@@ -1,0 +1,114 @@
+"""工作流入口：编译两张图 + 生成单章 / 批次任务 API（阶段 1 CLI/API 共用）。"""
+
+from __future__ import annotations
+
+import uuid
+
+from langgraph.graph.state import CompiledStateGraph
+
+from aiink.db import tenant_session
+from aiink.workflow.batch_graph import build_batch_graph
+from aiink.workflow.chapter_graph import build_chapter_graph
+from aiink.workflow.checkpointer import build_checkpointer
+
+_batch_graph: CompiledStateGraph | None = None
+_chapter_graph: CompiledStateGraph | None = None
+
+
+def get_graphs() -> tuple[CompiledStateGraph, CompiledStateGraph]:
+    """惰性编译（checkpointer 只建一次）。返回 (chapter_graph, batch_graph)。"""
+    global _batch_graph, _chapter_graph
+    if _chapter_graph is None:
+        cp = build_checkpointer()
+        _chapter_graph = build_chapter_graph(checkpointer=cp)
+        _batch_graph = build_batch_graph(_chapter_graph, checkpointer=cp)
+    return _chapter_graph, _batch_graph
+
+
+def generate_chapter(*, project_id: str, chapter_seq: int, task_id: str | None = None,
+                     user_instruction: str | None = None) -> dict:
+    """生成单章（阶段 1 同步版；阶段 2 由 worker 消费 Redis 队列调用）。
+
+    task_id 作 thread_id：中断/恢复/重试续跑同一条执行链（§6.7）。
+    """
+    chapter_graph, _ = get_graphs()
+    thread_id = task_id or str(uuid.uuid4())
+    result = chapter_graph.invoke(
+        {
+            "project_id": project_id,
+            "chapter_seq": chapter_seq,
+            "task_id": thread_id,
+            "user_instruction": user_instruction,
+        },
+        config={"configurable": {"thread_id": thread_id}},
+    )
+    if result.get("error"):
+        _set_task_status(project_id, thread_id, "failed", result["error"])
+    else:
+        # 单章任务终态：转人工（critical）或 done（自动放行）
+        _set_task_status(project_id, thread_id,
+                         "awaiting_review" if result.get("needs_review") else "done")
+    return result
+
+
+def generate_batch(*, project_id: str, size: int, start_chapter: int,
+                   batch_task_id: str | None = None) -> dict:
+    """自动写作批次（§6.11）。batch_task_id 作批次 thread_id，整批可续跑。
+
+    单章失败 → BatchChapterError 中断（§6.12）：任务置 failed，batch 线程 checkpoint
+    停在失败章；调用方用同一 batch_task_id + resume_thread 续跑，从失败章继续、
+    不重跑已完成章。返回 {"batch_failed": True, "error": ...} 供调用方识别。
+    """
+    from aiink.workflow.batch_graph import BatchChapterError
+
+    _, batch_graph = get_graphs()
+    thread_id = batch_task_id or str(uuid.uuid4())
+    state = {
+        "project_id": project_id,
+        "batch_task_id": thread_id,
+        "size": size,
+        "position": 0,
+        "start_chapter": start_chapter,
+    }
+    try:
+        return batch_graph.invoke(state, config={"configurable": {"thread_id": thread_id}})
+    except BatchChapterError as exc:
+        _set_task_status(project_id, thread_id, "failed", str(exc))
+        return {"batch_failed": True, "error": str(exc)}
+
+
+def resume_thread(graph: CompiledStateGraph, thread_id: str, state: dict) -> dict:
+    """从断点续跑（§6.12：批次中断/服务重启/人工暂停后）。
+
+    同一 thread_id 再 invoke：LangGraph 从最后 checkpoint 继续，不重跑已完成节点；
+    失败章重试。续跑输入以 checkpoint 状态为基座（`{**state, **checkpoint}`，
+    checkpoint 优先）——进度字段（如批次 position）不被外部输入覆盖，
+    否则会冲回 0 重跑已完成章。外部 state 只补缺口（首次无 checkpoint 时兜底）。
+    """
+    snap = graph.get_state({"configurable": {"thread_id": thread_id}})
+    resume_state = {**state, **(snap.values or {})}  # checkpoint 优先
+    return graph.invoke(resume_state, config={"configurable": {"thread_id": thread_id}})
+
+
+def new_task(*, project_id: str, task_type: str, payload: dict, chapter_seq: int | None = None) -> str:
+    """创建任务（DB 为最终权威，§5.3/§6.12 幂等键）。"""
+    from aiink.models import Task
+
+    with tenant_session(project_id) as db:
+        task = Task(project_id=uuid.UUID(project_id), task_type=task_type,
+                    payload=payload, status="queued", chapter_seq=chapter_seq)
+        db.add(task)
+        db.flush()
+        return str(task.id)
+
+
+def _set_task_status(project_id: str, task_id: str, status: str, error: str | None = None) -> None:
+    """更新任务终态（tasks 是观测/队列数据，但业务写入仍走租户会话保持一致性）。"""
+    from aiink.models import Task
+
+    with tenant_session(project_id) as db:
+        task = db.get(Task, uuid.UUID(task_id))
+        if task:
+            task.status = status
+            if error:
+                task.error = error

@@ -1,0 +1,55 @@
+"""向量存储抽象（§3 决策：VectorStore 接口，pgvector 实现，Milvus 可切换）。
+
+隔离（§14.1 坑 1）：RLS 保证安全，但过滤在排序后——向量查询必须**显式 filter**
+（project_id）让 HNSW 走过滤索引，保证召回质量不被他书向量污染 Top-K。
+"""
+
+from __future__ import annotations
+
+import uuid
+from abc import ABC, abstractmethod
+
+from sqlalchemy import select, text
+from sqlalchemy.orm import Session
+
+from aiink.models import EmbeddingRow
+
+
+class VectorStore(ABC):
+    @abstractmethod
+    def upsert(self, session: Session, *, project_id: uuid.UUID, level: str,
+               source_id: uuid.UUID, source_chapter: int | None,
+               model_version: str, embedding: list[float]) -> None:
+        """写向量（阶段 3 起 Milvus 实现切换点）。"""
+
+    @abstractmethod
+    def search(self, session: Session, *, project_id: uuid.UUID, level: str | None,
+               embedding: list[float], top_k: int = 20) -> list[tuple[uuid.UUID, float]]:
+        """按 project_id 显式过滤召回（返回 [(source_id, distance)]）。"""
+
+
+class PgvectorStore(VectorStore):
+    """pgvector 实现（MVP 一库多用，§5.2）。"""
+
+    def upsert(self, session: Session, *, project_id: uuid.UUID, level: str,
+               source_id: uuid.UUID, source_chapter: int | None,
+               model_version: str, embedding: list[float]) -> None:
+        row = EmbeddingRow(
+            project_id=project_id, level=level, source_id=source_id,
+            source_chapter=source_chapter, model_version=model_version,
+            embedding=embedding,
+        )
+        session.add(row)
+
+    def search(self, session: Session, *, project_id: uuid.UUID, level: str | None,
+               embedding: list[float], top_k: int = 20) -> list[tuple[uuid.UUID, float]]:
+        # 显式 filter 走 HNSW 过滤索引（§14.1 坑 1：避免排序后过滤污染 Top-K）
+        query = select(
+            EmbeddingRow.source_id,
+            EmbeddingRow.embedding.cosine_distance(embedding).label("dist"),
+        ).where(EmbeddingRow.project_id == project_id)
+        if level:
+            query = query.where(EmbeddingRow.level == level)
+        query = query.order_by(text("dist")).limit(top_k)
+        rows = session.execute(query).all()
+        return [(r.source_id, r.dist) for r in rows]

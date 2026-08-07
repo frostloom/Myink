@@ -1,0 +1,41 @@
+[project]
+name = "aiink"
+version = "0.1.0"
+description = "Ai Ink - 面向长篇网文的多 Agent 智能创作助手（推理层，阶段 1）"
+requires-python = ">=3.11"
+dependencies = [
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.1",
+    "pgvector>=0.3",
+    "pydantic>=2.7",
+    "langgraph>=0.2",
+    "langgraph-checkpoint-postgres>=2.0",
+    "openai>=1.30",
+    "python-dotenv>=1.0",
+    "typer>=0.12",
+    "rich>=13.7",
+    # bge-m3 本地 embedding（§5.2 一库多用；1024 维与 embeddings 表 Vector(1024) 匹配）。
+    # DeepSeek 官方无 embedding 接口，故本地加载；延迟导入，测试环境可不装。
+    "sentence-transformers>=3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
+
+[project.scripts]
+aiink = "aiink.cli:app"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
