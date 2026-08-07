@@ -1,0 +1,124 @@
+"""阶段 1 CLI：本地端到端跑通（章节生成 / 校验证据 / 批次 / 任务时间线）。
+
+用法：
+    aiink init                                  # 建表 + RLS + demo 种子
+    aiink chapter <project_id> <seq>            # 生成单章
+    aiink batch <project_id> <N> <start_seq>    # 自动写作批次
+    aiink status <task_id>                      # 任务状态 + 每节点成本/耗时
+"""
+
+from __future__ import annotations
+
+import uuid
+
+import typer
+from rich.console import Console
+from rich.table import Table
+
+from aiink.db import get_engine, tenant_session
+from aiink.models import Base
+from aiink.seed import create_demo_project
+from aiink.workflow.runner import generate_batch, generate_chapter, new_task
+
+app = typer.Typer(help="Ai Ink 推理层 CLI（阶段 1 单体闭环）")
+console = Console()
+
+
+@app.command()
+def init() -> None:
+    """初始化数据库：建表 + RLS + demo 种子数据。"""
+    from aiink.db import enable_row_level_security, get_admin_engine
+
+    # 建表 + RLS 走超级用户（owner）连接；业务运行走 aiink_app（NOBYPASSRLS，受 RLS 约束）
+    console.print("[bold]1/3[/] 建表（PostgreSQL + pgvector）...")
+    Base.metadata.create_all(get_admin_engine())
+    console.print("[bold]2/3[/] 启用 RLS 主强制（FORCE ROW LEVEL SECURITY）...")
+    enable_row_level_security()
+    console.print("[bold]3/3[/] 写入 demo 种子（《九州问天》）...")
+    pid = create_demo_project()
+    console.print(f"[green]✓[/] 初始化完成。demo project_id = [bold]{pid}[/]")
+
+
+@app.command()
+def chapter(project_id: str, seq: int, instruction: str | None = None) -> None:
+    """生成单章（含校验证据 + 战力通胀/大纲偏差报告）。"""
+    task_id = new_task(project_id=project_id, task_type="chapter_generate",
+                       payload={"seq": seq}, chapter_seq=seq)
+    console.print(f"task_id = {task_id}\n[dim]生成中（10–60s）...[/]")
+    result = generate_chapter(project_id=project_id, chapter_seq=seq, task_id=task_id,
+                              user_instruction=instruction)
+    _print_chapter_result(result)
+
+
+def _print_chapter_result(result: dict) -> None:
+    if result.get("error"):
+        console.print(f"[red]✗ 失败: {result['error']}[/]")
+        return
+    draft = result.get("draft", "")
+    console.print(f"\n[bold]第 {result.get('chapter_seq')} 章[/]（{len(draft)} 字）")
+    console.print(draft[:500] + ("..." if len(draft) > 500 else ""))
+
+    report = result.get("report") or {}
+    findings = report.get("findings", [])
+    if findings:
+        table = Table(title=f"校验报告（{report.get('summary', {}).get('total', 0)} 项）")
+        table.add_column("类型"); table.add_column("严重度"); table.add_column("证据"); table.add_column("建议")
+        for f in findings:
+            ev = "; ".join(q["quote"][:60] for q in f.get("evidence", []))
+            table.add_row(f.get("conflict_type"), f.get("severity"),
+                          ev or "-", f.get("suggestion", ""))
+        console.print(table)
+    else:
+        console.print("[green]✓ 校验通过，无冲突[/]")
+
+    if result.get("needs_review"):
+        console.print("[yellow]⏸ 存在 critical 冲突 → 候选已转待人工确认（批次将暂停）[/]")
+
+
+@app.command()
+def batch(project_id: str, n: int, start_seq: int = 1) -> None:
+    """自动写作批次：一次规划 N 章推进蓝图，逐章生成（§6.11）。"""
+    if n < 1 or n > 20:
+        console.print("[red]N 需在 1–20（硬上限，§6.11）[/]")
+        raise typer.Exit(1)
+    task_id = new_task(project_id=project_id, task_type="batch_generate",
+                       payload={"size": n, "start": start_seq}, chapter_seq=start_seq)
+    console.print(f"batch_task_id = {task_id}\n[dim]批次生成中（N 章，每章 10–60s）...[/]")
+    result = generate_batch(project_id=project_id, size=n, start_chapter=start_seq,
+                            batch_task_id=task_id)
+    if result.get("error"):
+        console.print(f"[red]✗ 批次中断: {result['error']}[/]")
+    summary = result.get("batch_summary") or {}
+    console.print(f"[bold]批次汇总[/]: 状态={summary.get('status')} 完成={summary.get('completed')}/{summary.get('size')} "
+                  f"总成本≈¥{summary.get('total_cost', 0)} 总耗时={summary.get('total_duration_ms', 0)}ms")
+
+
+@app.command()
+def status(task_id: str) -> None:
+    """任务状态 + 每节点 token/成本/耗时（§6.8 节点时间线）。"""
+    from aiink.models import AgentRun, Task
+
+    # agent_runs / tasks 是观测/队列数据，不走 RLS（§14 隔离清单：Redis/观测数据无租户语义）
+    from aiink.db import new_session
+
+    with new_session() as db:
+        task = db.get(Task, uuid.UUID(task_id))
+        if task is None:
+            console.print("[red]任务不存在[/]")
+            raise typer.Exit(1)
+        runs = db.query(AgentRun).filter(AgentRun.task_id == task_id).order_by(AgentRun.id).all()
+        table = Table(title=f"任务 {task_id[:8]} · {task.task_type} · {task.status}")
+        table.add_column("节点"); table.add_column("模型"); table.add_column("输入tok")
+        table.add_column("输出tok"); table.add_column("缓存"); table.add_column("耗时ms")
+        table.add_column("成本¥"); table.add_column("重试"); table.add_column("降级")
+        for r in runs:
+            table.add_row(r.node, r.model_id or "-", str(r.input_tokens), str(r.output_tokens),
+                          "✓" if r.cache_hit else "-", str(r.duration_ms),
+                          f"{r.cost_est:.4f}", str(r.retry_count), "✓" if r.degraded else "-")
+        console.print(table)
+        total = round(sum(r.cost_est for r in runs), 6)
+        console.print(f"合计成本 ≈ ¥{total}，总耗时 {sum(r.duration_ms for r in runs)}ms")
+
+
+if __name__ == "__main__":
+    app()

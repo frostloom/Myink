@@ -1,0 +1,25 @@
+# 密钥与配置（plan §17.2：密钥不进代码库）
+.env
+*.env
+!*.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# 测试/临时
+.coverage
+htmlcov/
+
+# 本地数据
+*.db
+*.sqlite3
+
+# 外部参考项目（仅参考不调用，不进版本库，见 plan.md 借鉴边界）
+inkos/
