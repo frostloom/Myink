@@ -46,6 +46,9 @@ class Settings:
     # device: auto=有 CUDA 用 GPU 否则 CPU（实测 CPU encode ~0.6s/次，MVP 每章 2 次可接受）
     embed_model_name: str = field(default_factory=lambda: _env("EMBED_MODEL_NAME", "BAAI/bge-m3") or "BAAI/bge-m3")
     embed_device: str = field(default_factory=lambda: _env("EMBED_DEVICE", "auto") or "auto")
+    # 低内存/CI 关闭开关：向量是加分项（§14.1 坑 1），EMBED_ENABLED=0 时不加载
+    # bge-m3（CPU 约 2.2GB），encode 立即抛错由调用方降级走纯关系链路
+    embed_enabled: bool = field(default_factory=lambda: _env("EMBED_ENABLED", "1") == "1")
     # 默认离线加载（模型缓存后不触网探测 adapter，防 sentence-transformers 5.x 卡死）；
     # 首次下载模型时设 EMBED_ALLOW_DOWNLOAD=1
     embed_allow_download: bool = field(default_factory=lambda: _env("EMBED_ALLOW_DOWNLOAD", "0") == "1")
@@ -54,8 +57,26 @@ class Settings:
     recall_token_budget: int = 12_000
     max_revisions: int = 2  # rewrite 轮次上限（spec/state-flow.md §3）
     max_replans: int = 1  # replan 轮次上限（重规划比重写贵，预算更紧，§6.5）
+    max_tool_calls: int = 3  # 只读查证工具执行总数预算（§10：audit/write 工具循环封顶）
     batch_max_default: int = 5  # 批次上限默认（plan.md §6.11）
     batch_max_hard: int = 20  # 批次硬上限
+
+    # 阶段 2：Redis 队列 + worker（§阶段2；§5.3 Redis 只管可重建数据，终态落 DB）
+    redis_url: str = field(default_factory=lambda: _env("REDIS_URL", "redis://localhost:6380/0") or "redis://localhost:6380/0")
+    worker_stream: str = field(default_factory=lambda: _env("WORKER_STREAM", "queue:tasks") or "queue:tasks")
+    worker_group: str = field(default_factory=lambda: _env("WORKER_GROUP", "workers") or "workers")
+    worker_max_retries: int = field(default_factory=lambda: int(_env("WORKER_MAX_RETRIES", "3") or "3"))
+    worker_backoff_base: int = field(default_factory=lambda: int(_env("WORKER_BACKOFF_BASE", "1") or "1"))  # 2^retry 秒退避
+    worker_defer_backoff_s: int = field(default_factory=lambda: int(_env("WORKER_DEFER_BACKOFF_S", "5") or "5"))  # 书忙固定退避（不计 retry_count）
+    # 租约锁（§6.12 崩溃恢复缺口修复）：锁 TTL 远小于网关认领阈值 MinIdle(120s)，
+    # 崩溃后锁自过期早于认领；心跳续租间隔（秒），3× 间隔无心跳判僵尸可回收
+    worker_inflight_ttl: int = field(default_factory=lambda: int(_env("WORKER_INFLIGHT_TTL", "60") or "60"))  # lock:task TTL（租约）
+    worker_lock_heartbeat: int = field(default_factory=lambda: int(_env("WORKER_LOCK_HEARTBEAT", "15") or "15"))  # 持锁续租间隔
+    worker_heartbeat_interval: int = field(default_factory=lambda: int(_env("WORKER_HEARTBEAT_INTERVAL", "5") or "5"))
+    api_host: str = field(default_factory=lambda: _env("API_HOST", "127.0.0.1") or "127.0.0.1")
+    api_port: int = field(default_factory=lambda: int(_env("API_PORT", "8100") or "8100"))
+    # 阶段 2 展示前端：网关唯一入口（app.py 生成走网关异步，§17.2）
+    gateway_url: str = field(default_factory=lambda: _env("GATEWAY_URL", "http://localhost:8080") or "http://localhost:8080")
 
     def is_prod(self) -> bool:
         return self.app_env == "prod"
@@ -66,3 +87,4 @@ class Settings:
 
 
 settings = Settings()
+settings.validate()  # prod 缺 DEEPSEEK_API_KEY 时导入即失败（评审 A5 fail-fast，§17.2）
