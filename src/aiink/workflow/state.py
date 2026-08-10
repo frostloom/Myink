@@ -53,6 +53,9 @@ class ChapterState(TypedDict, total=False):
     revision_count: int
     revise_responses: list[dict]
 
+    # 只读查证工具调用痕迹（§10：audit/write 持只读工具，仅记录不落库，纯 checkpoint）
+    tool_trace: list[dict]  # [{tool, arguments, result[:200]}]
+
     # persist 产物 / 失败
     persisted: bool
     needs_review: bool  # 转人工（§6.11 确认分流）

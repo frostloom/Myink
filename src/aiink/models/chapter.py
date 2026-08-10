@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import JSON, ForeignKey, Integer, String, Text, Uuid
+from sqlalchemy import JSON, ForeignKey, Integer, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from aiink.models.base import Base, TimestampMixin, UUIDPkMixin
@@ -16,6 +16,11 @@ class Chapter(Base, UUIDPkMixin, TimestampMixin):
     """章节正文与状态。"""
 
     __tablename__ = "chapters"
+    __table_args__ = (
+        # (project_id, chapter_seq) 唯一（评审 A6）：save_chapter 是查后 upsert，
+        # 并发入口 / CLI 直调绕过 worker 书锁时靠约束兜底，杜绝同章双行竞态
+        UniqueConstraint("project_id", "chapter_seq", name="uq_chapters_project_seq"),
+    )
 
     project_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True

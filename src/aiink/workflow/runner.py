@@ -59,7 +59,7 @@ def generate_batch(*, project_id: str, size: int, start_chapter: int,
     停在失败章；调用方用同一 batch_task_id + resume_thread 续跑，从失败章继续、
     不重跑已完成章。返回 {"batch_failed": True, "error": ...} 供调用方识别。
     """
-    from aiink.workflow.batch_graph import BatchChapterError
+    from aiink.workflow.batch_graph import BatchChapterError, BatchReviewError
 
     _, batch_graph = get_graphs()
     thread_id = batch_task_id or str(uuid.uuid4())
@@ -72,6 +72,11 @@ def generate_batch(*, project_id: str, size: int, start_chapter: int,
     }
     try:
         return batch_graph.invoke(state, config={"configurable": {"thread_id": thread_id}})
+    except BatchReviewError as exc:
+        # critical 冲突转人工（§6.11）：任务置 awaiting_review，checkpoint 停在本章，
+        # 人工确认候选后 resume 从本章续跑（不重跑已完成章）。
+        _set_task_status(project_id, thread_id, "awaiting_review", str(exc))
+        return {"batch_paused": True, "error": str(exc), "needs_review": True}
     except BatchChapterError as exc:
         _set_task_status(project_id, thread_id, "failed", str(exc))
         return {"batch_failed": True, "error": str(exc)}
@@ -90,25 +95,36 @@ def resume_thread(graph: CompiledStateGraph, thread_id: str, state: dict) -> dic
     return graph.invoke(resume_state, config={"configurable": {"thread_id": thread_id}})
 
 
-def new_task(*, project_id: str, task_type: str, payload: dict, chapter_seq: int | None = None) -> str:
-    """创建任务（DB 为最终权威，§5.3/§6.12 幂等键）。"""
+def new_task(*, project_id: str, task_type: str, payload: dict, chapter_seq: int | None = None,
+             task_id: str | None = None, trace_id: str | None = None,
+             status: str = "queued") -> str:
+    """创建任务（DB 为最终权威，§5.3/§6.12 幂等键）。
+
+    阶段 2 worker 物化队列消息时传入 task_id（幂等键，与 Redis 消息同 id）、trace_id；
+    默认行为与阶段 1 完全一致（自生成 uuid、status=queued）。
+    """
     from aiink.models import Task
 
     with tenant_session(project_id) as db:
-        task = Task(project_id=uuid.UUID(project_id), task_type=task_type,
-                    payload=payload, status="queued", chapter_seq=chapter_seq)
+        task = Task(id=uuid.UUID(task_id) if task_id else uuid.uuid4(),
+                    project_id=uuid.UUID(project_id), task_type=task_type,
+                    payload=payload, status=status, chapter_seq=chapter_seq,
+                    trace_id=trace_id)
         db.add(task)
         db.flush()
         return str(task.id)
 
 
 def _set_task_status(project_id: str, task_id: str, status: str, error: str | None = None) -> None:
-    """更新任务终态（tasks 是观测/队列数据，但业务写入仍走租户会话保持一致性）。"""
+    """更新任务终态（tasks 是观测/队列数据，但业务写入仍走租户会话保持一致性）。
+
+    阶段 2 守卫：cancelled 优先——用户取消后（尽力而为，§6.12）不再被后续终态回写覆盖。
+    """
     from aiink.models import Task
 
     with tenant_session(project_id) as db:
         task = db.get(Task, uuid.UUID(task_id))
-        if task:
+        if task and task.status != "cancelled":
             task.status = status
             if error:
                 task.error = error

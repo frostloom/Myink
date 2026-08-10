@@ -1,6 +1,6 @@
 # Ai Ink 批量自动写作状态流转图 — Phase 0
 
-> **用途**：LangGraph 工作流（plan.md §6.3）的运行蓝图 + 节点契约 + 异常分支。实现阶段 1 时本图直接变为代码骨架：节点函数、`ChapterState` / `BatchState` TypedDict、条件路由函数 `route_after_validation`。
+> **用途**：LangGraph 工作流（plan.md §6.3）的运行蓝图 + 节点契约 + 异常分支。实现阶段 1 时本图直接变为代码骨架：节点函数、`ChapterState` / `BatchState` TypedDict、条件路由函数 `route_after_audit`。
 >
 > **配套**：数据契约见 `spec/schema.md`；评测样例见 `spec/conflict-samples.md`；批量设计见 plan.md §6.11，失败兜底见 §6.12。
 
@@ -45,7 +45,7 @@ flowchart TD
 
 ## 2. 节点契约
 
-> 节点间传**结构化对象**（plan.md §6.4），不传不断变长的自然语言 Prompt。类型 = 确定性节点（纯代码）/ LLM Agent / 角色。**LLM agent 不持任何工具**（§6.2 数据流边界），工具集中在确定性节点。
+> 节点间传**结构化对象**（plan.md §6.4），不传不断变长的自然语言 Prompt。类型 = 确定性节点（纯代码）/ LLM Agent / 角色。**LLM agent 不持写工具**（§6.2 数据流边界）：写库只在 `persist` 编排层；**Audit/Writer 持只读查证工具**（function calling，§10）——写稿/审核前可主动核实人物台账 / 伏笔 / 剧情线 / 硬约束，工具确定性执行、服务端断言归属、`tool_trace` 可审计。
 
 | 节点 | 层级 | 类型 | 输入 | 输出 / 副作用 | 用到的工具 |
 |---|---|---|---|---|---|
@@ -53,10 +53,10 @@ flowchart TD
 | `load_state` | 章 | 确定性 | 任务参数（project_id、chapter_seq） | 项目设定、章节计划、前情摘要初始化 | — |
 | `recall` | 章 | 确定性 | 设定 + 前情 | `RetrievedContext`（分层召回 + token 预算） | `search_world_facts` / `search_plot_events` / `get_entity_relations` / `get_chapter_context` |
 | `plan_chapter` | 章 | Planner（LLM） | `RetrievedContext` + 本章在 BatchPlan 的目标 | `ChapterPlan` | — |
-| `write` | 章 | Writer（LLM） | `RetrievedContext` + `ChapterPlan` | `draft`（章节草稿） | — |
+| `write` | 章 | Writer（LLM） | `RetrievedContext` + `ChapterPlan` | `draft`（章节草稿） | `inspect_character` / `inspect_facts`（只读查证，§10） |
 | `extract` | 章 | Memory（LLM） | `draft` + `ChapterPlan` | `MutationCandidate[]` 写入待确认池（自动模式：低风险自动放行，§6.11） | `save_memory_candidates` |
 | `validate` | 章 | 确定性（L1 规则层） | `draft` + 图谱/事件/事实 + extract 候选 | `ValidationReport`（L1 硬证据，不被 LLM 绕过） | `check_constraints` |
-| `audit` | 章 | **审核中枢 Audit（LLM，第 4 类 agent）** | `draft` + ChapterPlan + 召回上下文 + extract 候选 | `AuditVerdict`：pass / rewrite / replan + L2 findings + reasons + confidence | — |
+| `audit` | 章 | **审核中枢 Audit（LLM，第 4 类 agent）** | `draft` + ChapterPlan + 召回上下文 + extract 候选 | `AuditVerdict`：pass / rewrite / replan + L2 findings + reasons + confidence | `inspect_character` / `inspect_foreshadows` / `inspect_plot_threads` / `inspect_facts`（只读查证，§10） |
 | `revise` | 章 | 角色（复用 Writer 模型） | `draft` + Audit unresolved findings | 修订后 `draft` + 逐条 `fixed/cannot_fix/dispute` | — |
 | `persist` | 章 | 确定性（编排层） | 确认候选 / 自动放行候选 | 事件/事实/状态/关系/伏笔落库（追加式）；`update_plot_threads` 推进大纲 | `save_chapter` / `save_*` / `update_plot_threads` |
 | `状态桥` | 章间 | 确定性 | 上章 persist 结果 | 上章沉淀 → 下一章 recall 输入（连续推进） | — |
@@ -135,5 +135,5 @@ LLM Agent：batch_plan + plan_chapter(Planner) / write(Writer) / extract(Memory)
 
 > 审核路由边界（§6.11 混合路由）：Audit 输出 AuditVerdict 做语义路由（pass/rewrite/replan），但 L1 critical 与轮次预算由确定性规则强制——Audit 不能绕过硬约束，也不能无限重写。
 
-> 能力边界（plan.md §6.2）：写作/规划/校验 agent 只拿组装好的上下文，**没有任何 agent 直接写库**；写状态经 extract 出候选，编排层（persist）确认或自动放行后落库。
-> 工具调用方式（plan.md §10）：阶段 1 工具是确定性节点内 Python 函数；阶段 3 封装 MCP server 跨服务复用；function calling 保留为 P1 agent 主动查证演进。
+> 能力边界（plan.md §6.2）：写作/规划/校验 agent 只拿组装好的上下文，**没有任何 agent 直接写库**；写状态经 extract 出候选，编排层（persist）确认或自动放行后落库。**例外只给只读查证工具**：Audit/Writer 经 function calling 主动核实（§10），不触碰写边界。
+> 工具调用方式（plan.md §10）：**MVP（阶段 1）** Audit/Writer 已持只读查证工具（function calling，确定性节点内 execute，`max_tool_calls=3` 预算封顶）；写工具仍是确定性节点内 Python 函数（persist 编排层）；阶段 3 以 **MCP Client** 接入外部数据源（热点榜单 / 素材检索 / 图片生成，2026-07-28 无状态协议），外部工具不暴露给 agent（编排层受控能力，热榜数据当灵感参考、不进记忆层）。

@@ -5,6 +5,9 @@
 - 连接级上下文：`SET LOCAL app.tenant_id = :id` 只在当前事务生效，事务结束自动恢复，
   连接池复用时不泄漏上一位用户的租户（坑 1：连接池污染）；
 - fail closed：未设置租户则 RLS 策略返回空集，任何查询空结果，不返回他人数据。
+  坑 2（自定义 GUC 默认值）：任意 SET LOCAL 提交后，该连接会话级 `app.tenant_id` 恢复为
+  自定义变量的默认空串 `''`（而非 NULL）——策略必须用 NULLIF(...,'') 判空，否则
+  `''::uuid` 抛 DataError，而不是 fail closed（见下方 CREATE POLICY）。
 """
 
 from __future__ import annotations
@@ -107,8 +110,73 @@ def enable_row_level_security() -> None:
             conn.execute(text(
                 f"DROP POLICY IF EXISTS tenant_isolation ON {t}"
             ))
+            # NULLIF(...,'') 判空（坑 2）：SET LOCAL 提交后连接会话级 tenant 是 '' 不是 NULL，
+            # 裸 current_setting 的 ::uuid 会 DataError。与 models/base.py aiink.tenant_id() 同口径。
             conn.execute(text(
                 f"CREATE POLICY tenant_isolation ON {t} "
-                "USING (current_setting('app.tenant_id', true) IS NOT NULL "
-                "AND project_id = current_setting('app.tenant_id', true)::uuid)"
+                "USING (NULLIF(current_setting('app.tenant_id', true), '') IS NOT NULL "
+                "AND project_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid)"
             ))
+
+
+# ---- 组合索引 + 向量 ANN 索引（评审 A6 同款：模型已声明，create_all 不改已有表）----
+
+def ensure_storage_indexes() -> None:
+    """为活库补齐组合索引与 HNSW（幂等，评审存储建议）。
+
+    create_all 对已存在的表不会补索引，故建模后需显式 CREATE INDEX。每枚索引
+    先查 pg_indexes 判存在，幂等可重跑；存在重复索引名时跳过不报错。
+    """
+    from sqlalchemy import text as _text
+
+    _INDEX_DDL = {
+        # 与 models 声明同名同列：组合索引前缀 = 查询里的等值/范围前缀（§14.1 RLS 使
+        # 所有查询恒带 project_id，故前缀必是 project_id，评审建议列核对后仅留真实热键）
+        "ix_character_states_project_char_seq":
+            "CREATE INDEX ix_character_states_project_char_seq "
+            "ON character_states (project_id, character_id, chapter_seq)",
+        "ix_events_project_chapter":
+            "CREATE INDEX ix_events_project_chapter ON events (project_id, source_chapter)",
+        "ix_relations_project_source":
+            "CREATE INDEX ix_relations_project_source ON relations (project_id, source_id)",
+        "ix_relations_project_target":
+            "CREATE INDEX ix_relations_project_target ON relations (project_id, target_id)",
+        "ix_embeddings_project_level":
+            "CREATE INDEX ix_embeddings_project_level ON embeddings (project_id, level)",
+        # ANN（§5.2）：pgvector ≥0.5 的 HNSW，cosine 与 PgvectorStore.search 的
+        # cosine_distance 对齐；显式 WHERE project_id 使扫描限定本租户向量集（§14.1 坑 1）
+        "ix_embeddings_embedding_hnsw":
+            "CREATE INDEX ix_embeddings_embedding_hnsw ON embeddings "
+            "USING hnsw (embedding vector_cosine_ops)",
+        # agent_runs 无 RLS（观测表，§14 清单），查询按 task_id 前缀 + id 增量扫，
+        # 前缀用 task_id 而非 project_id（评审建议的 project_id 前缀对真实查询无益）
+        "ix_agent_runs_task_id":
+            "CREATE INDEX ix_agent_runs_task_id ON agent_runs (task_id, id)",
+    }
+    with _admin_engine.begin() as conn:
+        existing = {
+            r[0] for r in conn.execute(_text(
+                "SELECT indexname FROM pg_indexes WHERE schemaname = 'public'"
+            ))
+        }
+        for name, ddl in _INDEX_DDL.items():
+            if name not in existing:
+                conn.execute(_text(ddl))
+
+
+def ensure_unique_constraints() -> None:
+    """为活库补齐 create_all 不会 ALTER 的唯一约束（幂等，阶段 5 迁移链前的过渡）。
+
+    模型 __table_args__ 的 UniqueConstraint 只对新建表生效；老库（create_all 建）
+    缺约束需显式 ALTER。用 pg_constraint 查重保证幂等；库内已有重复行时 ALTER
+    会如实报错（此时应先人工去重，不能静默吞掉）。
+    """
+    with _admin_engine.begin() as conn:
+        conn.execute(text("""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_chapters_project_seq') THEN
+                    ALTER TABLE chapters ADD CONSTRAINT uq_chapters_project_seq UNIQUE (project_id, chapter_seq);
+                END IF;
+            END $$;
+        """))

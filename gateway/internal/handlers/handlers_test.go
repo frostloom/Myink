@@ -1,0 +1,435 @@
+// 网关 HTTP 层测试（httptest 直打 router）：建章/建批次、闸门拒绝、转发、SSE、探针。
+// 活 Redis :6380；Python API 用内存 httptest 假服务替代（测转发，不依赖 8100）。
+package handlers
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/gin-gonic/gin"
+
+	"aiink/gateway/internal/config"
+	"aiink/gateway/internal/pyapi"
+	"aiink/gateway/internal/redis"
+)
+
+func newRouter(t *testing.T, r *redis.Client, py *pyapi.Client) *gin.Engine {
+	t.Helper()
+	cfg := config.Load()
+	cfg.QuotaDaily = 2
+	cfg.ConcurrencyLimit = 1
+	cfg.DailyBudget = 1.0
+	cfg.RatePerSec = 1000 // 测试不触发限流
+	cfg.RateBurst = 1000
+	return NewRouter(cfg, r, py)
+}
+
+func newTestRedis(t *testing.T) *redis.Client {
+	t.Helper()
+	r := redis.New("localhost:6380", "")
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err := r.Ping(ctx); err != nil {
+		t.Skipf("aiink-redis 不可达: %v", err)
+	}
+	return r
+}
+
+// fakePy 内存假 Python API：GET 详情 / POST 控制 / 项目与章节读返回固定 JSON。
+func fakePy() *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case strings.HasSuffix(req.URL.Path, "/tasks/detail-test"):
+			fmt.Fprint(w, `{"task_id":"detail-test","status":"done","progress":{"i":1,"n":2}}`)
+		case strings.HasSuffix(req.URL.Path, "/tasks/missing-task"):
+			// 模拟任务尚未物化（入队→DB 异步窗口内）→ 上游明确 404
+			http.Error(w, `{"detail":"任务不存在: missing-task"}`, http.StatusNotFound)
+		case strings.HasSuffix(req.URL.Path, "/projects"):
+			fmt.Fprint(w, `[{"id":"p1","title":"书A","genre":"仙侠"},{"id":"p2","title":"书B","genre":"科幻"}]`)
+		case strings.Contains(req.URL.Path, "/chapters"):
+			fmt.Fprint(w, `[{"chapter_seq":1,"status":"confirmed"},{"chapter_seq":2,"status":"draft"}]`)
+		case strings.Contains(req.URL.Path, "/pause"):
+			fmt.Fprint(w, `{"task_id":"batch-x","status":"paused"}`)
+		default:
+			fmt.Fprint(w, `{"error":"not_found"}`)
+		}
+	}))
+}
+
+// recordingPy 记录所有收到的转发路径，用于断言转发目标（BatchControl 曾转发错路径 batches→tasks）。
+func recordingPy(paths *[]string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		*paths = append(*paths, req.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"ok":true}`)
+	}))
+}
+
+func TestCreateChapter202(t *testing.T) {
+	r := newTestRedis(t)
+	py := pyapi.New(fakePy().URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	// 清理用户闸门键，隔离（含 inflight 残留）
+	uid := "web-test-user"
+	ctx := context.Background()
+	keys, _ := r.Raw().Keys(ctx, "rate:quota:"+uid+":*").Result()
+	bk, _ := r.Raw().Keys(ctx, "rate:bookquota:"+uid+":*").Result()
+	bkc, _ := r.Raw().Keys(ctx, "rate:bookcnt:"+uid+":*").Result()
+	bk = append(bk, bkc...)
+	keys = append(keys, bk...)
+	_ = r.Raw().Del(ctx, append(keys, "rate:inflight:"+uid+":proj-1", "rate:quota:"+uid+":"+time.Now().Format("2006-01-02"))...).Err()
+	// 入队会真实 SADD inflight + 扣配额（用户 + 每书，活 Redis），注册末尾清理防污染其他用户/测试
+	defer func() { _ = r.Raw().Del(ctx, "rate:inflight:"+uid+":proj-1", "rate:quota:"+uid+":"+time.Now().Format("2006-01-02"), "rate:bookquota:"+uid+":proj-1:"+time.Now().Format("2006-01-02"), "rate:bookcnt:"+uid+":"+time.Now().Format("2006-01-02")).Err() }()
+
+	body := `{"seq":1,"user_instruction":"写第一章"}`
+	req := httptest.NewRequest(http.MethodPost,
+		"/api/v1/projects/proj-1/chapters/ch-1/generate", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-AiInk-User", uid)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("应 202，实际 %d body=%s", w.Code, w.Body.String())
+	}
+	var resp struct {
+		TaskID string `json:"task_id"`
+		Status string `json:"status"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("响应解析失败: %v", err)
+	}
+	if resp.TaskID == "" || resp.Status != "queued" {
+		t.Fatalf("应返回 task_id + queued，实际 %+v", resp)
+	}
+	// 应透传 X-Trace-ID 头（§17.2 全链路）
+	if w.Header().Get("X-Request-ID") == "" {
+		t.Fatal("应带 X-Request-ID 响应头")
+	}
+}
+
+func TestCreateChapterQuotaRejected(t *testing.T) {
+	r := newTestRedis(t)
+	py := pyapi.New(fakePy().URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	uid := "web-test-quota"
+	ctx := context.Background()
+	today := time.Now().Format("2006-01-02")
+	// 清残留后占满配额；go-redis Del 调用即执行，defer 必须包闭包
+	keys, _ := r.Raw().Keys(ctx, "rate:quota:"+uid+":*").Result()
+	bk, _ := r.Raw().Keys(ctx, "rate:bookquota:"+uid+":*").Result()
+	bkc, _ := r.Raw().Keys(ctx, "rate:bookcnt:"+uid+":*").Result()
+	bk = append(bk, bkc...)
+	keys = append(keys, bk...)
+	_ = r.Raw().Del(ctx, append(keys, "rate:inflight:"+uid+":proj-1", "rate:quota:"+uid+":"+today)...).Err()
+	_ = r.Raw().Set(ctx, "rate:quota:"+uid+":"+today, "2", 0).Err() // 占满配额
+	defer func() { _ = r.Raw().Del(ctx, append(keys, "rate:inflight:"+uid+":proj-1", "rate:quota:"+uid+":"+today)...).Err() }()
+
+	req := httptest.NewRequest(http.MethodPost,
+		"/api/v1/projects/proj-1/chapters/ch-1/generate", strings.NewReader(`{"seq":1}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-AiInk-User", uid)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("配额超限应 429，实际 %d body=%s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "QUOTA_EXCEEDED") {
+		t.Fatalf("错误体应含 QUOTA_EXCEEDED，实际 %s", w.Body.String())
+	}
+}
+
+func TestCreateBatchDeductN(t *testing.T) {
+	r := newTestRedis(t)
+	py := pyapi.New(fakePy().URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	uid := "web-test-batch"
+	ctx := context.Background()
+	today := time.Now().Format("2006-01-02")
+	// 先清残留闸门键（前次运行可能遗留），再注册末尾清理
+	keys, _ := r.Raw().Keys(ctx, "rate:quota:"+uid+":*").Result()
+	bk, _ := r.Raw().Keys(ctx, "rate:bookquota:"+uid+":*").Result()
+	bkc, _ := r.Raw().Keys(ctx, "rate:bookcnt:"+uid+":*").Result()
+	bk = append(bk, bkc...)
+	keys = append(keys, bk...)
+	_ = r.Raw().Del(ctx, append(keys, "rate:inflight:"+uid+":proj-1", "rate:quota:"+uid+":"+today)...).Err()
+	// go-redis Del 立即执行，defer 必须用运行时实际键名（快照不含运行期新增的 bookquota）
+	defer func() { _ = r.Raw().Del(ctx, "rate:inflight:"+uid+":proj-1", "rate:quota:"+uid+":"+today, "rate:bookquota:"+uid+":proj-1:"+today, "rate:bookcnt:"+uid+":"+today).Err() }()
+
+	body := `{"size":2,"start":1}`
+	req := httptest.NewRequest(http.MethodPost,
+		"/api/v1/projects/proj-1/batches/generate", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-AiInk-User", uid)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("应 202，实际 %d body=%s", w.Code, w.Body.String())
+	}
+	quota := r.Raw().Get(ctx, "rate:quota:"+uid+":"+today).Val()
+	if quota != "2" {
+		t.Fatalf("批次应扣 2 配额，实际 %q", quota)
+	}
+}
+
+func TestCreateBatchStartDefaultsOne(t *testing.T) {
+	r := newTestRedis(t)
+	py := pyapi.New(fakePy().URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	uid := "web-batch-start-default"
+	ctx := context.Background()
+	today := time.Now().Format("2006-01-02")
+	defer func() {
+		_ = r.Raw().Del(ctx, "rate:inflight:"+uid+":proj-1", "rate:quota:"+uid+":"+today,
+			"rate:bookquota:"+uid+":proj-1:"+today, "rate:bookcnt:"+uid+":"+today).Err()
+		// 清理本测试入队的 proj-1 消息（同 enqueue_test.cleanupTestMessages 约定，防残留）
+		msgs, _ := r.Raw().XRange(ctx, "queue:tasks", "-", "+").Result()
+		var ids []string
+		for _, m := range msgs {
+			if b, ok := m.Values["body"].(string); ok {
+				var bd struct {
+					Project string `json:"project_id"`
+				}
+				if json.Unmarshal([]byte(b), &bd) == nil && bd.Project == "proj-1" {
+					ids = append(ids, m.ID)
+				}
+			}
+		}
+		if len(ids) > 0 {
+			_ = r.Raw().XDel(ctx, "queue:tasks", ids...).Err()
+		}
+	}()
+
+	// 缺省 start（复查 B1）：Go 零值 0 原会穿透到 worker 让批次从第 0 章写起；修后应默认 1。
+	// 权威写序校验在 worker（_guard_write_order：首章必须 = max_seq+1），网关只做语法层。
+	body := `{"size":2}`
+	req := httptest.NewRequest(http.MethodPost,
+		"/api/v1/projects/proj-1/batches/generate", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-AiInk-User", uid)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("应 202，实际 %d body=%s", w.Code, w.Body.String())
+	}
+	msgs, err := r.Raw().XRange(ctx, "queue:tasks", "-", "+").Result()
+	if err != nil {
+		t.Fatalf("读流失败: %v", err)
+	}
+	var lastStart *int
+	for _, m := range msgs {
+		bodyRaw, ok := m.Values["body"].(string)
+		if !ok {
+			continue
+		}
+		var msg struct {
+			ProjectID string `json:"project_id"`
+			TaskType  string `json:"task_type"`
+			Payload   struct {
+				Size  int `json:"size"`
+				Start int `json:"start"`
+			} `json:"payload"`
+		}
+		if json.Unmarshal([]byte(bodyRaw), &msg) != nil || msg.ProjectID != "proj-1" {
+			continue
+		}
+		if msg.TaskType == "batch_generate" {
+			v := msg.Payload.Start
+			lastStart = &v
+		}
+	}
+	if lastStart == nil || *lastStart != 1 {
+		t.Fatalf("缺省 start 应为 1，实际 %v", lastStart)
+	}
+}
+
+func TestGetTaskForwards(t *testing.T) {
+	r := newTestRedis(t)
+	py := pyapi.New(fakePy().URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/tasks/detail-test", nil)
+	req.Header.Set("X-AiInk-User", "dev")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("应 200，实际 %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), `"progress":{"i":1,"n":2}`) {
+		t.Fatalf("应透传 Python API 详情，实际 %s", w.Body.String())
+	}
+}
+
+func TestGetTaskNotFoundPassesThrough(t *testing.T) {
+	// 回归：任务尚未物化（入队→DB 落行的异步窗口内）时 Python API 返回 404，
+	// 网关曾误转 502 python_api_unreachable → 前端 raise_for_status 崩溃。
+	// 应透传 404，前端轮询视为"在途"继续等。
+	r := newTestRedis(t)
+	py := pyapi.New(fakePy().URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/tasks/missing-task", nil))
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("应透传 404，实际 %d body=%s", w.Code, w.Body.String())
+	}
+}
+
+func TestBatchPauseForwards(t *testing.T) {
+	r := newTestRedis(t)
+	py := pyapi.New(fakePy().URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/batches/batch-x/pause", nil)
+	req.Header.Set("X-AiInk-User", "dev")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), `"status":"paused"`) {
+		t.Fatalf("应透传暂停结果，实际 %s", w.Body.String())
+	}
+}
+
+func TestBatchControlForwardsToTasksPath(t *testing.T) {
+	// 回归：BatchControl 曾转发到 /internal/v1/batches/{id}/{action}，但 Python API
+	// 实际路由是 /internal/v1/tasks/{id}/{action} —— 路径不匹配导致 pause/resume/cancel 全 404。
+	r := newTestRedis(t)
+	var paths []string
+	py := pyapi.New(recordingPy(&paths).URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/v1/batches/batch-x/resume", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
+	}
+	if len(paths) != 1 || paths[0] != "/internal/v1/tasks/batch-x/resume" {
+		t.Fatalf("应转发 /internal/v1/tasks/batch-x/resume，实际 %v", paths)
+	}
+}
+
+func TestListProjectsForwards(t *testing.T) {
+	// 多书展示前端：GET /api/v1/projects 应透传 Python API 项目列表。
+	r := newTestRedis(t)
+	py := pyapi.New(fakePy().URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/projects", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), `"title":"书B"`) {
+		t.Fatalf("应透传项目列表，实际 %s", w.Body.String())
+	}
+}
+
+func TestListChaptersForwards(t *testing.T) {
+	r := newTestRedis(t)
+	py := pyapi.New(fakePy().URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/projects/p1/chapters", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), `"status":"draft"`) {
+		t.Fatalf("应透传章节列表，实际 %s", w.Body.String())
+	}
+}
+
+func TestHealthzReadyz(t *testing.T) {
+	r := newTestRedis(t)
+	py := pyapi.New(fakePy().URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	// /healthz 存活
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("healthz 应 200，实际 %d", w.Code)
+	}
+
+	// /readyz：redis ok + 假 Python API ok，但 worker 心跳无 → degraded 503（阶段 2 单 worker）。
+	// 开发环境可能有真 worker 在写心跳（5s 写一次，TTL 15s），先删心跳再断言；若恰逢 worker 重写则删后重试。
+	ctx := context.Background()
+	heartbeats := func() []string {
+		ks, _ := r.Raw().Keys(ctx, "queue:heartbeat:*").Result()
+		return ks
+	}
+	var w2 *httptest.ResponseRecorder
+	for attempt := 0; attempt < 3; attempt++ {
+		_ = r.Raw().Del(ctx, heartbeats()...).Err()
+		w2 = httptest.NewRecorder()
+		router.ServeHTTP(w2, httptest.NewRequest(http.MethodGet, "/readyz", nil))
+		if w2.Code == http.StatusServiceUnavailable {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if w2.Code != http.StatusServiceUnavailable {
+		t.Fatalf("无 worker 心跳应 degraded 503，实际 %d body=%s", w2.Code, w2.Body.String())
+	}
+	if !strings.Contains(w2.Body.String(), "worker") {
+		t.Fatalf("应指出 worker 降级，实际 %s", w2.Body.String())
+	}
+	// 还原：删掉本次测试写的心跳（若有），避免干扰后续测试/真 worker 探活
+	_ = r.Raw().Del(ctx, heartbeats()...).Err()
+}
+
+func TestSSEFrameForward(t *testing.T) {
+	r := newTestRedis(t)
+	py := pyapi.New(fakePy().URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	// 预写 running + done 事件到通道（模拟 worker 完整链路；done 触发 handler 收尾）
+	// 与 worker 侧 XADD 扁平字段对齐：event=status, status=done
+	taskID := "sse-test-task"
+	ctx := context.Background()
+	// 清理：测试直写不经 worker（无 TTL），不留键会泄漏（曾留一个永不过期的 queue:sse:sse-test-task）
+	defer r.Raw().Del(ctx, "queue:sse:"+taskID)
+	_, _ = r.XAdd(ctx, "queue:sse:"+taskID, map[string]any{
+		"event": "status", "task_id": taskID, "status": "running",
+	})
+	_, _ = r.XAdd(ctx, "queue:sse:"+taskID, map[string]any{
+		"event": "status", "task_id": taskID, "status": "done",
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/tasks/"+taskID+"/events", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("SSE 应 200，实际 %d", w.Code)
+	}
+	if ct := w.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/event-stream") {
+		t.Fatalf("应 text/event-stream，实际 %q", ct)
+	}
+	out := w.Body.String()
+	if !strings.Contains(out, `"status":"running"`) {
+		t.Fatalf("应转发 running 帧，实际 %s", out)
+	}
+	if !strings.Contains(out, `"status":"done"`) {
+		t.Fatalf("应转发 done 帧，实际 %s", out)
+	}
+}

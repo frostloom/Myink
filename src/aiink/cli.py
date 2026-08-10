@@ -14,6 +14,7 @@ import uuid
 import typer
 from rich.console import Console
 from rich.table import Table
+from sqlalchemy import text
 
 from aiink.db import get_engine, tenant_session
 from aiink.models import Base
@@ -27,16 +28,26 @@ console = Console()
 @app.command()
 def init() -> None:
     """初始化数据库：建表 + RLS + demo 种子数据。"""
-    from aiink.db import enable_row_level_security, get_admin_engine
+    from aiink.db import (enable_row_level_security, ensure_storage_indexes,
+                          ensure_unique_constraints, get_admin_engine)
+    from aiink.seed import create_sample_books
 
     # 建表 + RLS 走超级用户（owner）连接；业务运行走 aiink_app（NOBYPASSRLS，受 RLS 约束）
+    # 扩展须在 create_all 之前建（HNSW 索引/vector 列依赖 vector 类型，评审存储建议）
+    with get_admin_engine().begin() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
     console.print("[bold]1/3[/] 建表（PostgreSQL + pgvector）...")
     Base.metadata.create_all(get_admin_engine())
+    console.print("[bold]1.5/3[/] 补齐唯一约束 + 组合索引/HNSW（幂等，评审 A6/存储建议）...")
+    ensure_unique_constraints()
+    ensure_storage_indexes()
     console.print("[bold]2/3[/] 启用 RLS 主强制（FORCE ROW LEVEL SECURITY）...")
     enable_row_level_security()
-    console.print("[bold]3/3[/] 写入 demo 种子（《九州问天》）...")
+    console.print("[bold]3/3[/] 写入 demo 种子（《九州问天》+ 示例书）...")
     pid = create_demo_project()
-    console.print(f"[green]✓[/] 初始化完成。demo project_id = [bold]{pid}[/]")
+    new_books = create_sample_books()
+    console.print(f"[green]✓[/] 初始化完成。demo project_id = [bold]{pid}[/]"
+                  + (f"；新增示例书 {len(new_books)} 本（多书展示）" if new_books else ""))
 
 
 @app.command()
@@ -106,7 +117,8 @@ def status(task_id: str) -> None:
         if task is None:
             console.print("[red]任务不存在[/]")
             raise typer.Exit(1)
-        runs = db.query(AgentRun).filter(AgentRun.task_id == task_id).order_by(AgentRun.id).all()
+        # 批次内每章 run 的 task_id = {task_id}:ch{seq}，前缀匹配才不漏章成本（同 node_batch_end）
+        runs = db.query(AgentRun).filter(AgentRun.task_id.like(f"{task_id}%")).order_by(AgentRun.id).all()
         table = Table(title=f"任务 {task_id[:8]} · {task.task_type} · {task.status}")
         table.add_column("节点"); table.add_column("模型"); table.add_column("输入tok")
         table.add_column("输出tok"); table.add_column("缓存"); table.add_column("耗时ms")

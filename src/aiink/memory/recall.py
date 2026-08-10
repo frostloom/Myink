@@ -30,6 +30,28 @@ logger = logging.getLogger(__name__)
 _MAX_ENTITIES = 12
 # 事件语义召回补充上限（去重后）
 _VECTOR_RECALL_TOP_K = 5
+# 硬约束/事件内容注入上限（§7.4 召回预算：防超长文本撑爆 12k tokens）
+_CONTENT_CAP = 300
+
+
+def _merge_settings_constraints(session: Session, project_id: uuid.UUID,
+                                facts_out: list[dict]) -> None:
+    """project_settings.hard_constraints 并入硬约束列表（§7.11：设定是活数据）。
+
+    facts 表是硬约束权威；project_settings.hard_constraints 是建书时的配置层约束
+    （seed 双源）。合并按 content 去重：九州问天 同源只出现一次，示例书的
+    题材硬约束（如「不得引入仙佛鬼神」）自此真正注入生成上下文。
+    """
+    settings_row = repo.get_settings(session, project_id)
+    if not settings_row or not settings_row.hard_constraints:
+        return
+    seen = {f.get("content") for f in facts_out}
+    for text in settings_row.hard_constraints:
+        text = str(text or "").strip()[: _CONTENT_CAP]
+        if text and text not in seen:
+            facts_out.append({"content": text, "source_chapter": None,
+                              "category": "规则", "is_hard": True, "source": "project_settings"})
+            seen.add(text)
 
 
 def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
@@ -50,9 +72,16 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
         facts_out = shared_context["hard_facts"]  # 复用批次内已组装结果（§6.11）
     else:
         hard_facts = repo.get_hard_facts(session, project_id, chapter_seq)
+        # content 必须带上：硬约束恒在 Top-K（§7.2），注入的是可读文本而非裸 id
+        #（裸 id 模型不可反查 → 硬约束对生成实际不可见）。截断防超长规则撑爆预算。
         facts_out = [
-            {"fact_id": str(f.id), "source_chapter": f.source_chapter} for f in hard_facts
+            {"fact_id": str(f.id), "source_chapter": f.source_chapter,
+             "content": (f.content or "")[:300], "category": f.category, "is_hard": bool(f.is_hard)}
+            for f in hard_facts
         ]
+        # §7.11 设定是活数据：project_settings.hard_constraints 一并并入硬约束（按内容去重，
+        # 避免与 facts 表同源重复）。示例书（长安夜行/星舰远征）的题材硬约束此前从未生效。
+        _merge_settings_constraints(session, project_id, facts_out)
         shared_context["hard_facts"] = facts_out
     recent_events = repo.get_recent_events(session, project_id, limit=10)
 
@@ -87,7 +116,10 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
         for t in repo.get_plot_threads(session, project_id)
     ]
 
-    events_out = [{"event_id": str(e.id), "chapter": e.source_chapter, "confidence": e.confidence} for e in recent_events]
+    events_out = [
+        {"event_id": str(e.id), "chapter": e.source_chapter, "confidence": e.confidence,
+         "summary": (e.summary or "")[: _CONTENT_CAP]} for e in recent_events
+    ]
 
     # 事件语义近邻召回（§15 最小向量召回）：以上一章摘要为 query，召回历史相似事件
     # ——补充关键词命中漏掉的呼应/重复素材；失败降级（模型未装/加载失败都不阻断）。
@@ -127,7 +159,8 @@ def _semantic_recall(session: Session, project_id: uuid.UUID, query_text: str,
         ).scalars().all()
         for e in rows:
             events_out.append({"event_id": str(e.id), "chapter": e.source_chapter,
-                               "confidence": e.confidence, "recalled_by": "vector"})
+                               "confidence": e.confidence, "recalled_by": "vector",
+                               "summary": (e.summary or "")[: _CONTENT_CAP]})
         logger.info("事件语义召回补充 %d 条（query=上一章摘要）", len(rows))
         return events_out
     except Exception as exc:

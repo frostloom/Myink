@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 
@@ -37,7 +38,9 @@ class DeepSeekProvider(ModelProvider):
         return "deepseek"
 
     def generate(self, messages: list[dict], *, model_id: str, max_tokens: int | None = None,
-                 temperature: float | None = None, json_mode: bool = False) -> ModelResponse:
+                 temperature: float | None = None, json_mode: bool = False,
+                 tools: list[dict] | None = None,
+                 disable_thinking: bool = False) -> ModelResponse:
         if not self._api_key:
             return ModelResponse(content="", model_id=model_id, error="DEEPSEEK_API_KEY 未配置")
 
@@ -49,18 +52,54 @@ class DeepSeekProvider(ModelProvider):
             kwargs["temperature"] = temperature
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
+        if json_mode or tools or disable_thinking:
             # v4 思考模式默认开启：思考 token 会让 content 变空（正文进 reasoning_content）
-            # 且破坏 JSON 结构（§19.3）。JSON mode 一律关思考——本项目结构化输出
-            # 都是 extract/plan/write 的确定性产物，不需要思考（§6.9 单遍生成）。
+            # 且破坏 JSON 结构（§19.3）。JSON mode / 工具轮 / 纯文本正文一律关思考——
+            # 本项目结构化输出（extract/plan/audit）与长文正文（write/revise）都是确定性
+            # 产物，不需要思考（§6.9 单遍生成）；工具循环要重建 assistant tool_calls
+            # 消息回传，thinking 开着会产生 reasoning_content，下轮不回传会 400。
             kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
+        if tools:
+            kwargs["tools"] = tools
 
         last_error: str | None = None
         for attempt in range(MAX_RETRIES + 1):
             try:
                 resp = self._client.chat.completions.create(**kwargs)
                 usage = resp.usage or type("U", (), {})()
-                content = resp.choices[0].message.content or ""
+                message = resp.choices[0].message
+                content = message.content or ""
+                # v4 思考模式默认开启，`thinking: disabled` 偶发不生效（§19.3）：
+                # content 空或全空白但 reasoning_content 有内容时兜底——实测 json_mode
+                # 最终轮偶发返回「全空白占位 content」（122 空格，`not content` 抓不住），
+                # 避免下游 _parse_json("") 崩整章。reasoning 也空白 → 返回 error 触发
+                # FallbackChain 降级重试（§6.10/§6.12 ① 模型降级链）。
+                # 注意：工具轮 content 空 + tool_calls 非空是正常情况（模型只输出工具
+                # 调用不输出文本），不触发空白兜底。
+                if not content.strip() and not getattr(message, "tool_calls", None):
+                    reasoning = getattr(message, "reasoning_content", None) or ""
+                    if reasoning.strip():
+                        logger.warning("DeepSeek content 为空/空白，用 reasoning_content 兜底 (node/model=%s)", model_id)
+                        content = reasoning
+                    else:
+                        return ModelResponse(
+                            content="", model_id=model_id,
+                            error="DeepSeek 返回空白/空内容（thinking disabled 失效或输出异常）",
+                            duration_ms=int((time.monotonic() - t0) * 1000))
                 duration_ms = int((time.monotonic() - t0) * 1000)
+                tool_calls = None
+                if getattr(message, "tool_calls", None):
+                    # arguments 是 JSON 字符串（OpenAI 兼容格式），解析失败容错为 {}
+                    parsed = []
+                    for tc in message.tool_calls:
+                        try:
+                            args = json.loads(tc.function.arguments or "{}")
+                        except (json.JSONDecodeError, TypeError):
+                            logger.warning("tool_calls.arguments 解析失败: %r", tc.function.arguments)
+                            args = {}
+                        parsed.append({"id": tc.id, "name": tc.function.name,
+                                       "arguments": args if isinstance(args, dict) else {}})
+                    tool_calls = parsed
                 return ModelResponse(
                     content=content,
                     model_id=model_id,
@@ -69,6 +108,7 @@ class DeepSeekProvider(ModelProvider):
                     cache_hit=bool(getattr(usage, "prompt_cache_hit_tokens", 0)),
                     duration_ms=duration_ms,
                     retry_count=attempt,
+                    tool_calls=tool_calls,
                 )
             except Exception as exc:
                 last_error = str(exc)

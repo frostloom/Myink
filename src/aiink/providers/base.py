@@ -48,6 +48,8 @@ class ModelResponse:
     retry_count: int = 0
     degraded: bool = False
     error: str | None = None
+    # 工具调用（§10 只读查证工具）：[{id, name, arguments(dict)}]，None = 本轮无工具调用
+    tool_calls: list[dict] | None = None
 
     @property
     def cost_est(self) -> float:
@@ -64,7 +66,9 @@ class ModelProvider(ABC):
 
     @abstractmethod
     def generate(self, messages: list[dict], *, model_id: str, max_tokens: int | None = None,
-                 temperature: float | None = None, json_mode: bool = False) -> ModelResponse:
+                 temperature: float | None = None, json_mode: bool = False,
+                 tools: list[dict] | None = None,
+                 disable_thinking: bool = False) -> ModelResponse:
         ...
 
     @abstractmethod
@@ -80,13 +84,15 @@ class FallbackChain:
         self.chain = chain
 
     def generate(self, messages: list[dict], *, json_mode: bool = False, max_tokens: int | None = None,
-                 temperature: float | None = None) -> ModelResponse:
+                 temperature: float | None = None, tools: list[dict] | None = None,
+                 disable_thinking: bool = False) -> ModelResponse:
         last_error: str | None = None
         for i, model_id in enumerate(self.chain):
             try:
                 resp = self.provider.generate(
                     messages, model_id=model_id, max_tokens=max_tokens,
-                    temperature=temperature, json_mode=json_mode,
+                    temperature=temperature, json_mode=json_mode, tools=tools,
+                    disable_thinking=disable_thinking,
                 )
                 if resp.error is None:
                     resp.degraded = i > 0

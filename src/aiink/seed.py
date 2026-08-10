@@ -6,6 +6,8 @@ init 命令：建库建表 + RLS 启用 + 写入 demo user/project/人物/硬约
 
 from __future__ import annotations
 
+import uuid
+
 from sqlalchemy.orm import Session
 
 from aiink.db import get_engine, tenant_session
@@ -88,3 +90,82 @@ def create_demo_project() -> str:
 def _ensure_character(db: Session, project_id: str, name: str, **kw) -> None:
     if db.query(Character).filter_by(project_id=project_id, name=name).first() is None:
         db.add(Character(project_id=project_id, name=name, **kw))
+
+
+# ---- 多本书展示数据源（2026-08-09）：阶段 2 展示前端侧边栏多书切换 ----
+# 与《九州问天》题材错开的示例书，幂等补建（重复 init 不重复写）。
+_SAMPLE_BOOKS = [
+    {
+        "title": "长安夜行",
+        "genre": "历史悬疑",
+        "target_words": 3000,
+        "world_rules": {"era": "盛唐长安", "power_system": "无超凡力量，靠智谋与武艺",
+                        "restrictions": "人物行动须符合唐代官制与地理，不得越界"},
+        "style_profile": {"pov": "第三人称限知视角，以沈青梧为主", "sentence_style": "克制冷峻，对话简练",
+                          "forbidden": ["禁止引入仙佛鬼神", "禁止现代词汇（'摄像头''监控'等）"]},
+        "hard_constraints": ["主线为查案，不得引入仙佛鬼神", "主角是大理寺不良人，不得越权执政"],
+        "characters": [
+            {"name": "沈青梧", "realm_cap": "武艺·一流", "origin": "大理寺不良人",
+             "personality": "敏锐孤僻、重证据轻直觉"},
+            {"name": "裴元庆", "realm_cap": "武艺·三流", "origin": "京兆府推官",
+             "personality": "圆滑世故、暗藏底线"},
+        ],
+        "threads": [("朱雀大街命案，追查玉匣背后的朝堂暗流", "main", 1)],
+    },
+    {
+        "title": "星舰远征",
+        "genre": "科幻",
+        "target_words": 3000,
+        "world_rules": {"tech": "超光速曲率航行，战舰有护盾与相位炮", "power": "无个人超凡，靠舰船与战术",
+                        "restrictions": "物理设定遵循经典科幻（超光速例外），不得出现玄幻力量"},
+        "style_profile": {"pov": "第三人称，以指挥视角为主", "sentence_style": "冷静技术感，术语精准",
+                          "forbidden": ["禁止魔法/修仙元素", "禁止忽略硬性物理后果"]},
+        "hard_constraints": ["不得出现魔法/修仙元素", "战斗须基于舰船武器系统，不依赖个人武力"],
+        "characters": [
+            {"name": "苏晚晴", "realm_cap": "指挥·上将", "origin": "远征军旗舰舰长",
+             "personality": "冷静果决、护短"},
+            {"name": "凌风", "realm_cap": "驾驶·王牌", "origin": "领航员",
+             "personality": "话少技高、信任队友"},
+        ],
+        "threads": [("殖民舰队遭遇未知星域异常，追查信标信号", "main", 1)],
+    },
+]
+
+
+def _ensure_sample_book(user_id: uuid.UUID, spec: dict) -> str | None:
+    """幂等建单本示例书（根表先 commit，再租户会话写设定/人物/剧情线），返回新 pid。"""
+    with Session(get_engine()) as db:
+        if db.query(Project).filter(Project.title == spec["title"], Project.user_id == user_id).first():
+            return None
+        p = Project(user_id=user_id, title=spec["title"], genre=spec["genre"],
+                    target_words=spec.get("target_words", DEMO_TARGET_WORDS))
+        db.add(p)
+        db.flush()
+        pid = str(p.id)
+        db.commit()
+    with tenant_session(pid) as tdb:
+        tdb.add(ProjectSettings(
+            project_id=pid,
+            world_rules=spec["world_rules"],
+            style_profile=spec["style_profile"],
+            hard_constraints=spec["hard_constraints"],
+        ))
+        for ch in spec["characters"]:
+            _ensure_character(tdb, pid, **ch)
+        for name, kind, priority in spec["threads"]:
+            tdb.add(PlotThread(project_id=pid, name=name, kind=kind, status="active", priority=priority))
+    return pid
+
+
+def create_sample_books() -> list[str]:
+    """幂等补建示例书（多本书展示数据源），返回本次新建的 pid 列表。"""
+    created: list[str] = []
+    with Session(get_engine()) as db:
+        user = db.query(User).filter(User.username == DEMO_USERNAME).first()
+        if user is None:
+            return created  # demo 用户未建（init 顺序保证先建 demo），跳过
+    for spec in _SAMPLE_BOOKS:
+        pid = _ensure_sample_book(user.id, spec)
+        if pid:
+            created.append(pid)
+    return created

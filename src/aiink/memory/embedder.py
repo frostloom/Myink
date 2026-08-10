@@ -43,6 +43,8 @@ class Embedder:
         # 默认纯离线（模型已缓存时不触网探测 adapter，防卡死）；下载开关走配置
         self._allow_download = settings.embed_allow_download if allow_download is None else allow_download
         self._model = None
+        # 加载失败记为 sticky：模型 ~2GB（CPU），失败后不再重试加载（否则每次 encode 都重载 → OOM）
+        self._load_failed = False
         self._lock = threading.Lock()
 
     def _resolve_device(self) -> str:
@@ -54,19 +56,25 @@ class Embedder:
         return "cuda" if torch.cuda.is_available() else "cpu"
 
     def _load(self) -> None:
-        if self._model is not None:
+        if self._model is not None or self._load_failed:
             return
         with self._lock:
-            if self._model is not None:
+            if self._model is not None or self._load_failed:
                 return
             from sentence_transformers import SentenceTransformer  # 延迟导入：测试环境不装也不崩
 
             device = self._resolve_device()
             logger.info("加载 embedding 模型 %s (device=%s, local_files_only=%s)...",
                         self._model_name, device, not self._allow_download)
-            # local_files_only=True：缓存后纯离线加载，不再向 Hub 探测 adapter（sentence-transformers 5.x 坑）
-            self._model = SentenceTransformer(self._model_name, device=device,
-                                              local_files_only=not self._allow_download)
+            try:
+                # local_files_only=True：缓存后纯离线加载，不再向 Hub 探测 adapter（sentence-transformers 5.x 坑）
+                self._model = SentenceTransformer(self._model_name, device=device,
+                                                  local_files_only=not self._allow_download)
+            except Exception:
+                # 加载失败 sticky：禁止后续重试 2GB 级加载（CPU 上会 OOM 整进程）。
+                # 向量是加分项（§14.1 坑 1 / §6.12），调用方 try/except 降级即可。
+                self._load_failed = True
+                raise
             logger.info("embedding 模型就绪")
 
     def encode(self, texts: list[str]) -> list[list[float]]:
@@ -74,6 +82,8 @@ class Embedder:
         if not texts:
             return []
         self._load()
+        if self._model is None:
+            raise RuntimeError("embedding 模型加载失败，已降级跳过向量化")
         vecs = self._model.encode(texts, normalize_embeddings=True, convert_to_numpy=True)
         return [v.tolist() for v in vecs]
 
@@ -81,8 +91,20 @@ class Embedder:
 _embedder: Embedder | None = None
 
 
+class _DisabledEmbedder(Embedder):
+    """EMBED_ENABLED=0 时的降级实现：不加载原生模型，encode 立即抛错由调用方降级。"""
+
+    def encode(self, texts: list[str]) -> list[list[float]]:
+        raise RuntimeError("embedding 已禁用（EMBED_ENABLED=0），由调用方降级")
+
+
 def get_embedder() -> Embedder:
     global _embedder
+    if not settings.embed_enabled:
+        return _DISABLED  # 低内存/CI 关闭向量召回（加分项，§14.1 坑 1）
     if _embedder is None:
         _embedder = Embedder()
     return _embedder
+
+
+_DISABLED = _DisabledEmbedder()
