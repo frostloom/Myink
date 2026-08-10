@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import JSON, Boolean, CheckConstraint, Float, ForeignKey, Integer, String, Text, Uuid
+from sqlalchemy import JSON, Boolean, CheckConstraint, Float, ForeignKey, Index, Integer, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from aiink.models.base import Base, TimestampMixin, UUIDPkMixin
@@ -27,6 +27,9 @@ class CharacterState(Base, UUIDPkMixin, TimestampMixin):
     __tablename__ = "character_states"
     __table_args__ = (
         CheckConstraint(f"field IN {CHARACTER_STATE_FIELDS}", name="field_enum"),
+        # 台账物化（§7.7）：按 project+character 拉最近章序列 → 组合索引前缀命中
+        Index("ix_character_states_project_char_seq",
+              "project_id", "character_id", "chapter_seq"),
     )
 
     project_id: Mapped[uuid.UUID] = mapped_column(
@@ -69,6 +72,11 @@ class Event(Base, UUIDPkMixin, TimestampMixin):
     """剧情事件（中期记忆，§7.4，promoted_to_fact 升格）。"""
 
     __tablename__ = "events"
+    __table_args__ = (
+        # recall 近章事件（§7.4）：ORDER BY source_chapter DESC LIMIT n —— btree 双向，
+        # ASC 索引反向扫即服务 DESC 排序，无需显式 desc（与 character_states 同理）
+        Index("ix_events_project_chapter", "project_id", "source_chapter"),
+    )
 
     project_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
@@ -90,6 +98,11 @@ class Relation(Base, UUIDPkMixin, TimestampMixin):
     __tablename__ = "relations"
     __table_args__ = (
         CheckConstraint(f"relation_type IN {RELATION_TYPES}", name="relation_type_enum"),
+        # 1-2 跳关系查询（§7.8）：get_relations 按 source_id IN / target_id IN 双向查
+        # （过滤 project_id + valid_to IS NULL），两枚索引各覆盖一端；不按 relation_type
+        # 过滤故不进索引（评审建议的 relation_type/valid_to 列是空列，不建空索引）。
+        Index("ix_relations_project_source", "project_id", "source_id"),
+        Index("ix_relations_project_target", "project_id", "target_id"),
     )
 
     project_id: Mapped[uuid.UUID] = mapped_column(
@@ -197,6 +210,17 @@ class EmbeddingRow(Base, UUIDPkMixin, TimestampMixin):
     """向量对象（pgvector，分层：世界观/事件/章节，§11.1）。"""
 
     __tablename__ = "embeddings"
+    __table_args__ = (
+        # 显式 filter 参与 ANN 扫描（§14.1 坑 1）：按 project+level 过滤召回集
+        Index("ix_embeddings_project_level", "project_id", "level"),
+        # ANN 索引（§5.2，pgvector ≥0.5）：百万级向量避免全表余弦排序；
+        # 显式 WHERE project_id 使扫描一开始限定本租户向量集（§14.1 坑 1）。
+        Index(
+            "ix_embeddings_embedding_hnsw", "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )
 
     project_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True

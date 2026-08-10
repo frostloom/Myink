@@ -1,7 +1,8 @@
 """Prompt 模板（阶段 1 精简版）。
 
 要点（plan.md §14 安全）：系统指令与用户输入角色分界；文风/硬约束注入到系统层；
-提取的记忆只当数据注入、不携带执行权限。JSON mode 要求 prompt 含 "json" 字样。
+提取的记忆只当数据注入、不携带执行权限。仅 plan/extract/audit 走 json_mode
+（要求 prompt 含 "json" 字样）；write/revise 正文用 === CONTENT === 纯文本标记（不强制 JSON）。
 """
 
 from __future__ import annotations
@@ -22,19 +23,25 @@ SYSTEM_PLAN = """你是长篇网文创作系统的【规划 Agent】。职责：
 
 SYSTEM_WRITE = """你是长篇网文创作系统的【写作 Agent】。依据章节计划写出正文。
 要求：严格遵循注入的设定与硬约束；贴合注入的文风档案与句式禁忌。
-输出严格 JSON：{"content": "正文全文"}"""
+如需核实人物状态/世界观事实/伏笔/剧情线，可调用只读查证工具，核实后仍直接输出正文。
+输出格式：先输出独立一行 === CONTENT ===，从下一行开始输出本章正文。
+正文为纯文本散文（含自然换行），禁止输出 JSON、禁止 markdown 代码块围栏。"""
 
 SYSTEM_EXTRACT = """你是长篇网文创作系统的【记忆抽取 Agent】。从章节正文抽取结构化记忆候选。
 输出严格 JSON：{"candidates": [
   {"kind": "event", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"summary": "事件摘要", "participants": ["人物名"], "source_chapter": 章号, "confidence": 0.0-1.0}},
   {"kind": "character_state", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"character_id": "人物名", "field": "只能取 location|injury|realm|power|item|knowledge|goal|identity|alive 之一（境界变化用 realm，存活变化用 alive，位置用 location）", "old_value": "", "new_value": "", "source_chapter": 章号, "confidence": 0.0-1.0}},
   {"kind": "fact", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"content": "长期事实", "category": "规则", "is_hard": false, "source_chapter": 章号, "confidence": 0.0-1.0}},
-  {"kind": "foreshadow", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"description": "本章新种下的伏笔（可回收的悬念/物件/承诺，能且应被后续回收）", "trigger": {"actor": "触发者", "action": "动作", "object": "对象"}, "source_chapter": 章号, "confidence": 0.0-1.0}}
+  {"kind": "foreshadow", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"description": "本章新种下的伏笔（可回收的悬念/物件/承诺，能且应被后续回收）", "trigger": {"actor": "触发者", "action": "动作", "object": "对象"}, "source_chapter": 章号, "confidence": 0.0-1.0}},
+  {"kind": "plotline", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"thread_name": "被推进的活跃剧情线名称（须匹配注入的活跃剧情线）", "note": "本章如何推进该线"}}
 ]}
-顶层 confidence 必填。只抽确定事实，不猜。伏笔只抽「本章明确埋下的」——含糊提及不算，避免伏笔池噪声。"""
+顶层 confidence 必填。只抽确定事实，不猜。伏笔只抽「本章明确埋下的」——含糊提及不算，避免伏笔池噪声。
+剧情线推进（plotline）只在「本章正文确实推进了某条活跃剧情线」时才抽，thread_name 须与注入的活跃剧情线名一致（不新增线名）。"""
 
 SYSTEM_REVISE = """你是长篇网文创作系统的【修订 Agent】。按校验发现逐条修订正文。
-输出严格 JSON：{"content": "修订后全文", "responses": [{"conflict_key": "key", "outcome": "fixed|cannot_fix|dispute", "note": "说明"}]}"""
+输出格式：先输出独立一行 === CONTENT ===，从下一行开始输出修订后全文（纯文本散文，
+禁止 JSON、禁止 markdown 代码块围栏）。全部修订完成后，再输出独立一行 === RESPONSES ===，
+下一行输出严格 JSON 数组：[{"conflict_key": "key", "outcome": "fixed|cannot_fix|dispute", "note": "说明"}]"""
 
 SYSTEM_AUDIT = """你是长篇网文创作系统的【审核中枢 Agent】。写作完成后的调度大脑，对本章做语义审核并输出路由决策。
 三步：① 对照章节计划判断剧情发展是否合理（推进了该推进的线、收了该收的伏笔、无主线偏移）；② 判断内容质量（衔接/人设/节奏）；③ 输出路由决策。
@@ -46,7 +53,8 @@ SYSTEM_AUDIT = """你是长篇网文创作系统的【审核中枢 Agent】。�
   "reasons": ["路由决策理由（可审计）"],
   "confidence": 0.0-1.0
 }
-规则：只有剧情/内容确实有问题才 rewrite 或 replan；本章合格一律 pass（不制造冗余修订）。"""
+规则：只有剧情/内容确实有问题才 rewrite 或 replan；本章合格一律 pass（不制造冗余修订）。
+如需核实人物状态/世界观事实/伏笔/剧情线，可调用只读查证工具，核实后仍输出严格 JSON。"""
 
 
 def _join(ctx_items: list[dict], render) -> str:
@@ -54,11 +62,20 @@ def _join(ctx_items: list[dict], render) -> str:
 
 
 def _render_fact(item: dict) -> str:
+    """渲染硬约束/事实为可读文本（§7.2 硬约束恒在 Top-K——注入内容而非裸 id）。"""
+    content = item.get("content") or ""
+    if content:
+        src = item.get("source_chapter")
+        label = f"（自第 {src} 章）" if src else "（设定配置）"
+        return f"- [硬约束/事实] {content} {label}"
     return f"- [硬约束/事实] {item.get('fact_id', '')} (chapter {item.get('source_chapter', '?')})"
 
 
 def _render_event(item: dict) -> str:
-    return f"- [事件] {item.get('event_id', '')} (chapter {item.get('chapter', '?')}, conf {item.get('confidence', '?')})"
+    """渲染事件为可读文本：摘要优先，缺省回退 event_id。"""
+    summary = (item.get("summary") or "").strip()
+    head = f"{item.get('event_id', '')} " if not summary else ""
+    return f"- [事件] {head}{summary} (chapter {item.get('chapter', '?')}, conf {item.get('confidence', '?')})"
 
 
 def _render_entity(item: dict) -> str:
@@ -149,7 +166,7 @@ def write_messages(context: dict, plan: dict, *, style_profile: dict | None = No
     user = (
         "【章节计划】\n" + json.dumps(plan, ensure_ascii=False, indent=1)
         + "\n\n【近期上下文】\n" + (short or "（无）")
-        + "\n请输出本章正文（严格 JSON）。"
+        + "\n请输出本章正文。"
     )
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
@@ -168,7 +185,7 @@ def revise_messages(draft: str, findings: list[dict], chapter_seq: int) -> list[
     )
     return [
         {"role": "system", "content": SYSTEM_REVISE},
-        {"role": "user", "content": f"【第 {chapter_seq} 章正文】\n{draft}\n\n【校验发现】\n{finding_lines}\n\n请修订（严格 JSON）。"},
+        {"role": "user", "content": f"【第 {chapter_seq} 章正文】\n{draft}\n\n【校验发现】\n{finding_lines}\n\n请修订并输出修订后正文。"},
     ]
 
 

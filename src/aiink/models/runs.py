@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import JSON, Boolean, Float, ForeignKey, Integer, String, Text, Uuid
+from sqlalchemy import JSON, Boolean, Float, ForeignKey, Index, Integer, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from aiink.models.base import Base, TimestampMixin, UUIDPkMixin
@@ -40,6 +40,12 @@ class AgentRun(Base, TimestampMixin):
     """每节点执行记录（§6.8）。id 用自增（观测数据，无租户语义，不参与 RLS 查询热点）。"""
 
     __tablename__ = "agent_runs"
+    __table_args__ = (
+        # 任务详情/成本聚合（§6.8）：全部查询按 task_id 前缀 + id 增量扫（routes_tasks/observer/
+        # processor 无一条按 project_id 查——观测表无 RLS，故组合索引前缀用 task_id 而非 project_id）。
+        # 前缀 LIKE 在默认 collation 下走 btree 范围扫；若将来 collation 非 C 需换 pg_trgm/text_pattern_ops。
+        Index("ix_agent_runs_task_id", "task_id", "id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     project_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
@@ -56,3 +62,6 @@ class AgentRun(Base, TimestampMixin):
     retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     degraded: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     error: Mapped[str | None] = mapped_column(Text)
+    # 节点关键产物（debug 回放，§6.8）：audit 行→audit_verdict；write/audit 工具轮→tool_trace；
+    # 确定性节点（recall/validate/persist/load_state）→执行统计。纯观测字段，不影响执行语义。
+    detail: Mapped[dict | None] = mapped_column(JSON, nullable=True)

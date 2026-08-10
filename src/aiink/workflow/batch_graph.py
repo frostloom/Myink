@@ -48,6 +48,16 @@ class BatchChapterError(Exception):
     """
 
 
+class BatchReviewError(Exception):
+    """批次 critical 冲突转人工（§6.11 确认分流：暂停批次等人工）。
+
+    与 BatchChapterError 同一续跑机制：抛异常使 checkpoint 停在本章、resume 从
+    本章续跑不重跑已完成章；区别在终态语义——任务置 awaiting_review（而非 failed），
+    人工确认候选后 resume 放行。若走 batch_paused→batch_end→END 的优雅路径，
+    续跑只能整批重跑，违背"不重跑已完成章"。
+    """
+
+
 _BATCH_PLAN_PROMPT = """你是长篇网文创作系统的【批次规划 Agent】。为接下来 N 章做整体推进蓝图（N 是规划单元，不是重复次数——N 章要系统性推进主线/支线/伏笔/大纲，不能各自为政）。
 输出严格 JSON：
 {"chapters": [{"goal": "本章推进目标（哪条线/收哪些伏笔/新种钩子）", "outline_advance": "大纲推进段"}, ...]}  共 N 项"""
@@ -71,7 +81,21 @@ def node_batch_plan(state: BatchState) -> BatchState:
             return {"batch_failed": True, "error": resp.error}
     try:
         data = nodes._parse_json(resp.content)
+        if not isinstance(data, dict):
+            raise json.JSONDecodeError("batch_plan 顶层非 JSON 对象", resp.content, 0)
         chapters = data.get("chapters", [])
+        # 合法 JSON 但形状不符（chapters 非数组）→ 显式失败，避免对 dict 迭代 TypeError
+        if not isinstance(chapters, list):
+            raise json.JSONDecodeError(
+                f"chapters 字段非数组（实际 {type(chapters).__name__}）", resp.content, 0
+            )
+        # 少返回 → 显式失败（评审 A3）：position 按 0..size-1 推进，缺项会让批次
+        # 以 failed 收尾却只写了部分章；多返回截断到 size（多余项不执行）
+        if len(chapters) < state["size"]:
+            raise json.JSONDecodeError(
+                f"batch_plan 只返回 {len(chapters)} 项，需要 {state['size']} 项", resp.content, 0
+            )
+        chapters = chapters[: state["size"]]
     except (json.JSONDecodeError, KeyError) as exc:
         return {"batch_failed": True, "error": f"batch_plan 输出解析失败: {exc}"}
     for i, c in enumerate(chapters):
@@ -110,6 +134,14 @@ def make_chapter_runner(chapter_graph):
         if result.get("error"):  # 子图优雅失败（error 返回非异常）→ 同样中断批次，不走到 batch_end
             logger.error("单章 %s 失败: %s", chapter_seq, result["error"])
             raise BatchChapterError(f"单章 {chapter_seq} 失败: {result['error']}")
+        # critical 冲突（§6.11 确认分流）：暂停批次转人工。抛异常而非走 batch_paused——
+        # batch_paused→batch_end→END 后续跑只能整批重跑；抛 BatchReviewError 使
+        # checkpoint 停在本章（position 未推进），人工确认候选后 resume 从本章续跑。
+        report = result.get("report") or {}
+        if result.get("needs_review") and (report.get("summary") or {}).get("critical", 0) > 0:
+            raise BatchReviewError(
+                f"第 {chapter_seq} 章存在 critical 冲突，暂停批次转人工（§6.11）"
+            )
         # 首章 recall 组装共享上下文 → 桥回批次，后续章复用（§6.11）
         shared = result.get("shared_context") or state.get("shared_context")
         return {"current": result, "position": position, "shared_context": shared}
@@ -127,16 +159,16 @@ def node_reset_replan_batch(state: BatchState) -> BatchState:
 
 
 def route_after_chapter(state: BatchState) -> str:
-    """批次路由（spec/state-flow.md §3，已确认策略）。"""
+    """批次路由（spec/state-flow.md §3，已确认策略）。
+
+    critical 冲突已在 node_run_chapter 抛 BatchReviewError 转人工（§6.11），
+    不会走到这里；此处只处理正常推进 / 单章失败 / replan / 批次完结。
+    """
     current = state.get("current") or {}
     if state.get("batch_failed") or current.get("error"):
         return "batch_failed"
     if current.get("replan_batch"):  # 审核判 replan(batch) → 回 batch_plan 重规划剩余章（§6.11）
         return "replan_batch"
-    if current.get("needs_review"):
-        report = current.get("report") or {}
-        if (report.get("summary") or {}).get("critical", 0) > 0:
-            return "batch_paused"  # critical 暂停批次（污染后续章）
     position = state.get("position", 0)
     if position + 1 < state.get("size", 0):
         return "next_chapter"
@@ -158,7 +190,9 @@ def node_batch_end(state: BatchState) -> BatchState:
     }
     with tenant_session(pid) as db:
         from aiink.models import AgentRun, Task
-        runs = db.query(AgentRun).filter(AgentRun.task_id == state["batch_task_id"]).all()
+        # 每章 run 的 task_id = {batch_task_id}:ch{seq}，batch_plan 一次 run 用裸
+        # batch_task_id——必须前缀匹配才不漏章成本（精确匹配只统计到 batch_plan）。
+        runs = db.query(AgentRun).filter(AgentRun.task_id.like(f"{state['batch_task_id']}%")).all()
         summary["total_cost"] = round(sum(r.cost_est for r in runs), 6)
         summary["total_duration_ms"] = sum(r.duration_ms for r in runs)
         summary["degraded_runs"] = sum(1 for r in runs if r.degraded)
@@ -187,7 +221,7 @@ def build_batch_graph(chapter_graph, checkpointer=None):
     )
     g.add_conditional_edges(
         "chapter", route_after_chapter,
-        {"next_chapter": "bridge", "batch_paused": "batch_end",
+        {"next_chapter": "bridge",
          "batch_failed": "batch_end", "batch_done": "batch_end",
          "replan_batch": "reset_replan_batch"},
     )
