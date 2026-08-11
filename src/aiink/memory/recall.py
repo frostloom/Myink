@@ -32,6 +32,8 @@ _MAX_ENTITIES = 12
 _VECTOR_RECALL_TOP_K = 5
 # 硬约束/事件内容注入上限（§7.4 召回预算：防超长文本撑爆 12k tokens）
 _CONTENT_CAP = 300
+# 写作经验注入上限（§8.9 reflexion：8 条短经验 ≈ 300-500 tokens，兼容召回预算）
+_MAX_LESSONS = 8
 
 
 def _merge_settings_constraints(session: Session, project_id: uuid.UUID,
@@ -115,6 +117,13 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
          "last_progress_chapter": t.last_progress_chapter}
         for t in repo.get_plot_threads(session, project_id)
     ]
+    # 本书写作经验（§8.9 reflexion 注入）：在效经验 → 后续章规划/写作遵守；cap 上限
+    # 兼容召回预算（8 条短经验 ≈ 300-500 tokens，远低于 §7.4 12k 预算）。
+    lessons_out = [
+        {"content": l.content, "lesson_type": l.lesson_type,
+         "category": l.category, "source_chapter": l.source_chapter}
+        for l in repo.get_active_lessons(session, project_id)[: _MAX_LESSONS]
+    ]
 
     events_out = [
         {"event_id": str(e.id), "chapter": e.source_chapter, "confidence": e.confidence,
@@ -133,6 +142,7 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
         entity_snapshots=snapshots,
         open_foreshadows=foreshadows_out,
         plot_threads=threads_out,
+        reflexions=lessons_out,
     )
     if user_instruction:
         ctx.short_context.append({"kind": "user_instruction", "text": user_instruction})

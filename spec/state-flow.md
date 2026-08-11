@@ -39,7 +39,8 @@ flowchart TD
     REBP --> LS
     BRIDGE -- "单章失败(重试+降级后)" --> FAIL[批次中断<br/>可从失败章续跑]
     FAIL -- "续跑" --> LS
-    BRIDGE -- "批次数到 N" --> BE[batch_end<br/>每K章全局审计 + 批次汇总]
+    BRIDGE -- "批次数到 N" --> RF[reflexion<br/>复盘沉淀：整批 audit findings<br/>→ 复发率记账 + LLM 总结演化 → 落库]
+    RF -- "正常收尾才提炼" --> BE[batch_end<br/>每K章全局审计 + 批次汇总]
     BE --> END([END])
 ```
 
@@ -60,7 +61,8 @@ flowchart TD
 | `revise` | 章 | 角色（复用 Writer 模型） | `draft` + Audit unresolved findings | 修订后 `draft` + 逐条 `fixed/cannot_fix/dispute` | — |
 | `persist` | 章 | 确定性（编排层） | 确认候选 / 自动放行候选 | 事件/事实/状态/关系/伏笔落库（追加式）；`update_plot_threads` 推进大纲 | `save_chapter` / `save_*` / `update_plot_threads` |
 | `状态桥` | 章间 | 确定性 | 上章 persist 结果 | 上章沉淀 → 下一章 recall 输入（连续推进） | — |
-| `batch_end` | 批次 | 确定性 | 批次全部章节 | 每 K 章全局审计（§8.6）+ 批次汇总报告 | `commit_batch` |
+| `reflexion` | 批次 | 确定性编排 + 复盘 Agent（LLM，§8.9） | 整批各章 audit findings（agent_runs.detail）+ 已有 active 经验 | 复发率记账（确定性）→ LLM 总结演化 → `writing_lessons` 落库（同 category update 演化 / 无则 create 分级 proposed/active）；短路（无发现 / 已复盘 / 全被覆盖）；失败不阻塞批次 | `record_run`（编排层写库，Agent 不直写） |
+| `batch_end` | 批次 | 确定性 | 批次全部章节 + reflexion 指标 | 每 K 章全局审计（§8.6）+ 批次汇总报告（含 reflexion 复盘指标） | `commit_batch` |
 
 ## 3. 条件路由逻辑
 
@@ -89,7 +91,7 @@ route_after_chapter(batch):
       raise BatchChapterError    # 中断批次，可从失败章续跑（§6.11/§6.12，已确认）
   if batch.position < batch.size:
       return "next_chapter"     # 状态桥 → 下一章
-  return "batch_done"           # 批次收尾
+  return "batch_done"           # 批次收尾 → reflexion（复盘沉淀）→ batch_end
 
 # 机制说明（2026-08-07 落地）：章失败抛 BatchChapterError 而非优雅返回 batch_failed——
 # LangGraph 只在图未达 END 时支持同 thread 再 invoke 从断点续跑；优雅走到 batch_end
@@ -120,6 +122,8 @@ route_after_chapter(batch):
 | 重复投递 | 任务层 | `task_id` 幂等键 + DB 唯一约束，只执行一次 |
 | 批次中断 / 服务重启 / 人工暂停 | 任务层 | Checkpointer 断点续跑（`thread_id = batch_task_id`），从失败章续跑，不重跑已完成章 |
 | 校验不收敛（≥2 轮仍有 unresolved） | 任务层 | needs_review 转人工；非 critical 批次继续，critical 批次暂停 |
+| 复盘提炼失败（LLM 报错 / 解析失败） | 增强层（§8.9） | **只记 error 不阻塞批次**：reflexion 是加分项非创作主线，批次照常 batch_end；失败批不走到 reflexion（batch_failed 直连 batch_end） |
+| 同批次重复触发复盘 | 增强层（§8.9） | `_batch_already_reflexed` guard 短路跳过（幂等，不堆重复经验）；content_hash 字面 + LLM 语义去重兜底跨批 |
 | 抽取坏数据（Pydantic 校验失败） | 数据层 | **拒绝但不崩**：结构化 JSON + Pydantic 强校验，坏候选标记无效不落库 |
 | 并发写 | 数据层 | 项目级"记忆沉淀锁"（Redis SETNX）+ 乐观版本号；顺序固定：落章节 → 沉淀记忆 → 更新状态（§7.6） |
 | 半写 / 重放 | 数据层 | 单章一个事务；persist 幂等（`conflict_key` / 唯一约束），重放不重复落库 |
@@ -128,8 +132,8 @@ route_after_chapter(batch):
 ## 6. 与 5 类 Agent 的映射
 
 ```text
-确定性节点（非 LLM）：load_state / recall / validate（L1 规则层）/ persist / 状态桥 / batch_end
-LLM Agent：batch_plan + plan_chapter(Planner) / write(Writer) / extract(Memory) / audit(审核中枢 Audit)
+确定性节点（非 LLM）：load_state / recall / validate（L1 规则层）/ persist / 状态桥 / reflexion（确定性编排部分）/ batch_end
+LLM Agent：batch_plan + plan_chapter(Planner) / write(Writer) / extract(Memory) / audit(审核中枢 Audit) / reflexion 复盘 Agent（提炼总结演化）
 角色（非独立 agent）：revise —— 复用 Writer 模型，与 Audit 分离保证审核报告纯净可审计
 ```
 

@@ -152,6 +152,17 @@ def ensure_storage_indexes() -> None:
         # 前缀用 task_id 而非 project_id（评审建议的 project_id 前缀对真实查询无益）
         "ix_agent_runs_task_id":
             "CREATE INDEX ix_agent_runs_task_id ON agent_runs (task_id, id)",
+        # writing_lessons（§8.9 reflexion）：在效经验列出 / 复发率按 category 匹配
+        "ix_writing_lessons_project_status":
+            "CREATE INDEX ix_writing_lessons_project_status "
+            "ON writing_lessons (project_id, status)",
+        "ix_writing_lessons_project_category":
+            "CREATE INDEX ix_writing_lessons_project_category "
+            "ON writing_lessons (project_id, category)",
+        # 跨批同内容去重（仅 active 在效）：同一本书同一条经验只一条
+        "uq_writing_lessons_active_content":
+            "CREATE UNIQUE INDEX uq_writing_lessons_active_content "
+            "ON writing_lessons (project_id, content_hash) WHERE status = 'active'",
     }
     with _admin_engine.begin() as conn:
         existing = {

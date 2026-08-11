@@ -306,10 +306,38 @@
     "mid_term_events":  { "type": "array", "items": { "type": "object", "properties": { "event_id": { "type": "string" }, "chapter": { "type": "integer" }, "confidence": { "type": "number" } } } },
     "short_context":    { "type": "array", "items": { "type": "object" }, "description": "上一章摘要 + 上一章候选事件 + 本章开头 + 最近场景（plan.md §7.1）" },
     "entity_snapshots": { "type": "array", "items": { "type": "object" }, "description": "人物/势力/地点当前状态快照（台账最新）" },
+    "reflexions":       { "type": "array", "items": { "type": "object" }, "description": "在效写作经验（§8.9 reflexion）：content / lesson_type / category / source_chapter；上限 8 条" },
     "token_usage":      { "type": "integer" }
   }
 }
 ```
+
+---
+
+## 13. WritingLesson — 跨章写作经验（reflexion 产物，§8.9）
+
+```json
+{
+  "project_id": "uuid",
+  "category": "power|faction|timeline|location|character|character_state|relation|foreshadow|item_rule|plotline|persona|style",
+  "lesson_type": "planning|writing|both",
+  "content": "跨章可复用的一句话写作经验（注入后续章节规划/写作）",
+  "content_hash": "sha256(content)",
+  "evidence": [ { "chapter": 3, "conflict_type": "power", "severity": "major", "quote": "原文片段" } ],
+  "confidence": 0.9,
+  "source_chapter": 1,
+  "source_batch_task_id": "uuid",
+  "status": "proposed|active|rejected",
+  "recurrence_count": 0,
+  "last_recurrence_at": null
+}
+```
+
+- 生命周期 `proposed → active / rejected`（去掉 superseded：同 category 演化是 update 同一行，无新盖旧）；
+- **分级**：源自 critical/major finding → `proposed` 候选池待人工确认；minor/hint → `active` 自动生效；
+- **演化**：同 category 已有行 → update 同一行（content 换演化版、evidence 追加、confidence 更新、保留 id、继承复发指标）；无 → create；
+- **去重**：`(project_id, content_hash) WHERE status='active'` 部分唯一约束 + `_batch_already_reflexed` 批次 guard + LLM 语义去重；
+- 编排层写库（reflexion 节点），Agent 不直写；人工确认经确认 API（`confirm` / `reject`）。
 
 ---
 
