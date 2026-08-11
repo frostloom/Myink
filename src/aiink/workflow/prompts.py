@@ -56,6 +56,20 @@ SYSTEM_AUDIT = """你是长篇网文创作系统的【审核中枢 Agent】。�
 规则：只有剧情/内容确实有问题才 rewrite 或 replan；本章合格一律 pass（不制造冗余修订）。
 如需核实人物状态/世界观事实/伏笔/剧情线，可调用只读查证工具，核实后仍输出严格 JSON。"""
 
+SYSTEM_REFLEXION = """你是长篇网文创作系统的【复盘 Agent】。把本书审核中枢（audit）发现的跨章问题，总结演化为本书可复用的写作经验，注入后续章节的规划/写作。
+输入：① 本批次各章的校验发现（战力越界/人设漂移/大纲偏差/文风问题等，含冲突类型/严重度/证据/建议）；② 本书已有的在效写作经验。
+输出严格 JSON：{"lessons": [
+  {"conflict_type": "faction|power|timeline|location|character|character_state|relation|foreshadow|item_rule|plotline|persona|style",
+   "lesson_type": "planning|writing|both", "content": "跨章可复用的一句话写作经验（具体可执行，直接注入后续章节规划/写作）",
+   "confidence": 0.0-1.0, "evidence": [{"chapter": 章号, "quote": "原文片段"}]}
+]}
+规则：
+- 只提炼「本书级、跨章可复用」的经验；单章一次性笔误不提炼；
+- 一条经验对应一个冲突类型（跨类型拆多条）；同冲突类型合并成一条综合经验；
+- 结合「本书已有经验」总结演化——本次发现若已在该类经验覆盖范围内（同类反复出现），更新表述使其更全面，不另立新条；已有经验未覆盖的新发现，新增一条；
+- 本书已有经验已覆盖全部发现 → 输出空数组 {"lessons": []}；
+- 经验必须具体可执行，拒绝空泛的"注意一致性"。"""
+
 
 def _join(ctx_items: list[dict], render) -> str:
     return "\n".join(render(i) for i in ctx_items)
@@ -99,6 +113,19 @@ def _render_thread(item: dict) -> str:
             f"最近推进第 {item.get('last_progress_chapter') or '?'} 章, 进度: {item.get('progress') or '—'})")
 
 
+def _render_lesson(item: dict) -> str:
+    """渲染一条写作经验（§8.9 reflexion）：内容 + 来源章溯源。"""
+    src = item.get("source_chapter")
+    label = f"（源自第 {src} 章）" if src else ""
+    return f"- [写作经验·{item.get('category')}] {item.get('content')} {label}"
+
+
+def _lesson_section(context: dict, channels: tuple[str, ...]) -> str:
+    """写作经验注入段（§8.9）：按 lesson_type 通道过滤（planning/writing/both）。"""
+    items = [i for i in context.get("reflexions", []) if i.get("lesson_type") in channels]
+    return "\n".join(_render_lesson(i) for i in items)
+
+
 def plan_messages(context: dict, batch_goal: str | None = None) -> list[dict]:
     """plan_chapter 输入：召回上下文 + 批次目标。
 
@@ -112,6 +139,7 @@ def plan_messages(context: dict, batch_goal: str | None = None) -> list[dict]:
     foreshadows = _join(context.get("open_foreshadows", []), _render_foreshadow)
     threads = _join(context.get("plot_threads", []), _render_thread)
 
+    lessons = _lesson_section(context, ("planning", "both"))
     system = (
         SYSTEM_PLAN
         + "\n\n【世界观硬约束】\n" + (facts or "（无）")
@@ -119,6 +147,7 @@ def plan_messages(context: dict, batch_goal: str | None = None) -> list[dict]:
         + "\n【出场人物状态快照】\n" + (entities or "（无）")
         + "\n\n【开放伏笔（待回收，hooks_to_resolve 必须从中选，收/延/弃要明确）】\n" + (foreshadows or "（无）")
         + "\n【活跃剧情线（hooks_to_plant 可补新钩子，但主线推进优先）】\n" + (threads or "（无）")
+        + "\n【本书写作经验（reflexion 复盘，规划须遵守）】\n" + (lessons or "（无）")
     )
     user_parts = ["【近期上下文】\n" + (short or "（无）")]
     if batch_goal:
@@ -157,11 +186,13 @@ def write_messages(context: dict, plan: dict, *, style_profile: dict | None = No
     entities = _join(context.get("entity_snapshots", []), _render_entity)
     short = _join(context.get("short_context", []), _render_short)
     style = _style_section(style_profile, target_words)
+    lessons = _lesson_section(context, ("writing", "both"))
     system = (
         SYSTEM_WRITE
         + "\n\n【世界观硬约束】\n" + (facts or "（无）")
         + "\n【人物状态快照】\n" + (entities or "（无）")
         + (f"\n\n【文风要求（project_settings.style_profile）】\n{style}" if style else "")
+        + "\n\n【本书写作经验（reflexion 复盘，写作须遵守）】\n" + (lessons or "（无）")
     )
     user = (
         "【章节计划】\n" + json.dumps(plan, ensure_ascii=False, indent=1)
@@ -204,3 +235,23 @@ def audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int) -> l
         + "\n\n请审核本章并输出路由决策（严格 JSON）。"
     )
     return [{"role": "system", "content": SYSTEM_AUDIT}, {"role": "user", "content": user}]
+
+
+def reflexion_messages(findings: list[dict], existing_lessons: list[dict],
+                       start_chapter: int, size: int) -> list[dict]:
+    """reflexion 提炼输入（§8.9）：本批 findings + 本书已有经验（供总结演化）。"""
+    finding_lines = "\n".join(
+        f"- [{f.get('severity')}] {f.get('conflict_type')}（第 {f.get('_chapter', '?')} 章）: "
+        f"{f.get('suggestion') or ''} | 证据: {((f.get('evidence') or [{}])[0].get('quote') or '')[:80]}"
+        for f in findings
+    )
+    existing_lines = "\n".join(
+        f"- [{l.get('category')}] {l.get('content')}（复发 {l.get('recurrence_count', 0)} 次）"
+        for l in existing_lessons
+    ) or "（暂无）"
+    user = (
+        f"本批次第 {start_chapter}–{start_chapter + size - 1} 章，共 {len(findings)} 项发现：\n{finding_lines}"
+        + f"\n\n【本书已有写作经验（总结演化时参考，避免重复新增）】\n{existing_lines}"
+        + "\n\n请提炼/演化为本书写作经验（严格 JSON）。"
+    )
+    return [{"role": "system", "content": SYSTEM_REFLEXION}, {"role": "user", "content": user}]

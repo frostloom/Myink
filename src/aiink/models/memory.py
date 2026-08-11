@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import JSON, Boolean, CheckConstraint, Float, ForeignKey, Index, Integer, String, Text, Uuid
+from sqlalchemy import JSON, Boolean, CheckConstraint, Float, ForeignKey, Index, Integer, String, Text, Uuid, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from aiink.models.base import Base, TimestampMixin, UUIDPkMixin
@@ -231,3 +231,56 @@ class EmbeddingRow(Base, UUIDPkMixin, TimestampMixin):
     model_version: Mapped[str] = mapped_column(String(64), nullable=False)
     # bge-m3 1024 维（plan.md §5.2 在 pgvector 维度上限内）
     embedding: Mapped[list] = mapped_column(Vector(1024), nullable=False)
+
+
+# 写作经验生命周期（reflexion 复盘沉淀，§8.9）：proposed（高危待确认）→ active / rejected
+WRITING_LESSON_STATUSES = ("proposed", "active", "rejected")
+# 注入通道：planning（plan_messages） / writing（write_messages） / both
+LESSON_TYPES = ("planning", "writing", "both")
+
+
+class WritingLesson(Base, UUIDPkMixin, TimestampMixin):
+    """本书写作经验（reflexion 复盘沉淀，plan.md §8.9）。
+
+    把审核中枢 audit 发现的跨章问题提炼为本书可复用经验，注入后续章节的规划/写作。
+    category 复用 Finding.conflict_type 枚举（复发率确定性匹配键）；同 category 恒一条
+    （有则总结演化 update、无则 create），复发指标跨演化连续。
+    """
+
+    __tablename__ = "writing_lessons"
+    __table_args__ = (
+        CheckConstraint(f"status IN {WRITING_LESSON_STATUSES}", name="status_enum"),
+        CheckConstraint(f"lesson_type IN {LESSON_TYPES}", name="lesson_type_enum"),
+        # 在效经验列出 / 复发率按 category 匹配（RLS 恒带 project_id 前缀，§14.1）
+        Index("ix_writing_lessons_project_status", "project_id", "status"),
+        Index("ix_writing_lessons_project_category", "project_id", "category"),
+        # 跨批同内容去重（仅 active 在效）：同一本书同一条经验只一条
+        # （不设批次唯一约束——一批可提炼多条 lesson；幂等靠 guard + content_hash）
+        Index(
+            "uq_writing_lessons_active_content", "project_id", "content_hash",
+            unique=True, postgresql_where=text("status = 'active'"),
+        ),
+    )
+
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    category: Mapped[str] = mapped_column(
+        String(32), nullable=False, comment="ConflictType 枚举（复发率确定性匹配键）"
+    )
+    lesson_type: Mapped[str] = mapped_column(
+        String(16), default="both", nullable=False, comment="注入通道 planning/writing/both"
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False, comment="写作经验正文（注入 plan/write system 段）")
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False, comment="sha256(content)，跨批去重")
+    evidence: Mapped[list] = mapped_column(
+        JSON, default=list, nullable=False, comment="[{chapter, conflict_type, severity, quote, suggestion}] 溯源证据"
+    )
+    confidence: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
+    source_chapter: Mapped[int] = mapped_column(Integer, nullable=False, comment="提炼来源最早章节")
+    source_batch_task_id: Mapped[str] = mapped_column(
+        String(128), nullable=False, comment="提炼批次 task_id"
+    )
+    status: Mapped[str] = mapped_column(String(16), default="proposed", nullable=False)
+    recurrence_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False, comment="复发次数（跨演化累计）")
+    last_recurrence_at: Mapped[int | None] = mapped_column(Integer, comment="最近复发章节号")

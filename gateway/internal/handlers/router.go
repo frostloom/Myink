@@ -42,6 +42,8 @@ func NewRouter(cfg config.Config, r *redis.Client, py *pyapi.Client) *gin.Engine
 		// 记忆候选：待确认池 / 确认 / 拒绝（§6.11 确认分流，转发 Python API）
 		api.GET("/projects/:project_id/candidates", taskH.ListCandidates)
 		api.POST("/projects/:project_id/candidates/:candidate_id/:action", taskH.CandidateAction)
+		api.GET("/projects/:project_id/lessons", taskH.ListLessons)
+		api.POST("/projects/:project_id/lessons/:lesson_id/:action", taskH.LessonAction)
 		// SSE 进度事件
 		api.GET("/tasks/:task_id/events", sseH.Stream)
 	}

@@ -150,6 +150,22 @@ func (h *TaskHandler) CandidateAction(c *gin.Context) {
 	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/candidates/"+cid+"/"+action, nil)
 }
 
+// 写作经验列表（§8.9 reflexion：经验池展示）。
+// GET /api/v1/projects/:project_id/lessons
+func (h *TaskHandler) ListLessons(c *gin.Context) {
+	pid := c.Param("project_id")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/lessons", nil)
+}
+
+// 经验确认/拒绝（§8.9 reflexion 确认分流，编排层写库）。
+// POST /api/v1/projects/:project_id/lessons/:lesson_id/:action  (action: confirm|reject)
+func (h *TaskHandler) LessonAction(c *gin.Context) {
+	pid := c.Param("project_id")
+	lid := c.Param("lesson_id")
+	action := c.Param("action")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/lessons/"+lid+"/"+action, nil)
+}
+
 // 章节列表：转发 Python API（RLS 由 Python 侧 tenant_session 过滤）。
 // GET /api/v1/projects/:project_id/chapters
 func (h *TaskHandler) ListChapters(c *gin.Context) {

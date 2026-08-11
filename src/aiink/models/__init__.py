@@ -12,9 +12,11 @@ from aiink.models.memory import (
     CANDIDATE_STATUSES,
     FACT_CONFIRM_STATUSES,
     FORESHADOW_STATUSES,
+    LESSON_TYPES,
     PLOT_THREAD_KINDS,
     PLOT_THREAD_STATUSES,
     RELATION_TYPES,
+    WRITING_LESSON_STATUSES,
     Alias,
     CharacterState,
     EmbeddingRow,
@@ -25,6 +27,7 @@ from aiink.models.memory import (
     MemoryCandidate,
     PlotThread,
     Relation,
+    WritingLesson,
 )
 from aiink.models.project import (
     Character,
@@ -61,6 +64,7 @@ __all__ = [
     "PlotThread",
     "MemoryCandidate",
     "EmbeddingRow",
+    "WritingLesson",
     # chapter / outline
     "Chapter",
     "VolumeOutline",
@@ -80,4 +84,6 @@ __all__ = [
     "FACT_CONFIRM_STATUSES",
     "CANDIDATE_KINDS",
     "CANDIDATE_STATUSES",
+    "WRITING_LESSON_STATUSES",
+    "LESSON_TYPES",
 ]

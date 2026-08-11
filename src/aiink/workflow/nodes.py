@@ -8,6 +8,7 @@ function calling），写库只在 persist（编排层）发生。
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import re
@@ -23,7 +24,7 @@ from aiink.memory import repository as repo
 from aiink.memory.embedder import get_embedder
 from aiink.memory.recall import build_context
 from aiink.memory.vector_store import PgvectorStore
-from aiink.models import AgentRun, Chapter, CharacterState, Event, Fact, Foreshadow, MemoryCandidate, Relation
+from aiink.models import AgentRun, Chapter, CharacterState, Event, Fact, Foreshadow, MemoryCandidate, Relation, WritingLesson
 from aiink.models.memory import CHARACTER_STATE_FIELDS
 from aiink.providers import FallbackChain, ModelResponse, make_chain
 from aiink.schemas import AuditVerdict, ChapterPlan, Finding, MutationCandidate, ValidationReport
@@ -84,7 +85,7 @@ def record_run_detail(db: Session, *, task_id: str | None, node: str, detail: di
 # write 按 target_words 换算限长：实测中文约 1 token ≈ 0.7 字（1 字≈1.43 token），
 # 3000 字 ≈ 2100 tokens；×1.25 余量防截断，同时从源头限死字数（最多 ~3900 字）。
 _WRITE_TOKENS_PER_CHAR = 1.43
-_MAX_TOKENS = {"plan_chapter": 4096, "extract": 4096, "revise": 8192, "audit": 4096}
+_MAX_TOKENS = {"plan_chapter": 4096, "extract": 4096, "revise": 8192, "audit": 4096, "reflexion": 4096}
 
 
 def _assistant_tool_calls_message(resp: ModelResponse) -> dict:
@@ -793,3 +794,159 @@ def _advance_current_chapter(db: Session, pid: str, chapter_seq: int) -> None:
     proj = db.get(Project, project_id)
     if proj is not None and chapter_seq > (proj.current_chapter or 0):
         proj.current_chapter = chapter_seq
+
+
+# ---- reflexion 复盘沉淀（§8.9）：audit findings → 跨章写作经验 ----
+
+_SEVERITY_RANK = {"critical": 4, "major": 3, "minor": 2, "hint": 1}
+
+
+def _collect_batch_audit_findings(db: Session, batch_task_id: str) -> list[dict]:
+    """整批各章 audit findings（唯一持久化点 = agent_runs.detail，§6.8）。
+
+    每章取最后一条 audit 行（settled 终态——不把 rewrite 循环里已修的发现重复灌入，
+    后行覆盖即得本章最终 verdict）。每条补 `_chapter`（从 task_id `{batch}:ch{seq}` 解析）。
+    """
+    runs = db.query(AgentRun).filter(
+        AgentRun.task_id.like(f"{batch_task_id}:ch%"), AgentRun.node == "audit",
+    ).order_by(AgentRun.id.asc()).all()
+    final: dict[str, AgentRun] = {}
+    for r in runs:
+        final[r.task_id] = r
+    out: list[dict] = []
+    for tid, r in final.items():
+        verdict = (r.detail or {}).get("audit_verdict") or {}
+        ch = int(tid.rsplit("ch", 1)[1])
+        for f in verdict.get("findings") or []:
+            f = dict(f)
+            f["_chapter"] = ch
+            out.append(f)
+    return out
+
+
+def _update_recurrences(db: Session, project_id: str, findings: list[dict],
+                        start_chapter: int) -> int:
+    """复发记账（确定性，不耗 LLM）：新 finding.conflict_type == active lesson.category
+    且 lesson.source_chapter < 本批首章 → 复发。按 (lesson, chapter) 去重（rewrite 循环内
+    同一 finding 只记一次）。返回本次复发数。"""
+    pid = uuid.UUID(project_id)
+    active = db.query(WritingLesson).filter(
+        WritingLesson.project_id == pid, WritingLesson.status == "active"
+    ).all()
+    by_cat = {l.category: l for l in active}
+    seen: set[tuple[str, int]] = set()
+    for f in findings:
+        lesson = by_cat.get(f.get("conflict_type"))
+        if not lesson or (lesson.source_chapter or 0) >= start_chapter:
+            continue
+        seen.add((str(lesson.id), f.get("_chapter") or 0))
+    for lid, ch in seen:
+        lesson = next(l for l in active if str(l.id) == lid)
+        lesson.recurrence_count = (lesson.recurrence_count or 0) + 1
+        lesson.last_recurrence_at = max(lesson.last_recurrence_at or 0, ch)
+    db.flush()
+    return len(seen)
+
+
+def _batch_already_reflexed(db: Session, project_id: str, batch_task_id: str) -> bool:
+    """同批次已提炼过 → 跳过（幂等 guard，重跑不堆重复）。"""
+    return db.query(WritingLesson).filter(
+        WritingLesson.project_id == uuid.UUID(project_id),
+        WritingLesson.source_batch_task_id == batch_task_id,
+    ).first() is not None
+
+
+def _covered_by_active(db: Session, project_id: str, findings: list[dict],
+                       start_chapter: int) -> list[dict]:
+    """已被在效经验覆盖的发现（同类经验 source_chapter < 本批首章）：不发 LLM、不新增经验。
+
+    复发率已在 _update_recurrences 记账；只把「未被覆盖」的新发现喂 LLM 提炼/演化。
+    """
+    pid = uuid.UUID(project_id)
+    active = db.query(WritingLesson).filter(
+        WritingLesson.project_id == pid, WritingLesson.status == "active"
+    ).all()
+    covered_cats = {l.category for l in active if (l.source_chapter or 0) < start_chapter}
+    return [f for f in findings if f.get("conflict_type") not in covered_cats]
+
+
+def _persist_lessons(db: Session, project_id: str, batch_task_id: str, start: int,
+                     lessons: list[dict], findings: list[dict]) -> tuple[int, int]:
+    """提炼产物落库（编排层，§6.2 数据流边界）：Agent 不直写。
+
+    - 可溯源守卫：lesson.conflict_type 必须在 findings 里有同型发现，否则丢弃（LLM 幻觉）；
+    - 路由：同 category 已有行 → update 演化（保留 id、继承复发指标）；无 → create；
+    - 分级（仅 create）：同型 findings 最高 severity critical/major → proposed，否则 active；
+    - 去重：content_hash 字面（同 project+content_hash 任意状态已存在 → 跳过）。
+    返回 (inserted, skipped_duplicates)。
+    """
+    pid = uuid.UUID(project_id)
+    by_type: dict[str, list[dict]] = {}
+    for f in findings:
+        by_type.setdefault(f.get("conflict_type"), []).append(f)
+    existing = {l.category: l for l in db.query(WritingLesson).filter(
+        WritingLesson.project_id == pid).all()}
+    inserted = skipped = 0
+    for lesson in lessons:
+        src = by_type.get(lesson.get("conflict_type")) or []
+        if not src:
+            continue  # 不可溯源 → 丢弃
+        max_sev = max((f.get("severity") for f in src), key=lambda s: _SEVERITY_RANK.get(s, 0))
+        h = hashlib.sha256(lesson["content"].encode("utf-8")).hexdigest()
+        dup = db.query(WritingLesson).filter(
+            WritingLesson.project_id == pid, WritingLesson.content_hash == h).first()
+        if dup:
+            skipped += 1
+            continue
+        evidence = [{k: f.get(k) for k in ("chapter", "conflict_type", "severity", "quote", "suggestion")}
+                    for f in src if isinstance(f, dict)]
+        src_ch = min((f.get("_chapter") or start for f in src), default=start)
+        prev = existing.get(lesson.get("conflict_type"))
+        if prev is not None:
+            # 总结演化：同 category 更新同一行——content 换演化版、evidence 追加、保留 id 与复发指标
+            prev.content = lesson["content"]
+            prev.content_hash = h
+            prev.confidence = lesson.get("confidence") or prev.confidence
+            merged = prev.evidence or []
+            existing_keys = {(e.get("chapter"), e.get("quote")) for e in merged if isinstance(e, dict)}
+            for e in evidence:
+                if (e.get("chapter"), e.get("quote")) not in existing_keys:
+                    merged.append(e)
+            prev.evidence = merged
+            prev.source_chapter = min(prev.source_chapter or start, src_ch)
+            prev.lesson_type = lesson.get("lesson_type", prev.lesson_type or "both")
+            prev.source_batch_task_id = batch_task_id
+            inserted += 1
+            continue
+        status = "proposed" if max_sev in ("critical", "major") else "active"
+        db.add(WritingLesson(
+            project_id=pid, category=lesson["conflict_type"],
+            lesson_type=lesson.get("lesson_type", "both"),
+            content=lesson["content"], content_hash=h,
+            evidence=evidence, confidence=lesson.get("confidence") or 1.0,
+            source_chapter=src_ch, source_batch_task_id=batch_task_id, status=status,
+        ))
+        inserted += 1
+    db.flush()
+    return inserted, skipped
+
+
+def confirm_lesson(db: Session, project_id: str, lesson_id: uuid.UUID) -> WritingLesson | None:
+    """人工确认经验生效（proposed→active，§8.9）。幂等：非 proposed 返回 None。
+
+    归属断言同 confirm_candidate：tenant_session RLS + 显式 project_id 比对（双保险，§14.1）。
+    """
+    lesson = db.get(WritingLesson, lesson_id)
+    if lesson is None or str(lesson.project_id) != project_id or lesson.status != "proposed":
+        return None
+    lesson.status = "active"
+    return lesson
+
+
+def reject_lesson(db: Session, project_id: str, lesson_id: uuid.UUID) -> WritingLesson | None:
+    """拒绝经验（proposed→rejected，§8.9）。幂等：非 proposed 返回 None。"""
+    lesson = db.get(WritingLesson, lesson_id)
+    if lesson is None or str(lesson.project_id) != project_id or lesson.status != "proposed":
+        return None
+    lesson.status = "rejected"
+    return lesson

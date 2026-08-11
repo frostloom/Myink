@@ -12,6 +12,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from aiink.api.routes_candidates import router as candidates_router
+from aiink.api.routes_lessons import router as lessons_router
 from aiink.api.routes_tasks import router as tasks_router
 from aiink.config import settings
 from aiink.db import new_session, tenant_session
@@ -32,6 +33,7 @@ app.add_middleware(
 
 app.include_router(tasks_router)
 app.include_router(candidates_router)
+app.include_router(lessons_router)
 
 
 @app.get("/healthz")
