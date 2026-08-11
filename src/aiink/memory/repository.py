@@ -24,6 +24,7 @@ from aiink.models import (
     ProjectSettings,
     Relation,
     VolumeOutline,
+    WritingLesson,
 )
 
 
@@ -103,6 +104,15 @@ def get_open_foreshadows(session: Session, project_id: uuid.UUID) -> list[Foresh
 def get_plot_threads(session: Session, project_id: uuid.UUID) -> list[PlotThread]:
     return list(session.execute(
         select(PlotThread).where(PlotThread.project_id == project_id, PlotThread.status == "active")
+    ).scalars())
+
+
+def get_active_lessons(session: Session, project_id: uuid.UUID) -> list[WritingLesson]:
+    """在效写作经验（reflexion 注入用，§8.9）：复发数降序、最近优先，cap 在 recall 层。"""
+    return list(session.execute(
+        select(WritingLesson)
+        .where(WritingLesson.project_id == project_id, WritingLesson.status == "active")
+        .order_by(WritingLesson.recurrence_count.desc(), WritingLesson.created_at.desc())
     ).scalars())
 
 

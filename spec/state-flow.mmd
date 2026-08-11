@@ -26,5 +26,6 @@ flowchart TD
     REBP --> LS
     BRIDGE -- "单章失败(重试+降级后)" --> FAIL[批次中断<br/>可从失败章续跑]
     FAIL -- "续跑" --> LS
-    BRIDGE -- "批次数到 N" --> BE[batch_end<br/>每K章全局审计 + 批次汇总]
+    BRIDGE -- "批次数到 N" --> RF[reflexion<br/>复盘沉淀：整批 audit findings<br/>→ 复发率记账 + LLM 总结演化 → 落库]
+    RF -- "正常收尾才提炼" --> BE[batch_end<br/>每K章全局审计 + 批次汇总]
     BE --> END([END])

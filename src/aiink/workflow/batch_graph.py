@@ -30,6 +30,7 @@ from typing import Any
 from langgraph.graph import END, START, StateGraph
 
 from aiink.db import tenant_session
+from aiink.memory import repository as repo
 from aiink.providers import make_chain
 from aiink.workflow import nodes, prompts
 from aiink.workflow.state import BatchState, ChapterState
@@ -175,6 +176,50 @@ def route_after_chapter(state: BatchState) -> str:
     return "batch_done"
 
 
+def node_reflexion(state: BatchState) -> BatchState:
+    """批次收尾复盘（§8.9 reflexion）：读整批 audit findings → 复发率记账 → LLM 总结演化写作经验。
+
+    增强项不阻塞批次：LLM 失败 / 解析失败只记 error，批次照常 batch_end（与 batch_plan 的
+    batch_failed 不同——复盘是加分项，不是创作主线）。失败批不走到这里（batch_failed→batch_end）。
+    """
+    pid = state["project_id"]
+    batch_task_id = state["batch_task_id"]
+    start = state["start_chapter"]
+    try:
+        with tenant_session(pid) as db:
+            if nodes._batch_already_reflexed(db, pid, batch_task_id):
+                return {"reflexion": {"skipped": "already_reflexed"}}
+            findings = nodes._collect_batch_audit_findings(db, batch_task_id)
+            recurrences = nodes._update_recurrences(db, pid, findings, start)
+            new_findings = nodes._covered_by_active(db, pid, findings, start)
+            if not new_findings:
+                nodes.record_plain(db, project_id=pid, task_id=batch_task_id, node="reflexion",
+                                   detail={"findings": len(findings), "recurrences": recurrences,
+                                           "lessons": 0, "reason": "no_new_findings"})
+                return {"reflexion": {"findings": len(findings), "recurrences": recurrences,
+                                      "lessons": 0, "reason": "no_new_findings"}}
+            existing = repo.get_active_lessons(db, uuid.UUID(pid))
+            messages = prompts.reflexion_messages(new_findings, [
+                {"category": l.category, "content": l.content, "recurrence_count": l.recurrence_count}
+                for l in existing
+            ], start, state["size"])
+            resp = make_chain("audit").generate(messages, json_mode=True,
+                                                max_tokens=nodes._MAX_TOKENS["reflexion"])
+            nodes.record_run(db, project_id=pid, task_id=batch_task_id, node="reflexion",
+                             role="Reflexion", resp=resp, error=resp.error,
+                             detail={"findings": len(findings), "recurrences": recurrences})
+            if resp.error:
+                return {"reflexion": {"error": resp.error}}
+            data = nodes._parse_json(resp.content)
+            lessons = data.get("lessons", []) if isinstance(data, dict) else []
+            inserted, skipped = nodes._persist_lessons(db, pid, batch_task_id, start, lessons, new_findings)
+            return {"reflexion": {"findings": len(findings), "recurrences": recurrences,
+                                  "lessons": inserted, "skipped_duplicates": skipped}}
+    except Exception as exc:
+        logger.warning("reflexion 复盘失败（不阻塞批次）: %s", exc)
+        return {"reflexion": {"error": str(exc)}}
+
+
 def node_batch_end(state: BatchState) -> BatchState:
     """批次收尾：汇总报告 + 更新任务状态（§6.8 批次成本展示）。"""
     pid = state["project_id"]
@@ -188,6 +233,9 @@ def node_batch_end(state: BatchState) -> BatchState:
         "status": status,
         "error": state.get("error"),
     }
+    # reflexion 复盘指标（§8.9）：findings / recurrences / lessons，随批次汇总暴露
+    if state.get("reflexion"):
+        summary["reflexion"] = state["reflexion"]
     with tenant_session(pid) as db:
         from aiink.models import AgentRun, Task
         # 每章 run 的 task_id = {batch_task_id}:ch{seq}，batch_plan 一次 run 用裸
@@ -211,6 +259,7 @@ def build_batch_graph(chapter_graph, checkpointer=None):
     g.add_node("chapter", node_run_chapter)
     g.add_node("bridge", lambda s: {"position": (s.get("position") or 0) + 1})
     g.add_node("reset_replan_batch", node_reset_replan_batch)
+    g.add_node("reflexion", node_reflexion)
     g.add_node("batch_end", node_batch_end)
 
     g.add_edge(START, "batch_plan")
@@ -222,11 +271,13 @@ def build_batch_graph(chapter_graph, checkpointer=None):
     g.add_conditional_edges(
         "chapter", route_after_chapter,
         {"next_chapter": "bridge",
-         "batch_failed": "batch_end", "batch_done": "batch_end",
+         "batch_failed": "batch_end", "batch_done": "reflexion",
          "replan_batch": "reset_replan_batch"},
     )
     g.add_edge("bridge", "chapter")
     # replan(batch) → 回 batch_plan 重规划剩余章（position 保留本章，不推进）
     g.add_edge("reset_replan_batch", "batch_plan")
+    # 批次收尾复盘（§8.9）：正常收尾才提炼；失败/暂停批跳过（batch_failed 直连 batch_end）
+    g.add_edge("reflexion", "batch_end")
     g.add_edge("batch_end", END)
     return g.compile(checkpointer=checkpointer)
