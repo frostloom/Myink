@@ -703,12 +703,20 @@ def _persist_candidates(db: Session, pid: str, chapter_seq: int, candidates: lis
                         source_chapter=chapter_seq, confidence=p.get("confidence", 0.8),
                         confirm_status="confirmed"))
         elif cand["kind"] == "relation_change":
+            # 关系写入语义（§3 决策）：落库前先关闭同 (source_id, target_id) 有序对全部活跃
+            # 旧行（schema.md §6「当前关系 = 最新 valid_to IS NULL」），透传候选 valid_to（临时盟约）。
+            # 双端缺一或类型缺失无法定位关系对 → 跳过且不关任何行（§6.12 坏数据拒绝但不崩）。
             src = p.get("source_id")
             tgt = p.get("target_id")
-            if src and tgt:
-                db.add(Relation(project_id=project_id, source_id=uuid.UUID(str(src)),
-                                relation_type=p["relation_type"], target_id=uuid.UUID(str(tgt)),
-                                confidence=p.get("confidence", 0.8), source_chapter=chapter_seq))
+            rtype = p.get("relation_type")
+            if src and tgt and rtype:
+                src_uuid, tgt_uuid = uuid.UUID(str(src)), uuid.UUID(str(tgt))
+                _close_active_relations(db, project_id, src_uuid, tgt_uuid, chapter_seq)
+                db.add(Relation(project_id=project_id, source_id=src_uuid,
+                                relation_type=rtype, target_id=tgt_uuid,
+                                confidence=p.get("confidence", 0.8), source_chapter=chapter_seq,
+                                valid_from=p.get("valid_from", 1),
+                                valid_to=p.get("valid_to")))
         elif cand["kind"] == "foreshadow":
             db.add(Foreshadow(project_id=project_id, description=p.get("description", ""),
                               status="planted", planted_chapter=chapter_seq, trigger=p.get("trigger") or {}))
@@ -721,6 +729,25 @@ def _persist_candidates(db: Session, pid: str, chapter_seq: int, candidates: lis
                     if name == (t.name or "") or name in (t.name or "") or (t.name or "") in name:
                         t.last_progress_chapter = chapter_seq
                         break
+
+
+def _close_active_relations(db: Session, project_id: uuid.UUID, source_id: uuid.UUID,
+                            target_id: uuid.UUID, chapter_seq: int) -> int:
+    """收口同一 (source_id, target_id) 有序对的全部活跃旧关系（valid_to = 本章序，§7.8）。
+
+    维护 schema.md §6「当前关系 = 最新一条 valid_to IS NULL」：新关系变更落库前必须把
+    该对旧活跃行全部关闭，保证「每对至多一条活跃」不变量。跨类型全关（按对，非按类型）；
+    只关同向对，不代写反向 (target, source)（§9.3 成对落库语义由写入侧负责）。返回关闭行数。
+    """
+    rows = db.query(Relation).filter(
+        Relation.project_id == project_id,
+        Relation.source_id == source_id,
+        Relation.target_id == target_id,
+        Relation.valid_to.is_(None),
+    ).all()
+    for r in rows:
+        r.valid_to = chapter_seq
+    return len(rows)
 
 
 def _pool_has_duplicate(db: Session, pid: str, chapter_seq: int, cand: dict) -> bool:
