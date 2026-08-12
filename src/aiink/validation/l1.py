@@ -22,6 +22,12 @@ from aiink.schemas import Finding, MutationCandidate
 _INFLATION_WINDOW = 3
 _INFLATION_STEPS = 2
 
+# 样例 18/23 阈值：伏笔债务（planted 无回收条件 15 章无触碰 / developing 捡起后 10 章不落地 → 烂尾 hint）
+_FS_PLANTED_STALL = 15
+_FS_DEVELOPING_STALL = 10
+# 样例 19 阈值：主线连续 15 章未推进 → 停滞 hint（支线可长期休眠，样例 27 阴性）
+_THREAD_STALL = 15
+
 
 def _key(conflict_type: str, entity: str, chapter_seq: int) -> str:
     return hashlib.md5(f"{conflict_type}:{entity}:{chapter_seq}".encode()).hexdigest()[:16]
@@ -59,6 +65,56 @@ class L1Validator:
 
         # 战力通胀（跨章序列，不依赖候选）
         findings.extend(self.power_inflation_check(session, project_id, chapter_seq))
+        # 长线债务（伏笔烂尾 / 主线停滞，不依赖候选；hint 不阻塞，§8.6 线程债务 + §7.9 伏笔治理）
+        findings.extend(self.foreshadow_debt_check(session, project_id, chapter_seq))
+        findings.extend(self.plot_thread_debt_check(session, project_id, chapter_seq))
+        return findings
+
+    # ---- 伏笔烂尾（样例 18/23，阴性 26 对照，§7.9）----
+    def foreshadow_debt_check(self, session: Session, project_id: uuid.UUID,
+                              chapter_seq: int) -> list[Finding]:
+        findings: list[Finding] = []
+        for f in repo.get_open_foreshadows(session, project_id):  # planted / developing
+            last = f.last_touched or f.planted_chapter
+            if not last:
+                continue
+            if f.status == "developing":
+                # 样例 23：作者已捡起（developing）却长期不落地 → 烂尾（不依赖 trigger 成熟度，
+                # 以状态作"已承诺"的确定性代理；成熟度语义判断属 L2/阶段 3 主体）
+                if last > chapter_seq - _FS_DEVELOPING_STALL:
+                    continue
+            else:
+                # 样例 18：planted 且无回收条件（trigger 空）却长期无触碰 → 烂尾
+                if f.trigger:
+                    continue  # 有回收条件 = 刻意长沉（样例 26 阴性，0 误报）
+                if last > chapter_seq - _FS_PLANTED_STALL:
+                    continue
+            findings.append(Finding(
+                conflict_key=_key("foreshadow", str(f.id), chapter_seq),
+                conflict_type="foreshadow", severity="hint", scope="local", source="L1",
+                evidence=[{"chapter": chapter_seq,
+                           "quote": f"伏笔「{f.description[:40]}」自第 {last} 章起 {chapter_seq - last} 章无触碰"}],
+                suggestion="伏笔疑似烂尾：作者决策收/弃（标 resolved/dropped）或补剧情触碰（§7.9）",
+            ))
+        return findings
+
+    # ---- 剧情线停滞（样例 19，阴性 27 对照，§8.6 P1 线程债务）----
+    def plot_thread_debt_check(self, session: Session, project_id: uuid.UUID,
+                               chapter_seq: int) -> list[Finding]:
+        findings: list[Finding] = []
+        for t in repo.get_plot_threads(session, project_id):  # status=active
+            if t.kind != "main":
+                continue  # 支线可长期休眠（样例 27 阴性）
+            if not t.last_progress_chapter or t.last_progress_chapter > chapter_seq - _THREAD_STALL:
+                continue
+            findings.append(Finding(
+                conflict_key=_key("plotline", str(t.id), chapter_seq),
+                conflict_type="plotline", severity="hint", scope="local", source="L1",
+                evidence=[{"chapter": chapter_seq,
+                           "quote": f"主线「{t.name[:40]}」自第 {t.last_progress_chapter} 章起 "
+                                    f"{chapter_seq - t.last_progress_chapter} 章未推进"}],
+                suggestion="主线长期停滞：推进该线，或作者决策收线/降级（§8.6 P1）",
+            ))
         return findings
 
     # ---- realm ----
