@@ -17,6 +17,8 @@ import json
 import time
 import uuid
 
+import pytest
+
 from aiink.db import new_session
 from aiink.models import Task
 from aiink.worker.processor import process
@@ -432,3 +434,55 @@ def test_process_stable_worker_id_for_locks(temp_project, stub_provider, monkeyp
     assert len(captured) >= 2, f"应捕获至少 2 次 acquire，实际 {len(captured)}"
     assert len(set(captured)) == 1, f"同进程锁归属名应一致，实际 {captured}"
     assert captured[0].startswith("worker-"), captured[0]
+
+
+# ── 显式重写写序守卫（§7.3 失效重建触发点）──────────────────────────────────
+
+
+def _seed_chapter(project_id: str, seq: int, *, status: str = "confirmed") -> None:
+    """给临时书直接物化一章（绕图，测 guard 纯逻辑；temp_project 收尾 FK 级联删）。"""
+    from aiink.db import tenant_session
+    from aiink.models import Chapter
+
+    with tenant_session(project_id) as db:
+        db.add(Chapter(project_id=uuid.UUID(project_id), chapter_seq=seq,
+                       title=f"第{seq}章", content="正文", status=status, version=1))
+        db.commit()
+
+
+def test_guard_rewrite_allows_confirmed(temp_project):
+    """rewrite=True 放行已 confirmed 章（唯一合法重写对象）。"""
+    from aiink.worker.processor import _guard_write_order
+
+    _seed_chapter(temp_project, 1)
+    _guard_write_order(temp_project, 1, rewrite=True)  # 不放行会抛 WriteOrderError
+
+
+def test_guard_rewrite_rejects_missing_or_beyond(temp_project):
+    """rewrite=True 拒绝不存在的章 / 超过已写范围（空书重写第 3 章、只写到 1 重写 5）。"""
+    from aiink.worker.processor import WriteOrderError, _guard_write_order
+
+    with pytest.raises(WriteOrderError):
+        _guard_write_order(temp_project, 3, rewrite=True)
+    _seed_chapter(temp_project, 1)
+    with pytest.raises(WriteOrderError):
+        _guard_write_order(temp_project, 5, rewrite=True)
+
+
+def test_guard_rewrite_rejects_awaiting_review(temp_project):
+    """rewrite=True 拒绝 awaiting_review 章（§6.11 确认分流：走 resume/reject 处理）。"""
+    from aiink.worker.processor import WriteOrderError, _guard_write_order
+
+    _seed_chapter(temp_project, 1, status="awaiting_review")
+    with pytest.raises(WriteOrderError):
+        _guard_write_order(temp_project, 1, rewrite=True)
+
+
+def test_guard_no_rewrite_stays_strict(temp_project):
+    """无 rewrite 时旧严格校验不变：重写已写章仍拒绝、只放行 max_seq+1（默认参数零回归）。"""
+    from aiink.worker.processor import WriteOrderError, _guard_write_order
+
+    _seed_chapter(temp_project, 1)
+    with pytest.raises(WriteOrderError):
+        _guard_write_order(temp_project, 1)  # 未带 rewrite 不能重写已写章
+    _guard_write_order(temp_project, 2)       # max_seq+1 正常放行
