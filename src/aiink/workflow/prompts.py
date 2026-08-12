@@ -174,6 +174,9 @@ def _style_section(style_profile: dict | None, target_words: int | None) -> str:
     forbidden = sp.get("forbidden") or []
     if forbidden:
         parts.append("表述禁忌（必须避免）：" + "；".join(forbidden) + "。")
+    fw = sp.get("fatigue_words") or []
+    if fw:
+        parts.append("高频词节制（避免机械复用）：" + "、".join(fw) + "。")
     if sp.get("dialogue"):
         parts.append(f"对话要求：{sp['dialogue']}。")
     return "\n".join(parts)
