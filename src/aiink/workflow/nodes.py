@@ -698,10 +698,13 @@ def _persist_candidates(db: Session, pid: str, chapter_seq: int, candidates: lis
                                   old_value=p.get("old_value"), new_value=p.get("new_value"),
                                   source_chapter=chapter_seq, confidence=p.get("confidence", 0.8)))
         elif cand["kind"] == "fact":
-            db.add(Fact(project_id=project_id, content=p.get("content", ""),
+            fact = Fact(project_id=project_id, content=p.get("content", ""),
                         category=p.get("category"), is_hard=bool(p.get("is_hard")),
                         source_chapter=chapter_seq, confidence=p.get("confidence", 0.8),
-                        confirm_status="confirmed"))
+                        confirm_status="confirmed")
+            db.add(fact)
+            db.flush()  # 拿 fact.id 供向量索引关联
+            _index_fact_embedding(db, project_id, fact)
         elif cand["kind"] == "relation_change":
             # 关系写入语义（§3 决策）：落库前先关闭同 (source_id, target_id) 有序对全部活跃
             # 旧行（schema.md §6「当前关系 = 最新 valid_to IS NULL」），透传候选 valid_to（临时盟约）。
@@ -788,21 +791,40 @@ def confirm_candidate(db: Session, project_id: str, candidate_id: uuid.UUID) -> 
     return cand
 
 
-def _index_event_embedding(db: Session, pid: str, ev: Event) -> None:
-    """事件摘要向量化入 embeddings（§15 最小向量召回，level=event）。
+def _index_embedding(db: Session, *, project_id: uuid.UUID, level: str,
+                     source_id: uuid.UUID, source_chapter: int | None,
+                     text: str, model_version: str = "bge-m3") -> None:
+    """通用向量化入 embeddings（分层 event/world/chapter，§7.2/§15）。
 
     加分项：bge-m3 未装/加载失败都降级（记录日志不阻塞落库，§6.12 数据层），
     伏笔/人设走偏主防线是关系链路（foreshadows 状态机 + 台账），不依赖本函数。
     """
-    if not ev.summary:
+    if not text:
         return
     try:
-        emb = get_embedder().encode([ev.summary])[0]
-        PgvectorStore().upsert(db, project_id=ev.project_id, level="event", source_id=ev.id,
-                               source_chapter=ev.source_chapter,
-                               model_version="bge-m3", embedding=emb)
+        emb = get_embedder().encode([text])[0]
+        PgvectorStore().upsert(db, project_id=project_id, level=level, source_id=source_id,
+                               source_chapter=source_chapter,
+                               model_version=model_version, embedding=emb)
     except Exception as exc:
-        logger.warning("事件向量化失败，跳过索引（不影响落库）: %s", exc)
+        logger.warning("向量化失败（level=%s），跳过索引（不影响落库）: %s", level, exc)
+
+
+def _index_event_embedding(db: Session, pid: str, ev: Event) -> None:
+    """事件摘要向量化入 embeddings（level=event，§15 最小向量召回）。"""
+    _index_embedding(db, project_id=ev.project_id, level="event", source_id=ev.id,
+                     source_chapter=ev.source_chapter, text=ev.summary)
+
+
+def _index_fact_embedding(db: Session, pid: str, fact: Fact) -> None:
+    """世界观/长期事实向量化入 embeddings（level=world，§7.2 分层 collection）。
+
+    硬约束恒在 Top-K、不参与相似度截断（§7.2），向量化是浪费 → 跳过。
+    """
+    if fact.is_hard:
+        return
+    _index_embedding(db, project_id=fact.project_id, level="world", source_id=fact.id,
+                     source_chapter=fact.source_chapter, text=fact.content)
 
 
 def _chapter_summary(candidates: list[dict]) -> str:
