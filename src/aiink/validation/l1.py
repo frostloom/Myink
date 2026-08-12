@@ -4,6 +4,9 @@
 - 境界跳级 / 越界（realm_order + realm_cap，样例 10/1）
 - 死而复生（alive 台账 vs 候选，样例 3）
 - 战力通胀（per-角色 realm 序列斜率，样例 11，跨章）
+- 候选 old_value-vs-台账（extract 误读注入快照，样例 16/20/21 确定性窄脚印）
+- 关系台账自洽（重复/矛盾活跃行，§7.8）
+- 伏笔烂尾 / 主线停滞（样例 18/19/23/26/27）
 
 conflict_key = hash(类型+实体+位置)，跨修订轮稳定（§6.4）。
 """
@@ -27,6 +30,11 @@ _FS_PLANTED_STALL = 15
 _FS_DEVELOPING_STALL = 10
 # 样例 19 阈值：主线连续 15 章未推进 → 停滞 hint（支线可长期休眠，样例 27 阴性）
 _THREAD_STALL = 15
+
+# 通用台账比对字段：realm/alive 已有 _realm_checks/_alive_checks 消费 old_value，
+# 通用检查仅覆盖无专属检查的字段（防同候选双报 + test_flow 样例 1 类别级不回归）。
+# 样例 16/20/21 的确定性窄脚印（状态机一致性）——正文-台账语义比对留 L2。
+_GENERAL_STATE_FIELDS = ("location", "injury", "power", "item", "knowledge", "goal", "identity")
 
 
 def _key(conflict_type: str, entity: str, chapter_seq: int) -> str:
@@ -62,12 +70,17 @@ class L1Validator:
             elif field == "alive":
                 findings.extend(self._alive_checks(session, project_id, chapter_seq,
                                                    str(ch_id), old_v, new_v, cand))
+            elif field in _GENERAL_STATE_FIELDS:
+                findings.extend(self._old_value_ledger_check(session, project_id, chapter_seq,
+                                                             str(ch_id), field, old_v, cand))
 
         # 战力通胀（跨章序列，不依赖候选）
         findings.extend(self.power_inflation_check(session, project_id, chapter_seq))
         # 长线债务（伏笔烂尾 / 主线停滞，不依赖候选；hint 不阻塞，§8.6 线程债务 + §7.9 伏笔治理）
         findings.extend(self.foreshadow_debt_check(session, project_id, chapter_seq))
         findings.extend(self.plot_thread_debt_check(session, project_id, chapter_seq))
+        # 关系台账自洽（仅活跃行；重复/矛盾 → major 不阻塞，§7.8 关系写入语义）
+        findings.extend(self.relation_ledger_check(session, project_id, chapter_seq))
         return findings
 
     # ---- 伏笔烂尾（样例 18/23，阴性 26 对照，§7.9）----
@@ -115,6 +128,49 @@ class L1Validator:
                                     f"{chapter_seq - t.last_progress_chapter} 章未推进"}],
                 suggestion="主线长期停滞：推进该线，或作者决策收线/降级（§8.6 P1）",
             ))
+        return findings
+
+    # ---- 关系台账自洽（样例 17/22 台账侧 + 新增样例，§7.8）----
+    def relation_ledger_check(self, session: Session, project_id: uuid.UUID,
+                              chapter_seq: int) -> list[Finding]:
+        """活跃关系台账自洽（仅 valid_to IS NULL）：
+
+        - 重复活跃：同 (source_id, target_id, relation_type) ≥2 条活跃 → 当前关系不可判定；
+        - 矛盾活跃：同 (source_id, target_id) 存在 ≥2 种不同 relation_type 活跃 → 敌/盟并存。
+        纯结构不变量（非阈值/语义猜测），合法数据 0 误报：persist 关闭修复保证新写入不产生；
+        demo 关系表为空默认不触发。major/structural：报告 + 进 revise 上下文，不阻塞（§6.12）。
+        """
+        findings: list[Finding] = []
+        relations = repo.get_relations(session, project_id)
+        if not relations:
+            return findings  # 空表廉价跳过
+        by_pair: dict[tuple[uuid.UUID, uuid.UUID], list] = {}
+        for r in relations:
+            by_pair.setdefault((r.source_id, r.target_id), []).append(r)
+        for (src, tgt), rows in by_pair.items():
+            by_type: dict[str, list] = {}
+            for r in rows:
+                by_type.setdefault(r.relation_type, []).append(r)
+            for rtype, typed in by_type.items():  # 重复活跃
+                if len(typed) < 2:
+                    continue
+                chs = ",".join(str(r.source_chapter) for r in typed)
+                findings.append(Finding(
+                    conflict_key=_key("relation", f"dup:{src}:{tgt}", chapter_seq),
+                    conflict_type="relation", severity="major", scope="structural", source="L1",
+                    evidence=[{"chapter": chapter_seq,
+                               "quote": f"关系 {src}→{tgt} 存在 {len(typed)} 条活跃 {rtype}（第 {chs} 章写入），当前关系不可判定"}],
+                    suggestion="台账重复活跃：合并/关闭至一条（persist 关闭修复已防新增，存量人工收口）",
+                ))
+            if len(by_type) >= 2:  # 矛盾活跃
+                kinds = " + ".join(f"{t}×{len(r)}" for t, r in by_type.items())
+                findings.append(Finding(
+                    conflict_key=_key("relation", f"con:{src}:{tgt}", chapter_seq),
+                    conflict_type="relation", severity="major", scope="structural", source="L1",
+                    evidence=[{"chapter": chapter_seq,
+                               "quote": f"关系 {src}→{tgt} 同时活跃 {kinds}，敌/盟语义互相矛盾"}],
+                    suggestion="台账矛盾活跃：确定当前唯一关系类型并关闭其余行（§7.8）",
+                ))
         return findings
 
     # ---- realm ----
@@ -169,6 +225,32 @@ class L1Validator:
                 conflict_type="character", severity="critical", scope="structural", source="L1",
                 evidence=[{"chapter": cand.source_chapter, "quote": f"{ch_id} 台账已死却被写为存活"}],
                 suggestion="死而复生需先落复活机制规则（facts），否则冲突",
+            ))
+        return findings
+
+    # ---- 候选 old_value-vs-台账（样例 16/20/21 确定性窄脚印）----
+    def _old_value_ledger_check(self, session: Session, project_id: uuid.UUID,
+                                chapter_seq: int, ch_id: str, field: str, old_v: object,
+                                cand: MutationCandidate) -> list[Finding]:
+        """extract 候选 old_value vs 台账当前值（至 chapter_seq-1）：非空且不符 → 疑似误读台账。
+
+        只比非空 old_value；台账该字段当前值为空/缺席（repo.get_character_state 至 seq-1）
+        → 跳过（首写不变量，fresh 书 0 误报）。正文-台账语义比对（"无过渡推翻"）留 L2。
+        """
+        findings: list[Finding] = []
+        if not old_v:
+            return findings
+        ledger = repo.get_character_state(session, project_id, uuid.UUID(ch_id), chapter_seq - 1)
+        current = (ledger.get(field) or "").strip()
+        if not current:
+            return findings  # 台账无当前值（首写）即跳过
+        if str(old_v).strip() != current:
+            findings.append(Finding(
+                conflict_key=_key("character_state", f"{ch_id}:{field}", chapter_seq),
+                conflict_type="character_state", severity="minor", scope="local", source="L1",
+                evidence=[{"chapter": cand.source_chapter,
+                           "quote": f"候选 old_value={old_v!r} 与台账当前 {field}={current!r} 不符（抽取疑似误读注入快照）"}],
+                suggestion="extract 读到旧台账快照：核对 recall 注入的状态快照，或重新抽取该字段",
             ))
         return findings
 
