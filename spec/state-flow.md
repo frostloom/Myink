@@ -141,4 +141,22 @@ LLM Agent：batch_plan + plan_chapter(Planner) / write(Writer) / extract(Memory)
 > 审核路由边界（§6.11 混合路由）：Audit 输出 AuditVerdict 做语义路由（pass/rewrite/replan），但 L1 critical 与轮次预算由确定性规则强制——Audit 不能绕过硬约束，也不能无限重写。
 
 > 能力边界（plan.md §6.2）：写作/规划/校验 agent 只拿组装好的上下文，**没有任何 agent 直接写库**；写状态经 extract 出候选，编排层（persist）确认或自动放行后落库。**例外只给只读查证工具**：Audit/Writer 经 function calling 主动核实（§10），不触碰写边界。
+
+## 7. 编辑 / 校正 / 级联删除（阶段 3 切片：正文修改后的记忆动作，plan.md §7.3 编辑校正注记）
+
+> 与重写（rewrite=true 整章重生成）不同，本切片处理**用户对已确认正文的轻量修改**。三端点均走编排层，Agent 不直写。
+
+**① 轻编辑零动作**：`PUT .../chapters/{id}/content` 只更新 `content` + `version+1`，**不触发 LLM / 记忆动作**。用户只改语言风格 / 句子长短 / 标点时记忆不动——自动校正会因措辞抖动误伤/误增记忆，故校正必须显式触发。
+
+**② 显式校正** `POST .../chapters/{id}/correct-memory`：
+1. 对编辑后正文重新 `extract`（复用 `nodes.extract_candidates_from_draft`，与 `node_extract` 同一抽取路径，一次同步 LLM 调用）；
+2. `diff_changeset` 对比该章已落库记忆 → 变更集 `{add, remove, keep}`；
+   - **结构化记忆**（character_state / relation）按稳定键**精确匹配**（state：`character_id+field+old_value+new_value`；relation：`source_id+relation_type+target_id`）；
+   - **自由文本**（event 摘要 / fact 内容 / foreshadow 描述）按归一化签名（去空白标点）+ 模糊相似（`SequenceMatcher` ≥ 0.85）；
+   - **事件只按摘要匹配、不解析参与者**——抽取路径未消解参与者 UUID，按参与者比对会「规范化 UUID vs 原始人名」错配误删；
+3. 变更集写**待确认池**（`apply_changeset_to_pool`）：add 原样入池、remove 转 `memory_removal` 候选（`payload={memory_type, memory_id, display}`）入池；按 `(kind, payload, source_chapter)` 幂等查重（任意状态），重跑不重复入池；keep 零动作。人工 confirm/reject 后生效（复用现有候选池端点），**不自动直落**——守住「校正不直写」边界。
+
+**`memory_removal` 确认语义**（`apply_memory_removal`，幂等——目标已不存在视作成功）：events 硬删 + 向量删；facts `valid_to=seq` + `confirm_status="expired"`；states/relations `valid_to=seq` 关窗；开放伏笔硬删。校验约束由 `ensure_memory_candidate_kinds` 幂等重建（全名 `ck_memory_candidates_kind_enum`）。
+
+**③ 级联删除** `DELETE .../chapters/{id}`：删除该章及其后**全部章节**（正文 + 记忆 + 池候选），进度回退到保留最大章（无保留则 0）。逐章复用 `invalidate_chapter_memory` 失效语义 + 清该章池候选 + 删章行；`autoflush=False` 下先 `flush()` 再查 `max(chapter_seq)`。**边界**：删 N 后 N+1 剧情引用已删事件会断层，故级联让作者从被删章重新生成；删除范围无进行中任务守卫（任务 checkpoint 引用章节，删除前应人工确保）。
 > 工具调用方式（plan.md §10）：**MVP（阶段 1）** Audit/Writer 已持只读查证工具（function calling，确定性节点内 execute，`max_tool_calls=3` 预算封顶）；写工具仍是确定性节点内 Python 函数（persist 编排层）；阶段 3 以 **MCP Client** 接入外部数据源（热点榜单 / 素材检索 / 图片生成，2026-07-28 无状态协议），外部工具不暴露给 agent（编排层受控能力，热榜数据当灵感参考、不进记忆层）。

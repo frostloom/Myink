@@ -17,7 +17,7 @@ FORESHADOW_STATUSES = ("planted", "developing", "resolved", "dropped")
 PLOT_THREAD_KINDS = ("main", "side")
 PLOT_THREAD_STATUSES = ("active", "stalled", "closed")
 FACT_CONFIRM_STATUSES = ("pending", "confirmed", "rejected", "expired")
-CANDIDATE_KINDS = ("event", "fact", "character_state", "relation_change", "foreshadow", "chapter_summary")
+CANDIDATE_KINDS = ("event", "fact", "character_state", "relation_change", "foreshadow", "chapter_summary", "memory_removal")
 CANDIDATE_STATUSES = ("pending", "confirmed", "rejected")
 
 

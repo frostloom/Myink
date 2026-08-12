@@ -260,10 +260,10 @@
   "required": ["kind", "project_id", "source_chapter", "payload"],
   "properties": {
     "id":            { "type": "string", "format": "uuid" },
-    "kind":          { "type": "string", "enum": ["event","fact","character_state","relation_change","foreshadow","chapter_summary"] },
+    "kind":          { "type": "string", "enum": ["event","fact","character_state","relation_change","foreshadow","chapter_summary","memory_removal"] },
     "project_id":    { "type": "string", "format": "uuid" },
     "source_chapter":{ "type": "integer", "minimum": 1 },
-    "payload":       { "type": "object", "description": "对应 kind 的对象体（Event/Fact/CharacterState/Relation/Foreshadow/摘要）" },
+    "payload":       { "type": "object", "description": "对应 kind 的对象体（Event/Fact/CharacterState/Relation/Foreshadow/摘要；memory_removal 为 {memory_type, memory_id, display}，阶段 3 编辑校正删除候选）" },
     "confidence":    { "type": "number", "minimum": 0, "maximum": 1 },
     "status":        { "type": "string", "enum": ["pending","confirmed","rejected"], "default": "pending" }
   }

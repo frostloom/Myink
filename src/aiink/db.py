@@ -191,3 +191,24 @@ def ensure_unique_constraints() -> None:
                 END IF;
             END $$;
         """))
+
+
+def ensure_memory_candidate_kinds() -> None:
+    """补齐 memory_candidates.kind CHECK（新增 memory_removal 校正删除候选，阶段 3 编辑校正）。
+
+    create_all 只对新建表生效、不更新已存在表的 CHECK——老库 kind_enum 缺 memory_removal，
+    需显式重建（DROP + ADD，事务内原子）。幂等：新库模型已含 memory_removal，重建后结果一致；
+    重跑先 DROP IF EXISTS 再 ADD，不抛错。
+    """
+    _KINDS = ("event", "fact", "character_state", "relation_change",
+              "foreshadow", "chapter_summary", "memory_removal")
+    # 约束全名按命名约定 ck_%(table)s_%(constraint)s（base.py convention）：
+    # memory_candidates.kind_enum → ck_memory_candidates_kind_enum
+    with _admin_engine.begin() as conn:
+        conn.execute(text(
+            "ALTER TABLE memory_candidates DROP CONSTRAINT IF EXISTS ck_memory_candidates_kind_enum"
+        ))
+        conn.execute(text(
+            f"ALTER TABLE memory_candidates ADD CONSTRAINT ck_memory_candidates_kind_enum "
+            f"CHECK (kind IN {_KINDS})"
+        ))
