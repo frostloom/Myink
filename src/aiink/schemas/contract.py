@@ -235,3 +235,5 @@ class RetrievedContext(BaseModel):
     plot_threads: list[dict] = Field(default_factory=list, description="活跃剧情线 [{name, kind, status, progress}]（线程债务治理输入）")
     reflexions: list[dict] = Field(default_factory=list, description="本书写作经验（reflexion 注入，§8.9）[{content, lesson_type, category, source_chapter}]")
     token_usage: int = 0
+    recall_stats: dict = Field(default_factory=dict,
+                               description="{vector_hits, keyword_hits, fused_total, recall_tokens_est, context_tokens_est, share}（§16 召回占比，混合召回时填充）")

@@ -52,7 +52,7 @@ flowchart TD
 |---|---|---|---|---|---|
 | `batch_plan` | 批次 | Planner（LLM） | 当前大纲 / 剧情线 / 伏笔状态 + N | `BatchPlan`：N 章推进蓝图（每章推进目标 / 收伏笔 / 大纲推进段） | `get_plot_status` |
 | `load_state` | 章 | 确定性 | 任务参数（project_id、chapter_seq） | 项目设定、章节计划、前情摘要初始化 | — |
-| `recall` | 章 | 确定性 | 设定 + 前情 | `RetrievedContext`（分层召回 + token 预算） | `search_world_facts` / `search_plot_events` / `get_entity_relations` / `get_chapter_context` |
+| `recall` | 章 | 确定性 | 设定 + 前情 | `RetrievedContext`（分层召回 + token 预算 + `recall_stats` 召回占比） | `search_world_facts` / `search_plot_events` / `get_entity_relations` / `get_chapter_context` |
 | `plan_chapter` | 章 | Planner（LLM） | `RetrievedContext` + 本章在 BatchPlan 的目标 | `ChapterPlan` | — |
 | `write` | 章 | Writer（LLM） | `RetrievedContext` + `ChapterPlan` | `draft`（章节草稿） | `inspect_character` / `inspect_facts`（只读查证，§10） |
 | `extract` | 章 | Memory（LLM） | `draft` + `ChapterPlan` | `MutationCandidate[]` 写入待确认池（自动模式：低风险自动放行，§6.11） | `save_memory_candidates` |
@@ -117,6 +117,7 @@ route_after_chapter(batch):
 |---|---|---|
 | LLM 调用失败 / 超时 / 限流 | 调用层 | 指数退避重试（1s/2s/4s，上限 3 次）→ 模型降级链（主→备→默认）→ 思考模式超时降非思考 |
 | 结构化输出解析失败 | 调用层 | 带"必须为 JSON"重试一次；仍失败 → 节点报错走任务层 |
+| 向量 / 关键词召回失败（§7.2 事件混合召回） | 增强层 | **逐腿独立降级**：向量腿 encode/search 抛错 → 关键词腿独立工作；关键词腿术语空 → 向量腿独立工作；双腿全挂 → 纯关系召回兜底、`recall_stats={}`，**不阻塞生成** |
 | 输出超限被截断 | 调用层 | 检测截断标记 → 重生成尾部（前文摘要 + 剩余目标），不让截断章落库 |
 | 单节点异常 | 任务层 | `stage_log` 记录错误 → 节点失败；批次中断（若该章重试+降级后仍失败） |
 | 重复投递 | 任务层 | `task_id` 幂等键 + DB 唯一约束，只执行一次 |

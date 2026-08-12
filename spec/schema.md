@@ -303,11 +303,12 @@
   "required": ["long_term_facts", "mid_term_events", "short_context", "entity_snapshots", "token_usage"],
   "properties": {
     "long_term_facts":  { "type": "array", "items": { "type": "object", "properties": { "fact_id": { "type": "string" }, "source_chapter": { "type": "integer" } } } },
-    "mid_term_events":  { "type": "array", "items": { "type": "object", "properties": { "event_id": { "type": "string" }, "chapter": { "type": "integer" }, "confidence": { "type": "number" } } } },
+    "mid_term_events":  { "type": "array", "items": { "type": "object", "properties": { "event_id": { "type": "string" }, "chapter": { "type": "integer" }, "confidence": { "type": "number" }, "recalled_by": { "type": "string", "description": "混合召回标签：vector / keyword / vector+keyword（仅混合召回补充的事件有）" } } } },
     "short_context":    { "type": "array", "items": { "type": "object" }, "description": "上一章摘要 + 上一章候选事件 + 本章开头 + 最近场景（plan.md §7.1）" },
     "entity_snapshots": { "type": "array", "items": { "type": "object" }, "description": "人物/势力/地点当前状态快照（台账最新）" },
     "reflexions":       { "type": "array", "items": { "type": "object" }, "description": "在效写作经验（§8.9 reflexion）：content / lesson_type / category / source_chapter；上限 8 条" },
-    "token_usage":      { "type": "integer" }
+    "token_usage":      { "type": "integer" },
+    "recall_stats":     { "type": "object", "description": "事件混合召回占比（§7.2/§16，2026-08-12 落地）：{ vector_hits, keyword_hits, fused_total, recall_tokens_est, context_tokens_est, share }；无混合召回时为空对象 {}" }
   }
 }
 ```
