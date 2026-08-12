@@ -31,6 +31,10 @@ func NewRouter(cfg config.Config, r *redis.Client, py *pyapi.Client) *gin.Engine
 		// 项目/章节读（多书展示前端，转发 Python API）
 		api.GET("/projects", taskH.ListProjects)
 		api.GET("/projects/:project_id/chapters", taskH.ListChapters)
+		// 章节编辑 / 记忆校正 / 级联删除（阶段 3：正文轻编辑 + 增量记忆校正，转发 Python API）
+		api.PUT("/projects/:project_id/chapters/:chapter_id/content", taskH.UpdateChapterContent)
+		api.POST("/projects/:project_id/chapters/:chapter_id/correct-memory", taskH.CorrectMemory)
+		api.DELETE("/projects/:project_id/chapters/:chapter_id", taskH.DeleteChapter)
 		// 建单章生成任务
 		api.POST("/projects/:project_id/chapters/:chapter_id/generate", taskH.CreateChapter)
 		// 建批次生成任务

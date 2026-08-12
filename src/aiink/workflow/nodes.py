@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from aiink.config import settings
 from aiink.db import tenant_session
 from aiink.memory import repository as repo
+from aiink.memory.correction import apply_memory_removal
 from aiink.memory.embedder import get_embedder
 from aiink.memory.invalidation import invalidate_chapter_memory
 from aiink.memory.recall import build_context
@@ -543,6 +544,45 @@ def node_write(state: ChapterState) -> ChapterState:
     return out
 
 
+def extract_candidates_from_draft(db: Session, *, project_id: str, chapter_seq: int,
+                                  draft: str, task_id: str | None = None) -> tuple[list[dict], str | None]:
+    """对任意正文跑记忆抽取（extract LLM）→ 校验/归一化候选（§6.4/§7.5）。
+
+    节点与「校正记忆」端点复用同一条抽取/清洗路径，保证口径一致（阶段 3 编辑校正）。
+    返回 (candidates, error)：error 非空时 candidates 为空，由调用方决定是否阻断。
+    """
+    messages = prompts.extract_messages(draft, chapter_seq)
+    state: dict = {"project_id": project_id, "chapter_seq": chapter_seq, "task_id": task_id}
+    resp, _ = _llm(db, state, "extract", "Memory", make_chain("extract"), messages)
+    if resp.error:
+        return [], resp.error
+    try:
+        data = _parse_json(resp.content)
+        raw_candidates = data.get("candidates", []) or []
+    except json.JSONDecodeError as exc:
+        return [], f"extract 输出解析失败: {exc}"
+
+    candidates: list[dict] = []
+    for raw in raw_candidates:
+        try:
+            cand = MutationCandidate(**raw)
+        except ValidationError:
+            continue  # 坏候选拒绝但不崩（§6.12 数据层）
+        if cand.kind == "character_state":
+            cid = _resolve_character_id(db, project_id, str(cand.payload.get("character_id", "")))
+            if not cid:
+                continue  # 无法归一化的角色不落库
+            # field 白名单校验（§6.12 坏候选拒绝但不崩）：LLM 自由输出可能造出
+            # DB CHECK 枚举外的新值（如 "realm_status"），落库必炸批次 → 这里丢弃
+            if cand.payload.get("field") not in CHARACTER_STATE_FIELDS:
+                logger.warning("丢弃非法 character_state 候选 field=%r（ch%d）",
+                               cand.payload.get("field"), chapter_seq)
+                continue
+            cand.payload["character_id"] = str(cid)
+        candidates.append(cand.model_dump(mode="json"))
+    return candidates, None
+
+
 def node_extract(state: ChapterState) -> ChapterState:
     if state.get("error"):
         return {}  # 上游 LLM 已失败：透传根因（§6.12）
@@ -551,34 +591,11 @@ def node_extract(state: ChapterState) -> ChapterState:
     if not draft:
         return {"error": "write 未产出草稿"}
     with tenant_session(pid) as db:
-        messages = prompts.extract_messages(draft, state["chapter_seq"])
-        resp, _ = _llm(db, state, "extract", "Memory", make_chain("extract"), messages)
-        if resp.error:
-            return {"error": resp.error}
-        try:
-            data = _parse_json(resp.content)
-            raw_candidates = data.get("candidates", []) or []
-        except json.JSONDecodeError as exc:
-            return {"error": f"extract 输出解析失败: {exc}"}
-
-        candidates: list[dict] = []
-        for raw in raw_candidates:
-            try:
-                cand = MutationCandidate(**raw)
-            except ValidationError:
-                continue  # 坏候选拒绝但不崩（§6.12 数据层）
-            if cand.kind == "character_state":
-                cid = _resolve_character_id(db, pid, str(cand.payload.get("character_id", "")))
-                if not cid:
-                    continue  # 无法归一化的角色不落库
-                # field 白名单校验（§6.12 坏候选拒绝但不崩）：LLM 自由输出可能造出
-                # DB CHECK 枚举外的新值（如 "realm_status"），落库必炸批次 → 这里丢弃
-                if cand.payload.get("field") not in CHARACTER_STATE_FIELDS:
-                    logger.warning("丢弃非法 character_state 候选 field=%r（ch%d）",
-                                   cand.payload.get("field"), state["chapter_seq"])
-                    continue
-                cand.payload["character_id"] = str(cid)
-            candidates.append(cand.model_dump(mode="json"))
+        candidates, err = extract_candidates_from_draft(
+            db, project_id=pid, chapter_seq=state["chapter_seq"], draft=draft,
+            task_id=state.get("task_id"))
+        if err:
+            return {"error": err}
     return {"candidates": candidates}
 
 
@@ -834,8 +851,15 @@ def confirm_candidate(db: Session, project_id: str, candidate_id: uuid.UUID) -> 
     cand = db.get(MemoryCandidate, candidate_id)
     if cand is None or str(cand.project_id) != project_id or cand.status != "pending":
         return None
-    _persist_candidates(db, project_id, cand.source_chapter,
-                        [{"kind": cand.kind, "payload": cand.payload, "confidence": cand.confidence}])
+    if cand.kind == "memory_removal":
+        # 删除候选（阶段 3 编辑校正）：确认 = 按类型失效被删记忆，而非写新记忆。
+        # 幂等：目标记忆已不存在视为已删除 → True；payload 非法返回 False → 409。
+        if not apply_memory_removal(db, project_id=uuid.UUID(project_id),
+                                    payload=cand.payload, chapter_seq=cand.source_chapter):
+            return None
+    else:
+        _persist_candidates(db, project_id, cand.source_chapter,
+                            [{"kind": cand.kind, "payload": cand.payload, "confidence": cand.confidence}])
     cand.status = "confirmed"
     return cand
 

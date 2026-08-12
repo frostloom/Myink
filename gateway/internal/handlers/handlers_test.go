@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -426,6 +427,48 @@ func TestCreateChapterRewritePassthrough(t *testing.T) {
 	}
 	if got == nil || !*got {
 		t.Fatalf("rewrite=true 应透传到 payload，实际 %v", got)
+	}
+}
+
+func TestChapterEditCorrectDeleteForwards(t *testing.T) {
+	// 阶段 3 三端点（编辑正文 / 记忆校正 / 级联删除）均为转发路由，应把方法与路径
+	// 原样转给 Python API（与 BatchControl 同款回归：曾转发错路径导致 404）。
+	r := newTestRedis(t)
+	var paths []string
+	py := pyapi.New(recordingPy(&paths).URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	cases := []struct {
+		name, method, path, body string
+	}{
+		{"编辑正文", http.MethodPut, "/api/v1/projects/p1/chapters/ch-1/content", `{"content":"改标点后的正文。"}`},
+		{"校正记忆", http.MethodPost, "/api/v1/projects/p1/chapters/ch-1/correct-memory", ``},
+		{"级联删除", http.MethodDelete, "/api/v1/projects/p1/chapters/ch-1", ``},
+	}
+	want := []string{
+		"/internal/v1/projects/p1/chapters/ch-1/content",
+		"/internal/v1/projects/p1/chapters/ch-1/correct-memory",
+		"/internal/v1/projects/p1/chapters/ch-1",
+	}
+	for i, c := range cases {
+		var rd io.Reader
+		if c.body != "" {
+			rd = strings.NewReader(c.body)
+		}
+		req := httptest.NewRequest(c.method, c.path, rd)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-AiInk-User", "dev")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("case %d(%s) 应 200，实际 %d body=%s", i, c.name, w.Code, w.Body.String())
+		}
+		if len(paths) != i+1 {
+			t.Fatalf("case %d(%s) 应转发 %d 次，实际 %v", i, c.name, i+1, paths)
+		}
+		if paths[i] != want[i] {
+			t.Fatalf("case %d(%s) 应转发 %s，实际 %s", i, c.name, want[i], paths[i])
+		}
 	}
 }
 

@@ -178,6 +178,33 @@ func (h *TaskHandler) ListChapters(c *gin.Context) {
 	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/chapters", nil)
 }
 
+// 编辑章节正文（阶段 3 轻编辑：只更新正文不触记忆，零 LLM）。
+// PUT /api/v1/projects/:project_id/chapters/:chapter_id/content
+func (h *TaskHandler) UpdateChapterContent(c *gin.Context) {
+	pid := c.Param("project_id")
+	cid := c.Param("chapter_id")
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/chapters/"+cid+"/content", body)
+}
+
+// 显式校正记忆（阶段 3：编辑后正文重新抽取 → 与该章已落库记忆 diff → 变更集进待确认池）。
+// 同步 LLM 调用（一次 extract），网关超时 30s；超时属正常，前端可提示重试。
+// POST /api/v1/projects/:project_id/chapters/:chapter_id/correct-memory
+func (h *TaskHandler) CorrectMemory(c *gin.Context) {
+	pid := c.Param("project_id")
+	cid := c.Param("chapter_id")
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/chapters/"+cid+"/correct-memory", body)
+}
+
+// 级联删除章节（阶段 3：删除该章及其后全部章节正文 + 记忆 + 池候选，进度回退）。
+// DELETE /api/v1/projects/:project_id/chapters/:chapter_id
+func (h *TaskHandler) DeleteChapter(c *gin.Context) {
+	pid := c.Param("project_id")
+	cid := c.Param("chapter_id")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/chapters/"+cid, nil)
+}
+
 // forwardToPy 把请求体原样转发 Python API 并透传响应。
 func (h *TaskHandler) forwardToPy(c *gin.Context, path string, body []byte) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
