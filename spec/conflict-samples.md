@@ -124,6 +124,7 @@
 - **预期 Finding**：`conflict_type=style, severity=hint, scope=local`
 - **度量指标**：AI 味复发率、高频句式频次曲线（随章节数应不增长）。
 - **误报控制**：文风是作者自由，只暴露"复发趋势"不阻塞；前端可"忽略"回流标注。
+- **检测现状**：✅ **已落地（2026-08-12，L1 高频句式/用词统计）**——`style_profile.fatigue_patterns`（句式 regex findall）单句式单章 ≥2 次（本片段单章内 2 处「不是…而是…」恰在边界）→ `style/hint/local`，每章至多 1 条；`fatigue_words`（词级 count）单词 ≥3 次亦触发；写章 Prompt 同步注入「高频词节制」。见 [l1.py](../src/aiink/validation/l1.py) `style_repeat_check` / [test_style_repeat.py](../tests/test_style_repeat.py)。**边界**：句长分布、每 K 章抽样 L2 比对风格档案（锚定作者自身风格，相对漂移）属阶段 3 收尾。
 
 ---
 
