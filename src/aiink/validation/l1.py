@@ -8,6 +8,7 @@
 - 关系台账自洽（重复/矛盾活跃行，§7.8）
 - 伏笔烂尾 / 主线停滞（样例 18/19/23/26/27）
 - 桥段重复向量近邻（样例 14，阴性 32 对照，§8.6）：事件向量近邻 + 呼应词豁免
+- 高频句式统计（样例 15，§8.6 AI 味治理）：fatigue_words/patterns 频次超阈值 → style hint
 
 conflict_key = hash(类型+实体+位置)，跨修订轮稳定（§6.4）。
 """
@@ -16,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 import uuid
 
 from sqlalchemy import select
@@ -38,6 +40,12 @@ _FS_PLANTED_STALL = 15
 _FS_DEVELOPING_STALL = 10
 # 样例 19 阈值：主线连续 15 章未推进 → 停滞 hint（支线可长期休眠，样例 27 阴性）
 _THREAD_STALL = 15
+
+# 样例 15 阈值：AI 味高频句式/用词统计（§8.6 文风与 AI 味治理检测侧）。
+# 单句式模式单章 ≥2 次 / 单高频词单章 ≥3 次 → 记 offender。宁缺毋滥（§8.8）：
+# 文风是作者自由，只暴露"复发趋势"标 hint 不阻塞。样例 15 单章内 2 处「不是…而是…」恰在边界。
+_STYLE_PATTERN_CAP = 2
+_STYLE_WORD_CAP = 3
 
 # 样例 14/32 阈值：桥段重复（事件向量近邻，§8.6）。跨章最小间隔 10（样例 14 ch5→ch15 恰在边界）；
 # cosine distance < 0.3 ⟺ 余弦相似度 > 0.7。宁缺毋滥（§8.8）：先保阴性 0 误报，再抬阳性检出率。
@@ -253,6 +261,54 @@ class L1Validator:
                     return findings  # 每章至多 1 条，即出即止（宁缺毋滥）
         except Exception as exc:
             logger.warning("桥段重复向量近邻失败，跳过（加分项不阻塞）: %s", exc)
+        return findings
+
+    # ---- 高频句式统计（样例 15，§8.6 文风与 AI 味治理检测侧；draft 依赖故由 service 编排）----
+    def style_repeat_check(self, session: Session, *, project_id: uuid.UUID,
+                           chapter_seq: int, draft: str | None = None) -> list[Finding]:
+        """本章 draft 中 AI 味高频句式/用词频次统计，超阈值提示。
+
+        - 判据：style_profile.fatigue_words（词级 draft.count）≥ _STYLE_WORD_CAP，
+          fatigue_patterns（句式 regex re.findall）≥ _STYLE_PATTERN_CAP → 记 offender；
+        - 任一 offender → 1 条 style/hint/local hint（每章至多 1 条，宁缺毋滥）；
+        - 降级：无 draft / 无 fatigue 字段 / get_settings 异常 → 一律跳过不阻塞（§6.12）。
+        """
+        findings: list[Finding] = []
+        try:
+            if not draft:
+                return findings
+            settings = repo.get_settings(session, project_id)
+            sp = settings.style_profile if settings else {}
+            words = sp.get("fatigue_words") or []
+            pats = sp.get("fatigue_patterns") or []
+            if not words and not pats:
+                return findings
+            offenders: list[tuple[str, int]] = []
+            for w in words:
+                n = draft.count(w)
+                if n >= _STYLE_WORD_CAP:
+                    offenders.append((w, n))
+            for p in pats:
+                try:
+                    n = len(re.findall(p, draft))
+                except re.error:
+                    continue  # 非法 regex 跳过该 pattern，不阻塞
+                if n >= _STYLE_PATTERN_CAP:
+                    offenders.append((p, n))
+            if not offenders:
+                return findings
+            top = sorted(offenders, key=lambda x: x[1], reverse=True)[:3]
+            offenders_str = "、".join(f"「{o}」×{n}" for o, n in top)
+            findings.append(Finding(
+                conflict_key=_key("style", "fatigue", chapter_seq),
+                conflict_type="style", severity="hint", scope="local", source="L1",
+                evidence=[{"chapter": chapter_seq,
+                           "quote": f"本章高频句式/用词：{offenders_str}"
+                                    f"（句式≥{_STYLE_PATTERN_CAP}次/词≥{_STYLE_WORD_CAP}次阈值）"}],
+                suggestion="AI 味句式/高频词复发：改写或补差异化表达；写章 Prompt 已注入禁忌（§8.6）",
+            ))
+        except Exception as exc:
+            logger.warning("高频句式统计失败，跳过（加分项不阻塞）: %s", exc)
         return findings
 
     # ---- realm ----
