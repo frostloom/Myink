@@ -119,10 +119,11 @@ class FakeEmbedder:
 
 @pytest.fixture(autouse=True)
 def fake_embedder(monkeypatch):
-    """全测试 mock 掉 bge-m3：persist 向量化/recall 语义召回都走假实现，不加载真实模型。"""
+    """全测试 mock 掉 bge-m3：persist 向量化/recall/桥段近邻都走假实现，不加载真实模型。"""
     fake = FakeEmbedder()
     monkeypatch.setattr("aiink.workflow.nodes.get_embedder", lambda: fake)
     monkeypatch.setattr("aiink.memory.recall.get_embedder", lambda: fake)
+    monkeypatch.setattr("aiink.validation.l1.get_embedder", lambda: fake)
     return fake
 
 

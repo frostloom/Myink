@@ -3,6 +3,7 @@
 - L1：validation.l1.L1Validator（无模型，纯规则）；
 - 大纲偏差：ChapterPlan.expected_events vs extract 实际事件（§8.6，近免费——
   复用 extract 产物，不新增 LLM 调用）→ 偏差报告 → 作者决策（改正文/改大纲）；
+- 桥段重复向量近邻（L1 事件层，样例 14/32）——draft 依赖，故由 service 编排而非并入 l1.validate；
 - L2（语义校验）阶段 1 留接口，阶段 3 接 Validator-L2。
 """
 
@@ -98,6 +99,9 @@ class ValidationService:
                  plan: ChapterPlan | None = None,
                  draft: str | None = None, target_words: int | None = None) -> ValidationReport:
         findings = self.l1.validate(session, project_id=project_id, chapter_seq=chapter_seq, candidates=candidates)
+        # 桥段重复向量近邻（§8.6 样例 14/32）：draft 依赖，service 编排；hint 不阻塞
+        findings += self.l1.bridge_repeat_check(session, project_id=project_id, chapter_seq=chapter_seq,
+                                                candidates=candidates, draft=draft)
         findings += outline_deviation(session, project_id, chapter_seq, plan, candidates)
         findings += chapter_length_check(chapter_seq, draft, target_words)
 

@@ -7,6 +7,7 @@
 - 候选 old_value-vs-台账（extract 误读注入快照，样例 16/20/21 确定性窄脚印）
 - 关系台账自洽（重复/矛盾活跃行，§7.8）
 - 伏笔烂尾 / 主线停滞（样例 18/19/23/26/27）
+- 桥段重复向量近邻（样例 14，阴性 32 对照，§8.6）：事件向量近邻 + 呼应词豁免
 
 conflict_key = hash(类型+实体+位置)，跨修订轮稳定（§6.4）。
 """
@@ -14,12 +15,19 @@ conflict_key = hash(类型+实体+位置)，跨修订轮稳定（§6.4）。
 from __future__ import annotations
 
 import hashlib
+import logging
 import uuid
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from aiink.memory import repository as repo
+from aiink.memory.embedder import get_embedder
+from aiink.memory.vector_store import PgvectorStore
+from aiink.models import Event
 from aiink.schemas import Finding, MutationCandidate
+
+logger = logging.getLogger(__name__)
 
 # 样例 11 阈值：连续 3 章内每次 chapter 都升境界 → 无铺垫通胀强信号
 _INFLATION_WINDOW = 3
@@ -31,6 +39,23 @@ _FS_DEVELOPING_STALL = 10
 # 样例 19 阈值：主线连续 15 章未推进 → 停滞 hint（支线可长期休眠，样例 27 阴性）
 _THREAD_STALL = 15
 
+# 样例 14/32 阈值：桥段重复（事件向量近邻，§8.6）。跨章最小间隔 10（样例 14 ch5→ch15 恰在边界）；
+# cosine distance < 0.3 ⟺ 余弦相似度 > 0.7。宁缺毋滥（§8.8）：先保阴性 0 误报，再抬阳性检出率。
+_REPEAT_MIN_GAP = 10
+_REPEAT_DIST_THRESHOLD = 0.3
+_REPEAT_TOP_K = 10
+_REPEAT_QUERY_CAP = 3
+
+# 呼应豁免词表（样例 32 阴性 0 误报关键）：正文/候选摘要含任一标记 → 整章/该候选豁免。
+# 词表故意偏宽（宽豁免只损检出率不损误报率）；未覆盖表述靠 L2 抽样兜底（阶段 3 收尾）。
+_CALLBACK_MARKERS = (
+    "当年", "昔日", "想当年", "忆当年", "与当年",      # 时间回指
+    "何其相似", "如出一辙", "似曾相识", "恍如隔世",      # 相似性元叙述
+    "故技重施", "旧事重演", "历史重演", "重演",          # 明示重复
+    "再现", "这一幕", "此情此景", "同样的一幕",          # 场景回指
+    "忆起", "历历在目", "仿佛昨日",                      # 记忆唤起
+)
+
 # 通用台账比对字段：realm/alive 已有 _realm_checks/_alive_checks 消费 old_value，
 # 通用检查仅覆盖无专属检查的字段（防同候选双报 + test_flow 样例 1 类别级不回归）。
 # 样例 16/20/21 的确定性窄脚印（状态机一致性）——正文-台账语义比对留 L2。
@@ -39,6 +64,11 @@ _GENERAL_STATE_FIELDS = ("location", "injury", "power", "item", "knowledge", "go
 
 def _key(conflict_type: str, entity: str, chapter_seq: int) -> str:
     return hashlib.md5(f"{conflict_type}:{entity}:{chapter_seq}".encode()).hexdigest()[:16]
+
+
+def _has_callback_marker(text: str | None) -> bool:
+    """呼应豁免：文本含任一呼应/回指元叙述标记词（样例 32 阴性 0 误报）。"""
+    return bool(text) and any(m in text for m in _CALLBACK_MARKERS)
 
 
 class L1Validator:
@@ -171,6 +201,58 @@ class L1Validator:
                                "quote": f"关系 {src}→{tgt} 同时活跃 {kinds}，敌/盟语义互相矛盾"}],
                     suggestion="台账矛盾活跃：确定当前唯一关系类型并关闭其余行（§7.8）",
                 ))
+        return findings
+
+    # ---- 桥段重复向量近邻（样例 14，阴性 32 对照，§8.6；draft 依赖故由 service 编排）----
+    def bridge_repeat_check(self, session: Session, *, project_id: uuid.UUID,
+                            chapter_seq: int, candidates: list[MutationCandidate],
+                            draft: str | None = None) -> list[Finding]:
+        """当前章事件候选摘要 vs 历史事件向量近邻 → 疑似偷懒重复桥段。
+
+        - 命中判据：cosine distance < _REPEAT_DIST_THRESHOLD 且历史事件章距 >= _REPEAT_MIN_GAP；
+        - 呼应豁免（样例 32）：draft 或候选摘要含呼应标记词 → 整章/该候选跳过（宁缺毋滥）；
+        - 每章至多 1 条 hint（style/local），append 后即出即止；
+        - 加分项：embedder/向量不可用一律静默跳过（try/except 降级，不阻塞生成，§6.12）。
+        """
+        findings: list[Finding] = []
+        try:
+            if draft and _has_callback_marker(draft):
+                return findings  # 本章含呼应意图 → 整章豁免（样例 32）
+            ev_cands = [c for c in candidates
+                        if c.kind == "event" and isinstance(c.payload, dict) and c.payload.get("summary")]
+            if not ev_cands:
+                return findings
+            ev_cands = sorted(ev_cands, key=lambda c: c.confidence, reverse=True)[:_REPEAT_QUERY_CAP]
+            vecs = get_embedder().encode([c.payload["summary"] for c in ev_cands])  # 一次批量前向
+            for cand, emb in zip(ev_cands, vecs):
+                summary = cand.payload["summary"]
+                if _has_callback_marker(summary):
+                    continue  # 候选摘要自带呼应意图
+                hits = PgvectorStore().search(session, project_id=project_id, level="event",
+                                              embedding=emb, top_k=_REPEAT_TOP_K)
+                if not hits:
+                    continue  # 无向量数据 → 跳过
+                rows = session.execute(
+                    select(Event).where(Event.id.in_([sid for sid, _ in hits]))
+                ).scalars().all()
+                by_id = {e.id: e for e in rows}
+                for sid, dist in hits:
+                    ev = by_id.get(sid)
+                    if ev is None or ev.source_chapter > chapter_seq - _REPEAT_MIN_GAP:
+                        continue  # 章距太近：正常情节连续性，非偷懒重复
+                    if dist >= _REPEAT_DIST_THRESHOLD:
+                        continue
+                    findings.append(Finding(
+                        conflict_key=_key("style", f"bridge:{str(sid)}", chapter_seq),
+                        conflict_type="style", severity="hint", scope="local", source="L1",
+                        evidence=[{"chapter": chapter_seq,
+                                   "quote": f"本章事件「{summary[:40]}」与第 {ev.source_chapter} 章事件"
+                                            f"「{ev.summary[:40]}」高度相似（余弦距离 {dist:.3f}）"}],
+                        suggestion="疑似桥段偷懒重复：若为刻意呼应请补意图/差异，否则改写桥段（§8.6）",
+                    ))
+                    return findings  # 每章至多 1 条，即出即止（宁缺毋滥）
+        except Exception as exc:
+            logger.warning("桥段重复向量近邻失败，跳过（加分项不阻塞）: %s", exc)
         return findings
 
     # ---- realm ----
