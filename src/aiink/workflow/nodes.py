@@ -22,6 +22,7 @@ from aiink.config import settings
 from aiink.db import tenant_session
 from aiink.memory import repository as repo
 from aiink.memory.embedder import get_embedder
+from aiink.memory.invalidation import invalidate_chapter_memory
 from aiink.memory.recall import build_context
 from aiink.memory.vector_store import PgvectorStore
 from aiink.models import AgentRun, Chapter, CharacterState, Event, Fact, Foreshadow, MemoryCandidate, Relation, WritingLesson
@@ -649,18 +650,28 @@ def node_persist(state: ChapterState) -> ChapterState:
         return {"persisted": True, "needs_review": True}
 
     with tenant_session(pid) as db:
-        # auto 放行路径：跳过已进确认池的候选（评审 A2——critical→confirm→resume 后
-        # 重跑无 critical 时，confirmed/rejected 候选不再重复落库）
-        _persist_candidates(db, pid, chapter_seq, state.get("candidates", []),
-                            skip_pool_handled=True)
+        candidates = state.get("candidates", [])
+        invalidation = None
+        if state.get("rewrite"):
+            # 显式重写（§7.3 失效重建，阶段 3）：先失效该章旧记忆（facts/states/relations
+            # 时间窗关闭 + events/foreshadows/embeddings 删除），再写新记忆——同事务原子，
+            # 新写失败回滚则旧记忆不失效。池候选重放：重写续跑补已确认候选、排除已拒绝
+            # 候选，防「已确认记忆被失效后又因 skip_pool_handled 不重写」而丢失。
+            candidates = _reapply_pool_for_rewrite(db, pid, chapter_seq, candidates)
+            invalidation = invalidate_chapter_memory(db, uuid.UUID(pid), chapter_seq)
+            _persist_candidates(db, pid, chapter_seq, candidates, skip_pool_handled=False)
+        else:
+            # auto 放行路径：跳过已进确认池的候选（评审 A2——critical→confirm→resume 后
+            # 重跑无 critical 时，confirmed/rejected 候选不再重复落库）
+            _persist_candidates(db, pid, chapter_seq, candidates, skip_pool_handled=True)
         # 落章节正文
-        summary = _chapter_summary(state.get("candidates", []))
+        summary = _chapter_summary(candidates)
         repo.save_chapter(db, project_id=uuid.UUID(pid), chapter_seq=chapter_seq,
                           content=state["draft"], summary=summary, generation_source="auto")
         _advance_current_chapter(db, pid, chapter_seq)
         record_plain(db, project_id=pid, task_id=state.get("task_id"), node="persist",
-                     detail={"candidates": len(state.get("candidates", [])),
-                             "status": "auto_confirm"})
+                     detail={"candidates": len(candidates), "status": "auto_confirm",
+                             "rewrite": bool(state.get("rewrite")), "invalidation": invalidation})
     return {"persisted": True, "needs_review": False}
 
 
@@ -772,6 +783,44 @@ def _pool_has_duplicate(db: Session, pid: str, chapter_seq: int, cand: dict) -> 
         )
     ).scalars().all()
     return any(r.payload == cand["payload"] for r in rows)
+
+
+def _reapply_pool_for_rewrite(db: Session, pid: str, chapter_seq: int,
+                              candidates: list[dict]) -> list[dict]:
+    """重写续跑池候选重放（§7.3 失效重建）：补已确认、排除已拒绝。
+
+    重写会先失效该章旧记忆；若原章曾走 critical→confirm→resume，池内有已确认候选
+    （其落库记忆会被失效）——重写后必须重放这些确认项，否则用户确认的记忆丢失。
+    rejected 语义保留：用户拒过的候选不因重写复活。pending 候选不动（仍留池待处理）。
+    按 (kind, payload) 与 state 候选去重（复用 _pool_has_duplicate 比对口径）。
+    """
+    from sqlalchemy import select
+
+    project_id = uuid.UUID(pid)
+    pool = db.execute(
+        select(MemoryCandidate).where(
+            MemoryCandidate.project_id == project_id,
+            MemoryCandidate.source_chapter == chapter_seq,
+        )
+    ).scalars().all()
+    pool_by_status: dict[str, list[dict]] = {}
+    for row in pool:
+        pool_by_status.setdefault(row.status, []).append(
+            {"kind": row.kind, "payload": row.payload, "confidence": row.confidence})
+
+    # 1) state 候选排除池内已拒绝项（rejected 语义保留）
+    result = []
+    for cand in candidates:
+        if any(r["kind"] == cand["kind"] and r["payload"] == cand["payload"]
+               for r in pool_by_status.get("rejected", [])):
+            continue
+        result.append(cand)
+
+    # 2) 补入池内已确认且 state 未再产出的项（防确认记忆在失效后被丢）
+    for conf in pool_by_status.get("confirmed", []):
+        if not any(c["kind"] == conf["kind"] and c["payload"] == conf["payload"] for c in result):
+            result.append(conf)
+    return result
 
 
 def confirm_candidate(db: Session, project_id: str, candidate_id: uuid.UUID) -> MemoryCandidate | None:

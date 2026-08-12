@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from abc import ABC, abstractmethod
 
-from sqlalchemy import select, text
+from sqlalchemy import delete as sa_delete, select, text
 from sqlalchemy.orm import Session
 
 from aiink.models import EmbeddingRow
@@ -26,6 +26,15 @@ class VectorStore(ABC):
     def search(self, session: Session, *, project_id: uuid.UUID, level: str | None,
                embedding: list[float], top_k: int = 20) -> list[tuple[uuid.UUID, float]]:
         """按 project_id 显式过滤召回（返回 [(source_id, distance)]）。"""
+
+    @abstractmethod
+    def delete(self, session: Session, *, project_id: uuid.UUID,
+               source_chapter: int | None = None, level: str | None = None,
+               source_id: uuid.UUID | None = None) -> int:
+        """按 project_id(+可选 source_chapter/level/source_id) 删除向量行，返回 rowcount。
+
+        章节重写失效重建（§7.3）：旧事件/事实向量随记忆失效删除，新记忆 persist 时重写。
+        """
 
 
 class PgvectorStore(VectorStore):
@@ -53,3 +62,15 @@ class PgvectorStore(VectorStore):
         query = query.order_by(text("dist")).limit(top_k)
         rows = session.execute(query).all()
         return [(r.source_id, r.dist) for r in rows]
+
+    def delete(self, session: Session, *, project_id: uuid.UUID,
+               source_chapter: int | None = None, level: str | None = None,
+               source_id: uuid.UUID | None = None) -> int:
+        q = sa_delete(EmbeddingRow).where(EmbeddingRow.project_id == project_id)
+        if source_chapter is not None:
+            q = q.where(EmbeddingRow.source_chapter == source_chapter)
+        if level is not None:
+            q = q.where(EmbeddingRow.level == level)
+        if source_id is not None:
+            q = q.where(EmbeddingRow.source_id == source_id)
+        return session.execute(q).rowcount or 0

@@ -26,10 +26,11 @@ def get_graphs() -> tuple[CompiledStateGraph, CompiledStateGraph]:
 
 
 def generate_chapter(*, project_id: str, chapter_seq: int, task_id: str | None = None,
-                     user_instruction: str | None = None) -> dict:
+                     user_instruction: str | None = None, rewrite: bool = False) -> dict:
     """生成单章（阶段 1 同步版；阶段 2 由 worker 消费 Redis 队列调用）。
 
     task_id 作 thread_id：中断/恢复/重试续跑同一条执行链（§6.7）。
+    rewrite：显式重写已确认章（§7.3 失效重建）——persist 先失效该章旧记忆再写新。
     """
     chapter_graph, _ = get_graphs()
     thread_id = task_id or str(uuid.uuid4())
@@ -39,6 +40,7 @@ def generate_chapter(*, project_id: str, chapter_seq: int, task_id: str | None =
             "chapter_seq": chapter_seq,
             "task_id": thread_id,
             "user_instruction": user_instruction,
+            "rewrite": rewrite,
         },
         config={"configurable": {"thread_id": thread_id}},
     )

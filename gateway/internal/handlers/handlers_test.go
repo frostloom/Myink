@@ -358,6 +358,77 @@ func TestListChaptersForwards(t *testing.T) {
 	}
 }
 
+func TestCreateChapterRewritePassthrough(t *testing.T) {
+	// 显式重写（§7.3 失效重建触发点）：body rewrite=true 应透传到 payload 入队；
+	// 用独立 proj-rewrite 项目 id 隔离，避免扫到 TestCreateChapter202 残留的 chapter_generate 消息。
+	r := newTestRedis(t)
+	py := pyapi.New(fakePy().URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	uid := "web-rewrite-test"
+	ctx := context.Background()
+	today := time.Now().Format("2006-01-02")
+	defer func() {
+		_ = r.Raw().Del(ctx, "rate:inflight:"+uid+":proj-rewrite", "rate:quota:"+uid+":"+today,
+			"rate:bookquota:"+uid+":proj-rewrite:"+today, "rate:bookcnt:"+uid+":"+today).Err()
+		msgs, _ := r.Raw().XRange(ctx, "queue:tasks", "-", "+").Result()
+		var ids []string
+		for _, m := range msgs {
+			if b, ok := m.Values["body"].(string); ok {
+				var bd struct {
+					Project string `json:"project_id"`
+				}
+				if json.Unmarshal([]byte(b), &bd) == nil && bd.Project == "proj-rewrite" {
+					ids = append(ids, m.ID)
+				}
+			}
+		}
+		if len(ids) > 0 {
+			_ = r.Raw().XDel(ctx, "queue:tasks", ids...).Err()
+		}
+	}()
+
+	req := httptest.NewRequest(http.MethodPost,
+		"/api/v1/projects/proj-rewrite/chapters/ch-rw/generate", strings.NewReader(`{"seq":1,"rewrite":true}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-AiInk-User", uid)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("应 202，实际 %d body=%s", w.Code, w.Body.String())
+	}
+	msgs, err := r.Raw().XRange(ctx, "queue:tasks", "-", "+").Result()
+	if err != nil {
+		t.Fatalf("读流失败: %v", err)
+	}
+	var got *bool
+	for _, m := range msgs {
+		bodyRaw, ok := m.Values["body"].(string)
+		if !ok {
+			continue
+		}
+		var msg struct {
+			ProjectID string `json:"project_id"`
+			TaskType  string `json:"task_type"`
+			Payload   struct {
+				Seq     int  `json:"seq"`
+				Rewrite bool `json:"rewrite"`
+			} `json:"payload"`
+		}
+		if json.Unmarshal([]byte(bodyRaw), &msg) != nil || msg.ProjectID != "proj-rewrite" {
+			continue
+		}
+		if msg.TaskType == "chapter_generate" {
+			v := msg.Payload.Rewrite
+			got = &v
+		}
+	}
+	if got == nil || !*got {
+		t.Fatalf("rewrite=true 应透传到 payload，实际 %v", got)
+	}
+}
+
 func TestHealthzReadyz(t *testing.T) {
 	r := newTestRedis(t)
 	py := pyapi.New(fakePy().URL, 3*time.Second)

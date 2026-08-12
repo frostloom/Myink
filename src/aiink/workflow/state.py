@@ -16,6 +16,7 @@ class ChapterState(TypedDict, total=False):
     chapter_seq: int
     task_id: str  # thread_id（单章任务 = task_id；批次内 = batch_task_id 派生）
     user_instruction: str | None
+    rewrite: bool  # 显式重写已确认章（§7.3 失效重建触发，persist 先失效旧记忆再写新）
 
     # load_state 产物
     settings: dict

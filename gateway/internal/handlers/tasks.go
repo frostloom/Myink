@@ -29,13 +29,15 @@ func NewTaskHandler(cfg config.Config, r *redis.Client, py *pyapi.Client) *TaskH
 
 // 建单章生成任务（三层闸门扣 1）。
 // POST /api/v1/projects/:project_id/chapters/:chapter_id/generate
-// body: {"seq": N, "user_instruction": "..."}
+// body: {"seq": N, "user_instruction": "...", "rewrite": false}
+// rewrite=true 显式重写已确认章（§7.3 失效重建，worker _guard_write_order 放行）。
 func (h *TaskHandler) CreateChapter(c *gin.Context) {
 	projectID := c.Param("project_id")
 	chapterID := c.Param("chapter_id")
 	var req struct {
 		Seq             int    `json:"seq"`
 		UserInstruction string `json:"user_instruction"`
+		Rewrite         bool   `json:"rewrite"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_body"})
@@ -45,6 +47,9 @@ func (h *TaskHandler) CreateChapter(c *gin.Context) {
 		"chapter_id":       chapterID,
 		"seq":              req.Seq,
 		"user_instruction": req.UserInstruction,
+	}
+	if req.Rewrite {
+		payload["rewrite"] = true
 	}
 	h.enqueue(c, projectID, "chapter_generate", payload, 1, h.cfg.CostPerChapter)
 }
