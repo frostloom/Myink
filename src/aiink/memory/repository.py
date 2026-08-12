@@ -73,12 +73,18 @@ def get_recent_events(session: Session, project_id: uuid.UUID, limit: int = 20) 
 
 def get_character_state(session: Session, project_id: uuid.UUID, character_id: uuid.UUID,
                         chapter_seq: int) -> dict[str, str]:
-    """人物状态台账当前值：按 chapter_seq 最近一条有效记录物化（§7.7）。"""
+    """人物状态台账当前值：按 chapter_seq 最近一条有效记录物化（§7.7）。
+
+    valid_to IS NULL 过滤已失效状态（§7.3 章节重写后旧状态 valid_to 关闭，不再计入）；
+    valid_from <= chapter_seq 与 get_hard_facts 时间窗口径对齐（§7.7 时序快照语义）。
+    """
     rows = session.execute(
         select(CharacterState).where(
             CharacterState.project_id == project_id,
             CharacterState.character_id == character_id,
             CharacterState.chapter_seq <= chapter_seq,
+            CharacterState.valid_from <= chapter_seq,
+            CharacterState.valid_to.is_(None),
         ).order_by(CharacterState.chapter_seq.desc())
     ).scalars().all()
     state: dict[str, str] = {}

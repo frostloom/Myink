@@ -83,12 +83,15 @@ class WriteOrderError(Exception):
     """章节顺序校验失败（重写已写章节 / 跳章），worker 置任务 failed，不消耗 LLM。"""
 
 
-def _guard_write_order(project_id: str, seq: int) -> None:
+def _guard_write_order(project_id: str, seq: int, *, rewrite: bool = False) -> None:
     """单章写保护：只允许写「已写最大章 + 1」（§11 章节顺序约束）。
 
     理由：跳章（写 1,2,4）会让中间章缺失，后续 recall 的"上一章"跳到更早章，上下文断裂；
     重写已写章会覆盖正文，但第 2 章内容基于旧第 1 章，覆盖后第 2 章不级联 → 剧情断层。
     写保护把这些状态从「允许但产出漂移」收敛为「显式拒绝 + 报错」，前端据此引导用户写下一章。
+
+    rewrite=True（显式重写，§7.3 失效重建触发）：目标章必须已存在且 confirmed 才放行——
+    await/review 章走 resume/reject，跳章/新章仍拒绝；批次首章仍走严格校验（写序连续性）。
     """
     from aiink.db import tenant_session
     from aiink.models import Chapter, Project
@@ -101,6 +104,20 @@ def _guard_write_order(project_id: str, seq: int) -> None:
         max_seq = db.query(func.max(Chapter.chapter_seq)).filter(
             Chapter.project_id == proj.id).scalar()
         expected = (max_seq or 0) + 1
+        if rewrite:
+            if seq > (max_seq or 0):
+                raise WriteOrderError(
+                    f"重写失败：第 {seq} 章不存在（已写到第 {max_seq or 0} 章）。"
+                )
+            ch = db.query(Chapter).filter(
+                Chapter.project_id == proj.id, Chapter.chapter_seq == seq).first()
+            if ch is None:
+                raise WriteOrderError(f"重写失败：第 {seq} 章不存在。")
+            if ch.status != "confirmed":
+                raise WriteOrderError(
+                    f"仅 confirmed 章节可重写；第 {seq} 章状态为 {ch.status}，请走 resume/reject 处理。"
+                )
+            return
         if seq != expected:
             raise WriteOrderError(
                 f"章节顺序校验失败：只能写第 {expected} 章（已写到第 {max_seq or 0} 章），"
@@ -117,12 +134,14 @@ def _dispatch(body: dict) -> dict:
 
     if task_type == "chapter_generate":
         seq = _resolve_chapter_seq(project_id, payload)
-        _guard_write_order(project_id, seq)
+        rewrite = bool(payload.get("rewrite"))
+        _guard_write_order(project_id, seq, rewrite=rewrite)
         return generate_chapter(
             project_id=project_id,
             chapter_seq=seq,
             task_id=task_id,
             user_instruction=payload.get("user_instruction"),
+            rewrite=rewrite,
         )
     if task_type == "batch_generate":
         # 批次写序守卫（复查 B1）：与单章同口径——批次首章必须 = 已写最大章 + 1。
@@ -152,6 +171,8 @@ def _dispatch(body: dict) -> dict:
     if task_type == "chapter_resume":
         # 单章续跑（§6.11 确认分流放行 / §6.12 失败续跑）：chapter 图以 task_id 作
         # thread_id 续跑该章；checkpoint 优先（resume_thread 语义），外部只补缺口。
+        # rewrite 同透传：重写任务中断后续跑，persist 仍先失效旧记忆（checkpoint 也有，
+        # 双保险）。批次续跑不传（批次无单章重写语义）。
         chapter_graph, _ = get_graphs()
         return resume_thread(
             chapter_graph,
@@ -161,6 +182,7 @@ def _dispatch(body: dict) -> dict:
                 "task_id": task_id,
                 "chapter_seq": int(payload.get("seq", 1)),
                 "user_instruction": payload.get("user_instruction"),
+                "rewrite": bool(payload.get("rewrite")),
             },
         )
     raise ValueError(f"未知 task_type: {task_type}")
