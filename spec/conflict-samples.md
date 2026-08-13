@@ -23,6 +23,7 @@
 - **预期检出**：L1 → `faction`（敌我关系矛盾，无解除/盟约记录）
 - **预期 Finding**：`conflict_type=faction, severity=critical, scope=structural`
 - **误报控制**：若剧情有意"暂时联手"，必须先在 relations 落一条临时盟约（带 `valid_to`），否则按无记录即冲突处理。
+- **检测现状**：✅ **已落地（2026-08-13，L1 确定性，补漏切片）**——活跃 hostile 关系双名（含别名）共现于本章 draft + 任一协作标记（`并肩而立/并肩作战/共抗/携手/联手/化敌为友/握手言和/把酒言和`）→ `faction/critical/structural`；守卫：临时盟约覆盖本章（非 hostile 行带 `valid_to` 落在本章，或永久非敌对行）→ 跳过（0 误报，样例 40 阴性）；每章至多 1 条。见 [l1.py](../src/aiink/validation/l1.py) `faction_check` / [test_conflict_sample_suite.py](../tests/test_conflict_sample_suite.py)。
 
 ### 样例 3 · 时间线（死而复生）
 - **前置**：第 8 章事件记录"北境城守将秦虎战死"；无复活机制设定。
@@ -344,11 +345,18 @@
 - **误报控制**：L2 判定 prompt 显式要求「单场景节奏/情感合法变化不标」；LLM 判 ok / 空数组 → 0 检出（[test_style_audit.py](../tests/test_style_audit.py) `test_style_negative_sample39_scene_variation`）；守卫独立保证过度标记过不了逐字核验（`test_style_guard_drops_*` 四例）。
 - **度量指标**：误报率（此例被误报 = 文风漂移误报 +1）。与样例 38 成对构成 L2「面级漂移 vs 场景变化」的精度锚点。
 
+### 样例 40 · 阵营·临时联手合法（样例 2 对照）— 点级·阴性（2026-08-13 补漏切片新增，评测集自生长 §16）
+- **前置**：林砚与天衡宗执法弟子敌对（relations `hostile` 活跃行）；宗门已传讯约定**暂时联手**（relations 落临时盟约，带 `valid_to`，覆盖联手各章）。
+- **合法片段**：`夜色中，林砚与天衡宗执法弟子并肩而立，共抗万魔渊魔修。此前宗门已传讯约定：此役只是暂时联手，事毕各归其营。`
+- **预期**：**不检出**——样例 2 误报控制成立（已落临时盟约 → 守卫跳过）
+- **误报控制**：`faction_check` 守卫查「非 hostile 行（带 `valid_to` 落在本章，或永久非敌对行）」→ 跳过（[l1.py](../src/aiink/validation/l1.py) `faction_check` / [test_conflict_sample_suite.py](../tests/test_conflict_sample_suite.py) `test_sample_40_...`）；永久非敌对（hostile+ally 双活跃）本由 `relation_ledger_check` 判矛盾兜底，faction 不双报。
+- **度量指标**：误报率（此例被误报 = 阵营敌对误报 +1）。与样例 2 构成 L1「敌我矛盾 vs 合法联手」的精度锚点。
+
 ---
 
 ## 使用方式
 
-1. **跑测**：阳性（样例 1–23、33–34、38）埋入章节样本或独立跑样例，跑 L1 + L2，统计**检出率**；阴性（样例 24–32、35、37、39）单独跑正常章节，统计**误报率**（阴性被检出 = 误报 +1）。两组缺一，指标不成立；**全集系统性首测套件已落地（2026-08-13）**——[test_conflict_sample_suite.py](../tests/test_conflict_sample_suite.py) 逐例直连真实机制（仅 mock LLM 判定），39 例全量矩阵一次跑完（`pytest tests/test_conflict_sample_suite.py -rx`）；当前首测结果 = 检出率 **76.9%**（20/26）、误报率 **0%**（0/13）；6 漏检（样例 2/5/6/7/8/9：L1 faction/timeline/item_rule/foreshadow-兑现/power-规则/归属机制未实现）标 `xfail(strict=False)` 记录缺口——实现后 XPASS 即取消标记，新增机制先在本套件补对应样例再验收；
+1. **跑测**：阳性（样例 1–23、33–34、38）埋入章节样本或独立跑样例，跑 L1 + L2，统计**检出率**；阴性（样例 24–32、35、37、39、40）单独跑正常章节，统计**误报率**（阴性被检出 = 误报 +1）。两组缺一，指标不成立；**全集系统性首测套件已落地（2026-08-13）**——[test_conflict_sample_suite.py](../tests/test_conflict_sample_suite.py) 逐例直连真实机制（仅 mock LLM 判定），40 例全量矩阵一次跑完（`pytest tests/test_conflict_sample_suite.py -rx`）；首测结果 = 检出率 **76.9%**（20/26）、误报率 **0%**（0/13），**补漏切片复测（2026-08-13）**：样例 2 阵营敌对 L1 faction 机制落地（`faction_check`，新增阴性样例 40）→ 检出率 **80.8%**（21/26）、误报率 **0%**（0/14）；5 漏检（样例 5/6/7/8/9：timeline/item_rule/foreshadow-兑现/power-规则/归属机制未实现）标 `xfail(strict=False)` 记录缺口——实现后 XPASS 即取消标记，新增机制先在本套件补对应样例再验收；
 2. **调阈值**：L1 阈值宁缺毋滥（plan.md §8.8），先保证阴性 0 误报，再抬阳性检出率；L2 低置信度标 hint 不耗修订预算；
 3. **长线**：样例 18/19/23/26/27 债务检查已落地为 **L1 每章 hint**（确定性、零模型成本、不阻塞，见 l1.py / test_debt_checks.py），与周期审计口径一致可直接对账；**样例 14/32 桥段重复的 L1 部分也已并入每章检查**（事件向量近邻 + 呼应词豁免，hint 不阻塞，见 l1.py `bridge_repeat_check` / test_bridge_repeat.py）；其余样例 11–13、15、31 走周期审计（每 K 章一次），不并入每章点检——避免成本与误报不可控；桥段重复的 L2 呼应判定同走周期审计（全局审计桥段维度，2026-08-13 已落地，样例 14 阳性 / 样例 32、37 阴性成对）；文风漂移 L2 抽样比对同走周期审计（全局审计文风维度，2026-08-13 已落地，样例 38 阳性 / 样例 39 阴性成对，首轮审计窗口无基线锚点中性跳过、自第二次起生效）；
 4. **度量**：检出率 = 检出阳性 / 阳性总数；误报率 = 误报阴性 / 阴性总数；新增样例按同一协议对账（固定 seed / prompt 模板 / 模型版本，不挑选成功案例，plan.md §16）。
