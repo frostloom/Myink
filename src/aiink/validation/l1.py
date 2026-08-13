@@ -458,7 +458,7 @@ class L1Validator:
                 findings.append(Finding(
                     conflict_key=_key("power", str(char.id), chapter_seq),
                     conflict_type="power", severity="major", scope="structural", source="L1",
-                    evidence=[{"chapter": r.chapter_seq, "quote": f"{char.name} 连续 {len(seq)} 章每章升境界: {' → '.join(seq)}"}],
+                    evidence=[{"chapter": chapter_seq, "quote": f"{char.name} 连续 {len(seq)} 章每章升境界: {' → '.join(seq)}"}],
                     suggestion="战力通胀强信号：连续数章无铺垫升级；若为奇遇需补代价说明，否则降为待审计",
                 ))
         return findings
