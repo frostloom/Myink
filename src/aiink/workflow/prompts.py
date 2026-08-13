@@ -1,7 +1,7 @@
 """Prompt 模板（阶段 1 精简版）。
 
 要点（plan.md §14 安全）：系统指令与用户输入角色分界；文风/硬约束注入到系统层；
-提取的记忆只当数据注入、不携带执行权限。仅 plan/extract/audit 走 json_mode
+提取的记忆只当数据注入、不携带执行权限。仅 plan/extract/audit/style_extract 走 json_mode
 （要求 prompt 含 "json" 字样）；write/revise 正文用 === CONTENT === 纯文本标记（不强制 JSON）。
 """
 
@@ -222,7 +222,12 @@ def plan_messages(context: dict, batch_goal: str | None = None) -> list[dict]:
 
 
 def _style_section(style_profile: dict | None, target_words: int | None) -> str:
-    """文风档案注入段（§7.12 / §8.6 生成约束）：字数目标 + 句式禁忌 + 对话要求。"""
+    """文风档案注入段（§7.12 / §8.6 生成约束）：字数目标 + 句式/词汇约束 + 对话要求 + 风格示范。
+
+    §7.12 样本提取新增键全部 get() 容错（lexicon_tendency / reference_excerpts /
+    frequent_words / 节奏基线），与既有键渲染一致；fatigue_words/forbidden 键不变 →
+    L1/L2 检测零回归（样例 15/38/39 锚点）。
+    """
     parts = []
     if target_words:
         low, high = int(target_words * 0.8), int(target_words * 1.3)
@@ -236,15 +241,40 @@ def _style_section(style_profile: dict | None, target_words: int | None) -> str:
         parts.append(f"叙事视角：{sp['pov']}。")
     if sp.get("sentence_style"):
         parts.append(f"句式要求：{sp['sentence_style']}。")
+    if sp.get("lexicon_tendency"):
+        parts.append(f"词汇修辞倾向：{sp['lexicon_tendency']}。")
     forbidden = sp.get("forbidden") or []
     if forbidden:
         parts.append("表述禁忌（必须避免）：" + "；".join(forbidden) + "。")
     fw = sp.get("fatigue_words") or []
-    if fw:
-        parts.append("高频词节制（避免机械复用）：" + "、".join(fw) + "。")
+    freq = sp.get("frequent_words") or []
+    # §7.12：样本提取产出的高频词串并入写章节制（与显式 fatigue_words 去重合并），不进 L1 阈值
+    high_freq = list(dict.fromkeys([*fw, *freq]))
+    if high_freq:
+        parts.append("高频词节制（避免机械复用）：" + "、".join(high_freq) + "。")
     if sp.get("dialogue"):
         parts.append(f"对话要求：{sp['dialogue']}。")
+    rhythm = _rhythm_reference(sp)
+    if rhythm:
+        parts.append(rhythm)
+    excerpts = sp.get("reference_excerpts") or []
+    if excerpts:
+        parts.append("风格示范（作者样本摘录，模仿其文风、不逐字复制）：\n"
+                     + "\n".join(f"- {e}" for e in excerpts))
     return "\n".join(parts)
+
+
+def _rhythm_reference(sp: dict) -> str:
+    """节奏基线一行（§7.12 样本提取）：样本平均句长 + 对话占比 → 写章节奏参考（容错缺键）。"""
+    dist = sp.get("sentence_len_dist")
+    if not isinstance(dist, dict) or not dist.get("avg"):
+        return ""
+    line = f"节奏参考：样本平均句长 {dist['avg']} 字。"
+    ratio = sp.get("dialogue_ratio")
+    if isinstance(ratio, (int, float)) and 0 <= ratio <= 1:
+        line += (f" 对话占比约 {ratio * 100:.0f}%，对话偏{'多' if ratio >= 0.4 else '少'}"
+                 f"，写章对话密度请贴近样本。")
+    return line
 
 
 def write_messages(context: dict, plan: dict, *, style_profile: dict | None = None,
@@ -407,3 +437,41 @@ def style_audit_messages(baseline: list[dict], sampled: list[dict], style_profil
     )
     return [{"role": "system", "content": SYSTEM_GLOBAL_AUDIT_STYLE},
             {"role": "user", "content": user}]
+
+
+SYSTEM_STYLE_EXTRACT = """你是长篇网文创作系统的【文风提炼 Agent】。把作者提交的样本正文提炼成该书可复用的文风档案草稿（§7.12 样本提取）。
+输入：① 作者样本（1–2 篇）；② 对样本的确定性统计（句长分布 / 对话密度 / 段落结构 / 高频词串——数字只作参考，语义提炼以样本正文为准）。
+输出严格 JSON 对象：
+{
+  "pov": "叙事人称与视角（如：第三人称限知、以主角为主；样本无稳定倾向写「未从样本提炼」）",
+  "sentence_style": "句式与节奏习惯（长短句偏好 / 段落疏密 / 避免机械交替；样本无稳定倾向写「未从样本提炼」）",
+  "lexicon_tendency": "词汇与修辞倾向（用词色彩 / 意象 / 比喻习惯）",
+  "dialogue": "对话腔调要求（角色区分度 / 口语化程度）",
+  "forbidden": ["样本中反复暴露的滥俗 / AI 味表达（2–4 条，具体可执行）"],
+  "reference_excerpts": ["1–2 段最能代表该文风的样本原文（逐字摘自样本，供写章作风格示范）"]
+}
+规则：
+- 只提炼样本中真实、反复出现的特征，不臆造；样本信息不足的字段填「未从样本提炼」或省略该键；
+- forbidden 只列样本里确实反复出现 / 暴露问题的表达，宁缺毋滥；
+- reference_excerpts 必须逐字摘自样本原文（不得改写、不得拼接），1–2 段即可。"""
+
+
+def style_extract_messages(samples: list[str], stats: dict) -> list[dict]:
+    """文风样本提炼输入（§7.12 样本提取）：作者样本正文 + 确定性统计（数字只作提炼参考）。"""
+    sample_block = "\n\n".join(f"【样本 {i + 1}】\n{s}" for i, s in enumerate(samples))
+    dist = stats.get("sentence_len_dist") or {}
+    para = stats.get("para_stats") or {}
+    freq = "、".join(stats.get("frequent_words") or []) or "（无）"
+    stats_block = (
+        f"- 句长分布（字）：短<15 {dist.get('short')} / 中15-40 {dist.get('mid')} / "
+        f"长>40 {dist.get('long')}，平均 {dist.get('avg')} 字\n"
+        f"- 对话占比：{stats.get('dialogue_ratio')}\n"
+        f"- 段落结构：{para.get('count')} 段，平均 {para.get('avg_len')} 字/段\n"
+        f"- 高频词串（2 字）：{freq}"
+    )
+    return [
+        {"role": "system", "content": SYSTEM_STYLE_EXTRACT},
+        {"role": "user", "content": f"【作者样本】\n{sample_block}\n\n"
+                                    f"【确定性统计（仅参考，语义以样本为准）】\n{stats_block}\n\n"
+                                    f"请提炼文风档案草稿（严格 JSON）。"},
+    ]

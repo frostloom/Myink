@@ -1,0 +1,92 @@
+"""文风样本提取内部端点（§7.12 文风档案闭环：统计层 + LLM 提炼 → 草稿 → 确认落库）。
+
+- POST /projects/{pid}/style-samples：作者样本 → 统计层（确定性）+ LLM 提炼（extract 档
+  一次调用）→ 合并返回 StyleProfile **草稿**（不落库）；LLM 失败降级只回统计层 +
+  extract_error（§6.12 不 500、不阻塞）。
+- PUT /projects/{pid}/style-profile：前端可编辑草稿后回传 → 校验 → 编排层落库
+  project_settings.style_profile + 递增 version（乐观版本号 §7.6）。
+
+与 §7.11 设定治理权威模型一致：agent 只提案、用户确认是唯一 canon（不走记忆候选池）；
+数据流边界（§6.2）：确认 = 编排层写库入口，与 persist 同层。
+"""
+
+from __future__ import annotations
+
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+
+from aiink.api.auth import require_owner
+from aiink.db import tenant_session
+from aiink.memory.repository import get_settings
+from aiink.models import ProjectSettings
+from aiink.style_extract import (
+    analyze_sample_stats,
+    extract_style_profile,
+    merge_style_draft,
+    validate_profile,
+)
+
+router = APIRouter(prefix="/internal/v1", tags=["style"])
+
+# 样本上限（1–2 篇、总量 1.2 万字）——防 prompt 溢出（extract 档上下文窗口内，§6.12）
+_MAX_SAMPLES = 2
+_MAX_TOTAL_CHARS = 12_000
+
+
+def _pid(project_id: str) -> uuid.UUID:
+    """path 里的 project_id 转 uuid（require_owner 已校验格式合法，此处兜底防误用）。"""
+    return uuid.UUID(project_id)
+
+
+class StyleSamplesBody(BaseModel):
+    """作者样本（1–2 篇）。"""
+
+    samples: list[str]
+
+
+@router.post("/projects/{project_id}/style-samples",
+             dependencies=[Depends(require_owner)])
+def style_samples(project_id: str, body: StyleSamplesBody) -> dict:
+    """样本 → 统计层 + LLM 提炼 → 文风档案草稿（不落库）。"""
+    samples = [s.strip() for s in body.samples if s.strip()]
+    if not samples:
+        raise HTTPException(status_code=400, detail="至少提供一篇非空样本")
+    if len(samples) > _MAX_SAMPLES:
+        raise HTTPException(status_code=400, detail=f"样本最多 {_MAX_SAMPLES} 篇")
+    if sum(len(s) for s in samples) > _MAX_TOTAL_CHARS:
+        raise HTTPException(status_code=400, detail=f"样本总量不超过 {_MAX_TOTAL_CHARS} 字")
+
+    stats = analyze_sample_stats(samples)
+    llm_profile, extract_error = extract_style_profile(samples, stats)
+    draft = merge_style_draft(stats, llm_profile, extract_error=extract_error)
+    return {"draft": draft, "stats": stats}
+
+
+class StyleProfileBody(BaseModel):
+    """文风档案（前端可编辑草稿后回传；dict 透传，落库前轻校验）。"""
+
+    profile: dict
+
+
+@router.put("/projects/{project_id}/style-profile",
+            dependencies=[Depends(require_owner)])
+def put_style_profile(project_id: str, body: StyleProfileBody) -> dict:
+    """确认落库：编排层写 project_settings.style_profile + version 递增（§7.6 乐观版本号）。"""
+    try:
+        profile = validate_profile(body.profile)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    with tenant_session(project_id) as db:
+        st = get_settings(db, _pid(project_id))
+        if st is None:
+            # 新行：列默认 version=1（本切片起计数）；已存在的行每次确认 +1
+            st = ProjectSettings(project_id=_pid(project_id), style_profile=profile, version=1)
+            db.add(st)
+        else:
+            st.style_profile = profile
+            st.version = (st.version or 1) + 1
+        db.commit()
+        new_version = st.version
+    return {"style_profile": profile, "version": new_version}
