@@ -13,10 +13,11 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import delete as sa_delete, func
 
+from aiink.api.auth import require_owner
 from aiink.db import tenant_session
 from aiink.memory import correction
 from aiink.memory.invalidation import invalidate_chapter_memory
@@ -44,7 +45,8 @@ def _chapter_id(raw: str) -> uuid.UUID:
         raise HTTPException(status_code=400, detail=f"章节 id 非法: {raw}") from exc
 
 
-@router.put("/projects/{project_id}/chapters/{chapter_id}/content")
+@router.put("/projects/{project_id}/chapters/{chapter_id}/content",
+            dependencies=[Depends(require_owner)])
 def update_chapter_content(project_id: str, chapter_id: str, body: ContentUpdate) -> dict:
     """编辑正文（轻编辑：只写回正文 + 版本递增，不动记忆不耗 LLM）。
 
@@ -60,7 +62,8 @@ def update_chapter_content(project_id: str, chapter_id: str, body: ContentUpdate
             "status": ch.status, "version": ch.version}
 
 
-@router.post("/projects/{project_id}/chapters/{chapter_id}/correct-memory")
+@router.post("/projects/{project_id}/chapters/{chapter_id}/correct-memory",
+             dependencies=[Depends(require_owner)])
 def correct_chapter_memory(project_id: str, chapter_id: str) -> dict:
     """显式校正记忆：编辑后正文重新抽取 → 与该章已落库记忆 diff → 变更集进待确认池。
 
@@ -84,7 +87,8 @@ def correct_chapter_memory(project_id: str, chapter_id: str) -> dict:
     return report
 
 
-@router.delete("/projects/{project_id}/chapters/{chapter_id}")
+@router.delete("/projects/{project_id}/chapters/{chapter_id}",
+               dependencies=[Depends(require_owner)])
 def delete_chapter(project_id: str, chapter_id: str) -> dict:
     """级联删除章节：删除该章及其后全部章节（正文 + 记忆 + 待确认池候选）。
 

@@ -14,11 +14,29 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 
 	"aiink/gateway/internal/config"
 	"aiink/gateway/internal/pyapi"
 	"aiink/gateway/internal/redis"
 )
+
+// bearer 生成 JWT Bearer 头（§14.1 ③：业务路由一律要求已签名 token）。
+// 密钥与 newRouter 的 cfg.JWTSecret 同源（config.Load：默认 DevJWTSecret，环境显式
+// 设 JWT_SECRET 时两边读同一值），验签一致。
+func bearer(t *testing.T, sub string) string {
+	t.Helper()
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": sub,
+		"iss": "aiink",
+		"exp": time.Now().Add(time.Hour).Unix(),
+	})
+	s, err := tok.SignedString([]byte(config.Load().JWTSecret))
+	if err != nil {
+		t.Fatalf("签 JWT 失败: %v", err)
+	}
+	return "Bearer " + s
+}
 
 func newRouter(t *testing.T, r *redis.Client, py *pyapi.Client) *gin.Engine {
 	t.Helper()
@@ -58,6 +76,8 @@ func fakePy() *httptest.Server {
 			fmt.Fprint(w, `[{"chapter_seq":1,"status":"confirmed"},{"chapter_seq":2,"status":"draft"}]`)
 		case strings.Contains(req.URL.Path, "/pause"):
 			fmt.Fprint(w, `{"task_id":"batch-x","status":"paused"}`)
+		case strings.HasSuffix(req.URL.Path, "/auth/token"):
+			fmt.Fprint(w, `{"token":"t-jwt","user_id":"u-1","expires_in":1800}`)
 		default:
 			fmt.Fprint(w, `{"error":"not_found"}`)
 		}
@@ -94,7 +114,7 @@ func TestCreateChapter202(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost,
 		"/api/v1/projects/proj-1/chapters/ch-1/generate", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-AiInk-User", uid)
+	req.Header.Set("Authorization", bearer(t, uid))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -138,7 +158,7 @@ func TestCreateChapterQuotaRejected(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost,
 		"/api/v1/projects/proj-1/chapters/ch-1/generate", strings.NewReader(`{"seq":1}`))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-AiInk-User", uid)
+	req.Header.Set("Authorization", bearer(t, uid))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -172,7 +192,7 @@ func TestCreateBatchDeductN(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost,
 		"/api/v1/projects/proj-1/batches/generate", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-AiInk-User", uid)
+	req.Header.Set("Authorization", bearer(t, uid))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -220,7 +240,7 @@ func TestCreateBatchStartDefaultsOne(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost,
 		"/api/v1/projects/proj-1/batches/generate", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-AiInk-User", uid)
+	req.Header.Set("Authorization", bearer(t, uid))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -264,7 +284,7 @@ func TestGetTaskForwards(t *testing.T) {
 	router := newRouter(t, r, py)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/tasks/detail-test", nil)
-	req.Header.Set("X-AiInk-User", "dev")
+	req.Header.Set("Authorization", bearer(t, "dev"))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -284,8 +304,10 @@ func TestGetTaskNotFoundPassesThrough(t *testing.T) {
 	py := pyapi.New(fakePy().URL, 3*time.Second)
 	router := newRouter(t, r, py)
 
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/tasks/missing-task", nil)
+	req.Header.Set("Authorization", bearer(t, "dev"))
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/tasks/missing-task", nil))
+	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("应透传 404，实际 %d body=%s", w.Code, w.Body.String())
@@ -298,7 +320,7 @@ func TestBatchPauseForwards(t *testing.T) {
 	router := newRouter(t, r, py)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/batches/batch-x/pause", nil)
-	req.Header.Set("X-AiInk-User", "dev")
+	req.Header.Set("Authorization", bearer(t, "dev"))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -318,8 +340,10 @@ func TestBatchControlForwardsToTasksPath(t *testing.T) {
 	py := pyapi.New(recordingPy(&paths).URL, 3*time.Second)
 	router := newRouter(t, r, py)
 
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/batches/batch-x/resume", nil)
+	req.Header.Set("Authorization", bearer(t, "dev"))
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/v1/batches/batch-x/resume", nil))
+	router.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
 	}
@@ -334,8 +358,10 @@ func TestListProjectsForwards(t *testing.T) {
 	py := pyapi.New(fakePy().URL, 3*time.Second)
 	router := newRouter(t, r, py)
 
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects", nil)
+	req.Header.Set("Authorization", bearer(t, "dev"))
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/projects", nil))
+	router.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
 	}
@@ -349,8 +375,10 @@ func TestListChaptersForwards(t *testing.T) {
 	py := pyapi.New(fakePy().URL, 3*time.Second)
 	router := newRouter(t, r, py)
 
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/p1/chapters", nil)
+	req.Header.Set("Authorization", bearer(t, "dev"))
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/projects/p1/chapters", nil))
+	router.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
 	}
@@ -392,7 +420,7 @@ func TestCreateChapterRewritePassthrough(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost,
 		"/api/v1/projects/proj-rewrite/chapters/ch-rw/generate", strings.NewReader(`{"seq":1,"rewrite":true}`))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-AiInk-User", uid)
+	req.Header.Set("Authorization", bearer(t, uid))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -459,7 +487,7 @@ func TestChapterEditCorrectDeleteForwards(t *testing.T) {
 		}
 		req := httptest.NewRequest(c.method, c.path, rd)
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-AiInk-User", "dev")
+		req.Header.Set("Authorization", bearer(t, "dev"))
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 		if w.Code != http.StatusOK {
@@ -532,6 +560,7 @@ func TestSSEFrameForward(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/tasks/"+taskID+"/events", nil)
+	req.Header.Set("Authorization", bearer(t, "dev"))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -547,5 +576,71 @@ func TestSSEFrameForward(t *testing.T) {
 	}
 	if !strings.Contains(out, `"status":"done"`) {
 		t.Fatalf("应转发 done 帧，实际 %s", out)
+	}
+}
+
+// ---- JWT 身份断言（§14.1 ③：网关验签第一道门，替换 X-AiInk-User 占位）----
+
+func TestAuthTokenForwardsToPython(t *testing.T) {
+	// 签发端点不挂 JWT（否则无法登录）：转发 Python /internal/v1/auth/token。
+	r := newTestRedis(t)
+	var paths []string
+	py := pyapi.New(recordingPy(&paths).URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/token",
+		strings.NewReader(`{"username":"demo"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
+	}
+	if len(paths) != 1 || paths[0] != "/internal/v1/auth/token" {
+		t.Fatalf("应转发 /internal/v1/auth/token，实际 %v", paths)
+	}
+}
+
+func TestJWTRejectsMissingToken(t *testing.T) {
+	r := newTestRedis(t)
+	py := pyapi.New(fakePy().URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/v1/projects", nil))
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("缺 token 应 401，实际 %d body=%s", w.Code, w.Body.String())
+	}
+}
+
+func TestJWTRejectsBadToken(t *testing.T) {
+	r := newTestRedis(t)
+	py := pyapi.New(fakePy().URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects", nil)
+	req.Header.Set("Authorization", "Bearer not-a-real-token")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("坏 token 应 401，实际 %d body=%s", w.Code, w.Body.String())
+	}
+}
+
+func TestJWTGoodTokenSetsTrustedHeader(t *testing.T) {
+	// 验签通过 → 透传 X-AiInk-User = 可信 sub（Python 侧归属断言依赖此头，§14.1 ③）。
+	r := newTestRedis(t)
+	py := pyapi.New(fakePy().URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects", nil)
+	req.Header.Set("Authorization", bearer(t, "user-123"))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("好 token 应 200，实际 %d body=%s", w.Code, w.Body.String())
+	}
+	if got := w.Header().Get(HeaderUser); got != "user-123" {
+		t.Fatalf("应透传 X-AiInk-User=user-123，实际 %q", got)
 	}
 }

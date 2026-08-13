@@ -6,6 +6,11 @@ import (
 	"strconv"
 )
 
+// JWT 身份断言（§14.1 ③）：dev 默认密钥与 Python config.py 的 _DEV_JWT_SECRET 同值，
+// 两端 HS256 签名才互通；生产必须显式设置（Python validate 会拒默认值，网关不校验
+// APP_ENV——真实密钥由部署注入，无默认则演示口令失效即 401）。
+const DevJWTSecret = "dev-jwt-secret-change-me"
+
 type Config struct {
 	Port             string
 	RedisAddr        string
@@ -25,6 +30,10 @@ type Config struct {
 	// 进程内令牌桶（DoS 盾，非业务配额）
 	RatePerSec       int
 	RateBurst        int
+	// 阶段 3：JWT 身份断言（§14.1 ③）。密钥与 Python config.py 共享同一 .env；dev 默认
+	// 保证本地演示两端互通，生产由部署注入强随机密钥（Python prod 校验会拒绝默认值）。
+	JWTSecret        string
+	JWTTTL           int
 }
 
 func env(key, def string) string {
@@ -67,5 +76,7 @@ func Load() Config {
 		BatchMaxHard:     envInt("BATCH_MAX_HARD", 20),
 		RatePerSec:       envInt("RATE_PER_SEC", 20),
 		RateBurst:        envInt("RATE_BURST", 40),
+		JWTSecret:        env("JWT_SECRET", DevJWTSecret),
+		JWTTTL:           envInt("JWT_TTL", 1800),
 	}
 }
