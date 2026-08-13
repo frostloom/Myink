@@ -1,6 +1,6 @@
-# Ai Ink 冲突样例集 — Phase 0（37 例）
+# Ai Ink 冲突样例集 — Phase 0（39 例）
 
-> **用途**：评测集（plan.md §16）。点级 10 例测 L1/L2 点校验（plan.md §8.4），长线级 5 例测长线一致性治理（plan.md §8.6），§7.7-7.9 记忆/图谱/伏笔线 12 例（样例 16-27）测人物状态台账 / 关系动态 / 伏笔 / 剧情线的一致性（§19.1 项 2），点/长线阴性对照 5 例（样例 28-32）测误报边界，§7.8 关系台账自洽 3 例（样例 33-35，2026-08-12 新增）测关系台账结构不变量，§8.6 人设漂移误报边界 1 例（样例 36，2026-08-12 新增，样例 12 的阴性对照）、桥段重复 L2 呼应判定 1 例（样例 37，2026-08-13 新增，样例 32 的 L2 阴性对照——无词表标记的刻意呼应）。任何优化跑同一套样例 + 同一 seed / prompt 模板 / 模型，用**检出率 / 误报率**度量，不挑成功案例。每例标注**检测现状**：已落地（代码可检出，见 test_flow.py / test_debt_checks.py / test_state_relation_checks.py）/ 待落地（机制已建模或已规划，阶段 3 长线治理主体落地）。新增样例统一标注 **阳性（应检出）/ 阴性（应不检出，误报控制）**。
+> **用途**：评测集（plan.md §16）。点级 10 例测 L1/L2 点校验（plan.md §8.4），长线级 5 例测长线一致性治理（plan.md §8.6），§7.7-7.9 记忆/图谱/伏笔线 12 例（样例 16-27）测人物状态台账 / 关系动态 / 伏笔 / 剧情线的一致性（§19.1 项 2），点/长线阴性对照 5 例（样例 28-32）测误报边界，§7.8 关系台账自洽 3 例（样例 33-35，2026-08-12 新增）测关系台账结构不变量，§8.6 人设漂移误报边界 1 例（样例 36，2026-08-12 新增，样例 12 的阴性对照）、桥段重复 L2 呼应判定 1 例（样例 37，2026-08-13 新增，样例 32 的 L2 阴性对照——无词表标记的刻意呼应）、文风漂移 L2 抽样比对 2 例（样例 38/39，2026-08-13 新增：样例 38 全书风格漂移阳性 + 样例 39 场景节奏合法变化阴性对照）。任何优化跑同一套样例 + 同一 seed / prompt 模板 / 模型，用**检出率 / 误报率**度量，不挑成功案例。每例标注**检测现状**：已落地（代码可检出，见 test_flow.py / test_debt_checks.py / test_state_relation_checks.py）/ 待落地（机制已建模或已规划，阶段 3 长线治理主体落地）。新增样例统一标注 **阳性（应检出）/ 阴性（应不检出，误报控制）**。
 >
 > **世界观基线**：附录 A《九州问天》——林砚（主角，筑基后期，叛出天衡宗）、五方势力、境界 炼气→筑基→金丹→元婴→化神→大乘→渡劫、战力 1–100（筑基上限 20）、地域禁制不可瞬移。
 >
@@ -125,29 +125,31 @@
 - **预期 Finding**：`conflict_type=style, severity=hint, scope=local`
 - **度量指标**：AI 味复发率、高频句式频次曲线（随章节数应不增长）。
 - **误报控制**：文风是作者自由，只暴露"复发趋势"不阻塞；前端可"忽略"回流标注。
-- **检测现状**：✅ **已落地（2026-08-12，L1 高频句式/用词统计）**——`style_profile.fatigue_patterns`（句式 regex findall）单句式单章 ≥2 次（本片段单章内 2 处「不是…而是…」恰在边界）→ `style/hint/local`，每章至多 1 条；`fatigue_words`（词级 count）单词 ≥3 次亦触发；写章 Prompt 同步注入「高频词节制」。见 [l1.py](../src/aiink/validation/l1.py) `style_repeat_check` / [test_style_repeat.py](../tests/test_style_repeat.py)。**边界**：句长分布、每 K 章抽样 L2 比对风格档案（锚定作者自身风格，相对漂移）属阶段 3 收尾。
+- **检测现状**：✅ **已落地（2026-08-12，L1 高频句式/用词统计）**——`style_profile.fatigue_patterns`（句式 regex findall）单句式单章 ≥2 次（本片段单章内 2 处「不是…而是…」恰在边界）→ `style/hint/local`，每章至多 1 条；`fatigue_words`（词级 count）单词 ≥3 次亦触发；写章 Prompt 同步注入「高频词节制」。见 [l1.py](../src/aiink/validation/l1.py) `style_repeat_check` / [test_style_repeat.py](../tests/test_style_repeat.py)。**L2 部分**：✅ **已落地（2026-08-13，全局审计文风维度抽样比对）**——每 K 章对窗口章节抽样摘录 vs 窗口前已确认章节基线（锚定作者自身风格、相对漂移）+ 文风档案，LLM 判 drift|ok，确定性守卫 0 误报（样例 38/39，见 [global_audit.py](../src/aiink/validation/global_audit.py) 文风维度 / [test_style_audit.py](../tests/test_style_audit.py)）。**仍属后续**：句长分布、档案参考样本摘录等基线字段。
 
 ---
 
 ## C. §7.7-7.9 记忆/图谱/伏笔线样例（12 例，plan.md §19.1 项 2）
 
-> 8 例阳性 + 4 例阴性，补"台账/状态机 vs 正文/候选"的一致性：人物状态台账（样例 16/20/21，阴性 24）、关系动态（样例 17/22，阴性 25）、伏笔状态机（样例 18/23，阴性 26）、剧情线线程债务（样例 19，阴性 27）。**检测现状（2026-08-12）**：样例 18/19/23 纯确定性债务检查 + 阴性 26/27 **已落地**（0 误报，见 [l1.py](../src/aiink/validation/l1.py) / [test_debt_checks.py](../tests/test_debt_checks.py)）；样例 16/17/20/21/22 + 阴性 24/25 **台账侧已落地**——通用候选 old_value-vs-台账 L1（minor，样例 16/20/21 确定性窄脚印）+ persist 关系关闭修复 + L1 关系台账自洽（major，样例 17/22 台账侧），见 [l1.py](../src/aiink/validation/l1.py) `_old_value_ledger_check` / `relation_ledger_check`、[nodes.py](../src/aiink/workflow/nodes.py) `_close_active_relations`、[test_state_relation_checks.py](../tests/test_state_relation_checks.py)；**正文-台账语义比对（"无过渡推翻" / "无身份来源却示人" / "无变更却表现相反"）仍属 L2**（需 extract 产出 relation_change + 正文语义，阶段 3 长线治理主体）；**阴性样例即误报边界，已落地部分必须 0 误报**。登记为评测集基线，检测落地后按同一协议跑检出率 / 误报率。
+> 8 例阳性 + 4 例阴性，补"台账/状态机 vs 正文/候选"的一致性：人物状态台账（样例 16/20/21，阴性 24）、关系动态（样例 17/22，阴性 25）、伏笔状态机（样例 18/23，阴性 26）、剧情线线程债务（样例 19，阴性 27）。**检测现状（2026-08-13）**：样例 18/19/23 纯确定性债务检查 + 阴性 26/27 **已落地**（0 误报，见 [l1.py](../src/aiink/validation/l1.py) / [test_debt_checks.py](../tests/test_debt_checks.py)）；样例 16/17/20/21/22 + 阴性 24/25 **台账侧已落地**——通用候选 old_value-vs-台账 L1（minor，样例 16/20/21 确定性窄脚印）+ persist 关系关闭修复 + L1 关系台账自洽（major，样例 17/22 台账侧），见 [l1.py](../src/aiink/validation/l1.py) `_old_value_ledger_check` / `relation_ledger_check`、[nodes.py](../src/aiink/workflow/nodes.py) `_close_active_relations`、[test_state_relation_checks.py](../tests/test_state_relation_checks.py)；**正文-台账语义比对（"无过渡推翻" / "无身份来源却示人" / "无变更却表现相反"）已落地（2026-08-13，L2 语义比对）**——L1 窄脚印管「extract 误读」（old≠台账），L2 语义比对管「正文直接表现新值却无建立交代」（old==台账，判定集预滤 + validator_l2 LLM + 本地守卫，见 [ledger_l2.py](../src/aiink/validation/ledger_l2.py) / [test_ledger_l2.py](../tests/test_ledger_l2.py)）；**阴性样例即误报边界，已落地部分必须 0 误报**。登记为评测集基线，检测落地后按同一协议跑检出率 / 误报率。
+
+> **正文-台账语义比对 L2 机制（2026-08-13 落地）**：extract 候选（`character_state` / `relation_change`）进 `ledger_l2.build_judgment_set` 预滤——只有「候选 `old_value` == 台账当前值 且 `new_value` ≠ 台账当前值」进判定集（realm/alive 有专属 L1 检查，不进判定集防双报）；判定集空 → 零 LLM 调用（成本短路，写作路径每章至多 1 次 L2 且可 0 次）。LLM（`validator_l2`）只判 `valid | invalid`：`valid` = 当前章正文**明确建立了该变更**（过渡 / 来源 / 变更记录，样例 24/25 即此形态）；`invalid` = 直接表现新值却无任何建立交代。本地守卫逐字核验 evidence ∈ 内存 draft（L2 跑在 persist 前，不能读库）、`key ∈ 判定集`、`confidence ≥ 0.6` 才出 finding；严重度由字段**确定性映射**（identity/injury → major，location/goal/power/item/knowledge → minor，relation_change → major/structural），LLM 不参与评级。**边界**：extract 漏产候选即漏检（证据链必须从候选进入，与 L1 窄脚印同哲学）；台账无当前值（fresh 书首写）→ 不进判定集；L1（old≠台账，抽取误读）与 L2（old==台账，语义推翻）互斥，conflict_key 不撞。
 
 ### 样例 16 · 状态失真·伤/位置（§7.7 人物状态台账）— 点级·阳性
 - **前置**：`character_states` 台账 ch8：林砚 `injury=濒死`、`location=东海水宫`（valid_to 未关）；此后无任何治疗 / 移动记录。
 - **冲突片段**：ch11 `林砚负手立于北境城楼，气色如常，与守将谈笑风生。`——正文无养伤、无离开水宫的中间状态演化。
 - **预期检出**：L2 → `character_state`（台账显式状态被无过渡推翻：`injury` 濒死→如常、`location` 水宫→北境，均无中间行）
 - **预期 Finding**：`conflict_type=character_state, severity=major, scope=local`
-- **检测现状**：✅ **已落地（2026-08-12，确定性窄脚印）**——通用候选 old_value-vs-台账 L1（`minor/local`，见 [l1.py](../src/aiink/validation/l1.py) `_old_value_ledger_check` / [test_state_relation_checks.py](../tests/test_state_relation_checks.py)）；「无过渡推翻」的正文-台账语义比对本条属 L2。
+- **检测现状**：✅ **已落地（2026-08-12 台账侧 L1 窄脚印 / 2026-08-13 正文侧 L2 语义比对）**——通用候选 old_value-vs-台账 L1（`minor/local`，见 [l1.py](../src/aiink/validation/l1.py) `_old_value_ledger_check` / [test_state_relation_checks.py](../tests/test_state_relation_checks.py)）；「无过渡推翻」的正文-台账语义比对 L2 已落地（`character_state/major/local`，见 [ledger_l2.py](../src/aiink/validation/ledger_l2.py) / [test_ledger_l2.py](../tests/test_ledger_l2.py)）。
 - **误报控制**：台账是"最近有效行"（§7.7 只追加）；若正文先有"服回春丹闭关"且 extract 落 `injury=痊愈` 候选 → 合法（样例 24 即此形态）。只查"显式状态被无过渡推翻"。
 - **度量指标**：状态失真检出率 / 误报率（§16 人物属性保持率）。
 
 ### 样例 17 · 关系演变矛盾·敌对→结盟（§7.8 人物关系动态）— 点级·阳性
 - **前置**：`relations` 台账：林砚-蛟王 = `hostile`（第 6 章，valid_to 未关）；无 `ally` / 临时盟约记录。
 - **冲突片段**：ch14 `蛟王与林砚并肩立于水宫殿前，道："林兄，今日之事有劳了。"`——无解仇 / 结盟情节铺垫。
-- **预期检出**：L1 → `relation`（extract `relation_change` 候选 vs 台账：无关系变更却表现相反）
+- **预期检出**：L2 → `relation`（正文-台账语义比对：extract `relation_change` 候选 old==台账，无变更记录却表现相反）
 - **预期 Finding**：`conflict_type=relation, severity=major, scope=structural`
-- **检测现状**：✅ **已落地（2026-08-12，台账侧）**——persist 关闭修复（relation_change 落库先关同 (source,target) 有序对全部活跃旧行 + 透传 valid_to，[nodes.py](../src/aiink/workflow/nodes.py) `_close_active_relations`）+ L1 关系台账自洽（重复/矛盾活跃行 → `major/structural`，[l1.py](../src/aiink/validation/l1.py) `relation_ledger_check`，见 [test_state_relation_checks.py](../tests/test_state_relation_checks.py)）。正文「无变更却表现相反」比对属 L2（需 extract 产出 relation_change，SYSTEM_EXTRACT 现不含该 kind）。
+- **检测现状**：✅ **已落地（2026-08-12 台账侧 / 2026-08-13 正文侧 L2）**——persist 关闭修复（relation_change 落库先关同 (source,target) 有序对全部活跃旧行 + 透传 valid_to，[nodes.py](../src/aiink/workflow/nodes.py) `_close_active_relations`）+ L1 关系台账自洽（重复/矛盾活跃行 → `major/structural`，[l1.py](../src/aiink/validation/l1.py) `relation_ledger_check`）+ extract 第 6 类 `relation_change` 产出（[prompts.py](../src/aiink/workflow/prompts.py) `SYSTEM_EXTRACT`，快照注入校准 old_value）+ L1 窄脚印（old≠台账 → `minor/local`）。正文「无变更却表现相反」语义比对 L2 已落地（`relation/major/structural`，[ledger_l2.py](../src/aiink/validation/ledger_l2.py) / [test_ledger_l2.py](../tests/test_ledger_l2.py)）。
 - **误报控制**：若正文先有"一杯酒泯恩仇"且 extract 落 `relation_change`（hostile→ally）→ 合法（样例 25 即此形态）；只查"无变更记录却表现相反"。
 - **度量指标**：关系矛盾检出率 / 误报率（§16 关系和阵营冲突召回率）。
 
@@ -174,7 +176,7 @@
 - **冲突片段**：ch14 `林砚已彻底放下玉佩一事，将全副心思投在黑市商号上，与旧敌把酒言欢。`——正文无转折铺垫，台账 `goal` 未变。
 - **预期检出**：L2 → `character_state`（`goal` 无过渡推翻）
 - **预期 Finding**：`conflict_type=character_state, severity=minor, scope=local`
-- **检测现状**：✅ **已落地（2026-08-12，确定性窄脚印）**——通用候选 old_value-vs-台账 L1（`minor/local`，见 [l1.py](../src/aiink/validation/l1.py) `_old_value_ledger_check` / [test_state_relation_checks.py](../tests/test_state_relation_checks.py)）；「无过渡推翻」的正文-台账语义比对属 L2。
+- **检测现状**：✅ **已落地（2026-08-12 台账侧 L1 窄脚印 / 2026-08-13 正文侧 L2 语义比对）**——通用候选 old_value-vs-台账 L1（`minor/local`，见 [l1.py](../src/aiink/validation/l1.py) `_old_value_ledger_check` / [test_state_relation_checks.py](../tests/test_state_relation_checks.py)）；「无过渡推翻」的正文-台账语义比对 L2 已落地（`character_state/minor/local`，见 [ledger_l2.py](../src/aiink/validation/ledger_l2.py) / [test_ledger_l2.py](../tests/test_ledger_l2.py)）。
 - **误报控制**：若正文先有"玉佩真相揭露"转折且 extract 落 `goal` 变更候选 → 合法；目标切换是作者自由，只查"无过渡推翻 + 无任何交代"。
 - **度量指标**：状态失真检出率 / 误报率（§16 人物属性保持率）。
 
@@ -183,16 +185,16 @@
 - **冲突片段**：ch11 `林砚以城主身份坐镇北境城，点将校尉，发号施令。`——台账 `identity` 无变化，正文无身份来源（受封 / 夺权）事件。
 - **预期检出**：L2 → `character_state`（`identity` 无过渡切换）
 - **预期 Finding**：`conflict_type=character_state, severity=major, scope=local`
-- **检测现状**：✅ **已落地（2026-08-12，确定性窄脚印）**——通用候选 old_value-vs-台账 L1（`minor/local`，见 [l1.py](../src/aiink/validation/l1.py) `_old_value_ledger_check` / [test_state_relation_checks.py](../tests/test_state_relation_checks.py)）；「无身份来源却以新身份示人」的正文-台账语义比对属 L2。与样例 9 区分：样例 9 是 `faction` 阵营归属矛盾，本条是台账身份字段一致性。
+- **检测现状**：✅ **已落地（2026-08-12 台账侧 L1 窄脚印 / 2026-08-13 正文侧 L2 语义比对）**——通用候选 old_value-vs-台账 L1（`minor/local`，见 [l1.py](../src/aiink/validation/l1.py) `_old_value_ledger_check` / [test_state_relation_checks.py](../tests/test_state_relation_checks.py)）；「无身份来源却以新身份示人」的正文-台账语义比对 L2 已落地（`character_state/major/local`，见 [ledger_l2.py](../src/aiink/validation/ledger_l2.py) / [test_ledger_l2.py](../tests/test_ledger_l2.py)）。与样例 9 区分：样例 9 是 `faction` 阵营归属矛盾，本条是台账身份字段一致性。
 - **误报控制**：若正文先有受封 / 夺权事件且 extract 落 `identity` 变更候选 → 合法（样例 9 误报控制已登记伪装记录路径）；只查"无身份来源却以新身份示人"。
 - **度量指标**：状态失真检出率 / 误报率（§16 人物属性保持率）。
 
 ### 样例 22 · 关系演变矛盾·师徒→敌对（§7.8 人物关系动态）— 点级·阳性
 - **前置**：`relations` 台账：林砚-沈沧澜 = `master_student`（第 2 章，valid_to 未关）；无决裂事件、无关系变更记录。
 - **冲突片段**：ch16 `沈沧澜立于林砚对面，冷笑："逆徒，今日便取你性命。"林砚亦拔剑相向。`——无欺师灭祖 / 逐出师门铺垫。
-- **预期检出**：L1 → `relation`（正文表现敌对 vs 台账 `master_student`，无 `relation_change` 候选）
+- **预期检出**：L2 → `relation`（正文-台账语义比对：正文表现敌对 vs 台账 `master_student`，无变更记录却表现相反）
 - **预期 Finding**：`conflict_type=relation, severity=major, scope=structural`
-- **检测现状**：✅ **已落地（2026-08-12，台账侧）**——与样例 17 同：persist 关闭修复 + L1 关系台账自洽（重复/矛盾活跃行 → `major`，见 [l1.py](../src/aiink/validation/l1.py) `relation_ledger_check` / [test_state_relation_checks.py](../tests/test_state_relation_checks.py)）；正文「无变更却表现相反」比对属 L2（需 extract 产出 relation_change）。
+- **检测现状**：✅ **已落地（2026-08-12 台账侧 / 2026-08-13 正文侧 L2）**——与样例 17 同：persist 关闭修复 + L1 关系台账自洽（重复/矛盾活跃行 → `major`，见 [l1.py](../src/aiink/validation/l1.py) `relation_ledger_check` / [test_state_relation_checks.py](../tests/test_state_relation_checks.py)）+ extract 第 6 类 `relation_change` 产出；正文「无变更却表现相反」语义比对 L2 已落地（`relation/major/structural`，[ledger_l2.py](../src/aiink/validation/ledger_l2.py) / [test_ledger_l2.py](../tests/test_ledger_l2.py)）。
 - **误报控制**：若正文先有"逐出师门"且落 `relation_change`（master_student→hostile）→ 合法；只查"无变更却表现相反"。
 - **度量指标**：关系矛盾检出率 / 误报率（§16 关系和阵营冲突召回率）。
 
@@ -308,7 +310,7 @@
 
 ---
 
-## F. §8.6 全局审计抽样 L2（新增样例 36/37，2026-08-12 人设漂移误报边界 + 2026-08-13 桥段重复呼应判定）
+## F. §8.6 全局审计抽样 L2（新增样例 36/37/38/39，2026-08-12 人设漂移误报边界 + 2026-08-13 桥段重复呼应判定 + 2026-08-13 文风漂移抽样比对）
 
 > 样例 12 的阴性对照：L2 判定只标「确有漂移且无变故铺垫 / 成长弧线」——转变有正当因果即不漂移（§8.6 误报控制：漏报优于误报）。**阴性算误报率分子**。
 
@@ -327,11 +329,26 @@
 - **度量指标**：误报率（此例被误报 = 桥段重复误报 +1）。与样例 14 成对构成 L2「区分呼应 vs 重复」的精度锚点（14 阳性应检出 / 37 阴性应不检出）。
 - **检测现状**：✅ **已落地（2026-08-13，全局审计桥段维度 L2）**——样例 32 词表预滤除对已豁免的对不重审；本样例无标记词 → 进入 LLM 判定，判 echo → 0 检出（[test_bridge_audit.py](../tests/test_bridge_audit.py) `test_bridge_negative_sample37_unmarked_echo`）；守卫独立保证 LLM 过度标 repeat 也过不了逐字核验（`test_bridge_guard_drops_*` 三例）。
 
+### 样例 38 · 文风·全书风格漂移（样例 15 的 L2 对照）— 长线级·阳性
+- **前置**：本书早 1–10 章已确立文风（仙侠雅句、第三人称限知、长短句交错，与文风档案一致）；事件/人设无异常。
+- **冲突片段**：第 12–15 章突然全用现代网络口语、对话失去角色区分：`林砚拍桌而起："卧槽，这也太离谱了吧，直接开干！"`——与早先章节系统性偏离，非单场景变化。
+- **预期检出**：L2 抽样比对窗口摘录 vs 窗口前已确认章节基线（+ 文风档案）→ 判 drift → `style/hint/local/L2`
+- **度量指标**：风格漂移检出率 / AI 味复发率。面级漂移由 L2 单独承担——漂移文本规避 L1 fatigue 阈值，companion 断言 [test_style_audit.py](../tests/test_style_audit.py) `test_style_l1_not_triggered_on_sample38` 证明 L1 不触发。
+- **误报控制**：L2 只标「与既定文风系统性持续偏离」；单场景节奏/情感合法变化不标；证据不足/低置信度宁不输出；确定性守卫只放行 verdict=drift + 逐字引文 + 采样章。
+- **检测现状**：✅ **已落地（2026-08-13，全局审计文风维度 L2）**——基线 = 窗口前已确认章节（even-spacing cap 4，锚定作者自身风格、相对漂移），窗口抽样 even-spacing cap 4 + 文风档案上下文，LLM 判 drift|ok，确定性守卫 0 误报（[test_style_audit.py](../tests/test_style_audit.py) `test_style_positive_sample38_drift`）。已知边界：首个窗口（无基线锚点）style 中性跳过、移动基线测不出慢速累积漂移（[global_audit.py](../src/aiink/validation/global_audit.py) docstring）。
+
+### 样例 39 · 文风·场景节奏合法变化（样例 38 对照）— 长线级·阴性
+- **前置**：同样例 38，早 1–10 章既定文风。
+- **合法片段**：第 13 章大战高潮用短句快节奏：`剑鸣刺耳。血溅三尺。林砚不退，剑锋再进。`——场景张力需要，非全书性漂移。
+- **预期**：**不检出**——场景级节奏/情感合法变化不判漂移
+- **误报控制**：L2 判定 prompt 显式要求「单场景节奏/情感合法变化不标」；LLM 判 ok / 空数组 → 0 检出（[test_style_audit.py](../tests/test_style_audit.py) `test_style_negative_sample39_scene_variation`）；守卫独立保证过度标记过不了逐字核验（`test_style_guard_drops_*` 四例）。
+- **度量指标**：误报率（此例被误报 = 文风漂移误报 +1）。与样例 38 成对构成 L2「面级漂移 vs 场景变化」的精度锚点。
+
 ---
 
 ## 使用方式
 
-1. **跑测**：阳性（样例 1–23、33–34）埋入章节样本或独立跑样例，跑 L1 + L2，统计**检出率**；阴性（样例 24–32、35、37）单独跑正常章节，统计**误报率**（阴性被检出 = 误报 +1）。两组缺一，指标不成立；
+1. **跑测**：阳性（样例 1–23、33–34、38）埋入章节样本或独立跑样例，跑 L1 + L2，统计**检出率**；阴性（样例 24–32、35、37、39）单独跑正常章节，统计**误报率**（阴性被检出 = 误报 +1）。两组缺一，指标不成立；
 2. **调阈值**：L1 阈值宁缺毋滥（plan.md §8.8），先保证阴性 0 误报，再抬阳性检出率；L2 低置信度标 hint 不耗修订预算；
-3. **长线**：样例 18/19/23/26/27 债务检查已落地为 **L1 每章 hint**（确定性、零模型成本、不阻塞，见 l1.py / test_debt_checks.py），与周期审计口径一致可直接对账；**样例 14/32 桥段重复的 L1 部分也已并入每章检查**（事件向量近邻 + 呼应词豁免，hint 不阻塞，见 l1.py `bridge_repeat_check` / test_bridge_repeat.py）；其余样例 11–13、15、31 走周期审计（每 K 章一次），不并入每章点检——避免成本与误报不可控；桥段重复的 L2 呼应判定同走周期审计（全局审计桥段维度，2026-08-13 已落地，样例 14 阳性 / 样例 32、37 阴性成对）；
+3. **长线**：样例 18/19/23/26/27 债务检查已落地为 **L1 每章 hint**（确定性、零模型成本、不阻塞，见 l1.py / test_debt_checks.py），与周期审计口径一致可直接对账；**样例 14/32 桥段重复的 L1 部分也已并入每章检查**（事件向量近邻 + 呼应词豁免，hint 不阻塞，见 l1.py `bridge_repeat_check` / test_bridge_repeat.py）；其余样例 11–13、15、31 走周期审计（每 K 章一次），不并入每章点检——避免成本与误报不可控；桥段重复的 L2 呼应判定同走周期审计（全局审计桥段维度，2026-08-13 已落地，样例 14 阳性 / 样例 32、37 阴性成对）；文风漂移 L2 抽样比对同走周期审计（全局审计文风维度，2026-08-13 已落地，样例 38 阳性 / 样例 39 阴性成对，首轮审计窗口无基线锚点中性跳过、自第二次起生效）；
 4. **度量**：检出率 = 检出阳性 / 阳性总数；误报率 = 误报阴性 / 阴性总数；新增样例按同一协议对账（固定 seed / prompt 模板 / 模型版本，不挑选成功案例，plan.md §16）。

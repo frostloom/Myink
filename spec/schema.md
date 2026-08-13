@@ -240,7 +240,7 @@
     "conflict_type": { "type": "string", "enum": ["faction","power","timeline","location","character","character_state","relation","foreshadow","item_rule","plotline","persona","style"] },
     "severity":      { "type": "string", "enum": ["critical","major","minor","hint"] },
     "scope":         { "type": "string", "enum": ["local","structural"], "description": "冲突作用域，修订分级（plan.md §6.5）" },
-    "source":        { "type": "string", "enum": ["L1","L2"], "description": "L1 确定性 / L2 语义" },
+    "source":        { "type": "string", "enum": ["L1","L2"], "description": "L1 确定性规则 / L2 语义——全局审计抽样维度（persona/style，2026-08-12/13）+ 单章点级正文-台账语义比对（validator_l2，2026-08-13，§8.6 落地注记）" },
     "evidence":      { "type": "array", "items": { "type": "object", "properties": { "chapter": { "type": "integer" }, "quote": { "type": "string" } }, "required": ["chapter","quote"] } },
     "confidence":    { "type": "number", "minimum": 0, "maximum": 1, "description": "仅 L2 需要" },
     "suggestion":    { "type": "string" }
@@ -263,7 +263,7 @@
     "kind":          { "type": "string", "enum": ["event","fact","character_state","relation_change","foreshadow","chapter_summary","memory_removal"] },
     "project_id":    { "type": "string", "format": "uuid" },
     "source_chapter":{ "type": "integer", "minimum": 1 },
-    "payload":       { "type": "object", "description": "对应 kind 的对象体（Event/Fact/CharacterState/Relation/Foreshadow/摘要；memory_removal 为 {memory_type, memory_id, display}，阶段 3 编辑校正删除候选）" },
+    "payload":       { "type": "object", "description": "对应 kind 的对象体（Event/Fact/CharacterState/Relation/Foreshadow/摘要；character_state/relation_change 候选带 old_value/new_value——old_value 由 extract 按注入快照校准（§8.6 正文-台账语义比对前置）；memory_removal 为 {memory_type, memory_id, display}，阶段 3 编辑校正删除候选）" },
     "confidence":    { "type": "number", "minimum": 0, "maximum": 1 },
     "status":        { "type": "string", "enum": ["pending","confirmed","rejected"], "default": "pending" }
   }
@@ -271,6 +271,7 @@
 ```
 
 - 存 **DB 表**（`memory_candidates`），Redis 只做短期标记（plan.md §5.3 / §7.3）。
+- `relation_change` 候选 payload（§6 Relation 的候选形态扩展，2026-08-13 落地）：`{source_id: 人物名, target_id: 人物名, relation_type: 白名单枚举（hostile/ally/master_student/located_in/owns/defeated_by/knows/promises/happened_at）, old_value: 注入快照中的当前关系类型, new_value: 目标类型, source_chapter, confidence}`——extract 只抽「正文**明确发生**的关系演变」，`old_value` 须与注入的当前台账快照一致（`extract_messages` context 注入「【当前台账快照】」）；落库由 persist 先关闭同 (source,target) 有序对全部活跃旧行。这是样例 17/22 正文-台账语义比对 L2 与 L1 窄脚印（old≠台账）的机制入口（plan.md §8.6 / spec/conflict-samples.md）。
 
 ## 11. ValidationReport — 校验报告
 
@@ -342,7 +343,7 @@
 
 ---
 
-## 14. GlobalAuditReport — 全局审计报告（§8.6 抽样 L2 产物，2026-08-12 人设漂移 + 2026-08-13 桥段重复双维度落地）
+## 14. GlobalAuditReport — 全局审计报告（§8.6 抽样 L2 产物，2026-08-12 人设漂移 + 2026-08-13 桥段重复 / 文风漂移三维度落地）
 
 ```json
 {
@@ -363,9 +364,9 @@
 
 - **触发**：批次收尾 `global_audit` 节点每 K 章（`AUDIT_INTERVAL` 默认 10，窗口 = [上次审计后 +1, 当前最大章]，长度 ≥ K 才触发）或手动端点 `POST .../projects/{pid}/global-audit`（显式动作不做 K 门槛）；below_threshold 短路零成本、不落行；
 - **marker**：`audited_up_to_chapter` = window_end 作跨批进度标记（`last_audited_up_to` 读 max）——LLM/解析失败也落 `status=failed` 行并推进（非阻塞 + 有界，防每批重审同一毒窗口）；
-- **findings 复用 §8 Finding 形状**：一次审计可混排两个维度的 finding——`conflict_type=persona`（`persona:{角色}:{章}`，切片 1）/ `conflict_type=style`（`bridge:{历史事件id}:{章}` 与 L1 桥段同前缀，切片 2），均 `severity=hint, scope=local, source=L2, evidence=[{chapter,quote}]`，前端审计视图与章节 finding 同构渲染；
-- **双维度编排**：`run_global_audit` 单次调用跑人设漂移 + 桥段重复（共用窗口 / marker / 报告行）；`summary["bridge"]={"pairs","findings"}` 桥段维度跑了才有；维度失败 error 记 `summary["errors"]`（报告 status=completed 当任一维度成功或全维度中性，failed 当有维度失败且无维度成功；error 字段单失败透传原文 / 多失败 k=v 拼接）；
-- **0 误报**：共享 `_verify_findings` 确定性守卫（evidence 引文必须是该章正文逐字子串 / chapter 在窗口 / 实体在采样集 / kind 合法 / 置信度 ≥0.6，丢弃其余）——persona 经 `normalize_and_verify_findings`、bridge 经 `normalize_and_verify_bridge_findings` 包装，非信任 LLM；
+- **findings 复用 §8 Finding 形状**：一次审计可混排三个维度的 finding——`conflict_type=persona`（`persona:{角色}:{章}`，切片 1）/ `conflict_type=style`（`bridge:{历史事件id}:{章}` 与 L1 桥段同前缀，切片 2；`style_drift:{章}` 文风漂移，切片 3），均 `severity=hint, scope=local, source=L2, evidence=[{chapter,quote}]`，前端审计视图与章节 finding 同构渲染；
+- **三维度编排**：`run_global_audit` 单次调用跑人设漂移 + 桥段重复 + 文风漂移（共用窗口 / marker / 报告行）；`summary["bridge"]={"pairs","findings"}` 桥段维度跑了才有、`summary["style"]={"sampled","findings"}` 文风维度采样非空才有；维度失败 error 记 `summary["errors"]`（报告 status=completed 当任一维度成功或全维度中性，failed 当有维度失败且无维度成功；error 字段单失败透传原文 / 多失败 k=v 拼接）；
+- **0 误报**：共享 `_verify_findings` 确定性守卫（evidence 引文必须是该章正文逐字子串 / chapter 在窗口 / 实体在采样集 / kind 合法 / 置信度 ≥0.6，丢弃其余）——persona 经 `normalize_and_verify_findings`、bridge 经 `normalize_and_verify_bridge_findings`、style 经 `normalize_and_verify_style_findings` 包装，非信任 LLM；
 - **RLS**：租户业务表（带 project_id），`enable_row_level_security` 全表迭代自动覆盖（**不在** `_NO_RLS_TABLES`，仅 agent_runs/tasks 豁免）。
 
 ---

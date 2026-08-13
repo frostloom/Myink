@@ -40,7 +40,7 @@ flowchart TD
     BRIDGE -- "单章失败(重试+降级后)" --> FAIL[批次中断<br/>可从失败章续跑]
     FAIL -- "续跑" --> LS
     BRIDGE -- "批次数到 N" --> RF[reflexion<br/>复盘沉淀：整批 audit findings<br/>→ 复发率记账 + LLM 总结演化 → 落库]
-    RF -- "正常收尾才提炼" --> GA[global_audit<br/>全局审计：每K章抽样<br/>人设漂移 + 桥段重复双维度 L2，below_threshold 短路]
+    RF -- "正常收尾才提炼" --> GA[global_audit<br/>全局审计：每K章抽样<br/>人设漂移 + 桥段重复 + 文风漂移三维度 L2，below_threshold 短路]
     GA -- "非阻塞" --> BE[batch_end<br/>批次汇总 + global_audit 指标]
     BE --> END([END])
 ```
@@ -57,9 +57,9 @@ flowchart TD
 | `plan_chapter` | 章 | Planner（LLM） | `RetrievedContext` + 本章在 BatchPlan 的目标 | `ChapterPlan` | — |
 | `write` | 章 | Writer（LLM） | `RetrievedContext` + `ChapterPlan` | `draft`（章节草稿） | `inspect_character` / `inspect_facts`（只读查证，§10） |
 | `extract` | 章 | Memory（LLM） | `draft` + `ChapterPlan` | `MutationCandidate[]` 写入待确认池（自动模式：低风险自动放行，§6.11） | `save_memory_candidates` |
-| `validate` | 章 | 确定性（L1 规则层） | `draft` + 图谱/事件/事实 + extract 候选 | `ValidationReport`（L1 硬证据，不被 LLM 绕过） | `check_constraints` |
-| `audit` | 章 | **审核中枢 Audit（LLM，第 4 类 agent）** | `draft` + ChapterPlan + 召回上下文 + extract 候选 | `AuditVerdict`：pass / rewrite / replan + L2 findings + reasons + confidence | `inspect_character` / `inspect_foreshadows` / `inspect_plot_threads` / `inspect_facts`（只读查证，§10） |
-| `revise` | 章 | 角色（复用 Writer 模型） | `draft` + Audit unresolved findings | 修订后 `draft` + 逐条 `fixed/cannot_fix/dispute` | — |
+| `validate` | 章 | 确定性（L1 规则层）+ L2 正文-台账语义比对 | `draft` + 图谱/事件/事实 + extract 候选 | `ValidationReport`——L1 硬证据（不被 LLM 绕过）+ **L2 语义比对 findings**（`summary.l2_major`，2026-08-13）：`ValidationService.validate` 只产确定性 L1（LLM 不能进校验器）；L2 在 `node_validate` 接线——extract 候选经 `ledger_l2.build_judgment_set` 判定集预滤（old==台账 且 new≠台账，空集零 LLM 短路）→ `validator_l2` 判 valid/invalid → 本地守卫（evidence 逐字 ∈ 内存 draft / key ∈ 判定集 / 置信度 ≥0.6）→ 严重度确定性映射 | `check_constraints` + `record_run` |
+| `audit` | 章 | **审核中枢 Audit（LLM，第 4 类 agent）** | `draft` + ChapterPlan + 召回上下文 + extract 候选 + 上一节点 unresolved（L1/L2 major） | `AuditVerdict`：pass / rewrite / replan + L2 findings + reasons + confidence；**unresolved 按 conflict_key 合并**——audit 判定覆盖同键、L1/L2 不同键共存（`_merge_unresolved`，2026-08-13；原实现直接覆盖会把 L1/L2 major 丢出 revise 上下文） | `inspect_character` / `inspect_foreshadows` / `inspect_plot_threads` / `inspect_facts`（只读查证，§10） |
+| `revise` | 章 | 角色（复用 Writer 模型） | `draft` + audit 合并后 unresolved findings | 修订后 `draft` + 逐条 `fixed/cannot_fix/dispute` | — |
 | `persist` | 章 | 确定性（编排层） | 确认候选 / 自动放行候选 | 事件/事实/状态/关系/伏笔落库（追加式）；`update_plot_threads` 推进大纲。**relation_change 落库先关闭同 (source,target) 有序对全部活跃旧行（`valid_to`=本章序）并透传候选 `valid_to`（临时盟约）**——保证「每对至多一条活跃」（2026-08-12）。**rewrite 分支（2026-08-12，§7.3）**：显式重写（`rewrite=true`）时自动放行分支**先失效该章旧记忆再写新**——`invalidate_chapter_memory` 关 facts/states/relations 时间窗（硬事实同时 expired）、删 events/开放伏笔/embeddings，同事务原子，无重复行；`_persist_candidates` 保持纯追加、`confirm_candidate` 永不失效 | `save_chapter` / `save_*` / `update_plot_threads` / `invalidate_chapter_memory` |
 | `状态桥` | 章间 | 确定性 | 上章 persist 结果 | 上章沉淀 → 下一章 recall 输入（连续推进） | — |
 | `reflexion` | 批次 | 确定性编排 + 复盘 Agent（LLM，§8.9） | 整批各章 audit findings（agent_runs.detail）+ 已有 active 经验 | 复发率记账（确定性）→ LLM 总结演化 → `writing_lessons` 落库（同 category update 演化 / 无则 create 分级 proposed/active）；短路（无发现 / 已复盘 / 全被覆盖）；失败不阻塞批次 | `record_run`（编排层写库，Agent 不直写） |
@@ -72,8 +72,8 @@ flowchart TD
 # 章内路由（单章子图）——混合路由（2026-08-07 确认）：规则层优先，LLM 兜语义
 route_after_audit(state):
   # ① 规则层（不看 verdict，LLM 不能绕过硬约束）
-  if L1 report 存在 critical:
-      return "needs_review" if 预算用尽 else "revise"   # critical 强制修订/转人工
+  if L1 report 存在 critical 或 summary.l2_major > 0:   # L2 major = 正文-台账语义矛盾（2026-08-13）
+      return "needs_review" if 预算用尽 else "revise"   # critical / L2 major 强制修订/转人工
   if revision_count >= max_revisions or replan_count >= max_replans:
       return "needs_review"     # 预算用尽 → 转人工，不无限循环
   # ② LLM 语义层（采纳 AuditVerdict）
@@ -130,17 +130,17 @@ route_after_chapter(batch):
 | 抽取坏数据（Pydantic 校验失败） | 数据层 | **拒绝但不崩**：结构化 JSON + Pydantic 强校验，坏候选标记无效不落库 |
 | 并发写 | 数据层 | 项目级"记忆沉淀锁"（Redis SETNX）+ 乐观版本号；顺序固定：落章节 → 沉淀记忆 → 更新状态（§7.6） |
 | 半写 / 重放 | 数据层 | 单章一个事务；persist 幂等（`conflict_key` / 唯一约束），重放不重复落库 |
-| 长线问题（战力通胀/人设漂移/桥段重复等） | 批次收尾 | 不阻塞本章——global_audit 节点每 K 章周期审计输出全局审计报告（§8.6，人设漂移 + 桥段重复双维度，每维度各 1 次 LLM 判定、单维度失败不阻塞另一维度），LLM/解析失败只记 failed 报告并推进 marker（非阻塞 + 有界，防每批重审毒窗口） |
+| 长线问题（战力通胀/人设漂移/桥段重复等） | 批次收尾 | 不阻塞本章——global_audit 节点每 K 章周期审计输出全局审计报告（§8.6，人设漂移 + 桥段重复 + 文风漂移三维度，每维度各 1 次 LLM 判定、单维度失败不阻塞另一维度），LLM/解析失败只记 failed 报告并推进 marker（非阻塞 + 有界，防每批重审毒窗口） |
 
 ## 6. 与 5 类 Agent 的映射
 
 ```text
-确定性节点（非 LLM）：load_state / recall / validate（L1 规则层）/ persist / 状态桥 / reflexion（确定性编排部分）/ global_audit（确定性编排部分）/ batch_end
-LLM Agent：batch_plan + plan_chapter(Planner) / write(Writer) / extract(Memory) / audit(审核中枢 Audit) / reflexion 复盘 Agent（提炼总结演化）/ 全局审计 Agent（人设漂移 + 桥段重复抽样判定，§8.6）
+确定性节点（非 LLM）：load_state / recall / persist / 状态桥 / reflexion（确定性编排部分）/ global_audit（确定性编排部分）/ batch_end —— validate 节点从 2026-08-13 起不再纯确定性：`ValidationService.validate`（L1 规则层）仍零 LLM，但 `node_validate` 叠加 L2 正文-台账语义比对（`validator_l2` LLM，判定集预滤 + 本地守卫，见上表 validate 行）
+LLM Agent：batch_plan + plan_chapter(Planner) / write(Writer) / extract(Memory) / audit(审核中枢 Audit) / validate 节点的 L2 语义比对（validator_l2）/ reflexion 复盘 Agent（提炼总结演化）/ 全局审计 Agent（人设漂移 + 桥段重复 + 文风漂移抽样判定，§8.6）
 角色（非独立 agent）：revise —— 复用 Writer 模型，与 Audit 分离保证审核报告纯净可审计
 ```
 
-> 审核路由边界（§6.11 混合路由）：Audit 输出 AuditVerdict 做语义路由（pass/rewrite/replan），但 L1 critical 与轮次预算由确定性规则强制——Audit 不能绕过硬约束，也不能无限重写。
+> 审核路由边界（§6.11 混合路由）：Audit 输出 AuditVerdict 做语义路由（pass/rewrite/replan），但 L1 critical / L2 major（正文-台账语义矛盾）与轮次预算由确定性规则强制——Audit 不能绕过硬约束，也不能无限重写。L2 major 时 persist 视同 critical 分流待确认池 + awaiting_review（语义矛盾不自洽静默落库）。
 
 > 能力边界（plan.md §6.2）：写作/规划/校验 agent 只拿组装好的上下文，**没有任何 agent 直接写库**；写状态经 extract 出候选，编排层（persist）确认或自动放行后落库。**例外只给只读查证工具**：Audit/Writer 经 function calling 主动核实（§10），不触碰写边界。
 

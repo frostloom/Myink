@@ -90,6 +90,10 @@ class L1Validator:
         characters: dict[uuid.UUID, object] = {}
 
         for cand in candidates:
+            if cand.kind == "relation_change":
+                findings.extend(self._relation_change_ledger_check(
+                    session, project_id, chapter_seq, cand))
+                continue
             if cand.kind != "character_state":
                 continue
             payload = cand.payload
@@ -389,6 +393,41 @@ class L1Validator:
                 evidence=[{"chapter": cand.source_chapter,
                            "quote": f"候选 old_value={old_v!r} 与台账当前 {field}={current!r} 不符（抽取疑似误读注入快照）"}],
                 suggestion="extract 读到旧台账快照：核对 recall 注入的状态快照，或重新抽取该字段",
+            ))
+        return findings
+
+    # ---- 候选 relation_change old_value-vs-台账（样例 17/22 确定性窄脚印）----
+    def _relation_change_ledger_check(self, session: Session, project_id: uuid.UUID,
+                                      chapter_seq: int, cand: MutationCandidate) -> list[Finding]:
+        """候选 relation_change old_value vs 台账当前有序对类型：非空且不符 → 疑似误读台账。
+
+        只比非空 old_value；台账该有序对无活跃行 / 有歧义（>1 活跃行，重复/矛盾交
+        relation_ledger_check 兜底）→ 跳过（首写/歧义不误报）。old_value == 台账 → 跳过，
+        正文-台账语义比对（"无变更却表现相反"）留 L2。
+        """
+        findings: list[Finding] = []
+        p = cand.payload
+        old_v = (p.get("old_value") or "").strip()
+        if not old_v:
+            return findings
+        src = p.get("source_id")
+        tgt = p.get("target_id")
+        if not src or not tgt:
+            return findings
+        try:
+            current = repo.get_relation_current_type(session, project_id,
+                                                     uuid.UUID(str(src)), uuid.UUID(str(tgt)))
+        except ValueError:
+            return findings
+        if not current:
+            return findings  # 台账无活跃关系或歧义（None）→ 跳过
+        if old_v != current:
+            findings.append(Finding(
+                conflict_key=_key("relation", f"{src}:{tgt}", chapter_seq),
+                conflict_type="relation", severity="minor", scope="local", source="L1",
+                evidence=[{"chapter": cand.source_chapter,
+                           "quote": f"候选 old_value={old_v!r} 与台账当前关系 {current!r} 不符（抽取疑似误读注入快照）"}],
+                suggestion="extract 读到旧台账快照：核对 recall 注入的关系快照，或重新抽取该关系变更",
             ))
         return findings
 

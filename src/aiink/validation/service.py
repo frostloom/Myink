@@ -92,6 +92,13 @@ def outline_deviation(session: Session, project_id: uuid.UUID, chapter_seq: int,
 
 
 class ValidationService:
+    """确定性校验编排（只产 L1，零 LLM）。
+
+    正文-台账语义比对 L2（validator_l2 LLM，§8.6 点级）不在本类——LLM 不能进校验器：
+    validate 被测试直接调用（test_bridge_repeat/test_style_repeat 无 LLM monkeypatch），
+    L2 在 node_validate 接线（nodes.py），validate 只产出可完全确定性断言的 L1 检查。
+    """
+
     def __init__(self, realm_order: list[str]):
         self.l1 = L1Validator(realm_order)
 

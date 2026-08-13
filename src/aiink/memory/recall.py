@@ -27,10 +27,17 @@ from aiink.config import settings
 from aiink.memory import repository as repo
 from aiink.memory.embedder import get_embedder
 from aiink.memory.vector_store import PgvectorStore
-from aiink.models import Event
+from aiink.models import Character, Event
 from aiink.schemas import RetrievedContext
 
 logger = logging.getLogger(__name__)
+
+
+def _relation_target_name(session: Session, cid) -> str:
+    """关系目标角色名（快照渲染用；角色已删则回退 id 字符串）。"""
+    ch = session.get(Character, cid)
+    return ch.name if ch else str(cid)
+
 
 # 出场人物上限（recall 预算控制，防上下文膨胀）
 _MAX_ENTITIES = 12
@@ -109,7 +116,8 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
     if prev and prev.chapter_seq < chapter_seq:
         short.append({"kind": "prev_chapter_summary", "chapter": prev.chapter_seq, "summary": prev.summary or ""})
 
-    # 出场人物状态快照
+    # 出场人物状态快照（含当前关系——L2 正文-台账语义比对与写前预防的台账侧输入，
+    # _render_entity 一并注入 write/plan/audit/extract；只取 ch 为 source 的有序对活跃行）
     snapshots: list[dict] = []
     if participants:
         for name in participants[: _MAX_ENTITIES]:
@@ -117,9 +125,15 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
             if not ch:
                 continue
             state = repo.get_character_state(session, project_id, ch.id, chapter_seq)
+            relations = [
+                {"target": _relation_target_name(session, r.target_id),
+                 "relation_type": r.relation_type, "source_chapter": r.source_chapter}
+                for r in repo.get_relations(session, project_id, entity_ids=[ch.id])
+                if r.source_id == ch.id
+            ]
             snapshots.append({
                 "character_id": str(ch.id), "name": ch.name, "realm_cap": ch.realm_cap,
-                "state": state, "personality": ch.personality,
+                "state": state, "personality": ch.personality, "relations": relations,
             })
 
     # 开放伏笔 + 活跃剧情线（§7.9 防伏笔烂尾：plan_chapter 输入，决定收/延/弃）
