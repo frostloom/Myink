@@ -20,13 +20,13 @@ import logging
 import re
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from aiink.memory import repository as repo
 from aiink.memory.embedder import get_embedder
 from aiink.memory.vector_store import PgvectorStore
-from aiink.models import Event
+from aiink.models import Event, Relation
 from aiink.schemas import Finding, MutationCandidate
 
 logger = logging.getLogger(__name__)
@@ -64,6 +64,14 @@ _CALLBACK_MARKERS = (
     "忆起", "历历在目", "仿佛昨日",                      # 记忆唤起
 )
 
+# 样例 2/40 阈值：阵营敌对（§8.4 L1 第 1 类）。活跃 hostile 关系双名共现 + 任一协作标记 → 冲突。
+# 词表故意偏窄（宁缺毋滥 §8.8）：只收明确协作语义的标记；且仅当 hostile 关系存在才触发，
+# 双名须共现于本章 draft。合法联手须先落临时盟约（relation 带 valid_to）→ 守卫跳过（样例 40）。
+_FACTION_COOP_MARKERS = (
+    "并肩作战", "并肩而立", "共抗", "携手", "联手",
+    "化敌为友", "握手言和", "把酒言和",
+)
+
 # 通用台账比对字段：realm/alive 已有 _realm_checks/_alive_checks 消费 old_value，
 # 通用检查仅覆盖无专属检查的字段（防同候选双报 + test_flow 样例 1 类别级不回归）。
 # 样例 16/20/21 的确定性窄脚印（状态机一致性）——正文-台账语义比对留 L2。
@@ -77,6 +85,36 @@ def _key(conflict_type: str, entity: str, chapter_seq: int) -> str:
 def _has_callback_marker(text: str | None) -> bool:
     """呼应豁免：文本含任一呼应/回指元叙述标记词（样例 32 阴性 0 误报）。"""
     return bool(text) and any(m in text for m in _CALLBACK_MARKERS)
+
+
+def _names_present(draft: str, ch: object) -> bool:
+    """角色名或任一别名精确子串出现于 draft（样例 2 双名共现判据）。"""
+    if ch.name in draft:
+        return True
+    return bool(getattr(ch, "aliases", None)) and any(a in draft for a in ch.aliases)
+
+
+def _temp_alliance_covers(session: Session, project_id: uuid.UUID,
+                          source_id: uuid.UUID, target_id: uuid.UUID, chapter_seq: int) -> bool:
+    """守卫（样例 40）：pair 存在非 hostile 关系行覆盖本章 → 合法联手/已非敌对，跳过。
+
+    - 覆盖 = valid_from <= chapter_seq 且 (valid_to IS NULL 或 valid_to >= chapter_seq)；
+    - 双向（(a,b) 与 (b,a) 都查）；含带 valid_to 的临时盟约与永久非敌对行——
+      后者本会同有 hostile 行 → relation_ledger_check 判矛盾兜底，此处防双报。
+    """
+    rows = session.execute(
+        select(Relation).where(
+            Relation.project_id == project_id,
+            or_(
+                and_(Relation.source_id == source_id, Relation.target_id == target_id),
+                and_(Relation.source_id == target_id, Relation.target_id == source_id),
+            ),
+            Relation.relation_type != "hostile",
+            or_(Relation.valid_from.is_(None), Relation.valid_from <= chapter_seq),
+            or_(Relation.valid_to.is_(None), Relation.valid_to >= chapter_seq),
+        )
+    ).scalars().all()
+    return bool(rows)
 
 
 class L1Validator:
@@ -461,4 +499,46 @@ class L1Validator:
                     evidence=[{"chapter": chapter_seq, "quote": f"{char.name} 连续 {len(seq)} 章每章升境界: {' → '.join(seq)}"}],
                     suggestion="战力通胀强信号：连续数章无铺垫升级；若为奇遇需补代价说明，否则降为待审计",
                 ))
+        return findings
+
+    # ---- 阵营敌对（样例 2，阴性样例 40 守卫，§8.4 L1 第 1 类）----
+    def faction_check(self, session: Session, *, project_id: uuid.UUID,
+                      chapter_seq: int, draft: str | None = None) -> list[Finding]:
+        """本章 draft 中活跃敌对关系双名共现 + 协作标记 → faction/critical/structural。
+
+        - 命中判据：relation_type=hostile 的活跃关系对；双名（含别名）共现于 draft；任一协作标记在 draft；
+        - 守卫（样例 40）：临时盟约覆盖本章（任一带 valid_to 的非 hostile 行 valid_from<=ch<=valid_to，
+          或永久有效的非 hostile 行）→ 跳过——合法联手须先落 relation 带 valid_to（spec 误报控制）；
+          永久非敌对/同对歧义交 relation_ledger_check 兜底，防双报；
+        - 每章至多 1 条（宁缺毋滥 §8.8），即出即止；降级：无 draft/异常一律跳过不阻塞（§6.12）。
+        """
+        findings: list[Finding] = []
+        try:
+            if not draft:
+                return findings
+            chars = {c.id: c for c in repo.get_all_characters(session, project_id)}
+            if not chars:
+                return findings
+            hostile = [r for r in repo.get_relations(session, project_id)
+                       if r.relation_type == "hostile"]
+            for r in hostile:
+                a, b = chars.get(r.source_id), chars.get(r.target_id)
+                if a is None or b is None:
+                    continue
+                if not _names_present(draft, a) or not _names_present(draft, b):
+                    continue
+                if not any(m in draft for m in _FACTION_COOP_MARKERS):
+                    continue
+                if _temp_alliance_covers(session, project_id, r.source_id, r.target_id, chapter_seq):
+                    continue  # 合法联手已落临时盟约（样例 40）
+                findings.append(Finding(
+                    conflict_key=_key("faction", f"{r.source_id}:{r.target_id}", chapter_seq),
+                    conflict_type="faction", severity="critical", scope="structural", source="L1",
+                    evidence=[{"chapter": chapter_seq,
+                               "quote": f"敌对关系（{a.name} ↔ {b.name}）本章并肩协作，无临时盟约记录"}],
+                    suggestion="阵营敌我矛盾：敌对双方并肩协作须先在 relations 落临时盟约（带 valid_to），否则冲突（§8.4 第 1 类）",
+                ))
+                return findings  # 每章至多 1 条
+        except Exception as exc:
+            logger.warning("阵营敌对检查失败，跳过（加分项不阻塞）: %s", exc)
         return findings
