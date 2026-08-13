@@ -213,6 +213,14 @@ func (h *TaskHandler) GlobalAudit(c *gin.Context) {
 	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/global-audit", nil)
 }
 
+// 签发 JWT（§14.1 ③ 身份断言第一道门）：转发 Python API 签发端点。
+// POST /api/v1/auth/token  body: {"username": "..."}  →  {token, user_id, expires_in}
+// 唯一不挂 JWTMiddleware 的业务路由（否则无法登录）；网关不直连 DB，签发真源在 Python。
+func (h *TaskHandler) AuthToken(c *gin.Context) {
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPy(c, "/internal/v1/auth/token", body)
+}
+
 // forwardToPy 把请求体原样转发 Python API 并透传响应。
 func (h *TaskHandler) forwardToPy(c *gin.Context, path string, body []byte) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)

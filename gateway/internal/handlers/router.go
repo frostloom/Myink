@@ -18,7 +18,6 @@ func NewRouter(cfg config.Config, r *redis.Client, py *pyapi.Client) *gin.Engine
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(trace.Middleware())
-	router.Use(UserMiddleware())
 	// 进程内令牌桶：粗粒度限流（防外部刷接口；细粒度配额走 gates.lua §13）
 	router.Use(limiter.Middleware(rate.Limit(cfg.RatePerSec), cfg.RateBurst))
 
@@ -27,30 +26,34 @@ func NewRouter(cfg config.Config, r *redis.Client, py *pyapi.Client) *gin.Engine
 	healthH := NewHealthHandler(cfg, r, py)
 
 	api := router.Group("/api/v1")
+	// 签发端点不挂 JWT（否则无法登录）；业务路由一律 Bearer（§14.1 ③）
+	api.POST("/auth/token", taskH.AuthToken)
+
+	secured := api.Group("", JWTMiddleware([]byte(cfg.JWTSecret)))
 	{
 		// 项目/章节读（多书展示前端，转发 Python API）
-		api.GET("/projects", taskH.ListProjects)
-		api.GET("/projects/:project_id/chapters", taskH.ListChapters)
+		secured.GET("/projects", taskH.ListProjects)
+		secured.GET("/projects/:project_id/chapters", taskH.ListChapters)
 		// 章节编辑 / 记忆校正 / 级联删除 / 全局审计（阶段 3：正文轻编辑 + 增量记忆校正 + 长线治理，转发 Python API）
-		api.PUT("/projects/:project_id/chapters/:chapter_id/content", taskH.UpdateChapterContent)
-		api.POST("/projects/:project_id/chapters/:chapter_id/correct-memory", taskH.CorrectMemory)
-		api.DELETE("/projects/:project_id/chapters/:chapter_id", taskH.DeleteChapter)
-		api.POST("/projects/:project_id/global-audit", taskH.GlobalAudit)
+		secured.PUT("/projects/:project_id/chapters/:chapter_id/content", taskH.UpdateChapterContent)
+		secured.POST("/projects/:project_id/chapters/:chapter_id/correct-memory", taskH.CorrectMemory)
+		secured.DELETE("/projects/:project_id/chapters/:chapter_id", taskH.DeleteChapter)
+		secured.POST("/projects/:project_id/global-audit", taskH.GlobalAudit)
 		// 建单章生成任务
-		api.POST("/projects/:project_id/chapters/:chapter_id/generate", taskH.CreateChapter)
+		secured.POST("/projects/:project_id/chapters/:chapter_id/generate", taskH.CreateChapter)
 		// 建批次生成任务
-		api.POST("/projects/:project_id/batches/generate", taskH.CreateBatch)
+		secured.POST("/projects/:project_id/batches/generate", taskH.CreateBatch)
 		// 任务详情（转发 Python API）
-		api.GET("/tasks/:task_id", taskH.GetTask)
+		secured.GET("/tasks/:task_id", taskH.GetTask)
 		// 批次控制 pause/resume/cancel（转发 Python API）
-		api.POST("/batches/:batch_id/:action", taskH.BatchControl)
+		secured.POST("/batches/:batch_id/:action", taskH.BatchControl)
 		// 记忆候选：待确认池 / 确认 / 拒绝（§6.11 确认分流，转发 Python API）
-		api.GET("/projects/:project_id/candidates", taskH.ListCandidates)
-		api.POST("/projects/:project_id/candidates/:candidate_id/:action", taskH.CandidateAction)
-		api.GET("/projects/:project_id/lessons", taskH.ListLessons)
-		api.POST("/projects/:project_id/lessons/:lesson_id/:action", taskH.LessonAction)
+		secured.GET("/projects/:project_id/candidates", taskH.ListCandidates)
+		secured.POST("/projects/:project_id/candidates/:candidate_id/:action", taskH.CandidateAction)
+		secured.GET("/projects/:project_id/lessons", taskH.ListLessons)
+		secured.POST("/projects/:project_id/lessons/:lesson_id/:action", taskH.LessonAction)
 		// SSE 进度事件
-		api.GET("/tasks/:task_id/events", sseH.Stream)
+		secured.GET("/tasks/:task_id/events", sseH.Stream)
 	}
 
 	// 探针

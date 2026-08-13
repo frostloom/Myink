@@ -27,7 +27,23 @@ st.set_page_config(page_title="Ai Ink · 阶段 2 展示台", layout="wide")
 
 # ---- 网关 HTTP 客户端（唯一入口，§17.2：生成走网关异步）----
 _GW = settings.gateway_url.rstrip("/")
-_GW_HEADERS = {"X-AiInk-User": "dev-user", "Content-Type": "application/json"}
+# 阶段 3 JWT 身份断言（§14.1 ③）：网关要求 Bearer，签发端点按 username 换 token（demo 用户）。
+# 演示工具缓存于模块级（stale 时 401 由调用方 raise，可重跑本工具刷新）。
+_JWT_TOKEN: str | None = None
+
+
+def _fetch_token() -> str:
+    resp = requests.post(f"{_GW}/api/v1/auth/token", json={"username": "demo"}, timeout=10)
+    resp.raise_for_status()
+    return resp.json()["token"]
+
+
+def _auth_headers() -> dict:
+    """带 Bearer 的网关请求头（首次调用惰性拿 token，§14.1 ③ 替换 X-AiInk-User 占位）。"""
+    global _JWT_TOKEN
+    if _JWT_TOKEN is None:
+        _JWT_TOKEN = _fetch_token()
+    return {"Authorization": f"Bearer {_JWT_TOKEN}", "Content-Type": "application/json"}
 
 
 def gw_create_chapter(project_id: str, seq: int, instruction: str | None) -> dict:
@@ -35,7 +51,7 @@ def gw_create_chapter(project_id: str, seq: int, instruction: str | None) -> dic
     resp = requests.post(
         f"{_GW}/api/v1/projects/{project_id}/chapters/ch-{seq}/generate",
         json={"seq": seq, "user_instruction": instruction or ""},
-        headers=_GW_HEADERS, timeout=10,
+        headers=_auth_headers(), timeout=10,
     )
     if resp.status_code == 429:
         raise RuntimeError(f"三层闸门拒绝：{resp.json().get('error')}（配额/并发/日成本超限）")
@@ -48,7 +64,7 @@ def gw_create_batch(project_id: str, size: int, start: int) -> dict:
     resp = requests.post(
         f"{_GW}/api/v1/projects/{project_id}/batches/generate",
         json={"size": size, "start": start},
-        headers=_GW_HEADERS, timeout=10,
+        headers=_auth_headers(), timeout=10,
     )
     if resp.status_code == 429:
         raise RuntimeError(f"三层闸门拒绝：{resp.json().get('error')}")
@@ -58,7 +74,7 @@ def gw_create_batch(project_id: str, size: int, start: int) -> dict:
 
 def gw_get_task(task_id: str) -> dict:
     """GET 网关任务详情（status/payload/error/progress/runs）。"""
-    resp = requests.get(f"{_GW}/api/v1/tasks/{task_id}", headers=_GW_HEADERS, timeout=10)
+    resp = requests.get(f"{_GW}/api/v1/tasks/{task_id}", headers=_auth_headers(), timeout=10)
     resp.raise_for_status()
     return resp.json()
 

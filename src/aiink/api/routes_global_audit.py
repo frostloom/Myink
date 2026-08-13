@@ -11,8 +11,9 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from aiink.api.auth import require_owner
 from aiink.db import tenant_session
 from aiink.validation import global_audit as ga
 
@@ -26,7 +27,8 @@ def _project_id(raw: str) -> uuid.UUID:
         raise HTTPException(status_code=400, detail=f"项目 id 非法: {raw}") from exc
 
 
-@router.post("/projects/{project_id}/global-audit")
+@router.post("/projects/{project_id}/global-audit",
+             dependencies=[Depends(require_owner)])
 def trigger_global_audit(project_id: str) -> dict:
     """手动触发全局审计：全部未审计章窗口（不做 K 门槛），返回审计报告。
 
