@@ -1,18 +1,18 @@
-"""全集系统性首测（plan.md §16）——conflict-samples.md 39 样例 → 检测机制 → 检出率/误报率。
+"""全集系统性首测（plan.md §16）——conflict-samples.md 40 样例 → 检测机制 → 检出率/误报率。
 
 §16 里程碑：「全集系统性首测 = 阶段 3 长线治理主体完成时」。本套件逐例直连真实检测入口
 （不 mock 机制，仅 mock LLM 判定），作为首测的可运行计量仪器：
 
 - **阳性 26 例**（样例 1-23、33/34、38）：断言对应机制产出目标类型 finding；
-  其中 6 例（样例 2/5/6/7/8/9，L1 faction/timeline/item_rule/foreshadow-兑现/power-规则/faction
-  归属）**检测机制未实现** → 标 `xfail(strict=False)` 记漏检（实现后 XPASS → 取消标记即可）；
+  其中 5 例（样例 5/6/7/8/9，timeline/item_rule/foreshadow-兑现/power-规则/faction归属）
+  **检测机制未实现** → 标 `xfail(strict=False)` 记漏检（实现后 XPASS → 取消标记即可）；
   样例 4 检出但 finding 类别/严重度与 spec 不符（见注），另计。
-- **阴性 13 例**（样例 24-32、35、36、37、39）：断言 0 误报；样例 28/29/30 对应机制未落地
-  → 真空通过（仅样例 24/25/26/27/31/32/35/36/37/39 十例有真实机制证明）。
+- **阴性 14 例**（样例 24-32、35、36、37、39、40）：断言 0 误报；样例 28/29/30 对应机制未落地
+  → 真空通过（其余 11 例有真实机制证明，含 2026-08-13 新增样例 40 阵营临时联手守卫）。
 
 度量口径（conflict-samples.md「使用方式」）：检出率 = 检出阳性/阳性总数；误报率 = 误报阴性/阴性总数。
-本套件绿跑产出：阳性 20/26 可检出（含样例 4 类别偏差检出）、6 漏检、阴性 0 误报——
-即 **检出率 76.9%（20/26）、误报率 0%（0/13）**，记入 .md §5 / plan.md §16。
+本套件绿跑产出：阳性 21/26 可检出（含样例 4 类别偏差检出、样例 2 补漏 faction）、5 漏检、阴性 0 误报——
+即 **检出率 80.8%（21/26）、误报率 0%（0/14）**，记入 .md §5 / plan.md §16。
 
 桩设计（复用既有测试模板）：LLM 单点注入 = monkeypatch `global_audit.make_chain`（样例 12/36/37/38/39）
 / `ledger_l2.make_chain`（样例 16/17/20/21/22/24/25/4）；embedder 用 DeterministicFakeEmbedder
@@ -48,9 +48,9 @@ A, B = uuid.uuid4(), uuid.uuid4()
 # ---- 首测指标基线（随套件结果写入 .md §5 / plan.md §16，防文档与代码漂移）----
 
 POSITIVE_COUNT = 26          # 阳性：1-23、33/34、38
-NEGATIVE_COUNT = 13          # 阴性：24-32、35、36、37、39
-DETECTED_COUNT = 20          # 检出：19 全机制 + 样例 4（类别偏差检出）
-XFAIL_SAMPLES = {2, 5, 6, 7, 8, 9}   # 漏检（机制未实现）
+NEGATIVE_COUNT = 14          # 阴性：24-32、35、36、37、39、40
+DETECTED_COUNT = 21          # 检出：20 全机制（含样例 2 补漏 faction）+ 样例 4（类别偏差检出）
+XFAIL_SAMPLES = {5, 6, 7, 8, 9}   # 漏检（机制未实现）
 
 
 # ---- 样例数据（镜像各专属测试文件，conflict-samples.md 原文语义）----
@@ -61,6 +61,11 @@ DRAFT24 = "林砚服下回春丹，闭关三日，伤势尽复。第7章。"
 # 样例 4（location 跨域无传送）
 DRAFT4 = "清晨林砚还在东海水宫与蛟王对饮，黄昏已站在荒原部的图腾祭坛前。第7章。"
 QUOTE4 = "黄昏已站在荒原部的图腾祭坛前"
+# 样例 2 / 40（阵营敌对 / 临时联手合法，conflict-samples.md 原文语义）
+DRAFT2 = ("夜色中，林砚与天衡宗执法弟子并肩而立，共抗万魔渊魔修。"
+          "那执法弟子拍了拍他肩头：\"林师弟，你我本是同门。\"")
+DRAFT40 = ("夜色中，林砚与天衡宗执法弟子并肩而立，共抗万魔渊魔修。"
+           "此前宗门已传讯约定：此役只是暂时联手，事毕各归其营。")
 # 样例 15（AI 味句式）
 SAMPLE15_DRAFT = ("他不是不知道前路凶险，而是早已没有退路。"
                   "他不是畏惧强敌，而是害怕辜负。")
@@ -320,6 +325,13 @@ def _style_check(pid: str, draft, seq: int = 15) -> list[dict]:
         return [f.model_dump(mode="json") for f in fs]
 
 
+def _faction_check(pid: str, seq: int, draft: str) -> list[dict]:
+    with tenant_session(pid) as db:
+        fs = L1Validator(REALM_ORDER).faction_check(
+            db, project_id=uuid.UUID(pid), chapter_seq=seq, draft=draft)
+        return [f.model_dump(mode="json") for f in fs]
+
+
 def _bridge_check(pid: str, candidates: list[MutationCandidate], draft=None, seq: int = 15) -> list[dict]:
     with tenant_session(pid) as db:
         fs = L1Validator(REALM_ORDER).bridge_repeat_check(
@@ -354,12 +366,20 @@ def test_sample_01_realm_over_cap(temp_project):
     assert power[0]["severity"] == "critical" and power[0]["scope"] == "structural"
 
 
-@pytest.mark.xfail(reason="首测记录（漏检）：样例 2 阵营敌对——L1 faction 机制未实现", strict=False)
 def test_sample_02_faction_hostility(temp_project):
-    """样例 2 阵营敌对：正文与敌对势力并肩，无临时盟约记录 → 应出 faction/critical（机制未实现）。"""
-    _seed_character(temp_project, "林砚")
-    fs = _validate(temp_project, 8)
-    assert any(f["conflict_type"] == "faction" for f in fs), fs
+    """样例 2 阵营敌对：活跃敌对关系双名共现 + 协作标记（并肩而立/共抗），无临时盟约 → faction/critical/structural。
+
+    机制：faction_check 直连（draft 依赖，service.validate 每章首稿自动生效）；
+    conflict_key 确定性 = _key("faction", f"{lin_id}:{zhi_id}", 8)（关系端点须为已 seed 的 Character id）。
+    """
+    lin_id = _seed_character(temp_project, "林砚")
+    zhi_id = _seed_character(temp_project, "执法弟子")
+    _seed_relation(temp_project, source_id=lin_id, relation_type="hostile", target_id=zhi_id, source_chapter=3)
+    fs = _faction_check(temp_project, 8, DRAFT2)
+    faction = [f for f in fs if f["conflict_type"] == "faction"]
+    assert len(faction) == 1, fs
+    assert faction[0]["severity"] == "critical" and faction[0]["scope"] == "structural"
+    assert faction[0]["conflict_key"] == _key("faction", f"{str(lin_id)}:{str(zhi_id)}", 8)
 
 
 def test_sample_03_death_and_resurrection(temp_project):
@@ -422,12 +442,33 @@ def test_sample_08_capability_rule_violation(temp_project):
     assert any(f["conflict_type"] == "power" for f in fs), fs
 
 
-@pytest.mark.xfail(reason="首测记录（漏检）：样例 9 势力归属矛盾——L1 faction 机制未实现", strict=False)
+@pytest.mark.xfail(reason="首测记录（漏检）：样例 9 势力归属——需 extract 补归属/faction 候选或 facts 归属类联动（数据模型边界：relations 端点仅 character id、无势力归属知识）", strict=False)
 def test_sample_09_faction_allegiance(temp_project):
-    """样例 9 势力归属：叛出天衡宗却自称执法弟子 → 应出 faction/major（机制未实现）。"""
+    """样例 9 势力归属：叛出天衡宗却自称执法弟子 → 应出 faction/major。
+
+    数据模型边界（2026-08-13 补漏切片记录）：样例 2 的 faction 机制已落地，但样例 9 的「自称归属」
+    需要「势力名 + 成员」知识——relations 端点只能是 character id（_resolve_character_id 只查
+    characters 表），Faction/Entity 表无 repo 读取方法、无 seed 行 → 当前模型不承载，留独立切片：
+    由 extract 产出归属/faction 候选，或读 facts 归属类（category=归属）联动。
+    """
     _seed_character(temp_project, "林砚")
     fs = _validate(temp_project, 8)
     assert any(f["conflict_type"] == "faction" for f in fs), fs
+
+
+def test_sample_40_faction_temp_alliance_legal(temp_project):
+    """样例 40 阵营·临时联手合法（样例 2 对照，阴性）：敌对关系 + 已落临时盟约（带 valid_to 覆盖本章）→ 0 检出。
+
+    spec 误报控制（样例 2）：剧情有意暂时联手须先落 relation 带 valid_to → 守卫跳过，0 误报。
+    守卫判定：非 hostile 行（ally）valid_from<=8<=valid_to 覆盖本章 → faction_check 跳过。
+    """
+    lin_id = _seed_character(temp_project, "林砚")
+    zhi_id = _seed_character(temp_project, "执法弟子")
+    _seed_relation(temp_project, source_id=lin_id, relation_type="hostile", target_id=zhi_id, source_chapter=3)
+    _seed_relation(temp_project, source_id=lin_id, relation_type="ally", target_id=zhi_id,
+                   source_chapter=6, valid_from=6, valid_to=13)
+    fs = _faction_check(temp_project, 8, DRAFT40)
+    assert [f for f in fs if f["conflict_type"] == "faction"] == [], fs
 
 
 def test_sample_10_realm_skip_grade(temp_project):
@@ -760,6 +801,6 @@ def test_metric_baseline_constants():
     检出率 = DETECTED_COUNT/POSITIVE_COUNT；误报率 = 0/NEGATIVE_COUNT。
     新增/取消 xfail 标记须同步更新 XFAIL_SAMPLES 与文档。
     """
-    assert POSITIVE_COUNT == 26 and NEGATIVE_COUNT == 13, "样例总数须为 39"
-    assert DETECTED_COUNT == 20, "检出 20 = 19 全机制 + 样例 4（类别偏差检出）"
-    assert XFAIL_SAMPLES == {2, 5, 6, 7, 8, 9}, "漏检 6 例固定"
+    assert POSITIVE_COUNT == 26 and NEGATIVE_COUNT == 14, "样例总数须为 40"
+    assert DETECTED_COUNT == 21, "检出 21 = 20 全机制（含样例 2 补漏 faction）+ 样例 4（类别偏差检出）"
+    assert XFAIL_SAMPLES == {5, 6, 7, 8, 9}, "漏检 5 例固定"
