@@ -27,9 +27,10 @@ from aiink.memory.invalidation import invalidate_chapter_memory
 from aiink.memory.recall import build_context
 from aiink.memory.vector_store import PgvectorStore
 from aiink.models import AgentRun, Chapter, CharacterState, Event, Fact, Foreshadow, MemoryCandidate, Relation, WritingLesson
-from aiink.models.memory import CHARACTER_STATE_FIELDS
+from aiink.models.memory import CHARACTER_STATE_FIELDS, RELATION_TYPES
 from aiink.providers import FallbackChain, ModelResponse, make_chain
 from aiink.schemas import AuditVerdict, ChapterPlan, Finding, MutationCandidate, ValidationReport
+from aiink.validation.ledger_l2 import run_ledger_l2
 from aiink.validation.service import ValidationService
 from aiink.workflow import prompts
 from aiink.workflow.state import ChapterState
@@ -406,6 +407,20 @@ def node_load_state(state: ChapterState) -> ChapterState:
                 "error": None, "needs_review": False, "persisted": False, "unresolved": []}
 
 
+def _merge_unresolved(prev: list[dict], audit_findings: list[Finding]) -> list[dict]:
+    """合并 unresolved（§6.5）：保留既有 L1/L2 major，audit 判定覆盖同 conflict_key。
+
+    修复点级 L2 进入 revise 上下文的前置缺口：node_audit 曾以 verdict.findings 整体覆盖
+    state["unresolved"]，把 validate 的 L1/L2 major 丢出 node_revise 输入（node_revise:605
+    只读 unresolved）。合并后不同键共存、同键以 audit（语义层）为准。
+    """
+    by_key: dict[str, dict] = {f["conflict_key"]: f for f in prev}
+    for f in audit_findings:
+        if f.severity in ("critical", "major"):
+            by_key[f.conflict_key] = f.model_dump(mode="json")
+    return list(by_key.values())
+
+
 def node_recall(state: ChapterState) -> ChapterState:
     pid = state["project_id"]
     participants = [c.get("name") for c in state.get("characters", [])[:12]]
@@ -447,12 +462,23 @@ def node_validate(state: ChapterState) -> ChapterState:
         report = service.validate(db, project_id=uuid.UUID(pid), chapter_seq=state["chapter_seq"],
                                   candidates=candidates, plan=plan,
                                   draft=state.get("draft"), target_words=state.get("target_words"))
+        # 正文-台账语义比对 L2（§8.6 点级，样例 16/17/20/21/22）：判定集预滤零成本短路、
+        # LLM 非阻断（L1 窄脚印仍在）。LLM 不能进 validate（validate 被测试直接调用）→ 在此接线。
+        l2_findings = run_ledger_l2(db, project_id=uuid.UUID(pid), chapter_seq=state["chapter_seq"],
+                                    candidates=state.get("candidates", []), draft=state.get("draft"),
+                                    task_id=state.get("task_id"))
+        if l2_findings:
+            report.findings.extend(Finding(**f) for f in l2_findings)
+            report.summary["total"] = report.summary.get("total", 0) + len(l2_findings)
+            # l2_major 进 summary → route_after_audit 路由 revise / persist 转人工（§6.11）
+            report.summary["l2_major"] = sum(1 for f in l2_findings if f.get("severity") == "major")
         # unresolved = critical/major（触发 revise；hint 不阻塞）
         unresolved = [f.model_dump(mode="json") for f in report.findings if f.severity in ("critical", "major")]
         # 校验报告落库（findings 证据链可追溯，§8.7）
         record_plain(db, project_id=pid, task_id=state.get("task_id"), node="validate",
                      detail={"findings_total": report.summary.get("total", 0),
                              "critical": report.summary.get("critical", 0),
+                             "l2_major": report.summary.get("l2_major", 0),
                              "unresolved": len(unresolved)})
         return {"report": report.model_dump(mode="json"), "unresolved": unresolved}
 
@@ -485,9 +511,10 @@ def node_audit(state: ChapterState) -> ChapterState:
                               detail={"audit_verdict": verdict.model_dump(mode="json")})
         except (json.JSONDecodeError, ValidationError) as exc:
             return {"error": f"audit 输出解析失败: {exc} | content[:120]={resp.content[:120]!r} len={len(resp.content)}"}
-    # verdict.findings（L2）→ unresolved：rewrite 时 revise 注入逐条修（§6.5）
-    unresolved = [f.model_dump(mode="json") for f in verdict.findings
-                  if f.severity in ("critical", "major")]
+    # verdict.findings（L2）→ unresolved：rewrite 时 revise 注入逐条修（§6.5）。
+    # 合并而非覆盖：保留 validate 的 L1/L2 major（此前被 audit 覆盖丢出 revise 上下文），
+    # 同 conflict_key 以 audit 判定为准（语义层更权威）。
+    unresolved = _merge_unresolved(state.get("unresolved", []), verdict.findings)
     out: dict = {
         "audit_verdict": verdict.model_dump(mode="json"),
         "unresolved": unresolved,
@@ -545,13 +572,16 @@ def node_write(state: ChapterState) -> ChapterState:
 
 
 def extract_candidates_from_draft(db: Session, *, project_id: str, chapter_seq: int,
-                                  draft: str, task_id: str | None = None) -> tuple[list[dict], str | None]:
+                                  draft: str, task_id: str | None = None,
+                                  context: dict | None = None) -> tuple[list[dict], str | None]:
     """对任意正文跑记忆抽取（extract LLM）→ 校验/归一化候选（§6.4/§7.5）。
 
     节点与「校正记忆」端点复用同一条抽取/清洗路径，保证口径一致（阶段 3 编辑校正）。
+    context（recall 的 RetrievedContext）非空时注入当前台账快照——extract 校准 old_value、
+    产出 relation_change 候选（正文-台账语义比对 L2 的证据链入口，§8.6）。
     返回 (candidates, error)：error 非空时 candidates 为空，由调用方决定是否阻断。
     """
-    messages = prompts.extract_messages(draft, chapter_seq)
+    messages = prompts.extract_messages(draft, chapter_seq, context=context)
     state: dict = {"project_id": project_id, "chapter_seq": chapter_seq, "task_id": task_id}
     resp, _ = _llm(db, state, "extract", "Memory", make_chain("extract"), messages)
     if resp.error:
@@ -579,6 +609,19 @@ def extract_candidates_from_draft(db: Session, *, project_id: str, chapter_seq: 
                                cand.payload.get("field"), chapter_seq)
                 continue
             cand.payload["character_id"] = str(cid)
+        elif cand.kind == "relation_change":
+            # 双端角色归一化 + relation_type 白名单（§6.12）：任一缺 → 丢，防 persist 落库炸批次
+            src = _resolve_character_id(db, project_id, str(cand.payload.get("source_id", "")))
+            tgt = _resolve_character_id(db, project_id, str(cand.payload.get("target_id", "")))
+            if not src or not tgt:
+                logger.warning("丢弃无法归一化的 relation_change 候选（ch%d）", chapter_seq)
+                continue
+            if cand.payload.get("relation_type") not in RELATION_TYPES:
+                logger.warning("丢弃非法 relation_change 候选 relation_type=%r（ch%d）",
+                               cand.payload.get("relation_type"), chapter_seq)
+                continue
+            cand.payload["source_id"] = str(src)
+            cand.payload["target_id"] = str(tgt)
         candidates.append(cand.model_dump(mode="json"))
     return candidates, None
 
@@ -593,7 +636,7 @@ def node_extract(state: ChapterState) -> ChapterState:
     with tenant_session(pid) as db:
         candidates, err = extract_candidates_from_draft(
             db, project_id=pid, chapter_seq=state["chapter_seq"], draft=draft,
-            task_id=state.get("task_id"))
+            task_id=state.get("task_id"), context=state.get("context"))
         if err:
             return {"error": err}
     return {"candidates": candidates}
@@ -632,14 +675,19 @@ def node_revise(state: ChapterState) -> ChapterState:
 # ---- persist（编排层，§6.2 数据流边界的落库点）----
 
 def node_persist(state: ChapterState) -> ChapterState:
-    """确认分流（§6.11）：无 critical → 低风险自动放行落库；有 critical → 候选池待人工。"""
+    """确认分流（§6.11）：无 critical/L2 major → 低风险自动放行落库；有 → 候选池待人工。
+
+    L2 major（正文-台账语义矛盾，§8.6 点级）与 L1 critical 同等待遇：语义不自洽的
+    候选不自洽静默 auto 落库，进待确认池 + 章节 awaiting_review。
+    """
     pid = state["project_id"]
     chapter_seq = state["chapter_seq"]
     report = state.get("report") or {}
     critical = report.get("summary", {}).get("critical", 0) or 0
+    l2_major = report.get("summary", {}).get("l2_major", 0) or 0
 
-    if critical > 0:
-        # critical 暂停：候选进待确认池，章节标 awaiting_review（§6.11）。
+    if critical or l2_major:
+        # critical/L2 major 暂停：候选进待确认池，章节标 awaiting_review（§6.11）。
         # plotline 推进候选不落池——正文已写即推进已发生（低风险自动生效，§7.11），
         # 且 memory_candidates 的 DB CHECK 不含 plotline kind。
         with tenant_session(pid) as db:
@@ -663,7 +711,8 @@ def node_persist(state: ChapterState) -> ChapterState:
                                status="awaiting_review"))
         record_plain(db, project_id=pid, task_id=state.get("task_id"), node="persist",
                      detail={"candidates": len(state.get("candidates", [])),
-                             "status": "awaiting_review", "reason": "critical"})
+                             "status": "awaiting_review",
+                             "reason": "critical" if critical else "l2_major"})
         return {"persisted": True, "needs_review": True}
 
     with tenant_session(pid) as db:

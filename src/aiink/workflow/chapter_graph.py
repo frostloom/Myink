@@ -2,7 +2,7 @@
 
 load_state → recall → plan_chapter → write → extract → validate → audit
   → route_after_audit（混合路由，§6.11 已确认：规则层优先，LLM 兜语义）：
-     ① L1 critical（规则层）→ rev < 预算 revise / 预算用尽 persist(needs_review)
+     ① L1 critical / L2 major（规则层）→ rev < 预算 revise / 预算用尽 persist(needs_review)
      ② 预算用尽 → persist(needs_review)
      ③ 采纳 AuditVerdict：pass → persist / rewrite → revise / replan → 回 plan_chapter
      或 replan_batch → 结束单章子图，批次层读 replan_batch 信号回 batch_plan
@@ -34,20 +34,22 @@ def node_reset_replan(state: ChapterState) -> ChapterState:
 def route_after_audit(state: ChapterState) -> str:
     """混合路由纯函数（spec/state-flow.md §3，2026-08-07 确认）。
 
-    规则层（①L1 critical ②预算）优先——LLM 不能绕过硬约束、不能无限重写；
-    LLM 语义层（③采纳 AuditVerdict）只在规则放行时生效。
+    规则层（①L1 critical ②L2 major ③预算）优先——LLM 不能绕过硬约束、不能无限重写；
+    LLM 语义层（④采纳 AuditVerdict）只在规则放行时生效。
     """
     if state.get("error"):
         return "fail"
     report = state.get("report") or {}
     l1_critical = (report.get("summary") or {}).get("critical", 0) or 0
+    l2_major = (report.get("summary") or {}).get("l2_major", 0) or 0
     budget_exhausted = (
         state.get("revision_count", 0) >= settings.max_revisions
         or state.get("replan_count", 0) >= settings.max_replans
     )
-    if l1_critical or budget_exhausted:
-        # 规则层：critical 或预算用尽 → 还能修则修，否则转人工（persist 按 critical 分流）
-        if l1_critical and not budget_exhausted:
+    if l1_critical or l2_major or budget_exhausted:
+        # 规则层：L1 critical / L2 major（正文-台账语义矛盾）或预算用尽 → 还能修则修，
+        # 否则转人工（persist 按 critical/l2_major 分流进待确认池）
+        if (l1_critical or l2_major) and not budget_exhausted:
             return "revise"
         return "needs_review"
     verdict = (state.get("audit_verdict") or {}).get("verdict")

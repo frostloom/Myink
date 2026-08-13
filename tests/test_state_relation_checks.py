@@ -204,3 +204,47 @@ def test_l1_candidate_realm_not_double_fired(temp_project):
     _seed_state(temp_project, chapter_seq=5, field="realm", new_value="金丹")
     fs = _validate(temp_project, 7, [_state_cand("realm", "筑基", "金丹")])
     assert not [f for f in fs if f["conflict_type"] == "character_state"], fs
+
+
+# ---- L1 候选 relation_change old_value-vs-台账（样例 17/22 窄脚印；正文语义比对留 L2）----
+
+
+def _rel_mc(rtype: str, old_v, new_v, src=A, tgt=B, chapter: int = 5) -> MutationCandidate:
+    return MutationCandidate(
+        kind="relation_change", source_chapter=chapter,
+        payload={"source_id": str(src), "target_id": str(tgt), "relation_type": rtype,
+                 "old_value": old_v, "new_value": new_v},
+        confidence=0.9,
+    )
+
+
+def test_l1_relation_change_old_value_mismatch_fires(temp_project):
+    """候选 old_value ≠ 台账当前有序对类型（抽取误读快照）→ minor/local。"""
+    _seed_relation(temp_project, source_id=A, relation_type="hostile", target_id=B, source_chapter=3)
+    fs = _validate(temp_project, 7, [_rel_mc("hostile", "master_student", "hostile")])
+    misread = [f for f in fs if "候选 old_value" in f["evidence"][0]["quote"]]
+    assert len(misread) == 1, fs
+    assert misread[0]["severity"] == "minor" and misread[0]["scope"] == "local"
+    assert misread[0]["conflict_type"] == "relation"
+
+
+def test_l1_relation_change_old_value_match_no_fire(temp_project):
+    """候选 old_value == 台账 → 不报（正文-台账语义比对留 L2，样例 17 机制入口）。"""
+    _seed_relation(temp_project, source_id=A, relation_type="hostile", target_id=B, source_chapter=3)
+    fs = _validate(temp_project, 7, [_rel_mc("ally", "hostile", "ally")])
+    assert not [f for f in fs if "候选 old_value" in f["evidence"][0]["quote"]], fs
+
+
+def test_l1_relation_change_ledger_missing_skip(temp_project):
+    """台账该有序对无活跃行（首写）→ 跳过，fresh 书 0 误报。"""
+    fs = _validate(temp_project, 7, [_rel_mc("ally", "hostile", "ally")])
+    assert not [f for f in fs if "候选 old_value" in f["evidence"][0]["quote"]], fs
+
+
+def test_l1_relation_change_ambiguity_skip(temp_project):
+    """有序对 >1 活跃行（重复/矛盾）→ 当前类型不可判定 → 本检查跳过（relation_ledger_check 兜底）。"""
+    _seed_relation(temp_project, source_id=A, relation_type="hostile", target_id=B, source_chapter=3)
+    _seed_relation(temp_project, source_id=A, relation_type="ally", target_id=B, source_chapter=5)
+    fs = _validate(temp_project, 7, [_rel_mc("hostile", "hostile", "ally")])
+    # 窄脚印不误报；若 relation_ledger_check 报矛盾 major 属另一检查，与本检查无关
+    assert not [f for f in fs if "候选 old_value" in f["evidence"][0]["quote"]], fs

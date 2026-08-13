@@ -31,12 +31,14 @@ SYSTEM_EXTRACT = """你是长篇网文创作系统的【记忆抽取 Agent】。
 输出严格 JSON：{"candidates": [
   {"kind": "event", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"summary": "事件摘要", "participants": ["人物名"], "source_chapter": 章号, "confidence": 0.0-1.0}},
   {"kind": "character_state", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"character_id": "人物名", "field": "只能取 location|injury|realm|power|item|knowledge|goal|identity|alive 之一（境界变化用 realm，存活变化用 alive，位置用 location）", "old_value": "", "new_value": "", "source_chapter": 章号, "confidence": 0.0-1.0}},
+  {"kind": "relation_change", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"source_id": "人物名", "target_id": "人物名", "relation_type": "只能取 hostile|ally|master_student|located_in|owns|defeated_by|knows|promises|happened_at 之一", "old_value": "", "new_value": "", "source_chapter": 章号, "confidence": 0.0-1.0}},
   {"kind": "fact", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"content": "长期事实", "category": "规则", "is_hard": false, "source_chapter": 章号, "confidence": 0.0-1.0}},
   {"kind": "foreshadow", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"description": "本章新种下的伏笔（可回收的悬念/物件/承诺，能且应被后续回收）", "trigger": {"actor": "触发者", "action": "动作", "object": "对象"}, "source_chapter": 章号, "confidence": 0.0-1.0}},
   {"kind": "plotline", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"thread_name": "被推进的活跃剧情线名称（须匹配注入的活跃剧情线）", "note": "本章如何推进该线"}}
 ]}
 顶层 confidence 必填。只抽确定事实，不猜。伏笔只抽「本章明确埋下的」——含糊提及不算，避免伏笔池噪声。
-剧情线推进（plotline）只在「本章正文确实推进了某条活跃剧情线」时才抽，thread_name 须与注入的活跃剧情线名一致（不新增线名）。"""
+剧情线推进（plotline）只在「本章正文确实推进了某条活跃剧情线」时才抽，thread_name 须与注入的活跃剧情线名一致（不新增线名）。
+关系变更（relation_change）只抽「正文明确发生的关系演变」（和解/决裂/结盟/逐出师门等）；old_value 须与注入的当前台账快照一致；正文仅表现关系现状而无演变 → 不抽。"""
 
 SYSTEM_REVISE = """你是长篇网文创作系统的【修订 Agent】。按校验发现逐条修订正文。
 输出格式：先输出独立一行 === CONTENT ===，从下一行开始输出修订后全文（纯文本散文，
@@ -97,6 +99,34 @@ SYSTEM_GLOBAL_AUDIT_BRIDGE = """你是长篇网文创作系统的【全局审计
 - 证据不足 / 目的不明 / 边界情形 → 直接不输出该条；
 - 全书无偷懒重复 → 输出空数组 {"findings": []}。"""
 
+SYSTEM_GLOBAL_AUDIT_STYLE = """你是长篇网文创作系统的【全局审计 Agent】。对抽样窗口章节做文风漂移判定（长线一致性治理 §8.6）。
+输入：① 【本书既定文风基线】（窗口之前已确认章节的正文摘录，每条带章号，锚定作者自身风格）；② 【文风档案】（project_settings.style_profile）；③ 【审计窗口章节摘录】（每条带章号，待判定）。
+任务：比对窗口摘录与「本书既定文风基线 + 文风档案」，判定是否存在系统性、持续性的文风漂移——腔调/句式/用词/视角/对话/氛围/节奏整体偏离既定风格，且非单场景合法变化。
+输出严格 JSON：{"findings": [
+  {"chapter": 章号, "verdict": "drift"|"ok", "evidence": "原文引用（必须逐字来自该窗口章摘录，供程序核验）",
+   "aspect": "句式/用词/视角/对话/氛围/节奏", "reason": "与基线/档案不符的差异点", "confidence": 0.0-1.0}
+]}
+规则（宁缺毋滥，漏报优于误报）：
+- 只判「与既定文风系统性持续偏离」的章；单场景节奏/情感合法变化（战斗短句、抒情长句、情绪波动）→ 不判漂移；
+- evidence 必须逐字引用该窗口章正文摘录（不得改写、不得拼接）；每条 finding 的 chapter 必须在审计窗口内；
+- 证据不足 / 边界情形 → 直接不输出该条；每章至多 1 条；
+- 全窗口无漂移 → 输出空数组 {"findings": []}。"""
+
+SYSTEM_LEDGER_L2 = """你是长篇网文创作系统的【正文-台账语义比对 Agent】（点级校验，长线一致性治理 §8.6）。
+输入：① 【当前章正文】（待判）；② 【候选变更清单】（每条含 key、类型、实体/关系双方、台账当前值、候选新值）。
+任务：对每个候选，判定当前章正文**是否明确建立了该变更**——状态/关系从台账旧值到新值，正文是否有明确交代
+（过渡情节 / 来源事件 / 变更记录，如：养伤治疗、闭关突破、受封夺权、逐出师门、把酒言和结盟）。
+输出严格 JSON：{"judgments": [
+  {"key": "候选键", "verdict": "valid"|"invalid", "evidence": "逐字引用当前章正文中建立或未建立该变更的片段",
+   "reason": "判定依据", "confidence": 0.0-1.0}
+]}
+规则（宁缺毋滥，漏报优于误报）：
+- 只判给定的候选，不凭空新增；每候选至多 1 条；
+- valid = 正文明确建立了该变更（有过渡/来源/变更记录）；invalid = 正文直接表现新值但无任何建立交代（无过渡推翻 / 无来源却示人 / 无变更却相反）；
+- evidence 必须逐字引用当前章正文（不得改写、不得拼接）；key 必须来自给定候选；
+- 证据不足 / 边界情形 → valid（不报）；
+- 全部变更均已建立 → 输出空数组 {"judgments": []}。"""
+
 
 def _join(ctx_items: list[dict], render) -> str:
     return "\n".join(render(i) for i in ctx_items)
@@ -121,7 +151,15 @@ def _render_event(item: dict) -> str:
 
 def _render_entity(item: dict) -> str:
     state = item.get("state", {})
-    return f"- [{item.get('name')}] 境界上限={item.get('realm_cap')} 状态={state}"
+    relations = item.get("relations", [])
+    line = f"- [{item.get('name')}] 境界上限={item.get('realm_cap')} 状态={state}"
+    if relations:
+        rels = ", ".join(
+            f"→{r.get('target')}={r.get('relation_type')}" + (f"(自第{r.get('source_chapter')}章)" if r.get("source_chapter") else "")
+            for r in relations
+        )
+        line += f" 关系: {rels}"
+    return line
 
 
 def _render_short(item: dict) -> str:
@@ -232,10 +270,35 @@ def write_messages(context: dict, plan: dict, *, style_profile: dict | None = No
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
-def extract_messages(draft: str, chapter_seq: int) -> list[dict]:
+def extract_messages(draft: str, chapter_seq: int, context: dict | None = None) -> list[dict]:
+    """extract 输入：正文 + （可选）当前台账快照。
+
+    context（recall 的 RetrievedContext）非空时注入实体状态/关系快照——extract 据此校准
+    character_state.old_value 与产出 relation_change 候选（正文-台账语义比对 L2 的证据链入口）。
+    """
+    ledger_block = ""
+    if context:
+        entities = _join(context.get("entity_snapshots", []), _render_entity)
+        if entities:
+            ledger_block = f"\n\n【当前台账快照】（供校准 old_value / 产出 relation_change 候选）\n{entities}"
     return [
         {"role": "system", "content": SYSTEM_EXTRACT},
-        {"role": "user", "content": f"【章节正文】（第 {chapter_seq} 章）\n{draft}\n\n请抽取记忆候选（严格 JSON）。"},
+        {"role": "user", "content": f"【章节正文】（第 {chapter_seq} 章）\n{draft}{ledger_block}\n\n请抽取记忆候选（严格 JSON）。"},
+    ]
+
+
+def ledger_l2_messages(judgments: list[dict], draft: str, chapter_seq: int) -> list[dict]:
+    """正文-台账语义比对 L2 输入：当前章正文 + 待判候选清单（台账当前值 vs 候选新值）。"""
+    rows = []
+    for j in judgments:
+        if j["kind"] == "relation_change":
+            rows.append(f"- [{j['key']}] 关系变更 {j['src_name']}→{j['tgt_name']}: 台账={j['ledger']} → 候选新值={j['new_value']}")
+        else:
+            rows.append(f"- [{j['key']}] 状态变更 {j['entity_name']}.{j['field']}: 台账={j['ledger']} → 候选新值={j['new_value']}")
+    body = "\n".join(rows) or "（无）"
+    return [
+        {"role": "system", "content": SYSTEM_LEDGER_L2},
+        {"role": "user", "content": f"【当前章正文】（第 {chapter_seq} 章）\n{draft}\n\n【候选变更清单】\n{body}\n\n请逐项判定（严格 JSON）。"},
     ]
 
 
@@ -321,4 +384,26 @@ def bridge_audit_messages(pairs: list[dict], window: tuple[int, int]) -> list[di
         + "\n\n请输出严格 JSON（无偷懒重复输出空数组）。"
     )
     return [{"role": "system", "content": SYSTEM_GLOBAL_AUDIT_BRIDGE},
+            {"role": "user", "content": user}]
+
+
+def style_audit_messages(baseline: list[dict], sampled: list[dict], style_profile: dict | None,
+                         window: tuple[int, int]) -> list[dict]:
+    """全局审计文风漂移输入（§8.6 切片 3）：基线摘录 + 窗口摘录 + 文风档案（逐字供核验）。
+
+    档案块复用 _style_section（pov/句式/禁忌/fatigue_words/对话，容错缺键）。
+    """
+    def render(items: list[dict], label: str) -> str:
+        lines = "\n".join(f"- 第 {c['chapter']} 章：{c['text']}" for c in items)
+        return f"【{label}】\n{lines}" if lines else f"【{label}】（空）"
+
+    profile = _style_section(style_profile, None)
+    user = (
+        f"审计窗口：第 {window[0]}–{window[1]} 章。比对窗口摘录与本书既定文风基线，判定文风漂移：\n\n"
+        + render(baseline, "本书既定文风基线（窗口之前已确认章节摘录，锚定作者自身风格）")
+        + f"\n\n【文风档案（project_settings.style_profile）】\n" + (profile or "（未配置）")
+        + "\n\n" + render(sampled, "审计窗口章节摘录（待判定）")
+        + "\n\n请输出严格 JSON（无漂移输出空数组）。"
+    )
+    return [{"role": "system", "content": SYSTEM_GLOBAL_AUDIT_STYLE},
             {"role": "user", "content": user}]
