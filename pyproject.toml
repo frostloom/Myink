@@ -23,6 +23,8 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn>=0.30",
     "sse-starlette>=2.0",
+    # 阶段 3：JWT 身份断言（§14.1 ③，签发端点；网关验签走 golang-jwt，密钥共享 .env）
+    "pyjwt>=2.8",
 ]
 
 [project.optional-dependencies]

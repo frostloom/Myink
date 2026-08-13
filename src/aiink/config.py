@@ -18,6 +18,11 @@ def _env(name: str, default: str | None = None) -> str | None:
     return os.getenv(name, default)
 
 
+# JWT 身份断言（§14.1 ③）：dev 默认密钥仅供本地开发/测试（Python 与 Go 网关共享同一
+# 非空默认，两端的 HS256 签名才能互相验证）；APP_ENV=prod 时 validate 拒绝该默认值。
+_DEV_JWT_SECRET = "dev-jwt-secret-change-me"
+
+
 @dataclass(frozen=True)
 class Settings:
     app_env: str = field(default_factory=lambda: _env("APP_ENV", "dev") or "dev")
@@ -80,12 +85,19 @@ class Settings:
     # 阶段 2 展示前端：网关唯一入口（app.py 生成走网关异步，§17.2）
     gateway_url: str = field(default_factory=lambda: _env("GATEWAY_URL", "http://localhost:8080") or "http://localhost:8080")
 
+    # 阶段 3：JWT 身份断言（§14.1 ③，替换 X-AiInk-User 占位）。密钥与 Go 网关共享同一 .env，
+    # dev 非空默认保证两端签名互通；prod 由 validate 强制显式密钥。
+    jwt_secret: str = field(default_factory=lambda: _env("JWT_SECRET", _DEV_JWT_SECRET) or _DEV_JWT_SECRET)
+    jwt_ttl: int = field(default_factory=lambda: int(_env("JWT_TTL", "1800") or "1800"))  # 秒，短时效（§14.2 SSO/token）
+
     def is_prod(self) -> bool:
         return self.app_env == "prod"
 
     def validate(self) -> None:
         if self.is_prod() and not self.deepseek_api_key:
             raise RuntimeError("APP_ENV=prod 时 DEEPSEEK_API_KEY 不能为空")
+        if self.is_prod() and self.jwt_secret == _DEV_JWT_SECRET:
+            raise RuntimeError("APP_ENV=prod 时 JWT_SECRET 不能为 dev 默认值（生产密钥需显式注入）")
 
 
 settings = Settings()

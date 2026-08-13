@@ -8,9 +8,11 @@ from __future__ import annotations
 import logging
 import uuid
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from aiink.api.auth import current_user, require_owner
+from aiink.api.auth import router as auth_router
 from aiink.api.routes_candidates import router as candidates_router
 from aiink.api.routes_chapters import router as chapters_router
 from aiink.api.routes_global_audit import router as global_audit_router
@@ -33,6 +35,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
 app.include_router(tasks_router)
 app.include_router(candidates_router)
 app.include_router(chapters_router)
@@ -73,19 +76,29 @@ def readyz() -> dict:
 
 
 @app.get("/internal/v1/projects")
-def list_projects() -> list[dict]:
-    """项目列表（根表无 RLS，普通连接）。"""
+def list_projects(user_id: str | None = Depends(current_user)) -> list[dict]:
+    """项目列表（根表无 RLS，应用层按身份过滤：只返回自己的书，§14.1 ③）。
+
+    identity 缺失/非法 → 空列表（fail closed，不返回他人作品）。
+    """
+    if not user_id:
+        return []  # 身份缺失 → fail closed
+    try:
+        uid = uuid.UUID(str(user_id))
+    except (ValueError, TypeError, AttributeError):
+        return []  # 身份非法 → fail closed
     with new_session() as db:
-        rows = db.query(Project).all()
+        rows = db.query(Project).filter(Project.user_id == uid).all()
         return [
             {"id": str(p.id), "title": p.title, "genre": p.genre, "current_chapter": p.current_chapter}
             for p in rows
         ]
 
 
-@app.get("/internal/v1/projects/{project_id}/chapters")
+@app.get("/internal/v1/projects/{project_id}/chapters",
+         dependencies=[Depends(require_owner)])
 def list_chapters(project_id: str) -> list[dict]:
-    """章节列表（RLS：tenant_session 过滤，只返回本项目）。"""
+    """章节列表（RLS：tenant_session 过滤，只返回本项目 + 归属断言双保险）。"""
     with tenant_session(project_id) as db:
         rows = db.query(Chapter).order_by(Chapter.chapter_seq).all()
         return [
@@ -99,7 +112,8 @@ def list_chapters(project_id: str) -> list[dict]:
         ]
 
 
-@app.get("/internal/v1/projects/{project_id}/chapters/{chapter_id}")
+@app.get("/internal/v1/projects/{project_id}/chapters/{chapter_id}",
+         dependencies=[Depends(require_owner)])
 def get_chapter(project_id: str, chapter_id: str) -> dict:
     with tenant_session(project_id) as db:
         chapter = db.get(Chapter, uuid.UUID(chapter_id))
