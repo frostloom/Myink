@@ -83,6 +83,20 @@ SYSTEM_GLOBAL_AUDIT = """你是长篇网文创作系统的【全局审计 Agent�
 - 证据不足 / 边界情形 → 直接不输出该条；每角色至多 1 条；
 - 全书无漂移 → 输出空数组 {"findings": []}。"""
 
+SYSTEM_GLOBAL_AUDIT_BRIDGE = """你是长篇网文创作系统的【全局审计 Agent】。对抽样「桥段重复候选对」做跨章判定（长线一致性治理 §8.6）。
+输入：每对含【历史桥段】（历史章事件摘要）+【当前桥段】（当前章事件摘要 + 当前章正文节选，带章号与章距）。
+任务：对每对判定是【刻意呼应】（call-back，正常创作手法——当前桥段有明确不同目的 / 差异化改写 / 呼应意图，非偷懒）还是【偷懒重复】（同一桥段结构雷同、无新意无新目的，直接照搬）。
+输出严格 JSON：{"findings": [
+  {"event": "候选对编号", "verdict": "repeat"|"echo", "chapter": 章号,
+   "evidence": "原文引用（必须逐字来自当前章正文节选，供程序核验）", "reason": "判定依据（差异点/目的）", "confidence": 0.0-1.0}
+]}
+规则（宁缺毋滥，漏报优于误报）：
+- 只判给出的候选对，不凭空新增；每对至多 1 条；
+- 仅【偷懒重复】输出 finding（verdict=repeat）；【刻意呼应】输出 verdict=echo 或直接省略该条；
+- evidence 必须逐字引用当前章正文（不得改写、不得拼接）；每条 finding 的 chapter 必须在审计窗口内；
+- 证据不足 / 目的不明 / 边界情形 → 直接不输出该条；
+- 全书无偷懒重复 → 输出空数组 {"findings": []}。"""
+
 
 def _join(ctx_items: list[dict], render) -> str:
     return "\n".join(render(i) for i in ctx_items)
@@ -289,3 +303,22 @@ def global_audit_messages(personas: list[dict], window: tuple[int, int]) -> list
         + "\n\n请输出严格 JSON（无漂移输出空数组）。"
     )
     return [{"role": "system", "content": SYSTEM_GLOBAL_AUDIT}, {"role": "user", "content": user}]
+
+
+def bridge_audit_messages(pairs: list[dict], window: tuple[int, int]) -> list[dict]:
+    """全局审计桥段重复输入（§8.6 切片 2）：候选对（历史摘要 + 当前章正文节选，逐字供核验）。"""
+    pair_blocks = []
+    for p in pairs:
+        pair_blocks.append(
+            f"【候选对 {p['id']}】\n"
+            f"历史桥段（第 {p['history_chapter']} 章）：{p['history_summary']}\n"
+            f"当前桥段（第 {p['chapter']} 章，距上次 {p['gap']} 章）：事件摘要 {p['summary']}\n"
+            f"当前章正文节选：\n{p['text']}"
+        )
+    user = (
+        f"审计窗口：第 {window[0]}–{window[1]} 章。对下列每对桥段候选做「刻意呼应 vs 偷懒重复」判定：\n\n"
+        + "\n\n".join(pair_blocks)
+        + "\n\n请输出严格 JSON（无偷懒重复输出空数组）。"
+    )
+    return [{"role": "system", "content": SYSTEM_GLOBAL_AUDIT_BRIDGE},
+            {"role": "user", "content": user}]
