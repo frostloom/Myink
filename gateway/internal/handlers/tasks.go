@@ -205,6 +205,14 @@ func (h *TaskHandler) DeleteChapter(c *gin.Context) {
 	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/chapters/"+cid, nil)
 }
 
+// 全局审计（阶段 3 长线治理：手动触发抽样人设漂移 L2，转发 Python API）。
+// 同步 LLM 调用（一次判定），网关超时 30s；超时属正常，前端可提示重试（同 CorrectMemory）。
+// POST /api/v1/projects/:project_id/global-audit
+func (h *TaskHandler) GlobalAudit(c *gin.Context) {
+	pid := c.Param("project_id")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/global-audit", nil)
+}
+
 // forwardToPy 把请求体原样转发 Python API 并透传响应。
 func (h *TaskHandler) forwardToPy(c *gin.Context, path string, body []byte) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)

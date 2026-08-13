@@ -12,6 +12,8 @@ from aiink.models.memory import (
     CANDIDATE_STATUSES,
     FACT_CONFIRM_STATUSES,
     FORESHADOW_STATUSES,
+    GLOBAL_AUDIT_STATUSES,
+    GLOBAL_AUDIT_TRIGGERS,
     LESSON_TYPES,
     PLOT_THREAD_KINDS,
     PLOT_THREAD_STATUSES,
@@ -24,6 +26,7 @@ from aiink.models.memory import (
     Event,
     Fact,
     Foreshadow,
+    GlobalAuditReport,
     MemoryCandidate,
     PlotThread,
     Relation,
@@ -65,6 +68,7 @@ __all__ = [
     "MemoryCandidate",
     "EmbeddingRow",
     "WritingLesson",
+    "GlobalAuditReport",
     # chapter / outline
     "Chapter",
     "VolumeOutline",
@@ -86,4 +90,6 @@ __all__ = [
     "CANDIDATE_STATUSES",
     "WRITING_LESSON_STATUSES",
     "LESSON_TYPES",
+    "GLOBAL_AUDIT_STATUSES",
+    "GLOBAL_AUDIT_TRIGGERS",
 ]

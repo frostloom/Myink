@@ -29,9 +29,11 @@ from typing import Any
 
 from langgraph.graph import END, START, StateGraph
 
+from aiink.config import settings
 from aiink.db import tenant_session
 from aiink.memory import repository as repo
 from aiink.providers import make_chain
+from aiink.validation import global_audit as ga
 from aiink.workflow import nodes, prompts
 from aiink.workflow.state import BatchState, ChapterState
 
@@ -220,6 +222,26 @@ def node_reflexion(state: BatchState) -> BatchState:
         return {"reflexion": {"error": str(exc)}}
 
 
+def node_global_audit(state: BatchState) -> BatchState:
+    """批次收尾全局审计（§8.6 周期性触发）：窗口长度 >= K 时对抽样角色做人设漂移 L2。
+
+    非阻塞（镜像 node_reflexion）：below_threshold 短路零成本、不落报告；LLM/解析
+    失败仍写 status=failed 报告并推进 marker（不阻塞批次，防每批重审同一毒窗口）。
+    增强项失败不 batch_failed——审计是加分项，不是创作主线。
+    """
+    pid = state["project_id"]
+    try:
+        with tenant_session(pid) as db:
+            win = ga.window_for_batch(db, pid, K=settings.audit_interval)
+            if win is None:
+                return {"global_audit": {"triggered": False, "reason": "below_threshold"}}
+            return {"global_audit": ga.run_global_audit(
+                db, pid, win, source="batch", source_batch_task_id=state["batch_task_id"])}
+    except Exception as exc:
+        logger.warning("全局审计失败（不阻塞批次）: %s", exc)
+        return {"global_audit": {"error": str(exc)}}
+
+
 def node_batch_end(state: BatchState) -> BatchState:
     """批次收尾：汇总报告 + 更新任务状态（§6.8 批次成本展示）。"""
     pid = state["project_id"]
@@ -236,6 +258,9 @@ def node_batch_end(state: BatchState) -> BatchState:
     # reflexion 复盘指标（§8.9）：findings / recurrences / lessons，随批次汇总暴露
     if state.get("reflexion"):
         summary["reflexion"] = state["reflexion"]
+    # 全局审计指标（§8.6）：triggered/窗口/findings/status，随批次汇总暴露
+    if state.get("global_audit"):
+        summary["global_audit"] = state["global_audit"]
     with tenant_session(pid) as db:
         from aiink.models import AgentRun, Task
         # 每章 run 的 task_id = {batch_task_id}:ch{seq}，batch_plan 一次 run 用裸
@@ -260,6 +285,7 @@ def build_batch_graph(chapter_graph, checkpointer=None):
     g.add_node("bridge", lambda s: {"position": (s.get("position") or 0) + 1})
     g.add_node("reset_replan_batch", node_reset_replan_batch)
     g.add_node("reflexion", node_reflexion)
+    g.add_node("global_audit", node_global_audit)
     g.add_node("batch_end", node_batch_end)
 
     g.add_edge(START, "batch_plan")
@@ -278,6 +304,8 @@ def build_batch_graph(chapter_graph, checkpointer=None):
     # replan(batch) → 回 batch_plan 重规划剩余章（position 保留本章，不推进）
     g.add_edge("reset_replan_batch", "batch_plan")
     # 批次收尾复盘（§8.9）：正常收尾才提炼；失败/暂停批跳过（batch_failed 直连 batch_end）
-    g.add_edge("reflexion", "batch_end")
+    # 复盘后接全局审计（§8.6，每 K 章触发，below_threshold 短路零成本），再 batch_end
+    g.add_edge("reflexion", "global_audit")
+    g.add_edge("global_audit", "batch_end")
     g.add_edge("batch_end", END)
     return g.compile(checkpointer=checkpointer)

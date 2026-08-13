@@ -88,4 +88,5 @@ class BatchState(TypedDict, total=False):
     replan_batch: bool  # 本章 audit 判 replan(batch) → 回 batch_plan 重规划剩余章
     error: str | None
     reflexion: dict  # 复盘提炼指标（§8.9：findings/recurrences/lessons，随 batch_summary 暴露）
+    global_audit: dict  # 全局审计指标（§8.6：triggered/窗口/findings/status，随 batch_summary 暴露）
     batch_summary: dict  # batch_end 汇总（状态/成本/耗时）
