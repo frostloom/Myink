@@ -342,7 +342,7 @@
 
 ---
 
-## 14. GlobalAuditReport — 全局审计报告（§8.6 抽样 L2 产物，2026-08-12 落地）
+## 14. GlobalAuditReport — 全局审计报告（§8.6 抽样 L2 产物，2026-08-12 人设漂移 + 2026-08-13 桥段重复双维度落地）
 
 ```json
 {
@@ -355,15 +355,17 @@
   "status": "completed|failed",
   "sampled_characters": [ { "character_id": "uuid", "name": "林砚" } ],
   "findings": [ ],
-  "summary": { "sampled": 1, "findings": 0, "chapters": 10 },
+  "summary": { "sampled": 1, "findings": 1, "chapters": 10,
+               "bridge": { "pairs": 1, "findings": 1 } },
   "error": null
 }
 ```
 
 - **触发**：批次收尾 `global_audit` 节点每 K 章（`AUDIT_INTERVAL` 默认 10，窗口 = [上次审计后 +1, 当前最大章]，长度 ≥ K 才触发）或手动端点 `POST .../projects/{pid}/global-audit`（显式动作不做 K 门槛）；below_threshold 短路零成本、不落行；
 - **marker**：`audited_up_to_chapter` = window_end 作跨批进度标记（`last_audited_up_to` 读 max）——LLM/解析失败也落 `status=failed` 行并推进（非阻塞 + 有界，防每批重审同一毒窗口）；
-- **findings 复用 §8 Finding 形状**：`conflict_type=persona, severity=hint, scope=local, source=L2, evidence=[{chapter,quote}]`，前端审计视图与章节 finding 同构渲染；
-- **0 误报**：`normalize_and_verify_findings` 确定性守卫（evidence 引文必须是该章正文逐字子串 / chapter 在窗口 / character 在采样集 / drift_type=persona / 置信度 ≥0.6，丢弃其余），非信任 LLM；
+- **findings 复用 §8 Finding 形状**：一次审计可混排两个维度的 finding——`conflict_type=persona`（`persona:{角色}:{章}`，切片 1）/ `conflict_type=style`（`bridge:{历史事件id}:{章}` 与 L1 桥段同前缀，切片 2），均 `severity=hint, scope=local, source=L2, evidence=[{chapter,quote}]`，前端审计视图与章节 finding 同构渲染；
+- **双维度编排**：`run_global_audit` 单次调用跑人设漂移 + 桥段重复（共用窗口 / marker / 报告行）；`summary["bridge"]={"pairs","findings"}` 桥段维度跑了才有；维度失败 error 记 `summary["errors"]`（报告 status=completed 当任一维度成功或全维度中性，failed 当有维度失败且无维度成功；error 字段单失败透传原文 / 多失败 k=v 拼接）；
+- **0 误报**：共享 `_verify_findings` 确定性守卫（evidence 引文必须是该章正文逐字子串 / chapter 在窗口 / 实体在采样集 / kind 合法 / 置信度 ≥0.6，丢弃其余）——persona 经 `normalize_and_verify_findings`、bridge 经 `normalize_and_verify_bridge_findings` 包装，非信任 LLM；
 - **RLS**：租户业务表（带 project_id），`enable_row_level_security` 全表迭代自动覆盖（**不在** `_NO_RLS_TABLES`，仅 agent_runs/tasks 豁免）。
 
 ---
