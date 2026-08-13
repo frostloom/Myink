@@ -60,6 +60,8 @@ class Settings:
     max_tool_calls: int = 3  # 只读查证工具执行总数预算（§10：audit/write 工具循环封顶）
     batch_max_default: int = 5  # 批次上限默认（plan.md §6.11）
     batch_max_hard: int = 20  # 批次硬上限
+    # 长线治理全局审计（§8.6）：每 K 章一次跨章抽样 L2（batch_end 触发，窗口 < K 短路零成本）
+    audit_interval: int = field(default_factory=lambda: int(_env("AUDIT_INTERVAL", "10") or "10"))
 
     # 阶段 2：Redis 队列 + worker（§阶段2；§5.3 Redis 只管可重建数据，终态落 DB）
     redis_url: str = field(default_factory=lambda: _env("REDIS_URL", "redis://localhost:6380/0") or "redis://localhost:6380/0")

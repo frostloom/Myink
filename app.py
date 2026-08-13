@@ -339,7 +339,8 @@ _ROUTE_COLOR = {"rewrite": "#d97706", "replan": "#dc2626", "pass": "#16a34a", "r
 _NODE_CN = {"batch_plan": "批次规划", "load_state": "加载状态", "recall": "召回",
             "plan_chapter": "章节规划", "write": "写作", "extract": "记忆抽取",
             "validate": "L1校验", "audit": "审核中枢", "revise": "修订",
-            "persist": "落库", "needs_review": "待人工", "reflexion": "复盘"}
+            "persist": "落库", "needs_review": "待人工", "reflexion": "复盘",
+            "global_audit": "全局审计"}
 # 确定性节点（无 LLM 调用，cost=0，record_plain 记录）：卡片显示统计而非成本
 # （reflexion 调 LLM 有真实成本，不列为确定性——record_plain 短路路径 cost=0 显示 ¥0 即可）
 _DETERMINISTIC = {"load_state", "recall", "validate", "persist"}

@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from aiink.api.routes_candidates import router as candidates_router
 from aiink.api.routes_chapters import router as chapters_router
+from aiink.api.routes_global_audit import router as global_audit_router
 from aiink.api.routes_lessons import router as lessons_router
 from aiink.api.routes_tasks import router as tasks_router
 from aiink.config import settings
@@ -36,6 +37,7 @@ app.include_router(tasks_router)
 app.include_router(candidates_router)
 app.include_router(chapters_router)
 app.include_router(lessons_router)
+app.include_router(global_audit_router)
 
 
 @app.get("/healthz")

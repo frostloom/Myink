@@ -284,3 +284,49 @@ class WritingLesson(Base, UUIDPkMixin, TimestampMixin):
     status: Mapped[str] = mapped_column(String(16), default="proposed", nullable=False)
     recurrence_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False, comment="复发次数（跨演化累计）")
     last_recurrence_at: Mapped[int | None] = mapped_column(Integer, comment="最近复发章节号")
+
+
+# 全局审计状态枚举（阶段 3 长线治理 L2：completed=成功产出报告 / failed=LLM 失败但已推进 marker）
+GLOBAL_AUDIT_STATUSES = ("completed", "failed")
+GLOBAL_AUDIT_TRIGGERS = ("batch", "manual")
+
+
+class GlobalAuditReport(Base, UUIDPkMixin, TimestampMixin):
+    """全局审计报告（长线一致性治理 §8.6，阶段 3 L2 抽样审计切片）。
+
+    每 K 章触发一次跨章抽样 L2 审计（人设漂移等），产出可查询的报告 + 证据 findings。
+    audited_up_to_chapter 是审计进度 marker（下次窗口从其后开始）；LLM 失败也写
+    status=failed 行并推进 marker——非阻塞 + 有界，防每批重审同一毒窗口（§8.6 落地注记）。
+    findings 存 Finding 形状 dict（conflict_type/severity/scope/source/evidence），
+    前端审计视图与章节 finding 同构渲染。
+    """
+
+    __tablename__ = "global_audit_reports"
+    __table_args__ = (
+        CheckConstraint(f"status IN {GLOBAL_AUDIT_STATUSES}", name="status_enum"),
+        CheckConstraint(f"trigger IN {GLOBAL_AUDIT_TRIGGERS}", name="trigger_enum"),
+        # 审计进度 marker 查询热键：max(audited_up_to_chapter) WHERE project_id（RLS 恒带前缀）
+        Index("ix_global_audit_reports_project_up_to", "project_id", "audited_up_to_chapter"),
+    )
+
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    window_start: Mapped[int] = mapped_column(Integer, nullable=False, comment="审计窗口起点章号")
+    window_end: Mapped[int] = mapped_column(Integer, nullable=False, comment="审计窗口终点章号")
+    audited_up_to_chapter: Mapped[int] = mapped_column(
+        Integer, nullable=False, comment="审计进度 marker（= window_end，下次窗口从其 +1 开始）"
+    )
+    trigger: Mapped[str] = mapped_column(String(16), default="batch", nullable=False, comment="batch|manual")
+    source_batch_task_id: Mapped[str | None] = mapped_column(String(128), comment="触发批次 task_id（manual 为 NULL）")
+    status: Mapped[str] = mapped_column(String(16), default="completed", nullable=False)
+    sampled_characters: Mapped[list] = mapped_column(
+        JSON, default=list, nullable=False, comment="[{character_id, name}] 抽样角色"
+    )
+    findings: Mapped[list] = mapped_column(
+        JSON, default=list, nullable=False, comment="Finding 形状 dict 列表（persona/hint/local/L2）"
+    )
+    summary: Mapped[dict] = mapped_column(
+        JSON, default=dict, nullable=False, comment="{sampled, findings, chapters} 计数"
+    )
+    error: Mapped[str | None] = mapped_column(Text, comment="失败原因（status=failed 时）")

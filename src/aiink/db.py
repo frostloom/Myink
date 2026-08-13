@@ -212,3 +212,18 @@ def ensure_memory_candidate_kinds() -> None:
             f"ALTER TABLE memory_candidates ADD CONSTRAINT ck_memory_candidates_kind_enum "
             f"CHECK (kind IN {_KINDS})"
         ))
+
+
+def ensure_global_audit_reports() -> None:
+    """幂等建表 + RLS（阶段 3 长线治理：global_audit_reports）。
+
+    create_all 只建不存在的表（老库跑过 init 的缺新表），此处单表显式补齐，活 demo 库
+    不用破坏性重初始化；索引随 create_all 建（新表）。RLS 由 enable_row_level_security
+    全表迭代覆盖（带 project_id 即强制隔离），幂等可重跑。
+    """
+    from aiink.models import GlobalAuditReport
+    from aiink.models.base import Base
+
+    with _admin_engine.begin() as conn:
+        Base.metadata.create_all(conn, tables=[GlobalAuditReport.__table__])
+    enable_row_level_security()

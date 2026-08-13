@@ -342,6 +342,32 @@
 
 ---
 
+## 14. GlobalAuditReport — 全局审计报告（§8.6 抽样 L2 产物，2026-08-12 落地）
+
+```json
+{
+  "project_id": "uuid",
+  "window_start": 1,
+  "window_end": 10,
+  "audited_up_to_chapter": 10,
+  "trigger": "batch|manual",
+  "source_batch_task_id": "uuid|null",
+  "status": "completed|failed",
+  "sampled_characters": [ { "character_id": "uuid", "name": "林砚" } ],
+  "findings": [ ],
+  "summary": { "sampled": 1, "findings": 0, "chapters": 10 },
+  "error": null
+}
+```
+
+- **触发**：批次收尾 `global_audit` 节点每 K 章（`AUDIT_INTERVAL` 默认 10，窗口 = [上次审计后 +1, 当前最大章]，长度 ≥ K 才触发）或手动端点 `POST .../projects/{pid}/global-audit`（显式动作不做 K 门槛）；below_threshold 短路零成本、不落行；
+- **marker**：`audited_up_to_chapter` = window_end 作跨批进度标记（`last_audited_up_to` 读 max）——LLM/解析失败也落 `status=failed` 行并推进（非阻塞 + 有界，防每批重审同一毒窗口）；
+- **findings 复用 §8 Finding 形状**：`conflict_type=persona, severity=hint, scope=local, source=L2, evidence=[{chapter,quote}]`，前端审计视图与章节 finding 同构渲染；
+- **0 误报**：`normalize_and_verify_findings` 确定性守卫（evidence 引文必须是该章正文逐字子串 / chapter 在窗口 / character 在采样集 / drift_type=persona / 置信度 ≥0.6，丢弃其余），非信任 LLM；
+- **RLS**：租户业务表（带 project_id），`enable_row_level_security` 全表迭代自动覆盖（**不在** `_NO_RLS_TABLES`，仅 agent_runs/tasks 豁免）。
+
+---
+
 ## 与实现的关系
 
 - 阶段 1 用 Pydantic `BaseModel` 直接映射上表（`Field` 约束与 Schema 一致），LangGraph 节点间传结构化对象（plan.md §6.4 `ChapterState` TypedDict）；

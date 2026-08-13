@@ -444,11 +444,13 @@ func TestChapterEditCorrectDeleteForwards(t *testing.T) {
 		{"编辑正文", http.MethodPut, "/api/v1/projects/p1/chapters/ch-1/content", `{"content":"改标点后的正文。"}`},
 		{"校正记忆", http.MethodPost, "/api/v1/projects/p1/chapters/ch-1/correct-memory", ``},
 		{"级联删除", http.MethodDelete, "/api/v1/projects/p1/chapters/ch-1", ``},
+		{"全局审计", http.MethodPost, "/api/v1/projects/p1/global-audit", ``},
 	}
 	want := []string{
 		"/internal/v1/projects/p1/chapters/ch-1/content",
 		"/internal/v1/projects/p1/chapters/ch-1/correct-memory",
 		"/internal/v1/projects/p1/chapters/ch-1",
+		"/internal/v1/projects/p1/global-audit",
 	}
 	for i, c := range cases {
 		var rd io.Reader

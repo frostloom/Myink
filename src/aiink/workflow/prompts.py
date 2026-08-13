@@ -70,6 +70,19 @@ SYSTEM_REFLEXION = """你是长篇网文创作系统的【复盘 Agent】。把�
 - 本书已有经验已覆盖全部发现 → 输出空数组 {"lessons": []}；
 - 经验必须具体可执行，拒绝空泛的"注意一致性"。"""
 
+SYSTEM_GLOBAL_AUDIT = """你是长篇网文创作系统的【全局审计 Agent】。对抽样角色做跨章人设漂移判定（长线一致性治理 §8.6）。
+输入：每个角色的【性格基线】（characters.personality）+ 该角色近 N 章言行摘录（每条带章号）。
+任务：比对言行与基线，判定是否存在人设漂移——谨慎→鲁莽、腔调改变、动机随剧情临时变，且正文中无变故铺垫/成长弧线支撑。
+输出严格 JSON：{"findings": [
+  {"character": "角色名", "drift_type": "persona", "chapter": 章号,
+   "evidence": "原文引用（必须逐字来自摘录，供程序核验）", "reason": "判定理由", "confidence": 0.0-1.0}
+]}
+规则（宁缺毋滥，漏报优于误报）：
+- 只判「确有漂移且无变故铺垫/成长弧线」的言行；有变故铺垫、角色成长弧线支撑的转变 → 不判漂移；
+- evidence 必须逐字引用正文片段（不得改写、不得拼接）；每条 finding 的 chapter 必须在审计窗口内；
+- 证据不足 / 边界情形 → 直接不输出该条；每角色至多 1 条；
+- 全书无漂移 → 输出空数组 {"findings": []}。"""
+
 
 def _join(ctx_items: list[dict], render) -> str:
     return "\n".join(render(i) for i in ctx_items)
@@ -258,3 +271,21 @@ def reflexion_messages(findings: list[dict], existing_lessons: list[dict],
         + "\n\n请提炼/演化为本书写作经验（严格 JSON）。"
     )
     return [{"role": "system", "content": SYSTEM_REFLEXION}, {"role": "user", "content": user}]
+
+
+def global_audit_messages(personas: list[dict], window: tuple[int, int]) -> list[dict]:
+    """全局审计人设漂移输入（§8.6）：抽样角色基线 + 窗口内言行摘录（逐字引用供核验）。"""
+    char_blocks = []
+    for p in personas:
+        passages = "\n".join(
+            f"- 第 {ps['chapter']} 章：{ps['quote']}" for ps in p["passages"]
+        ) or "（窗口内未提及该角色——无言行证据，不应输出该角色的 finding）"
+        char_blocks.append(
+            f"【角色 {p['name']}】\n性格基线：{p['baseline'] or '（未设定）'}\n近 N 章言行摘录：\n{passages}"
+        )
+    user = (
+        f"审计窗口：第 {window[0]}–{window[1]} 章。对下列每个抽样角色做跨章人设漂移判定：\n\n"
+        + "\n\n".join(char_blocks)
+        + "\n\n请输出严格 JSON（无漂移输出空数组）。"
+    )
+    return [{"role": "system", "content": SYSTEM_GLOBAL_AUDIT}, {"role": "user", "content": user}]

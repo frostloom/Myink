@@ -40,7 +40,8 @@ flowchart TD
     BRIDGE -- "单章失败(重试+降级后)" --> FAIL[批次中断<br/>可从失败章续跑]
     FAIL -- "续跑" --> LS
     BRIDGE -- "批次数到 N" --> RF[reflexion<br/>复盘沉淀：整批 audit findings<br/>→ 复发率记账 + LLM 总结演化 → 落库]
-    RF -- "正常收尾才提炼" --> BE[batch_end<br/>每K章全局审计 + 批次汇总]
+    RF -- "正常收尾才提炼" --> GA[global_audit<br/>全局审计：每K章抽样<br/>人设漂移 L2，below_threshold 短路]
+    GA -- "非阻塞" --> BE[batch_end<br/>批次汇总 + global_audit 指标]
     BE --> END([END])
 ```
 
@@ -62,7 +63,8 @@ flowchart TD
 | `persist` | 章 | 确定性（编排层） | 确认候选 / 自动放行候选 | 事件/事实/状态/关系/伏笔落库（追加式）；`update_plot_threads` 推进大纲。**relation_change 落库先关闭同 (source,target) 有序对全部活跃旧行（`valid_to`=本章序）并透传候选 `valid_to`（临时盟约）**——保证「每对至多一条活跃」（2026-08-12）。**rewrite 分支（2026-08-12，§7.3）**：显式重写（`rewrite=true`）时自动放行分支**先失效该章旧记忆再写新**——`invalidate_chapter_memory` 关 facts/states/relations 时间窗（硬事实同时 expired）、删 events/开放伏笔/embeddings，同事务原子，无重复行；`_persist_candidates` 保持纯追加、`confirm_candidate` 永不失效 | `save_chapter` / `save_*` / `update_plot_threads` / `invalidate_chapter_memory` |
 | `状态桥` | 章间 | 确定性 | 上章 persist 结果 | 上章沉淀 → 下一章 recall 输入（连续推进） | — |
 | `reflexion` | 批次 | 确定性编排 + 复盘 Agent（LLM，§8.9） | 整批各章 audit findings（agent_runs.detail）+ 已有 active 经验 | 复发率记账（确定性）→ LLM 总结演化 → `writing_lessons` 落库（同 category update 演化 / 无则 create 分级 proposed/active）；短路（无发现 / 已复盘 / 全被覆盖）；失败不阻塞批次 | `record_run`（编排层写库，Agent 不直写） |
-| `batch_end` | 批次 | 确定性 | 批次全部章节 + reflexion 指标 | 每 K 章全局审计（§8.6）+ 批次汇总报告（含 reflexion 复盘指标） | `commit_batch` |
+| `global_audit` | 批次 | 确定性编排 + 全局审计 Agent（LLM，§8.6） | 窗口内章节正文 + `characters.personality` 基线 | 每 K 章（`AUDIT_INTERVAL`）触发：确定性名提及抽样（cap 3，零提及短路落空报告）→ 1 次 LLM 判定（json_mode）→ `normalize_and_verify_findings` 确定性证据核验（引文逐字子串 / 章在窗口 / 角色在采样集 / 置信度 ≥0.6，丢弃其余）→ `global_audit_reports` 落库（findings 复用 Finding 形状，`persona/hint/local/L2`）；窗口 < K 短路（below_threshold 零成本）；LLM/解析失败写 status=failed 报告并推进 marker（非阻塞 + 有界） | `record_run`（编排层写库，Agent 不直写） |
+| `batch_end` | 批次 | 确定性 | 批次全部章节 + reflexion / global_audit 指标 | 批次汇总报告（状态/成本/耗时 + reflexion 复盘指标 + global_audit 审计指标） | `commit_batch` |
 
 ## 3. 条件路由逻辑
 
@@ -128,13 +130,13 @@ route_after_chapter(batch):
 | 抽取坏数据（Pydantic 校验失败） | 数据层 | **拒绝但不崩**：结构化 JSON + Pydantic 强校验，坏候选标记无效不落库 |
 | 并发写 | 数据层 | 项目级"记忆沉淀锁"（Redis SETNX）+ 乐观版本号；顺序固定：落章节 → 沉淀记忆 → 更新状态（§7.6） |
 | 半写 / 重放 | 数据层 | 单章一个事务；persist 幂等（`conflict_key` / 唯一约束），重放不重复落库 |
-| 长线问题（战力通胀/人设漂移等） | 批次收尾 | 不阻塞本章——batch_end 每 K 章周期审计输出全局审计报告（§8.6） |
+| 长线问题（战力通胀/人设漂移等） | 批次收尾 | 不阻塞本章——global_audit 节点每 K 章周期审计输出全局审计报告（§8.6），LLM/解析失败只记 failed 报告并推进 marker（非阻塞 + 有界，防每批重审毒窗口） |
 
 ## 6. 与 5 类 Agent 的映射
 
 ```text
-确定性节点（非 LLM）：load_state / recall / validate（L1 规则层）/ persist / 状态桥 / reflexion（确定性编排部分）/ batch_end
-LLM Agent：batch_plan + plan_chapter(Planner) / write(Writer) / extract(Memory) / audit(审核中枢 Audit) / reflexion 复盘 Agent（提炼总结演化）
+确定性节点（非 LLM）：load_state / recall / validate（L1 规则层）/ persist / 状态桥 / reflexion（确定性编排部分）/ global_audit（确定性编排部分）/ batch_end
+LLM Agent：batch_plan + plan_chapter(Planner) / write(Writer) / extract(Memory) / audit(审核中枢 Audit) / reflexion 复盘 Agent（提炼总结演化）/ 全局审计 Agent（人设漂移抽样判定，§8.6）
 角色（非独立 agent）：revise —— 复用 Writer 模型，与 Audit 分离保证审核报告纯净可审计
 ```
 
