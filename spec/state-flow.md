@@ -40,7 +40,7 @@ flowchart TD
     BRIDGE -- "单章失败(重试+降级后)" --> FAIL[批次中断<br/>可从失败章续跑]
     FAIL -- "续跑" --> LS
     BRIDGE -- "批次数到 N" --> RF[reflexion<br/>复盘沉淀：整批 audit findings<br/>→ 复发率记账 + LLM 总结演化 → 落库]
-    RF -- "正常收尾才提炼" --> GA[global_audit<br/>全局审计：每K章抽样<br/>人设漂移 L2，below_threshold 短路]
+    RF -- "正常收尾才提炼" --> GA[global_audit<br/>全局审计：每K章抽样<br/>人设漂移 + 桥段重复双维度 L2，below_threshold 短路]
     GA -- "非阻塞" --> BE[batch_end<br/>批次汇总 + global_audit 指标]
     BE --> END([END])
 ```
@@ -130,13 +130,13 @@ route_after_chapter(batch):
 | 抽取坏数据（Pydantic 校验失败） | 数据层 | **拒绝但不崩**：结构化 JSON + Pydantic 强校验，坏候选标记无效不落库 |
 | 并发写 | 数据层 | 项目级"记忆沉淀锁"（Redis SETNX）+ 乐观版本号；顺序固定：落章节 → 沉淀记忆 → 更新状态（§7.6） |
 | 半写 / 重放 | 数据层 | 单章一个事务；persist 幂等（`conflict_key` / 唯一约束），重放不重复落库 |
-| 长线问题（战力通胀/人设漂移等） | 批次收尾 | 不阻塞本章——global_audit 节点每 K 章周期审计输出全局审计报告（§8.6），LLM/解析失败只记 failed 报告并推进 marker（非阻塞 + 有界，防每批重审毒窗口） |
+| 长线问题（战力通胀/人设漂移/桥段重复等） | 批次收尾 | 不阻塞本章——global_audit 节点每 K 章周期审计输出全局审计报告（§8.6，人设漂移 + 桥段重复双维度，每维度各 1 次 LLM 判定、单维度失败不阻塞另一维度），LLM/解析失败只记 failed 报告并推进 marker（非阻塞 + 有界，防每批重审毒窗口） |
 
 ## 6. 与 5 类 Agent 的映射
 
 ```text
 确定性节点（非 LLM）：load_state / recall / validate（L1 规则层）/ persist / 状态桥 / reflexion（确定性编排部分）/ global_audit（确定性编排部分）/ batch_end
-LLM Agent：batch_plan + plan_chapter(Planner) / write(Writer) / extract(Memory) / audit(审核中枢 Audit) / reflexion 复盘 Agent（提炼总结演化）/ 全局审计 Agent（人设漂移抽样判定，§8.6）
+LLM Agent：batch_plan + plan_chapter(Planner) / write(Writer) / extract(Memory) / audit(审核中枢 Audit) / reflexion 复盘 Agent（提炼总结演化）/ 全局审计 Agent（人设漂移 + 桥段重复抽样判定，§8.6）
 角色（非独立 agent）：revise —— 复用 Writer 模型，与 Audit 分离保证审核报告纯净可审计
 ```
 
