@@ -1,19 +1,27 @@
-"""全局审计（阶段 3 长线治理 L2 · 切片 1 人设漂移抽样 + 切片 2 桥段重复「呼应 vs 重复」）。
+"""全局审计（阶段 3 长线治理 L2 · 切片 1 人设漂移 + 切片 2 桥段重复「呼应 vs 重复」+
+切片 3 文风漂移「抽样比对」）。
 
 plan.md §8.6「周期性全局审计」的抽样 L2 骨架：每 K 章对窗口内候选做跨章长线判定。
-两个维度共用同一窗口与同一报告行（一次 marker 推进，防 per-kind 标记错位）：
+三个维度共用同一窗口与同一报告行（一次 marker 推进，防 per-kind 标记错位）：
   - 维度 A 人设漂移：抽样角色性格基线 vs 窗口言行摘录（切片 1）；
-  - 维度 B 桥段重复：窗口事件 vs 历史事件向量近邻 → LLM 判「刻意呼应 vs 偷懒重复」（切片 2）。
+  - 维度 B 桥段重复：窗口事件 vs 历史事件向量近邻 → LLM 判「刻意呼应 vs 偷懒重复」（切片 2）；
+  - 维度 C 文风漂移：窗口章节摘录 vs 窗口前已确认章节（本书既定风格）→ LLM 判「drift vs ok」（切片 3）。
 确定性编排（窗口 / 抽样 / 组装 / 核验 / 落库）+ 每维度一次 LLM 判定（json_mode，空数组 = 无发现）。
 
 0 误报的兜底是 _verify_findings 的确定性证据核验（evidence 引文必须是该章正文逐字
 子串、chapter 在窗口内、实体在采样集、kind 合法、置信度 ≥ 阈值），不是信任 LLM——
 LLM 过度标记会被守卫拦下，负例 0 误报由此保证（样例 12/36 阳性阴性、样例 32/37
-桥段呼应对照）。
+桥段呼应、样例 38/39 文风漂移对照）。
 
 采样口径：persona 只审窗口内有名字/别名提及的角色（cap 3），零提及短路空报告；
 bridge 只审窗口内事件命中历史向量近邻且未被呼应词表豁免的候选对（cap 3），零候选
-短路——不给 LLM 喂无证据候选，防其从任意正文摘句凑数过子串守卫（宁缺毋滥，§8.8）。
+短路；style 以「窗口前已确认章节」为基线（even-spacing cap 4，每章摘录前 800 字），
+基线空（首个窗口 [1, K]）或窗口无章 → 中性短路——不给 LLM 喂无证据候选，防其从任意
+正文摘句凑数过子串守卫（宁缺毋滥，§8.8）。
+
+文风漂移边界（锚定作者自身风格、相对漂移，§7.12）：基线随审计推进滑动且自参照，
+测不出「早期就系统性走偏」的慢速累积漂移（基线已含偏）；首个窗口无锚点直接跳过，
+风格审计从第二次起生效。不宣称完整落地 §7.12（句长分布/档案参考样本摘录仍属后续）。
 
 数据流边界 §6.2：Agent 不直写——LLM 只产出候选 findings，落库走编排层（record_report）。
 维度失败（LLM error / 解析失败）不阻塞另一维度：失败维度 error 记入 summary["errors"]；
@@ -30,6 +38,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from aiink.memory.embedder import get_embedder
+from aiink.memory.repository import get_settings
 from aiink.memory.vector_store import PgvectorStore
 from aiink.models import Chapter, Character, Event, GlobalAuditReport
 from aiink.providers import make_chain
@@ -50,6 +59,9 @@ MIN_CONFIDENCE = 0.6  # 宁缺毋滥：LLM 置信度低于此丢弃（L2 软冲�
 MAX_BRIDGE_PAIRS = 3  # 每轮审计桥段候选对上限（成本有界：另一维度的 1 次 LLM 调用）
 MAX_BRIDGE_SCAN_EVENTS = 8  # 窗口事件扫描池上限（先按 confidence 降序预筛）
 MAX_BRIDGE_CHAPTER_CHARS = 3000  # 当前章正文节选上限（供 LLM 逐字引用；核验仍用全章）
+
+MAX_STYLE_CHAPTERS = 4  # 文风漂移基线/窗口抽样章数上限（成本有界：另一维度的 1 次 LLM 调用）
+MAX_STYLE_CHAPTER_CHARS = 800  # 每章摘录正文上限（句长/对话节奏需跨段；核验仍用全章）
 
 
 def last_audited_up_to(db: Session, project_id) -> int:
@@ -356,21 +368,103 @@ def normalize_and_verify_bridge_findings(db: Session, project_id, raw, pairs: li
                             kind_value="repeat", resolve=resolve, emit=emit)
 
 
+def _even_spaced_indices(n: int, cap: int) -> list[int]:
+    """均匀取 0..n-1 中 cap 个索引（含首尾）：n≤cap 全取，cap≤1 取 [0]（防除零）。
+
+    银行家舍入 + set 去重会让 n>cap 时偶发少取 1-2 个——采样偏小无害（宁缺毋滥）。
+    """
+    if n <= cap:
+        return list(range(n))
+    if cap <= 1:
+        return [0]
+    return sorted({round(i * (n - 1) / (cap - 1)) for i in range(cap)})
+
+
+def _sample_chapters(db: Session, project_id, *, seq_lo: int, seq_hi: int,
+                     cap: int) -> list[dict]:
+    """按章号升序取 [seq_lo, seq_hi] 内正文非空章节，even-spacing cap，摘录前 800 字。
+
+    过滤 content 非空（planning 状态章 content 可能为 NULL，空摘录喂给 LLM 只会诱发
+    幻觉引用；守卫会拦但无谓烧 token）。返回 [{chapter, text}]。
+    """
+    rows = (db.query(Chapter)
+            .filter(Chapter.project_id == project_id,
+                    Chapter.chapter_seq >= seq_lo,
+                    Chapter.chapter_seq <= seq_hi)
+            .order_by(Chapter.chapter_seq).all())
+    chapters = [c for c in rows if c.content]
+    return [{"chapter": chapters[i].chapter_seq,
+             "text": chapters[i].content[:MAX_STYLE_CHAPTER_CHARS]}
+            for i in _even_spaced_indices(len(chapters), cap)]
+
+
+def sample_style_baseline(db: Session, project_id, window: tuple[int, int],
+                          *, cap: int = MAX_STYLE_CHAPTERS) -> list[dict]:
+    """文风漂移基线抽样（切片 3）：窗口之前已确认章节 = 本书既定风格锚点。
+
+    基线为空（首个窗口 [1, K] 等）→ 返回 [] → 维度中性短路：无锚点无法定义漂移
+    （已知边界，见模块 docstring）。
+    """
+    return _sample_chapters(db, project_id, seq_lo=1, seq_hi=window[0] - 1, cap=cap)
+
+
+def sample_style_chapters(db: Session, project_id, window: tuple[int, int],
+                          *, cap: int = MAX_STYLE_CHAPTERS) -> list[dict]:
+    """文风漂移窗口抽样（切片 3）：窗口内章节摘录（待判定）。窗口无章 → [] → 中性短路。"""
+    return _sample_chapters(db, project_id, seq_lo=window[0], seq_hi=window[1], cap=cap)
+
+
+def normalize_and_verify_style_findings(db: Session, project_id, raw, sampled: list[dict],
+                                        window: tuple[int, int]) -> list[dict]:
+    """确定性核验守卫（文风漂移维度，mirror persona/bridge 守卫；0 误报不依赖 LLM）。
+
+    逐条丢弃：非 dict / 字段缺失 / verdict != drift / chapter 不在窗口采样集 / evidence
+    引文不是该章正文逐字子串 / 置信度 < MIN_CONFIDENCE。强制 severity=hint scope=local
+    source=L2 conflict_type=style（与 L1 文风口径一致）；("style", chapter) 去重保最高
+    置信度——去重键必须二元组且 [1]=chapter（_verify_findings 排序依赖，一元组会崩）。
+    返回 Finding 形状 dict 列表。
+    """
+    by_chapter = {c["chapter"]: c for c in sampled}
+
+    def resolve(chapter):
+        return by_chapter.get(chapter)
+
+    def emit(ch, chapter, quote, confidence, reason):
+        return ("style", chapter), {
+            "conflict_key": f"style_drift:{chapter}",
+            "conflict_type": "style",
+            "severity": "hint",  # L2 软冲突一律 hint：不阻塞、不耗修订预算（§8.6）
+            "scope": "local",
+            "source": "L2",
+            "evidence": [{"chapter": chapter, "quote": quote}],
+            "confidence": confidence,
+            "suggestion": f"第 {chapter} 章文风与本书既定文风系统性漂移（{reason}）；建议贴合基线改写（§8.6）",
+        }
+
+    return _verify_findings(db, project_id, raw, window,
+                            entity_field="chapter", kind_field="verdict",
+                            kind_value="drift", resolve=resolve, emit=emit)
+
+
 def record_report(db: Session, *, project_id, window: tuple[int, int], findings: list[dict],
                   sampled: list[dict], status: str, error: str | None, source: str,
                   source_batch_task_id: str | None = None,
                   bridge_pairs: int = 0, bridge_findings: int = 0,
+                  style_sampled: int = 0, style_findings: int = 0,
                   kind_errors: dict[str, str] | None = None) -> dict:
     """审计报告落库（编排层写库，§6.2）并返回报告 dict。audited_up_to = window_end 推进 marker。
 
     sampled_characters 列存抽样角色（persona 维度）；summary 追加桥段维度计数（bridge 维度
-    跑了才有）与维度失败明细（kind_errors）。error 字段单失败透传原文 / 多失败 k=v 拼接。
+    跑了才有）、文风维度计数（style_sampled 非 0 才有，键用 sampled 避免与顶层 chapters
+    撞名）与维度失败明细（kind_errors）。error 字段单失败透传原文 / 多失败 k=v 拼接。
     """
     window_start, window_end = window
     summary: dict = {"sampled": len(sampled), "findings": len(findings),
                      "chapters": window_end - window_start + 1}
     if bridge_pairs:
         summary["bridge"] = {"pairs": bridge_pairs, "findings": bridge_findings}
+    if style_sampled:
+        summary["style"] = {"sampled": style_sampled, "findings": style_findings}
     if kind_errors:
         summary["errors"] = dict(kind_errors)
     db.add(GlobalAuditReport(
@@ -419,12 +513,15 @@ def _run_kind_llm(db: Session, project_id, task_id: str | None, window: tuple[in
 
 def run_global_audit(db: Session, project_id, window: tuple[int, int], *,
                      source: str = "manual", source_batch_task_id: str | None = None) -> dict:
-    """全局审计编排入口：窗口内抽样跑【人设漂移】+【桥段重复】两个 L2 维度（§8.6）。
+    """全局审计编排入口：窗口内抽样跑【人设漂移】+【桥段重复】+【文风漂移】三个 L2 维度（§8.6）。
 
-    两维度共用同一窗口与同一报告行（一次 marker 推进）。维度"中性"= 无候选（短路零成本）；
+    三维度共用同一窗口与同一报告行（一次 marker 推进）。维度"中性"= 无候选（短路零成本）；
     "成功"= 有候选且 LLM+解析通过；"失败"= 有候选但 LLM/解析挂。status = completed 当任一
     维度成功 或 全维度中性（空报告）；failed 当有维度失败且无维度成功；部分成功 → completed，
     失败维度 error 记入 summary["errors"]——非阻塞 + 有界，marker 照常推进（防每批重审毒窗口）。
+    文风维度：基线 = 窗口前已确认章节（首个窗口 [1, K] 基线空 → 中性跳过，风格审计从第二次
+    起生效）；注意窗口前有章时 style 会触发（如 metric 测试的第二个窗口），在该类窗口断言
+    LLM 调用次数需计入 style。
     函数级懒导入 workflow.nodes/prompts（validation 被 workflow.nodes 模块级引用，模块级
     import 会成环；懒导入破环，mirror reflexion 的运行记录模式）。
     """
@@ -463,7 +560,28 @@ def run_global_audit(db: Session, project_id, window: tuple[int, int], *,
             bridge_findings = normalize_and_verify_bridge_findings(db, pid, raw, pairs, window)
             findings += bridge_findings
 
-    any_succeeded = (personas and "persona" not in errors) or (pairs and "bridge" not in errors)
+    # 维度 C：文风漂移「抽样比对」（切片 3，锚定窗口前已确认章节为基线）
+    style_sampled = 0
+    style_findings: list[dict] = []
+    baseline = sample_style_baseline(db, pid, window)
+    sampled_style = sample_style_chapters(db, pid, window) if baseline else []
+    if baseline and sampled_style:
+        style_sampled = len(sampled_style)
+        settings_row = get_settings(db, uuid.UUID(pid))
+        style_profile = (settings_row.style_profile if settings_row else {}) or {}
+        messages = prompts.style_audit_messages(baseline, sampled_style, style_profile, window)
+        raw, err = _run_kind_llm(db, pid, source_batch_task_id, window, messages,
+                                 detail={"window": [window_start, window_end], "kind": "style",
+                                         "sampled": [c["chapter"] for c in sampled_style]})
+        if err:
+            errors["style"] = err
+        else:
+            style_findings = normalize_and_verify_style_findings(db, pid, raw, sampled_style, window)
+            findings += style_findings
+
+    any_succeeded = ((personas and "persona" not in errors)
+                     or (pairs and "bridge" not in errors)
+                     or (style_sampled and "style" not in errors))
     status = "completed" if (any_succeeded or not errors) else "failed"
     if errors:
         logger.warning("全局审计维度失败（不阻塞，marker 已推进）: %s", errors)
@@ -471,4 +589,5 @@ def run_global_audit(db: Session, project_id, window: tuple[int, int], *,
                          sampled=personas, status=status, error=_join_errors(errors),
                          source=source, source_batch_task_id=source_batch_task_id,
                          bridge_pairs=len(pairs), bridge_findings=len(bridge_findings),
+                         style_sampled=style_sampled, style_findings=len(style_findings),
                          kind_errors=errors)

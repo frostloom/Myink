@@ -101,6 +101,26 @@ def get_relations(session: Session, project_id: uuid.UUID, entity_ids: list[uuid
     return list(session.execute(q).scalars())
 
 
+def get_relation_current_type(session: Session, project_id: uuid.UUID,
+                              source_id: uuid.UUID, target_id: uuid.UUID) -> str | None:
+    """有序对当前关系类型（§7.8 当前关系 = 最新 valid_to IS NULL）。
+
+    L2 正文-台账语义比对（§8.6）的台账侧取值：0 或 >1 条活跃行（无记录 /
+    存量重复/矛盾）→ None，歧义交 L1 relation_ledger_check 兜底，不在此吞掉。
+    """
+    rows = session.execute(
+        select(Relation).where(
+            Relation.project_id == project_id,
+            Relation.source_id == source_id,
+            Relation.target_id == target_id,
+            Relation.valid_to.is_(None),
+        )
+    ).scalars().all()
+    if len(rows) != 1:
+        return None
+    return rows[0].relation_type
+
+
 def get_open_foreshadows(session: Session, project_id: uuid.UUID) -> list[Foreshadow]:
     return list(session.execute(
         select(Foreshadow).where(Foreshadow.project_id == project_id, Foreshadow.status.in_(["planted", "developing"]))
