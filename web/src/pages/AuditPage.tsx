@@ -23,14 +23,16 @@ export default function AuditPage() {
   const [banner, setBanner] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<GlobalAuditReportSummary[] | null> => {
     setBanner(null)
     try {
       const [list, proj] = await Promise.all([api.listGlobalAudits(projectId), api.listProjects()])
       setReports(list)
       setProjects(proj)
+      return list
     } catch (err) {
       setBanner(err instanceof ApiError ? err.code : '报告加载失败')
+      return null
     }
   }, [projectId])
 
@@ -56,9 +58,9 @@ export default function AuditPage() {
     setOk(null)
     try {
       await api.triggerGlobalAudit(projectId)
-      await load()
-      // 展开最新一份（触发后报告在列表首位）
-      const newest = reports?.[0]
+      // 用 load 返回的当次列表（勿读本渲染闭包的旧 reports——await 后闭包已陈旧）
+      const list = await load()
+      const newest = list?.[0]
       if (newest) await openReport(newest.report_id)
       setOk('审计已完成')
     } catch (err) {

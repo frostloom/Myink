@@ -21,12 +21,12 @@ from aiink.api.auth import require_owner
 from aiink.db import tenant_session
 from aiink.memory.repository import get_settings
 from aiink.models import ProjectSettings
-from aiink.providers import MODEL_REGISTRY
+from aiink.providers import CONFIGURABLE_ROLES, MODEL_REGISTRY
 
 router = APIRouter(prefix="/internal/v1", tags=["settings"])
 
-# 可配置角色（§6.10）：planner/writer/validator_l2/extract；audit/revise/L1 固定默认链。
-CONFIGURABLE_ROLES = {"planner", "writer", "validator_l2", "extract"}
+# 可配置角色（§6.10）：planner/writer/validator_l2/extract；audit/revise/L1 固定默认链
+# （常量定义在 providers/base，make_chain 与 PUT 校验共用同一闸）。
 
 
 def _pid(project_id: str) -> uuid.UUID:

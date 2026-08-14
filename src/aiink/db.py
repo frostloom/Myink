@@ -240,4 +240,16 @@ def ensure_chapter_versions() -> None:
 
     with _admin_engine.begin() as conn:
         Base.metadata.create_all(conn, tables=[ChapterVersion.__table__])
+        # 同章版本号唯一约束（评审 M2 兜底）：create_all 只对新建表建约束，老表需显式补。
+        # 库内已有重复行时 ALTER 如实报错（与 ensure_unique_constraints 同口径，先人工去重）。
+        conn.execute(text("""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                               WHERE conname = 'uq_chapter_versions_chapter_version') THEN
+                    ALTER TABLE chapter_versions
+                    ADD CONSTRAINT uq_chapter_versions_chapter_version UNIQUE (chapter_id, version);
+                END IF;
+            END $$;
+        """))
     enable_row_level_security()
