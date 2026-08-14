@@ -13,7 +13,8 @@ interface Props {
   projectId: string
   chapters: ChapterMeta[]
   selectedChapter: ChapterMeta | null
-  onTaskStart: (taskId: string) => void
+  /** 批次生成时带 batchTotal，供时间线实时 i/N */
+  onTaskStart: (taskId: string, batchTotal?: number) => void
 }
 
 export function GenerationPanel({ projectId, chapters, selectedChapter, onTaskStart }: Props) {
@@ -67,7 +68,7 @@ export function GenerationPanel({ projectId, chapters, selectedChapter, onTaskSt
         size: batchN,
         start: batchStart,
       })
-      onTaskStart(resp.task_id)
+      onTaskStart(resp.task_id, batchN)
     } catch (err) {
       showError(err)
     } finally {

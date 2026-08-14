@@ -1,6 +1,6 @@
 // 任务进度状态机：SSE 实时节点流（fetch 客户端）→ 终态/410 过期回退 GET /tasks/:id 快照。
 // 断线（网络中断 / 网关 30min 硬超时）指数退避重连，带 last_event_id 追平（Redis 流可重放）。
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../lib/api'
 import { openSSE, type SSEEvent } from '../lib/sse'
 import type { AgentRun, TaskStatus } from '../types'
@@ -39,7 +39,10 @@ export function isTerminalPhase(phase: TaskPhase): boolean {
   return phase === 'terminal' || phase === 'expired' || phase === 'error'
 }
 
-export function useTaskEvents(taskId: string | null): TaskEventState {
+export function useTaskEvents(
+  taskId: string | null,
+  opts?: { batchTotal?: number },
+): TaskEventState {
   const [phase, setPhase] = useState<TaskPhase>('idle')
   const [status, setStatus] = useState<TaskStatus | null>(null)
   const [nodes, setNodes] = useState<NodeEvent[]>([])
@@ -147,6 +150,15 @@ export function useTaskEvents(taskId: string | null): TaskEventState {
     if (taskId) void connect(taskId)
   }, [taskId, connect])
 
+  // 实时批次 i/N：SSE 只带节点名，用 persist 节点章级 task_id 去重计数（与 Python
+  // progress.current 口径一致，§阶段2）；快照到达后以快照为权威。
+  const liveCurrent = useMemo(
+    () => new Set(nodes.filter((n) => n.node === 'persist').map((n) => n.taskId)).size,
+    [nodes],
+  )
+  const effectiveProgress =
+    progress ?? (opts?.batchTotal ? { current: liveCurrent, total: opts.batchTotal } : null)
+
   useEffect(() => {
     if (!taskId) {
       stop()
@@ -162,7 +174,7 @@ export function useTaskEvents(taskId: string | null): TaskEventState {
     status,
     nodes,
     runs,
-    progress,
+    progress: effectiveProgress,
     error,
     lastEventId,
     stop,

@@ -22,6 +22,7 @@ export default function WorkspacePage() {
   const [chapters, setChapters] = useState<ChapterMeta[]>([])
   const [selectedCid, setSelectedCid] = useState<string | null>(null)
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
+  const [batchTotal, setBatchTotal] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [refreshTick, setRefreshTick] = useState(0)
 
@@ -30,6 +31,7 @@ export default function WorkspacePage() {
   }, [])
 
   const loadChapters = useCallback(async () => {
+    setError(null) // 新一次加载先清陈旧错误横幅
     try {
       const list = await api.listChapters(projectId)
       setChapters(list)
@@ -41,11 +43,21 @@ export default function WorkspacePage() {
   }, [projectId])
 
   useEffect(() => {
+    // projectId 变化 = 切书：清空上一本的选择/任务/批次上下文
+    setSelectedCid(null)
+    setActiveTaskId(null)
+    setBatchTotal(null)
+    setError(null)
     loadProjects()
     void loadChapters()
   }, [loadProjects, loadChapters])
 
-  const task = useTaskEvents(activeTaskId)
+  const handleTaskStart = useCallback((taskId: string, total?: number) => {
+    setBatchTotal(total ?? null)
+    setActiveTaskId(taskId)
+  }, [])
+
+  const task = useTaskEvents(activeTaskId, batchTotal ? { batchTotal } : undefined)
   const taskPhase = task.phase
 
   // 生成任务进入终态/过期 → 章节状态与内容已更新：刷新列表 + 让编辑器重拉当前章正文
@@ -110,7 +122,7 @@ export default function WorkspacePage() {
           projectId={projectId}
           chapters={chapters}
           selectedChapter={selectedChapter}
-          onTaskStart={setActiveTaskId}
+          onTaskStart={handleTaskStart}
         />
         <TaskTimeline
           taskId={activeTaskId}
