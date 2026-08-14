@@ -103,6 +103,11 @@ class FallbackChain:
         return ModelResponse(content="", model_id=self.chain[-1], error=last_error)
 
 
+# 可配置角色（§6.10）：仅这些 role 允许项目级 model_routes 覆盖主模型；
+# audit/revise/L1 固定默认链（设置端点 PUT 同样按此校验，本表是 make_chain 的兜底闸）。
+CONFIGURABLE_ROLES: frozenset[str] = frozenset({"planner", "writer", "validator_l2", "extract"})
+
+
 # 默认路由表（§6.10）：role → 模型链（主 → 备）
 DEFAULT_ROUTES: dict[str, list[str]] = {
     "planner": ["deepseek-v4-flash", "deepseek-v4-pro"],   # 规划/校验强模型

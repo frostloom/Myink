@@ -46,6 +46,9 @@ class ChapterVersion(Base, UUIDPkMixin, TimestampMixin):
     __table_args__ = (
         # 单章历史按 version 倒序扫（versions 列表端点）
         Index("ix_chapter_versions_chapter_version", "chapter_id", "version"),
+        # 同章版本号唯一兜底（评审 M2）：并发写（用户编辑 vs 批次 persist）即使读到同一
+        # version 各自快照，约束也保证不落重复行——重复插入一方 IntegrityError 回滚。
+        UniqueConstraint("chapter_id", "version", name="uq_chapter_versions_chapter_version"),
     )
 
     project_id: Mapped[uuid.UUID] = mapped_column(
