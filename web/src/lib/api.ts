@@ -8,6 +8,7 @@ import type {
   ContentUpdateResponse,
   GenerateResponse,
   Project,
+  TaskControlResponse,
   TaskDetail,
 } from '../types'
 import { dispatchUnauthorized, getToken } from './token'
@@ -96,4 +97,13 @@ export const api = {
     request<GenerateResponse>('POST', `/projects/${pid}/batches/generate`, body),
 
   getTask: (tid: string) => request<TaskDetail>('GET', `/tasks/${tid}`),
+
+  // 批次控制（pause|resume|cancel）：网关转发 Python 任务控制端点；外部控制不发
+  // SSE 事件，成功后调用方需主动 GET 快照刷新（useTaskEvents.refresh）。
+  pauseBatch: (batchId: string) =>
+    request<TaskControlResponse>('POST', `/batches/${batchId}/pause`),
+  resumeBatch: (batchId: string) =>
+    request<TaskControlResponse>('POST', `/batches/${batchId}/resume`),
+  cancelBatch: (batchId: string) =>
+    request<TaskControlResponse>('POST', `/batches/${batchId}/cancel`),
 }

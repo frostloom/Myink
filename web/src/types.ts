@@ -56,6 +56,13 @@ export interface GenerateResponse {
   status: string
 }
 
+/** 批次控制响应（POST /batches/:id/:action → Python tasks/{id}/{action}） */
+export interface TaskControlResponse {
+  task_id: string
+  status: TaskStatus
+  message?: string
+}
+
 export type RunNode =
   | 'load_state'
   | 'recall'
