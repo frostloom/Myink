@@ -39,6 +39,11 @@
   font-size: var(--text-small);
 }
 
+.hint {
+  color: var(--warning);
+  font-size: var(--text-small);
+}
+
 .nodes {
   list-style: none;
   margin: 0;

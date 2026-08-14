@@ -131,3 +131,30 @@ export interface TaskDetail {
   progress?: { current: number; total: number }
   runs: AgentRun[]
 }
+
+/** 记忆候选 kind（memory_candidates 表 CHECK 枚举，§7.3 事实生命周期） */
+export type CandidateKind =
+  | 'event'
+  | 'fact'
+  | 'character_state'
+  | 'relation_change'
+  | 'foreshadow'
+  | 'chapter_summary'
+  | 'memory_removal'
+  | (string & {})
+
+/** 待确认候选（list_candidates，routes_candidates.py；payload 为自由 dict） */
+export interface MemoryCandidate {
+  candidate_id: string
+  kind: CandidateKind
+  source_chapter: number
+  payload: Record<string, unknown>
+  confidence: number
+  status: 'pending' | 'confirmed' | 'rejected'
+  created_at: string | null
+}
+
+export interface CandidateActionResponse {
+  candidate_id: string
+  status: 'confirmed' | 'rejected'
+}

@@ -42,12 +42,13 @@ const ACTION_LABEL: Record<BatchAction, string> = {
   cancel: '取消',
 }
 
-// 各任务状态可用的控制动作。候选确认池（awaiting_review → 确认后放行）与失败重试
-// 是独立切片，这里不暴露误导性按钮（Python 端点已支持，仅前端未接线）。
+// 各任务状态可用的控制动作。awaiting_review（候选确认池）已接线：确认候选后
+// resume 从 checkpoint 续跑放行（Python _RESUMABLE 含 awaiting_review）；失败重试仍留重试切片。
 const STATUS_ACTIONS: Partial<Record<TaskStatus, BatchAction[]>> = {
   paused: ['resume', 'cancel'],
   queued: ['pause', 'cancel'],
   running: ['pause', 'cancel'],
+  awaiting_review: ['resume'],
 }
 
 export function TaskTimeline({
@@ -117,6 +118,9 @@ export function TaskTimeline({
               {ctrl === a ? '处理中…' : ACTION_LABEL[a]}
             </button>
           ))}
+          {status === 'awaiting_review' && (
+            <span className={styles.hint}>候选待确认，处理完点续跑放行</span>
+          )}
           {ctrlError && <span className={styles.ctrlError}>{ctrlError}</span>}
         </div>
       )}

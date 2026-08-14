@@ -3,10 +3,12 @@
 
 import type {
   AuthResponse,
+  CandidateActionResponse,
   ChapterDetail,
   ChapterMeta,
   ContentUpdateResponse,
   GenerateResponse,
+  MemoryCandidate,
   Project,
   TaskControlResponse,
   TaskDetail,
@@ -106,4 +108,18 @@ export const api = {
     request<TaskControlResponse>('POST', `/batches/${batchId}/resume`),
   cancelBatch: (batchId: string) =>
     request<TaskControlResponse>('POST', `/batches/${batchId}/cancel`),
+
+  // 待确认候选池（§6.11 确认分流）：GET 列表 + 人工 confirm/reject（编排层写库入口）。
+  listCandidates: (pid: string, status = 'pending') =>
+    request<MemoryCandidate[]>('GET', `/projects/${pid}/candidates?status=${status}`),
+
+  confirmCandidate: (pid: string, cid: string) =>
+    request<CandidateActionResponse>(
+      'POST', `/projects/${pid}/candidates/${cid}/confirm`,
+    ),
+
+  rejectCandidate: (pid: string, cid: string) =>
+    request<CandidateActionResponse>(
+      'POST', `/projects/${pid}/candidates/${cid}/reject`,
+    ),
 }

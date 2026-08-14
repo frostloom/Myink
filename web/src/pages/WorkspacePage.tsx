@@ -1,8 +1,9 @@
-// 工作台（三栏）：rail 项目切换 + 章节列表 | 章节编辑器 | 生成入口/时间线/校验报告。
+// 工作台（三栏）：rail 项目切换 + 章节列表 | 章节编辑器 | 生成入口/时间线/校验报告/候选池。
 // 生成任务进度状态在页面级提升：useTaskEvents(activeTaskId)，终态 → 刷新章节列表。
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { AuditPanel } from '../components/AuditPanel'
+import { CandidatePanel } from '../components/CandidatePanel'
 import { ChapterEditor } from '../components/ChapterEditor'
 import { ChapterList } from '../components/ChapterList'
 import { GenerationPanel } from '../components/GenerationPanel'
@@ -11,7 +12,7 @@ import { TaskTimeline } from '../components/TaskTimeline'
 import { useAuth } from '../context/AuthContext'
 import { useTaskEvents } from '../hooks/useTaskEvents'
 import { api, ApiError } from '../lib/api'
-import type { ChapterMeta, Project } from '../types'
+import type { ChapterMeta, MemoryCandidate, Project } from '../types'
 import styles from './WorkspacePage.module.css'
 
 export default function WorkspacePage() {
@@ -20,11 +21,26 @@ export default function WorkspacePage() {
 
   const [projects, setProjects] = useState<Project[]>([])
   const [chapters, setChapters] = useState<ChapterMeta[]>([])
+  const [candidates, setCandidates] = useState<MemoryCandidate[]>([])
   const [selectedCid, setSelectedCid] = useState<string | null>(null)
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
   const [batchTotal, setBatchTotal] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [refreshTick, setRefreshTick] = useState(0)
+
+  // 候选池加载失败静默降级（空列表），不阻塞主链路
+  const loadCandidates = useCallback(() => {
+    api.listCandidates(projectId).then(setCandidates).catch(() => setCandidates([]))
+  }, [projectId])
+
+  // 章序 → 待确认候选数（候选面板与章节列表角标联动）
+  const pendingByChapter = useMemo(() => {
+    const m = new Map<number, number>()
+    for (const c of candidates) {
+      m.set(c.source_chapter, (m.get(c.source_chapter) ?? 0) + 1)
+    }
+    return m
+  }, [candidates])
 
   const loadProjects = useCallback(() => {
     api.listProjects().then(setProjects).catch(() => setProjects([]))
@@ -43,14 +59,15 @@ export default function WorkspacePage() {
   }, [projectId])
 
   useEffect(() => {
-    // projectId 变化 = 切书：清空上一本的选择/任务/批次上下文
+    // projectId 变化 = 切书：清空上一本的选择/任务/批次上下文 + 重载候选池
     setSelectedCid(null)
     setActiveTaskId(null)
     setBatchTotal(null)
     setError(null)
     loadProjects()
     void loadChapters()
-  }, [loadProjects, loadChapters])
+    loadCandidates()
+  }, [loadProjects, loadChapters, loadCandidates])
 
   const handleTaskStart = useCallback((taskId: string, total?: number) => {
     setBatchTotal(total ?? null)
@@ -60,13 +77,14 @@ export default function WorkspacePage() {
   const task = useTaskEvents(activeTaskId, batchTotal ? { batchTotal } : undefined)
   const taskPhase = task.phase
 
-  // 生成任务进入终态/过期 → 章节状态与内容已更新：刷新列表 + 让编辑器重拉当前章正文
+  // 生成任务进入终态/过期 → 章节状态与内容已更新：刷新列表 + 让编辑器重拉当前章正文 + 重载候选池
   useEffect(() => {
     if (taskPhase === 'terminal' || taskPhase === 'expired' || taskPhase === 'error') {
       void loadChapters()
+      loadCandidates()
       setRefreshTick((t) => t + 1)
     }
-  }, [taskPhase, loadChapters])
+  }, [taskPhase, loadChapters, loadCandidates])
 
   const selectedChapter = chapters.find((c) => c.id === selectedCid) ?? null
 
@@ -97,6 +115,7 @@ export default function WorkspacePage() {
           chapters={chapters}
           selectedCid={selectedCid}
           onSelect={setSelectedCid}
+          pendingByChapter={pendingByChapter}
         />
       </aside>
 
@@ -137,6 +156,11 @@ export default function WorkspacePage() {
           refresh={task.refresh}
         />
         <AuditPanel runs={task.runs} onNavigateChapter={handleNavigateChapter} />
+        <CandidatePanel
+          projectId={projectId}
+          candidates={candidates}
+          onChanged={loadCandidates}
+        />
       </aside>
     </div>
   )
