@@ -16,8 +16,10 @@ from __future__ import annotations
 import re
 from collections import Counter
 
-# 中文句末标点（……归一后）+ 紧随的闭引号
-_SENTENCE_END = re.compile(r"[。！？…!?；;]+[”’」』»\"']*")
+# 中文句末标点（……归一后）+ 紧随的闭引号。
+# 口径：分号；不在边界集（中文分号是句内并列、非断句）；省略号仍视边界（欲言又止的短句
+# 也计短句）——启发式简化，确定性统计（口径：句长分布为确定性启发式分句产出）。
+_SENTENCE_END = re.compile(r"[。！？…!?]+[”’」』»\"']*")
 # 对话引号对（成对出现才判对话行）
 _QUOTE_PAIRS = (("「", "」"), ("『", "』"), ("“", "”"), ('"', '"'))
 # 句长三档阈值（字）：短 / 长
@@ -88,17 +90,28 @@ def analyze_sample_stats(texts: list[str]) -> dict:
     }
 
 
-def extract_style_profile(samples: list[str], stats: dict) -> tuple[dict, str | None]:
+def extract_style_profile(samples: list[str], stats: dict, *,
+                          project_id: str | None = None, db=None) -> tuple[dict, str | None]:
     """LLM 提炼文风语义：一次 extract 档调用（便宜快模型）+ 鲁棒 JSON 解析。
 
     返回 (llm_profile, error)：LLM 失败 / 解析失败 → ({}, error)（§6.12 降级，端点回统计草稿）。
     函数内懒导入 providers/workflow（api 层 import 本模块时避免 import 环）。
+
+    db 非 None 时记 agent_runs（§6.8 成本透明，对齐 global_audit._run_kind_llm）：generate 后
+    立即 record_run（含降级行 error=resp.error），提交由调用方负责；此时 project_id 必填。
     """
     from aiink.providers import make_chain
     from aiink.workflow import nodes, prompts
 
     messages = prompts.style_extract_messages(samples, stats)
-    resp = make_chain("extract").generate(messages, json_mode=True, max_tokens=4096)
+    resp = make_chain("extract").generate(messages, json_mode=True,
+                                          max_tokens=nodes._MAX_TOKENS["extract"])
+    if db is not None:
+        if project_id is None:
+            raise ValueError("db 非 None 时必须提供 project_id（agent_runs 归属）")
+        nodes.record_run(db, project_id=project_id, task_id=None, node="style_extract",
+                         role="StyleExtract", resp=resp, error=resp.error,
+                         detail={"n_samples": len(samples)})
     if resp.error:
         return {}, resp.error
     try:
@@ -136,7 +149,8 @@ def merge_style_draft(stats: dict, llm_profile: dict, *, extract_error: str | No
 def validate_profile(profile) -> dict:
     """PUT 落库前校验 + 类型轻归一（非 dict → ValueError 由端点转 400；用户 canon 不重写内容）。
 
-    仅做类型归一（str/list/dict/标量透传，None 丢弃），内容一字不动——用户是唯一 canon（§7.11）。
+    仅做类型归一（str/list/dict/标量透传，**顶层** None 丢弃；嵌套结构原样透传——用户 canon
+    不递归改写），内容一字不动——用户是唯一 canon（§7.11）。
     """
     if not isinstance(profile, dict):
         raise ValueError("文风档案必须是 JSON 对象")
