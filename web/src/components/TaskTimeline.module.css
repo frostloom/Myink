@@ -58,11 +58,6 @@
   color: var(--ink);
 }
 
-.nodeTaskId {
-  color: var(--ink-subtle);
-  font-variant-numeric: tabular-nums;
-}
-
 .runs {
   display: flex;
   flex-direction: column;

@@ -1,5 +1,5 @@
 // 章节编辑器：读正文（GET 单章详情）→ 纸张色 textarea → Ctrl+S / 按钮保存（PUT content 轻编辑）。
-import { useCallback, useEffect, useState, type KeyboardEvent } from 'react'
+import { useEffect, useState, type KeyboardEvent } from 'react'
 import { api, ApiError } from '../lib/api'
 import { chapterStatusLabel, chapterStatusTone } from '../lib/labels'
 import type { ChapterDetail, ChapterMeta } from '../types'
@@ -78,16 +78,13 @@ export function ChapterEditor({
     }
   }
 
-  const onKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault()
-        if (dirty) void save()
-      }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [dirty, saving],
-  )
+  // 内联 handler：每次渲染取最新 save/content，避免 useCallback 闭包存陈旧正文
+  function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault()
+      if (dirty) void save()
+    }
+  }
 
   return (
     <div className={styles.editor}>
