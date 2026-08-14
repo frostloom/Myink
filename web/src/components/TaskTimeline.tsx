@@ -1,4 +1,8 @@
 // 生成进度时间线：phase 状态条 + 批次 i/N + 实时节点流（SSE 实时层）→ 终态后 runs 节点卡（快照权威）。
+// 批次控制（暂停/续跑/取消）：网关控制路由仅对批次任务开放；外部控制不发 SSE 事件，
+// 成功后调 refresh() 主动拉快照刷新状态/进度，终态（取消）由 refresh 停流。
+import { useState } from 'react'
+import { api, ApiError } from '../lib/api'
 import { nodeLabel } from '../lib/labels'
 import type { TaskPhase } from '../hooks/useTaskEvents'
 import type { AgentRun, TaskStatus } from '../types'
@@ -14,6 +18,10 @@ export interface TaskTimelineProps {
   progress: { current: number; total: number } | null
   error: string | null
   onRetry: () => void
+  /** 批次任务才有控制权（网关仅暴露 /batches/:id/:action；单章生成走同端点但无网关控制路由） */
+  canControl?: boolean
+  /** 控制成功后主动拉快照刷新（见 useTaskEvents.refresh） */
+  refresh: () => void
 }
 
 const PHASE_LABEL: Record<TaskPhase, string> = {
@@ -26,6 +34,22 @@ const PHASE_LABEL: Record<TaskPhase, string> = {
   error: '出错',
 }
 
+type BatchAction = 'pause' | 'resume' | 'cancel'
+
+const ACTION_LABEL: Record<BatchAction, string> = {
+  pause: '暂停',
+  resume: '续跑',
+  cancel: '取消',
+}
+
+// 各任务状态可用的控制动作。候选确认池（awaiting_review → 确认后放行）与失败重试
+// 是独立切片，这里不暴露误导性按钮（Python 端点已支持，仅前端未接线）。
+const STATUS_ACTIONS: Partial<Record<TaskStatus, BatchAction[]>> = {
+  paused: ['resume', 'cancel'],
+  queued: ['pause', 'cancel'],
+  running: ['pause', 'cancel'],
+}
+
 export function TaskTimeline({
   taskId,
   phase,
@@ -35,13 +59,37 @@ export function TaskTimeline({
   progress,
   error,
   onRetry,
+  canControl = false,
+  refresh,
 }: TaskTimelineProps) {
+  const [ctrl, setCtrl] = useState<BatchAction | null>(null)
+  const [ctrlError, setCtrlError] = useState<string | null>(null)
+
   if (!taskId) {
     return <p className="empty">尚未发起生成。</p>
   }
 
   const terminal = phase === 'terminal'
   const busy = phase === 'connecting' || phase === 'live' || phase === 'reconnecting'
+  const actions = canControl && status ? (STATUS_ACTIONS[status] ?? []) : []
+  // 参数解构是可变绑定，收窄不进闭包：非空捕获 const 供 control 使用
+  const tid = taskId
+
+  async function control(action: BatchAction) {
+    if (ctrl) return
+    setCtrl(action)
+    setCtrlError(null)
+    try {
+      if (action === 'pause') await api.pauseBatch(tid)
+      else if (action === 'resume') await api.resumeBatch(tid)
+      else await api.cancelBatch(tid)
+    } catch (err) {
+      setCtrlError(err instanceof ApiError ? err.code : '操作失败')
+    } finally {
+      setCtrl(null)
+      refresh()
+    }
+  }
 
   return (
     <div className={styles.timeline}>
@@ -55,6 +103,23 @@ export function TaskTimeline({
         )}
         {error && <span className={styles.error}>{error}</span>}
       </header>
+
+      {actions.length > 0 && (
+        <div className={styles.controls}>
+          {actions.map((a) => (
+            <button
+              key={a}
+              type="button"
+              className="btn btn-quiet"
+              disabled={ctrl !== null}
+              onClick={() => void control(a)}
+            >
+              {ctrl === a ? '处理中…' : ACTION_LABEL[a]}
+            </button>
+          ))}
+          {ctrlError && <span className={styles.ctrlError}>{ctrlError}</span>}
+        </div>
+      )}
 
       {phase === 'expired' && (
         <button type="button" className="btn btn-quiet" onClick={onRetry}>

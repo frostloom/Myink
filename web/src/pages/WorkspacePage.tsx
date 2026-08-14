@@ -133,6 +133,8 @@ export default function WorkspacePage() {
           progress={task.progress}
           error={task.error}
           onRetry={task.retry}
+          canControl={batchTotal !== null}
+          refresh={task.refresh}
         />
         <AuditPanel runs={task.runs} onNavigateChapter={handleNavigateChapter} />
       </aside>

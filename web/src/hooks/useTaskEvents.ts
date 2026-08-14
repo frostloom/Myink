@@ -33,6 +33,9 @@ export interface TaskEventState {
   lastEventId: string | null
   stop: () => void
   retry: () => void
+  /** 外部控制（pause/resume/cancel）后主动拉 GET /tasks/:id 快照刷新状态/进度；
+   *  若为终态（如取消成功）→ 停流并切 phase=terminal（外部控制不发 SSE 事件，流不会自终） */
+  refresh: () => void
 }
 
 export function isTerminalPhase(phase: TaskPhase): boolean {
@@ -56,17 +59,30 @@ export function useTaskEvents(
   const nodesRef = useRef<NodeEvent[]>([])
   const lastIdRef = useRef<string | null>(null)
 
-  const fetchSnapshot = useCallback(async (tid: string) => {
+  // SSE 终态判定与网关 sse.go 一致（status∈{done,failed,awaiting_review,cancelled} 关流）
+  const TERMINAL_STATUS: TaskStatus[] = ['done', 'failed', 'cancelled', 'awaiting_review']
+
+  const fetchSnapshot = useCallback(async (tid: string, forceTerminal = false) => {
     try {
       const detail = await api.getTask(tid)
       setRuns(detail.runs)
       setStatus(detail.status)
       setError(detail.error)
       if (detail.progress) setProgress(detail.progress)
+      if (forceTerminal && TERMINAL_STATUS.includes(detail.status)) {
+        // 外部取消：流不会自己终态 → 主动停流；connect 循环在 openSSE 返回后先查
+        // controller.signal.aborted 早退，不会把 phase 误写成 error
+        abortRef.current?.abort()
+        setPhase('terminal')
+      }
     } catch {
       // 任务在途（入队→DB 物化窗口内 404）时快照失败：保留现场，交手动 retry
     }
   }, [])
+
+  const refresh = useCallback(() => {
+    if (taskId) void fetchSnapshot(taskId, true)
+  }, [taskId, fetchSnapshot])
 
   const stop = useCallback(() => {
     abortRef.current?.abort()
@@ -179,5 +195,6 @@ export function useTaskEvents(
     lastEventId,
     stop,
     retry,
+    refresh,
   }
 }
