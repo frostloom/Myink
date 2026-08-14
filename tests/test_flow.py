@@ -424,6 +424,81 @@ def test_batch_failure_and_resume(project_id, monkeypatch):
         assert w4 == 2, "失败章 ch4 应恰好重试一次（1 失败 + 1 成功）"
 
 
+def test_batch_pause_halt_and_resume(project_id, monkeypatch):
+    """§6.12 手动暂停：章节边界守卫中断批次（不写剩余章），resume 同 thread 续跑不重跑已完成章。
+
+    批次 size=3（ch3/4/5），第 2 次 write（ch4）期间用户点暂停 → 任务置 paused；
+    图在 ch5 边界读到 paused → BatchHaltError 中断（非 END，checkpoint 停在本章）。
+    断言：write 只到 ch4（2 次）、任务保持 paused；resume 后只补 ch5（write=3）→ done。
+    """
+    import aiink.providers as providers_mod
+    import aiink.workflow.batch_graph as bg_mod
+
+    tid = new_task(project_id=project_id, task_type="batch_generate",
+                   payload={"start": 3, "size": 3})
+
+    def pause_batch():
+        with tenant_session(project_id) as db:
+            db.get(Task, uuid.UUID(tid)).status = "paused"
+            db.commit()
+
+    stub = BatchHaltStub("金丹", "金丹", on_write=2, halt_cb=pause_batch)
+    monkeypatch.setattr(providers_mod, "default_provider", stub)
+    monkeypatch.setattr(bg_mod, "make_chain", lambda role: _Chain(stub))
+    monkeypatch.setitem(providers_mod.DEFAULT_ROUTES, "writer", ["deepseek-v4-flash"])
+    _reset_runs(project_id)
+
+    result = generate_batch(project_id=project_id, size=3, start_chapter=3, batch_task_id=tid)
+    assert result.get("manual_halt") == "paused", f"应返回 manual_halt=paused，实际 {result}"
+    assert stub.write_calls == 2, f"暂停后应停在第 3 章前（write=2），实际 {stub.write_calls}"
+    with new_session() as db:
+        assert db.get(Task, uuid.UUID(tid)).status == "paused", "暂停后任务状态应保持 paused"
+
+    # resume：worker 拾取语义把 paused 置回 running + 同 thread 续跑 → 补跑剩余章 → done
+    with tenant_session(project_id) as db:
+        db.get(Task, uuid.UUID(tid)).status = "running"
+        db.commit()
+    _, batch_graph = get_graphs()
+    final = resume_thread(batch_graph, tid, {
+        "project_id": project_id, "batch_task_id": tid, "size": 3,
+        "position": 0, "start_chapter": 3,  # position=0 故意传旧值：续跑以 checkpoint 为准
+    })
+    summary = final.get("batch_summary") or {}
+    assert summary.get("status") == "done", f"续跑后批次应完成，实际 {summary}"
+    assert stub.write_calls == 3, f"已完成章不应重跑（续跑只补第 3 章 write），实际 {stub.write_calls}"
+    with new_session() as db:
+        assert db.get(Task, uuid.UUID(tid)).status == "done", "续跑成功任务应为 done"
+
+
+def test_batch_cancel_halt(project_id, monkeypatch):
+    """§6.12 手动取消：边界守卫中断批次，cancelled 保持（不被 batch_end 覆盖回 done）。
+
+    同暂停机制（BatchHaltError），区别在终态语义：取消后任务置 cancelled、无续跑。
+    """
+    import aiink.providers as providers_mod
+    import aiink.workflow.batch_graph as bg_mod
+
+    tid = new_task(project_id=project_id, task_type="batch_generate",
+                   payload={"start": 3, "size": 3})
+
+    def cancel_batch():
+        with tenant_session(project_id) as db:
+            db.get(Task, uuid.UUID(tid)).status = "cancelled"
+            db.commit()
+
+    stub = BatchHaltStub("金丹", "金丹", on_write=2, halt_cb=cancel_batch)
+    monkeypatch.setattr(providers_mod, "default_provider", stub)
+    monkeypatch.setattr(bg_mod, "make_chain", lambda role: _Chain(stub))
+    monkeypatch.setitem(providers_mod.DEFAULT_ROUTES, "writer", ["deepseek-v4-flash"])
+    _reset_runs(project_id)
+
+    result = generate_batch(project_id=project_id, size=3, start_chapter=3, batch_task_id=tid)
+    assert result.get("manual_halt") == "cancelled", f"应返回 manual_halt=cancelled，实际 {result}"
+    assert stub.write_calls == 2, f"取消后应停在第 3 章前（write=2），实际 {stub.write_calls}"
+    with new_session() as db:
+        assert db.get(Task, uuid.UUID(tid)).status == "cancelled", "取消后任务状态应保持 cancelled"
+
+
 def test_task_status_done(project_id, stub_provider):
     """runner.generate_chapter 成功后任务终态应为 done（§6.8 任务状态可观测）。"""
     stub_provider("金丹", "金丹")
@@ -674,6 +749,36 @@ class BatchFailStub(StubProvider):
                 self.failures += 1
                 return ModelResponse(content="", model_id=model_id, error="write 失败",
                                      input_tokens=100, output_tokens=0, duration_ms=50)
+        return super().generate(messages, model_id=model_id, max_tokens=max_tokens,
+                                temperature=temperature, json_mode=json_mode)
+
+
+class BatchHaltStub(StubProvider):
+    """批次中途手动暂停/取消：第 on_write 次 write 期间触发 halt_cb（模拟用户途中点暂停/取消）。
+
+    测 §6.12 批次控制守卫：章节边界查 DB 任务状态 → paused/cancelled 抛 BatchHaltError
+    中断（剩余章不写），resume 同 thread 续跑补跑剩余章、已完成章不重跑。
+    """
+
+    def __init__(self, realm_from, realm_to, on_write=2, halt_cb=None):
+        super().__init__(realm_from, realm_to)
+        self.on_write = on_write
+        self.halt_cb = halt_cb
+        self.write_calls = 0
+
+    def generate(self, messages, *, model_id, max_tokens=None, temperature=None, json_mode=False,
+                 tools=None, disable_thinking=False):
+        messages = list(messages)
+        if "批次规划" in (messages[0].get("content", "") if messages else ""):
+            content = ('{"chapters":[{"goal":"推进主线A","outline_advance":"卷纲推进"},'
+                       '{"goal":"推进主线B","outline_advance":"卷纲推进"},'
+                       '{"goal":"推进主线C","outline_advance":"卷纲推进"}]}')
+            return ModelResponse(content=content, model_id=model_id, input_tokens=50,
+                                 output_tokens=80, duration_ms=30)
+        if self._infer_node(messages) == "write":
+            self.write_calls += 1
+            if self.write_calls == self.on_write and self.halt_cb:
+                self.halt_cb()  # 模拟用户在第 on_write 次 write 期间点暂停/取消
         return super().generate(messages, model_id=model_id, max_tokens=max_tokens,
                                 temperature=temperature, json_mode=json_mode)
 
