@@ -181,8 +181,8 @@ def run_ledger_l2(session: Session, *, project_id, chapter_seq: int,
     if not judgments:
         return []
     messages = prompts.ledger_l2_messages(judgments, draft, chapter_seq)
-    resp = make_chain("validator_l2").generate(messages, json_mode=True,
-                                               max_tokens=_MAX_LEDGER_L2_TOKENS)
+    resp = make_chain("validator_l2", db=session, project_id=str(project_id)).generate(messages, json_mode=True,
+                                                                                       max_tokens=_MAX_LEDGER_L2_TOKENS)
     error = resp.error
     findings: list[dict] = []
     if not error:

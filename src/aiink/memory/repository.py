@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from aiink.models import (
     Chapter,
     ChapterOutline,
+    ChapterVersion,
     Character,
     CharacterState,
     Event,
@@ -169,6 +170,25 @@ def get_volume_outline(session: Session, project_id: uuid.UUID, volume_seq: int)
 
 # ---- 写（仅 persist / 编排层调用，§6.2 数据流边界）----
 
+def snapshot_chapter(session: Session, chapter: Chapter, reason: str = "edit") -> None:
+    """覆盖写前快照：把 chapter 当前状态写入 chapter_versions（阶段 4 版本表）。
+
+    版本表语义：chapters 是「当前版本」，每次写前把旧状态留痕成历史行（含当时版本号），
+    回退/审计据此恢复。仅对已存在章节（有 id）调用——新建章无旧状态可快照。
+    """
+    if chapter is None or chapter.id is None:
+        return
+    session.add(ChapterVersion(
+        project_id=chapter.project_id,
+        chapter_id=chapter.id,
+        version=chapter.version or 1,
+        title=chapter.title,
+        content=chapter.content,
+        summary=chapter.summary,
+        reason=reason,
+    ))
+
+
 def save_chapter(session: Session, *, project_id: uuid.UUID, chapter_seq: int, content: str,
                  summary: str | None = None, title: str | None = None,
                  generation_source: str = "manual") -> Chapter:
@@ -177,6 +197,7 @@ def save_chapter(session: Session, *, project_id: uuid.UUID, chapter_seq: int, c
         chapter = Chapter(project_id=project_id, chapter_seq=chapter_seq, status="confirmed", version=1)
         session.add(chapter)
     else:
+        snapshot_chapter(session, chapter, reason=generation_source or "edit")  # 版本表快照旧状态
         chapter.version = (chapter.version or 0) + 1
     chapter.content = content
     chapter.summary = summary

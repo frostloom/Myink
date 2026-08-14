@@ -99,7 +99,7 @@ class AuditStub:
 
 def _install_audit_stub(monkeypatch, stub):
     """单点注入：patch aiink.validation.global_audit.make_chain（全局审计唯一桩点）。"""
-    monkeypatch.setattr(ga, "make_chain", lambda role: _Chain(stub))
+    monkeypatch.setattr(ga, "make_chain", lambda role, **_kwargs: _Chain(stub))
 
 
 # ---- 1. 窗口推进：K 门槛 / 续后不重审 ----
@@ -153,7 +153,7 @@ def test_sample_characters_zero_mention_shortcircuit(temp_project, monkeypatch):
     _seed_character(temp_project, "林砚", "谨慎隐忍")
     _seed_chapter(temp_project, 1, "山间雾气弥漫，无人言语。")
     # 必炸桩：零提及若走到 LLM 就证明短路失效
-    monkeypatch.setattr(ga, "make_chain", lambda role: (_ for _ in ()).throw(
+    monkeypatch.setattr(ga, "make_chain", lambda role, **_kwargs: (_ for _ in ()).throw(
         AssertionError("零提及应短路，不调 LLM")))
     with tenant_session(temp_project) as db:
         rep = ga.run_global_audit(db, temp_project, (1, 1), source="manual")
@@ -304,7 +304,7 @@ def test_batch_summary_surfaces_metrics(temp_project, monkeypatch):
     _install_audit_stub(monkeypatch, audit_stub)
     # 单章子图（write 正文带"林砚"提及，供采样）+ batch_plan
     monkeypatch.setattr(providers_mod, "default_provider", StubProvider("金丹", "金丹"))
-    monkeypatch.setattr(bg_mod, "make_chain", lambda role: _Chain(_BatchPlanStub()))
+    monkeypatch.setattr(bg_mod, "make_chain", lambda role, **_kwargs: _Chain(_BatchPlanStub()))
 
     thread = str(uuid.uuid4())
     result = build_batch_graph(build_chapter_graph()).invoke(
@@ -340,7 +340,7 @@ def test_below_threshold_no_report(temp_project, monkeypatch):
 
     _seed_chapter(temp_project, 1, "林砚静观云海。")
     # 必炸桩：若 below_threshold 还调 LLM 即证明短路失效
-    monkeypatch.setattr(ga, "make_chain", lambda role: (_ for _ in ()).throw(
+    monkeypatch.setattr(ga, "make_chain", lambda role, **_kwargs: (_ for _ in ()).throw(
         AssertionError("below_threshold 应短路，不调 LLM")))
     out = bg_mod.node_global_audit({"project_id": temp_project, "batch_task_id": "b0",
                                     "size": 5, "position": 0, "start_chapter": 1})

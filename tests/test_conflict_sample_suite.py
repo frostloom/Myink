@@ -278,11 +278,11 @@ class LedgerStub:
 
 
 def _install_audit_stub(monkeypatch, stub):
-    monkeypatch.setattr(ga, "make_chain", lambda role: _Chain(stub))
+    monkeypatch.setattr(ga, "make_chain", lambda role, **_kwargs: _Chain(stub))
 
 
 def _install_ledger_stub(monkeypatch, stub):
-    monkeypatch.setattr(l2, "make_chain", lambda role: _Chain(stub))
+    monkeypatch.setattr(l2, "make_chain", lambda role, **_kwargs: _Chain(stub))
 
 
 # ---- 机制调用辅助 ----

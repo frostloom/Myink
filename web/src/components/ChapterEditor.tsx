@@ -1,9 +1,11 @@
 // 章节编辑器：读正文（GET 单章详情）→ 纸张色 textarea → Ctrl+S / 按钮保存（PUT content 轻编辑）。
+// 阶段 4：头部「历史版本」入口 → 版本列表/回退弹层（覆盖写前快照，版本表）。
 import { useEffect, useState, type KeyboardEvent } from 'react'
 import { api, ApiError } from '../lib/api'
 import { chapterStatusLabel, chapterStatusTone } from '../lib/labels'
-import type { ChapterDetail, ChapterMeta } from '../types'
+import type { ChapterDetail, ChapterMeta, ChapterVersion, ContentUpdateResponse } from '../types'
 import { StatusBadge } from './StatusBadge'
+import { VersionHistory } from './VersionHistory'
 import styles from './ChapterEditor.module.css'
 
 interface Props {
@@ -31,6 +33,7 @@ export function ChapterEditor({
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [version, setVersion] = useState<number | null>(null)
+  const [showHistory, setShowHistory] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -86,12 +89,32 @@ export function ChapterEditor({
     }
   }
 
+  // 回退成功：就地覆盖编辑器正文/版本（restore 已持久化，无需重拉），版本列表随之变化
+  function handleRestored(target: ChapterVersion, resp: ContentUpdateResponse) {
+    setContent(target.content ?? '')
+    setVersion(resp.version)
+    setDirty(false)
+    setShowHistory(false)
+    onSaved()
+  }
+
   return (
     <div className={styles.editor}>
       <header className={styles.head}>
-        <h2 className={styles.title}>
-          第 {chapter.chapter_seq} 章{detail?.title ? ` · ${detail.title}` : ''}
-        </h2>
+        <div className={styles.headRow}>
+          <h2 className={styles.title}>
+            第 {chapter.chapter_seq} 章{detail?.title ? ` · ${detail.title}` : ''}
+          </h2>
+          {loaded && (
+            <button
+              type="button"
+              className="btn btn-quiet"
+              onClick={() => setShowHistory(true)}
+            >
+              历史版本
+            </button>
+          )}
+        </div>
         <div className={styles.metaRow}>
           <StatusBadge tone={chapterStatusTone(chapter.status)}>
             {chapterStatusLabel(chapter.status)}
@@ -132,6 +155,16 @@ export function ChapterEditor({
             </button>
           </footer>
         </>
+      )}
+
+      {showHistory && (
+        <VersionHistory
+          projectId={projectId}
+          chapterId={chapter.id}
+          chapterSeq={chapter.chapter_seq}
+          onClose={() => setShowHistory(false)}
+          onRestored={handleRestored}
+        />
       )}
     </div>
   )

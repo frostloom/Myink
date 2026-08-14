@@ -171,6 +171,37 @@ _SAMPLE_BOOKS = [
 ]
 
 
+# 题材 Skill 预设注册表（§7.12 预设包）：4 本种子书 = 4 个预设（含《九州问天》）。
+# 引用各 book 的 style_profile（DRY，改书档案即改预设）；设置页「预设导入」据此渲染 +
+# 原子写 project_settings.style_profile + skill_pack（marker）。
+STYLE_PRESETS = [
+    {
+        "id": "xianxia-jiuzhou",
+        "name": "九州问天",
+        "genre": "仙侠玄幻",
+        "style_profile": DEMO_STYLE_PROFILE,
+    },
+    {
+        "id": "changan-yexing",
+        "name": "长安夜行",
+        "genre": "历史悬疑",
+        "style_profile": _SAMPLE_BOOKS[0]["style_profile"],
+    },
+    {
+        "id": "xingjian-yuanzheng",
+        "name": "星舰远征",
+        "genre": "科幻",
+        "style_profile": _SAMPLE_BOOKS[1]["style_profile"],
+    },
+    {
+        "id": "dushi-yiguan",
+        "name": "都市医馆",
+        "genre": "都市",
+        "style_profile": _SAMPLE_BOOKS[2]["style_profile"],
+    },
+]
+
+
 def _ensure_sample_book(user_id: uuid.UUID, spec: dict) -> str | None:
     """幂等建单本示例书（根表先 commit，再租户会话写设定/人物/剧情线），返回新 pid。"""
     with Session(get_engine()) as db:

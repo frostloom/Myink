@@ -334,7 +334,7 @@ def test_batch_flow(project_id, stub_provider, monkeypatch):
     # batch_plan 节点走 batch_graph.make_chain → 换批次 stub（返回 N 章蓝图）
     # 单章子图仍走 nodes.make_chain → default_provider（stub_provider 已换成单章 stub）
     batch_stub = BatchStubProvider("金丹", "金丹")
-    monkeypatch.setattr(bg_mod, "make_chain", lambda role: _Chain(batch_stub))
+    monkeypatch.setattr(bg_mod, "make_chain", lambda role, **_kwargs: _Chain(batch_stub))
 
     chapter_graph = build_chapter_graph()
     batch_graph = build_batch_graph(chapter_graph)
@@ -356,7 +356,7 @@ def test_batch_plan_short_explicit_fail(project_id, monkeypatch):
 
     stub = ShortBatchStub("金丹", "金丹")
     monkeypatch.setattr(providers_mod, "default_provider", stub)
-    monkeypatch.setattr(bg_mod, "make_chain", lambda role: _Chain(stub))
+    monkeypatch.setattr(bg_mod, "make_chain", lambda role, **_kwargs: _Chain(stub))
     _reset_runs(project_id)
 
     chapter_graph = build_chapter_graph()
@@ -388,7 +388,7 @@ def test_batch_failure_and_resume(project_id, monkeypatch):
 
     stub = BatchFailStub("金丹", "金丹")
     monkeypatch.setattr(providers_mod, "default_provider", stub)          # 单章节点链
-    monkeypatch.setattr(bg_mod, "make_chain", lambda role: _Chain(stub))  # batch_plan 节点
+    monkeypatch.setattr(bg_mod, "make_chain", lambda role, **_kwargs: _Chain(stub))  # batch_plan 节点
     # writer 降级链打成单模型：write 失败一次即定（fallback 会掩盖失败、干扰计数语义）
     monkeypatch.setitem(providers_mod.DEFAULT_ROUTES, "writer", ["deepseek-v4-flash"])
 
@@ -444,7 +444,7 @@ def test_batch_pause_halt_and_resume(project_id, monkeypatch):
 
     stub = BatchHaltStub("金丹", "金丹", on_write=2, halt_cb=pause_batch)
     monkeypatch.setattr(providers_mod, "default_provider", stub)
-    monkeypatch.setattr(bg_mod, "make_chain", lambda role: _Chain(stub))
+    monkeypatch.setattr(bg_mod, "make_chain", lambda role, **_kwargs: _Chain(stub))
     monkeypatch.setitem(providers_mod.DEFAULT_ROUTES, "writer", ["deepseek-v4-flash"])
     _reset_runs(project_id)
 
@@ -488,7 +488,7 @@ def test_batch_cancel_halt(project_id, monkeypatch):
 
     stub = BatchHaltStub("金丹", "金丹", on_write=2, halt_cb=cancel_batch)
     monkeypatch.setattr(providers_mod, "default_provider", stub)
-    monkeypatch.setattr(bg_mod, "make_chain", lambda role: _Chain(stub))
+    monkeypatch.setattr(bg_mod, "make_chain", lambda role, **_kwargs: _Chain(stub))
     monkeypatch.setitem(providers_mod.DEFAULT_ROUTES, "writer", ["deepseek-v4-flash"])
     _reset_runs(project_id)
 
@@ -569,7 +569,7 @@ def test_batch_shared_context(project_id, monkeypatch):
 
     stub = BatchStubProvider("金丹", "金丹")
     monkeypatch.setattr(providers_mod, "default_provider", stub)
-    monkeypatch.setattr(bg_mod, "make_chain", lambda role: _Chain(stub))
+    monkeypatch.setattr(bg_mod, "make_chain", lambda role, **_kwargs: _Chain(stub))
 
     original = recall_mod.repo.get_hard_facts
     calls = {"n": 0}
@@ -606,7 +606,7 @@ def test_audit_replan_batch(project_id, monkeypatch):
 
     stub = AuditReplanBatchStub("金丹", "金丹")
     monkeypatch.setattr(providers_mod, "default_provider", stub)
-    monkeypatch.setattr(bg_mod, "make_chain", lambda role: _Chain(stub))
+    monkeypatch.setattr(bg_mod, "make_chain", lambda role, **_kwargs: _Chain(stub))
     _reset_runs(project_id)
 
     chapter_graph = build_chapter_graph()

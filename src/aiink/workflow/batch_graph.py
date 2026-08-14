@@ -92,7 +92,7 @@ def node_batch_plan(state: BatchState) -> BatchState:
     pid = state["project_id"]
     with tenant_session(pid) as db:
         messages = _batch_plan_messages(state)
-        resp = make_chain("planner").generate(messages, json_mode=True)
+        resp = make_chain("planner", db=db, project_id=pid).generate(messages, json_mode=True)
         nodes.record_run(db, project_id=pid, task_id=state.get("batch_task_id"),
                          node="batch_plan", role="Planner", resp=resp, error=resp.error)
         if resp.error:

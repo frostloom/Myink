@@ -522,6 +522,122 @@ func TestChapterEditCorrectDeleteForwards(t *testing.T) {
 	}
 }
 
+func TestChapterVersionForwards(t *testing.T) {
+	// 阶段 4 版本表两端点（版本列表 / 回退）均为转发路由，应把方法与路径原样转给 Python API。
+	r := newTestRedis(t)
+	var paths []string
+	py := pyapi.New(recordingPy(&paths).URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	cases := []struct {
+		name, method, path, body string
+	}{
+		{"版本列表", http.MethodGet, "/api/v1/projects/p1/chapters/ch-1/versions", ``},
+		{"回退到 v2", http.MethodPost, "/api/v1/projects/p1/chapters/ch-1/versions/2/restore", ``},
+	}
+	want := []string{
+		"/internal/v1/projects/p1/chapters/ch-1/versions",
+		"/internal/v1/projects/p1/chapters/ch-1/versions/2/restore",
+	}
+	for i, c := range cases {
+		var rd io.Reader
+		if c.body != "" {
+			rd = strings.NewReader(c.body)
+		}
+		req := httptest.NewRequest(c.method, c.path, rd)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", bearer(t, "dev"))
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("case %d(%s) 应 200，实际 %d body=%s", i, c.name, w.Code, w.Body.String())
+		}
+		if len(paths) != i+1 {
+			t.Fatalf("case %d(%s) 应转发 %d 次，实际 %v", i, c.name, i+1, paths)
+		}
+		if paths[i] != want[i] {
+			t.Fatalf("case %d(%s) 应转发 %s，实际 %s", i, c.name, want[i], paths[i])
+		}
+	}
+}
+
+func TestSettingsAndStyleForwards(t *testing.T) {
+	// 阶段 4 设置页 5 端点（settings 读/写、skill-presets、样本提取、文风档案确认）均为
+	// 转发路由，应把方法与路径原样转给 Python API（同 BatchControl 回归约定）。
+	r := newTestRedis(t)
+	var paths []string
+	py := pyapi.New(recordingPy(&paths).URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	cases := []struct {
+		name, method, path, body string
+	}{
+		{"读设置", http.MethodGet, "/api/v1/projects/p1/settings", ``},
+		{"写模型路由", http.MethodPut, "/api/v1/projects/p1/settings", `{"model_routes":{"planner":"deepseek-v4-pro"}}`},
+		{"预设列表", http.MethodGet, "/api/v1/skill-presets", ``},
+		{"样本提取", http.MethodPost, "/api/v1/projects/p1/style-samples", `{"samples":["第一章正文。"]}`},
+		{"文风档案确认", http.MethodPut, "/api/v1/projects/p1/style-profile", `{"profile":{"pov":"限知"}}`},
+	}
+	want := []string{
+		"/internal/v1/projects/p1/settings",
+		"/internal/v1/projects/p1/settings",
+		"/internal/v1/skill-presets",
+		"/internal/v1/projects/p1/style-samples",
+		"/internal/v1/projects/p1/style-profile",
+	}
+	for i, c := range cases {
+		var rd io.Reader
+		if c.body != "" {
+			rd = strings.NewReader(c.body)
+		}
+		req := httptest.NewRequest(c.method, c.path, rd)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", bearer(t, "dev"))
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("case %d(%s) 应 200，实际 %d body=%s", i, c.name, w.Code, w.Body.String())
+		}
+		if len(paths) != i+1 {
+			t.Fatalf("case %d(%s) 应转发 %d 次，实际 %v", i, c.name, i+1, paths)
+		}
+		if paths[i] != want[i] {
+			t.Fatalf("case %d(%s) 应转发 %s，实际 %s", i, c.name, want[i], paths[i])
+		}
+	}
+}
+
+func TestGlobalAuditReadForwards(t *testing.T) {
+	// 阶段 4 审计视图：报告列表 / 详情两个读端点应转发 Python API 路径。
+	r := newTestRedis(t)
+	var paths []string
+	py := pyapi.New(recordingPy(&paths).URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	cases := []struct {
+		name, method, path string
+	}{
+		{"报告列表", http.MethodGet, "/api/v1/projects/p1/global-audit"},
+		{"报告详情", http.MethodGet, "/api/v1/projects/p1/global-audit/rpt-1"},
+	}
+	want := []string{
+		"/internal/v1/projects/p1/global-audit",
+		"/internal/v1/projects/p1/global-audit/rpt-1",
+	}
+	for i, c := range cases {
+		req := httptest.NewRequest(c.method, c.path, nil)
+		req.Header.Set("Authorization", bearer(t, "dev"))
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("case %d(%s) 应 200，实际 %d body=%s", i, c.name, w.Code, w.Body.String())
+		}
+		if len(paths) != i+1 || paths[i] != want[i] {
+			t.Fatalf("case %d(%s) 应转发 %s，实际 %v", i, c.name, want[i], paths)
+		}
+	}
+}
+
 func TestHealthzReadyz(t *testing.T) {
 	r := newTestRedis(t)
 	py := pyapi.New(fakePy().URL, 3*time.Second)

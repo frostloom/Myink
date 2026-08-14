@@ -6,10 +6,19 @@ import type {
   CandidateActionResponse,
   ChapterDetail,
   ChapterMeta,
+  ChapterVersionsResponse,
   ContentUpdateResponse,
   GenerateResponse,
+  AuditRunResponse,
+  GlobalAuditReportDetail,
+  GlobalAuditReportSummary,
   MemoryCandidate,
   Project,
+  ProjectSettings,
+  SkillPreset,
+  StyleDraft,
+  StyleProfile,
+  StyleProfileResponse,
   TaskControlResponse,
   TaskDetail,
 } from '../types'
@@ -89,6 +98,15 @@ export const api = {
       content,
     }),
 
+  // 章节历史版本（阶段 4 版本表）：列表 + 回退（网关转发 Python）。
+  listChapterVersions: (pid: string, cid: string) =>
+    request<ChapterVersionsResponse>('GET', `/projects/${pid}/chapters/${cid}/versions`),
+
+  restoreChapterVersion: (pid: string, cid: string, version: number) =>
+    request<ContentUpdateResponse>(
+      'POST', `/projects/${pid}/chapters/${cid}/versions/${version}/restore`,
+    ),
+
   generateChapter: (
     pid: string,
     cid: string,
@@ -122,4 +140,32 @@ export const api = {
     request<CandidateActionResponse>(
       'POST', `/projects/${pid}/candidates/${cid}/reject`,
     ),
+
+  // 创作设置（阶段 4 设置页）：settings 读/写 + 题材预设 + 文风样本/档案（网关转发 Python）。
+  getSettings: (pid: string) =>
+    request<ProjectSettings>('GET', `/projects/${pid}/settings`),
+
+  updateSettings: (pid: string, model_routes: Record<string, string>) =>
+    request<ProjectSettings>('PUT', `/projects/${pid}/settings`, { model_routes }),
+
+  listSkillPresets: () => request<SkillPreset[]>('GET', '/skill-presets'),
+
+  extractStyleSample: (pid: string, samples: string[]) =>
+    request<StyleDraft>('POST', `/projects/${pid}/style-samples`, { samples }),
+
+  putStyleProfile: (pid: string, profile: StyleProfile, skill_pack?: string) =>
+    request<StyleProfileResponse>(
+      'PUT', `/projects/${pid}/style-profile`,
+      skill_pack ? { profile, skill_pack } : { profile },
+    ),
+
+  // 全局审计报告（阶段 4 审计视图）：手动触发 + 列表 + 详情（网关转发 Python）。
+  triggerGlobalAudit: (pid: string) =>
+    request<AuditRunResponse>('POST', `/projects/${pid}/global-audit`),
+
+  listGlobalAudits: (pid: string) =>
+    request<GlobalAuditReportSummary[]>('GET', `/projects/${pid}/global-audit`),
+
+  getGlobalAudit: (pid: string, rid: string) =>
+    request<GlobalAuditReportDetail>('GET', `/projects/${pid}/global-audit/${rid}`),
 }

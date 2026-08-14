@@ -1,0 +1,146 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.card {
+  width: min(640px, calc(100vw - 48px));
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  gap: var(--space-3);
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-heading);
+  color: var(--ink);
+}
+
+.current {
+  color: var(--ink);
+  font-size: var(--text-small);
+}
+
+.muted {
+  color: var(--ink-subtle);
+  margin-left: var(--space-1);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.rowTop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.badge {
+  color: var(--accent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-small);
+}
+
+.reason {
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.date {
+  margin-left: auto;
+  color: var(--ink-subtle);
+  font-size: var(--text-small);
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.titleLine {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.summary {
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+}
+
+.excerpt {
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.detail {
+  font-size: var(--text-small);
+}
+
+.detail summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+
+.full {
+  white-space: pre-wrap;
+  background: var(--editor);
+  color: var(--editor-ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  margin: var(--space-2) 0 0;
+  max-height: 260px;
+  overflow-y: auto;
+  font-family: var(--font-editor);
+  font-size: var(--text-body);
+  line-height: 1.7;
+}
+
+.rowFoot {
+  display: flex;
+  justify-content: flex-end;
+}
