@@ -25,9 +25,10 @@ from fastapi.testclient import TestClient
 from aiink.api.main import app
 from aiink.db import new_session, tenant_session
 from aiink.memory.repository import get_settings
-from aiink.models import ProjectSettings, User
+from aiink.models import AgentRun, ProjectSettings, User
 from aiink.providers.base import ModelProvider, ModelResponse
 from aiink.style_extract import (
+    _split_sentences,
     analyze_sample_stats,
     extract_style_profile,
     merge_style_draft,
@@ -287,3 +288,118 @@ def test_style_section_legacy_keys_unchanged():
     assert "表述禁忌（必须避免）：套语。" in section
     assert "风格示范" not in section, "无 reference_excerpts → 不渲染示范段"
     assert "节奏参考" not in section, "无节奏基线字段 → 不渲染节奏行"
+
+
+# ---- 审计整改（2026-08-14，commit 186e93c 审计整改切片）----
+
+
+def _style_run_count() -> int:
+    """style_extract 节点的 agent_runs 行数（观测表无 RLS，new_session 可查）。"""
+    with new_session() as db:
+        return db.query(AgentRun).filter(AgentRun.node == "style_extract").count()
+
+
+def test_split_sentences_no_semicolon_boundary():
+    """S3：中文分号是句内并列不作句边界（口径收紧，2026-08-14 审计整改）。"""
+    assert _split_sentences("他缓缓走来；她抬头。") == ["他缓缓走来；她抬头"]
+    assert _split_sentences("他缓缓走来。她抬头；两人对视。") == ["他缓缓走来", "她抬头；两人对视"]
+
+
+def test_style_samples_does_not_persist(temp_project, style_stub):
+    """S6：「不落库」的 DB 断言——POST 草稿不改 settings 行/档案。"""
+    style_stub(_STYLE_PAYLOAD)
+    headers = _h(_demo_user_id())
+    with tenant_session(temp_project) as db:
+        before = get_settings(db, uuid.UUID(temp_project))
+        before_profile = None if before is None else dict(before.style_profile or {})
+    resp = client.post(
+        f"/internal/v1/projects/{temp_project}/style-samples", headers=headers,
+        json={"samples": [_SAMPLE_1]},
+    )
+    assert resp.status_code == 200
+    with tenant_session(temp_project) as db:
+        after = get_settings(db, uuid.UUID(temp_project))
+    if before is None:
+        assert after is None, "POST 不应新建 settings 行"
+    else:
+        assert dict(after.style_profile or {}) == before_profile, "POST 不应改动 style_profile"
+
+
+def test_style_samples_records_agent_run(temp_project, style_stub):
+    """W3：extract 调用记 agent_runs（§6.8 成本透明；成功路径 error 空）。"""
+    style_stub(_STYLE_PAYLOAD)
+    before = _style_run_count()
+    resp = client.post(
+        f"/internal/v1/projects/{temp_project}/style-samples",
+        headers=_h(_demo_user_id()),
+        json={"samples": [_SAMPLE_1]},
+    )
+    assert resp.status_code == 200
+    assert _style_run_count() == before + 1, "本次 POST 应恰好新增一行 agent_runs"
+    with new_session() as db:
+        ok = db.query(AgentRun).filter(AgentRun.node == "style_extract",
+                                       AgentRun.error.is_(None)).first()
+        assert ok is not None, "成功路径应存在 error 为空的 agent_runs 行"
+
+
+def test_style_samples_degraded_http(temp_project, style_stub):
+    """S6+W3：HTTP 全路径降级——LLM 抛错 → 200 统计层草稿 + extract_error + 降级记 error 行。"""
+    style_stub(raise_error=True)
+    before = _style_run_count()
+    resp = client.post(
+        f"/internal/v1/projects/{temp_project}/style-samples",
+        headers=_h(_demo_user_id()),
+        json={"samples": [_SAMPLE_1]},
+    )
+    assert resp.status_code == 200, "LLM 失败不 500（§6.12）"
+    draft = resp.json()["draft"]
+    assert "provider down" in draft["extract_error"]
+    assert "pov" not in draft, "LLM 失败不应有语义字段"
+    assert _style_run_count() == before + 1, "降级调用也应新增 agent_runs 行"
+    with new_session() as db:
+        err = db.query(AgentRun).filter(AgentRun.node == "style_extract",
+                                        AgentRun.error.isnot(None)).first()
+        assert err is not None and "provider down" in err.error, "降级应记 error 行（§6.12 可观测）"
+
+
+def test_put_preserves_fatigue_words_on_sample_confirm(temp_project):
+    """W2：样本草稿（不含检测基线键）确认时不抹预设 fatigue_words；显式 [] 可清空。"""
+    headers = _h(_demo_user_id())
+    url = f"/internal/v1/projects/{temp_project}/style-profile"
+    r = client.put(url, headers=headers, json={"profile": {"pov": "预设包", "fatigue_words": ["凝望"]}})
+    assert r.status_code == 200
+    r = client.put(url, headers=headers, json={"profile": {"pov": "样本草稿确认", "source": "sample"}})
+    assert r.status_code == 200
+    with tenant_session(temp_project) as db:
+        st = get_settings(db, uuid.UUID(temp_project))
+        assert st.style_profile["fatigue_words"] == ["凝望"], "样本草稿确认应保留预设 L1 基线"
+        assert st.style_profile["pov"] == "样本草稿确认"
+    r = client.put(url, headers=headers, json={"profile": {"fatigue_words": []}})
+    assert r.status_code == 200
+    with tenant_session(temp_project) as db:
+        st = get_settings(db, uuid.UUID(temp_project))
+        assert st.style_profile["fatigue_words"] == [], "显式空列表允许清空"
+
+
+def test_put_strips_extract_error(temp_project):
+    """S7：草稿降级诊断键 extract_error 不落库（瞬态提示非档案内容）。"""
+    headers = _h(_demo_user_id())
+    r = client.put(
+        f"/internal/v1/projects/{temp_project}/style-profile", headers=headers,
+        json={"profile": {"pov": "v", "extract_error": "provider down"}},
+    )
+    assert r.status_code == 200
+    assert "extract_error" not in r.json()["style_profile"]
+    with tenant_session(temp_project) as db:
+        st = get_settings(db, uuid.UUID(temp_project))
+        assert "extract_error" not in st.style_profile
+
+
+def test_style_section_str_list_keys_safe():
+    """S5：列表键为字符串时不逐字展开（join/unpack 前 _profile_list 类型守卫）。"""
+    profile = {"fatigue_words": ["凝望"], "frequent_words": "夜色冷笑",
+               "forbidden": "套语", "reference_excerpts": "你来了。"}
+    section = _style_section(profile, None)
+    assert "凝望、夜色冷笑" in section, "frequent_words 字符串应整体入高频词节制，不逐字展开"
+    assert "表述禁忌（必须避免）：套语。" in section
+    assert "风格示范" in section and "你来了。" in section
