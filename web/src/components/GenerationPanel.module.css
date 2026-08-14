@@ -1,0 +1,46 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.heading {
+  font-size: var(--text-title);
+  color: var(--ink);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.label {
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+}
+
+.batchRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.batchRow input {
+  width: 64px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.batchHint {
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+}
+
+.cost {
+  color: var(--ink-subtle);
+}

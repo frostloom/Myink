@@ -1,0 +1,119 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.heading {
+  font-size: var(--text-title);
+  color: var(--ink);
+}
+
+.verdict {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.verdictHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.replan {
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+}
+
+.confidence {
+  margin-left: auto;
+  color: var(--ink-subtle);
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.reasons {
+  margin: 0;
+  padding-left: var(--space-3);
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.findings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.finding {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.findingHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.findingType {
+  color: var(--ink);
+  font-size: var(--text-small);
+}
+
+.findingSrc {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+}
+
+.evidence {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-2);
+  border-left: 2px solid var(--line-strong);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.chapter {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: var(--text-small);
+  padding: 0;
+}
+.chapter:hover {
+  text-decoration: underline;
+}
+
+.quote {
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+  white-space: pre-wrap;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.suggestion {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-small);
+}

@@ -1,0 +1,45 @@
+.wrap {
+  height: 100%;
+  display: flex;
+}
+
+.main {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-6) var(--space-6);
+  max-width: var(--content-max);
+}
+
+.main h1 {
+  margin-bottom: var(--space-5);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-4);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color 120ms ease;
+}
+.card:hover {
+  border-color: var(--accent);
+}
+
+.title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  color: var(--ink-subtle);
+  font-size: var(--text-small);
+}

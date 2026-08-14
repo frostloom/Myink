@@ -1,0 +1,76 @@
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.status {
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+}
+
+.progress {
+  color: var(--accent);
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.error {
+  color: var(--error);
+  font-size: var(--text-small);
+}
+
+.nodes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.node {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-small);
+  color: var(--ink-muted);
+}
+
+.nodeDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.nodeLabel {
+  color: var(--ink);
+}
+
+.nodeTaskId {
+  color: var(--ink-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.runs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.runsTitle {
+  font-size: var(--text-small);
+  color: var(--ink-muted);
+  margin: var(--space-2) 0 0;
+}

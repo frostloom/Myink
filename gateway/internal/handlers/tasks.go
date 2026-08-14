@@ -178,6 +178,15 @@ func (h *TaskHandler) ListChapters(c *gin.Context) {
 	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/chapters", nil)
 }
 
+// 章节详情（含正文/summary）：转发 Python API（get_chapter，main.py:117）。
+// 阶段 4 前端章节编辑器读取正文；Python 侧 require_owner 归属断言。
+// GET /api/v1/projects/:project_id/chapters/:chapter_id
+func (h *TaskHandler) GetChapter(c *gin.Context) {
+	pid := c.Param("project_id")
+	cid := c.Param("chapter_id")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/chapters/"+cid, nil)
+}
+
 // 编辑章节正文（阶段 3 轻编辑：只更新正文不触记忆，零 LLM）。
 // PUT /api/v1/projects/:project_id/chapters/:chapter_id/content
 func (h *TaskHandler) UpdateChapterContent(c *gin.Context) {
