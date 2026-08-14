@@ -41,3 +41,7 @@
   white-space: nowrap;
   color: inherit;
 }
+
+.pending {
+  flex-shrink: 0;
+}
