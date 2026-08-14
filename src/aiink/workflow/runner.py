@@ -61,7 +61,7 @@ def generate_batch(*, project_id: str, size: int, start_chapter: int,
     停在失败章；调用方用同一 batch_task_id + resume_thread 续跑，从失败章继续、
     不重跑已完成章。返回 {"batch_failed": True, "error": ...} 供调用方识别。
     """
-    from aiink.workflow.batch_graph import BatchChapterError, BatchReviewError
+    from aiink.workflow.batch_graph import BatchChapterError, BatchHaltError, BatchReviewError
 
     _, batch_graph = get_graphs()
     thread_id = batch_task_id or str(uuid.uuid4())
@@ -79,6 +79,12 @@ def generate_batch(*, project_id: str, size: int, start_chapter: int,
         # 人工确认候选后 resume 从本章续跑（不重跑已完成章）。
         _set_task_status(project_id, thread_id, "awaiting_review", str(exc))
         return {"batch_paused": True, "error": str(exc), "needs_review": True}
+    except BatchHaltError as exc:
+        # 手动暂停/取消（§6.12）：状态已由控制端点置 paused/cancelled，此处幂等确认
+        # （cancelled 经 _set_task_status 守卫跳过，paused 补写）+ 返回标记供 processor
+        # 发对应 SSE 事件。checkpoint 停在本章，resume 从断点续跑。
+        _set_task_status(project_id, thread_id, exc.status)
+        return {"manual_halt": exc.status}
     except BatchChapterError as exc:
         _set_task_status(project_id, thread_id, "failed", str(exc))
         return {"batch_failed": True, "error": str(exc)}

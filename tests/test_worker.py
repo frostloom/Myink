@@ -111,6 +111,46 @@ def test_process_cancel_skips_and_wins(project_id, stub_provider):
         assert db.get(Task, uuid.UUID(task_id)).status == "cancelled", "cancelled 应保持"
 
 
+def test_process_batch_pause_publishes_paused(temp_project, monkeypatch):
+    """在途批次手动暂停：process 跑批次 → 图中途查 DB paused 中断 → 任务保持 paused + SSE 末事件 paused。
+
+    覆盖 processor._run 对 manual_halt 的 SSE 收尾（§6.12 批次控制）：暂停非终态——
+    SSE 事件为 paused（非 done），流保持开启等 resume 续跑。用独立临时书（start=1）
+    满足写序守卫且不污染 demo 数据。
+    """
+    import aiink.providers as providers_mod
+    import aiink.workflow.batch_graph as bg_mod
+    from aiink.workflow.runner import new_task
+
+    from test_flow import BatchHaltStub, _Chain
+
+    tid = new_task(project_id=temp_project, task_type="batch_generate",
+                   payload={"start": 1, "size": 3})
+
+    def pause_batch():
+        with new_session() as db:
+            db.get(Task, uuid.UUID(tid)).status = "paused"
+            db.commit()
+
+    stub = BatchHaltStub("金丹", "金丹", on_write=2, halt_cb=pause_batch)
+    monkeypatch.setattr(providers_mod, "default_provider", stub)
+    monkeypatch.setattr(bg_mod, "make_chain", lambda role: _Chain(stub))
+    monkeypatch.setitem(providers_mod.DEFAULT_ROUTES, "writer", ["deepseek-v4-flash"])
+
+    body = _body(tid, temp_project, task_type="batch_generate", payload={"start": 1, "size": 3})
+    r = get_redis()
+    try:
+        assert process(body) == "terminal"
+        with new_session() as db:
+            assert db.get(Task, uuid.UUID(tid)).status == "paused", "暂停后任务应保持 paused"
+        events = r.xrange(sse_key(tid))
+        statuses = [f["status"] for _, f in events]
+        assert "paused" in statuses, f"SSE 应有 paused 事件，实际 {statuses}"
+        assert statuses[-1] == "paused", f"SSE 末事件应为 paused（非 done），实际 {statuses}"
+    finally:
+        r.delete(sse_key(tid))
+
+
 def test_process_retry_classification(project_id, stub_provider, monkeypatch):
     """可重试失败：dispatch 前置查询抛 ConnectionError → "retry"（§6.12 退避重投）。
 
