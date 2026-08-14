@@ -3,6 +3,7 @@
 import uuid
 
 from aiink.providers.base import (
+    CONFIGURABLE_ROLES,
     DEFAULT_ROUTES,
     MODEL_REGISTRY,
     DEEPSEEK_PRICES,
@@ -34,10 +35,13 @@ def make_chain(role: str, project_id=None, db=None) -> FallbackChain:
 
 
 def _project_primary(role: str, project_id, db) -> str | None:
-    """读 project_settings.model_routes[role] 的主模型；无 settings / 未配置 / 非法 id → None。
+    """读 project_settings.model_routes[role] 的主模型；非可配置角色 / 无 settings /
+    未配置 / 非法模型 id → None（回落默认链）。
 
     providers 是底层模块，懒导入 memory.repository 防 providers↔repository 依赖环。
     """
+    if role not in CONFIGURABLE_ROLES:  # audit/revise/L1 固定默认链（§6.10），双保险
+        return None
     from aiink.memory.repository import get_settings  # 懒导入防环
     from aiink.db import tenant_session
 
@@ -54,6 +58,7 @@ def _project_primary(role: str, project_id, db) -> str | None:
 
 
 __all__ = [
+    "CONFIGURABLE_ROLES",
     "DEFAULT_ROUTES",
     "MODEL_REGISTRY",
     "DEEPSEEK_PRICES",

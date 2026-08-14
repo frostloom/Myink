@@ -11,6 +11,7 @@ import uuid
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 
 from aiink.api.routes_chapters import (ContentUpdate, list_chapter_versions,
                                        restore_chapter_version,
@@ -83,6 +84,21 @@ def test_versions_missing_chapter_or_version_404(temp_project):
     with pytest.raises(HTTPException) as e2:
         restore_chapter_version(temp_project, cid, 99)
     assert e2.value.status_code == 404
+
+
+def test_version_duplicate_insert_rejected_by_constraint(temp_project):
+    """同章同版本号重复行被唯一约束拒（评审 M2 兜底）：并发写即使各自读到同一 version
+    快照，也不落重复历史行——正常路径已靠行锁串行化，此约束是最终防线。"""
+    cid = _seed(temp_project)
+    with tenant_session(temp_project) as db:
+        ch = db.get(Chapter, uuid.UUID(cid))
+        db.add(ChapterVersion(project_id=ch.project_id, chapter_id=ch.id,
+                              version=1, content="dup", reason="edit"))
+        db.add(ChapterVersion(project_id=ch.project_id, chapter_id=ch.id,
+                              version=1, content="dup2", reason="edit"))
+        with pytest.raises(IntegrityError):
+            db.commit()
+        db.rollback()  # 清掉失败 flush 状态，避免上下文管理器成功后再次 commit 抛 PendingRollbackError
 
 
 def test_delete_chapter_cascades_versions(temp_project):

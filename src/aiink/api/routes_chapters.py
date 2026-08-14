@@ -57,7 +57,9 @@ def update_chapter_content(project_id: str, chapter_id: str, body: ContentUpdate
     用户改语言风格 / 句子长短 / 标点后直接保存；记忆校正走显式 correct-memory 端点。
     """
     with tenant_session(project_id) as db:
-        ch = db.get(Chapter, _chapter_id(chapter_id))
+        # 行锁（评审 M2）：串行化同一章的并发写（用户编辑 vs 批次 persist），防版本表
+        # 重复 (chapter_id, version) 行 + 丢失更新；批次侧 save_chapter 同步行锁。
+        ch = db.get(Chapter, _chapter_id(chapter_id), with_for_update=True)
         if ch is None:
             raise HTTPException(status_code=404, detail="章节不存在")
         snapshot_chapter(db, ch)  # 覆盖写前快照进版本表（历史/回退依据，阶段 4）
@@ -101,7 +103,8 @@ def list_chapter_versions(project_id: str, chapter_id: str) -> dict:
 def restore_chapter_version(project_id: str, chapter_id: str, version: int) -> dict:
     """回退到历史版本：先快照当前（回退本身留痕为 revert）→ 覆盖正文/标题/摘要 → 版本 +1。"""
     with tenant_session(project_id) as db:
-        ch = db.get(Chapter, _chapter_id(chapter_id))
+        # 行锁（评审 M2）：restore 也是覆盖写路径，与 PUT content / 批次 persist 串行化
+        ch = db.get(Chapter, _chapter_id(chapter_id), with_for_update=True)
         if ch is None:
             raise HTTPException(status_code=404, detail="章节不存在")
         target = (db.query(ChapterVersion)

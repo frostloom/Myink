@@ -192,7 +192,12 @@ def snapshot_chapter(session: Session, chapter: Chapter, reason: str = "edit") -
 def save_chapter(session: Session, *, project_id: uuid.UUID, chapter_seq: int, content: str,
                  summary: str | None = None, title: str | None = None,
                  generation_source: str = "manual") -> Chapter:
-    chapter = get_chapter(session, project_id, chapter_seq)
+    # 行锁（评审 M2）：与用户编辑端点（PUT content / restore）串行化同一章的覆盖写，
+    # 防版本表重复 (chapter_id, version) 行 + 丢失更新（唯一约束为最终兜底）。
+    chapter = session.execute(
+        select(Chapter).where(Chapter.project_id == project_id,
+                              Chapter.chapter_seq == chapter_seq).with_for_update()
+    ).scalar_one_or_none()
     if chapter is None:
         chapter = Chapter(project_id=project_id, chapter_seq=chapter_seq, status="confirmed", version=1)
         session.add(chapter)
