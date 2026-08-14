@@ -1,0 +1,73 @@
+/* DESIGN.md 设计令牌（阶段 4 前端设计系统）：
+   深色壳传达系统层级，编辑面用纸张色承载长读长写。单一 accent，无渐变/玻璃拟态。 */
+
+:root {
+  /* 表面 */
+  --canvas: #0d0f11;
+  --surface-1: #14171a;
+  --surface-2: #1b1f23;
+  --surface-3: #23282d;
+  --line: #2b3137;
+  --line-strong: #3a424a;
+
+  /* 文字 */
+  --ink: #f1f3f4;
+  --ink-muted: #c2c8ce;
+  --ink-subtle: #8d969f;
+  --ink-faint: #626b74;
+
+  /* 强调（单一 accent） */
+  --accent: #8cc8b4;
+  --accent-hover: #a7e4d0;
+  --accent-pressed: #6fb39b;
+  --focus: #a7e4d0;
+
+  /* 语义色 */
+  --success: #78c69b;
+  --warning: #e1b66b;
+  --error: #e48686;
+
+  /* 编辑面（纸张色，长读长写） */
+  --editor: #f2f0eb;
+  --editor-ink: #252623;
+  --editor-muted: #747773;
+
+  /* 半径：4px 控件 / 8px 面板 / 12px 大框面 */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* 间距（基准 4px） */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* 字体栈：UI Geist/Inter/sans 兜底；长文编辑器用系统衬线（中文宋体） */
+  --font-ui: 'Geist', 'Inter', -apple-system, 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+  --font-editor: Georgia, 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
+
+  /* 排版 */
+  --text-body: 14px;
+  --text-small: 12px;
+  --text-heading: 18px;
+  --text-editor: 18px;
+  --editor-line-height: 1.8;
+
+  /* 布局 */
+  --rail-width: 240px;
+  --right-panel-width: 340px;
+  --content-max: 1280px;
+}
+
+/* severity / status 分级色（文字+icon+色三通道，不单靠颜色传达结果） */
+:root {
+  --sev-critical: #e48686;
+  --sev-major: #e1b66b;
+  --sev-minor: #8cc8b4;
+  --sev-hint: #8d969f;
+}

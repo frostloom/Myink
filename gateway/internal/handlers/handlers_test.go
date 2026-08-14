@@ -387,6 +387,26 @@ func TestListChaptersForwards(t *testing.T) {
 	}
 }
 
+func TestGetChapterForwards(t *testing.T) {
+	// 阶段 4 前端章节编辑器：GET 单章详情（含正文/summary）应转发 Python API 路径。
+	r := newTestRedis(t)
+	var paths []string
+	py := pyapi.New(recordingPy(&paths).URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/p1/chapters/ch-1", nil)
+	req.Header.Set("Authorization", bearer(t, "dev"))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
+	}
+	if len(paths) != 1 || paths[0] != "/internal/v1/projects/p1/chapters/ch-1" {
+		t.Fatalf("应转发 /internal/v1/projects/p1/chapters/ch-1，实际 %v", paths)
+	}
+}
+
 func TestCreateChapterRewritePassthrough(t *testing.T) {
 	// 显式重写（§7.3 失效重建触发点）：body rewrite=true 应透传到 payload 入队；
 	// 用独立 proj-rewrite 项目 id 隔离，避免扫到 TestCreateChapter202 残留的 chapter_generate 消息。
