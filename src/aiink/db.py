@@ -227,3 +227,17 @@ def ensure_global_audit_reports() -> None:
     with _admin_engine.begin() as conn:
         Base.metadata.create_all(conn, tables=[GlobalAuditReport.__table__])
     enable_row_level_security()
+
+
+def ensure_chapter_versions() -> None:
+    """幂等建表 + RLS（阶段 4 章节版本表 chapter_versions）。
+
+    与 ensure_global_audit_reports 同款：老 demo 库补建新表（含索引，create_all 对新建表
+    生效），RLS 由 enable_row_level_security 全表迭代覆盖（带 project_id 即强制隔离）。
+    """
+    from aiink.models import ChapterVersion
+    from aiink.models.base import Base
+
+    with _admin_engine.begin() as conn:
+        Base.metadata.create_all(conn, tables=[ChapterVersion.__table__])
+    enable_row_level_security()

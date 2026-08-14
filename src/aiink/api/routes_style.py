@@ -22,6 +22,7 @@ from aiink.api.auth import require_owner
 from aiink.db import new_session, tenant_session
 from aiink.memory.repository import get_settings
 from aiink.models import ProjectSettings
+from aiink.seed import STYLE_PRESETS
 from aiink.style_extract import (
     analyze_sample_stats,
     extract_style_profile,
@@ -45,6 +46,16 @@ class StyleSamplesBody(BaseModel):
     """作者样本（1–2 篇）。"""
 
     samples: list[str]
+
+
+@router.get("/skill-presets")
+def skill_presets() -> list[dict]:
+    """题材 Skill 预设列表（§7.12 预设包）：4 本种子书文风档案，设置页「预设导入」渲染。
+
+    静态数据（无租户隔离），网关 JWT 已认证；预设 id 同时是 skill_pack marker。
+    """
+    return [{"id": p["id"], "name": p["name"], "genre": p["genre"],
+             "style_profile": p["style_profile"]} for p in STYLE_PRESETS]
 
 
 @router.post("/projects/{project_id}/style-samples",
@@ -75,9 +86,13 @@ def style_samples(project_id: str, body: StyleSamplesBody) -> dict:
 
 
 class StyleProfileBody(BaseModel):
-    """文风档案（前端可编辑草稿后回传；dict 透传，落库前轻校验）。"""
+    """文风档案（前端可编辑草稿后回传；dict 透传，落库前轻校验）。
+
+    skill_pack：题材预设 marker（§7.12 预设导入原子写，值为预设 id）；None 保留现值。
+    """
 
     profile: dict
+    skill_pack: str | None = None
 
 
 @router.put("/projects/{project_id}/style-profile",
@@ -87,7 +102,8 @@ def put_style_profile(project_id: str, body: StyleProfileBody) -> dict:
 
     - 剔除瞬态诊断键 extract_error（草稿降级提示不落库）；
     - 键级保留 L1 基线键 fatigue_words/patterns：样本草稿白名单收键不含检测基线，确认时不抹
-      预设（显式传 [] 可清空）；其余键仍整档案覆盖。
+      预设（显式传 [] 可清空）；其余键仍整档案覆盖；
+    - body.skill_pack 非 None 时一并落 skill_pack（预设导入 = profile + marker 原子写）。
     """
     profile = dict(body.profile)
     profile.pop("extract_error", None)
@@ -108,6 +124,8 @@ def put_style_profile(project_id: str, body: StyleProfileBody) -> dict:
                     profile[k] = existing[k]
             st.style_profile = profile
             st.version = (st.version or 1) + 1
+        if body.skill_pack is not None:
+            st.skill_pack = body.skill_pack
         db.commit()
         new_version = st.version
-    return {"style_profile": profile, "version": new_version}
+    return {"style_profile": profile, "skill_pack": st.skill_pack, "version": new_version}

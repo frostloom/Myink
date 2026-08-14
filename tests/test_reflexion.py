@@ -110,7 +110,7 @@ def _install(monkeypatch, chapter_stub, batch_stub):
     import aiink.workflow.batch_graph as bg_mod
 
     monkeypatch.setattr(providers_mod, "default_provider", chapter_stub)
-    monkeypatch.setattr(bg_mod, "make_chain", lambda role: _Chain(batch_stub))
+    monkeypatch.setattr(bg_mod, "make_chain", lambda role, **_kwargs: _Chain(batch_stub))
     return bg_mod
 
 
@@ -228,7 +228,7 @@ def test_reflexion_batch_rerun_idempotent(temp_project, monkeypatch):
     assert _count_lessons(temp_project) == 2
     # 二次 node_reflexion：_batch_already_reflexed 命中 → 短路，不再调 LLM
     orig_make_chain = bg_mod.make_chain
-    monkeypatch.setattr(bg_mod, "make_chain", lambda role: (_ for _ in ()).throw(
+    monkeypatch.setattr(bg_mod, "make_chain", lambda role, **_kwargs: (_ for _ in ()).throw(
         AssertionError("幂等 guard 应短路，不调 make_chain")))
     out = node_reflexion({"project_id": temp_project, "batch_task_id": thread,
                           "start_chapter": 1, "size": 2})

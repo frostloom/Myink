@@ -40,7 +40,19 @@ func NewRouter(cfg config.Config, r *redis.Client, py *pyapi.Client) *gin.Engine
 		secured.PUT("/projects/:project_id/chapters/:chapter_id/content", taskH.UpdateChapterContent)
 		secured.POST("/projects/:project_id/chapters/:chapter_id/correct-memory", taskH.CorrectMemory)
 		secured.DELETE("/projects/:project_id/chapters/:chapter_id", taskH.DeleteChapter)
+		// 章节历史版本（阶段 4 版本表：列表/回退，转发 Python API）
+		secured.GET("/projects/:project_id/chapters/:chapter_id/versions", taskH.ListChapterVersions)
+		secured.POST("/projects/:project_id/chapters/:chapter_id/versions/:version/restore", taskH.RestoreChapterVersion)
 		secured.POST("/projects/:project_id/global-audit", taskH.GlobalAudit)
+		// 全局审计报告读（阶段 4 审计视图：列表/详情，转发 Python API）
+		secured.GET("/projects/:project_id/global-audit", taskH.ListGlobalAudits)
+		secured.GET("/projects/:project_id/global-audit/:report_id", taskH.GetGlobalAudit)
+		// 创作设置（阶段 4：文风档案/样本提取/预设导入 + 每 Agent 模型路由，转发 Python API）
+		secured.GET("/projects/:project_id/settings", taskH.ListSettings)
+		secured.PUT("/projects/:project_id/settings", taskH.UpdateSettings)
+		secured.GET("/skill-presets", taskH.SkillPresets)
+		secured.POST("/projects/:project_id/style-samples", taskH.StyleSamples)
+		secured.PUT("/projects/:project_id/style-profile", taskH.PutStyleProfile)
 		// 建单章生成任务
 		secured.POST("/projects/:project_id/chapters/:chapter_id/generate", taskH.CreateChapter)
 		// 建批次生成任务

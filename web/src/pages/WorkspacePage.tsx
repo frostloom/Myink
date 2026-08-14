@@ -1,7 +1,7 @@
 // 工作台（三栏）：rail 项目切换 + 章节列表 | 章节编辑器 | 生成入口/时间线/校验报告/候选池。
 // 生成任务进度状态在页面级提升：useTaskEvents(activeTaskId)，终态 → 刷新章节列表。
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { AuditPanel } from '../components/AuditPanel'
 import { CandidatePanel } from '../components/CandidatePanel'
 import { ChapterEditor } from '../components/ChapterEditor'
@@ -18,6 +18,7 @@ import styles from './WorkspacePage.module.css'
 export default function WorkspacePage() {
   const { projectId = '' } = useParams()
   const { logout } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [projects, setProjects] = useState<Project[]>([])
   const [chapters, setChapters] = useState<ChapterMeta[]>([])
@@ -27,6 +28,7 @@ export default function WorkspacePage() {
   const [batchTotal, setBatchTotal] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [refreshTick, setRefreshTick] = useState(0)
+  const [exporting, setExporting] = useState(false)
 
   // 候选池加载失败静默降级（空列表），不阻塞主链路
   const loadCandidates = useCallback(() => {
@@ -69,6 +71,17 @@ export default function WorkspacePage() {
     loadCandidates()
   }, [loadProjects, loadChapters, loadCandidates])
 
+  // 跨页深链（审计视图「跳章」→ /projects/:pid?chapter=<seq>）：一次性选中目标章并清参数
+  useEffect(() => {
+    const seqRaw = searchParams.get('chapter')
+    if (seqRaw === null) return
+    const target = chapters.find((c) => c.chapter_seq === Number(seqRaw))
+    if (target) {
+      setSelectedCid(target.id)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, chapters, setSearchParams])
+
   const handleTaskStart = useCallback((taskId: string, total?: number) => {
     setBatchTotal(total ?? null)
     setActiveTaskId(taskId)
@@ -97,6 +110,33 @@ export default function WorkspacePage() {
     void loadChapters()
   }, [loadChapters])
 
+  // Markdown 导出（纯前端拼接下载）：逐章拉正文 → 标题/章节分隔 → Blob 下载
+  const handleExportMarkdown = useCallback(async () => {
+    if (exporting || chapters.length === 0) return
+    setExporting(true)
+    try {
+      const project = projects.find((p) => p.id === projectId)
+      const lines: string[] = [`# ${project?.title ?? 'Ai Ink 作品'}`, '']
+      for (const c of chapters) {
+        const detail = await api.getChapter(projectId, c.id)
+        const title = detail.title?.trim() || ''
+        lines.push(title ? `## 第 ${c.chapter_seq} 章 · ${title}` : `## 第 ${c.chapter_seq} 章`, '')
+        lines.push(detail.content?.trim() ?? '', '')
+      }
+      const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${project?.title ?? 'ai-ink'}.md`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setError('导出失败')
+    } finally {
+      setExporting(false)
+    }
+  }, [exporting, chapters, projects, projectId])
+
   const handleNavigateChapter = useCallback(
     (seq: number) => {
       const target = chapters.find((c) => c.chapter_seq === seq)
@@ -110,7 +150,17 @@ export default function WorkspacePage() {
       <ProjectRail projects={projects} onLogout={logout} />
 
       <aside className={styles.chapters} aria-label="章节列表">
-        <h3 className={styles.sideTitle}>章节</h3>
+        <div className={styles.sideHead}>
+          <h3 className={styles.sideTitle}>章节</h3>
+          <button
+            type="button"
+            className="btn btn-quiet"
+            disabled={exporting || chapters.length === 0}
+            onClick={() => void handleExportMarkdown()}
+          >
+            {exporting ? '导出中…' : '导出 .md'}
+          </button>
+        </div>
         <ChapterList
           chapters={chapters}
           selectedCid={selectedCid}

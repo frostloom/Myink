@@ -1,5 +1,5 @@
 // 左 rail：项目切换（active 高亮）+ 当前用户 + 登出。
-import { NavLink } from 'react-router-dom'
+import { NavLink, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import type { Project } from '../types'
 import styles from './ProjectRail.module.css'
@@ -11,6 +11,7 @@ interface Props {
 
 export function ProjectRail({ projects, onLogout }: Props) {
   const { session } = useAuth()
+  const { projectId } = useParams()
   return (
     <aside className={styles.rail}>
       <NavLink to="/projects" className={styles.brand}>
@@ -27,6 +28,26 @@ export function ProjectRail({ projects, onLogout }: Props) {
           </NavLink>
         ))}
       </nav>
+      {projectId && (
+        <div className={styles.pageLinks}>
+          <NavLink
+            to={`/projects/${projectId}/settings`}
+            className={({ isActive }) =>
+              isActive ? `${styles.item} ${styles.active}` : styles.item
+            }
+          >
+            <span className={styles.title}>创作设置</span>
+          </NavLink>
+          <NavLink
+            to={`/projects/${projectId}/audit`}
+            className={({ isActive }) =>
+              isActive ? `${styles.item} ${styles.active}` : styles.item
+            }
+          >
+            <span className={styles.title}>全局审计</span>
+          </NavLink>
+        </div>
+      )}
       <div className={styles.foot}>
         <span className={styles.user}>{session?.username}</span>
         <button type="button" className="btn btn-quiet" onClick={onLogout}>

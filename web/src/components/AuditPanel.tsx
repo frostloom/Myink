@@ -1,10 +1,10 @@
-// 校验报告侧栏：从快照 runs 的 audit 行取 detail.audit_verdict → verdict + findings（severity 分级 + evidence 跳章）。
-import { severityLabel, severityTone, verdictLabel, verdictTone } from '../lib/labels'
-import type { AgentRun, AuditVerdict, FindingSeverity } from '../types'
+// 校验报告侧栏：从快照 runs 的 audit 行取 detail.audit_verdict → verdict + findings。
+// finding 明细渲染复用 FindingsList（与全局审计报告视图同构，§8.6）。
+import { verdictLabel, verdictTone } from '../lib/labels'
+import type { AgentRun, AuditVerdict } from '../types'
+import { FindingsList } from './FindingsList'
 import { StatusBadge } from './StatusBadge'
 import styles from './AuditPanel.module.css'
-
-const SEVERITY_ORDER: FindingSeverity[] = ['critical', 'major', 'minor', 'hint']
 
 interface Props {
   runs: AgentRun[]
@@ -43,10 +43,6 @@ function VerdictCard({
   verdict: AuditVerdict
   onNavigateChapter: (seq: number) => void
 }) {
-  const findings = [...verdict.findings].sort(
-    (a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity),
-  )
-
   return (
     <div className={styles.verdict}>
       <header className={styles.verdictHead}>
@@ -67,36 +63,7 @@ function VerdictCard({
         </ul>
       )}
 
-      {findings.length === 0 ? (
-        <p className="empty">未发现冲突。</p>
-      ) : (
-        <ul className={styles.findings}>
-          {findings.map((f) => (
-            <li key={f.conflict_key} className={styles.finding}>
-              <div className={styles.findingHead}>
-                <StatusBadge tone={severityTone(f.severity)}>
-                  {severityLabel(f.severity)}
-                </StatusBadge>
-                <span className={styles.findingType}>{f.conflict_type}</span>
-              </div>
-              <p className={styles.findingSrc}>{f.source}</p>
-              {f.evidence.map((ev, i) => (
-                <blockquote key={i} className={styles.evidence}>
-                  <button
-                    type="button"
-                    className={styles.chapter}
-                    onClick={() => onNavigateChapter(ev.chapter)}
-                  >
-                    第 {ev.chapter} 章 →
-                  </button>
-                  <span className={styles.quote}>{ev.quote}</span>
-                </blockquote>
-              ))}
-              {f.suggestion && <p className={styles.suggestion}>建议：{f.suggestion}</p>}
-            </li>
-          ))}
-        </ul>
-      )}
+      <FindingsList findings={verdict.findings} onNavigateChapter={onNavigateChapter} />
     </div>
   )
 }

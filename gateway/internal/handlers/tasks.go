@@ -214,12 +214,82 @@ func (h *TaskHandler) DeleteChapter(c *gin.Context) {
 	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/chapters/"+cid, nil)
 }
 
+// 章节历史版本列表（阶段 4 版本表：降序含正文，供前端预览/比对/回退）。
+// GET /api/v1/projects/:project_id/chapters/:chapter_id/versions
+func (h *TaskHandler) ListChapterVersions(c *gin.Context) {
+	pid := c.Param("project_id")
+	cid := c.Param("chapter_id")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/chapters/"+cid+"/versions", nil)
+}
+
+// 回退到历史版本（阶段 4：快照当前 → 覆盖回目标版本 → 版本 +1，转发 Python API）。
+// POST /api/v1/projects/:project_id/chapters/:chapter_id/versions/:version/restore
+func (h *TaskHandler) RestoreChapterVersion(c *gin.Context) {
+	pid := c.Param("project_id")
+	cid := c.Param("chapter_id")
+	version := c.Param("version")
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/chapters/"+cid+"/versions/"+version+"/restore", body)
+}
+
 // 全局审计（阶段 3 长线治理：手动触发抽样人设漂移 L2，转发 Python API）。
 // 同步 LLM 调用（一次判定），网关超时 30s；超时属正常，前端可提示重试（同 CorrectMemory）。
 // POST /api/v1/projects/:project_id/global-audit
 func (h *TaskHandler) GlobalAudit(c *gin.Context) {
 	pid := c.Param("project_id")
 	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/global-audit", nil)
+}
+
+// 创作设置读取（阶段 4 设置页）：文风档案 / 题材 Skill / 模型路由表 / 版本号，转发 Python API。
+// GET /api/v1/projects/:project_id/settings
+func (h *TaskHandler) ListSettings(c *gin.Context) {
+	pid := c.Param("project_id")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/settings", nil)
+}
+
+// 更新模型路由表（§6.10 每 Agent 模型路由：role→model_id 全量替换 + version++，转发 Python API）。
+// PUT /api/v1/projects/:project_id/settings  body: {"model_routes": {"planner": "deepseek-v4-pro", ...}}
+func (h *TaskHandler) UpdateSettings(c *gin.Context) {
+	pid := c.Param("project_id")
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/settings", body)
+}
+
+// 题材 Skill 预设列表（§7.12 预设包 = 4 本种子书文风档案），转发 Python API。
+// GET /api/v1/skill-presets
+func (h *TaskHandler) SkillPresets(c *gin.Context) {
+	h.forwardToPy(c, "/internal/v1/skill-presets", nil)
+}
+
+// 文风样本提取（§7.12 闭环：作者样本 → 统计层 + LLM 提炼 → 草稿，转发 Python API）。
+// POST /api/v1/projects/:project_id/style-samples  body: {"samples": ["..."]}
+func (h *TaskHandler) StyleSamples(c *gin.Context) {
+	pid := c.Param("project_id")
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/style-samples", body)
+}
+
+// 文风档案确认落库（§7.12；预设导入可带 skill_pack 原子写 profile+marker，转发 Python API）。
+// PUT /api/v1/projects/:project_id/style-profile  body: {"profile": {...}, "skill_pack": "..."}
+func (h *TaskHandler) PutStyleProfile(c *gin.Context) {
+	pid := c.Param("project_id")
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/style-profile", body)
+}
+
+// 全局审计报告列表（阶段 4 审计视图导航）：最新在前，转发 Python API。
+// GET /api/v1/projects/:project_id/global-audit
+func (h *TaskHandler) ListGlobalAudits(c *gin.Context) {
+	pid := c.Param("project_id")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/global-audit", nil)
+}
+
+// 全局审计报告详情（阶段 4 审计视图：findings 明细 + 抽样角色，转发 Python API）。
+// GET /api/v1/projects/:project_id/global-audit/:report_id
+func (h *TaskHandler) GetGlobalAudit(c *gin.Context) {
+	pid := c.Param("project_id")
+	rid := c.Param("report_id")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/global-audit/"+rid, nil)
 }
 
 // 签发 JWT（§14.1 ③ 身份断言第一道门）：转发 Python API 签发端点。

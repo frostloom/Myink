@@ -4,6 +4,7 @@ from aiink.models.base import Base
 from aiink.models.chapter import (
     Chapter,
     ChapterOutline,
+    ChapterVersion,
     VolumeOutline,
 )
 from aiink.models.memory import (
@@ -71,6 +72,7 @@ __all__ = [
     "GlobalAuditReport",
     # chapter / outline
     "Chapter",
+    "ChapterVersion",
     "VolumeOutline",
     "ChapterOutline",
     # validation

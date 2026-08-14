@@ -15,9 +15,13 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from aiink.api.auth import require_owner
 from aiink.db import tenant_session
+from aiink.models import GlobalAuditReport
 from aiink.validation import global_audit as ga
 
 router = APIRouter(prefix="/internal/v1", tags=["global-audit"])
+
+# 报告列表页大小上限（前端翻页由阶段 4 前省略，只取最新一页）
+_MAX_REPORTS = 20
 
 
 def _project_id(raw: str) -> uuid.UUID:
@@ -25,6 +29,33 @@ def _project_id(raw: str) -> uuid.UUID:
         return uuid.UUID(raw)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=f"项目 id 非法: {raw}") from exc
+
+
+def _report_summary(r: GlobalAuditReport) -> dict:
+    """列表项（不含 findings 明细，省流量）：窗口/状态/触发源/进度 marker/计数/时间。"""
+    return {
+        "report_id": str(r.id),
+        "window_start": r.window_start,
+        "window_end": r.window_end,
+        "audited_up_to_chapter": r.audited_up_to_chapter,
+        "trigger": r.trigger,
+        "status": r.status,
+        "sampled": r.summary.get("sampled", 0),
+        "findings": r.summary.get("findings", 0),
+        "chapters": r.summary.get("chapters", 0),
+        "bridge": r.summary.get("bridge"),
+        "style": r.summary.get("style"),
+        "error": r.error,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+    }
+
+
+def _report_detail(r: GlobalAuditReport) -> dict:
+    """详情：列表项 + 抽样角色 + findings 明细（前端审计视图与章节 finding 同构渲染）。"""
+    return {**_report_summary(r),
+            "sampled_characters": r.sampled_characters,
+            "findings": r.findings,
+            "summary": r.summary}
 
 
 @router.post("/projects/{project_id}/global-audit",
@@ -44,3 +75,26 @@ def trigger_global_audit(project_id: str) -> dict:
     if report.get("status") == "failed":
         raise HTTPException(status_code=502, detail=f"全局审计失败: {report.get('error')}")
     return report
+
+
+@router.get("/projects/{project_id}/global-audit",
+            dependencies=[Depends(require_owner)])
+def list_global_audits(project_id: str, limit: int = _MAX_REPORTS) -> list[dict]:
+    """审计报告列表（最新在前，limit ≤ 20）：窗口/状态/计数，前端审计视图导航。"""
+    limit = min(max(int(limit), 1), _MAX_REPORTS)
+    with tenant_session(project_id) as db:
+        rows = (db.query(GlobalAuditReport)
+                .order_by(GlobalAuditReport.created_at.desc(), GlobalAuditReport.id.desc())
+                .limit(limit).all())
+        return [_report_summary(r) for r in rows]
+
+
+@router.get("/projects/{project_id}/global-audit/{report_id}",
+            dependencies=[Depends(require_owner)])
+def get_global_audit(project_id: str, report_id: str) -> dict:
+    """单报告详情：findings 明细（persona/bridge/style 维度同构）+ 抽样角色 + 维度计数。"""
+    with tenant_session(project_id) as db:
+        r = db.get(GlobalAuditReport, _project_id(report_id))
+        if r is None:
+            raise HTTPException(status_code=404, detail="审计报告不存在")
+        return _report_detail(r)
