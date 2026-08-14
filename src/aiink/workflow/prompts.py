@@ -221,12 +221,25 @@ def plan_messages(context: dict, batch_goal: str | None = None) -> list[dict]:
     return [{"role": "system", "content": system}, {"role": "user", "content": "\n\n".join(user_parts)}]
 
 
+def _profile_list(profile: dict, key: str) -> list[str]:
+    """文风档案列表键的安全读取：list→str 清洗；str 非空→单元素；其余→[]。
+
+    防字符串被 join / [*a, *b] 逐字展开（PUT 走 dict 透传，前端可能传 str）。
+    """
+    val = profile.get(key)
+    if isinstance(val, list):
+        return [str(v) for v in val if str(v).strip()]
+    if isinstance(val, str) and val.strip():
+        return [val]
+    return []
+
+
 def _style_section(style_profile: dict | None, target_words: int | None) -> str:
     """文风档案注入段（§7.12 / §8.6 生成约束）：字数目标 + 句式/词汇约束 + 对话要求 + 风格示范。
 
     §7.12 样本提取新增键全部 get() 容错（lexicon_tendency / reference_excerpts /
     frequent_words / 节奏基线），与既有键渲染一致；fatigue_words/forbidden 键不变 →
-    L1/L2 检测零回归（样例 15/38/39 锚点）。
+    L1/L2 检测零回归（样例 15/38/39 锚点）。列表键经 _profile_list 类型守卫。
     """
     parts = []
     if target_words:
@@ -243,11 +256,11 @@ def _style_section(style_profile: dict | None, target_words: int | None) -> str:
         parts.append(f"句式要求：{sp['sentence_style']}。")
     if sp.get("lexicon_tendency"):
         parts.append(f"词汇修辞倾向：{sp['lexicon_tendency']}。")
-    forbidden = sp.get("forbidden") or []
+    forbidden = _profile_list(sp, "forbidden")
     if forbidden:
         parts.append("表述禁忌（必须避免）：" + "；".join(forbidden) + "。")
-    fw = sp.get("fatigue_words") or []
-    freq = sp.get("frequent_words") or []
+    fw = _profile_list(sp, "fatigue_words")
+    freq = _profile_list(sp, "frequent_words")
     # §7.12：样本提取产出的高频词串并入写章节制（与显式 fatigue_words 去重合并），不进 L1 阈值
     high_freq = list(dict.fromkeys([*fw, *freq]))
     if high_freq:
@@ -257,7 +270,7 @@ def _style_section(style_profile: dict | None, target_words: int | None) -> str:
     rhythm = _rhythm_reference(sp)
     if rhythm:
         parts.append(rhythm)
-    excerpts = sp.get("reference_excerpts") or []
+    excerpts = _profile_list(sp, "reference_excerpts")
     if excerpts:
         parts.append("风格示范（作者样本摘录，模仿其文风、不逐字复制）：\n"
                      + "\n".join(f"- {e}" for e in excerpts))

@@ -2,9 +2,10 @@
 
 - POST /projects/{pid}/style-samples：作者样本 → 统计层（确定性）+ LLM 提炼（extract 档
   一次调用）→ 合并返回 StyleProfile **草稿**（不落库）；LLM 失败降级只回统计层 +
-  extract_error（§6.12 不 500、不阻塞）。
+  extract_error（§6.12 不 500、不阻塞）；extract 调用记 agent_runs（§6.8 成本透明）。
 - PUT /projects/{pid}/style-profile：前端可编辑草稿后回传 → 校验 → 编排层落库
-  project_settings.style_profile + 递增 version（乐观版本号 §7.6）。
+  project_settings.style_profile + 递增 version（乐观版本号 §7.6）；键级保留 L1 基线键
+  fatigue_words/patterns（样本草稿确认不抹预设，显式 [] 可清空）。
 
 与 §7.11 设定治理权威模型一致：agent 只提案、用户确认是唯一 canon（不走记忆候选池）；
 数据流边界（§6.2）：确认 = 编排层写库入口，与 persist 同层。
@@ -18,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from aiink.api.auth import require_owner
-from aiink.db import tenant_session
+from aiink.db import new_session, tenant_session
 from aiink.memory.repository import get_settings
 from aiink.models import ProjectSettings
 from aiink.style_extract import (
@@ -36,7 +37,7 @@ _MAX_TOTAL_CHARS = 12_000
 
 
 def _pid(project_id: str) -> uuid.UUID:
-    """path 里的 project_id 转 uuid（require_owner 已校验格式合法，此处兜底防误用）。"""
+    """path 里的 project_id 转 uuid（require_owner 已校验格式合法，此处仅类型转换）。"""
     return uuid.UUID(project_id)
 
 
@@ -49,7 +50,10 @@ class StyleSamplesBody(BaseModel):
 @router.post("/projects/{project_id}/style-samples",
              dependencies=[Depends(require_owner)])
 def style_samples(project_id: str, body: StyleSamplesBody) -> dict:
-    """样本 → 统计层 + LLM 提炼 → 文风档案草稿（不落库）。"""
+    """样本 → 统计层 + LLM 提炼 → 文风档案草稿（不落库）。
+
+    extract 调用记 agent_runs（§6.8 成本透明）；agent_runs 无 RLS（观测表），普通连接可写。
+    """
     samples = [s.strip() for s in body.samples if s.strip()]
     if not samples:
         raise HTTPException(status_code=400, detail="至少提供一篇非空样本")
@@ -59,9 +63,15 @@ def style_samples(project_id: str, body: StyleSamplesBody) -> dict:
         raise HTTPException(status_code=400, detail=f"样本总量不超过 {_MAX_TOTAL_CHARS} 字")
 
     stats = analyze_sample_stats(samples)
-    llm_profile, extract_error = extract_style_profile(samples, stats)
+    db = new_session()
+    try:
+        llm_profile, extract_error = extract_style_profile(samples, stats,
+                                                           project_id=project_id, db=db)
+        db.commit()
+    finally:
+        db.close()
     draft = merge_style_draft(stats, llm_profile, extract_error=extract_error)
-    return {"draft": draft, "stats": stats}
+    return {"draft": draft}
 
 
 class StyleProfileBody(BaseModel):
@@ -73,9 +83,16 @@ class StyleProfileBody(BaseModel):
 @router.put("/projects/{project_id}/style-profile",
             dependencies=[Depends(require_owner)])
 def put_style_profile(project_id: str, body: StyleProfileBody) -> dict:
-    """确认落库：编排层写 project_settings.style_profile + version 递增（§7.6 乐观版本号）。"""
+    """确认落库：编排层写 project_settings.style_profile + version 递增（§7.6 乐观版本号）。
+
+    - 剔除瞬态诊断键 extract_error（草稿降级提示不落库）；
+    - 键级保留 L1 基线键 fatigue_words/patterns：样本草稿白名单收键不含检测基线，确认时不抹
+      预设（显式传 [] 可清空）；其余键仍整档案覆盖。
+    """
+    profile = dict(body.profile)
+    profile.pop("extract_error", None)
     try:
-        profile = validate_profile(body.profile)
+        profile = validate_profile(profile)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     with tenant_session(project_id) as db:
@@ -85,6 +102,10 @@ def put_style_profile(project_id: str, body: StyleProfileBody) -> dict:
             st = ProjectSettings(project_id=_pid(project_id), style_profile=profile, version=1)
             db.add(st)
         else:
+            existing = st.style_profile or {}
+            for k in ("fatigue_words", "fatigue_patterns"):
+                if k not in profile and existing.get(k) is not None:
+                    profile[k] = existing[k]
             st.style_profile = profile
             st.version = (st.version or 1) + 1
         db.commit()
