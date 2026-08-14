@@ -532,7 +532,7 @@ def node_plan_chapter(state: ChapterState) -> ChapterState:
     pid = state["project_id"]
     with tenant_session(pid) as db:
         messages = prompts.plan_messages(state.get("context") or {}, state.get("batch_goal"))
-        resp, _ = _llm(db, state, "plan_chapter", "Planner", make_chain("planner"), messages)
+        resp, _ = _llm(db, state, "plan_chapter", "Planner", make_chain("planner", db=db, project_id=pid), messages)
         if resp.error:
             return {"error": resp.error}
     try:
@@ -555,7 +555,7 @@ def node_write(state: ChapterState) -> ChapterState:
             state.get("context") or {}, state.get("plan") or {},
             style_profile=state.get("style_profile"), target_words=state.get("target_words"),
         )
-        resp, tool_trace = _llm(db, state, "write", "Writer", make_chain("writer"), messages,
+        resp, tool_trace = _llm(db, state, "write", "Writer", make_chain("writer", db=db, project_id=pid), messages,
                                 tools=READ_TOOLS, json_mode=False, disable_thinking=True)
         if resp.error:
             return {"error": resp.error}
@@ -583,7 +583,7 @@ def extract_candidates_from_draft(db: Session, *, project_id: str, chapter_seq: 
     """
     messages = prompts.extract_messages(draft, chapter_seq, context=context)
     state: dict = {"project_id": project_id, "chapter_seq": chapter_seq, "task_id": task_id}
-    resp, _ = _llm(db, state, "extract", "Memory", make_chain("extract"), messages)
+    resp, _ = _llm(db, state, "extract", "Memory", make_chain("extract", db=db, project_id=project_id), messages)
     if resp.error:
         return [], resp.error
     try:
@@ -646,7 +646,7 @@ def node_revise(state: ChapterState) -> ChapterState:
     pid = state["project_id"]
     with tenant_session(pid) as db:
         messages = prompts.revise_messages(state["draft"], state.get("unresolved", []), state["chapter_seq"])
-        resp, _ = _llm(db, state, "revise", "Writer", make_chain("writer"), messages,
+        resp, _ = _llm(db, state, "revise", "Writer", make_chain("writer", db=db, project_id=pid), messages,
                        json_mode=False, disable_thinking=True)
         if resp.error:
             return {"error": resp.error}

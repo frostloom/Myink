@@ -134,7 +134,7 @@ def test_process_batch_pause_publishes_paused(temp_project, monkeypatch):
 
     stub = BatchHaltStub("金丹", "金丹", on_write=2, halt_cb=pause_batch)
     monkeypatch.setattr(providers_mod, "default_provider", stub)
-    monkeypatch.setattr(bg_mod, "make_chain", lambda role: _Chain(stub))
+    monkeypatch.setattr(bg_mod, "make_chain", lambda role, **_kwargs: _Chain(stub))
     monkeypatch.setitem(providers_mod.DEFAULT_ROUTES, "writer", ["deepseek-v4-flash"])
 
     body = _body(tid, temp_project, task_type="batch_generate", payload={"start": 1, "size": 3})

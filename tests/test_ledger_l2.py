@@ -109,7 +109,7 @@ def install_stub(monkeypatch):
     """注入单点：patch aiink.validation.ledger_l2.make_chain（正文-台账语义比对唯一桩点）。"""
 
     def _install(stub):
-        monkeypatch.setattr(l2, "make_chain", lambda role: _Chain(stub))
+        monkeypatch.setattr(l2, "make_chain", lambda role, **_kwargs: _Chain(stub))
 
     return _install
 

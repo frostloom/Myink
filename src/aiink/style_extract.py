@@ -104,8 +104,8 @@ def extract_style_profile(samples: list[str], stats: dict, *,
     from aiink.workflow import nodes, prompts
 
     messages = prompts.style_extract_messages(samples, stats)
-    resp = make_chain("extract").generate(messages, json_mode=True,
-                                          max_tokens=nodes._MAX_TOKENS["extract"])
+    resp = make_chain("extract", db=db, project_id=project_id).generate(messages, json_mode=True,
+                                                                        max_tokens=nodes._MAX_TOKENS["extract"])
     if db is not None:
         if project_id is None:
             raise ValueError("db 非 None 时必须提供 project_id（agent_runs 归属）")

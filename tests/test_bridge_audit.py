@@ -163,7 +163,7 @@ class _FirstFailStub:
 
 def _install_audit_stub(monkeypatch, stub):
     """单点注入：patch aiink.validation.global_audit.make_chain（全局审计唯一桩点）。"""
-    monkeypatch.setattr(ga, "make_chain", lambda role: _Chain(stub))
+    monkeypatch.setattr(ga, "make_chain", lambda role, **_kwargs: _Chain(stub))
 
 
 # ---- 1. 桥段候选抽样：向量近邻 / 零事件短路 / 词表预滤除 ----

@@ -1,9 +1,12 @@
-"""章节编辑 / 记忆校正 / 级联删除（阶段 3 切片：正文轻编辑 + 增量记忆校正）。
+"""章节编辑 / 记忆校正 / 版本历史 / 级联删除（阶段 3 正文轻编辑 + 阶段 4 版本表）。
 
 - PUT content：只更新正文（版本 +1），不触发任何 LLM / 记忆动作——纯风格编辑默认零动作；
+  覆盖写前把旧状态快照进 chapter_versions（版本表，历史/回退依据）；
+- GET versions：章节历史版本列表（降序），含正文可供前端预览/比对；
+- POST .../versions/{version}/restore：回退——快照当前（回退本身留痕）→ 覆盖回目标版本 → 版本 +1；
 - POST correct-memory：显式校正——对编辑后正文重新 extract → 与该章已落库记忆 diff →
   变更集（新增/删除）进待确认池，人工 confirm/reject 后生效；
-- DELETE：级联删除该章及其后全部章节（正文 + 记忆 + 待确认池候选），进度回退到保留最大章。
+- DELETE：级联删除该章及其后全部章节（正文 + 记忆 + 版本 + 待确认池候选），进度回退到保留最大章。
 
 数据流边界 §6.2：校正的重抽取走编排层（复用节点级 extract 路径），记忆写库仅经确认池
 confirm 落库，Agent 不直写。
@@ -21,7 +24,8 @@ from aiink.api.auth import require_owner
 from aiink.db import tenant_session
 from aiink.memory import correction
 from aiink.memory.invalidation import invalidate_chapter_memory
-from aiink.models import Chapter, MemoryCandidate, Project
+from aiink.memory.repository import snapshot_chapter
+from aiink.models import Chapter, ChapterVersion, MemoryCandidate, Project
 from aiink.workflow import nodes
 
 router = APIRouter(prefix="/internal/v1", tags=["chapters"])
@@ -56,7 +60,59 @@ def update_chapter_content(project_id: str, chapter_id: str, body: ContentUpdate
         ch = db.get(Chapter, _chapter_id(chapter_id))
         if ch is None:
             raise HTTPException(status_code=404, detail="章节不存在")
+        snapshot_chapter(db, ch)  # 覆盖写前快照进版本表（历史/回退依据，阶段 4）
         ch.content = body.content
+        ch.version = (ch.version or 1) + 1
+    return {"chapter_id": chapter_id, "chapter_seq": ch.chapter_seq,
+            "status": ch.status, "version": ch.version}
+
+
+def _version_list(db, ch: Chapter) -> list[dict]:
+    versions = (db.query(ChapterVersion)
+                .filter(ChapterVersion.chapter_id == ch.id)
+                .order_by(ChapterVersion.version.desc()).all())
+    return [{
+        "version": v.version,
+        "title": v.title,
+        "content": v.content,
+        "summary": v.summary,
+        "reason": v.reason,
+        "created_at": v.created_at.isoformat() if v.created_at else None,
+    } for v in versions]
+
+
+@router.get("/projects/{project_id}/chapters/{chapter_id}/versions",
+            dependencies=[Depends(require_owner)])
+def list_chapter_versions(project_id: str, chapter_id: str) -> dict:
+    """章节历史版本（降序，最新在前）；含正文供前端预览/比对，不含当前实时版本。
+
+    语义：chapters.version 是当前实时版本（不在本列表），历史 = 每次覆盖写前的快照。
+    """
+    with tenant_session(project_id) as db:
+        ch = db.get(Chapter, _chapter_id(chapter_id))
+        if ch is None:
+            raise HTTPException(status_code=404, detail="章节不存在")
+        return {"chapter_id": chapter_id, "chapter_seq": ch.chapter_seq,
+                "current_version": ch.version or 1, "versions": _version_list(db, ch)}
+
+
+@router.post("/projects/{project_id}/chapters/{chapter_id}/versions/{version}/restore",
+             dependencies=[Depends(require_owner)])
+def restore_chapter_version(project_id: str, chapter_id: str, version: int) -> dict:
+    """回退到历史版本：先快照当前（回退本身留痕为 revert）→ 覆盖正文/标题/摘要 → 版本 +1。"""
+    with tenant_session(project_id) as db:
+        ch = db.get(Chapter, _chapter_id(chapter_id))
+        if ch is None:
+            raise HTTPException(status_code=404, detail="章节不存在")
+        target = (db.query(ChapterVersion)
+                  .filter(ChapterVersion.chapter_id == ch.id,
+                          ChapterVersion.version == version).one_or_none())
+        if target is None:
+            raise HTTPException(status_code=404, detail=f"版本 {version} 不存在")
+        snapshot_chapter(db, ch, reason="revert")
+        ch.content = target.content
+        ch.title = target.title
+        ch.summary = target.summary
         ch.version = (ch.version or 1) + 1
     return {"chapter_id": chapter_id, "chapter_seq": ch.chapter_seq,
             "status": ch.status, "version": ch.version}

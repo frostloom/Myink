@@ -1,8 +1,10 @@
 // 路由：/login 公开；其余挂 RequireAuth（无 token → 跳登录）。
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
+import AuditPage from './pages/AuditPage'
 import LoginPage from './pages/LoginPage'
 import ProjectsPage from './pages/ProjectsPage'
+import SettingsPage from './pages/SettingsPage'
 import WorkspacePage from './pages/WorkspacePage'
 
 function RequireAuth() {
@@ -19,6 +21,8 @@ export const router = createBrowserRouter([
       { path: '/', element: <Navigate to="/projects" replace /> },
       { path: '/projects', element: <ProjectsPage /> },
       { path: '/projects/:projectId', element: <WorkspacePage /> },
+      { path: '/projects/:projectId/settings', element: <SettingsPage /> },
+      { path: '/projects/:projectId/audit', element: <AuditPage /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

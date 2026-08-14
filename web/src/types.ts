@@ -41,6 +41,24 @@ export interface ContentUpdateResponse {
   version: number
 }
 
+/** 章节历史版本（阶段 4 版本表：覆盖写前快照；reason = manual/batch/revise/revert） */
+export interface ChapterVersion {
+  version: number
+  title: string | null
+  content: string | null
+  summary: string | null
+  reason: string
+  created_at: string | null
+}
+
+/** 版本列表响应（versions 降序；当前实时版本 = current_version，不在列表中） */
+export interface ChapterVersionsResponse {
+  chapter_id: string
+  chapter_seq: number
+  current_version: number
+  versions: ChapterVersion[]
+}
+
 export type TaskStatus =
   | 'queued'
   | 'running'
@@ -157,4 +175,71 @@ export interface MemoryCandidate {
 export interface CandidateActionResponse {
   candidate_id: string
   status: 'confirmed' | 'rejected'
+}
+
+/** 文风档案（§7.12 StyleProfile：键值透传，validate_profile 顶层 None 丢弃） */
+export type StyleProfile = Record<string, unknown>
+
+/** 创作设置（GET/PUT settings，routes_settings.py；model_routes 全量替换） */
+export interface ProjectSettings {
+  style_profile: StyleProfile
+  skill_pack: string | null
+  model_routes: Record<string, string>
+  version: number
+}
+
+/** 题材 Skill 预设（skill-presets，routes_style.py；id 即 skill_pack marker） */
+export interface SkillPreset {
+  id: string
+  name: string
+  genre: string
+  style_profile: StyleProfile
+}
+
+/** 文风样本提取响应（style-samples：统计层 + LLM 提炼草稿；extract_error 为 LLM 降级提示） */
+export interface StyleDraft {
+  draft: StyleProfile & { extract_error?: string }
+}
+
+/** 文风档案确认落库响应（style-profile：确认 + 可选 skill_pack 原子写） */
+export interface StyleProfileResponse {
+  style_profile: StyleProfile
+  skill_pack: string | null
+  version: number
+}
+
+/** 全局审计报告（GET global-audit 列表项，routes_global_audit.py；findings 明细在详情） */
+export interface GlobalAuditReportSummary {
+  report_id: string
+  window_start: number
+  window_end: number
+  audited_up_to_chapter: number
+  trigger: 'batch' | 'manual' | (string & {})
+  status: string
+  sampled: number
+  findings: number
+  chapters: number
+  bridge?: { pairs: number; findings: number } | null
+  style?: { sampled: number; findings: number } | null
+  error: string | null
+  created_at: string | null
+}
+
+/** 全局审计报告详情（GET global-audit/:id = 列表项 + 抽样角色 + findings 明细） */
+export interface GlobalAuditReportDetail extends Omit<GlobalAuditReportSummary, 'findings'> {
+  findings: Finding[]
+  sampled_characters: Array<{ character_id: string; name: string }>
+  summary: Record<string, unknown>
+}
+
+/** 手动触发全局审计响应（POST global-audit：run_global_audit 报告 dict，无 report_id/trigger） */
+export interface AuditRunResponse {
+  window_start: number
+  window_end: number
+  audited_up_to_chapter: number
+  status: string
+  sampled_characters: Array<{ character_id: string; name: string }>
+  findings: Finding[]
+  error: string | null
+  summary: Record<string, unknown>
 }
