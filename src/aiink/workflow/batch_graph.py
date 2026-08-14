@@ -61,6 +61,21 @@ class BatchReviewError(Exception):
     """
 
 
+class BatchHaltError(Exception):
+    """手动暂停/取消中断批次（§6.12 批次控制）。
+
+    用户在途中点暂停/取消 → 控制端点只改 DB 任务状态（paused/cancelled），
+    图在章节边界查 DB 感知并中断批次。与 BatchReviewError 同一续跑机制：抛异常
+    使 checkpoint 停在本章（position 未推进）、resume 从本章续跑不重跑已完成章。
+    若走优雅路径到 batch_end（图 END），resume 只能整批重跑，违背"不重跑已完成章"。
+    status 取任务状态（paused/cancelled），runner/processor 据此落终态 + 发 SSE。
+    """
+
+    def __init__(self, status: str):
+        super().__init__(f"批次已{status}")
+        self.status = status
+
+
 _BATCH_PLAN_PROMPT = """你是长篇网文创作系统的【批次规划 Agent】。为接下来 N 章做整体推进蓝图（N 是规划单元，不是重复次数——N 章要系统性推进主线/支线/伏笔/大纲，不能各自为政）。
 输出严格 JSON：
 {"chapters": [{"goal": "本章推进目标（哪条线/收哪些伏笔/新种钩子）", "outline_advance": "大纲推进段"}, ...]}  共 N 项"""
@@ -118,6 +133,16 @@ def make_chapter_runner(chapter_graph):
         chapter_seq = item["seq"]
         # 每章派生 thread，与 batch 主 thread 隔离（§6.12 续跑语义）
         thread_id = f"{state['batch_task_id']}:ch{chapter_seq}"
+
+        # 手动暂停/取消守卫（§6.12 批次控制）：章节边界查 DB 任务状态——paused/cancelled
+        # 中断批次。外部控制（POST .../pause|cancel）只改 DB 不产生 SSE 事件，图在此处
+        # 感知并停下（尽力而为：本章跑完即停，非节点级中断）。抛 BatchHaltError 使
+        # checkpoint 停在本章，resume 从本章续跑不重跑已完成章。
+        with tenant_session(state["project_id"]) as db:
+            from aiink.models import Task
+            batch = db.get(Task, uuid.UUID(state["batch_task_id"]))
+            if batch and batch.status in ("paused", "cancelled"):
+                raise BatchHaltError(batch.status)
 
         chapter_input: ChapterState = {
             "project_id": state["project_id"],

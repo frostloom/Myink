@@ -254,7 +254,7 @@ def _run(body: dict, task_id: str, task_type: str, project_id: str) -> str:
         # 批次 critical 冲突：resume 续跑时由图内节点抛出（首次运行在 runner
         # generate_batch 内 catch 置 awaiting_review）。置 awaiting_review 等人工
         # 处理候选后 resume，不标 failed（§6.11 确认分流）。
-        from aiink.workflow.batch_graph import BatchReviewError
+        from aiink.workflow.batch_graph import BatchHaltError, BatchReviewError
 
         if isinstance(exc, BatchReviewError):
             from aiink.workflow.runner import _set_task_status
@@ -262,6 +262,16 @@ def _run(body: dict, task_id: str, task_type: str, project_id: str) -> str:
             _set_task_status(project_id, task_id, "awaiting_review", str(exc))
             logger.info("批次 critical 转人工暂停: %s err=%s", task_id, exc)
             _pub_status(task_id, "awaiting_review", {"error": str(exc)})
+            return "terminal"
+        if isinstance(exc, BatchHaltError):
+            # 手动暂停/取消（§6.12 批次控制）：batch_resume 续跑时图内再次感知
+            # paused/cancelled 中断（首次批次由 generate_batch 接住转 manual_halt 标记，
+            # 不走到这里）。状态幂等确认 + 发对应 SSE 事件（cancelled 终态关流、
+            # paused 非终态保持流开启等 resume 续跑）。
+            from aiink.workflow.runner import _set_task_status
+
+            _set_task_status(project_id, task_id, exc.status)
+            _pub_status(task_id, exc.status)
             return "terminal"
         if _is_retryable(exc):
             logger.warning("可重试失败，将退避重投: %s err=%s", task_id, exc)
@@ -274,8 +284,11 @@ def _run(body: dict, task_id: str, task_type: str, project_id: str) -> str:
         return "terminal"
 
     # 终态已由 runner 落库（generate_chapter/batch 内部 _set_task_status）。
-    # 先判转人工（critical 冲突同时带 error 说明）再判失败，保证 SSE 状态正确。
-    if result.get("needs_review"):
+    # 先判手动暂停/取消（§6.12：generate_batch 返回 manual_halt 标记）再判转人工
+    # （critical 冲突同时带 error 说明）再判失败，保证 SSE 状态正确。
+    if result.get("manual_halt"):
+        _pub_status(task_id, result["manual_halt"])
+    elif result.get("needs_review"):
         _pub_status(task_id, "awaiting_review")
     elif result.get("error"):
         logger.warning("任务失败（runner 已落 failed）: %s err=%s", task_id, result["error"])
