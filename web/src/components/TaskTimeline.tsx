@@ -68,7 +68,6 @@ export function TaskTimeline({
             <li key={`${n.seenAt}-${i}`} className={styles.node}>
               <span className={styles.nodeDot} />
               <span className={styles.nodeLabel}>{nodeLabel(n.node)}</span>
-              {progress && <span className={styles.nodeTaskId}>#{n.taskId}</span>}
             </li>
           ))}
         </ol>
