@@ -31,6 +31,11 @@ export function ChapterList({ chapters, selectedCid, onSelect, pendingByChapter 
           >
             <span className={styles.seq}>第 {c.chapter_seq} 章</span>
             {c.title && <span className={styles.title}>{c.title}</span>}
+            {c.word_count != null && (
+              <span className={styles.words} title="正文字符数（含标点）">
+                {c.word_count.toLocaleString()} 字
+              </span>
+            )}
             {pending > 0 && (
               <span className={`badge badge-warning ${styles.pending}`} title="有待确认候选">
                 {pending} 待确认

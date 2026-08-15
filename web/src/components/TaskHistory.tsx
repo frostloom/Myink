@@ -143,6 +143,11 @@ export function TaskHistory({ projectId, activeTaskId }: Props) {
                   <StatusBadge tone={taskStatusTone(t.status)}>{taskStatusLabel(t.status)}</StatusBadge>
                   <span className={styles.type}>{taskTypeLabel(t.task_type)}</span>
                   <span className={styles.target}>{targetLabel(t)}</span>
+                  {t.cost_total > 0 && (
+                    <span className={styles.cost} title="任务总花费（节点 cost 合计，§6.8 成本透明）">
+                      总 ¥{t.cost_total.toFixed(2)}
+                    </span>
+                  )}
                   {active && <span className={styles.live}>进行中</span>}
                   <span className={styles.date}>
                     {t.created_at ? new Date(t.created_at).toLocaleString('zh-CN') : ''}
@@ -157,6 +162,9 @@ export function TaskHistory({ projectId, activeTaskId }: Props) {
                     ) : detail ? (
                       <>
                         <div className={styles.detailHead}>
+                          {detail.cost_total > 0 && (
+                            <span className={styles.cost}>总花费 ¥{detail.cost_total.toFixed(2)}</span>
+                          )}
                           {detail.progress && (
                             <span className={styles.progress}>
                               {detail.progress.current}/{detail.progress.total}

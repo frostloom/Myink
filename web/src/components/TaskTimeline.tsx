@@ -65,6 +65,8 @@ export function TaskTimeline({
 }: TaskTimelineProps) {
   const [ctrl, setCtrl] = useState<BatchAction | null>(null)
   const [ctrlError, setCtrlError] = useState<string | null>(null)
+  // 执行详情默认收起：总花费常显，展开才看逐节点流转/过程花费（用户口径）
+  const [runsOpen, setRunsOpen] = useState(false)
 
   if (!taskId) {
     return <p className="empty">尚未发起生成。</p>
@@ -72,6 +74,8 @@ export function TaskTimeline({
 
   const terminal = phase === 'terminal'
   const busy = phase === 'connecting' || phase === 'live' || phase === 'reconnecting'
+  // 总花费（§6.8 成本透明）：runs 终态快照全量，求和即任务总成本（批次=全批）
+  const totalCost = runs.reduce((s, r) => s + r.cost_est, 0)
   const actions = canControl && status ? (STATUS_ACTIONS[status] ?? []) : []
   // 参数解构是可变绑定，收窄不进闭包：非空捕获 const 供 control 使用
   const tid = taskId
@@ -97,6 +101,11 @@ export function TaskTimeline({
       <header className={styles.head}>
         <span className={`badge badge-${phaseTone(phase)}`}>{PHASE_LABEL[phase]}</span>
         {status && <span className={styles.status}>任务 {status}</span>}
+        {totalCost > 0 && (
+          <span className={styles.cost} title="任务总花费（节点 cost 合计，§6.8 成本透明）">
+            总花费 ¥{totalCost.toFixed(2)}
+          </span>
+        )}
         {progress && (
           <span className={styles.progress}>
             {progress.current}/{progress.total}
@@ -144,10 +153,24 @@ export function TaskTimeline({
 
       {terminal && runs.length > 0 && (
         <div className={styles.runs}>
-          <h4 className={styles.runsTitle}>执行详情</h4>
-          {runs.map((r, i) => (
-            <RunNodeCard key={`${r.node}-${i}`} run={r} />
-          ))}
+          <button
+            type="button"
+            className={styles.runsToggle}
+            onClick={() => setRunsOpen((o) => !o)}
+            aria-expanded={runsOpen}
+          >
+            <h4 className={styles.runsTitle}>
+              执行详情 · {runs.length} 节点 · ¥{totalCost.toFixed(2)}
+            </h4>
+            <span className={styles.runCaret}>{runsOpen ? '▾' : '▸'}</span>
+          </button>
+          {runsOpen && (
+            <div className={styles.runList}>
+              {runs.map((r, i) => (
+                <RunNodeCard key={`${r.node}-${i}`} run={r} />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
