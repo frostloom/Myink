@@ -16,6 +16,8 @@ type Config struct {
 	RedisAddr        string
 	RedisPassword    string
 	PythonAPIBase    string
+	// 阶段 5：前端静态托管目录（web/dist，容器内 /app/dist；不存在时 SPA fallback 自动降级为 404）
+	WebDistDir       string
 	// 三层闸门（§13）：每日配额（章）、并发上限（进行中任务）、日成本上限（¥）
 	QuotaDaily       int
 	// 每书每日配额（章）：单用户同时写多本书时限制单书用量（默认 50 章/书/日）
@@ -67,6 +69,7 @@ func Load() Config {
 		RedisAddr:        env("REDIS_ADDR", "localhost:6380"),
 		RedisPassword:    env("REDIS_PASSWORD", ""),
 		PythonAPIBase:    env("PYTHON_API_BASE", "http://127.0.0.1:8100"),
+		WebDistDir:       env("WEB_DIST_DIR", "web/dist"),
 		QuotaDaily:       envInt("QUOTA_DAILY_CHAPTERS", 500),
 		BookQuotaDaily:   envInt("BOOK_QUOTA_DAILY_CHAPTERS", 50),
 		BooksPerDay:      envInt("BOOKS_PER_DAY", 10),

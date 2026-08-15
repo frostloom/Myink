@@ -9,6 +9,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -778,5 +780,86 @@ func TestJWTGoodTokenSetsTrustedHeader(t *testing.T) {
 	}
 	if got := w.Header().Get(HeaderUser); got != "user-123" {
 		t.Fatalf("应透传 X-AiInk-User=user-123，实际 %q", got)
+	}
+}
+
+func TestStaticSPAFallback(t *testing.T) {
+	// 阶段 5 静态托管：/assets 命中、根/深链回退 index.html、/api 保持 JSON 404、
+	// dist 外路径穿越不回退也不泄露。构造独立 router（dist 指向临时目录）。
+	dist := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dist, "index.html"), []byte("<html>index</html>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dist, "assets"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dist, "assets", "app.js"), []byte("console.log(1)"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// dist 外放一个敏感文件，验证穿越不可达
+	secret := filepath.Join(filepath.Dir(dist), "secret.txt")
+	if err := os.WriteFile(secret, []byte("topsecret"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := config.Load()
+	cfg.RatePerSec = 1000
+	cfg.RateBurst = 1000
+	cfg.WebDistDir = dist
+	router := NewRouter(cfg, nil, nil)
+
+	cases := []struct {
+		name string
+		path string
+		want int
+		body string // 非空则断言 body 包含
+	}{
+		{"root", "/", http.StatusOK, "<html>index</html>"},
+		{"spa deep link", "/projects/p1/audit", http.StatusOK, "<html>index</html>"},
+		{"asset", "/assets/app.js", http.StatusOK, "console.log(1)"},
+		{"api miss keeps json 404", "/api/v1/unknown", http.StatusNotFound, `"not_found"`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+			if w.Code != tc.want {
+				t.Fatalf("%s 应 %d，实际 %d body=%s", tc.path, tc.want, w.Code, w.Body.String())
+			}
+			if tc.body != "" && !strings.Contains(w.Body.String(), tc.body) {
+				t.Fatalf("%s body 应含 %q，实际 %q", tc.path, tc.body, w.Body.String())
+			}
+		})
+	}
+
+	// 路径穿越：含 .. 的请求被 Go net/http 层直接 400 拒（handler 前）——安全属性是
+	// dist 外 secret.txt 绝不泄露（防护是双保险，net/http 已挡第一道）。
+	t.Run("traversal never leaks dist-outer file", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet,
+			"/../"+filepath.Base(filepath.Dir(dist))+"/secret.txt", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		if strings.Contains(w.Body.String(), "topsecret") {
+			t.Fatalf("穿越请求泄露了 dist 外文件内容: %q", w.Body.String())
+		}
+	})
+}
+
+func TestStaticNoDistDirNoPanic(t *testing.T) {
+	// dist 目录不存在 → 静态托管自动降级 404，不 panic（本地 dev 跑网关未 build 前端时）。
+	cfg := config.Load()
+	cfg.RatePerSec = 1000
+	cfg.RateBurst = 1000
+	cfg.WebDistDir = filepath.Join(t.TempDir(), "no-such-dir")
+	router := NewRouter(cfg, nil, nil)
+
+	for _, path := range []string{"/", "/projects/p1", "/assets/x.js"} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusNotFound {
+			t.Fatalf("%s dist 缺失应 404，实际 %d body=%s", path, w.Code, w.Body.String())
+		}
 	}
 }
