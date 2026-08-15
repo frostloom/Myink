@@ -105,7 +105,7 @@ CI 用**全新 PG** 跑全量回归是有意为之：`DuplicateTable` 索引冲�
 （本地库已存在，`create_all` 的 checkfirst 会跳过表直接全绿）——CI 正是那道闸。
 **契约 diff 闸**（阶段 5 契约测试形式化）：「响应契约单一事实源」= `spec/api-openapi.json`（`aiink contract export` 导出，
 OpenAPI 3 标准）。改 `schemas.py` 响应模型没重新导出、或改路由没挂 response_model，Python job 即红——与 `test_api_contract.py`
-29 项（正向覆盖 + 反向闸 + diff 测试侧）及 Go `contract_test.go` 契约一致性测试构成三层防护（见 .md 难点 30）。
+29 项（正向覆盖 + 反向闸 + diff 测试侧）及 Go `contract_test.go` 契约一致性测试构成三层防护。
 
 **本地一键复现同一套门禁**（仓库没配 git remote 也能验证）：
 
