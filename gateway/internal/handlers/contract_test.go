@@ -52,6 +52,7 @@ var forwardedPaths = []struct{ method, path string }{
 	{"POST", "/internal/v1/tasks/{task_id}/pause"},
 	{"POST", "/internal/v1/tasks/{task_id}/resume"},
 	{"POST", "/internal/v1/tasks/{task_id}/cancel"},
+	{"GET", "/internal/v1/projects/{project_id}/tasks"},
 	{"GET", "/internal/v1/projects/{project_id}/candidates"},
 	{"POST", "/internal/v1/projects/{project_id}/candidates/{candidate_id}/confirm"},
 	{"POST", "/internal/v1/projects/{project_id}/candidates/{candidate_id}/reject"},

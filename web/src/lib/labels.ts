@@ -72,6 +72,17 @@ export function taskStatusTone(s: TaskStatus): BadgeTone {
   return TASK_TONES[s]
 }
 
+/** 任务类型中文标签（任务历史列表行；未知类型回退原名，不崩） */
+export function taskTypeLabel(t: string): string {
+  return {
+    chapter_generate: '单章生成',
+    batch_generate: '批次生成',
+    validate: '校验',
+    outline_generate: '大纲生成',
+    global_audit: '全局审计',
+  }[t] ?? t
+}
+
 export function severityLabel(s: FindingSeverity): string {
   return { critical: '致命', major: '重大', minor: '次要', hint: '提示' }[s]
 }

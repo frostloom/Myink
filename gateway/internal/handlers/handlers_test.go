@@ -358,6 +358,25 @@ func TestBatchControlForwardsToTasksPath(t *testing.T) {
 	}
 }
 
+func TestListProjectTasksForwards(t *testing.T) {
+	// 阶段 4 任务视图：GET /api/v1/projects/:pid/tasks 应转发 Python API 任务历史路径。
+	r := newTestRedis(t)
+	var paths []string
+	py := pyapi.New(recordingPy(&paths).URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/p1/tasks", nil)
+	req.Header.Set("Authorization", bearer(t, "dev"))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
+	}
+	if len(paths) != 1 || paths[0] != "/internal/v1/projects/p1/tasks" {
+		t.Fatalf("应转发 /internal/v1/projects/p1/tasks，实际 %v", paths)
+	}
+}
+
 func TestListProjectsForwards(t *testing.T) {
 	// 多书展示前端：GET /api/v1/projects 应透传 Python API 项目列表。
 	r := newTestRedis(t)
