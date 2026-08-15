@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from aiink.models import (
+    Alias,
     Chapter,
     ChapterOutline,
     ChapterVersion,
@@ -42,9 +43,25 @@ def get_settings(session: Session, project_id: uuid.UUID) -> ProjectSettings | N
 
 
 def get_character(session: Session, project_id: uuid.UUID, name: str) -> Character | None:
-    return session.execute(
+    """按 canonical 名精确定位人物（§7.5 归一化；名字匹配优先）。
+
+    name 未命中 canonical → 回退别名解析（正文以别名出现时归一到同一人物，防跨别名
+    重复建卡/参与者断链）。别名行是 polymorphic（entity_id 可能是实体或人物），校验
+    entity_id 确实是本项目的人物才返回。
+    """
+    ch = session.execute(
         select(Character).where(Character.project_id == project_id, Character.name == name)
     ).scalar_one_or_none()
+    if ch:
+        return ch
+    alias_row = session.execute(
+        select(Alias).where(Alias.project_id == project_id, Alias.alias == name)
+    ).scalar_one_or_none()
+    if alias_row:
+        ch = session.get(Character, alias_row.entity_id)
+        if ch is not None and ch.project_id == project_id:
+            return ch
+    return None
 
 
 def get_all_characters(session: Session, project_id: uuid.UUID) -> list[Character]:

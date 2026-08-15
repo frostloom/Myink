@@ -286,10 +286,18 @@ func (h *TaskHandler) PutStyleProfile(c *gin.Context) {
 }
 
 // 建书（§7.11 建书向导）：创建 Project + 空 ProjectSettings（不调 LLM，转发 Python API）。
-// POST /api/v1/projects  body: {"title": "...", "genre": "..."}
+// POST /api/v1/projects  body: {"title": "...", "genre": "...", "target_words": 3000}
 func (h *TaskHandler) CreateProject(c *gin.Context) {
 	body, _ := io.ReadAll(c.Request.Body)
 	h.forwardToPy(c, "/internal/v1/projects", body)
+}
+
+// 作品基本信息更新（§6.9 每章目标字数可配，转发 Python API）。
+// PUT /api/v1/projects/:project_id  body: {"target_words": 3500}
+func (h *TaskHandler) UpdateProject(c *gin.Context) {
+	pid := c.Param("project_id")
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPy(c, "/internal/v1/projects/"+pid, body)
 }
 
 // 设定骨架草稿（§7.11 ②：一句话梗概 → Planner 提案，可反复重新生成，转发 Python API）。
@@ -320,6 +328,13 @@ func (h *TaskHandler) GetWorld(c *gin.Context) {
 func (h *TaskHandler) GetCharacters(c *gin.Context) {
 	pid := c.Param("project_id")
 	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/characters", nil)
+}
+
+// 设定实体浏览（§7.11 ④ 自动建档：武器/功法/技能/地点，转发 Python API）。
+// GET /api/v1/projects/:project_id/entities
+func (h *TaskHandler) ListEntities(c *gin.Context) {
+	pid := c.Param("project_id")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/entities", nil)
 }
 
 // 全局审计报告列表（阶段 4 审计视图导航）：最新在前，转发 Python API。

@@ -643,18 +643,22 @@ func TestBookSetupAndWorldForwards(t *testing.T) {
 	cases := []struct {
 		name, method, path, body string
 	}{
-		{"建书", http.MethodPost, "/api/v1/projects", `{"title":"破晓录","genre":"历史悬疑"}`},
+		{"建书", http.MethodPost, "/api/v1/projects", `{"title":"破晓录","genre":"历史悬疑","target_words":3000}`},
+		{"更新作品", http.MethodPut, "/api/v1/projects/p1", `{"target_words":3500}`},
 		{"设定草稿", http.MethodPost, "/api/v1/projects/p1/setup-draft", `{"premise":"少年闯仙途。"}`},
 		{"确认落库", http.MethodPut, "/api/v1/projects/p1/setup", `{"hard_constraints":["凡人不可御剑"]}`},
 		{"世界观", http.MethodGet, "/api/v1/projects/p1/world", ``},
 		{"人物卡片", http.MethodGet, "/api/v1/projects/p1/characters", ``},
+		{"设定实体", http.MethodGet, "/api/v1/projects/p1/entities", ``},
 	}
 	want := []string{
 		"/internal/v1/projects",
+		"/internal/v1/projects/p1",
 		"/internal/v1/projects/p1/setup-draft",
 		"/internal/v1/projects/p1/setup",
 		"/internal/v1/projects/p1/world",
 		"/internal/v1/projects/p1/characters",
+		"/internal/v1/projects/p1/entities",
 	}
 	for i, c := range cases {
 		var rd io.Reader

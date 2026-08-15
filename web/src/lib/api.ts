@@ -17,6 +17,7 @@ import type {
   GlobalAuditReportDetail,
   GlobalAuditReportSummary,
   LessonActionResponse,
+  LoreEntity,
   MemoryCandidate,
   Project,
   ProjectSettings,
@@ -30,6 +31,7 @@ import type {
   TaskControlResponse,
   TaskDetail,
   TaskSummary,
+  UpdateProjectBody,
   WorldView,
   WritingLesson,
 } from '../types'
@@ -205,6 +207,10 @@ export const api = {
   // 建书向导 + 设定浏览（§7.11：创建作品 / 设定草稿 / 确认落库 / 世界观 / 人物卡片）。
   createProject: (body: CreateProjectBody) => request<Project>('POST', '/projects', body),
 
+  // 作品信息更新（§6.9 每章目标字数可配）：未传字段不改，显式 null 置空。
+  updateProject: (pid: string, body: UpdateProjectBody) =>
+    request<Project>('PUT', `/projects/${pid}`, body),
+
   setupDraft: (pid: string, premise: string) =>
     request<SetupDraft>('POST', `/projects/${pid}/setup-draft`, { premise }),
 
@@ -214,4 +220,7 @@ export const api = {
   getWorld: (pid: string) => request<WorldView>('GET', `/projects/${pid}/world`),
 
   getCharacters: (pid: string) => request<CharacterCard[]>('GET', `/projects/${pid}/characters`),
+
+  // 设定实体（§7.11 ④ 自动建档：武器/功法/技能/地点，低风险正文抽取自动登记）。
+  listEntities: (pid: string) => request<LoreEntity[]>('GET', `/projects/${pid}/entities`),
 }
