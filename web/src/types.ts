@@ -243,3 +243,66 @@ export interface AuditRunResponse {
   error: string | null
   summary: Record<string, unknown>
 }
+
+/** 建书（§7.11 建书向导）：POST /projects 创建 Project + 空 ProjectSettings（不调 LLM） */
+export interface CreateProjectBody {
+  title: string
+  genre: string
+}
+
+/** 设定骨架草稿请求（§7.11 ②：一句话梗概 → Planner 提案） */
+export interface SetupDraftBody {
+  premise: string
+}
+
+/** 设定骨架草稿响应（可编辑不落库；LLM 失败 → draft:{} + error 降级） */
+export interface SetupDraft {
+  draft: Record<string, unknown>
+  error: string | null
+}
+
+/** 设定确认落库（§7.11 ③ append-only：world_rules/hard_constraints 整体替换、角色/势力/地点按 name 建） */
+export interface SetupBody {
+  world_rules: Record<string, unknown>
+  hard_constraints: string[]
+  characters: Array<Record<string, unknown>>
+  forces: Array<Record<string, unknown>>
+  locations: Array<{ name: string }>
+}
+
+export interface SetupConfirmResponse {
+  ok: boolean
+}
+
+/** 势力（世界观浏览） */
+export interface LoreFaction {
+  name: string
+  stance: string | null
+  resources: string[]
+}
+
+/** 地点（世界观浏览） */
+export interface LoreLocation {
+  name: string
+}
+
+/** 世界观浏览（GET world：world_rules 含 realm_order 列表、hard_constraints + 势力/地点） */
+export interface WorldView {
+  world_rules: Record<string, unknown>
+  hard_constraints: string[]
+  factions: LoreFaction[]
+  locations: LoreLocation[]
+}
+
+/** 人物卡片（静态基底 + 当前状态台账 §7.7，state 按当前章物化 {field: new_value}） */
+export interface CharacterCard {
+  id: string
+  name: string
+  race: string | null
+  origin: string | null
+  realm_cap: string
+  personality: string | null
+  aliases: unknown[]
+  base_attrs: Record<string, unknown>
+  state: Record<string, string>
+}

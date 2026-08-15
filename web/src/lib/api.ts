@@ -4,10 +4,12 @@
 import type {
   AuthResponse,
   CandidateActionResponse,
+  CharacterCard,
   ChapterDetail,
   ChapterMeta,
   ChapterVersionsResponse,
   ContentUpdateResponse,
+  CreateProjectBody,
   GenerateResponse,
   AuditRunResponse,
   GlobalAuditReportDetail,
@@ -15,12 +17,16 @@ import type {
   MemoryCandidate,
   Project,
   ProjectSettings,
+  SetupBody,
+  SetupConfirmResponse,
+  SetupDraft,
   SkillPreset,
   StyleDraft,
   StyleProfile,
   StyleProfileResponse,
   TaskControlResponse,
   TaskDetail,
+  WorldView,
 } from '../types'
 import { dispatchUnauthorized, getToken } from './token'
 
@@ -168,4 +174,17 @@ export const api = {
 
   getGlobalAudit: (pid: string, rid: string) =>
     request<GlobalAuditReportDetail>('GET', `/projects/${pid}/global-audit/${rid}`),
+
+  // 建书向导 + 设定浏览（§7.11：创建作品 / 设定草稿 / 确认落库 / 世界观 / 人物卡片）。
+  createProject: (body: CreateProjectBody) => request<Project>('POST', '/projects', body),
+
+  setupDraft: (pid: string, premise: string) =>
+    request<SetupDraft>('POST', `/projects/${pid}/setup-draft`, { premise }),
+
+  confirmSetup: (pid: string, body: SetupBody) =>
+    request<SetupConfirmResponse>('PUT', `/projects/${pid}/setup`, body),
+
+  getWorld: (pid: string) => request<WorldView>('GET', `/projects/${pid}/world`),
+
+  getCharacters: (pid: string) => request<CharacterCard[]>('GET', `/projects/${pid}/characters`),
 }

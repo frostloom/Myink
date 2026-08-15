@@ -211,3 +211,37 @@ class GlobalAuditDetailOut(GlobalAuditSummaryOut):
     sampled_characters: list[dict] = Field(default_factory=list)
     findings: list[dict] = Field(default_factory=list)
     summary: dict = Field(default_factory=dict)
+
+
+class SetupDraftOut(BaseModel):
+    """建书设定骨架草稿（§7.11 ②）：Planner 提案，可编辑、不落库；LLM 失败 → {} + error。"""
+
+    draft: dict = Field(default_factory=dict)
+    error: str | None = None
+
+
+class SetupConfirmOut(BaseModel):
+    ok: bool
+
+
+class WorldViewOut(BaseModel):
+    """世界观浏览（§7.11 设定是活数据）：settings 的 world_rules/hard_constraints + 势力/地点。"""
+
+    world_rules: dict = Field(default_factory=dict)
+    hard_constraints: list[str] = Field(default_factory=list)
+    factions: list[dict] = Field(default_factory=list)
+    locations: list[dict] = Field(default_factory=list)
+
+
+class CharacterCardOut(BaseModel):
+    """人物卡片（静态基底 + 当前状态台账，§7.7）：state 按当前章物化 {field: new_value}。"""
+
+    id: str
+    name: str
+    race: str | None = None
+    origin: str | None = None
+    realm_cap: str
+    personality: str | None = None
+    aliases: list = Field(default_factory=list)
+    base_attrs: dict = Field(default_factory=dict)
+    state: dict = Field(default_factory=dict)

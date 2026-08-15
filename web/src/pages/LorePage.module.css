@@ -1,0 +1,220 @@
+.wrap {
+  height: 100%;
+  display: flex;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.inner {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5) var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.crumb {
+  margin-top: var(--space-1);
+  font-size: var(--text-small);
+  color: var(--ink-muted);
+}
+
+.section {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sectionTitle {
+  font-size: 18px;
+}
+
+.subTitle {
+  font-size: var(--text-heading);
+  margin-bottom: var(--space-2);
+}
+
+/* 人物卡片 */
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+
+.card {
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  color: var(--ink);
+  font-size: var(--text-body);
+}
+
+.cardName {
+  font-weight: 600;
+  font-size: var(--text-heading);
+}
+
+.cardArrow {
+  margin-left: auto;
+  color: var(--ink-faint);
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-2);
+}
+
+.cardMeta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  font-size: var(--text-small);
+}
+
+.cardMeta dt {
+  color: var(--ink-muted);
+}
+
+.cardMeta dd {
+  margin: 0;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+.cardLabel {
+  font-size: var(--text-small);
+  color: var(--ink-muted);
+}
+
+.readonly {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-small);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* 世界观 */
+.realmOrder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.realmStep {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.realmItem {
+  padding: 1px var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-size: var(--text-small);
+}
+
+.realmArrow {
+  color: var(--ink-faint);
+}
+
+.ruleList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.ruleRow {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+.ruleKey {
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+}
+
+.ruleVal {
+  margin: 0;
+  color: var(--ink);
+}
+
+/* 硬约束 */
+.constraintList {
+  margin: 0;
+  padding-left: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* 势力与地点 */
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+
+.factionList,
+.locationList {
+  margin: 0;
+  padding-left: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.factionName {
+  font-weight: 600;
+}
+
+.factionStance {
+  color: var(--ink-muted);
+  margin-left: var(--space-2);
+}
+
+.factionResources {
+  color: var(--ink-subtle);
+  font-size: var(--text-small);
+  margin-left: var(--space-2);
+}

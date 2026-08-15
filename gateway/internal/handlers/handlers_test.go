@@ -613,6 +613,52 @@ func TestSettingsAndStyleForwards(t *testing.T) {
 	}
 }
 
+func TestBookSetupAndWorldForwards(t *testing.T) {
+	// §7.11 建书向导 + 设定浏览 5 端点（建书、设定草稿、确认落库、世界观、人物卡片）
+	// 均为转发路由，应把方法与路径原样转给 Python API（同 BatchControl 回归约定）。
+	r := newTestRedis(t)
+	var paths []string
+	py := pyapi.New(recordingPy(&paths).URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	cases := []struct {
+		name, method, path, body string
+	}{
+		{"建书", http.MethodPost, "/api/v1/projects", `{"title":"破晓录","genre":"历史悬疑"}`},
+		{"设定草稿", http.MethodPost, "/api/v1/projects/p1/setup-draft", `{"premise":"少年闯仙途。"}`},
+		{"确认落库", http.MethodPut, "/api/v1/projects/p1/setup", `{"hard_constraints":["凡人不可御剑"]}`},
+		{"世界观", http.MethodGet, "/api/v1/projects/p1/world", ``},
+		{"人物卡片", http.MethodGet, "/api/v1/projects/p1/characters", ``},
+	}
+	want := []string{
+		"/internal/v1/projects",
+		"/internal/v1/projects/p1/setup-draft",
+		"/internal/v1/projects/p1/setup",
+		"/internal/v1/projects/p1/world",
+		"/internal/v1/projects/p1/characters",
+	}
+	for i, c := range cases {
+		var rd io.Reader
+		if c.body != "" {
+			rd = strings.NewReader(c.body)
+		}
+		req := httptest.NewRequest(c.method, c.path, rd)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", bearer(t, "dev"))
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("case %d(%s) 应 200，实际 %d body=%s", i, c.name, w.Code, w.Body.String())
+		}
+		if len(paths) != i+1 {
+			t.Fatalf("case %d(%s) 应转发 %d 次，实际 %v", i, c.name, i+1, paths)
+		}
+		if paths[i] != want[i] {
+			t.Fatalf("case %d(%s) 应转发 %s，实际 %s", i, c.name, want[i], paths[i])
+		}
+	}
+}
+
 func TestGlobalAuditReadForwards(t *testing.T) {
 	// 阶段 4 审计视图：报告列表 / 详情两个读端点应转发 Python API 路径。
 	r := newTestRedis(t)

@@ -488,3 +488,30 @@ def style_extract_messages(samples: list[str], stats: dict) -> list[dict]:
                                     f"【确定性统计（仅参考，语义以样本为准）】\n{stats_block}\n\n"
                                     f"请提炼文风档案草稿（严格 JSON）。"},
     ]
+
+
+SYSTEM_BOOK_SETUP = """你是长篇网文创作系统的【规划 Agent】。职责：根据作者的一句话梗概与题材偏好，产出本书的**设定骨架草稿**（§7.11 建书流程：提案→确认→落库，agent 只提案不篡改）。
+输出严格 JSON 对象（schema 见下），字段不许缺：
+{
+  "realm_order": ["境界/实力阶段按升序排列，非仙侠题材则给出实力/职业进阶序列"],
+  "world_rules": {"规则键": "规则值，如 时间/地域/禁制 等世界观硬性规定"},
+  "hard_constraints": ["写作必须遵守的硬约束，如 不可越级晋升、不得引入仙佛鬼神"],
+  "forces": [{"name": "势力名", "stance": "立场/主张", "resources": ["资源"]}],
+  "characters": [{"name": "人物名", "role": "主角/重要配角/反派", "race": "", "origin": "出身", "realm_cap": "实力上限（战力硬约束，非仙侠题材给定位）", "personality": "性格基调一句话"}],
+  "locations": [{"name": "关键地点名"}]
+}
+要求：骨架是**可编辑草稿**不是定稿——数量克制（核心 3-6 个角色、2-4 个势力、3-5 个地点即可），留白让作者后续补全；hard_constraints 必须是明确的、可执行的写作纪律，不是风格形容词。"""
+
+
+def book_setup_messages(genre: str, premise: str) -> list[dict]:
+    """建书设定草稿输入（§7.11 ② 一句话梗概启动 + Planner 提案）：题材 + 作者一句话梗概。
+
+    json_mode 调用（prompt 含 "json" 字样）；Planner 复用（不新增 agent），生成的是
+    可编辑骨架，不落库——用户逐项确认/修改后走 setup 端点落库。
+    """
+    return [
+        {"role": "system", "content": SYSTEM_BOOK_SETUP},
+        {"role": "user", "content": f"【题材偏好】\n{genre}\n\n"
+                                    f"【作者一句话梗概】\n{premise}\n\n"
+                                    f"请产出本书设定骨架草稿（严格 JSON）。"},
+    ]

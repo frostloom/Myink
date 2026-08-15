@@ -277,6 +277,43 @@ func (h *TaskHandler) PutStyleProfile(c *gin.Context) {
 	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/style-profile", body)
 }
 
+// 建书（§7.11 建书向导）：创建 Project + 空 ProjectSettings（不调 LLM，转发 Python API）。
+// POST /api/v1/projects  body: {"title": "...", "genre": "..."}
+func (h *TaskHandler) CreateProject(c *gin.Context) {
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPy(c, "/internal/v1/projects", body)
+}
+
+// 设定骨架草稿（§7.11 ②：一句话梗概 → Planner 提案，可反复重新生成，转发 Python API）。
+// POST /api/v1/projects/:project_id/setup-draft  body: {"premise": "..."}
+func (h *TaskHandler) SetupDraft(c *gin.Context) {
+	pid := c.Param("project_id")
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/setup-draft", body)
+}
+
+// 设定确认落库（§7.11 ③ append-only：用户确认 = 编排层写库入口，转发 Python API）。
+// PUT /api/v1/projects/:project_id/setup  body: {"world_rules":{...}, ...}
+func (h *TaskHandler) Setup(c *gin.Context) {
+	pid := c.Param("project_id")
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/setup", body)
+}
+
+// 世界观浏览（world_rules/hard_constraints + 势力/地点，转发 Python API）。
+// GET /api/v1/projects/:project_id/world
+func (h *TaskHandler) GetWorld(c *gin.Context) {
+	pid := c.Param("project_id")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/world", nil)
+}
+
+// 人物卡片浏览（静态基底 + 当前状态台账 §7.7，转发 Python API）。
+// GET /api/v1/projects/:project_id/characters
+func (h *TaskHandler) GetCharacters(c *gin.Context) {
+	pid := c.Param("project_id")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/characters", nil)
+}
+
 // 全局审计报告列表（阶段 4 审计视图导航）：最新在前，转发 Python API。
 // GET /api/v1/projects/:project_id/global-audit
 func (h *TaskHandler) ListGlobalAudits(c *gin.Context) {

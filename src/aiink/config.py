@@ -67,6 +67,10 @@ class Settings:
     batch_max_hard: int = 20  # 批次硬上限
     # 长线治理全局审计（§8.6）：每 K 章一次跨章抽样 L2（batch_end 触发，窗口 < K 短路零成本）
     audit_interval: int = field(default_factory=lambda: int(_env("AUDIT_INTERVAL", "10") or "10"))
+    # 每日新建作品数上限（plan.md §13 三层闸门 bookcnt）：建书端点独立校验（生成入队时
+    # 网关 gates.lua rate:bookcnt 才触发，建书本身需在 Python 侧计数）。env 名与默认值
+    # 对齐网关 config.go BooksPerDay（双端同 env 防漂移），超限返回 429 BOOK_CNT_EXCEEDED。
+    books_per_day_max: int = field(default_factory=lambda: int(_env("BOOKS_PER_DAY", "10") or "10"))
 
     # 阶段 2：Redis 队列 + worker（§阶段2；§5.3 Redis 只管可重建数据，终态落 DB）
     redis_url: str = field(default_factory=lambda: _env("REDIS_URL", "redis://localhost:6380/0") or "redis://localhost:6380/0")

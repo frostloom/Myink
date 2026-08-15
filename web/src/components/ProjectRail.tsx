@@ -31,6 +31,14 @@ export function ProjectRail({ projects, onLogout }: Props) {
       {projectId && (
         <div className={styles.pageLinks}>
           <NavLink
+            to={`/projects/${projectId}/lore`}
+            className={({ isActive }) =>
+              isActive ? `${styles.item} ${styles.active}` : styles.item
+            }
+          >
+            <span className={styles.title}>设定</span>
+          </NavLink>
+          <NavLink
             to={`/projects/${projectId}/settings`}
             className={({ isActive }) =>
               isActive ? `${styles.item} ${styles.active}` : styles.item

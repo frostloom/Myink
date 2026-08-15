@@ -372,6 +372,78 @@
         "title": "ChapterVersionsOut",
         "type": "object"
       },
+      "CharacterCardOut": {
+        "description": "人物卡片（静态基底 + 当前状态台账，§7.7）：state 按当前章物化 {field: new_value}。",
+        "properties": {
+          "aliases": {
+            "items": {},
+            "title": "Aliases",
+            "type": "array"
+          },
+          "base_attrs": {
+            "additionalProperties": true,
+            "title": "Base Attrs",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin"
+          },
+          "personality": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Personality"
+          },
+          "race": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Race"
+          },
+          "realm_cap": {
+            "title": "Realm Cap",
+            "type": "string"
+          },
+          "state": {
+            "additionalProperties": true,
+            "title": "State",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "realm_cap"
+        ],
+        "title": "CharacterCardOut",
+        "type": "object"
+      },
       "ContentUpdate": {
         "properties": {
           "content": {
@@ -439,6 +511,24 @@
           "no_op"
         ],
         "title": "CorrectMemoryOut",
+        "type": "object"
+      },
+      "CreateProjectBody": {
+        "properties": {
+          "genre": {
+            "default": "仙侠玄幻",
+            "title": "Genre",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "CreateProjectBody",
         "type": "object"
       },
       "DeleteChapterOut": {
@@ -868,6 +958,98 @@
         "title": "SettingsBody",
         "type": "object"
       },
+      "SetupBody": {
+        "description": "确认落库的设定（前端可编辑草稿后回传；自由形状字段松类型，落库前清洗）。",
+        "properties": {
+          "characters": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Characters",
+            "type": "array"
+          },
+          "forces": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Forces",
+            "type": "array"
+          },
+          "hard_constraints": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Hard Constraints",
+            "type": "array"
+          },
+          "locations": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Locations",
+            "type": "array"
+          },
+          "world_rules": {
+            "additionalProperties": true,
+            "title": "World Rules",
+            "type": "object"
+          }
+        },
+        "title": "SetupBody",
+        "type": "object"
+      },
+      "SetupConfirmOut": {
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "SetupConfirmOut",
+        "type": "object"
+      },
+      "SetupDraftBody": {
+        "properties": {
+          "premise": {
+            "title": "Premise",
+            "type": "string"
+          }
+        },
+        "required": [
+          "premise"
+        ],
+        "title": "SetupDraftBody",
+        "type": "object"
+      },
+      "SetupDraftOut": {
+        "description": "建书设定骨架草稿（§7.11 ②）：Planner 提案，可编辑、不落库；LLM 失败 → {} + error。",
+        "properties": {
+          "draft": {
+            "additionalProperties": true,
+            "title": "Draft",
+            "type": "object"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "title": "SetupDraftOut",
+        "type": "object"
+      },
       "SkillPresetOut": {
         "properties": {
           "genre": {
@@ -1171,6 +1353,41 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "WorldViewOut": {
+        "description": "世界观浏览（§7.11 设定是活数据）：settings 的 world_rules/hard_constraints + 势力/地点。",
+        "properties": {
+          "factions": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Factions",
+            "type": "array"
+          },
+          "hard_constraints": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Hard Constraints",
+            "type": "array"
+          },
+          "locations": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Locations",
+            "type": "array"
+          },
+          "world_rules": {
+            "additionalProperties": true,
+            "title": "World Rules",
+            "type": "object"
+          }
+        },
+        "title": "WorldViewOut",
+        "type": "object"
+      },
       "WritingLessonOut": {
         "properties": {
           "category": {
@@ -1381,6 +1598,64 @@
           }
         },
         "summary": "List Projects"
+      },
+      "post": {
+        "description": "创建作品：根表 Project + 空 ProjectSettings（不调 LLM，快；设定草稿走 setup-draft）。\n\n身份缺失/非法 → 403（fail closed，§14.1 ③）；当日建书数超限 → 429 BOOK_CNT_EXCEEDED\n（对齐网关 gates.lua rate:bookcnt 默认值，双端同 BOOKS_PER_DAY env；错误体用网关同款\n{\"error\": code} 信封，前端 GATE_CODES 才能命中中文文案）。",
+        "operationId": "create_project_internal_v1_projects_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Project",
+        "tags": [
+          "book"
+        ]
       }
     },
     "/internal/v1/projects/{project_id}/candidates": {
@@ -2073,6 +2348,69 @@
         ]
       }
     },
+    "/internal/v1/projects/{project_id}/characters": {
+      "get": {
+        "description": "人物卡片：静态基底 + 当前状态台账（§7.7 按当前章物化 {field: new_value}）。",
+        "operationId": "character_cards_internal_v1_projects__project_id__characters_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CharacterCardOut"
+                  },
+                  "title": "Response Character Cards Internal V1 Projects  Project Id  Characters Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Character Cards",
+        "tags": [
+          "book"
+        ]
+      }
+    },
     "/internal/v1/projects/{project_id}/global-audit": {
       "get": {
         "description": "审计报告列表（最新在前，limit ≤ 20）：窗口/状态/计数，前端审计视图导航。",
@@ -2612,6 +2950,144 @@
         ]
       }
     },
+    "/internal/v1/projects/{project_id}/setup": {
+      "put": {
+        "description": "确认落库：编排层写 project_settings + characters/factions/locations（create-if-missing）。\n\nworld_rules / hard_constraints 整体替换 + version 递增（§7.6 乐观版本号）；角色/势力/\n地点按 name 查重，不存在才建（§7.11 ③ append-only：已落行不覆盖，防无影响面分析改基底）。",
+        "operationId": "put_setup_internal_v1_projects__project_id__setup_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetupBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupConfirmOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Setup",
+        "tags": [
+          "book"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/setup-draft": {
+      "post": {
+        "description": "一句话梗概 → Planner 生成设定骨架草稿（不落库，可反复重新生成）。\n\nLLM 失败 / 解析失败 → {draft: {}, error} 200（§6.12 降级，前端回手填空表单）。\nagent_runs 记录（§6.8 成本透明）；agent_runs 无 RLS（观测表），普通连接可写。",
+        "operationId": "setup_draft_internal_v1_projects__project_id__setup_draft_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetupDraftBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupDraftOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Setup Draft",
+        "tags": [
+          "book"
+        ]
+      }
+    },
     "/internal/v1/projects/{project_id}/style-profile": {
       "put": {
         "description": "确认落库：编排层写 project_settings.style_profile + version 递增（§7.6 乐观版本号）。\n\n- 剔除瞬态诊断键 extract_error（草稿降级提示不落库）；\n- 键级保留 L1 基线键 fatigue_words/patterns：样本草稿白名单收键不含检测基线，确认时不抹\n  预设（显式传 [] 可清空）；其余键仍整档案覆盖；\n- body.skill_pack 非 None 时一并落 skill_pack（预设导入 = profile + marker 原子写）。",
@@ -2747,6 +3223,65 @@
         "summary": "Style Samples",
         "tags": [
           "style"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/world": {
+      "get": {
+        "description": "世界观浏览：settings 的 world_rules/hard_constraints + 势力 + 地点。\n\n无 settings 行 → 空默认不 500（仿 routes_settings 空默认口径）。",
+        "operationId": "world_view_internal_v1_projects__project_id__world_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorldViewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "World View",
+        "tags": [
+          "book"
         ]
       }
     },
