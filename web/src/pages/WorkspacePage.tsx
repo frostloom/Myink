@@ -7,7 +7,9 @@ import { CandidatePanel } from '../components/CandidatePanel'
 import { ChapterEditor } from '../components/ChapterEditor'
 import { ChapterList } from '../components/ChapterList'
 import { GenerationPanel } from '../components/GenerationPanel'
+import { LessonsPanel } from '../components/LessonsPanel'
 import { ProjectRail } from '../components/ProjectRail'
+import { TaskHistory } from '../components/TaskHistory'
 import { TaskTimeline } from '../components/TaskTimeline'
 import { useAuth } from '../context/AuthContext'
 import { useTaskEvents } from '../hooks/useTaskEvents'
@@ -99,6 +101,14 @@ export default function WorkspacePage() {
     }
   }, [taskPhase, loadChapters, loadCandidates])
 
+  // 批次/单章完成后自动打开最早生成的章节（新建书首轮批次结束 → 编辑器立即可用，
+  // 「单章生成」随之可点）；用户已手动选中则不动。chapters 异步更新，依赖两者兜底。
+  useEffect(() => {
+    if (taskPhase !== 'terminal' || chapters.length === 0 || selectedCid) return
+    const first = [...chapters].sort((a, b) => a.chapter_seq - b.chapter_seq)[0]
+    setSelectedCid(first.id)
+  }, [taskPhase, chapters, selectedCid])
+
   const selectedChapter = chapters.find((c) => c.id === selectedCid) ?? null
 
   const handleNotFound = useCallback(() => {
@@ -177,6 +187,7 @@ export default function WorkspacePage() {
             chapter={selectedChapter}
             onNotFound={handleNotFound}
             onSaved={handleSaved}
+            onMemoryChanged={loadCandidates}
             refreshTick={refreshTick}
           />
         ) : (
@@ -193,6 +204,7 @@ export default function WorkspacePage() {
           selectedChapter={selectedChapter}
           onTaskStart={handleTaskStart}
         />
+        <TaskHistory projectId={projectId} activeTaskId={activeTaskId} />
         <TaskTimeline
           taskId={activeTaskId}
           phase={task.phase}
@@ -211,6 +223,7 @@ export default function WorkspacePage() {
           candidates={candidates}
           onChanged={loadCandidates}
         />
+        <LessonsPanel projectId={projectId} />
       </aside>
     </div>
   )

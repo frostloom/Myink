@@ -120,6 +120,23 @@ class TaskControlOut(BaseModel):
     message: str | None = None
 
 
+class TaskSummaryOut(BaseModel):
+    """任务历史列表项（§阶段 4 任务视图）：轻量摘要不含 runs，点开再拉详情。
+
+    批次进度为派生量（同 TaskDetailOut.progress 口径）：current = 该批 persist 节点
+    去重章数，total = payload.size。观测表（tasks 无 RLS），new_session 普通连接可查。
+    """
+
+    task_id: str
+    task_type: str
+    status: str
+    chapter_seq: int | None = None
+    batch_size: int | None = None
+    batch_current: int | None = None
+    error: str | None = None
+    created_at: str | None = None
+
+
 class MemoryCandidateOut(BaseModel):
     candidate_id: str
     kind: str

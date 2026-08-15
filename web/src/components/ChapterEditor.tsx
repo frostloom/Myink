@@ -15,6 +15,8 @@ interface Props {
   onNotFound: () => void
   /** 保存成功 → 父级可刷新章节列表（status/version 变化） */
   onSaved: () => void
+  /** 记忆校正生成变更集进待确认池 → 父级重载候选池 */
+  onMemoryChanged: () => void
   /** 生成任务终态后自增 → 重新拉取正文（同章再生内容已更新） */
   refreshTick?: number
 }
@@ -24,6 +26,7 @@ export function ChapterEditor({
   chapter,
   onNotFound,
   onSaved,
+  onMemoryChanged,
   refreshTick = 0,
 }: Props) {
   const [detail, setDetail] = useState<ChapterDetail | null>(null)
@@ -32,6 +35,9 @@ export function ChapterEditor({
   const [saving, setSaving] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [memBusy, setMemBusy] = useState(false)
+  const [delBusy, setDelBusy] = useState(false)
+  const [memBanner, setMemBanner] = useState<string | null>(null)
   const [version, setVersion] = useState<number | null>(null)
   const [showHistory, setShowHistory] = useState(false)
 
@@ -98,6 +104,50 @@ export function ChapterEditor({
     onSaved()
   }
 
+  // 校正记忆（§7.3）：编辑后正文重新抽取 → 与该章已落库记忆 diff → 变更集进待确认池。
+  // 同步 LLM 调用（一次 extract），超时/失败可重试；no_op = 纯风格编辑无记忆差异。
+  async function correctMemory() {
+    if (memBusy) return
+    setMemBusy(true)
+    setError(null)
+    setMemBanner(null)
+    try {
+      const resp = await api.correctMemory(projectId, chapter.id)
+      setMemBanner(
+        resp.no_op
+          ? '无记忆变更（正文与已落库记忆一致）。'
+          : '已生成变更集，进入「待确认候选」池。',
+      )
+      onMemoryChanged()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.code : '校正失败')
+    } finally {
+      setMemBusy(false)
+    }
+  }
+
+  // 级联删除本章及之后全部章节（正文 + 记忆 + 池候选，进度回退），不可撤销
+  async function deleteChapter() {
+    if (delBusy) return
+    if (
+      !window.confirm(
+        `删除第 ${chapter.chapter_seq} 章及其后全部章节？正文、记忆与待确认候选将一并移除，不可撤销。`,
+      )
+    ) {
+      return
+    }
+    setDelBusy(true)
+    setError(null)
+    try {
+      await api.deleteChapter(projectId, chapter.id)
+      onNotFound()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.code : '删除失败')
+    } finally {
+      setDelBusy(false)
+    }
+  }
+
   return (
     <div className={styles.editor}>
       <header className={styles.head}>
@@ -106,13 +156,31 @@ export function ChapterEditor({
             第 {chapter.chapter_seq} 章{detail?.title ? ` · ${detail.title}` : ''}
           </h2>
           {loaded && (
-            <button
-              type="button"
-              className="btn btn-quiet"
-              onClick={() => setShowHistory(true)}
-            >
-              历史版本
-            </button>
+            <div className={styles.actions}>
+              <button
+                type="button"
+                className="btn btn-quiet"
+                disabled={memBusy || delBusy}
+                onClick={() => void correctMemory()}
+              >
+                {memBusy ? '校正中…' : '校正记忆'}
+              </button>
+              <button
+                type="button"
+                className={`btn ${styles.danger}`}
+                disabled={memBusy || delBusy}
+                onClick={() => void deleteChapter()}
+              >
+                {delBusy ? '删除中…' : '删除本章'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-quiet"
+                onClick={() => setShowHistory(true)}
+              >
+                历史版本
+              </button>
+            </div>
           )}
         </div>
         <div className={styles.metaRow}>
@@ -125,6 +193,7 @@ export function ChapterEditor({
       </header>
 
       {error && <div className="banner banner-error">{error}</div>}
+      {memBanner && <div className="banner">{memBanner}</div>}
 
       {!loaded ? (
         <div className="empty">加载中…</div>

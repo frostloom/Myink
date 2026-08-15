@@ -1,6 +1,8 @@
-"""任务内部端点：查询 / 批次控制（pause/resume/cancel）。
+"""任务内部端点：查询（单条 + 项目历史列表）/ 批次控制（pause/resume/cancel）。
 
 - 查询：tasks + agent_runs 无 RLS（观测/队列表），new_session 普通连接可查（§14）。
+- `GET /projects/{pid}/tasks`：项目任务历史（最近 50 条倒序，轻量摘要不含 runs）——前端
+  切书后展示过往任务，点开任一条再走 `GET /tasks/{id}` 拿完整节点流转（agent_runs）。
 - pause/resume/cancel（§6.12 暂停 vs 取消）：
   - pause    → status=paused（保留 Checkpointer 现场；真正节点级中断是阶段 3）
   - resume   → status in (failed/paused) → 置 queued + XADD 一条 batch_resume 消息
@@ -15,9 +17,10 @@ from __future__ import annotations
 import json
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-from aiink.api.schemas import TaskControlOut, TaskDetailOut
+from aiink.api.auth import require_owner
+from aiink.api.schemas import TaskControlOut, TaskDetailOut, TaskSummaryOut
 from aiink.config import settings
 from aiink.db import new_session
 from aiink.models import AgentRun, Task
@@ -35,6 +38,16 @@ def _task_uuid(raw: str) -> uuid.UUID:
         return uuid.UUID(raw)
     except (ValueError, TypeError) as exc:
         raise HTTPException(status_code=400, detail=f"任务 id 非法: {raw}") from exc
+
+
+def _batch_done_chapters(db, task_id: str) -> int:
+    """批次已完成章数（§阶段2 派生口径）：该批 persist 节点去重章数——不能按任意
+    agent_runs 计数（load_state 也写 run，章刚启动就被计为完成，评审 A7）。"""
+    runs = db.query(AgentRun).filter(
+        AgentRun.task_id.like(f"{task_id}:ch%"),
+        AgentRun.node == "persist",
+    ).all()
+    return len({r.task_id for r in runs})
 
 
 def _task_payload(task_id: str, with_runs: bool = True) -> dict:
@@ -59,12 +72,7 @@ def _task_payload(task_id: str, with_runs: bool = True) -> dict:
         # 不能按「任意 agent_runs」计数——load_state 也会写 run，章刚启动就被计为完成（评审 A7）。
         if task.task_type == "batch_generate" and task.payload:
             size = int(task.payload.get("size", 0))
-            runs = db.query(AgentRun).filter(
-                AgentRun.task_id.like(f"{task_id}:ch%"),
-                AgentRun.node == "persist",
-            ).all()
-            done_chapters = len({r.task_id for r in runs})
-            data["progress"] = {"current": done_chapters, "total": size}
+            data["progress"] = {"current": _batch_done_chapters(db, task_id), "total": size}
         if with_runs:
             runs = (
                 db.query(AgentRun)
@@ -95,6 +103,42 @@ def _task_payload(task_id: str, with_runs: bool = True) -> dict:
 @router.get("/tasks/{task_id}", response_model=TaskDetailOut)
 def get_task(task_id: str) -> dict:
     return _task_payload(task_id)
+
+
+@router.get("/projects/{project_id}/tasks",
+            dependencies=[Depends(require_owner)], response_model=list[TaskSummaryOut])
+def list_project_tasks(project_id: str) -> list[dict]:
+    """项目任务历史（最近 50 条，倒序）：前端切书后展示过往任务，点开再拉详情拿流转。
+
+    轻量摘要不含 runs（重量留给 GET /tasks/{id}）；批次进度派生（persist 去重章数）。
+    require_owner 归属断言由依赖挂载（§14.1 ③）；tasks 无 RLS 观测表，new_session 可查。
+    """
+    pid = _task_uuid(project_id)
+    with new_session() as db:
+        tasks = (
+            db.query(Task)
+            .filter(Task.project_id == pid)
+            .order_by(Task.created_at.desc())
+            .limit(50)
+            .all()
+        )
+        result = []
+        for t in tasks:
+            item: dict = {
+                "task_id": str(t.id),
+                "task_type": t.task_type,
+                "status": t.status,
+                "chapter_seq": t.chapter_seq,
+                "batch_size": None,
+                "batch_current": None,
+                "error": t.error,
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+            }
+            if t.task_type == "batch_generate" and t.payload:
+                item["batch_size"] = int(t.payload.get("size", 0))
+                item["batch_current"] = _batch_done_chapters(db, str(t.id))
+            result.append(item)
+        return result
 
 
 @router.post("/tasks/{task_id}/pause", response_model=TaskControlOut)

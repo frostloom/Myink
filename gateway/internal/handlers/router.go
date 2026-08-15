@@ -68,6 +68,8 @@ func NewRouter(cfg config.Config, r *redis.Client, py *pyapi.Client) *gin.Engine
 		secured.POST("/projects/:project_id/chapters/:chapter_id/generate", taskH.CreateChapter)
 		// 建批次生成任务
 		secured.POST("/projects/:project_id/batches/generate", taskH.CreateBatch)
+		// 项目任务历史（阶段 4 任务视图：切书后展示该书过往任务，转发 Python API）
+		secured.GET("/projects/:project_id/tasks", taskH.ListProjectTasks)
 		// 任务详情（转发 Python API）
 		secured.GET("/tasks/:task_id", taskH.GetTask)
 		// 批次控制 pause/resume/cancel（转发 Python API）

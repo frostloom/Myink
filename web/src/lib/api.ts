@@ -9,11 +9,14 @@ import type {
   ChapterMeta,
   ChapterVersionsResponse,
   ContentUpdateResponse,
+  CorrectMemoryResponse,
   CreateProjectBody,
+  DeleteChapterResponse,
   GenerateResponse,
   AuditRunResponse,
   GlobalAuditReportDetail,
   GlobalAuditReportSummary,
+  LessonActionResponse,
   MemoryCandidate,
   Project,
   ProjectSettings,
@@ -26,7 +29,9 @@ import type {
   StyleProfileResponse,
   TaskControlResponse,
   TaskDetail,
+  TaskSummary,
   WorldView,
+  WritingLesson,
 } from '../types'
 import { dispatchUnauthorized, getToken } from './token'
 
@@ -104,6 +109,25 @@ export const api = {
       content,
     }),
 
+  // 显式校正记忆（§7.3：编辑后重新抽取 → 与该章已落库记忆 diff → 变更集进待确认池）。
+  // 同步 LLM 调用（一次 extract），网关超时 30s；超时属正常，提示重试即可。
+  correctMemory: (pid: string, cid: string) =>
+    request<CorrectMemoryResponse>('POST', `/projects/${pid}/chapters/${cid}/correct-memory`),
+
+  // 级联删除章节（§7.3：删除该章及其后全部正文 + 记忆 + 池候选，进度回退）。
+  deleteChapter: (pid: string, cid: string) =>
+    request<DeleteChapterResponse>('DELETE', `/projects/${pid}/chapters/${cid}`),
+
+  // 写作经验（§8.9 reflexion：批次复盘高危经验池）。confirm/reject 幂等（非 proposed 409）。
+  listLessons: (pid: string) =>
+    request<WritingLesson[]>('GET', `/projects/${pid}/lessons`),
+
+  confirmLesson: (pid: string, lid: string) =>
+    request<LessonActionResponse>('POST', `/projects/${pid}/lessons/${lid}/confirm`),
+
+  rejectLesson: (pid: string, lid: string) =>
+    request<LessonActionResponse>('POST', `/projects/${pid}/lessons/${lid}/reject`),
+
   // 章节历史版本（阶段 4 版本表）：列表 + 回退（网关转发 Python）。
   listChapterVersions: (pid: string, cid: string) =>
     request<ChapterVersionsResponse>('GET', `/projects/${pid}/chapters/${cid}/versions`),
@@ -123,6 +147,9 @@ export const api = {
     request<GenerateResponse>('POST', `/projects/${pid}/batches/generate`, body),
 
   getTask: (tid: string) => request<TaskDetail>('GET', `/tasks/${tid}`),
+
+  // 项目任务历史（阶段 4 任务视图）：切书后展示该书过往任务（网关转发 Python）。
+  listTasks: (pid: string) => request<TaskSummary[]>('GET', `/projects/${pid}/tasks`),
 
   // 批次控制（pause|resume|cancel）：网关转发 Python 任务控制端点；外部控制不发
   // SSE 事件，成功后调用方需主动 GET 快照刷新（useTaskEvents.refresh）。

@@ -150,6 +150,21 @@ export interface TaskDetail {
   runs: AgentRun[]
 }
 
+/** 项目任务历史列表项（GET /projects/:pid/tasks → Python TaskSummaryOut，阶段 4 任务视图）。
+ * 轻量摘要不含 runs，点开任一条再走 GET /tasks/:id 拉节点流转记录。 */
+export interface TaskSummary {
+  task_id: string
+  task_type: 'chapter_generate' | 'batch_generate' | string
+  status: TaskStatus
+  chapter_seq: number | null
+  /** 批次任务：目标章数（payload.size）；单章任务为 null */
+  batch_size: number | null
+  /** 批次任务：已完成章数（该批 persist 节点去重派生）；单章任务为 null */
+  batch_current: number | null
+  error: string | null
+  created_at: string | null
+}
+
 /** 记忆候选 kind（memory_candidates 表 CHECK 枚举，§7.3 事实生命周期） */
 export type CandidateKind =
   | 'event'
@@ -175,6 +190,50 @@ export interface MemoryCandidate {
 export interface CandidateActionResponse {
   candidate_id: string
   status: 'confirmed' | 'rejected'
+}
+
+/** 校正记忆响应（POST chapters/:cid/correct-memory → Python CorrectMemoryOut，§7.3） */
+export interface CorrectMemoryResponse {
+  chapter_seq: number
+  /** 该章编辑后重新抽取 → 与已落库记忆 diff 出的变更集（进待确认池） */
+  changeset: Record<string, unknown>
+  pool: Record<string, unknown>
+  /** 无差异 → true（前端提示「无变更」，不打扰） */
+  no_op: boolean
+}
+
+/** 级联删章明细（DELETE chapters/:cid → Python DeleteChapterOut：删该章及其后全部章节） */
+export interface DeletedChapter {
+  chapter_seq: number
+  title: string | null
+  invalidation: Record<string, unknown>
+}
+
+export interface DeleteChapterResponse {
+  deleted: DeletedChapter[]
+  /** 删完后的当前最大章序 */
+  current_chapter: number
+}
+
+/** 写作经验（GET lessons → Python WritingLessonOut，§8.9 reflexion：批次复盘高危经验） */
+export interface WritingLesson {
+  lesson_id: string
+  category: string
+  lesson_type: string
+  content: string
+  evidence: Array<Record<string, unknown>>
+  confidence: number
+  source_chapter: number
+  /** proposed 待确认 → confirm/reject → active/rejected */
+  status: 'proposed' | 'active' | 'rejected' | (string & {})
+  recurrence_count: number
+  last_recurrence_at: number | null
+  created_at: string | null
+}
+
+export interface LessonActionResponse {
+  lesson_id: string
+  status: 'active' | 'rejected' | (string & {})
 }
 
 /** 文风档案（§7.12 StyleProfile：键值透传，validate_profile 顶层 None 丢弃） */

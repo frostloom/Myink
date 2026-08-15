@@ -140,6 +140,14 @@ func (h *TaskHandler) ListProjects(c *gin.Context) {
 	h.forwardToPy(c, "/internal/v1/projects", nil)
 }
 
+// 项目任务历史（阶段 4 任务视图）：转发 Python API（切书后展示该书过往任务，
+// 点开任一条再由前端走 GET /tasks/:task_id 拉节点流转）。
+// GET /api/v1/projects/:project_id/tasks
+func (h *TaskHandler) ListProjectTasks(c *gin.Context) {
+	pid := c.Param("project_id")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/tasks", nil)
+}
+
 // 记忆候选：待确认池（§6.11 确认分流）。GET /api/v1/projects/:project_id/candidates
 func (h *TaskHandler) ListCandidates(c *gin.Context) {
 	pid := c.Param("project_id")
