@@ -28,6 +28,8 @@ export interface ChapterMeta {
   chapter_seq: number
   title: string | null
   status: ChapterStatus
+  /** 正文字符数（len 口径，与 L1 字数门禁同源 §6.9；章节列表/正文侧展示） */
+  word_count: number | null
 }
 
 /** 单章详情（get_chapter，main.py:117；无 version——version 由保存响应返回） */
@@ -149,6 +151,8 @@ export interface TaskDetail {
   created_at: string | null
   /** 仅批次任务 */
   progress?: { current: number; total: number }
+  /** 任务总花费（agent_runs.cost_est 求和，§6.8 成本透明）：单章=该章，批次=全批 */
+  cost_total: number
   runs: AgentRun[]
 }
 
@@ -163,6 +167,8 @@ export interface TaskSummary {
   batch_size: number | null
   /** 批次任务：已完成章数（该批 persist 节点去重派生）；单章任务为 null */
   batch_current: number | null
+  /** 任务总花费（§6.8 成本透明；批次=全批聚合） */
+  cost_total: number
   error: string | null
   created_at: string | null
 }

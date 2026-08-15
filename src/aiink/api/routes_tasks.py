@@ -97,6 +97,9 @@ def _task_payload(task_id: str, with_runs: bool = True) -> dict:
                 }
                 for r in runs
             ]
+            # 总花费（§6.8 成本透明，前端「每章总花费」）：单章 = 该章任务全部节点；
+            # 批次 = 全批（task_id 前缀与 runs 同口径）。runs 已加载，求和免额外查询。
+            data["cost_total"] = round(sum(r.cost_est for r in runs), 6)
         return data
 
 
@@ -122,6 +125,17 @@ def list_project_tasks(project_id: str) -> list[dict]:
             .limit(50)
             .all()
         )
+        # 每任务总花费（§6.8 成本透明）：agent_runs.cost_est 按 task_id 前缀聚合——
+        # 单章任务 task_id=裸 uuid；批次任务每章 run= {batch_id}:ch{seq} + 裸 batch_id
+        # （batch_plan/reflexion）。统一按「:」前段分桶，等价 _task_payload 的 LIKE 口径。
+        # 一次查询取全部（项目级量级小，观测表无 RLS），避免逐任务子查询。
+        runs = db.query(AgentRun.task_id, AgentRun.cost_est).filter(AgentRun.project_id == pid).all()
+        cost_by_task: dict[str, float] = {}
+        for tid, cost in runs:
+            if not tid:
+                continue
+            prefix = tid.split(":")[0]
+            cost_by_task[prefix] = cost_by_task.get(prefix, 0.0) + (cost or 0.0)
         result = []
         for t in tasks:
             item: dict = {
@@ -131,6 +145,7 @@ def list_project_tasks(project_id: str) -> list[dict]:
                 "chapter_seq": t.chapter_seq,
                 "batch_size": None,
                 "batch_current": None,
+                "cost_total": round(cost_by_task.get(str(t.id), 0.0), 6),
                 "error": t.error,
                 "created_at": t.created_at.isoformat() if t.created_at else None,
             }

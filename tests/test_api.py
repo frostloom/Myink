@@ -11,11 +11,13 @@ dependencies（不改函数签名），直接调用测试照常。
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi.testclient import TestClient
 
 from aiink.api.main import app, list_chapters
 from aiink.db import new_session
-from aiink.models import User
+from aiink.models import Chapter, User
 
 client = TestClient(app)
 
@@ -34,9 +36,20 @@ def test_list_projects_returns_books():
 
 
 def test_list_chapters_fields_valid(project_id):
-    """章节列表字段合法（回归：target_words 曾致 500）。"""
+    """章节列表字段合法（回归：target_words 曾致 500）+ word_count 字数口径（§6.9）。"""
     chapters = list_chapters(project_id)
     assert isinstance(chapters, list)
     for c in chapters:
         assert "chapter_seq" in c and "status" in c and "id" in c
         assert "target_words" not in c, "target_words 是 Project 字段，章节列表不应携带"
+        assert c["word_count"] is not None and c["word_count"] >= 0, "每章应返回字数"
+    if chapters:
+        # 口径 = len(content) 字符数（与 L1 chapter_length_check 同源）；
+        # chapters 是 RLS 租户表，须用 tenant_session 才能查到行
+        from aiink.db import tenant_session
+        with tenant_session(project_id) as db:
+            row = db.query(Chapter).filter(
+                Chapter.project_id == uuid.UUID(project_id),
+                Chapter.chapter_seq == chapters[0]["chapter_seq"],
+            ).first()
+            assert chapters[0]["word_count"] == len(row.content or ""), "字数 = 正文字符数"

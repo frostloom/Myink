@@ -77,7 +77,8 @@ def test_list_tasks_shape_and_desc_order(temp_project):
         assert first["batch_size"] is None and first["batch_current"] is None, "单章无批次进度"
         assert first["error"] is None and first["created_at"] is not None
         assert set(first) == {"task_id", "task_type", "status", "chapter_seq",
-                              "batch_size", "batch_current", "error", "created_at"}
+                              "batch_size", "batch_current", "cost_total",
+                              "error", "created_at"}
     finally:
         _cleanup(tids, temp_project)
 
@@ -103,6 +104,48 @@ def test_list_tasks_batch_progress_derived(temp_project):
         item = next(i for i in resp.json() if i["task_id"] == tid)
         assert item["batch_size"] == 3
         assert item["batch_current"] == 2, "persist 去重章数，非任意 run 计数"
+    finally:
+        _cleanup([tid], temp_project)
+
+
+def test_list_tasks_cost_total_single_and_batch(temp_project):
+    """cost_total（§6.8 成本透明）：单章 = 该章全部节点 cost 和；批次 = 全批（含 :ch 前缀）。"""
+    single = _add_task(temp_project, task_type="chapter_generate", status="done", chapter_seq=1)
+    batch = _add_task(temp_project, task_type="batch_generate", status="done", payload={"size": 2})
+    pid = uuid.UUID(temp_project)
+    with new_session() as db:
+        # 单章：3 节点（含 cost=0 的确定性节点）
+        for i, cost in enumerate([0.012, 0.006, 0.0]):
+            db.add(AgentRun(project_id=pid, task_id=single, node=f"n{i}", cost_est=cost))
+        # 批次：batch_plan 裸 id + ch1/ch2 前缀各 2 节点
+        for tid, costs in [(batch, [0.02]), (f"{batch}:ch1", [0.03, 0.004]), (f"{batch}:ch2", [0.01])]:
+            for cost in costs:
+                db.add(AgentRun(project_id=pid, task_id=tid, node="write", cost_est=cost))
+        db.commit()
+    try:
+        resp = client.get(f"/internal/v1/projects/{temp_project}/tasks", headers=_h(_demo_user_id()))
+        items = {i["task_id"]: i for i in resp.json()}
+        assert round(items[single]["cost_total"], 4) == 0.018, "单章 = 全节点 cost 和"
+        assert round(items[batch]["cost_total"], 4) == 0.064, "批次 = 裸 id + 全 :ch 前缀聚合"
+    finally:
+        _cleanup([single, batch], temp_project)
+
+
+def test_get_task_cost_total(temp_project):
+    """详情 cost_total = 该任务 runs 的 cost 和（GET /tasks/{id}）。"""
+    tid = _add_task(temp_project, task_type="chapter_generate", status="done", chapter_seq=1)
+    pid = uuid.UUID(temp_project)
+    with new_session() as db:
+        db.add(AgentRun(project_id=pid, task_id=tid, node="write", cost_est=0.021))
+        db.add(AgentRun(project_id=pid, task_id=tid, node="extract", cost_est=0.007))
+        db.add(AgentRun(project_id=pid, task_id=tid, node="persist", cost_est=0.0))
+        db.commit()
+    try:
+        resp = client.get(f"/internal/v1/tasks/{tid}", headers=_h(_demo_user_id()))
+        assert resp.status_code == 200
+        detail = resp.json()
+        assert round(detail["cost_total"], 4) == 0.028, "详情总花费 = runs cost 和"
+        assert len(detail["runs"]) == 3
     finally:
         _cleanup([tid], temp_project)
 

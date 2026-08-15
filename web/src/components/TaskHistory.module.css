@@ -76,6 +76,13 @@
   font-size: var(--text-small);
 }
 
+.cost {
+  color: var(--accent);
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .live {
   color: var(--accent);
   font-size: var(--text-small);

@@ -33,6 +33,7 @@ class ChapterMetaOut(BaseModel):
     chapter_seq: int
     title: str | None = None
     status: str
+    word_count: int | None = None
 
 
 class ChapterDetailOut(ChapterMetaOut):
@@ -112,6 +113,7 @@ class TaskDetailOut(BaseModel):
     batch_task_id: str | None = None
     created_at: str | None = None
     progress: TaskProgressOut | None = None
+    cost_total: float = 0.0
     runs: list[AgentRunOut] = Field(default_factory=list)
 
 
@@ -134,6 +136,7 @@ class TaskSummaryOut(BaseModel):
     chapter_seq: int | None = None
     batch_size: int | None = None
     batch_current: int | None = None
+    cost_total: float = 0.0
     error: str | None = None
     created_at: str | None = None
 

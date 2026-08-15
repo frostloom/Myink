@@ -230,6 +230,17 @@
               }
             ],
             "title": "Title"
+          },
+          "word_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Word Count"
           }
         },
         "required": [
@@ -264,6 +275,17 @@
               }
             ],
             "title": "Title"
+          },
+          "word_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Word Count"
           }
         },
         "required": [
@@ -1322,6 +1344,11 @@
             ],
             "title": "Chapter Seq"
           },
+          "cost_total": {
+            "default": 0.0,
+            "title": "Cost Total",
+            "type": "number"
+          },
           "created_at": {
             "anyOf": [
               {
@@ -1456,6 +1483,11 @@
               }
             ],
             "title": "Chapter Seq"
+          },
+          "cost_total": {
+            "default": 0.0,
+            "title": "Cost Total",
+            "type": "number"
           },
           "created_at": {
             "anyOf": [
@@ -2125,7 +2157,7 @@
     },
     "/internal/v1/projects/{project_id}/chapters": {
       "get": {
-        "description": "章节列表（RLS：tenant_session 过滤，只返回本项目 + 归属断言双保险）。",
+        "description": "章节列表（RLS：tenant_session 过滤，只返回本项目 + 归属断言双保险）。\n\nword_count = 正文字符数（len 口径，与 L1 chapter_length_check §6.9 同源——\n中文按字符计，含标点），供章节列表/正文侧展示每章字数。",
         "operationId": "list_chapters_internal_v1_projects__project_id__chapters_get",
         "parameters": [
           {
