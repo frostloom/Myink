@@ -97,7 +97,13 @@ def list_projects(user_id: str | None = Depends(current_user)) -> list[dict]:
     with new_session() as db:
         rows = db.query(Project).filter(Project.user_id == uid).all()
         return [
-            {"id": str(p.id), "title": p.title, "genre": p.genre, "current_chapter": p.current_chapter}
+            {
+                "id": str(p.id),
+                "title": p.title,
+                "genre": p.genre,
+                "current_chapter": p.current_chapter,
+                "target_words": p.target_words,
+            }
             for p in rows
         ]
 

@@ -201,7 +201,8 @@ def ensure_memory_candidate_kinds() -> None:
     重跑先 DROP IF EXISTS 再 ADD，不抛错。
     """
     _KINDS = ("event", "fact", "character_state", "relation_change",
-              "foreshadow", "chapter_summary", "memory_removal")
+              "foreshadow", "chapter_summary", "memory_removal",
+              "character_card", "new_entity")
     # 约束全名按命名约定 ck_%(table)s_%(constraint)s（base.py convention）：
     # memory_candidates.kind_enum → ck_memory_candidates_kind_enum
     with _admin_engine.begin() as conn:

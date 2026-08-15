@@ -25,6 +25,7 @@ class ProjectOut(BaseModel):
     title: str
     genre: str
     current_chapter: int
+    target_words: int | None = None
 
 
 class ChapterMetaOut(BaseModel):
@@ -262,3 +263,13 @@ class CharacterCardOut(BaseModel):
     aliases: list = Field(default_factory=list)
     base_attrs: dict = Field(default_factory=dict)
     state: dict = Field(default_factory=dict)
+
+
+class EntityCardOut(BaseModel):
+    """设定实体卡片（§7.11 ④ 自动建档：武器/功法/技能/地点低风险自动登记）。"""
+
+    id: str
+    entity_type: str
+    name: str
+    description: str | None = None
+    first_seen_chapter: int | None = None

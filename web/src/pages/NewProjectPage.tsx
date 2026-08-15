@@ -64,6 +64,8 @@ export default function NewProjectPage() {
   const [title, setTitle] = useState('')
   const [genre, setGenre] = useState(GENRES[0])
   const [premise, setPremise] = useState('')
+  // 每章目标字数（§6.9 三层字数控制；500–20000，默认 3000）
+  const [targetWords, setTargetWords] = useState('3000')
   const [projects, setProjects] = useState<Project[]>([])
   const [pid, setPid] = useState<string | null>(null)
   const [section, setSection] = useState<SetupSection | null>(null)
@@ -81,11 +83,16 @@ export default function NewProjectPage() {
       setBanner('请填写一句话梗概（创作设定的种子）')
       return
     }
+    const words = Number(targetWords)
+    if (!Number.isInteger(words) || words < 500 || words > 20000) {
+      setBanner('目标字数需为 500–20000 的整数')
+      return
+    }
     setBusy('create')
     setBanner(null)
     setOk(null)
     try {
-      const project = await api.createProject({ title: title.trim(), genre })
+      const project = await api.createProject({ title: title.trim(), genre, target_words: words })
       setPid(project.id)
       setProjects(await api.listProjects())
       await regenerate(project.id)
@@ -170,6 +177,21 @@ export default function NewProjectPage() {
                   </option>
                 ))}
               </select>
+            </label>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>
+                每章目标字数
+                <span className={styles.hint}>（500–20000，驱动单章长度，默认 3000）</span>
+              </span>
+              <input
+                className="input"
+                type="number"
+                min={500}
+                max={20000}
+                step={100}
+                value={targetWords}
+                onChange={(e) => setTargetWords(e.target.value)}
+              />
             </label>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>一句话梗概</span>

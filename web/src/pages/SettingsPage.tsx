@@ -121,6 +121,8 @@ export default function SettingsPage() {
   const [presets, setPresets] = useState<SkillPreset[]>([])
   const [profileDraft, setProfileDraft] = useState<StyleProfile>({})
   const [routeSel, setRouteSel] = useState<Record<string, string>>({})
+  // 每章目标字数（§6.9 三层字数控制；从 projects 取该书当前值，可改保存）
+  const [targetWords, setTargetWords] = useState('3000')
   // 样本提取草稿（提取后编辑再确认；draftDraft 非空显示编辑区）
   const [sampleText, setSampleText] = useState('')
   const [draftDraft, setDraftDraft] = useState<StyleProfile | null>(null)
@@ -144,6 +146,9 @@ export default function SettingsPage() {
       )
       setPresets(pre)
       setProjects(proj)
+      const cur = proj.find((p) => p.id === projectId)
+      // 该书已显式置空 → 回落默认 3000（与生成侧 or 3000 语义一致），不留上一本书残留值
+      setTargetWords(cur?.target_words != null ? String(cur.target_words) : '3000')
     } catch (err) {
       setBanner(err instanceof ApiError ? err.code : '设置加载失败')
     }
@@ -223,6 +228,26 @@ export default function SettingsPage() {
       await api.putStyleProfile(projectId, p.style_profile, p.id)
       await load()
       setOk(`已应用预设《${p.name}》`)
+    } catch (err) {
+      showError(err)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function saveTargetWords() {
+    const words = Number(targetWords)
+    if (!Number.isInteger(words) || words < 500 || words > 20000) {
+      setBanner('目标字数需为 500–20000 的整数')
+      return
+    }
+    setBusy('words')
+    setBanner(null)
+    setOk(null)
+    try {
+      await api.updateProject(projectId, { target_words: words })
+      await load()
+      setOk('目标字数已保存，对新生成章节生效')
     } catch (err) {
       showError(err)
     } finally {
@@ -348,6 +373,36 @@ export default function SettingsPage() {
                   </button>
                 </div>
               ))}
+            </div>
+          </section>
+
+          <section className={`panel ${styles.section}`}>
+            <h2 className={styles.sectionTitle}>生成设置</h2>
+            <p className={styles.hint}>
+              每章目标字数（§6.9 三层字数控制）：驱动单章生成长度，新生成章节按
+              [0.8×目标, 1.3×目标] 校验，越界自动重写。默认 3000，范围 500–20000。
+            </p>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>每章目标字数</span>
+              <input
+                className="input"
+                type="number"
+                min={500}
+                max={20000}
+                step={100}
+                value={targetWords}
+                onChange={(e) => setTargetWords(e.target.value)}
+              />
+            </label>
+            <div className={styles.saveRow}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={busy !== null}
+                onClick={() => void saveTargetWords()}
+              >
+                {busy === 'words' ? '保存中…' : '保存目标字数'}
+              </button>
             </div>
           </section>
 

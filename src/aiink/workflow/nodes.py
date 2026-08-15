@@ -26,7 +26,8 @@ from aiink.memory.embedder import get_embedder
 from aiink.memory.invalidation import invalidate_chapter_memory
 from aiink.memory.recall import build_context
 from aiink.memory.vector_store import PgvectorStore
-from aiink.models import AgentRun, Chapter, CharacterState, Event, Fact, Foreshadow, MemoryCandidate, Relation, WritingLesson
+from aiink.models import (AgentRun, Alias, Chapter, Character, CharacterState, Entity,
+                          Event, Fact, Foreshadow, MemoryCandidate, Relation, WritingLesson)
 from aiink.models.memory import CHARACTER_STATE_FIELDS, RELATION_TYPES
 from aiink.providers import FallbackChain, ModelResponse, make_chain
 from aiink.schemas import AuditVerdict, ChapterPlan, Finding, MutationCandidate, ValidationReport
@@ -682,17 +683,33 @@ def node_persist(state: ChapterState) -> ChapterState:
     """
     pid = state["project_id"]
     chapter_seq = state["chapter_seq"]
+    candidates = state.get("candidates", [])
     report = state.get("report") or {}
     critical = report.get("summary", {}).get("critical", 0) or 0
     l2_major = report.get("summary", {}).get("l2_major", 0) or 0
+    # 空名卡片是噪声（确认后什么也不做，_persist_candidates 会跳过）：不触发暂停、
+    # 不进池（审计 Low-4）。
+    has_card = any(
+        c["kind"] == "character_card"
+        and str((c.get("payload") or {}).get("name") or "").strip()
+        for c in candidates
+    )
 
-    if critical or l2_major:
-        # critical/L2 major 暂停：候选进待确认池，章节标 awaiting_review（§6.11）。
-        # plotline 推进候选不落池——正文已写即推进已发生（低风险自动生效，§7.11），
-        # 且 memory_candidates 的 DB CHECK 不含 plotline kind。
+    if critical or l2_major or has_card:
+        # critical/L2 major / 新人物卡片 暂停：候选进待确认池，章节标 awaiting_review
+        # （§6.11 / §7.11 ④——新人物是高风险 canon，必须人工确认后才落卡）。
+        # plotline 推进与新设定实体 new_entity 不落池：正文已写即推进已发生（低风险
+        # 自动生效，§7.11 ④ 地点/物品/技能自动建档口径）；plotline 连 CHECK 都不含。
         with tenant_session(pid) as db:
-            for cand in state.get("candidates", []):
-                if cand["kind"] == "plotline":
+            auto_entities = [c for c in candidates if c["kind"] == "new_entity"]
+            if auto_entities:
+                _persist_candidates(db, pid, chapter_seq, auto_entities,
+                                    skip_pool_handled=False)
+            for cand in candidates:
+                if cand["kind"] in ("plotline", "new_entity"):
+                    continue
+                if cand["kind"] == "character_card" \
+                        and not str((cand.get("payload") or {}).get("name") or "").strip():
                     continue
                 # 幂等守卫：resume 续跑会重跑 extract → 防同 payload 候选在池里堆重复
                 # （确认流：人工处理候选后 resume 重跑，重复项不应再进池）。
@@ -709,10 +726,12 @@ def node_persist(state: ChapterState) -> ChapterState:
                 # 记录可展示（原缺陷：critical 路径只更新不创建，依赖前序 auto 残留的行）
                 db.add(Chapter(project_id=uuid.UUID(pid), chapter_seq=chapter_seq,
                                status="awaiting_review"))
-        record_plain(db, project_id=pid, task_id=state.get("task_id"), node="persist",
-                     detail={"candidates": len(state.get("candidates", [])),
-                             "status": "awaiting_review",
-                             "reason": "critical" if critical else "l2_major"})
+            # 运行记录写进同一事务（在会话内，否则会话关闭后 add 静默丢失，审计 Low-5）
+            record_plain(db, project_id=pid, task_id=state.get("task_id"), node="persist",
+                         detail={"candidates": len(candidates),
+                                 "status": "awaiting_review",
+                                 "reason": "critical" if critical else
+                                           "l2_major" if l2_major else "character_card"})
         return {"persisted": True, "needs_review": True}
 
     with tenant_session(pid) as db:
@@ -797,6 +816,35 @@ def _persist_candidates(db: Session, pid: str, chapter_seq: int, candidates: lis
                                 confidence=p.get("confidence", 0.8), source_chapter=chapter_seq,
                                 valid_from=p.get("valid_from", 1),
                                 valid_to=p.get("valid_to")))
+        elif cand["kind"] == "character_card":
+            # 新人物卡片（§7.11 ④）：确认后建 characters 静态基底 + alias 归一化（§7.5）。
+            # 同名/同别名已建档跳过——防重复建卡（池内同 payload 去重是章级，跨章靠这里，
+            # get_character 已接别名解析）。
+            name = str(p.get("name") or "").strip()
+            personality = str(p.get("personality") or "").strip() or None
+            if name and repo.get_character(db, project_id, name) is None:
+                char = Character(project_id=project_id, name=name, realm_cap="无",
+                                 personality=personality,
+                                 base_attrs={k: p.get(k) for k in ("identity", "role", "importance")
+                                             if p.get(k) is not None and str(p.get(k)).strip()})
+                db.add(char)
+                db.flush()  # 拿 char.id 供 alias 关联
+                db.add(Alias(project_id=project_id, alias=name, entity_id=char.id))
+        elif cand["kind"] == "new_entity":
+            # 新设定实体（§7.11 ④ 武器/功法/技能/地点自动建档）：低风险登记，同名去重。
+            name = str(p.get("name") or "").strip()
+            etype = str(p.get("entity_type") or "").strip()
+            # 白名单（§6.12 坏数据拒绝但不崩）：LLM 输出白名单外类型（如「神器」）不登记
+            # ——否则落库后设定页三桶渲染不可见（审计 Low-3）。
+            if name and etype in ("item", "skill", "location") \
+                    and _entity_exists(db, project_id, etype, name) is None:
+                desc = str(p.get("description") or "").strip() or None
+                ent = Entity(project_id=project_id, entity_type=etype, canonical_name=name,
+                             properties={"description": desc,
+                                         "first_seen_chapter": chapter_seq})
+                db.add(ent)
+                db.flush()
+                db.add(Alias(project_id=project_id, alias=name, entity_id=ent.id))
         elif cand["kind"] == "foreshadow":
             db.add(Foreshadow(project_id=project_id, description=p.get("description", ""),
                               status="planted", planted_chapter=chapter_seq, trigger=p.get("trigger") or {}))
@@ -809,6 +857,31 @@ def _persist_candidates(db: Session, pid: str, chapter_seq: int, candidates: lis
                     if name == (t.name or "") or name in (t.name or "") or (t.name or "") in name:
                         t.last_progress_chapter = chapter_seq
                         break
+
+
+def _entity_exists(db: Session, project_id: uuid.UUID, entity_type: str,
+                   name: str) -> Entity | None:
+    """同名同类型设定实体去重（§7.11 ④ 自动建档：已登记不重复建）。
+
+    canonical 名精确命中优先；未命中 → 回退别名解析（§7.5：正文以别名出现时归一到
+    同一实体）。别名 polymorphic，校验 entity_id 确是本项目该类型实体。
+    """
+    ent = db.query(Entity).filter(
+        Entity.project_id == project_id,
+        Entity.entity_type == entity_type,
+        Entity.canonical_name == name,
+    ).first()
+    if ent:
+        return ent
+    alias_row = db.query(Alias).filter(
+        Alias.project_id == project_id, Alias.alias == name
+    ).first()
+    if alias_row:
+        ent = db.get(Entity, alias_row.entity_id)
+        if ent is not None and ent.project_id == project_id \
+                and ent.entity_type == entity_type:
+            return ent
+    return None
 
 
 def _close_active_relations(db: Session, project_id: uuid.UUID, source_id: uuid.UUID,

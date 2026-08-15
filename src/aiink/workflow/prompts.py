@@ -34,11 +34,15 @@ SYSTEM_EXTRACT = """你是长篇网文创作系统的【记忆抽取 Agent】。
   {"kind": "relation_change", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"source_id": "人物名", "target_id": "人物名", "relation_type": "只能取 hostile|ally|master_student|located_in|owns|defeated_by|knows|promises|happened_at 之一", "old_value": "", "new_value": "", "source_chapter": 章号, "confidence": 0.0-1.0}},
   {"kind": "fact", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"content": "长期事实", "category": "规则", "is_hard": false, "source_chapter": 章号, "confidence": 0.0-1.0}},
   {"kind": "foreshadow", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"description": "本章新种下的伏笔（可回收的悬念/物件/承诺，能且应被后续回收）", "trigger": {"actor": "触发者", "action": "动作", "object": "对象"}, "source_chapter": 章号, "confidence": 0.0-1.0}},
-  {"kind": "plotline", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"thread_name": "被推进的活跃剧情线名称（须匹配注入的活跃剧情线）", "note": "本章如何推进该线"}}
+  {"kind": "plotline", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"thread_name": "被推进的活跃剧情线名称（须匹配注入的活跃剧情线）", "note": "本章如何推进该线"}},
+  {"kind": "character_card", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"name": "新人物名", "identity": "身份/来历", "role": "与主角/势力的关系", "personality": "性格初步印象", "importance": "剧情作用简评"}},
+  {"kind": "new_entity", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"entity_type": "只能取 item|skill|location 之一（武器/功法技能/地点）", "name": "名称", "description": "一句话简介"}}
 ]}
 顶层 confidence 必填。只抽确定事实，不猜。伏笔只抽「本章明确埋下的」——含糊提及不算，避免伏笔池噪声。
 剧情线推进（plotline）只在「本章正文确实推进了某条活跃剧情线」时才抽，thread_name 须与注入的活跃剧情线名一致（不新增线名）。
-关系变更（relation_change）只抽「正文明确发生的关系演变」（和解/决裂/结盟/逐出师门等）；old_value 须与注入的当前台账快照一致；正文仅表现关系现状而无演变 → 不抽。"""
+关系变更（relation_change）只抽「正文明确发生的关系演变」（和解/决裂/结盟/逐出师门等）；old_value 须与注入的当前台账快照一致；正文仅表现关系现状而无演变 → 不抽。
+新人物卡片（character_card）只抽「本章首次出现且影响剧情的重要人物」（有名字、有台词、剧情上有作用）；已在【人物状态快照】中的人、纯龙套/一次性质 → 不抽（防待确认池噪声）。
+新设定实体（new_entity）抽「本章首次明确命名的武器/功法/技能/地点」，低风险自动登记；已有同名实体不重复抽。"""
 
 SYSTEM_REVISE = """你是长篇网文创作系统的【修订 Agent】。按校验发现逐条修订正文。
 输出格式：先输出独立一行 === CONTENT ===，从下一行开始输出修订后全文（纯文本散文，

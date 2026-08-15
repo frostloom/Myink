@@ -11,6 +11,8 @@ export interface Project {
   title: string
   genre: string
   current_chapter: number
+  /** 每章目标字数（§6.9 三层字数控制：max_tokens 换算 + L1 长度门禁 + prompt 注入） */
+  target_words: number | null
 }
 
 export type ChapterStatus =
@@ -174,6 +176,8 @@ export type CandidateKind =
   | 'foreshadow'
   | 'chapter_summary'
   | 'memory_removal'
+  | 'character_card'
+  | 'new_entity'
   | (string & {})
 
 /** 待确认候选（list_candidates，routes_candidates.py；payload 为自由 dict） */
@@ -307,6 +311,15 @@ export interface AuditRunResponse {
 export interface CreateProjectBody {
   title: string
   genre: string
+  /** 每章目标字数（可选；500–20000，默认 3000） */
+  target_words?: number
+}
+
+/** 作品信息更新（§6.9 每章目标字数可配）：PUT /projects/:pid，未传字段不改；显式 null 置空 */
+export interface UpdateProjectBody {
+  title?: string
+  genre?: string
+  target_words?: number | null
 }
 
 /** 设定骨架草稿请求（§7.11 ②：一句话梗概 → Planner 提案） */
@@ -364,4 +377,13 @@ export interface CharacterCard {
   aliases: unknown[]
   base_attrs: Record<string, unknown>
   state: Record<string, string>
+}
+
+/** 设定实体（§7.11 ④ 自动建档：武器/功法/技能/地点，低风险正文抽取自动登记） */
+export interface LoreEntity {
+  id: string
+  entity_type: 'item' | 'skill' | 'location' | (string & {})
+  name: string
+  description: string | null
+  first_seen_chapter: number | null
 }
