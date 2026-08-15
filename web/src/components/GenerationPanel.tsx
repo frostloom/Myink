@@ -101,6 +101,11 @@ export function GenerationPanel({ projectId, chapters, selectedChapter, onTaskSt
         >
           单章生成
         </button>
+        {chapters.length === 0 && (
+          <p className={styles.emptyHint}>
+            新书还没有章节——先点「发起批次」写第 1 章，生成完成后会自动打开。
+          </p>
+        )}
       </form>
 
       <form className={styles.form} onSubmit={generateBatch}>

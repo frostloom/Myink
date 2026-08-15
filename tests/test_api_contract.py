@@ -1,7 +1,7 @@
 """HTTP 响应契约套件（阶段 5 契约测试形式化）。
 
-单一事实源 = FastAPI `app.openapi()`：32 条公开消费端点（前端 api.ts 27 方法 + Go
-网关转发但前端未用的 5 个：lessons×3 + correct-memory + delete）挂 response_model
+单一事实源 = FastAPI `app.openapi()`：33 条公开消费端点（前端 api.ts 方法逐一覆盖，
+含任务历史列表 tasks、写作经验 lessons×3、correct-memory、级联删章）挂 response_model
 （src/aiink/api/schemas.py）后，openapi 响应 schema有实质内容；`aiink contract export`
 导出到 spec/api-openapi.json 提交入库，本套件与 CI 的 `git diff --exit-code` 构成双闸
 ——后端改 response_model 未重新导出即红。
@@ -19,8 +19,8 @@ import pytest
 
 from aiink.api.main import app
 
-# 公开消费端点（前端 api.ts 22 方法 + Go 网关转发但前端未用的 5 个：lessons×3 +
-# correct-memory + delete）。path 用 FastAPI 模板形式（{project_id}）。
+# 公开消费端点（前端 api.ts 方法逐一覆盖：生成走网关入队不在此列）。path 用 FastAPI
+# 模板形式（{project_id}）。
 PUBLIC_ENDPOINTS: list[tuple[str, str]] = [
     ("POST", "/internal/v1/auth/token"),
     ("GET", "/internal/v1/projects"),
@@ -36,6 +36,7 @@ PUBLIC_ENDPOINTS: list[tuple[str, str]] = [
     ("POST", "/internal/v1/tasks/{task_id}/pause"),
     ("POST", "/internal/v1/tasks/{task_id}/resume"),
     ("POST", "/internal/v1/tasks/{task_id}/cancel"),
+    ("GET", "/internal/v1/projects/{project_id}/tasks"),
     ("GET", "/internal/v1/projects/{project_id}/candidates"),
     ("POST", "/internal/v1/projects/{project_id}/candidates/{candidate_id}/confirm"),
     ("POST", "/internal/v1/projects/{project_id}/candidates/{candidate_id}/reject"),

@@ -1,0 +1,135 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.head {
+  padding: var(--space-2) var(--space-3);
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: none;
+  border: 0;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  width: 100%;
+  text-align: left;
+}
+
+.title {
+  font-size: var(--text-body);
+}
+
+.caret {
+  margin-left: auto;
+  color: var(--ink-subtle);
+  font-size: var(--text-small);
+  flex-shrink: 0;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.type {
+  color: var(--ink);
+}
+
+.target {
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+}
+
+.live {
+  color: var(--accent);
+  font-size: var(--text-small);
+}
+
+.date {
+  margin-left: auto;
+  color: var(--ink-subtle);
+  font-size: var(--text-small);
+  white-space: nowrap;
+}
+
+.errorText {
+  margin: 0;
+  color: var(--error);
+  font-size: var(--text-small);
+  word-break: break-all;
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-top: 1px dashed var(--line);
+  padding-top: var(--space-2);
+}
+
+.detailHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.progress {
+  color: var(--accent);
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.hint {
+  color: var(--ink-subtle);
+  font-size: var(--text-small);
+}
+
+.runs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
