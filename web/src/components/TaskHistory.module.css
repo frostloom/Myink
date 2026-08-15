@@ -4,7 +4,7 @@
 }
 
 .head {
-  padding: var(--space-2) var(--space-3);
+  padding: 15px 16px;
 }
 
 .toggle {
@@ -22,7 +22,7 @@
 }
 
 .title {
-  font-size: var(--text-body);
+  font-size: 18px;
 }
 
 .caret {
@@ -35,7 +35,7 @@
 .list {
   list-style: none;
   margin: 0;
-  padding: var(--space-3);
+  padding: 14px;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -46,10 +46,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--surface-2);
+  padding: 14px;
+  background: #fffdf8;
   border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
 }
 
 .row {
