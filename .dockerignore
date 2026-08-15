@@ -3,7 +3,7 @@
 *.env
 !.env.example
 
-# 外部参考项目（仅参考不调用，plan.md 借鉴边界）+ git 元数据
+# 外部参考项目（仅参考不调用）+ git 元数据
 inkos/
 .git/
 

@@ -521,7 +521,7 @@ def node_audit(state: ChapterState) -> ChapterState:
         "unresolved": unresolved,
         "replan_batch": verdict.verdict == "replan" and verdict.replan_target == "batch",
     }
-    # 只读查证工具调用痕迹（§10）：可审计 + 佐证 Agent 确实核实过（ §5 工具参与率）
+    # 只读查证工具调用痕迹（§10）：可审计 + 佐证 Agent 确实核实过
     if tool_trace:
         out["tool_trace"] = tool_trace
     return out
