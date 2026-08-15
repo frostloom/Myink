@@ -10,8 +10,16 @@
   max-width: var(--content-max);
 }
 
-.main h1 {
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
   margin-bottom: var(--space-5);
+}
+
+.head h1 {
+  margin: 0;
 }
 
 .grid {

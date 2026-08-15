@@ -1,6 +1,6 @@
-// 项目库：左 rail + 项目卡（title/genre/current_chapter → 进入工作台）。
+// 项目库：左 rail + 「新建作品」+ 项目卡（title/genre/current_chapter → 进入工作台）。
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
 import { api, ApiError } from '../lib/api'
@@ -9,6 +9,7 @@ import styles from './ProjectsPage.module.css'
 
 export default function ProjectsPage() {
   const { logout } = useAuth()
+  const navigate = useNavigate()
   const [projects, setProjects] = useState<Project[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -27,12 +28,17 @@ export default function ProjectsPage() {
     <div className={styles.wrap}>
       <ProjectRail projects={projects ?? []} onLogout={logout} />
       <main className={styles.main}>
-        <h1>作品库</h1>
+        <div className={styles.head}>
+          <h1>作品库</h1>
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/projects/new')}>
+            新建作品
+          </button>
+        </div>
         {error && <div className="banner banner-error">加载失败：{error}</div>}
         {projects === null ? (
           <div className="empty">加载中…</div>
         ) : projects.length === 0 ? (
-          <div className="empty">还没有作品。先用 seed 创建一个演示项目，刷新后即出现在这里。</div>
+          <div className="empty">还没有作品。点击右上角「新建作品」，一句话梗概即可创建第一本书。</div>
         ) : (
           <div className={styles.grid}>
             {projects.map((p) => (

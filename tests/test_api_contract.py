@@ -1,9 +1,10 @@
 """HTTP 响应契约套件（阶段 5 契约测试形式化）。
 
-单一事实源 = FastAPI `app.openapi()`：27 条公开消费端点（前端 api.ts 22 方法 + Go
-网关转发 5 个）挂 response_model（src/aiink/api/schemas.py）后，openapi 响应 schema
-有实质内容；`aiink contract export` 导出到 spec/api-openapi.json 提交入库，本套件
-与 CI 的 `git diff --exit-code` 构成双闸——后端改 response_model 未重新导出即红。
+单一事实源 = FastAPI `app.openapi()`：32 条公开消费端点（前端 api.ts 27 方法 + Go
+网关转发但前端未用的 5 个：lessons×3 + correct-memory + delete）挂 response_model
+（src/aiink/api/schemas.py）后，openapi 响应 schema有实质内容；`aiink contract export`
+导出到 spec/api-openapi.json 提交入库，本套件与 CI 的 `git diff --exit-code` 构成双闸
+——后端改 response_model 未重新导出即红。
 
 独立运行：只 import app 调 app.openapi()，不触 DB、不需要 aiink init。
 """
@@ -23,6 +24,7 @@ from aiink.api.main import app
 PUBLIC_ENDPOINTS: list[tuple[str, str]] = [
     ("POST", "/internal/v1/auth/token"),
     ("GET", "/internal/v1/projects"),
+    ("POST", "/internal/v1/projects"),
     ("GET", "/internal/v1/projects/{project_id}/chapters"),
     ("GET", "/internal/v1/projects/{project_id}/chapters/{chapter_id}"),
     ("PUT", "/internal/v1/projects/{project_id}/chapters/{chapter_id}/content"),
@@ -43,6 +45,10 @@ PUBLIC_ENDPOINTS: list[tuple[str, str]] = [
     ("GET", "/internal/v1/skill-presets"),
     ("POST", "/internal/v1/projects/{project_id}/style-samples"),
     ("PUT", "/internal/v1/projects/{project_id}/style-profile"),
+    ("POST", "/internal/v1/projects/{project_id}/setup-draft"),
+    ("PUT", "/internal/v1/projects/{project_id}/setup"),
+    ("GET", "/internal/v1/projects/{project_id}/world"),
+    ("GET", "/internal/v1/projects/{project_id}/characters"),
     ("GET", "/internal/v1/projects/{project_id}/settings"),
     ("PUT", "/internal/v1/projects/{project_id}/settings"),
     ("POST", "/internal/v1/projects/{project_id}/global-audit"),
