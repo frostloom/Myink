@@ -45,3 +45,10 @@
 .pending {
   flex-shrink: 0;
 }
+
+.words {
+  flex-shrink: 0;
+  color: var(--ink-subtle);
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
+}

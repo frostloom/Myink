@@ -111,7 +111,11 @@ def list_projects(user_id: str | None = Depends(current_user)) -> list[dict]:
 @app.get("/internal/v1/projects/{project_id}/chapters",
          dependencies=[Depends(require_owner)], response_model=list[ChapterMetaOut])
 def list_chapters(project_id: str) -> list[dict]:
-    """章节列表（RLS：tenant_session 过滤，只返回本项目 + 归属断言双保险）。"""
+    """章节列表（RLS：tenant_session 过滤，只返回本项目 + 归属断言双保险）。
+
+    word_count = 正文字符数（len 口径，与 L1 chapter_length_check §6.9 同源——
+    中文按字符计，含标点），供章节列表/正文侧展示每章字数。
+    """
     with tenant_session(project_id) as db:
         rows = db.query(Chapter).order_by(Chapter.chapter_seq).all()
         return [
@@ -120,6 +124,7 @@ def list_chapters(project_id: str) -> list[dict]:
                 "chapter_seq": c.chapter_seq,
                 "title": c.title,
                 "status": c.status,
+                "word_count": len(c.content or ""),
             }
             for c in rows
         ]
