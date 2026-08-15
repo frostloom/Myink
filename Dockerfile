@@ -19,6 +19,10 @@ COPY src/ ./src/
 # --timeout/--retries 应对国内大依赖读超时抖动。
 RUN --mount=type=cache,target=/root/.cache/pip pip install . --index-url ${PIP_INDEX_URL} --timeout 120 --retries 5
 
+# 镜像自洽：核心依赖不含 ml extras（torch/sentence-transformers），默认关闭向量
+#（config.py 默认 enable=1 会去 import 未装的 torch 报错而非降级）；compose 可按需覆盖
+ENV EMBED_ENABLED=0
+
 EXPOSE 8100
 # 默认入口；compose 中 aiink-api 覆盖为 `aiink init && aiink-api`，worker 覆盖为 `aiink-worker`
 CMD ["aiink-api"]
