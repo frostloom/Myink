@@ -14,6 +14,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 
 from aiink.api.auth import require_owner
+from aiink.api.schemas import LessonActionOut, WritingLessonOut
 from aiink.db import tenant_session
 from aiink.models import WritingLesson
 from aiink.workflow import nodes
@@ -29,7 +30,7 @@ def _lesson_id(raw: str) -> uuid.UUID:
 
 
 @router.get("/projects/{project_id}/lessons",
-            dependencies=[Depends(require_owner)])
+            dependencies=[Depends(require_owner)], response_model=list[WritingLessonOut])
 def list_lessons(project_id: str, status: str | None = None) -> list[dict]:
     """写作经验列表（reflexion 复盘，按来源章排序；status 可选过滤）。"""
     with tenant_session(project_id) as db:
@@ -55,7 +56,7 @@ def list_lessons(project_id: str, status: str | None = None) -> list[dict]:
 
 
 @router.post("/projects/{project_id}/lessons/{lesson_id}/confirm",
-             dependencies=[Depends(require_owner)])
+             dependencies=[Depends(require_owner)], response_model=LessonActionOut)
 def confirm_lesson(project_id: str, lesson_id: str) -> dict:
     """确认经验生效（proposed→active，后续章节注入遵守）。幂等：非 proposed 返回 409。"""
     with tenant_session(project_id) as db:
@@ -67,7 +68,7 @@ def confirm_lesson(project_id: str, lesson_id: str) -> dict:
 
 
 @router.post("/projects/{project_id}/lessons/{lesson_id}/reject",
-             dependencies=[Depends(require_owner)])
+             dependencies=[Depends(require_owner)], response_model=LessonActionOut)
 def reject_lesson(project_id: str, lesson_id: str) -> dict:
     """拒绝经验（proposed→rejected，幻觉/无益经验清理）。幂等：非 proposed 返回 409。"""
     with tenant_session(project_id) as db:

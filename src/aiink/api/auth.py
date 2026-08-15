@@ -22,6 +22,7 @@ import jwt
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 
+from aiink.api.schemas import AuthResponse
 from aiink.config import settings
 from aiink.db import new_session
 from aiink.models import Project, User
@@ -80,7 +81,7 @@ class _TokenRequest(BaseModel):
     username: str
 
 
-@router.post("/auth/token")
+@router.post("/auth/token", response_model=AuthResponse)
 def issue_token(body: _TokenRequest) -> dict:
     """签发 JWT（MVP 无密码：用户名即身份，与 seed demo 用户对齐）。"""
     with new_session() as db:

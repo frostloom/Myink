@@ -68,14 +68,18 @@ func fakePy() *httptest.Server {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case strings.HasSuffix(req.URL.Path, "/tasks/detail-test"):
-			fmt.Fprint(w, `{"task_id":"detail-test","status":"done","progress":{"i":1,"n":2}}`)
+			// 对齐契约形状（spec/api-openapi.json TaskDetailOut；progress 用 current/total）
+			fmt.Fprint(w, `{"task_id":"detail-test","task_type":"batch_generate","status":"done",`+
+				`"payload":{},"retry_count":0,"runs":[],"progress":{"current":1,"total":2}}`)
 		case strings.HasSuffix(req.URL.Path, "/tasks/missing-task"):
 			// 模拟任务尚未物化（入队→DB 异步窗口内）→ 上游明确 404
 			http.Error(w, `{"detail":"任务不存在: missing-task"}`, http.StatusNotFound)
 		case strings.HasSuffix(req.URL.Path, "/projects"):
-			fmt.Fprint(w, `[{"id":"p1","title":"书A","genre":"仙侠"},{"id":"p2","title":"书B","genre":"科幻"}]`)
+			fmt.Fprint(w, `[{"id":"p1","title":"书A","genre":"仙侠","current_chapter":5},`+
+				`{"id":"p2","title":"书B","genre":"科幻","current_chapter":0}]`)
 		case strings.Contains(req.URL.Path, "/chapters"):
-			fmt.Fprint(w, `[{"chapter_seq":1,"status":"confirmed"},{"chapter_seq":2,"status":"draft"}]`)
+			fmt.Fprint(w, `[{"id":"ch-1","chapter_seq":1,"title":"第1章","status":"confirmed"},`+
+				`{"id":"ch-2","chapter_seq":2,"title":"第2章","status":"draft"}]`)
 		case strings.Contains(req.URL.Path, "/pause"):
 			fmt.Fprint(w, `{"task_id":"batch-x","status":"paused"}`)
 		case strings.HasSuffix(req.URL.Path, "/auth/token"):
@@ -293,7 +297,7 @@ func TestGetTaskForwards(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("应 200，实际 %d", w.Code)
 	}
-	if !strings.Contains(w.Body.String(), `"progress":{"i":1,"n":2}`) {
+	if !strings.Contains(w.Body.String(), `"progress":{"current":1,"total":2}`) {
 		t.Fatalf("应透传 Python API 详情，实际 %s", w.Body.String())
 	}
 }

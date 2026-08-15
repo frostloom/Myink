@@ -14,6 +14,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 
 from aiink.api.auth import require_owner
+from aiink.api.schemas import CandidateActionOut, MemoryCandidateOut
 from aiink.db import tenant_session
 from aiink.models import MemoryCandidate
 from aiink.workflow import nodes
@@ -29,7 +30,7 @@ def _cand_id(raw: str) -> uuid.UUID:
 
 
 @router.get("/projects/{project_id}/candidates",
-            dependencies=[Depends(require_owner)])
+            dependencies=[Depends(require_owner)], response_model=list[MemoryCandidateOut])
 def list_candidates(project_id: str, status: str = "pending") -> list[dict]:
     """待确认池列表（按章排序，含 payload 供前端展示）。"""
     with tenant_session(project_id) as db:
@@ -51,7 +52,7 @@ def list_candidates(project_id: str, status: str = "pending") -> list[dict]:
 
 
 @router.post("/projects/{project_id}/candidates/{candidate_id}/confirm",
-             dependencies=[Depends(require_owner)])
+             dependencies=[Depends(require_owner)], response_model=CandidateActionOut)
 def confirm_candidate(project_id: str, candidate_id: str) -> dict:
     """确认候选落库（Event/Fact/CharacterState…，§7.3）。幂等：已处理候选返回 409。"""
     with tenant_session(project_id) as db:
@@ -63,7 +64,7 @@ def confirm_candidate(project_id: str, candidate_id: str) -> dict:
 
 
 @router.post("/projects/{project_id}/candidates/{candidate_id}/reject",
-             dependencies=[Depends(require_owner)])
+             dependencies=[Depends(require_owner)], response_model=CandidateActionOut)
 def reject_candidate(project_id: str, candidate_id: str) -> dict:
     """拒绝候选（幻觉/误抽清理）。幂等：已处理候选返回 409。"""
     with tenant_session(project_id) as db:

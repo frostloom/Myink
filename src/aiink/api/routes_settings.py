@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from aiink.api.auth import require_owner
+from aiink.api.schemas import ProjectSettingsOut
 from aiink.db import tenant_session
 from aiink.memory.repository import get_settings
 from aiink.models import ProjectSettings
@@ -35,7 +36,7 @@ def _pid(project_id: str) -> uuid.UUID:
 
 
 @router.get("/projects/{project_id}/settings",
-            dependencies=[Depends(require_owner)])
+            dependencies=[Depends(require_owner)], response_model=ProjectSettingsOut)
 def get_project_settings(project_id: str) -> dict:
     """读创作设置（设置行缺失 → 空默认，页面不 500）。"""
     with tenant_session(project_id) as db:
@@ -57,7 +58,7 @@ class SettingsBody(BaseModel):
 
 
 @router.put("/projects/{project_id}/settings",
-            dependencies=[Depends(require_owner)])
+            dependencies=[Depends(require_owner)], response_model=ProjectSettingsOut)
 def put_project_settings(project_id: str, body: SettingsBody) -> dict:
     """全量替换 model_routes：role∈可配置集 + model∈注册表，违规 400；version++。
 
