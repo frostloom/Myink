@@ -12,7 +12,7 @@
 
 度量口径（conflict-samples.md「使用方式」）：检出率 = 检出阳性/阳性总数；误报率 = 误报阴性/阴性总数。
 本套件绿跑产出：阳性 21/26 可检出（含样例 4 类别偏差检出、样例 2 补漏 faction）、5 漏检、阴性 0 误报——
-即 **检出率 80.8%（21/26）、误报率 0%（0/14）**，记入 .md §5 / plan.md §16。
+即 **检出率 80.8%（21/26）、误报率 0%（0/14）**，指标基线见下方常量（防文档与代码漂移）。
 
 桩设计（复用既有测试模板）：LLM 单点注入 = monkeypatch `global_audit.make_chain`（样例 12/36/37/38/39）
 / `ledger_l2.make_chain`（样例 16/17/20/21/22/24/25/4）；embedder 用 DeterministicFakeEmbedder
@@ -45,7 +45,7 @@ from aiink.validation.service import outline_deviation
 REALM_ORDER = ["炼气", "筑基", "金丹", "元婴", "化神", "大乘", "渡劫"]
 A, B = uuid.uuid4(), uuid.uuid4()
 
-# ---- 首测指标基线（随套件结果写入 .md §5 / plan.md §16，防文档与代码漂移）----
+# ---- 首测指标基线（随套件结果维护，防文档与代码漂移）----
 
 POSITIVE_COUNT = 26          # 阳性：1-23、33/34、38
 NEGATIVE_COUNT = 14          # 阴性：24-32、35、36、37、39、40
@@ -796,7 +796,7 @@ def test_sample_39_style_scene_variation(temp_project, monkeypatch):
 # =====================================================================
 
 def test_metric_baseline_constants():
-    """首测指标基线（.md §5 / plan.md §16 记载数字与本常量对账）。
+    """首测指标基线（指标基线常量与本套件结果对账）。
 
     检出率 = DETECTED_COUNT/POSITIVE_COUNT；误报率 = 0/NEGATIVE_COUNT。
     新增/取消 xfail 标记须同步更新 XFAIL_SAMPLES 与文档。
