@@ -19,6 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from aiink.api.auth import require_owner
+from aiink.api.schemas import SkillPresetOut, StyleDraftOut, StyleProfileOut
 from aiink.db import new_session, tenant_session
 from aiink.memory.repository import get_settings
 from aiink.models import ProjectSettings
@@ -48,7 +49,7 @@ class StyleSamplesBody(BaseModel):
     samples: list[str]
 
 
-@router.get("/skill-presets")
+@router.get("/skill-presets", response_model=list[SkillPresetOut])
 def skill_presets() -> list[dict]:
     """题材 Skill 预设列表（§7.12 预设包）：4 本种子书文风档案，设置页「预设导入」渲染。
 
@@ -59,7 +60,7 @@ def skill_presets() -> list[dict]:
 
 
 @router.post("/projects/{project_id}/style-samples",
-             dependencies=[Depends(require_owner)])
+             dependencies=[Depends(require_owner)], response_model=StyleDraftOut)
 def style_samples(project_id: str, body: StyleSamplesBody) -> dict:
     """样本 → 统计层 + LLM 提炼 → 文风档案草稿（不落库）。
 
@@ -96,7 +97,7 @@ class StyleProfileBody(BaseModel):
 
 
 @router.put("/projects/{project_id}/style-profile",
-            dependencies=[Depends(require_owner)])
+            dependencies=[Depends(require_owner)], response_model=StyleProfileOut)
 def put_style_profile(project_id: str, body: StyleProfileBody) -> dict:
     """确认落库：编排层写 project_settings.style_profile + version 递增（§7.6 乐观版本号）。
 

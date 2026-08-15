@@ -19,9 +19,11 @@ docker compose up -d aiink-pg aiink-redis
 docker compose stop aiink-worker >/dev/null 2>&1 || true
 trap 'docker compose start aiink-worker >/dev/null 2>&1 || true' EXIT
 
-echo "==> [1/4] Python：语法门禁 + 初始化 + 全量回归"
+echo "==> [1/4] Python：语法门禁 + 初始化 + 契约 diff 闸 + 全量回归"
 python -m compileall -q src tests
 aiink init
+aiink contract export
+git diff --exit-code -- spec/api-openapi.json
 EMBED_ENABLED=0 python -m pytest tests/ -q
 
 echo "==> [2/4] Go 网关：vet + 单测（需 Redis :6380，上面已起）"

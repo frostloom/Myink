@@ -21,6 +21,8 @@ from pydantic import BaseModel
 from sqlalchemy import delete as sa_delete, func
 
 from aiink.api.auth import require_owner
+from aiink.api.schemas import (ChapterVersionsOut, ContentUpdateOut,
+                               CorrectMemoryOut, DeleteChapterOut)
 from aiink.db import tenant_session
 from aiink.memory import correction
 from aiink.memory.invalidation import invalidate_chapter_memory
@@ -50,7 +52,7 @@ def _chapter_id(raw: str) -> uuid.UUID:
 
 
 @router.put("/projects/{project_id}/chapters/{chapter_id}/content",
-            dependencies=[Depends(require_owner)])
+            dependencies=[Depends(require_owner)], response_model=ContentUpdateOut)
 def update_chapter_content(project_id: str, chapter_id: str, body: ContentUpdate) -> dict:
     """编辑正文（轻编辑：只写回正文 + 版本递增，不动记忆不耗 LLM）。
 
@@ -84,7 +86,7 @@ def _version_list(db, ch: Chapter) -> list[dict]:
 
 
 @router.get("/projects/{project_id}/chapters/{chapter_id}/versions",
-            dependencies=[Depends(require_owner)])
+            dependencies=[Depends(require_owner)], response_model=ChapterVersionsOut)
 def list_chapter_versions(project_id: str, chapter_id: str) -> dict:
     """章节历史版本（降序，最新在前）；含正文供前端预览/比对，不含当前实时版本。
 
@@ -99,7 +101,7 @@ def list_chapter_versions(project_id: str, chapter_id: str) -> dict:
 
 
 @router.post("/projects/{project_id}/chapters/{chapter_id}/versions/{version}/restore",
-             dependencies=[Depends(require_owner)])
+             dependencies=[Depends(require_owner)], response_model=ContentUpdateOut)
 def restore_chapter_version(project_id: str, chapter_id: str, version: int) -> dict:
     """回退到历史版本：先快照当前（回退本身留痕为 revert）→ 覆盖正文/标题/摘要 → 版本 +1。"""
     with tenant_session(project_id) as db:
@@ -122,7 +124,7 @@ def restore_chapter_version(project_id: str, chapter_id: str, version: int) -> d
 
 
 @router.post("/projects/{project_id}/chapters/{chapter_id}/correct-memory",
-             dependencies=[Depends(require_owner)])
+             dependencies=[Depends(require_owner)], response_model=CorrectMemoryOut)
 def correct_chapter_memory(project_id: str, chapter_id: str) -> dict:
     """显式校正记忆：编辑后正文重新抽取 → 与该章已落库记忆 diff → 变更集进待确认池。
 
@@ -147,7 +149,7 @@ def correct_chapter_memory(project_id: str, chapter_id: str) -> dict:
 
 
 @router.delete("/projects/{project_id}/chapters/{chapter_id}",
-               dependencies=[Depends(require_owner)])
+               dependencies=[Depends(require_owner)], response_model=DeleteChapterOut)
 def delete_chapter(project_id: str, chapter_id: str) -> dict:
     """级联删除章节：删除该章及其后全部章节（正文 + 记忆 + 待确认池候选）。
 

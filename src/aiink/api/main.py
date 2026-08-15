@@ -20,6 +20,7 @@ from aiink.api.routes_lessons import router as lessons_router
 from aiink.api.routes_settings import router as settings_router
 from aiink.api.routes_style import router as style_router
 from aiink.api.routes_tasks import router as tasks_router
+from aiink.api.schemas import ChapterDetailOut, ChapterMetaOut, ProjectOut
 from aiink.config import settings
 from aiink.db import new_session, tenant_session
 from aiink.models import Chapter, Project
@@ -79,7 +80,7 @@ def readyz() -> dict:
 # ---- 项目/章节读（RLS 保护，tenant_session 带租户上下文）----
 
 
-@app.get("/internal/v1/projects")
+@app.get("/internal/v1/projects", response_model=list[ProjectOut])
 def list_projects(user_id: str | None = Depends(current_user)) -> list[dict]:
     """项目列表（根表无 RLS，应用层按身份过滤：只返回自己的书，§14.1 ③）。
 
@@ -100,7 +101,7 @@ def list_projects(user_id: str | None = Depends(current_user)) -> list[dict]:
 
 
 @app.get("/internal/v1/projects/{project_id}/chapters",
-         dependencies=[Depends(require_owner)])
+         dependencies=[Depends(require_owner)], response_model=list[ChapterMetaOut])
 def list_chapters(project_id: str) -> list[dict]:
     """章节列表（RLS：tenant_session 过滤，只返回本项目 + 归属断言双保险）。"""
     with tenant_session(project_id) as db:
@@ -117,7 +118,7 @@ def list_chapters(project_id: str) -> list[dict]:
 
 
 @app.get("/internal/v1/projects/{project_id}/chapters/{chapter_id}",
-         dependencies=[Depends(require_owner)])
+         dependencies=[Depends(require_owner)], response_model=ChapterDetailOut)
 def get_chapter(project_id: str, chapter_id: str) -> dict:
     with tenant_session(project_id) as db:
         chapter = db.get(Chapter, uuid.UUID(chapter_id))

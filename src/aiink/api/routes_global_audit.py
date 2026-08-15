@@ -14,6 +14,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 
 from aiink.api.auth import require_owner
+from aiink.api.schemas import AuditRunOut, GlobalAuditDetailOut, GlobalAuditSummaryOut
 from aiink.db import tenant_session
 from aiink.models import GlobalAuditReport
 from aiink.validation import global_audit as ga
@@ -59,7 +60,7 @@ def _report_detail(r: GlobalAuditReport) -> dict:
 
 
 @router.post("/projects/{project_id}/global-audit",
-             dependencies=[Depends(require_owner)])
+             dependencies=[Depends(require_owner)], response_model=AuditRunOut)
 def trigger_global_audit(project_id: str) -> dict:
     """手动触发全局审计：全部未审计章窗口（不做 K 门槛），返回审计报告。
 
@@ -78,7 +79,7 @@ def trigger_global_audit(project_id: str) -> dict:
 
 
 @router.get("/projects/{project_id}/global-audit",
-            dependencies=[Depends(require_owner)])
+            dependencies=[Depends(require_owner)], response_model=list[GlobalAuditSummaryOut])
 def list_global_audits(project_id: str, limit: int = _MAX_REPORTS) -> list[dict]:
     """审计报告列表（最新在前，limit ≤ 20）：窗口/状态/计数，前端审计视图导航。"""
     limit = min(max(int(limit), 1), _MAX_REPORTS)
@@ -90,7 +91,7 @@ def list_global_audits(project_id: str, limit: int = _MAX_REPORTS) -> list[dict]
 
 
 @router.get("/projects/{project_id}/global-audit/{report_id}",
-            dependencies=[Depends(require_owner)])
+            dependencies=[Depends(require_owner)], response_model=GlobalAuditDetailOut)
 def get_global_audit(project_id: str, report_id: str) -> dict:
     """单报告详情：findings 明细（persona/bridge/style 维度同构）+ 抽样角色 + 维度计数。"""
     with tenant_session(project_id) as db:
