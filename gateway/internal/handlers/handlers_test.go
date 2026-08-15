@@ -844,6 +844,17 @@ func TestStaticSPAFallback(t *testing.T) {
 			t.Fatalf("穿越请求泄露了 dist 外文件内容: %q", w.Body.String())
 		}
 	})
+	// 反斜杠穿越（Windows 本地运行时）：net/http 只清理 / 段，\.. 会原样到 handler；
+	// handler 已把 \ 归一为 / 再判段，逃出 dist 的文件绝不泄露。
+	t.Run("backslash traversal never leaks dist-outer file", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet,
+			"/foo%5c..%5c..%5c"+filepath.Base(filepath.Dir(dist))+"%5csecret.txt", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		if strings.Contains(w.Body.String(), "topsecret") {
+			t.Fatalf("反斜杠穿越请求泄露了 dist 外文件内容: %q", w.Body.String())
+		}
+	})
 }
 
 func TestStaticNoDistDirNoPanic(t *testing.T) {

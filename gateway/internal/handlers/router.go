@@ -91,8 +91,9 @@ func NewRouter(cfg config.Config, r *redis.Client, py *pyapi.Client) *gin.Engine
 			return
 		}
 		rel := strings.TrimPrefix(p, "/")
-		// 防路径穿越（段级判断，跨平台不依赖 filepath.Clean 的分隔符形态）：
-		// 以 .. 开头或含 /../ 的请求一律回退 SPA 首页，不触碰 dist 外文件
+		// 防路径穿越（段级判断）：统一把反斜杠归一为正斜杠，再按段判断，
+		// 兼容 Windows 本地运行时（filepath 以 \ 为分隔符，/foo\..\secret 也会逃出 dist）
+		rel = strings.ReplaceAll(rel, "\\", "/")
 		if strings.HasPrefix(rel, "..") || strings.Contains(rel, "/..") {
 			c.File(filepath.Join(dist, "index.html"))
 			return

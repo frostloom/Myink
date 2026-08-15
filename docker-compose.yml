@@ -6,8 +6,8 @@ name: aiink
 
 services:
   aiink-pg:
-    # 本机已有 daocloud 前缀镜像（docker.io 直连不稳）；境外环境可改回 pgvector/pgvector:pg16
-    image: docker.m.daocloud.io/pgvector/pgvector:pg16
+    # 国内网络 daocloud 前缀更稳（docker.io 直连超时）；境外可用 PG_IMAGE=pgvector/pgvector:pg16 覆盖
+    image: ${PG_IMAGE:-docker.m.daocloud.io/pgvector/pgvector:pg16}
     container_name: aiink-pg
     environment:
       POSTGRES_USER: aiink
@@ -28,7 +28,8 @@ services:
     restart: unless-stopped
 
   aiink-redis:
-    image: redis:7-alpine
+    # 国内网络 daocloud 前缀更稳；境外可用 REDIS_IMAGE=redis:7-alpine 覆盖
+    image: ${REDIS_IMAGE:-docker.m.daocloud.io/library/redis:7-alpine}
     container_name: aiink-redis
     ports:
       - "6380:6379"
@@ -109,12 +110,15 @@ services:
         GOPROXY: https://goproxy.cn,direct
     image: aiink-gateway:local
     container_name: aiink-gateway
-    env_file: .env
     environment:
       GATEWAY_PORT: "8080"
       REDIS_ADDR: aiink-redis:6379
       PYTHON_API_BASE: http://aiink-api:8100
       WEB_DIST_DIR: /app/dist
+      # 不挂 env_file：gateway 只消费 JWT_SECRET（其余 REDIS/PYTHON/WEB 已显式覆盖），
+      # 避免把 DEEPSEEK_API_KEY/DATABASE_URL 等业务密钥带进唯一公网入口容器（最小暴露）；
+      # ${JWT_SECRET} 由 compose 自动从根 .env 插值（缺省走 config.go 的 dev 默认，两端互通）
+      JWT_SECRET: ${JWT_SECRET}
     ports:
       - "8080:8080"
     depends_on:

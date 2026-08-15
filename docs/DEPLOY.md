@@ -64,8 +64,8 @@ docker compose down -v               # 停止并清空数据库（回到全新�
 
 - **`name conflicts with an existing container`**：旧手工容器未删，见「前置」。
 - **端口被占（5432/6380）**：`netstat -ano | findstr :5432` 找占用进程，或确认旧的 `aiink-pg`/`aiink-redis` 容器已停止。
-- **构建失败：`Read timed out` / `dial tcp ... connection refused`**：docker.io / pypi / npm / golang 官方源在国内直连不稳。compose 里已按国内环境覆盖镜像源（`docker-compose.yml` build args：daocloud 基础镜像 + 阿里云 pip + npmmirror + goproxy.cn）——**境外网络可删除这些 args 用官方源**。
-- **镜像构建极慢**：pip 装 torch/sentence-transformers 等大依赖首次需数分钟到十几分钟；Dockerfile 已用 buildkit cache mount 让已下载 wheel 跨 build 复用，中断重跑不重下。
+- **构建失败：`Read timed out` / `dial tcp ... connection refused`**：docker.io / pypi / npm / golang 官方源在国内直连不稳。compose 里已按国内环境覆盖（基础镜像/运行时镜像走 daocloud 前缀、阿里云 pip + npmmirror + goproxy.cn）——**境外网络可覆盖回官方源**：pg/redis 用 `PG_IMAGE=pgvector/pgvector:pg16 REDIS_IMAGE=redis:7-alpine` 传 compose 环境变量，其余删除 build args 的国内源即可。
+- **镜像构建慢**：Dockerfile 用 buildkit cache mount 让已下载 wheel 跨 build 复用，中断重跑不重下。核心依赖不装 torch（见向量 FAQ），构建通常 1~2 分钟。
 - **登录后项目库为空**：等 `docker compose logs -f aiink-api` 里 `aiink init` 完成（seed 写入《九州问天》+ 示例书），约 30~60 秒；也可 `docker compose restart aiink-api` 重跑（幂等）。
 - **生成任务一直 pending / 报错**：`docker compose logs -f aiink-worker` 看 worker 是否消费；`.env` 的 `DEEPSEEK_API_KEY` 是否有效。
 - **向量能力（bge-m3）默认关闭**：Docker 镜像默认**不装 torch/sentence-transformers**（依赖拆到 `[ml]` extras，torch ~2GB 且国内镜像源下载易抖）；`EMBED_ENABLED=0` 时 embedder 延迟导入、完全不加载，纯关系链路可跑通演示（§6.12 降级）。需要向量：Dockerfile 的 `pip install .` 改 `pip install .[ml]` 重构建，并把 `EMBED_ENABLED=1`、`EMBED_ALLOW_DOWNLOAD=1` 加进 compose 的 api/worker 环境变量，挂 volume 缓存模型（`~/.cache/huggingface`）。
