@@ -89,3 +89,26 @@ docker compose stop aiink-worker   # 跑完测试再 docker compose up -d aiink-
 python -m pytest tests/ -q          # 期望 314 passed + 5 xfailed
 cd gateway && go test ./...
 ```
+
+## CI / 本地复现
+
+项目已配 **GitHub Actions**（`.github/workflows/ci.yml`，push/PR 到 main 触发），四个 job 并行：
+
+| job | 内容 | 依赖 |
+|---|---|---|
+| python | **全新 PG + Redis 服务容器** → 语法门禁（compileall）→ `aiink init` → 全量回归（314 passed + 5 xfailed） | pgvector/redis 容器 |
+| go | `go vet` + `go test`（**拦截 SKIP**：Redis 未就绪不允许静默通过） | redis 容器 |
+| frontend | `npm ci` → oxlint → vitest → tsc/vite build | 无 |
+| build-images | 根 + gateway 两个 Dockerfile 构建（GitHub 境外用官方源；本地脚本走 `docker compose build` 用国内源） | Docker |
+
+CI 用**全新 PG** 跑全量回归是有意为之：`DuplicateTable` 索引冲突、schema `CREATE` 权限这类部署 bug 只在 fresh 库暴露
+（本地库已存在，`create_all` 的 checkfirst 会跳过表直接全绿）——CI 正是那道闸。
+
+**本地一键复现同一套门禁**（仓库没配 git remote 也能验证）：
+
+```bash
+bash scripts/ci-local.sh                # 停 worker → Python → Go → 前端 → 镜像（全套）
+SKIP_IMAGES=1 bash scripts/ci-local.sh  # 跳过镜像构建，本地日常快跑
+```
+
+脚本自动起/停 `aiink-pg`/`aiink-redis`、停 `aiink-worker`（防抢队列），退出时恢复 worker，无需手动 `docker compose stop`。
