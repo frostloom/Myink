@@ -12,6 +12,8 @@ export const CANDIDATE_LABELS: Record<string, string> = {
   foreshadow: '伏笔',
   chapter_summary: '章节摘要',
   memory_removal: '记忆删除',
+  character_card: '新人物卡片',
+  new_entity: '新设定实体',
 }
 
 export function candidateLabel(kind: CandidateKind): string {
@@ -26,6 +28,8 @@ const CANDIDATE_TONES: Record<string, BadgeTone> = {
   foreshadow: 'warning',
   chapter_summary: 'hint',
   memory_removal: 'error',
+  character_card: 'accent',
+  new_entity: 'minor',
 }
 
 export function candidateTone(kind: CandidateKind): BadgeTone {
@@ -43,6 +47,8 @@ const KIND_FIELD_ORDER: Record<string, string[]> = {
   foreshadow: ['name', 'description', 'trigger', 'payoff_plan', 'planted_chapter'],
   chapter_summary: ['summary'],
   memory_removal: ['memory_type', 'memory_id', 'reason'],
+  character_card: ['name', 'identity', 'role', 'personality', 'importance'],
+  new_entity: ['entity_type', 'name', 'description'],
 }
 
 const FIELD_LABELS: Record<string, string> = {
@@ -75,6 +81,10 @@ const FIELD_LABELS: Record<string, string> = {
   payoff_plan: '回收计划',
   date: '时间',
   location: '地点',
+  identity: '身份',
+  role: '角色',
+  importance: '重要度',
+  entity_type: '实体类型',
 }
 
 /** 顶层已展示/冗余字段，渲染 payload 时跳过 */

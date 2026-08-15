@@ -5,8 +5,16 @@ import { Link, useParams } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
 import { api, ApiError } from '../lib/api'
-import type { CharacterCard, Project, WorldView } from '../types'
+import type { CharacterCard, LoreEntity, Project, WorldView } from '../types'
 import styles from './LorePage.module.css'
+
+// 设定实体分组（§7.11 ④ 自动建档：正文抽取低风险自动登记）
+const ENTITY_TYPE_LABELS: Record<string, string> = {
+  item: '物品/武器',
+  skill: '功法/技能',
+  location: '地点',
+}
+const ENTITY_TYPE_ORDER = ['item', 'skill', 'location']
 
 /** realm_order 渲染为阶段箭头列表（对齐 seed world_rules.realm_order 口径） */
 function RealmOrder({ value }: { value: unknown }) {
@@ -106,20 +114,23 @@ export default function LorePage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [world, setWorld] = useState<WorldView | null>(null)
   const [characters, setCharacters] = useState<CharacterCard[]>([])
+  const [entities, setEntities] = useState<LoreEntity[]>([])
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [banner, setBanner] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setBanner(null)
     try {
-      const [proj, w, ch] = await Promise.all([
+      const [proj, w, ch, ent] = await Promise.all([
         api.listProjects(),
         api.getWorld(projectId),
         api.getCharacters(projectId),
+        api.listEntities(projectId),
       ])
       setProjects(proj)
       setWorld(w)
       setCharacters(ch)
+      setEntities(ent)
     } catch (err) {
       setBanner(err instanceof ApiError ? err.code : '设定加载失败')
     }
@@ -168,6 +179,47 @@ export default function LorePage() {
                     onToggle={() => toggle(c.id)}
                   />
                 ))}
+              </div>
+            )}
+          </section>
+
+          <section className={`panel ${styles.section}`}>
+            <h2 className={styles.sectionTitle}>设定实体</h2>
+            <p className={styles.hint}>
+              正文中首次明确命名的武器 / 功法 / 技能 / 地点自动登记（§7.11 ④ 低风险自动建档），
+              确认新人物卡片时同步写入。
+            </p>
+            {entities.length === 0 ? (
+              <div className="empty">暂无设定实体。写作中出现新武器 / 功法 / 技能 / 地点时自动登记。</div>
+            ) : (
+              <div className={styles.twoCol}>
+                {ENTITY_TYPE_ORDER.map((t) => {
+                  const list = entities.filter((e) => e.entity_type === t)
+                  return (
+                    <div key={t}>
+                      <h3 className={styles.subTitle}>{ENTITY_TYPE_LABELS[t] ?? t}</h3>
+                      {list.length === 0 ? (
+                        <div className="empty">暂无</div>
+                      ) : (
+                        <ul className={styles.entityList}>
+                          {list.map((e) => (
+                            <li key={e.id} className={styles.entityItem}>
+                              <span className={styles.entityHead}>
+                                <span className={styles.entityName}>{e.name}</span>
+                                {e.first_seen_chapter != null && (
+                                  <span className="badge">第 {e.first_seen_chapter} 章</span>
+                                )}
+                              </span>
+                              {e.description && (
+                                <span className={styles.entityDesc}>{e.description}</span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </section>

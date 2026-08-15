@@ -26,12 +26,13 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from aiink.api.auth import current_user, require_owner
-from aiink.api.schemas import CharacterCardOut, ProjectOut, SetupConfirmOut, SetupDraftOut, WorldViewOut
+from aiink.api.schemas import (CharacterCardOut, EntityCardOut, ProjectOut,
+                               SetupConfirmOut, SetupDraftOut, WorldViewOut)
 from aiink.book_setup import generate_book_setup
 from aiink.config import settings
 from aiink.db import new_session, tenant_session
 from aiink.memory.repository import get_all_characters, get_character, get_character_state, get_settings
-from aiink.models import Character, Faction, Location, Project, ProjectSettings
+from aiink.models import Character, Entity, Faction, Location, Project, ProjectSettings
 from sqlalchemy import func
 
 router = APIRouter(prefix="/internal/v1", tags=["book"])
@@ -53,6 +54,22 @@ def _str_or_none(value) -> str | None:
 class CreateProjectBody(BaseModel):
     title: str
     genre: str = "仙侠玄幻"
+    target_words: int | None = None
+
+
+class ProjectUpdateBody(BaseModel):
+    """作品基本信息更新（§6.9 字数可配）：非 None 字段才更新；target_words 显式传 null 置空。"""
+
+    title: str | None = None
+    genre: str | None = None
+    target_words: int | None = None
+
+
+def _check_target_words(v: int | None, *, field: str) -> int | None:
+    """字数白名单：500–20000，越界 400（对齐 L1 章节字数门禁的可写区间）。"""
+    if v is not None and not (500 <= v <= 20000):
+        raise HTTPException(status_code=400, detail=f"{field} 需在 500–20000 之间（当前 {v}）")
+    return v
 
 
 class SetupDraftBody(BaseModel):
@@ -94,7 +111,9 @@ def create_project(body: CreateProjectBody,
             Project.user_id == uid, Project.created_at >= today).count()
         if created >= settings.books_per_day_max:
             return JSONResponse(status_code=429, content={"error": "BOOK_CNT_EXCEEDED"})
-        project = Project(user_id=uid, title=title, genre=body.genre.strip() or "仙侠玄幻")
+        target_words = _check_target_words(body.target_words, field="每章目标字数")
+        project = Project(user_id=uid, title=title, genre=body.genre.strip() or "仙侠玄幻",
+                          target_words=target_words)
         db.add(project)
         db.flush()
         pid = str(project.id)
@@ -103,7 +122,53 @@ def create_project(body: CreateProjectBody,
         if tdb.query(ProjectSettings).filter_by(project_id=pid).first() is None:
             tdb.add(ProjectSettings(project_id=pid))
     return {"id": pid, "title": project.title, "genre": project.genre,
-            "current_chapter": project.current_chapter}
+            "current_chapter": project.current_chapter, "target_words": project.target_words}
+
+
+@router.put("/projects/{project_id}", dependencies=[Depends(require_owner)],
+            response_model=ProjectOut)
+def update_project(project_id: str, body: ProjectUpdateBody) -> dict:
+    """更新作品基本信息（§6.9 每章目标字数可配）。非 None 字段才更新（None = 不改）；
+    target_words 显式传 null 才置空（清空回落生成侧默认 3000）。归属断言 fail closed。"""
+    pid = _pid(project_id)
+    with new_session() as db:
+        project = db.get(Project, pid)
+        if project is None:
+            raise HTTPException(status_code=404, detail="作品不存在")
+        if body.title is not None and body.title.strip():
+            project.title = body.title.strip()
+        if body.genre is not None and body.genre.strip():
+            project.genre = body.genre.strip()
+        if body.target_words is not None:
+            project.target_words = _check_target_words(body.target_words, field="每章目标字数")
+        elif "target_words" in body.model_fields_set and body.target_words is None:
+            project.target_words = None  # 显式传 null → 置空
+        db.commit()
+    return {"id": str(project.id), "title": project.title, "genre": project.genre,
+            "current_chapter": project.current_chapter, "target_words": project.target_words}
+
+
+@router.get("/projects/{project_id}/entities",
+            dependencies=[Depends(require_owner)], response_model=list[EntityCardOut])
+def entity_cards(project_id: str) -> list[dict]:
+    """设定实体浏览（§7.11 ④ 自动建档：武器/功法/技能/地点低风险自动登记）。
+
+    实体是"存在即登记"的低冲突注册表（对齐地点自动建档口径）；状态变化仍走状态台账
+    （character_state item/power/location），此处只读静态卡。"""
+    pid = _pid(project_id)
+    with tenant_session(project_id) as db:
+        rows = db.query(Entity).filter(Entity.project_id == pid) \
+            .order_by(Entity.entity_type, Entity.canonical_name).all()
+        return [
+            {
+                "id": str(e.id),
+                "entity_type": e.entity_type,
+                "name": e.canonical_name,
+                "description": (e.properties or {}).get("description"),
+                "first_seen_chapter": (e.properties or {}).get("first_seen_chapter"),
+            }
+            for e in rows
+        ]
 
 
 @router.post("/projects/{project_id}/setup-draft",

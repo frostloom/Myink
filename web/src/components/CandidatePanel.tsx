@@ -52,7 +52,9 @@ export function CandidatePanel({ projectId, candidates, onChanged }: Props) {
       {error && <div className="banner banner-error">{error}</div>}
 
       {open && count === 0 && (
-        <p className="empty">无待确认候选。批次 critical 冲突 / 编辑校正变更会进入这里。</p>
+        <p className="empty">
+          无待确认候选。批次 critical 冲突 / 编辑校正变更 / 新人物卡片会进入这里。
+        </p>
       )}
 
       {open && count > 0 && (
@@ -74,6 +76,11 @@ export function CandidatePanel({ projectId, candidates, onChanged }: Props) {
                   </div>
                 ))}
               </dl>
+              {c.kind === 'character_card' && (
+                <p className={styles.danger}>
+                  确认将在设定页新建人物卡片（身份 / 角色 / 性格），正文后续抽取会持续更新其状态。
+                </p>
+              )}
               {c.kind === 'memory_removal' && (
                 <p className={styles.danger}>确认将按类型失效被删记忆（events 硬删 / facts 关窗），不可撤销。</p>
               )}

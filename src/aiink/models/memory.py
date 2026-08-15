@@ -17,7 +17,11 @@ FORESHADOW_STATUSES = ("planted", "developing", "resolved", "dropped")
 PLOT_THREAD_KINDS = ("main", "side")
 PLOT_THREAD_STATUSES = ("active", "stalled", "closed")
 FACT_CONFIRM_STATUSES = ("pending", "confirmed", "rejected", "expired")
-CANDIDATE_KINDS = ("event", "fact", "character_state", "relation_change", "foreshadow", "chapter_summary", "memory_removal")
+# character_card（§7.11 ④ 新人物卡片候选，高风险需人工确认）/ new_entity（新设定实体
+# 候选，低风险自动建档）——两者都进 extract 产出；character_card 进待确认池，new_entity
+# 由 persist 自动落 entities（仿 plotline 不进池口径），CHECK 带上防路由漂移。
+CANDIDATE_KINDS = ("event", "fact", "character_state", "relation_change", "foreshadow",
+                   "chapter_summary", "memory_removal", "character_card", "new_entity")
 CANDIDATE_STATUSES = ("pending", "confirmed", "rejected")
 
 
