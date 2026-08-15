@@ -1,0 +1,129 @@
+# Ai Ink 阶段 5 首切：一键启动全部服务（PostgreSQL+pgvector / Redis / Python API / Worker / Go 网关）。
+# 用法：docker compose up -d --build  →  访问 http://localhost:8080（网关静态托管前端，同源出页面+API+SSE）。
+# 首次初始化：pg 挂载 docker/initdb 建 aiink_app 角色（NOBYPASSRLS）；api 容器 command 先跑 `aiink init`
+# （幂等：建表 + RLS + demo 种子）再起 uvicorn。无 key 也能启动看界面，生成才需 .env 的 DEEPSEEK_API_KEY。
+name: aiink
+
+services:
+  aiink-pg:
+    # 本机已有 daocloud 前缀镜像（docker.io 直连不稳）；境外环境可改回 pgvector/pgvector:pg16
+    image: docker.m.daocloud.io/pgvector/pgvector:pg16
+    container_name: aiink-pg
+    environment:
+      POSTGRES_USER: aiink
+      POSTGRES_PASSWORD: aiink
+      POSTGRES_DB: aiink
+    ports:
+      - "5432:5432"
+    volumes:
+      # 显式 volume 名避开手工时代的 aiink_pgdata（避免意外复用旧数据导致 initdb 角色脚本不执行）；
+      # 旧数据留在原 volume 不动，如需找回可手动挂回
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiink -d aiink"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  aiink-redis:
+    image: redis:7-alpine
+    container_name: aiink-redis
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  # Python API：容器内先 `aiink init`（幂等）再起 uvicorn（仅内部监听，网关转发入口）。
+  # env_file 注入 .env 真实密钥（DEEPSEEK_API_KEY 等）；environment 显式覆盖网络相关项
+  # （compose 优先级 environment > env_file；本地 localhost 串在容器网络内必须换服务名）。
+  aiink-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # 国内网络：基础镜像 / pip 依赖走国内源（Dockerfile 默认 docker.io / pypi.org；阿里云对 torch 等大文件更稳）
+        PYTHON_IMAGE: docker.m.daocloud.io/library/python:3.12-slim
+        PIP_INDEX_URL: https://mirrors.aliyun.com/pypi/simple/
+    image: aiink-api:local
+    container_name: aiink-api
+    env_file: .env
+    environment:
+      APP_ENV: dev
+      DATABASE_URL: postgresql+psycopg://aiink_app:aiink@aiink-pg:5432/aiink
+      ADMIN_DATABASE_URL: postgresql+psycopg://aiink:aiink@aiink-pg:5432/aiink
+      REDIS_URL: redis://aiink-redis:6379/0
+      API_HOST: 0.0.0.0
+      API_PORT: "8100"
+      # 向量默认关：bge-m3 首次要下载 ~2.2GB 模型，纯关系链路降级可用（config.py 声明）。开法见 docs/DEPLOY.md
+      EMBED_ENABLED: "0"
+    command: ["sh", "-c", "aiink init && aiink-api"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8100/openapi.json')"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    depends_on:
+      aiink-pg:
+        condition: service_healthy
+      aiink-redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Worker：消费 Redis 队列跑 LangGraph（api/worker 共用同一 Python 镜像，仅 command 不同）。
+  aiink-worker:
+    image: aiink-api:local
+    container_name: aiink-worker
+    env_file: .env
+    environment:
+      APP_ENV: dev
+      DATABASE_URL: postgresql+psycopg://aiink_app:aiink@aiink-pg:5432/aiink
+      ADMIN_DATABASE_URL: postgresql+psycopg://aiink:aiink@aiink-pg:5432/aiink
+      REDIS_URL: redis://aiink-redis:6379/0
+      EMBED_ENABLED: "0"
+    command: ["aiink-worker"]
+    depends_on:
+      aiink-pg:
+        condition: service_healthy
+      aiink-redis:
+        condition: service_healthy
+      aiink-api:
+        condition: service_started
+    restart: unless-stopped
+
+  # Go 网关：唯一公网入口，静态托管 web/dist（前端）+ /api/v1 转发 + SSE（单端口 8080）。
+  aiink-gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+      args:
+        # 国内网络：docker.io 直连超时 → node 镜像走 daocloud；npm 包 / go 模块走国内镜像源（Dockerfile 均有默认值，覆盖传参见下）
+        NODE_IMAGE: docker.m.daocloud.io/library/node:20-alpine
+        NPM_REGISTRY: https://registry.npmmirror.com
+        GOPROXY: https://goproxy.cn,direct
+    image: aiink-gateway:local
+    container_name: aiink-gateway
+    env_file: .env
+    environment:
+      GATEWAY_PORT: "8080"
+      REDIS_ADDR: aiink-redis:6379
+      PYTHON_API_BASE: http://aiink-api:8100
+      WEB_DIST_DIR: /app/dist
+    ports:
+      - "8080:8080"
+    depends_on:
+      aiink-redis:
+        condition: service_healthy
+      aiink-api:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+    name: aiink_pgdata_v2   # 避开手工时代同名 volume（见 aiink-pg 注释）

@@ -1,0 +1,25 @@
+# 安全：密钥/配置绝不打进镜像构建上下文（.env 含真实 DEEPSEEK_API_KEY，§17.2）
+.env
+*.env
+!.env.example
+
+# 外部参考项目（仅参考不调用，plan.md 借鉴边界）+ git 元数据
+inkos/
+.git/
+
+# 前端缓存与产物（容器内 npm ci + vite build 重新生成）
+web/node_modules
+web/dist
+
+# Python 缓存/虚拟环境
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+*.egg-info/
+
+# 测试 / 本地构建产物（不进镜像）
+tests/
+spec/
+gateway/bin/
+alembic/

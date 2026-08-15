@@ -2,6 +2,11 @@
 package handlers
 
 import (
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
 
@@ -73,6 +78,32 @@ func NewRouter(cfg config.Config, r *redis.Client, py *pyapi.Client) *gin.Engine
 	// 探针
 	router.GET("/healthz", healthH.Live)
 	router.GET("/readyz", healthH.Ready)
+
+	// 阶段 5：前端静态托管（唯一入口 8080 同源出页面 + API）。
+	// /assets 静态产物走 gin.Static；其余未匹配路径：/api、探针保持 JSON 404，
+	// 前端 BrowserRouter 深链（/projects/:pid 刷新等）回退 index.html（SPA fallback）。
+	dist := cfg.WebDistDir
+	router.Static("/assets", filepath.Join(dist, "assets"))
+	router.NoRoute(func(c *gin.Context) {
+		p := c.Request.URL.Path
+		if strings.HasPrefix(p, "/api/") || p == "/healthz" || p == "/readyz" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not_found"})
+			return
+		}
+		rel := strings.TrimPrefix(p, "/")
+		// 防路径穿越（段级判断，跨平台不依赖 filepath.Clean 的分隔符形态）：
+		// 以 .. 开头或含 /../ 的请求一律回退 SPA 首页，不触碰 dist 外文件
+		if strings.HasPrefix(rel, "..") || strings.Contains(rel, "/..") {
+			c.File(filepath.Join(dist, "index.html"))
+			return
+		}
+		f := filepath.Join(dist, filepath.Clean(filepath.FromSlash(rel)))
+		if info, err := os.Stat(f); err == nil && !info.IsDir() {
+			c.File(f)
+			return
+		}
+		c.File(filepath.Join(dist, "index.html"))
+	})
 
 	// 队列守护（退避重投 / DLQ / 崩溃认领）由 main 启动，不在路由内
 	return router

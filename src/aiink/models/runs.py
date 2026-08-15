@@ -50,7 +50,9 @@ class AgentRun(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     project_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
     # thread_id（单章=task_id；批次内= batch_task_id:ch{seq}），字符串标识，非严格 uuid
-    task_id: Mapped[str | None] = mapped_column(String(128), index=True)
+    # 不设 index=True：__table_args__ 组合索引 ix_agent_runs_task_id(task_id,id) 左前缀已覆盖
+    # 按 task_id 查询；同名单列索引会在 create_all fresh 库时与组合索引同名冲突（DuplicateTable）
+    task_id: Mapped[str | None] = mapped_column(String(128))
     node: Mapped[str] = mapped_column(String(64), nullable=False, comment="load_state/recall/plan_chapter/write/extract/validate/revise/persist/batch_plan/...")
     role: Mapped[str | None] = mapped_column(String(32), comment="Planner/Writer/Memory/Validator")
     model_id: Mapped[str | None] = mapped_column(String(64), comment="含降级后的实际模型")
