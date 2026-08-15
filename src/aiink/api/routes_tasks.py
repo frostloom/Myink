@@ -17,6 +17,7 @@ import uuid
 
 from fastapi import APIRouter, HTTPException
 
+from aiink.api.schemas import TaskControlOut, TaskDetailOut
 from aiink.config import settings
 from aiink.db import new_session
 from aiink.models import AgentRun, Task
@@ -91,12 +92,12 @@ def _task_payload(task_id: str, with_runs: bool = True) -> dict:
         return data
 
 
-@router.get("/tasks/{task_id}")
+@router.get("/tasks/{task_id}", response_model=TaskDetailOut)
 def get_task(task_id: str) -> dict:
     return _task_payload(task_id)
 
 
-@router.post("/tasks/{task_id}/pause")
+@router.post("/tasks/{task_id}/pause", response_model=TaskControlOut)
 def pause_task(task_id: str) -> dict:
     with new_session() as db:
         task = db.get(Task, _task_uuid(task_id))
@@ -109,7 +110,7 @@ def pause_task(task_id: str) -> dict:
     return {"task_id": task_id, "status": "paused"}
 
 
-@router.post("/tasks/{task_id}/resume")
+@router.post("/tasks/{task_id}/resume", response_model=TaskControlOut)
 def resume_task(task_id: str) -> dict:
     with new_session() as db:
         task = db.get(Task, _task_uuid(task_id))
@@ -140,7 +141,7 @@ def resume_task(task_id: str) -> dict:
     return {"task_id": task_id, "status": "queued", "message": "已投递续跑消息"}
 
 
-@router.post("/tasks/{task_id}/cancel")
+@router.post("/tasks/{task_id}/cancel", response_model=TaskControlOut)
 def cancel_task(task_id: str) -> dict:
     with new_session() as db:
         task = db.get(Task, _task_uuid(task_id))

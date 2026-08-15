@@ -1,0 +1,2968 @@
+{
+  "components": {
+    "schemas": {
+      "AgentRunOut": {
+        "properties": {
+          "cache_hit": {
+            "title": "Cache Hit",
+            "type": "boolean"
+          },
+          "cost_est": {
+            "title": "Cost Est",
+            "type": "number"
+          },
+          "degraded": {
+            "title": "Degraded",
+            "type": "boolean"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "input_tokens": {
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "output_tokens": {
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "retry_count": {
+            "title": "Retry Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "node",
+          "input_tokens",
+          "output_tokens",
+          "cache_hit",
+          "duration_ms",
+          "cost_est",
+          "retry_count",
+          "degraded"
+        ],
+        "title": "AgentRunOut",
+        "type": "object"
+      },
+      "AuditRunOut": {
+        "properties": {
+          "audited_up_to_chapter": {
+            "title": "Audited Up To Chapter",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "findings": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "sampled_characters": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Sampled Characters",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "title": "Summary",
+            "type": "object"
+          },
+          "window_end": {
+            "title": "Window End",
+            "type": "integer"
+          },
+          "window_start": {
+            "title": "Window Start",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "window_start",
+          "window_end",
+          "audited_up_to_chapter",
+          "status"
+        ],
+        "title": "AuditRunOut",
+        "type": "object"
+      },
+      "AuthResponse": {
+        "properties": {
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "user_id",
+          "expires_in"
+        ],
+        "title": "AuthResponse",
+        "type": "object"
+      },
+      "CandidateActionOut": {
+        "properties": {
+          "candidate_id": {
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "status"
+        ],
+        "title": "CandidateActionOut",
+        "type": "object"
+      },
+      "ChapterDetailOut": {
+        "properties": {
+          "chapter_seq": {
+            "title": "Chapter Seq",
+            "type": "integer"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "id",
+          "chapter_seq",
+          "status"
+        ],
+        "title": "ChapterDetailOut",
+        "type": "object"
+      },
+      "ChapterMetaOut": {
+        "properties": {
+          "chapter_seq": {
+            "title": "Chapter Seq",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "id",
+          "chapter_seq",
+          "status"
+        ],
+        "title": "ChapterMetaOut",
+        "type": "object"
+      },
+      "ChapterVersionOut": {
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "title": "ChapterVersionOut",
+        "type": "object"
+      },
+      "ChapterVersionsOut": {
+        "properties": {
+          "chapter_id": {
+            "title": "Chapter Id",
+            "type": "string"
+          },
+          "chapter_seq": {
+            "title": "Chapter Seq",
+            "type": "integer"
+          },
+          "current_version": {
+            "title": "Current Version",
+            "type": "integer"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/ChapterVersionOut"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "chapter_id",
+          "chapter_seq",
+          "current_version"
+        ],
+        "title": "ChapterVersionsOut",
+        "type": "object"
+      },
+      "ContentUpdate": {
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "ContentUpdate",
+        "type": "object"
+      },
+      "ContentUpdateOut": {
+        "properties": {
+          "chapter_id": {
+            "title": "Chapter Id",
+            "type": "string"
+          },
+          "chapter_seq": {
+            "title": "Chapter Seq",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "chapter_id",
+          "chapter_seq",
+          "status",
+          "version"
+        ],
+        "title": "ContentUpdateOut",
+        "type": "object"
+      },
+      "CorrectMemoryOut": {
+        "properties": {
+          "changeset": {
+            "additionalProperties": true,
+            "title": "Changeset",
+            "type": "object"
+          },
+          "chapter_seq": {
+            "title": "Chapter Seq",
+            "type": "integer"
+          },
+          "no_op": {
+            "title": "No Op",
+            "type": "boolean"
+          },
+          "pool": {
+            "additionalProperties": true,
+            "title": "Pool",
+            "type": "object"
+          }
+        },
+        "required": [
+          "chapter_seq",
+          "no_op"
+        ],
+        "title": "CorrectMemoryOut",
+        "type": "object"
+      },
+      "DeleteChapterOut": {
+        "properties": {
+          "current_chapter": {
+            "title": "Current Chapter",
+            "type": "integer"
+          },
+          "deleted": {
+            "items": {
+              "$ref": "#/components/schemas/DeletedChapterOut"
+            },
+            "title": "Deleted",
+            "type": "array"
+          }
+        },
+        "required": [
+          "current_chapter"
+        ],
+        "title": "DeleteChapterOut",
+        "type": "object"
+      },
+      "DeletedChapterOut": {
+        "properties": {
+          "chapter_seq": {
+            "title": "Chapter Seq",
+            "type": "integer"
+          },
+          "invalidation": {
+            "additionalProperties": true,
+            "title": "Invalidation",
+            "type": "object"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "chapter_seq"
+        ],
+        "title": "DeletedChapterOut",
+        "type": "object"
+      },
+      "GlobalAuditDetailOut": {
+        "description": "详情：列表项 + 抽样角色 + findings 明细（覆盖 Summary 的 int 计数为 list，同前端 Omit 模式）。",
+        "properties": {
+          "audited_up_to_chapter": {
+            "title": "Audited Up To Chapter",
+            "type": "integer"
+          },
+          "bridge": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bridge"
+          },
+          "chapters": {
+            "title": "Chapters",
+            "type": "integer"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "findings": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "report_id": {
+            "title": "Report Id",
+            "type": "string"
+          },
+          "sampled": {
+            "title": "Sampled",
+            "type": "integer"
+          },
+          "sampled_characters": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Sampled Characters",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "title": "Summary",
+            "type": "object"
+          },
+          "trigger": {
+            "title": "Trigger",
+            "type": "string"
+          },
+          "window_end": {
+            "title": "Window End",
+            "type": "integer"
+          },
+          "window_start": {
+            "title": "Window Start",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "report_id",
+          "window_start",
+          "window_end",
+          "audited_up_to_chapter",
+          "trigger",
+          "status",
+          "sampled",
+          "chapters"
+        ],
+        "title": "GlobalAuditDetailOut",
+        "type": "object"
+      },
+      "GlobalAuditSummaryOut": {
+        "properties": {
+          "audited_up_to_chapter": {
+            "title": "Audited Up To Chapter",
+            "type": "integer"
+          },
+          "bridge": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bridge"
+          },
+          "chapters": {
+            "title": "Chapters",
+            "type": "integer"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "findings": {
+            "title": "Findings",
+            "type": "integer"
+          },
+          "report_id": {
+            "title": "Report Id",
+            "type": "string"
+          },
+          "sampled": {
+            "title": "Sampled",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
+          },
+          "trigger": {
+            "title": "Trigger",
+            "type": "string"
+          },
+          "window_end": {
+            "title": "Window End",
+            "type": "integer"
+          },
+          "window_start": {
+            "title": "Window Start",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "report_id",
+          "window_start",
+          "window_end",
+          "audited_up_to_chapter",
+          "trigger",
+          "status",
+          "sampled",
+          "findings",
+          "chapters"
+        ],
+        "title": "GlobalAuditSummaryOut",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "LessonActionOut": {
+        "properties": {
+          "lesson_id": {
+            "title": "Lesson Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lesson_id",
+          "status"
+        ],
+        "title": "LessonActionOut",
+        "type": "object"
+      },
+      "MemoryCandidateOut": {
+        "properties": {
+          "candidate_id": {
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "source_chapter": {
+            "title": "Source Chapter",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "kind",
+          "source_chapter",
+          "confidence",
+          "status"
+        ],
+        "title": "MemoryCandidateOut",
+        "type": "object"
+      },
+      "ProjectOut": {
+        "properties": {
+          "current_chapter": {
+            "title": "Current Chapter",
+            "type": "integer"
+          },
+          "genre": {
+            "title": "Genre",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "genre",
+          "current_chapter"
+        ],
+        "title": "ProjectOut",
+        "type": "object"
+      },
+      "ProjectSettingsOut": {
+        "properties": {
+          "model_routes": {
+            "additionalProperties": true,
+            "title": "Model Routes",
+            "type": "object"
+          },
+          "skill_pack": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skill Pack"
+          },
+          "style_profile": {
+            "additionalProperties": true,
+            "title": "Style Profile",
+            "type": "object"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "title": "ProjectSettingsOut",
+        "type": "object"
+      },
+      "SettingsBody": {
+        "description": "模型路由表全量替换（缺省 → 清空，回落默认链）。",
+        "properties": {
+          "model_routes": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Routes"
+          }
+        },
+        "title": "SettingsBody",
+        "type": "object"
+      },
+      "SkillPresetOut": {
+        "properties": {
+          "genre": {
+            "title": "Genre",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "style_profile": {
+            "additionalProperties": true,
+            "title": "Style Profile",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "genre"
+        ],
+        "title": "SkillPresetOut",
+        "type": "object"
+      },
+      "StyleDraftOut": {
+        "properties": {
+          "draft": {
+            "additionalProperties": true,
+            "title": "Draft",
+            "type": "object"
+          }
+        },
+        "title": "StyleDraftOut",
+        "type": "object"
+      },
+      "StyleProfileBody": {
+        "description": "文风档案（前端可编辑草稿后回传；dict 透传，落库前轻校验）。\n\nskill_pack：题材预设 marker（§7.12 预设导入原子写，值为预设 id）；None 保留现值。",
+        "properties": {
+          "profile": {
+            "additionalProperties": true,
+            "title": "Profile",
+            "type": "object"
+          },
+          "skill_pack": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skill Pack"
+          }
+        },
+        "required": [
+          "profile"
+        ],
+        "title": "StyleProfileBody",
+        "type": "object"
+      },
+      "StyleProfileOut": {
+        "properties": {
+          "skill_pack": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skill Pack"
+          },
+          "style_profile": {
+            "additionalProperties": true,
+            "title": "Style Profile",
+            "type": "object"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "title": "StyleProfileOut",
+        "type": "object"
+      },
+      "StyleSamplesBody": {
+        "description": "作者样本（1–2 篇）。",
+        "properties": {
+          "samples": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Samples",
+            "type": "array"
+          }
+        },
+        "required": [
+          "samples"
+        ],
+        "title": "StyleSamplesBody",
+        "type": "object"
+      },
+      "TaskControlOut": {
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "status"
+        ],
+        "title": "TaskControlOut",
+        "type": "object"
+      },
+      "TaskDetailOut": {
+        "properties": {
+          "batch_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Task Id"
+          },
+          "chapter_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Seq"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskProgressOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "retry_count": {
+            "title": "Retry Count",
+            "type": "integer"
+          },
+          "runs": {
+            "items": {
+              "$ref": "#/components/schemas/AgentRunOut"
+            },
+            "title": "Runs",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "task_type": {
+            "title": "Task Type",
+            "type": "string"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Id"
+          }
+        },
+        "required": [
+          "task_id",
+          "task_type",
+          "status",
+          "retry_count"
+        ],
+        "title": "TaskDetailOut",
+        "type": "object"
+      },
+      "TaskProgressOut": {
+        "properties": {
+          "current": {
+            "title": "Current",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "current",
+          "total"
+        ],
+        "title": "TaskProgressOut",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "WritingLessonOut": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "evidence": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "last_recurrence_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Recurrence At"
+          },
+          "lesson_id": {
+            "title": "Lesson Id",
+            "type": "string"
+          },
+          "lesson_type": {
+            "title": "Lesson Type",
+            "type": "string"
+          },
+          "recurrence_count": {
+            "title": "Recurrence Count",
+            "type": "integer"
+          },
+          "source_chapter": {
+            "title": "Source Chapter",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lesson_id",
+          "category",
+          "lesson_type",
+          "content",
+          "confidence",
+          "source_chapter",
+          "status",
+          "recurrence_count"
+        ],
+        "title": "WritingLessonOut",
+        "type": "object"
+      },
+      "_TokenRequest": {
+        "properties": {
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ],
+        "title": "_TokenRequest",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Ai Ink 内部 API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/healthz": {
+      "get": {
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Healthz Healthz Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Healthz"
+      }
+    },
+    "/internal/v1/auth/token": {
+      "post": {
+        "description": "签发 JWT（MVP 无密码：用户名即身份，与 seed demo 用户对齐）。",
+        "operationId": "issue_token_internal_v1_auth_token_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/_TokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Issue Token",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/internal/v1/projects": {
+      "get": {
+        "description": "项目列表（根表无 RLS，应用层按身份过滤：只返回自己的书，§14.1 ③）。\n\nidentity 缺失/非法 → 空列表（fail closed，不返回他人作品）。",
+        "operationId": "list_projects_internal_v1_projects_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectOut"
+                  },
+                  "title": "Response List Projects Internal V1 Projects Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Projects"
+      }
+    },
+    "/internal/v1/projects/{project_id}/candidates": {
+      "get": {
+        "description": "待确认池列表（按章排序，含 payload 供前端展示）。",
+        "operationId": "list_candidates_internal_v1_projects__project_id__candidates_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "pending",
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MemoryCandidateOut"
+                  },
+                  "title": "Response List Candidates Internal V1 Projects  Project Id  Candidates Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Candidates",
+        "tags": [
+          "candidates"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/candidates/{candidate_id}/confirm": {
+      "post": {
+        "description": "确认候选落库（Event/Fact/CharacterState…，§7.3）。幂等：已处理候选返回 409。",
+        "operationId": "confirm_candidate_internal_v1_projects__project_id__candidates__candidate_id__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateActionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm Candidate",
+        "tags": [
+          "candidates"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/candidates/{candidate_id}/reject": {
+      "post": {
+        "description": "拒绝候选（幻觉/误抽清理）。幂等：已处理候选返回 409。",
+        "operationId": "reject_candidate_internal_v1_projects__project_id__candidates__candidate_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateActionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject Candidate",
+        "tags": [
+          "candidates"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/chapters": {
+      "get": {
+        "description": "章节列表（RLS：tenant_session 过滤，只返回本项目 + 归属断言双保险）。",
+        "operationId": "list_chapters_internal_v1_projects__project_id__chapters_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ChapterMetaOut"
+                  },
+                  "title": "Response List Chapters Internal V1 Projects  Project Id  Chapters Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Chapters"
+      }
+    },
+    "/internal/v1/projects/{project_id}/chapters/{chapter_id}": {
+      "delete": {
+        "description": "级联删除章节：删除该章及其后全部章节（正文 + 记忆 + 待确认池候选）。\n\n语义（阶段 3 决策）：中间章删掉后后续章剧情引用已删事件会断层，级联删除让作者\n从被删章重新生成。进度回退到保留的最大章序；无保留章则回 0。\n边界：删除前应确保该范围无进行中的生成/续跑任务（任务 checkpoint 引用章节）。",
+        "operationId": "delete_chapter_internal_v1_projects__project_id__chapters__chapter_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "title": "Chapter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteChapterOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Chapter",
+        "tags": [
+          "chapters"
+        ]
+      },
+      "get": {
+        "operationId": "get_chapter_internal_v1_projects__project_id__chapters__chapter_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "title": "Chapter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChapterDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Chapter"
+      }
+    },
+    "/internal/v1/projects/{project_id}/chapters/{chapter_id}/content": {
+      "put": {
+        "description": "编辑正文（轻编辑：只写回正文 + 版本递增，不动记忆不耗 LLM）。\n\n用户改语言风格 / 句子长短 / 标点后直接保存；记忆校正走显式 correct-memory 端点。",
+        "operationId": "update_chapter_content_internal_v1_projects__project_id__chapters__chapter_id__content_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "title": "Chapter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentUpdateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Chapter Content",
+        "tags": [
+          "chapters"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/chapters/{chapter_id}/correct-memory": {
+      "post": {
+        "description": "显式校正记忆：编辑后正文重新抽取 → 与该章已落库记忆 diff → 变更集进待确认池。\n\n一次 extract LLM 调用；纯风格编辑 → no_op=True、池零新增。返回变更报告供前端展示，\n变更集的人工确认复用现有 candidates confirm/reject 端点。",
+        "operationId": "correct_chapter_memory_internal_v1_projects__project_id__chapters__chapter_id__correct_memory_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "title": "Chapter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorrectMemoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Correct Chapter Memory",
+        "tags": [
+          "chapters"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/chapters/{chapter_id}/versions": {
+      "get": {
+        "description": "章节历史版本（降序，最新在前）；含正文供前端预览/比对，不含当前实时版本。\n\n语义：chapters.version 是当前实时版本（不在本列表），历史 = 每次覆盖写前的快照。",
+        "operationId": "list_chapter_versions_internal_v1_projects__project_id__chapters__chapter_id__versions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "title": "Chapter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChapterVersionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Chapter Versions",
+        "tags": [
+          "chapters"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/chapters/{chapter_id}/versions/{version}/restore": {
+      "post": {
+        "description": "回退到历史版本：先快照当前（回退本身留痕为 revert）→ 覆盖正文/标题/摘要 → 版本 +1。",
+        "operationId": "restore_chapter_version_internal_v1_projects__project_id__chapters__chapter_id__versions__version__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "title": "Chapter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentUpdateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Chapter Version",
+        "tags": [
+          "chapters"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/global-audit": {
+      "get": {
+        "description": "审计报告列表（最新在前，limit ≤ 20）：窗口/状态/计数，前端审计视图导航。",
+        "operationId": "list_global_audits_internal_v1_projects__project_id__global_audit_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GlobalAuditSummaryOut"
+                  },
+                  "title": "Response List Global Audits Internal V1 Projects  Project Id  Global Audit Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Global Audits",
+        "tags": [
+          "global-audit"
+        ]
+      },
+      "post": {
+        "description": "手动触发全局审计：全部未审计章窗口（不做 K 门槛），返回审计报告。\n\n无已写章节 → 400；LLM/解析失败 → 502（报告已落库为 failed 并推进 marker）。",
+        "operationId": "trigger_global_audit_internal_v1_projects__project_id__global_audit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditRunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trigger Global Audit",
+        "tags": [
+          "global-audit"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/global-audit/{report_id}": {
+      "get": {
+        "description": "单报告详情：findings 明细（persona/bridge/style 维度同构）+ 抽样角色 + 维度计数。",
+        "operationId": "get_global_audit_internal_v1_projects__project_id__global_audit__report_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "title": "Report Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalAuditDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Global Audit",
+        "tags": [
+          "global-audit"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/lessons": {
+      "get": {
+        "description": "写作经验列表（reflexion 复盘，按来源章排序；status 可选过滤）。",
+        "operationId": "list_lessons_internal_v1_projects__project_id__lessons_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WritingLessonOut"
+                  },
+                  "title": "Response List Lessons Internal V1 Projects  Project Id  Lessons Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Lessons",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/lessons/{lesson_id}/confirm": {
+      "post": {
+        "description": "确认经验生效（proposed→active，后续章节注入遵守）。幂等：非 proposed 返回 409。",
+        "operationId": "confirm_lesson_internal_v1_projects__project_id__lessons__lesson_id__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "lesson_id",
+            "required": true,
+            "schema": {
+              "title": "Lesson Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonActionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm Lesson",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/lessons/{lesson_id}/reject": {
+      "post": {
+        "description": "拒绝经验（proposed→rejected，幻觉/无益经验清理）。幂等：非 proposed 返回 409。",
+        "operationId": "reject_lesson_internal_v1_projects__project_id__lessons__lesson_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "lesson_id",
+            "required": true,
+            "schema": {
+              "title": "Lesson Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonActionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject Lesson",
+        "tags": [
+          "lessons"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/settings": {
+      "get": {
+        "description": "读创作设置（设置行缺失 → 空默认，页面不 500）。",
+        "operationId": "get_project_settings_internal_v1_projects__project_id__settings_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Project Settings",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "description": "全量替换 model_routes：role∈可配置集 + model∈注册表，违规 400；version++。\n\n全量替换语义（非合并）：前端改前先 GET 拿现值，改完整体回传——空 dict = 清空全部\n路由回落默认链，无歧义。落库前校验防 LLM/手填脏数据进表。",
+        "operationId": "put_project_settings_internal_v1_projects__project_id__settings_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Project Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/style-profile": {
+      "put": {
+        "description": "确认落库：编排层写 project_settings.style_profile + version 递增（§7.6 乐观版本号）。\n\n- 剔除瞬态诊断键 extract_error（草稿降级提示不落库）；\n- 键级保留 L1 基线键 fatigue_words/patterns：样本草稿白名单收键不含检测基线，确认时不抹\n  预设（显式传 [] 可清空）；其余键仍整档案覆盖；\n- body.skill_pack 非 None 时一并落 skill_pack（预设导入 = profile + marker 原子写）。",
+        "operationId": "put_style_profile_internal_v1_projects__project_id__style_profile_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StyleProfileBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StyleProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Style Profile",
+        "tags": [
+          "style"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/style-samples": {
+      "post": {
+        "description": "样本 → 统计层 + LLM 提炼 → 文风档案草稿（不落库）。\n\nextract 调用记 agent_runs（§6.8 成本透明）；agent_runs 无 RLS（观测表），普通连接可写。",
+        "operationId": "style_samples_internal_v1_projects__project_id__style_samples_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StyleSamplesBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StyleDraftOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Style Samples",
+        "tags": [
+          "style"
+        ]
+      }
+    },
+    "/internal/v1/skill-presets": {
+      "get": {
+        "description": "题材 Skill 预设列表（§7.12 预设包）：4 本种子书文风档案，设置页「预设导入」渲染。\n\n静态数据（无租户隔离），网关 JWT 已认证；预设 id 同时是 skill_pack marker。",
+        "operationId": "skill_presets_internal_v1_skill_presets_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SkillPresetOut"
+                  },
+                  "title": "Response Skill Presets Internal V1 Skill Presets Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Skill Presets",
+        "tags": [
+          "style"
+        ]
+      }
+    },
+    "/internal/v1/tasks/{task_id}": {
+      "get": {
+        "operationId": "get_task_internal_v1_tasks__task_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Task",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
+    "/internal/v1/tasks/{task_id}/cancel": {
+      "post": {
+        "operationId": "cancel_task_internal_v1_tasks__task_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskControlOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Task",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
+    "/internal/v1/tasks/{task_id}/pause": {
+      "post": {
+        "operationId": "pause_task_internal_v1_tasks__task_id__pause_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskControlOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pause Task",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
+    "/internal/v1/tasks/{task_id}/resume": {
+      "post": {
+        "operationId": "resume_task_internal_v1_tasks__task_id__resume_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskControlOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resume Task",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
+    "/readyz": {
+      "get": {
+        "operationId": "readyz_readyz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Readyz Readyz Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Readyz"
+      }
+    }
+  }
+}

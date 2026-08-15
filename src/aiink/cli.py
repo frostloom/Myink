@@ -139,5 +139,27 @@ def status(task_id: str) -> None:
         console.print(f"合计成本 ≈ ¥{total}，总耗时 {sum(r.duration_ms for r in runs)}ms")
 
 
+contract_app = typer.Typer(help="契约工具：导出 OpenAPI 响应契约（阶段 5 契约测试形式化）")
+app.add_typer(contract_app, name="contract")
+
+
+@contract_app.command()
+def export() -> None:
+    """导出 OpenAPI 契约到 spec/api-openapi.json（HTTP 响应契约单一事实源）。"""
+    import json
+    import pathlib
+
+    from aiink.api.main import app  # 延迟导入：CLI 不模块级引入 API 装配
+
+    spec_path = pathlib.Path(__file__).resolve().parents[2] / "spec" / "api-openapi.json"
+    spec_path.write_text(
+        json.dumps(app.openapi(), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    # ASCII 输出（✓ 在 GBK 控制台会 UnicodeEncodeError，见 scripts/ci-local.sh 同款修复）
+    console.print(f"[green]OK[/] OpenAPI 契约已导出"
+                  f"（{len(app.openapi()['paths'])} 条路径）：{spec_path}")
+
+
 if __name__ == "__main__":
     app()

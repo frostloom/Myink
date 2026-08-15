@@ -61,7 +61,11 @@ jobs:
         run: python -m compileall -q src tests
       - name: 初始化（建表 + RLS + seed，幂等）
         run: aiink init
-      - name: 全量回归（期望 314 passed + 5 xfailed）
+      - name: 契约导出 + diff 闸（改响应模型未重新导出 spec 即红）
+        run: |
+          aiink contract export
+          git diff --exit-code -- spec/api-openapi.json
+      - name: 全量回归（期望 343 passed + 5 xfailed）
         run: python -m pytest tests/ -q
 
   # Go 网关：仅需 Redis（Python API 用 httptest 假服务，不依赖 8100）。

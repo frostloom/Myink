@@ -86,7 +86,7 @@ PG 首次初始化时挂载的 `docker/initdb/01-roles.sql` 建业务角色 `aii
 
 ```bash
 docker compose stop aiink-worker   # 跑完测试再 docker compose up -d aiink-worker 恢复
-python -m pytest tests/ -q          # 期望 314 passed + 5 xfailed
+python -m pytest tests/ -q          # 期望 343 passed + 5 xfailed（含契约套件 29 项）
 cd gateway && go test ./...
 ```
 
@@ -96,13 +96,16 @@ cd gateway && go test ./...
 
 | job | 内容 | 依赖 |
 |---|---|---|
-| python | **全新 PG + Redis 服务容器** → 语法门禁（compileall）→ `aiink init` → 全量回归（314 passed + 5 xfailed） | pgvector/redis 容器 |
+| python | **全新 PG + Redis 服务容器** → 语法门禁（compileall）→ `aiink init` → **契约 diff 闸**（`aiink contract export` + `git diff --exit-code -- spec/api-openapi.json`）→ 全量回归（343 passed + 5 xfailed） | pgvector/redis 容器 |
 | go | `go vet` + `go test`（**拦截 SKIP**：Redis 未就绪不允许静默通过） | redis 容器 |
 | frontend | `npm ci` → oxlint → vitest → tsc/vite build | 无 |
 | build-images | 根 + gateway 两个 Dockerfile 构建（GitHub 境外用官方源；本地脚本走 `docker compose build` 用国内源） | Docker |
 
 CI 用**全新 PG** 跑全量回归是有意为之：`DuplicateTable` 索引冲突、schema `CREATE` 权限这类部署 bug 只在 fresh 库暴露
 （本地库已存在，`create_all` 的 checkfirst 会跳过表直接全绿）——CI 正是那道闸。
+**契约 diff 闸**（阶段 5 契约测试形式化）：「响应契约单一事实源」= `spec/api-openapi.json`（`aiink contract export` 导出，
+OpenAPI 3 标准）。改 `schemas.py` 响应模型没重新导出、或改路由没挂 response_model，Python job 即红——与 `test_api_contract.py`
+29 项（正向覆盖 + 反向闸 + diff 测试侧）及 Go `contract_test.go` 契约一致性测试构成三层防护（见 .md 难点 30）。
 
 **本地一键复现同一套门禁**（仓库没配 git remote 也能验证）：
 
