@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from aiink.api.auth import current_user, require_owner
 from aiink.api.auth import router as auth_router
+from aiink.api.routes_book import router as book_router
 from aiink.api.routes_candidates import router as candidates_router
 from aiink.api.routes_chapters import router as chapters_router
 from aiink.api.routes_global_audit import router as global_audit_router
@@ -39,6 +40,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(book_router)
 app.include_router(tasks_router)
 app.include_router(candidates_router)
 app.include_router(chapters_router)

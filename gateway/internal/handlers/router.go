@@ -38,6 +38,7 @@ func NewRouter(cfg config.Config, r *redis.Client, py *pyapi.Client) *gin.Engine
 	{
 		// 项目/章节读（多书展示前端，转发 Python API）
 		secured.GET("/projects", taskH.ListProjects)
+		secured.POST("/projects", taskH.CreateProject)
 		secured.GET("/projects/:project_id/chapters", taskH.ListChapters)
 		// 章节详情（含正文/summary，阶段 4 前端章节编辑器读取正文；转发 Python API）
 		secured.GET("/projects/:project_id/chapters/:chapter_id", taskH.GetChapter)
@@ -58,6 +59,11 @@ func NewRouter(cfg config.Config, r *redis.Client, py *pyapi.Client) *gin.Engine
 		secured.GET("/skill-presets", taskH.SkillPresets)
 		secured.POST("/projects/:project_id/style-samples", taskH.StyleSamples)
 		secured.PUT("/projects/:project_id/style-profile", taskH.PutStyleProfile)
+		// 建书向导 + 设定浏览（§7.11：创建作品 / 设定草稿 / 确认落库 / 世界观 / 人物卡片，转发 Python API）
+		secured.POST("/projects/:project_id/setup-draft", taskH.SetupDraft)
+		secured.PUT("/projects/:project_id/setup", taskH.Setup)
+		secured.GET("/projects/:project_id/world", taskH.GetWorld)
+		secured.GET("/projects/:project_id/characters", taskH.GetCharacters)
 		// 建单章生成任务
 		secured.POST("/projects/:project_id/chapters/:chapter_id/generate", taskH.CreateChapter)
 		// 建批次生成任务
