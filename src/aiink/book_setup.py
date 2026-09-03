@@ -40,3 +40,37 @@ def generate_book_setup(genre: str, premise: str, *,
     if not isinstance(data, dict):
         return {}, "unexpected_json"
     return data, None
+
+
+def generate_book_outline(genre: str, premise: str, *, chapter_count: int = 20,
+                          storyline: str = "", project_id: str | None = None,
+                          db=None) -> tuple[dict, str | None]:
+    """Planner 生成整书大纲草稿（§11 建书 ③：题材/梗概/大致章节数/大致故事线 → Objective + 卷 + 逐章）。
+
+    同 generate_book_setup 模式：planner 档一次 json_mode 调用 + 鲁棒解析 + agent_runs
+    记录 + 从不 raise（§6.12 降级返回 ({}, error)）。形状守卫：顶层 volumes 非数组视为降级
+    （前端据此展示错误横幅，可重新生成或手填）。**草稿不落库**，确认走 PUT outline 端点。
+    """
+    from aiink.providers import make_chain
+    from aiink.workflow import nodes, prompts
+
+    messages = prompts.book_outline_messages(genre, premise, chapter_count, storyline)
+    resp = make_chain("planner", db=db, project_id=project_id).generate(
+        messages, json_mode=True, max_tokens=nodes._MAX_TOKENS["plan_chapter"])
+    if db is not None:
+        if project_id is None:
+            raise ValueError("db 非 None 时必须提供 project_id（agent_runs 归属）")
+        nodes.record_run(db, project_id=project_id, task_id=None, node="book_outline",
+                         role="Planner", resp=resp, error=resp.error,
+                         detail={"genre": genre, "chapter_count": chapter_count})
+    if resp.error:
+        return {}, resp.error
+    try:
+        data = nodes._parse_json(resp.content)
+    except Exception as exc:  # noqa: BLE001 —— 解析失败同 LLM 失败处理（§6.12）
+        return {}, f"parse_error: {exc}"
+    if not isinstance(data, dict):
+        return {}, "unexpected_json"
+    if not isinstance(data.get("volumes"), list):
+        return {}, "unexpected_shape: volumes 缺失或非数组"
+    return data, None

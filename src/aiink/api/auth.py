@@ -33,13 +33,17 @@ _ALG = "HS256"
 _ISS = "aiink"
 
 
-def create_access_token(user_id: uuid.UUID) -> str:
-    """签 JWT：HS256、sub=user_id、iss=aiink、短时效（§14.2 token 短期有效）。"""
+def create_access_token(user_id: uuid.UUID, tier: str = "normal") -> str:
+    """签 JWT：HS256、sub=user_id、iss=aiink、tier（阶段 6 VIP 优先级）、短时效（§14.2 token 短期有效）。
+
+    tier claim 由网关 verifyJWT 读出，VIP → RabbitMQ 消息高优先级（vip→9/normal→0）。
+    """
     now = datetime.now(timezone.utc)
     return jwt.encode(
         {
             "sub": str(user_id),
             "iss": _ISS,
+            "tier": tier,
             "iat": now,
             "exp": now + timedelta(seconds=settings.jwt_ttl),
         },
@@ -89,7 +93,8 @@ def issue_token(body: _TokenRequest) -> dict:
         if user is None:
             raise HTTPException(status_code=404, detail=f"用户不存在: {body.username}")
         return {
-            "token": create_access_token(user.id),
+            "token": create_access_token(user.id, tier=user.tier),
             "user_id": str(user.id),
+            "tier": user.tier,
             "expires_in": settings.jwt_ttl,
         }

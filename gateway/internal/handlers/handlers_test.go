@@ -1,5 +1,7 @@
 // 网关 HTTP 层测试（httptest 直打 router）：建章/建批次、闸门拒绝、转发、SSE、探针。
-// 活 Redis :6380；Python API 用内存 httptest 假服务替代（测转发，不依赖 8100）。
+// 活 Redis :6380 + RabbitMQ :5672（入队断言走 -h-t- 观察队列）；Python API 用内存
+// httptest 假服务替代（测转发，不依赖 8100）。
+// 对 compose 起的 aiink-rabbitmq 需 AMQP_URL=amqp://aiink:aiink@localhost:5672/ 否则 dial 403 静默 skip。
 package handlers
 
 import (
@@ -17,21 +19,32 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	amqp091 "github.com/rabbitmq/amqp091-go"
 
 	"aiink/gateway/internal/config"
 	"aiink/gateway/internal/pyapi"
+	"aiink/gateway/internal/queue"
 	"aiink/gateway/internal/redis"
 )
 
+const testQueuePrefix = "-h-t-" // RabbitMQ 拓扑隔离：不碰运行中网关/worker 的真实队列
+
 // bearer 生成 JWT Bearer 头（§14.1 ③：业务路由一律要求已签名 token）。
 // 密钥与 newRouter 的 cfg.JWTSecret 同源（config.Load：默认 DevJWTSecret，环境显式
-// 设 JWT_SECRET 时两边读同一值），验签一致。
+// 设 JWT_SECRET 时两边读同一值），验签一致。tier 默认 normal（老 token 无 claim 回落 0）。
 func bearer(t *testing.T, sub string) string {
 	t.Helper()
+	return bearerTier(t, sub, "normal")
+}
+
+// bearerTier 同 bearer 但带 tier claim（VIP → 网关入队高优先级）。
+func bearerTier(t *testing.T, sub, tier string) string {
+	t.Helper()
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": sub,
-		"iss": "aiink",
-		"exp": time.Now().Add(time.Hour).Unix(),
+		"sub":  sub,
+		"tier": tier,
+		"iss":  "aiink",
+		"exp":  time.Now().Add(time.Hour).Unix(),
 	})
 	s, err := tok.SignedString([]byte(config.Load().JWTSecret))
 	if err != nil {
@@ -48,7 +61,86 @@ func newRouter(t *testing.T, r *redis.Client, py *pyapi.Client) *gin.Engine {
 	cfg.DailyBudget = 1.0
 	cfg.RatePerSec = 1000 // 测试不触发限流
 	cfg.RateBurst = 1000
-	return NewRouter(cfg, r, py)
+	cfg.QueuePrefix = testQueuePrefix
+	return NewRouter(cfg, r, newTestRMQ(t, cfg), py)
+}
+
+// newTestRMQ 连 RabbitMQ（skip-if-unreachable :5672），声明 -h-t- 前缀的测试拓扑。
+func newTestRMQ(t *testing.T, cfg config.Config) *queue.AMQP {
+	t.Helper()
+	conn, err := amqp091.Dial(cfg.AmqpURL)
+	if err != nil {
+		t.Skipf("aiink-rabbitmq 不可达 %s: %v", cfg.AmqpURL, err)
+	}
+	_ = conn.Close()
+	rmq, err := queue.DialAMQP(cfg)
+	if err != nil {
+		t.Fatalf("DialAMQP: %v", err)
+	}
+	t.Cleanup(func() { _ = rmq.Close() })
+	return rmq
+}
+
+// bindObserver 建独占 auto-delete 观察队列，绑定 -h-t- 交换机的 rk=tasks —— 之后入队发布的
+// 每条消息都被复制一份（读后即弃，测试隔离）。返回队列名 + 连接（readObserver 复用同一连接）。
+func bindObserver(t *testing.T) (string, *amqp091.Connection) {
+	t.Helper()
+	conn, err := amqp091.Dial(config.Load().AmqpURL)
+	if err != nil {
+		t.Fatalf("observer dial: %v", err)
+	}
+	ch, err := conn.Channel()
+	if err != nil {
+		t.Fatalf("observer channel: %v", err)
+	}
+	q, err := ch.QueueDeclare("", false, true, true, false, nil)
+	if err != nil {
+		t.Fatalf("observer declare: %v", err)
+	}
+	if err := ch.QueueBind(q.Name, queue.KeyTasks, queue.ExchangeTasks+testQueuePrefix, false, nil); err != nil {
+		t.Fatalf("observer bind: %v", err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	return q.Name, conn
+}
+
+// readObserver 读观察队列当前全部消息（非阻塞，读到空为止）。
+func readObserver(t *testing.T, conn *amqp091.Connection, q string) []amqp091.Delivery {
+	t.Helper()
+	ch, err := conn.Channel()
+	if err != nil {
+		t.Fatalf("read channel: %v", err)
+	}
+	defer ch.Close()
+	var out []amqp091.Delivery
+	for {
+		d, ok, err := ch.Get(q, true)
+		if err != nil {
+			t.Fatalf("read get: %v", err)
+		}
+		if !ok {
+			return out
+		}
+		out = append(out, d)
+	}
+}
+
+// purgeTestQueues 清空 -h-t- 前缀的持久队列（入队残留不跨测试累积）。
+func purgeTestQueues(t *testing.T) {
+	t.Helper()
+	conn, err := amqp091.Dial(config.Load().AmqpURL)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+	ch, err := conn.Channel()
+	if err != nil {
+		return
+	}
+	defer ch.Close()
+	for _, q := range []string{queue.MainQueue(testQueuePrefix), queue.DelayQueue(testQueuePrefix), queue.DlqQueue(testQueuePrefix)} {
+		_, _ = ch.QueuePurge(q, false)
+	}
 }
 
 func newTestRedis(t *testing.T) *redis.Client {
@@ -82,6 +174,34 @@ func fakePy() *httptest.Server {
 				`{"id":"ch-2","chapter_seq":2,"title":"第2章","status":"draft"}]`)
 		case strings.Contains(req.URL.Path, "/pause"):
 			fmt.Fprint(w, `{"task_id":"batch-x","status":"paused"}`)
+		case strings.HasSuffix(req.URL.Path, "/rankings"):
+			// 对齐契约 RankingsOut（source 必填；样例数据降级路径）
+			fmt.Fprint(w, `{"source":"sample","tool":"","fetched_at":null,`+
+				`"error":"RANKINGS_ENABLED=0 已禁用扫榜","items":[{"rank":1,`+
+				`"title":"【示例】九天剑帝","author":"青竹","tags":["仙侠","无敌流"],"hot":"热榜 1"}]}`)
+		case strings.HasSuffix(req.URL.Path, "/graph"):
+			// 对齐契约 WorldGraphOut（4 类节点 + 活跃/失效关系 + 层级边）
+			fmt.Fprint(w, `{"nodes":[{"id":"n1","name":"林晚","type":"character","realm_cap":"金丹"},`+
+				`{"id":"n2","name":"沈岳","type":"character","realm_cap":"元婴"},`+
+				`{"id":"n3","name":"青云宗","type":"faction","stance":"正道"},`+
+				`{"id":"n4","name":"青云山","type":"location","parent_id":"n5"},`+
+				`{"id":"n5","name":"青云州","type":"location","parent_id":null},`+
+				`{"id":"n6","name":"焚天剑","type":"entity","entity_type":"item"}],`+
+				`"edges":[{"source_id":"n1","target_id":"n2","edge_type":"hostile",`+
+				`"confidence":0.9,"expired":false,"source_chapter":3},`+
+				`{"source_id":"n2","target_id":"n1","edge_type":"knows",`+
+				`"confidence":0.7,"expired":true,"source_chapter":8},`+
+				`{"source_id":"n4","target_id":"n5","edge_type":"hierarchy","expired":false}]}`)
+		case strings.HasSuffix(req.URL.Path, "/outline"):
+			// 对齐契约 BookOutlineOut（Objective + 卷 + 逐章目标；GET 无大纲时为 null）
+			fmt.Fprint(w, `{"outline":{"premise":"少年得玉佩追寻真相","chapter_count":20,`+
+				`"storyline":"前期宗门、中期追查、后期决战",`+
+				`"objective":"从杂役修士成为宗门长老并公开父辈冤案真相",`+
+				`"volumes":[{"volume_seq":1,"title":"第一卷 · 青云山下","theme":"立身",`+
+				`"goal":"入宗立足并发现玉佩疑点","key_results":["通过入门试炼","拜入长老座下"],`+
+				`"end_event":"主角被迫离开青云宗",`+
+				`"chapters":[{"seq":1,"title":"第一章 玉佩","goal":"得玉佩、初入青云宗",`+
+				`"beats":["得玉佩","遇苏瑶"]}]}]}}`)
 		case strings.HasSuffix(req.URL.Path, "/auth/token"):
 			fmt.Fprint(w, `{"token":"t-jwt","user_id":"u-1","expires_in":1800}`)
 		default:
@@ -103,6 +223,7 @@ func TestCreateChapter202(t *testing.T) {
 	r := newTestRedis(t)
 	py := pyapi.New(fakePy().URL, 3*time.Second)
 	router := newRouter(t, r, py)
+	defer purgeTestQueues(t)
 
 	// 清理用户闸门键，隔离（含 inflight 残留）
 	uid := "web-test-user"
@@ -140,6 +261,42 @@ func TestCreateChapter202(t *testing.T) {
 	// 应透传 X-Trace-ID 头（§17.2 全链路）
 	if w.Header().Get("X-Request-ID") == "" {
 		t.Fatal("应带 X-Request-ID 响应头")
+	}
+}
+
+func TestCreateChapterPriorityFromJWT(t *testing.T) {
+	// VIP 优先：JWT tier=vip → 网关把 RabbitMQ 消息 priority 置 VIPPriority（主队列 x-max-priority=10）。
+	// 观察队列读到 priority 属性（非排序断言——优先级只影响消费排序，不影响发布）。
+	r := newTestRedis(t)
+	py := pyapi.New(fakePy().URL, 3*time.Second)
+	router := newRouter(t, r, py)
+	obs, conn := bindObserver(t)
+	defer purgeTestQueues(t)
+
+	uid := "web-vip-user"
+	ctx := context.Background()
+	today := time.Now().Format("2006-01-02")
+	defer func() {
+		_ = r.Raw().Del(ctx, "rate:inflight:"+uid+":proj-1", "rate:quota:"+uid+":"+today,
+			"rate:bookquota:"+uid+":proj-1:"+today, "rate:bookcnt:"+uid+":"+today).Err()
+	}()
+
+	req := httptest.NewRequest(http.MethodPost,
+		"/api/v1/projects/proj-1/chapters/ch-1/generate", strings.NewReader(`{"seq":1}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", bearerTier(t, uid, "vip"))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("应 202，实际 %d body=%s", w.Code, w.Body.String())
+	}
+	msgs := readObserver(t, conn, obs)
+	if len(msgs) != 1 {
+		t.Fatalf("应收到 1 条消息，实际 %d", len(msgs))
+	}
+	if want := uint8(config.Load().VIPPriority); msgs[0].Priority != want {
+		t.Fatalf("VIP 消息 priority 应为 %d，实际 %d", want, msgs[0].Priority)
 	}
 }
 
@@ -215,6 +372,8 @@ func TestCreateBatchStartDefaultsOne(t *testing.T) {
 	r := newTestRedis(t)
 	py := pyapi.New(fakePy().URL, 3*time.Second)
 	router := newRouter(t, r, py)
+	obs, conn := bindObserver(t)
+	defer purgeTestQueues(t)
 
 	uid := "web-batch-start-default"
 	ctx := context.Background()
@@ -222,22 +381,6 @@ func TestCreateBatchStartDefaultsOne(t *testing.T) {
 	defer func() {
 		_ = r.Raw().Del(ctx, "rate:inflight:"+uid+":proj-1", "rate:quota:"+uid+":"+today,
 			"rate:bookquota:"+uid+":proj-1:"+today, "rate:bookcnt:"+uid+":"+today).Err()
-		// 清理本测试入队的 proj-1 消息（同 enqueue_test.cleanupTestMessages 约定，防残留）
-		msgs, _ := r.Raw().XRange(ctx, "queue:tasks", "-", "+").Result()
-		var ids []string
-		for _, m := range msgs {
-			if b, ok := m.Values["body"].(string); ok {
-				var bd struct {
-					Project string `json:"project_id"`
-				}
-				if json.Unmarshal([]byte(b), &bd) == nil && bd.Project == "proj-1" {
-					ids = append(ids, m.ID)
-				}
-			}
-		}
-		if len(ids) > 0 {
-			_ = r.Raw().XDel(ctx, "queue:tasks", ids...).Err()
-		}
 	}()
 
 	// 缺省 start（复查 B1）：Go 零值 0 原会穿透到 worker 让批次从第 0 章写起；修后应默认 1。
@@ -253,16 +396,8 @@ func TestCreateBatchStartDefaultsOne(t *testing.T) {
 	if w.Code != http.StatusAccepted {
 		t.Fatalf("应 202，实际 %d body=%s", w.Code, w.Body.String())
 	}
-	msgs, err := r.Raw().XRange(ctx, "queue:tasks", "-", "+").Result()
-	if err != nil {
-		t.Fatalf("读流失败: %v", err)
-	}
 	var lastStart *int
-	for _, m := range msgs {
-		bodyRaw, ok := m.Values["body"].(string)
-		if !ok {
-			continue
-		}
+	for _, d := range readObserver(t, conn, obs) {
 		var msg struct {
 			ProjectID string `json:"project_id"`
 			TaskType  string `json:"task_type"`
@@ -271,7 +406,7 @@ func TestCreateBatchStartDefaultsOne(t *testing.T) {
 				Start int `json:"start"`
 			} `json:"payload"`
 		}
-		if json.Unmarshal([]byte(bodyRaw), &msg) != nil || msg.ProjectID != "proj-1" {
+		if json.Unmarshal(d.Body, &msg) != nil || msg.ProjectID != "proj-1" {
 			continue
 		}
 		if msg.TaskType == "batch_generate" {
@@ -395,6 +530,25 @@ func TestListProjectsForwards(t *testing.T) {
 	}
 }
 
+func TestDeleteProjectForwards(t *testing.T) {
+	// 整本书删除（阶段 6 硬删）：DELETE /api/v1/projects/:pid 应转发 Python API 删除路径。
+	r := newTestRedis(t)
+	var paths []string
+	py := pyapi.New(recordingPy(&paths).URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/projects/p1", nil)
+	req.Header.Set("Authorization", bearer(t, "dev"))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
+	}
+	if len(paths) != 1 || paths[0] != "/internal/v1/projects/p1" {
+		t.Fatalf("应转发 /internal/v1/projects/p1，实际 %v", paths)
+	}
+}
+
 func TestListChaptersForwards(t *testing.T) {
 	r := newTestRedis(t)
 	py := pyapi.New(fakePy().URL, 3*time.Second)
@@ -409,6 +563,44 @@ func TestListChaptersForwards(t *testing.T) {
 	}
 	if !strings.Contains(w.Body.String(), `"status":"draft"`) {
 		t.Fatalf("应透传章节列表，实际 %s", w.Body.String())
+	}
+}
+
+func TestRankingsForwards(t *testing.T) {
+	// 扫榜（§10，建书前灵感工具，全局无项目端点）：应转发 Python API 内部路径 + 透传 RankingsOut 响应。
+	r := newTestRedis(t)
+	var paths []string
+	py := pyapi.New(recordingPy(&paths).URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/rankings", nil)
+	req.Header.Set("Authorization", bearer(t, "dev"))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
+	}
+	if len(paths) != 1 || paths[0] != "/internal/v1/rankings" {
+		t.Fatalf("应转发 /internal/v1/rankings，实际 %v", paths)
+	}
+}
+
+func TestGraphForwards(t *testing.T) {
+	// 关系图谱（§9 世界拓扑）：GET /api/v1/projects/:pid/graph 应转发 Python API 路径 + 透传拓扑响应。
+	r := newTestRedis(t)
+	var paths []string
+	py := pyapi.New(recordingPy(&paths).URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/projects/p1/graph", nil)
+	req.Header.Set("Authorization", bearer(t, "dev"))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
+	}
+	if len(paths) != 1 || paths[0] != "/internal/v1/projects/p1/graph" {
+		t.Fatalf("应转发 /internal/v1/projects/p1/graph，实际 %v", paths)
 	}
 }
 
@@ -433,11 +625,12 @@ func TestGetChapterForwards(t *testing.T) {
 }
 
 func TestCreateChapterRewritePassthrough(t *testing.T) {
-	// 显式重写（§7.3 失效重建触发点）：body rewrite=true 应透传到 payload 入队；
-	// 用独立 proj-rewrite 项目 id 隔离，避免扫到 TestCreateChapter202 残留的 chapter_generate 消息。
+	// 显式重写（§7.3 失效重建触发点）：body rewrite=true 应透传到 payload 入队。
 	r := newTestRedis(t)
 	py := pyapi.New(fakePy().URL, 3*time.Second)
 	router := newRouter(t, r, py)
+	obs, conn := bindObserver(t)
+	defer purgeTestQueues(t)
 
 	uid := "web-rewrite-test"
 	ctx := context.Background()
@@ -445,21 +638,6 @@ func TestCreateChapterRewritePassthrough(t *testing.T) {
 	defer func() {
 		_ = r.Raw().Del(ctx, "rate:inflight:"+uid+":proj-rewrite", "rate:quota:"+uid+":"+today,
 			"rate:bookquota:"+uid+":proj-rewrite:"+today, "rate:bookcnt:"+uid+":"+today).Err()
-		msgs, _ := r.Raw().XRange(ctx, "queue:tasks", "-", "+").Result()
-		var ids []string
-		for _, m := range msgs {
-			if b, ok := m.Values["body"].(string); ok {
-				var bd struct {
-					Project string `json:"project_id"`
-				}
-				if json.Unmarshal([]byte(b), &bd) == nil && bd.Project == "proj-rewrite" {
-					ids = append(ids, m.ID)
-				}
-			}
-		}
-		if len(ids) > 0 {
-			_ = r.Raw().XDel(ctx, "queue:tasks", ids...).Err()
-		}
 	}()
 
 	req := httptest.NewRequest(http.MethodPost,
@@ -472,16 +650,8 @@ func TestCreateChapterRewritePassthrough(t *testing.T) {
 	if w.Code != http.StatusAccepted {
 		t.Fatalf("应 202，实际 %d body=%s", w.Code, w.Body.String())
 	}
-	msgs, err := r.Raw().XRange(ctx, "queue:tasks", "-", "+").Result()
-	if err != nil {
-		t.Fatalf("读流失败: %v", err)
-	}
 	var got *bool
-	for _, m := range msgs {
-		bodyRaw, ok := m.Values["body"].(string)
-		if !ok {
-			continue
-		}
+	for _, d := range readObserver(t, conn, obs) {
 		var msg struct {
 			ProjectID string `json:"project_id"`
 			TaskType  string `json:"task_type"`
@@ -490,7 +660,7 @@ func TestCreateChapterRewritePassthrough(t *testing.T) {
 				Rewrite bool `json:"rewrite"`
 			} `json:"payload"`
 		}
-		if json.Unmarshal([]byte(bodyRaw), &msg) != nil || msg.ProjectID != "proj-rewrite" {
+		if json.Unmarshal(d.Body, &msg) != nil || msg.ProjectID != "proj-rewrite" {
 			continue
 		}
 		if msg.TaskType == "chapter_generate" {
@@ -647,6 +817,9 @@ func TestBookSetupAndWorldForwards(t *testing.T) {
 		{"更新作品", http.MethodPut, "/api/v1/projects/p1", `{"target_words":3500}`},
 		{"设定草稿", http.MethodPost, "/api/v1/projects/p1/setup-draft", `{"premise":"少年闯仙途。"}`},
 		{"确认落库", http.MethodPut, "/api/v1/projects/p1/setup", `{"hard_constraints":["凡人不可御剑"]}`},
+		{"大纲草稿", http.MethodPost, "/api/v1/projects/p1/outline-draft", `{"premise":"少年得玉佩追寻真相","chapter_count":20,"storyline":"前期宗门"}`},
+		{"确认大纲", http.MethodPut, "/api/v1/projects/p1/outline", `{"objective":"成为宗门长老并公开真相","volumes":[{"title":"第一卷","goal":"入宗立足","chapters":[{"title":"第一章","goal":"入宗"}]}]}`},
+		{"大纲读取", http.MethodGet, "/api/v1/projects/p1/outline", ``},
 		{"世界观", http.MethodGet, "/api/v1/projects/p1/world", ``},
 		{"人物卡片", http.MethodGet, "/api/v1/projects/p1/characters", ``},
 		{"设定实体", http.MethodGet, "/api/v1/projects/p1/entities", ``},
@@ -656,6 +829,9 @@ func TestBookSetupAndWorldForwards(t *testing.T) {
 		"/internal/v1/projects/p1",
 		"/internal/v1/projects/p1/setup-draft",
 		"/internal/v1/projects/p1/setup",
+		"/internal/v1/projects/p1/outline-draft",
+		"/internal/v1/projects/p1/outline",
+		"/internal/v1/projects/p1/outline",
 		"/internal/v1/projects/p1/world",
 		"/internal/v1/projects/p1/characters",
 		"/internal/v1/projects/p1/entities",
@@ -879,7 +1055,7 @@ func TestStaticSPAFallback(t *testing.T) {
 	cfg.RatePerSec = 1000
 	cfg.RateBurst = 1000
 	cfg.WebDistDir = dist
-	router := NewRouter(cfg, nil, nil)
+	router := NewRouter(cfg, nil, nil, nil)
 
 	cases := []struct {
 		name string
@@ -936,7 +1112,7 @@ func TestStaticNoDistDirNoPanic(t *testing.T) {
 	cfg.RatePerSec = 1000
 	cfg.RateBurst = 1000
 	cfg.WebDistDir = filepath.Join(t.TempDir(), "no-such-dir")
-	router := NewRouter(cfg, nil, nil)
+	router := NewRouter(cfg, nil, nil, nil)
 
 	for _, path := range []string{"/", "/projects/p1", "/assets/x.js"} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)

@@ -12,6 +12,8 @@ export const NODE_LABELS: Record<string, string> = {
   revise: '修订',
   audit: '审核',
   persist: '落库',
+  summarize: '章节摘要',
+  reflexion: '复盘',
   batch_plan: '批次规划',
   batch_end: '批次收尾',
   global_audit: '全局审计',

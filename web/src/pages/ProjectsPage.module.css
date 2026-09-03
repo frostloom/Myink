@@ -51,3 +51,19 @@
   color: var(--ink-subtle);
   font-size: var(--text-small);
 }
+
+.del {
+  align-self: flex-start;
+  margin-top: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--ink-subtle);
+  font-size: var(--text-small);
+  cursor: pointer;
+}
+.del:hover {
+  color: var(--error);
+  border-color: var(--error);
+}

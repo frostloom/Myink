@@ -68,6 +68,17 @@
           "retry_count": {
             "title": "Retry Count",
             "type": "integer"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
           }
         },
         "required": [
@@ -164,6 +175,25 @@
           "expires_in"
         ],
         "title": "AuthResponse",
+        "type": "object"
+      },
+      "BookOutlineOut": {
+        "description": "整书大纲读取/落库结果（§11：无大纲 → outline null，不 500）。",
+        "properties": {
+          "outline": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outline"
+          }
+        },
+        "title": "BookOutlineOut",
         "type": "object"
       },
       "CandidateActionOut": {
@@ -264,6 +294,17 @@
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
           },
           "title": {
             "anyOf": [
@@ -584,6 +625,25 @@
         "title": "DeleteChapterOut",
         "type": "object"
       },
+      "DeleteProjectOut": {
+        "description": "整本书删除结果（§阶段 6：硬删，FK 级联清业务表 + 显式清 checkpoint/Redis 残留）。",
+        "properties": {
+          "deleted": {
+            "title": "Deleted",
+            "type": "boolean"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "deleted"
+        ],
+        "title": "DeleteProjectOut",
+        "type": "object"
+      },
       "DeletedChapterOut": {
         "properties": {
           "chapter_seq": {
@@ -657,6 +717,56 @@
           "name"
         ],
         "title": "EntityCardOut",
+        "type": "object"
+      },
+      "ForeshadowOut": {
+        "description": "伏笔池台账（§7.9 伏笔状态机：planted/developing/resolved/dropped）。",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "planted_chapter": {
+            "title": "Planted Chapter",
+            "type": "integer"
+          },
+          "related_entities": {
+            "items": {},
+            "title": "Related Entities",
+            "type": "array"
+          },
+          "resolved_chapter": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved Chapter"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "trigger": {
+            "additionalProperties": true,
+            "title": "Trigger",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "description",
+          "status",
+          "planted_chapter"
+        ],
+        "title": "ForeshadowOut",
         "type": "object"
       },
       "GlobalAuditDetailOut": {
@@ -874,6 +984,125 @@
         "title": "GlobalAuditSummaryOut",
         "type": "object"
       },
+      "GraphEdgeOut": {
+        "description": "世界拓扑边（§9 图谱：人物关系活跃/失效 + 地点层级）。",
+        "properties": {
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "edge_type": {
+            "title": "Edge Type",
+            "type": "string"
+          },
+          "expired": {
+            "default": false,
+            "title": "Expired",
+            "type": "boolean"
+          },
+          "source_chapter": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Chapter"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "target_id",
+          "edge_type"
+        ],
+        "title": "GraphEdgeOut",
+        "type": "object"
+      },
+      "GraphNodeOut": {
+        "description": "世界拓扑节点（§9 图谱：4 类分组全量，建书设定即入图含孤立项）。",
+        "properties": {
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Type"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "realm_cap": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Realm Cap"
+          },
+          "stance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stance"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type"
+        ],
+        "title": "GraphNodeOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -952,6 +1181,88 @@
           "status"
         ],
         "title": "MemoryCandidateOut",
+        "type": "object"
+      },
+      "OutlineConfirmBody": {
+        "description": "整书大纲确认落库（§11 ③）：Objective + volumes（每卷含逐章 {title, goal, beats}）；\npremise/章节数/故事线一并存下供后续重新生成。",
+        "properties": {
+          "chapter_count": {
+            "default": 0,
+            "title": "Chapter Count",
+            "type": "integer"
+          },
+          "objective": {
+            "default": "",
+            "title": "Objective",
+            "type": "string"
+          },
+          "premise": {
+            "default": "",
+            "title": "Premise",
+            "type": "string"
+          },
+          "storyline": {
+            "default": "",
+            "title": "Storyline",
+            "type": "string"
+          },
+          "volumes": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Volumes",
+            "type": "array"
+          }
+        },
+        "title": "OutlineConfirmBody",
+        "type": "object"
+      },
+      "OutlineDraftBody": {
+        "description": "整书大纲草稿输入（§11 建书 ③）：一句话梗概 + 大致章节数 + 大致故事线。",
+        "properties": {
+          "chapter_count": {
+            "default": 20,
+            "title": "Chapter Count",
+            "type": "integer"
+          },
+          "premise": {
+            "title": "Premise",
+            "type": "string"
+          },
+          "storyline": {
+            "default": "",
+            "title": "Storyline",
+            "type": "string"
+          }
+        },
+        "required": [
+          "premise"
+        ],
+        "title": "OutlineDraftBody",
+        "type": "object"
+      },
+      "OutlineDraftOut": {
+        "description": "整书大纲草稿（§11 建书 ③）：Planner 提案（Objective + 卷 + 逐章目标），可编辑、不落库；\nLLM 失败 → {} + error（§6.12 降级）。",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "outline": {
+            "additionalProperties": true,
+            "title": "Outline",
+            "type": "object"
+          }
+        },
+        "title": "OutlineDraftOut",
         "type": "object"
       },
       "ProjectOut": {
@@ -1065,6 +1376,102 @@
           }
         },
         "title": "ProjectUpdateBody",
+        "type": "object"
+      },
+      "RankingItemOut": {
+        "description": "扫榜单条（§10）：外部榜单已 sanitize（allowlist 字段，只作灵感参考）。",
+        "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
+          "hot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hot"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rank",
+          "title"
+        ],
+        "title": "RankingItemOut",
+        "type": "object"
+      },
+      "RankingsOut": {
+        "description": "扫榜响应（§10）：source=remote（实时榜单）/ sample（降级样例）；error 为降级原因。",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetched At"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RankingItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "tool": {
+            "default": "",
+            "title": "Tool",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source"
+        ],
+        "title": "RankingsOut",
         "type": "object"
       },
       "SettingsBody": {
@@ -1572,6 +1979,27 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "WorldGraphOut": {
+        "description": "世界拓扑全量（§9 图谱前端：ECharts 力导向分组渲染）。",
+        "properties": {
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/GraphEdgeOut"
+            },
+            "title": "Edges",
+            "type": "array"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/GraphNodeOut"
+            },
+            "title": "Nodes",
+            "type": "array"
+          }
+        },
+        "title": "WorldGraphOut",
+        "type": "object"
+      },
       "WorldViewOut": {
         "description": "世界观浏览（§7.11 设定是活数据）：settings 的 world_rules/hard_constraints + 势力/地点。",
         "properties": {
@@ -1878,6 +2306,63 @@
       }
     },
     "/internal/v1/projects/{project_id}": {
+      "delete": {
+        "description": "整本书删除（硬删）：守卫进行中任务 → 清 checkpoint/Redis 残留 → FK 级联删业务表。\n\n守卫：DB 非终态任务 ∪ Redis inflight 键——网关入队先 SADD inflight + XADD，worker 消费\n才物化 DB 行，单查 DB 会漏「已入队未物化」窗口；resume 直发绕过网关（无 SADD）但\nDB status 非终态，由 DB 腿兜住（双腿互补）。有进行中任务 → 409（对齐 pause/cancel）。\n\n级联（FK ondelete=CASCADE，RLS 对参照动作豁免）覆盖：chapters/versions/outlines/\nsettings/characters/factions/locations/记忆层/memory_candidates/writing_lessons/\nvalidation 报表/**embeddings 向量**/tasks；agent_runs（无 FK）、LangGraph checkpoint\n三表（无 project_id）与 Redis 队列/锁残留需显式清理（本函数完成）。",
+        "operationId": "delete_project_internal_v1_projects__project_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteProjectOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Project",
+        "tags": [
+          "book"
+        ]
+      },
       "put": {
         "description": "更新作品基本信息（§6.9 每章目标字数可配）。非 None 字段才更新（None = 不改）；\ntarget_words 显式传 null 才置空（清空回落生成侧默认 3000）。归属断言 fail closed。",
         "operationId": "update_project_internal_v1_projects__project_id__put",
@@ -2217,7 +2702,7 @@
     },
     "/internal/v1/projects/{project_id}/chapters/{chapter_id}": {
       "delete": {
-        "description": "级联删除章节：删除该章及其后全部章节（正文 + 记忆 + 待确认池候选）。\n\n语义（阶段 3 决策）：中间章删掉后后续章剧情引用已删事件会断层，级联删除让作者\n从被删章重新生成。进度回退到保留的最大章序；无保留章则回 0。\n边界：删除前应确保该范围无进行中的生成/续跑任务（任务 checkpoint 引用章节）。",
+        "description": "级联删除章节：删除该章及其后全部章节（正文 + 记忆 + 待确认池候选 + 登记表产物）。\n\n语义（阶段 3 决策）：中间章删掉后后续章剧情引用已删事件会断层，级联删除让作者\n从被删章重新生成。进度回退到保留的最大章序；无保留章则回 0。\n登记表（人物卡/设定实体/别名）按被删章节产物精准清理（purge_deleted_chapter_registry），\n建书确认的势力/地点/世界观规则保留。边界：删除前应确保该范围无进行中的生成/续跑任务。",
         "operationId": "delete_chapter_internal_v1_projects__project_id__chapters__chapter_id__delete",
         "parameters": [
           {
@@ -2762,6 +3247,69 @@
         ]
       }
     },
+    "/internal/v1/projects/{project_id}/foreshadows": {
+      "get": {
+        "description": "伏笔池台账（§7.9 状态机全量，供前端「伏笔池」区块）。\n\n全状态返回（planted/developing/resolved/dropped 都展示）——已回收/已废弃保留历史\n供复盘「哪些伏笔埋了没收、哪些收早了」，open 的才是 plan_chapter 会消费的。\ntenant_session RLS 隔离 + 显式 project_id 过滤双保险（同 world_graph）。",
+        "operationId": "foreshadow_ledger_internal_v1_projects__project_id__foreshadows_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ForeshadowOut"
+                  },
+                  "title": "Response Foreshadow Ledger Internal V1 Projects  Project Id  Foreshadows Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Foreshadow Ledger",
+        "tags": [
+          "book"
+        ]
+      }
+    },
     "/internal/v1/projects/{project_id}/global-audit": {
       "get": {
         "description": "审计报告列表（最新在前，limit ≤ 20）：窗口/状态/计数，前端审计视图导航。",
@@ -2957,6 +3505,65 @@
         "summary": "Get Global Audit",
         "tags": [
           "global-audit"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/graph": {
+      "get": {
+        "description": "世界拓扑全量（§9 图谱前端：4 类节点 + 人物关系/地点层级边）。\n\n节点全量含孤立项（建书设定即入图，不因无关联被裁掉）；人物关系**含失效行**\n（valid_to 非空 → expired=True，前端活跃实线/失效虚线区分），地点层级按 parent_id。\ntenant_session RLS 已按项目隔离，此处再显式 project_id 过滤为双保险（同 entity_cards）。",
+        "operationId": "world_graph_internal_v1_projects__project_id__graph_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorldGraphOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "World Graph",
+        "tags": [
+          "book"
         ]
       }
     },
@@ -3172,6 +3779,201 @@
         "summary": "Reject Lesson",
         "tags": [
           "lessons"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/outline": {
+      "get": {
+        "description": "整书大纲读取（§11 前端展示 / 重新生成输入）。无大纲 → {outline: null} 不 500。\n\n存量旧版扁平大纲（{arc, chapters}）经 normalize_outline 归一为新三层（并入「全书主线」单卷），\n前端展示与写作注入对新旧数据一致。",
+        "operationId": "get_outline_internal_v1_projects__project_id__outline_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookOutlineOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Outline",
+        "tags": [
+          "book"
+        ]
+      },
+      "put": {
+        "description": "整书大纲确认落库（§11 ③）：volume_outlines 单行（volume_seq=1）整体替换。\n\n归一化：逐章补全局 seq（跨卷连续编号），plan/write 按 seq 取本章大纲位；空章/空卷丢弃；\nvolume_seq 重新编号（=卷下标+1）。objective 单行存全书终局。",
+        "operationId": "put_outline_internal_v1_projects__project_id__outline_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutlineConfirmBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookOutlineOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Outline",
+        "tags": [
+          "book"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/outline-draft": {
+      "post": {
+        "description": "整书大纲草稿（§11 建书 ③）：题材/梗概/大致章节数/大致故事线 → Planner 提案。\n\n不落库可反复重新生成；LLM 失败 → {outline: {}, error} 200 降级（§6.12）。\nagent_runs 记 node=book_outline（§6.8 成本透明）。",
+        "operationId": "outline_draft_internal_v1_projects__project_id__outline_draft_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutlineDraftBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutlineDraftOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Outline Draft",
+        "tags": [
+          "book"
         ]
       }
     },
@@ -3579,7 +4381,7 @@
     },
     "/internal/v1/projects/{project_id}/tasks": {
       "get": {
-        "description": "项目任务历史（最近 50 条，倒序）：前端切书后展示过往任务，点开再拉详情拿流转。\n\n轻量摘要不含 runs（重量留给 GET /tasks/{id}）；批次进度派生（persist 去重章数）。\nrequire_owner 归属断言由依赖挂载（§14.1 ③）；tasks 无 RLS 观测表，new_session 可查。",
+        "description": "项目任务历史（最近 50 条，倒序）：前端切书后展示过往任务，点开再拉详情拿流转。\n\n轻量摘要不含 runs（重量留给 GET /tasks/{id}）；批次进度派生（persist 去重章数）。\nrequire_owner 归属断言由依赖挂载（§14.1 ③）；tasks 无 RLS 观测表，new_session 可查。\n\nchapter_seq 非空（§右栏按章过滤）：只返回覆盖该章的任务——单章按 chapter_seq 精确\n匹配、批次按 payload.start..start+size 范围覆盖；cost_total 随之收窄为该章 agent_runs\n切片（批次 = {batch_id}:ch{seq} 行，单章 = 全任务；批次 book 级 run 如 batch_plan 不计入章成本）。",
         "operationId": "list_project_tasks_internal_v1_projects__project_id__tasks_get",
         "parameters": [
           {
@@ -3589,6 +4391,22 @@
             "schema": {
               "title": "Project Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "chapter_seq",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Chapter Seq"
             }
           },
           {
@@ -3696,6 +4514,66 @@
         "summary": "World View",
         "tags": [
           "book"
+        ]
+      }
+    },
+    "/internal/v1/rankings": {
+      "get": {
+        "description": "扫榜响应：source=remote（实时榜单）/ sample（降级样例），error 为降级原因。",
+        "operationId": "get_rankings_internal_v1_rankings_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "refresh",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Refresh",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RankingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Rankings",
+        "tags": [
+          "rankings"
         ]
       }
     },

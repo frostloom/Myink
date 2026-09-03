@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Iterable
 
 from langgraph.checkpoint.postgres import PostgresSaver
 from psycopg import Connection
@@ -41,3 +42,21 @@ def build_checkpointer() -> PostgresSaver:
     saver.setup()  # 建 checkpoints / checkpoint_blobs / checkpoint_writes
     _build["saver"] = saver
     return saver
+
+
+def delete_threads(thread_ids: Iterable[str]) -> None:
+    """按 thread_id 清理 LangGraph checkpoint 三张内部表（整本书删除现场）。
+
+    checkpoint 三表无 project_id、无 RLS、无 FK 级联（checkpoint_blobs/writes 对
+    checkpoints 无 REFERENCES），必须显式按 thread_id 全删；batch 每章 run id 形如
+    `{batch_id}:ch{seq}`（§任务）→ 用 LIKE `{tid}:ch%` 一并覆盖。
+    thread_ids 集合 = 删除前从 tasks 表快照的任务 id（单章=裸 task_id，批次=裸 batch_id）。
+    """
+    with Connection.connect(_CONN_STR, autocommit=True, prepare_threshold=0) as conn:
+        for tid in thread_ids:
+            for table in ("checkpoint_writes", "checkpoint_blobs", "checkpoints"):
+                # psycopg3 原生字符串 SQL + %s 占位（like 的 % 在绑定值里，不在 SQL 文本中）
+                conn.execute(
+                    f"DELETE FROM {table} WHERE thread_id = %s OR thread_id LIKE %s",
+                    (tid, f"{tid}:ch%"),
+                )

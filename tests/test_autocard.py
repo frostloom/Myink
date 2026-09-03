@@ -142,6 +142,54 @@ def test_new_entity_invalid_type_skipped(temp_project):
         assert _count(db, Entity, canonical_name="诛仙剑") == 0, "白名单外类型不应登记"
 
 
+def _stub_llm(monkeypatch, payload):
+    """mock nodes._llm：返回固定 extract JSON，不真调 LLM（make_chain 仅构造成员无网络）。"""
+    import json
+    from types import SimpleNamespace
+
+    from aiink.workflow import nodes
+
+    def fake_llm(db, state, node, role, chain, messages, **kw):
+        return SimpleNamespace(error=None, content=json.dumps(payload, ensure_ascii=False)), []
+
+    monkeypatch.setattr(nodes, "_llm", fake_llm)
+    return nodes
+
+
+def test_extract_character_card_drops_existing_name(temp_project, monkeypatch):
+    """抽取侧去重（§7.11 ④，防 resume 死循环）：正文已建档人物再出卡 → 候选被丢弃。
+
+    缺此守卫时 resume 重跑会把已确认角色反复抽成新卡 → persist 恒 has_card → 章节
+    永远 awaiting_review、正文永远不落库。落库侧（_persist_candidates）去重已有，但
+    进池前必须拦掉，否则 persist 的 has_card 检查仍会暂停。
+    """
+    with tenant_session(temp_project) as db:
+        db.add(Character(project_id=uuid.UUID(temp_project), name="沈青", realm_cap="金丹"))
+        db.flush()
+    nodes = _stub_llm(monkeypatch, {"candidates": [
+        {"kind": "character_card", "source_chapter": 1, "payload": dict(_CARD), "confidence": 0.9},
+        {"kind": "new_entity", "source_chapter": 1, "payload": dict(_ENTITY), "confidence": 0.8},
+    ]})
+    with tenant_session(temp_project) as db:
+        cands, err = nodes.extract_candidates_from_draft(
+            db, project_id=temp_project, chapter_seq=1, draft="正文")
+        assert err is None
+        assert [c["kind"] for c in cands] == ["new_entity"], \
+            f"已建档名字沈青不应再抽成新卡: {cands}"
+
+
+def test_extract_character_card_keeps_new_name(temp_project, monkeypatch):
+    """未建档新名字正常出卡（不误杀）：新人物卡片候选应保留进待确认池。"""
+    nodes = _stub_llm(monkeypatch, {"candidates": [
+        {"kind": "character_card", "source_chapter": 1, "payload": dict(_CARD), "confidence": 0.9},
+    ]})
+    with tenant_session(temp_project) as db:
+        cands, err = nodes.extract_candidates_from_draft(
+            db, project_id=temp_project, chapter_seq=1, draft="正文")
+        assert err is None
+        assert len(cands) == 1 and cands[0]["kind"] == "character_card"
+
+
 def test_empty_name_card_does_not_block_auto(temp_project):
     """空名卡片（审计 Low-4）：不触发池分流、不建卡，章节照常 auto 落库。"""
     state = {

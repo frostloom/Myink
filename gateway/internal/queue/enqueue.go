@@ -1,10 +1,11 @@
-// Package queue 任务入队 + 三层闸门（§13）+ 退避重投 / DLQ / 崩溃认领（§6.12）。
+// Package queue 任务入队：三层闸门（§13，gates.lua）+ RabbitMQ 发布（publisher confirm，失败补偿）。
 package queue
 
 import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -17,11 +18,8 @@ import (
 //go:embed gates.lua
 var gatesScript string
 
-const (
-	StreamTasks = "queue:tasks"
-	StreamDelay = "queue:delay"
-	StreamDLQ   = "queue:dlq"
-)
+//go:embed compensate.lua
+var compensateScript string
 
 type EnqueueResult struct {
 	TaskID  string `json:"task_id"`
@@ -35,20 +33,25 @@ type GateError struct {
 
 func (e *GateError) Error() string { return e.Message }
 
-// Enqueue 原子执行三层闸门 + 入队（gates.lua，消灭 TOCTOU）。
-// userID 阶段 2 占位（X-AiInk-User 头）；projectID 由网关从路径取。
-// taskType: chapter_generate | batch_generate。
-// payload 含章节/批次参数；quotaDeductN 单章=1、批次=N（§13 批次扣减）。
-func Enqueue(ctx context.Context, r *redis.Client, cfg config.Config,
-	userID, projectID, taskType string, payload map[string]any, quotaDeductN int, costEst float64) (*EnqueueResult, error) {
+// Enqueue 三层闸门（gates.lua，消灭 TOCTOU）+ RabbitMQ 发布（publisher confirm）。
+// userID/projectID/taskType/payload/quotaDeductN/costEst 语义同前（taskType: chapter_generate|batch_generate）；
+// priority 为 RabbitMQ 消息优先级（VIP=9 / normal=0，主队列 x-max-priority=10）。
+// 失败语义：
+//   - GateError：闸门拒绝（配额/并发/成本超限），无副作用
+//   - 发布确定失败（发送前错误 / broker nack）：跑 compensate.lua 回滚闸门副作用
+//   - 发布结果不确定（confirm 超时）：不补偿（消息可能已入队，worker 幂等兜底），按失败返回
+func Enqueue(ctx context.Context, r *redis.Client, rmq *AMQP, cfg config.Config,
+	userID, projectID, taskType string, payload map[string]any, quotaDeductN int, costEst float64, priority int) (*EnqueueResult, error) {
 
 	now := time.Now()
 	taskID := uuid.NewString()
 	quotaKey := fmt.Sprintf("rate:quota:%s:%s", userID, now.Format("2006-01-02"))
 	costKey := fmt.Sprintf("rate:cost:%s", now.Format("2006-01-02"))
+	inflightKey := fmt.Sprintf("rate:inflight:%s:%s", userID, projectID)
+	bookQuotaKey := fmt.Sprintf("rate:bookquota:%s:%s:%s", userID, projectID, now.Format("2006-01-02"))
+	bookCntKey := fmt.Sprintf("rate:bookcnt:%s:%s", userID, now.Format("2006-01-02"))
 
-	// 消息体与 worker 侧对齐（consumer 读 fields["body"]，processor 取 task_id/payload/...）：
-	// queue:tasks 单字段 body = 整条任务字典 JSON，payload 保持嵌套对象而非字符串。
+	// 消息体 = 任务 JSON 本身（协议不变量：worker 直接 json.loads，不再包 {"body":...}）。
 	bodyJSON, err := json.Marshal(map[string]any{
 		"task_id":     taskID,
 		"task_type":   taskType,
@@ -64,14 +67,10 @@ func Enqueue(ctx context.Context, r *redis.Client, cfg config.Config,
 		return nil, err
 	}
 
+	// 三层闸门：KEYS 布局与 gates.lua 头注释一致（入队职责已迁 RabbitMQ，无 StreamTasks）
 	res, err := r.Eval(ctx, gatesScript,
-		// 并发闸门按书粒度（§13 BYOK：每书 1 并发，异书并行；同书串行靠 worker 侧 book 锁）
-		[]string{StreamTasks, quotaKey, fmt.Sprintf("rate:inflight:%s:%s", userID, projectID), costKey,
-			// 每书日配额（多书写书双层限制）
-			fmt.Sprintf("rate:bookquota:%s:%s:%s", userID, projectID, now.Format("2006-01-02")),
-			// 每天最多 N 本不同书（Set 去重，成员=project_id）
-			fmt.Sprintf("rate:bookcnt:%s:%s", userID, now.Format("2006-01-02"))},
-		taskID, string(bodyJSON),
+		[]string{quotaKey, inflightKey, costKey, bookQuotaKey, bookCntKey},
+		taskID,
 		fmt.Sprint(quotaDeductN), fmt.Sprint(costEst),
 		fmt.Sprint(cfg.QuotaDaily), fmt.Sprint(cfg.DailyBudget), fmt.Sprint(cfg.BookQuotaDaily),
 		fmt.Sprint(cfg.BooksPerDay), projectID)
@@ -87,6 +86,21 @@ func Enqueue(ctx context.Context, r *redis.Client, cfg config.Config,
 	if code != 1 {
 		reason, _ := arr[1].(string)
 		return nil, &GateError{Code: reason, Message: reason}
+	}
+
+	// RabbitMQ 发布（publisher confirm）
+	if err := rmq.PublishTask(ctx, bodyJSON, priority); err != nil {
+		if errors.Is(err, ErrPublishAmbiguous) {
+			// 结果不确定：不补偿（消息可能已入队，worker 幂等兜底）
+			return nil, fmt.Errorf("enqueue: %w", err)
+		}
+		// 确定失败：回滚闸门副作用（配额 + 并发占位；bookcnt 不反悔，罕见多计可接受）
+		if _, cerr := r.Eval(ctx, compensateScript,
+			[]string{quotaKey, bookQuotaKey, inflightKey},
+			fmt.Sprint(quotaDeductN), taskID); cerr != nil {
+			return nil, fmt.Errorf("enqueue: publish: %w (compensate: %v)", err, cerr)
+		}
+		return nil, fmt.Errorf("enqueue: publish: %w", err)
 	}
 	return &EnqueueResult{TaskID: taskID, TraceID: taskID}, nil
 }

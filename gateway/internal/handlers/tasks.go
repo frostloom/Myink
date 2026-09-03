@@ -20,11 +20,12 @@ import (
 type TaskHandler struct {
 	cfg config.Config
 	r   *redis.Client
+	rmq *queue.AMQP
 	py  *pyapi.Client
 }
 
-func NewTaskHandler(cfg config.Config, r *redis.Client, py *pyapi.Client) *TaskHandler {
-	return &TaskHandler{cfg: cfg, r: r, py: py}
+func NewTaskHandler(cfg config.Config, r *redis.Client, rmq *queue.AMQP, py *pyapi.Client) *TaskHandler {
+	return &TaskHandler{cfg: cfg, r: r, rmq: rmq, py: py}
 }
 
 // 建单章生成任务（三层闸门扣 1）。
@@ -89,7 +90,12 @@ func (h *TaskHandler) enqueue(c *gin.Context, projectID, taskType string, payloa
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	res, err := queue.Enqueue(ctx, h.r, h.cfg, GetUserID(c), projectID, taskType, payload, quotaN, costEst)
+	// VIP 优先：JWT tier claim → RabbitMQ priority（vip→9 / 其他→0）
+	priority := h.cfg.NormalPriority
+	if GetUserTier(c) == "vip" {
+		priority = h.cfg.VIPPriority
+	}
+	res, err := queue.Enqueue(ctx, h.r, h.rmq, h.cfg, GetUserID(c), projectID, taskType, payload, quotaN, costEst, priority)
 	if err != nil {
 		var ge *queue.GateError
 		if errors.As(err, &ge) {
@@ -300,12 +306,19 @@ func (h *TaskHandler) UpdateProject(c *gin.Context) {
 	h.forwardToPy(c, "/internal/v1/projects/"+pid, body)
 }
 
+// 整本书删除（硬删：守卫进行中任务 → 级联清业务表/向量/checkpoint/Redis 残留，转发 Python API）。
+// DELETE /api/v1/projects/:project_id
+func (h *TaskHandler) DeleteProject(c *gin.Context) {
+	pid := c.Param("project_id")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid, nil)
+}
+
 // 设定骨架草稿（§7.11 ②：一句话梗概 → Planner 提案，可反复重新生成，转发 Python API）。
 // POST /api/v1/projects/:project_id/setup-draft  body: {"premise": "..."}
 func (h *TaskHandler) SetupDraft(c *gin.Context) {
 	pid := c.Param("project_id")
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/setup-draft", body)
+	h.forwardToPyLong(c, "/internal/v1/projects/"+pid+"/setup-draft", body)
 }
 
 // 设定确认落库（§7.11 ③ append-only：用户确认 = 编排层写库入口，转发 Python API）。
@@ -314,6 +327,29 @@ func (h *TaskHandler) Setup(c *gin.Context) {
 	pid := c.Param("project_id")
 	body, _ := io.ReadAll(c.Request.Body)
 	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/setup", body)
+}
+
+// 整书大纲草稿（§11 建书 ③：梗概 + 大致章节数 + 大致故事线 → Planner 提案，不落库，转发 Python API）。
+// POST /api/v1/projects/:project_id/outline-draft  body: {"premise": "...", "chapter_count": 20, "storyline": "..."}
+func (h *TaskHandler) OutlineDraft(c *gin.Context) {
+	pid := c.Param("project_id")
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPyLong(c, "/internal/v1/projects/"+pid+"/outline-draft", body)
+}
+
+// 整书大纲确认落库（§11 ③：arc + 逐章目标整体替换 volume_outlines 单行，转发 Python API）。
+// PUT /api/v1/projects/:project_id/outline  body: {"arc": [...], "chapters": [...], ...}
+func (h *TaskHandler) PutOutline(c *gin.Context) {
+	pid := c.Param("project_id")
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/outline", body)
+}
+
+// 整书大纲读取（§11 前端展示 / 重新生成输入，转发 Python API）。
+// GET /api/v1/projects/:project_id/outline
+func (h *TaskHandler) GetOutline(c *gin.Context) {
+	pid := c.Param("project_id")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/outline", nil)
 }
 
 // 世界观浏览（world_rules/hard_constraints + 势力/地点，转发 Python API）。
@@ -337,6 +373,26 @@ func (h *TaskHandler) ListEntities(c *gin.Context) {
 	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/entities", nil)
 }
 
+// 世界拓扑全量（§9 图谱：4 类节点 + 人物关系/地点层级边，转发 Python API）。
+// GET /api/v1/projects/:project_id/graph
+func (h *TaskHandler) GetGraph(c *gin.Context) {
+	pid := c.Param("project_id")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/graph", nil)
+}
+
+// 伏笔池台账（§7.9 状态机全量：planted/developing/resolved/dropped，转发 Python API）。
+// GET /api/v1/projects/:project_id/foreshadows
+func (h *TaskHandler) ListForeshadows(c *gin.Context) {
+	pid := c.Param("project_id")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/foreshadows", nil)
+}
+
+// 扫榜（§10 MCP Client 拉取外部榜单，只作建书前的灵感工具；全局无项目端点，转发 Python API）。
+// GET /api/v1/rankings
+func (h *TaskHandler) ListRankings(c *gin.Context) {
+	h.forwardToPy(c, "/internal/v1/rankings", nil)
+}
+
 // 全局审计报告列表（阶段 4 审计视图导航）：最新在前，转发 Python API。
 // GET /api/v1/projects/:project_id/global-audit
 func (h *TaskHandler) ListGlobalAudits(c *gin.Context) {
@@ -358,6 +414,28 @@ func (h *TaskHandler) GetGlobalAudit(c *gin.Context) {
 func (h *TaskHandler) AuthToken(c *gin.Context) {
 	body, _ := io.ReadAll(c.Request.Body)
 	h.forwardToPy(c, "/internal/v1/auth/token", body)
+}
+
+// forwardToPyLong 同 forwardToPy，但超时放宽到 180s（> Python 侧 LLM 120s 上限）。
+// 仅长耗时同步生成端点使用：真实 Planner 生成整书大纲（几十上百章逐章目标）或设定骨架草稿
+// 常超 30s，若用统一 30s 转发会在 LLM 完成前掐断 → 502。
+func (h *TaskHandler) forwardToPyLong(c *gin.Context, path string, body []byte) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 180*time.Second)
+	defer cancel()
+
+	header := c.Request.Header.Clone()
+	header.Set(HeaderUser, GetUserID(c))
+	resp, err := h.py.ForwardLong(ctx, c.Request.Method, path, c.Request.URL.Query(), header, bytes.NewReader(body))
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "python_api_unreachable"})
+		return
+	}
+	defer resp.Body.Close()
+	c.Status(resp.StatusCode)
+	c.Header("Content-Type", resp.Header.Get("Content-Type"))
+	if _, err := io.Copy(c.Writer, resp.Body); err != nil {
+		c.Abort()
+	}
 }
 
 // forwardToPy 把请求体原样转发 Python API 并透传响应。

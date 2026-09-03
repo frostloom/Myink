@@ -18,6 +18,7 @@ from aiink.api.routes_candidates import router as candidates_router
 from aiink.api.routes_chapters import router as chapters_router
 from aiink.api.routes_global_audit import router as global_audit_router
 from aiink.api.routes_lessons import router as lessons_router
+from aiink.api.routes_rankings import router as rankings_router
 from aiink.api.routes_settings import router as settings_router
 from aiink.api.routes_style import router as style_router
 from aiink.api.routes_tasks import router as tasks_router
@@ -48,6 +49,7 @@ app.include_router(lessons_router)
 app.include_router(style_router)
 app.include_router(settings_router)
 app.include_router(global_audit_router)
+app.include_router(rankings_router)
 
 
 @app.get("/healthz")
@@ -125,6 +127,7 @@ def list_chapters(project_id: str) -> list[dict]:
                 "title": c.title,
                 "status": c.status,
                 "word_count": len(c.content or ""),
+                "summary": c.summary,
             }
             for c in rows
         ]

@@ -14,7 +14,7 @@ import json
 from types import SimpleNamespace
 
 from aiink.providers.base import ModelResponse
-from aiink.providers.deepseek import DeepSeekProvider
+from aiink.providers.deepseek import DeepSeekProvider, MAX_RETRIES
 
 
 def _fake_create(content: str = "", reasoning_content: str = ""):
@@ -66,5 +66,28 @@ def test_both_empty_returns_error():
     """content 与 reasoning_content 皆空：返回 error 触发 FallbackChain 降级重试（§6.12 ①）。"""
     p = _provider_with(_fake_create(content="", reasoning_content=""))
     resp: ModelResponse = p.generate([{"role": "user", "content": "x"}], model_id="deepseek-v4-flash")
+    assert resp.error is not None
+    assert "空白/空内容" in resp.error
+
+
+def test_empty_content_retries_then_error():
+    """皆空：在既有循环内快速重试 MAX_RETRIES 次（不 sleep），用尽才返回 error。
+
+    回归（2026-08-22）：此前皆空立即返回 error，flash→pro 两条模型同病就白给；现在
+    快速重发可自愈瞬时输出异常，用尽仍返回 error 触发 FallbackChain 降级链。
+    """
+    calls = {"n": 0}
+
+    def create(**kwargs):
+        calls["n"] += 1
+        usage = SimpleNamespace(prompt_tokens=10, completion_tokens=5,
+                                prompt_cache_hit_tokens=0)
+        message = SimpleNamespace(content=None, reasoning_content=None, tool_calls=None)
+        return SimpleNamespace(usage=usage,
+                               choices=[SimpleNamespace(message=message)])
+
+    p = _provider_with(create)
+    resp: ModelResponse = p.generate([{"role": "user", "content": "x"}], model_id="deepseek-v4-flash")
+    assert calls["n"] == MAX_RETRIES + 1, f"皆空应重试 {MAX_RETRIES} 次后返回 error，实际 {calls['n']} 次"
     assert resp.error is not None
     assert "空白/空内容" in resp.error

@@ -35,25 +35,27 @@ var (
 // （否则 Python 侧归属断言可被绕过，§14.1 ③）。
 func JWTMiddleware(secret []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		sub, err := verifyJWT(c.GetHeader("Authorization"), secret)
+		sub, tier, err := verifyJWT(c.GetHeader("Authorization"), secret)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
 		c.Set("user_id", sub)
+		c.Set("user_tier", tier)
 		c.Header(HeaderUser, sub)
 		c.Next()
 	}
 }
 
-// verifyJWT 解析 `Bearer <token>` 并验签，返回可信 sub。失败返回对应 AuthError。
-func verifyJWT(authHeader string, secret []byte) (string, error) {
+// verifyJWT 解析 `Bearer <token>` 并验签，返回可信 sub + tier。失败返回对应 AuthError。
+// tier 用于入队优先级（VIP → 高 priority；老 token 无 claim 回落 normal，优先级退化）。
+func verifyJWT(authHeader string, secret []byte) (string, string, error) {
 	if authHeader == "" {
-		return "", errMissingToken
+		return "", "", errMissingToken
 	}
 	parts := strings.SplitN(authHeader, " ", 2)
 	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") || strings.TrimSpace(parts[1]) == "" {
-		return "", errInvalidToken
+		return "", "", errInvalidToken
 	}
 	token, err := jwt.Parse(parts[1], func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -62,13 +64,19 @@ func verifyJWT(authHeader string, secret []byte) (string, error) {
 		return secret, nil
 	}, jwt.WithValidMethods([]string{"HS256"}))
 	if err != nil || !token.Valid {
-		return "", errInvalidToken
+		return "", "", errInvalidToken
 	}
 	sub, err := token.Claims.GetSubject()
 	if err != nil || sub == "" {
-		return "", errInvalidSubject
+		return "", "", errInvalidSubject
 	}
-	return sub, nil
+	tier := "normal"
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		if t, _ := claims["tier"].(string); t != "" {
+			tier = t
+		}
+	}
+	return sub, tier, nil
 }
 
 // GetUserID 取当前请求用户 ID（JWTMiddleware 之后，可信 sub）。
@@ -79,6 +87,16 @@ func GetUserID(c *gin.Context) string {
 		}
 	}
 	return ""
+}
+
+// GetUserTier 取当前请求用户等级（JWTMiddleware 之后，tier claim；缺省 normal）。
+func GetUserTier(c *gin.Context) string {
+	if v, ok := c.Get("user_tier"); ok {
+		if s, ok := v.(string); ok && s != "" {
+			return s
+		}
+	}
+	return "normal"
 }
 
 // GetTraceID 取当前请求 trace_id（trace.Middleware 之后）。

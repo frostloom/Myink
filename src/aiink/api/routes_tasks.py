@@ -5,11 +5,11 @@
   切书后展示过往任务，点开任一条再走 `GET /tasks/{id}` 拿完整节点流转（agent_runs）。
 - pause/resume/cancel（§6.12 暂停 vs 取消）：
   - pause    → status=paused（保留 Checkpointer 现场；真正节点级中断是阶段 3）
-  - resume   → status in (failed/paused) → 置 queued + XADD 一条 batch_resume 消息
+  - resume   → status in (failed/paused) → 置 queued + publish 一条 batch_resume 消息
                （同 task_id → thread_id 断点续跑，§6.12）
   - cancel   → status=cancelled（尽力而为，不回滚已落库；runner 终态守卫不回写）
-- resume 的 XADD 复用 worker 的队列 key 约定（queue:tasks），网关 dispatcher 不会重复
-  XADD（它只重投 queue:delay / XAUTOCLAIM PENDING）。
+- resume 的发布复用 worker 的 RabbitMQ 拓扑（aiink.tasks key=tasks，见 worker/amqp.py），
+  与网关入队同一主队列；延迟/死信由 RabbitMQ 侧承担，无网关 dispatcher。
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from aiink.api.schemas import TaskControlOut, TaskDetailOut, TaskSummaryOut
 from aiink.config import settings
 from aiink.db import new_session
 from aiink.models import AgentRun, Task
-from aiink.worker.redis_client import get_redis, stream_name
+from aiink.worker import amqp
 
 router = APIRouter(prefix="/internal/v1", tags=["tasks"])
 
@@ -83,6 +83,7 @@ def _task_payload(task_id: str, with_runs: bool = True) -> dict:
             )
             data["runs"] = [
                 {
+                    "task_id": r.task_id,
                     "node": r.node,
                     "model_id": r.model_id,
                     "input_tokens": r.input_tokens,
@@ -110,11 +111,15 @@ def get_task(task_id: str) -> dict:
 
 @router.get("/projects/{project_id}/tasks",
             dependencies=[Depends(require_owner)], response_model=list[TaskSummaryOut])
-def list_project_tasks(project_id: str) -> list[dict]:
+def list_project_tasks(project_id: str, chapter_seq: int | None = None) -> list[dict]:
     """项目任务历史（最近 50 条，倒序）：前端切书后展示过往任务，点开再拉详情拿流转。
 
     轻量摘要不含 runs（重量留给 GET /tasks/{id}）；批次进度派生（persist 去重章数）。
     require_owner 归属断言由依赖挂载（§14.1 ③）；tasks 无 RLS 观测表，new_session 可查。
+
+    chapter_seq 非空（§右栏按章过滤）：只返回覆盖该章的任务——单章按 chapter_seq 精确
+    匹配、批次按 payload.start..start+size 范围覆盖；cost_total 随之收窄为该章 agent_runs
+    切片（批次 = {batch_id}:ch{seq} 行，单章 = 全任务；批次 book 级 run 如 batch_plan 不计入章成本）。
     """
     pid = _task_uuid(project_id)
     with new_session() as db:
@@ -130,14 +135,40 @@ def list_project_tasks(project_id: str) -> list[dict]:
         # （batch_plan/reflexion）。统一按「:」前段分桶，等价 _task_payload 的 LIKE 口径。
         # 一次查询取全部（项目级量级小，观测表无 RLS），避免逐任务子查询。
         runs = db.query(AgentRun.task_id, AgentRun.cost_est).filter(AgentRun.project_id == pid).all()
-        cost_by_task: dict[str, float] = {}
-        for tid, cost in runs:
-            if not tid:
-                continue
-            prefix = tid.split(":")[0]
-            cost_by_task[prefix] = cost_by_task.get(prefix, 0.0) + (cost or 0.0)
+        if chapter_seq is None:
+            # 全量口径：前缀分桶（批次 = 全批含 book 级 run；单章 = 全任务）
+            cost_by_task: dict[str, float] = {}
+            for tid, cost in runs:
+                if not tid:
+                    continue
+                prefix = tid.split(":")[0]
+                cost_by_task[prefix] = cost_by_task.get(prefix, 0.0) + (cost or 0.0)
+        else:
+            # 按章口径：批次只计 {batch_id}:ch{seq} 行；单章任务 = chapter_seq 命中时全任务
+            batch_ch_cost: dict[str, float] = {}
+            bare_cost: dict[str, float] = {}
+            for tid, cost in runs:
+                if not tid:
+                    continue
+                if tid.count(":ch") == 1:
+                    b, _, ch = tid.partition(":ch")
+                    if ch.isdigit() and int(ch) == chapter_seq:
+                        batch_ch_cost[b] = batch_ch_cost.get(b, 0.0) + (cost or 0.0)
+                else:
+                    bare_cost[tid] = bare_cost.get(tid, 0.0) + (cost or 0.0)
+            cost_by_task = {}
+            for t in tasks:
+                if t.task_type == "batch_generate" and t.payload:
+                    start = int(t.payload.get("start", 1))
+                    size = int(t.payload.get("size", 0))
+                    if start <= chapter_seq < start + size:
+                        cost_by_task[str(t.id)] = batch_ch_cost.get(str(t.id), 0.0)
+                elif t.chapter_seq == chapter_seq:
+                    cost_by_task[str(t.id)] = bare_cost.get(str(t.id), 0.0)
         result = []
         for t in tasks:
+            if chapter_seq is not None and str(t.id) not in cost_by_task:
+                continue  # 不覆盖本章的任务过滤掉
             item: dict = {
                 "task_id": str(t.id),
                 "task_type": t.task_type,
@@ -196,7 +227,7 @@ def resume_task(task_id: str) -> dict:
         "retry_count": 0,
         "created_at": "",
     }
-    get_redis().xadd(stream_name(), {"body": json.dumps(body)})
+    amqp.publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS)
     return {"task_id": task_id, "status": "queued", "message": "已投递续跑消息"}
 
 
