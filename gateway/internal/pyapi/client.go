@@ -15,6 +15,7 @@ type Client struct {
 	base    string
 	httpc   *http.Client
 	timeout time.Duration
+	longc   *http.Client // 长耗时同步生成端点专用（LLM 草稿生成常态超 30s）
 }
 
 func New(base string, timeout time.Duration) *Client {
@@ -22,11 +23,27 @@ func New(base string, timeout time.Duration) *Client {
 		base:    base,
 		timeout: timeout,
 		httpc:   &http.Client{Timeout: timeout},
+		longc:   &http.Client{Timeout: 180 * time.Second},
 	}
 }
 
 // Forward 把网关请求原样转发给 Python API（方法/路径/查询/头/体），响应透传。
 // 用于 tasks 详情、pause/resume/cancel、章节 CRUD 等同步查询与控制端点。
+func (c *Client) ForwardLong(ctx context.Context, method, path string, query url.Values, header http.Header, body io.Reader) (*http.Response, error) {
+	u := c.base + path
+	if len(query) > 0 {
+		u += "?" + query.Encode()
+	}
+	req, err := http.NewRequestWithContext(ctx, method, u, body)
+	if err != nil {
+		return nil, err
+	}
+	// 透传对 RLS/租户上下文有意义的头（含 X-AiInk-User 占位身份）
+	for k := range header {
+		req.Header.Set(k, header.Get(k))
+	}
+	return c.longc.Do(req)
+}
 func (c *Client) Forward(ctx context.Context, method, path string, query url.Values, header http.Header, body io.Reader) (*http.Response, error) {
 	u := c.base + path
 	if len(query) > 0 {

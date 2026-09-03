@@ -72,8 +72,9 @@ class DeepSeekProvider(ModelProvider):
                 # v4 思考模式默认开启，`thinking: disabled` 偶发不生效（§19.3）：
                 # content 空或全空白但 reasoning_content 有内容时兜底——实测 json_mode
                 # 最终轮偶发返回「全空白占位 content」（122 空格，`not content` 抓不住），
-                # 避免下游 _parse_json("") 崩整章。reasoning 也空白 → 返回 error 触发
-                # FallbackChain 降级重试（§6.10/§6.12 ① 模型降级链）。
+                # 避免下游 _parse_json("") 崩整章。reasoning 也空白 → 快速重试（瞬时输出
+                # 异常，不 sleep 区别于网络退避），用尽后返回 error 触发 FallbackChain
+                # 降级链（§6.10/§6.12 ① 模型降级链）——两档叠加治「两条模型同病」白给。
                 # 注意：工具轮 content 空 + tool_calls 非空是正常情况（模型只输出工具
                 # 调用不输出文本），不触发空白兜底。
                 if not content.strip() and not getattr(message, "tool_calls", None):
@@ -82,6 +83,10 @@ class DeepSeekProvider(ModelProvider):
                         logger.warning("DeepSeek content 为空/空白，用 reasoning_content 兜底 (node/model=%s)", model_id)
                         content = reasoning
                     else:
+                        if attempt < MAX_RETRIES:
+                            logger.warning("DeepSeek 返回空白/空内容（attempt=%d/%d），快速重试",
+                                           attempt, MAX_RETRIES)
+                            continue
                         return ModelResponse(
                             content="", model_id=model_id,
                             error="DeepSeek 返回空白/空内容（thinking disabled 失效或输出异常）",

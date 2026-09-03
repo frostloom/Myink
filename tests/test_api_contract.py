@@ -1,6 +1,6 @@
 """HTTP 响应契约套件（阶段 5 契约测试形式化）。
 
-单一事实源 = FastAPI `app.openapi()`：33 条公开消费端点（前端 api.ts 方法逐一覆盖，
+单一事实源 = FastAPI `app.openapi()`：全部公开消费端点（前端 api.ts 方法逐一覆盖，
 含任务历史列表 tasks、写作经验 lessons×3、correct-memory、级联删章）挂 response_model
 （src/aiink/api/schemas.py）后，openapi 响应 schema有实质内容；`aiink contract export`
 导出到 spec/api-openapi.json 提交入库，本套件与 CI 的 `git diff --exit-code` 构成双闸
@@ -26,6 +26,7 @@ PUBLIC_ENDPOINTS: list[tuple[str, str]] = [
     ("GET", "/internal/v1/projects"),
     ("POST", "/internal/v1/projects"),
     ("PUT", "/internal/v1/projects/{project_id}"),
+    ("DELETE", "/internal/v1/projects/{project_id}"),
     ("GET", "/internal/v1/projects/{project_id}/chapters"),
     ("GET", "/internal/v1/projects/{project_id}/chapters/{chapter_id}"),
     ("PUT", "/internal/v1/projects/{project_id}/chapters/{chapter_id}/content"),
@@ -49,9 +50,16 @@ PUBLIC_ENDPOINTS: list[tuple[str, str]] = [
     ("PUT", "/internal/v1/projects/{project_id}/style-profile"),
     ("POST", "/internal/v1/projects/{project_id}/setup-draft"),
     ("PUT", "/internal/v1/projects/{project_id}/setup"),
+    # 整书大纲（§11 建书 ③：草稿 / 确认落库 / 读取）
+    ("POST", "/internal/v1/projects/{project_id}/outline-draft"),
+    ("PUT", "/internal/v1/projects/{project_id}/outline"),
+    ("GET", "/internal/v1/projects/{project_id}/outline"),
     ("GET", "/internal/v1/projects/{project_id}/world"),
     ("GET", "/internal/v1/projects/{project_id}/characters"),
     ("GET", "/internal/v1/projects/{project_id}/entities"),
+    ("GET", "/internal/v1/projects/{project_id}/graph"),
+    ("GET", "/internal/v1/projects/{project_id}/foreshadows"),
+    ("GET", "/internal/v1/rankings"),
     ("GET", "/internal/v1/projects/{project_id}/settings"),
     ("PUT", "/internal/v1/projects/{project_id}/settings"),
     ("POST", "/internal/v1/projects/{project_id}/global-audit"),

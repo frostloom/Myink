@@ -30,6 +30,8 @@ export interface ChapterMeta {
   status: ChapterStatus
   /** 正文字符数（len 口径，与 L1 字数门禁同源 §6.9；章节列表/正文侧展示） */
   word_count: number | null
+  /** 章节摘要（§7 短期记忆：该章发生了什么，前端章节记忆区块展示） */
+  summary: string | null
 }
 
 /** 单章详情（get_chapter，main.py:117；无 version——version 由保存响应返回） */
@@ -102,6 +104,8 @@ export type RunNode =
   | (string & {})
 
 export interface AgentRun {
+  /** 所属子线程：批次 = {batch_id}:ch{seq}，单章 = 裸任务 id（右栏按选中章过滤流转） */
+  task_id?: string | null
   node: RunNode
   model_id: string | null
   input_tokens: number
@@ -180,6 +184,7 @@ export type CandidateKind =
   | 'character_state'
   | 'relation_change'
   | 'foreshadow'
+  | 'foreshadow_touch'
   | 'chapter_summary'
   | 'memory_removal'
   | 'character_card'
@@ -223,6 +228,12 @@ export interface DeleteChapterResponse {
   deleted: DeletedChapter[]
   /** 删完后的当前最大章序 */
   current_chapter: number
+}
+
+/** 整本书删除结果（DELETE /projects/:pid → Python DeleteProjectOut，阶段 6 硬删） */
+export interface DeleteProjectResponse {
+  project_id: string
+  deleted: boolean
 }
 
 /** 写作经验（GET lessons → Python WritingLessonOut，§8.9 reflexion：批次复盘高危经验） */
@@ -352,6 +363,68 @@ export interface SetupConfirmResponse {
   ok: boolean
 }
 
+/** 整书大纲单章（§11 建书 ③：三层骨架的章层；草稿无 seq，PUT 落库时后端跨卷补全局 seq） */
+export interface OutlineChapter {
+  seq?: number
+  title: string
+  goal: string
+  beats?: string[]
+}
+
+/** 整书大纲卷（§11 ③：Planner 按目标章节数自动分卷，3-5 卷沿故事线起/承/转/合） */
+export interface OutlineVolume {
+  volume_seq?: number
+  title: string
+  theme?: string
+  goal: string
+  key_results?: string[]
+  end_event?: string
+  chapters: OutlineChapter[]
+}
+
+/** 整书大纲草稿请求（§11 ③：梗概 + 大致章节数 + 大致故事线 → Planner 提案） */
+export interface OutlineDraftBody {
+  premise: string
+  chapter_count: number
+  storyline: string
+}
+
+/** 整书大纲草稿响应（不落库可反复生成；LLM 失败 → outline:{} + error 降级） */
+export interface OutlineDraft {
+  outline: BookOutline
+  error: string | null
+}
+
+/** 整书大纲（Objective → 卷 → 逐章目标；确认落库后含 premise/chapter_count/storyline） */
+export interface BookOutline {
+  premise?: string
+  chapter_count?: number
+  storyline?: string
+  objective: string
+  volumes: OutlineVolume[]
+}
+
+/** 整书大纲确认落库请求（PUT outline → volume_outlines 单行整体替换） */
+export interface OutlineConfirmBody {
+  objective: string
+  volumes: Array<{
+    title: string
+    theme?: string
+    goal: string
+    key_results?: string[]
+    end_event?: string
+    chapters: Array<{ title: string; goal: string; beats: string[] }>
+  }>
+  premise: string
+  chapter_count: number
+  storyline: string
+}
+
+/** 整书大纲读取响应（GET outline；无大纲 → outline:null 不 500） */
+export interface BookOutlineResponse {
+  outline: BookOutline | null
+}
+
 /** 势力（世界观浏览） */
 export interface LoreFaction {
   name: string
@@ -392,4 +465,65 @@ export interface LoreEntity {
   name: string
   description: string | null
   first_seen_chapter: number | null
+}
+
+/** 扫榜单条（§10：外部榜单已 sanitize allowlist 字段，只当灵感参考；rank 从 1 起） */
+export interface RankingItem {
+  rank: number
+  title: string
+  author: string | null
+  tags: string[]
+  hot: string | null
+}
+
+/** 世界拓扑节点（GET graph → Python GraphNodeOut，§9 图谱：4 类分组全量含孤立项） */
+export interface GraphNode {
+  id: string
+  name: string
+  type: 'character' | 'faction' | 'location' | 'entity' | (string & {})
+  realm_cap?: string | null
+  stance?: string | null
+  entity_type?: string | null
+  parent_id?: string | null
+}
+
+/** 世界拓扑边（GET graph → Python GraphEdgeOut，§9 图谱：人物关系活跃/失效 + 地点层级） */
+export interface GraphEdge {
+  source_id: string
+  target_id: string
+  /** 人物关系类型（hostile/ally/…）或 hierarchy（地点层级） */
+  edge_type: string
+  confidence?: number | null
+  /** valid_to 非空 → 已失效（前端渲染虚线） */
+  expired: boolean
+  source_chapter?: number | null
+}
+
+/** 世界拓扑全量（GET /projects/:pid/graph → Python WorldGraphOut，ECharts 力导向渲染） */
+export interface WorldGraphResponse {
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+}
+
+/** 伏笔池台账单条（GET /projects/:pid/foreshadows → Python ForeshadowOut，§7.9 状态机） */
+export interface Foreshadow {
+  id: string
+  description: string
+  /** planted / developing / resolved / dropped */
+  status: string
+  planted_chapter: number
+  resolved_chapter: number | null
+  trigger: Record<string, unknown>
+  related_entities: unknown[]
+}
+
+/** 扫榜响应（GET /rankings → Python RankingsOut，§10）。
+ * source=remote（实时榜单）/ sample（降级样例）；error 为降级原因（网络不可达/已禁用）。
+ * 数据只作建书前的题材风向灵感工具，不进记忆/事实层、不注入任何生成节点。 */
+export interface RankingsResponse {
+  source: string
+  tool: string
+  fetched_at: string | null
+  error: string | null
+  items: RankingItem[]
 }

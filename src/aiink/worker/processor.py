@@ -23,6 +23,7 @@ from aiink.config import settings
 from aiink.db import new_session
 from aiink.models import Task
 from aiink.workflow.runner import (
+    finalize_chapter_review,
     generate_batch,
     generate_chapter,
     get_graphs,
@@ -77,6 +78,19 @@ def _resolve_chapter_seq(project_id: str, payload: dict) -> int:
     with tenant_session(project_id) as db:
         proj = db.get(Project, uuid.UUID(project_id))
         return (proj.current_chapter + 1) if proj else 1
+
+
+def _chapter_awaiting_review(project_id: str, seq: int) -> bool:
+    """章节是否处于确认流暂停（§6.11 awaiting_review，待人工处理候选后 resume 放行）。"""
+    from aiink.db import tenant_session
+    from aiink.models import Chapter
+
+    with tenant_session(project_id) as db:
+        ch = db.query(Chapter).filter(
+            Chapter.project_id == uuid.UUID(project_id),
+            Chapter.chapter_seq == seq,
+        ).first()
+        return ch is not None and ch.status == "awaiting_review"
 
 
 class WriteOrderError(Exception):
@@ -173,6 +187,13 @@ def _dispatch(body: dict) -> dict:
         # thread_id 续跑该章；checkpoint 优先（resume_thread 语义），外部只补缺口。
         # rewrite 同透传：重写任务中断后续跑，persist 仍先失效旧记忆（checkpoint 也有，
         # 双保险）。批次续跑不传（批次无单章重写语义）。
+        seq = int(payload.get("seq", 1))
+        # 确认流收尾：章节 awaiting_review（首跑 critical/L2 major/新人物卡片暂停）→
+        # 取 checkpoint 草稿直接落库正文，不走图重跑——LangGraph 1.2.9 resume 语义是
+        # 整图从 START 重跑，确定性输入会再命中确认分流 → 永久 awaiting_review、正文
+        # 永不落库（2026-08-17 用户实测：确认后点续跑变成重新生成）。
+        if _chapter_awaiting_review(project_id, seq):
+            return finalize_chapter_review(project_id=project_id, task_id=task_id, chapter_seq=seq)
         chapter_graph, _ = get_graphs()
         return resume_thread(
             chapter_graph,
@@ -180,7 +201,7 @@ def _dispatch(body: dict) -> dict:
             {
                 "project_id": project_id,
                 "task_id": task_id,
-                "chapter_seq": int(payload.get("seq", 1)),
+                "chapter_seq": seq,
                 "user_instruction": payload.get("user_instruction"),
                 "rewrite": bool(payload.get("rewrite")),
             },
@@ -245,6 +266,23 @@ def _finish(body: dict, decision: str) -> None:
         _accumulate_cost(body)
 
 
+def _maybe_reflexion(project_id: str, chapter_seq: int, task_id: str) -> None:
+    """单章流每 N 章复盘（§8.9 扩展）：失败仅记日志，不阻塞任务终态（SSE done 已发）。
+
+    批次流走 batch_end node_reflexion，不走这里。复盘是加分项：LLM 失败/DB 异常都只
+    warning，绝不把已完成的章节任务拉回失败。
+    """
+    if chapter_seq < 1 or chapter_seq % settings.chapter_reflexion_interval != 0:
+        return
+    from aiink.workflow import nodes
+
+    try:
+        nodes.reflexion_for_chapter_window(project_id=project_id, end_chapter=chapter_seq,
+                                           task_id=task_id)
+    except Exception as exc:
+        logger.warning("章节窗口复盘失败（不阻塞任务）: %s", exc)
+
+
 def _run(body: dict, task_id: str, task_type: str, project_id: str) -> str:
     """派发并分类终态（decision = terminal / retry，SSE 事件在此写）。"""
     _pub_status(task_id, "running")
@@ -283,18 +321,31 @@ def _run(body: dict, task_id: str, task_type: str, project_id: str) -> str:
         logger.error("不可重试失败: %s err=%s", task_id, exc)
         return "terminal"
 
-    # 终态已由 runner 落库（generate_chapter/batch 内部 _set_task_status）。
+    # 终态落库 + SSE。首跑已由 runner 内部 _set_task_status（generate_chapter/batch），
+    # resume 路径（§6.12：chapter_resume/batch_resume 走 resume_thread）runner 不落库，
+    # 此处统一补写终态——否则 resume 完成后任务永久滞留 running（DB 为权威，重启后
+    # 无法续跑也不可重投，2026-08-17 修复）。_set_task_status 幂等且 cancelled 优先
+    # 守卫，对首跑重复设置无害。
     # 先判手动暂停/取消（§6.12：generate_batch 返回 manual_halt 标记）再判转人工
     # （critical 冲突同时带 error 说明）再判失败，保证 SSE 状态正确。
+    from aiink.workflow.runner import _set_task_status
+
     if result.get("manual_halt"):
+        _set_task_status(project_id, task_id, result["manual_halt"])
         _pub_status(task_id, result["manual_halt"])
     elif result.get("needs_review"):
+        _set_task_status(project_id, task_id, "awaiting_review")
         _pub_status(task_id, "awaiting_review")
     elif result.get("error"):
         logger.warning("任务失败（runner 已落 failed）: %s err=%s", task_id, result["error"])
+        _set_task_status(project_id, task_id, "failed", result["error"])
         _pub_status(task_id, "failed", {"error": result["error"]})
     else:
+        _set_task_status(project_id, task_id, "done")
         _pub_status(task_id, "done")
+        # 单章流每 N 章复盘：SSE done 先发、复盘后跑（不延迟用户感知；批次流走 batch_end）
+        if task_type in ("chapter_generate", "chapter_resume"):
+            _maybe_reflexion(project_id, int((body.get("payload") or {}).get("seq", 0)), task_id)
     return "terminal"
 
 

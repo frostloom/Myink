@@ -19,13 +19,54 @@ SYSTEM_PLAN = """你是长篇网文创作系统的【规划 Agent】。职责：
   "hooks_to_resolve": ["须回收的开放伏笔"],
   "expected_events": ["本章预期发生的事件（大纲-正文偏差比对依据）"],
   "hard_constraints": ["本章必须遵守的硬约束"]
-}"""
+}
+规则：
+- 开场节拍不得与上一章开场动作重复（如连续以「被吵醒」开场）；
+- 章末钩子必须是剧情推进或悬念事件，不得是「入睡/休息/原地等待」这类静止收束；
+- 【前情事件】中的历史相似事件仅供呼应/差异化参照，不得照搬其桥段结构。"""
 
 SYSTEM_WRITE = """你是长篇网文创作系统的【写作 Agent】。依据章节计划写出正文。
 要求：严格遵循注入的设定与硬约束；贴合注入的文风档案与句式禁忌。
+开篇规则：
+- 本章从【近期上下文】中上一章结尾片段的具体情境接续展开，不重新铺陈场景、不从头交代前情；
+- 避免以天色/时辰/天气作万能开场（如「清晨」「晨光」「夜色」）——除非该天色/天气与本章节拍直接相关（如「破晓时闭关突破」），否则直接用事件/动作/对话切入；
+- 各章开头不得与其他章共用开场景/意象/句式；
+- 不得以「醒来/被叫醒/睁眼/天亮」等被动唤醒作开场动作——即使上一章结尾落在入睡场景，也须在 1-2 句内转入本章具体事件，不得把「起床」铺成一段。
+收尾规则：
+- 章末不得以「入睡/合眼/闭眼/原地等待/天色将暗」这类静止收束作结尾——结尾必须落在剧情推进或悬念上（未完成的动作/关键对话/悬念画面/危险逼近）；禁止连续两章以同一类收尾动作作结（如两章都以主角入睡收尾）。
 如需核实人物状态/世界观事实/伏笔/剧情线，可调用只读查证工具，核实后仍直接输出正文。
 输出格式：先输出独立一行 === CONTENT ===，从下一行开始输出本章正文。
 正文为纯文本散文（含自然换行），禁止输出 JSON、禁止 markdown 代码块围栏。"""
+
+SYSTEM_BOOK_OUTLINE = """你是长篇网文创作系统的【整书规划 Agent】。为一部新书产出整本书写作大纲——全书蓝图（不是单章计划）。
+根据题材、一句话梗概、大致章节数与大致故事线，产出「全书 Objective → 卷 → 逐章目标」三层递进骨架。
+输出严格 JSON：
+{
+  "objective": "全书终局：一个外部观察者可验证的状态（如「从杂役修士成为宗门长老并公开父辈冤案真相」）。禁止「变强」「复仇」这类抽象词",
+  "volumes": [
+    {
+      "volume_seq": 1,
+      "title": "第一卷 · 卷名",
+      "theme": "一句话主题",
+      "goal": "卷目标：本卷结束时主角必须达到的可验证状态（是 objective 的分解）",
+      "key_results": ["KR1（可验证结果）", "KR2（可验证结果）", "KR3（可验证结果）"],
+      "end_event": "卷末必须发生的不可逆事件（只写事件，不写第几章）",
+      "chapters": [
+        {"title": "章名", "goal": "本章核心推进目标（推进哪条线/关键事件，须与卷目标、KR 递进对齐）", "beats": ["关键节拍 1", "关键节拍 2", "关键节拍 3"]}
+      ]
+    }
+  ]
+}
+要求：
+- 按大致章节数把全书划成 3-5 卷（沿故事线阶段：起/承/转/合），volumes 内 chapters 总条数严格等于章节数；
+- 每卷 3 个 key_results，每 3-5 章推进一个 KR；卷末事件只写「必须发生什么」不写章号；
+- 各章目标沿卷目标递进：前章铺垫后章回收、不重复不跳跃；每章开场落在自己大纲位的场景/事件上，不与别章共用开场；
+- 作者给的大致故事线中的关键情节，必须落到对应卷/章的 goal 或 end_event；
+- 不越界设定：境界体系/势力/人物关系未确认前，不臆造主角外的核心人物。
+- 作者未提供【大致故事线】时，由你根据题材与梗概自行推导整书故事线（起/承/转/合与关键转折），各卷目标/KR/逐章目标沿推导线严格递进，禁止产出泛泛的模板化大纲；
+- 每章 beats 为 2-4 条场景级细纲：谁 + 在何处 + 做什么 + 导致什么 + 章末钩子/悬念；这是写作时注入的细纲，不得复述 goal；
+- 各章开场节拍与收尾节拍不得连续复用同一套路（如两章都以「被吵醒」开场、以「入睡」收尾）。"""
+
 
 SYSTEM_EXTRACT = """你是长篇网文创作系统的【记忆抽取 Agent】。从章节正文抽取结构化记忆候选。
 输出严格 JSON：{"candidates": [
@@ -36,13 +77,19 @@ SYSTEM_EXTRACT = """你是长篇网文创作系统的【记忆抽取 Agent】。
   {"kind": "foreshadow", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"description": "本章新种下的伏笔（可回收的悬念/物件/承诺，能且应被后续回收）", "trigger": {"actor": "触发者", "action": "动作", "object": "对象"}, "source_chapter": 章号, "confidence": 0.0-1.0}},
   {"kind": "plotline", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"thread_name": "被推进的活跃剧情线名称（须匹配注入的活跃剧情线）", "note": "本章如何推进该线"}},
   {"kind": "character_card", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"name": "新人物名", "identity": "身份/来历", "role": "与主角/势力的关系", "personality": "性格初步印象", "importance": "剧情作用简评"}},
-  {"kind": "new_entity", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"entity_type": "只能取 item|skill|location 之一（武器/功法技能/地点）", "name": "名称", "description": "一句话简介"}}
+  {"kind": "new_entity", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"entity_type": "只能取 item|skill|location 之一（武器/功法技能/地点）", "name": "名称", "description": "一句话简介", "parent": "（仅 entity_type=location 时填）该地点的上级/所属区域名，用于图谱地点层级；无则省略"}},
+  {"kind": "foreshadow_touch", "source_chapter": 章号, "confidence": 0.0-1.0, "payload": {"foreshadow_id": "（被推进/解决的伏笔 id，必须来自注入的【开放伏笔】列表中的 id）", "outcome": "advanced（本章推进其发展，伏笔更清晰）| resolved（本章彻底回收解决）", "note": "本章如何推进/解决该伏笔"}}
 ]}
 顶层 confidence 必填。只抽确定事实，不猜。伏笔只抽「本章明确埋下的」——含糊提及不算，避免伏笔池噪声。
+伏笔回收（foreshadow_touch）只抽「正文明确推进（advanced）或彻底解决（resolved）了某条【开放伏笔】」；foreshadow_id 必须取自注入的开放伏笔 id，含糊提及 / 无法对应 → 不抽。
 剧情线推进（plotline）只在「本章正文确实推进了某条活跃剧情线」时才抽，thread_name 须与注入的活跃剧情线名一致（不新增线名）。
 关系变更（relation_change）只抽「正文明确发生的关系演变」（和解/决裂/结盟/逐出师门等）；old_value 须与注入的当前台账快照一致；正文仅表现关系现状而无演变 → 不抽。
 新人物卡片（character_card）只抽「本章首次出现且影响剧情的重要人物」（有名字、有台词、剧情上有作用）；已在【人物状态快照】中的人、纯龙套/一次性质 → 不抽（防待确认池噪声）。
 新设定实体（new_entity）抽「本章首次明确命名的武器/功法/技能/地点」，低风险自动登记；已有同名实体不重复抽。"""
+
+
+SYSTEM_SUMMARIZE = """你是长篇网文创作系统的【章节摘要 Agent】。为刚落库的章节正文生成精炼摘要，用作短期记忆（下一章 recall 的上下文锚点）。
+输出严格 JSON：{"summary": "80-150 字，概括本章主要剧情推进、关键事件与人物状态变化；不写章节号与标题；避免与前几章摘要重复措辞。"}"""
 
 SYSTEM_REVISE = """你是长篇网文创作系统的【修订 Agent】。按校验发现逐条修订正文。
 输出格式：先输出独立一行 === CONTENT ===，从下一行开始输出修订后全文（纯文本散文，
@@ -167,12 +214,14 @@ def _render_entity(item: dict) -> str:
 
 
 def _render_short(item: dict) -> str:
-    return f"- [{item.get('kind')}] {item.get('text') or item.get('summary') or ''}"
+    return f"- [{item.get('kind')}] {item.get('text') or item.get('summary') or item.get('tail') or ''}"
 
 
 def _render_foreshadow(item: dict) -> str:
     trigger = item.get("trigger") or {}
-    return (f"- [{item.get('status')}] {item.get('description')} "
+    fid = item.get("foreshadow_id")
+    id_tag = f" (id: {fid})" if fid else ""
+    return (f"- [{item.get('status')}]{id_tag} {item.get('description')} "
             f"(种于第 {item.get('planted_chapter', '?')} 章, 回收条件: "
             f"触发者={trigger.get('actor', '?')} 动作={trigger.get('action', '?')} 对象={trigger.get('object', '?')})")
 
@@ -195,11 +244,58 @@ def _lesson_section(context: dict, channels: tuple[str, ...]) -> str:
     return "\n".join(_render_lesson(i) for i in items)
 
 
-def plan_messages(context: dict, batch_goal: str | None = None) -> list[dict]:
-    """plan_chapter 输入：召回上下文 + 批次目标。
+def _outline_section(outline: dict | None, *, verbose: bool) -> str:
+    """整书大纲注入段（§11）：outline 为 {objective, volume, current} 切片（node_plan_chapter 按章切好）。
+
+    三层递进：全书 Objective（仅 verbose=plan 给，规划须对齐终局）→ 当前卷（主题/卷目标/关键结果/
+    卷末事件）→ 本章大纲位（目标+节拍）。写作只给卷+章（正文 prompt 预算有限）；写章额外点明
+    「开场扣住本大纲位、勿与其他章共用开场景」——开头雷同的根治来自各章不同的大纲位，而非注入上一章。
+    """
+    if not outline:
+        return ""
+    parts: list[str] = []
+    if verbose:
+        objective = (outline.get("objective") or "").strip()
+        if objective:
+            parts.append(f"\n【全书 Objective（终局，卷/章规划必须逐级逼近）】\n{objective}")
+    vol = outline.get("volume") or {}
+    if vol:
+        vseq = vol.get("volume_seq")
+        vtitle = (vol.get("title") or f"第 {vseq} 卷").strip()
+        line = f"\n【当前卷 · {vtitle}】卷目标：{vol.get('goal') or '—'}"
+        theme = (vol.get("theme") or "").strip()
+        if theme:
+            line += f"；主题：{theme}"
+        krs = [str(k).strip() for k in (vol.get("key_results") or []) if str(k).strip()]
+        if krs:
+            line += "\n本卷关键结果（每 3-5 章推进一个）：" + "；".join(krs)
+        end_event = (vol.get("end_event") or "").strip()
+        if end_event:
+            line += f"\n卷末不可逆事件：{end_event}"
+        parts.append(line)
+    cur = outline.get("current") or {}
+    seq = cur.get("seq")
+    if seq is not None:
+        line = f"\n【本章大纲位 · 第 {seq} 章】目标：{cur.get('goal') or '—'}"
+        beats = [str(b).strip() for b in (cur.get("beats") or []) if str(b).strip()]
+        if beats:
+            line += "；关键节拍：" + "；".join(beats)
+        if not verbose:
+            line += "。开场须扣住本节拍/目标落点，勿与其他章共用开场景/意象/句式"
+        parts.append(line)
+    parts.append("\n【大纲是方向参考：与已写正文（前情事件/近期上下文）冲突时，以已写正文为准】")
+    return "\n".join(parts)
+
+
+def plan_messages(context: dict, batch_goal: str | None = None,
+                  outline: dict | None = None) -> list[dict]:
+    """plan_chapter 输入：召回上下文 + 批次目标 +（可选）整书大纲切片。
 
     开放伏笔/剧情线注入（§7.9）：hooks_to_resolve 必须从【开放伏笔】里选——
     防 LLM 编造不存在的伏笔要收，防伏笔烂尾。
+    整书大纲注入（§11）：outline 是 {objective, volume, current} 切片（node_plan_chapter 按章切好），
+    规划须贴合该章大纲位、沿所属卷目标/KR 推进——没有大纲时规划各自为政、章节目标易泛。
+    扫榜灵感已整体前移至建书前（§10：只作建书向导的题材风向工具，不再注入规划节点）。
     """
     facts = _join(context.get("long_term_facts", []), _render_fact)
     events = _join(context.get("mid_term_events", []), _render_event)
@@ -207,6 +303,7 @@ def plan_messages(context: dict, batch_goal: str | None = None) -> list[dict]:
     short = _join(context.get("short_context", []), _render_short)
     foreshadows = _join(context.get("open_foreshadows", []), _render_foreshadow)
     threads = _join(context.get("plot_threads", []), _render_thread)
+    outline_section = _outline_section(outline, verbose=True)
 
     lessons = _lesson_section(context, ("planning", "both"))
     system = (
@@ -214,6 +311,7 @@ def plan_messages(context: dict, batch_goal: str | None = None) -> list[dict]:
         + "\n\n【世界观硬约束】\n" + (facts or "（无）")
         + "\n【前情事件】\n" + (events or "（无）")
         + "\n【出场人物状态快照】\n" + (entities or "（无）")
+        + outline_section
         + "\n\n【开放伏笔（待回收，hooks_to_resolve 必须从中选，收/延/弃要明确）】\n" + (foreshadows or "（无）")
         + "\n【活跃剧情线（hooks_to_plant 可补新钩子，但主线推进优先）】\n" + (threads or "（无）")
         + "\n【本书写作经验（reflexion 复盘，规划须遵守）】\n" + (lessons or "（无）")
@@ -295,18 +393,25 @@ def _rhythm_reference(sp: dict) -> str:
 
 
 def write_messages(context: dict, plan: dict, *, style_profile: dict | None = None,
-                   target_words: int | None = None) -> list[dict]:
-    """write 输入：召回上下文 + 章节计划 + 文风/字数生成约束（§7.12）。"""
+                   target_words: int | None = None, outline: dict | None = None) -> list[dict]:
+    """write 输入：召回上下文 + 章节计划 + 文风/字数生成约束（§7.12）+（可选）大纲切片。
+
+    防章节开头雷同（§11）：不注入上一章开头（那是治标 hack）——每章大纲位（目标+节拍）本就不同，
+    _outline_section 在写章路径点明「开场扣住本大纲位、勿与其他章共用开场景」，从源头区分开头。
+    整书大纲（§11）：注入当前卷（目标/关键结果）+ 本章大纲位，写作贴大纲不跑偏；大纲与已写正文冲突信正文。
+    """
     facts = _join(context.get("long_term_facts", []), _render_fact)
     entities = _join(context.get("entity_snapshots", []), _render_entity)
     short = _join(context.get("short_context", []), _render_short)
     style = _style_section(style_profile, target_words)
     lessons = _lesson_section(context, ("writing", "both"))
+    outline_section = _outline_section(outline, verbose=False)
     system = (
         SYSTEM_WRITE
         + "\n\n【世界观硬约束】\n" + (facts or "（无）")
         + "\n【人物状态快照】\n" + (entities or "（无）")
         + (f"\n\n【文风要求（project_settings.style_profile）】\n{style}" if style else "")
+        + outline_section
         + "\n\n【本书写作经验（reflexion 复盘，写作须遵守）】\n" + (lessons or "（无）")
     )
     user = (
@@ -324,13 +429,25 @@ def extract_messages(draft: str, chapter_seq: int, context: dict | None = None) 
     character_state.old_value 与产出 relation_change 候选（正文-台账语义比对 L2 的证据链入口）。
     """
     ledger_block = ""
+    foreshadow_block = ""
     if context:
         entities = _join(context.get("entity_snapshots", []), _render_entity)
         if entities:
             ledger_block = f"\n\n【当前台账快照】（供校准 old_value / 产出 relation_change 候选）\n{entities}"
+        foreshadows = _join(context.get("open_foreshadows", []), _render_foreshadow)
+        if foreshadows:
+            foreshadow_block = f"\n\n【开放伏笔】（foreshadow_touch 的 foreshadow_id 必须取自此处）\n{foreshadows}"
     return [
         {"role": "system", "content": SYSTEM_EXTRACT},
-        {"role": "user", "content": f"【章节正文】（第 {chapter_seq} 章）\n{draft}{ledger_block}\n\n请抽取记忆候选（严格 JSON）。"},
+        {"role": "user", "content": f"【章节正文】（第 {chapter_seq} 章）\n{draft}{ledger_block}{foreshadow_block}\n\n请抽取记忆候选（严格 JSON）。"},
+    ]
+
+
+def summary_messages(draft: str, chapter_seq: int) -> list[dict]:
+    """章节摘要输入（§7 短期记忆，node_summarize）：落库后追加的 LLM 真摘要。"""
+    return [
+        {"role": "system", "content": SYSTEM_SUMMARIZE},
+        {"role": "user", "content": f"【章节正文】（第 {chapter_seq} 章）\n{draft}\n\n请生成章节摘要（严格 JSON）。"},
     ]
 
 
@@ -497,6 +614,7 @@ def style_extract_messages(samples: list[str], stats: dict) -> list[dict]:
 SYSTEM_BOOK_SETUP = """你是长篇网文创作系统的【规划 Agent】。职责：根据作者的一句话梗概与题材偏好，产出本书的**设定骨架草稿**（§7.11 建书流程：提案→确认→落库，agent 只提案不篡改）。
 输出严格 JSON 对象（schema 见下），字段不许缺：
 {
+  "title": "书名建议（作者未定书名时给 2-8 字主标题；已定书名返回空串）",
   "realm_order": ["境界/实力阶段按升序排列，非仙侠题材则给出实力/职业进阶序列"],
   "world_rules": {"规则键": "规则值，如 时间/地域/禁制 等世界观硬性规定"},
   "hard_constraints": ["写作必须遵守的硬约束，如 不可越级晋升、不得引入仙佛鬼神"],
@@ -504,7 +622,7 @@ SYSTEM_BOOK_SETUP = """你是长篇网文创作系统的【规划 Agent】。职
   "characters": [{"name": "人物名", "role": "主角/重要配角/反派", "race": "", "origin": "出身", "realm_cap": "实力上限（战力硬约束，非仙侠题材给定位）", "personality": "性格基调一句话"}],
   "locations": [{"name": "关键地点名"}]
 }
-要求：骨架是**可编辑草稿**不是定稿——数量克制（核心 3-6 个角色、2-4 个势力、3-5 个地点即可），留白让作者后续补全；hard_constraints 必须是明确的、可执行的写作纪律，不是风格形容词。"""
+要求：骨架是**可编辑草稿**不是定稿——数量克制（核心 3-6 个角色、2-4 个势力、3-5 个地点即可），留白让作者后续补全；hard_constraints 必须是明确的、可执行的写作纪律，不是风格形容词；作者未定书名时 title 给出简练的主标题（2-8 字），已定书名则返回空串。"""
 
 
 def book_setup_messages(genre: str, premise: str) -> list[dict]:
@@ -518,4 +636,22 @@ def book_setup_messages(genre: str, premise: str) -> list[dict]:
         {"role": "user", "content": f"【题材偏好】\n{genre}\n\n"
                                     f"【作者一句话梗概】\n{premise}\n\n"
                                     f"请产出本书设定骨架草稿（严格 JSON）。"},
+    ]
+
+
+def book_outline_messages(genre: str, premise: str, chapter_count: int,
+                          storyline: str) -> list[dict]:
+    """整书大纲草稿输入（§11 建书 ③）：题材 + 梗概 + 大致章节数 + 大致故事线 → Planner 提案。
+
+    Planner 按目标章节数自动分卷（3-5 卷，沿故事线起/承/转/合），产出「Objective → 卷 → 逐章目标」
+    三层骨架；可编辑、确认后落 volume_outlines。plan_chapter / write / batch_plan 注入当前卷 OKR +
+    本章大纲位（§11：不给大纲时规划各自为政、章节开头易雷同）。
+    """
+    parts = [f"【题材】\n{genre}", f"【一句话梗概】\n{premise}",
+             f"【大致章节数】\n{chapter_count}"]
+    if storyline.strip():
+        parts.append(f"【大致故事线】\n{storyline.strip()}")
+    return [
+        {"role": "system", "content": SYSTEM_BOOK_OUTLINE},
+        {"role": "user", "content": "\n\n".join(parts) + "\n\n请产出整书写作大纲（严格 JSON）。"},
     ]

@@ -35,6 +35,7 @@ from aiink.memory import repository as repo
 from aiink.providers import make_chain
 from aiink.validation import global_audit as ga
 from aiink.workflow import nodes, prompts
+from aiink.workflow.outline import normalize_outline
 from aiink.workflow.state import BatchState, ChapterState
 
 logger = logging.getLogger(__name__)
@@ -77,21 +78,65 @@ class BatchHaltError(Exception):
 
 
 _BATCH_PLAN_PROMPT = """你是长篇网文创作系统的【批次规划 Agent】。为接下来 N 章做整体推进蓝图（N 是规划单元，不是重复次数——N 章要系统性推进主线/支线/伏笔/大纲，不能各自为政）。
+若给定了【整书大纲】与【已写章节】，每章 goal 必须贴合对应大纲位、沿所属卷的卷目标/KR 推进，且不重复已写章节的开场/桥段；大纲与已写正文冲突时以已写正文为准。
 输出严格 JSON：
 {"chapters": [{"goal": "本章推进目标（哪条线/收哪些伏笔/新种钩子）", "outline_advance": "大纲推进段"}, ...]}  共 N 项"""
 
 
-def _batch_plan_messages(batch: dict) -> list[dict]:
+def _batch_plan_messages(batch: dict, outline: dict | None = None) -> list[dict]:
+    """批次规划输入：起点/N +（可选）整书大纲（§11：批次对齐「卷 OKR + 逐章大纲位」，防各自为政）。
+
+    只注入本批次推进范围内的章（start..start+size-1）与其所属卷——给全书几十上百章会把上下文撑爆，
+    且超出范围的章与新章无关。Objective 给全局终局（批次沿全书方向推进）。
+    """
+    user_parts = [f"起点章 {batch['start_chapter']}，N={batch['size']}。请输出 {batch['size']} 章推进蓝图（严格 JSON）。"]
+    if outline:
+        objective = (outline.get("objective") or "").strip()
+        volumes = outline.get("volumes") or []
+        if not isinstance(volumes, list):
+            volumes = []
+        start, size = int(batch["start_chapter"]), int(batch["size"])
+        end = start + size - 1
+        if objective:
+            user_parts.append(f"【全书 Objective（终局，沿此方向推进）】{objective}")
+        rel_volumes, rel_chapters = [], []
+        for v in volumes:
+            if not isinstance(v, dict):
+                continue
+            vch = [c for c in (v.get("chapters") or [])
+                   if isinstance(c, dict) and start <= int(c.get("seq") or 0) <= end]
+            if vch:
+                rel_volumes.append(v)
+                rel_chapters.extend(vch)
+        if rel_volumes:
+            vol_lines = []
+            for v in rel_volumes:
+                krs = [str(k).strip() for k in (v.get("key_results") or []) if str(k).strip()]
+                vline = (f"- 第 {v.get('volume_seq')} 卷《{v.get('title') or ''}》：{v.get('goal') or ''}")
+                if krs:
+                    vline += "（KR：" + "；".join(krs) + "）"
+                vol_lines.append(vline)
+            user_parts.append("【涉及卷（本批次推进范围内，新章目标须贴卷目标/KR）】\n" + "\n".join(vol_lines))
+        if rel_chapters:
+            rel_chapters.sort(key=lambda c: int(c.get("seq") or 0))
+            user_parts.append("【大纲逐章目标（新章贴合对应大纲位，不跳大纲）】\n" + "\n".join(
+                f"- 第 {c.get('seq')} 章：{c.get('title') or ''} —— {c.get('goal') or ''}"
+                for c in rel_chapters))
     return [
         {"role": "system", "content": _BATCH_PLAN_PROMPT},
-        {"role": "user", "content": f"起点章 {batch['start_chapter']}，N={batch['size']}。请输出 {batch['size']} 章推进蓝图（严格 JSON）。"},
+        {"role": "user", "content": "\n\n".join(user_parts)},
     ]
 
 
 def node_batch_plan(state: BatchState) -> BatchState:
     pid = state["project_id"]
     with tenant_session(pid) as db:
-        messages = _batch_plan_messages(state)
+        # 整书大纲注入（§11）：批次蓝图对齐卷目标/KR + 大纲位；无大纲回退原行为（各自为政会泛化）。
+        outline = None
+        row = repo.get_volume_outline(db, uuid.UUID(pid), 1)
+        if row and isinstance(row.outline, dict):
+            outline = normalize_outline(row.outline)
+        messages = _batch_plan_messages(state, outline=outline)
         resp = make_chain("planner", db=db, project_id=pid).generate(messages, json_mode=True)
         nodes.record_run(db, project_id=pid, task_id=state.get("batch_task_id"),
                          node="batch_plan", role="Planner", resp=resp, error=resp.error)
@@ -143,6 +188,19 @@ def make_chapter_runner(chapter_graph):
             batch = db.get(Task, uuid.UUID(state["batch_task_id"]))
             if batch and batch.status in ("paused", "cancelled"):
                 raise BatchHaltError(batch.status)
+
+        # 确认流收尾（§6.11）：本章 awaiting_review（批次因 critical 暂停后人工确认候选、
+        # resume 批次）→ 取本章 checkpoint 草稿直接落库正文，不重跑本章——LangGraph 1.2.9
+        # resume 语义是整图从 START 重跑，确定性输入会再命中 critical → 永久暂停、正文
+        # 永不落库（2026-08-17 用户实测：确认后点续跑变成重新生成）。
+        with tenant_session(state["project_id"]) as db:
+            ch = repo.get_chapter(db, uuid.UUID(state["project_id"]), chapter_seq)
+        if ch is not None and ch.status == "awaiting_review":
+            snap = chapter_graph.get_state({"configurable": {"thread_id": thread_id}})
+            if snap.values:
+                result = nodes.finalize_awaiting_review(snap.values, task_id=thread_id)
+                return {"current": result, "position": position,
+                        "shared_context": state.get("shared_context")}
 
         chapter_input: ChapterState = {
             "project_id": state["project_id"],

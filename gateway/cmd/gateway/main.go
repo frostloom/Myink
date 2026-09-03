@@ -55,22 +55,27 @@ func main() {
 	}
 	cancel0()
 
+	// RabbitMQ：连接 + 幂等声明拓扑（延迟/死信/优先级由 RabbitMQ 侧承担，网关只需发布端；
+	// 失败直接退出，不进入无队列可用状态）
+	rmq, err := queue.DialAMQP(cfg)
+	if err != nil {
+		log.Fatalf("[gateway] RabbitMQ 不可达 %s: %v", cfg.AmqpURL, err)
+	}
+	defer rmq.Close()
+
 	py := pyapi.New(cfg.PythonAPIBase, 30*time.Second)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// 队列守护：退避重投 / DLQ / 崩溃认领（独立 goroutine，网关重启不丢）
-	go queue.Run(ctx, r, ctx.Done())
-
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           handlers.NewRouter(cfg, r, py),
+		Handler:           handlers.NewRouter(cfg, r, rmq, py),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	go func() {
-		log.Printf("[gateway] 监听 :%s（Redis=%s PythonAPI=%s）", cfg.Port, cfg.RedisAddr, cfg.PythonAPIBase)
+		log.Printf("[gateway] 监听 :%s（Redis=%s RabbitMQ=%s PythonAPI=%s）", cfg.Port, cfg.RedisAddr, cfg.AmqpURL, cfg.PythonAPIBase)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("[gateway] 服务异常退出: %v", err)
 		}

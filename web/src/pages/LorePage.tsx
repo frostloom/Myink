@@ -1,11 +1,20 @@
 // 设定浏览页（§7.11）：人物卡片（静态基底 + 当前状态台账）+ 世界观（realm_order 阶段箭头）+
 // 硬约束 + 势力/地点。数据 GET world + GET characters 并行；无设定 → 空态不报错。
-import { useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
+import { WorldGraph } from '../components/WorldGraph'
 import { useAuth } from '../context/AuthContext'
 import { api, ApiError } from '../lib/api'
-import type { CharacterCard, LoreEntity, Project, WorldView } from '../types'
+import type {
+  BookOutline,
+  ChapterMeta,
+  CharacterCard,
+  Foreshadow,
+  LoreEntity,
+  Project,
+  WorldView,
+} from '../types'
 import styles from './LorePage.module.css'
 
 // 设定实体分组（§7.11 ④ 自动建档：正文抽取低风险自动登记）
@@ -15,6 +24,35 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   location: '地点',
 }
 const ENTITY_TYPE_ORDER = ['item', 'skill', 'location']
+
+// 人物卡片基础属性中文标签（character_card payload 的 identity/role/importance）
+const BASE_ATTR_LABELS: Record<string, string> = {
+  identity: '身份',
+  role: '角色定位',
+  importance: '重要性',
+}
+
+// 当前状态台账字段中文标签（character_states.field 枚举：realm/injury/goal/knowledge 等 9 类）
+const STATE_LABELS: Record<string, string> = {
+  realm: '修为',
+  power: '实力',
+  injury: '伤势',
+  goal: '目标',
+  location: '位置',
+  item: '随身物品',
+  knowledge: '已知信息',
+  identity: '身份',
+  alive: '生死',
+}
+
+// 伏笔状态机中文标签（§7.9：planted/developing/resolved/dropped）
+const FORESHADOW_STATUS_LABELS: Record<string, string> = {
+  planted: '种植中',
+  developing: '推进中',
+  resolved: '已回收',
+  dropped: '已废弃',
+}
+const FORESHADOW_STATUS_ORDER = ['planted', 'developing', 'resolved', 'dropped']
 
 /** realm_order 渲染为阶段箭头列表（对齐 seed world_rules.realm_order 口径） */
 function RealmOrder({ value }: { value: unknown }) {
@@ -83,21 +121,28 @@ function CharacterCardBlock({
             )}
           </dl>
           {Object.keys(card.base_attrs).length > 0 && (
-            <div className={styles.cardMeta}>
+            <>
               <span className={styles.cardLabel}>基础属性</span>
-              <code className={styles.readonly}>{JSON.stringify(card.base_attrs)}</code>
-            </div>
+              <dl className={styles.cardMeta}>
+                {Object.entries(card.base_attrs).map(([k, v]) => (
+                  <Fragment key={k}>
+                    <dt>{BASE_ATTR_LABELS[k] ?? k}</dt>
+                    <dd>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</dd>
+                  </Fragment>
+                ))}
+              </dl>
+            </>
           )}
-          <span className={styles.cardLabel}>当前状态（§7.7 台账）</span>
+          <span className={styles.cardLabel}>当前状态</span>
           {stateRows.length === 0 ? (
             <div className="empty">暂无状态记录。</div>
           ) : (
             <dl className={styles.cardMeta}>
               {stateRows.map(([k, v]) => (
-                <div key={k}>
-                  <dt>{k}</dt>
+                <Fragment key={k}>
+                  <dt>{STATE_LABELS[k] ?? k}</dt>
                   <dd>{v}</dd>
-                </div>
+                </Fragment>
               ))}
             </dl>
           )}
@@ -115,22 +160,31 @@ export default function LorePage() {
   const [world, setWorld] = useState<WorldView | null>(null)
   const [characters, setCharacters] = useState<CharacterCard[]>([])
   const [entities, setEntities] = useState<LoreEntity[]>([])
+  const [foreshadows, setForeshadows] = useState<Foreshadow[]>([])
+  const [chapters, setChapters] = useState<ChapterMeta[]>([])
+  const [outline, setOutline] = useState<BookOutline | null>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [banner, setBanner] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setBanner(null)
     try {
-      const [proj, w, ch, ent] = await Promise.all([
+      const [proj, w, ch, ent, fo, chaps, ol] = await Promise.all([
         api.listProjects(),
         api.getWorld(projectId),
         api.getCharacters(projectId),
         api.listEntities(projectId),
+        api.listForeshadows(projectId),
+        api.listChapters(projectId),
+        api.getOutline(projectId),
       ])
       setProjects(proj)
       setWorld(w)
       setCharacters(ch)
       setEntities(ent)
+      setForeshadows(fo)
+      setChapters(chaps)
+      setOutline(ol.outline)
     } catch (err) {
       setBanner(err instanceof ApiError ? err.code : '设定加载失败')
     }
@@ -166,6 +220,63 @@ export default function LorePage() {
           {!world && !banner && <div className="empty">加载中…</div>}
 
           <section className={`panel ${styles.section}`}>
+            <h2 className={styles.sectionTitle}>整书大纲</h2>
+            <p className={styles.hint}>
+              建书第 ③ 步规划的「全书 Objective → 卷 → 逐章目标」三层骨架（§11）。
+              每次写作注入当前卷目标/关键结果与本章大纲位，逐章推进主线、从源头区分各章开头。
+            </p>
+            {outline == null ? (
+              <div className="empty">暂无大纲。可在「新建作品」第 ③ 步规划整书主线与逐章目标。</div>
+            ) : (
+              <div>
+                {outline.objective && (
+                  <>
+                    <span className={styles.cardLabel}>全书 Objective（终局）</span>
+                    <p className={styles.entityDesc}>{outline.objective}</p>
+                  </>
+                )}
+                {outline.volumes.length === 0 ? (
+                  <div className="empty">大纲暂无卷。</div>
+                ) : (
+                  outline.volumes.map((v, vi) => (
+                    <div key={vi} className={styles.block}>
+                      <span className={styles.cardLabel}>
+                        第 {v.volume_seq ?? vi + 1} 卷 · {v.title || '（未命名）'}
+                      </span>
+                      {v.theme && <span className="badge">{v.theme}</span>}
+                      {v.goal && <span className={styles.entityDesc}>卷目标：{v.goal}</span>}
+                      {v.key_results && v.key_results.length > 0 && (
+                        <ul className={styles.constraintList}>
+                          {v.key_results.map((k, i) => (
+                            <li key={i}>KR：{k}</li>
+                          ))}
+                        </ul>
+                      )}
+                      {v.end_event && <span className={styles.entityDesc}>卷末事件：{v.end_event}</span>}
+                      <span className={styles.cardLabel}>本卷章节</span>
+                      {v.chapters.length === 0 ? (
+                        <div className="empty">本卷暂无章节。</div>
+                      ) : (
+                        <ul className={styles.entityList}>
+                          {v.chapters.map((c) => (
+                            <li key={c.seq ?? c.title ?? '?'} className={styles.entityItem}>
+                              <span className={styles.entityHead}>
+                                <span className={styles.entityName}>第 {c.seq ?? '?'} 章</span>
+                                {c.title && <span className="badge">{c.title}</span>}
+                              </span>
+                              {c.goal && <span className={styles.entityDesc}>{c.goal}</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </section>
+
+          <section className={`panel ${styles.section}`}>
             <h2 className={styles.sectionTitle}>人物卡片</h2>
             {characters.length === 0 ? (
               <div className="empty">暂无人物。可在「新建作品」设定或后续章节抽取中建立。</div>
@@ -181,6 +292,46 @@ export default function LorePage() {
                 ))}
               </div>
             )}
+          </section>
+
+          <section className={`panel ${styles.section}`}>
+            <h2 className={styles.sectionTitle}>章节记忆</h2>
+            <p className={styles.hint}>
+              各章摘要（§7 短期记忆）：每章正文落库时随事件沉淀，回溯「前面章节发生了什么」。
+            </p>
+            {chapters.length === 0 ? (
+              <div className="empty">暂无已写章节。开始写作后各章摘要自动沉淀于此。</div>
+            ) : (
+              <ul className={styles.entityList}>
+                {[...chapters]
+                  .sort((a, b) => b.chapter_seq - a.chapter_seq)
+                  .map((c) => (
+                    <li key={c.id} className={styles.entityItem}>
+                      <span className={styles.entityHead}>
+                        <span className={styles.entityName}>第 {c.chapter_seq} 章</span>
+                        <span className="badge">{c.status}</span>
+                        {c.word_count != null && (
+                          <span className={styles.entityDesc}>{c.word_count} 字</span>
+                        )}
+                      </span>
+                      {c.summary ? (
+                        <span className={styles.entityDesc}>{c.summary}</span>
+                      ) : (
+                        <span className={styles.entityDesc}>（本章暂无摘要）</span>
+                      )}
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </section>
+
+          <section className={`panel ${styles.section}`}>
+            <h2 className={styles.sectionTitle}>关系图谱</h2>
+            <p className={styles.hint}>
+              全量世界拓扑（人物 / 势力 / 地点 / 设定实体 4 类节点；人物关系与地点层级为边）。
+              实线为活跃关系，虚线为已失效关系；可拖拽、滚轮缩放、点图例过滤分类。
+            </p>
+            <WorldGraph projectId={projectId} />
           </section>
 
           <section className={`panel ${styles.section}`}>
@@ -221,6 +372,38 @@ export default function LorePage() {
                   )
                 })}
               </div>
+            )}
+          </section>
+
+          <section className={`panel ${styles.section}`}>
+            <h2 className={styles.sectionTitle}>伏笔池</h2>
+            <p className={styles.hint}>
+              伏笔台账（§7.9 状态机）：种植中/推进中的开放伏笔会被后续章节规划消费
+              （决定回收/延续/放弃），已回收/已废弃保留历史供复盘。
+            </p>
+            {foreshadows.length === 0 ? (
+              <div className="empty">暂无伏笔。正文中出现可回收的悬念/物件/承诺时自动登记。</div>
+            ) : (
+              <ul className={styles.entityList}>
+                {FORESHADOW_STATUS_ORDER.flatMap((s) =>
+                  foreshadows
+                    .filter((f) => f.status === s)
+                    .map((f) => (
+                      <li key={f.id} className={styles.entityItem}>
+                        <span className={styles.entityHead}>
+                          <span className="badge badge-accent">
+                            {FORESHADOW_STATUS_LABELS[f.status] ?? f.status}
+                          </span>
+                          <span className={styles.entityName}>第 {f.planted_chapter} 章</span>
+                          {f.resolved_chapter != null && (
+                            <span className={styles.entityDesc}>→ 第 {f.resolved_chapter} 章回收</span>
+                          )}
+                        </span>
+                        <span className={styles.entityDesc}>{f.description}</span>
+                      </li>
+                    )),
+                )}
+              </ul>
             )}
           </section>
 
