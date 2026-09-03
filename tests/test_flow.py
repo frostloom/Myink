@@ -65,6 +65,8 @@ class StubProvider(ModelProvider):
             )
         elif node == "revise":
             content = '=== CONTENT ===\n修订后正文\n=== RESPONSES ===\n[]'
+        elif node == "summarize":
+            content = '{"summary":"本章测试摘要"}'
         else:
             content = "{}"
         return ModelResponse(content=content, model_id=model_id, input_tokens=100,
@@ -83,6 +85,8 @@ def _infer_node(messages):
         return "revise"
     if "审核中枢" in sys:
         return "audit"
+    if "章节摘要" in sys:
+        return "summarize"
     return "write"
 
 
@@ -166,6 +170,25 @@ def test_chapter_flow_auto_confirm(project_id, stub_provider):
         assert all(r.cost_est >= 0 for r in runs)
 
 
+def test_rewrite_flow_invalidates_then_persists(project_id, stub_provider):
+    """回归（2026-08-18）：重写路径曾以位置参数调 invalidate_chapter_memory（签名仅关键字）
+    → TypeError 整章失败、旧记忆永不失效。invoke rewrite=True 应先失效再落库新正文。"""
+    stub_provider("金丹", "金丹")
+    _reset_runs(project_id)
+
+    graph = build_chapter_graph()
+    thread = str(uuid.uuid4())
+    result = graph.invoke(
+        {"project_id": project_id, "chapter_seq": 1, "task_id": thread, "rewrite": True},
+        config={"configurable": {"thread_id": thread}},
+    )
+    assert result.get("error") is None, result.get("error")
+    assert result.get("persisted") is True, "重写应走 persist 自动放行落库"
+    with tenant_session(project_id) as db:
+        ch = db.execute(text("SELECT status FROM chapters WHERE chapter_seq=1")).scalar()
+        assert ch == "confirmed", "重写完成后章节应 confirmed"
+
+
 def test_recall_context_has_foreshadows(project_id, stub_provider, fake_embedder):
     """伏笔链路闭环：recall 上下文应带开放伏笔 + 活跃剧情线（§7.9 plan_chapter 输入）。"""
     from aiink.memory.recall import build_context
@@ -190,9 +213,9 @@ def test_chapter_flow_power_violation(project_id, stub_provider):
     stub_provider("金丹", "元婴")
     _reset_runs(project_id)
 
-    graph = build_chapter_graph()
+    chapter_graph, _ = get_graphs()
     thread = str(uuid.uuid4())
-    result = graph.invoke(
+    result = chapter_graph.invoke(
         {"project_id": project_id, "chapter_seq": 2, "task_id": thread},
         config={"configurable": {"thread_id": thread}},
     )
@@ -219,14 +242,17 @@ def _clean_seq2_memory(project_id):
 
 
 def test_confirm_resume_no_duplicate(project_id, stub_provider):
-    """§6.11 confirm→resume 幂等：人工确认候选后 resume 重跑 extract/persist 不重复沉淀。
+    """§6.11 confirm→resume 收尾：确认候选后 resume 落库正文，不重跑整章不重复沉淀。
 
-    回归评审 A2：原去重只查 pending，confirmed 候选对 resume 不可见 → 重跑把同
-    payload 候选再次进池/落库（事件/事实重复写入）。修后池内任意状态同位候选都挡
-    重写。断言：确认后 event 只落 1 条；resume 后池行数不变、event 仍 1 条。
+    回归（2026-08-17）：确认后点续跑走确认流收尾——章节 awaiting_review → _dispatch
+    的 chapter_resume 不重跑图（LangGraph 1.2.9 resume 语义=整图从 START 重跑，确定性
+    输入会再命中 critical → 永久 awaiting_review、正文永不落库），而是取 checkpoint
+    草稿直接落库正文 + 推进进度。已确认候选 confirm 时已落库，收尾不重复写、池不堆
+    重复（评审 A2 幂等仍验：池内任意状态同位候选都挡重写）。
     """
     import aiink.workflow.nodes as nodes
     from aiink.models import MemoryCandidate
+    from aiink.worker.processor import _dispatch
 
     stub_provider("金丹", "元婴")  # 越界 → L1 critical → 待确认池
     _reset_runs(project_id)
@@ -267,28 +293,46 @@ def test_confirm_resume_no_duplicate(project_id, stub_provider):
             {"p": project_id}).scalar()
         assert ev_after == 1, "人工确认应落库 1 条 event"
 
-    # resume 同 thread 续跑（stub 确定性 → 内容未变 → 仍 critical）→ 重跑不重复沉淀
-    resume_thread(chapter_graph, tid, {
-        "project_id": project_id, "chapter_seq": 2, "task_id": tid,
+    # 收尾：worker 对 awaiting_review 章的 chapter_resume 路由到确认流收尾
+    # （finalize_chapter_review 取 checkpoint 草稿 → node_persist auto 路径），
+    # 不重跑图——agent_runs 只 +2 条（persist 落库 + summarize 追加摘要）。
+    result = _dispatch({
+        "project_id": project_id,
+        "task_id": tid,
+        "task_type": "chapter_resume",
+        "payload": {"seq": 2},
     })
+    assert result.get("needs_review") is False, f"收尾应放行（非转人工），实际 {result}"
 
     with tenant_session(project_id) as db:
         runs_after = db.execute(text(
             "SELECT count(*) FROM agent_runs WHERE project_id=:p AND task_id=:t"),
             {"p": project_id, "t": tid}).scalar()
-        assert runs_after > runs_before, "resume 应重跑本章（验证续跑路径真的执行）"
+        assert runs_after == runs_before + 2, \
+            f"收尾应只补 persist+summarize 2 条运行记录（不重跑整章），实际 {runs_before} → {runs_after}"
+        added_nodes = {r.node for r in db.query(AgentRun).filter(
+            AgentRun.task_id == tid).order_by(AgentRun.id.asc()).all()[-2:]}
+        assert added_nodes == {"persist", "summarize"}, \
+            f"收尾应只跑 persist+summarize，实际 {added_nodes}"
         pool2 = db.query(MemoryCandidate).filter(
             MemoryCandidate.project_id == uuid.UUID(project_id),
             MemoryCandidate.source_chapter == 2,
         ).all()
         assert len(pool2) == len(pool), \
-            f"resume 重跑不应往池里堆重复候选（{len(pool)} → {len(pool2)}）"
+            f"收尾不应往池里堆重复候选（{len(pool)} → {len(pool2)}）"
         assert ("event", "confirmed") in [(c.kind, c.status) for c in pool2], \
-            "确认的候选状态应保持 confirmed（不被重跑覆盖/重复）"
+            "确认的候选状态应保持 confirmed（不被覆盖/重复）"
         ev_final = db.execute(text(
             "SELECT count(*) FROM events WHERE project_id=:p AND source_chapter=2"),
             {"p": project_id}).scalar()
-        assert ev_final == 1, "resume 重跑不应重复落库 event"
+        assert ev_final == 1, "收尾不应重复落库 event"
+        # 正文在收尾时落库（修复：confirm 后正文从未落库）
+        row = db.execute(text(
+            "SELECT status, content FROM chapters WHERE project_id=:p AND chapter_seq=2"),
+            {"p": project_id}).fetchone()
+        assert row is not None and row.status == "confirmed", \
+            f"收尾后章节应 confirmed，实际 {row}"
+        assert row.content, "收尾应落库正文"
 
 
 def test_persist_skips_pool_handled_candidates(project_id):
@@ -347,6 +391,77 @@ def test_batch_flow(project_id, stub_provider, monkeypatch):
     summary = result.get("batch_summary") or {}
     assert summary.get("status") == "done", f"批次应完成，实际 {summary}"
     assert summary.get("completed") == 2, "应完成 2 章"
+
+
+def _clean_chapter_range(project_id, lo: int, hi: int):
+    """自清理某段章节的池/记忆/章节残留（批次测试复用范围前先清，防跨测试污染）。"""
+    with tenant_session(project_id) as db:
+        for tbl, col in [("memory_candidates", "source_chapter"), ("events", "source_chapter"),
+                         ("character_states", "source_chapter"), ("foreshadows", "planted_chapter")]:
+            db.execute(text(f"DELETE FROM {tbl} WHERE project_id=:p AND {col} BETWEEN :lo AND :hi"),
+                       {"p": project_id, "lo": lo, "hi": hi})
+        db.execute(text("DELETE FROM chapters WHERE project_id=:p AND chapter_seq BETWEEN :lo AND :hi"),
+                   {"p": project_id, "lo": lo, "hi": hi})
+        db.commit()
+
+
+def test_batch_review_resume_finalizes_chapter(project_id, monkeypatch):
+    """§6.11 批次确认流：critical 章暂停 → 确认候选后 resume 收尾落库正文，不重跑本章。
+
+    回归（2026-08-17）：批次 critical 暂停后人工确认候选、resume 批次——node_run_chapter
+    若重跑本章（LangGraph 1.2.9 resume=整图从 START 重跑），确定性输入会再命中 critical
+    → 永久暂停、正文永不落库（用户实测：确认后点续跑变成重新生成）。修后取本章
+    checkpoint 草稿直接收尾落库正文（不重跑图），再续下一章；下一章仍 critical 则另行
+    暂停等人工。用 6/7 章段（3/4/5 被他批次测试复用），结束自清理防污染。
+    """
+    import aiink.providers as providers_mod
+    import aiink.workflow.batch_graph as bg_mod
+    import aiink.workflow.nodes as nodes
+    from aiink.models import MemoryCandidate
+
+    _clean_chapter_range(project_id, 6, 7)
+    stub = BatchStubProvider("金丹", "元婴")  # 每章越界 → L1 critical
+    monkeypatch.setattr(providers_mod, "default_provider", stub)          # 单章节点链
+    monkeypatch.setattr(bg_mod, "make_chain", lambda role, **_kwargs: _Chain(stub))  # batch_plan 节点
+    _reset_runs(project_id)
+
+    tid = new_task(project_id=project_id, task_type="batch_generate",
+                   payload={"start": 6, "size": 2})
+    result = generate_batch(project_id=project_id, size=2, start_chapter=6, batch_task_id=tid)
+    assert result.get("needs_review") is True, f"批次应在 ch6 critical 暂停，实际 {result}"
+
+    with tenant_session(project_id) as db:
+        ch6 = db.execute(text("SELECT status, content FROM chapters WHERE project_id=:p AND chapter_seq=6"),
+                         {"p": project_id}).fetchone()
+        assert ch6 is not None and ch6.status == "awaiting_review", f"ch6 应待人工，实际 {ch6}"
+        assert not ch6.content, "暂停时正文不应落库"
+        pool = db.query(MemoryCandidate).filter(
+            MemoryCandidate.project_id == uuid.UUID(project_id),
+            MemoryCandidate.source_chapter == 6,
+        ).all()
+        assert pool, "critical 应产生待确认候选"
+        ev_cand = next(c for c in pool if c.kind == "event")
+        assert nodes.confirm_candidate(db, project_id, ev_cand.id) is not None
+        db.commit()
+
+    # resume 批次：ch6 确认流收尾落库正文（不重跑 ch6），推进到 ch7 再 critical 暂停
+    # （BatchReviewError 由 worker 的 _run 接住置 awaiting_review；直调 resume_thread 会抛出）
+    _, batch_graph = get_graphs()
+    with pytest.raises(bg_mod.BatchReviewError):
+        resume_thread(batch_graph, tid, {
+            "project_id": project_id, "batch_task_id": tid, "size": 2,
+            "position": 0, "start_chapter": 6,
+        })
+
+    with tenant_session(project_id) as db:
+        ch6 = db.execute(text("SELECT status, content FROM chapters WHERE project_id=:p AND chapter_seq=6"),
+                         {"p": project_id}).fetchone()
+        assert ch6 is not None and ch6.status == "confirmed", f"ch6 收尾后应 confirmed，实际 {ch6}"
+        assert ch6.content, "ch6 收尾应落库正文"
+        ch7 = db.execute(text("SELECT status FROM chapters WHERE project_id=:p AND chapter_seq=7"),
+                         {"p": project_id}).scalar()
+        assert ch7 == "awaiting_review", "ch7 应再次暂停等人工"
+    _clean_chapter_range(project_id, 6, 7)
 
 
 def test_batch_plan_short_explicit_fail(project_id, monkeypatch):
@@ -1357,6 +1472,22 @@ def test_parse_json_repair_noop_on_valid():
     raw = '{"content": "正常文本，无引号", "title": "a"}'
     assert _parse_json(raw)["content"] == "正常文本，无引号"
     assert _parse_json(raw)["title"] == "a"
+
+
+def test_parse_json_repairs_stray_quote_then_control_char():
+    """§6.12 输出容错：裸引号提前闭合字符串后，后续原始控制字符会漏转义。
+
+    真实 DeepSeek 输出（2026-08-17 破晓录 ch3 逼出）：plan_chapter JSON 字符串值内
+    裸 ASCII 引号 + 原始换行组合 → _escape_control_chars 的 in_str 状态机被裸引号误导，
+    控制字符停在「结构位置」漏转义 → Invalid control character。兜底顺序必须先修裸引号
+    再转义控制字符（_escape_control_chars(_repair_stray_quotes(body))）。
+    """
+    from aiink.workflow.nodes import _parse_json
+
+    raw = '{"content": "他说"好\n", "t": 1}'
+    data = _parse_json(raw)
+    assert data["content"] == "他说\"好\n"
+    assert data["t"] == 1
 
 
 def test_split_marked_no_marker_returns_default():

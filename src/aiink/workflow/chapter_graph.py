@@ -72,6 +72,7 @@ def build_chapter_graph(checkpointer=None):
     g.add_node("audit", nodes.node_audit)
     g.add_node("revise", nodes.node_revise)
     g.add_node("persist", nodes.node_persist)
+    g.add_node("summarize", nodes.node_summarize)
     g.add_node("reset_replan", node_reset_replan)
 
     g.add_edge(START, "load_state")
@@ -94,5 +95,6 @@ def build_chapter_graph(checkpointer=None):
     )
     g.add_edge("reset_replan", "plan_chapter")
     g.add_edge("revise", "audit")
-    g.add_edge("persist", END)
+    g.add_edge("persist", "summarize")
+    g.add_edge("summarize", END)
     return g.compile(checkpointer=checkpointer)

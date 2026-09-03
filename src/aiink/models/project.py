@@ -18,6 +18,11 @@ class User(Base, UUIDPkMixin, TimestampMixin):
 
     email: Mapped[str | None] = mapped_column(String(255), unique=True)
     username: Mapped[str] = mapped_column(String(64), nullable=False)
+    # 阶段 6：用户等级（VIP → 网关入队 RabbitMQ 高优先级；老库由 db.ensure_user_tier 幂等补齐）
+    tier: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="normal", server_default="normal",
+        comment="用户等级：normal/vip（VIP 任务高优先级入队）",
+    )
     daily_quota: Mapped[int] = mapped_column(Integer, default=2, nullable=False, comment="每日章节配额")
     concurrent_limit: Mapped[int] = mapped_column(Integer, default=1, nullable=False, comment="进行中任务上限")
 

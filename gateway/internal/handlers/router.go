@@ -13,12 +13,13 @@ import (
 	"aiink/gateway/internal/config"
 	"aiink/gateway/internal/limiter"
 	"aiink/gateway/internal/pyapi"
+	"aiink/gateway/internal/queue"
 	"aiink/gateway/internal/redis"
 	"aiink/gateway/internal/trace"
 )
 
 // NewRouter 装配全部路由与中间件。
-func NewRouter(cfg config.Config, r *redis.Client, py *pyapi.Client) *gin.Engine {
+func NewRouter(cfg config.Config, r *redis.Client, rmq *queue.AMQP, py *pyapi.Client) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -26,7 +27,7 @@ func NewRouter(cfg config.Config, r *redis.Client, py *pyapi.Client) *gin.Engine
 	// 进程内令牌桶：粗粒度限流（防外部刷接口；细粒度配额走 gates.lua §13）
 	router.Use(limiter.Middleware(rate.Limit(cfg.RatePerSec), cfg.RateBurst))
 
-	taskH := NewTaskHandler(cfg, r, py)
+	taskH := NewTaskHandler(cfg, r, rmq, py)
 	sseH := NewSSEHandler(r)
 	healthH := NewHealthHandler(cfg, r, py)
 
@@ -41,6 +42,8 @@ func NewRouter(cfg config.Config, r *redis.Client, py *pyapi.Client) *gin.Engine
 		secured.POST("/projects", taskH.CreateProject)
 		// 作品信息更新（§6.9 每章目标字数可配）
 		secured.PUT("/projects/:project_id", taskH.UpdateProject)
+		// 整本书删除（硬删：守卫进行中任务 → 级联清业务表/向量/checkpoint/Redis 残留，转发 Python API）
+		secured.DELETE("/projects/:project_id", taskH.DeleteProject)
 		secured.GET("/projects/:project_id/chapters", taskH.ListChapters)
 		// 章节详情（含正文/summary，阶段 4 前端章节编辑器读取正文；转发 Python API）
 		secured.GET("/projects/:project_id/chapters/:chapter_id", taskH.GetChapter)
@@ -64,10 +67,20 @@ func NewRouter(cfg config.Config, r *redis.Client, py *pyapi.Client) *gin.Engine
 		// 建书向导 + 设定浏览（§7.11：创建作品 / 设定草稿 / 确认落库 / 世界观 / 人物卡片，转发 Python API）
 		secured.POST("/projects/:project_id/setup-draft", taskH.SetupDraft)
 		secured.PUT("/projects/:project_id/setup", taskH.Setup)
+		// 整书大纲（§11 建书 ③：草稿 / 确认落库 / 读取，写作时注入逐章目标）
+		secured.POST("/projects/:project_id/outline-draft", taskH.OutlineDraft)
+		secured.PUT("/projects/:project_id/outline", taskH.PutOutline)
+		secured.GET("/projects/:project_id/outline", taskH.GetOutline)
 		secured.GET("/projects/:project_id/world", taskH.GetWorld)
 		secured.GET("/projects/:project_id/characters", taskH.GetCharacters)
 		// 设定实体浏览（§7.11 ④ 自动建档：武器/功法/技能/地点）
 		secured.GET("/projects/:project_id/entities", taskH.ListEntities)
+		// 世界拓扑全量（§9 图谱：4 类节点 + 人物关系/地点层级边）
+		secured.GET("/projects/:project_id/graph", taskH.GetGraph)
+		// 伏笔池台账（§7.9 状态机全量，前端设定页伏笔池区块）
+		secured.GET("/projects/:project_id/foreshadows", taskH.ListForeshadows)
+		// 扫榜灵感（§10 MCP Client 拉取外部榜单，只作建书前的灵感工具；全局无项目端点）
+		secured.GET("/rankings", taskH.ListRankings)
 		// 建单章生成任务
 		secured.POST("/projects/:project_id/chapters/:chapter_id/generate", taskH.CreateChapter)
 		// 建批次生成任务
@@ -118,6 +131,5 @@ func NewRouter(cfg config.Config, r *redis.Client, py *pyapi.Client) *gin.Engine
 		c.File(filepath.Join(dist, "index.html"))
 	})
 
-	// 队列守护（退避重投 / DLQ / 崩溃认领）由 main 启动，不在路由内
 	return router
 }

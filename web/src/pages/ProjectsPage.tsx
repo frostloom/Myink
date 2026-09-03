@@ -1,5 +1,6 @@
 // 项目库：左 rail + 「新建作品」+ 项目卡（title/genre/current_chapter → 进入工作台）。
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import type { MouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
@@ -12,17 +13,44 @@ export default function ProjectsPage() {
   const navigate = useNavigate()
   const [projects, setProjects] = useState<Project[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let alive = true
+  // 删除/重载共用：删除成功后刷新列表
+  const loadProjects = useCallback(() => {
+    setError(null)
     api
       .listProjects()
-      .then((list) => alive && setProjects(list))
-      .catch((err) => alive && setError(err instanceof ApiError ? err.code : '加载失败'))
-    return () => {
-      alive = false
-    }
+      .then((list) => setProjects(list))
+      .catch((err) => setError(err instanceof ApiError ? err.code : '加载失败'))
   }, [])
+
+  useEffect(() => {
+    void loadProjects()
+  }, [loadProjects])
+
+  // 整本书删除（阶段 6 硬删）：卡片是整块 <Link>，删除按钮必须截断冒泡防误导航。
+  // 有进行中任务 → Python 409（本书需先暂停/取消），前端给中文横幅。
+  const handleDelete = useCallback(
+    (e: MouseEvent, p: Project) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (!window.confirm(`删除《${p.title}》？全书正文、记忆、向量与任务记录将一并移除，不可撤销。`)) return
+      api
+        .deleteProject(p.id)
+        .then(() => {
+          setDeleteError(null)
+          void loadProjects()
+        })
+        .catch((err) => {
+          if (err instanceof ApiError && err.status === 409) {
+            setDeleteError(`《${p.title}》有进行中任务，无法删除。请先暂停/取消后再试。`)
+          } else {
+            setDeleteError(err instanceof ApiError ? `删除失败：${err.code}` : '删除失败')
+          }
+        })
+    },
+    [loadProjects],
+  )
 
   return (
     <div className={styles.wrap}>
@@ -35,6 +63,7 @@ export default function ProjectsPage() {
           </button>
         </div>
         {error && <div className="banner banner-error">加载失败：{error}</div>}
+        {deleteError && <div className="banner banner-error">{deleteError}</div>}
         {projects === null ? (
           <div className="empty">加载中…</div>
         ) : projects.length === 0 ? (
@@ -47,6 +76,15 @@ export default function ProjectsPage() {
                 <div className={styles.meta}>
                   {p.genre} · 已写至第 {p.current_chapter} 章
                 </div>
+                <button
+                  type="button"
+                  className={styles.del}
+                  onClick={(e) => handleDelete(e, p)}
+                  aria-label={`删除《${p.title}》`}
+                  title="删除本书"
+                >
+                  删除
+                </button>
               </Link>
             ))}
           </div>

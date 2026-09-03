@@ -151,6 +151,48 @@ def test_process_batch_pause_publishes_paused(temp_project, monkeypatch):
         r.delete(sse_key(tid))
 
 
+def test_process_resume_settles_terminal_status(temp_project, monkeypatch):
+    """resume 终态落库（2026-08-17 修复）：resume_thread 不落库，process 结果分支补写。
+
+    回归：chapter_resume 跑完后任务 DB 状态滞留 running——运行中无法续跑（409）、
+    重启后也不可重投，任务永久卡死。mock _dispatch 返回 done / needs_review 结果，
+    断言任务行终态被补写为 done / awaiting_review（awaiting_review 可再续跑）。
+    """
+    import aiink.worker.processor as proc_mod
+    from aiink.workflow.runner import new_task
+
+    r = get_redis()
+
+    def run_done(*a, **k):
+        return {"chapter_seq": 2}
+
+    def run_review(*a, **k):
+        return {"chapter_seq": 2, "needs_review": True}
+
+    try:
+        # 场景一：续跑成功 → done
+        tid = new_task(project_id=temp_project, task_type="chapter_generate",
+                       payload={"seq": 2}, chapter_seq=2, status="running")
+        body = _body(tid, temp_project, task_type="chapter_resume", payload={"seq": 2})
+        monkeypatch.setattr(proc_mod, "_dispatch", run_done)
+        assert process(body) == "terminal"
+        with new_session() as db:
+            assert db.get(Task, uuid.UUID(tid)).status == "done", "续跑成功应补写 done"
+
+        # 场景二：续跑转人工（persist has_card）→ awaiting_review，可再续跑
+        tid2 = new_task(project_id=temp_project, task_type="chapter_generate",
+                        payload={"seq": 2}, chapter_seq=2, status="running")
+        body2 = _body(tid2, temp_project, task_type="chapter_resume", payload={"seq": 2})
+        monkeypatch.setattr(proc_mod, "_dispatch", run_review)
+        assert process(body2) == "terminal"
+        with new_session() as db:
+            assert db.get(Task, uuid.UUID(tid2)).status == "awaiting_review", \
+                "续跑转人工应补写 awaiting_review"
+    finally:
+        r.delete(sse_key(tid)) if "tid" in locals() else None
+        r.delete(sse_key(tid2)) if "tid2" in locals() else None
+
+
 def test_process_retry_classification(project_id, stub_provider, monkeypatch):
     """可重试失败：dispatch 前置查询抛 ConnectionError → "retry"（§6.12 退避重投）。
 

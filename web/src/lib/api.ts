@@ -12,15 +12,22 @@ import type {
   CorrectMemoryResponse,
   CreateProjectBody,
   DeleteChapterResponse,
+  DeleteProjectResponse,
   GenerateResponse,
   AuditRunResponse,
   GlobalAuditReportDetail,
   GlobalAuditReportSummary,
+  Foreshadow,
   LessonActionResponse,
   LoreEntity,
   MemoryCandidate,
   Project,
   ProjectSettings,
+  BookOutlineResponse,
+  OutlineConfirmBody,
+  OutlineDraft,
+  OutlineDraftBody,
+  RankingsResponse,
   SetupBody,
   SetupConfirmResponse,
   SetupDraft,
@@ -32,6 +39,7 @@ import type {
   TaskDetail,
   TaskSummary,
   UpdateProjectBody,
+  WorldGraphResponse,
   WorldView,
   WritingLesson,
 } from '../types'
@@ -142,7 +150,7 @@ export const api = {
   generateChapter: (
     pid: string,
     cid: string,
-    body: { seq: number; user_instruction?: string },
+    body: { seq: number; user_instruction?: string; rewrite?: boolean },
   ) => request<GenerateResponse>('POST', `/projects/${pid}/chapters/${cid}/generate`, body),
 
   generateBatch: (pid: string, body: { size: number; start: number }) =>
@@ -151,7 +159,12 @@ export const api = {
   getTask: (tid: string) => request<TaskDetail>('GET', `/tasks/${tid}`),
 
   // 项目任务历史（阶段 4 任务视图）：切书后展示该书过往任务（网关转发 Python）。
-  listTasks: (pid: string) => request<TaskSummary[]>('GET', `/projects/${pid}/tasks`),
+  // chapterSeq 非空 → 只列覆盖该章的任务 + 该章花费（右栏按章过滤，§11）。
+  listTasks: (pid: string, chapterSeq?: number) =>
+    request<TaskSummary[]>(
+      'GET',
+      `/projects/${pid}/tasks${chapterSeq ? `?chapter_seq=${chapterSeq}` : ''}`,
+    ),
 
   // 批次控制（pause|resume|cancel）：网关转发 Python 任务控制端点；外部控制不发
   // SSE 事件，成功后调用方需主动 GET 快照刷新（useTaskEvents.refresh）。
@@ -211,11 +224,27 @@ export const api = {
   updateProject: (pid: string, body: UpdateProjectBody) =>
     request<Project>('PUT', `/projects/${pid}`, body),
 
+  // 整本书删除（阶段 6 硬删：FK 级联清正文/记忆/向量/任务记录；有进行中任务 → 409）。
+  deleteProject: (pid: string) =>
+    request<DeleteProjectResponse>('DELETE', `/projects/${pid}`),
+
   setupDraft: (pid: string, premise: string) =>
     request<SetupDraft>('POST', `/projects/${pid}/setup-draft`, { premise }),
 
   confirmSetup: (pid: string, body: SetupBody) =>
     request<SetupConfirmResponse>('PUT', `/projects/${pid}/setup`, body),
+
+  // 整书大纲（§11 建书 ③：梗概 + 大致章节数 + 大致故事线 → Planner 按章节数分卷提案
+  // Objective+卷+逐章；草稿不落库，确认后 PUT 整体替换 volume_outlines 单行；写作注入当前卷
+  // OKR + 本章大纲位，推进主线并防章节开头雷同）。
+  outlineDraft: (pid: string, body: OutlineDraftBody) =>
+    request<OutlineDraft>('POST', `/projects/${pid}/outline-draft`, body),
+
+  confirmOutline: (pid: string, body: OutlineConfirmBody) =>
+    request<BookOutlineResponse>('PUT', `/projects/${pid}/outline`, body),
+
+  getOutline: (pid: string) =>
+    request<BookOutlineResponse>('GET', `/projects/${pid}/outline`),
 
   getWorld: (pid: string) => request<WorldView>('GET', `/projects/${pid}/world`),
 
@@ -223,4 +252,15 @@ export const api = {
 
   // 设定实体（§7.11 ④ 自动建档：武器/功法/技能/地点，低风险正文抽取自动登记）。
   listEntities: (pid: string) => request<LoreEntity[]>('GET', `/projects/${pid}/entities`),
+
+  // 世界拓扑全量（§9 图谱：4 类节点 + 人物关系/地点层级边，ECharts 力导向渲染）。
+  listGraph: (pid: string) => request<WorldGraphResponse>('GET', `/projects/${pid}/graph`),
+
+  // 伏笔池台账（§7.9 状态机全量：planted/developing/resolved/dropped，设定页展示）。
+  listForeshadows: (pid: string) => request<Foreshadow[]>('GET', `/projects/${pid}/foreshadows`),
+
+  // 扫榜灵感（§10 MCP Client 拉取外部榜单，只作建书前的灵感工具；全局无项目端点，网关转发 Python）。
+  // refresh=true 强制绕过进程内 TTL 缓存重拉（降级样例也可重试）。
+  listRankings: (refresh = false) =>
+    request<RankingsResponse>('GET', `/rankings${refresh ? '?refresh=true' : ''}`),
 }

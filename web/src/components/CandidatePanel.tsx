@@ -8,15 +8,24 @@ import type { MemoryCandidate } from '../types'
 import { StatusBadge } from './StatusBadge'
 import styles from './CandidatePanel.module.css'
 
+/** 放行目标：单章 awaiting_review 任务确认完候选后，从这里 resume 落库正文 */
+export interface ReleaseTarget {
+  taskId: string
+  chapterSeq: number
+}
+
 interface Props {
   projectId: string
   candidates: MemoryCandidate[]
   onChanged: () => void
+  /** 当前章 await review 确认收尾后可放行 → 空态渲染主按钮 */
+  releaseTarget?: ReleaseTarget | null
+  onReleased?: (taskId: string, chapterSeq: number) => void
 }
 
-type Cid = MemoryCandidate['candidate_id']
+type Cid = MemoryCandidate['candidate_id'] | '__release__'
 
-export function CandidatePanel({ projectId, candidates, onChanged }: Props) {
+export function CandidatePanel({ projectId, candidates, onChanged, releaseTarget, onReleased }: Props) {
   const [open, setOpen] = useState(candidates.length > 0)
   const [busy, setBusy] = useState<Cid | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -39,6 +48,21 @@ export function CandidatePanel({ projectId, candidates, onChanged }: Props) {
     }
   }
 
+  // 放行本章：候选确认完后 resume 单章任务（§6.11），把 checkpoint 草稿落库为正文
+  async function release() {
+    if (!releaseTarget || busy) return
+    setBusy('__release__')
+    setError(null)
+    try {
+      await api.resumeBatch(releaseTarget.taskId)
+      onReleased?.(releaseTarget.taskId, releaseTarget.chapterSeq)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.code : '放行失败')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   return (
     <section className={`panel ${styles.panel}`}>
       <header className={styles.head}>
@@ -52,9 +76,21 @@ export function CandidatePanel({ projectId, candidates, onChanged }: Props) {
       {error && <div className="banner banner-error">{error}</div>}
 
       {open && count === 0 && (
-        <p className="empty">
-          无待确认候选。批次 critical 冲突 / 编辑校正变更 / 新人物卡片会进入这里。
-        </p>
+        <div className={styles.release}>
+          <p className="empty">
+            无待确认候选。批次 critical 冲突 / 编辑校正变更 / 新人物卡片会进入这里。
+          </p>
+          {releaseTarget && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy !== null}
+              onClick={() => void release()}
+            >
+              {busy === '__release__' ? '放行中…' : `放行第 ${releaseTarget.chapterSeq} 章`}
+            </button>
+          )}
+        </div>
       )}
 
       {open && count > 0 && (

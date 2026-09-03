@@ -396,3 +396,139 @@ def test_lessons_api(temp_project):
     assert any(row["lesson_id"] == plid for row in rows)
     rows = list_lessons(temp_project, status="rejected")
     assert any(row["lesson_id"] == rlid for row in rows)
+
+
+# ---- 11. 单章流每 N 章复盘（reflexion_for_chapter_window，§8.9 扩展）----
+
+
+class WindowReflexionChain:
+    """nodes.make_chain("audit") 换桩：reflexion 返回预置 lessons（或 error）。"""
+
+    def __init__(self, lessons=None, reflexion_error=None):
+        self.lessons = lessons if lessons is not None else {"lessons": []}
+        self.reflexion_error = reflexion_error
+        self.calls = 0
+
+    def generate(self, messages, *, json_mode=False, max_tokens=None, temperature=None, tools=None):
+        self.calls += 1
+        if self.reflexion_error:
+            return ModelResponse(content="", model_id="stub", error=self.reflexion_error,
+                                 input_tokens=10, output_tokens=0, duration_ms=10)
+        return ModelResponse(content=json.dumps(self.lessons, ensure_ascii=False),
+                             model_id="stub", input_tokens=10, output_tokens=50, duration_ms=10)
+
+
+def _seed_audit_runs(temp_project: str, findings_by_seq: dict):
+    """造单章任务（done）+ settled audit findings，模拟已写完章节的审计台账。"""
+    from aiink.models import AgentRun, Task
+
+    with tenant_session(temp_project) as db:
+        for seq, findings in findings_by_seq.items():
+            tid = str(uuid.uuid4())
+            # Task.id 必须 = AgentRun.task_id（章号映射 Task.id → chapter_seq 的关联键）
+            db.add(Task(id=uuid.UUID(tid), project_id=uuid.UUID(temp_project),
+                        task_type="chapter_generate", status="done", payload={"seq": seq},
+                        chapter_seq=seq))
+            db.add(AgentRun(project_id=uuid.UUID(temp_project), task_id=tid, node="audit",
+                            role="Audit", model_id="stub", input_tokens=60, output_tokens=80,
+                            duration_ms=30,
+                            detail={"audit_verdict": {"verdict": "pass", "findings": findings}}))
+        db.flush()
+
+
+def test_chapter_window_reflexion_distills(temp_project, monkeypatch):
+    """单章流窗口 [end-N+1, end]：audit findings → LLM 提炼 → 分级落库。"""
+    _seed_audit_runs(temp_project, {
+        1: [{"conflict_key": "p1", "conflict_type": "power", "severity": "major", "scope": "structural",
+             "evidence": [{"chapter": 1, "quote": "林砚一掌拍出，直接晋升大境界"}],
+             "confidence": 0.8, "suggestion": "突破须有契机"}],
+        5: [{"conflict_key": "s1", "conflict_type": "style", "severity": "minor", "scope": "local",
+             "evidence": [{"chapter": 5, "quote": "夜色沉沉，月色沉沉"}],
+             "confidence": 0.7, "suggestion": "减少排比堆砌"}],
+    })
+    chain = WindowReflexionChain({"lessons": [
+        {"conflict_type": "power", "lesson_type": "both", "content": "突破须有契机且配角战力受限",
+         "confidence": 0.9},
+        {"conflict_type": "style", "lesson_type": "writing", "content": "减少排比堆砌，对话区分腔调",
+         "confidence": 0.8},
+    ]})
+    monkeypatch.setattr(nodes, "make_chain", lambda role, **kw: chain)
+
+    out = nodes.reflexion_for_chapter_window(project_id=temp_project, end_chapter=5, task_id="r-w1")
+    ref = out.get("reflexion") or {}
+    assert ref.get("findings") == 2 and ref.get("lessons") == 2, f"实际 {ref}"
+    assert chain.calls == 1
+
+    with tenant_session(temp_project) as db:
+        rows = db.query(WritingLesson).filter(
+            WritingLesson.project_id == uuid.UUID(temp_project)).all()
+        by_cat = {r.category: r for r in rows}
+        assert by_cat["power"].status == "proposed" and by_cat["power"].source_chapter == 1
+        assert by_cat["style"].status == "active" and by_cat["style"].source_chapter == 5
+        runs = db.query(nodes.AgentRun).filter(nodes.AgentRun.task_id == "r-w1",
+                                               nodes.AgentRun.node == "reflexion").all()
+        assert len(runs) == 1, "应记一条 reflexion 运行记录"
+        assert (runs[0].detail or {}).get("findings") == 2
+
+
+def test_chapter_window_reflexion_no_findings_shortcircuits(temp_project, monkeypatch):
+    """窗口内无发现 → 短路（不调 LLM），只记 no_new_findings 台账。"""
+    _seed_audit_runs(temp_project, {3: []})
+    chain = WindowReflexionChain()
+    monkeypatch.setattr(nodes, "make_chain", lambda role, **kw: chain)
+
+    out = nodes.reflexion_for_chapter_window(project_id=temp_project, end_chapter=5, task_id="r-w2")
+    ref = out.get("reflexion") or {}
+    assert ref.get("reason") == "no_new_findings" and ref.get("lessons") == 0, f"实际 {ref}"
+    assert chain.calls == 0, "无发现应短路，不调 LLM"
+    assert _count_lessons(temp_project) == 0
+
+
+def test_chapter_window_includes_batch_subthreads(temp_project, monkeypatch):
+    """批次子线程 task_id `{batch}:ch{seq}` 纳入窗口（章号从后缀解析，无需 Task 行）。"""
+    from aiink.models import AgentRun
+
+    with tenant_session(temp_project) as db:
+        db.add(AgentRun(project_id=uuid.UUID(temp_project), task_id="batch-x:ch3", node="audit",
+                        role="Audit", model_id="stub", input_tokens=60, output_tokens=80,
+                        duration_ms=30,
+                        detail={"audit_verdict": {"verdict": "pass", "findings": [
+                            {"conflict_key": "p1", "conflict_type": "power", "severity": "major",
+                             "scope": "structural", "evidence": [{"chapter": 3, "quote": "越界"}],
+                             "confidence": 0.8, "suggestion": "突破须有契机"}]}}))
+        db.flush()
+    chain = WindowReflexionChain({"lessons": [
+        {"conflict_type": "power", "lesson_type": "both", "content": "突破须有契机",
+         "confidence": 0.9}]})
+    monkeypatch.setattr(nodes, "make_chain", lambda role, **kw: chain)
+
+    out = nodes.reflexion_for_chapter_window(project_id=temp_project, end_chapter=5, task_id="r-w3")
+    ref = out.get("reflexion") or {}
+    assert ref.get("findings") == 1, f"批次子线程应纳入窗口，实际 {ref}"
+    assert ref.get("lessons") == 1
+    with tenant_session(temp_project) as db:
+        row = db.query(WritingLesson).filter(
+            WritingLesson.project_id == uuid.UUID(temp_project)).first()
+        assert row.source_chapter == 3
+
+
+def test_maybe_reflexion_interval_and_swallow(temp_project, monkeypatch):
+    """worker 钩子：seq 命中间隔才触发；异常被吞（复盘不阻塞任务终态）。"""
+    from aiink.worker.processor import _maybe_reflexion
+
+    calls = []
+
+    def fake_reflexion(*, project_id, end_chapter, task_id):
+        calls.append((end_chapter, task_id))
+
+    monkeypatch.setattr(nodes, "reflexion_for_chapter_window", fake_reflexion)
+    _maybe_reflexion(temp_project, 5, "t5")  # 5 % 5 == 0 → 触发
+    _maybe_reflexion(temp_project, 4, "t4")  # 不命中
+    _maybe_reflexion(temp_project, 0, "t0")  # seq<1 不触发
+    assert calls == [(5, "t5")], f"实际 {calls}"
+
+    def boom(**kw):
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(nodes, "reflexion_for_chapter_window", boom)
+    _maybe_reflexion(temp_project, 5, "t6")  # 不应抛异常

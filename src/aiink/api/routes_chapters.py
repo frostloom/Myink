@@ -25,7 +25,8 @@ from aiink.api.schemas import (ChapterVersionsOut, ContentUpdateOut,
                                CorrectMemoryOut, DeleteChapterOut)
 from aiink.db import tenant_session
 from aiink.memory import correction
-from aiink.memory.invalidation import invalidate_chapter_memory
+from aiink.memory.invalidation import (invalidate_chapter_memory,
+                                       purge_deleted_chapter_registry)
 from aiink.memory.repository import snapshot_chapter
 from aiink.models import Chapter, ChapterVersion, MemoryCandidate, Project
 from aiink.workflow import nodes
@@ -151,11 +152,12 @@ def correct_chapter_memory(project_id: str, chapter_id: str) -> dict:
 @router.delete("/projects/{project_id}/chapters/{chapter_id}",
                dependencies=[Depends(require_owner)], response_model=DeleteChapterOut)
 def delete_chapter(project_id: str, chapter_id: str) -> dict:
-    """级联删除章节：删除该章及其后全部章节（正文 + 记忆 + 待确认池候选）。
+    """级联删除章节：删除该章及其后全部章节（正文 + 记忆 + 待确认池候选 + 登记表产物）。
 
     语义（阶段 3 决策）：中间章删掉后后续章剧情引用已删事件会断层，级联删除让作者
     从被删章重新生成。进度回退到保留的最大章序；无保留章则回 0。
-    边界：删除前应确保该范围无进行中的生成/续跑任务（任务 checkpoint 引用章节）。
+    登记表（人物卡/设定实体/别名）按被删章节产物精准清理（purge_deleted_chapter_registry），
+    建书确认的势力/地点/世界观规则保留。边界：删除前应确保该范围无进行中的生成/续跑任务。
     """
     with tenant_session(project_id) as db:
         ch = db.get(Chapter, _chapter_id(chapter_id))
@@ -164,6 +166,9 @@ def delete_chapter(project_id: str, chapter_id: str) -> dict:
         seq = ch.chapter_seq
         rows = (db.query(Chapter).filter(Chapter.chapter_seq >= seq)
                 .order_by(Chapter.chapter_seq).all())
+        # 先清登记表再失效：失效会硬删被删范围事件，而人物引用判定依赖事件参与者，
+        # 必须先算（§审计整改：删章不再残留人物卡/武器实体/悬空关系边）。
+        purge_deleted_chapter_registry(db, project_id=uuid.UUID(project_id), from_seq=seq)
         deleted: list[dict] = []
         for c in rows:
             invalidation = invalidate_chapter_memory(db, project_id=uuid.UUID(project_id),

@@ -2,10 +2,12 @@
 # 最终镜像包含 web/dist（网关静态托管，单端口 8080 同源出页面 + API + SSE）。
 #
 # 基础镜像源可用 build arg 覆盖（国内 docker.io 直连可能超时；compose 当前环境传
-# NODE_IMAGE=docker.m.daocloud.io/library/node:20-alpine，见 docker-compose.yml）。
+# NODE_IMAGE/GOLANG_IMAGE/DEBIAN_IMAGE=docker.m.daocloud.io/library/...，见 docker-compose.yml）。
 #
 # 阶段 1：构建前端静态产物（vite build，base=/，产物含 index.html/assets/favicon）
 ARG NODE_IMAGE=node:20-alpine
+ARG GOLANG_IMAGE=golang:1.26.1-alpine
+ARG DEBIAN_IMAGE=debian:bookworm-slim
 FROM ${NODE_IMAGE} AS web
 # npm 源可覆盖（国内 registry.npmjs.org 可能不通，compose 传 npmmirror）
 ARG NPM_REGISTRY=https://registry.npmjs.org
@@ -16,7 +18,7 @@ COPY web/ ./
 RUN npm run build
 
 # 阶段 2：构建网关二进制（pure Go 静态编译，alpine 可跑）
-FROM golang:1.26.1-alpine AS build
+FROM ${GOLANG_IMAGE} AS build
 # go 模块代理可覆盖（国内 proxy.golang.org 不通，compose 传 goproxy.cn）
 ARG GOPROXY=https://proxy.golang.org,direct
 ENV GOPROXY=${GOPROXY}
@@ -27,7 +29,7 @@ COPY gateway/ ./
 RUN CGO_ENABLED=0 go build -o /out/gateway ./cmd/gateway
 
 # 阶段 3：精简运行层（debian slim，含 dist + 二进制）
-FROM debian:bookworm-slim
+FROM ${DEBIAN_IMAGE}
 WORKDIR /app
 COPY --from=build /out/gateway /usr/local/bin/gateway
 COPY --from=web /app/web/dist /app/dist

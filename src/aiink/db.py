@@ -175,6 +175,19 @@ def ensure_storage_indexes() -> None:
                 conn.execute(_text(ddl))
 
 
+def ensure_user_tier() -> None:
+    """为老库补齐 users.tier（幂等，阶段 6 VIP 优先级）。
+
+    create_all 对已存在的表不会补列——老 demo 库需显式 ADD COLUMN IF NOT EXISTS
+    （新建库模型已含该列，幂等无副作用）；server_default 保证存量行落为 normal。
+    """
+    with _admin_engine.begin() as conn:
+        conn.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS tier VARCHAR(16) "
+            "NOT NULL DEFAULT 'normal'"
+        ))
+
+
 def ensure_unique_constraints() -> None:
     """为活库补齐 create_all 不会 ALTER 的唯一约束（幂等，阶段 5 迁移链前的过渡）。
 

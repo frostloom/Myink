@@ -132,7 +132,7 @@ def test_list_tasks_cost_total_single_and_batch(temp_project):
 
 
 def test_get_task_cost_total(temp_project):
-    """详情 cost_total = 该任务 runs 的 cost 和（GET /tasks/{id}）。"""
+    """详情 cost_total = 该任务 runs 的 cost 和（GET /tasks/{id}）；runs 带 task_id 供前端按章切。"""
     tid = _add_task(temp_project, task_type="chapter_generate", status="done", chapter_seq=1)
     pid = uuid.UUID(temp_project)
     with new_session() as db:
@@ -146,8 +146,60 @@ def test_get_task_cost_total(temp_project):
         detail = resp.json()
         assert round(detail["cost_total"], 4) == 0.028, "详情总花费 = runs cost 和"
         assert len(detail["runs"]) == 3
+        assert all(r["task_id"] == tid for r in detail["runs"]), "run 应带所属子线程 task_id"
     finally:
         _cleanup([tid], temp_project)
+
+
+def test_list_tasks_chapter_filter(temp_project):
+    """chapter_seq 查询参数（§11 右栏按章过滤）：只列覆盖该章的任务，cost 收窄为该章切片。
+
+    - 单章任务：chapter_seq 精确匹配，cost = 全任务；
+    - 批次任务：payload.start..start+size 范围覆盖，cost = 只计 {batch}:ch{seq} 行
+      （book 级 run 如 batch_plan 不计入章成本）；
+    - 不覆盖该章的任务（另一批）不出现在结果里。
+    """
+    single = _add_task(temp_project, task_type="chapter_generate", status="done", chapter_seq=2)
+    batch2 = _add_task(temp_project, task_type="batch_generate", status="done",
+                       payload={"start": 2, "size": 3})  # 覆盖 2..4
+    batch5 = _add_task(temp_project, task_type="batch_generate", status="done",
+                       payload={"start": 5, "size": 2})  # 覆盖 5..6
+    pid = uuid.UUID(temp_project)
+    with new_session() as db:
+        # 单章 ch2：全任务 cost
+        db.add(AgentRun(project_id=pid, task_id=single, node="write", cost_est=0.01))
+        # batch2：book 级 run（batch_plan 裸 id）+ ch2/ch3 章 run
+        db.add(AgentRun(project_id=pid, task_id=batch2, node="batch_plan", cost_est=0.05))
+        db.add(AgentRun(project_id=pid, task_id=f"{batch2}:ch2", node="write", cost_est=0.02))
+        db.add(AgentRun(project_id=pid, task_id=f"{batch2}:ch2", node="persist", cost_est=0.0))
+        db.add(AgentRun(project_id=pid, task_id=f"{batch2}:ch3", node="write", cost_est=0.03))
+        # batch5：ch5 章 run
+        db.add(AgentRun(project_id=pid, task_id=f"{batch5}:ch5", node="write", cost_est=0.07))
+        db.commit()
+    try:
+        # 过滤 ch2 → single + batch2（batch5 不覆盖，剔除）
+        resp = client.get(f"/internal/v1/projects/{temp_project}/tasks?chapter_seq=2",
+                          headers=_h(_demo_user_id()))
+        assert resp.status_code == 200
+        items = {i["task_id"]: i for i in resp.json()}
+        assert set(items) == {single, batch2}, "只列覆盖该章的任务"
+        assert round(items[single]["cost_total"], 4) == 0.01, "单章 = 全任务 cost"
+        assert round(items[batch2]["cost_total"], 4) == 0.02, \
+            "批次章成本 = :ch2 切片，book 级 batch_plan 不计入"
+        assert items[batch2]["batch_size"] == 3
+        # 过滤 ch5 → 只有 batch5，cost = ch5 切片
+        resp5 = client.get(f"/internal/v1/projects/{temp_project}/tasks?chapter_seq=5",
+                           headers=_h(_demo_user_id()))
+        items5 = {i["task_id"]: i for i in resp5.json()}
+        assert set(items5) == {batch5}
+        assert round(items5[batch5]["cost_total"], 4) == 0.07
+        # 无过滤 → 全量（回归：原口径批次 = 裸 id + 全 :ch 前缀聚合）
+        resp_all = client.get(f"/internal/v1/projects/{temp_project}/tasks",
+                              headers=_h(_demo_user_id()))
+        items_all = {i["task_id"]: i for i in resp_all.json()}
+        assert round(items_all[batch2]["cost_total"], 4) == 0.1, "全量口径批次含 book 级 run"
+    finally:
+        _cleanup([single, batch2, batch5], temp_project)
 
 
 def test_list_tasks_ownership_matrix(temp_project):

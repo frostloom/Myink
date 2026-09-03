@@ -376,3 +376,12 @@ def test_world_characters_ownership(temp_project):
         assert client.get(path).status_code == 403
         assert client.get(f"/internal/v1/projects/{uuid.uuid4()}/world",
                           headers=_h(_demo_user_id())).status_code == 404
+
+
+# ---- 提示词契约（§7.11 AI 起名）：SYSTEM_BOOK_SETUP schema 含 title ----
+
+def test_setup_prompt_ai_title_contract():
+    """AI 起名契约：SYSTEM_BOOK_SETUP 的 JSON schema 含 title 字段（书名留空由 Planner 建议）。"""
+    from aiink.workflow import prompts
+    assert '"title"' in prompts.SYSTEM_BOOK_SETUP, "schema 须含书名建议字段"
+    assert "已定书名返回空串" in prompts.SYSTEM_BOOK_SETUP, "已定书名时 title 返回空串（不覆盖作者决定）"

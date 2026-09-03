@@ -87,9 +87,39 @@
   align-items: center;
 }
 
+/* 整书大纲 ③：每卷一个视觉分组（卷头 + 卷级字段 + 卷内章节） */
+.volumeBlock {
+  padding: var(--space-3);
+  margin: var(--space-4) 0;
+  border: 1px solid var(--ink-border, rgba(128, 128, 128, 0.35));
+  border-radius: 8px;
+}
+
 .charGrid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr auto;
   gap: var(--space-2);
   align-items: center;
+}
+
+/* 题材标签（建书 ①）：建议集点选组合，非限定 */
+.genreChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.chip {
+  padding: 2px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+  cursor: pointer;
+}
+
+.chipOn {
+  border-color: var(--accent);
+  color: var(--accent);
 }

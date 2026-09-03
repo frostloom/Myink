@@ -39,6 +39,8 @@ def _relation_target_name(session: Session, cid) -> str:
     return ch.name if ch else str(cid)
 
 
+
+
 # 出场人物上限（recall 预算控制，防上下文膨胀）
 _MAX_ENTITIES = 12
 # 事件语义召回补充上限（去重后）
@@ -57,6 +59,23 @@ _CONTENT_CAP = 300
 _MAX_LESSONS = 8
 # 关键词腿术语上限（人物名去重后）
 _MAX_KEYWORD_TERMS = 12
+# 上一章结尾片段上限（字）：只够本章接续落点，不把全文喂进上下文（§11 防开头雷同）
+_TAIL_CAP = 300
+
+
+def _tail_of(content: str | None) -> str:
+    """取正文结尾片段，对齐段落边界避免中途截断句子。
+
+    content 是带自然换行的纯文本散文：取最后 _TAIL_CAP 字后，若窗口内出现段落换行
+    则从最后一段开头取（给模型完整段落收尾）；窗口内无换行（单段落超长）则原样返回。
+    """
+    if not content:
+        return ""
+    tail = content.strip()[-_TAIL_CAP:]
+    idx = tail.find("\n")
+    if 0 < idx <= 80:
+        tail = tail[idx + 1:].lstrip()
+    return tail
 
 
 def _merge_settings_constraints(session: Session, project_id: uuid.UUID,
@@ -110,11 +129,16 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
         shared_context["hard_facts"] = facts_out
     recent_events = repo.get_recent_events(session, project_id, limit=10)
 
-    # 上一章摘要 / 开头（短期上下文）
+    # 上一章摘要 + 结尾片段（短期上下文）。摘要概括主线；结尾片段是本章接续锚点——
+    # 从上一章收尾的具体情境继续展开，而非从零铺陈场景（§11 开头雷同的根治之二：
+    # 大纲位定「写什么」，结尾片段定「从哪接上」。不注入上一章开头，那是治标 hack）。
     short: list[dict] = []
     prev = repo.get_latest_chapter(session, project_id)
     if prev and prev.chapter_seq < chapter_seq:
         short.append({"kind": "prev_chapter_summary", "chapter": prev.chapter_seq, "summary": prev.summary or ""})
+        tail = _tail_of(prev.content)
+        if tail:
+            short.append({"kind": "prev_chapter_tail", "chapter": prev.chapter_seq, "tail": tail})
 
     # 出场人物状态快照（含当前关系——L2 正文-台账语义比对与写前预防的台账侧输入，
     # _render_entity 一并注入 write/plan/audit/extract；只取 ch 为 source 的有序对活跃行）

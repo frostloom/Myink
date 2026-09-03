@@ -9,12 +9,13 @@ import {
 } from './candidates'
 
 describe('candidateLabel / candidateTone', () => {
-  it('七类候选有中文标签', () => {
+  it('候选有中文标签', () => {
     expect(candidateLabel('event')).toBe('事件')
     expect(candidateLabel('fact')).toBe('事实')
     expect(candidateLabel('character_state')).toBe('角色状态')
     expect(candidateLabel('relation_change')).toBe('关系变更')
     expect(candidateLabel('foreshadow')).toBe('伏笔')
+    expect(candidateLabel('foreshadow_touch')).toBe('伏笔回收')
     expect(candidateLabel('chapter_summary')).toBe('章节摘要')
     expect(candidateLabel('memory_removal')).toBe('记忆删除')
   })
@@ -26,6 +27,10 @@ describe('candidateLabel / candidateTone', () => {
   it('memory_removal 用 error 色调（破坏性动作警示）', () => {
     expect(candidateTone('memory_removal')).toBe('error')
     expect(candidateTone('event')).toBe('accent')
+  })
+
+  it('foreshadow_touch 与伏笔同用 warning 色调', () => {
+    expect(candidateTone('foreshadow_touch')).toBe('warning')
   })
 })
 
@@ -83,5 +88,18 @@ describe('candidateFields', () => {
 
   it('空 payload 返回空数组', () => {
     expect(candidateFields('event', {})).toEqual([])
+  })
+
+  it('foreshadow_touch 展示伏笔 id/回收结果/说明', () => {
+    const rows = candidateFields('foreshadow_touch', {
+      foreshadow_id: 'aaaaaaaa-0000-0000-0000-000000000001',
+      outcome: 'resolved',
+      note: '灯谜在拍卖会上揭晓',
+    })
+    expect(rows).toEqual([
+      ['伏笔', 'aaaaaaaa…'],
+      ['回收结果', 'resolved'],
+      ['说明', '灯谜在拍卖会上揭晓'],
+    ])
   })
 })

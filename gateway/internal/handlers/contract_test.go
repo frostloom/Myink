@@ -30,6 +30,7 @@ var forwardedPaths = []struct{ method, path string }{
 	{"GET", "/internal/v1/projects"},
 	{"POST", "/internal/v1/projects"},
 	{"PUT", "/internal/v1/projects/{project_id}"},
+	{"DELETE", "/internal/v1/projects/{project_id}"},
 	{"GET", "/internal/v1/projects/{project_id}/chapters"},
 	{"GET", "/internal/v1/projects/{project_id}/chapters/{chapter_id}"},
 	{"PUT", "/internal/v1/projects/{project_id}/chapters/{chapter_id}/content"},
@@ -47,9 +48,16 @@ var forwardedPaths = []struct{ method, path string }{
 	{"PUT", "/internal/v1/projects/{project_id}/style-profile"},
 	{"POST", "/internal/v1/projects/{project_id}/setup-draft"},
 	{"PUT", "/internal/v1/projects/{project_id}/setup"},
+	// 整书大纲（§11 建书 ③：草稿 / 确认落库 / 读取）
+	{"POST", "/internal/v1/projects/{project_id}/outline-draft"},
+	{"PUT", "/internal/v1/projects/{project_id}/outline"},
+	{"GET", "/internal/v1/projects/{project_id}/outline"},
 	{"GET", "/internal/v1/projects/{project_id}/world"},
 	{"GET", "/internal/v1/projects/{project_id}/characters"},
 	{"GET", "/internal/v1/projects/{project_id}/entities"},
+	{"GET", "/internal/v1/projects/{project_id}/graph"},
+	{"GET", "/internal/v1/projects/{project_id}/foreshadows"},
+	{"GET", "/internal/v1/rankings"},
 	{"GET", "/internal/v1/tasks/{task_id}"},
 	{"POST", "/internal/v1/tasks/{task_id}/pause"},
 	{"POST", "/internal/v1/tasks/{task_id}/resume"},
@@ -208,6 +216,10 @@ func TestFakePyFieldsWithinContractSchema(t *testing.T) {
 		{"任务详情", "GET", "/internal/v1/tasks/detail-test", "/internal/v1/tasks/{task_id}"},
 		{"批次暂停", "POST", "/internal/v1/tasks/batch-x/pause", "/internal/v1/tasks/{task_id}/pause"},
 		{"签发 token", "POST", "/internal/v1/auth/token", "/internal/v1/auth/token"},
+		{"扫榜", "GET", "/internal/v1/rankings", "/internal/v1/rankings"},
+		{"关系图谱", "GET", "/internal/v1/projects/p1/graph", "/internal/v1/projects/{project_id}/graph"},
+		{"伏笔池", "GET", "/internal/v1/projects/p1/foreshadows", "/internal/v1/projects/{project_id}/foreshadows"},
+		{"整书大纲", "GET", "/internal/v1/projects/p1/outline", "/internal/v1/projects/{project_id}/outline"},
 	}
 	for _, f := range fixtures {
 		t.Run(f.name, func(t *testing.T) {

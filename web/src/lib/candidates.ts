@@ -10,6 +10,7 @@ export const CANDIDATE_LABELS: Record<string, string> = {
   character_state: '角色状态',
   relation_change: '关系变更',
   foreshadow: '伏笔',
+  foreshadow_touch: '伏笔回收',
   chapter_summary: '章节摘要',
   memory_removal: '记忆删除',
   character_card: '新人物卡片',
@@ -26,6 +27,7 @@ const CANDIDATE_TONES: Record<string, BadgeTone> = {
   character_state: 'minor',
   relation_change: 'major',
   foreshadow: 'warning',
+  foreshadow_touch: 'warning',
   chapter_summary: 'hint',
   memory_removal: 'error',
   character_card: 'accent',
@@ -45,6 +47,7 @@ const KIND_FIELD_ORDER: Record<string, string[]> = {
     'relation_type', 'source_id', 'target_id', 'change', 'reason', 'valid_from', 'valid_to',
   ],
   foreshadow: ['name', 'description', 'trigger', 'payoff_plan', 'planted_chapter'],
+  foreshadow_touch: ['foreshadow_id', 'outcome', 'note'],
   chapter_summary: ['summary'],
   memory_removal: ['memory_type', 'memory_id', 'reason'],
   character_card: ['name', 'identity', 'role', 'personality', 'importance'],
@@ -72,6 +75,9 @@ const FIELD_LABELS: Record<string, string> = {
   valid_to: '失效章',
   description: '描述',
   trigger: '回收触发',
+  foreshadow_id: '伏笔',
+  outcome: '回收结果',
+  note: '说明',
   thread_name: '剧情线',
   memory_type: '记忆类型',
   memory_id: '记忆',
@@ -91,7 +97,7 @@ const FIELD_LABELS: Record<string, string> = {
 const SKIP_KEYS = new Set(['confidence', 'project_id', 'source_chapter', 'status'])
 
 /** UUID 型 id 展示前 8 位（全 UUID 过长干扰阅读） */
-const ID_KEYS = new Set(['character_id', 'source_id', 'target_id', 'memory_id'])
+const ID_KEYS = new Set(['character_id', 'source_id', 'target_id', 'memory_id', 'foreshadow_id'])
 
 export function formatCandidateValue(key: string, value: unknown): string {
   if (value === null || value === undefined || value === '') return ''

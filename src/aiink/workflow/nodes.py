@@ -27,13 +27,15 @@ from aiink.memory.invalidation import invalidate_chapter_memory
 from aiink.memory.recall import build_context
 from aiink.memory.vector_store import PgvectorStore
 from aiink.models import (AgentRun, Alias, Chapter, Character, CharacterState, Entity,
-                          Event, Fact, Foreshadow, MemoryCandidate, Relation, WritingLesson)
+                          Event, Fact, Foreshadow, Location, MemoryCandidate, Relation,
+                          WritingLesson)
 from aiink.models.memory import CHARACTER_STATE_FIELDS, RELATION_TYPES
 from aiink.providers import FallbackChain, ModelResponse, make_chain
 from aiink.schemas import AuditVerdict, ChapterPlan, Finding, MutationCandidate, ValidationReport
 from aiink.validation.ledger_l2 import run_ledger_l2
 from aiink.validation.service import ValidationService
 from aiink.workflow import prompts
+from aiink.workflow.outline import normalize_outline
 from aiink.workflow.state import ChapterState
 from aiink.workflow.tools import READ_TOOLS, execute_tool
 
@@ -89,7 +91,7 @@ def record_run_detail(db: Session, *, task_id: str | None, node: str, detail: di
 # write 按 target_words 换算限长：实测中文约 1 token ≈ 0.7 字（1 字≈1.43 token），
 # 3000 字 ≈ 2100 tokens；×1.25 余量防截断，同时从源头限死字数（最多 ~3900 字）。
 _WRITE_TOKENS_PER_CHAR = 1.43
-_MAX_TOKENS = {"plan_chapter": 4096, "extract": 4096, "revise": 8192, "audit": 4096, "reflexion": 4096}
+_MAX_TOKENS = {"plan_chapter": 4096, "extract": 4096, "revise": 8192, "audit": 4096, "reflexion": 4096, "summarize": 1024}
 
 
 def _assistant_tool_calls_message(resp: ModelResponse) -> dict:
@@ -189,6 +191,52 @@ def _llm(db: Session, state: ChapterState, node: str, role: str, chain: Fallback
     return resp, []
 
 
+# 节点级自修复重试上限（§6.12 调用层兜底第 4 档）：输出质量失败（非法 JSON / 空正文 / 跑偏）时重发次数。
+_LLM_CHECK_RETRIES = 2
+_RETRY_CORRECTIVE_JSON = ("你上一次输出不是合法 JSON 或内容为空，请重新输出严格的 JSON 对象，"
+                          "不要包含 markdown 代码块围栏、解释文字或任何多余内容。")
+_RETRY_CORRECTIVE_TEXT = ("你上一次输出为空、或不是纯文本正文（如 JSON / 工具调用文本），"
+                          "请直接重新输出本章正文：纯文本散文，先输出独立一行 === CONTENT ===，禁止 JSON。")
+
+
+def _llm_checked(db: Session, state: ChapterState, node: str, role: str, chain: FallbackChain,
+                 messages: list[dict], *, check, tools: list[dict] | None = None,
+                 json_mode: bool = True, disable_thinking: bool = False,
+                 max_attempts: int = _LLM_CHECK_RETRIES,
+                 corrective: str | None = None) -> tuple[ModelResponse, list[dict], Any, str | None]:
+    """LLM 调用 + 输出自修复：check(content) 解析并返回产物，失败追加修正指令重试。
+
+    调用层已有三档兜底（传输退避重试 / 模型降级链 flash→pro / _parse_json 容错），本函数补
+    最后一档——「输出质量」失败（非法 JSON / 空正文 / 跑偏）时重发同请求 + 一行修正指令，
+    靠模型方差与明确纠正挽回，避免一次坏输出永久杀掉整章（用户实测：plan_chapter 解析失败、
+    DeepSeek 空内容 → 任务直接失败）。
+
+    契约：check(content) -> 解析产物（失败抛异常）。**只重试解析层失败，resp.error 直接透传**
+    （降级链已用尽，重试同一模型无意义；且 BatchFailStub 建模「失败一次→批次失败」语义，
+    误重试会吃掉失败）。每次重试都走 _llm（record_run 记一条，前端流转图可见重试），
+    最终失败 error 带 retry 次数 + 末次 content 片段供排查。
+    """
+    last_exc: str | None = None
+    for attempt in range(max_attempts + 1):
+        msgs = list(messages)
+        if attempt:
+            msgs.append({"role": "system",
+                         "content": corrective or (_RETRY_CORRECTIVE_JSON if json_mode
+                                                   else _RETRY_CORRECTIVE_TEXT)})
+        resp, tool_trace = _llm(db, state, node, role, chain, msgs,
+                                tools=tools, json_mode=json_mode,
+                                disable_thinking=disable_thinking)
+        if resp.error:
+            return resp, tool_trace, None, resp.error
+        try:
+            return resp, tool_trace, check(resp.content), None
+        except Exception as exc:
+            last_exc = f"{type(exc).__name__}: {exc}"
+            logger.warning("%s 输出不合格（attempt=%d/%d）: %s", node, attempt, max_attempts, last_exc)
+    return resp, [], None, (f"{node} 输出多次不合格（已重试 {max_attempts} 次）: {last_exc}"
+                            f" | content[:120]={resp.content[:120]!r}")
+
+
 def _split_marked(content: str) -> dict[str, str]:
     """按 === 标记切块（write/revise 纯文本正文，§6.12 标记锚点）。
 
@@ -265,8 +313,12 @@ def _parse_json(content: str) -> Any:
         try:
             return decoder.raw_decode(body)[0]
         except json.JSONDecodeError:
-            # 裸引号兜底：仅当常规容错仍失败（不影响合法 JSON 的解析路径）
-            return decoder.raw_decode(_repair_stray_quotes(body))[0]
+            # 裸引号兜底：仅当常规容错仍失败（不影响合法 JSON 的解析路径）。
+            # 顺序有讲究——先修裸引号再转义控制字符：裸引号会提前闭合字符串，让
+            # _escape_control_chars 的 in_str 状态机误判后续字符在结构位置，导致字符串
+            # 值内的原始控制字符漏转义（真实 DeepSeek 输出：正文裸引号 + 原始换行组合，
+            # 2026-08-17 破晓录 ch3 逼出 Invalid control character）。
+            return decoder.raw_decode(_escape_control_chars(_repair_stray_quotes(body)))[0]
 
 
 def _escape_control_chars(s: str) -> str:
@@ -496,22 +548,22 @@ def node_audit(state: ChapterState) -> ChapterState:
     draft = state.get("draft")
     if not draft:
         return {"error": "write 未产出草稿"}
+
+    def _check_audit(content: str) -> AuditVerdict:
+        data = _parse_json(content)
+        return AuditVerdict(**{k: v for k, v in data.items() if k in AuditVerdict.model_fields})
+
     with tenant_session(pid) as db:
-        messages = prompts.audit_messages(
-            draft, state.get("plan") or {}, state.get("context") or {}, state["chapter_seq"]
-        )
-        resp, tool_trace = _llm(db, state, "audit", "Audit", make_chain("audit"), messages,
-                                tools=READ_TOOLS)
-        if resp.error:
-            return {"error": resp.error}
-        try:
-            data = _parse_json(resp.content)
-            verdict = AuditVerdict(**{k: v for k, v in data.items() if k in AuditVerdict.model_fields})
-            # 审核决策补记到本条 agent_runs（§6.8 debug：verdict/reasons/confidence 落库可审计）
-            record_run_detail(db, task_id=state.get("task_id"), node="audit",
-                              detail={"audit_verdict": verdict.model_dump(mode="json")})
-        except (json.JSONDecodeError, ValidationError) as exc:
-            return {"error": f"audit 输出解析失败: {exc} | content[:120]={resp.content[:120]!r} len={len(resp.content)}"}
+        _, tool_trace, verdict, err = _llm_checked(
+            db, state, "audit", "Audit", make_chain("audit"),
+            prompts.audit_messages(draft, state.get("plan") or {},
+                                   state.get("context") or {}, state["chapter_seq"]),
+            check=_check_audit, tools=READ_TOOLS)
+        if err:
+            return {"error": err}
+        # 审核决策补记到本条 agent_runs（§6.8 debug：verdict/reasons/confidence 落库可审计）
+        record_run_detail(db, task_id=state.get("task_id"), node="audit",
+                          detail={"audit_verdict": verdict.model_dump(mode="json")})
     # verdict.findings（L2）→ unresolved：rewrite 时 revise 注入逐条修（§6.5）。
     # 合并而非覆盖：保留 validate 的 L1/L2 major（此前被 audit 覆盖丢出 revise 上下文），
     # 同 conflict_key 以 audit 判定为准（语义层更权威）。
@@ -529,22 +581,65 @@ def node_audit(state: ChapterState) -> ChapterState:
 
 # ---- LLM 节点 ----
 
+def _load_outline_slice(db: Session, project_id: uuid.UUID, chapter_seq: int) -> dict | None:
+    """整书大纲按章切片（§11 注入）：{objective, volume, current}；无大纲/该章不在大纲 → None。
+
+    current=本章大纲位（目标+节拍）；volume=所属卷（主题/卷目标/关键结果/卷末事件）——规划与写作
+    都拿到「卷 OKR + 本章大纲位」两层，逐章推进卷目标。volume_outlines 单行存整书（volume_seq=1）。
+    """
+    row = repo.get_volume_outline(db, project_id, 1)
+    if row is None or not isinstance(row.outline, dict):
+        return None
+    outline = normalize_outline(row.outline) or {}
+    volumes = outline.get("volumes") or []
+    if not isinstance(volumes, list):
+        return None
+    volume = next((v for v in volumes if isinstance(v, dict) and any(
+        isinstance(c, dict) and c.get("seq") == chapter_seq for c in v.get("chapters") or [])), None)
+    if volume is None:
+        return None
+    current = next((c for c in volume.get("chapters") or [] if c.get("seq") == chapter_seq), None)
+    return {"objective": outline.get("objective") or "", "volume": volume, "current": current}
+
+
 def node_plan_chapter(state: ChapterState) -> ChapterState:
     pid = state["project_id"]
-    with tenant_session(pid) as db:
-        messages = prompts.plan_messages(state.get("context") or {}, state.get("batch_goal"))
-        resp, _ = _llm(db, state, "plan_chapter", "Planner", make_chain("planner", db=db, project_id=pid), messages)
-        if resp.error:
-            return {"error": resp.error}
-    try:
-        data = _coerce_str_lists(
-            _parse_json(resp.content), ChapterPlan)
+    seq = state["chapter_seq"]
+
+    def _check_plan(content: str) -> dict:
+        data = _coerce_str_lists(_parse_json(content), ChapterPlan)
         plan = ChapterPlan(**{k: v for k, v in data.items() if k in ChapterPlan.model_fields})
         plan.project_id = uuid.UUID(pid)
-        plan.chapter_seq = state["chapter_seq"]
-    except (json.JSONDecodeError, ValidationError) as exc:
-        return {"error": f"plan_chapter 输出解析失败: {exc}"}
-    return {"plan": plan.model_dump(mode="json")}
+        plan.chapter_seq = seq
+        return plan.model_dump(mode="json")
+
+    with tenant_session(pid) as db:
+        # 整书大纲注入（§11）：规划须贴本章大纲位、沿所属卷目标/KR 推进；无大纲则回退原行为。
+        # 扫榜灵感已整体前移至建书前（§10：题材风向参考只作建书向导工具，不再注入规划节点）
+        outline = _load_outline_slice(db, uuid.UUID(pid), seq)
+        _, _, plan, err = _llm_checked(
+            db, state, "plan_chapter", "Planner", make_chain("planner", db=db, project_id=pid),
+            prompts.plan_messages(state.get("context") or {}, state.get("batch_goal"),
+                                  outline=outline),
+            check=_check_plan)
+        if err:
+            return {"error": err}
+    return {"plan": plan}
+
+
+def _check_draft(content: str) -> str:
+    """write/revise 正文校验（§6.12 输出质量）：取 CONTENT 块，空/工具噪声抛异常触发 _llm_checked 重试。
+
+    复用 _split_marked/_content_block 容错（模型漏写标记兜底归 default），跑偏命中强特征
+    显式失败（诚实报错可重试），不把噪声当正文落库。
+    """
+    parts = _split_marked(content)
+    draft = _content_block(parts, content)
+    if not draft:
+        raise ValueError("正文为空")
+    if _looks_like_tool_noise(draft):
+        raise ValueError("正文跑偏（工具调用文本而非正文）")
+    return draft
 
 
 def node_write(state: ChapterState) -> ChapterState:
@@ -552,20 +647,18 @@ def node_write(state: ChapterState) -> ChapterState:
         return {}  # 上游 LLM 已失败：透传根因，不再覆盖（§6.12 错误可追溯）
     pid = state["project_id"]
     with tenant_session(pid) as db:
-        messages = prompts.write_messages(
-            state.get("context") or {}, state.get("plan") or {},
-            style_profile=state.get("style_profile"), target_words=state.get("target_words"),
-        )
-        resp, tool_trace = _llm(db, state, "write", "Writer", make_chain("writer", db=db, project_id=pid), messages,
-                                tools=READ_TOOLS, json_mode=False, disable_thinking=True)
-        if resp.error:
-            return {"error": resp.error}
-    parts = _split_marked(resp.content)
-    draft = _content_block(parts, resp.content)
-    if not draft:
-        return {"error": f"write 输出为空: content[:120]={resp.content[:120]!r} len={len(resp.content)}"}
-    if _looks_like_tool_noise(draft):
-        return {"error": f"write 输出跑偏（工具调用文本而非正文）: content[:120]={resp.content[:120]!r} len={len(resp.content)}"}
+        outline = _load_outline_slice(db, uuid.UUID(pid), state["chapter_seq"])
+        _, tool_trace, draft, err = _llm_checked(
+            db, state, "write", "Writer", make_chain("writer", db=db, project_id=pid),
+            prompts.write_messages(
+                state.get("context") or {}, state.get("plan") or {},
+                style_profile=state.get("style_profile"), target_words=state.get("target_words"),
+                outline=outline,
+            ),
+            check=_check_draft, tools=READ_TOOLS, json_mode=False, disable_thinking=True,
+            corrective=_RETRY_CORRECTIVE_TEXT)
+        if err:
+            return {"error": err}
     out: dict = {"draft": draft}
     if tool_trace:
         out["tool_trace"] = tool_trace
@@ -584,14 +677,18 @@ def extract_candidates_from_draft(db: Session, *, project_id: str, chapter_seq: 
     """
     messages = prompts.extract_messages(draft, chapter_seq, context=context)
     state: dict = {"project_id": project_id, "chapter_seq": chapter_seq, "task_id": task_id}
-    resp, _ = _llm(db, state, "extract", "Memory", make_chain("extract", db=db, project_id=project_id), messages)
-    if resp.error:
-        return [], resp.error
-    try:
-        data = _parse_json(resp.content)
-        raw_candidates = data.get("candidates", []) or []
-    except json.JSONDecodeError as exc:
-        return [], f"extract 输出解析失败: {exc}"
+
+    def _check_extract(content: str) -> list[dict]:
+        data = _parse_json(content)
+        if not isinstance(data, dict):
+            raise ValueError("extract 输出不是 JSON 对象")
+        return data.get("candidates", []) or []
+
+    _, _, raw_candidates, err = _llm_checked(
+        db, state, "extract", "Memory", make_chain("extract", db=db, project_id=project_id),
+        messages, check=_check_extract)
+    if err:
+        return [], err
 
     candidates: list[dict] = []
     for raw in raw_candidates:
@@ -623,6 +720,16 @@ def extract_candidates_from_draft(db: Session, *, project_id: str, chapter_seq: 
                 continue
             cand.payload["source_id"] = str(src)
             cand.payload["target_id"] = str(tgt)
+        elif cand.kind == "character_card":
+            # 新人物卡片去重（§7.11 ④）：名字已建档（Character 表）→ 不抽为候选。
+            # 缺此守卫时 resume 重跑会把已确认角色反复抽成新卡 → persist 恒 has_card
+            # → 章节永远 awaiting_review、正文永远不落库（死循环）。
+            name = str((cand.payload or {}).get("name") or "").strip()
+            if not name:
+                continue  # 空名卡片是噪声（persist 也不暂停，审计 Low-4）
+            if _resolve_character_id(db, project_id, name):
+                logger.info("丢弃 character_card 候选（名字已建档 %r，ch%d）", name, chapter_seq)
+                continue
         candidates.append(cand.model_dump(mode="json"))
     return candidates, None
 
@@ -646,17 +753,15 @@ def node_extract(state: ChapterState) -> ChapterState:
 def node_revise(state: ChapterState) -> ChapterState:
     pid = state["project_id"]
     with tenant_session(pid) as db:
-        messages = prompts.revise_messages(state["draft"], state.get("unresolved", []), state["chapter_seq"])
-        resp, _ = _llm(db, state, "revise", "Writer", make_chain("writer", db=db, project_id=pid), messages,
-                       json_mode=False, disable_thinking=True)
-        if resp.error:
-            return {"error": resp.error}
+        resp, _, draft, err = _llm_checked(
+            db, state, "revise", "Writer", make_chain("writer", db=db, project_id=pid),
+            prompts.revise_messages(state["draft"], state.get("unresolved", []),
+                                    state["chapter_seq"]),
+            check=_check_draft, json_mode=False, disable_thinking=True,
+            corrective=_RETRY_CORRECTIVE_TEXT)
+        if err:
+            return {"error": err}
     parts = _split_marked(resp.content)
-    draft = _content_block(parts, resp.content)
-    if not draft:
-        return {"error": f"revise 输出为空: content[:120]={resp.content[:120]!r} len={len(resp.content)}"}
-    if _looks_like_tool_noise(draft):
-        return {"error": f"revise 输出跑偏（工具调用文本而非正文）: content[:120]={resp.content[:120]!r} len={len(resp.content)}"}
     responses = []
     raw_responses = parts.get("RESPONSES")
     if raw_responses:
@@ -698,15 +803,17 @@ def node_persist(state: ChapterState) -> ChapterState:
     if critical or l2_major or has_card:
         # critical/L2 major / 新人物卡片 暂停：候选进待确认池，章节标 awaiting_review
         # （§6.11 / §7.11 ④——新人物是高风险 canon，必须人工确认后才落卡）。
-        # plotline 推进与新设定实体 new_entity 不落池：正文已写即推进已发生（低风险
-        # 自动生效，§7.11 ④ 地点/物品/技能自动建档口径）；plotline 连 CHECK 都不含。
+        # plotline 推进 / 新设定实体 new_entity / 伏笔回收 foreshadow_touch 不落池：
+        # 正文已写即推进已发生（低风险自动生效，§7.11 ④ 地点/物品/技能自动建档口径）；
+        # plotline 连 CHECK 都不含，foreshadow_touch 是状态推进不改 canon。
         with tenant_session(pid) as db:
-            auto_entities = [c for c in candidates if c["kind"] == "new_entity"]
-            if auto_entities:
-                _persist_candidates(db, pid, chapter_seq, auto_entities,
+            auto_candidates = [c for c in candidates
+                               if c["kind"] in ("new_entity", "foreshadow_touch")]
+            if auto_candidates:
+                _persist_candidates(db, pid, chapter_seq, auto_candidates,
                                     skip_pool_handled=False)
             for cand in candidates:
-                if cand["kind"] in ("plotline", "new_entity"):
+                if cand["kind"] in ("plotline", "new_entity", "foreshadow_touch"):
                     continue
                 if cand["kind"] == "character_card" \
                         and not str((cand.get("payload") or {}).get("name") or "").strip():
@@ -743,14 +850,16 @@ def node_persist(state: ChapterState) -> ChapterState:
             # 新写失败回滚则旧记忆不失效。池候选重放：重写续跑补已确认候选、排除已拒绝
             # 候选，防「已确认记忆被失效后又因 skip_pool_handled 不重写」而丢失。
             candidates = _reapply_pool_for_rewrite(db, pid, chapter_seq, candidates)
-            invalidation = invalidate_chapter_memory(db, uuid.UUID(pid), chapter_seq)
+            invalidation = invalidate_chapter_memory(db, project_id=uuid.UUID(pid),
+                                                     chapter_seq=chapter_seq)
             _persist_candidates(db, pid, chapter_seq, candidates, skip_pool_handled=False)
         else:
             # auto 放行路径：跳过已进确认池的候选（评审 A2——critical→confirm→resume 后
             # 重跑无 critical 时，confirmed/rejected 候选不再重复落库）
             _persist_candidates(db, pid, chapter_seq, candidates, skip_pool_handled=True)
-        # 落章节正文
-        summary = _chapter_summary(candidates)
+        # 落章节正文。summary 取事件候选摘要拼接；finalize 收尾时完整候选走
+        # summary_candidates 键（掩码后 candidates 只剩 plotline，直接取会丢事件摘要）
+        summary = _chapter_summary(state.get("summary_candidates") or candidates)
         repo.save_chapter(db, project_id=uuid.UUID(pid), chapter_seq=chapter_seq,
                           content=state["draft"], summary=summary, generation_source="auto")
         _advance_current_chapter(db, pid, chapter_seq)
@@ -758,6 +867,68 @@ def node_persist(state: ChapterState) -> ChapterState:
                      detail={"candidates": len(candidates), "status": "auto_confirm",
                              "rewrite": bool(state.get("rewrite")), "invalidation": invalidation})
     return {"persisted": True, "needs_review": False}
+
+
+def node_summarize(state: ChapterState) -> ChapterState:
+    """章节摘要（§7 短期记忆）：落库后追加 LLM 真摘要，非阻塞——失败保留启发式摘要。
+
+    追加节点（persist → summarize）：auto 路径 persist 已确认落库，这里以整章正文为输入
+    生成 80-150 字摘要覆盖启发式；awaiting_review 首跑状态未 confirmed → 短路不产
+    （确认流收尾时由 runner.finalize_chapter_review 单独补调）。LLM 失败/解析失败/异常
+    只记 warning 返回空更新，绝不影响主链路。
+    """
+    pid = state["project_id"]
+    seq = state["chapter_seq"]
+    draft = state.get("draft")
+    if not draft:
+        return {}
+    try:
+        with tenant_session(pid) as db:
+            ch = repo.get_chapter(db, uuid.UUID(pid), seq)
+            if ch is None or ch.status != "confirmed":
+                return {}  # 非落库终态（awaiting_review 首跑等）不产摘要
+            messages = prompts.summary_messages(draft, seq)
+            resp, _ = _llm(db, state, "summarize", "Summarize", make_chain("summarize"), messages,
+                           json_mode=True)
+            if resp.error:
+                logger.warning("章节摘要生成失败（保留启发式）: %s", resp.error)
+                return {}
+            data = _parse_json(resp.content)
+            text = (data.get("summary") or "").strip() if isinstance(data, dict) else ""
+            if not text:
+                return {}
+            ch.summary = text
+    except Exception as exc:
+        logger.warning("章节摘要生成失败（保留启发式）: %s", exc)
+        return {}
+    return {}
+
+
+def finalize_awaiting_review(values: dict, *, task_id: str) -> dict:
+    """确认流收尾（§6.11）：把 checkpoint 草稿落库为正文，不走图重跑。
+
+    修复（2026-08-17）：LangGraph 1.2.9 的 invoke-resume 语义是「整图从 START 重跑」，
+    不是断点续跑。确认流 resume 若走 resume_thread 重跑整章，确定性输入会再次命中
+    critical/L2 major/新人物卡片 → 永久 awaiting_review、正文永不落库（用户实测：
+    确认后点续跑变成重新生成）。故 await/review 章的续跑不重跑图，而是取 checkpoint
+    状态（含 write 产出的草稿），掩码 report 走 node_persist auto 路径落库正文 + 推进进度。
+
+    记忆已在确认流分头处理：confirmed 候选 confirm 时落库、未处理候选留池待后续评审、
+    new_entity 首跑即建（低风险自动建档）、plotline 正文已写即推进——收尾只需把仍
+    未落库的 plotline 补齐推进，其余不再重复写（skip_pool_handled + 池判重幂等兜底）。
+    values 为 checkpoint 状态（snap.values），调用方负责从 checkpointer 取。
+    """
+    full_candidates = values.get("candidates") or []
+    candidates = [c for c in full_candidates if c.get("kind") == "plotline"]
+    return node_persist({
+        **values,
+        "task_id": task_id,
+        "candidates": candidates,
+        # 摘要兜底：掩码后 candidates 只剩 plotline，事件候选摘要会丢 → 完整原候选
+        # 走 summary_candidates 键，node_persist 落库时取它拼章节摘要（回归修复）
+        "summary_candidates": full_candidates,
+        "report": {"summary": {"critical": 0, "l2_major": 0}},  # 掩码：跳过确认分流
+    })
 
 
 def _persist_candidates(db: Session, pid: str, chapter_seq: int, candidates: list[dict],
@@ -769,8 +940,8 @@ def _persist_candidates(db: Session, pid: str, chapter_seq: int, candidates: lis
     confirm_candidate 调用传 False（正在确认的那条必须落库）。"""
     project_id = uuid.UUID(pid)
     for cand in candidates:
-        # plotline 不落确认池（正文已写即推进），无需查池
-        if skip_pool_handled and cand["kind"] != "plotline" \
+        # plotline / foreshadow_touch 不落确认池（低风险自动生效），无需查池
+        if skip_pool_handled and cand["kind"] not in ("plotline", "foreshadow_touch") \
                 and _pool_has_duplicate(db, pid, chapter_seq, cand):
             continue
         p = cand.get("payload") or {}
@@ -845,9 +1016,35 @@ def _persist_candidates(db: Session, pid: str, chapter_seq: int, candidates: lis
                 db.add(ent)
                 db.flush()
                 db.add(Alias(project_id=project_id, alias=name, entity_id=ent.id))
+                # 地点实体镜像进 Location 注册表（§9 图谱地点层级数据源）：new_entity
+                # 只写 Entity 时图谱地点全是孤立点——建/并 Location 行并解析 parent 上级，
+                # 让自动建档地点也能挂出 hierarchy 边（world_graph 读 Location.parent_id）。
+                if etype == "location":
+                    _upsert_location(db, project_id, name,
+                                     parent_name=str(p.get("parent") or "").strip() or None)
         elif cand["kind"] == "foreshadow":
             db.add(Foreshadow(project_id=project_id, description=p.get("description", ""),
                               status="planted", planted_chapter=chapter_seq, trigger=p.get("trigger") or {}))
+        elif cand["kind"] == "foreshadow_touch":
+            # 伏笔自动回收（§7.9 抽取驱动）：id 在项目内存在才推进/解决，防幻觉 id 落库。
+            # 缺 id / 查不到 → 丢弃（extract 层已尽力，persist 兜底防炸批次；RLS 隔离租户）。
+            try:
+                fs_id = uuid.UUID(str(p.get("foreshadow_id") or ""))
+            except (ValueError, TypeError):
+                continue
+            fs = db.get(Foreshadow, fs_id)
+            if fs is None:
+                continue
+            outcome = str(p.get("outcome") or "")
+            if outcome == "resolved":
+                if fs.status != "resolved":
+                    fs.status = "resolved"
+                    fs.resolved_chapter = chapter_seq
+                fs.last_touched = chapter_seq
+            elif outcome == "advanced" and fs.status != "resolved":
+                if fs.status == "planted":
+                    fs.status = "developing"
+                fs.last_touched = chapter_seq
         elif cand["kind"] == "plotline":
             # 剧情线推进台账（§7.9）：正文已写 = 推进已发生，低风险自动生效（同 §7.11
             # 地点自动建档），不落候选池。按名称匹配线程更新最近推进章；匹配不到不推进。
@@ -882,6 +1079,30 @@ def _entity_exists(db: Session, project_id: uuid.UUID, entity_type: str,
                 and ent.entity_type == entity_type:
             return ent
     return None
+
+
+def _upsert_location(db: Session, project_id: uuid.UUID, name: str, *,
+                     parent_name: str | None = None) -> None:
+    """地点实体镜像进 Location 注册表（§9 图谱地点层级数据源，同名 create-if-missing）。
+
+    parent_name 非空时解析上级地点（同名建行，保证 hierarchy 边两端都在节点集内），
+    写入 parent_id。幂等：同名已存在则复用行、只补 parent_id（不覆盖旧行其它字段）。
+    """
+    row = db.query(Location).filter(Location.project_id == project_id,
+                                    Location.name == name).first()
+    if row is None:
+        row = Location(project_id=project_id, name=name)
+        db.add(row)
+        db.flush()
+    if parent_name:
+        parent = db.query(Location).filter(Location.project_id == project_id,
+                                           Location.name == parent_name).first()
+        if parent is None:
+            parent = Location(project_id=project_id, name=parent_name)
+            db.add(parent)
+            db.flush()
+        if row.parent_id != parent.id:
+            row.parent_id = parent.id
 
 
 def _close_active_relations(db: Session, project_id: uuid.UUID, source_id: uuid.UUID,
@@ -1173,6 +1394,91 @@ def _persist_lessons(db: Session, project_id: str, batch_task_id: str, start: in
         inserted += 1
     db.flush()
     return inserted, skipped
+
+
+def _collect_chapter_window_findings(db: Session, project_id: str,
+                                     start_chapter: int, end_chapter: int) -> list[dict]:
+    """单章流窗口内各章 audit findings（§8.9 扩展）。
+
+    合并单章任务与批次子线程的 settled findings（每 task_id 取最后一条 audit 行，
+    同 _collect_batch_audit_findings 口径——不把 rewrite 循环里已修的发现重复灌入）。
+    章号映射：批次子线程 task_id `{batch}:ch{seq}` → seq；单章任务 → Task.chapter_seq。
+    逐条补 `_chapter` 供复发记账 / 溯源。批次主任务 chapter_seq 为空自然跳过。
+    """
+    from aiink.models import Task
+
+    pid = uuid.UUID(project_id)
+    runs = db.query(AgentRun).filter(
+        AgentRun.project_id == pid, AgentRun.node == "audit",
+    ).order_by(AgentRun.id.asc()).all()
+    single_ids = [r.task_id for r in runs if r.task_id and ":ch" not in r.task_id]
+    seq_by_task: dict[str, int] = {}
+    if single_ids:
+        rows = db.query(Task.id, Task.chapter_seq).filter(
+            Task.project_id == pid, Task.id.in_([uuid.UUID(t) for t in single_ids]),
+            Task.chapter_seq.isnot(None)).all()
+        seq_by_task = {str(tid): int(seq) for tid, seq in rows if seq is not None}
+    final: dict[str, AgentRun] = {}
+    for r in runs:
+        final[r.task_id] = r
+    out: list[dict] = []
+    for tid, r in final.items():
+        if tid and ":ch" in tid:
+            try:
+                ch = int(tid.rsplit("ch", 1)[1])
+            except ValueError:
+                continue
+        else:
+            ch = seq_by_task.get(tid)
+        if not ch or not (start_chapter <= ch <= end_chapter):
+            continue
+        verdict = (r.detail or {}).get("audit_verdict") or {}
+        for f in verdict.get("findings") or []:
+            f = dict(f)
+            f["_chapter"] = ch
+            out.append(f)
+    return out
+
+
+def reflexion_for_chapter_window(*, project_id: str, end_chapter: int, task_id: str) -> dict:
+    """单章流每 N 章复盘（§8.9 扩展）：窗口 [end-N+1, end] 内 audit findings → 复发记账 →
+    LLM 总结演化写作经验。复盘是加分项，任何失败只记 error 不抛（worker 调用方兜底 try）。
+
+    batch 流走 batch_end node_reflexion 不走这里；此处只服务单章流（chapter_generate /
+    chapter_resume）。source_batch_task_id 记本次触发的任务 id，作经验溯源。
+    """
+    start = max(1, end_chapter - settings.chapter_reflexion_interval + 1)
+    try:
+        with tenant_session(project_id) as db:
+            findings = _collect_chapter_window_findings(db, project_id, start, end_chapter)
+            recurrences = _update_recurrences(db, project_id, findings, start)
+            new_findings = _covered_by_active(db, project_id, findings, start)
+            if not new_findings:
+                record_plain(db, project_id=project_id, task_id=task_id, node="reflexion",
+                             detail={"findings": len(findings), "recurrences": recurrences,
+                                     "lessons": 0, "reason": "no_new_findings"})
+                return {"reflexion": {"findings": len(findings), "recurrences": recurrences,
+                                      "lessons": 0, "reason": "no_new_findings"}}
+            existing = repo.get_active_lessons(db, uuid.UUID(project_id))
+            messages = prompts.reflexion_messages(new_findings, [
+                {"category": l.category, "content": l.content, "recurrence_count": l.recurrence_count}
+                for l in existing
+            ], start, settings.chapter_reflexion_interval)
+            resp = make_chain("audit").generate(messages, json_mode=True,
+                                                max_tokens=_MAX_TOKENS["reflexion"])
+            record_run(db, project_id=project_id, task_id=task_id, node="reflexion",
+                       role="Reflexion", resp=resp, error=resp.error,
+                       detail={"findings": len(findings), "recurrences": recurrences})
+            if resp.error:
+                return {"reflexion": {"error": resp.error}}
+            data = _parse_json(resp.content)
+            lessons = data.get("lessons", []) if isinstance(data, dict) else []
+            inserted, skipped = _persist_lessons(db, project_id, task_id, start, lessons, new_findings)
+            return {"reflexion": {"findings": len(findings), "recurrences": recurrences,
+                                  "lessons": inserted, "skipped_duplicates": skipped}}
+    except Exception as exc:
+        logger.warning("章节窗口复盘失败（不阻塞任务）: %s", exc)
+        return {"reflexion": {"error": str(exc)}}
 
 
 def confirm_lesson(db: Session, project_id: str, lesson_id: uuid.UUID) -> WritingLesson | None:

@@ -6,6 +6,19 @@ test_flow.py 自带同名 fixtures（模块级优先于 conftest），此处 re-
 
 from __future__ import annotations
 
+import os
+
+# 扫榜默认关（§10）：图节点集成测试不触外网。DaoSearch 不可达会让 mcp initialize 挂起/
+# 被内部 cancel scope 取消（CancelledError 不降级直接炸节点）；且 test_multiprocess 的子
+# 进程是全新 import（monkeypatch 传播不到）。必须在 aiink.config 首次导入前设（settings
+# 是 frozen dataclass 模块级单例）。rankings 特性测试自带 FakeSettings/monkeypatch，不受影响。
+os.environ["RANKINGS_ENABLED"] = "0"
+# RabbitMQ 测试隔离（阶段 6）：QUEUE_PREFIX=-mp- 让本套件发布/消费全走 queue:tasks-mp-，
+# 不碰开发栈无前缀真实队列（避免测试消息污染生产队列/被真实 worker 抢走）。
+# 必须在 aiink.config 首次导入前设（settings 是 frozen 单例）——单在 test_multiprocess.py
+# 模块级设已太晚：conftest 的 aiink.db 导入会先触发 settings 冻结。
+os.environ["QUEUE_PREFIX"] = "-mp-"
+
 import uuid
 
 import pytest

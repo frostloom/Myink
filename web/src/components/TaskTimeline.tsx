@@ -16,6 +16,8 @@ export interface TaskTimelineProps {
   nodes: Array<{ taskId: string; node: string; seenAt: number }>
   runs: AgentRun[]
   progress: { current: number; total: number } | null
+  /** 右栏按章过滤：非空时 runs/nodes 已是该章切片，花费/详情标签标注「第 N 章」 */
+  chapterSeq?: number | null
   error: string | null
   onRetry: () => void
   /** 批次任务才有控制权（网关仅暴露 /batches/:id/:action；单章生成走同端点但无网关控制路由） */
@@ -58,6 +60,7 @@ export function TaskTimeline({
   nodes,
   runs,
   progress,
+  chapterSeq = null,
   error,
   onRetry,
   canControl = false,
@@ -102,8 +105,15 @@ export function TaskTimeline({
         <span className={`badge badge-${phaseTone(phase)}`}>{PHASE_LABEL[phase]}</span>
         {status && <span className={styles.status}>任务 {status}</span>}
         {totalCost > 0 && (
-          <span className={styles.cost} title="任务总花费（节点 cost 合计，§6.8 成本透明）">
-            总花费 ¥{totalCost.toFixed(2)}
+          <span
+            className={styles.cost}
+            title={
+              chapterSeq !== null
+                ? `第 ${chapterSeq} 章运行成本（按选中章过滤，§6.8 成本透明）`
+                : '任务总花费（节点 cost 合计，§6.8 成本透明）'
+            }
+          >
+            {chapterSeq !== null ? `第 ${chapterSeq} 章花费 ¥${totalCost.toFixed(2)}` : `总花费 ¥${totalCost.toFixed(2)}`}
           </span>
         )}
         {progress && (
@@ -160,7 +170,8 @@ export function TaskTimeline({
             aria-expanded={runsOpen}
           >
             <h4 className={styles.runsTitle}>
-              执行详情 · {runs.length} 节点 · ¥{totalCost.toFixed(2)}
+              {chapterSeq !== null ? `第 ${chapterSeq} 章` : '执行详情'} · {runs.length} 节点 · ¥
+              {totalCost.toFixed(2)}
             </h4>
             <span className={styles.runCaret}>{runsOpen ? '▾' : '▸'}</span>
           </button>

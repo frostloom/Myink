@@ -7,6 +7,7 @@ import uuid
 from langgraph.graph.state import CompiledStateGraph
 
 from aiink.db import tenant_session
+from aiink.workflow import nodes
 from aiink.workflow.batch_graph import build_batch_graph
 from aiink.workflow.chapter_graph import build_chapter_graph
 from aiink.workflow.checkpointer import build_checkpointer
@@ -101,6 +102,27 @@ def resume_thread(graph: CompiledStateGraph, thread_id: str, state: dict) -> dic
     snap = graph.get_state({"configurable": {"thread_id": thread_id}})
     resume_state = {**state, **(snap.values or {})}  # checkpoint 优先
     return graph.invoke(resume_state, config={"configurable": {"thread_id": thread_id}})
+
+
+def finalize_chapter_review(*, project_id: str, task_id: str, chapter_seq: int) -> dict:
+    """§6.11 确认流收尾：人工确认候选后，把 checkpoint 草稿直接落库为正文（不重跑整章）。
+
+    修复（2026-08-17）：LangGraph 1.2.9 的 invoke-resume 语义是「整图从 START 重跑」，
+    不是断点续跑。confirm→resume 若走 resume_thread 重跑整章，确定性输入会再次命中
+    critical → 永久 awaiting_review、正文永不落库（用户实测：确认后点续跑变成重生成）。
+    收尾取 checkpoint 状态（含 write 产出的草稿），掩码 report 走 node_persist auto 路径
+    落库正文 + 推进进度；记忆已在确认流分头处理（confirmed 落库 / 未处理留池 / 新实体
+    已建），不再重复写。
+    """
+    chapter_graph, _ = get_graphs()
+    snap = chapter_graph.get_state({"configurable": {"thread_id": task_id}})
+    if not snap.values or not snap.values.get("draft"):
+        raise ValueError(f"任务 {task_id} 无草稿 checkpoint，无法确认流收尾")
+    result = nodes.finalize_awaiting_review(snap.values, task_id=task_id)
+    # 落库后追加 LLM 真摘要（§7 短期记忆）：finalize 路径不走图，这里单独补一次。
+    # node_summarize 自吞异常（失败保留启发式摘要），不阻塞确认流收尾。
+    nodes.node_summarize({**snap.values, "task_id": task_id})
+    return result
 
 
 def new_task(*, project_id: str, task_type: str, payload: dict, chapter_seq: int | None = None,

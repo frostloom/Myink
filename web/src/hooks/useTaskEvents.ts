@@ -44,7 +44,7 @@ export function isTerminalPhase(phase: TaskPhase): boolean {
 
 export function useTaskEvents(
   taskId: string | null,
-  opts?: { batchTotal?: number },
+  opts?: { batchTotal?: number; resumeKey?: number | null },
 ): TaskEventState {
   const [phase, setPhase] = useState<TaskPhase>('idle')
   const [status, setStatus] = useState<TaskStatus | null>(null)
@@ -182,8 +182,10 @@ export function useTaskEvents(
     }
     void connect(taskId)
     return () => abortRef.current?.abort()
-    // taskId 变化才重连；stop/connect 闭包捕获最新 ref
-  }, [taskId, connect, stop])
+    // taskId 变化或 resumeKey 变化才重连；stop/connect 闭包捕获最新 ref。
+    // resumeKey：awaiting_review 终态关流后「放行本章」复用同一 task_id 续跑，
+    // taskId 不变不会触发重连，靠 resumeKey 自增强制重开流（last_event_id 追平）。
+  }, [taskId, connect, stop, opts?.resumeKey])
 
   return {
     phase,

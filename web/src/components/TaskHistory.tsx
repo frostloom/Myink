@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react'
 import { api, ApiError } from '../lib/api'
 import { taskStatusLabel, taskStatusTone, taskTypeLabel } from '../lib/labels'
+import { chapterRunsOf } from '../lib/taskChapter'
 import type { AgentRun, TaskDetail, TaskStatus, TaskSummary } from '../types'
 import { RunNodeCard } from './RunNodeCard'
 import { StatusBadge } from './StatusBadge'
@@ -13,6 +14,8 @@ interface Props {
   projectId: string
   /** 当前活动任务（SSE 实时时间线）；命中该行高亮「进行中」 */
   activeTaskId: string | null
+  /** 右栏按章过滤（§11）：非空时列表只列覆盖该章的任务，展开详情也按章切片 */
+  selectedSeq: number | null
 }
 
 type BatchAction = 'pause' | 'resume' | 'cancel'
@@ -41,7 +44,7 @@ function targetLabel(t: TaskSummary): string {
   return t.chapter_seq !== null ? `第 ${t.chapter_seq} 章` : ''
 }
 
-export function TaskHistory({ projectId, activeTaskId }: Props) {
+export function TaskHistory({ projectId, activeTaskId, selectedSeq }: Props) {
   const [open, setOpen] = useState(true)
   const [tasks, setTasks] = useState<TaskSummary[]>([])
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
@@ -56,20 +59,21 @@ export function TaskHistory({ projectId, activeTaskId }: Props) {
     setTasks([])
     setOpenTaskId(null)
     setDetail(null)
-    api.listTasks(projectId)
+    api.listTasks(projectId, selectedSeq ?? undefined)
       .then((list) => { if (alive) setTasks(list) })
       .catch(() => { if (alive) setTasks([]) })
     return () => { alive = false }
   }, [projectId])
 
-  // 新任务入队/终态 → 历史追加当前任务（实时流转仍走上方 TaskTimeline）
+  // 新任务入队/终态 → 历史追加当前任务；选中章变化 → 列表按章重拉（§11 右栏按章过滤）。
+  // 实时流转仍走上方 TaskTimeline。
   useEffect(() => {
     let alive = true
-    api.listTasks(projectId)
+    api.listTasks(projectId, selectedSeq ?? undefined)
       .then((list) => { if (alive) setTasks(list) })
       .catch(() => { if (alive) setTasks([]) })
     return () => { alive = false }
-  }, [activeTaskId, projectId])
+  }, [activeTaskId, projectId, selectedSeq])
 
   // 展开/收起一行：展开时拉任务详情（含 runs 流转记录）
   async function toggleDetail(tid: string) {
@@ -101,7 +105,7 @@ export function TaskHistory({ projectId, activeTaskId }: Props) {
       else if (action === 'resume') await api.resumeBatch(tid)
       else await api.cancelBatch(tid)
       setDetail(await api.getTask(tid))
-      const list = await api.listTasks(projectId).catch(() => [])
+      const list = await api.listTasks(projectId, selectedSeq ?? undefined).catch(() => [])
       setTasks(list)
     } catch (err) {
       setError(err instanceof ApiError ? err.code : '操作失败')
@@ -160,45 +164,64 @@ export function TaskHistory({ projectId, activeTaskId }: Props) {
                     {detailLoading ? (
                       <p className="empty">加载流转记录…</p>
                     ) : detail ? (
-                      <>
-                        <div className={styles.detailHead}>
-                          {detail.cost_total > 0 && (
-                            <span className={styles.cost}>总花费 ¥{detail.cost_total.toFixed(2)}</span>
-                          )}
-                          {detail.progress && (
-                            <span className={styles.progress}>
-                              {detail.progress.current}/{detail.progress.total}
-                            </span>
-                          )}
-                          {detailActions.length > 0 && (
-                            <div className={styles.controls}>
-                              {detailActions.map((a) => (
-                                <button
-                                  key={a}
-                                  type="button"
-                                  className="btn btn-quiet"
-                                  disabled={ctrl !== null}
-                                  onClick={() => void control(a, t.task_id)}
-                                >
-                                  {ctrl === a ? '处理中…' : ACTION_LABEL[a]}
-                                </button>
-                              ))}
-                              {detail.status === 'awaiting_review' && (
-                                <span className={styles.hint}>候选待确认，处理完点续跑放行</span>
+                      (() => {
+                        // 右栏按章过滤：列表已按章拉取，批次展开详情再按 :ch{seq} 切运行（单章全量）
+                        const shownRuns = chapterRunsOf(t.task_type, t.task_id, detail.runs, selectedSeq)
+                        const shownCost = shownRuns.reduce((s, r) => s + r.cost_est, 0)
+                        return (
+                          <>
+                            <div className={styles.detailHead}>
+                              {selectedSeq !== null ? (
+                                shownCost > 0 && (
+                                  <span className={styles.cost} title="该章运行成本（按选中章过滤，§6.8 成本透明）">
+                                    第 {selectedSeq} 章 ¥{shownCost.toFixed(2)}
+                                  </span>
+                                )
+                              ) : (
+                                detail.cost_total > 0 && (
+                                  <span className={styles.cost}>总花费 ¥{detail.cost_total.toFixed(2)}</span>
+                                )
+                              )}
+                              {detail.progress && (
+                                <span className={styles.progress}>
+                                  {detail.progress.current}/{detail.progress.total}
+                                </span>
+                              )}
+                              {detailActions.length > 0 && (
+                                <div className={styles.controls}>
+                                  {detailActions.map((a) => (
+                                    <button
+                                      key={a}
+                                      type="button"
+                                      className="btn btn-quiet"
+                                      disabled={ctrl !== null}
+                                      onClick={() => void control(a, t.task_id)}
+                                    >
+                                      {ctrl === a ? '处理中…' : ACTION_LABEL[a]}
+                                    </button>
+                                  ))}
+                                  {detail.status === 'awaiting_review' && (
+                                    <span className={styles.hint}>候选待确认，处理完点续跑放行</span>
+                                  )}
+                                </div>
                               )}
                             </div>
-                          )}
-                        </div>
-                        {detail.runs.length > 0 ? (
-                          <div className={styles.runs}>
-                            {detail.runs.map((r: AgentRun, i) => (
-                              <RunNodeCard key={`${r.node}-${i}`} run={r} />
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="empty">无流转记录（任务未开始或尚未落库）。</p>
-                        )}
-                      </>
+                            {shownRuns.length > 0 ? (
+                              <div className={styles.runs}>
+                                {shownRuns.map((r: AgentRun, i) => (
+                                  <RunNodeCard key={`${r.node}-${i}`} run={r} />
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="empty">
+                                {selectedSeq !== null
+                                  ? `第 ${selectedSeq} 章无流转记录（批次未推进到本章或尚未开始）。`
+                                  : '无流转记录（任务未开始或尚未落库）。'}
+                              </p>
+                            )}
+                          </>
+                        )
+                      })()
                     ) : (
                       <p className="empty">详情加载失败。</p>
                     )}

@@ -36,6 +36,13 @@ type Config struct {
 	// 保证本地演示两端互通，生产由部署注入强随机密钥（Python prod 校验会拒绝默认值）。
 	JWTSecret        string
 	JWTTTL           int
+	// 阶段 6：RabbitMQ 任务队列。AmqpURL 与 Python 侧 config.amqp_url 同值；QueuePrefix
+	// 仅测试隔离用（生产空串，交换/队列名与 Python 端一致）；VIPPriority/NormalPriority
+	// 决定 JWT tier=vip 时入队消息的 RabbitMQ priority 属性。
+	AmqpURL        string
+	QueuePrefix    string
+	VIPPriority    int
+	NormalPriority int
 }
 
 func env(key, def string) string {
@@ -81,5 +88,9 @@ func Load() Config {
 		RateBurst:        envInt("RATE_BURST", 40),
 		JWTSecret:        env("JWT_SECRET", DevJWTSecret),
 		JWTTTL:           envInt("JWT_TTL", 1800),
+		AmqpURL:          env("AMQP_URL", "amqp://guest:guest@localhost:5672/"),
+		QueuePrefix:      env("QUEUE_PREFIX", ""),
+		VIPPriority:      envInt("PRIORITY_VIP", 9),
+		NormalPriority:   envInt("PRIORITY_NORMAL", 0),
 	}
 }

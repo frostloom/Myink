@@ -34,6 +34,7 @@ class ChapterMetaOut(BaseModel):
     title: str | None = None
     status: str
     word_count: int | None = None
+    summary: str | None = None  # 章节摘要（§7 短期记忆，前端章节记忆区块展示）
 
 
 class ChapterDetailOut(ChapterMetaOut):
@@ -82,7 +83,15 @@ class DeleteChapterOut(BaseModel):
     current_chapter: int
 
 
+class DeleteProjectOut(BaseModel):
+    """整本书删除结果（§阶段 6：硬删，FK 级联清业务表 + 显式清 checkpoint/Redis 残留）。"""
+
+    project_id: str
+    deleted: bool
+
+
 class AgentRunOut(BaseModel):
+    task_id: str | None = None  # 所属子线程：批次 = {batch_id}:ch{seq}，单章 = 裸任务 id（右栏按章过滤）
     node: str
     model_id: str | None = None
     input_tokens: int
@@ -245,6 +254,20 @@ class SetupConfirmOut(BaseModel):
     ok: bool
 
 
+class OutlineDraftOut(BaseModel):
+    """整书大纲草稿（§11 建书 ③）：Planner 提案（Objective + 卷 + 逐章目标），可编辑、不落库；
+    LLM 失败 → {} + error（§6.12 降级）。"""
+
+    outline: dict = Field(default_factory=dict)
+    error: str | None = None
+
+
+class BookOutlineOut(BaseModel):
+    """整书大纲读取/落库结果（§11：无大纲 → outline null，不 500）。"""
+
+    outline: dict | None = None
+
+
 class WorldViewOut(BaseModel):
     """世界观浏览（§7.11 设定是活数据）：settings 的 world_rules/hard_constraints + 势力/地点。"""
 
@@ -276,3 +299,65 @@ class EntityCardOut(BaseModel):
     name: str
     description: str | None = None
     first_seen_chapter: int | None = None
+
+
+class GraphNodeOut(BaseModel):
+    """世界拓扑节点（§9 图谱：4 类分组全量，建书设定即入图含孤立项）。"""
+
+    id: str
+    name: str
+    type: str  # character / faction / location / entity
+    realm_cap: str | None = None
+    stance: str | None = None
+    entity_type: str | None = None
+    parent_id: str | None = None
+
+
+class GraphEdgeOut(BaseModel):
+    """世界拓扑边（§9 图谱：人物关系活跃/失效 + 地点层级）。"""
+
+    source_id: str
+    target_id: str
+    edge_type: str  # 人物关系类型（hostile/ally/…）或 hierarchy（地点层级）
+    confidence: float | None = None
+    expired: bool = False  # valid_to 非空 → 已失效（前端虚线）
+    source_chapter: int | None = None
+
+
+class WorldGraphOut(BaseModel):
+    """世界拓扑全量（§9 图谱前端：ECharts 力导向分组渲染）。"""
+
+    nodes: list[GraphNodeOut] = Field(default_factory=list)
+    edges: list[GraphEdgeOut] = Field(default_factory=list)
+
+
+class ForeshadowOut(BaseModel):
+    """伏笔池台账（§7.9 伏笔状态机：planted/developing/resolved/dropped）。"""
+
+    id: str
+    description: str
+    status: str
+    planted_chapter: int
+    resolved_chapter: int | None = None
+    trigger: dict = Field(default_factory=dict)
+    related_entities: list = Field(default_factory=list)
+
+
+class RankingItemOut(BaseModel):
+    """扫榜单条（§10）：外部榜单已 sanitize（allowlist 字段，只作灵感参考）。"""
+
+    rank: int
+    title: str
+    author: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    hot: str | None = None
+
+
+class RankingsOut(BaseModel):
+    """扫榜响应（§10）：source=remote（实时榜单）/ sample（降级样例）；error 为降级原因。"""
+
+    source: str
+    tool: str = ""
+    fetched_at: str | None = None
+    error: str | None = None
+    items: list[RankingItemOut] = Field(default_factory=list)

@@ -67,6 +67,8 @@ class Settings:
     batch_max_hard: int = 20  # 批次硬上限
     # 长线治理全局审计（§8.6）：每 K 章一次跨章抽样 L2（batch_end 触发，窗口 < K 短路零成本）
     audit_interval: int = field(default_factory=lambda: int(_env("AUDIT_INTERVAL", "10") or "10"))
+    # 单章流 Reflexion 复盘（§8.9 扩展）：每 N 章对窗口内章节做一次复盘提炼（批次流走 batch_end）
+    chapter_reflexion_interval: int = 5
     # 每日新建作品数上限（plan.md §13 三层闸门 bookcnt）：建书端点独立校验（生成入队时
     # 网关 gates.lua rate:bookcnt 才触发，建书本身需在 Python 侧计数）。env 名与默认值
     # 对齐网关 config.go BooksPerDay（双端同 env 防漂移），超限返回 429 BOOK_CNT_EXCEEDED。
@@ -84,6 +86,11 @@ class Settings:
     worker_inflight_ttl: int = field(default_factory=lambda: int(_env("WORKER_INFLIGHT_TTL", "60") or "60"))  # lock:task TTL（租约）
     worker_lock_heartbeat: int = field(default_factory=lambda: int(_env("WORKER_LOCK_HEARTBEAT", "15") or "15"))  # 持锁续租间隔
     worker_heartbeat_interval: int = field(default_factory=lambda: int(_env("WORKER_HEARTBEAT_INTERVAL", "5") or "5"))
+    # 阶段 6：RabbitMQ 任务队列（替代 Redis Streams 主队列 + ZSET 延迟 + 网关 dispatcher）。
+    # amqp_url 与网关 config.go AmqpURL 同值（compose 内 amqp://aiink:aiink@aiink-rabbitmq:5672/）；
+    # queue_prefix 仅测试隔离用（生产空串，拓扑名与网关端完全一致）。
+    amqp_url: str = field(default_factory=lambda: _env("AMQP_URL", "amqp://guest:guest@localhost:5672/") or "amqp://guest:guest@localhost:5672/")
+    queue_prefix: str = field(default_factory=lambda: _env("QUEUE_PREFIX", "") or "")
     api_host: str = field(default_factory=lambda: _env("API_HOST", "127.0.0.1") or "127.0.0.1")
     api_port: int = field(default_factory=lambda: int(_env("API_PORT", "8100") or "8100"))
     # 阶段 2 展示前端：网关唯一入口（app.py 生成走网关异步，§17.2）
@@ -93,6 +100,20 @@ class Settings:
     # dev 非空默认保证两端签名互通；prod 由 validate 强制显式密钥。
     jwt_secret: str = field(default_factory=lambda: _env("JWT_SECRET", _DEV_JWT_SECRET) or _DEV_JWT_SECRET)
     jwt_ttl: int = field(default_factory=lambda: int(_env("JWT_TTL", "1800") or "1800"))  # 秒，短时效（§14.2 SSO/token）
+
+    # 阶段 3：MCP 扫榜（plan.md §10；外部 server 不可信，榜单只作建书前的题材风向
+    # 灵感工具、不进记忆/事实层、不注入任何生成节点）。默认开 + 优雅降级：
+    # RANKINGS_ENABLED=0 完全关闭；网络不可达/无匹配工具/无有效项 → 内置样例
+    # （source=sample + error），面板照常展示不中断。
+    rankings_enabled: bool = field(default_factory=lambda: _env("RANKINGS_ENABLED", "1") == "1")
+    rankings_mcp_url: str = field(default_factory=lambda: _env(
+        "RANKINGS_MCP_URL", "https://daosearch.io/api/mcp") or "https://daosearch.io/api/mcp")
+    rankings_timeout: int = field(default_factory=lambda: int(_env("RANKINGS_TIMEOUT", "10") or "10"))  # 秒
+    rankings_limit: int = field(default_factory=lambda: int(_env("RANKINGS_LIMIT", "10") or "10"))  # 注入条数 cap
+    rankings_cache_ttl: int = field(default_factory=lambda: int(_env("RANKINGS_CACHE_TTL", "3600") or "3600"))  # 秒
+    rankings_source: str = field(default_factory=lambda: _env("RANKINGS_SOURCE", "qidian") or "qidian")
+    # 榜单工具名覆盖（空 → list_tools 自动发现 rank 关键词，source 命中优先）
+    rankings_tool: str = field(default_factory=lambda: _env("RANKINGS_TOOL", "") or "")
 
     def is_prod(self) -> bool:
         return self.app_env == "prod"

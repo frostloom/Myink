@@ -30,7 +30,8 @@ def init() -> None:
     """初始化数据库：建表 + RLS + demo 种子数据。"""
     from aiink.db import (enable_row_level_security, ensure_chapter_versions,
                           ensure_global_audit_reports, ensure_memory_candidate_kinds,
-                          ensure_storage_indexes, ensure_unique_constraints, get_admin_engine)
+                          ensure_storage_indexes, ensure_unique_constraints, ensure_user_tier,
+                          get_admin_engine)
     from aiink.seed import create_sample_books
 
     # 建表 + RLS 走超级用户（owner）连接；业务运行走 aiink_app（NOBYPASSRLS，受 RLS 约束）
@@ -42,6 +43,8 @@ def init() -> None:
     console.print("[bold]1.5/3[/] 补齐唯一约束 + 组合索引/HNSW（幂等，评审 A6/存储建议）...")
     ensure_unique_constraints()
     ensure_storage_indexes()
+    console.print("[bold]1.55/3[/] 补齐 users.tier（阶段 6 VIP 优先级，幂等）...")
+    ensure_user_tier()
     console.print("[bold]1.6/3[/] 补齐记忆候选 kind 枚举（memory_removal，阶段 3 编辑校正）...")
     ensure_memory_candidate_kinds()
     console.print("[bold]1.7/3[/] 补齐全局审计报告表（global_audit_reports，阶段 3 长线治理）...")
