@@ -6,23 +6,27 @@ flowchart TD
         direction TB
         LS --> RC[recall]
         RC --> PC[plan_chapter]
-        PC --> W[write]
+        PC --> PG{{plan_gate}}
+        PG -- "自动：展示后直通" --> W[write]
+        PG -- "手动：awaiting_plan" --> HUMANPLAN[作者编辑/确认 Plan]
+        HUMANPLAN -- "checkpoint resume" --> PG
         W --> EX[extract]
         EX --> VA[validate]
         VA --> AU[audit<br/>审核中枢：AuditVerdict]
         AU --> RT{{route_after_audit<br/>混合路由：规则层优先}}
         RT -- "pass" --> PERSIST[persist<br/>低风险自动放行]
-        RT -- "rewrite → rev < 预算" --> RV[revise] --> AU
+        RT -- "rewrite → rev < 预算" --> RV[revise] --> EX
         RT -- "replan_target=chapter" --> PC
         RT -- "rev ≥ 预算 / replan ≥ 预算 → needs_review" --> NR[needs_review]
-        NR -- "非 critical 标待人工" --> PERSIST
-        NR -- "critical → 暂停批次" --> PAUSE[批次暂停等人工]
+        NR --> PERSIST
+        PERSIST -- "awaiting_review → 暂停批次" --> PAUSE[批次暂停等人工]
         PERSIST --> BRIDGE[状态桥<br/>上章沉淀 → 下章recall]
     end
 
     BRIDGE -- "还有下章" --> LS
-    PAUSE -- "人工处理/放行" --> LS
-    AU -- "replan_target=batch" --> REBP[回 batch_plan<br/>重规划剩余章]
+    PAUSE -- "否定设定：修订复审" --> RV
+    PAUSE -- "候选全处理且接受当前稿" --> PERSIST
+    RT -- "replan_target=batch 且预算未耗尽" --> REBP[回 batch_plan<br/>重规划剩余章]
     REBP --> LS
     BRIDGE -- "单章失败(重试+降级后)" --> FAIL[批次中断<br/>可从失败章续跑]
     FAIL -- "续跑" --> LS

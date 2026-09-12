@@ -6,6 +6,7 @@
 返回值约定（供 consumer 决策）：
 - "skip"     已处理过/取消/他 worker 在跑 → 直接 ACK 丢弃
 - "terminal" 正常终态（done/awaiting_review/failed/paused 已由 runner 落库）
+- "waiting"  手动模式等待计划确认；释放 Worker/书锁，但保留网关并发占位
 - "retry"    可重试失败 → ACK + ZADD queue:delay 退避
 - "defer"    同书被占（书锁活）→ ACK + ZADD queue:delay 固定退避重投（不计 retry_count，
              书忙是瞬态非失败，重投不进 DLQ；同书串行、异书并行由书锁保证，§13）
@@ -19,6 +20,10 @@ import socket
 import uuid
 from datetime import date
 
+from psycopg import InterfaceError as PsycopgInterfaceError
+from psycopg import OperationalError as PsycopgOperationalError
+from sqlalchemy.exc import OperationalError as SQLAlchemyOperationalError
+
 from aiink.config import settings
 from aiink.db import new_session
 from aiink.models import Task
@@ -28,8 +33,10 @@ from aiink.workflow.runner import (
     generate_chapter,
     get_graphs,
     new_task,
+    resume_chapter_plan,
     resume_thread,
 )
+from aiink.workflow.streaming import bind_artifact_sink
 from aiink.worker.lock import TaskLock
 from aiink.worker.redis_client import (
     book_key,
@@ -47,6 +54,9 @@ _RETRYABLE = (
     TimeoutError,
     ConnectionError,
     OSError,
+    PsycopgInterfaceError,
+    PsycopgOperationalError,
+    SQLAlchemyOperationalError,
 )
 
 
@@ -78,6 +88,17 @@ def _resolve_chapter_seq(project_id: str, payload: dict) -> int:
     with tenant_session(project_id) as db:
         proj = db.get(Project, uuid.UUID(project_id))
         return (proj.current_chapter + 1) if proj else 1
+
+
+def _latest_plan_attempt(db, task_id: str) -> int:
+    """读取当前待确认的业务计划版本；解析重试行没有 plan，会自动略过。"""
+    from aiink.models import AgentRun
+
+    rows = (db.query(AgentRun)
+            .filter(AgentRun.task_id == task_id, AgentRun.node == "plan_chapter")
+            .order_by(AgentRun.id.desc()).all())
+    row = next((item for item in rows if (item.detail or {}).get("plan")), None)
+    return int((row.detail or {}).get("plan_attempt") or 0) if row else 0
 
 
 def _chapter_awaiting_review(project_id: str, seq: int) -> bool:
@@ -117,7 +138,21 @@ def _guard_write_order(project_id: str, seq: int, *, rewrite: bool = False) -> N
             return  # 项目不存在，让下游正常报错
         max_seq = db.query(func.max(Chapter.chapter_seq)).filter(
             Chapter.project_id == proj.id).scalar()
-        expected = (max_seq or 0) + 1
+        latest = None
+        if max_seq is not None:
+            latest = db.query(Chapter).filter(
+                Chapter.project_id == proj.id,
+                Chapter.chapter_seq == max_seq,
+            ).first()
+        # 生成任务会在真正写作前先建一条空的 writing 章节，供页面和流转绑定。
+        # worker 重投或用户重试时必须继续写这同一章；同时不能把空占位误算成
+        # “已完成一章”而放行下一章，否则会制造正文缺口。
+        latest_is_placeholder = bool(
+            latest is not None
+            and not (latest.content or "").strip()
+            and latest.status in ("planning", "writing", "failed", "cancelled")
+        )
+        expected = int(max_seq) if latest_is_placeholder else (max_seq or 0) + 1
         if rewrite:
             if seq > (max_seq or 0):
                 raise WriteOrderError(
@@ -150,12 +185,28 @@ def _dispatch(body: dict) -> dict:
         seq = _resolve_chapter_seq(project_id, payload)
         rewrite = bool(payload.get("rewrite"))
         _guard_write_order(project_id, seq, rewrite=rewrite)
+        if not rewrite:
+            from aiink.db import tenant_session
+            from aiink.memory import repository as repo
+
+            with tenant_session(project_id) as db:
+                repo.ensure_chapter_placeholder(
+                    db, project_id=uuid.UUID(project_id), chapter_seq=seq,
+                    status="planning" if payload.get("mode") == "manual" else "writing",
+                )
         return generate_chapter(
             project_id=project_id,
             chapter_seq=seq,
             task_id=task_id,
             user_instruction=payload.get("user_instruction"),
             rewrite=rewrite,
+            writing_mode="manual" if payload.get("mode") == "manual" else "auto",
+        )
+    if task_type == "chapter_plan_resume":
+        return resume_chapter_plan(
+            project_id=project_id,
+            task_id=task_id,
+            approved_plan=payload["approved_plan"],
         )
     if task_type == "batch_generate":
         # 批次写序守卫（复查 B1）：与单章同口径——批次首章必须 = 已写最大章 + 1。
@@ -163,6 +214,13 @@ def _dispatch(body: dict) -> dict:
         # recall 连续性，batch_graph 用 start 直接算各章 seq，无内置守卫）。
         start_chapter = int(payload.get("start", 1))
         _guard_write_order(project_id, start_chapter)
+        from aiink.db import tenant_session
+        from aiink.memory import repository as repo
+
+        with tenant_session(project_id) as db:
+            repo.ensure_chapter_placeholder(
+                db, project_id=uuid.UUID(project_id), chapter_seq=start_chapter,
+            )
         return generate_batch(
             project_id=project_id,
             size=_clamp_batch_size(payload.get("size", settings.batch_max_default)),
@@ -209,6 +267,31 @@ def _dispatch(body: dict) -> dict:
     raise ValueError(f"未知 task_type: {task_type}")
 
 
+def _mark_empty_writing_chapters(body: dict, status: str) -> None:
+    """任务终止时同步空占位状态，避免章节列表永久显示“写作中”。"""
+    task_type = body.get("task_type")
+    if task_type not in ("chapter_generate", "chapter_plan_resume", "batch_generate"):
+        return
+    payload = body.get("payload") or {}
+    seq = int(payload.get("seq", 1)) if task_type != "batch_generate" \
+        else int(payload.get("start", 1))
+
+    from aiink.db import tenant_session
+    from aiink.models import Chapter
+
+    with tenant_session(body["project_id"]) as db:
+        query = db.query(Chapter).filter(
+            Chapter.project_id == uuid.UUID(body["project_id"]),
+            Chapter.chapter_seq >= seq,
+            Chapter.status.in_(("planning", "writing")),
+        )
+        if task_type != "batch_generate":
+            query = query.filter(Chapter.chapter_seq == seq)
+        for chapter in query.all():
+            if not (chapter.content or "").strip():
+                chapter.status = status
+
+
 def _pub_status(task_id: str, status: str, extra: dict | None = None) -> None:
     """写 SSE 进度事件到 queue:sse:{task_id}（worker 侧唯一写 SSE 的地方）。"""
     r = get_redis()
@@ -217,6 +300,16 @@ def _pub_status(task_id: str, status: str, extra: dict | None = None) -> None:
         data.update(extra)
     r.xadd(sse_key(task_id), data, maxlen=1000)
     r.expire(sse_key(task_id), 3600)
+
+
+def _pub_artifact(root_task_id: str, event: dict[str, str]) -> None:
+    """把工作流产物事件写入任务 SSE Stream；观测失败不影响正文生成。"""
+    try:
+        r = get_redis()
+        r.xadd(sse_key(root_task_id), event, maxlen=1000)
+        r.expire(sse_key(root_task_id), 3600)
+    except Exception as exc:
+        logger.warning("SSE 文本片段写入失败（不阻塞任务）: task=%s err=%s", root_task_id, exc)
 
 
 def _release_inflight(body: dict) -> None:
@@ -260,7 +353,7 @@ def _finish(body: dict, decision: str) -> None:
     - 成本累计：只在终态或最后一次重试求和一次，避免 retry 重复计入。
     """
     final_attempt = int(body.get("retry_count") or 0) >= settings.worker_max_retries - 1
-    if decision != "retry" or final_attempt:
+    if decision != "waiting" and (decision != "retry" or final_attempt):
         _release_inflight(body)
     if decision == "terminal" or (decision == "retry" and final_attempt):
         _accumulate_cost(body)
@@ -284,10 +377,11 @@ def _maybe_reflexion(project_id: str, chapter_seq: int, task_id: str) -> None:
 
 
 def _run(body: dict, task_id: str, task_type: str, project_id: str) -> str:
-    """派发并分类终态（decision = terminal / retry，SSE 事件在此写）。"""
+    """派发并分类终态（decision = terminal / waiting / retry，SSE 在此写）。"""
     _pub_status(task_id, "running")
     try:
-        result = _dispatch(body)
+        with bind_artifact_sink(lambda event: _pub_artifact(task_id, event)):
+            result = _dispatch(body)
     except Exception as exc:
         # 批次 critical 冲突：resume 续跑时由图内节点抛出（首次运行在 runner
         # generate_batch 内 catch 置 awaiting_review）。置 awaiting_review 等人工
@@ -317,6 +411,7 @@ def _run(body: dict, task_id: str, task_type: str, project_id: str) -> str:
         # 不可重试 → 置 failed（runner 未覆盖的异常路径）
         from aiink.workflow.runner import _set_task_status
 
+        _mark_empty_writing_chapters(body, "failed")
         _set_task_status(project_id, task_id, "failed", str(exc))
         logger.error("不可重试失败: %s err=%s", task_id, exc)
         return "terminal"
@@ -331,20 +426,27 @@ def _run(body: dict, task_id: str, task_type: str, project_id: str) -> str:
     from aiink.workflow.runner import _set_task_status
 
     if result.get("manual_halt"):
+        if result["manual_halt"] == "cancelled":
+            _mark_empty_writing_chapters(body, "cancelled")
         _set_task_status(project_id, task_id, result["manual_halt"])
         _pub_status(task_id, result["manual_halt"])
+    elif result.get("awaiting_plan"):
+        _set_task_status(project_id, task_id, "awaiting_plan")
+        _pub_status(task_id, "awaiting_plan")
+        return "waiting"
     elif result.get("needs_review"):
         _set_task_status(project_id, task_id, "awaiting_review")
         _pub_status(task_id, "awaiting_review")
     elif result.get("error"):
         logger.warning("任务失败（runner 已落 failed）: %s err=%s", task_id, result["error"])
+        _mark_empty_writing_chapters(body, "failed")
         _set_task_status(project_id, task_id, "failed", result["error"])
         _pub_status(task_id, "failed", {"error": result["error"]})
     else:
         _set_task_status(project_id, task_id, "done")
         _pub_status(task_id, "done")
         # 单章流每 N 章复盘：SSE done 先发、复盘后跑（不延迟用户感知；批次流走 batch_end）
-        if task_type in ("chapter_generate", "chapter_resume"):
+        if task_type in ("chapter_generate", "chapter_plan_resume", "chapter_resume"):
             _maybe_reflexion(project_id, int((body.get("payload") or {}).get("seq", 0)), task_id)
     return "terminal"
 
@@ -384,7 +486,17 @@ def process(body: dict, worker_id: str | None = None) -> str:
         # 幂等 ②：查 DB 现状（tasks 无 RLS，普通连接可查）
         with new_session() as db:
             row = db.get(Task, uuid.UUID(task_id))
-            if row and row.status in ("done", "failed", "cancelled", "awaiting_review"):
+            if row and row.status == "awaiting_plan" and task_type == "chapter_plan_resume" \
+                    and int((body.get("payload") or {}).get("plan_attempt") or 0) != _latest_plan_attempt(db, task_id):
+                # RabbitMQ 至少一次投递可能重放上一版确认消息。若此时审核已 replan 到
+                # 新版，旧 Command(resume) 绝不能越过第二次人工确认；ACK 丢弃旧消息，
+                # 同时沿用 waiting 决策保留并发闸门。
+                decision = "waiting"
+                logger.info("跳过过期计划确认: %s message_attempt=%s current_attempt=%s",
+                            task_id, (body.get("payload") or {}).get("plan_attempt"),
+                            _latest_plan_attempt(db, task_id))
+            elif row and row.status in ("done", "failed", "cancelled", "awaiting_review", "awaiting_plan") \
+                    and not (row.status == "awaiting_plan" and task_type == "chapter_plan_resume"):
                 logger.info("跳过（已终态，去重）: %s status=%s", task_id, row.status)
             elif row and row.status == "paused" and task_type != "batch_resume":
                 logger.info("跳过（已暂停，等 resume）: %s", task_id)
@@ -393,7 +505,8 @@ def process(body: dict, worker_id: str | None = None) -> str:
                 new_task(
                     project_id=project_id,
                     task_type=task_type,
-                    payload=body.get("payload") or {},
+                    payload={**(body.get("payload") or {}),
+                             "_gate_user_id": body.get("user_id") or ""},
                     chapter_seq=(body.get("payload") or {}).get("seq"),
                     task_id=task_id,
                     trace_id=body.get("trace_id"),

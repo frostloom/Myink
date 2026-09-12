@@ -88,6 +88,8 @@ class _TokenRequest(BaseModel):
 @router.post("/auth/token", response_model=AuthResponse)
 def issue_token(body: _TokenRequest) -> dict:
     """签发 JWT（MVP 无密码：用户名即身份，与 seed demo 用户对齐）。"""
+    if settings.is_prod():
+        raise HTTPException(status_code=403, detail="DEMO_LOGIN_DISABLED")
     with new_session() as db:
         user = db.query(User).filter(User.username == body.username).first()
         if user is None:

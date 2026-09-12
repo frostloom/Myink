@@ -5,7 +5,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
 import { api, ApiError } from '../lib/api'
-import type { Project, ProjectSettings, SkillPreset, StyleProfile } from '../types'
+import type { ConnectionTestResult, ModelConnection, ModelConnectionInput, ModelProbeRequest, Project, ProjectSettings, SkillPreset, StyleProfile } from '../types'
 import styles from './SettingsPage.module.css'
 
 // 文风档案键展示（§7.12 种子书档案键；数组键按行编辑，其余透传）
@@ -26,11 +26,21 @@ const MODEL_ROLES = [
   { key: 'validator_l2', label: '语义校验（validator_l2）' },
   { key: 'extract', label: '抽取（extract）' },
 ]
-const MODEL_OPTIONS = [
+const BUILTIN_MODEL_OPTIONS = [
   { value: '', label: '默认' },
   { value: 'deepseek-v4-flash', label: 'deepseek-v4-flash' },
   { value: 'deepseek-v4-pro', label: 'deepseek-v4-pro' },
 ]
+
+type ModelConnectionDraft = ModelConnection & { api_key: string }
+
+/** 单张连接卡片的探针瞬态（不进 draft、不落库）：加载态 + 拉取到的模型 + 最近一次结果 */
+type ProbeState = {
+  loading?: 'models' | 'test'
+  models?: string[]
+  listError?: string
+  test?: ConnectionTestResult
+}
 
 function orderedKeys(profile: StyleProfile): string[] {
   const known = KEY_ORDER.filter((k) => k in profile)
@@ -121,6 +131,9 @@ export default function SettingsPage() {
   const [presets, setPresets] = useState<SkillPreset[]>([])
   const [profileDraft, setProfileDraft] = useState<StyleProfile>({})
   const [routeSel, setRouteSel] = useState<Record<string, string>>({})
+  const [connectionDrafts, setConnectionDrafts] = useState<ModelConnectionDraft[]>([])
+  // 每连接探针瞬态（按 connection.id 索引）：拉取到的模型 + 测试结果，纯前端展示不落库
+  const [probes, setProbes] = useState<Record<string, ProbeState>>({})
   // 每章目标字数（§6.9 三层字数控制；从 projects 取该书当前值，可改保存）
   const [targetWords, setTargetWords] = useState('3000')
   // 样本提取草稿（提取后编辑再确认；draftDraft 非空显示编辑区）
@@ -144,6 +157,7 @@ export default function SettingsPage() {
       setRouteSel(
         Object.fromEntries(MODEL_ROLES.map((r) => [r.key, s.model_routes[r.key] ?? ''])),
       )
+      setConnectionDrafts((s.model_connections ?? []).map((connection) => ({ ...connection, api_key: '' })))
       setPresets(pre)
       setProjects(proj)
       const cur = proj.find((p) => p.id === projectId)
@@ -261,14 +275,135 @@ export default function SettingsPage() {
     ) as Record<string, string>
     setBusy('routes')
     setBanner(null)
+    setOk(null)
+    const connections: ModelConnectionInput[] = []
+    for (const draft of connectionDrafts) {
+      const name = draft.name.trim()
+      const baseUrl = draft.base_url.trim().replace(/\/$/, '')
+      const model = draft.model.trim()
+      if (!name || !baseUrl || !model) {
+        setBusy(null)
+        setBanner('每个模型连接都需要填写名称、请求地址和模型 id')
+        return
+      }
+      try {
+        const parsed = new URL(baseUrl)
+        if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('scheme')
+      } catch {
+        setBusy(null)
+        setBanner(`模型连接“${name}”的请求地址无效`)
+        return
+      }
+      if (!draft.has_api_key && !draft.api_key.trim()) {
+        setBusy(null)
+        setBanner(`新模型连接“${name}”需要填写 API Key`)
+        return
+      }
+      connections.push({
+        id: draft.id,
+        name,
+        protocol: draft.protocol,
+        base_url: baseUrl,
+        model,
+        ...(draft.api_key.trim() ? { api_key: draft.api_key.trim() } : {}),
+      })
+    }
     try {
-      await api.updateSettings(projectId, routes)
+      await api.updateSettings(projectId, routes, connections)
       await load()
-      setOk('模型路由已保存')
+      setOk('模型连接与路由已保存')
     } catch (err) {
       showError(err)
     } finally {
       setBusy(null)
+    }
+  }
+
+  function addConnection() {
+    setConnectionDrafts((items) => [...items, {
+      id: crypto.randomUUID(),
+      name: '',
+      protocol: 'openai',
+      base_url: '',
+      model: '',
+      api_key: '',
+      has_api_key: false,
+    }])
+  }
+
+  function updateConnection(id: string, patch: Partial<ModelConnectionDraft>) {
+    setConnectionDrafts((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item))
+  }
+
+  function removeConnection(id: string) {
+    setConnectionDrafts((items) => items.filter((item) => item.id !== id))
+    setRouteSel((routes) => Object.fromEntries(
+      Object.entries(routes).map(([role, model]) => [role, model === `custom:${id}` ? '' : model]),
+    ))
+    setProbes((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }
+
+  /** 探针请求体：明文 key 优先；已保存连接留空则传 connection_id 让后端复用密文密钥。 */
+  function probeBody(draft: ModelConnectionDraft): ModelProbeRequest {
+    const apiKey = draft.api_key.trim()
+    return {
+      protocol: draft.protocol,
+      base_url: draft.base_url.trim().replace(/\/$/, ''),
+      ...(draft.model.trim() ? { model: draft.model.trim() } : {}),
+      ...(apiKey ? { api_key: apiKey } : draft.has_api_key ? { connection_id: draft.id } : {}),
+    }
+  }
+
+  /** 探针前置校验（未保存的新连接必须已有明文 key；测试还需模型 id）。 */
+  function probeReady(draft: ModelConnectionDraft, needModel: boolean): boolean {
+    if (!draft.base_url.trim()) {
+      setBanner('请先填写请求地址')
+      return false
+    }
+    if (needModel && !draft.model.trim()) {
+      setBanner('请先填写模型 id')
+      return false
+    }
+    if (!draft.has_api_key && !draft.api_key.trim()) {
+      setBanner('请先填写 API Key')
+      return false
+    }
+    return true
+  }
+
+  async function fetchModels(draft: ModelConnectionDraft) {
+    if (!probeReady(draft, false)) return
+    setBanner(null)
+    setOk(null)
+    setProbes((p) => ({ ...p, [draft.id]: { ...p[draft.id], loading: 'models' } }))
+    try {
+      const res = await api.listModels(projectId, probeBody(draft))
+      setProbes((p) => ({ ...p, [draft.id]: {
+        loading: undefined, models: res.models, listError: res.ok ? undefined : (res.error ?? '拉取失败'),
+      } }))
+    } catch (err) {
+      setProbes((p) => ({ ...p, [draft.id]: {
+        loading: undefined, listError: err instanceof ApiError ? err.code : '拉取失败',
+      } }))
+    }
+  }
+
+  async function runTest(draft: ModelConnectionDraft) {
+    if (!probeReady(draft, true)) return
+    setBanner(null)
+    setOk(null)
+    setProbes((p) => ({ ...p, [draft.id]: { ...p[draft.id], loading: 'test' } }))
+    try {
+      const res = await api.testConnection(projectId, probeBody(draft))
+      setProbes((p) => ({ ...p, [draft.id]: { ...p[draft.id], loading: undefined, test: res } }))
+    } catch (err) {
+      setProbes((p) => ({ ...p, [draft.id]: { loading: undefined, test: {
+        ok: false, latency_ms: 0, reply: null, error: err instanceof ApiError ? err.code : '测试失败',
+      } } }))
     }
   }
 
@@ -407,10 +542,90 @@ export default function SettingsPage() {
           </section>
 
           <section className={`panel ${styles.section}`}>
-            <h2 className={styles.sectionTitle}>每 Agent 模型路由</h2>
-            <p className={styles.hint}>
-              为各角色指定主模型（§6.10），未指定的角色回落默认降级链；写作 / 抽取等角色独立调优。
-            </p>
+            <div className={styles.connectionTitleRow}>
+              <div>
+                <h2 className={styles.sectionTitle}>模型连接与路由</h2>
+                <p className={styles.hint}>
+                  可添加 OpenAI 兼容接口或 Anthropic 原生接口。API Key 由后端加密保存，页面不会再次显示原文。
+                </p>
+              </div>
+              <button type="button" className="btn btn-secondary" disabled={busy !== null} onClick={addConnection}>
+                添加网络模型
+              </button>
+            </div>
+
+            {connectionDrafts.length === 0 ? (
+              <div className="empty">尚未添加网络模型；下方仍可使用内置 DeepSeek。</div>
+            ) : (
+              <div className={styles.connectionList}>
+                {connectionDrafts.map((connection) => (
+                  <article key={connection.id} className={styles.connectionCard}>
+                    <div className={styles.connectionHead}>
+                      <input className="input" aria-label="连接名称" value={connection.name}
+                        onChange={(e) => updateConnection(connection.id, { name: e.target.value })}
+                        placeholder="例如：我的 Claude" />
+                      <select className="input" aria-label="接口协议" value={connection.protocol}
+                        onChange={(e) => updateConnection(connection.id, { protocol: e.target.value as 'openai' | 'anthropic' })}>
+                        <option value="openai">OpenAI 兼容</option>
+                        <option value="anthropic">Anthropic 原生</option>
+                      </select>
+                      <button type="button" className="btn btn-quiet" disabled={busy !== null}
+                        onClick={() => removeConnection(connection.id)}>移除</button>
+                    </div>
+                    <div className={styles.connectionGrid}>
+                      <label className={styles.compactField}>
+                        <span>请求地址</span>
+                        <input className="input" value={connection.base_url}
+                          onChange={(e) => updateConnection(connection.id, { base_url: e.target.value })}
+                          placeholder={connection.protocol === 'anthropic' ? 'https://api.anthropic.com' : 'https://api.openai.com/v1'} />
+                      </label>
+                      <label className={styles.compactField}>
+                        <span>模型 id</span>
+                        <input className="input" list={`models-${connection.id}`} value={connection.model}
+                          onChange={(e) => updateConnection(connection.id, { model: e.target.value })}
+                          placeholder={connection.protocol === 'anthropic' ? 'claude-sonnet-4-5' : 'gpt-5'} />
+                        <datalist id={`models-${connection.id}`}>
+                          {(probes[connection.id]?.models ?? []).map((m) => <option key={m} value={m} />)}
+                        </datalist>
+                      </label>
+                      <label className={`${styles.compactField} ${styles.keyField}`}>
+                        <span>API Key {connection.has_api_key && <em>已保存，留空即保留</em>}</span>
+                        <input className="input" type="password" autoComplete="new-password" value={connection.api_key}
+                          onChange={(e) => updateConnection(connection.id, { api_key: e.target.value })}
+                          placeholder={connection.has_api_key ? '••••••••（留空保留）' : '输入 API Key'} />
+                      </label>
+                    </div>
+                    <div className={styles.probeRow}>
+                      <button type="button" className="btn btn-quiet"
+                        disabled={busy !== null || probes[connection.id]?.loading !== undefined}
+                        onClick={() => void fetchModels(connection)}>
+                        {probes[connection.id]?.loading === 'models' ? '获取中…' : '获取模型列表'}
+                      </button>
+                      <button type="button" className="btn btn-quiet"
+                        disabled={busy !== null || probes[connection.id]?.loading !== undefined}
+                        onClick={() => void runTest(connection)}>
+                        {probes[connection.id]?.loading === 'test' ? '测试中…' : '测试连接'}
+                      </button>
+                      <span className={styles.probeStatus}>
+                        {probes[connection.id]?.test?.ok === true &&
+                          `连接正常 · ${probes[connection.id]?.test?.latency_ms ?? 0} ms`}
+                        {probes[connection.id]?.test?.ok === false &&
+                          `连接失败：${probes[connection.id]?.test?.error ?? '未知错误'}`}
+                        {probes[connection.id]?.listError &&
+                          `模型列表不可用：${probes[connection.id]?.listError}`}
+                        {probes[connection.id]?.models !== undefined && !probes[connection.id]?.listError &&
+                          `已获取 ${probes[connection.id]?.models?.length ?? 0} 个模型`}
+                      </span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+
+            <div className={styles.routeDivider}>
+              <h3>每 Agent 主模型</h3>
+              <p className={styles.hint}>未指定时使用默认降级链；自定义接口调用失败时也会自动回落到内置模型。</p>
+            </div>
             <div className={styles.routeList}>
               {MODEL_ROLES.map((r) => (
                 <label key={r.key} className={styles.routeRow}>
@@ -420,9 +635,15 @@ export default function SettingsPage() {
                     value={routeSel[r.key] ?? ''}
                     onChange={(e) => setRouteSel((s) => ({ ...s, [r.key]: e.target.value }))}
                   >
-                    {MODEL_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
+                    {[
+                      ...BUILTIN_MODEL_OPTIONS,
+                      ...connectionDrafts.map((connection) => ({
+                        value: `custom:${connection.id}`,
+                        label: `${connection.name.trim() || '未命名连接'} · ${connection.model.trim() || '未填写模型'}`,
+                      })),
+                    ].map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
                       </option>
                     ))}
                   </select>
@@ -436,7 +657,7 @@ export default function SettingsPage() {
                 disabled={busy !== null}
                 onClick={saveRoutes}
               >
-                {busy === 'routes' ? '保存中…' : '保存模型路由'}
+                {busy === 'routes' ? '保存中…' : '保存连接与路由'}
               </button>
             </div>
           </section>

@@ -57,7 +57,11 @@ describe('parseData 载荷解析', () => {
   it('合法 JSON 归一为 SSEEvent', () => {
     expect(
       parseData('{"type":"node","task_id":"t1","node":"write","status":"","message":"m"}'),
-    ).toEqual({ type: 'node', task_id: 't1', node: 'write', status: '', message: 'm' })
+    ).toEqual({
+      type: 'node', task_id: 't1', node: 'write', status: '', message: 'm',
+      stage: '', chapter_seq: 0, attempt: 0, offset: 0,
+      artifact_id: '', content: '', artifact: '',
+    })
   })
 
   it('坏 JSON / 缺 type 返回 null（跳帧容错）', () => {
@@ -67,9 +71,10 @@ describe('parseData 载荷解析', () => {
 })
 
 describe('isTerminalStatus 终态判定', () => {
-  it('done/failed/awaiting_review/cancelled 为终态', () => {
+  it('done/failed/awaiting_plan/awaiting_review/cancelled 为终态', () => {
     expect(isTerminalStatus('done')).toBe(true)
     expect(isTerminalStatus('failed')).toBe(true)
+    expect(isTerminalStatus('awaiting_plan')).toBe(true)
     expect(isTerminalStatus('awaiting_review')).toBe(true)
     expect(isTerminalStatus('cancelled')).toBe(true)
   })

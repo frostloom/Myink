@@ -1,21 +1,23 @@
 // 工作台（三栏）：rail 项目切换 + 章节列表 | 章节编辑器 | 生成入口/时间线/校验报告/候选池。
 // 生成任务进度状态在页面级提升：useTaskEvents(activeTaskId)，终态 → 刷新章节列表。
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AuditPanel } from '../components/AuditPanel'
 import { CandidatePanel, type ReleaseTarget } from '../components/CandidatePanel'
 import { ChapterEditor } from '../components/ChapterEditor'
+import { ChapterPlanPanel } from '../components/ChapterPlanPanel'
 import { ChapterList } from '../components/ChapterList'
 import { GenerationPanel } from '../components/GenerationPanel'
 import { LessonsPanel } from '../components/LessonsPanel'
 import { ProjectRail } from '../components/ProjectRail'
-import { TaskHistory } from '../components/TaskHistory'
 import { TaskTimeline } from '../components/TaskTimeline'
+import { StreamingChapterView } from '../components/StreamingChapterView'
 import { useAuth } from '../context/AuthContext'
 import { useTaskEvents } from '../hooks/useTaskEvents'
 import { api, ApiError } from '../lib/api'
-import { nodesForChapter, runsForChapter } from '../lib/taskChapter'
-import type { ChapterMeta, MemoryCandidate, Project } from '../types'
+import { liveStageNode } from '../lib/taskFlow'
+import { chapterToOpenForPendingTask, latestChapterAwaitingReview, latestGenerationTask, nodesForChapter, runsForChapter } from '../lib/taskChapter'
+import type { ChapterMeta, MemoryCandidate, Project, WritingMode } from '../types'
 import styles from './WorkspacePage.module.css'
 
 export default function WorkspacePage() {
@@ -27,6 +29,7 @@ export default function WorkspacePage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [chapters, setChapters] = useState<ChapterMeta[]>([])
   const [candidates, setCandidates] = useState<MemoryCandidate[]>([])
+  const [candidateReferenceNames, setCandidateReferenceNames] = useState<Record<string, string>>({})
   const [selectedCid, setSelectedCid] = useState<string | null>(null)
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
   const [batchTotal, setBatchTotal] = useState<number | null>(null)
@@ -40,16 +43,61 @@ export default function WorkspacePage() {
   const [releaseTarget, setReleaseTarget] = useState<ReleaseTarget | null>(null)
   // 放行复用同一 task_id 续跑，SSE 需强制重连（useTaskEvents resumeKey 触发）
   const [releaseResumeKey, setReleaseResumeKey] = useState<number | null>(null)
+  const [centerView, setCenterView] = useState<'plan' | 'write'>('write')
+  const taskStartVersion = useRef(0)
+  const chapterMaterializeVersion = useRef(0)
+  const activeTaskIdRef = useRef<string | null>(null)
+  const selectedCidRef = useRef<string | null>(null)
+  const selectedChapterSeqRef = useRef<number | null>(null)
+  const latestPlanArtifactRef = useRef<string | null>(null)
+  const latestWriteArtifactRef = useRef<string | null>(null)
+  // 只允许本页刚发起/续跑的任务在终态时自动跳章一次。历史任务恢复为 terminal 后
+  // 不能持续把用户从其他章节拉回待确认章。
+  const pendingAutoOpen = useRef<{ taskId: string; chapterSeq: number | null } | null>(null)
+
+  useEffect(() => {
+    activeTaskIdRef.current = activeTaskId
+  }, [activeTaskId])
+
+  useEffect(() => {
+    if (selectedCidRef.current === selectedCid) return
+    const selected = chapters.find((chapter) => chapter.id === selectedCid)
+    const changedChapter = selectedChapterSeqRef.current !== (selected?.chapter_seq ?? null)
+    selectedCidRef.current = selectedCid
+    selectedChapterSeqRef.current = selected?.chapter_seq ?? null
+    // 临时章节 id 被数据库真实 id 替换时仍是同一章，不能把正在展示的 Plan 翻回空正文。
+    if (!changedChapter) return
+    setCenterView(selected?.status === 'planning' ? 'plan' : 'write')
+    latestPlanArtifactRef.current = null
+    latestWriteArtifactRef.current = null
+  }, [chapters, selectedCid])
 
   // 候选池加载失败静默降级（空列表），不阻塞主链路
   const loadCandidates = useCallback(() => {
-    api.listCandidates(projectId).then(setCandidates).catch(() => setCandidates([]))
+    api.listCandidates(projectId, '').then(setCandidates).catch(() => setCandidates([]))
+  }, [projectId])
+
+  const loadCandidateReferences = useCallback(async () => {
+    const [graphResult, foreshadowResult] = await Promise.allSettled([
+      api.listGraph(projectId),
+      api.listForeshadows(projectId),
+    ])
+    const names: Record<string, string> = {}
+    if (graphResult.status === 'fulfilled') {
+      for (const node of graphResult.value.nodes) names[node.id] = node.name
+    }
+    if (foreshadowResult.status === 'fulfilled') {
+      for (const item of foreshadowResult.value) {
+        names[item.id] = item.description.length > 48 ? `${item.description.slice(0, 48)}…` : item.description
+      }
+    }
+    setCandidateReferenceNames(names)
   }, [projectId])
 
   // 章序 → 待确认候选数（候选面板与章节列表角标联动）
   const pendingByChapter = useMemo(() => {
     const m = new Map<number, number>()
-    for (const c of candidates) {
+    for (const c of candidates.filter((item) => item.status === 'pending')) {
       m.set(c.source_chapter, (m.get(c.source_chapter) ?? 0) + 1)
     }
     return m
@@ -79,11 +127,22 @@ export default function WorkspacePage() {
     setActiveChapterSeq(null)
     setReleaseTarget(null)
     setReleaseResumeKey(null)
+    setCenterView('write')
+    selectedCidRef.current = null
+    selectedChapterSeqRef.current = null
+    latestPlanArtifactRef.current = null
+    latestWriteArtifactRef.current = null
+    chapterMaterializeVersion.current += 1
+    pendingAutoOpen.current = null
     setError(null)
     loadProjects()
     void loadChapters()
     loadCandidates()
-  }, [loadProjects, loadChapters, loadCandidates])
+    void loadCandidateReferences()
+    return () => {
+      chapterMaterializeVersion.current += 1
+    }
+  }, [loadProjects, loadChapters, loadCandidates, loadCandidateReferences])
 
   // 跨页深链（审计视图「跳章」→ /projects/:pid?chapter=<seq>）：一次性选中目标章并清参数
   useEffect(() => {
@@ -97,57 +156,142 @@ export default function WorkspacePage() {
   }, [searchParams, chapters, setSearchParams])
 
   const handleTaskStart = useCallback(
-    (taskId: string, total?: number, chapterSeq?: number) => {
+    (taskId: string, total?: number, chapterSeq?: number, _mode: WritingMode = 'auto') => {
+      taskStartVersion.current += 1
       setBatchTotal(total ?? null)
       setActiveTaskId(taskId)
+      setCenterView('plan')
+      latestPlanArtifactRef.current = null
+      latestWriteArtifactRef.current = null
+      pendingAutoOpen.current = { taskId, chapterSeq: chapterSeq ?? null }
       // 单章任务带出对应章（右栏按章过滤）；批次任务不带（按 :ch{seq} 子线程切）
       setActiveChapterSeq(chapterSeq ?? null)
+
+      if (chapterSeq === undefined) return
+      const existing = chapters.find((chapter) => chapter.chapter_seq === chapterSeq)
+      if (existing) {
+        setSelectedCid(existing.id)
+        return
+      }
+
+      // 网关返回任务后先在界面建立目标章，确保新任务从第一帧起不占用上一章的正文和右栏。
+      // worker 会随即持久化同章 writing 记录；轮询拿到真实 id 后无缝替换临时页。
+      const optimisticId = `pending-chapter:${taskId}:${chapterSeq}`
+      const optimisticChapter: ChapterMeta = {
+        id: optimisticId,
+        chapter_seq: chapterSeq,
+        title: null,
+        status: 'planning',
+        word_count: 0,
+        summary: null,
+      }
+      setChapters((current) => {
+        if (current.some((chapter) => chapter.chapter_seq === chapterSeq)) return current
+        return [...current, optimisticChapter].sort((a, b) => a.chapter_seq - b.chapter_seq)
+      })
+      setSelectedCid(optimisticId)
+
+      const materializeVersion = ++chapterMaterializeVersion.current
+      void (async () => {
+        for (let attempt = 0; attempt < 40; attempt += 1) {
+          if (materializeVersion !== chapterMaterializeVersion.current) return
+          try {
+            const list = await api.listChapters(projectId)
+            const target = list.find((chapter) => chapter.chapter_seq === chapterSeq)
+            if (target) {
+              setChapters(list)
+              setSelectedCid((current) => current === optimisticId ? target.id : current)
+              return
+            }
+            setChapters([...list, optimisticChapter].sort((a, b) => a.chapter_seq - b.chapter_seq))
+          } catch {
+            // SSE/终态刷新仍会继续接管；短暂列表请求失败不打断正在运行的写作任务。
+          }
+          await new Promise((resolve) => window.setTimeout(resolve, 250))
+        }
+      })()
     },
-    [],
+    [chapters, projectId],
   )
 
   // 放行本章：resume 同一 task_id 续跑（§6.11 确认流收尾）。taskId 不变但 SSE 已关流，
   // 用 releaseResumeKey 强制重连；终态 → 既有 effect 刷章节/候选，正文出现、按钮消失。
-  const handleRelease = useCallback((taskId: string, chapterSeq: number) => {
-    setBatchTotal(null)
+  const handleRelease = useCallback((taskId: string, chapterSeq: number, batchSize?: number) => {
+    taskStartVersion.current += 1
+    setBatchTotal(batchSize ?? null)
     setActiveChapterSeq(chapterSeq)
     setActiveTaskId(taskId)
+    pendingAutoOpen.current = { taskId, chapterSeq }
     setReleaseTarget(null)
     setReleaseResumeKey(Date.now())
   }, [])
 
+  const handlePlanConfirmed = useCallback((taskId: string, chapterSeq: number) => {
+    taskStartVersion.current += 1
+    setBatchTotal(null)
+    setActiveChapterSeq(chapterSeq)
+    setActiveTaskId(taskId)
+    setCenterView('write')
+    pendingAutoOpen.current = { taskId, chapterSeq }
+    setChapters((current) => current.map((chapter) => (
+      chapter.chapter_seq === chapterSeq ? { ...chapter, status: 'writing' } : chapter
+    )))
+    setReleaseResumeKey(Date.now())
+  }, [])
+
+  const handlePlanCancelled = useCallback((_taskId: string, chapterSeq: number) => {
+    pendingAutoOpen.current = null
+    setChapters((current) => current.map((chapter) => (
+      chapter.chapter_seq === chapterSeq ? { ...chapter, status: 'cancelled' } : chapter
+    )))
+    setReleaseResumeKey(Date.now())
+    setCenterView('write')
+    void loadChapters()
+  }, [loadChapters])
+
   const task = useTaskEvents(
     activeTaskId,
-    batchTotal
-      ? { batchTotal }
-      : releaseResumeKey !== null
-        ? { resumeKey: releaseResumeKey }
-        : undefined,
+    {
+      ...(batchTotal ? { batchTotal } : {}),
+      ...(releaseResumeKey !== null ? { resumeKey: releaseResumeKey } : {}),
+    },
   )
   const taskPhase = task.phase
 
   // 生成任务进入终态/过期 → 章节状态与内容已更新：刷新列表 + 让编辑器重拉当前章正文 + 重载候选池
   useEffect(() => {
     if (taskPhase === 'terminal' || taskPhase === 'expired' || taskPhase === 'error') {
+      chapterMaterializeVersion.current += 1
       void loadChapters()
       loadCandidates()
       setRefreshTick((t) => t + 1)
       // 单章任务停在 awaiting_review → 候选确认完后给「放行本章」；放行完成（done）即清
       if (task.status === 'awaiting_review' && activeTaskId && activeChapterSeq) {
-        setReleaseTarget({ taskId: activeTaskId, chapterSeq: activeChapterSeq })
+        setReleaseTarget({ taskId: activeTaskId, chapterSeq: activeChapterSeq, batchSize: batchTotal ?? undefined })
       } else if (task.status === 'done' || task.status === 'failed' || task.status === 'cancelled') {
         setReleaseTarget(null)
       }
     }
-  }, [taskPhase, task.status, loadChapters, loadCandidates, activeTaskId, activeChapterSeq])
+  }, [taskPhase, task.status, loadChapters, loadCandidates, activeTaskId, activeChapterSeq, batchTotal])
 
-  // 批次/单章完成后自动打开最早生成的章节（新建书首轮批次结束 → 编辑器立即可用，
-  // 「单章生成」随之可点）；用户已手动选中则不动。chapters 异步更新，依赖两者兜底。
+  // 单章完成或转人工后只自动打开一次刚生成的章。历史任务重载同样是 terminal，若不以
+  // pendingAutoOpen 限定，用户从第 17 章点到其他章节时会立刻被旧终态 effect 拉回。
   useEffect(() => {
-    if (taskPhase !== 'terminal' || chapters.length === 0 || selectedCid) return
-    const first = [...chapters].sort((a, b) => a.chapter_seq - b.chapter_seq)[0]
-    setSelectedCid(first.id)
-  }, [taskPhase, chapters, selectedCid])
+    const pending = pendingAutoOpen.current
+    const target = chapterToOpenForPendingTask(
+      chapters, pending, activeTaskId, taskPhase, selectedCid,
+    )
+    if (!target) return
+    pendingAutoOpen.current = null
+    if (target.id !== selectedCid) setSelectedCid(target.id)
+  }, [taskPhase, activeTaskId, chapters, selectedCid])
+
+  // 刷新页面或重新进入项目时恢复尚未处理的最新章节，让用户直接看到候选与放行入口。
+  useEffect(() => {
+    if (selectedCid || taskPhase !== 'idle') return
+    const target = latestChapterAwaitingReview(chapters)
+    if (target) setSelectedCid(target.id)
+  }, [chapters, selectedCid, taskPhase])
 
   const selectedChapter = chapters.find((c) => c.id === selectedCid) ?? null
 
@@ -163,30 +307,108 @@ export default function WorkspacePage() {
         if (cancelled) return
         const awaiting = tasks.find((t) => t.status === 'awaiting_review')
         if (awaiting) {
-          setReleaseTarget({ taskId: awaiting.task_id, chapterSeq: selectedChapter.chapter_seq })
+          setReleaseTarget({ taskId: awaiting.task_id, chapterSeq: selectedChapter.chapter_seq, batchSize: awaiting.batch_size ?? undefined })
         }
       })
       .catch(() => {})
     return () => {
       cancelled = true
     }
-  }, [projectId, selectedChapter?.id, selectedChapter?.status, selectedChapter?.chapter_seq])
+  }, [projectId, selectedChapter])
 
   // 右栏按章过滤（§11）：选中某章时，节点流转/花费只显示该章——批次按 :ch{seq}
   // 子线程切、单章按发起时带出的章对齐；未选中章则不过滤（时间线整体兜底）。
   const selectedSeq = selectedChapter?.chapter_seq ?? null
+
+  // 每章只呈现一份状态流转：选章后加载覆盖该章的最新生成任务，实时和历史共用一条流程。
+  useEffect(() => {
+    if (selectedSeq === null) {
+      setActiveTaskId(null)
+      setBatchTotal(null)
+      setActiveChapterSeq(null)
+      setReleaseTarget(null)
+      return
+    }
+    const pending = pendingAutoOpen.current
+    if (pending?.taskId === activeTaskIdRef.current && pending.chapterSeq === selectedSeq) {
+      return
+    }
+    let cancelled = false
+    setActiveTaskId(null)
+    setBatchTotal(null)
+    setActiveChapterSeq(null)
+    setReleaseTarget(null)
+    const requestVersion = taskStartVersion.current
+    api.listTasks(projectId, selectedSeq)
+      .then((tasks) => {
+        if (cancelled || requestVersion !== taskStartVersion.current) return
+        const latest = latestGenerationTask(tasks)
+        if (!latest) {
+          setActiveTaskId(null)
+          setBatchTotal(null)
+          setActiveChapterSeq(null)
+          setReleaseTarget(null)
+          return
+        }
+        setActiveTaskId(latest.task_id)
+        setBatchTotal(latest.batch_size)
+        setActiveChapterSeq(selectedSeq)
+        setReleaseResumeKey(null)
+        setReleaseTarget(latest.status === 'awaiting_review'
+          ? { taskId: latest.task_id, chapterSeq: selectedSeq, batchSize: latest.batch_size ?? undefined }
+          : null)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [projectId, selectedSeq])
   const taskRuns = runsForChapter(task.runs, {
     taskId: activeTaskId,
     batch: batchTotal !== null,
     selectedSeq,
     activeChapterSeq,
   })
+  // 保留该任务的全部执行轮次；重进页面后 rewrite/replan 的前序审核也必须可追溯。
+  const visibleTaskRuns = taskRuns
   const taskNodes = nodesForChapter(task.nodes, {
     taskId: activeTaskId,
     batch: batchTotal !== null,
     selectedSeq,
     activeChapterSeq,
   })
+  const planArtifact = task.artifacts.find((item) => item.chapterSeq === selectedSeq && item.stage === 'plan') ?? null
+  const writeArtifact = task.artifacts.find((item) => item.chapterSeq === selectedSeq && item.stage === 'write') ?? null
+  const taskIsCreating = task.status === 'queued' || task.status === 'running' || task.status === 'awaiting_plan'
+  const hasPlan = planArtifact !== null || visibleTaskRuns.some((run) => (
+    run.node === 'plan_chapter' && run.detail?.plan
+  ))
+  const isPendingChapter = selectedChapter?.id.startsWith('pending-chapter:') ?? false
+  // 节点记录在 LLM 返回后才落库，写作进行中右栏会停在上一节点；用产物未完成态补一条实时步骤。
+  // 仅任务在途时启用：终态/暂停下残留的未完成产物不该再显示「正在执行」。
+  const liveNode = taskIsCreating
+    ? liveStageNode(visibleTaskRuns, planArtifact, writeArtifact)
+    : null
+  const showCreationWorkspace = Boolean(selectedChapter && (hasPlan || taskIsCreating || isPendingChapter))
+  const canOpenWrite = Boolean(
+    selectedChapter && (
+      writeArtifact !== null
+      || selectedChapter.status === 'writing'
+      || (!taskIsCreating && !isPendingChapter)
+    ),
+  )
+
+  // 新的 Plan（包括审核后的 replan）先占满中栏；Writer 真正开始输出后再自动翻到正文。
+  // artifact_id 作为一次产物的稳定边界，避免后续每个 delta 都抢走用户手动切换的页面。
+  useEffect(() => {
+    if (!planArtifact || latestPlanArtifactRef.current === planArtifact.artifactId) return
+    latestPlanArtifactRef.current = planArtifact.artifactId
+    setCenterView('plan')
+  }, [planArtifact?.artifactId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!writeArtifact || latestWriteArtifactRef.current === writeArtifact.artifactId) return
+    latestWriteArtifactRef.current = writeArtifact.artifactId
+    setCenterView('write')
+  }, [writeArtifact?.artifactId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleNotFound = useCallback(() => {
     setSelectedCid(null)
@@ -288,14 +510,71 @@ export default function WorkspacePage() {
       <main className={styles.main}>
         {error && <div className="banner banner-error">{error}</div>}
         {selectedChapter ? (
-          <ChapterEditor
-            projectId={projectId}
-            chapter={selectedChapter}
-            onNotFound={handleNotFound}
-            onSaved={handleSaved}
-            onMemoryChanged={loadCandidates}
-            refreshTick={refreshTick}
-          />
+          showCreationWorkspace ? <div className={styles.creationWorkspace}>
+            <nav className={styles.stageTabs} aria-label={`第 ${selectedChapter.chapter_seq} 章创作视图`}>
+              <button
+                type="button"
+                className={centerView === 'plan' ? styles.stageTabActive : styles.stageTab}
+                disabled={!hasPlan && !taskIsCreating && !isPendingChapter}
+                aria-current={centerView === 'plan' ? 'page' : undefined}
+                onClick={() => setCenterView('plan')}
+              >
+                <span>Plan</span><small>{task.status === 'awaiting_plan' ? '等待确认' : '章节计划'}</small>
+              </button>
+              <button
+                type="button"
+                className={centerView === 'write' ? styles.stageTabActive : styles.stageTab}
+                disabled={!canOpenWrite}
+                aria-current={centerView === 'write' ? 'page' : undefined}
+                onClick={() => setCenterView('write')}
+              >
+                <span>正文</span><small>{writeArtifact?.complete ? '生成完成' : writeArtifact ? '实时写作' : 'Write'}</small>
+              </button>
+            </nav>
+            <div className={styles.creationPage}>
+              {centerView === 'plan' ? (
+                <ChapterPlanPanel
+                  taskId={activeTaskId}
+                  chapterSeq={selectedChapter.chapter_seq}
+                  status={task.status}
+                  runs={visibleTaskRuns}
+                  artifact={planArtifact}
+                  onConfirmed={handlePlanConfirmed}
+                  onCancelled={handlePlanCancelled}
+                />
+              ) : taskIsCreating ? (
+                <StreamingChapterView
+                  chapterSeq={selectedChapter.chapter_seq}
+                  artifact={writeArtifact}
+                  summary={selectedChapter.summary}
+                />
+              ) : isPendingChapter ? (
+                <div className={styles.generatingChapter} role="status">
+                  <span className={styles.generatingBadge}>准备中</span>
+                  <h2>第 {selectedChapter.chapter_seq} 章</h2>
+                  <p>章节页面已经建立，正在连接生成任务。</p>
+                </div>
+              ) : (
+                <ChapterEditor
+                  projectId={projectId}
+                  chapter={selectedChapter}
+                  onNotFound={handleNotFound}
+                  onSaved={handleSaved}
+                  onMemoryChanged={loadCandidates}
+                  refreshTick={refreshTick}
+                />
+              )}
+            </div>
+          </div> : (
+            <ChapterEditor
+              projectId={projectId}
+              chapter={selectedChapter}
+              onNotFound={handleNotFound}
+              onSaved={handleSaved}
+              onMemoryChanged={loadCandidates}
+              refreshTick={refreshTick}
+            />
+          )
         ) : (
           <div className="empty">
             {chapters.length === 0 ? '还没有章节。在右侧发起首次生成。' : '选择左侧章节开始编辑。'}
@@ -308,19 +587,17 @@ export default function WorkspacePage() {
           projectId={projectId}
           chapters={chapters}
           selectedChapter={selectedChapter}
+          taskBusy={taskIsCreating || task.status === 'awaiting_review'}
           onTaskStart={handleTaskStart}
         />
-        <TaskHistory
-          projectId={projectId}
-          activeTaskId={activeTaskId}
-          selectedSeq={selectedSeq}
-        />
         <TaskTimeline
+          key={`flow-${selectedSeq ?? 'none'}`}
           taskId={activeTaskId}
           phase={task.phase}
           status={task.status}
           nodes={taskNodes}
-          runs={taskRuns}
+          runs={visibleTaskRuns}
+          liveNode={liveNode}
           progress={task.progress}
           chapterSeq={selectedSeq}
           error={task.error}
@@ -328,13 +605,17 @@ export default function WorkspacePage() {
           canControl={batchTotal !== null}
           refresh={task.refresh}
         />
-        <AuditPanel runs={taskRuns} onNavigateChapter={handleNavigateChapter} />
+        <AuditPanel key={`audit-${selectedSeq ?? 'none'}`} runs={visibleTaskRuns} onNavigateChapter={handleNavigateChapter} />
         <CandidatePanel
+          key={`${projectId}:${selectedSeq ?? 'none'}`}
           projectId={projectId}
+          chapterSeq={selectedSeq}
+          chapterStatus={selectedChapter?.status}
           candidates={candidates}
           onChanged={loadCandidates}
           releaseTarget={releaseTarget}
           onReleased={handleRelease}
+          referenceNames={candidateReferenceNames}
         />
         <LessonsPanel projectId={projectId} />
       </aside>

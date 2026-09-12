@@ -21,18 +21,20 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from aiink.config import settings
+from aiink.db_url import normalize_localhost_database_url
 
 # 生产用连接池配置（plan.md §5.2 真实边界：连接池）。
 # pool_size * 并发 worker < PG max_connections(默认 100)。
 _engine: Engine = create_engine(
-    settings.database_url,
+    normalize_localhost_database_url(settings.database_url),
     pool_size=10,
     max_overflow=5,
     pool_pre_ping=True,  # 回收失效连接
 )
 
 # 超级用户 DDL 连接（仅 init/迁移/RLS，业务不碰；超级用户永远绕过 RLS，不能用于业务）
-_admin_engine: Engine = create_engine(settings.admin_database_url, pool_pre_ping=True)
+_admin_engine: Engine = create_engine(
+    normalize_localhost_database_url(settings.admin_database_url), pool_pre_ping=True)
 
 _SessionLocal = sessionmaker(bind=_engine, expire_on_commit=False, autoflush=False)
 
@@ -217,6 +219,8 @@ def ensure_memory_candidate_kinds() -> None:
               "foreshadow", "chapter_summary", "memory_removal",
               "character_card", "new_entity")
     # 约束全名按命名约定 ck_%(table)s_%(constraint)s（base.py convention）：
+    with get_admin_engine().begin() as conn:
+        conn.execute(text("ALTER TABLE memory_candidates ADD COLUMN IF NOT EXISTS review JSON"))
     # memory_candidates.kind_enum → ck_memory_candidates_kind_enum
     with _admin_engine.begin() as conn:
         conn.execute(text(

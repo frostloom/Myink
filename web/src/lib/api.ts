@@ -7,7 +7,9 @@ import type {
   CharacterCard,
   ChapterDetail,
   ChapterMeta,
+  ChapterPlan,
   ChapterVersionsResponse,
+  ConnectionTestResult,
   ContentUpdateResponse,
   CorrectMemoryResponse,
   CreateProjectBody,
@@ -21,6 +23,9 @@ import type {
   LessonActionResponse,
   LoreEntity,
   MemoryCandidate,
+  ModelConnectionInput,
+  ModelListResult,
+  ModelProbeRequest,
   Project,
   ProjectSettings,
   BookOutlineResponse,
@@ -42,6 +47,7 @@ import type {
   WorldGraphResponse,
   WorldView,
   WritingLesson,
+  WritingMode,
 } from '../types'
 import { dispatchUnauthorized, getToken } from './token'
 
@@ -94,8 +100,9 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     } catch {
       /* 非 JSON 响应：保留原始状态 */
     }
-    const code =
-      (parsed as { error?: string } | null)?.error ?? res.statusText
+    const errorBody = parsed as { error?: string; detail?: unknown } | null
+    const code = errorBody?.error
+      ?? (typeof errorBody?.detail === 'string' ? errorBody.detail : res.statusText)
     if (res.status === 401) dispatchUnauthorized()
     throw new ApiError(res.status, code, parsed)
   }
@@ -114,9 +121,10 @@ export const api = {
   getChapter: (pid: string, cid: string) =>
     request<ChapterDetail>('GET', `/projects/${pid}/chapters/${cid}`),
 
-  updateContent: (pid: string, cid: string, content: string) =>
+  updateContent: (pid: string, cid: string, content: string, expectedVersion: number) =>
     request<ContentUpdateResponse>('PUT', `/projects/${pid}/chapters/${cid}/content`, {
       content,
+      expected_version: expectedVersion,
     }),
 
   // 显式校正记忆（§7.3：编辑后重新抽取 → 与该章已落库记忆 diff → 变更集进待确认池）。
@@ -150,13 +158,22 @@ export const api = {
   generateChapter: (
     pid: string,
     cid: string,
-    body: { seq: number; user_instruction?: string; rewrite?: boolean },
+    body: { seq: number; user_instruction?: string; rewrite?: boolean; mode?: WritingMode },
   ) => request<GenerateResponse>('POST', `/projects/${pid}/chapters/${cid}/generate`, body),
 
   generateBatch: (pid: string, body: { size: number; start: number }) =>
     request<GenerateResponse>('POST', `/projects/${pid}/batches/generate`, body),
 
   getTask: (tid: string) => request<TaskDetail>('GET', `/tasks/${tid}`),
+
+  confirmTaskPlan: (tid: string, plan: ChapterPlan, expectedAttempt: number) =>
+    request<TaskControlResponse>('POST', `/tasks/${tid}/plan/confirm`, {
+      plan,
+      expected_attempt: expectedAttempt,
+    }),
+
+  cancelTask: (tid: string) =>
+    request<TaskControlResponse>('POST', `/tasks/${tid}/cancel`),
 
   // 项目任务历史（阶段 4 任务视图）：切书后展示该书过往任务（网关转发 Python）。
   // chapterSeq 非空 → 只列覆盖该章的任务 + 该章花费（右栏按章过滤，§11）。
@@ -184,17 +201,24 @@ export const api = {
       'POST', `/projects/${pid}/candidates/${cid}/confirm`,
     ),
 
-  rejectCandidate: (pid: string, cid: string) =>
+  rejectCandidate: (pid: string, cid: string, reason = "", mode: "revise" | "memory_only" = "revise") =>
     request<CandidateActionResponse>(
-      'POST', `/projects/${pid}/candidates/${cid}/reject`,
+      'POST', `/projects/${pid}/candidates/${cid}/reject`, { reason, mode },
     ),
 
   // 创作设置（阶段 4 设置页）：settings 读/写 + 题材预设 + 文风样本/档案（网关转发 Python）。
   getSettings: (pid: string) =>
     request<ProjectSettings>('GET', `/projects/${pid}/settings`),
 
-  updateSettings: (pid: string, model_routes: Record<string, string>) =>
-    request<ProjectSettings>('PUT', `/projects/${pid}/settings`, { model_routes }),
+  updateSettings: (pid: string, model_routes: Record<string, string>, model_connections?: ModelConnectionInput[]) =>
+    request<ProjectSettings>('PUT', `/projects/${pid}/settings`, { model_routes, model_connections }),
+
+  // 模型连接探针（设置页「添加网络模型」闭环）：拉取可用模型列表 / 联通测试。
+  listModels: (pid: string, body: ModelProbeRequest) =>
+    request<ModelListResult>('POST', `/projects/${pid}/settings/models`, body),
+
+  testConnection: (pid: string, body: ModelProbeRequest) =>
+    request<ConnectionTestResult>('POST', `/projects/${pid}/settings/test-connection`, body),
 
   listSkillPresets: () => request<SkillPreset[]>('GET', '/skill-presets'),
 

@@ -141,3 +141,110 @@
   font-size: var(--text-body);
   color: var(--ink);
 }
+
+.connectionTitleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.connectionTitleRow > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.connectionTitleRow > :global(.btn) {
+  flex-shrink: 0;
+}
+
+.connectionList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.connectionCard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.connectionHead {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 180px auto;
+  gap: 10px;
+}
+
+.connectionGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(180px, 0.65fr);
+  gap: 12px;
+}
+
+.compactField {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+
+.compactField em {
+  margin-left: 5px;
+  color: #4f7d5c;
+  font-style: normal;
+}
+
+.keyField {
+  grid-column: 1 / -1;
+}
+
+.probeRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.probeStatus {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.routeDivider {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.routeDivider h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 18px;
+}
+
+@media (max-width: 1050px) {
+  .connectionHead,
+  .connectionGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .keyField {
+    grid-column: auto;
+  }
+}

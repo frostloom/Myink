@@ -19,7 +19,7 @@ import uuid
 
 import pytest
 
-from aiink.db import new_session
+from aiink.db import new_session, tenant_session
 from aiink.models import Task
 from aiink.worker.processor import process
 from aiink.worker.redis_client import book_key, get_redis, inflight_key, lock_key, sse_key
@@ -36,6 +36,18 @@ def _body(task_id, project_id, task_type="chapter_generate", payload=None, user_
         "request_id": f"req-{uuid.uuid4().hex[:8]}",
         "retry_count": 0,
     }
+
+
+def test_database_disconnects_are_retryable():
+    """PG 重启/断连不能被判成不可重试，否则队列正常但任务会立即永久失败。"""
+    from psycopg import InterfaceError, OperationalError
+    from sqlalchemy.exc import OperationalError as SQLAlchemyOperationalError
+
+    from aiink.worker.processor import _is_retryable
+
+    assert _is_retryable(OperationalError("the connection is closed"))
+    assert _is_retryable(InterfaceError("connection lost"))
+    assert _is_retryable(SQLAlchemyOperationalError("select 1", {}, Exception("closed")))
 
 
 def test_process_materialize_and_done(temp_project, stub_provider):
@@ -68,12 +80,200 @@ def test_process_materialize_and_done(temp_project, stub_provider):
     assert r.exists(lock_key(task_id)) == 0
     # SSE 事件：应有 running（物化阶段写）+ done（终态写）；fields 扁平存 event/status
     events = r.xrange(sse_key(task_id))
-    types = [f["status"] for _, f in events]
+    types = [f["status"] for _, f in events if f.get("status")]
     assert "running" in types, f"SSE 应有 running，实际 {types}"
     assert types[-1] == "done", f"SSE 末事件应为 done，实际 {types}"
 
     # SSE 事件键 worker 直写只设 1h 过期，显式清理防残留（同 test_multiprocess._cleanup）
     r.delete(sse_key(task_id))
+
+
+def test_worker_publishes_artifact_while_dispatch_is_still_running(temp_project, monkeypatch):
+    """Worker 应在任务完成事件之前发布正文片段，而非结束后一次性补发。"""
+    import aiink.worker.processor as processor_mod
+    from aiink.workflow.streaming import ArtifactEmitter
+
+    task_id = str(uuid.uuid4())
+    body = _body(task_id, temp_project, payload={"seq": 1, "mode": "auto"})
+    r = get_redis()
+    observed_during_dispatch: list[dict[str, str]] = []
+
+    def fake_dispatch(_body):
+        emitter = ArtifactEmitter(
+            task_id=task_id, chapter_seq=1, stage="write", attempt=1, chunk_size=4,
+        )
+        emitter.start()
+        emitter.feed("模型仍在生成时到达的第一段")
+        observed_during_dispatch.extend(fields for _, fields in r.xrange(sse_key(task_id)))
+        emitter.complete()
+        return {}
+
+    monkeypatch.setattr(processor_mod, "_dispatch", fake_dispatch)
+
+    try:
+        assert process(body) == "terminal"
+        live_deltas = [
+            frame for frame in observed_during_dispatch
+            if frame.get("event") == "artifact_delta" and frame.get("stage") == "write"
+        ]
+        assert live_deltas and live_deltas[0]["content"]
+        assert not any(frame.get("status") == "done" for frame in observed_during_dispatch)
+
+        frames = [fields for _, fields in r.xrange(sse_key(task_id))]
+        live_deltas = [
+            frame for frame in frames
+            if frame.get("event") == "artifact_delta" and frame.get("stage") == "write"
+        ]
+        assert live_deltas
+        assert frames[-1].get("status") == "done"
+    finally:
+        r.delete(sse_key(task_id), lock_key(task_id), book_key(temp_project))
+
+
+def test_manual_plan_worker_waits_without_releasing_gate_then_resumes(temp_project, monkeypatch):
+    """手动模式暂停时释放 worker/书锁但保留并发闸门；确认后同 task 断点完成并释放。"""
+    import aiink.providers as providers_mod
+    from aiink.models import AgentRun, Chapter
+    from test_manual_plan import ManualPlanProvider
+
+    provider = ManualPlanProvider()
+    monkeypatch.setattr(providers_mod, "default_provider", provider)
+    task_id = str(uuid.uuid4())
+    r = get_redis()
+    gate = inflight_key("manual-user", temp_project)
+    body = _body(
+        task_id, temp_project, payload={"seq": 1, "mode": "manual"}, user_id="manual-user",
+    )
+    r.sadd(gate, task_id)
+    try:
+        assert process(body) == "waiting"
+        with tenant_session(temp_project) as db:
+            task = db.get(Task, uuid.UUID(task_id))
+            chapter = (db.query(Chapter)
+                       .filter(Chapter.project_id == uuid.UUID(temp_project),
+                               Chapter.chapter_seq == 1).one())
+            plan_run = (db.query(AgentRun)
+                        .filter(AgentRun.task_id == task_id, AgentRun.node == "plan_chapter").one())
+            approved = plan_run.detail["plan"]
+            assert task.status == "awaiting_plan"
+            assert task.payload["_gate_user_id"] == "manual-user"
+            assert chapter.status == "planning" and not chapter.content
+        assert r.sismember(gate, task_id), "等待用户时应占住本书并发闸门"
+        assert r.exists(lock_key(task_id)) == 0
+        assert r.exists(book_key(temp_project)) == 0
+        frames = [fields for _, fields in r.xrange(sse_key(task_id))]
+        assert any(frame.get("event") == "artifact_complete" and frame.get("stage") == "plan"
+                   for frame in frames)
+        assert frames[-1]["status"] == "awaiting_plan"
+
+        with new_session() as db:
+            task = db.get(Task, uuid.UUID(task_id))
+            task.status = "queued"
+            task.payload = {**task.payload, "approved_plan": approved, "plan_attempt": 1}
+            db.commit()
+        resume = _body(
+            task_id, temp_project, task_type="chapter_plan_resume",
+            payload={"seq": 1, "mode": "manual", "approved_plan": approved, "plan_attempt": 1},
+            user_id="manual-user",
+        )
+        assert process(resume) == "terminal"
+        with tenant_session(temp_project) as db:
+            task = db.get(Task, uuid.UUID(task_id))
+            chapter = (db.query(Chapter)
+                       .filter(Chapter.project_id == uuid.UUID(temp_project),
+                               Chapter.chapter_seq == 1).one())
+            assert task.status == "done"
+            assert chapter.status == "confirmed" and chapter.content
+        assert not r.sismember(gate, task_id), "确认并完成后应释放并发闸门"
+    finally:
+        r.delete(gate, sse_key(task_id), lock_key(task_id), book_key(temp_project))
+
+
+def test_stale_plan_resume_cannot_approve_a_new_replan_version(temp_project, monkeypatch):
+    """第 1 版确认消息重放时，不得越过第 2 版 Plan 的人工确认点。"""
+    import aiink.providers as providers_mod
+    from aiink.models import AgentRun
+    from test_manual_plan import ManualPlanProvider
+
+    provider = ManualPlanProvider(replan_once=True)
+    monkeypatch.setattr(providers_mod, "default_provider", provider)
+    task_id = str(uuid.uuid4())
+    r = get_redis()
+    gate = inflight_key("manual-user", temp_project)
+    first_body = _body(
+        task_id, temp_project, payload={"seq": 1, "mode": "manual"}, user_id="manual-user",
+    )
+    r.sadd(gate, task_id)
+    try:
+        assert process(first_body) == "waiting"
+        with new_session() as db:
+            plan1 = (db.query(AgentRun)
+                     .filter(AgentRun.task_id == task_id, AgentRun.node == "plan_chapter")
+                     .order_by(AgentRun.id.desc()).first()).detail["plan"]
+            task = db.get(Task, uuid.UUID(task_id))
+            task.status = "queued"
+            db.commit()
+        resume1 = _body(
+            task_id, temp_project, task_type="chapter_plan_resume", user_id="manual-user",
+            payload={"seq": 1, "mode": "manual", "approved_plan": plan1, "plan_attempt": 1},
+        )
+        assert process(resume1) == "waiting", "审核 replan 后应再次等待人工"
+        assert provider.plan_count == 2 and provider.calls.count("write") == 1
+
+        # 模拟 RabbitMQ 把第 1 版确认消息再次交付。守卫应直接 ACK，不能执行第二次 write。
+        assert process(resume1) == "waiting"
+        assert provider.calls.count("write") == 1
+        with new_session() as db:
+            assert db.get(Task, uuid.UUID(task_id)).status == "awaiting_plan"
+            plan2 = (db.query(AgentRun)
+                     .filter(AgentRun.task_id == task_id, AgentRun.node == "plan_chapter")
+                     .order_by(AgentRun.id.desc()).first()).detail["plan"]
+        assert r.sismember(gate, task_id), "丢弃旧确认消息时仍须保留闸门"
+
+        with new_session() as db:
+            task = db.get(Task, uuid.UUID(task_id))
+            task.status = "queued"
+            db.commit()
+        resume2 = _body(
+            task_id, temp_project, task_type="chapter_plan_resume", user_id="manual-user",
+            payload={"seq": 1, "mode": "manual", "approved_plan": plan2, "plan_attempt": 2},
+        )
+        assert process(resume2) == "terminal"
+        assert provider.calls.count("write") == 2
+        assert not r.sismember(gate, task_id)
+    finally:
+        r.delete(gate, sse_key(task_id), lock_key(task_id), book_key(temp_project))
+
+
+def test_cancel_awaiting_plan_releases_gate_and_marks_empty_chapter(temp_project, monkeypatch):
+    """用户不想采用 Plan 时可退出等待态，避免该书被永久锁住。"""
+    import aiink.providers as providers_mod
+    from aiink.api.routes_tasks import cancel_task
+    from aiink.models import Chapter
+    from test_manual_plan import ManualPlanProvider
+
+    monkeypatch.setattr(providers_mod, "default_provider", ManualPlanProvider())
+    task_id = str(uuid.uuid4())
+    r = get_redis()
+    gate = inflight_key("manual-user", temp_project)
+    body = _body(
+        task_id, temp_project, payload={"seq": 1, "mode": "manual"}, user_id="manual-user",
+    )
+    r.sadd(gate, task_id)
+    try:
+        assert process(body) == "waiting"
+        result = cancel_task(task_id)
+        assert result["status"] == "cancelled"
+        assert not r.sismember(gate, task_id)
+        with tenant_session(temp_project) as db:
+            task = db.get(Task, uuid.UUID(task_id))
+            chapter = (db.query(Chapter)
+                       .filter(Chapter.project_id == uuid.UUID(temp_project),
+                               Chapter.chapter_seq == 1).one())
+            assert task.status == "cancelled"
+            assert chapter.status == "cancelled" and not chapter.content
+    finally:
+        r.delete(gate, sse_key(task_id), lock_key(task_id), book_key(temp_project))
 
 
 def test_process_idempotent_skip_done(temp_project, stub_provider):
@@ -89,7 +289,7 @@ def test_process_idempotent_skip_done(temp_project, stub_provider):
     assert process(body) == "skip"
     # 不应产生第二条 done 事件覆盖（SSE 仍以首次 done 结尾，后续无事件）
     events = r.xrange(sse_key(task_id))
-    types = [f["status"] for _, f in events]
+    types = [f["status"] for _, f in events if f.get("status")]
     assert types.count("done") == 1, f"done 事件只应 1 次，实际 {types}"
 
     # SSE 事件键 worker 直写只设 1h 过期，显式清理防残留（同 test_multiprocess._cleanup）
@@ -144,7 +344,7 @@ def test_process_batch_pause_publishes_paused(temp_project, monkeypatch):
         with new_session() as db:
             assert db.get(Task, uuid.UUID(tid)).status == "paused", "暂停后任务应保持 paused"
         events = r.xrange(sse_key(tid))
-        statuses = [f["status"] for _, f in events]
+        statuses = [f["status"] for _, f in events if f.get("status")]
         assert "paused" in statuses, f"SSE 应有 paused 事件，实际 {statuses}"
         assert statuses[-1] == "paused", f"SSE 末事件应为 paused（非 done），实际 {statuses}"
     finally:
@@ -568,3 +768,84 @@ def test_guard_no_rewrite_stays_strict(temp_project):
     with pytest.raises(WriteOrderError):
         _guard_write_order(temp_project, 1)  # 未带 rewrite 不能重写已写章
     _guard_write_order(temp_project, 2)       # max_seq+1 正常放行
+
+
+def test_guard_resumes_empty_placeholder_without_skipping_chapter(temp_project):
+    """生成中/失败的空章节仍是当前目标：允许重试本章，禁止直接跳到下一章。"""
+    from aiink.db import tenant_session
+    from aiink.models import Chapter
+    from aiink.worker.processor import WriteOrderError, _guard_write_order
+
+    with tenant_session(temp_project) as db:
+        db.add(Chapter(
+            project_id=uuid.UUID(temp_project),
+            chapter_seq=1,
+            status="writing",
+            generation_source="auto",
+            version=1,
+        ))
+
+    _guard_write_order(temp_project, 1)
+    with pytest.raises(WriteOrderError):
+        _guard_write_order(temp_project, 2)
+
+
+def test_dispatch_materializes_target_chapter_before_writing(temp_project, monkeypatch):
+    """正文工作流启动前即建立目标章节页，流转不再寄生在上一章。"""
+    import aiink.worker.processor as processor
+    from aiink.db import tenant_session
+    from aiink.memory import repository as repo
+
+    observed = {}
+
+    def fake_generate_chapter(**kwargs):
+        with tenant_session(temp_project) as db:
+            chapter = repo.get_chapter(db, uuid.UUID(temp_project), 1)
+            observed["chapter"] = chapter
+            assert chapter is not None
+            assert chapter.status == "writing"
+        return {"persisted": False}
+
+    monkeypatch.setattr(processor, "generate_chapter", fake_generate_chapter)
+    result = processor._dispatch({
+        "project_id": temp_project,
+        "task_id": str(uuid.uuid4()),
+        "task_type": "chapter_generate",
+        "payload": {"seq": 1},
+    })
+
+    assert result == {"persisted": False}
+    assert observed["chapter"].chapter_seq == 1
+
+
+def test_batch_runner_materializes_each_chapter_before_its_subgraph(temp_project):
+    """批次推进到后续章时也先建立该章页面，再运行该章子图。"""
+    from aiink.db import tenant_session
+    from aiink.memory import repository as repo
+    from aiink.workflow.batch_graph import make_chapter_runner
+
+    class FakeChapterGraph:
+        def invoke(self, state, config):
+            with tenant_session(temp_project) as db:
+                chapter = repo.get_chapter(db, uuid.UUID(temp_project), state["chapter_seq"])
+                assert chapter is not None
+                assert chapter.status == "writing"
+            return {"persisted": False, "shared_context": {}}
+
+    run_chapter = make_chapter_runner(FakeChapterGraph())
+    result = run_chapter({
+        "project_id": temp_project,
+        "batch_task_id": str(uuid.uuid4()),
+        "size": 3,
+        "position": 1,
+        "start_chapter": 1,
+        "batch_plan": {"chapters": [
+            {"seq": 1, "goal": "一"},
+            {"seq": 2, "goal": "二"},
+            {"seq": 3, "goal": "三"},
+        ]},
+    })
+
+    assert result["position"] == 1
+    with tenant_session(temp_project) as db:
+        assert repo.get_chapter(db, uuid.UUID(temp_project), 2).status == "writing"

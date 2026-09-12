@@ -23,7 +23,14 @@ def node_reset_replan(state: ChapterState) -> ChapterState:
     设计：audit 判 replan → 重新规划本章（plan_chapter）→ 重写 → 重新 extract/validate/audit。
     不清瞬态会让旧草稿/旧 finding 污染新一轮（§6.12 同类问题：残留状态短路）。
     """
+    context = dict(state.get("context") or {})
+    verdict = state.get("audit_verdict") or {}
+    feedback = "重新规划本章，解决上一版计划的问题：" + "；".join(verdict.get("reasons") or [])
+    feedback += "；".join(f.get("suggestion") or "" for f in verdict.get("findings") or [])
+    context["short_context"] = [*(context.get("short_context") or []),
+                                {"kind": "replan_feedback", "text": feedback}]
     return {
+        "context": context,
         "draft": None, "candidates": [], "report": None, "unresolved": [],
         "audit_verdict": None, "replan_batch": False,
         "revision_count": 0, "revise_responses": [],
@@ -42,30 +49,46 @@ def route_after_audit(state: ChapterState) -> str:
     report = state.get("report") or {}
     l1_critical = (report.get("summary") or {}).get("critical", 0) or 0
     l2_major = (report.get("summary") or {}).get("l2_major", 0) or 0
-    budget_exhausted = (
-        state.get("revision_count", 0) >= settings.max_revisions
-        or state.get("replan_count", 0) >= settings.max_replans
-    )
-    if l1_critical or l2_major or budget_exhausted:
+    revision_exhausted = state.get("revision_count", 0) >= settings.max_revisions
+    replan_exhausted = state.get("replan_count", 0) >= settings.max_replans
+    if l1_critical or l2_major:
         # 规则层：L1 critical / L2 major（正文-台账语义矛盾）或预算用尽 → 还能修则修，
         # 否则转人工（persist 按 critical/l2_major 分流进待确认池）
-        if (l1_critical or l2_major) and not budget_exhausted:
+        if not revision_exhausted:
             return "revise"
         return "needs_review"
     verdict = (state.get("audit_verdict") or {}).get("verdict")
-    if verdict == "rewrite":
-        return "revise"
+    semantic_block = any(f.get("severity") in ("critical", "major")
+                         for f in (state.get("audit_verdict") or {}).get("findings", []))
+    if verdict == "rewrite" or (verdict == "pass" and semantic_block):
+        return "needs_review" if revision_exhausted else "revise"
     if verdict == "replan":
-        return "replan_chapter" if (state.get("audit_verdict") or {}).get("replan_target") == "chapter" \
+        if replan_exhausted:
+            return "needs_review"
+        return "replan_chapter" if ((state.get("audit_verdict") or {}).get("replan_target") == "chapter" or ":ch" not in (state.get("task_id") or "")) \
             else "replan_batch"
-    return "persist"  # pass（或缺失 verdict 兜底为放行）
+    return "persist" if verdict == "pass" else "needs_review"
 
 
-def build_chapter_graph(checkpointer=None):
+def node_route(state: ChapterState) -> ChapterState:
+    route = route_after_audit(state)
+    with nodes.tenant_session(state["project_id"]) as db:
+        nodes.record_plain(db, project_id=state["project_id"], task_id=state.get("task_id"),
+                           node="route", detail={"route": route,
+                           "audit_verdict": state.get("audit_verdict"),
+                           "revision_count": state.get("revision_count", 0),
+                           "replan_count": state.get("replan_count", 0),
+                           "rule_summary": (state.get("report") or {}).get("summary", {})})
+    return {"needs_review": route == "needs_review",
+            "replan_batch": route == "replan_batch"}
+
+
+def build_chapter_graph(checkpointer=None, *, entry: str = "load_state"):
     g = StateGraph(ChapterState)
     g.add_node("load_state", nodes.node_load_state)
     g.add_node("recall", nodes.node_recall)
     g.add_node("plan_chapter", nodes.node_plan_chapter)
+    g.add_node("plan_gate", nodes.node_plan_gate)
     g.add_node("write", nodes.node_write)
     g.add_node("extract", nodes.node_extract)
     g.add_node("validate", nodes.node_validate)
@@ -74,16 +97,19 @@ def build_chapter_graph(checkpointer=None):
     g.add_node("persist", nodes.node_persist)
     g.add_node("summarize", nodes.node_summarize)
     g.add_node("reset_replan", node_reset_replan)
+    g.add_node("route", node_route)
 
-    g.add_edge(START, "load_state")
+    g.add_edge(START, entry)
     g.add_edge("load_state", "recall")
     g.add_edge("recall", "plan_chapter")
-    g.add_edge("plan_chapter", "write")
+    g.add_edge("plan_chapter", "plan_gate")
+    g.add_edge("plan_gate", "write")
     g.add_edge("write", "extract")
     g.add_edge("extract", "validate")
     g.add_edge("validate", "audit")
+    g.add_edge("audit", "route")
     g.add_conditional_edges(
-        "audit", route_after_audit,
+        "route", route_after_audit,
         {
             "persist": "persist",
             "revise": "revise",
@@ -94,7 +120,8 @@ def build_chapter_graph(checkpointer=None):
         },
     )
     g.add_edge("reset_replan", "plan_chapter")
-    g.add_edge("revise", "audit")
+    # 修订改变了正文：重新抽取记忆并校验，不能持旧候选/旧报告审核新稿。
+    g.add_edge("revise", "extract")
     g.add_edge("persist", "summarize")
     g.add_edge("summarize", END)
     return g.compile(checkpointer=checkpointer)

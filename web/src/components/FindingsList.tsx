@@ -1,5 +1,5 @@
 // 冲突 finding 列表（校验报告侧栏 + 全局审计报告视图共用）：severity 分级 + evidence 引文 + 跳章。
-import { severityLabel, severityTone } from '../lib/labels'
+import { conflictTypeLabel, findingSourceLabel, severityLabel, severityTone } from '../lib/labels'
 import type { Finding, FindingSeverity } from '../types'
 import { StatusBadge } from './StatusBadge'
 import styles from './FindingsList.module.css'
@@ -27,9 +27,9 @@ export function FindingsList({ findings, onNavigateChapter }: Props) {
             <StatusBadge tone={severityTone(f.severity)}>
               {severityLabel(f.severity)}
             </StatusBadge>
-            <span className={styles.findingType}>{f.conflict_type}</span>
+            <span className={styles.findingType}>{conflictTypeLabel(f.conflict_type)}</span>
           </div>
-          <p className={styles.findingSrc}>{f.source}</p>
+          <p className={styles.findingSrc}>{findingSourceLabel(f.source)}</p>
           {f.evidence.map((ev, i) => (
             <blockquote key={i} className={styles.evidence}>
               {onNavigateChapter ? (

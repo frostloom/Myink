@@ -14,12 +14,15 @@ import pytest
 from fastapi import HTTPException
 
 from aiink.api.routes_global_audit import get_global_audit, list_global_audits
-from aiink.api.routes_settings import (SettingsBody, get_project_settings,
+from aiink.api import routes_settings
+from aiink.api.routes_settings import (ModelConnectionBody, SettingsBody, get_project_settings,
                                        put_project_settings)
 from aiink.db import tenant_session
 from aiink.memory.repository import get_settings
 from aiink.models import GlobalAuditReport, ProjectSettings
 from aiink.providers import make_chain
+from aiink.providers.connections import CONNECTIONS_KEY
+from aiink.providers.credentials import decrypt_api_key
 
 FINDING = {"conflict_type": "persona_drift", "severity": "hint", "scope": "local",
            "source": "audit", "evidence": [{"chapter": 1, "quote": "……"}],
@@ -104,6 +107,143 @@ def test_settings_rejects_invalid_role_and_model(temp_project):
         put_project_settings(temp_project, SettingsBody(model_routes={"writer": "not-a-model"}))
     assert e2.value.status_code == 400
     assert get_project_settings(temp_project)["model_routes"] == {}
+
+
+def test_custom_model_connection_is_encrypted_redacted_and_routable(temp_project):
+    cid = str(uuid.uuid4())
+    result = put_project_settings(temp_project, SettingsBody(
+        model_connections=[ModelConnectionBody(
+            id=cid, name="私有 OpenAI", protocol="openai",
+            base_url="https://models.example.com/v1/", model="novel-pro",
+            api_key="secret-value",
+        )],
+        model_routes={"writer": f"custom:{cid}"},
+    ))
+
+    assert result["model_routes"] == {"writer": f"custom:{cid}"}
+    assert result["model_connections"] == [{
+        "id": cid, "name": "私有 OpenAI", "protocol": "openai",
+        "base_url": "https://models.example.com/v1", "model": "novel-pro",
+        "has_api_key": True,
+    }]
+    assert "secret-value" not in repr(result)
+    with tenant_session(temp_project) as db:
+        stored = get_settings(db, uuid.UUID(temp_project)).model_routes
+        encrypted = stored[CONNECTIONS_KEY][cid]["api_key_encrypted"]
+    assert encrypted != "secret-value"
+    assert decrypt_api_key(encrypted) == "secret-value"
+
+    chain = make_chain("writer", project_id=temp_project)
+    assert chain.chain == ["novel-pro", "deepseek-v4-flash", "deepseek-v4-pro"]
+    assert chain.providers[0].name() == "openai-compatible"
+    assert chain.providers[1].name() == "deepseek"
+
+
+def test_updating_custom_connection_with_blank_key_preserves_secret(temp_project):
+    cid = str(uuid.uuid4())
+    put_project_settings(temp_project, SettingsBody(
+        model_connections=[ModelConnectionBody(
+            id=cid, name="Claude", protocol="anthropic",
+            base_url="https://api.anthropic.com", model="claude-sonnet", api_key="first-key",
+        )],
+        model_routes={"planner": f"custom:{cid}"},
+    ))
+    put_project_settings(temp_project, SettingsBody(
+        model_connections=[ModelConnectionBody(
+            id=cid, name="Claude 新名称", protocol="anthropic",
+            base_url="https://api.anthropic.com/v1", model="claude-sonnet",
+        )],
+        model_routes={"planner": f"custom:{cid}"},
+    ))
+
+    chain = make_chain("planner", project_id=temp_project)
+    assert chain.providers[0].name() == "anthropic"
+    assert get_project_settings(temp_project)["model_connections"][0]["name"] == "Claude 新名称"
+
+
+def test_custom_connection_validation_rejects_missing_key_and_unsafe_url(temp_project):
+    cid = str(uuid.uuid4())
+    with pytest.raises(HTTPException, match="必须填写 API Key"):
+        put_project_settings(temp_project, SettingsBody(
+            model_connections=[ModelConnectionBody(
+                id=cid, name="无密钥", protocol="openai",
+                base_url="https://models.example.com/v1", model="m",
+            )],
+        ))
+    with pytest.raises(HTTPException, match="请求地址不能包含"):
+        put_project_settings(temp_project, SettingsBody(
+            model_connections=[ModelConnectionBody(
+                id=cid, name="错误地址", protocol="openai",
+                base_url="https://user:pass@models.example.com/v1?key=x", model="m", api_key="x",
+            )],
+        ))
+
+
+# ---- 模型连接探针端点（POST settings/models + settings/test-connection）----
+
+def test_probe_endpoints_forward_inline_key_and_shape(temp_project, monkeypatch):
+    """未保存的新连接：明文 key 直达探针；返回契约形状（ok/models/error、ok/latency/reply/error）。"""
+    seen: dict = {}
+
+    def fake_list(protocol, base_url, api_key):
+        seen["list"] = (protocol, base_url, api_key)
+        return ["novel-pro", "novel-mini"], None
+
+    def fake_test(protocol, base_url, api_key, model):
+        seen["test"] = (protocol, base_url, api_key, model)
+        return True, 42, "pong", None
+
+    monkeypatch.setattr(routes_settings.probe, "list_models", fake_list)
+    monkeypatch.setattr(routes_settings.probe, "test_connection", fake_test)
+
+    out = routes_settings.list_connection_models(temp_project, routes_settings.ConnectionProbeBody(
+        protocol="openai", base_url="https://models.example.com/v1/", api_key="inline-key"))
+    assert out == {"ok": True, "models": ["novel-pro", "novel-mini"], "error": None}
+    assert seen["list"] == ("openai", "https://models.example.com/v1", "inline-key")  # 去尾斜杠
+
+    res = routes_settings.test_model_connection(temp_project, routes_settings.ConnectionProbeBody(
+        protocol="anthropic", base_url="https://api.anthropic.com", model="claude-x", api_key="k2"))
+    assert res == {"ok": True, "latency_ms": 42, "reply": "pong", "error": None}
+    assert seen["test"] == ("anthropic", "https://api.anthropic.com", "k2", "claude-x")
+
+
+def test_probe_reuses_stored_connection_key_when_blank(temp_project, monkeypatch):
+    """已保存连接留空 key：用 connection_id 取密文解密后调探针。"""
+    cid = str(uuid.uuid4())
+    put_project_settings(temp_project, SettingsBody(
+        model_connections=[ModelConnectionBody(
+            id=cid, name="私有", protocol="openai",
+            base_url="https://models.example.com/v1", model="novel-pro", api_key="stored-secret")]))
+    seen: dict = {}
+
+    def fake_list(protocol, base_url, api_key):
+        seen["key"] = api_key
+        return ["novel-pro"], None
+
+    monkeypatch.setattr(routes_settings.probe, "list_models", fake_list)
+    out = routes_settings.list_connection_models(temp_project, routes_settings.ConnectionProbeBody(
+        protocol="openai", base_url="https://models.example.com/v1", connection_id=cid))
+
+    assert out["ok"] is True and seen["key"] == "stored-secret"
+
+
+def test_probe_rejects_bad_url_missing_key_and_missing_model(temp_project, monkeypatch):
+    """非法地址 / 无密钥 / 缺模型 id → 400，且不触达真实探针。"""
+    def boom(*_args, **_kwargs):
+        raise AssertionError("不应触达探针")
+
+    monkeypatch.setattr(routes_settings.probe, "list_models", boom)
+    monkeypatch.setattr(routes_settings.probe, "test_connection", boom)
+
+    with pytest.raises(HTTPException):
+        routes_settings.list_connection_models(temp_project, routes_settings.ConnectionProbeBody(
+            protocol="openai", base_url="not-a-url", api_key="k"))
+    with pytest.raises(HTTPException, match="API Key"):
+        routes_settings.list_connection_models(temp_project, routes_settings.ConnectionProbeBody(
+            protocol="openai", base_url="https://models.example.com/v1"))
+    with pytest.raises(HTTPException, match="模型 id"):
+        routes_settings.test_model_connection(temp_project, routes_settings.ConnectionProbeBody(
+            protocol="openai", base_url="https://models.example.com/v1", api_key="k"))
 
 
 # ---- 审计读端点（列表/详情）----

@@ -61,6 +61,9 @@ func NewRouter(cfg config.Config, r *redis.Client, rmq *queue.AMQP, py *pyapi.Cl
 		// 创作设置（阶段 4：文风档案/样本提取/预设导入 + 每 Agent 模型路由，转发 Python API）
 		secured.GET("/projects/:project_id/settings", taskH.ListSettings)
 		secured.PUT("/projects/:project_id/settings", taskH.UpdateSettings)
+		// 模型连接探针（设置页「添加网络模型」闭环：拉取可用模型 / 联通测试，转发 Python API）
+		secured.POST("/projects/:project_id/settings/models", taskH.ListConnectionModels)
+		secured.POST("/projects/:project_id/settings/test-connection", taskH.TestModelConnection)
 		secured.GET("/skill-presets", taskH.SkillPresets)
 		secured.POST("/projects/:project_id/style-samples", taskH.StyleSamples)
 		secured.PUT("/projects/:project_id/style-profile", taskH.PutStyleProfile)
@@ -89,6 +92,8 @@ func NewRouter(cfg config.Config, r *redis.Client, rmq *queue.AMQP, py *pyapi.Cl
 		secured.GET("/projects/:project_id/tasks", taskH.ListProjectTasks)
 		// 任务详情（转发 Python API）
 		secured.GET("/tasks/:task_id", taskH.GetTask)
+		secured.POST("/tasks/:task_id/plan/confirm", taskH.ConfirmTaskPlan)
+		secured.POST("/tasks/:task_id/cancel", taskH.TaskControl)
 		// 批次控制 pause/resume/cancel（转发 Python API）
 		secured.POST("/batches/:batch_id/:action", taskH.BatchControl)
 		// 记忆候选：待确认池 / 确认 / 拒绝（§6.11 确认分流，转发 Python API）
@@ -108,7 +113,19 @@ func NewRouter(cfg config.Config, r *redis.Client, rmq *queue.AMQP, py *pyapi.Cl
 	// /assets 静态产物走 gin.Static；其余未匹配路径：/api、探针保持 JSON 404，
 	// 前端 BrowserRouter 深链（/projects/:pid 刷新等）回退 index.html（SPA fallback）。
 	dist := cfg.WebDistDir
+	router.Use(func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, "/assets/") {
+			c.Header("Cache-Control", "public, max-age=31536000, immutable")
+		}
+		c.Next()
+	})
 	router.Static("/assets", filepath.Join(dist, "assets"))
+	serveIndex := func(c *gin.Context) {
+		c.Header("Cache-Control", "no-store, max-age=0")
+		c.Header("Pragma", "no-cache")
+		c.Header("Expires", "0")
+		c.File(filepath.Join(dist, "index.html"))
+	}
 	router.NoRoute(func(c *gin.Context) {
 		p := c.Request.URL.Path
 		if strings.HasPrefix(p, "/api/") || p == "/healthz" || p == "/readyz" {
@@ -120,7 +137,7 @@ func NewRouter(cfg config.Config, r *redis.Client, rmq *queue.AMQP, py *pyapi.Cl
 		// 兼容 Windows 本地运行时（filepath 以 \ 为分隔符，/foo\..\secret 也会逃出 dist）
 		rel = strings.ReplaceAll(rel, "\\", "/")
 		if strings.HasPrefix(rel, "..") || strings.Contains(rel, "/..") {
-			c.File(filepath.Join(dist, "index.html"))
+			serveIndex(c)
 			return
 		}
 		f := filepath.Join(dist, filepath.Clean(filepath.FromSlash(rel)))
@@ -128,7 +145,7 @@ func NewRouter(cfg config.Config, r *redis.Client, rmq *queue.AMQP, py *pyapi.Cl
 			c.File(f)
 			return
 		}
-		c.File(filepath.Join(dist, "index.html"))
+		serveIndex(c)
 	})
 
 	return router

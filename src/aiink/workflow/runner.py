@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 
 from langgraph.graph.state import CompiledStateGraph
+from langgraph.types import Command
 
 from aiink.db import tenant_session
 from aiink.workflow import nodes
@@ -27,7 +28,8 @@ def get_graphs() -> tuple[CompiledStateGraph, CompiledStateGraph]:
 
 
 def generate_chapter(*, project_id: str, chapter_seq: int, task_id: str | None = None,
-                     user_instruction: str | None = None, rewrite: bool = False) -> dict:
+                     user_instruction: str | None = None, rewrite: bool = False,
+                     writing_mode: str = "auto") -> dict:
     """生成单章（阶段 1 同步版；阶段 2 由 worker 消费 Redis 队列调用）。
 
     task_id 作 thread_id：中断/恢复/重试续跑同一条执行链（§6.7）。
@@ -42,16 +44,36 @@ def generate_chapter(*, project_id: str, chapter_seq: int, task_id: str | None =
             "task_id": thread_id,
             "user_instruction": user_instruction,
             "rewrite": rewrite,
+            "writing_mode": writing_mode,
         },
-        config={"configurable": {"thread_id": thread_id}},
+        config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64},
     )
-    if result.get("error"):
-        _set_task_status(project_id, thread_id, "failed", result["error"])
-    else:
-        # 单章任务终态：转人工（critical）或 done（自动放行）
-        _set_task_status(project_id, thread_id,
-                         "awaiting_review" if result.get("needs_review") else "done")
+    _finish_chapter_result(project_id, thread_id, result)
     return result
+
+
+def resume_chapter_plan(*, project_id: str, task_id: str, approved_plan: dict) -> dict:
+    """从 plan_gate 的动态 interrupt 恢复；不重新调用 Planner。"""
+    chapter_graph, _ = get_graphs()
+    result = chapter_graph.invoke(
+        Command(resume=approved_plan),
+        config={"configurable": {"thread_id": task_id}, "recursion_limit": 64},
+    )
+    _finish_chapter_result(project_id, task_id, result)
+    return result
+
+
+def _finish_chapter_result(project_id: str, task_id: str, result: dict) -> str:
+    if result.get("__interrupt__"):
+        result["awaiting_plan"] = True
+        _set_task_status(project_id, task_id, "awaiting_plan")
+        return "awaiting_plan"
+    if result.get("error"):
+        _set_task_status(project_id, task_id, "failed", result["error"])
+        return "failed"
+    status = "awaiting_review" if result.get("needs_review") else "done"
+    _set_task_status(project_id, task_id, status)
+    return status
 
 
 def generate_batch(*, project_id: str, size: int, start_chapter: int,
@@ -74,7 +96,7 @@ def generate_batch(*, project_id: str, size: int, start_chapter: int,
         "start_chapter": start_chapter,
     }
     try:
-        return batch_graph.invoke(state, config={"configurable": {"thread_id": thread_id}})
+        return batch_graph.invoke(state, config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
     except BatchReviewError as exc:
         # critical 冲突转人工（§6.11）：任务置 awaiting_review，checkpoint 停在本章，
         # 人工确认候选后 resume 从本章续跑（不重跑已完成章）。
@@ -101,7 +123,7 @@ def resume_thread(graph: CompiledStateGraph, thread_id: str, state: dict) -> dic
     """
     snap = graph.get_state({"configurable": {"thread_id": thread_id}})
     resume_state = {**state, **(snap.values or {})}  # checkpoint 优先
-    return graph.invoke(resume_state, config={"configurable": {"thread_id": thread_id}})
+    return graph.invoke(resume_state, config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
 
 
 def finalize_chapter_review(*, project_id: str, task_id: str, chapter_seq: int) -> dict:
@@ -109,19 +131,20 @@ def finalize_chapter_review(*, project_id: str, task_id: str, chapter_seq: int) 
 
     修复（2026-08-17）：LangGraph 1.2.9 的 invoke-resume 语义是「整图从 START 重跑」，
     不是断点续跑。confirm→resume 若走 resume_thread 重跑整章，确定性输入会再次命中
-    critical → 永久 awaiting_review、正文永不落库（用户实测：确认后点续跑变成重生成）。
+    critical → 永久 awaiting_review、章节永远无法最终确认（用户实测：确认后点续跑变成重生成）。
     收尾取 checkpoint 状态（含 write 产出的草稿），掩码 report 走 node_persist auto 路径
-    落库正文 + 推进进度；记忆已在确认流分头处理（confirmed 落库 / 未处理留池 / 新实体
+    确认正文状态 + 推进进度；记忆已在确认流分头处理（confirmed 落库 / 未处理留池 / 新实体
     已建），不再重复写。
     """
     chapter_graph, _ = get_graphs()
     snap = chapter_graph.get_state({"configurable": {"thread_id": task_id}})
     if not snap.values or not snap.values.get("draft"):
         raise ValueError(f"任务 {task_id} 无草稿 checkpoint，无法确认流收尾")
-    result = nodes.finalize_awaiting_review(snap.values, task_id=task_id)
+    from aiink.workflow.review import resolve_review
+    result = resolve_review(chapter_graph, snap.values, task_id=task_id)
     # 落库后追加 LLM 真摘要（§7 短期记忆）：finalize 路径不走图，这里单独补一次。
     # node_summarize 自吞异常（失败保留启发式摘要），不阻塞确认流收尾。
-    nodes.node_summarize({**snap.values, "task_id": task_id})
+    nodes.node_summarize(result)
     return result
 
 

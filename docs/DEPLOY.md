@@ -1,117 +1,98 @@
-# Ai Ink 一键启动（Docker Compose，阶段 5 首切）
+# Ai Ink 本地部署与验证
 
-一条命令拉起全部服务，访问 **http://localhost:8080** 即可：前端页面 + API + SSE 全部同源（网关静态托管 `web/dist`）。
+当前交付目标是本地演示。登录使用已有用户名，无密码验证；`APP_ENV=prod` 会拒绝演示 token 签发。正式公网账户体系尚未实现。
 
-## 前置
+## 启动应用
 
-- Docker Desktop 运行中（Windows：托盘图标为 Running）
-- 根目录已有 `.env`（没有则 `copy .env.example .env`，填 `DEEPSEEK_API_KEY`；**不填也能启动看界面，生成章节才需要**）
-- **如之前用手工 `docker run` 起过 `aiink-pg` / `aiink-redis`**，先停掉并删除（compose 接管同名容器，端口 5432/6380 冲突）：
-  ```bash
-  docker stop aiink-pg aiink-redis && docker rm aiink-pg aiink-redis
-  ```
+安装并启动 Docker Desktop，在项目根目录执行：
 
-## 一键启动
-
-```bash
-# 首次：构建镜像（慢，一次性：npm ci + vite build + go build + pip install，约 10~20 分钟）
-docker compose build
-
-# 启动全部服务（含自动初始化：建库角色 + aiink init 建表/RLS/seed）
-docker compose up -d
-
-# 访问
-open http://localhost:8080        # 登录账号：demo（无密码，seed 自动创建）
+```powershell
+Copy-Item .env.example .env  # 仅首次执行，已有 .env 时保留原配置
+# 编辑 .env，实际生成章节前填入 DEEPSEEK_API_KEY
+docker compose up -d --build
+docker compose ps
 ```
 
-启动后等待约 30~60 秒（首次初始化建表 + seed），`docker compose ps` 看到全部 `Up (healthy)` 即可用。
+打开 http://localhost:8080 ，使用 `demo` 进入。不填写有效模型密钥也可以浏览已有作品。
 
-## 端口
+如需让用户在项目设置中保存自定义模型 API Key，请在首次使用前设置稳定的
+`MODEL_CREDENTIAL_KEY`。该值用于加密数据库中的模型密钥，部署后修改会使旧密钥无法解密；
+未设置时会从 `JWT_SECRET` 派生，以兼容本地开发。设置页支持 OpenAI 兼容接口与
+Anthropic Messages 原生接口，请按服务商要求填写包含版本前缀的基础地址。
 
-| 端口 | 服务 | 说明 |
-|---|---|---|
-| **8080** | aiink-gateway | **唯一入口**：前端页面 + `/api/v1/*` + SSE |
-| 5432 | aiink-pg | PostgreSQL + pgvector（仅本机可连） |
-| 6380 | aiink-redis | Redis 队列（避开外部 rag-redis 的 6379） |
-| 8100 | aiink-api | Python API（仅容器网络内，不映射到本机） |
-| — | aiink-worker | 队列消费进程（无端口） |
+| 本机地址 | 服务 |
+|---|---|
+| 127.0.0.1:8080 | Go 网关、前端、API、SSE |
+| 127.0.0.1:5432 | PostgreSQL + pgvector |
+| 127.0.0.1:6380 | Redis：限流、锁、心跳、SSE 事件 |
+| 127.0.0.1:5672 | RabbitMQ：任务、延迟重投、死信 |
+| 127.0.0.1:15672 | RabbitMQ 管理界面，演示账号 aiink/aiink |
 
-## 常用命令
+Python API 的 8100 端口仅在容器网络内开放。所有宿主机端口默认绑定回环地址。不要将这份演示配置原样开放到公网。
 
-```bash
-docker compose ps                    # 状态
-docker compose logs -f aiink-api     # 看初始化日志（aiink init → uvicorn）
-docker compose logs -f aiink-gateway # 网关日志（请求转发）
-docker compose down                  # 停止（数据保留在 pgdata volume）
-docker compose up -d --build         # 改了代码后重建
-docker compose down -v               # 停止并清空数据库（回到全新状态，慎用）
-```
-
-## 两种用法
-
-1. **全量一键**（上面的命令）：全部服务进容器，适合演示/交付。
-2. **只起基础设施**，Python/前端本地直跑（开发热更新）：
-   ```bash
-   docker compose up -d aiink-pg aiink-redis
-   # 然后本地：
-   python -m pip install -e . && aiink init
-   aiink-api & aiink-worker &        # 或分别开两个终端
-   cd gateway && go run ./cmd/gateway
-   cd web && npm run dev             # 前端热更新，http://localhost:5173
-   ```
-
-## 常见问题
-
-- **`name conflicts with an existing container`**：旧手工容器未删，见「前置」。
-- **端口被占（5432/6380）**：`netstat -ano | findstr :5432` 找占用进程，或确认旧的 `aiink-pg`/`aiink-redis` 容器已停止。
-- **构建失败：`Read timed out` / `dial tcp ... connection refused`**：docker.io / pypi / npm / golang 官方源在国内直连不稳。compose 里已按国内环境覆盖（基础镜像/运行时镜像走 daocloud 前缀、阿里云 pip + npmmirror + goproxy.cn）——**境外网络可覆盖回官方源**：pg/redis 用 `PG_IMAGE=pgvector/pgvector:pg16 REDIS_IMAGE=redis:7-alpine` 传 compose 环境变量，其余删除 build args 的国内源即可。
-- **镜像构建慢**：Dockerfile 用 buildkit cache mount 让已下载 wheel 跨 build 复用，中断重跑不重下。核心依赖不装 torch（见向量 FAQ），构建通常 1~2 分钟。
-- **登录后项目库为空**：等 `docker compose logs -f aiink-api` 里 `aiink init` 完成（seed 写入《九州问天》+ 示例书），约 30~60 秒；也可 `docker compose restart aiink-api` 重跑（幂等）。
-- **生成任务一直 pending / 报错**：`docker compose logs -f aiink-worker` 看 worker 是否消费；`.env` 的 `DEEPSEEK_API_KEY` 是否有效。
-- **向量能力（bge-m3）默认关闭**：Docker 镜像默认**不装 torch/sentence-transformers**（依赖拆到 `[ml]` extras，torch ~2GB 且国内镜像源下载易抖）；`EMBED_ENABLED=0` 时 embedder 延迟导入、完全不加载，纯关系链路可跑通演示（§6.12 降级）。需要向量：Dockerfile 的 `pip install .` 改 `pip install .[ml]` 重构建，并把 `EMBED_ENABLED=1`、`EMBED_ALLOW_DOWNLOAD=1` 加进 compose 的 api/worker 环境变量，挂 volume 缓存模型（`~/.cache/huggingface`）。
-
-## 初始化都做了什么（为什么能幂等重跑）
-
-`aiink-api` 容器启动时先执行 `aiink init`：
-1. `CREATE EXTENSION vector` + `Base.metadata.create_all` 建表（幂等）
-2. 补齐唯一约束 / 组合索引 / HNSW / 候选 kind / 全局审计报告表 / 章节版本表（幂等）
-3. `enable_row_level_security()`：全表 FORCE RLS + 租户策略
-4. seed：demo 用户（`demo`）+ 《九州问天》作品 + 示例书
-
-PG 首次初始化时挂载的 `docker/initdb/01-roles.sql` 建业务角色 `aiink_app`（NOBYPASSRLS，受 RLS 约束）+ `public` schema 建表权（langgraph checkpointer `saver.setup()` 用应用连接建内部表，PG15+ public 默认对 PUBLIC 无 CREATE）+ 默认权限（未来建表自动授 DML）。
-
-## 跑测试（注意 compose worker 会抢 Redis 队列）
-
-本地 Python 全量回归依赖 Docker 的 `aiink-pg`/`aiink-redis`，但 **compose 的 `aiink-worker` 正消费同一个 Redis 队列**，会抢掉测试入队的任务导致 worker/多进程用例断言失败。跑测试前先停掉它：
+首次启动由 `docker/initdb/01-roles.sql` 创建非超级用户 `aiink_app`；API 启动时运行 `aiink init`，创建表、RLS、必要补丁和演示数据。已有数据库升级目前使用幂等补丁，尚无完整的 Alembic 版本迁移链。
 
 ```bash
-docker compose stop aiink-worker   # 跑完测试再 docker compose up -d aiink-worker 恢复
-python -m pytest tests/ -q          # 期望 343 passed + 5 xfailed（含契约套件 29 项）
-cd gateway && go test ./...
+docker compose logs -f aiink-api aiink-worker aiink-gateway
+docker compose down       # 停止应用，保留作品数据卷
+docker compose up -d --build
 ```
 
-## CI / 本地复现
+`docker compose down -v` 会删除作品数据，不能用作日常重启。
 
-项目已配 **GitHub Actions**（`.github/workflows/ci.yml`，push/PR 到 main 触发），四个 job 并行：
-
-| job | 内容 | 依赖 |
-|---|---|---|
-| python | **全新 PG + Redis 服务容器** → 语法门禁（compileall）→ `aiink init` → **契约 diff 闸**（`aiink contract export` + `git diff --exit-code -- spec/api-openapi.json`）→ 全量回归（343 passed + 5 xfailed） | pgvector/redis 容器 |
-| go | `go vet` + `go test`（**拦截 SKIP**：Redis 未就绪不允许静默通过） | redis 容器 |
-| frontend | `npm ci` → oxlint → vitest → tsc/vite build | 无 |
-| build-images | 根 + gateway 两个 Dockerfile 构建（GitHub 境外用官方源；本地脚本走 `docker compose build` 用国内源） | Docker |
-
-CI 用**全新 PG** 跑全量回归是有意为之：`DuplicateTable` 索引冲突、schema `CREATE` 权限这类部署 bug 只在 fresh 库暴露
-（本地库已存在，`create_all` 的 checkfirst 会跳过表直接全绿）——CI 正是那道闸。
-**契约 diff 闸**（阶段 5 契约测试形式化）：「响应契约单一事实源」= `spec/api-openapi.json`（`aiink contract export` 导出，
-OpenAPI 3 标准）。改 `schemas.py` 响应模型没重新导出、或改路由没挂 response_model，Python job 即红——与 `test_api_contract.py`
-29 项（正向覆盖 + 反向闸 + diff 测试侧）及 Go `contract_test.go` 契约一致性测试构成三层防护。
-
-**本地一键复现同一套门禁**（仓库没配 git remote 也能验证）：
+## 本机开发
 
 ```bash
-bash scripts/ci-local.sh                # 停 worker → Python → Go → 前端 → 镜像（全套）
-SKIP_IMAGES=1 bash scripts/ci-local.sh  # 跳过镜像构建，本地日常快跑
+docker compose up -d --wait aiink-pg aiink-redis aiink-rabbitmq
+python -m pip install -e '.[dev]'
+aiink init
 ```
 
-脚本自动起/停 `aiink-pg`/`aiink-redis`、停 `aiink-worker`（防抢队列），退出时恢复 worker，无需手动 `docker compose stop`。
+在不同终端运行 `aiink-api`、`aiink-worker`、`cd gateway && go run ./cmd/gateway`、`cd web && npm ci && npm run dev`。本机连接 Compose RabbitMQ 使用 `.env.example` 中的 `amqp://aiink:aiink@localhost:5672/`；容器内使用服务名 `aiink-rabbitmq`。不要混用 guest 凭据。
+
+前端开发地址 http://localhost:5173 ，通过 Vite 代理访问网关。
+
+## 自动化回归（独立测试数据）
+
+```bash
+SKIP_IMAGES=1 bash scripts/ci-local.sh
+# 加上镜像构建：
+bash scripts/ci-local.sh
+```
+
+使用 Bash 环境（Windows 可用 Git Bash）。脚本通过 `docker-compose.test.yml` 启动 `aiink-test` 专用项目，不停止开发 worker、不挂载开发数据卷。测试结束后清理临时容器及其卷。测试数据库为 tmpfs，停止或删除容器后不保留数据。
+
+| 测试环境变量 | 值 |
+|---|---|
+| DATABASE_URL | postgresql+psycopg://aiink_app:aiink@127.0.0.1:15432/aiink |
+| ADMIN_DATABASE_URL | postgresql+psycopg://aiink:aiink@127.0.0.1:15432/aiink |
+| REDIS_URL | redis://127.0.0.1:16380/0 |
+| REDIS_ADDR | 127.0.0.1:16380 |
+| AMQP_URL | amqp://aiink:aiink@127.0.0.1:15673/ |
+
+脚本依次执行 Python 语法检查、初始化、契约导出差异检查、Python 全量回归、Go vet/测试、前端 lint/交互测试/构建。模型和 embedding 使用替身，不产生真实模型费用。Go 的 SKIP 会被门禁判为失败。
+
+改动 API 后先执行 `aiink contract export` 并提交 `spec/api-openapi.json`，再运行检查；未提交的契约变化会被 `git diff --exit-code` 拦截，这是预期行为。
+
+GitHub Actions 的 Python 和 Go job 均提供 RabbitMQ。PG 业务角色在 checkout 后通过 SQL 创建，避免服务容器早于 checkout 导致初始化脚本缺失。
+
+国内镜像覆盖示例（只用于测试基础设施）：
+
+```bash
+PG_IMAGE=docker.m.daocloud.io/pgvector/pgvector:pg16 \
+REDIS_IMAGE=docker.m.daocloud.io/library/redis:7-alpine \
+RABBITMQ_IMAGE=docker.m.daocloud.io/library/rabbitmq:3.13-management \
+SKIP_IMAGES=1 bash scripts/ci-local.sh
+```
+
+## 上下文与向量配置
+
+`REQUEST_TOKEN_BUDGET=64000` 控制完整请求的估算输入上限，包含正文、提示词、记忆和工具 schema/返回。`RECALL_TOKEN_BUDGET=12000` 单独限制可选记忆的增量，不能充当整章正文预算。提示词另预留 1000 tokens 给纠错消息，write/audit 还按实际工具 schema 大小预留；发送前按模型注册表的上下文窗口减输出预留再次限制。估算不是精确 tokenizer，真实 usage 另行记录。超出完整请求上限时仍明确失败，不截断正文或硬约束。
+
+预算覆盖章节规划、写作、抽取、审核及章节节点的模型调用。整书规划、批次复盘、全局审计等独立调用尚未统一到这一预算，不能宣称全系统所有请求均限制在 12k。
+
+Compose 默认 `EMBED_ENABLED=0`，关闭向量腿但仍可使用关系与关键词召回。启用需将 Dockerfile 安装改为 `pip install .[ml]`，重建镜像，并给 API/worker 配置 `EMBED_ENABLED=1`、首次下载时 `EMBED_ALLOW_DOWNLOAD=1`，持久化模型缓存。本地 embedding 会额外占用内存与磁盘。
+
+## 仍需完成的生产工作
+
+正式身份验证、版本化数据库迁移、备份与恢复演练、集中监控和容量测试仍在后续范围。当前没有生产可用性或真实小说质量的保证；演示和面试应使用已验证的机制与测试结果描述能力。

@@ -53,6 +53,15 @@ def test_issue_token_unknown_user_404():
     assert resp.status_code == 404
 
 
+def test_demo_login_disabled_in_production(monkeypatch):
+    from types import SimpleNamespace
+    import aiink.api.auth as auth
+    monkeypatch.setattr(auth, "settings", SimpleNamespace(is_prod=lambda: True))
+    resp = client.post("/internal/v1/auth/token", json={"username": "demo"})
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == "DEMO_LOGIN_DISABLED"
+
+
 # ---- 归属断言（§14.5 越权矩阵：跨用户读 / 伪装 project_id / 漏传身份）----
 
 

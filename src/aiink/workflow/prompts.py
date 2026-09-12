@@ -8,6 +8,9 @@
 from __future__ import annotations
 
 import json
+from aiink.config import settings
+from aiink.context_budget import estimate_tokens, fit_prompt
+from aiink.workflow.tools import READ_TOOLS
 
 SYSTEM_PLAN = """你是长篇网文创作系统的【规划 Agent】。职责：为某一章产出结构化章节计划。
 输出严格 JSON 对象（schema 见下），字段不许缺：
@@ -18,12 +21,17 @@ SYSTEM_PLAN = """你是长篇网文创作系统的【规划 Agent】。职责：
   "hooks_to_plant": ["本章要种的伏笔"],
   "hooks_to_resolve": ["须回收的开放伏笔"],
   "expected_events": ["本章预期发生的事件（大纲-正文偏差比对依据）"],
-  "hard_constraints": ["本章必须遵守的硬约束"]
+  "hard_constraints": ["本章必须遵守的硬约束"],
+  "transition": {"mode": "continue|time_jump|scene_cut|opening", "anchor_quote": "上一章结尾逐字短引，首章/无原文填空", "pending_action": "未完成动作/问题/危险，无则空", "opening_beat": "承接后的第一拍新进展", "bridge": "时空/视角变化的线索、悬念承接方式，直接接续可空"}
 }
 规则：
 - 开场节拍不得与上一章开场动作重复（如连续以「被吵醒」开场）；
+- 先读上一章结尾原文，再填 transition。已完成的进门/交接/抵达不能重演；未完成的请求/危险要回应或交代其延迟原因。大纲冲突时以前章正文为准，调整本章第一拍。
+- 合理跳时、切景、换视角可以使用，但须安排读者能理解的桥接线索，不能靠突兀的时间标签抹掉上一章危机。首章用 opening；缺少前章原文时不得编造 anchor_quote。
+- 【近期章节开头】只用于识别重复的句式、意象和开场套路，不是接续位置；持续同一场景和有意义的呼应允许，不为多样性强行换场。
 - 章末钩子必须是剧情推进或悬念事件，不得是「入睡/休息/原地等待」这类静止收束；
-- 【前情事件】中的历史相似事件仅供呼应/差异化参照，不得照搬其桥段结构。"""
+- 【前情事件】中的历史相似事件仅供呼应/差异化参照，不得照搬其桥段结构；
+- JSON 数组项、对象字段之间必须使用英文逗号，字符串内部的双引号必须转义。"""
 
 SYSTEM_WRITE = """你是长篇网文创作系统的【写作 Agent】。依据章节计划写出正文。
 要求：严格遵循注入的设定与硬约束；贴合注入的文风档案与句式禁忌。
@@ -31,7 +39,10 @@ SYSTEM_WRITE = """你是长篇网文创作系统的【写作 Agent】。依据�
 - 本章从【近期上下文】中上一章结尾片段的具体情境接续展开，不重新铺陈场景、不从头交代前情；
 - 避免以天色/时辰/天气作万能开场（如「清晨」「晨光」「夜色」）——除非该天色/天气与本章节拍直接相关（如「破晓时闭关突破」），否则直接用事件/动作/对话切入；
 - 各章开头不得与其他章共用开场景/意象/句式；
-- 不得以「醒来/被叫醒/睁眼/天亮」等被动唤醒作开场动作——即使上一章结尾落在入睡场景，也须在 1-2 句内转入本章具体事件，不得把「起床」铺成一段。
+- 上述规则禁止机械套用开场模板；同一场景的自然延续、有新意义的呼应允许。不要为了差异化强行换地点或视角。
+- 不得把「醒来/被叫醒/睁眼/天亮」等被动唤醒作万能开场动作；前章确已昏迷/入睡且恢复与剧情有关时允许醒来，但应迅速进入本章事件。
+- 执行章节计划 transition：上一章已完成的动作不得重做；悬而未决的请求、问话、威胁须得到反应。衔接应写动作的后果、人物的回答和下一步选择，避免复述章尾或用「上回说到」概述前情。
+- 时间、地点或视角有变化时，在开头自然给出桥接线索并处理原悬念，不能用一段天气/伤痛/环境描写把紧迫事件重置。
 收尾规则：
 - 章末不得以「入睡/合眼/闭眼/原地等待/天色将暗」这类静止收束作结尾——结尾必须落在剧情推进或悬念上（未完成的动作/关键对话/悬念画面/危险逼近）；禁止连续两章以同一类收尾动作作结（如两章都以主角入睡收尾）。
 如需核实人物状态/世界观事实/伏笔/剧情线，可调用只读查证工具，核实后仍直接输出正文。
@@ -84,6 +95,7 @@ SYSTEM_EXTRACT = """你是长篇网文创作系统的【记忆抽取 Agent】。
 伏笔回收（foreshadow_touch）只抽「正文明确推进（advanced）或彻底解决（resolved）了某条【开放伏笔】」；foreshadow_id 必须取自注入的开放伏笔 id，含糊提及 / 无法对应 → 不抽。
 剧情线推进（plotline）只在「本章正文确实推进了某条活跃剧情线」时才抽，thread_name 须与注入的活跃剧情线名一致（不新增线名）。
 关系变更（relation_change）只抽「正文明确发生的关系演变」（和解/决裂/结盟/逐出师门等）；old_value 须与注入的当前台账快照一致；正文仅表现关系现状而无演变 → 不抽。
+角色状态的 old_value 必须逐字复制【当前台账快照】中该字段的完整值；new_value 必须写变化后的完整最终状态。尤其 item/knowledge 禁止只写「新增……」「其余不变」等增量简称，必须保留原有内容并合并新增内容；若有失去/消耗，也必须输出删减后的完整清单。
 新人物卡片（character_card）只抽「本章首次出现且影响剧情的重要人物」（有名字、有台词、剧情上有作用）；已在【人物状态快照】中的人、纯龙套/一次性质 → 不抽（防待确认池噪声）。
 新设定实体（new_entity）抽「本章首次明确命名的武器/功法/技能/地点」，低风险自动登记；已有同名实体不重复抽。"""
 
@@ -107,6 +119,8 @@ SYSTEM_AUDIT = """你是长篇网文创作系统的【审核中枢 Agent】。�
   "confidence": 0.0-1.0
 }
 规则：只有剧情/内容确实有问题才 rewrite 或 replan；本章合格一律 pass（不制造冗余修订）。
+跨章必查：对照【近期上下文】的章尾原文与本章开头，检查是否重演已完成动作、丢弃未完成请求/危险、无交代地改变时间地点/视角；计划不能推翻已写正文。对照【近期章节开头】检查近义改写的同一套路，不能只看字面不同。
+明确的接续断裂或机械重复应报 major 并 rewrite，建议必须给出具体接续动作；evidence 至少各引用一处前章/历史章与本章原文并标明章号。同场景接续、合理转场、回应悬念、有意义的呼应不算重复。没有前章原文时不能臆测跨章矛盾。
 如需核实人物状态/世界观事实/伏笔/剧情线，可调用只读查证工具，核实后仍输出严格 JSON。"""
 
 SYSTEM_REFLEXION = """你是长篇网文创作系统的【复盘 Agent】。把本书审核中枢（audit）发现的跨章问题，总结演化为本书可复用的写作经验，注入后续章节的规划/写作。
@@ -287,7 +301,7 @@ def _outline_section(outline: dict | None, *, verbose: bool) -> str:
     return "\n".join(parts)
 
 
-def plan_messages(context: dict, batch_goal: str | None = None,
+def _plan_messages(context: dict, batch_goal: str | None = None,
                   outline: dict | None = None) -> list[dict]:
     """plan_chapter 输入：召回上下文 + 批次目标 +（可选）整书大纲切片。
 
@@ -316,7 +330,7 @@ def plan_messages(context: dict, batch_goal: str | None = None,
         + "\n【活跃剧情线（hooks_to_plant 可补新钩子，但主线推进优先）】\n" + (threads or "（无）")
         + "\n【本书写作经验（reflexion 复盘，规划须遵守）】\n" + (lessons or "（无）")
     )
-    user_parts = ["【近期上下文】\n" + (short or "（无）")]
+    user_parts = ["【近期上下文】\n" + (short or "（无）"), _opening_section(context)]
     if batch_goal:
         user_parts.append(f"【本批次推进目标】\n{batch_goal}")
     user_parts.append("请输出本章章节计划（严格 JSON）。")
@@ -392,12 +406,11 @@ def _rhythm_reference(sp: dict) -> str:
     return line
 
 
-def write_messages(context: dict, plan: dict, *, style_profile: dict | None = None,
+def _write_messages(context: dict, plan: dict, *, style_profile: dict | None = None,
                    target_words: int | None = None, outline: dict | None = None) -> list[dict]:
     """write 输入：召回上下文 + 章节计划 + 文风/字数生成约束（§7.12）+（可选）大纲切片。
 
-    防章节开头雷同（§11）：不注入上一章开头（那是治标 hack）——每章大纲位（目标+节拍）本就不同，
-    _outline_section 在写章路径点明「开场扣住本大纲位、勿与其他章共用开场景」，从源头区分开头。
+    近期章头用于差异化比较，前章章尾用于接续，大纲提供本章目标；三者不可混淆。
     整书大纲（§11）：注入当前卷（目标/关键结果）+ 本章大纲位，写作贴大纲不跑偏；大纲与已写正文冲突信正文。
     """
     facts = _join(context.get("long_term_facts", []), _render_fact)
@@ -417,12 +430,13 @@ def write_messages(context: dict, plan: dict, *, style_profile: dict | None = No
     user = (
         "【章节计划】\n" + json.dumps(plan, ensure_ascii=False, indent=1)
         + "\n\n【近期上下文】\n" + (short or "（无）")
+        + "\n\n" + _opening_section(context)
         + "\n请输出本章正文。"
     )
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
-def extract_messages(draft: str, chapter_seq: int, context: dict | None = None) -> list[dict]:
+def _extract_messages(draft: str, chapter_seq: int, context: dict | None = None) -> list[dict]:
     """extract 输入：正文 + （可选）当前台账快照。
 
     context（recall 的 RetrievedContext）非空时注入实体状态/关系快照——extract 据此校准
@@ -466,18 +480,31 @@ def ledger_l2_messages(judgments: list[dict], draft: str, chapter_seq: int) -> l
     ]
 
 
-def revise_messages(draft: str, findings: list[dict], chapter_seq: int) -> list[dict]:
+def revise_messages(draft: str, findings: list[dict], chapter_seq: int, *,
+                    context: dict | None = None, plan: dict | None = None,
+                    style_profile: dict | None = None, target_words: int | None = None,
+                    outline: dict | None = None) -> list[dict]:
+    return fit_prompt(context or {}, lambda c: _revise_messages(
+        draft, findings, chapter_seq, c, plan or {}, style_profile, target_words, outline),
+        settings.request_token_budget - 1000)
+
+
+def _revise_messages(draft, findings, chapter_seq, context, plan, style_profile, target_words, outline):
     finding_lines = "\n".join(
-        f"- [{f.get('severity')}] {f.get('conflict_type')}: {f.get('evidence')} | 建议: {f.get('suggestion')}"
+        f"- [{f.get('conflict_key')}] [{f.get('severity')}] {f.get('conflict_type')}: {f.get('evidence')} | 建议: {f.get('suggestion')}"
         for f in findings
     )
+    writing = _write_messages(context, plan, style_profile=style_profile,
+                              target_words=target_words, outline=outline)
     return [
-        {"role": "system", "content": SYSTEM_REVISE},
-        {"role": "user", "content": f"【第 {chapter_seq} 章正文】\n{draft}\n\n【校验发现】\n{finding_lines}\n\n请修订并输出修订后正文。"},
+        {"role": "system", "content": writing[0]["content"] + "\n\n" + SYSTEM_REVISE},
+        {"role": "user", "content": writing[1]["content"].removesuffix("\n请输出本章正文。")
+         + f"\n\n【第 {chapter_seq} 章待修正文】\n{draft}\n\n【校验发现】\n{finding_lines}"
+         + "\n\n修复问题并保持全章因果、人物状态和篇幅；保留无须修改的有效情节。输出修订后全文与 RESPONSES。"},
     ]
 
 
-def audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int) -> list[dict]:
+def _audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int) -> list[dict]:
     """audit 输入：正文 + 章节计划 + 召回上下文（审核中枢做语义审核 + 路由决策）。"""
     plan_str = json.dumps(plan, ensure_ascii=False, indent=1) if plan else "（无章节计划）"
     events = _join(context.get("mid_term_events", []), _render_event)
@@ -486,12 +513,23 @@ def audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int) -> l
     user = (
         f"【第 {chapter_seq} 章正文】\n{draft}"
         + f"\n\n【章节计划】\n{plan_str}"
+        + "\n\n【世界观硬约束】\n" + (_join(context.get("long_term_facts", []), _render_fact) or "（无）")
+        + "\n\n【确定性校验结果（逐条核实，不得忽略字数等重大问题）】\n" + json.dumps(context.get("validation_report") or {}, ensure_ascii=False)
         + "\n\n【剧情上下文】\n" + (threads or "（无）")
         + "\n【开放伏笔】\n" + (foreshadows or "（无）")
         + "\n【近期事件】\n" + (events or "（无）")
+        + "\n\n【近期上下文】\n" + (_join(context.get("short_context", []), _render_short) or "（无）")
+        + "\n\n" + _opening_section(context)
+        + "\n\n【人物状态快照】\n" + (_join(context.get("entity_snapshots", []), _render_entity) or "（无）")
         + "\n\n请审核本章并输出路由决策（严格 JSON）。"
     )
     return [{"role": "system", "content": SYSTEM_AUDIT}, {"role": "user", "content": user}]
+
+
+def _opening_section(context: dict) -> str:
+    rows = _join(context.get("recent_openings", []),
+                 lambda row: f"第 {row['chapter']} 章开头：{row['text']}")
+    return "【近期章节开头（仅作差异化参照，勿照搬；接续位置以章尾为准）】\n" + (rows or "（无）")
 
 
 def reflexion_messages(findings: list[dict], existing_lessons: list[dict],
@@ -655,3 +693,31 @@ def book_outline_messages(genre: str, premise: str, chapter_count: int,
         {"role": "system", "content": SYSTEM_BOOK_OUTLINE},
         {"role": "user", "content": "\n\n".join(parts) + "\n\n请产出整书写作大纲（严格 JSON）。"},
     ]
+
+
+# 工具 schema 单独计入预算，另留 1,000 估算 tokens 给纠错/工具轮消息。
+def _tool_prompt_budget() -> int:
+    tool_overhead = estimate_tokens({"messages": [], "tools": READ_TOOLS}) - estimate_tokens([])
+    return settings.request_token_budget - tool_overhead - 1000
+
+
+def plan_messages(context: dict, batch_goal: str | None = None,
+                  outline: dict | None = None) -> list[dict]:
+    return fit_prompt(context, lambda c: _plan_messages(c, batch_goal, outline),
+                      settings.request_token_budget - 1000)
+
+
+def write_messages(context: dict, plan: dict, *, style_profile: dict | None = None,
+                   target_words: int | None = None, outline: dict | None = None) -> list[dict]:
+    return fit_prompt(context, lambda c: _write_messages(c, plan, style_profile=style_profile,
+                      target_words=target_words, outline=outline), _tool_prompt_budget())
+
+
+def extract_messages(draft: str, chapter_seq: int, context: dict | None = None) -> list[dict]:
+    return fit_prompt(context or {}, lambda c: _extract_messages(draft, chapter_seq, c) + [{"role": "user", "content": "作者评审意见：\n" + _join([r for r in c.get("short_context", []) if r.get("kind") in ("author_review", "user_instruction")], _render_short)}],
+                      settings.request_token_budget - 1000)
+
+
+def audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int) -> list[dict]:
+    return fit_prompt(context, lambda c: _audit_messages(draft, plan, c, chapter_seq),
+                      _tool_prompt_budget())

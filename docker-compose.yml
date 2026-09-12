@@ -14,7 +14,7 @@ services:
       POSTGRES_PASSWORD: aiink
       POSTGRES_DB: aiink
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       # 显式 volume 名避开手工时代的 aiink_pgdata（避免意外复用旧数据导致 initdb 角色脚本不执行）；
       # 旧数据留在原 volume 不动，如需找回可手动挂回
@@ -32,7 +32,7 @@ services:
     image: ${REDIS_IMAGE:-docker.m.daocloud.io/library/redis:7-alpine}
     container_name: aiink-redis
     ports:
-      - "6380:6379"
+      - "127.0.0.1:6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 3s
@@ -51,8 +51,8 @@ services:
       RABBITMQ_DEFAULT_USER: aiink
       RABBITMQ_DEFAULT_PASS: aiink
     ports:
-      - "5672:5672"
-      - "15672:15672" # Management UI（aiink/aiink）
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672" # Management UI（aiink/aiink）
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
       - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
@@ -87,6 +87,8 @@ services:
       API_PORT: "8100"
       # 向量默认关：bge-m3 首次要下载 ~2.2GB 模型，纯关系链路降级可用（config.py 声明）。开法见 docs/DEPLOY.md
       EMBED_ENABLED: "0"
+      REQUEST_TOKEN_BUDGET: ${REQUEST_TOKEN_BUDGET:-64000}
+      RECALL_TOKEN_BUDGET: ${RECALL_TOKEN_BUDGET:-12000}
       # 扫榜灵感（§10 MCP Client）：容器内显式声明（env_file 已注入，重复声明仅文档化意图 + 防 .env 缺失）
       RANKINGS_ENABLED: "1"
       RANKINGS_MCP_URL: https://daosearch.io/api/mcp
@@ -118,7 +120,9 @@ services:
       REDIS_URL: redis://aiink-redis:6379/0
       AMQP_URL: amqp://aiink:aiink@aiink-rabbitmq:5672/
       EMBED_ENABLED: "0"
-      # 扫榜灵感（§10 MCP Client）：worker 图节点拉取榜单注入规划 prompt，容器内显式声明
+      REQUEST_TOKEN_BUDGET: ${REQUEST_TOKEN_BUDGET:-64000}
+      RECALL_TOKEN_BUDGET: ${RECALL_TOKEN_BUDGET:-12000}
+      # 扫榜灵感只用于建书前题材参考，不注入 worker 生成节点
       RANKINGS_ENABLED: "1"
       RANKINGS_MCP_URL: https://daosearch.io/api/mcp
     command: ["aiink-worker"]
@@ -156,9 +160,9 @@ services:
       # 不挂 env_file：gateway 只消费 JWT_SECRET（其余 REDIS/PYTHON/WEB 已显式覆盖），
       # 避免把 DEEPSEEK_API_KEY/DATABASE_URL 等业务密钥带进唯一公网入口容器（最小暴露）；
       # ${JWT_SECRET} 由 compose 自动从根 .env 插值（缺省走 config.go 的 dev 默认，两端互通）
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:-}
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     depends_on:
       aiink-redis:
         condition: service_healthy

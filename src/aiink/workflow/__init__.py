@@ -5,7 +5,9 @@ from aiink.workflow.runner import (
     generate_chapter,
     get_graphs,
     new_task,
+    resume_chapter_plan,
     resume_thread,
 )
 
-__all__ = ["generate_chapter", "generate_batch", "resume_thread", "get_graphs", "new_task"]
+__all__ = ["generate_chapter", "generate_batch", "resume_chapter_plan",
+           "resume_thread", "get_graphs", "new_task"]

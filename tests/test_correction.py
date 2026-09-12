@@ -341,7 +341,7 @@ def test_correct_memory_no_content_400(temp_project):
 def test_update_chapter_content_increments_version(temp_project):
     """编辑保存：只更新正文 + 版本递增，不动记忆。"""
     ch_id = _seed_chapter(temp_project, 3, "原标题正文")
-    r = update_chapter_content(temp_project, ch_id, ContentUpdate(content="改标点后的正文。"))
+    r = update_chapter_content(temp_project, ch_id, ContentUpdate(content="改标点后的正文。", expected_version=1))
     assert r["version"] == 2
     with tenant_session(temp_project) as db:
         ch = db.get(Chapter, uuid.UUID(ch_id))

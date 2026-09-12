@@ -81,9 +81,21 @@
     "hooks_to_plant":  { "type": "array", "items": { "type": "string" }, "description": "本章要种的伏笔" },
     "hooks_to_resolve":{ "type": "array", "items": { "type": "string" }, "description": "须命中池中开放伏笔（plan.md §7.9）" },
     "expected_events": { "type": "array", "items": { "type": "string" }, "description": "预期事件（大纲-正文偏差比对输入，plan.md §8.6）" },
-    "hard_constraints":{ "type": "array", "items": { "type": "string" }, "description": "本章必须遵守的硬约束" }
+    "hard_constraints":{ "type": "array", "items": { "type": "string" }, "description": "本章必须遵守的硬约束" },
+    "transition": { "$ref": "#/definitions/ChapterTransition", "description": "新规划的跨章接续方案；旧计划可省略" }
   },
   "definitions": {
+    "ChapterTransition": {
+      "type": "object",
+      "required": ["mode", "anchor_quote", "pending_action", "opening_beat", "bridge"],
+      "properties": {
+        "mode": { "enum": ["continue", "time_jump", "scene_cut", "opening"] },
+        "anchor_quote": { "type": "string", "description": "前章章尾逐字引文；无原文则空" },
+        "pending_action": { "type": "string", "description": "待回应动作/问题/危险" },
+        "opening_beat": { "type": "string", "minLength": 1, "description": "本章第一拍的新进展" },
+        "bridge": { "type": "string", "description": "转场线索及原悬念如何衔接" }
+      }
+    },
     "Scene": {
       "type": "object",
       "required": ["location_id", "participants", "goal"],
@@ -306,6 +318,7 @@
     "long_term_facts":  { "type": "array", "items": { "type": "object", "properties": { "fact_id": { "type": "string" }, "source_chapter": { "type": "integer" } } } },
     "mid_term_events":  { "type": "array", "items": { "type": "object", "properties": { "event_id": { "type": "string" }, "chapter": { "type": "integer" }, "confidence": { "type": "number" }, "recalled_by": { "type": "string", "description": "混合召回标签：vector / keyword / vector+keyword（仅混合召回补充的事件有）" } } } },
     "short_context":    { "type": "array", "items": { "type": "object" }, "description": "上一章摘要 + 上一章候选事件 + 本章开头 + 最近场景（plan.md §7.1）" },
+    "recent_openings":  { "type": "array", "items": { "type": "object" }, "description": "最近 4 个历史章开头 [{chapter, text}]；仅供差异化比较，不作接续位置" },
     "entity_snapshots": { "type": "array", "items": { "type": "object" }, "description": "人物/势力/地点当前状态快照（台账最新）" },
     "reflexions":       { "type": "array", "items": { "type": "object" }, "description": "在效写作经验（§8.9 reflexion）：content / lesson_type / category / source_chapter；上限 8 条" },
     "token_usage":      { "type": "integer" },
@@ -376,3 +389,7 @@
 - 阶段 1 用 Pydantic `BaseModel` 直接映射上表（`Field` 约束与 Schema 一致），LangGraph 节点间传结构化对象（plan.md §6.4 `ChapterState` TypedDict）；
 - Schema 是 extract / plan_chapter / validate 三方输出的唯一契约：**坏数据拒绝但不崩**（plan.md §3 已确认决策）；
 - 新增字段（如 `plotline` / `persona` / `style` 冲突类型）已同步 plan.md §8.6 / §8.4，后续一致演进。
+
+### 候选评审元数据（2026-09-08）
+
+`memory_candidates.review` 为可空 JSON：`mode=revise|memory_only`、`reason`、`applied`；旧稿候选作废记录 `superseded=true`。旧记录 NULL 保持原有仅拒绝记忆语义。拒绝默认 revise，恢复评审时修订正文并重新抽取、校验和审核。

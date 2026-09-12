@@ -261,6 +261,10 @@
             ],
             "title": "Title"
           },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
           "word_count": {
             "anyOf": [
               {
@@ -276,7 +280,8 @@
         "required": [
           "id",
           "chapter_seq",
-          "status"
+          "status",
+          "version"
         ],
         "title": "ChapterDetailOut",
         "type": "object"
@@ -507,15 +512,120 @@
         "title": "CharacterCardOut",
         "type": "object"
       },
+      "ConnectionProbeBody": {
+        "description": "探针请求：未保存的新连接直接传明文 api_key；已保存连接可只给 connection_id 复用密钥。",
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "format": "password",
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          },
+          "connection_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Id"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "protocol": {
+            "enum": [
+              "openai",
+              "anthropic"
+            ],
+            "title": "Protocol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "protocol",
+          "base_url"
+        ],
+        "title": "ConnectionProbeBody",
+        "type": "object"
+      },
+      "ConnectionTestOut": {
+        "description": "模型连接探针：ping 联通结果（ok + 耗时；reply 为截断回显，可能为空）。",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "latency_ms": {
+            "default": 0,
+            "title": "Latency Ms",
+            "type": "integer"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "reply": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "ConnectionTestOut",
+        "type": "object"
+      },
       "ContentUpdate": {
         "properties": {
           "content": {
             "title": "Content",
             "type": "string"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
           }
         },
         "required": [
-          "content"
+          "content",
+          "expected_version"
         ],
         "title": "ContentUpdate",
         "type": "object"
@@ -1164,6 +1274,18 @@
             "title": "Payload",
             "type": "object"
           },
+          "review": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review"
+          },
           "source_chapter": {
             "title": "Source Chapter",
             "type": "integer"
@@ -1181,6 +1303,88 @@
           "status"
         ],
         "title": "MemoryCandidateOut",
+        "type": "object"
+      },
+      "ModelConnectionBody": {
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "format": "password",
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "protocol": {
+            "enum": [
+              "openai",
+              "anthropic"
+            ],
+            "title": "Protocol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "protocol",
+          "base_url",
+          "model"
+        ],
+        "title": "ModelConnectionBody",
+        "type": "object"
+      },
+      "ModelListOut": {
+        "description": "模型连接探针：拉取可用模型 id（设置页「获取模型列表」；中转不支持 /models 时 ok=False）。",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "ModelListOut",
         "type": "object"
       },
       "OutlineConfirmBody": {
@@ -1265,6 +1469,25 @@
         "title": "OutlineDraftOut",
         "type": "object"
       },
+      "PlanConfirmBody": {
+        "properties": {
+          "expected_attempt": {
+            "title": "Expected Attempt",
+            "type": "integer"
+          },
+          "plan": {
+            "additionalProperties": true,
+            "title": "Plan",
+            "type": "object"
+          }
+        },
+        "required": [
+          "plan",
+          "expected_attempt"
+        ],
+        "title": "PlanConfirmBody",
+        "type": "object"
+      },
       "ProjectOut": {
         "properties": {
           "current_chapter": {
@@ -1306,6 +1529,14 @@
       },
       "ProjectSettingsOut": {
         "properties": {
+          "model_connections": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Model Connections",
+            "type": "array"
+          },
           "model_routes": {
             "additionalProperties": true,
             "title": "Model Routes",
@@ -1474,9 +1705,44 @@
         "title": "RankingsOut",
         "type": "object"
       },
-      "SettingsBody": {
-        "description": "模型路由表全量替换（缺省 → 清空，回落默认链）。",
+      "RejectCandidateIn": {
         "properties": {
+          "mode": {
+            "default": "revise",
+            "enum": [
+              "revise",
+              "memory_only"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "reason": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "title": "RejectCandidateIn",
+        "type": "object"
+      },
+      "SettingsBody": {
+        "description": "Routes are fully replaced; omitted connections preserve the current list.",
+        "properties": {
+          "model_connections": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ModelConnectionBody"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Connections"
+          },
           "model_routes": {
             "anyOf": [
               {
@@ -2612,6 +2878,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RejectCandidateIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -3979,7 +4262,6 @@
     },
     "/internal/v1/projects/{project_id}/settings": {
       "get": {
-        "description": "读创作设置（设置行缺失 → 空默认，页面不 500）。",
         "operationId": "get_project_settings_internal_v1_projects__project_id__settings_get",
         "parameters": [
           {
@@ -4036,7 +4318,6 @@
         ]
       },
       "put": {
-        "description": "全量替换 model_routes：role∈可配置集 + model∈注册表，违规 400；version++。\n\n全量替换语义（非合并）：前端改前先 GET 拿现值，改完整体回传——空 dict = 清空全部\n路由回落默认链，无歧义。落库前校验防 LLM/手填脏数据进表。",
         "operationId": "put_project_settings_internal_v1_projects__project_id__settings_put",
         "parameters": [
           {
@@ -4098,6 +4379,142 @@
           }
         },
         "summary": "Put Project Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/settings/models": {
+      "post": {
+        "operationId": "list_connection_models_internal_v1_projects__project_id__settings_models_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionProbeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Connection Models",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/settings/test-connection": {
+      "post": {
+        "operationId": "test_model_connection_internal_v1_projects__project_id__settings_test_connection_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionProbeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionTestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Model Connection",
         "tags": [
           "settings"
         ]
@@ -4381,7 +4798,7 @@
     },
     "/internal/v1/projects/{project_id}/tasks": {
       "get": {
-        "description": "项目任务历史（最近 50 条，倒序）：前端切书后展示过往任务，点开再拉详情拿流转。\n\n轻量摘要不含 runs（重量留给 GET /tasks/{id}）；批次进度派生（persist 去重章数）。\nrequire_owner 归属断言由依赖挂载（§14.1 ③）；tasks 无 RLS 观测表，new_session 可查。\n\nchapter_seq 非空（§右栏按章过滤）：只返回覆盖该章的任务——单章按 chapter_seq 精确\n匹配、批次按 payload.start..start+size 范围覆盖；cost_total 随之收窄为该章 agent_runs\n切片（批次 = {batch_id}:ch{seq} 行，单章 = 全任务；批次 book 级 run 如 batch_plan 不计入章成本）。",
+        "description": "项目任务历史（倒序）：全项目最近 50 条；按章节查询时扫描完整历史。\n\n轻量摘要不含 runs（重量留给 GET /tasks/{id}）；批次进度派生（persist 去重章数）。\nrequire_owner 归属断言由依赖挂载（§14.1 ③）；tasks 无 RLS 观测表，new_session 可查。\n\nchapter_seq 非空（§右栏按章过滤）：只返回覆盖该章的任务——单章按 chapter_seq 精确\n匹配、批次按 payload.start..start+size 范围覆盖；cost_total 随之收窄为该章 agent_runs\n切片（批次 = {batch_id}:ch{seq} 行，单章 = 全任务；批次 book 级 run 如 batch_plan 不计入章成本）。",
         "operationId": "list_project_tasks_internal_v1_projects__project_id__tasks_get",
         "parameters": [
           {
@@ -4724,6 +5141,59 @@
           }
         },
         "summary": "Pause Task",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
+    "/internal/v1/tasks/{task_id}/plan/confirm": {
+      "post": {
+        "description": "确认手动模式计划，用同一任务 ID 从 plan_gate 断点继续。",
+        "operationId": "confirm_task_plan_internal_v1_tasks__task_id__plan_confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanConfirmBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskControlOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm Task Plan",
         "tags": [
           "tasks"
         ]

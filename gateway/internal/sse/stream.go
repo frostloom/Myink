@@ -29,19 +29,28 @@ func StreamKey(taskID string) string { return StreamPrefix + taskID }
 
 // Event 是 SSE 帧的载体（对应 worker 侧 XADD 的 fields）。
 type Event struct {
-	ID      string `json:"id"`
-	Type    string `json:"type"` // status | node | heartbeat | done
-	TaskID  string `json:"task_id,omitempty"`
-	Node    string `json:"node,omitempty"`
-	Status  string `json:"status,omitempty"`
-	Message string `json:"message,omitempty"`
+	ID         string `json:"id"`
+	Type       string `json:"type"` // status | node | heartbeat | done
+	TaskID     string `json:"task_id,omitempty"`
+	Node       string `json:"node,omitempty"`
+	Status     string `json:"status,omitempty"`
+	Message    string `json:"message,omitempty"`
+	Stage      string `json:"stage,omitempty"`
+	Chapter    int    `json:"chapter_seq,omitempty"`
+	Attempt    int    `json:"attempt,omitempty"`
+	Offset     int    `json:"offset,omitempty"`
+	ArtifactID string `json:"artifact_id,omitempty"`
+	Content    string `json:"content,omitempty"`
+	Artifact   string `json:"artifact,omitempty"`
 }
 
 // ErrStreamGone 通道不存在（任务终态且流已过期）→ 客户端应回退 GET 快照。
 var ErrStreamGone = fmt.Errorf("sse 通道不存在")
 
-// Replay 通过 ctx 逐帧转发通道中 afterID 之后的已有帧，返回最后已转发的流 ID
-// （供 Subscribe 的 XREAD 从该 ID 之后继续，避免已有帧被重复读取）。
+// Replay 通过 ctx 逐帧转发通道中 afterID 之后的已有帧，返回最后已读取的流 ID
+// （供 Subscribe 的 XREAD 从该 ID 之后继续，避免已有帧被重复读取）。同一 task_id
+// 会跨 awaiting_plan / awaiting_review 多次续跑；历史终态后已有新事件时必须跳过该
+// 历史终态，否则浏览器会在 Plan 或首次评审处提前关流，看不到后续正文。
 // 返回 ErrStreamGone 表示通道已不存在。
 func Replay(ctx context.Context, r *redis.Client, taskID, afterID string, send func(Event) error) (string, error) {
 	key := StreamKey(taskID)
@@ -52,23 +61,41 @@ func Replay(ctx context.Context, r *redis.Client, taskID, afterID string, send f
 	if exists == 0 {
 		return afterID, ErrStreamGone
 	}
-	// Last-Event-ID 之后的所有帧（复用 XRangeN，afterID 为上一帧 ID）
-	msgs, err := r.Raw().XRangeN(ctx, key, afterID, "+", 1000).Result()
+	// XRANGE 起点默认包含自身；用 '(' 做严格大于，避免重连时重复上一帧。
+	msgs, err := r.Raw().XRange(ctx, key, "("+afterID, "+").Result()
 	if err != nil {
 		return afterID, err
 	}
-	last := afterID
+	type decodedMessage struct {
+		id string
+		ev Event
+	}
+	decoded := make([]decodedMessage, 0, len(msgs))
 	for _, m := range msgs {
 		ev, ok := decodeEvent(m)
-		if !ok {
+		if ok {
+			decoded = append(decoded, decodedMessage{id: m.ID, ev: ev})
+		}
+	}
+	last := afterID
+	for i, item := range decoded {
+		last = item.id
+		if terminalStatus(item.ev.Status) && i < len(decoded)-1 {
 			continue
 		}
-		if err := send(ev); err != nil {
+		if err := send(item.ev); err != nil {
 			return last, err
 		}
-		last = m.ID
 	}
 	return last, nil
+}
+
+func terminalStatus(status string) bool {
+	switch status {
+	case "done", "failed", "awaiting_plan", "awaiting_review", "cancelled":
+		return true
+	}
+	return false
 }
 
 // Subscribe 阻塞式把通道事件持续转发给 send，直到 ctx 取消或 send 返回错误。
@@ -135,17 +162,44 @@ func decodeEvent(m goredis.XMessage) (Event, bool) {
 	ev.Node, _ = m.Values["node"].(string)
 	ev.Status, _ = m.Values["status"].(string)
 	ev.Message, _ = m.Values["message"].(string)
+	ev.Stage, _ = m.Values["stage"].(string)
+	ev.ArtifactID, _ = m.Values["artifact_id"].(string)
+	ev.Content, _ = m.Values["content"].(string)
+	ev.Artifact, _ = m.Values["artifact"].(string)
+	ev.Chapter = intField(m.Values["chapter_seq"])
+	ev.Attempt = intField(m.Values["attempt"])
+	ev.Offset = intField(m.Values["offset"])
 	return ev, true
+}
+
+func intField(value any) int {
+	switch v := value.(type) {
+	case string:
+		n, _ := strconv.Atoi(v)
+		return n
+	case int:
+		return v
+	case int64:
+		return int(v)
+	}
+	return 0
 }
 
 // WriteEvent 把 Event 序列化为 SSE 帧文本（data: + 可选 event: 行）。
 func WriteEvent(ev Event) string {
 	data, _ := json.Marshal(map[string]any{
-		"type":    ev.Type,
-		"task_id": ev.TaskID,
-		"node":    ev.Node,
-		"status":  ev.Status,
-		"message": ev.Message,
+		"type":        ev.Type,
+		"task_id":     ev.TaskID,
+		"node":        ev.Node,
+		"status":      ev.Status,
+		"message":     ev.Message,
+		"stage":       ev.Stage,
+		"chapter_seq": ev.Chapter,
+		"attempt":     ev.Attempt,
+		"offset":      ev.Offset,
+		"artifact_id": ev.ArtifactID,
+		"content":     ev.Content,
+		"artifact":    ev.Artifact,
 	})
 	var b []byte
 	if ev.Type != "" && ev.Type != "message" {

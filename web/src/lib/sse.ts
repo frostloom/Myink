@@ -61,6 +61,13 @@ export interface SSEEvent {
   node: string
   status: string
   message: string
+  stage: string
+  chapter_seq: number
+  attempt: number
+  offset: number
+  artifact_id: string
+  content: string
+  artifact: string
 }
 
 export function parseData(data: string): SSEEvent | null {
@@ -73,6 +80,13 @@ export function parseData(data: string): SSEEvent | null {
       node: obj.node ?? '',
       status: obj.status ?? '',
       message: obj.message ?? '',
+      stage: obj.stage ?? '',
+      chapter_seq: typeof obj.chapter_seq === 'number' ? obj.chapter_seq : 0,
+      attempt: typeof obj.attempt === 'number' ? obj.attempt : 0,
+      offset: typeof obj.offset === 'number' ? obj.offset : 0,
+      artifact_id: obj.artifact_id ?? '',
+      content: obj.content ?? '',
+      artifact: obj.artifact ?? '',
     }
   } catch {
     return null
@@ -84,6 +98,7 @@ export function isTerminalStatus(status: string | undefined | null): boolean {
   return (
     status === 'done' ||
     status === 'failed' ||
+    status === 'awaiting_plan' ||
     status === 'awaiting_review' ||
     status === 'cancelled'
   )

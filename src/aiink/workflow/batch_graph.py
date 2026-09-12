@@ -90,6 +90,9 @@ def _batch_plan_messages(batch: dict, outline: dict | None = None) -> list[dict]
     且超出范围的章与新章无关。Objective 给全局终局（批次沿全书方向推进）。
     """
     user_parts = [f"起点章 {batch['start_chapter']}，N={batch['size']}。请输出 {batch['size']} 章推进蓝图（严格 JSON）。"]
+    verdict = ((batch.get("current") or {}).get("audit_verdict") or {})
+    if verdict.get("verdict") == "replan":
+        user_parts.append("【上轮审核要求重规划的原因】" + json.dumps(verdict, ensure_ascii=False))
     if outline:
         objective = (outline.get("objective") or "").strip()
         volumes = outline.get("volumes") or []
@@ -185,6 +188,13 @@ def make_chapter_runner(chapter_graph):
         # checkpoint 停在本章，resume 从本章续跑不重跑已完成章。
         with tenant_session(state["project_id"]) as db:
             from aiink.models import Task
+            # 批次推进到某章时先物化该章页面，随后该章的规划、写作、审核和费用
+            # 才开始产生；刷新或切章时不会借用上一章的页面承载当前进度。
+            repo.ensure_chapter_placeholder(
+                db,
+                project_id=uuid.UUID(state["project_id"]),
+                chapter_seq=chapter_seq,
+            )
             batch = db.get(Task, uuid.UUID(state["batch_task_id"]))
             if batch and batch.status in ("paused", "cancelled"):
                 raise BatchHaltError(batch.status)
@@ -198,7 +208,12 @@ def make_chapter_runner(chapter_graph):
         if ch is not None and ch.status == "awaiting_review":
             snap = chapter_graph.get_state({"configurable": {"thread_id": thread_id}})
             if snap.values:
-                result = nodes.finalize_awaiting_review(snap.values, task_id=thread_id)
+                from aiink.workflow.review import resolve_review
+                result = resolve_review(chapter_graph, snap.values, task_id=thread_id)
+                if result.get("error"):
+                    raise BatchChapterError(result["error"])
+                if result.get("needs_review"):
+                    raise BatchReviewError(f"第 {chapter_seq} 章仍需人工评审")
                 return {"current": result, "position": position,
                         "shared_context": state.get("shared_context")}
 
@@ -212,7 +227,7 @@ def make_chapter_runner(chapter_graph):
         }
         try:
             result = chapter_graph.invoke(
-                chapter_input, config={"configurable": {"thread_id": thread_id}}
+                chapter_input, config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64}
             )
         except Exception as exc:  # 子图异常 → 抛中断，batch checkpoint 停在 chapter 节点可续跑
             logger.exception("单章 %s 失败", chapter_seq)
@@ -220,11 +235,14 @@ def make_chapter_runner(chapter_graph):
         if result.get("error"):  # 子图优雅失败（error 返回非异常）→ 同样中断批次，不走到 batch_end
             logger.error("单章 %s 失败: %s", chapter_seq, result["error"])
             raise BatchChapterError(f"单章 {chapter_seq} 失败: {result['error']}")
+        if result.get("replan_batch") and state.get("batch_replan_count", 0) >= settings.max_replans:
+            result.update(nodes.node_persist({**result, "replan_batch": False, "needs_review": True}))
+            result["replan_batch"] = False
         # critical 冲突（§6.11 确认分流）：暂停批次转人工。抛异常而非走 batch_paused——
         # batch_paused→batch_end→END 后续跑只能整批重跑；抛 BatchReviewError 使
         # checkpoint 停在本章（position 未推进），人工确认候选后 resume 从本章续跑。
         report = result.get("report") or {}
-        if result.get("needs_review") and (report.get("summary") or {}).get("critical", 0) > 0:
+        if result.get("needs_review"):
             raise BatchReviewError(
                 f"第 {chapter_seq} 章存在 critical 冲突，暂停批次转人工（§6.11）"
             )
@@ -241,7 +259,7 @@ def node_reset_replan_batch(state: BatchState) -> BatchState:
     设计：audit 判 replan_target=batch → 批次蓝图走偏，整批剩余章重规划。重置
     replan_batch 信号 + 保留 position（batch_plan 重规划后本章重跑）；不重跑已完成章。
     """
-    return {"replan_batch": False}
+    return {"replan_batch": False, "batch_replan_count": state.get("batch_replan_count", 0) + 1}
 
 
 def route_after_chapter(state: BatchState) -> str:

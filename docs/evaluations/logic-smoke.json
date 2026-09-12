@@ -1,0 +1,267 @@
+[
+  {
+    "name": "first_visit",
+    "expected_pass": false,
+    "verdict": {
+      "verdict": "rewrite",
+      "findings": [
+        {
+          "conflict_key": "arrival_repetition",
+          "conflict_type": "plotline",
+          "severity": "major",
+          "scope": "local",
+          "evidence": [
+            {
+              "chapter": 1,
+              "quote": "昨晚林川已在北桥站办理登记"
+            },
+            {
+              "chapter": 2,
+              "quote": "这是林川有生以来第一次来到北桥站，此前他从未到过这里。"
+            }
+          ],
+          "confidence": 0.95,
+          "suggestion": "修改本章开头，明确林川是再次来到北桥站，例如：'再次站在北桥站的站台上，林川心中已无初次的新奇。' 或直接承接昨晚的登记情节，展开后续行动。"
+        }
+      ],
+      "reasons": [
+        "本章开头与上一章章尾直接矛盾：上一章明确林川昨晚已在北桥站办理登记，本章却称'第一次来到北桥站'，属于明显的接续断裂。",
+        "内容过于单薄，仅一句话，未推进任何剧情线，也未回应任何伏笔，不符合章节基本要求。",
+        "根据规则，明确的接续断裂应报major并rewrite，建议给出具体接续动作。"
+      ],
+      "confidence": 0.95
+    },
+    "matched": true,
+    "input_tokens": 651,
+    "output_tokens": 306
+  },
+  {
+    "name": "return_visit",
+    "expected_pass": true,
+    "verdict": {
+      "verdict": "pass",
+      "findings": [],
+      "reasons": [
+        "本章内容为章节开头，仅一句动作描写，无剧情推进或冲突，未发现与上下文矛盾。",
+        "无章节计划、世界观约束、确定性校验结果，无法判断剧情合理性。",
+        "内容质量上，衔接自然，无重复或断裂。",
+        "根据规则，本章合格，应输出pass。"
+      ],
+      "confidence": 0.95
+    },
+    "matched": true,
+    "input_tokens": 646,
+    "output_tokens": 106
+  },
+  {
+    "name": "destroyed_item",
+    "expected_pass": false,
+    "verdict": {
+      "verdict": "rewrite",
+      "findings": [
+        {
+          "conflict_key": "ch2_meter_contradiction",
+          "conflict_type": "item_rule",
+          "severity": "critical",
+          "scope": "local",
+          "evidence": [
+            {
+              "chapter": 1,
+              "quote": "林川唯一的万用表已烧成无法修复的残骸，他尚未获取替代品。"
+            },
+            {
+              "chapter": 2,
+              "quote": "林川拿起那只完好无损的旧万用表，接上探针，顺利测出了电压。"
+            }
+          ],
+          "confidence": 1.0,
+          "suggestion": "修改本章开头，使林川使用替代品或修复后的万用表，或明确交代他如何获得新表，避免与第1章结尾矛盾。"
+        }
+      ],
+      "reasons": [
+        "本章内容与上一章结尾直接矛盾：第1章明确万用表已烧毁且无替代品，第2章却出现完好无损的万用表并成功使用，属于关键物品状态冲突。",
+        "无章节计划，但内容质量上存在严重衔接问题，必须重写以保持连贯性。"
+      ],
+      "confidence": 1.0
+    },
+    "matched": true,
+    "input_tokens": 658,
+    "output_tokens": 288
+  },
+  {
+    "name": "replacement_item",
+    "expected_pass": true,
+    "verdict": {
+      "verdict": "pass",
+      "findings": [],
+      "reasons": [
+        "本章内容为领取新万用表并测量，与上一章章尾（万用表烧毁）形成合理接续，无剧情断裂或机械重复。",
+        "无章节计划、世界观硬约束、剧情上下文等，无法判断主线偏移或伏笔遗漏。",
+        "内容质量上，衔接自然，人设未出现异常，节奏合理。",
+        "未发现任何冲突或错误，因此判定为pass。"
+      ],
+      "confidence": 0.95
+    },
+    "matched": true,
+    "input_tokens": 660,
+    "output_tokens": 129
+  },
+  {
+    "name": "unfulfilled_promise",
+    "expected_pass": false,
+    "verdict": {
+      "verdict": "rewrite",
+      "findings": [
+        {
+          "conflict_key": "pump_repair_sequence",
+          "conflict_type": "plotline",
+          "severity": "major",
+          "scope": "local",
+          "evidence": [
+            {
+              "chapter": 1,
+              "quote": "林川承诺修好水泵，但检修尚未开始，水泵仍完全损坏。"
+            },
+            {
+              "chapter": 2,
+              "quote": "检修还没开始，大家就确认林川已经兑现修好水泵的承诺，水泵已经恢复运作。"
+            }
+          ],
+          "confidence": 0.95,
+          "suggestion": "调整本章内容，使检修过程得以展开，并逐步展示林川修复水泵的具体行动，最终在检修结束时确认水泵恢复运作。"
+        }
+      ],
+      "reasons": [
+        "本章与上一章结尾存在明显矛盾：上一章明确水泵仍损坏且检修未开始，本章却直接跳到已修复，缺乏必要的过渡和过程。",
+        "剧情推进不合理，跳过了关键的检修和修复过程，导致情节断裂。",
+        "应重写本章，补充检修和修复的具体过程，确保剧情连贯。"
+      ],
+      "confidence": 0.95
+    },
+    "matched": true,
+    "input_tokens": 654,
+    "output_tokens": 279
+  },
+  {
+    "name": "promise_completed",
+    "expected_pass": true,
+    "verdict": {
+      "verdict": "pass",
+      "findings": [],
+      "reasons": [
+        "本章内容与上一章章尾衔接合理：上一章林川承诺修水泵，本章直接描写拆泵、换电容、接线、试运行成功，完成了承诺，没有重演或丢弃动作。",
+        "内容质量合格：动作连贯，人物行为符合承诺，节奏紧凑，无主线偏移。",
+        "无跨章矛盾或机械重复，无需要修订的问题。"
+      ],
+      "confidence": 0.95
+    },
+    "matched": true,
+    "input_tokens": 658,
+    "output_tokens": 117
+  },
+  {
+    "name": "capability_rule",
+    "expected_pass": false,
+    "verdict": {
+      "verdict": "rewrite",
+      "findings": [
+        {
+          "conflict_key": "instrument_power_rule",
+          "conflict_type": "item_rule",
+          "severity": "critical",
+          "scope": "local",
+          "evidence": [
+            {
+              "chapter": 2,
+              "quote": "没有接入任何电源，仪器却持续正常测量，林川直接读出了实时电流值。"
+            },
+            {
+              "chapter": 1,
+              "quote": "林川检查了仪器：外接电源已断开，电池也已取出。"
+            }
+          ],
+          "confidence": 1.0,
+          "suggestion": "修改本章内容，使仪器无法在没有电源的情况下工作。例如，林川发现仪器无法启动，或需要重新连接电源/装入电池才能测量。"
+        }
+      ],
+      "reasons": [
+        "本章内容直接违反了世界观硬约束：仪器必须外接电源或装入电池才能测量。前章明确外接电源已断开且电池已取出，本章却描述仪器无电源仍正常测量，属于关键设定冲突。",
+        "该冲突为critical级别，影响剧情合理性，必须重写本章以符合设定。"
+      ],
+      "confidence": 1.0
+    },
+    "matched": true,
+    "input_tokens": 678,
+    "output_tokens": 275
+  },
+  {
+    "name": "capability_restored",
+    "expected_pass": true,
+    "verdict": {
+      "verdict": "pass",
+      "findings": [],
+      "reasons": [
+        "本章内容为简单的动作接续，符合前章章尾状态（仪器无电源），未发现剧情偏移或逻辑矛盾。",
+        "无章节计划、世界观约束或上下文冲突，内容质量合格。",
+        "未发现需要修订或重规划的问题。"
+      ],
+      "confidence": 0.95
+    },
+    "matched": true,
+    "input_tokens": 679,
+    "output_tokens": 92
+  },
+  {
+    "name": "allegiance",
+    "expected_pass": false,
+    "verdict": {
+      "verdict": "rewrite",
+      "findings": [
+        {
+          "conflict_key": "contract_status_conflict",
+          "conflict_type": "character_state",
+          "severity": "critical",
+          "scope": "local",
+          "evidence": [
+            {
+              "chapter": 1,
+              "quote": "林川已正式退出北桥检修队，合同解除且未重新入职。"
+            },
+            {
+              "chapter": 2,
+              "quote": "林川的合同并未解除，他始终是北桥检修队的现任正式员工，今天仍以队员身份领薪。"
+            }
+          ],
+          "confidence": 1.0,
+          "suggestion": "必须与前一章结尾保持一致。若需反转，应明确交代重新入职的过程或原因，否则应修改本章内容，使林川的合同状态与已写正文相符。"
+        }
+      ],
+      "reasons": [
+        "本章内容与前一章结尾直接矛盾，林川的合同状态从解除变为未解除，且无任何过渡或解释。",
+        "该矛盾属于关键人物状态冲突，影响后续剧情逻辑，必须修正。"
+      ],
+      "confidence": 1.0
+    },
+    "matched": true,
+    "input_tokens": 658,
+    "output_tokens": 264
+  },
+  {
+    "name": "former_member",
+    "expected_pass": true,
+    "verdict": {
+      "verdict": "pass",
+      "findings": [],
+      "reasons": [
+        "本章内容为林川以外部维修承包人身份递交报价单，与近期上下文（已退出检修队）衔接合理，无剧情冲突。",
+        "无章节计划、世界观硬约束、开放伏笔等，无法判断主线偏移或伏笔遗漏。",
+        "内容质量上，动作明确，人设一致，节奏正常，无机械重复或接续断裂。",
+        "因此判定为合格，无需修订或重规划。"
+      ],
+      "confidence": 0.95
+    },
+    "matched": true,
+    "input_tokens": 651,
+    "output_tokens": 130
+  }
+]

@@ -22,8 +22,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 import redis  # noqa: E402
 
 from aiink.providers.base import ModelProvider, ModelResponse  # noqa: E402
+from aiink.config import settings  # noqa: E402
 
-_R = redis.from_url("redis://127.0.0.1:6380/0", decode_responses=True)
+_R = redis.from_url(settings.redis_url, decode_responses=True)
 
 
 class FakeEmbedder:

@@ -15,6 +15,7 @@ import (
 	"aiink/gateway/internal/pyapi"
 	"aiink/gateway/internal/queue"
 	"aiink/gateway/internal/redis"
+	streaming "aiink/gateway/internal/sse"
 )
 
 type TaskHandler struct {
@@ -39,6 +40,7 @@ func (h *TaskHandler) CreateChapter(c *gin.Context) {
 		Seq             int    `json:"seq"`
 		UserInstruction string `json:"user_instruction"`
 		Rewrite         bool   `json:"rewrite"`
+		Mode            string `json:"mode"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_body"})
@@ -49,6 +51,14 @@ func (h *TaskHandler) CreateChapter(c *gin.Context) {
 		"seq":              req.Seq,
 		"user_instruction": req.UserInstruction,
 	}
+	if req.Mode == "" {
+		req.Mode = "auto"
+	}
+	if req.Mode != "auto" && req.Mode != "manual" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_writing_mode"})
+		return
+	}
+	payload["mode"] = req.Mode
 	if req.Rewrite {
 		payload["rewrite"] = true
 	}
@@ -106,6 +116,14 @@ func (h *TaskHandler) enqueue(c *gin.Context, projectID, taskType string, payloa
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "enqueue_failed"})
 		return
 	}
+	// 在返回 task_id 前建立 SSE 流，消除“浏览器已订阅、Worker 尚未取到 RabbitMQ
+	// 消息”窗口。否则 Subscribe 会把尚不存在的流误判为历史流过期，前端只能等刷新。
+	streamKey := streaming.StreamKey(res.TaskID)
+	if _, streamErr := h.r.XAdd(ctx, streamKey, map[string]any{
+		"event": "status", "task_id": res.TaskID, "status": "queued",
+	}); streamErr == nil {
+		_ = h.r.Expire(ctx, streamKey, streaming.TTL)
+	}
 	c.JSON(http.StatusAccepted, gin.H{
 		"task_id":  res.TaskID,
 		"trace_id": res.TraceID,
@@ -129,6 +147,24 @@ func (h *TaskHandler) GetTask(c *gin.Context) {
 		return
 	}
 	c.Data(http.StatusOK, "application/json; charset=utf-8", body)
+}
+
+// 确认手动模式章节计划：转发 Python API，由后者校验版本并发布断点恢复消息。
+// POST /api/v1/tasks/:task_id/plan/confirm
+func (h *TaskHandler) ConfirmTaskPlan(c *gin.Context) {
+	taskID := c.Param("task_id")
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_body"})
+		return
+	}
+	h.forwardToPy(c, "/internal/v1/tasks/"+taskID+"/plan/confirm", body)
+}
+
+// 单章任务控制。目前手动 Plan 等待页只开放取消；转发到 Python 的统一任务端点。
+func (h *TaskHandler) TaskControl(c *gin.Context) {
+	taskID := c.Param("task_id")
+	h.forwardToPy(c, "/internal/v1/tasks/"+taskID+"/cancel", nil)
 }
 
 // 批次控制：pause / resume / cancel，转发 Python API。
@@ -254,19 +290,35 @@ func (h *TaskHandler) GlobalAudit(c *gin.Context) {
 	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/global-audit", nil)
 }
 
-// 创作设置读取（阶段 4 设置页）：文风档案 / 题材 Skill / 模型路由表 / 版本号，转发 Python API。
+// 创作设置读取：文风档案 / 题材 Skill / 模型连接 / 路由表 / 版本号，转发 Python API。
 // GET /api/v1/projects/:project_id/settings
 func (h *TaskHandler) ListSettings(c *gin.Context) {
 	pid := c.Param("project_id")
 	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/settings", nil)
 }
 
-// 更新模型路由表（§6.10 每 Agent 模型路由：role→model_id 全量替换 + version++，转发 Python API）。
-// PUT /api/v1/projects/:project_id/settings  body: {"model_routes": {"planner": "deepseek-v4-pro", ...}}
+// 更新模型连接与路由（自定义 API Key 由 Python 层加密，网关只透传请求体）。
+// PUT /api/v1/projects/:project_id/settings  body: {"model_routes": {...}, "model_connections": [...]}
 func (h *TaskHandler) UpdateSettings(c *gin.Context) {
 	pid := c.Param("project_id")
 	body, _ := io.ReadAll(c.Request.Body)
 	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/settings", body)
+}
+
+// 拉取连接可用模型列表（探针：GET /models；body 含 protocol/base_url/api_key|connection_id，转发 Python API）。
+// POST /api/v1/projects/:project_id/settings/models
+func (h *TaskHandler) ListConnectionModels(c *gin.Context) {
+	pid := c.Param("project_id")
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/settings/models", body)
+}
+
+// 连接联通测试（探针：发一条 max_tokens=16 的 ping，转发 Python API）。
+// POST /api/v1/projects/:project_id/settings/test-connection
+func (h *TaskHandler) TestModelConnection(c *gin.Context) {
+	pid := c.Param("project_id")
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/settings/test-connection", body)
 }
 
 // 题材 Skill 预设列表（§7.12 预设包 = 4 本种子书文风档案），转发 Python API。

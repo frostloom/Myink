@@ -14,31 +14,49 @@ from typing import Iterable
 from langgraph.checkpoint.postgres import PostgresSaver
 from psycopg import Connection
 from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
 
 from aiink.config import settings
+from aiink.db_url import normalize_localhost_database_url
 
 logger = logging.getLogger(__name__)
 
 _build: dict[str, PostgresSaver] = {}
 
-# 复用 psycopg3 连接串（去掉 SQLAlchemy 方言前缀）
-_CONN_STR = settings.database_url.replace("postgresql+psycopg://", "postgresql://")
+def _psycopg_conn_str(database_url: str) -> str:
+    """Convert SQLAlchemy URL and avoid threaded ``localhost`` DNS stalls on Windows."""
+    value = database_url.replace("postgresql+psycopg://", "postgresql://")
+    return normalize_localhost_database_url(value)
+
+
+# 复用 psycopg3 连接串（去掉 SQLAlchemy 方言前缀）。
+_CONN_STR = _psycopg_conn_str(settings.database_url)
 
 
 def build_checkpointer() -> PostgresSaver:
     """构建并初始化 PG Checkpointer（幂等：setup() 建内部表）。
 
-    langgraph-checkpoint-postgres 新版的 `from_conn_string` 是上下文管理器
-    （进入即占连接、退出即关闭），不适合进程级缓存的长期 saver。这里复刻其
-    内部行为：autocommit + prepare_threshold=0 + dict_row，连接随进程存活。
+    使用 psycopg 连接池而不是进程级单连接。每次 checkout 都先检查连接，PostgreSQL
+    重启后会丢弃旧连接并重连；否则缓存的 PostgresSaver 会永久持有已关闭连接，直到
+    worker 自身重启，后续每个任务都会立即失败。
     checkpointer 连接是 psycopg 直连，与 SQLAlchemy 双引擎完全分离（§6.7）。
     """
     if "saver" in _build:
         return _build["saver"]
-    conn: Connection = Connection.connect(
-        _CONN_STR, autocommit=True, prepare_threshold=0, row_factory=dict_row
+    pool = ConnectionPool(
+        conninfo=_CONN_STR,
+        min_size=1,
+        max_size=2,
+        open=True,
+        kwargs={
+            "autocommit": True,
+            "prepare_threshold": 0,
+            "row_factory": dict_row,
+        },
+        check=ConnectionPool.check_connection,
     )
-    saver = PostgresSaver(conn)
+    pool.wait()
+    saver = PostgresSaver(pool)
     saver.setup()  # 建 checkpoints / checkpoint_blobs / checkpoint_writes
     _build["saver"] = saver
     return saver

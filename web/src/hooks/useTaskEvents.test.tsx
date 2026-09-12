@@ -1,0 +1,199 @@
+// @vitest-environment jsdom
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
+import { afterEach, expect, it, vi } from 'vitest'
+import { api } from '../lib/api'
+import { openSSE } from '../lib/sse'
+import type { SSEEvent } from '../lib/sse'
+import type { TaskDetail } from '../types'
+import { useTaskEvents } from './useTaskEvents'
+
+vi.mock('../lib/api', () => ({ api: { getTask: vi.fn() } }))
+vi.mock('../lib/sse', () => ({ openSSE: vi.fn() }))
+
+afterEach(() => {
+  cleanup()
+  vi.clearAllMocks()
+})
+
+it('loads archived runs from the task snapshot when the old SSE stream has expired', async () => {
+  vi.mocked(openSSE).mockResolvedValue({ reason: 'expired' })
+  const detail: TaskDetail = {
+    task_id: 'old-task', task_type: 'chapter_generate', status: 'done', payload: { seq: 8 },
+    error: null, retry_count: 0, trace_id: null, chapter_seq: 8, batch_task_id: null,
+    created_at: null, cost_total: 0.01,
+    runs: [{ task_id: 'old-task', node: 'write', model_id: 'stub', input_tokens: 10,
+      output_tokens: 20, cache_hit: false, duration_ms: 100, cost_est: 0.01,
+      retry_count: 0, degraded: false, error: null, detail: null }],
+  }
+  vi.mocked(api.getTask).mockResolvedValue(detail)
+
+  const { result } = renderHook(() => useTaskEvents('old-task'))
+
+  await waitFor(() => expect(result.current.phase).toBe('expired'))
+  await waitFor(() => expect(result.current.runs.map((run) => run.node)).toEqual(['write']))
+  expect(result.current.status).toBe('done')
+  expect(api.getTask).toHaveBeenCalledWith('old-task')
+})
+
+it('loads the persisted snapshot immediately even when an old SSE stream stays open', async () => {
+  vi.mocked(openSSE).mockImplementation((_url, _onEvent, opts) => new Promise((resolve) => {
+    opts?.signal?.addEventListener('abort', () => resolve({ reason: 'aborted' }), { once: true })
+  }))
+  vi.mocked(api.getTask).mockResolvedValue({
+    task_id: 'persisted-task', task_type: 'chapter_generate', status: 'done', payload: { seq: 6 },
+    error: null, retry_count: 0, trace_id: null, chapter_seq: 6, batch_task_id: null,
+    created_at: null, cost_total: 0.02,
+    runs: [
+      { task_id: 'persisted-task', node: 'write', model_id: 'stub', input_tokens: 10,
+        output_tokens: 20, cache_hit: false, duration_ms: 100, cost_est: 0.01,
+        retry_count: 0, degraded: false, error: null, detail: null },
+      { task_id: 'persisted-task', node: 'audit', model_id: 'stub', input_tokens: 5,
+        output_tokens: 5, cache_hit: false, duration_ms: 50, cost_est: 0.01,
+        retry_count: 0, degraded: false, error: null,
+        detail: { audit_verdict: { verdict: 'pass', reasons: [], findings: [], confidence: 1 } } },
+    ],
+  })
+
+  const { result } = renderHook(() => useTaskEvents('persisted-task'))
+
+  await waitFor(() => expect(result.current.runs.map((run) => run.node)).toEqual(['write', 'audit']))
+  expect(result.current.status).toBe('done')
+  expect(result.current.phase).toBe('connecting')
+})
+
+it('refreshes the run snapshot on every node event, not only at route/persist', async () => {
+  const event = (patch: Partial<SSEEvent>): SSEEvent => ({
+    type: 'node', task_id: 'flow-task', node: '', status: '', message: '',
+    stage: '', chapter_seq: 0, attempt: 0, offset: 0,
+    artifact_id: '', content: '', artifact: '', ...patch,
+  })
+  const running: TaskDetail = {
+    task_id: 'flow-task', task_type: 'chapter_generate', status: 'running',
+    payload: { seq: 4, mode: 'auto' }, error: null, retry_count: 0,
+    trace_id: null, chapter_seq: 4, batch_task_id: null, created_at: null,
+    cost_total: 0, runs: [],
+  }
+  const written: TaskDetail = {
+    ...running,
+    runs: [{ task_id: 'flow-task:ch4', node: 'write', model_id: 'stub', input_tokens: 1,
+      output_tokens: 2, cache_hit: false, duration_ms: 10, cost_est: 0.001, retry_count: 0,
+      degraded: false, error: null, detail: null }],
+  }
+  vi.mocked(api.getTask).mockResolvedValueOnce(running).mockResolvedValue(written)
+  // write 节点落库（非 route/persist）：右栏耗时视图也要立刻跟上，否则会一直停在 plan
+  vi.mocked(openSSE).mockImplementation((_url, onEvent, opts) => new Promise((resolve) => {
+    onEvent(event({ node: 'write', task_id: 'flow-task:ch4' }))
+    opts?.signal?.addEventListener('abort', () => resolve({ reason: 'aborted' }), { once: true })
+  }))
+
+  const { result } = renderHook(() => useTaskEvents('flow-task'))
+
+  await waitFor(() => expect(result.current.runs.map((run) => run.node)).toEqual(['write']))
+})
+
+it('assembles replayable artifact deltas and exposes the completed plan', async () => {
+  const event = (patch: Partial<SSEEvent>): SSEEvent => ({
+    type: 'artifact_delta', task_id: 'stream-task', node: '', status: '', message: '',
+    stage: 'plan', chapter_seq: 17, attempt: 1, offset: 0,
+    artifact_id: 'artifact-1', content: '', artifact: '', ...patch,
+  })
+  vi.mocked(api.getTask).mockResolvedValue({
+    task_id: 'stream-task', task_type: 'chapter_generate', status: 'awaiting_plan',
+    payload: { seq: 17, mode: 'manual' }, error: null, retry_count: 0,
+    trace_id: null, chapter_seq: 17, batch_task_id: null, created_at: null,
+    cost_total: 0, runs: [],
+  })
+  vi.mocked(openSSE).mockImplementation(async (_url, onEvent) => {
+    onEvent(event({ type: 'artifact_reset' }))
+    onEvent(event({ content: '甲🌙', offset: 0 }))
+    onEvent(event({ content: '乙', offset: 2 }))
+    onEvent(event({
+      type: 'artifact_complete', offset: 3,
+      artifact: JSON.stringify({ goals: ['推进'], expected_events: ['查证'] }),
+    }))
+    onEvent(event({ type: 'status', status: 'awaiting_plan' }))
+    return { reason: 'terminal' }
+  })
+
+  const { result } = renderHook(() => useTaskEvents('stream-task'))
+  await waitFor(() => expect(result.current.phase).toBe('terminal'))
+  await waitFor(() => expect(result.current.artifacts).toHaveLength(1))
+  expect(result.current.artifacts[0]).toMatchObject({
+    content: '甲🌙乙', complete: true, attempt: 1,
+    artifact: { goals: ['推进'], expected_events: ['查证'] },
+  })
+})
+
+it('publishes an incomplete write artifact before the SSE request finishes', async () => {
+  let releaseStream!: () => void
+  const streamBlocked = new Promise<void>((resolve) => { releaseStream = resolve })
+  const event = (patch: Partial<SSEEvent>): SSEEvent => ({
+    type: 'artifact_delta', task_id: 'live-write-task', node: '', status: '', message: '',
+    stage: 'write', chapter_seq: 8, attempt: 1, offset: 0,
+    artifact_id: 'write-1', content: '', artifact: '', ...patch,
+  })
+  const runningDetail: TaskDetail = {
+    task_id: 'live-write-task', task_type: 'chapter_generate', status: 'running',
+    payload: { seq: 8, mode: 'auto' }, error: null, retry_count: 0,
+    trace_id: null, chapter_seq: 8, batch_task_id: null, created_at: null,
+    cost_total: 0, runs: [],
+  }
+  vi.mocked(api.getTask)
+    .mockResolvedValueOnce(runningDetail)
+    .mockResolvedValue({ ...runningDetail, status: 'done' })
+  vi.mocked(openSSE).mockImplementation(async (_url, onEvent) => {
+    onEvent(event({ type: 'artifact_reset' }))
+    onEvent(event({ content: '模型仍在生成时到达的第一段', offset: 0 }))
+    await streamBlocked
+    onEvent(event({ type: 'artifact_complete', offset: 13 }))
+    onEvent(event({ type: 'status', status: 'done' }))
+    return { reason: 'terminal' }
+  })
+
+  const { result } = renderHook(() => useTaskEvents('live-write-task'))
+
+  await waitFor(() => expect(result.current.artifacts[0]?.content).toBe('模型仍在生成时到达的第一段'))
+  expect(result.current.artifacts[0].complete).toBe(false)
+  expect(result.current.phase).not.toBe('terminal')
+
+  await act(async () => { releaseStream() })
+  await waitFor(() => expect(result.current.phase).toBe('terminal'))
+})
+
+it('keeps following a resumed task when SSE first replays an old review terminal', async () => {
+  const base: TaskDetail = {
+    task_id: 'resumed-task', task_type: 'chapter_generate', status: 'queued',
+    payload: { seq: 14, mode: 'auto' }, error: null, retry_count: 0,
+    trace_id: null, chapter_seq: 14, batch_task_id: null, created_at: null,
+    cost_total: 0, runs: [],
+  }
+  // 挂载时的主动快照 + 历史终态后的权威快照都仍在续跑；第二次连接才到真正 done。
+  vi.mocked(api.getTask)
+    .mockResolvedValueOnce(base)
+    .mockResolvedValueOnce(base)
+    .mockResolvedValue({ ...base, status: 'done' })
+  vi.mocked(openSSE)
+    .mockImplementationOnce(async (_url, onEvent) => {
+      onEvent({
+        type: 'status', task_id: 'resumed-task', node: '', status: 'awaiting_review',
+        message: '', stage: '', chapter_seq: 0, attempt: 0, offset: 0,
+        artifact_id: '', content: '', artifact: '',
+      })
+      return { reason: 'terminal' }
+    })
+    .mockImplementationOnce(async (_url, onEvent) => {
+      onEvent({
+        type: 'status', task_id: 'resumed-task', node: '', status: 'done',
+        message: '', stage: '', chapter_seq: 0, attempt: 0, offset: 0,
+        artifact_id: '', content: '', artifact: '',
+      })
+      return { reason: 'terminal' }
+    })
+
+  const { result } = renderHook(() => useTaskEvents('resumed-task'))
+
+  await waitFor(() => expect(openSSE).toHaveBeenCalledTimes(2), { timeout: 3000 })
+  await waitFor(() => expect(result.current.phase).toBe('terminal'))
+  expect(result.current.status).toBe('done')
+  expect(api.getTask).toHaveBeenCalledTimes(3)
+})

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -40,29 +41,44 @@ func (h *SSEHandler) Stream(c *gin.Context) {
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no")
 	c.Writer.Flush()
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), sseMaxDuration)
-	defer cancel()
+
+	// ResponseWriter 不允许并发写。心跳和模型片段共用同一把锁，避免生成超过 15 秒时
+	// 两个 goroutine 交叉写坏 SSE 帧，造成浏览器只能等重连后一次性看到正文。
+	var writeMu sync.Mutex
+	writeFrame := func(frame string) error {
+		writeMu.Lock()
+		defer writeMu.Unlock()
+		_, err := fmt.Fprint(c.Writer, frame)
+		c.Writer.Flush()
+		return err
+	}
 
 	// 15s 心跳注释帧保中间代理连接（终态帧触发收尾前一直发）
 	ticker := time.NewTicker(15 * time.Second)
-	defer ticker.Stop()
+	heartbeatDone := make(chan struct{})
 	go func() {
+		defer close(heartbeatDone)
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				_, _ = fmt.Fprint(c.Writer, ": keepalive\n\n")
-				c.Writer.Flush()
+				_ = writeFrame(": keepalive\n\n")
 			}
 		}
 	}()
+	defer func() {
+		ticker.Stop()
+		cancel()
+		<-heartbeatDone
+	}()
 
 	err := sse.Subscribe(ctx, h.r, taskID, after, func(ev sse.Event) error {
-		_, werr := fmt.Fprint(c.Writer, sse.WriteEvent(ev))
-		c.Writer.Flush()
+		werr := writeFrame(sse.WriteEvent(ev))
 		if isTerminal(ev) {
 			return errTerminal // 终态帧 → 停止订阅收尾
 		}
@@ -83,7 +99,7 @@ func (h *SSEHandler) Stream(c *gin.Context) {
 // isTerminal 终态判定：worker 终态事件是 event=status + status∈{done,failed,awaiting_review}。
 func isTerminal(ev sse.Event) bool {
 	switch ev.Status {
-	case "done", "failed", "awaiting_review", "cancelled":
+	case "done", "failed", "awaiting_plan", "awaiting_review", "cancelled":
 		return true
 	}
 	return false

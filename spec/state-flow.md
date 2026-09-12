@@ -6,9 +6,7 @@
 
 ## 1. 图拓扑（两级：批次主图 + 单章子图）
 
-![Ai Ink 批量自动写作状态流转图](./state-flow.png)
-
-> 上图由 `state-flow.mmd`（可编辑源文件）渲染生成；Mermaid 源码保持内联以便在 GitHub / VSCode 直接预览。
+> 当前拓扑以以下 Mermaid 和 `state-flow.mmd` 为准；历史 PNG 尚未重绘。
 
 ```mermaid
 flowchart TD
@@ -19,23 +17,27 @@ flowchart TD
         direction TB
         LS --> RC[recall]
         RC --> PC[plan_chapter]
-        PC --> W[write]
+        PC --> PG{{plan_gate}}
+        PG -- "自动模式：展示后直通" --> W[write]
+        PG -- "手动模式：awaiting_plan" --> HUMANPLAN[前端编辑/确认 Plan]
+        HUMANPLAN -- "Command(resume=approved_plan)" --> PG
         W --> EX[extract]
         EX --> VA[validate<br/>L1 规则层]
         VA --> AU[audit<br/>审核中枢：AuditVerdict]
         AU --> RT{{route_after_audit<br/>混合路由：规则层优先}}
         RT -- "pass" --> PERSIST[persist<br/>低风险自动放行]
-        RT -- "rewrite → rev < 预算" --> RV[revise] --> AU
+        RT -- "rewrite → rev < 预算" --> RV[revise] --> EX
         RT -- "replan_target=chapter" --> PC
         RT -- "rev ≥ 预算 / replan ≥ 预算 → needs_review" --> NR[needs_review]
-        NR -- "非 critical 标待人工" --> PERSIST
-        NR -- "critical → 暂停批次" --> PAUSE[批次暂停等人工]
+        NR --> PERSIST
+        PERSIST -- "awaiting_review → 暂停批次" --> PAUSE[批次暂停等人工]
         PERSIST --> BRIDGE[状态桥<br/>上章沉淀 → 下章recall]
     end
 
     BRIDGE -- "还有下章" --> LS
-    PAUSE -- "人工处理/放行" --> LS
-    AU -- "replan_target=batch" --> REBP[回 batch_plan<br/>重规划剩余章]
+    PAUSE -- "否定设定：修订复审" --> RV
+    PAUSE -- "候选全处理且接受当前稿" --> PERSIST
+    RT -- "replan_target=batch 且预算未耗尽" --> REBP[回 batch_plan<br/>重规划剩余章]
     REBP --> LS
     BRIDGE -- "单章失败(重试+降级后)" --> FAIL[批次中断<br/>可从失败章续跑]
     FAIL -- "续跑" --> LS
@@ -55,11 +57,12 @@ flowchart TD
 | `load_state` | 章 | 确定性 | 任务参数（project_id、chapter_seq） | 项目设定、章节计划、前情摘要初始化 | — |
 | `recall` | 章 | 确定性 | 设定 + 前情 | `RetrievedContext`（分层召回 + token 预算 + `recall_stats` 召回占比） | `search_world_facts` / `search_plot_events` / `get_entity_relations` / `get_chapter_context` |
 | `plan_chapter` | 章 | Planner（LLM） | `RetrievedContext` + 本章在 BatchPlan 的目标 | `ChapterPlan` | — |
+| `plan_gate` | 章 | 确定性 + LangGraph interrupt | `ChapterPlan` + `writing_mode` | 自动模式直通；手动模式进入 `awaiting_plan`，作者可编辑后以 `Command(resume=approved_plan)` 从同一 checkpoint 继续，不重跑 Planner；replan 产生的新版本会再次确认 | — |
 | `write` | 章 | Writer（LLM） | `RetrievedContext` + `ChapterPlan` | `draft`（章节草稿） | `inspect_character` / `inspect_facts`（只读查证，§10） |
 | `extract` | 章 | Memory（LLM） | `draft` + `ChapterPlan` | `MutationCandidate[]` 写入待确认池（自动模式：低风险自动放行，§6.11） | `save_memory_candidates` |
 | `validate` | 章 | 确定性（L1 规则层）+ L2 正文-台账语义比对 | `draft` + 图谱/事件/事实 + extract 候选 | `ValidationReport`——L1 硬证据（不被 LLM 绕过）+ **L2 语义比对 findings**（`summary.l2_major`，2026-08-13）：`ValidationService.validate` 只产确定性 L1（LLM 不能进校验器）；L2 在 `node_validate` 接线——extract 候选经 `ledger_l2.build_judgment_set` 判定集预滤（old==台账 且 new≠台账，空集零 LLM 短路）→ `validator_l2` 判 valid/invalid → 本地守卫（evidence 逐字 ∈ 内存 draft / key ∈ 判定集 / 置信度 ≥0.6）→ 严重度确定性映射 | `check_constraints` + `record_run` |
 | `audit` | 章 | **审核中枢 Audit（LLM，第 4 类 agent）** | `draft` + ChapterPlan + 召回上下文 + extract 候选 + 上一节点 unresolved（L1/L2 major） | `AuditVerdict`：pass / rewrite / replan + L2 findings + reasons + confidence；**unresolved 按 conflict_key 合并**——audit 判定覆盖同键、L1/L2 不同键共存（`_merge_unresolved`，2026-08-13；原实现直接覆盖会把 L1/L2 major 丢出 revise 上下文） | `inspect_character` / `inspect_foreshadows` / `inspect_plot_threads` / `inspect_facts`（只读查证，§10） |
-| `revise` | 章 | 角色（复用 Writer 模型） | `draft` + audit 合并后 unresolved findings | 修订后 `draft` + 逐条 `fixed/cannot_fix/dispute` | — |
+| `revise` | 章 | 角色（复用 Writer 模型） | `draft` + unresolved findings + 章节计划/transition + 前章结尾/近期章头 + 文风/字数/本章大纲 | 修订后 `draft` + 逐条 `fixed/cannot_fix/dispute`；回 extract → validate → audit，替换旧稿的记忆和报告 | — |
 | `persist` | 章 | 确定性（编排层） | 确认候选 / 自动放行候选 | 事件/事实/状态/关系/伏笔落库（追加式）；`update_plot_threads` 推进大纲。**relation_change 落库先关闭同 (source,target) 有序对全部活跃旧行（`valid_to`=本章序）并透传候选 `valid_to`（临时盟约）**——保证「每对至多一条活跃」（2026-08-12）。**rewrite 分支（2026-08-12，§7.3）**：显式重写（`rewrite=true`）时自动放行分支**先失效该章旧记忆再写新**——`invalidate_chapter_memory` 关 facts/states/relations 时间窗（硬事实同时 expired）、删 events/开放伏笔/embeddings，同事务原子，无重复行；`_persist_candidates` 保持纯追加、`confirm_candidate` 永不失效 | `save_chapter` / `save_*` / `update_plot_threads` / `invalidate_chapter_memory` |
 | `状态桥` | 章间 | 确定性 | 上章 persist 结果 | 上章沉淀 → 下一章 recall 输入（连续推进） | — |
 | `reflexion` | 批次 | 确定性编排 + 复盘 Agent（LLM，§8.9） | 整批各章 audit findings（agent_runs.detail）+ 已有 active 经验 | 复发率记账（确定性）→ LLM 总结演化 → `writing_lessons` 落库（同 category update 演化 / 无则 create 分级 proposed/active）；短路（无发现 / 已复盘 / 全被覆盖）；失败不阻塞批次 | `record_run`（编排层写库，Agent 不直写） |
@@ -71,24 +74,28 @@ flowchart TD
 ```text
 # 章内路由（单章子图）——混合路由（2026-08-07 确认）：规则层优先，LLM 兜语义
 route_after_audit(state):
-  # ① 规则层（不看 verdict，LLM 不能绕过硬约束）
-  if L1 report 存在 critical 或 summary.l2_major > 0:   # L2 major = 正文-台账语义矛盾（2026-08-13）
-      return "needs_review" if 预算用尽 else "revise"   # critical / L2 major 强制修订/转人工
-  if revision_count >= max_revisions or replan_count >= max_replans:
-      return "needs_review"     # 预算用尽 → 转人工，不无限循环
-  # ② LLM 语义层（采纳 AuditVerdict）
-  match state.audit_verdict.verdict:
-    "pass"    -> return "persist"
-    "rewrite" -> return "revise"                        # 修订循环
-    "replan"  -> return "replan_chapter" if verdict.replan_target=="chapter"
-                                          else "replan_batch"  # 单章重规划 / 整批重规划
+  if error: return "fail"
+  if L1 critical 或 L2 major:
+      return "needs_review" if revision_count >= max_revisions else "revise"
+  if verdict == "rewrite" 或 verdict == "pass" 但仍有 major/critical findings:
+      return "needs_review" if revision_count >= max_revisions else "revise"
+  if verdict == "replan":
+      if replan_count >= max_replans: return "needs_review"
+      return "replan_chapter" if target=="chapter" 或非批次任务 else "replan_batch"
+  return "persist" if verdict == "pass" else "needs_review"
+
+# rewrite/replan 预算独立；干净通过的稿件不因历史轮次用尽而停下。
+# route 节点记录实际去向、规则计数、审核建议，前端直接显示。
+# 单章可逐次选择 auto/manual；manual 禁用批量生成。Plan 与正文是中栏内互斥的
+# 全幅页面，通过 Redis Stream 发送 artifact_reset/delta/complete，前端直接呈现真实
+# 模型增量。网关在返回 task_id 前建立 queued 流，并支持 Last-Event-ID 重放。
 
 # 批次路由（单章结束后）
 route_after_chapter(batch):
   if 本章 audit 判 replan_target=batch:
       return "replan_batch"     # 回 batch_plan 重规划剩余章（蓝图走偏，§6.11）
-  if 本章 critical 冲突未解决:
-      return "batch_paused"     # 暂停批次等人工（§6.11，已确认）
+  if 本章 needs_review:
+      raise BatchReviewError     # 暂停批次等人工（§6.11，已确认）
   if 本章重试+降级后仍失败:
       raise BatchChapterError    # 中断批次，可从失败章续跑（§6.11/§6.12，已确认）
   if batch.position < batch.size:
@@ -109,9 +116,10 @@ route_after_chapter(batch):
 
 - **触发源**：`audit` 的 verdict=rewrite（不是校验报告直接触发）——Audit 输出 L2 findings + 建议 → revise 逐条修；
 - findings 每项带**冲突作用域**（`scope`）：`local`（段落级，预算 1 轮） / `structural`（整章，预算 2 轮）；
-- revise 注入 unresolved findings，要求**逐条结构化响应**（`fixed / cannot_fix / dispute`）+ 修订后草稿；
+- revise 注入 unresolved findings 和完整写作上下文，要求**逐条结构化响应**（`fixed / cannot_fix / dispute`）+ 修订后草稿；随后重新抽取、校验和审核，不能持旧候选落库。
+- 修订预算耗尽且审核仍为 rewrite/replan 时，persist 标记 awaiting_review；作者明确续跑才接受当前稿。干净通过的稿件正常落库。
 - 每条 finding 的"生死"（提出 → 修复 → 复验）落 `finding_status`；
-- **修订超预算 → needs_review**：非 critical 标记待人工、批次继续；critical 暂停批次等人工（§6.11）。
+- **修订超预算 → needs_review**：任何 awaiting_review 都暂停批次，审核通过并落库后才继续（§6.11）。
 
 ## 5. 异常分支与兜底（三层，plan.md §6.12）
 

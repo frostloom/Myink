@@ -26,7 +26,7 @@ const STATUS_LABEL: Record<LessonStatus, string> = {
 }
 
 export function LessonsPanel({ projectId }: Props) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const [lessons, setLessons] = useState<WritingLesson[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)

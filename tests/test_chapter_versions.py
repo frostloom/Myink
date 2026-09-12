@@ -17,7 +17,7 @@ from aiink.api.routes_chapters import (ContentUpdate, list_chapter_versions,
                                        restore_chapter_version,
                                        update_chapter_content)
 from aiink.db import tenant_session
-from aiink.memory.repository import save_chapter
+from aiink.memory.repository import save_chapter, save_review_draft
 from aiink.models import Chapter, ChapterVersion
 
 
@@ -45,11 +45,38 @@ def test_save_chapter_snapshots_previous_versions(temp_project):
         assert hist[0].reason == "batch"
 
 
+def test_review_draft_is_visible_and_final_confirmation_does_not_duplicate_version(temp_project):
+    """待确认稿立即可读；确认同一正文只切状态，不重复快照或增加版本号。"""
+    with tenant_session(temp_project) as db:
+        db.add(Chapter(
+            project_id=uuid.UUID(temp_project), chapter_seq=1,
+            status="draft", content=None, version=1,
+        ))
+        db.flush()
+        draft = save_review_draft(
+            db, project_id=uuid.UUID(temp_project), chapter_seq=1,
+            content="刚生成的正文", summary="待确认摘要",
+        )
+        db.flush()
+        chapter_id = draft.id
+        assert draft.status == "awaiting_review" and draft.content == "刚生成的正文"
+
+    with tenant_session(temp_project) as db:
+        confirmed = save_chapter(
+            db, project_id=uuid.UUID(temp_project), chapter_seq=1,
+            content="刚生成的正文", summary="最终摘要", generation_source="auto",
+        )
+        db.flush()
+        assert confirmed.status == "confirmed"
+        assert confirmed.version == 1
+        assert db.query(ChapterVersion).filter(ChapterVersion.chapter_id == chapter_id).count() == 0
+
+
 def test_put_content_snapshots_and_increments(temp_project):
     """PUT content（编辑保存）→ 快照旧正文 + 版本 +1，列表按版本降序返回。"""
     cid = _seed(temp_project)
     for i, body in enumerate(("改标点后正文", "再改一次正文"), start=2):
-        resp = update_chapter_content(temp_project, cid, ContentUpdate(content=body))
+        resp = update_chapter_content(temp_project, cid, ContentUpdate(content=body, expected_version=i - 1))
         assert resp["version"] == i
     result = list_chapter_versions(temp_project, cid)
     assert result["current_version"] == 3
@@ -62,8 +89,8 @@ def test_put_content_snapshots_and_increments(temp_project):
 def test_restore_rolls_back_content_and_leaves_revert_trace(temp_project):
     """回退到历史版本 → 正文/标题覆盖回目标版，当前再快照（reason=revert），版本 +1。"""
     cid = _seed(temp_project)
-    update_chapter_content(temp_project, cid, ContentUpdate(content="v2 正文"))
-    update_chapter_content(temp_project, cid, ContentUpdate(content="v3 正文"))
+    update_chapter_content(temp_project, cid, ContentUpdate(content="v2 正文", expected_version=1))
+    update_chapter_content(temp_project, cid, ContentUpdate(content="v3 正文", expected_version=2))
 
     resp = restore_chapter_version(temp_project, cid, 2)
     assert resp["version"] == 4
@@ -104,9 +131,43 @@ def test_version_duplicate_insert_rejected_by_constraint(temp_project):
 def test_delete_chapter_cascades_versions(temp_project):
     """级联删章 → 版本历史随章节 FK 级联清除（不回留下孤儿历史）。"""
     cid = _seed(temp_project)
-    update_chapter_content(temp_project, cid, ContentUpdate(content="v2"))
+    update_chapter_content(temp_project, cid, ContentUpdate(content="v2", expected_version=1))
     from aiink.api.routes_chapters import delete_chapter
     delete_chapter(temp_project, cid)
     with tenant_session(temp_project) as db:
         assert db.query(ChapterVersion).filter(
             ChapterVersion.chapter_id == uuid.UUID(cid)).count() == 0
+
+
+def test_stale_editor_cannot_overwrite_newer_content(temp_project):
+    cid = _seed(temp_project)
+    update_chapter_content(temp_project, cid, ContentUpdate(content="另一页面已保存", expected_version=1))
+    with pytest.raises(HTTPException) as exc:
+        update_chapter_content(temp_project, cid, ContentUpdate(content="旧页面草稿", expected_version=1))
+    assert exc.value.status_code == 409
+    with tenant_session(temp_project) as db:
+        ch = db.get(Chapter, uuid.UUID(cid))
+        assert ch.content == "另一页面已保存" and ch.version == 2
+        assert db.query(ChapterVersion).filter(ChapterVersion.chapter_id == ch.id).count() == 1
+
+
+def test_two_simultaneous_saves_only_one_wins(temp_project):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    cid = _seed(temp_project)
+    gate = Barrier(2)
+
+    def save(text):
+        gate.wait(timeout=10)
+        try:
+            update_chapter_content(temp_project, cid, ContentUpdate(content=text, expected_version=1))
+            return 200
+        except HTTPException as exc:
+            return exc.status_code
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        assert sorted(pool.map(save, ["甲页面", "乙页面"])) == [200, 409]
+    with tenant_session(temp_project) as db:
+        ch = db.get(Chapter, uuid.UUID(cid))
+        assert ch.version == 2 and ch.content in ("甲页面", "乙页面")

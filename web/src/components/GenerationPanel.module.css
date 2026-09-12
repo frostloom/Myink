@@ -1,12 +1,72 @@
 .panel {
   display: flex;
+  min-width: 0;
   flex-direction: column;
-  gap: 16px;
+  overflow: hidden;
+}
+
+.head {
+  padding: 14px 16px;
+}
+
+.toggle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+  border-radius: 4px;
 }
 
 .heading {
-  font-size: 22px;
-  color: #443c38;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.next,
+.caret {
+  color: var(--ink-subtle);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.caret {
+  width: 12px;
+  text-align: center;
+}
+
+.body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+  padding: 14px 16px 18px;
+  border-top: 1px solid var(--line);
+}
+
+.notice {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid #b4dfbd;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 12%, white);
+  color: #42654c;
+  font-size: var(--text-small);
+  line-height: 1.5;
 }
 
 .form {
@@ -20,8 +80,68 @@
   font-size: var(--text-small);
 }
 
+.modeSwitch {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 6px;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #fffdf8;
+}
+
+.modeSwitch legend {
+  padding: 0 4px;
+  color: var(--ink-muted);
+  font-size: 11px;
+}
+
+.modeSwitch button {
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.modeButton {
+  background: transparent;
+  color: var(--ink-muted);
+}
+
+.modeActive {
+  border-color: #91cfa8 !important;
+  background: #eaf7ef;
+  color: #286a43;
+  font-weight: 650;
+}
+
+.modeSwitch button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.modeSwitch span {
+  grid-column: 1 / -1;
+  color: var(--ink-subtle);
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.batchDisabled {
+  margin: 0;
+  color: var(--ink-subtle);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .batchRow {
-  display: flex;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
   align-items: center;
   gap: var(--space-3);
 }
@@ -37,8 +157,10 @@
 }
 
 .batchHint {
+  min-width: 0;
   color: var(--ink-muted);
   font-size: var(--text-small);
+  overflow-wrap: anywhere;
 }
 
 .emptyHint {

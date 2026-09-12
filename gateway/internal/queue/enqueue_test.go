@@ -20,7 +20,7 @@ const testQueuePrefix = "-gtest-"
 
 func newTestRedis(t *testing.T) *redis.Client {
 	t.Helper()
-	r := redis.New("localhost:6380", "")
+	r := redis.New(config.Load().RedisAddr, "")
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	if err := r.Ping(ctx); err != nil {

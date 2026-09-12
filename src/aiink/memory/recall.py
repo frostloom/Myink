@@ -23,12 +23,13 @@ import uuid
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from aiink.config import settings
 from aiink.memory import repository as repo
 from aiink.memory.embedder import get_embedder
 from aiink.memory.vector_store import PgvectorStore
-from aiink.models import Character, Event
+from aiink.models import Chapter, Character, Event, MemoryCandidate
 from aiink.schemas import RetrievedContext
+from aiink.context_budget import estimate_tokens
+from aiink.validation.continuity import opening_excerpt
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ _MAX_LESSONS = 8
 # 关键词腿术语上限（人物名去重后）
 _MAX_KEYWORD_TERMS = 12
 # 上一章结尾片段上限（字）：只够本章接续落点，不把全文喂进上下文（§11 防开头雷同）
-_TAIL_CAP = 300
+_TAIL_CAP = 800
 
 
 def _tail_of(content: str | None) -> str:
@@ -71,7 +72,10 @@ def _tail_of(content: str | None) -> str:
     """
     if not content:
         return ""
-    tail = content.strip()[-_TAIL_CAP:]
+    text = content.strip()
+    if len(text) <= _TAIL_CAP:
+        return text  # 未截断时首段就是完整证据，不能因换行将其丢掉。
+    tail = text[-_TAIL_CAP:]
     idx = tail.find("\n")
     if 0 < idx <= 80:
         tail = tail[idx + 1:].lstrip()
@@ -91,7 +95,7 @@ def _merge_settings_constraints(session: Session, project_id: uuid.UUID,
         return
     seen = {f.get("content") for f in facts_out}
     for text in settings_row.hard_constraints:
-        text = str(text or "").strip()[: _CONTENT_CAP]
+        text = str(text or "").strip()
         if text and text not in seen:
             facts_out.append({"content": text, "source_chapter": None,
                               "category": "规则", "is_hard": True, "source": "project_settings"})
@@ -117,28 +121,43 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
     else:
         hard_facts = repo.get_hard_facts(session, project_id, chapter_seq)
         # content 必须带上：硬约束恒在 Top-K（§7.2），注入的是可读文本而非裸 id
-        #（裸 id 模型不可反查 → 硬约束对生成实际不可见）。截断防超长规则撑爆预算。
+        #（裸 id 模型不可反查 → 硬约束对生成实际不可见）。硬约束保留全文，由提示词总预算检查。
         facts_out = [
             {"fact_id": str(f.id), "source_chapter": f.source_chapter,
-             "content": (f.content or "")[:300], "category": f.category, "is_hard": bool(f.is_hard)}
+             "content": (f.content or "") if f.is_hard else (f.content or "")[:300], "category": f.category, "is_hard": bool(f.is_hard)}
             for f in hard_facts
         ]
         # §7.11 设定是活数据：project_settings.hard_constraints 一并并入硬约束（按内容去重，
         # 避免与 facts 表同源重复）。示例书（长安夜行/星舰远征）的题材硬约束此前从未生效。
         _merge_settings_constraints(session, project_id, facts_out)
         shared_context["hard_facts"] = facts_out
-    recent_events = repo.get_recent_events(session, project_id, limit=10)
+    recent_events = repo.get_recent_events(session, project_id, limit=10, before_chapter=chapter_seq)
 
     # 上一章摘要 + 结尾片段（短期上下文）。摘要概括主线；结尾片段是本章接续锚点——
-    # 从上一章收尾的具体情境继续展开，而非从零铺陈场景（§11 开头雷同的根治之二：
-    # 大纲位定「写什么」，结尾片段定「从哪接上」。不注入上一章开头，那是治标 hack）。
+    # 精确取前一章：重写/待确认重试时，latest 可能是本章或未来章，不能据此丢失前情。
     short: list[dict] = []
-    prev = repo.get_latest_chapter(session, project_id)
-    if prev and prev.chapter_seq < chapter_seq:
+    rejected = session.query(MemoryCandidate).filter(
+        MemoryCandidate.project_id == project_id, MemoryCandidate.status == "rejected",
+        MemoryCandidate.source_chapter <= chapter_seq).all()
+    rejected = [r for r in rejected if (r.review or {}).get("mode") == "revise"]
+    if rejected:
+        from aiink.workflow.review import rejection_text
+        short.append({"kind": "author_review", "text": rejection_text(rejected)})
+
+    prev = repo.get_chapter(session, project_id, chapter_seq - 1) if chapter_seq > 1 else None
+    if prev:
         short.append({"kind": "prev_chapter_summary", "chapter": prev.chapter_seq, "summary": prev.summary or ""})
         tail = _tail_of(prev.content)
         if tail:
             short.append({"kind": "prev_chapter_tail", "chapter": prev.chapter_seq, "tail": tail})
+
+    # 开场仅作差异化参照，与必须接续的章尾明确分开。只取已确认的历史章，最近优先。
+    history = session.execute(select(Chapter).where(
+        Chapter.project_id == project_id, Chapter.chapter_seq < chapter_seq,
+        Chapter.status == "confirmed", Chapter.content.is_not(None),
+    ).order_by(Chapter.chapter_seq.desc()).limit(4)).scalars().all()
+    openings = [{"chapter": ch.chapter_seq, "text": opening_excerpt(ch.content)}
+                for ch in history if (ch.content or "").strip()]
 
     # 出场人物状态快照（含当前关系——L2 正文-台账语义比对与写前预防的台账侧输入，
     # _render_entity 一并注入 write/plan/audit/extract；只取 ch 为 source 的有序对活跃行）
@@ -192,10 +211,13 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
     else:
         recall_stats = {}
 
+    # 混合召回也可能返回本章旧版/未来事件；不能把这些当作已经发生的前情。
+    events_out = [e for e in events_out if e["chapter"] < chapter_seq]
     ctx = RetrievedContext(
         long_term_facts=facts_out,
         mid_term_events=events_out,
         short_context=short,
+        recent_openings=openings,
         entity_snapshots=snapshots,
         open_foreshadows=foreshadows_out,
         plot_threads=threads_out,
@@ -203,8 +225,8 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
     )
     if user_instruction:
         ctx.short_context.append({"kind": "user_instruction", "text": user_instruction})
-    # 召回预算（§7.4）：正文 tokens 估算只读层，节点组装时按 budget 截断
-    ctx.token_usage = settings.recall_token_budget
+    # 记录召回数据的估算量；提示词组装时按完整消息预算选择可选记忆。
+    ctx.token_usage = estimate_tokens(ctx.model_dump(exclude={"token_usage", "recall_stats"}))
     ctx.recall_stats = recall_stats  # §16 召回占比（混合召回时填充，无 hybrid → {}）
     return ctx
 

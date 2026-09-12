@@ -146,6 +146,7 @@ def get_chapter(project_id: str, chapter_id: str) -> dict:
             "title": chapter.title,
             "status": chapter.status,
             "content": chapter.content,
+            "version": chapter.version or 1,
             "summary": chapter.summary,
         }
 

@@ -129,11 +129,28 @@ def _run_batch(project_id: str, monkeypatch, batch_stub=None,
     )
     bg_mod = _install(monkeypatch, chapter_stub, batch_stub)
     thread = str(uuid.uuid4())
-    result = build_batch_graph(build_chapter_graph()).invoke(
+    from langgraph.checkpoint.memory import InMemorySaver
+    from aiink.workflow.batch_graph import BatchReviewError
+    from aiink.workflow.runner import resume_thread
+    from aiink.models import MemoryCandidate
+    checkpoint = InMemorySaver()
+    graph = build_batch_graph(build_chapter_graph(checkpointer=checkpoint), checkpointer=checkpoint)
+    initial = {"project_id": project_id, "batch_task_id": thread, "size": size,
+               "position": 0, "start_chapter": start}
+    try:
+        result = graph.invoke(
         {"project_id": project_id, "batch_task_id": thread, "size": size,
          "position": 0, "start_chapter": start},
-        config={"configurable": {"thread_id": thread}},
-    )
+            config={"configurable": {"thread_id": thread}},
+        )
+    except BatchReviewError:
+        # 审核同时给 pass+major 不再自动放行。复盘测试显式模拟作者接受当前稿、
+        # 拒绝候选入库后的续跑，保留已评审的 major 供复盘分级。
+        with tenant_session(project_id) as db:
+            for candidate in db.query(MemoryCandidate).filter_by(status="pending").all():
+                candidate.status = "rejected"
+                candidate.review = {"mode": "memory_only"}
+        result = resume_thread(graph, thread, initial)
     return result, bg_mod, thread
 
 

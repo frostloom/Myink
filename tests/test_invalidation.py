@@ -284,7 +284,7 @@ def test_get_character_state_valid_from_boundary(temp_project):
 
 
 def test_recall_after_invalidate_no_stale_keeps_other(temp_project, fake_embedder):
-    """§16 读侧闭环：build_context 不含已失效章 ch5 事实/事件、仍含 ch6。"""
+    """§16 读侧闭环：写 ch7 时不含已失效 ch5 事实/事件、仍含历史 ch6。"""
     _seed_fact(temp_project, 5, "事实5", is_hard=False)
     _seed_fact(temp_project, 6, "事实6", is_hard=False)
     _seed_event(temp_project, 5, "事件5")
@@ -292,7 +292,7 @@ def test_recall_after_invalidate_no_stale_keeps_other(temp_project, fake_embedde
     with tenant_session(temp_project) as db:
         invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=5)
         db.flush()
-        ctx = build_context(db, project_id=uuid.UUID(temp_project), chapter_seq=6)
+        ctx = build_context(db, project_id=uuid.UUID(temp_project), chapter_seq=7)
     fact_contents = [f["content"] for f in ctx.long_term_facts]
     event_summaries = [e["summary"] for e in ctx.mid_term_events]
     assert "事实5" not in fact_contents and "事实6" in fact_contents

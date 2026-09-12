@@ -2,7 +2,52 @@
 // 批次按 {batch_id}:ch{seq} 子线程切；单章任务按发起时带出的 activeChapterSeq 对齐。
 // 选中章为 null（未选）→ 不过滤（时间线整体兜底，保持原行为）。
 
-import type { AgentRun } from '../types'
+import type { AgentRun, ChapterMeta, TaskSummary } from '../types'
+
+/**
+ * 单章任务结束后打开刚生成的章节，让 awaiting_review 的候选和流转立即可见。
+ * 批次没有 activeChapterSeq：仅在用户尚未选章时打开最早一章。
+ */
+export function chapterToOpenAfterTask(
+  chapters: ChapterMeta[],
+  activeChapterSeq: number | null,
+  selectedCid: string | null,
+): ChapterMeta | null {
+  if (activeChapterSeq !== null) {
+    return chapters.find((chapter) => chapter.chapter_seq === activeChapterSeq) ?? null
+  }
+  if (selectedCid || chapters.length === 0) return null
+  return [...chapters].sort((a, b) => a.chapter_seq - b.chapter_seq)[0]
+}
+
+export interface PendingAutoOpen {
+  taskId: string
+  chapterSeq: number | null
+}
+
+/** 历史终态任务不得触发自动跳章；只有当前页面明确登记的生成任务可以跳一次。 */
+export function chapterToOpenForPendingTask(
+  chapters: ChapterMeta[],
+  pending: PendingAutoOpen | null,
+  activeTaskId: string | null,
+  taskPhase: string,
+  selectedCid: string | null,
+): ChapterMeta | null {
+  if (taskPhase !== 'terminal' || !pending || pending.taskId !== activeTaskId) return null
+  return chapterToOpenAfterTask(chapters, pending.chapterSeq, selectedCid)
+}
+
+/** 页面刷新后优先恢复仍在生成或待处理的章节，计划确认页也不能丢。 */
+export function latestChapterAwaitingReview(chapters: ChapterMeta[]): ChapterMeta | null {
+  return chapters
+    .filter((chapter) => ['planning', 'writing', 'awaiting_review'].includes(chapter.status))
+    .sort((a, b) => b.chapter_seq - a.chapter_seq)[0] ?? null
+}
+
+/** API 已按时间倒序；右栏只取最新一次生成任务，忽略校验/全局审计等其他任务。 */
+export function latestGenerationTask(tasks: TaskSummary[]): TaskSummary | null {
+  return tasks.find((task) => task.task_type === 'chapter_generate' || task.task_type === 'batch_generate') ?? null
+}
 
 export interface ChapterFilterOpts {
   /** 活动任务 id（SSE 时间线）；null = 无活动任务，不过滤 */
