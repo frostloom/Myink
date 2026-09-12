@@ -198,7 +198,7 @@ def delete_project(project_id: str) -> dict:
             raise HTTPException(status_code=404, detail="作品不存在")
         active = db.query(Task.id).filter(
             Task.project_id == pid,
-            Task.status.in_(("queued", "running", "paused", "awaiting_review")),
+            Task.status.in_(("queued", "running", "paused", "awaiting_plan", "awaiting_review")),
         ).count()
         inflight = get_redis().exists(inflight_key(str(proj.user_id), str(pid)))
         if active or inflight:

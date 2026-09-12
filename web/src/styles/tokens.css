@@ -65,7 +65,7 @@
 
   /* 布局 */
   --rail-width: 252px;
-  --right-panel-width: 336px;
+  --right-panel-width: clamp(360px, 25vw, 430px);
   --content-max: 1280px;
   --shadow-soft: 0 10px 28px rgba(95, 77, 58, 0.1), 0 2px 5px rgba(95, 77, 58, 0.05);
   --shadow-lift: 0 15px 32px rgba(95, 77, 58, 0.14), 0 3px 7px rgba(95, 77, 58, 0.07);

@@ -1,0 +1,271 @@
+{
+  "fixture": "纯合成现实题材，不含用户小说内容",
+  "initial": {
+    "chars": 2841,
+    "needs_review": false
+  },
+  "final_chars": 3283,
+  "error": null,
+  "needs_review": false,
+  "bad_sentence_removed": true,
+  "runs": [
+    {
+      "node": "load_state",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "error": null,
+      "detail": {
+        "characters": 2
+      }
+    },
+    {
+      "node": "recall",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "error": null,
+      "detail": {
+        "facts": 1,
+        "events": 0,
+        "snapshots": 2,
+        "foreshadows": 0,
+        "threads": 0,
+        "context_tokens_est": 980
+      }
+    },
+    {
+      "node": "plan_chapter",
+      "input_tokens": 745,
+      "output_tokens": 582,
+      "error": null,
+      "detail": null
+    },
+    {
+      "node": "write",
+      "input_tokens": 1866,
+      "output_tokens": 2041,
+      "error": null,
+      "detail": {
+        "tool_trace": []
+      }
+    },
+    {
+      "node": "extract",
+      "input_tokens": 3311,
+      "output_tokens": 726,
+      "error": null,
+      "detail": null
+    },
+    {
+      "node": "validate",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "error": null,
+      "detail": {
+        "findings_total": 1,
+        "critical": 0,
+        "l2_major": 0,
+        "unresolved": 1
+      }
+    },
+    {
+      "node": "audit",
+      "input_tokens": 3842,
+      "output_tokens": 65,
+      "error": null,
+      "detail": {
+        "tool_trace": []
+      }
+    },
+    {
+      "node": "audit",
+      "input_tokens": 3436,
+      "output_tokens": 228,
+      "error": null,
+      "detail": {
+        "tool_trace": [
+          {
+            "tool": "inspect_facts",
+            "arguments": {},
+            "result": "{\"count\": 0, \"facts\": []}"
+          },
+          {
+            "tool": "inspect_plot_threads",
+            "arguments": {},
+            "result": "{\"count\": 0, \"threads\": []}"
+          },
+          {
+            "tool": "inspect_foreshadows",
+            "arguments": {},
+            "result": "{\"count\": 0, \"foreshadows\": []}"
+          }
+        ],
+        "audit_verdict": {
+          "verdict": "pass",
+          "replan_target": null,
+          "findings": [],
+          "reasons": [
+            "计划要求：修复观测站供电、发现漏水接线盒、林川与许宁协作处理危机并以此埋下外力破坏与天气异常的伏笔。本章严格按此展开，主线未被偏移。",
+            "场景推进由检查到修复、再到部分恢复供电，节奏环环相扣，无机械重复或中断；结尾以风力仪晃动意象成功搭建悬悬念，收束自然。",
+            "林川刻意克制膝伤、许宁从纠正操作到专业受挫、互相补位等细节，保持两人性格区分，符合真实世界约束，无超自然手段。",
+            "接线盒凹痕与预制胶皮的伏笔已按计划植入，未刻意提前解释，铺垫适度且不冲突。",
+            "全章仅出现林川与许宁，未引入新人物；历史数据与接续逻辑暂无跨章矛盾，无不可复查的篡改动作。"
+          ],
+          "confidence": 0.97
+        }
+      }
+    },
+    {
+      "node": "route",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "error": null,
+      "detail": {
+        "route": "persist",
+        "audit_verdict": {
+          "verdict": "pass",
+          "replan_target": null,
+          "findings": [],
+          "reasons": [
+            "计划要求：修复观测站供电、发现漏水接线盒、林川与许宁协作处理危机并以此埋下外力破坏与天气异常的伏笔。本章严格按此展开，主线未被偏移。",
+            "场景推进由检查到修复、再到部分恢复供电，节奏环环相扣，无机械重复或中断；结尾以风力仪晃动意象成功搭建悬悬念，收束自然。",
+            "林川刻意克制膝伤、许宁从纠正操作到专业受挫、互相补位等细节，保持两人性格区分，符合真实世界约束，无超自然手段。",
+            "接线盒凹痕与预制胶皮的伏笔已按计划植入，未刻意提前解释，铺垫适度且不冲突。",
+            "全章仅出现林川与许宁，未引入新人物；历史数据与接续逻辑暂无跨章矛盾，无不可复查的篡改动作。"
+          ],
+          "confidence": 0.97
+        },
+        "revision_count": 0,
+        "replan_count": 0,
+        "rule_summary": {
+          "total": 1,
+          "critical": 0,
+          "resolved": 0
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "error": null,
+      "detail": {
+        "candidates": 7,
+        "status": "auto_confirm",
+        "rewrite": false,
+        "invalidation": null
+      }
+    },
+    {
+      "node": "summarize",
+      "input_tokens": 2158,
+      "output_tokens": 89,
+      "error": null,
+      "detail": null
+    },
+    {
+      "node": "revise",
+      "input_tokens": 3633,
+      "output_tokens": 2408,
+      "error": null,
+      "detail": null
+    },
+    {
+      "node": "extract",
+      "input_tokens": 3684,
+      "output_tokens": 798,
+      "error": null,
+      "detail": null
+    },
+    {
+      "node": "validate",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "error": null,
+      "detail": {
+        "findings_total": 0,
+        "critical": 0,
+        "l2_major": 0,
+        "unresolved": 0
+      }
+    },
+    {
+      "node": "audit",
+      "input_tokens": 4215,
+      "output_tokens": 350,
+      "error": null,
+      "detail": {
+        "tool_trace": [],
+        "audit_verdict": {
+          "verdict": "pass",
+          "replan_target": null,
+          "findings": [],
+          "reasons": [
+            "剧情符合章节计划：本章完整覆盖了计划中的场景与目标，即检查/发现/修复接线盒漏水并恢复关键供电，动作推进主线，无主线偏移。",
+            "完成了埋设伏笔的任务：接线盒铝壳上规整的撬压凹痕、被剪子铰过（齐口横断）而不是扯断的胶皮，人物『不剪断』的判断为外力破坏线索埋点，与『这雨是怎么来的』的异常天气疑问呼应，均符合 hooks_to_plant。",
+            "人设一致：林川左膝扭伤全程受限（重心压右脚、撑膝借力、腿抖、扶凳站起），符合硬约束；许宁自称看资料不碰电却需动手，与章内『她会用电』的合理表现平衡得当。两个人物全程在场，无新增人物。",
+            "现实题材无超自然介入：修复全部通过实际动手（剥线、压线鼻、浇封树脂、合闸试电）完成，符合物理逻辑，杜绝瞬间移动类超自然设定。",
+            "回应悬念与合理收尾：末段林川对外力痕迹的警戒、对持续暴雨与排水沟/中继器的安排，为下一夜留下自然承接，收束了本章推进的线路，无遗留未完成请求。",
+            "序章无前置章节或开放伏笔，单章内部冲突点（如树脂见水起壳、铝线混铜端子过紧易发热）均已在文中给出专业应对，未产生矛盾。"
+          ],
+          "confidence": 0.97
+        }
+      }
+    },
+    {
+      "node": "route",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "error": null,
+      "detail": {
+        "route": "persist",
+        "audit_verdict": {
+          "verdict": "pass",
+          "replan_target": null,
+          "findings": [],
+          "reasons": [
+            "剧情符合章节计划：本章完整覆盖了计划中的场景与目标，即检查/发现/修复接线盒漏水并恢复关键供电，动作推进主线，无主线偏移。",
+            "完成了埋设伏笔的任务：接线盒铝壳上规整的撬压凹痕、被剪子铰过（齐口横断）而不是扯断的胶皮，人物『不剪断』的判断为外力破坏线索埋点，与『这雨是怎么来的』的异常天气疑问呼应，均符合 hooks_to_plant。",
+            "人设一致：林川左膝扭伤全程受限（重心压右脚、撑膝借力、腿抖、扶凳站起），符合硬约束；许宁自称看资料不碰电却需动手，与章内『她会用电』的合理表现平衡得当。两个人物全程在场，无新增人物。",
+            "现实题材无超自然介入：修复全部通过实际动手（剥线、压线鼻、浇封树脂、合闸试电）完成，符合物理逻辑，杜绝瞬间移动类超自然设定。",
+            "回应悬念与合理收尾：末段林川对外力痕迹的警戒、对持续暴雨与排水沟/中继器的安排，为下一夜留下自然承接，收束了本章推进的线路，无遗留未完成请求。",
+            "序章无前置章节或开放伏笔，单章内部冲突点（如树脂见水起壳、铝线混铜端子过紧易发热）均已在文中给出专业应对，未产生矛盾。"
+          ],
+          "confidence": 0.97
+        },
+        "revision_count": 1,
+        "replan_count": 0,
+        "rule_summary": {
+          "total": 0,
+          "critical": 0,
+          "resolved": 0
+        }
+      }
+    },
+    {
+      "node": "persist",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "error": null,
+      "detail": {
+        "candidates": 8,
+        "status": "auto_confirm",
+        "rewrite": true,
+        "invalidation": {
+          "facts_closed": 1,
+          "states_closed": 2,
+          "relations_closed": 1,
+          "events_deleted": 1,
+          "foreshadows_closed": 1,
+          "embeddings_deleted": 0
+        }
+      }
+    },
+    {
+      "node": "summarize",
+      "input_tokens": 2466,
+      "output_tokens": 90,
+      "error": null,
+      "detail": null
+    }
+  ]
+}

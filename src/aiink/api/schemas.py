@@ -38,6 +38,7 @@ class ChapterMetaOut(BaseModel):
 
 
 class ChapterDetailOut(ChapterMetaOut):
+    version: int
     content: str | None = None
     summary: str | None = None
 
@@ -158,6 +159,7 @@ class MemoryCandidateOut(BaseModel):
     confidence: float
     status: str
     created_at: str | None = None
+    review: dict | None = None
 
 
 class CandidateActionOut(BaseModel):
@@ -188,7 +190,25 @@ class ProjectSettingsOut(BaseModel):
     style_profile: dict = Field(default_factory=dict)
     skill_pack: str | None = None
     model_routes: dict = Field(default_factory=dict)
+    model_connections: list[dict] = Field(default_factory=list)
     version: int
+
+
+class ModelListOut(BaseModel):
+    """模型连接探针：拉取可用模型 id（设置页「获取模型列表」；中转不支持 /models 时 ok=False）。"""
+
+    ok: bool
+    models: list[str] = Field(default_factory=list)
+    error: str | None = None
+
+
+class ConnectionTestOut(BaseModel):
+    """模型连接探针：ping 联通结果（ok + 耗时；reply 为截断回显，可能为空）。"""
+
+    ok: bool
+    latency_ms: int = 0
+    reply: str | None = None
+    error: str | None = None
 
 
 class SkillPresetOut(BaseModel):

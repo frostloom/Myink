@@ -36,6 +36,7 @@ export interface ChapterMeta {
 
 /** 单章详情（get_chapter，main.py:117；无 version——version 由保存响应返回） */
 export interface ChapterDetail extends ChapterMeta {
+  version: number
   content: string | null
   summary: string | null
 }
@@ -69,6 +70,7 @@ export type TaskStatus =
   | 'queued'
   | 'running'
   | 'paused'
+  | 'awaiting_plan'
   | 'awaiting_review'
   | 'failed'
   | 'cancelled'
@@ -91,6 +93,7 @@ export type RunNode =
   | 'load_state'
   | 'recall'
   | 'plan_chapter'
+  | 'plan_review'
   | 'write'
   | 'extract'
   | 'validate'
@@ -117,7 +120,55 @@ export interface AgentRun {
   degraded: boolean
   error: string | null
   /** 确定性节点记执行统计；audit 行带 audit_verdict */
-  detail: { audit_verdict?: AuditVerdict } | null
+  detail: {
+    audit_verdict?: AuditVerdict
+    route?: string
+    revision_count?: number
+    replan_count?: number
+    rule_summary?: Record<string, number>
+    plan?: ChapterPlan
+    plan_attempt?: number
+    writing_mode?: WritingMode
+    original_plan?: ChapterPlan
+    approved_plan?: ChapterPlan
+    changed?: boolean
+    status?: string
+  } | null
+}
+
+export type WritingMode = 'auto' | 'manual'
+
+export interface ChapterPlanScene {
+  location_id: string
+  participants: string[]
+  goal: string
+  time?: string | null
+}
+
+export interface ChapterPlanCharacter {
+  character_id: string
+  expected_state: Record<string, unknown>
+}
+
+export interface ChapterPlanTransition {
+  mode: 'continue' | 'time_jump' | 'scene_cut' | 'opening'
+  anchor_quote: string
+  pending_action: string
+  opening_beat: string
+  bridge: string
+}
+
+export interface ChapterPlan {
+  project_id?: string | null
+  chapter_seq?: number | null
+  goals: string[]
+  scenes: ChapterPlanScene[]
+  characters: ChapterPlanCharacter[]
+  hooks_to_plant: string[]
+  hooks_to_resolve: string[]
+  expected_events: string[]
+  hard_constraints: string[]
+  transition?: ChapterPlanTransition | null
 }
 
 export type Verdict = 'pass' | 'rewrite' | 'replan'
@@ -199,6 +250,7 @@ export interface MemoryCandidate {
   payload: Record<string, unknown>
   confidence: number
   status: 'pending' | 'confirmed' | 'rejected'
+  review?: { mode?: "revise" | "memory_only"; reason?: string; applied?: boolean; superseded?: boolean } | null
   created_at: string | null
 }
 
@@ -260,12 +312,52 @@ export interface LessonActionResponse {
 /** 文风档案（§7.12 StyleProfile：键值透传，validate_profile 顶层 None 丢弃） */
 export type StyleProfile = Record<string, unknown>
 
+export type ModelProtocol = 'openai' | 'anthropic'
+
+export interface ModelConnection {
+  id: string
+  name: string
+  protocol: ModelProtocol
+  base_url: string
+  model: string
+  has_api_key: boolean
+}
+
+export interface ModelConnectionInput extends Omit<ModelConnection, 'has_api_key'> {
+  api_key?: string
+}
+
 /** 创作设置（GET/PUT settings，routes_settings.py；model_routes 全量替换） */
 export interface ProjectSettings {
   style_profile: StyleProfile
   skill_pack: string | null
   model_routes: Record<string, string>
+  model_connections: ModelConnection[]
   version: number
+}
+
+/** 模型连接探针请求（未保存的新连接传明文 api_key；已保存连接可传 connection_id 复用密钥） */
+export interface ModelProbeRequest {
+  protocol: ModelProtocol
+  base_url: string
+  model?: string
+  api_key?: string
+  connection_id?: string
+}
+
+/** 拉取可用模型列表（settings/models；中转不支持 /models 时 ok=false + error） */
+export interface ModelListResult {
+  ok: boolean
+  models: string[]
+  error: string | null
+}
+
+/** 联通测试结果（settings/test-connection；reply 为截断回显，可能为空） */
+export interface ConnectionTestResult {
+  ok: boolean
+  latency_ms: number
+  reply: string | null
+  error: string | null
 }
 
 /** 题材 Skill 预设（skill-presets，routes_style.py；id 即 skill_pack marker） */

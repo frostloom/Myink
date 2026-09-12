@@ -79,13 +79,19 @@ def get_hard_facts(session: Session, project_id: uuid.UUID, chapter_seq: int | N
         )
     else:
         q = q.where((Fact.is_hard.is_(True)) | (Fact.valid_to.is_(None)))
-    return list(session.execute(q.order_by(Fact.is_hard.desc(), Fact.created_at.desc()).limit(100)).scalars())
+    # 硬约束全部保留；超预算由提示词组装显式拒绝，不能被 LIMIT 静默丢弃。
+    hard = list(session.execute(q.where(Fact.is_hard.is_(True)).order_by(Fact.created_at.desc())).scalars())
+    soft = list(session.execute(q.where(Fact.is_hard.is_(False)).order_by(Fact.created_at.desc()).limit(100)).scalars())
+    return hard + soft
 
 
-def get_recent_events(session: Session, project_id: uuid.UUID, limit: int = 20) -> list[Event]:
+def get_recent_events(session: Session, project_id: uuid.UUID, limit: int = 20,
+                      *, before_chapter: int | None = None) -> list[Event]:
+    query = select(Event).where(Event.project_id == project_id)
+    if before_chapter is not None:
+        query = query.where(Event.source_chapter < before_chapter)
     return list(session.execute(
-        select(Event).where(Event.project_id == project_id)
-        .order_by(Event.source_chapter.desc()).limit(limit)
+        query.order_by(Event.source_chapter.desc()).limit(limit)
     ).scalars())
 
 
@@ -166,6 +172,35 @@ def get_chapter(session: Session, project_id: uuid.UUID, chapter_seq: int) -> Ch
     ).scalar_one_or_none()
 
 
+def ensure_chapter_placeholder(session: Session, *, project_id: uuid.UUID,
+                               chapter_seq: int, status: str = "writing") -> Chapter:
+    """在工作流开始时物化目标章节，让正文、流转和审核从一开始就有明确归属。"""
+    if status not in ("planning", "writing"):
+        raise ValueError(f"非法章节占位状态: {status}")
+    chapter = session.execute(
+        select(Chapter).where(
+            Chapter.project_id == project_id,
+            Chapter.chapter_seq == chapter_seq,
+        ).with_for_update()
+    ).scalar_one_or_none()
+    if chapter is None:
+        chapter = Chapter(
+            project_id=project_id,
+            chapter_seq=chapter_seq,
+            status=status,
+            generation_source="auto",
+            version=1,
+        )
+        session.add(chapter)
+        session.flush()
+    elif chapter.content is None and chapter.status in (
+        "planning", "writing", "failed", "cancelled",
+    ):
+        chapter.status = status
+        chapter.generation_source = "auto"
+    return chapter
+
+
 def get_latest_chapter(session: Session, project_id: uuid.UUID) -> Chapter | None:
     return session.execute(
         select(Chapter).where(Chapter.project_id == project_id)
@@ -206,6 +241,30 @@ def snapshot_chapter(session: Session, chapter: Chapter, reason: str = "edit") -
     ))
 
 
+def save_review_draft(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
+                      content: str, summary: str | None = None,
+                      title: str | None = None) -> Chapter:
+    """保存可见的待确认正文；人工确认只控制设定入库，不隐藏已经生成的文章。"""
+    chapter = session.execute(
+        select(Chapter).where(Chapter.project_id == project_id,
+                              Chapter.chapter_seq == chapter_seq).with_for_update()
+    ).scalar_one_or_none()
+    if chapter is None:
+        chapter = Chapter(project_id=project_id, chapter_seq=chapter_seq,
+                          status="awaiting_review", version=1)
+        session.add(chapter)
+    elif chapter.content != content and chapter.content is not None:
+        snapshot_chapter(session, chapter, reason="auto_review_draft")
+        chapter.version = (chapter.version or 0) + 1
+    chapter.content = content
+    chapter.summary = summary
+    if title is not None:
+        chapter.title = title
+    chapter.status = "awaiting_review"
+    chapter.generation_source = "auto"
+    return chapter
+
+
 def save_chapter(session: Session, *, project_id: uuid.UUID, chapter_seq: int, content: str,
                  summary: str | None = None, title: str | None = None,
                  generation_source: str = "manual") -> Chapter:
@@ -218,7 +277,8 @@ def save_chapter(session: Session, *, project_id: uuid.UUID, chapter_seq: int, c
     if chapter is None:
         chapter = Chapter(project_id=project_id, chapter_seq=chapter_seq, status="confirmed", version=1)
         session.add(chapter)
-    else:
+    elif not (chapter.status == "awaiting_review" and chapter.content == content):
+        # 待确认正文已经对用户可见；最终确认同一稿只切状态，不制造一份重复历史版本。
         snapshot_chapter(session, chapter, reason=generation_source or "edit")  # 版本表快照旧状态
         chapter.version = (chapter.version or 0) + 1
     chapter.content = content

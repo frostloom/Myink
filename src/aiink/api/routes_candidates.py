@@ -10,6 +10,9 @@ critical 冲突时 persist 把 extract 候选写入待确认池、章节/任务�
 from __future__ import annotations
 
 import uuid
+from typing import Literal
+
+from pydantic import BaseModel, Field
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -20,6 +23,11 @@ from aiink.models import MemoryCandidate
 from aiink.workflow import nodes
 
 router = APIRouter(prefix="/internal/v1", tags=["candidates"])
+
+
+class RejectCandidateIn(BaseModel):
+    mode: Literal["revise", "memory_only"] = "revise"
+    reason: str = Field(default="", max_length=2000)
 
 
 def _cand_id(raw: str) -> uuid.UUID:
@@ -45,6 +53,7 @@ def list_candidates(project_id: str, status: str = "pending") -> list[dict]:
                 "payload": c.payload,
                 "confidence": c.confidence,
                 "status": c.status,
+                "review": c.review,
                 "created_at": c.created_at.isoformat() if c.created_at else None,
             }
             for c in q.all()
@@ -65,7 +74,7 @@ def confirm_candidate(project_id: str, candidate_id: str) -> dict:
 
 @router.post("/projects/{project_id}/candidates/{candidate_id}/reject",
              dependencies=[Depends(require_owner)], response_model=CandidateActionOut)
-def reject_candidate(project_id: str, candidate_id: str) -> dict:
+def reject_candidate(project_id: str, candidate_id: str, body: RejectCandidateIn | None = None) -> dict:
     """拒绝候选（幻觉/误抽清理）。幂等：已处理候选返回 409。"""
     with tenant_session(project_id) as db:
         cand = db.get(MemoryCandidate, _cand_id(candidate_id))
@@ -74,5 +83,7 @@ def reject_candidate(project_id: str, candidate_id: str) -> dict:
         if cand.status != "pending":
             raise HTTPException(status_code=409, detail=f"候选已处理: {cand.status}")
         cand.status = "rejected"
+        decision = body or RejectCandidateIn()
+        cand.review = {"mode": decision.mode, "reason": decision.reason, "applied": False}
         db.commit()
     return {"candidate_id": candidate_id, "status": "rejected"}

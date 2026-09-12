@@ -285,6 +285,10 @@ def test_confirm_resume_no_duplicate(project_id, stub_provider):
         ev_cand = next(c for c in pool if c.kind == "event")
         confirmed = nodes.confirm_candidate(db, project_id, ev_cand.id)
         assert confirmed is not None and confirmed.status == "confirmed"
+        for remaining in pool:
+            if remaining.status == "pending":
+                remaining.status = "rejected"
+                remaining.review = {"mode": "memory_only"}
         db.commit()
 
     with tenant_session(project_id) as db:
@@ -434,7 +438,7 @@ def test_batch_review_resume_finalizes_chapter(project_id, monkeypatch):
         ch6 = db.execute(text("SELECT status, content FROM chapters WHERE project_id=:p AND chapter_seq=6"),
                          {"p": project_id}).fetchone()
         assert ch6 is not None and ch6.status == "awaiting_review", f"ch6 应待人工，实际 {ch6}"
-        assert not ch6.content, "暂停时正文不应落库"
+        assert ch6.content, "待确认时已生成正文也必须立即展示"
         pool = db.query(MemoryCandidate).filter(
             MemoryCandidate.project_id == uuid.UUID(project_id),
             MemoryCandidate.source_chapter == 6,
@@ -442,6 +446,10 @@ def test_batch_review_resume_finalizes_chapter(project_id, monkeypatch):
         assert pool, "critical 应产生待确认候选"
         ev_cand = next(c for c in pool if c.kind == "event")
         assert nodes.confirm_candidate(db, project_id, ev_cand.id) is not None
+        for remaining in pool:
+            if remaining.status == "pending":
+                remaining.status = "rejected"
+                remaining.review = {"mode": "memory_only"}
         db.commit()
 
     # resume 批次：ch6 确认流收尾落库正文（不重跑 ch6），推进到 ch7 再 critical 暂停
@@ -1261,7 +1269,7 @@ def test_write_rejects_tool_noise(project_id, monkeypatch):
         assert content is None or "inspect_facts" not in (content or ""), "噪声不应落库"
 
 
-def test_tool_budget_forced_exit(project_id, monkeypatch):
+def test_tool_budget_forced_exit(temp_project, monkeypatch):
     """工具预算封顶（§10）：stub 每轮都要求调工具 → 3 次执行后用尽预算 → 强制最终轮。
 
     验证 max_tool_calls=3 封顶：tool_trace 恰好 3 条、audit 4 轮 LLM（3 工具 + 1 最终）
@@ -1269,6 +1277,8 @@ def test_tool_budget_forced_exit(project_id, monkeypatch):
     """
     import aiink.providers as providers_mod
 
+    # 此处验证工具调用次数；共享 demo 的累积记忆会先撞到 token 预算，掩盖本测试目标。
+    project_id = temp_project
     stub = ToolBudgetStub("金丹", "金丹")
     monkeypatch.setattr(providers_mod, "default_provider", stub)
     _reset_runs(project_id)
@@ -1448,6 +1458,20 @@ def test_parse_json_tolerates_trailing_junk_with_brace():
     # 前有语气词 + 尾部截断杂质
     messy = '好的，审核结果如下：{"verdict":"rewrite"} 后面还有{内容'
     assert _parse_json(messy)["verdict"] == "rewrite"
+
+
+def test_parse_json_repairs_missing_commas_at_value_boundaries():
+    """DeepSeek 偶发漏掉数组项/对象字段/对象项逗号；确定性修语法且保留原值。"""
+    from aiink.workflow.nodes import _parse_json
+
+    raw = '{"goals":["推进主线" "处理伤势"], "meta":{"a":1 "b":2}, "scenes":[{} {}]}'
+    data = _parse_json(raw)
+
+    assert data == {
+        "goals": ["推进主线", "处理伤势"],
+        "meta": {"a": 1, "b": 2},
+        "scenes": [{}, {}],
+    }
 
 
 def test_parse_json_repairs_stray_quotes():

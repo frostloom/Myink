@@ -1,5 +1,5 @@
 # Ai Ink CI：PR / 主分支门禁（格式检查 + 全量回归 + 镜像构建，plan.md §阶段 5 余项「CI」）。
-# 四个 job 并行：python（全新 PG + Redis 服务容器，测前 aiink init）/ go（网关 vet+test）/ frontend / build-images。
+# 四个 job 并行：python（全新 PG + Redis + RabbitMQ 服务容器，测前 aiink init）/ go（网关 vet+test）/ frontend / build-images。
 # 关键设计：Python 测试用「全新 PG」服务容器——刚修过的部署 bug（索引名冲突 / schema CREATE 权限）
 # 都是全新库才暴露的类型，CI 用 fresh 库跑全量回归就是那道闸；EMBED_ENABLED=0 不装 ml extras（torch）。
 # 无 git remote 时本地等价验证：bash scripts/ci-local.sh（同一套门禁，见 docs/DEPLOY.md）。
@@ -18,13 +18,14 @@ permissions:
   contents: read
 
 jobs:
-  # Python 全量回归：pgvector + redis 服务容器（默认连接串正好指向映射端口，无需覆盖）。
-  # initdb 脚本挂进容器 —— fresh 数据目录自动建 aiink_app 角色 + 授权（与 compose 同款）。
+  # Python 全量回归：pgvector + Redis + RabbitMQ 服务容器。
+  # checkout 后执行角色初始化 SQL，再建表和 seed。
   python:
     name: Python 全量回归（全新 PG）
     runs-on: ubuntu-latest
     env:
       EMBED_ENABLED: "0"
+      AMQP_URL: amqp://aiink:aiink@localhost:5672/
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -34,8 +35,6 @@ jobs:
           POSTGRES_DB: aiink
         ports:
           - 5432:5432
-        volumes:
-          - ./docker/initdb:/docker-entrypoint-initdb.d:ro
         options: >-
           --health-cmd "pg_isready -U aiink -d aiink"
           --health-interval 3s
@@ -50,6 +49,18 @@ jobs:
           --health-interval 3s
           --health-timeout 3s
           --health-retries 30
+      rabbitmq:
+        image: rabbitmq:3.13-management
+        env:
+          RABBITMQ_DEFAULT_USER: aiink
+          RABBITMQ_DEFAULT_PASS: aiink
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -57,22 +68,28 @@ jobs:
           python-version: "3.12"
       - name: 安装依赖（dev extras，不装 ml/torch）
         run: pip install -e '.[dev]'
-      - name: Python 格式门禁（零依赖语法/字节码检查）
+      - name: Python 语法检查
         run: python -m compileall -q src tests
+      - name: 创建测试业务角色（checkout 后执行，避免 service 提前挂载空目录）
+        env:
+          PGPASSWORD: aiink
+        run: psql -h localhost -U aiink -d aiink -v ON_ERROR_STOP=1 -f docker/initdb/01-roles.sql
       - name: 初始化（建表 + RLS + seed，幂等）
         run: aiink init
       - name: 契约导出 + diff 闸（改响应模型未重新导出 spec 即红）
         run: |
           aiink contract export
           git diff --exit-code -- spec/api-openapi.json
-      - name: 全量回归（期望 343 passed + 5 xfailed）
+      - name: 全量回归（LLM/embedding 使用替身）
         run: python -m pytest tests/ -q
 
-  # Go 网关：仅需 Redis（Python API 用 httptest 假服务，不依赖 8100）。
+  # Go 网关：需要 Redis + RabbitMQ（Python API 用 httptest 假服务，不依赖 8100）。
   # Redis 不通时 newTestRedis 会 t.Skipf 整体跳过而非失败——显式拦截「绿灯空转」。
   go:
     name: Go 网关（vet + 单测）
     runs-on: ubuntu-latest
+    env:
+      AMQP_URL: amqp://aiink:aiink@localhost:5672/
     services:
       redis:
         image: redis:7-alpine
@@ -83,6 +100,18 @@ jobs:
           --health-interval 3s
           --health-timeout 3s
           --health-retries 30
+      rabbitmq:
+        image: rabbitmq:3.13-management
+        env:
+          RABBITMQ_DEFAULT_USER: aiink
+          RABBITMQ_DEFAULT_PASS: aiink
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -91,19 +120,19 @@ jobs:
       - name: go vet
         working-directory: gateway
         run: go vet ./...
-      - name: go test（拦截 SKIP：Redis 未就绪不允许静默通过）
+      - name: go test（拦截 SKIP：Redis/RabbitMQ 未就绪不允许静默通过）
         working-directory: gateway
         run: |
-          go test -count=1 -v ./... > /tmp/go-test.log 2>&1
-          rc=$?
+          rc=0
+          go test -count=1 -v ./... > /tmp/go-test.log 2>&1 || rc=$?
           cat /tmp/go-test.log
           if grep -q -- '--- SKIP' /tmp/go-test.log; then
-            echo "::error::检测到 SKIP（Redis 服务未就绪），CI 不允许绿灯空转"
+            echo "::error::检测到 SKIP（Redis/RabbitMQ 服务未就绪），CI 不允许绿灯空转"
             exit 1
           fi
           exit $rc
 
-  # 前端：oxlint + vitest + tsc/vite build（纯 node 单测，无浏览器/后端）。
+  # 前端：oxlint + vitest + tsc/vite build（工具函数单测 + jsdom 编辑器交互回归）。
   frontend:
     name: 前端（lint + 单测 + 构建）
     runs-on: ubuntu-latest

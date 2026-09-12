@@ -1,12 +1,11 @@
-// 生成进度时间线：phase 状态条 + 批次 i/N + 实时节点流（SSE 实时层）→ 终态后 runs 节点卡（快照权威）。
-// 批次控制（暂停/续跑/取消）：网关控制路由仅对批次任务开放；外部控制不发 SSE 事件，
-// 成功后调 refresh() 主动拉快照刷新状态/进度，终态（取消）由 refresh 停流。
+// 当前章节唯一的状态流转图：实时节点与终态快照共用一条流程，逐节点展示耗时和费用。
+// 审核结论与人工设定确认由独立面板负责，避免三类信息混在同一组件。
 import { useState } from 'react'
 import { api, ApiError } from '../lib/api'
-import { nodeLabel } from '../lib/labels'
+import { nodeLabel, taskStatusLabel, taskStatusTone } from '../lib/labels'
+import { compactFlowRuns, groupFlowAttempts } from '../lib/taskFlow'
 import type { TaskPhase } from '../hooks/useTaskEvents'
 import type { AgentRun, TaskStatus } from '../types'
-import { RunNodeCard } from './RunNodeCard'
 import styles from './TaskTimeline.module.css'
 
 export interface TaskTimelineProps {
@@ -15,24 +14,23 @@ export interface TaskTimelineProps {
   status: TaskStatus | null
   nodes: Array<{ taskId: string; node: string; seenAt: number }>
   runs: AgentRun[]
+  /** 正在执行、尚无 agent_runs 记录的节点（由产物流推导）：补一条实时步骤，避免停在上一节点 */
+  liveNode?: string | null
   progress: { current: number; total: number } | null
-  /** 右栏按章过滤：非空时 runs/nodes 已是该章切片，花费/详情标签标注「第 N 章」 */
   chapterSeq?: number | null
   error: string | null
   onRetry: () => void
-  /** 批次任务才有控制权（网关仅暴露 /batches/:id/:action；单章生成走同端点但无网关控制路由） */
   canControl?: boolean
-  /** 控制成功后主动拉快照刷新（见 useTaskEvents.refresh） */
   refresh: () => void
 }
 
 const PHASE_LABEL: Record<TaskPhase, string> = {
   idle: '空闲',
   connecting: '连接中',
-  live: '实时',
+  live: '执行中',
   reconnecting: '重连中',
-  terminal: '已完成',
-  expired: '流已过期',
+  terminal: '已结束',
+  expired: '记录已归档',
   error: '出错',
 }
 
@@ -44,13 +42,21 @@ const ACTION_LABEL: Record<BatchAction, string> = {
   cancel: '取消',
 }
 
-// 各任务状态可用的控制动作。awaiting_review（候选确认池）已接线：确认候选后
-// resume 从 checkpoint 续跑放行（Python _RESUMABLE 含 awaiting_review）；失败重试仍留重试切片。
 const STATUS_ACTIONS: Partial<Record<TaskStatus, BatchAction[]>> = {
   paused: ['resume', 'cancel'],
   queued: ['pause', 'cancel'],
   running: ['pause', 'cancel'],
   awaiting_review: ['resume'],
+}
+
+const ROUTE_LABELS: Record<string, string> = {
+  plan_review: '等待确认计划',
+  persist: '通过，进入落库',
+  revise: '重写并复审',
+  replan_chapter: '重规划本章',
+  replan_batch: '重规划批次',
+  needs_review: '转人工确认',
+  fail: '停止',
 }
 
 export function TaskTimeline({
@@ -59,6 +65,7 @@ export function TaskTimeline({
   status,
   nodes,
   runs,
+  liveNode = null,
   progress,
   chapterSeq = null,
   error,
@@ -66,25 +73,27 @@ export function TaskTimeline({
   canControl = false,
   refresh,
 }: TaskTimelineProps) {
+  const [open, setOpen] = useState(true)
   const [ctrl, setCtrl] = useState<BatchAction | null>(null)
   const [ctrlError, setCtrlError] = useState<string | null>(null)
-  // 执行详情默认收起：总花费常显，展开才看逐节点流转/过程花费（用户口径）
-  const [runsOpen, setRunsOpen] = useState(false)
-
-  if (!taskId) {
-    return <p className="empty">尚未发起生成。</p>
-  }
-
-  const terminal = phase === 'terminal'
-  const busy = phase === 'connecting' || phase === 'live' || phase === 'reconnecting'
-  // 总花费（§6.8 成本透明）：runs 终态快照全量，求和即任务总成本（批次=全批）
-  const totalCost = runs.reduce((s, r) => s + r.cost_est, 0)
+  const attempts = groupFlowAttempts(runs).map((attemptRuns) => ({
+    rawRuns: attemptRuns,
+    displayRuns: compactFlowRuns(attemptRuns, status),
+  }))
+  const displayRunCount = attempts.reduce((sum, attempt) => sum + attempt.displayRuns.length, 0)
+  const displayNodes = nodes.filter((node, index) => index === 0 || node.node !== nodes[index - 1].node)
+  const renderedTail = attempts.length > 0
+    ? attempts.at(-1)?.displayRuns.at(-1)?.node
+    : displayNodes.at(-1)?.node
+  // 已落库的最后一步就是这个进行中节点（落库先于产物 complete 的极窄窗口）→ 不重复补
+  const pendingNode = liveNode && liveNode !== renderedTail ? liveNode : null
+  const totalCost = runs.reduce((sum, run) => sum + run.cost_est, 0)
+  const totalDuration = runs.reduce((sum, run) => sum + run.duration_ms, 0)
   const actions = canControl && status ? (STATUS_ACTIONS[status] ?? []) : []
-  // 参数解构是可变绑定，收窄不进闭包：非空捕获 const 供 control 使用
   const tid = taskId
 
   async function control(action: BatchAction) {
-    if (ctrl) return
+    if (!tid || ctrl) return
     setCtrl(action)
     setCtrlError(null)
     try {
@@ -99,109 +108,164 @@ export function TaskTimeline({
     }
   }
 
+  const tone = status ? taskStatusTone(status) : phaseTone(phase)
+  const label = status ? taskStatusLabel(status) : PHASE_LABEL[phase]
+
   return (
-    <div className={styles.timeline}>
+    <section className={`panel ${styles.panel}`} aria-label="章节状态流转">
       <header className={styles.head}>
-        <span className={`badge badge-${phaseTone(phase)}`}>{PHASE_LABEL[phase]}</span>
-        {status && <span className={styles.status}>任务 {status}</span>}
-        {totalCost > 0 && (
-          <span
-            className={styles.cost}
-            title={
-              chapterSeq !== null
-                ? `第 ${chapterSeq} 章运行成本（按选中章过滤，§6.8 成本透明）`
-                : '任务总花费（节点 cost 合计，§6.8 成本透明）'
-            }
-          >
-            {chapterSeq !== null ? `第 ${chapterSeq} 章花费 ¥${totalCost.toFixed(2)}` : `总花费 ¥${totalCost.toFixed(2)}`}
+        <button type="button" className={styles.toggle} onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+          <span className={styles.headingGroup}>
+            <span className={styles.title}>章节流转</span>
+            {chapterSeq !== null && <span className={styles.chapter}>第 {chapterSeq} 章</span>}
           </span>
-        )}
-        {progress && (
-          <span className={styles.progress}>
-            {progress.current}/{progress.total}
+          <span className={styles.headerMeta}>
+            <span className={`badge badge-${tone}`}>{label}</span>
+            {taskId && <span className={styles.cost}>¥{totalCost.toFixed(4)}</span>}
+            <span className={styles.caret}>{open ? '▾' : '▸'}</span>
           </span>
-        )}
-        {error && <span className={styles.error}>{error}</span>}
+        </button>
       </header>
 
-      {actions.length > 0 && (
-        <div className={styles.controls}>
-          {actions.map((a) => (
-            <button
-              key={a}
-              type="button"
-              className="btn btn-quiet"
-              disabled={ctrl !== null}
-              onClick={() => void control(a)}
-            >
-              {ctrl === a ? '处理中…' : ACTION_LABEL[a]}
-            </button>
-          ))}
-          {status === 'awaiting_review' && (
-            <span className={styles.hint}>候选待确认，处理完点续跑放行</span>
+      {open && (
+        <div className={styles.body}>
+          {!taskId ? (
+            <p className="empty">本章还没有生成记录。</p>
+          ) : (
+            <>
+              <div className={styles.summary}>
+                <span>
+                  {attempts.length > 0
+                    ? `${attempts.length} 次生成 · ${displayRunCount} 个阶段`
+                    : `本次 ${displayNodes.length} 个阶段`}
+                </span>
+                {totalDuration > 0 && <span>{formatDuration(totalDuration)}</span>}
+                {progress && <span>批次 {progress.current}/{progress.total}</span>}
+              </div>
+              {error && <div className="banner banner-error">{error}</div>}
+
+              {attempts.length > 0 ? (
+                <div className={styles.attemptList}>
+                  {attempts.map((attempt, attemptIndex) => {
+                    const attemptCost = attempt.rawRuns.reduce((sum, run) => sum + run.cost_est, 0)
+                    const attemptDuration = attempt.rawRuns.reduce((sum, run) => sum + run.duration_ms, 0)
+                    const attemptTokens = attempt.rawRuns.reduce(
+                      (sum, run) => sum + run.input_tokens + run.output_tokens, 0,
+                    )
+                    return (
+                      <section key={attemptIndex} className={styles.attempt} aria-label={`第 ${attemptIndex + 1} 次生成`}>
+                        <div className={styles.attemptHead}>
+                          <strong>第 {attemptIndex + 1} 次生成</strong>
+                          <span>{attempt.displayRuns.length} 个阶段</span>
+                        </div>
+                        <div className={styles.attemptSummary}>
+                          <span>{formatDuration(attemptDuration)}</span>
+                          <span>¥{attemptCost.toFixed(4)}</span>
+                          <span>{attemptTokens.toLocaleString('zh-CN')} Token</span>
+                        </div>
+                        <ol className={styles.flow}>
+                          {attempt.displayRuns.map((run, index) => (
+                            <li key={`${run.node}-${index}`} className={styles.step}>
+                              <span className={`${styles.dot} ${run.error ? styles.dotError : ''}`} />
+                              <div className={styles.stepMain}>
+                                <div className={styles.stepHead}>
+                                  <strong>{nodeLabel(run.node)}</strong>
+                                  {run.detail?.route && <span className={styles.route}>{ROUTE_LABELS[run.detail.route] ?? run.detail.route}{run.derived ? '（依据结果）' : ''}</span>}
+                                </div>
+                                <dl className={styles.metrics}>
+                                  <div><dt>耗时</dt><dd>{formatDuration(run.duration_ms)}</dd></div>
+                                  <div><dt>费用</dt><dd>¥{run.cost_est.toFixed(4)}</dd></div>
+                                  <div><dt>Token</dt><dd>{(run.input_tokens + run.output_tokens).toLocaleString('zh-CN')}</dd></div>
+                                </dl>
+                                {run.retry_count > 0 && <span className={styles.retry}>重试 {run.retry_count} 次</span>}
+                                {run.error && <p className={styles.stepError}>{run.error}</p>}
+                              </div>
+                            </li>
+                          ))}
+                          {attemptIndex === attempts.length - 1 && pendingNode && (
+                            <LiveStep node={pendingNode} />
+                          )}
+                        </ol>
+                      </section>
+                    )
+                  })}
+                </div>
+              ) : displayNodes.length > 0 || pendingNode ? (
+                <ol className={styles.flow}>
+                  {displayNodes.map((node, index) => (
+                    <li key={`${node.seenAt}-${index}`} className={styles.step}>
+                      <span className={styles.dot} />
+                      <div className={styles.stepMain}>
+                        <div className={styles.stepHead}><strong>{nodeLabel(node.node)}</strong></div>
+                        <p className={styles.liveState}>已完成</p>
+                      </div>
+                    </li>
+                  ))}
+                  {pendingNode && <LiveStep node={pendingNode} />}
+                </ol>
+              ) : (
+                <p className="empty">{emptyTaskMessage(status)}</p>
+              )}
+
+              {actions.length > 0 && (
+                <div className={styles.controls}>
+                  {actions.map((action) => (
+                    <button key={action} type="button" className="btn btn-quiet" disabled={ctrl !== null} onClick={() => void control(action)}>
+                      {ctrl === action ? '处理中…' : ACTION_LABEL[action]}
+                    </button>
+                  ))}
+                  {ctrlError && <span className={styles.ctrlError}>{ctrlError}</span>}
+                </div>
+              )}
+              {phase === 'expired' && <button type="button" className="btn btn-quiet" onClick={onRetry}>重新连接</button>}
+            </>
           )}
-          {ctrlError && <span className={styles.ctrlError}>{ctrlError}</span>}
         </div>
       )}
-
-      {phase === 'expired' && (
-        <button type="button" className="btn btn-quiet" onClick={onRetry}>
-          重新连接
-        </button>
-      )}
-
-      {(busy || nodes.length > 0) && (
-        <ol className={styles.nodes}>
-          {nodes.map((n, i) => (
-            <li key={`${n.seenAt}-${i}`} className={styles.node}>
-              <span className={styles.nodeDot} />
-              <span className={styles.nodeLabel}>{nodeLabel(n.node)}</span>
-            </li>
-          ))}
-        </ol>
-      )}
-
-      {terminal && runs.length > 0 && (
-        <div className={styles.runs}>
-          <button
-            type="button"
-            className={styles.runsToggle}
-            onClick={() => setRunsOpen((o) => !o)}
-            aria-expanded={runsOpen}
-          >
-            <h4 className={styles.runsTitle}>
-              {chapterSeq !== null ? `第 ${chapterSeq} 章` : '执行详情'} · {runs.length} 节点 · ¥
-              {totalCost.toFixed(2)}
-            </h4>
-            <span className={styles.runCaret}>{runsOpen ? '▾' : '▸'}</span>
-          </button>
-          {runsOpen && (
-            <div className={styles.runList}>
-              {runs.map((r, i) => (
-                <RunNodeCard key={`${r.node}-${i}`} run={r} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+    </section>
   )
+}
+
+function LiveStep({ node }: { node: string }) {
+  return (
+    <li className={styles.step}>
+      <span className={`${styles.dot} ${styles.dotLive}`} />
+      <div className={styles.stepMain}>
+        <div className={styles.stepHead}><strong>{nodeLabel(node)}</strong></div>
+        <p className={styles.liveState}>正在执行</p>
+      </div>
+    </li>
+  )
+}
+
+function emptyTaskMessage(status: TaskStatus | null): string {
+  switch (status) {
+    case 'failed': return '本次生成在记录流程前失败，请查看错误信息。'
+    case 'cancelled': return '任务已取消，没有可显示的流程记录。'
+    case 'done': return '任务已完成，但没有可显示的流程记录。'
+    case 'awaiting_plan': return '章节计划正在等待确认。'
+    case 'awaiting_review': return '任务正在等待人工处理，但没有可显示的流程记录。'
+    case 'paused': return '任务已暂停，尚未记录执行步骤。'
+    default: return '任务已创建，等待第一个步骤开始。'
+  }
+}
+
+function formatDuration(milliseconds: number): string {
+  if (milliseconds < 1000) return `${milliseconds} ms`
+  if (milliseconds < 60_000) return `${(milliseconds / 1000).toFixed(1)} 秒`
+  const minutes = Math.floor(milliseconds / 60_000)
+  const seconds = Math.round((milliseconds % 60_000) / 1000)
+  return `${minutes} 分 ${seconds} 秒`
 }
 
 function phaseTone(phase: TaskPhase): string {
   switch (phase) {
-    case 'live':
-      return 'accent'
-    case 'terminal':
-      return 'success'
+    case 'live': return 'accent'
+    case 'terminal': return 'success'
     case 'connecting':
-    case 'reconnecting':
-      return 'warning'
+    case 'reconnecting': return 'warning'
     case 'expired':
-      return 'error'
-    case 'error':
-      return 'error'
-    case 'idle':
-      return 'hint'
+    case 'error': return 'error'
+    case 'idle': return 'hint'
   }
 }

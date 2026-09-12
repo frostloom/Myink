@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from typing import Callable
 
 from openai import OpenAI
 
@@ -37,14 +38,11 @@ class DeepSeekProvider(ModelProvider):
     def name(self) -> str:
         return "deepseek"
 
-    def generate(self, messages: list[dict], *, model_id: str, max_tokens: int | None = None,
-                 temperature: float | None = None, json_mode: bool = False,
-                 tools: list[dict] | None = None,
-                 disable_thinking: bool = False) -> ModelResponse:
-        if not self._api_key:
-            return ModelResponse(content="", model_id=model_id, error="DEEPSEEK_API_KEY 未配置")
-
-        t0 = time.monotonic()
+    @staticmethod
+    def _request_kwargs(messages: list[dict], *, model_id: str,
+                        max_tokens: int | None, temperature: float | None,
+                        json_mode: bool, tools: list[dict] | None,
+                        disable_thinking: bool) -> dict:
         kwargs: dict = {"model": model_id, "messages": messages}
         if max_tokens is not None:
             kwargs["max_tokens"] = max_tokens
@@ -53,14 +51,25 @@ class DeepSeekProvider(ModelProvider):
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
         if json_mode or tools or disable_thinking:
-            # v4 思考模式默认开启：思考 token 会让 content 变空（正文进 reasoning_content）
-            # 且破坏 JSON 结构（§19.3）。JSON mode / 工具轮 / 纯文本正文一律关思考——
-            # 本项目结构化输出（extract/plan/audit）与长文正文（write/revise）都是确定性
-            # 产物，不需要思考（§6.9 单遍生成）；工具循环要重建 assistant tool_calls
-            # 消息回传，thinking 开着会产生 reasoning_content，下轮不回传会 400。
             kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
         if tools:
             kwargs["tools"] = tools
+        return kwargs
+
+    def generate(self, messages: list[dict], *, model_id: str, max_tokens: int | None = None,
+                 temperature: float | None = None, json_mode: bool = False,
+                 tools: list[dict] | None = None,
+                 disable_thinking: bool = False) -> ModelResponse:
+        if not self._api_key:
+            return ModelResponse(content="", model_id=model_id, error="DEEPSEEK_API_KEY 未配置")
+
+        t0 = time.monotonic()
+        # v4 思考模式默认开启：JSON / 工具轮 / 正文必须关闭，避免 reasoning 抢输出预算。
+        kwargs = self._request_kwargs(
+            messages, model_id=model_id, max_tokens=max_tokens,
+            temperature=temperature, json_mode=json_mode, tools=tools,
+            disable_thinking=disable_thinking,
+        )
 
         last_error: str | None = None
         for attempt in range(MAX_RETRIES + 1):
@@ -121,3 +130,115 @@ class DeepSeekProvider(ModelProvider):
                 if attempt < MAX_RETRIES:
                     time.sleep(BACKOFF_BASE[min(attempt, len(BACKOFF_BASE) - 1)])
         return ModelResponse(content="", model_id=model_id, error=last_error, duration_ms=int((time.monotonic() - t0) * 1000))
+
+    def generate_stream(self, messages: list[dict], *, model_id: str,
+                        on_delta: Callable[[str], None],
+                        on_reset: Callable[[], None] | None = None,
+                        max_tokens: int | None = None,
+                        temperature: float | None = None, json_mode: bool = False,
+                        tools: list[dict] | None = None,
+                        disable_thinking: bool = False) -> ModelResponse:
+        """OpenAI 兼容流式调用，最终仍聚合为 ModelResponse 供原校验链使用。"""
+        if not self._api_key:
+            return ModelResponse(content="", model_id=model_id, error="DEEPSEEK_API_KEY 未配置")
+
+        t0 = time.monotonic()
+        kwargs = self._request_kwargs(
+            messages, model_id=model_id, max_tokens=max_tokens,
+            temperature=temperature, json_mode=json_mode, tools=tools,
+            disable_thinking=disable_thinking,
+        )
+        kwargs["stream"] = True
+        # OpenAI 兼容协议在最后一个空 choices 帧返回完整 usage。
+        kwargs["stream_options"] = {"include_usage": True}
+        last_error: str | None = None
+
+        for attempt in range(MAX_RETRIES + 1):
+            content_parts: list[str] = []
+            reasoning_parts: list[str] = []
+            tool_parts: dict[int, dict[str, str]] = {}
+            usage = None
+            emitted = False
+            try:
+                stream = self._client.chat.completions.create(**kwargs)
+                for chunk in stream:
+                    if getattr(chunk, "usage", None) is not None:
+                        usage = chunk.usage
+                    if not getattr(chunk, "choices", None):
+                        continue
+                    delta = chunk.choices[0].delta
+                    text = getattr(delta, "content", None) or ""
+                    if text:
+                        content_parts.append(text)
+                        on_delta(text)
+                        emitted = True
+                    reasoning = getattr(delta, "reasoning_content", None) or ""
+                    if reasoning:
+                        reasoning_parts.append(reasoning)
+                    for tc in (getattr(delta, "tool_calls", None) or []):
+                        idx = int(getattr(tc, "index", 0) or 0)
+                        row = tool_parts.setdefault(idx, {"id": "", "name": "", "arguments": ""})
+                        if getattr(tc, "id", None):
+                            row["id"] += tc.id
+                        fn = getattr(tc, "function", None)
+                        if fn is not None:
+                            row["name"] += getattr(fn, "name", None) or ""
+                            row["arguments"] += getattr(fn, "arguments", None) or ""
+
+                content = "".join(content_parts)
+                tool_calls: list[dict] | None = None
+                if tool_parts:
+                    parsed_tools: list[dict] = []
+                    for idx in sorted(tool_parts):
+                        row = tool_parts[idx]
+                        try:
+                            args = json.loads(row["arguments"] or "{}")
+                        except (json.JSONDecodeError, TypeError):
+                            logger.warning("流式 tool_calls.arguments 解析失败: %r", row["arguments"])
+                            args = {}
+                        parsed_tools.append({
+                            "id": row["id"], "name": row["name"],
+                            "arguments": args if isinstance(args, dict) else {},
+                        })
+                    tool_calls = parsed_tools
+
+                if not content.strip() and not tool_calls:
+                    reasoning = "".join(reasoning_parts)
+                    if reasoning.strip():
+                        content = reasoning
+                        on_delta(reasoning)
+                        emitted = True
+                    elif attempt < MAX_RETRIES:
+                        if emitted and on_reset:
+                            on_reset()
+                        logger.warning("DeepSeek 流式返回空内容（attempt=%d/%d），快速重试",
+                                       attempt, MAX_RETRIES)
+                        continue
+                    else:
+                        return ModelResponse(
+                            content="", model_id=model_id,
+                            error="DeepSeek 流式返回空白/空内容",
+                            duration_ms=int((time.monotonic() - t0) * 1000),
+                        )
+                usage = usage or type("U", (), {})()
+                return ModelResponse(
+                    content=content,
+                    model_id=model_id,
+                    input_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+                    output_tokens=getattr(usage, "completion_tokens", 0) or 0,
+                    cache_hit=bool(getattr(usage, "prompt_cache_hit_tokens", 0)),
+                    duration_ms=int((time.monotonic() - t0) * 1000),
+                    retry_count=attempt,
+                    tool_calls=tool_calls,
+                )
+            except Exception as exc:
+                last_error = str(exc)
+                logger.warning("DeepSeek 流式调用失败(attempt=%d): %s", attempt, last_error)
+                if emitted and on_reset:
+                    on_reset()
+                if attempt < MAX_RETRIES:
+                    time.sleep(BACKOFF_BASE[min(attempt, len(BACKOFF_BASE) - 1)])
+        return ModelResponse(
+            content="", model_id=model_id, error=last_error,
+            duration_ms=int((time.monotonic() - t0) * 1000),
+        )

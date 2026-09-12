@@ -14,7 +14,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from aiink.models.base import Base, TimestampMixin, UUIDPkMixin
 
-TASK_STATUSES = ("queued", "running", "paused", "awaiting_review", "failed", "cancelled", "done")
+TASK_STATUSES = ("queued", "running", "paused", "awaiting_plan", "awaiting_review", "failed", "cancelled", "done")
 TASK_TYPES = ("chapter_generate", "batch_generate", "validate", "outline_generate")
 
 

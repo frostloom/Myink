@@ -1,0 +1,40 @@
+# 独立临时基础设施：不挂开发数据卷，不运行真实 worker，不调用模型。
+services:
+  postgres:
+    image: ${PG_IMAGE:-pgvector/pgvector:pg16}
+    environment:
+      POSTGRES_USER: aiink
+      POSTGRES_PASSWORD: aiink
+      POSTGRES_DB: aiink
+    ports:
+      - "127.0.0.1:15432:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    volumes:
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiink -d aiink"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  redis:
+    image: ${REDIS_IMAGE:-redis:7-alpine}
+    ports:
+      - "127.0.0.1:16380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  rabbitmq:
+    image: ${RABBITMQ_IMAGE:-rabbitmq:3.13-management}
+    environment:
+      RABBITMQ_DEFAULT_USER: aiink
+      RABBITMQ_DEFAULT_PASS: aiink
+    ports:
+      - "127.0.0.1:15673:5672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 30

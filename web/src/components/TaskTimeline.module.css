@@ -1,126 +1,41 @@
-.timeline {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.status {
-  color: var(--ink-muted);
-  font-size: var(--text-small);
-}
-
-.progress {
-  color: var(--accent);
-  font-size: var(--text-small);
-  font-variant-numeric: tabular-nums;
-}
-
-.error {
-  color: var(--error);
-  font-size: var(--text-small);
-}
-
-.controls {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-.ctrlError {
-  color: var(--error);
-  font-size: var(--text-small);
-}
-
-.hint {
-  color: var(--warning);
-  font-size: var(--text-small);
-}
-
-.nodes {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  max-height: 220px;
-  overflow-y: auto;
-}
-
-.node {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-small);
-  color: var(--ink-muted);
-}
-
-.nodeDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-  flex-shrink: 0;
-}
-
-.nodeLabel {
-  color: var(--ink);
-}
-
-.runs {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.runsTitle {
-  font-size: var(--text-small);
-  color: var(--ink-muted);
-  margin: var(--space-2) 0 0;
-}
-
-.cost {
-  color: var(--accent);
-  font-size: var(--text-small);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.runsToggle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  width: 100%;
-  background: none;
-  border: 0;
-  padding: 0;
-  font: inherit;
-  cursor: pointer;
-  text-align: left;
-  color: var(--ink);
-}
-
-.runsToggle:hover .runsTitle {
-  color: var(--ink);
-}
-
-.runCaret {
-  margin-left: auto;
-  color: var(--ink-subtle);
-  font-size: var(--text-small);
-  flex-shrink: 0;
-}
-
-.runList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
+.panel { display: flex; min-width: 0; flex-direction: column; overflow: hidden; }
+.head { padding: 14px 16px; }
+.toggle { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 4px; }
+.headingGroup, .headerMeta { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.headingGroup { flex-wrap: wrap; }
+.headerMeta { justify-content: flex-end; }
+.title { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; }
+.chapter { color: var(--ink-subtle); font-size: 11px; white-space: nowrap; }
+.cost { color: #587861; font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.caret { width: 12px; color: var(--ink-subtle); font-size: 11px; text-align: center; flex-shrink: 0; }
+.body { display: flex; min-width: 0; flex-direction: column; gap: 14px; padding: 14px 16px 18px; border-top: 1px solid var(--line); }
+.summary { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--ink-subtle); font-size: 11px; font-variant-numeric: tabular-nums; }
+.attemptList { display: flex; min-width: 0; flex-direction: column; gap: 16px; }
+.attempt { min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--surface-2) 68%, var(--surface-1)); }
+.attemptHead { display: flex; min-width: 0; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 4px; }
+.attemptHead strong { color: var(--ink); font-size: 13px; }
+.attemptHead span { color: var(--ink-subtle); font-size: 10px; white-space: nowrap; }
+.attemptSummary { display: flex; min-width: 0; flex-wrap: wrap; gap: 5px 12px; margin-bottom: 14px; color: var(--ink-subtle); font-size: 10px; font-variant-numeric: tabular-nums; }
+.flow { min-width: 0; margin: 0; padding: 0; list-style: none; }
+.step { position: relative; display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 10px; min-width: 0; padding-bottom: 16px; }
+.step:last-child { padding-bottom: 0; }
+.step:not(:last-child)::before { position: absolute; top: 12px; bottom: 0; left: 5px; width: 1px; background: var(--line-strong); content: ''; }
+.dot { position: relative; z-index: 1; width: 11px; height: 11px; margin-top: 4px; border: 2px solid #9ab9a2; border-radius: 50%; background: var(--surface-1); box-shadow: 0 0 0 3px var(--surface-1); }
+.dotLive { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.dotError { border-color: var(--error); background: var(--error); }
+.stepMain { min-width: 0; }
+.stepHead { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 8px; min-width: 0; color: var(--ink); font-size: 13px; }
+.stepHead strong { min-width: 0; overflow-wrap: anywhere; }
+.route { max-width: 180px; color: #587861; font-size: 11px; font-weight: 500; line-height: 1.45; text-align: right; overflow-wrap: anywhere; }
+.metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; min-width: 0; margin: 7px 0 0; padding: 7px 9px; border-radius: 7px; background: color-mix(in srgb, var(--surface-2) 76%, transparent); }
+.metrics > div { min-width: 0; }
+.metrics dt, .metrics dd { margin: 0; overflow-wrap: anywhere; }
+.metrics dt { color: var(--ink-subtle); font-size: 10px; }
+.metrics dd { margin-top: 2px; color: var(--ink-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.retry, .liveState { display: inline-block; margin: 5px 0 0; color: var(--warning); font-size: 11px; }
+.liveState { color: var(--ink-subtle); }
+.stepError { margin: 6px 0 0; color: var(--error); font-size: var(--text-small); line-height: 1.55; overflow-wrap: anywhere; }
+.controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.ctrlError { color: var(--error); font-size: var(--text-small); overflow-wrap: anywhere; }
+@media (max-width: 1280px) { .route { max-width: 140px; } .metrics { gap: 6px; padding-inline: 7px; } }

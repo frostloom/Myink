@@ -3,11 +3,11 @@
 //
 // 独立运行：不依赖 Redis（不调 newTestRedis/newRouter），只依赖已提交的契约文件 +
 // 标准库 encoding/json。两类断言：
-//   1. TestContractHasAllForwardedPaths —— 网关每个转发内部路径必须在契约里有同形状
-//      path + method（防 BatchControl 式路径漂移：曾转发 /internal/v1/batches/... 404）。
-//   2. TestFakePyFieldsWithinContractSchema —— 假服务（fakePy）响应与契约 200 schema
-//      双向键对齐：契约 required ⊆ 假键（抓"缺字段"）且假键 ⊆ properties（抓"多/错
-//      字段"），数组递归。单向"假⊆契约"抓不住"假项目缺 current_chapter"这类缺字段失配。
+//  1. TestContractHasAllForwardedPaths —— 网关每个转发内部路径必须在契约里有同形状
+//     path + method（防 BatchControl 式路径漂移：曾转发 /internal/v1/batches/... 404）。
+//  2. TestFakePyFieldsWithinContractSchema —— 假服务（fakePy）响应与契约 200 schema
+//     双向键对齐：契约 required ⊆ 假键（抓"缺字段"）且假键 ⊆ properties（抓"多/错
+//     字段"），数组递归。单向"假⊆契约"抓不住"假项目缺 current_chapter"这类缺字段失配。
 package handlers
 
 import (
@@ -43,6 +43,8 @@ var forwardedPaths = []struct{ method, path string }{
 	{"GET", "/internal/v1/projects/{project_id}/global-audit/{report_id}"},
 	{"GET", "/internal/v1/projects/{project_id}/settings"},
 	{"PUT", "/internal/v1/projects/{project_id}/settings"},
+	{"POST", "/internal/v1/projects/{project_id}/settings/models"},
+	{"POST", "/internal/v1/projects/{project_id}/settings/test-connection"},
 	{"GET", "/internal/v1/skill-presets"},
 	{"POST", "/internal/v1/projects/{project_id}/style-samples"},
 	{"PUT", "/internal/v1/projects/{project_id}/style-profile"},
@@ -59,6 +61,7 @@ var forwardedPaths = []struct{ method, path string }{
 	{"GET", "/internal/v1/projects/{project_id}/foreshadows"},
 	{"GET", "/internal/v1/rankings"},
 	{"GET", "/internal/v1/tasks/{task_id}"},
+	{"POST", "/internal/v1/tasks/{task_id}/plan/confirm"},
 	{"POST", "/internal/v1/tasks/{task_id}/pause"},
 	{"POST", "/internal/v1/tasks/{task_id}/resume"},
 	{"POST", "/internal/v1/tasks/{task_id}/cancel"},

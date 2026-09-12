@@ -48,14 +48,22 @@ _MP_WORKER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_mp_worke
 # ── worker 子进程管理 ─────────────────────────────────────────────────────────
 
 
+def _purge_test_queues() -> None:
+    """仅清理 -mp- 隔离队列；必须在 worker 启动前或完全停止后执行。"""
+    with amqp.connect() as conn:
+        ch = conn.channel()
+        amqp.declare_topology(ch)
+        for queue in (amqp.main_queue(), amqp.delay_queue(), amqp.dlq_queue()):
+            ch.queue_purge(queue)
+
+
 @pytest.fixture(scope="module")
 def two_workers():
     """起 2 个真实 worker 进程（消费同一 RabbitMQ 主队列），等心跳就绪后 yield。"""
     r = get_redis()
-    # 清历史心跳，避免误判就绪（E2E/上次运行残留的 key 已过期或待清理）
-    stale_hb = r.keys("queue:heartbeat:*")
-    if stale_hb:
-        r.delete(*stale_hb)
+    # 上次异常终止时，未确认消息会在 worker 退出后重新入队。启动前清理，避免消费引用
+    # 已删除临时项目的旧消息；只操作 QUEUE_PREFIX=-mp- 的测试队列。
+    _purge_test_queues()
     procs, logs = [], []
     for i in range(2):
         log_path = os.path.join(tempfile.gettempdir(), f"mp_worker_{i}.log")
@@ -71,7 +79,11 @@ def two_workers():
         logs.append(logf)
     deadline = time.time() + 40
     while time.time() < deadline:
-        if len(r.keys("queue:heartbeat:*")) >= 2:
+        own_heartbeats = {
+            key for key in r.keys("queue:heartbeat:*")
+            if any(key.endswith(f"-{process.pid}") for process in procs)
+        }
+        if len(own_heartbeats) == len(procs):
             break
         time.sleep(0.5)
     else:
@@ -97,6 +109,14 @@ def two_workers():
             p.kill()
     for lf in logs:
         lf.close()
+    # 先停 worker，再清理其退出时重新入队的未确认消息，保证下一轮测试从空队列开始。
+    _purge_test_queues()
+    own_heartbeats = {
+        key for key in r.keys("queue:heartbeat:*")
+        if any(key.endswith(f"-{process.pid}") for process in procs)
+    }
+    if own_heartbeats:
+        r.delete(*own_heartbeats)
     for k in set(r.keys("queue:sse:*")) - sse_before:
         r.delete(k)
 
@@ -154,6 +174,8 @@ def _wait_status(task_id: str, timeout: int = 90) -> str:
             row = db.get(Task, uuid.UUID(task_id))
             last = row.status if row is not None else None
             if row is not None and row.status in ("done", "failed", "cancelled"):
+                if row.status == "failed":
+                    raise AssertionError(f"task {task_id[:8]} 执行失败: {row.error}")
                 return row.status
         time.sleep(0.5)
     raise AssertionError(f"task {task_id[:8]} 未在 {timeout}s 内终态，末态 {last}")

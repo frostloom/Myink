@@ -44,6 +44,8 @@ class Settings:
     )
     deepseek_api_key: str = field(default_factory=lambda: _env("DEEPSEEK_API_KEY", "") or "")
     deepseek_base_url: str = field(default_factory=lambda: _env("DEEPSEEK_BASE_URL", "https://api.deepseek.com") or "https://api.deepseek.com")
+    # 项目自定义模型密钥的静态加密主密钥；空值时沿用 JWT_SECRET 派生密钥以兼容本地部署。
+    model_credential_key: str = field(default_factory=lambda: _env("MODEL_CREDENTIAL_KEY", "") or "")
     log_level: str = field(default_factory=lambda: _env("LOG_LEVEL", "INFO") or "INFO")
 
     # 本地 embedding（§5.2 一库多用）：bge-m3 中英双语，1024 维与 embeddings 表 Vector(1024) 匹配
@@ -59,7 +61,9 @@ class Settings:
     embed_allow_download: bool = field(default_factory=lambda: _env("EMBED_ALLOW_DOWNLOAD", "0") == "1")
 
     # 单章写作 token 预算（plan.md §7.4 分层召回预算）
-    recall_token_budget: int = 12_000
+    recall_token_budget: int = field(default_factory=lambda: int(_env("RECALL_TOKEN_BUDGET", "12000") or "12000"))
+    # 完整请求（正文、提示词、记忆、工具）的独立上限；召回预算不能充当正文预算。
+    request_token_budget: int = field(default_factory=lambda: int(_env("REQUEST_TOKEN_BUDGET", "64000") or "64000"))
     max_revisions: int = 2  # rewrite 轮次上限（spec/state-flow.md §3）
     max_replans: int = 1  # replan 轮次上限（重规划比重写贵，预算更紧，§6.5）
     max_tool_calls: int = 3  # 只读查证工具执行总数预算（§10：audit/write 工具循环封顶）
@@ -119,6 +123,10 @@ class Settings:
         return self.app_env == "prod"
 
     def validate(self) -> None:
+        if self.request_token_budget <= 1000:
+            raise ValueError("REQUEST_TOKEN_BUDGET 必须大于 1000")
+        if self.recall_token_budget <= 1000:
+            raise RuntimeError("RECALL_TOKEN_BUDGET 必须大于预留的 1000 tokens")
         if self.is_prod() and not self.deepseek_api_key:
             raise RuntimeError("APP_ENV=prod 时 DEEPSEEK_API_KEY 不能为空")
         if self.is_prod() and self.jwt_secret == _DEV_JWT_SECRET:
