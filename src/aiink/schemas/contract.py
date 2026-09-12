@@ -68,6 +68,16 @@ class CharacterPresence(BaseModel):
     expected_state: dict = Field(default_factory=dict)
 
 
+class ChapterTransition(BaseModel):
+    """从原文章尾推导的接续方案；存入计划，供写作和修订共同遵守。"""
+
+    mode: Literal["continue", "time_jump", "scene_cut", "opening"]
+    anchor_quote: str = Field(description="上一章结尾逐字短引；首章/缺失正文填空")
+    pending_action: str = Field(description="尚未完成的动作、问题或危险；没有则填空")
+    opening_beat: str = Field(min_length=1, description="第一拍的新动作及其结果，不重演已完成动作")
+    bridge: str = Field(description="转时空/视角的线索，以及悬念如何承接；直接接续可填空")
+
+
 class ChapterPlan(BaseModel):
     """章节计划（规划 agent 输出，§3，大纲偏差比对输入）。"""
 
@@ -80,6 +90,7 @@ class ChapterPlan(BaseModel):
     hooks_to_resolve: list[str] = Field(default_factory=list, description="须命中池中开放伏笔")
     expected_events: list[str] = Field(min_length=1, description="预期事件")
     hard_constraints: list[str] = Field(default_factory=list)
+    transition: ChapterTransition | None = None  # 兼容旧 checkpoint；新规划提示词要求输出
 
 
 class Event(BaseModel):
@@ -230,6 +241,7 @@ class RetrievedContext(BaseModel):
     long_term_facts: list[dict] = Field(default_factory=list, description="[{fact_id, source_chapter}]")
     mid_term_events: list[dict] = Field(default_factory=list, description="[{event_id, chapter, confidence}]")
     short_context: list[dict] = Field(default_factory=list, description="上一章摘要+候选事件+本章开头+最近场景")
+    recent_openings: list[dict] = Field(default_factory=list, description="历史章开头 [{chapter, text}]，仅供差异化比较")
     entity_snapshots: list[dict] = Field(default_factory=list, description="人物/势力/地点当前状态快照")
     open_foreshadows: list[dict] = Field(default_factory=list, description="开放伏笔 [{description, trigger, planted_chapter, status}]（§7.9，plan_chapter 消费决定收/延/弃）")
     plot_threads: list[dict] = Field(default_factory=list, description="活跃剧情线 [{name, kind, status, progress}]（线程债务治理输入）")

@@ -126,6 +126,6 @@ def test_runner_finalize_appends_node_summarize(temp_project, monkeypatch):
     monkeypatch.setattr(nodes, "node_summarize", lambda state: calls.append(state))
 
     result = finalize_chapter_review(project_id=temp_project, task_id="t1", chapter_seq=1)
-    assert result == {"needs_review": False}
+    assert result["needs_review"] is False
     assert len(calls) == 1, "收尾后应补调 node_summarize"
     assert calls[0]["task_id"] == "t1" and calls[0]["draft"] == "正文草稿"

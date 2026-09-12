@@ -208,6 +208,7 @@ class MemoryCandidate(Base, UUIDPkMixin, TimestampMixin):
     payload: Mapped[dict] = mapped_column(JSON, nullable=False, comment="对应 kind 的对象体")
     confidence: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
     status: Mapped[str] = mapped_column(String(16), default="pending", nullable=False)
+    review: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 class EmbeddingRow(Base, UUIDPkMixin, TimestampMixin):

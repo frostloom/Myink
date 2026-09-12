@@ -61,7 +61,9 @@ def test_llm_checked_retries_parse_failure_then_succeeds(monkeypatch):
     assert err is None and result == _PLAN["goals"]
     assert calls["n"] == 2
     assert calls["messages"][1][-1]["role"] == "system"
-    assert "不是合法 JSON" in calls["messages"][1][-1]["content"], "重试应追加 JSON 修正指令"
+    assert "未通过 JSON" in calls["messages"][1][-1]["content"], "重试应追加 JSON 修正指令"
+    assert calls["messages"][1][-2] == {"role": "assistant", "content": "not json{{"}, \
+        "JSON 重试必须带回上一版错误输出，才能定点修复而不是从头重复规划"
 
 
 def test_llm_checked_all_fail_returns_error_at_limit(monkeypatch):
@@ -124,3 +126,42 @@ def test_node_plan_chapter_retries_bad_json(temp_project, monkeypatch):
     assert out["plan"]["chapter_seq"] == 1
     assert out["plan"]["goals"] == _PLAN["goals"]
     assert calls["n"] == 2, "坏 JSON 应重发一次而不是直接判失败"
+
+
+def test_node_plan_chapter_repairs_missing_comma_without_model_retry(temp_project, monkeypatch):
+    """Planner 只漏一个结构逗号时本地修复，不能让用户看到整份 Plan 连续重写。"""
+    malformed = json.dumps(_PLAN, ensure_ascii=False).replace('], "scenes"', '] "scenes"', 1)
+    calls = _queued_llm(monkeypatch, [malformed])
+
+    out = nodes.node_plan_chapter({"project_id": temp_project, "chapter_seq": 1, "context": {}})
+
+    assert "error" not in out, out.get("error")
+    assert out["plan"]["goals"] == _PLAN["goals"]
+    assert calls["n"] == 1, "可确定修复的漏逗号不应再次调用 Planner"
+
+
+def test_node_plan_chapter_repairs_inexact_anchor_without_model_retry(temp_project, monkeypatch):
+    """生成计划误引或改写章尾时只替换证据字段，不重新规划场景。"""
+    tail = "众人收好物资。\n桥下忽然传来三声短促的敲击，林眠抬手示意所有人噤声。"
+    plan = {
+        **_PLAN,
+        "transition": {
+            "mode": "continue",
+            "anchor_quote": "桥下传来敲击声，大家安静下来",
+            "pending_action": "查明桥下敲击来源",
+            "opening_beat": "林眠靠近桥栏辨认声音方位",
+            "bridge": "",
+        },
+    }
+    calls = _queued_llm(monkeypatch, [json.dumps(plan, ensure_ascii=False)])
+
+    out = nodes.node_plan_chapter({
+        "project_id": temp_project,
+        "chapter_seq": 2,
+        "context": {"short_context": [{"kind": "prev_chapter_tail", "chapter": 1, "tail": tail}]},
+    })
+
+    assert "error" not in out, out.get("error")
+    assert out["plan"]["transition"]["anchor_quote"] == tail.splitlines()[-1]
+    assert out["plan"]["scenes"] == _PLAN["scenes"]
+    assert calls["n"] == 1, "可从章尾确定性纠正的引文不应重跑 Planner"

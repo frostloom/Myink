@@ -145,7 +145,7 @@ func purgeTestQueues(t *testing.T) {
 
 func newTestRedis(t *testing.T) *redis.Client {
 	t.Helper()
-	r := redis.New("localhost:6380", "")
+	r := redis.New(config.Load().RedisAddr, "")
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	if err := r.Ping(ctx); err != nil {
@@ -235,7 +235,9 @@ func TestCreateChapter202(t *testing.T) {
 	keys = append(keys, bk...)
 	_ = r.Raw().Del(ctx, append(keys, "rate:inflight:"+uid+":proj-1", "rate:quota:"+uid+":"+time.Now().Format("2006-01-02"))...).Err()
 	// 入队会真实 SADD inflight + 扣配额（用户 + 每书，活 Redis），注册末尾清理防污染其他用户/测试
-	defer func() { _ = r.Raw().Del(ctx, "rate:inflight:"+uid+":proj-1", "rate:quota:"+uid+":"+time.Now().Format("2006-01-02"), "rate:bookquota:"+uid+":proj-1:"+time.Now().Format("2006-01-02"), "rate:bookcnt:"+uid+":"+time.Now().Format("2006-01-02")).Err() }()
+	defer func() {
+		_ = r.Raw().Del(ctx, "rate:inflight:"+uid+":proj-1", "rate:quota:"+uid+":"+time.Now().Format("2006-01-02"), "rate:bookquota:"+uid+":proj-1:"+time.Now().Format("2006-01-02"), "rate:bookcnt:"+uid+":"+time.Now().Format("2006-01-02")).Err()
+	}()
 
 	body := `{"seq":1,"user_instruction":"写第一章"}`
 	req := httptest.NewRequest(http.MethodPost,
@@ -257,6 +259,12 @@ func TestCreateChapter202(t *testing.T) {
 	}
 	if resp.TaskID == "" || resp.Status != "queued" {
 		t.Fatalf("应返回 task_id + queued，实际 %+v", resp)
+	}
+	streamKey := "queue:sse:" + resp.TaskID
+	defer r.Raw().Del(context.Background(), streamKey)
+	queued, err := r.Raw().XRange(context.Background(), streamKey, "-", "+").Result()
+	if err != nil || len(queued) == 0 || queued[0].Values["status"] != "queued" {
+		t.Fatalf("返回 202 前应建立 queued SSE 流，实际 events=%v err=%v", queued, err)
 	}
 	// 应透传 X-Trace-ID 头（§17.2 全链路）
 	if w.Header().Get("X-Request-ID") == "" {
@@ -316,7 +324,9 @@ func TestCreateChapterQuotaRejected(t *testing.T) {
 	keys = append(keys, bk...)
 	_ = r.Raw().Del(ctx, append(keys, "rate:inflight:"+uid+":proj-1", "rate:quota:"+uid+":"+today)...).Err()
 	_ = r.Raw().Set(ctx, "rate:quota:"+uid+":"+today, "2", 0).Err() // 占满配额
-	defer func() { _ = r.Raw().Del(ctx, append(keys, "rate:inflight:"+uid+":proj-1", "rate:quota:"+uid+":"+today)...).Err() }()
+	defer func() {
+		_ = r.Raw().Del(ctx, append(keys, "rate:inflight:"+uid+":proj-1", "rate:quota:"+uid+":"+today)...).Err()
+	}()
 
 	req := httptest.NewRequest(http.MethodPost,
 		"/api/v1/projects/proj-1/chapters/ch-1/generate", strings.NewReader(`{"seq":1}`))
@@ -349,7 +359,9 @@ func TestCreateBatchDeductN(t *testing.T) {
 	keys = append(keys, bk...)
 	_ = r.Raw().Del(ctx, append(keys, "rate:inflight:"+uid+":proj-1", "rate:quota:"+uid+":"+today)...).Err()
 	// go-redis Del 立即执行，defer 必须用运行时实际键名（快照不含运行期新增的 bookquota）
-	defer func() { _ = r.Raw().Del(ctx, "rate:inflight:"+uid+":proj-1", "rate:quota:"+uid+":"+today, "rate:bookquota:"+uid+":proj-1:"+today, "rate:bookcnt:"+uid+":"+today).Err() }()
+	defer func() {
+		_ = r.Raw().Del(ctx, "rate:inflight:"+uid+":proj-1", "rate:quota:"+uid+":"+today, "rate:bookquota:"+uid+":proj-1:"+today, "rate:bookcnt:"+uid+":"+today).Err()
+	}()
 
 	body := `{"size":2,"start":1}`
 	req := httptest.NewRequest(http.MethodPost,
@@ -490,6 +502,24 @@ func TestBatchControlForwardsToTasksPath(t *testing.T) {
 	}
 	if len(paths) != 1 || paths[0] != "/internal/v1/tasks/batch-x/resume" {
 		t.Fatalf("应转发 /internal/v1/tasks/batch-x/resume，实际 %v", paths)
+	}
+}
+
+func TestTaskCancelForwardsToTasksPath(t *testing.T) {
+	r := newTestRedis(t)
+	var paths []string
+	py := pyapi.New(recordingPy(&paths).URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/tasks/manual-task/cancel", nil)
+	req.Header.Set("Authorization", bearer(t, "dev"))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
+	}
+	if len(paths) != 1 || paths[0] != "/internal/v1/tasks/manual-task/cancel" {
+		t.Fatalf("应转发单章取消路径，实际 %v", paths)
 	}
 }
 
@@ -957,12 +987,56 @@ func TestSSEFrameForward(t *testing.T) {
 	if ct := w.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/event-stream") {
 		t.Fatalf("应 text/event-stream，实际 %q", ct)
 	}
+	if buffering := w.Header().Get("X-Accel-Buffering"); buffering != "no" {
+		t.Fatalf("SSE 必须显式关闭代理缓冲，实际 %q", buffering)
+	}
 	out := w.Body.String()
 	if !strings.Contains(out, `"status":"running"`) {
 		t.Fatalf("应转发 running 帧，实际 %s", out)
 	}
 	if !strings.Contains(out, `"status":"done"`) {
 		t.Fatalf("应转发 done 帧，实际 %s", out)
+	}
+}
+
+func TestSSEReplayContinuesPastHistoricalTerminal(t *testing.T) {
+	r := newTestRedis(t)
+	py := pyapi.New(fakePy().URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	taskID := "sse-resumed-task"
+	ctx := context.Background()
+	key := "queue:sse:" + taskID
+	defer r.Raw().Del(ctx, key)
+	events := []map[string]any{
+		{"event": "status", "task_id": taskID, "status": "running"},
+		{"event": "status", "task_id": taskID, "status": "awaiting_plan"},
+		{"event": "status", "task_id": taskID, "status": "queued"},
+		{"event": "status", "task_id": taskID, "status": "running"},
+		{"event": "artifact_reset", "task_id": taskID, "stage": "write", "chapter_seq": 15, "artifact_id": "write-1"},
+		{"event": "artifact_delta", "task_id": taskID, "stage": "write", "chapter_seq": 15, "artifact_id": "write-1", "content": "正文已在生成"},
+		{"event": "artifact_complete", "task_id": taskID, "stage": "write", "chapter_seq": 15, "artifact_id": "write-1", "offset": 6},
+		{"event": "status", "task_id": taskID, "status": "awaiting_review"},
+	}
+	for _, event := range events {
+		if _, err := r.XAdd(ctx, key, event); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/tasks/"+taskID+"/events", nil)
+	req.Header.Set("Authorization", bearer(t, "dev"))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	out := w.Body.String()
+	if strings.Contains(out, `"status":"awaiting_plan"`) {
+		t.Fatalf("续跑后的回放不应发送历史 awaiting_plan 终态: %s", out)
+	}
+	if !strings.Contains(out, `"type":"artifact_delta"`) || !strings.Contains(out, "正文已在生成") {
+		t.Fatalf("应越过历史终态并回放正文片段: %s", out)
+	}
+	if !strings.Contains(out, `"status":"awaiting_review"`) {
+		t.Fatalf("应以当前最终状态结束回放: %s", out)
 	}
 }
 
@@ -1058,15 +1132,16 @@ func TestStaticSPAFallback(t *testing.T) {
 	router := NewRouter(cfg, nil, nil, nil)
 
 	cases := []struct {
-		name string
-		path string
-		want int
-		body string // 非空则断言 body 包含
+		name  string
+		path  string
+		want  int
+		body  string // 非空则断言 body 包含
+		cache string
 	}{
-		{"root", "/", http.StatusOK, "<html>index</html>"},
-		{"spa deep link", "/projects/p1/audit", http.StatusOK, "<html>index</html>"},
-		{"asset", "/assets/app.js", http.StatusOK, "console.log(1)"},
-		{"api miss keeps json 404", "/api/v1/unknown", http.StatusNotFound, `"not_found"`},
+		{"root", "/", http.StatusOK, "<html>index</html>", "no-store, max-age=0"},
+		{"spa deep link", "/projects/p1/audit", http.StatusOK, "<html>index</html>", "no-store, max-age=0"},
+		{"asset", "/assets/app.js", http.StatusOK, "console.log(1)", "public, max-age=31536000, immutable"},
+		{"api miss keeps json 404", "/api/v1/unknown", http.StatusNotFound, `"not_found"`, ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1078,6 +1153,9 @@ func TestStaticSPAFallback(t *testing.T) {
 			}
 			if tc.body != "" && !strings.Contains(w.Body.String(), tc.body) {
 				t.Fatalf("%s body 应含 %q，实际 %q", tc.path, tc.body, w.Body.String())
+			}
+			if got := w.Header().Get("Cache-Control"); got != tc.cache {
+				t.Fatalf("%s Cache-Control 应为 %q，实际 %q", tc.path, tc.cache, got)
 			}
 		})
 	}

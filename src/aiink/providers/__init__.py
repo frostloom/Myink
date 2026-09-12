@@ -1,63 +1,85 @@
-"""模型提供方（§6.10 模型路由 + §6.12 调用层兜底）。"""
+"""Model providers and project-scoped routing with a default fallback chain."""
+
+from __future__ import annotations
 
 import uuid
+from typing import Any
 
+from aiink.providers.anthropic import AnthropicProvider
 from aiink.providers.base import (
     CONFIGURABLE_ROLES,
     DEFAULT_ROUTES,
-    MODEL_REGISTRY,
     DEEPSEEK_PRICES,
+    MODEL_REGISTRY,
     FallbackChain,
     ModelProvider,
     ModelResponse,
     ModelSpec,
 )
+from aiink.providers.connections import CUSTOM_ROUTE_PREFIX, unpack_model_settings
+from aiink.providers.credentials import decrypt_api_key
 from aiink.providers.deepseek import DeepSeekProvider
+from aiink.providers.openai_compatible import OpenAICompatibleProvider
 
-# 默认单例：DeepSeek 主模型（v4-flash 默认，降级链到 v4-pro）
 default_provider = DeepSeekProvider()
 
 
 def make_chain(role: str, project_id=None, db=None) -> FallbackChain:
-    """按 role 建降级链（§6.10 默认分层；project_settings.model_routes 每项目可覆盖）。
-
-    project_id 非空时读该书 model_routes[role]（可配置角色 = planner/writer/validator_l2/
-    extract，§6.10；audit/revise/L1 不可覆盖走默认链）：命中合法模型 → 该书主模型置链首，
-    默认链其余去重兜底；未配置/非法模型 → 默认链。db 复用调用方已开的租户会话（读一次
-    project_settings），避免每次建链多连；project_id 为 None 时纯默认，零 DB 访问。
-    """
+    """Build a project route and retain the built-in DeepSeek chain as fallback."""
     route = DEFAULT_ROUTES.get(role, DEFAULT_ROUTES["extract"])
     override = _project_primary(role, project_id, db) if project_id is not None else None
     if override is None:
         return FallbackChain(default_provider, route)
-    chain = [override] + [m for m in route if m != override]
-    return FallbackChain(default_provider, chain)
+    if isinstance(override, str):
+        chain = [override] + [model for model in route if model != override]
+        return FallbackChain(default_provider, chain)
+
+    api_key = decrypt_api_key(str(override.get("api_key_encrypted", "")))
+    if not api_key:
+        return FallbackChain(default_provider, route)
+    protocol = override.get("protocol")
+    if protocol == "openai":
+        provider: ModelProvider = OpenAICompatibleProvider(
+            api_key=api_key, base_url=str(override.get("base_url", "")))
+    elif protocol == "anthropic":
+        provider = AnthropicProvider(api_key=api_key, base_url=str(override.get("base_url", "")))
+    else:
+        return FallbackChain(default_provider, route)
+    model = str(override.get("model", "")).strip()
+    if not model:
+        return FallbackChain(default_provider, route)
+    return FallbackChain(
+        provider,
+        [model, *route],
+        providers=[provider, *([default_provider] * len(route))],
+    )
 
 
-def _project_primary(role: str, project_id, db) -> str | None:
-    """读 project_settings.model_routes[role] 的主模型；非可配置角色 / 无 settings /
-    未配置 / 非法模型 id → None（回落默认链）。
-
-    providers 是底层模块，懒导入 memory.repository 防 providers↔repository 依赖环。
-    """
-    if role not in CONFIGURABLE_ROLES:  # audit/revise/L1 固定默认链（§6.10），双保险
+def _project_primary(role: str, project_id, db) -> str | dict[str, Any] | None:
+    if role not in CONFIGURABLE_ROLES:
         return None
-    from aiink.memory.repository import get_settings  # 懒导入防环
     from aiink.db import tenant_session
+    from aiink.memory.repository import get_settings
 
     pid = uuid.UUID(str(project_id))
     if db is None:
-        with tenant_session(str(pid)) as s:
-            st = get_settings(s, pid)
+        with tenant_session(str(pid)) as session:
+            st = get_settings(session, pid)
     else:
         st = get_settings(db, pid)
     if st is None:
         return None
-    override = (st.model_routes or {}).get(role)
-    return override if override in MODEL_REGISTRY else None
+    routes, connections = unpack_model_settings(st.model_routes)
+    route = routes.get(role)
+    if route in MODEL_REGISTRY:
+        return route
+    if route and route.startswith(CUSTOM_ROUTE_PREFIX):
+        return connections.get(route[len(CUSTOM_ROUTE_PREFIX):])
+    return None
 
 
 __all__ = [
+    "AnthropicProvider",
     "CONFIGURABLE_ROLES",
     "DEFAULT_ROUTES",
     "MODEL_REGISTRY",
@@ -67,6 +89,7 @@ __all__ = [
     "ModelResponse",
     "ModelSpec",
     "DeepSeekProvider",
+    "OpenAICompatibleProvider",
     "default_provider",
     "make_chain",
 ]

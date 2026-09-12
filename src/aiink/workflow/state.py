@@ -17,6 +17,8 @@ class ChapterState(TypedDict, total=False):
     task_id: str  # thread_id（单章任务 = task_id；批次内 = batch_task_id 派生）
     user_instruction: str | None
     rewrite: bool  # 显式重写已确认章（§7.3 失效重建触发，persist 先失效旧记忆再写新）
+    review_revision: bool  # 人工否定设定后的修订，不重放旧稿的已确认候选
+    writing_mode: str  # auto / manual；manual 在每次 plan_chapter 后等待用户确认
 
     # load_state 产物
     settings: dict
@@ -83,6 +85,7 @@ class BatchState(TypedDict, total=False):
 
     # 批次结果
     completed: list[dict]
+    batch_replan_count: int
     batch_failed: bool
     batch_paused: bool
     replan_batch: bool  # 本章 audit 判 replan(batch) → 回 batch_plan 重规划剩余章

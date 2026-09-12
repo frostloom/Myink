@@ -1,8 +1,8 @@
 """任务内部端点：查询（单条 + 项目历史列表）/ 批次控制（pause/resume/cancel）。
 
 - 查询：tasks + agent_runs 无 RLS（观测/队列表），new_session 普通连接可查（§14）。
-- `GET /projects/{pid}/tasks`：项目任务历史（最近 50 条倒序，轻量摘要不含 runs）——前端
-  切书后展示过往任务，点开任一条再走 `GET /tasks/{id}` 拿完整节点流转（agent_runs）。
+- `GET /projects/{pid}/tasks`：项目任务历史（全项目最近 50 条；按章查询完整历史）——前端
+  选章后恢复过往任务，再走 `GET /tasks/{id}` 拿全部节点流转（agent_runs）。
 - pause/resume/cancel（§6.12 暂停 vs 取消）：
   - pause    → status=paused（保留 Checkpointer 现场；真正节点级中断是阶段 3）
   - resume   → status in (failed/paused) → 置 queued + publish 一条 batch_resume 消息
@@ -18,18 +18,27 @@ import json
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, ValidationError
 
 from aiink.api.auth import require_owner
 from aiink.api.schemas import TaskControlOut, TaskDetailOut, TaskSummaryOut
 from aiink.config import settings
+from aiink.context_budget import estimate_tokens
 from aiink.db import new_session
 from aiink.models import AgentRun, Task
+from aiink.schemas import ChapterPlan
 from aiink.worker import amqp
+from aiink.worker.redis_client import get_redis, inflight_key
 
 router = APIRouter(prefix="/internal/v1", tags=["tasks"])
 
 # resume 放行的前置状态（§6.12：失败续跑 / 暂停续跑 / critical 转人工后放行）
 _RESUMABLE = {"failed", "paused", "queued", "awaiting_review"}
+
+
+class PlanConfirmBody(BaseModel):
+    plan: dict
+    expected_attempt: int
 
 
 def _task_uuid(raw: str) -> uuid.UUID:
@@ -47,11 +56,11 @@ def _batch_done_chapters(db, task_id: str) -> int:
         AgentRun.task_id.like(f"{task_id}:ch%"),
         AgentRun.node == "persist",
     ).all()
-    return len({r.task_id for r in runs})
+    return len({r.task_id for r in runs if (r.detail or {}).get("status") != "awaiting_review"})
 
 
 def _task_payload(task_id: str, with_runs: bool = True) -> dict:
-    """组装任务详情（status/payload/error/progress/最近 agent_runs）。"""
+    """组装任务详情（status/payload/error/progress/完整 agent_runs）。"""
     with new_session() as db:
         task = db.get(Task, _task_uuid(task_id))
         if task is None:
@@ -60,7 +69,7 @@ def _task_payload(task_id: str, with_runs: bool = True) -> dict:
             "task_id": str(task.id),
             "task_type": task.task_type,
             "status": task.status,
-            "payload": task.payload,
+            "payload": {k: v for k, v in (task.payload or {}).items() if not k.startswith("_")},
             "error": task.error,
             "retry_count": task.retry_count,
             "trace_id": task.trace_id,
@@ -78,7 +87,6 @@ def _task_payload(task_id: str, with_runs: bool = True) -> dict:
                 db.query(AgentRun)
                 .filter(AgentRun.task_id.like(f"{task_id}%"))
                 .order_by(AgentRun.id)
-                .limit(200)
                 .all()
             )
             data["runs"] = [
@@ -112,7 +120,7 @@ def get_task(task_id: str) -> dict:
 @router.get("/projects/{project_id}/tasks",
             dependencies=[Depends(require_owner)], response_model=list[TaskSummaryOut])
 def list_project_tasks(project_id: str, chapter_seq: int | None = None) -> list[dict]:
-    """项目任务历史（最近 50 条，倒序）：前端切书后展示过往任务，点开再拉详情拿流转。
+    """项目任务历史（倒序）：全项目最近 50 条；按章节查询时扫描完整历史。
 
     轻量摘要不含 runs（重量留给 GET /tasks/{id}）；批次进度派生（persist 去重章数）。
     require_owner 归属断言由依赖挂载（§14.1 ③）；tasks 无 RLS 观测表，new_session 可查。
@@ -123,13 +131,13 @@ def list_project_tasks(project_id: str, chapter_seq: int | None = None) -> list[
     """
     pid = _task_uuid(project_id)
     with new_session() as db:
-        tasks = (
+        task_query = (
             db.query(Task)
             .filter(Task.project_id == pid)
             .order_by(Task.created_at.desc())
-            .limit(50)
-            .all()
         )
+        # 章节侧栏必须能找到旧章节任务；若先截项目最近 50 条，生成次数多后旧流程会消失。
+        tasks = task_query.limit(50).all() if chapter_seq is None else task_query.all()
         # 每任务总花费（§6.8 成本透明）：agent_runs.cost_est 按 task_id 前缀聚合——
         # 单章任务 task_id=裸 uuid；批次任务每章 run= {batch_id}:ch{seq} + 裸 batch_id
         # （batch_plan/reflexion）。统一按「:」前段分桶，等价 _task_payload 的 LIKE 口径。
@@ -193,7 +201,7 @@ def pause_task(task_id: str) -> dict:
         task = db.get(Task, _task_uuid(task_id))
         if task is None:
             raise HTTPException(status_code=404, detail="任务不存在")
-        if task.status in ("done", "failed", "cancelled"):
+        if task.status in ("done", "failed", "cancelled", "awaiting_plan"):
             raise HTTPException(status_code=409, detail=f"任务已终态，不可暂停: {task.status}")
         task.status = "paused"
         db.commit()
@@ -231,6 +239,83 @@ def resume_task(task_id: str) -> dict:
     return {"task_id": task_id, "status": "queued", "message": "已投递续跑消息"}
 
 
+@router.post("/tasks/{task_id}/plan/confirm", response_model=TaskControlOut)
+def confirm_task_plan(task_id: str, body: PlanConfirmBody) -> dict:
+    """确认手动模式计划，用同一任务 ID 从 plan_gate 断点继续。"""
+    tid = _task_uuid(task_id)
+    with new_session() as db:
+        # 锁住任务行，避免双击/多标签页同时确认同一版计划并重复投递。
+        task = db.get(Task, tid, with_for_update=True)
+        if task is None:
+            raise HTTPException(status_code=404, detail="任务不存在")
+        if task.status != "awaiting_plan":
+            raise HTTPException(status_code=409, detail=f"当前状态不可确认计划: {task.status}")
+        payload = dict(task.payload or {})
+        if task.task_type != "chapter_generate" or payload.get("mode") != "manual":
+            raise HTTPException(status_code=409, detail="该任务不是手动单章写作")
+        runs = (db.query(AgentRun)
+                .filter(AgentRun.task_id == task_id, AgentRun.node == "plan_chapter")
+                .order_by(AgentRun.id.desc()).all())
+        plan_run = next((run for run in runs if (run.detail or {}).get("plan")), None)
+        if plan_run is None:
+            raise HTTPException(status_code=409, detail="计划尚未生成完成")
+        attempt = int((plan_run.detail or {}).get("plan_attempt") or 1)
+        if body.expected_attempt != attempt:
+            raise HTTPException(status_code=409, detail="PLAN_VERSION_CONFLICT")
+        try:
+            plan = ChapterPlan.model_validate(body.plan)
+        except ValidationError as exc:
+            raise HTTPException(status_code=422, detail=exc.errors()) from exc
+        plan.project_id = task.project_id
+        plan.chapter_seq = int(payload.get("seq") or task.chapter_seq or 1)
+        approved = plan.model_dump(mode="json")
+        if estimate_tokens(approved) > min(16_000, settings.request_token_budget // 3):
+            raise HTTPException(status_code=400, detail="PLAN_TOO_LARGE")
+        # 用户可能编辑章节衔接锚点。恢复 worker 后才发现锚点无效会把任务打成
+        # failed，因此在入队前用 checkpoint 中同一份召回上下文校验，直接返回可改错误。
+        from aiink.validation.continuity import check_transition_anchor
+        from aiink.workflow.runner import get_graphs
+
+        chapter_graph, _ = get_graphs()
+        snapshot = chapter_graph.get_state({"configurable": {"thread_id": task_id}})
+        if not snapshot.values or not snapshot.values.get("plan"):
+            raise HTTPException(status_code=409, detail="PLAN_CHECKPOINT_MISSING")
+        try:
+            check_transition_anchor(approved, snapshot.values.get("context") or {})
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        payload["approved_plan"] = approved
+        payload["plan_attempt"] = attempt
+        task.payload = payload
+        task.status = "queued"
+        task.error = None
+        project_id = str(task.project_id)
+        trace_id = task.trace_id or task_id
+        db.commit()
+
+    message = {
+        "task_id": task_id,
+        "task_type": "chapter_plan_resume",
+        "project_id": project_id,
+        "user_id": payload.get("_gate_user_id") or "",
+        "payload": {**payload, "approved_plan": approved},
+        "trace_id": trace_id,
+        "request_id": task_id,
+        "retry_count": 0,
+        "created_at": "",
+    }
+    try:
+        amqp.publish(json.dumps(message, ensure_ascii=False), amqp.KEY_TASKS)
+    except Exception as exc:
+        with new_session() as db:
+            current = db.get(Task, tid)
+            if current and current.status == "queued":
+                current.status = "awaiting_plan"
+                db.commit()
+        raise HTTPException(status_code=503, detail="计划确认投递失败，请重试") from exc
+    return {"task_id": task_id, "status": "queued", "message": "计划已确认，开始写作"}
+
+
 @router.post("/tasks/{task_id}/cancel", response_model=TaskControlOut)
 def cancel_task(task_id: str) -> dict:
     with new_session() as db:
@@ -239,7 +324,25 @@ def cancel_task(task_id: str) -> dict:
             raise HTTPException(status_code=404, detail="任务不存在")
         if task.status in ("done", "cancelled"):
             raise HTTPException(status_code=409, detail=f"任务已终态: {task.status}")
+        was_awaiting_plan = task.status == "awaiting_plan"
+        payload = dict(task.payload or {})
+        project_id = str(task.project_id)
+        chapter_seq = int(payload.get("seq") or task.chapter_seq or 0)
         task.status = "cancelled"
         db.commit()
+    if was_awaiting_plan:
+        gate_user = payload.get("_gate_user_id") or ""
+        if gate_user:
+            get_redis().srem(inflight_key(gate_user, project_id), task_id)
+        if chapter_seq:
+            from aiink.db import tenant_session
+            from aiink.models import Chapter
+
+            with tenant_session(project_id) as db:
+                chapter = (db.query(Chapter)
+                           .filter(Chapter.project_id == uuid.UUID(project_id),
+                                   Chapter.chapter_seq == chapter_seq).first())
+                if chapter is not None and not (chapter.content or "").strip():
+                    chapter.status = "cancelled"
     # 尽力而为：worker 启动前幂等检查跳过 / runner 终态守卫不回写（§6.12）
     return {"task_id": task_id, "status": "cancelled"}

@@ -1,0 +1,25 @@
+{
+  "backend_container": {
+    "passed": 536,
+    "known_xfail": 5,
+    "failed": 0
+  },
+  "frontend": {
+    "passed": 82,
+    "interaction_verified_on": "2026-09-09",
+    "build": "passed"
+  },
+  "gateway": {
+    "passed": 55,
+    "skipped": 0,
+    "failed": 0,
+    "vet": "passed"
+  },
+  "live_logic": {
+    "matched": 10,
+    "total": 10
+  },
+  "real_failure_replay": "仅在本地使用实际失败checkpoint构建抽取/审核/修订完整请求，未发送原小说到模型",
+  "deployed": "9 月 8 日版本：Docker API/worker/gateway 已更新；浏览器确认历史 pass 决策和评审说明可见",
+  "interaction_deployment_2026_09_09": "网关 Docker 镜像构建通过；当前引擎未发现原容器或数据卷，尚未更新原运行实例"
+}

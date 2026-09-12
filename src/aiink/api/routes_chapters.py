@@ -17,7 +17,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import delete as sa_delete, func
 
 from aiink.api.auth import require_owner
@@ -36,6 +36,7 @@ router = APIRouter(prefix="/internal/v1", tags=["chapters"])
 
 class ContentUpdate(BaseModel):
     content: str
+    expected_version: int = Field(ge=1)
 
 
 def _project_id(raw: str) -> uuid.UUID:
@@ -65,6 +66,8 @@ def update_chapter_content(project_id: str, chapter_id: str, body: ContentUpdate
         ch = db.get(Chapter, _chapter_id(chapter_id), with_for_update=True)
         if ch is None:
             raise HTTPException(status_code=404, detail="章节不存在")
+        if body.expected_version != (ch.version or 1):
+            raise HTTPException(status_code=409, detail="CHAPTER_VERSION_CONFLICT")
         snapshot_chapter(db, ch)  # 覆盖写前快照进版本表（历史/回退依据，阶段 4）
         ch.content = body.content
         ch.version = (ch.version or 1) + 1

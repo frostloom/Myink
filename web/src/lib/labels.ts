@@ -6,11 +6,14 @@ export const NODE_LABELS: Record<string, string> = {
   load_state: '加载状态',
   recall: '回忆召回',
   plan_chapter: '章节规划',
+  plan_review: '确认计划',
   write: '写作',
   extract: '记忆抽取',
   validate: '校验',
   revise: '修订',
   audit: '审核',
+  route: '策略路由',
+  reset_replan: '重新规划',
   persist: '落库',
   summarize: '章节摘要',
   reflexion: '复盘',
@@ -52,6 +55,7 @@ const TASK_TONES: Record<TaskStatus, BadgeTone> = {
   queued: 'hint',
   running: 'accent',
   paused: 'warning',
+  awaiting_plan: 'warning',
   awaiting_review: 'warning',
   failed: 'error',
   cancelled: 'hint',
@@ -63,6 +67,7 @@ export function taskStatusLabel(s: TaskStatus): string {
     queued: '排队中',
     running: '运行中',
     paused: '已暂停',
+    awaiting_plan: '待确认计划',
     awaiting_review: '待人工',
     failed: '失败',
     cancelled: '已取消',
@@ -99,4 +104,17 @@ export function verdictLabel(v: Verdict): string {
 
 export function verdictTone(v: Verdict): BadgeTone {
   return v === 'pass' ? 'success' : v === 'rewrite' ? 'warning' : 'error'
+}
+
+export function conflictTypeLabel(type: string): string {
+  return {
+    faction: '势力设定', power: '境界与战力', timeline: '时间线', location: '地点连续性',
+    character: '人物设定', character_state: '人物状态', relation: '人物关系',
+    foreshadow: '伏笔', item_rule: '物品规则', plotline: '剧情线', persona: '人物行为',
+    style: '文风与重复', fact: '事实设定',
+  }[type] ?? type
+}
+
+export function findingSourceLabel(source: string): string {
+  return { L1: '确定性校验', L2: '语义台账校验', audit: '模型审核' }[source] ?? source
 }

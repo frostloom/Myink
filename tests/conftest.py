@@ -18,6 +18,8 @@ os.environ["RANKINGS_ENABLED"] = "0"
 # 必须在 aiink.config 首次导入前设（settings 是 frozen 单例）——单在 test_multiprocess.py
 # 模块级设已太晚：conftest 的 aiink.db 导入会先触发 settings 冻结。
 os.environ["QUEUE_PREFIX"] = "-mp-"
+# 本地 compose 对外暴露的 RabbitMQ 用户。显式传入的 CI/开发环境配置仍优先。
+os.environ.setdefault("AMQP_URL", "amqp://aiink:aiink@localhost:5672/")
 
 import uuid
 

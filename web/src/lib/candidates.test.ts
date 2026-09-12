@@ -18,10 +18,11 @@ describe('candidateLabel / candidateTone', () => {
     expect(candidateLabel('foreshadow_touch')).toBe('伏笔回收')
     expect(candidateLabel('chapter_summary')).toBe('章节摘要')
     expect(candidateLabel('memory_removal')).toBe('记忆删除')
+    expect(candidateLabel('plotline')).toBe('剧情线推进')
   })
 
   it('未知 kind 回退原始字符串', () => {
-    expect(candidateLabel('plotline')).toBe('plotline')
+    expect(candidateLabel('unknown_kind')).toBe('unknown_kind')
   })
 
   it('memory_removal 用 error 色调（破坏性动作警示）', () => {
@@ -40,7 +41,10 @@ describe('formatCandidateValue', () => {
     expect(formatCandidateValue('k', undefined)).toBe('')
     expect(formatCandidateValue('is_hard', true)).toBe('是')
     expect(formatCandidateValue('participants', ['甲', '乙'])).toBe('甲、乙')
-    expect(formatCandidateValue('trigger', { who: '甲' })).toBe('{"who":"甲"}')
+    expect(formatCandidateValue('evidence', { who: '甲' })).toBe('who：甲')
+    expect(formatCandidateValue('trigger', {
+      actor: '林尘', action: '观察吊坠背面纹路并决定查证', object: '卫珩的墨绿吊坠',
+    })).toBe('人物：林尘\n动作：观察吊坠背面纹路并决定查证\n对象：卫珩的墨绿吊坠')
   })
 
   it('UUID 型 id 截断前 8 位', () => {
@@ -49,6 +53,18 @@ describe('formatCandidateValue', () => {
     expect(formatCandidateValue('memory_id', id)).toBe('12345678…')
     // 非 id 键不截断
     expect(formatCandidateValue('summary', id)).toBe(id)
+  })
+
+  it('已知引用显示人物名称，并翻译状态字段', () => {
+    const id = '79d87319-cba8-47d0-b631-3559acc7a758'
+    expect(formatCandidateValue('character_id', id, { [id]: '林尘' })).toBe('林尘')
+    expect(formatCandidateValue('field', 'goal')).toBe('目标')
+    expect(formatCandidateValue('field', 'alive')).toBe('存活状态')
+    expect(formatCandidateValue('relation_type', 'master_student')).toBe('师徒')
+    expect(formatCandidateValue('relation_type', 'happened_at')).toBe('发生于')
+    expect(formatCandidateValue('outcome', 'advanced')).toBe('已推进')
+    expect(formatCandidateValue('outcome', 'resolved')).toBe('已回收')
+    expect(formatCandidateValue('participants', [id, '卫珩'], { [id]: '林尘' })).toBe('林尘、卫珩')
   })
 })
 
@@ -63,10 +79,30 @@ describe('candidateFields', () => {
     })
     expect(rows).toEqual([
       ['角色', '12345678…'],
-      ['字段', 'realm'],
+      ['字段', '境界'],
       ['旧值', '筑基'],
       ['新值', '金丹'],
     ])
+  })
+
+  it('character_state 使用引用表显示角色名和中文字段名', () => {
+    const id = '79d87319-cba8-47d0-b631-3559acc7a758'
+    expect(candidateFields('character_state', { character_id: id, field: 'item' }, { [id]: '林尘' })).toEqual([
+      ['角色', '林尘'],
+      ['字段', '持有物'],
+    ])
+  })
+
+  it('旧增量候选的新值显示为完整持有物，避免误以为会覆盖原清单', () => {
+    const oldValue = '持有玉佩碎片、纸条、两块仿制玉片'
+    const rows = candidateFields('character_state', {
+      character_id: '79d87319-cba8-47d0-b631-3559acc7a758',
+      field: 'item',
+      old_value: oldValue,
+      new_value: '新增怪人摊主所给一包药渣；其余物件不变',
+    }, { '79d87319-cba8-47d0-b631-3559acc7a758': '林尘' })
+
+    expect(rows).toContainEqual(['新值', `${oldValue}；新增怪人摊主所给一包药渣`])
   })
 
   it('relation_change 双端角色 id 展示', () => {
@@ -75,7 +111,7 @@ describe('candidateFields', () => {
       source_id: 'aaaaaaaa-0000-0000-0000-000000000001',
       target_id: 'bbbbbbbb-0000-0000-0000-000000000002',
     })
-    expect(rows[0]).toEqual(['关系', 'hostile'])
+    expect(rows[0]).toEqual(['关系', '敌对'])
     expect(rows).toContainEqual(['源角色', 'aaaaaaaa…'])
     expect(rows).toContainEqual(['目标角色', 'bbbbbbbb…'])
   })
@@ -98,7 +134,7 @@ describe('candidateFields', () => {
     })
     expect(rows).toEqual([
       ['伏笔', 'aaaaaaaa…'],
-      ['回收结果', 'resolved'],
+      ['回收结果', '已回收'],
       ['说明', '灯谜在拍卖会上揭晓'],
     ])
   })
