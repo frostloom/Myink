@@ -1,9 +1,12 @@
 """整本书删除（阶段 6 硬删）：409 守卫 + FK 级联清全部业务表/向量 + checkpoint/Redis 残留。
 
-- 级联全清：章/事件+向量/池候选/势力/任务/agent_runs 一并删除，Redis 残留键（book 锁、
-  sse/lock）清空，Project 行不存在；
-- 守卫 409：DB 非终态任务（running/paused）拒绝；Redis inflight 键存在（已入队未物化
-  窗口）拒绝——网关入队先 SADD inflight + XADD，worker 消费才物化 DB 行，单查 DB 会漏窗口；
+- 级联全清：章/事件+向量/池候选/势力/任务/agent_runs 一并删除，Redis 残留键（sse/lock）
+  清空，Project 行不存在；
+- 守卫 409：只拦 status=running（真有 worker 在跑）与书级租约锁存活（paused 但 worker 仍在
+  写当前章，batch_graph 只在章边界停）；queued/paused/awaiting_plan/awaiting_review 属历史
+  残留，删除时自动置 cancelled 后整本删掉（awaiting_review 在 UI 里没有取消入口，拦下会让
+  整本书永远删不掉）；Redis inflight 键不参与守卫（泄漏会长期锁死，awaiting_review 下
+  worker 也不释放它）；
 - 404/403 矩阵（仿 test_auth.py 归属断言口径）；
 - delete_threads：真实 PostgresSaver.put/put_writes 落 checkpoint 行 + 直接插 blob 行 +
   `:ch%` 批次前缀行 → 三表全清（batch run id 形如 {batch_id}:ch{seq}）。
@@ -121,16 +124,14 @@ def test_delete_project_cascades_everything(temp_project):
     _seed_faction(pid)
     _seed_agent_run(pid, tid)
     uid = str(_demo_user_id())
-    # Redis 残留：book 锁 / sse / lock 键（done 任务已终态，无 inflight——inflight 存在即 409）
+    # Redis 残留：sse / lock 键（书锁存活是 409 判据、inflight 存在是闸门占用，见下方守卫用例）
     r = get_redis()
-    r.set(book_key(pid), "1")
     r.set(sse_key(tid), "x")
     r.set(lock_key(tid), "x")
     try:
         result = delete_project(pid)
         assert result == {"project_id": pid, "deleted": True}
         assert _counts(pid) == (False, 0, 0, 0, 0, 0, 0, 0)
-        assert r.exists(book_key(pid)) == 0
         assert r.exists(sse_key(tid)) == 0
         assert r.exists(lock_key(tid)) == 0
         assert r.exists(inflight_key(uid, pid)) == 0, "inflight 键应被清理（无任务时本就不存在）"
@@ -139,41 +140,80 @@ def test_delete_project_cascades_everything(temp_project):
         r.delete(book_key(pid), sse_key(tid), lock_key(tid), inflight_key(uid, pid))
 
 
-# ---- 409 守卫（双腿互补：DB 非终态任务 ∪ Redis inflight 键）----
+# ---- 409 守卫（只拦真在跑的 running）----
 
 
-@pytest.mark.parametrize("status", ["running", "paused", "awaiting_review"])
-def test_delete_project_refuses_active_db_task(temp_project, status):
-    """DB 非终态任务（queued/running/paused/awaiting_review）→ 409，不删。"""
-    _seed_task(temp_project, status=status)
+def test_delete_project_refuses_running_task(temp_project):
+    """worker 真在跑（status=running）→ 409，书与任务行都保持原状。"""
+    _seed_task(temp_project, status="running")
     with pytest.raises(HTTPException) as ei:
         delete_project(temp_project)
     assert ei.value.status_code == 409
     with new_session() as db:
         assert db.get(Project, uuid.UUID(temp_project)) is not None, "409 守卫下不得删除"
+        assert db.query(Task).filter(
+            Task.project_id == uuid.UUID(temp_project), Task.status == "running").count() == 1
 
 
-def test_delete_project_refuses_queued_task(temp_project):
-    _seed_task(temp_project, status="queued")
-    with pytest.raises(HTTPException) as ei:
-        delete_project(temp_project)
-    assert ei.value.status_code == 409
+@pytest.mark.parametrize("status", ["queued", "paused", "awaiting_plan", "awaiting_review"])
+def test_delete_project_cancels_non_running_tasks(temp_project, status):
+    """非终态残留（queued/paused/awaiting_plan/awaiting_review）不再拦删除：置 cancelled 后删掉。"""
+    _seed_task(temp_project, status=status)
+    assert delete_project(temp_project) == {"project_id": temp_project, "deleted": True}
+    with new_session() as db:
+        assert db.get(Project, uuid.UUID(temp_project)) is None
 
 
-def test_delete_project_refuses_stale_inflight_key(temp_project):
-    """Redis inflight 键存在（入队未物化窗口）→ 409，即使 DB 无任务行。"""
+def test_delete_project_ignores_leftover_inflight_key(temp_project):
+    """Redis inflight 键残留（TTL 3600s 内未释放）不应锁死删除；删书顺带清掉该键。"""
     uid = str(_demo_user_id())
     key = inflight_key(uid, temp_project)
     r = get_redis()
     r.set(key, "1")
     try:
+        assert delete_project(temp_project) == {"project_id": temp_project, "deleted": True}
+        assert r.exists(key) == 0
+    finally:
+        r.delete(key)
+
+
+def test_delete_project_refuses_while_worker_holds_book_lock(temp_project):
+    """paused 但 worker 仍在写当前章（书级租约锁存活）→ 409。
+
+    pause 只改 DB 状态，batch_graph 到章边界才停；这段时间删库会让 worker 白跑一章、
+    落库撞 FK。书锁心跳续租、TTL 60s，崩溃自过期 → 不会像 inflight 键那样长期锁死删除。
+    """
+    r = get_redis()
+    r.set(book_key(temp_project), "1", ex=60)
+    try:
         with pytest.raises(HTTPException) as ei:
             delete_project(temp_project)
         assert ei.value.status_code == 409
         with new_session() as db:
-            assert db.get(Project, uuid.UUID(temp_project)) is not None
+            assert db.get(Project, uuid.UUID(temp_project)) is not None, "书锁守卫下不得删除"
     finally:
-        r.delete(key)
+        r.delete(book_key(temp_project))
+
+
+def test_delete_project_survives_redis_failure(temp_project, monkeypatch):
+    """Redis 不可用时删书仍须完成：残留清理是 best-effort。
+
+    否则会留下最坏状态——任务已 commit 成 cancelled（cancelled 不可续跑）、书还在，
+    用户既删不掉也无法 resume，只能手工修库。
+    """
+    from aiink.api import routes_book
+
+    class _Boom:
+        def exists(self, *args, **kwargs):
+            raise RuntimeError("redis down")
+
+        def delete(self, *args, **kwargs):
+            raise RuntimeError("redis down")
+
+    monkeypatch.setattr(routes_book, "get_redis", lambda: _Boom())
+    assert delete_project(temp_project) == {"project_id": temp_project, "deleted": True}
+    with new_session() as db:
+        assert db.get(Project, uuid.UUID(temp_project)) is None
 
 
 # ---- 404 / 403 矩阵（require_owner 挂依赖，走 TestClient HTTP 层）----

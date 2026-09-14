@@ -109,6 +109,18 @@ def test_settings_rejects_invalid_role_and_model(temp_project):
     assert get_project_settings(temp_project)["model_routes"] == {}
 
 
+def test_settings_omitting_routes_preserves_them(temp_project):
+    """省略 model_routes = 保留现值（与 connections 对称），显式 {} 才清空。
+
+    旧写法 `body.model_routes or {}` 分不清「没传」与「传空」：只改连接的客户端（或任何
+    绕过前端的调用）会静默清空全部分角色路由。
+    """
+    put_project_settings(temp_project, SettingsBody(model_routes={"writer": "deepseek-v4-pro"}))
+    assert put_project_settings(temp_project, SettingsBody())["model_routes"] == \
+        {"writer": "deepseek-v4-pro"}
+    assert put_project_settings(temp_project, SettingsBody(model_routes={}))["model_routes"] == {}
+
+
 def test_custom_model_connection_is_encrypted_redacted_and_routable(temp_project):
     cid = str(uuid.uuid4())
     result = put_project_settings(temp_project, SettingsBody(
@@ -244,6 +256,35 @@ def test_probe_rejects_bad_url_missing_key_and_missing_model(temp_project, monke
     with pytest.raises(HTTPException, match="模型 id"):
         routes_settings.test_model_connection(temp_project, routes_settings.ConnectionProbeBody(
             protocol="openai", base_url="https://models.example.com/v1", api_key="k"))
+
+
+def test_probe_rejects_metadata_and_link_local_hosts(temp_project, monkeypatch):
+    """探针地址守卫：云元数据/链路本地/多播/未指定一律 400，且不触达探针。"""
+    def boom(*_args, **_kwargs):
+        raise AssertionError("不应触达探针")
+
+    monkeypatch.setattr(routes_settings.probe, "list_models", boom)
+    for risky in ("http://169.254.169.254/latest/meta-data", "http://[fe80::1]:8080/v1",
+                  "http://0.0.0.0/v1", "http://239.1.1.1/v1"):
+        with pytest.raises(HTTPException, match="链路本地"):
+            routes_settings.list_connection_models(temp_project, routes_settings.ConnectionProbeBody(
+                protocol="openai", base_url=risky, api_key="k"))
+
+
+def test_probe_allows_loopback_and_private_hosts(temp_project, monkeypatch):
+    """回环与私有段刻意放行：本地推理服务（127.0.0.1:11434 Ollama）是本功能主场景。"""
+    seen: dict = {}
+
+    def fake_list(protocol, base_url, api_key):
+        seen["url"] = base_url
+        return ["m"], None
+
+    monkeypatch.setattr(routes_settings.probe, "list_models", fake_list)
+    for local in ("http://127.0.0.1:11434/v1", "http://192.168.1.20:8000/v1"):
+        assert routes_settings.list_connection_models(
+            temp_project, routes_settings.ConnectionProbeBody(
+                protocol="openai", base_url=local, api_key="k"))["ok"] is True
+    assert seen["url"] == "http://192.168.1.20:8000/v1"
 
 
 # ---- 审计读端点（列表/详情）----

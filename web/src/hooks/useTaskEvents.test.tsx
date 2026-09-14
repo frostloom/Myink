@@ -91,6 +91,63 @@ it('refreshes the run snapshot on every node event, not only at route/persist', 
   await waitFor(() => expect(result.current.runs.map((run) => run.node)).toEqual(['write']))
 })
 
+it('coalesces node-event snapshots instead of refetching on every node', async () => {
+  const event = (patch: Partial<SSEEvent>): SSEEvent => ({
+    type: 'node', task_id: 'burst-task', node: '', status: '', message: '',
+    stage: '', chapter_seq: 0, attempt: 0, offset: 0,
+    artifact_id: '', content: '', artifact: '', ...patch,
+  })
+  const base: TaskDetail = {
+    task_id: 'burst-task', task_type: 'chapter_generate', status: 'running',
+    payload: { seq: 2 }, error: null, retry_count: 0, trace_id: null,
+    chapter_seq: 2, batch_task_id: null, created_at: null, cost_total: 0,
+    runs: [{ task_id: 'burst-task', node: 'write', model_id: 'stub', input_tokens: 1,
+      output_tokens: 2, cache_hit: false, duration_ms: 10, cost_est: 0.001,
+      retry_count: 0, degraded: false, error: null, detail: null }],
+  }
+  vi.mocked(api.getTask).mockResolvedValue(base)
+  // 一章十个节点密集落库：逐事件拉全量详情是 O(节点数) 次请求（批量下近似平方级）
+  vi.mocked(openSSE).mockImplementation((_url, onEvent, opts) => new Promise((resolve) => {
+    for (const node of ['load_state', 'recall', 'plan_chapter', 'write', 'route']) {
+      onEvent(event({ node }))
+    }
+    opts?.signal?.addEventListener('abort', () => resolve({ reason: 'aborted' }), { once: true })
+  }))
+
+  const { result } = renderHook(() => useTaskEvents('burst-task'))
+
+  await waitFor(() => expect(result.current.runs.map((run) => run.node)).toEqual(['write']))
+  // 挂载快照 1 次 + 5 个节点合并为 1 次；逐事件各自拉会打到 6 次
+  expect(vi.mocked(api.getTask).mock.calls.length).toBeLessThanOrEqual(2)
+})
+
+it('does not let a slow snapshot overwrite a newer SSE status', async () => {
+  const base: TaskDetail = {
+    task_id: 'race-task', task_type: 'chapter_generate', status: 'running',
+    payload: { seq: 3 }, error: null, retry_count: 0, trace_id: null,
+    chapter_seq: 3, batch_task_id: null, created_at: null, cost_total: 0, runs: [],
+  }
+  let resolveSlow!: (detail: TaskDetail) => void
+  const slow = new Promise<TaskDetail>((resolve) => { resolveSlow = resolve })
+  // 挂载快照（发起时是旧视图 running）尚未返回，SSE 已推送终态 done
+  vi.mocked(api.getTask).mockReturnValueOnce(slow).mockResolvedValue({ ...base, status: 'done' })
+  vi.mocked(openSSE).mockImplementation(async (_url, onEvent) => {
+    onEvent({
+      type: 'status', task_id: 'race-task', node: '', status: 'done', message: '',
+      stage: '', chapter_seq: 0, attempt: 0, offset: 0,
+      artifact_id: '', content: '', artifact: '',
+    })
+    return { reason: 'terminal' }
+  })
+
+  const { result } = renderHook(() => useTaskEvents('race-task'))
+
+  await waitFor(() => expect(result.current.status).toBe('done'))
+  await act(async () => { resolveSlow(base) })
+  // 晚回的旧快照不得把右栏拽回 running（「左边已 write、右边还在 plan」的来源）
+  expect(result.current.status).toBe('done')
+})
+
 it('assembles replayable artifact deltas and exposes the completed plan', async () => {
   const event = (patch: Partial<SSEEvent>): SSEEvent => ({
     type: 'artifact_delta', task_id: 'stream-task', node: '', status: '', message: '',
