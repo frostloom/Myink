@@ -58,6 +58,31 @@ it('adds a network model and routes Writer through it without exposing saved key
   ))
 })
 
+it('names the missing field beside the save button and does not save', async () => {
+  vi.mocked(api.getSettings).mockResolvedValue({
+    style_profile: {}, skill_pack: null, model_routes: {}, model_connections: [], version: 1,
+  })
+  vi.mocked(api.listSkillPresets).mockResolvedValue([])
+  vi.mocked(api.listProjects).mockResolvedValue([])
+  vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('33333333-3333-4333-8333-333333333333')
+
+  render(
+    <MemoryRouter initialEntries={['/projects/p/settings']}>
+      <Routes><Route path="/projects/:projectId/settings" element={<SettingsPage />} /></Routes>
+    </MemoryRouter>,
+  )
+  await screen.findByText(/尚未添加网络模型/)
+  fireEvent.click(screen.getByRole('button', { name: '添加网络模型' }))
+  fireEvent.change(screen.getByLabelText('请求地址'), { target: { value: 'https://models.example.com/v1' } })
+  fireEvent.change(screen.getByLabelText('模型 id'), { target: { value: 'novel-pro' } })
+  fireEvent.change(screen.getByLabelText(/API Key/), { target: { value: 'secret-key' } })
+  fireEvent.click(screen.getByRole('button', { name: '保存连接与路由' }))
+
+  const status = await screen.findByRole('status')
+  expect(status.textContent).toContain('第 1 个模型连接缺少：连接名称')
+  expect(api.updateSettings).not.toHaveBeenCalled()
+})
+
 it('fetches the model list into the datalist and tests connectivity', async () => {
   vi.mocked(api.getSettings).mockResolvedValue({
     style_profile: {}, skill_pack: null, model_routes: {}, model_connections: [], version: 1,
