@@ -63,6 +63,10 @@ const TERMINAL_STATUSES = new Set<TaskStatus>([
   'done', 'failed', 'cancelled', 'awaiting_plan', 'awaiting_review',
 ])
 
+// 落库节点事件触发的快照合并窗口：20 章批次每章约 10 个节点，逐事件拉整任务详情是
+// O(节点数) 次全量请求（批量下近似平方级）。窗口内最多拉一次，末态仍必被拉到。
+const SNAPSHOT_DEBOUNCE_MS = 250
+
 export function useTaskEvents(
   taskId: string | null,
   opts?: { batchTotal?: number; resumeKey?: number | null },
@@ -83,17 +87,28 @@ export function useTaskEvents(
   const nodesRef = useRef<NodeEvent[]>([])
   const artifactRef = useRef(new Map<string, ArtifactState>())
   const lastIdRef = useRef<string | null>(null)
+  // 状态推进序号：SSE 的 status 事件与每次应用的快照都 +1。快照请求发起时记下当时序号，
+  // 回来时序号已变（期间来了更新的状态）就只更新 runs、不覆盖 status。
+  const statusSeqRef = useRef(0)
+  const snapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const fetchSnapshot = useCallback(async (tid: string, forceTerminal = false): Promise<TaskStatus | null> => {
+    const statusSeq = statusSeqRef.current
     try {
       const detail = await api.getTask(tid)
       // 切章期间旧请求可能晚于新请求返回，不能让上一章快照覆盖当前章节。
       if (connectedTaskRef.current !== tid) return null
       setRuns(detail.runs)
       setPayload(detail.payload)
-      setStatus(detail.status)
       setError(detail.error)
       if (detail.progress) setProgress(detail.progress)
+      // 状态写入要论新旧：SSE 的 status 事件比快照新（快照是请求发起时的视图），
+      // 晚回的旧快照覆盖它，右栏就会出现「左边已 write、右边还在 plan」。
+      // forceTerminal = 外部控制后的权威核对，无条件写入。
+      if (forceTerminal || statusSeq === statusSeqRef.current) {
+        setStatus(detail.status)
+        statusSeqRef.current += 1
+      }
       if (forceTerminal && TERMINAL_STATUSES.has(detail.status)) {
         // 外部取消：流不会自己终态 → 主动停流；connect 循环在 openSSE 返回后先查
         // controller.signal.aborted 早退，不会把 phase 误写成 error
@@ -107,12 +122,26 @@ export function useTaskEvents(
     }
   }, [])
 
+  // 节点事件快照合并（见 SNAPSHOT_DEBOUNCE_MS）：窗口内最多拉一次；窗口结束仍在工作
+  // （取数期间又来事件）就再开一轮，保证最后一个节点对应的 runs 一定被拉到。
+  const scheduleSnapshot = useCallback((tid: string) => {
+    if (snapTimerRef.current !== null) return
+    snapTimerRef.current = setTimeout(() => {
+      snapTimerRef.current = null
+      void fetchSnapshot(tid)
+    }, SNAPSHOT_DEBOUNCE_MS)
+  }, [fetchSnapshot])
+
   const refresh = useCallback(() => {
     if (taskId) void fetchSnapshot(taskId, true)
   }, [taskId, fetchSnapshot])
 
   const stop = useCallback(() => {
     abortRef.current?.abort()
+    if (snapTimerRef.current !== null) {
+      clearTimeout(snapTimerRef.current)
+      snapTimerRef.current = null
+    }
     nodesRef.current = []
     artifactRef.current.clear()
     lastIdRef.current = null
@@ -136,6 +165,7 @@ export function useTaskEvents(
 
       const onEvent = (ev: SSEEvent) => {
         if (ev.status) {
+          statusSeqRef.current += 1
           setStatus(ev.status as TaskStatus)
         }
         if (ev.node) {
@@ -146,7 +176,8 @@ export function useTaskEvents(
           setNodes(nodesRef.current)
           // 每个节点落库即拉一次快照：右栏的耗时/费用视图（runs）只认快照，若只在
           // route/persist 刷新，写作完成后要等到审核结束才更新，期间一直停在上一节点。
-          void fetchSnapshot(tid)
+          // 走合并窗口（SNAPSHOT_DEBOUNCE_MS）：节点密集时不会打出一串全量详情请求。
+          scheduleSnapshot(tid)
         }
         if (ev.type.startsWith('artifact_') && ev.stage && ev.chapter_seq) {
           const key = `${ev.stage}:${ev.chapter_seq}`
@@ -257,7 +288,7 @@ export function useTaskEvents(
         }
       }
     },
-    [fetchSnapshot],
+    [fetchSnapshot, scheduleSnapshot],
   )
 
   const retry = useCallback(() => {
@@ -291,13 +322,20 @@ export function useTaskEvents(
       setError(null)
       setPayload({})
       setLastEventId(null)
+      statusSeqRef.current = 0
       connectedTaskRef.current = taskId
     }
     // 持久化快照先行：旧任务的 Redis 流可能仍存在却不会再产生终态事件，若只等 SSE
     // 结束，重新进入页面会一直显示空流程。实时任务随后继续由 SSE 增量更新。
     void fetchSnapshot(taskId)
     void connect(taskId)
-    return () => abortRef.current?.abort()
+    return () => {
+      abortRef.current?.abort()
+      if (snapTimerRef.current !== null) {
+        clearTimeout(snapTimerRef.current)
+        snapTimerRef.current = null
+      }
+    }
     // taskId 变化或 resumeKey 变化才重连；stop/connect 闭包捕获最新 ref。
     // resumeKey：awaiting_review 终态关流后「放行本章」复用同一 task_id 续跑，
     // taskId 不变不会触发重连，靠 resumeKey 自增强制重开流（last_event_id 追平）。

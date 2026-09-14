@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ipaddress
+import socket
 import uuid
 from typing import Literal
 from urllib.parse import urlsplit
@@ -40,7 +42,10 @@ class ModelConnectionBody(BaseModel):
 
 
 class SettingsBody(BaseModel):
-    """Routes are fully replaced; omitted connections preserve the current list."""
+    """两个字段都是「省略 = 保留现值，显式传（含 {} / []）= 整体替换」。
+
+    原先 model_routes 省略会被当成空字典覆盖，只改连接的客户端会静默丢掉全部分角色配置。
+    """
 
     model_routes: dict[str, str] | None = None
     model_connections: list[ModelConnectionBody] | None = None
@@ -64,6 +69,35 @@ def _clean_base_url(base_url: str) -> str:
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise HTTPException(status_code=400, detail="请求地址不能包含账号、密码、查询参数或片段")
     return base_url
+
+
+def _unsafe_address(raw: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(raw)
+    except ValueError:
+        return True  # 解析不出（含 zone id 等）→ 保守拒绝
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    return ip.is_link_local or ip.is_multicast or ip.is_unspecified or ip.is_reserved
+
+
+def _assert_probe_host_allowed(base_url: str) -> None:
+    """探针地址守卫：只拦纯滥用目标——链路本地（含 169.254.169.254 云元数据）、多播、未指定、
+    保留段。私有段与回环**刻意放行**：本地推理服务（如 127.0.0.1:11434 Ollama）正是本功能的
+    主场景，拦住等于砍掉正常用法；生成路径本就能打任意地址，探针不引入新的越权面。
+
+    解析后才判（域名解析到链路本地同样拒绝）；解析失败不在此处改写成另一种错误，交给探针
+    自己报「连不上」，让失败原因来自真实请求。
+    """
+    host = urlsplit(base_url).hostname
+    if not host:
+        raise HTTPException(status_code=400, detail="请求地址缺少主机名")
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        return
+    if any(_unsafe_address(info[4][0]) for info in infos):
+        raise HTTPException(status_code=400, detail="请求地址指向内网元数据/链路本地端点，已拒绝")
 
 
 def _validate_connection(item: ModelConnectionBody) -> tuple[str, str, str, str]:
@@ -106,10 +140,12 @@ def get_project_settings(project_id: str) -> dict:
 @router.put("/projects/{project_id}/settings",
             dependencies=[Depends(require_owner)], response_model=ProjectSettingsOut)
 def put_project_settings(project_id: str, body: SettingsBody) -> dict:
-    routes = body.model_routes or {}
     with tenant_session(project_id) as db:
         st = get_settings(db, _pid(project_id))
-        _, existing_connections = unpack_model_settings(st.model_routes if st else None)
+        existing_routes, existing_connections = unpack_model_settings(st.model_routes if st else None)
+        # 省略 model_routes = 保留现值（与 model_connections 对称）：旧写法 `or {}` 分不清
+        # 「没传」与「传空」，只改连接的客户端会把全部分角色路由清空。
+        routes = existing_routes if body.model_routes is None else body.model_routes
         connections = existing_connections
         if body.model_connections is not None:
             connections = {}
@@ -171,6 +207,7 @@ def _probe_key(project_id: str, body: ConnectionProbeBody) -> str:
              dependencies=[Depends(require_owner)], response_model=ModelListOut)
 def list_connection_models(project_id: str, body: ConnectionProbeBody) -> dict:
     base_url = _clean_base_url(body.base_url)
+    _assert_probe_host_allowed(base_url)
     api_key = _probe_key(project_id, body)
     models, error = probe.list_models(body.protocol, base_url, api_key)
     return {"ok": error is None, "models": models, "error": error}
@@ -183,6 +220,7 @@ def test_model_connection(project_id: str, body: ConnectionProbeBody) -> dict:
     if not model or len(model) > 160:
         raise HTTPException(status_code=400, detail="模型 id 长度必须为 1–160")
     base_url = _clean_base_url(body.base_url)
+    _assert_probe_host_allowed(base_url)
     api_key = _probe_key(project_id, body)
     ok, latency_ms, reply, error = probe.test_connection(body.protocol, base_url, api_key, model)
     return {"ok": ok, "latency_ms": latency_ms, "reply": reply, "error": error}

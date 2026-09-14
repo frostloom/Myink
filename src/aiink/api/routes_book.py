@@ -177,14 +177,34 @@ def update_project(project_id: str, body: ProjectUpdateBody) -> dict:
             "current_chapter": project.current_chapter, "target_words": project.target_words}
 
 
+def _worker_active(project_id: str) -> bool:
+    """书级租约锁是否仍被活 worker 持有（心跳续租，TTL 60s）。
+
+    paused 的语义是「本章跑完即停」，锁还在 = worker 仍在写当前章，此时删库会让它白跑一章。
+    Redis 不可用时按「无锁」放行（fail-open）：删书是用户显式意图，不该因 Redis 抖动彻底删不掉。
+    """
+    try:
+        return bool(get_redis().exists(book_key(project_id)))
+    except Exception as exc:
+        logger.warning("删书守卫：书锁探测失败（按无锁处理）project_id=%s err=%s", project_id, exc)
+        return False
+
+
 @router.delete("/projects/{project_id}", dependencies=[Depends(require_owner)],
                response_model=DeleteProjectOut)
 def delete_project(project_id: str) -> dict:
-    """整本书删除（硬删）：守卫进行中任务 → 清 checkpoint/Redis 残留 → FK 级联删业务表。
+    """整本书删除（硬删）：守卫正在执行的任务 → 清 checkpoint/Redis 残留 → FK 级联删业务表。
 
-    守卫：DB 非终态任务 ∪ Redis inflight 键——网关入队先 SADD inflight + XADD，worker 消费
-    才物化 DB 行，单查 DB 会漏「已入队未物化」窗口；resume 直发绕过网关（无 SADD）但
-    DB status 非终态，由 DB 腿兜住（双腿互补）。有进行中任务 → 409（对齐 pause/cancel）。
+    守卫拦两类：status=running（真有 worker 在跑）、书级租约锁 lock:book:{pid} 仍存活
+    （worker 已收到 paused 但还在写当前章——batch_graph 只在章边界停，本章跑完即停）。
+    后者是收窄守卫后必须补上的窗口：pause 立刻改 DB 状态，若只数 running，删库会放行，而
+    worker 仍在跑当前章，落库时 chapters FK 违约，白烧一章 token。书锁是心跳续租的租约
+    （TTL 60s），worker 崩溃 ≤60s 自过期，不会像 inflight 键那样长期锁死删除。
+    inflight 键不参与守卫的另一原因：awaiting_review（waiting 决策）下 worker 不释放它，
+    拿它当判据会让「待人工确认」的书永远删不掉。
+    queued/paused/awaiting_plan/awaiting_review 行先置 cancelled 当墓碑——worker 见 cancelled
+    直接跳过（幂等 ②），在途消息不会给已删项目重新物化任务；真要执行的任务在进本函数前
+    已被 worker 翻成 running。
 
     级联（FK ondelete=CASCADE，RLS 对参照动作豁免）覆盖：chapters/versions/outlines/
     settings/characters/factions/locations/记忆层/memory_candidates/writing_lessons/
@@ -196,24 +216,40 @@ def delete_project(project_id: str) -> dict:
         proj = db.get(Project, pid)
         if proj is None:
             raise HTTPException(status_code=404, detail="作品不存在")
-        active = db.query(Task.id).filter(
-            Task.project_id == pid,
-            Task.status.in_(("queued", "running", "paused", "awaiting_plan", "awaiting_review")),
+        running = db.query(Task.id).filter(
+            Task.project_id == pid, Task.status == "running",
         ).count()
-        inflight = get_redis().exists(inflight_key(str(proj.user_id), str(pid)))
-        if active or inflight:
-            raise HTTPException(status_code=409, detail="本书有进行中任务，请先暂停/取消后再删除")
+        if running:
+            raise HTTPException(
+                status_code=409,
+                detail=f"本书有 {running} 个任务正在执行，请先暂停/取消后再删除")
+        if _worker_active(project_id):
+            raise HTTPException(
+                status_code=409,
+                detail="本书正在收尾（当前章仍在写），请稍等几十秒后再删")
+        db.query(Task).filter(
+            Task.project_id == pid,
+            Task.status.in_(("queued", "paused", "awaiting_plan", "awaiting_review")),
+        ).update({Task.status: "cancelled"}, synchronize_session=False)
         task_ids = [str(tid) for (tid,) in
                     db.query(Task.id).filter(Task.project_id == pid).all()]
+        # 墓碑先 commit：后面两步 best-effort 清理耗时不可控，此时才提交会让 worker 在这段
+        # 窗口里读不到 cancelled 而照常跑（见 docstring 的幂等 ②）。
+        db.commit()
     # best-effort 清理（checkpoint/Redis 是可重建、幂等数据；失败仅告警不阻塞删除）
     try:
         delete_threads(task_ids)
     except Exception:
         logger.warning("删除书籍：checkpoint 清理失败 project_id=%s", project_id)
-    r = get_redis()
-    for tid in task_ids:
-        r.delete(sse_key(tid), lock_key(tid))
-    r.delete(book_key(project_id), inflight_key(str(proj.user_id), str(pid)))
+    # 与 checkpoint 清理对齐的 best-effort：Redis 残留可重建/幂等，不能让删除在这里 500——
+    # 此时任务已 commit 成 cancelled、Project 还没删，500 会留下「删不掉、也续不了」的坏状态。
+    try:
+        r = get_redis()
+        for tid in task_ids:
+            r.delete(sse_key(tid), lock_key(tid))
+        r.delete(book_key(project_id), inflight_key(str(proj.user_id), str(pid)))
+    except Exception:
+        logger.warning("删除书籍：Redis 残留清理失败 project_id=%s", project_id)
     # 最终不可逆点：agent_runs（无 FK）+ projects（FK 级联清其余全部业务表）。
     # with new_session() 退出只 close（回滚未提交事务），必须显式 commit（代码库约定）。
     with new_session() as db:
