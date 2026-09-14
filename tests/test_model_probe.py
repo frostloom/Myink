@@ -102,7 +102,44 @@ def test_test_connection_reports_failure(monkeypatch):
     assert ok is False and reply is None and error
 
 
-# ---- 密钥脱敏 ----
+def test_test_connection_reports_provider_reason_and_redacts_key(monkeypatch):
+    """上游 4xx 的具体原因（鉴权方式不对 / 模型不存在）只在响应体里，必须带出来。"""
+    secret = "sk-relay-secret"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(400, json={"error": {"message": f"invalid key {secret}"}})
+
+    _patch_client(monkeypatch, handler)
+    ok, _latency, reply, error = probe.test_connection(
+        "anthropic", "https://relay.example.com", secret, "claude-x")
+
+    assert ok is False and reply is None
+    assert "400" in (error or "") and "invalid key" in (error or "")
+    assert secret not in (error or "")
+
+
+def test_list_models_surfaces_plain_text_error_body(monkeypatch):
+    """中转不一定回 JSON：非 JSON 响应体也要原样带出（截断脱敏后）。"""
+    _patch_client(monkeypatch, lambda request: httpx.Response(404, text="404 page not found"))
+    models, error = probe.list_models("anthropic", "https://relay.example.com", "ak-test")
+
+    assert models == []
+    assert "404" in (error or "") and "404 page not found" in (error or "")
+
+
+def test_test_connection_rejects_non_object_json_body(monkeypatch):
+    """2xx 但 body 不是 JSON 对象（误配到返回数组/字符串的端点）→ ok=False 且可诊断。
+
+    此前 data.get 假定 dict，AttributeError 会逃出探针 → 路由 500，前端只看到「服务器错误」。
+    """
+    _patch_client(monkeypatch, lambda request: httpx.Response(200, json=["not", "an", "object"]))
+    ok, _latency, reply, error = probe.test_connection(
+        "openai", "https://misconfigured.example.com/v1", "sk-x", "novel-pro")
+
+    assert ok is False and reply is None
+    assert "不是 JSON 对象" in (error or "")
+
+
 
 def test_probe_error_redacts_api_key(monkeypatch):
     secret = "sk-super-secret-value"
