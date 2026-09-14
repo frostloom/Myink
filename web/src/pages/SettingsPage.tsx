@@ -42,6 +42,8 @@ type ProbeState = {
   test?: ConnectionTestResult
 }
 
+type SectionMsg = { tone: 'error' | 'ok'; text: string } | null
+
 function orderedKeys(profile: StyleProfile): string[] {
   const known = KEY_ORDER.filter((k) => k in profile)
   const rest = Object.keys(profile).filter((k) => !KEY_ORDER.includes(k))
@@ -134,6 +136,9 @@ export default function SettingsPage() {
   const [connectionDrafts, setConnectionDrafts] = useState<ModelConnectionDraft[]>([])
   // 每连接探针瞬态（按 connection.id 索引）：拉取到的模型 + 测试结果，纯前端展示不落库
   const [probes, setProbes] = useState<Record<string, ProbeState>>({})
+  // 模型连接区的就地反馈：页面顶部那条 banner 离保存按钮太远（点保存看不到任何反应，
+  // 未保存的草稿一刷新就没了），这里把校验/保存结果渲染在按钮旁。
+  const [connMsg, setConnMsg] = useState<SectionMsg>(null)
   // 每章目标字数（§6.9 三层字数控制；从 projects 取该书当前值，可改保存）
   const [targetWords, setTargetWords] = useState('3000')
   // 样本提取草稿（提取后编辑再确认；draftDraft 非空显示编辑区）
@@ -276,14 +281,19 @@ export default function SettingsPage() {
     setBusy('routes')
     setBanner(null)
     setOk(null)
+    setConnMsg(null)
     const connections: ModelConnectionInput[] = []
-    for (const draft of connectionDrafts) {
+    for (const [index, draft] of connectionDrafts.entries()) {
       const name = draft.name.trim()
       const baseUrl = draft.base_url.trim().replace(/\/$/, '')
       const model = draft.model.trim()
-      if (!name || !baseUrl || !model) {
+      // 报缺哪个字段：原来三项合成一句，用户看不出究竟差什么，点保存像没反应
+      const missing = [
+        !name && '连接名称', !baseUrl && '请求地址', !model && '模型 id',
+      ].filter(Boolean).join('、')
+      if (missing) {
         setBusy(null)
-        setBanner('每个模型连接都需要填写名称、请求地址和模型 id')
+        setConnMsg({ tone: 'error', text: `第 ${index + 1} 个模型连接缺少：${missing}` })
         return
       }
       try {
@@ -291,12 +301,12 @@ export default function SettingsPage() {
         if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('scheme')
       } catch {
         setBusy(null)
-        setBanner(`模型连接“${name}”的请求地址无效`)
+        setConnMsg({ tone: 'error', text: `模型连接“${name}”的请求地址无效` })
         return
       }
       if (!draft.has_api_key && !draft.api_key.trim()) {
         setBusy(null)
-        setBanner(`新模型连接“${name}”需要填写 API Key`)
+        setConnMsg({ tone: 'error', text: `新模型连接“${name}”需要填写 API Key` })
         return
       }
       connections.push({
@@ -311,9 +321,9 @@ export default function SettingsPage() {
     try {
       await api.updateSettings(projectId, routes, connections)
       await load()
-      setOk('模型连接与路由已保存')
+      setConnMsg({ tone: 'ok', text: `已保存 ${connections.length} 个模型连接与路由` })
     } catch (err) {
-      showError(err)
+      setConnMsg({ tone: 'error', text: err instanceof ApiError ? err.code : '请求失败，请重试' })
     } finally {
       setBusy(null)
     }
@@ -361,15 +371,15 @@ export default function SettingsPage() {
   /** 探针前置校验（未保存的新连接必须已有明文 key；测试还需模型 id）。 */
   function probeReady(draft: ModelConnectionDraft, needModel: boolean): boolean {
     if (!draft.base_url.trim()) {
-      setBanner('请先填写请求地址')
+      setConnMsg({ tone: 'error', text: '请先填写请求地址' })
       return false
     }
     if (needModel && !draft.model.trim()) {
-      setBanner('请先填写模型 id')
+      setConnMsg({ tone: 'error', text: '请先填写模型 id' })
       return false
     }
     if (!draft.has_api_key && !draft.api_key.trim()) {
-      setBanner('请先填写 API Key')
+      setConnMsg({ tone: 'error', text: '请先填写 API Key' })
       return false
     }
     return true
@@ -377,8 +387,7 @@ export default function SettingsPage() {
 
   async function fetchModels(draft: ModelConnectionDraft) {
     if (!probeReady(draft, false)) return
-    setBanner(null)
-    setOk(null)
+    setConnMsg(null)
     setProbes((p) => ({ ...p, [draft.id]: { ...p[draft.id], loading: 'models' } }))
     try {
       const res = await api.listModels(projectId, probeBody(draft))
@@ -394,8 +403,7 @@ export default function SettingsPage() {
 
   async function runTest(draft: ModelConnectionDraft) {
     if (!probeReady(draft, true)) return
-    setBanner(null)
-    setOk(null)
+    setConnMsg(null)
     setProbes((p) => ({ ...p, [draft.id]: { ...p[draft.id], loading: 'test' } }))
     try {
       const res = await api.testConnection(projectId, probeBody(draft))
@@ -659,6 +667,14 @@ export default function SettingsPage() {
               >
                 {busy === 'routes' ? '保存中…' : '保存连接与路由'}
               </button>
+              {connMsg && (
+                <span
+                  role="status"
+                  className={`${styles.saveMsg} ${connMsg.tone === 'error' ? styles.saveMsgError : ''}`}
+                >
+                  {connMsg.text}
+                </span>
+              )}
             </div>
           </section>
         </div>

@@ -84,6 +84,20 @@
   margin-top: 6px;
 }
 
+/* 模型连接区的就地反馈：靠左、按钮保持在右，避免顶部 banner 在页面外看不到 */
+.saveMsg {
+  margin-right: auto;
+  align-self: center;
+  color: var(--success);
+  font-size: var(--text-small);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.saveMsgError {
+  color: var(--error);
+}
+
 .draftBox {
   margin-top: var(--space-4);
   padding-top: var(--space-4);
