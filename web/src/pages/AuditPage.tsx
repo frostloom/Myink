@@ -7,6 +7,7 @@ import { ProjectRail } from '../components/ProjectRail'
 import { StatusBadge } from '../components/StatusBadge'
 import { useAuth } from '../context/AuthContext'
 import { api, ApiError } from '../lib/api'
+import { formatApiError } from '../lib/apiError'
 import type { GlobalAuditReportDetail, GlobalAuditReportSummary, Project } from '../types'
 import styles from './AuditPage.module.css'
 
@@ -31,7 +32,7 @@ export default function AuditPage() {
       setProjects(proj)
       return list
     } catch (err) {
-      setBanner(err instanceof ApiError ? err.code : '报告加载失败')
+      setBanner(formatApiError(err, '报告加载失败'))
       return null
     }
   }, [projectId])
@@ -47,7 +48,7 @@ export default function AuditPage() {
       setDetail(d)
       setOpenId(id)
     } catch (err) {
-      setBanner(err instanceof ApiError ? err.code : '报告详情加载失败')
+      setBanner(formatApiError(err, '报告详情加载失败'))
     }
   }
 
@@ -69,7 +70,7 @@ export default function AuditPage() {
         else if (err.status === 502) {
           setBanner('审计失败（已落 failed 报告，可查看明细）')
           void load()
-        } else setBanner(err.code)
+        } else setBanner(formatApiError(err))
       } else {
         setBanner('请求失败，请重试')
       }
@@ -88,7 +89,7 @@ export default function AuditPage() {
               <h1>全局审计</h1>
               <div className={styles.crumb}>
                 <Link to={`/projects/${projectId}`}>返回工作台</Link>
-                <span>每 K 章跨章抽样，检出跨章长线一致性问题</span>
+                <span>每约 30 章对照卷规划，看推进有没有偏离、怎么拉回来</span>
               </div>
             </div>
             <button type="button" className="btn btn-primary" disabled={busy} onClick={trigger}>
@@ -102,7 +103,7 @@ export default function AuditPage() {
           {reports === null ? (
             <div className="empty">加载中…</div>
           ) : reports.length === 0 ? (
-            <div className="empty">还没有审计报告。写几章后点「触发审计」开始跨章长线检查。</div>
+            <div className="empty">还没有审计报告。写过章节并有整书大纲后，点「触发审计」对照卷规划。</div>
           ) : (
             <ul className={styles.list}>
               {reports.map((r) => (
@@ -119,7 +120,7 @@ export default function AuditPage() {
                       第 {r.window_start}–{r.window_end} 章
                     </span>
                     <span className={styles.meta}>
-                      {r.chapters} 章 · 抽样 {r.sampled} 角色 · {r.findings} 发现
+                      {r.chapters} 章 · 对照 {r.sampled} 个阶段 · {r.findings} 发现
                       {r.trigger === 'manual' && ' · 手动'}
                     </span>
                     <span className={styles.date}>{r.created_at?.slice(0, 16) ?? ''}</span>
@@ -130,12 +131,13 @@ export default function AuditPage() {
                       {r.error && <div className="banner banner-error">失败原因：{r.error}</div>}
                       <div className={styles.stats}>
                         <Stat label="窗口" value={`${r.window_start}–${r.window_end} 章`} />
-                        <Stat label="抽样角色" value={r.sampled} />
+                        <Stat label="对照阶段" value={r.sampled} />
                         <Stat label="findings" value={r.findings} />
-                        {(r.bridge || r.style) && (
+                        {r.volume && (
                           <span className={styles.dims}>
-                            {r.bridge && <span className="badge badge-accent">桥段 {r.bridge.pairs} 对</span>}
-                            {r.style && <span className="badge badge-accent">文风 {r.style.sampled} 章</span>}
+                            <span className="badge badge-accent">
+                              {r.volume.volumes} 卷 / {r.volume.stages} 段
+                            </span>
                           </span>
                         )}
                       </div>

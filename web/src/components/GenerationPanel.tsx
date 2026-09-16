@@ -1,8 +1,9 @@
 // 生成入口：写下一章（永远写「已写最大章 + 1」的下一未写章）+ 重写本章（仅 confirmed 章，
 // 带确认弹窗）+ 批次生成（N≤20，成本估算标注「估算」）。
-// 429 → 闸门码中文横幅（GATE_CODES）；成功 → onTaskStart(taskId) 交给时间线。
+// 失败 → 中文横幅；成功 → onTaskStart(taskId) 交给时间线。
 import { useState } from 'react'
-import { api, ApiError, GATE_CODES } from '../lib/api'
+import { api, ApiError } from '../lib/api'
+import { formatApiError } from '../lib/apiError'
 import type { ChapterMeta, WritingMode } from '../types'
 import styles from './GenerationPanel.module.css'
 
@@ -63,13 +64,7 @@ export function GenerationPanel({ projectId, chapters, selectedChapter, taskBusy
   function showError(err: unknown) {
     setNotice(null)
     if (err instanceof ApiError) {
-      if (err.status === 429) {
-        setBanner(GATE_CODES[err.code] ?? `额度受限（${err.code}）`)
-      } else if (err.code) {
-        setBanner(err.code)
-      } else {
-        setBanner('请求失败，请重试')
-      }
+      setBanner(formatApiError(err))
     } else {
       setBanner('请求失败，请重试')
     }

@@ -218,3 +218,28 @@ def test_list_tasks_project_missing_404():
 def test_list_tasks_invalid_project_id_400():
     resp = client.get("/internal/v1/projects/not-a-uuid/tasks", headers=_h(_demo_user_id()))
     assert resp.status_code == 400
+
+
+def test_get_task_backfills_zero_cost_for_deepseek_flash(temp_project):
+    """历史行 cost_est=0 但 Token 有数：按 deepseek-flash 单价回算，避免流转图全是 ¥0。"""
+    tid = _add_task(temp_project, task_type="chapter_generate", status="done", chapter_seq=1)
+    pid = uuid.UUID(temp_project)
+    with new_session() as db:
+        db.add(AgentRun(
+            project_id=pid, task_id=tid, node="write", model_id="deepseek-flash",
+            input_tokens=1_000_000, output_tokens=500_000, cache_hit=False, cost_est=0.0,
+        ))
+        db.add(AgentRun(project_id=pid, task_id=tid, node="persist", cost_est=0.0))
+        db.commit()
+    try:
+        detail = client.get(f"/internal/v1/tasks/{tid}", headers=_h(_demo_user_id())).json()
+        assert detail["runs"][0]["cost_est"] == 3.0
+        assert detail["runs"][1]["cost_est"] == 0.0
+        assert detail["cost_total"] == 3.0
+        listed = client.get(
+            f"/internal/v1/projects/{temp_project}/tasks", headers=_h(_demo_user_id()),
+        ).json()
+        item = next(row for row in listed if row["task_id"] == tid)
+        assert item["cost_total"] == 3.0
+    finally:
+        _cleanup([tid], temp_project)

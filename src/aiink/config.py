@@ -42,8 +42,6 @@ class Settings:
         )
         or "postgresql+psycopg://aiink:aiink@localhost:5432/aiink"
     )
-    deepseek_api_key: str = field(default_factory=lambda: _env("DEEPSEEK_API_KEY", "") or "")
-    deepseek_base_url: str = field(default_factory=lambda: _env("DEEPSEEK_BASE_URL", "https://api.deepseek.com") or "https://api.deepseek.com")
     # 项目自定义模型密钥的静态加密主密钥；空值时沿用 JWT_SECRET 派生密钥以兼容本地部署。
     model_credential_key: str = field(default_factory=lambda: _env("MODEL_CREDENTIAL_KEY", "") or "")
     log_level: str = field(default_factory=lambda: _env("LOG_LEVEL", "INFO") or "INFO")
@@ -70,7 +68,7 @@ class Settings:
     batch_max_default: int = 5  # 批次上限默认（plan.md §6.11）
     batch_max_hard: int = 20  # 批次硬上限
     # 长线治理全局审计（§8.6）：每 K 章一次跨章抽样 L2（batch_end 触发，窗口 < K 短路零成本）
-    audit_interval: int = field(default_factory=lambda: int(_env("AUDIT_INTERVAL", "10") or "10"))
+    audit_interval: int = field(default_factory=lambda: int(_env("AUDIT_INTERVAL", "30") or "30"))
     # 单章流 Reflexion 复盘（§8.9 扩展）：每 N 章对窗口内章节做一次复盘提炼（批次流走 batch_end）
     chapter_reflexion_interval: int = 5
     # 每日新建作品数上限（plan.md §13 三层闸门 bookcnt）：建书端点独立校验（生成入队时
@@ -127,11 +125,9 @@ class Settings:
             raise ValueError("REQUEST_TOKEN_BUDGET 必须大于 1000")
         if self.recall_token_budget <= 1000:
             raise RuntimeError("RECALL_TOKEN_BUDGET 必须大于预留的 1000 tokens")
-        if self.is_prod() and not self.deepseek_api_key:
-            raise RuntimeError("APP_ENV=prod 时 DEEPSEEK_API_KEY 不能为空")
         if self.is_prod() and self.jwt_secret == _DEV_JWT_SECRET:
             raise RuntimeError("APP_ENV=prod 时 JWT_SECRET 不能为 dev 默认值（生产密钥需显式注入）")
 
 
 settings = Settings()
-settings.validate()  # prod 缺 DEEPSEEK_API_KEY 时导入即失败（评审 A5 fail-fast，§17.2）
+settings.validate()

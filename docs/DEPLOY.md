@@ -1,6 +1,6 @@
 # Ai Ink 本地部署与验证
 
-当前交付目标是本地演示。登录使用已有用户名，无密码验证；`APP_ENV=prod` 会拒绝演示 token 签发。正式公网账户体系尚未实现。
+当前交付目标是本地演示。登录使用已有用户名，无密码验证；`APP_ENV=prod` 会拒绝演示 token 签发。公网账户、模型密钥用户级 RLS 与登录防撞库见 [PROD-CREDENTIALS.md](PROD-CREDENTIALS.md)，上线时按该方案做，不要把本文演示配置原样暴露公网。
 
 ## 启动应用
 
@@ -8,7 +8,7 @@
 
 ```powershell
 Copy-Item .env.example .env  # 仅首次执行，已有 .env 时保留原配置
-# 编辑 .env，实际生成章节前填入 DEEPSEEK_API_KEY
+# 生成章节前在前端「环境配置」填写模型 Key，不要写进 .env
 docker compose up -d --build
 docker compose ps
 ```
