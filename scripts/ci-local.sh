@@ -23,7 +23,6 @@ export AMQP_URL=amqp://aiink:aiink@127.0.0.1:15673/
 export APP_ENV=test
 export EMBED_ENABLED=0
 export RANKINGS_ENABLED=0
-export DEEPSEEK_API_KEY=
 compose_test=(docker compose -p aiink-test -f docker-compose.test.yml)
 trap '"${compose_test[@]}" down --volumes >/dev/null 2>&1 || true' EXIT
 "${compose_test[@]}" up -d --wait

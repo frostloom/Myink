@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
 import { api, ApiError } from '../lib/api'
+import { formatApiError } from '../lib/apiError'
 import type { Project } from '../types'
 import styles from './ProjectsPage.module.css'
 
@@ -21,7 +22,7 @@ export default function ProjectsPage() {
     api
       .listProjects()
       .then((list) => setProjects(list))
-      .catch((err) => setError(err instanceof ApiError ? err.code : '加载失败'))
+      .catch((err) => setError(formatApiError(err, '加载失败')))
   }, [])
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export default function ProjectsPage() {
           if (err instanceof ApiError && err.status === 409) {
             setDeleteError(`《${p.title}》有进行中任务，无法删除。请先暂停/取消后再试。`)
           } else {
-            setDeleteError(err instanceof ApiError ? `删除失败：${err.code}` : '删除失败')
+            setDeleteError(formatApiError(err, '删除失败'))
           }
         })
     },

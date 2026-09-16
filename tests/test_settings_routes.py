@@ -1,7 +1,6 @@
 """阶段 4 二次切片核心新功能回归（评审 M1 补齐）：每 Agent 模型路由 / 创作设置端点 / 审计读端点。
 
-- make_chain 消费 project_settings.model_routes（§6.10）：命中合法模型 → 置链首 + 默认链
-  去重兜底；非可配置角色 / 未配置 / 非法模型 → 默认链；
+- make_chain 只消费 custom: 连接；未配置 / 非法模型 → unconfigured，不再回落内置 DeepSeek；
 - settings GET/PUT 全量替换 + 非法 role/model 400 + 空 dict 清空；
 - global-audit 列表/详情形状对齐（列表只带计数、详情带 findings/抽样角色）。
 """
@@ -17,9 +16,9 @@ from aiink.api.routes_global_audit import get_global_audit, list_global_audits
 from aiink.api import routes_settings
 from aiink.api.routes_settings import (ModelConnectionBody, SettingsBody, get_project_settings,
                                        put_project_settings)
-from aiink.db import tenant_session
+from aiink.db import new_session, tenant_session
 from aiink.memory.repository import get_settings
-from aiink.models import GlobalAuditReport, ProjectSettings
+from aiink.models import GlobalAuditReport, Project, ProjectSettings, User
 from aiink.providers import make_chain
 from aiink.providers.connections import CONNECTIONS_KEY
 from aiink.providers.credentials import decrypt_api_key
@@ -27,6 +26,17 @@ from aiink.providers.credentials import decrypt_api_key
 FINDING = {"conflict_type": "persona_drift", "severity": "hint", "scope": "local",
            "source": "audit", "evidence": [{"chapter": 1, "quote": "……"}],
            "suggestion": None, "conflict_key": "persona:test"}
+
+
+def _isolate_from_account_env(pid: str) -> None:
+    """临时书挂到空账号，避免演示用户的环境配置抢掉项目级 make_chain。"""
+    _set_routes(pid, {})
+    with new_session() as db:
+        user = User(username=f"iso-{uuid.uuid4().hex[:8]}")
+        db.add(user)
+        db.flush()
+        db.get(Project, uuid.UUID(pid)).user_id = user.id
+        db.commit()
 
 
 def _set_routes(pid: str, routes: dict[str, str]) -> None:
@@ -43,38 +53,23 @@ def _set_routes(pid: str, routes: dict[str, str]) -> None:
 
 # ---- 每 Agent 模型路由（§6.10）----
 
-def test_make_chain_override_puts_primary_head_with_default_fallback(temp_project):
-    """项目级 writer→pro：链首为 pro、默认链其余去重兜底；未配置角色走默认链。"""
-    _set_routes(temp_project, {"writer": "deepseek-v4-pro"})
-    assert make_chain("writer", project_id=temp_project).chain == \
-        ["deepseek-v4-pro", "deepseek-v4-flash"]
-    # 未配置的 role 不受影响
-    assert make_chain("planner", project_id=temp_project).chain == \
-        ["deepseek-v4-flash", "deepseek-v4-pro"]
-    # db=None（自开会话）与复用调用方会话结果一致
+def test_make_chain_without_user_model_does_not_use_builtin(temp_project):
+    """未配置连接：明确报错，不再打 .env DeepSeek。"""
+    _isolate_from_account_env(temp_project)
+    chain = make_chain("writer", project_id=temp_project)
+    assert chain.chain == ["unconfigured"]
+    resp = chain.generate([{"role": "user", "content": "x"}])
+    assert resp.error is not None and "环境配置" in resp.error
     with tenant_session(temp_project) as db:
-        assert make_chain("writer", project_id=temp_project, db=db).chain == \
-            ["deepseek-v4-pro", "deepseek-v4-flash"]
+        assert make_chain("writer", project_id=temp_project, db=db).chain == ["unconfigured"]
 
 
-def test_make_chain_ignores_invalid_or_absent_model_route(temp_project):
-    """非法模型 id / 空路由 → 回落默认链（脏数据不炸链、不静默换模型）。"""
+def test_make_chain_ignores_invalid_or_builtin_model_route(temp_project):
+    """非法模型 id / 已废弃内置 id → unconfigured，不静默换模型。"""
+    _isolate_from_account_env(temp_project)
     _set_routes(temp_project, {"writer": "not-a-model", "extract": "deepseek-v4-pro"})
-    assert make_chain("writer", project_id=temp_project).chain == \
-        ["deepseek-v4-flash", "deepseek-v4-pro"]
-    assert make_chain("extract", project_id=temp_project).chain == \
-        ["deepseek-v4-pro", "deepseek-v4-flash"]
-
-
-def test_make_chain_non_configurable_roles_ignore_override(temp_project):
-    """audit 不在可配置集（§6.10）→ 即使直写 model_routes 也走默认链（PUT 同闸双保险）。"""
-    _set_routes(temp_project, {"audit": "deepseek-v4-pro"})
-    assert make_chain("audit", project_id=temp_project).chain == \
-        ["deepseek-v4-flash", "deepseek-v4-pro"]
-    # 完全未配置任何路由
-    _set_routes(temp_project, {})
-    assert make_chain("writer", project_id=temp_project).chain == \
-        ["deepseek-v4-flash", "deepseek-v4-pro"]
+    assert make_chain("writer", project_id=temp_project).chain == ["unconfigured"]
+    assert make_chain("extract", project_id=temp_project).chain == ["unconfigured"]
 
 
 # ---- 创作设置端点（GET/PUT）----
@@ -84,14 +79,21 @@ def test_settings_roundtrip_full_replace(temp_project):
     g0 = get_project_settings(temp_project)
     assert g0["model_routes"] == {} and g0["version"] == 0
 
-    put_project_settings(temp_project, SettingsBody(model_routes={"planner": "deepseek-v4-pro"}))
+    cid = str(uuid.uuid4())
+    conn = ModelConnectionBody(
+        id=cid, name="私有", protocol="openai",
+        base_url="https://models.example.com/v1", model="novel-pro", api_key="k",
+    )
+    put_project_settings(temp_project, SettingsBody(
+        model_connections=[conn], model_routes={"planner": f"custom:{cid}"}))
     g1 = get_project_settings(temp_project)
-    assert g1["model_routes"] == {"planner": "deepseek-v4-pro"} and g1["version"] == 1
+    assert g1["model_routes"] == {"planner": f"custom:{cid}"} and g1["version"] == 1
 
     # 再 PUT 另一角色 → 全量替换（planner 被清）+ version 递增
-    put_project_settings(temp_project, SettingsBody(model_routes={"extract": "deepseek-v4-pro"}))
+    put_project_settings(temp_project, SettingsBody(
+        model_connections=[conn], model_routes={"extract": f"custom:{cid}"}))
     g2 = get_project_settings(temp_project)
-    assert g2["model_routes"] == {"extract": "deepseek-v4-pro"} and g2["version"] == 2
+    assert g2["model_routes"] == {"extract": f"custom:{cid}"} and g2["version"] == 2
 
     put_project_settings(temp_project, SettingsBody(model_routes={}))
     g3 = get_project_settings(temp_project)
@@ -101,7 +103,7 @@ def test_settings_roundtrip_full_replace(temp_project):
 def test_settings_rejects_invalid_role_and_model(temp_project):
     """非法 role（非可配置集）/ 非法模型 id → 400 且不污染现值。"""
     with pytest.raises(HTTPException) as e1:
-        put_project_settings(temp_project, SettingsBody(model_routes={"audit": "deepseek-v4-pro"}))
+        put_project_settings(temp_project, SettingsBody(model_routes={"not-a-role": "custom:x"}))
     assert e1.value.status_code == 400
     with pytest.raises(HTTPException) as e2:
         put_project_settings(temp_project, SettingsBody(model_routes={"writer": "not-a-model"}))
@@ -115,13 +117,21 @@ def test_settings_omitting_routes_preserves_them(temp_project):
     旧写法 `body.model_routes or {}` 分不清「没传」与「传空」：只改连接的客户端（或任何
     绕过前端的调用）会静默清空全部分角色路由。
     """
-    put_project_settings(temp_project, SettingsBody(model_routes={"writer": "deepseek-v4-pro"}))
+    cid = str(uuid.uuid4())
+    put_project_settings(temp_project, SettingsBody(
+        model_connections=[ModelConnectionBody(
+            id=cid, name="私有", protocol="openai",
+            base_url="https://models.example.com/v1", model="novel-pro", api_key="k",
+        )],
+        model_routes={"writer": f"custom:{cid}"},
+    ))
     assert put_project_settings(temp_project, SettingsBody())["model_routes"] == \
-        {"writer": "deepseek-v4-pro"}
+        {"writer": f"custom:{cid}"}
     assert put_project_settings(temp_project, SettingsBody(model_routes={}))["model_routes"] == {}
 
 
 def test_custom_model_connection_is_encrypted_redacted_and_routable(temp_project):
+    _isolate_from_account_env(temp_project)
     cid = str(uuid.uuid4())
     result = put_project_settings(temp_project, SettingsBody(
         model_connections=[ModelConnectionBody(
@@ -136,7 +146,7 @@ def test_custom_model_connection_is_encrypted_redacted_and_routable(temp_project
     assert result["model_connections"] == [{
         "id": cid, "name": "私有 OpenAI", "protocol": "openai",
         "base_url": "https://models.example.com/v1", "model": "novel-pro",
-        "has_api_key": True,
+        "input_price": None, "output_price": None, "has_api_key": True,
     }]
     assert "secret-value" not in repr(result)
     with tenant_session(temp_project) as db:
@@ -146,12 +156,16 @@ def test_custom_model_connection_is_encrypted_redacted_and_routable(temp_project
     assert decrypt_api_key(encrypted) == "secret-value"
 
     chain = make_chain("writer", project_id=temp_project)
-    assert chain.chain == ["novel-pro", "deepseek-v4-flash", "deepseek-v4-pro"]
+    assert chain.chain == ["novel-pro"]
     assert chain.providers[0].name() == "openai-compatible"
-    assert chain.providers[1].name() == "deepseek"
+    # 审核未单独配置时沿用 writer 的自备连接，不再打 .env DeepSeek
+    audit = make_chain("audit", project_id=temp_project)
+    assert audit.chain == ["novel-pro"]
+    assert audit.providers[0].name() == "openai-compatible"
 
 
 def test_updating_custom_connection_with_blank_key_preserves_secret(temp_project):
+    _isolate_from_account_env(temp_project)
     cid = str(uuid.uuid4())
     put_project_settings(temp_project, SettingsBody(
         model_connections=[ModelConnectionBody(

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 
 def generate_book_setup(genre: str, premise: str, *,
+                        genre_pack: dict | None = None,
                         project_id: str | None = None, db=None) -> tuple[dict, str | None]:
     """Planner 生成本书设定骨架草稿（境界体系/世界观/硬约束/势力/核心人物/关键地点）。
 
@@ -23,9 +24,9 @@ def generate_book_setup(genre: str, premise: str, *,
     from aiink.providers import make_chain
     from aiink.workflow import nodes, prompts
 
-    messages = prompts.book_setup_messages(genre, premise)
+    messages = prompts.book_setup_messages(genre, premise, genre_pack=genre_pack)
     resp = make_chain("planner", db=db, project_id=project_id).generate(
-        messages, json_mode=True, max_tokens=nodes._MAX_TOKENS["plan_chapter"])
+        messages, json_mode=True, max_tokens=nodes._MAX_TOKENS["book_setup"])
     if db is not None:
         if project_id is None:
             raise ValueError("db 非 None 时必须提供 project_id（agent_runs 归属）")
@@ -42,21 +43,19 @@ def generate_book_setup(genre: str, premise: str, *,
     return data, None
 
 
-def generate_book_outline(genre: str, premise: str, *, chapter_count: int = 20,
-                          storyline: str = "", project_id: str | None = None,
+def generate_book_outline(genre: str, premise: str, *, chapter_count: int = 200,
+                          storyline: str = "", genre_pack: dict | None = None,
+                          project_id: str | None = None,
                           db=None) -> tuple[dict, str | None]:
-    """Planner 生成整书大纲草稿（§11 建书 ③：题材/梗概/大致章节数/大致故事线 → Objective + 卷 + 逐章）。
-
-    同 generate_book_setup 模式：planner 档一次 json_mode 调用 + 鲁棒解析 + agent_runs
-    记录 + 从不 raise（§6.12 降级返回 ({}, error)）。形状守卫：顶层 volumes 非数组视为降级
-    （前端据此展示错误横幅，可重新生成或手填）。**草稿不落库**，确认走 PUT outline 端点。
-    """
+    """Planner 生成整书大纲草稿：Objective + 卷 + 约 30 章一段的阶段。草稿不落库。"""
     from aiink.providers import make_chain
     from aiink.workflow import nodes, prompts
+    from aiink.workflow.outline import normalize_outline
 
-    messages = prompts.book_outline_messages(genre, premise, chapter_count, storyline)
+    messages = prompts.book_outline_messages(
+        genre, premise, chapter_count, storyline, genre_pack=genre_pack)
     resp = make_chain("planner", db=db, project_id=project_id).generate(
-        messages, json_mode=True, max_tokens=nodes._MAX_TOKENS["plan_chapter"])
+        messages, json_mode=True, max_tokens=nodes._MAX_TOKENS["book_outline"])
     if db is not None:
         if project_id is None:
             raise ValueError("db 非 None 时必须提供 project_id（agent_runs 归属）")
@@ -73,4 +72,4 @@ def generate_book_outline(genre: str, premise: str, *, chapter_count: int = 20,
         return {}, "unexpected_json"
     if not isinstance(data.get("volumes"), list):
         return {}, "unexpected_shape: volumes 缺失或非数组"
-    return data, None
+    return normalize_outline(data) or data, None

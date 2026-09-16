@@ -6,7 +6,8 @@ import * as echarts from 'echarts/core'
 import { GraphChart } from 'echarts/charts'
 import { TooltipComponent, LegendComponent } from 'echarts/components'
 import { SVGRenderer } from 'echarts/renderers'
-import { api, ApiError } from '../lib/api'
+import { api } from '../lib/api'
+import { formatApiError } from '../lib/apiError'
 import { MAX_GRAPH_NODES, toEchartsOption } from '../lib/graph'
 import type { WorldGraphResponse } from '../types'
 import styles from './WorldGraph.module.css'
@@ -41,7 +42,7 @@ export function WorldGraph({ projectId }: { projectId: string }) {
         if (g.nodes.length > 0) chart.setOption(toEchartsOption(g))
       })
       .catch((err: unknown) => {
-        if (alive) setError(err instanceof ApiError ? err.code : '关系图谱加载失败')
+        if (alive) setError(formatApiError(err, '关系图谱加载失败'))
       })
     return () => {
       alive = false

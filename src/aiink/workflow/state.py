@@ -25,6 +25,7 @@ class ChapterState(TypedDict, total=False):
     characters: list[dict]
     chapter_plan_input: dict
     style_profile: dict | None  # 文风档案（§7.12，写章生成约束）
+    genre_pack: dict | None  # 本书题材包快照（节奏/禁忌/机制）
     target_words: int | None  # 单章目标字数（§6.9，可配置）
 
     # recall 产物

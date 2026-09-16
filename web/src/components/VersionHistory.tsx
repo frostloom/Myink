@@ -2,7 +2,8 @@
 // 语义：chapters 是当前实时版本（列表顶部标出）；历史行是每次覆盖写前的快照，
 // 回退会把当前再留痕（revert）并覆盖回目标版本。
 import { useEffect, useState } from 'react'
-import { api, ApiError } from '../lib/api'
+import { api } from '../lib/api'
+import { formatApiError } from '../lib/apiError'
 import type { ChapterVersion, ContentUpdateResponse } from '../types'
 import styles from './VersionHistory.module.css'
 
@@ -42,7 +43,7 @@ export function VersionHistory({ projectId, chapterId, chapterSeq, onClose, onRe
       })
       .catch((err) => {
         if (!alive) return
-        setError(err instanceof ApiError ? err.code : '加载失败')
+        setError(formatApiError(err, '加载失败'))
         setLoading(false)
       })
     return () => {
@@ -61,7 +62,7 @@ export function VersionHistory({ projectId, chapterId, chapterSeq, onClose, onRe
       const resp = await api.restoreChapterVersion(projectId, chapterId, v.version)
       onRestored(v, resp)
     } catch (err) {
-      setError(err instanceof ApiError ? err.code : '回退失败')
+      setError(formatApiError(err, '回退失败'))
     } finally {
       setRestoring(null)
     }

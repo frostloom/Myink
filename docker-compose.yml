@@ -1,7 +1,7 @@
 # Ai Ink 阶段 5 首切：一键启动全部服务（PostgreSQL+pgvector / Redis / Python API / Worker / Go 网关）。
 # 用法：docker compose up -d --build  →  访问 http://localhost:8080（网关静态托管前端，同源出页面+API+SSE）。
 # 首次初始化：pg 挂载 docker/initdb 建 aiink_app 角色（NOBYPASSRLS）；api 容器 command 先跑 `aiink init`
-# （幂等：建表 + RLS + demo 种子）再起 uvicorn。无 key 也能启动看界面，生成才需 .env 的 DEEPSEEK_API_KEY。
+# （幂等：建表 + RLS + demo 种子）再起 uvicorn。无 key 也能启动看界面；生成请在前端「环境配置」填模型 Key。
 name: aiink
 
 services:
@@ -64,7 +64,7 @@ services:
     restart: unless-stopped
 
   # Python API：容器内先 `aiink init`（幂等）再起 uvicorn（仅内部监听，网关转发入口）。
-  # env_file 注入 .env 真实密钥（DEEPSEEK_API_KEY 等）；environment 显式覆盖网络相关项
+  # env_file 注入 .env（JWT / 加密主密钥等）；environment 显式覆盖网络相关项
   # （compose 优先级 environment > env_file；本地 localhost 串在容器网络内必须换服务名）。
   aiink-api:
     build:
@@ -158,7 +158,7 @@ services:
       PYTHON_API_BASE: http://aiink-api:8100
       WEB_DIST_DIR: /app/dist
       # 不挂 env_file：gateway 只消费 JWT_SECRET（其余 REDIS/PYTHON/WEB 已显式覆盖），
-      # 避免把 DEEPSEEK_API_KEY/DATABASE_URL 等业务密钥带进唯一公网入口容器（最小暴露）；
+      # 避免把 DATABASE_URL 等业务密钥带进唯一公网入口容器（最小暴露）；
       # ${JWT_SECRET} 由 compose 自动从根 .env 插值（缺省走 config.go 的 dev 默认，两端互通）
       JWT_SECRET: ${JWT_SECRET:-}
     ports:
