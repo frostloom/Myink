@@ -5,7 +5,8 @@ import { Link, useParams } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { WorldGraph } from '../components/WorldGraph'
 import { useAuth } from '../context/AuthContext'
-import { api, ApiError } from '../lib/api'
+import { api } from '../lib/api'
+import { formatApiError } from '../lib/apiError'
 import type {
   BookOutline,
   ChapterMeta,
@@ -186,7 +187,7 @@ export default function LorePage() {
       setChapters(chaps)
       setOutline(ol.outline)
     } catch (err) {
-      setBanner(err instanceof ApiError ? err.code : '设定加载失败')
+      setBanner(formatApiError(err, '设定加载失败'))
     }
   }, [projectId])
 
@@ -222,11 +223,11 @@ export default function LorePage() {
           <section className={`panel ${styles.section}`}>
             <h2 className={styles.sectionTitle}>整书大纲</h2>
             <p className={styles.hint}>
-              建书第 ③ 步规划的「全书 Objective → 卷 → 逐章目标」三层骨架（§11）。
-              每次写作注入当前卷目标/关键结果与本章大纲位，逐章推进主线、从源头区分各章开头。
+              建书第 ③ 步规划的「全书 Objective → 卷 → 约 30 章一段的阶段」。
+              写作注入当前卷目标与当前阶段。
             </p>
             {outline == null ? (
-              <div className="empty">暂无大纲。可在「新建作品」第 ③ 步规划整书主线与逐章目标。</div>
+              <div className="empty">暂无大纲。可在「新建作品」第 ③ 步规划整书卷与阶段。</div>
             ) : (
               <div>
                 {outline.objective && (
@@ -242,6 +243,9 @@ export default function LorePage() {
                     <div key={vi} className={styles.block}>
                       <span className={styles.cardLabel}>
                         第 {v.volume_seq ?? vi + 1} 卷 · {v.title || '（未命名）'}
+                        {v.chapter_start && v.chapter_end
+                          ? ` · 第 ${v.chapter_start}–${v.chapter_end} 章`
+                          : ''}
                       </span>
                       {v.theme && <span className="badge">{v.theme}</span>}
                       {v.goal && <span className={styles.entityDesc}>卷目标：{v.goal}</span>}
@@ -253,18 +257,22 @@ export default function LorePage() {
                         </ul>
                       )}
                       {v.end_event && <span className={styles.entityDesc}>卷末事件：{v.end_event}</span>}
-                      <span className={styles.cardLabel}>本卷章节</span>
-                      {v.chapters.length === 0 ? (
-                        <div className="empty">本卷暂无章节。</div>
+                      <span className={styles.cardLabel}>本卷阶段</span>
+                      {!(v.stages && v.stages.length) ? (
+                        <div className="empty">本卷暂无阶段。</div>
                       ) : (
                         <ul className={styles.entityList}>
-                          {v.chapters.map((c) => (
-                            <li key={c.seq ?? c.title ?? '?'} className={styles.entityItem}>
+                          {v.stages.map((s, si) => (
+                            <li key={s.stage_seq ?? si} className={styles.entityItem}>
                               <span className={styles.entityHead}>
-                                <span className={styles.entityName}>第 {c.seq ?? '?'} 章</span>
-                                {c.title && <span className="badge">{c.title}</span>}
+                                <span className={styles.entityName}>{s.name || `第 ${si + 1} 段`}</span>
+                                {s.chapter_start && s.chapter_end && (
+                                  <span className="badge">
+                                    第 {s.chapter_start}–{s.chapter_end} 章
+                                  </span>
+                                )}
                               </span>
-                              {c.goal && <span className={styles.entityDesc}>{c.goal}</span>}
+                              {s.goal && <span className={styles.entityDesc}>{s.goal}</span>}
                             </li>
                           ))}
                         </ul>

@@ -57,6 +57,17 @@ def current_user(x_aiink_user: str | None = Header(None, alias="X-AiInk-User")) 
     return x_aiink_user
 
 
+def require_user(user_id: str | None = Depends(current_user)) -> str:
+    """已认证用户（无项目归属）。缺失/非法身份 → 403。供账号级端点（环境配置、扫榜）挂载。"""
+    if not user_id:
+        raise HTTPException(status_code=403, detail="缺失身份（未携带已认证用户）")
+    try:
+        uuid.UUID(user_id)
+    except (ValueError, TypeError, AttributeError):
+        raise HTTPException(status_code=403, detail="身份非法")
+    return user_id
+
+
 def require_owner(project_id: str, user_id: str | None = Depends(current_user)) -> None:
     """归属断言：project 必须属于请求者。失败 404（不存在）/ 403（越权或身份缺失/非法）。
 

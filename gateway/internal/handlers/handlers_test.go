@@ -787,8 +787,7 @@ func TestChapterVersionForwards(t *testing.T) {
 }
 
 func TestSettingsAndStyleForwards(t *testing.T) {
-	// 阶段 4 设置页 5 端点（settings 读/写、skill-presets、样本提取、文风档案确认）均为
-	// 转发路由，应把方法与路径原样转给 Python API（同 BatchControl 回归约定）。
+	// 阶段 4 设置页 + 账号级环境配置转发路由，应把方法与路径原样转给 Python API。
 	r := newTestRedis(t)
 	var paths []string
 	py := pyapi.New(recordingPy(&paths).URL, 3*time.Second)
@@ -799,14 +798,24 @@ func TestSettingsAndStyleForwards(t *testing.T) {
 	}{
 		{"读设置", http.MethodGet, "/api/v1/projects/p1/settings", ``},
 		{"写模型路由", http.MethodPut, "/api/v1/projects/p1/settings", `{"model_routes":{"planner":"deepseek-v4-pro"}}`},
+		{"读环境配置", http.MethodGet, "/api/v1/environment", ``},
+		{"写环境配置", http.MethodPut, "/api/v1/environment", `{"model_routes":{"planner":"deepseek-v4-pro"}}`},
 		{"预设列表", http.MethodGet, "/api/v1/skill-presets", ``},
+		{"题材目录", http.MethodGet, "/api/v1/genre-packs", ``},
+		{"本书题材", http.MethodPut, "/api/v1/projects/p1/genre-pack", `{"pacing":"三章一反馈"}`},
+		{"恢复题材", http.MethodPost, "/api/v1/projects/p1/genre-pack/restore", ``},
 		{"样本提取", http.MethodPost, "/api/v1/projects/p1/style-samples", `{"samples":["第一章正文。"]}`},
 		{"文风档案确认", http.MethodPut, "/api/v1/projects/p1/style-profile", `{"profile":{"pov":"限知"}}`},
 	}
 	want := []string{
 		"/internal/v1/projects/p1/settings",
 		"/internal/v1/projects/p1/settings",
+		"/internal/v1/environment",
+		"/internal/v1/environment",
 		"/internal/v1/skill-presets",
+		"/internal/v1/genre-packs",
+		"/internal/v1/projects/p1/genre-pack",
+		"/internal/v1/projects/p1/genre-pack/restore",
 		"/internal/v1/projects/p1/style-samples",
 		"/internal/v1/projects/p1/style-profile",
 	}

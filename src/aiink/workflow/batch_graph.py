@@ -78,17 +78,21 @@ class BatchHaltError(Exception):
 
 
 _BATCH_PLAN_PROMPT = """你是长篇网文创作系统的【批次规划 Agent】。为接下来 N 章做整体推进蓝图（N 是规划单元，不是重复次数——N 章要系统性推进主线/支线/伏笔/大纲，不能各自为政）。
-若给定了【整书大纲】与【已写章节】，每章 goal 必须贴合对应大纲位、沿所属卷的卷目标/KR 推进，且不重复已写章节的开场/桥段；大纲与已写正文冲突时以已写正文为准。
+若给定了【整书大纲】，每章 goal 必须沿所属卷目标/阶段目标推进，且不重复已写章节的开场/桥段；大纲与已写正文冲突时以已写正文为准。
 输出严格 JSON：
 {"chapters": [{"goal": "本章推进目标（哪条线/收哪些伏笔/新种钩子）", "outline_advance": "大纲推进段"}, ...]}  共 N 项"""
 
 
-def _batch_plan_messages(batch: dict, outline: dict | None = None) -> list[dict]:
-    """批次规划输入：起点/N +（可选）整书大纲（§11：批次对齐「卷 OKR + 逐章大纲位」，防各自为政）。
+def _overlaps(item: dict, start: int, end: int) -> bool:
+    try:
+        lo, hi = int(item.get("chapter_start") or 0), int(item.get("chapter_end") or 0)
+    except (TypeError, ValueError):
+        return False
+    return bool(lo and hi and lo <= end and hi >= start)
 
-    只注入本批次推进范围内的章（start..start+size-1）与其所属卷——给全书几十上百章会把上下文撑爆，
-    且超出范围的章与新章无关。Objective 给全局终局（批次沿全书方向推进）。
-    """
+
+def _batch_plan_messages(batch: dict, outline: dict | None = None) -> list[dict]:
+    """批次规划：只注入本批范围内的卷与阶段，不灌逐章细纲。"""
     user_parts = [f"起点章 {batch['start_chapter']}，N={batch['size']}。请输出 {batch['size']} 章推进蓝图（严格 JSON）。"]
     verdict = ((batch.get("current") or {}).get("audit_verdict") or {})
     if verdict.get("verdict") == "replan":
@@ -102,29 +106,29 @@ def _batch_plan_messages(batch: dict, outline: dict | None = None) -> list[dict]
         end = start + size - 1
         if objective:
             user_parts.append(f"【全书 Objective（终局，沿此方向推进）】{objective}")
-        rel_volumes, rel_chapters = [], []
+        rel_volumes, rel_stages = [], []
         for v in volumes:
             if not isinstance(v, dict):
                 continue
-            vch = [c for c in (v.get("chapters") or [])
-                   if isinstance(c, dict) and start <= int(c.get("seq") or 0) <= end]
-            if vch:
+            stages = [s for s in (v.get("stages") or [])
+                      if isinstance(s, dict) and _overlaps(s, start, end)]
+            if stages or _overlaps(v, start, end):
                 rel_volumes.append(v)
-                rel_chapters.extend(vch)
+                rel_stages.extend(stages)
         if rel_volumes:
             vol_lines = []
             for v in rel_volumes:
                 krs = [str(k).strip() for k in (v.get("key_results") or []) if str(k).strip()]
-                vline = (f"- 第 {v.get('volume_seq')} 卷《{v.get('title') or ''}》：{v.get('goal') or ''}")
+                vline = (f"- 第 {v.get('volume_seq')} 卷《{v.get('title') or ''}》"
+                         f"（第 {v.get('chapter_start')}–{v.get('chapter_end')} 章）：{v.get('goal') or ''}")
                 if krs:
                     vline += "（KR：" + "；".join(krs) + "）"
                 vol_lines.append(vline)
-            user_parts.append("【涉及卷（本批次推进范围内，新章目标须贴卷目标/KR）】\n" + "\n".join(vol_lines))
-        if rel_chapters:
-            rel_chapters.sort(key=lambda c: int(c.get("seq") or 0))
-            user_parts.append("【大纲逐章目标（新章贴合对应大纲位，不跳大纲）】\n" + "\n".join(
-                f"- 第 {c.get('seq')} 章：{c.get('title') or ''} —— {c.get('goal') or ''}"
-                for c in rel_chapters))
+            user_parts.append("【涉及卷（本批次须贴卷目标/KR）】\n" + "\n".join(vol_lines))
+        if rel_stages:
+            user_parts.append("【涉及阶段（沿阶段目标推进，不要写成逐章细纲复述）】\n" + "\n".join(
+                f"- {s.get('name')} 第 {s.get('chapter_start')}–{s.get('chapter_end')} 章：{s.get('goal') or ''}"
+                for s in rel_stages))
     return [
         {"role": "system", "content": _BATCH_PLAN_PROMPT},
         {"role": "user", "content": "\n\n".join(user_parts)},
@@ -306,7 +310,7 @@ def node_reflexion(state: BatchState) -> BatchState:
                 {"category": l.category, "content": l.content, "recurrence_count": l.recurrence_count}
                 for l in existing
             ], start, state["size"])
-            resp = make_chain("audit").generate(messages, json_mode=True,
+            resp = make_chain("audit", db=db, project_id=pid).generate(messages, json_mode=True,
                                                 max_tokens=nodes._MAX_TOKENS["reflexion"])
             nodes.record_run(db, project_id=pid, task_id=batch_task_id, node="reflexion",
                              role="Reflexion", resp=resp, error=resp.error,
@@ -324,7 +328,7 @@ def node_reflexion(state: BatchState) -> BatchState:
 
 
 def node_global_audit(state: BatchState) -> BatchState:
-    """批次收尾全局审计（§8.6 周期性触发）：窗口长度 >= K 时对抽样角色做人设漂移 L2。
+    """批次收尾全局审计：窗口长度 >= K 时对照卷规划做推进审计。
 
     非阻塞（镜像 node_reflexion）：below_threshold 短路零成本、不落报告；LLM/解析
     失败仍写 status=failed 报告并推进 marker（不阻塞批次，防每批重审同一毒窗口）。

@@ -1,13 +1,22 @@
 // 建书向导（§7.11）：书名/题材 + 一句话梗概 → 创建作品 → Planner 生成设定骨架草稿 →
 // 可编辑确认 → 落库跳工作台。agent 只提案、用户确认是唯一 canon（§7.11 ③）。
 // 布局复用 SettingsPage 的 wrap→rail→main→inner；分区编辑控件对齐 KeyField 风格。
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { RankingsPanel } from '../components/RankingsPanel'
 import { useAuth } from '../context/AuthContext'
-import { api, ApiError, GATE_CODES } from '../lib/api'
-import { GENRE_SUGGESTIONS, parseGenres, toggleGenre } from '../lib/genres'
+import { api } from '../lib/api'
+import { formatApiError } from '../lib/apiError'
+import { GenrePackFields } from '../components/GenrePackFields'
+import {
+  composeFields,
+  displayGenre,
+  emptyFields,
+  groupCatalog,
+  type GenreCatalogItem,
+  type GenreFields,
+} from '../lib/genrePacks'
 import {
   emptySection,
   isSectionEmpty,
@@ -15,7 +24,7 @@ import {
   splitDraft,
   type SetupSection,
 } from '../lib/bookDraft'
-import type { BookOutline, OutlineChapter, OutlineVolume, Project } from '../types'
+import type { BookOutline, OutlineStage, OutlineVolume, Project } from '../types'
 import styles from './NewProjectPage.module.css'
 
 /** 通用「每行一条」文本 ↔ 字符串数组（去空行） */
@@ -52,8 +61,7 @@ function textToWorldRules(text: string): Record<string, string> {
 }
 
 function ApiMessage(err: unknown, fallback: string): string {
-  if (err instanceof ApiError && err.code) return GATE_CODES[err.code] ?? err.code
-  return fallback
+  return formatApiError(err, fallback)
 }
 
 export default function NewProjectPage() {
@@ -63,7 +71,10 @@ export default function NewProjectPage() {
   const [title, setTitle] = useState('')
   // 已落库的书名（AI 起名/用户填写后确认）；书名留空时由 Planner 在设定草稿带 title 建议
   const [savedTitle, setSavedTitle] = useState('')
-  const [genre, setGenre] = useState('')
+  const [catalog, setCatalog] = useState<GenreCatalogItem[]>([])
+  const [primaryId, setPrimaryId] = useState<string | null>(null)
+  const [secondaryId, setSecondaryId] = useState<string | null>(null)
+  const [genreFields, setGenreFields] = useState<GenreFields>(emptyFields())
   const [premise, setPremise] = useState('')
   // 每章目标字数（§6.9 三层字数控制；500–20000，默认 3000）
   const [targetWords, setTargetWords] = useState('3000')
@@ -73,13 +84,39 @@ export default function NewProjectPage() {
   const [draftError, setDraftError] = useState<string | null>(null)
   // ③ 整书大纲（§11）：设定确认落库后出现；梗概 + 大致章节数 + 大致故事线 → Planner 提案
   const [setupConfirmed, setSetupConfirmed] = useState(false)
-  const [outlineCount, setOutlineCount] = useState('20')
+  const [outlineCount, setOutlineCount] = useState('200')
   const [outlineStoryline, setOutlineStoryline] = useState('')
   const [outline, setOutline] = useState<BookOutline | null>(null)
   const [outlineError, setOutlineError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [banner, setBanner] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
+
+  useEffect(() => {
+    void api.listGenrePacks().then(setCatalog).catch(() => {
+      setBanner('题材目录加载失败，可先不选题材创建')
+    })
+  }, [])
+
+  const primary = catalog.find((item) => item.id === primaryId) ?? null
+  const secondary = catalog.find((item) => item.id === secondaryId) ?? null
+  const genreLabel = displayGenre(primary, secondary)
+
+  function pickPrimary(id: string) {
+    const next = primaryId === id ? null : id
+    setPrimaryId(next)
+    setSecondaryId(null)
+    const nextPrimary = catalog.find((item) => item.id === next) ?? null
+    setGenreFields(composeFields(nextPrimary, null))
+  }
+
+  function pickSecondary(id: string) {
+    if (!primaryId) return
+    const next = secondaryId === id ? null : id
+    setSecondaryId(next)
+    const nextSecondary = catalog.find((item) => item.id === next) ?? null
+    setGenreFields(composeFields(primary, nextSecondary))
+  }
 
   async function createAndDraft() {
     const brief = premise.trim()
@@ -97,7 +134,13 @@ export default function NewProjectPage() {
     setBanner(null)
     setOk(null)
     try {
-      const project = await api.createProject({ title: finalTitle, genre, target_words: words })
+      const project = await api.createProject({
+        title: finalTitle,
+        primary_id: primaryId,
+        secondary_id: secondaryId,
+        genre_fields: genreFields,
+        target_words: words,
+      })
       setPid(project.id)
       setSavedTitle(finalTitle)
       setProjects(await api.listProjects())
@@ -157,8 +200,8 @@ export default function NewProjectPage() {
   // ③ 整书大纲：Planner 按目标章节数分卷提案 Objective + 卷 + 逐章；草稿不落库，确认后 PUT 整体替换。
   async function generateOutline(forPid: string) {
     const cc = Number(outlineCount)
-    if (!Number.isInteger(cc) || cc < 1 || cc > 200) {
-      setBanner('大致章节数需为 1–200 的整数')
+    if (!Number.isInteger(cc) || cc < 50 || cc > 1000) {
+      setBanner('大致章节数需为 50–1000 的整数')
       return
     }
     setBusy('outline-draft')
@@ -196,7 +239,6 @@ export default function NewProjectPage() {
   /** 大纲确认落库（单独确认 / 确认全部共用） */
   async function persistOutline() {
     if (!pid || !outline) return
-    const totalChapters = outline.volumes.reduce((n, v) => n + v.chapters.length, 0)
     await api.confirmOutline(pid, {
       objective: outline.objective,
       volumes: outline.volumes.map((v) => ({
@@ -205,10 +247,18 @@ export default function NewProjectPage() {
         goal: v.goal,
         key_results: v.key_results ?? [],
         end_event: v.end_event ?? '',
-        chapters: v.chapters.map((c) => ({ title: c.title, goal: c.goal, beats: c.beats ?? [] })),
+        chapter_start: v.chapter_start,
+        chapter_end: v.chapter_end,
+        stages: (v.stages ?? []).map((s) => ({
+          name: s.name,
+          chapter_start: s.chapter_start,
+          chapter_end: s.chapter_end,
+          goal: s.goal,
+          beats: s.beats ?? [],
+        })),
       })),
       premise: premise.trim(),
-      chapter_count: Number(outlineCount) || totalChapters,
+      chapter_count: Number(outlineCount) || 0,
       storyline: outlineStoryline.trim(),
     })
     await syncTitle()
@@ -273,39 +323,41 @@ export default function NewProjectPage() {
         : o,
     )
 
-  const updateChapter = (vi: number, ci: number, patch: Partial<OutlineChapter>) =>
+  const updateStage = (vi: number, si: number, patch: Partial<OutlineStage>) =>
     setOutline((o) =>
       o
         ? {
             ...o,
             volumes: o.volumes.map((v, j) =>
               j === vi
-                ? { ...v, chapters: v.chapters.map((c, k) => (k === ci ? { ...c, ...patch } : c)) }
+                ? { ...v, stages: (v.stages ?? []).map((s, k) => (k === si ? { ...s, ...patch } : s)) }
                 : v,
             ),
           }
         : o,
     )
 
-  const removeChapter = (vi: number, ci: number) =>
+  const removeStage = (vi: number, si: number) =>
     setOutline((o) =>
       o
         ? {
             ...o,
             volumes: o.volumes.map((v, j) =>
-              j === vi ? { ...v, chapters: v.chapters.filter((_, k) => k !== ci) } : v,
+              j === vi ? { ...v, stages: (v.stages ?? []).filter((_, k) => k !== si) } : v,
             ),
           }
         : o,
     )
 
-  const addChapter = (vi: number) =>
+  const addStage = (vi: number) =>
     setOutline((o) =>
       o
         ? {
             ...o,
             volumes: o.volumes.map((v, j) =>
-              j === vi ? { ...v, chapters: [...v.chapters, { title: '', goal: '', beats: [] }] } : v,
+              j === vi
+                ? { ...v, stages: [...(v.stages ?? []), { name: `第 ${(v.stages ?? []).length + 1} 段`, goal: '', beats: [] }] }
+                : v,
             ),
           }
         : o,
@@ -321,7 +373,7 @@ export default function NewProjectPage() {
               {
                 title: `第 ${o.volumes.length + 1} 卷`,
                 goal: '',
-                chapters: [{ title: '', goal: '' }],
+                stages: [{ name: '本卷', goal: '', beats: [] }],
               },
             ],
           }
@@ -364,34 +416,55 @@ export default function NewProjectPage() {
                 maxLength={60}
               />
             </label>
-            <label className={styles.field}>
+            <div className={styles.field}>
               <span className={styles.fieldLabel}>
                 题材
-                <span className={styles.hint}>（自由输入，或点下方标签组合，可叠加如「都市修仙」）</span>
+                <span className={styles.hint}>（建书时选定，显示名锁定为包名；详情可改，只作用于即将创建的这本书）</span>
               </span>
-              <input
-                className="input"
-                value={genre}
-                onChange={(e) => setGenre(e.target.value)}
-                placeholder="如：都市修仙"
-                maxLength={64}
-              />
-              <div className={styles.genreChips}>
-                {GENRE_SUGGESTIONS.map((g) => {
-                  const on = parseGenres(genre).includes(g)
-                  return (
-                    <button
-                      key={g}
-                      type="button"
-                      className={styles.chip + (on ? ' ' + styles.chipOn : '')}
-                      onClick={() => setGenre(toggleGenre(genre, g))}
-                    >
-                      {g}
-                    </button>
-                  )
-                })}
+              <div className={styles.lockedGenre}>{genreLabel}</div>
+              {groupCatalog(catalog).map(({ group, items }) => (
+                <div key={group} className={styles.genreGroup}>
+                  <div className={styles.genreGroupTitle}>主题材 · {group}</div>
+                  <div className={styles.genreChips}>
+                    {items.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={styles.chip + (primaryId === item.id ? ' ' + styles.chipOn : '')}
+                        onClick={() => pickPrimary(item.id)}
+                      >
+                        {item.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <div className={styles.genreGroup}>
+                <div className={styles.genreGroupTitle}>辅题材（可选，须先选主题材）</div>
+                {groupCatalog(catalog).map(({ group, items }) => (
+                  <div key={`sec-${group}`}>
+                    <div className={styles.genreSubTitle}>{group}</div>
+                    <div className={styles.genreChips}>
+                      {items.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          disabled={!primaryId || item.id === primaryId}
+                          className={styles.chip + (secondaryId === item.id ? ' ' + styles.chipOn : '')}
+                          onClick={() => pickSecondary(item.id)}
+                        >
+                          {item.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
-            </label>
+              <details className={styles.genreDetails}>
+                <summary>题材详情（默认折叠，可按自己的想法改）</summary>
+                <GenrePackFields value={genreFields} onChange={setGenreFields} />
+              </details>
+            </div>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>
                 每章目标字数
@@ -669,20 +742,19 @@ export default function NewProjectPage() {
                 </button>
               </div>
               <p className={styles.hint}>
-                按梗概（与可选的补充故事线，不填则 Planner 自动推导）把全书划成 3-5 卷（起/承/转/合），
-                产出「全书 Objective → 卷 → 逐章目标 + 细纲节拍」骨架。每章写作注入所属卷目标、
-                关键结果与本章细纲，从源头区分各章开头（不靠上一章开头避雷），可编辑后确认。
+                按题材节奏分卷（推进快则卷多），只规划到卷和约每 30 章一段的阶段，不写逐章细纲。
+                写作时注入当前卷目标与当前阶段。可编辑后确认。
               </p>
               {outlineError && (
                 <div className="banner banner-warning">LLM 生成降级：{outlineError}（可手填后确认）</div>
               )}
               <div className={styles.block}>
-                <span className={styles.fieldLabel}>大致章节数（1–200）</span>
+                <span className={styles.fieldLabel}>大致章节数（50–1000）</span>
                 <input
                   className="input"
                   type="number"
-                  min={1}
-                  max={200}
+                  min={50}
+                  max={1000}
                   value={outlineCount}
                   onChange={(e) => setOutlineCount(e.target.value)}
                 />
@@ -711,15 +783,14 @@ export default function NewProjectPage() {
                       placeholder="如：从杂役修士成为宗门长老并公开父辈冤案真相"
                     />
                   </div>
-                  {outline.volumes.map((v, vi) => {
-                    const base = outline.volumes
-                      .slice(0, vi)
-                      .reduce((n, pv) => n + pv.chapters.length, 0)
-                    return (
+                  {outline.volumes.map((v, vi) => (
                       <div key={vi} className={`${styles.block} ${styles.volumeBlock}`}>
                         <div className={styles.rowGrid}>
                           <span className={styles.fieldLabel}>
-                            第 {vi + 1} 卷 · 共 {v.chapters.length} 章
+                            第 {vi + 1} 卷
+                            {v.chapter_start && v.chapter_end
+                              ? ` · 第 ${v.chapter_start}–${v.chapter_end} 章`
+                              : ''}
                           </span>
                           <input
                             className="input"
@@ -737,6 +808,28 @@ export default function NewProjectPage() {
                             onChange={(e) => updateVolume(vi, { theme: e.target.value })}
                           />
                         </div>
+                        <div className={styles.rowGrid}>
+                          <input
+                            className="input"
+                            type="number"
+                            min={1}
+                            placeholder="起始章"
+                            value={v.chapter_start ?? ''}
+                            onChange={(e) =>
+                              updateVolume(vi, { chapter_start: Number(e.target.value) || undefined })
+                            }
+                          />
+                          <input
+                            className="input"
+                            type="number"
+                            min={1}
+                            placeholder="结束章"
+                            value={v.chapter_end ?? ''}
+                            onChange={(e) =>
+                              updateVolume(vi, { chapter_end: Number(e.target.value) || undefined })
+                            }
+                          />
+                        </div>
                         <textarea
                           className="textarea"
                           rows={1}
@@ -747,7 +840,7 @@ export default function NewProjectPage() {
                         <textarea
                           className="textarea"
                           rows={1}
-                          placeholder="关键结果 KR（每行一条，每 3-5 章推进一个）"
+                          placeholder="关键结果 KR（每行一条）"
                           value={arrayToLines(v.key_results ?? [])}
                           onChange={(e) => updateVolume(vi, { key_results: linesToArray(e.target.value) })}
                         />
@@ -758,20 +851,39 @@ export default function NewProjectPage() {
                           value={v.end_event ?? ''}
                           onChange={(e) => updateVolume(vi, { end_event: e.target.value })}
                         />
-                        {v.chapters.map((c, ci) => (
-                          <div key={ci} className={styles.block}>
+                        {(v.stages ?? []).map((s, si) => (
+                          <div key={si} className={styles.block}>
                             <div className={styles.rowGrid}>
-                              <span className={styles.fieldLabel}>第 {base + ci + 1} 章</span>
                               <input
                                 className="input"
-                                placeholder="章名"
-                                value={c.title}
-                                onChange={(e) => updateChapter(vi, ci, { title: e.target.value })}
+                                placeholder="阶段名（前期/中期/后期）"
+                                value={s.name}
+                                onChange={(e) => updateStage(vi, si, { name: e.target.value })}
+                              />
+                              <input
+                                className="input"
+                                type="number"
+                                min={1}
+                                placeholder="起始章"
+                                value={s.chapter_start ?? ''}
+                                onChange={(e) =>
+                                  updateStage(vi, si, { chapter_start: Number(e.target.value) || undefined })
+                                }
+                              />
+                              <input
+                                className="input"
+                                type="number"
+                                min={1}
+                                placeholder="结束章"
+                                value={s.chapter_end ?? ''}
+                                onChange={(e) =>
+                                  updateStage(vi, si, { chapter_end: Number(e.target.value) || undefined })
+                                }
                               />
                               <button
                                 type="button"
                                 className="btn btn-quiet"
-                                onClick={() => removeChapter(vi, ci)}
+                                onClick={() => removeStage(vi, si)}
                               >
                                 删
                               </button>
@@ -779,27 +891,26 @@ export default function NewProjectPage() {
                             <textarea
                               className="textarea"
                               rows={1}
-                              placeholder="本章目标（会注入本章写作）"
-                              value={c.goal}
-                              onChange={(e) => updateChapter(vi, ci, { goal: e.target.value })}
+                              placeholder="阶段目标（约 30 章一段，会注入写作）"
+                              value={s.goal}
+                              onChange={(e) => updateStage(vi, si, { goal: e.target.value })}
                             />
                             <textarea
                               className="textarea"
-                              rows={Math.max(1, c.beats?.length ?? 0)}
-                              placeholder="细纲节拍（每行一条：谁 + 在何处 + 做什么 + 导致什么 + 章末钩子，注入本章写作）"
-                              value={arrayToLines(c.beats ?? [])}
+                              rows={Math.max(1, s.beats?.length ?? 0)}
+                              placeholder="阶段节拍（每行一条）"
+                              value={arrayToLines(s.beats ?? [])}
                               onChange={(e) =>
-                                updateChapter(vi, ci, { beats: linesToArray(e.target.value) })
+                                updateStage(vi, si, { beats: linesToArray(e.target.value) })
                               }
                             />
                           </div>
                         ))}
-                        <button type="button" className="btn btn-quiet" onClick={() => addChapter(vi)}>
-                          + 本卷加一章
+                        <button type="button" className="btn btn-quiet" onClick={() => addStage(vi)}>
+                          + 本卷加一段
                         </button>
                       </div>
-                    )
-                  })}
+                  ))}
                   <div className={styles.saveRow}>
                     <button type="button" className="btn btn-quiet" disabled={busy !== null} onClick={addVolume}>
                       + 新增一卷

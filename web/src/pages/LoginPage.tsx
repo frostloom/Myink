@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { ApiError } from '../lib/api'
+import { formatApiError } from '../lib/apiError'
 import styles from './LoginPage.module.css'
 
 export default function LoginPage() {
@@ -26,7 +27,7 @@ export default function LoginPage() {
         setError(
           err.code === 'network_error'
             ? '无法连接服务，请确认网关（:8080）已启动'
-            : `登录失败：${err.code}`,
+            : formatApiError(err, '登录失败'),
         )
       } else {
         setError('登录失败')

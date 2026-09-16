@@ -186,9 +186,30 @@ class LessonActionOut(BaseModel):
     status: str
 
 
+class GenrePackOut(BaseModel):
+    source_id: str | None = None
+    source_name: str = ""
+    secondary_id: str | None = None
+    secondary_name: str | None = None
+    selling_point: str = ""
+    subgenres: list[dict] = Field(default_factory=list)
+    taboos: list[str] = Field(default_factory=list)
+    pacing: str = ""
+    satisfaction: list[str] = Field(default_factory=list)
+    mechanics: list[str] = Field(default_factory=list)
+    world_hints: list[str] = Field(default_factory=list)
+
+
+class GenreCatalogItemOut(GenrePackOut):
+    id: str
+    name: str
+    group: str
+
+
 class ProjectSettingsOut(BaseModel):
     style_profile: dict = Field(default_factory=dict)
     skill_pack: str | None = None
+    genre_pack: dict = Field(default_factory=dict)
     model_routes: dict = Field(default_factory=dict)
     model_connections: list[dict] = Field(default_factory=list)
     version: int
@@ -208,6 +229,32 @@ class ConnectionTestOut(BaseModel):
     ok: bool
     latency_ms: int = 0
     reply: str | None = None
+    error: str | None = None
+
+
+class RankingsConfigOut(BaseModel):
+    enabled: bool
+    mcp_url: str
+    timeout: int
+    limit: int
+    source: str
+    tool: str
+
+
+class EnvironmentOut(BaseModel):
+    """账号级环境配置（模型连接/路由 + 思考模式 + MCP 扫榜）。"""
+
+    model_routes: dict = Field(default_factory=dict)
+    model_connections: list[dict] = Field(default_factory=list)
+    rankings: RankingsConfigOut
+    thinking_enabled: bool = False
+
+
+class RankingsProbeOut(BaseModel):
+    """MCP 扫榜探针：list_tools 联通结果。"""
+
+    ok: bool
+    tools: list[str] = Field(default_factory=list)
     error: str | None = None
 
 
@@ -251,6 +298,7 @@ class GlobalAuditSummaryOut(BaseModel):
     chapters: int
     bridge: dict | None = None
     style: dict | None = None
+    volume: dict | None = None
     error: str | None = None
     created_at: str | None = None
 

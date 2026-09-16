@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ArtifactState } from '../hooks/useTaskEvents'
 import { api, ApiError } from '../lib/api'
+import { formatApiError } from '../lib/apiError'
 import type {
   AgentRun,
   ChapterPlan,
@@ -210,7 +211,7 @@ export function ChapterPlanPanel({ taskId, chapterSeq, status, runs, artifact, o
       if (err instanceof ApiError && err.code === 'PLAN_VERSION_CONFLICT') {
         setError('计划已在其他页面更新，请刷新后再编辑。')
       } else if (err instanceof ApiError && err.status === 422) {
-        setError(err.code || '计划内容不符合约束，请修改后重试。')
+        setError(formatApiError(err, '计划内容不符合约束，请修改后重试。'))
       } else {
         setError('计划确认失败，请重试。')
       }

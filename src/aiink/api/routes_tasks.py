@@ -27,6 +27,8 @@ from aiink.context_budget import estimate_tokens
 from aiink.db import new_session
 from aiink.models import AgentRun, Task
 from aiink.schemas import ChapterPlan
+from aiink.providers.base import effective_cost
+from aiink.providers.connections import price_tables_from_packed
 from aiink.worker import amqp
 from aiink.worker.redis_client import get_redis, inflight_key
 
@@ -47,6 +49,41 @@ def _task_uuid(raw: str) -> uuid.UUID:
         return uuid.UUID(raw)
     except (ValueError, TypeError) as exc:
         raise HTTPException(status_code=400, detail=f"任务 id 非法: {raw}") from exc
+
+
+def _project_price_tables(db, project_id: uuid.UUID) -> dict[str, dict[str, float]]:
+    """账号环境单价覆盖书内遗留连接；按 model_id 回算历史 ¥0 行。"""
+    from aiink.environment import packed_models
+    from aiink.memory.repository import get_settings
+    from aiink.models import Project
+
+    tables: dict[str, dict[str, float]] = {}
+    st = get_settings(db, project_id)
+    if st is not None:
+        tables.update(price_tables_from_packed(st.model_routes))
+    proj = db.get(Project, project_id)
+    if proj is not None and proj.user_id is not None:
+        tables.update(price_tables_from_packed(packed_models(proj.user_id)))
+    return tables
+
+
+def _run_cost(row: AgentRun, tables: dict[str, dict[str, float]] | None = None) -> float:
+    extra = tables.get(row.model_id) if tables and row.model_id else None
+    return effective_cost(
+        cost_est=row.cost_est, model_id=row.model_id,
+        input_tokens=row.input_tokens, output_tokens=row.output_tokens,
+        cache_hit=row.cache_hit, prices=extra,
+    )
+
+
+def _row_cost(cost_est, model_id, input_tokens, output_tokens, cache_hit,
+              tables: dict[str, dict[str, float]] | None = None) -> float:
+    extra = tables.get(model_id) if tables and model_id else None
+    return effective_cost(
+        cost_est=cost_est, model_id=model_id,
+        input_tokens=input_tokens or 0, output_tokens=output_tokens or 0,
+        cache_hit=bool(cache_hit), prices=extra,
+    )
 
 
 def _batch_done_chapters(db, task_id: str) -> int:
@@ -83,6 +120,7 @@ def _task_payload(task_id: str, with_runs: bool = True) -> dict:
             size = int(task.payload.get("size", 0))
             data["progress"] = {"current": _batch_done_chapters(db, task_id), "total": size}
         if with_runs:
+            tables = _project_price_tables(db, task.project_id)
             runs = (
                 db.query(AgentRun)
                 .filter(AgentRun.task_id.like(f"{task_id}%"))
@@ -98,7 +136,7 @@ def _task_payload(task_id: str, with_runs: bool = True) -> dict:
                     "output_tokens": r.output_tokens,
                     "cache_hit": r.cache_hit,
                     "duration_ms": r.duration_ms,
-                    "cost_est": r.cost_est,
+                    "cost_est": _run_cost(r, tables),
                     "retry_count": r.retry_count,
                     "degraded": r.degraded,
                     "error": r.error,
@@ -108,7 +146,7 @@ def _task_payload(task_id: str, with_runs: bool = True) -> dict:
             ]
             # 总花费（§6.8 成本透明，前端「每章总花费」）：单章 = 该章任务全部节点；
             # 批次 = 全批（task_id 前缀与 runs 同口径）。runs 已加载，求和免额外查询。
-            data["cost_total"] = round(sum(r.cost_est for r in runs), 6)
+            data["cost_total"] = round(sum(item["cost_est"] for item in data["runs"]), 6)
         return data
 
 
@@ -142,28 +180,34 @@ def list_project_tasks(project_id: str, chapter_seq: int | None = None) -> list[
         # 单章任务 task_id=裸 uuid；批次任务每章 run= {batch_id}:ch{seq} + 裸 batch_id
         # （batch_plan/reflexion）。统一按「:」前段分桶，等价 _task_payload 的 LIKE 口径。
         # 一次查询取全部（项目级量级小，观测表无 RLS），避免逐任务子查询。
-        runs = db.query(AgentRun.task_id, AgentRun.cost_est).filter(AgentRun.project_id == pid).all()
+        tables = _project_price_tables(db, pid)
+        runs = db.query(
+            AgentRun.task_id, AgentRun.cost_est, AgentRun.model_id,
+            AgentRun.input_tokens, AgentRun.output_tokens, AgentRun.cache_hit,
+        ).filter(AgentRun.project_id == pid).all()
         if chapter_seq is None:
             # 全量口径：前缀分桶（批次 = 全批含 book 级 run；单章 = 全任务）
             cost_by_task: dict[str, float] = {}
-            for tid, cost in runs:
+            for tid, cost, model_id, inp, out, hit in runs:
                 if not tid:
                     continue
                 prefix = tid.split(":")[0]
-                cost_by_task[prefix] = cost_by_task.get(prefix, 0.0) + (cost or 0.0)
+                cost_by_task[prefix] = cost_by_task.get(prefix, 0.0) + _row_cost(
+                    cost, model_id, inp, out, hit, tables)
         else:
             # 按章口径：批次只计 {batch_id}:ch{seq} 行；单章任务 = chapter_seq 命中时全任务
             batch_ch_cost: dict[str, float] = {}
             bare_cost: dict[str, float] = {}
-            for tid, cost in runs:
+            for tid, cost, model_id, inp, out, hit in runs:
                 if not tid:
                     continue
+                amount = _row_cost(cost, model_id, inp, out, hit, tables)
                 if tid.count(":ch") == 1:
                     b, _, ch = tid.partition(":ch")
                     if ch.isdigit() and int(ch) == chapter_seq:
-                        batch_ch_cost[b] = batch_ch_cost.get(b, 0.0) + (cost or 0.0)
+                        batch_ch_cost[b] = batch_ch_cost.get(b, 0.0) + amount
                 else:
-                    bare_cost[tid] = bare_cost.get(tid, 0.0) + (cost or 0.0)
+                    bare_cost[tid] = bare_cost.get(tid, 0.0) + amount
             cost_by_task = {}
             for t in tasks:
                 if t.task_type == "batch_generate" and t.payload:
