@@ -46,6 +46,7 @@ def _report_summary(r: GlobalAuditReport) -> dict:
         "chapters": r.summary.get("chapters", 0),
         "bridge": r.summary.get("bridge"),
         "style": r.summary.get("style"),
+        "volume": r.summary.get("volume"),
         "error": r.error,
         "created_at": r.created_at.isoformat() if r.created_at else None,
     }
@@ -93,7 +94,7 @@ def list_global_audits(project_id: str, limit: int = _MAX_REPORTS) -> list[dict]
 @router.get("/projects/{project_id}/global-audit/{report_id}",
             dependencies=[Depends(require_owner)], response_model=GlobalAuditDetailOut)
 def get_global_audit(project_id: str, report_id: str) -> dict:
-    """单报告详情：findings 明细（persona/bridge/style 维度同构）+ 抽样角色 + 维度计数。"""
+    """单报告详情：findings 明细 + 对照的卷/阶段 + 计数。"""
     with tenant_session(project_id) as db:
         r = db.get(GlobalAuditReport, _project_id(report_id))
         if r is None:

@@ -12,12 +12,38 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Callable
 
-# ---- DeepSeek V4 官方价格（¥/百万 token，§19.3 核对 2026-08-05）----
-# 缓存命中输入价 ≈ 未命中 1/50
-DEEPSEEK_PRICES: dict[str, dict[str, float]] = {
-    "deepseek-v4-flash": {"input": 1.0, "input_cache_hit": 0.02, "output": 2.0},
-    "deepseek-v4-pro": {"input": 2.0, "input_cache_hit": 0.04, "output": 8.0},
-}
+from aiink.providers.prices import lookup_prices
+
+
+def estimate_cost(
+    model_id: str | None,
+    input_tokens: int = 0,
+    output_tokens: int = 0,
+    cache_hit: bool = False,
+    prices: dict[str, float] | None = None,
+) -> float:
+    """成本估算（¥）：输入×(命中?命中价:未命中价) + 输出×输出价。"""
+    table = prices if prices is not None else lookup_prices(model_id)
+    if table is None:
+        return 0.0
+    in_price = table["input_cache_hit"] if cache_hit else table["input"]
+    return (input_tokens * in_price + output_tokens * table["output"]) / 1_000_000
+
+
+def effective_cost(
+    *,
+    cost_est: float | None,
+    model_id: str | None,
+    input_tokens: int = 0,
+    output_tokens: int = 0,
+    cache_hit: bool = False,
+    prices: dict[str, float] | None = None,
+) -> float:
+    """已写入的非零 cost 原样用；历史 0 行按连接单价或内置表回算。"""
+    stored = float(cost_est or 0.0)
+    if stored:
+        return stored
+    return estimate_cost(model_id, input_tokens, output_tokens, cache_hit, prices=prices)
 
 
 @dataclass(frozen=True)
@@ -51,15 +77,16 @@ class ModelResponse:
     error: str | None = None
     # 工具调用（§10 只读查证工具）：[{id, name, arguments(dict)}]，None = 本轮无工具调用
     tool_calls: list[dict] | None = None
+    # 连接上的自定义单价（¥/百万 token）；None 则回落到 lookup_prices(model_id)
+    prices: dict[str, float] | None = None
 
     @property
     def cost_est(self) -> float:
         """成本估算（¥）。"""
-        prices = DEEPSEEK_PRICES.get(self.model_id)
-        if prices is None:
-            return 0.0
-        in_price = prices["input_cache_hit"] if self.cache_hit else prices["input"]
-        return (self.input_tokens * in_price + self.output_tokens * prices["output"]) / 1_000_000
+        return estimate_cost(
+            self.model_id, self.input_tokens, self.output_tokens, self.cache_hit,
+            prices=self.prices,
+        )
 
 
 class ModelProvider(ABC):
@@ -102,16 +129,28 @@ class FallbackChain:
     """降级链：主 → 备 → 全局默认（§6.10/§6.12 调用层）。"""
 
     def __init__(self, provider: ModelProvider, chain: list[str],
-                 providers: list[ModelProvider] | None = None):
+                 providers: list[ModelProvider] | None = None,
+                 thinking_enabled: bool = False,
+                 prices: dict[str, float] | None = None):
         if providers is not None and len(providers) != len(chain):
             raise ValueError("providers 与 chain 长度必须一致")
         self.provider = provider
         self.chain = chain
         self.providers = providers or [provider] * len(chain)
+        self.thinking_enabled = thinking_enabled
+        self.prices = prices
+
+    def _stamp(self, resp: ModelResponse, *, degraded: bool) -> ModelResponse:
+        resp.degraded = degraded
+        if self.prices is not None:
+            resp.prices = self.prices
+        return resp
 
     def generate(self, messages: list[dict], *, json_mode: bool = False, max_tokens: int | None = None,
                  temperature: float | None = None, tools: list[dict] | None = None,
                  disable_thinking: bool = False) -> ModelResponse:
+        if not self.thinking_enabled:
+            disable_thinking = True
         last_error: str | None = None
         for i, (provider, model_id) in enumerate(zip(self.providers, self.chain, strict=True)):
             try:
@@ -121,8 +160,7 @@ class FallbackChain:
                     disable_thinking=disable_thinking,
                 )
                 if resp.error is None:
-                    resp.degraded = i > 0
-                    return resp
+                    return self._stamp(resp, degraded=i > 0)
                 last_error = resp.error
             except Exception as exc:  # 网络 / 超时 / 5xx → 试下一个
                 last_error = str(exc)
@@ -133,6 +171,8 @@ class FallbackChain:
                         json_mode: bool = False, max_tokens: int | None = None,
                         temperature: float | None = None, tools: list[dict] | None = None,
                         disable_thinking: bool = False) -> ModelResponse:
+        if not self.thinking_enabled:
+            disable_thinking = True
         last_error: str | None = None
         for i, (provider, model_id) in enumerate(zip(self.providers, self.chain, strict=True)):
             if i and on_reset:
@@ -144,24 +184,34 @@ class FallbackChain:
                     json_mode=json_mode, tools=tools, disable_thinking=disable_thinking,
                 )
                 if resp.error is None:
-                    resp.degraded = i > 0
-                    return resp
+                    return self._stamp(resp, degraded=i > 0)
                 last_error = resp.error
             except Exception as exc:
                 last_error = str(exc)
         return ModelResponse(content="", model_id=self.chain[-1], error=last_error)
 
 
-# 可配置角色（§6.10）：仅这些 role 允许项目级 model_routes 覆盖主模型；
-# audit/revise/L1 固定默认链（设置端点 PUT 同样按此校验，本表是 make_chain 的兜底闸）。
-CONFIGURABLE_ROLES: frozenset[str] = frozenset({"planner", "writer", "validator_l2", "extract"})
+# 可配置角色：环境配置里用户可为这些 role 指定自己的模型。
+CONFIGURABLE_ROLES: frozenset[str] = frozenset({
+    "planner", "writer", "validator_l2", "extract", "audit", "summarize",
+})
 
 
-# 默认路由表（§6.10）：role → 模型链（主 → 备）
-DEFAULT_ROUTES: dict[str, list[str]] = {
-    "planner": ["deepseek-v4-flash", "deepseek-v4-pro"],   # 规划/校验强模型
-    "writer": ["deepseek-v4-flash", "deepseek-v4-pro"],
-    "validator_l2": ["deepseek-v4-flash", "deepseek-v4-pro"],
-    "audit": ["deepseek-v4-flash", "deepseek-v4-pro"],     # 审核中枢：语义判断 + 路由决策（§6.5）
-    "extract": ["deepseek-v4-flash"],                      # 便宜快模型（抽取）
-}
+# 已废弃：不再内置 DeepSeek 默认链。测试仍可能 setitem，生产路径不读此表。
+DEFAULT_ROUTES: dict[str, list[str]] = {}
+
+
+class MissingModelProvider(ModelProvider):
+    """用户未配置连接时的显式失败，避免悄悄打 .env 里的内置 Key。"""
+
+    def generate(self, messages: list[dict], *, model_id: str, max_tokens: int | None = None,
+                 temperature: float | None = None, json_mode: bool = False,
+                 tools: list[dict] | None = None,
+                 disable_thinking: bool = False) -> ModelResponse:
+        return ModelResponse(
+            content="", model_id=model_id,
+            error="请先在环境配置里添加模型连接，并为该角色指定模型",
+        )
+
+    def name(self) -> str:
+        return "unconfigured"

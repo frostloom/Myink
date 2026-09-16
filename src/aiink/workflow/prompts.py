@@ -49,8 +49,8 @@ SYSTEM_WRITE = """你是长篇网文创作系统的【写作 Agent】。依据�
 输出格式：先输出独立一行 === CONTENT ===，从下一行开始输出本章正文。
 正文为纯文本散文（含自然换行），禁止输出 JSON、禁止 markdown 代码块围栏。"""
 
-SYSTEM_BOOK_OUTLINE = """你是长篇网文创作系统的【整书规划 Agent】。为一部新书产出整本书写作大纲——全书蓝图（不是单章计划）。
-根据题材、一句话梗概、大致章节数与大致故事线，产出「全书 Objective → 卷 → 逐章目标」三层递进骨架。
+SYSTEM_BOOK_OUTLINE = """你是长篇网文创作系统的【整书规划 Agent】。为一部长篇网文产出卷级写作大纲——全书蓝图，不是逐章细纲。
+根据题材、一句话梗概、大致章节数与大致故事线，产出「全书 Objective → 卷 → 阶段」骨架。
 输出严格 JSON：
 {
   "objective": "全书终局：一个外部观察者可验证的状态（如「从杂役修士成为宗门长老并公开父辈冤案真相」）。禁止「变强」「复仇」这类抽象词",
@@ -62,21 +62,31 @@ SYSTEM_BOOK_OUTLINE = """你是长篇网文创作系统的【整书规划 Agent�
       "goal": "卷目标：本卷结束时主角必须达到的可验证状态（是 objective 的分解）",
       "key_results": ["KR1（可验证结果）", "KR2（可验证结果）", "KR3（可验证结果）"],
       "end_event": "卷末必须发生的不可逆事件（只写事件，不写第几章）",
-      "chapters": [
-        {"title": "章名", "goal": "本章核心推进目标（推进哪条线/关键事件，须与卷目标、KR 递进对齐）", "beats": ["关键节拍 1", "关键节拍 2", "关键节拍 3"]}
+      "chapter_start": 1,
+      "chapter_end": 40,
+      "stages": [
+        {
+          "stage_seq": 1,
+          "name": "前期",
+          "chapter_start": 1,
+          "chapter_end": 30,
+          "goal": "本阶段结束时必须达到的可验证状态",
+          "beats": ["谁+何处+做什么+导致什么", "阶段末钩子/悬念"]
+        }
       ]
     }
   ]
 }
 要求：
-- 按大致章节数把全书划成 3-5 卷（沿故事线阶段：起/承/转/合），volumes 内 chapters 总条数严格等于章节数；
-- 每卷 3 个 key_results，每 3-5 章推进一个 KR；卷末事件只写「必须发生什么」不写章号；
-- 各章目标沿卷目标递进：前章铺垫后章回收、不重复不跳跃；每章开场落在自己大纲位的场景/事件上，不与别章共用开场；
-- 作者给的大致故事线中的关键情节，必须落到对应卷/章的 goal 或 end_event；
+- 禁止输出逐章 chapters。不要给每一章写标题或细纲。
+- 卷数按用户消息里的【分卷约束】来，不要固定 3-5 卷：题材推进快则卷多卷短，推进慢则卷少卷长。
+- 各卷 chapter_start/end 连续覆盖 1..章节数，不重叠不留空。
+- 每卷超过 30 章必须再拆 stages，每段约 30 章（前/中/后期或第 N 段）；不超过 30 章可只留 1 段覆盖整卷。
+- 每卷 3 个 key_results；卷末事件只写「必须发生什么」不写章号。
+- 作者给的大致故事线中的关键情节，必须落到对应卷 goal / end_event 或阶段 goal。
 - 不越界设定：境界体系/势力/人物关系未确认前，不臆造主角外的核心人物。
-- 作者未提供【大致故事线】时，由你根据题材与梗概自行推导整书故事线（起/承/转/合与关键转折），各卷目标/KR/逐章目标沿推导线严格递进，禁止产出泛泛的模板化大纲；
-- 每章 beats 为 2-4 条场景级细纲：谁 + 在何处 + 做什么 + 导致什么 + 章末钩子/悬念；这是写作时注入的细纲，不得复述 goal；
-- 各章开场节拍与收尾节拍不得连续复用同一套路（如两章都以「被吵醒」开场、以「入睡」收尾）。"""
+- 作者未提供【大致故事线】时，由你根据题材与梗概自行推导整书故事线（起/承/转/合与关键转折），各卷/阶段沿推导线递进，禁止泛泛的模板化大纲。
+- 阶段 beats 为 3-6 条：谁 + 在何处 + 做什么 + 导致什么 + 阶段末钩子；不得复述该阶段 goal。"""
 
 
 SYSTEM_EXTRACT = """你是长篇网文创作系统的【记忆抽取 Agent】。从章节正文抽取结构化记忆候选。
@@ -137,45 +147,21 @@ SYSTEM_REFLEXION = """你是长篇网文创作系统的【复盘 Agent】。把�
 - 本书已有经验已覆盖全部发现 → 输出空数组 {"lessons": []}；
 - 经验必须具体可执行，拒绝空泛的"注意一致性"。"""
 
-SYSTEM_GLOBAL_AUDIT = """你是长篇网文创作系统的【全局审计 Agent】。对抽样角色做跨章人设漂移判定（长线一致性治理 §8.6）。
-输入：每个角色的【性格基线】（characters.personality）+ 该角色近 N 章言行摘录（每条带章号）。
-任务：比对言行与基线，判定是否存在人设漂移——谨慎→鲁莽、腔调改变、动机随剧情临时变，且正文中无变故铺垫/成长弧线支撑。
+SYSTEM_GLOBAL_AUDIT = """你是长篇网文创作系统的【全局审计 Agent】。只审「已写章节是否在推进卷规划」，不审人设、文风、桥段（那些由单章审核负责）。
+输入：全书 Objective、当前卷目标/KR/卷末事件、重叠的阶段目标、窗口内已写章节摘要。
+任务：判断窗口内剧情是否沿着卷/阶段目标推进；若偏离或明显落后，给出怎么拉回来。
 输出严格 JSON：{"findings": [
-  {"character": "角色名", "drift_type": "persona", "chapter": 章号,
-   "evidence": "原文引用（必须逐字来自摘录，供程序核验）", "reason": "判定理由", "confidence": 0.0-1.0}
+  {"verdict": "drifted"|"behind", "chapter": 章号, "volume_seq": 1, "stage_seq": 1,
+   "evidence": "必须逐字来自窗口摘要或正文摘录", "reason": "偏离/落后了哪条卷目标或阶段目标",
+   "recovery": "后续写作如何拉回（具体可执行）", "confidence": 0.0-1.0}
 ]}
 规则（宁缺毋滥，漏报优于误报）：
-- 只判「确有漂移且无变故铺垫/成长弧线」的言行；有变故铺垫、角色成长弧线支撑的转变 → 不判漂移；
-- evidence 必须逐字引用正文片段（不得改写、不得拼接）；每条 finding 的 chapter 必须在审计窗口内；
-- 证据不足 / 边界情形 → 直接不输出该条；每角色至多 1 条；
-- 全书无漂移 → 输出空数组 {"findings": []}。"""
-
-SYSTEM_GLOBAL_AUDIT_BRIDGE = """你是长篇网文创作系统的【全局审计 Agent】。对抽样「桥段重复候选对」做跨章判定（长线一致性治理 §8.6）。
-输入：每对含【历史桥段】（历史章事件摘要）+【当前桥段】（当前章事件摘要 + 当前章正文节选，带章号与章距）。
-任务：对每对判定是【刻意呼应】（call-back，正常创作手法——当前桥段有明确不同目的 / 差异化改写 / 呼应意图，非偷懒）还是【偷懒重复】（同一桥段结构雷同、无新意无新目的，直接照搬）。
-输出严格 JSON：{"findings": [
-  {"event": "候选对编号", "verdict": "repeat"|"echo", "chapter": 章号,
-   "evidence": "原文引用（必须逐字来自当前章正文节选，供程序核验）", "reason": "判定依据（差异点/目的）", "confidence": 0.0-1.0}
-]}
-规则（宁缺毋滥，漏报优于误报）：
-- 只判给出的候选对，不凭空新增；每对至多 1 条；
-- 仅【偷懒重复】输出 finding（verdict=repeat）；【刻意呼应】输出 verdict=echo 或直接省略该条；
-- evidence 必须逐字引用当前章正文（不得改写、不得拼接）；每条 finding 的 chapter 必须在审计窗口内；
-- 证据不足 / 目的不明 / 边界情形 → 直接不输出该条；
-- 全书无偷懒重复 → 输出空数组 {"findings": []}。"""
-
-SYSTEM_GLOBAL_AUDIT_STYLE = """你是长篇网文创作系统的【全局审计 Agent】。对抽样窗口章节做文风漂移判定（长线一致性治理 §8.6）。
-输入：① 【本书既定文风基线】（窗口之前已确认章节的正文摘录，每条带章号，锚定作者自身风格）；② 【文风档案】（project_settings.style_profile）；③ 【审计窗口章节摘录】（每条带章号，待判定）。
-任务：比对窗口摘录与「本书既定文风基线 + 文风档案」，判定是否存在系统性、持续性的文风漂移——腔调/句式/用词/视角/对话/氛围/节奏整体偏离既定风格，且非单场景合法变化。
-输出严格 JSON：{"findings": [
-  {"chapter": 章号, "verdict": "drift"|"ok", "evidence": "原文引用（必须逐字来自该窗口章摘录，供程序核验）",
-   "aspect": "句式/用词/视角/对话/氛围/节奏", "reason": "与基线/档案不符的差异点", "confidence": 0.0-1.0}
-]}
-规则（宁缺毋滥，漏报优于误报）：
-- 只判「与既定文风系统性持续偏离」的章；单场景节奏/情感合法变化（战斗短句、抒情长句、情绪波动）→ 不判漂移；
-- evidence 必须逐字引用该窗口章正文摘录（不得改写、不得拼接）；每条 finding 的 chapter 必须在审计窗口内；
-- 证据不足 / 边界情形 → 直接不输出该条；每章至多 1 条；
-- 全窗口无漂移 → 输出空数组 {"findings": []}。"""
+- 只判给出的卷/阶段，不编造未规划的线；
+- 按规划节奏尚未轮到的 KR / 卷末事件 → 不判落后；
+- 人设、文风、用词、桥段重复 → 一律不报；
+- 沿目标推进 → 输出空数组 {"findings": []}；
+- evidence 必须逐字引用输入里的摘要或摘录；chapter 必须在审计窗口内；
+- 证据不足 / 边界情形 → 不输出该条；每个阶段至多 1 条。"""
 
 SYSTEM_LEDGER_L2 = """你是长篇网文创作系统的【正文-台账语义比对 Agent】（点级校验，长线一致性治理 §8.6）。
 输入：① 【当前章正文】（待判）；② 【候选变更清单】（每条含 key、类型、实体/关系双方、台账当前值、候选新值）。
@@ -259,43 +245,48 @@ def _lesson_section(context: dict, channels: tuple[str, ...]) -> str:
 
 
 def _outline_section(outline: dict | None, *, verbose: bool) -> str:
-    """整书大纲注入段（§11）：outline 为 {objective, volume, current} 切片（node_plan_chapter 按章切好）。
-
-    三层递进：全书 Objective（仅 verbose=plan 给，规划须对齐终局）→ 当前卷（主题/卷目标/关键结果/
-    卷末事件）→ 本章大纲位（目标+节拍）。写作只给卷+章（正文 prompt 预算有限）；写章额外点明
-    「开场扣住本大纲位、勿与其他章共用开场景」——开头雷同的根治来自各章不同的大纲位，而非注入上一章。
-    """
+    """整书大纲注入段：{objective, volume, stage}（按章号切到所属卷/阶段）。"""
     if not outline:
         return ""
     parts: list[str] = []
     if verbose:
         objective = (outline.get("objective") or "").strip()
         if objective:
-            parts.append(f"\n【全书 Objective（终局，卷/章规划必须逐级逼近）】\n{objective}")
+            parts.append(f"\n【全书 Objective（终局，卷/阶段规划必须逐级逼近）】\n{objective}")
     vol = outline.get("volume") or {}
     if vol:
         vseq = vol.get("volume_seq")
         vtitle = (vol.get("title") or f"第 {vseq} 卷").strip()
-        line = f"\n【当前卷 · {vtitle}】卷目标：{vol.get('goal') or '—'}"
+        lo, hi = vol.get("chapter_start"), vol.get("chapter_end")
+        span = f"第 {lo}–{hi} 章" if lo and hi else ""
+        line = f"\n【当前卷 · {vtitle}】"
+        if span:
+            line += f"{span}；"
+        line += f"卷目标：{vol.get('goal') or '—'}"
         theme = (vol.get("theme") or "").strip()
         if theme:
             line += f"；主题：{theme}"
         krs = [str(k).strip() for k in (vol.get("key_results") or []) if str(k).strip()]
         if krs:
-            line += "\n本卷关键结果（每 3-5 章推进一个）：" + "；".join(krs)
+            line += "\n本卷关键结果：" + "；".join(krs)
         end_event = (vol.get("end_event") or "").strip()
         if end_event:
             line += f"\n卷末不可逆事件：{end_event}"
         parts.append(line)
-    cur = outline.get("current") or {}
-    seq = cur.get("seq")
-    if seq is not None:
-        line = f"\n【本章大纲位 · 第 {seq} 章】目标：{cur.get('goal') or '—'}"
-        beats = [str(b).strip() for b in (cur.get("beats") or []) if str(b).strip()]
+    stg = outline.get("stage") or outline.get("current") or {}
+    if stg:
+        name = (stg.get("name") or f"第 {stg.get('stage_seq') or '?'} 段").strip()
+        lo, hi = stg.get("chapter_start"), stg.get("chapter_end")
+        span = f"第 {lo}–{hi} 章" if lo and hi else ""
+        line = f"\n【当前阶段 · {name}】"
+        if span:
+            line += f"{span}；"
+        line += f"目标：{stg.get('goal') or '—'}"
+        beats = [str(b).strip() for b in (stg.get("beats") or []) if str(b).strip()]
         if beats:
-            line += "；关键节拍：" + "；".join(beats)
+            line += "；阶段节拍：" + "；".join(beats)
         if not verbose:
-            line += "。开场须扣住本节拍/目标落点，勿与其他章共用开场景/意象/句式"
+            line += "。本章沿本阶段目标推进，不要提前写本阶段之外的卷末事件；开场勿与其他章共用套路"
         parts.append(line)
     parts.append("\n【大纲是方向参考：与已写正文（前情事件/近期上下文）冲突时，以已写正文为准】")
     return "\n".join(parts)
@@ -307,8 +298,7 @@ def _plan_messages(context: dict, batch_goal: str | None = None,
 
     开放伏笔/剧情线注入（§7.9）：hooks_to_resolve 必须从【开放伏笔】里选——
     防 LLM 编造不存在的伏笔要收，防伏笔烂尾。
-    整书大纲注入（§11）：outline 是 {objective, volume, current} 切片（node_plan_chapter 按章切好），
-    规划须贴合该章大纲位、沿所属卷目标/KR 推进——没有大纲时规划各自为政、章节目标易泛。
+    整书大纲注入：outline 是 {objective, volume, stage} 切片，规划沿所属卷/阶段目标推进。
     扫榜灵感已整体前移至建书前（§10：只作建书向导的题材风向工具，不再注入规划节点）。
     """
     facts = _join(context.get("long_term_facts", []), _render_fact)
@@ -348,6 +338,12 @@ def _profile_list(profile: dict, key: str) -> list[str]:
     if isinstance(val, str) and val.strip():
         return [val]
     return []
+
+
+def _genre_section(genre_pack: dict | None) -> str:
+    """本书题材包注入段：节奏/爽点/禁忌/机制；与文风档案分开。"""
+    from aiink.genre_catalog import format_prompt
+    return format_prompt(genre_pack)
 
 
 def _style_section(style_profile: dict | None, target_words: int | None) -> str:
@@ -407,7 +403,8 @@ def _rhythm_reference(sp: dict) -> str:
 
 
 def _write_messages(context: dict, plan: dict, *, style_profile: dict | None = None,
-                   target_words: int | None = None, outline: dict | None = None) -> list[dict]:
+                   target_words: int | None = None, outline: dict | None = None,
+                   genre_pack: dict | None = None) -> list[dict]:
     """write 输入：召回上下文 + 章节计划 + 文风/字数生成约束（§7.12）+（可选）大纲切片。
 
     近期章头用于差异化比较，前章章尾用于接续，大纲提供本章目标；三者不可混淆。
@@ -417,12 +414,14 @@ def _write_messages(context: dict, plan: dict, *, style_profile: dict | None = N
     entities = _join(context.get("entity_snapshots", []), _render_entity)
     short = _join(context.get("short_context", []), _render_short)
     style = _style_section(style_profile, target_words)
+    genre = _genre_section(genre_pack)
     lessons = _lesson_section(context, ("writing", "both"))
     outline_section = _outline_section(outline, verbose=False)
     system = (
         SYSTEM_WRITE
         + "\n\n【世界观硬约束】\n" + (facts or "（无）")
         + "\n【人物状态快照】\n" + (entities or "（无）")
+        + (f"\n\n【本书题材（project_settings.genre_pack）】\n{genre}" if genre else "")
         + (f"\n\n【文风要求（project_settings.style_profile）】\n{style}" if style else "")
         + outline_section
         + "\n\n【本书写作经验（reflexion 复盘，写作须遵守）】\n" + (lessons or "（无）")
@@ -483,19 +482,22 @@ def ledger_l2_messages(judgments: list[dict], draft: str, chapter_seq: int) -> l
 def revise_messages(draft: str, findings: list[dict], chapter_seq: int, *,
                     context: dict | None = None, plan: dict | None = None,
                     style_profile: dict | None = None, target_words: int | None = None,
-                    outline: dict | None = None) -> list[dict]:
+                    outline: dict | None = None, genre_pack: dict | None = None) -> list[dict]:
     return fit_prompt(context or {}, lambda c: _revise_messages(
-        draft, findings, chapter_seq, c, plan or {}, style_profile, target_words, outline),
+        draft, findings, chapter_seq, c, plan or {}, style_profile, target_words, outline,
+        genre_pack),
         settings.request_token_budget - 1000)
 
 
-def _revise_messages(draft, findings, chapter_seq, context, plan, style_profile, target_words, outline):
+def _revise_messages(draft, findings, chapter_seq, context, plan, style_profile, target_words,
+                     outline, genre_pack):
     finding_lines = "\n".join(
         f"- [{f.get('conflict_key')}] [{f.get('severity')}] {f.get('conflict_type')}: {f.get('evidence')} | 建议: {f.get('suggestion')}"
         for f in findings
     )
     writing = _write_messages(context, plan, style_profile=style_profile,
-                              target_words=target_words, outline=outline)
+                              target_words=target_words, outline=outline,
+                              genre_pack=genre_pack)
     return [
         {"role": "system", "content": writing[0]["content"] + "\n\n" + SYSTEM_REVISE},
         {"role": "user", "content": writing[1]["content"].removesuffix("\n请输出本章正文。")
@@ -504,7 +506,8 @@ def _revise_messages(draft, findings, chapter_seq, context, plan, style_profile,
     ]
 
 
-def _audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int) -> list[dict]:
+def _audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int,
+                    genre_pack: dict | None = None) -> list[dict]:
     """audit 输入：正文 + 章节计划 + 召回上下文（审核中枢做语义审核 + 路由决策）。"""
     plan_str = json.dumps(plan, ensure_ascii=False, indent=1) if plan else "（无章节计划）"
     events = _join(context.get("mid_term_events", []), _render_event)
@@ -521,9 +524,18 @@ def _audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int) -> 
         + "\n\n【近期上下文】\n" + (_join(context.get("short_context", []), _render_short) or "（无）")
         + "\n\n" + _opening_section(context)
         + "\n\n【人物状态快照】\n" + (_join(context.get("entity_snapshots", []), _render_entity) or "（无）")
+        + _taboo_hint(genre_pack)
         + "\n\n请审核本章并输出路由决策（严格 JSON）。"
     )
     return [{"role": "system", "content": SYSTEM_AUDIT}, {"role": "user", "content": user}]
+
+
+def _taboo_hint(genre_pack: dict | None) -> str:
+    from aiink.genre_catalog import taboo_hints
+    items = taboo_hints(genre_pack)
+    if not items:
+        return ""
+    return "\n\n【题材禁忌（提示，不作为硬失败）】\n" + "；".join(items)
 
 
 def _opening_section(context: dict) -> str:
@@ -552,63 +564,33 @@ def reflexion_messages(findings: list[dict], existing_lessons: list[dict],
     return [{"role": "system", "content": SYSTEM_REFLEXION}, {"role": "user", "content": user}]
 
 
-def global_audit_messages(personas: list[dict], window: tuple[int, int]) -> list[dict]:
-    """全局审计人设漂移输入（§8.6）：抽样角色基线 + 窗口内言行摘录（逐字引用供核验）。"""
-    char_blocks = []
-    for p in personas:
-        passages = "\n".join(
-            f"- 第 {ps['chapter']} 章：{ps['quote']}" for ps in p["passages"]
-        ) or "（窗口内未提及该角色——无言行证据，不应输出该角色的 finding）"
-        char_blocks.append(
-            f"【角色 {p['name']}】\n性格基线：{p['baseline'] or '（未设定）'}\n近 N 章言行摘录：\n{passages}"
+def global_audit_messages(ctx: dict, window: tuple[int, int]) -> list[dict]:
+    """全局审计卷推进输入：卷/阶段规划 + 窗口已写摘要。"""
+    objective = (ctx.get("objective") or "").strip() or "（未写终局）"
+    vol_blocks = []
+    for v in ctx.get("volumes") or []:
+        krs = "；".join(v.get("key_results") or []) or "—"
+        stages = "\n".join(
+            f"  - {s.get('name')}（第 {s.get('chapter_start')}–{s.get('chapter_end')} 章）"
+            f"目标：{s.get('goal') or '—'}；节拍：{'；'.join(s.get('beats') or []) or '—'}"
+            for s in (v.get("stages") or [])
+        ) or "  （无阶段）"
+        vol_blocks.append(
+            f"【第 {v.get('volume_seq')} 卷 · {v.get('title') or ''}】"
+            f"第 {v.get('chapter_start')}–{v.get('chapter_end')} 章\n"
+            f"卷目标：{v.get('goal') or '—'}\nKR：{krs}\n"
+            f"卷末事件：{v.get('end_event') or '—'}\n阶段：\n{stages}"
         )
+    progress = "\n".join(
+        f"- 第 {p['seq']} 章：{p['text']}" for p in (ctx.get("progress") or [])
+    ) or "（窗口内无摘要）"
     user = (
-        f"审计窗口：第 {window[0]}–{window[1]} 章。对下列每个抽样角色做跨章人设漂移判定：\n\n"
-        + "\n\n".join(char_blocks)
-        + "\n\n请输出严格 JSON（无漂移输出空数组）。"
+        f"审计窗口：第 {window[0]}–{window[1]} 章。对照卷规划判断是否推进到位。\n\n"
+        f"【全书 Objective】\n{objective}\n\n"
+        + "\n\n".join(vol_blocks)
+        + f"\n\n【窗口已写章节】\n{progress}\n\n请输出严格 JSON（沿目标推进则空数组）。"
     )
     return [{"role": "system", "content": SYSTEM_GLOBAL_AUDIT}, {"role": "user", "content": user}]
-
-
-def bridge_audit_messages(pairs: list[dict], window: tuple[int, int]) -> list[dict]:
-    """全局审计桥段重复输入（§8.6 切片 2）：候选对（历史摘要 + 当前章正文节选，逐字供核验）。"""
-    pair_blocks = []
-    for p in pairs:
-        pair_blocks.append(
-            f"【候选对 {p['id']}】\n"
-            f"历史桥段（第 {p['history_chapter']} 章）：{p['history_summary']}\n"
-            f"当前桥段（第 {p['chapter']} 章，距上次 {p['gap']} 章）：事件摘要 {p['summary']}\n"
-            f"当前章正文节选：\n{p['text']}"
-        )
-    user = (
-        f"审计窗口：第 {window[0]}–{window[1]} 章。对下列每对桥段候选做「刻意呼应 vs 偷懒重复」判定：\n\n"
-        + "\n\n".join(pair_blocks)
-        + "\n\n请输出严格 JSON（无偷懒重复输出空数组）。"
-    )
-    return [{"role": "system", "content": SYSTEM_GLOBAL_AUDIT_BRIDGE},
-            {"role": "user", "content": user}]
-
-
-def style_audit_messages(baseline: list[dict], sampled: list[dict], style_profile: dict | None,
-                         window: tuple[int, int]) -> list[dict]:
-    """全局审计文风漂移输入（§8.6 切片 3）：基线摘录 + 窗口摘录 + 文风档案（逐字供核验）。
-
-    档案块复用 _style_section（pov/句式/禁忌/fatigue_words/对话，容错缺键）。
-    """
-    def render(items: list[dict], label: str) -> str:
-        lines = "\n".join(f"- 第 {c['chapter']} 章：{c['text']}" for c in items)
-        return f"【{label}】\n{lines}" if lines else f"【{label}】（空）"
-
-    profile = _style_section(style_profile, None)
-    user = (
-        f"审计窗口：第 {window[0]}–{window[1]} 章。比对窗口摘录与本书既定文风基线，判定文风漂移：\n\n"
-        + render(baseline, "本书既定文风基线（窗口之前已确认章节摘录，锚定作者自身风格）")
-        + f"\n\n【文风档案（project_settings.style_profile）】\n" + (profile or "（未配置）")
-        + "\n\n" + render(sampled, "审计窗口章节摘录（待判定）")
-        + "\n\n请输出严格 JSON（无漂移输出空数组）。"
-    )
-    return [{"role": "system", "content": SYSTEM_GLOBAL_AUDIT_STYLE},
-            {"role": "user", "content": user}]
 
 
 SYSTEM_STYLE_EXTRACT = """你是长篇网文创作系统的【文风提炼 Agent】。把作者提交的样本正文提炼成该书可复用的文风档案草稿（§7.12 样本提取）。
@@ -663,30 +645,40 @@ SYSTEM_BOOK_SETUP = """你是长篇网文创作系统的【规划 Agent】。职
 要求：骨架是**可编辑草稿**不是定稿——数量克制（核心 3-6 个角色、2-4 个势力、3-5 个地点即可），留白让作者后续补全；hard_constraints 必须是明确的、可执行的写作纪律，不是风格形容词；作者未定书名时 title 给出简练的主标题（2-8 字），已定书名则返回空串。"""
 
 
-def book_setup_messages(genre: str, premise: str) -> list[dict]:
+def book_setup_messages(genre: str, premise: str, *,
+                        genre_pack: dict | None = None) -> list[dict]:
     """建书设定草稿输入（§7.11 ② 一句话梗概启动 + Planner 提案）：题材 + 作者一句话梗概。
 
     json_mode 调用（prompt 含 "json" 字样）；Planner 复用（不新增 agent），生成的是
     可编辑骨架，不落库——用户逐项确认/修改后走 setup 端点落库。
     """
+    pack = _genre_section(genre_pack)
+    extra = f"\n\n【本书题材包】\n{pack}" if pack else ""
     return [
         {"role": "system", "content": SYSTEM_BOOK_SETUP},
         {"role": "user", "content": f"【题材偏好】\n{genre}\n\n"
-                                    f"【作者一句话梗概】\n{premise}\n\n"
+                                    f"【作者一句话梗概】\n{premise}{extra}\n\n"
                                     f"请产出本书设定骨架草稿（严格 JSON）。"},
     ]
 
 
 def book_outline_messages(genre: str, premise: str, chapter_count: int,
-                          storyline: str) -> list[dict]:
-    """整书大纲草稿输入（§11 建书 ③）：题材 + 梗概 + 大致章节数 + 大致故事线 → Planner 提案。
+                          storyline: str, *, genre_pack: dict | None = None) -> list[dict]:
+    """整书大纲草稿：题材节奏决定卷数，阶段约每 30 章一段，禁止逐章细纲。"""
+    from aiink.genre_catalog import suggest_volume_count, volume_span_for
+    from aiink.workflow.outline import STAGE_SPAN
 
-    Planner 按目标章节数自动分卷（3-5 卷，沿故事线起/承/转/合），产出「Objective → 卷 → 逐章目标」
-    三层骨架；可编辑、确认后落 volume_outlines。plan_chapter / write / batch_plan 注入当前卷 OKR +
-    本章大纲位（§11：不给大纲时规划各自为政、章节开头易雷同）。
-    """
+    span = volume_span_for(genre_pack)
+    nvol = suggest_volume_count(chapter_count, genre_pack)
     parts = [f"【题材】\n{genre}", f"【一句话梗概】\n{premise}",
-             f"【大致章节数】\n{chapter_count}"]
+             f"【大致章节数】\n{chapter_count}",
+             f"【分卷约束】按本题材节奏，建议约 {nvol} 卷（每卷约 {span} 章）。"
+             f"快节奏卷多卷短，慢节奏卷少卷长。"
+             f"每卷超过 {STAGE_SPAN} 章必须再拆成约 {STAGE_SPAN} 章一段的阶段细纲。"
+             f"禁止逐章大纲。"]
+    pack = _genre_section(genre_pack)
+    if pack:
+        parts.append(f"【本书题材包】\n{pack}")
     if storyline.strip():
         parts.append(f"【大致故事线】\n{storyline.strip()}")
     return [
@@ -708,9 +700,11 @@ def plan_messages(context: dict, batch_goal: str | None = None,
 
 
 def write_messages(context: dict, plan: dict, *, style_profile: dict | None = None,
-                   target_words: int | None = None, outline: dict | None = None) -> list[dict]:
+                   target_words: int | None = None, outline: dict | None = None,
+                   genre_pack: dict | None = None) -> list[dict]:
     return fit_prompt(context, lambda c: _write_messages(c, plan, style_profile=style_profile,
-                      target_words=target_words, outline=outline), _tool_prompt_budget())
+                      target_words=target_words, outline=outline, genre_pack=genre_pack),
+                      _tool_prompt_budget())
 
 
 def extract_messages(draft: str, chapter_seq: int, context: dict | None = None) -> list[dict]:
@@ -718,6 +712,7 @@ def extract_messages(draft: str, chapter_seq: int, context: dict | None = None) 
                       settings.request_token_budget - 1000)
 
 
-def audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int) -> list[dict]:
-    return fit_prompt(context, lambda c: _audit_messages(draft, plan, c, chapter_seq),
-                      _tool_prompt_budget())
+def audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int,
+                   genre_pack: dict | None = None) -> list[dict]:
+    return fit_prompt(context, lambda c: _audit_messages(
+        draft, plan, c, chapter_seq, genre_pack), _tool_prompt_budget())

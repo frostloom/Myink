@@ -16,6 +16,8 @@ from aiink.api.auth import router as auth_router
 from aiink.api.routes_book import router as book_router
 from aiink.api.routes_candidates import router as candidates_router
 from aiink.api.routes_chapters import router as chapters_router
+from aiink.api.routes_environment import router as environment_router
+from aiink.api.routes_genre import router as genre_router
 from aiink.api.routes_global_audit import router as global_audit_router
 from aiink.api.routes_lessons import router as lessons_router
 from aiink.api.routes_rankings import router as rankings_router
@@ -48,6 +50,8 @@ app.include_router(chapters_router)
 app.include_router(lessons_router)
 app.include_router(style_router)
 app.include_router(settings_router)
+app.include_router(environment_router)
+app.include_router(genre_router)
 app.include_router(global_audit_router)
 app.include_router(rankings_router)
 

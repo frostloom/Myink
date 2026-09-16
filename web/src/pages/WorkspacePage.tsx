@@ -15,6 +15,7 @@ import { StreamingChapterView } from '../components/StreamingChapterView'
 import { useAuth } from '../context/AuthContext'
 import { useTaskEvents } from '../hooks/useTaskEvents'
 import { api, ApiError } from '../lib/api'
+import { formatApiError } from '../lib/apiError'
 import { liveStageNode } from '../lib/taskFlow'
 import { chapterToOpenForPendingTask, latestChapterAwaitingReview, latestGenerationTask, nodesForChapter, runsForChapter } from '../lib/taskChapter'
 import type { ChapterMeta, MemoryCandidate, Project, WritingMode } from '../types'
@@ -114,7 +115,7 @@ export default function WorkspacePage() {
       setChapters(list)
       return list
     } catch (err) {
-      setError(err instanceof ApiError ? err.code : '章节加载失败')
+      setError(formatApiError(err, '章节加载失败'))
       return []
     }
   }, [projectId])
@@ -469,7 +470,7 @@ export default function WorkspacePage() {
           err instanceof ApiError && err.status === 409
             ? '本书有进行中任务，无法删除。请先暂停/取消后再试。'
             : err instanceof ApiError
-              ? `删除失败：${err.code}`
+              ? formatApiError(err, '删除失败')
               : '删除失败',
         )
       })

@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, Uuid, func
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, Uuid, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from aiink.models.base import Base, TenantMixin, TimestampMixin, UUIDPkMixin
@@ -25,6 +25,11 @@ class User(Base, UUIDPkMixin, TimestampMixin):
     )
     daily_quota: Mapped[int] = mapped_column(Integer, default=2, nullable=False, comment="每日章节配额")
     concurrent_limit: Mapped[int] = mapped_column(Integer, default=1, nullable=False, comment="进行中任务上限")
+    # 账号级环境配置（模型连接/路由 + MCP 扫榜）；老库由 db.ensure_user_environment 幂等补列
+    environment: Mapped[dict] = mapped_column(
+        JSON, default=dict, nullable=False, server_default=text("'{}'"),
+        comment="账号级环境配置（模型连接/路由 + MCP 扫榜）",
+    )
 
 
 class Project(Base, UUIDPkMixin, TimestampMixin):
@@ -52,7 +57,10 @@ class ProjectSettings(Base, UUIDPkMixin, TimestampMixin):
     )
     world_rules: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False, comment="世界观规则（§7.11）")
     style_profile: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False, comment="文风档案 StyleProfile（§7.12）")
-    skill_pack: Mapped[str | None] = mapped_column(String(64), comment="题材 Skill 预设包（§7.12）")
+    skill_pack: Mapped[str | None] = mapped_column(String(64), comment="文风种子标记（旧字段，不再作题材包）")
+    genre_pack: Mapped[dict] = mapped_column(
+        JSON, default=dict, nullable=False, comment="本书题材包快照（建书深拷贝，只改本书）",
+    )
     model_routes: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False, comment="role→model 路由表（§6.10）")
     hard_constraints: Mapped[list] = mapped_column(JSON, default=list, nullable=False, comment="硬约束（§7.10）")
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False, comment="乐观版本号（§7.6）")

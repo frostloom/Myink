@@ -11,6 +11,7 @@ import type {
   ChapterVersionsResponse,
   ConnectionTestResult,
   ContentUpdateResponse,
+  EnvironmentSettings,
   CorrectMemoryResponse,
   CreateProjectBody,
   DeleteChapterResponse,
@@ -32,6 +33,9 @@ import type {
   OutlineConfirmBody,
   OutlineDraft,
   OutlineDraftBody,
+  RankingsConfigInput,
+  RankingsProbeRequest,
+  RankingsProbeResult,
   RankingsResponse,
   SetupBody,
   SetupConfirmResponse,
@@ -67,14 +71,7 @@ export class ApiError extends Error {
   }
 }
 
-/** 三层闸门拒绝码（§6.11）：429 时前端按 code 展示中文文案 */
-export const GATE_CODES: Record<string, string> = {
-  QUOTA_EXCEEDED: '今日免费额度已用完，请明天再试',
-  BOOK_QUOTA_EXCEEDED: '本书当日写作额度已用完',
-  CONCURRENCY_LIMIT: '本书已有进行中的任务，请稍候',
-  DAILY_BUDGET_EXCEEDED: '当日全局成本预算已用完',
-  BOOK_CNT_EXCEEDED: '今日新建作品数已达上限',
-}
+export { GATE_CODES, formatApiError, formatErrorText } from './apiError'
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' }
@@ -206,21 +203,41 @@ export const api = {
       'POST', `/projects/${pid}/candidates/${cid}/reject`, { reason, mode },
     ),
 
-  // 创作设置（阶段 4 设置页）：settings 读/写 + 题材预设 + 文风样本/档案（网关转发 Python）。
+  // 创作设置（书内文风/预设/目标字数；模型连接已迁到账号级 /environment）。
   getSettings: (pid: string) =>
     request<ProjectSettings>('GET', `/projects/${pid}/settings`),
 
   updateSettings: (pid: string, model_routes: Record<string, string>, model_connections?: ModelConnectionInput[]) =>
     request<ProjectSettings>('PUT', `/projects/${pid}/settings`, { model_routes, model_connections }),
 
-  // 模型连接探针（设置页「添加网络模型」闭环）：拉取可用模型列表 / 联通测试。
-  listModels: (pid: string, body: ModelProbeRequest) =>
-    request<ModelListResult>('POST', `/projects/${pid}/settings/models`, body),
+  getEnvironment: () => request<EnvironmentSettings>('GET', '/environment'),
 
-  testConnection: (pid: string, body: ModelProbeRequest) =>
-    request<ConnectionTestResult>('POST', `/projects/${pid}/settings/test-connection`, body),
+  updateEnvironment: (body: {
+    model_routes?: Record<string, string>
+    model_connections?: ModelConnectionInput[]
+    rankings?: RankingsConfigInput
+    thinking_enabled?: boolean
+  }) => request<EnvironmentSettings>('PUT', '/environment', body),
+
+  // 模型连接探针（环境配置页）：拉取可用模型列表 / 联通测试。
+  listModels: (body: ModelProbeRequest) =>
+    request<ModelListResult>('POST', '/environment/models', body),
+
+  testConnection: (body: ModelProbeRequest) =>
+    request<ConnectionTestResult>('POST', '/environment/test-connection', body),
+
+  testRankings: (body: RankingsProbeRequest) =>
+    request<RankingsProbeResult>('POST', '/environment/test-rankings', body),
 
   listSkillPresets: () => request<SkillPreset[]>('GET', '/skill-presets'),
+
+  listGenrePacks: () => request<import('../lib/genrePacks').GenreCatalogItem[]>('GET', '/genre-packs'),
+
+  putGenrePack: (pid: string, fields: import('../lib/genrePacks').GenreFields) =>
+    request<import('../lib/genrePacks').BookGenrePack>('PUT', `/projects/${pid}/genre-pack`, fields),
+
+  restoreGenrePack: (pid: string) =>
+    request<import('../lib/genrePacks').BookGenrePack>('POST', `/projects/${pid}/genre-pack/restore`),
 
   extractStyleSample: (pid: string, samples: string[]) =>
     request<StyleDraft>('POST', `/projects/${pid}/style-samples`, { samples }),
@@ -258,9 +275,7 @@ export const api = {
   confirmSetup: (pid: string, body: SetupBody) =>
     request<SetupConfirmResponse>('PUT', `/projects/${pid}/setup`, body),
 
-  // 整书大纲（§11 建书 ③：梗概 + 大致章节数 + 大致故事线 → Planner 按章节数分卷提案
-  // Objective+卷+逐章；草稿不落库，确认后 PUT 整体替换 volume_outlines 单行；写作注入当前卷
-  // OKR + 本章大纲位，推进主线并防章节开头雷同）。
+  // 整书大纲：梗概 + 章节数 + 故事线 → 卷 + 约 30 章一段的阶段；写作注入当前卷/阶段。
   outlineDraft: (pid: string, body: OutlineDraftBody) =>
     request<OutlineDraft>('POST', `/projects/${pid}/outline-draft`, body),
 

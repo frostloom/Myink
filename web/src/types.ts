@@ -320,6 +320,8 @@ export interface ModelConnection {
   protocol: ModelProtocol
   base_url: string
   model: string
+  input_price?: number | null
+  output_price?: number | null
   has_api_key: boolean
 }
 
@@ -327,13 +329,52 @@ export interface ModelConnectionInput extends Omit<ModelConnection, 'has_api_key
   api_key?: string
 }
 
-/** 创作设置（GET/PUT settings，routes_settings.py；model_routes 全量替换） */
+/** 创作设置（GET/PUT settings；文风在书内，题材包是另一层） */
 export interface ProjectSettings {
   style_profile: StyleProfile
   skill_pack: string | null
+  genre_pack: import('./lib/genrePacks').BookGenrePack | Record<string, never>
   model_routes: Record<string, string>
   model_connections: ModelConnection[]
   version: number
+}
+
+/** MCP 扫榜覆盖（账号级环境配置） */
+export interface RankingsConfig {
+  enabled: boolean
+  mcp_url: string
+  timeout: number
+  limit: number
+  source: string
+  tool: string
+}
+
+export interface RankingsConfigInput {
+  enabled?: boolean
+  mcp_url?: string
+  timeout?: number
+  limit?: number
+  source?: string
+  tool?: string
+}
+
+/** 账号级环境配置（GET/PUT /environment） */
+export interface EnvironmentSettings {
+  model_routes: Record<string, string>
+  model_connections: ModelConnection[]
+  rankings: RankingsConfig
+  thinking_enabled: boolean
+}
+
+export interface RankingsProbeRequest {
+  mcp_url: string
+  timeout?: number
+}
+
+export interface RankingsProbeResult {
+  ok: boolean
+  tools: string[]
+  error: string | null
 }
 
 /** 模型连接探针请求（未保存的新连接传明文 api_key；已保存连接可传 connection_id 复用密钥） */
@@ -393,6 +434,7 @@ export interface GlobalAuditReportSummary {
   chapters: number
   bridge?: { pairs: number; findings: number } | null
   style?: { sampled: number; findings: number } | null
+  volume?: { volumes: number; stages: number } | null
   error: string | null
   created_at: string | null
 }
@@ -419,7 +461,11 @@ export interface AuditRunResponse {
 /** 建书（§7.11 建书向导）：POST /projects 创建 Project + 空 ProjectSettings（不调 LLM） */
 export interface CreateProjectBody {
   title: string
-  genre: string
+  genre?: string
+  /** 传入（含 null）即走题材包建书，显示名锁定为包名 */
+  primary_id?: string | null
+  secondary_id?: string | null
+  genre_fields?: import('./lib/genrePacks').GenreFields
   /** 每章目标字数（可选；500–20000，默认 3000） */
   target_words?: number
 }
@@ -455,15 +501,17 @@ export interface SetupConfirmResponse {
   ok: boolean
 }
 
-/** 整书大纲单章（§11 建书 ③：三层骨架的章层；草稿无 seq，PUT 落库时后端跨卷补全局 seq） */
-export interface OutlineChapter {
-  seq?: number
-  title: string
+/** 整书大纲阶段（约 30 章一段） */
+export interface OutlineStage {
+  stage_seq?: number
+  name: string
+  chapter_start?: number
+  chapter_end?: number
   goal: string
   beats?: string[]
 }
 
-/** 整书大纲卷（§11 ③：Planner 按目标章节数自动分卷，3-5 卷沿故事线起/承/转/合） */
+/** 整书大纲卷（题材决定卷跨度；卷下是阶段，不是逐章） */
 export interface OutlineVolume {
   volume_seq?: number
   title: string
@@ -471,7 +519,10 @@ export interface OutlineVolume {
   goal: string
   key_results?: string[]
   end_event?: string
-  chapters: OutlineChapter[]
+  chapter_start?: number
+  chapter_end?: number
+  stages?: OutlineStage[]
+  chapters?: Array<{ seq?: number; title?: string; goal?: string; beats?: string[] }>
 }
 
 /** 整书大纲草稿请求（§11 ③：梗概 + 大致章节数 + 大致故事线 → Planner 提案） */
@@ -505,7 +556,10 @@ export interface OutlineConfirmBody {
     goal: string
     key_results?: string[]
     end_event?: string
-    chapters: Array<{ title: string; goal: string; beats: string[] }>
+    chapter_start?: number
+    chapter_end?: number
+    stages?: OutlineStage[]
+    chapters?: Array<{ title: string; goal: string; beats: string[] }>
   }>
   premise: string
   chapter_count: number

@@ -33,6 +33,7 @@ from aiink.models import (AgentRun, Alias, Chapter, Character, CharacterState, E
                           WritingLesson)
 from aiink.models.memory import CHARACTER_STATE_FIELDS, RELATION_TYPES
 from aiink.providers import FallbackChain, ModelResponse, make_chain
+from aiink.providers.deepseek import strip_thinking_text
 from aiink.schemas import AuditVerdict, ChapterPlan, Finding, MutationCandidate, ValidationReport
 from aiink.validation.ledger_l2 import run_ledger_l2
 from aiink.validation.continuity import check_transition_anchor, repair_generated_transition_anchor
@@ -114,7 +115,10 @@ def record_run_detail(db: Session, *, task_id: str | None, node: str, detail: di
 # write 按 target_words 换算限长：实测中文约 1 token ≈ 0.7 字（1 字≈1.43 token），
 # 3000 字 ≈ 2100 tokens；×1.25 余量防截断，同时从源头限死字数（最多 ~3900 字）。
 _WRITE_TOKENS_PER_CHAR = 1.43
-_MAX_TOKENS = {"plan_chapter": 4096, "extract": 4096, "revise": 8192, "audit": 4096, "reflexion": 4096, "summarize": 1024}
+_MAX_TOKENS = {
+    "plan_chapter": 8192, "extract": 4096, "revise": 8192, "audit": 8192,
+    "reflexion": 4096, "summarize": 1024, "book_setup": 8192, "book_outline": 16384,
+}
 
 
 def _assistant_tool_calls_message(resp: ModelResponse) -> dict:
@@ -582,13 +586,14 @@ def node_load_state(state: ChapterState) -> ChapterState:
         settings_row = repo.get_settings(db, uuid.UUID(pid))
         world_rules = (settings_row.world_rules if settings_row else {}) or {}
         style_profile = (settings_row.style_profile if settings_row else {}) or {}
+        genre_pack = (settings_row.genre_pack if settings_row else {}) or {}
         project = repo.get_project(db, uuid.UUID(pid))
         target_words = project.target_words if project and project.target_words else None
         plan_input = {"characters": characters, "world_rules": world_rules}
         record_plain(db, project_id=pid, task_id=state.get("task_id"), node="load_state",
                      detail={"characters": len(characters)})
         return {"characters": characters, "chapter_plan_input": plan_input, "settings": world_rules,
-                "style_profile": style_profile, "target_words": target_words,
+                "style_profile": style_profile, "genre_pack": genre_pack, "target_words": target_words,
                 # 重置上次尝试的瞬态失败标记（§6.12 续跑）：同 thread 再 invoke 时
                 # LangGraph 合并 checkpoint 状态，残留 error 会让 write/extract 短路重蹈失败 → 这里清零
                 "error": None, "needs_review": False, "persisted": False, "unresolved": [],
@@ -696,9 +701,10 @@ def node_audit(state: ChapterState) -> ChapterState:
 
     with tenant_session(pid) as db:
         _, tool_trace, verdict, err = _llm_checked(
-            db, state, "audit", "Audit", make_chain("audit"),
+            db, state, "audit", "Audit", make_chain("audit", db=db, project_id=pid),
             prompts.audit_messages(draft, state.get("plan") or {},
-                                   {**(state.get("context") or {}), "validation_report": state.get("report")}, state["chapter_seq"]),
+                                   {**(state.get("context") or {}), "validation_report": state.get("report")},
+                                   state["chapter_seq"], genre_pack=state.get("genre_pack")),
             check=_check_audit, tools=READ_TOOLS)
         if err:
             return {"error": err}
@@ -723,24 +729,21 @@ def node_audit(state: ChapterState) -> ChapterState:
 # ---- LLM 节点 ----
 
 def _load_outline_slice(db: Session, project_id: uuid.UUID, chapter_seq: int) -> dict | None:
-    """整书大纲按章切片（§11 注入）：{objective, volume, current}；无大纲/该章不在大纲 → None。
+    """整书大纲按章切片：{objective, volume, stage}；无大纲 → None。"""
+    from aiink.workflow.outline import covering_item
 
-    current=本章大纲位（目标+节拍）；volume=所属卷（主题/卷目标/关键结果/卷末事件）——规划与写作
-    都拿到「卷 OKR + 本章大纲位」两层，逐章推进卷目标。volume_outlines 单行存整书（volume_seq=1）。
-    """
     row = repo.get_volume_outline(db, project_id, 1)
     if row is None or not isinstance(row.outline, dict):
         return None
     outline = normalize_outline(row.outline) or {}
-    volumes = outline.get("volumes") or []
-    if not isinstance(volumes, list):
+    volumes = [v for v in (outline.get("volumes") or []) if isinstance(v, dict)]
+    if not volumes:
         return None
-    volume = next((v for v in volumes if isinstance(v, dict) and any(
-        isinstance(c, dict) and c.get("seq") == chapter_seq for c in v.get("chapters") or [])), None)
+    volume = covering_item(volumes, chapter_seq)
     if volume is None:
         return None
-    current = next((c for c in volume.get("chapters") or [] if c.get("seq") == chapter_seq), None)
-    return {"objective": outline.get("objective") or "", "volume": volume, "current": current}
+    stage = covering_item(list(volume.get("stages") or []), chapter_seq)
+    return {"objective": outline.get("objective") or "", "volume": volume, "stage": stage}
 
 
 def node_plan_chapter(state: ChapterState) -> ChapterState:
@@ -823,8 +826,8 @@ def _check_draft(content: str) -> str:
     复用 _split_marked/_content_block 容错（模型漏写标记兜底归 default），跑偏命中强特征
     显式失败（诚实报错可重试），不把噪声当正文落库。
     """
-    parts = _split_marked(content)
-    draft = _content_block(parts, content)
+    parts = _split_marked(strip_thinking_text(content))
+    draft = strip_thinking_text(_content_block(parts, content))
     if not draft:
         raise ValueError("正文为空")
     if _looks_like_tool_noise(draft):
@@ -843,7 +846,7 @@ def node_write(state: ChapterState) -> ChapterState:
             prompts.write_messages(
                 state.get("context") or {}, state.get("plan") or {},
                 style_profile=state.get("style_profile"), target_words=state.get("target_words"),
-                outline=outline,
+                outline=outline, genre_pack=state.get("genre_pack"),
             ),
             check=_check_draft, tools=READ_TOOLS, json_mode=False, disable_thinking=True,
             corrective=_RETRY_CORRECTIVE_TEXT)
@@ -974,7 +977,8 @@ def node_revise(state: ChapterState) -> ChapterState:
                                     state["chapter_seq"], context=context,
                                     plan=state.get("plan"), style_profile=state.get("style_profile"),
                                     target_words=state.get("target_words"),
-                                    outline=_load_outline_slice(db, uuid.UUID(pid), state["chapter_seq"])),
+                                    outline=_load_outline_slice(db, uuid.UUID(pid), state["chapter_seq"]),
+                                    genre_pack=state.get("genre_pack")),
             check=_check_draft, json_mode=False, disable_thinking=True,
             corrective=_RETRY_CORRECTIVE_TEXT)
         if err:
@@ -1119,7 +1123,8 @@ def node_summarize(state: ChapterState) -> ChapterState:
             if ch is None or ch.status != "confirmed":
                 return {}  # 非落库终态（awaiting_review 首跑等）不产摘要
             messages = prompts.summary_messages(draft, seq)
-            resp, _ = _llm(db, state, "summarize", "Summarize", make_chain("summarize"), messages,
+            resp, _ = _llm(db, state, "summarize", "Summarize",
+                           make_chain("summarize", db=db, project_id=pid), messages,
                            json_mode=True)
             if resp.error:
                 logger.warning("章节摘要生成失败（保留启发式）: %s", resp.error)
@@ -1704,7 +1709,7 @@ def reflexion_for_chapter_window(*, project_id: str, end_chapter: int, task_id: 
                 {"category": l.category, "content": l.content, "recurrence_count": l.recurrence_count}
                 for l in existing
             ], start, settings.chapter_reflexion_interval)
-            resp = make_chain("audit").generate(messages, json_mode=True,
+            resp = make_chain("audit", db=db, project_id=project_id).generate(messages, json_mode=True,
                                                 max_tokens=_MAX_TOKENS["reflexion"])
             record_run(db, project_id=project_id, task_id=task_id, node="reflexion",
                        role="Reflexion", resp=resp, error=resp.error,

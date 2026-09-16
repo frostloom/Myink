@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -113,6 +114,7 @@ func (h *TaskHandler) enqueue(c *gin.Context, projectID, taskType string, payloa
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": ge.Code})
 			return
 		}
+		log.Printf("[gateway] enqueue_failed project=%s type=%s: %v", projectID, taskType, err)
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "enqueue_failed"})
 		return
 	}
@@ -321,10 +323,62 @@ func (h *TaskHandler) TestModelConnection(c *gin.Context) {
 	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/settings/test-connection", body)
 }
 
+// 账号级环境配置读取（模型连接 / 路由 / MCP 扫榜），转发 Python API。
+// GET /api/v1/environment
+func (h *TaskHandler) GetEnvironment(c *gin.Context) {
+	h.forwardToPy(c, "/internal/v1/environment", nil)
+}
+
+// 更新账号级模型连接、路由与扫榜覆盖（自定义 API Key 由 Python 层加密）。
+// PUT /api/v1/environment
+func (h *TaskHandler) UpdateEnvironment(c *gin.Context) {
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPy(c, "/internal/v1/environment", body)
+}
+
+// 拉取连接可用模型列表（账号级探针）。
+// POST /api/v1/environment/models
+func (h *TaskHandler) ListEnvironmentModels(c *gin.Context) {
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPy(c, "/internal/v1/environment/models", body)
+}
+
+// 模型连接联通测试（账号级探针）。
+// POST /api/v1/environment/test-connection
+func (h *TaskHandler) TestEnvironmentConnection(c *gin.Context) {
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPy(c, "/internal/v1/environment/test-connection", body)
+}
+
+// MCP 扫榜联通测试（list_tools）。
+// POST /api/v1/environment/test-rankings
+func (h *TaskHandler) TestRankingsConnection(c *gin.Context) {
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPy(c, "/internal/v1/environment/test-rankings", body)
+}
+
 // 题材 Skill 预设列表（§7.12 预设包 = 4 本种子书文风档案），转发 Python API。
 // GET /api/v1/skill-presets
 func (h *TaskHandler) SkillPresets(c *gin.Context) {
 	h.forwardToPy(c, "/internal/v1/skill-presets", nil)
+}
+
+// GET /api/v1/genre-packs
+func (h *TaskHandler) GenrePacks(c *gin.Context) {
+	h.forwardToPy(c, "/internal/v1/genre-packs", nil)
+}
+
+// PUT /api/v1/projects/:project_id/genre-pack
+func (h *TaskHandler) PutGenrePack(c *gin.Context) {
+	pid := c.Param("project_id")
+	body, _ := io.ReadAll(c.Request.Body)
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/genre-pack", body)
+}
+
+// POST /api/v1/projects/:project_id/genre-pack/restore
+func (h *TaskHandler) RestoreGenrePack(c *gin.Context) {
+	pid := c.Param("project_id")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/genre-pack/restore", nil)
 }
 
 // 文风样本提取（§7.12 闭环：作者样本 → 统计层 + LLM 提炼 → 草稿，转发 Python API）。

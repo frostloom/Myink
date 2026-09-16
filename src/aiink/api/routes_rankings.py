@@ -25,4 +25,4 @@ async def get_rankings(refresh: bool = False,
     """扫榜响应：source=remote（实时榜单）/ sample（降级样例），error 为降级原因。"""
     if not user_id:
         raise HTTPException(status_code=403, detail="缺失身份（未携带已认证用户）")
-    return await fetch_rankings(refresh=refresh)
+    return await fetch_rankings(refresh=refresh, user_id=user_id)
