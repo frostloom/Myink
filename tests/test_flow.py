@@ -1573,6 +1573,13 @@ def test_content_block_prefers_content_then_named():
     assert _content_block({}, "整段原文") == "整段原文"
 
 
+def test_check_draft_strips_thinking_wrappers():
+    from aiink.workflow.nodes import _check_draft
+
+    assert _check_draft("<think>先列大纲</think>\n=== CONTENT ===\n林砚推门而出。") == "林砚推门而出。"
+    assert _check_draft("<think>这段不该落库</think>\n夜色沉沉，林砚立在廊下。") == "夜色沉沉，林砚立在廊下。"
+
+
 def test_looks_like_tool_noise_detects_text_tool_calls():
     """§10 write/revise 跑偏：模型把工具调用写成文本而非 function calling → 判噪声。"""
     from aiink.workflow.nodes import _looks_like_tool_noise

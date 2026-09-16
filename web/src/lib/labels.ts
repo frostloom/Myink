@@ -111,6 +111,7 @@ export function conflictTypeLabel(type: string): string {
     faction: '势力设定', power: '境界与战力', timeline: '时间线', location: '地点连续性',
     character: '人物设定', character_state: '人物状态', relation: '人物关系',
     foreshadow: '伏笔', item_rule: '物品规则', plotline: '剧情线', persona: '人物行为',
+    volume: '卷规划',
     style: '文风与重复', fact: '事实设定',
   }[type] ?? type
 }

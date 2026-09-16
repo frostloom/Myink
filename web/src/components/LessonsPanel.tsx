@@ -2,7 +2,8 @@
 // proposed 显示 confirm/reject；active/rejected 灰显只读 + 复发次数徽标。确认后经验
 // 随下一批 recall 注入后续章节规划/写作（越写越懂这本书）。
 import { useEffect, useState } from 'react'
-import { api, ApiError } from '../lib/api'
+import { api } from '../lib/api'
+import { formatApiError } from '../lib/apiError'
 import type { WritingLesson } from '../types'
 import { StatusBadge } from './StatusBadge'
 import styles from './LessonsPanel.module.css'
@@ -51,7 +52,7 @@ export function LessonsPanel({ projectId }: Props) {
       const list = await api.listLessons(projectId).catch(() => [])
       setLessons(list)
     } catch (err) {
-      setError(err instanceof ApiError ? err.code : '操作失败')
+      setError(formatApiError(err, '操作失败'))
     } finally {
       setBusy(null)
     }

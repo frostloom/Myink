@@ -59,7 +59,8 @@ def temp_project():
         if ds is not None:
             db.add(ProjectSettings(
                 project_id=b.id, world_rules=ds.world_rules, style_profile=ds.style_profile,
-                skill_pack=ds.skill_pack, model_routes=ds.model_routes,
+                skill_pack=ds.skill_pack, genre_pack=getattr(ds, "genre_pack", None) or {},
+                model_routes=ds.model_routes,
                 hard_constraints=ds.hard_constraints, version=1))
         db.commit()
         pid = str(b.id)

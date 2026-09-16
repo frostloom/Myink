@@ -33,7 +33,7 @@ from aiink.db import tenant_session
 from aiink.memory.vector_store import PgvectorStore
 from aiink.models import (
     Chapter, Character, CharacterState, Event, Foreshadow, GlobalAuditReport,
-    PlotThread, ProjectSettings, Relation,
+    PlotThread, ProjectSettings, Relation, VolumeOutline,
 )
 from aiink.providers.base import ModelResponse
 from aiink.schemas import ChapterPlan, MutationCandidate
@@ -114,7 +114,6 @@ def fake_embedder(monkeypatch):
     monkeypatch.setattr("aiink.validation.l1.get_embedder", lambda: fake)
     monkeypatch.setattr("aiink.workflow.nodes.get_embedder", lambda: fake)
     monkeypatch.setattr("aiink.memory.recall.get_embedder", lambda: fake)
-    monkeypatch.setattr("aiink.validation.global_audit.get_embedder", lambda: fake)
     return fake
 
 
@@ -497,21 +496,34 @@ def test_sample_11_power_inflation(temp_project):
     assert power[0]["severity"] == "major" and power[0]["scope"] == "structural"
 
 
+def _seed_outline(pid: str, end: int = 30) -> None:
+    with tenant_session(pid) as db:
+        db.add(VolumeOutline(
+            project_id=uuid.UUID(pid), volume_seq=1, title="整书大纲",
+            outline={"objective": "入宗立足", "chapter_count": end, "volumes": [{
+                "title": "第一卷", "goal": "入宗立足",
+                "chapter_start": 1, "chapter_end": end,
+                "stages": [{"name": "前期", "chapter_start": 1, "chapter_end": end,
+                            "goal": "入门试炼"}]}]}))
+        db.commit()
+
+
 def test_sample_12_persona_drift(temp_project, monkeypatch):
-    """样例 12 人设漂移：无变故铺垫踹门骂街 → persona/hint/local/L2 + marker 推进。"""
-    _seed_character(temp_project, "林砚", personality="谨慎隐忍、谋定后动")
+    """样例 12：窗口剧情偏离卷规划 → volume/hint/structural/L2。"""
+    _seed_outline(temp_project, end=12)
     for seq in range(1, 12):
         _seed_chapter(temp_project, seq, f"林砚静观云海，谋定后动。第{seq}章。")
     _seed_chapter(temp_project, 12, "林砚一脚踹开房门，破口大骂：'都给我滚！'")
-    drift = {"character": "林砚", "drift_type": "persona", "chapter": 12,
-             "evidence": "一脚踹开房门，破口大骂", "reason": "无变故铺垫突然暴怒", "confidence": 0.85}
+    drift = {"verdict": "drifted", "chapter": 12, "volume_seq": 1, "stage_seq": 1,
+             "evidence": "一脚踹开房门，破口大骂", "reason": "偏离入门试炼",
+             "recovery": "拉回宗门线", "confidence": 0.85}
     _install_audit_stub(monkeypatch, AuditStub(findings=[drift]))
     rep = _audit(temp_project, (1, 12))
     assert rep["status"] == "completed"
     assert len(rep["findings"]) == 1, rep["findings"]
     f = rep["findings"][0]
-    assert f["conflict_type"] == "persona" and f["severity"] == "hint"
-    assert f["scope"] == "local" and f["source"] == "L2" and f["evidence"][0]["chapter"] == 12
+    assert f["conflict_type"] == "volume" and f["severity"] == "hint"
+    assert f["scope"] == "structural" and f["source"] == "L2" and f["evidence"][0]["chapter"] == 12
 
 
 def test_sample_13_outline_deviation(temp_project):
@@ -770,17 +782,18 @@ def test_sample_37_bridge_unmarked_echo(temp_project, monkeypatch):
 
 
 def test_sample_38_style_drift(temp_project, monkeypatch):
-    """样例 38 阳性：窗口网络口语 vs 基线仙侠雅句 → LLM 判 drift → style/hint/local/L2。"""
+    """样例 38 阳性：窗口内容偏离卷规划 → volume/hint/structural/L2。"""
+    _seed_outline(temp_project, end=10)
     _seed_style_book(temp_project, 5, 5)
     _install_audit_stub(monkeypatch, AuditStub(findings=[
-        {"chapter": 6, "verdict": "drift", "evidence": DRIFT_QUOTE,
-         "aspect": "用词/语气", "reason": "网络口语与仙侠雅句基线系统性偏离", "confidence": 0.85}]))
+        {"chapter": 6, "verdict": "drifted", "evidence": DRIFT_QUOTE,
+         "reason": "偏离入门试炼", "recovery": "拉回卷目标", "confidence": 0.85}]))
     rep = _audit(temp_project, (6, 10))
     assert rep["status"] == "completed"
     assert len(rep["findings"]) == 1, rep["findings"]
     f = rep["findings"][0]
-    assert f["conflict_type"] == "style" and f["severity"] == "hint"
-    assert f["scope"] == "local" and f["source"] == "L2" and f["evidence"][0]["chapter"] == 6
+    assert f["conflict_type"] == "volume" and f["severity"] == "hint"
+    assert f["scope"] == "structural" and f["source"] == "L2" and f["evidence"][0]["chapter"] == 6
 
 
 def test_sample_39_style_scene_variation(temp_project, monkeypatch):
