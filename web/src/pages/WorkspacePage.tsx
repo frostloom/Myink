@@ -174,6 +174,10 @@ export default function WorkspacePage() {
         summary: null,
       }
       pendingAutoOpen.current = { taskId: saved.taskId, chapterSeq: saved.chapterSeq }
+      // 同一次提交里 selectedSeq 仍是 null，后面的按章 listTasks effect 会先清 taskId。
+      // ref / version 立刻对齐，避免空列表把刚恢复的写作盖掉。
+      taskStartVersion.current += 1
+      activeTaskIdRef.current = saved.taskId
       setActiveTaskId(saved.taskId)
       setBatchTotal(saved.batchTotal)
       setActiveChapterSeq(saved.chapterSeq)
@@ -443,15 +447,30 @@ export default function WorkspacePage() {
 
   // 每章只呈现一份状态流转：选章后加载覆盖该章的最新生成任务，实时和历史共用一条流程。
   useEffect(() => {
+    const saved = readActiveWrite(projectId)
+    const pending = pendingAutoOpen.current
+    const remembered = pending?.taskId
+      ? {
+          taskId: pending.taskId,
+          chapterSeq: pending.chapterSeq,
+          batchTotal: saved?.taskId === pending.taskId ? saved.batchTotal : null,
+        }
+      : saved
+
     if (selectedSeq === null) {
+      // 切书恢复的同一轮里章节还没选上；不能把刚接上的 taskId 清掉。
+      if (remembered) return
       setActiveTaskId(null)
       setBatchTotal(null)
       setActiveChapterSeq(null)
       setReleaseTarget(null)
       return
     }
-    const pending = pendingAutoOpen.current
-    if (pending?.taskId === activeTaskIdRef.current && pending.chapterSeq === selectedSeq) {
+    if (remembered && remembered.chapterSeq === selectedSeq) {
+      activeTaskIdRef.current = remembered.taskId
+      setActiveTaskId(remembered.taskId)
+      setBatchTotal(remembered.batchTotal ?? null)
+      setActiveChapterSeq(selectedSeq)
       return
     }
     let cancelled = false
@@ -465,6 +484,14 @@ export default function WorkspacePage() {
         if (cancelled || requestVersion !== taskStartVersion.current) return
         const latest = latestGenerationTask(tasks)
         if (!latest) {
+          const keep = readActiveWrite(projectId)
+          if (keep && keep.chapterSeq === selectedSeq) {
+            activeTaskIdRef.current = keep.taskId
+            setActiveTaskId(keep.taskId)
+            setBatchTotal(keep.batchTotal)
+            setActiveChapterSeq(selectedSeq)
+            return
+          }
           setActiveTaskId(null)
           setBatchTotal(null)
           setActiveChapterSeq(null)
