@@ -2,6 +2,7 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import AuditPage from './pages/AuditPage'
+import EnvironmentPage from './pages/EnvironmentPage'
 import LoginPage from './pages/LoginPage'
 import LorePage from './pages/LorePage'
 import NewProjectPage from './pages/NewProjectPage'
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: <Navigate to="/projects" replace /> },
       { path: '/projects', element: <ProjectsPage /> },
+      { path: '/environment', element: <EnvironmentPage /> },
       { path: '/projects/new', element: <NewProjectPage /> },
       { path: '/projects/:projectId', element: <WorkspacePage /> },
       { path: '/projects/:projectId/settings', element: <SettingsPage /> },

@@ -64,7 +64,16 @@ func NewRouter(cfg config.Config, r *redis.Client, rmq *queue.AMQP, py *pyapi.Cl
 		// 模型连接探针（设置页「添加网络模型」闭环：拉取可用模型 / 联通测试，转发 Python API）
 		secured.POST("/projects/:project_id/settings/models", taskH.ListConnectionModels)
 		secured.POST("/projects/:project_id/settings/test-connection", taskH.TestModelConnection)
+		// 账号级环境配置（作品库即可进入：模型连接/路由 + MCP 扫榜，转发 Python API）
+		secured.GET("/environment", taskH.GetEnvironment)
+		secured.PUT("/environment", taskH.UpdateEnvironment)
+		secured.POST("/environment/models", taskH.ListEnvironmentModels)
+		secured.POST("/environment/test-connection", taskH.TestEnvironmentConnection)
+		secured.POST("/environment/test-rankings", taskH.TestRankingsConnection)
 		secured.GET("/skill-presets", taskH.SkillPresets)
+		secured.GET("/genre-packs", taskH.GenrePacks)
+		secured.PUT("/projects/:project_id/genre-pack", taskH.PutGenrePack)
+		secured.POST("/projects/:project_id/genre-pack/restore", taskH.RestoreGenrePack)
 		secured.POST("/projects/:project_id/style-samples", taskH.StyleSamples)
 		secured.PUT("/projects/:project_id/style-profile", taskH.PutStyleProfile)
 		// 建书向导 + 设定浏览（§7.11：创建作品 / 设定草稿 / 确认落库 / 世界观 / 人物卡片，转发 Python API）

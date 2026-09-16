@@ -16,13 +16,15 @@ from aiink.api.schemas import ConnectionTestOut, ModelListOut, ProjectSettingsOu
 from aiink.db import tenant_session
 from aiink.memory.repository import get_settings
 from aiink.models import ProjectSettings
-from aiink.providers import CONFIGURABLE_ROLES, MODEL_REGISTRY, probe
+from aiink.providers import CONFIGURABLE_ROLES, probe
 from aiink.providers.connections import (
     CUSTOM_ROUTE_PREFIX,
+    keep_custom_routes,
     pack_model_settings,
     public_connections,
     unpack_model_settings,
 )
+from aiink.genre_catalog import public_pack
 from aiink.providers.credentials import decrypt_api_key, encrypt_api_key
 
 router = APIRouter(prefix="/internal/v1", tags=["settings"])
@@ -39,6 +41,8 @@ class ModelConnectionBody(BaseModel):
     base_url: str
     model: str
     api_key: SecretStr | None = None
+    input_price: float | None = None
+    output_price: float | None = None
 
 
 class SettingsBody(BaseModel):
@@ -114,17 +118,41 @@ def _validate_connection(item: ModelConnectionBody) -> tuple[str, str, str, str]
     return cid, name, _clean_base_url(item.base_url), model
 
 
+def _price_fields(item: ModelConnectionBody) -> dict:
+    if item.input_price is None and item.output_price is None:
+        return {}
+    if item.input_price is None or item.output_price is None:
+        raise HTTPException(status_code=400, detail="输入价与输出价须同时填写")
+    for label, value in (("输入价", item.input_price), ("输出价", item.output_price)):
+        if value < 0 or value > 10_000:
+            raise HTTPException(status_code=400, detail=f"{label}须为 0–10000（¥/百万 token）")
+    return {"input_price": float(item.input_price), "output_price": float(item.output_price)}
+
+
+def connection_record(item: ModelConnectionBody, existing_connections: dict) -> tuple[str, dict]:
+    cid, name, base_url, model = _validate_connection(item)
+    raw_key = item.api_key.get_secret_value().strip() if item.api_key else ""
+    encrypted = encrypt_api_key(raw_key) if raw_key else existing_connections.get(cid, {}).get("api_key_encrypted")
+    if not encrypted:
+        raise HTTPException(status_code=400, detail=f"新模型连接“{name}”必须填写 API Key")
+    return cid, {
+        "name": name, "protocol": item.protocol, "base_url": base_url,
+        "model": model, "api_key_encrypted": encrypted, **_price_fields(item),
+    }
+
+
 def _response(st: ProjectSettings | None) -> dict:
     if st is None:
         return {
-            "style_profile": {}, "skill_pack": None, "model_routes": {},
-            "model_connections": [], "version": 0,
+            "style_profile": {}, "skill_pack": None, "genre_pack": {},
+            "model_routes": {}, "model_connections": [], "version": 0,
         }
     routes, connections = unpack_model_settings(st.model_routes)
     return {
         "style_profile": st.style_profile or {},
         "skill_pack": st.skill_pack,
-        "model_routes": routes,
+        "genre_pack": public_pack(st.genre_pack),
+        "model_routes": keep_custom_routes(routes, connections),
         "model_connections": public_connections(connections),
         "version": st.version or 0,
     }
@@ -151,25 +179,18 @@ def put_project_settings(project_id: str, body: SettingsBody) -> dict:
             connections = {}
             seen: set[str] = set()
             for item in body.model_connections:
-                cid, name, base_url, model = _validate_connection(item)
+                cid, rec = connection_record(item, existing_connections)
                 if cid in seen:
                     raise HTTPException(status_code=400, detail=f"模型连接 id 重复: {cid}")
                 seen.add(cid)
-                raw_key = item.api_key.get_secret_value().strip() if item.api_key else ""
-                encrypted = encrypt_api_key(raw_key) if raw_key else existing_connections.get(cid, {}).get("api_key_encrypted")
-                if not encrypted:
-                    raise HTTPException(status_code=400, detail=f"新模型连接“{name}”必须填写 API Key")
-                connections[cid] = {
-                    "name": name, "protocol": item.protocol, "base_url": base_url,
-                    "model": model, "api_key_encrypted": encrypted,
-                }
+                connections[cid] = rec
+        if body.model_routes is None:
+            routes = keep_custom_routes(routes, connections)
 
         for role, model_ref in routes.items():
             if role not in CONFIGURABLE_ROLES:
                 raise HTTPException(status_code=400,
                                     detail=f"不可配置的 role: {role}（仅 {sorted(CONFIGURABLE_ROLES)}）")
-            if model_ref in MODEL_REGISTRY:
-                continue
             if model_ref.startswith(CUSTOM_ROUTE_PREFIX) and model_ref[len(CUSTOM_ROUTE_PREFIX):] in connections:
                 continue
             raise HTTPException(status_code=400, detail=f"未知模型: {model_ref}")

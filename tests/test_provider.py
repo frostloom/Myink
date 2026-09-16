@@ -36,6 +36,16 @@ def _provider_with(create):
     return p
 
 
+def test_leading_think_block_stripped_from_chapter():
+    p = _provider_with(_fake_create(content="<think>先推敲</think>\n他推开门。"))
+    resp: ModelResponse = p.generate(
+        [{"role": "user", "content": "x"}], model_id="novel-pro",
+        disable_thinking=True, json_mode=False,
+    )
+    assert resp.error is None
+    assert resp.content == "他推开门。"
+
+
 def test_content_nonempty_passthrough():
     """content 非空：正常路径原样返回，不触发兜底。"""
     p = _provider_with(_fake_create(content='{"verdict": "pass"}'))
@@ -44,10 +54,29 @@ def test_content_nonempty_passthrough():
     assert resp.content == '{"verdict": "pass"}'
 
 
+def test_write_path_does_not_use_reasoning_as_chapter():
+    p = _provider_with(_fake_create(content="", reasoning_content="我先想一下剧情再写"))
+    resp: ModelResponse = p.generate(
+        [{"role": "user", "content": "x"}], model_id="deepseek-flash",
+        disable_thinking=True, json_mode=False,
+    )
+    assert resp.error is not None
+    assert "思考过程" in resp.error
+    # 思考开着也不把 reasoning 当章节（inkos：只拆字段，不并入正文）
+    resp_on = p.generate(
+        [{"role": "user", "content": "x"}], model_id="deepseek-flash",
+        disable_thinking=False, json_mode=False,
+    )
+    assert resp_on.error is not None
+    assert "思考过程" in resp_on.error
+
+
 def test_reasoning_content_fallback():
-    """content 空 + reasoning_content 有值：兜底为 content（§19.3 v4 偶发思考模式）。"""
+    """JSON 才允许 content 空时借用 reasoning（audit 偶发把 JSON 放进思考字段）。"""
     p = _provider_with(_fake_create(content="", reasoning_content='思考过程... {"verdict": "pass"}'))
-    resp: ModelResponse = p.generate([{"role": "user", "content": "x"}], model_id="deepseek-v4-flash")
+    resp: ModelResponse = p.generate(
+        [{"role": "user", "content": "x"}], model_id="deepseek-v4-flash", json_mode=True,
+    )
     assert resp.error is None
     assert resp.content.startswith("思考过程")
     assert "verdict" in resp.content
@@ -56,7 +85,9 @@ def test_reasoning_content_fallback():
 def test_blank_content_falls_back():
     """content 全空白（json_mode 最终轮占位输出，122 空格）+ reasoning 有值：兜底。"""
     p = _provider_with(_fake_create(content=" " * 122, reasoning_content='思考... {"verdict": "pass"}'))
-    resp: ModelResponse = p.generate([{"role": "user", "content": "x"}], model_id="deepseek-v4-flash")
+    resp: ModelResponse = p.generate(
+        [{"role": "user", "content": "x"}], model_id="deepseek-v4-flash", json_mode=True,
+    )
     assert resp.error is None
     assert resp.content.startswith("思考")
     assert "verdict" in resp.content

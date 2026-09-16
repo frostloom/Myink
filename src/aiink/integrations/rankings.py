@@ -235,11 +235,38 @@ class RankingsService:
 
 
 _service = RankingsService()
+_user_services: dict[str, RankingsService] = {}
 
 
-async def fetch_rankings(refresh: bool = False) -> dict[str, Any]:
-    """async 入口（FastAPI 全局端点，建书前灵感工具；无项目归属，身份由路由断言）。"""
-    result = await _service.fetch(refresh=refresh)
+def _service_for_user(user_id: str) -> RankingsService:
+    from aiink.environment import rankings_view_for_user
+
+    view = rankings_view_for_user(user_id)
+    if view is None:
+        return _service
+    key = "|".join((
+        user_id, view.rankings_mcp_url, view.rankings_source, view.rankings_tool,
+        str(view.rankings_enabled), str(view.rankings_timeout), str(view.rankings_limit),
+    ))
+    cached = _user_services.get(key)
+    if cached is not None:
+        return cached
+
+    def factory(url=view.rankings_mcp_url, timeout=view.rankings_timeout):
+        return McpClient(url, timeout_s=timeout)
+
+    svc = RankingsService(settings_obj=view, client_factory=factory)
+    _user_services[key] = svc
+    return svc
+
+
+async def fetch_rankings(refresh: bool = False, user_id: str | None = None) -> dict[str, Any]:
+    """async 入口（FastAPI 全局端点，建书前灵感工具；无项目归属，身份由路由断言）。
+
+    已登录且账号环境配置里保存过扫榜项 → 用用户覆盖；否则走进程 .env 默认。
+    """
+    svc = _service_for_user(user_id) if user_id else _service
+    result = await svc.fetch(refresh=refresh)
     return {
         "source": result.source,
         "tool": result.tool,
