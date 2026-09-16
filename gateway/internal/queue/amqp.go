@@ -4,6 +4,7 @@ package queue
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -32,13 +33,15 @@ func DlqQueue(prefix string) string   { return "queue:dlq" + prefix }
 var ErrPublishAmbiguous = fmt.Errorf("publish ambiguous")
 
 // AMQP RabbitMQ 发布端。单 channel + mutex 串行发布（单用户项目量级远不需多 channel），
-// channel 开 confirm 模式，每次发布等 broker 确认。
+// channel 开 confirm 模式，每次发布等 broker 确认。TCP 被对端掐掉后 Publish 失败会重拨一次。
 type AMQP struct {
-	conn      *amqp091.Connection
-	ch        *amqp091.Channel
-	exchange  string
+	conn       *amqp091.Connection
+	ch         *amqp091.Channel
+	exchange   string
 	routingKey string
-	mu        sync.Mutex
+	url        string
+	prefix     string
+	mu         sync.Mutex
 }
 
 // DialAMQP 连接 RabbitMQ 并幂等声明 5 项拓扑：
@@ -50,26 +53,48 @@ type AMQP struct {
 //
 // 失败返回 error（连接/声明/confirm 任一失败）。
 func DialAMQP(cfg config.Config) (*AMQP, error) {
-	conn, err := amqp091.Dial(cfg.AmqpURL)
+	a := &AMQP{
+		exchange:   ExchangeTasks + cfg.QueuePrefix,
+		routingKey: KeyTasks,
+		url:        cfg.AmqpURL,
+		prefix:     cfg.QueuePrefix,
+	}
+	if err := a.connect(); err != nil {
+		return nil, err
+	}
+	return a, nil
+}
+
+func (a *AMQP) connect() error {
+	if a.ch != nil {
+		_ = a.ch.Close()
+		a.ch = nil
+	}
+	if a.conn != nil {
+		_ = a.conn.Close()
+		a.conn = nil
+	}
+	conn, err := amqp091.Dial(a.url)
 	if err != nil {
-		return nil, fmt.Errorf("amqp dial: %w", err)
+		return fmt.Errorf("amqp dial: %w", err)
 	}
 	ch, err := conn.Channel()
 	if err != nil {
 		_ = conn.Close()
-		return nil, fmt.Errorf("amqp channel: %w", err)
+		return fmt.Errorf("amqp channel: %w", err)
 	}
 	if err := ch.Confirm(false); err != nil {
 		_ = ch.Close()
 		_ = conn.Close()
-		return nil, fmt.Errorf("amqp confirm: %w", err)
+		return fmt.Errorf("amqp confirm: %w", err)
 	}
-	a := &AMQP{conn: conn, ch: ch, exchange: ExchangeTasks + cfg.QueuePrefix, routingKey: KeyTasks}
-	if err := a.declare(cfg.QueuePrefix); err != nil {
+	a.conn = conn
+	a.ch = ch
+	if err := a.declare(a.prefix); err != nil {
 		_ = a.Close()
-		return nil, err
+		return err
 	}
-	return a, nil
+	return nil
 }
 
 // declare 幂等声明 5 项拓扑（重复声明安全；参数变更需清 RabbitMQ 数据卷）。
@@ -122,7 +147,20 @@ func (a *AMQP) declare(prefix string) error {
 func (a *AMQP) PublishTask(ctx context.Context, body []byte, priority int) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	err := a.publishLocked(ctx, body, priority)
+	if err == nil || errors.Is(err, ErrPublishAmbiguous) {
+		return err
+	}
+	if rerr := a.connect(); rerr != nil {
+		return fmt.Errorf("amqp reconnect: %w (publish: %v)", rerr, err)
+	}
+	return a.publishLocked(ctx, body, priority)
+}
 
+func (a *AMQP) publishLocked(ctx context.Context, body []byte, priority int) error {
+	if a.ch == nil {
+		return fmt.Errorf("amqp publish: channel closed")
+	}
 	dcf, err := a.ch.PublishWithDeferredConfirmWithContext(ctx, a.exchange, a.routingKey, false, false,
 		amqp091.Publishing{
 			ContentType:  "application/json",

@@ -28,34 +28,46 @@ export function ProjectRail({ projects, onLogout }: Props) {
           </NavLink>
         ))}
       </nav>
-      {projectId && (
-        <div className={styles.pageLinks}>
+      <div className={styles.pageLinks}>
+        {!projectId && (
           <NavLink
-            to={`/projects/${projectId}/lore`}
+            to="/environment"
             className={({ isActive }) =>
               isActive ? `${styles.item} ${styles.active}` : styles.item
             }
           >
-            <span className={styles.title}>设定</span>
+            <span className={styles.title}>环境配置</span>
           </NavLink>
-          <NavLink
-            to={`/projects/${projectId}/settings`}
-            className={({ isActive }) =>
-              isActive ? `${styles.item} ${styles.active}` : styles.item
-            }
-          >
-            <span className={styles.title}>创作设置</span>
-          </NavLink>
-          <NavLink
-            to={`/projects/${projectId}/audit`}
-            className={({ isActive }) =>
-              isActive ? `${styles.item} ${styles.active}` : styles.item
-            }
-          >
-            <span className={styles.title}>全局审计</span>
-          </NavLink>
-        </div>
-      )}
+        )}
+        {projectId && (
+          <>
+            <NavLink
+              to={`/projects/${projectId}/lore`}
+              className={({ isActive }) =>
+                isActive ? `${styles.item} ${styles.active}` : styles.item
+              }
+            >
+              <span className={styles.title}>设定</span>
+            </NavLink>
+            <NavLink
+              to={`/projects/${projectId}/settings`}
+              className={({ isActive }) =>
+                isActive ? `${styles.item} ${styles.active}` : styles.item
+              }
+            >
+              <span className={styles.title}>创作设置</span>
+            </NavLink>
+            <NavLink
+              to={`/projects/${projectId}/audit`}
+              className={({ isActive }) =>
+                isActive ? `${styles.item} ${styles.active}` : styles.item
+              }
+            >
+              <span className={styles.title}>全局审计</span>
+            </NavLink>
+          </>
+        )}
+      </div>
       <div className={styles.foot}>
         <span className={styles.user}>{session?.username}</span>
         <button type="button" className="btn btn-quiet" onClick={onLogout}>

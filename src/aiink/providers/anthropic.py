@@ -11,6 +11,11 @@ from urllib.parse import urlsplit, urlunsplit
 import httpx
 
 from aiink.providers.base import ModelProvider, ModelResponse
+from aiink.providers.think_tag_stripper import (
+    LeadingThinkTagStripper,
+    isolate_response_body,
+    looks_like_unclosed_think,
+)
 
 logger = logging.getLogger(__name__)
 MAX_RETRIES = 3
@@ -144,8 +149,10 @@ class AnthropicProvider(ModelProvider):
                 response = self._client.post(self._url, headers=self._headers(), json=payload)
                 response.raise_for_status()
                 data = response.json()
-                content = "".join(block.get("text", "") for block in data.get("content", [])
-                                  if block.get("type") == "text")
+                content = isolate_response_body("".join(
+                    block.get("text", "") for block in data.get("content", [])
+                    if block.get("type") == "text"
+                ))
                 calls = [{"id": block.get("id", ""), "name": block.get("name", ""),
                           "arguments": block.get("input", {})}
                          for block in data.get("content", []) if block.get("type") == "tool_use"] or None
@@ -190,6 +197,7 @@ class AnthropicProvider(ModelProvider):
             input_tokens = 0
             output_tokens = 0
             emitted = False
+            stripper = LeadingThinkTagStripper()
             try:
                 with self._client.stream("POST", self._url, headers=self._headers(), json=payload) as response:
                     response.raise_for_status()
@@ -219,13 +227,19 @@ class AnthropicProvider(ModelProvider):
                             if delta.get("type") == "text_delta":
                                 text = delta.get("text", "")
                                 if text:
-                                    parts.append(text)
-                                    on_delta(text)
-                                    emitted = True
+                                    emittable = stripper.push(text)
+                                    if emittable:
+                                        parts.append(emittable)
+                                        on_delta(emittable)
+                                        emitted = True
                             elif delta.get("type") == "input_json_delta" and index in tool_parts:
                                 tool_parts[index]["arguments"] += delta.get("partial_json", "")
                         elif kind == "message_delta":
                             output_tokens = int(event.get("usage", {}).get("output_tokens", output_tokens) or 0)
+                leftover = stripper.flush()
+                if leftover and not looks_like_unclosed_think(leftover):
+                    parts.append(leftover)
+                content = isolate_response_body("".join(parts))
                 calls = []
                 for index in sorted(tool_parts):
                     row = tool_parts[index]
@@ -234,13 +248,13 @@ class AnthropicProvider(ModelProvider):
                     except json.JSONDecodeError:
                         arguments = {}
                     calls.append({"id": row["id"], "name": row["name"], "arguments": arguments})
-                if not "".join(parts).strip() and not calls:
+                if not content.strip() and not calls:
                     return ModelResponse(
                         content="", model_id=model_id, error="Anthropic 流式返回空白/空内容",
                         duration_ms=int((time.monotonic() - t0) * 1000), retry_count=attempt,
                     )
                 return ModelResponse(
-                    content="".join(parts), model_id=model_id,
+                    content=content, model_id=model_id,
                     input_tokens=input_tokens, output_tokens=output_tokens,
                     duration_ms=int((time.monotonic() - t0) * 1000), retry_count=attempt,
                     tool_calls=calls or None,

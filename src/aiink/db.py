@@ -190,6 +190,28 @@ def ensure_user_tier() -> None:
         ))
 
 
+def ensure_genre_pack() -> None:
+    """为老库补齐 project_settings.genre_pack（幂等，本书题材包快照）。"""
+    with _admin_engine.begin() as conn:
+        conn.execute(text(
+            "ALTER TABLE project_settings ADD COLUMN IF NOT EXISTS genre_pack JSON "
+            "NOT NULL DEFAULT '{}'"
+        ))
+
+
+def ensure_user_environment() -> None:
+    """为老库补齐 users.environment（幂等，账号级模型连接/扫榜配置）。
+
+    create_all 对已存在的表不会补列——活 demo 库需显式 ADD COLUMN IF NOT EXISTS；
+    新建库模型已含该列，幂等无副作用。默认空对象，密钥由前端环境配置页写入。
+    """
+    with _admin_engine.begin() as conn:
+        conn.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS environment JSONB "
+            "NOT NULL DEFAULT '{}'::jsonb"
+        ))
+
+
 def ensure_unique_constraints() -> None:
     """为活库补齐 create_all 不会 ALTER 的唯一约束（幂等，阶段 5 迁移链前的过渡）。
 

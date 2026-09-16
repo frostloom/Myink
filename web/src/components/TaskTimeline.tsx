@@ -1,7 +1,8 @@
 // 当前章节唯一的状态流转图：实时节点与终态快照共用一条流程，逐节点展示耗时和费用。
 // 审核结论与人工设定确认由独立面板负责，避免三类信息混在同一组件。
 import { useState } from 'react'
-import { api, ApiError } from '../lib/api'
+import { api } from '../lib/api'
+import { formatApiError, formatErrorText } from '../lib/apiError'
 import { nodeLabel, taskStatusLabel, taskStatusTone } from '../lib/labels'
 import { compactFlowRuns, groupFlowAttempts } from '../lib/taskFlow'
 import type { TaskPhase } from '../hooks/useTaskEvents'
@@ -101,7 +102,7 @@ export function TaskTimeline({
       else if (action === 'resume') await api.resumeBatch(tid)
       else await api.cancelBatch(tid)
     } catch (err) {
-      setCtrlError(err instanceof ApiError ? err.code : '操作失败')
+      setCtrlError(formatApiError(err, '操作失败'))
     } finally {
       setCtrl(null)
       refresh()
@@ -142,7 +143,7 @@ export function TaskTimeline({
                 {totalDuration > 0 && <span>{formatDuration(totalDuration)}</span>}
                 {progress && <span>批次 {progress.current}/{progress.total}</span>}
               </div>
-              {error && <div className="banner banner-error">{error}</div>}
+              {error && <div className="banner banner-error">{formatErrorText(error, undefined, error)}</div>}
 
               {attempts.length > 0 ? (
                 <div className={styles.attemptList}>
@@ -178,7 +179,7 @@ export function TaskTimeline({
                                   <div><dt>Token</dt><dd>{(run.input_tokens + run.output_tokens).toLocaleString('zh-CN')}</dd></div>
                                 </dl>
                                 {run.retry_count > 0 && <span className={styles.retry}>重试 {run.retry_count} 次</span>}
-                                {run.error && <p className={styles.stepError}>{run.error}</p>}
+                                {run.error && <p className={styles.stepError}>{formatErrorText(run.error, undefined, run.error)}</p>}
                               </div>
                             </li>
                           ))}

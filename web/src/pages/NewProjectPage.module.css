@@ -102,7 +102,42 @@
   align-items: center;
 }
 
-/* 题材标签（建书 ①）：建议集点选组合，非限定 */
+.lockedGenre {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.genreGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.genreGroupTitle {
+  font-size: var(--text-small);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.genreSubTitle {
+  margin-top: var(--space-1);
+  font-size: var(--text-small);
+  color: var(--ink-muted);
+}
+
+.genreDetails {
+  margin-top: var(--space-2);
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+}
+
+.genreDetails summary {
+  cursor: pointer;
+  margin-bottom: var(--space-2);
+}
+
 .genreChips {
   display: flex;
   flex-wrap: wrap;
@@ -122,4 +157,9 @@
 .chipOn {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.chip:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }

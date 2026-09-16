@@ -392,7 +392,7 @@ def _h(uid: str | uuid.UUID | None) -> dict:
 
 
 def test_rankings_endpoint_200_shape(monkeypatch):
-    async def fake(refresh=False):
+    async def fake(refresh=False, user_id=None):
         return {"source": "remote", "tool": "qidian_rank",
                 "fetched_at": "2026-01-01T00:00:00+00:00", "error": None,
                 "items": [{"rank": 1, "title": "甲", "author": "张", "tags": ["仙侠"], "hot": "1.2万"}]}
@@ -408,7 +408,7 @@ def test_rankings_endpoint_200_shape(monkeypatch):
 def test_rankings_endpoint_refresh_param_passed(monkeypatch):
     seen: list[bool] = []
 
-    async def fake(refresh=False):
+    async def fake(refresh=False, user_id=None):
         seen.append(refresh)
         return {"source": "sample", "tool": "", "fetched_at": None, "error": "已禁用", "items": []}
 
