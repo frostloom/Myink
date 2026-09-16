@@ -1,7 +1,8 @@
 // 章节编辑器：读正文（GET 单章详情）→ 纸张色 textarea → Ctrl+S / 按钮保存（PUT content 轻编辑）。
 // 阶段 4：头部「历史版本」入口 → 版本列表/回退弹层（覆盖写前快照，版本表）。
 import { useState, type KeyboardEvent } from 'react'
-import { api, ApiError } from '../lib/api'
+import { api } from '../lib/api'
+import { formatApiError } from '../lib/apiError'
 import { getSession } from '../lib/token'
 import { useChapterDraft } from '../hooks/useChapterDraft'
 import { chapterStatusLabel, chapterStatusTone } from '../lib/labels'
@@ -77,7 +78,7 @@ function ChapterEditorBody({
       )
       onMemoryChanged()
     } catch (err) {
-      setError(err instanceof ApiError ? err.code : '校正失败')
+      setError(formatApiError(err, '校正失败'))
     } finally {
       setMemBusy(false)
     }
@@ -99,7 +100,7 @@ function ChapterEditorBody({
       await api.deleteChapter(projectId, chapter.id)
       onNotFound()
     } catch (err) {
-      setError(err instanceof ApiError ? err.code : '删除失败')
+      setError(formatApiError(err, '删除失败'))
     } finally {
       setDelBusy(false)
     }

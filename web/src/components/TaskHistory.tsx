@@ -2,7 +2,8 @@
 // 节点流转记录（RunNodeCard 逐节点 token/成本/耗时）+ 批次进度 + pause/resume/cancel 控制。
 // 实时流转仍走上方 TaskTimeline（SSE），此处管历史快照（根因 2/3：换书看任务 + 流转记录）。
 import { useEffect, useState } from 'react'
-import { api, ApiError } from '../lib/api'
+import { api } from '../lib/api'
+import { formatApiError } from '../lib/apiError'
 import { taskStatusLabel, taskStatusTone, taskTypeLabel } from '../lib/labels'
 import { chapterRunsOf } from '../lib/taskChapter'
 import type { AgentRun, TaskDetail, TaskStatus, TaskSummary } from '../types'
@@ -89,7 +90,7 @@ export function TaskHistory({ projectId, activeTaskId, selectedSeq }: Props) {
     try {
       setDetail(await api.getTask(tid))
     } catch (err) {
-      setError(err instanceof ApiError ? err.code : '详情加载失败')
+      setError(formatApiError(err, '详情加载失败'))
     } finally {
       setDetailLoading(false)
     }
@@ -108,7 +109,7 @@ export function TaskHistory({ projectId, activeTaskId, selectedSeq }: Props) {
       const list = await api.listTasks(projectId, selectedSeq ?? undefined).catch(() => [])
       setTasks(list)
     } catch (err) {
-      setError(err instanceof ApiError ? err.code : '操作失败')
+      setError(formatApiError(err, '操作失败'))
     } finally {
       setCtrl(null)
     }

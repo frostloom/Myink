@@ -56,8 +56,8 @@ docker compose up -d --build
 
 访问 127.0.0.1:8080（网关静态托管前端，同源提供页面 + API + SSE）。
 
-- 复制配置后即可浏览界面；执行 AI 生成前填写根目录 `.env` 中的 `DEEPSEEK_API_KEY`
-- 也可在“创作设置 → 模型连接与路由”添加 OpenAI 兼容或 Anthropic 原生接口，并分别为 Planner、Writer、L2 校验和记忆抽取选择主模型；自定义接口失败时回落内置 DeepSeek 链
+- 复制配置后即可浏览界面；生成章节前在「环境配置」添加模型连接并指定角色
+- 支持 OpenAI 兼容或 Anthropic 原生接口；未配置连接时不会回落内置模型
 - 向量召回默认关闭（`EMBED_ENABLED=0`），开启与模型下载见 [docs/DEPLOY.md](docs/DEPLOY.md)
 - 首次启动自动建表 + RLS + 示例数据，幂等可重复执行
 

@@ -34,6 +34,7 @@ from aiink.api.schemas import (BookOutlineOut, CharacterCardOut, DeleteProjectOu
                                SetupConfirmOut, SetupDraftOut, WorldGraphOut, WorldViewOut)
 from aiink.book_setup import generate_book_outline, generate_book_setup
 from aiink.config import settings
+from aiink.genre_catalog import build_book_pack, display_genre, is_managed_pack
 from aiink.db import new_session, tenant_session
 from aiink.memory.repository import (get_all_characters, get_character, get_character_state,
                                      get_settings, get_volume_outline)
@@ -41,7 +42,8 @@ from aiink.models import (AgentRun, Character, Entity, Faction, Foreshadow, Loca
                           Project, ProjectSettings, Relation, Task, VolumeOutline)
 from aiink.worker.redis_client import book_key, get_redis, inflight_key, lock_key, sse_key
 from aiink.workflow.checkpointer import delete_threads
-from aiink.workflow.outline import normalize_outline
+from aiink.workflow.outline import (CHAPTER_COUNT_MAX, CHAPTER_COUNT_MIN,
+                                    build_persisted_outline, normalize_outline)
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +67,10 @@ class CreateProjectBody(BaseModel):
     title: str
     genre: str = "仙侠玄幻"
     target_words: int | None = None
+    # 传入 primary_id（可为 null）即走题材包建书：显示名锁定为包名，快照写入本书
+    primary_id: str | None = None
+    secondary_id: str | None = None
+    genre_fields: dict = Field(default_factory=dict)
 
 
 class ProjectUpdateBody(BaseModel):
@@ -97,16 +103,15 @@ class SetupBody(BaseModel):
 
 
 class OutlineDraftBody(BaseModel):
-    """整书大纲草稿输入（§11 建书 ③）：一句话梗概 + 大致章节数 + 大致故事线。"""
+    """整书大纲草稿输入：一句话梗概 + 大致章节数 + 大致故事线。"""
 
     premise: str
-    chapter_count: int = 20
+    chapter_count: int = 200
     storyline: str = ""
 
 
 class OutlineConfirmBody(BaseModel):
-    """整书大纲确认落库（§11 ③）：Objective + volumes（每卷含逐章 {title, goal, beats}）；
-    premise/章节数/故事线一并存下供后续重新生成。"""
+    """整书大纲确认落库：Objective + 卷（阶段细纲）；premise/章节数/故事线一并保存。"""
 
     objective: str = ""
     volumes: list[dict] = Field(default_factory=list)
@@ -141,15 +146,23 @@ def create_project(body: CreateProjectBody,
         if created >= settings.books_per_day_max:
             return JSONResponse(status_code=429, content={"error": "BOOK_CNT_EXCEEDED"})
         target_words = _check_target_words(body.target_words, field="每章目标字数")
-        project = Project(user_id=uid, title=title, genre=body.genre.strip() or "仙侠玄幻",
-                          target_words=target_words)
+        genre_pack: dict = {}
+        if "primary_id" in body.model_fields_set:
+            try:
+                genre_pack = build_book_pack(body.primary_id, body.secondary_id, body.genre_fields)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            genre = display_genre(body.primary_id, body.secondary_id)
+        else:
+            genre = body.genre.strip() or "仙侠玄幻"
+        project = Project(user_id=uid, title=title, genre=genre, target_words=target_words)
         db.add(project)
         db.flush()
         pid = str(project.id)
         db.commit()  # 根表先落库，后续租户事务才能引用外键（seed._ensure_sample_book 同款）
     with tenant_session(pid) as tdb:
         if tdb.query(ProjectSettings).filter_by(project_id=pid).first() is None:
-            tdb.add(ProjectSettings(project_id=pid))
+            tdb.add(ProjectSettings(project_id=pid, genre_pack=genre_pack))
     return {"id": pid, "title": project.title, "genre": project.genre,
             "current_chapter": project.current_chapter, "target_words": project.target_words}
 
@@ -167,6 +180,10 @@ def update_project(project_id: str, body: ProjectUpdateBody) -> dict:
         if body.title is not None and body.title.strip():
             project.title = body.title.strip()
         if body.genre is not None and body.genre.strip():
+            with tenant_session(project_id) as tdb:
+                st = get_settings(tdb, pid)
+                if st is not None and is_managed_pack(st.genre_pack):
+                    raise HTTPException(status_code=400, detail="本书题材名已锁定为所选题材包")
             project.genre = body.genre.strip()
         if body.target_words is not None:
             project.target_words = _check_target_words(body.target_words, field="每章目标字数")
@@ -293,11 +310,15 @@ def setup_draft(project_id: str, body: SetupDraftBody) -> dict:
     premise = body.premise.strip()
     if not premise:
         raise HTTPException(status_code=400, detail="一句话梗概不能为空")
+    with tenant_session(project_id) as tdb:
+        st = get_settings(tdb, _pid(project_id))
+        genre_pack = (st.genre_pack if st else {}) or {}
     db = new_session()
     try:
         project = db.get(Project, _pid(project_id))
         genre = project.genre if project is not None else ""
-        draft, error = generate_book_setup(genre, premise, project_id=project_id, db=db)
+        draft, error = generate_book_setup(
+            genre, premise, genre_pack=genre_pack, project_id=project_id, db=db)
         db.commit()
     finally:
         db.close()
@@ -369,15 +390,20 @@ def outline_draft(project_id: str, body: OutlineDraftBody) -> dict:
     if not premise:
         raise HTTPException(status_code=400, detail="一句话梗概不能为空")
     cc = body.chapter_count
-    if not (1 <= cc <= 200):
-        raise HTTPException(status_code=400, detail="大致章节数需在 1–200 之间")
+    if not (CHAPTER_COUNT_MIN <= cc <= CHAPTER_COUNT_MAX):
+        raise HTTPException(
+            status_code=400,
+            detail=f"大致章节数需在 {CHAPTER_COUNT_MIN}–{CHAPTER_COUNT_MAX} 之间")
+    with tenant_session(project_id) as tdb:
+        st = get_settings(tdb, _pid(project_id))
+        genre_pack = (st.genre_pack if st else {}) or {}
     db = new_session()
     try:
         project = db.get(Project, _pid(project_id))
         genre = project.genre if project is not None else ""
         outline, error = generate_book_outline(
             genre, premise, chapter_count=cc, storyline=body.storyline,
-            project_id=project_id, db=db)
+            genre_pack=genre_pack, project_id=project_id, db=db)
         db.commit()
     finally:
         db.close()
@@ -387,50 +413,12 @@ def outline_draft(project_id: str, body: OutlineDraftBody) -> dict:
 @router.put("/projects/{project_id}/outline",
             dependencies=[Depends(require_owner)], response_model=BookOutlineOut)
 def put_outline(project_id: str, body: OutlineConfirmBody) -> dict:
-    """整书大纲确认落库（§11 ③）：volume_outlines 单行（volume_seq=1）整体替换。
-
-    归一化：逐章补全局 seq（跨卷连续编号），plan/write 按 seq 取本章大纲位；空章/空卷丢弃；
-    volume_seq 重新编号（=卷下标+1）。objective 单行存全书终局。
-    """
+    """整书大纲确认落库：volume_outlines 单行整体替换为卷 + 阶段。"""
     pid = _pid(project_id)
-    volumes: list[dict] = []
-    seq_counter = 0
-    for v in body.volumes or []:
-        if not isinstance(v, dict):
-            continue
-        chapters: list[dict] = []
-        for c in v.get("chapters") or []:
-            if not isinstance(c, dict):
-                continue
-            title = str(c.get("title") or "").strip()
-            goal = str(c.get("goal") or "").strip()
-            if not title and not goal:
-                continue
-            seq_counter += 1
-            chapters.append({
-                "seq": seq_counter,
-                "title": title,
-                "goal": goal,
-                "beats": [str(b).strip() for b in (c.get("beats") or []) if str(b).strip()],
-            })
-        if not chapters:
-            continue  # 空卷丢弃（防全空 outline 落库）
-        volumes.append({
-            "volume_seq": len(volumes) + 1,
-            "title": str(v.get("title") or "").strip() or f"第 {len(volumes) + 1} 卷",
-            "theme": str(v.get("theme") or "").strip(),
-            "goal": str(v.get("goal") or "").strip(),
-            "key_results": [str(k).strip() for k in (v.get("key_results") or []) if str(k).strip()],
-            "end_event": str(v.get("end_event") or "").strip(),
-            "chapters": chapters,
-        })
-    payload = {
-        "premise": body.premise.strip(),
-        "chapter_count": body.chapter_count or seq_counter,
-        "storyline": body.storyline.strip(),
-        "objective": str(body.objective or "").strip(),
-        "volumes": volumes,
-    }
+    payload = build_persisted_outline(
+        objective=body.objective, volumes=body.volumes or [],
+        premise=body.premise, chapter_count=body.chapter_count,
+        storyline=body.storyline)
     with tenant_session(project_id) as db:
         row = get_volume_outline(db, pid, 1)
         if row is None:

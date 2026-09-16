@@ -5,7 +5,8 @@
 // （网络不可达 / RANKINGS_ENABLED=0）+ 示例数据（warning 徽标，书名带【示例】前缀）。
 // 头部刷新按钮强制绕过进程内 TTL 缓存重拉；数据仅灵感参考，不进记忆/事实层。
 import { useCallback, useEffect, useState } from 'react'
-import { api, ApiError } from '../lib/api'
+import { api } from '../lib/api'
+import { formatApiError } from '../lib/apiError'
 import { hotText, sourceLabel, sourceTone, tagsText } from '../lib/rankings'
 import type { RankingsResponse } from '../types'
 import { StatusBadge } from './StatusBadge'
@@ -23,7 +24,7 @@ export function RankingsPanel() {
     try {
       setData(await api.listRankings(refresh))
     } catch (err) {
-      setError(err instanceof ApiError ? err.code : '榜单加载失败')
+      setError(formatApiError(err, '榜单加载失败'))
     } finally {
       setBusy(false)
     }
