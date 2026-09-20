@@ -89,6 +89,21 @@ var forwardedPaths = []struct{ method, path string }{
 	{"GET", "/internal/v1/projects/{project_id}/lessons"},
 	{"POST", "/internal/v1/projects/{project_id}/lessons/{lesson_id}/confirm"},
 	{"POST", "/internal/v1/projects/{project_id}/lessons/{lesson_id}/reject"},
+	// 管理只读面板（admin.go:37 由 router.go:41-47 的路径表拼出 "/internal/v1/admin"+path，
+	// 全部 GET）。这条链路是字符串拼接而非逐个 handler，路径漂移不会被编译器拦住，
+	// 所以必须在这里显式列全：两端任一侧改了路径而另一侧没跟上，本测试即红。
+	{"GET", "/internal/v1/admin/overview"},
+	{"GET", "/internal/v1/admin/users"},
+	{"GET", "/internal/v1/admin/projects"},
+	{"GET", "/internal/v1/admin/projects/{project_id}/chapters"},
+	{"GET", "/internal/v1/admin/projects/{project_id}/chapters/{chapter_id}"},
+	{"GET", "/internal/v1/admin/projects/{project_id}/context"},
+	{"GET", "/internal/v1/admin/tasks"},
+	{"GET", "/internal/v1/admin/tasks/{task_id}"},
+	{"GET", "/internal/v1/admin/tasks/{task_id}/runs"},
+	{"GET", "/internal/v1/admin/runs"},
+	{"GET", "/internal/v1/admin/runs/{run_id}"},
+	{"GET", "/internal/v1/admin/access-logs"},
 }
 
 func loadContract(t *testing.T) map[string]any {

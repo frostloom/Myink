@@ -95,8 +95,6 @@ class Settings:
     queue_prefix: str = field(default_factory=lambda: _env("QUEUE_PREFIX", "") or "")
     api_host: str = field(default_factory=lambda: _env("API_HOST", "127.0.0.1") or "127.0.0.1")
     api_port: int = field(default_factory=lambda: int(_env("API_PORT", "8100") or "8100"))
-    # 阶段 2 展示前端：网关唯一入口（app.py 生成走网关异步，§17.2）
-    gateway_url: str = field(default_factory=lambda: _env("GATEWAY_URL", "http://localhost:8080") or "http://localhost:8080")
 
     # 阶段 3：JWT 身份断言（§14.1 ③，替换 X-Myink-User 占位）。密钥与 Go 网关共享同一 .env，
     # dev 非空默认保证两端签名互通；prod 由 validate 强制显式密钥。

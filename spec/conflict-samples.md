@@ -126,7 +126,7 @@
 - **预期 Finding**：`conflict_type=style, severity=hint, scope=local`
 - **度量指标**：AI 味复发率、高频句式频次曲线（随章节数应不增长）。
 - **误报控制**：文风是作者自由，只暴露"复发趋势"不阻塞；前端可"忽略"回流标注。
-- **检测现状**：✅ **已落地（2026-08-12，L1 高频句式/用词统计）**——`style_profile.fatigue_patterns`（句式 regex findall）单句式单章 ≥2 次（本片段单章内 2 处「不是…而是…」恰在边界）→ `style/hint/local`，每章至多 1 条；`fatigue_words`（词级 count）单词 ≥3 次亦触发；写章 Prompt 同步注入「高频词节制」。见 [l1.py](../src/myink/validation/l1.py) `style_repeat_check` / [test_style_repeat.py](../tests/test_style_repeat.py)。**L2 部分**：✅ **已落地（2026-08-13，全局审计文风维度抽样比对）**——每 K 章对窗口章节抽样摘录 vs 窗口前已确认章节基线（锚定作者自身风格、相对漂移）+ 文风档案，LLM 判 drift|ok，确定性守卫 0 误报（样例 38/39，见 [global_audit.py](../src/myink/validation/global_audit.py) 文风维度 / [test_style_audit.py](../tests/test_style_audit.py)）。**仍属后续**：句长分布、档案参考样本摘录等基线字段。
+- **检测现状**：✅ **已落地（2026-08-12，L1 高频句式/用词统计）**——`style_profile.fatigue_patterns`（句式 regex findall）单句式单章 ≥2 次（本片段单章内 2 处「不是…而是…」恰在边界）→ `style/hint/local`，每章至多 1 条；`fatigue_words`（词级 count）单词 ≥3 次亦触发；写章 Prompt 同步注入「高频词节制」。见 [l1.py](../src/myink/validation/l1.py) `style_repeat_check` / [test_style_repeat.py](../tests/test_style_repeat.py)。**L2 部分**：✅ **已落地（2026-08-13，全局审计文风维度抽样比对）**——每 K 章对窗口章节抽样摘录 vs 窗口前已确认章节基线（锚定作者自身风格、相对漂移）+ 文风档案，LLM 判 drift|ok，确定性守卫 0 误报（样例 38/39，见 [global_audit.py](../src/myink/validation/global_audit.py) 文风维度 / [test_conflict_sample_suite.py](../tests/test_conflict_sample_suite.py) `test_sample_38_style_drift`、`test_sample_39_style_scene_variation`）。**仍属后续**：句长分布、档案参考样本摘录等基线字段。
 
 ---
 
@@ -328,21 +328,21 @@
 - **预期**：**不检出**——刻意呼应（call-back）非偷懒重复；L2 判定要求 LLM 给差异点/目的，目的不同即呼应
 - **误报控制**：样例 32 的词表预滤除救不了这类（无标记词 → L1 会误报）；L2 依赖 LLM 判「目的/差异」——prompt 显式要求「无新意无新目的才标偷懒重复」，verdict=echo / 证据不足宁不输出；确定性守卫只放行 verdict=repeat + 逐字引文的 finding。
 - **度量指标**：误报率（此例被误报 = 桥段重复误报 +1）。与样例 14 成对构成 L2「区分呼应 vs 重复」的精度锚点（14 阳性应检出 / 37 阴性应不检出）。
-- **检测现状**：✅ **已落地（2026-08-13，全局审计桥段维度 L2）**——样例 32 词表预滤除对已豁免的对不重审；本样例无标记词 → 进入 LLM 判定，判 echo → 0 检出（[test_bridge_audit.py](../tests/test_bridge_audit.py) `test_bridge_negative_sample37_unmarked_echo`）；守卫独立保证 LLM 过度标 repeat 也过不了逐字核验（`test_bridge_guard_drops_*` 三例）。
+- **检测现状**：✅ **已落地（2026-08-13，全局审计桥段维度 L2）**——样例 32 词表预滤除对已豁免的对不重审；本样例无标记词 → 进入 LLM 判定，判 echo → 0 检出（[test_conflict_sample_suite.py](../tests/test_conflict_sample_suite.py) `test_sample_37_bridge_unmarked_echo`）；守卫独立保证 LLM 过度标 repeat 也过不了逐字核验（[test_ledger_l2.py](../tests/test_ledger_l2.py) `test_guard_drops_*` 四例）。
 
 ### 样例 38 · 文风·全书风格漂移（样例 15 的 L2 对照）— 长线级·阳性
 - **前置**：本书早 1–10 章已确立文风（仙侠雅句、第三人称限知、长短句交错，与文风档案一致）；事件/人设无异常。
 - **冲突片段**：第 12–15 章突然全用现代网络口语、对话失去角色区分：`林砚拍桌而起："卧槽，这也太离谱了吧，直接开干！"`——与早先章节系统性偏离，非单场景变化。
 - **预期检出**：L2 抽样比对窗口摘录 vs 窗口前已确认章节基线（+ 文风档案）→ 判 drift → `style/hint/local/L2`
-- **度量指标**：风格漂移检出率 / AI 味复发率。面级漂移由 L2 单独承担——漂移文本规避 L1 fatigue 阈值，companion 断言 [test_style_audit.py](../tests/test_style_audit.py) `test_style_l1_not_triggered_on_sample38` 证明 L1 不触发。
+- **度量指标**：风格漂移检出率 / AI 味复发率。面级漂移由 L2 单独承担——漂移文本规避 L1 fatigue 阈值，companion 断言见 [test_style_repeat.py](../tests/test_style_repeat.py) `test_below_threshold_clean`（未过阈值 → L1 不触发）与 [test_conflict_sample_suite.py](../tests/test_conflict_sample_suite.py) `test_sample_38_style_drift`（样例 38 由 L2 单独检出）。
 - **误报控制**：L2 只标「与既定文风系统性持续偏离」；单场景节奏/情感合法变化不标；证据不足/低置信度宁不输出；确定性守卫只放行 verdict=drift + 逐字引文 + 采样章。
-- **检测现状**：✅ **已落地（2026-08-13，全局审计文风维度 L2）**——基线 = 窗口前已确认章节（even-spacing cap 4，锚定作者自身风格、相对漂移），窗口抽样 even-spacing cap 4 + 文风档案上下文，LLM 判 drift|ok，确定性守卫 0 误报（[test_style_audit.py](../tests/test_style_audit.py) `test_style_positive_sample38_drift`）。已知边界：首个窗口（无基线锚点）style 中性跳过、移动基线测不出慢速累积漂移（[global_audit.py](../src/myink/validation/global_audit.py) docstring）。
+- **检测现状**：✅ **已落地（2026-08-13，全局审计文风维度 L2）**——基线 = 窗口前已确认章节（even-spacing cap 4，锚定作者自身风格、相对漂移），窗口抽样 even-spacing cap 4 + 文风档案上下文，LLM 判 drift|ok，确定性守卫 0 误报（[test_conflict_sample_suite.py](../tests/test_conflict_sample_suite.py) `test_sample_38_style_drift`）。已知边界：首个窗口（无基线锚点）style 中性跳过、移动基线测不出慢速累积漂移（[global_audit.py](../src/myink/validation/global_audit.py) docstring）。
 
 ### 样例 39 · 文风·场景节奏合法变化（样例 38 对照）— 长线级·阴性
 - **前置**：同样例 38，早 1–10 章既定文风。
 - **合法片段**：第 13 章大战高潮用短句快节奏：`剑鸣刺耳。血溅三尺。林砚不退，剑锋再进。`——场景张力需要，非全书性漂移。
 - **预期**：**不检出**——场景级节奏/情感合法变化不判漂移
-- **误报控制**：L2 判定 prompt 显式要求「单场景节奏/情感合法变化不标」；LLM 判 ok / 空数组 → 0 检出（[test_style_audit.py](../tests/test_style_audit.py) `test_style_negative_sample39_scene_variation`）；守卫独立保证过度标记过不了逐字核验（`test_style_guard_drops_*` 四例）。
+- **误报控制**：L2 判定 prompt 显式要求「单场景节奏/情感合法变化不标」；LLM 判 ok / 空数组 → 0 检出（[test_conflict_sample_suite.py](../tests/test_conflict_sample_suite.py) `test_sample_39_style_scene_variation`）；守卫独立保证过度标记过不了逐字核验（[test_ledger_l2.py](../tests/test_ledger_l2.py) `test_guard_drops_*` 四例）。
 - **度量指标**：误报率（此例被误报 = 文风漂移误报 +1）。与样例 38 成对构成 L2「面级漂移 vs 场景变化」的精度锚点。
 
 ### 样例 40 · 阵营·临时联手合法（样例 2 对照）— 点级·阴性（2026-08-13 补漏切片新增，评测集自生长 §16）
