@@ -144,6 +144,11 @@ func TestSessionCheckFailsClosedWhenUpstreamFails(t *testing.T) {
 }
 
 func TestAuthRegistrationProxyBoundsAndRateLimit(t *testing.T) {
+	// 未配置可信代理（TRUSTED_PROXIES 空）下的默认行为：限流按直连地址计数，伪造的
+	// X-Forwarded-For 一律忽略。显式置空而非继承 config.Load() 的环境，避免开发机导出
+	// 了 TRUSTED_PROXIES 时本用例莫名其妙变红。
+	cfg := config.Load()
+	cfg.TrustedProxies = nil
 	r := newTestRedis(t)
 	peer := "198.51.100.231"
 	digest := sha256.Sum256([]byte(peer))
@@ -161,7 +166,7 @@ func TestAuthRegistrationProxyBoundsAndRateLimit(t *testing.T) {
 		fmt.Fprint(w, `{"token":"test","user_id":"test","username":"new","tier":"normal","expires_in":1800}`)
 	}))
 	defer upstream.Close()
-	router := NewRouter(config.Load(), r, nil, pyapi.New(upstream.URL, time.Second))
+	router := NewRouter(cfg, r, nil, pyapi.New(upstream.URL, time.Second))
 	for i := 0; i < 21; i++ {
 		body := `{"username":"new","password":"long-password-test"}`
 		if i == 0 {
@@ -220,7 +225,10 @@ func testSSESessionDeadline(t *testing.T, expire bool) {
 	defer upstream.Close()
 	server := httptest.NewServer(NewRouter(config.Load(), r, nil, pyapi.New(upstream.URL, time.Second)))
 	defer server.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	// 撤销后的最坏发现时延 = 心跳/重验 ticker 15s（sse.go:86）+ validSession 5s 超时 = 20s。
+	// 这里给 30s：若沿用 20s，测试预算恰好等于被测行为的上界，负载稍高就自己撞 deadline
+	// 假失败（跨包并行 `go test ./...` 下实测偶发）。断言本身不放宽。
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	req, _ := http.NewRequestWithContext(ctx, "GET", server.URL+"/api/v1/tasks/"+taskID+"/events", nil)
 	req.Header.Set("Authorization", strictToken(t, func(claims jwt.MapClaims) {

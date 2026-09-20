@@ -57,9 +57,13 @@ services:
       - rabbitmq-data:/var/lib/rabbitmq
       - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      # check_port_connectivity 才真正验证 5672 能接连接（ping 只查 erlang 节点注册到 epmd，
+      # 是存活探针不是就绪探针，会让 gateway 在监听器就绪前被放行 → 启动竞态）。
+      # gosu 降权到 rabbitmq：healthcheck 的 docker exec 默认以 root 跑，
+      # 若抢在 broker 之前创建 .erlang.cookie 会写出 root:root 0400 把 uid 999 锁死。
+      test: ["CMD", "gosu", "rabbitmq", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
       interval: 5s
-      timeout: 5s
+      timeout: 10s
       retries: 30
     restart: unless-stopped
 
@@ -161,6 +165,8 @@ services:
       # 避免把 DATABASE_URL 等业务密钥带进唯一公网入口容器（最小暴露）；
       # ${JWT_SECRET} 由 compose 自动从根 .env 插值（缺省走 config.go 的 dev 默认，两端互通）
       JWT_SECRET: ${JWT_SECRET:-}
+      # 反代后按真实客户端 IP 分桶（空 = 不信任任何代理，限流按直连地址）。见 .env.example
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:

@@ -4,6 +4,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 )
 
 // JWT 身份断言（§14.1 ③）：dev 默认密钥与 Python config.py 的 _DEV_JWT_SECRET 同值，
@@ -12,30 +13,30 @@ import (
 const DevJWTSecret = "dev-jwt-secret-change-me"
 
 type Config struct {
-	Port             string
-	RedisAddr        string
-	RedisPassword    string
-	PythonAPIBase    string
+	Port          string
+	RedisAddr     string
+	RedisPassword string
+	PythonAPIBase string
 	// 阶段 5：前端静态托管目录（web/dist，容器内 /app/dist；不存在时 SPA fallback 自动降级为 404）
-	WebDistDir       string
+	WebDistDir string
 	// 三层闸门（§13）：每日配额（章）、并发上限（进行中任务）、日成本上限（¥）
-	QuotaDaily       int
+	QuotaDaily int
 	// 每书每日配额（章）：单用户同时写多本书时限制单书用量（默认 50 章/书/日）
-	BookQuotaDaily   int
+	BookQuotaDaily int
 	// 每用户每天最多碰几本不同书（去重计数，Set rate:bookcnt，默认 10 本/日）
 	BooksPerDay      int
 	ConcurrencyLimit int
 	DailyBudget      float64
 	CostPerChapter   float64
 	// 批次硬上限（与 Python config.batch_max_hard 对齐，§6.11 成本熔断第一道闸）
-	BatchMaxHard     int
+	BatchMaxHard int
 	// 进程内令牌桶（DoS 盾，非业务配额）
-	RatePerSec       int
-	RateBurst        int
+	RatePerSec int
+	RateBurst  int
 	// 阶段 3：JWT 身份断言（§14.1 ③）。密钥与 Python config.py 共享同一 .env；dev 默认
 	// 保证本地演示两端互通，生产由部署注入强随机密钥（Python prod 校验会拒绝默认值）。
-	JWTSecret        string
-	JWTTTL           int
+	JWTSecret string
+	JWTTTL    int
 	// 阶段 6：RabbitMQ 任务队列。AmqpURL 与 Python 侧 config.amqp_url 同值；QueuePrefix
 	// 仅测试隔离用（生产空串，交换/队列名与 Python 端一致）；VIPPriority/NormalPriority
 	// 决定 JWT tier=vip 时入队消息的 RabbitMQ priority 属性。
@@ -43,6 +44,10 @@ type Config struct {
 	QueuePrefix    string
 	VIPPriority    int
 	NormalPriority int
+	// TrustedProxies：可信反向代理（逗号分隔的 IP/CIDR）。默认空 = 不信任任何代理，
+	// 认证限流按直连地址计数（无代理部署的原有行为）。只有网关确实位于反代之后才配置——
+	// 否则任何客户端都能伪造 X-Forwarded-For 自选配额桶，把撞库限流整个绕开。
+	TrustedProxies []string
 }
 
 func env(key, def string) string {
@@ -70,6 +75,22 @@ func envFloat(key string, def float64) float64 {
 	return def
 }
 
+// envList 逗号分隔列表；空串或全空白返回 nil（调用方据此走「未配置」分支）。
+func envList(key string) []string {
+	v := os.Getenv(key)
+	if strings.TrimSpace(v) == "" {
+		return nil
+	}
+	parts := strings.Split(v, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if s := strings.TrimSpace(p); s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
 func Load() Config {
 	return Config{
 		Port:             env("GATEWAY_PORT", "8080"),
@@ -92,5 +113,6 @@ func Load() Config {
 		QueuePrefix:      env("QUEUE_PREFIX", ""),
 		VIPPriority:      envInt("PRIORITY_VIP", 9),
 		NormalPriority:   envInt("PRIORITY_NORMAL", 0),
+		TrustedProxies:   envList("TRUSTED_PROXIES"),
 	}
 }
