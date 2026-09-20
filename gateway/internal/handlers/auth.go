@@ -92,8 +92,10 @@ func checkAccess(c *gin.Context, py *pyapi.Client, kind, id string, writing ...b
 	return true
 }
 
-// Shared Redis counters use the TCP peer, not user-supplied forwarding headers.
-func AuthRateLimit(r *redis.Client) gin.HandlerFunc {
+// 共享 Redis 计数器按「真实客户端地址」分桶。直连对端不在 trusted 内时忽略转发头、只认
+// 直连地址（见 ClientIP）——否则伪造 X-Forwarded-For 就能自选配额桶。挂在反代之后的部署
+// 必须配 TRUSTED_PROXIES，否则所有用户塌进同一个桶，一个人刷就锁死所有人登录。
+func AuthRateLimit(r *redis.Client, trusted []*net.IPNet) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("Cache-Control", "no-store")
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4096)
@@ -101,11 +103,7 @@ func AuthRateLimit(r *redis.Client) gin.HandlerFunc {
 			c.AbortWithStatusJSON(503, gin.H{"error": "auth_unavailable"})
 			return
 		}
-		peer, _, err := net.SplitHostPort(c.Request.RemoteAddr)
-		if err != nil {
-			peer = c.Request.RemoteAddr
-		}
-		digest := sha256.Sum256([]byte(peer))
+		digest := sha256.Sum256([]byte(ClientIP(c, trusted)))
 		key := fmt.Sprintf("rate:auth:%x", digest)
 		count, err := r.Eval(c.Request.Context(), `local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],60) end; return n`, []string{key})
 		if err != nil {
