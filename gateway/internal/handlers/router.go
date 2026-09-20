@@ -31,11 +31,12 @@ func NewRouter(cfg config.Config, r *redis.Client, rmq *queue.AMQP, py *pyapi.Cl
 	taskH := NewTaskHandler(cfg, r, rmq, py)
 	sseH := NewSSEHandler(r, py)
 	healthH := NewHealthHandler(cfg, r, py)
+	trustedProxies := ParseTrustedProxies(cfg.TrustedProxies)
 
 	api := router.Group("/api/v1")
 	// 签发端点不挂 JWT（否则无法登录）；业务路由一律 Bearer（§14.1 ③）
-	api.POST("/auth/token", AuthRateLimit(r), taskH.AuthAction)
-	api.POST("/auth/register", AuthRateLimit(r), taskH.AuthAction)
+	api.POST("/auth/token", AuthRateLimit(r, trustedProxies), taskH.AuthAction)
+	api.POST("/auth/register", AuthRateLimit(r, trustedProxies), taskH.AuthAction)
 
 	secured := api.Group("", JWTMiddleware([]byte(cfg.JWTSecret)), SessionMiddleware(py))
 	for _, path := range []string{
@@ -47,7 +48,7 @@ func NewRouter(cfg config.Config, r *redis.Client, rmq *queue.AMQP, py *pyapi.Cl
 	}
 	{
 		secured.GET("/auth/session", taskH.AuthAction)
-		secured.POST("/auth/password", AuthRateLimit(r), taskH.AuthAction)
+		secured.POST("/auth/password", AuthRateLimit(r, trustedProxies), taskH.AuthAction)
 		secured.POST("/auth/logout", taskH.AuthAction)
 		// 项目/章节读（多书展示前端，转发 Python API）
 		secured.GET("/projects", taskH.ListProjects)
