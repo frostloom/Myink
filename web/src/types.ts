@@ -510,11 +510,6 @@ export interface UpdateProjectBody {
   target_words?: number | null
 }
 
-/** 设定骨架草稿请求（§7.11 ②：一句话梗概 → Planner 提案） */
-export interface SetupDraftBody {
-  premise: string
-}
-
 /** 设定骨架草稿响应（可编辑不落库；LLM 失败 → draft:{} + error 降级） */
 export interface SetupDraft {
   draft: Record<string, unknown>

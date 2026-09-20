@@ -34,7 +34,9 @@ services:
     ports:
       - "127.0.0.1:15673:5672"
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      # 与 docker-compose.yml 同款：check_port_connectivity 才验证 5672 可连；gosu 降权避免
+      # root 身份抢建 .erlang.cookie 锁死 uid 999 的 broker。
+      test: ["CMD", "gosu", "rabbitmq", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
       interval: 3s
-      timeout: 5s
+      timeout: 10s
       retries: 30

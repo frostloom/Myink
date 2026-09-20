@@ -245,13 +245,6 @@ def ensure_chapter_placeholder(session: Session, *, project_id: uuid.UUID,
     return chapter
 
 
-def get_latest_chapter(session: Session, project_id: uuid.UUID) -> Chapter | None:
-    return session.execute(
-        select(Chapter).where(Chapter.project_id == project_id)
-        .order_by(Chapter.chapter_seq.desc()).limit(1)
-    ).scalar_one_or_none()
-
-
 def get_volume_outline(session: Session, project_id: uuid.UUID, volume_seq: int) -> VolumeOutline | None:
     return session.execute(
         select(VolumeOutline).where(VolumeOutline.project_id == project_id, VolumeOutline.volume_seq == volume_seq)

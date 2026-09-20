@@ -220,20 +220,6 @@ class AuditVerdict(BaseModel):
     confidence: float = Field(default=0.8, ge=0, le=1, description="决策置信度（低 → 规则兜底转人工）")
 
 
-class ReflexionLesson(BaseModel):
-    """复盘提炼单条写作经验（reflexion 节点 LLM 输出，node 里确定性分级路由）。
-
-    conflict_type 一条经验对应一个冲突类型（跨类型拆多条）；content 为结合已有经验
-    总结演化的跨章可复用表述（注入后续章节规划/写作 system 段）。
-    """
-
-    conflict_type: ConflictType
-    lesson_type: Literal["planning", "writing", "both"] = "both"
-    content: str = Field(min_length=1)
-    confidence: float | None = Field(default=None, ge=0, le=1)
-    evidence: list[EvidenceItem] = Field(default_factory=list)
-
-
 class RetrievedContext(BaseModel):
     """召回上下文（recall 节点输出，§12）。"""
 

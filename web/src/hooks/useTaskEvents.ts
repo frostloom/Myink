@@ -54,10 +54,6 @@ export interface TaskEventState {
   refresh: () => void
 }
 
-export function isTerminalPhase(phase: TaskPhase): boolean {
-  return phase === 'terminal' || phase === 'expired' || phase === 'error'
-}
-
 // 与网关 sse.go 的关流终态保持一致。
 const TERMINAL_STATUSES = new Set<TaskStatus>([
   'done', 'failed', 'cancelled', 'awaiting_plan', 'awaiting_review',
