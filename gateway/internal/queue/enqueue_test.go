@@ -55,11 +55,13 @@ func newTestRMQ(t *testing.T, cfg config.Config) *AMQP {
 	return rmq
 }
 
-// 清理闸门键：避免测试相互污染（每用户独立键 + 每书并发键 + 全局日成本键）。
+// 清理闸门键：避免测试相互污染（每用户独立键 + 每书并发键）。
+// 注意不再碰全局日成本键 rate:cost:{date}——它没有用户前缀，`go test ./...` 并行跨包
+// 共用同一个 redis，谁写谁污染别人；本套件的预算用例改为用超大 costEst 就地触发，
+// 不再需要全局写入（见 TestEnqueueDailyBudgetExceeded）。
 func cleanupGates(t *testing.T, r *redis.Client, uid string) {
 	t.Helper()
 	ctx := context.Background()
-	today := time.Now().Format("2006-01-02")
 	keys, _ := r.Raw().Keys(ctx, "rate:quota:"+uid+":*").Result()
 	inflights, _ := r.Raw().Keys(ctx, "rate:inflight:"+uid+":*").Result()
 	bookquotas, _ := r.Raw().Keys(ctx, "rate:bookquota:"+uid+":*").Result()
@@ -67,7 +69,6 @@ func cleanupGates(t *testing.T, r *redis.Client, uid string) {
 	keys = append(keys, inflights...)
 	keys = append(keys, bookquotas...)
 	keys = append(keys, bookcnts...)
-	keys = append(keys, "rate:cost:"+today)
 	if len(keys) > 0 {
 		_ = r.Raw().Del(ctx, keys...).Err()
 	}
@@ -123,11 +124,6 @@ func drainObserver(t *testing.T, rmq *AMQP, q string) []amqp091.Delivery {
 		}
 		out = append(out, d)
 	}
-}
-
-// costKeyToday 与 gates 侧 costKey 同规则（全局日成本键）。
-func costKeyToday() string {
-	return "rate:cost:" + time.Now().Format("2006-01-02")
 }
 
 func TestEnqueueOK(t *testing.T) {
@@ -328,11 +324,10 @@ func TestEnqueueDailyBudgetExceeded(t *testing.T) {
 	defer purgeTestQueues(t, rmq)
 
 	ctx := context.Background()
-	// 成本键已用满（日预算 1.0）
-	_ = r.Raw().Set(ctx, costKeyToday(), "1.0", 0).Err()
-
+	// 单笔估算成本本身就超日预算（预算 1.0，本次 1.01）→ 走到同一个
+	// cost_used + cost_est > budget 分支，却不写全局 rate:cost 键（跨包 flake 根因）。
 	_, err := Enqueue(ctx, r, rmq, cfg, uid, "proj-1", "batch_generate",
-		map[string]any{"size": 2, "start": 1}, 2, cfg.CostPerChapter*2, cfg.NormalPriority)
+		map[string]any{"size": 2, "start": 1}, 2, cfg.DailyBudget+0.01, cfg.NormalPriority)
 	if err == nil {
 		t.Fatal("日成本超限应拒绝")
 	}

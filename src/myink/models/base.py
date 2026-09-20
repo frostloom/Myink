@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, MetaData, Uuid, func, text
+from sqlalchemy import DateTime, MetaData, Uuid, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # 统一命名约定（alembic autogenerate 友好）
@@ -53,13 +53,3 @@ class TenantMixin:
     project_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, nullable=False, index=True, comment="租户键，RLS 过滤依据"
     )
-
-
-def tenant_trigger_fn_sql() -> str:
-    """RLS 租户取值函数：优先 app.tenant_id，回退 current_user（fail closed 语义）。"""
-    return text("""
-CREATE OR REPLACE FUNCTION myink.tenant_id()
-RETURNS uuid AS $$
-  SELECT NULLIF(current_setting('app.tenant_id', true), '')::uuid
-$$ LANGUAGE sql STABLE;
-""")
