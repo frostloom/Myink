@@ -1,0 +1,80 @@
+# Myink 边缘层：Caddy 收证书 / 发前端静态 / 按路径分流。
+#
+# 职责边界（与 Python API 的分工）：
+#   - Caddy：TLS、静态文件、SPA 回退、把真实客户端 IP 盖成 X-Myink-Client-IP、SSE 不缓冲
+#   - Python (myink-api)：验身份、限流、闸门、入队、全部业务路由
+#   - Go (myink-gateway)：只剩 SSE 中继，挂在 myink-gateway:8080
+#
+# 本地开发想走纯 HTTP：CADDY_TLS= 置空（见 docker-compose.yml 的 CADDY_TLS 插值）。
+{
+	# 管理 API 只监听容器内回环：热重载用，不对外
+	admin 127.0.0.1:2019
+	# 想给 ACME 留联系邮箱就加一行 `email you@example.com`。刻意不写成
+	# `email {$CADDY_ACME_EMAIL:}` —— 环境变量为空时 Caddy 不会把该行丢掉，
+	# 而是解析成一个无参数指令然后启动失败（已实测）。
+}
+
+# SITE_ADDRESS 决定协议与证书，三种取值（Caddy 原生机制，不是自制开关）：
+#   http://localhost   → 纯 HTTP，监听 :80，不出证书（本地开发默认，零摩擦）
+#   localhost          → 自动 HTTPS + 自签证书（本地想看 TLS 行为时用，浏览器会警告）
+#   myink.example.com  → 自动 HTTPS，ACME 向 Let's Encrypt/ZeroSSL 申请并自动续期（生产）
+# 注意：不要试图用「把某个环境变量置空让 tls 那行消失」来切 HTTP —— 实测无效，
+# 站点地址是主机名时 Caddy 的 automatic HTTPS 照样开，只是把签发者从自签换成 ACME。
+{$SITE_ADDRESS:http://localhost} {
+	# ⚠️ encode 绝不能提到站点级：它会给 text/event-stream 做压缩缓冲，
+	# 表现为「生成过程静默、结束时一次性吐出全部进度」。只在静态文件那两个块里开。
+
+	# 1) SSE 必须排在 /api/v1/* 之前 —— handle 块互斥且先匹配先赢，
+	#    否则下面的通配块会把 /tasks/*/events 一起吃掉，SSE 挂在那里不动。
+	handle /api/v1/tasks/*/events {
+		reverse_proxy myink-gateway:8080 {
+			# 关掉反向代理的响应缓冲，让每一帧立刻落回客户端
+			flush_interval -1
+		}
+	}
+
+	# 2) 其余业务 API 全部直达 Python（验身份 / 限流 / 闸门 / 入队都在那边）
+	handle /api/v1/* {
+		reverse_proxy myink-api:8100 {
+			# header_up 是「设置」不是「追加」：客户端自带的同名头会被覆盖，
+			# 所以 X-Myink-Client-IP 无法伪造 —— 这是限流桶不可自选的基础。
+			header_up X-Myink-Client-IP {http.request.remote.host}
+		}
+	}
+
+	# 3) 探针直达 Python（Python 的 /readyz 会查 Redis + DB + worker 心跳）
+	#    必须用命名匹配器：handle 只吃一个匹配器记号，`handle /healthz /readyz` 是语法错误（已实测）
+	@probes path /healthz /readyz
+	handle @probes {
+		reverse_proxy myink-api:8100
+	}
+
+	# 4) 非 v1 的 /api/* ：JSON 404，绝不落进下面的 SPA 回退
+	#    否则 API 客户端打错版本号会拿到 200 + index.html，排查起来极其困惑
+	handle /api/* {
+		header Content-Type "application/json"
+		respond `{"error":"not_found"}` 404
+	}
+
+	# 5) /assets/*：vite 产物文件名带内容哈希，可以长缓存
+	handle /assets/* {
+		root * /srv/web/dist
+		encode zstd gzip
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# 6) 其余全部：SPA 回退（深链刷新交给前端路由），index.html 不缓存
+	handle {
+		root * /srv/web/dist
+		encode zstd gzip
+		header Cache-Control "no-store, max-age=0"
+		try_files {path} /index.html
+		file_server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}
