@@ -1,5 +1,7 @@
-# Myink 阶段 5 首切：一键启动全部服务（PostgreSQL+pgvector / Redis / Python API / Worker / Go 网关）。
-# 用法：docker compose up -d --build  →  访问 http://localhost:8080（网关静态托管前端，同源出页面+API+SSE）。
+# Myink 一键启动全部服务（PostgreSQL+pgvector / Redis / RabbitMQ / Python API / Worker / Go 网关 / Caddy 边缘）。
+# 用法：docker compose up -d --build
+#   迁移完成后唯一入口是 Caddy：http://localhost（SITE_ADDRESS 默认 http://localhost，同源出页面+API+SSE）。
+#   迁移期间 Go 网关仍额外监听 127.0.0.1:8080，作为回滚入口保留（见 myink-gateway 注释）。
 # 首次初始化：pg 挂载 docker/initdb 建 myink_app 角色（NOBYPASSRLS）；api 先跑 `myink init --no-seed`
 # （幂等：建表 + RLS，不重建改名后的 demo）再起 uvicorn。需要开发示例数据时手工执行 `myink init`。
 name: myink
@@ -141,7 +143,47 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Go 网关：唯一公网入口，静态托管 web/dist（前端）+ /api/v1 转发 + SSE（单端口 8080）。
+  # Caddy 边缘层：TLS + 前端静态托管 + SPA 回退 + 按路径分流。
+  # 原先由网关兼任的「公网入口 + 发前端」职责交到这里，网关收缩为只服务 SSE。
+  # SITE_ADDRESS 三种取值见 caddy/Caddyfile 顶部注释：http://localhost（本地纯 HTTP，默认）
+  # / localhost（本地自签 HTTPS）/ 域名（生产，ACME 自动签发续期）。
+  myink-caddy:
+    build:
+      context: .
+      dockerfile: caddy/Dockerfile
+      args:
+        # 国内网络：node/caddy 基础镜像走 daocloud；npm 包走 npmmirror（同 gateway/Dockerfile 风格）
+        NODE_IMAGE: docker.m.daocloud.io/library/node:20-alpine
+        CADDY_IMAGE: docker.m.daocloud.io/library/caddy:2.11.4-alpine
+        NPM_REGISTRY: https://registry.npmmirror.com
+    image: myink-caddy:local
+    container_name: myink-caddy
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-http://localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    volumes:
+      # 证书与 ACME 账户必须持久化：不落盘则每次重启都重新签发，会撞 Let's Encrypt 速率限制
+      - caddy-data:/data
+      - caddy-config:/config
+    healthcheck:
+      # 打 admin API 而不是站点本身：HTTPS 模式下 :80 会 301 到 :443，且证书可能是自签的，
+      # 两种模式共用的稳定探法只有进程内的管理端点（见 Caddyfile 的 admin 127.0.0.1:2019）
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    depends_on:
+      myink-api:
+        condition: service_started
+      myink-gateway:
+        condition: service_started
+    restart: unless-stopped
+
+  # Go 网关：目前仍是公网入口（静态托管 web/dist + /api/v1 转发 + SSE，单端口 8080）。
+  # 迁移中：Caddy 起来后本服务收缩为只服务 SSE，端口发布随之取消（见 caddy/Caddyfile 分流）。
   myink-gateway:
     build:
       context: .
@@ -182,3 +224,5 @@ volumes:
   pgdata:
     name: myink_pgdata_v2   # 更名 Myink 时由 aiink_pgdata_v2 复制迁移（见 myink-pg 注释）
   rabbitmq-data:            # RabbitMQ 数据卷（拓扑参数变更时需清空重建，见 myink-rabbitmq 注释）
+  caddy-data:               # Caddy 证书 / ACME 账户（删掉＝下次启动重新签发，见 myink-caddy 注释）
+  caddy-config:             # Caddy 自动生成的运行配置
