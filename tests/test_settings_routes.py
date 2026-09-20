@@ -272,21 +272,28 @@ def test_probe_rejects_bad_url_missing_key_and_missing_model(temp_project, monke
             protocol="openai", base_url="https://models.example.com/v1", api_key="k"))
 
 
-def test_probe_rejects_metadata_and_link_local_hosts(temp_project, monkeypatch):
-    """探针地址守卫：云元数据/链路本地/多播/未指定一律 400，且不触达探针。"""
+def test_probe_rejects_non_global_hosts(temp_project, monkeypatch):
+    """出站地址守卫：云元数据/内网/回环/多播/保留一律 400，且不触达探针。
+
+    100.100.100.200 是阿里云元数据，落在 100.64.0.0/10——既不属 private 也不属 reserved，
+    列举式判据会漏掉它，只有「非全球可路由」拦得住。这条用例就是防判据退回列举法。
+    """
     def boom(*_args, **_kwargs):
         raise AssertionError("不应触达探针")
 
     monkeypatch.setattr(routes_settings.probe, "list_models", boom)
-    for risky in ("http://169.254.169.254/latest/meta-data", "http://[fe80::1]:8080/v1",
+    for risky in ("http://169.254.169.254/latest/meta-data",
+                  "http://100.100.100.200/latest/meta-data",
+                  "http://[fe80::1]:8080/v1", "http://127.0.0.1:11434/v1",
+                  "http://192.168.1.20:8000/v1", "http://10.0.0.5/v1",
                   "http://0.0.0.0/v1", "http://239.1.1.1/v1"):
-        with pytest.raises(HTTPException, match="链路本地"):
+        with pytest.raises(HTTPException, match="内网/保留地址"):
             routes_settings.list_connection_models(temp_project, routes_settings.ConnectionProbeBody(
                 protocol="openai", base_url=risky, api_key="k"))
 
 
-def test_probe_allows_loopback_and_private_hosts(temp_project, monkeypatch):
-    """回环与私有段刻意放行：本地推理服务（127.0.0.1:11434 Ollama）是本功能主场景。"""
+def test_probe_allows_global_hosts(temp_project, monkeypatch):
+    """全球可路由地址照常放行（本地/内网地址已不再放行——本部署不用本地模型）。"""
     seen: dict = {}
 
     def fake_list(protocol, base_url, api_key):
@@ -294,11 +301,26 @@ def test_probe_allows_loopback_and_private_hosts(temp_project, monkeypatch):
         return ["m"], None
 
     monkeypatch.setattr(routes_settings.probe, "list_models", fake_list)
-    for local in ("http://127.0.0.1:11434/v1", "http://192.168.1.20:8000/v1"):
+    for public in ("http://8.8.8.8/v1", "https://models.example.com/v1"):
         assert routes_settings.list_connection_models(
             temp_project, routes_settings.ConnectionProbeBody(
-                protocol="openai", base_url=local, api_key="k"))["ok"] is True
-    assert seen["url"] == "http://192.168.1.20:8000/v1"
+                protocol="openai", base_url=public, api_key="k"))["ok"] is True
+    assert seen["url"] == "https://models.example.com/v1"
+
+
+def test_settings_save_rejects_non_global_model_host(temp_project):
+    """保存路径也要守：只在探针拦而保存不拦等于没拦——地址落库后由 worker 在生成时真打出去。"""
+    for risky in ("http://169.254.169.254/latest/meta-data",
+                  "http://100.100.100.200/latest/meta-data",
+                  "http://127.0.0.1:11434/v1", "http://192.168.1.20:8000/v1"):
+        with pytest.raises(HTTPException, match="内网/保留地址"):
+            put_project_settings(temp_project, SettingsBody(
+                model_connections=[ModelConnectionBody(
+                    id=str(uuid.uuid4()), name="风险地址", protocol="openai",
+                    base_url=risky, model="m", api_key="k",
+                )],
+            ))
+    assert get_project_settings(temp_project)["model_connections"] == []
 
 
 # ---- 审计读端点（列表/详情）----

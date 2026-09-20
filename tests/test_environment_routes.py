@@ -139,6 +139,30 @@ def test_environment_rejects_invalid_role_and_rankings(temp_user):
     assert e2.value.status_code == 400
 
 
+def test_environment_save_rejects_non_global_model_host(temp_user):
+    """保存也要守。此前只有探针守、保存不守，元数据地址能落库，worker 生成时再打出去。
+
+    100.100.100.200 是阿里云元数据（100.64.0.0/10），列举式判据漏它，只有「非全球可路由」拦得住。
+    """
+    for risky in ("http://169.254.169.254/latest/meta-data",
+                  "http://100.100.100.200/latest/meta-data",
+                  "http://127.0.0.1:11434/v1", "http://192.168.1.20:8000/v1"):
+        with pytest.raises(HTTPException, match="内网/保留地址"):
+            put_environment(EnvironmentBody(
+                model_connections=[ModelConnectionBody(
+                    id=str(uuid.uuid4()), name="风险地址", protocol="openai",
+                    base_url=risky, model="m", api_key="k",
+                )],
+            ), user_id=temp_user)
+    assert get_environment(user_id=temp_user)["model_connections"] == []
+
+
+def test_environment_save_rejects_non_global_rankings_url(temp_user):
+    with pytest.raises(HTTPException, match="内网/保留地址"):
+        put_environment(EnvironmentBody(rankings={"mcp_url": "http://169.254.169.254/mcp"}),
+                        user_id=temp_user)
+
+
 def test_environment_saves_audit_summarize_and_thinking(temp_user):
     cid = str(uuid.uuid4())
     out = put_environment(EnvironmentBody(

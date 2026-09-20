@@ -11,7 +11,7 @@ from myink.api.auth import require_user
 from myink.api.routes_settings import (
     ConnectionProbeBody,
     ModelConnectionBody,
-    _assert_probe_host_allowed,
+    _assert_host_allowed,
     _clean_base_url,
     connection_record,
 )
@@ -62,6 +62,7 @@ def _validate_rankings(body: RankingsBody, existing: dict) -> dict:
         merged["enabled"] = body.enabled
     if body.mcp_url is not None:
         merged["mcp_url"] = _clean_base_url(body.mcp_url)
+        _assert_host_allowed(merged["mcp_url"])
     if body.timeout is not None:
         if not 1 <= body.timeout <= 60:
             raise HTTPException(status_code=400, detail="扫榜超时须为 1–60 秒")
@@ -158,7 +159,7 @@ def list_environment_models(
     body: ConnectionProbeBody, user_id: str = Depends(require_user),
 ) -> dict:
     base_url = _clean_base_url(body.base_url)
-    _assert_probe_host_allowed(base_url)
+    _assert_host_allowed(base_url)
     api_key = _probe_key(user_id, body)
     models, error = probe.list_models(body.protocol, base_url, api_key)
     return {"ok": error is None, "models": models, "error": error}
@@ -172,7 +173,7 @@ def test_environment_connection(
     if not model or len(model) > 160:
         raise HTTPException(status_code=400, detail="模型 id 长度必须为 1–160")
     base_url = _clean_base_url(body.base_url)
-    _assert_probe_host_allowed(base_url)
+    _assert_host_allowed(base_url)
     api_key = _probe_key(user_id, body)
     ok, latency_ms, reply, error = probe.test_connection(body.protocol, base_url, api_key, model)
     return {"ok": ok, "latency_ms": latency_ms, "reply": reply, "error": error}
@@ -184,7 +185,7 @@ async def test_rankings_connection(
 ) -> dict:
     del user_id  # 身份已由 require_user 断言；探针不读已存密钥
     base_url = _clean_base_url(body.mcp_url)
-    _assert_probe_host_allowed(base_url)
+    _assert_host_allowed(base_url)
     timeout = settings.rankings_timeout if body.timeout is None else body.timeout
     if not 1 <= timeout <= 60:
         raise HTTPException(status_code=400, detail="扫榜超时须为 1–60 秒")

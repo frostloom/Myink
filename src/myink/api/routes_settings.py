@@ -76,21 +76,32 @@ def _clean_base_url(base_url: str) -> str:
 
 
 def _unsafe_address(raw: str) -> bool:
+    """判据是「不是全球可路由」，而不是列举内网段。
+
+    列举法会漏掉 100.64.0.0/10：它既不属 private 也不属 reserved，却正是 CGNAT 与
+    阿里云元数据 100.100.100.200 所在的段，只有 is_global 能识别。多播是唯一反例
+    （is_global 为 True），所以单独补一条。
+    """
     try:
         ip = ipaddress.ip_address(raw)
     except ValueError:
         return True  # 解析不出（含 zone id 等）→ 保守拒绝
     if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
         ip = ip.ipv4_mapped
-    return ip.is_link_local or ip.is_multicast or ip.is_unspecified or ip.is_reserved
+    return ip.is_multicast or not ip.is_global
 
 
-def _assert_probe_host_allowed(base_url: str) -> None:
-    """探针地址守卫：只拦纯滥用目标——链路本地（含 169.254.169.254 云元数据）、多播、未指定、
-    保留段。私有段与回环**刻意放行**：本地推理服务（如 127.0.0.1:11434 Ollama）正是本功能的
-    主场景，拦住等于砍掉正常用法；生成路径本就能打任意地址，探针不引入新的越权面。
+def _assert_host_allowed(base_url: str) -> None:
+    """出站地址守卫：只放行全球可路由的地址。
 
-    解析后才判（域名解析到链路本地同样拒绝）；解析失败不在此处改写成另一种错误，交给探针
+    原先私有段与回环**刻意放行**，为的是本地推理服务（如 127.0.0.1:11434 Ollama）；
+    现已确认本部署不用本地模型，改为一律拒绝——非全球可路由的地址里含云元数据
+    （169.254.169.254、阿里云 100.100.100.200）与内网服务，正是 SSRF 的目标。
+
+    探针与保存共用本守卫：只在探针拦而保存不拦等于没拦——地址落库后由 worker 在生成时
+    真打出去，探针那道检查形同虚设。
+
+    解析后才判（域名解析到内网同样拒绝）；解析失败不在此处改写成另一种错误，交给探针
     自己报「连不上」，让失败原因来自真实请求。
     """
     host = urlsplit(base_url).hostname
@@ -101,7 +112,7 @@ def _assert_probe_host_allowed(base_url: str) -> None:
     except socket.gaierror:
         return
     if any(_unsafe_address(info[4][0]) for info in infos):
-        raise HTTPException(status_code=400, detail="请求地址指向内网元数据/链路本地端点，已拒绝")
+        raise HTTPException(status_code=400, detail="请求地址指向内网/保留地址，已拒绝")
 
 
 def _validate_connection(item: ModelConnectionBody) -> tuple[str, str, str, str]:
@@ -131,6 +142,7 @@ def _price_fields(item: ModelConnectionBody) -> dict:
 
 def connection_record(item: ModelConnectionBody, existing_connections: dict) -> tuple[str, dict]:
     cid, name, base_url, model = _validate_connection(item)
+    _assert_host_allowed(base_url)
     raw_key = item.api_key.get_secret_value().strip() if item.api_key else ""
     encrypted = encrypt_api_key(raw_key) if raw_key else existing_connections.get(cid, {}).get("api_key_encrypted")
     if not encrypted:
@@ -228,7 +240,7 @@ def _probe_key(project_id: str, body: ConnectionProbeBody) -> str:
              dependencies=[Depends(require_owner)], response_model=ModelListOut)
 def list_connection_models(project_id: str, body: ConnectionProbeBody) -> dict:
     base_url = _clean_base_url(body.base_url)
-    _assert_probe_host_allowed(base_url)
+    _assert_host_allowed(base_url)
     api_key = _probe_key(project_id, body)
     models, error = probe.list_models(body.protocol, base_url, api_key)
     return {"ok": error is None, "models": models, "error": error}
@@ -241,7 +253,7 @@ def test_model_connection(project_id: str, body: ConnectionProbeBody) -> dict:
     if not model or len(model) > 160:
         raise HTTPException(status_code=400, detail="模型 id 长度必须为 1–160")
     base_url = _clean_base_url(body.base_url)
-    _assert_probe_host_allowed(base_url)
+    _assert_host_allowed(base_url)
     api_key = _probe_key(project_id, body)
     ok, latency_ms, reply, error = probe.test_connection(body.protocol, base_url, api_key, model)
     return {"ok": ok, "latency_ms": latency_ms, "reply": reply, "error": error}
