@@ -1,6 +1,6 @@
 """扫榜端点（plan.md §10：MCP Client 接入外部榜单，只作建书前的灵感工具）。
 
-GET /internal/v1/rankings：全局无项目端点，拉取外部榜单（经 MCP Client + sanitize），
+GET /api/v1/rankings：全局无项目端点，拉取外部榜单（经 MCP Client + sanitize），
 供建书向导「扫榜灵感」面板展示。榜单数据**不进记忆/事实层**（不落库）——这里只是
 把编排层受控能力的结果暴露给前端看 + 让用户触发刷新（refresh=true 绕过 TTL 缓存）。
 
@@ -16,7 +16,7 @@ from myink.api.auth import current_user
 from myink.api.schemas import RankingsOut
 from myink.integrations import fetch_rankings
 
-router = APIRouter(prefix="/internal/v1", tags=["rankings"])
+router = APIRouter(prefix="/api/v1", tags=["rankings"])
 
 
 @router.get("/rankings", response_model=RankingsOut)

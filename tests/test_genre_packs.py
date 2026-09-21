@@ -95,7 +95,7 @@ def test_book_pack_baseline_isolated_from_later_edits():
 def test_create_without_primary_id_keeps_old_genre_string():
     uid = _fresh_user()
     try:
-        resp = client.post("/internal/v1/projects", headers=_h(uid),
+        resp = client.post("/api/v1/projects", headers=_h(uid),
                            json={"title": "旧接口书", "genre": "历史悬疑"})
         assert resp.status_code == 200
         assert resp.json()["genre"] == "历史悬疑"
@@ -111,7 +111,7 @@ def test_create_without_primary_id_keeps_old_genre_string():
 def test_create_with_pack_locks_name_and_stores_snapshot():
     uid = _fresh_user()
     try:
-        resp = client.post("/internal/v1/projects", headers=_h(uid), json={
+        resp = client.post("/api/v1/projects", headers=_h(uid), json={
             "title": "新包书",
             "primary_id": "xiuxian",
             "secondary_id": "xitong",
@@ -127,23 +127,23 @@ def test_create_with_pack_locks_name_and_stores_snapshot():
             assert st.genre_pack["secondary_id"] == "xitong"
             assert st.genre_pack["pacing"] == "用户自己的节奏"
             assert st.genre_pack["baseline"]["pacing"] == "用户自己的节奏"
-        listed = client.get("/internal/v1/genre-packs", headers=_h(uid))
+        listed = client.get("/api/v1/genre-packs", headers=_h(uid))
         assert listed.status_code == 200
         assert len(listed.json()) == 37
-        settings = client.get(f"/internal/v1/projects/{pid}/settings", headers=_h(uid))
+        settings = client.get(f"/api/v1/projects/{pid}/settings", headers=_h(uid))
         assert settings.status_code == 200
         pub = settings.json()["genre_pack"]
         assert "baseline" not in pub
         assert pub["source_name"] == "修仙"
-        locked = client.put(f"/internal/v1/projects/{pid}", headers=_h(uid),
+        locked = client.put(f"/api/v1/projects/{pid}", headers=_h(uid),
                             json={"genre": "都市"})
         assert locked.status_code == 400
-        saved = client.put(f"/internal/v1/projects/{pid}/genre-pack", headers=_h(uid),
+        saved = client.put(f"/api/v1/projects/{pid}/genre-pack", headers=_h(uid),
                            json={"taboos": ["本书自己的禁忌"]})
         assert saved.status_code == 200
         assert saved.json()["taboos"] == ["本书自己的禁忌"]
         assert saved.json()["pacing"] == "用户自己的节奏"
-        restored = client.post(f"/internal/v1/projects/{pid}/genre-pack/restore",
+        restored = client.post(f"/api/v1/projects/{pid}/genre-pack/restore",
                                headers=_h(uid))
         assert restored.status_code == 200
         assert restored.json()["pacing"] == "用户自己的节奏"
@@ -155,7 +155,7 @@ def test_create_with_pack_locks_name_and_stores_snapshot():
 def test_secondary_requires_primary_400():
     uid = _fresh_user()
     try:
-        resp = client.post("/internal/v1/projects", headers=_h(uid), json={
+        resp = client.post("/api/v1/projects", headers=_h(uid), json={
             "title": "只有辅",
             "primary_id": None,
             "secondary_id": "xitong",
@@ -168,10 +168,10 @@ def test_secondary_requires_primary_400():
 def test_old_book_cannot_put_genre_pack():
     uid = _fresh_user()
     try:
-        resp = client.post("/internal/v1/projects", headers=_h(uid),
+        resp = client.post("/api/v1/projects", headers=_h(uid),
                            json={"title": "旧书"})
         pid = resp.json()["id"]
-        put = client.put(f"/internal/v1/projects/{pid}/genre-pack", headers=_h(uid),
+        put = client.put(f"/api/v1/projects/{pid}/genre-pack", headers=_h(uid),
                          json={"pacing": "想补"})
         assert put.status_code == 400
     finally:

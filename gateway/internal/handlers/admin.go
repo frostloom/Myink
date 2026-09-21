@@ -34,7 +34,7 @@ func (h *TaskHandler) AdminRead(c *gin.Context) {
 	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
 	defer cancel()
-	path := "/internal/v1/admin" + strings.TrimPrefix(c.Request.URL.Path, "/api/v1/admin")
+	path := "/api/v1/admin" + strings.TrimPrefix(c.Request.URL.Path, "/api/v1/admin")
 	header := http.Header{"Authorization": []string{c.GetHeader("Authorization")}}
 	resp, err := h.py.Forward(ctx, http.MethodGet, path, c.Request.URL.Query(), header, nil)
 	if err != nil {

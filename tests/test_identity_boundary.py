@@ -30,7 +30,7 @@ client = TestClient(app)
 # （没有令牌才需要拿令牌，它们靠 by-IP 的 auth_rate_limit 挡爆破）。
 OPEN_PATHS = {
     "/healthz", "/readyz",
-    "/internal/v1/auth/register", "/internal/v1/auth/token",
+    "/api/v1/auth/register", "/api/v1/auth/token",
 }
 
 # 依赖闭包里出现任一名字即视为「挂了身份守卫」。
@@ -163,15 +163,15 @@ def test_the_structural_sweep_actually_sees_the_routers():
     """防止 _declared_routes 因为装配方式变化而静默退化成只剩 app 级那 5 条。"""
     paths = {route.path for route in _declared_routes()}
     assert len(paths) > 50, f"只看到 {len(paths)} 条路由，路由器可能没被取到"
-    assert "/internal/v1/projects/{project_id}/chapters" in paths
-    assert "/internal/v1/skill-presets" in paths
+    assert "/api/v1/projects/{project_id}/chapters" in paths
+    assert "/api/v1/skill-presets" in paths
 
 
 def test_sweep_actually_covers_the_business_surface():
     """防止上面的遍历因为路由装配方式变化而静默退化成空循环。"""
     paths = {path for _, path in _business_routes()}
     assert len(paths) > 50, f"只扫到 {len(paths)} 条业务路由，遍历可能坏了"
-    assert "/internal/v1/projects/{project_id}/chapters" in paths
+    assert "/api/v1/projects/{project_id}/chapters" in paths
 
 
 @pytest.mark.parametrize("method,suffix,body", [
@@ -185,7 +185,7 @@ def test_sweep_actually_covers_the_business_surface():
 def test_foreign_account_gets_403(accounts, method, suffix, body):
     """跨账号是 403（身份本身有效，只是不拥有这本）——与「未知账号 401」是两回事。"""
     (_, book_a), (uid_b, _) = accounts
-    response = client.request(method, f"/internal/v1/projects/{book_a}{suffix}",
+    response = client.request(method, f"/api/v1/projects/{book_a}{suffix}",
                               json=body, headers=identity_headers(uid_b))
     assert response.status_code == 403, f"{method} {suffix} -> {response.status_code}"
 
@@ -194,10 +194,10 @@ def test_forged_plaintext_header_cannot_override_or_elevate(accounts):
     """明文头既不能覆盖令牌身份，也不能提权。"""
     (uid_a, book_a), (uid_b, _) = accounts
     spoofed_own = {**identity_headers(uid_a), "X-Myink-User": str(uid_b)}
-    assert client.get(f"/internal/v1/projects/{book_a}/chapters",
+    assert client.get(f"/api/v1/projects/{book_a}/chapters",
                       headers=spoofed_own).status_code == 200
     spoofed_foreign = {**identity_headers(uid_b), "X-Myink-User": str(uid_a)}
-    assert client.get(f"/internal/v1/projects/{book_a}/chapters",
+    assert client.get(f"/api/v1/projects/{book_a}/chapters",
                       headers=spoofed_foreign).status_code == 403
 
 
@@ -209,8 +209,8 @@ def test_logout_revokes_the_session_immediately(accounts):
     """
     uid_a, book_a = accounts[0]
     headers = identity_headers(uid_a)
-    assert client.post("/internal/v1/auth/logout", headers=headers).status_code == 200
-    assert client.get(f"/internal/v1/projects/{book_a}/chapters", headers=headers).status_code == 401
+    assert client.post("/api/v1/auth/logout", headers=headers).status_code == 200
+    assert client.get(f"/api/v1/projects/{book_a}/chapters", headers=headers).status_code == 401
 
 
 @pytest.mark.parametrize("claims", [
@@ -226,7 +226,7 @@ def test_logout_revokes_the_session_immediately(accounts):
 ])
 def test_bad_bearer_is_rejected_with_401(accounts, claims):
     token = jwt.encode(claims, TEST_JWT_SECRET, algorithm="HS256")
-    response = client.get(f"/internal/v1/projects/{accounts[0][1]}/chapters",
+    response = client.get(f"/api/v1/projects/{accounts[0][1]}/chapters",
                           headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 401
 
@@ -238,7 +238,7 @@ def test_token_signed_with_another_algorithm_is_rejected(accounts, algorithm):
         token = jwt.encode(_claims(), key="", algorithm="none")
     else:
         token = jwt.encode(_claims(), TEST_JWT_SECRET, algorithm=algorithm)
-    response = client.get(f"/internal/v1/projects/{accounts[0][1]}/chapters",
+    response = client.get(f"/api/v1/projects/{accounts[0][1]}/chapters",
                           headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 401
 
@@ -246,6 +246,6 @@ def test_token_signed_with_another_algorithm_is_rejected(accounts, algorithm):
 @pytest.mark.parametrize("scheme", ["Basic", "Token"])
 def test_non_bearer_authorization_scheme_is_ignored(accounts, scheme):
     """非 bearer 方案一律当成「没带凭证」→ 403（不是 401）。"""
-    response = client.get(f"/internal/v1/projects/{accounts[0][1]}/chapters",
+    response = client.get(f"/api/v1/projects/{accounts[0][1]}/chapters",
                           headers={"Authorization": f"{scheme} abc"})
     assert response.status_code == 403

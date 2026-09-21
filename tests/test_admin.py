@@ -14,7 +14,7 @@ from myink.db import get_admin_engine, new_session, tenant_session
 from myink.models import AgentRun, Chapter, Fact, Invitation, Project, ProjectSettings, Task, User
 
 client = TestClient(app, raise_server_exceptions=False)
-PREFIX = "/internal/v1/admin"
+PREFIX = "/api/v1/admin"
 
 
 @pytest.fixture
@@ -172,9 +172,9 @@ def test_actual_registration_and_login_accept_exactly_eight_characters(admin_dat
         invitation, code = create_invitation(db, expires_at=datetime.now(timezone.utc)+timedelta(hours=1))
         db.commit()
     try:
-        response = client.post("/internal/v1/auth/register", json={"username":username, "password":"abcd1234", "invitation_code":code})
+        response = client.post("/api/v1/auth/register", json={"username":username, "password":"abcd1234", "invitation_code":code})
         assert response.status_code == 201, response.text
-        login = client.post("/internal/v1/auth/token", json={"username":username, "password":"abcd1234"})
+        login = client.post("/api/v1/auth/token", json={"username":username, "password":"abcd1234"})
         assert login.status_code == 200, login.text
         assert login.json()["role"] == "user"
     finally:

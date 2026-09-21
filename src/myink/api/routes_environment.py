@@ -28,7 +28,7 @@ from myink.providers.connections import (
 )
 from myink.providers.credentials import decrypt_api_key
 
-router = APIRouter(prefix="/internal/v1", tags=["environment"])
+router = APIRouter(prefix="/api/v1", tags=["environment"])
 
 
 class RankingsBody(BaseModel):

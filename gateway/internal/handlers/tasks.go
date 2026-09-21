@@ -139,7 +139,7 @@ func (h *TaskHandler) enqueue(c *gin.Context, projectID, taskType string, payloa
 // 任务详情：转发 Python API（任务状态 + 批次进度 i/N）。
 // GET /api/v1/tasks/:task_id
 func (h *TaskHandler) GetTask(c *gin.Context) {
-	h.forwardToPy(c, "/internal/v1/tasks/"+c.Param("task_id"), nil)
+	h.forwardToPy(c, "/api/v1/tasks/"+c.Param("task_id"), nil)
 }
 
 // 确认手动模式章节计划：转发 Python API，由后者校验版本并发布断点恢复消息。
@@ -151,32 +151,32 @@ func (h *TaskHandler) ConfirmTaskPlan(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_body"})
 		return
 	}
-	h.forwardToPy(c, "/internal/v1/tasks/"+taskID+"/plan/confirm", body)
+	h.forwardToPy(c, "/api/v1/tasks/"+taskID+"/plan/confirm", body)
 }
 
 // 单章任务控制。目前手动 Plan 等待页只开放取消；转发到 Python 的统一任务端点。
 func (h *TaskHandler) TaskControl(c *gin.Context) {
 	taskID := c.Param("task_id")
-	h.forwardToPy(c, "/internal/v1/tasks/"+taskID+"/cancel", nil)
+	h.forwardToPy(c, "/api/v1/tasks/"+taskID+"/cancel", nil)
 }
 
 // 批次控制：pause / resume / cancel，转发 Python API。
 // POST /api/v1/batches/:batch_id/:action  (action: pause|resume|cancel)
-// 转发到 /internal/v1/tasks/{id}/{action}（Python API 任务控制端点；批次 id = batch 任务 id）。
+// 转发到 /api/v1/tasks/{id}/{action}（Python API 任务控制端点；批次 id = batch 任务 id）。
 func (h *TaskHandler) BatchControl(c *gin.Context) {
 	batchID := c.Param("batch_id")
 	action := c.Param("action")
-	h.forwardToPy(c, "/internal/v1/tasks/"+batchID+"/"+action, nil)
+	h.forwardToPy(c, "/api/v1/tasks/"+batchID+"/"+action, nil)
 }
 
 // 项目列表：转发 Python API（多本书展示前端侧边栏，唯一入口仍走网关）。
 // GET /api/v1/projects
 func (h *TaskHandler) ListProjects(c *gin.Context) {
-	h.forwardToPy(c, "/internal/v1/projects", nil)
+	h.forwardToPy(c, "/api/v1/projects", nil)
 }
 
 func (h *TaskHandler) GetCreation(c *gin.Context) {
-	h.forwardToPy(c, "/internal/v1/projects/"+c.Param("project_id")+"/creation", nil)
+	h.forwardToPy(c, "/api/v1/projects/"+c.Param("project_id")+"/creation", nil)
 }
 
 // 项目任务历史（阶段 4 任务视图）：转发 Python API（切书后展示该书过往任务，
@@ -184,13 +184,13 @@ func (h *TaskHandler) GetCreation(c *gin.Context) {
 // GET /api/v1/projects/:project_id/tasks
 func (h *TaskHandler) ListProjectTasks(c *gin.Context) {
 	pid := c.Param("project_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/tasks", nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/tasks", nil)
 }
 
 // 记忆候选：待确认池（§6.11 确认分流）。GET /api/v1/projects/:project_id/candidates
 func (h *TaskHandler) ListCandidates(c *gin.Context) {
 	pid := c.Param("project_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/candidates", nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/candidates", nil)
 }
 
 // 候选确认/拒绝（§7.3 事实生命周期，编排层写库）。
@@ -199,14 +199,14 @@ func (h *TaskHandler) CandidateAction(c *gin.Context) {
 	pid := c.Param("project_id")
 	cid := c.Param("candidate_id")
 	action := c.Param("action")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/candidates/"+cid+"/"+action, nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/candidates/"+cid+"/"+action, nil)
 }
 
 // 写作经验列表（§8.9 reflexion：经验池展示）。
 // GET /api/v1/projects/:project_id/lessons
 func (h *TaskHandler) ListLessons(c *gin.Context) {
 	pid := c.Param("project_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/lessons", nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/lessons", nil)
 }
 
 // 经验确认/拒绝（§8.9 reflexion 确认分流，编排层写库）。
@@ -215,14 +215,14 @@ func (h *TaskHandler) LessonAction(c *gin.Context) {
 	pid := c.Param("project_id")
 	lid := c.Param("lesson_id")
 	action := c.Param("action")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/lessons/"+lid+"/"+action, nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/lessons/"+lid+"/"+action, nil)
 }
 
 // 章节列表：转发 Python API（RLS 由 Python 侧 tenant_session 过滤）。
 // GET /api/v1/projects/:project_id/chapters
 func (h *TaskHandler) ListChapters(c *gin.Context) {
 	pid := c.Param("project_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/chapters", nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/chapters", nil)
 }
 
 // 章节详情（含正文/summary）：转发 Python API（get_chapter，main.py:117）。
@@ -231,7 +231,7 @@ func (h *TaskHandler) ListChapters(c *gin.Context) {
 func (h *TaskHandler) GetChapter(c *gin.Context) {
 	pid := c.Param("project_id")
 	cid := c.Param("chapter_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/chapters/"+cid, nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/chapters/"+cid, nil)
 }
 
 // 编辑章节正文（阶段 3 轻编辑：只更新正文不触记忆，零 LLM）。
@@ -240,7 +240,7 @@ func (h *TaskHandler) UpdateChapterContent(c *gin.Context) {
 	pid := c.Param("project_id")
 	cid := c.Param("chapter_id")
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/chapters/"+cid+"/content", body)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/chapters/"+cid+"/content", body)
 }
 
 // 显式校正记忆（阶段 3：编辑后正文重新抽取 → 与该章已落库记忆 diff → 变更集进待确认池）。
@@ -250,7 +250,7 @@ func (h *TaskHandler) CorrectMemory(c *gin.Context) {
 	pid := c.Param("project_id")
 	cid := c.Param("chapter_id")
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/chapters/"+cid+"/correct-memory", body)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/chapters/"+cid+"/correct-memory", body)
 }
 
 // 级联删除章节（阶段 3：删除该章及其后全部章节正文 + 记忆 + 池候选，进度回退）。
@@ -258,7 +258,7 @@ func (h *TaskHandler) CorrectMemory(c *gin.Context) {
 func (h *TaskHandler) DeleteChapter(c *gin.Context) {
 	pid := c.Param("project_id")
 	cid := c.Param("chapter_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/chapters/"+cid, nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/chapters/"+cid, nil)
 }
 
 // 章节历史版本列表（阶段 4 版本表：降序含正文，供前端预览/比对/回退）。
@@ -266,7 +266,7 @@ func (h *TaskHandler) DeleteChapter(c *gin.Context) {
 func (h *TaskHandler) ListChapterVersions(c *gin.Context) {
 	pid := c.Param("project_id")
 	cid := c.Param("chapter_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/chapters/"+cid+"/versions", nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/chapters/"+cid+"/versions", nil)
 }
 
 // 回退到历史版本（阶段 4：快照当前 → 覆盖回目标版本 → 版本 +1，转发 Python API）。
@@ -276,7 +276,7 @@ func (h *TaskHandler) RestoreChapterVersion(c *gin.Context) {
 	cid := c.Param("chapter_id")
 	version := c.Param("version")
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/chapters/"+cid+"/versions/"+version+"/restore", body)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/chapters/"+cid+"/versions/"+version+"/restore", body)
 }
 
 // 全局审计（阶段 3 长线治理：手动触发抽样人设漂移 L2，转发 Python API）。
@@ -284,14 +284,14 @@ func (h *TaskHandler) RestoreChapterVersion(c *gin.Context) {
 // POST /api/v1/projects/:project_id/global-audit
 func (h *TaskHandler) GlobalAudit(c *gin.Context) {
 	pid := c.Param("project_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/global-audit", nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/global-audit", nil)
 }
 
 // 创作设置读取：文风档案 / 题材 Skill / 模型连接 / 路由表 / 版本号，转发 Python API。
 // GET /api/v1/projects/:project_id/settings
 func (h *TaskHandler) ListSettings(c *gin.Context) {
 	pid := c.Param("project_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/settings", nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/settings", nil)
 }
 
 // 更新模型连接与路由（自定义 API Key 由 Python 层加密，网关只透传请求体）。
@@ -299,7 +299,7 @@ func (h *TaskHandler) ListSettings(c *gin.Context) {
 func (h *TaskHandler) UpdateSettings(c *gin.Context) {
 	pid := c.Param("project_id")
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/settings", body)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/settings", body)
 }
 
 // 拉取连接可用模型列表（探针：GET /models；body 含 protocol/base_url/api_key|connection_id，转发 Python API）。
@@ -307,7 +307,7 @@ func (h *TaskHandler) UpdateSettings(c *gin.Context) {
 func (h *TaskHandler) ListConnectionModels(c *gin.Context) {
 	pid := c.Param("project_id")
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/settings/models", body)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/settings/models", body)
 }
 
 // 连接联通测试（探针：发一条 max_tokens=16 的 ping，转发 Python API）。
@@ -315,65 +315,65 @@ func (h *TaskHandler) ListConnectionModels(c *gin.Context) {
 func (h *TaskHandler) TestModelConnection(c *gin.Context) {
 	pid := c.Param("project_id")
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/settings/test-connection", body)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/settings/test-connection", body)
 }
 
 // 账号级环境配置读取（模型连接 / 路由 / MCP 扫榜），转发 Python API。
 // GET /api/v1/environment
 func (h *TaskHandler) GetEnvironment(c *gin.Context) {
-	h.forwardToPy(c, "/internal/v1/environment", nil)
+	h.forwardToPy(c, "/api/v1/environment", nil)
 }
 
 // 更新账号级模型连接、路由与扫榜覆盖（自定义 API Key 由 Python 层加密）。
 // PUT /api/v1/environment
 func (h *TaskHandler) UpdateEnvironment(c *gin.Context) {
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPy(c, "/internal/v1/environment", body)
+	h.forwardToPy(c, "/api/v1/environment", body)
 }
 
 // 拉取连接可用模型列表（账号级探针）。
 // POST /api/v1/environment/models
 func (h *TaskHandler) ListEnvironmentModels(c *gin.Context) {
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPy(c, "/internal/v1/environment/models", body)
+	h.forwardToPy(c, "/api/v1/environment/models", body)
 }
 
 // 模型连接联通测试（账号级探针）。
 // POST /api/v1/environment/test-connection
 func (h *TaskHandler) TestEnvironmentConnection(c *gin.Context) {
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPy(c, "/internal/v1/environment/test-connection", body)
+	h.forwardToPy(c, "/api/v1/environment/test-connection", body)
 }
 
 // MCP 扫榜联通测试（list_tools）。
 // POST /api/v1/environment/test-rankings
 func (h *TaskHandler) TestRankingsConnection(c *gin.Context) {
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPy(c, "/internal/v1/environment/test-rankings", body)
+	h.forwardToPy(c, "/api/v1/environment/test-rankings", body)
 }
 
 // 题材 Skill 预设列表（§7.12 预设包 = 4 本种子书文风档案），转发 Python API。
 // GET /api/v1/skill-presets
 func (h *TaskHandler) SkillPresets(c *gin.Context) {
-	h.forwardToPy(c, "/internal/v1/skill-presets", nil)
+	h.forwardToPy(c, "/api/v1/skill-presets", nil)
 }
 
 // GET /api/v1/genre-packs
 func (h *TaskHandler) GenrePacks(c *gin.Context) {
-	h.forwardToPy(c, "/internal/v1/genre-packs", nil)
+	h.forwardToPy(c, "/api/v1/genre-packs", nil)
 }
 
 // PUT /api/v1/projects/:project_id/genre-pack
 func (h *TaskHandler) PutGenrePack(c *gin.Context) {
 	pid := c.Param("project_id")
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/genre-pack", body)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/genre-pack", body)
 }
 
 // POST /api/v1/projects/:project_id/genre-pack/restore
 func (h *TaskHandler) RestoreGenrePack(c *gin.Context) {
 	pid := c.Param("project_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/genre-pack/restore", nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/genre-pack/restore", nil)
 }
 
 // 文风样本提取（§7.12 闭环：作者样本 → 统计层 + LLM 提炼 → 草稿，转发 Python API）。
@@ -381,7 +381,7 @@ func (h *TaskHandler) RestoreGenrePack(c *gin.Context) {
 func (h *TaskHandler) StyleSamples(c *gin.Context) {
 	pid := c.Param("project_id")
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/style-samples", body)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/style-samples", body)
 }
 
 // 文风档案确认落库（§7.12；预设导入可带 skill_pack 原子写 profile+marker，转发 Python API）。
@@ -389,14 +389,14 @@ func (h *TaskHandler) StyleSamples(c *gin.Context) {
 func (h *TaskHandler) PutStyleProfile(c *gin.Context) {
 	pid := c.Param("project_id")
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/style-profile", body)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/style-profile", body)
 }
 
 // 建书（§7.11 建书向导）：创建 Project + 空 ProjectSettings（不调 LLM，转发 Python API）。
 // POST /api/v1/projects  body: {"title": "...", "genre": "...", "target_words": 3000}
 func (h *TaskHandler) CreateProject(c *gin.Context) {
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPy(c, "/internal/v1/projects", body)
+	h.forwardToPy(c, "/api/v1/projects", body)
 }
 
 // 作品基本信息更新（§6.9 每章目标字数可配，转发 Python API）。
@@ -404,14 +404,14 @@ func (h *TaskHandler) CreateProject(c *gin.Context) {
 func (h *TaskHandler) UpdateProject(c *gin.Context) {
 	pid := c.Param("project_id")
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPy(c, "/internal/v1/projects/"+pid, body)
+	h.forwardToPy(c, "/api/v1/projects/"+pid, body)
 }
 
 // 整本书删除（硬删：守卫进行中任务 → 级联清业务表/向量/checkpoint/Redis 残留，转发 Python API）。
 // DELETE /api/v1/projects/:project_id
 func (h *TaskHandler) DeleteProject(c *gin.Context) {
 	pid := c.Param("project_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid, nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid, nil)
 }
 
 // 设定骨架草稿（§7.11 ②：一句话梗概 → Planner 提案，可反复重新生成，转发 Python API）。
@@ -419,7 +419,7 @@ func (h *TaskHandler) DeleteProject(c *gin.Context) {
 func (h *TaskHandler) SetupDraft(c *gin.Context) {
 	pid := c.Param("project_id")
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPyLong(c, "/internal/v1/projects/"+pid+"/setup-draft", body)
+	h.forwardToPyLong(c, "/api/v1/projects/"+pid+"/setup-draft", body)
 }
 
 // 设定确认落库（§7.11 ③ append-only：用户确认 = 编排层写库入口，转发 Python API）。
@@ -427,7 +427,7 @@ func (h *TaskHandler) SetupDraft(c *gin.Context) {
 func (h *TaskHandler) Setup(c *gin.Context) {
 	pid := c.Param("project_id")
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/setup", body)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/setup", body)
 }
 
 // 整书大纲草稿（§11 建书 ③：梗概 + 大致章节数 + 大致故事线 → Planner 提案，不落库，转发 Python API）。
@@ -435,7 +435,7 @@ func (h *TaskHandler) Setup(c *gin.Context) {
 func (h *TaskHandler) OutlineDraft(c *gin.Context) {
 	pid := c.Param("project_id")
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPyLong(c, "/internal/v1/projects/"+pid+"/outline-draft", body)
+	h.forwardToPyLong(c, "/api/v1/projects/"+pid+"/outline-draft", body)
 }
 
 // 整书大纲确认落库（§11 ③：arc + 逐章目标整体替换 volume_outlines 单行，转发 Python API）。
@@ -443,42 +443,42 @@ func (h *TaskHandler) OutlineDraft(c *gin.Context) {
 func (h *TaskHandler) PutOutline(c *gin.Context) {
 	pid := c.Param("project_id")
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/outline", body)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/outline", body)
 }
 
 // 整书大纲读取（§11 前端展示 / 重新生成输入，转发 Python API）。
 // GET /api/v1/projects/:project_id/outline
 func (h *TaskHandler) GetOutline(c *gin.Context) {
 	pid := c.Param("project_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/outline", nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/outline", nil)
 }
 
 // 世界观浏览（world_rules/hard_constraints + 势力/地点，转发 Python API）。
 // GET /api/v1/projects/:project_id/world
 func (h *TaskHandler) GetWorld(c *gin.Context) {
 	pid := c.Param("project_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/world", nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/world", nil)
 }
 
 // 人物卡片浏览（静态基底 + 当前状态台账 §7.7，转发 Python API）。
 // GET /api/v1/projects/:project_id/characters
 func (h *TaskHandler) GetCharacters(c *gin.Context) {
 	pid := c.Param("project_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/characters", nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/characters", nil)
 }
 
 // 设定实体浏览（§7.11 ④ 自动建档：武器/功法/技能/地点，转发 Python API）。
 // GET /api/v1/projects/:project_id/entities
 func (h *TaskHandler) ListEntities(c *gin.Context) {
 	pid := c.Param("project_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/entities", nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/entities", nil)
 }
 
 // 事件台账（§7.4 中期记忆全量，可按 from_chapter/to_chapter 过滤，转发 Python API）。
 // GET /api/v1/projects/:project_id/events
 func (h *TaskHandler) ListEvents(c *gin.Context) {
 	pid := c.Param("project_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/events", nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/events", nil)
 }
 
 // 人物状态变化历史（§7.7 追加式台账全量，含已失效行，转发 Python API）。
@@ -486,34 +486,34 @@ func (h *TaskHandler) ListEvents(c *gin.Context) {
 func (h *TaskHandler) ListCharacterStates(c *gin.Context) {
 	pid := c.Param("project_id")
 	cid := c.Param("character_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/characters/"+cid+"/state-history", nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/characters/"+cid+"/state-history", nil)
 }
 
 // 世界拓扑全量（§9 图谱：4 类节点 + 人物关系/地点层级边，转发 Python API）。
 // GET /api/v1/projects/:project_id/graph
 func (h *TaskHandler) GetGraph(c *gin.Context) {
 	pid := c.Param("project_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/graph", nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/graph", nil)
 }
 
 // 伏笔池台账（§7.9 状态机全量：planted/developing/resolved/dropped，转发 Python API）。
 // GET /api/v1/projects/:project_id/foreshadows
 func (h *TaskHandler) ListForeshadows(c *gin.Context) {
 	pid := c.Param("project_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/foreshadows", nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/foreshadows", nil)
 }
 
 // 扫榜（§10 MCP Client 拉取外部榜单，只作建书前的灵感工具；全局无项目端点，转发 Python API）。
 // GET /api/v1/rankings
 func (h *TaskHandler) ListRankings(c *gin.Context) {
-	h.forwardToPy(c, "/internal/v1/rankings", nil)
+	h.forwardToPy(c, "/api/v1/rankings", nil)
 }
 
 // 全局审计报告列表（阶段 4 审计视图导航）：最新在前，转发 Python API。
 // GET /api/v1/projects/:project_id/global-audit
 func (h *TaskHandler) ListGlobalAudits(c *gin.Context) {
 	pid := c.Param("project_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/global-audit", nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/global-audit", nil)
 }
 
 // 全局审计报告详情（阶段 4 审计视图：findings 明细 + 抽样角色，转发 Python API）。
@@ -521,7 +521,7 @@ func (h *TaskHandler) ListGlobalAudits(c *gin.Context) {
 func (h *TaskHandler) GetGlobalAudit(c *gin.Context) {
 	pid := c.Param("project_id")
 	rid := c.Param("report_id")
-	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/global-audit/"+rid, nil)
+	h.forwardToPy(c, "/api/v1/projects/"+pid+"/global-audit/"+rid, nil)
 }
 
 // 签发 JWT（§14.1 ③ 身份断言第一道门）：转发 Python API 签发端点。
@@ -529,7 +529,7 @@ func (h *TaskHandler) GetGlobalAudit(c *gin.Context) {
 // 唯一不挂 JWTMiddleware 的业务路由（否则无法登录）；网关不直连 DB，签发真源在 Python。
 func (h *TaskHandler) AuthToken(c *gin.Context) {
 	body, _ := io.ReadAll(c.Request.Body)
-	h.forwardToPy(c, "/internal/v1/auth/token", body)
+	h.forwardToPy(c, "/api/v1/auth/token", body)
 }
 
 // forwardToPyLong 同 forwardToPy，但超时放宽到 180s（> Python 侧 LLM 120s 上限）。

@@ -28,7 +28,7 @@ def test_list_projects_returns_books():
     with new_session() as db:
         user = db.query(User).filter(User.username == "demo").first()
         assert user is not None, "请先运行 `myink init`（demo 用户未建）"
-    resp = client.get("/internal/v1/projects", headers=identity_headers(user))
+    resp = client.get("/api/v1/projects", headers=identity_headers(user))
     assert resp.status_code == 200
     projects = resp.json()
     assert len(projects) >= 3, f"应有多本（示例书已补建），实际 {len(projects)}"

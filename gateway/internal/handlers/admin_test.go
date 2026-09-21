@@ -21,7 +21,7 @@ func TestAdminReadProxySecurity(t *testing.T) {
 			return
 		}
 		forwarded++
-		if r.Method != "GET" || r.URL.Path != "/internal/v1/admin/users" || r.URL.Query().Get("limit") != "1" || r.Header.Get("Authorization") != token {
+		if r.Method != "GET" || r.URL.Path != "/api/v1/admin/users" || r.URL.Query().Get("limit") != "1" || r.Header.Get("Authorization") != token {
 			t.Errorf("incorrect admin proxy method/path/query/bearer")
 		}
 		w.Header().Set("Cache-Control", "no-store")

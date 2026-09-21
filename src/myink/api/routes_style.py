@@ -31,7 +31,7 @@ from myink.style_extract import (
     validate_profile,
 )
 
-router = APIRouter(prefix="/internal/v1", tags=["style"])
+router = APIRouter(prefix="/api/v1", tags=["style"])
 
 # 样本上限（1–2 篇、总量 1.2 万字）——防 prompt 溢出（extract 档上下文窗口内，§6.12）
 _MAX_SAMPLES = 2

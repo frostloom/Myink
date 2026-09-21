@@ -19,7 +19,7 @@ from myink.db import tenant_session
 from myink.models import WritingLesson
 from myink.workflow import nodes
 
-router = APIRouter(prefix="/internal/v1", tags=["lessons"])
+router = APIRouter(prefix="/api/v1", tags=["lessons"])
 
 
 def _lesson_id(raw: str) -> uuid.UUID:
