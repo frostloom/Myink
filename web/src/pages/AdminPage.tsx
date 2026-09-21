@@ -175,7 +175,7 @@ function OverviewView({ token, onForbidden }: { token: string; onForbidden: () =
   return (
     <section className={styles.view} aria-labelledby="overview-heading">
       <div className={styles.viewHead}>
-        <div><h2 id="overview-heading">全局概览</h2><p>只读统计，来自当前服务端数据。</p></div>
+        <div><h2 id="overview-heading">全局概览</h2></div>
         <RefreshButton onClick={resource.retry} />
       </div>
       <LoadState {...resource} empty={!value}>
@@ -224,7 +224,7 @@ function UsersView({ token, onForbidden, onProjects, onTasks }: {
   }
   return (
     <section className={styles.view} aria-labelledby="users-heading">
-      <div className={styles.viewHead}><div><h2 id="users-heading">用户</h2><p>搜索账号并查看统计。</p></div><RefreshButton onClick={resource.retry} /></div>
+      <div className={styles.viewHead}><div><h2 id="users-heading">用户</h2></div><RefreshButton onClick={resource.retry} /></div>
       <form className={styles.filters} role="search" aria-label="用户筛选" onSubmit={submit}>
         <label><span>搜索用户</span><input className="input" value={draft} maxLength={128} onChange={(event) => setDraft(event.target.value)} /></label>
         <button className="btn btn-primary" type="submit">搜索</button>
@@ -332,7 +332,6 @@ function ProjectDetailView({ token, project, onForbidden }: {
         </section>
         <section className={`panel ${styles.detail}`}>
           <h3>受限上下文快照</h3>
-          <p className={styles.muted}>所有字段均可能被截断或脱敏；这里只显示服务端允许的设置、大纲、事件、事实和上下文。</p>
           <LoadState {...context} empty={!context.data}>{context.data && <ContextView value={context.data} />}</LoadState>
         </section>
       </div>
@@ -364,7 +363,7 @@ function ProjectsView({ token, onForbidden, initialUserId }: {
   }
   return (
     <section className={styles.view} aria-labelledby="projects-heading">
-      <div className={styles.viewHead}><div><h2 id="projects-heading">作品</h2><p>按作品名或作者查看统计、章节和受限上下文。</p></div><RefreshButton onClick={resource.retry} /></div>
+      <div className={styles.viewHead}><div><h2 id="projects-heading">作品</h2></div><RefreshButton onClick={resource.retry} /></div>
       <form className={styles.filters} role="search" aria-label="作品筛选" onSubmit={submit}>
         <label><span>作品搜索</span><input className="input" value={draftQ} maxLength={128} onChange={(event) => setDraftQ(event.target.value)} /></label>
         <label><span>用户 ID</span><input className="input" value={draftUser} onChange={(event) => setDraftUser(event.target.value)} /></label>
@@ -459,7 +458,7 @@ function TaskDetailView({ token, task, onForbidden }: {
         </>}</LoadState>
       </section>
       <section className={`panel ${styles.detail}`}>
-        <div className={styles.detailHead}><div><h3>有序节点流</h3><p>按运行 ID 升序；节点计时不等于任务跨度。</p></div><RefreshButton onClick={runs.retry} /></div>
+        <div className={styles.detailHead}><div><h3>有序节点流</h3></div><RefreshButton onClick={runs.retry} /></div>
         <LoadState {...runs} empty={runs.data?.items.length === 0}>
           {runs.data && <><RunTable runs={runs.data.items} onSelect={(run) => setRunId(run.id)} /><Pagination total={runs.data.total} offset={offset} onChange={(next) => { setRunId(null); setOffset(next) }} /></>}
         </LoadState>
@@ -493,7 +492,7 @@ function TasksView({ token, onForbidden, initialUserId }: {
   }
   return (
     <section className={styles.view} aria-labelledby="tasks-heading">
-      <div className={styles.viewHead}><div><h2 id="tasks-heading">任务</h2><p>按用户、作品和状态筛选。</p></div><RefreshButton onClick={resource.retry} /></div>
+      <div className={styles.viewHead}><div><h2 id="tasks-heading">任务</h2></div><RefreshButton onClick={resource.retry} /></div>
       <form className={styles.filters} aria-label="任务筛选" onSubmit={submit}>
         <label><span>用户 ID</span><input className="input" value={draft.userId} onChange={(event) => setDraft({ ...draft, userId: event.target.value })} /></label>
         <label><span>作品 ID</span><input className="input" value={draft.projectId} onChange={(event) => setDraft({ ...draft, projectId: event.target.value })} /></label>
@@ -537,7 +536,7 @@ function RunsView({ token, onForbidden }: { token: string; onForbidden: () => vo
   }
   return (
     <section className={styles.view} aria-labelledby="runs-heading">
-      <div className={styles.viewHead}><div><h2 id="runs-heading">全部运行</h2><p>包含建书、大纲等没有任务 ID 的运行。</p></div><RefreshButton onClick={resource.retry} /></div>
+      <div className={styles.viewHead}><div><h2 id="runs-heading">全部运行</h2></div><RefreshButton onClick={resource.retry} /></div>
       <form className={styles.filters} aria-label="运行筛选" onSubmit={submit}>
         <label><span>用户 ID</span><input className="input" value={draft.userId} onChange={(event) => setDraft({ ...draft, userId: event.target.value })} /></label>
         <label><span>作品 ID</span><input className="input" value={draft.projectId} onChange={(event) => setDraft({ ...draft, projectId: event.target.value })} /></label>
@@ -561,7 +560,7 @@ function LogsView({ token, onForbidden }: { token: string; onForbidden: () => vo
   const resource = useResource<PageResult<AdminAccessLog>>(load, onForbidden)
   return (
     <section className={styles.view} aria-labelledby="logs-heading">
-      <div className={styles.viewHead}><div><h2 id="logs-heading">访问日志</h2><p>只记录管理员读取动作和目标，不展示凭据。</p></div><RefreshButton onClick={resource.retry} /></div>
+      <div className={styles.viewHead}><div><h2 id="logs-heading">访问日志</h2></div><RefreshButton onClick={resource.retry} /></div>
       <LoadState {...resource} empty={resource.data?.items.length === 0}>
         {resource.data && <>
           <div className={styles.tableWrap}><table><thead><tr><th>时间</th><th>管理员</th><th>动作</th><th>目标</th></tr></thead>
@@ -641,7 +640,7 @@ function InvitesView({ token, onForbidden }: { token: string; onForbidden: () =>
   return (
     <section className={styles.view} aria-labelledby="invites-heading">
       <div className={styles.viewHead}>
-        <div><h2 id="invites-heading">邀请码</h2><p>注册入口的唯一凭据；撤销或改 JWT_SECRET 后立即失效。</p></div>
+        <div><h2 id="invites-heading">邀请码</h2></div>
         <RefreshButton onClick={resource.retry} />
       </div>
       <form className={styles.filters} aria-label="生成邀请码" onSubmit={submit}>
@@ -707,8 +706,7 @@ function AdminConsole({ token, logout, onForbidden }: {
       <ProjectRail projects={[]} onLogout={logout} />
       <main className={styles.main}>
         <header className={styles.header}>
-          <div><h1>管理员控制台</h1><p>跨账号观测为只读；邀请码是唯一可写项。服务端权限仍是最终安全边界。</p></div>
-          <span className="badge badge-warning">观测只读</span>
+          <div><h1>管理员控制台</h1></div>
         </header>
         <nav className={styles.tabs} aria-label="管理视图">
           {tabs.map(([id, label]) => <button

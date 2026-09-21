@@ -517,7 +517,6 @@ export default function NewProjectPage() {
 
           {banner && <div className="banner banner-error">{banner}</div>}
           {ok && <div className="banner banner-warning">{ok}</div>}
-          {pid && <p className={styles.hint}>草稿和已确认内容已保留。手动编辑请点击对应确认按钮保存；未确认编辑离开后不会保留。完成设定与有效大纲后才开放写作。</p>}
 
           {/* 扫榜灵感（§10）：建书前的题材风向参考，全局端点；不注入任何生成节点 */}
           <RankingsPanel />
@@ -536,10 +535,7 @@ export default function NewProjectPage() {
               />
             </label>
             <div className={styles.field}>
-              <span className={styles.fieldLabel}>
-                题材
-                <span className={styles.hint}>（建书时选定，显示名锁定为包名；详情可改，只作用于即将创建的这本书）</span>
-              </span>
+              <span className={styles.fieldLabel}>题材</span>
               <div className={styles.lockedGenre}>{genreLabel}</div>
               {groupCatalog(catalog).map(({ group, items }) => (
                 <div key={group} className={styles.genreGroup}>
@@ -588,10 +584,7 @@ export default function NewProjectPage() {
               </details>
             </div>
             <label className={styles.field}>
-              <span className={styles.fieldLabel}>
-                每章目标字数
-                <span className={styles.hint}>（500–20000，驱动单章长度，默认 3000）</span>
-              </span>
+              <span className={styles.fieldLabel}>每章目标字数（500–20000）</span>
               <input
                 className="input"
                 type="number"
@@ -643,10 +636,6 @@ export default function NewProjectPage() {
                   {busy === 'draft' ? '重新生成中…' : '重新生成草稿'}
                 </button>
               </div>
-              <p className={styles.hint}>
-                由 Planner 按你的梗概生成（境界体系 / 世界观 / 硬约束 / 势力 / 核心人物 / 关键地点）。
-                草稿只是提案，可直接编辑，确认后落库生效。
-              </p>
               {draftError && (
                 <div className="banner banner-warning">LLM 生成降级：{draftError}（可手填后确认）</div>
               )}
@@ -865,10 +854,6 @@ export default function NewProjectPage() {
                   {busy === 'outline-draft' ? '生成中…' : outline ? '重新生成大纲' : '生成大纲'}
                 </button>
               </div>
-              <p className={styles.hint}>
-                按题材节奏分卷（推进快则卷多），只规划到卷和约每 30 章一段的阶段，不写逐章细纲。
-                写作时注入当前卷目标与当前阶段。可编辑后确认。
-              </p>
               {outlineError && (
                 <div className="banner banner-warning">LLM 生成降级：{outlineError}（可手填后确认）</div>
               )}

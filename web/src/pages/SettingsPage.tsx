@@ -306,10 +306,6 @@ export default function SettingsPage() {
 
           <section className={`panel ${styles.section}`}>
             <h2 className={styles.sectionTitle}>文风档案</h2>
-            <p className={styles.hint}>
-              写作生成的硬约束（§7.12）：视角 / 句式 / 禁用表达 / 疲劳词与句式模式 / 对话腔调。
-              直接编辑即改全书文风，保存后生效。
-            </p>
             {settings ? (
               <ProfileEditor
                 draft={profileDraft}
@@ -326,15 +322,12 @@ export default function SettingsPage() {
 
           <section className={`panel ${styles.section}`}>
             <h2 className={styles.sectionTitle}>样本提取</h2>
-            <p className={styles.hint}>
-              粘贴 1–2 篇你的样章（合计 ≤1.2 万字），系统做统计层分析 + LLM 提炼，生成文风草稿供确认。
-            </p>
             <textarea
               className="textarea"
               rows={4}
               value={sampleText}
               onChange={(e) => setSampleText(e.target.value)}
-              placeholder="粘贴样本段落（空行分隔，最多取前两段）"
+              placeholder="粘贴样本段落（空行分隔，最多取前两段，合计不超过 1.2 万字）"
             />
             <div className={styles.saveRow}>
               <button
@@ -364,10 +357,6 @@ export default function SettingsPage() {
 
           <section className={`panel ${styles.section}`}>
             <h2 className={styles.sectionTitle}>本书题材</h2>
-            <p className={styles.hint}>
-              节奏、爽点、禁忌、机制。根题材在建书时锁定，这里只改这本书的字段，不影响目录和其他书。
-              文风在上面单独编辑，靠导入作品提取。
-            </p>
             {genrePack ? (
               <>
                 <p className={styles.hint}>
@@ -401,15 +390,8 @@ export default function SettingsPage() {
 
           <section className={`panel ${styles.section}`}>
             <h2 className={styles.sectionTitle}>生成设置</h2>
-            <p className={styles.hint}>
-              每章目标字数（§6.9 三层字数控制）：驱动单章生成长度，新生成章节按
-              [0.8×目标, 1.3×目标] 校验，越界自动重写。默认 3000，范围 500–20000。
-              模型 API Key 与扫榜请到
-              <Link to="/environment">环境配置</Link>
-              （作品库左侧）。
-            </p>
             <label className={styles.field}>
-              <span className={styles.fieldLabel}>每章目标字数</span>
+              <span className={styles.fieldLabel}>每章目标字数（500–20000）</span>
               <input
                 className="input"
                 type="number"
@@ -429,6 +411,7 @@ export default function SettingsPage() {
               >
                 {busy === 'words' ? '保存中…' : '保存目标字数'}
               </button>
+              <Link className="btn btn-quiet" to="/environment">模型连接与扫榜</Link>
             </div>
           </section>
         </div>

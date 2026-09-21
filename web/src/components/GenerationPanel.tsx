@@ -7,7 +7,7 @@ import { formatApiError } from '../lib/apiError'
 import type { ChapterMeta, WritingMode } from '../types'
 import styles from './GenerationPanel.module.css'
 
-/** 单章估算成本（与 gateway config.go 默认值对齐；无 API 暴露，前端常量标注「估算」） */
+/** 单章估算成本（与 COST_PER_CHAPTER_YUAN 默认值对齐；无 API 暴露，前端常量标注「估算」） */
 const COST_PER_CHAPTER = 0.05
 const BATCH_MAX = 20
 

@@ -3,7 +3,7 @@ import { expect, it } from 'vitest'
 import { formatApiError, formatErrorText } from './apiError'
 import { ApiError } from './api'
 
-it('maps gateway codes and HTTP status to Chinese', () => {
+it('maps queue codes and HTTP status to Chinese', () => {
   expect(formatApiError(new ApiError(429, 'CONCURRENCY_LIMIT', null))).toBe('本书已有进行中的任务，请稍候')
   expect(formatApiError(new ApiError(503, 'enqueue_failed', null))).toBe('写作任务没能进入队列，请稍后重试')
   expect(formatApiError(new ApiError(500, 'Internal Server Error', null))).toBe('服务器出错，请稍后重试')

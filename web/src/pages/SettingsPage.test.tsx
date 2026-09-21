@@ -38,5 +38,5 @@ it('keeps style settings and no longer hosts model connections', async () => {
   expect(screen.getByText('本书题材')).toBeTruthy()
   expect(screen.queryByText('题材预设')).toBeNull()
   expect(screen.queryByText('模型连接与路由')).toBeNull()
-  expect(screen.getByRole('link', { name: '环境配置' })).toBeTruthy()
+  expect(screen.getByRole('link', { name: '模型连接与扫榜' })).toBeTruthy()
 })

@@ -42,13 +42,6 @@
   font-size: 18px;
 }
 
-.hint {
-  margin: 0;
-  color: var(--ink-muted);
-  font-size: var(--text-small);
-  line-height: 1.6;
-}
-
 .subTitle {
   font-size: var(--text-heading);
   margin-bottom: var(--space-2);
