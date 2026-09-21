@@ -78,7 +78,7 @@ jobs:
           PGPASSWORD: myink
         run: psql -h localhost -U myink -d myink -v ON_ERROR_STOP=1 -f docker/initdb/01-roles.sql
       - name: 初始化（建表 + RLS + seed，幂等）
-        run: myink init
+        run: myink init --seed
       - name: 契约导出 + diff 闸（改响应模型未重新导出 spec 即红）
         run: |
           myink contract export

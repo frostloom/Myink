@@ -43,7 +43,7 @@ ZERO_VEC = [0.0] * 1024
 def _demo_user_id() -> uuid.UUID:
     with new_session() as db:
         u = db.query(User).filter(User.username == "demo").first()
-        assert u is not None, "请先运行 `myink init`（demo 用户未建）"
+        assert u is not None, "请先运行 `myink init --seed`（demo 用户未建）"
         return u.id
 
 

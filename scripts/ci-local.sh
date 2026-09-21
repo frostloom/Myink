@@ -32,7 +32,7 @@ trap '"${compose_test[@]}" down --volumes >/dev/null 2>&1 || true' EXIT
 
 echo "==> [1/4] Python：语法门禁 + 初始化 + 契约 diff 闸 + 全量回归"
 python -m compileall -q src tests
-myink init
+myink init --seed
 myink contract export
 git diff --exit-code -- spec/api-openapi.json
 EMBED_ENABLED=0 python -m pytest tests/ -q

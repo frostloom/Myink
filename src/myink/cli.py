@@ -1,7 +1,8 @@
 """阶段 1 CLI：本地端到端跑通（章节生成 / 校验证据 / 批次 / 任务时间线）。
 
 用法：
-    myink init                                  # 建表 + RLS + demo 种子
+    myink init                                  # 建表 + RLS（空库，不建账号与示例书）
+    myink init --seed                           # 额外写入 demo 种子与示例书（开发/测试用）
     myink chapter <project_id> <seq>            # 生成单章
     myink batch <project_id> <N> <start_seq>    # 自动写作批次
     myink status <task_id>                      # 任务状态 + 每节点成本/耗时
@@ -30,12 +31,12 @@ console = Console()
 
 @app.command()
 def init(
-    no_seed: Annotated[bool, typer.Option(
-        "--no-seed",
-        help="Run additive initialization without creating demo or sample books.",
+    seed: Annotated[bool, typer.Option(
+        "--seed",
+        help="Also create the demo account and sample books.",
     )] = False,
 ) -> None:
-    """初始化数据库：建表 + RLS + demo 种子数据。"""
+    """初始化数据库：建表 + RLS。默认不建账号、不建示例书。"""
     from myink.db import (enable_row_level_security, ensure_chapter_versions,
                           ensure_genre_pack, ensure_global_audit_reports,
                           ensure_memory_candidate_kinds, ensure_project_creation,
@@ -76,9 +77,10 @@ def init(
     # automatically when deploying authentication onto an existing book database.
     console.print("[bold]2/3[/] 启用 RLS 主强制（FORCE ROW LEVEL SECURITY）...")
     enable_row_level_security()
-    if no_seed:
-        console.print("[bold]3/3[/] 跳过 demo 与示例书种子...")
-        console.print("[green]✓[/] 初始化完成（无种子数据）")
+    if not seed:
+        console.print("[bold]3/3[/] 不建账号与示例书（要演示数据请显式加 --seed）...")
+        console.print("[green]✓[/] 初始化完成（空库：无账号、无示例书）")
+        console.print("首个账号：myink create-invite 发码 → 登录页注册；要进管理面板再跑 myink set-role <用户名> admin")
         return
     console.print("[bold]3/3[/] 写入 demo 种子（《九州问天》+ 示例书）...")
     pid = create_demo_project()
