@@ -2,56 +2,19 @@ package handlers
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"myink/gateway/internal/pyapi"
-	"myink/gateway/internal/redis"
 )
 
-// SessionMiddleware checks revocation and obtains the account's current tier.
-func SessionMiddleware(py *pyapi.Client) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Header("Cache-Control", "no-store")
-		if py == nil {
-			c.AbortWithStatusJSON(503, gin.H{"error": "auth_unavailable"})
-			return
-		}
-		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
-		defer cancel()
-		header := http.Header{"Authorization": []string{c.GetHeader("Authorization")}}
-		resp, err := py.Forward(ctx, http.MethodGet, "/api/v1/auth/session", nil, header, nil)
-		if err != nil {
-			c.AbortWithStatusJSON(503, gin.H{"error": "auth_unavailable"})
-			return
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode == 401 || resp.StatusCode == 403 {
-			c.AbortWithStatusJSON(401, gin.H{"error": "invalid_token"})
-			return
-		}
-		var session struct {
-			UserID   string `json:"user_id"`
-			Username string `json:"username"`
-			Tier     string `json:"tier"`
-		}
-		if resp.StatusCode != 200 || json.NewDecoder(io.LimitReader(resp.Body, 65536)).Decode(&session) != nil || session.UserID != GetUserID(c) || session.Username == "" {
-			c.AbortWithStatusJSON(503, gin.H{"error": "auth_unavailable"})
-			return
-		}
-		c.Set("user_tier", session.Tier)
-		c.Next()
-	}
-}
-
+// checkAccess 向 Python 的归属接口确认「当前身份能否访问这个对象」，不能则直接结束响应。
+//
+// 身份取自 JWT 验签后的 sub（GetUserID），不是请求里带的头——伪造的头在这里没有任何作用。
 func checkAccess(c *gin.Context, py *pyapi.Client, kind, id string, writing ...bool) bool {
 	if py == nil {
 		c.AbortWithStatusJSON(503, gin.H{"error": "authorization_unavailable"})
@@ -90,41 +53,4 @@ func checkAccess(c *gin.Context, py *pyapi.Client, kind, id string, writing ...b
 		return false
 	}
 	return true
-}
-
-// 共享 Redis 计数器按「真实客户端地址」分桶。直连对端不在 trusted 内时忽略转发头、只认
-// 直连地址（见 ClientIP）——否则伪造 X-Forwarded-For 就能自选配额桶。挂在反代之后的部署
-// 必须配 TRUSTED_PROXIES，否则所有用户塌进同一个桶，一个人刷就锁死所有人登录。
-func AuthRateLimit(r *redis.Client, trusted []*net.IPNet) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Header("Cache-Control", "no-store")
-		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4096)
-		if r == nil {
-			c.AbortWithStatusJSON(503, gin.H{"error": "auth_unavailable"})
-			return
-		}
-		digest := sha256.Sum256([]byte(ClientIP(c, trusted)))
-		key := fmt.Sprintf("rate:auth:%x", digest)
-		count, err := r.Eval(c.Request.Context(), `local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],60) end; return n`, []string{key})
-		if err != nil {
-			c.AbortWithStatusJSON(503, gin.H{"error": "auth_unavailable"})
-			return
-		}
-		if n, ok := count.(int64); !ok || n > 20 {
-			c.Header("Retry-After", "60")
-			c.AbortWithStatusJSON(429, gin.H{"error": "auth_rate_limited"})
-			return
-		}
-		c.Next()
-	}
-}
-
-func (h *TaskHandler) AuthAction(c *gin.Context) {
-	body, err := io.ReadAll(http.MaxBytesReader(c.Writer, c.Request.Body, 4096))
-	if err != nil {
-		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "auth_body_too_large"})
-		return
-	}
-	action := strings.TrimPrefix(c.FullPath(), "/api/v1/auth/")
-	h.forwardToPy(c, "/api/v1/auth/"+action, body)
 }

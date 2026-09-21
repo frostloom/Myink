@@ -4,7 +4,6 @@ package config
 import (
 	"os"
 	"strconv"
-	"strings"
 )
 
 // JWT 身份断言（§14.1 ③）：dev 默认密钥与 Python config.py 的 _DEV_JWT_SECRET 同值，
@@ -17,9 +16,11 @@ type Config struct {
 	RedisAddr     string
 	RedisPassword string
 	PythonAPIBase string
-	// 阶段 5：前端静态托管目录（web/dist，容器内 /app/dist；不存在时 SPA fallback 自动降级为 404）
-	WebDistDir string
 	// 三层闸门（§13）：每日配额（章）、并发上限（进行中任务）、日成本上限（¥）
+	//
+	// 这一组连同下面的 AmqpURL/QueuePrefix/优先级，网关二进制已不再读取——入队搬去了
+	// Python（src/myink/worker/enqueue.py）。留着只为让 internal/queue 编译：那是闸门
+	// .lua 的语义参照实现。别照这里的默认值去改 Python 侧。
 	QuotaDaily int
 	// 每书每日配额（章）：单用户同时写多本书时限制单书用量（默认 50 章/书/日）
 	BookQuotaDaily int
@@ -44,10 +45,6 @@ type Config struct {
 	QueuePrefix    string
 	VIPPriority    int
 	NormalPriority int
-	// TrustedProxies：可信反向代理（逗号分隔的 IP/CIDR）。默认空 = 不信任任何代理，
-	// 认证限流按直连地址计数（无代理部署的原有行为）。只有网关确实位于反代之后才配置——
-	// 否则任何客户端都能伪造 X-Forwarded-For 自选配额桶，把撞库限流整个绕开。
-	TrustedProxies []string
 }
 
 func env(key, def string) string {
@@ -75,29 +72,12 @@ func envFloat(key string, def float64) float64 {
 	return def
 }
 
-// envList 逗号分隔列表；空串或全空白返回 nil（调用方据此走「未配置」分支）。
-func envList(key string) []string {
-	v := os.Getenv(key)
-	if strings.TrimSpace(v) == "" {
-		return nil
-	}
-	parts := strings.Split(v, ",")
-	out := make([]string, 0, len(parts))
-	for _, p := range parts {
-		if s := strings.TrimSpace(p); s != "" {
-			out = append(out, s)
-		}
-	}
-	return out
-}
-
 func Load() Config {
 	return Config{
 		Port:             env("GATEWAY_PORT", "8080"),
 		RedisAddr:        env("REDIS_ADDR", "localhost:6380"),
 		RedisPassword:    env("REDIS_PASSWORD", ""),
 		PythonAPIBase:    env("PYTHON_API_BASE", "http://127.0.0.1:8100"),
-		WebDistDir:       env("WEB_DIST_DIR", "web/dist"),
 		QuotaDaily:       envInt("QUOTA_DAILY_CHAPTERS", 500),
 		BookQuotaDaily:   envInt("BOOK_QUOTA_DAILY_CHAPTERS", 50),
 		BooksPerDay:      envInt("BOOKS_PER_DAY", 10),
@@ -113,6 +93,5 @@ func Load() Config {
 		QueuePrefix:      env("QUEUE_PREFIX", ""),
 		VIPPriority:      envInt("PRIORITY_VIP", 9),
 		NormalPriority:   envInt("PRIORITY_NORMAL", 0),
-		TrustedProxies:   envList("TRUSTED_PROXIES"),
 	}
 }

@@ -1,19 +1,10 @@
-// 契约一致性测试（阶段 5 契约测试形式化）：网关转发契约与 Python 侧单一事实源
-// spec/api-openapi.json 对齐。
+// 契约一致性测试：网关转发契约与 Python 侧单一事实源 spec/api-openapi.json 对齐。
 //
-// 独立运行：不依赖 Redis（不调 newTestRedis/newRouter），只依赖已提交的契约文件 +
-// 标准库 encoding/json。两类断言：
-//  1. TestContractHasAllForwardedPaths —— 网关每个转发内部路径必须在契约里有同形状
-//     path + method（防 BatchControl 式路径漂移：曾转发 /api/v1/batches/... 404）。
-//  2. TestFakePyFieldsWithinContractSchema —— 假服务（fakePy）响应与契约 200 schema
-//     双向键对齐：契约 required ⊆ 假键（抓"缺字段"）且假键 ⊆ properties（抓"多/错
-//     字段"），数组递归。单向"假⊆契约"抓不住"假项目缺 current_chapter"这类缺字段失配。
+// 独立运行：不依赖 Redis，只依赖已提交的契约文件 + 标准库 encoding/json。
 package handlers
 
 import (
 	"encoding/json"
-	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -22,88 +13,14 @@ import (
 	"testing"
 )
 
-// forwardedPaths：网关转发的内部路径表（tasks.go 各 handler 注释 + pyapi.GetTaskDetail +
-// health.go 的 /readyz；healthz 网关本地回，不转发）。path 用 FastAPI 模板形式。
+// forwardedPaths：网关**仍然**直连 Python 的路径表。
+//
+// 刻意只剩两条，不是搬了一半——Caddy 接管公网入口后，83 条业务转发全部改由 Caddy
+// 分流到 Python（见 caddy/Caddyfile），Go 只剩 SSE 这一条长连接，以及它沿途需要的
+// 两次身份往返。path 用 FastAPI 模板形式。
 var forwardedPaths = []struct{ method, path string }{
-	{"GET", "/readyz"}, // Ready 探针：Redis ping + Python /readyz 转发（health.go）
-	{"POST", "/api/v1/auth/token"},
-	{"POST", "/api/v1/auth/register"},
-	{"GET", "/api/v1/auth/session"},
-	{"POST", "/api/v1/auth/password"},
-	{"POST", "/api/v1/auth/logout"},
-	{"GET", "/api/v1/projects/{project_id}/access"},
-	{"GET", "/api/v1/tasks/{task_id}/access"},
-	{"GET", "/api/v1/projects"},
-	{"POST", "/api/v1/projects"},
-	{"GET", "/api/v1/projects/{project_id}/creation"},
-	{"PUT", "/api/v1/projects/{project_id}"},
-	{"DELETE", "/api/v1/projects/{project_id}"},
-	{"GET", "/api/v1/projects/{project_id}/chapters"},
-	{"GET", "/api/v1/projects/{project_id}/chapters/{chapter_id}"},
-	{"PUT", "/api/v1/projects/{project_id}/chapters/{chapter_id}/content"},
-	{"POST", "/api/v1/projects/{project_id}/chapters/{chapter_id}/correct-memory"},
-	{"DELETE", "/api/v1/projects/{project_id}/chapters/{chapter_id}"},
-	{"GET", "/api/v1/projects/{project_id}/chapters/{chapter_id}/versions"},
-	{"POST", "/api/v1/projects/{project_id}/chapters/{chapter_id}/versions/{version}/restore"},
-	{"POST", "/api/v1/projects/{project_id}/global-audit"},
-	{"GET", "/api/v1/projects/{project_id}/global-audit"},
-	{"GET", "/api/v1/projects/{project_id}/global-audit/{report_id}"},
-	{"GET", "/api/v1/projects/{project_id}/settings"},
-	{"PUT", "/api/v1/projects/{project_id}/settings"},
-	{"POST", "/api/v1/projects/{project_id}/settings/models"},
-	{"POST", "/api/v1/projects/{project_id}/settings/test-connection"},
-	{"GET", "/api/v1/environment"},
-	{"PUT", "/api/v1/environment"},
-	{"POST", "/api/v1/environment/models"},
-	{"POST", "/api/v1/environment/test-connection"},
-	{"POST", "/api/v1/environment/test-rankings"},
-	{"GET", "/api/v1/skill-presets"},
-	{"GET", "/api/v1/genre-packs"},
-	{"PUT", "/api/v1/projects/{project_id}/genre-pack"},
-	{"POST", "/api/v1/projects/{project_id}/genre-pack/restore"},
-	{"POST", "/api/v1/projects/{project_id}/style-samples"},
-	{"PUT", "/api/v1/projects/{project_id}/style-profile"},
-	{"POST", "/api/v1/projects/{project_id}/setup-draft"},
-	{"PUT", "/api/v1/projects/{project_id}/setup"},
-	// 整书大纲（§11 建书 ③：草稿 / 确认落库 / 读取）
-	{"POST", "/api/v1/projects/{project_id}/outline-draft"},
-	{"PUT", "/api/v1/projects/{project_id}/outline"},
-	{"GET", "/api/v1/projects/{project_id}/outline"},
-	{"GET", "/api/v1/projects/{project_id}/world"},
-	{"GET", "/api/v1/projects/{project_id}/characters"},
-	{"GET", "/api/v1/projects/{project_id}/characters/{character_id}/state-history"},
-	{"GET", "/api/v1/projects/{project_id}/events"},
-	{"GET", "/api/v1/projects/{project_id}/entities"},
-	{"GET", "/api/v1/projects/{project_id}/graph"},
-	{"GET", "/api/v1/projects/{project_id}/foreshadows"},
-	{"GET", "/api/v1/rankings"},
-	{"GET", "/api/v1/tasks/{task_id}"},
-	{"POST", "/api/v1/tasks/{task_id}/plan/confirm"},
-	{"POST", "/api/v1/tasks/{task_id}/pause"},
-	{"POST", "/api/v1/tasks/{task_id}/resume"},
-	{"POST", "/api/v1/tasks/{task_id}/cancel"},
-	{"GET", "/api/v1/projects/{project_id}/tasks"},
-	{"GET", "/api/v1/projects/{project_id}/candidates"},
-	{"POST", "/api/v1/projects/{project_id}/candidates/{candidate_id}/confirm"},
-	{"POST", "/api/v1/projects/{project_id}/candidates/{candidate_id}/reject"},
-	{"GET", "/api/v1/projects/{project_id}/lessons"},
-	{"POST", "/api/v1/projects/{project_id}/lessons/{lesson_id}/confirm"},
-	{"POST", "/api/v1/projects/{project_id}/lessons/{lesson_id}/reject"},
-	// 管理只读面板（admin.go:37 由 router.go:41-47 的路径表拼出 "/api/v1/admin"+path，
-	// 全部 GET）。这条链路是字符串拼接而非逐个 handler，路径漂移不会被编译器拦住，
-	// 所以必须在这里显式列全：两端任一侧改了路径而另一侧没跟上，本测试即红。
-	{"GET", "/api/v1/admin/overview"},
-	{"GET", "/api/v1/admin/users"},
-	{"GET", "/api/v1/admin/projects"},
-	{"GET", "/api/v1/admin/projects/{project_id}/chapters"},
-	{"GET", "/api/v1/admin/projects/{project_id}/chapters/{chapter_id}"},
-	{"GET", "/api/v1/admin/projects/{project_id}/context"},
-	{"GET", "/api/v1/admin/tasks"},
-	{"GET", "/api/v1/admin/tasks/{task_id}"},
-	{"GET", "/api/v1/admin/tasks/{task_id}/runs"},
-	{"GET", "/api/v1/admin/runs"},
-	{"GET", "/api/v1/admin/runs/{run_id}"},
-	{"GET", "/api/v1/admin/access-logs"},
+	{"GET", "/api/v1/tasks/{task_id}/access"}, // checkAccess：SSE 连接的归属断言（middleware 之外，auth.go）
+	{"GET", "/api/v1/auth/session"},           // SSE 每 15 秒的会话复检（sse.go:134）
 }
 
 func loadContract(t *testing.T) map[string]any {
@@ -131,84 +48,9 @@ func normPath(p string) string {
 	return pathParamRe.ReplaceAllString(p, "{}")
 }
 
-// resolveSchema：解 $ref / anyOf（pydantic v2 的 `X | None` 会产 anyOf=[{$ref},{type:null}]，
-// 取首个非 null 分支）到含 properties 的最终 schema。
-func resolveSchema(schema map[string]any, components map[string]any) map[string]any {
-	for i := 0; i < 8; i++ { // 防循环 $ref
-		if ref, ok := schema["$ref"].(string); ok {
-			comps, _ := components["schemas"].(map[string]any)
-			next, ok := comps[ref[strings.LastIndex(ref, "/")+1:]].(map[string]any)
-			if !ok {
-				return schema
-			}
-			schema = next
-			continue
-		}
-		if arr, ok := schema["anyOf"].([]any); ok {
-			var picked map[string]any
-			for _, item := range arr {
-				m, _ := item.(map[string]any)
-				if m == nil || m["type"] == "null" {
-					continue
-				}
-				picked = m
-				break
-			}
-			if picked != nil {
-				schema = picked
-				continue
-			}
-		}
-		break
-	}
-	return schema
-}
-
-// checkValue：双向键检查——契约 required ⊆ 假值键（缺字段失败）且假值键 ⊆ properties
-// （多/错字段失败）；数组递归 items；无 properties（自由形状/标量）跳过。
-func checkValue(t *testing.T, value any, schema map[string]any, components map[string]any, where string) {
-	t.Helper()
-	if ty, ok := schema["type"].(string); ok && ty == "array" {
-		items, _ := schema["items"].(map[string]any)
-		if items == nil {
-			return
-		}
-		list, ok := value.([]any)
-		if !ok {
-			return
-		}
-		for _, v := range list {
-			checkValue(t, v, items, components, where+"[]")
-		}
-		return
-	}
-	schema = resolveSchema(schema, components)
-	props, _ := schema["properties"].(map[string]any)
-	if props == nil {
-		return // 自由形状（additionalProperties）或标量：不校验
-	}
-	doc, ok := value.(map[string]any)
-	if !ok {
-		return
-	}
-	if req, ok := schema["required"].([]any); ok {
-		for _, r := range req {
-			rk, _ := r.(string)
-			if _, exists := doc[rk]; !exists {
-				t.Errorf("%s: 缺契约必填字段 %q", where, rk)
-			}
-		}
-	}
-	for k, v := range doc {
-		p, ok := props[k].(map[string]any)
-		if !ok {
-			t.Errorf("%s: 假服务多出契约未声明字段 %q", where, k)
-			continue
-		}
-		checkValue(t, v, p, components, where+"."+k)
-	}
-}
-
+// 网关这几个内部路径是字符串拼出来的（checkAccess 用 kind+id 拼、sse.go 直接写字面量），
+// 编译器拦不住路径漂移（历史上真出过 BatchControl 转发错路径 404）。所以显式列全再比对：
+// Python 侧改了路由而这里没跟上，本测试即红。
 func TestContractHasAllForwardedPaths(t *testing.T) {
 	doc := loadContract(t)
 	paths, _ := doc["paths"].(map[string]any)
@@ -231,65 +73,5 @@ func TestContractHasAllForwardedPaths(t *testing.T) {
 		if _, ok := ops[strings.ToLower(r.method)]; !ok {
 			t.Errorf("网关转发 %s %s 在契约里缺 method", r.method, r.path)
 		}
-	}
-}
-
-func TestFakePyFieldsWithinContractSchema(t *testing.T) {
-	doc := loadContract(t)
-	components, _ := doc["components"].(map[string]any)
-	paths, _ := doc["paths"].(map[string]any)
-	py := fakePy()
-
-	fixtures := []struct {
-		name   string
-		method string
-		req    string // 请求假服务的路径（契约模板的实例值）
-		ctPath string // 契约模板路径
-	}{
-		{"项目列表", "GET", "/api/v1/projects", "/api/v1/projects"},
-		{"章节列表", "GET", "/api/v1/projects/p1/chapters", "/api/v1/projects/{project_id}/chapters"},
-		{"任务详情", "GET", "/api/v1/tasks/detail-test", "/api/v1/tasks/{task_id}"},
-		{"批次暂停", "POST", "/api/v1/tasks/batch-x/pause", "/api/v1/tasks/{task_id}/pause"},
-		{"签发 token", "POST", "/api/v1/auth/token", "/api/v1/auth/token"},
-		{"扫榜", "GET", "/api/v1/rankings", "/api/v1/rankings"},
-		{"关系图谱", "GET", "/api/v1/projects/p1/graph", "/api/v1/projects/{project_id}/graph"},
-		{"伏笔池", "GET", "/api/v1/projects/p1/foreshadows", "/api/v1/projects/{project_id}/foreshadows"},
-		{"整书大纲", "GET", "/api/v1/projects/p1/outline", "/api/v1/projects/{project_id}/outline"},
-	}
-	for _, f := range fixtures {
-		t.Run(f.name, func(t *testing.T) {
-			req, err := http.NewRequest(f.method, py.URL+f.req, nil)
-			if err != nil {
-				t.Fatalf("构造请求失败: %v", err)
-			}
-			resp, err := py.Client().Do(req)
-			if err != nil {
-				t.Fatalf("请求假服务失败: %v", err)
-			}
-			defer resp.Body.Close()
-			raw, err := io.ReadAll(resp.Body)
-			if err != nil {
-				t.Fatalf("读假服务响应失败: %v", err)
-			}
-
-			ops, _ := paths[f.ctPath].(map[string]any)
-			if ops == nil {
-				t.Fatalf("契约缺路径 %s", f.ctPath)
-			}
-			m, _ := ops[strings.ToLower(f.method)].(map[string]any)
-			if m == nil {
-				t.Fatalf("契约缺 method %s %s", f.method, f.ctPath)
-			}
-			resp200, _ := m["responses"].(map[string]any)["200"].(map[string]any)
-			schema, _ := resp200["content"].(map[string]any)["application/json"].(map[string]any)["schema"].(map[string]any)
-			if schema == nil {
-				t.Fatalf("契约缺 200 schema: %s %s", f.method, f.ctPath)
-			}
-			var body any
-			if err := json.Unmarshal(raw, &body); err != nil {
-				t.Fatalf("假服务响应解析失败: %v", err)
-			}
-			checkValue(t, body, schema, components, f.req)
-		})
 	}
 }

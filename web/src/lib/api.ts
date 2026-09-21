@@ -1,5 +1,5 @@
-// fetch 统一封装：Vite dev proxy 把 /api 转发到网关 :8080（同源免 CORS）。
-// 网关业务路由一律 Bearer（§14.1 ③）；非 2xx 统一抛 ApiError（code = 网关 {"error": code}）。
+// fetch 统一封装：Vite dev proxy 把 /api 转发到 Caddy（:80，见 vite.config.ts），生产同源。
+// 业务路由一律 Bearer（§14.1 ③）；非 2xx 统一抛 ApiError（code = {"error": code} 信封）。
 
 import type {
   AuthResponse,

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"myink/gateway/internal/config"
 	"myink/gateway/internal/pyapi"
@@ -65,132 +63,37 @@ func TestJWTRejectsMissingSecurityClaims(t *testing.T) {
 	}
 }
 
-func TestRevokedSessionCannotReadProjects(t *testing.T) {
-	businessCalls := 0
+// 伪造的 X-Myink-User 头既不能自证身份，也不能覆盖 token 里的 sub：送到 Python 归属接口的
+// 必须是验签后的 sub。上游一旦看到别的值，就等于越权的钥匙被转发过去了。
+func TestForgedIdentityHeaderIsIgnoredByAccessCheck(t *testing.T) {
+	accessCalls := 0
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		if r.URL.Path == "/api/v1/auth/session" {
-			w.WriteHeader(401)
-			fmt.Fprint(w, `{"detail":"invalid_token"}`)
+			json.NewEncoder(w).Encode(map[string]string{"user_id": isolationUser, "username": "owner", "tier": "normal"})
 			return
 		}
-		businessCalls++
-		fmt.Fprint(w, `[]`)
+		if strings.HasSuffix(r.URL.Path, "/access") {
+			accessCalls++
+			if r.Header.Get(HeaderUser) != isolationUser {
+				t.Errorf("untrusted identity forwarded: %s", r.Header.Get(HeaderUser))
+			}
+			w.WriteHeader(403)
+			fmt.Fprint(w, `{"detail":"forbidden"}`)
+			return
+		}
+		t.Errorf("unexpected upstream call %s", r.URL.Path)
 	}))
 	defer upstream.Close()
-	router := NewRouter(config.Load(), nil, nil, pyapi.New(upstream.URL, time.Second))
-	request := httptest.NewRequest("GET", "/api/v1/projects", nil)
+	// Nil Redis ensures authorization happens before touching it.
+	router := NewRouter(config.Load(), nil, pyapi.New(upstream.URL, time.Second))
+	request := httptest.NewRequest("GET", "/api/v1/tasks/c1111111-1111-4111-8111-111111111111/events", nil)
 	request.Header.Set("Authorization", strictToken(t, nil))
+	request.Header.Set(HeaderUser, "forged-owner")
 	result := httptest.NewRecorder()
 	router.ServeHTTP(result, request)
-	if result.Code != 401 || businessCalls != 0 {
-		t.Fatalf("status=%d business calls=%d", result.Code, businessCalls)
-	}
-}
-
-func TestForeignWritingOperationsDeniedBeforeSideEffects(t *testing.T) {
-	for _, endpoint := range []struct{ method, path, body string }{
-		{"POST", "/api/v1/projects/b1111111-1111-4111-8111-111111111111/chapters/new/generate", `{"seq":1}`},
-		{"POST", "/api/v1/projects/b1111111-1111-4111-8111-111111111111/batches/generate", `{"size":1,"start":1}`},
-		{"GET", "/api/v1/tasks/c1111111-1111-4111-8111-111111111111/events", ""},
-	} {
-		t.Run(endpoint.path, func(t *testing.T) {
-			accessCalls := 0
-			upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
-				if r.URL.Path == "/api/v1/auth/session" {
-					json.NewEncoder(w).Encode(map[string]string{"user_id": isolationUser, "username": "owner", "tier": "normal"})
-					return
-				}
-				if strings.HasSuffix(r.URL.Path, "/access") {
-					accessCalls++
-					if r.Header.Get(HeaderUser) != isolationUser {
-						t.Errorf("untrusted identity forwarded: %s", r.Header.Get(HeaderUser))
-					}
-					w.WriteHeader(403)
-					fmt.Fprint(w, `{"detail":"forbidden"}`)
-					return
-				}
-				t.Errorf("unexpected upstream call %s", r.URL.Path)
-			}))
-			defer upstream.Close()
-			// Nil queue/Redis ensures authorization happens before touching either.
-			router := NewRouter(config.Load(), nil, nil, pyapi.New(upstream.URL, time.Second))
-			request := httptest.NewRequest(endpoint.method, endpoint.path, strings.NewReader(endpoint.body))
-			request.Header.Set("Content-Type", "application/json")
-			request.Header.Set("Authorization", strictToken(t, nil))
-			request.Header.Set(HeaderUser, "forged-owner")
-			result := httptest.NewRecorder()
-			router.ServeHTTP(result, request)
-			if result.Code != 403 || accessCalls != 1 {
-				t.Fatalf("status=%d access checks=%d body=%s", result.Code, accessCalls, result.Body.String())
-			}
-		})
-	}
-}
-
-func TestSessionCheckFailsClosedWhenUpstreamFails(t *testing.T) {
-	for _, status := range []int{500, 503, 200} {
-		upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(status); fmt.Fprint(w, `{"invalid":true}`) }))
-		router := NewRouter(config.Load(), nil, nil, pyapi.New(upstream.URL, time.Second))
-		req := httptest.NewRequest("GET", "/api/v1/projects", nil)
-		req.Header.Set("Authorization", strictToken(t, nil))
-		result := httptest.NewRecorder()
-		router.ServeHTTP(result, req)
-		upstream.Close()
-		if result.Code < 400 {
-			t.Fatalf("accepted broken session response %d", status)
-		}
-	}
-}
-
-func TestAuthRegistrationProxyBoundsAndRateLimit(t *testing.T) {
-	// 未配置可信代理（TRUSTED_PROXIES 空）下的默认行为：限流按直连地址计数，伪造的
-	// X-Forwarded-For 一律忽略。显式置空而非继承 config.Load() 的环境，避免开发机导出
-	// 了 TRUSTED_PROXIES 时本用例莫名其妙变红。
-	cfg := config.Load()
-	cfg.TrustedProxies = nil
-	r := newTestRedis(t)
-	peer := "198.51.100.231"
-	digest := sha256.Sum256([]byte(peer))
-	key := fmt.Sprintf("rate:auth:%x", digest)
-	r.Raw().Del(context.Background(), key)
-	t.Cleanup(func() { r.Raw().Del(context.Background(), key) })
-	calls := 0
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		calls++
-		if req.URL.Path != "/api/v1/auth/register" || req.Header.Get(HeaderUser) != "" {
-			t.Error("wrong auth proxy target/identity")
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(201)
-		fmt.Fprint(w, `{"token":"test","user_id":"test","username":"new","tier":"normal","expires_in":1800}`)
-	}))
-	defer upstream.Close()
-	router := NewRouter(cfg, r, nil, pyapi.New(upstream.URL, time.Second))
-	for i := 0; i < 21; i++ {
-		body := `{"username":"new","password":"long-password-test"}`
-		if i == 0 {
-			body = strings.Repeat("x", 5000)
-		}
-		req := httptest.NewRequest("POST", "/api/v1/auth/register", strings.NewReader(body))
-		req.RemoteAddr = peer + ":12345"
-		req.Header.Set(HeaderUser, "forged-owner")
-		req.Header.Set("X-Forwarded-For", fmt.Sprintf("203.0.113.%d", i))
-		result := httptest.NewRecorder()
-		router.ServeHTTP(result, req)
-		want := 201
-		if i == 0 {
-			want = 413
-		}
-		if i == 20 {
-			want = 429
-		}
-		if result.Code != want || result.Header().Get("Cache-Control") != "no-store" {
-			t.Fatalf("request %d status=%d cache=%s", i, result.Code, result.Header().Get("Cache-Control"))
-		}
-	}
-	if calls != 19 {
-		t.Fatalf("unexpected upstream calls %d", calls)
+	if result.Code != 403 || accessCalls != 1 {
+		t.Fatalf("status=%d access checks=%d body=%s", result.Code, accessCalls, result.Body.String())
 	}
 }
 
@@ -223,7 +126,7 @@ func testSSESessionDeadline(t *testing.T, expire bool) {
 		fmt.Fprint(w, `{"ok":true}`)
 	}))
 	defer upstream.Close()
-	server := httptest.NewServer(NewRouter(config.Load(), r, nil, pyapi.New(upstream.URL, time.Second)))
+	server := httptest.NewServer(NewRouter(config.Load(), r, pyapi.New(upstream.URL, time.Second)))
 	defer server.Close()
 	// 撤销后的最坏发现时延 = 心跳/重验 ticker 15s（sse.go:86）+ validSession 5s 超时 = 20s。
 	// 这里给 30s：若沿用 20s，测试预算恰好等于被测行为的上界，负载稍高就自己撞 deadline
@@ -256,20 +159,5 @@ func testSSESessionDeadline(t *testing.T, expire bool) {
 	}
 	if expire && time.Since(started) > 10*time.Second {
 		t.Fatal("expired stream waited for the 15-second session refresh")
-	}
-}
-
-func TestEveryAuthActionBoundsRequestBody(t *testing.T) {
-	for _, method := range []string{"GET", "POST"} {
-		router := gin.New()
-		router.Use(gin.Recovery())
-		handler := &TaskHandler{}
-		router.Handle(method, "/api/v1/auth/session", handler.AuthAction)
-		req := httptest.NewRequest(method, "/api/v1/auth/session", strings.NewReader(strings.Repeat("x", 5000)))
-		result := httptest.NewRecorder()
-		router.ServeHTTP(result, req)
-		if result.Code != 413 {
-			t.Fatalf("%s unbounded auth body status=%d", method, result.Code)
-		}
 	}
 }

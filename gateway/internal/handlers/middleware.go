@@ -1,7 +1,9 @@
-// Package handlers 网关 HTTP 层（阶段 2，唯一公网入口）。
-// 身份阶段 3：JWT 验证（§14.1 ③ 归属校验双保险第一道门，替换阶段 2 X-Myink-User 占位）。
-// 网关验签 → 解出可信 sub(user_id) → 写入上下文 + 透传 X-Myink-User 头给 Python API
-// （Python 侧 require_owner 断言 project.user_id == 该身份，RLS 之外第二道门，见 api/auth.py）。
+// Package handlers 网关 HTTP 层。Caddy 接管公网入口与静态/转发之后，这里只剩 SSE 中继。
+//
+// JWT 验证（§14.1 ③）保留在网关自己做：SSE 是长连接，Caddy 无法替它按次判定身份。
+// 验签 → 解出可信 sub(user_id) → 写入上下文。Python 侧同时也自己验签
+// （见 api/auth.py），两边共用同一密钥、同一套必需 claim——不是双保险，是两个各自
+// 独立的进程都必须能自证身份。
 package handlers
 
 import (

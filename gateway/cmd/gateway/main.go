@@ -1,4 +1,4 @@
-// Myink 阶段 2 网关：唯一公网入口（鉴权占位 + 限流 + 三层闸门 + SSE + 转发 Python API）。
+// Myink 网关：SSE 中继（进度事件流）。Caddy 是公网入口，其余 /api/v1/* 直达 Python。
 package main
 
 import (
@@ -16,7 +16,6 @@ import (
 	"myink/gateway/internal/config"
 	"myink/gateway/internal/handlers"
 	"myink/gateway/internal/pyapi"
-	"myink/gateway/internal/queue"
 	"myink/gateway/internal/redis"
 )
 
@@ -55,14 +54,8 @@ func main() {
 	}
 	cancel0()
 
-	// RabbitMQ：连接 + 幂等声明拓扑（延迟/死信/优先级由 RabbitMQ 侧承担，网关只需发布端；
-	// 失败直接退出，不进入无队列可用状态）
-	rmq, err := queue.DialAMQP(cfg)
-	if err != nil {
-		log.Fatalf("[gateway] RabbitMQ 不可达 %s: %v", cfg.AmqpURL, err)
-	}
-	defer rmq.Close()
-
+	// RabbitMQ 不再由网关连接：入队与三层闸门已搬到 Python（见 src/myink/worker/enqueue.py）。
+	// internal/queue 与两份 .lua 保留在仓库里作为闸门语义的参照实现（parity 见 tests/test_gates_parity.py）。
 	py := pyapi.New(cfg.PythonAPIBase, 30*time.Second)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -70,12 +63,12 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           handlers.NewRouter(cfg, r, rmq, py),
+		Handler:           handlers.NewRouter(cfg, r, py),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	go func() {
-		log.Printf("[gateway] 监听 :%s（Redis=%s RabbitMQ=%s PythonAPI=%s）", cfg.Port, cfg.RedisAddr, cfg.AmqpURL, cfg.PythonAPIBase)
+		log.Printf("[gateway] 监听 :%s（Redis=%s PythonAPI=%s）", cfg.Port, cfg.RedisAddr, cfg.PythonAPIBase)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("[gateway] 服务异常退出: %v", err)
 		}
