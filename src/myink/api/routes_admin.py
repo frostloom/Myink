@@ -1,31 +1,38 @@
-"""Authenticated cross-user reporting only; business RLS policies are unchanged.
+"""Authenticated cross-user reporting, plus admin-only invitation management.
 
-Currently uses ADMIN_DATABASE_URL with a read-only transaction. Production must
+Reporting uses ADMIN_DATABASE_URL with a read-only transaction. Production must
 provide that connection; a dedicated BYPASSRLS reporting role with SELECT-only
 grants should replace the migration role in a future deployment hardening step.
 Audit writes always use the ordinary application connection, separately.
+Writes (invitation create/revoke) never reuse the reporting session: they take
+their own `new_session()` so the read-only guarantee stays intact.
 """
 from __future__ import annotations
 
 import uuid
 from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, Field
 from sqlalchemy import String, and_, cast, func, or_, select, text
-from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, aliased
 
+from myink import invitations as invitations_mod
 from myink.admin_observability import capture
 from myink.api.admin_schemas import (
     AdminAccessLogOut, AdminChapter, AdminChapterDetail, AdminContext,
-    AdminOverview, AdminPage, AdminProject, AdminRun, AdminRunDetail, AdminTask,
-    AdminTaskDetail, AdminUser,
+    AdminInvitation, AdminInvitationCreated, AdminOverview, AdminPage,
+    AdminProject, AdminRun, AdminRunDetail, AdminTask, AdminTaskDetail, AdminUser,
 )
 from myink.api.auth import _AuthenticatedUser, require_admin
+from myink.api.schemas import OkOut
 from myink.db import get_admin_engine, new_session
 from myink.models import (
     AdminAccessLog, AgentRun, Chapter, Character, Event, Fact, Foreshadow,
-    PlotThread, Project, ProjectSettings, Task, User, VolumeOutline,
+    Invitation, PlotThread, Project, ProjectSettings, Task, User, VolumeOutline,
 )
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
@@ -298,3 +305,79 @@ def access_logs(db: DB, limit: Limit = 25, offset: Offset = 0):
     return _page(db, select(AdminAccessLog.id, AdminAccessLog.actor_id, AdminAccessLog.action,
                             AdminAccessLog.target, AdminAccessLog.created_at)
                  .order_by(AdminAccessLog.id.desc()), limit, offset)
+
+
+# --- 邀请码管理：本模块唯一的写操作。------------------------------------------------
+# 写路径不能用 `DB`——reporting_db 的事务是 SET TRANSACTION READ ONLY，且走 superuser
+# 的 ADMIN_DATABASE_URL。这里改用 require_admin + new_session()（应用连接、受 RLS 约束），
+# 并自己补一次审计写（失败关闭，与 reporting_db 的 ADMIN_AUDIT_UNAVAILABLE 语义一致）。
+
+
+class InvitationCreateBody(BaseModel):
+    expires_days: int = Field(7, ge=1, le=365)
+    max_redemptions: int = Field(1, ge=1, le=1000)
+    label: str | None = Field(None, max_length=64, description="便于分发的备注，可空")
+    code: str | None = Field(
+        None, max_length=64, description="自定义码面；留空则生成 256 位随机码"
+    )
+
+
+def _audit_or_fail(actor: _AuthenticatedUser, request: Request, action: str) -> None:
+    try:
+        write_access_log(actor.id, action, _safe_target(request))
+    except Exception:
+        raise HTTPException(503, "ADMIN_AUDIT_UNAVAILABLE") from None
+
+
+@router.get("/invitations", response_model=AdminPage[AdminInvitation], name="admin.invitations")
+def invitations(db: DB, limit: Limit = 25, offset: Offset = 0):
+    """只读列表。刻意不返回摘要（对管理员无用），明文码仅创建时可见一次。"""
+    creator = aliased(User)
+    return _page(db, select(
+        Invitation.id, Invitation.label, Invitation.expires_at, Invitation.max_redemptions,
+        Invitation.redemption_count, Invitation.revoked_at, Invitation.created_by,
+        creator.username.label("created_by_username"), Invitation.created_at,
+    ).outerjoin(creator, creator.id == Invitation.created_by)
+     .order_by(Invitation.created_at.desc()), limit, offset)
+
+
+@router.post("/invitations", response_model=AdminInvitationCreated, status_code=201,
+             name="admin.create_invitation")
+def create_invitation_endpoint(
+    request: Request,
+    body: InvitationCreateBody,
+    actor: _AuthenticatedUser = Depends(require_admin),
+):
+    _audit_or_fail(actor, request, "admin.create_invitation")
+    expires_at = datetime.now(timezone.utc) + timedelta(days=body.expires_days)
+    try:
+        with new_session() as db:
+            invitation, code = invitations_mod.create_invitation(
+                db, expires_at=expires_at, max_redemptions=body.max_redemptions,
+                token=body.code, label=body.label, created_by=actor.id,
+            )
+            db.commit()
+            return {
+                "id": invitation.id, "code": code, "label": invitation.label,
+                "expires_at": invitation.expires_at,
+                "max_redemptions": invitation.max_redemptions,
+            }
+    except IntegrityError:
+        raise HTTPException(409, "INVITATION_CODE_TAKEN") from None
+    except ValueError as exc:
+        raise HTTPException(400, f"INVALID_INVITATION: {exc}") from None
+
+
+@router.post("/invitations/{invitation_id}/revoke", response_model=OkOut,
+             name="admin.revoke_invitation")
+def revoke_invitation_endpoint(
+    invitation_id: uuid.UUID,
+    request: Request,
+    actor: _AuthenticatedUser = Depends(require_admin),
+):
+    _audit_or_fail(actor, request, "admin.revoke_invitation")
+    with new_session() as db:
+        if not invitations_mod.revoke_invitation(db, invitation_id):
+            raise HTTPException(404, "NOT_FOUND")
+        db.commit()
+    return {"ok": True}
