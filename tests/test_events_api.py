@@ -16,6 +16,7 @@ import uuid
 
 from fastapi.testclient import TestClient
 
+from conftest import INVALID_BEARER, identity_headers
 from myink.api.main import app
 from myink.db import new_session, tenant_session
 from myink.models import Character, CharacterState, Event, User
@@ -31,8 +32,8 @@ def _demo_user_id() -> uuid.UUID:
 
 
 def _h(uid) -> dict:
-    """请求头：X-Myink-User = 网关已验证的 JWT sub（None → 不带，测 fail closed）。"""
-    return {"X-Myink-User": str(uid)} if uid is not None else {}
+    """请求头：真 HS256 Bearer（None → 不带，测 fail closed）。"""
+    return identity_headers(uid)
 
 
 def _seed_events(pid: str) -> dict[str, str]:
@@ -117,9 +118,9 @@ def test_events_auth_matrix(temp_project):
     _seed_events(temp_project)
     assert client.get(f"/internal/v1/projects/{temp_project}/events").status_code == 403
     assert client.get(f"/internal/v1/projects/{temp_project}/events",
-                      headers=_h(uuid.uuid4())).status_code == 403
+                      headers=_h(uuid.uuid4())).status_code == 401
     assert client.get(f"/internal/v1/projects/{temp_project}/events",
-                      headers=_h("not-a-uuid")).status_code == 403
+                      headers=INVALID_BEARER).status_code == 401
     assert client.get(f"/internal/v1/projects/{uuid.uuid4()}/events",
                       headers=_h(_demo_user_id())).status_code == 404
 
@@ -205,8 +206,8 @@ def test_state_history_auth_matrix(temp_project):
     cid = _seed_states(temp_project)
     path = f"/internal/v1/projects/{temp_project}/characters/{cid}/state-history"
     assert client.get(path).status_code == 403
-    assert client.get(path, headers=_h(uuid.uuid4())).status_code == 403
-    assert client.get(path, headers=_h("not-a-uuid")).status_code == 403
+    assert client.get(path, headers=_h(uuid.uuid4())).status_code == 401
+    assert client.get(path, headers=INVALID_BEARER).status_code == 401
     assert client.get(
         f"/internal/v1/projects/{uuid.uuid4()}/characters/{cid}/state-history",
         headers=_h(_demo_user_id())).status_code == 404

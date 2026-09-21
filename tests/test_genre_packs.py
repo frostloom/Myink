@@ -7,6 +7,7 @@ import uuid
 from fastapi.testclient import TestClient
 from sqlalchemy import delete as sa_delete
 
+from conftest import identity_headers
 from myink.api.main import app
 from myink.db import ensure_genre_pack, new_session, tenant_session
 
@@ -47,7 +48,7 @@ def _delete_user(uid: uuid.UUID) -> None:
 
 
 def _h(uid: uuid.UUID) -> dict:
-    return {"X-Myink-User": str(uid)}
+    return identity_headers(uid)
 
 
 def test_catalog_has_37_and_stable_ids():

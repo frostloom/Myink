@@ -1,8 +1,9 @@
-"""Local account authentication plus the private-gateway identity boundary.
+"""Local account authentication plus the private-API identity boundary.
 
-Authentication endpoints always validate their Bearer token themselves. Existing
-business routes continue to trust ``X-Myink-User`` because Python is private and the
-gateway overwrites that header after validating and introspecting the token.
+Python verifies the bearer token itself on every business route. It used to trust the
+``X-Myink-User`` header because a private Go gateway overwrote that header after
+validating the token -- but Python already owns the user table, so asking a second
+process "is this session still valid?" on every request was a redundant network hop.
 """
 
 from __future__ import annotations
@@ -15,12 +16,13 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 import jwt
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, field_validator
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
+from myink.api.ratelimit import auth_rate_limit
 from myink.api.schemas import AuthResponse, AuthSessionOut, OkOut
 from myink.config import settings
 from myink.db import new_session
@@ -111,9 +113,30 @@ def create_access_token(
     )
 
 
-def current_user(x_myink_user: str | None = Header(None, alias="X-Myink-User")) -> str | None:
-    """Read the identity already authenticated by the private gateway."""
-    return x_myink_user
+def current_identity(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+) -> _AuthenticatedUser:
+    """Fully verified identity; tier/role/auth_version come fresh from the DB."""
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise _invalid_credentials()
+    user = _load_identity(_decode_token(credentials.credentials))
+    if user is None:
+        raise _invalid_credentials()
+    return user
+
+
+def current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+) -> str | None:
+    """Caller id, or ``None`` when the request carried no credentials at all.
+
+    Only the "no credentials" case returns ``None``, so callers keep their fail-closed
+    branch (empty list / 403). A token that is present but invalid, expired or revoked
+    is a 401 -- which is what the browser needs in order to notice it must sign in again.
+    """
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        return None
+    return str(current_identity(credentials).id)
 
 
 def require_user(user_id: str | None = Depends(current_user)) -> str:
@@ -192,15 +215,16 @@ class _AuthenticatedUser:
     auth_version: int
 
 
-def _decode_bearer(
-    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
-) -> _TokenClaims:
+def _decode_token(token: str) -> _TokenClaims:
+    """Verify signature, issuer and required claims. Any failure is 401.
+
+    This is the same check the Go gateway used to run (HS256 + issuer ``myink`` +
+    required ``sub/iss/iat/exp/ver`` + UUID ``sub`` + integral ``ver`` >= 1).
+    """
     require_auth_configuration()
-    if credentials is None or credentials.scheme.lower() != "bearer":
-        raise _invalid_credentials()
     try:
         claims = jwt.decode(
-            credentials.credentials,
+            token,
             settings.jwt_secret,
             algorithms=[_ALG],
             issuer=_ISS,
@@ -208,6 +232,7 @@ def _decode_bearer(
         )
         user_id = uuid.UUID(claims["sub"])
         auth_version = claims["ver"]
+        # bool is an int subclass, so it has to be rejected explicitly
         if isinstance(auth_version, bool) or not isinstance(auth_version, int) or auth_version < 1:
             raise ValueError("invalid token version")
     except (jwt.PyJWTError, KeyError, TypeError, ValueError, AttributeError):
@@ -215,11 +240,12 @@ def _decode_bearer(
     return _TokenClaims(user_id=user_id, auth_version=auth_version)
 
 
-def _authenticated_user(claims: _TokenClaims = Depends(_decode_bearer)) -> _AuthenticatedUser:
+def _load_identity(claims: _TokenClaims) -> _AuthenticatedUser | None:
+    """Primary-key read of the account; ``None`` when it is gone or its session was revoked."""
     with new_session() as db:
         user = db.get(User, claims.user_id)
         if user is None or user.auth_version != claims.auth_version:
-            raise _invalid_credentials()
+            return None
         return _AuthenticatedUser(
             id=user.id,
             username=user.username,
@@ -228,6 +254,21 @@ def _authenticated_user(claims: _TokenClaims = Depends(_decode_bearer)) -> _Auth
             password_hash=user.password_hash,
             auth_version=user.auth_version,
         )
+
+
+def _decode_bearer(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+) -> _TokenClaims:
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        raise _invalid_credentials()
+    return _decode_token(credentials.credentials)
+
+
+def _authenticated_user(claims: _TokenClaims = Depends(_decode_bearer)) -> _AuthenticatedUser:
+    user = _load_identity(claims)
+    if user is None:
+        raise _invalid_credentials()
+    return user
 
 
 def require_admin(
@@ -254,7 +295,8 @@ def _auth_response(user: User) -> dict:
     }
 
 
-@router.post("/auth/register", status_code=status.HTTP_201_CREATED, response_model=AuthResponse)
+@router.post("/auth/register", status_code=status.HTTP_201_CREATED, response_model=AuthResponse,
+             dependencies=[Depends(auth_rate_limit)])
 def register(body: _RegisterRequest, response: Response) -> dict:
     require_auth_configuration()
     try:
@@ -292,7 +334,7 @@ def register(body: _RegisterRequest, response: Response) -> dict:
     return payload
 
 
-@router.post("/auth/token", response_model=AuthResponse)
+@router.post("/auth/token", response_model=AuthResponse, dependencies=[Depends(auth_rate_limit)])
 def issue_token(body: _TokenRequest, response: Response) -> dict:
     require_auth_configuration()
     if not 1 <= len(body.password) <= 128:
@@ -326,7 +368,7 @@ def auth_session(response: Response, user: _AuthenticatedUser = Depends(_authent
     }
 
 
-@router.post("/auth/password", response_model=OkOut)
+@router.post("/auth/password", response_model=OkOut, dependencies=[Depends(auth_rate_limit)])
 def change_password(
     body: _PasswordRequest,
     response: Response,

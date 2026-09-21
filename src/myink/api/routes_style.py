@@ -18,7 +18,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from myink.api.auth import require_owner
+from myink.api.auth import require_owner, require_user
 from myink.api.schemas import SkillPresetOut, StyleDraftOut, StyleProfileOut
 from myink.db import new_session, tenant_session
 from myink.memory.repository import get_settings
@@ -49,11 +49,15 @@ class StyleSamplesBody(BaseModel):
     samples: list[str]
 
 
-@router.get("/skill-presets", response_model=list[SkillPresetOut])
+@router.get("/skill-presets", dependencies=[Depends(require_user)],
+            response_model=list[SkillPresetOut])
 def skill_presets() -> list[dict]:
     """题材 Skill 预设列表（§7.12 预设包）：4 本种子书文风档案，设置页「预设导入」渲染。
 
-    静态数据（无租户隔离），网关 JWT 已认证；预设 id 同时是 skill_pack marker。
+    静态数据，但需身份：网关时代它挂在 secured 分组里（JWT 必带），换成 Caddy 直连
+    Python 后必须把这一条性质显式补回来，否则任何匿名请求都能拿到整份预设正文。
+    require_user（不是 require_owner）：无书可归属，与 /environment 同一档。
+    预设 id 同时是 skill_pack marker。
     """
     return [{"id": p["id"], "name": p["name"], "genre": p["genre"],
              "style_profile": p["style_profile"]} for p in STYLE_PRESETS]

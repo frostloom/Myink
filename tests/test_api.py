@@ -4,8 +4,8 @@ list_chapters 曾引用 Chapter 模型不存在的 target_words → 真实 API 5
 （Go 网关测试用假 Python 服务测不到，前端接真 API 才暴露）。
 回归：章节列表返回可序列化、字段合法。
 
-list_projects 在阶段 3 加身份过滤（§14.1 ③，应用层按 X-Myink-User 归属断言），
-改为 TestClient 带 demo 身份头走 HTTP 层；list_chapters 归属断言用 route-level
+list_projects 在阶段 3 加身份过滤（§14.1 ③，应用层按令牌身份归属断言），
+改为 TestClient 带 demo 的真 Bearer 走 HTTP 层；list_chapters 归属断言用 route-level
 dependencies（不改函数签名），直接调用测试照常。
 """
 
@@ -15,6 +15,7 @@ import uuid
 
 from fastapi.testclient import TestClient
 
+from conftest import identity_headers
 from myink.api.main import app, list_chapters
 from myink.db import new_session
 from myink.models import Chapter, User
@@ -23,11 +24,11 @@ client = TestClient(app)
 
 
 def test_list_projects_returns_books():
-    """项目列表按身份过滤：demo 用户带 X-Myink-User 头 → 返回自己的多本（示例书已补建）。"""
+    """项目列表按身份过滤：demo 用户带真 Bearer → 返回自己的多本（示例书已补建）。"""
     with new_session() as db:
         user = db.query(User).filter(User.username == "demo").first()
         assert user is not None, "请先运行 `myink init`（demo 用户未建）"
-    resp = client.get("/internal/v1/projects", headers={"X-Myink-User": str(user.id)})
+    resp = client.get("/internal/v1/projects", headers=identity_headers(user))
     assert resp.status_code == 200
     projects = resp.json()
     assert len(projects) >= 3, f"应有多本（示例书已补建），实际 {len(projects)}"

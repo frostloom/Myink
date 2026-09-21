@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete, select
 
+from conftest import identity_headers
 from myink.api.main import app
 from myink.db import new_session
 from myink.models import Project, User
@@ -26,7 +27,7 @@ def draft_book(monkeypatch):
     monkeypatch.setattr(book, "settings", replace(book.settings, books_per_day_max=100000))
     with new_session() as db:
         uid = db.scalar(select(User.id).where(User.username == "demo"))
-    headers = {"X-Myink-User": str(uid)}
+    headers = identity_headers(uid)
     response = client.post("/internal/v1/projects", headers=headers, json={
         "title": f"draft-test-{uuid.uuid4().hex}", "premise": "保留的创作简报",
         "chapter_count": 50, "storyline": "寻找真相",
@@ -46,7 +47,9 @@ def test_new_project_is_draft_and_resume_is_owned(draft_book):
     response = client.get(url, headers=headers)
     assert response.status_code == 200
     assert response.json()["context"]["premise"] == "保留的创作简报"
-    assert client.get(url, headers={"X-Myink-User": str(uuid.uuid4())}).status_code == 403
+    # 签名合法但 sub 指向一个不存在的账号：凭证无效 → 401（跨账号访问才是 403，
+    # 那条性质由 tests/test_identity_boundary.py 用真第二个账号覆盖）
+    assert client.get(url, headers=identity_headers(uuid.uuid4())).status_code == 401
 
 
 def test_setup_alone_does_not_allow_writing(draft_book):

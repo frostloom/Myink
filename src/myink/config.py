@@ -96,6 +96,12 @@ class Settings:
     api_host: str = field(default_factory=lambda: _env("API_HOST", "127.0.0.1") or "127.0.0.1")
     api_port: int = field(default_factory=lambda: int(_env("API_PORT", "8100") or "8100"))
 
+    # 进程内全局令牌桶（等价网关 limiter.Middleware）：env 名与默认值照抄网关 config.go 的
+    # RATE_PER_SEC / RATE_BURST，好让 .env 保持单一真源。粗粒度防刷；按用户的配额/并发/
+    # 日成本走 gates.lua（§13）。uvicorn 单进程时额度与网关一致，加 workers= 会翻倍。
+    rate_per_sec: int = field(default_factory=lambda: int(_env("RATE_PER_SEC", "20") or "20"))
+    rate_burst: int = field(default_factory=lambda: int(_env("RATE_BURST", "40") or "40"))
+
     # 阶段 3：JWT 身份断言（§14.1 ③，替换 X-Myink-User 占位）。密钥与 Go 网关共享同一 .env，
     # dev 非空默认保证两端签名互通；prod 由 validate 强制显式密钥。
     jwt_secret: str = field(default_factory=lambda: _env("JWT_SECRET", _DEV_JWT_SECRET) or _DEV_JWT_SECRET)
