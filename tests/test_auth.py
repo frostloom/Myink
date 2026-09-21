@@ -1,4 +1,4 @@
-"""Account authentication and the private-gateway identity boundary."""
+"""Account authentication and the API's own identity boundary."""
 
 from __future__ import annotations
 

@@ -150,6 +150,16 @@ def generate_batch(project_id: str, body: BatchGenerateBody,
 @router.get("/tasks/{task_id}/access", response_model=OkOut)
 def task_access(task_id: str, user_id: str = Depends(require_user)) -> dict:
     """SSE authorization also covers the enqueue-before-materialization window."""
+    assert_task_access(task_id, user_id)
+    return {"ok": True}
+
+
+def assert_task_access(task_id: str, user_id: str) -> None:
+    """任务归属判定，供 /access 与 SSE 订阅共用（两处口径必须一致）。
+
+    刚入队、worker 还没建 tasks 行的窗口里，归属只存在于 `queue:task-owner:{tid}`
+    （enqueue 侧 set 的 24h 租约）；此时放行与否只能信它。
+    """
     tid = _task_uuid(task_id)
     with new_session() as db:
         task = db.get(Task, tid)
@@ -168,7 +178,6 @@ def task_access(task_id: str, user_id: str = Depends(require_user)) -> dict:
         if not isinstance(project_id, str):
             raise HTTPException(status_code=403, detail="任务归属非法")
     require_owner(project_id, user_id)
-    return {"ok": True}
 
 
 def _project_price_tables(db, project_id: uuid.UUID) -> dict[str, dict[str, float]]:

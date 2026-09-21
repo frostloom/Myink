@@ -1,7 +1,7 @@
 """Python API 读端点测试（2026-08-09，前端接入暴露的契约回归）。
 
 list_chapters 曾引用 Chapter 模型不存在的 target_words → 真实 API 500
-（Go 网关测试用假 Python 服务测不到，前端接真 API 才暴露）。
+（当时网关测试用假 Python 服务顶替，测不到，前端接真 API 才暴露）。
 回归：章节列表返回可序列化、字段合法。
 
 list_projects 在阶段 3 加身份过滤（§14.1 ③，应用层按令牌身份归属断言），

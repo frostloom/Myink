@@ -18,8 +18,8 @@ def _env(name: str, default: str | None = None) -> str | None:
     return os.getenv(name, default)
 
 
-# JWT 身份断言（§14.1 ③）：dev 默认密钥仅供本地开发/测试（Python 与 Go 网关共享同一
-# 非空默认，两端的 HS256 签名才能互相验证）；APP_ENV=prod 时 validate 拒绝该默认值。
+# JWT 身份断言（§14.1 ③）：dev 默认密钥仅供本地开发/测试；APP_ENV=prod 时 validate
+# 拒绝该默认值。签发与验签同一个进程，不再有「两端密钥必须一致」的隐式约束。
 _DEV_JWT_SECRET = "dev-jwt-secret-change-me"
 
 
@@ -113,8 +113,8 @@ class Settings:
     rate_per_sec: int = field(default_factory=lambda: int(_env("RATE_PER_SEC", "20") or "20"))
     rate_burst: int = field(default_factory=lambda: int(_env("RATE_BURST", "40") or "40"))
 
-    # 阶段 3：JWT 身份断言（§14.1 ③，替换 X-Myink-User 占位）。密钥与 Go 网关共享同一 .env，
-    # dev 非空默认保证两端签名互通；prod 由 validate 强制显式密钥。
+    # 阶段 3：JWT 身份断言（§14.1 ③，替换 X-Myink-User 占位）。
+    # dev 非空默认便于本地起步；prod 由 validate 强制显式密钥。
     jwt_secret: str = field(default_factory=lambda: _env("JWT_SECRET", _DEV_JWT_SECRET) or _DEV_JWT_SECRET)
     jwt_ttl: int = field(default_factory=lambda: int(_env("JWT_TTL", "1800") or "1800"))  # 秒，短时效（§14.2 SSO/token）
 

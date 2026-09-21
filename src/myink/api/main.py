@@ -1,13 +1,15 @@
 """Python API 装配（FastAPI，:8100，只在容器网络内监听）。
 
-身份由本服务自己验 JWT（见 auth.py），不读网关写下的内部用户头——Go 网关已收缩为只服务 SSE，
-Caddy 是唯一公网入口。启动：`myink-api` 或 `python -m myink.api.main`（pyproject scripts）。
+身份由本服务自己验 JWT（见 auth.py），不读任何上游写下的内部用户头。全部 /api/v1/* 路由
+（含 SSE 进度流）都在本进程，Caddy 是唯一公网入口。
+启动：`myink-api` 或 `python -m myink.api.main`（pyproject scripts）。
 """
 
 from __future__ import annotations
 
 import logging
 import uuid
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exception_handlers import http_exception_handler
@@ -27,6 +29,7 @@ from myink.api.routes_global_audit import router as global_audit_router
 from myink.api.routes_lessons import router as lessons_router
 from myink.api.routes_rankings import router as rankings_router
 from myink.api.routes_settings import router as settings_router
+from myink.api.routes_sse import router as sse_router
 from myink.api.routes_style import router as style_router
 from myink.api.routes_tasks import router as tasks_router
 from myink.api.schemas import ChapterDetailOut, ChapterMetaOut, ProjectOut
@@ -38,7 +41,24 @@ from myink.worker.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Myink API", docs_url=None, redoc_url=None)
+# 线程池上限：业务路由都是同步 def，跑在 anyio 默认线程池（40 个令牌）里。SSE 收流原先由
+# Go 网关的 goroutine 承担，现在也在本进程里，而**一条活跃连接会占住一个令牌直到终态**
+# （最长 30min）——40 个观众就能把整个 API 饿死。抬高上限把这部分容量留出来；正常负载下
+# 令牌是按需创建的，抬上限本身不占资源。
+_SSE_THREAD_HEADROOM = 128
+
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    # 必须在这里改：current_default_thread_limiter() 要求有正在运行的事件循环，
+    # 在模块层或 main() 里直接调用会抛 anyio.NoEventLoopError。
+    import anyio
+
+    anyio.to_thread.current_default_thread_limiter().total_tokens = _SSE_THREAD_HEADROOM
+    yield
+
+
+app = FastAPI(title="Myink API", docs_url=None, redoc_url=None, lifespan=_lifespan)
 
 
 @app.middleware("http")
@@ -93,6 +113,7 @@ app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(book_router)
 app.include_router(tasks_router)
+app.include_router(sse_router)
 app.include_router(candidates_router)
 app.include_router(chapters_router)
 app.include_router(lessons_router)

@@ -2,8 +2,12 @@
 #
 # 职责边界（与 Python API 的分工）：
 #   - Caddy：TLS、静态文件、SPA 回退、把真实客户端 IP 盖成 X-Myink-Client-IP、SSE 不缓冲
-#   - Python (myink-api)：验身份、限流、闸门、入队、全部业务路由
-#   - Go (myink-gateway)：只剩 SSE 中继，挂在 myink-gateway:8080
+#   - Python (myink-api)：验身份、限流、闸门、入队、全部业务路由（含 SSE 进度流）
+#
+# 这里曾经把 /tasks/*/events 单独劈给一个 Go 网关进程（只服务这一条路由 + /healthz）。
+# 那条链路已并回 Python：鉴权与归属判定本来就在 Python，多一个进程只为转发一次 Stream，
+# 构建、部署、双份配置的代价高过收益。下面第 1 个块保留了独立 handle —— 它需要
+# flush_interval -1，而这不该扩散到其余 JSON 路由。
 #
 # 本地开发想走纯 HTTP：把 SITE_ADDRESS 设成 http://localhost（默认值，见下方说明）。
 {
@@ -27,9 +31,12 @@
 	# 1) SSE 必须排在 /api/v1/* 之前 —— handle 块互斥且先匹配先赢，
 	#    否则下面的通配块会把 /tasks/*/events 一起吃掉，SSE 挂在那里不动。
 	handle /api/v1/tasks/*/events {
-		reverse_proxy myink-gateway:8080 {
+		reverse_proxy myink-api:8100 {
 			# 关掉反向代理的响应缓冲，让每一帧立刻落回客户端
 			flush_interval -1
+			# 与下面的通配块同款盖章：SSE 现在也在 Python 进程里收尾，而 client_ip()
+			# 的权威来源就是这个头。漏掉它，SSE 请求会退化成「对端是 Caddy 容器」。
+			header_up X-Myink-Client-IP {http.request.remote.host}
 		}
 	}
 

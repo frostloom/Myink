@@ -72,7 +72,7 @@ def test_owner_can_read_own_task(accounts_and_books):
     assert response.json()["task_id"] == str(task.id)
 
 
-def test_pending_task_access_uses_gateway_owner_record(accounts_and_books):
+def test_pending_task_access_uses_enqueue_owner_record(accounts_and_books):
     import json
     from myink.worker.redis_client import get_redis
 

@@ -39,6 +39,8 @@ OPEN_PATHS = {
 _GUARDS = {
     "current_user", "current_identity", "require_user", "require_owner",
     "require_admin", "_authenticated_user", "_decode_bearer",
+    # SSE 订阅者身份：自验 JWT + 查库，失效即 401（与 current_identity 同一条路径）。
+    "_subscriber",
 }
 
 _METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
