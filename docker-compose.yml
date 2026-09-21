@@ -95,6 +95,11 @@ services:
       EMBED_ENABLED: "0"
       REQUEST_TOKEN_BUDGET: ${REQUEST_TOKEN_BUDGET:-64000}
       RECALL_TOKEN_BUDGET: ${RECALL_TOKEN_BUDGET:-12000}
+      # 令牌桶必须与 myink-gateway 那组插值逐字一致：Caddy 把流量劈给两个进程，各自一份桶。
+      # 若这里只靠 env_file 而 gateway 用 ${...}，宿主 shell 里 export RATE_PER_SEC 会只改到
+      # gateway 一侧，两侧限额静默分叉（正是 plan 风险 15）。
+      RATE_PER_SEC: ${RATE_PER_SEC:-20}
+      RATE_BURST: ${RATE_BURST:-40}
       # 扫榜灵感（§10 MCP Client）：容器内显式声明（env_file 已注入，重复声明仅文档化意图 + 防 .env 缺失）
       RANKINGS_ENABLED: "1"
       RANKINGS_MCP_URL: https://daosearch.io/api/mcp
