@@ -31,7 +31,7 @@ from myink.memory.repository import snapshot_chapter
 from myink.models import Chapter, ChapterVersion, MemoryCandidate, Project
 from myink.workflow import nodes
 
-router = APIRouter(prefix="/internal/v1", tags=["chapters"])
+router = APIRouter(prefix="/api/v1", tags=["chapters"])
 
 
 class ContentUpdate(BaseModel):

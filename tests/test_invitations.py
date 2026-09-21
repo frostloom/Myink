@@ -48,7 +48,7 @@ def _register(username: str, token: str | None):
     body = {"username": username, "password": "correct horse battery 1"}
     if token is not None:
         body["invitation_code"] = token
-    return client.post("/internal/v1/auth/register", json=body)
+    return client.post("/api/v1/auth/register", json=body)
 
 
 def _cleanup(*, usernames: list[str] = [], invitation_ids: list[uuid.UUID] = []) -> None:

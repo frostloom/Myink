@@ -68,7 +68,7 @@ func TestJWTRejectsMissingSecurityClaims(t *testing.T) {
 func TestRevokedSessionCannotReadProjects(t *testing.T) {
 	businessCalls := 0
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/internal/v1/auth/session" {
+		if r.URL.Path == "/api/v1/auth/session" {
 			w.WriteHeader(401)
 			fmt.Fprint(w, `{"detail":"invalid_token"}`)
 			return
@@ -97,7 +97,7 @@ func TestForeignWritingOperationsDeniedBeforeSideEffects(t *testing.T) {
 			accessCalls := 0
 			upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				if r.URL.Path == "/internal/v1/auth/session" {
+				if r.URL.Path == "/api/v1/auth/session" {
 					json.NewEncoder(w).Encode(map[string]string{"user_id": isolationUser, "username": "owner", "tier": "normal"})
 					return
 				}
@@ -158,7 +158,7 @@ func TestAuthRegistrationProxyBoundsAndRateLimit(t *testing.T) {
 	calls := 0
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		calls++
-		if req.URL.Path != "/internal/v1/auth/register" || req.Header.Get(HeaderUser) != "" {
+		if req.URL.Path != "/api/v1/auth/register" || req.Header.Get(HeaderUser) != "" {
 			t.Error("wrong auth proxy target/identity")
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -212,7 +212,7 @@ func testSSESessionDeadline(t *testing.T, expire bool) {
 	t.Cleanup(func() { r.Raw().Del(context.Background(), key) })
 	var revoked atomic.Bool
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if req.URL.Path == "/internal/v1/auth/session" {
+		if req.URL.Path == "/api/v1/auth/session" {
 			if revoked.Load() {
 				w.WriteHeader(401)
 				return

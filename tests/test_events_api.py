@@ -60,7 +60,7 @@ def _seed_events(pid: str) -> dict[str, str]:
 
 
 def _events(pid: str, uid=None, **params) -> tuple[int, list]:
-    resp = client.get(f"/internal/v1/projects/{pid}/events", headers=_h(uid or _demo_user_id()),
+    resp = client.get(f"/api/v1/projects/{pid}/events", headers=_h(uid or _demo_user_id()),
                       params=params)
     return resp.status_code, resp.json()
 
@@ -116,12 +116,12 @@ def test_events_empty_project(temp_project):
 
 def test_events_auth_matrix(temp_project):
     _seed_events(temp_project)
-    assert client.get(f"/internal/v1/projects/{temp_project}/events").status_code == 403
-    assert client.get(f"/internal/v1/projects/{temp_project}/events",
+    assert client.get(f"/api/v1/projects/{temp_project}/events").status_code == 403
+    assert client.get(f"/api/v1/projects/{temp_project}/events",
                       headers=_h(uuid.uuid4())).status_code == 401
-    assert client.get(f"/internal/v1/projects/{temp_project}/events",
+    assert client.get(f"/api/v1/projects/{temp_project}/events",
                       headers=INVALID_BEARER).status_code == 401
-    assert client.get(f"/internal/v1/projects/{uuid.uuid4()}/events",
+    assert client.get(f"/api/v1/projects/{uuid.uuid4()}/events",
                       headers=_h(_demo_user_id())).status_code == 404
 
 
@@ -159,7 +159,7 @@ def _seed_states(pid: str) -> str:
 
 
 def _history(pid: str, cid: str, uid=None) -> tuple[int, list]:
-    resp = client.get(f"/internal/v1/projects/{pid}/characters/{cid}/state-history",
+    resp = client.get(f"/api/v1/projects/{pid}/characters/{cid}/state-history",
                       headers=_h(uid or _demo_user_id()))
     return resp.status_code, resp.json()
 
@@ -197,17 +197,17 @@ def test_state_history_unknown_character_empty(temp_project):
 def test_state_history_invalid_character_id_400(temp_project):
     """character_id 不在 require_owner 校验范围内，须自守卫（否则查库才炸成 500）。"""
     resp = client.get(
-        f"/internal/v1/projects/{temp_project}/characters/not-a-uuid/state-history",
+        f"/api/v1/projects/{temp_project}/characters/not-a-uuid/state-history",
         headers=_h(_demo_user_id()))
     assert resp.status_code == 400
 
 
 def test_state_history_auth_matrix(temp_project):
     cid = _seed_states(temp_project)
-    path = f"/internal/v1/projects/{temp_project}/characters/{cid}/state-history"
+    path = f"/api/v1/projects/{temp_project}/characters/{cid}/state-history"
     assert client.get(path).status_code == 403
     assert client.get(path, headers=_h(uuid.uuid4())).status_code == 401
     assert client.get(path, headers=INVALID_BEARER).status_code == 401
     assert client.get(
-        f"/internal/v1/projects/{uuid.uuid4()}/characters/{cid}/state-history",
+        f"/api/v1/projects/{uuid.uuid4()}/characters/{cid}/state-history",
         headers=_h(_demo_user_id())).status_code == 404

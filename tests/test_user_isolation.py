@@ -52,7 +52,7 @@ def test_task_endpoints_reject_non_owner(accounts_and_books, method, suffix, bod
         db.commit()
     published = []
     monkeypatch.setattr("myink.api.routes_tasks.amqp.publish", lambda *a, **kw: published.append(a))
-    response = client.request(method, f"/internal/v1/tasks/{task.id}{suffix}",
+    response = client.request(method, f"/api/v1/tasks/{task.id}{suffix}",
                               json=body, headers=headers(users[1]) if identity == "foreign" else {})
     assert response.status_code in (401, 403, 404)
     assert "owner-only-outline" not in response.text
@@ -67,7 +67,7 @@ def test_owner_can_read_own_task(accounts_and_books):
         task = Task(project_id=books[0].id, task_type="chapter_generate", payload={"seq": 1})
         db.add(task)
         db.commit()
-    response = client.get(f"/internal/v1/tasks/{task.id}", headers=headers(users[0]))
+    response = client.get(f"/api/v1/tasks/{task.id}", headers=headers(users[0]))
     assert response.status_code == 200
     assert response.json()["task_id"] == str(task.id)
 
@@ -82,7 +82,7 @@ def test_pending_task_access_uses_gateway_owner_record(accounts_and_books):
     redis = get_redis()
     redis.set(key, json.dumps({"user_id": str(users[0].id), "project_id": str(books[0].id)}), ex=60)
     try:
-        path = f"/internal/v1/tasks/{task_id}/access"
+        path = f"/api/v1/tasks/{task_id}/access"
         assert client.get(path, headers=headers(users[0])).status_code == 200
         assert client.get(path, headers=headers(users[1])).status_code == 403
         assert client.get(path).status_code == 403
@@ -92,7 +92,7 @@ def test_pending_task_access_uses_gateway_owner_record(accounts_and_books):
 
 def test_project_access_checks_owner(accounts_and_books):
     users, books = accounts_and_books
-    path = f"/internal/v1/projects/{books[0].id}/access"
+    path = f"/api/v1/projects/{books[0].id}/access"
     assert client.get(path, headers=headers(users[0])).status_code == 200
     assert client.get(path, headers=headers(users[1])).status_code == 403
 
@@ -101,7 +101,7 @@ def test_project_access_checks_owner(accounts_and_books):
                                      "candidates", "lessons", "events", "graph", "outline"])
 def test_book_views_reject_other_account(accounts_and_books, suffix):
     users, books = accounts_and_books
-    response = client.get(f"/internal/v1/projects/{books[0].id}/{suffix}", headers=headers(users[1]))
+    response = client.get(f"/api/v1/projects/{books[0].id}/{suffix}", headers=headers(users[1]))
     assert response.status_code in (403, 404)
 
 
@@ -115,7 +115,7 @@ def test_rls_and_root_lists_do_not_cross_accounts(accounts_and_books):
             db.flush()
             chapter_ids.append(chapter.id)
     for index, user in enumerate(users):
-        response = client.get("/internal/v1/projects", headers=headers(user))
+        response = client.get("/api/v1/projects", headers=headers(user))
         assert [b["id"] for b in response.json()] == [str(books[index].id)]
         with tenant_session(books[index].id) as db:
             assert db.get(Chapter, chapter_ids[1-index]) is None

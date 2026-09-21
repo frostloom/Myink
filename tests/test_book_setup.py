@@ -130,7 +130,7 @@ def test_create_project_creates_project_and_settings():
         uid = _fresh_user(db)
         db.commit()
     try:
-        resp = client.post("/internal/v1/projects", headers=_h(uid),
+        resp = client.post("/api/v1/projects", headers=_h(uid),
                            json={"title": "破晓录", "genre": "历史悬疑"})
         assert resp.status_code == 200
         data = resp.json()
@@ -154,7 +154,7 @@ def test_create_project_empty_title_400():
         uid = _fresh_user(db)
         db.commit()
     try:
-        resp = client.post("/internal/v1/projects", headers=_h(uid), json={"title": "  "})
+        resp = client.post("/api/v1/projects", headers=_h(uid), json={"title": "  "})
         assert resp.status_code == 400
     finally:
         _delete_user(uid)
@@ -163,8 +163,8 @@ def test_create_project_empty_title_400():
 def test_create_project_fail_closed():
     """缺身份 → 403，坏凭证 → 401（§14.1 ③ 默认拒绝）。"""
     body = {"title": "破晓录"}
-    assert client.post("/internal/v1/projects", json=body).status_code == 403
-    assert client.post("/internal/v1/projects", headers=INVALID_BEARER, json=body).status_code == 401
+    assert client.post("/api/v1/projects", json=body).status_code == 403
+    assert client.post("/api/v1/projects", headers=INVALID_BEARER, json=body).status_code == 401
 
 
 def test_create_project_daily_quota_429():
@@ -175,7 +175,7 @@ def test_create_project_daily_quota_429():
             db.add(Project(user_id=uid, title=f"配额书{i}"))
         db.commit()
     try:
-        resp = client.post("/internal/v1/projects", headers=_h(uid), json={"title": "超限书"})
+        resp = client.post("/api/v1/projects", headers=_h(uid), json={"title": "超限书"})
         assert resp.status_code == 429
         assert resp.json() == {"error": "BOOK_CNT_EXCEEDED"}, "错误体用网关同款信封（前端 GATE_CODES 命中）"
     finally:
@@ -193,7 +193,7 @@ def test_setup_draft_returns_draft_not_persisted(temp_project, book_stub):
     with tenant_session(temp_project) as db:
         st_before = get_settings(db, uuid.UUID(temp_project))
     resp = client.post(
-        f"/internal/v1/projects/{temp_project}/setup-draft", headers=headers,
+        f"/api/v1/projects/{temp_project}/setup-draft", headers=headers,
         json={"premise": "少年从青云镇出发，闯荡仙途。"},
     )
     assert resp.status_code == 200
@@ -220,7 +220,7 @@ def test_setup_draft_degraded_on_provider_error(temp_project, book_stub):
     headers = _h(_demo_user_id())
     before = _book_setup_run_count(temp_project)
     resp = client.post(
-        f"/internal/v1/projects/{temp_project}/setup-draft", headers=headers,
+        f"/api/v1/projects/{temp_project}/setup-draft", headers=headers,
         json={"premise": "少年闯仙途。"},
     )
     assert resp.status_code == 200
@@ -238,7 +238,7 @@ def test_setup_draft_degraded_on_provider_error(temp_project, book_stub):
 def test_setup_draft_degraded_on_bad_json(temp_project, book_stub):
     book_stub(raw="{not-json")
     resp = client.post(
-        f"/internal/v1/projects/{temp_project}/setup-draft", headers=_h(_demo_user_id()),
+        f"/api/v1/projects/{temp_project}/setup-draft", headers=_h(_demo_user_id()),
         json={"premise": "少年闯仙途。"},
     )
     assert resp.status_code == 200
@@ -249,20 +249,20 @@ def test_setup_draft_degraded_on_bad_json(temp_project, book_stub):
 
 def test_setup_draft_empty_premise_400(temp_project):
     resp = client.post(
-        f"/internal/v1/projects/{temp_project}/setup-draft", headers=_h(_demo_user_id()),
+        f"/api/v1/projects/{temp_project}/setup-draft", headers=_h(_demo_user_id()),
         json={"premise": "  "},
     )
     assert resp.status_code == 400
 
 
 def test_setup_draft_ownership(temp_project):
-    url = f"/internal/v1/projects/{temp_project}/setup-draft"
+    url = f"/api/v1/projects/{temp_project}/setup-draft"
     body = {"premise": "少年闯仙途。"}
     assert client.post(url, headers=_h(uuid.uuid4()), json=body).status_code == 401   # 未知账号
     assert client.post(url, json=body).status_code == 403                             # 缺失身份
-    assert client.post(f"/internal/v1/projects/{uuid.uuid4()}/setup-draft",
+    assert client.post(f"/api/v1/projects/{uuid.uuid4()}/setup-draft",
                        headers=_h(_demo_user_id()), json=body).status_code == 404     # 项目不存在
-    assert client.post("/internal/v1/projects/not-a-uuid/setup-draft",
+    assert client.post("/api/v1/projects/not-a-uuid/setup-draft",
                        headers=_h(_demo_user_id()), json=body).status_code == 400     # id 非法
 
 
@@ -272,13 +272,13 @@ def test_setup_draft_ownership(temp_project):
 def test_put_setup_persists_and_upserts_by_name(temp_project):
     """确认落库 + append-only：按 name create-if-missing，重复确认不重复建行。"""
     headers = _h(_demo_user_id())
-    url = f"/internal/v1/projects/{temp_project}/setup"
+    url = f"/api/v1/projects/{temp_project}/setup"
     r = client.put(url, headers=headers, json=_SETUP_BODY)
     assert r.status_code == 200
     assert r.json() == {"ok": True}
 
     # 读回：world + characters
-    w = client.get(f"/internal/v1/projects/{temp_project}/world", headers=headers)
+    w = client.get(f"/api/v1/projects/{temp_project}/world", headers=headers)
     assert w.status_code == 200
     wd = w.json()
     assert wd["world_rules"] == {"灵气": "充盈"}
@@ -286,7 +286,7 @@ def test_put_setup_persists_and_upserts_by_name(temp_project):
     assert wd["factions"] == [{"name": "青云宗", "stance": "正道之首", "resources": []}]
     assert wd["locations"] == [{"name": "青云山"}]
 
-    cards = client.get(f"/internal/v1/projects/{temp_project}/characters", headers=headers)
+    cards = client.get(f"/api/v1/projects/{temp_project}/characters", headers=headers)
     assert cards.status_code == 200
     assert cards.json() == [{
         "id": cards.json()[0]["id"], "name": "林砚", "race": "人族", "origin": None,
@@ -303,9 +303,9 @@ def test_put_setup_persists_and_upserts_by_name(temp_project):
         "world_rules": {"灵气": "充盈", "剑道": "剑气纵横"},
     })
     assert r2.status_code == 200
-    w2 = client.get(f"/internal/v1/projects/{temp_project}/world", headers=headers)
+    w2 = client.get(f"/api/v1/projects/{temp_project}/world", headers=headers)
     assert w2.json()["world_rules"] == {"灵气": "充盈", "剑道": "剑气纵横"}, "整体替换语义"
-    cards2 = client.get(f"/internal/v1/projects/{temp_project}/characters", headers=headers)
+    cards2 = client.get(f"/api/v1/projects/{temp_project}/characters", headers=headers)
     names = {c["name"] for c in cards2.json()}
     assert names == {"林砚", "苏晚"}, "林砚 不重复建、苏晚 新建"
     suwan = next(c for c in cards2.json() if c["name"] == "苏晚")
@@ -317,7 +317,7 @@ def test_put_setup_persists_and_upserts_by_name(temp_project):
 
 def test_put_setup_increments_version(temp_project):
     headers = _h(_demo_user_id())
-    url = f"/internal/v1/projects/{temp_project}/setup"
+    url = f"/api/v1/projects/{temp_project}/setup"
     client.put(url, headers=headers, json=_SETUP_BODY)
     with tenant_session(temp_project) as db:
         v1 = get_settings(db, uuid.UUID(temp_project)).version
@@ -334,7 +334,7 @@ def test_put_setup_creates_settings_when_missing(temp_project):
             ProjectSettings.project_id == uuid.UUID(temp_project)).delete()
         db.commit()
     resp = client.put(
-        f"/internal/v1/projects/{temp_project}/setup", headers=_h(_demo_user_id()),
+        f"/api/v1/projects/{temp_project}/setup", headers=_h(_demo_user_id()),
         json={"hard_constraints": ["凡人不可御剑飞行"]},
     )
     assert resp.status_code == 200
@@ -345,10 +345,10 @@ def test_put_setup_creates_settings_when_missing(temp_project):
 
 
 def test_put_setup_ownership(temp_project):
-    url = f"/internal/v1/projects/{temp_project}/setup"
+    url = f"/api/v1/projects/{temp_project}/setup"
     assert client.put(url, headers=_h(uuid.uuid4()), json=_SETUP_BODY).status_code == 401
     assert client.put(url, json=_SETUP_BODY).status_code == 403
-    assert client.put(f"/internal/v1/projects/{uuid.uuid4()}/setup",
+    assert client.put(f"/api/v1/projects/{uuid.uuid4()}/setup",
                       headers=_h(_demo_user_id()), json=_SETUP_BODY).status_code == 404
 
 
@@ -362,20 +362,20 @@ def test_world_empty_defaults_on_no_settings(temp_project):
             ProjectSettings.project_id == uuid.UUID(temp_project)).delete()
         db.commit()
     headers = _h(_demo_user_id())
-    w = client.get(f"/internal/v1/projects/{temp_project}/world", headers=headers)
+    w = client.get(f"/api/v1/projects/{temp_project}/world", headers=headers)
     assert w.status_code == 200
     assert w.json() == {"world_rules": {}, "hard_constraints": [], "factions": [], "locations": []}
-    cards = client.get(f"/internal/v1/projects/{temp_project}/characters", headers=headers)
+    cards = client.get(f"/api/v1/projects/{temp_project}/characters", headers=headers)
     assert cards.status_code == 200
     assert cards.json() == []
 
 
 def test_world_characters_ownership(temp_project):
-    for path in (f"/internal/v1/projects/{temp_project}/world",
-                 f"/internal/v1/projects/{temp_project}/characters"):
+    for path in (f"/api/v1/projects/{temp_project}/world",
+                 f"/api/v1/projects/{temp_project}/characters"):
         assert client.get(path, headers=_h(uuid.uuid4())).status_code == 401
         assert client.get(path).status_code == 403
-        assert client.get(f"/internal/v1/projects/{uuid.uuid4()}/world",
+        assert client.get(f"/api/v1/projects/{uuid.uuid4()}/world",
                           headers=_h(_demo_user_id())).status_code == 404
 
 

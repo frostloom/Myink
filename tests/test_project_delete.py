@@ -221,22 +221,22 @@ def test_delete_project_survives_redis_failure(temp_project, monkeypatch):
 
 
 def test_delete_project_missing_404():
-    resp = client.delete(f"/internal/v1/projects/{uuid.uuid4()}", headers=_h(_demo_user_id()))
+    resp = client.delete(f"/api/v1/projects/{uuid.uuid4()}", headers=_h(_demo_user_id()))
     assert resp.status_code == 404
 
 
 def test_delete_project_rejects_unknown_user(temp_project):
-    resp = client.delete(f"/internal/v1/projects/{temp_project}", headers=_h(uuid.uuid4()))
+    resp = client.delete(f"/api/v1/projects/{temp_project}", headers=_h(uuid.uuid4()))
     assert resp.status_code == 401
 
 
 def test_delete_project_fail_closed_without_identity(temp_project):
-    resp = client.delete(f"/internal/v1/projects/{temp_project}")
+    resp = client.delete(f"/api/v1/projects/{temp_project}")
     assert resp.status_code == 403
 
 
 def test_delete_project_rejects_invalid_identity(temp_project):
-    resp = client.delete(f"/internal/v1/projects/{temp_project}", headers=INVALID_BEARER)
+    resp = client.delete(f"/api/v1/projects/{temp_project}", headers=INVALID_BEARER)
     assert resp.status_code == 401
 
 
