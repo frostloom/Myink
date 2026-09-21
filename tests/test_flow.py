@@ -102,7 +102,7 @@ def project_id():
     """取 demo project（seed 已在 init 建立）。"""
     with new_session() as db:
         row = db.execute(text("SELECT id FROM projects WHERE title='九州问天'")).first()
-        assert row is not None, "请先运行 `myink init`"
+        assert row is not None, "请先运行 `myink init --seed`"
         return str(row.id)
 
 

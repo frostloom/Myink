@@ -59,12 +59,12 @@ docker compose up -d --build
 
 访问 http://localhost（Caddy 托管前端静态产物，同源提供页面 + API + SSE）。Go 网关只服务 SSE，不再发布宿主机端口；需要 HTTPS 时把 `SITE_ADDRESS` 改成域名走自动签发。
 
-- 配置密钥后，管理员用 `myink create-invite` 发放默认 7 天有效的一次性邀请码；受邀者在登录页注册
-- 旧账号（含 demo）没有默认密码，需管理员运行 `myink reset-password demo` 激活；详见 [账号与隔离说明](docs/AUTH.md)
+- 冷启动只有空库：用 `myink create-invite` 发一个默认 7 天有效的一次性邀请码，在登录页注册即得首个账号；要进管理面板再跑 `myink set-role <用户名> admin`
+- 之后发码不必回命令行：管理员在 `/admin` 的「邀请码」页签即可建码、设有效期/次数/备注/自定义码面并撤销
 - 管理员可通过 `/admin` 只读查看全站作品、任务与节点指标；权限授予、观测边界和部署要求见 [管理面板说明](docs/ADMIN.md)。
 - 支持 OpenAI 兼容或 Anthropic 原生接口；未配置连接时不会回落内置模型
 - 向量召回默认关闭（`EMBED_ENABLED=0`），开启与模型下载见 [docs/DEPLOY.md](docs/DEPLOY.md)
-- 首次启动自动建表 + RLS + 示例数据，幂等可重复执行
+- 首次启动自动建表 + RLS（不建账号、不建示例数据），幂等可重复执行；要示例账号与示例书用 `myink init --seed`，示例账号没有默认密码，需 `myink reset-password` 激活
 
 ## 项目结构
 

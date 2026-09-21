@@ -32,7 +32,7 @@ Anthropic Messages 原生接口，请按服务商要求填写包含版本前缀�
 
 Python API 的 8100 端口与 Go 网关的 8080 端口都仅在容器网络内开放（`expose`，不发布宿主机端口）。宿主机上唯一对外发布的是 Caddy：它按设计监听所有网卡的 80/443——那就是公网入口；PostgreSQL、Redis、RabbitMQ 只绑定回环地址。本机跑演示时 Caddy 对同局域网可达，要收口就配宿主防火墙，或把 compose 里 Caddy 的 `ports` 改成 `127.0.0.1:80:80` 这类形式。不要将这份演示配置原样开放到公网。
 
-首次启动由 `docker/initdb/01-roles.sql` 创建非超级用户 `myink_app`；API 启动时运行 `myink init`，创建表、RLS、必要补丁和演示数据；启动不再自动清理遗留表/列。单独升级认证字段可用 `myink auth-upgrade`，不重命名旧账号、不迁移作品归属。已有数据库升级目前使用幂等补丁，尚无完整的 Alembic 版本迁移链。
+首次启动由 `docker/initdb/01-roles.sql` 创建非超级用户 `myink_app`；API 启动时运行 `myink init`，创建表、RLS 与必要补丁（默认不建账号、不建示例数据）；启动不再自动清理遗留表/列。单独升级认证字段可用 `myink auth-upgrade`，不重命名旧账号、不迁移作品归属。已有数据库升级目前使用幂等补丁，尚无完整的 Alembic 版本迁移链。
 
 ```bash
 docker compose logs -f myink-api myink-worker myink-gateway myink-caddy
@@ -47,7 +47,7 @@ docker compose up -d --build
 ```bash
 docker compose up -d --wait myink-pg myink-redis myink-rabbitmq
 python -m pip install -e '.[dev]'
-myink init
+myink init --seed
 ```
 
 在不同终端运行 `myink-api`、`myink-worker`、`cd gateway && go run ./cmd/gateway`、`cd web && npm ci && npm run dev`。网关本机运行只需 `REDIS_ADDR`、`PYTHON_API_BASE`、`JWT_SECRET`（它不再连接 RabbitMQ）。本机连接 Compose RabbitMQ 使用 `.env.example` 中的 `amqp://myink:myink@localhost:5672/`；容器内使用服务名 `myink-rabbitmq`。不要混用 guest 凭据。

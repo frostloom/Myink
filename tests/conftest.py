@@ -107,7 +107,7 @@ def temp_project():
     """
     with new_session() as db:
         row = db.execute(sa_select(Project).where(Project.title == "九州问天")).scalars().first()
-        assert row is not None, "请先运行 `myink init`"
+        assert row is not None, "请先运行 `myink init --seed`"
         demo = row
         b = Project(user_id=demo.user_id, title=f"test书-{uuid.uuid4().hex[:6]}",
                     genre=demo.genre, target_words=demo.target_words)
