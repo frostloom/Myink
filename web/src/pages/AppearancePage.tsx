@@ -6,6 +6,7 @@ import { Link, useBlocker } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
+import { useGuest } from '../hooks/useGuest'
 import { api } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
 import {
@@ -254,6 +255,7 @@ function WorkspacePreview(props: {
 
 export default function AppearancePage() {
   const { logout } = useAuth()
+  const guest = useGuest()
   const {
     theme,
     presets,
@@ -334,10 +336,11 @@ export default function AppearancePage() {
   }
 
   useEffect(() => {
+    if (guest) return
     api.listProjects().then(setProjects).catch((err) => {
       setBanner(formatApiError(err, '作品列表加载失败'))
     })
-  }, [])
+  }, [guest])
 
   useEffect(() => {
     let cancelled = false

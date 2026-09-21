@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { RankingsPanel } from '../components/RankingsPanel'
 import { useAuth } from '../context/AuthContext'
+import { useGuest } from '../hooks/useGuest'
 import { api } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
 import { isProjectDraft } from '../lib/projectCreation'
@@ -81,6 +82,7 @@ function ApiMessage(err: unknown, fallback: string): string {
 
 export default function NewProjectPage() {
   const { logout } = useAuth()
+  const guest = useGuest()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const resumeId = searchParams.get('draft')
@@ -111,13 +113,22 @@ export default function NewProjectPage() {
   const [ok, setOk] = useState<string | null>(null)
 
   useEffect(() => {
+    if (guest) {
+      setProjects([])
+      return
+    }
     void api.listProjects().then(setProjects).catch(() => {})
     void api.listGenrePacks().then(setCatalog).catch(() => {
       setBanner('题材目录加载失败，可先不选题材创建')
     })
-  }, [])
+  }, [guest])
 
   useEffect(() => {
+    // 游客不进建书向导：题材目录、草稿恢复都是需要凭据的请求，一律不发。
+    if (guest) {
+      setBusy(null)
+      return
+    }
     if (resumeId && currentPid.current === resumeId) return
     let disposed = false
     currentPid.current = null
@@ -163,7 +174,7 @@ export default function NewProjectPage() {
     }).catch((err) => { if (!disposed) setBanner(ApiMessage(err, '恢复草稿失败，请刷新重试')) })
       .finally(() => { if (!disposed) setBusy(null) })
     return () => { disposed = true }
-  }, [resumeId, navigate])
+  }, [guest, resumeId, navigate])
 
   const primary = catalog.find((item) => item.id === primaryId) ?? null
   const secondary = catalog.find((item) => item.id === secondaryId) ?? null
