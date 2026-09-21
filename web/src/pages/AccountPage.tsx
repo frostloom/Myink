@@ -85,7 +85,6 @@ export default function AccountPage() {
         {status === 'authenticated' && session?.role === 'admin' && session.roleVerified === true && (
           <section className={`panel ${styles.section}`} aria-labelledby="admin-console">
             <h2 id="admin-console">管理后台</h2>
-            <p className={styles.hint}>查看全局用户、作品、任务、运行与访问日志；后台仅提供只读观测。</p>
             <Link className="btn btn-secondary" to="/admin">打开管理后台</Link>
           </section>
         )}

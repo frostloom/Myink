@@ -133,9 +133,6 @@ export default function LoginPage() {
         </label>
         {mode === 'register' && (
           <>
-            <p className={styles.sub}>
-              Administrators can see writing and debugging content（管理员可查看写作与调试内容）。
-            </p>
             <label className={styles.field}>
               <span>确认密码</span>
               <input
