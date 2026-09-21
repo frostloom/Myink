@@ -2,7 +2,7 @@
 
 面向长篇网络小说连续创作的多 Agent 智能创作系统。通过多 Agent 编排、审核路由、复盘沉淀与多级记忆召回，旨在减少长文中的人设不一致、战力崩坏、剧情前后矛盾、长上下文过载等问题，实现「规划 → 生成 → 校验 → 记忆沉淀」的完整创作闭环。
 
-当前定位：**本地演示与小范围邀请试用的 MVP**。新账号必须使用服务端发放的邀请码注册；已有账号继续使用密码登录。作品、写作任务及实时事件按账号隔离。Compose 默认只绑定本机，公网部署仍需独立安全加固。
+当前定位：**本地演示与小范围邀请试用的 MVP**。新账号必须使用服务端发放的邀请码注册；已有账号继续使用密码登录。作品、写作任务及实时事件按账号隔离。Compose 里只有 Caddy 边缘层发布宿主机端口（按设计监听所有网卡的 80/443），其余服务都绑回环；公网部署仍需独立安全加固。
 
 ## 核心能力
 
@@ -31,8 +31,8 @@ Agent 只输出候选，由编排层处理落库。低风险候选可自动确�
 
 ### 工程化
 
-- Go(Gin) 网关承载高并发面（限流 / 鉴权 / SSE），与 Python(FastAPI/LangGraph) 推理层通过 HTTP 解耦、独立扩缩容；RabbitMQ 承载异步任务/延迟重投/死信，Redis 承载限流/锁/SSE；Last-Event-ID 在事件保留窗口内追平
-- 多租户隔离默认拒绝：PostgreSQL RLS + 事务级 `SET LOCAL` 杜绝连接池跨租户串数据，向量检索显式按项目过滤；过滤场景的召回质量需通过数据集验证，网关 JWT 验签 + 应用层归属断言双保险
+- Caddy 边缘层承载 TLS / 前端静态托管 / 按路径分流；Go(Gin) 网关收缩为只服务 SSE 进度流；Python(FastAPI/LangGraph) 自验 JWT、跑三层闸门并独立扩缩容；RabbitMQ 承载异步任务/延迟重投/死信，Redis 承载限流/锁/SSE；Last-Event-ID 在事件保留窗口内追平
+- 多租户隔离默认拒绝：PostgreSQL RLS + 事务级 `SET LOCAL` 杜绝连接池跨租户串数据，向量检索显式按项目过滤；过滤场景的召回质量需通过数据集验证，Python 自验 JWT + 应用层归属断言双保险
 - 已落地 MCP Client 标准协议接入起点 DaoSearch 外部榜单（Streamable HTTP，白名单 sanitize + 优雅降级样例），榜单仅作建书前的题材风向灵感工具、不进入记忆 / 事实层、不注入任何生成节点
 
 ## 技术栈
@@ -40,10 +40,11 @@ Agent 只输出候选，由编排层处理落库。低风险候选可自动确�
 | 层 | 技术 |
 |---|---|
 | 推理编排 | Python 3.12 / FastAPI / LangGraph / SQLAlchemy |
-| 网关 | Go / Gin |
+| 边缘层 | Caddy 2（TLS / 静态托管 / 按路径分流） |
+| 网关 | Go / Gin（只服务 SSE 进度流） |
 | 存储与队列 | PostgreSQL 16 + pgvector / Redis 7 / RabbitMQ 3.13 |
 | 前端 | React 19 / TypeScript / Vite / CSS Modules |
-| 部署 | Docker Compose 一键启动（单端口 8080） |
+| 部署 | Docker Compose 一键启动（单入口 80/443，Caddy） |
 
 ## 快速开始
 
@@ -52,11 +53,11 @@ Agent 只输出候选，由编排层处理落库。低风险候选可自动确�
 cp .env.example .env
 # 首次使用前填写强随机 JWT_SECRET（至少 32 字节）及独立 MODEL_CREDENTIAL_KEY
 # 已有数据库请先阅读 docs/AUTH.md 的无损升级步骤，不要直接更换旧密钥
-# 启动全部服务（PostgreSQL+pgvector / Redis / RabbitMQ / Python API / Worker / Go 网关）
+# 启动全部服务（PostgreSQL+pgvector / Redis / RabbitMQ / Python API / Worker / Go 网关 / Caddy）
 docker compose up -d --build
 ```
 
-访问 127.0.0.1:8080（网关静态托管前端，同源提供页面 + API + SSE）。
+访问 http://localhost（Caddy 托管前端静态产物，同源提供页面 + API + SSE）。Go 网关只服务 SSE，不再发布宿主机端口；需要 HTTPS 时把 `SITE_ADDRESS` 改成域名走自动签发。
 
 - 配置密钥后，管理员用 `myink create-invite` 发放默认 7 天有效的一次性邀请码；受邀者在登录页注册
 - 旧账号（含 demo）没有默认密码，需管理员运行 `myink reset-password demo` 激活；详见 [账号与隔离说明](docs/AUTH.md)
@@ -69,7 +70,7 @@ docker compose up -d --build
 
 ```
 src/myink/        Python 推理层（workflow 编排 / api / models / providers）
-gateway/          Go 网关（转发 / 鉴权 / SSE / 静态托管）
+gateway/          Go 网关（只服务 SSE 进度流；验签与中继）
 web/              React + TypeScript 前端
 tests/            Python 测试（含冲突样例评测集）
 spec/             API 契约（OpenAPI）与状态流设计
@@ -87,7 +88,7 @@ docker/           initdb 脚本
 
 - Python：编排、校验、租户隔离、版本并发冲突、上下文预算及 OpenAPI 契约回归。
 - 前端：工具函数与 jsdom 编辑器交互回归，另运行 TypeScript / Vite 构建。
-- Go：网关契约、转发、Redis 闸门与 RabbitMQ 集成测试；CI 拒绝静默跳过。
+- Go：网关契约（仅剩两条直连 Python 的路径）、SSE 中继、闸门脚本语义参照与 RabbitMQ 集成测试；CI 拒绝静默跳过。
 - 契约：`myink contract export` 导出后提交 `spec/api-openapi.json`；CI 检查漂移。
 - `bash scripts/ci-local.sh` 使用独立临时基础设施，不改动开发作品库。设置 `SKIP_IMAGES=1` 可跳过镜像构建。详细环境见 [部署文档](docs/DEPLOY.md)。
 
