@@ -30,12 +30,12 @@ Anthropic Messages 原生接口，请按服务商要求填写包含版本前缀�
 | 127.0.0.1:5672 | RabbitMQ：任务、延迟重投、死信 |
 | 127.0.0.1:15672 | RabbitMQ 管理界面，演示账号 myink/myink |
 
-Python API 的 8100 端口与 Go 网关的 8080 端口都仅在容器网络内开放（`expose`，不发布宿主机端口）。宿主机上唯一对外发布的是 Caddy：它按设计监听所有网卡的 80/443——那就是公网入口；PostgreSQL、Redis、RabbitMQ 只绑定回环地址。本机跑演示时 Caddy 对同局域网可达，要收口就配宿主防火墙，或把 compose 里 Caddy 的 `ports` 改成 `127.0.0.1:80:80` 这类形式。不要将这份演示配置原样开放到公网。
+Python API 的 8100 端口仅在容器网络内开放（`expose`，不发布宿主机端口）。宿主机上唯一对外发布的是 Caddy：它按设计监听所有网卡的 80/443——那就是公网入口；PostgreSQL、Redis、RabbitMQ 只绑定回环地址。本机跑演示时 Caddy 对同局域网可达，要收口就配宿主防火墙，或把 compose 里 Caddy 的 `ports` 改成 `127.0.0.1:80:80` 这类形式。不要将这份演示配置原样开放到公网。
 
 首次启动由 `docker/initdb/01-roles.sql` 创建非超级用户 `myink_app`；API 启动时运行 `myink init`，创建表、RLS 与必要补丁（默认不建账号、不建示例数据）；启动不再自动清理遗留表/列。单独升级认证字段可用 `myink auth-upgrade`，不重命名旧账号、不迁移作品归属。已有数据库升级目前使用幂等补丁，尚无完整的 Alembic 版本迁移链。
 
 ```bash
-docker compose logs -f myink-api myink-worker myink-gateway myink-caddy
+docker compose logs -f myink-api myink-worker myink-caddy
 docker compose down       # 停止应用，保留作品数据卷
 docker compose up -d --build
 ```
@@ -50,7 +50,7 @@ python -m pip install -e '.[dev]'
 myink init --seed
 ```
 
-在不同终端运行 `myink-api`、`myink-worker`、`cd gateway && go run ./cmd/gateway`、`cd web && npm ci && npm run dev`。网关本机运行只需 `REDIS_ADDR`、`PYTHON_API_BASE`、`JWT_SECRET`（它不再连接 RabbitMQ）。本机连接 Compose RabbitMQ 使用 `.env.example` 中的 `amqp://myink:myink@localhost:5672/`；容器内使用服务名 `myink-rabbitmq`。不要混用 guest 凭据。
+在不同终端运行 `myink-api`、`myink-worker`、`cd web && npm ci && npm run dev`。本机连接 Compose RabbitMQ 使用 `.env.example` 中的 `amqp://myink:myink@localhost:5672/`；容器内使用服务名 `myink-rabbitmq`。不要混用 guest 凭据。
 
 前端开发地址 http://localhost:5173 ，Vite dev proxy 把 `/api` 转发到 Caddy（`http://localhost:80`，见 `web/vite.config.ts`），因此本机开发要同时起 `docker compose up -d myink-caddy`。
 
@@ -105,7 +105,7 @@ Caddy 要占用 80/443，宿主若已跑着 nginx，它会起不来。这一步*
 3. 再停 nginx（`systemctl stop nginx`，确认后 `systemctl disable nginx`），把 `ports` 改回 `"80:80"` / `"443:443"` / `"443:443/udp"`，`docker compose up -d myink-caddy`。
 4. 域名解析指过来，`SITE_ADDRESS` 填域名（不带协议前缀），Caddy 自动申请续期证书；证书落在 `caddy-data` 卷里，**不要删这个卷**，否则重启会重签并可能撞 Let's Encrypt 速率限制。
 
-回滚就是把 nginx 起回来、`ports` 改回 8081（第 1 步若删过 vhost，先把它恢复）：Caddy 与 Go 网关都不持有跨启动的业务状态。
+回滚就是把 nginx 起回来、`ports` 改回 8081（第 1 步若删过 vhost，先把它恢复）：Caddy 与 API 都不持有跨启动的业务状态。
 
 ## 仍需完成的生产工作
 

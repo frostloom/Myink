@@ -1,5 +1,5 @@
 # Myink CI：PR / 主分支门禁（格式检查 + 全量回归 + 镜像构建，plan.md §阶段 5 余项「CI」）。
-# 四个 job 并行：python（全新 PG + Redis + RabbitMQ 服务容器，测前 myink init）/ go（网关 vet+test）/ frontend / build-images。
+# 三个 job 并行：python（全新 PG + Redis + RabbitMQ 服务容器，测前 myink init）/ frontend / build-images。
 # 关键设计：Python 测试用「全新 PG」服务容器——刚修过的部署 bug（索引名冲突 / schema CREATE 权限）
 # 都是全新库才暴露的类型，CI 用 fresh 库跑全量回归就是那道闸；EMBED_ENABLED=0 不装 ml extras（torch）。
 # 无 git remote 时本地等价验证：bash scripts/ci-local.sh（同一套门禁，见 docs/DEPLOY.md）。
@@ -86,55 +86,6 @@ jobs:
       - name: 全量回归（LLM/embedding 使用替身）
         run: python -m pytest tests/ -q
 
-  # Go 网关：需要 Redis + RabbitMQ（Python API 用 httptest 假服务，不依赖 8100）。
-  # Redis 不通时 newTestRedis 会 t.Skipf 整体跳过而非失败——显式拦截「绿灯空转」。
-  go:
-    name: Go 网关（vet + 单测）
-    runs-on: ubuntu-latest
-    env:
-      AMQP_URL: amqp://myink:myink@localhost:5672/
-    services:
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6380:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 3s
-          --health-timeout 3s
-          --health-retries 30
-      rabbitmq:
-        image: rabbitmq:3.13-management
-        env:
-          RABBITMQ_DEFAULT_USER: myink
-          RABBITMQ_DEFAULT_PASS: myink
-        ports:
-          - 5672:5672
-        options: >-
-          --health-cmd "rabbitmq-diagnostics -q ping"
-          --health-interval 3s
-          --health-timeout 5s
-          --health-retries 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: gateway/go.mod
-      - name: go vet
-        working-directory: gateway
-        run: go vet ./...
-      - name: go test（拦截 SKIP：Redis/RabbitMQ 未就绪不允许静默通过）
-        working-directory: gateway
-        run: |
-          rc=0
-          go test -count=1 -v ./... > /tmp/go-test.log 2>&1 || rc=$?
-          cat /tmp/go-test.log
-          if grep -q -- '--- SKIP' /tmp/go-test.log; then
-            echo "::error::检测到 SKIP（Redis/RabbitMQ 服务未就绪），CI 不允许绿灯空转"
-            exit 1
-          fi
-          exit $rc
-
   # 前端：oxlint + vitest + tsc/vite build（工具函数单测 + jsdom 编辑器交互回归）。
   frontend:
     name: 前端（lint + 单测 + 构建）
@@ -161,13 +112,11 @@ jobs:
   # 镜像构建：GitHub runner 境外网络用官方源即可（pypi / npmjs / goproxy），
   # 不需 daocloud/aliyun 覆盖（那是本地 compose 的国内源参数）。
   build-images:
-    name: 镜像构建（Python + 网关 + Caddy）
+    name: 镜像构建（Python + Caddy）
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Python 镜像（api/worker 共用，核心依赖）
         run: docker build -f Dockerfile -t myink-api:ci .
-      - name: 网关镜像（go 静态编译 → slim，只含 SSE 中继二进制）
-        run: docker build -f gateway/Dockerfile -t myink-gateway:ci .
       - name: Caddy 镜像（node 构建 dist + Caddyfile，构建期 caddy validate 兜语法错）
         run: docker build -f caddy/Dockerfile -t myink-caddy:ci .

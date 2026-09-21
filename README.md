@@ -53,11 +53,11 @@ Agent 只输出候选，由编排层处理落库。低风险候选可自动确�
 cp .env.example .env
 # 首次使用前填写强随机 JWT_SECRET（至少 32 字节）及独立 MODEL_CREDENTIAL_KEY
 # 已有数据库请先阅读 docs/AUTH.md 的无损升级步骤，不要直接更换旧密钥
-# 启动全部服务（PostgreSQL+pgvector / Redis / RabbitMQ / Python API / Worker / Go 网关 / Caddy）
+# 启动全部服务（PostgreSQL+pgvector / Redis / RabbitMQ / Python API / Worker / Caddy）
 docker compose up -d --build
 ```
 
-访问 http://localhost（Caddy 托管前端静态产物，同源提供页面 + API + SSE）。Go 网关只服务 SSE，不再发布宿主机端口；需要 HTTPS 时把 `SITE_ADDRESS` 改成域名走自动签发。
+访问 http://localhost（Caddy 托管前端静态产物，同源提供页面 + API + SSE）。业务进程只有 Python 两个（api / worker），都只在容器网络内监听；需要 HTTPS 时把 `SITE_ADDRESS` 改成域名走自动签发。
 
 - 冷启动只有空库：用 `myink create-invite` 发一个默认 7 天有效的一次性邀请码，在登录页注册即得首个账号；要进管理面板再跑 `myink set-role <用户名> admin`
 - 之后发码不必回命令行：管理员在 `/admin` 的「邀请码」页签即可建码、设有效期/次数/备注/自定义码面并撤销
@@ -70,8 +70,8 @@ docker compose up -d --build
 
 ```
 src/myink/        Python 推理层（workflow 编排 / api / models / providers）
-gateway/          Go 网关（只服务 SSE 进度流；验签与中继）
 web/              React + TypeScript 前端
+caddy/            边缘层（TLS / 静态产物 / 按路径分流）
 tests/            Python 测试（含冲突样例评测集）
 spec/             API 契约（OpenAPI）与状态流设计
 docs/             部署文档

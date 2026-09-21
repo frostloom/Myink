@@ -37,7 +37,7 @@ myink set-role demo user
 
 ## 隔离边界
 
-- Caddy 是唯一用户入口，只发布 80/443；Go 网关与 Python API 都只在容器网络内监听。身份由 Python 自己验 JWT（HS256 + 签发方 + 必需声明 + 会话版本比对），客户端伪造 `X-Myink-User` 已完全无效——Python 不读这个头。
+- Caddy 是唯一用户入口，只发布 80/443；Python API 只在容器网络内监听。身份由 Python 自己验 JWT（HS256 + 签发方 + 必需声明 + 会话版本比对），客户端伪造 `X-Myink-User` 已完全无效——Python 不读这个头。
 - 注册、登录和改密共享每个来源地址每分钟 20 次限额；认证请求体最多 4096 字节，密码计算每个 API 进程最多并发 2 次。来源地址取自 Caddy 覆盖写入的 `X-Myink-Client-IP`，客户端伪造同名头会被抹掉。
 - Python 业务接口只在容器网络内开放（`expose`，不发布宿主机端口）；**不要单独公开 Python 8100 端口**——它自己验签，但绕过 Caddy 就同时绕过了 TLS 与限流。数据库、Redis 和 RabbitMQ 同样不能面向不可信网络。
 - `role=user|admin` 是管理权限，与 `tier=normal|vip` 任务优先级完全独立。管理员依赖完整 Bearer 验签、会话版本和数据库当前角色；不信任 `X-Myink-User`、JWT 角色宣称或浏览器存储。修改角色会撤销该账号的旧会话。管理员可查看用户写作与调试内容，注册页已明示提醒。
@@ -48,7 +48,7 @@ myink set-role demo user
 
 ## API
 
-对外只有一个前缀 `/api/v1`，契约见 `spec/api-openapi.json`。Caddy 按路径把 `/api/v1/tasks/*/events` 分给 Go 网关（SSE 中继），其余 `/api/v1/*` 与 `/healthz` `/readyz` 分给 Python；非 `/api/v1` 的 `/api/*` 直接回 JSON 404，不会落进 SPA 回退。
+对外只有一个前缀 `/api/v1`，契约见 `spec/api-openapi.json`。Caddy 把全部 `/api/v1/*` 与 `/healthz` `/readyz` 转给 Python（SSE 进度流是同进程里的一条普通路由，只是代理侧要关缓冲）；非 `/api/v1` 的 `/api/*` 直接回 JSON 404，不会落进 SPA 回退。
 
 | 方法与路径 | 请求 | 结果 |
 |---|---|---|

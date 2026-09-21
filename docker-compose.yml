@@ -1,7 +1,7 @@
-# Myink 一键启动全部服务（PostgreSQL+pgvector / Redis / RabbitMQ / Python API / Worker / Go 网关 / Caddy 边缘）。
+# Myink 一键启动全部服务（PostgreSQL+pgvector / Redis / RabbitMQ / Python API / Worker / Caddy 边缘）。
 # 用法：docker compose up -d --build
 #   唯一入口是 Caddy：http://localhost（SITE_ADDRESS 默认 http://localhost，同源出页面+API+SSE）。
-#   Go 网关已收缩为只服务 SSE，不再发布端口（只 expose 给 Caddy 网络内部）。
+#   业务进程只有 Python 两个：myink-api（全部路由，含 SSE 进度流）与 myink-worker。
 # 首次初始化：pg 挂载 docker/initdb 建 myink_app 角色（NOBYPASSRLS）；api 先跑 `myink init`
 # （幂等：建表 + RLS，默认不建账号与示例书）再起 uvicorn。需要开发示例数据时手工执行
 # `myink init --seed`；首个账号用 `myink create-invite` 发码注册。
@@ -61,7 +61,7 @@ services:
       - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     healthcheck:
       # check_port_connectivity 才真正验证 5672 能接连接（ping 只查 erlang 节点注册到 epmd，
-      # 是存活探针不是就绪探针，会让 gateway 在监听器就绪前被放行 → 启动竞态）。
+      # 是存活探针不是就绪探针，会让 worker 在监听器就绪前被放行 → 启动竞态）。
       # gosu 降权到 rabbitmq：healthcheck 的 docker exec 默认以 root 跑，
       # 若抢在 broker 之前创建 .erlang.cookie 会写出 root:root 0400 把 uid 999 锁死。
       test: ["CMD", "gosu", "rabbitmq", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
@@ -96,9 +96,8 @@ services:
       EMBED_ENABLED: "0"
       REQUEST_TOKEN_BUDGET: ${REQUEST_TOKEN_BUDGET:-64000}
       RECALL_TOKEN_BUDGET: ${RECALL_TOKEN_BUDGET:-12000}
-      # 令牌桶必须与 myink-gateway 那组插值逐字一致：Caddy 把流量劈给两个进程，各自一份桶。
-      # 若这里只靠 env_file 而 gateway 用 ${...}，宿主 shell 里 export RATE_PER_SEC 会只改到
-      # gateway 一侧，两侧限额静默分叉（正是 plan 风险 15）。
+      # 用 ${...} 而不是只靠 env_file：宿主 shell 里 export 能覆盖到容器，
+      # 也与 .env.example 保持单一真源。
       RATE_PER_SEC: ${RATE_PER_SEC:-20}
       RATE_BURST: ${RATE_BURST:-40}
       # 扫榜灵感（§10 MCP Client）：容器内显式声明（env_file 已注入，重复声明仅文档化意图 + 防 .env 缺失）
@@ -158,7 +157,7 @@ services:
       context: .
       dockerfile: caddy/Dockerfile
       args:
-        # 国内网络：node/caddy 基础镜像走 daocloud；npm 包走 npmmirror（同 gateway/Dockerfile 风格）
+        # 国内网络：node/caddy 基础镜像走 daocloud；npm 包走 npmmirror
         NODE_IMAGE: docker.m.daocloud.io/library/node:20-alpine
         CADDY_IMAGE: docker.m.daocloud.io/library/caddy:2.11.4-alpine
         NPM_REGISTRY: https://registry.npmmirror.com
@@ -182,42 +181,6 @@ services:
       timeout: 5s
       retries: 30
     depends_on:
-      myink-api:
-        condition: service_started
-      myink-gateway:
-        condition: service_started
-    restart: unless-stopped
-
-  # Go 网关：Caddy 接管公网入口后只剩一条业务路由——SSE 进度事件流。
-  # 不再发布端口（只 expose 给 Caddy 网络内部访问），不再连 RabbitMQ（入队已搬去 Python）。
-  myink-gateway:
-    build:
-      context: .
-      dockerfile: gateway/Dockerfile
-      args:
-        # 国内网络：docker.io 直连超时 → golang/debian 基础镜像走 daocloud；go 模块走国内镜像源（Dockerfile 均有默认值，覆盖传参见下）
-        GOLANG_IMAGE: docker.m.daocloud.io/library/golang:1.26.1-alpine
-        DEBIAN_IMAGE: docker.m.daocloud.io/library/debian:bookworm-slim
-        GOPROXY: https://goproxy.cn,direct
-    image: myink-gateway:local
-    container_name: myink-gateway
-    environment:
-      GATEWAY_PORT: "8080"
-      REDIS_ADDR: myink-redis:6379
-      PYTHON_API_BASE: http://myink-api:8100
-      # 不挂 env_file：gateway 只消费 JWT_SECRET（其余 REDIS/PYTHON 已显式覆盖），
-      # 避免把 DATABASE_URL 等业务密钥带进这个容器（最小暴露）；
-      # ${JWT_SECRET} 由 compose 自动从根 .env 插值（缺省走 config.go 的 dev 默认，两端互通）
-      JWT_SECRET: ${JWT_SECRET:-}
-      # 与 Python 侧同一个桶参数（.env 单一真源）：Caddy 把 SSE 分给 Go、其余分给 Python，
-      # 两边读到不同的值会让总限额悄悄变化。见 .env.example
-      RATE_PER_SEC: ${RATE_PER_SEC:-20}
-      RATE_BURST: ${RATE_BURST:-40}
-    expose:
-      - "8080"
-    depends_on:
-      myink-redis:
-        condition: service_healthy
       myink-api:
         condition: service_started
     restart: unless-stopped

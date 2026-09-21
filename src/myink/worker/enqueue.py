@@ -1,12 +1,12 @@
 """任务入队：三层闸门（gates.lua）→ 归属登记 → RabbitMQ 发布（publisher confirm + 失败补偿）。
 
-移植自网关 `gateway/internal/queue/enqueue.go`。闸门脚本不重写：`gates.lua` /
-`compensate.lua` 是网关那份的**逐字节副本**（`tests/test_gates_parity.py` 钉住），
-语义真源留在 Go 的 `internal/queue/`（连带它那 8 个行为测试）。
+移植自网关 `gateway/internal/queue/enqueue.go`（网关已退场，本文件是唯一实现）。
+闸门脚本 `gates.lua` / `compensate.lua` 就躺在模块旁边，
+`tests/test_enqueue_gates.py` 钉住其调用形状与失败语义（真跑 Redis + 真 Lua）。
 
-调用形状与 `enqueue.go:71-76` 对齐：5 KEYS / 8 ARGV，ARGV 全传字符串（脚本内部
-`tonumber`）。**不要**去"修" gates.lua 里那句硬编码的 `if inflight > 0`——
-`CONCURRENCY_LIMIT` 从来没人传过，Go 也一样，parity 测试就是防这个的。
+调用形状：5 KEYS / 8 ARGV，ARGV 全传字符串（脚本内部 `tonumber`）。**不要**去"修"
+gates.lua 里那句硬编码的 `if inflight > 0`——`CONCURRENCY_LIMIT` 从来没人传过，
+这是与网关行为对齐时留下的有意为之（当初有 parity 测试防手滑）。
 
 失败语义（与 Go 逐条对齐，搞反的后果是要么配额泄漏、要么重复扣费）：
 - `GateError`：闸门拒绝，无副作用 → 429 `{"error": <CODE>}`

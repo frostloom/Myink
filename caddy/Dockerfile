@@ -1,7 +1,6 @@
 # Myink 边缘层镜像：前端静态产物 + Caddy 二进制。
 #
-# 与 gateway/Dockerfile 的分工：静态产物（web/dist）的构建职责原来挂在网关镜像的阶段 1，
-# 现在搬到这里 —— 因为发前端的人从网关换成了 Caddy。
+# 静态产物（web/dist）与 Caddy 二进制同镜像：发前端的人就是 Caddy，多阶段构建到同层里。
 #
 # 基础镜像源可用 build arg 覆盖（国内 docker.io 直连可能超时；compose 当前环境传
 # NODE_IMAGE/CADDY_IMAGE=docker.m.daocloud.io/library/...，见 docker-compose.yml）。

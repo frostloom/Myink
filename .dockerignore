@@ -23,5 +23,4 @@ __pycache__/
 # 测试 / 本地构建产物（不进镜像）
 tests/
 spec/
-gateway/bin/
 alembic/
