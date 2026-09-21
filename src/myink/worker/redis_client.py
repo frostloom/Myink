@@ -9,6 +9,9 @@
                       rate:inflight，resume 直发绕过闸门时书锁为权威）
 - rate:inflight:{uid}:{pid} —— 每书并发闸门（异书并行、同书串行；worker 终态 SREM）
 - rate:cost:{date} —— 全局日成本累计（worker 终态 INCRBYFLOAT）
+- rate:quota:{uid}:{date} —— 每用户日配额已用章数（gates.lua KEYS[1]，入队扣减）
+- rate:bookquota:{uid}:{pid}:{date} —— 每书日配额已用章数（KEYS[4]）
+- rate:bookcnt:{uid}:{date} —— 每用户每天碰过的去重书数（Set，KEYS[5]）
 - queue:heartbeat:{wid} —— worker 存活心跳
 """
 
@@ -56,3 +59,15 @@ def inflight_key(user_id: str, project_id: str) -> str:
 
 def cost_key(date: str) -> str:
     return f"rate:cost:{date}"
+
+
+def quota_key(user_id: str, date: str) -> str:
+    return f"rate:quota:{user_id}:{date}"
+
+
+def book_quota_key(user_id: str, project_id: str, date: str) -> str:
+    return f"rate:bookquota:{user_id}:{project_id}:{date}"
+
+
+def book_cnt_key(user_id: str, date: str) -> str:
+    return f"rate:bookcnt:{user_id}:{date}"

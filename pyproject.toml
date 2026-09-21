@@ -55,6 +55,11 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# 闸门脚本是网关那份 gates.lua / compensate.lua 的逐字节副本（tests/test_gates_parity.py
+# 钉住）。少了这一行 .lua 不进 wheel/镜像，enqueue.py 导入即 FileNotFoundError。
+[tool.setuptools.package-data]
+myink = ["worker/*.lua"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"

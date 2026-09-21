@@ -20,8 +20,8 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ValidationError
 
-from myink.api.auth import require_owner, require_user
-from myink.api.schemas import OkOut, TaskControlOut, TaskDetailOut, TaskSummaryOut
+from myink.api.auth import _AuthenticatedUser, current_identity, require_owner, require_user
+from myink.api.schemas import OkOut, TaskControlOut, TaskDetailOut, TaskEnqueuedOut, TaskSummaryOut
 from myink.config import settings
 from myink.context_budget import estimate_tokens
 from myink.db import new_session
@@ -30,6 +30,7 @@ from myink.schemas import ChapterPlan
 from myink.providers.base import effective_cost
 from myink.providers.connections import price_tables_from_packed
 from myink.worker import amqp
+from myink.worker.enqueue import enqueue
 from myink.worker.redis_client import get_redis, inflight_key
 
 router = APIRouter(prefix="/api/v1", tags=["tasks"])
@@ -65,11 +66,85 @@ def require_task_owner(task_id: str, user_id: str = Depends(require_user)) -> No
 @router.get("/projects/{project_id}/access", dependencies=[Depends(require_owner)], response_model=OkOut)
 def project_access(project_id: str, write: bool = False) -> dict:
     if write:
-        with new_session() as db:
-            project = db.get(Project, uuid.UUID(project_id))
-            if project is None or project.creation_status not in {"ready", "legacy_ready"}:
-                raise HTTPException(status_code=409, detail="PROJECT_NOT_READY")
+        _assert_writable(project_id)
     return {"ok": True}
+
+
+def _assert_writable(project_id: str) -> None:
+    """写操作前置：草稿状态的书进不了生成队列（409 PROJECT_NOT_READY）。
+
+    网关时代这条性质由 `checkAccess(write=true)` 回调本文件的 /access 拿到 409 再改写成
+    `{"error": "PROJECT_NOT_READY"}` 得到；现在 Python 自己判。信封保持 detail——
+    前端 `api.ts` 取 `error ?? detail` 当 code，PROJECT_NOT_READY 照样命中中文文案。
+    """
+    with new_session() as db:
+        project = db.get(Project, uuid.UUID(project_id))
+        if project is None or project.creation_status not in {"ready", "legacy_ready"}:
+            raise HTTPException(status_code=409, detail="PROJECT_NOT_READY")
+
+
+class ChapterGenerateBody(BaseModel):
+    """单章生成入队体。seq 缺省时 worker 按当前进度补齐（`_resolve_chapter_seq`）。"""
+
+    seq: int | None = None
+    user_instruction: str | None = None
+    rewrite: bool = False
+    mode: str = "auto"
+
+
+class BatchGenerateBody(BaseModel):
+    size: int = 1
+    start: int = 1
+
+
+def _priority(tier: str) -> int:
+    """VIP 插队：JWT tier → RabbitMQ 消息优先级（主队列 x-max-priority=10）。"""
+    return settings.priority_vip if tier == "vip" else settings.priority_normal
+
+
+@router.post("/projects/{project_id}/chapters/{chapter_id}/generate",
+             dependencies=[Depends(require_owner)], response_model=TaskEnqueuedOut, status_code=202)
+def generate_chapter(project_id: str, chapter_id: str, body: ChapterGenerateBody,
+                     identity: _AuthenticatedUser = Depends(current_identity)) -> dict:
+    """单章生成入队（§13 三层闸门扣 1）。
+
+    这两条生成路由原先只存在于网关（Go 独占闸门 + 入队），Python 侧完全没有；
+    边缘换 Caddy 之后由本文件接管。闸门拒绝 → 429 `{"error": CODE}`（全局处理器），
+    前端 GATE_CODES 认这个信封。
+    """
+    if body.mode not in {"auto", "manual"}:
+        raise HTTPException(status_code=400, detail="invalid_writing_mode")
+    _assert_writable(project_id)
+    payload: dict = {
+        "chapter_id": chapter_id,
+        "seq": body.seq,
+        "user_instruction": body.user_instruction or "",
+        "mode": body.mode,
+    }
+    # 与 Go 同形：rewrite 只在 true 时进 payload（worker 侧是 bool(payload.get("rewrite"))）
+    if body.rewrite:
+        payload["rewrite"] = True
+    return enqueue(user_id=str(identity.id), project_id=project_id, task_type="chapter_generate",
+                   payload=payload, quota_n=1, cost_est=settings.cost_per_chapter,
+                   priority=_priority(identity.tier))
+
+
+@router.post("/projects/{project_id}/batches/generate",
+             dependencies=[Depends(require_owner)], response_model=TaskEnqueuedOut, status_code=202)
+def generate_batch(project_id: str, body: BatchGenerateBody,
+                   identity: _AuthenticatedUser = Depends(current_identity)) -> dict:
+    """批次生成入队（§13 三层闸门扣 size）。
+
+    size 是**钳制**不是拒绝（§6.11 成本熔断第一道闸，与 Go 同口径；worker 消费时再钳
+    一次双保险），start < 1 归一到 1——Go 零值 0 会穿透到 worker 让批次从第 0 章写起。
+    """
+    size = min(max(body.size, 1), settings.batch_max_hard)
+    start = max(body.start, 1)
+    _assert_writable(project_id)
+    return enqueue(user_id=str(identity.id), project_id=project_id, task_type="batch_generate",
+                   payload={"size": size, "start": start}, quota_n=size,
+                   cost_est=settings.cost_per_chapter * size,
+                   priority=_priority(identity.tier))
 
 
 @router.get("/tasks/{task_id}/access", response_model=OkOut)

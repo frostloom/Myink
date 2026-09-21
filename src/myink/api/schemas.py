@@ -153,6 +153,14 @@ class TaskControlOut(BaseModel):
     message: str | None = None
 
 
+class TaskEnqueuedOut(BaseModel):
+    """入队受理（202）：前端拿 task_id 去订阅 SSE。"""
+
+    task_id: str
+    trace_id: str
+    status: str
+
+
 class TaskSummaryOut(BaseModel):
     """任务历史列表项（§阶段 4 任务视图）：轻量摘要不含 runs，点开再拉详情。
 
