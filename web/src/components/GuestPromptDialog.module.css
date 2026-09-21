@@ -1,0 +1,78 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(48, 42, 38, 0.34);
+  backdrop-filter: blur(2px);
+}
+
+.dialog {
+  display: flex;
+  width: min(440px, calc(100vw - 32px));
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, #8d7f74);
+  border-radius: 16px;
+  background: var(--surface-1);
+  box-shadow: 0 24px 70px rgba(48, 42, 38, 0.2);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px 14px;
+}
+
+.head h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 18px;
+}
+
+.close {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.close:hover {
+  color: var(--accent);
+}
+
+.close:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 0 22px 22px;
+}
+
+.body p {
+  margin: 0;
+  color: var(--ink-muted);
+  line-height: 1.7;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+}
