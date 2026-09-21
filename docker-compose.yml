@@ -2,8 +2,9 @@
 # 用法：docker compose up -d --build
 #   唯一入口是 Caddy：http://localhost（SITE_ADDRESS 默认 http://localhost，同源出页面+API+SSE）。
 #   Go 网关已收缩为只服务 SSE，不再发布端口（只 expose 给 Caddy 网络内部）。
-# 首次初始化：pg 挂载 docker/initdb 建 myink_app 角色（NOBYPASSRLS）；api 先跑 `myink init --no-seed`
-# （幂等：建表 + RLS，不重建改名后的 demo）再起 uvicorn。需要开发示例数据时手工执行 `myink init`。
+# 首次初始化：pg 挂载 docker/initdb 建 myink_app 角色（NOBYPASSRLS）；api 先跑 `myink init`
+# （幂等：建表 + RLS，默认不建账号与示例书）再起 uvicorn。需要开发示例数据时手工执行
+# `myink init --seed`；首个账号用 `myink create-invite` 发码注册。
 name: myink
 
 services:
@@ -103,7 +104,7 @@ services:
       # 扫榜灵感（§10 MCP Client）：容器内显式声明（env_file 已注入，重复声明仅文档化意图 + 防 .env 缺失）
       RANKINGS_ENABLED: "1"
       RANKINGS_MCP_URL: https://daosearch.io/api/mcp
-    command: ["sh", "-c", "myink init --no-seed && myink-api"]
+    command: ["sh", "-c", "myink init && myink-api"]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8100/openapi.json')"]
       interval: 5s

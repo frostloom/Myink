@@ -15,7 +15,7 @@
 配套 tests/_mp_worker.py（子进程入口：注入假 provider + 并发检测）。测试数据全用临时
 project（复制 demo 的 Project+ProjectSettings），demo 零污染；清理 = 删临时 project
 （FK 级联子表）+ agent_runs（无 FK 手动）+ Redis/RabbitMQ 残留。需活 Redis（myink-redis
-:6380）+ 活 RabbitMQ（myink-rabbitmq :5672）+ 活 PG（myink init 建过 demo 项目）。
+:6380）+ 活 RabbitMQ（myink-rabbitmq :5672）+ 活 PG（myink init --seed 建过 demo 项目）。
 """
 
 from __future__ import annotations
@@ -129,7 +129,7 @@ def _demo_project_id() -> str:
 
     with new_session() as db:
         row = db.execute(text("SELECT id FROM projects WHERE title='九州问天'")).first()
-        assert row is not None, "请先运行 myink init 建立 demo 项目"
+        assert row is not None, "请先运行 myink init --seed 建立 demo 项目"
         return str(row.id)
 
 

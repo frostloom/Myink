@@ -30,7 +30,7 @@ myink set-role demo user
 1. 先备份已有数据库和配置。保留原 `.env`，不要复制样例覆盖它。
 2. 新安装设置独立、稳定的 `MODEL_CREDENTIAL_KEY`，并设置强随机 `JWT_SECRET`（至少 32 字节，建议 `openssl rand -base64 48`）。Python 与 Go 必须使用同一 JWT 密钥。所有环境都拒绝默认或过短的 JWT 密钥，返回 `AUTH_SECRET_NOT_CONFIGURED`。
 3. 已有模型密文且未独立设置 `MODEL_CREDENTIAL_KEY` 时，先将原有效 `JWT_SECRET` 固定到 `MODEL_CREDENTIAL_KEY`，确认旧密文仍可解密，再更换 JWT 密钥。若历史环境使用过源码中的开发默认值，按旧配置确定有效派生密钥，不要把实际密钥写入文档或提交；公网部署前需完成密钥轮换与存量密文迁移。
-4. 使用新版本执行 `myink auth-upgrade`，仅添加密码字段、会话版本、规范用户名唯一索引以及默认为 `user` 的角色列。重复执行安全，不修改用户名或作品。如果旧用户名经去空白/小写后冲突，升级会回滚并报错，不自动合并或删除账号。`myink init` 也包含该升级，并已取消自动删除遗留表/列的步骤。仅需增量初始化而不创建 demo/示例书时，使用 `myink init --no-seed`。
+4. 使用新版本执行 `myink auth-upgrade`，仅添加密码字段、会话版本、规范用户名唯一索引以及默认为 `user` 的角色列。重复执行安全，不修改用户名或作品。如果旧用户名经去空白/小写后冲突，升级会回滚并报错，不自动合并或删除账号。`myink init` 也包含该升级，并已取消自动删除遗留表/列的步骤；它默认不创建 demo 账号与示例书，需要开发示例数据时用 `myink init --seed`。
 5. 管理员使用 `myink reset-password <username>` 为旧账号设置密码；新用户自行注册。部署时协调重启 API、网关和 worker，旧格式 JWT 不再接受。既有队列中没有合法用户归属的消息会被拒绝，不猜测归属。
 
 本次实现不会自动修改现有 `.env`、轮换密钥、删除书籍或运行开发库迁移。
