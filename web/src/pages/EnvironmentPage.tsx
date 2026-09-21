@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
+import { useGuest } from '../hooks/useGuest'
 import { api } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
 import type {
@@ -47,6 +48,7 @@ const EMPTY_RANKINGS: RankingsConfig = {
 
 export default function EnvironmentPage() {
   const { logout } = useAuth()
+  const guest = useGuest()
   const [projects, setProjects] = useState<Project[]>([])
   const [routeSel, setRouteSel] = useState<Record<string, string>>({})
   const [connectionDrafts, setConnectionDrafts] = useState<ModelConnectionDraft[]>([])
@@ -61,6 +63,8 @@ export default function EnvironmentPage() {
 
   const load = useCallback(async () => {
     setBanner(null)
+    // 游客读不到环境配置（403），这里直接留空，免得进页面就顶一条红条。
+    if (guest) return
     try {
       const [env, proj] = await Promise.all([api.getEnvironment(), api.listProjects()])
       setRouteSel(Object.fromEntries(MODEL_ROLES.map((r) => {
@@ -74,7 +78,7 @@ export default function EnvironmentPage() {
     } catch (err) {
       setBanner(formatApiError(err, '环境配置加载失败'))
     }
-  }, [])
+  }, [guest])
 
   useEffect(() => {
     void load()

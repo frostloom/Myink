@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
+import { useGuest } from '../hooks/useGuest'
 import { api } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
 import { isValidNewPassword, NEW_PASSWORD_VALIDATION_MESSAGE } from '../lib/passwordPolicy'
@@ -10,6 +11,7 @@ import styles from './AccountPage.module.css'
 
 export default function AccountPage() {
   const { session, status, changePassword, logout } = useAuth()
+  const guest = useGuest()
   const [projects, setProjects] = useState<Project[]>([])
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -18,12 +20,13 @@ export default function AccountPage() {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
+    if (guest) return
     let alive = true
     api.listProjects()
       .then((items) => { if (alive) setProjects(items) })
       .catch(() => { if (alive) setProjects([]) })
     return () => { alive = false }
-  }, [])
+  }, [guest])
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -66,15 +69,15 @@ export default function AccountPage() {
           <dl className={styles.account}>
             <div>
               <dt>用户名</dt>
-              <dd>{session?.username}</dd>
+              <dd>{guest ? '未登录' : session?.username}</dd>
             </div>
             <div>
               <dt>账号级别</dt>
-              <dd>{session?.tier ?? 'normal'}</dd>
+              <dd>{guest ? '—' : session?.tier ?? 'normal'}</dd>
             </div>
             <div>
               <dt>账号角色</dt>
-              <dd>{session?.role ?? 'user'}</dd>
+              <dd>{guest ? '—' : session?.role ?? 'user'}</dd>
             </div>
           </dl>
         </section>

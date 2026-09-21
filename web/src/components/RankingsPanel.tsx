@@ -5,6 +5,7 @@
 // （网络不可达 / RANKINGS_ENABLED=0）+ 示例数据（warning 徽标，书名带【示例】前缀）。
 // 头部刷新按钮强制绕过进程内 TTL 缓存重拉；数据仅灵感参考，不进记忆/事实层。
 import { useCallback, useEffect, useState } from 'react'
+import { useGuest } from '../hooks/useGuest'
 import { api } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
 import { hotText, sourceLabel, sourceTone, tagsText } from '../lib/rankings'
@@ -13,6 +14,7 @@ import { StatusBadge } from './StatusBadge'
 import styles from './RankingsPanel.module.css'
 
 export function RankingsPanel() {
+  const guest = useGuest()
   const [open, setOpen] = useState(false)
   const [data, setData] = useState<RankingsResponse | null>(null)
   const [busy, setBusy] = useState(false)
@@ -30,15 +32,17 @@ export function RankingsPanel() {
     }
   }, [])
 
-  // 挂载即预热（TTL 缓存服务端兜底，多次折叠展开不重复打 MCP）；失败静默降级
+  // 挂载即预热（TTL 缓存服务端兜底，多次折叠展开不重复打 MCP）；失败静默降级。
+  // 未登录时榜单接口 403，预热没有意义，直接跳过（展开按钮也会被 GuestShell 拦下）。
   useEffect(() => {
+    if (guest) return
     let alive = true
     api
       .listRankings()
       .then((res) => { if (alive) setData(res) })
       .catch(() => { if (alive) setData(null) })
     return () => { alive = false }
-  }, [])
+  }, [guest])
 
   const degraded = data?.source === 'sample'
 

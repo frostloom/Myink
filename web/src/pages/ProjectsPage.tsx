@@ -4,6 +4,7 @@ import type { MouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
+import { useGuest } from '../hooks/useGuest'
 import { api, ApiError } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
 import { isProjectDraft, projectHref } from '../lib/projectCreation'
@@ -12,6 +13,7 @@ import styles from './ProjectsPage.module.css'
 
 export default function ProjectsPage() {
   const { logout } = useAuth()
+  const guest = useGuest()
   const navigate = useNavigate()
   const [projects, setProjects] = useState<Project[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -20,11 +22,15 @@ export default function ProjectsPage() {
   // 删除/重载共用：删除成功后刷新列表
   const loadProjects = useCallback(() => {
     setError(null)
+    if (guest) {
+      setProjects([])
+      return
+    }
     api
       .listProjects()
       .then((list) => setProjects(list))
       .catch((err) => setError(formatApiError(err, '加载失败')))
-  }, [])
+  }, [guest])
 
   useEffect(() => {
     void loadProjects()

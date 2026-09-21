@@ -1,6 +1,8 @@
 // 左 rail：作品列表；进书后是设定/创作设置/全局审计；作品库等全局页才露出环境配置和主题。
+// data-guest-exempt：未登录时整条 rail 仍是可用导航（GuestShell 的拦截器放行此子树）。
 import { NavLink, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useGuest } from '../hooks/useGuest'
 import { isProjectDraft } from '../lib/projectCreation'
 import type { Project } from '../types'
 import styles from './ProjectRail.module.css'
@@ -12,9 +14,10 @@ interface Props {
 
 export function ProjectRail({ projects, onLogout }: Props) {
   const { session, status } = useAuth()
+  const guest = useGuest()
   const { projectId } = useParams()
   return (
-    <aside className={styles.rail}>
+    <aside className={styles.rail} data-guest-exempt>
       <NavLink to="/projects" className={styles.brand}>
         Myink
       </NavLink>
@@ -89,10 +92,10 @@ export function ProjectRail({ projects, onLogout }: Props) {
           <span className={styles.title}>账号</span>
         </NavLink>
         <div className={styles.userRow}>
-          <span className={styles.user}>{session?.username}</span>
-          <button type="button" className="btn btn-quiet" onClick={() => void onLogout()}>
-            登出
-          </button>
+          <span className={styles.user}>{guest ? '未登录' : session?.username}</span>
+          {guest
+            ? <NavLink to="/login" className="btn btn-quiet">登录</NavLink>
+            : <button type="button" className="btn btn-quiet" onClick={() => void onLogout()}>登出</button>}
         </div>
       </div>
     </aside>

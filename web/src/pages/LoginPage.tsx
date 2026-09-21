@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { ApiError } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
@@ -17,7 +17,11 @@ function passwordLength(value: string): number {
 export default function LoginPage() {
   const { login, register, notice } = useAuth()
   const navigate = useNavigate()
-  const [mode, setMode] = useState<Mode>('login')
+  const [searchParams] = useSearchParams()
+  // 只读一次：/login 在 RequireAuth 之外，游客弹窗的「注册」必然是新挂载。
+  const [mode, setMode] = useState<Mode>(
+    searchParams.get('mode') === 'register' ? 'register' : 'login',
+  )
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
