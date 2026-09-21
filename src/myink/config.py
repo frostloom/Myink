@@ -66,7 +66,18 @@ class Settings:
     max_replans: int = 1  # replan 轮次上限（重规划比重写贵，预算更紧，§6.5）
     max_tool_calls: int = 3  # 只读查证工具执行总数预算（§10：audit/write 工具循环封顶）
     batch_max_default: int = 5  # 批次上限默认（plan.md §6.11）
-    batch_max_hard: int = 20  # 批次硬上限
+    batch_max_hard: int = field(default_factory=lambda: int(_env("BATCH_MAX_HARD", "20") or "20"))  # 批次硬上限
+    # 三层闸门（§13，gates.lua）参数：env 名与默认值照抄网关 config.go，让 .env 保持
+    # 单一真源；Go 退场后这里是唯一读取方。CONCURRENCY_LIMIT 刻意不搬——gates.lua 里
+    # 并发判定是硬编码的 `inflight > 0`，那个配置项从来没人读（网关侧也一样），
+    # 搬过来只会让人以为并发数可调。
+    quota_daily: int = field(default_factory=lambda: int(_env("QUOTA_DAILY_CHAPTERS", "500") or "500"))
+    book_quota_daily: int = field(default_factory=lambda: int(_env("BOOK_QUOTA_DAILY_CHAPTERS", "50") or "50"))
+    daily_budget: float = field(default_factory=lambda: float(_env("DAILY_BUDGET_YUAN", "2.0") or "2.0"))
+    cost_per_chapter: float = field(default_factory=lambda: float(_env("COST_PER_CHAPTER_YUAN", "0.05") or "0.05"))
+    # 入队消息的 RabbitMQ 优先级（tier=vip 插队；主队列 x-max-priority=10）
+    priority_vip: int = field(default_factory=lambda: int(_env("PRIORITY_VIP", "9") or "9"))
+    priority_normal: int = field(default_factory=lambda: int(_env("PRIORITY_NORMAL", "0") or "0"))
     # 长线治理全局审计（§8.6）：每 K 章一次跨章抽样 L2（batch_end 触发，窗口 < K 短路零成本）
     audit_interval: int = field(default_factory=lambda: int(_env("AUDIT_INTERVAL", "30") or "30"))
     # 单章流 Reflexion 复盘（§8.9 扩展）：每 N 章对窗口内章节做一次复盘提炼（批次流走 batch_end）

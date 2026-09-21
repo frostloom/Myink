@@ -32,6 +32,7 @@ from myink.api.schemas import ChapterDetailOut, ChapterMetaOut, ProjectOut
 from myink.config import settings
 from myink.db import new_session, tenant_session
 from myink.models import Chapter, Project
+from myink.worker.enqueue import EnqueueUnavailable, GateError
 from myink.worker.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,19 @@ app.add_middleware(GlobalRateLimit)
 async def _api_error(_request: Request, exc: ApiError) -> JSONResponse:
     """`{"error": CODE}` 信封——前端 GATE_CODES 认这个键，不认 FastAPI 默认的 detail。"""
     return JSONResponse({"error": exc.code}, status_code=exc.status_code, headers=exc.headers)
+
+
+@app.exception_handler(GateError)
+async def _gate_rejected(_request: Request, exc: GateError) -> JSONResponse:
+    """三层闸门拒绝（配额/并发/成本/书数）→ 429，信封同 ApiError。"""
+    return JSONResponse({"error": exc.code}, status_code=429)
+
+
+@app.exception_handler(EnqueueUnavailable)
+async def _enqueue_unavailable(_request: Request, exc: EnqueueUnavailable) -> JSONResponse:
+    """入队基础设施失败 → 503；原因只进日志，不外泄。"""
+    logger.warning("入队失败（%s）: %s", exc.reason, exc.__cause__)
+    return JSONResponse({"error": "enqueue_failed"}, status_code=503)
 
 
 @app.exception_handler(StarletteHTTPException)

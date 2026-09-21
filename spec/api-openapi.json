@@ -1347,6 +1347,22 @@
         "title": "AuthSessionOut",
         "type": "object"
       },
+      "BatchGenerateBody": {
+        "properties": {
+          "size": {
+            "default": 1,
+            "title": "Size",
+            "type": "integer"
+          },
+          "start": {
+            "default": 1,
+            "title": "Start",
+            "type": "integer"
+          }
+        },
+        "title": "BatchGenerateBody",
+        "type": "object"
+      },
       "BookOutlineOut": {
         "description": "整书大纲读取/落库结果（§11：无大纲 → outline null，不 500）。",
         "properties": {
@@ -1508,6 +1524,45 @@
           "version"
         ],
         "title": "ChapterDetailOut",
+        "type": "object"
+      },
+      "ChapterGenerateBody": {
+        "description": "单章生成入队体。seq 缺省时 worker 按当前进度补齐（`_resolve_chapter_seq`）。",
+        "properties": {
+          "mode": {
+            "default": "auto",
+            "title": "Mode",
+            "type": "string"
+          },
+          "rewrite": {
+            "default": false,
+            "title": "Rewrite",
+            "type": "boolean"
+          },
+          "seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seq"
+          },
+          "user_instruction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Instruction"
+          }
+        },
+        "title": "ChapterGenerateBody",
         "type": "object"
       },
       "ChapterMetaOut": {
@@ -4118,6 +4173,30 @@
         "title": "TaskDetailOut",
         "type": "object"
       },
+      "TaskEnqueuedOut": {
+        "description": "入队受理（202）：前端拿 task_id 去订阅 SSE。",
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "trace_id": {
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "trace_id",
+          "status"
+        ],
+        "title": "TaskEnqueuedOut",
+        "type": "object"
+      },
       "TaskProgressOut": {
         "properties": {
           "current": {
@@ -5965,6 +6044,64 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/batches/generate": {
+      "post": {
+        "description": "批次生成入队（§13 三层闸门扣 size）。\n\nsize 是**钳制**不是拒绝（§6.11 成本熔断第一道闸，与 Go 同口径；worker 消费时再钳\n一次双保险），start < 1 归一到 1——Go 零值 0 会穿透到 worker 让批次从第 0 章写起。",
+        "operationId": "generate_batch_api_v1_projects__project_id__batches_generate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchGenerateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskEnqueuedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Generate Batch",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/candidates": {
       "get": {
         "description": "待确认池列表（按章排序，含 payload 供前端展示）。",
@@ -6436,6 +6573,73 @@
         "summary": "Correct Chapter Memory",
         "tags": [
           "chapters"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/chapters/{chapter_id}/generate": {
+      "post": {
+        "description": "单章生成入队（§13 三层闸门扣 1）。\n\n这两条生成路由原先只存在于网关（Go 独占闸门 + 入队），Python 侧完全没有；\n边缘换 Caddy 之后由本文件接管。闸门拒绝 → 429 `{\"error\": CODE}`（全局处理器），\n前端 GATE_CODES 认这个信封。",
+        "operationId": "generate_chapter_api_v1_projects__project_id__chapters__chapter_id__generate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "title": "Chapter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChapterGenerateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskEnqueuedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Generate Chapter",
+        "tags": [
+          "tasks"
         ]
       }
     },
