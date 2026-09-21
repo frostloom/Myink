@@ -1,7 +1,7 @@
 # Myink 一键启动全部服务（PostgreSQL+pgvector / Redis / RabbitMQ / Python API / Worker / Go 网关 / Caddy 边缘）。
 # 用法：docker compose up -d --build
-#   迁移完成后唯一入口是 Caddy：http://localhost（SITE_ADDRESS 默认 http://localhost，同源出页面+API+SSE）。
-#   迁移期间 Go 网关仍额外监听 127.0.0.1:8080，作为回滚入口保留（见 myink-gateway 注释）。
+#   唯一入口是 Caddy：http://localhost（SITE_ADDRESS 默认 http://localhost，同源出页面+API+SSE）。
+#   Go 网关已收缩为只服务 SSE，不再发布端口（只 expose 给 Caddy 网络内部）。
 # 首次初始化：pg 挂载 docker/initdb 建 myink_app 角色（NOBYPASSRLS）；api 先跑 `myink init --no-seed`
 # （幂等：建表 + RLS，不重建改名后的 demo）再起 uvicorn。需要开发示例数据时手工执行 `myink init`。
 name: myink
@@ -182,42 +182,38 @@ services:
         condition: service_started
     restart: unless-stopped
 
-  # Go 网关：目前仍是公网入口（静态托管 web/dist + /api/v1 转发 + SSE，单端口 8080）。
-  # 迁移中：Caddy 起来后本服务收缩为只服务 SSE，端口发布随之取消（见 caddy/Caddyfile 分流）。
+  # Go 网关：Caddy 接管公网入口后只剩一条业务路由——SSE 进度事件流。
+  # 不再发布端口（只 expose 给 Caddy 网络内部访问），不再连 RabbitMQ（入队已搬去 Python）。
   myink-gateway:
     build:
       context: .
       dockerfile: gateway/Dockerfile
       args:
-        # 国内网络：docker.io 直连超时 → node/golang/debian 基础镜像全走 daocloud；npm 包 / go 模块走国内镜像源（Dockerfile 均有默认值，覆盖传参见下）
-        NODE_IMAGE: docker.m.daocloud.io/library/node:20-alpine
+        # 国内网络：docker.io 直连超时 → golang/debian 基础镜像走 daocloud；go 模块走国内镜像源（Dockerfile 均有默认值，覆盖传参见下）
         GOLANG_IMAGE: docker.m.daocloud.io/library/golang:1.26.1-alpine
         DEBIAN_IMAGE: docker.m.daocloud.io/library/debian:bookworm-slim
-        NPM_REGISTRY: https://registry.npmmirror.com
         GOPROXY: https://goproxy.cn,direct
     image: myink-gateway:local
     container_name: myink-gateway
     environment:
       GATEWAY_PORT: "8080"
       REDIS_ADDR: myink-redis:6379
-      AMQP_URL: amqp://myink:myink@myink-rabbitmq:5672/
       PYTHON_API_BASE: http://myink-api:8100
-      WEB_DIST_DIR: /app/dist
-      # 不挂 env_file：gateway 只消费 JWT_SECRET（其余 REDIS/PYTHON/WEB 已显式覆盖），
-      # 避免把 DATABASE_URL 等业务密钥带进唯一公网入口容器（最小暴露）；
+      # 不挂 env_file：gateway 只消费 JWT_SECRET（其余 REDIS/PYTHON 已显式覆盖），
+      # 避免把 DATABASE_URL 等业务密钥带进这个容器（最小暴露）；
       # ${JWT_SECRET} 由 compose 自动从根 .env 插值（缺省走 config.go 的 dev 默认，两端互通）
       JWT_SECRET: ${JWT_SECRET:-}
-      # 反代后按真实客户端 IP 分桶（空 = 不信任任何代理，限流按直连地址）。见 .env.example
-      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
-    ports:
-      - "127.0.0.1:8080:8080"
+      # 与 Python 侧同一个桶参数（.env 单一真源）：Caddy 把 SSE 分给 Go、其余分给 Python，
+      # 两边读到不同的值会让总限额悄悄变化。见 .env.example
+      RATE_PER_SEC: ${RATE_PER_SEC:-20}
+      RATE_BURST: ${RATE_BURST:-40}
+    expose:
+      - "8080"
     depends_on:
       myink-redis:
         condition: service_healthy
       myink-api:
         condition: service_started
-      myink-rabbitmq:
-        condition: service_healthy
     restart: unless-stopped
 
 volumes:
