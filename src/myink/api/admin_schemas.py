@@ -1,4 +1,7 @@
-"""Explicit, GET-only reporting contracts. Narrative fields are plain text."""
+"""Explicit reporting contracts. Narrative fields are plain text.
+
+除 `AdminInvitationCreated`（邀请码创建响应）外均为只读观测契约。
+"""
 from datetime import datetime
 from typing import Generic, Literal, TypeVar
 from uuid import UUID
@@ -167,3 +170,27 @@ class AdminAccessLogOut(BaseModel):
     action: str
     target: str
     created_at: datetime
+
+
+class AdminInvitation(BaseModel):
+    """邀请码的管理视图。永远不含明文码，也不含摘要——摘要对管理员无用。"""
+
+    id: UUID
+    label: str | None
+    expires_at: datetime
+    max_redemptions: int
+    redemption_count: int
+    revoked_at: datetime | None
+    created_by: UUID | None
+    created_by_username: str | None
+    created_at: datetime
+
+
+class AdminInvitationCreated(BaseModel):
+    """创建响应：`code` 是全生命周期内唯一一次可见的明文。"""
+
+    id: UUID
+    code: str
+    label: str | None
+    expires_at: datetime
+    max_redemptions: int

@@ -165,6 +165,16 @@ export function authenticatedGet<T>(path: string, token: string, signal?: AbortS
   return request<T>('GET', path, undefined, { token, signal })
 }
 
+export function authenticatedSend<T>(
+  method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+  path: string,
+  token: string,
+  body?: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
+  return request<T>(method, path, body, { token, signal })
+}
+
 export const api = {
   login: (username: string, password: string) =>
     request<AuthResponse>('POST', '/auth/token', { username, password }, { token: null }),
