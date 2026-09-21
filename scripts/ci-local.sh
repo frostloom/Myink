@@ -23,6 +23,9 @@ export AMQP_URL=amqp://myink:myink@127.0.0.1:15673/
 export APP_ENV=test
 export EMBED_ENABLED=0
 export RANKINGS_ENABLED=0
+# 身份边界换血后 Python 自己验 JWT，密钥短于 32 字节 → require_auth_configuration 让业务路由全 503。
+# CI 没有 .env，必须显式给足长度（与 tests/conftest.py 的 TEST_JWT_SECRET 同值）。
+export JWT_SECRET=test-jwt-secret-at-least-32-bytes-long
 compose_test=(docker compose -p myink-test -f docker-compose.test.yml)
 trap '"${compose_test[@]}" down --volumes >/dev/null 2>&1 || true' EXIT
 "${compose_test[@]}" up -d --wait
@@ -47,10 +50,11 @@ echo "==> [3/4] 前端：lint + 单测 + 构建"
 (cd web && npm ci && npm run lint && npm test && npm run build)
 
 if [[ "${SKIP_IMAGES:-0}" != "1" ]]; then
-  echo "==> [4/4] 镜像构建（Python + 网关）"
+  echo "==> [4/4] 镜像构建（Python + 网关 + Caddy）"
   # 走 compose build 而非裸 docker build：国内网络要 daocloud 基础镜像 + 阿里云 pip / npmmirror /
   # goproxy.cn 覆盖（compose 已配好，DRY 不重复写 build args）；GitHub Actions 境外 runner 用官方源（ci.yml）。
-  docker compose build myink-api myink-gateway
+  # Caddy 镜像在同一构建里跑 caddy validate：Caddyfile 语法错在这里就红，不留到部署。
+  docker compose build myink-api myink-gateway myink-caddy
 else
   echo "==> [4/4] 镜像构建已跳过（SKIP_IMAGES=1）"
 fi
