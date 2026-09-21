@@ -23,6 +23,7 @@ from langgraph.checkpoint.base import Checkpoint, CheckpointMetadata
 from langgraph.checkpoint.postgres import PostgresSaver
 from psycopg import Connection
 
+from conftest import INVALID_BEARER, identity_headers
 from myink.api.main import app
 from myink.api.routes_book import delete_project
 from myink.config import settings
@@ -47,7 +48,7 @@ def _demo_user_id() -> uuid.UUID:
 
 
 def _h(uid) -> dict:
-    return {"X-Myink-User": str(uid)} if uid is not None else {}
+    return identity_headers(uid)
 
 
 def _seed_chapter(pid: str, seq: int) -> None:
@@ -216,7 +217,7 @@ def test_delete_project_survives_redis_failure(temp_project, monkeypatch):
         assert db.get(Project, uuid.UUID(temp_project)) is None
 
 
-# ---- 404 / 403 矩阵（require_owner 挂依赖，走 TestClient HTTP 层）----
+# ---- 404 / 403 / 401 矩阵（require_owner 挂依赖，走 TestClient HTTP 层）----
 
 
 def test_delete_project_missing_404():
@@ -224,9 +225,9 @@ def test_delete_project_missing_404():
     assert resp.status_code == 404
 
 
-def test_delete_project_rejects_foreign_user(temp_project):
+def test_delete_project_rejects_unknown_user(temp_project):
     resp = client.delete(f"/internal/v1/projects/{temp_project}", headers=_h(uuid.uuid4()))
-    assert resp.status_code == 403
+    assert resp.status_code == 401
 
 
 def test_delete_project_fail_closed_without_identity(temp_project):
@@ -235,8 +236,8 @@ def test_delete_project_fail_closed_without_identity(temp_project):
 
 
 def test_delete_project_rejects_invalid_identity(temp_project):
-    resp = client.delete(f"/internal/v1/projects/{temp_project}", headers=_h("not-a-uuid"))
-    assert resp.status_code == 403
+    resp = client.delete(f"/internal/v1/projects/{temp_project}", headers=INVALID_BEARER)
+    assert resp.status_code == 401
 
 
 # ---- delete_threads：清 checkpoint 三表（含 batch `:ch%` 前缀）----

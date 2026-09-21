@@ -7,7 +7,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from myink.api.auth import require_owner
+from myink.api.auth import require_owner, require_user
 from myink.api.schemas import GenreCatalogItemOut, GenrePackOut
 from myink.db import tenant_session
 from myink.genre_catalog import (
@@ -41,9 +41,14 @@ def _fields_from_body(body: GenrePackFieldsBody) -> dict:
     return data
 
 
-@router.get("/genre-packs", response_model=list[GenreCatalogItemOut])
+@router.get("/genre-packs", dependencies=[Depends(require_user)],
+            response_model=list[GenreCatalogItemOut])
 def list_genre_packs() -> list[dict]:
-    """根题材目录（只读）。"""
+    """根题材目录（只读，但需身份：网关时代它挂在 secured 分组里）。
+
+    无归属可查（根目录不属任何书），所以是 require_user 而不是 require_owner——
+    与 /environment 同一档：只要是个已认证账号就能读，匿名不给。
+    """
     return catalog_entries()
 
 

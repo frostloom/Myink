@@ -22,10 +22,13 @@ os.environ["QUEUE_PREFIX"] = "-mp-"
 os.environ.setdefault("AMQP_URL", "amqp://myink:myink@localhost:5672/")
 
 import uuid
+from dataclasses import replace
 
 import pytest
 from sqlalchemy import delete as sa_delete, select as sa_select
 
+from myink.api.auth import create_access_token
+from myink.config import settings
 from myink.db import new_session
 from myink.models import AgentRun, Project, ProjectSettings
 
@@ -36,6 +39,62 @@ from test_flow import (  # noqa: F401  (re-export fixtures/StubProvider)
     project_id,
     stub_provider,
 )
+
+TEST_JWT_SECRET = "test-jwt-secret-at-least-32-bytes-long"
+
+# 形态是 Bearer 但内容不是合法 JWT：用于「坏凭证 → 401」的用例。
+# 旧套件用 _h("not-a-uuid") 表达同一件事（当时身份是明文头，可以随便塞垃圾）；
+# 现在身份是签名令牌，垃圾要塞在 Authorization 里才等效。
+INVALID_BEARER = {"Authorization": "Bearer not-a-jwt"}
+
+
+@pytest.fixture(autouse=True)
+def _strong_auth_secret(monkeypatch):
+    """业务路由现在自己验 JWT，而 ``require_auth_configuration`` 对所有环境拒绝短于
+    32 字节的密钥（``_DEV_JWT_SECRET`` 只有 23 字节）——不换密钥则全站 503。
+
+    补丁打在 ``myink.api.auth`` 里那个 ``settings`` 名字上（不是环境变量），所以不会
+    泄漏到别的进程，也不依赖 conftest 的 import 顺序。test_auth / test_admin 自带的
+    同款夹具值相同，两者共存不冲突。
+    """
+    import myink.api.auth as auth
+
+    monkeypatch.setattr(auth, "settings", replace(settings, jwt_secret=TEST_JWT_SECRET))
+
+
+def identity_headers(
+    user, *, tier: str | None = None, auth_version: int | None = None
+) -> dict[str, str]:
+    """给 ``user`` 签一个真 HS256 bearer；``user`` 为 None 时返回 ``{}``。
+
+    ``user`` 可以是 ``User`` 行，也可以只是 id。tier / auth_version 省略时取行上的值
+    （``models/project.py`` 给这两列都设了 default，裸 ``User(username=...)`` flush 后
+    就带得上），所以绝大多数用例直接 ``identity_headers(user)`` 即可。
+
+    取代旧的 ``{"X-Myink-User": str(uid)}``：那个头已经不再被信任，测试必须出示一个
+    真能验过的令牌。
+    """
+    uid = getattr(user, "id", user)
+    if uid is None:
+        return {}
+    claims_tier = tier or getattr(user, "tier", None) or "normal"
+    claimed_version = auth_version if auth_version is not None else getattr(user, "auth_version", None)
+    token = create_access_token(uuid.UUID(str(uid)), claims_tier, claimed_version or 1)
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture(autouse=True)
+def _no_rate_limits(monkeypatch):
+    """把两个限流器在测试期抬到几乎无穷大。
+
+    它们一个按「全进程一个桶」、一个按「一个 IP 一个键」计数，而整套 pytest 共用同一个
+    TestClient 地址、在几十秒内打完几百次请求——按真实阈值会大面积 429，那测的是限流器
+    而不是被测代码。限流器本身由 tests/test_ratelimit.py 把阈值调回真实值专测。
+    """
+    import myink.api.ratelimit as rl
+
+    monkeypatch.setattr(rl, "settings", replace(rl.settings, rate_per_sec=10**9, rate_burst=10**9))
+    monkeypatch.setattr(rl, "AUTH_RATE_MAX", 10**9)
 
 
 @pytest.fixture

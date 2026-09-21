@@ -12,6 +12,7 @@ import uuid
 
 from fastapi.testclient import TestClient
 
+from conftest import INVALID_BEARER, identity_headers
 from myink.api.main import app
 from myink.db import new_session, tenant_session
 from myink.models import (Chapter, Character, Entity, Faction, Foreshadow,
@@ -28,8 +29,8 @@ def _demo_user_id() -> uuid.UUID:
 
 
 def _h(uid) -> dict:
-    """请求头：X-Myink-User = 网关已验证的 JWT sub（None → 不带，测 fail closed）。"""
-    return {"X-Myink-User": str(uid)} if uid is not None else {}
+    """请求头：真 HS256 Bearer（None → 不带，测 fail closed）。"""
+    return identity_headers(uid)
 
 
 def _seed_graph(pid: str) -> None:
@@ -157,7 +158,7 @@ def test_graph_empty_project(temp_project):
     assert data == {"nodes": [], "edges": []}
 
 
-# ---- 404 / 403 矩阵（require_owner 挂依赖，走 TestClient HTTP 层）----
+# ---- 404 / 403 / 401 矩阵（require_owner 挂依赖，走 TestClient HTTP 层）----
 
 
 def test_graph_missing_project_404():
@@ -165,9 +166,9 @@ def test_graph_missing_project_404():
     assert resp.status_code == 404
 
 
-def test_graph_rejects_foreign_user(temp_project):
+def test_graph_rejects_unknown_user(temp_project):
     resp = client.get(f"/internal/v1/projects/{temp_project}/graph", headers=_h(uuid.uuid4()))
-    assert resp.status_code == 403
+    assert resp.status_code == 401
 
 
 def test_graph_fail_closed_without_identity(temp_project):
@@ -176,8 +177,8 @@ def test_graph_fail_closed_without_identity(temp_project):
 
 
 def test_graph_rejects_invalid_identity(temp_project):
-    resp = client.get(f"/internal/v1/projects/{temp_project}/graph", headers=_h("not-a-uuid"))
-    assert resp.status_code == 403
+    resp = client.get(f"/internal/v1/projects/{temp_project}/graph", headers=INVALID_BEARER)
+    assert resp.status_code == 401
 
 
 # ---- 伏笔池台账（§7.9 状态机全量）----
@@ -224,9 +225,9 @@ def test_foreshadows_auth_matrix(temp_project):
     _seed_foreshadows(temp_project)
     assert client.get(f"/internal/v1/projects/{temp_project}/foreshadows").status_code == 403
     assert client.get(f"/internal/v1/projects/{temp_project}/foreshadows",
-                      headers=_h(uuid.uuid4())).status_code == 403
+                      headers=_h(uuid.uuid4())).status_code == 401
     assert client.get(f"/internal/v1/projects/{temp_project}/foreshadows",
-                      headers=_h("not-a-uuid")).status_code == 403
+                      headers=INVALID_BEARER).status_code == 401
     assert client.get(f"/internal/v1/projects/{uuid.uuid4()}/foreshadows",
                       headers=_h(_demo_user_id())).status_code == 404
 

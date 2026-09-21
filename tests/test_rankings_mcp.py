@@ -20,6 +20,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
+from conftest import identity_headers
 from myink.api.main import app
 from myink.db import new_session
 from myink.integrations import fetch_rankings as facade_fetch_rankings
@@ -387,8 +388,8 @@ def _demo_user_id() -> uuid.UUID:
 
 
 def _h(uid: str | uuid.UUID | None) -> dict:
-    """请求头：X-Myink-User = 网关已验证的 JWT sub（None → 不带，测 fail closed）。"""
-    return {"X-Myink-User": str(uid)} if uid is not None else {}
+    """请求头：真 HS256 Bearer（None → 不带，测 fail closed）。"""
+    return identity_headers(uid)
 
 
 def test_rankings_endpoint_200_shape(monkeypatch):

@@ -17,6 +17,7 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 
+from conftest import identity_headers
 from myink.api.main import app
 from myink.db import new_session, tenant_session
 from myink.models import Alias, Character, Entity, MemoryCandidate
@@ -34,7 +35,7 @@ def _demo_user_id() -> uuid.UUID:
 
 
 def _h(uid: str | uuid.UUID | None) -> dict:
-    return {"X-Myink-User": str(uid)} if uid is not None else {}
+    return identity_headers(uid)
 
 
 _CARD = {"name": "沈青", "identity": "青云宗大师姐", "role": "主角师姐",
@@ -240,4 +241,4 @@ def test_list_entities_endpoint(temp_project):
     # 越权矩阵
     assert client.get(f"/internal/v1/projects/{temp_project}/entities").status_code == 403
     assert client.get(f"/internal/v1/projects/{temp_project}/entities",
-                      headers=_h(uuid.uuid4())).status_code == 403
+                      headers=_h(uuid.uuid4())).status_code == 401

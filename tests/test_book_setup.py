@@ -1,11 +1,11 @@
 """建书向导 + 设定浏览测试（§7.11 建书流程：一句话梗概 + Planner 提案 + 用户确认落库）。
 
 范围：
-- 建书：POST /projects 创建 Project + 空 ProjectSettings（不调 LLM）；缺/非法身份 403
+- 建书：POST /projects 创建 Project + 空 ProjectSettings（不调 LLM）；缺身份 403 / 坏凭证 401
   fail closed；每日建书数超限（§13 bookcnt）→ 429 BOOK_CNT_EXCEEDED；空标题 400；
 - 草稿：POST setup-draft stub 合法 JSON → {draft, error:None} 且不落库（DB 断言）、记
   agent_runs；stub 抛错 / 坏 JSON → {draft:{}, error} 200（§6.12 降级）；premise 空 400；
-  越权矩阵（伪造他人 403 / 缺失身份 403 / 项目不存在 404 / id 非法 400）；
+  越权矩阵（未知账号 401 / 缺失身份 403 / 项目不存在 404 / id 非法 400）；
 - 确认落库：PUT setup → world_rules/hard_constraints 整体替换 + version++、characters/
   forces/locations 按 name create-if-missing（append-only §7.11 ③，重复确认不重复建）；
   realm_cap 缺失默认「无」；
@@ -24,6 +24,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete as sa_delete
 
+from conftest import INVALID_BEARER, identity_headers
 from myink.api.main import app
 from myink.config import settings
 from myink.db import new_session, tenant_session
@@ -60,8 +61,8 @@ def _demo_user_id() -> uuid.UUID:
 
 
 def _h(uid: str | uuid.UUID | None) -> dict:
-    """请求头：X-Myink-User = 网关已验证的 JWT sub（None → 不带，测 fail closed）。"""
-    return {"X-Myink-User": str(uid)} if uid is not None else {}
+    """请求头：真 HS256 Bearer（None → 不带，测 fail closed）。"""
+    return identity_headers(uid)
 
 
 class _BookStub(ModelProvider):
@@ -160,10 +161,10 @@ def test_create_project_empty_title_400():
 
 
 def test_create_project_fail_closed():
-    """缺身份 / 身份非法 → 403（§14.1 ③ 默认拒绝）。"""
+    """缺身份 → 403，坏凭证 → 401（§14.1 ③ 默认拒绝）。"""
     body = {"title": "破晓录"}
     assert client.post("/internal/v1/projects", json=body).status_code == 403
-    assert client.post("/internal/v1/projects", headers=_h("not-a-uuid"), json=body).status_code == 403
+    assert client.post("/internal/v1/projects", headers=INVALID_BEARER, json=body).status_code == 401
 
 
 def test_create_project_daily_quota_429():
@@ -257,7 +258,7 @@ def test_setup_draft_empty_premise_400(temp_project):
 def test_setup_draft_ownership(temp_project):
     url = f"/internal/v1/projects/{temp_project}/setup-draft"
     body = {"premise": "少年闯仙途。"}
-    assert client.post(url, headers=_h(uuid.uuid4()), json=body).status_code == 403   # 伪造他人
+    assert client.post(url, headers=_h(uuid.uuid4()), json=body).status_code == 401   # 未知账号
     assert client.post(url, json=body).status_code == 403                             # 缺失身份
     assert client.post(f"/internal/v1/projects/{uuid.uuid4()}/setup-draft",
                        headers=_h(_demo_user_id()), json=body).status_code == 404     # 项目不存在
@@ -345,7 +346,7 @@ def test_put_setup_creates_settings_when_missing(temp_project):
 
 def test_put_setup_ownership(temp_project):
     url = f"/internal/v1/projects/{temp_project}/setup"
-    assert client.put(url, headers=_h(uuid.uuid4()), json=_SETUP_BODY).status_code == 403
+    assert client.put(url, headers=_h(uuid.uuid4()), json=_SETUP_BODY).status_code == 401
     assert client.put(url, json=_SETUP_BODY).status_code == 403
     assert client.put(f"/internal/v1/projects/{uuid.uuid4()}/setup",
                       headers=_h(_demo_user_id()), json=_SETUP_BODY).status_code == 404
@@ -372,7 +373,7 @@ def test_world_empty_defaults_on_no_settings(temp_project):
 def test_world_characters_ownership(temp_project):
     for path in (f"/internal/v1/projects/{temp_project}/world",
                  f"/internal/v1/projects/{temp_project}/characters"):
-        assert client.get(path, headers=_h(uuid.uuid4())).status_code == 403
+        assert client.get(path, headers=_h(uuid.uuid4())).status_code == 401
         assert client.get(path).status_code == 403
         assert client.get(f"/internal/v1/projects/{uuid.uuid4()}/world",
                           headers=_h(_demo_user_id())).status_code == 404

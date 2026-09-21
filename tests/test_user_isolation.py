@@ -5,6 +5,7 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 
+from conftest import identity_headers
 from myink.api.main import app
 from myink.db import new_session, tenant_session
 from myink.models import AgentRun, Chapter, Project, Task, User
@@ -31,7 +32,7 @@ def accounts_and_books():
 
 
 def headers(user):
-    return {"X-Myink-User": str(user.id)}
+    return identity_headers(user)
 
 
 @pytest.mark.parametrize("method,suffix,body", [
