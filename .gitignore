@@ -18,8 +18,7 @@ venv/
 .coverage
 htmlcov/
 
-# Go 构建缓存（scripts/ci-local.sh 本地 GOCACHE，体积数百 MB）
-gateway/.tmp-go-cache/
+# 本地构建缓存（体积数百 MB）
 .tmp/go-cache/
 
 # 本地数据

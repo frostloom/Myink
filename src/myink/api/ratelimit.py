@@ -22,13 +22,13 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from myink.config import settings
 from myink.worker.redis_client import get_redis
 
-# 与网关 auth.go 里的 `EXPIRE ... 60` / `n > 20` 同源。写成模块常量而不是配置项，
-# 是因为网关那边也硬编码着，多一个环境变量只会让两端更难对齐。
+# 窗口与上限原先与网关 auth.go 的 `EXPIRE ... 60` / `n > 20` 同源。写成模块常量而不是
+# 配置项，是因为当初要两端逐字对齐；网关退场后仍是常量——这两条不该随手调。
 AUTH_RATE_WINDOW = 60
 AUTH_RATE_MAX = 20
 
-# 逐字节照抄 gateway/internal/handlers/auth.go 的内联脚本：键名与窗口不变，
-# 切流时在途计数直接接续，不会给暴力破解留一个「计数清零」的缝。
+# 沿用网关 auth.go 的内联脚本（键名与窗口不变）：切流时在途计数直接接续，
+# 不会给暴力破解留一个「计数清零」的缝。
 _AUTH_WINDOW_LUA = (
     "local n=redis.call('INCR',KEYS[1]); "
     "if n==1 then redis.call('EXPIRE',KEYS[1],60) end; "

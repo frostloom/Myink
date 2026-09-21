@@ -8924,6 +8924,72 @@
         ]
       }
     },
+    "/api/v1/tasks/{task_id}/events": {
+      "get": {
+        "description": "GET /api/v1/tasks/{task_id}/events —— 任务进度流（SSE）。",
+        "operationId": "task_events_api_v1_tasks__task_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "last_event_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "text/event-stream": {}
+            },
+            "description": "SSE 帧流（注释帧为心跳）"
+          },
+          "410": {
+            "description": "流已过期：`sse_stream_expired`，客户端应回退 GET /tasks/{task_id} 快照"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Task Events",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
     "/api/v1/tasks/{task_id}/pause": {
       "post": {
         "operationId": "pause_task_api_v1_tasks__task_id__pause_post",

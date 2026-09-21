@@ -1,5 +1,5 @@
 # Myink Python 镜像：myink-api（uvicorn）/ myink-worker（队列消费）共用。
-# 只 COPY Python 侧（pyproject + src/），web/gateway/测试不进镜像。
+# 只 COPY Python 侧（pyproject + src/），web/ 与 tests/ 不进镜像。
 # 依赖全量安装（含 sentence-transformers/bge-m3，重但按 EMBED_ENABLED 开关加载，见 docker-compose.yml）。
 #
 # 基础镜像源可用 build arg 覆盖（国内 docker.io 直连可能超时；compose 当前环境传

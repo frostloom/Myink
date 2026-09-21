@@ -203,6 +203,8 @@ class _PasswordRequest(BaseModel):
 class _TokenClaims:
     user_id: uuid.UUID
     auth_version: int
+    # SSE 长连接要按 token 到期时间收流（网关时代的 `auth_expires`），所以这里多带一个。
+    expires_at: datetime
 
 
 @dataclass(frozen=True)
@@ -235,9 +237,10 @@ def _decode_token(token: str) -> _TokenClaims:
         # bool is an int subclass, so it has to be rejected explicitly
         if isinstance(auth_version, bool) or not isinstance(auth_version, int) or auth_version < 1:
             raise ValueError("invalid token version")
-    except (jwt.PyJWTError, KeyError, TypeError, ValueError, AttributeError):
+        expires_at = datetime.fromtimestamp(claims["exp"], tz=timezone.utc)
+    except (jwt.PyJWTError, KeyError, TypeError, ValueError, AttributeError, OSError, OverflowError):
         raise _invalid_credentials()
-    return _TokenClaims(user_id=user_id, auth_version=auth_version)
+    return _TokenClaims(user_id=user_id, auth_version=auth_version, expires_at=expires_at)
 
 
 def _load_identity(claims: _TokenClaims) -> _AuthenticatedUser | None:

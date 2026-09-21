@@ -1,7 +1,8 @@
-"""Live gateway/API smoke check; writes only new fixtures to the dedicated test DB.
+"""Live API smoke check; writes only new fixtures to the dedicated test DB.
 
-Run with the test environment from docs/DEPLOY.md and services bound to ports
-18080 (gateway), 18100 (API). No cleanup/delete or real model calls are performed.
+Run with the test environment from docs/DEPLOY.md and the API bound to port 18100
+(previously 18080 was a separate Go gateway; SSE now terminates in the API).
+No cleanup/delete or real model calls are performed.
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ def main() -> None:
         raise RuntimeError("Refusing to write fixtures outside the dedicated local test Redis")
 
     checks = 0
-    with httpx.Client(base_url="http://127.0.0.1:18080/api/v1", timeout=20) as client:
+    with httpx.Client(base_url="http://127.0.0.1:18100/api/v1", timeout=20) as client:
         def request(method, path, status, token=None, **kwargs):
             nonlocal checks
             headers = kwargs.pop("headers", {})

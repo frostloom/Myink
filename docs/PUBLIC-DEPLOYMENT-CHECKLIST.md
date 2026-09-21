@@ -2,7 +2,7 @@
 
 ## 当前结论
 
-密码认证与用户数据隔离已实现并完成回归，但**当前 Compose 仅适合本机验收，不能直接开放公网**。本次启动的网页入口为 `http://localhost`（Caddy 边缘层）。Python API 与 Go 网关均未发布宿主机端口；Caddy 是唯一发布端口的服务，且按设计监听所有网卡的 80/443，本机跑演示时对同局域网可达。以下未完成项不是已实现的安全保证。
+密码认证与用户数据隔离已实现并完成回归，但**当前 Compose 仅适合本机验收，不能直接开放公网**。本次启动的网页入口为 `http://localhost`（Caddy 边缘层）。Python API 未发布宿主机端口；Caddy 是唯一发布端口的服务，且按设计监听所有网卡的 80/443，本机跑演示时对同局域网可达。以下未完成项不是已实现的安全保证。
 
 网站已实现独立的 `role=user/admin` 与只读管理面板；`tier=normal/vip` 仍只是写作优先级，不是管理权限。管理员功能和本次账号切换验收见 [管理面板说明](ADMIN.md) 与 [管理员验收记录](ADMIN-ACCEPTANCE-2026-09-19.md)。服务器管理员通过 `docker compose exec myink-api myink reset-password <用户名>` 重设密码；不能把 RabbitMQ/数据库管理凭据当成网站登录账号。
 
@@ -22,7 +22,7 @@
 | 项目 | 当前情况 | 上线前要求 |
 |---|---|---|
 | 公网入口 | Caddy 边缘层已就位（80/443、前端静态托管、按路径分流、SSE 无缓冲中继）；本地默认纯 HTTP，Compose 强制 APP_ENV=dev | 填真实域名走 ACME 自动签发续期；公网只开放 443（80 仅跳转/证书验证）；配置 HSTS 与安全响应头；Caddy 之前再加 CDN/云 LB 时必须配全局 trusted_proxies |
-| 内部服务 | Python 与 Go 网关都只在容器网络内监听（`expose`）；Python 自己验 JWT，不读内部用户头；DB/Redis/RabbitMQ 绑定本机 | 不发布内部服务端口；隔离内部网络，限制 Caddy/API/worker 的访问关系；禁止绕过 Caddy 直连 Python——那会同时绕过 TLS 与限流 |
+| 内部服务 | Python API 只在容器网络内监听（`expose`）；它自己验 JWT，不读内部用户头；DB/Redis/RabbitMQ 绑定本机 | 不发布内部服务端口；隔离内部网络，限制 Caddy/API/worker 的访问关系；禁止绕过 Caddy 直连 Python——那会同时绕过 TLS 与限流 |
 | 浏览器令牌 | JWT 存于 localStorage，能被同源 JavaScript 读取 | 设计 HttpOnly + Secure + SameSite 的会话 Cookie，并配套 CSRF 防护；落实 CSP、XSS 防护及第三方依赖审查 |
 | 自定义模型/MCP 地址 | 出站地址守卫已统一到「探针 + 保存」两条路径，且只放行全球可路由地址（阻断云元数据 169.254.169.254 与阿里云 100.100.100.200；本部署不使用本地模型，内网与回环一并拒绝）。未处理重定向跟随、DNS 重绑定与出站代理 | 全部出站路径统一 SSRF 防护：阻断私网、回环、链路本地和元数据服务；处理 DNS 重绑定、重定向和 IPv6；优先允许列表/受控出站代理；本地模型须由管理员显式授权 |
 | 密钥与基础设施凭据 | JWT 已随机化；MODEL_CREDENTIAL_KEY 已换成独立随机主密钥，存量模型密文**已于 2026-09-20 迁移并验证**（见下「历史问题追平」）；DB/RabbitMQ 仍有本地默认凭据，Redis 未启用认证 | 备份后用独立随机主密钥事务式重加密存量模型凭据并验证；轮换基础设施密码；启用 Redis ACL/认证；使用 Secrets 管理，不把密钥写入镜像/日志 |

@@ -1,7 +1,7 @@
 """三层闸门 + 入队（Python 接管网关原先独占的那条路径）。
 
-闸门脚本本身是网关那份 `.lua` 的逐字节副本（parity 见 `test_gates_parity.py`），
-所以这里测的是**调用形状与失败语义**：5 KEYS / 8 ARGV、五种拒绝码的 `{"error"}` 信封、
+闸门脚本是 `src/myink/worker/gates.lua` / `compensate.lua`，所以这里测的是**调用形状与
+失败语义**：5 KEYS / 8 ARGV、五种拒绝码的 `{"error"}` 信封、
 发布"确定失败"才补偿而"结果不明"不补偿。
 
 真跑 Redis（测试栈自带）而不是 stub ——KEYS 顺序或 ARGV 个数写错，只有真 Lua 抓得住。
@@ -273,3 +273,21 @@ def test_produced_menus_reach_the_right_dispatch_branch(book, monkeypatch, task_
                "project_id": book.pid, "user_id": book.uid, "payload": payload}
     assert processor._dispatch(message) == "done"
     assert seen == [expected]
+
+
+def test_the_lua_scripts_ship_next_to_the_module():
+    """脚本必须躺在模块旁边：`package-data` 漏了的话进不了 wheel / 镜像。
+
+    真跑一遍生产同款的加载路径（`__file__` 同级），而不是断言仓库里那个相对路径。
+    这段原先是 `test_gates_parity.py` 的一半——另一半（与网关那份逐字节相同）随 Go 退场作废。
+    """
+    from pathlib import Path
+
+    from myink.worker import enqueue
+
+    here = Path(enqueue.__file__).parent
+    for name in ("gates.lua", "compensate.lua"):
+        script = here / name
+        assert script.is_file(), f"{here} 里没有 {name}（package-data 漏了？）"
+        assert script.read_text(encoding="utf-8").strip(), f"{name} 是空的"
+    assert enqueue._GATES_LUA == (here / "gates.lua").read_text(encoding="utf-8")

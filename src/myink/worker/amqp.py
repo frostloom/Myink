@@ -1,14 +1,14 @@
 """RabbitMQ 连接与拓扑（worker 消费 + API/worker 发布共用）。
 
-拓扑与 Go 网关 `gateway/internal/queue/amqp.go` 完全一致（producer/consumer/API 三端
-幂等声明；参数不一致会 PRECONDITION_FAILED）：
+拓扑沿用 Go 网关 `gateway/internal/queue/amqp.go`（已退场）：producer/consumer/API 三端
+幂等声明；参数不一致会 PRECONDITION_FAILED。
 
     myink.tasks (direct)
       ├─ key "tasks" → queue:tasks  (x-max-priority=10, DLX→myink.dlx/dlq)
       └─ key "delay" → queue:delay  (DLX→myink.tasks/tasks；无固定 TTL，逐条 expiration 退避)
     myink.dlx (direct) → key "dlq" → queue:dlq
 
-协议不变量（最高风险）：消息体 = 任务 JSON 本身（Go 端发布即任务字典，worker 单次
+协议不变量（最高风险）：消息体 = 任务 JSON 本身（发出去就是任务字典，worker 单次
 json.loads，不再包 {"body":...}）。
 
 QUEUE_PREFIX 只用于测试隔离：对 exchange 与 queue 名统一加前缀（生产空串）。

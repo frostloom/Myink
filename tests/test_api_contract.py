@@ -81,8 +81,14 @@ PUBLIC_ENDPOINTS: list[tuple[str, str]] = [
     ("GET", "/api/v1/projects/{project_id}/global-audit/{report_id}"),
 ]
 
-# 探针（无业务消费方，不要求响应契约；Go 路径闸允许清单）
-ALLOWLIST = {("GET", "/healthz"), ("GET", "/readyz")}
+# 探针（无业务消费方，不要求响应契约；Go 路径闸允许清单）。
+# SSE 进度流也在列：它回的是 `text/event-stream` 帧流，不是 JSON 信封，本来就没有响应
+# schema 可挂——真实契约（帧格式、12 个 data 键、410 回退信封）钉在 test_sse.py。
+ALLOWLIST = {
+    ("GET", "/healthz"),
+    ("GET", "/readyz"),
+    ("GET", "/api/v1/tasks/{task_id}/events"),
+}
 
 SPEC_PATH = pathlib.Path(__file__).resolve().parents[1] / "spec" / "api-openapi.json"
 
