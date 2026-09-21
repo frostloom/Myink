@@ -76,7 +76,7 @@ export function StreamingChapterView({ chapterSeq, artifact, summary }: Props) {
           </button>
         )}
       </div>
-      <footer>{Array.from(source).length.toLocaleString()} 字 · 生成期间为只读预览</footer>
+      <footer>{Array.from(source).length.toLocaleString()} 字</footer>
     </section>
   )
 }

@@ -281,10 +281,6 @@ export default function LorePage() {
 
           <section className={`panel ${styles.section}`}>
             <h2 className={styles.sectionTitle}>整书大纲</h2>
-            <p className={styles.hint}>
-              建书第 ③ 步规划的「全书 Objective → 卷 → 约 30 章一段的阶段」。
-              写作注入当前卷目标与当前阶段。
-            </p>
             {outline == null ? (
               <div className="empty">暂无大纲。可在「新建作品」第 ③ 步规划整书卷与阶段。</div>
             ) : (
@@ -373,9 +369,6 @@ export default function LorePage() {
 
           <section className={`panel ${styles.section}`}>
             <h2 className={styles.sectionTitle}>章节记忆</h2>
-            <p className={styles.hint}>
-              各章摘要（§7 短期记忆）：每章正文落库时随事件沉淀，回溯「前面章节发生了什么」。
-            </p>
             {chapters.length === 0 ? (
               <div className="empty">暂无已写章节。开始写作后各章摘要自动沉淀于此。</div>
             ) : (
@@ -425,19 +418,11 @@ export default function LorePage() {
 
           <section className={`panel ${styles.section}`}>
             <h2 className={styles.sectionTitle}>关系图谱</h2>
-            <p className={styles.hint}>
-              全量世界拓扑（人物 / 势力 / 地点 / 设定实体 4 类节点；人物关系与地点层级为边）。
-              实线为活跃关系，虚线为已失效关系；可拖拽、滚轮缩放、点图例过滤分类。
-            </p>
             <WorldGraph projectId={projectId} />
           </section>
 
           <section className={`panel ${styles.section}`}>
             <h2 className={styles.sectionTitle}>设定实体</h2>
-            <p className={styles.hint}>
-              正文中首次明确命名的武器 / 功法 / 技能 / 地点自动登记（§7.11 ④ 低风险自动建档），
-              确认新人物卡片时同步写入。
-            </p>
             {entities.length === 0 ? (
               <div className="empty">暂无设定实体。写作中出现新武器 / 功法 / 技能 / 地点时自动登记。</div>
             ) : (
@@ -475,10 +460,6 @@ export default function LorePage() {
 
           <section className={`panel ${styles.section}`}>
             <h2 className={styles.sectionTitle}>伏笔池</h2>
-            <p className={styles.hint}>
-              伏笔台账（§7.9 状态机）：种植中/推进中的开放伏笔会被后续章节规划消费
-              （决定回收/延续/放弃），已回收/已废弃保留历史供复盘。
-            </p>
             {foreshadows.length === 0 ? (
               <div className="empty">暂无伏笔。正文中出现可回收的悬念/物件/承诺时自动登记。</div>
             ) : (

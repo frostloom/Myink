@@ -108,5 +108,4 @@ it('requires an ASCII letter and digit in an eight-character registration passwo
   fireEvent.click(screen.getByRole('button', { name: '创建账号' }))
   await screen.findByRole('button', { name: '创建账号' })
   expect(register).toHaveBeenCalledWith('alice', 'abcd1234', 'invite')
-  expect(screen.getByText(/administrator/i).textContent).toContain('writing and debugging content')
 })

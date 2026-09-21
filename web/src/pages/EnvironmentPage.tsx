@@ -304,10 +304,6 @@ export default function EnvironmentPage() {
             <div className={styles.connectionTitleRow}>
               <div>
                 <h2 className={styles.sectionTitle}>模型连接与路由</h2>
-                <p className={styles.hint}>
-                  在这里填写自己的模型 API Key，对全部作品生效。支持 OpenAI 兼容接口或 Anthropic 原生接口。
-                  密钥由后端加密保存，页面不会再次显示原文。章节费用按官方标价估算，不用手填单价。
-                </p>
               </div>
               <button type="button" className="btn btn-secondary" disabled={busy !== null} onClick={addConnection}>
                 添加网络模型
@@ -352,7 +348,7 @@ export default function EnvironmentPage() {
                         <span>API Key {connection.has_api_key && <em>已保存，留空即保留</em>}</span>
                         <input className="input" type="password" autoComplete="new-password" value={connection.api_key}
                           onChange={(e) => updateConnection(connection.id, { api_key: e.target.value })}
-                          placeholder={connection.has_api_key ? '••••••••（留空保留）' : '输入 API Key'} />
+                          placeholder={connection.has_api_key ? '••••••••（留空保留）' : '输入 API Key（保存后不再显示原文）'} />
                       </label>
                     </div>
                     <div className={styles.probeRow}>
@@ -384,7 +380,6 @@ export default function EnvironmentPage() {
 
             <div className={styles.routeDivider}>
               <h3>每 Agent 主模型</h3>
-              <p className={styles.hint}>规划、写作、校验、抽取、审核、摘要都在这里指定。未指定则该角色不绑定连接。</p>
             </div>
             <label className={styles.routeRow}>
               <span className={styles.routeLabel}>思考模式</span>
@@ -398,9 +393,6 @@ export default function EnvironmentPage() {
                 <option value="1">开启</option>
               </select>
             </label>
-            <p className={styles.hint}>
-              能关就关；关不了就把思考拆到独立字段；若仍写进正文开头会自动剥掉。章节只用正文，思考永不落库。开启后规划、审核、抽取、摘要可以使用模型思考。
-            </p>
             <div className={styles.routeList}>
               {MODEL_ROLES.map((r) => (
                 <label key={r.key} className={styles.routeRow}>
@@ -447,9 +439,6 @@ export default function EnvironmentPage() {
 
           <section className={`panel ${styles.section}`}>
             <h2 className={styles.sectionTitle}>外接 MCP 扫榜</h2>
-            <p className={styles.hint}>
-              建书向导的榜单灵感来自外部 MCP。可改地址、超时和工具名；关闭后只展示内置示例。
-            </p>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>启用扫榜</span>
               <select

@@ -42,13 +42,6 @@
   font-size: 18px;
 }
 
-.hint {
-  margin: 0;
-  color: var(--ink-muted);
-  font-size: var(--text-small);
-  line-height: 1.6;
-}
-
 .field {
   display: flex;
   flex-direction: column;
