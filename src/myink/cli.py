@@ -89,6 +89,21 @@ def init(
                   + (f"；新增示例书 {len(new_books)} 本（多书展示）" if new_books else ""))
 
 
+@app.command("db-cleanup")
+def db_cleanup() -> None:
+    """Drop dead tables/columns that older schemas leave behind (idempotent).
+
+    `myink init` 刻意不跑这个（见那里注释）：破坏性 DDL 不该挂在启动路径上。但建表唯一
+    来源是 `Base.metadata.create_all`，它只建新表、不改已有表，所以模型侧删掉的东西必须
+    在老库里显式 DROP——否则那些列会一直带着 NOT NULL 躺在结构里，而模型已经没有它们了，
+    插入时会撞非空约束（events.related_threads 就是这么炸的）。升级老库时手工跑一次。
+    """
+    from myink.db import ensure_legacy_schema_cleanup
+
+    ensure_legacy_schema_cleanup()
+    console.print("[green]✓[/] 已清理老库遗留的表/列（幂等，可重复跑）")
+
+
 @app.command("auth-upgrade")
 def auth_upgrade() -> None:
     """Safely add account-authentication schema without legacy cleanup."""
