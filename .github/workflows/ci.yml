@@ -26,6 +26,9 @@ jobs:
     env:
       EMBED_ENABLED: "0"
       AMQP_URL: amqp://myink:myink@localhost:5672/
+      # Python 自己验 JWT 之后，密钥短于 32 字节会让 require_auth_configuration 把业务路由全判 503。
+      # 仓库里没有 .env，这里显式给足长度（与 tests/conftest.py 的 TEST_JWT_SECRET 同值）。
+      JWT_SECRET: test-jwt-secret-at-least-32-bytes-long
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -158,11 +161,13 @@ jobs:
   # 镜像构建：GitHub runner 境外网络用官方源即可（pypi / npmjs / goproxy），
   # 不需 daocloud/aliyun 覆盖（那是本地 compose 的国内源参数）。
   build-images:
-    name: 镜像构建（Python + 网关）
+    name: 镜像构建（Python + 网关 + Caddy）
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Python 镜像（api/worker 共用，核心依赖）
         run: docker build -f Dockerfile -t myink-api:ci .
-      - name: 网关镜像（node 构建 dist + go 静态编译 → slim）
+      - name: 网关镜像（go 静态编译 → slim，只含 SSE 中继二进制）
         run: docker build -f gateway/Dockerfile -t myink-gateway:ci .
+      - name: Caddy 镜像（node 构建 dist + Caddyfile，构建期 caddy validate 兜语法错）
+        run: docker build -f caddy/Dockerfile -t myink-caddy:ci .
