@@ -2,7 +2,7 @@
 
 本文是**公网上线的后续加固设计**，不是当前实现清单。密码认证现已落地（scrypt、注册/改密/全会话撤销、独立认证限流），所有环境均禁止无密码进入 `demo`。当前行为及无损升级以 [AUTH.md](AUTH.md) 为准；下文“现状”表和 Argon2id/pepper/凭据表方案保留为原设计背景，尚未实施的部分不能视为安全保证。不要把 Compose 本地配置原样暴露公网。
 
-对齐现有隔离口径（`src/myink/db.py` §14.1）：事务级 `SET LOCAL`、FORCE RLS、未设上下文空集、应用角色 `NOBYPASSRLS`、网关 JWT + 应用层第二道门。密钥与密码的租户粒度是 **`user_id`**，不是 `project_id`。禁止把现有 `app.tenant_id = project_id` 策略套到 `users` 或密钥行上。
+对齐现有隔离口径（`src/myink/db.py` §14.1）：事务级 `SET LOCAL`、FORCE RLS、未设上下文空集、应用角色 `NOBYPASSRLS`、Python 自验 JWT + 应用层第二道门。密钥与密码的租户粒度是 **`user_id`**，不是 `project_id`。禁止把现有 `app.tenant_id = project_id` 策略套到 `users` 或密钥行上。
 
 ---
 
@@ -14,7 +14,7 @@
 | 用户表 | `users` / `projects` **故意无 RLS** | `myink_app` 可 `SELECT * FROM users` |
 | 模型 Key | 密文在 `users.environment` JSON | 与根表同命运：一次查询拖走全站密文 |
 | 加密 | Fernet，主密钥 `MODEL_CREDENTIAL_KEY` 或回落 `JWT_SECRET` | 回落等于两用一把钥匙；换密钥旧密文全废 |
-| 登录限流 | 网关全站令牌桶（默认 20/秒） | 挡不住按用户名撞库 |
+| 登录限流 | 全站令牌桶（默认 20/秒，Go 与 Python 各一份） | 挡不住按用户名撞库 |
 | Worker 读 Key | `new_session()` 按 `user_id` 取环境 | 忘写 WHERE 时库不拦 |
 
 章节/记忆已经有 `SET LOCAL app.tenant_id` + `project_id` RLS。密钥现在吃的是根表例外，**比正文还弱**。
@@ -41,8 +41,9 @@
 
 ```
 浏览器
-  → 网关（验 JWT / 登录限流 / 唯一公网入口）
-    → Python API（127.0.0.1，信 X-Myink-User）
+  → Caddy 边缘（TLS / 静态托管 / 唯一公网入口 / 按路径分流）
+    → 网关（只服务 SSE，验 JWT）
+    → Python API（容器网络内，自验 JWT + 登录限流）
          ├─ 登录：SECURITY DEFINER 校验函数（应用角色不能直接 SELECT 哈希）
          ├─ 根表 users/projects：仍无 RLS，只列自己的书
          ├─ 凭据表：SET LOCAL app.user_id + FORCE RLS
@@ -165,7 +166,7 @@ SECURITY DEFINER
 
 ### 5.3 在线撞库
 
-网关对 `POST /api/v1/auth/token` **单独**限流，不复用全站 20/秒：
+Python API 对 `POST /api/v1/auth/token` **单独**限流（Caddy 转发过来，来源地址由 Caddy 覆盖写入），不复用全站 20/秒：
 
 - Redis：`auth:fail:ip:{ip}`、`auth:fail:user:{username}`。
 - 建议：同一 IP 15 分钟 20 次失败 → 429；同一用户名 15 分钟 10 次 → 锁定 15 分钟。
@@ -173,7 +174,7 @@ SECURITY DEFINER
 - 响应统一「用户名或密码错误」，不区分 404/403。
 - 生产必须带密码字段；无密码或演示签发路径保持 `DEMO_LOGIN_DISABLED`。
 
-JWT 维持现状：HS256、`sub=user_id`、短 TTL、`iss=myink`。网关验签后透传 `X-Myink-User`。生产 `JWT_SECRET` 独立、足够长，与 `MODEL_CREDENTIAL_KEY` / `PASSWORD_PEPPER` 三者互不相同。
+JWT 维持现状：HS256、`sub=user_id`、短 TTL、`iss=myink`。Python 自己验签，不再有内部用户头。生产 `JWT_SECRET` 独立、足够长，与 `MODEL_CREDENTIAL_KEY` / `PASSWORD_PEPPER` 三者互不相同。
 
 ### 5.4 注册（若上线开放注册）
 
@@ -252,7 +253,7 @@ ADMIN_DATABASE_URL=         # 仅迁移机
 | 密钥位置 | `users.environment` | `user_credentials` + 用户 RLS |
 | 读密钥 | `new_session` + user_id | 仅 `user_session` |
 | 主密钥 | 可回落 JWT | 独立且启动校验 |
-| 网关 | 全站限流 | 登录单独计数 |
+| 限流 | 全站令牌桶（Go 与 Python 各一，同参数） | 登录单独计数 |
 
 未落地本文前，产品口径保持 README / `docs/DEPLOY.md`：本地演示，不是公网账户系统。
 

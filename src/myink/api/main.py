@@ -1,6 +1,7 @@
-"""Python API 装配（FastAPI，127.0.0.1:8100，内部服务）。
+"""Python API 装配（FastAPI，:8100，只在容器网络内监听）。
 
-启动：`myink-api` 或 `python -m myink.api.main`（pyproject scripts）。
+身份由本服务自己验 JWT（见 auth.py），不读网关写下的内部用户头——Go 网关已收缩为只服务 SSE，
+Caddy 是唯一公网入口。启动：`myink-api` 或 `python -m myink.api.main`（pyproject scripts）。
 """
 
 from __future__ import annotations
@@ -37,7 +38,7 @@ from myink.worker.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Myink 内部 API", docs_url=None, redoc_url=None)
+app = FastAPI(title="Myink API", docs_url=None, redoc_url=None)
 
 
 @app.middleware("http")
