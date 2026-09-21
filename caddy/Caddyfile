@@ -5,7 +5,7 @@
 #   - Python (myink-api)：验身份、限流、闸门、入队、全部业务路由
 #   - Go (myink-gateway)：只剩 SSE 中继，挂在 myink-gateway:8080
 #
-# 本地开发想走纯 HTTP：CADDY_TLS= 置空（见 docker-compose.yml 的 CADDY_TLS 插值）。
+# 本地开发想走纯 HTTP：把 SITE_ADDRESS 设成 http://localhost（默认值，见下方说明）。
 {
 	# 管理 API 只监听容器内回环：热重载用，不对外
 	admin 127.0.0.1:2019

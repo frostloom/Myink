@@ -15,7 +15,7 @@ docker compose up -d --build
 docker compose ps
 ```
 
-打开 http://localhost:8080 ，注册自己的账号。旧 `demo` 账号需管理员通过 `myink reset-password demo` 设置密码后才能访问其示例书，不存在公开默认密码。
+打开 http://localhost ，注册自己的账号。旧 `demo` 账号需管理员通过 `myink reset-password demo` 设置密码后才能访问其示例书，不存在公开默认密码。
 
 如需让用户在项目设置中保存自定义模型 API Key，请在首次使用前设置稳定的
 `MODEL_CREDENTIAL_KEY`。该值用于加密数据库中的模型密钥，部署后修改会使旧密钥无法解密；
@@ -24,18 +24,18 @@ Anthropic Messages 原生接口，请按服务商要求填写包含版本前缀�
 
 | 本机地址 | 服务 |
 |---|---|
-| 127.0.0.1:8080 | Go 网关、前端、API、SSE |
+| 127.0.0.1:80 / :443 | Caddy 边缘层：前端静态产物、SPA 回退、TLS，把 `/api/v1/*` 分给 Python、`/api/v1/tasks/*/events` 分给 Go |
 | 127.0.0.1:5432 | PostgreSQL + pgvector |
 | 127.0.0.1:6380 | Redis：限流、锁、心跳、SSE 事件 |
 | 127.0.0.1:5672 | RabbitMQ：任务、延迟重投、死信 |
 | 127.0.0.1:15672 | RabbitMQ 管理界面，演示账号 myink/myink |
 
-Python API 的 8100 端口仅在容器网络内开放。所有宿主机端口默认绑定回环地址。不要将这份演示配置原样开放到公网。
+Python API 的 8100 端口与 Go 网关的 8080 端口都仅在容器网络内开放（`expose`，不发布宿主机端口）。宿主机上唯一对外发布的是 Caddy：它按设计监听所有网卡的 80/443——那就是公网入口；PostgreSQL、Redis、RabbitMQ 只绑定回环地址。本机跑演示时 Caddy 对同局域网可达，要收口就配宿主防火墙，或把 compose 里 Caddy 的 `ports` 改成 `127.0.0.1:80:80` 这类形式。不要将这份演示配置原样开放到公网。
 
 首次启动由 `docker/initdb/01-roles.sql` 创建非超级用户 `myink_app`；API 启动时运行 `myink init`，创建表、RLS、必要补丁和演示数据；启动不再自动清理遗留表/列。单独升级认证字段可用 `myink auth-upgrade`，不重命名旧账号、不迁移作品归属。已有数据库升级目前使用幂等补丁，尚无完整的 Alembic 版本迁移链。
 
 ```bash
-docker compose logs -f myink-api myink-worker myink-gateway
+docker compose logs -f myink-api myink-worker myink-gateway myink-caddy
 docker compose down       # 停止应用，保留作品数据卷
 docker compose up -d --build
 ```
@@ -50,9 +50,9 @@ python -m pip install -e '.[dev]'
 myink init
 ```
 
-在不同终端运行 `myink-api`、`myink-worker`、`cd gateway && go run ./cmd/gateway`、`cd web && npm ci && npm run dev`。本机连接 Compose RabbitMQ 使用 `.env.example` 中的 `amqp://myink:myink@localhost:5672/`；容器内使用服务名 `myink-rabbitmq`。不要混用 guest 凭据。
+在不同终端运行 `myink-api`、`myink-worker`、`cd gateway && go run ./cmd/gateway`、`cd web && npm ci && npm run dev`。网关本机运行只需 `REDIS_ADDR`、`PYTHON_API_BASE`、`JWT_SECRET`（它不再连接 RabbitMQ）。本机连接 Compose RabbitMQ 使用 `.env.example` 中的 `amqp://myink:myink@localhost:5672/`；容器内使用服务名 `myink-rabbitmq`。不要混用 guest 凭据。
 
-前端开发地址 http://localhost:5173 ，通过 Vite 代理访问网关。
+前端开发地址 http://localhost:5173 ，Vite dev proxy 把 `/api` 转发到 Caddy（`http://localhost:80`，见 `web/vite.config.ts`），因此本机开发要同时起 `docker compose up -d myink-caddy`。
 
 ## 自动化回归（独立测试数据）
 
@@ -71,6 +71,7 @@ bash scripts/ci-local.sh
 | REDIS_URL | redis://127.0.0.1:16380/0 |
 | REDIS_ADDR | 127.0.0.1:16380 |
 | AMQP_URL | amqp://myink:myink@127.0.0.1:15673/ |
+| JWT_SECRET | test-jwt-secret-at-least-32-bytes-long（脚本设置；CI 没有 `.env`，密钥短于 32 字节会让业务路由全判 503） |
 
 脚本依次执行 Python 语法检查、初始化、契约导出差异检查、Python 全量回归、Go vet/测试、前端 lint/交互测试/构建。模型和 embedding 使用替身，不产生真实模型费用。Go 的 SKIP 会被门禁判为失败。
 
@@ -95,6 +96,17 @@ SKIP_IMAGES=1 bash scripts/ci-local.sh
 
 Compose 默认 `EMBED_ENABLED=0`，关闭向量腿但仍可使用关系与关键词召回。启用需将 Dockerfile 安装改为 `pip install .[ml]`，重建镜像，并给 API/worker 配置 `EMBED_ENABLED=1`、首次下载时 `EMBED_ALLOW_DOWNLOAD=1`，持久化模型缓存。本地 embedding 会额外占用内存与磁盘。开关只对新写入生效，存量事件的向量要另跑一次 `myink embed-backfill --level event`（事实用 `--level world`，`--project` 可限定单本）补建；否则向量腿索引为空，召回静默退化成纯关键词，`recall_stats.vector_status` 会显示 `enabled_but_empty`。该命令幂等，可重复执行。
 
+## 切换公网入口（宿主已有 web 服务器时）
+
+Caddy 要占用 80/443，宿主若已跑着 nginx，它会起不来。这一步**手工做**，不要脚本化：
+
+1. **先确认那台 nginx 没有在服务别的站点**。有的话只删对应的 vhost 文件，别卸载 nginx 包。
+2. 把 `docker-compose.yml` 里 `myink-caddy` 的 `ports` 临时改成 `"127.0.0.1:8081:80"`，`docker compose up -d --build myink-caddy`，用 `http://127.0.0.1:8081` 走一遍登录与生成，确认新入口自己是对的。
+3. 再停 nginx（`systemctl stop nginx`，确认后 `systemctl disable nginx`），把 `ports` 改回 `"80:80"` / `"443:443"` / `"443:443/udp"`，`docker compose up -d myink-caddy`。
+4. 域名解析指过来，`SITE_ADDRESS` 填域名（不带协议前缀），Caddy 自动申请续期证书；证书落在 `caddy-data` 卷里，**不要删这个卷**，否则重启会重签并可能撞 Let's Encrypt 速率限制。
+
+回滚就是把 nginx 起回来、`ports` 改回 8081（第 1 步若删过 vhost，先把它恢复）：Caddy 与 Go 网关都不持有跨启动的业务状态。
+
 ## 仍需完成的生产工作
 
-HTTPS/可信反向代理、模型凭据用户级数据库权限加固、版本化数据库迁移、备份与恢复演练、集中监控和容量测试仍在后续范围。当前没有生产可用性或真实小说质量的保证；演示应使用已验证的机制与测试结果描述能力。
+HTTPS 已由 Caddy 承担（`SITE_ADDRESS` 填域名即自动签发续期）；Caddy 之前若再挂 CDN 或云 LB，必须配 Caddy 全局 `trusted_proxies` 并把客户端 IP 取值换成 `{client_ip}`，否则所有用户会塌进同一个限流桶（见 `.env.example`）。模型凭据用户级数据库权限加固、版本化数据库迁移、备份与恢复演练、集中监控和容量测试仍在后续范围。当前没有生产可用性或真实小说质量的保证；演示应使用已验证的机制与测试结果描述能力。
