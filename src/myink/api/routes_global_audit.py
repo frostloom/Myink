@@ -19,7 +19,7 @@ from myink.db import tenant_session
 from myink.models import GlobalAuditReport
 from myink.validation import global_audit as ga
 
-router = APIRouter(prefix="/internal/v1", tags=["global-audit"])
+router = APIRouter(prefix="/api/v1", tags=["global-audit"])
 
 # 报告列表页大小上限（前端翻页由阶段 4 前省略，只取最新一页）
 _MAX_REPORTS = 20

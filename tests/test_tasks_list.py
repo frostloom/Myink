@@ -67,7 +67,7 @@ def test_list_tasks_shape_and_desc_order(temp_project):
                   chapter_seq=2, created_at=now - timedelta(minutes=5)),
     ]
     try:
-        resp = client.get(f"/internal/v1/projects/{temp_project}/tasks", headers=_h(_demo_user_id()))
+        resp = client.get(f"/api/v1/projects/{temp_project}/tasks", headers=_h(_demo_user_id()))
         assert resp.status_code == 200
         items = resp.json()
         assert [i["task_id"] for i in items] == [tids[0], tids[1]], "created_at 新的在前"
@@ -85,7 +85,7 @@ def test_list_tasks_shape_and_desc_order(temp_project):
 
 
 def test_list_tasks_empty_project_returns_empty(temp_project):
-    resp = client.get(f"/internal/v1/projects/{temp_project}/tasks", headers=_h(_demo_user_id()))
+    resp = client.get(f"/api/v1/projects/{temp_project}/tasks", headers=_h(_demo_user_id()))
     assert resp.status_code == 200
     assert resp.json() == []
 
@@ -101,7 +101,7 @@ def test_list_tasks_batch_progress_derived(temp_project):
             db.add(AgentRun(project_id=pid, task_id=f"{tid}:{ch}", node=node))
         db.commit()
     try:
-        resp = client.get(f"/internal/v1/projects/{temp_project}/tasks", headers=_h(_demo_user_id()))
+        resp = client.get(f"/api/v1/projects/{temp_project}/tasks", headers=_h(_demo_user_id()))
         item = next(i for i in resp.json() if i["task_id"] == tid)
         assert item["batch_size"] == 3
         assert item["batch_current"] == 2, "persist 去重章数，非任意 run 计数"
@@ -124,7 +124,7 @@ def test_list_tasks_cost_total_single_and_batch(temp_project):
                 db.add(AgentRun(project_id=pid, task_id=tid, node="write", cost_est=cost))
         db.commit()
     try:
-        resp = client.get(f"/internal/v1/projects/{temp_project}/tasks", headers=_h(_demo_user_id()))
+        resp = client.get(f"/api/v1/projects/{temp_project}/tasks", headers=_h(_demo_user_id()))
         items = {i["task_id"]: i for i in resp.json()}
         assert round(items[single]["cost_total"], 4) == 0.018, "单章 = 全节点 cost 和"
         assert round(items[batch]["cost_total"], 4) == 0.064, "批次 = 裸 id + 全 :ch 前缀聚合"
@@ -142,7 +142,7 @@ def test_get_task_cost_total(temp_project):
         db.add(AgentRun(project_id=pid, task_id=tid, node="persist", cost_est=0.0))
         db.commit()
     try:
-        resp = client.get(f"/internal/v1/tasks/{tid}", headers=_h(_demo_user_id()))
+        resp = client.get(f"/api/v1/tasks/{tid}", headers=_h(_demo_user_id()))
         assert resp.status_code == 200
         detail = resp.json()
         assert round(detail["cost_total"], 4) == 0.028, "详情总花费 = runs cost 和"
@@ -179,7 +179,7 @@ def test_list_tasks_chapter_filter(temp_project):
         db.commit()
     try:
         # 过滤 ch2 → single + batch2（batch5 不覆盖，剔除）
-        resp = client.get(f"/internal/v1/projects/{temp_project}/tasks?chapter_seq=2",
+        resp = client.get(f"/api/v1/projects/{temp_project}/tasks?chapter_seq=2",
                           headers=_h(_demo_user_id()))
         assert resp.status_code == 200
         items = {i["task_id"]: i for i in resp.json()}
@@ -189,13 +189,13 @@ def test_list_tasks_chapter_filter(temp_project):
             "批次章成本 = :ch2 切片，book 级 batch_plan 不计入"
         assert items[batch2]["batch_size"] == 3
         # 过滤 ch5 → 只有 batch5，cost = ch5 切片
-        resp5 = client.get(f"/internal/v1/projects/{temp_project}/tasks?chapter_seq=5",
+        resp5 = client.get(f"/api/v1/projects/{temp_project}/tasks?chapter_seq=5",
                            headers=_h(_demo_user_id()))
         items5 = {i["task_id"]: i for i in resp5.json()}
         assert set(items5) == {batch5}
         assert round(items5[batch5]["cost_total"], 4) == 0.07
         # 无过滤 → 全量（回归：原口径批次 = 裸 id + 全 :ch 前缀聚合）
-        resp_all = client.get(f"/internal/v1/projects/{temp_project}/tasks",
+        resp_all = client.get(f"/api/v1/projects/{temp_project}/tasks",
                               headers=_h(_demo_user_id()))
         items_all = {i["task_id"]: i for i in resp_all.json()}
         assert round(items_all[batch2]["cost_total"], 4) == 0.1, "全量口径批次含 book 级 run"
@@ -205,19 +205,19 @@ def test_list_tasks_chapter_filter(temp_project):
 
 def test_list_tasks_ownership_matrix(temp_project):
     """越权矩阵：缺失身份 403 / 未知账号 401（§14.1 ③ fail closed）。"""
-    url = f"/internal/v1/projects/{temp_project}/tasks"
+    url = f"/api/v1/projects/{temp_project}/tasks"
     assert client.get(url).status_code == 403
     assert client.get(url, headers=_h("00000000-0000-0000-0000-000000000000")).status_code == 401
 
 
 def test_list_tasks_project_missing_404():
     pid = uuid.uuid4()
-    resp = client.get(f"/internal/v1/projects/{pid}/tasks", headers=_h(_demo_user_id()))
+    resp = client.get(f"/api/v1/projects/{pid}/tasks", headers=_h(_demo_user_id()))
     assert resp.status_code == 404
 
 
 def test_list_tasks_invalid_project_id_400():
-    resp = client.get("/internal/v1/projects/not-a-uuid/tasks", headers=_h(_demo_user_id()))
+    resp = client.get("/api/v1/projects/not-a-uuid/tasks", headers=_h(_demo_user_id()))
     assert resp.status_code == 400
 
 
@@ -233,12 +233,12 @@ def test_get_task_backfills_zero_cost_for_deepseek_flash(temp_project):
         db.add(AgentRun(project_id=pid, task_id=tid, node="persist", cost_est=0.0))
         db.commit()
     try:
-        detail = client.get(f"/internal/v1/tasks/{tid}", headers=_h(_demo_user_id())).json()
+        detail = client.get(f"/api/v1/tasks/{tid}", headers=_h(_demo_user_id())).json()
         assert detail["runs"][0]["cost_est"] == 3.0
         assert detail["runs"][1]["cost_est"] == 0.0
         assert detail["cost_total"] == 3.0
         listed = client.get(
-            f"/internal/v1/projects/{temp_project}/tasks", headers=_h(_demo_user_id()),
+            f"/api/v1/projects/{temp_project}/tasks", headers=_h(_demo_user_id()),
         ).json()
         item = next(row for row in listed if row["task_id"] == tid)
         assert item["cost_total"] == 3.0

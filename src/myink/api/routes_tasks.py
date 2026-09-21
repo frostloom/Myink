@@ -32,7 +32,7 @@ from myink.providers.connections import price_tables_from_packed
 from myink.worker import amqp
 from myink.worker.redis_client import get_redis, inflight_key
 
-router = APIRouter(prefix="/internal/v1", tags=["tasks"])
+router = APIRouter(prefix="/api/v1", tags=["tasks"])
 
 # resume 放行的前置状态（§6.12：失败续跑 / 暂停续跑 / critical 转人工后放行）
 _RESUMABLE = {"failed", "paused", "queued", "awaiting_review"}

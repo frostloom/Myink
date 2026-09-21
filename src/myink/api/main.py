@@ -41,7 +41,7 @@ app = FastAPI(title="Myink 内部 API", docs_url=None, redoc_url=None)
 
 @app.middleware("http")
 async def admin_no_store(request, call_next):
-    if request.url.path == "/internal/v1/admin" or request.url.path.startswith("/internal/v1/admin/"):
+    if request.url.path == "/api/v1/admin" or request.url.path.startswith("/api/v1/admin/"):
         try:
             response = await call_next(request)
         except Exception:
@@ -126,7 +126,7 @@ def readyz() -> dict:
 # ---- 项目/章节读（RLS 保护，tenant_session 带租户上下文）----
 
 
-@app.get("/internal/v1/projects", response_model=list[ProjectOut])
+@app.get("/api/v1/projects", response_model=list[ProjectOut])
 def list_projects(user_id: str | None = Depends(current_user)) -> list[dict]:
     """项目列表（根表无 RLS，应用层按身份过滤：只返回自己的书，§14.1 ③）。
 
@@ -153,7 +153,7 @@ def list_projects(user_id: str | None = Depends(current_user)) -> list[dict]:
         ]
 
 
-@app.get("/internal/v1/projects/{project_id}/chapters",
+@app.get("/api/v1/projects/{project_id}/chapters",
          dependencies=[Depends(require_owner)], response_model=list[ChapterMetaOut])
 def list_chapters(project_id: str) -> list[dict]:
     """章节列表（RLS：tenant_session 过滤，只返回本项目 + 归属断言双保险）。
@@ -176,7 +176,7 @@ def list_chapters(project_id: str) -> list[dict]:
         ]
 
 
-@app.get("/internal/v1/projects/{project_id}/chapters/{chapter_id}",
+@app.get("/api/v1/projects/{project_id}/chapters/{chapter_id}",
          dependencies=[Depends(require_owner)], response_model=ChapterDetailOut)
 def get_chapter(project_id: str, chapter_id: str) -> dict:
     with tenant_session(project_id) as db:

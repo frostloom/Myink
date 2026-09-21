@@ -131,7 +131,7 @@ func (h *SSEHandler) validSession(ctx context.Context, authorization, userID str
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	header := http.Header{"Authorization": []string{authorization}}
-	resp, err := h.py.Forward(ctx, http.MethodGet, "/internal/v1/auth/session", nil, header, nil)
+	resp, err := h.py.Forward(ctx, http.MethodGet, "/api/v1/auth/session", nil, header, nil)
 	if err != nil {
 		return false
 	}

@@ -229,7 +229,7 @@ def test_list_entities_endpoint(temp_project):
         nodes._persist_candidates(db, temp_project, 1,
                                   [{"kind": "new_entity", "payload": dict(_ENTITY),
                                     "confidence": 0.9}], skip_pool_handled=True)
-    resp = client.get(f"/internal/v1/projects/{temp_project}/entities", headers=_h(uid))
+    resp = client.get(f"/api/v1/projects/{temp_project}/entities", headers=_h(uid))
     assert resp.status_code == 200
     cards = resp.json()
     assert len(cards) == 1
@@ -239,6 +239,6 @@ def test_list_entities_endpoint(temp_project):
     assert cards[0]["first_seen_chapter"] == 1
     assert cards[0]["id"]
     # 越权矩阵
-    assert client.get(f"/internal/v1/projects/{temp_project}/entities").status_code == 403
-    assert client.get(f"/internal/v1/projects/{temp_project}/entities",
+    assert client.get(f"/api/v1/projects/{temp_project}/entities").status_code == 403
+    assert client.get(f"/api/v1/projects/{temp_project}/entities",
                       headers=_h(uuid.uuid4())).status_code == 401

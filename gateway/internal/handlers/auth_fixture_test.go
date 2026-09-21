@@ -11,7 +11,7 @@ import (
 
 // Existing forwarding tests model the new internal authorization endpoints too.
 func serveAuthFixture(w http.ResponseWriter, req *http.Request) bool {
-	if req.URL.Path == "/internal/v1/auth/session" {
+	if req.URL.Path == "/api/v1/auth/session" {
 		user, tier, err := verifyJWT(req.Header.Get("Authorization"), []byte(config.Load().JWTSecret))
 		if err != nil {
 			w.WriteHeader(401)

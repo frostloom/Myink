@@ -28,7 +28,7 @@ func SessionMiddleware(py *pyapi.Client) gin.HandlerFunc {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 		defer cancel()
 		header := http.Header{"Authorization": []string{c.GetHeader("Authorization")}}
-		resp, err := py.Forward(ctx, http.MethodGet, "/internal/v1/auth/session", nil, header, nil)
+		resp, err := py.Forward(ctx, http.MethodGet, "/api/v1/auth/session", nil, header, nil)
 		if err != nil {
 			c.AbortWithStatusJSON(503, gin.H{"error": "auth_unavailable"})
 			return
@@ -64,7 +64,7 @@ func checkAccess(c *gin.Context, py *pyapi.Client, kind, id string, writing ...b
 	if len(writing) > 0 && writing[0] {
 		query.Set("write", "true")
 	}
-	resp, err := py.Forward(ctx, http.MethodGet, "/internal/v1/"+kind+"/"+url.PathEscape(id)+"/access", query, header, nil)
+	resp, err := py.Forward(ctx, http.MethodGet, "/api/v1/"+kind+"/"+url.PathEscape(id)+"/access", query, header, nil)
 	if err != nil {
 		c.AbortWithStatusJSON(503, gin.H{"error": "authorization_unavailable"})
 		return false
@@ -126,5 +126,5 @@ func (h *TaskHandler) AuthAction(c *gin.Context) {
 		return
 	}
 	action := strings.TrimPrefix(c.FullPath(), "/api/v1/auth/")
-	h.forwardToPy(c, "/internal/v1/auth/"+action, body)
+	h.forwardToPy(c, "/api/v1/auth/"+action, body)
 }

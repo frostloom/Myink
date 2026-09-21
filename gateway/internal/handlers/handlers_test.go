@@ -502,8 +502,8 @@ func TestBatchPauseForwards(t *testing.T) {
 }
 
 func TestBatchControlForwardsToTasksPath(t *testing.T) {
-	// 回归：BatchControl 曾转发到 /internal/v1/batches/{id}/{action}，但 Python API
-	// 实际路由是 /internal/v1/tasks/{id}/{action} —— 路径不匹配导致 pause/resume/cancel 全 404。
+	// 回归：BatchControl 曾转发到 /api/v1/batches/{id}/{action}，但 Python API
+	// 实际路由是 /api/v1/tasks/{id}/{action} —— 路径不匹配导致 pause/resume/cancel 全 404。
 	r := newTestRedis(t)
 	var paths []string
 	py := pyapi.New(recordingPy(&paths).URL, 3*time.Second)
@@ -516,8 +516,8 @@ func TestBatchControlForwardsToTasksPath(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
 	}
-	if len(paths) != 1 || paths[0] != "/internal/v1/tasks/batch-x/resume" {
-		t.Fatalf("应转发 /internal/v1/tasks/batch-x/resume，实际 %v", paths)
+	if len(paths) != 1 || paths[0] != "/api/v1/tasks/batch-x/resume" {
+		t.Fatalf("应转发 /api/v1/tasks/batch-x/resume，实际 %v", paths)
 	}
 }
 
@@ -534,7 +534,7 @@ func TestTaskCancelForwardsToTasksPath(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
 	}
-	if len(paths) != 1 || paths[0] != "/internal/v1/tasks/manual-task/cancel" {
+	if len(paths) != 1 || paths[0] != "/api/v1/tasks/manual-task/cancel" {
 		t.Fatalf("应转发单章取消路径，实际 %v", paths)
 	}
 }
@@ -553,8 +553,8 @@ func TestListProjectTasksForwards(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
 	}
-	if len(paths) != 1 || paths[0] != "/internal/v1/projects/p1/tasks" {
-		t.Fatalf("应转发 /internal/v1/projects/p1/tasks，实际 %v", paths)
+	if len(paths) != 1 || paths[0] != "/api/v1/projects/p1/tasks" {
+		t.Fatalf("应转发 /api/v1/projects/p1/tasks，实际 %v", paths)
 	}
 }
 
@@ -590,8 +590,8 @@ func TestDeleteProjectForwards(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
 	}
-	if len(paths) != 1 || paths[0] != "/internal/v1/projects/p1" {
-		t.Fatalf("应转发 /internal/v1/projects/p1，实际 %v", paths)
+	if len(paths) != 1 || paths[0] != "/api/v1/projects/p1" {
+		t.Fatalf("应转发 /api/v1/projects/p1，实际 %v", paths)
 	}
 }
 
@@ -626,8 +626,8 @@ func TestRankingsForwards(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
 	}
-	if len(paths) != 1 || paths[0] != "/internal/v1/rankings" {
-		t.Fatalf("应转发 /internal/v1/rankings，实际 %v", paths)
+	if len(paths) != 1 || paths[0] != "/api/v1/rankings" {
+		t.Fatalf("应转发 /api/v1/rankings，实际 %v", paths)
 	}
 }
 
@@ -645,8 +645,8 @@ func TestGraphForwards(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
 	}
-	if len(paths) != 1 || paths[0] != "/internal/v1/projects/p1/graph" {
-		t.Fatalf("应转发 /internal/v1/projects/p1/graph，实际 %v", paths)
+	if len(paths) != 1 || paths[0] != "/api/v1/projects/p1/graph" {
+		t.Fatalf("应转发 /api/v1/projects/p1/graph，实际 %v", paths)
 	}
 }
 
@@ -665,8 +665,8 @@ func TestGetChapterForwards(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
 	}
-	if len(paths) != 1 || paths[0] != "/internal/v1/projects/p1/chapters/ch-1" {
-		t.Fatalf("应转发 /internal/v1/projects/p1/chapters/ch-1，实际 %v", paths)
+	if len(paths) != 1 || paths[0] != "/api/v1/projects/p1/chapters/ch-1" {
+		t.Fatalf("应转发 /api/v1/projects/p1/chapters/ch-1，实际 %v", paths)
 	}
 }
 
@@ -736,10 +736,10 @@ func TestChapterEditCorrectDeleteForwards(t *testing.T) {
 		{"全局审计", http.MethodPost, "/api/v1/projects/p1/global-audit", ``},
 	}
 	want := []string{
-		"/internal/v1/projects/p1/chapters/ch-1/content",
-		"/internal/v1/projects/p1/chapters/ch-1/correct-memory",
-		"/internal/v1/projects/p1/chapters/ch-1",
-		"/internal/v1/projects/p1/global-audit",
+		"/api/v1/projects/p1/chapters/ch-1/content",
+		"/api/v1/projects/p1/chapters/ch-1/correct-memory",
+		"/api/v1/projects/p1/chapters/ch-1",
+		"/api/v1/projects/p1/global-audit",
 	}
 	for i, c := range cases {
 		var rd io.Reader
@@ -777,8 +777,8 @@ func TestChapterVersionForwards(t *testing.T) {
 		{"回退到 v2", http.MethodPost, "/api/v1/projects/p1/chapters/ch-1/versions/2/restore", ``},
 	}
 	want := []string{
-		"/internal/v1/projects/p1/chapters/ch-1/versions",
-		"/internal/v1/projects/p1/chapters/ch-1/versions/2/restore",
+		"/api/v1/projects/p1/chapters/ch-1/versions",
+		"/api/v1/projects/p1/chapters/ch-1/versions/2/restore",
 	}
 	for i, c := range cases {
 		var rd io.Reader
@@ -824,16 +824,16 @@ func TestSettingsAndStyleForwards(t *testing.T) {
 		{"文风档案确认", http.MethodPut, "/api/v1/projects/p1/style-profile", `{"profile":{"pov":"限知"}}`},
 	}
 	want := []string{
-		"/internal/v1/projects/p1/settings",
-		"/internal/v1/projects/p1/settings",
-		"/internal/v1/environment",
-		"/internal/v1/environment",
-		"/internal/v1/skill-presets",
-		"/internal/v1/genre-packs",
-		"/internal/v1/projects/p1/genre-pack",
-		"/internal/v1/projects/p1/genre-pack/restore",
-		"/internal/v1/projects/p1/style-samples",
-		"/internal/v1/projects/p1/style-profile",
+		"/api/v1/projects/p1/settings",
+		"/api/v1/projects/p1/settings",
+		"/api/v1/environment",
+		"/api/v1/environment",
+		"/api/v1/skill-presets",
+		"/api/v1/genre-packs",
+		"/api/v1/projects/p1/genre-pack",
+		"/api/v1/projects/p1/genre-pack/restore",
+		"/api/v1/projects/p1/style-samples",
+		"/api/v1/projects/p1/style-profile",
 	}
 	for i, c := range cases {
 		var rd io.Reader
@@ -880,16 +880,16 @@ func TestBookSetupAndWorldForwards(t *testing.T) {
 		{"设定实体", http.MethodGet, "/api/v1/projects/p1/entities", ``},
 	}
 	want := []string{
-		"/internal/v1/projects",
-		"/internal/v1/projects/p1",
-		"/internal/v1/projects/p1/setup-draft",
-		"/internal/v1/projects/p1/setup",
-		"/internal/v1/projects/p1/outline-draft",
-		"/internal/v1/projects/p1/outline",
-		"/internal/v1/projects/p1/outline",
-		"/internal/v1/projects/p1/world",
-		"/internal/v1/projects/p1/characters",
-		"/internal/v1/projects/p1/entities",
+		"/api/v1/projects",
+		"/api/v1/projects/p1",
+		"/api/v1/projects/p1/setup-draft",
+		"/api/v1/projects/p1/setup",
+		"/api/v1/projects/p1/outline-draft",
+		"/api/v1/projects/p1/outline",
+		"/api/v1/projects/p1/outline",
+		"/api/v1/projects/p1/world",
+		"/api/v1/projects/p1/characters",
+		"/api/v1/projects/p1/entities",
 	}
 	for i, c := range cases {
 		var rd io.Reader
@@ -927,8 +927,8 @@ func TestGlobalAuditReadForwards(t *testing.T) {
 		{"报告详情", http.MethodGet, "/api/v1/projects/p1/global-audit/rpt-1"},
 	}
 	want := []string{
-		"/internal/v1/projects/p1/global-audit",
-		"/internal/v1/projects/p1/global-audit/rpt-1",
+		"/api/v1/projects/p1/global-audit",
+		"/api/v1/projects/p1/global-audit/rpt-1",
 	}
 	for i, c := range cases {
 		req := httptest.NewRequest(c.method, c.path, nil)
@@ -1096,7 +1096,7 @@ func TestSSEStreamExpiredReturns410(t *testing.T) {
 // ---- JWT 身份断言（§14.1 ③：网关验签第一道门，替换 X-Myink-User 占位）----
 
 func TestAuthTokenForwardsToPython(t *testing.T) {
-	// 签发端点不挂 JWT（否则无法登录）：转发 Python /internal/v1/auth/token。
+	// 签发端点不挂 JWT（否则无法登录）：转发 Python /api/v1/auth/token。
 	r := newTestRedis(t)
 	var paths []string
 	py := pyapi.New(recordingPy(&paths).URL, 3*time.Second)
@@ -1110,8 +1110,8 @@ func TestAuthTokenForwardsToPython(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("应 200，实际 %d body=%s", w.Code, w.Body.String())
 	}
-	if len(paths) != 1 || paths[0] != "/internal/v1/auth/token" {
-		t.Fatalf("应转发 /internal/v1/auth/token，实际 %v", paths)
+	if len(paths) != 1 || paths[0] != "/api/v1/auth/token" {
+		t.Fatalf("应转发 /api/v1/auth/token，实际 %v", paths)
 	}
 }
 

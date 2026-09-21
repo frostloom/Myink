@@ -28,7 +28,7 @@ from myink.models import (
     PlotThread, Project, ProjectSettings, Task, User, VolumeOutline,
 )
 
-router = APIRouter(prefix="/internal/v1/admin", tags=["admin"])
+router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 Limit = Annotated[int, Query(ge=1, le=100)]
 Offset = Annotated[int, Query(ge=0)]
 Search = Annotated[str | None, Query(max_length=128)]

@@ -171,7 +171,7 @@ def test_validate_profile_normalizes_types():
 def test_style_samples_returns_draft(temp_project, style_stub):
     stub = style_stub(_STYLE_PAYLOAD)
     resp = client.post(
-        f"/internal/v1/projects/{temp_project}/style-samples",
+        f"/api/v1/projects/{temp_project}/style-samples",
         headers=_h(_demo_user_id()),
         json={"samples": [_SAMPLE_1]},
     )
@@ -186,15 +186,15 @@ def test_style_samples_returns_draft(temp_project, style_stub):
 def test_style_samples_rejects_bad_input(temp_project):
     headers = _h(_demo_user_id())
     # 空样本 → 400
-    r = client.post(f"/internal/v1/projects/{temp_project}/style-samples", headers=headers,
+    r = client.post(f"/api/v1/projects/{temp_project}/style-samples", headers=headers,
                     json={"samples": ["", "  "]})
     assert r.status_code == 400
     # 超过 2 篇 → 400
-    r = client.post(f"/internal/v1/projects/{temp_project}/style-samples", headers=headers,
+    r = client.post(f"/api/v1/projects/{temp_project}/style-samples", headers=headers,
                     json={"samples": ["a", "b", "c"]})
     assert r.status_code == 400
     # 总量超限 → 400
-    r = client.post(f"/internal/v1/projects/{temp_project}/style-samples", headers=headers,
+    r = client.post(f"/api/v1/projects/{temp_project}/style-samples", headers=headers,
                     json={"samples": ["很" * 13_000]})
     assert r.status_code == 400
 
@@ -205,7 +205,7 @@ def test_style_samples_rejects_bad_input(temp_project):
 def test_put_style_profile_persists_and_increments_version(temp_project):
     """确认落库 + version 递增（相对断言，不依赖 demo 初始 state；读回一致，§7.6）。"""
     headers = _h(_demo_user_id())
-    url = f"/internal/v1/projects/{temp_project}/style-profile"
+    url = f"/api/v1/projects/{temp_project}/style-profile"
     r1 = client.put(url, headers=headers, json={"profile": {"pov": "第一版", "source": "sample"}})
     assert r1.status_code == 200
     assert r1.json()["style_profile"]["source"] == "sample"
@@ -224,7 +224,7 @@ def test_put_style_profile_creates_settings_when_missing(temp_project):
         db.query(ProjectSettings).filter(ProjectSettings.project_id == uuid.UUID(temp_project)).delete()
         db.commit()
     resp = client.put(
-        f"/internal/v1/projects/{temp_project}/style-profile",
+        f"/api/v1/projects/{temp_project}/style-profile",
         headers=_h(_demo_user_id()),
         json={"profile": {"pov": "作者个人风格"}},
     )
@@ -240,20 +240,20 @@ def test_put_style_profile_creates_settings_when_missing(temp_project):
 
 
 def test_style_samples_ownership(temp_project):
-    url = f"/internal/v1/projects/{temp_project}/style-samples"
+    url = f"/api/v1/projects/{temp_project}/style-samples"
     body = {"samples": [_SAMPLE_1]}
     assert client.post(url, headers=_h(uuid.uuid4()), json=body).status_code == 401   # 未知账号
     assert client.post(url, json=body).status_code == 403                             # 缺失身份
-    assert client.post(f"/internal/v1/projects/{uuid.uuid4()}/style-samples",
+    assert client.post(f"/api/v1/projects/{uuid.uuid4()}/style-samples",
                        headers=_h(_demo_user_id()), json=body).status_code == 404     # 项目不存在
 
 
 def test_put_style_profile_ownership(temp_project):
-    url = f"/internal/v1/projects/{temp_project}/style-profile"
+    url = f"/api/v1/projects/{temp_project}/style-profile"
     body = {"profile": {"pov": "x"}}
     assert client.put(url, headers=_h(uuid.uuid4()), json=body).status_code == 401
     assert client.put(url, json=body).status_code == 403
-    assert client.put(f"/internal/v1/projects/{uuid.uuid4()}/style-profile",
+    assert client.put(f"/api/v1/projects/{uuid.uuid4()}/style-profile",
                       headers=_h(_demo_user_id()), json=body).status_code == 404
 
 
@@ -314,7 +314,7 @@ def test_style_samples_does_not_persist(temp_project, style_stub):
         before = get_settings(db, uuid.UUID(temp_project))
         before_profile = None if before is None else dict(before.style_profile or {})
     resp = client.post(
-        f"/internal/v1/projects/{temp_project}/style-samples", headers=headers,
+        f"/api/v1/projects/{temp_project}/style-samples", headers=headers,
         json={"samples": [_SAMPLE_1]},
     )
     assert resp.status_code == 200
@@ -331,7 +331,7 @@ def test_style_samples_records_agent_run(temp_project, style_stub):
     style_stub(_STYLE_PAYLOAD)
     before = _style_run_count()
     resp = client.post(
-        f"/internal/v1/projects/{temp_project}/style-samples",
+        f"/api/v1/projects/{temp_project}/style-samples",
         headers=_h(_demo_user_id()),
         json={"samples": [_SAMPLE_1]},
     )
@@ -348,7 +348,7 @@ def test_style_samples_degraded_http(temp_project, style_stub):
     style_stub(raise_error=True)
     before = _style_run_count()
     resp = client.post(
-        f"/internal/v1/projects/{temp_project}/style-samples",
+        f"/api/v1/projects/{temp_project}/style-samples",
         headers=_h(_demo_user_id()),
         json={"samples": [_SAMPLE_1]},
     )
@@ -366,7 +366,7 @@ def test_style_samples_degraded_http(temp_project, style_stub):
 def test_put_preserves_fatigue_words_on_sample_confirm(temp_project):
     """W2：样本草稿（不含检测基线键）确认时不抹预设 fatigue_words；显式 [] 可清空。"""
     headers = _h(_demo_user_id())
-    url = f"/internal/v1/projects/{temp_project}/style-profile"
+    url = f"/api/v1/projects/{temp_project}/style-profile"
     r = client.put(url, headers=headers, json={"profile": {"pov": "预设包", "fatigue_words": ["凝望"]}})
     assert r.status_code == 200
     r = client.put(url, headers=headers, json={"profile": {"pov": "样本草稿确认", "source": "sample"}})
@@ -386,7 +386,7 @@ def test_put_strips_extract_error(temp_project):
     """S7：草稿降级诊断键 extract_error 不落库（瞬态提示非档案内容）。"""
     headers = _h(_demo_user_id())
     r = client.put(
-        f"/internal/v1/projects/{temp_project}/style-profile", headers=headers,
+        f"/api/v1/projects/{temp_project}/style-profile", headers=headers,
         json={"profile": {"pov": "v", "extract_error": "provider down"}},
     )
     assert r.status_code == 200

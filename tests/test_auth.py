@@ -67,7 +67,7 @@ def _registered_account(*, password: str = "correct horse battery 1") -> Iterato
     username = f"acct-{uuid.uuid4().hex[:12]}"
     invitation_id, invitation_code = _issue_invitation()
     response = client.post(
-        "/internal/v1/auth/register",
+        "/api/v1/auth/register",
         json={"username": username, "password": password, "invitation_code": invitation_code},
     )
     assert response.status_code == 201, response.text
@@ -88,7 +88,7 @@ def test_register_canonicalizes_username_hashes_password_and_returns_exact_shape
     canonical = f"mixed_user-{suffix}"
     invitation_id, invitation_code = _issue_invitation()
     response = client.post(
-        "/internal/v1/auth/register",
+        "/api/v1/auth/register",
         json={
             "username": submitted,
             "password": "correct horse battery 1",
@@ -138,7 +138,7 @@ def test_registration_rejects_duplicate_canonical_username():
     first_invitation_id, first_invitation_code = _issue_invitation()
     second_invitation_id, second_invitation_code = _issue_invitation()
     first = client.post(
-        "/internal/v1/auth/register",
+        "/api/v1/auth/register",
         json={
             "username": f"  {canonical.upper()}  ",
             "password": "correct horse battery 1",
@@ -149,7 +149,7 @@ def test_registration_rejects_duplicate_canonical_username():
     assert first.status_code == 201, first.text
     try:
         second = client.post(
-            "/internal/v1/auth/register",
+            "/api/v1/auth/register",
             json={
                 "username": canonical,
                 "password": "another secure password 2",
@@ -172,7 +172,7 @@ def test_registration_rejects_invalid_usernames(username: str):
     invitation_id, invitation_code = _issue_invitation()
     try:
         response = client.post(
-            "/internal/v1/auth/register",
+            "/api/v1/auth/register",
             json={
                 "username": username,
                 "password": "correct horse battery 1",
@@ -191,7 +191,7 @@ def test_registration_rejects_invalid_new_passwords(password: str):
     invitation_id, invitation_code = _issue_invitation()
     try:
         response = client.post(
-            "/internal/v1/auth/register",
+            "/api/v1/auth/register",
             json={
                 "username": f"valid-{uuid.uuid4().hex[:10]}",
                 "password": password,
@@ -212,7 +212,7 @@ def test_passwordless_unknown_and_wrong_credentials_share_one_unauthorized_respo
     ]
     with _registered_account() as account:
         attempts.append({"username": account["username"], "password": "definitely the wrong password"})
-        responses = [client.post("/internal/v1/auth/token", json=body) for body in attempts]
+        responses = [client.post("/api/v1/auth/token", json=body) for body in attempts]
     assert [(response.status_code, response.json()) for response in responses] == [
         (401, {"detail": "INVALID_CREDENTIALS"}),
         (401, {"detail": "INVALID_CREDENTIALS"}),
@@ -223,7 +223,7 @@ def test_passwordless_unknown_and_wrong_credentials_share_one_unauthorized_respo
 @pytest.mark.parametrize("password", ["", "x" * 129])
 def test_login_rejects_out_of_bounds_passwords_as_invalid_credentials(password: str):
     response = client.post(
-        "/internal/v1/auth/token",
+        "/api/v1/auth/token",
         json={"username": "demo", "password": password},
     )
     assert response.status_code == 401
@@ -240,7 +240,7 @@ def test_auth_hash_capacity_exhaustion_fails_fast():
     assert slots.acquire(blocking=False)
     try:
         response = client.post(
-            "/internal/v1/auth/register",
+            "/api/v1/auth/register",
             json={
                 "username": f"capacity-{uuid.uuid4().hex[:8]}",
                 "password": "correct horse battery 1",
@@ -260,7 +260,7 @@ def test_auth_hash_capacity_exhaustion_fails_fast():
 def test_login_and_session_have_exact_shapes_and_session_ignores_trusted_identity_header():
     with _registered_account() as account:
         login = client.post(
-            "/internal/v1/auth/token",
+            "/api/v1/auth/token",
             json={"username": account["username"].upper(), "password": account["password"]},
         )
         assert login.status_code == 200, login.text
@@ -268,13 +268,13 @@ def test_login_and_session_have_exact_shapes_and_session_ignores_trusted_identit
         assert login.headers["cache-control"] == "no-store"
 
         without_bearer = client.get(
-            "/internal/v1/auth/session",
+            "/api/v1/auth/session",
             headers=_forged_header(account["user_id"]),
         )
         assert without_bearer.status_code == 401
 
         session = client.get(
-            "/internal/v1/auth/session",
+            "/api/v1/auth/session",
             headers=_bearer(login.json()["token"]),
         )
         assert session.status_code == 200, session.text
@@ -302,7 +302,7 @@ def test_session_rejects_jwt_missing_or_mismatching_required_claims_for_existing
         variants.append(wrong_issuer)
         for claims in variants:
             token = jwt.encode(claims, TEST_JWT_SECRET, algorithm="HS256")
-            response = client.get("/internal/v1/auth/session", headers=_bearer(token))
+            response = client.get("/api/v1/auth/session", headers=_bearer(token))
             assert response.status_code == 401
             assert response.json() == {"detail": "INVALID_CREDENTIALS"}
 
@@ -314,7 +314,7 @@ def test_weak_auth_secret_fails_closed_before_authentication_or_registration(mon
     username = f"weak-secret-{uuid.uuid4().hex[:8]}"
     invitation_id, invitation_code = _issue_invitation()
     register = client.post(
-        "/internal/v1/auth/register",
+        "/api/v1/auth/register",
         json={
             "username": username,
             "password": "correct horse battery 1",
@@ -323,10 +323,10 @@ def test_weak_auth_secret_fails_closed_before_authentication_or_registration(mon
     )
     try:
         login = client.post(
-            "/internal/v1/auth/token",
+            "/api/v1/auth/token",
             json={"username": "demo", "password": "correct horse battery 1"},
         )
-        session = client.get("/internal/v1/auth/session", headers=_bearer("not-a-token"))
+        session = client.get("/api/v1/auth/session", headers=_bearer("not-a-token"))
         for response in (register, login, session):
             assert response.status_code == 503
             assert response.json() == {"detail": "AUTH_SECRET_NOT_CONFIGURED"}
@@ -346,22 +346,22 @@ def test_weak_auth_secret_fails_closed_before_authentication_or_registration(mon
 
 def test_logout_atomically_invalidates_old_token():
     with _registered_account() as account:
-        response = client.post("/internal/v1/auth/logout", headers=_bearer(account["token"]))
+        response = client.post("/api/v1/auth/logout", headers=_bearer(account["token"]))
         assert response.status_code == 200
         assert response.json() == {"ok": True}
         assert response.headers["cache-control"] == "no-store"
         assert client.get(
-            "/internal/v1/auth/session", headers=_bearer(account["token"])
+            "/api/v1/auth/session", headers=_bearer(account["token"])
         ).status_code == 401
         assert client.post(
-            "/internal/v1/auth/logout", headers=_bearer(account["token"])
+            "/api/v1/auth/logout", headers=_bearer(account["token"])
         ).status_code == 401
 
 
 def test_password_change_atomically_revokes_token_and_requires_new_password():
     with _registered_account() as account:
         changed = client.post(
-            "/internal/v1/auth/password",
+            "/api/v1/auth/password",
             headers=_bearer(account["token"]),
             json={
                 "current_password": account["password"],
@@ -371,14 +371,14 @@ def test_password_change_atomically_revokes_token_and_requires_new_password():
         assert changed.status_code == 200, changed.text
         assert changed.json() == {"ok": True}
         assert client.get(
-            "/internal/v1/auth/session", headers=_bearer(account["token"])
+            "/api/v1/auth/session", headers=_bearer(account["token"])
         ).status_code == 401
         assert client.post(
-            "/internal/v1/auth/token",
+            "/api/v1/auth/token",
             json={"username": account["username"], "password": account["password"]},
         ).status_code == 401
         fresh = client.post(
-            "/internal/v1/auth/token",
+            "/api/v1/auth/token",
             json={"username": account["username"], "password": "new-pass1"},
         )
         assert fresh.status_code == 200, fresh.text
@@ -387,13 +387,13 @@ def test_password_change_atomically_revokes_token_and_requires_new_password():
 def test_password_change_rejects_wrong_current_password_without_revoking_token():
     with _registered_account() as account:
         changed = client.post(
-            "/internal/v1/auth/password",
+            "/api/v1/auth/password",
             headers=_bearer(account["token"]),
             json={"current_password": "wrong current password", "new_password": "secure12"},
         )
         assert changed.status_code == 401
         assert client.get(
-            "/internal/v1/auth/session", headers=_bearer(account["token"])
+            "/api/v1/auth/session", headers=_bearer(account["token"])
         ).status_code == 200
 
 
@@ -458,14 +458,14 @@ def test_interactive_admin_reset_preserves_books_and_revokes_existing_token():
         )
         assert result.exit_code == 0, result.output
         assert client.get(
-            "/internal/v1/auth/session", headers=_bearer(account["token"])
+            "/api/v1/auth/session", headers=_bearer(account["token"])
         ).status_code == 401
         assert client.post(
-            "/internal/v1/auth/token",
+            "/api/v1/auth/token",
             json={"username": account["username"], "password": account["password"]},
         ).status_code == 401
         assert client.post(
-            "/internal/v1/auth/token",
+            "/api/v1/auth/token",
             json={"username": account["username"], "password": "adminpass1"},
         ).status_code == 200
         with new_session() as db:
@@ -492,7 +492,7 @@ def test_login_accepts_a_legacy_hash_that_does_not_meet_new_password_rules():
         user_id = user.id
     try:
         response = client.post(
-            "/internal/v1/auth/token",
+            "/api/v1/auth/token",
             json={"username": username, "password": legacy_password},
         )
         assert response.status_code == 200, response.text
@@ -539,7 +539,7 @@ def test_set_role_changes_only_an_existing_account_and_revokes_its_sessions():
         changed = runner.invoke(cli_app, ["set-role", account["username"], "admin"])
         assert changed.exit_code == 0, changed.output
         assert client.get(
-            "/internal/v1/auth/session", headers=_bearer(account["token"]),
+            "/api/v1/auth/session", headers=_bearer(account["token"]),
         ).status_code == 401
         with new_session() as db:
             user = db.get(User, uuid.UUID(account["user_id"]))
@@ -556,7 +556,7 @@ def test_set_role_changes_only_an_existing_account_and_revokes_its_sessions():
 
 def test_owner_access_own_project(temp_project):
     response = client.get(
-        f"/internal/v1/projects/{temp_project}/chapters",
+        f"/api/v1/projects/{temp_project}/chapters",
         headers=identity_headers(_demo_user_id()),
     )
     assert response.status_code == 200
@@ -565,19 +565,19 @@ def test_owner_access_own_project(temp_project):
 def test_owner_rejects_foreign_project(temp_project):
     with _registered_account() as account:
         response = client.get(
-            f"/internal/v1/projects/{temp_project}/chapters",
+            f"/api/v1/projects/{temp_project}/chapters",
             headers=_bearer(account["token"]),
         )
     assert response.status_code == 403
 
 
 def test_owner_fail_closed_without_identity(temp_project):
-    assert client.get(f"/internal/v1/projects/{temp_project}/chapters").status_code == 403
+    assert client.get(f"/api/v1/projects/{temp_project}/chapters").status_code == 403
 
 
 def test_owner_rejects_invalid_identity(temp_project):
     response = client.get(
-        f"/internal/v1/projects/{temp_project}/chapters",
+        f"/api/v1/projects/{temp_project}/chapters",
         headers=INVALID_BEARER,
     )
     assert response.status_code == 401
@@ -585,7 +585,7 @@ def test_owner_rejects_invalid_identity(temp_project):
 
 def test_owner_missing_project_404():
     response = client.get(
-        f"/internal/v1/projects/{uuid.uuid4()}/chapters",
+        f"/api/v1/projects/{uuid.uuid4()}/chapters",
         headers=identity_headers(_demo_user_id()),
     )
     assert response.status_code == 404
@@ -600,7 +600,7 @@ def test_list_projects_only_own():
         db.commit()
         other_id = other.id
     try:
-        response = client.get("/internal/v1/projects", headers=identity_headers(_demo_user_id()))
+        response = client.get("/api/v1/projects", headers=identity_headers(_demo_user_id()))
         assert response.status_code == 200
         titles = {project["title"] for project in response.json()}
         assert "九州问天" in titles
@@ -613,6 +613,6 @@ def test_list_projects_only_own():
 
 
 def test_list_projects_fail_closed_without_identity():
-    response = client.get("/internal/v1/projects")
+    response = client.get("/api/v1/projects")
     assert response.status_code == 200
     assert response.json() == []

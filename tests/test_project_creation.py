@@ -28,7 +28,7 @@ def draft_book(monkeypatch):
     with new_session() as db:
         uid = db.scalar(select(User.id).where(User.username == "demo"))
     headers = identity_headers(uid)
-    response = client.post("/internal/v1/projects", headers=headers, json={
+    response = client.post("/api/v1/projects", headers=headers, json={
         "title": f"draft-test-{uuid.uuid4().hex}", "premise": "保留的创作简报",
         "chapter_count": 50, "storyline": "寻找真相",
     })
@@ -43,7 +43,7 @@ def draft_book(monkeypatch):
 def test_new_project_is_draft_and_resume_is_owned(draft_book):
     project, headers = draft_book
     assert project.get("creation_status") == "draft"
-    url = f'/internal/v1/projects/{project["id"]}/creation'
+    url = f'/api/v1/projects/{project["id"]}/creation'
     response = client.get(url, headers=headers)
     assert response.status_code == 200
     assert response.json()["context"]["premise"] == "保留的创作简报"
@@ -54,7 +54,7 @@ def test_new_project_is_draft_and_resume_is_owned(draft_book):
 
 def test_setup_alone_does_not_allow_writing(draft_book):
     project, headers = draft_book
-    base = f'/internal/v1/projects/{project["id"]}'
+    base = f'/api/v1/projects/{project["id"]}'
     assert client.put(base + "/setup", headers=headers, json={"world_rules": {"rule": "规则"}}).status_code == 200
     assert client.get(base + "/access?write=true", headers=headers).status_code == 409
     assert client.get(base + "/creation", headers=headers).json()["project"]["creation_status"] == "setup_confirmed"
@@ -62,13 +62,13 @@ def test_setup_alone_does_not_allow_writing(draft_book):
 
 def test_outline_requires_confirmed_setup(draft_book):
     project, headers = draft_book
-    base = f'/internal/v1/projects/{project["id"]}'
+    base = f'/api/v1/projects/{project["id"]}'
     assert client.put(base + "/outline", headers=headers, json=OUTLINE).status_code == 409
 
 
 def test_empty_outline_cannot_promote_but_valid_confirmation_can(draft_book):
     project, headers = draft_book
-    base = f'/internal/v1/projects/{project["id"]}'
+    base = f'/api/v1/projects/{project["id"]}'
     client.put(base + "/setup", headers=headers, json={"world_rules": {"rule": "规则"}})
     assert client.put(base + "/outline", headers=headers, json={}).status_code == 400
     assert client.get(base + "/access?write=true", headers=headers).status_code == 409
@@ -80,7 +80,7 @@ def test_empty_outline_cannot_promote_but_valid_confirmation_can(draft_book):
 def test_generated_proposals_survive_reload_without_becoming_canon(draft_book, monkeypatch):
     import myink.api.routes_book as book
     project, headers = draft_book
-    base = f'/internal/v1/projects/{project["id"]}'
+    base = f'/api/v1/projects/{project["id"]}'
     monkeypatch.setattr(book, "generate_book_setup", lambda *a, **kw: ({"world_rules": {"r": "draft"}}, None))
     monkeypatch.setattr(book, "generate_book_outline", lambda *a, **kw: (OUTLINE, None))
     assert client.post(base + "/setup-draft", headers=headers, json={"premise": "简报"}).status_code == 200
@@ -103,7 +103,7 @@ def test_worker_also_rejects_unfinished_project(draft_book):
 
 def test_ready_project_rejects_empty_outline_update(draft_book):
     project, headers = draft_book
-    base = f'/internal/v1/projects/{project["id"]}'
+    base = f'/api/v1/projects/{project["id"]}'
     client.put(base + "/setup", headers=headers, json={"world_rules": {"rule": "规则"}})
     assert client.put(base + "/outline", headers=headers, json=OUTLINE).status_code == 200
     assert client.put(base + "/outline", headers=headers, json={}).status_code == 400
@@ -116,7 +116,7 @@ def test_creation_request_retry_returns_same_project(draft_book):
     ids = set()
     try:
         for _ in range(2):
-            response = client.post("/internal/v1/projects", headers=headers, json=body)
+            response = client.post("/api/v1/projects", headers=headers, json=body)
             assert response.status_code == 200
             ids.add(uuid.UUID(response.json()["id"]))
         assert len(ids) == 1
@@ -132,7 +132,7 @@ def test_parallel_and_late_proposals_preserve_confirmed_state(draft_book):
 
     project, headers = draft_book
     pid = project["id"]
-    base = f"/internal/v1/projects/{pid}"
+    base = f"/api/v1/projects/{pid}"
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = [pool.submit(save_proposal, pid, patch) for patch in (
             {"setup_draft": {"world_rules": {"rule": "proposal"}}},

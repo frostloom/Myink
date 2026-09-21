@@ -5,7 +5,7 @@
 - sanitize：allowlist / 剥控制字符 / 字段与条数 cap / 非 dict / 无 title 丢弃 / JSON 文本输入（McpClient 返回的是字符串）；
 - RankingsService：禁用 / TTL 缓存命中与过期 / refresh 绕过 / McpError 降级 / 无工具降级 / 无有效项降级 / remote 归一；
 - facade fetch_rankings：无 pid 全局入口形状（source/tool/fetched_at/error/items）；
-- API：全局 /internal/v1/rankings 端点 → 200 形状（RankingsOut）+ refresh 透传；缺失身份 → 403 fail closed。
+- API：全局 /api/v1/rankings 端点 → 200 形状（RankingsOut）+ refresh 透传；缺失身份 → 403 fail closed。
   扫榜已整体前移至建书前——不注入任何生成节点（plan_messages / 图节点不再拉榜单）。
 """
 
@@ -399,7 +399,7 @@ def test_rankings_endpoint_200_shape(monkeypatch):
                 "items": [{"rank": 1, "title": "甲", "author": "张", "tags": ["仙侠"], "hot": "1.2万"}]}
 
     monkeypatch.setattr("myink.api.routes_rankings.fetch_rankings", fake)
-    resp = client.get("/internal/v1/rankings", headers=_h(_demo_user_id()))
+    resp = client.get("/api/v1/rankings", headers=_h(_demo_user_id()))
     assert resp.status_code == 200
     body = resp.json()
     assert body["source"] == "remote"
@@ -414,11 +414,11 @@ def test_rankings_endpoint_refresh_param_passed(monkeypatch):
         return {"source": "sample", "tool": "", "fetched_at": None, "error": "已禁用", "items": []}
 
     monkeypatch.setattr("myink.api.routes_rankings.fetch_rankings", fake)
-    resp = client.get("/internal/v1/rankings?refresh=true", headers=_h(_demo_user_id()))
+    resp = client.get("/api/v1/rankings?refresh=true", headers=_h(_demo_user_id()))
     assert resp.status_code == 200
     assert seen == [True]
 
 
 def test_rankings_endpoint_ownership():
     """身份断言（current_user fail closed，全局端点无项目归属）：缺失身份 → 403。"""
-    assert client.get("/internal/v1/rankings").status_code == 403
+    assert client.get("/api/v1/rankings").status_code == 403

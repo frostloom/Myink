@@ -27,7 +27,7 @@ from myink.providers.connections import (
 from myink.genre_catalog import public_pack
 from myink.providers.credentials import decrypt_api_key, encrypt_api_key
 
-router = APIRouter(prefix="/internal/v1", tags=["settings"])
+router = APIRouter(prefix="/api/v1", tags=["settings"])
 
 
 def _pid(project_id: str) -> uuid.UUID:

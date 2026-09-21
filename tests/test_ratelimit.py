@@ -60,8 +60,8 @@ def test_auth_rate_limit_trips_at_threshold(monkeypatch):
     monkeypatch.setattr(rl, "AUTH_RATE_MAX", 3)
     _forget()
     for _ in range(3):
-        assert client.post("/internal/v1/auth/token", json=_BAD_LOGIN).status_code == 401
-    blocked = client.post("/internal/v1/auth/token", json=_BAD_LOGIN)
+        assert client.post("/api/v1/auth/token", json=_BAD_LOGIN).status_code == 401
+    blocked = client.post("/api/v1/auth/token", json=_BAD_LOGIN)
     assert blocked.status_code == 429
     assert blocked.json() == {"error": "auth_rate_limited"}
     assert blocked.headers["retry-after"] == "60"
@@ -73,13 +73,13 @@ def test_auth_rate_limit_buckets_by_stamped_client_ip(monkeypatch):
 
     monkeypatch.setattr(rl, "AUTH_RATE_MAX", 1)
     _forget("203.0.113.7", "203.0.113.8")
-    first = client.post("/internal/v1/auth/token", json=_BAD_LOGIN,
+    first = client.post("/api/v1/auth/token", json=_BAD_LOGIN,
                         headers={"X-Myink-Client-IP": "203.0.113.7"})
     assert first.status_code == 401
-    again = client.post("/internal/v1/auth/token", json=_BAD_LOGIN,
+    again = client.post("/api/v1/auth/token", json=_BAD_LOGIN,
                         headers={"X-Myink-Client-IP": "203.0.113.7"})
     assert again.status_code == 429
-    other = client.post("/internal/v1/auth/token", json=_BAD_LOGIN,
+    other = client.post("/api/v1/auth/token", json=_BAD_LOGIN,
                         headers={"X-Myink-Client-IP": "203.0.113.8"})
     assert other.status_code == 401
 
@@ -92,7 +92,7 @@ def test_auth_rate_limit_fails_closed_when_redis_is_down(monkeypatch):
         raise RuntimeError("redis down")
 
     monkeypatch.setattr(rl, "get_redis", _boom)
-    response = client.post("/internal/v1/auth/token", json=_BAD_LOGIN)
+    response = client.post("/api/v1/auth/token", json=_BAD_LOGIN)
     assert response.status_code == 503
     assert response.json() == {"error": "auth_unavailable"}
 

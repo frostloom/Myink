@@ -256,7 +256,7 @@ def test_environment_requires_auth():
 
     from myink.api.main import app
 
-    assert TestClient(app).get("/internal/v1/environment").status_code == 403
+    assert TestClient(app).get("/api/v1/environment").status_code == 403
 
 
 def test_environment_requires_auth():
@@ -265,7 +265,7 @@ def test_environment_requires_auth():
     from myink.api.main import app
 
     client = TestClient(app)
-    assert client.get("/internal/v1/environment").status_code == 403
+    assert client.get("/api/v1/environment").status_code == 403
 
 
 def test_save_raw_unknown_user():

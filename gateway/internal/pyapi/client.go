@@ -63,7 +63,7 @@ func (c *Client) Forward(ctx context.Context, method, path string, query url.Val
 // GetTaskDetail 调 Python API 取任务详情（含批次进度 i/N），供网关任务查询与 SSE 兜底。
 // 返回原始 JSON（透传，前端无需感知内部结构）+ 上游状态码（调用方需区分 404 vs 故障）。
 func (c *Client) GetTaskDetail(ctx context.Context, taskID string) ([]byte, int, error) {
-	u := fmt.Sprintf("%s/internal/v1/tasks/%s", c.base, url.PathEscape(taskID))
+	u := fmt.Sprintf("%s/api/v1/tasks/%s", c.base, url.PathEscape(taskID))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, 0, err

@@ -19,7 +19,7 @@ from myink.genre_catalog import (
 )
 from myink.memory.repository import get_settings
 
-router = APIRouter(prefix="/internal/v1", tags=["genre"])
+router = APIRouter(prefix="/api/v1", tags=["genre"])
 
 
 def _pid(project_id: str) -> uuid.UUID:

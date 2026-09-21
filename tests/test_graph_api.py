@@ -62,7 +62,7 @@ def _seed_graph(pid: str) -> None:
 
 
 def _graph(pid: str, uid=None) -> tuple[int, dict]:
-    resp = client.get(f"/internal/v1/projects/{pid}/graph", headers=_h(uid or _demo_user_id()))
+    resp = client.get(f"/api/v1/projects/{pid}/graph", headers=_h(uid or _demo_user_id()))
     return resp.status_code, resp.json()
 
 
@@ -162,22 +162,22 @@ def test_graph_empty_project(temp_project):
 
 
 def test_graph_missing_project_404():
-    resp = client.get(f"/internal/v1/projects/{uuid.uuid4()}/graph", headers=_h(_demo_user_id()))
+    resp = client.get(f"/api/v1/projects/{uuid.uuid4()}/graph", headers=_h(_demo_user_id()))
     assert resp.status_code == 404
 
 
 def test_graph_rejects_unknown_user(temp_project):
-    resp = client.get(f"/internal/v1/projects/{temp_project}/graph", headers=_h(uuid.uuid4()))
+    resp = client.get(f"/api/v1/projects/{temp_project}/graph", headers=_h(uuid.uuid4()))
     assert resp.status_code == 401
 
 
 def test_graph_fail_closed_without_identity(temp_project):
-    resp = client.get(f"/internal/v1/projects/{temp_project}/graph")
+    resp = client.get(f"/api/v1/projects/{temp_project}/graph")
     assert resp.status_code == 403
 
 
 def test_graph_rejects_invalid_identity(temp_project):
-    resp = client.get(f"/internal/v1/projects/{temp_project}/graph", headers=INVALID_BEARER)
+    resp = client.get(f"/api/v1/projects/{temp_project}/graph", headers=INVALID_BEARER)
     assert resp.status_code == 401
 
 
@@ -202,7 +202,7 @@ def test_foreshadows_ledger_all_statuses(temp_project):
     """全状态返回（planted/developing/resolved/dropped 都展示），含 trigger/回收章。"""
     pid = temp_project
     _seed_foreshadows(pid)
-    resp = client.get(f"/internal/v1/projects/{pid}/foreshadows", headers=_h(_demo_user_id()))
+    resp = client.get(f"/api/v1/projects/{pid}/foreshadows", headers=_h(_demo_user_id()))
     assert resp.status_code == 200
     rows = resp.json()
     by_desc = {r["description"]: r for r in rows}
@@ -216,19 +216,19 @@ def test_foreshadows_ledger_all_statuses(temp_project):
 
 
 def test_foreshadows_empty_project(temp_project):
-    resp = client.get(f"/internal/v1/projects/{temp_project}/foreshadows",
+    resp = client.get(f"/api/v1/projects/{temp_project}/foreshadows",
                       headers=_h(_demo_user_id()))
     assert resp.status_code == 200 and resp.json() == []
 
 
 def test_foreshadows_auth_matrix(temp_project):
     _seed_foreshadows(temp_project)
-    assert client.get(f"/internal/v1/projects/{temp_project}/foreshadows").status_code == 403
-    assert client.get(f"/internal/v1/projects/{temp_project}/foreshadows",
+    assert client.get(f"/api/v1/projects/{temp_project}/foreshadows").status_code == 403
+    assert client.get(f"/api/v1/projects/{temp_project}/foreshadows",
                       headers=_h(uuid.uuid4())).status_code == 401
-    assert client.get(f"/internal/v1/projects/{temp_project}/foreshadows",
+    assert client.get(f"/api/v1/projects/{temp_project}/foreshadows",
                       headers=INVALID_BEARER).status_code == 401
-    assert client.get(f"/internal/v1/projects/{uuid.uuid4()}/foreshadows",
+    assert client.get(f"/api/v1/projects/{uuid.uuid4()}/foreshadows",
                       headers=_h(_demo_user_id())).status_code == 404
 
 
@@ -246,7 +246,7 @@ def test_chapter_list_includes_summary(temp_project):
                     content="正文二", summary=None),
         ])
         db.commit()
-    resp = client.get(f"/internal/v1/projects/{temp_project}/chapters",
+    resp = client.get(f"/api/v1/projects/{temp_project}/chapters",
                       headers=_h(_demo_user_id()))
     assert resp.status_code == 200
     by_seq = {c["chapter_seq"]: c for c in resp.json()}

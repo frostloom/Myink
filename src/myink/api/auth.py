@@ -34,7 +34,7 @@ from myink.invitations import (
 from myink.models import Project, User
 from myink.passwords import hash_password, validate_password, verify_password
 
-router = APIRouter(prefix="/internal/v1", tags=["auth"])
+router = APIRouter(prefix="/api/v1", tags=["auth"])
 
 _ALG = "HS256"
 _ISS = "myink"

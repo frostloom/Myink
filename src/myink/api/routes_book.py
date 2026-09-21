@@ -52,7 +52,7 @@ from myink.workflow.outline import (CHAPTER_COUNT_MAX, CHAPTER_COUNT_MIN,
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/internal/v1", tags=["book"])
+router = APIRouter(prefix="/api/v1", tags=["book"])
 
 
 def _pid(project_id: str) -> uuid.UUID:

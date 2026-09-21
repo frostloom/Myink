@@ -94,7 +94,7 @@ def test_outline_draft_returns_draft_not_persisted(temp_project, monkeypatch):
     import myink.providers as providers_mod
 
     monkeypatch.setattr(providers_mod, "default_provider", _OutlineStub(_OUTLINE))
-    resp = client.post(f"/internal/v1/projects/{temp_project}/outline-draft",
+    resp = client.post(f"/api/v1/projects/{temp_project}/outline-draft",
                        headers=_h(_demo_user_id()),
                        json={"premise": "少年得玉佩追寻真相", "chapter_count": 160,
                              "storyline": "前期宗门、中期追查、后期决战"})
@@ -114,7 +114,7 @@ def test_outline_draft_returns_draft_not_persisted(temp_project, monkeypatch):
 def test_outline_draft_degraded_on_provider_error(temp_project, monkeypatch):
     import myink.providers as providers_mod
     monkeypatch.setattr(providers_mod, "default_provider", _OutlineStub(raise_error=True))
-    resp = client.post(f"/internal/v1/projects/{temp_project}/outline-draft",
+    resp = client.post(f"/api/v1/projects/{temp_project}/outline-draft",
                        headers=_h(_demo_user_id()),
                        json={"premise": "少年追查玉佩真相", "chapter_count": 80})
     assert resp.status_code == 200
@@ -125,7 +125,7 @@ def test_outline_draft_degraded_on_bad_json(temp_project, monkeypatch):
     import myink.providers as providers_mod
     monkeypatch.setattr(providers_mod, "default_provider",
                         _OutlineStub(raw="not json{{{", raise_error=False))
-    resp = client.post(f"/internal/v1/projects/{temp_project}/outline-draft",
+    resp = client.post(f"/api/v1/projects/{temp_project}/outline-draft",
                        headers=_h(_demo_user_id()),
                        json={"premise": "少年追查玉佩真相", "chapter_count": 80})
     assert resp.status_code == 200
@@ -138,7 +138,7 @@ def test_outline_draft_degraded_wrong_shape(temp_project, monkeypatch):
     import myink.providers as providers_mod
     monkeypatch.setattr(providers_mod, "default_provider",
                         _OutlineStub({"arc": ["起"], "not_volumes": []}))
-    resp = client.post(f"/internal/v1/projects/{temp_project}/outline-draft",
+    resp = client.post(f"/api/v1/projects/{temp_project}/outline-draft",
                        headers=_h(_demo_user_id()),
                        json={"premise": "少年追查玉佩真相", "chapter_count": 80})
     assert resp.status_code == 200
@@ -150,7 +150,7 @@ def test_outline_draft_degraded_wrong_shape(temp_project, monkeypatch):
 def test_outline_draft_validation_400(temp_project, monkeypatch):
     import myink.providers as providers_mod
     monkeypatch.setattr(providers_mod, "default_provider", _OutlineStub(_OUTLINE))
-    url = f"/internal/v1/projects/{temp_project}/outline-draft"
+    url = f"/api/v1/projects/{temp_project}/outline-draft"
     assert client.post(url, headers=_h(_demo_user_id()),
                        json={"premise": "  ", "chapter_count": 80}).status_code == 400
     assert client.post(url, headers=_h(_demo_user_id()),
@@ -162,11 +162,11 @@ def test_outline_draft_validation_400(temp_project, monkeypatch):
 
 
 def test_outline_draft_ownership(temp_project):
-    url = f"/internal/v1/projects/{temp_project}/outline-draft"
+    url = f"/api/v1/projects/{temp_project}/outline-draft"
     body = {"premise": "少年追查玉佩真相", "chapter_count": 80}
     assert client.post(url, json=body).status_code == 403
     assert client.post(url, headers=_h(uuid.uuid4()), json=body).status_code == 401
-    assert client.post(f"/internal/v1/projects/{uuid.uuid4()}/outline-draft",
+    assert client.post(f"/api/v1/projects/{uuid.uuid4()}/outline-draft",
                        headers=_h(_demo_user_id()), json=body).status_code == 404
 
 
@@ -178,7 +178,7 @@ def test_put_outline_persists_volumes_and_stages(temp_project):
         "chapter_count": 160,
         "storyline": "前期宗门、中期追查、后期决战",
     }
-    resp = client.put(f"/internal/v1/projects/{temp_project}/outline",
+    resp = client.put(f"/api/v1/projects/{temp_project}/outline",
                       headers=_h(_demo_user_id()), json=body)
     assert resp.status_code == 200
     saved = resp.json()["outline"]
@@ -189,7 +189,7 @@ def test_put_outline_persists_volumes_and_stages(temp_project):
     assert [s["name"] for s in v1["stages"]] == ["前期", "中期", "后期"]
     assert v1["stages"][0]["beats"] == ["得玉佩", "遇苏瑶"]
 
-    got = client.get(f"/internal/v1/projects/{temp_project}/outline",
+    got = client.get(f"/api/v1/projects/{temp_project}/outline",
                      headers=_h(_demo_user_id()))
     assert got.status_code == 200
     assert got.json()["outline"]["volumes"][0]["stages"][0]["goal"] == "入门试炼"
@@ -209,7 +209,7 @@ def test_put_outline_legacy_chapters_become_stages(temp_project):
         }],
         "premise": "", "chapter_count": 40, "storyline": "",
     }
-    saved = client.put(f"/internal/v1/projects/{temp_project}/outline",
+    saved = client.put(f"/api/v1/projects/{temp_project}/outline",
                        headers=_h(_demo_user_id()), json=body).json()["outline"]
     stages = saved["volumes"][0]["stages"]
     assert len(stages) == 2
@@ -227,7 +227,7 @@ def test_put_outline_drops_blank_volume(temp_project):
         ],
         "premise": "", "chapter_count": 50, "storyline": "",
     }
-    saved = client.put(f"/internal/v1/projects/{temp_project}/outline",
+    saved = client.put(f"/api/v1/projects/{temp_project}/outline",
                        headers=_h(_demo_user_id()), json=body).json()["outline"]
     assert len(saved["volumes"]) == 1
     assert saved["volumes"][0]["title"] == "有效卷"
@@ -238,15 +238,15 @@ def test_put_outline_overwrites_existing(temp_project):
         {"title": "旧卷", "goal": "旧目标", "chapter_start": 1, "chapter_end": 50,
          "stages": [{"name": "本卷", "goal": "旧", "chapter_start": 1, "chapter_end": 50}]}],
              "premise": ""}
-    client.put(f"/internal/v1/projects/{temp_project}/outline",
+    client.put(f"/api/v1/projects/{temp_project}/outline",
                headers=_h(_demo_user_id()), json=body)
     body2 = {"objective": "新终局", "volumes": [
         {"title": "新卷", "goal": "新目标", "chapter_start": 1, "chapter_end": 60,
          "stages": [{"name": "本卷", "goal": "新", "chapter_start": 1, "chapter_end": 60}]}],
               "premise": ""}
-    client.put(f"/internal/v1/projects/{temp_project}/outline",
+    client.put(f"/api/v1/projects/{temp_project}/outline",
                headers=_h(_demo_user_id()), json=body2)
-    got = client.get(f"/internal/v1/projects/{temp_project}/outline",
+    got = client.get(f"/api/v1/projects/{temp_project}/outline",
                      headers=_h(_demo_user_id())).json()
     assert got["outline"]["objective"] == "新终局"
     with tenant_session(temp_project) as db:
@@ -254,17 +254,17 @@ def test_put_outline_overwrites_existing(temp_project):
 
 
 def test_get_outline_empty_project_null(temp_project):
-    resp = client.get(f"/internal/v1/projects/{temp_project}/outline",
+    resp = client.get(f"/api/v1/projects/{temp_project}/outline",
                       headers=_h(_demo_user_id()))
     assert resp.status_code == 200
     assert resp.json() == {"outline": None}
 
 
 def test_outline_ownership_matrix(temp_project):
-    url = f"/internal/v1/projects/{temp_project}/outline"
+    url = f"/api/v1/projects/{temp_project}/outline"
     assert client.get(url).status_code == 403
     assert client.get(url, headers=_h(uuid.uuid4())).status_code == 401
-    assert client.get(f"/internal/v1/projects/{uuid.uuid4()}/outline",
+    assert client.get(f"/api/v1/projects/{uuid.uuid4()}/outline",
                       headers=_h(_demo_user_id())).status_code == 404
     body = {"objective": "", "volumes": []}
     assert client.put(url, json=body).status_code == 403
@@ -291,7 +291,7 @@ def test_get_outline_normalizes_legacy_flat_shape(temp_project):
                                       "chapters": [{"seq": 1, "title": "旧章", "goal": "旧目标"}],
                                       "premise": ""}))
         db.commit()
-    got = client.get(f"/internal/v1/projects/{temp_project}/outline",
+    got = client.get(f"/api/v1/projects/{temp_project}/outline",
                      headers=_h(_demo_user_id())).json()
     assert got["outline"]["volumes"][0]["title"] == "全书主线"
     assert got["outline"]["volumes"][0]["stages"][0]["goal"] == "旧目标"

@@ -22,7 +22,7 @@ from myink.db import tenant_session
 from myink.models import MemoryCandidate
 from myink.workflow import nodes
 
-router = APIRouter(prefix="/internal/v1", tags=["candidates"])
+router = APIRouter(prefix="/api/v1", tags=["candidates"])
 
 
 class RejectCandidateIn(BaseModel):
