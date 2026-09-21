@@ -6,6 +6,7 @@ import uuid
 
 from fastapi.testclient import TestClient
 
+from conftest import identity_headers
 from myink.api.main import app
 from myink.db import new_session, tenant_session
 from myink.models import AgentRun, User, VolumeOutline
@@ -62,7 +63,7 @@ def _demo_user_id() -> uuid.UUID:
 
 
 def _h(uid: str | uuid.UUID | None) -> dict:
-    return {"X-Myink-User": str(uid)} if uid is not None else {}
+    return identity_headers(uid)
 
 
 class _OutlineStub(ModelProvider):
@@ -164,7 +165,7 @@ def test_outline_draft_ownership(temp_project):
     url = f"/internal/v1/projects/{temp_project}/outline-draft"
     body = {"premise": "少年追查玉佩真相", "chapter_count": 80}
     assert client.post(url, json=body).status_code == 403
-    assert client.post(url, headers=_h(uuid.uuid4()), json=body).status_code == 403
+    assert client.post(url, headers=_h(uuid.uuid4()), json=body).status_code == 401
     assert client.post(f"/internal/v1/projects/{uuid.uuid4()}/outline-draft",
                        headers=_h(_demo_user_id()), json=body).status_code == 404
 
@@ -262,12 +263,12 @@ def test_get_outline_empty_project_null(temp_project):
 def test_outline_ownership_matrix(temp_project):
     url = f"/internal/v1/projects/{temp_project}/outline"
     assert client.get(url).status_code == 403
-    assert client.get(url, headers=_h(uuid.uuid4())).status_code == 403
+    assert client.get(url, headers=_h(uuid.uuid4())).status_code == 401
     assert client.get(f"/internal/v1/projects/{uuid.uuid4()}/outline",
                       headers=_h(_demo_user_id())).status_code == 404
     body = {"objective": "", "volumes": []}
     assert client.put(url, json=body).status_code == 403
-    assert client.put(url, headers=_h(uuid.uuid4()), json=body).status_code == 403
+    assert client.put(url, headers=_h(uuid.uuid4()), json=body).status_code == 401
 
 
 def test_normalize_outline_old_flat_shape_wrapped():

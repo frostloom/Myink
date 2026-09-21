@@ -22,6 +22,7 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 
+from conftest import identity_headers
 from myink.api.main import app
 from myink.db import new_session, tenant_session
 from myink.memory.repository import get_settings
@@ -62,8 +63,8 @@ def _demo_user_id() -> uuid.UUID:
 
 
 def _h(uid: str | uuid.UUID | None) -> dict:
-    """请求头：X-Myink-User = 网关已验证的 JWT sub（None → 不带，测 fail closed）。"""
-    return {"X-Myink-User": str(uid)} if uid is not None else {}
+    """请求头：真 HS256 Bearer（None → 不带，测 fail closed）。"""
+    return identity_headers(uid)
 
 
 class _StyleStub(ModelProvider):
@@ -241,7 +242,7 @@ def test_put_style_profile_creates_settings_when_missing(temp_project):
 def test_style_samples_ownership(temp_project):
     url = f"/internal/v1/projects/{temp_project}/style-samples"
     body = {"samples": [_SAMPLE_1]}
-    assert client.post(url, headers=_h(uuid.uuid4()), json=body).status_code == 403   # 伪造他人
+    assert client.post(url, headers=_h(uuid.uuid4()), json=body).status_code == 401   # 未知账号
     assert client.post(url, json=body).status_code == 403                             # 缺失身份
     assert client.post(f"/internal/v1/projects/{uuid.uuid4()}/style-samples",
                        headers=_h(_demo_user_id()), json=body).status_code == 404     # 项目不存在
@@ -250,7 +251,7 @@ def test_style_samples_ownership(temp_project):
 def test_put_style_profile_ownership(temp_project):
     url = f"/internal/v1/projects/{temp_project}/style-profile"
     body = {"profile": {"pov": "x"}}
-    assert client.put(url, headers=_h(uuid.uuid4()), json=body).status_code == 403
+    assert client.put(url, headers=_h(uuid.uuid4()), json=body).status_code == 401
     assert client.put(url, json=body).status_code == 403
     assert client.put(f"/internal/v1/projects/{uuid.uuid4()}/style-profile",
                       headers=_h(_demo_user_id()), json=body).status_code == 404

@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import delete, inspect, select, text, update
 from typer.testing import CliRunner
 
+from conftest import INVALID_BEARER, identity_headers
 from myink.api.main import app
 from myink.cli import app as cli_app
 from myink.config import settings
@@ -42,7 +43,8 @@ def _demo_user_id() -> uuid.UUID:
         return user.id
 
 
-def _trusted_header(user_id: str | uuid.UUID | None) -> dict[str, str]:
+def _forged_header(user_id: str | uuid.UUID | None) -> dict[str, str]:
+    """明文 X-Myink-User —— 网关时代 Python 信它，现在必须被完全忽略。"""
     return {"X-Myink-User": str(user_id)} if user_id is not None else {}
 
 
@@ -267,7 +269,7 @@ def test_login_and_session_have_exact_shapes_and_session_ignores_trusted_identit
 
         without_bearer = client.get(
             "/internal/v1/auth/session",
-            headers=_trusted_header(account["user_id"]),
+            headers=_forged_header(account["user_id"]),
         )
         assert without_bearer.status_code == 401
 
@@ -512,7 +514,7 @@ def test_require_admin_uses_strict_bearer_authentication_and_current_database_ro
     probe_client = TestClient(probe)
     with _registered_account() as account:
         assert probe_client.get(
-            "/admin", headers={"X-Myink-User": account["user_id"]},
+            "/admin", headers=_forged_header(account["user_id"]),
         ).status_code == 401
         assert probe_client.get("/admin", headers=_bearer(account["token"])).status_code == 403
 
@@ -549,22 +551,23 @@ def test_set_role_changes_only_an_existing_account_and_revokes_its_sessions():
     assert missing.exit_code == 1
 
 
-# Existing private gateway trust boundary remains for business routes.
+# 业务路由的归属边界：身份一律取自 Bearer，明文头不作数。
 
 
 def test_owner_access_own_project(temp_project):
     response = client.get(
         f"/internal/v1/projects/{temp_project}/chapters",
-        headers=_trusted_header(_demo_user_id()),
+        headers=identity_headers(_demo_user_id()),
     )
     assert response.status_code == 200
 
 
 def test_owner_rejects_foreign_project(temp_project):
-    response = client.get(
-        f"/internal/v1/projects/{temp_project}/chapters",
-        headers=_trusted_header(uuid.uuid4()),
-    )
+    with _registered_account() as account:
+        response = client.get(
+            f"/internal/v1/projects/{temp_project}/chapters",
+            headers=_bearer(account["token"]),
+        )
     assert response.status_code == 403
 
 
@@ -575,15 +578,15 @@ def test_owner_fail_closed_without_identity(temp_project):
 def test_owner_rejects_invalid_identity(temp_project):
     response = client.get(
         f"/internal/v1/projects/{temp_project}/chapters",
-        headers=_trusted_header("not-a-uuid"),
+        headers=INVALID_BEARER,
     )
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 def test_owner_missing_project_404():
     response = client.get(
         f"/internal/v1/projects/{uuid.uuid4()}/chapters",
-        headers=_trusted_header(_demo_user_id()),
+        headers=identity_headers(_demo_user_id()),
     )
     assert response.status_code == 404
 
@@ -597,7 +600,7 @@ def test_list_projects_only_own():
         db.commit()
         other_id = other.id
     try:
-        response = client.get("/internal/v1/projects", headers=_trusted_header(_demo_user_id()))
+        response = client.get("/internal/v1/projects", headers=identity_headers(_demo_user_id()))
         assert response.status_code == 200
         titles = {project["title"] for project in response.json()}
         assert "九州问天" in titles

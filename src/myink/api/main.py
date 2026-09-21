@@ -8,11 +8,14 @@ from __future__ import annotations
 import logging
 import uuid
 
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.exception_handlers import http_exception_handler
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from myink.api.auth import current_user, require_owner
 from myink.api.auth import router as auth_router
+from myink.api.ratelimit import ApiError, GlobalRateLimit
 from myink.api.routes_admin import router as admin_router
 from myink.api.routes_book import router as book_router
 from myink.api.routes_candidates import router as candidates_router
@@ -48,13 +51,28 @@ async def admin_no_store(request, call_next):
         return response
     return await call_next(request)
 
-# 仅网关访问，但 MVP 开发方便看错误；生产收紧为内网白名单（阶段 5）
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# 粗粒度限流（等价网关的令牌桶）。原先这里挂着 allow_origins=["*"] 的 CORSMiddleware：
+# 边缘交给 Caddy 之后前端与 API 同源（本地开发走 Vite 代理也是同源），没有任何跨源调用方，
+# 而 allow_headers=["*"] 等于允许任何站点朝这里发 Authorization——严格劣于没有。删掉。
+app.add_middleware(GlobalRateLimit)
+
+
+@app.exception_handler(ApiError)
+async def _api_error(_request: Request, exc: ApiError) -> JSONResponse:
+    """`{"error": CODE}` 信封——前端 GATE_CODES 认这个键，不认 FastAPI 默认的 detail。"""
+    return JSONResponse({"error": exc.code}, status_code=exc.status_code, headers=exc.headers)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _aligned_http_error(request: Request, exc: StarletteHTTPException):
+    """把「路由没匹配上」这一种 404 归一成 `{"error": "not_found"}`。
+
+    只改这一种：显式抛出的 404 都带着自己的 detail，原样透传（走 FastAPI 默认处理器）。
+    这样 `/api/v1/不存在的路径` 给 API 客户端的是 JSON，而不是 Caddy 的 SPA 回退。
+    """
+    if exc.status_code == 404 and exc.detail == "Not Found":
+        return JSONResponse({"error": "not_found"}, status_code=404)
+    return await http_exception_handler(request, exc)
 
 app.include_router(auth_router)
 app.include_router(admin_router)
@@ -92,10 +110,15 @@ def readyz() -> dict:
         checks["db"] = "ok"
     except Exception as exc:
         checks["db"] = f"fail: {exc}"
+    # worker 心跳：queue:heartbeat:* 有任一条即视为存活（等价网关 Ready 的 worker 项）。
+    # 用 scan_iter 而不是 KEYS——KEYS 是全系统唯一的 O(N) 阻塞命令，没理由把它一起抄过来。
+    try:
+        alive = next(get_redis().scan_iter("queue:heartbeat:*", count=100), None)
+        checks["worker"] = "ok" if alive is not None else "fail: 无 worker 心跳"
+    except Exception as exc:
+        checks["worker"] = f"fail: {exc}"
     ok = all(v == "ok" for v in checks.values())
     if not ok:
-        from fastapi.responses import JSONResponse
-
         return JSONResponse({"status": "degraded", "checks": checks}, status_code=503)
     return {"status": "ok", "checks": checks}
 

@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 from sqlalchemy import delete as sa_delete
 
+from conftest import identity_headers
 from myink.api.main import app
 from myink.db import new_session
 from myink.models import AgentRun, Task, User
@@ -32,7 +33,7 @@ def _demo_user_id() -> uuid.UUID:
 
 
 def _h(uid: str | uuid.UUID | None) -> dict:
-    return {"X-Myink-User": str(uid)} if uid is not None else {}
+    return identity_headers(uid)
 
 
 def _add_task(pid, *, task_type="chapter_generate", status="done", chapter_seq=None,
@@ -203,10 +204,10 @@ def test_list_tasks_chapter_filter(temp_project):
 
 
 def test_list_tasks_ownership_matrix(temp_project):
-    """越权矩阵：缺失身份 403 / 伪造他人 403（§14.1 ③ fail closed）。"""
+    """越权矩阵：缺失身份 403 / 未知账号 401（§14.1 ③ fail closed）。"""
     url = f"/internal/v1/projects/{temp_project}/tasks"
     assert client.get(url).status_code == 403
-    assert client.get(url, headers=_h("00000000-0000-0000-0000-000000000000")).status_code == 403
+    assert client.get(url, headers=_h("00000000-0000-0000-0000-000000000000")).status_code == 401
 
 
 def test_list_tasks_project_missing_404():
