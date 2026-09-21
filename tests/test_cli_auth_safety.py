@@ -32,6 +32,24 @@ def test_init_does_not_run_legacy_schema_cleanup(monkeypatch):
     cleanup.assert_not_called()
 
 
+def test_db_cleanup_command_runs_the_legacy_cleanup(monkeypatch):
+    """`myink db-cleanup` 是老库清结构的**唯一**入口，断了这条缝就会再犯同一个错。
+
+    症状：模型侧删掉的列在老库里仍带 NOT NULL，`create_all` 不改已有表，插入时撞非空约束
+    （events.related_threads 实际炸过一次）。`init` 被刻意禁止跑它，所以这里钉住另一头。
+    """
+    import myink.cli as cli
+    import myink.db as db
+
+    cleanup = MagicMock()
+    monkeypatch.setattr(db, "ensure_legacy_schema_cleanup", cleanup)
+
+    result = CliRunner().invoke(cli.app, ["db-cleanup"])
+
+    assert result.exit_code == 0, result.output
+    cleanup.assert_called_once_with()
+
+
 def test_init_default_runs_additive_setup_without_creating_demo_or_samples(monkeypatch):
     import myink.cli as cli
     import myink.db as db
