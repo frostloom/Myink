@@ -35,6 +35,7 @@ const ERROR_CODES: Record<string, string> = {
   INVITATION_EXPIRED: '邀请码已过期',
   INVITATION_REVOKED: '邀请码已被撤销',
   INVITATION_USED: '邀请码已用完',
+  INVITATION_CODE_TAKEN: '该邀请码已被占用，请换一个',
   AUTH_SECRET_NOT_CONFIGURED: '认证服务尚未安全配置，请联系本机管理员设置 JWT_SECRET 后重启服务',
   PLAN_VERSION_CONFLICT: '章节计划已被更新，请刷新后再试',
   DEMO_LOGIN_DISABLED: '演示登录已关闭',

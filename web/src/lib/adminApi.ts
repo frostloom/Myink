@@ -1,4 +1,4 @@
-import { authenticatedGet } from './api'
+import { authenticatedGet, authenticatedSend } from './api'
 
 export interface AdminPage<T> {
   items: T[]
@@ -161,6 +161,33 @@ export interface AdminAccessLog {
   created_at: string
 }
 
+export interface AdminInvitation {
+  id: string
+  label: string | null
+  expires_at: string
+  max_redemptions: number
+  redemption_count: number
+  revoked_at: string | null
+  created_by: string | null
+  created_by_username: string | null
+  created_at: string
+}
+
+export interface AdminInvitationCreated {
+  id: string
+  code: string
+  label: string | null
+  expires_at: string
+  max_redemptions: number
+}
+
+export interface InvitationDraft {
+  expiresDays: number
+  maxRedemptions: number
+  label?: string
+  code?: string
+}
+
 interface PageFilters {
   limit?: number
   offset?: number
@@ -255,5 +282,23 @@ export const adminApi = {
   listAccessLogs: (token: string, filters: PageFilters, signal?: AbortSignal) =>
     authenticatedGet<AdminPage<AdminAccessLog>>(
       `/admin/access-logs${query(paging(filters))}`, token, signal,
+    ),
+
+  listInvitations: (token: string, filters: PageFilters, signal?: AbortSignal) =>
+    authenticatedGet<AdminPage<AdminInvitation>>(
+      `/admin/invitations${query(paging(filters))}`, token, signal,
+    ),
+
+  createInvitation: (token: string, draft: InvitationDraft, signal?: AbortSignal) =>
+    authenticatedSend<AdminInvitationCreated>('POST', '/admin/invitations', token, {
+      expires_days: draft.expiresDays,
+      max_redemptions: draft.maxRedemptions,
+      label: draft.label?.trim() || null,
+      code: draft.code?.trim() || null,
+    }, signal),
+
+  revokeInvitation: (token: string, invitationId: string, signal?: AbortSignal) =>
+    authenticatedSend<{ ok: true }>(
+      'POST', `/admin/invitations/${encodeURIComponent(invitationId)}/revoke`, token, undefined, signal,
     ),
 }

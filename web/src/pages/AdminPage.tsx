@@ -15,6 +15,8 @@ import {
   type AdminAccessLog,
   type AdminChapterDetail,
   type AdminContext,
+  type AdminInvitation,
+  type AdminInvitationCreated,
   type AdminMetrics,
   type AdminOverview,
   type AdminPage as PageResult,
@@ -29,7 +31,7 @@ import {
 import styles from './AdminPage.module.css'
 
 const PAGE_SIZE = 25
-type Tab = 'overview' | 'users' | 'projects' | 'tasks' | 'runs' | 'logs'
+type Tab = 'overview' | 'users' | 'projects' | 'tasks' | 'runs' | 'logs' | 'invites'
 
 function useResource<T>(
   loader: (signal: AbortSignal) => Promise<T>,
@@ -571,6 +573,122 @@ function LogsView({ token, onForbidden }: { token: string; onForbidden: () => vo
   )
 }
 
+function InviteBadge({ invite }: { invite: AdminInvitation }) {
+  if (invite.revoked_at) return <span className="badge badge-error">已撤销</span>
+  if (new Date(invite.expires_at).getTime() <= Date.now()) return <span className="badge badge-warning">已过期</span>
+  if (invite.redemption_count >= invite.max_redemptions) return <span className="badge">已用完</span>
+  return <span className="badge badge-success">可用</span>
+}
+
+function InvitesView({ token, onForbidden }: { token: string; onForbidden: () => void }) {
+  const [offset, setOffset] = useState(0)
+  const [expiresDays, setExpiresDays] = useState('7')
+  const [maxRedemptions, setMaxRedemptions] = useState('1')
+  const [label, setLabel] = useState('')
+  const [code, setCode] = useState('')
+  const [minted, setMinted] = useState<AdminInvitationCreated | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const load = useCallback(
+    (signal: AbortSignal) => adminApi.listInvitations(token, { limit: PAGE_SIZE, offset }, signal),
+    [offset, token],
+  )
+  const resource = useResource<PageResult<AdminInvitation>>(load, onForbidden)
+
+  const run = async (action: () => Promise<void>, fallback: string) => {
+    setError(null)
+    setBusy(true)
+    try {
+      await action()
+    } catch (reason) {
+      setError(formatApiError(reason, fallback))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault()
+    void run(async () => {
+      const created = await adminApi.createInvitation(token, {
+        expiresDays: Number(expiresDays),
+        maxRedemptions: Number(maxRedemptions),
+        label,
+        code,
+      })
+      setMinted(created)
+      setCopied(false)
+      setLabel('')
+      setCode('')
+      setOffset(0)
+      resource.retry()
+    }, '创建失败，请稍后重试')
+  }
+
+  const revoke = (invitationId: string) => void run(async () => {
+    await adminApi.revokeInvitation(token, invitationId)
+    resource.retry()
+  }, '撤销失败，请稍后重试')
+
+  const copy = () => {
+    if (!minted) return
+    navigator.clipboard.writeText(minted.code)
+      .then(() => setCopied(true))
+      .catch(() => setError('复制失败，请手动选中上方文本'))
+  }
+
+  return (
+    <section className={styles.view} aria-labelledby="invites-heading">
+      <div className={styles.viewHead}>
+        <div><h2 id="invites-heading">邀请码</h2><p>注册入口的唯一凭据；撤销或改 JWT_SECRET 后立即失效。</p></div>
+        <RefreshButton onClick={resource.retry} />
+      </div>
+      <form className={styles.filters} aria-label="生成邀请码" onSubmit={submit}>
+        <label><span>有效天数</span><input className="input" type="number" min={1} max={365} required
+          value={expiresDays} onChange={(event) => setExpiresDays(event.target.value)} /></label>
+        <label><span>可用次数</span><input className="input" type="number" min={1} max={1000} required
+          value={maxRedemptions} onChange={(event) => setMaxRedemptions(event.target.value)} /></label>
+        <label><span>备注</span><input className="input" maxLength={64}
+          value={label} onChange={(event) => setLabel(event.target.value)} /></label>
+        <label><span>自定义码（留空随机生成）</span><input className="input" minLength={4} maxLength={64}
+          value={code} onChange={(event) => setCode(event.target.value)} /></label>
+        <button className="btn btn-primary" type="submit" disabled={busy}>生成邀请码</button>
+      </form>
+      {minted && (
+        <div className={`panel ${styles.panel}`}>
+          <h3>邀请码（只显示这一次）</h3>
+          <pre className={styles.pre}>{minted.code}</pre>
+          <div className={styles.actions}>
+            <button type="button" className="btn btn-secondary" onClick={copy}>{copied ? '已复制' : '复制'}</button>
+            <button type="button" className="btn btn-quiet" onClick={() => setMinted(null)}>关闭</button>
+          </div>
+        </div>
+      )}
+      {error && <div className="banner banner-error" role="alert"><span>{error}</span></div>}
+      <LoadState {...resource} empty={resource.data?.items.length === 0}>
+        {resource.data && <>
+          <div className={styles.tableWrap}><table><thead><tr>
+            <th>备注</th><th>状态</th><th>有效期至</th><th>已用/上限</th><th>创建人</th><th>操作</th>
+          </tr></thead>
+            <tbody>{resource.data.items.map((invite) => <tr key={invite.id}>
+              <td>{invite.label ?? '—'}</td>
+              <td><InviteBadge invite={invite} /></td>
+              <td>{formatDate(invite.expires_at)}</td>
+              <td>{invite.redemption_count} / {invite.max_redemptions}</td>
+              <td>{invite.created_by_username ?? '—'}</td>
+              <td className={styles.actions}>
+                <button type="button" className="btn btn-quiet" disabled={busy || invite.revoked_at !== null}
+                  onClick={() => revoke(invite.id)}>撤销</button>
+              </td>
+            </tr>)}</tbody></table></div>
+          <Pagination total={resource.data.total} offset={offset} onChange={setOffset} />
+        </>}
+      </LoadState>
+    </section>
+  )
+}
+
 function AdminConsole({ token, logout, onForbidden }: {
   token: string
   logout: () => Promise<void>
@@ -580,7 +698,7 @@ function AdminConsole({ token, logout, onForbidden }: {
   const [userFilter, setUserFilter] = useState('')
   const tabs: Array<[Tab, string]> = [
     ['overview', '概览'], ['users', '用户'], ['projects', '作品'], ['tasks', '任务'],
-    ['runs', '全部运行'], ['logs', '访问日志'],
+    ['runs', '全部运行'], ['logs', '访问日志'], ['invites', '邀请码'],
   ]
   const openProjects = (userId: string) => { setUserFilter(userId); setTab('projects') }
   const openTasks = (userId: string) => { setUserFilter(userId); setTab('tasks') }
@@ -589,8 +707,8 @@ function AdminConsole({ token, logout, onForbidden }: {
       <ProjectRail projects={[]} onLogout={logout} />
       <main className={styles.main}>
         <header className={styles.header}>
-          <div><h1>管理员控制台</h1><p>跨账号只读观测；服务端权限仍是最终安全边界。</p></div>
-          <span className="badge badge-warning">只读</span>
+          <div><h1>管理员控制台</h1><p>跨账号观测为只读；邀请码是唯一可写项。服务端权限仍是最终安全边界。</p></div>
+          <span className="badge badge-warning">观测只读</span>
         </header>
         <nav className={styles.tabs} aria-label="管理视图">
           {tabs.map(([id, label]) => <button
@@ -607,6 +725,7 @@ function AdminConsole({ token, logout, onForbidden }: {
         {tab === 'tasks' && <TasksView key={`tasks:${userFilter}`} token={token} onForbidden={onForbidden} initialUserId={userFilter} />}
         {tab === 'runs' && <RunsView token={token} onForbidden={onForbidden} />}
         {tab === 'logs' && <LogsView token={token} onForbidden={onForbidden} />}
+        {tab === 'invites' && <InvitesView token={token} onForbidden={onForbidden} />}
       </main>
     </div>
   )
@@ -625,7 +744,17 @@ export default function AdminPage() {
   const allowed = status === 'authenticated'
     && session?.role === 'admin'
     && session.roleVerified === true
-  if (!allowed || !session) return null
+  if (!allowed || !session) {
+    // 未登录或非管理员：给一页带左 rail 的空态，而不是白屏（游客仍能从这里走回其它页）。
+    return (
+      <div className={styles.wrap}>
+        <ProjectRail projects={[]} onLogout={logout} />
+        <main className={styles.main}>
+          <div className="empty">只有管理员可以打开控制台。</div>
+        </main>
+      </div>
+    )
+  }
   if (forbidden) {
     return (
       <div className={styles.denied} role="alert">
