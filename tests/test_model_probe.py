@@ -170,3 +170,16 @@ def test_connection_failure_is_actionable(monkeypatch, protocol, operation):
         assert not ok and latency >= 0 and reply is None
     assert "未能连接模型服务" in error
     assert "private host" not in error and "sk-secret" not in error
+
+
+@pytest.mark.parametrize("protocol", ["openai", "anthropic"])
+@pytest.mark.parametrize("as_list", [False, True])
+def test_non_object_json_redacts_key_before_any_truncation(monkeypatch, protocol, as_list):
+    secret = "sk-private-test-key-0123456789"
+    payload = ["x" * 108 + secret] if as_list else "x" * 110 + secret
+    _patch_client(monkeypatch, lambda request: httpx.Response(200, json=payload))
+    ok, _, reply, error = probe.test_connection(protocol, "https://example.test/v1", secret, "test")
+    assert not ok and reply is None
+    assert "不是 JSON 对象" in error and len(error) <= 300
+    assert "sk-private" not in error
+    assert "***" in error
