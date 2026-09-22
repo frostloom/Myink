@@ -10,7 +10,18 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-22-provider-errors-design.md`。本计划和设计必须一起阅读。
 
-状态：待实施计划评审；本文件中的代码为拟实施内容，尚未进入产品代码。
+状态：用户已认可，三个任务的代码已实现；下列代码块保留为原计划，最终以源文件及验收记录为准。
+
+## 实施验收记录（2026-09-22）
+
+- 任务 1：`deb0f32`，相关测试 65 项通过，Python 全量 959 passed / 5 xfailed；[CI 三项成功](https://github.com/frostloom/Myink/actions/runs/35741711007)。
+- 任务 2：`82a66a8`，相关测试 28 项通过，Python 全量 965 passed / 5 xfailed；[CI 三项成功](https://github.com/frostloom/Myink/actions/runs/35743467331)。
+- 任务 3：交互测试 9 项通过；前端全量 250 项通过，lint/build 成功。最终全量回归、独立复核及本提交 CI 仍在完成中。
+- 无头 Edge 实测：长页面等待后错误仍在视口；不同连接错误保留；375px 下通知长文无横向溢出；Escape 关闭恢复焦点；首个错误字段定位；保存失败保留草稿；关闭不重发、手动重试只请求一次。全部 API 请求受控拦截，未调用付费模型。
+- 小屏验收仅覆盖本次通知组件；原页面的桌面最小宽度仍存在，不将本次结果表述为全站移动适配完成。
+- 沿用既有 6 条前端 lint warning、>500kB chunk warning，以及故意测试 HS512 错误算法时的短测试密钥 warning，没有把警告冒充不存在。
+- 未重建正式 API/worker/Caddy；源码提交不等于正式容器已经更新。
+- 执行调整：后续任务可在前一 CI 运行时实施，但前一 CI 成功前不再推送；前端异常测试按实际 status/code/body 契约修正；按用户要求保留执行记录与 worktree，不做删除清理。
 
 ## Global Constraints
 
