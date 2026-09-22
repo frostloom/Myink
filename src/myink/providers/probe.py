@@ -11,11 +11,12 @@ import time
 
 import httpx
 
+from myink.config import settings
+from myink.providers.errors import format_provider_error
 from myink.providers.anthropic import _messages_url, _models_url
 
 PROBE_TIMEOUT = 20.0
 _ANTHROPIC_VERSION = "2023-06-01"
-_MAX_ERROR_CHARS = 300
 _PING = [{"role": "user", "content": "ping"}]
 
 Protocol = str  # "openai" | "anthropic"（路由层已用 Literal 收敛）
@@ -34,37 +35,12 @@ def _chat_url(protocol: Protocol, base_url: str) -> str:
     return base_url.rstrip("/") + "/chat/completions"
 
 
-def _sanitize(text: str, api_key: str) -> str:
-    if api_key:
-        text = text.replace(api_key, "***")
-    return text[:_MAX_ERROR_CHARS]
-
-
 def _error_text(exc: Exception, api_key: str) -> str:
-    return _sanitize(str(exc) or exc.__class__.__name__, api_key)
+    return format_provider_error(exc, api_key=api_key, self_host_url=settings.self_host_url)
 
 
 def _status_error(exc: httpx.HTTPStatusError, api_key: str) -> str:
-    """非 2xx 时把上游响应体一起带出：中转/网关的具体原因（模型不存在、鉴权方式不对、
-    额度用尽）只在 body 里，只回「Client error '400 Bad Request'」用户无从下手。"""
-    return _sanitize(f"{exc} | {_body_detail(exc.response)}", api_key)
-
-
-def _body_detail(resp: httpx.Response) -> str:
-    try:
-        payload = resp.json()
-    except Exception:
-        return (resp.text or "").strip()
-    if isinstance(payload, dict):
-        err = payload.get("error")
-        if isinstance(err, dict) and err.get("message"):
-            return str(err["message"])
-        if isinstance(err, str):
-            return err
-        for key in ("message", "detail", "msg"):
-            if payload.get(key):
-                return str(payload[key])
-    return str(payload)
+    return _error_text(exc, api_key)
 
 
 def list_models(protocol: Protocol, base_url: str, api_key: str) -> tuple[list[str], str | None]:

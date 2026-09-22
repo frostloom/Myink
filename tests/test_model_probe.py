@@ -6,6 +6,7 @@ httpx 用 MockTransport 打桩（同 tests/test_custom_providers.py 的范式）
 from __future__ import annotations
 
 import httpx
+import pytest
 
 from myink.providers import probe
 
@@ -152,4 +153,20 @@ def test_probe_error_redacts_api_key(monkeypatch):
 
     assert models == []
     assert secret not in (error or "")
-    assert "***" in (error or "")
+    assert "未能连接模型服务" in (error or "")
+
+
+@pytest.mark.parametrize("protocol", ["openai", "anthropic"])
+@pytest.mark.parametrize("operation", ["models", "test"])
+def test_connection_failure_is_actionable(monkeypatch, protocol, operation):
+    def handler(request):
+        raise httpx.ConnectError("private host sk-secret", request=request)
+    _patch_client(monkeypatch, handler)
+    if operation == "models":
+        models, error = probe.list_models(protocol, "https://example.test/v1", "sk-secret")
+        assert models == []
+    else:
+        ok, latency, reply, error = probe.test_connection(protocol, "https://example.test/v1", "sk-secret", "test")
+        assert not ok and latency >= 0 and reply is None
+    assert "未能连接模型服务" in error
+    assert "private host" not in error and "sk-secret" not in error
