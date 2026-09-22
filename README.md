@@ -4,6 +4,8 @@
 
 当前定位：**本地演示与小范围邀请试用的 MVP**。新账号必须使用服务端发放的邀请码注册；已有账号继续使用密码登录。作品、写作任务及实时事件按账号隔离。Compose 里只有 Caddy 边缘层发布宿主机端口（按设计监听所有网卡的 80/443），其余服务都绑回环；公网部署仍需独立安全加固。
 
+以 **AGPL-3.0** 发布。本仓库移植了 inkos（AGPL-3.0）的思考标签剥离代码；题材模板与素材表原样收录自 webnovel-writer（GPL-3.0），位于 `src/myink/third_party/webnovel-writer/`。来源、上游版本与各自许可见 [NOTICE.md](NOTICE.md)。
+
 ## 核心能力
 
 ### 多 Agent 编排 + 审核中枢路由
@@ -93,3 +95,11 @@ docker/           initdb 脚本
 - `bash scripts/ci-local.sh` 使用独立临时基础设施，不改动开发作品库。设置 `SKIP_IMAGES=1` 可跳过镜像构建。详细环境见 [部署文档](docs/DEPLOY.md)。
 
 项目演示步骤、证据边界和下一阶段真实评测方案见 [项目演示与验证](docs/DEMO.md)。测试数量以实际运行输出为准，不将机制测试通过率表述为真实小说质量。
+
+## 许可
+
+本项目以 **GNU Affero General Public License v3.0** 发布，全文见 [LICENSE](LICENSE)。
+
+选 AGPL-3.0 而非 GPL-3.0 的原因：本仓库移植了 inkos 的思考标签剥离代码，而 inkos 采用 AGPL-3.0。AGPL-3.0 与 GPL-3.0 单向兼容（GPL-3.0 内容可并入 AGPL-3.0 作品），因此一个许可即可覆盖全部上游。
+
+第三方来源、上游版本与各自的改动日期见 [NOTICE.md](NOTICE.md)。
