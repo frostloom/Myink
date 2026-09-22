@@ -50,6 +50,16 @@ def test_replan_clears_patch_transients():
     assert result["patch_rejected_reason"] is None
 
 
+def test_new_attempt_clears_checkpoint_patch_transients(temp_project):
+    previous = {"project_id": temp_project, "patch_count": 2, "revision_count": 2,
+                "patch_applied": 1, "patch_skipped": 2, "revise_mode": "patch",
+                "patch_rejected_reason": "旧失败"}
+    merged = {**previous, **nodes.node_load_state(previous)}
+    assert merged["patch_count"] == merged["patch_applied"] == merged["patch_skipped"] == 0
+    assert merged["revise_mode"] == "full" and merged["patch_rejected_reason"] is None
+    assert route_after_audit({**merged, **local_state()}) == "patch"
+
+
 PATCH = """=== PATCHES ===
 --- PATCH 1 ---
 TARGET_TEXT:
@@ -122,6 +132,15 @@ def test_rejected_output_retains_original_and_does_not_claim_fixed(temp_project,
     assert result["draft"] == DRAFT
     assert result["patch_count"] == 1
     assert result["patch_applied"] == 0 and result["patch_rejected_reason"]
+    assert result["revise_responses"] == []
+
+
+def test_partly_malformed_output_cannot_claim_all_responses_fixed(temp_project, monkeypatch):
+    output = PATCH.replace("=== RESPONSES ===", "--- PATCH 2 ---\nTARGET_TEXT:\n坏块\n--- END PATCH ---\n=== RESPONSES ===")
+    install_provider(monkeypatch, PatchProvider(output))
+    result = nodes.node_patch({**local_state(), "project_id": temp_project, "chapter_seq": 1,
+                               "draft": DRAFT, "task_id": str(uuid.uuid4())})
+    assert result["patch_applied"] == 1 and result["patch_skipped"] == 1
     assert result["revise_responses"] == []
 
 

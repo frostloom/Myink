@@ -605,6 +605,8 @@ def node_load_state(state: ChapterState) -> ChapterState:
                 # LangGraph 合并 checkpoint 状态，残留 error 会让 write/extract 短路重蹈失败 → 这里清零
                 "error": None, "needs_review": False, "persisted": False, "unresolved": [],
                 "revision_count": 0, "replan_count": 0, "audit_verdict": None,
+                "patch_count": 0, "revise_mode": "full", "patch_applied": 0,
+                "patch_skipped": 0, "patch_rejected_reason": None,
                 "replan_batch": False, "report": None, "candidates": [], "draft": None}
 
 
