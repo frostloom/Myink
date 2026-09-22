@@ -1,12 +1,17 @@
 """题材包根目录（建书时深拷贝到本书，根包只读）。
 
-字段与 webnovel-writer 的题材分类对齐，正文按我们自己的 schema 重写，不搬对方 Markdown。
+分类与 webnovel-writer 的 37 个题材对齐。别名解析、主辅 7:3、六个精调题材的写章附加层
+按那套预设逻辑接进生成。该仓库的题材模板与素材表原样收录在
+`third_party/webnovel-writer/`（GPL-3，来源与许可见 NOTICE.md），
+由 `read_genre_reference` 工具按需读取——整份塞进提示词会白烧 token。
 """
 
 from __future__ import annotations
 
 from copy import deepcopy
 from typing import Any
+
+from myink.reference_corpus import genre_template_path, sections_of
 
 UNSELECTED_NAME = "未选题材"
 
@@ -27,6 +32,38 @@ _SLOW_PACKS = frozenset({
 FIELD_KEYS = (
     "selling_point", "subgenres", "taboos", "pacing", "satisfaction", "mechanics", "world_hints",
 )
+
+# 输入别名 → 目录 id。官方名和 id 由 resolve_pack_id 另行识别。
+_ALIASES = {
+    "玄幻": "xiuxian",
+    "修真": "xiuxian",
+    "玄幻修仙": "xiuxian",
+    "仙侠": "xiuxian",
+    "传统修真": "xiuxian",
+    "东方仙侠": "xiuxian",
+    "宗门流": "xiuxian",
+    "系统": "xitong",
+    "系统文": "xitong",
+    "都市修真": "dushi-yineng",
+    "现代异能": "dushi-yineng",
+    "游戏电竞": "dianjing",
+    "电竞文": "dianjing",
+    "直播": "zhibo",
+    "主播": "zhibo",
+    "直播带货": "zhibo",
+    "克系": "kesulu",
+    "克系悬疑": "kesulu",
+}
+
+# 六个精调题材：写章时在主题材字段之外多一层追读 / 兑现 / 审查侧重。
+_REFINE = {
+    "xiuxian": "追读靠资源与突破还没付完的代价；每隔几章要有一次看得见的小收获；审查时看突破有没有铺垫和代价。",
+    "gouxie": "追读靠关系误会和当章的情绪兑现；误会要落在具体事件上；审查时看虐和反转里有没有人物自己的选择。",
+    "niandai": "追读靠日子里的具体缺口，粮、工分、名额；小胜利要落到一件实物；审查时看器物和说话方式有没有串到当代。",
+    "xianshi": "追读靠眼前这件事的下一步；收获是关系或处境的一点变化；审查时看人物有没有转成说教。",
+    "guize": "追读靠一条已经写明、读者能用来推测的规则；每章揭开规则的一层并付出代价；审查时看规则有没有事后改口。",
+    "zhihu": "追读靠一个核心事件的下一拍；这一篇里要有一次明确回报；审查时看结尾有没有收成空话。",
+}
 
 GROUPS: list[tuple[str, list[str]]] = [
     ("玄幻修仙", ["xiuxian", "xitong", "gaowu", "xihuan", "wuxian", "moshi", "kehuan"]),
@@ -566,11 +603,29 @@ def empty_fields() -> dict[str, Any]:
     }
 
 
-def get_root(pack_id: str | None) -> dict[str, Any] | None:
-    if not pack_id:
+def resolve_pack_id(raw: str | None) -> str | None:
+    """目录 id、官方名或别名 → 目录 id。认不出则 None。"""
+    if not raw:
         return None
-    root = PACKS.get(pack_id)
-    return deepcopy(root) if root else None
+    text = str(raw).strip()
+    if not text:
+        return None
+    if text in PACKS:
+        return text
+    alias = _ALIASES.get(text)
+    if alias:
+        return alias
+    for pack_id, pack in PACKS.items():
+        if pack["name"] == text:
+            return pack_id
+    return None
+
+
+def get_root(pack_id: str | None) -> dict[str, Any] | None:
+    resolved = resolve_pack_id(pack_id)
+    if resolved is None:
+        return None
+    return deepcopy(PACKS[resolved])
 
 
 def catalog_entries() -> list[dict[str, Any]]:
@@ -600,7 +655,7 @@ def _copy_fields(root: dict[str, Any]) -> dict[str, Any]:
 
 
 def compose_fields(primary_id: str | None, secondary_id: str | None) -> dict[str, Any]:
-    """主题材整份；辅题材叠加 mechanics / satisfaction / selling_point，禁忌并集。"""
+    """主题材整份。辅题材不并进禁忌和机制，写章时按 7:3 另附。"""
     primary = get_root(primary_id)
     if primary is None:
         return empty_fields()
@@ -609,19 +664,11 @@ def compose_fields(primary_id: str | None, secondary_id: str | None) -> dict[str
     if secondary is None:
         return fields
     extra_sell = str(secondary.get("selling_point") or "").strip()
+    tag = f"辅题材（{secondary['name']}）按 7:3 附在主题材之后"
     if extra_sell:
-        base = str(fields.get("selling_point") or "").strip()
-        tag = f"辅题材（{secondary['name']}）：{extra_sell}"
-        fields["selling_point"] = f"{base}\n{tag}" if base else tag
-    fields["mechanics"] = list(fields["mechanics"]) + list(secondary.get("mechanics") or [])
-    fields["satisfaction"] = list(fields["satisfaction"]) + list(secondary.get("satisfaction") or [])
-    seen = set(fields["taboos"])
-    merged = list(fields["taboos"])
-    for item in secondary.get("taboos") or []:
-        if item not in seen:
-            seen.add(item)
-            merged.append(item)
-    fields["taboos"] = merged
+        tag = f"{tag}：{extra_sell}"
+    base = str(fields.get("selling_point") or "").strip()
+    fields["selling_point"] = f"{base}\n{tag}" if base else tag
     return fields
 
 
@@ -664,6 +711,16 @@ def validate_selection(primary_id: str | None, secondary_id: str | None) -> None
 
 def build_book_pack(primary_id: str | None, secondary_id: str | None,
                     overrides: dict[str, Any] | None = None) -> dict[str, Any]:
+    if primary_id:
+        resolved = resolve_pack_id(primary_id)
+        if resolved is None:
+            raise ValueError(f"未知主题材：{primary_id}")
+        primary_id = resolved
+    if secondary_id:
+        resolved = resolve_pack_id(secondary_id)
+        if resolved is None:
+            raise ValueError(f"未知辅题材：{secondary_id}")
+        secondary_id = resolved
     validate_selection(primary_id, secondary_id)
     fields = compose_fields(primary_id, secondary_id)
     if overrides:
@@ -754,7 +811,46 @@ def format_prompt(pack: Any) -> str:
         items = [str(x).strip() for x in (data.get(key) or []) if str(x).strip()]
         if items:
             parts.append(f"{label_cn}：" + "；".join(items))
+    secondary = get_root(data.get("secondary_id")) if data.get("secondary_id") else None
+    if secondary is not None:
+        parts.append(
+            "主辅比例：7:3。主线、节奏、禁忌和世界观遵循主题材。"
+            "辅题材约占三成，只提供钩子、规则和爽点，不改主题材主线。"
+        )
+        hooks = []
+        for item in secondary.get("subgenres") or []:
+            if isinstance(item, dict) and item.get("name"):
+                hook = f"（{item['hook']}）" if item.get("hook") else ""
+                hooks.append(f"{item['name']}{hook}")
+        if hooks:
+            parts.append("辅题材钩子：" + "；".join(hooks))
+        for label_cn, key in (("辅题材爽点", "satisfaction"), ("辅题材规则", "mechanics"),
+                              ("辅题材约束（服从主题材）", "taboos")):
+            items = [str(x).strip() for x in (secondary.get(key) or []) if str(x).strip()]
+            if items:
+                parts.append(f"{label_cn}：" + "；".join(items))
+    refine = _REFINE.get(str(data.get("source_id") or ""))
+    if refine:
+        parts.append(f"精调：{refine}")
     return "\n".join(parts)
+
+
+def reference_hint(pack: Any) -> str:
+    """本书题材对应的参考文档指针（路径 + 小节清单）。
+
+    只给「文档在哪、里面有哪几节」，正文按需由 Writer 用 read_genre_reference 自取——
+    整份模板塞进提示词会白烧 token，且挑哪一节要由写手自己判断。
+    """
+    data = pack if isinstance(pack, dict) else {}
+    rel = genre_template_path(data.get("name"))
+    if not rel:
+        return ""
+    lines = [f"参考文档：{rel}"]
+    sections = sections_of(rel)
+    if sections:
+        lines.append("可用小节：" + "、".join(sections))
+    lines.append("要写具体套路、世界观细节或大纲结构时，用 read_genre_reference 读它，别凭印象编。")
+    return "\n".join(lines)
 
 
 def taboo_hints(pack: Any) -> list[str]:

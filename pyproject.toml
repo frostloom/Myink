@@ -57,8 +57,21 @@ where = ["src"]
 
 # 闸门脚本是网关那份 gates.lua / compensate.lua 的逐字节副本（tests/test_gates_parity.py
 # 钉住）。少了这一行 .lua 不进 wheel/镜像，enqueue.py 导入即 FileNotFoundError。
+#
+# third_party/webnovel-writer 是题材参考语料（原样收录，来源与许可见 NOTICE.md）。
+# read_genre_reference 工具按路径读它，patterns 漏了就直接 404，所以这里要覆盖到底——
+# tests/test_reference_corpus.py 有一条测试拿这份 patterns 去 glob 全量语料，
+# 漏掉任何一类文件（曾经漏过 references/*.json）都会红。
 [tool.setuptools.package-data]
-myink = ["worker/*.lua"]
+myink = [
+    "worker/*.lua",
+    "third_party/webnovel-writer/LICENSE",
+    "third_party/webnovel-writer/templates/*.md",
+    "third_party/webnovel-writer/templates/*/*.md",
+    "third_party/webnovel-writer/references/*.md",
+    "third_party/webnovel-writer/references/*.json",
+    "third_party/webnovel-writer/references/*/*",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

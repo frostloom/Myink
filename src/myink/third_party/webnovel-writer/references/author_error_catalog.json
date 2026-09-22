@@ -1,0 +1,126 @@
+{
+  "schema_version": "webnovel-author-error-catalog/v1",
+  "errors": [
+    {
+      "code": "mainline_ready=false",
+      "match": {
+        "codes": ["mainline_ready=false"],
+        "contains": ["mainline_ready=false"]
+      },
+      "severity": "must_handle",
+      "title": "这本书的写作档案还没就绪",
+      "reason": "系统还没有拿到继续写作所需的 Story System 主链资料。",
+      "impact": "继续写章可能会用旧资料或缺少本章写作要求。",
+      "next_action": "先运行 `/webnovel-init` 创建项目档案；如果已经初始化过，再运行 `/webnovel-doctor` 查缺项。",
+      "command": "/webnovel-doctor",
+      "auto_handle": false
+    },
+    {
+      "code": "write-gate failed",
+      "match": {
+        "codes": ["write-gate failed", "prewrite_validator_blocking", "phase_not_ready_for_precommit"],
+        "contains": ["write-gate failed"]
+      },
+      "severity": "must_handle",
+      "title": "写作自检没有通过",
+      "reason": "系统在写前、提交前或提交后检查时发现阻断问题。",
+      "impact": "当前章节不能可靠进入下一步。",
+      "next_action": "按报告里的影响和修复建议处理后，重新运行同一条写作命令。",
+      "command": "/webnovel-doctor",
+      "auto_handle": false
+    },
+    {
+      "code": "chapter-commit rejected",
+      "match": {
+        "codes": ["chapter-commit rejected", "commit.rejected", "rejected"],
+        "contains": ["chapter-commit rejected"]
+      },
+      "severity": "must_handle",
+      "title": "本章事实没有通过提交",
+      "reason": "本章仍有未覆盖节点、待确认歧义或阻断审查问题。",
+      "impact": "本章不会被当作已正式写入故事主链，后续章节不能直接依赖它。",
+      "next_action": "先修复 missed_nodes、pending 或 blocking 问题，再重新提交本章事实。",
+      "command": "/webnovel-doctor",
+      "auto_handle": false
+    },
+    {
+      "code": "artifact.schema_error",
+      "match": {
+        "codes": ["artifact.schema_error", "schema_error"],
+        "contains": ["schema error", "missing field", "字段"]
+      },
+      "severity": "must_handle",
+      "title": "中间结果格式不完整",
+      "reason": "某个检查或资料整理结果缺少必要字段。",
+      "impact": "系统无法确认本章事实是否完整，不能继续提交。",
+      "next_action": "重新运行产生该中间结果的步骤；如果仍失败，运行 `/webnovel-doctor` 并附日志反馈。",
+      "command": "/webnovel-doctor",
+      "auto_handle": false
+    },
+    {
+      "code": "missing_artifact",
+      "match": {
+        "codes": ["artifact.missing_artifact", "missing_artifact"],
+        "contains": ["artifact missing", "missing artifact"]
+      },
+      "severity": "must_handle",
+      "title": "缺少中间结果文件",
+      "reason": "写作检查、目标完成情况或故事事实提取结果没有生成。",
+      "impact": "系统无法安全保存本章事实。",
+      "next_action": "重新运行同一条主命令，让系统从缺失步骤继续。",
+      "command": "/webnovel-doctor",
+      "auto_handle": false
+    },
+    {
+      "code": "projection failed",
+      "match": {
+        "codes": ["projection_failure", "commit.projection_failure", "projection failed"],
+        "contains": ["projection failed"]
+      },
+      "severity": "must_handle",
+      "title": "故事资料更新失败",
+      "reason": "本章事实已生成，但同步到状态、摘要、长期记忆或检索库时失败。",
+      "impact": "后续查询可能读不到本章最新变化。",
+      "next_action": "修复失败原因后补跑资料更新；也可以先运行 `/webnovel-doctor` 查看具体卡点。",
+      "command": "/webnovel-doctor",
+      "auto_handle": true
+    },
+    {
+      "code": "projection pending",
+      "match": {
+        "codes": ["projection_pending", "projection_status_missing", "projection_incomplete"],
+        "contains": ["projection pending"]
+      },
+      "severity": "needs_confirmation",
+      "title": "故事资料还没更新完成",
+      "reason": "本章事实同步到各处的状态仍在等待或缺少记录。",
+      "impact": "后续查询可能暂时不完整。",
+      "next_action": "等待或补跑资料更新；如果反复出现，运行 `/webnovel-doctor`。",
+      "command": "/webnovel-doctor",
+      "auto_handle": true
+    },
+    {
+      "code": "rag degraded",
+      "match": {
+        "codes": ["rag.degraded", "rag_fallback", "fallback"],
+        "contains": ["rag fallback"]
+      },
+      "severity": "auto_handled",
+      "title": "检索临时降级",
+      "reason": "向量检索不可用或响应失败，系统改用较简单的读取方式。",
+      "impact": "当前流程可以继续，但召回资料可能不如平时完整。",
+      "next_action": "本次无需处理；如果经常出现，检查 RAG API key 和网络配置。",
+      "command": "/webnovel-doctor",
+      "auto_handle": true
+    }
+  ],
+  "fallback": {
+    "severity": "must_handle",
+    "title": "遇到未登记的问题",
+    "reason": "这里遇到一个系统还没有登记过的问题。",
+    "impact": "当前不会把它当成已完成。",
+    "next_action": "请先运行 `/webnovel-doctor`，或反馈时附上 `.webnovel/logs/run_last.log`。",
+    "command": "/webnovel-doctor",
+    "auto_handle": false
+  }
+}

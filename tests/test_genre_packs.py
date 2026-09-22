@@ -1,4 +1,4 @@
-"""题材包：根目录只读、本书快照、主辅叠加、显示名锁定。"""
+"""题材包：根目录只读、本书快照、主辅 7:3、别名解析、显示名锁定。"""
 
 from __future__ import annotations
 
@@ -21,6 +21,7 @@ from myink.genre_catalog import (
     catalog_entries,
     compose_fields,
     display_genre,
+    format_prompt,
     is_managed_pack,
     suggest_volume_count,
     volume_span_for,
@@ -58,16 +59,17 @@ def test_catalog_has_37_and_stable_ids():
     assert {e["id"] for e in entries} == set(PACKS)
 
 
-def test_compose_secondary_overlays_only_allowed_fields():
+def test_compose_secondary_keeps_primary_rules():
     fields = compose_fields("xiuxian", "xitong")
     primary = compose_fields("xiuxian", None)
     assert fields["pacing"] == primary["pacing"]
     assert fields["world_hints"] == primary["world_hints"]
     assert fields["subgenres"] == primary["subgenres"]
+    assert fields["mechanics"] == primary["mechanics"]
+    assert fields["taboos"] == primary["taboos"]
     assert "辅题材（系统流）" in fields["selling_point"]
-    assert len(fields["mechanics"]) > len(primary["mechanics"])
-    assert "无铺垫越级突破" in fields["taboos"]
-    assert "面板每章完整刷屏" in fields["taboos"]
+    assert "7:3" in fields["selling_point"]
+    assert "面板每章完整刷屏" not in fields["taboos"]
 
 
 def test_volume_span_follows_pacing():
@@ -81,7 +83,17 @@ def test_volume_span_follows_pacing():
 def test_display_genre_locked_names():
     assert display_genre(None, None) == UNSELECTED_NAME
     assert display_genre("xiuxian", None) == "修仙"
+    assert display_genre("玄幻", "系统") == "修仙+系统流"
     assert display_genre("xiuxian", "xitong") == "修仙+系统流"
+
+
+def test_secondary_prompt_is_seven_to_three_and_refine():
+    text = format_prompt(build_book_pack("玄幻", "xitong"))
+    assert "主辅比例：7:3" in text
+    assert "面板每章完整刷屏" in text
+    assert "辅题材约束（服从主题材）" in text
+    assert "精调：" in text
+    assert text.index("无铺垫越级突破") < text.index("主辅比例：7:3")
 
 
 def test_book_pack_baseline_isolated_from_later_edits():
