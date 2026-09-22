@@ -10,7 +10,9 @@ from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
+from myink.config import settings
 from myink.providers.base import ModelProvider, ModelResponse
+from myink.providers.errors import format_provider_error
 from myink.providers.think_tag_stripper import (
     LeadingThinkTagStripper,
     isolate_response_body,
@@ -170,7 +172,9 @@ class AnthropicProvider(ModelProvider):
                     retry_count=attempt, tool_calls=calls,
                 )
             except Exception as exc:
-                last_error = str(exc)
+                last_error = format_provider_error(
+                    exc, api_key=self._api_key, self_host_url=settings.self_host_url,
+                )
                 logger.warning("Anthropic 调用失败(attempt=%d): %s", attempt, last_error)
                 if attempt < MAX_RETRIES:
                     time.sleep(BACKOFF_BASE[min(attempt, len(BACKOFF_BASE) - 1)])
@@ -260,7 +264,9 @@ class AnthropicProvider(ModelProvider):
                     tool_calls=calls or None,
                 )
             except Exception as exc:
-                last_error = str(exc)
+                last_error = format_provider_error(
+                    exc, api_key=self._api_key, self_host_url=settings.self_host_url,
+                )
                 logger.warning("Anthropic 流式调用失败(attempt=%d): %s", attempt, last_error)
                 if emitted and on_reset:
                     on_reset()

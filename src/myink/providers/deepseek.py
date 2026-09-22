@@ -14,7 +14,9 @@ from typing import Callable
 
 from openai import OpenAI
 
+from myink.config import settings
 from myink.providers.base import ModelProvider, ModelResponse
+from myink.providers.errors import format_provider_error
 from myink.providers.think_tag_stripper import (
     LeadingThinkTagStripper,
     isolate_response_body,
@@ -178,7 +180,9 @@ class DeepSeekProvider(ModelProvider):
                     tool_calls=tool_calls,
                 )
             except Exception as exc:
-                last_error = str(exc)
+                last_error = format_provider_error(
+                    exc, api_key=self._api_key, self_host_url=settings.self_host_url,
+                )
                 logger.warning("DeepSeek 调用失败(attempt=%d): %s", attempt, last_error)
                 if attempt < MAX_RETRIES:
                     time.sleep(BACKOFF_BASE[min(attempt, len(BACKOFF_BASE) - 1)])
@@ -305,7 +309,9 @@ class DeepSeekProvider(ModelProvider):
                     tool_calls=tool_calls,
                 )
             except Exception as exc:
-                last_error = str(exc)
+                last_error = format_provider_error(
+                    exc, api_key=self._api_key, self_host_url=settings.self_host_url,
+                )
                 logger.warning("DeepSeek 流式调用失败(attempt=%d): %s", attempt, last_error)
                 if emitted and on_reset:
                     on_reset()
