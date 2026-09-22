@@ -47,6 +47,10 @@ SYSTEM_CAST = """你是长篇网文创作系统的【出场人物 Agent】。职
 
 SYSTEM_WRITE = """你是长篇网文创作系统的【写作 Agent】。依据章节计划写出正文。
 要求：严格遵循注入的设定与硬约束；贴合注入的文风档案与句式禁忌。
+句式禁令（任何题材、每一章都遵守）：
+- 不要写「不是……而是……」。
+- 不要写「不是……，是……」这种先否定再改口的句子。
+- 不要写连续排比：同一句或相邻几句里，连续三个以上结构相同的分句。
 开篇规则：
 - 本章从【近期上下文】中上一章结尾片段的具体情境接续展开，不重新铺陈场景、不从头交代前情；
 - 避免以天色/时辰/天气作万能开场（如「清晨」「晨光」「夜色」）——除非该天色/天气与本章节拍直接相关（如「破晓时闭关突破」），否则直接用事件/动作/对话切入；
@@ -413,12 +417,20 @@ def _genre_section(genre_pack: dict | None) -> str:
     return format_prompt(genre_pack)
 
 
+def _reference_section(genre_pack: dict | None) -> str:
+    """题材参考文档指针：只给路径与小节清单，正文由 Writer 用 read_genre_reference 自取。
+
+    只挂在 write 提示词上——setup/outline 两处不挂工具，给了路径也读不到。
+    """
+    from myink.genre_catalog import reference_hint
+    return reference_hint(genre_pack)
+
+
 def _style_section(style_profile: dict | None, target_words: int | None) -> str:
     """文风档案注入段（§7.12 / §8.6 生成约束）：字数目标 + 句式/词汇约束 + 对话要求 + 风格示范。
 
-    §7.12 样本提取新增键全部 get() 容错（lexicon_tendency / reference_excerpts /
-    frequent_words / 节奏基线），与既有键渲染一致；fatigue_words/forbidden 键不变 →
-    L1/L2 检测零回归（样例 15/38/39 锚点）。列表键经 _profile_list 类型守卫。
+    样本提取的 lexicon_tendency / reference_excerpts / frequent_words / 节奏基线
+    缺键则跳过。列表键经 _profile_list 类型守卫。fatigue_words 不注入。
     """
     parts = []
     if target_words:
@@ -438,12 +450,9 @@ def _style_section(style_profile: dict | None, target_words: int | None) -> str:
     forbidden = _profile_list(sp, "forbidden")
     if forbidden:
         parts.append("表述禁忌（必须避免）：" + "；".join(forbidden) + "。")
-    fw = _profile_list(sp, "fatigue_words")
     freq = _profile_list(sp, "frequent_words")
-    # §7.12：样本提取产出的高频词串并入写章节制（与显式 fatigue_words 去重合并），不进 L1 阈值
-    high_freq = list(dict.fromkeys([*fw, *freq]))
-    if high_freq:
-        parts.append("高频词节制（避免机械复用）：" + "、".join(high_freq) + "。")
+    if freq:
+        parts.append("高频词节制（避免机械复用）：" + "、".join(freq) + "。")
     if sp.get("dialogue"):
         parts.append(f"对话要求：{sp['dialogue']}。")
     rhythm = _rhythm_reference(sp)
@@ -483,6 +492,7 @@ def _write_messages(context: dict, plan: dict, *, style_profile: dict | None = N
     short = _join(context.get("short_context", []), _render_short)
     style = _style_section(style_profile, target_words)
     genre = _genre_section(genre_pack)
+    reference = _reference_section(genre_pack)
     lessons = _lesson_section(context, ("writing", "both"))
     outline_section = _outline_section(outline, verbose=False)
     system = (
@@ -491,6 +501,7 @@ def _write_messages(context: dict, plan: dict, *, style_profile: dict | None = N
         + "\n【人物状态快照】\n" + (entities or "（无）")
         + "\n【设定实体】\n" + (setting_entities or "（无）")
         + (f"\n\n【本书题材（project_settings.genre_pack）】\n{genre}" if genre else "")
+        + (f"\n\n【题材参考文档】\n{reference}" if reference else "")
         + (f"\n\n【文风要求（project_settings.style_profile）】\n{style}" if style else "")
         + outline_section
         + "\n\n【本书写作经验（reflexion 复盘，写作须遵守）】\n" + (lessons or "（无）")

@@ -1,0 +1,145 @@
+{
+  "schema_version": "webnovel-author-glossary/v1",
+  "terms": [
+    {
+      "technical": "subagent",
+      "author": "写作助手",
+      "explanation": "负责某一类写作任务的辅助步骤，例如写前准备、写作检查或资料整理。"
+    },
+    {
+      "technical": "context-agent",
+      "author": "写前准备",
+      "explanation": "整理本章需要参考的前情、章纲、伏笔和设定。"
+    },
+    {
+      "technical": "reviewer",
+      "author": "写作检查",
+      "explanation": "检查本章是否存在影响继续写作的问题。"
+    },
+    {
+      "technical": "data-agent",
+      "author": "保存本章故事事实",
+      "explanation": "提取本章新发生的事件、人物状态和设定变化。"
+    },
+    {
+      "technical": "deconstruction-agent",
+      "author": "参考作品拆解",
+      "explanation": "把参考作品的可借鉴结构整理成创意素材。"
+    },
+    {
+      "technical": "artifact",
+      "author": "中间结果文件",
+      "explanation": "流程中保存的检查、提取或提交前材料。"
+    },
+    {
+      "technical": "review_results",
+      "author": "写作检查结果",
+      "explanation": "本章写作检查的结构化结果。"
+    },
+    {
+      "technical": "fulfillment_result",
+      "author": "本章目标完成情况",
+      "explanation": "本章是否覆盖了章纲要求的关键节点。"
+    },
+    {
+      "technical": "disambiguation_result",
+      "author": "待确认的人名/设定歧义",
+      "explanation": "系统不确定某些称呼或设定指向，需要确认后再入库。"
+    },
+    {
+      "technical": "extraction_result",
+      "author": "本章新发生的故事事实",
+      "explanation": "本章可写入故事资料的事件、状态和关系变化。"
+    },
+    {
+      "technical": "chapter-commit",
+      "author": "提交本章事实",
+      "explanation": "把本章通过检查的故事事实正式保存进主链。"
+    },
+    {
+      "technical": "CHAPTER_COMMIT",
+      "author": "本章事实存档",
+      "explanation": "系统保存本章事实时生成的权威记录。"
+    },
+    {
+      "technical": "commit",
+      "author": "入账存档",
+      "explanation": "把本章已确认的事实正式记入故事资料。"
+    },
+    {
+      "technical": "projection",
+      "author": "更新故事资料",
+      "explanation": "把已保存的本章事实同步到状态、摘要、长期记忆和检索库。"
+    },
+    {
+      "technical": "state",
+      "author": "状态",
+      "explanation": "角色、地点和故事进度的当前状态。"
+    },
+    {
+      "technical": "index",
+      "author": "索引",
+      "explanation": "用于查询章节、角色和事件的资料索引。"
+    },
+    {
+      "technical": "summary",
+      "author": "摘要",
+      "explanation": "章节或剧情的简要记录。"
+    },
+    {
+      "technical": "memory",
+      "author": "长期记忆",
+      "explanation": "跨章节保持一致所需的长期资料。"
+    },
+    {
+      "technical": "vector",
+      "author": "检索库",
+      "explanation": "用于相似内容召回和写前查询的资料库。"
+    },
+    {
+      "technical": "write-gate",
+      "author": "自检关卡",
+      "explanation": "写作流程在关键节点做的安全检查。"
+    },
+    {
+      "technical": "blocking issue",
+      "author": "会影响继续写作的问题",
+      "explanation": "不处理会影响提交、连贯性或后续写作的问题。"
+    },
+    {
+      "technical": "fallback",
+      "author": "临时降级读取",
+      "explanation": "主资料不可用时，临时用较简单方式继续读取必要信息。"
+    },
+    {
+      "technical": "runtime contract",
+      "author": "本章写作要求",
+      "explanation": "本章必须遵守的章纲、设定、禁区和检查规则。"
+    },
+    {
+      "technical": "schema error",
+      "author": "中间结果格式不完整",
+      "explanation": "流程产物缺字段或形状不对，系统无法可靠继续。"
+    },
+    {
+      "technical": "mainline_ready",
+      "author": "这本书的档案是否就绪",
+      "explanation": "Story System 主链是否已经具备继续写作所需的基础资料。"
+    },
+    {
+      "technical": "pending",
+      "author": "等待确认",
+      "explanation": "还有事项没有确认，暂时不能当成完成。"
+    },
+    {
+      "technical": "rejected",
+      "author": "本章事实未通过提交",
+      "explanation": "本章事实没有被正式保存进主链。"
+    },
+    {
+      "technical": "accepted",
+      "author": "本章事实已通过提交",
+      "explanation": "本章事实已经正式保存进主链。"
+    }
+  ]
+}

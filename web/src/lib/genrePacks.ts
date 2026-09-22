@@ -1,4 +1,4 @@
-/** 题材包：根目录条目 + 主辅叠加（与 genre_catalog.compose_fields 对齐）。 */
+/** 题材包：根目录条目。辅题材不并进主题材字段，写章提示里按 7:3 另附。 */
 
 export const UNSELECTED_NAME = '未选题材'
 
@@ -63,20 +63,11 @@ export function composeFields(
   }
   if (!secondary) return fields
   const extra = secondary.selling_point.trim()
-  if (extra) {
-    const tag = `辅题材（${secondary.name}）：${extra}`
-    const base = fields.selling_point.trim()
-    fields.selling_point = base ? `${base}\n${tag}` : tag
-  }
-  fields.mechanics = [...fields.mechanics, ...secondary.mechanics]
-  fields.satisfaction = [...fields.satisfaction, ...secondary.satisfaction]
-  const seen = new Set(fields.taboos)
-  for (const item of secondary.taboos) {
-    if (!seen.has(item)) {
-      seen.add(item)
-      fields.taboos.push(item)
-    }
-  }
+  const tag = extra
+    ? `辅题材（${secondary.name}）按 7:3 附在主题材之后：${extra}`
+    : `辅题材（${secondary.name}）按 7:3 附在主题材之后`
+  const base = fields.selling_point.trim()
+  fields.selling_point = base ? `${base}\n${tag}` : tag
   return fields
 }
 

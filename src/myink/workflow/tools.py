@@ -17,6 +17,7 @@ import uuid
 from sqlalchemy.orm import Session
 
 from myink.memory import repository as repo
+from myink.reference_corpus import read_reference
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,19 @@ TOOL_SCHEMAS: list[dict] = [
         {"type": "object", "properties": {
             "query": {"type": "string", "description": "可选关键词，过滤事实内容"},
             "chapter_seq": {"type": "integer", "description": "按章号取当时有效的硬约束（缺省全部）"},
+        }, "required": []},
+    ),
+    _tool(
+        "read_genre_reference",
+        "读取题材参考语料（题材模板、产出模板、桥段/技法/命名素材表）。"
+        "留空 path 返回可用文档清单；给了 path 读该文档，markdown 还能用 section 只读某一节。"
+        "要写具体套路、世界观细节、金手指设计、命名或产出格式时先查它，"
+        "不要凭印象编题材细节。",
+        {"type": "object", "properties": {
+            "path": {"type": "string",
+                     "description": "相对路径，如 templates/genres/修仙.md；留空取清单"},
+            "section": {"type": "string",
+                        "description": "只读该 markdown 的某一节（按小节标题匹配），如 大纲结构"},
         }, "required": []},
     ),
 ]
@@ -117,11 +131,23 @@ def _inspect_facts(db: Session, project_id: uuid.UUID, args: dict) -> dict:
     ]}
 
 
+# ---- 题材参考语料（third_party/webnovel-writer，原样收录，来源与许可见 NOTICE.md）----
+#
+# 定位、切片与截断都在 myink.reference_corpus，这里只是把它包成工具调用形式。
+
+def _read_genre_reference(db: Session, project_id: uuid.UUID, args: dict) -> dict:
+    return read_reference(
+        str(args.get("path") or "").strip(),
+        str(args.get("section") or "").strip() or None,
+    )
+
+
 _EXECUTORS = {
     "inspect_character": _inspect_character,
     "inspect_foreshadows": _inspect_foreshadows,
     "inspect_plot_threads": _inspect_plot_threads,
     "inspect_facts": _inspect_facts,
+    "read_genre_reference": _read_genre_reference,
 }
 
 
