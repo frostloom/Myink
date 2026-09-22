@@ -19,6 +19,7 @@ from langgraph.graph import END, START, StateGraph
 from myink.config import settings
 from myink.workflow import nodes
 from myink.workflow.state import ChapterState
+from myink.workflow.patches import resolve_revise_mode
 
 
 def node_reset_replan(state: ChapterState) -> ChapterState:
@@ -38,6 +39,8 @@ def node_reset_replan(state: ChapterState) -> ChapterState:
         "draft": None, "candidates": [], "report": None, "unresolved": [],
         "audit_verdict": None, "replan_batch": False,
         "revision_count": 0, "revise_responses": [],
+        "patch_count": 0, "patch_applied": 0, "patch_skipped": 0,
+        "patch_rejected_reason": None, "revise_mode": "full",
         "replan_count": state.get("replan_count", 0) + 1,
     }
 
@@ -58,6 +61,8 @@ def route_after_audit(state: ChapterState) -> str:
     if l1_critical or l2_major:
         # 规则层：L1 critical / L2 major（正文-台账语义矛盾）或预算用尽 → 还能修则修，
         # 否则转人工（persist 按 critical/l2_major 分流进待确认池）
+        if resolve_revise_mode(state) == "patch":
+            return "needs_review" if state.get("patch_count", 0) >= settings.max_patches else "patch"
         if not revision_exhausted:
             return "revise"
         return "needs_review"
@@ -65,6 +70,8 @@ def route_after_audit(state: ChapterState) -> str:
     semantic_block = any(f.get("severity") in ("critical", "major")
                          for f in (state.get("audit_verdict") or {}).get("findings", []))
     if verdict == "rewrite" or (verdict == "pass" and semantic_block):
+        if resolve_revise_mode(state) == "patch":
+            return "needs_review" if state.get("patch_count", 0) >= settings.max_patches else "patch"
         return "needs_review" if revision_exhausted else "revise"
     if verdict == "replan":
         if replan_exhausted:
@@ -81,6 +88,11 @@ def node_route(state: ChapterState) -> ChapterState:
                            node="route", detail={"route": route,
                            "audit_verdict": state.get("audit_verdict"),
                            "revision_count": state.get("revision_count", 0),
+                           "patch_count": state.get("patch_count", 0),
+                           "revise_mode": resolve_revise_mode(state),
+                           "patch_applied": state.get("patch_applied", 0),
+                           "patch_skipped": state.get("patch_skipped", 0),
+                           "patch_rejected_reason": state.get("patch_rejected_reason"),
                            "replan_count": state.get("replan_count", 0),
                            "rule_summary": (state.get("report") or {}).get("summary", {})})
     return {"needs_review": route == "needs_review",
@@ -99,6 +111,7 @@ def build_chapter_graph(checkpointer=None, *, entry: str = "load_state"):
     g.add_node("validate", nodes.node_validate)
     g.add_node("audit", nodes.node_audit)
     g.add_node("revise", nodes.node_revise)
+    g.add_node("patch", nodes.node_patch)
     g.add_node("persist", nodes.node_persist)
     g.add_node("summarize", nodes.node_summarize)
     g.add_node("reset_replan", node_reset_replan)
@@ -119,6 +132,7 @@ def build_chapter_graph(checkpointer=None, *, entry: str = "load_state"):
         {
             "persist": "persist",
             "revise": "revise",
+            "patch": "patch",
             "replan_chapter": "reset_replan",
             "replan_batch": END,   # 单章子图结束，批次层读 replan_batch 信号
             "needs_review": "persist",  # persist 按 critical 决定 awaiting_review/落库（spec §3）
@@ -128,6 +142,7 @@ def build_chapter_graph(checkpointer=None, *, entry: str = "load_state"):
     g.add_edge("reset_replan", "plan_cast")
     # 修订改变了正文：重新抽取记忆并校验，不能持旧候选/旧报告审核新稿。
     g.add_edge("revise", "extract")
+    g.add_edge("patch", "extract")
     g.add_edge("persist", "summarize")
     g.add_edge("summarize", END)
     return g.compile(checkpointer=checkpointer)

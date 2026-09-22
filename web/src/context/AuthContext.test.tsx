@@ -50,6 +50,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
 })
 
 it('validates a stored session before exposing authenticated content', async () => {
@@ -152,15 +153,16 @@ it('ignores a delayed unauthorized event from the previous token', async () => {
 })
 
 it('clears an authenticated session when its local expiry time arrives', async () => {
+  vi.useFakeTimers()
   setSession({
     token: 'short-token', userId: 'user-a', username: 'alice', tier: 'normal', role: 'user', roleVerified: true,
     expiresAt: Date.now() + 50,
   })
   vi.mocked(api.getSession).mockResolvedValue({ user_id: 'user-a', username: 'alice', tier: 'normal', role: 'user' })
-  render(<AuthProvider><Probe /></AuthProvider>)
-
-  await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('authenticated'))
-  await waitFor(() => expect(screen.getByTestId('identity').textContent).toBe('signed-out'), { timeout: 1000 })
+  await act(async () => { render(<AuthProvider><Probe /></AuthProvider>) })
+  expect(screen.getByTestId('status').textContent).toBe('authenticated')
+  await act(async () => { await vi.advanceTimersByTimeAsync(50) })
+  expect(screen.getByTestId('identity').textContent).toBe('signed-out')
   expect(localStorage.getItem('myink.session')).toBeNull()
 })
 
