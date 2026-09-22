@@ -176,7 +176,7 @@ class Finding(BaseModel):
     conflict_key: str = Field(description="hash(类型+实体+位置)")
     conflict_type: ConflictType
     severity: Severity
-    scope: Literal["local", "structural"] = "local"
+    scope: Literal["local", "structural", "unknown"] = "unknown"
     source: FindingSource = "L1"
     evidence: list[EvidenceItem] = Field(default_factory=list)
     confidence: float | None = Field(default=None, ge=0, le=1, description="仅 L2 需要")
