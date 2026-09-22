@@ -1,9 +1,23 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { ConnectionNotices } from './ConnectionNotices'
+import { ConnectionNotices, type ConnectionNotice } from './ConnectionNotices'
 
 afterEach(cleanup)
+
+it('reveals new and updated messages after the notice region has been scrolled', () => {
+  const old: ConnectionNotice = { id: 'old', tone: 'error', text: '旧错误', returnFocus: null }
+  const view = render(<ConnectionNotices items={[old]} onDismiss={vi.fn()} />)
+  const region = screen.getByRole('region', { name: '模型连接通知' })
+  region.scrollTop = 200
+  const next: ConnectionNotice = { id: 'new', tone: 'error', text: '新错误', returnFocus: null }
+  view.rerender(<ConnectionNotices items={[next, old]} onDismiss={vi.fn()} />)
+  expect(region.scrollTop).toBe(0)
+  region.scrollTop = 200
+  view.rerender(<ConnectionNotices items={[{ ...next, text: '重试错误' }, old]} onDismiss={vi.fn()} />)
+  expect(region.scrollTop).toBe(0)
+  expect(screen.getAllByRole('alert')).toHaveLength(2)
+})
 
 it('keeps errors from separate connections without taking focus', () => {
   const trigger = document.createElement('button')
