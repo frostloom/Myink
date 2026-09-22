@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import EnvironmentPage from './EnvironmentPage'
 import { api } from '../lib/api'
 
@@ -26,6 +26,10 @@ const emptyEnv = {
   },
 }
 
+beforeEach(() => {
+  Element.prototype.scrollIntoView = vi.fn()
+})
+
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
@@ -38,6 +42,45 @@ function renderPage() {
     </MemoryRouter>,
   )
 }
+
+it('keeps the draft and presents failed saves in the notification region', async () => {
+  vi.mocked(api.getEnvironment).mockResolvedValue({ ...emptyEnv, model_connections: [{
+    id: 'test', name: '连接 A', protocol: 'openai', base_url: 'https://example.test/v1',
+    model: 'writer', has_api_key: true,
+  }] })
+  vi.mocked(api.listProjects).mockResolvedValue([])
+  vi.mocked(api.updateEnvironment).mockRejectedValue({ status: 500, code: '保存失败', body: null })
+  renderPage()
+  const name = await screen.findByLabelText('连接名称')
+  fireEvent.change(name, { target: { value: '新名称' } })
+  fireEvent.click(screen.getByRole('button', { name: '保存连接与路由' }))
+  const notice = await screen.findByRole('alert')
+  expect(notice.textContent).toContain('保存失败')
+  expect(screen.getByRole('region', { name: '模型连接通知' }).contains(notice)).toBe(true)
+  fireEvent.click(screen.getByRole('button', { name: '关闭通知' }))
+  expect((name as HTMLInputElement).value).toBe('新名称')
+  expect(api.updateEnvironment).toHaveBeenCalledTimes(1)
+})
+
+it.each(['models', 'test'] as const)('reports %s failures visibly without resubmitting on close', async (operation) => {
+  vi.mocked(api.getEnvironment).mockResolvedValue({ ...emptyEnv, model_connections: [{
+    id: 'test', name: '连接 A', protocol: 'openai', base_url: 'https://example.test/v1',
+    model: 'writer', has_api_key: true,
+  }] })
+  vi.mocked(api.listProjects).mockResolvedValue([])
+  vi.mocked(api.listModels).mockResolvedValue({ ok: false, models: [], error: '服务拒绝' })
+  vi.mocked(api.testConnection).mockRejectedValue({ status: 500, code: '服务拒绝', body: null })
+  renderPage()
+  await screen.findByDisplayValue('连接 A')
+  const button = screen.getByRole('button', { name: operation === 'models' ? '获取模型列表' : '测试连接' })
+  fireEvent.click(button)
+  const notice = await screen.findByRole('alert')
+  expect(notice.textContent).toContain('服务拒绝')
+  expect(within(screen.getByRole('region', { name: '模型连接通知' })).getByRole('alert')).toBe(notice)
+  fireEvent.click(screen.getByRole('button', { name: '关闭通知' }))
+  expect(screen.queryByRole('alert')).toBeNull()
+  expect(operation === 'models' ? api.listModels : api.testConnection).toHaveBeenCalledTimes(1)
+})
 
 it('adds a network model and routes Writer through it without exposing saved keys', async () => {
   vi.mocked(api.getEnvironment).mockResolvedValue(emptyEnv)
@@ -67,7 +110,7 @@ it('adds a network model and routes Writer through it without exposing saved key
   }))
 })
 
-it('names the missing field beside the save button and does not save', async () => {
+it('focuses and describes the missing field without saving', async () => {
   vi.mocked(api.getEnvironment).mockResolvedValue(emptyEnv)
   vi.mocked(api.listProjects).mockResolvedValue([])
   vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('33333333-3333-4333-8333-333333333333')
@@ -80,8 +123,11 @@ it('names the missing field beside the save button and does not save', async () 
   fireEvent.change(screen.getByLabelText(/API Key/), { target: { value: 'secret-key' } })
   fireEvent.click(screen.getByRole('button', { name: '保存连接与路由' }))
 
-  const statuses = await screen.findAllByRole('status')
-  expect(statuses.some((el) => el.textContent?.includes('第 1 个模型连接缺少：连接名称'))).toBe(true)
+  const field = screen.getByLabelText('连接名称')
+  expect(document.activeElement).toBe(field)
+  expect(field.getAttribute('aria-invalid')).toBe('true')
+  expect(document.getElementById(field.getAttribute('aria-describedby') ?? '')?.textContent).toContain('连接名称')
+  expect(field.scrollIntoView).toHaveBeenCalled()
   expect(api.updateEnvironment).not.toHaveBeenCalled()
 })
 
@@ -103,14 +149,14 @@ it('fetches the model list into the datalist and tests connectivity', async () =
   await waitFor(() => expect(api.listModels).toHaveBeenCalledWith({
     protocol: 'openai', base_url: 'https://models.example.com/v1', model: 'novel-pro', api_key: 'secret-key',
   }))
-  await screen.findByText(/已获取 2 个模型/)
+  await within(screen.getByRole('main')).findByText(/已获取 2 个模型/)
   const options = Array.from(document.querySelectorAll('datalist option'))
     .map((option) => option.getAttribute('value'))
   expect(options).toEqual(['novel-pro', 'novel-mini'])
 
   fireEvent.click(screen.getByRole('button', { name: '测试连接' }))
   await waitFor(() => expect(api.testConnection).toHaveBeenCalled())
-  await screen.findByText(/连接正常 · 88 ms/)
+  await within(screen.getByRole('main')).findByText(/连接正常 · 88 ms/)
 })
 
 it('does not offer built-in DeepSeek models in the role dropdowns', async () => {
