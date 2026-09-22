@@ -741,6 +741,16 @@
   font-style: normal;
 }
 
+.fieldError {
+  color: var(--ink);
+  font-size: var(--text-small);
+  line-height: 1.5;
+}
+
+.compactField :global(.input[aria-invalid='true']) {
+  border-color: var(--error);
+}
+
 .keyField {
   grid-column: 1 / -1;
 }

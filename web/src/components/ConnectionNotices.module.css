@@ -1,0 +1,29 @@
+.region {
+  position: fixed;
+  z-index: 900; /* 高于正文，低于现有 GuestPromptDialog 的 1000 */
+  inset-inline-end: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  width: min(26rem, calc(100vw - 32px));
+  max-height: 45dvh;
+  overflow-y: auto;
+  display: grid;
+  gap: 8px;
+}
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line-strong);
+  border-inline-start: 3px solid var(--success);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--ink);
+  box-shadow: var(--shadow-soft);
+  font-size: var(--text-body);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.notice[data-tone='error'] { border-inline-start-color: var(--error); }
+.notice > div { flex: 1; min-width: 0; }
+.notice > button { flex: none; }

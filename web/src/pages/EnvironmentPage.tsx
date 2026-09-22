@@ -1,6 +1,7 @@
 // 账号级环境配置：模型连接/路由 + MCP 扫榜。作品库即可进入，不绑具体书。
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ConnectionNotices, type ConnectionNotice } from '../components/ConnectionNotices'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
 import { useGuest } from '../hooks/useGuest'
@@ -25,6 +26,9 @@ const MODEL_ROLES = [
   { key: 'summarize', label: '摘要（summarize）' },
 ]
 const EMPTY_ROUTE = { value: '', label: '未指定' }
+
+type ConnectionField = 'name' | 'base_url' | 'model' | 'api_key'
+type FieldProblem = { key: string; text: string } | null
 
 type ModelConnectionDraft = ModelConnection & { api_key: string }
 
@@ -55,11 +59,47 @@ export default function EnvironmentPage() {
   const [probes, setProbes] = useState<Record<string, ProbeState>>({})
   const [rankings, setRankings] = useState<RankingsConfig>(EMPTY_RANKINGS)
   const [thinkingEnabled, setThinkingEnabled] = useState(false)
-  const [connMsg, setConnMsg] = useState<SectionMsg>(null)
+  const [notices, setNotices] = useState<ConnectionNotice[]>([])
+  const [fieldProblem, setFieldProblem] = useState<FieldProblem>(null)
+  const fieldRefs = useRef(new Map<string, HTMLInputElement>())
   const [rankMsg, setRankMsg] = useState<SectionMsg>(null)
   const [rankProbe, setRankProbe] = useState<{ loading: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [banner, setBanner] = useState<string | null>(null)
+
+  function notify(id: string, tone: 'error' | 'ok', text: string, returnFocus: HTMLElement | null) {
+    setNotices((previous) => [
+      { id, tone, text, returnFocus }, ...previous.filter((item) => item.id !== id),
+    ])
+  }
+
+  function rejectField(id: string, field: ConnectionField, text: string) {
+    const key = `${id}:${field}`
+    setFieldProblem({ key, text })
+    setBusy(null)
+    fieldRefs.current.get(key)?.focus()
+    fieldRefs.current.get(key)?.scrollIntoView({ block: 'center', behavior: 'auto' })
+    return false
+  }
+
+  function fieldAttributes(id: string, field: ConnectionField) {
+    const key = `${id}:${field}`
+    return {
+      ref: (element: HTMLInputElement | null) => {
+        if (element) fieldRefs.current.set(key, element)
+        else fieldRefs.current.delete(key)
+      },
+      'aria-invalid': fieldProblem?.key === key || undefined,
+      'aria-describedby': fieldProblem?.key === key ? `error-${key}` : undefined,
+    }
+  }
+
+  function fieldMessage(id: string, field: ConnectionField) {
+    const key = `${id}:${field}`
+    return fieldProblem?.key === key
+      ? <span id={`error-${key}`} className={styles.fieldError}>{fieldProblem.text}</span>
+      : null
+  }
 
   const load = useCallback(async () => {
     setBanner(null)
@@ -85,37 +125,29 @@ export default function EnvironmentPage() {
   }, [load])
 
   async function saveRoutes() {
+    const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const routes = Object.fromEntries(
       MODEL_ROLES.map((r) => [r.key, routeSel[r.key]]).filter(([, v]) => v),
     ) as Record<string, string>
     setBusy('routes')
     setBanner(null)
-    setConnMsg(null)
+    setFieldProblem(null)
     const connections: ModelConnectionInput[] = []
-    for (const [index, draft] of connectionDrafts.entries()) {
+    for (const draft of connectionDrafts) {
       const name = draft.name.trim()
       const baseUrl = draft.base_url.trim().replace(/\/$/, '')
       const model = draft.model.trim()
-      const missing = [
-        !name && '连接名称', !baseUrl && '请求地址', !model && '模型 id',
-      ].filter(Boolean).join('、')
-      if (missing) {
-        setBusy(null)
-        setConnMsg({ tone: 'error', text: `第 ${index + 1} 个模型连接缺少：${missing}` })
-        return
-      }
+      if (!name) return rejectField(draft.id, 'name', '请填写连接名称')
+      if (!baseUrl) return rejectField(draft.id, 'base_url', '请填写请求地址')
+      if (!model) return rejectField(draft.id, 'model', '请填写模型 id')
       try {
         const parsed = new URL(baseUrl)
         if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('scheme')
       } catch {
-        setBusy(null)
-        setConnMsg({ tone: 'error', text: `模型连接“${name}”的请求地址无效` })
-        return
+        return rejectField(draft.id, 'base_url', '请输入有效的 http/https 请求地址')
       }
       if (!draft.has_api_key && !draft.api_key.trim()) {
-        setBusy(null)
-        setConnMsg({ tone: 'error', text: `新模型连接“${name}”需要填写 API Key` })
-        return
+        return rejectField(draft.id, 'api_key', '请填写 API Key')
       }
       connections.push({
         id: draft.id,
@@ -131,9 +163,9 @@ export default function EnvironmentPage() {
         model_routes: routes, model_connections: connections, thinking_enabled: thinkingEnabled,
       })
       await load()
-      setConnMsg({ tone: 'ok', text: `已保存 ${connections.length} 个模型连接与路由` })
+      notify('save', 'ok', '模型连接与路由已保存', returnFocus)
     } catch (err) {
-      setConnMsg({ tone: 'error', text: formatApiError(err) })
+      notify('save', 'error', formatApiError(err), returnFocus)
     } finally {
       setBusy(null)
     }
@@ -152,6 +184,7 @@ export default function EnvironmentPage() {
   }
 
   function updateConnection(id: string, patch: Partial<ModelConnectionDraft>) {
+    setFieldProblem((problem) => problem && Object.keys(patch).some((field) => problem.key === `${id}:${field}`) ? null : problem)
     setConnectionDrafts((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item))
   }
 
@@ -178,31 +211,33 @@ export default function EnvironmentPage() {
   }
 
   function probeReady(draft: ModelConnectionDraft, needModel: boolean): boolean {
+    setFieldProblem(null)
     if (!draft.base_url.trim()) {
-      setConnMsg({ tone: 'error', text: '请先填写请求地址' })
-      return false
+      return rejectField(draft.id, 'base_url', '请填写请求地址')
     }
     if (needModel && !draft.model.trim()) {
-      setConnMsg({ tone: 'error', text: '请先填写模型 id' })
-      return false
+      return rejectField(draft.id, 'model', '请填写模型 id')
     }
     if (!draft.has_api_key && !draft.api_key.trim()) {
-      setConnMsg({ tone: 'error', text: '请先填写 API Key' })
-      return false
+      return rejectField(draft.id, 'api_key', '请填写 API Key')
     }
     return true
   }
 
   async function fetchModels(draft: ModelConnectionDraft) {
+    const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     if (!probeReady(draft, false)) return
-    setConnMsg(null)
+    setFieldProblem(null)
     setProbes((p) => ({ ...p, [draft.id]: { ...p[draft.id], loading: 'models' } }))
     try {
       const res = await api.listModels(probeBody(draft))
+      notify(`probe:${draft.id}`, res.ok ? 'ok' : 'error',
+        `${draft.name.trim() || '模型连接'}：${res.ok ? `已获取 ${res.models.length} 个模型` : (res.error ?? '获取模型列表失败')}`, returnFocus)
       setProbes((p) => ({ ...p, [draft.id]: {
         loading: undefined, models: res.models, listError: res.ok ? undefined : (res.error ?? '拉取失败'),
       } }))
     } catch (err) {
+      notify(`probe:${draft.id}`, 'error', `${draft.name.trim() || '模型连接'}：${formatApiError(err, '获取模型列表失败')}`, returnFocus)
       setProbes((p) => ({ ...p, [draft.id]: {
         loading: undefined, listError: formatApiError(err, '拉取失败'),
       } }))
@@ -210,13 +245,17 @@ export default function EnvironmentPage() {
   }
 
   async function runTest(draft: ModelConnectionDraft) {
+    const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     if (!probeReady(draft, true)) return
-    setConnMsg(null)
+    setFieldProblem(null)
     setProbes((p) => ({ ...p, [draft.id]: { ...p[draft.id], loading: 'test' } }))
     try {
       const res = await api.testConnection(probeBody(draft))
+      notify(`probe:${draft.id}`, res.ok ? 'ok' : 'error',
+        `${draft.name.trim() || '模型连接'}：${res.ok ? `连接正常 · ${res.latency_ms} ms` : (res.error ?? '连接测试失败')}`, returnFocus)
       setProbes((p) => ({ ...p, [draft.id]: { ...p[draft.id], loading: undefined, test: res } }))
     } catch (err) {
+      notify(`probe:${draft.id}`, 'error', `${draft.name.trim() || '模型连接'}：${formatApiError(err, '连接测试失败')}`, returnFocus)
       setProbes((p) => ({ ...p, [draft.id]: { loading: undefined, test: {
         ok: false, latency_ms: 0, reply: null, error: formatApiError(err, '测试失败'),
       } } }))
@@ -286,6 +325,7 @@ export default function EnvironmentPage() {
 
   return (
     <div className={styles.wrap}>
+      <ConnectionNotices items={notices} onDismiss={(id) => setNotices((items) => items.filter((item) => item.id !== id))} />
       <ProjectRail projects={projects} onLogout={logout} />
       <main className={styles.main}>
         <div className={styles.inner}>
@@ -317,9 +357,12 @@ export default function EnvironmentPage() {
                 {connectionDrafts.map((connection) => (
                   <article key={connection.id} className={styles.connectionCard}>
                     <div className={styles.connectionHead}>
-                      <input className="input" aria-label="连接名称" value={connection.name}
+                      <div className={styles.compactField}>
+                      <input {...fieldAttributes(connection.id, 'name')} className="input" aria-label="连接名称" value={connection.name}
                         onChange={(e) => updateConnection(connection.id, { name: e.target.value })}
                         placeholder="例如：DeepSeek / 我的 Claude" />
+                      {fieldMessage(connection.id, 'name')}
+                      </div>
                       <select className="input" aria-label="接口协议" value={connection.protocol}
                         onChange={(e) => updateConnection(connection.id, { protocol: e.target.value as 'openai' | 'anthropic' })}>
                         <option value="openai">OpenAI 兼容</option>
@@ -331,24 +374,27 @@ export default function EnvironmentPage() {
                     <div className={styles.connectionGrid}>
                       <label className={styles.compactField}>
                         <span>请求地址</span>
-                        <input className="input" value={connection.base_url}
+                        <input {...fieldAttributes(connection.id, 'base_url')} className="input" value={connection.base_url}
                           onChange={(e) => updateConnection(connection.id, { base_url: e.target.value })}
                           placeholder={connection.protocol === 'anthropic' ? 'https://api.anthropic.com' : 'https://api.openai.com/v1'} />
+                        {fieldMessage(connection.id, 'base_url')}
                       </label>
                       <label className={styles.compactField}>
                         <span>模型 id</span>
-                        <input className="input" list={`models-${connection.id}`} value={connection.model}
+                        <input {...fieldAttributes(connection.id, 'model')} className="input" list={`models-${connection.id}`} value={connection.model}
                           onChange={(e) => updateConnection(connection.id, { model: e.target.value })}
                           placeholder={connection.protocol === 'anthropic' ? 'claude-sonnet-4-5' : 'gpt-4o'} />
+                        {fieldMessage(connection.id, 'model')}
                         <datalist id={`models-${connection.id}`}>
                           {(probes[connection.id]?.models ?? []).map((m) => <option key={m} value={m} />)}
                         </datalist>
                       </label>
                       <label className={`${styles.compactField} ${styles.keyField}`}>
                         <span>API Key {connection.has_api_key && <em>已保存，留空即保留</em>}</span>
-                        <input className="input" type="password" autoComplete="new-password" value={connection.api_key}
+                        <input {...fieldAttributes(connection.id, 'api_key')} className="input" type="password" autoComplete="new-password" value={connection.api_key}
                           onChange={(e) => updateConnection(connection.id, { api_key: e.target.value })}
                           placeholder={connection.has_api_key ? '••••••••（留空保留）' : '输入 API Key（保存后不再显示原文）'} />
+                        {fieldMessage(connection.id, 'api_key')}
                       </label>
                     </div>
                     <div className={styles.probeRow}>
@@ -426,14 +472,6 @@ export default function EnvironmentPage() {
               >
                 {busy === 'routes' ? '保存中…' : '保存连接与路由'}
               </button>
-              {connMsg && (
-                <span
-                  role="status"
-                  className={`${styles.saveMsg} ${connMsg.tone === 'error' ? styles.saveMsgError : ''}`}
-                >
-                  {connMsg.text}
-                </span>
-              )}
             </div>
           </section>
 
