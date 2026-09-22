@@ -85,7 +85,7 @@ def test_connection(protocol: Protocol, base_url: str, api_key: str,
             # 2xx 但不是 JSON 对象（误配到返回数组/字符串的端点）也走「不连通 + 可诊断」，
             # 否则 data.get 抛 AttributeError 逃出探针 → 路由 500，前端只看到「服务器错误」。
             if not isinstance(data, dict):
-                raise ValueError(f"响应不是 JSON 对象: {str(data)[:120]}")
+                raise ValueError(f"响应不是 JSON 对象: {data}")
             reply = _reply_text(protocol, data)
     except httpx.HTTPStatusError as exc:
         return False, int((time.monotonic() - started) * 1000), None, _status_error(exc, api_key)

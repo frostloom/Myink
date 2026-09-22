@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import styles from './ConnectionNotices.module.css'
 
@@ -12,8 +13,15 @@ export function ConnectionNotices({ items, onDismiss }: {
   items: ConnectionNotice[]
   onDismiss: (id: string) => void
 }) {
+  const regionRef = useRef<HTMLElement>(null)
+  const newest = items[0]
+  useLayoutEffect(() => {
+    // 新结果始终位于列表顶端；浏览器的滚动锚定不能把它留在裁切区外。
+    if (regionRef.current) regionRef.current.scrollTop = 0
+  }, [newest])
+
   return createPortal(
-    <section className={styles.region} aria-label="模型连接通知">
+    <section ref={regionRef} className={styles.region} aria-label="模型连接通知">
       {items.map((item) => (
         <div className={styles.notice} key={item.id} data-tone={item.tone}
           onKeyDown={(event) => {
