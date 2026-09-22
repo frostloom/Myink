@@ -44,6 +44,7 @@ class Settings:
     )
     # 项目自定义模型密钥的静态加密主密钥；空值时沿用 JWT_SECRET 派生密钥以兼容本地部署。
     model_credential_key: str = field(default_factory=lambda: _env("MODEL_CREDENTIAL_KEY", "") or "")
+    self_host_url: str = field(default_factory=lambda: _env("SELF_HOST_URL", "") or "")
     log_level: str = field(default_factory=lambda: _env("LOG_LEVEL", "INFO") or "INFO")
 
     # 本地 embedding（§5.2 一库多用）：bge-m3 中英双语，1024 维与 embeddings 表 Vector(1024) 匹配
