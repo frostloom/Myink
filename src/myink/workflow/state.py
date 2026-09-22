@@ -58,6 +58,11 @@ class ChapterState(TypedDict, total=False):
 
     # revise 产物
     revision_count: int
+    patch_count: int
+    revise_mode: str
+    patch_applied: int
+    patch_skipped: int
+    patch_rejected_reason: str | None
     revise_responses: list[dict]
 
     # 只读查证工具调用痕迹（§10：audit/write 持只读工具，仅记录不落库，纯 checkpoint）

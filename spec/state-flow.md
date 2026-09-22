@@ -78,15 +78,21 @@ flowchart TD
 route_after_audit(state):
   if error: return "fail"
   if L1 critical 或 L2 major:
+      if 规则与审核的阻塞发现全部显式 local:
+          return "needs_review" if patch_count >= max_patches else "patch"
       return "needs_review" if revision_count >= max_revisions else "revise"
   if verdict == "rewrite" 或 verdict == "pass" 但仍有 major/critical findings:
+      if 规则与审核的阻塞发现全部显式 local:
+          return "needs_review" if patch_count >= max_patches else "patch"
       return "needs_review" if revision_count >= max_revisions else "revise"
   if verdict == "replan":
       if replan_count >= max_replans: return "needs_review"
       return "replan_chapter" if target=="chapter" 或非批次任务 else "replan_batch"
   return "persist" if verdict == "pass" else "needs_review"
 
-# rewrite/replan 预算独立；干净通过的稿件不因历史轮次用尽而停下。
+# patch/rewrite/replan 预算独立；干净通过的稿件不因历史轮次用尽而停下。
+# scope 缺失/unknown 或规则 summary 缺对应发现时保守走 revise。
+# patch 只应用唯一命中的有界补丁，然后重新 extract → validate → audit。
 # route 节点记录实际去向、规则计数、审核建议，前端直接显示。
 # 单章可逐次选择 auto/manual；manual 禁用批量生成。Plan 与正文是中栏内互斥的
 # 全幅页面，通过 Redis Stream 发送 artifact_reset/delta/complete，前端直接呈现真实
@@ -112,12 +118,12 @@ route_after_chapter(batch):
 ```
 
 - 条件路由是**纯函数**，不在节点内部自由跳转——可观测、可测试；语义建议由 Audit 提供，规则只兜硬约束与预算（§6.11 混合路由）；
-- `max_revisions = 2`（rewrite）/ `max_replans = 1`（replan）；同一 `conflict_key` 跨修订轮稳定，去重不计入轮次。
+- `max_patches = 2`（patch）/ `max_revisions = 2`（rewrite）/ `max_replans = 1`（replan）；同一 `conflict_key` 跨修订轮稳定，去重不计入轮次。
 
 ## 4. 修订循环契约（审核中枢驱动）
 
 - **触发源**：`audit` 的 verdict=rewrite（不是校验报告直接触发）——Audit 输出 L2 findings + 建议 → revise 逐条修；
-- findings 每项带**冲突作用域**（`scope`）：`local`（段落级，预算 1 轮） / `structural`（整章，预算 2 轮）；
+- findings 每项带**冲突作用域**（scope）：local（有界补丁，独立预算 2 轮）/ structural（整章，预算 2 轮）/ unknown（默认，保守按整章处理）；历史记录不回填。
 - revise 注入 unresolved findings 和完整写作上下文，要求**逐条结构化响应**（`fixed / cannot_fix / dispute`）+ 修订后草稿；随后重新抽取、校验和审核，不能持旧候选落库。
 - 修订预算耗尽且审核仍为 rewrite/replan 时，persist 标记 awaiting_review；作者明确续跑才接受当前稿。干净通过的稿件正常落库。
 - 每条 finding 的"生死"（提出 → 修复 → 复验）落 `finding_status`；

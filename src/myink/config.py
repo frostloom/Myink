@@ -64,6 +64,7 @@ class Settings:
     # 完整请求（正文、提示词、记忆、工具）的独立上限；召回预算不能充当正文预算。
     request_token_budget: int = field(default_factory=lambda: int(_env("REQUEST_TOKEN_BUDGET", "64000") or "64000"))
     max_revisions: int = 2  # rewrite 轮次上限（spec/state-flow.md §3）
+    max_patches: int = 2  # 局部补丁独立预算，不占用全章重写轮次
     max_replans: int = 1  # replan 轮次上限（重规划比重写贵，预算更紧，§6.5）
     max_tool_calls: int = 3  # 只读查证工具执行总数预算（§10：audit/write 工具循环封顶）
     batch_max_default: int = 5  # 批次上限默认（plan.md §6.11）

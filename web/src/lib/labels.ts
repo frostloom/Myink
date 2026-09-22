@@ -12,6 +12,7 @@ export const NODE_LABELS: Record<string, string> = {
   extract: '记忆抽取',
   validate: '校验',
   revise: '修订',
+  patch: '局部修订',
   audit: '审核',
   route: '策略路由',
   reset_replan: '重新规划',

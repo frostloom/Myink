@@ -54,6 +54,7 @@ const ROUTE_LABELS: Record<string, string> = {
   plan_review: '等待确认计划',
   persist: '通过，进入落库',
   revise: '重写并复审',
+  patch: '局部修订并复审',
   replan_chapter: '重规划本章',
   replan_batch: '重规划批次',
   needs_review: '转人工确认',
@@ -179,6 +180,10 @@ export function TaskTimeline({
                                   <div><dt>Token</dt><dd>{(run.input_tokens + run.output_tokens).toLocaleString('zh-CN')}</dd></div>
                                 </dl>
                                 {run.retry_count > 0 && <span className={styles.retry}>重试 {run.retry_count} 次</span>}
+                                {run.node === 'patch' && run.detail?.patch_applied !== undefined && (
+                                  <span className={styles.retry}>应用 {run.detail.patch_applied} · 跳过 {run.detail.patch_skipped ?? 0}</span>
+                                )}
+                                {run.detail?.patch_rejected_reason && <p className={styles.stepError}>{run.detail.patch_rejected_reason}</p>}
                                 {run.error && <p className={styles.stepError}>{formatErrorText(run.error, undefined, run.error)}</p>}
                               </div>
                             </li>

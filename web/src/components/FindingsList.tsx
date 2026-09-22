@@ -28,6 +28,7 @@ export function FindingsList({ findings, onNavigateChapter }: Props) {
               {severityLabel(f.severity)}
             </StatusBadge>
             <span className={styles.findingType}>{conflictTypeLabel(f.conflict_type)}</span>
+            <span className={styles.findingType}>{f.scope === 'local' ? '局部' : f.scope === 'structural' ? '结构' : '范围未定'}</span>
           </div>
           <p className={styles.findingSrc}>{findingSourceLabel(f.source)}</p>
           {f.evidence.map((ev, i) => (
