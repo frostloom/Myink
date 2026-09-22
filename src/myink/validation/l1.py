@@ -113,7 +113,14 @@ def _parallel_quotes(text: str) -> list[str]:
 def _prose_ban_quotes(text: str) -> list[str]:
     quotes: list[str] = []
     for pattern in (_NOT_BUT, _NOT_IS):
-        quotes.extend(match.group(0) for match in pattern.finditer(text))
+        for match in pattern.finditer(text):
+            # 匹配式只负责判定；证据还需包含「是」之后的内容，供审核/修订定位。
+            # 保留原文切片，遇句末或换行停止，避免把后续正文整段带入报告。
+            end = match.start()
+            limit = min(len(text), match.start() + 160)
+            while end < limit and text[end] not in "。！？!?\r\n":
+                end += 1
+            quotes.append(text[match.start():end])
     quotes.extend(_parallel_quotes(text))
     seen: set[str] = set()
     ordered: list[str] = []

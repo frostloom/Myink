@@ -7,11 +7,49 @@ from __future__ import annotations
 
 import uuid
 
+import pytest
+
 from myink.db import tenant_session
-from myink.validation.l1 import L1Validator
+from myink.validation.l1 import L1Validator, _prose_ban_quotes
 from myink.validation.service import ValidationService
 
 REALM_ORDER = ["炼气", "筑基", "金丹", "元婴", "化神", "大乘", "渡劫"]
+
+
+@pytest.mark.parametrize("ending", ["。", "！", "？", "!", "?", "\n", "\r\n"])
+def test_prose_evidence_includes_right_clause_without_next_sentence(ending):
+    draft = "他不是害怕，是不愿意走" + ending + "门外有人。"
+    assert _prose_ban_quotes(draft) == ["不是害怕，是不愿意走"]
+
+
+def test_not_but_evidence_includes_right_clause_at_end_of_text():
+    assert _prose_ban_quotes("他不是胆怯，而是在等援兵") == ["不是胆怯，而是在等援兵"]
+
+
+def test_prose_evidence_keeps_original_whitespace():
+    assert _prose_ban_quotes("他不是害怕, 是  不愿意走。") == ["不是害怕, 是  不愿意走"]
+
+
+def test_long_prose_evidence_is_bounded_and_remains_an_exact_excerpt():
+    draft = "他不是害怕，是不愿意走" + "远" * 500
+    quotes = _prose_ban_quotes(draft)
+    assert len(quotes) == 1
+    assert "是不愿意走" in quotes[0]
+    assert quotes[0] in draft
+    assert len(quotes[0]) <= 160
+
+
+def test_prose_evidence_bounds_whitespace_inside_the_detected_match():
+    draft = "不是害怕，" + " " * 500 + "是不愿意走。"
+    quotes = _prose_ban_quotes(draft)
+    assert len(quotes) == 1
+    assert quotes[0] in draft
+    assert len(quotes[0]) <= 160
+
+
+def test_prose_evidence_does_not_cross_a_newline_inside_the_match():
+    # 既有检测式的逗号后允许空白；本次不改判定，只限制展示证据的范围。
+    assert _prose_ban_quotes("不是害怕，\n是不愿意走。") == ["不是害怕，"]
 
 
 def _check(pid: str, draft, seq: int = 15) -> list[dict]:
