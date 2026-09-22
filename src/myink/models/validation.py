@@ -36,7 +36,7 @@ class Finding(Base, UUIDPkMixin, TimestampMixin):
     conflict_key: Mapped[str] = mapped_column(String(128), nullable=False, comment="hash(类型+实体+位置)")
     conflict_type: Mapped[str] = mapped_column(String(32), nullable=False)
     severity: Mapped[str] = mapped_column(String(16), nullable=False, comment="critical/major/minor/hint")
-    scope: Mapped[str] = mapped_column(String(16), default="local", nullable=False)
+    scope: Mapped[str] = mapped_column(String(16), default="unknown", nullable=False)
     source: Mapped[str] = mapped_column(String(4), default="L1", nullable=False)
     evidence: Mapped[list] = mapped_column(JSON, default=list, nullable=False, comment="[{chapter,quote}]")
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True, comment="仅 L2 需要")
