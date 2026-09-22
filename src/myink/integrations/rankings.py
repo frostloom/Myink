@@ -44,12 +44,18 @@ _ALLOWED = {"rank", "title", "author", "tags", "tag", "hot"}
 _FIELD_CAP = {"title": 120, "author": 60, "tags": 12, "hot": 40}
 _MAX_TAGS = 8
 
-# 按 source 给榜单工具的建议参数（与 DaoSearch REST 文档对齐；工具名/参数以 list_tools 为准，
-# 对不上时 sanitize + 降级兜底）
+# 参数属于精确工具契约，不属于用户选择的 source。未知工具禁止试探调用。
 _TOOL_ARGS: dict[str, dict[str, Any]] = {
-    "qidian": {"type": "hotsales", "genre": "overall"},
-    "community": {"period": "all-time", "genre": "1"},
+    "qidian_rank": {"type": "hotsales", "genre": "overall"},
+    "community_rank": {"period": "all-time", "genre": "1"},
 }
+_SOURCE_TOOLS = {"qidian": "qidian_rank", "community": "community_rank"}
+_COLLECTION_KEYS = ("items", "rankings", "data", "list", "books")
+
+
+def _tool_args(tool: str) -> dict[str, Any] | None:
+    args = _TOOL_ARGS.get(tool)
+    return dict(args) if args is not None else None
 
 
 def _clean_text(value: Any, cap: int) -> str:
@@ -90,7 +96,9 @@ def _extract_rows(raw: Any) -> list[Any]:
     if isinstance(raw, list):
         return raw
     if isinstance(raw, dict):
-        for key in ("items", "rankings", "data", "list", "books"):
+        if raw.get("title") and any(isinstance(raw.get(k), list) for k in _COLLECTION_KEYS):
+            return []  # 带标题的分类容器，不把其标题或子分类当成书。
+        for key in _COLLECTION_KEYS:
             if isinstance(raw.get(key), list):
                 return raw[key]
         if raw.get("title"):
@@ -114,6 +122,8 @@ def sanitize(raw: Any, *, limit: int) -> list[dict[str, Any]]:
     for row in _extract_rows(raw):
         if not isinstance(row, dict):
             continue
+        if any(isinstance(row.get(k), list) for k in _COLLECTION_KEYS):
+            continue  # 混合返回中也逐条过滤；伪造 rank 字段不能绕过。
         title = _clean_text(row.get("title"), _FIELD_CAP["title"])
         if not title:
             continue
@@ -137,17 +147,11 @@ def sanitize(raw: Any, *, limit: int) -> list[dict[str, Any]]:
 
 
 def _find_tool(tools: list[str], source: str, override: str) -> str | None:
-    """榜单工具发现：RANKINGS_TOOL 精确命中优先；否则 name 含 "rank" 模糊匹配，source 命中优先。"""
+    """只做精确发现；显式覆盖的参数契约由调用前的 _tool_args 再检查。"""
     if override:
         return override if override in tools else None
-    candidates = [t for t in tools if "rank" in t.lower()]
-    if not candidates:
-        return None
-    if source:
-        for t in candidates:
-            if source in t.lower():
-                return t
-    return candidates[0]
+    candidate = _SOURCE_TOOLS.get(source)
+    return candidate if candidate in tools else None
 
 
 @dataclass
@@ -209,7 +213,11 @@ class RankingsService:
                         error=f"未在 MCP server 发现榜单工具（可用: {tools[:10] or '无'}）",
                         items=_SAMPLE_ITEMS,
                     )
-                raw = await client.call_tool(tool, _TOOL_ARGS.get(st.rankings_source, {}))
+                args = _tool_args(tool)
+                if args is None:
+                    return RankingsResult(source="sample", error=f"工具 {tool} 无受支持的参数约定",
+                                          items=_SAMPLE_ITEMS)
+                raw = await client.call_tool(tool, args)
                 items = sanitize(raw, limit=st.rankings_limit)
                 if not items:
                     return RankingsResult(
@@ -225,7 +233,7 @@ class RankingsService:
             # mcp SDK 内部 cancel scope 触发（初始化/请求挂起被取消）——CancelledError 是
             # BaseException，`except Exception` 捕不住；外部通道不可靠，照常降级不炸节点。
             logger.info("扫榜降级（MCP 请求被取消，连接挂起或通道关闭）")
-            return RankingsResult(source="sample", error="扫榜请求被取消", items=_SAMPLE_ITEMS)
+            return RankingsResult(source="sample", error="扫榜服务不可达（连接失败或被取消）", items=_SAMPLE_ITEMS)
         except McpError as exc:
             logger.info("扫榜降级（MCP 错误）: %s", exc)
             return RankingsResult(source="sample", error=str(exc), items=_SAMPLE_ITEMS)
