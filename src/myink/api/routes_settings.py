@@ -161,7 +161,10 @@ def _response(st: ProjectSettings | None) -> dict:
         }
     routes, connections = unpack_model_settings(st.model_routes)
     return {
-        "style_profile": st.style_profile or {},
+        "style_profile": {
+            key: value for key, value in (st.style_profile or {}).items()
+            if key not in ("fatigue_words", "fatigue_patterns")
+        },
         "skill_pack": st.skill_pack,
         "genre_pack": public_pack(st.genre_pack),
         "model_routes": keep_custom_routes(routes, connections),

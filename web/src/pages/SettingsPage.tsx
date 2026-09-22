@@ -16,10 +16,8 @@ const KEY_LABELS: Record<string, string> = {
   sentence_style: '句式风格',
   dialogue: '对话腔调',
   forbidden: '禁用表达（每行一条）',
-  fatigue_words: '疲劳高频词（每行一条）',
-  fatigue_patterns: '疲劳句式模式（每行一条）',
 }
-const KEY_ORDER = ['pov', 'sentence_style', 'dialogue', 'forbidden', 'fatigue_words', 'fatigue_patterns']
+const KEY_ORDER = ['pov', 'sentence_style', 'dialogue', 'forbidden']
 
 function orderedKeys(profile: StyleProfile): string[] {
   const known = KEY_ORDER.filter((k) => k in profile)

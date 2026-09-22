@@ -4,8 +4,8 @@
   一次调用）→ 合并返回 StyleProfile **草稿**（不落库）；LLM 失败降级只回统计层 +
   extract_error（§6.12 不 500、不阻塞）；extract 调用记 agent_runs（§6.8 成本透明）。
 - PUT /projects/{pid}/style-profile：前端可编辑草稿后回传 → 校验 → 编排层落库
-  project_settings.style_profile + 递增 version（乐观版本号 §7.6）；键级保留 L1 基线键
-  fatigue_words/patterns（样本草稿确认不抹预设，显式 [] 可清空）。
+  project_settings.style_profile + 递增 version（乐观版本号 §7.6）；
+  fatigue_words / fatigue_patterns 不落库。
 
 与 §7.11 设定治理权威模型一致：agent 只提案、用户确认是唯一 canon（不走记忆候选池）；
 数据流边界（§6.2）：确认 = 编排层写库入口，与 persist 同层。
@@ -106,12 +106,13 @@ def put_style_profile(project_id: str, body: StyleProfileBody) -> dict:
     """确认落库：编排层写 project_settings.style_profile + version 递增（§7.6 乐观版本号）。
 
     - 剔除瞬态诊断键 extract_error（草稿降级提示不落库）；
-    - 键级保留 L1 基线键 fatigue_words/patterns：样本草稿白名单收键不含检测基线，确认时不抹
-      预设（显式传 [] 可清空）；其余键仍整档案覆盖；
+    - 剔除 fatigue_words / fatigue_patterns（不再注入提示，也不再按频率统计）；
     - body.skill_pack 非 None 时一并落 skill_pack（预设导入 = profile + marker 原子写）。
     """
     profile = dict(body.profile)
     profile.pop("extract_error", None)
+    profile.pop("fatigue_words", None)
+    profile.pop("fatigue_patterns", None)
     try:
         profile = validate_profile(profile)
     except ValueError as exc:
@@ -123,10 +124,6 @@ def put_style_profile(project_id: str, body: StyleProfileBody) -> dict:
             st = ProjectSettings(project_id=_pid(project_id), style_profile=profile, version=1)
             db.add(st)
         else:
-            existing = st.style_profile or {}
-            for k in ("fatigue_words", "fatigue_patterns"):
-                if k not in profile and existing.get(k) is not None:
-                    profile[k] = existing[k]
             st.style_profile = profile
             st.version = (st.version or 1) + 1
         if body.skill_pack is not None:

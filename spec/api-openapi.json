@@ -8472,7 +8472,7 @@
     },
     "/api/v1/projects/{project_id}/style-profile": {
       "put": {
-        "description": "确认落库：编排层写 project_settings.style_profile + version 递增（§7.6 乐观版本号）。\n\n- 剔除瞬态诊断键 extract_error（草稿降级提示不落库）；\n- 键级保留 L1 基线键 fatigue_words/patterns：样本草稿白名单收键不含检测基线，确认时不抹\n  预设（显式传 [] 可清空）；其余键仍整档案覆盖；\n- body.skill_pack 非 None 时一并落 skill_pack（预设导入 = profile + marker 原子写）。",
+        "description": "确认落库：编排层写 project_settings.style_profile + version 递增（§7.6 乐观版本号）。\n\n- 剔除瞬态诊断键 extract_error（草稿降级提示不落库）；\n- 剔除 fatigue_words / fatigue_patterns（不再注入提示，也不再按频率统计）；\n- body.skill_pack 非 None 时一并落 skill_pack（预设导入 = profile + marker 原子写）。",
         "operationId": "put_style_profile_api_v1_projects__project_id__style_profile_put",
         "parameters": [
           {

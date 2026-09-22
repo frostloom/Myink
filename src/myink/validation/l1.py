@@ -8,7 +8,7 @@
 - 关系台账自洽（重复/矛盾活跃行，§7.8）
 - 伏笔烂尾 / 主线停滞（样例 18/19/23/26/27）
 - 桥段重复向量近邻（样例 14，阴性 32 对照，§8.6）：事件向量近邻 + 呼应词豁免
-- 高频句式统计（样例 15，§8.6 AI 味治理）：fatigue_words/patterns 频次超阈值 → style hint
+- 句式禁令（任何题材）：「不是…而是…」「不是…，是…」、连续排比，出现即 critical
 
 conflict_key = hash(类型+实体+位置)，跨修订轮稳定（§6.4）。
 """
@@ -41,11 +41,10 @@ _FS_DEVELOPING_STALL = 10
 # 样例 19 阈值：主线连续 15 章未推进 → 停滞 hint（支线可长期休眠，样例 27 阴性）
 _THREAD_STALL = 15
 
-# 样例 15 阈值：AI 味高频句式/用词统计（§8.6 文风与 AI 味治理检测侧）。
-# 单句式模式单章 ≥2 次 / 单高频词单章 ≥3 次 → 记 offender。宁缺毋滥（§8.8）：
-# 文风是作者自由，只暴露"复发趋势"标 hint 不阻塞。样例 15 单章内 2 处「不是…而是…」恰在边界。
-_STYLE_PATTERN_CAP = 2
-_STYLE_WORD_CAP = 3
+# 句式禁令：同一句内「不是…而是…」「不是…，是…」，以及连续三个结构相同的分句。
+_NOT_BUT = re.compile(r"(?<!是)不是[^。！？!?\n]{0,40}而是")
+_NOT_IS = re.compile(r"(?<!是)不是[^。！？!?\n]{0,40}[，,]\s*是")
+_SENTENCE_END = re.compile(r"[。！？!?]+")
 
 # 样例 14/32 阈值：桥段重复（事件向量近邻，§8.6）。跨章最小间隔 10（样例 14 ch5→ch15 恰在边界）；
 # cosine distance < 0.3 ⟺ 余弦相似度 > 0.7。宁缺毋滥（§8.8）：先保阴性 0 误报，再抬阳性检出率。
@@ -80,6 +79,49 @@ _GENERAL_STATE_FIELDS = ("location", "injury", "power", "item", "knowledge", "go
 
 def _key(conflict_type: str, entity: str, chapter_seq: int) -> str:
     return hashlib.md5(f"{conflict_type}:{entity}:{chapter_seq}".encode()).hexdigest()[:16]
+
+
+def _is_parallel(chunks: list[str]) -> bool:
+    """连续三个分句结构相同：长度接近，且开头两字相同或结尾一字相同。"""
+    if any(not (3 <= len(chunk) <= 24) for chunk in chunks):
+        return False
+    lengths = [len(chunk) for chunk in chunks]
+    if max(lengths) - min(lengths) > 4:
+        return False
+    if len({chunk[:2] for chunk in chunks}) == 1:
+        return True
+    return len({chunk[-1] for chunk in chunks}) == 1
+
+
+def _parallel_quotes(text: str) -> list[str]:
+    hits: list[str] = []
+    sentences = [part.strip() for part in _SENTENCE_END.split(text) if part.strip()]
+    for sentence in sentences:
+        parts = [part.strip() for part in re.split(r"[，,]", sentence) if part.strip()]
+        for index in range(len(parts) - 2):
+            window = parts[index:index + 3]
+            if _is_parallel(window):
+                hits.append("，".join(window))
+                break
+    for index in range(len(sentences) - 2):
+        window = sentences[index:index + 3]
+        if _is_parallel(window):
+            hits.append("。".join(window))
+    return hits
+
+
+def _prose_ban_quotes(text: str) -> list[str]:
+    quotes: list[str] = []
+    for pattern in (_NOT_BUT, _NOT_IS):
+        quotes.extend(match.group(0) for match in pattern.finditer(text))
+    quotes.extend(_parallel_quotes(text))
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for quote in quotes:
+        if quote not in seen:
+            seen.add(quote)
+            ordered.append(quote)
+    return ordered
 
 
 def _has_callback_marker(text: str | None) -> bool:
@@ -303,53 +345,22 @@ class L1Validator:
             logger.warning("桥段重复向量近邻失败，跳过（加分项不阻塞）: %s", exc)
         return findings
 
-    # ---- 高频句式统计（样例 15，§8.6 文风与 AI 味治理检测侧；draft 依赖故由 service 编排）----
-    def style_repeat_check(self, session: Session, *, project_id: uuid.UUID,
-                           chapter_seq: int, draft: str | None = None) -> list[Finding]:
-        """本章 draft 中 AI 味高频句式/用词频次统计，超阈值提示。
-
-        - 判据：style_profile.fatigue_words（词级 draft.count）≥ _STYLE_WORD_CAP，
-          fatigue_patterns（句式 regex re.findall）≥ _STYLE_PATTERN_CAP → 记 offender；
-        - 任一 offender → 1 条 style/hint/local hint（每章至多 1 条，宁缺毋滥）；
-        - 降级：无 draft / 无 fatigue 字段 / get_settings 异常 → 一律跳过不阻塞（§6.12）。
-        """
-        findings: list[Finding] = []
-        try:
-            if not draft:
-                return findings
-            settings = repo.get_settings(session, project_id)
-            sp = settings.style_profile if settings else {}
-            words = sp.get("fatigue_words") or []
-            pats = sp.get("fatigue_patterns") or []
-            if not words and not pats:
-                return findings
-            offenders: list[tuple[str, int]] = []
-            for w in words:
-                n = draft.count(w)
-                if n >= _STYLE_WORD_CAP:
-                    offenders.append((w, n))
-            for p in pats:
-                try:
-                    n = len(re.findall(p, draft))
-                except re.error:
-                    continue  # 非法 regex 跳过该 pattern，不阻塞
-                if n >= _STYLE_PATTERN_CAP:
-                    offenders.append((p, n))
-            if not offenders:
-                return findings
-            top = sorted(offenders, key=lambda x: x[1], reverse=True)[:3]
-            offenders_str = "、".join(f"「{o}」×{n}" for o, n in top)
-            findings.append(Finding(
-                conflict_key=_key("style", "fatigue", chapter_seq),
-                conflict_type="style", severity="hint", scope="local", source="L1",
-                evidence=[{"chapter": chapter_seq,
-                           "quote": f"本章高频句式/用词：{offenders_str}"
-                                    f"（句式≥{_STYLE_PATTERN_CAP}次/词≥{_STYLE_WORD_CAP}次阈值）"}],
-                suggestion="AI 味句式/高频词复发：改写或补差异化表达；写章 Prompt 已注入禁忌（§8.6）",
-            ))
-        except Exception as exc:
-            logger.warning("高频句式统计失败，跳过（加分项不阻塞）: %s", exc)
-        return findings
+    # ---- 句式禁令（任何题材；出现即 critical，不按词频统计）----
+    def prose_ban_check(self, session: Session, *, project_id: uuid.UUID,
+                        chapter_seq: int, draft: str | None = None) -> list[Finding]:
+        """「不是…而是…」「不是…，是…」或连续排比出现一次即 style/critical。"""
+        del session, project_id
+        if not draft:
+            return []
+        quotes = _prose_ban_quotes(draft)[:3]
+        if not quotes:
+            return []
+        return [Finding(
+            conflict_key=_key("style", "prose-ban", chapter_seq),
+            conflict_type="style", severity="critical", scope="local", source="L1",
+            evidence=[{"chapter": chapter_seq, "quote": quote} for quote in quotes],
+            suggestion="删掉「不是…而是…」「不是…，是…」和连续排比，改成直接叙述",
+        )]
 
     # ---- realm ----
     def _realm_checks(self, session: Session, project_id: uuid.UUID, chapter_seq: int,
