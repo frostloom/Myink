@@ -250,11 +250,12 @@ def test_sanitize_missing_rank_backfills_by_position():
 # ---- _find_tool ----
 
 
-def test_find_tool_rank_substring_and_source_priority():
+def test_find_tool_requires_exact_known_source_or_explicit_override():
     tools = ["qidian_rank", "community_rank"]
     assert _find_tool(tools, "qidian", "") == "qidian_rank"
     assert _find_tool(tools, "community", "") == "community_rank"
-    assert _find_tool(tools, "other", "") == "qidian_rank", "无 source 命中 → 取首个 rank 工具"
+    assert _find_tool(tools, "other", "") is None, "未知 source 不猜工具"
+    assert _find_tool(["list_rankings", "qidian_rank_preview"], "qidian", "") is None
     assert _find_tool(["qidian_rank", "community_rank"], "qidian", "community_rank") == "community_rank", \
         "override 精确命中优先"
     assert _find_tool(["web_search"], "qidian", "") is None, "无 rank 工具 → None（降级）"
@@ -289,6 +290,42 @@ def test_service_remote_returns_sanitized_items():
         {"rank": 2, "title": "乙"},
     ]
     assert fake.tool_calls == [("qidian_rank", {"type": "hotsales", "genre": "overall"})]
+
+
+def test_override_parameters_follow_tool_not_source():
+    fake = FakeClient(["community_rank"], '[{"title":"真实书"}]')
+    svc, _, _ = _service(fake, source="qidian", tool="community_rank")
+    assert asyncio.run(svc.fetch()).source == "remote"
+    assert fake.tool_calls == [("community_rank", {"period": "all-time", "genre": "1"})]
+
+
+@pytest.mark.parametrize("tool", ["list_rankings", "unknown_rank", "get_ranking"])
+def test_tool_without_parameter_contract_is_never_called(tool):
+    fake = FakeClient([tool], '[{"title":"男频阅读榜","items":[]}]')
+    svc, _, _ = _service(fake, tool=tool)
+    result = asyncio.run(svc.fetch())
+    assert result.source == "sample" and "参数" in result.error
+    assert fake.tool_calls == []
+
+
+@pytest.mark.parametrize("wrapper", [lambda x: x, lambda x: {"items": x}, lambda x: json.dumps(x)])
+def test_categories_in_mixed_results_are_not_books(wrapper):
+    group = {"title": "男频阅读榜", "items": [{"id": "1_2_1141", "name": "西方奇幻"}]}
+    assert sanitize(wrapper([group, {**group, "rank": 1}, {"title": "真实书", "author": "作者"}]), limit=10) == [
+        {"title": "真实书", "author": "作者", "rank": 1}]
+
+
+def test_single_category_container_is_not_expanded_into_books():
+    assert sanitize({"title": "分类", "items": [{"title": "子分类"}]}, limit=10) == []
+
+
+def test_invalid_categories_are_not_cached_as_remote_success():
+    fake = FakeClient(["qidian_rank"], '[{"title":"男频阅读榜","items":[]}]')
+    svc, _, _ = _service(fake)
+    assert asyncio.run(svc.fetch()).source == "sample"
+    fake.call_result = '[{"title":"真实书"}]'
+    assert asyncio.run(svc.fetch()).items[0]["title"] == "真实书"
+    assert fake.list_calls == 2
 
 
 def test_service_caches_within_ttl_and_refresh_bypasses():
@@ -344,7 +381,7 @@ def test_service_cancelled_error_degrades_to_sample():
     result = asyncio.run(svc.fetch())
     assert result.source == "sample"
     assert result.items == _SAMPLE_ITEMS
-    assert "取消" in (result.error or "")
+    assert "连接失败或被取消" in (result.error or "")
 
 
 def test_service_no_tool_found_degrades_to_sample():
