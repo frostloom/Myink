@@ -99,6 +99,22 @@ def test_full_content_mixed_with_patch_is_rejected(heading):
     assert parse_patches(raw) == []
 
 
+@pytest.mark.parametrize("broken", [
+    "--- PATCH 2 ---\nTARGET_TEXT:\n坏块\n--- END PATCH ---",
+    "--- PATCH 2 ---\nTARGET_TEXT:\n坏块",
+    "--- PATCH x ---\nTARGET_TEXT:\n坏块\nREPLACEMENT_TEXT:\n新\n--- END PATCH ---",
+])
+def test_malformed_declarations_count_toward_failure_ratio(broken):
+    raw = ("=== PATCHES ===\n--- PATCH 1 ---\nTARGET_TEXT:\n旧剑\n"
+           "REPLACEMENT_TEXT:\n青剑\n--- END PATCH ---\n" + broken + "\n" + broken)
+    original = framed("旧剑")
+    parsed = parse_patches(raw)
+    assert len(parsed) == 3
+    result = apply_patches(original, parsed)
+    assert result.content == original and not result.applied
+    assert result.skipped_count == 3
+
+
 def finding(scope="local", **kwargs):
     return {"scope": scope, "severity": "major", **kwargs}
 

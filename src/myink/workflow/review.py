@@ -39,6 +39,8 @@ def resolve_review(graph, values: dict, *, task_id: str) -> dict:
     state = {**values, "task_id": task_id, "context": ctx, "error": None,
              "needs_review": False, "persisted": False, "rewrite": True, "review_revision": True,
              "revision_count": 0, "replan_count": 0, "audit_verdict": None,
+             "patch_count": 0, "revise_mode": "full", "patch_applied": 0,
+             "patch_skipped": 0, "patch_rejected_reason": None,
              "unresolved": [{"conflict_key": "author:review", "severity": "major",
                   "conflict_type": "fact", "evidence": [], "suggestion": instruction}]}
     revision = build_chapter_graph(checkpointer=graph.checkpointer, entry="revise")

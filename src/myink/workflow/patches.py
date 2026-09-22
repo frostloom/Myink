@@ -26,13 +26,23 @@ def parse_patches(raw: str) -> list[Patch]:
     section = re.search(r"(?ims)^\s*===\s*PATCHES\s*===\s*\n(.*?)(?=^\s*===|\Z)", raw)
     if not section:
         return []
-    blocks = re.findall(
-        r"(?ims)^--- PATCH \d+ ---\s*\nTARGET_TEXT:\s*\n(.*?)"
-        r"\nREPLACEMENT_TEXT:[ \t]*\n(.*?)\n--- END PATCH ---[ \t]*$",
-        section[1],
-    )
-    return [Patch(target.strip("\r\n"), replacement.strip("\r\n"))
-            for target, replacement in blocks]
+    text = section[1].replace("\r\n", "\n")
+    boundaries = list(re.finditer(r"(?im)^--- PATCH[^\n]*", text))
+    if not boundaries or text[:boundaries[0].start()].strip():
+        return []  # No trustworthy start boundary: reject the entire response.
+    patches = []
+    for index, boundary in enumerate(boundaries):
+        end = boundaries[index + 1].start() if index + 1 < len(boundaries) else len(text)
+        block = re.fullmatch(
+            r"(?is)--- PATCH \d+ ---[ \t]*\nTARGET_TEXT:[ \t]*\n(.*?)"
+            r"\nREPLACEMENT_TEXT:[ \t]*\n(.*?)\n--- END PATCH ---\s*",
+            text[boundary.start():end],
+        )
+        # Empty targets are never applied. Retain malformed declarations in the
+        # denominator without letting a regex borrow fields from the next block.
+        patches.append(Patch(block[1].strip("\n"), block[2].strip("\n"))
+                       if block else Patch("", ""))
+    return patches
 
 
 def _occurrences(text: str, target: str) -> list[int]:

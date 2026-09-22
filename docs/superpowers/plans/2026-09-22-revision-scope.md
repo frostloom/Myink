@@ -7,6 +7,8 @@
 **Tech Stack:** Python / pytest / LangGraph / React / Vitest。
 **Spec:** docs/superpowers/specs/2026-09-22-revision-scope-design.md
 
+**Execution status (2026-09-23):** Tasks 1–2 implemented; independent review's two Important findings fixed in one RED→GREEN pass (malformed patch denominator and new-attempt budget reset). Final local verification: 1012 Python passed / 5 expected xfails, 253 frontend passed, lint/build passed; exact-SHA CI confirmation follows push. Checkboxes below preserve the original implementation brief, not the live status.
+
 ## Global Constraints
 
 - 不删除数据或卷，不修改历史 finding，不碰 Jev。

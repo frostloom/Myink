@@ -32,6 +32,8 @@ def test_rejected_setting_revises_and_reaudits(temp_project, monkeypatch):
     calls=[]
     def revise(s):
         assert '需要治疗过程' in str(s['context'])
+        assert s['patch_count'] == s['patch_applied'] == s['patch_skipped'] == 0
+        assert s['revise_mode'] == 'full' and s['patch_rejected_reason'] is None
         calls.append('revise')
         return {'draft':'他继续包扎伤口，仍无法行走。','revision_count':1}
     def extract(s):
@@ -45,7 +47,9 @@ def test_rejected_setting_revises_and_reaudits(temp_project, monkeypatch):
     monkeypatch.setattr(nodes,'node_summarize',lambda s:{})
     graph=build_chapter_graph(checkpointer=InMemorySaver())
     out=resolve_review(graph,{'project_id':temp_project,'chapter_seq':1,'draft':'伤势无故痊愈',
-                             'needs_review':True,'candidates':[]},task_id=tid)
+                             'needs_review':True,'candidates':[], 'patch_count':2,
+                             'patch_applied':1, 'patch_skipped':2, 'revise_mode':'patch',
+                             'patch_rejected_reason':'旧失败'},task_id=tid)
     assert calls==['revise','extract','validate','audit']
     assert not out['needs_review']
     with tenant_session(temp_project) as db:
