@@ -153,6 +153,11 @@ export interface AgentRun {
     audit_verdict?: AuditVerdict
     route?: string
     revision_count?: number
+    patch_count?: number
+    revise_mode?: 'patch' | 'full'
+    patch_applied?: number
+    patch_skipped?: number
+    patch_rejected_reason?: string | null
     replan_count?: number
     rule_summary?: Record<string, number>
     plan?: ChapterPlan
@@ -216,7 +221,7 @@ export interface Finding {
   conflict_key: string
   conflict_type: string
   severity: FindingSeverity
-  scope: 'local' | 'structural'
+  scope: 'local' | 'structural' | 'unknown'
   source: string
   evidence: Array<{ chapter: number; quote: string }>
   suggestion: string | null

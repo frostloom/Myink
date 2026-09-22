@@ -134,17 +134,33 @@ SYSTEM_REVISE = """你是长篇网文创作系统的【修订 Agent】。按校�
 禁止 JSON、禁止 markdown 代码块围栏）。全部修订完成后，再输出独立一行 === RESPONSES ===，
 下一行输出严格 JSON 数组：[{"conflict_key": "key", "outcome": "fixed|cannot_fix|dispute", "note": "说明"}]"""
 
+SYSTEM_REVISE_PATCH = """你是长篇网文创作系统的【局部修订 Agent】。
+只修改审稿指出的问题句及必要的前后一句，其余正文逐字不动。禁止输出全文或 CONTENT。
+每块目标和替换最多 600 字，合计修改范围不超过原稿 30%；不能借补丁改写整章。
+TARGET_TEXT 从原稿精确复制，必须唯一命中；无法安全修复则输出空 PATCHES。
+格式：
+=== PATCHES ===
+--- PATCH 1 ---
+TARGET_TEXT:
+原句
+REPLACEMENT_TEXT:
+改后句
+--- END PATCH ---
+=== RESPONSES ===
+[{"conflict_key":"key","outcome":"fixed|cannot_fix|dispute","note":"说明"}]"""
+
 SYSTEM_AUDIT = """你是长篇网文创作系统的【审核中枢 Agent】。写作完成后的调度大脑，对本章做语义审核并输出路由决策。
 三步：① 对照章节计划判断剧情发展是否合理（推进了该推进的线、收了该收的伏笔、无主线偏移）；② 判断内容质量（衔接/人设/节奏）；③ 输出路由决策。
 输出严格 JSON：
 {
   "verdict": "pass|rewrite|replan",
   "replan_target": "chapter|batch（仅 verdict=replan 时必填：本章规划偏 → chapter；整批蓝图走偏 → batch）",
-  "findings": [{"conflict_key": "hash键", "conflict_type": "power|timeline|location|character|character_state|relation|foreshadow|item_rule|plotline|persona|style", "severity": "critical|major|minor|hint", "scope": "local|structural", "evidence": [{"chapter": 章号, "quote": "原文片段"}], "confidence": 0.0-1.0, "suggestion": "修改建议"}],
+  "findings": [{"conflict_key": "hash键", "conflict_type": "power|timeline|location|character|character_state|relation|foreshadow|item_rule|plotline|persona|style", "severity": "critical|major|minor|hint", "scope": "local|structural|unknown", "evidence": [{"chapter": 章号, "quote": "原文片段"}], "confidence": 0.0-1.0, "suggestion": "修改建议"}],
   "reasons": ["路由决策理由（可审计）"],
   "confidence": 0.0-1.0
 }
 规则：只有剧情/内容确实有问题才 rewrite 或 replan；本章合格一律 pass（不制造冗余修订）。
+scope 必须明确：local 是句段级小修；structural 是因果、时间线、人物逻辑或整场/整章结构改写；无法判断写 unknown，不从严重程度推测范围。
 跨章必查：对照【近期上下文】的章尾原文与本章开头，检查是否重演已完成动作、丢弃未完成请求/危险、无交代地改变时间地点/视角；计划不能推翻已写正文。对照【近期章节开头】检查近义改写的同一套路，不能只看字面不同。
 明确的接续断裂或机械重复应报 major 并 rewrite，建议必须给出具体接续动作；evidence 至少各引用一处前章/历史章与本章原文并标明章号。同场景接续、合理转场、回应悬念、有意义的呼应不算重复。没有前章原文时不能臆测跨章矛盾。
 如需核实人物状态/世界观事实/伏笔/剧情线，可调用只读查证工具，核实后仍输出严格 JSON。"""
@@ -569,10 +585,25 @@ def revise_messages(draft: str, findings: list[dict], chapter_seq: int, *,
         settings.request_token_budget - 1000)
 
 
+def patch_messages(state: dict) -> list[dict]:
+    findings = [*((state.get("report") or {}).get("findings") or []),
+                *(state.get("unresolved") or []),
+                *((state.get("audit_verdict") or {}).get("findings") or [])]
+    return [
+        {"role": "system", "content": SYSTEM_REVISE_PATCH},
+        {"role": "user", "content": (
+            f"【第 {state['chapter_seq']} 章原稿】\n{state['draft']}\n\n"
+            + "【校验与审核发现】\n" + json.dumps(findings, ensure_ascii=False)
+            + "\n【修订原因】\n" + json.dumps((state.get("audit_verdict") or {}).get("reasons") or [], ensure_ascii=False)
+            + "\n【章节计划】\n" + json.dumps(state.get("plan") or {}, ensure_ascii=False)
+        )},
+    ]
+
+
 def _revise_messages(draft, findings, chapter_seq, context, plan, style_profile, target_words,
                      outline, genre_pack):
     finding_lines = "\n".join(
-        f"- [{f.get('conflict_key')}] [{f.get('severity')}] {f.get('conflict_type')}: {f.get('evidence')} | 建议: {f.get('suggestion')}"
+        f"- [{f.get('conflict_key')}] [{f.get('severity')}] [{f.get('scope', 'unknown')}] {f.get('conflict_type')}: {f.get('evidence')} | 建议: {f.get('suggestion')}"
         for f in findings
     )
     writing = _write_messages(context, plan, style_profile=style_profile,

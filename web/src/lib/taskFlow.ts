@@ -99,6 +99,7 @@ export function liveStageNode(
 function deriveHistoricalRoute(run: AgentRun, next: AgentRun | undefined, status: TaskStatus | null): string | null {
   if (next?.node === 'persist' || next?.node === 'summarize') return 'persist'
   if (next?.node === 'revise') return 'revise'
+  if (next?.node === 'patch') return 'patch'
   if (next?.node === 'reset_replan' || next?.node === 'plan_chapter') return 'replan_chapter'
   if (next?.node === 'batch_plan') return 'replan_batch'
   if (status === 'awaiting_plan') return 'plan_review'

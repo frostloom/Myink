@@ -43,6 +43,7 @@ from myink.validation.service import ValidationService
 from myink.workflow import prompts
 from myink.workflow.outline import normalize_outline
 from myink.workflow.state import ChapterState
+from myink.workflow.patches import apply_patches, parse_patches
 from myink.workflow.streaming import ArtifactEmitter
 from myink.workflow.tools import READ_TOOLS, execute_tool
 
@@ -122,7 +123,7 @@ def record_run_detail(db: Session, *, task_id: str | None, node: str, detail: di
 # 3000 字 ≈ 2100 tokens；×1.25 余量防截断，同时从源头限死字数（最多 ~3900 字）。
 _WRITE_TOKENS_PER_CHAR = 1.43
 _MAX_TOKENS = {
-    "plan_cast": 1024, "plan_chapter": 8192, "extract": 4096, "revise": 8192, "audit": 8192,
+    "plan_cast": 1024, "plan_chapter": 8192, "extract": 4096, "revise": 8192, "patch": 4096, "audit": 8192,
     "reflexion": 4096, "summarize": 1024, "book_setup": 8192, "book_outline": 16384,
 }
 
@@ -1026,6 +1027,37 @@ def node_extract(state: ChapterState) -> ChapterState:
     return {"candidates": candidates}
 
 
+def node_patch(state: ChapterState) -> ChapterState:
+    """Writer proposes bounded text edits; server applies them, never writes memory here."""
+    if state.get("error"):
+        return {}
+    if not state.get("draft"):
+        return {"error": "局部修订缺少原稿"}
+    pid = state["project_id"]
+    with tenant_session(pid) as db:
+        resp, _ = _llm(
+            db, state, "patch", "Writer", make_chain("writer", db=db, project_id=pid),
+            prompts.patch_messages(state), json_mode=False, disable_thinking=True,
+        )
+        if resp.error:
+            return {"error": resp.error}
+        result = apply_patches(state["draft"], parse_patches(resp.content))
+        detail = {"revise_mode": "patch", "patch_count": state.get("patch_count", 0) + 1,
+                  "patch_applied": result.applied_count, "patch_skipped": result.skipped_count,
+                  "patch_rejected_reason": result.rejected_reason}
+        record_run_detail(db, task_id=state.get("task_id"), node="patch", detail=detail)
+    # Responses are advisory; only the new extract/validate/audit establishes resolution.
+    responses = []
+    if result.applied and not result.skipped_count:
+        try:
+            value = _parse_json(_split_marked(resp.content).get("RESPONSES") or "[]")
+            if isinstance(value, list):
+                responses = [v for v in value if isinstance(v, dict)]
+        except (ValueError, TypeError):
+            pass
+    return {"draft": result.content, **detail, "revise_responses": responses}
+
+
 def node_revise(state: ChapterState) -> ChapterState:
     pid = state["project_id"]
     context = dict(state.get("context") or {})
@@ -1059,6 +1091,7 @@ def node_revise(state: ChapterState) -> ChapterState:
     return {
         "draft": draft,
         "revision_count": state.get("revision_count", 0) + 1,
+        "revise_mode": "full",
         "revise_responses": responses,
     }
 
