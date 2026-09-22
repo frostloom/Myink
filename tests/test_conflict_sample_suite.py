@@ -69,7 +69,6 @@ DRAFT40 = ("夜色中，林砚与天衡宗执法弟子并肩而立，共抗万�
 # 样例 15（AI 味句式）
 SAMPLE15_DRAFT = ("他不是不知道前路凶险，而是早已没有退路。"
                   "他不是畏惧强敌，而是害怕辜负。")
-PROFILE15 = {"fatigue_words": ["仿佛", "竟然"], "fatigue_patterns": ["不是.{0,20}而是"]}
 # 样例 14/32（桥段重复 / 呼应豁免）
 CH5 = "拍卖会上林砚被嘲讽亮出身份打脸"
 CH15_MARKED = "同样的拍卖厅，同样的叫价——林砚暗想：这一幕与当年何其相似。他亮出底牌，这次却非争锋，只为引蛇出洞。"
@@ -319,7 +318,7 @@ def _relation_check(pid: str, seq: int) -> list[dict]:
 
 def _style_check(pid: str, draft, seq: int = 15) -> list[dict]:
     with tenant_session(pid) as db:
-        fs = L1Validator(REALM_ORDER).style_repeat_check(
+        fs = L1Validator(REALM_ORDER).prose_ban_check(
             db, project_id=uuid.UUID(pid), chapter_seq=seq, draft=draft)
         return [f.model_dump(mode="json") for f in fs]
 
@@ -551,11 +550,10 @@ def test_sample_14_bridge_repeat_l1(temp_project):
 
 
 def test_sample_15_ai_style_repeat(temp_project):
-    """样例 15 AI 味复发：单章 2 处「不是…而是…」→ style/hint/local/L1。"""
-    _set_profile(temp_project, PROFILE15)
+    """样例 15：「不是…而是…」出现即 style/critical，不依赖文风档案。"""
     fs = _style_check(temp_project, SAMPLE15_DRAFT)
     assert len(fs) == 1, fs
-    assert fs[0]["conflict_type"] == "style" and fs[0]["severity"] == "hint" and fs[0]["source"] == "L1"
+    assert fs[0]["conflict_type"] == "style" and fs[0]["severity"] == "critical" and fs[0]["source"] == "L1"
 
 
 # =====================================================================

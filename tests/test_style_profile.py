@@ -266,7 +266,6 @@ def test_style_section_renders_new_keys():
         "sentence_style": "长短句交错",
         "lexicon_tendency": "冷色调意象",
         "forbidden": ["“嘴角勾起一抹冷笑”类套语"],
-        "fatigue_words": ["凝望", "目光"],
         "frequent_words": ["夜色", "冷笑"],
         "dialogue": "对话短促",
         "reference_excerpts": ["「你来了。」他声音很轻，像怕惊动什么。"],
@@ -277,15 +276,17 @@ def test_style_section_renders_new_keys():
     assert "叙事视角" in section and "第三人称限知" in section
     assert "词汇修辞倾向" in section and "冷色调意象" in section
     assert "风格示范" in section and "你来了。" in section
-    assert "凝望、目光、夜色、冷笑" in section, "fatigue_words + frequent_words 去重合并"
+    assert "高频词节制（避免机械复用）：夜色、冷笑" in section
+    assert "凝望" not in section
     assert "节奏参考" in section and "对话占比约 40%" in section
 
 
 def test_style_section_legacy_keys_unchanged():
-    """既有键（无样本提取字段）渲染与原输出一致——L1/L2 文风检测零回归锚点（样例 15/38/39）。"""
+    """既有键渲染；fatigue_words 即使残留也不进提示。"""
     profile = {"pov": "第三人称限知视角", "fatigue_words": ["凝望"], "forbidden": ["套语"]}
     section = _style_section(profile, None)
-    assert "高频词节制（避免机械复用）：凝望" in section
+    assert "凝望" not in section
+    assert "高频词节制" not in section
     assert "表述禁忌（必须避免）：套语。" in section
     assert "风格示范" not in section, "无 reference_excerpts → 不渲染示范段"
     assert "节奏参考" not in section, "无节奏基线字段 → 不渲染节奏行"
@@ -363,23 +364,22 @@ def test_style_samples_degraded_http(temp_project, style_stub):
         assert err is not None and "provider down" in err.error, "降级应记 error 行（§6.12 可观测）"
 
 
-def test_put_preserves_fatigue_words_on_sample_confirm(temp_project):
-    """W2：样本草稿（不含检测基线键）确认时不抹预设 fatigue_words；显式 [] 可清空。"""
+def test_put_drops_fatigue_keys(temp_project):
+    """确认落库时丢掉 fatigue_words / fatigue_patterns，不保留旧值。"""
     headers = _h(_demo_user_id())
     url = f"/api/v1/projects/{temp_project}/style-profile"
-    r = client.put(url, headers=headers, json={"profile": {"pov": "预设包", "fatigue_words": ["凝望"]}})
+    r = client.put(url, headers=headers, json={
+        "profile": {"pov": "预设包", "fatigue_words": ["凝望"], "fatigue_patterns": ["不是.{0,20}而是"]},
+    })
     assert r.status_code == 200
+    assert "fatigue_words" not in r.json()["style_profile"]
+    assert "fatigue_patterns" not in r.json()["style_profile"]
     r = client.put(url, headers=headers, json={"profile": {"pov": "样本草稿确认", "source": "sample"}})
     assert r.status_code == 200
     with tenant_session(temp_project) as db:
         st = get_settings(db, uuid.UUID(temp_project))
-        assert st.style_profile["fatigue_words"] == ["凝望"], "样本草稿确认应保留预设 L1 基线"
+        assert "fatigue_words" not in st.style_profile
         assert st.style_profile["pov"] == "样本草稿确认"
-    r = client.put(url, headers=headers, json={"profile": {"fatigue_words": []}})
-    assert r.status_code == 200
-    with tenant_session(temp_project) as db:
-        st = get_settings(db, uuid.UUID(temp_project))
-        assert st.style_profile["fatigue_words"] == [], "显式空列表允许清空"
 
 
 def test_put_strips_extract_error(temp_project):
@@ -398,9 +398,9 @@ def test_put_strips_extract_error(temp_project):
 
 def test_style_section_str_list_keys_safe():
     """S5：列表键为字符串时不逐字展开（join/unpack 前 _profile_list 类型守卫）。"""
-    profile = {"fatigue_words": ["凝望"], "frequent_words": "夜色冷笑",
+    profile = {"frequent_words": "夜色冷笑",
                "forbidden": "套语", "reference_excerpts": "你来了。"}
     section = _style_section(profile, None)
-    assert "凝望、夜色冷笑" in section, "frequent_words 字符串应整体入高频词节制，不逐字展开"
+    assert "高频词节制（避免机械复用）：夜色冷笑" in section
     assert "表述禁忌（必须避免）：套语。" in section
     assert "风格示范" in section and "你来了。" in section
