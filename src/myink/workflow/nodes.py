@@ -19,6 +19,7 @@ from pydantic import BaseModel, ValidationError
 from langgraph.types import interrupt
 from sqlalchemy.orm import Session
 
+from myink import snapshot
 from myink.config import settings
 from myink.admin_observability import capture, capture_detail
 from myink.context_budget import ContextBudgetExceeded, estimate_tokens
@@ -30,8 +31,8 @@ from myink.memory.invalidation import invalidate_chapter_memory
 from myink.memory.recall import build_context
 from myink.memory.vector_store import PgvectorStore
 from myink.models import (AgentRun, Alias, Chapter, Character, CharacterState, Entity,
-                          Event, Fact, Foreshadow, Location, MemoryCandidate, Relation,
-                          WritingLesson)
+                          Event, Fact, Foreshadow, GenerationSnapshot, Location, MemoryCandidate,
+                          Relation, SNAPSHOT_STAGES, WritingLesson)
 from myink.models.memory import CHARACTER_STATE_FIELDS, RELATION_TYPES
 from myink.providers import FallbackChain, ModelResponse, make_chain
 from myink.providers.deepseek import strip_thinking_text
@@ -116,6 +117,51 @@ def record_run_detail(db: Session, *, task_id: str | None, node: str, detail: di
            .order_by(AgentRun.id.desc()).first())
     if row:
         row.detail = capture_detail({**(row.detail or {}), **detail})
+
+
+def record_snapshot(db: Session, *, state: ChapterState, stage: str,
+                    messages: list[dict] | None = None, resp: ModelResponse | None = None,
+                    payload: dict | None = None) -> None:
+    """留一次生成尝试的原始输入（选择性，见 snapshot.py 的留存口径）。
+
+    与 agent_runs 同库同事务：不新开连接，app.tenant_id 已在（RLS 满足）。
+    attempt 记规划版本号（replan_count+1）——同章重规划留多行、可比对输入差异；
+    解析自修复重试与同轮内的重复调用覆盖同一行（agent_runs 已逐次记全）。
+    合并而非覆盖同一行的 payload（同 record_run_detail 的写法）：patch 先经 _llm 落
+    提示词、应用完再补应用片段，两笔都要在。
+    """
+    if stage not in SNAPSHOT_STAGES:
+        return
+    task_id = state.get("task_id")
+    chapter_seq = state.get("chapter_seq")
+    # 快照是可观测性副作用，绝不能反过来让生成失败：键不全就跳过。唯一键含 chapter_seq，
+    # 缺它则唯一约束在 PostgreSQL 里不成立（NULL 互不相等），会堆重复行。现有 8 个阶段必有章号。
+    if not task_id or chapter_seq is None:
+        return
+    attempt = state.get("replan_count", 0) + 1
+    body = dict(payload or {})
+    if messages is not None:
+        body["prompt"] = snapshot.project_prompt(messages)
+    if resp is not None:
+        body["output"] = snapshot.project_output(resp.content)
+        if resp.error:
+            body["error"] = resp.error
+    db.flush()  # 保证上一笔 record_run 的 insert 对后续 query 可见（session autoflush=False）
+    row = (db.query(GenerationSnapshot)
+           .filter(GenerationSnapshot.task_id == task_id,
+                   GenerationSnapshot.chapter_seq == chapter_seq,
+                   GenerationSnapshot.stage == stage,
+                   GenerationSnapshot.attempt == attempt)
+           .order_by(GenerationSnapshot.id.desc()).first())
+    if row is None:
+        row = GenerationSnapshot(project_id=uuid.UUID(state["project_id"]), task_id=task_id,
+                                 chapter_seq=chapter_seq, stage=stage, attempt=attempt)
+        db.add(row)
+    row.payload = snapshot.finalize({**(row.payload or {}), **body}, previous=row.payload)
+    if resp is not None:
+        row.model_id, row.input_tokens, row.output_tokens = resp.model_id, resp.input_tokens, resp.output_tokens
+        row.cache_hit, row.duration_ms, row.cost_est = resp.cache_hit, resp.duration_ms, resp.cost_est
+        row.retry_count, row.degraded = resp.retry_count, resp.degraded
 
 
 # 各节点 max_tokens 上限（§19.3：JSON mode 须设 max_tokens 防截断）。
@@ -249,14 +295,18 @@ def _llm(db: Session, state: ChapterState, node: str, role: str, chain: Fallback
         target = state.get("target_words") or 3000
         max_tokens = int(target * _WRITE_TOKENS_PER_CHAR * 1.25)
     if tools:
-        return _run_tool_loop(db, state, node, role, chain, messages,
-                              max_tokens=max_tokens, tools=tools,
-                              max_tool_calls=settings.max_tool_calls, detail=detail,
-                              final_json=json_mode, streamer=streamer)
+        resp, tool_trace = _run_tool_loop(db, state, node, role, chain, messages,
+                                          max_tokens=max_tokens, tools=tools,
+                                          max_tool_calls=settings.max_tool_calls, detail=detail,
+                                          final_json=json_mode, streamer=streamer)
+        # 只留初始提示词：工具轮的查证过程已在 agent_runs.detail.tool_trace 里，不重复存
+        record_snapshot(db, state=state, stage=node, messages=messages, resp=resp)
+        return resp, tool_trace
     resp = _bounded_generate(chain, messages, json_mode=json_mode, max_tokens=max_tokens,
                           disable_thinking=disable_thinking, streamer=streamer)
     record_run(db, project_id=state["project_id"], task_id=state.get("task_id"),
                node=node, role=role, resp=resp, error=resp.error, detail=detail, messages=messages)
+    record_snapshot(db, state=state, stage=node, messages=messages, resp=resp)
     return resp, []
 
 
@@ -649,6 +699,8 @@ def node_recall(state: ChapterState) -> ChapterState:
                              "settings": len(ctx.setting_snapshots),
                              "foreshadows": len(ctx.open_foreshadows),
                              "threads": len(ctx.plot_threads), "context_tokens_est": ctx.token_usage})
+        record_snapshot(db, state=state, stage="recall",
+                        payload={"recall": snapshot.project_recall(out["context"])})
         return out
 
 
@@ -694,6 +746,12 @@ def node_validate(state: ChapterState) -> ChapterState:
                              "critical": report.summary.get("critical", 0),
                              "l2_major": report.summary.get("l2_major", 0),
                              "unresolved": len(unresolved)})
+        # 发现全留：这是「规则漏报/误报」的唯一原始样本，比 agent_runs 里的计数有用得多
+        record_snapshot(db, state=state, stage="validate", payload={
+            "findings": snapshot.project_findings([f.model_dump(mode="json") for f in report.findings]),
+            "summary": report.summary,
+            "input_draft": snapshot.project_output(state.get("draft")),
+        })
         return {"report": report.model_dump(mode="json"), "unresolved": unresolved}
 
 
@@ -809,6 +867,9 @@ def node_plan_cast(state: ChapterState) -> ChapterState:
                              "snapshots": len(ctx.entity_snapshots),
                              "settings": len(ctx.setting_snapshots),
                              "recall_stats": ctx.recall_stats})
+        # 这一版上下文才是 write/plan_chapter 实际用的（人物状态与设定随出场名单重取过）
+        record_snapshot(db, state=state, stage="plan_cast",
+                        payload={"recall": snapshot.project_recall(ctx.model_dump(mode="json"))})
     return {"cast": cast, "context": ctx.model_dump(mode="json")}
 
 
@@ -1048,6 +1109,9 @@ def node_patch(state: ChapterState) -> ChapterState:
                   "patch_applied": result.applied_count, "patch_skipped": result.skipped_count,
                   "patch_rejected_reason": result.rejected_reason}
         record_run_detail(db, task_id=state.get("task_id"), node="patch", detail=detail)
+        # 应用成功的片段补进同一条快照（提示词那半已由 _llm 落好）——只记个数事后查不出改了什么
+        record_snapshot(db, state=state, stage="patch", payload={"applied_spans": [
+            {"target": span.target, "replacement": span.replacement} for span in result.applied_spans]})
     # Responses are advisory; only the new extract/validate/audit establishes resolution.
     responses = []
     if result.applied and not result.skipped_count:

@@ -18,6 +18,9 @@ class ApplyResult:
     applied_count: int
     skipped_count: int
     rejected_reason: str | None = None
+    # 真正应用成功的补丁（模型申报的原文；仅空白可能与实际命中位置不同）。
+    # 只记个数的话，「这次修订改了什么」在事后无从查证——快照留的就是这份片段。
+    applied_spans: tuple[Patch, ...] = ()
 
 
 def parse_patches(raw: str) -> list[Patch]:
@@ -76,7 +79,7 @@ def _locate(original: str, target: str) -> tuple[int, int] | None:
 
 
 def apply_patches(original: str, patches: list[Patch]) -> ApplyResult:
-    edits: list[tuple[int, int, str]] = []
+    edits: list[tuple[int, int, Patch]] = []
     for patch in patches:
         if not patch.target.strip() or max(len(patch.target), len(patch.replacement)) > 600:
             continue
@@ -88,19 +91,20 @@ def apply_patches(original: str, patches: list[Patch]) -> ApplyResult:
             continue
         if any(start < b and end > a for a, b, _ in edits):
             continue
-        edits.append((start, end, patch.replacement))
+        edits.append((start, end, patch))
     count = len(edits)
     skipped = len(patches) - count
     if not count or count * 2 < len(patches):
         return ApplyResult(original, False, 0, len(patches), "补丁为空、未命中或应用率不足 50%")
     # Bound both removal and insertion; a tiny target cannot expand to a new chapter.
-    touched = sum(max(end - start, len(replacement)) for start, end, replacement in edits)
+    touched = sum(max(end - start, len(patch.replacement)) for start, end, patch in edits)
     if touched > max(100, int(len(original) * 0.3)):
         return ApplyResult(original, False, 0, len(patches), "补丁超出局部修改范围")
     content = original
-    for start, end, replacement in sorted(edits, reverse=True):
-        content = content[:start] + replacement + content[end:]
-    return ApplyResult(content, True, count, skipped)
+    for start, end, patch in sorted(edits, key=lambda edit: edit[0], reverse=True):
+        content = content[:start] + patch.replacement + content[end:]
+    return ApplyResult(content, True, count, skipped,
+                       applied_spans=tuple(patch for _, _, patch in edits))
 
 
 def resolve_revise_mode(state: dict) -> str:

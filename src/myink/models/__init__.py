@@ -44,7 +44,7 @@ from myink.models.project import (
     ProjectSettings,
     User,
 )
-from myink.models.runs import AgentRun, Task
+from myink.models.runs import SNAPSHOT_STAGES, AgentRun, GenerationSnapshot, Task
 from myink.models.validation import Finding, ValidationReport
 
 __all__ = [
@@ -83,6 +83,7 @@ __all__ = [
     # runs
     "Task",
     "AgentRun",
+    "GenerationSnapshot",
     # 枚举常量
     "CHARACTER_STATE_FIELDS",
     "RELATION_TYPES",
@@ -96,4 +97,5 @@ __all__ = [
     "LESSON_TYPES",
     "GLOBAL_AUDIT_STATUSES",
     "GLOBAL_AUDIT_TRIGGERS",
+    "SNAPSHOT_STAGES",
 ]

@@ -40,6 +40,22 @@ def test_individual_missing_patch_is_skipped():
     assert result.applied_count == 2 and result.skipped_count == 1
 
 
+def test_applied_spans_report_only_the_patches_that_landed():
+    """只记个数的话「这次修订改了什么」事后无从查证；快照留的就是这份片段。"""
+    result = apply_patches(framed("旧剑。破门。"), [
+        Patch("旧剑。", "青剑。"), Patch("不存在", "新词"), Patch("破门。", "木门。")])
+    assert [(p.target, p.replacement) for p in result.applied_spans] == [
+        ("旧剑。", "青剑。"), ("破门。", "木门。")]
+    assert len(result.applied_spans) == result.applied_count
+
+
+@pytest.mark.parametrize("patches", [[], [Patch("旧剑", "青剑"), Patch("无一", "一"), Patch("无二", "二")]])
+def test_reverted_apply_reports_no_spans(patches):
+    """整份回滚（空集或应用率不足）时原文没动，不能留下「改过这些」的痕迹。"""
+    result = apply_patches(framed("旧剑。"), patches)
+    assert not result.applied and result.content == framed("旧剑。") and result.applied_spans == ()
+
+
 def test_below_half_reverts_every_change():
     original = framed("旧剑。")
     result = apply_patches(original, [Patch("旧剑", "青剑"), Patch("无一", "一"), Patch("无二", "二")])
