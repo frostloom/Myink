@@ -24,7 +24,7 @@ Ruling: 管理员权限实施为跨用户只读内容/观测，不新增破坏�
 | 4 | 部署/已有数据 | 最新授权不备份，精确删除旧zlx；原demo保留UUID/内容摘要，使用无种子初始化 |
 
 Ruling: Windows Bash入口失败（E_ACCESSDENIED），使用当前计划专属.local/admin-observability目录存放brief/report/review；不改系统配置。成本：脚本自动抽取改为手工维护。
-BASE: 82090a38a5e7c589d3f439c5ca1e17f294a9c3c4; current checkout has existing user changes, no commits planned.
+BASE: 70e443731ec7876a48549f071d76298ef0f44da8; current checkout has existing user changes, no commits planned.
 Task 1: implementation delivered /root/admin_identity, awaiting /root/admin_identity_review. Focused Python54/frontend22 passed; production frontend build passed (chunk advisory). Root full frontend224 passed, lint0errors/5warnings. Root full Python760passed/5xfail/1 OpenAPI snapshot mismatch; normal contract export + focused58contract tests passed. Final full suite remains Task4.
 Task 2: pending.
 Task 3: pending.
@@ -33,7 +33,7 @@ Task 4: pending.
 Task 1: review spec compliant, quality Needs fixes; important duplicated new-password validator in LoginPage/AccountPage. Fix round1 dispatched original implementer for shared helper + focused tests. Minor (deferred): add exact8-char API registration/change-and-login integration boundary test; Python validator boundary already covered. OpenAPI cannot-verify resolved by controller export +58 passing contract tests.
 
 Task 1: fix round1/5 (1 addressed,0 open); passwordPolicy shared helper,16 focused tests/build passed, scoped re-review Approved. Minor exact8-char endpoint carried into Task2 fixtures.
-Task 1: complete (uncommitted delta against 82090a38; independent review clean).
+Task 1: complete (uncommitted delta against 70e44373; independent review clean).
 Task 2: dispatched /root/admin_observability_backend (gpt-6-astra/high); .local/admin-observability/baseline-2 snapshots backend/tests/gateway/spec after Task1; root real HTTP smoke prepared in .local/admin-observability/verify-admin-http.py, not run until isolated updated containers exist. No test suite currently running.
 
 Ruling: 跨用户管理读复用现有管理数据库连接，严格Bearer管理员校验后开启只读事务；不放宽普通业务RLS，审计另走普通连接。成本：公网仍需拆分最小权限报表角色；应用持有管理凭据的既有风险未消除。
@@ -49,7 +49,7 @@ Task 1: integration fixture follow-up complete; independent scoped review Approv
 Task 2: review Important URL scrubber quadratic scan (20k public-URL text ~7s); fix round1 reduced to~4ms,8focused passed. Scoped review: original addressed, new Important adjacent serialized URL consumes nextscheme and leaks secondcredential. Fix round2 dispatched original implementer; root fullPython fix1 stillrunning, wait before codechange. No API contract changes. New API image currentlyfix1, smokeAPI still initialcorrection; final rebuild/update required.
 
 Task 2: fix round2/5 (all addressed,0open); independent URL delimiter windows;13focused passed,20k~8ms, scoped re-review Approved. Prior fullPython fix1 finished779passed/5xfail,zero warnings; final corrected fullsuite remains planned. Task1 auth dependency verified by Task1 independent reviews; contract export58test and isolatedAPI69paths/admin12 close review cannot-verify items.
-Task 2: complete (uncommitted delta 82090a38, task review +2 scoped fix reviews; no openCritical/Important).
+Task 2: complete (uncommitted delta 70e44373, task review +2 scoped fix reviews; no openCritical/Important).
 Task 3: next dispatch uses baseline-3/web/src, finalized task-3-brief.md; Task2 response contracts unchanged through corrections.
 
 Task 3: dispatched /root/admin_panel (gpt-5.6-sol/high), implementation running; no backend source changes authorized.
