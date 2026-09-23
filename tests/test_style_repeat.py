@@ -1,5 +1,5 @@
-"""句式禁令：任何题材，同一句内「不是…是…」（含「不是…而是…」「不是…，是…」）或连续排比出现
-一次即 critical。
+"""句式禁令：任何题材，「不是…」紧跟「是…」（含「不是…而是…」「不是…，是…」，也含拆成两句的
+「不是…。是…」）或连续排比出现一次即 critical。
 
 不读文风档案，不按词频计数。普通用词和未达结构的句子不报。
 """
@@ -83,6 +83,33 @@ def test_not_is_without_a_comma_is_critical(temp_project):
     fs = _check(temp_project, "他不是坏人是个好人。")
     assert len(fs) == 1, fs
     assert fs[0]["severity"] == "critical"
+
+
+@pytest.mark.parametrize("draft,quote", [
+    ("他不是懦弱。是不想连累别人。", "不是懦弱。是不想连累别人"),
+    ("他不是懦弱！是不想连累别人。", "不是懦弱！是不想连累别人"),
+    ("他不是懦弱？是不想连累别人。", "不是懦弱？是不想连累别人"),
+    ("他不是懦弱。\n是不想连累别人。", "不是懦弱。"),    # 换行收束证据，判定不受影响
+    ("他不是懦弱。\n\n是不想连累别人。", "不是懦弱。"),  # 拆到下一段同理
+])
+def test_not_is_across_two_sentences_is_critical(temp_project, draft, quote):
+    """拆成两句、后半句以「是」起头，同样是先否定再改口的对举；证据不跨行。"""
+    assert _prose_ban_quotes(draft) == [quote]
+    fs = _check(temp_project, draft)
+    assert len(fs) == 1, fs
+    assert fs[0]["severity"] == "critical"
+    assert fs[0]["evidence"][0]["quote"] == quote
+
+
+@pytest.mark.parametrize("draft", [
+    "这不是懦弱。这是克制。",             # 后半句以「这」起头，是两句各自判断，不是对举
+    "他不是懦弱。这只是克制。",            # 只是
+    "他不是懦弱。他知道自己在怕。",         # 后半句不以「是」起头
+])
+def test_second_sentence_not_opening_with_shi_passes(temp_project, draft):
+    """拆句禁令只认「后半句以是起头」；两句各自成理的不算。"""
+    assert _prose_ban_quotes(draft) == []
+    assert _check(temp_project, draft) == []
 
 
 @pytest.mark.parametrize("draft", [
