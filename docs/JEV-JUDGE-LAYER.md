@@ -23,10 +23,10 @@
 
 L1 的 13 个检出点按严重度分布：
 
-- `critical` — `_realm_checks`（境界越界 ×2）、`_alive_checks`（死而复生）、`faction_check`（阵营敌对）
+- `critical` — `_realm_checks`（境界越界 ×2）、`_alive_checks`（死而复生）、`faction_check`（阵营敌对）、`prose_ban_check`（句式禁令）
 - `major` — `power_inflation_check`（战力通胀）、`relation_ledger_check`（关系台账自洽 ×2）
 - `minor` — `_old_value_ledger_check`、`_relation_change_ledger_check`
-- `hint` — `foreshadow_debt_check`、`plot_thread_debt_check`、`bridge_repeat_check`、`style_repeat_check`
+- `hint` — `foreshadow_debt_check`、`plot_thread_debt_check`、`bridge_repeat_check`
 
 路由规则见 `route_after_audit`（[chapter_graph.py:45-74](../src/myink/workflow/chapter_graph.py#L45-L74)）：`l1_critical or l2_major` 先短路；只有规则放行才读 audit 的 verdict。
 
@@ -67,7 +67,7 @@ L1 的 13 个检出点按严重度分布：
 | 除选项外的产出 | 无 | 无 |
 | 输入 | 一对事件摘要（各一到两句）+ 向量距离 | 基线摘录若干 + 当前样本摘录 |
 | 判据局部性 | 单对判定，不需全书语境 | 单样本对基线判定 |
-| 现有覆盖 | L1 只有词表豁免，无标记的呼应会误报 | L1 只数高频句式/词，不比对基线 |
+| 现有覆盖 | L1 只有词表豁免，无标记的呼应会误报 | L1 只有句式禁令（禁对举与排比），不比对基线 |
 | 评测集 | 样例 37（阴性） | 样例 38（阳性）/ 39（阴性） |
 
 两者都是「正常创作手法 vs 质量问题」的二分，恶性侧才出 finding，良性侧直接丢——不产 finding 就不需要解释，这正是「零散文」能成立的原因。
