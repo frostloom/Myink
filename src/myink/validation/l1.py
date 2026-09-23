@@ -8,7 +8,7 @@
 - 关系台账自洽（重复/矛盾活跃行，§7.8）
 - 伏笔烂尾 / 主线停滞（样例 18/19/23/26/27）
 - 桥段重复向量近邻（样例 14，阴性 32 对照，§8.6）：事件向量近邻 + 呼应词豁免
-- 句式禁令（任何题材）：「不是…而是…」「不是…，是…」、连续排比，出现即 critical
+- 句式禁令（任何题材）：同一句内「不是…是…」（含「不是…而是…」「不是…，是…」）、连续排比，出现即 critical
 
 conflict_key = hash(类型+实体+位置)，跨修订轮稳定（§6.4）。
 """
@@ -41,9 +41,12 @@ _FS_DEVELOPING_STALL = 10
 # 样例 19 阈值：主线连续 15 章未推进 → 停滞 hint（支线可长期休眠，样例 27 阴性）
 _THREAD_STALL = 15
 
-# 句式禁令：同一句内「不是…而是…」「不是…，是…」，以及连续三个结构相同的分句。
-_NOT_BUT = re.compile(r"(?<!是)不是[^。！？!?\n]{0,40}而是")
-_NOT_IS = re.compile(r"(?<!是)不是[^。！？!?\n]{0,40}[，,]\s*是")
+# 句式禁令：同一句内出现「不是…是…」即命中——「不是…而是…」与「不是…，是…」都含在里面。
+# 后一个「是」紧跟连词/副词/语气助词时（只是、但是、于是、就是、还是、可是、更是…）或紧跟另
+# 一个「不」时（是不是，不是A不是B），那是词的一部分，不是「先否定、再改口」的对举，跳过。
+# 逗号后的空白不设上限：换行与长空白都在同一句里，判定不该被排版打断。
+_IS_PREFIX = "不只但于就还可总要倒单也便仍更全若虽既光自又且均算本或其实很尤确非即亦竟偏却老硬乃岂"
+_NOT_IS = re.compile(rf"(?<!是)不是[^。！？!?\n]{{0,40}}\s*(?<![{_IS_PREFIX}])是")
 _SENTENCE_END = re.compile(r"[。！？!?]+")
 
 # 样例 14/32 阈值：桥段重复（事件向量近邻，§8.6）。跨章最小间隔 10（样例 14 ch5→ch15 恰在边界）；
@@ -112,15 +115,14 @@ def _parallel_quotes(text: str) -> list[str]:
 
 def _prose_ban_quotes(text: str) -> list[str]:
     quotes: list[str] = []
-    for pattern in (_NOT_BUT, _NOT_IS):
-        for match in pattern.finditer(text):
-            # 匹配式只负责判定；证据还需包含「是」之后的内容，供审核/修订定位。
-            # 保留原文切片，遇句末或换行停止，避免把后续正文整段带入报告。
-            end = match.start()
-            limit = min(len(text), match.start() + 160)
-            while end < limit and text[end] not in "。！？!?\r\n":
-                end += 1
-            quotes.append(text[match.start():end])
+    for match in _NOT_IS.finditer(text):
+        # 匹配式只负责判定；证据还需包含「是」之后的内容，供审核/修订定位。
+        # 保留原文切片，遇句末或换行停止，避免把后续正文整段带入报告。
+        end = match.start()
+        limit = min(len(text), match.start() + 160)
+        while end < limit and text[end] not in "。！？!?\r\n":
+            end += 1
+        quotes.append(text[match.start():end])
     quotes.extend(_parallel_quotes(text))
     seen: set[str] = set()
     ordered: list[str] = []
@@ -355,7 +357,7 @@ class L1Validator:
     # ---- 句式禁令（任何题材；出现即 critical，不按词频统计）----
     def prose_ban_check(self, session: Session, *, project_id: uuid.UUID,
                         chapter_seq: int, draft: str | None = None) -> list[Finding]:
-        """「不是…而是…」「不是…，是…」或连续排比出现一次即 style/critical。"""
+        """同一句内「不是…是…」（含「不是…而是…」）或连续排比出现一次即 style/critical。"""
         del session, project_id
         if not draft:
             return []
@@ -366,7 +368,7 @@ class L1Validator:
             conflict_key=_key("style", "prose-ban", chapter_seq),
             conflict_type="style", severity="critical", scope="local", source="L1",
             evidence=[{"chapter": chapter_seq, "quote": quote} for quote in quotes],
-            suggestion="删掉「不是…而是…」「不是…，是…」和连续排比，改成直接叙述",
+            suggestion="删掉「不是…是…」和连续排比，改成直接叙述",
         )]
 
     # ---- realm ----
