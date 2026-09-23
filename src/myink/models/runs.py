@@ -3,6 +3,9 @@
 agent_runs 每节点一行全字段（§6.8 任务成本透明）：
 节点、角色、model_id（含降级后实际）、输入/输出 token（思考 token 计入输出）、
 缓存命中标记、耗时、成本估算、重试、降级、错误 —— 前端节点时间线数据源。
+
+generation_snapshots 每阶段一行原始输入留存（选择性）：渲染后的提示词按节留下
+有分析价值的部分，供运维排障逐章回看「当时喂进去的是什么」。
 """
 
 from __future__ import annotations
@@ -16,6 +19,10 @@ from myink.models.base import Base, TimestampMixin, UUIDPkMixin
 
 TASK_STATUSES = ("queued", "running", "paused", "awaiting_plan", "awaiting_review", "failed", "cancelled", "done")
 TASK_TYPES = ("chapter_generate", "batch_generate", "validate", "outline_generate")
+
+# 留快照的阶段（与 workflow/nodes.py 的挂点一一对应）。
+# revise 一并留下：它带着上轮的校验/审计发现，是「改不对」时唯一的输入凭据。
+SNAPSHOT_STAGES = ("recall", "plan_cast", "plan_chapter", "write", "validate", "audit", "patch", "revise")
 
 
 class Task(Base, UUIDPkMixin, TimestampMixin):
@@ -67,3 +74,40 @@ class AgentRun(Base, TimestampMixin):
     # 节点关键产物（debug 回放，§6.8）：audit 行→audit_verdict；write/audit 工具轮→tool_trace；
     # 确定性节点（recall/validate/persist/load_state）→执行统计。纯观测字段，不影响执行语义。
     detail: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class GenerationSnapshot(Base, TimestampMixin):
+    """一次生成尝试、每个阶段一行的原始输入留存（§6.8 分析口径）。
+
+    与 agent_runs 的分工：agent_runs 记「花了多少」（每次 LLM 调用一行，含重试与降级），
+    本表记「当时喂进去的是什么」（渲染后的提示词分节、召回块指针、生效的硬规则与文风版本），
+    供运维排障逐章对账。标量列与 agent_runs 同口径，故单章成本/耗时不必回表 join
+    （同一节点多次重试在 agent_runs 里是多行，join 会重复计数）。
+
+    唯一键 (task_id, chapter_seq, stage, attempt) 让重跑同一章同一阶段覆盖而非堆行；
+    chapter_seq 可空（全书级阶段尚无），PostgreSQL 里 NULL 互不相等，故无章节的行不受唯一约束。
+    不给 tasks 设 FK：批次线程 id 是合成串 {batch_id}:ch{seq}，agent_runs 也是这么松关联的。
+    """
+
+    __tablename__ = "generation_snapshots"
+    __table_args__ = (
+        Index("uq_generation_snapshots_key", "task_id", "chapter_seq", "stage", "attempt", unique=True),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True, comment="租户键，RLS 过滤依据")
+    task_id: Mapped[str] = mapped_column(String(128), nullable=False, comment="thread_id（单章=task_id；批次=batch:ch{seq}）")
+    chapter_seq: Mapped[int | None] = mapped_column(Integer)
+    stage: Mapped[str] = mapped_column(String(24), nullable=False, comment="/".join(SNAPSHOT_STAGES))
+    attempt: Mapped[int] = mapped_column(Integer, default=1, nullable=False, comment="同阶段第几次尝试（重规划/重写递增）")
+    model_id: Mapped[str | None] = mapped_column(String(64), comment="含降级后的实际模型")
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    cache_hit: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    cost_est: Mapped[float] = mapped_column(Float, default=0.0, nullable=False, comment="成本估算（¥）")
+    retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    degraded: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # 分节留存（选择性，见 snapshot.py 的投影规则）：只存有分析/提升价值的部分，
+    # 逐字节相同的静态素材只留长度 + sha256；任何省略都在 payload 里显式标记。
+    payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
