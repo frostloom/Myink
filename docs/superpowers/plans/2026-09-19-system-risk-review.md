@@ -75,7 +75,7 @@
 **证据**
 
 - 当前凭据密钥派生固定使用 `myink:model-credentials:`，并在未设置独立 key 时回退到 JWT secret（`src/myink/providers/credentials.py:13-16`）。
-- 仓库内已完成的只读数据审计记录：品牌更名提交 `82090a3` 把前缀从 `aiink:model-credentials:` 改为当前前缀；两条现存密文用当前前缀可解密 0 条、用历史前缀可解密 2 条（`docs/PUBLIC-DEPLOYMENT-CHECKLIST.md:53-54`）。
+- 仓库内已完成的只读数据审计记录：品牌更名提交 `70e4437` 把前缀从 `aiink:model-credentials:` 改为当前前缀；两条现存密文用当前前缀可解密 0 条、用历史前缀可解密 2 条（`docs/PUBLIC-DEPLOYMENT-CHECKLIST.md:53-54`）。
 - 配置示例已经提示在轮换 JWT 前固定独立 `MODEL_CREDENTIAL_KEY`（`.env.example:44-45`），但这不能自动修复已经因前缀变化失配的密文。
 
 **影响**

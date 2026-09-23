@@ -1,6 +1,6 @@
 # SDD ledger — plan: docs/superpowers/plans/2026-09-19-auth-isolation.md
 
-Base: 82090a3. Existing untracked files: AGENTS.md, docs/BACKLOG.md, docs/team-workflow.md.
+Base: 70e4437. Existing untracked files: AGENTS.md, docs/BACKLOG.md, docs/team-workflow.md.
 
 Ruling: User explicitly requested autonomous execution without questions; design and implementation decisions proceed under that authorization, with no approval pauses or commits.
 Ruling: Work in the supplied project checkout to keep the deliverable immediately reviewable and preserve its untracked instructions. No checkout/reset operations; changes remain uncommitted. Skill scratch/commit/delete steps are adapted to the user's no-destructive-operations requirement; reports remain in project documentation.
