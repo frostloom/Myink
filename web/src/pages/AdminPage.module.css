@@ -251,8 +251,44 @@
   background: var(--surface-2);
 }
 
-.capture .capture {
-  background: var(--surface-1);
+.fields {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.fields > div {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.fields dt {
+  color: var(--ink-subtle);
+  font-size: var(--text-small);
+}
+
+.fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.plainList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.plainList li + li {
+  margin-top: var(--space-2);
+}
+
+.text {
+  margin: 0;
+  max-height: 440px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .flags {

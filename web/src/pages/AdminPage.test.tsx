@@ -65,14 +65,13 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-it('shows the global overview and explains estimated metrics', async () => {
+it('shows the global overview with labeled metrics and status counts', async () => {
   renderPage()
 
   expect(await screen.findByRole('heading', { name: '管理员控制台' })).toBeTruthy()
   expect(await screen.findByText('4')).toBeTruthy()
-  expect(screen.getByText('预估存储成本（非实际账单）')).toBeTruthy()
-  expect(screen.getByText('节点计时合计；0 表示未记录')).toBeTruthy()
-  expect(screen.getByText('queued')).toBeTruthy()
+  expect(screen.getByText('预估成本')).toBeTruthy()
+  expect(screen.getByText('排队中')).toBeTruthy()
 })
 
 it('does not request or render protected data for a normal user', () => {
@@ -182,7 +181,7 @@ it('shows task payload and ordered node detail, including legacy missing fields'
   vi.mocked(adminApi.listTasks).mockResolvedValue({
     items: [{
       id: 'task-1', project_id: 'book-1', user_id: 'user-1', username: 'alice', project_title: '山河册',
-      task_type: 'generate', status: 'failed', chapter_seq: 1, batch_task_id: null, retry_count: 1,
+      task_type: 'chapter_generate', status: 'failed', chapter_seq: 1, batch_task_id: null, retry_count: 1,
       created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:01:00Z', metrics,
     }], total: 1, limit: 25, offset: 0,
   })
@@ -215,19 +214,17 @@ it('shows task payload and ordered node detail, including legacy missing fields'
   fireEvent.click(screen.getByRole('button', { name: '任务' }))
   fireEvent.click(await screen.findByRole('button', { name: '查看任务 task-1' }))
   expect(await screen.findByText('模型超时')).toBeTruthy()
-  expect(screen.getByText('包含排队、暂停与人工等待')).toBeTruthy()
   fireEvent.click(await screen.findByRole('button', { name: '查看节点 draft #11' }))
   expect(await screen.findByText('旧记录未保存详情，无法重建。')).toBeTruthy()
   expect(screen.getByText('旧记录未保存提示词，无法重建。')).toBeTruthy()
   expect(screen.getByText('内容已截断')).toBeTruthy()
   expect(screen.getByText('敏感信息已脱敏')).toBeTruthy()
-  expect(screen.getByText('0 表示未记录')).toBeTruthy()
 })
 
 it('uses the refreshed task detail status instead of the selected list snapshot', async () => {
   const task = {
     id: 'task-refresh', project_id: 'book-1', user_id: 'user-1', username: 'alice', project_title: '山河册',
-    task_type: 'generate', status: 'queued', chapter_seq: 1, batch_task_id: null, retry_count: 0,
+    task_type: 'chapter_generate', status: 'queued', chapter_seq: 1, batch_task_id: null, retry_count: 0,
     created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z', metrics,
   }
   const capture = {
@@ -245,14 +242,14 @@ it('uses the refreshed task detail status instead of the selected list snapshot'
   renderPage()
   fireEvent.click(screen.getByRole('button', { name: '任务' }))
   fireEvent.click(await screen.findByRole('button', { name: '查看任务 task-refresh' }))
-  const heading = await screen.findByRole('heading', { name: '任务 task-refresh' })
+  const heading = await screen.findByRole('heading', { name: '山河册 · 单章生成' })
   const detailSection = heading.closest('section')
   expect(detailSection).not.toBeNull()
-  expect(await screen.findByText('山河册 · generate · queued')).toBeTruthy()
+  expect(await screen.findByText('alice · 第 1 章 · 排队中')).toBeTruthy()
 
   fireEvent.click(within(detailSection as HTMLElement).getByRole('button', { name: '刷新当前视图' }))
 
-  expect(await screen.findByText('山河册 · generate · done')).toBeTruthy()
+  expect(await screen.findByText('alice · 第 1 章 · 完成')).toBeTruthy()
 })
 
 it('keeps taskless setup runs discoverable and loads access logs', async () => {
@@ -270,8 +267,8 @@ it('keeps taskless setup runs discoverable and loads access logs', async () => {
   })
   renderPage()
   fireEvent.click(screen.getByRole('button', { name: '全部运行' }))
-  expect(await screen.findByText('无关联任务')).toBeTruthy()
-  expect(await screen.findByText(/未降级/)).toBeTruthy()
+  expect(await screen.findByText('#20')).toBeTruthy()
+  expect(screen.getByText('0.0300')).toBeTruthy()
   expect(screen.getByRole('button', { name: '查看节点 book_setup #20' })).toBeTruthy()
 
   fireEvent.click(screen.getByRole('button', { name: '访问日志' }))

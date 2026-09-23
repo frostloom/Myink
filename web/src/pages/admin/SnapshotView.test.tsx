@@ -95,7 +95,7 @@ it('tells the operator a legacy row has no payload instead of showing empty tabl
 
   expect(await screen.findByText('这条记录早于快照上线，只剩标量遥测。')).toBeTruthy()
   expect(screen.queryByRole('navigation', { name: '快照子视图' })).toBeNull()
-  expect(screen.getByText(/write · 第 4 章 · 第 1 次/)).toBeTruthy()
+  expect(screen.getByText(/写作 · 第 4 章 · 第 1 次/)).toBeTruthy()
 })
 
 it('reloads the same snapshot when asked to refresh', async () => {
