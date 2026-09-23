@@ -9,6 +9,7 @@
 - 伏笔烂尾 / 主线停滞（样例 18/19/23/26/27）
 - 桥段重复向量近邻（样例 14，阴性 32 对照，§8.6）：事件向量近邻 + 呼应词豁免
 - 句式禁令（任何题材）：「不是…」紧跟「是…」（含拆成两句的「不是…。是…」）、连续排比，出现即 critical
+- 正文卫生（对齐 inkos post-write-validator 同类规则）：章节号指称（critical）、作者说教词 / 连续「了」字 / 段落过长（hint）
 
 conflict_key = hash(类型+实体+位置)，跨修订轮稳定（§6.4）。
 """
@@ -49,6 +50,14 @@ _THREAD_STALL = 15
 _IS_PREFIX = "不只但于就还可总要倒单也便仍更全若虽既光自又且均算本或其实很尤确非即亦竟偏却老硬乃岂"
 _NOT_IS = re.compile(rf"(?<!是)不是[^。！？!?\n]{{0,40}}[。！？!?]*\s*(?<![{_IS_PREFIX}])是")
 _SENTENCE_END = re.compile(r"[。！？!?]+")
+
+# 正文卫生四则（对齐 inkos packages/core/src/agents/post-write-validator.ts 的同类硬规则）。
+# 阈值取 inkos 代码的**实际值**：其注释与代码不符处已逐条标注，以代码为准。
+_CHAPTER_REF = re.compile(r"第\s*\d+\s*章|[Cc]hapter\s+\d+")
+_SERMON_WORDS = ("显然", "毋庸置疑", "不言而喻", "众所周知", "不难看出")
+_CONSECUTIVE_LE_MIN = 6        # inkos 注释写「3 句以上」，代码实为 >= 6
+_LONG_PARAGRAPH_CHARS = 300    # inkos 注释写「50-250 字为宜」，代码实为 > 300
+_LONG_PARAGRAPH_MIN = 2        # 需 >= 2 个超长段落才报
 
 # 样例 14/32 阈值：桥段重复（事件向量近邻，§8.6）。跨章最小间隔 10（样例 14 ch5→ch15 恰在边界）；
 # cosine distance < 0.3 ⟺ 余弦相似度 > 0.7。宁缺毋滥（§8.8）：先保阴性 0 误报，再抬阳性检出率。
@@ -139,6 +148,34 @@ def _prose_ban_quotes(text: str) -> list[str]:
             seen.add(quote)
             ordered.append(quote)
     return ordered
+
+
+def _chapter_refs(text: str) -> list[str]:
+    """正文里出现的章节号指称，去重保序——角色不知道自己在第几章。"""
+    return list(dict.fromkeys(_CHAPTER_REF.findall(text)))
+
+
+def _sermon_words(text: str) -> list[str]:
+    """作者说教词，出现即收。含「显然」这类日常词，故只按 hint 报，不阻塞。"""
+    return [word for word in _SERMON_WORDS if word in text]
+
+
+def _max_consecutive_le(text: str) -> int:
+    """最长连续含「了」的句数。句以本案既有的 _SENTENCE_END 切分。"""
+    longest = current = 0
+    for sentence in _SENTENCE_END.split(text):
+        if len(sentence.strip()) > 2 and "了" in sentence:
+            current += 1
+            longest = max(longest, current)
+        else:
+            current = 0
+    return longest
+
+
+def _long_paragraphs(text: str) -> list[int]:
+    """按空行分段后，超过 _LONG_PARAGRAPH_CHARS 的段落长度清单。"""
+    parts = (part.strip() for part in re.split(r"\n\s*\n", text))
+    return [len(part) for part in parts if len(part) > _LONG_PARAGRAPH_CHARS]
 
 
 def _has_callback_marker(text: str | None) -> bool:
@@ -378,6 +415,57 @@ class L1Validator:
             evidence=[{"chapter": chapter_seq, "quote": quote} for quote in quotes],
             suggestion="删掉「不是…是…」和连续排比，改成直接叙述",
         )]
+
+    def prose_hygiene_check(self, session: Session, *, project_id: uuid.UUID,
+                            chapter_seq: int, draft: str | None = None) -> list[Finding]:
+        """正文卫生四则（对齐 inkos post-write-validator 的同类规则）。
+
+        章节号指称是正确性缺陷（角色不知道自己在第几章）→ critical，触发修订；
+        说教词 / 连续「了」字 / 段落过长是文体提示 → hint，只记录不阻塞。
+        """
+        del session, project_id
+        if not draft:
+            return []
+        findings: list[Finding] = []
+
+        refs = _chapter_refs(draft)
+        if refs:
+            findings.append(Finding(
+                conflict_key=_key("style", "chapter-ref", chapter_seq),
+                conflict_type="style", severity="critical", scope="local", source="L1",
+                evidence=[{"chapter": chapter_seq, "quote": "、".join(refs)}],
+                suggestion="正文别写章节号，改成自然指代：「那天晚上」「仓库出事那次」",
+            ))
+
+        sermons = _sermon_words(draft)
+        if sermons:
+            findings.append(Finding(
+                conflict_key=_key("style", "sermon", chapter_seq),
+                conflict_type="style", severity="hint", scope="local", source="L1",
+                evidence=[{"chapter": chapter_seq, "quote": "、".join(sermons)}],
+                suggestion="删掉说教词，让读者自己从情节里判断",
+            ))
+
+        longest = _max_consecutive_le(draft)
+        if longest >= _CONSECUTIVE_LE_MIN:
+            findings.append(Finding(
+                conflict_key=_key("style", "consecutive-le", chapter_seq),
+                conflict_type="style", severity="hint", scope="local", source="L1",
+                evidence=[{"chapter": chapter_seq, "quote": f"连续 {longest} 句含「了」"}],
+                suggestion="保留最有力的一个「了」，其余改成无「了」句式",
+            ))
+
+        longs = _long_paragraphs(draft)
+        if len(longs) >= _LONG_PARAGRAPH_MIN:
+            findings.append(Finding(
+                conflict_key=_key("style", "long-paragraph", chapter_seq),
+                conflict_type="style", severity="hint", scope="local", source="L1",
+                evidence=[{"chapter": chapter_seq,
+                           "quote": f"{len(longs)} 段超过 {_LONG_PARAGRAPH_CHARS} 字，最长 {max(longs)} 字"}],
+                suggestion="长段落拆成 3-5 行的短段，在动作切换或情绪节点处断开",
+            ))
+
+        return findings
 
     # ---- realm ----
     def _realm_checks(self, session: Session, project_id: uuid.UUID, chapter_seq: int,
