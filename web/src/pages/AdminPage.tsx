@@ -1,14 +1,6 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type FormEvent,
-  type ReactNode,
-} from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
-import { ApiError } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
 import {
   adminApi,
@@ -17,7 +9,6 @@ import {
   type AdminContext,
   type AdminInvitation,
   type AdminInvitationCreated,
-  type AdminMetrics,
   type AdminOverview,
   type AdminPage as PageResult,
   type AdminProject,
@@ -25,148 +16,23 @@ import {
   type AdminRunDetail,
   type AdminTask,
   type AdminTaskDetail,
-  type AdminUser,
-  type CapturedData,
 } from '../lib/adminApi'
+import { Analytics } from './admin/Analytics'
+import {
+  CapturedView,
+  formatDate,
+  formatDuration,
+  JsonText,
+  LoadState,
+  Metrics,
+  PAGE_SIZE,
+  Pagination,
+  RefreshButton,
+  useResource,
+} from './admin/shared'
 import styles from './AdminPage.module.css'
 
-const PAGE_SIZE = 25
-type Tab = 'overview' | 'users' | 'projects' | 'tasks' | 'runs' | 'logs' | 'invites'
-
-function useResource<T>(
-  loader: (signal: AbortSignal) => Promise<T>,
-  onForbidden: () => void,
-) {
-  const [data, setData] = useState<T | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [revision, setRevision] = useState(0)
-  const sequence = useRef(0)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    const current = ++sequence.current
-    setLoading(true)
-    setError(null)
-    setData(null)
-    void loader(controller.signal).then((value) => {
-      if (!controller.signal.aborted && current === sequence.current) setData(value)
-    }).catch((reason: unknown) => {
-      if (controller.signal.aborted || current !== sequence.current) return
-      if (reason instanceof ApiError && reason.status === 403) {
-        onForbidden()
-        return
-      }
-      if (reason instanceof ApiError && reason.code === 'request_aborted') return
-      setError(formatApiError(reason, '加载失败，请稍后重试'))
-    }).finally(() => {
-      if (!controller.signal.aborted && current === sequence.current) setLoading(false)
-    })
-    return () => controller.abort()
-  }, [loader, onForbidden, revision])
-
-  return { data, loading, error, retry: () => setRevision((value) => value + 1) }
-}
-
-function LoadState({
-  loading,
-  error,
-  empty,
-  retry,
-  children,
-}: {
-  loading: boolean
-  error: string | null
-  empty: boolean
-  retry: () => void
-  children: ReactNode
-}) {
-  if (loading) return <div className="empty" role="status">正在加载…</div>
-  if (error) {
-    return (
-      <div className={`banner banner-error ${styles.loadError}`} role="alert">
-        <span>{error}</span>
-        <button type="button" className="btn btn-secondary" onClick={retry}>重试</button>
-      </div>
-    )
-  }
-  if (empty) return <div className="empty">暂无数据</div>
-  return children
-}
-
-function Pagination({ total, offset, onChange }: {
-  total: number
-  offset: number
-  onChange: (offset: number) => void
-}) {
-  return (
-    <div className={styles.pagination} aria-label="分页">
-      <button
-        type="button"
-        className="btn btn-quiet"
-        disabled={offset === 0}
-        onClick={() => onChange(Math.max(0, offset - PAGE_SIZE))}
-      >上一页</button>
-      <span>第 {Math.floor(offset / PAGE_SIZE) + 1} 页 · 共 {total} 条</span>
-      <button
-        type="button"
-        className="btn btn-quiet"
-        disabled={offset + PAGE_SIZE >= total}
-        onClick={() => onChange(offset + PAGE_SIZE)}
-      >下一页</button>
-    </div>
-  )
-}
-
-function RefreshButton({ onClick }: { onClick: () => void }) {
-  return <button type="button" className="btn btn-secondary" onClick={onClick}>刷新当前视图</button>
-}
-
-function Metrics({ value }: { value: AdminMetrics }) {
-  return (
-    <dl className={styles.metrics}>
-      <div><dt>运行数</dt><dd>{value.run_count.toLocaleString()}</dd></div>
-      <div><dt>输入 Token</dt><dd>{value.input_tokens.toLocaleString()}</dd></div>
-      <div><dt>输出 Token</dt><dd>{value.output_tokens.toLocaleString()}</dd></div>
-      <div><dt>预估存储成本（非实际账单）</dt><dd>¥/US$ {value.cost_est.toFixed(4)}</dd></div>
-      <div><dt>节点计时合计；0 表示未记录</dt><dd>{formatDuration(value.duration_ms)}</dd></div>
-    </dl>
-  )
-}
-
-function formatDuration(value: number): string {
-  if (value === 0) return '0（未记录）'
-  if (value < 1000) return `${value} ms`
-  return `${(value / 1000).toFixed(2)} 秒`
-}
-
-function formatDate(value: string): string {
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN')
-}
-
-function JsonText({ value }: { value: unknown }) {
-  if (value === null || value === undefined || value === '') return <p className={styles.muted}>无记录</p>
-  const text = typeof value === 'string' ? value : JSON.stringify(value, null, 2)
-  return <pre className={styles.pre}>{text}</pre>
-}
-
-function CapturedView({ value, label }: { value: CapturedData; label: string }) {
-  return (
-    <section className={styles.capture} aria-label={label}>
-      <h4>{label}</h4>
-      <div className={styles.flags}>
-        {value.truncated && <span className="badge badge-warning">内容已截断</span>}
-        {value.redacted && <span className="badge badge-warning">敏感信息已脱敏</span>}
-        {!value.truncated && !value.redacted && <span className="badge">完整的受限快照</span>}
-      </div>
-      <JsonText value={value.data} />
-      <small className={styles.muted}>
-        上限：{value.limits.max_items} 项 / {value.limits.max_text} 字符 / {value.limits.max_bytes} 字节
-      </small>
-    </section>
-  )
-}
+type Tab = 'overview' | 'analytics' | 'projects' | 'tasks' | 'runs' | 'logs' | 'invites'
 
 function OverviewView({ token, onForbidden }: { token: string; onForbidden: () => void }) {
   const load = useCallback((signal: AbortSignal) => adminApi.getOverview(token, signal), [token])
@@ -198,52 +64,6 @@ function OverviewView({ token, onForbidden }: { token: string; onForbidden: () =
             </div>
           </>
         )}
-      </LoadState>
-    </section>
-  )
-}
-
-function UsersView({ token, onForbidden, onProjects, onTasks }: {
-  token: string
-  onForbidden: () => void
-  onProjects: (userId: string) => void
-  onTasks: (userId: string) => void
-}) {
-  const [draft, setDraft] = useState('')
-  const [q, setQ] = useState('')
-  const [offset, setOffset] = useState(0)
-  const load = useCallback(
-    (signal: AbortSignal) => adminApi.listUsers(token, { q, limit: PAGE_SIZE, offset }, signal),
-    [offset, q, token],
-  )
-  const resource = useResource<PageResult<AdminUser>>(load, onForbidden)
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
-    setOffset(0)
-    setQ(draft.trim())
-  }
-  return (
-    <section className={styles.view} aria-labelledby="users-heading">
-      <div className={styles.viewHead}><div><h2 id="users-heading">用户</h2></div><RefreshButton onClick={resource.retry} /></div>
-      <form className={styles.filters} role="search" aria-label="用户筛选" onSubmit={submit}>
-        <label><span>搜索用户</span><input className="input" value={draft} maxLength={128} onChange={(event) => setDraft(event.target.value)} /></label>
-        <button className="btn btn-primary" type="submit">搜索</button>
-      </form>
-      <LoadState {...resource} empty={resource.data?.items.length === 0}>
-        {resource.data && <>
-          <div className={styles.tableWrap}><table><thead><tr><th>用户</th><th>角色/级别</th><th>作品/章节/字数</th><th>任务/运行</th><th>操作</th></tr></thead>
-            <tbody>{resource.data.items.map((user) => <tr key={user.id}>
-              <td><strong>{user.username}</strong><small>{user.id}</small></td>
-              <td>{user.role} / {user.tier}</td>
-              <td>{user.project_count} / {user.chapter_count} / {user.word_count.toLocaleString()}</td>
-              <td>{user.task_count} / {user.metrics.run_count}</td>
-              <td className={styles.actions}>
-                <button type="button" className="btn btn-quiet" aria-label={`查看 ${user.username} 的作品`} onClick={() => onProjects(user.id)}>作品</button>
-                <button type="button" className="btn btn-quiet" aria-label={`查看 ${user.username} 的任务`} onClick={() => onTasks(user.id)}>任务</button>
-              </td>
-            </tr>)}</tbody></table></div>
-          <Pagination total={resource.data.total} offset={offset} onChange={setOffset} />
-        </>}
       </LoadState>
     </section>
   )
@@ -340,14 +160,13 @@ function ProjectDetailView({ token, project, onForbidden }: {
   )
 }
 
-function ProjectsView({ token, onForbidden, initialUserId }: {
+function ProjectsView({ token, onForbidden }: {
   token: string
   onForbidden: () => void
-  initialUserId: string
 }) {
   const [draftQ, setDraftQ] = useState('')
-  const [draftUser, setDraftUser] = useState(initialUserId)
-  const [filters, setFilters] = useState({ q: '', userId: initialUserId })
+  const [draftUser, setDraftUser] = useState('')
+  const [filters, setFilters] = useState({ q: '', userId: '' })
   const [offset, setOffset] = useState(0)
   const [selected, setSelected] = useState<AdminProject | null>(null)
   const load = useCallback(
@@ -468,12 +287,11 @@ function TaskDetailView({ token, task, onForbidden }: {
   )
 }
 
-function TasksView({ token, onForbidden, initialUserId }: {
+function TasksView({ token, onForbidden }: {
   token: string
   onForbidden: () => void
-  initialUserId: string
 }) {
-  const [draft, setDraft] = useState({ userId: initialUserId, projectId: '', status: '' })
+  const [draft, setDraft] = useState({ userId: '', projectId: '', status: '' })
   const [filters, setFilters] = useState(draft)
   const [offset, setOffset] = useState(0)
   const [selected, setSelected] = useState<AdminTask | null>(null)
@@ -694,13 +512,10 @@ function AdminConsole({ token, logout, onForbidden }: {
   onForbidden: () => void
 }) {
   const [tab, setTab] = useState<Tab>('overview')
-  const [userFilter, setUserFilter] = useState('')
   const tabs: Array<[Tab, string]> = [
-    ['overview', '概览'], ['users', '用户'], ['projects', '作品'], ['tasks', '任务'],
+    ['overview', '概览'], ['analytics', '分析'], ['projects', '作品'], ['tasks', '任务'],
     ['runs', '全部运行'], ['logs', '访问日志'], ['invites', '邀请码'],
   ]
-  const openProjects = (userId: string) => { setUserFilter(userId); setTab('projects') }
-  const openTasks = (userId: string) => { setUserFilter(userId); setTab('tasks') }
   return (
     <div className={styles.wrap}>
       <ProjectRail projects={[]} onLogout={logout} />
@@ -714,13 +529,13 @@ function AdminConsole({ token, logout, onForbidden }: {
             type="button"
             className={tab === id ? styles.activeTab : ''}
             aria-pressed={tab === id}
-            onClick={() => { setUserFilter(''); setTab(id) }}
+            onClick={() => setTab(id)}
           >{label}</button>)}
         </nav>
         {tab === 'overview' && <OverviewView token={token} onForbidden={onForbidden} />}
-        {tab === 'users' && <UsersView token={token} onForbidden={onForbidden} onProjects={openProjects} onTasks={openTasks} />}
-        {tab === 'projects' && <ProjectsView key={`projects:${userFilter}`} token={token} onForbidden={onForbidden} initialUserId={userFilter} />}
-        {tab === 'tasks' && <TasksView key={`tasks:${userFilter}`} token={token} onForbidden={onForbidden} initialUserId={userFilter} />}
+        {tab === 'analytics' && <Analytics token={token} onForbidden={onForbidden} />}
+        {tab === 'projects' && <ProjectsView token={token} onForbidden={onForbidden} />}
+        {tab === 'tasks' && <TasksView token={token} onForbidden={onForbidden} />}
         {tab === 'runs' && <RunsView token={token} onForbidden={onForbidden} />}
         {tab === 'logs' && <LogsView token={token} onForbidden={onForbidden} />}
         {tab === 'invites' && <InvitesView token={token} onForbidden={onForbidden} />}

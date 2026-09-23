@@ -1,0 +1,162 @@
+/* 布局类（tableWrap/pre/muted）取自 AdminPage.module.css，此处只放快照页自己的类。 */
+.snapshot {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.head h3 {
+  margin: 0;
+}
+
+.head p {
+  margin: var(--space-1) 0 0;
+  color: var(--ink-subtle);
+}
+
+.flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.subnav button {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  color: inherit;
+  cursor: pointer;
+}
+
+.subnav .activeView {
+  border-color: var(--accent);
+  background: var(--surface-2);
+  font-weight: 600;
+}
+
+.group {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.group h4 {
+  margin: 0;
+}
+
+.sections,
+.items {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sections > li,
+.items > li {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+
+.itemHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pairs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.pairs div {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.pairs dt {
+  color: var(--ink-subtle);
+}
+
+.pairs dd {
+  margin: 0;
+}
+
+.excerpt {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.summary {
+  margin: 0;
+  color: var(--ink-subtle);
+}
+
+.muted {
+  margin: 0;
+  color: var(--ink-subtle);
+}
+
+.pre {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: var(--text-small, 0.875rem);
+}
+
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+
+.tableWrap table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+}
+
+.tableWrap th,
+.tableWrap td {
+  text-align: left;
+  vertical-align: top;
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.tableWrap th {
+  color: var(--ink-subtle);
+  font-size: var(--text-small);
+  background: var(--surface-2);
+}
+
+.tableWrap tbody tr:last-child td {
+  border-bottom: 0;
+}

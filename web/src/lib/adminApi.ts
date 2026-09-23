@@ -15,6 +15,13 @@ export interface AdminMetrics {
   duration_ms: number
 }
 
+/** 两级均值：先按任务汇总，再对任务取平均。无任务时为 null（与「花费为零」区分）。 */
+export interface AdminTaskAverages {
+  avg_cost_per_task: number | null
+  avg_duration_ms_per_task: number | null
+  avg_runs_per_task: number | null
+}
+
 export interface CaptureLimits {
   max_depth: number
   max_items: number
@@ -48,6 +55,7 @@ export interface AdminUser {
   word_count: number
   task_count: number
   metrics: AdminMetrics
+  task_averages: AdminTaskAverages
 }
 
 export interface AdminProject {
@@ -65,6 +73,7 @@ export interface AdminProject {
   word_count: number
   task_count: number
   metrics: AdminMetrics
+  task_averages: AdminTaskAverages
 }
 
 export interface AdminChapter {
@@ -123,6 +132,129 @@ export interface AdminTaskDetail extends AdminTask {
   error: CapturedData
   elapsed_ms: number
   elapsed_includes_waits: true
+}
+
+/** 一本书里的一个任务一行（分析页第二层）。 */
+export interface AdminGenerationTask {
+  id: string
+  task_type: string
+  status: string
+  chapter_seq: number | null
+  batch_task_id: string | null
+  retry_count: number
+  chapter_count: number
+  snapshot_count: number
+  created_at: string
+  updated_at: string
+  metrics: AdminMetrics
+}
+
+/** 快照指针：只有定位与标量，正文在 /snapshots/{id}。 */
+export interface AdminSnapshotRef {
+  id: number
+  stage: string
+  attempt: number
+  model_id: string | null
+  cost_est: number
+  duration_ms: number
+  degraded: boolean
+  created_at: string
+}
+
+/** 任务内按章的分解（分析页第三层）。 */
+export interface AdminTaskChapter {
+  chapter_seq: number | null
+  stages: string[]
+  metrics: AdminMetrics
+  snapshots: AdminSnapshotRef[]
+}
+
+/** 渲染后的提示词分节。hash 只留字节数与摘要；full 留原文（可能被节上限截断）。 */
+export interface SnapshotSection {
+  role: string | null
+  name: string | null
+  policy: 'full' | 'hash'
+  text?: string
+  bytes?: number
+  sha256?: string
+  truncated?: boolean
+  omitted?: 'budget'
+}
+
+export interface SnapshotPrompt {
+  sections: SnapshotSection[]
+  truncated: boolean
+  bytes: number
+}
+
+export interface SnapshotRecallItem {
+  [key: string]: unknown
+}
+
+export interface SnapshotRecall {
+  groups: Record<string, SnapshotRecallItem[]>
+  counts: Record<string, number>
+  stats: Record<string, unknown>
+}
+
+/** 快照留存的原始输入（选择性）。键的存在即代表该阶段有这项内容。 */
+export interface SnapshotPayload {
+  prompt?: SnapshotPrompt
+  output?: { bytes: number; sha256: string; excerpt: string }
+  recall?: SnapshotRecall
+  findings?: SnapshotFinding[]
+  applied_spans?: Array<{ target: string; replacement: string }>
+  input_draft?: { bytes: number; sha256: string; excerpt: string }
+  summary?: string
+  error?: string
+  _capture?: { scope: string; selective: boolean; truncated: boolean; redacted: boolean }
+}
+
+export interface AdminSnapshot {
+  id: number
+  project_id: string
+  task_id: string
+  chapter_seq: number | null
+  stage: string
+  attempt: number
+  model_id: string | null
+  input_tokens: number
+  output_tokens: number
+  cache_hit: boolean
+  duration_ms: number
+  cost_est: number
+  retry_count: number
+  degraded: boolean
+  created_at: string
+  updated_at: string
+  payload: CapturedData
+  snapshot_missing: boolean
+}
+
+export interface SnapshotEvidence {
+  chapter: number
+  quote: string
+}
+
+/** 一条校验发现 + 它出现在哪一章哪次尝试。 */
+export interface SnapshotFinding {
+  finding_id?: string | null
+  conflict_key?: string | null
+  conflict_type?: string | null
+  severity?: string | null
+  scope?: string | null
+  source?: string | null
+  confidence?: number | null
+  suggestion?: string | null
+  evidence?: SnapshotEvidence[]
+}
+
+export interface AdminSnapshotFinding extends SnapshotFinding {
+  snapshot_id: number
+  task_id: string
+  chapter_seq: number | null
+  attempt: number
+  evidence: SnapshotEvidence[]
 }
 
 export interface AdminRun {
@@ -210,6 +342,11 @@ interface RunFilters extends PageFilters {
   node?: string
 }
 
+interface FindingFilters extends PageFilters {
+  severity?: string
+  chapterSeq?: number
+}
+
 function query(entries: Array<[string, string | number | undefined]>): string {
   const params = new URLSearchParams()
   for (const [key, value] of entries) {
@@ -278,6 +415,29 @@ export const adminApi = {
 
   getRun: (token: string, runId: number, signal?: AbortSignal) =>
     authenticatedGet<AdminRunDetail>(`/admin/runs/${runId}`, token, signal),
+
+  listGenerationTasks: (token: string, projectId: string, filters: PageFilters, signal?: AbortSignal) =>
+    authenticatedGet<AdminPage<AdminGenerationTask>>(
+      `/admin/projects/${encodeURIComponent(projectId)}/generation-tasks${query(paging(filters))}`,
+      token, signal,
+    ),
+
+  listTaskChapters: (token: string, taskId: string, filters: PageFilters, signal?: AbortSignal) =>
+    authenticatedGet<AdminPage<AdminTaskChapter>>(
+      `/admin/tasks/${encodeURIComponent(taskId)}/chapters${query(paging(filters))}`,
+      token, signal,
+    ),
+
+  getSnapshot: (token: string, snapshotId: number, signal?: AbortSignal) =>
+    authenticatedGet<AdminSnapshot>(`/admin/snapshots/${snapshotId}`, token, signal),
+
+  listFindings: (token: string, projectId: string, filters: FindingFilters, signal?: AbortSignal) =>
+    authenticatedGet<AdminPage<AdminSnapshotFinding>>(
+      `/admin/projects/${encodeURIComponent(projectId)}/findings${query([
+        ['severity', filters.severity], ['chapter_seq', filters.chapterSeq], ...paging(filters),
+      ])}`,
+      token, signal,
+    ),
 
   listAccessLogs: (token: string, filters: PageFilters, signal?: AbortSignal) =>
     authenticatedGet<AdminPage<AdminAccessLog>>(
