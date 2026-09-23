@@ -1,4 +1,5 @@
-"""句式禁令：任何题材，「不是…而是…」「不是…，是…」或连续排比出现一次即 critical。
+"""句式禁令：任何题材，同一句内「不是…是…」（含「不是…而是…」「不是…，是…」）或连续排比出现
+一次即 critical。
 
 不读文风档案，不按词频计数。普通用词和未达结构的句子不报。
 """
@@ -74,6 +75,27 @@ def test_not_comma_is_critical(temp_project):
     fs = _check(temp_project, "他不是害怕，是不愿意走。")
     assert len(fs) == 1, fs
     assert "是不愿意" in fs[0]["evidence"][0]["quote"]
+
+
+def test_not_is_without_a_comma_is_critical(temp_project):
+    """没有逗号、也没有「而是」的对举同样算：否定与改口在同一句里就够了。"""
+    assert _prose_ban_quotes("他不是坏人是个好人。") == ["不是坏人是个好人"]
+    fs = _check(temp_project, "他不是坏人是个好人。")
+    assert len(fs) == 1, fs
+    assert fs[0]["severity"] == "critical"
+
+
+@pytest.mark.parametrize("draft", [
+    "他不是不想去，只是没时间。",          # 只是：后一个「是」是词的一部分
+    "他不是不知道轻重，就是不肯低头。",     # 就是
+    "他不是不怕，但是不能退。",            # 但是
+    "这到底是不是真的？",                 # 是不是：前一个「是」把「不是」挡住了
+    "他不是不想去，也不是不愿意。",         # 不是A不是B：只有一个「不是」在对举
+])
+def test_words_containing_shi_pass(temp_project, draft):
+    """连词/副词里的「是」不是禁句；否则每一章都会命中。"""
+    assert _prose_ban_quotes(draft) == []
+    assert _check(temp_project, draft) == []
 
 
 def test_parallel_clauses_critical(temp_project):
