@@ -1,4 +1,4 @@
-"""账号级环境配置：模型连接/路由 + MCP 扫榜（不绑具体作品）。"""
+"""账号级环境配置：模型连接/路由 + 扫榜 + MCP 客户端设置（不绑具体作品）。"""
 
 from __future__ import annotations
 
@@ -36,8 +36,6 @@ class RankingsBody(BaseModel):
     mcp_url: str | None = None
     timeout: int | None = None
     limit: int | None = None
-    source: str | None = None
-    tool: str | None = None
 
 
 class EnvironmentBody(BaseModel):
@@ -71,16 +69,6 @@ def _validate_rankings(body: RankingsBody, existing: dict) -> dict:
         if not 1 <= body.limit <= 50:
             raise HTTPException(status_code=400, detail="扫榜条数须为 1–50")
         merged["limit"] = body.limit
-    if body.source is not None:
-        source = body.source.strip()
-        if len(source) > 32:
-            raise HTTPException(status_code=400, detail="榜单来源长度必须 ≤32")
-        merged["source"] = source
-    if body.tool is not None:
-        tool = body.tool.strip()
-        if len(tool) > 80:
-            raise HTTPException(status_code=400, detail="工具名长度必须 ≤80")
-        merged["tool"] = tool
     return merged
 
 

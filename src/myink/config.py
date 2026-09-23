@@ -120,19 +120,16 @@ class Settings:
     jwt_secret: str = field(default_factory=lambda: _env("JWT_SECRET", _DEV_JWT_SECRET) or _DEV_JWT_SECRET)
     jwt_ttl: int = field(default_factory=lambda: int(_env("JWT_TTL", "1800") or "1800"))  # 秒，短时效（§14.2 SSO/token）
 
-    # 阶段 3：MCP 扫榜（plan.md §10；外部 server 不可信，榜单只作建书前的题材风向
-    # 灵感工具、不进记忆/事实层、不注入任何生成节点）。默认开 + 优雅降级：
-    # RANKINGS_ENABLED=0 完全关闭；网络不可达/无匹配工具/无有效项 → 内置样例
+    # 阶段 3：扫榜（plan.md §10；上游不可信，榜单只作建书前的题材风向灵感工具、
+    # 不进记忆/事实层、不注入任何生成节点）。默认开 + 优雅降级：
+    # RANKINGS_ENABLED=0 完全关闭；网络不可达/无有效项 → 内置样例
     # （source=sample + error），面板照常展示不中断。
     rankings_enabled: bool = field(default_factory=lambda: _env("RANKINGS_ENABLED", "1") == "1")
+    rankings_timeout: int = field(default_factory=lambda: int(_env("RANKINGS_TIMEOUT", "10") or "10"))  # 秒
+    rankings_limit: int = field(default_factory=lambda: int(_env("RANKINGS_LIMIT", "10") or "10"))  # 展示条数 cap
+    rankings_cache_ttl: int = field(default_factory=lambda: int(_env("RANKINGS_CACHE_TTL", "3600") or "3600"))  # 秒
     rankings_mcp_url: str = field(default_factory=lambda: _env(
         "RANKINGS_MCP_URL", "https://daosearch.io/api/mcp") or "https://daosearch.io/api/mcp")
-    rankings_timeout: int = field(default_factory=lambda: int(_env("RANKINGS_TIMEOUT", "10") or "10"))  # 秒
-    rankings_limit: int = field(default_factory=lambda: int(_env("RANKINGS_LIMIT", "10") or "10"))  # 注入条数 cap
-    rankings_cache_ttl: int = field(default_factory=lambda: int(_env("RANKINGS_CACHE_TTL", "3600") or "3600"))  # 秒
-    rankings_source: str = field(default_factory=lambda: _env("RANKINGS_SOURCE", "qidian") or "qidian")
-    # 榜单工具名覆盖（空 → list_tools 自动发现 rank 关键词，source 命中优先）
-    rankings_tool: str = field(default_factory=lambda: _env("RANKINGS_TOOL", "") or "")
 
     def is_prod(self) -> bool:
         return self.app_env == "prod"

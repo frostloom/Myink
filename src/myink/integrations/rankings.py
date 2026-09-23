@@ -1,16 +1,16 @@
-"""扫榜能力：外部小说榜单经 MCP Client 拉取 → sanitize → 供建书前灵感工具展示。
+"""扫榜能力：番茄榜单取数 → sanitize → 供建书前灵感工具展示。
 
 设计口径（plan.md §10 / 记忆确认）：
-- Myink 是 **MCP Client**（接入外部数据源的标准协议）；外部 server 不可信；
+- 取数走 `integrations/fanqie.py`（外部接口不可信）；取到的原始行**必须**过 sanitize；
 - 榜单数据**只当灵感参考展示给用户，不进记忆/事实/事件层**（不落库），
   且**不注入任何生成节点**——扫榜已整体前移至建书前的用户灵感工具；
 - **输出 sanitize 防注入**：只留 allowlist 字段、剥控制字符、字段/条数 cap；
-- **优雅降级（§6.12）**：`RANKINGS_ENABLED=0` / 网络不可达 / 无匹配工具 / 无有效项
+- **优雅降级（§6.12）**：`RANKINGS_ENABLED=0` / 网络不可达 / 无有效项
   → 返回内置样例（`source=sample` + `error`），面板照常展示不中断。
 
 入口：`fetch_rankings`（async，供 FastAPI 全局端点直接 await）。进程内 TTL 缓存
 （api 与 worker 独立进程各持一份——榜单是全局只读低频公开数据，各进程每小时最多
-打一次 MCP，不值得上 Redis 共享缓存）。
+打一次上游，不值得上 Redis 共享缓存）。
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from myink.config import settings
-from myink.integrations.mcp import McpClient, McpError
+from myink.integrations.fanqie import FanqieError, fetch_all
 
 logger = logging.getLogger(__name__)
 
@@ -44,18 +44,10 @@ _ALLOWED = {"rank", "title", "author", "tags", "tag", "hot"}
 _FIELD_CAP = {"title": 120, "author": 60, "tags": 12, "hot": 40}
 _MAX_TAGS = 8
 
-# 参数属于精确工具契约，不属于用户选择的 source。未知工具禁止试探调用。
-_TOOL_ARGS: dict[str, dict[str, Any]] = {
-    "qidian_rank": {"type": "hotsales", "genre": "overall"},
-    "community_rank": {"period": "all-time", "genre": "1"},
-}
-_SOURCE_TOOLS = {"qidian": "qidian_rank", "community": "community_rank"}
 _COLLECTION_KEYS = ("items", "rankings", "data", "list", "books")
 
-
-def _tool_args(tool: str) -> dict[str, Any] | None:
-    args = _TOOL_ARGS.get(tool)
-    return dict(args) if args is not None else None
+# 取数来源标识（写进响应的 tool 字段；字段本身保留，形状不变）
+_SOURCE_NAME = "fanqie"
 
 
 def _clean_text(value: Any, cap: int) -> str:
@@ -92,7 +84,7 @@ def _collect_tags(row: dict[str, Any]) -> list[str]:
 
 
 def _extract_rows(raw: Any) -> list[Any]:
-    """宽容解析 MCP 返回：顶层 list / {items|rankings|data|list|books: [...]} / 单条 dict。"""
+    """宽容解析上游返回：顶层 list / {items|rankings|data|list|books: [...]} / 单条 dict。"""
     if isinstance(raw, list):
         return raw
     if isinstance(raw, dict):
@@ -109,7 +101,7 @@ def _extract_rows(raw: Any) -> list[Any]:
 def sanitize(raw: Any, *, limit: int) -> list[dict[str, Any]]:
     """外部榜单数据 → 归一 `[{"rank","title","author","tags","hot"}]`（只留 allowlist）。
 
-    输入宽容：已解析 list/dict 或 JSON 文本（McpClient text 块拼平返回的是字符串）都接受；
+    输入宽容：已解析 list/dict 或 JSON 文本都接受；
     非 JSON 文本（工具错误文案等）→ []。未知键丢弃、字段长度 cap、条数 cap 到 limit、
     非 dict 项丢弃、无 title 项丢弃；rank 缺失按序号补。0 有效项 → 返回 []，调用方据此降级样例。
     """
@@ -146,14 +138,6 @@ def sanitize(raw: Any, *, limit: int) -> list[dict[str, Any]]:
     return out
 
 
-def _find_tool(tools: list[str], source: str, override: str) -> str | None:
-    """只做精确发现；显式覆盖的参数契约由调用前的 _tool_args 再检查。"""
-    if override:
-        return override if override in tools else None
-    candidate = _SOURCE_TOOLS.get(source)
-    return candidate if candidate in tools else None
-
-
 @dataclass
 class RankingsResult:
     source: str = "sample"  # "remote" | "sample"
@@ -163,19 +147,12 @@ class RankingsResult:
     items: list[dict[str, Any]] = field(default_factory=list)
 
 
-def _default_client_factory():
-    def factory() -> McpClient:
-        return McpClient(settings.rankings_mcp_url, timeout_s=settings.rankings_timeout)
-
-    return factory
-
-
 class RankingsService:
-    """扫榜服务：TTL 缓存 + 降级 + 双入口。测试可注入 settings / client 工厂 / 时钟。"""
+    """扫榜服务：TTL 缓存 + 降级 + 双入口。测试可注入 settings / 取数函数 / 时钟。"""
 
-    def __init__(self, *, settings_obj=None, client_factory=None, clock=None):
+    def __init__(self, *, settings_obj=None, fetcher=None, clock=None):
         self._settings = settings_obj or settings
-        self._client_factory = client_factory or _default_client_factory()
+        self._fetcher = fetcher or fetch_all
         self._clock = clock or time.time
         self._cache: dict[str, dict] = {}  # key -> {"ts": float, "result": RankingsResult}
 
@@ -204,40 +181,25 @@ class RankingsService:
     async def _fetch_remote(self) -> RankingsResult:
         st = self._settings
         try:
-            async with self._client_factory() as client:
-                tools = await client.list_tools()
-                tool = _find_tool(tools, st.rankings_source, st.rankings_tool)
-                if not tool:
-                    return RankingsResult(
-                        source="sample",
-                        error=f"未在 MCP server 发现榜单工具（可用: {tools[:10] or '无'}）",
-                        items=_SAMPLE_ITEMS,
-                    )
-                args = _tool_args(tool)
-                if args is None:
-                    return RankingsResult(source="sample", error=f"工具 {tool} 无受支持的参数约定",
-                                          items=_SAMPLE_ITEMS)
-                raw = await client.call_tool(tool, args)
-                items = sanitize(raw, limit=st.rankings_limit)
-                if not items:
-                    return RankingsResult(
-                        source="sample", error=f"工具 {tool} 返回无有效榜单项", items=_SAMPLE_ITEMS
-                    )
-                return RankingsResult(
-                    source="remote",
-                    tool=tool,
-                    fetched_at=datetime.now(timezone.utc).isoformat(),
-                    items=items,
-                )
+            rows = await self._fetcher(timeout=st.rankings_timeout)
+            items = sanitize(rows, limit=st.rankings_limit)
+            if not items:
+                return RankingsResult(source="sample", error="榜单返回无有效项", items=_SAMPLE_ITEMS)
+            return RankingsResult(
+                source="remote",
+                tool=_SOURCE_NAME,
+                fetched_at=datetime.now(timezone.utc).isoformat(),
+                items=items,
+            )
         except asyncio.CancelledError:
-            # mcp SDK 内部 cancel scope 触发（初始化/请求挂起被取消）——CancelledError 是
-            # BaseException，`except Exception` 捕不住；外部通道不可靠，照常降级不炸节点。
-            logger.info("扫榜降级（MCP 请求被取消，连接挂起或通道关闭）")
+            # 请求挂起被取消——CancelledError 是 BaseException，`except Exception` 捕不住；
+            # 外部通道不可靠，照常降级不炸节点。
+            logger.info("扫榜降级（请求被取消，连接挂起或通道关闭）")
             return RankingsResult(source="sample", error="扫榜服务不可达（连接失败或被取消）", items=_SAMPLE_ITEMS)
-        except McpError as exc:
-            logger.info("扫榜降级（MCP 错误）: %s", exc)
+        except FanqieError as exc:
+            logger.info("扫榜降级（榜单接口不可用）: %s", exc)
             return RankingsResult(source="sample", error=str(exc), items=_SAMPLE_ITEMS)
-        except Exception as exc:  # noqa: BLE001 - 外部协议不可信，统一降级不炸面板
+        except Exception as exc:  # noqa: BLE001 - 外部接口不可信，统一降级不炸面板
             logger.exception("扫榜降级（未预期异常）")
             return RankingsResult(source="sample", error=f"扫榜失败: {exc}", items=_SAMPLE_ITEMS)
 
@@ -253,17 +215,12 @@ def _service_for_user(user_id: str) -> RankingsService:
     if view is None:
         return _service
     key = "|".join((
-        user_id, view.rankings_mcp_url, view.rankings_source, view.rankings_tool,
-        str(view.rankings_enabled), str(view.rankings_timeout), str(view.rankings_limit),
+        user_id, str(view.rankings_enabled), str(view.rankings_timeout), str(view.rankings_limit),
     ))
     cached = _user_services.get(key)
     if cached is not None:
         return cached
-
-    def factory(url=view.rankings_mcp_url, timeout=view.rankings_timeout):
-        return McpClient(url, timeout_s=timeout)
-
-    svc = RankingsService(settings_obj=view, client_factory=factory)
+    svc = RankingsService(settings_obj=view)
     _user_services[key] = svc
     return svc
 

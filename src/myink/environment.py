@@ -1,4 +1,4 @@
-"""账号级环境配置：模型连接/路由 + MCP 扫榜（存在 users.environment JSON）。"""
+"""账号级环境配置：模型连接/路由 + 扫榜（存在 users.environment JSON）。"""
 
 from __future__ import annotations
 
@@ -18,8 +18,6 @@ def default_rankings() -> dict[str, Any]:
         "mcp_url": settings.rankings_mcp_url,
         "timeout": int(settings.rankings_timeout),
         "limit": int(settings.rankings_limit),
-        "source": settings.rankings_source,
-        "tool": settings.rankings_tool,
     }
 
 
@@ -39,12 +37,6 @@ def merge_rankings(raw: Any) -> dict[str, Any]:
     limit = raw.get("limit")
     if isinstance(limit, int) and 1 <= limit <= 50:
         base["limit"] = limit
-    source = raw.get("source")
-    if isinstance(source, str):
-        base["source"] = source.strip()[:32]
-    tool = raw.get("tool")
-    if isinstance(tool, str):
-        base["tool"] = tool.strip()[:80]
     return base
 
 
@@ -95,12 +87,9 @@ class RankingsSettingsView:
     """供 RankingsService 消费的设置视图（字段名对齐 config.settings）。"""
 
     rankings_enabled: bool
-    rankings_mcp_url: str
     rankings_timeout: int
     rankings_limit: int
     rankings_cache_ttl: int
-    rankings_source: str
-    rankings_tool: str
 
 
 def rankings_view_for_user(user_id: str | uuid.UUID) -> RankingsSettingsView | None:
@@ -111,10 +100,7 @@ def rankings_view_for_user(user_id: str | uuid.UUID) -> RankingsSettingsView | N
     merged = merge_rankings(raw.get("rankings"))
     return RankingsSettingsView(
         rankings_enabled=merged["enabled"],
-        rankings_mcp_url=merged["mcp_url"],
         rankings_timeout=merged["timeout"],
         rankings_limit=merged["limit"],
         rankings_cache_ttl=int(settings.rankings_cache_ttl),
-        rankings_source=merged["source"],
-        rankings_tool=merged["tool"],
     )

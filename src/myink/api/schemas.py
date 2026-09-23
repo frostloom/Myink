@@ -265,12 +265,10 @@ class RankingsConfigOut(BaseModel):
     mcp_url: str
     timeout: int
     limit: int
-    source: str
-    tool: str
 
 
 class EnvironmentOut(BaseModel):
-    """账号级环境配置（模型连接/路由 + 思考模式 + MCP 扫榜）。"""
+    """账号级环境配置（模型连接/路由 + 思考模式 + 扫榜）。"""
 
     model_routes: dict = Field(default_factory=dict)
     model_connections: list[dict] = Field(default_factory=list)
@@ -279,7 +277,7 @@ class EnvironmentOut(BaseModel):
 
 
 class RankingsProbeOut(BaseModel):
-    """MCP 扫榜探针：list_tools 联通结果。"""
+    """MCP 连通探针：list_tools 结果。"""
 
     ok: bool
     tools: list[str] = Field(default_factory=list)

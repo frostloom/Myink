@@ -3054,7 +3054,7 @@
         "type": "object"
       },
       "EnvironmentOut": {
-        "description": "账号级环境配置（模型连接/路由 + 思考模式 + MCP 扫榜）。",
+        "description": "账号级环境配置（模型连接/路由 + 思考模式 + 扫榜）。",
         "properties": {
           "model_connections": {
             "items": {
@@ -4371,17 +4371,6 @@
             ],
             "title": "Mcp Url"
           },
-          "source": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source"
-          },
           "timeout": {
             "anyOf": [
               {
@@ -4392,17 +4381,6 @@
               }
             ],
             "title": "Timeout"
-          },
-          "tool": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tool"
           }
         },
         "title": "RankingsBody",
@@ -4422,26 +4400,16 @@
             "title": "Mcp Url",
             "type": "string"
           },
-          "source": {
-            "title": "Source",
-            "type": "string"
-          },
           "timeout": {
             "title": "Timeout",
             "type": "integer"
-          },
-          "tool": {
-            "title": "Tool",
-            "type": "string"
           }
         },
         "required": [
           "enabled",
           "mcp_url",
           "timeout",
-          "limit",
-          "source",
-          "tool"
+          "limit"
         ],
         "title": "RankingsConfigOut",
         "type": "object"
@@ -4519,7 +4487,7 @@
         "type": "object"
       },
       "RankingsProbeOut": {
-        "description": "MCP 扫榜探针：list_tools 联通结果。",
+        "description": "MCP 连通探针：list_tools 结果。",
         "properties": {
           "error": {
             "anyOf": [

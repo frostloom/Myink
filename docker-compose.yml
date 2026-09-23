@@ -100,7 +100,7 @@ services:
       # 也与 .env.example 保持单一真源。
       RATE_PER_SEC: ${RATE_PER_SEC:-20}
       RATE_BURST: ${RATE_BURST:-40}
-      # 扫榜灵感（§10 MCP Client）：容器内显式声明（env_file 已注入，重复声明仅文档化意图 + 防 .env 缺失）
+      # 扫榜灵感（§10：直连番茄公开榜单）+ MCP 客户端地址（留作后续接其他 MCP 工具）
       RANKINGS_ENABLED: "1"
       RANKINGS_MCP_URL: https://daosearch.io/api/mcp
     command: ["sh", "-c", "myink init && myink-api"]

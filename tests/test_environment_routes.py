@@ -57,7 +57,7 @@ def test_environment_roundtrip_models_and_rankings(temp_user):
         )],
         model_routes={"writer": f"custom:{cid}"},
         rankings={"enabled": False, "mcp_url": "https://mcp.example.com/api",
-                  "timeout": 8, "limit": 5, "source": "qidian", "tool": "rank_tool"},
+                  "timeout": 8, "limit": 5},
     ), user_id=temp_user)
 
     assert out["model_routes"] == {"writer": f"custom:{cid}"}
