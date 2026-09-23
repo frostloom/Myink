@@ -155,6 +155,10 @@ def ensure_storage_indexes() -> None:
         # 前缀用 task_id 而非 project_id（评审建议的 project_id 前缀对真实查询无益）
         "ix_agent_runs_task_id":
             "CREATE INDEX ix_agent_runs_task_id ON agent_runs (task_id, id)",
+        # 分析下钻按「某本书的全部 run」聚合（project_id 等值 + task_id 前缀 LIKE），
+        # 上面那枚以 task_id 打头，project_id 只能回表过滤
+        "ix_agent_runs_project_task":
+            "CREATE INDEX ix_agent_runs_project_task ON agent_runs (project_id, task_id)",
         # writing_lessons（§8.9 reflexion）：在效经验列出 / 复发率按 category 匹配
         "ix_writing_lessons_project_status":
             "CREATE INDEX ix_writing_lessons_project_status "

@@ -52,6 +52,9 @@ class AgentRun(Base, TimestampMixin):
         # processor 无一条按 project_id 查——观测表无 RLS，故组合索引前缀用 task_id 而非 project_id）。
         # 前缀 LIKE 在默认 collation 下走 btree 范围扫；若将来 collation 非 C 需换 pg_trgm/text_pattern_ops。
         Index("ix_agent_runs_task_id", "task_id", "id"),
+        # 管理面板的分析下钻：按「某本书的全部 run」聚合，project_id 是等值前缀，
+        # task_id 供 LIKE '{id}:ch%' 走索引（上面那枚以 task_id 打头，project_id 只能回表过滤）。
+        Index("ix_agent_runs_project_task", "project_id", "task_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

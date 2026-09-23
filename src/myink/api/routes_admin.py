@@ -16,7 +16,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import String, and_, cast, func, or_, select, text
+from sqlalchemy import Integer, String, and_, case, cast, column, func, or_, select, text, true
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased
 
@@ -24,14 +25,15 @@ from myink import invitations as invitations_mod
 from myink.admin_observability import capture
 from myink.api.admin_schemas import (
     AdminAccessLogOut, AdminChapter, AdminChapterDetail, AdminContext,
-    AdminInvitation, AdminInvitationCreated, AdminOverview, AdminPage,
-    AdminProject, AdminRun, AdminRunDetail, AdminTask, AdminTaskDetail, AdminUser,
+    AdminGenerationTask, AdminInvitation, AdminInvitationCreated, AdminOverview, AdminPage,
+    AdminProject, AdminRun, AdminRunDetail, AdminSnapshot, AdminSnapshotFinding, AdminTask,
+    AdminTaskChapter, AdminTaskDetail, AdminUser,
 )
 from myink.api.auth import _AuthenticatedUser, require_admin
 from myink.api.schemas import OkOut
 from myink.db import get_admin_engine, new_session
 from myink.models import (
-    AdminAccessLog, AgentRun, Chapter, Character, Event, Fact, Foreshadow,
+    AdminAccessLog, AgentRun, Chapter, Character, Event, Fact, Foreshadow, GenerationSnapshot,
     Invitation, PlotThread, Project, ProjectSettings, Task, User, VolumeOutline,
 )
 
@@ -40,6 +42,8 @@ Limit = Annotated[int, Query(ge=1, le=100)]
 Offset = Annotated[int, Query(ge=0)]
 Search = Annotated[str | None, Query(max_length=128)]
 _METRIC_FIELDS = ("input_tokens", "output_tokens", "cost_est", "duration_ms")
+# 路径参数里没有租户语义的自增主键（其余都是 uuid）。
+_INT_PATH_PARAMS = frozenset({"run_id", "snapshot_id"})
 
 
 @contextmanager
@@ -64,7 +68,7 @@ def _safe_target(request: Request) -> str:
     ids = []
     for key, raw in request.path_params.items():
         try:
-            value = str(int(raw)) if key == "run_id" else str(uuid.UUID(str(raw)))
+            value = str(int(raw)) if key in _INT_PATH_PARAMS else str(uuid.UUID(str(raw)))
         except (ValueError, TypeError):
             value = "invalid"
         ids.append(f"{key}={value}")
@@ -108,7 +112,68 @@ def _task_runs(task_id, project_id):
 def _nested_metrics(row):
     result = dict(row)
     result["metrics"] = {key: result.pop(key) for key in ("run_count", *_METRIC_FIELDS)}
+    averages = {key: result.pop(key) for key in _TASK_AVERAGE_FIELDS if key in result}
+    if averages:
+        result["task_averages"] = {key: round(value, 6) if isinstance(value, float) else value
+                                   for key, value in averages.items()}
     return result
+
+
+# ---- 分析下钻：用户 → 书 → 任务 → 章 → 快照 ----------------------------------------
+# 核心是两级聚合：先按任务汇总，再对任务求平均。按 run 行平均会让 12 次调用的批次任务
+# 凭调用次数压过 2 次调用的单章任务，得到的就不是「单次任务的平均」。
+
+_TASK_AVERAGE_FIELDS = ("avg_cost_per_task", "avg_duration_ms_per_task", "avg_runs_per_task")
+
+
+def _snapshot_scope(task_id):
+    """快照的线程前缀匹配，与 _task_runs 同口径（批次 = `{batch}:ch{seq}`）。"""
+    tid = cast(task_id, String)
+    return or_(GenerationSnapshot.task_id == tid,
+               GenerationSnapshot.task_id.like(tid + ":ch%"))
+
+
+def _chapter_count():
+    """任务覆盖的章数：批次按 `{batch}:ch{seq}` 归章；book 级 run（batch_plan 用裸
+    batch_id）不是章——有 :ch 线程时把这类线程扣掉，否则每批凭空多出一章；单章任务
+    的 run 全挂在裸 task_id 上，自身算一章。
+    """
+    total = func.count(func.distinct(AgentRun.task_id))
+    book_level = func.count(func.distinct(AgentRun.task_id)).filter(
+        AgentRun.task_id.notlike("%:ch%"))
+    has_chapter_threads = func.count().filter(AgentRun.task_id.like("%:ch%")) > 0
+    return (total - case((has_chapter_threads, book_level), else_=0)).label("chapter_count")
+
+
+def _per_task_totals():
+    """每个任务一行（Σ成本/耗时/tokens、调用次数、覆盖章数）——两级聚合的中间层。"""
+    return (select(Task.id.label("task_id"), Task.project_id.label("project_id"),
+                   func.count(AgentRun.id).label("run_count"),
+                   func.coalesce(func.sum(AgentRun.input_tokens), 0).label("input_tokens"),
+                   func.coalesce(func.sum(AgentRun.output_tokens), 0).label("output_tokens"),
+                   func.coalesce(func.sum(AgentRun.cost_est), 0.0).label("cost_est"),
+                   func.coalesce(func.sum(AgentRun.duration_ms), 0).label("duration_ms"),
+                   _chapter_count())
+            .select_from(Task).join(AgentRun, _task_runs(Task.id, Task.project_id))
+            .group_by(Task.id, Task.project_id).subquery("per_task"))
+
+
+def _task_average_columns(scope):
+    """per-task 两级均值列。scope(per_task) 把中间层限定到外层这一行（某个用户 / 某本书）。
+
+    没有任务（或任务全无 run）时 SQL 的 avg 回 NULL——「没有任务」与「花费为零」要能分开。
+    """
+    per_task = _per_task_totals()
+
+    def scalar(expression):
+        return (select(expression).select_from(per_task).where(scope(per_task))
+                .correlate(Project, User).scalar_subquery())
+
+    return [
+        scalar(func.avg(per_task.c.cost_est)).label("avg_cost_per_task"),
+        scalar(func.avg(per_task.c.duration_ms)).label("avg_duration_ms_per_task"),
+        scalar(func.avg(per_task.c.run_count)).label("avg_runs_per_task"),
+    ]
 
 
 def _page(db, stmt, limit, offset, transform=dict):
@@ -147,7 +212,9 @@ def users(db: DB, q: Search = None, limit: Limit = 25, offset: Offset = 0):
                   _count(Chapter, Chapter.project_id.in_(owned)).label("chapter_count"),
                   _word_count(Chapter.project_id.in_(owned)).label("word_count"),
                   _count(Task, Task.project_id.in_(owned)).label("task_count"),
-                  *_metric_columns(AgentRun.project_id.in_(owned))).order_by(User.created_at.desc(), User.id.desc())
+                  *_metric_columns(AgentRun.project_id.in_(owned)),
+                  *_task_average_columns(lambda per_task: per_task.c.project_id.in_(owned))
+                  ).order_by(User.created_at.desc(), User.id.desc())
     if q:
         stmt = stmt.where(or_(User.username.icontains(q, autoescape=True), cast(User.id, String) == q))
     return _page(db, stmt, limit, offset, _nested_metrics)
@@ -161,7 +228,9 @@ def projects(db: DB, user_id: uuid.UUID | None = None, q: Search = None, limit: 
                   _count(Chapter, Chapter.project_id == Project.id).label("chapter_count"),
                   _word_count(Chapter.project_id == Project.id).label("word_count"),
                   _count(Task, Task.project_id == Project.id).label("task_count"),
-                  *_metric_columns(AgentRun.project_id == Project.id)).join(User, User.id == Project.user_id)
+                  *_metric_columns(AgentRun.project_id == Project.id),
+                  *_task_average_columns(lambda per_task: per_task.c.project_id == Project.id)
+                  ).join(User, User.id == Project.user_id)
     if user_id:
         stmt = stmt.where(Project.user_id == user_id)
     if q:
@@ -268,6 +337,151 @@ def task_runs(task_id: uuid.UUID, db: DB, limit: Limit = 25, offset: Offset = 0)
         raise HTTPException(404, "NOT_FOUND")
     return _page(db, _run_statement().where(_task_runs(str(task_id), pid))
                  .order_by(AgentRun.id), limit, offset)
+
+
+@router.get("/tasks/{task_id}/chapters", response_model=AdminPage[AdminTaskChapter],
+            name="admin.task_chapters")
+def task_chapters(task_id: uuid.UUID, db: DB, limit: Limit = 25, offset: Offset = 0):
+    """任务内按章的分解：每章成本/耗时/tokens + 跑过的节点 + 快照指针。
+
+    章节清单由 agent_runs 驱动；快照按章号挂上去（两个写点出自同一个漏斗，有 run 才会有
+    快照，反之不会）。批次任务里 book 级 run（batch_plan）不归章——它没有章号，成本仍计在
+    该任务自己的 metrics 里，所以各章之和可以小于任务总额。
+    """
+    row = db.execute(select(Task.project_id, Task.chapter_seq).where(Task.id == task_id)).mappings().first()
+    if row is None:
+        raise HTTPException(404, "NOT_FOUND")
+    project_id, single_chapter = row["project_id"], row["chapter_seq"]
+    thread = func.nullif(func.split_part(AgentRun.task_id, ":ch", 2), "")
+    if single_chapter is None:
+        # 批次的章号全在 :ch 线程上；带不出章号的 run 是 book 级的，不列进来
+        chapter = cast(thread, Integer).label("chapter_seq")
+        condition = (thread.isnot(None),)
+    else:
+        # 单章任务的 run 挂在裸 task_id 上，thread 为空，归到本任务的目标章号
+        chapter = func.coalesce(cast(thread, Integer), single_chapter).label("chapter_seq")
+        condition = ()
+    stmt = (select(chapter,
+                   func.count(AgentRun.id).label("run_count"),
+                   func.coalesce(func.sum(AgentRun.input_tokens), 0).label("input_tokens"),
+                   func.coalesce(func.sum(AgentRun.output_tokens), 0).label("output_tokens"),
+                   func.coalesce(func.sum(AgentRun.cost_est), 0.0).label("cost_est"),
+                   func.coalesce(func.sum(AgentRun.duration_ms), 0).label("duration_ms"),
+                   func.array_agg(func.distinct(AgentRun.node)).label("stages"))
+            .where(*condition, _task_runs(str(task_id), project_id))
+            .group_by(chapter).order_by(chapter))
+    total = db.scalar(select(func.count()).select_from(stmt.order_by(None).subquery()))
+    rows = db.execute(stmt.limit(limit).offset(offset)).mappings().all()
+    # 快照指针：只给定位与标量，正文留在快照详情接口
+    refs: dict[int, list[dict]] = {}
+    sequences = [item["chapter_seq"] for item in rows]
+    if sequences:
+        for ref in db.execute(select(
+                GenerationSnapshot.id, GenerationSnapshot.stage, GenerationSnapshot.attempt,
+                GenerationSnapshot.chapter_seq, GenerationSnapshot.model_id,
+                GenerationSnapshot.cost_est, GenerationSnapshot.duration_ms,
+                GenerationSnapshot.degraded, GenerationSnapshot.created_at)
+                .where(GenerationSnapshot.project_id == project_id,
+                       GenerationSnapshot.chapter_seq.in_(sequences),
+                       _snapshot_scope(str(task_id)))
+                .order_by(GenerationSnapshot.stage, GenerationSnapshot.attempt)).mappings():
+            refs.setdefault(ref["chapter_seq"], []).append(dict(ref))
+    items = [{**_nested_metrics(dict(item)), "stages": sorted(set(item["stages"] or [])),
+              "snapshots": refs.get(item["chapter_seq"], [])} for item in rows]
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
+
+
+@router.get("/projects/{project_id}/generation-tasks", response_model=AdminPage[AdminGenerationTask],
+            name="admin.generation_tasks")
+def generation_tasks(project_id: uuid.UUID, db: DB, limit: Limit = 25, offset: Offset = 0):
+    """一本书的任务清单：每个任务一行 Σ成本/耗时/tokens 与覆盖章数、快照数。
+
+    列表不 select 任何 JSON blob（2C4G 上要轻）；正文只在 /snapshots/{id} 出。
+    """
+    _exists(db, Project, project_id)
+    per_task = _per_task_totals()
+    snapshots = (select(func.count(GenerationSnapshot.id)).where(_snapshot_scope(Task.id))
+                 .correlate(Task).scalar_subquery())
+    stmt = (select(Task.id, Task.task_type, Task.status, Task.chapter_seq, Task.batch_task_id,
+                   Task.retry_count, Task.created_at, Task.updated_at,
+                   func.coalesce(per_task.c.run_count, 0).label("run_count"),
+                   func.coalesce(per_task.c.input_tokens, 0).label("input_tokens"),
+                   func.coalesce(per_task.c.output_tokens, 0).label("output_tokens"),
+                   func.coalesce(per_task.c.cost_est, 0.0).label("cost_est"),
+                   func.coalesce(per_task.c.duration_ms, 0).label("duration_ms"),
+                   func.coalesce(per_task.c.chapter_count, 0).label("chapter_count"),
+                   snapshots.label("snapshot_count"))
+            .select_from(Task).outerjoin(per_task, per_task.c.task_id == Task.id)
+            .where(Task.project_id == project_id)
+            .order_by(Task.created_at.desc(), Task.id.desc()))
+    return _page(db, stmt, limit, offset, _nested_metrics)
+
+
+@router.get("/snapshots/{snapshot_id}", response_model=AdminSnapshot, name="admin.snapshot")
+def snapshot(snapshot_id: int, db: DB):
+    """一次生成尝试、一个阶段的原始输入留存；本模块唯一出正文的读接口。"""
+    row = db.execute(select(
+        GenerationSnapshot.id, GenerationSnapshot.project_id, GenerationSnapshot.task_id,
+        GenerationSnapshot.chapter_seq, GenerationSnapshot.stage, GenerationSnapshot.attempt,
+        GenerationSnapshot.model_id, GenerationSnapshot.input_tokens, GenerationSnapshot.output_tokens,
+        GenerationSnapshot.cache_hit, GenerationSnapshot.duration_ms, GenerationSnapshot.cost_est,
+        GenerationSnapshot.retry_count, GenerationSnapshot.degraded, GenerationSnapshot.created_at,
+        GenerationSnapshot.updated_at, GenerationSnapshot.payload)
+        .where(GenerationSnapshot.id == snapshot_id)).mappings().first()
+    if row is None:
+        raise HTTPException(404, "NOT_FOUND")
+    result = dict(row)
+    payload = result["payload"]
+    captured = capture(payload)
+    previous = payload.get("_capture") if isinstance(payload, dict) else None
+    if isinstance(previous, dict):
+        captured["truncated"] |= bool(previous.get("truncated"))
+        captured["redacted"] |= bool(previous.get("redacted"))
+    result.update(payload=captured, snapshot_missing=payload is None)
+    return result
+
+
+def _finding_row(row) -> dict:
+    """把 JSONB 里的那条发现摊平；形状对不上的证据条目直接丢，不让一条脏数据毁掉整页。"""
+    value = row["finding"] if isinstance(row["finding"], dict) else {}
+    evidence = [{"chapter": item["chapter"], "quote": item["quote"]}
+                for item in (value.get("evidence") or [])
+                if isinstance(item, dict) and isinstance(item.get("chapter"), int)
+                and isinstance(item.get("quote"), str)]
+    return {"snapshot_id": row["snapshot_id"], "task_id": row["task_id"],
+            "chapter_seq": row["chapter_seq"], "attempt": row["attempt"],
+            "finding_id": value.get("finding_id"), "conflict_key": value.get("conflict_key"),
+            "conflict_type": value.get("conflict_type"), "severity": value.get("severity"),
+            "scope": value.get("scope"), "source": value.get("source"),
+            "confidence": value.get("confidence"), "suggestion": value.get("suggestion"),
+            "evidence": evidence}
+
+
+@router.get("/projects/{project_id}/findings", response_model=AdminPage[AdminSnapshotFinding],
+            name="admin.findings")
+def findings(project_id: uuid.UUID, db: DB, severity: Annotated[str | None, Query(max_length=16)] = None,
+             chapter_seq: Annotated[int | None, Query(ge=1)] = None, limit: Limit = 25, offset: Offset = 0):
+    """跨章复查同一类校验发现（改进硬规则质量的输入）。
+
+    事实来源是 validate 快照的 payload.findings，不是 validation_reports/findings 那两张
+    建了从没写过的表。用 jsonb_array_elements 展开后按发现分页，不是按快照分页。
+    """
+    _exists(db, Project, project_id)
+    evidence = func.jsonb_array_elements(
+        cast(GenerationSnapshot.payload, JSONB).op("->")("findings")).table_valued(
+            column("value", JSONB)).alias("finding")
+    stmt = (select(GenerationSnapshot.id.label("snapshot_id"), GenerationSnapshot.task_id,
+                   GenerationSnapshot.chapter_seq, GenerationSnapshot.attempt,
+                   evidence.c.value.label("finding"))
+            .select_from(GenerationSnapshot).join(evidence, true())
+            .where(GenerationSnapshot.project_id == project_id,
+                   GenerationSnapshot.stage == "validate"))
+    if severity:
+        stmt = stmt.where(evidence.c.value["severity"].astext == severity)
+    if chapter_seq is not None:
+        stmt = stmt.where(GenerationSnapshot.chapter_seq == chapter_seq)
+    return _page(db, stmt.order_by(GenerationSnapshot.chapter_seq.desc(), GenerationSnapshot.id),
+                 limit, offset, _finding_row)
 
 
 @router.get("/runs", response_model=AdminPage[AdminRun], name="admin.runs")

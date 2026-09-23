@@ -256,6 +256,107 @@
         "title": "AdminContextCollection",
         "type": "object"
       },
+      "AdminFindingEvidence": {
+        "properties": {
+          "chapter": {
+            "title": "Chapter",
+            "type": "integer"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chapter",
+          "quote"
+        ],
+        "title": "AdminFindingEvidence",
+        "type": "object"
+      },
+      "AdminGenerationTask": {
+        "description": "单次任务的生成账：一本书里一个任务一行（分析页下钻的第二层）。",
+        "properties": {
+          "batch_task_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Task Id"
+          },
+          "chapter_count": {
+            "description": "该任务覆盖的章数：批次按 :ch 线程归章，book 级 run 不计章",
+            "title": "Chapter Count",
+            "type": "integer"
+          },
+          "chapter_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Seq"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/AdminMetrics"
+          },
+          "retry_count": {
+            "title": "Retry Count",
+            "type": "integer"
+          },
+          "snapshot_count": {
+            "description": "落盘的生成快照数；0 = 该任务早于快照上线，只剩遥测",
+            "title": "Snapshot Count",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "task_type": {
+            "title": "Task Type",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "task_type",
+          "status",
+          "chapter_seq",
+          "batch_task_id",
+          "retry_count",
+          "chapter_count",
+          "snapshot_count",
+          "created_at",
+          "updated_at",
+          "metrics"
+        ],
+        "title": "AdminGenerationTask",
+        "type": "object"
+      },
       "AdminInvitation": {
         "description": "邀请码的管理视图。永远不含明文码，也不含摘要——摘要对管理员无用。",
         "properties": {
@@ -521,6 +622,37 @@
         "title": "AdminPage[AdminChapter]",
         "type": "object"
       },
+      "AdminPage_AdminGenerationTask_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminGenerationTask"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AdminPage[AdminGenerationTask]",
+        "type": "object"
+      },
       "AdminPage_AdminInvitation_": {
         "properties": {
           "items": {
@@ -612,6 +744,68 @@
           "offset"
         ],
         "title": "AdminPage[AdminRun]",
+        "type": "object"
+      },
+      "AdminPage_AdminSnapshotFinding_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminSnapshotFinding"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AdminPage[AdminSnapshotFinding]",
+        "type": "object"
+      },
+      "AdminPage_AdminTaskChapter_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminTaskChapter"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AdminPage[AdminTaskChapter]",
         "type": "object"
       },
       "AdminPage_AdminTask_": {
@@ -718,6 +912,9 @@
             ],
             "title": "Target Words"
           },
+          "task_averages": {
+            "$ref": "#/components/schemas/AdminTaskAverages"
+          },
           "task_count": {
             "title": "Task Count",
             "type": "integer"
@@ -759,7 +956,8 @@
           "chapter_count",
           "word_count",
           "task_count",
-          "metrics"
+          "metrics",
+          "task_averages"
         ],
         "title": "AdminProject",
         "type": "object"
@@ -1028,6 +1226,319 @@
         "title": "AdminRunDetail",
         "type": "object"
       },
+      "AdminSnapshot": {
+        "description": "一次生成尝试、一个阶段的原始输入留存（选择性）。唯一出正文的读接口。",
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "cache_hit": {
+            "title": "Cache Hit",
+            "type": "boolean"
+          },
+          "chapter_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Seq"
+          },
+          "cost_est": {
+            "title": "Cost Est",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "degraded": {
+            "title": "Degraded",
+            "type": "boolean"
+          },
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "input_tokens": {
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "output_tokens": {
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/CapturedData"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "retry_count": {
+            "title": "Retry Count",
+            "type": "integer"
+          },
+          "snapshot_missing": {
+            "description": "早于快照上线的记录只剩遥测，payload 为空；不做假回填",
+            "title": "Snapshot Missing",
+            "type": "boolean"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "task_id",
+          "chapter_seq",
+          "stage",
+          "attempt",
+          "model_id",
+          "input_tokens",
+          "output_tokens",
+          "cache_hit",
+          "duration_ms",
+          "cost_est",
+          "retry_count",
+          "degraded",
+          "created_at",
+          "updated_at",
+          "payload",
+          "snapshot_missing"
+        ],
+        "title": "AdminSnapshot",
+        "type": "object"
+      },
+      "AdminSnapshotFinding": {
+        "description": "一条校验发现 + 它出现在哪一章哪次尝试。事实来源是快照，不是那两张没人写的表。",
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "chapter_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Seq"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "conflict_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conflict Key"
+          },
+          "conflict_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conflict Type"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/AdminFindingEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "finding_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finding Id"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity"
+          },
+          "snapshot_id": {
+            "title": "Snapshot Id",
+            "type": "integer"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "snapshot_id",
+          "task_id",
+          "chapter_seq",
+          "attempt",
+          "finding_id",
+          "conflict_key",
+          "conflict_type",
+          "severity",
+          "scope",
+          "source",
+          "confidence",
+          "suggestion",
+          "evidence"
+        ],
+        "title": "AdminSnapshotFinding",
+        "type": "object"
+      },
+      "AdminSnapshotRef": {
+        "description": "快照指针。列表只给定位与标量；渲染后的提示词与召回正文只在快照详情接口出。",
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "cost_est": {
+            "title": "Cost Est",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "degraded": {
+            "title": "Degraded",
+            "type": "boolean"
+          },
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "stage",
+          "attempt",
+          "model_id",
+          "cost_est",
+          "duration_ms",
+          "degraded",
+          "created_at"
+        ],
+        "title": "AdminSnapshotRef",
+        "type": "object"
+      },
       "AdminTask": {
         "properties": {
           "batch_task_id": {
@@ -1118,6 +1629,93 @@
           "metrics"
         ],
         "title": "AdminTask",
+        "type": "object"
+      },
+      "AdminTaskAverages": {
+        "description": "两级均值：先按任务汇总，再对任务取平均——不是对 run 行取平均。\n\n12 次调用的批次任务与 2 次调用的单章任务在这里各占一票；按 run 行平均会让批次凭\n调用次数压过单章任务，均值不再是「单次任务的平均」。无任务（或任务全无 run）时为\nnull：「没有任务」与「任务花费为零」要能分开。",
+        "properties": {
+          "avg_cost_per_task": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Cost Per Task"
+          },
+          "avg_duration_ms_per_task": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Duration Ms Per Task"
+          },
+          "avg_runs_per_task": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Runs Per Task"
+          }
+        },
+        "required": [
+          "avg_cost_per_task",
+          "avg_duration_ms_per_task",
+          "avg_runs_per_task"
+        ],
+        "title": "AdminTaskAverages",
+        "type": "object"
+      },
+      "AdminTaskChapter": {
+        "description": "任务内按章的分解（分析页下钻的第三层）。",
+        "properties": {
+          "chapter_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Seq"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/AdminMetrics"
+          },
+          "snapshots": {
+            "items": {
+              "$ref": "#/components/schemas/AdminSnapshotRef"
+            },
+            "title": "Snapshots",
+            "type": "array"
+          },
+          "stages": {
+            "description": "该章实际跑过的节点；缺哪个阶段即没跑到或失败",
+            "items": {
+              "type": "string"
+            },
+            "title": "Stages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "chapter_seq",
+          "stages",
+          "metrics",
+          "snapshots"
+        ],
+        "title": "AdminTaskChapter",
         "type": "object"
       },
       "AdminTaskDetail": {
@@ -1258,6 +1856,9 @@
             "title": "Role",
             "type": "string"
           },
+          "task_averages": {
+            "$ref": "#/components/schemas/AdminTaskAverages"
+          },
           "task_count": {
             "title": "Task Count",
             "type": "integer"
@@ -1284,7 +1885,8 @@
           "chapter_count",
           "word_count",
           "task_count",
-          "metrics"
+          "metrics",
+          "task_averages"
         ],
         "title": "AdminUser",
         "type": "object"
@@ -5284,6 +5886,184 @@
         ]
       }
     },
+    "/api/v1/admin/projects/{project_id}/findings": {
+      "get": {
+        "description": "跨章复查同一类校验发现（改进硬规则质量的输入）。\n\n事实来源是 validate 快照的 payload.findings，不是 validation_reports/findings 那两张\n建了从没写过的表。用 jsonb_array_elements 展开后按发现分页，不是按快照分页。",
+        "operationId": "admin_findings_api_v1_admin_projects__project_id__findings_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "severity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 16,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Severity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "chapter_seq",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Chapter Seq"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPage_AdminSnapshotFinding_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Findings",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/projects/{project_id}/generation-tasks": {
+      "get": {
+        "description": "一本书的任务清单：每个任务一行 Σ成本/耗时/tokens 与覆盖章数、快照数。\n\n列表不 select 任何 JSON blob（2C4G 上要轻）；正文只在 /snapshots/{id} 出。",
+        "operationId": "admin_generation_tasks_api_v1_admin_projects__project_id__generation_tasks_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPage_AdminGenerationTask_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Generation Tasks",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/runs": {
       "get": {
         "operationId": "admin_runs_api_v1_admin_runs_get",
@@ -5438,6 +6218,54 @@
           }
         ],
         "summary": "Admin.Run",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/snapshots/{snapshot_id}": {
+      "get": {
+        "description": "一次生成尝试、一个阶段的原始输入留存；本模块唯一出正文的读接口。",
+        "operationId": "admin_snapshot_api_v1_admin_snapshots__snapshot_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "title": "Snapshot Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Snapshot",
         "tags": [
           "admin"
         ]
@@ -5598,6 +6426,78 @@
           }
         ],
         "summary": "Admin.Task",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/tasks/{task_id}/chapters": {
+      "get": {
+        "description": "任务内按章的分解：每章成本/耗时/tokens + 跑过的节点 + 快照指针。\n\n章节清单由 agent_runs 驱动；快照按章号挂上去（两个写点出自同一个漏斗，有 run 才会有\n快照，反之不会）。批次任务里 book 级 run（batch_plan）不归章——它没有章号，成本仍计在\n该任务自己的 metrics 里，所以各章之和可以小于任务总额。",
+        "operationId": "admin_task_chapters_api_v1_admin_tasks__task_id__chapters_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPage_AdminTaskChapter_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Task Chapters",
         "tags": [
           "admin"
         ]
