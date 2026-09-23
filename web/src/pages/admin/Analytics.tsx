@@ -9,9 +9,23 @@ import {
   type AdminPage as PageResult,
   type AdminSnapshotFinding,
 } from '../../lib/adminApi'
+import {
+  conflictTypeLabel,
+  creationStatusLabel,
+  findingSourceLabel,
+  nodeLabel,
+  roleLabel,
+  scopeLabel,
+  severityLabel,
+  taskStatusLabel,
+  taskTypeLabel,
+  tierLabel,
+} from '../../lib/labels'
 import { severityClass } from '../../lib/snapshotView'
 import { SnapshotView } from './SnapshotView'
 import {
+  FieldRows,
+  formatCost,
   formatDate,
   formatDuration,
   LoadState,
@@ -31,10 +45,13 @@ function formatAverageDuration(value: number | null): string {
 /** 单次任务的均值：先按任务汇总再对任务取平均，不是对 run 行取平均。 */
 function Averages({ value }: { value: AdminTaskAverages }) {
   if (value.avg_runs_per_task === null) return <span className={styles.muted}>无任务</span>
-  return <span>
-    ¥/US$ {(value.avg_cost_per_task ?? 0).toFixed(4)} · {formatAverageDuration(value.avg_duration_ms_per_task)}
-    <small>{value.avg_runs_per_task.toFixed(1)} 次调用/任务</small>
-  </span>
+  return (
+    <FieldRows rows={[
+      ['预估成本', formatCost(value.avg_cost_per_task ?? 0)],
+      ['耗时', formatAverageDuration(value.avg_duration_ms_per_task)],
+      ['调用', `${value.avg_runs_per_task.toFixed(1)} 次/任务`],
+    ]} />
+  )
 }
 
 function FindingsPanel({ token, projectId, onForbidden }: {
@@ -78,12 +95,16 @@ function FindingsPanel({ token, projectId, onForbidden }: {
       <LoadState {...resource} empty={resource.data?.items.length === 0}>
         {resource.data && <>
           <div className={styles.tableWrap}><table>
-            <thead><tr><th>章/次</th><th>严重度</th><th>类型</th><th>范围</th><th>建议</th><th>证据</th></tr></thead>
+            <thead><tr>
+              <th>章</th><th>第几次</th><th>严重度</th><th>类型</th><th>范围</th><th>来源</th><th>建议</th><th>证据</th>
+            </tr></thead>
             <tbody>{resource.data.items.map((finding, index) => <tr key={`${finding.snapshot_id}-${index}`}>
-              <td>第 {finding.chapter_seq ?? '—'} 章 · 第 {finding.attempt} 次</td>
-              <td><span className={severityClass(finding.severity)}>{finding.severity ?? '未标'}</span></td>
-              <td>{finding.conflict_type ?? '—'}<small>{finding.source ?? '未标来源'}</small></td>
-              <td>{finding.scope ?? '—'}</td>
+              <td>第 {finding.chapter_seq ?? '—'} 章</td>
+              <td>第 {finding.attempt} 次</td>
+              <td><span className={severityClass(finding.severity)}>{finding.severity ? severityLabel(finding.severity) : '未标'}</span></td>
+              <td>{finding.conflict_type ? conflictTypeLabel(finding.conflict_type) : '—'}</td>
+              <td>{finding.scope ? scopeLabel(finding.scope) : '—'}</td>
+              <td>{finding.source ? findingSourceLabel(finding.source) : '—'}</td>
               <td>{finding.suggestion ?? '—'}</td>
               <td>{finding.evidence.map((item) => `第 ${item.chapter} 章：${item.quote}`).join('；') || '—'}</td>
             </tr>)}</tbody>
@@ -102,13 +123,18 @@ function ChapterSnapshots({ chapter, onSelect }: {
   if (chapter.snapshots.length === 0) return <p className={styles.muted}>这一章没有落盘快照</p>
   return (
     <div className={styles.tableWrap}><table>
-      <thead><tr><th>阶段</th><th>模型</th><th>预估成本</th><th>计时</th><th>状态</th><th>操作</th></tr></thead>
+      <thead><tr>
+        <th>阶段</th><th>第几次</th><th>时间</th><th>模型</th>
+        <th>预估成本</th><th>耗时</th><th>降级</th><th>操作</th>
+      </tr></thead>
       <tbody>{chapter.snapshots.map((ref) => <tr key={ref.id}>
-        <td><strong>{ref.stage}</strong><small>第 {ref.attempt} 次 · {formatDate(ref.created_at)}</small></td>
+        <td>{nodeLabel(ref.stage)}</td>
+        <td>第 {ref.attempt} 次</td>
+        <td>{formatDate(ref.created_at)}</td>
         <td>{ref.model_id ?? '未记录'}</td>
-        <td>¥/US$ {ref.cost_est.toFixed(4)}</td>
+        <td>{formatCost(ref.cost_est)}</td>
         <td>{formatDuration(ref.duration_ms)}</td>
-        <td>{ref.degraded ? '降级' : '未降级'}</td>
+        <td>{ref.degraded ? '是' : '否'}</td>
         <td><button type="button" className="btn btn-quiet"
           aria-label={`查看第 ${chapter.chapter_seq} 章 ${ref.stage} 快照`}
           onClick={() => onSelect(ref.id)}>查看</button></td>
@@ -135,18 +161,24 @@ function TaskChapters({ token, task, onForbidden }: {
   return (
     <section className={`panel ${styles.panel}`}>
       <div className={styles.panelHead}>
-        <div><h3>任务 {task.id} 的每章分解</h3></div>
+        <div><h3>{taskTypeLabel(task.task_type)} · 每章分解
+          {task.chapter_seq === null ? '（整批）' : `（目标第 ${task.chapter_seq} 章）`}</h3></div>
         <RefreshButton onClick={resource.retry} />
       </div>
       <LoadState {...resource} empty={resource.data?.items.length === 0}>
         {resource.data && <>
           <div className={styles.tableWrap}><table>
-            <thead><tr><th>章</th><th>跑过的节点</th><th>运行</th><th>成本/计时</th><th>快照</th><th>操作</th></tr></thead>
+            <thead><tr>
+              <th>章</th><th>跑过的节点</th><th>运行</th><th>token 合计</th>
+              <th>预估成本</th><th>耗时</th><th>快照</th><th>操作</th>
+            </tr></thead>
             <tbody>{resource.data.items.map((row) => <tr key={String(row.chapter_seq)}>
-              <td><strong>第 {row.chapter_seq ?? '—'} 章</strong></td>
-              <td>{row.stages.join(' / ') || '无'}</td>
-              <td>{row.metrics.run_count}<small>{row.metrics.input_tokens + row.metrics.output_tokens} token</small></td>
-              <td>¥/US$ {row.metrics.cost_est.toFixed(4)}<small>{formatDuration(row.metrics.duration_ms)}</small></td>
+              <td>第 {row.chapter_seq ?? '—'} 章</td>
+              <td>{row.stages.map(nodeLabel).join('、') || '无'}</td>
+              <td>{row.metrics.run_count}</td>
+              <td>{(row.metrics.input_tokens + row.metrics.output_tokens).toLocaleString()}</td>
+              <td>{formatCost(row.metrics.cost_est)}</td>
+              <td>{formatDuration(row.metrics.duration_ms)}</td>
               <td>{row.snapshots.length}</td>
               <td><button type="button" className="btn btn-quiet"
                 aria-label={`查看第 ${row.chapter_seq} 章的快照`}
@@ -193,14 +225,22 @@ function BookTasks({ token, project, onForbidden }: {
         <LoadState {...resource} empty={resource.data?.items.length === 0}>
           {resource.data && <>
             <div className={styles.tableWrap}><table>
-              <thead><tr><th>任务</th><th>类型/状态</th><th>章数/快照</th><th>运行/Token</th><th>Σ成本/Σ计时</th><th>重试</th><th>操作</th></tr></thead>
+              <thead><tr>
+                <th>任务</th><th>状态</th><th>目标章节</th><th>章数</th><th>快照</th><th>运行</th>
+                <th>token 合计</th><th>预估成本</th><th>耗时</th><th>重试</th><th>创建时间</th><th>操作</th>
+              </tr></thead>
               <tbody>{resource.data.items.map((row) => <tr key={row.id}>
-                <td><strong>{row.id}</strong><small>{formatDate(row.created_at)}</small></td>
-                <td>{row.task_type} / {row.status}<small>{row.chapter_seq === null ? '批次' : `目标第 ${row.chapter_seq} 章`}</small></td>
-                <td>{row.chapter_count} / {row.snapshot_count}</td>
-                <td>{row.metrics.run_count}<small>{row.metrics.input_tokens + row.metrics.output_tokens} token</small></td>
-                <td>¥/US$ {row.metrics.cost_est.toFixed(4)}<small>{formatDuration(row.metrics.duration_ms)}</small></td>
+                <td>{taskTypeLabel(row.task_type)}</td>
+                <td>{taskStatusLabel(row.status)}</td>
+                <td>{row.chapter_seq === null ? '整批' : `第 ${row.chapter_seq} 章`}</td>
+                <td>{row.chapter_count}</td>
+                <td>{row.snapshot_count}</td>
+                <td>{row.metrics.run_count}</td>
+                <td>{(row.metrics.input_tokens + row.metrics.output_tokens).toLocaleString()}</td>
+                <td>{formatCost(row.metrics.cost_est)}</td>
+                <td>{formatDuration(row.metrics.duration_ms)}</td>
                 <td>{row.retry_count}</td>
+                <td>{formatDate(row.created_at)}</td>
                 <td><button type="button" className="btn btn-quiet" aria-label={`查看任务 ${row.id} 的每章分解`}
                   onClick={() => setTask(row)}>每章</button></td>
               </tr>)}</tbody>
@@ -240,12 +280,18 @@ function UserBooks({ token, user, onForbidden }: {
         <LoadState {...resource} empty={resource.data?.items.length === 0}>
           {resource.data && <>
             <div className={styles.tableWrap}><table>
-              <thead><tr><th>作品</th><th>状态</th><th>章节/字数</th><th>任务/运行</th><th>单次任务均值</th><th>操作</th></tr></thead>
+              <thead><tr>
+                <th>作品</th><th>题材</th><th>状态</th><th>章节</th><th>字数</th>
+                <th>任务</th><th>运行</th><th>单次任务均值</th><th>操作</th>
+              </tr></thead>
               <tbody>{resource.data.items.map((row) => <tr key={row.id}>
-                <td><strong>{row.title}</strong><small>{row.genre} · {row.id}</small></td>
-                <td>{row.creation_status}</td>
-                <td>{row.chapter_count} / {row.word_count.toLocaleString()}</td>
-                <td>{row.task_count} / {row.metrics.run_count}</td>
+                <td>{row.title}</td>
+                <td>{row.genre || '—'}</td>
+                <td>{creationStatusLabel(row.creation_status)}</td>
+                <td>{row.chapter_count}</td>
+                <td>{row.word_count.toLocaleString()}</td>
+                <td>{row.task_count}</td>
+                <td>{row.metrics.run_count}</td>
                 <td><Averages value={row.task_averages} /></td>
                 <td><button type="button" className="btn btn-quiet" aria-label={`查看《${row.title}》的分析`}
                   onClick={() => setProject(row)}>下钻</button></td>
@@ -291,11 +337,19 @@ export function Analytics({ token, onForbidden }: { token: string; onForbidden: 
       <LoadState {...resource} empty={resource.data?.items.length === 0}>
         {resource.data && <>
           <div className={styles.tableWrap}><table>
-            <thead><tr><th>用户</th><th>作品/章节/字数</th><th>任务/运行</th><th>单次任务均值</th><th>操作</th></tr></thead>
+            <thead><tr>
+              <th>用户</th><th>角色</th><th>等级</th><th>作品</th><th>章节</th>
+              <th>字数</th><th>任务</th><th>运行</th><th>单次任务均值</th><th>操作</th>
+            </tr></thead>
             <tbody>{resource.data.items.map((row) => <tr key={row.id}>
-              <td><strong>{row.username}</strong><small>{row.role} / {row.tier}</small></td>
-              <td>{row.project_count} / {row.chapter_count} / {row.word_count.toLocaleString()}</td>
-              <td>{row.task_count} / {row.metrics.run_count}</td>
+              <td>{row.username}</td>
+              <td>{roleLabel(row.role)}</td>
+              <td>{tierLabel(row.tier)}</td>
+              <td>{row.project_count}</td>
+              <td>{row.chapter_count}</td>
+              <td>{row.word_count.toLocaleString()}</td>
+              <td>{row.task_count}</td>
+              <td>{row.metrics.run_count}</td>
               <td><Averages value={row.task_averages} /></td>
               <td><button type="button" className="btn btn-quiet" aria-label={`分析 ${row.username}`}
                 onClick={() => setUser(row)}>下钻</button></td>

@@ -50,7 +50,7 @@ const idleUser: AdminUser = {
 
 const project: AdminProject = {
   id: 'book-1', user_id: 'user-1', username: 'alice', title: '山河册', genre: '奇幻',
-  current_chapter: 4, target_words: 100000, creation_status: 'ready',
+  current_chapter: 4, target_words: 100000, creation_status: 'legacy_ready',
   created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-02T00:00:00Z',
   chapter_count: 4, word_count: 4500, task_count: 3, metrics,
   task_averages: { avg_cost_per_task: 0.4, avg_duration_ms_per_task: 900, avg_runs_per_task: 3.5 },
@@ -88,7 +88,8 @@ it('shows per-task averages at the user level and says so when a user has no tas
   renderAnalytics()
 
   expect(await screen.findByText('alice')).toBeTruthy()
-  expect(screen.getByText(/0\.2100/).textContent).toContain('2.0 次调用/任务')
+  expect(screen.getByText('0.2100')).toBeTruthy()
+  expect(screen.getByText('2.0 次/任务')).toBeTruthy()
   expect(screen.getByText('无任务')).toBeTruthy()
 })
 
@@ -128,14 +129,14 @@ it('drills from a user to their books, tasks, chapters and snapshot refs', async
   ))
   const userPanel = (await screen.findByRole('heading', { name: 'alice 的作品' })).closest('section')!
   expect(userPanel.textContent).toContain('0.4000')
-  expect(userPanel.textContent).toContain('3.5 次调用/任务')
+  expect(userPanel.textContent).toContain('3.5 次/任务')
 
   fireEvent.click(screen.getByRole('button', { name: '查看《山河册》的分析' }))
   await waitFor(() => expect(adminApi.listGenerationTasks).toHaveBeenCalledWith(
     'token-admin', 'book-1', expect.objectContaining({ offset: 0 }), expect.any(AbortSignal),
   ))
   const bookPanel = (await screen.findByRole('heading', { name: '《山河册》的任务' })).closest('section')!
-  expect(bookPanel.textContent).toContain('batch_generate')
+  expect(bookPanel.textContent).toContain('批次生成')
   expect(bookPanel.textContent).toContain('1.85')
   expect(await screen.findByText('校验发现')).toBeTruthy()
 
@@ -143,8 +144,8 @@ it('drills from a user to their books, tasks, chapters and snapshot refs', async
   await waitFor(() => expect(adminApi.listTaskChapters).toHaveBeenCalledWith(
     'token-admin', 'task-1', expect.objectContaining({ offset: 0 }), expect.any(AbortSignal),
   ))
-  const chapterPanel = (await screen.findByRole('heading', { name: '任务 task-1 的每章分解' })).closest('section')!
-  expect(chapterPanel.textContent).toContain('recall / write / validate')
+  const chapterPanel = (await screen.findByRole('heading', { name: '批次生成 · 每章分解（整批）' })).closest('section')!
+  expect(chapterPanel.textContent).toContain('回忆召回、写作、校验')
   expect(chapterPanel.textContent).toContain('第 2 章')
 
   fireEvent.click(screen.getByRole('button', { name: '查看第 2 章的快照' }))
@@ -159,14 +160,18 @@ it('filters findings by severity and chapter and keeps them pageable', async () 
   vi.mocked(adminApi.listGenerationTasks).mockResolvedValue(pageOf([]))
   vi.mocked(adminApi.listFindings).mockResolvedValue(pageOf([{
     snapshot_id: 31, task_id: 'task-1', chapter_seq: 2, attempt: 1,
-    severity: 'major', conflict_type: '设定冲突', scope: '人物',
-    source: 'world_facts', suggestion: '把铜镜改成铜铃', evidence: [{ chapter: 2, quote: '铜镜亮了' }],
+    severity: 'major', conflict_type: 'faction', scope: 'local',
+    source: 'L1', suggestion: '把铜镜改成铜铃', evidence: [{ chapter: 2, quote: '铜镜亮了' }],
   }]))
   renderAnalytics()
 
   fireEvent.click(await screen.findByRole('button', { name: '分析 alice' }))
   fireEvent.click(await screen.findByRole('button', { name: '查看《山河册》的分析' }))
   expect(await screen.findByText(/第 2 章：铜镜亮了/)).toBeTruthy()
+  expect(screen.getByText('重大')).toBeTruthy()
+  expect(screen.getByText('势力设定')).toBeTruthy()
+  expect(screen.getByText('局部')).toBeTruthy()
+  expect(screen.getByText('确定性校验')).toBeTruthy()
 
   fireEvent.change(screen.getByLabelText('严重度'), { target: { value: 'major' } })
   fireEvent.change(screen.getByLabelText('章号'), { target: { value: '2' } })

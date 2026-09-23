@@ -39,7 +39,7 @@ function recallLabel(key: string): string {
   return RECALL_LABELS[key] ?? key
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
+export function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
     ? value as Record<string, unknown>
     : null
@@ -130,14 +130,44 @@ export function severityClass(severity: string | null | undefined): string {
 const FIELD_LABELS: Record<string, string> = {
   kind: '类型', name: '名称', fact_id: '事实', event_id: '事件', entity_id: '实体',
   character_id: '人物', thread_id: '故事线', foreshadow_id: '伏笔', chapter: '章',
-  chapter_seq: '章', source_chapter: '源自第几章', first_seen_chapter: '首见章',
+  chapter_seq: '章', chapter_count: '章数', chapter_id: '章节 id', seq: '章序号',
+  source_chapter: '源自第几章', first_seen_chapter: '首见章',
   confidence: '置信', status: '状态', lesson_type: '经验类型', category: '类别',
   is_hard: '硬约束', source: '来源',
+  summary: '摘要', description: '描述', content: '内容', excerpt: '摘录',
+  title: '标题', premise: '前提', storyline: '故事线', objective: '目标',
+  volumes: '分卷', volume_seq: '卷序号', outline: '大纲',
+  participants: '参与人物', confirm_status: '确认状态',
+  planted_chapter: '埋设章', resolved_chapter: '回收章',
+  trigger: '触发条件', actor: '人物', action: '动作', object: '对象',
+  race: '种族', origin: '出身', realm_cap: '境界上限', personality: '性格',
+  base_attrs: '基础设定', identity: '身份', role: '定位', importance: '作用',
+  world_rules: '世界规则', hard_constraints: '硬约束', style_profile: '文风档案',
+  genre_pack: '题材包', skill_pack: '技能包', settings: '设定',
+  source_id: '题材', source_name: '题材名', secondary_id: '辅题材',
+  secondary_name: '辅题材名', selling_point: '卖点', subgenres: '子题材',
+  taboos: '禁忌', pacing: '节奏', satisfaction: '爽点', mechanics: '机制',
+  world_hints: '世界提示', hook: '钩子', factions: '势力', locations: '地点',
+  user_instruction: '用户指令', mode: '模式', attempt: '第几次',
+  bytes: '字节', sha256: '摘要', model_id: '模型', stage: '阶段',
+  total: '发现总数', critical: '致命', l2_major: '台账重大', resolved: '已解决',
+  vector_hits: '向量腿命中', keyword_hits: '关键词腿命中', fused_total: '融合新增',
+  recall_tokens_est: '召回 token（估）', context_tokens_est: '上下文 token（估）',
+  share: '召回占比', vector_status: '向量腿状态', keyword_status: '关键词腿状态',
+  degrade_reason: '降级原因', hybrid_status: '混合召回状态', recalled_by: '召回来源',
+  text: '文本', tail: '结尾', statement: '陈述', state: '状态',
+  old_value: '原值', new_value: '新值',
 }
 
 export function fieldLabel(key: string): string {
   return FIELD_LABELS[key] ?? key
 }
+
+/** 内部标记字段（`_gate_user_id` 之类）不进展示。 */
+export function isInternalKey(key: string): boolean {
+  return key.startsWith('_')
+}
+
 
 /** 条目里可以直接成对显示的标量字段（摘录单独渲染，不当字段列）。 */
 export function scalarPairs(item: Record<string, unknown>): Array<[string, string]> {

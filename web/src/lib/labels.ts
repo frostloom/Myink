@@ -38,7 +38,7 @@ const CHAPTER_TONES: Record<ChapterStatus, BadgeTone> = {
   cancelled: 'hint',
 }
 
-export function chapterStatusLabel(s: ChapterStatus): string {
+export function chapterStatusLabel(s: string): string {
   return {
     planning: '规划中',
     writing: '写作中',
@@ -46,7 +46,7 @@ export function chapterStatusLabel(s: ChapterStatus): string {
     confirmed: '已确认',
     failed: '失败',
     cancelled: '已取消',
-  }[s]
+  }[s] ?? s
 }
 
 export function chapterStatusTone(s: ChapterStatus): BadgeTone {
@@ -64,7 +64,8 @@ const TASK_TONES: Record<TaskStatus, BadgeTone> = {
   done: 'success',
 }
 
-export function taskStatusLabel(s: TaskStatus): string {
+/** 管理台读的是库里的裸字符串，可能落在联合类型之外：认不出就原样返回。 */
+export function taskStatusLabel(s: string): string {
   return {
     queued: '排队中',
     running: '运行中',
@@ -74,7 +75,7 @@ export function taskStatusLabel(s: TaskStatus): string {
     failed: '失败',
     cancelled: '已取消',
     done: '完成',
-  }[s]
+  }[s] ?? s
 }
 
 export function taskStatusTone(s: TaskStatus): BadgeTone {
@@ -92,8 +93,35 @@ export function taskTypeLabel(t: string): string {
   }[t] ?? t
 }
 
-export function severityLabel(s: FindingSeverity): string {
-  return { critical: '致命', major: '重大', minor: '次要', hint: '提示' }[s]
+/** 建书状态：草稿=设定未定，legacy_ready=存量书可直接开写。 */
+export function creationStatusLabel(s: string): string {
+  return { draft: '草稿', legacy_ready: '可直接写作' }[s] ?? s
+}
+
+/** 台账状态：事实的确认态与伏笔的生命周期共用一张表（两边取值不冲突）。 */
+export function ledgerStatusLabel(s: string): string {
+  return {
+    confirmed: '已确认', expired: '已失效',
+    planted: '已埋设', developing: '推进中', resolved: '已回收', dropped: '已放弃',
+  }[s] ?? s
+}
+
+/** 用户等级：VIP 走网关高优先级队列（routes_tasks.py 的 tier 判定）。 */
+export function tierLabel(s: string): string {
+  return { normal: '普通', vip: 'VIP' }[s] ?? s
+}
+
+export function roleLabel(s: string): string {
+  return { user: '普通用户', admin: '管理员' }[s] ?? s
+}
+
+export function severityLabel(s: string): string {
+  return { critical: '致命', major: '重大', minor: '次要', hint: '提示' }[s] ?? s
+}
+
+/** 修订范围：局部可走 patch，结构性必须整章重写（validation/service.py 的判定口径）。 */
+export function scopeLabel(s: string): string {
+  return { local: '局部', structural: '结构性' }[s] ?? s
 }
 
 export function severityTone(s: FindingSeverity): BadgeTone {

@@ -1,6 +1,13 @@
 import { useCallback, useMemo, useState } from 'react'
 import { adminApi, type AdminSnapshot } from '../../lib/adminApi'
 import {
+  conflictTypeLabel,
+  findingSourceLabel,
+  nodeLabel,
+  scopeLabel,
+  severityLabel,
+} from '../../lib/labels'
+import {
   appliedSpans,
   availableSubViews,
   fieldLabel,
@@ -19,7 +26,16 @@ import {
   type RecallGroup,
   type SnapshotSubView,
 } from '../../lib/snapshotView'
-import { formatDate, formatDuration, JsonText, LoadState, RefreshButton, useResource } from './shared'
+import {
+  formatCost,
+  formatDate,
+  formatDuration,
+  LoadState,
+  RecordFields,
+  RefreshButton,
+  useResource,
+  ValueText,
+} from './shared'
 import styles from './SnapshotView.module.css'
 
 function ItemList({ group }: { group: RecallGroup }) {
@@ -84,7 +100,7 @@ function RecallView({ payload }: { payload: ReturnType<typeof snapshotPayload> }
       </dl>
       {Object.keys(stats).length > 0 && <dl className={styles.pairs}>
         {Object.entries(stats).map(([key, value]) => (
-          <div key={key}><dt>{key}</dt><dd>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</dd></div>
+          <div key={key}><dt>{fieldLabel(key)}</dt><dd><ValueText value={value} /></dd></div>
         ))}
       </dl>}
       {groups.map((group) => (
@@ -126,10 +142,10 @@ function FindingsView({ payload }: { payload: ReturnType<typeof snapshotPayload>
     <div className={styles.tableWrap}><table>
       <thead><tr><th>严重度</th><th>类型</th><th>范围</th><th>来源</th><th>置信</th><th>建议</th><th>证据</th></tr></thead>
       <tbody>{findings(payload).map((finding, index) => <tr key={finding.finding_id ?? index}>
-        <td><span className={severityClass(finding.severity)}>{finding.severity ?? '未标'}</span></td>
-        <td>{finding.conflict_type ?? '—'}</td>
-        <td>{finding.scope ?? '—'}</td>
-        <td>{finding.source ?? '—'}</td>
+        <td><span className={severityClass(finding.severity)}>{finding.severity ? severityLabel(finding.severity) : '未标'}</span></td>
+        <td>{finding.conflict_type ? conflictTypeLabel(finding.conflict_type) : '—'}</td>
+        <td>{finding.scope ? scopeLabel(finding.scope) : '—'}</td>
+        <td>{finding.source ? findingSourceLabel(finding.source) : '—'}</td>
         <td>{finding.confidence ?? '—'}</td>
         <td>{finding.suggestion ?? '—'}</td>
         <td>{(finding.evidence ?? []).map((item) => `第 ${item.chapter} 章：${item.quote}`).join('；') || '—'}</td>
@@ -195,13 +211,18 @@ export function SnapshotView({ token, snapshotId, onForbidden }: {
       {value && <article className={styles.snapshot} aria-label={`快照 ${value.id}`}>
         <div className={styles.head}>
           <div>
-            <h3>{value.stage} · 第 {value.chapter_seq ?? '—'} 章 · 第 {value.attempt} 次</h3>
-            <p>
-              {value.model_id ?? '未记录模型'} · {formatDuration(value.duration_ms)} ·
-              输入 {value.input_tokens} / 输出 {value.output_tokens} · 估算 ¥/US$ {value.cost_est.toFixed(4)} ·
-              {value.cache_hit ? '缓存命中' : '缓存未命中'} · {value.degraded ? '降级' : '未降级'} ·
-              重试 {value.retry_count} · {formatDate(value.created_at)}
-            </p>
+            <h3>{nodeLabel(value.stage)} · 第 {value.chapter_seq ?? '—'} 章 · 第 {value.attempt} 次</h3>
+            <dl className={styles.pairs}>
+              <div><dt>模型</dt><dd>{value.model_id ?? '未记录'}</dd></div>
+              <div><dt>耗时</dt><dd>{formatDuration(value.duration_ms)}</dd></div>
+              <div><dt>输入 token</dt><dd>{value.input_tokens.toLocaleString()}</dd></div>
+              <div><dt>输出 token</dt><dd>{value.output_tokens.toLocaleString()}</dd></div>
+              <div><dt>预估成本</dt><dd>{formatCost(value.cost_est)}</dd></div>
+              <div><dt>缓存</dt><dd>{value.cache_hit ? '命中' : '未命中'}</dd></div>
+              <div><dt>降级</dt><dd>{value.degraded ? '是' : '否'}</dd></div>
+              <div><dt>重试</dt><dd>{value.retry_count}</dd></div>
+              <div><dt>创建时间</dt><dd>{formatDate(value.created_at)}</dd></div>
+            </dl>
           </div>
           <RefreshButton onClick={resource.retry} />
         </div>
@@ -231,7 +252,7 @@ export function SnapshotView({ token, snapshotId, onForbidden }: {
         </section>}
         {payload.summary && <section className={styles.group}>
           <h4>校验小结</h4>
-          <JsonText value={payload.summary} />
+          <RecordFields value={payload.summary} />
         </section>}
         {payload.error && <p className="banner banner-error">{payload.error}</p>}
       </article>}
