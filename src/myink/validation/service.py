@@ -4,7 +4,7 @@
 - 大纲偏差：ChapterPlan.expected_events vs extract 实际事件（§8.6，近免费——
   复用 extract 产物，不新增 LLM 调用）→ 偏差报告 → 作者决策（改正文/改大纲）；
 - 桥段重复向量近邻（L1 事件层，样例 14/32）——draft 依赖，故由 service 编排而非并入 l1.validate；
-- 高频句式统计（L1，样例 15）——draft 依赖，service 编排；
+- 句式禁令（L1，样例 15）——draft 依赖，service 编排；
 - L2（语义校验）阶段 1 留接口，阶段 3 接 Validator-L2。
 """
 

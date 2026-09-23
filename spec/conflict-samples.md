@@ -122,11 +122,11 @@
 ### 样例 15 · AI 味复发
 - **前置**：写作 Prompt 已注入表述禁忌清单（禁"不是…而是…"转折堆砌、段落结尾总结式收束、连续排比）。
 - **冲突片段**：连续 3 章结尾 `他不是不知道前路凶险，而是早已没有退路。……他不是畏惧强敌，而是害怕辜负。`
-- **预期检出**：L1 高频句式统计（"不是…而是…"频次超阈值）→ 触发风格偏离报告；抽样 L2 比对风格档案
-- **预期 Finding**：`conflict_type=style, severity=hint, scope=local`
-- **度量指标**：AI 味复发率、高频句式频次曲线（随章节数应不增长）。
-- **误报控制**：文风是作者自由，只暴露"复发趋势"不阻塞；前端可"忽略"回流标注。
-- **检测现状**：✅ **已落地（2026-08-12，L1 高频句式/用词统计）**——`style_profile.fatigue_patterns`（句式 regex findall）单句式单章 ≥2 次（本片段单章内 2 处「不是…而是…」恰在边界）→ `style/hint/local`，每章至多 1 条；`fatigue_words`（词级 count）单词 ≥3 次亦触发；写章 Prompt 同步注入「高频词节制」。见 [l1.py](../src/myink/validation/l1.py) `style_repeat_check` / [test_style_repeat.py](../tests/test_style_repeat.py)。**L2 部分**：✅ **已落地（2026-08-13，全局审计文风维度抽样比对）**——每 K 章对窗口章节抽样摘录 vs 窗口前已确认章节基线（锚定作者自身风格、相对漂移）+ 文风档案，LLM 判 drift|ok，确定性守卫 0 误报（样例 38/39，见 [global_audit.py](../src/myink/validation/global_audit.py) 文风维度 / [test_conflict_sample_suite.py](../tests/test_conflict_sample_suite.py) `test_sample_38_style_drift`、`test_sample_39_style_scene_variation`）。**仍属后续**：句长分布、档案参考样本摘录等基线字段。
+- **预期检出**：L1 句式禁令（一处「不是…」紧跟「是…」即拦，含拆成两句的「不是…。是…」）→ 触发风格偏离报告；抽样 L2 比对风格档案
+- **预期 Finding**：`conflict_type=style, severity=critical, scope=local`
+- **度量指标**：AI 味复发率、禁句出现次数（随章节数应不增长）。
+- **误报控制**：规则只认「先否定、再改口」的结构，不数词频；连词/副词里的「是」（只是、但是、于是、就是、还是）与单独的「不是」句放行，阴性对照见 [test_style_repeat.py](../tests/test_style_repeat.py)。
+- **检测现状**：✅ **已落地（2026-08-12；2026-09-23 由高频统计改成句式禁令）**——`prose_ban_check`：「不是…」紧跟「是…」（含「不是…而是…」「不是…，是…」，以及拆成两句的「不是…。是…」）或连续排比出现即 `style/critical/local`，每章至多 1 条、证据至多 3 处；不读文风档案、不按词频计数（原 `style_profile.fatigue_patterns` / `fatigue_words` 阈值机制已删）。见 [l1.py](../src/myink/validation/l1.py) `prose_ban_check` / [test_style_repeat.py](../tests/test_style_repeat.py)。**L2 部分**：✅ **已落地（2026-08-13，全局审计文风维度抽样比对）**——每 K 章对窗口章节抽样摘录 vs 窗口前已确认章节基线（锚定作者自身风格、相对漂移）+ 文风档案，LLM 判 drift|ok，确定性守卫 0 误报（样例 38/39，见 [global_audit.py](../src/myink/validation/global_audit.py) 文风维度 / [test_conflict_sample_suite.py](../tests/test_conflict_sample_suite.py) `test_sample_38_style_drift`、`test_sample_39_style_scene_variation`）。**仍属后续**：句长分布、档案参考样本摘录等基线字段。
 
 ---
 
@@ -334,7 +334,7 @@
 - **前置**：本书早 1–10 章已确立文风（仙侠雅句、第三人称限知、长短句交错，与文风档案一致）；事件/人设无异常。
 - **冲突片段**：第 12–15 章突然全用现代网络口语、对话失去角色区分：`林砚拍桌而起："卧槽，这也太离谱了吧，直接开干！"`——与早先章节系统性偏离，非单场景变化。
 - **预期检出**：L2 抽样比对窗口摘录 vs 窗口前已确认章节基线（+ 文风档案）→ 判 drift → `style/hint/local/L2`
-- **度量指标**：风格漂移检出率 / AI 味复发率。面级漂移由 L2 单独承担——漂移文本规避 L1 fatigue 阈值，companion 断言见 [test_style_repeat.py](../tests/test_style_repeat.py) `test_below_threshold_clean`（未过阈值 → L1 不触发）与 [test_conflict_sample_suite.py](../tests/test_conflict_sample_suite.py) `test_sample_38_style_drift`（样例 38 由 L2 单独检出）。
+- **度量指标**：风格漂移检出率 / AI 味复发率。面级漂移由 L2 单独承担——漂移文本不踩 L1 句式禁令，companion 断言见 [test_style_repeat.py](../tests/test_style_repeat.py) `test_plain_words_and_negation_pass`（正常叙述 → L1 不触发）与 [test_conflict_sample_suite.py](../tests/test_conflict_sample_suite.py) `test_sample_38_style_drift`（样例 38 由 L2 单独检出）。
 - **误报控制**：L2 只标「与既定文风系统性持续偏离」；单场景节奏/情感合法变化不标；证据不足/低置信度宁不输出；确定性守卫只放行 verdict=drift + 逐字引文 + 采样章。
 - **检测现状**：✅ **已落地（2026-08-13，全局审计文风维度 L2）**——基线 = 窗口前已确认章节（even-spacing cap 4，锚定作者自身风格、相对漂移），窗口抽样 even-spacing cap 4 + 文风档案上下文，LLM 判 drift|ok，确定性守卫 0 误报（[test_conflict_sample_suite.py](../tests/test_conflict_sample_suite.py) `test_sample_38_style_drift`）。已知边界：首个窗口（无基线锚点）style 中性跳过、移动基线测不出慢速累积漂移（[global_audit.py](../src/myink/validation/global_audit.py) docstring）。
 
