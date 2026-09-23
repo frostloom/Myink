@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { ApiError } from '../lib/api'
@@ -20,6 +20,10 @@ vi.mock('../lib/adminApi', async (original) => {
 
 const metrics: AdminMetrics = {
   run_count: 2, input_tokens: 1200, output_tokens: 800, cost_est: 0.42, duration_ms: 3500,
+}
+
+const taskAverages = {
+  avg_cost_per_task: 0.21, avg_duration_ms_per_task: 1750, avg_runs_per_task: 2,
 }
 
 const auth = {
@@ -50,7 +54,6 @@ beforeEach(() => {
     user_count: 4, project_count: 6, chapter_count: 18, task_count: 9,
     metrics, task_status_counts: { queued: 2, completed: 7 },
   })
-  vi.mocked(adminApi.listUsers).mockResolvedValue({ items: [], total: 0, limit: 25, offset: 0 })
   vi.mocked(adminApi.listProjects).mockResolvedValue({ items: [], total: 0, limit: 25, offset: 0 })
   vi.mocked(adminApi.listTasks).mockResolvedValue({ items: [], total: 0, limit: 25, offset: 0 })
   vi.mocked(adminApi.listRuns).mockResolvedValue({ items: [], total: 0, limit: 25, offset: 0 })
@@ -135,55 +138,13 @@ it('clears protected content and revalidates when an admin request returns 403',
   expect(auth.revalidate).toHaveBeenCalledTimes(1)
 })
 
-it('searches users, opens their books and pages through results', async () => {
-  vi.mocked(adminApi.listUsers)
-    .mockResolvedValueOnce({
-      items: [{
-        id: 'user-1', username: 'alice', tier: 'normal', role: 'user', project_count: 2,
-        chapter_count: 7, word_count: 12000, task_count: 3, metrics,
-      }], total: 26, limit: 25, offset: 0,
-    })
-    .mockResolvedValueOnce({
-      items: [{
-        id: 'user-1', username: 'alice', tier: 'normal', role: 'user', project_count: 2,
-        chapter_count: 7, word_count: 12000, task_count: 3, metrics,
-      }], total: 26, limit: 25, offset: 0,
-    })
-    .mockResolvedValueOnce({
-      items: [{
-        id: 'user-1', username: 'alice', tier: 'normal', role: 'user', project_count: 2,
-        chapter_count: 7, word_count: 12000, task_count: 3, metrics,
-      }], total: 26, limit: 25, offset: 25,
-    })
-  renderPage()
-  fireEvent.click(screen.getByRole('button', { name: '用户' }))
-  expect(await screen.findByText('alice')).toBeTruthy()
-
-  fireEvent.change(screen.getByLabelText('搜索用户'), { target: { value: 'ali ce' } })
-  fireEvent.submit(screen.getByRole('search', { name: '用户筛选' }))
-  await waitFor(() => expect(adminApi.listUsers).toHaveBeenLastCalledWith(
-    'token-admin', expect.objectContaining({ q: 'ali ce', offset: 0 }), expect.any(AbortSignal),
-  ))
-
-  fireEvent.click(screen.getByRole('button', { name: '下一页' }))
-  await waitFor(() => expect(adminApi.listUsers).toHaveBeenLastCalledWith(
-    'token-admin', expect.objectContaining({ offset: 25 }), expect.any(AbortSignal),
-  ))
-
-  vi.mocked(adminApi.listProjects).mockResolvedValue({ items: [], total: 0, limit: 25, offset: 0 })
-  fireEvent.click(screen.getByRole('button', { name: '查看 alice 的作品' }))
-  await waitFor(() => expect(adminApi.listProjects).toHaveBeenCalledWith(
-    'token-admin', expect.objectContaining({ userId: 'user-1' }), expect.any(AbortSignal),
-  ))
-})
-
 it('loads chapter content and bounded project context only after selecting a book', async () => {
   vi.mocked(adminApi.listProjects).mockResolvedValue({
     items: [{
       id: 'book-1', user_id: 'user-1', username: 'alice', title: '山河册', genre: '奇幻',
       current_chapter: 2, target_words: 100000, creation_status: 'ready',
       created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-02T00:00:00Z',
-      chapter_count: 2, word_count: 4500, task_count: 1, metrics,
+      chapter_count: 2, word_count: 4500, task_count: 1, metrics, task_averages: taskAverages,
     }], total: 1, limit: 25, offset: 0,
   })
   vi.mocked(adminApi.listChapters).mockResolvedValue({
