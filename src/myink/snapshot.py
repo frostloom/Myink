@@ -12,7 +12,8 @@
 - hash：每章逐字节相同的模板、或库里另有全文的素材（题材包、题材参考文档），
   只留字节数与 sha256——足以证明它当时在场、也能与今天的设置比对是否改过，不占正文预算。
 标签名不认识的节按 full 处理：宁可多留，不静默丢掉新加的段。
-超过预算的节退化为 hash + truncated，绝不静默丢。
+超过单节上限的节留到上限为止（记 truncated + 原字节数 + sha256）；合计预算见底时整节
+退化为 hash（记 omitted=budget）——两种都不静默丢。
 """
 
 from __future__ import annotations
@@ -22,11 +23,17 @@ import re
 
 from myink.admin_observability import capture
 
-# 逐节上限与合计上限（字节）。总行上限 32 KiB，与 agent_runs.detail 的 64 KiB 遥测预算分开：
+# 逐节上限与合计上限（字节）。总行上限 64 KiB，与 agent_runs.detail 的遥测预算同量级：
 # 那些 detail 只能看截断后的样子，本表是「原始输入」的正本。
-SECTION_BYTE_CAP = 4000
-PROMPT_BYTE_BUDGET = 12000
-ROW_BUDGET = 32768
+# 三个数字按真书实测定（深渊天梯第 5 章）：各阶段要留 13.4–16.3 KB，单节最大 6075 字节
+# （审计/补丁的提示词把本章原稿整段嵌了进去）。原来的 12000/4000 会把「章节计划」这类
+# 最该逐字看的段砍掉——留存口径明说它要全文，预算却先一步截断，自相矛盾。
+SECTION_BYTE_CAP = 8000
+PROMPT_BYTE_BUDGET = 24000
+ROW_BUDGET = 65536
+# 预算只剩个零头时不留半截正文：剩不到一句话的字节，留 1 个字节既没有分析价值，
+# 也不如整节退化成哈希干净（原字节数与 sha256 本来就在）。
+MIN_SECTION_SLICE = 256
 # 召回条目摘录与模型输出摘录（正文与台账原文在 chapters/memory 表里，不在这里重复存）
 ITEM_EXCERPT_CHARS = 200
 OUTPUT_EXCERPT_CHARS = 500
@@ -96,7 +103,10 @@ def project_prompt(messages: list[dict]) -> dict:
         for section in split_sections(str(message.get("content") or "")):
             name, text = section["name"], section["text"]
             raw_bytes = len(text.encode())
-            if not _is_hash_section(name) and remaining > 0:
+            # 放得下就留全文；放不下时剩余预算得够装一段话才切，否则整节退化哈希。
+            keep_text = not _is_hash_section(name) and (
+                raw_bytes <= remaining or remaining >= MIN_SECTION_SLICE)
+            if keep_text:
                 kept, clipped = _clip_to_bytes(text, min(SECTION_BYTE_CAP, remaining))
                 remaining -= len(kept.encode())
                 entry = {"role": role, "name": name, "policy": "full", "text": kept}
