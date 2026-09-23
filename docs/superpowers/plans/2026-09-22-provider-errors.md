@@ -14,8 +14,8 @@
 
 ## 实施验收记录（2026-09-22）
 
-- 任务 1：`deb0f32`，相关测试 65 项通过，Python 全量 959 passed / 5 xfailed；[CI 三项成功](https://github.com/frostloom/Myink/actions/runs/35741711007)。
-- 任务 2：`82a66a8`，相关测试 28 项通过，Python 全量 965 passed / 5 xfailed；[CI 三项成功](https://github.com/frostloom/Myink/actions/runs/35743467331)。
+- 任务 1：`b7d88ad`，相关测试 65 项通过，Python 全量 959 passed / 5 xfailed；[CI 三项成功](https://github.com/frostloom/Myink/actions/runs/35741711007)。
+- 任务 2：`b4556be`，相关测试 28 项通过，Python 全量 965 passed / 5 xfailed；[CI 三项成功](https://github.com/frostloom/Myink/actions/runs/35743467331)。
 - 任务 3 与最终修正：交互测试 10 项通过；前端全量 251 项通过，lint/build 成功；Python 全量 969 passed / 5 xfailed。最终 CI 以 GitHub 对应提交 SHA 的结果为准。
 - 独立复核发现两项 Important，均已通过新增测试 RED→GREEN 修复：非对象 JSON 不再提前截断测试密钥；通知区域已滚动时新增/更新消息会回到可见位置。未遗留未处理的重要问题。
 - 无头 Edge 实测：长页面等待后错误仍在视口；不同连接错误保留；375px 下通知长文无横向溢出；通知区滚到底后新错误仍可见；Escape 关闭恢复焦点；首个错误字段定位；保存失败保留草稿；关闭不重发、手动重试只请求一次。全部 API 请求受控拦截，未调用付费模型。
@@ -686,6 +686,6 @@ if (!model) return rejectField(draft.id, 'model', '请填写模型 id')
 - [x] 设计覆盖：共享分类、探针、两类 provider 四出口、可选配置、可见反馈、必要指引、脱敏、重试不变均有归属；建书弹窗/全站设计明确排除。
 - [x] 接口核对：只新增 formatter 与局部通知组件，不变更 ModelResponse、API 响应、队列与租户字段。
 - [x] Review Focus 五项分别落在任务 1、2、3 的测试与浏览器清单。
-- [x] 路径核对：基于 `9f26845` 当前代码结构；旧 Go 目录与旧计划行号不是修改依据。
+- [x] 路径核对：基于 `a6f0cf2` 当前代码结构；旧 Go 目录与旧计划行号不是修改依据。
 - [ ] 执行时每任务记录 RED 命令与原因、GREEN 计数、跳过/警告、commit SHA、CI URL/结论。
 - [ ] 最终记录正式容器是否部署了本目标；未重建部署不能把源码完成说成线上生效。
