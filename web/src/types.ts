@@ -373,14 +373,12 @@ export interface ProjectSettings {
   version: number
 }
 
-/** MCP 扫榜覆盖（账号级环境配置） */
+/** 扫榜覆盖（账号级环境配置） */
 export interface RankingsConfig {
   enabled: boolean
   mcp_url: string
   timeout: number
   limit: number
-  source: string
-  tool: string
 }
 
 export interface RankingsConfigInput {
@@ -388,8 +386,6 @@ export interface RankingsConfigInput {
   mcp_url?: string
   timeout?: number
   limit?: number
-  source?: string
-  tool?: string
 }
 
 /** 账号级环境配置（GET/PUT /environment） */

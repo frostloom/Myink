@@ -21,7 +21,8 @@ PostgreSQL myink_pgdata_v2、RabbitMQ myink_rabbitmq-data、Redis 原匿名卷�
 - 已完成代码与 CI：局部修订（全链复审、独立预算、失败保留原稿、scope 可见）。3225c8d 已推送 main；CI 35754841453 三项成功。本地 Python 1012 passed / 5 xfailed，前端 253 passed，lint/build 通过。独立审查两项 Important 已 RED→GREEN 修复，无遗留 Minor。正式容器最终部署另记。
 - 已完成代码与本地验证：扫榜客户端防护（精确工具与参数、拒绝分类假书）。全量 Python 1021 passed / 5 xfailed；独立审查与精确 SHA CI 结果见本任务最终交付。完整换源仍未完成。
 - 暂缓：短篇产品实现。管理员 7 项目均无可用 writer 连接，无法通过 2 万字真实输出前置门槛。改进意见及解除条件见 ../specs/2026-09-23-short-form-preflight.md。
-- 暂缓：扫榜 sidecar/正式默认切换。上游 README 有 MIT 字样但无完整 LICENSE 文件（GitHub license=null）；目标 ECS 网络未验证。本机番茄页面 200 不能替代云端验收，且直接 HTML 抓取有 PUA 书名问题。未复制第三方代码、未放宽 SSRF、未部署不存在的 sidecar。见 ../specs/2026-09-23-rankings-guardrails-design.md。
+- 已完成代码（本地验证待补）：扫榜换源落地——绕开 sidecar 与上游 MCP，直连番茄榜单公开接口 `api-lf.fanqiesdk.com`（形状取自 inkos `radar-source.ts`），httpx 取数隔离在 `integrations/fanqie.py`；`rankings_source` / `rankings_tool` 及其死码删除，MCP 客户端与连通探针保留。
+- 暂缓（2026-09-23 后续已解除：改为直连番茄公开接口，见上条）：扫榜 sidecar/正式默认切换。上游 README 有 MIT 字样但无完整 LICENSE 文件（GitHub license=null）；目标 ECS 网络未验证。本机番茄页面 200 不能替代云端验收，且直接 HTML 抓取有 PUA 书名问题。未复制第三方代码、未放宽 SSRF、未部署不存在的 sidecar。见 ../specs/2026-09-23-rankings-guardrails-design.md。
 
 ## 可复查的 CI
 

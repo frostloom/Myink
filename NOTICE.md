@@ -65,6 +65,7 @@ Myink 整体以 **AGPL-3.0** 发布，许可全文见 [LICENSE](LICENSE)。
 
 - **题材别名** —— `genre_catalog.py` 的 `_ALIASES` 18 条全部取自上游 `references/taxonomy/genre-index.csv` 的 aliases 列（逐条核对，18/18 命中）。
 - **主辅题材 7:3** —— 取自上游 `templates/output/复合题材-融合逻辑.md`（"占比建议：7:3"）与 `scripts/data_modules/genre_profile_builder.py`（主辅冲突时优先保证主题材的读者承诺）。落在 `compose_fields()` / `format_prompt()`。
+- **番茄榜单接口形状** —— 取数端点（host、路径、`aid`、`side_type` 取值、`data.result[]` 字段名）取自上游 `packages/core/src/agents/radar-source.ts` 的 `FanqieRadarSource`。请求与归一代码为本仓库自写，落在 `src/myink/integrations/fanqie.py`。
 
 **未接进来的部分**：上游 `references/genre-profiles.md` 里那套数值权重（钩子类型、每章爽点密度、微兑现下限、节奏停滞章数）没有接进生成逻辑——该文件自标 "Fallback Only"，声明只用来调建议、不做硬性裁决。文件本身已随语料收录，未被代码读取。
 

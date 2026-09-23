@@ -22,7 +22,7 @@ const emptyEnv = {
   thinking_enabled: false,
   rankings: {
     enabled: true, mcp_url: 'https://daosearch.io/api/mcp',
-    timeout: 10, limit: 10, source: 'qidian', tool: '',
+    timeout: 10, limit: 10,
   },
 }
 
@@ -184,7 +184,7 @@ it('saves rankings config and tests MCP connectivity', async () => {
   await screen.findByLabelText('MCP 地址')
   fireEvent.change(screen.getByLabelText('MCP 地址'), { target: { value: 'https://mcp.example.com/api' } })
   fireEvent.change(screen.getByLabelText('扫榜超时'), { target: { value: '8' } })
-  fireEvent.click(screen.getByRole('button', { name: '测试扫榜连接' }))
+  fireEvent.click(screen.getByRole('button', { name: '测试 MCP 连接' }))
   await waitFor(() => expect(api.testRankings).toHaveBeenCalledWith({
     mcp_url: 'https://mcp.example.com/api', timeout: 8,
   }))
@@ -194,7 +194,7 @@ it('saves rankings config and tests MCP connectivity', async () => {
   await waitFor(() => expect(api.updateEnvironment).toHaveBeenCalledWith({
     rankings: {
       enabled: true, mcp_url: 'https://mcp.example.com/api',
-      timeout: 8, limit: 10, source: 'qidian', tool: '',
+      timeout: 8, limit: 10,
     },
   }))
 })

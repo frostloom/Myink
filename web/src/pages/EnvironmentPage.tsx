@@ -1,4 +1,4 @@
-// 账号级环境配置：模型连接/路由 + MCP 扫榜。作品库即可进入，不绑具体书。
+// 账号级环境配置：模型连接/路由 + 扫榜。作品库即可进入，不绑具体书。
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ConnectionNotices, type ConnectionNotice } from '../components/ConnectionNotices'
@@ -46,8 +46,6 @@ const EMPTY_RANKINGS: RankingsConfig = {
   mcp_url: 'https://daosearch.io/api/mcp',
   timeout: 10,
   limit: 10,
-  source: 'qidian',
-  tool: '',
 }
 
 export default function EnvironmentPage() {
@@ -290,8 +288,6 @@ export default function EnvironmentPage() {
           mcp_url: url,
           timeout: rankings.timeout,
           limit: rankings.limit,
-          source: rankings.source.trim(),
-          tool: rankings.tool.trim(),
         },
       })
       await load()
@@ -476,7 +472,7 @@ export default function EnvironmentPage() {
           </section>
 
           <section className={`panel ${styles.section}`}>
-            <h2 className={styles.sectionTitle}>外接 MCP 扫榜</h2>
+            <h2 className={styles.sectionTitle}>扫榜</h2>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>启用扫榜</span>
               <select
@@ -488,16 +484,6 @@ export default function EnvironmentPage() {
                 <option value="1">开启</option>
                 <option value="0">关闭（只用示例数据）</option>
               </select>
-            </label>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>MCP 地址</span>
-              <input
-                className="input"
-                aria-label="MCP 地址"
-                value={rankings.mcp_url}
-                onChange={(e) => setRankings((r) => ({ ...r, mcp_url: e.target.value }))}
-                placeholder="https://daosearch.io/api/mcp"
-              />
             </label>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>超时（秒）</span>
@@ -523,24 +509,17 @@ export default function EnvironmentPage() {
                 onChange={(e) => setRankings((r) => ({ ...r, limit: Number(e.target.value) }))}
               />
             </label>
+            <div className={styles.routeDivider}>
+              <h3>MCP 服务</h3>
+            </div>
             <label className={styles.field}>
-              <span className={styles.fieldLabel}>来源（source）</span>
+              <span className={styles.fieldLabel}>MCP 地址</span>
               <input
                 className="input"
-                aria-label="榜单来源"
-                value={rankings.source}
-                onChange={(e) => setRankings((r) => ({ ...r, source: e.target.value }))}
-                placeholder="qidian"
-              />
-            </label>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>工具名（留空自动发现）</span>
-              <input
-                className="input"
-                aria-label="扫榜工具名"
-                value={rankings.tool}
-                onChange={(e) => setRankings((r) => ({ ...r, tool: e.target.value }))}
-                placeholder="留空则按名称自动匹配"
+                aria-label="MCP 地址"
+                value={rankings.mcp_url}
+                onChange={(e) => setRankings((r) => ({ ...r, mcp_url: e.target.value }))}
+                placeholder="https://daosearch.io/api/mcp"
               />
             </label>
             <div className={styles.probeRow}>
@@ -550,7 +529,7 @@ export default function EnvironmentPage() {
                 disabled={busy !== null || rankProbe?.loading === true}
                 onClick={() => void testRankings()}
               >
-                {rankProbe?.loading ? '测试中…' : '测试扫榜连接'}
+                {rankProbe?.loading ? '测试中…' : '测试 MCP 连接'}
               </button>
               {rankProbe && !rankProbe.loading && (
                 <span className={styles.probeStatus}>{rankProbe.text}</span>

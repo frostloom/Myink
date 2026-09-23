@@ -1,9 +1,10 @@
-"""扫榜灵感模块测试（plan.md §10：MCP Client → sanitize → 建书前灵感工具 → 降级）。全离线：stub/注入，不触外网。
+"""扫榜灵感模块测试（plan.md §10：番茄榜单 → sanitize → 建书前灵感工具 → 降级）。全离线：stub/注入，不触外网。
 
 覆盖：
 - McpClient：text 块拼平 / is_error / 无文本 / structuredContent 回退 / list_tools 归一（stub 会话鸭子类型）；
-- sanitize：allowlist / 剥控制字符 / 字段与条数 cap / 非 dict / 无 title 丢弃 / JSON 文本输入（McpClient 返回的是字符串）；
-- RankingsService：禁用 / TTL 缓存命中与过期 / refresh 绕过 / McpError 降级 / 无工具降级 / 无有效项降级 / remote 归一；
+  扫榜不再走它取数（取数在 integrations/fanqie.py），客户端保留作后续接其他 MCP 工具的入口；
+- sanitize：allowlist / 剥控制字符 / 字段与条数 cap / 非 dict / 无 title 丢弃 / JSON 文本输入；
+- RankingsService：禁用 / TTL 缓存命中与过期 / refresh 绕过 / 榜单不可用降级 / 无有效项降级 / remote 归一；
 - facade fetch_rankings：无 pid 全局入口形状（source/tool/fetched_at/error/items）；
 - API：全局 /api/v1/rankings 端点 → 200 形状（RankingsOut）+ refresh 透传；缺失身份 → 403 fail closed。
   扫榜已整体前移至建书前——不注入任何生成节点（plan_messages / 图节点不再拉榜单）。
@@ -24,11 +25,11 @@ from conftest import identity_headers
 from myink.api.main import app
 from myink.db import new_session
 from myink.integrations import fetch_rankings as facade_fetch_rankings
+from myink.integrations.fanqie import FanqieError
 from myink.integrations.mcp import McpClient, McpError
 from myink.integrations.rankings import (
     RankingsService,
     _SAMPLE_ITEMS,
-    _find_tool,
     sanitize,
 )
 from myink.models import User
@@ -45,34 +46,23 @@ class FakeSettings:
     rankings_enabled: bool = True
     rankings_cache_ttl: float = 3600
     rankings_limit: int = 10
-    rankings_source: str = "qidian"
-    rankings_tool: str = ""
+    rankings_timeout: int = 10
 
 
-class FakeClient:
-    """async 上下文管理器，鸭子类型 McpClient（client_factory 注入）。"""
+class FakeFetcher:
+    """鸭子类型 fanqie.fetch_all（fetcher 注入）。"""
 
-    def __init__(self, tools: list[str], call_result: object):
-        self.tools = tools
-        self.call_result = call_result
-        self.list_calls = 0
-        self.tool_calls: list[tuple[str, dict]] = []
+    def __init__(self, rows: object):
+        self.rows = rows
+        self.calls = 0
+        self.timeouts: list[float] = []
 
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, *exc):
-        return False
-
-    async def list_tools(self):
-        self.list_calls += 1
-        return self.tools
-
-    async def call_tool(self, name, arguments):
-        self.tool_calls.append((name, arguments))
-        if isinstance(self.call_result, BaseException):
-            raise self.call_result
-        return self.call_result
+    async def __call__(self, *, timeout):
+        self.calls += 1
+        self.timeouts.append(timeout)
+        if isinstance(self.rows, BaseException):
+            raise self.rows
+        return self.rows
 
 
 def _make_clock():
@@ -80,9 +70,9 @@ def _make_clock():
     return (lambda: t[0]), t
 
 
-def _service(fake, *, enabled=True, ttl=3600, limit=10, source="qidian", tool="", clock=None):
-    st = FakeSettings(enabled, ttl, limit, source, tool)
-    svc = RankingsService(settings_obj=st, client_factory=lambda: fake, clock=clock or (lambda: 0.0))
+def _service(fake, *, enabled=True, ttl=3600, limit=10, clock=None):
+    st = FakeSettings(enabled, ttl, limit)
+    svc = RankingsService(settings_obj=st, fetcher=fake, clock=clock or (lambda: 0.0))
     return svc, st, fake
 
 
@@ -215,7 +205,7 @@ def test_sanitize_allowlist_and_normalizes():
 
 
 def test_sanitize_accepts_json_string_input():
-    """McpClient.call_tool 返回的是 text 块拼平的 JSON 字符串 → sanitize 必须能解析。"""
+    """上游返回 JSON 文本时 sanitize 必须能解析（MCP 工具路径即为此形态）。"""
     raw = '[{"rank":1,"title":"甲","tags":["仙侠"],"evil":"x"},{"rank":2,"title":"乙"}]'
     items = sanitize(raw, limit=10)
     assert items == [{"rank": 1, "title": "甲", "tags": ["仙侠"]}, {"rank": 2, "title": "乙"}]
@@ -247,65 +237,34 @@ def test_sanitize_missing_rank_backfills_by_position():
     assert [i["rank"] for i in items] == [1, 99], "缺 rank 按出现顺序补"
 
 
-# ---- _find_tool ----
-
-
-def test_find_tool_requires_exact_known_source_or_explicit_override():
-    tools = ["qidian_rank", "community_rank"]
-    assert _find_tool(tools, "qidian", "") == "qidian_rank"
-    assert _find_tool(tools, "community", "") == "community_rank"
-    assert _find_tool(tools, "other", "") is None, "未知 source 不猜工具"
-    assert _find_tool(["list_rankings", "qidian_rank_preview"], "qidian", "") is None
-    assert _find_tool(["qidian_rank", "community_rank"], "qidian", "community_rank") == "community_rank", \
-        "override 精确命中优先"
-    assert _find_tool(["web_search"], "qidian", "") is None, "无 rank 工具 → None（降级）"
-    assert _find_tool(["qidian_rank"], "qidian", "missing") is None, "override 不匹配 → None"
-
-
 # ---- RankingsService：禁用 / 缓存 / 降级 / remote ----
 
 
-def test_service_disabled_returns_sample_without_mcp():
-    fake = FakeClient([], "[]")
+def test_service_disabled_returns_sample_without_fetch():
+    fake = FakeFetcher([])
     svc, st, _ = _service(fake, enabled=False)
     result = asyncio.run(svc.fetch())
     assert result.source == "sample"
     assert result.error == "RANKINGS_ENABLED=0 已禁用扫榜"
     assert result.items == _SAMPLE_ITEMS
-    assert fake.list_calls == 0, "禁用不触 MCP"
+    assert fake.calls == 0, "禁用不触上游"
 
 
 def test_service_remote_returns_sanitized_items():
-    fake = FakeClient(["qidian_rank"], json.dumps([
-        {"rank": 1, "title": "甲", "author": "张", "tags": ["仙侠"], "hot": "1.2万", "evil": "x"},
+    fake = FakeFetcher([
+        {"rank": 1, "title": "甲", "author": "张", "tags": ["热门榜", "仙侠"], "hot": "热度 1万", "evil": "x"},
         {"rank": 2, "title": "乙"},
-    ]))
+    ])
     svc, st, _ = _service(fake)
     result = asyncio.run(svc.fetch())
     assert result.source == "remote"
-    assert result.tool == "qidian_rank"
+    assert result.tool == "fanqie"
     assert result.fetched_at is not None
     assert result.items == [
-        {"rank": 1, "title": "甲", "author": "张", "tags": ["仙侠"], "hot": "1.2万"},
+        {"rank": 1, "title": "甲", "author": "张", "tags": ["热门榜", "仙侠"], "hot": "热度 1万"},
         {"rank": 2, "title": "乙"},
     ]
-    assert fake.tool_calls == [("qidian_rank", {"type": "hotsales", "genre": "overall"})]
-
-
-def test_override_parameters_follow_tool_not_source():
-    fake = FakeClient(["community_rank"], '[{"title":"真实书"}]')
-    svc, _, _ = _service(fake, source="qidian", tool="community_rank")
-    assert asyncio.run(svc.fetch()).source == "remote"
-    assert fake.tool_calls == [("community_rank", {"period": "all-time", "genre": "1"})]
-
-
-@pytest.mark.parametrize("tool", ["list_rankings", "unknown_rank", "get_ranking"])
-def test_tool_without_parameter_contract_is_never_called(tool):
-    fake = FakeClient([tool], '[{"title":"男频阅读榜","items":[]}]')
-    svc, _, _ = _service(fake, tool=tool)
-    result = asyncio.run(svc.fetch())
-    assert result.source == "sample" and "参数" in result.error
-    assert fake.tool_calls == []
+    assert fake.timeouts == [10], "超时取自 settings.rankings_timeout"
 
 
 @pytest.mark.parametrize("wrapper", [lambda x: x, lambda x: {"items": x}, lambda x: json.dumps(x)])
@@ -320,44 +279,44 @@ def test_single_category_container_is_not_expanded_into_books():
 
 
 def test_invalid_categories_are_not_cached_as_remote_success():
-    fake = FakeClient(["qidian_rank"], '[{"title":"男频阅读榜","items":[]}]')
+    fake = FakeFetcher([{"title": "男频阅读榜", "items": []}])
     svc, _, _ = _service(fake)
     assert asyncio.run(svc.fetch()).source == "sample"
-    fake.call_result = '[{"title":"真实书"}]'
+    fake.rows = [{"title": "真实书"}]
     assert asyncio.run(svc.fetch()).items[0]["title"] == "真实书"
-    assert fake.list_calls == 2
+    assert fake.calls == 2
 
 
 def test_service_caches_within_ttl_and_refresh_bypasses():
-    fake = FakeClient(["qidian_rank"], json.dumps([{"rank": 1, "title": "甲"}]))
+    fake = FakeFetcher([{"rank": 1, "title": "甲"}])
     clock, t = _make_clock()
     svc, st, _ = _service(fake, clock=clock)
 
     r1 = asyncio.run(svc.fetch())
     assert r1.source == "remote"
-    assert fake.list_calls == 1
-    # TTL 内第二次不重打 MCP
+    assert fake.calls == 1
+    # TTL 内第二次不重打上游
     asyncio.run(svc.fetch())
-    assert fake.list_calls == 1, "TTL 内缓存命中，不重复打 MCP"
+    assert fake.calls == 1, "TTL 内缓存命中，不重复打上游"
 
     asyncio.run(svc.fetch(refresh=True))
-    assert fake.list_calls == 2, "refresh=True 绕过缓存重拉"
+    assert fake.calls == 2, "refresh=True 绕过缓存重拉"
 
 
 def test_service_ttl_expiry_refetches():
-    fake = FakeClient(["qidian_rank"], json.dumps([{"rank": 1, "title": "甲"}]))
+    fake = FakeFetcher([{"rank": 1, "title": "甲"}])
     clock, t = _make_clock()
     svc, st, _ = _service(fake, ttl=100, clock=clock)
 
     asyncio.run(svc.fetch())
-    assert fake.list_calls == 1
+    assert fake.calls == 1
     t[0] = 100.0  # TTL 到点
     asyncio.run(svc.fetch())
-    assert fake.list_calls == 2, "TTL 过期重新拉取"
+    assert fake.calls == 2, "TTL 过期重新拉取"
 
 
-def test_service_mcp_error_degrades_to_sample():
-    fake = FakeClient(["qidian_rank"], McpError("连接超时"))
+def test_service_fanqie_error_degrades_to_sample():
+    fake = FakeFetcher(FanqieError("番茄榜单不可用（热门榜: 连接超时）"))
     svc, st, _ = _service(fake)
     result = asyncio.run(svc.fetch())
     assert result.source == "sample"
@@ -366,7 +325,7 @@ def test_service_mcp_error_degrades_to_sample():
 
 
 def test_service_unexpected_error_degrades_to_sample():
-    fake = FakeClient(["qidian_rank"], RuntimeError("神秘错误"))
+    fake = FakeFetcher(RuntimeError("神秘错误"))
     svc, st, _ = _service(fake)
     result = asyncio.run(svc.fetch())
     assert result.source == "sample"
@@ -374,9 +333,9 @@ def test_service_unexpected_error_degrades_to_sample():
 
 
 def test_service_cancelled_error_degrades_to_sample():
-    # mcp SDK 内部 cancel scope（连接挂起/通道关闭）抛 CancelledError——BaseException，
-    # 不是 Exception，`except Exception` 捕不住；不加这条会直接炸图节点（真实 bug）。
-    fake = FakeClient(["qidian_rank"], asyncio.CancelledError("cancelled"))
+    # 请求挂起被取消时抛 CancelledError——BaseException，不是 Exception，
+    # `except Exception` 捕不住；不加这条会直接炸图节点（真实 bug）。
+    fake = FakeFetcher(asyncio.CancelledError("cancelled"))
     svc, st, _ = _service(fake)
     result = asyncio.run(svc.fetch())
     assert result.source == "sample"
@@ -384,33 +343,25 @@ def test_service_cancelled_error_degrades_to_sample():
     assert "连接失败或被取消" in (result.error or "")
 
 
-def test_service_no_tool_found_degrades_to_sample():
-    fake = FakeClient(["web_search"], "[]")
-    svc, st, _ = _service(fake)
-    result = asyncio.run(svc.fetch())
-    assert result.source == "sample"
-    assert "未在 MCP server 发现榜单工具" in (result.error or "")
-    assert fake.tool_calls == [], "无工具不 call_tool"
-
-
 def test_service_no_valid_items_degrades_to_sample():
-    fake = FakeClient(["qidian_rank"], json.dumps([{"foo": 1}]))
+    fake = FakeFetcher([{"foo": 1}])
     svc, st, _ = _service(fake)
     result = asyncio.run(svc.fetch())
     assert result.source == "sample"
-    assert "无有效榜单项" in (result.error or "")
+    assert "无有效项" in (result.error or "")
 
 
 # ---- facade fetch_rankings（全局无 pid 入口）----
 
 
 def test_facade_fetch_rankings_shape(monkeypatch):
-    fake = FakeClient(["qidian_rank"], json.dumps([{"rank": 1, "title": "甲"}]))
+    fake = FakeFetcher([{"rank": 1, "title": "甲"}])
     svc, st, _ = _service(fake)
     monkeypatch.setattr("myink.integrations.rankings._service", svc)
     result = asyncio.run(facade_fetch_rankings())
     assert set(result) == {"source", "tool", "fetched_at", "error", "items"}
     assert result["source"] == "remote"
+    assert result["tool"] == "fanqie"
     assert result["items"][0]["title"] == "甲"
 
 
@@ -431,16 +382,16 @@ def _h(uid: str | uuid.UUID | None) -> dict:
 
 def test_rankings_endpoint_200_shape(monkeypatch):
     async def fake(refresh=False, user_id=None):
-        return {"source": "remote", "tool": "qidian_rank",
+        return {"source": "remote", "tool": "fanqie",
                 "fetched_at": "2026-01-01T00:00:00+00:00", "error": None,
-                "items": [{"rank": 1, "title": "甲", "author": "张", "tags": ["仙侠"], "hot": "1.2万"}]}
+                "items": [{"rank": 1, "title": "甲", "author": "张", "tags": ["热门榜", "仙侠"], "hot": "热度 1万"}]}
 
     monkeypatch.setattr("myink.api.routes_rankings.fetch_rankings", fake)
     resp = client.get("/api/v1/rankings", headers=_h(_demo_user_id()))
     assert resp.status_code == 200
     body = resp.json()
     assert body["source"] == "remote"
-    assert body["items"][0] == {"rank": 1, "title": "甲", "author": "张", "tags": ["仙侠"], "hot": "1.2万"}
+    assert body["items"][0] == {"rank": 1, "title": "甲", "author": "张", "tags": ["热门榜", "仙侠"], "hot": "热度 1万"}
 
 
 def test_rankings_endpoint_refresh_param_passed(monkeypatch):
