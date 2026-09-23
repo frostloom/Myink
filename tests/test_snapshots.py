@@ -83,6 +83,65 @@ def test_prompt_budget_degrades_later_sections_to_hash():
     assert any(s.get("omitted") == "budget" and s["policy"] == "hash" for s in proj["sections"])
 
 
+def _blob(nbytes: int) -> str:
+    """造一段约 nbytes 字节的中文（3 字节/字），用于按真实体量压预算。"""
+    return "中" * (nbytes // 3)
+
+
+# 深渊天梯第 5 章 write 阶段实测的各节字节数。旧预算（12000/4000）下「章节计划」
+# 被单节上限砍到 3998/4815、「近期章节开头」只剩 1 字节——真书才暴露的。
+_REAL_WRITE_SECTIONS = (
+    ("世界观硬约束", 1479), ("人物状态快照", 981), ("设定实体", 916),
+    ("本书题材（project_settings.genre_pack）", 1528),
+    ("文风要求（project_settings.style_profile）", 141),
+    ("本书写作经验（reflexion 复盘，写作须遵守）", 10),
+    ("章节计划", 4815), ("近期上下文", 2880),
+    ("近期章节开头（仅作差异化参照，勿照搬；接续位置以章尾为准）", 2667),
+)
+
+
+def _real_write_prompt() -> str:
+    content = _blob(2396) + "\n"                       # 模板前言（首个标签之前）
+    for name, size in _REAL_WRITE_SECTIONS:
+        content += f"【{name}】\n{_blob(size)}\n"
+    return content
+
+
+def test_real_sized_prompt_is_kept_whole():
+    """按真书体量：该留全文的节一个都不许被截断，静态素材照样只留哈希。"""
+    proj = snapshot.project_prompt([{"role": "system", "content": _real_write_prompt()}])
+    assert not proj["truncated"]
+    assert all(not s.get("truncated") for s in proj["sections"])
+    kept = {s["name"]: s for s in proj["sections"]}
+    assert "text" in kept["章节计划"] and "text" not in kept["本书题材（project_settings.genre_pack）"]
+
+
+def test_real_sized_row_survives_row_capture():
+    """行上限得容得下「提示词吃满预算 + 一份丰满的召回投影」，否则整行被 capture 乱刀截。"""
+    filler = "".join(f"【填{i}】\n{_blob(snapshot.SECTION_BYTE_CAP)}\n" for i in range(4))
+    proj = snapshot.project_prompt([{"role": "system", "content": filler}])
+    assert sum(len(s.get("text", "").encode()) for s in proj["sections"]) >= snapshot.PROMPT_BYTE_BUDGET - 64
+    recall = snapshot.project_recall({"long_term_facts": [
+        {"fact_id": f"f{i}", "content": "中" * 900} for i in range(5)]})
+    row = snapshot.finalize({"prompt": proj, "recall": recall,
+                             "output": snapshot.project_output("正" * 3000)})
+    assert row["_capture"]["truncated"] is False
+
+
+def test_budget_floor_omits_the_section_instead_of_keeping_a_sliver():
+    """预算只剩零头时整节退化哈希：留几个字节的正文没有分析价值。"""
+    chunk = _blob(snapshot.SECTION_BYTE_CAP)
+    body = "".join(f"【填{i}】\n{chunk}\n"
+                   for i in range(snapshot.PROMPT_BYTE_BUDGET // snapshot.SECTION_BYTE_CAP))
+    proj = snapshot.project_prompt([{"role": "user", "content": body + "【被挤掉的节】\n" + _blob(3000) + "\n"}])
+    dropped = proj["sections"][-1]
+    assert dropped["omitted"] == "budget" and dropped["policy"] == "hash" and "text" not in dropped
+    # 也不许别处留下「一两个字节」的半截正文
+    assert all(s["policy"] == "hash" or len(s.get("text", "").encode()) >= snapshot.MIN_SECTION_SLICE
+               for s in proj["sections"])
+
+
+
 def test_recall_excerpt_prefers_content_over_provenance():
     """摘录要取 content；按最长字段取会挑到 source=project_settings 这种来源标记。"""
     rec = snapshot.project_recall({"long_term_facts": [
