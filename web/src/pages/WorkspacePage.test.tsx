@@ -418,6 +418,38 @@ it('auto-starts the short generation once on handover, then strips the intent', 
   expect(api.generateShort).toHaveBeenCalledTimes(1)
 })
 
+it('tells the reader the start failed and offers the retry that re-enqueues', async () => {
+  vi.mocked(api.generateShort).mockRejectedValueOnce(new Error('gateway'))
+  mockShortBook([])
+  renderWorkspace({ beginShortWriting: true })
+
+  // 入队是真失败了（回查确认没有任务）：状态带要说实话，并把重试摆在手边。
+  await waitFor(() => expect(screen.getByRole('status').textContent).toContain('没能开始写'))
+  const retry = screen.getByRole('button', { name: '重试' })
+  vi.mocked(api.generateShort).mockResolvedValue({ task_id: 'task-1', trace_id: 'trace-1', status: 'queued' })
+  await act(async () => { retry.click() })
+  await waitFor(() => expect(api.generateShort).toHaveBeenCalledTimes(2))
+  expect(api.generateShort).toHaveBeenLastCalledWith('project-1')
+})
+
+it('adopts a task that exists when the enqueue answer is lost, instead of claiming nothing started', async () => {
+  // 服务端收到了这次入队（所以之后回查能看到任务），但回包丢了。任务从「拒绝落地」那一刻
+  // 起才存在——挂载时那些回查（244、恢复）看得见的仍然是空书。
+  let enqueued = false
+  vi.mocked(api.generateShort).mockImplementation(() =>
+    Promise.reject(new Error('timeout')).finally(() => { enqueued = true }))
+  mockShortBook([])
+  vi.mocked(api.listTasks).mockImplementation(() =>
+    Promise.resolve((enqueued ? [{ ...shortTask, task_id: 'task-lost', status: 'running' }] : []) as never))
+  renderWorkspace({ beginShortWriting: true })
+
+  // 整篇其实在写。说「没能开始写」是把用户往死重试上引（重试还会被并发闸 429 挡掉），
+  // 所以这里必须接上那条任务。
+  await waitFor(() => expect(screen.getByRole('status').textContent).toContain('正在写整篇'))
+  expect(screen.getByRole('status').textContent).not.toContain('没能开始写')
+  expect(screen.queryByRole('button', { name: '重试' })).toBeNull()
+})
+
 it('does not auto-start when the handover did not ask for it', async () => {
   vi.mocked(api.generateShort).mockResolvedValue({ task_id: 'task-1', trace_id: 'trace-1', status: 'queued' })
   mockShortBook([])
