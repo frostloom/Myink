@@ -73,3 +73,80 @@ def generate_book_outline(genre: str, premise: str, *, chapter_count: int = 200,
     if not isinstance(data.get("volumes"), list):
         return {}, "unexpected_shape: volumes 缺失或非数组"
     return normalize_outline(data) or data, None
+
+
+def generate_short_plan(genre: str, premise: str, *, chapter_count: int,
+                        chars_per_chapter: int, storyline: str = "",
+                        revision_reason: str = "", genre_pack: dict | None = None,
+                        project_id: str | None = None,
+                        db=None) -> tuple[dict, str | None]:
+    """Planner 生成短篇逐章方案草稿：恰好一卷 + 逐章细纲（docs/SHORT-FORM §5）。草稿不落库。
+
+    与 `generate_book_outline` 同款：一次 json_mode 调用 + 鲁棒解析 + agent_runs + 从不 raise。
+    但两份方案是两回事，所以**不共用节点名**——成本面板上要能一眼分清长篇大纲与短篇方案。
+
+    逐章 chapters 原样带出：短篇写手要靠它一次成稿，这里不能走长篇那条「折成 stages」的归一。
+    """
+    from myink.providers import make_chain
+    from myink.workflow import nodes, prompts
+
+    messages = prompts.short_plan_messages(
+        genre, premise, chapter_count, chars_per_chapter, genre_pack=genre_pack,
+        storyline=storyline, revision_reason=revision_reason)
+    resp = make_chain("planner", db=db, project_id=project_id).generate(
+        messages, json_mode=True, max_tokens=nodes._MAX_TOKENS["short_plan"])
+    if db is not None:
+        if project_id is None:
+            raise ValueError("db 非 None 时必须提供 project_id（agent_runs 归属）")
+        nodes.record_run(db, project_id=project_id, task_id=None, node="short_plan",
+                         role="Planner", resp=resp, error=resp.error, messages=messages,
+                         detail={"genre": genre, "chapter_count": chapter_count,
+                                 "chars_per_chapter": chars_per_chapter,
+                                 "revision_reason": revision_reason})
+    if resp.error:
+        return {}, resp.error
+    try:
+        data = nodes._parse_json(resp.content)
+    except Exception as exc:  # noqa: BLE001 —— 解析失败同 LLM 失败处理（§6.12）
+        return {}, f"parse_error: {exc}"
+    if not isinstance(data, dict):
+        return {}, "unexpected_json"
+    volumes = data.get("volumes")
+    if not isinstance(volumes, list) or not volumes:
+        return {}, "unexpected_shape: volumes 缺失或非数组"
+    for volume in volumes:
+        if isinstance(volume, dict) and not isinstance(volume.get("chapters"), list):
+            return {}, "unexpected_shape: 卷内缺少逐章 chapters"
+    return data, None
+
+
+def review_short_plan(plan: dict, *, chapter_count: int, project_id: str | None = None,
+                      db=None) -> tuple[str, str]:
+    """短篇审纲：只判这份方案能不能支撑一次写完整篇（决策文档 §2 第 2 步）。
+
+    返回 `(verdict, reason)`，verdict 只可能是 "pass" / "revise"。
+
+    **审纲失败一律当作 "pass"**：它是建议不是闸门。一次 parse 失败就把用户卡在出方案页上，
+    比放过一份平庸方案糟糕得多——方案本来就是可反复重出的草稿。
+    """
+    from myink.providers import make_chain
+    from myink.workflow import nodes, prompts
+
+    messages = prompts.short_plan_review_messages(plan, chapter_count)
+    resp = make_chain("planner", db=db, project_id=project_id).generate(
+        messages, json_mode=True, max_tokens=nodes._MAX_TOKENS["short_plan_review"])
+    if db is not None:
+        if project_id is None:
+            raise ValueError("db 非 None 时必须提供 project_id（agent_runs 归属）")
+        nodes.record_run(db, project_id=project_id, task_id=None, node="short_plan_review",
+                         role="Planner", resp=resp, error=resp.error, messages=messages,
+                         detail={"chapter_count": chapter_count})
+    if resp.error:
+        return "pass", ""
+    try:
+        data = nodes._parse_json(resp.content)
+    except Exception:  # noqa: BLE001 —— 审纲坏了不拦方案
+        return "pass", ""
+    if not isinstance(data, dict) or data.get("verdict") != "revise":
+        return "pass", ""
+    return "revise", str(data.get("reason") or "").strip()

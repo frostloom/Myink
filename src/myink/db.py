@@ -212,6 +212,22 @@ def ensure_user_tier() -> None:
         ))
 
 
+def ensure_project_form() -> None:
+    """为老库补齐 projects.form（幂等，短篇形态）。
+
+    存量书全是长篇（短篇功能此前不存在），所以 server_default='long' 不是「随便挑的
+    宽松值」而是正确语义：alter 时已有的行直接落为 long，无需回填。
+
+    走 get_admin_engine 这个可注入缝隙（与同表的 ensure_project_creation 一致，
+    而非 ensure_user_tier 直取 _admin_engine）：孤立 schema 的迁移测试靠它。
+    """
+    with get_admin_engine().begin() as conn:
+        conn.execute(text(
+            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS form VARCHAR(8) "
+            "NOT NULL DEFAULT 'long'"
+        ))
+
+
 def ensure_user_role() -> None:
     """Add the independent user/admin role to existing installations."""
     with _admin_engine.begin() as conn:

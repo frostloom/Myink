@@ -2801,9 +2801,19 @@
           "chapter_count": {
             "default": 200,
             "maximum": 1000.0,
-            "minimum": 50.0,
+            "minimum": 1.0,
             "title": "Chapter Count",
             "type": "integer"
+          },
+          "chars_per_chapter": {
+            "default": 8000,
+            "title": "Chars Per Chapter",
+            "type": "integer"
+          },
+          "form": {
+            "default": "long",
+            "title": "Form",
+            "type": "string"
           },
           "genre": {
             "default": "仙侠玄幻",
@@ -4075,11 +4085,16 @@
         "type": "object"
       },
       "OutlineDraftBody": {
-        "description": "整书大纲草稿输入：一句话梗概 + 大致章节数 + 大致故事线。",
+        "description": "整书大纲草稿输入：一句话梗概 + 大致章节数 + 大致故事线。\n\n`chars_per_chapter` 只对短篇有意义（长篇的每章字数走 target_words，§6.9）。",
         "properties": {
           "chapter_count": {
             "default": 200,
             "title": "Chapter Count",
+            "type": "integer"
+          },
+          "chars_per_chapter": {
+            "default": 8000,
+            "title": "Chars Per Chapter",
             "type": "integer"
           },
           "premise": {
@@ -4167,6 +4182,11 @@
           "current_chapter": {
             "title": "Current Chapter",
             "type": "integer"
+          },
+          "form": {
+            "default": "long",
+            "title": "Form",
+            "type": "string"
           },
           "genre": {
             "title": "Genre",
@@ -8846,7 +8866,7 @@
     },
     "/api/v1/projects/{project_id}/outline": {
       "get": {
-        "description": "整书大纲读取（§11 前端展示 / 重新生成输入）。无大纲 → {outline: null} 不 500。\n\n存量旧版扁平大纲（{arc, chapters}）经 normalize_outline 归一为新三层（并入「全书主线」单卷），\n前端展示与写作注入对新旧数据一致。",
+        "description": "整书大纲读取（§11 前端展示 / 重新生成输入）。无大纲 → {outline: null} 不 500。\n\n存量旧版扁平大纲（{arc, chapters}）经 normalize_outline 归一为新三层（并入「全书主线」单卷），\n前端展示与写作注入对新旧数据一致。**短篇不走这条归一**：它落库的就是逐章形状，\n归一会把卷内 chapters 折成 stages（30 章一段的老数据兼容路径），把写手的方案吃掉。",
         "operationId": "get_outline_api_v1_projects__project_id__outline_get",
         "parameters": [
           {
@@ -8892,7 +8912,7 @@
         ]
       },
       "put": {
-        "description": "整书大纲确认落库：volume_outlines 单行整体替换为卷 + 阶段。",
+        "description": "整书大纲确认落库：volume_outlines 单行整体替换为卷 + 阶段。\n\n形态决定校验口径与落库形状：短篇必须带逐章 chapters（写手一次成稿的依据），\n长篇仍按 Objective → 卷 → 阶段那套归一（老数据兼容路径不碰）。",
         "operationId": "put_outline_api_v1_projects__project_id__outline_put",
         "parameters": [
           {
@@ -8950,7 +8970,7 @@
     },
     "/api/v1/projects/{project_id}/outline-draft": {
       "post": {
-        "description": "整书大纲草稿（§11 建书 ③）：题材/梗概/大致章节数/大致故事线 → Planner 提案。\n\n不落库可反复重新生成；LLM 失败 → {outline: {}, error} 200 降级（§6.12）。\nagent_runs 记 node=book_outline（§6.8 成本透明）。",
+        "description": "整书大纲草稿（§11 建书 ③）：题材/梗概/大致章节数/大致故事线 → Planner 提案。\n\n不落库可反复重新生成；LLM 失败 → {outline: {}, error} 200 降级（§6.12）。\nagent_runs 记 node=book_outline（长篇）/ short_plan（短篇，§6.8 成本透明）。\n区间与方案形状按 `project.form` 分叉——短篇走 1–10 章 + 逐章细纲 + 审纲。",
         "operationId": "outline_draft_api_v1_projects__project_id__outline_draft_post",
         "parameters": [
           {
@@ -9335,6 +9355,54 @@
         "summary": "Setup Draft",
         "tags": [
           "book"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/short/generate": {
+      "post": {
+        "description": "短篇全篇生成入队（§13 三层闸门扣「章数」，与批次 size=N 同口径）。\n\n短篇只有一次任务（成稿 / 审稿 / 改稿都在里面），但它买的是整篇的输出额度——\n按 1 个任务扣的话，2 万字的整篇只花掉 1 章的配额。\n\n篇幅参数由 `short_params_for` 从**确认后的方案**与建书上下文读，worker 侧用的是\n同一份（路由与 worker 各算一套的话，扣费和写手的目标字数会对不上）。",
+        "operationId": "generate_short_api_v1_projects__project_id__short_generate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskEnqueuedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Generate Short",
+        "tags": [
+          "tasks"
         ]
       }
     },

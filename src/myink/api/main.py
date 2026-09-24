@@ -184,6 +184,7 @@ def list_projects(user_id: str | None = Depends(current_user)) -> list[dict]:
                 "current_chapter": p.current_chapter,
                 "target_words": p.target_words,
                 "creation_status": p.creation_status,
+                "form": p.form or "long",
             }
             for p in rows
         ]

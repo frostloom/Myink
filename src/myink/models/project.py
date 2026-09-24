@@ -66,6 +66,12 @@ class Project(Base, UUIDPkMixin, TimestampMixin):
     creation_context: Mapped[dict] = mapped_column(
         JSON, default=dict, server_default=text("'{}'"), nullable=False,
     )
+    # 作品形态：短篇是「整篇一次成稿」的并行管道，不是放宽阈值的长篇（SHORT-FORM.md §1）。
+    # 老库由 db.ensure_project_form 幂等补列，存量书落为 long。
+    form: Mapped[str] = mapped_column(
+        String(8), nullable=False, default="long", server_default="long",
+        comment="作品形态：long=长篇管道 / short=短篇整篇一次成稿",
+    )
 
 
 class ProjectSettings(Base, UUIDPkMixin, TimestampMixin):

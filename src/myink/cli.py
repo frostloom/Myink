@@ -40,6 +40,7 @@ def init(
     from myink.db import (enable_row_level_security, ensure_chapter_versions,
                           ensure_genre_pack, ensure_global_audit_reports,
                           ensure_memory_candidate_kinds, ensure_project_creation,
+                          ensure_project_form,
                           ensure_storage_indexes, ensure_unique_constraints,
                           ensure_user_auth_schema, ensure_user_environment,
                           ensure_user_role, ensure_user_tier, get_admin_engine)
@@ -56,6 +57,8 @@ def init(
     console.print("[bold]1.5/3[/] 补齐唯一约束 + 组合索引/HNSW（幂等，评审 A6/存储建议）...")
     ensure_unique_constraints()
     ensure_storage_indexes()
+    console.print("[bold]1.53/3[/] 补齐 projects.form（作品形态：long 长篇 / short 短篇，幂等）...")
+    ensure_project_form()
     console.print("[bold]1.55/3[/] 补齐 users.tier（阶段 6 VIP 优先级，幂等）...")
     ensure_user_tier()
     console.print("[bold]1.555/3[/] 补齐 users.role（user/admin 独立权限，幂等）...")
