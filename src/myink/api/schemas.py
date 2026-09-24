@@ -11,6 +11,8 @@ invalidation）用 `dict` / `list[dict]` 松类型——契约价值在字段名
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -484,3 +486,29 @@ class RankingsOut(BaseModel):
     fetched_at: str | None = None
     error: str | None = None
     items: list[RankingItemOut] = Field(default_factory=list)
+
+
+class StyleLibraryItemOut(BaseModel):
+    id: str                          # uuid 字符串，或 "builtin:<preset_id>"
+    name: str
+    profile: dict
+    note: str = ""
+    sample_chars: int = 0
+    created_at: datetime | None = None
+    builtin: bool = False
+    removable: bool = False
+
+
+class StyleLibraryOut(BaseModel):
+    items: list[StyleLibraryItemOut]
+
+
+class StyleLibrarySaveBody(BaseModel):
+    name: str = Field(max_length=64)
+    profile: dict
+    note: str = Field(default="", max_length=200)
+    sample_chars: int = Field(default=0, ge=0)
+
+
+class StyleSampleBody(BaseModel):
+    samples: list[str] = Field(default_factory=list)

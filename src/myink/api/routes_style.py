@@ -26,16 +26,13 @@ from myink.models import ProjectSettings
 from myink.seed import STYLE_PRESETS
 from myink.style_extract import (
     analyze_sample_stats,
+    clean_samples,
     extract_style_profile,
     merge_style_draft,
     validate_profile,
 )
 
 router = APIRouter(prefix="/api/v1", tags=["style"])
-
-# 样本上限（1–2 篇、总量 1.2 万字）——防 prompt 溢出（extract 档上下文窗口内，§6.12）
-_MAX_SAMPLES = 2
-_MAX_TOTAL_CHARS = 12_000
 
 
 def _pid(project_id: str) -> uuid.UUID:
@@ -70,13 +67,10 @@ def style_samples(project_id: str, body: StyleSamplesBody) -> dict:
 
     extract 调用记 agent_runs（§6.8 成本透明）；agent_runs 无 RLS（观测表），普通连接可写。
     """
-    samples = [s.strip() for s in body.samples if s.strip()]
-    if not samples:
-        raise HTTPException(status_code=400, detail="至少提供一篇非空样本")
-    if len(samples) > _MAX_SAMPLES:
-        raise HTTPException(status_code=400, detail=f"样本最多 {_MAX_SAMPLES} 篇")
-    if sum(len(s) for s in samples) > _MAX_TOTAL_CHARS:
-        raise HTTPException(status_code=400, detail=f"样本总量不超过 {_MAX_TOTAL_CHARS} 字")
+    try:
+        samples = clean_samples(body.samples)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     stats = analyze_sample_stats(samples)
     db = new_session()
