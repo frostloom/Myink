@@ -65,7 +65,19 @@ export default function WorkspacePage() {
   // 它那条任务不属于任何一章，所以右栏按章过滤与按章取任务都得绕开。
   const isShortBook = projects.find((p) => p.id === projectId)?.form === 'short'
   // 建书对话页确认完跳进来时带了这个 state：那次 commit 只落书不出稿，入队归 GenerationPanel。
-  const handover = (useLocation().state ?? {}) as { beginShortWriting?: boolean; planWarning?: string | null }
+  const location = useLocation()
+  const handover = (location.state ?? {}) as { beginShortWriting?: boolean; planWarning?: string | null }
+  const autoStartShort = Boolean(isShortBook && handover.beginShortWriting)
+
+  // 意图只在「刚确认完」那一次进入有效：吃掉它的同一个提交里抹掉 history.state 上的标记，
+  // 硬刷新不会把它带回来（带回来就是白花一次整篇配额）。
+  // 闸门是 autoStartShort 而不是 beginShortWriting：项目列表是异步拉回来的，
+  // 首帧还不知道是不是短篇，若按原始标记抹，标记会在列表到齐前就没了，这次进入反而不入队。
+  // 子组件 effect 先于父组件跑：GenerationPanel 的入队发生在前，这里紧随其后抹标记。
+  useEffect(() => {
+    if (!autoStartShort) return
+    navigate(location.pathname, { replace: true, state: { planWarning: handover.planWarning ?? null } })
+  }, [autoStartShort, handover.planWarning, location.pathname, navigate])
 
   useEffect(() => {
     activeTaskIdRef.current = activeTaskId
@@ -783,7 +795,7 @@ export default function WorkspacePage() {
           selectedChapter={selectedChapter}
           form={isShortBook ? 'short' : 'long'}
           taskBusy={taskInFlight}
-          autoStartShort={Boolean(isShortBook && handover.beginShortWriting)}
+          autoStartShort={autoStartShort}
           onTaskStart={handleTaskStart}
         />
         <TaskTimeline
