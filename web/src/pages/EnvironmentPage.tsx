@@ -43,7 +43,6 @@ type SectionMsg = { tone: 'error' | 'ok'; text: string } | null
 
 const EMPTY_RANKINGS: RankingsConfig = {
   enabled: true,
-  mcp_url: 'https://daosearch.io/api/mcp',
   timeout: 10,
   limit: 10,
 }
@@ -61,7 +60,6 @@ export default function EnvironmentPage() {
   const [fieldProblem, setFieldProblem] = useState<FieldProblem>(null)
   const fieldRefs = useRef(new Map<string, HTMLInputElement>())
   const [rankMsg, setRankMsg] = useState<SectionMsg>(null)
-  const [rankProbe, setRankProbe] = useState<{ loading: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [banner, setBanner] = useState<string | null>(null)
 
@@ -261,16 +259,6 @@ export default function EnvironmentPage() {
   }
 
   async function saveRankings() {
-    const url = rankings.mcp_url.trim().replace(/\/$/, '')
-    if (rankings.enabled) {
-      try {
-        const parsed = new URL(url)
-        if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('scheme')
-      } catch {
-        setRankMsg({ tone: 'error', text: 'MCP 地址必须是有效的 http/https 地址' })
-        return
-      }
-    }
     if (!Number.isInteger(rankings.timeout) || rankings.timeout < 1 || rankings.timeout > 60) {
       setRankMsg({ tone: 'error', text: '超时须为 1–60 秒' })
       return
@@ -285,7 +273,6 @@ export default function EnvironmentPage() {
       await api.updateEnvironment({
         rankings: {
           enabled: rankings.enabled,
-          mcp_url: url,
           timeout: rankings.timeout,
           limit: rankings.limit,
         },
@@ -296,26 +283,6 @@ export default function EnvironmentPage() {
       setRankMsg({ tone: 'error', text: formatApiError(err) })
     } finally {
       setBusy(null)
-    }
-  }
-
-  async function testRankings() {
-    const url = rankings.mcp_url.trim().replace(/\/$/, '')
-    if (!url) {
-      setRankMsg({ tone: 'error', text: '请先填写 MCP 地址' })
-      return
-    }
-    setRankMsg(null)
-    setRankProbe({ loading: true, text: '' })
-    try {
-      const res = await api.testRankings({ mcp_url: url, timeout: rankings.timeout })
-      if (res.ok) {
-        setRankProbe({ loading: false, text: `连接正常 · 发现 ${res.tools.length} 个工具` })
-      } else {
-        setRankProbe({ loading: false, text: `连接失败：${res.error ?? '未知错误'}` })
-      }
-    } catch (err) {
-      setRankProbe({ loading: false, text: formatApiError(err, '测试失败') })
     }
   }
 
@@ -473,6 +440,7 @@ export default function EnvironmentPage() {
 
           <section className={`panel ${styles.section}`}>
             <h2 className={styles.sectionTitle}>扫榜</h2>
+            <p className={styles.hint}>数据来自番茄榜单，只作建书前灵感，不进记忆层。</p>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>启用扫榜</span>
               <select
@@ -509,32 +477,6 @@ export default function EnvironmentPage() {
                 onChange={(e) => setRankings((r) => ({ ...r, limit: Number(e.target.value) }))}
               />
             </label>
-            <div className={styles.routeDivider}>
-              <h3>MCP 服务</h3>
-            </div>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>MCP 地址</span>
-              <input
-                className="input"
-                aria-label="MCP 地址"
-                value={rankings.mcp_url}
-                onChange={(e) => setRankings((r) => ({ ...r, mcp_url: e.target.value }))}
-                placeholder="https://daosearch.io/api/mcp"
-              />
-            </label>
-            <div className={styles.probeRow}>
-              <button
-                type="button"
-                className="btn btn-quiet"
-                disabled={busy !== null || rankProbe?.loading === true}
-                onClick={() => void testRankings()}
-              >
-                {rankProbe?.loading ? '测试中…' : '测试 MCP 连接'}
-              </button>
-              {rankProbe && !rankProbe.loading && (
-                <span className={styles.probeStatus}>{rankProbe.text}</span>
-              )}
-            </div>
             <div className={styles.saveRow}>
               <button
                 type="button"

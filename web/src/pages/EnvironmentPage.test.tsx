@@ -12,7 +12,6 @@ vi.mock('../lib/api', () => ({
   api: {
     getEnvironment: vi.fn(), listProjects: vi.fn(),
     updateEnvironment: vi.fn(), listModels: vi.fn(), testConnection: vi.fn(),
-    testRankings: vi.fn(),
   },
 }))
 
@@ -21,7 +20,7 @@ const emptyEnv = {
   model_connections: [],
   thinking_enabled: false,
   rankings: {
-    enabled: true, mcp_url: 'https://daosearch.io/api/mcp',
+    enabled: true,
     timeout: 10, limit: 10,
   },
 }
@@ -174,27 +173,26 @@ it('does not offer built-in DeepSeek models in the role dropdowns', async () => 
   expect(screen.queryByRole('button', { name: '填入 DeepSeek 官方地址' })).toBeNull()
 })
 
-it('saves rankings config and tests MCP connectivity', async () => {
+it('saves the rankings config without any MCP field', async () => {
   vi.mocked(api.getEnvironment).mockResolvedValue(emptyEnv)
   vi.mocked(api.listProjects).mockResolvedValue([])
   vi.mocked(api.updateEnvironment).mockResolvedValue(emptyEnv)
-  vi.mocked(api.testRankings).mockResolvedValue({ ok: true, tools: ['qidian_rank', 'community_rank'], error: null })
 
   renderPage()
-  await screen.findByLabelText('MCP 地址')
-  fireEvent.change(screen.getByLabelText('MCP 地址'), { target: { value: 'https://mcp.example.com/api' } })
-  fireEvent.change(screen.getByLabelText('扫榜超时'), { target: { value: '8' } })
-  fireEvent.click(screen.getByRole('button', { name: '测试 MCP 连接' }))
-  await waitFor(() => expect(api.testRankings).toHaveBeenCalledWith({
-    mcp_url: 'https://mcp.example.com/api', timeout: 8,
-  }))
-  await screen.findByText(/连接正常 · 发现 2 个工具/)
-
+  fireEvent.change(await screen.findByLabelText('扫榜超时'), { target: { value: '8' } })
   fireEvent.click(screen.getByRole('button', { name: '保存扫榜配置' }))
   await waitFor(() => expect(api.updateEnvironment).toHaveBeenCalledWith({
-    rankings: {
-      enabled: true, mcp_url: 'https://mcp.example.com/api',
-      timeout: 8, limit: 10,
-    },
+    rankings: { enabled: true, timeout: 8, limit: 10 },
   }))
+})
+
+it('has no MCP address input or probe button left in the rankings section', async () => {
+  vi.mocked(api.getEnvironment).mockResolvedValue(emptyEnv)
+  vi.mocked(api.listProjects).mockResolvedValue([])
+
+  renderPage()
+  await screen.findByLabelText('扫榜超时')
+  expect(screen.queryByLabelText('MCP 地址')).toBeNull()
+  expect(screen.queryByRole('button', { name: '测试 MCP 连接' })).toBeNull()
+  expect(screen.queryByText('MCP 服务')).toBeNull()
 })
