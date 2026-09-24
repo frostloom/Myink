@@ -16,6 +16,7 @@ import LorePage from './pages/LorePage'
 import NewProjectPage from './pages/NewProjectPage'
 import ProjectsPage from './pages/ProjectsPage'
 import SettingsPage from './pages/SettingsPage'
+import ShortCreationPage from './pages/ShortCreationPage'
 import WorkspacePage from './pages/WorkspacePage'
 
 function RequireAuth() {
@@ -60,7 +61,7 @@ export const router = createBrowserRouter([
       { path: '/long', element: <ProjectsPage form="long" /> },
       { path: '/short', element: <ProjectsPage form="short" /> },
       { path: '/long/new', element: <NewProjectPage form="long" /> },
-      { path: '/short/new', element: <NewProjectPage form="short" /> },
+      { path: '/short/new', element: <ShortCreationPage /> },
       // 旧链接：/projects 归长篇；/projects/new 保留（草稿链接还带 ?draft=，形态由草稿决定）。
       { path: '/projects', element: <Navigate to="/long" replace /> },
       { path: '/projects/new', element: <NewProjectPage /> },

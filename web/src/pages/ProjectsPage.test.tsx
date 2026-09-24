@@ -39,7 +39,8 @@ it('shows only short-form work on the short page and routes its new-book entry t
   expect(await within(main).findByText('短篇正式书')).toBeTruthy()
   expect(within(main).queryByText('长篇正式书')).toBeNull()
   const drafts = within(main).getByRole('region', { name: '待完成作品' })
-  expect(within(drafts).getByRole('link').getAttribute('href')).toBe('/short/new?draft=short-draft')
+  // 短篇草稿也进工作台：/short/new 现在是对话页，接不上半篇会话。
+  expect(within(drafts).getByRole('link').getAttribute('href')).toBe('/projects/short-draft')
   expect(within(drafts).queryByText('长篇草稿')).toBeNull()
   expect(within(main).getByRole('link', { name: '新建短篇' }).getAttribute('href')).toBe('/short/new')
   expect(within(main).getByRole('heading', { level: 1 }).textContent).toBe('短篇')
