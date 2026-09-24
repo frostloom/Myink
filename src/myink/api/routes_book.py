@@ -179,6 +179,80 @@ class OutlineConfirmBody(BaseModel):
     storyline: str = ""
 
 
+class BookCountExceeded(Exception):
+    """当日建书数超限。
+
+    两个建书入口（表单建书、对话建书）共用同一段计数逻辑，所以也要共用同一个信号。
+    不用 HTTPException：错误体必须是网关同款 {"error": "BOOK_CNT_EXCEEDED"} 信封
+    （前端 GATE_CODES 才能命中中文文案），而 HTTPException 会被包成 {"detail": ...}。
+    """
+
+
+def _book_cnt_response() -> JSONResponse:
+    return JSONResponse(status_code=429, content={"error": "BOOK_CNT_EXCEEDED"})
+
+
+def _create_project_row(db, uid: uuid.UUID, *, title: str, genre: str, premise: str = "",
+                        chapter_count: int, chars_per_chapter: int, storyline: str = "",
+                        target_words: int | None = None, form: str = "long",
+                        genre_pack: dict | None = None,
+                        request_id: uuid.UUID | None = None) -> Project:
+    """建 Project 行 + 空 ProjectSettings。**每日上限与 request_id 幂等都在这里。**
+
+    两条建书动线共用这一段——各写一份就会出现两种上限口径（对话建书能绕开表单建书的
+    闸门，那是最糟的一类漏洞）。调用方负责先做完形态/章数/字数的白名单校验。
+
+    request_id 命中已有作品时直接返回它（不计数、不新建），与调用方的响应形状无关。
+    """
+    if request_id is not None:
+        existing = db.scalar(select(Project).where(
+            Project.user_id == uid,
+            Project.creation_context["request_id"].as_string() == str(request_id),
+        ))
+        if existing is not None:
+            return existing
+    today = func.date_trunc("day", func.now())
+    created = db.query(Project).filter(
+        Project.user_id == uid, Project.created_at >= today).count()
+    if created >= settings.books_per_day_max:
+        raise BookCountExceeded()
+    project = Project(user_id=uid, title=title, genre=genre, target_words=target_words,
+                      form=form,
+                      creation_status="draft", creation_context={
+                          "request_id": str(request_id) if request_id else None,
+                          "premise": premise, "chapter_count": chapter_count,
+                          "form": form, "chars_per_chapter": chars_per_chapter,
+                          "storyline": storyline})
+    db.add(project)
+    db.flush()
+    db.execute(text("SELECT set_config('app.tenant_id', :pid, true)"),
+               {"pid": str(project.id)})
+    db.add(ProjectSettings(project_id=project.id, genre_pack=genre_pack or {}))
+    return project
+
+
+def _persist_short_outline(db, pid: uuid.UUID, payload: dict) -> None:
+    """短篇大纲落库 + 置 ready，**没有 setup_confirmed 闸门**。
+
+    `put_outline` 的短篇分支与对话式建书的 commit 共用这一段：对话动线没有设定页，
+    那张方案卡就是设定。硬前提——短篇生成要求 creation_status ∈ {ready, legacy_ready}。
+
+    调用方负责 commit。
+    """
+    validate_short_outline(payload)
+    project = db.scalar(select(Project).where(Project.id == pid).with_for_update())
+    if project is None:
+        raise HTTPException(status_code=404, detail="作品不存在")
+    project.creation_status = "ready"
+    project.creation_context = {**(project.creation_context or {}),
+                               "outline_draft": payload}
+    row = get_volume_outline(db, pid, 1)
+    if row is None:
+        db.add(VolumeOutline(project_id=pid, volume_seq=1, title="整书大纲", outline=payload))
+    else:
+        row.outline = payload
+
+
 @router.post("/projects", response_model=ProjectOut)
 def create_project(body: CreateProjectBody,
                    user_id: str | None = Depends(current_user)) -> dict:
@@ -204,18 +278,6 @@ def create_project(body: CreateProjectBody,
         # Serialize the daily count and insert for this user; creation is one transaction.
         if db.scalar(select(User.id).where(User.id == uid).with_for_update()) is None:
             raise HTTPException(status_code=403, detail="身份非法")
-        if body.request_id is not None:
-            existing = db.scalar(select(Project).where(
-                Project.user_id == uid,
-                Project.creation_context["request_id"].as_string() == str(body.request_id),
-            ))
-            if existing is not None:
-                return project_payload(existing)
-        today = func.date_trunc("day", func.now())
-        created = db.query(Project).filter(
-            Project.user_id == uid, Project.created_at >= today).count()
-        if created >= settings.books_per_day_max:
-            return JSONResponse(status_code=429, content={"error": "BOOK_CNT_EXCEEDED"})
         target_words = _check_target_words(body.target_words, field="每章目标字数")
         genre_pack: dict = {}
         if "primary_id" in body.model_fields_set:
@@ -226,18 +288,14 @@ def create_project(body: CreateProjectBody,
             genre = display_genre(body.primary_id, body.secondary_id)
         else:
             genre = body.genre.strip() or "仙侠玄幻"
-        project = Project(user_id=uid, title=title, genre=genre, target_words=target_words,
-                          form=form,
-                          creation_status="draft", creation_context={
-                              "request_id": str(body.request_id) if body.request_id else None,
-                              "premise": body.premise, "chapter_count": body.chapter_count,
-                              "form": form, "chars_per_chapter": body.chars_per_chapter,
-                              "storyline": body.storyline})
-        db.add(project)
-        db.flush()
-        pid = str(project.id)
-        db.execute(text("SELECT set_config('app.tenant_id', :pid, true)"), {"pid": pid})
-        db.add(ProjectSettings(project_id=pid, genre_pack=genre_pack))
+        try:
+            project = _create_project_row(
+                db, uid, title=title, genre=genre, premise=body.premise,
+                chapter_count=body.chapter_count, chars_per_chapter=body.chars_per_chapter,
+                storyline=body.storyline, target_words=target_words, form=form,
+                genre_pack=genre_pack, request_id=body.request_id)
+        except BookCountExceeded:
+            return _book_cnt_response()
         db.commit()
     return project_payload(project)
 
@@ -562,31 +620,36 @@ def put_outline(project_id: str, body: OutlineConfirmBody) -> dict:
     pid = _pid(project_id)
     with tenant_session(project_id) as db:
         project = db.scalar(select(Project).where(Project.id == pid).with_for_update())
-        short = project.form == "short"
-        payload = build_persisted_short_outline(
-            objective=body.objective, volumes=body.volumes or [],
-            premise=body.premise, chapter_count=body.chapter_count,
-            storyline=body.storyline) if short else build_persisted_outline(
-            objective=body.objective, volumes=body.volumes or [],
-            premise=body.premise, chapter_count=body.chapter_count,
-            storyline=body.storyline)
-        validate = validate_short_outline if short else validate_creation_outline
-        if project.creation_status in DRAFT_STATES:
-            if project.creation_status != "setup_confirmed":
+        if project.form == "short":
+            # 同一个 builder，只是从「按 flag 选」提到分支里，免得为长篇也算一遍。
+            payload = build_persisted_short_outline(
+                objective=body.objective, volumes=body.volumes or [],
+                premise=body.premise, chapter_count=body.chapter_count,
+                storyline=body.storyline)
+            if project.creation_status in DRAFT_STATES and project.creation_status != "setup_confirmed":
                 raise HTTPException(status_code=409, detail="SETUP_NOT_CONFIRMED")
-            validate(payload)
-            project.creation_status = "ready"
-            project.creation_context = {**(project.creation_context or {}), "outline_draft": payload}
-        elif project.creation_status == "ready":
-            # Modern books must retain a usable outline after their first confirmation.
-            # Legacy books deliberately keep their historical, less structured format.
-            validate(payload)
-        row = get_volume_outline(db, pid, 1)
-        if row is None:
-            db.add(VolumeOutline(project_id=pid, volume_seq=1, title="整书大纲",
-                                 outline=payload))
+            # validate + 置 ready + 写 outline_draft + volume_outlines upsert 都在 helper 里。
+            _persist_short_outline(db, pid, payload)
         else:
-            row.outline = payload
+            payload = build_persisted_outline(
+                objective=body.objective, volumes=body.volumes or [],
+                premise=body.premise, chapter_count=body.chapter_count,
+                storyline=body.storyline)
+            if project.creation_status in DRAFT_STATES:
+                if project.creation_status != "setup_confirmed":
+                    raise HTTPException(status_code=409, detail="SETUP_NOT_CONFIRMED")
+                validate_creation_outline(payload)
+                project.creation_status = "ready"
+                project.creation_context = {**(project.creation_context or {}), "outline_draft": payload}
+            elif project.creation_status == "ready":
+                # Modern books must retain a usable outline after their first confirmation.
+                # Legacy books deliberately keep their historical, less structured format.
+                validate_creation_outline(payload)
+            row = get_volume_outline(db, pid, 1)
+            if row is None:
+                db.add(VolumeOutline(project_id=pid, volume_seq=1, title="整书大纲", outline=payload))
+            else:
+                row.outline = payload
         db.commit()
     return {"outline": payload}
 
