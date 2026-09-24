@@ -9,6 +9,7 @@ import AdminPage, { AdminConsole } from './pages/AdminPage'
 import { ProjectDetailPage } from './pages/admin/ProjectDetail'
 import { RunDetailPage } from './pages/admin/RunDetail'
 import { TaskDetailPage } from './pages/admin/TaskDetail'
+import { UserDetailPage } from './pages/admin/UserDetail'
 import AppearancePage from './pages/AppearancePage'
 import EnvironmentPage from './pages/EnvironmentPage'
 import LoginPage from './pages/LoginPage'
@@ -75,6 +76,7 @@ export const router = createBrowserRouter([
           { path: 'projects/:projectId', element: <ProjectDetailPage /> },
           { path: 'tasks/:taskId', element: <TaskDetailPage /> },
           { path: 'runs/:runId', element: <RunDetailPage /> },
+          { path: 'users/:userId', element: <UserDetailPage /> },
         ],
       },
       { path: '/environment', element: <EnvironmentPage /> },

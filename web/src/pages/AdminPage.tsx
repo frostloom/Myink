@@ -13,6 +13,7 @@ import {
   type AdminProject,
   type AdminRun,
   type AdminTask,
+  type AdminUser,
 } from '../lib/adminApi'
 import {
   creationStatusLabel,
@@ -35,10 +36,10 @@ import {
 } from './admin/shared'
 import styles from './AdminPage.module.css'
 
-type Tab = 'overview' | 'analytics' | 'projects' | 'tasks' | 'runs' | 'logs' | 'invites'
+type Tab = 'overview' | 'analytics' | 'users' | 'projects' | 'tasks' | 'runs' | 'logs' | 'invites'
 
 const TABS: Array<[Tab, string]> = [
-  ['overview', '概览'], ['analytics', '分析'], ['projects', '作品'], ['tasks', '任务'],
+  ['overview', '概览'], ['analytics', '分析'], ['users', '用户'], ['projects', '作品'], ['tasks', '任务'],
   ['runs', '全部运行'], ['logs', '访问日志'], ['invites', '邀请码'],
 ]
 
@@ -72,6 +73,46 @@ function OverviewView({ token, onForbidden }: { token: string; onForbidden: () =
             </div>
           </>
         )}
+      </LoadState>
+    </section>
+  )
+}
+
+function UsersView({ token, onForbidden }: { token: string; onForbidden: () => void }) {
+  const [draftQ, setDraftQ] = useState('')
+  const [q, setQ] = useState('')
+  const [offset, setOffset] = useState(0)
+  const navigate = useNavigate()
+  const load = useCallback(
+    (signal: AbortSignal) => adminApi.listUsers(token, { q, limit: PAGE_SIZE, offset }, signal),
+    [offset, q, token],
+  )
+  const resource = useResource<PageResult<AdminUser>>(load, onForbidden)
+  const submit = (event: FormEvent) => { event.preventDefault(); setOffset(0); setQ(draftQ.trim()) }
+  return (
+    <section className={styles.view} aria-labelledby="users-heading">
+      <div className={styles.viewHead}><div><h2 id="users-heading">用户</h2></div><RefreshButton onClick={resource.retry} /></div>
+      <form className={styles.filters} role="search" aria-label="用户筛选" onSubmit={submit}>
+        <label><span>用户名或 ID</span><input className="input" value={draftQ} maxLength={128} onChange={(e) => setDraftQ(e.target.value)} /></label>
+        <button className="btn btn-primary" type="submit">筛选</button>
+      </form>
+      <LoadState {...resource} empty={resource.data?.items.length === 0}>
+        {resource.data && <>
+          <div className={styles.tableWrap}><table><thead><tr>
+            <th>用户</th><th>等级</th><th>作品</th><th>章节</th><th>字数</th><th>运行</th><th>总花费</th><th>操作</th>
+          </tr></thead>
+            <tbody>{resource.data.items.map((user) => <tr key={user.id}>
+              <td><strong>{user.username}</strong></td>
+              <td>{user.tier}</td>
+              <td>{user.project_count}</td>
+              <td>{user.chapter_count}</td>
+              <td>{user.word_count.toLocaleString()}</td>
+              <td>{user.metrics.run_count}</td>
+              <td>{formatCost(user.metrics.cost_est)}</td>
+              <td><button type="button" className="btn btn-quiet" aria-label={`查看用户 ${user.username}`} onClick={() => navigate(`/admin/users/${user.id}`)}>查看</button></td>
+            </tr>)}</tbody></table></div>
+          <Pagination total={resource.data.total} offset={offset} onChange={setOffset} />
+        </>}
       </LoadState>
     </section>
   )
@@ -372,6 +413,7 @@ export function AdminConsole() {
       </nav>
       {tab === 'overview' && <OverviewView token={token} onForbidden={onForbidden} />}
       {tab === 'analytics' && <Analytics token={token} onForbidden={onForbidden} />}
+      {tab === 'users' && <UsersView token={token} onForbidden={onForbidden} />}
       {tab === 'projects' && <ProjectsView token={token} onForbidden={onForbidden} />}
       {tab === 'tasks' && <TasksView token={token} onForbidden={onForbidden} />}
       {tab === 'runs' && <RunsView token={token} onForbidden={onForbidden} />}

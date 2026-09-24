@@ -259,10 +259,10 @@ export interface AdminSnapshotFinding extends SnapshotFinding {
 
 export interface AdminRun {
   id: number
-  project_id: string
+  project_id: string | null
   user_id: string
-  username: string
-  project_title: string
+  username: string | null
+  project_title: string | null
   task_id: string | null
   node: string
   role: string | null
