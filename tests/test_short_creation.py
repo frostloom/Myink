@@ -7,7 +7,7 @@ import uuid
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import delete as sa_delete, select
 
 from conftest import identity_headers
 from myink.api.main import app
@@ -411,6 +411,34 @@ def test_commit_retry_after_a_plan_failure_reuses_the_same_book(temp_user, chain
     assert second.status_code == 200
     with new_session() as db:
         assert db.query(Project).filter(Project.user_id == uuid.UUID(temp_user)).count() == 1
+
+
+def test_commit_survives_a_session_deleted_midway(temp_user, chain_stub, monkeypatch):
+    """第 1 步锁住会话之后、第 4 步写回之前，会话被 DELETE 掉——不能崩成 500。
+
+    书与逐章方案都已经落了，这条动线的语义就是「成功」：用户回到工作台就能开写。
+    收尾那一步写不回去（会话都没了）不该把已经建好的书报成失败。
+    """
+    from myink.api import routes_short_creation as _mod
+    chain_stub([_PLAN_JSON])
+    real = _mod._book._short_outline_draft
+
+    def sabotage(*args, **kwargs):
+        with new_session() as db:                 # 模拟用户在出方案那几秒里点了「重新开始」
+            db.execute(sa_delete(ShortCreationMessage))
+            db.execute(sa_delete(ShortCreationSession))
+            db.commit()
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(_mod._book, "_short_outline_draft", sabotage)
+    _seed_session(temp_user)
+    resp = client.post("/api/v1/short/creation/commit", json={},
+                       headers=identity_headers(temp_user))
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["project_id"]
+    with new_session() as db:                     # 书照常落库，只是收尾没写回
+        assert db.scalar(select(ShortCreationSession)
+                         .where(ShortCreationSession.user_id == uuid.UUID(temp_user))) is None
 
 
 def test_commit_respects_the_daily_book_cap(temp_user, chain_stub, monkeypatch):

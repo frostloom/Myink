@@ -215,15 +215,18 @@ def commit(body: ShortCreationCommitBody, user_id: str = Depends(require_user)) 
             settings_row.version = (settings_row.version or 1) + 1
         tdb.commit()
 
-    # 4) 会话收尾
+    # 4) 会话收尾。会话可能在步骤 1 之后被 DELETE /short/creation 删掉
+    # （用户在出方案那几秒里点了「重新开始」）——书与方案都已经落了，这一段的语义是
+    # 「成功」，不能因为收尾写不回去就把已经建好的书报成 500。
     with new_session() as db:
         session = db.scalar(select(ShortCreationSession)
                             .where(ShortCreationSession.user_id == uid))
-        session.status = "committed"
-        session.book_id = pid
-        if style_item_id:
-            session.style_item_id = style_item_id
-            session.style_name = style_name
+        if session is not None:
+            session.status = "committed"
+            session.book_id = pid
+            if style_item_id:
+                session.style_item_id = style_item_id
+                session.style_name = style_name
         db.commit()
     return {"project_id": pid, "lengths_compressed": compressed,
             "plan_warning": patch.get("outline_warning"), "style_name": style_name}
