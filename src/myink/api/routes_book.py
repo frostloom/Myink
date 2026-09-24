@@ -35,11 +35,15 @@ from myink.api.schemas import (BookOutlineOut, CharacterCardOut, CharacterStateC
                                DeleteProjectOut, EntityCardOut, ForeshadowOut, OutlineDraftOut,
                                ProjectOut, ProjectCreationOut, SetupConfirmOut, SetupDraftOut, StoryEventOut,
                                WorldGraphOut, WorldViewOut)
-from myink.book_setup import generate_book_outline, generate_book_setup
+from myink.book_setup import (generate_book_outline, generate_book_setup,
+                              generate_short_plan, review_short_plan)
 from myink.config import settings
-from myink.creation import DRAFT_STATES, project_payload, save_proposal, validate_creation_outline
+from myink.creation import (DRAFT_STATES, project_payload, save_proposal,
+                            validate_creation_outline, validate_short_outline)
 from myink.genre_catalog import build_book_pack, display_genre, is_managed_pack
 from myink.db import new_session, tenant_session
+from myink.short.form import (SHORT_CHAPTER_MAX, SHORT_CHAPTER_MIN, SHORT_CHARS_MAX,
+                              resolve_short_lengths)
 from myink.memory.repository import (get_all_characters, get_character, get_character_state,
                                      get_settings, get_volume_outline)
 from myink.models import (AgentRun, Character, CharacterState, Entity, Event, Faction,
@@ -48,16 +52,43 @@ from myink.models import (AgentRun, Character, CharacterState, Entity, Event, Fa
 from myink.worker.redis_client import book_key, get_redis, inflight_key, lock_key, sse_key
 from myink.workflow.checkpointer import delete_threads
 from myink.workflow.outline import (CHAPTER_COUNT_MAX, CHAPTER_COUNT_MIN,
-                                    build_persisted_outline, normalize_outline)
+                                    build_persisted_outline, build_persisted_short_outline,
+                                    normalize_outline)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["book"])
 
+# 作品形态（§SHORT-FORM）：long=长篇管道（现状）/ short=短篇整篇一次成稿。
+PROJECT_FORMS = ("long", "short")
+
 
 def _pid(project_id: str) -> uuid.UUID:
     """path 里的 project_id 转 uuid（require_owner 已校验格式合法，此处仅类型转换）。"""
     return uuid.UUID(project_id)
+
+
+def _check_form(form: str | None) -> str:
+    """形态白名单：不传 = 长篇（老客户端语义，与列 server_default 'long' 一致）。"""
+    normalized = (form or "long").strip().lower()
+    if normalized not in PROJECT_FORMS:
+        raise HTTPException(status_code=400,
+                            detail=f"作品形态只能是 {' / '.join(PROJECT_FORMS)}（当前 {form}）")
+    return normalized
+
+
+def _check_form_chapter_count(form: str, count: int) -> int:
+    """章数区间按形态选（短篇 1–10 / 长篇 50–1000）。
+
+    不再靠 `Field(ge=50, le=1000)` 拦——Field 拿不到 form，短篇的 5 会被 pydantic 直接 422。
+    """
+    lo, hi = ((SHORT_CHAPTER_MIN, SHORT_CHAPTER_MAX) if form == "short"
+              else (CHAPTER_COUNT_MIN, CHAPTER_COUNT_MAX))
+    if not (lo <= count <= hi):
+        raise HTTPException(
+            status_code=400,
+            detail=f"{'短篇' if form == 'short' else '长篇'}章数需在 {lo}–{hi} 之间（当前 {count}）")
+    return count
 
 
 def _str_or_none(value) -> str | None:
@@ -87,7 +118,13 @@ class CreateProjectBody(BaseModel):
     secondary_id: str | None = None
     genre_fields: dict = Field(default_factory=dict)
     premise: str = Field(default="", max_length=20000)
-    chapter_count: int = Field(default=200, ge=50, le=1000)
+    # 区间按 form 在路由体内校验（Field 拿不到 form）：短篇 1–10 / 长篇 50–1000。
+    chapter_count: int = Field(default=200, ge=1, le=1000)
+    # 作品形态：不传 = 长篇（老客户端）。短篇只在建书时定，之后不可改（形态决定整条管道）。
+    form: str = "long"
+    # 短篇的每章字数（§5：章数 × 每章字数 ≤ 20000）；长篇忽略此字段。
+    # 默认取 §5 的上限，配合 resolve_short_lengths 正好还原 §5 的表（1→8000 / 5→4000 / 10→2000）。
+    chars_per_chapter: int = SHORT_CHARS_MAX
     storyline: str = Field(default="", max_length=20000)
 
 
@@ -121,10 +158,14 @@ class SetupBody(BaseModel):
 
 
 class OutlineDraftBody(BaseModel):
-    """整书大纲草稿输入：一句话梗概 + 大致章节数 + 大致故事线。"""
+    """整书大纲草稿输入：一句话梗概 + 大致章节数 + 大致故事线。
+
+    `chars_per_chapter` 只对短篇有意义（长篇的每章字数走 target_words，§6.9）。
+    """
 
     premise: str
     chapter_count: int = 200
+    chars_per_chapter: int = SHORT_CHARS_MAX
     storyline: str = ""
 
 
@@ -156,6 +197,8 @@ def create_project(body: CreateProjectBody,
     title = body.title.strip()
     if not title:
         raise HTTPException(status_code=400, detail="作品标题不能为空")
+    form = _check_form(body.form)
+    _check_form_chapter_count(form, body.chapter_count)
 
     with new_session() as db:
         # Serialize the daily count and insert for this user; creation is one transaction.
@@ -184,9 +227,11 @@ def create_project(body: CreateProjectBody,
         else:
             genre = body.genre.strip() or "仙侠玄幻"
         project = Project(user_id=uid, title=title, genre=genre, target_words=target_words,
+                          form=form,
                           creation_status="draft", creation_context={
                               "request_id": str(body.request_id) if body.request_id else None,
                               "premise": body.premise, "chapter_count": body.chapter_count,
+                              "form": form, "chars_per_chapter": body.chars_per_chapter,
                               "storyline": body.storyline})
         db.add(project)
         db.flush()
@@ -426,22 +471,60 @@ def put_setup(project_id: str, body: SetupBody) -> dict:
     return {"ok": True}
 
 
+def _short_outline_draft(project_id: str, body: OutlineDraftBody, genre: str,
+                         genre_pack: dict, chapter_count: int, db) -> tuple[dict, dict]:
+    """短篇出方案：出完**紧接着跑一次审纲**；被打回就带 reason 重出一次（决策文档 §2 第 2 步）。
+
+    两次都不过 → 保留第一版方案并回一个 warning（对齐「保留 v001」）：审纲是建议不是闸门，
+    用户要的是能接着往下用的方案，不是被卡在出方案页上。
+
+    最多四次调用，全部走 planner 角色、各记一条 agent_runs（§6.8）。返回 (落库 patch, 响应体)。
+    """
+    premise = body.premise.strip()
+    chapters, chars, compressed = resolve_short_lengths(chapter_count, body.chars_per_chapter)
+
+    def _plan(revision_reason: str = "") -> tuple[dict, str | None]:
+        return generate_short_plan(
+            genre, premise, chapter_count=chapters, chars_per_chapter=chars,
+            storyline=body.storyline, revision_reason=revision_reason,
+            genre_pack=genre_pack, project_id=project_id, db=db)
+
+    def _review(plan: dict) -> tuple[str, str]:
+        return review_short_plan(plan, chapter_count=chapters, project_id=project_id, db=db)
+
+    outline, error = _plan()
+    warning = None
+    if not error:
+        verdict, reason = _review(outline)
+        if verdict == "revise":
+            second, second_error = _plan(reason)
+            if second_error:
+                warning = f"审纲建议改稿（{reason}），但重出一版失败（{second_error}）；已保留第一版方案"
+            else:
+                second_verdict, second_reason = _review(second)
+                if second_verdict == "revise":
+                    warning = f"两版方案都被审纲建议改稿（{second_reason}）；已保留第一版方案"
+                else:
+                    outline = second
+    db.commit()
+    patch = {"premise": premise, "chapter_count": chapters, "storyline": body.storyline,
+             "chars_per_chapter": chars, "lengths_compressed": compressed,
+             "outline_draft": outline, "outline_error": error, "outline_warning": warning}
+    return patch, {"outline": outline, "error": error}
+
+
 @router.post("/projects/{project_id}/outline-draft",
              dependencies=[Depends(require_owner)], response_model=OutlineDraftOut)
 def outline_draft(project_id: str, body: OutlineDraftBody) -> dict:
     """整书大纲草稿（§11 建书 ③）：题材/梗概/大致章节数/大致故事线 → Planner 提案。
 
     不落库可反复重新生成；LLM 失败 → {outline: {}, error} 200 降级（§6.12）。
-    agent_runs 记 node=book_outline（§6.8 成本透明）。
+    agent_runs 记 node=book_outline（长篇）/ short_plan（短篇，§6.8 成本透明）。
+    区间与方案形状按 `project.form` 分叉——短篇走 1–10 章 + 逐章细纲 + 审纲。
     """
     premise = body.premise.strip()
     if not premise:
         raise HTTPException(status_code=400, detail="一句话梗概不能为空")
-    cc = body.chapter_count
-    if not (CHAPTER_COUNT_MIN <= cc <= CHAPTER_COUNT_MAX):
-        raise HTTPException(
-            status_code=400,
-            detail=f"大致章节数需在 {CHAPTER_COUNT_MIN}–{CHAPTER_COUNT_MAX} 之间")
     with tenant_session(project_id) as tdb:
         st = get_settings(tdb, _pid(project_id))
         genre_pack = (st.genre_pack if st else {}) or {}
@@ -449,39 +532,55 @@ def outline_draft(project_id: str, body: OutlineDraftBody) -> dict:
     try:
         project = db.get(Project, _pid(project_id))
         genre = project.genre if project is not None else ""
-        outline, error = generate_book_outline(
-            genre, premise, chapter_count=cc, storyline=body.storyline,
-            genre_pack=genre_pack, project_id=project_id, db=db)
-        db.commit()
+        form = project.form if project is not None else "long"
+        cc = _check_form_chapter_count(form, body.chapter_count)
+        if form == "short":
+            patch, result = _short_outline_draft(project_id, body, genre, genre_pack, cc, db)
+        else:
+            outline, error = generate_book_outline(
+                genre, premise, chapter_count=cc, storyline=body.storyline,
+                genre_pack=genre_pack, project_id=project_id, db=db)
+            db.commit()
+            patch = {"premise": premise, "chapter_count": cc,
+                     "storyline": body.storyline, "outline_draft": outline,
+                     "outline_error": error}
+            result = {"outline": outline, "error": error}
     finally:
         db.close()
-    save_proposal(project_id, {"premise": premise, "chapter_count": cc,
-                              "storyline": body.storyline, "outline_draft": outline,
-                              "outline_error": error})
-    return {"outline": outline, "error": error}
+    save_proposal(project_id, patch)
+    return result
 
 
 @router.put("/projects/{project_id}/outline",
             dependencies=[Depends(require_owner)], response_model=BookOutlineOut)
 def put_outline(project_id: str, body: OutlineConfirmBody) -> dict:
-    """整书大纲确认落库：volume_outlines 单行整体替换为卷 + 阶段。"""
+    """整书大纲确认落库：volume_outlines 单行整体替换为卷 + 阶段。
+
+    形态决定校验口径与落库形状：短篇必须带逐章 chapters（写手一次成稿的依据），
+    长篇仍按 Objective → 卷 → 阶段那套归一（老数据兼容路径不碰）。
+    """
     pid = _pid(project_id)
-    payload = build_persisted_outline(
-        objective=body.objective, volumes=body.volumes or [],
-        premise=body.premise, chapter_count=body.chapter_count,
-        storyline=body.storyline)
     with tenant_session(project_id) as db:
         project = db.scalar(select(Project).where(Project.id == pid).with_for_update())
+        short = project.form == "short"
+        payload = build_persisted_short_outline(
+            objective=body.objective, volumes=body.volumes or [],
+            premise=body.premise, chapter_count=body.chapter_count,
+            storyline=body.storyline) if short else build_persisted_outline(
+            objective=body.objective, volumes=body.volumes or [],
+            premise=body.premise, chapter_count=body.chapter_count,
+            storyline=body.storyline)
+        validate = validate_short_outline if short else validate_creation_outline
         if project.creation_status in DRAFT_STATES:
             if project.creation_status != "setup_confirmed":
                 raise HTTPException(status_code=409, detail="SETUP_NOT_CONFIRMED")
-            validate_creation_outline(payload)
+            validate(payload)
             project.creation_status = "ready"
             project.creation_context = {**(project.creation_context or {}), "outline_draft": payload}
         elif project.creation_status == "ready":
             # Modern books must retain a usable outline after their first confirmation.
             # Legacy books deliberately keep their historical, less structured format.
-            validate_creation_outline(payload)
+            validate(payload)
         row = get_volume_outline(db, pid, 1)
         if row is None:
             db.add(VolumeOutline(project_id=pid, volume_seq=1, title="整书大纲",
@@ -498,12 +597,17 @@ def get_outline(project_id: str) -> dict:
     """整书大纲读取（§11 前端展示 / 重新生成输入）。无大纲 → {outline: null} 不 500。
 
     存量旧版扁平大纲（{arc, chapters}）经 normalize_outline 归一为新三层（并入「全书主线」单卷），
-    前端展示与写作注入对新旧数据一致。
+    前端展示与写作注入对新旧数据一致。**短篇不走这条归一**：它落库的就是逐章形状，
+    归一会把卷内 chapters 折成 stages（30 章一段的老数据兼容路径），把写手的方案吃掉。
     """
     pid = _pid(project_id)
     with tenant_session(project_id) as db:
+        project = db.get(Project, pid)
+        short = project is not None and project.form == "short"
         row = get_volume_outline(db, pid, 1)
-    return {"outline": normalize_outline(row.outline) if row else None}
+    if row is None:
+        return {"outline": None}
+    return {"outline": row.outline if short else normalize_outline(row.outline)}
 
 
 @router.get("/projects/{project_id}/world",

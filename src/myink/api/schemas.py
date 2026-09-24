@@ -41,6 +41,8 @@ class ProjectOut(BaseModel):
     current_chapter: int
     target_words: int | None = None
     creation_status: str = "legacy_ready"
+    # 形态（长篇/短篇）：前端建书表单、大纲页、工作台都按它分支。
+    form: str = "long"
 
 
 class ProjectCreationOut(BaseModel):

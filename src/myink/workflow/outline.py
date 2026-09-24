@@ -275,3 +275,28 @@ def build_persisted_outline(*, objective: str, volumes: list, premise: str,
     if not out.get("chapter_count") and out["volumes"]:
         out["chapter_count"] = max((_as_int(v.get("chapter_end")) for v in out["volumes"]), default=0)
     return out
+
+
+def build_persisted_short_outline(*, objective: str, volumes: list, premise: str,
+                                  chapter_count: int, storyline: str) -> dict:
+    """短篇确认落库前清洗：**保住卷内逐章 chapters**，不切 stages、不吞章。
+
+    长篇的 `build_persisted_outline` 会把卷内 chapters 折成约 30 章一段的 stages
+    （`_stages_from_chapter_list` 的老数据兼容路径）；短篇的逐章细纲是写手一次成稿的
+    唯一依据，折掉就没得写了。所以短篇只做重编号这类顺手清洗。
+    """
+    cleaned = []
+    for volume in volumes or []:
+        if not isinstance(volume, dict):
+            continue
+        nv = dict(volume)
+        nv["volume_seq"] = len(cleaned) + 1
+        nv["chapters"] = [c for c in (volume.get("chapters") or []) if isinstance(c, dict)]
+        cleaned.append(nv)
+    return {
+        "objective": str(objective or "").strip(),
+        "volumes": cleaned,
+        "premise": str(premise or "").strip(),
+        "chapter_count": _as_int(chapter_count),
+        "storyline": str(storyline or "").strip(),
+    }

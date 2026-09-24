@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 from myink.config import settings
 from myink.context_budget import estimate_tokens, fit_prompt
+from myink.workflow.short_parse import CHAPTER_HEADING
 from myink.workflow.tools import READ_TOOLS
 
 SYSTEM_PLAN = """你是长篇网文创作系统的【规划 Agent】。职责：为某一章产出结构化章节计划。
@@ -102,6 +103,131 @@ SYSTEM_BOOK_OUTLINE = """你是长篇网文创作系统的【整书规划 Agent�
 - 不越界设定：境界体系/势力/人物关系未确认前，不臆造主角外的核心人物。
 - 作者未提供【大致故事线】时，由你根据题材与梗概自行推导整书故事线（起/承/转/合与关键转折），各卷/阶段沿推导线递进，禁止泛泛的模板化大纲。
 - 阶段 beats 为 3-6 条：谁 + 在何处 + 做什么 + 导致什么 + 阶段末钩子；不得复述该阶段 goal。"""
+
+
+SYSTEM_SHORT_PLAN = """你是中文短篇创作系统的【短篇方案 Agent】。为一篇**整篇一次成稿**的短篇小说产出逐章方案。
+这不是长篇连载的启动包：故事必须有完整的起承转合与结局，读者读完这一篇就是读完了整个故事。
+
+输出严格 JSON：
+{
+  "objective": "全篇终局：一个外部观察者可验证的状态（如「林砚查清父亲之死并让青溪渡停航」）。禁止「成长」「揭秘」这类抽象词",
+  "volumes": [
+    {
+      "volume_seq": 1,
+      "title": "全篇 · 篇名",
+      "theme": "一句话主题",
+      "goal": "全篇目标：结局时主角必须达到的可验证状态",
+      "chapter_start": 1,
+      "chapter_end": 10,
+      "chapters": [
+        {
+          "chapter_seq": 1,
+          "title": "章节标题方向（像平台内容，不要文艺化总结）",
+          "goal": "本章结束时必须达到的可验证状态",
+          "key_scene": "关键场面：谁 + 在何处 + 做什么",
+          "character_action": "角色动作：主角主动做出的选择或行动",
+          "escalation_or_payoff": "本章的压力升级或回报",
+          "hook": "章尾钩子：让读者接着读下一章的那个具体理由"
+        }
+      ]
+    }
+  ]
+}
+
+三条硬要求（缺一条，这份方案就撑不起一次成稿）：
+- 信息密度够一次成稿：逐章写清 标题方向 / 关键场面 / 角色动作 / 压力升级或回报 / 章尾钩子。
+  写手拿到这份方案必须能直接落笔，不需要再问任何问题。
+- 禁止输出「本卷共 N 章」这类空壳。每一章都要有具体的场面与动作，不许用结构说明代替内容。
+- 故事必须完整，不是长篇前 N 章的启动包：要有结局、有回报落地，不许在结尾留「未完待续」。
+
+字数口径：
+- 字数是校准，不是平均数学题。大场面可略长，过渡章可略短；某章明显偏短通常说明你把它写成了梗概，
+  必须补有效场面。整篇的章数与每章字数以用户消息给出的为准，不要自行改动。
+
+其他：
+- 恰好一卷：chapter_start=1，chapter_end=用户给的章数。
+- 卷内 chapters 必须逐章存在，chapter_seq 连续覆盖 1..章数，不多不少。
+- 不越界设定：境界体系 / 势力 / 人物关系未确认前，不臆造主角外的核心人物。"""
+
+
+SYSTEM_SHORT_PLAN_REVIEW = """你是中文短篇创作系统的【短篇审纲 Agent】。只判一件事：这份逐章方案能不能支撑写手**一次**写完整篇。
+
+判定只看这一条，不看文笔高低：
+- 每章是否都有具体的场面、动作与推进，而不是结构说明或梗概；
+- 全篇是否有完整结局，而不是长篇连载的启动包；
+- 章与章之间是否连得上，有没有空档。
+
+输出严格 JSON：
+{"verdict": "pass", "reason": "一句话说明理由"}
+
+verdict 取 "pass" 当且仅当这份方案能支撑一次成稿；否则取 "revise"，并在 reason 里写清缺什么，
+供重出一版时采纳。不要把审纲变成确定性打分：不要输出评分、维度表，也不要输出修改后的方案。"""
+
+
+SYSTEM_SHORT_WRITER = """你是中文短篇创作系统的【短篇写作 Agent】。**一次调用写完整篇**：不分章调用、不分批交付，
+输出就是读者从第一行读到最后一行的那一篇。
+
+输出格式（硬要求，解析器按它拆章）：
+- 每章正文之前**单独一行**输出章标记，形如 `=== CHAPTER 3 CONTENT ===`（章号换成实际章号）；
+- 每章只打一次标记，正文里不要重复标记、不要写章标题行；
+- 正文为纯文本散文，禁止输出 JSON、禁止 markdown 代码块围栏。
+
+三条硬要求（缺一条，这一篇就撑不起来）：
+- 故事必须完整：有结局、有回报落地，不许在结尾留「未完待续」——这不是长篇的前几章。
+- 没写到的章就是空章：宁可某章略短，也不要把两章并成一章写，更不要在结尾用一段
+  「后来……」把没写完的部分糊过去。
+- 字数是校准，不是平均数学题：大场面可略长，过渡章可略短；某章明显偏短通常说明你把它
+  写成了梗概，必须补有效场面。
+
+句式禁令（任何题材都遵守）：
+- 不要写「不是……是……」：先否定再改口的对举一律不用，含「不是……而是……」与「不是……，是……」，拆成两句的「不是……。是……」也一样。
+- 不要写连续排比：同一句或相邻几句里，连续三个以上结构相同的分句。
+
+落笔依据是注入的逐章方案：每一章都要写出方案给的关键场面（谁 + 在何处 + 做什么）与角色动作，
+并让章尾钩子成立。不要重新设计剧情、不要增删章数、不要改动结局——方案已经确认过了。
+方案与注入的设定冲突时信设定。"""
+
+
+SYSTEM_SHORT_DRAFT_REVIEW = """你是中文短篇创作系统的【短篇审稿 Agent】。整篇一次读完，站在编辑的立场上给意见。
+
+只判一件事：这一篇能不能直接发。检查项逐条过一遍，有问题才写进 issues：
+- 标题、章节标题：有没有跑题、标题党或与内容不符；
+- 开篇：第一段能不能抓住人，有没有靠天色/时辰/天气开场；
+- 人物动机：角色为什么这么做，读者跟不跟得上；
+- 时间线：先后顺序有没有错乱、有没有无解释的跳动；
+- 人物关系：称呼、亲疏、立场是否前后一致；
+- 证据/权限：角色知道的信息、拿得到的东西，是不是他该知道的；
+- 压力递进：中途有没有一段变成平铺直叙；
+- 反派反扑：对手有没有真的形成压力，还是被主角一路平推；
+- 后半段：是否泄气——该收的地方松了、该快的地方慢了；
+- 结尾：回报有没有落地，方案里承诺的终局是不是真的发生了。
+
+输出严格 JSON：
+{"verdict": "pass", "issues": ["问题，一句一条，说清在哪一章"], "suggestions": ["可执行的改法"]}
+
+verdict 取 "pass" 当且仅当这一篇可以直接发；只有存在**必须改**的问题时才取 "revise"。
+不要把审稿变成确定性打分：不要输出评分、不要输出维度表、不要复述剧情、不要重写正文。
+issues 与 suggestions 一一对应，各不超过 8 条。"""
+
+
+SYSTEM_SHORT_REVISER = """你是中文短篇创作系统的【短篇改稿 Agent】。按审稿意见把整篇重写一遍。
+
+硬要求：
+- 输出完整正文，不要只列修改建议，不要只改几章片段——改一章会波及别章的呼应铺垫，
+  只有整篇重写才不留缝。
+- 没被审稿点名的部分照原样保留，被点名的部分改到位；**没有提到的章也要完整写出来**，
+  不许出现「此处不变」「同前」这类占位。
+- 章数、章序、结局一律不动，仍是每章一行 `=== CHAPTER N CONTENT ===` 标记 + 纯文本正文。"""
+
+
+SYSTEM_SHORT_CONTINUER = """你是中文短篇创作系统的【短篇补写 Agent】。这一篇已经写了大半，只缺其中几章。
+
+硬要求：
+- **只输出缺失的那几章**：每章一行 `=== CHAPTER N CONTENT ===` 标记 + 该章正文；
+- 不要重复输出已经写好的章，不要改写它们，也不要另外写总结、前言或「未完待续」；
+- 补的章要与已写部分接得上：前一章结尾的人、事、物从原处接着往下走，别重开一个场景；
+- 缺的章就是缺的，不许用一段「后来……」把几章并成一章——每章仍要有自己的场面与推进；
+- 纯文本散文，禁止输出 JSON、禁止 markdown 代码块围栏。"""
 
 
 SYSTEM_EXTRACT = """你是长篇网文创作系统的【记忆抽取 Agent】。从章节正文抽取结构化记忆候选。
@@ -795,6 +921,183 @@ def book_outline_messages(genre: str, premise: str, chapter_count: int,
     return [
         {"role": "system", "content": SYSTEM_BOOK_OUTLINE},
         {"role": "user", "content": "\n\n".join(parts) + "\n\n请产出整书写作大纲（严格 JSON）。"},
+    ]
+
+
+def short_plan_messages(genre: str, premise: str, chapter_count: int,
+                        chars_per_chapter: int, *,
+                        genre_pack: dict | None = None,
+                        storyline: str = "",
+                        revision_reason: str = "") -> list[dict]:
+    """短篇方案草稿：恰好一卷、逐章细纲（长篇明令禁止逐章，短篇必须逐章）。
+
+    总共不到 10 章，逐章没有 JSON 爆炸风险，而写手要靠它一次成稿。
+
+    `revision_reason` 是审纲打回时给的意见：重出一版必须看见它，否则只是把同一份方案
+    再掷一次骰子（决策文档 §2 第 2 步）。
+    """
+    parts = [f"【题材】\n{genre}", f"【一句话梗概】\n{premise}",
+             f"【章数】\n{chapter_count} 章",
+             f"【每章字数】\n{chars_per_chapter} 字（全篇约 {chapter_count * chars_per_chapter} 字）"]
+    pack = _genre_section(genre_pack)
+    if pack:
+        parts.append(f"【本书题材包】\n{pack}")
+    if storyline.strip():
+        parts.append(f"【大致故事线】\n{storyline.strip()}")
+    if revision_reason.strip():
+        parts.append(f"【上一版被打回的原因】\n{revision_reason.strip()}"
+                     "\n这一版必须把这条改掉，其余部分保持完整。")
+    return [
+        {"role": "system", "content": SYSTEM_SHORT_PLAN},
+        {"role": "user", "content": "\n\n".join(parts)
+         + f"\n\n请产出这 {chapter_count} 章的逐章方案（严格 JSON，恰好一卷）。"},
+    ]
+
+
+def short_plan_review_messages(plan: dict, chapter_count: int) -> list[dict]:
+    """审纲：只判这份方案能不能支撑一次写完整篇。"""
+    return [
+        {"role": "system", "content": SYSTEM_SHORT_PLAN_REVIEW},
+        {"role": "user", "content": (
+            json.dumps(plan, ensure_ascii=False, indent=2)
+            + f"\n\n上面是 {chapter_count} 章的逐章方案，请判定它能否支撑一次写完整篇（严格 JSON）。")},
+    ]
+
+
+# ---- 短篇成稿三步（§SHORT-FORM 二 第 3–5 步）----
+#
+# 三步共用同一份「前置块」（方案 / 设定 / 题材 / 文风 / 篇幅）：它对三步都必需——
+# 写手照它落笔，审稿照它判「承诺的终局有没有落地」，改稿照它保住没被点名的地方。
+# 块放用户消息而非系统消息：系统消息只放角色与规则，三份提示词因此各自稳定可缓存。
+
+def _short_chapter_line(chapter: dict) -> str:
+    """逐章细纲一行：方案里有什么字段就写什么（缺字段跳过，不臆造）。"""
+    fields = (("title", "标题方向"), ("goal", "本章目标"), ("key_scene", "关键场面"),
+              ("character_action", "角色动作"), ("escalation_or_payoff", "压力升级/回报"),
+              ("hook", "章尾钩子"))
+    bits = [f"{label}：{chapter[key]}" for key, label in fields
+            if str(chapter.get(key) or "").strip()]
+    return f"第 {chapter.get('chapter_seq', '?')} 章 " + "；".join(bits)
+
+
+def _short_plan_section(outline: dict) -> str:
+    """确认后的逐章方案：全篇终局 + 卷目标 + 逐章细纲。"""
+    lines: list[str] = []
+    objective = str((outline or {}).get("objective") or "").strip()
+    if objective:
+        lines.append(f"全篇终局：{objective}")
+    for volume in (outline or {}).get("volumes") or []:
+        if not isinstance(volume, dict):
+            continue
+        goal = str(volume.get("goal") or "").strip()
+        if goal:
+            lines.append(f"全篇目标：{goal}")
+        for chapter in volume.get("chapters") or []:
+            if isinstance(chapter, dict):
+                lines.append(_short_chapter_line(chapter))
+    return "\n".join(lines) or "（方案缺失）"
+
+
+def _short_brief_section(brief: dict) -> str:
+    """短篇三步共用的前置块。键由 `short_runner._load_brief` 唯一生产。"""
+    genre = brief.get("genre") or "（未指定）"
+    parts = [f"【题材】\n{genre}",
+             "【逐章方案（已确认）】\n" + _short_plan_section(brief.get("outline") or {})]
+    world = brief.get("world_rules") or {}
+    if world:
+        parts.append("【世界观硬约束】\n" + "\n".join(f"- {k}：{v}" for k, v in world.items()))
+    constraints = [str(c).strip() for c in (brief.get("hard_constraints") or []) if str(c).strip()]
+    if constraints:
+        parts.append("【硬约束】\n" + "\n".join(f"- {c}" for c in constraints))
+    people = brief.get("characters") or []
+    if people:
+        parts.append("【核心人物】\n" + "\n".join(
+            f"- {p.get('name', '')}（境界上限={p.get('realm_cap') or '无'}）"
+            f"{p.get('personality') or ''}" for p in people))
+    forces = brief.get("factions") or []
+    places = brief.get("locations") or []
+    if forces or places:
+        lines = [f"- [势力] {f.get('name', '')}" + (f"：{f['stance']}" if f.get("stance") else "")
+                 for f in forces]
+        lines += [f"- [地点] {p.get('name', '')}" for p in places]
+        parts.append("【势力与地点】\n" + "\n".join(lines))
+    pack = _genre_section(brief.get("genre_pack"))
+    if pack:
+        parts.append(f"【本书题材包】\n{pack}")
+    style = _style_section(brief.get("style_profile"), None)
+    if style:
+        parts.append(f"【文风要求】\n{style}")
+    count, chars = brief.get("chapter_count") or 0, brief.get("chars_per_chapter") or 0
+    parts.append(f"【篇幅】\n全篇共 {count} 章，每章约 {chars} 字"
+                 f"（全篇约 {count * chars} 字）——整篇要在这一次输出里写完。")
+    return "\n\n".join(parts)
+
+
+def _short_marker_lines(chapter_count: int) -> str:
+    """逐章点名的章标记：写手 prompt 与解析器共用 `CHAPTER_HEADING`，两边不会漂。"""
+    return "\n".join(CHAPTER_HEADING.format(seq=i) for i in range(1, chapter_count + 1))
+
+
+def short_write_messages(brief: dict) -> list[dict]:
+    """成稿：一次调用写完整个短篇（§二 第 3 步）。"""
+    count = brief.get("chapter_count") or 0
+    return [
+        {"role": "system", "content": SYSTEM_SHORT_WRITER},
+        {"role": "user", "content": (
+            _short_brief_section(brief)
+            + f"\n\n【章标记】\n依次输出这 {count} 行标记，每行后面紧跟该章正文：\n"
+            + _short_marker_lines(count)
+            + f"\n\n请一次写完这 {count} 章。")},
+    ]
+
+
+def short_continue_messages(brief: dict, draft: str, missing: list[int]) -> list[dict]:
+    """补写：把已写正文与缺失章号一起回喂，只补缺的那几章（§二 第 3 步）。
+
+    补写有独立的系统提示词而不是复用写手的：写手的系统提示词通篇在说「一次写完整个短篇、
+    不要增删章数」，与「只输出缺失的章」正面冲突——让用户消息去压系统消息，正是这套提示词
+    设计一直避免的那种冲突。
+    """
+    seqs = "、".join(f"第 {n} 章" for n in missing)
+    markers = "\n".join(CHAPTER_HEADING.format(seq=n) for n in missing)
+    return [
+        {"role": "system", "content": SYSTEM_SHORT_CONTINUER},
+        {"role": "user", "content": (
+            _short_brief_section(brief)
+            + f"\n\n【已写正文】\n{draft}"
+            + f"\n\n【缺失章号】\n{seqs}（只补这几章）"
+            + f"\n\n【章标记】\n{markers}"
+            + f"\n\n请补写{seqs}。")},
+    ]
+
+
+def short_review_messages(brief: dict, draft: str) -> list[dict]:
+    """审稿：整篇一次，编辑视角（§二 第 4 步）。
+
+    带着方案一起审：检查项里的「结尾回报有没有落地」要对着方案承诺的终局判。
+    """
+    return [
+        {"role": "system", "content": SYSTEM_SHORT_DRAFT_REVIEW},
+        {"role": "user", "content": (
+            _short_brief_section(brief)
+            + f"\n\n【待审正文】\n{draft}"
+            + "\n\n请审这一篇，给出问题与可执行的改法（严格 JSON）。")},
+    ]
+
+
+def short_revise_messages(brief: dict, draft: str, review: dict) -> list[dict]:
+    """改稿：整篇重写一次（§二 第 5 步）。首稿与审稿意见一起回喂。"""
+    count = brief.get("chapter_count") or 0
+    issues = "\n".join(f"- {i}" for i in (review.get("issues") or [])) or "（无）"
+    suggestions = "\n".join(f"- {s}" for s in (review.get("suggestions") or [])) or "（无）"
+    return [
+        {"role": "system", "content": SYSTEM_SHORT_REVISER},
+        {"role": "user", "content": (
+            _short_brief_section(brief)
+            + f"\n\n【审稿问题】\n{issues}\n【审稿建议】\n{suggestions}"
+            + f"\n\n【首稿】\n{draft}"
+            + f"\n\n【章标记】\n仍是这 {count} 行标记：\n" + _short_marker_lines(count)
+            + f"\n\n请把这一篇按上面的意见整篇重写一遍（完整正文，{count} 章）。")},
     ]
 
 
