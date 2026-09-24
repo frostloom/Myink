@@ -294,3 +294,52 @@ def test_admin_user_detail_404s_on_an_unknown_id(admin_data):
     response = client.get(PREFIX + f"/users/{uuid.uuid4()}", headers=bearer(users[0]))
     assert response.status_code == 404
     assert response.json()["detail"] == "NOT_FOUND"
+
+
+def test_overview_metrics_agree_with_the_runs_list(admin_data):
+    """M-9：全局 metrics 与「全部运行」列表同口径——列表能看到多少行，全局就计多少。
+
+    `agent_runs.project_id` 无 FK，删账号会留下「指向已删的书 + user_id 也没了」的行。
+    这类行在运行列表里被 `owner IS NOT NULL` 挡掉（不然 AdminRun.user_id 非空字段会炸成
+    503），全局却一直算着它们，于是两块页面的花费对不上。
+    """
+    users, *_ = admin_data
+    headers = bearer(users[0])
+    overview = client.get(PREFIX + "/overview", headers=headers).json()["metrics"]
+    listed = client.get(PREFIX + "/runs", params={"limit": 1}, headers=headers).json()["total"]
+    assert overview["run_count"] == listed
+
+
+def test_overview_drops_runs_that_have_no_owner(admin_data):
+    """三行边界里只有两行有归属：无主的孤儿不许进全局合计。
+
+    用增量断言（加行前后的差）而不是绝对值——这套用例跑在长期复用的测试库上，
+    绝对值会被别的套件留下的行搅乱，差额才是不随库里存量漂移的那个量。
+    """
+    users, books, *_ = admin_data
+    headers = bearer(users[0])
+
+    def overview_metrics() -> dict:
+        return client.get(PREFIX + "/overview", headers=headers).json()["metrics"]
+
+    before = overview_metrics()
+    with new_session() as db:
+        rows = [
+            AgentRun(project_id=books[1].id, user_id=users[1].id, node="attributed",
+                     input_tokens=1, output_tokens=1, cost_est=0.5),
+            AgentRun(project_id=None, user_id=users[1].id, node="account_only",
+                     input_tokens=1, output_tokens=1, cost_est=0.25),
+            AgentRun(project_id=uuid.uuid4(), user_id=None, node="ownerless_orphan",
+                     input_tokens=1, output_tokens=1, cost_est=0.125),
+        ]
+        db.add_all(rows)
+        db.commit()
+        created = [row.id for row in rows]
+    try:
+        after = overview_metrics()
+        assert after["run_count"] - before["run_count"] == 2          # 孤儿那行不算
+        assert after["cost_est"] - before["cost_est"] == pytest.approx(0.75)
+    finally:
+        with new_session() as db:
+            db.query(AgentRun).filter(AgentRun.id.in_(created)).delete()
+            db.commit()
