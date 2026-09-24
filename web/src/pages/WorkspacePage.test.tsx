@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { useEffect } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { afterEach, expect, it, vi } from 'vitest'
 import { api } from '../lib/api'
@@ -80,13 +81,27 @@ vi.mock('../components/ChapterList', () => ({
   ),
 }))
 vi.mock('../components/GenerationPanel', () => ({
-  GenerationPanel: ({ form, onTaskStart }: { form?: string; onTaskStart: (id: string, total?: number, seq?: number) => void }) => (
-    <div>
-      <span>gen-form-{form ?? 'long'}</span>
-      <button type="button" onClick={() => onTaskStart('task-13', undefined, 13)}>start-13</button>
-      {form === 'short' && <button type="button" onClick={() => onTaskStart('task-short')}>start-short</button>}
-    </div>
-  ),
+  GenerationPanel: ({ form, projectId, autoStartShort, onTaskStart }: {
+    form?: string
+    projectId: string
+    autoStartShort?: boolean
+    onTaskStart: (id: string, total?: number, seq?: number) => void
+  }) => {
+    // 契约替身：真实组件「收到 autoStartShort 即入队一次」的行为由 GenerationPanel.test.tsx
+    // 对着真身钉住，这里只复刻这条契约，让页面级用例能观察到「入队几次」。
+    useEffect(() => {
+      if (!autoStartShort) return
+      void api.generateShort(projectId)
+    }, [autoStartShort, projectId])
+    return (
+      <div>
+        <span>gen-form-{form ?? 'long'}</span>
+        <span>gen-auto-{autoStartShort ? 'on' : 'off'}</span>
+        <button type="button" onClick={() => onTaskStart('task-13', undefined, 13)}>start-13</button>
+        {form === 'short' && <button type="button" onClick={() => onTaskStart('task-short')}>start-short</button>}
+      </div>
+    )
+  },
 }))
 vi.mock('../components/TaskTimeline', () => ({
   TaskTimeline: ({ taskId, chapterSeq }: { taskId: string | null; chapterSeq: number | null }) => (
@@ -106,6 +121,7 @@ vi.mock('../lib/api', async (importOriginal) => {
       listGraph: vi.fn(),
       listForeshadows: vi.fn(),
       listTasks: vi.fn(),
+      generateShort: vi.fn(),
     },
   }
 })
@@ -430,4 +446,35 @@ it('still shows the long-form panels on a book without a form', async () => {
   expect(screen.getByText('candidate-panel')).toBeTruthy()
   expect(screen.getByText('lessons-panel')).toBeTruthy()
   expect(screen.queryByText('short-review-0')).toBeNull()
+})
+
+it('consumes the creation hand-off exactly once and strips it so a reload cannot enqueue again', async () => {
+  vi.mocked(api.generateShort).mockResolvedValue({ task_id: 'task-1', trace_id: 'trace-1', status: 'queued' })
+  mockShortBook([])
+
+  const route = [{ path: '/projects/:projectId', element: <WorkspacePage /> }]
+  const router = createMemoryRouter(route, {
+    initialEntries: [{ pathname: '/projects/project-1', state: { beginShortWriting: true, planWarning: '方案被截断过' } }],
+  })
+  render(<RouterProvider router={router} />)
+
+  // 刚确认完那一次：入队一次，然后 history.state 上的意图被 replace 掉（F5 带不回来）。
+  // 入队只发生一次本身就是「意图被送下去了」的证据——替身只在 autoStartShort 为真时入队。
+  await waitFor(() => expect(api.generateShort).toHaveBeenCalledTimes(1))
+  await waitFor(() => expect(router.state.location.state?.beginShortWriting).toBeUndefined())
+  expect(router.state.location.state?.planWarning).toBe('方案被截断过')
+  // 吃掉之后回到普通状态：同一个页面不再持有入队意图。
+  expect(await screen.findByText('gen-auto-off')).toBeTruthy()
+
+  // 把「刷新后」的 state 原样喂给第二只 router：不得再入队一次。
+  const reloaded = router.state.location.state
+  cleanup()
+  const reloadRouter = createMemoryRouter(route, {
+    initialEntries: [{ pathname: '/projects/project-1', state: reloaded }],
+  })
+  render(<RouterProvider router={reloadRouter} />)
+
+  expect(await screen.findByText('gen-form-short')).toBeTruthy()
+  expect(screen.getByText('gen-auto-off')).toBeTruthy()
+  expect(api.generateShort).toHaveBeenCalledTimes(1)
 })
