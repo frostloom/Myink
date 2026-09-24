@@ -35,13 +35,14 @@ const SHORT_CHARS_MIN = 1000
 const SHORT_CHARS_MAX = 8000
 const SHORT_TOTAL_MAX = 20000
 
-/** 卡上算一遍后端会怎么归一（只在确认前提示，不代替后端）。章数先夹到 ≥1 再取整，避免除零。 */
+/** 卡上算一遍后端会怎么归一（只在确认前提示，不代替后端）。先截断小数，再夹进区间，避免除零。 */
 function resolveShortLengths(chapterCount: number, charsPerChapter: number): {
   chars: number
   compressed: boolean
 } {
-  const chapters = Math.min(Math.max(chapterCount, SHORT_CHAPTER_MIN), SHORT_CHAPTER_MAX)
-  const chars = Math.min(Math.max(charsPerChapter, SHORT_CHARS_MIN), SHORT_CHARS_MAX)
+  // 卡片字段后端是 int() 截断（creation.py 的 _known），这里同规先截再夹。
+  const chapters = Math.min(Math.max(Math.trunc(chapterCount), SHORT_CHAPTER_MIN), SHORT_CHAPTER_MAX)
+  const chars = Math.min(Math.max(Math.trunc(charsPerChapter), SHORT_CHARS_MIN), SHORT_CHARS_MAX)
   if (chapters * chars > SHORT_TOTAL_MAX) {
     return {
       chars: Math.max(SHORT_CHARS_MIN, Math.floor(SHORT_TOTAL_MAX / chapters)),
