@@ -51,3 +51,20 @@ it('saves a named item and deletes by id', async () => {
   expect(fetchMock).toHaveBeenCalledWith('/api/v1/style-library/item-1',
     expect.objectContaining({ method: 'DELETE' }))
 })
+
+it('renames through PATCH on the item path', async () => {
+  const fetchMock = stubJson({ id: 'item-1', name: '渡口白描', builtin: false })
+  await expect(styleLibraryApi.patch('t', 'item-1', { name: '渡口白描' })).resolves.toMatchObject({
+    id: 'item-1', name: '渡口白描',
+  })
+  expect(fetchMock).toHaveBeenCalledWith('/api/v1/style-library/item-1',
+    expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ name: '渡口白描' }) }))
+})
+
+it('sends only the field being patched', async () => {
+  // 后端是「没传的字段不动」，所以 body 里多带一个 undefined 或空串都会改变语义。
+  const fetchMock = stubJson({ id: 'item-1', name: '渡口', note: '冷白描' })
+  await styleLibraryApi.patch('t', 'item-1', { note: '冷白描' })
+  expect(fetchMock).toHaveBeenCalledWith('/api/v1/style-library/item-1',
+    expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ note: '冷白描' }) }))
+})
