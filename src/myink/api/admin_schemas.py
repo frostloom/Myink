@@ -237,10 +237,10 @@ class AdminSnapshotFinding(BaseModel):
 
 class AdminRun(BaseModel):
     id: int
-    project_id: UUID
+    project_id: UUID | None          # 账号级运行（建书对话/文风提取）没有书
     user_id: UUID
-    username: str
-    project_title: str
+    username: str | None
+    project_title: str | None
     task_id: str | None
     node: str
     role: str | None

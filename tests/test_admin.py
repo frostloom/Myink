@@ -212,3 +212,31 @@ def test_admin_run_read_bounds_and_scrubs_lossless_business_detail(admin_data):
     data = response.json()["detail"]
     assert data["truncated"] and "LEGACY-CONTROL-SECRET" not in response.text
     assert len(json.dumps(data).encode()) <= 65536
+
+
+def test_user_cost_includes_account_level_runs(admin_data, temp_user, temp_project):
+    """Review Focus 5：没有书的调用（建书对话）也要算进这个人的花费，且点得进去看明细。"""
+    users, *_ = admin_data
+    with new_session() as db:
+        db.execute(text("UPDATE projects SET user_id = :uid WHERE id = :pid"),
+                   {"uid": temp_user, "pid": temp_project})
+        db.add(AgentRun(user_id=uuid.UUID(temp_user), node="short_creation", role="Planner",
+                        model_id="m", input_tokens=10, output_tokens=20, cost_est=7.5))
+        db.commit()
+
+    # 管理端点要的是 **admin 的令牌**：`temp_user` 只是被查的对象，不是查询者。
+    # 不加这个头，四条请求全是 401，测试会以「哪都没坏」的样子红掉。
+    headers = bearer(users[0])
+
+    rows = client.get(PREFIX + "/users", params={"q": temp_user}, headers=headers).json()["items"]
+    assert rows[0]["metrics"]["cost_est"] >= 7.5
+
+    runs = client.get(PREFIX + "/runs", params={"user_id": temp_user}, headers=headers).json()
+    assert any(run["node"] == "short_creation" for run in runs["items"])
+    account_run = next(run for run in runs["items"] if run["node"] == "short_creation")
+    assert account_run["project_id"] is None
+    assert account_run["project_title"] is None
+    assert account_run["username"] is not None       # 账号名兜底填上，列表不会开天窗
+
+    detail = client.get(PREFIX + f"/runs/{account_run['id']}", headers=headers)
+    assert detail.status_code == 200                 # 详情页也要能直接打开

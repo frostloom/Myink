@@ -207,12 +207,16 @@ def overview(db: DB):
 @router.get("/users", response_model=AdminPage[AdminUser], name="admin.users")
 def users(db: DB, q: Search = None, limit: Limit = 25, offset: Offset = 0):
     owned = select(Project.id).where(Project.user_id == User.id).correlate(User)
+    # 归属口径与 _run_statement 显示的同源：有书看书的作者（老行没有 user_id），
+    # 没有书才看账号（建书对话、文风提取）。两处不一致，列表里的行数就与总花费对不上。
+    run_owner = or_(AgentRun.project_id.in_(owned),
+                    and_(AgentRun.project_id.is_(None), AgentRun.user_id == User.id))
     stmt = select(User.id, User.username, User.tier, User.role,
                   _count(Project, Project.user_id == User.id).label("project_count"),
                   _count(Chapter, Chapter.project_id.in_(owned)).label("chapter_count"),
                   _word_count(Chapter.project_id.in_(owned)).label("word_count"),
                   _count(Task, Task.project_id.in_(owned)).label("task_count"),
-                  *_metric_columns(AgentRun.project_id.in_(owned)),
+                  *_metric_columns(run_owner),
                   *_task_average_columns(lambda per_task: per_task.c.project_id.in_(owned))
                   ).order_by(User.created_at.desc(), User.id.desc())
     if q:
@@ -339,8 +343,16 @@ def _run_statement(detail=False):
     columns = [getattr(AgentRun, f) for f in fields]
     if detail:
         columns += [AgentRun.detail, AgentRun.error]
-    return select(*columns, Project.user_id, User.username, Project.title.label("project_title"))\
-        .join(Project, Project.id == AgentRun.project_id).join(User, User.id == Project.user_id)
+    # 外连接：账号级运行没有 project_id，内连接会把它们整行丢掉（成本就对不上了）。
+    # username 用 coalesce 兜底到账号名，列表里不会开天窗。
+    account = aliased(User)
+    return select(*columns,
+                  func.coalesce(Project.user_id, AgentRun.user_id).label("user_id"),
+                  func.coalesce(User.username, account.username).label("username"),
+                  Project.title.label("project_title"))\
+        .outerjoin(Project, Project.id == AgentRun.project_id)\
+        .outerjoin(User, User.id == Project.user_id)\
+        .outerjoin(account, account.id == AgentRun.user_id)
 
 
 @router.get("/tasks/{task_id}/runs", response_model=AdminPage[AdminRun], name="admin.task_runs")
@@ -502,7 +514,8 @@ def runs(db: DB, user_id: uuid.UUID | None = None, project_id: uuid.UUID | None 
          node: Annotated[str | None, Query(max_length=64)] = None, limit: Limit = 25, offset: Offset = 0):
     stmt = _run_statement()
     if user_id:
-        stmt = stmt.where(Project.user_id == user_id)
+        stmt = stmt.where(or_(Project.user_id == user_id,
+                              and_(AgentRun.project_id.is_(None), AgentRun.user_id == user_id)))
     if project_id:
         stmt = stmt.where(AgentRun.project_id == project_id)
     if node:
