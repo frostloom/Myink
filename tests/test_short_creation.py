@@ -14,7 +14,8 @@ from myink.api.main import app
 from myink.book_setup import generate_short_creation_turn
 from myink.db import ensure_user_environment, new_session, tenant_session
 from myink.memory.repository import get_settings, get_volume_outline
-from myink.models import AgentRun, Project, ShortCreationMessage, ShortCreationSession, StyleLibraryItem
+from myink.models import (AgentRun, Chapter, Project, ShortCreationMessage,
+                          ShortCreationSession, StyleLibraryItem, Task)
 from myink.providers.base import ModelProvider, ModelResponse
 from myink.short import creation
 from myink.workflow import nodes, prompts
@@ -305,6 +306,61 @@ def test_reset_clears_the_conversation(temp_user):
     out = client.get("/api/v1/short/creation", headers=identity_headers(temp_user)).json()
     assert len(out["messages"]) == 1                      # 只剩新的开场白
     assert out["session"]["card"]["direction"] == ""
+
+
+def _seed_session_on_an_orphan_draft_book(user: str) -> str:
+    """会话 + 一本「当日建、还是 draft、无任务无章节」的书。
+
+    commit 在第 1 步之后失败（比如出方案那步 502）就会留下这个形状：书在库里、额度被吃掉、
+    对话里却什么都没成。这是 M-6 的场景，不是随便造的一本书。
+    """
+    from myink.api import routes_book as _book
+
+    uid = uuid.UUID(user)
+    with new_session() as db:
+        project = _book._create_project_row(
+            db, uid, title="半途的渡口", genre="悬疑", chapter_count=3,
+            chars_per_chapter=4000, form="short")
+        db.add(ShortCreationSession(user_id=uid, status="active",
+                                    card=creation.default_card(), book_id=project.id))
+        db.commit()
+        return str(project.id)
+
+
+def test_reset_removes_todays_orphan_draft_book(temp_user):
+    """重置对话要把当日那本没写完的草稿书一起带走——它已经吃掉了当日建书额度。"""
+    pid = _seed_session_on_an_orphan_draft_book(temp_user)
+    assert client.delete("/api/v1/short/creation",
+                         headers=identity_headers(temp_user)).status_code == 200
+    with new_session() as db:
+        assert db.get(Project, uuid.UUID(pid)) is None, "当日这张没写完的草稿书该被一并清掉"
+
+
+def test_reset_keeps_a_book_that_already_has_tasks(temp_user):
+    """书一旦有任务就是「正在写」——宁可漏删，也不许重置对话把它带走。"""
+    pid = _seed_session_on_an_orphan_draft_book(temp_user)
+    with new_session() as db:                    # tasks 在 _NO_RLS_TABLES 里，普通会话就能写
+        db.add(Task(project_id=uuid.UUID(pid), task_type="short_generate", status="queued"))
+        db.commit()
+    assert client.delete("/api/v1/short/creation",
+                         headers=identity_headers(temp_user)).status_code == 200
+    with new_session() as db:
+        assert db.get(Project, uuid.UUID(pid)) is not None, "已经在写的书不该被重置带走"
+
+
+def test_reset_keeps_a_draft_book_that_already_has_chapters(temp_user):
+    """`chapters` 带 project_id（FORCE RLS）：只有进租户上下文才看得见行。
+
+    在普通 new_session() 里查它，「没有章节」这道闸恒真（RLS 把行滤空）——守卫等于没写。
+    这条用例就是钉住「守卫必须真的看得见章节」。
+    """
+    pid = _seed_session_on_an_orphan_draft_book(temp_user)
+    with tenant_session(pid) as db:              # chapters 有 RLS，插入也要租户上下文
+        db.add(Chapter(project_id=uuid.UUID(pid), chapter_seq=1, status="done"))
+    assert client.delete("/api/v1/short/creation",
+                         headers=identity_headers(temp_user)).status_code == 200
+    with new_session() as db:
+        assert db.get(Project, uuid.UUID(pid)) is not None, "有章节的书不是孤儿草稿"
 
 
 def test_messages_rejects_an_empty_content(temp_user):

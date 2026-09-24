@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import delete as sa_delete, select
+from sqlalchemy import delete as sa_delete, func, select
 
 from myink.api import routes_book as _book
 from myink.api.auth import require_user
@@ -21,8 +21,8 @@ from myink.book_setup import generate_short_creation_turn
 from myink.creation import validate_short_outline
 from myink.db import new_session, tenant_session
 from myink.memory.repository import get_settings
-from myink.models import (Project, ProjectSettings, ShortCreationMessage,
-                          ShortCreationSession, User)
+from myink.models import (Chapter, Project, ProjectSettings, ShortCreationMessage,
+                          ShortCreationSession, Task, User)
 from myink.short import creation
 from myink.short.form import resolve_short_lengths
 
@@ -115,12 +115,36 @@ def post_message(body: ShortCreationMessageBody, user_id: str = Depends(require_
         db.close()
 
 
+def _orphan_draft_book(db, uid: uuid.UUID, book_id) -> Project | None:
+    """上次 commit 中途失败留下的那本当日的草稿书——它已经吃掉了当日建书额度。
+
+    只有「本人 + 当日创建 + 仍是 draft + 一个任务/章节都没有」才认。两条存在性检查必须
+    进租户上下文：`chapters` 带 project_id 且有 FORCE RLS，在无租户的普通会话里恒为空，
+    那样「没有章节」恒真——守卫会误删一本已经有了正文的书。
+    """
+    if book_id is None:
+        return None
+    with tenant_session(str(book_id)) as tdb:
+        if tdb.scalar(select(Task.id).where(Task.project_id == book_id).limit(1)) is not None:
+            return None
+        if tdb.scalar(select(Chapter.id).where(Chapter.project_id == book_id).limit(1)) is not None:
+            return None
+    return db.scalar(select(Project).where(
+        Project.id == book_id, Project.user_id == uid,
+        Project.creation_status == "draft",
+        Project.created_at >= func.date_trunc("day", func.now()),
+    ))
+
+
 @router.delete("", response_model=OkOut)
 def reset_session(user_id: str = Depends(require_user)) -> dict:
     uid = uuid.UUID(user_id)
     with new_session() as db:
         session = _session(db, uid)
         if session is not None:
+            book = _orphan_draft_book(db, uid, session.book_id)
+            if book is not None:
+                db.delete(book)
             db.execute(sa_delete(ShortCreationMessage)
                        .where(ShortCreationMessage.session_id == session.id))
             db.delete(session)
