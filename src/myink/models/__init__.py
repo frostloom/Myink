@@ -3,7 +3,7 @@
 from myink.models.base import Base
 from myink.models.admin import AdminAccessLog
 from myink.models.invitation import Invitation
-from myink.models.creation import StyleLibraryItem
+from myink.models.creation import ShortCreationMessage, ShortCreationSession, StyleLibraryItem
 from myink.models.chapter import (
     Chapter,
     ChapterVersion,
@@ -63,6 +63,8 @@ __all__ = [
     "Message",
     # creation（账号级）
     "StyleLibraryItem",
+    "ShortCreationSession",
+    "ShortCreationMessage",
     # memory / graph
     "CharacterState",
     "Fact",
