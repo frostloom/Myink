@@ -18,7 +18,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from myink.models.base import Base, TimestampMixin, UUIDPkMixin
 
 TASK_STATUSES = ("queued", "running", "paused", "awaiting_plan", "awaiting_review", "failed", "cancelled", "done")
-TASK_TYPES = ("chapter_generate", "batch_generate", "validate", "outline_generate")
+TASK_TYPES = ("chapter_generate", "batch_generate", "validate", "outline_generate",
+              "short_generate")
 
 # 留快照的阶段（与 workflow/nodes.py 的挂点一一对应）。
 # revise 一并留下：它带着上轮的校验/审计发现，是「改不对」时唯一的输入凭据。

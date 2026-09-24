@@ -70,6 +70,9 @@ class ModelResponse:
     model_id: str
     input_tokens: int = 0
     output_tokens: int = 0  # 思考 token 计入输出（§19.3）
+    # "stop"=自然结束 / "length"=被 max_tokens 截断。截断时 content 非空、error 为空，
+    # 调用层无法分辨，短篇「整篇一次成稿没被砍」只能靠它观测（SHORT-FORM §7 门禁）。
+    finish_reason: str | None = None
     cache_hit: bool = False
     duration_ms: int = 0
     retry_count: int = 0

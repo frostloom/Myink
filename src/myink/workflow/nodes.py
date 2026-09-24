@@ -171,6 +171,12 @@ _WRITE_TOKENS_PER_CHAR = 1.43
 _MAX_TOKENS = {
     "plan_cast": 1024, "plan_chapter": 8192, "extract": 4096, "revise": 8192, "patch": 4096, "audit": 8192,
     "reflexion": 4096, "summarize": 1024, "book_setup": 8192, "book_outline": 16384,
+    # 短篇方案：不到 10 章的逐章细纲，比整书大纲（16384）小一个量级；
+    # 审纲只回一个 verdict + 一句话 reason，1024 足够。
+    "short_plan": 8192, "short_plan_review": 1024,
+    # 短篇审稿：整篇一次读，回 issues + suggestions 两张不超过 8 条的短列表。
+    # 成稿/改稿不在此表——它们的上限按全篇目标字数换算（见 short_runner）。
+    "short_review": 4096,
 }
 
 
