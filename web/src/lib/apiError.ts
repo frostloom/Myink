@@ -38,6 +38,7 @@ const ERROR_CODES: Record<string, string> = {
   INVITATION_CODE_TAKEN: '该邀请码已被占用，请换一个',
   AUTH_SECRET_NOT_CONFIGURED: '认证服务尚未安全配置，请联系本机管理员设置 JWT_SECRET 后重启服务',
   PLAN_VERSION_CONFLICT: '章节计划已被更新，请刷新后再试',
+  SESSION_COMMITTED: '这段建书对话已经开写过了，请点「重新开始」另起一篇',
   DEMO_LOGIN_DISABLED: '演示登录已关闭',
   API_ERROR: '请求失败，请重试',
   Conflict: '内容已被其他人更新，请刷新后再试',

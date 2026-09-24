@@ -27,3 +27,10 @@ it('keeps already-Chinese details and uses fallback for unknown errors', () => {
   expect(formatApiError(new ApiError(400, '扫榜超时须为 1–60 秒', null))).toBe('扫榜超时须为 1–60 秒')
   expect(formatApiError(new Error('boom'), '加载失败')).toBe('加载失败')
 })
+
+it('explains a committed creation session instead of a generic conflict', () => {
+  // 后端 409 detail=SESSION_COMMITTED；泛化的 409 文案会劝用户「刷新后重试」，而那正好复现该状态。
+  expect(formatApiError(new ApiError(409, 'SESSION_COMMITTED', null)))
+    .toBe('这段建书对话已经开写过了，请点「重新开始」另起一篇')
+  expect(formatApiError(new ApiError(409, 'Conflict', null))).toBe('内容已被其他人更新，请刷新后再试')
+})
