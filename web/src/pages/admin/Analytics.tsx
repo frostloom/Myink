@@ -17,6 +17,7 @@ import {
   roleLabel,
   scopeLabel,
   severityLabel,
+  taskChapterLabel,
   taskStatusLabel,
   taskTypeLabel,
   tierLabel,
@@ -161,8 +162,7 @@ function TaskChapters({ token, task, onForbidden }: {
   return (
     <section className={`panel ${styles.panel}`}>
       <div className={styles.panelHead}>
-        <div><h3>{taskTypeLabel(task.task_type)} · 每章分解
-          {task.chapter_seq === null ? '（整批）' : `（目标第 ${task.chapter_seq} 章）`}</h3></div>
+        <div><h3>{taskTypeLabel(task.task_type)} · 每章分解（{taskChapterLabel(task)}）</h3></div>
         <RefreshButton onClick={resource.retry} />
       </div>
       <LoadState {...resource} empty={resource.data?.items.length === 0}>
@@ -232,7 +232,7 @@ function BookTasks({ token, project, onForbidden }: {
               <tbody>{resource.data.items.map((row) => <tr key={row.id}>
                 <td>{taskTypeLabel(row.task_type)}</td>
                 <td>{taskStatusLabel(row.status)}</td>
-                <td>{row.chapter_seq === null ? '整批' : `第 ${row.chapter_seq} 章`}</td>
+                <td>{taskChapterLabel(row)}</td>
                 <td>{row.chapter_count}</td>
                 <td>{row.snapshot_count}</td>
                 <td>{row.metrics.run_count}</td>

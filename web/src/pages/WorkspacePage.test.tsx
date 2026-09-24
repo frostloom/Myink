@@ -3,10 +3,11 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { afterEach, expect, it, vi } from 'vitest'
 import { api } from '../lib/api'
-import type { ChapterMeta } from '../types'
+import type { AgentRun, ChapterMeta } from '../types'
 import WorkspacePage from './WorkspacePage'
 
 const liveTask = vi.hoisted(() => ({
+  runs: [] as AgentRun[],
   artifacts: [] as Array<{
     artifactId: string
     taskId: string
@@ -31,7 +32,7 @@ vi.mock('../hooks/useTaskEvents', () => ({
     status: taskId ? 'running' : null,
     nodes: [],
     artifacts: taskId ? liveTask.artifacts : [],
-    runs: [],
+    runs: taskId ? liveTask.runs : [],
     progress: null,
     error: null,
     payload: {},
@@ -43,9 +44,12 @@ vi.mock('../hooks/useTaskEvents', () => ({
 }))
 
 vi.mock('../components/ProjectRail', () => ({ ProjectRail: () => <div /> }))
-vi.mock('../components/LessonsPanel', () => ({ LessonsPanel: () => <div /> }))
-vi.mock('../components/AuditPanel', () => ({ AuditPanel: () => <div /> }))
-vi.mock('../components/CandidatePanel', () => ({ CandidatePanel: () => <div /> }))
+vi.mock('../components/LessonsPanel', () => ({ LessonsPanel: () => <div>lessons-panel</div> }))
+vi.mock('../components/AuditPanel', () => ({ AuditPanel: () => <div>audit-panel</div> }))
+vi.mock('../components/CandidatePanel', () => ({ CandidatePanel: () => <div>candidate-panel</div> }))
+vi.mock('../components/ShortStoryPanel', () => ({
+  ShortStoryPanel: ({ runs }: { runs: AgentRun[] }) => <div>short-review-{runs.length}</div>,
+}))
 vi.mock('../components/ChapterEditor', () => ({
   ChapterEditor: ({ chapter }: { chapter: ChapterMeta }) => <div>editor-{chapter.chapter_seq}</div>,
 }))
@@ -76,8 +80,12 @@ vi.mock('../components/ChapterList', () => ({
   ),
 }))
 vi.mock('../components/GenerationPanel', () => ({
-  GenerationPanel: ({ onTaskStart }: { onTaskStart: (id: string, total?: number, seq?: number) => void }) => (
-    <button type="button" onClick={() => onTaskStart('task-13', undefined, 13)}>start-13</button>
+  GenerationPanel: ({ form, onTaskStart }: { form?: string; onTaskStart: (id: string, total?: number, seq?: number) => void }) => (
+    <div>
+      <span>gen-form-{form ?? 'long'}</span>
+      <button type="button" onClick={() => onTaskStart('task-13', undefined, 13)}>start-13</button>
+      {form === 'short' && <button type="button" onClick={() => onTaskStart('task-short')}>start-short</button>}
+    </div>
   ),
 }))
 vi.mock('../components/TaskTimeline', () => ({
@@ -115,6 +123,7 @@ afterEach(() => {
   cleanup()
   vi.clearAllMocks()
   liveTask.artifacts = []
+  liveTask.runs = []
   sessionStorage.clear()
 })
 
@@ -297,4 +306,128 @@ it('reconnects an in-flight writing task after switching back before the chapter
 
   expect(await screen.findByText('plan-page-3')).toBeTruthy()
   expect(screen.getByText('timeline-task-3-chapter-3')).toBeTruthy()
+})
+
+const shortProject = {
+  id: 'project-1',
+  title: '渡口',
+  genre: '悬疑',
+  current_chapter: 5,
+  target_words: 2000,
+  form: 'short' as const,
+}
+
+const shortTask = {
+  task_id: 'task-short',
+  task_type: 'short_generate',
+  status: 'done' as const,
+  chapter_seq: null,
+  batch_size: null,
+  batch_current: null,
+  cost_total: 0.25,
+  error: null,
+  created_at: null,
+}
+
+const shortReviewRun: AgentRun = {
+  task_id: 'task-short',
+  node: 'short_review',
+  model_id: 'deepseek-chat',
+  input_tokens: 100,
+  output_tokens: 200,
+  cache_hit: false,
+  duration_ms: 1000,
+  cost_est: 0.1,
+  retry_count: 0,
+  degraded: false,
+  error: null,
+  detail: {
+    short_review: { verdict: 'pass', issues: [], suggestions: [], warning: null },
+    empty_chapters: [],
+    length_findings: [],
+    revised: false,
+  },
+}
+
+function shortBookChapters(): ChapterMeta[] {
+  return [1, 2, 3, 4, 5].map((seq) => ({
+    id: `chapter-${seq}`,
+    chapter_seq: seq,
+    title: null,
+    status: 'confirmed' as const,
+    word_count: 2000,
+    summary: null,
+  }))
+}
+
+function mockShortBook(taskList: unknown[]) {
+  vi.mocked(api.listProjects).mockResolvedValue([shortProject])
+  vi.mocked(api.listChapters).mockResolvedValue(shortBookChapters())
+  vi.mocked(api.listCandidates).mockResolvedValue([])
+  vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] })
+  vi.mocked(api.listForeshadows).mockResolvedValue([])
+  vi.mocked(api.listTasks).mockResolvedValue(taskList as never)
+}
+
+it('keeps the whole-story review reachable after a chapter is picked on a short book', async () => {
+  mockShortBook([shortTask])
+  liveTask.runs = [shortReviewRun]
+
+  const router = createMemoryRouter(
+    [{ path: '/projects/:projectId', element: <WorkspacePage /> }],
+    { initialEntries: ['/projects/project-1'] },
+  )
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByText('gen-form-short')).toBeTruthy()
+  // 整篇任务不属于任何一章：按章取任务会一条都取不到，审稿报告就整块消失了。
+  expect(await screen.findByText('short-review-1')).toBeTruthy()
+  expect(screen.getByText('timeline-task-short-chapter-none')).toBeTruthy()
+
+  fireEvent.click(screen.getByRole('button', { name: 'chapter-2' }))
+  await screen.findByText('write-page-2')
+
+  fireEvent.click(screen.getByRole('button', { name: 'start-short' }))
+  // 整篇任务不产出章节 Plan，翻到 Plan 页只会永远停在「等待计划」。
+  expect(screen.queryByText('plan-page-2')).toBeNull()
+
+  expect(screen.getByText('short-review-1')).toBeTruthy()
+  expect(screen.getByText('timeline-task-short-chapter-none')).toBeTruthy()
+})
+
+it('shows the short-form panels instead of the long-form ones on a short book', async () => {
+  mockShortBook([])
+
+  const router = createMemoryRouter(
+    [{ path: '/projects/:projectId', element: <WorkspacePage /> }],
+    { initialEntries: ['/projects/project-1'] },
+  )
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByText('gen-form-short')).toBeTruthy()
+  expect(screen.getByText('short-review-0')).toBeTruthy()
+  expect(screen.queryByText('audit-panel')).toBeNull()
+  expect(screen.queryByText('candidate-panel')).toBeNull()
+  expect(screen.queryByText('lessons-panel')).toBeNull()
+})
+
+it('still shows the long-form panels on a book without a form', async () => {
+  vi.mocked(api.listProjects).mockResolvedValue([{ ...shortProject, form: undefined }])
+  vi.mocked(api.listChapters).mockResolvedValue([])
+  vi.mocked(api.listCandidates).mockResolvedValue([])
+  vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] })
+  vi.mocked(api.listForeshadows).mockResolvedValue([])
+  vi.mocked(api.listTasks).mockResolvedValue([])
+
+  const router = createMemoryRouter(
+    [{ path: '/projects/:projectId', element: <WorkspacePage /> }],
+    { initialEntries: ['/projects/project-1'] },
+  )
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByText('gen-form-long')).toBeTruthy()
+  expect(screen.getByText('audit-panel')).toBeTruthy()
+  expect(screen.getByText('candidate-panel')).toBeTruthy()
+  expect(screen.getByText('lessons-panel')).toBeTruthy()
+  expect(screen.queryByText('short-review-0')).toBeNull()
 })

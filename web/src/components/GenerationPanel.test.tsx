@@ -13,6 +13,7 @@ vi.mock('../lib/api', async (importOriginal) => {
       ...actual.api,
       generateChapter: vi.fn(),
       generateBatch: vi.fn(),
+      generateShort: vi.fn(),
     },
   }
 })
@@ -202,4 +203,59 @@ it('manual mode is sent with the chapter request and disables batch generation',
     { seq: 17, mode: 'manual' },
   ))
   expect(onTaskStart).toHaveBeenCalledWith('manual-17', undefined, 17, 'manual')
+})
+
+it('starts a short book as one whole story and binds no chapter to the task', async () => {
+  vi.mocked(api.generateShort).mockResolvedValue({ task_id: 'task-short', trace_id: 'trace-short', status: 'queued' })
+  const onTaskStart = vi.fn()
+
+  render(
+    <GenerationPanel
+      projectId="project-1"
+      chapters={[]}
+      selectedChapter={null}
+      form="short"
+      onTaskStart={onTaskStart}
+    />,
+  )
+
+  fireEvent.click(screen.getByRole('button', { name: '开始写全篇' }))
+
+  await waitFor(() => expect(api.generateShort).toHaveBeenCalledWith('project-1'))
+  // 整篇任务不属于任何一章：多带一个 chapterSeq 就会被右栏按章过滤掉，整条流转直接空掉。
+  expect(onTaskStart).toHaveBeenCalledWith('task-short')
+  expect((await screen.findByRole('status')).textContent).toContain('全篇写作任务已创建')
+})
+
+it('offers no chapter-level control on a short book', () => {
+  render(
+    <GenerationPanel
+      projectId="project-1"
+      chapters={[]}
+      selectedChapter={null}
+      form="short"
+      onTaskStart={() => {}}
+    />,
+  )
+
+  expect(screen.queryByLabelText('写作指令（可留空）')).toBeNull()
+  expect(screen.queryByRole('button', { name: /写下一章|重写本章|发起批次/ })).toBeNull()
+  expect(screen.getByText('整篇一次成稿，任务里依次跑成稿、审稿，需要时再改稿。')).toBeTruthy()
+})
+
+it('shows why a short book cannot start yet', async () => {
+  vi.mocked(api.generateShort).mockRejectedValue(new ApiError(400, '该作品不是短篇形态', null))
+
+  render(
+    <GenerationPanel
+      projectId="project-1"
+      chapters={[]}
+      selectedChapter={null}
+      form="short"
+      onTaskStart={() => {}}
+    />,
+  )
+
+  fireEvent.click(screen.getByRole('button', { name: '开始写全篇' }))
+  expect((await screen.findByRole('alert')).textContent).toContain('该作品不是短篇形态')
 })

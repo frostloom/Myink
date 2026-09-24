@@ -28,6 +28,8 @@ export interface Project {
   /** 每章目标字数（§6.9 三层字数控制：max_tokens 换算 + L1 长度门禁 + prompt 注入） */
   target_words: number | null
   creation_status?: 'draft' | 'setup_confirmed' | 'ready' | 'legacy_ready'
+  /** 作品形态：短篇没有「下一章」，工作台/大纲页按它分叉 */
+  form?: 'long' | 'short'
 }
 
 export interface ProjectCreation {
@@ -36,6 +38,13 @@ export interface ProjectCreation {
     premise?: string
     chapter_count?: number
     storyline?: string
+    form?: 'long' | 'short'
+    /** 建书时填的每章字数；短篇的实际篇幅以确认后的方案为准 */
+    chars_per_chapter?: number
+    /** 方案里的篇幅被归一过（如 10 章 × 8000 → 10 章 × 2000），前端要解释这件事 */
+    lengths_compressed?: boolean
+    /** 审纲建议改稿但两版都被打回时的痕迹（建议不是闸门，不拦方案） */
+    outline_warning?: string | null
     setup_draft?: Record<string, unknown>
     outline_draft?: Partial<BookOutline>
     setup_error?: string | null
@@ -167,7 +176,24 @@ export interface AgentRun {
     approved_plan?: ChapterPlan
     changed?: boolean
     status?: string
+    /** 短篇审稿结论（short_review 那条运行记录；短篇没有全局审计，这是全篇唯一的出口） */
+    short_review?: ShortReview
+    /** 补写之后仍为空的章号（1-based，正常为 []） */
+    empty_chapters?: number[]
+    /** 逐章字数观测（只回给用户看，不拦稿、不落库） */
+    length_findings?: Finding[]
+    /** 审稿要求改稿且改稿真的落下来了 */
+    revised?: boolean
   } | null
+}
+
+/** 短篇审稿结论（short_runner._review）：warning 是降级说明，非空时必须让用户看见。 */
+export interface ShortReview {
+  verdict: 'pass' | 'revise'
+  issues: string[]
+  suggestions: string[]
+  /** 审稿未完成 / 无法解析 → 按通过处理，这里说明原因 */
+  warning?: string | null
 }
 
 export type WritingMode = 'auto' | 'manual'
@@ -496,6 +522,10 @@ export interface CreateProjectBody {
   storyline?: string
   title: string
   genre?: string
+  /** 作品形态：短篇走另一条生成管道（整篇一次成稿），章数区间与大纲形状都不同 */
+  form?: 'long' | 'short'
+  /** 每章字数（短篇用；长篇的每章字数走 target_words） */
+  chars_per_chapter?: number
   /** 传入（含 null）即走题材包建书，显示名锁定为包名 */
   primary_id?: string | null
   secondary_id?: string | null
@@ -540,6 +570,25 @@ export interface OutlineStage {
   beats?: string[]
 }
 
+/** 卷内逐章细纲（**短篇专用**：长篇明令禁止逐章，走 stages；短篇靠它一次成稿） */
+export interface OutlineChapter {
+  /** 短篇方案里的章号（1-based，必须齐 1..N——写手照它逐章落块） */
+  chapter_seq?: number
+  /** 旧数据里的章号写法 */
+  seq?: number
+  title?: string
+  goal?: string
+  beats?: string[]
+  /** 本章的关键场景（短篇方案六字段之一） */
+  key_scene?: string
+  /** 本章人物要做的动作 */
+  character_action?: string
+  /** 本章的升级或回报落地 */
+  escalation_or_payoff?: string
+  /** 章末钩子 */
+  hook?: string
+}
+
 /** 整书大纲卷（题材决定卷跨度；卷下是阶段，不是逐章） */
 export interface OutlineVolume {
   volume_seq?: number
@@ -551,7 +600,7 @@ export interface OutlineVolume {
   chapter_start?: number
   chapter_end?: number
   stages?: OutlineStage[]
-  chapters?: Array<{ seq?: number; title?: string; goal?: string; beats?: string[] }>
+  chapters?: OutlineChapter[]
 }
 
 /** 整书大纲草稿请求（§11 ③：梗概 + 大致章节数 + 大致故事线 → Planner 提案） */
@@ -559,6 +608,8 @@ export interface OutlineDraftBody {
   premise: string
   chapter_count: number
   storyline: string
+  /** 每章字数（短篇用；长篇的每章字数走 target_words，§6.9） */
+  chars_per_chapter?: number
 }
 
 /** 整书大纲草稿响应（不落库可反复生成；LLM 失败 → outline:{} + error 降级） */
@@ -588,7 +639,7 @@ export interface OutlineConfirmBody {
     chapter_start?: number
     chapter_end?: number
     stages?: OutlineStage[]
-    chapters?: Array<{ title: string; goal: string; beats: string[] }>
+    chapters?: OutlineChapter[]
   }>
   premise: string
   chapter_count: number

@@ -26,10 +26,18 @@ import {
   splitDraft,
   type SetupSection,
 } from '../lib/bookDraft'
-import type { BookOutline, OutlineStage, OutlineVolume, Project } from '../types'
+import type { BookOutline, OutlineChapter, OutlineStage, OutlineVolume, Project } from '../types'
 import styles from './NewProjectPage.module.css'
 
 const PENDING_PROJECT_CREATION_KEY = 'myink.pending-project-creation'
+
+// 短篇形态参数（docs/SHORT-FORM.md §5）：长篇的章数/每章字数区间与短篇不同，
+// 全篇总量上限决定后端会不会把每章字数压下来，压了就得告诉用户。
+const SHORT_CHAPTER_MIN = 1
+const SHORT_CHAPTER_MAX = 10
+const SHORT_CHARS_MIN = 1000
+const SHORT_CHARS_MAX = 8000
+const SHORT_TOTAL_MAX = 20000
 
 function pendingProjectCreationId(): string {
   const existing = window.sessionStorage.getItem(PENDING_PROJECT_CREATION_KEY)
@@ -96,8 +104,12 @@ export default function NewProjectPage() {
   const [secondaryId, setSecondaryId] = useState<string | null>(null)
   const [genreFields, setGenreFields] = useState<GenreFields>(emptyFields())
   const [premise, setPremise] = useState('')
+  // 作品形态：短篇走另一条生成管道（整篇一次成稿），章数/每章字数的区间都不同
+  const [form, setForm] = useState<'long' | 'short'>('long')
   // 每章目标字数（§6.9 三层字数控制；500–20000，默认 3000）
   const [targetWords, setTargetWords] = useState('3000')
+  // 短篇每章字数（1000–8000；全篇总量超上限时后端会压下来并回传提示）
+  const [shortChars, setShortChars] = useState('2000')
   const [projects, setProjects] = useState<Project[]>([])
   const [pid, setPid] = useState<string | null>(null)
   const [section, setSection] = useState<SetupSection | null>(null)
@@ -108,6 +120,9 @@ export default function NewProjectPage() {
   const [outlineStoryline, setOutlineStoryline] = useState('')
   const [outline, setOutline] = useState<BookOutline | null>(null)
   const [outlineError, setOutlineError] = useState<string | null>(null)
+  // 短篇方案的服务端回执：字数被压到多少（null = 没压过）、审纲留了改稿痕（都要让用户看见，§8 风险）
+  const [compressedChars, setCompressedChars] = useState<number | null>(null)
+  const [outlineWarning, setOutlineWarning] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(resumeId ? 'restore' : null)
   const [banner, setBanner] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
@@ -139,7 +154,9 @@ export default function NewProjectPage() {
     setSecondaryId(null)
     setGenreFields(emptyFields())
     setPremise('')
+    setForm('long')
     setTargetWords('3000')
+    setShortChars('2000')
     setSection(null)
     setDraftError(null)
     setSetupConfirmed(false)
@@ -147,6 +164,8 @@ export default function NewProjectPage() {
     setOutlineStoryline('')
     setOutline(null)
     setOutlineError(null)
+    setCompressedChars(null)
+    setOutlineWarning(null)
     setBanner(null)
     setOk(null)
     setBusy(resumeId ? 'restore' : null)
@@ -161,7 +180,9 @@ export default function NewProjectPage() {
       setPid(project.id)
       setTitle(project.title)
       setSavedTitle(project.title)
+      setForm(project.form ?? context.form ?? 'long')
       setTargetWords(String(project.target_words ?? 3000))
+      setShortChars(String(context.chars_per_chapter ?? 2000))
       setPremise(context.premise ?? '')
       setOutlineCount(String(context.chapter_count ?? 200))
       setOutlineStoryline(context.storyline ?? '')
@@ -169,6 +190,8 @@ export default function NewProjectPage() {
       setSetupConfirmed(project.creation_status === 'setup_confirmed')
       setDraftError(context.setup_error ?? null)
       setOutlineError(context.outline_error ?? null)
+      setCompressedChars(context.lengths_compressed ? context.chars_per_chapter ?? null : null)
+      setOutlineWarning(context.outline_warning ?? null)
       setOutline({ objective: context.outline_draft?.objective ?? '', volumes: context.outline_draft?.volumes ?? [] })
       setOk('已恢复待完成作品，可继续确认设定与大纲；不会重复创建作品。')
     }).catch((err) => { if (!disposed) setBanner(ApiMessage(err, '恢复草稿失败，请刷新重试')) })
@@ -179,6 +202,29 @@ export default function NewProjectPage() {
   const primary = catalog.find((item) => item.id === primaryId) ?? null
   const secondary = catalog.find((item) => item.id === secondaryId) ?? null
   const genreLabel = displayGenre(primary, secondary)
+  const isShort = form === 'short'
+
+  /** 形态切换：只保留在新形态区间内的章数，越界就换成该形态的默认值 */
+  function pickForm(next: 'long' | 'short') {
+    if (busy === 'restore' || pid !== null) return
+    setForm(next)
+    const n = Number(outlineCount)
+    const inRange = next === 'short'
+      ? n >= SHORT_CHAPTER_MIN && n <= SHORT_CHAPTER_MAX
+      : n >= 50 && n <= 1000
+    if (!inRange) setOutlineCount(next === 'short' ? '5' : '200')
+  }
+
+  /** 短篇方案的服务端回执（归一后的字数、审纲留痕）只落在创建上下文里，要再拉一次才算看见 */
+  async function refreshShortNotice(forPid: string) {
+    try {
+      const { context } = await api.getCreation(forPid)
+      setCompressedChars(context.lengths_compressed ? context.chars_per_chapter ?? null : null)
+      setOutlineWarning(context.outline_warning ?? null)
+    } catch {
+      /* 回执是附加信息，读不到就不显示 */
+    }
+  }
 
   function pickPrimary(id: string) {
     const next = primaryId === id ? null : id
@@ -204,14 +250,21 @@ export default function NewProjectPage() {
       return
     }
     const words = Number(targetWords)
-    if (!Number.isInteger(words) || words < 500 || words > 20000) {
+    if (!isShort && (!Number.isInteger(words) || words < 500 || words > 20000)) {
       setBanner('目标字数需为 500–20000 的整数')
       return
     }
     const finalTitle = title.trim() || '未命名作品'
     const chapterCount = Number(outlineCount)
-    if (!Number.isInteger(chapterCount) || chapterCount < 50 || chapterCount > 1000) {
-      setBanner('大致章节数需为 50–1000 的整数')
+    const countMin = isShort ? SHORT_CHAPTER_MIN : 50
+    const countMax = isShort ? SHORT_CHAPTER_MAX : 1000
+    if (!Number.isInteger(chapterCount) || chapterCount < countMin || chapterCount > countMax) {
+      setBanner(isShort ? '大致章节数需为 1–10 的整数' : '大致章节数需为 50–1000 的整数')
+      return
+    }
+    const chars = Number(shortChars)
+    if (isShort && (!Number.isInteger(chars) || chars < SHORT_CHARS_MIN || chars > SHORT_CHARS_MAX)) {
+      setBanner('每章字数需为 1000–8000 的整数')
       return
     }
     let requestId: string
@@ -230,7 +283,10 @@ export default function NewProjectPage() {
         primary_id: primaryId,
         secondary_id: secondaryId,
         genre_fields: genreFields,
-        target_words: words,
+        // 短篇的篇幅走 chars_per_chapter（长篇的每章字数走 target_words），互不代填
+        ...(isShort
+          ? { form: 'short' as const, chars_per_chapter: chars }
+          : { target_words: words }),
         premise: brief,
         chapter_count: chapterCount,
         storyline: outlineStoryline.trim(),
@@ -311,8 +367,10 @@ export default function NewProjectPage() {
   // ③ 提案保存到创建上下文供恢复；确认后才写入正式大纲。
   async function generateOutline(forPid: string, managed = false) {
     const cc = Number(outlineCount)
-    if (!Number.isInteger(cc) || cc < 50 || cc > 1000) {
-      setBanner('大致章节数需为 50–1000 的整数')
+    const countMin = isShort ? SHORT_CHAPTER_MIN : 50
+    const countMax = isShort ? SHORT_CHAPTER_MAX : 1000
+    if (!Number.isInteger(cc) || cc < countMin || cc > countMax) {
+      setBanner(isShort ? '大致章节数需为 1–10 的整数' : '大致章节数需为 50–1000 的整数')
       return false
     }
     if (!managed) setBusy('outline-draft')
@@ -323,6 +381,7 @@ export default function NewProjectPage() {
         premise: premise.trim(),
         chapter_count: cc,
         storyline: outlineStoryline.trim(),
+        ...(isShort ? { chars_per_chapter: Number(shortChars) } : {}),
       })
       // 降级时 outline 为 {} → 归一为空结构，保证可编辑面板始终可渲染。
       setOutline({
@@ -330,6 +389,7 @@ export default function NewProjectPage() {
         volumes: Array.isArray(resp.outline.volumes) ? resp.outline.volumes : [],
       })
       setOutlineError(resp.error)
+      if (isShort) await refreshShortNotice(forPid)
       return !resp.error
     } catch (err) {
       setBanner(ApiMessage(err, '生成大纲失败，请重试'))
@@ -370,6 +430,20 @@ export default function NewProjectPage() {
           goal: s.goal,
           beats: s.beats ?? [],
         })),
+        // 短篇写手读的是逐章细纲，缺它就整篇成稿无从落地；长篇不传（形状是卷+阶段）
+        ...(isShort
+          ? {
+              chapters: (v.chapters ?? []).map((c) => ({
+                chapter_seq: c.chapter_seq,
+                title: c.title ?? '',
+                goal: c.goal ?? '',
+                key_scene: c.key_scene ?? '',
+                character_action: c.character_action ?? '',
+                escalation_or_payoff: c.escalation_or_payoff ?? '',
+                hook: c.hook ?? '',
+              })),
+            }
+          : {}),
       })),
       premise: premise.trim(),
       chapter_count: Number(outlineCount) || 0,
@@ -437,6 +511,21 @@ export default function NewProjectPage() {
     setOutline((o) =>
       o
         ? { ...o, volumes: o.volumes.map((v, j) => (j === vi ? { ...v, ...patch } : v)) }
+        : o,
+    )
+
+  /** 短篇逐章细纲的编辑（章号不可手改：后端要求 1..N 齐整，改坏了确认必失败） */
+  const updateShortChapter = (vi: number, ci: number, patch: Partial<OutlineChapter>) =>
+    setOutline((o) =>
+      o
+        ? {
+            ...o,
+            volumes: o.volumes.map((v, j) =>
+              j === vi
+                ? { ...v, chapters: (v.chapters ?? []).map((c, k) => (k === ci ? { ...c, ...patch } : c)) }
+                : v,
+            ),
+          }
         : o,
     )
 
@@ -583,19 +672,75 @@ export default function NewProjectPage() {
                 </fieldset>
               </details>
             </div>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>每章目标字数（500–20000）</span>
-              <input
-                className="input"
-                type="number"
-                min={500}
-                max={20000}
-                step={100}
-                value={targetWords}
-                disabled={busy === 'restore' || pid !== null}
-                onChange={(e) => setTargetWords(e.target.value)}
-              />
-            </label>
+            <div className={styles.field}>
+              <span className={styles.fieldLabel}>形态</span>
+              <div className={styles.genreChips}>
+                <button
+                  type="button"
+                  disabled={busy === 'restore' || pid !== null}
+                  className={styles.chip + (form === 'long' ? ' ' + styles.chipOn : '')}
+                  onClick={() => pickForm('long')}
+                >
+                  长篇
+                </button>
+                <button
+                  type="button"
+                  disabled={busy === 'restore' || pid !== null}
+                  className={styles.chip + (form === 'short' ? ' ' + styles.chipOn : '')}
+                  onClick={() => pickForm('short')}
+                >
+                  短篇
+                </button>
+              </div>
+              <div className={styles.genreSubTitle}>
+                长篇按卷+阶段推进、逐章确认；短篇整篇一次成稿，不做伏笔池与全局审计。
+              </div>
+            </div>
+            {isShort ? (
+              <>
+                <label className={styles.field}>
+                  <span className={styles.fieldLabel}>章数（1–10）</span>
+                  <input
+                    className="input"
+                    type="number"
+                    min={SHORT_CHAPTER_MIN}
+                    max={SHORT_CHAPTER_MAX}
+                    value={outlineCount}
+                    disabled={busy === 'restore' || pid !== null}
+                    onChange={(e) => setOutlineCount(e.target.value)}
+                  />
+                </label>
+                <label className={styles.field}>
+                  <span className={styles.fieldLabel}>
+                    每章字数（{SHORT_CHARS_MIN}–{SHORT_CHARS_MAX}）
+                  </span>
+                  <input
+                    className="input"
+                    type="number"
+                    min={SHORT_CHARS_MIN}
+                    max={SHORT_CHARS_MAX}
+                    step={500}
+                    value={shortChars}
+                    disabled={busy === 'restore' || pid !== null}
+                    onChange={(e) => setShortChars(e.target.value)}
+                  />
+                </label>
+              </>
+            ) : (
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>每章目标字数（500–20000）</span>
+                <input
+                  className="input"
+                  type="number"
+                  min={500}
+                  max={20000}
+                  step={100}
+                  value={targetWords}
+                  disabled={busy === 'restore' || pid !== null}
+                  onChange={(e) => setTargetWords(e.target.value)}
+                />
+              </label>
+            )}
             <label className={styles.field}>
               <span className={styles.fieldLabel}>创作简报</span>
               <textarea
@@ -858,16 +1003,28 @@ export default function NewProjectPage() {
                 <div className="banner banner-warning">LLM 生成降级：{outlineError}（可手填后确认）</div>
               )}
               <div className={styles.block}>
-                <span className={styles.fieldLabel}>大致章节数（50–1000）</span>
+                <span className={styles.fieldLabel}>
+                  {isShort
+                    ? `大致章节数（${SHORT_CHAPTER_MIN}–${SHORT_CHAPTER_MAX}）`
+                    : '大致章节数（50–1000）'}
+                </span>
                 <input
                   className="input"
                   type="number"
-                  min={50}
-                  max={1000}
+                  min={isShort ? SHORT_CHAPTER_MIN : 50}
+                  max={isShort ? SHORT_CHAPTER_MAX : 1000}
                   value={outlineCount}
                   onChange={(e) => setOutlineCount(e.target.value)}
                 />
               </div>
+              {isShort && compressedChars !== null && (
+                <div className="banner banner-warning">
+                  每章字数已按全篇 {SHORT_TOTAL_MAX} 字上限归一为每章 {compressedChars} 字，生成时按这个数走。
+                </div>
+              )}
+              {isShort && outlineWarning && (
+                <div className="banner banner-warning">方案审纲留痕：{outlineWarning}</div>
+              )}
               <details className={styles.block}>
                 <summary className={styles.fieldLabel}>
                   补充故事线（可选，不填则由 Planner 自动推导）
@@ -892,7 +1049,119 @@ export default function NewProjectPage() {
                       placeholder="如：从杂役修士成为宗门长老并公开父辈冤案真相"
                     />
                   </div>
-                  {outline.volumes.map((v, vi) => {
+                  {isShort && (
+                    <div className={styles.block}>
+                      <span className={styles.fieldLabel}>
+                        逐章方案（短篇唯一一卷；写手照它一次成稿，章号不可改）
+                      </span>
+                      {outline.volumes.length === 0 && (
+                        <div className="empty">方案为空（LLM 未产出），请点上方「重新生成大纲」。</div>
+                      )}
+                      {outline.volumes.map((v, vi) => (
+                        <div key={vi} className={styles.block}>
+                          <label className={styles.field}>
+                            <span className={styles.fieldLabel}>篇名</span>
+                            <input
+                              className="input"
+                              placeholder="全篇 · 篇名"
+                              value={v.title}
+                              onChange={(e) => updateVolume(vi, { title: e.target.value })}
+                            />
+                          </label>
+                          <label className={styles.field}>
+                            <span className={styles.fieldLabel}>主题</span>
+                            <input
+                              className="input"
+                              placeholder="一句话主题"
+                              value={v.theme ?? ''}
+                              onChange={(e) => updateVolume(vi, { theme: e.target.value })}
+                            />
+                          </label>
+                          <label className={styles.field}>
+                            <span className={styles.fieldLabel}>全篇目标（结局时主角必须达到的可验证状态）</span>
+                            <textarea
+                              className={`textarea ${styles.growArea}`}
+                              rows={3}
+                              value={v.goal}
+                              onChange={(e) => updateVolume(vi, { goal: e.target.value })}
+                            />
+                          </label>
+                          {(v.chapters ?? []).map((c, ci) => {
+                            const seq = c.chapter_seq ?? ci + 1
+                            return (
+                              <div key={ci} className={styles.stageFold}>
+                                <div className={styles.block}>
+                                  <div className={styles.foldTitle}>
+                                    第 {seq} 章{c.title ? ` · ${c.title}` : ''}
+                                  </div>
+                                  <label className={styles.field}>
+                                    <span className={styles.fieldLabel}>第 {seq} 章 · 章节标题</span>
+                                    <input
+                                      className="input"
+                                      placeholder="像平台内容，不要文艺化总结"
+                                      value={c.title ?? ''}
+                                      onChange={(e) => updateShortChapter(vi, ci, { title: e.target.value })}
+                                    />
+                                  </label>
+                                  <label className={styles.field}>
+                                    <span className={styles.fieldLabel}>第 {seq} 章 · 本章目标</span>
+                                    <textarea
+                                      className="textarea"
+                                      rows={2}
+                                      placeholder="本章结束时必须达到的可验证状态"
+                                      value={c.goal ?? ''}
+                                      onChange={(e) => updateShortChapter(vi, ci, { goal: e.target.value })}
+                                    />
+                                  </label>
+                                  <label className={styles.field}>
+                                    <span className={styles.fieldLabel}>第 {seq} 章 · 关键场面</span>
+                                    <input
+                                      className="input"
+                                      placeholder="谁 + 在何处 + 做什么"
+                                      value={c.key_scene ?? ''}
+                                      onChange={(e) => updateShortChapter(vi, ci, { key_scene: e.target.value })}
+                                    />
+                                  </label>
+                                  <label className={styles.field}>
+                                    <span className={styles.fieldLabel}>第 {seq} 章 · 角色动作</span>
+                                    <input
+                                      className="input"
+                                      placeholder="主角主动做出的选择或行动"
+                                      value={c.character_action ?? ''}
+                                      onChange={(e) =>
+                                        updateShortChapter(vi, ci, { character_action: e.target.value })
+                                      }
+                                    />
+                                  </label>
+                                  <label className={styles.field}>
+                                    <span className={styles.fieldLabel}>第 {seq} 章 · 压力升级或回报</span>
+                                    <input
+                                      className="input"
+                                      placeholder="本章的压力升级或回报"
+                                      value={c.escalation_or_payoff ?? ''}
+                                      onChange={(e) =>
+                                        updateShortChapter(vi, ci, { escalation_or_payoff: e.target.value })
+                                      }
+                                    />
+                                  </label>
+                                  <label className={styles.field}>
+                                    <span className={styles.fieldLabel}>第 {seq} 章 · 章尾钩子</span>
+                                    <input
+                                      className="input"
+                                      placeholder="让读者接着读下一章的那个具体理由"
+                                      value={c.hook ?? ''}
+                                      onChange={(e) => updateShortChapter(vi, ci, { hook: e.target.value })}
+                                    />
+                                  </label>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {!isShort && outline.volumes.map((v, vi) => {
                     const volumeRange = chapterRangeLabel(v.chapter_start, v.chapter_end)
                     const stageCount = (v.stages ?? []).length
                     return (
@@ -1079,9 +1348,12 @@ export default function NewProjectPage() {
                     )
                   })}
                   <div className={styles.saveRow}>
-                    <button type="button" className="btn btn-quiet" disabled={busy !== null} onClick={addVolume}>
-                      + 新增一卷
-                    </button>
+                    {/* 短篇只能有一卷：不给「新增一卷」，避免做出后端必拒的方案 */}
+                    {!isShort && (
+                      <button type="button" className="btn btn-quiet" disabled={busy !== null} onClick={addVolume}>
+                        + 新增一卷
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="btn btn-quiet"

@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { afterEach, expect, it, vi } from 'vitest'
 import NewProjectPage from './NewProjectPage'
 import { api } from '../lib/api'
-import type { OutlineDraft } from '../types'
+import type { OutlineDraft, ProjectCreation } from '../types'
 
 vi.mock('../context/AuthContext', () => ({ useAuth: () => ({ logout: vi.fn() }) }))
 vi.mock('../components/RankingsPanel', () => ({ RankingsPanel: () => null }))
@@ -204,3 +204,108 @@ it.each(['getItem', 'setItem'] as const)(
     expect(api.createProject).not.toHaveBeenCalled()
   },
 )
+
+function shortBookDraft(
+  context: ProjectCreation['context'],
+  creation_status: ProjectCreation['project']['creation_status'] = 'setup_confirmed',
+): ProjectCreation {
+  return {
+    project: { id: 'short-id', title: '渡口', genre: '悬疑', current_chapter: 0,
+      target_words: 3000, creation_status, form: 'short' as const },
+    context: { premise: '最后一班船', form: 'short' as const, chapter_count: 2,
+      chars_per_chapter: 2000, ...context },
+  }
+}
+
+it('creates a short book with the short chapter range and its per-chapter length', async () => {
+  vi.mocked(api.createProject).mockResolvedValue({
+    id: 'short-id', title: '渡口', genre: '悬疑', current_chapter: 0,
+    target_words: 3000, creation_status: 'draft', form: 'short',
+  })
+  vi.mocked(api.setupDraft).mockResolvedValue({ draft: {}, error: null })
+  vi.mocked(api.outlineDraft).mockResolvedValue({ outline: { objective: '', volumes: [] }, error: null })
+  vi.mocked(api.getCreation).mockResolvedValue(shortBookDraft({}))
+  render(<MemoryRouter><NewProjectPage /></MemoryRouter>)
+
+  fireEvent.click(screen.getByRole('button', { name: '短篇' }))
+  fillCreationBrief()
+  fireEvent.change(screen.getByLabelText('章数（1–10）'), { target: { value: '4' } })
+  fireEvent.change(screen.getByLabelText('每章字数（1000–8000）'), { target: { value: '3000' } })
+  fireEvent.click(screen.getByRole('button', { name: '创建作品' }))
+
+  await waitFor(() => expect(api.createProject).toHaveBeenCalledTimes(1))
+  expect(vi.mocked(api.createProject).mock.calls[0][0]).toMatchObject({
+    form: 'short', chapter_count: 4, chars_per_chapter: 3000,
+  })
+})
+
+it('edits and confirms the short plan chapter by chapter', async () => {
+  vi.mocked(api.getCreation).mockResolvedValue(shortBookDraft({
+    outline_draft: {
+      objective: '让青溪渡停航',
+      volumes: [{
+        volume_seq: 1, title: '全篇 · 渡口', theme: '离开', goal: '查清父亲死因',
+        chapter_start: 1, chapter_end: 2,
+        chapters: [
+          { chapter_seq: 1, title: '末班船', goal: '上船', key_scene: '码头夜雨',
+            character_action: '登船', escalation_or_payoff: '船票是假的', hook: '船开了' },
+          { chapter_seq: 2, title: '对岸', goal: '下船', key_scene: '雾中渡口',
+            character_action: '下船', escalation_or_payoff: '真相揭开', hook: '回到起点' },
+        ],
+      }],
+    },
+  }))
+  vi.mocked(api.confirmOutline).mockResolvedValue({ outline: null })
+  renderPage('/projects/new?draft=short-id')
+
+  expect(await screen.findByDisplayValue('末班船')).toBeTruthy()
+  expect(screen.getByDisplayValue('码头夜雨')).toBeTruthy()
+  // 卷 + 阶段那套是长篇的形状，短篇的写手读的是逐章细纲。
+  expect(screen.queryByText('+ 本卷加一段')).toBeNull()
+
+  fireEvent.change(screen.getByLabelText('第 2 章 · 本章目标'), { target: { value: '下船离开' } })
+  fireEvent.click(screen.getByRole('button', { name: '仅确认大纲并进入' }))
+
+  await waitFor(() => expect(api.confirmOutline).toHaveBeenCalledTimes(1))
+  const body = vi.mocked(api.confirmOutline).mock.calls[0][1]
+  expect(body.chapter_count).toBe(2)
+  expect(body.volumes[0].chapters).toEqual([
+    expect.objectContaining({ chapter_seq: 1, title: '末班船', goal: '上船' }),
+    expect.objectContaining({ chapter_seq: 2, goal: '下船离开', hook: '回到起点' }),
+  ])
+})
+
+it('tells the user when the short plan was compressed or flagged by the plan review', async () => {
+  vi.mocked(api.getCreation).mockResolvedValue(shortBookDraft({
+    chapter_count: 10, chars_per_chapter: 2000, lengths_compressed: true,
+    outline_warning: '两版方案都被审纲建议改稿（第 3 章没有回报落地）；已保留第一版方案',
+  }))
+  renderPage('/projects/new?draft=short-id')
+
+  expect(await screen.findByText(/每章字数已按全篇 20000 字上限归一为每章 2000 字/)).toBeTruthy()
+  expect(screen.getByText(/两版方案都被审纲建议改稿/)).toBeTruthy()
+})
+
+it('keeps the long-form chapter range and sends no short-only fields', async () => {
+  vi.mocked(api.createProject).mockResolvedValue({
+    id: 'long-id', title: '破晓录', genre: '悬疑', current_chapter: 0,
+    target_words: 3000, creation_status: 'draft',
+  })
+  vi.mocked(api.setupDraft).mockResolvedValue({ draft: {}, error: null })
+  vi.mocked(api.outlineDraft).mockResolvedValue({ outline: { objective: '', volumes: [] }, error: null })
+  render(<MemoryRouter><NewProjectPage /></MemoryRouter>)
+
+  expect(screen.queryByLabelText('章数（1–10）')).toBeNull()
+  expect(screen.queryByLabelText('每章字数（1000–8000）')).toBeNull()
+  expect(screen.getByLabelText('每章目标字数（500–20000）')).toBeTruthy()
+
+  fillCreationBrief()
+  fireEvent.click(screen.getByRole('button', { name: '创建作品' }))
+
+  await waitFor(() => expect(api.createProject).toHaveBeenCalledTimes(1))
+  const body = vi.mocked(api.createProject).mock.calls[0][0]
+  expect(body).not.toHaveProperty('form')
+  expect(body).not.toHaveProperty('chars_per_chapter')
+  expect(body.chapter_count).toBe(200)
+  expect(vi.mocked(api.outlineDraft).mock.calls[0][1]).not.toHaveProperty('chars_per_chapter')
+})

@@ -1,0 +1,91 @@
+.panel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.title {
+  min-width: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.headerMeta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.count {
+  color: var(--ink-subtle);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 16px 18px;
+  border-top: 1px solid var(--line);
+}
+
+.section {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.eyebrow {
+  color: var(--ink-subtle);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.list {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.list li {
+  overflow-wrap: anywhere;
+}
+
+.lengthRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.warning {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 2px solid var(--warning);
+  border-radius: 0 8px 8px 0;
+  background: color-mix(in srgb, var(--warning) 10%, var(--surface-1));
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}

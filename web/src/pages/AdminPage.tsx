@@ -22,6 +22,7 @@ import {
   chapterStatusLabel,
   creationStatusLabel,
   nodeLabel,
+  taskChapterLabel,
   taskStatusLabel,
   taskTypeLabel,
 } from '../lib/labels'
@@ -332,7 +333,7 @@ function TaskDetailView({ token, task, onForbidden }: {
           <div>
             <h3>{task.project_title} · {taskTypeLabel(task.task_type)}</h3>
             <p>
-              {task.username} · {task.chapter_seq === null ? '整批' : `第 ${task.chapter_seq} 章`}
+              {task.username} · {taskChapterLabel(task)}
               {' · '}{taskStatusLabel(detail.data?.status ?? task.status)}
             </p>
           </div>
@@ -344,7 +345,7 @@ function TaskDetailView({ token, task, onForbidden }: {
             <div><dt>创建</dt><dd>{formatDate(detail.data.created_at)}</dd></div>
             <div><dt>更新</dt><dd>{formatDate(detail.data.updated_at)}</dd></div>
             <div><dt>任务跨度</dt><dd>{formatDuration(detail.data.elapsed_ms)}</dd></div>
-            <div><dt>目标章节</dt><dd>{detail.data.chapter_seq ?? '整批'}</dd></div>
+            <div><dt>目标章节</dt><dd>{taskChapterLabel(detail.data)}</dd></div>
             <div><dt>批次任务</dt><dd>{detail.data.batch_task_id ?? '—'}</dd></div>
             <div><dt>重试</dt><dd>{detail.data.retry_count}</dd></div>
           </dl>
@@ -403,7 +404,7 @@ function TasksView({ token, onForbidden }: {
               <td>{task.username}</td>
               <td>{taskTypeLabel(task.task_type)}</td>
               <td>{taskStatusLabel(task.status)}</td>
-              <td>{task.chapter_seq === null ? '整批' : `第 ${task.chapter_seq} 章`}</td>
+              <td>{taskChapterLabel(task)}</td>
               <td>{task.retry_count}</td>
               <td>{task.metrics.run_count}</td>
               <td>{(task.metrics.input_tokens + task.metrics.output_tokens).toLocaleString()}</td>

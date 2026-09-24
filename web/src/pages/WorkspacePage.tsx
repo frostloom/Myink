@@ -10,6 +10,7 @@ import { ChapterList } from '../components/ChapterList'
 import { GenerationPanel } from '../components/GenerationPanel'
 import { LessonsPanel } from '../components/LessonsPanel'
 import { ProjectRail } from '../components/ProjectRail'
+import { ShortStoryPanel } from '../components/ShortStoryPanel'
 import { TaskTimeline } from '../components/TaskTimeline'
 import { StreamingChapterView } from '../components/StreamingChapterView'
 import { useAuth } from '../context/AuthContext'
@@ -60,6 +61,9 @@ export default function WorkspacePage() {
   // 只允许本页刚发起/续跑的任务在终态时自动跳章一次。历史任务恢复为 terminal 后
   // 不能持续把用户从其他章节拉回待确认章。
   const pendingAutoOpen = useRef<{ taskId: string; chapterSeq: number | null } | null>(null)
+  // 作品形态：短篇整篇一次成稿，没有「下一章」，也没有单章的记忆层与审核。
+  // 它那条任务不属于任何一章，所以右栏按章过滤与按章取任务都得绕开。
+  const isShortBook = projects.find((p) => p.id === projectId)?.form === 'short'
 
   useEffect(() => {
     activeTaskIdRef.current = activeTaskId
@@ -287,7 +291,8 @@ export default function WorkspacePage() {
       taskStartVersion.current += 1
       setBatchTotal(total ?? null)
       setActiveTaskId(taskId)
-      setCenterView('plan')
+      // 短篇没有 Plan 产物，翻到 Plan 页只会停在「等待计划」上。
+      if (!isShortBook) setCenterView('plan')
       latestPlanArtifactRef.current = null
       latestWriteArtifactRef.current = null
       pendingAutoOpen.current = { taskId, chapterSeq: chapterSeq ?? null }
@@ -341,7 +346,7 @@ export default function WorkspacePage() {
         }
       })()
     },
-    [accountId, chapters, projectId],
+    [accountId, chapters, projectId, isShortBook],
   )
 
   // 放行本章：resume 同一 task_id 续跑（§6.11 确认流收尾）。taskId 不变但 SSE 已关流，
@@ -451,8 +456,30 @@ export default function WorkspacePage() {
   // 子线程切、单章按发起时带出的章对齐；未选中章则不过滤（时间线整体兜底）。
   const selectedSeq = selectedChapter?.chapter_seq ?? null
 
+  // 短篇：整篇任务不属于任何一章，按章取任务一条都取不到，只能整表取最新那条
+  // short_generate（重进页面后审稿报告要能自己回来）。
+  useEffect(() => {
+    if (!isShortBook) return
+    let cancelled = false
+    const requestVersion = taskStartVersion.current
+    api.listTasks(projectId)
+      .then((tasks) => {
+        if (cancelled || requestVersion !== taskStartVersion.current) return
+        const latest = tasks.find((task) => task.task_type === 'short_generate') ?? null
+        activeTaskIdRef.current = latest?.task_id ?? null
+        setActiveTaskId(latest?.task_id ?? null)
+        setBatchTotal(null)
+        setActiveChapterSeq(null)
+        setReleaseTarget(null)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [projectId, isShortBook])
+
   // 每章只呈现一份状态流转：选章后加载覆盖该章的最新生成任务，实时和历史共用一条流程。
   useEffect(() => {
+    // 短篇走上面那条整篇任务恢复，按章对齐会把整条任务清掉。
+    if (isShortBook) return
     const saved = readActiveWrite(accountId, projectId)
     const pending = pendingAutoOpen.current
     const remembered = pending?.taskId
@@ -514,21 +541,23 @@ export default function WorkspacePage() {
       })
       .catch(() => {})
     return () => { cancelled = true }
-  }, [accountId, projectId, selectedSeq])
+  }, [accountId, projectId, selectedSeq, isShortBook])
   const taskRuns = runsForChapter(task.runs, {
     taskId: activeTaskId,
     batch: batchTotal !== null,
     selectedSeq,
     activeChapterSeq,
   })
-  // 保留该任务的全部执行轮次；重进页面后 rewrite/replan 的前序审核也必须可追溯。
-  const visibleTaskRuns = taskRuns
   const taskNodes = nodesForChapter(task.nodes, {
     taskId: activeTaskId,
     batch: batchTotal !== null,
     selectedSeq,
     activeChapterSeq,
   })
+  // 保留该任务的全部执行轮次；重进页面后 rewrite/replan 的前序审核也必须可追溯。
+  // 短篇任务只有一条线（成稿→审稿→改稿），按章切片会整条滤空。
+  const visibleTaskRuns = isShortBook ? task.runs : taskRuns
+  const visibleTaskNodes = isShortBook ? task.nodes : taskNodes
   const planArtifact = task.artifacts.find((item) => item.chapterSeq === selectedSeq && item.stage === 'plan') ?? null
   const writeArtifact = task.artifacts.find((item) => item.chapterSeq === selectedSeq && item.stage === 'write') ?? null
   const taskIsCreating = task.status === 'queued' || task.status === 'running' || task.status === 'awaiting_plan'
@@ -750,6 +779,7 @@ export default function WorkspacePage() {
           projectId={projectId}
           chapters={chapters}
           selectedChapter={selectedChapter}
+          form={isShortBook ? 'short' : 'long'}
           taskBusy={taskInFlight}
           onTaskStart={handleTaskStart}
         />
@@ -758,16 +788,20 @@ export default function WorkspacePage() {
           taskId={activeTaskId}
           phase={task.phase}
           status={task.status}
-          nodes={taskNodes}
+          nodes={visibleTaskNodes}
           runs={visibleTaskRuns}
           liveNode={liveNode}
           progress={task.progress}
-          chapterSeq={selectedSeq}
+          chapterSeq={isShortBook ? null : selectedSeq}
           error={task.error}
           onRetry={task.retry}
           canControl={batchTotal !== null}
           refresh={task.refresh}
         />
+        {isShortBook ? (
+          // 短篇：没有单章审核，也没有待确认池与复盘经验，整篇唯一的出口是审稿报告。
+          <ShortStoryPanel key={`short-${projectId}`} runs={visibleTaskRuns} />
+        ) : (<>
         <AuditPanel key={`audit-${projectId}-${selectedSeq ?? 'none'}`} runs={visibleTaskRuns} onNavigateChapter={handleNavigateChapter} />
         <CandidatePanel
           key={`${projectId}:${selectedSeq ?? 'none'}`}
@@ -781,6 +815,7 @@ export default function WorkspacePage() {
           referenceNames={candidateReferenceNames}
         />
         <LessonsPanel projectId={projectId} />
+        </>)}
       </aside>
     </div>
   )
