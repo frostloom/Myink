@@ -471,6 +471,131 @@ def test_process_batch_write_order_guard(temp_project, stub_provider):
             r.delete(sse_key(task_id))
 
 
+def _short_body(task_id: str, project_id: str, task_type: str = "short_generate") -> dict:
+    return {"task_id": task_id, "project_id": project_id, "task_type": task_type,
+            "payload": {}, "retry_count": 0, "user_id": None, "trace_id": None,
+            "request_id": task_id, "created_at": ""}
+
+
+def test_short_generate_dispatches_to_the_short_pipeline(temp_project, monkeypatch):
+    """短篇派发：自己的成稿 runner + 落库，不碰长篇那套写序机器。
+
+    短篇没有「下一章」这个调度单位——`_guard_write_order`（只能写 max_seq+1）与
+    `ensure_chapter_placeholder` 都是为按章续写设计的，短篇一旦走进去就写不了。
+    """
+    import myink.worker.processor as processor_mod
+    from myink.short.form import ShortParams
+    from myink.workflow import short_runner
+
+    with tenant_session(temp_project) as db:
+        project = db.get(Project, uuid.UUID(temp_project))
+        project.form = "short"
+        project.creation_context = {"chapter_count": 3, "chars_per_chapter": 2000}
+        db.commit()
+
+    draft = {"chapters": [{"chapter_seq": i, "title": f"第 {i} 章", "body": f"第 {i} 章正文"}
+                         for i in range(1, 4)],
+             "empty_chapters": [], "length_findings": [],
+             "review": {"verdict": "pass", "issues": [], "suggestions": []},
+             "warning": None, "error": None}
+    calls: list = []
+    monkeypatch.setattr(short_runner, "run_short_story",
+                        lambda **kw: calls.append(("write", kw)) or draft)
+    monkeypatch.setattr(short_runner, "persist_short_story",
+                        lambda **kw: calls.append(("persist", kw)) or 3)
+    monkeypatch.setattr(processor_mod, "_guard_write_order",
+                        lambda *a, **k: pytest.fail("短篇不该走章节写序守卫"))
+
+    result = processor_mod._dispatch(_short_body("t-short", temp_project))
+
+    assert [c[0] for c in calls] == ["write", "persist"]
+    assert calls[0][1]["form"] == ShortParams(3, 2000, False), "篇幅按方案与建书上下文归一"
+    assert calls[1][1]["result"] is draft, "落库拿的是成稿结果"
+    assert result["chapters"] == 3 and result["review"]["verdict"] == "pass"
+    assert "error" not in result
+
+
+def test_short_resume_dispatches_to_the_resume_entry(temp_project, monkeypatch):
+    """续跑走 resume 入口（成稿已落库就不重买，§6.12），落库照常。"""
+    import myink.worker.processor as processor_mod
+    from myink.workflow import short_runner
+
+    with tenant_session(temp_project) as db:
+        project = db.get(Project, uuid.UUID(temp_project))
+        project.form = "short"
+        project.creation_context = {"chapter_count": 1, "chars_per_chapter": 8000}
+        db.commit()
+
+    draft = {"chapters": [{"chapter_seq": 1, "title": "第 1 章", "body": "正文"}],
+             "empty_chapters": [], "length_findings": [],
+             "review": {"verdict": "pass", "issues": [], "suggestions": []},
+             "warning": None, "error": None}
+    seen: list = []
+    monkeypatch.setattr(short_runner, "resume_short_story",
+                        lambda **kw: seen.append("resume") or draft)
+    monkeypatch.setattr(short_runner, "run_short_story",
+                        lambda **kw: pytest.fail("续跑不该回到成稿入口"))
+    monkeypatch.setattr(short_runner, "persist_short_story", lambda **kw: seen.append("persist") or 1)
+
+    processor_mod._dispatch(_short_body("t-short", temp_project, "short_resume"))
+
+    assert seen == ["resume", "persist"]
+
+
+def test_a_retried_short_task_resumes_instead_of_rebuying_the_whole_story(temp_project, monkeypatch):
+    """重试（同 task_type 重投，只有 retry_count 涨）要当续跑：成稿已落库就别再买一次整篇。
+
+    一次 160 秒的整篇成稿之后才炸的瞬态失败（审稿段崩、落库后 Redis 抖动）重投时，成稿
+    已经躺在库里了——照 `short_generate` 重跑等于白买整篇。`resume_short_story` 没有落库稿时
+    自己会退回整条，所以走这条路无损。
+    """
+    import myink.worker.processor as processor_mod
+    from myink.workflow import short_runner
+
+    with tenant_session(temp_project) as db:
+        project = db.get(Project, uuid.UUID(temp_project))
+        project.form = "short"
+        project.creation_context = {"chapter_count": 1, "chars_per_chapter": 8000}
+        db.commit()
+
+    draft = {"chapters": [{"chapter_seq": 1, "title": "第 1 章", "body": "正文"}],
+             "empty_chapters": [], "length_findings": [],
+             "review": {"verdict": "pass", "issues": [], "suggestions": []},
+             "warning": None, "error": None}
+    seen: list = []
+    monkeypatch.setattr(short_runner, "resume_short_story",
+                        lambda **kw: seen.append("resume") or draft)
+    monkeypatch.setattr(short_runner, "run_short_story",
+                        lambda **kw: seen.append("write") or draft)
+    monkeypatch.setattr(short_runner, "persist_short_story", lambda **kw: 1)
+
+    body = {**_short_body("t-short", temp_project), "retry_count": 2}
+    processor_mod._dispatch(body)
+
+    assert seen == ["resume"], "重试不能再买一次整篇成稿"
+
+
+def test_a_failed_short_draft_fails_the_task_without_landing_anything(temp_project, monkeypatch):
+    """成稿没回来 → 回 error（worker 据此置 failed），一行都不落库。"""
+    import myink.worker.processor as processor_mod
+    from myink.workflow import short_runner
+
+    with tenant_session(temp_project) as db:
+        project = db.get(Project, uuid.UUID(temp_project))
+        project.form = "short"
+        project.creation_context = {"chapter_count": 1, "chars_per_chapter": 8000}
+        db.commit()
+
+    monkeypatch.setattr(short_runner, "run_short_story",
+                        lambda **kw: {"chapters": [], "error": "provider down"})
+    monkeypatch.setattr(short_runner, "persist_short_story",
+                        lambda **kw: pytest.fail("成稿都没回来，不该落库"))
+
+    result = processor_mod._dispatch(_short_body("t-short", temp_project))
+
+    assert result["error"] == "provider down"
+
+
 def _live_lock_value(worker_id="other-worker") -> str:
     """构造他 worker 正在跑的活锁值（心跳新鲜，§6.12 租约锁格式）。"""
     return json.dumps({"token": "other-token", "worker_id": worker_id,

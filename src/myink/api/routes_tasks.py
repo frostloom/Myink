@@ -70,17 +70,22 @@ def project_access(project_id: str, write: bool = False) -> dict:
     return {"ok": True}
 
 
-def _assert_writable(project_id: str) -> None:
+def _assert_writable(project_id: str, *, form: str | None = None) -> None:
     """写操作前置：草稿状态的书进不了生成队列（409 PROJECT_NOT_READY）。
 
     网关时代这条性质由 `checkAccess(write=true)` 回调本文件的 /access 拿到 409 再改写成
     `{"error": "PROJECT_NOT_READY"}` 得到；现在 Python 自己判。信封保持 detail——
     前端 `api.ts` 取 `error ?? detail` 当 code，PROJECT_NOT_READY 照样命中中文文案。
+
+    `form` 非空时还要求书是那个形态（400）：两条管道各有各的写序，短篇书走逐章生成会把
+    整篇塞成一章、还绕开「一次扣章数」的额度。形态不匹配是客户端问错了东西，不是未就绪。
     """
     with new_session() as db:
         project = db.get(Project, uuid.UUID(project_id))
         if project is None or project.creation_status not in {"ready", "legacy_ready"}:
             raise HTTPException(status_code=409, detail="PROJECT_NOT_READY")
+        if form is not None and (project.form or "long") != form:
+            raise HTTPException(status_code=400, detail="该作品是短篇形态，不能走长篇的逐章生成")
 
 
 class ChapterGenerateBody(BaseModel):
@@ -114,7 +119,7 @@ def generate_chapter(project_id: str, chapter_id: str, body: ChapterGenerateBody
     """
     if body.mode not in {"auto", "manual"}:
         raise HTTPException(status_code=400, detail="invalid_writing_mode")
-    _assert_writable(project_id)
+    _assert_writable(project_id, form="long")
     payload: dict = {
         "chapter_id": chapter_id,
         "seq": body.seq,
@@ -140,10 +145,37 @@ def generate_batch(project_id: str, body: BatchGenerateBody,
     """
     size = min(max(body.size, 1), settings.batch_max_hard)
     start = max(body.start, 1)
-    _assert_writable(project_id)
+    _assert_writable(project_id, form="long")
     return enqueue(user_id=str(identity.id), project_id=project_id, task_type="batch_generate",
                    payload={"size": size, "start": start}, quota_n=size,
                    cost_est=settings.cost_per_chapter * size,
+                   priority=_priority(identity.tier))
+
+
+@router.post("/projects/{project_id}/short/generate",
+             dependencies=[Depends(require_owner)], response_model=TaskEnqueuedOut, status_code=202)
+def generate_short(project_id: str,
+                   identity: _AuthenticatedUser = Depends(current_identity)) -> dict:
+    """短篇全篇生成入队（§13 三层闸门扣「章数」，与批次 size=N 同口径）。
+
+    短篇只有一次任务（成稿 / 审稿 / 改稿都在里面），但它买的是整篇的输出额度——
+    按 1 个任务扣的话，2 万字的整篇只花掉 1 章的配额。
+
+    篇幅参数由 `short_params_for` 从**确认后的方案**与建书上下文读，worker 侧用的是
+    同一份（路由与 worker 各算一套的话，扣费和写手的目标字数会对不上）。
+    """
+    from myink.workflow.short_runner import short_params_for
+
+    _assert_writable(project_id)
+    try:
+        form = short_params_for(project_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return enqueue(user_id=str(identity.id), project_id=project_id, task_type="short_generate",
+                   payload={"chapter_count": form.chapter_count,
+                            "chars_per_chapter": form.chars_per_chapter},
+                   quota_n=form.chapter_count,
+                   cost_est=settings.cost_per_chapter * form.chapter_count,
                    priority=_priority(identity.tier))
 
 
@@ -395,9 +427,11 @@ def resume_task(task_id: str) -> dict:
         owner_id = str(db.get(Project, task.project_id).user_id)
         db.commit()
     # XADD 续跑消息（同 task_id → thread_id 断点续跑，§6.12）。
-    # 按任务类型分流：批次 → batch_resume（batch 图整批续跑）；单章 → chapter_resume
-    # （chapter 图续跑该章，critical 转人工后 resume 走此路径重跑放行）。
-    resume_type = "batch_resume" if task.task_type == "batch_generate" else "chapter_resume"
+    # 按任务类型分流：批次 → batch_resume（batch 图整批续跑）；短篇 → short_resume
+    # （成稿已落库就只接着审稿/改稿）；单章 → chapter_resume（chapter 图续跑该章，
+    # critical 转人工后 resume 走此路径重跑放行）。
+    resume_type = {"batch_generate": "batch_resume",
+                   "short_generate": "short_resume"}.get(task.task_type, "chapter_resume")
     body = {
         "task_id": task_id,
         "task_type": resume_type,

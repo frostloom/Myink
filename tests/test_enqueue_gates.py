@@ -24,7 +24,7 @@ from conftest import identity_headers
 from myink.api.main import app
 from myink.config import settings
 from myink.db import new_session
-from myink.models import Project, User
+from myink.models import Project, Task, User
 from myink.worker import amqp, processor
 from myink.worker import enqueue as enq
 from myink.worker.redis_client import (
@@ -255,6 +255,7 @@ def test_batch_size_is_clamped_and_start_defaults_to_one(book, monkeypatch):
 @pytest.mark.parametrize("task_type,payload,expected", [
     ("chapter_generate", {"seq": 1}, "chapter"),
     ("batch_generate", {"start": 1, "size": 3}, "batch"),
+    ("short_generate", {}, "short"),
 ])
 def test_produced_menus_reach_the_right_dispatch_branch(book, monkeypatch, task_type,
                                                         payload, expected):
@@ -268,11 +269,97 @@ def test_produced_menus_reach_the_right_dispatch_branch(book, monkeypatch, task_
                         lambda **kwargs: seen.append("chapter") or "done")
     monkeypatch.setattr(processor, "generate_batch",
                         lambda **kwargs: seen.append("batch") or "done")
+    monkeypatch.setattr(processor, "_short_story",
+                        lambda *_args, **_kwargs: seen.append("short") or "done")
 
     message = {"task_id": str(uuid.uuid4()), "task_type": task_type,
                "project_id": book.pid, "user_id": book.uid, "payload": payload}
     assert processor._dispatch(message) == "done"
     assert seen == [expected]
+
+
+def _make_short(book, *, count: int = 5, chars: int = 2000) -> None:
+    """把 temp_project 建的书标成短篇（篇幅在建书上下文里，与建书路由同一形状）。"""
+    with new_session() as db:
+        project = db.get(Project, uuid.UUID(book.pid))
+        project.form = "short"
+        project.creation_context = {"form": "short", "chapter_count": count,
+                                    "chars_per_chapter": chars}
+        db.commit()
+
+
+def test_short_generate_enqueues_one_whole_story_task(book, monkeypatch):
+    """短篇入队：一个任务买整篇的额度——扣的是章数（与批次 size=N 同口径），不是 1。
+
+    短篇只有一次任务（成稿/审稿/改稿都在里面），所以闸门若按「1 个任务」扣，
+    2 万字的整篇输出就只花了 1 章的配额。
+    """
+    published: dict = {}
+    _capture_publish(monkeypatch, published)
+    _make_short(book)
+
+    response = client.post(f"/api/v1/projects/{book.pid}/short/generate", headers=book.headers)
+
+    assert response.status_code == 202, response.text
+    assert published["task_type"] == "short_generate"
+    assert published["payload"] == {"chapter_count": 5, "chars_per_chapter": 2000}
+    assert int(book.r.get(quota_key(book.uid, book.today))) == 5
+
+
+def test_a_long_book_cannot_ask_for_a_short_generate(book):
+    """长篇书点短篇生成 → 400（不是 500）：形态不匹配是客户端问错了东西。"""
+    response = client.post(f"/api/v1/projects/{book.pid}/short/generate", headers=book.headers)
+
+    assert response.status_code == 400, response.text
+    assert "短篇" in response.json()["detail"]
+
+
+def test_a_short_book_cannot_be_driven_through_the_long_pipeline(book, monkeypatch):
+    """反向：短篇书点「生成第 N 章 / 批次生成」→ 400。
+
+    短篇的写序是「整篇一次写完」，逐章管道落到短篇书上会把整篇塞成一章，而且它绕开了
+    `quota_n = 章数` 那笔额度（一次只扣 1 章）。两条路都不许入队、闸门一分钱不扣。
+    """
+    published: dict = {}
+    _capture_publish(monkeypatch, published)
+    _make_short(book)
+
+    single = _generate(book)
+    batch = client.post(f"/api/v1/projects/{book.pid}/batches/generate",
+                        json={"size": 2, "start": 1}, headers=book.headers)
+
+    assert single.status_code == 400, single.text
+    assert batch.status_code == 400, batch.text
+    assert "短篇" in single.json()["detail"]
+    assert published == {}
+    assert book.r.scard(inflight_key(book.uid, book.pid)) == 0
+    assert book.r.get(quota_key(book.uid, book.today)) is None
+
+
+@pytest.mark.parametrize("task_type,resume_type", [
+    ("chapter_generate", "chapter_resume"),
+    ("batch_generate", "batch_resume"),
+    ("short_generate", "short_resume"),
+])
+def test_resume_publishes_the_branch_its_task_type_maps_to(book, monkeypatch, task_type,
+                                                           resume_type):
+    """续跑分流：三个形态各回自己那张图。
+
+    映射是 task_type 到续跑类型的唯一一处翻译，漏一个就退回 chapter_resume——批次续跑
+    拿单章逻辑跑（首章之外全丢）、短篇续跑进不了成稿已落库那条路（白重写一遍整篇）。
+    """
+    published: dict = {}
+    _capture_publish(monkeypatch, published)
+    task_id = uuid.uuid4()
+    with new_session() as db:
+        db.add(Task(id=task_id, project_id=uuid.UUID(book.pid), task_type=task_type,
+                    status="failed", payload={"seq": 1}, error="boom"))
+        db.commit()
+
+    response = client.post(f"/api/v1/tasks/{task_id}/resume", headers=book.headers)
+
+    assert response.status_code == 200, response.text
+    assert published["task_type"] == resume_type
 
 
 def test_the_lua_scripts_ship_next_to_the_module():
