@@ -64,6 +64,9 @@ export default function WorkspacePage() {
   // 作品形态：短篇整篇一次成稿，没有「下一章」，也没有单章的记忆层与审核。
   // 它那条任务不属于任何一章，所以右栏按章过滤与按章取任务都得绕开。
   const isShortBook = projects.find((p) => p.id === projectId)?.form === 'short'
+  // 短篇一次成稿：没有逐章方案要确认，也没有 Plan 阶段。后面几处「续跑后跳回计划视图」
+  // 的调用点仍然会 setCenterView('plan')，所以判据必须落在渲染侧，而不是它们的调用侧。
+  const showPlanView = !isShortBook && centerView === 'plan'
   // 建书对话页确认完跳进来时带了这个 state：那次 commit 只落书不出稿，入队归 GenerationPanel。
   const location = useLocation()
   const handover = (location.state ?? {}) as { beginShortWriting?: boolean; planWarning?: string | null }
@@ -716,15 +719,17 @@ export default function WorkspacePage() {
         {selectedChapter ? (
           showCreationWorkspace ? <div className={styles.creationWorkspace}>
             <nav className={styles.stageTabs} aria-label={`第 ${selectedChapter.chapter_seq} 章创作视图`}>
-              <button
-                type="button"
-                className={centerView === 'plan' ? styles.stageTabActive : styles.stageTab}
-                disabled={!hasPlan && !taskIsCreating && !isPendingChapter}
-                aria-current={centerView === 'plan' ? 'page' : undefined}
-                onClick={() => setCenterView('plan')}
-              >
-                <span>Plan</span><small>{task.status === 'awaiting_plan' ? '等待确认' : '章节计划'}</small>
-              </button>
+              {!isShortBook && (
+                <button
+                  type="button"
+                  className={centerView === 'plan' ? styles.stageTabActive : styles.stageTab}
+                  disabled={!hasPlan && !taskIsCreating && !isPendingChapter}
+                  aria-current={centerView === 'plan' ? 'page' : undefined}
+                  onClick={() => setCenterView('plan')}
+                >
+                  <span>Plan</span><small>{task.status === 'awaiting_plan' ? '等待确认' : '章节计划'}</small>
+                </button>
+              )}
               <button
                 type="button"
                 className={centerView === 'write' ? styles.stageTabActive : styles.stageTab}
@@ -736,7 +741,7 @@ export default function WorkspacePage() {
               </button>
             </nav>
             <div className={styles.creationPage}>
-              {centerView === 'plan' ? (
+              {showPlanView ? (
                 <ChapterPlanPanel
                   key={`plan-${projectId}-${selectedChapter.chapter_seq}`}
                   taskId={activeTaskId}

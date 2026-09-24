@@ -24,6 +24,9 @@ export function ProjectRail({ projects, onLogout }: Props) {
       : inBook ? inBook.form ?? 'long' : null
   const books = projects.filter((p) => !isProjectDraft(p)
     && (section === null || (p.form ?? 'long') === section))
+  // 短篇没有设定页/全局审计/分形态的创作设置——这三个入口只对长篇成立。
+  // 判据取「确定是短篇才藏」：书还没加载进 projects 时 inBook 是 undefined，那时照样显示。
+  const isShortBook = inBook?.form === 'short'
   return (
     <aside className={styles.rail} data-guest-exempt>
       <NavLink to="/long" className={styles.brand}>
@@ -54,7 +57,7 @@ export function ProjectRail({ projects, onLogout }: Props) {
           </NavLink>
         ))}
       </nav>
-      {projectId && (
+      {projectId && !isShortBook && (
         <div className={styles.pageLinks}>
           <NavLink
             to={`/projects/${projectId}/lore`}
