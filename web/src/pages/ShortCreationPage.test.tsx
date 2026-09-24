@@ -120,6 +120,23 @@ it('does not warn when the card fits under the whole-book cap', async () => {
   expect(screen.queryByText(/归一为每章/)).toBeNull()
 })
 
+it('does not warn when 章数 is fractional and truncation lands on the cap', async () => {
+  // 卡上要是直接乘：5.5 × 4000 = 22000 > 20000 会说归一；后端先把卡片字段 int() 截成 5，
+  // 5 × 4000 正好等于上限（不是 >），不压缩——卡上不该说要归一。
+  renderPage()
+  fireEvent.change(await screen.findByLabelText('章数'), { target: { value: '5.5' } })
+  fireEvent.change(screen.getByLabelText('每章字数'), { target: { value: '4000' } })
+  expect(screen.queryByText(/归一为每章/)).toBeNull()
+})
+
+it('does not warn when 每章字数 is fractional and truncation lands on the cap', async () => {
+  // 5 × 4000.5 = 20000.25 > 20000 会说归一；后端 int(4000.5) = 4000，5 × 4000 不超上限。
+  renderPage()
+  fireEvent.change(await screen.findByLabelText('章数'), { target: { value: '5' } })
+  fireEvent.change(screen.getByLabelText('每章字数'), { target: { value: '4000.5' } })
+  expect(screen.queryByText(/归一为每章/)).toBeNull()
+})
+
 it('does not offer a confirm that can only fail once the session is committed', async () => {
   vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
     session: {
