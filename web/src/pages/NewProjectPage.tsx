@@ -10,6 +10,7 @@ import { useGuest } from '../hooks/useGuest'
 import { api } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
 import { isProjectDraft } from '../lib/projectCreation'
+import { styleLibraryApi, type StyleLibraryItem } from '../lib/styleLibraryApi'
 import { GenrePackFields } from '../components/GenrePackFields'
 import {
   composeFields,
@@ -90,8 +91,9 @@ function ApiMessage(err: unknown, fallback: string): string {
 
 /** 形态由入口决定（/long/new 或 /short/new）；草稿恢复时以服务端记的形态为准。 */
 export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'long' | 'short' }) {
-  const { logout } = useAuth()
+  const { session, logout } = useAuth()
   const guest = useGuest()
+  const token = session?.token ?? ''
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const resumeId = searchParams.get('draft')
@@ -127,6 +129,9 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
   const [busy, setBusy] = useState<string | null>(resumeId ? 'restore' : null)
   const [banner, setBanner] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
+  // 建书时选文风（可选）：列表来自账号文风库，值原样交给后端解析（内置预设是 "builtin:<id>"）
+  const [styleItems, setStyleItems] = useState<StyleLibraryItem[]>([])
+  const [styleItemId, setStyleItemId] = useState('')
 
   useEffect(() => {
     if (guest) {
@@ -137,7 +142,10 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
     void api.listGenrePacks().then(setCatalog).catch(() => {
       setBanner('题材目录加载失败，可先不选题材创建')
     })
-  }, [guest])
+    // 拿不到文风列表就当没有：这一步可选，不该因为一个附带请求失败就挡住建书。
+    void styleLibraryApi.list(token).then((out) => setStyleItems(out.items))
+      .catch(() => setStyleItems([]))
+  }, [guest, token])
 
   useEffect(() => {
     // 游客不进建书向导：题材目录、草稿恢复都是需要凭据的请求，一律不发。
@@ -158,6 +166,7 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
     setForm(routeForm)
     setTargetWords('3000')
     setShortChars('2000')
+    setStyleItemId('')
     setSection(null)
     setDraftError(null)
     setSetupConfirmed(false)
@@ -284,6 +293,8 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
         chapter_count: chapterCount,
         storyline: outlineStoryline.trim(),
         request_id: requestId,
+        // 不指定就显式发 null：后端把「没选」与「选了查不到」分得很开（后者 404）。
+        style_item_id: styleItemId || null,
       })
       let storageCleanupFailed = false
       try {
@@ -665,6 +676,23 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
                 </fieldset>
               </details>
             </div>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>文风（可选）</span>
+              <select
+                className="input"
+                aria-label="文风"
+                value={styleItemId}
+                disabled={busy === 'restore' || pid !== null}
+                onChange={(e) => setStyleItemId(e.target.value)}
+              >
+                <option value="">不指定</option>
+                {styleItems.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}{item.builtin ? '（内置）' : '（我的）'}
+                  </option>
+                ))}
+              </select>
+            </label>
             {isShort ? (
               <>
                 <label className={styles.field}>
