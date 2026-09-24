@@ -272,6 +272,18 @@ def ensure_user_environment() -> None:
         ))
 
 
+def ensure_agent_run_user() -> None:
+    """agent_runs 归属放宽：project_id 可空 + 新增 user_id（账号级调用记账用）。
+
+    纯 DDL、不回填：老行本来就有 project_id，回填 user_id 要按 project→owner 猜，
+    猜错就是把别人的花费记到别人头上。查询口径用 OR 同时认两条路。
+    """
+    with get_admin_engine().begin() as conn:
+        conn.execute(text("ALTER TABLE agent_runs ALTER COLUMN project_id DROP NOT NULL"))
+        conn.execute(text("ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS user_id UUID"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_agent_runs_user_id ON agent_runs (user_id)"))
+
+
 def ensure_user_auth_schema() -> None:
     """Add password authentication columns and canonical username uniqueness.
 

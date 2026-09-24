@@ -72,14 +72,31 @@ def _materialize_cumulative_state(field: str, old_value: object, new_value: obje
 
 # ---- 运行记录（§6.8：每节点一行 agent_runs 全字段 + 成本估算）----
 
-def record_run(db: Session, *, project_id: str, task_id: str | None, node: str, role: str | None,
+def _owner_ids(*, project_id: str | None, user_id) -> tuple[uuid.UUID | None, uuid.UUID | None]:
+    """记账的归属：至少要有一个。
+
+    放在这里而不是 DB 约束里，是因为「账号级调用是合法的」这件事是业务规则，
+    表约束只能写 NOT NULL project_id（那会直接封死账号级记账）。
+    """
+    pid = uuid.UUID(str(project_id)) if project_id else None
+    uid = None if user_id is None else (
+        user_id if isinstance(user_id, uuid.UUID) else uuid.UUID(str(user_id)))
+    if pid is None and uid is None:
+        raise ValueError("record_run 需要 project_id 或 user_id（记账不能没有归属）")
+    return pid, uid
+
+
+def record_run(db: Session, *, project_id: str | None = None, user_id=None,
+               task_id: str | None = None, node: str, role: str | None,
                resp: ModelResponse, error: str | None = None, detail: dict | None = None,
                messages: list[dict] | None = None) -> None:
+    pid, uid = _owner_ids(project_id=project_id, user_id=user_id)
     observed = {"response": {"content": resp.content, "tool_calls": resp.tool_calls}, **(detail or {})}
     if messages is not None:
         observed = {"messages": messages, **observed}
     db.add(AgentRun(
-        project_id=uuid.UUID(project_id),
+        project_id=pid,
+        user_id=uid,
         task_id=task_id,  # thread_id（字符串，单章=task_id / 批次= batch:ch{seq}）
         node=node, role=role, model_id=resp.model_id,
         input_tokens=resp.input_tokens, output_tokens=resp.output_tokens,
@@ -89,15 +106,17 @@ def record_run(db: Session, *, project_id: str, task_id: str | None, node: str, 
     ))
 
 
-def record_plain(db: Session, *, project_id: str, task_id: str | None, node: str,
+def record_plain(db: Session, *, project_id: str | None = None, user_id=None,
+                 task_id: str | None = None, node: str,
                  detail: dict | None = None, duration_ms: int = 0) -> None:
     """确定性节点运行记录（无 LLM 调用：load_state/recall/validate/persist，§6.8 debug 全链路）。
 
     cost/token 为 0（不是 LLM 调用），detail 带执行统计（角色数/召回数/校验命中/落库数），
     让前端流转图能画出完整真实链路，而非只画 LLM 环节。
     """
+    pid, uid = _owner_ids(project_id=project_id, user_id=user_id)
     db.add(AgentRun(
-        project_id=uuid.UUID(project_id),
+        project_id=pid, user_id=uid,
         task_id=task_id, node=node,
         input_tokens=0, output_tokens=0, duration_ms=duration_ms,
         cost_est=0.0, detail=capture_detail(detail),
