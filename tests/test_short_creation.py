@@ -58,6 +58,24 @@ def test_a_quoted_number_is_read_as_a_number():
     assert creation.card_patch({"chapter_count": " 8 ", "chars_per_chapter": "五"}) == {"chapter_count": 8}
 
 
+def test_non_finite_numbers_are_ignored_not_fatal():
+    """无穷 / NaN 经 `int()` 会抛 OverflowError 或 ValueError → 端点直接 500。
+
+    数字位与文本位都收得到它们（模型把 `1e400` 写成字符串同样常见），所以两条分支都要挡。
+    """
+    for bad in (float("inf"), float("-inf"), float("nan"), 1e400, "inf", "-inf", "nan", "1e400"):
+        out = creation.merge_model_card({"chapter_count": 5}, {"chapter_count": bad})
+        assert out["chapter_count"] == 5, f"{bad!r} 应当被当作「没给」，而不是炸掉或写进去"
+
+
+def test_numbers_never_land_in_text_fields():
+    """文本位收数字 → `Project(title=42)` 在建书那步崩成 500。类型不对就当没给。"""
+    out = creation.merge_model_card({}, {"working_title": 42, "genre": {"x": 1}, "chapter_count": 3})
+    assert "working_title" not in out
+    assert "genre" not in out
+    assert out["chapter_count"] == 3                     # 数字位照收，别一刀切
+
+
 def test_card_ready_needs_all_seven_text_fields():
     fields = creation.REQUIRED_CARD_FIELDS
     assert len(fields) == 7
