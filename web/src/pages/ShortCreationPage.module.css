@@ -1,5 +1,6 @@
-/* 两栏：左边聊，右边卡。窄屏堆成一列（聊在上，卡在下）。 */
-.wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); gap: 16px; height: 100%; min-height: 0; }
+/* 左 rail（与 /long/new 同款）+ 右两栏：左边聊，右边卡。窄屏堆成一列（聊在上，卡在下）。 */
+.page { height: 100%; display: flex; }
+.wrap { flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); gap: 16px; height: 100%; min-height: 0; }
 .thread { display: flex; flex-direction: column; min-height: 0; }
 .stream { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 12px 0; }
 .turn { max-width: 42em; padding: 10px 12px; border-radius: 10px; white-space: pre-wrap; }
@@ -11,4 +12,7 @@
 .card { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; }
 .card label { display: flex; flex-direction: column; gap: 2px; font-size: 0.85em; }
 .card small { opacity: 0.7; }
+.import { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--line, #ddd); border-radius: 8px; }
+.import label { display: flex; flex-direction: column; gap: 2px; font-size: 0.85em; }
+.import small { opacity: 0.8; }
 @media (max-width: 900px) { .wrap { grid-template-columns: minmax(0, 1fr); } }

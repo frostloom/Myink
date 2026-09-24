@@ -5,11 +5,15 @@
  */
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
+import { useGuest } from '../hooks/useGuest'
+import { api } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
 import { shortCreationApi, type ShortCreationCard, type ShortCreationPayload }
   from '../lib/shortCreationApi'
 import { styleLibraryApi, type StyleLibraryItem } from '../lib/styleLibraryApi'
+import type { Project } from '../types'
 import styles from './ShortCreationPage.module.css'
 
 const FIELDS: Array<[keyof ShortCreationCard, string]> = [
@@ -57,14 +61,21 @@ function isReady(card: Partial<ShortCreationCard>): boolean {
 }
 
 export default function ShortCreationPage() {
-  const { session } = useAuth()
+  const { session, logout } = useAuth()
+  const guest = useGuest()
   const token = session?.token ?? ''
   const navigate = useNavigate()
+  const [projects, setProjects] = useState<Project[]>([])
   const [data, setData] = useState<ShortCreationPayload | null>(null)
   const [card, setCard] = useState<Partial<ShortCreationCard>>({})
   const [styleItemId, setStyleItemId] = useState('')
   const [styleItems, setStyleItems] = useState<StyleLibraryItem[]>([])
   const [draft, setDraft] = useState('')
+  // 文风选择器旁的「导入文章」：粘正文 → 提取出草稿 → 命名存进我的文风库 → 自动选中。
+  const [importOpen, setImportOpen] = useState(false)
+  const [importText, setImportText] = useState('')
+  const [importDraft, setImportDraft] = useState<Record<string, unknown> | null>(null)
+  const [importName, setImportName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const stream = useRef<HTMLDivElement>(null)
@@ -87,6 +98,11 @@ export default function ShortCreationPage() {
   useEffect(() => {
     styleLibraryApi.list(token).then((out) => setStyleItems(out.items)).catch(() => setStyleItems([]))
   }, [token])
+  // rail 的书目：与别的页面同一个来源，拿不到就当空列表（rail 的分区链接照样在）。
+  useEffect(() => {
+    if (guest) { setProjects([]); return }
+    api.listProjects().then(setProjects).catch(() => setProjects([]))
+  }, [guest])
   useEffect(() => {
     if (stream.current) stream.current.scrollTop = stream.current.scrollHeight
   }, [data])
@@ -133,12 +149,41 @@ export default function ShortCreationPage() {
     await reload()
   }, '重置失败，请重试')
 
-  if (!data) return <div className="empty">{error ?? '正在打开建书对话…'}</div>
+  const extractStyle = () => void run(async () => {
+    const out = await styleLibraryApi.extract(token, [importText])
+    setImportDraft(out.draft)
+  }, '提取失败，请重试')
+
+  const saveStyle = () => void run(async () => {
+    const item = await styleLibraryApi.save(token, {
+      name: importName.trim(), profile: importDraft ?? {},
+      sample_chars: importText.trim().length,
+    })
+    setStyleItems((items) => [...items, item])
+    setStyleItemId(item.id)
+    setImportOpen(false)
+    setImportDraft(null)
+    setImportText('')
+    setImportName('')
+  }, '保存失败，请重试')
+
+  if (!data) {
+    return (
+      <div className={styles.page}>
+        <ProjectRail projects={projects} onLogout={logout} />
+        <div className={styles.wrap}><div className="empty">{error ?? '正在打开建书对话…'}</div></div>
+      </div>
+    )
+  }
   const ready = !committed && isReady(card)
   const lengths = resolveShortLengths(card.chapter_count ?? 5, card.chars_per_chapter ?? 4000)
+  // 提取失败时后端仍给一份只有统计层的草稿（draft.extract_error 记着原因），要如实告诉用户。
+  const extractError = typeof importDraft?.extract_error === 'string' ? importDraft.extract_error : null
 
   return (
-    <div className={styles.wrap}>
+    <div className={styles.page}>
+      <ProjectRail projects={projects} onLogout={logout} />
+      <div className={styles.wrap}>
       <section className={styles.thread} aria-label="建书对话">
         <header className="row-between">
           <h2>新建短篇</h2>
@@ -204,7 +249,38 @@ export default function ShortCreationPage() {
             ))}
           </select>
         </label>
-        <small>文风在确认时定下来，之后没有换的入口；想导入自己的文章，去「账号」页的文风库。</small>
+        <small>文风在确认时定下来，之后没有换的入口。也可以就在这儿导一篇你的文章，提取成自己的文风存着。</small>
+        <button type="button" className="btn btn-quiet"
+                onClick={() => setImportOpen((open) => !open)}>
+          {importOpen ? '收起导入' : '导入文章存成我的文风'}
+        </button>
+        {importOpen && (
+          <div className={styles.import}>
+            <label>
+              <span>粘贴一篇你的文章（合计 ≤12000 字）</span>
+              <textarea className="input" rows={4} aria-label="粘贴文章" maxLength={12000}
+                        value={importText}
+                        onChange={(event) => setImportText(event.target.value)} />
+            </label>
+            <button type="button" className="btn" disabled={busy || importText.trim() === ''}
+                    onClick={extractStyle}>提取文风</button>
+            {importDraft && (
+              <>
+                {extractError && (
+                  <small role="alert">模型这一趟没提取成功（{extractError}），这份草稿只有统计层。</small>
+                )}
+                <label>
+                  <span>起个名，存进我的文风库</span>
+                  <input className="input" aria-label="文风名" maxLength={64} value={importName}
+                         onChange={(event) => setImportName(event.target.value)} />
+                </label>
+                <button type="button" className="btn btn-primary"
+                        disabled={busy || importName.trim() === ''}
+                        onClick={saveStyle}>保存并选用</button>
+              </>
+            )}
+          </div>
+        )}
         {committed && (
           <div className="banner banner-warning" role="status">
             这段建书对话已经开写过了，确认按钮不再生效；要写新的一篇，点右上角的「重新开始」。
@@ -218,6 +294,7 @@ export default function ShortCreationPage() {
         </button>
         {!ready && !committed && <small>还差几个必填项——也可以直接告诉助手，它会补上。</small>}
       </aside>
+      </div>
     </div>
   )
 }
