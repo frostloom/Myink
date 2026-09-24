@@ -88,7 +88,8 @@ function ApiMessage(err: unknown, fallback: string): string {
   return formatApiError(err, fallback)
 }
 
-export default function NewProjectPage() {
+/** 形态由入口决定（/long/new 或 /short/new）；草稿恢复时以服务端记的形态为准。 */
+export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'long' | 'short' }) {
   const { logout } = useAuth()
   const guest = useGuest()
   const navigate = useNavigate()
@@ -105,7 +106,7 @@ export default function NewProjectPage() {
   const [genreFields, setGenreFields] = useState<GenreFields>(emptyFields())
   const [premise, setPremise] = useState('')
   // 作品形态：短篇走另一条生成管道（整篇一次成稿），章数/每章字数的区间都不同
-  const [form, setForm] = useState<'long' | 'short'>('long')
+  const [form, setForm] = useState<'long' | 'short'>(routeForm)
   // 每章目标字数（§6.9 三层字数控制；500–20000，默认 3000）
   const [targetWords, setTargetWords] = useState('3000')
   // 短篇每章字数（1000–8000；全篇总量超上限时后端会压下来并回传提示）
@@ -154,13 +155,14 @@ export default function NewProjectPage() {
     setSecondaryId(null)
     setGenreFields(emptyFields())
     setPremise('')
-    setForm('long')
+    setForm(routeForm)
     setTargetWords('3000')
     setShortChars('2000')
     setSection(null)
     setDraftError(null)
     setSetupConfirmed(false)
-    setOutlineCount('200')
+    // 章数初值必须落在本形态的区间里：短篇是 1–10，长篇的 200 会被后端章数校验挡下。
+    setOutlineCount(routeForm === 'short' ? '5' : '200')
     setOutlineStoryline('')
     setOutline(null)
     setOutlineError(null)
@@ -180,11 +182,12 @@ export default function NewProjectPage() {
       setPid(project.id)
       setTitle(project.title)
       setSavedTitle(project.title)
-      setForm(project.form ?? context.form ?? 'long')
+      const resolvedForm = project.form ?? context.form ?? routeForm
+      setForm(resolvedForm)
       setTargetWords(String(project.target_words ?? 3000))
       setShortChars(String(context.chars_per_chapter ?? 2000))
       setPremise(context.premise ?? '')
-      setOutlineCount(String(context.chapter_count ?? 200))
+      setOutlineCount(String(context.chapter_count ?? (resolvedForm === 'short' ? 5 : 200)))
       setOutlineStoryline(context.storyline ?? '')
       setSection(splitDraft(context.setup_draft ?? {}))
       setSetupConfirmed(project.creation_status === 'setup_confirmed')
@@ -197,23 +200,12 @@ export default function NewProjectPage() {
     }).catch((err) => { if (!disposed) setBanner(ApiMessage(err, '恢复草稿失败，请刷新重试')) })
       .finally(() => { if (!disposed) setBusy(null) })
     return () => { disposed = true }
-  }, [guest, resumeId, navigate])
+  }, [guest, resumeId, navigate, routeForm])
 
   const primary = catalog.find((item) => item.id === primaryId) ?? null
   const secondary = catalog.find((item) => item.id === secondaryId) ?? null
   const genreLabel = displayGenre(primary, secondary)
   const isShort = form === 'short'
-
-  /** 形态切换：只保留在新形态区间内的章数，越界就换成该形态的默认值 */
-  function pickForm(next: 'long' | 'short') {
-    if (busy === 'restore' || pid !== null) return
-    setForm(next)
-    const n = Number(outlineCount)
-    const inRange = next === 'short'
-      ? n >= SHORT_CHAPTER_MIN && n <= SHORT_CHAPTER_MAX
-      : n >= 50 && n <= 1000
-    if (!inRange) setOutlineCount(next === 'short' ? '5' : '200')
-  }
 
   /** 短篇方案的服务端回执（归一后的字数、审纲留痕）只落在创建上下文里，要再拉一次才算看见 */
   async function refreshShortNotice(forPid: string) {
@@ -283,9 +275,10 @@ export default function NewProjectPage() {
         primary_id: primaryId,
         secondary_id: secondaryId,
         genre_fields: genreFields,
-        // 短篇的篇幅走 chars_per_chapter（长篇的每章字数走 target_words），互不代填
+        // 形态由入口决定，显式声明：短篇的篇幅走 chars_per_chapter（长篇的每章字数走 target_words），互不代填
+        form,
         ...(isShort
-          ? { form: 'short' as const, chars_per_chapter: chars }
+          ? { chars_per_chapter: chars }
           : { target_words: words }),
         premise: brief,
         chapter_count: chapterCount,
@@ -501,7 +494,7 @@ export default function NewProjectPage() {
     } catch {
       /* 标题同步失败不阻塞进入 */
     }
-    navigate('/projects')
+    navigate(`/${form}`)
   }
 
   const updateOutline = (patch: Partial<BookOutline>) =>
@@ -599,7 +592,7 @@ export default function NewProjectPage() {
         <div className={styles.inner}>
           <header className={styles.header}>
             <div>
-              <h1>{pid || resumeId ? '继续创建作品' : '新建作品'}</h1>
+              <h1>{pid || resumeId ? '继续创建作品' : `新建${isShort ? '短篇' : '长篇'}`}</h1>
               <div className={styles.crumb}>创作简报启动，AI 生成设定骨架与整书大纲，你确认后落库。</div>
             </div>
           </header>
@@ -671,30 +664,6 @@ export default function NewProjectPage() {
                   <GenrePackFields value={genreFields} onChange={setGenreFields} />
                 </fieldset>
               </details>
-            </div>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>形态</span>
-              <div className={styles.genreChips}>
-                <button
-                  type="button"
-                  disabled={busy === 'restore' || pid !== null}
-                  className={styles.chip + (form === 'long' ? ' ' + styles.chipOn : '')}
-                  onClick={() => pickForm('long')}
-                >
-                  长篇
-                </button>
-                <button
-                  type="button"
-                  disabled={busy === 'restore' || pid !== null}
-                  className={styles.chip + (form === 'short' ? ' ' + styles.chipOn : '')}
-                  onClick={() => pickForm('short')}
-                >
-                  短篇
-                </button>
-              </div>
-              <div className={styles.genreSubTitle}>
-                长篇按卷+阶段推进、逐章确认；短篇整篇一次成稿，不做伏笔池与全局审计。
-              </div>
             </div>
             {isShort ? (
               <>

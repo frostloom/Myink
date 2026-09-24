@@ -220,22 +220,35 @@ def users(db: DB, q: Search = None, limit: Limit = 25, offset: Offset = 0):
     return _page(db, stmt, limit, offset, _nested_metrics)
 
 
+def _project_statement():
+    """列表与详情共用同一组列，跳页后看到的数字必须与列表行一致（列不一致就会漂）。"""
+    return (select(Project.id, Project.user_id, User.username, Project.title, Project.genre,
+                   Project.current_chapter, Project.target_words, Project.creation_status,
+                   Project.created_at, Project.updated_at,
+                   _count(Chapter, Chapter.project_id == Project.id).label("chapter_count"),
+                   _word_count(Chapter.project_id == Project.id).label("word_count"),
+                   _count(Task, Task.project_id == Project.id).label("task_count"),
+                   *_metric_columns(AgentRun.project_id == Project.id),
+                   *_task_average_columns(lambda per_task: per_task.c.project_id == Project.id)
+                   ).join(User, User.id == Project.user_id))
+
+
 @router.get("/projects", response_model=AdminPage[AdminProject], name="admin.projects")
 def projects(db: DB, user_id: uuid.UUID | None = None, q: Search = None, limit: Limit = 25, offset: Offset = 0):
-    stmt = select(Project.id, Project.user_id, User.username, Project.title, Project.genre,
-                  Project.current_chapter, Project.target_words, Project.creation_status,
-                  Project.created_at, Project.updated_at,
-                  _count(Chapter, Chapter.project_id == Project.id).label("chapter_count"),
-                  _word_count(Chapter.project_id == Project.id).label("word_count"),
-                  _count(Task, Task.project_id == Project.id).label("task_count"),
-                  *_metric_columns(AgentRun.project_id == Project.id),
-                  *_task_average_columns(lambda per_task: per_task.c.project_id == Project.id)
-                  ).join(User, User.id == Project.user_id)
+    stmt = _project_statement()
     if user_id:
         stmt = stmt.where(Project.user_id == user_id)
     if q:
         stmt = stmt.where(or_(Project.title.icontains(q, autoescape=True), cast(Project.id, String) == q))
     return _page(db, stmt.order_by(Project.created_at.desc(), Project.id.desc()), limit, offset, _nested_metrics)
+
+
+@router.get("/projects/{project_id}", response_model=AdminProject, name="admin.project")
+def project(project_id: uuid.UUID, db: DB):
+    row = db.execute(_project_statement().where(Project.id == project_id)).mappings().first()
+    if row is None:
+        raise HTTPException(404, "NOT_FOUND")
+    return _nested_metrics(row)
 
 
 def _chapter_columns():

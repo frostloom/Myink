@@ -21,6 +21,15 @@
   color: var(--accent);
 }
 
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0 0 var(--space-3);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--space-3);
+}
+
 .nav {
   flex: 1;
   overflow-y: auto;

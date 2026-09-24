@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { Project } from '../types'
@@ -22,6 +22,8 @@ function renderRail(path: string, projects: Project[]) {
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/projects" element={<ProjectRail projects={projects} onLogout={vi.fn()} />} />
+        <Route path="/long" element={<ProjectRail projects={projects} onLogout={vi.fn()} />} />
+        <Route path="/short" element={<ProjectRail projects={projects} onLogout={vi.fn()} />} />
         <Route path="/environment" element={<ProjectRail projects={projects} onLogout={vi.fn()} />} />
         <Route path="/theme" element={<ProjectRail projects={projects} onLogout={vi.fn()} />} />
         <Route path="/account" element={<ProjectRail projects={projects} onLogout={vi.fn()} />} />
@@ -71,4 +73,38 @@ it('shows the admin entry only for a server-verified administrator', () => {
   currentSession.value = { ...currentSession.value, role: 'admin', roleVerified: true }
   renderRail('/projects', projects)
   expect(screen.getByRole('link', { name: '管理后台' })).toBeTruthy()
+})
+
+const twoForms: Project[] = [
+  { id: 'l1', title: '长篇一', genre: '仙侠', current_chapter: 3, target_words: 3000, form: 'long' },
+  { id: 's1', title: '短篇一', genre: '悬疑', current_chapter: 1, target_words: null, form: 'short' },
+]
+
+it('lists long and short as separate sections and filters the books to the one you are in', () => {
+  const long = renderRail('/long', twoForms)
+  expect(screen.getByRole('link', { name: '长篇' }).getAttribute('href')).toBe('/long')
+  expect(screen.getByRole('link', { name: '短篇' }).getAttribute('href')).toBe('/short')
+  const longList = within(screen.getByRole('navigation', { name: '作品列表' }))
+  expect(longList.getByText('长篇一')).toBeTruthy()
+  expect(longList.queryByText('短篇一')).toBeNull()
+  long.unmount()
+
+  const short = renderRail('/short', twoForms)
+  const shortList = within(screen.getByRole('navigation', { name: '作品列表' }))
+  expect(shortList.getByText('短篇一')).toBeTruthy()
+  expect(shortList.queryByText('长篇一')).toBeNull()
+  short.unmount()
+
+  // 进书之后跟着这本书的形态走，而不是回到某个固定分区。
+  renderRail('/projects/s1', twoForms)
+  const bookList = within(screen.getByRole('navigation', { name: '作品列表' }))
+  expect(bookList.getByText('短篇一')).toBeTruthy()
+  expect(bookList.queryByText('长篇一')).toBeNull()
+})
+
+it('lists both forms on pages that have no section context', () => {
+  renderRail('/theme', twoForms)
+  const list = within(screen.getByRole('navigation', { name: '作品列表' }))
+  expect(list.getByText('长篇一')).toBeTruthy()
+  expect(list.getByText('短篇一')).toBeTruthy()
 })

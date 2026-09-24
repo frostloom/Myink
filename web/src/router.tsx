@@ -5,7 +5,10 @@ import { useAuth } from './context/AuthContext'
 import { useGuest } from './hooks/useGuest'
 import AuditPage from './pages/AuditPage'
 import AccountPage from './pages/AccountPage'
-import AdminPage from './pages/AdminPage'
+import AdminPage, { AdminConsole } from './pages/AdminPage'
+import { ProjectDetailPage } from './pages/admin/ProjectDetail'
+import { RunDetailPage } from './pages/admin/RunDetail'
+import { TaskDetailPage } from './pages/admin/TaskDetail'
 import AppearancePage from './pages/AppearancePage'
 import EnvironmentPage from './pages/EnvironmentPage'
 import LoginPage from './pages/LoginPage'
@@ -52,14 +55,30 @@ export const router = createBrowserRouter([
   {
     element: <RequireAuth />,
     children: [
-      { path: '/', element: <Navigate to="/projects" replace /> },
-      { path: '/projects', element: <ProjectsPage /> },
+      { path: '/', element: <Navigate to="/long" replace /> },
+      // 长篇与短篇是两条独立管道（后端 _assert_writable 也会拦错管道），前端从入口就分开。
+      { path: '/long', element: <ProjectsPage form="long" /> },
+      { path: '/short', element: <ProjectsPage form="short" /> },
+      { path: '/long/new', element: <NewProjectPage form="long" /> },
+      { path: '/short/new', element: <NewProjectPage form="short" /> },
+      // 旧链接：/projects 归长篇；/projects/new 保留（草稿链接还带 ?draft=，形态由草稿决定）。
+      { path: '/projects', element: <Navigate to="/long" replace /> },
+      { path: '/projects/new', element: <NewProjectPage /> },
       { path: '/account', element: <AccountPage /> },
-      { path: '/admin', element: <AdminPage /> },
+      // /admin 是外壳（闸门 + 左栏），控制台与三张详情页都是它的子路由——详情整页切换，不在表格下面往下滑。
+      {
+        path: '/admin',
+        element: <AdminPage />,
+        children: [
+          { index: true, element: <AdminConsole /> },
+          { path: 'projects/:projectId', element: <ProjectDetailPage /> },
+          { path: 'tasks/:taskId', element: <TaskDetailPage /> },
+          { path: 'runs/:runId', element: <RunDetailPage /> },
+        ],
+      },
       { path: '/environment', element: <EnvironmentPage /> },
       { path: '/theme', element: <AppearancePage /> },
       { path: '/appearance', element: <Navigate to="/theme" replace /> },
-      { path: '/projects/new', element: <NewProjectPage /> },
       {
         element: <RequireProject />,
         children: [

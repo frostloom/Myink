@@ -1,7 +1,7 @@
-// 项目库：左 rail + 「新建作品」+ 项目卡（title/genre/current_chapter → 进入工作台）。
+// 长篇 / 短篇各一张列表：左 rail + 「新建长篇/短篇」+ 项目卡（title/genre/current_chapter → 进入工作台）。
 import { useCallback, useEffect, useState } from 'react'
 import type { MouseEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
 import { useGuest } from '../hooks/useGuest'
@@ -11,10 +11,11 @@ import { isProjectDraft, projectHref } from '../lib/projectCreation'
 import type { Project } from '../types'
 import styles from './ProjectsPage.module.css'
 
-export default function ProjectsPage() {
+const FORM_LABEL = { long: '长篇', short: '短篇' } as const
+
+export default function ProjectsPage({ form = 'long' }: { form?: 'long' | 'short' }) {
   const { logout } = useAuth()
   const guest = useGuest()
-  const navigate = useNavigate()
   const [projects, setProjects] = useState<Project[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -60,28 +61,31 @@ export default function ProjectsPage() {
     [loadProjects],
   )
 
+  const mine = (projects ?? []).filter((p) => (p.form ?? 'long') === form)
+  const label = FORM_LABEL[form]
+
   return (
     <div className={styles.wrap}>
       <ProjectRail projects={projects ?? []} onLogout={logout} />
       <main className={styles.main}>
         <div className={styles.head}>
-          <h1>作品库</h1>
-          <button type="button" className="btn btn-primary" onClick={() => navigate('/projects/new')}>
-            新建作品
-          </button>
+          <h1>{label}</h1>
+          <Link to={`/${form}/new`} className="btn btn-primary">
+            新建{label}
+          </Link>
         </div>
         {error && <div className="banner banner-error">加载失败：{error}</div>}
         {deleteError && <div className="banner banner-error">{deleteError}</div>}
         {projects === null ? (
           <div className="empty">加载中…</div>
-        ) : projects.length === 0 ? (
-          <div className="empty">还没有作品。点击右上角「新建作品」，一句话梗概即可创建第一本书。</div>
+        ) : mine.length === 0 ? (
+          <div className="empty">还没有{label}作品。点击右上角「新建{label}」，一句话梗概即可创建第一本。</div>
         ) : (
           <>
           <h2 className={styles.sectionTitle}>正式作品</h2>
-          {projects.every(isProjectDraft) && <p className="empty">尚无已完成建书的作品，请先完成下方草稿。</p>}
+          {mine.every(isProjectDraft) && <p className="empty">尚无已完成建书的作品，请先完成下方草稿。</p>}
           <div className={styles.grid}>
-            {projects.filter((p) => !isProjectDraft(p)).map((p) => (
+            {mine.filter((p) => !isProjectDraft(p)).map((p) => (
               <Link key={p.id} to={projectHref(p)} className={`panel ${styles.card}`}>
                 <h2 className={styles.title}>{p.title}</h2>
                 <div className={styles.meta}>
@@ -99,12 +103,12 @@ export default function ProjectsPage() {
               </Link>
             ))}
           </div>
-          {projects.some(isProjectDraft) && (
+          {mine.some(isProjectDraft) && (
             <section aria-label="待完成作品">
               <h2 className={styles.sectionTitle}>待完成作品</h2>
               <p className={styles.meta}>草稿已保留。确认设定和整书大纲后，才会进入正式作品并开放写作。</p>
               <div className={styles.grid}>
-                {projects.filter(isProjectDraft).map((p) => (
+                {mine.filter(isProjectDraft).map((p) => (
                   <Link key={p.id} to={projectHref(p)} className={`panel ${styles.card}`}>
                     <h3>{p.title}</h3>
                     <span className={styles.meta}>{p.creation_status === 'setup_confirmed' ? '设定已确认 · 待确认大纲' : '待完成设定与大纲'}</span>

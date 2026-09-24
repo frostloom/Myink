@@ -5685,6 +5685,54 @@
         ]
       }
     },
+    "/api/v1/admin/projects/{project_id}": {
+      "get": {
+        "operationId": "admin_project_api_v1_admin_projects__project_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProject"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Project",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/projects/{project_id}/chapters": {
       "get": {
         "operationId": "admin_chapters_api_v1_admin_projects__project_id__chapters_get",

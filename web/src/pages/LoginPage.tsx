@@ -70,7 +70,7 @@ export default function LoginPage() {
       const accepted = mode === 'login'
         ? await login(name, password)
         : await register(name, password, invitation)
-      if (accepted) navigate('/projects', { replace: true })
+      if (accepted) navigate('/long', { replace: true })
     } catch (err) {
       if (err instanceof ApiError && err.code === 'network_error') {
         setError('无法连接服务，请确认网关（:8080）已启动')

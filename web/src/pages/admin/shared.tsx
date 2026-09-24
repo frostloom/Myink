@@ -4,6 +4,7 @@
  * 的版式，抽出来只是为了让分析页与快照页复用同一套，不复制一份 CSS。
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { ApiError } from '../../lib/api'
 import { formatApiError } from '../../lib/apiError'
 import type { AdminMetrics, CapturedData } from '../../lib/adminApi'
@@ -11,6 +12,9 @@ import { asRecord, fieldLabel, isInternalKey } from '../../lib/snapshotView'
 import styles from '../AdminPage.module.css'
 
 export const PAGE_SIZE = 25
+
+/** /admin 外壳交给子路由的东西：闸门验过的 token 与「权限已变」的回调。 */
+export type AdminOutletContext = { token: string; onForbidden: () => void }
 
 export function useResource<T>(
   loader: (signal: AbortSignal) => Promise<T>,
@@ -99,6 +103,23 @@ export function Pagination({ total, offset, onChange }: {
 
 export function RefreshButton({ onClick }: { onClick: () => void }) {
   return <button type="button" className="btn btn-secondary" onClick={onClick}>刷新当前视图</button>
+}
+
+/** 详情页外壳：标题 + 返回原标签页的链接。返回必须带回 tab，否则回退永远落在概览。 */
+export function DetailPage({ heading, backTab, children }: {
+  heading: string
+  backTab: string
+  children: ReactNode
+}) {
+  return (
+    <section className={styles.view}>
+      <div className={styles.viewHead}>
+        <div><h1>{heading}</h1></div>
+        <Link to={`/admin?tab=${backTab}`} className="btn btn-secondary">返回</Link>
+      </div>
+      {children}
+    </section>
+  )
 }
 
 /** 值 → 可读文本：标量直出，布尔转「是/否」，对象与对象数组降一级展开。 */

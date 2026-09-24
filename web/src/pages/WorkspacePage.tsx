@@ -652,7 +652,7 @@ export default function WorkspacePage() {
     setDeleting(true)
     api
       .deleteProject(projectId)
-      .then(() => navigate('/projects'))
+      .then(() => navigate(project?.form === 'short' ? '/short' : '/long'))
       .catch((err) => {
         setDeleting(false)
         setError(

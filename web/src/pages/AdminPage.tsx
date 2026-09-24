@@ -1,50 +1,46 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { Outlet, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
 import { formatApiError } from '../lib/apiError'
 import {
   adminApi,
   type AdminAccessLog,
-  type AdminChapterDetail,
-  type AdminContext,
-  type AdminContextCollection,
   type AdminInvitation,
   type AdminInvitationCreated,
   type AdminOverview,
   type AdminPage as PageResult,
   type AdminProject,
   type AdminRun,
-  type AdminRunDetail,
   type AdminTask,
-  type AdminTaskDetail,
 } from '../lib/adminApi'
 import {
-  chapterStatusLabel,
   creationStatusLabel,
-  nodeLabel,
   taskChapterLabel,
   taskStatusLabel,
   taskTypeLabel,
 } from '../lib/labels'
-import { asRecord } from '../lib/snapshotView'
 import { Analytics } from './admin/Analytics'
+import { RunTable } from './admin/RunDetail'
 import {
-  CapturedView,
+  type AdminOutletContext,
   formatCost,
   formatDate,
-  formatDuration,
   LoadState,
   Metrics,
   PAGE_SIZE,
   Pagination,
-  RecordFields,
   RefreshButton,
   useResource,
-  ValueText,
 } from './admin/shared'
 import styles from './AdminPage.module.css'
 
 type Tab = 'overview' | 'analytics' | 'projects' | 'tasks' | 'runs' | 'logs' | 'invites'
+
+const TABS: Array<[Tab, string]> = [
+  ['overview', '概览'], ['analytics', '分析'], ['projects', '作品'], ['tasks', '任务'],
+  ['runs', '全部运行'], ['logs', '访问日志'], ['invites', '邀请码'],
+]
 
 function OverviewView({ token, onForbidden }: { token: string; onForbidden: () => void }) {
   const load = useCallback((signal: AbortSignal) => adminApi.getOverview(token, signal), [token])
@@ -81,132 +77,6 @@ function OverviewView({ token, onForbidden }: { token: string; onForbidden: () =
   )
 }
 
-function ChapterDetailView({ token, projectId, chapterId, onForbidden }: {
-  token: string
-  projectId: string
-  chapterId: string
-  onForbidden: () => void
-}) {
-  const load = useCallback(
-    (signal: AbortSignal) => adminApi.getChapter(token, projectId, chapterId, signal),
-    [chapterId, projectId, token],
-  )
-  const resource = useResource<AdminChapterDetail>(load, onForbidden)
-  const value = resource.data
-  return (
-    <LoadState {...resource} empty={!value}>
-      {value && <article className={`panel ${styles.detail}`}>
-        <h3>{value.title ?? `第 ${value.chapter_seq} 章`} · v{value.version}</h3>
-        <h4>摘要</h4>
-        {typeof value.summary === 'string' && value.summary !== ''
-          ? <p className={styles.text}>{value.summary}</p>
-          : <RecordFields value={value.summary} />}
-        <h4>全文</h4>
-        {value.content
-          ? <p className={styles.text}>{value.content}</p>
-          : <p className={styles.muted}>无正文</p>}
-      </article>}
-    </LoadState>
-  )
-}
-
-/** 台账条目：键名翻中文，参与人物从 id 换成人名，嵌套结构再降一级。 */
-function ContextEntries({ collection, nameOf }: {
-  collection: AdminContextCollection
-  nameOf: (id: string) => string
-}) {
-  if (collection.items.length === 0) return <p className={styles.muted}>暂无记录</p>
-  return (
-    <ul className={styles.plainList}>{collection.items.map((item, index) => {
-      const record = asRecord(item.data)
-      if (!record) return <li key={index}><ValueText value={item.data} /></li>
-      const resolved: Record<string, unknown> = { ...record }
-      if (Array.isArray(resolved.participants)) {
-        resolved.participants = resolved.participants
-          .map((entry) => (typeof entry === 'string' ? nameOf(entry) : entry))
-      }
-      return <li key={index}><RecordFields value={resolved} skip={['id']} /></li>
-    })}</ul>
-  )
-}
-
-function ContextView({ value }: { value: AdminContext }) {
-  const nameOf = useMemo(() => {
-    const names = new Map<string, string>()
-    for (const item of value.characters.items) {
-      const record = asRecord(item.data)
-      if (record && typeof record.id === 'string' && typeof record.name === 'string') {
-        names.set(record.id, record.name)
-      }
-    }
-    return (id: string) => names.get(id) ?? `${id.slice(0, 8)}…`
-  }, [value])
-  const collections: Array<[string, AdminContextCollection]> = [
-    ['大纲', value.outlines], ['事件', value.events], ['事实', value.facts],
-    ['人物', value.characters], ['伏笔', value.foreshadows], ['故事线', value.threads],
-  ]
-  return (
-    <div className={styles.context}>
-      <CapturedView value={value.settings} label="作品设置" />
-      {collections.map(([label, collection]) => <section className={styles.capture} key={label}>
-        <h4>{label}（显示 {collection.items.length} / 共 {collection.total}）</h4>
-        {collection.truncated && <div className={styles.flags}>
-          <span className="badge badge-warning">集合已截断</span>
-        </div>}
-        <ContextEntries collection={collection} nameOf={nameOf} />
-      </section>)}
-    </div>
-  )
-}
-
-function ProjectDetailView({ token, project, onForbidden }: {
-  token: string
-  project: AdminProject
-  onForbidden: () => void
-}) {
-  const [offset, setOffset] = useState(0)
-  const [chapterId, setChapterId] = useState<string | null>(null)
-  const loadChapters = useCallback(
-    (signal: AbortSignal) => adminApi.listChapters(
-      token, project.id, { limit: PAGE_SIZE, offset }, signal,
-    ),
-    [offset, project.id, token],
-  )
-  const loadContext = useCallback(
-    (signal: AbortSignal) => adminApi.getProjectContext(token, project.id, PAGE_SIZE, signal),
-    [project.id, token],
-  )
-  const chapters = useResource(loadChapters, onForbidden)
-  const context = useResource(loadContext, onForbidden)
-  return (
-    <div className={styles.drilldown}>
-      <div className={styles.detailHead}>
-        <div><h3>《{project.title}》</h3><p>{project.username} · {project.genre} · {creationStatusLabel(project.creation_status)}</p></div>
-        <div><RefreshButton onClick={chapters.retry} /> <button type="button" className="btn btn-secondary" onClick={context.retry}>刷新设定</button></div>
-      </div>
-      <div className={styles.split}>
-        <section className={`panel ${styles.detail}`}>
-          <h3>章节元数据</h3>
-          <LoadState {...chapters} empty={chapters.data?.items.length === 0}>
-            {chapters.data && <>
-              <ul className={styles.list}>{chapters.data.items.map((chapter) => <li key={chapter.id}>
-                <div><strong>{chapter.title ?? `第 ${chapter.chapter_seq} 章`}</strong><small>{chapterStatusLabel(chapter.status)} · {chapter.word_count.toLocaleString()} 字 · {formatDate(chapter.updated_at)}</small></div>
-                <button type="button" className="btn btn-quiet" aria-label={`查看${chapter.title ?? `第 ${chapter.chapter_seq} 章`}全文`} onClick={() => setChapterId(chapter.id)}>全文</button>
-              </li>)}</ul>
-              <Pagination total={chapters.data.total} offset={offset} onChange={(next) => { setChapterId(null); setOffset(next) }} />
-            </>}
-          </LoadState>
-        </section>
-        <section className={`panel ${styles.detail}`}>
-          <h3>受限上下文快照</h3>
-          <LoadState {...context} empty={!context.data}>{context.data && <ContextView value={context.data} />}</LoadState>
-        </section>
-      </div>
-      {chapterId && <ChapterDetailView key={chapterId} token={token} projectId={project.id} chapterId={chapterId} onForbidden={onForbidden} />}
-    </div>
-  )
-}
-
 function ProjectsView({ token, onForbidden }: {
   token: string
   onForbidden: () => void
@@ -215,7 +85,7 @@ function ProjectsView({ token, onForbidden }: {
   const [draftUser, setDraftUser] = useState('')
   const [filters, setFilters] = useState({ q: '', userId: '' })
   const [offset, setOffset] = useState(0)
-  const [selected, setSelected] = useState<AdminProject | null>(null)
+  const navigate = useNavigate()
   const load = useCallback(
     (signal: AbortSignal) => adminApi.listProjects(token, { ...filters, limit: PAGE_SIZE, offset }, signal),
     [filters, offset, token],
@@ -223,7 +93,6 @@ function ProjectsView({ token, onForbidden }: {
   const resource = useResource<PageResult<AdminProject>>(load, onForbidden)
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    setSelected(null)
     setOffset(0)
     setFilters({ q: draftQ.trim(), userId: draftUser.trim() })
   }
@@ -249,118 +118,12 @@ function ProjectsView({ token, onForbidden }: {
               <td>{project.task_count}</td>
               <td>{project.metrics.run_count}</td>
               <td>{formatCost(project.metrics.cost_est)}</td>
-              <td><button type="button" className="btn btn-quiet" aria-label={`查看《${project.title}》`} onClick={() => setSelected(project)}>查看</button></td>
+              <td><button type="button" className="btn btn-quiet" aria-label={`查看《${project.title}》`} onClick={() => navigate(`/admin/projects/${project.id}`)}>查看</button></td>
             </tr>)}</tbody></table></div>
-          <Pagination total={resource.data.total} offset={offset} onChange={(next) => { setSelected(null); setOffset(next) }} />
+          <Pagination total={resource.data.total} offset={offset} onChange={setOffset} />
         </>}
       </LoadState>
-      {selected && <ProjectDetailView key={selected.id} token={token} project={selected} onForbidden={onForbidden} />}
     </section>
-  )
-}
-
-function RunTable({ runs, onSelect }: { runs: AdminRun[]; onSelect: (run: AdminRun) => void }) {
-  return (
-    <div className={styles.tableWrap}><table><thead><tr>
-      <th>运行</th><th>节点</th><th>作品</th><th>模型</th><th>输入 token</th><th>输出 token</th>
-      <th>预估成本</th><th>耗时</th><th>降级</th><th>重试</th><th>时间</th><th>操作</th>
-    </tr></thead>
-      <tbody>{runs.map((run) => <tr key={run.id}>
-        <td>#{run.id}</td>
-        <td><strong>{nodeLabel(run.node)}</strong></td>
-        <td>{run.project_title}</td>
-        <td>{run.model_id ?? '—'}</td>
-        <td>{run.input_tokens.toLocaleString()}</td>
-        <td>{run.output_tokens.toLocaleString()}</td>
-        <td>{formatCost(run.cost_est)}</td>
-        <td>{formatDuration(run.duration_ms)}</td>
-        <td>{run.degraded ? '是' : '否'}</td>
-        <td>{run.retry_count}</td>
-        <td>{formatDate(run.created_at)}</td>
-        <td><button type="button" className="btn btn-quiet" aria-label={`查看节点 ${run.node} #${run.id}`} onClick={() => onSelect(run)}>详情</button></td>
-      </tr>)}</tbody></table></div>
-  )
-}
-
-function RunDetailView({ token, runId, onForbidden }: {
-  token: string
-  runId: number
-  onForbidden: () => void
-}) {
-  const load = useCallback(
-    (signal: AbortSignal) => adminApi.getRun(token, runId, signal),
-    [runId, token],
-  )
-  const resource = useResource<AdminRunDetail>(load, onForbidden)
-  const value = resource.data
-  return (
-    <LoadState {...resource} empty={!value}>
-      {value && <article className={`panel ${styles.detail}`}>
-        <div className={styles.detailHead}>
-          <div><h3>节点 {nodeLabel(value.node)} #{value.id}</h3><p>{value.model_id ?? '未记录模型'} · {formatDuration(value.duration_ms)}</p></div>
-          <RefreshButton onClick={resource.retry} />
-        </div>
-        {value.detail_missing && <p className="banner banner-warning">旧记录未保存详情，无法重建。</p>}
-        {value.prompt_missing && <p className="banner banner-warning">旧记录未保存提示词，无法重建。</p>}
-        <CapturedView value={value.detail} label="调试详情" />
-        <CapturedView value={value.error} label="错误详情" />
-      </article>}
-    </LoadState>
-  )
-}
-
-function TaskDetailView({ token, task, onForbidden }: {
-  token: string
-  task: AdminTask
-  onForbidden: () => void
-}) {
-  const [offset, setOffset] = useState(0)
-  const [runId, setRunId] = useState<number | null>(null)
-  const loadTask = useCallback(
-    (signal: AbortSignal) => adminApi.getTask(token, task.id, signal),
-    [task.id, token],
-  )
-  const loadRuns = useCallback(
-    (signal: AbortSignal) => adminApi.listTaskRuns(token, task.id, { limit: PAGE_SIZE, offset }, signal),
-    [offset, task.id, token],
-  )
-  const detail = useResource<AdminTaskDetail>(loadTask, onForbidden)
-  const runs = useResource<PageResult<AdminRun>>(loadRuns, onForbidden)
-  return (
-    <div className={styles.drilldown}>
-      <section className={`panel ${styles.detail}`}>
-        <div className={styles.detailHead}>
-          <div>
-            <h3>{task.project_title} · {taskTypeLabel(task.task_type)}</h3>
-            <p>
-              {task.username} · {taskChapterLabel(task)}
-              {' · '}{taskStatusLabel(detail.data?.status ?? task.status)}
-            </p>
-          </div>
-          <RefreshButton onClick={detail.retry} />
-        </div>
-        <LoadState {...detail} empty={!detail.data}>{detail.data && <>
-          <dl className={styles.summaryList}>
-            <div><dt>任务 id</dt><dd>{detail.data.id}</dd></div>
-            <div><dt>创建</dt><dd>{formatDate(detail.data.created_at)}</dd></div>
-            <div><dt>更新</dt><dd>{formatDate(detail.data.updated_at)}</dd></div>
-            <div><dt>任务跨度</dt><dd>{formatDuration(detail.data.elapsed_ms)}</dd></div>
-            <div><dt>目标章节</dt><dd>{taskChapterLabel(detail.data)}</dd></div>
-            <div><dt>批次任务</dt><dd>{detail.data.batch_task_id ?? '—'}</dd></div>
-            <div><dt>重试</dt><dd>{detail.data.retry_count}</dd></div>
-          </dl>
-          <CapturedView value={detail.data.payload} label="任务载荷" />
-          <CapturedView value={detail.data.error} label="任务错误" />
-        </>}</LoadState>
-      </section>
-      <section className={`panel ${styles.detail}`}>
-        <div className={styles.detailHead}><div><h3>有序节点流</h3></div><RefreshButton onClick={runs.retry} /></div>
-        <LoadState {...runs} empty={runs.data?.items.length === 0}>
-          {runs.data && <><RunTable runs={runs.data.items} onSelect={(run) => setRunId(run.id)} /><Pagination total={runs.data.total} offset={offset} onChange={(next) => { setRunId(null); setOffset(next) }} /></>}
-        </LoadState>
-      </section>
-      {runId !== null && <RunDetailView key={runId} token={token} runId={runId} onForbidden={onForbidden} />}
-    </div>
   )
 }
 
@@ -371,7 +134,7 @@ function TasksView({ token, onForbidden }: {
   const [draft, setDraft] = useState({ userId: '', projectId: '', status: '' })
   const [filters, setFilters] = useState(draft)
   const [offset, setOffset] = useState(0)
-  const [selected, setSelected] = useState<AdminTask | null>(null)
+  const navigate = useNavigate()
   const load = useCallback(
     (signal: AbortSignal) => adminApi.listTasks(token, { ...filters, limit: PAGE_SIZE, offset }, signal),
     [filters, offset, token],
@@ -379,7 +142,6 @@ function TasksView({ token, onForbidden }: {
   const resource = useResource<PageResult<AdminTask>>(load, onForbidden)
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    setSelected(null)
     setOffset(0)
     setFilters({
       userId: draft.userId.trim(), projectId: draft.projectId.trim(), status: draft.status.trim(),
@@ -409,12 +171,11 @@ function TasksView({ token, onForbidden }: {
               <td>{task.metrics.run_count}</td>
               <td>{(task.metrics.input_tokens + task.metrics.output_tokens).toLocaleString()}</td>
               <td>{formatDate(task.created_at)}</td>
-              <td><button type="button" className="btn btn-quiet" aria-label={`查看任务 ${task.id}`} onClick={() => setSelected(task)}>查看</button></td>
+              <td><button type="button" className="btn btn-quiet" aria-label={`查看任务 ${task.id}`} onClick={() => navigate(`/admin/tasks/${task.id}`)}>查看</button></td>
             </tr>)}</tbody></table></div>
-          <Pagination total={resource.data.total} offset={offset} onChange={(next) => { setSelected(null); setOffset(next) }} />
+          <Pagination total={resource.data.total} offset={offset} onChange={setOffset} />
         </>}
       </LoadState>
-      {selected && <TaskDetailView key={selected.id} token={token} task={selected} onForbidden={onForbidden} />}
     </section>
   )
 }
@@ -423,7 +184,7 @@ function RunsView({ token, onForbidden }: { token: string; onForbidden: () => vo
   const [draft, setDraft] = useState({ userId: '', projectId: '', node: '' })
   const [filters, setFilters] = useState(draft)
   const [offset, setOffset] = useState(0)
-  const [runId, setRunId] = useState<number | null>(null)
+  const navigate = useNavigate()
   const load = useCallback(
     (signal: AbortSignal) => adminApi.listRuns(token, { ...filters, limit: PAGE_SIZE, offset }, signal),
     [filters, offset, token],
@@ -431,7 +192,6 @@ function RunsView({ token, onForbidden }: { token: string; onForbidden: () => vo
   const resource = useResource<PageResult<AdminRun>>(load, onForbidden)
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    setRunId(null)
     setOffset(0)
     setFilters({
       userId: draft.userId.trim(), projectId: draft.projectId.trim(), node: draft.node.trim(),
@@ -447,9 +207,8 @@ function RunsView({ token, onForbidden }: { token: string; onForbidden: () => vo
         <button className="btn btn-primary" type="submit">筛选</button>
       </form>
       <LoadState {...resource} empty={resource.data?.items.length === 0}>
-        {resource.data && <><RunTable runs={resource.data.items} onSelect={(run) => setRunId(run.id)} /><Pagination total={resource.data.total} offset={offset} onChange={(next) => { setRunId(null); setOffset(next) }} /></>}
+        {resource.data && <><RunTable runs={resource.data.items} onSelect={(run) => navigate(`/admin/runs/${run.id}`)} /><Pagination total={resource.data.total} offset={offset} onChange={setOffset} /></>}
       </LoadState>
-      {runId !== null && <RunDetailView key={runId} token={token} runId={runId} onForbidden={onForbidden} />}
     </section>
   )
 }
@@ -591,44 +350,38 @@ function InvitesView({ token, onForbidden }: { token: string; onForbidden: () =>
   )
 }
 
-function AdminConsole({ token, logout, onForbidden }: {
-  token: string
-  logout: () => Promise<void>
-  onForbidden: () => void
-}) {
-  const [tab, setTab] = useState<Tab>('overview')
-  const tabs: Array<[Tab, string]> = [
-    ['overview', '概览'], ['analytics', '分析'], ['projects', '作品'], ['tasks', '任务'],
-    ['runs', '全部运行'], ['logs', '访问日志'], ['invites', '邀请码'],
-  ]
+/** 控制台首页：标签栏与当前标签的内容。tab 放在 URL 上，详情页返回时才能回到原来的标签。 */
+export function AdminConsole() {
+  const { token, onForbidden } = useOutletContext<AdminOutletContext>()
+  const [params, setParams] = useSearchParams()
+  const requested = params.get('tab')
+  const tab = TABS.some(([id]) => id === requested) ? requested as Tab : 'overview'
   return (
-    <div className={styles.wrap}>
-      <ProjectRail projects={[]} onLogout={logout} />
-      <main className={styles.main}>
-        <header className={styles.header}>
-          <div><h1>管理员控制台</h1></div>
-        </header>
-        <nav className={styles.tabs} aria-label="管理视图">
-          {tabs.map(([id, label]) => <button
-            key={id}
-            type="button"
-            className={tab === id ? styles.activeTab : ''}
-            aria-pressed={tab === id}
-            onClick={() => setTab(id)}
-          >{label}</button>)}
-        </nav>
-        {tab === 'overview' && <OverviewView token={token} onForbidden={onForbidden} />}
-        {tab === 'analytics' && <Analytics token={token} onForbidden={onForbidden} />}
-        {tab === 'projects' && <ProjectsView token={token} onForbidden={onForbidden} />}
-        {tab === 'tasks' && <TasksView token={token} onForbidden={onForbidden} />}
-        {tab === 'runs' && <RunsView token={token} onForbidden={onForbidden} />}
-        {tab === 'logs' && <LogsView token={token} onForbidden={onForbidden} />}
-        {tab === 'invites' && <InvitesView token={token} onForbidden={onForbidden} />}
-      </main>
-    </div>
+    <>
+      <header className={styles.header}>
+        <div><h1>管理员控制台</h1></div>
+      </header>
+      <nav className={styles.tabs} aria-label="管理视图">
+        {TABS.map(([id, label]) => <button
+          key={id}
+          type="button"
+          className={tab === id ? styles.activeTab : ''}
+          aria-pressed={tab === id}
+          onClick={() => setParams({ tab: id }, { replace: true })}
+        >{label}</button>)}
+      </nav>
+      {tab === 'overview' && <OverviewView token={token} onForbidden={onForbidden} />}
+      {tab === 'analytics' && <Analytics token={token} onForbidden={onForbidden} />}
+      {tab === 'projects' && <ProjectsView token={token} onForbidden={onForbidden} />}
+      {tab === 'tasks' && <TasksView token={token} onForbidden={onForbidden} />}
+      {tab === 'runs' && <RunsView token={token} onForbidden={onForbidden} />}
+      {tab === 'logs' && <LogsView token={token} onForbidden={onForbidden} />}
+      {tab === 'invites' && <InvitesView token={token} onForbidden={onForbidden} />}
+    </>
   )
 }
 
+/** /admin 的闸门与外壳：详情页是它的子路由，权限一变整棵子树（含详情页）一起换掉。 */
 export default function AdminPage() {
   const { session, status, revalidate, logout } = useAuth()
   const [forbidden, setForbidden] = useState(false)
@@ -662,11 +415,11 @@ export default function AdminPage() {
     )
   }
   return (
-    <AdminConsole
-      key={identity}
-      token={session.token}
-      logout={logout}
-      onForbidden={onForbidden}
-    />
+    <div className={styles.wrap}>
+      <ProjectRail projects={[]} onLogout={logout} />
+      <main className={styles.main}>
+        <Outlet key={identity} context={{ token: session.token, onForbidden }} />
+      </main>
+    </div>
   )
 }
