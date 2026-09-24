@@ -20,13 +20,15 @@ import json
 import uuid
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from sqlalchemy import delete as sa_delete
 
 from conftest import identity_headers
 from myink.api.main import app
 from myink.db import new_session, tenant_session
 from myink.memory.repository import get_settings
-from myink.models import AgentRun, ProjectSettings, User
+from myink.models import AgentRun, ProjectSettings, StyleLibraryItem, User
 from myink.providers.base import ModelProvider, ModelResponse
 from myink.style_extract import (
     _split_sentences,
@@ -448,3 +450,60 @@ def test_ownerless_extraction_routes_through_the_account_level_chain(temp_user, 
                         lambda role, uid: (called.append((role, uid)), real(role, uid))[1])
     extract_style_profile([_SAMPLE_1], analyze_sample_stats([_SAMPLE_1]), user_id=temp_user)
     assert called == [("extract", temp_user)]
+
+
+def test_resolve_style_selection_prefers_builtin_then_library(temp_user):
+    """选择器的值 → (档案, skill_pack 标记, 展示名)：内置走预设，其余走自己的库。"""
+    from myink.api.routes_style import resolve_style_selection
+
+    with new_session() as db:
+        uid = uuid.UUID(temp_user)
+        profile, skill_pack, name = resolve_style_selection(db, uid, "builtin:xianxia-jiuzhou")
+        assert skill_pack == "xianxia-jiuzhou", "内置项 id 同时当 skill_pack 标记"
+        assert name == "九州问天"
+        assert profile, "内置预设也要把档案带出来"
+
+        item = StyleLibraryItem(user_id=uid, name="渡口白描",
+                                profile={"pov": "限知"}, sample_chars=10)
+        db.add(item)
+        db.commit()
+        profile, skill_pack, name = resolve_style_selection(db, uid, str(item.id))
+        assert profile == {"pov": "限知"}
+        assert skill_pack is None, "库里的一项不是题材包，不能留 skill_pack 标记"
+        assert name == "渡口白描"
+
+
+def test_resolve_style_selection_404s_on_garbage(temp_user):
+    from myink.api.routes_style import resolve_style_selection
+
+    with new_session() as db:
+        for bad in ("builtin:nope", "not-a-uuid", str(uuid.uuid4())):
+            with pytest.raises(HTTPException) as exc:
+                resolve_style_selection(db, uuid.UUID(temp_user), bad)
+            assert exc.value.status_code == 404
+
+
+def test_resolve_style_selection_will_not_read_a_stranger_item(temp_user):
+    """别人的档也要 404 —— 不能因为 id 真实存在就把档案交出去。"""
+    from myink.api.routes_style import resolve_style_selection
+
+    with new_session() as db:
+        other = User(username=f"style-{uuid.uuid4().hex[:8]}")
+        db.add(other)
+        db.commit()
+        other_id = other.id
+    try:
+        with new_session() as db:
+            item = StyleLibraryItem(user_id=other_id, name="别人家的",
+                                    profile={"pov": "全知"}, sample_chars=5)
+            db.add(item)
+            db.commit()
+            item_id = item.id
+        with new_session() as db, pytest.raises(HTTPException) as exc:
+            resolve_style_selection(db, uuid.UUID(temp_user), str(item_id))
+        assert exc.value.status_code == 404
+    finally:
+        with new_session() as db:
+            db.execute(sa_delete(StyleLibraryItem).where(StyleLibraryItem.user_id == other_id))
+            db.execute(sa_delete(User).where(User.id == other_id))
+            db.commit()
