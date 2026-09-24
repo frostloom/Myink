@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 from myink.api.auth import require_user
 from myink.api.schemas import (OkOut, StyleDraftOut, StyleLibraryItemOut, StyleLibraryOut,
-                               StyleLibrarySaveBody, StyleSampleBody)
+                               StyleLibraryPatchBody, StyleLibrarySaveBody, StyleSampleBody)
 from myink.db import new_session
 from myink.models import StyleLibraryItem
 from myink.seed import STYLE_PRESETS
@@ -83,6 +83,37 @@ def save_item(body: StyleLibrarySaveBody, user_id: str = Depends(require_user)) 
         item = StyleLibraryItem(user_id=uid, name=name, profile=profile,
                                 note=body.note.strip(), sample_chars=body.sample_chars)
         db.add(item)
+        db.commit()
+        return _item_out(item)
+
+
+@router.patch("/{item_id}", response_model=StyleLibraryItemOut)
+def patch_item(item_id: str, body: StyleLibraryPatchBody,
+               user_id: str = Depends(require_user)) -> dict:
+    """改名 / 改备注：只动传了的字段，档案与样本统计不重算。"""
+    uid = uuid.UUID(user_id)
+    try:
+        target = uuid.UUID(item_id)
+    except (ValueError, TypeError):
+        # "builtin:xxx" 也走这条 —— 内置预设改不得，给 404 而不是 500。
+        raise HTTPException(status_code=404, detail="NOT_FOUND") from None
+    name = body.name.strip() if body.name is not None else None
+    if name is not None and not name:
+        raise HTTPException(status_code=400, detail="文风名不能为空")
+    with new_session() as db:
+        item = db.scalar(select(StyleLibraryItem).where(
+            StyleLibraryItem.id == target, StyleLibraryItem.user_id == uid))
+        if item is None:
+            raise HTTPException(status_code=404, detail="NOT_FOUND")
+        if name is not None and name != item.name:
+            taken = db.scalar(select(StyleLibraryItem.id).where(
+                StyleLibraryItem.user_id == uid, StyleLibraryItem.name == name,
+                StyleLibraryItem.id != target))
+            if taken is not None:
+                raise HTTPException(status_code=409, detail="NAME_TAKEN")
+            item.name = name
+        if body.note is not None:
+            item.note = body.note.strip()
         db.commit()
         return _item_out(item)
 

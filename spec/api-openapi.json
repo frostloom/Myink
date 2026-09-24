@@ -5057,6 +5057,37 @@
         "title": "StyleLibraryOut",
         "type": "object"
       },
+      "StyleLibraryPatchBody": {
+        "description": "改名 / 改备注。没传的字段不动（None 与「没传」区分开）。",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "title": "StyleLibraryPatchBody",
+        "type": "object"
+      },
       "StyleLibrarySaveBody": {
         "properties": {
           "name": {
@@ -10366,6 +10397,62 @@
           }
         ],
         "summary": "Delete Item",
+        "tags": [
+          "style-library"
+        ]
+      },
+      "patch": {
+        "description": "改名 / 改备注：只动传了的字段，档案与样本统计不重算。",
+        "operationId": "patch_item_api_v1_style_library__item_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StyleLibraryPatchBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StyleLibraryItemOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Patch Item",
         "tags": [
           "style-library"
         ]
