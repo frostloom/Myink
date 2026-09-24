@@ -1,7 +1,7 @@
 // 生成入口：写下一章（永远写「已写最大章 + 1」的下一未写章）+ 重写本章（仅 confirmed 章，
 // 带确认弹窗）+ 批次生成（N≤20，成本估算标注「估算」）。
 // 失败 → 中文横幅；成功 → onTaskStart(taskId) 交给时间线。
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api, ApiError } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
 import type { ChapterMeta, WritingMode } from '../types'
@@ -19,12 +19,14 @@ interface Props {
   form?: 'long' | 'short'
   /** 当前书已有任务在规划/写作/等待人工时，阻止重复发起。 */
   taskBusy?: boolean
+  /** 建书对话页确认完跳进来那一次：进页即开写（缺省 false，普通进入不受影响）。 */
+  autoStartShort?: boolean
   /** 批次生成时带 batchTotal（时间线实时 i/N）；单章任务带 chapterSeq（右栏按章过滤） */
   onTaskStart: (taskId: string, batchTotal?: number, chapterSeq?: number, mode?: WritingMode) => void
 }
 
 export function GenerationPanel({
-  projectId, chapters, selectedChapter, form = 'long', taskBusy = false, onTaskStart,
+  projectId, chapters, selectedChapter, form = 'long', taskBusy = false, autoStartShort = false, onTaskStart,
 }: Props) {
   const [open, setOpen] = useState(true)
   const [instruction, setInstruction] = useState('')
@@ -41,6 +43,15 @@ export function GenerationPanel({
     setBanner(null)
     setNotice(null)
   }, [projectId])
+
+  // 建书对话页确认完跳进来时那一刻：那次 commit 只落书不出稿，入队归这里。
+  // 用 ref 记住已经跑过——React 18 StrictMode 下 effect 会跑两次，跑两遍就是两次配额。
+  const handedOver = useRef(false)
+  useEffect(() => {
+    if (!isShort || !autoStartShort || handedOver.current) return
+    handedOver.current = true
+    void generateWholeStory()
+  }, [isShort, autoStartShort])
 
   // 已写最大章序 + 下一章序号（空项目 → 1，与 worker _guard_write_order 语义一致）。
   // 章节列表只有已物化行：写下一章 = seq 恒为 max_seq+1，绝不踩「选已写章被守卫拒绝」。

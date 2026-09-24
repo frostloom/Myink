@@ -243,6 +243,21 @@ it('offers no chapter-level control on a short book', () => {
   expect(screen.getByText('整篇一次成稿，任务里依次跑成稿、审稿，需要时再改稿。')).toBeTruthy()
 })
 
+it('starts the short-form writing as soon as the creation assistant hands over', async () => {
+  vi.mocked(api.generateShort).mockResolvedValue({ task_id: 'task-1', trace_id: 'trace-1', status: 'queued' })
+  const onTaskStart = vi.fn()
+  render(<GenerationPanel projectId="project-1" chapters={[]} selectedChapter={null}
+                          form="short" autoStartShort onTaskStart={onTaskStart} />)
+  await waitFor(() => expect(api.generateShort).toHaveBeenCalledWith('project-1'))
+  expect(onTaskStart).toHaveBeenCalledWith('task-1')
+})
+
+it('does not enqueue again on a plain visit', async () => {
+  render(<GenerationPanel projectId="project-1" chapters={[]} selectedChapter={null}
+                          form="short" onTaskStart={vi.fn()} />)
+  await waitFor(() => expect(api.generateShort).not.toHaveBeenCalled())
+})
+
 it('shows why a short book cannot start yet', async () => {
   vi.mocked(api.generateShort).mockRejectedValue(new ApiError(400, '该作品不是短篇形态', null))
 
