@@ -345,14 +345,18 @@ def _run_statement(detail=False):
         columns += [AgentRun.detail, AgentRun.error]
     # 外连接：账号级运行没有 project_id，内连接会把它们整行丢掉（成本就对不上了）。
     # username 用 coalesce 兜底到账号名，列表里不会开天窗。
+    # 只留有效归属非空的行：agent_runs.project_id 无 FK，删账号会留下 project_id 指向已删书、
+    # user_id 为 NULL 的孤儿行；AdminRun.user_id 非空，放它们过去会 ResponseValidationError。
     account = aliased(User)
+    owner = func.coalesce(Project.user_id, AgentRun.user_id)
     return select(*columns,
-                  func.coalesce(Project.user_id, AgentRun.user_id).label("user_id"),
+                  owner.label("user_id"),
                   func.coalesce(User.username, account.username).label("username"),
                   Project.title.label("project_title"))\
         .outerjoin(Project, Project.id == AgentRun.project_id)\
         .outerjoin(User, User.id == Project.user_id)\
-        .outerjoin(account, account.id == AgentRun.user_id)
+        .outerjoin(account, account.id == AgentRun.user_id)\
+        .where(owner.is_not(None))
 
 
 @router.get("/tasks/{task_id}/runs", response_model=AdminPage[AdminRun], name="admin.task_runs")
