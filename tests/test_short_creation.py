@@ -438,3 +438,36 @@ def test_commit_accepts_a_builtin_preset_by_key(temp_user, chain_stub):
     with tenant_session(out["project_id"]) as db:
         settings_row = get_settings(db, uuid.UUID(out["project_id"]))
         assert settings_row is not None and settings_row.skill_pack == "xianxia-jiuzhou"
+
+
+def _malformed_short_outline() -> dict:
+    """有 objective、有非空 volumes，但逐章细纲不合规（第 3 章 goal 为空）。
+
+    过得了 commit 那道闸（它只看 outline_error / volumes / objective），
+    过不了落库时的 `validate_short_outline`——所以它会一路走到第 3 步才炸。
+    """
+    plan = _short_outline()
+    plan["volumes"][0]["chapters"][2]["goal"] = ""
+    return plan
+
+
+def test_commit_turns_a_malformed_plan_into_a_retryable_502(temp_user, chain_stub):
+    """形状不合规给的是可重试的 502，不是 400 OUTLINE_INCOMPLETE。
+
+    第 3 步落库抛的那个 400，文案（apiError.ts）指向长篇设定页的「全书目标/每卷目标」
+    表单——对话式建书根本没有那张表单，用户拿到它只会一头雾水。这条路的整个设计是
+    「重按复用同一本」，形状不合规与出方案失败是同一件事：可以再来一次。
+    """
+    chain_stub([json.dumps(_malformed_short_outline(), ensure_ascii=False)])
+    _seed_session(temp_user)
+    resp = client.post("/api/v1/short/creation/commit", json={},
+                       headers=identity_headers(temp_user))
+    assert resp.status_code == 502
+    assert resp.json()["detail"].startswith("PLAN_FAILED")
+    with new_session() as db:
+        assert db.query(Project).filter(Project.user_id == uuid.UUID(temp_user)).count() == 1
+        # 会话仍 active、book_id 已记下：重按一次就走复用那本的路，不会建出第二本。
+        row = db.scalar(select(ShortCreationSession)
+                        .where(ShortCreationSession.user_id == uuid.UUID(temp_user)))
+        assert row is not None and row.status == "active" and row.book_id is not None
+        assert db.get(Project, row.book_id).creation_status != "ready"

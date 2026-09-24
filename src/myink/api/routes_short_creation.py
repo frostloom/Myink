@@ -17,6 +17,7 @@ from myink.api.schemas import (OkOut, ShortCreationCommitBody, ShortCreationComm
                                ShortCreationMessageBody, ShortCreationMessageOut,
                                ShortCreationOut, ShortCreationSessionOut)
 from myink.book_setup import generate_short_creation_turn
+from myink.creation import validate_short_outline
 from myink.db import new_session, tenant_session
 from myink.memory.repository import get_settings
 from myink.models import (Project, ProjectSettings, ShortCreationMessage,
@@ -206,11 +207,17 @@ def commit(body: ShortCreationCommitBody, user_id: str = Depends(require_user)) 
             or not str(outline.get("objective") or "").strip()):
         # 书已经在库里（session.book_id 记着），这一步失败用户重按一次即可——
         # 不会建出第二本，也不会卡在「方案空了但状态是 ready」上。
-        # 空 objective 也要在这里挡：它能过 generate_short_plan 的宽松形状检查，却过不了
-        # 第 3 步的 validate_short_outline——那时书已落库，用户拿到的是一个莫名其妙的
-        # 400 OUTLINE_INCOMPLETE，而这条路的整个设计就是「重按复用同一本」。
+        # 空 objective 也在这里挡（而不是留给下面的形状校验）：它给的是「方案为空」这个
+        # 更像人话的说法，而形状校验统一回「形状不合规」。
         raise HTTPException(status_code=502,
                             detail=f"PLAN_FAILED: {patch.get('outline_error') or '方案为空'}")
+    try:
+        # 逐章细纲缺章、卷不连续这类形状问题，原本要等到第 3 步落库才炸，那里抛的是
+        # 400 OUTLINE_INCOMPLETE——它的文案指向长篇设定页的那张「全书目标/每卷目标」表单，
+        # 而这条动线根本没有那张表单。提前按同一件「方案不行」挡成可重试的 502。
+        validate_short_outline(outline)
+    except HTTPException:
+        raise HTTPException(status_code=502, detail="PLAN_FAILED: 方案形状不合规") from None
 
     # 3) 落方案置 ready + 落文风
     style_item_id = (body.style_item_id or "").strip()
