@@ -432,3 +432,19 @@ def test_extract_style_profile_with_db_but_no_owner_is_rejected():
     with new_session() as db:
         with pytest.raises(ValueError, match="db 非 None"):
             extract_style_profile([_SAMPLE_1], analyze_sample_stats([_SAMPLE_1]), db=db)
+
+
+def test_ownerless_extraction_routes_through_the_account_level_chain(temp_user, monkeypatch):
+    """有 user_id 无 project_id 必须走 make_user_chain（不是 make_chain(project_id=None)）。
+
+    单纯装 style_stub 分辨不出来：make_chain 与 make_user_chain 在桩下返回同一条链。
+    这里盯调用本身。链未配置（无桩）→ 返回降级 error 即可，本测试只问「哪个构造函数被调」。
+    """
+    import myink.providers as providers_mod
+
+    called = []
+    real = providers_mod.make_user_chain
+    monkeypatch.setattr(providers_mod, "make_user_chain",
+                        lambda role, uid: (called.append((role, uid)), real(role, uid))[1])
+    extract_style_profile([_SAMPLE_1], analyze_sample_stats([_SAMPLE_1]), user_id=temp_user)
+    assert called == [("extract", temp_user)]
