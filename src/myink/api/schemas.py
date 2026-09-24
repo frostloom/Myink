@@ -506,6 +506,13 @@ class StyleSampleBody(BaseModel):
     samples: list[str] = Field(default_factory=list)
 
 
+class StyleLibraryPatchBody(BaseModel):
+    """改名 / 改备注。没传的字段不动（None 与「没传」区分开）。"""
+
+    name: str | None = Field(default=None, max_length=64)
+    note: str | None = Field(default=None, max_length=200)
+
+
 class ShortCreationMessageOut(BaseModel):
     id: int
     role: str

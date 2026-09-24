@@ -248,3 +248,104 @@ def test_extract_records_an_account_level_run(temp_user, style_stub):
     with new_session() as db:
         row = db.scalar(select(AgentRun).where(AgentRun.user_id == uuid.UUID(temp_user)))
     assert row is not None and row.node == "style_extract" and row.project_id is None
+
+
+def test_patch_renames_and_edits_the_note(temp_user):
+    created = client.post("/api/v1/style-library",
+                          json={"name": "渡口冷白描", "profile": {"pov": "限知"},
+                                "note": "旧备注", "sample_chars": 1200},
+                          headers=identity_headers(temp_user))
+    assert created.status_code == 200, created.text
+    item_id = created.json()["id"]
+
+    out = client.patch(f"/api/v1/style-library/{item_id}",
+                       json={"name": "渡口白描", "note": "冷、短句"},
+                       headers=identity_headers(temp_user))
+    assert out.status_code == 200, out.text
+    assert out.json()["name"] == "渡口白描"
+    assert out.json()["note"] == "冷、短句"
+
+    items = client.get("/api/v1/style-library", headers=identity_headers(temp_user)).json()["items"]
+    assert [i["name"] for i in items if not i["builtin"]] == ["渡口白描"]
+
+
+def test_patch_only_touches_the_supplied_fields(temp_user):
+    """没传的字段不动：档案不该随一次重命名被清空，名字也不该随一次改备注被覆盖。"""
+    created = client.post("/api/v1/style-library",
+                          json={"name": "渡口", "profile": {"pov": "限知"},
+                                "note": "原备注", "sample_chars": 42},
+                          headers=identity_headers(temp_user))
+    item_id = created.json()["id"]
+
+    out = client.patch(f"/api/v1/style-library/{item_id}", json={"name": "渡口二"},
+                       headers=identity_headers(temp_user))
+    assert out.status_code == 200, out.text
+    assert out.json()["note"] == "原备注", "没传 note 就不该动它"
+    assert out.json()["profile"] == {"pov": "限知"}, "档案不该随重命名丢"
+    assert out.json()["sample_chars"] == 42
+
+    note_only = client.patch(f"/api/v1/style-library/{item_id}", json={"note": "  trimmed  "},
+                             headers=identity_headers(temp_user))
+    assert note_only.json()["name"] == "渡口二", "只改备注不该动名字"
+    assert note_only.json()["note"] == "trimmed", "备注两端空白要去掉"
+
+
+def test_patch_renaming_to_its_own_name_is_allowed(temp_user):
+    """改成自己现在的名字不能撞到自己的唯一约束。"""
+    created = client.post("/api/v1/style-library",
+                          json={"name": "渡口", "profile": {}, "sample_chars": 0},
+                          headers=identity_headers(temp_user))
+    out = client.patch(f"/api/v1/style-library/{created.json()['id']}", json={"name": "渡口"},
+                       headers=identity_headers(temp_user))
+    assert out.status_code == 200, out.text
+
+
+def test_patch_rejects_a_duplicate_name(temp_user):
+    body = {"name": "渡口冷白描", "profile": {"pov": "限知"}, "sample_chars": 10}
+    assert client.post("/api/v1/style-library", json=body,
+                       headers=identity_headers(temp_user)).status_code == 200
+    second = client.post("/api/v1/style-library", json={**body, "name": "另一档"},
+                         headers=identity_headers(temp_user))
+    again = client.patch(f"/api/v1/style-library/{second.json()['id']}", json={"name": "渡口冷白描"},
+                         headers=identity_headers(temp_user))
+    assert again.status_code == 409
+    assert again.json()["detail"] == "NAME_TAKEN"
+
+
+def test_patch_rejects_a_blank_name(temp_user):
+    created = client.post("/api/v1/style-library",
+                          json={"name": "渡口", "profile": {}, "sample_chars": 0},
+                          headers=identity_headers(temp_user))
+    resp = client.patch(f"/api/v1/style-library/{created.json()['id']}", json={"name": "   "},
+                        headers=identity_headers(temp_user))
+    assert resp.status_code == 400
+
+
+def test_patch_of_a_builtin_or_a_stranger_is_404(temp_user):
+    """内置改不得；别人的项也改不得，且不给 403 与 404 的差别去反推 id 存在。"""
+    created = client.post("/api/v1/style-library",
+                          json={"name": "渡口", "profile": {}, "sample_chars": 0},
+                          headers=identity_headers(temp_user))
+    item_id = created.json()["id"]
+
+    assert client.patch("/api/v1/style-library/builtin:xianxia-jiuzhou",
+                        json={"name": "改内置"},
+                        headers=identity_headers(temp_user)).status_code == 404
+    assert client.patch(f"/api/v1/style-library/{uuid.uuid4()}", json={"name": "不存在的"},
+                        headers=identity_headers(temp_user)).status_code == 404
+
+    with new_session() as db:
+        other = User(username=f"style-{uuid.uuid4().hex[:8]}")
+        db.add(other)
+        db.commit()
+        other_id = other.id
+    try:
+        assert client.patch(f"/api/v1/style-library/{item_id}", json={"name": "被抢了"},
+                            headers=identity_headers(other_id)).status_code == 404
+        items = client.get("/api/v1/style-library", headers=identity_headers(temp_user)).json()["items"]
+        assert [i["name"] for i in items if not i["builtin"]] == ["渡口"], "别人的改名不能落库"
+    finally:
+        with new_session() as db:
+            db.execute(sa_delete(StyleLibraryItem).where(StyleLibraryItem.user_id == other_id))
+            db.execute(sa_delete(User).where(User.id == other_id))
+            db.commit()
