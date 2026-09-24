@@ -150,3 +150,36 @@ def review_short_plan(plan: dict, *, chapter_count: int, project_id: str | None 
     if not isinstance(data, dict) or data.get("verdict") != "revise":
         return "pass", ""
     return "revise", str(data.get("reason") or "").strip()
+
+
+def generate_short_creation_turn(history: list[dict], card: dict, *,
+                                 user_id, db=None) -> tuple[str, dict, str | None, ModelResponse]:
+    """建书对话一回合：一次 planner json_mode 调用，回 (reply, 卡增量, error, resp)。
+
+    **不抛、不清卡**：解析失败时把模型原文当 reply 交出去、增量回空 dict（调用方保留现值）、
+    error 记进消息。用户重说一句就能接着聊，而不是丢掉整场对话。
+
+    resp 一并交出去，是为了让调用方把 model_id / token / 花费逐条落进会话消息里。
+    """
+    from myink.providers import make_user_chain
+    from myink.providers.base import ModelResponse
+    from myink.short import creation
+    from myink.workflow import nodes, prompts
+
+    messages = prompts.short_creation_messages(history, card)
+    resp = make_user_chain("planner", user_id).generate(
+        messages, json_mode=True, max_tokens=nodes._MAX_TOKENS["short_creation"])
+    if db is not None:
+        nodes.record_run(db, user_id=user_id, task_id=None, node="short_creation",
+                         role="Planner", resp=resp, error=resp.error, messages=messages,
+                         detail={"turn": len(history)})
+    if resp.error:
+        return "（这一轮没连上模型，请再说一次）", {}, resp.error, resp
+    try:
+        data = nodes._parse_json(resp.content)
+    except Exception as exc:                       # 坏 JSON：原文当回复
+        return resp.content.strip(), {}, f"parse_error: {exc}", resp
+    if not isinstance(data, dict):
+        return resp.content.strip(), {}, "unexpected_json", resp
+    reply = str(data.get("reply") or "").strip() or "（模型这轮没有回复内容）"
+    return reply, creation.card_patch(data.get("card")), None, resp

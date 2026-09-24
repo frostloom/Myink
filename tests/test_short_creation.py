@@ -7,10 +7,15 @@ import uuid
 import pytest
 from sqlalchemy import select
 
+from myink.book_setup import generate_short_creation_turn
 from myink.db import new_session
-from myink.models import ShortCreationMessage, ShortCreationSession
+from myink.models import AgentRun, ShortCreationMessage, ShortCreationSession
+from myink.providers.base import ModelProvider, ModelResponse
 from myink.short import creation
 from myink.workflow import nodes, prompts
+
+_STUB_TURN = ('{"reply": "主角最大的压力是什么？", "card": '
+              '{"protagonist_pressure": "守着渡口的生计，也守着不肯走的儿子"}}')
 
 
 def test_card_patch_drops_blanks_so_the_model_cannot_erase_user_edits():
@@ -120,3 +125,70 @@ def test_short_creation_turn_budget_is_smaller_than_a_plan():
     """一回合只是一段话 + 一张卡，给 1500 token 足够；给大了会鼓励它写小说。"""
     assert nodes._MAX_TOKENS["short_creation"] == 1500
     assert nodes._MAX_TOKENS["short_creation"] < nodes._MAX_TOKENS["short_plan"]
+
+
+class _ChainStub(ModelProvider):
+    """记下每次 generate 的入参，按调用次数排队返回原文（用完重复最后一项）。"""
+
+    def __init__(self, contents: list[str], *, raises: bool = False):
+        self._contents = contents
+        self._raises = raises
+        self.calls: list[dict] = []
+
+    def name(self) -> str:
+        return "short-plan-stub"
+
+    def generate(self, messages, *, model_id, max_tokens=None, temperature=None,
+                 json_mode=False, tools=None, disable_thinking=False):
+        if self._raises:
+            raise RuntimeError("provider down")
+        self.calls.append({"messages": messages, "max_tokens": max_tokens, "json_mode": json_mode})
+        idx = min(len(self.calls) - 1, len(self._contents) - 1)
+        return ModelResponse(content=self._contents[idx], model_id=model_id,
+                             input_tokens=10, output_tokens=20)
+
+
+@pytest.fixture
+def chain_stub(monkeypatch):
+    import myink.providers as providers_mod
+
+    def _install(contents: list[str], *, raises: bool = False) -> _ChainStub:
+        stub = _ChainStub(contents, raises=raises)
+        monkeypatch.setattr(providers_mod, "default_provider", stub)
+        return stub
+
+    return _install
+
+
+def test_short_creation_turn_returns_reply_and_card(temp_user, chain_stub):
+    stub = chain_stub([_STUB_TURN])
+    reply, patch, error, resp = generate_short_creation_turn(
+        [{"role": "user", "content": "我想写个渡口故事"}], creation.default_card(),
+        user_id=temp_user)
+    assert error is None
+    assert reply == "主角最大的压力是什么？"
+    assert patch["protagonist_pressure"] == "守着渡口的生计，也守着不肯走的儿子"
+    # 记账：一次 planner 调用、json_mode、额度取自 _MAX_TOKENS、role 标 Planner
+    call = stub.calls[-1]
+    assert call["json_mode"] is True
+    assert call["max_tokens"] == nodes._MAX_TOKENS["short_creation"]
+
+
+def test_short_creation_turn_survives_bad_json(temp_user, chain_stub):
+    """模型吐了一整段散文：把原文当回复交出去，卡不动，error 记下来——用户重说一句就行。"""
+    chain_stub(['当然可以！我先说说渡口这个意象……'])
+    reply, patch, error, resp = generate_short_creation_turn(
+        [{"role": "user", "content": "随便聊聊"}], creation.default_card(), user_id=temp_user)
+    assert patch == {}
+    assert "渡口" in reply
+    assert error is not None and error.startswith("parse_error")
+
+
+def test_short_creation_turn_records_an_account_level_run(temp_user, chain_stub):
+    chain_stub([_STUB_TURN])
+    with new_session() as db:
+        generate_short_creation_turn([{"role": "user", "content": "hi"}],
+                                     creation.default_card(), user_id=temp_user, db=db)
+        db.commit()
+        row = db.scalar(select(AgentRun).where(AgentRun.user_id == uuid.UUID(temp_user)))
+    assert row is not None and row.node == "short_creation" and row.role == "Planner"
