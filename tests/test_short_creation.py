@@ -26,6 +26,10 @@ client = TestClient(app)
 _STUB_TURN = ('{"reply": "主角最大的压力是什么？", "card": '
               '{"protagonist_pressure": "守着渡口的生计，也守着不肯走的儿子"}}')
 
+# 模型这轮在暂定名上留空串：这是「没有新信息」，不是「清空」。
+_STUB_TURN_BLANK_TITLE = ('{"reply": "环境先放一放，主角的压力是什么？", "card": '
+                          '{"working_title": "", "protagonist_pressure": "守着渡口的生计"}}')
+
 
 def test_card_patch_drops_blanks_so_the_model_cannot_erase_user_edits():
     """模型这轮没把握的字段会留空串——那是「没有新信息」，不是「清空」。"""
@@ -236,16 +240,23 @@ def test_posting_a_message_appends_both_sides_and_updates_the_card(temp_user, ch
     assert out["messages"][-1]["cost_est"] >= 0
 
 
-def test_the_users_card_edits_win_over_the_models_next_blank(temp_user, chain_stub):
-    """Review Focus 1：用户手改的字段不能被模型下一轮的空字段抹掉。"""
-    chain_stub([_STUB_TURN])
-    client.get("/api/v1/short/creation", headers=identity_headers(temp_user))
+def test_an_empty_model_field_keeps_what_the_user_already_wrote(temp_user, chain_stub):
+    """Review Focus 1：模型在暂定名上回空串，不许冲掉用户已经写好的名字。
+
+    端点级的：handler 是「先合用户卡、再合模型卡」（`routes_short_creation.py:102→107`），
+    只测 `merge_model_card` 抓不到「两步顺序被写反」这类改动，所以必须走 POST /messages。
+    第二轮**不带** card——带上就等于给实现留了「至少用户卡还兜着」的退路，顺序写反也照样绿。
+    """
+    chain_stub([_STUB_TURN_BLANK_TITLE])           # 不装桩这轮拿不到「空串」这个输入
     client.post("/api/v1/short/creation/messages",
-                json={"content": "第一轮", "card": {"working_title": "最后一班渡船"}},
+                json={"content": "渡口，冷白描", "card": {"working_title": "渡口"}},
                 headers=identity_headers(temp_user))
     out = client.post("/api/v1/short/creation/messages",
-                      json={"content": "第二轮"}, headers=identity_headers(temp_user)).json()
-    assert out["session"]["card"]["working_title"] == "最后一班渡船"
+                      json={"content": "接着说说环境"},
+                      headers=identity_headers(temp_user)).json()
+    assert out["session"]["card"]["working_title"] == "渡口", "空串不该覆盖用户已写的值"
+    # 同一轮里模型真正给了值的字段照常落下来（空串不留 ≠ 整张卡不留）
+    assert out["session"]["card"]["protagonist_pressure"] == "守着渡口的生计"
 
 
 def test_ready_flips_only_when_all_seven_fields_are_filled(temp_user, chain_stub):
