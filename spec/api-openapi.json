@@ -1013,13 +1013,27 @@
             "type": "integer"
           },
           "project_id": {
-            "format": "uuid",
-            "title": "Project Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
           },
           "project_title": {
-            "title": "Project Title",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Title"
           },
           "retry_count": {
             "title": "Retry Count",
@@ -1058,8 +1072,15 @@
             "type": "string"
           },
           "username": {
-            "title": "Username",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
           }
         },
         "required": [
@@ -1146,13 +1167,27 @@
             "type": "integer"
           },
           "project_id": {
-            "format": "uuid",
-            "title": "Project Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
           },
           "project_title": {
-            "title": "Project Title",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Title"
           },
           "prompt_missing": {
             "title": "Prompt Missing",
@@ -1195,8 +1230,15 @@
             "type": "string"
           },
           "username": {
-            "title": "Username",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
           }
         },
         "required": [
@@ -4686,6 +4728,262 @@
         "title": "SetupDraftOut",
         "type": "object"
       },
+      "ShortCreationCommitBody": {
+        "properties": {
+          "card": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Card"
+          },
+          "style_item_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style Item Id"
+          }
+        },
+        "title": "ShortCreationCommitBody",
+        "type": "object"
+      },
+      "ShortCreationCommitOut": {
+        "properties": {
+          "lengths_compressed": {
+            "title": "Lengths Compressed",
+            "type": "boolean"
+          },
+          "plan_warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Warning"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "style_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style Name"
+          }
+        },
+        "required": [
+          "project_id",
+          "lengths_compressed",
+          "plan_warning",
+          "style_name"
+        ],
+        "title": "ShortCreationCommitOut",
+        "type": "object"
+      },
+      "ShortCreationMessageBody": {
+        "properties": {
+          "card": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Card"
+          },
+          "content": {
+            "maxLength": 4000,
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "ShortCreationMessageBody",
+        "type": "object"
+      },
+      "ShortCreationMessageOut": {
+        "properties": {
+          "card": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Card"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "cost_est": {
+            "title": "Cost Est",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "content",
+          "card",
+          "model_id",
+          "cost_est",
+          "error",
+          "created_at"
+        ],
+        "title": "ShortCreationMessageOut",
+        "type": "object"
+      },
+      "ShortCreationOut": {
+        "properties": {
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ShortCreationMessageOut"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "session": {
+            "$ref": "#/components/schemas/ShortCreationSessionOut"
+          }
+        },
+        "required": [
+          "session",
+          "messages",
+          "ready"
+        ],
+        "title": "ShortCreationOut",
+        "type": "object"
+      },
+      "ShortCreationSessionOut": {
+        "properties": {
+          "book_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Book Id"
+          },
+          "card": {
+            "additionalProperties": true,
+            "title": "Card",
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "style_item_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style Item Id"
+          },
+          "style_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style Name"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "card",
+          "style_item_id",
+          "style_name",
+          "book_id"
+        ],
+        "title": "ShortCreationSessionOut",
+        "type": "object"
+      },
       "SkillPresetOut": {
         "properties": {
           "genre": {
@@ -4759,6 +5057,110 @@
         "title": "StyleDraftOut",
         "type": "object"
       },
+      "StyleLibraryItemOut": {
+        "properties": {
+          "builtin": {
+            "default": false,
+            "title": "Builtin",
+            "type": "boolean"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          },
+          "profile": {
+            "additionalProperties": true,
+            "title": "Profile",
+            "type": "object"
+          },
+          "removable": {
+            "default": false,
+            "title": "Removable",
+            "type": "boolean"
+          },
+          "sample_chars": {
+            "default": 0,
+            "title": "Sample Chars",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "profile"
+        ],
+        "title": "StyleLibraryItemOut",
+        "type": "object"
+      },
+      "StyleLibraryOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StyleLibraryItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "StyleLibraryOut",
+        "type": "object"
+      },
+      "StyleLibrarySaveBody": {
+        "properties": {
+          "name": {
+            "maxLength": 64,
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Note",
+            "type": "string"
+          },
+          "profile": {
+            "additionalProperties": true,
+            "title": "Profile",
+            "type": "object"
+          },
+          "sample_chars": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Sample Chars",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "profile"
+        ],
+        "title": "StyleLibrarySaveBody",
+        "type": "object"
+      },
       "StyleProfileBody": {
         "description": "文风档案（前端可编辑草稿后回传；dict 透传，落库前轻校验）。\n\nskill_pack：题材预设 marker（§7.12 预设导入原子写，值为预设 id）；None 保留现值。",
         "properties": {
@@ -4812,6 +5214,19 @@
           "version"
         ],
         "title": "StyleProfileOut",
+        "type": "object"
+      },
+      "StyleSampleBody": {
+        "properties": {
+          "samples": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Samples",
+            "type": "array"
+          }
+        },
+        "title": "StyleSampleBody",
         "type": "object"
       },
       "StyleSamplesBody": {
@@ -9735,6 +10150,149 @@
         ]
       }
     },
+    "/api/v1/short/creation": {
+      "delete": {
+        "operationId": "reset_session_api_v1_short_creation_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reset Session",
+        "tags": [
+          "short-creation"
+        ]
+      },
+      "get": {
+        "operationId": "get_session_api_v1_short_creation_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShortCreationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Session",
+        "tags": [
+          "short-creation"
+        ]
+      }
+    },
+    "/api/v1/short/creation/commit": {
+      "post": {
+        "description": "确认开写：落书 + 出方案 + 落方案置 ready + 落文风。**不入队。**\n\n入队交给既有 POST /projects/{id}/short/generate——配额与成本估算只有那一条实现，\n在这里再写一份就会出现第二个口径；而且分离之后，入队失败用户能在工作台点「开始写全篇」重来。",
+        "operationId": "commit_api_v1_short_creation_commit_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShortCreationCommitBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShortCreationCommitOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Commit",
+        "tags": [
+          "short-creation"
+        ]
+      }
+    },
+    "/api/v1/short/creation/messages": {
+      "post": {
+        "operationId": "post_message_api_v1_short_creation_messages_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShortCreationMessageBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShortCreationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Post Message",
+        "tags": [
+          "short-creation"
+        ]
+      }
+    },
     "/api/v1/skill-presets": {
       "get": {
         "description": "题材 Skill 预设列表（§7.12 预设包）：4 本种子书文风档案，设置页「预设导入」渲染。\n\n静态数据，但需身份：网关时代它挂在 secured 分组里（JWT 必带），换成 Caddy 直连\nPython 后必须把这一条性质显式补回来，否则任何匿名请求都能拿到整份预设正文。\nrequire_user（不是 require_owner）：无书可归属，与 /environment 同一档。\n预设 id 同时是 skill_pack marker。",
@@ -9763,6 +10321,171 @@
         "summary": "Skill Presets",
         "tags": [
           "style"
+        ]
+      }
+    },
+    "/api/v1/style-library": {
+      "get": {
+        "description": "内置 4 个在前、用户项在后：一次请求喂满选择器，前端不再自备一份内置清单。",
+        "operationId": "list_items_api_v1_style_library_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StyleLibraryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Items",
+        "tags": [
+          "style-library"
+        ]
+      },
+      "post": {
+        "operationId": "save_item_api_v1_style_library_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StyleLibrarySaveBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StyleLibraryItemOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save Item",
+        "tags": [
+          "style-library"
+        ]
+      }
+    },
+    "/api/v1/style-library/samples": {
+      "post": {
+        "description": "导入的文章 → 一份可编辑的文风草稿（不落库，用户看过、改了名再保存）。",
+        "operationId": "extract_samples_api_v1_style_library_samples_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StyleSampleBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StyleDraftOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Extract Samples",
+        "tags": [
+          "style-library"
+        ]
+      }
+    },
+    "/api/v1/style-library/{item_id}": {
+      "delete": {
+        "operationId": "delete_item_api_v1_style_library__item_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Item",
+        "tags": [
+          "style-library"
         ]
       }
     },
