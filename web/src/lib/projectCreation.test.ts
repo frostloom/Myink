@@ -1,4 +1,5 @@
-// 卡片跳哪去由形态决定：草稿要回到对应形态的建书动线，正式作品才进工作台。
+// 卡片跳哪去由形态决定：长篇草稿回到长篇向导续填；短篇一律进工作台
+// （短篇没有「设定 → 大纲」两步可回填，回到对话页也接不上——对话页只能从头聊）。
 import { expect, it } from 'vitest'
 import { isProjectDraft, projectHref } from './projectCreation'
 import type { Project } from '../types'
@@ -7,11 +8,11 @@ function project(overrides: Partial<Project>): Project {
   return { id: 'p1', title: '书', genre: '悬疑', current_chapter: 0, target_words: null, ...overrides }
 }
 
-it('sends a draft back to its own form of the creation wizard', () => {
-  // 短板草稿进长篇向导会让章数范围（1–10 vs 50–1000）和第 1 步的字段全错。
+it('sends a short book to the workspace even while it is a draft', () => {
   const short = project({ creation_status: 'draft', form: 'short' })
-  expect(projectHref(short)).toBe('/short/new?draft=p1')
-  expect(projectHref(project({ creation_status: 'setup_confirmed', form: 'short' }))).toBe('/short/new?draft=p1')
+  expect(projectHref(short)).toBe('/projects/p1')
+  expect(projectHref(project({ creation_status: 'setup_confirmed', form: 'short' }))).toBe('/projects/p1')
+  expect(projectHref(project({ creation_status: 'ready', form: 'short' }))).toBe('/projects/p1')
 })
 
 it('treats a missing form as long-form', () => {

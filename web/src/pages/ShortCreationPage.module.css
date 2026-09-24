@@ -1,0 +1,14 @@
+/* 两栏：左边聊，右边卡。窄屏堆成一列（聊在上，卡在下）。 */
+.wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); gap: 16px; height: 100%; min-height: 0; }
+.thread { display: flex; flex-direction: column; min-height: 0; }
+.stream { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 12px 0; }
+.turn { max-width: 42em; padding: 10px 12px; border-radius: 10px; white-space: pre-wrap; }
+.mine { align-self: flex-end; background: var(--accent-soft, #eef2ff); }
+.theirs { align-self: flex-start; background: var(--panel-soft, #f5f5f5); }
+.failed { border: 1px solid var(--danger, #c00); font-size: 0.85em; }
+.composer { display: flex; gap: 8px; align-items: flex-end; padding-top: 8px; }
+.composer textarea { flex: 1; min-height: 3.2em; resize: vertical; }
+.card { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; }
+.card label { display: flex; flex-direction: column; gap: 2px; font-size: 0.85em; }
+.card small { opacity: 0.7; }
+@media (max-width: 900px) { .wrap { grid-template-columns: minmax(0, 1fr); } }

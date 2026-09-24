@@ -4,9 +4,10 @@ export function isProjectDraft(project: Project): boolean {
   return project.creation_status === 'draft' || project.creation_status === 'setup_confirmed'
 }
 
-/** 草稿要回到自己形态的建书动线；正式作品进工作台（工作台自己按 form 分叉）。 */
 export function projectHref(project: Project): string {
+  // 短篇一律进工作台（含草稿）：/short/new 现在是对话页，回不去一篇聊到一半的会话。
+  if (project.form === 'short') return `/projects/${project.id}`
   return isProjectDraft(project)
-    ? `/${project.form === 'short' ? 'short' : 'long'}/new?draft=${encodeURIComponent(project.id)}`
+    ? `/long/new?draft=${encodeURIComponent(project.id)}`
     : `/projects/${project.id}`
 }
