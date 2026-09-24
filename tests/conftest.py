@@ -30,7 +30,15 @@ from sqlalchemy import delete as sa_delete, select as sa_select
 from myink.api.auth import create_access_token
 from myink.config import settings
 from myink.db import new_session
-from myink.models import AgentRun, Project, ProjectSettings, StyleLibraryItem, User
+from myink.models import (
+    AgentRun,
+    Project,
+    ProjectSettings,
+    ShortCreationMessage,
+    ShortCreationSession,
+    StyleLibraryItem,
+    User,
+)
 
 from test_flow import (  # noqa: F401  (re-export fixtures/StubProvider)
     FakeEmbedder,
@@ -147,5 +155,8 @@ def temp_user():
     with new_session() as db:
         db.execute(sa_delete(StyleLibraryItem).where(StyleLibraryItem.user_id == uid))
         db.execute(sa_delete(AgentRun).where(AgentRun.user_id == uid))
+        db.execute(sa_delete(ShortCreationMessage).where(ShortCreationMessage.session_id.in_(
+            sa_select(ShortCreationSession.id).where(ShortCreationSession.user_id == uid))))
+        db.execute(sa_delete(ShortCreationSession).where(ShortCreationSession.user_id == uid))
         db.execute(sa_delete(User).where(User.id == uid))
         db.commit()

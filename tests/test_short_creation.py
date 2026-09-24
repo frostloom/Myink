@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+import uuid
+
+import pytest
+from sqlalchemy import select
+
+from myink.db import new_session
+from myink.models import ShortCreationMessage, ShortCreationSession
 from myink.short import creation
 
 
@@ -52,3 +59,38 @@ def test_card_premise_feeds_the_plan_generator_one_string():
     premise = creation.card_premise(creation.default_card() | {
         "direction": "一句话方向", "conflict_core": "核心冲突", "plot_sketch": "大致情节"})
     assert premise == "一句话方向\n\n核心冲突：核心冲突\n\n大致情节：大致情节"
+
+
+def test_session_is_one_per_user_and_messages_are_ordered(temp_user):
+    with new_session() as db:
+        session = ShortCreationSession(user_id=uuid.UUID(temp_user), status="active",
+                                       card=creation.default_card())
+        db.add(session)
+        db.commit()
+        db.add_all([
+            ShortCreationMessage(session_id=session.id, role="assistant", content="开场白"),
+            ShortCreationMessage(session_id=session.id, role="user", content="我想写渡口"),
+        ])
+        db.commit()
+        rows = db.scalars(select(ShortCreationMessage)
+                          .where(ShortCreationMessage.session_id == session.id)
+                          .order_by(ShortCreationMessage.id)).all()
+    assert [row.content for row in rows] == ["开场白", "我想写渡口"]
+    assert rows[0].id < rows[1].id
+
+
+def test_session_tables_have_no_project_id_column():
+    """同 StyleLibraryItem：带上 project_id 就会被套上租户策略。"""
+    assert "project_id" not in ShortCreationSession.__table__.columns
+    assert "project_id" not in ShortCreationMessage.__table__.columns
+
+
+def test_session_user_id_is_unique(temp_user):
+    from sqlalchemy.exc import IntegrityError
+    with new_session() as db:
+        db.add(ShortCreationSession(user_id=uuid.UUID(temp_user), status="active", card={}))
+        db.commit()
+        db.add(ShortCreationSession(user_id=uuid.UUID(temp_user), status="active", card={}))
+        with pytest.raises(IntegrityError):
+            db.commit()
+        db.rollback()
