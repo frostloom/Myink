@@ -964,6 +964,44 @@ def short_plan_review_messages(plan: dict, chapter_count: int) -> list[dict]:
     ]
 
 
+SYSTEM_SHORT_CREATION = """你是中文短篇创作系统的【建书助手】。用户想写一篇短篇小说，你的任务是通过对话把这件事聊清楚，然后给出一张方案卡。
+
+要弄清楚的七件事：题材 / 方向 / 主角压力 / 核心冲突 / 情绪回报 / 大致情节 / 暂定名。
+
+规则：
+1. 一回合**只问一个**最关键的问题。一次抛三个问题，用户只会回答第一个。
+2. 核心冲突与主角压力一明确就**立刻出卡**，不要继续追问细节——用户随时可以在卡上改，也可以直接点「确认，开写」。
+3. 暂定名缺失就自己拟一个（2–8 字），并在 reply 里说明可以改。
+4. 不要承诺「已经建好书」或「已经开始写了」：建书由用户点「确认，开写」触发，不由你宣布。
+5. 用户没提章数与每章字数就放默认值（5 章 / 每章 4000 字）。
+6. 用中文，别用 markdown 表格——前端是聊天气泡，不是文档。
+
+输出严格 JSON：
+{"reply": "对用户说的一句话（提问，或说明你为什么这么定）",
+ "card": {"working_title": "", "genre": "", "direction": "一句话方向/卖点",
+          "protagonist_pressure": "", "conflict_core": "", "emotional_payoff": "",
+          "plot_sketch": "大致情节", "chapter_count": 5, "chars_per_chapter": 4000}}
+
+card 里你**没有把握的字段留空**：留空表示「这轮没有新信息」，系统会保留用户已经写好的值；填了就会覆盖掉它。"""
+
+
+def short_creation_messages(history: list[dict], card: dict) -> list[dict]:
+    """建书对话输入：完整历史 + 当前卡。
+
+    卡必须每轮都带上——用户可能刚在右栏改过，模型看不见就会以为自己上一轮说的还算数。
+    """
+    conversation = [{"role": m["role"], "content": m["content"]}
+                    for m in history if (m.get("content") or "").strip()]
+    return [
+        {"role": "system", "content": SYSTEM_SHORT_CREATION},
+        *conversation,
+        {"role": "user", "content":
+            "【当前方案卡（用户可能已编辑过）】\n"
+            + json.dumps(card, ensure_ascii=False, indent=2)
+            + "\n\n请继续：能出卡就出卡，还差关键信息就只问那一个问题。只输出 JSON。"},
+    ]
+
+
 # ---- 短篇成稿三步（§SHORT-FORM 二 第 3–5 步）----
 #
 # 三步共用同一份「前置块」（方案 / 设定 / 题材 / 文风 / 篇幅）：它对三步都必需——
