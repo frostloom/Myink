@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { api } from '../lib/api'
 import { shortCreationApi, type ShortCreationPayload } from '../lib/shortCreationApi'
 import { styleLibraryApi } from '../lib/styleLibraryApi'
 import { useAuth } from '../context/AuthContext'
@@ -15,9 +16,17 @@ vi.mock('../lib/styleLibraryApi', () => ({
   styleLibraryApi: { list: vi.fn() },
 }))
 // rail 要项目列表；这里只关心「rail 在不在」，让它拿到空列表即可。
+// generateShort 是确认之后那步入队，必须换掉，否则会真的发 fetch。
 vi.mock('../lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../lib/api')>()
-  return { ...actual, api: { ...actual.api, listProjects: vi.fn().mockResolvedValue([]) } }
+  return {
+    ...actual,
+    api: {
+      ...actual.api,
+      listProjects: vi.fn().mockResolvedValue([]),
+      generateShort: vi.fn(),
+    },
+  }
 })
 
 const session: ShortCreationPayload['session'] = {
@@ -37,12 +46,25 @@ function payload(over: {
   }
 }
 
+// 一张聊齐备的卡：三段式第二段才看得见它。
+const FULL_CARD = {
+  working_title: '最后一班渡船', direction: 'd', conflict_core: 'c', genre: 'g',
+  protagonist_pressure: 'p', emotional_payoff: 'e', plot_sketch: 's',
+  chapter_count: 5, chars_per_chapter: 4000,
+}
+
 function renderPage() {
   const router = createMemoryRouter([
     { path: '/short/new', element: <ShortCreationPage /> },
     { path: '/projects/:projectId', element: <div>工作台</div> },
   ], { initialEntries: ['/short/new'] })
   return { ...render(<RouterProvider router={router} />), router }
+}
+
+/** 第一段 → 第二段：服务端说齐备之后，点开「开始建书」，等方案卡出现。 */
+async function openCard() {
+  fireEvent.click(await screen.findByRole('button', { name: '开始建书' }))
+  return await screen.findByLabelText('暂定名')
 }
 
 beforeEach(() => {
@@ -52,20 +74,86 @@ beforeEach(() => {
   } as unknown as ReturnType<typeof useAuth>)
   vi.mocked(shortCreationApi.get).mockResolvedValue(payload())
   vi.mocked(styleLibraryApi.list).mockResolvedValue({ items: [] })
+  vi.mocked(api.generateShort).mockResolvedValue({ task_id: 't1', trace_id: 'tr1', status: 'queued' })
 })
 
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 
+it('keeps the card hidden until the server says it is ready', async () => {
+  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({ messages: [], ready: false }))
+  renderPage()
+  // 第一段只有聊天：能说话，但既没有「开始建书」也没有方案卡。
+  expect(await screen.findByLabelText('对助手说')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: '开始建书' })).toBeNull()
+  expect(screen.queryByLabelText('暂定名')).toBeNull()
+})
+
+it('shows the start option once ready, then the card, then commits and enqueues in order', async () => {
+  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+    messages: [], ready: true, session: { card: { ...FULL_CARD, working_title: '渡口' } },
+  }))
+  vi.mocked(shortCreationApi.commit).mockResolvedValue({
+    project_id: 'p1', lengths_compressed: false, plan_warning: null, style_name: null,
+  })
+  const order: string[] = []
+  vi.mocked(shortCreationApi.commit).mockImplementation(async () => {
+    order.push('commit')
+    return { project_id: 'p1', lengths_compressed: false, plan_warning: null, style_name: null }
+  })
+  vi.mocked(api.generateShort).mockImplementation(async () => {
+    order.push('generate')
+    return { task_id: 't1', trace_id: 'tr1', status: 'queued' }
+  })
+  const { router } = renderPage()
+
+  // 第二段：卡带着服务端已经攒下的字段出现，作者可以在上面改。
+  expect((await openCard() as HTMLTextAreaElement).value).toBe('渡口')
+  expect(screen.queryByRole('button', { name: '开始建书' })).toBeNull()
+
+  // 第三段：确认 → 落书 → 入队 → 进工作台（入队成功就让它自动开写）。
+  fireEvent.click(screen.getByRole('button', { name: '确认，开写' }))
+  await waitFor(() => expect(order).toEqual(['commit', 'generate']))
+  await waitFor(() => expect(router.state.location.pathname).toBe('/projects/p1'))
+  expect(router.state.location.state).toEqual({ beginShortWriting: true, planWarning: null })
+})
+
+it('still enters the workspace when the enqueue call fails, but without auto-starting', async () => {
+  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+    messages: [], ready: true, session: { card: FULL_CARD },
+  }))
+  vi.mocked(shortCreationApi.commit).mockResolvedValue({
+    project_id: 'p1', lengths_compressed: false, plan_warning: null, style_name: null,
+  })
+  vi.mocked(api.generateShort).mockRejectedValue(new Error('quota'))
+  const { router } = renderPage()
+  await openCard()
+  fireEvent.click(screen.getByRole('button', { name: '确认，开写' }))
+  // 书已经建好了，不能因为入队失败就把它丢在这儿——进工作台，由状态带给重试入口。
+  await waitFor(() => expect(router.state.location.pathname).toBe('/projects/p1'))
+  expect(router.state.location.state).toEqual({ beginShortWriting: false, planWarning: null })
+})
+
 it('shows the greeting and the editable plan card', async () => {
   renderPage()
   expect(await screen.findByText('想写个什么样的短篇？')).toBeTruthy()
-  expect(screen.getByLabelText('暂定名')).toBeTruthy()
+})
+
+it('fills the card from the server and defaults the chapter count', async () => {
+  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+    messages: [], ready: true, session: { card: { working_title: '渡口' } },
+  }))
+  renderPage()
+  await openCard()
   expect((screen.getByLabelText('章数') as HTMLInputElement).value).toBe('5')
 })
 
 it('disables confirm until every required field is filled', async () => {
+  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+    messages: [], ready: true, session: { card: { working_title: '渡口' } },
+  }))
   renderPage()
-  const confirm = await screen.findByRole('button', { name: '确认，开写' })
+  await openCard()
+  const confirm = screen.getByRole('button', { name: '确认，开写' })
   expect((confirm as HTMLButtonElement).disabled).toBe(true)
   fireEvent.change(screen.getByLabelText('方向'), { target: { value: '一句话方向' } })
   expect((confirm as HTMLButtonElement).disabled).toBe(true)   // 只有一格还不够
@@ -85,19 +173,42 @@ it('sends the message and renders both sides of the turn', async () => {
   expect(screen.getByText('渡口的故事')).toBeTruthy()
 })
 
-it('confirms, then leaves for the workspace so writing starts there', async () => {
+it('sends on Enter and leaves Shift+Enter to insert a newline', async () => {
+  vi.mocked(shortCreationApi.send).mockResolvedValue(payload({ messages: [], ready: false }))
+  renderPage()
+  const box = await screen.findByLabelText('对助手说')
+  fireEvent.change(box, { target: { value: '一个渡口的故事' } })
+  fireEvent.keyDown(box, { key: 'Enter', shiftKey: false })
+  await waitFor(() => expect(shortCreationApi.send).toHaveBeenCalledWith('t', '一个渡口的故事', {}))
+  fireEvent.change(box, { target: { value: '第二句' } })
+  fireEvent.keyDown(box, { key: 'Enter', shiftKey: true })
+  expect(shortCreationApi.send).toHaveBeenCalledTimes(1)
+})
+
+it('does not send on an Enter that is only committing an IME composition', async () => {
+  renderPage()
+  const box = await screen.findByLabelText('对助手说')
+  fireEvent.change(box, { target: { value: '渡口' } })
+  // 中文输入法选词时的回车：isComposing 为真，不该当发送。
+  const event = createEvent.keyDown(box, { key: 'Enter' })
+  Object.defineProperty(event, 'isComposing', { value: true })
+  fireEvent(box, event)
+  expect(shortCreationApi.send).not.toHaveBeenCalled()
+})
+
+it('does not offer a confirm once the session is committed', async () => {
   vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
-    ready: true,
-    session: { card: { working_title: '最后一班渡船', direction: 'd', conflict_core: 'c', genre: 'g', protagonist_pressure: 'p', emotional_payoff: 'e', plot_sketch: 's', chapter_count: 5, chars_per_chapter: 4000 } },
+    messages: [], ready: true,
+    session: { status: 'committed', book_id: 'p1', card: FULL_CARD },
   }))
-  vi.mocked(shortCreationApi.commit).mockResolvedValue({
-    project_id: 'p1', lengths_compressed: false, plan_warning: null, style_name: null,
-  })
-  const { router } = renderPage()
-  fireEvent.click(await screen.findByRole('button', { name: '确认，开写' }))
-  // commit 只落书不出稿：入队由工作台那条路做（配额与成本只有一份实现）
-  await waitFor(() => expect(shortCreationApi.commit).toHaveBeenCalled())
-  await waitFor(() => expect(router.state.location.pathname).toBe('/projects/p1'))
+  renderPage()
+  // 已经开写过的会话：既不给方案卡，也不给确认——只留指路的那一条。
+  expect(await screen.findByRole('status')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: '开始建书' })).toBeNull()
+  expect(screen.queryByRole('button', { name: '确认，开写' })).toBeNull()
+  const notice = screen.getByRole('status')
+  expect(notice.textContent).toContain('重新开始')
+  expect(screen.getByRole('link', { name: '这里' }).getAttribute('href')).toBe('/projects/p1')
 })
 
 it('starting over clears the conversation', async () => {
@@ -107,73 +218,57 @@ it('starting over clears the conversation', async () => {
   await waitFor(() => expect(shortCreationApi.reset).toHaveBeenCalled())
 })
 
-it('warns that the per-chapter figure will be compressed before commit', async () => {
-  // 5 × 8000 超过全篇 20000 上限，后端会按 20000 // 5 = 4000 生成；卡上必须先说清楚。
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
-    session: { card: { chapter_count: 5, chars_per_chapter: 8000 } },
-  }))
-  renderPage()
-  expect(await screen.findByText(/归一为每章 4000 字/)).toBeTruthy()
-})
-
-it('does not warn when the card fits under the whole-book cap', async () => {
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
-    session: { card: { chapter_count: 5, chars_per_chapter: 4000 } },
-  }))
-  renderPage()
-  await screen.findByLabelText('章数')
-  expect(screen.queryByText(/归一为每章/)).toBeNull()
-})
-
-it('does not warn when 章数 is fractional and truncation lands on the cap', async () => {
-  // 卡上要是直接乘：5.5 × 4000 = 22000 > 20000 会说归一；后端先把卡片字段 int() 截成 5，
-  // 5 × 4000 正好等于上限（不是 >），不压缩——卡上不该说要归一。
-  renderPage()
-  fireEvent.change(await screen.findByLabelText('章数'), { target: { value: '5.5' } })
-  fireEvent.change(screen.getByLabelText('每章字数'), { target: { value: '4000' } })
-  expect(screen.queryByText(/归一为每章/)).toBeNull()
-})
-
-it('does not warn when 每章字数 is fractional and truncation lands on the cap', async () => {
-  // 5 × 4000.5 = 20000.25 > 20000 会说归一；后端 int(4000.5) = 4000，5 × 4000 不超上限。
-  renderPage()
-  fireEvent.change(await screen.findByLabelText('章数'), { target: { value: '5' } })
-  fireEvent.change(screen.getByLabelText('每章字数'), { target: { value: '4000.5' } })
-  expect(screen.queryByText(/归一为每章/)).toBeNull()
-})
-
-it('does not offer a confirm that can only fail once the session is committed', async () => {
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
-    session: {
-      status: 'committed',
-      book_id: 'p1',
-      card: {
-        working_title: '最后一班渡船', direction: 'd', conflict_core: 'c', genre: 'g',
-        protagonist_pressure: 'p', emotional_payoff: 'e', plot_sketch: 's',
-        chapter_count: 5, chars_per_chapter: 4000,
-      },
-    },
-  }))
-  renderPage()
-  const confirm = await screen.findByRole('button', { name: '确认，开写' })
-  expect((confirm as HTMLButtonElement).disabled).toBe(true)
-  fireEvent.click(confirm)
-  expect(shortCreationApi.commit).not.toHaveBeenCalled()
-  // 卡已填满也不该说「还差几个必填项」，而应指路「重新开始」，并给出刚开写的那本。
-  const notice = screen.getByRole('status')
-  expect(notice.textContent).toContain('重新开始')
-  expect(screen.getByRole('link', { name: '这里' }).getAttribute('href')).toBe('/projects/p1')
-})
-
 it('keeps the rail so the creation page is not a dead end', async () => {
   renderPage()
   expect(await screen.findByRole('navigation', { name: '作品分区' })).toBeTruthy()
   expect(await screen.findByRole('link', { name: /短篇/ })).toBeTruthy()
 })
 
-it('offers the style selector and a link to the library, with no inline import', async () => {
+it('warns that the per-chapter figure will be compressed before commit', async () => {
+  // 5 × 8000 超过全篇 20000 上限，后端会按 20000 // 5 = 4000 生成；卡上必须先说清楚。
+  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+    messages: [], ready: true, session: { card: { chapter_count: 5, chars_per_chapter: 8000 } },
+  }))
   renderPage()
-  expect(await screen.findByLabelText('文风')).toBeTruthy()
+  await openCard()
+  expect(screen.getByText(/归一为每章 4000 字/)).toBeTruthy()
+})
+
+it('does not warn when the card fits under the whole-book cap', async () => {
+  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+    messages: [], ready: true, session: { card: { chapter_count: 5, chars_per_chapter: 4000 } },
+  }))
+  renderPage()
+  await openCard()
+  expect(screen.queryByText(/归一为每章/)).toBeNull()
+})
+
+it('does not warn when 章数 is fractional and truncation lands on the cap', async () => {
+  // 卡上要是直接乘：5.5 × 4000 = 22000 > 20000 会说归一；后端先把卡片字段 int() 截成 5，
+  // 5 × 4000 正好等于上限（不是 >），不压缩——卡上不该说要归一。
+  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({ messages: [], ready: true }))
+  renderPage()
+  await openCard()
+  fireEvent.change(screen.getByLabelText('章数'), { target: { value: '5.5' } })
+  fireEvent.change(screen.getByLabelText('每章字数'), { target: { value: '4000' } })
+  expect(screen.queryByText(/归一为每章/)).toBeNull()
+})
+
+it('does not warn when 每章字数 is fractional and truncation lands on the cap', async () => {
+  // 5 × 4000.5 = 20000.25 > 20000 会说归一；后端 int(4000.5) = 4000，5 × 4000 不超上限。
+  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({ messages: [], ready: true }))
+  renderPage()
+  await openCard()
+  fireEvent.change(screen.getByLabelText('章数'), { target: { value: '5' } })
+  fireEvent.change(screen.getByLabelText('每章字数'), { target: { value: '4000.5' } })
+  expect(screen.queryByText(/归一为每章/)).toBeNull()
+})
+
+it('offers the style selector and a link to the library, with no inline import', async () => {
+  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({ messages: [], ready: true }))
+  renderPage()
+  await openCard()
+  expect(screen.getByLabelText('文风')).toBeTruthy()
   expect(screen.getByRole('link', { name: '去文风库添加' }).getAttribute('href')).toBe('/styles')
   // 导入文章那条动线整体搬去文风库页面了，这一页只留一个指路的链接。
   expect(screen.queryByRole('button', { name: '导入文章存成我的文风' })).toBeNull()

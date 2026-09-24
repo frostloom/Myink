@@ -3,7 +3,8 @@
  * 与长篇向导的分工：长篇要先填设定、再确认大纲，两步都不能省；短篇这里聊完那一刻
  * 方案卡就是设定，后端在确认时一次把逐章方案落库（生成需要它）。
  */
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState,
+         type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
@@ -73,6 +74,7 @@ export default function ShortCreationPage() {
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [cardOpen, setCardOpen] = useState(false)
   const stream = useRef<HTMLDivElement>(null)
 
   const apply = useCallback((next: ShortCreationPayload) => {
@@ -101,6 +103,8 @@ export default function ShortCreationPage() {
   useEffect(() => {
     if (stream.current) stream.current.scrollTop = stream.current.scrollHeight
   }, [data])
+  // 助手把卡聊回去（或「重新开始」清空）时，敞开着的卡要跟着收起来。
+  useEffect(() => { if (!data?.ready) setCardOpen(false) }, [data?.ready])
 
   const run = async (action: () => Promise<void>, fallback: string) => {
     setError(null)
@@ -114,14 +118,26 @@ export default function ShortCreationPage() {
     }
   }
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
+  const sendDraft = () => {
     const content = draft.trim()
     if (!content || busy) return
     void run(async () => {
       apply(await shortCreationApi.send(token, content, card as Record<string, unknown>))
       setDraft('')
     }, '这句话没发出去，请重试')
+  }
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault()
+    sendDraft()
+  }
+
+  // 回车发送（Shift+回车换行）。输入法组合态里的回车是「选词上屏」，不能当发送。
+  const onKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== 'Enter' || event.shiftKey) return
+    if (event.nativeEvent.isComposing) return
+    event.preventDefault()
+    sendDraft()
   }
 
   // 已确认过的会话不再是可写的（类型里 status 只有 active / committed 两种）。
@@ -132,9 +148,16 @@ export default function ShortCreationPage() {
     if (committed) return
     void run(async () => {
       const out = await shortCreationApi.commit(token, card as Record<string, unknown>, styleItemId || null)
-      // commit 只落书不出稿：进工作台点「开始写全篇」才入队
+      // commit 只落书。入队这一下失败也不能把刚建的书丢了——照样进工作台，
+      // 由状态带上的重试入口接手（beginShortWriting 为假即不自动开写）。
+      let enqueueFailed = false
+      try {
+        await api.generateShort(out.project_id)
+      } catch {
+        enqueueFailed = true
+      }
       navigate(`/projects/${out.project_id}`, {
-        state: { beginShortWriting: true, planWarning: out.plan_warning },
+        state: { beginShortWriting: !enqueueFailed, planWarning: out.plan_warning },
       })
     }, '确认失败，请重试')
   }
@@ -152,13 +175,13 @@ export default function ShortCreationPage() {
       </div>
     )
   }
-  const ready = !committed && isReady(card)
+  const cardReady = !committed && isReady(card)
   const lengths = resolveShortLengths(card.chapter_count ?? 5, card.chars_per_chapter ?? 4000)
 
   return (
     <div className={styles.page}>
       <ProjectRail projects={projects} onLogout={logout} />
-      <div className={styles.wrap}>
+      <div className={`${styles.wrap} ${cardOpen && !committed ? '' : styles.single}`}>
       <section className={styles.thread} aria-label="建书对话">
         <header className="row-between">
           <h2>新建短篇</h2>
@@ -173,59 +196,15 @@ export default function ShortCreationPage() {
               {message.error && <small role="alert">这一轮没成功：{message.error}</small>}
             </div>
           ))}
+          {/* 三段式：先只聊；服务端说聊齐备了，才冒出这条路；点开才见方案卡。 */}
+          {data.ready && !committed && !cardOpen && (
+            <button type="button" className={`btn btn-primary ${styles.option}`}
+                    onClick={() => setCardOpen(true)}>
+              开始建书
+            </button>
+          )}
         </div>
         {error && <div className="banner banner-error" role="alert"><span>{error}</span></div>}
-        <form className={styles.composer} onSubmit={submit}>
-          <label>
-            <textarea aria-label="对助手说" className="input" value={draft} maxLength={4000}
-                      placeholder="说说你想写的故事，或者说「就这样，开写吧」"
-                      onChange={(event) => setDraft(event.target.value)} />
-          </label>
-          <button type="submit" className="btn btn-primary" disabled={busy || draft.trim() === ''}>发送</button>
-        </form>
-      </section>
-
-      <aside className={`panel ${styles.card}`} aria-label="方案卡">
-        <h3>方案卡（随手改）</h3>
-        {FIELDS.map(([key, label]) => (
-          <label key={key}>
-            <span>{label}{REQUIRED_TEXT.includes(key) ? '（必填）' : ''}</span>
-            <textarea className="input" rows={key === 'plot_sketch' ? 4 : 2}
-                      aria-label={label} value={String(card[key] ?? '')} maxLength={4000}
-                      onChange={(event) => setCard({ ...card, [key]: event.target.value })} />
-          </label>
-        ))}
-        <label>
-          <span>章数（1–10）</span>
-          <input className="input" type="number" min={1} max={10} aria-label="章数"
-                 value={card.chapter_count ?? 5}
-                 onChange={(event) => setCard({ ...card, chapter_count: Number(event.target.value) })} />
-        </label>
-        <label>
-          <span>每章字数（1000–8000）</span>
-          <input className="input" type="number" min={1000} max={8000} aria-label="每章字数"
-                 value={card.chars_per_chapter ?? 4000}
-                 onChange={(event) => setCard({ ...card, chars_per_chapter: Number(event.target.value) })} />
-        </label>
-        {lengths.compressed && (
-          <div className="banner banner-warning">
-            每章字数已按全篇 {SHORT_TOTAL_MAX} 字上限归一为每章 {lengths.chars} 字，生成时按这个数走。
-          </div>
-        )}
-        <label>
-          <span>文风（建书后不可改）</span>
-          <select className="input" aria-label="文风" value={styleItemId}
-                  onChange={(event) => setStyleItemId(event.target.value)}>
-            <option value="">不指定</option>
-            {styleItems.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}{item.builtin ? '（内置）' : '（我的）'}
-              </option>
-            ))}
-          </select>
-        </label>
-        <small>文风在确认时定下来，之后没有换的入口。库里没有想要的？</small>
-        <Link to="/styles">去文风库添加</Link>
         {committed && (
           <div className="banner banner-warning" role="status">
             这段建书对话已经开写过了，确认按钮不再生效；要写新的一篇，点右上角的「重新开始」。
@@ -234,11 +213,64 @@ export default function ShortCreationPage() {
             )}
           </div>
         )}
-        <button type="button" className="btn btn-primary" disabled={!ready || busy} onClick={confirm}>
-          确认，开写
-        </button>
-        {!ready && !committed && <small>还差几个必填项——也可以直接告诉助手，它会补上。</small>}
-      </aside>
+        <form className={styles.composer} onSubmit={submit}>
+          <label>
+            <textarea aria-label="对助手说" className="input" value={draft} maxLength={4000}
+                      placeholder="说说你想写的故事，或者说「就这样，开写吧」"
+                      onChange={(event) => setDraft(event.target.value)} onKeyDown={onKeyDown} />
+          </label>
+          <button type="submit" className="btn btn-primary" disabled={busy || draft.trim() === ''}>发送</button>
+        </form>
+      </section>
+
+      {cardOpen && !committed && (
+        <aside className={`panel ${styles.card}`} aria-label="方案卡">
+          <h3>方案卡（随手改）</h3>
+          {FIELDS.map(([key, label]) => (
+            <label key={key}>
+              <span>{label}{REQUIRED_TEXT.includes(key) ? '（必填）' : ''}</span>
+              <textarea className="input" rows={key === 'plot_sketch' ? 4 : 2}
+                        aria-label={label} value={String(card[key] ?? '')} maxLength={4000}
+                        onChange={(event) => setCard({ ...card, [key]: event.target.value })} />
+            </label>
+          ))}
+          <label>
+            <span>章数（1–10）</span>
+            <input className="input" type="number" min={1} max={10} aria-label="章数"
+                   value={card.chapter_count ?? 5}
+                   onChange={(event) => setCard({ ...card, chapter_count: Number(event.target.value) })} />
+          </label>
+          <label>
+            <span>每章字数（1000–8000）</span>
+            <input className="input" type="number" min={1000} max={8000} aria-label="每章字数"
+                   value={card.chars_per_chapter ?? 4000}
+                   onChange={(event) => setCard({ ...card, chars_per_chapter: Number(event.target.value) })} />
+          </label>
+          {lengths.compressed && (
+            <div className="banner banner-warning">
+              每章字数已按全篇 {SHORT_TOTAL_MAX} 字上限归一为每章 {lengths.chars} 字，生成时按这个数走。
+            </div>
+          )}
+          <label>
+            <span>文风（建书后不可改）</span>
+            <select className="input" aria-label="文风" value={styleItemId}
+                    onChange={(event) => setStyleItemId(event.target.value)}>
+              <option value="">不指定</option>
+              {styleItems.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}{item.builtin ? '（内置）' : '（我的）'}
+                </option>
+              ))}
+            </select>
+          </label>
+          <small>文风在确认时定下来，之后没有换的入口。库里没有想要的？</small>
+          <Link to="/styles">去文风库添加</Link>
+          <button type="button" className="btn btn-primary" disabled={!cardReady || busy} onClick={confirm}>
+            确认，开写
+          </button>
+          {!cardReady && <small>还差几个必填项——也可以直接告诉助手，它会补上。</small>}
+        </aside>
+      )}
       </div>
     </div>
   )
