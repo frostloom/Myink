@@ -519,6 +519,8 @@ export interface CreateProjectBody {
   genre_fields?: import('./lib/genrePacks').GenreFields
   /** 每章目标字数（可选；500–20000，默认 3000） */
   target_words?: number
+  /** 建书时选的文风：`builtin:<preset id>` 或账号文风库的 item id；null/不传 = 不指定 */
+  style_item_id?: string | null
 }
 
 /** 作品信息更新（§6.9 每章目标字数可配）：PUT /projects/:pid，未传字段不改；显式 null 置空 */
