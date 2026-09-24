@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import JSON, Integer, String, Uuid
+from sqlalchemy import JSON, Integer, String, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from myink.models.base import Base, TimestampMixin, UUIDPkMixin
@@ -24,8 +24,10 @@ class StyleLibraryItem(Base, UUIDPkMixin, TimestampMixin):
     """
 
     __tablename__ = "style_library_items"
+    __table_args__ = (UniqueConstraint("user_id", "name", name="uq_style_library_user_name"),)
 
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     profile: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     sample_chars: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    note: Mapped[str] = mapped_column(String(200), nullable=False, default="")

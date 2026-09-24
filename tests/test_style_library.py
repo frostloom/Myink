@@ -6,6 +6,7 @@ import uuid
 
 import pytest
 from sqlalchemy import delete as sa_delete, select
+from sqlalchemy.exc import IntegrityError
 
 from myink.db import new_session
 from myink.models import StyleLibraryItem, User
@@ -44,3 +45,60 @@ def test_style_library_has_no_project_id_column():
     tenant_isolation 策略；账号级查询没设 app.tenant_id，会被策略静默过滤成空。
     """
     assert "project_id" not in StyleLibraryItem.__table__.columns
+
+
+def test_style_library_item_note_roundtrip():
+    with new_session() as db:
+        user = User(username=f"style-{uuid.uuid4().hex[:8]}")
+        db.add(user)
+        db.commit()
+        uid = user.id
+    try:
+        with new_session() as db:
+            item = StyleLibraryItem(user_id=uid, name="渡口冷白描", note="渡口那篇的冷白描",
+                                    profile={"pov": "第三人称限知"}, sample_chars=3200)
+            db.add(item)
+            db.commit()
+            item_id = item.id
+        with new_session() as db:
+            row = db.scalar(select(StyleLibraryItem).where(StyleLibraryItem.id == item_id))
+            assert row is not None
+            assert row.note == "渡口那篇的冷白描"
+        with new_session() as db:
+            plain = StyleLibraryItem(user_id=uid, name="没备注的档",
+                                     profile={}, sample_chars=100)
+            db.add(plain)
+            db.commit()
+            plain_id = plain.id
+        with new_session() as db:
+            row = db.scalar(select(StyleLibraryItem).where(StyleLibraryItem.id == plain_id))
+            assert row is not None
+            assert row.note == ""
+    finally:
+        with new_session() as db:
+            db.execute(sa_delete(StyleLibraryItem).where(StyleLibraryItem.user_id == uid))
+            db.execute(sa_delete(User).where(User.id == uid))
+            db.commit()
+
+
+def test_style_library_duplicate_name_rejected():
+    """同一 user 下重名不能落库：唯一约束在 (user_id, name) 上。"""
+    with new_session() as db:
+        user = User(username=f"style-{uuid.uuid4().hex[:8]}")
+        db.add(user)
+        db.commit()
+        uid = user.id
+    try:
+        with new_session() as db:
+            db.add(StyleLibraryItem(user_id=uid, name="重名档", profile={}, sample_chars=10))
+            db.commit()
+        with new_session() as db:
+            db.add(StyleLibraryItem(user_id=uid, name="重名档", profile={}, sample_chars=20))
+            with pytest.raises(IntegrityError):
+                db.flush()
+            db.rollback()
+    finally:
+        with new_session() as db:
+            db.execute(sa_delete(StyleLibraryItem).where(StyleLibraryItem.user_id == uid))
+            db.execute(sa_delete(User).where(User.id == uid))
+            db.commit()
