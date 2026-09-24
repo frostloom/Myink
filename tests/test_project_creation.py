@@ -9,7 +9,8 @@ from sqlalchemy import delete, select
 
 from conftest import identity_headers
 from myink.api.main import app
-from myink.db import new_session
+from myink.db import new_session, tenant_session
+from myink.memory.repository import get_settings
 from myink.models import Project, User
 
 client = TestClient(app)
@@ -151,3 +152,40 @@ def test_parallel_and_late_proposals_preserve_confirmed_state(draft_book):
     context = client.get(base + "/creation", headers=headers).json()["context"]
     save_proposal(pid, {"outline_draft": {}, "setup_draft": {}})
     assert client.get(base + "/creation", headers=headers).json()["context"] == context
+
+
+# ---- 建书选文风（与短篇建书共用 resolve_style_selection）----
+#
+# 读回 settings 走 tenant_session + get_settings：project_settings 是带 project_id 的
+# RLS FORCE 表，new_session() 不设 app.tenant_id 时一行都看不见（见 test_book_setup.py）。
+
+
+def test_create_project_writes_the_chosen_builtin_style(temp_user):
+    resp = client.post("/api/v1/projects",
+                       json={"title": "带文风的书", "style_item_id": "builtin:xianxia-jiuzhou"},
+                       headers=identity_headers(temp_user))
+    assert resp.status_code == 200, resp.text
+    pid = resp.json()["id"]
+    with tenant_session(pid) as db:
+        st = get_settings(db, uuid.UUID(pid))
+    assert st.skill_pack == "xianxia-jiuzhou"
+    assert st.style_profile, "内置预设的档案要真写进去"
+
+
+def test_create_project_without_style_item_id_keeps_settings_empty(temp_user):
+    resp = client.post("/api/v1/projects", json={"title": "不带文风的书"},
+                       headers=identity_headers(temp_user))
+    assert resp.status_code == 200, resp.text
+    pid = resp.json()["id"]
+    with tenant_session(pid) as db:
+        st = get_settings(db, uuid.UUID(pid))
+    assert st is not None
+    assert not st.style_profile and not st.skill_pack, "不传文风时与今天逐字节一致"
+
+
+def test_create_project_rejects_a_stranger_style_item_id(temp_user):
+    resp = client.post("/api/v1/projects",
+                       json={"title": "坏文风的书", "style_item_id": str(uuid.uuid4())},
+                       headers=identity_headers(temp_user))
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "NOT_FOUND"
