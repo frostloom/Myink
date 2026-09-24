@@ -23,6 +23,14 @@ export const NODE_LABELS: Record<string, string> = {
   batch_end: '批次收尾',
   global_audit: '全局审计',
   style_extract: '文风提炼',
+  // 短篇管道（整篇一次成稿，没有单章节点）：成稿 → 补写空章 → 审稿 → 改稿
+  short_write: '成稿',
+  short_continue: '补写空章',
+  short_review: '审稿',
+  short_revise: '改稿',
+  // 短篇的建书动线（共用建书那三条路由，按 form 分叉）
+  short_plan: '方案生成',
+  short_plan_review: '审纲',
 }
 
 export function nodeLabel(node: string): string {
@@ -87,10 +95,18 @@ export function taskTypeLabel(t: string): string {
   return {
     chapter_generate: '单章生成',
     batch_generate: '批次生成',
+    short_generate: '短篇生成',
     validate: '校验',
     outline_generate: '大纲生成',
     global_audit: '全局审计',
   }[t] ?? t
+}
+
+/** 任务的目标章节：单章 = 章号。`chapter_seq` 为空不止批次一种（短篇整篇也一样为空），
+ * 所以不能拿「空」当批次的判据——管理面板上把短篇写成「整批」是错的。 */
+export function taskChapterLabel(t: { task_type: string; chapter_seq: number | null }): string {
+  if (t.chapter_seq !== null) return `第 ${t.chapter_seq} 章`
+  return t.task_type === 'short_generate' ? '整篇' : '整批'
 }
 
 /** 建书状态：草稿=设定未定，legacy_ready=存量书可直接开写。 */

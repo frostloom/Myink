@@ -249,6 +249,10 @@ export const api = {
   generateBatch: (pid: string, body: { size: number; start: number }) =>
     request<GenerateResponse>('POST', `/projects/${pid}/batches/generate`, body),
 
+  // 短篇：整篇一次成稿（成稿/审稿/改稿都在一个任务里），扣的是章数额度。
+  generateShort: (pid: string) =>
+    request<GenerateResponse>('POST', `/projects/${pid}/short/generate`),
+
   getTask: (tid: string) => request<TaskDetail>('GET', `/tasks/${tid}`),
 
   confirmTaskPlan: (tid: string, plan: ChapterPlan, expectedAttempt: number) =>
