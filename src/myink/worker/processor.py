@@ -266,7 +266,31 @@ def _dispatch(body: dict) -> dict:
                 "rewrite": bool(payload.get("rewrite")),
             },
         )
+    if task_type in ("short_generate", "short_resume"):
+        # 重投时 task_type 不变、只有 retry_count 涨（consumer 的退避重投原样回投），所以
+        # 重试要自己认出来按续跑走：成稿已经落库的话，再买一次 160 秒的整篇就是白花。
+        # `resume_short_story` 没见到落库稿时会退回整条，走这条路无损。
+        resume = task_type == "short_resume" or int(body.get("retry_count") or 0) > 0
+        return _short_story(project_id, task_id, resume=resume)
     raise ValueError(f"未知 task_type: {task_type}")
+
+
+def _short_story(project_id: str, task_id: str, *, resume: bool) -> dict:
+    """短篇全篇：成稿（或续跑）→ 落库（§二 第 3–5 步）。
+
+    不建空占位、不走写序守卫——短篇没有「下一章」，整篇是唯一的工作粒度。篇幅参数由
+    `short_params_for` 从确认后的方案与建书上下文读，与路由算闸门时是同一份。
+    """
+    from myink.workflow import short_runner
+
+    form = short_runner.short_params_for(project_id)
+    run = short_runner.resume_short_story if resume else short_runner.run_short_story
+    result = run(project_id=project_id, task_id=task_id, form=form)
+    if result.get("error"):
+        return {"error": result["error"]}
+    return {"chapters": short_runner.persist_short_story(project_id=project_id, result=result),
+            "empty_chapters": result["empty_chapters"], "review": result["review"],
+            "warning": result["warning"]}
 
 
 def _mark_empty_writing_chapters(body: dict, status: str) -> None:
