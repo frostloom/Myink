@@ -90,6 +90,7 @@ class StyleLibraryItem(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     profile: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)   # 与 ProjectSettings.style_profile 同构
     note: Mapped[str] = mapped_column(String(200), nullable=False, default="") # 用户备注，可空串
+    sample_chars: Mapped[int] = mapped_column(Integer, nullable=False, default=0) # 抽取所用样例总字数
 ```
 
 `profile` 形状 = 现有 `StyleProfile`（`validate_profile` 把关的那份），与 `ProjectSettings.style_profile` 一致，
@@ -146,7 +147,7 @@ def make_user_chain(role: str, user_id, db=None) -> FallbackChain:
 `tests/test_style_library.py`：
 
 - 列表含 4 个内置（`builtin=True`）+ 自己的项；**看不到别人的项**（两个 user 交叉验证）。
-- `samples` → draft 落回 `{draft, stats}`，且 `agent_runs` 多一行 `node="style_extract"`、`project_id IS NULL`、`user_id` = 本人。
+- `samples` → 落回 `{"draft": {...}}`（`stats` 已并入 draft，不另开顶层键），且 `agent_runs` 多一行 `node="style_extract"`、`project_id IS NULL`、`user_id` = 本人。
 - 命名保存后再列表能看到；重名 409；删除后列表消失；删内置 404。
 - `validate_profile` 拒绝非法 profile（400）。
 
