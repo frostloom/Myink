@@ -12,7 +12,4 @@
 .card { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; }
 .card label { display: flex; flex-direction: column; gap: 2px; font-size: 0.85em; }
 .card small { opacity: 0.7; }
-.import { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--line, #ddd); border-radius: 8px; }
-.import label { display: flex; flex-direction: column; gap: 2px; font-size: 0.85em; }
-.import small { opacity: 0.8; }
 @media (max-width: 900px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
