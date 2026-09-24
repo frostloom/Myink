@@ -34,6 +34,8 @@ Python API 的 8100 端口仅在容器网络内开放（`expose`，不发布宿�
 
 首次启动由 `docker/initdb/01-roles.sql` 创建非超级用户 `myink_app`；API 启动时运行 `myink init`，创建表、RLS 与必要补丁（默认不建账号、不建示例数据）；启动不再自动清理遗留表/列。单独升级认证字段可用 `myink auth-upgrade`，不重命名旧账号、不迁移作品归属。已有数据库升级目前使用幂等补丁，尚无完整的 Alembic 版本迁移链。
 
+有一处补丁补不了，必须手工重建：若环境早于 `dbb62e9` 建过 `style_library_items`，那一版缺 `note` 列与 `(user_id, name)` 唯一约束，`create_all` 不会补这两样。一次性执行 `DROP TABLE style_library_items;` 再 `myink init` 重建即可——表里只有用户自建的文风档，重建会清空它们。
+
 ```bash
 docker compose logs -f myink-api myink-worker myink-caddy
 docker compose down       # 停止应用，保留作品数据卷
