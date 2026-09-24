@@ -109,6 +109,13 @@ def _task_runs(task_id, project_id):
                 or_(AgentRun.task_id == tid, AgentRun.task_id.like(tid + ":ch%")))
 
 
+# 归属口径与 /admin/runs 的 `owner = coalesce(Project.user_id, AgentRun.user_id)` 同源：
+# 书还在，或 无书但有账号（建书对话、文风提取）。两样都不占的行（删账号留下的孤儿）不进
+# 任何合计——否则全局花费会比运行列表多出看不见的一截。
+_ATTRIBUTED_RUN = or_(AgentRun.project_id.in_(select(Project.id)),
+                      AgentRun.user_id.is_not(None))
+
+
 def _nested_metrics(row):
     result = dict(row)
     result["metrics"] = {key: result.pop(key) for key in ("run_count", *_METRIC_FIELDS)}
@@ -199,7 +206,7 @@ def _word_count(condition):
 def overview(db: DB):
     counts = {name: db.scalar(select(func.count(model.id))) for name, model in (
         ("user_count", User), ("project_count", Project), ("chapter_count", Chapter), ("task_count", Task))}
-    metrics = db.execute(select(*_metric_columns())).mappings().one()
+    metrics = db.execute(select(*_metric_columns(_ATTRIBUTED_RUN))).mappings().one()
     return {**counts, "metrics": dict(metrics), "task_status_counts": dict(db.execute(
         select(Task.status, func.count(Task.id)).group_by(Task.status)).all())}
 
