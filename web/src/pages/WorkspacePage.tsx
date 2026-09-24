@@ -1,7 +1,7 @@
 // 工作台（三栏）：rail 项目切换 + 章节列表 | 章节编辑器 | 生成入口/时间线/校验报告/候选池。
 // 生成任务进度状态在页面级提升：useTaskEvents(activeTaskId)，终态 → 刷新章节列表。
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AuditPanel } from '../components/AuditPanel'
 import { CandidatePanel, type ReleaseTarget } from '../components/CandidatePanel'
 import { ChapterEditor } from '../components/ChapterEditor'
@@ -64,6 +64,8 @@ export default function WorkspacePage() {
   // 作品形态：短篇整篇一次成稿，没有「下一章」，也没有单章的记忆层与审核。
   // 它那条任务不属于任何一章，所以右栏按章过滤与按章取任务都得绕开。
   const isShortBook = projects.find((p) => p.id === projectId)?.form === 'short'
+  // 建书对话页确认完跳进来时带了这个 state：那次 commit 只落书不出稿，入队归 GenerationPanel。
+  const handover = (useLocation().state ?? {}) as { beginShortWriting?: boolean; planWarning?: string | null }
 
   useEffect(() => {
     activeTaskIdRef.current = activeTaskId
@@ -781,6 +783,7 @@ export default function WorkspacePage() {
           selectedChapter={selectedChapter}
           form={isShortBook ? 'short' : 'long'}
           taskBusy={taskInFlight}
+          autoStartShort={Boolean(isShortBook && handover.beginShortWriting)}
           onTaskStart={handleTaskStart}
         />
         <TaskTimeline
