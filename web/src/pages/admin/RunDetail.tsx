@@ -25,7 +25,7 @@ export function RunTable({ runs, onSelect }: { runs: AdminRun[]; onSelect: (run:
       <tbody>{runs.map((run) => <tr key={run.id}>
         <td>#{run.id}</td>
         <td><strong>{nodeLabel(run.node)}</strong></td>
-        <td>{run.project_title}</td>
+        <td>{run.project_title ?? '—'}</td>
         <td>{run.model_id ?? '—'}</td>
         <td>{run.input_tokens.toLocaleString()}</td>
         <td>{run.output_tokens.toLocaleString()}</td>

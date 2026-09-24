@@ -9,6 +9,7 @@ import AdminPage, { AdminConsole } from './AdminPage'
 import { ProjectDetailPage } from './admin/ProjectDetail'
 import { RunDetailPage } from './admin/RunDetail'
 import { TaskDetailPage } from './admin/TaskDetail'
+import { UserDetailPage } from './admin/UserDetail'
 
 vi.mock('../context/AuthContext', () => ({ useAuth: vi.fn() }))
 vi.mock('../lib/adminApi', async (original) => {
@@ -66,6 +67,7 @@ function buildRouter(initialEntry = '/admin') {
         { path: 'projects/:projectId', element: <ProjectDetailPage /> },
         { path: 'tasks/:taskId', element: <TaskDetailPage /> },
         { path: 'runs/:runId', element: <RunDetailPage /> },
+        { path: 'users/:userId', element: <UserDetailPage /> },
       ],
     },
   ], { initialEntries: [initialEntry] })
@@ -365,4 +367,61 @@ it('keeps taskless setup runs discoverable and loads access logs', async () => {
   fireEvent.click(screen.getByRole('button', { name: '访问日志' }))
   expect(await screen.findByText('admin.overview')).toBeTruthy()
   expect(screen.getByText('collection')).toBeTruthy()
+})
+
+it('lists users with their total spend and opens one user detail page', async () => {
+  vi.mocked(adminApi.listUsers).mockResolvedValue({
+    items: [{
+      id: 'user-1', username: 'alice', tier: 'normal', role: 'user',
+      project_count: 2, chapter_count: 8, word_count: 9000, task_count: 3,
+      metrics: { ...metrics, cost_est: 12.3456 }, task_averages: taskAverages,
+    }], total: 1, limit: 25, offset: 0,
+  })
+  vi.mocked(adminApi.listRuns).mockResolvedValue({
+    items: [{
+      id: 30, project_id: null, user_id: 'user-1', username: 'alice', project_title: null,
+      task_id: null, node: 'short_creation', role: 'Planner', model_id: 'model-a',
+      input_tokens: 10, output_tokens: 20, cost_est: 0.5, duration_ms: 900,
+      cache_hit: false, degraded: false, retry_count: 0,
+      created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:01Z',
+    }], total: 1, limit: 25, offset: 0,
+  })
+  const { router } = renderPage()
+  fireEvent.click(screen.getByRole('button', { name: '用户' }))
+
+  expect(await screen.findByText('12.3456')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: '查看用户 alice' }))
+
+  expect(router.state.location.pathname).toBe('/admin/users/user-1')
+  expect(await screen.findByRole('heading', { name: /alice/ })).toBeTruthy()
+  // 没有书的那次调用也要看得见，且作品一栏不开天窗
+  expect(await screen.findByText('short_creation')).toBeTruthy()
+  expect(adminApi.listRuns).toHaveBeenCalledWith('token-admin', { userId: 'user-1', limit: 25, offset: 0 }, expect.any(AbortSignal))
+
+  fireEvent.click(screen.getByRole('link', { name: '返回' }))
+  expect(router.state.location.pathname + router.state.location.search).toBe('/admin?tab=users')
+})
+
+it('keeps a taskless run row readable when the book is gone', async () => {
+  // 详情页同时取账号与运行；账号不挡住这次断言，但仍要有个可解析的响应。
+  vi.mocked(adminApi.listUsers).mockResolvedValue({
+    items: [{
+      id: 'user-1', username: 'alice', tier: 'normal', role: 'user',
+      project_count: 0, chapter_count: 0, word_count: 0, task_count: 1,
+      metrics, task_averages: taskAverages,
+    }], total: 1, limit: 25, offset: 0,
+  })
+  vi.mocked(adminApi.listRuns).mockResolvedValue({
+    items: [{
+      id: 31, project_id: null, user_id: 'user-1', username: 'alice', project_title: null,
+      task_id: null, node: 'style_extract', role: 'StyleExtract', model_id: 'model-a',
+      input_tokens: 1, output_tokens: 2, cost_est: 0.01, duration_ms: 10,
+      cache_hit: false, degraded: false, retry_count: 0,
+      created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:01Z',
+    }], total: 1, limit: 25, offset: 0,
+  })
+  renderPage('/admin/users/user-1')
+  // 节点列走 nodeLabel，style_extract 显示为「文风提炼」
+  expect(await screen.findByText('文风提炼')).toBeTruthy()
+  expect(screen.getAllByText('—').length).toBeGreaterThan(0)
 })
