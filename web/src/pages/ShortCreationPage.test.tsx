@@ -12,7 +12,7 @@ vi.mock('../lib/shortCreationApi', () => ({
   shortCreationApi: { get: vi.fn(), send: vi.fn(), commit: vi.fn(), reset: vi.fn() },
 }))
 vi.mock('../lib/styleLibraryApi', () => ({
-  styleLibraryApi: { list: vi.fn(), extract: vi.fn(), save: vi.fn(), remove: vi.fn() },
+  styleLibraryApi: { list: vi.fn() },
 }))
 // rail 要项目列表；这里只关心「rail 在不在」，让它拿到空列表即可。
 vi.mock('../lib/api', async (importOriginal) => {
@@ -171,26 +171,11 @@ it('keeps the rail so the creation page is not a dead end', async () => {
   expect(await screen.findByRole('link', { name: /短篇/ })).toBeTruthy()
 })
 
-it('imports an article into a named style and selects it', async () => {
-  vi.mocked(styleLibraryApi.extract).mockResolvedValue({
-    draft: { source: 'sample', pov: '第三人称限知' },
-  })
-  vi.mocked(styleLibraryApi.save).mockResolvedValue({
-    id: 'item-9', name: '渡口冷白描', profile: { source: 'sample', pov: '第三人称限知' },
-    note: '', sample_chars: 8, created_at: null, builtin: false, removable: true,
-  })
+it('offers the style selector and a link to the library, with no inline import', async () => {
   renderPage()
-  fireEvent.click(await screen.findByRole('button', { name: '导入文章存成我的文风' }))
-  fireEvent.change(screen.getByLabelText('粘贴文章'), { target: { value: '渡口的雾还没散。' } })
-  fireEvent.click(screen.getByRole('button', { name: '提取文风' }))
-  await waitFor(() => expect(styleLibraryApi.extract).toHaveBeenCalledWith('t', ['渡口的雾还没散。']))
-
-  fireEvent.change(await screen.findByLabelText('文风名'), { target: { value: '渡口冷白描' } })
-  fireEvent.click(screen.getByRole('button', { name: '保存并选用' }))
-  await waitFor(() => expect(styleLibraryApi.save).toHaveBeenCalledWith('t', {
-    name: '渡口冷白描', profile: { source: 'sample', pov: '第三人称限知' }, sample_chars: 8,
-  }))
-  // 存完自动选中刚建的这条：DOM 的 value 只会在真的有这个 option 时才等于它。
-  await waitFor(() =>
-    expect((screen.getByLabelText('文风') as HTMLSelectElement).value).toBe('item-9'))
+  expect(await screen.findByLabelText('文风')).toBeTruthy()
+  expect(screen.getByRole('link', { name: '去文风库添加' }).getAttribute('href')).toBe('/styles')
+  // 导入文章那条动线整体搬去文风库页面了，这一页只留一个指路的链接。
+  expect(screen.queryByRole('button', { name: '导入文章存成我的文风' })).toBeNull()
+  expect(screen.queryByLabelText('粘贴文章')).toBeNull()
 })
