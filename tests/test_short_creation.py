@@ -122,10 +122,21 @@ def test_short_creation_messages_carry_history_then_the_current_card():
     assert '"chapter_count": 5' in messages[-1]["content"]
 
 
+def test_short_creation_prompt_is_a_collaborator_not_a_questionnaire():
+    """聊天的口径是「合作者」：普通讨论直接答，三样一明确就把卡填满。
+
+    反面同样承重——「只问一个」是问卷机的口径，删掉之后不许再溜回来。
+    """
+    system = prompts.SYSTEM_SHORT_CREATION
+    assert "直接回答" in system
+    assert "填满" in system
+    assert "只问一个" not in system
+
+
 def test_short_creation_prompt_imposes_the_product_rules():
     system = prompts.SYSTEM_SHORT_CREATION
-    assert "只问一个" in system            # 一次抛三个问题，用户只会答第一个
-    assert "立刻出卡" in system            # 冲突一明确就别再追问细节
+    assert "直接回答" in system            # 普通讨论正常答，不拿反问凑回合
+    assert "填满" in system                # 关键两样一明确就把卡填满，不再逐项追问
     assert "确认，开写" in system          # 不许模型自己宣布已经建书/开写
     assert "留空" in system                # 空串 = 没有新信息，不是清空
 
