@@ -402,14 +402,12 @@ export interface ProjectSettings {
 /** 扫榜覆盖（账号级环境配置） */
 export interface RankingsConfig {
   enabled: boolean
-  mcp_url: string
   timeout: number
   limit: number
 }
 
 export interface RankingsConfigInput {
   enabled?: boolean
-  mcp_url?: string
   timeout?: number
   limit?: number
 }
@@ -420,17 +418,6 @@ export interface EnvironmentSettings {
   model_connections: ModelConnection[]
   rankings: RankingsConfig
   thinking_enabled: boolean
-}
-
-export interface RankingsProbeRequest {
-  mcp_url: string
-  timeout?: number
-}
-
-export interface RankingsProbeResult {
-  ok: boolean
-  tools: string[]
-  error: string | null
 }
 
 /** 模型连接探针请求（未保存的新连接传明文 api_key；已保存连接可传 connection_id 复用密钥） */

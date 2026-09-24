@@ -38,8 +38,6 @@ import type {
   OutlineDraftBody,
   OkResponse,
   RankingsConfigInput,
-  RankingsProbeRequest,
-  RankingsProbeResult,
   RankingsResponse,
   SetupBody,
   SetupConfirmResponse,
@@ -318,9 +316,6 @@ export const api = {
   testConnection: (body: ModelProbeRequest) =>
     request<ConnectionTestResult>('POST', '/environment/test-connection', body),
 
-  testRankings: (body: RankingsProbeRequest) =>
-    request<RankingsProbeResult>('POST', '/environment/test-rankings', body),
-
   listSkillPresets: () => request<SkillPreset[]>('GET', '/skill-presets'),
 
   listGenrePacks: () => request<import('../lib/genrePacks').GenreCatalogItem[]>('GET', '/genre-packs'),
@@ -409,7 +404,7 @@ export const api = {
   // 伏笔池台账（§7.9 状态机全量：planted/developing/resolved/dropped，设定页展示）。
   listForeshadows: (pid: string) => request<Foreshadow[]>('GET', `/projects/${pid}/foreshadows`),
 
-  // 扫榜灵感（§10 MCP Client 拉取外部榜单，只作建书前的灵感工具；全局无项目端点，网关转发 Python）。
+  // 扫榜灵感（§10 榜单数据由后端自己去取，只作建书前的灵感工具；全局无项目端点，网关转发 Python）。
   // refresh=true 强制绕过进程内 TTL 缓存重拉（降级样例也可重试）。
   listRankings: (refresh = false) =>
     request<RankingsResponse>('GET', `/rankings${refresh ? '?refresh=true' : ''}`),
