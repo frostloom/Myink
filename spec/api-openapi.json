@@ -4422,17 +4422,6 @@
             ],
             "title": "Limit"
           },
-          "mcp_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mcp Url"
-          },
           "timeout": {
             "anyOf": [
               {
@@ -4458,10 +4447,6 @@
             "title": "Limit",
             "type": "integer"
           },
-          "mcp_url": {
-            "title": "Mcp Url",
-            "type": "string"
-          },
           "timeout": {
             "title": "Timeout",
             "type": "integer"
@@ -4469,7 +4454,6 @@
         },
         "required": [
           "enabled",
-          "mcp_url",
           "timeout",
           "limit"
         ],
@@ -4522,62 +4506,6 @@
           "source"
         ],
         "title": "RankingsOut",
-        "type": "object"
-      },
-      "RankingsProbeBody": {
-        "properties": {
-          "mcp_url": {
-            "title": "Mcp Url",
-            "type": "string"
-          },
-          "timeout": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Timeout"
-          }
-        },
-        "required": [
-          "mcp_url"
-        ],
-        "title": "RankingsProbeBody",
-        "type": "object"
-      },
-      "RankingsProbeOut": {
-        "description": "MCP 连通探针：list_tools 结果。",
-        "properties": {
-          "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error"
-          },
-          "ok": {
-            "title": "Ok",
-            "type": "boolean"
-          },
-          "tools": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Tools",
-            "type": "array"
-          }
-        },
-        "required": [
-          "ok"
-        ],
-        "title": "RankingsProbeOut",
         "type": "object"
       },
       "RejectCandidateIn": {
@@ -7440,52 +7368,6 @@
           }
         ],
         "summary": "Test Environment Connection",
-        "tags": [
-          "environment"
-        ]
-      }
-    },
-    "/api/v1/environment/test-rankings": {
-      "post": {
-        "operationId": "test_rankings_connection_api_v1_environment_test_rankings_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RankingsProbeBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RankingsProbeOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Test Rankings Connection",
         "tags": [
           "environment"
         ]

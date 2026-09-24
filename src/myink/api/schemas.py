@@ -267,7 +267,6 @@ class ConnectionTestOut(BaseModel):
 
 class RankingsConfigOut(BaseModel):
     enabled: bool
-    mcp_url: str
     timeout: int
     limit: int
 
@@ -279,14 +278,6 @@ class EnvironmentOut(BaseModel):
     model_connections: list[dict] = Field(default_factory=list)
     rankings: RankingsConfigOut
     thinking_enabled: bool = False
-
-
-class RankingsProbeOut(BaseModel):
-    """MCP 连通探针：list_tools 结果。"""
-
-    ok: bool
-    tools: list[str] = Field(default_factory=list)
-    error: str | None = None
 
 
 class SkillPresetOut(BaseModel):
