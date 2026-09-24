@@ -196,6 +196,8 @@ _MAX_TOKENS = {
     # 短篇审稿：整篇一次读，回 issues + suggestions 两张不超过 8 条的短列表。
     # 成稿/改稿不在此表——它们的上限按全篇目标字数换算（见 short_runner）。
     "short_review": 4096,
+    # 建书对话：一回合一问一卡（reply + card），1500 足够；给大了会鼓励它写小说。
+    "short_creation": 1500,
 }
 
 

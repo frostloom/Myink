@@ -10,6 +10,7 @@ from sqlalchemy import select
 from myink.db import new_session
 from myink.models import ShortCreationMessage, ShortCreationSession
 from myink.short import creation
+from myink.workflow import nodes, prompts
 
 
 def test_card_patch_drops_blanks_so_the_model_cannot_erase_user_edits():
@@ -94,3 +95,28 @@ def test_session_user_id_is_unique(temp_user):
         with pytest.raises(IntegrityError):
             db.commit()
         db.rollback()
+
+
+def test_short_creation_messages_carry_history_then_the_current_card():
+    messages = prompts.short_creation_messages(
+        [{"role": "user", "content": "我想写个渡口的故事"},
+         {"role": "assistant", "content": "主角的压力是什么？"}],
+        {"working_title": "最后一班渡船", "chapter_count": 5})
+    assert messages[0]["content"] == prompts.SYSTEM_SHORT_CREATION
+    assert [m["role"] for m in messages[1:3]] == ["user", "assistant"]
+    assert '"最后一班渡船"' in messages[-1]["content"]
+    assert '"chapter_count": 5' in messages[-1]["content"]
+
+
+def test_short_creation_prompt_imposes_the_product_rules():
+    system = prompts.SYSTEM_SHORT_CREATION
+    assert "只问一个" in system            # 一次抛三个问题，用户只会答第一个
+    assert "立刻出卡" in system            # 冲突一明确就别再追问细节
+    assert "确认，开写" in system          # 不许模型自己宣布已经建书/开写
+    assert "留空" in system                # 空串 = 没有新信息，不是清空
+
+
+def test_short_creation_turn_budget_is_smaller_than_a_plan():
+    """一回合只是一段话 + 一张卡，给 1500 token 足够；给大了会鼓励它写小说。"""
+    assert nodes._MAX_TOKENS["short_creation"] == 1500
+    assert nodes._MAX_TOKENS["short_creation"] < nodes._MAX_TOKENS["short_plan"]
