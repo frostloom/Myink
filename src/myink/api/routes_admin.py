@@ -204,24 +204,37 @@ def overview(db: DB):
         select(Task.status, func.count(Task.id)).group_by(Task.status)).all())}
 
 
-@router.get("/users", response_model=AdminPage[AdminUser], name="admin.users")
-def users(db: DB, q: Search = None, limit: Limit = 25, offset: Offset = 0):
+def _user_statement():
+    """列表与详情共用同一组列，跳页后看到的数字必须与列表行一致（列不一致就会漂）。"""
     owned = select(Project.id).where(Project.user_id == User.id).correlate(User)
     # 归属口径与 _run_statement 显示的同源：有书看书的作者（老行没有 user_id），
     # 没有书才看账号（建书对话、文风提取）。两处不一致，列表里的行数就与总花费对不上。
     run_owner = or_(AgentRun.project_id.in_(owned),
                     and_(AgentRun.project_id.is_(None), AgentRun.user_id == User.id))
-    stmt = select(User.id, User.username, User.tier, User.role,
+    return select(User.id, User.username, User.tier, User.role,
                   _count(Project, Project.user_id == User.id).label("project_count"),
                   _count(Chapter, Chapter.project_id.in_(owned)).label("chapter_count"),
                   _word_count(Chapter.project_id.in_(owned)).label("word_count"),
                   _count(Task, Task.project_id.in_(owned)).label("task_count"),
                   *_metric_columns(run_owner),
                   *_task_average_columns(lambda per_task: per_task.c.project_id.in_(owned))
-                  ).order_by(User.created_at.desc(), User.id.desc())
+                  )
+
+
+@router.get("/users", response_model=AdminPage[AdminUser], name="admin.users")
+def users(db: DB, q: Search = None, limit: Limit = 25, offset: Offset = 0):
+    stmt = _user_statement().order_by(User.created_at.desc(), User.id.desc())
     if q:
         stmt = stmt.where(or_(User.username.icontains(q, autoescape=True), cast(User.id, String) == q))
     return _page(db, stmt, limit, offset, _nested_metrics)
+
+
+@router.get("/users/{user_id}", response_model=AdminUser, name="admin.user")
+def user_detail(user_id: uuid.UUID, db: DB):
+    row = db.execute(_user_statement().where(User.id == user_id)).mappings().first()
+    if row is None:
+        raise HTTPException(404, "NOT_FOUND")
+    return _nested_metrics(row)
 
 
 def _project_statement():

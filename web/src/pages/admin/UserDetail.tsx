@@ -1,7 +1,8 @@
 /** 用户详情：这个人的总花费，以及构成它的每一次调用（含没有任何作品的那些）。 */
 import { useCallback, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
-import { adminApi, type AdminUser } from '../../lib/adminApi'
+import { ApiError } from '../../lib/api'
+import { adminApi } from '../../lib/adminApi'
 import {
   type AdminOutletContext,
   DetailPage,
@@ -17,17 +18,24 @@ import styles from '../AdminPage.module.css'
 export function UserDetailPage() {
   const { token, onForbidden } = useOutletContext<AdminOutletContext>()
   const { userId = '' } = useParams()
-  const loadUser = useCallback(
-    (signal: AbortSignal) => adminApi.listUsers(token, { q: userId, limit: 1, offset: 0 }, signal),
-    [token, userId],
-  )
+  const loadUser = useCallback(async (signal: AbortSignal) => {
+    try {
+      return await adminApi.getUser(token, userId, signal)
+    } catch (reason) {
+      // 未知 id 要说人话：404 的英文码透传给用户看没有意义。
+      if (reason instanceof ApiError && reason.status === 404) {
+        throw new ApiError(404, '用户不存在', reason.body)
+      }
+      throw reason
+    }
+  }, [token, userId])
   const loadRuns = useCallback(
     (signal: AbortSignal) => adminApi.listRuns(token, { userId, limit: PAGE_SIZE, offset: 0 }, signal),
     [token, userId],
   )
   const user = useResource(loadUser, onForbidden)
   const runs = useResource(loadRuns, onForbidden)
-  const value: AdminUser | undefined = user.data?.items[0]
+  const value = user.data
   const [selected, setSelected] = useState<number | null>(null)
 
   return (

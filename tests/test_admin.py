@@ -266,3 +266,31 @@ def test_admin_runs_list_excludes_orphan_rows(admin_data):
         with new_session() as db:
             db.query(AgentRun).filter(AgentRun.id == orphan_id).delete()
             db.commit()
+
+
+def test_admin_user_detail_returns_one_user(admin_data):
+    users, *_ = admin_data
+    response = client.get(PREFIX + f"/users/{users[1].id}", headers=bearer(users[0]))
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["id"] == str(users[1].id)
+    assert body["username"] == users[1].username
+    assert body["role"] == "user"
+    assert "metrics" in body
+
+
+def test_admin_user_detail_matches_the_list_row(admin_data):
+    """详情页与列表行必须逐字段相同——两边共用一条 statement，抽函数时列/别名一动就分叉。"""
+    users, *_ = admin_data
+    headers = bearer(users[0])
+    listed = client.get(PREFIX + "/users", params={"q": users[1].username},
+                        headers=headers).json()["items"][0]
+    detail = client.get(PREFIX + f"/users/{users[1].id}", headers=headers).json()
+    assert detail == listed
+
+
+def test_admin_user_detail_404s_on_an_unknown_id(admin_data):
+    users, *_ = admin_data
+    response = client.get(PREFIX + f"/users/{uuid.uuid4()}", headers=bearer(users[0]))
+    assert response.status_code == 404
+    assert response.json()["detail"] == "NOT_FOUND"

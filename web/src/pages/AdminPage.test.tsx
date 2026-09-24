@@ -4,7 +4,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { ApiError } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
-import { adminApi, type AdminMetrics, type AdminProject } from '../lib/adminApi'
+import { adminApi, type AdminMetrics, type AdminProject, type AdminUser } from '../lib/adminApi'
 import AdminPage, { AdminConsole } from './AdminPage'
 import { ProjectDetailPage } from './admin/ProjectDetail'
 import { RunDetailPage } from './admin/RunDetail'
@@ -370,13 +370,13 @@ it('keeps taskless setup runs discoverable and loads access logs', async () => {
 })
 
 it('lists users with their total spend and opens one user detail page', async () => {
-  vi.mocked(adminApi.listUsers).mockResolvedValue({
-    items: [{
-      id: 'user-1', username: 'alice', tier: 'normal', role: 'user',
-      project_count: 2, chapter_count: 8, word_count: 9000, task_count: 3,
-      metrics: { ...metrics, cost_est: 12.3456 }, task_averages: taskAverages,
-    }], total: 1, limit: 25, offset: 0,
-  })
+  const alice: AdminUser = {
+    id: 'user-1', username: 'alice', tier: 'normal', role: 'user',
+    project_count: 2, chapter_count: 8, word_count: 9000, task_count: 3,
+    metrics: { ...metrics, cost_est: 12.3456 }, task_averages: taskAverages,
+  }
+  vi.mocked(adminApi.listUsers).mockResolvedValue({ items: [alice], total: 1, limit: 25, offset: 0 })
+  vi.mocked(adminApi.getUser).mockResolvedValue(alice)
   vi.mocked(adminApi.listRuns).mockResolvedValue({
     items: [{
       id: 30, project_id: null, user_id: 'user-1', username: 'alice', project_title: null,
@@ -394,6 +394,7 @@ it('lists users with their total spend and opens one user detail page', async ()
 
   expect(router.state.location.pathname).toBe('/admin/users/user-1')
   expect(await screen.findByRole('heading', { name: /alice/ })).toBeTruthy()
+  expect(adminApi.getUser).toHaveBeenCalledWith('token-admin', 'user-1', expect.any(AbortSignal))
   // 没有书的那次调用也要看得见，且作品一栏不开天窗
   expect(await screen.findByText('short_creation')).toBeTruthy()
   expect(adminApi.listRuns).toHaveBeenCalledWith('token-admin', { userId: 'user-1', limit: 25, offset: 0 }, expect.any(AbortSignal))
@@ -404,12 +405,10 @@ it('lists users with their total spend and opens one user detail page', async ()
 
 it('keeps a taskless run row readable when the book is gone', async () => {
   // 详情页同时取账号与运行；账号不挡住这次断言，但仍要有个可解析的响应。
-  vi.mocked(adminApi.listUsers).mockResolvedValue({
-    items: [{
-      id: 'user-1', username: 'alice', tier: 'normal', role: 'user',
-      project_count: 0, chapter_count: 0, word_count: 0, task_count: 1,
-      metrics, task_averages: taskAverages,
-    }], total: 1, limit: 25, offset: 0,
+  vi.mocked(adminApi.getUser).mockResolvedValue({
+    id: 'user-1', username: 'alice', tier: 'normal', role: 'user',
+    project_count: 0, chapter_count: 0, word_count: 0, task_count: 1,
+    metrics, task_averages: taskAverages,
   })
   vi.mocked(adminApi.listRuns).mockResolvedValue({
     items: [{
