@@ -1,8 +1,6 @@
-"""账号级环境配置：模型连接/路由 + 扫榜 + MCP 客户端设置（不绑具体作品）。"""
+"""账号级环境配置：模型连接/路由 + 扫榜（不绑具体作品）。"""
 
 from __future__ import annotations
-
-import asyncio
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -15,10 +13,8 @@ from myink.api.routes_settings import (
     _clean_base_url,
     connection_record,
 )
-from myink.api.schemas import ConnectionTestOut, EnvironmentOut, ModelListOut, RankingsProbeOut
-from myink.config import settings
+from myink.api.schemas import ConnectionTestOut, EnvironmentOut, ModelListOut
 from myink.environment import load_environment, load_raw, save_raw
-from myink.integrations.mcp import McpClient, McpError
 from myink.providers import CONFIGURABLE_ROLES, probe
 from myink.providers.connections import (
     CUSTOM_ROUTE_PREFIX,
@@ -33,7 +29,6 @@ router = APIRouter(prefix="/api/v1", tags=["environment"])
 
 class RankingsBody(BaseModel):
     enabled: bool | None = None
-    mcp_url: str | None = None
     timeout: int | None = None
     limit: int | None = None
 
@@ -47,20 +42,12 @@ class EnvironmentBody(BaseModel):
     thinking_enabled: bool | None = None
 
 
-class RankingsProbeBody(BaseModel):
-    mcp_url: str
-    timeout: int | None = None
-
-
 def _validate_rankings(body: RankingsBody, existing: dict) -> dict:
     from myink.environment import merge_rankings
 
     merged = merge_rankings(existing)
     if body.enabled is not None:
         merged["enabled"] = body.enabled
-    if body.mcp_url is not None:
-        merged["mcp_url"] = _clean_base_url(body.mcp_url)
-        _assert_host_allowed(merged["mcp_url"])
     if body.timeout is not None:
         if not 1 <= body.timeout <= 60:
             raise HTTPException(status_code=400, detail="扫榜超时须为 1–60 秒")
@@ -165,25 +152,3 @@ def test_environment_connection(
     api_key = _probe_key(user_id, body)
     ok, latency_ms, reply, error = probe.test_connection(body.protocol, base_url, api_key, model)
     return {"ok": ok, "latency_ms": latency_ms, "reply": reply, "error": error}
-
-
-@router.post("/environment/test-rankings", response_model=RankingsProbeOut)
-async def test_rankings_connection(
-    body: RankingsProbeBody, user_id: str = Depends(require_user),
-) -> dict:
-    del user_id  # 身份已由 require_user 断言；探针不读已存密钥
-    base_url = _clean_base_url(body.mcp_url)
-    _assert_host_allowed(base_url)
-    timeout = settings.rankings_timeout if body.timeout is None else body.timeout
-    if not 1 <= timeout <= 60:
-        raise HTTPException(status_code=400, detail="扫榜超时须为 1–60 秒")
-    try:
-        async with McpClient(base_url, timeout_s=timeout) as client:
-            tools = await client.list_tools()
-        return {"ok": True, "tools": tools[:50], "error": None}
-    except asyncio.CancelledError:
-        return {"ok": False, "tools": [], "error": "扫榜请求被取消"}
-    except McpError as exc:
-        return {"ok": False, "tools": [], "error": str(exc)}
-    except Exception as exc:  # noqa: BLE001 - 外部协议不可信，探针只回报失败
-        return {"ok": False, "tools": [], "error": f"扫榜连接失败: {exc}"}

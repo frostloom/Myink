@@ -32,7 +32,7 @@ def test_environment_roundtrip_models_and_rankings(temp_user):
     assert empty["model_routes"] == {}
     assert empty["model_connections"] == []
     assert empty["thinking_enabled"] is False
-    assert empty["rankings"]["mcp_url"]
+    assert "mcp_url" not in empty["rankings"]
 
     cid = str(uuid.uuid4())
     out = put_environment(EnvironmentBody(
@@ -42,8 +42,7 @@ def test_environment_roundtrip_models_and_rankings(temp_user):
             api_key="secret-value",
         )],
         model_routes={"writer": f"custom:{cid}"},
-        rankings={"enabled": False, "mcp_url": "https://mcp.example.com/api",
-                  "timeout": 8, "limit": 5},
+        rankings={"enabled": False, "timeout": 8, "limit": 5},
     ), user_id=temp_user)
 
     assert out["model_routes"] == {"writer": f"custom:{cid}"}
@@ -52,9 +51,7 @@ def test_environment_roundtrip_models_and_rankings(temp_user):
         "base_url": "https://models.example.com/v1", "model": "novel-pro",
         "input_price": None, "output_price": None, "has_api_key": True,
     }]
-    assert out["rankings"]["enabled"] is False
-    assert out["rankings"]["mcp_url"] == "https://mcp.example.com/api"
-    assert out["rankings"]["timeout"] == 8
+    assert out["rankings"] == {"enabled": False, "timeout": 8, "limit": 5}
     assert "secret-value" not in repr(out)
 
     with new_session() as db:
@@ -143,12 +140,6 @@ def test_environment_save_rejects_non_global_model_host(temp_user):
     assert get_environment(user_id=temp_user)["model_connections"] == []
 
 
-def test_environment_save_rejects_non_global_rankings_url(temp_user):
-    with pytest.raises(HTTPException, match="内网/保留地址"):
-        put_environment(EnvironmentBody(rankings={"mcp_url": "http://169.254.169.254/mcp"}),
-                        user_id=temp_user)
-
-
 def test_environment_saves_audit_summarize_and_thinking(temp_user):
     cid = str(uuid.uuid4())
     out = put_environment(EnvironmentBody(
@@ -216,25 +207,6 @@ def test_probe_reuses_environment_connection_key(temp_user, monkeypatch):
         user_id=temp_user,
     )
     assert out["ok"] is True and seen["key"] == "stored-secret"
-
-
-def test_rankings_probe_reports_tools(temp_user, monkeypatch):
-    class FakeClient:
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *exc):
-            return None
-
-        async def list_tools(self):
-            return ["qidian_rank", "community_rank"]
-
-    monkeypatch.setattr(routes_environment, "McpClient", lambda *a, **k: FakeClient())
-    out = __import__("asyncio").run(routes_environment.test_rankings_connection(
-        routes_environment.RankingsProbeBody(mcp_url="https://mcp.example.com/api", timeout=5),
-        user_id=temp_user,
-    ))
-    assert out == {"ok": True, "tools": ["qidian_rank", "community_rank"], "error": None}
 
 
 def test_environment_requires_auth():

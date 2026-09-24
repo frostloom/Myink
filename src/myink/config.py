@@ -128,8 +128,6 @@ class Settings:
     rankings_timeout: int = field(default_factory=lambda: int(_env("RANKINGS_TIMEOUT", "10") or "10"))  # 秒
     rankings_limit: int = field(default_factory=lambda: int(_env("RANKINGS_LIMIT", "10") or "10"))  # 展示条数 cap
     rankings_cache_ttl: int = field(default_factory=lambda: int(_env("RANKINGS_CACHE_TTL", "3600") or "3600"))  # 秒
-    rankings_mcp_url: str = field(default_factory=lambda: _env(
-        "RANKINGS_MCP_URL", "https://daosearch.io/api/mcp") or "https://daosearch.io/api/mcp")
 
     def is_prod(self) -> bool:
         return self.app_env == "prod"

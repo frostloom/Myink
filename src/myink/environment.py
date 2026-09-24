@@ -15,7 +15,6 @@ from myink.providers.connections import keep_custom_routes, unpack_model_setting
 def default_rankings() -> dict[str, Any]:
     return {
         "enabled": bool(settings.rankings_enabled),
-        "mcp_url": settings.rankings_mcp_url,
         "timeout": int(settings.rankings_timeout),
         "limit": int(settings.rankings_limit),
     }
@@ -28,9 +27,6 @@ def merge_rankings(raw: Any) -> dict[str, Any]:
         return base
     if "enabled" in raw:
         base["enabled"] = bool(raw["enabled"])
-    mcp_url = raw.get("mcp_url")
-    if isinstance(mcp_url, str) and mcp_url.strip():
-        base["mcp_url"] = mcp_url.strip()
     timeout = raw.get("timeout")
     if isinstance(timeout, int) and 1 <= timeout <= 60:
         base["timeout"] = timeout
