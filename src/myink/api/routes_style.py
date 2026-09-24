@@ -17,12 +17,13 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import select
 
 from myink.api.auth import require_owner, require_user
 from myink.api.schemas import SkillPresetOut, StyleDraftOut, StyleProfileOut
 from myink.db import new_session, tenant_session
 from myink.memory.repository import get_settings
-from myink.models import ProjectSettings
+from myink.models import ProjectSettings, StyleLibraryItem
 from myink.seed import STYLE_PRESETS
 from myink.style_extract import (
     analyze_sample_stats,
@@ -38,6 +39,30 @@ router = APIRouter(prefix="/api/v1", tags=["style"])
 def _pid(project_id: str) -> uuid.UUID:
     """path 里的 project_id 转 uuid（require_owner 已校验格式合法，此处仅类型转换）。"""
     return uuid.UUID(project_id)
+
+
+def resolve_style_selection(db, uid: uuid.UUID, item_id: str) -> tuple[dict, str | None, str]:
+    """选择器的值 → (style_profile, skill_pack, 展示名)。短篇建书与长篇建书共用这一份。
+
+    `builtin:<preset id>` 是内置预设（id 同时当 skill_pack 标记，与题材包导入同口径）；
+    其他按文风库 item id 处理，且**只查自己名下的**——查不到给 404，不区分「不存在」与
+    「是别人的」，免得拿 404/403 的差别当探测别人库的手段。
+    """
+    if item_id.startswith("builtin:"):
+        key = item_id[len("builtin:"):]
+        preset = next((p for p in STYLE_PRESETS if p["id"] == key), None)
+        if preset is None:
+            raise HTTPException(status_code=404, detail="NOT_FOUND")
+        return dict(preset["style_profile"]), key, str(preset["name"])
+    try:
+        target = uuid.UUID(item_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="NOT_FOUND") from None
+    item = db.scalar(select(StyleLibraryItem).where(
+        StyleLibraryItem.id == target, StyleLibraryItem.user_id == uid))
+    if item is None:
+        raise HTTPException(status_code=404, detail="NOT_FOUND")
+    return dict(item.profile), None, item.name
 
 
 class StyleSamplesBody(BaseModel):

@@ -13,6 +13,7 @@ from sqlalchemy import delete as sa_delete, select
 
 from myink.api import routes_book as _book
 from myink.api.auth import require_user
+from myink.api.routes_style import resolve_style_selection
 from myink.api.schemas import (OkOut, ShortCreationCommitBody, ShortCreationCommitOut,
                                ShortCreationMessageBody, ShortCreationMessageOut,
                                ShortCreationOut, ShortCreationSessionOut)
@@ -21,7 +22,7 @@ from myink.creation import validate_short_outline
 from myink.db import new_session, tenant_session
 from myink.memory.repository import get_settings
 from myink.models import (Project, ProjectSettings, ShortCreationMessage,
-                          ShortCreationSession, StyleLibraryItem, User)
+                          ShortCreationSession, User)
 from myink.short import creation
 from myink.short.form import resolve_short_lengths
 
@@ -127,32 +128,6 @@ def reset_session(user_id: str = Depends(require_user)) -> dict:
     return {"ok": True}
 
 
-def _style_for(db, uid: uuid.UUID, item_id: str) -> tuple[dict, str | None, str]:
-    """选择器的值 → (style_profile, skill_pack, 展示名)。
-
-    `builtin:<preset id>` 是内置预设（id 同时当 skill_pack 标记，与长篇那条路同口径）；
-    其他按文风库 item id 处理，且**只查自己名下的**——查不到给 404，不区分「不存在」与
-    「是别人的」，免得拿 404/403 的差别当探测别人的库。
-    """
-    from myink.seed import STYLE_PRESETS
-
-    if item_id.startswith("builtin:"):
-        key = item_id[len("builtin:"):]
-        preset = next((p for p in STYLE_PRESETS if p["id"] == key), None)
-        if preset is None:
-            raise HTTPException(status_code=404, detail="NOT_FOUND")
-        return dict(preset["style_profile"]), key, str(preset["name"])
-    try:
-        target = uuid.UUID(item_id)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="NOT_FOUND")
-    item = db.scalar(select(StyleLibraryItem).where(
-        StyleLibraryItem.id == target, StyleLibraryItem.user_id == uid))
-    if item is None:
-        raise HTTPException(status_code=404, detail="NOT_FOUND")
-    return dict(item.profile), None, item.name
-
-
 @router.post("/commit", response_model=ShortCreationCommitOut)
 def commit(body: ShortCreationCommitBody, user_id: str = Depends(require_user)) -> dict:
     """确认开写：落书 + 出方案 + 落方案置 ready + 落文风。**不入队。**
@@ -230,7 +205,7 @@ def commit(body: ShortCreationCommitBody, user_id: str = Depends(require_user)) 
                                                          "conflict_core": card["conflict_core"],
                                                          "plot_sketch": card["plot_sketch"]}}
         if style_item_id:
-            profile, skill_pack, style_name = _style_for(tdb, uid, style_item_id)
+            profile, skill_pack, style_name = resolve_style_selection(tdb, uid, style_item_id)
             settings_row = get_settings(tdb, pid)
             if settings_row is None:
                 settings_row = ProjectSettings(project_id=pid, version=1)
