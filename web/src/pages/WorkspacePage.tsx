@@ -49,7 +49,10 @@ export default function WorkspacePage() {
   // 放行复用同一 task_id 续跑，SSE 需强制重连（useTaskEvents resumeKey 触发）
   const [releaseResumeKey, setReleaseResumeKey] = useState<number | null>(null)
   const [centerView, setCenterView] = useState<'plan' | 'write'>('write')
+  // 短篇整篇入队失败（建书页确认完跳进来那一次）→ 状态带给重试入口，不静默咽掉。
+  const [shortStartFailed, setShortStartFailed] = useState(false)
   const taskStartVersion = useRef(0)
+  const shortStarted = useRef(false)
   const chapterMaterializeVersion = useRef(0)
   const projectIdRef = useRef(projectId)
   const activeTaskIdRef = useRef<string | null>(null)
@@ -67,20 +70,9 @@ export default function WorkspacePage() {
   // 短篇一次成稿：没有逐章方案要确认，也没有 Plan 阶段。后面几处「续跑后跳回计划视图」
   // 的调用点仍然会 setCenterView('plan')，所以判据必须落在渲染侧，而不是它们的调用侧。
   const showPlanView = !isShortBook && centerView === 'plan'
-  // 建书对话页确认完跳进来时带了这个 state：那次 commit 只落书不出稿，入队归 GenerationPanel。
+  // 建书对话页确认完跳进来时带了这个 state：那次 commit 只落书不出稿，入队归本页。
   const location = useLocation()
   const handover = (location.state ?? {}) as { beginShortWriting?: boolean; planWarning?: string | null }
-  const autoStartShort = Boolean(isShortBook && handover.beginShortWriting)
-
-  // 意图只在「刚确认完」那一次进入有效：吃掉它的同一个提交里抹掉 history.state 上的标记，
-  // 硬刷新不会把它带回来（带回来就是白花一次整篇配额）。
-  // 闸门是 autoStartShort 而不是 beginShortWriting：项目列表是异步拉回来的，
-  // 首帧还不知道是不是短篇，若按原始标记抹，标记会在列表到齐前就没了，这次进入反而不入队。
-  // 子组件 effect 先于父组件跑：GenerationPanel 的入队发生在前，这里紧随其后抹标记。
-  useEffect(() => {
-    if (!autoStartShort) return
-    navigate(location.pathname, { replace: true, state: { planWarning: handover.planWarning ?? null } })
-  }, [autoStartShort, handover.planWarning, location.pathname, navigate])
 
   useEffect(() => {
     activeTaskIdRef.current = activeTaskId
@@ -366,6 +358,26 @@ export default function WorkspacePage() {
     [accountId, chapters, projectId, isShortBook],
   )
 
+  // 建书对话页确认完跳进来那一次：入队归本页（中间栏状态带上就是重试入口）。
+  // 顺序是显式的——先入队，再抹掉 history.state 上的标记，硬刷新带不回来（带回来就是
+  // 白花一次整篇配额）。shortStarted 是 React 18 StrictMode 下的第二道闸；activeTaskId
+  // 那一格挡住「重进页面时其实已经有任务了」的重复入队（自动恢复那条 effect 用
+  // taskStartVersion 保证不会把我们刚接上的 taskId 又抹回 null）。
+  useEffect(() => {
+    // 先等 projects 到手：isShortBook 还是 false 的时候就抹标记，会把这次意图整个吞掉。
+    if (!isShortBook) return
+    if (handover.beginShortWriting && !shortStarted.current && activeTaskId === null) {
+      shortStarted.current = true
+      void api.generateShort(projectId)
+        .then((resp) => handleTaskStart(resp.task_id))
+        .catch(() => setShortStartFailed(true))
+    }
+    if (handover.planWarning || handover.beginShortWriting) {
+      navigate(location.pathname, { replace: true, state: { planWarning: handover.planWarning ?? null } })
+    }
+  }, [isShortBook, handover.beginShortWriting, handover.planWarning, activeTaskId,
+      projectId, location.pathname, navigate, handleTaskStart])
+
   // 放行本章：resume 同一 task_id 续跑（§6.11 确认流收尾）。taskId 不变但 SSE 已关流，
   // 用 releaseResumeKey 强制重连；终态 → 既有 effect 刷章节/候选，正文出现、按钮消失。
   const handleRelease = useCallback((taskId: string, chapterSeq: number, batchSize?: number) => {
@@ -588,6 +600,28 @@ export default function WorkspacePage() {
   const hasPlan = planArtifact !== null || visibleTaskRuns.some((run) => (
     run.node === 'plan_chapter' && run.detail?.plan
   ))
+  // 短篇中间栏那条状态带：整篇任务只有一条线，四态够用（进行中 / 写完 / 失败 / 没开始）。
+  const shortFailed = task.status === 'failed' || task.status === 'cancelled' || taskPhase === 'error'
+  const shortStatus = taskInFlight
+    ? '正在写整篇…'
+    : task.status === 'done'
+      ? '整篇写完了'
+      : shortFailed
+        ? '这次写作没能完成'
+        : shortStartFailed
+          ? '没能开始写'
+          : '还没开始写'
+  // 有任务在跑、或已经写完了，就不给重试/开写入口。
+  const canStartShort = !taskInFlight && task.status !== 'done'
+  const startShort = () => {
+    setShortStartFailed(false)
+    // 有历史任务 → 续跑它（retry 复用同一 task_id）；没有 → 新起一次整篇生成。
+    if (activeTaskId) { task.retry(); return }
+    void api.generateShort(projectId)
+      .then((resp) => handleTaskStart(resp.task_id))
+      .catch(() => setShortStartFailed(true))
+  }
+  const hasShortReview = visibleTaskRuns.some((run) => run.node === 'short_review')
   const isPendingChapter = selectedChapter?.id.startsWith('pending-chapter:') ?? false
   // 节点记录在 LLM 返回后才落库，写作进行中右栏会停在上一节点；用产物未完成态补一条实时步骤。
   // 仅任务在途时启用：终态/暂停下残留的未完成产物不该再显示「正在执行」。
@@ -716,6 +750,17 @@ export default function WorkspacePage() {
 
       <main className={styles.main}>
         {error && <div className="banner banner-error">{error}</div>}
+        {isShortBook && (
+          <div className={styles.band} role="status">
+            <span>{shortStatus}</span>
+            {handover.planWarning && <span className={styles.bandWarn}>{handover.planWarning}</span>}
+            {canStartShort && (
+              <button type="button" className="btn btn-quiet" onClick={startShort}>
+                {shortStartFailed || shortFailed ? '重试' : '开始写'}
+              </button>
+            )}
+          </div>
+        )}
         {selectedChapter ? (
           showCreationWorkspace ? <div className={styles.creationWorkspace}>
             <nav className={styles.stageTabs} aria-label={`第 ${selectedChapter.chapter_seq} 章创作视图`}>
@@ -788,19 +833,26 @@ export default function WorkspacePage() {
           )
         ) : (
           <div className="empty">
-            {chapters.length === 0 ? '还没有章节。在右侧发起首次生成。' : '选择左侧章节开始编辑。'}
+            {chapters.length === 0
+              ? (isShortBook ? '成稿还没出来。' : '还没有章节。在右侧发起首次生成。')
+              : '选择左侧章节开始编辑。'}
           </div>
+        )}
+        {isShortBook && hasShortReview && (
+          <details className={styles.review}>
+            <summary>审稿结论</summary>
+            <ShortStoryPanel key={`short-${projectId}`} runs={visibleTaskRuns} />
+          </details>
         )}
       </main>
 
+      {!isShortBook && (
       <aside className={styles.right} aria-label="生成与校验">
         <GenerationPanel
           projectId={projectId}
           chapters={chapters}
           selectedChapter={selectedChapter}
-          form={isShortBook ? 'short' : 'long'}
           taskBusy={taskInFlight}
-          autoStartShort={autoStartShort}
           onTaskStart={handleTaskStart}
         />
         <TaskTimeline
@@ -812,16 +864,12 @@ export default function WorkspacePage() {
           runs={visibleTaskRuns}
           liveNode={liveNode}
           progress={task.progress}
-          chapterSeq={isShortBook ? null : selectedSeq}
+          chapterSeq={selectedSeq}
           error={task.error}
           onRetry={task.retry}
           canControl={batchTotal !== null}
           refresh={task.refresh}
         />
-        {isShortBook ? (
-          // 短篇：没有单章审核，也没有待确认池与复盘经验，整篇唯一的出口是审稿报告。
-          <ShortStoryPanel key={`short-${projectId}`} runs={visibleTaskRuns} />
-        ) : (<>
         <AuditPanel key={`audit-${projectId}-${selectedSeq ?? 'none'}`} runs={visibleTaskRuns} onNavigateChapter={handleNavigateChapter} />
         <CandidatePanel
           key={`${projectId}:${selectedSeq ?? 'none'}`}
@@ -835,8 +883,8 @@ export default function WorkspacePage() {
           referenceNames={candidateReferenceNames}
         />
         <LessonsPanel projectId={projectId} />
-        </>)}
       </aside>
+      )}
     </div>
   )
 }

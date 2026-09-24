@@ -1,7 +1,7 @@
 // 生成入口：写下一章（永远写「已写最大章 + 1」的下一未写章）+ 重写本章（仅 confirmed 章，
 // 带确认弹窗）+ 批次生成（N≤20，成本估算标注「估算」）。
 // 失败 → 中文横幅；成功 → onTaskStart(taskId) 交给时间线。
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api, ApiError } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
 import type { ChapterMeta, WritingMode } from '../types'
@@ -15,27 +15,22 @@ interface Props {
   projectId: string
   chapters: ChapterMeta[]
   selectedChapter: ChapterMeta | null
-  /** 短篇没有「下一章」：整篇一次成稿，章级控件全部不渲染 */
-  form?: 'long' | 'short'
   /** 当前书已有任务在规划/写作/等待人工时，阻止重复发起。 */
   taskBusy?: boolean
-  /** 建书对话页确认完跳进来那一次：进页即开写（缺省 false，普通进入不受影响）。 */
-  autoStartShort?: boolean
   /** 批次生成时带 batchTotal（时间线实时 i/N）；单章任务带 chapterSeq（右栏按章过滤） */
   onTaskStart: (taskId: string, batchTotal?: number, chapterSeq?: number, mode?: WritingMode) => void
 }
 
 export function GenerationPanel({
-  projectId, chapters, selectedChapter, form = 'long', taskBusy = false, autoStartShort = false, onTaskStart,
+  projectId, chapters, selectedChapter, taskBusy = false, onTaskStart,
 }: Props) {
   const [open, setOpen] = useState(true)
   const [instruction, setInstruction] = useState('')
   const [batchN, setBatchN] = useState(3)
   const [mode, setMode] = useState<WritingMode>('auto')
-  const [busy, setBusy] = useState<null | 'chapter' | 'batch' | 'short'>(null)
+  const [busy, setBusy] = useState<null | 'chapter' | 'batch'>(null)
   const [banner, setBanner] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const isShort = form === 'short'
 
   useEffect(() => {
     setInstruction('')
@@ -43,15 +38,6 @@ export function GenerationPanel({
     setBanner(null)
     setNotice(null)
   }, [projectId])
-
-  // 建书对话页确认完跳进来时那一刻：那次 commit 只落书不出稿，入队归这里。
-  // 用 ref 记住已经跑过——React 18 StrictMode 下 effect 会跑两次，跑两遍就是两次配额。
-  const handedOver = useRef(false)
-  useEffect(() => {
-    if (!isShort || !autoStartShort || handedOver.current) return
-    handedOver.current = true
-    void generateWholeStory()
-  }, [isShort, autoStartShort])
 
   // 已写最大章序 + 下一章序号（空项目 → 1，与 worker _guard_write_order 语义一致）。
   // 章节列表只有已物化行：写下一章 = seq 恒为 max_seq+1，绝不踩「选已写章被守卫拒绝」。
@@ -157,33 +143,14 @@ export function GenerationPanel({
     }
   }
 
-  // 短篇：整篇一次成稿。任务不属于任何一章（chapterSeq 传了就绑不到章节页），
-  // 章数额度由后端按确认后的方案扣。写作指令短篇管道读不到，故不给输入框。
-  async function generateWholeStory() {
-    if (busy) return
-    setBusy('short')
-    setBanner(null)
-    setNotice(null)
-    try {
-      const resp = await api.generateShort(projectId)
-      onTaskStart(resp.task_id)
-      setNotice('全篇写作任务已创建，进度会显示在下方“章节流转”中。')
-    } catch (err) {
-      showError(err)
-    } finally {
-      setBusy(null)
-    }
-  }
-
+  // 短篇：整篇一次成稿的入口在工作台的中间栏状态带上，这里不再有短篇分支。
   return (
     <section className={`panel ${styles.panel}`}>
       <header className={styles.head}>
         <button type="button" className={styles.toggle} onClick={() => setOpen((value) => !value)} aria-expanded={open}>
           <span className={styles.heading}>生成与重写</span>
           <span className={styles.next}>
-            {isShort
-              ? '整篇一次成稿'
-              : chapterIsRunning
+            {chapterIsRunning
               ? `当前生成：第 ${nextSeq} 章`
               : chapterIsPlanning
                 ? `等待确认：第 ${nextSeq} 章`
@@ -199,21 +166,6 @@ export function GenerationPanel({
 
       {banner && <div className="banner banner-error" role="alert">{banner}</div>}
       {notice && <div className={styles.notice} role="status">{notice}</div>}
-
-      {isShort ? (
-        <form className={styles.form} onSubmit={(event) => { event.preventDefault(); void generateWholeStory() }}>
-          <p className={styles.emptyHint}>整篇一次成稿，任务里依次跑成稿、审稿，需要时再改稿。</p>
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={controlsBusy}
-            onClick={() => void generateWholeStory()}
-          >
-            {busy === 'short' ? '发起中…' : '开始写全篇'}
-          </button>
-          <p className={styles.batchHint}>按方案章数扣当日写作额度。</p>
-        </form>
-      ) : (<>
 
       <form className={styles.form} onSubmit={(event) => { event.preventDefault(); void generateNextChapter() }}>
         <label className={styles.label} htmlFor="user-instruction">
@@ -303,7 +255,6 @@ export function GenerationPanel({
         </button>
         {mode === 'manual' && <p className={styles.batchDisabled}>手动模式需要逐章确认计划，批量生成已禁用。</p>}
       </form>
-      </>)}
       </div>}
     </section>
   )

@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { useEffect } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { afterEach, expect, it, vi } from 'vitest'
 import { api } from '../lib/api'
@@ -81,27 +80,14 @@ vi.mock('../components/ChapterList', () => ({
   ),
 }))
 vi.mock('../components/GenerationPanel', () => ({
-  GenerationPanel: ({ form, projectId, autoStartShort, onTaskStart }: {
-    form?: string
-    projectId: string
-    autoStartShort?: boolean
+  GenerationPanel: ({ onTaskStart }: {
     onTaskStart: (id: string, total?: number, seq?: number) => void
-  }) => {
-    // 契约替身：真实组件「收到 autoStartShort 即入队一次」的行为由 GenerationPanel.test.tsx
-    // 对着真身钉住，这里只复刻这条契约，让页面级用例能观察到「入队几次」。
-    useEffect(() => {
-      if (!autoStartShort) return
-      void api.generateShort(projectId)
-    }, [autoStartShort, projectId])
-    return (
-      <div>
-        <span>gen-form-{form ?? 'long'}</span>
-        <span>gen-auto-{autoStartShort ? 'on' : 'off'}</span>
-        <button type="button" onClick={() => onTaskStart('task-13', undefined, 13)}>start-13</button>
-        {form === 'short' && <button type="button" onClick={() => onTaskStart('task-short')}>start-short</button>}
-      </div>
-    )
-  },
+  }) => (
+    <div>
+      <span>generation-panel</span>
+      <button type="button" onClick={() => onTaskStart('task-13', undefined, 13)}>start-13</button>
+    </div>
+  ),
 }))
 vi.mock('../components/TaskTimeline', () => ({
   TaskTimeline: ({ taskId, chapterSeq }: { taskId: string | null; chapterSeq: number | null }) => (
@@ -385,46 +371,77 @@ function mockShortBook(taskList: unknown[]) {
   vi.mocked(api.listTasks).mockResolvedValue(taskList as never)
 }
 
+function renderWorkspace(state?: Record<string, unknown>) {
+  const router = createMemoryRouter(
+    [{ path: '/projects/:projectId', element: <WorkspacePage /> }],
+    { initialEntries: [{ pathname: '/projects/project-1', state }] },
+  )
+  render(<RouterProvider router={router} />)
+  return router
+}
+
+it('renders no right column for a short book, and a status band instead', async () => {
+  mockShortBook([])
+  renderWorkspace()
+
+  // 短篇没有右栏那一整套：生成面板、章节流转、审计/候选/经验都不该出现。
+  await waitFor(() => expect(screen.getByRole('status').textContent).toContain('还没开始写'))
+  expect(screen.getByRole('button', { name: '开始写' })).toBeTruthy()
+  expect(screen.queryByText('generation-panel')).toBeNull()
+  expect(screen.queryByText(/timeline-/)).toBeNull()
+  expect(screen.queryByText('audit-panel')).toBeNull()
+  expect(screen.queryByText('candidate-panel')).toBeNull()
+  expect(screen.queryByText('lessons-panel')).toBeNull()
+})
+
+it('shows the plan warning on the short status band', async () => {
+  mockShortBook([])
+  renderWorkspace({ planWarning: '每章字数已按全篇上限归一' })
+
+  expect((await screen.findByRole('status')).textContent).toContain('每章字数已按全篇上限归一')
+})
+
+it('auto-starts the short generation once on handover, then strips the intent', async () => {
+  vi.mocked(api.generateShort).mockResolvedValue({ task_id: 'task-1', trace_id: 'trace-1', status: 'queued' })
+  mockShortBook([])
+  const router = renderWorkspace({ beginShortWriting: true })
+
+  // 建书页确认完跳进来那一次：本页负责入队（状态带上才有重试入口）。
+  await waitFor(() => expect(api.generateShort).toHaveBeenCalledWith('project-1'))
+  await waitFor(() => expect(api.generateShort).toHaveBeenCalledTimes(1))
+  // 意图被吃掉：history.state 上换成普通状态，硬刷新带不回来（带回来就是白花一次配额）。
+  await waitFor(() => expect(router.state.location.state?.beginShortWriting).toBeUndefined())
+
+  await act(async () => {
+    await router.navigate('/projects/project-1', { replace: true, state: { beginShortWriting: true } })
+  })
+  expect(api.generateShort).toHaveBeenCalledTimes(1)
+})
+
+it('does not auto-start when the handover did not ask for it', async () => {
+  vi.mocked(api.generateShort).mockResolvedValue({ task_id: 'task-1', trace_id: 'trace-1', status: 'queued' })
+  mockShortBook([])
+  renderWorkspace({ planWarning: null })
+
+  expect(await screen.findByRole('status')).toBeTruthy()
+  await act(async () => { await Promise.resolve() })
+  expect(api.generateShort).not.toHaveBeenCalled()
+})
+
 it('keeps the whole-story review reachable after a chapter is picked on a short book', async () => {
   mockShortBook([shortTask])
   liveTask.runs = [shortReviewRun]
+  renderWorkspace()
 
-  const router = createMemoryRouter(
-    [{ path: '/projects/:projectId', element: <WorkspacePage /> }],
-    { initialEntries: ['/projects/project-1'] },
-  )
-  render(<RouterProvider router={router} />)
-
-  expect(await screen.findByText('gen-form-short')).toBeTruthy()
-  // 整篇任务不属于任何一章：按章取任务会一条都取不到，审稿报告就整块消失了。
-  expect(await screen.findByText('short-review-1')).toBeTruthy()
-  expect(screen.getByText('timeline-task-short-chapter-none')).toBeTruthy()
+  // 整篇任务不属于任何一章：按章切会把审稿报告整块滤空，所以中栏用的是整表取到的 runs。
+  const review = await screen.findByText('short-review-1')
+  expect(review.closest('details')).toBeTruthy()
+  expect(screen.getByText('审稿结论')).toBeTruthy()
 
   fireEvent.click(screen.getByRole('button', { name: 'chapter-2' }))
   await screen.findByText('write-page-2')
 
-  fireEvent.click(screen.getByRole('button', { name: 'start-short' }))
-  // 整篇任务不产出章节 Plan，翻到 Plan 页只会永远停在「等待计划」。
-  expect(screen.queryByText('plan-page-2')).toBeNull()
-
   expect(screen.getByText('short-review-1')).toBeTruthy()
-  expect(screen.getByText('timeline-task-short-chapter-none')).toBeTruthy()
-})
-
-it('shows the short-form panels instead of the long-form ones on a short book', async () => {
-  mockShortBook([])
-
-  const router = createMemoryRouter(
-    [{ path: '/projects/:projectId', element: <WorkspacePage /> }],
-    { initialEntries: ['/projects/project-1'] },
-  )
-  render(<RouterProvider router={router} />)
-
-  expect(await screen.findByText('gen-form-short')).toBeTruthy()
-  expect(screen.getByText('short-review-0')).toBeTruthy()
-  expect(screen.queryByText('audit-panel')).toBeNull()
-  expect(screen.queryByText('candidate-panel')).toBeNull()
-  expect(screen.queryByText('lessons-panel')).toBeNull()
 })
 
 it('still shows the long-form panels on a book without a form', async () => {
@@ -434,63 +451,25 @@ it('still shows the long-form panels on a book without a form', async () => {
   vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] })
   vi.mocked(api.listForeshadows).mockResolvedValue([])
   vi.mocked(api.listTasks).mockResolvedValue([])
+  renderWorkspace()
 
-  const router = createMemoryRouter(
-    [{ path: '/projects/:projectId', element: <WorkspacePage /> }],
-    { initialEntries: ['/projects/project-1'] },
-  )
-  render(<RouterProvider router={router} />)
-
-  expect(await screen.findByText('gen-form-long')).toBeTruthy()
+  expect(await screen.findByText('generation-panel')).toBeTruthy()
+  expect(screen.queryByRole('status')).toBeNull()
   expect(screen.getByText('audit-panel')).toBeTruthy()
   expect(screen.getByText('candidate-panel')).toBeTruthy()
   expect(screen.getByText('lessons-panel')).toBeTruthy()
   expect(screen.queryByText('short-review-0')).toBeNull()
 })
 
-it('consumes the creation hand-off exactly once and strips it so a reload cannot enqueue again', async () => {
+it('never shows the plan stage for a short book', async () => {
   vi.mocked(api.generateShort).mockResolvedValue({ task_id: 'task-1', trace_id: 'trace-1', status: 'queued' })
   mockShortBook([])
+  renderWorkspace()
 
-  const route = [{ path: '/projects/:projectId', element: <WorkspacePage /> }]
-  const router = createMemoryRouter(route, {
-    initialEntries: [{ pathname: '/projects/project-1', state: { beginShortWriting: true, planWarning: '方案被截断过' } }],
-  })
-  render(<RouterProvider router={router} />)
-
-  // 刚确认完那一次：入队一次，然后 history.state 上的意图被 replace 掉（F5 带不回来）。
-  // 入队只发生一次本身就是「意图被送下去了」的证据——替身只在 autoStartShort 为真时入队。
-  await waitFor(() => expect(api.generateShort).toHaveBeenCalledTimes(1))
-  await waitFor(() => expect(router.state.location.state?.beginShortWriting).toBeUndefined())
-  expect(router.state.location.state?.planWarning).toBe('方案被截断过')
-  // 吃掉之后回到普通状态：同一个页面不再持有入队意图。
-  expect(await screen.findByText('gen-auto-off')).toBeTruthy()
-
-  // 把「刷新后」的 state 原样喂给第二只 router：不得再入队一次。
-  const reloaded = router.state.location.state
-  cleanup()
-  const reloadRouter = createMemoryRouter(route, {
-    initialEntries: [{ pathname: '/projects/project-1', state: reloaded }],
-  })
-  render(<RouterProvider router={reloadRouter} />)
-
-  expect(await screen.findByText('gen-form-short')).toBeTruthy()
-  expect(screen.getByText('gen-auto-off')).toBeTruthy()
-  expect(api.generateShort).toHaveBeenCalledTimes(1)
-})
-
-it('never shows the plan stage for a short book', async () => {
-  mockShortBook([shortTask])
-  const router = createMemoryRouter(
-    [{ path: '/projects/:projectId', element: <WorkspacePage /> }],
-    { initialEntries: ['/projects/project-1'] },
-  )
-  render(<RouterProvider router={router} />)
-  expect(await screen.findByText('gen-form-short')).toBeTruthy()
-
-  fireEvent.click(screen.getByRole('button', { name: 'chapter-2' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'chapter-2' }))
+  await screen.findByText('editor-2')
   // 起任务：只有任务在途时 nav 才会渲染，否则下面那条 null 断言是空的（P50）
-  fireEvent.click(await screen.findByRole('button', { name: 'start-short' }))
+  fireEvent.click(screen.getByRole('button', { name: '开始写' }))
 
   // 正向对照：nav 确实渲染出来了（正文阶段还在），证明下面那条 null 不是「整块没渲染」
   expect(await screen.findByRole('button', { name: /正文/ })).toBeTruthy()
