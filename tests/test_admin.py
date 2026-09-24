@@ -240,3 +240,29 @@ def test_user_cost_includes_account_level_runs(admin_data, temp_user, temp_proje
 
     detail = client.get(PREFIX + f"/runs/{account_run['id']}", headers=headers)
     assert detail.status_code == 200                 # 详情页也要能直接打开
+
+
+def test_admin_runs_list_excludes_orphan_rows(admin_data):
+    """孤儿 run（project_id 指向已不存在的书、user_id 为 NULL）不能被外连接带进响应。
+
+    有效归属 coalesce(Project.user_id, AgentRun.user_id) 为空，而 AdminRun.user_id 非空 →
+    ResponseValidationError（admin 中间件再转成 503 ADMIN_REPORT_UNAVAILABLE）。
+    列表要跳过它（200），孤儿详情报 404（与旧内连接一致）。
+    """
+    users, *_ = admin_data
+    with new_session() as db:
+        orphan = AgentRun(project_id=uuid.uuid4(), user_id=None, node="orphan",
+                          input_tokens=1, output_tokens=1, cost_est=0.1)
+        db.add(orphan)
+        db.commit()
+        orphan_id = orphan.id
+    try:
+        headers = bearer(users[0])
+        response = client.get(PREFIX + "/runs", headers=headers)
+        assert response.status_code == 200, response.text
+        assert all(run["node"] != "orphan" for run in response.json()["items"])
+        assert client.get(PREFIX + f"/runs/{orphan_id}", headers=headers).status_code == 404
+    finally:
+        with new_session() as db:
+            db.query(AgentRun).filter(AgentRun.id == orphan_id).delete()
+            db.commit()
