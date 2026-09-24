@@ -31,6 +31,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete as sa_delete, func, select, text
 
 from myink.api.auth import current_user, require_owner
+from myink.api.routes_style import resolve_style_selection
 from myink.api.schemas import (BookOutlineOut, CharacterCardOut, CharacterStateChangeOut,
                                DeleteProjectOut, EntityCardOut, ForeshadowOut, OutlineDraftOut,
                                ProjectOut, ProjectCreationOut, SetupConfirmOut, SetupDraftOut, StoryEventOut,
@@ -126,6 +127,9 @@ class CreateProjectBody(BaseModel):
     # 默认取 §5 的上限，配合 resolve_short_lengths 正好还原 §5 的表（1→8000 / 5→4000 / 10→2000）。
     chars_per_chapter: int = SHORT_CHARS_MAX
     storyline: str = Field(default="", max_length=20000)
+    # 建书时选的文风（可选）。`builtin:<preset id>` 走内置预设，其他按账号文风库的 item id；
+    # 传了就在同一事务里解析并写 project_settings，解析不到 → 404（与短篇建书共用一份实现）。
+    style_item_id: str | None = None
 
 
 class ProjectUpdateBody(BaseModel):
@@ -296,6 +300,15 @@ def create_project(body: CreateProjectBody,
                 genre_pack=genre_pack, request_id=body.request_id)
         except BookCountExceeded:
             return _book_cnt_response()
+        # 放在 try/except 之后：BookCountExceeded 分支已经 return，那里没有 project。
+        style_item_id = (body.style_item_id or "").strip()
+        if style_item_id:
+            profile, skill_pack, _name = resolve_style_selection(db, uid, style_item_id)
+            db.flush()                       # 上面那行只是把空 settings 挂进 session（autoflush=False）
+            settings_row = db.scalar(select(ProjectSettings).where(
+                ProjectSettings.project_id == project.id))
+            settings_row.style_profile = profile
+            settings_row.skill_pack = skill_pack
         db.commit()
     return project_payload(project)
 

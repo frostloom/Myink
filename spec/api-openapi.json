@@ -2913,6 +2913,17 @@
             "title": "Storyline",
             "type": "string"
           },
+          "style_item_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style Item Id"
+          },
           "target_words": {
             "anyOf": [
               {
