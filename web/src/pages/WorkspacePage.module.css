@@ -166,6 +166,37 @@
   flex-shrink: 0;
 }
 
+/* 短篇中间栏顶上的细状态带：进行中/写完/失败/没开始，一行说完，重试就在旁边。 */
+.band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: 14px;
+}
+
+.bandWarn {
+  color: var(--ink-muted);
+}
+
+/* 短篇的审稿结论：默认折起来贴在正文下方，想看再展开。 */
+.review {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.review > summary {
+  cursor: pointer;
+  color: var(--ink-muted);
+}
+
 @media (max-width: 1159px) {
   .wrap {
     min-width: 0;

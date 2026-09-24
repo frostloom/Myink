@@ -2,7 +2,6 @@
 import { cleanup, createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { api } from '../lib/api'
 import { shortCreationApi, type ShortCreationPayload } from '../lib/shortCreationApi'
 import { styleLibraryApi } from '../lib/styleLibraryApi'
 import { useAuth } from '../context/AuthContext'
@@ -16,16 +15,11 @@ vi.mock('../lib/styleLibraryApi', () => ({
   styleLibraryApi: { list: vi.fn() },
 }))
 // rail 要项目列表；这里只关心「rail 在不在」，让它拿到空列表即可。
-// generateShort 是确认之后那步入队，必须换掉，否则会真的发 fetch。
 vi.mock('../lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../lib/api')>()
   return {
     ...actual,
-    api: {
-      ...actual.api,
-      listProjects: vi.fn().mockResolvedValue([]),
-      generateShort: vi.fn(),
-    },
+    api: { ...actual.api, listProjects: vi.fn().mockResolvedValue([]) },
   }
 })
 
@@ -74,7 +68,6 @@ beforeEach(() => {
   } as unknown as ReturnType<typeof useAuth>)
   vi.mocked(shortCreationApi.get).mockResolvedValue(payload())
   vi.mocked(styleLibraryApi.list).mockResolvedValue({ items: [] })
-  vi.mocked(api.generateShort).mockResolvedValue({ task_id: 't1', trace_id: 'tr1', status: 'queued' })
 })
 
 afterEach(() => { cleanup(); vi.clearAllMocks() })
@@ -88,21 +81,12 @@ it('keeps the card hidden until the server says it is ready', async () => {
   expect(screen.queryByLabelText('暂定名')).toBeNull()
 })
 
-it('shows the start option once ready, then the card, then commits and enqueues in order', async () => {
+it('shows the start option once ready, then the card, then commits and hands off to the workspace', async () => {
   vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
     messages: [], ready: true, session: { card: { ...FULL_CARD, working_title: '渡口' } },
   }))
   vi.mocked(shortCreationApi.commit).mockResolvedValue({
     project_id: 'p1', lengths_compressed: false, plan_warning: null, style_name: null,
-  })
-  const order: string[] = []
-  vi.mocked(shortCreationApi.commit).mockImplementation(async () => {
-    order.push('commit')
-    return { project_id: 'p1', lengths_compressed: false, plan_warning: null, style_name: null }
-  })
-  vi.mocked(api.generateShort).mockImplementation(async () => {
-    order.push('generate')
-    return { task_id: 't1', trace_id: 'tr1', status: 'queued' }
   })
   const { router } = renderPage()
 
@@ -110,27 +94,11 @@ it('shows the start option once ready, then the card, then commits and enqueues 
   expect((await openCard() as HTMLTextAreaElement).value).toBe('渡口')
   expect(screen.queryByRole('button', { name: '开始建书' })).toBeNull()
 
-  // 第三段：确认 → 落书 → 入队 → 进工作台（入队成功就让它自动开写）。
+  // 第三段：确认 → 落书 → 进工作台，入队归那边（状态带上才有重试入口）。
   fireEvent.click(screen.getByRole('button', { name: '确认，开写' }))
-  await waitFor(() => expect(order).toEqual(['commit', 'generate']))
+  await waitFor(() => expect(shortCreationApi.commit).toHaveBeenCalled())
   await waitFor(() => expect(router.state.location.pathname).toBe('/projects/p1'))
   expect(router.state.location.state).toEqual({ beginShortWriting: true, planWarning: null })
-})
-
-it('still enters the workspace when the enqueue call fails, but without auto-starting', async () => {
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
-    messages: [], ready: true, session: { card: FULL_CARD },
-  }))
-  vi.mocked(shortCreationApi.commit).mockResolvedValue({
-    project_id: 'p1', lengths_compressed: false, plan_warning: null, style_name: null,
-  })
-  vi.mocked(api.generateShort).mockRejectedValue(new Error('quota'))
-  const { router } = renderPage()
-  await openCard()
-  fireEvent.click(screen.getByRole('button', { name: '确认，开写' }))
-  // 书已经建好了，不能因为入队失败就把它丢在这儿——进工作台，由状态带给重试入口。
-  await waitFor(() => expect(router.state.location.pathname).toBe('/projects/p1'))
-  expect(router.state.location.state).toEqual({ beginShortWriting: false, planWarning: null })
 })
 
 it('shows the greeting and the editable plan card', async () => {

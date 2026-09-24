@@ -148,16 +148,9 @@ export default function ShortCreationPage() {
     if (committed) return
     void run(async () => {
       const out = await shortCreationApi.commit(token, card as Record<string, unknown>, styleItemId || null)
-      // commit 只落书。入队这一下失败也不能把刚建的书丢了——照样进工作台，
-      // 由状态带上的重试入口接手（beginShortWriting 为假即不自动开写）。
-      let enqueueFailed = false
-      try {
-        await api.generateShort(out.project_id)
-      } catch {
-        enqueueFailed = true
-      }
+      // commit 只落书，入队归工作台：那边有状态带，入队失败就地给重试入口。
       navigate(`/projects/${out.project_id}`, {
-        state: { beginShortWriting: !enqueueFailed, planWarning: out.plan_warning },
+        state: { beginShortWriting: true, planWarning: out.plan_warning },
       })
     }, '确认失败，请重试')
   }
