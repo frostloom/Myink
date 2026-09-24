@@ -369,6 +369,9 @@ export const adminApi = {
       ['q', filters.q], ...paging(filters),
     ])}`, token, signal),
 
+  getUser: (token: string, userId: string, signal?: AbortSignal) =>
+    authenticatedGet<AdminUser>(`/admin/users/${encodeURIComponent(userId)}`, token, signal),
+
   listProjects: (token: string, filters: ProjectFilters, signal?: AbortSignal) =>
     authenticatedGet<AdminPage<AdminProject>>(`/admin/projects${query([
       ['user_id', filters.userId], ['q', filters.q], ...paging(filters),
