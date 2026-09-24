@@ -358,6 +358,28 @@ export default function WorkspacePage() {
     [accountId, chapters, projectId, isShortBook],
   )
 
+  // 入队失败先回查一次再报错：请求可能已经送到服务端、只是回包丢了（网关超时、断网）。
+  // 不回查就会一边写着整篇、一边告诉用户「没能开始写」，而重试还会被并发闸 429 挡掉——
+  // 状态说反了，唯一的出口还是个死按钮。
+  const startShortGeneration = useCallback(async () => {
+    try {
+      handleTaskStart((await api.generateShort(projectId)).task_id)
+      return
+    } catch {
+      // 落到回查：确认服务端到底有没有接上这次生成。
+    }
+    try {
+      const latest = (await api.listTasks(projectId)).find((task) => task.task_type === 'short_generate')
+      if (latest) {
+        handleTaskStart(latest.task_id)
+        return
+      }
+    } catch {
+      // 回查也失败：只能按失败处理，把重试留给用户。
+    }
+    setShortStartFailed(true)
+  }, [projectId, handleTaskStart])
+
   // 建书对话页确认完跳进来那一次：入队归本页（中间栏状态带上就是重试入口）。
   // 顺序是显式的——先入队，再抹掉 history.state 上的标记，硬刷新带不回来（带回来就是
   // 白花一次整篇配额）。shortStarted 是 React 18 StrictMode 下的第二道闸；activeTaskId
@@ -368,15 +390,13 @@ export default function WorkspacePage() {
     if (!isShortBook) return
     if (handover.beginShortWriting && !shortStarted.current && activeTaskId === null) {
       shortStarted.current = true
-      void api.generateShort(projectId)
-        .then((resp) => handleTaskStart(resp.task_id))
-        .catch(() => setShortStartFailed(true))
+      void startShortGeneration()
     }
     if (handover.planWarning || handover.beginShortWriting) {
       navigate(location.pathname, { replace: true, state: { planWarning: handover.planWarning ?? null } })
     }
   }, [isShortBook, handover.beginShortWriting, handover.planWarning, activeTaskId,
-      projectId, location.pathname, navigate, handleTaskStart])
+      location.pathname, navigate, startShortGeneration])
 
   // 放行本章：resume 同一 task_id 续跑（§6.11 确认流收尾）。taskId 不变但 SSE 已关流，
   // 用 releaseResumeKey 强制重连；终态 → 既有 effect 刷章节/候选，正文出现、按钮消失。
@@ -617,9 +637,7 @@ export default function WorkspacePage() {
     setShortStartFailed(false)
     // 有历史任务 → 续跑它（retry 复用同一 task_id）；没有 → 新起一次整篇生成。
     if (activeTaskId) { task.retry(); return }
-    void api.generateShort(projectId)
-      .then((resp) => handleTaskStart(resp.task_id))
-      .catch(() => setShortStartFailed(true))
+    void startShortGeneration()
   }
   const hasShortReview = visibleTaskRuns.some((run) => run.node === 'short_review')
   const isPendingChapter = selectedChapter?.id.startsWith('pending-chapter:') ?? false
