@@ -5,14 +5,21 @@ from __future__ import annotations
 import uuid
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+from conftest import identity_headers
+from myink.api.main import app
 from myink.book_setup import generate_short_creation_turn
-from myink.db import new_session
+from myink.db import ensure_user_environment, new_session
 from myink.models import AgentRun, ShortCreationMessage, ShortCreationSession
 from myink.providers.base import ModelProvider, ModelResponse
 from myink.short import creation
 from myink.workflow import nodes, prompts
+
+# 建表是幂等的；不调它，单独跑本模块时 accounts 的 environment 列可能还没补上。
+ensure_user_environment()
+client = TestClient(app)
 
 _STUB_TURN = ('{"reply": "主角最大的压力是什么？", "card": '
               '{"protagonist_pressure": "守着渡口的生计，也守着不肯走的儿子"}}')
@@ -192,3 +199,74 @@ def test_short_creation_turn_records_an_account_level_run(temp_user, chain_stub)
         db.commit()
         row = db.scalar(select(AgentRun).where(AgentRun.user_id == uuid.UUID(temp_user)))
     assert row is not None and row.node == "short_creation" and row.role == "Planner"
+
+
+def test_get_opens_a_session_with_a_fixed_greeting(temp_user):
+    out = client.get("/api/v1/short/creation", headers=identity_headers(temp_user)).json()
+    assert out["ready"] is False
+    assert out["session"]["status"] == "active"
+    assert out["session"]["card"]["chapter_count"] == 5
+    assert len(out["messages"]) == 1 and out["messages"][0]["role"] == "assistant"
+    # 开场白不调模型：首次进页面不该等一次网络
+    assert out["messages"][0]["model_id"] is None
+
+
+def test_posting_a_message_appends_both_sides_and_updates_the_card(temp_user, chain_stub):
+    chain_stub([_STUB_TURN])                       # 不装桩这轮拿不到方案卡增量
+    client.get("/api/v1/short/creation", headers=identity_headers(temp_user))
+    out = client.post("/api/v1/short/creation/messages",
+                      json={"content": "我想写个渡口故事"},
+                      headers=identity_headers(temp_user)).json()
+    assert [m["role"] for m in out["messages"]] == ["assistant", "user", "assistant"]
+    assert out["messages"][-1]["content"] == "主角最大的压力是什么？"
+    assert out["session"]["card"]["protagonist_pressure"].startswith("守着渡口")
+    assert out["messages"][-1]["cost_est"] >= 0
+
+
+def test_the_users_card_edits_win_over_the_models_next_blank(temp_user, chain_stub):
+    """Review Focus 1：用户手改的字段不能被模型下一轮的空字段抹掉。"""
+    chain_stub([_STUB_TURN])
+    client.get("/api/v1/short/creation", headers=identity_headers(temp_user))
+    client.post("/api/v1/short/creation/messages",
+                json={"content": "第一轮", "card": {"working_title": "最后一班渡船"}},
+                headers=identity_headers(temp_user))
+    out = client.post("/api/v1/short/creation/messages",
+                      json={"content": "第二轮"}, headers=identity_headers(temp_user)).json()
+    assert out["session"]["card"]["working_title"] == "最后一班渡船"
+
+
+def test_ready_flips_only_when_all_seven_fields_are_filled(temp_user, chain_stub):
+    chain_stub([_STUB_TURN])
+    client.get("/api/v1/short/creation", headers=identity_headers(temp_user))
+    body = {"content": "都聊清了", "card": {field: "有" for field in creation.REQUIRED_CARD_FIELDS}}
+    out = client.post("/api/v1/short/creation/messages", json=body,
+                      headers=identity_headers(temp_user)).json()
+    assert out["ready"] is True
+
+
+def test_a_bad_model_turn_keeps_the_session_alive(temp_user, chain_stub):
+    """Review Focus 2：坏 JSON 不能 500，也不能丢会话。"""
+    chain_stub(["这是一段没有 JSON 的散文。"])
+    client.get("/api/v1/short/creation", headers=identity_headers(temp_user))
+    resp = client.post("/api/v1/short/creation/messages", json={"content": "聊两句"},
+                       headers=identity_headers(temp_user))
+    assert resp.status_code == 200
+    out = resp.json()
+    assert out["messages"][-1]["error"].startswith("parse_error")
+    assert out["messages"][-1]["content"] == "这是一段没有 JSON 的散文。"
+    assert out["session"]["card"]["chapter_count"] == 5      # 卡没被毁
+
+
+def test_reset_clears_the_conversation(temp_user):
+    client.get("/api/v1/short/creation", headers=identity_headers(temp_user))
+    assert client.delete("/api/v1/short/creation", headers=identity_headers(temp_user)).status_code == 200
+    out = client.get("/api/v1/short/creation", headers=identity_headers(temp_user)).json()
+    assert len(out["messages"]) == 1                      # 只剩新的开场白
+    assert out["session"]["card"]["direction"] == ""
+
+
+def test_messages_rejects_an_empty_content(temp_user):
+    client.get("/api/v1/short/creation", headers=identity_headers(temp_user))
+    resp = client.post("/api/v1/short/creation/messages", json={"content": "   "},
+                       headers=identity_headers(temp_user))
+    assert resp.status_code == 400

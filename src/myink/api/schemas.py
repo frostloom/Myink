@@ -12,6 +12,7 @@ invalidation）用 `dict` / `list[dict]` 松类型——契约价值在字段名
 from __future__ import annotations
 
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -512,3 +513,34 @@ class StyleLibrarySaveBody(BaseModel):
 
 class StyleSampleBody(BaseModel):
     samples: list[str] = Field(default_factory=list)
+
+
+class ShortCreationMessageOut(BaseModel):
+    id: int
+    role: str
+    content: str
+    card: dict | None
+    model_id: str | None
+    cost_est: float
+    error: str | None
+    created_at: datetime
+
+
+class ShortCreationSessionOut(BaseModel):
+    id: UUID
+    status: str
+    card: dict
+    style_item_id: str | None
+    style_name: str | None
+    book_id: UUID | None
+
+
+class ShortCreationOut(BaseModel):
+    session: ShortCreationSessionOut
+    messages: list[ShortCreationMessageOut]
+    ready: bool
+
+
+class ShortCreationMessageBody(BaseModel):
+    content: str = Field(max_length=4000)
+    card: dict | None = None

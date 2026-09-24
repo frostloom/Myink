@@ -29,6 +29,7 @@ from myink.api.routes_global_audit import router as global_audit_router
 from myink.api.routes_lessons import router as lessons_router
 from myink.api.routes_rankings import router as rankings_router
 from myink.api.routes_settings import router as settings_router
+from myink.api.routes_short_creation import router as short_creation_router
 from myink.api.routes_sse import router as sse_router
 from myink.api.routes_style import router as style_router
 from myink.api.routes_style_library import router as style_library_router
@@ -125,6 +126,7 @@ app.include_router(environment_router)
 app.include_router(genre_router)
 app.include_router(global_audit_router)
 app.include_router(rankings_router)
+app.include_router(short_creation_router)
 
 
 @app.get("/healthz")
