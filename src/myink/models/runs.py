@@ -59,7 +59,10 @@ class AgentRun(Base, TimestampMixin):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    # 可空：账号级调用（建书对话、文风提取）此刻还没有书；账号归属落在 user_id 上。
+    # 两者至少有一个——由 workflow.nodes.record_run 统一把守（建表约束替不了跨行语义）。
+    project_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True, index=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, index=True)
     # thread_id（单章=task_id；批次内= batch_task_id:ch{seq}），字符串标识，非严格 uuid
     # 不设 index=True：__table_args__ 组合索引 ix_agent_runs_task_id(task_id,id) 左前缀已覆盖
     # 按 task_id 查询；同名单列索引会在 create_all fresh 库时与组合索引同名冲突（DuplicateTable）
