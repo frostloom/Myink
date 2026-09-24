@@ -26,6 +26,7 @@ function renderRail(path: string, projects: Project[]) {
         <Route path="/short" element={<ProjectRail projects={projects} onLogout={vi.fn()} />} />
         <Route path="/environment" element={<ProjectRail projects={projects} onLogout={vi.fn()} />} />
         <Route path="/theme" element={<ProjectRail projects={projects} onLogout={vi.fn()} />} />
+        <Route path="/styles" element={<ProjectRail projects={projects} onLogout={vi.fn()} />} />
         <Route path="/account" element={<ProjectRail projects={projects} onLogout={vi.fn()} />} />
         <Route path="/admin" element={<ProjectRail projects={projects} onLogout={vi.fn()} />} />
         <Route path="/appearance" element={<ProjectRail projects={projects} onLogout={vi.fn()} />} />
@@ -124,4 +125,14 @@ it('hides the long-form ledger entries inside a short book', () => {
   expect(screen.getByRole('link', { name: '设定' })).toBeTruthy()
   expect(screen.getByRole('link', { name: '全局审计' })).toBeTruthy()
   expect(screen.getByRole('link', { name: '创作设置' })).toBeTruthy()
+})
+
+it('links to the style library only on global pages', () => {
+  const { unmount } = renderRail('/environment', [])
+  expect(screen.getByRole('link', { name: '文风库' }).getAttribute('href')).toBe('/styles')
+  unmount()
+
+  // 与「环境配置」「主题」同一条闸：进书之后这三条都不该在。
+  renderRail('/projects/p1', [])
+  expect(screen.queryByRole('link', { name: '文风库' })).toBeNull()
 })

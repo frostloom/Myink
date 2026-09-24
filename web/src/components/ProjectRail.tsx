@@ -1,4 +1,4 @@
-// 左 rail：长篇/短篇两个分区 + 该书目的作品列表；进书后是设定/创作设置/全局审计；全局页才露出环境配置和主题。
+// 左 rail：长篇/短篇两个分区 + 该书目的作品列表；进书后是设定/创作设置/全局审计；全局页才露出环境配置、主题和文风库。
 // data-guest-exempt：未登录时整条 rail 仍是可用导航（GuestShell 的拦截器放行此子树）。
 import { NavLink, useLocation, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -98,6 +98,12 @@ export function ProjectRail({ projects, onLogout }: Props) {
             className={({ isActive }) => (isActive ? `${styles.item} ${styles.active}` : styles.item)}
           >
             <span className={styles.title}>主题</span>
+          </NavLink>
+          <NavLink
+            to="/styles"
+            className={({ isActive }) => (isActive ? `${styles.item} ${styles.active}` : styles.item)}
+          >
+            <span className={styles.title}>文风库</span>
           </NavLink>
         </nav>
       )}

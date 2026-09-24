@@ -18,6 +18,7 @@ import NewProjectPage from './pages/NewProjectPage'
 import ProjectsPage from './pages/ProjectsPage'
 import SettingsPage from './pages/SettingsPage'
 import ShortCreationPage from './pages/ShortCreationPage'
+import StyleLibraryPage from './pages/StyleLibraryPage'
 import WorkspacePage from './pages/WorkspacePage'
 
 function RequireAuth() {
@@ -81,6 +82,7 @@ export const router = createBrowserRouter([
       },
       { path: '/environment', element: <EnvironmentPage /> },
       { path: '/theme', element: <AppearancePage /> },
+      { path: '/styles', element: <StyleLibraryPage /> },
       { path: '/appearance', element: <Navigate to="/theme" replace /> },
       {
         element: <RequireProject />,
