@@ -4,7 +4,7 @@
  * 方案卡就是设定，后端在确认时一次把逐章方案落库（生成需要它）。
  */
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { formatApiError } from '../lib/apiError'
 import { shortCreationApi, type ShortCreationCard, type ShortCreationPayload }
@@ -26,6 +26,30 @@ const REQUIRED_TEXT: Array<keyof ShortCreationCard> = [
   'working_title', 'genre', 'direction', 'protagonist_pressure',
   'conflict_core', 'emotional_payoff', 'plot_sketch',
 ]
+
+// 短篇形态参数（docs/SHORT-FORM.md §5）：与后端 src/myink/short/form.py 的
+// resolve_short_lengths 同规——先各自夹进声明区间，再看全篇总量把每章字数压下来。
+const SHORT_CHAPTER_MIN = 1
+const SHORT_CHAPTER_MAX = 10
+const SHORT_CHARS_MIN = 1000
+const SHORT_CHARS_MAX = 8000
+const SHORT_TOTAL_MAX = 20000
+
+/** 卡上算一遍后端会怎么归一（只在确认前提示，不代替后端）。章数先夹到 ≥1 再取整，避免除零。 */
+function resolveShortLengths(chapterCount: number, charsPerChapter: number): {
+  chars: number
+  compressed: boolean
+} {
+  const chapters = Math.min(Math.max(chapterCount, SHORT_CHAPTER_MIN), SHORT_CHAPTER_MAX)
+  const chars = Math.min(Math.max(charsPerChapter, SHORT_CHARS_MIN), SHORT_CHARS_MAX)
+  if (chapters * chars > SHORT_TOTAL_MAX) {
+    return {
+      chars: Math.max(SHORT_CHARS_MIN, Math.floor(SHORT_TOTAL_MAX / chapters)),
+      compressed: true,
+    }
+  }
+  return { chars, compressed: false }
+}
 
 function isReady(card: Partial<ShortCreationCard>): boolean {
   return REQUIRED_TEXT.every((field) => String(card[field] ?? '').trim() !== '')
@@ -88,13 +112,20 @@ export default function ShortCreationPage() {
     }, '这句话没发出去，请重试')
   }
 
-  const confirm = () => void run(async () => {
-    const out = await shortCreationApi.commit(token, card as Record<string, unknown>, styleItemId || null)
-    // commit 只落书不出稿：进工作台点「开始写全篇」才入队
-    navigate(`/projects/${out.project_id}`, {
-      state: { beginShortWriting: true, planWarning: out.plan_warning },
-    })
-  }, '确认失败，请重试')
+  // 已确认过的会话不再是可写的（类型里 status 只有 active / committed 两种）。
+  const committed = data !== null && data.session.status !== 'active'
+
+  const confirm = () => {
+    // 已确认过的会话只会在后端 409；卡填满了也不给这个按钮真的发出去。
+    if (committed) return
+    void run(async () => {
+      const out = await shortCreationApi.commit(token, card as Record<string, unknown>, styleItemId || null)
+      // commit 只落书不出稿：进工作台点「开始写全篇」才入队
+      navigate(`/projects/${out.project_id}`, {
+        state: { beginShortWriting: true, planWarning: out.plan_warning },
+      })
+    }, '确认失败，请重试')
+  }
 
   const restart = () => void run(async () => {
     await shortCreationApi.reset(token)
@@ -102,7 +133,8 @@ export default function ShortCreationPage() {
   }, '重置失败，请重试')
 
   if (!data) return <div className="empty">{error ?? '正在打开建书对话…'}</div>
-  const ready = isReady(card)
+  const ready = !committed && isReady(card)
+  const lengths = resolveShortLengths(card.chapter_count ?? 5, card.chars_per_chapter ?? 4000)
 
   return (
     <div className={styles.wrap}>
@@ -154,6 +186,11 @@ export default function ShortCreationPage() {
                  value={card.chars_per_chapter ?? 4000}
                  onChange={(event) => setCard({ ...card, chars_per_chapter: Number(event.target.value) })} />
         </label>
+        {lengths.compressed && (
+          <div className="banner banner-warning">
+            每章字数已按全篇 {SHORT_TOTAL_MAX} 字上限归一为每章 {lengths.chars} 字，生成时按这个数走。
+          </div>
+        )}
         <label>
           <span>文风（建书后不可改）</span>
           <select className="input" aria-label="文风" value={styleItemId}
@@ -167,10 +204,18 @@ export default function ShortCreationPage() {
           </select>
         </label>
         <small>文风在确认时定下来，之后没有换的入口；想导入自己的文章，去「账号」页的文风库。</small>
+        {committed && (
+          <div className="banner banner-warning" role="status">
+            这段建书对话已经开写过了，确认按钮不再生效；要写新的一篇，点右上角的「重新开始」。
+            {data.session.book_id && (
+              <>{' '}刚开写的那本在<Link to={`/projects/${data.session.book_id}`}>这里</Link>。</>
+            )}
+          </div>
+        )}
         <button type="button" className="btn btn-primary" disabled={!ready || busy} onClick={confirm}>
           确认，开写
         </button>
-        {!ready && <small>还差几个必填项——也可以直接告诉助手，它会补上。</small>}
+        {!ready && !committed && <small>还差几个必填项——也可以直接告诉助手，它会补上。</small>}
       </aside>
     </div>
   )

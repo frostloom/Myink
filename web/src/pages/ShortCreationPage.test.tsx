@@ -101,3 +101,44 @@ it('starting over clears the conversation', async () => {
   fireEvent.click(await screen.findByRole('button', { name: '重新开始' }))
   await waitFor(() => expect(shortCreationApi.reset).toHaveBeenCalled())
 })
+
+it('warns that the per-chapter figure will be compressed before commit', async () => {
+  // 5 × 8000 超过全篇 20000 上限，后端会按 20000 // 5 = 4000 生成；卡上必须先说清楚。
+  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+    session: { card: { chapter_count: 5, chars_per_chapter: 8000 } },
+  }))
+  renderPage()
+  expect(await screen.findByText(/归一为每章 4000 字/)).toBeTruthy()
+})
+
+it('does not warn when the card fits under the whole-book cap', async () => {
+  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+    session: { card: { chapter_count: 5, chars_per_chapter: 4000 } },
+  }))
+  renderPage()
+  await screen.findByLabelText('章数')
+  expect(screen.queryByText(/归一为每章/)).toBeNull()
+})
+
+it('does not offer a confirm that can only fail once the session is committed', async () => {
+  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+    session: {
+      status: 'committed',
+      book_id: 'p1',
+      card: {
+        working_title: '最后一班渡船', direction: 'd', conflict_core: 'c', genre: 'g',
+        protagonist_pressure: 'p', emotional_payoff: 'e', plot_sketch: 's',
+        chapter_count: 5, chars_per_chapter: 4000,
+      },
+    },
+  }))
+  renderPage()
+  const confirm = await screen.findByRole('button', { name: '确认，开写' })
+  expect((confirm as HTMLButtonElement).disabled).toBe(true)
+  fireEvent.click(confirm)
+  expect(shortCreationApi.commit).not.toHaveBeenCalled()
+  // 卡已填满也不该说「还差几个必填项」，而应指路「重新开始」，并给出刚开写的那本。
+  const notice = screen.getByRole('status')
+  expect(notice.textContent).toContain('重新开始')
+  expect(screen.getByRole('link', { name: '这里' }).getAttribute('href')).toBe('/projects/p1')
+})
