@@ -108,3 +108,20 @@ it('lists both forms on pages that have no section context', () => {
   expect(list.getByText('长篇一')).toBeTruthy()
   expect(list.getByText('短篇一')).toBeTruthy()
 })
+
+it('hides the long-form ledger entries inside a short book', () => {
+  const shortBook: Project[] = [
+    { id: 'p1', title: '渡船', genre: '悬疑', current_chapter: 5, target_words: 2000, form: 'short' },
+  ]
+  const { unmount } = renderRail('/projects/p1', shortBook)
+  expect(screen.queryByRole('link', { name: '设定' })).toBeNull()
+  expect(screen.queryByRole('link', { name: '全局审计' })).toBeNull()
+  expect(screen.queryByRole('link', { name: '创作设置' })).toBeNull()
+  unmount()
+
+  // 反向对照：同一位置的长篇这三个入口都在——判据是形态，不是「不在书里」
+  renderRail('/projects/p1', [{ ...shortBook[0], form: 'long' }])
+  expect(screen.getByRole('link', { name: '设定' })).toBeTruthy()
+  expect(screen.getByRole('link', { name: '全局审计' })).toBeTruthy()
+  expect(screen.getByRole('link', { name: '创作设置' })).toBeTruthy()
+})

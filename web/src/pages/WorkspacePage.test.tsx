@@ -478,3 +478,21 @@ it('consumes the creation hand-off exactly once and strips it so a reload cannot
   expect(screen.getByText('gen-auto-off')).toBeTruthy()
   expect(api.generateShort).toHaveBeenCalledTimes(1)
 })
+
+it('never shows the plan stage for a short book', async () => {
+  mockShortBook([shortTask])
+  const router = createMemoryRouter(
+    [{ path: '/projects/:projectId', element: <WorkspacePage /> }],
+    { initialEntries: ['/projects/project-1'] },
+  )
+  render(<RouterProvider router={router} />)
+  expect(await screen.findByText('gen-form-short')).toBeTruthy()
+
+  fireEvent.click(screen.getByRole('button', { name: 'chapter-2' }))
+  // 起任务：只有任务在途时 nav 才会渲染，否则下面那条 null 断言是空的（P50）
+  fireEvent.click(await screen.findByRole('button', { name: 'start-short' }))
+
+  // 正向对照：nav 确实渲染出来了（正文阶段还在），证明下面那条 null 不是「整块没渲染」
+  expect(await screen.findByRole('button', { name: /正文/ })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: /Plan/ })).toBeNull()
+})
