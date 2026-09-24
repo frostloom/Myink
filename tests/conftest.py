@@ -30,7 +30,7 @@ from sqlalchemy import delete as sa_delete, select as sa_select
 from myink.api.auth import create_access_token
 from myink.config import settings
 from myink.db import new_session
-from myink.models import AgentRun, Project, ProjectSettings
+from myink.models import AgentRun, Project, ProjectSettings, StyleLibraryItem, User
 
 from test_flow import (  # noqa: F401  (re-export fixtures/StubProvider)
     FakeEmbedder,
@@ -128,4 +128,24 @@ def temp_project():
         db.execute(sa_delete(AgentRun).where(AgentRun.project_id == pid))
         db.execute(sa_delete(ProjectSettings).where(ProjectSettings.project_id == pid))
         db.execute(sa_delete(Project).where(Project.id == pid))
+        db.commit()
+
+
+@pytest.fixture
+def temp_user():
+    """一次性用户：不碰 seed 的 demo 账号，测完连它留下的账号级行一起删干净。
+
+    必须删账号级行（文风库）：它们没有 project_id，`temp_project` 的清理逻辑盖不到；
+    留着会污染别的模块里「全局计数」类断言。
+    """
+    with new_session() as db:
+        user = User(username=f"tmp-{uuid.uuid4().hex[:8]}")
+        db.add(user)
+        db.commit()
+        uid = user.id
+    yield str(uid)
+    with new_session() as db:
+        db.execute(sa_delete(StyleLibraryItem).where(StyleLibraryItem.user_id == uid))
+        # Task 3 会给 AgentRun 加 user_id，届时这里补删 AgentRun.user_id == uid。
+        db.execute(sa_delete(User).where(User.id == uid))
         db.commit()

@@ -6,7 +6,6 @@ import uuid
 
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import delete as sa_delete
 
 from myink.api import routes_environment
 from myink.api.routes_environment import (
@@ -26,19 +25,6 @@ from myink.providers.credentials import decrypt_api_key
 
 
 ensure_user_environment()
-
-
-@pytest.fixture
-def temp_user():
-    with new_session() as db:
-        user = User(username=f"env-{uuid.uuid4().hex[:8]}")
-        db.add(user)
-        db.commit()
-        uid = str(user.id)
-    yield uid
-    with new_session() as db:
-        db.execute(sa_delete(User).where(User.id == uuid.UUID(uid)))
-        db.commit()
 
 
 def test_environment_roundtrip_models_and_rankings(temp_user):
