@@ -32,7 +32,7 @@ function renderPage() {
   const router = createMemoryRouter(
     [
       { path: '/theme', element: <AppearancePage /> },
-      { path: '/projects', element: <p>作品库</p> },
+      { path: '/long', element: <p>长篇</p> },
     ],
     { initialEntries: ['/theme'] },
   )
@@ -126,7 +126,7 @@ it('blocks leaving the page while the font and opacity draft is unsaved', async 
   await screen.findByRole('button', { name: '纸感' })
   fireEvent.click(screen.getByRole('button', { name: '楷体' }))
 
-  fireEvent.click(screen.getByRole('link', { name: '返回作品库' }))
+  fireEvent.click(screen.getByRole('link', { name: '返回长篇' }))
   expect(screen.getByRole('dialog', { name: '还没保存' })).toBeTruthy()
 
   fireEvent.click(screen.getByRole('button', { name: '取消' }))
@@ -134,9 +134,9 @@ it('blocks leaving the page while the font and opacity draft is unsaved', async 
   expect(screen.getByRole('button', { name: '楷体' })).toBeTruthy()
 
   // 确认之后才真的走掉，走的时候把预览还原成盘上那套
-  fireEvent.click(screen.getByRole('link', { name: '返回作品库' }))
+  fireEvent.click(screen.getByRole('link', { name: '返回长篇' }))
   fireEvent.click(screen.getByRole('button', { name: '确认' }))
-  expect(await screen.findByText('作品库')).toBeTruthy()
+  expect(await screen.findByText('长篇')).toBeTruthy()
   expect(cssVar('--font-ui')).toContain('sans-serif')
 })
 

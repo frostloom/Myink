@@ -112,6 +112,18 @@ def test_admin_reads_cross_user_paginated_metadata_and_exact_batch_sums(admin_da
     assert any(r["actor_id"] == str(users[0].id) and r["action"] == "admin.task" for r in logs["items"])
 
 
+def test_admin_project_detail_matches_its_list_row_and_404s_on_unknown(admin_data):
+    users, books, *_ = admin_data
+    headers = bearer(users[0])
+    listed = client.get(PREFIX+f"/projects?user_id={users[1].id}", headers=headers).json()["items"][0]
+    detail = client.get(PREFIX+f"/projects/{books[1].id}", headers=headers)
+    assert detail.status_code == 200, detail.text
+    # 详情页直接按 id 取数，字段必须与列表行一致，否则跳页后数字会变。
+    assert detail.json() == listed
+    missing = client.get(PREFIX+f"/projects/{uuid.uuid4()}", headers=headers)
+    assert missing.status_code == 404 and missing.headers["cache-control"] == "no-store"
+
+
 def test_admin_revocation_and_validation_errors(admin_data):
     users, *_ = admin_data
     headers = bearer(users[0])

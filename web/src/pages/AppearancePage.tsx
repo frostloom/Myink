@@ -626,7 +626,7 @@ export default function AppearancePage() {
             <div>
               <h1>主题</h1>
               <div className={styles.crumb}>
-                <Link to="/projects">返回作品库</Link>
+                <Link to="/long">返回长篇</Link>
               </div>
             </div>
           </header>

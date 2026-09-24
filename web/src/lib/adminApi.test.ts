@@ -30,6 +30,21 @@ it('encodes admin list filters and uses the authenticated request path', async (
   )
 })
 
+it('fetches one project by id on its own detail path', async () => {
+  const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 'p-1' }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  }))
+  vi.stubGlobal('fetch', fetchMock)
+
+  await adminApi.getProject('token-a', 'p/一')
+
+  expect(fetchMock).toHaveBeenCalledWith('/api/v1/admin/projects/p%2F%E4%B8%80', expect.objectContaining({
+    method: 'GET',
+    headers: expect.objectContaining({ Authorization: 'Bearer token-a' }),
+  }))
+})
+
 it('passes an abort signal through detail requests', async () => {
   const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 7 }), {
     status: 200,

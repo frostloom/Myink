@@ -38,6 +38,8 @@ function renderPage(initialEntry: string) {
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/projects/new" element={<><NewProjectPage /><NavigationControls /></>} />
+        <Route path="/long/new" element={<NewProjectPage form="long" />} />
+        <Route path="/short/new" element={<NewProjectPage form="short" />} />
       </Routes>
     </MemoryRouter>,
   )
@@ -76,7 +78,7 @@ it('clears the restored draft when the same component navigates to a fresh form'
   fireEvent.click(screen.getByRole('button', { name: 'new-project' }))
 
   await waitFor(() => expect((screen.getByLabelText('书名') as HTMLInputElement).value).toBe(''))
-  expect(screen.getByRole('heading', { name: '新建作品' })).toBeTruthy()
+  expect(screen.getByRole('heading', { name: '新建长篇' })).toBeTruthy()
   expect(screen.queryByRole('heading', { name: '② 设定骨架草稿' })).toBeNull()
   expect((screen.getByRole('button', { name: '创建作品' }) as HTMLButtonElement).disabled).toBe(false)
 })
@@ -217,7 +219,7 @@ function shortBookDraft(
   }
 }
 
-it('creates a short book with the short chapter range and its per-chapter length', async () => {
+it('starts in the short form straight from its own section route, with no form switch to make', async () => {
   vi.mocked(api.createProject).mockResolvedValue({
     id: 'short-id', title: '渡口', genre: '悬疑', current_chapter: 0,
     target_words: 3000, creation_status: 'draft', form: 'short',
@@ -225,12 +227,18 @@ it('creates a short book with the short chapter range and its per-chapter length
   vi.mocked(api.setupDraft).mockResolvedValue({ draft: {}, error: null })
   vi.mocked(api.outlineDraft).mockResolvedValue({ outline: { objective: '', volumes: [] }, error: null })
   vi.mocked(api.getCreation).mockResolvedValue(shortBookDraft({}))
-  render(<MemoryRouter><NewProjectPage /></MemoryRouter>)
+  renderPage('/short/new')
 
-  fireEvent.click(screen.getByRole('button', { name: '短篇' }))
-  fillCreationBrief()
-  fireEvent.change(screen.getByLabelText('章数（1–10）'), { target: { value: '4' } })
+  // 形态由入口决定，第 1 步不再有形态开关。
+  expect(screen.queryByRole('button', { name: '短篇' })).toBeNull()
+  expect(screen.queryByRole('button', { name: '长篇' })).toBeNull()
+  const chapters = await screen.findByLabelText('章数（1–10）')
+  // 章数初值要落在短篇区间里——长篇的 200 会被后端章数校验挡下。
+  expect((chapters as HTMLInputElement).value).toBe('5')
+
+  fireEvent.change(chapters, { target: { value: '4' } })
   fireEvent.change(screen.getByLabelText('每章字数（1000–8000）'), { target: { value: '3000' } })
+  fillCreationBrief()
   fireEvent.click(screen.getByRole('button', { name: '创建作品' }))
 
   await waitFor(() => expect(api.createProject).toHaveBeenCalledTimes(1))
@@ -286,14 +294,14 @@ it('tells the user when the short plan was compressed or flagged by the plan rev
   expect(screen.getByText(/两版方案都被审纲建议改稿/)).toBeTruthy()
 })
 
-it('keeps the long-form chapter range and sends no short-only fields', async () => {
+it('keeps the long-form chapter range and declares the long form explicitly', async () => {
   vi.mocked(api.createProject).mockResolvedValue({
     id: 'long-id', title: '破晓录', genre: '悬疑', current_chapter: 0,
     target_words: 3000, creation_status: 'draft',
   })
   vi.mocked(api.setupDraft).mockResolvedValue({ draft: {}, error: null })
   vi.mocked(api.outlineDraft).mockResolvedValue({ outline: { objective: '', volumes: [] }, error: null })
-  render(<MemoryRouter><NewProjectPage /></MemoryRouter>)
+  renderPage('/long/new')
 
   expect(screen.queryByLabelText('章数（1–10）')).toBeNull()
   expect(screen.queryByLabelText('每章字数（1000–8000）')).toBeNull()
@@ -304,8 +312,8 @@ it('keeps the long-form chapter range and sends no short-only fields', async () 
 
   await waitFor(() => expect(api.createProject).toHaveBeenCalledTimes(1))
   const body = vi.mocked(api.createProject).mock.calls[0][0]
-  expect(body).not.toHaveProperty('form')
+  // 形态显式声明：分区入口选错时后端能立刻挡下，而不是悄悄建出另一形态的书。
+  expect(body).toMatchObject({ form: 'long', chapter_count: 200 })
   expect(body).not.toHaveProperty('chars_per_chapter')
-  expect(body.chapter_count).toBe(200)
   expect(vi.mocked(api.outlineDraft).mock.calls[0][1]).not.toHaveProperty('chars_per_chapter')
 })

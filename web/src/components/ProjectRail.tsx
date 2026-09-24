@@ -1,6 +1,6 @@
-// 左 rail：作品列表；进书后是设定/创作设置/全局审计；作品库等全局页才露出环境配置和主题。
+// 左 rail：长篇/短篇两个分区 + 该书目的作品列表；进书后是设定/创作设置/全局审计；全局页才露出环境配置和主题。
 // data-guest-exempt：未登录时整条 rail 仍是可用导航（GuestShell 的拦截器放行此子树）。
-import { NavLink, useParams } from 'react-router-dom'
+import { NavLink, useLocation, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useGuest } from '../hooks/useGuest'
 import { isProjectDraft } from '../lib/projectCreation'
@@ -16,13 +16,35 @@ export function ProjectRail({ projects, onLogout }: Props) {
   const { session, status } = useAuth()
   const guest = useGuest()
   const { projectId } = useParams()
+  const { pathname } = useLocation()
+  // 当前在哪个分区：分区页看路径，书内页看这本书的形态，其余页面（账号/主题/管理）不分区、列全部。
+  const inBook = projectId ? projects.find((p) => p.id === projectId) : undefined
+  const section = pathname.startsWith('/short') ? 'short'
+    : pathname.startsWith('/long') ? 'long'
+      : inBook ? inBook.form ?? 'long' : null
+  const books = projects.filter((p) => !isProjectDraft(p)
+    && (section === null || (p.form ?? 'long') === section))
   return (
     <aside className={styles.rail} data-guest-exempt>
-      <NavLink to="/projects" className={styles.brand}>
+      <NavLink to="/long" className={styles.brand}>
         Myink
       </NavLink>
+      <nav className={styles.sections} aria-label="作品分区">
+        <NavLink
+          to="/long"
+          className={({ isActive }) => (isActive ? `${styles.item} ${styles.active}` : styles.item)}
+        >
+          <span className={styles.title}>长篇</span>
+        </NavLink>
+        <NavLink
+          to="/short"
+          className={({ isActive }) => (isActive ? `${styles.item} ${styles.active}` : styles.item)}
+        >
+          <span className={styles.title}>短篇</span>
+        </NavLink>
+      </nav>
       <nav className={styles.nav} aria-label="作品列表">
-        {projects.filter((p) => !isProjectDraft(p)).map((p) => (
+        {books.map((p) => (
           <NavLink
             key={p.id}
             to={`/projects/${p.id}`}
