@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import math
+
 from pydantic import BaseModel
 
 # 凑齐这 7 个才允许「确认，开写」。后端自算，不信模型自报 ready——
@@ -54,12 +56,17 @@ def _known(raw) -> dict:
             if key in _NUMBER_FIELDS:
                 try:
                     out[key] = int(float(text))
-                except ValueError:
-                    continue                 # 数字位上的垃圾/空串：宁可不改，也不写进去
+                except (ValueError, OverflowError):
+                    continue                 # 数字位上的垃圾/空串/无穷：宁可不改，也不写进去
                 continue
             out[key] = text
             continue
-        elif isinstance(value, (int, float)):
+        if isinstance(value, (int, float)):
+            # 只有数字位收数字；文本位收数字会让 Project(title=<int>) 在建书那步崩。
+            if key not in _NUMBER_FIELDS:
+                continue
+            if not math.isfinite(value):     # Infinity / NaN / 1e400 一律当「没给」
+                continue
             out[key] = int(value)
     return out
 
