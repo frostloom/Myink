@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 
 import pytest
@@ -11,8 +12,9 @@ from sqlalchemy import select
 from conftest import identity_headers
 from myink.api.main import app
 from myink.book_setup import generate_short_creation_turn
-from myink.db import ensure_user_environment, new_session
-from myink.models import AgentRun, ShortCreationMessage, ShortCreationSession
+from myink.db import ensure_user_environment, new_session, tenant_session
+from myink.memory.repository import get_settings, get_volume_outline
+from myink.models import AgentRun, Project, ShortCreationMessage, ShortCreationSession, StyleLibraryItem
 from myink.providers.base import ModelProvider, ModelResponse
 from myink.short import creation
 from myink.workflow import nodes, prompts
@@ -270,3 +272,169 @@ def test_messages_rejects_an_empty_content(temp_user):
     resp = client.post("/api/v1/short/creation/messages", json={"content": "   "},
                        headers=identity_headers(temp_user))
     assert resp.status_code == 400
+
+
+_FULL_CARD = {field: "有" for field in creation.REQUIRED_CARD_FIELDS} | {
+    "working_title": "最后一班渡船", "genre": "现实主义", "chapter_count": 3,
+    "chars_per_chapter": 4000,
+}
+
+
+def _short_outline(chapter_count: int = 3) -> dict:
+    """一份能过 `validate_short_outline` 的最小短篇方案。
+
+    章数必须与 `_FULL_CARD` 的 `chapter_count` 对上（这里都是 3），否则落库那步的校验会拒。
+    """
+    chapters = [{"chapter_seq": i, "title": f"第 {i} 章", "goal": f"第 {i} 章的目标"}
+                for i in range(1, chapter_count + 1)]
+    return {"objective": "林砚查清父亲之死并让青溪渡停航", "chapter_count": chapter_count,
+            "volumes": [{"volume_seq": 1, "title": "全篇 · 最后一班渡船", "goal": "让渡口停航",
+                         "chapter_start": 1, "chapter_end": chapter_count, "chapters": chapters}]}
+
+
+_PLAN_JSON = json.dumps(_short_outline(), ensure_ascii=False)
+
+
+def _seed_session(user: str, card: dict | None = None):
+    """直接把会话摆好：这些用例验的是 commit，不验聊到这一步的过程。"""
+    with new_session() as db:
+        session = ShortCreationSession(user_id=uuid.UUID(user), status="active",
+                                       card=creation.merge_user_card(creation.default_card(), card or _FULL_CARD))
+        db.add(session)
+        db.commit()
+
+
+def test_commit_builds_a_ready_short_book_with_a_persisted_plan(temp_user, chain_stub):
+    chain_stub([_PLAN_JSON])
+    _seed_session(temp_user)
+    out = client.post("/api/v1/short/creation/commit", json={},
+                      headers=identity_headers(temp_user)).json()
+    with new_session() as db:
+        project = db.get(Project, uuid.UUID(out["project_id"]))
+        assert project.form == "short"
+        assert project.creation_status == "ready"
+        assert project.creation_context["chapter_count"] == 3
+        assert project.creation_context["creation_conversation"]["conflict_core"] == "有"
+    with tenant_session(out["project_id"]) as tdb:
+        outline = get_volume_outline(tdb, uuid.UUID(out["project_id"]), 1)
+    assert outline is not None and len(outline.outline["volumes"][0]["chapters"]) == 3
+
+
+def test_commit_refuses_an_incomplete_card(temp_user):
+    _seed_session(temp_user, {"working_title": "半张卡"})
+    resp = client.post("/api/v1/short/creation/commit", json={},
+                       headers=identity_headers(temp_user))
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "CARD_INCOMPLETE"
+
+
+def test_commit_twice_does_not_build_a_second_book(temp_user, chain_stub):
+    """Review Focus 4 前半（手滑再点一次）：会话已 committed，第二次是 409，不会建出第二本。"""
+    chain_stub([_PLAN_JSON])
+    _seed_session(temp_user)
+    first = client.post("/api/v1/short/creation/commit", json={},
+                        headers=identity_headers(temp_user)).json()
+    second = client.post("/api/v1/short/creation/commit", json={},
+                         headers=identity_headers(temp_user))
+    assert second.status_code == 409                     # 会话已 committed
+    assert second.json()["detail"] == "SESSION_COMMITTED"
+    with new_session() as db:
+        assert db.query(Project).filter(Project.user_id == uuid.UUID(temp_user)).count() == 1
+        assert db.scalar(select(ShortCreationSession.book_id)
+                         .where(ShortCreationSession.user_id == uuid.UUID(temp_user))) is not None
+
+
+def test_commit_retry_after_a_plan_failure_reuses_the_same_book(temp_user, chain_stub, monkeypatch):
+    """Review Focus 4 后半（中途失败后再点）——这才是「不能建出两本」真正的机制。
+
+    第一条用例走的是干净路径（status 变 committed 后 409），**没有碰到**复用逻辑。
+    这里让出方案那步在第一次调用时失败：502 之后会话仍是 active、`book_id` 已记下，
+    用户重按一次必须复用同一本书。删掉 `session.book_id = project.id` 那行，这条就红。
+    """
+    from myink.api import routes_book as _book
+    calls, real = [], _book._short_outline_draft
+
+    def flaky(*args, **kwargs):
+        calls.append(1)
+        if len(calls) == 1:
+            return ({"outline_error": "boom"}, {"outline": {}, "error": "boom"})
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(_book, "_short_outline_draft", flaky)
+    chain_stub([_PLAN_JSON])                 # 只有第二次真的走到模型（第一次被 flaky 提前挡下）
+    _seed_session(temp_user)
+    first = client.post("/api/v1/short/creation/commit", json={},
+                        headers=identity_headers(temp_user))
+    assert first.status_code == 502 and first.json()["detail"].startswith("PLAN_FAILED")
+    second = client.post("/api/v1/short/creation/commit", json={},
+                         headers=identity_headers(temp_user))
+    assert second.status_code == 200
+    with new_session() as db:
+        assert db.query(Project).filter(Project.user_id == uuid.UUID(temp_user)).count() == 1
+
+
+def test_commit_respects_the_daily_book_cap(temp_user, chain_stub, monkeypatch):
+    """Review Focus 3：上限用满时点确认 → 网关同款 429 信封，不是 500。"""
+    from dataclasses import replace
+
+    from myink.api import routes_book
+    monkeypatch.setattr(routes_book, "settings",
+                        replace(routes_book.settings, books_per_day_max=0))
+    chain_stub([_PLAN_JSON])              # 上限在出方案之前就拦下，桩是保险不是必需
+    _seed_session(temp_user)
+    resp = client.post("/api/v1/short/creation/commit", json={},
+                       headers=identity_headers(temp_user))
+    assert resp.status_code == 429
+    assert resp.json() == {"error": "BOOK_CNT_EXCEEDED"}
+    with new_session() as db:                             # 会话没被弄脏，用户配好额度后能重来
+        assert db.scalar(select(ShortCreationSession)
+                         .where(ShortCreationSession.user_id == uuid.UUID(temp_user))).status == "active"
+
+
+def test_commit_applies_a_library_style_and_rejects_someone_elses(temp_user, chain_stub):
+    chain_stub([_PLAN_JSON])              # 两次 commit 都在本用例内，桩装上后一直有效
+    with new_session() as db:
+        mine = StyleLibraryItem(user_id=uuid.UUID(temp_user), name="渡口冷白描",
+                                profile={"pov": "第三人称限知"}, sample_chars=1200)
+        # 「别人的」item 只需要一个不属于我的 owner：`StyleLibraryItem.user_id` 是普通索引、
+        # **没有外键**（`models/creation.py:29`），所以不必真建一个 User 行。建真 User 反而更糟——
+        # 它会出现在管理面板不加筛选的用户列表里，而且没人清理它。
+        theirs = StyleLibraryItem(user_id=uuid.uuid4(), name="别人的冷白描",
+                                  profile={"pov": "第一人称"}, sample_chars=900)
+        db.add_all([mine, theirs])
+        db.commit()
+        mine_id, other_item_id = str(mine.id), str(theirs.id)
+    _seed_session(temp_user)
+    out = client.post("/api/v1/short/creation/commit",
+                      json={"style_item_id": mine_id},
+                      headers=identity_headers(temp_user)).json()
+    with tenant_session(out["project_id"]) as db:
+        settings_row = get_settings(db, uuid.UUID(out["project_id"]))
+        assert settings_row is not None and settings_row.style_profile["pov"] == "第三人称限知"
+        session = db.scalar(select(ShortCreationSession)
+                            .where(ShortCreationSession.user_id == uuid.UUID(temp_user)))
+        assert session.style_name == "渡口冷白描"
+
+    # 借别人的 item id：404，不是 403、更不是静默忽略。
+    # 必须用**另一账号名下真实存在**的 item。随手一个随机 uuid 只能证明「未知 id 被拒」——
+    # 漏掉 `StyleLibraryItem.user_id == uid` 那个过滤的实现照样返回 404，用例就抓不到越权。
+    client.delete("/api/v1/short/creation", headers=identity_headers(temp_user))
+    _seed_session(temp_user)
+    resp = client.post("/api/v1/short/creation/commit", json={"style_item_id": other_item_id},
+                       headers=identity_headers(temp_user))
+    assert resp.status_code == 404
+    # 「别人的」item 的 owner 是个随机 uuid，`temp_user` 的收尾按 user_id 删不到它——自己收干净。
+    with new_session() as db:
+        db.query(StyleLibraryItem).filter(StyleLibraryItem.id == uuid.UUID(other_item_id)).delete()
+        db.commit()
+
+
+def test_commit_accepts_a_builtin_preset_by_key(temp_user, chain_stub):
+    chain_stub([_PLAN_JSON])
+    _seed_session(temp_user)
+    out = client.post("/api/v1/short/creation/commit",
+                      json={"style_item_id": "builtin:xianxia-jiuzhou"},
+                      headers=identity_headers(temp_user)).json()
+    with tenant_session(out["project_id"]) as db:
+        settings_row = get_settings(db, uuid.UUID(out["project_id"]))
+        assert settings_row is not None and settings_row.skill_pack == "xianxia-jiuzhou"

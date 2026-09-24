@@ -544,3 +544,15 @@ class ShortCreationOut(BaseModel):
 class ShortCreationMessageBody(BaseModel):
     content: str = Field(max_length=4000)
     card: dict | None = None
+
+
+class ShortCreationCommitBody(BaseModel):
+    card: dict | None = None
+    style_item_id: str | None = None
+
+
+class ShortCreationCommitOut(BaseModel):
+    project_id: UUID
+    lengths_compressed: bool
+    plan_warning: str | None
+    style_name: str | None
