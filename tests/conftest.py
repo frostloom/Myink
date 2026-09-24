@@ -146,6 +146,6 @@ def temp_user():
     yield str(uid)
     with new_session() as db:
         db.execute(sa_delete(StyleLibraryItem).where(StyleLibraryItem.user_id == uid))
-        # Task 3 会给 AgentRun 加 user_id，届时这里补删 AgentRun.user_id == uid。
+        db.execute(sa_delete(AgentRun).where(AgentRun.user_id == uid))
         db.execute(sa_delete(User).where(User.id == uid))
         db.commit()

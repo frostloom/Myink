@@ -173,3 +173,19 @@ def validate_profile(profile) -> dict:
         elif isinstance(val, dict):
             cleaned[key] = val
     return cleaned
+
+
+MAX_SAMPLES = 2
+MAX_TOTAL_CHARS = 12_000
+
+
+def clean_samples(raw) -> list[str]:
+    """样本归一 + 三重上限。项目内那条路与账号级文风库共用，免得又成两份口径。"""
+    samples = [s.strip() for s in raw if s and s.strip()]
+    if not samples:
+        raise ValueError("至少提供一篇非空样本")
+    if len(samples) > MAX_SAMPLES:
+        raise ValueError(f"样本最多 {MAX_SAMPLES} 篇")
+    if sum(len(s) for s in samples) > MAX_TOTAL_CHARS:
+        raise ValueError(f"样本总量不超过 {MAX_TOTAL_CHARS} 字")
+    return samples

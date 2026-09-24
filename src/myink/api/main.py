@@ -31,6 +31,7 @@ from myink.api.routes_rankings import router as rankings_router
 from myink.api.routes_settings import router as settings_router
 from myink.api.routes_sse import router as sse_router
 from myink.api.routes_style import router as style_router
+from myink.api.routes_style_library import router as style_library_router
 from myink.api.routes_tasks import router as tasks_router
 from myink.api.schemas import ChapterDetailOut, ChapterMetaOut, ProjectOut
 from myink.config import settings
@@ -118,6 +119,7 @@ app.include_router(candidates_router)
 app.include_router(chapters_router)
 app.include_router(lessons_router)
 app.include_router(style_router)
+app.include_router(style_library_router)
 app.include_router(settings_router)
 app.include_router(environment_router)
 app.include_router(genre_router)
