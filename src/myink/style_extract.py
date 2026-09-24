@@ -91,26 +91,34 @@ def analyze_sample_stats(texts: list[str]) -> dict:
 
 
 def extract_style_profile(samples: list[str], stats: dict, *,
-                          project_id: str | None = None, db=None) -> tuple[dict, str | None]:
+                          project_id: str | None = None, user_id=None,
+                          db=None) -> tuple[dict, str | None]:
     """LLM 提炼文风语义：一次 extract 档调用（便宜快模型）+ 鲁棒 JSON 解析。
 
     返回 (llm_profile, error)：LLM 失败 / 解析失败 → ({}, error)（§6.12 降级，端点回统计草稿）。
     函数内懒导入 providers/workflow（api 层 import 本模块时避免 import 环）。
 
     db 非 None 时记 agent_runs（§6.8 成本透明，对齐 global_audit._run_kind_llm）：generate 后
-    立即 record_run（含降级行 error=resp.error），提交由调用方负责；此时 project_id 必填。
+    立即 record_run（含降级行 error=resp.error），提交由调用方负责；此时 project_id / user_id
+    至少给一个——作品级走 make_chain，账号级（建书时导入文章，还没有书）走 make_user_chain。
     """
-    from myink.providers import make_chain
+    from myink.providers import make_chain, make_user_chain
     from myink.workflow import nodes, prompts
 
+    if db is not None and project_id is None and user_id is None:
+        raise ValueError("db 非 None 时必须有 project_id 或 user_id 之一（agent_runs 归属）")
+    if project_id is not None:
+        chain = make_chain("extract", db=db, project_id=project_id)
+    elif user_id is not None:
+        chain = make_user_chain("extract", user_id)
+    else:  # 无归属的纯提取（既有用法）——db 必为 None（上面的守卫保证）
+        chain = make_chain("extract", db=db, project_id=project_id)
     messages = prompts.style_extract_messages(samples, stats)
-    resp = make_chain("extract", db=db, project_id=project_id).generate(messages, json_mode=True,
-                                                                        max_tokens=nodes._MAX_TOKENS["extract"])
+    resp = chain.generate(messages, json_mode=True, max_tokens=nodes._MAX_TOKENS["extract"])
     if db is not None:
-        if project_id is None:
-            raise ValueError("db 非 None 时必须提供 project_id（agent_runs 归属）")
-        nodes.record_run(db, project_id=project_id, task_id=None, node="style_extract",
-                         role="StyleExtract", resp=resp, error=resp.error, messages=messages,
+        nodes.record_run(db, project_id=project_id, user_id=user_id, task_id=None,
+                         node="style_extract", role="StyleExtract", resp=resp,
+                         error=resp.error, messages=messages,
                          detail={"n_samples": len(samples)})
     if resp.error:
         return {}, resp.error

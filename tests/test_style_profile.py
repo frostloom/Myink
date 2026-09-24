@@ -404,3 +404,31 @@ def test_style_section_str_list_keys_safe():
     assert "高频词节制（避免机械复用）：夜色冷笑" in section
     assert "表述禁忌（必须避免）：套语。" in section
     assert "风格示范" in section and "你来了。" in section
+
+
+# ---- 账号级记账（建书时导入文章：还没有 project_id 也能提取）----
+
+
+def test_extract_style_profile_records_an_account_level_run(temp_user, style_stub):
+    """没有 project_id、只有 user_id 时也要能提取并记账（建书时的文风导入走这条路）。"""
+    style_stub(_STYLE_PAYLOAD)
+    with new_session() as db:
+        profile, err = extract_style_profile(
+            [_SAMPLE_1], analyze_sample_stats([_SAMPLE_1]), user_id=temp_user, db=db)
+        db.commit()
+        assert err is None and isinstance(profile, dict)
+        row = db.query(AgentRun).filter(AgentRun.user_id == uuid.UUID(temp_user)).first()
+    assert row is not None and row.project_id is None and row.node == "style_extract"
+
+
+def test_extract_style_profile_without_any_owner_still_extracts():
+    """不记账的纯提取（既有用法）不能被归属检查误伤。"""
+    profile, err = extract_style_profile([_SAMPLE_1], analyze_sample_stats([_SAMPLE_1]))
+    assert isinstance(profile, dict)
+
+
+def test_extract_style_profile_with_db_but_no_owner_is_rejected():
+    """有 db 就必须有归属：错误是归属检查的消息，不是 uuid 解析错（守卫必须先于选链）。"""
+    with new_session() as db:
+        with pytest.raises(ValueError, match="db 非 None"):
+            extract_style_profile([_SAMPLE_1], analyze_sample_stats([_SAMPLE_1]), db=db)
