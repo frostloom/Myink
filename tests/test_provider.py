@@ -17,7 +17,7 @@ from myink.providers.base import ModelResponse
 from myink.providers.deepseek import DeepSeekProvider, MAX_RETRIES
 
 
-def _fake_create(content: str = "", reasoning_content: str = ""):
+def _fake_create(content: str = "", reasoning_content: str = "", finish_reason: str | None = None):
     """构造模拟 OpenAI 响应的 create 函数（返回 usage/choices/message）。"""
     def create(**kwargs):
         usage = SimpleNamespace(prompt_tokens=10, completion_tokens=5,
@@ -26,7 +26,8 @@ def _fake_create(content: str = "", reasoning_content: str = ""):
                                   reasoning_content=reasoning_content or None,
                                   tool_calls=None)
         return SimpleNamespace(usage=usage,
-                               choices=[SimpleNamespace(message=message)])
+                               choices=[SimpleNamespace(message=message,
+                                                        finish_reason=finish_reason)])
     return create
 
 
@@ -122,3 +123,22 @@ def test_empty_content_retries_then_error():
     assert calls["n"] == MAX_RETRIES + 1, f"皆空应重试 {MAX_RETRIES} 次后返回 error，实际 {calls['n']} 次"
     assert resp.error is not None
     assert "空白/空内容" in resp.error
+
+
+def test_finish_reason_exposed_when_truncated():
+    """被 max_tokens 截断时 content 依然非空（只是短），error 也仍为空——
+    截断与正常完成在调用层不可区分，短篇「整篇一次成稿没被砍」只能靠这个字段观测。"""
+    p = _provider_with(_fake_create(content="正文" * 10, finish_reason="length"))
+    resp: ModelResponse = p.generate(
+        [{"role": "user", "content": "x"}], model_id="deepseek-v4-flash",
+        max_tokens=35750, disable_thinking=True, json_mode=False,
+    )
+    assert resp.error is None
+    assert resp.finish_reason == "length"
+
+
+def test_finish_reason_none_when_sdk_omits_it():
+    """SDK 未给 finish_reason 时为 None（旧响应/流式路径不猜）。"""
+    p = _provider_with(_fake_create(content="正文"))
+    resp: ModelResponse = p.generate([{"role": "user", "content": "x"}], model_id="deepseek-v4-flash")
+    assert resp.finish_reason is None

@@ -127,7 +127,8 @@ class DeepSeekProvider(ModelProvider):
             try:
                 resp = self._client.chat.completions.create(**kwargs)
                 usage = resp.usage or type("U", (), {})()
-                message = resp.choices[0].message
+                choice = resp.choices[0]
+                message = choice.message
                 reasoning = _message_reasoning(message)
                 content = isolate_response_body(
                     extract_openai_text_part(message.content),
@@ -177,6 +178,7 @@ class DeepSeekProvider(ModelProvider):
                     cache_hit=bool(getattr(usage, "prompt_cache_hit_tokens", 0)),
                     duration_ms=duration_ms,
                     retry_count=attempt,
+                    finish_reason=getattr(choice, "finish_reason", None),
                     tool_calls=tool_calls,
                 )
             except Exception as exc:
