@@ -10,14 +10,29 @@ import { emptyFields, isManagedPack, type BookGenrePack, type GenreFields } from
 import type { Project, ProjectSettings, StyleProfile } from '../types'
 import styles from './SettingsPage.module.css'
 
-// 文风档案键展示（§7.12 种子书档案键；数组键按行编辑，其余透传）
+// 文风档案键展示（§7.12 种子书档案键 + 样本提取的文笔八维；数组键按行编辑，其余透传）。
+// 八维那份与 StyleLibraryPage 的 PROSE_DIMS 同一口径，改键名要一起改。
 const KEY_LABELS: Record<string, string> = {
   pov: '视角',
+  narrative_voice: '叙事声音与语气',
+  dialogue_style: '对话风格',
+  scene_description: '场景描写特征',
+  transitions: '转折与衔接手法',
+  pacing: '节奏特征',
+  diction: '词汇偏好',
+  emotional_expression: '情绪表达方式',
+  distinctive_habits: '独特习惯',
   sentence_style: '句式风格',
+  lexicon_tendency: '词汇修辞倾向',
   dialogue: '对话腔调',
   forbidden: '禁用表达（每行一条）',
+  reference_excerpts: '样本摘录（每行一条）',
 }
-const KEY_ORDER = ['pov', 'sentence_style', 'dialogue', 'forbidden']
+const KEY_ORDER = [
+  'pov', 'narrative_voice', 'dialogue_style', 'scene_description', 'transitions',
+  'pacing', 'diction', 'emotional_expression', 'distinctive_habits',
+  'sentence_style', 'lexicon_tendency', 'dialogue', 'forbidden', 'reference_excerpts',
+]
 
 function orderedKeys(profile: StyleProfile): string[] {
   const known = KEY_ORDER.filter((k) => k in profile)
