@@ -237,8 +237,14 @@ def users(db: DB, q: Search = None, limit: Limit = 25, offset: Offset = 0):
 
 
 @router.get("/users/{user_id}", response_model=AdminUser, name="admin.user")
-def user_detail(user_id: uuid.UUID, db: DB):
-    row = db.execute(_user_statement().where(User.id == user_id)).mappings().first()
+def user_detail(user_id: str, db: DB):
+    # 路径参数收 str 再自己解析：id 写成 uuid 类型时，格式不对的路由会被 FastAPI 挡成 422
+    # 「请求参数不合法」，而面板要的是「没这个人」——手改地址栏或旧书签都会撞上。
+    try:
+        uid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(404, "NOT_FOUND") from None
+    row = db.execute(_user_statement().where(User.id == uid)).mappings().first()
     if row is None:
         raise HTTPException(404, "NOT_FOUND")
     return _nested_metrics(row)

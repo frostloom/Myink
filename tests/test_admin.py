@@ -296,6 +296,18 @@ def test_admin_user_detail_404s_on_an_unknown_id(admin_data):
     assert response.json()["detail"] == "NOT_FOUND"
 
 
+def test_admin_user_detail_404s_on_a_malformed_id(admin_data):
+    """地址栏手改 / 旧书签会把 id 写成随便一串。
+
+    路径参数若收 uuid 类型，FastAPI 会先把它挡成 422「请求参数不合法」，而面板要的是
+    「没这个人」——所以路由收 str 自己解析，格式不对照样 404。
+    """
+    users, *_ = admin_data
+    response = client.get(PREFIX + "/users/not-a-uuid", headers=bearer(users[0]))
+    assert response.status_code == 404, response.text
+    assert response.json()["detail"] == "NOT_FOUND"
+
+
 def test_overview_metrics_agree_with_the_runs_list(admin_data):
     """M-9：全局 metrics 与「全部运行」列表同口径——列表能看到多少行，全局就计多少。
 
