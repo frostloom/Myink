@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ArtifactState } from '../hooks/useTaskEvents'
 import { api, ApiError } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
+import { autoGrow } from '../lib/autoGrow'
 import type {
   AgentRun,
   ChapterPlan,
@@ -94,11 +95,12 @@ function PlanReadOnly({ plan }: { plan: ChapterPlan }) {
 
 function ListField({ label, value, onChange }: { label: string; value: string[]; onChange: (next: string[]) => void }) {
   return <label className={styles.field}><span>{label}<small>每行一条</small></span>
-    <textarea rows={Math.max(2, Math.min(5, value.length + 1))} value={listText(value)} onChange={(e) => onChange(textList(e.target.value))} />
+    <textarea rows={2} value={listText(value)} onChange={(e) => onChange(textList(e.target.value))} />
   </label>
 }
 
 function PlanEditor({ plan, onChange }: { plan: ChapterPlan; onChange: (next: ChapterPlan) => void }) {
+  const root = useRef<HTMLDivElement>(null)
   const update = <K extends keyof ChapterPlan>(key: K, value: ChapterPlan[K]) => onChange({ ...plan, [key]: value })
   const transition = plan.transition ?? { mode: 'continue' as const, anchor_quote: '', pending_action: '', opening_beat: '', bridge: '' }
   const updateScene = (index: number, patch: Partial<ChapterPlanScene>) => {
@@ -109,7 +111,14 @@ function PlanEditor({ plan, onChange }: { plan: ChapterPlan; onChange: (next: Ch
     const characters = plan.characters.map((character, i) => i === index ? { ...character, ...patch } : character)
     update('characters', characters)
   }
-  return <div className={styles.editor}>
+  // 框随内容长高：整个计划正文只留 .body 那一条滚动条。
+  // 框自己再滚，就成了「能滚的块里嵌一个能滚的框」。
+  useEffect(() => {
+    if (!root.current) return
+    for (const el of root.current.querySelectorAll('textarea')) autoGrow(el)
+  }, [plan])
+
+  return <div className={styles.editor} ref={root}>
     <ListField label="本章目标" value={plan.goals} onChange={(value) => update('goals', value)} />
     <fieldset className={styles.transition}><legend>与上一章的衔接</legend>
       <label><span>方式</span><select value={transition.mode} onChange={(e) => update('transition', { ...transition, mode: e.target.value as typeof transition.mode })}>
