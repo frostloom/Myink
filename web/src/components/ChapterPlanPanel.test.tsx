@@ -78,6 +78,25 @@ it('shows a streaming replan while folding the previous plan into history', () =
   expect(screen.queryByRole('button', { name: '确认计划并开始写作' })).toBeNull()
 })
 
+it('grows the plan boxes to their content so only the plan body scrolls', async () => {
+  // jsdom 量不出真实高度，把 scrollHeight 钉成非零值：接线在，每个框就都该拿到内联高。
+  const measured = vi.spyOn(Element.prototype, 'scrollHeight', 'get').mockReturnValue(140)
+  try {
+    render(<ChapterPlanPanel
+      taskId="task-17" chapterSeq={17} status="awaiting_plan"
+      runs={[run(1, plan('目标'))]} artifact={null}
+      onConfirmed={() => {}} onCancelled={() => {}}
+    />)
+    await waitFor(() => expect(screen.getByLabelText(/本章目标/)).toBeTruthy())
+    // 计划正文那块自己滚（.body）：里面的框再滚，就成了「能滚的块里嵌一个能滚的框」。
+    const boxes = Array.from(document.querySelectorAll('textarea'))
+    expect(boxes.length).toBeGreaterThan(3)
+    for (const box of boxes) expect(box.style.height).toBe('140px')
+  } finally {
+    measured.mockRestore()
+  }
+})
+
 it('can cancel a task that is waiting for plan confirmation', async () => {
   vi.mocked(api.cancelTask).mockResolvedValue({ task_id: 'task-17', status: 'cancelled' })
   const onCancelled = vi.fn()

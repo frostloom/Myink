@@ -19,7 +19,8 @@
 .field > span, .transition label > span { display: flex; justify-content: space-between; color: var(--ink-muted); font-size: 12px; }
 .field small { color: var(--ink-subtle); font-weight: 400; }
 .editor textarea, .editor input, .editor select { box-sizing: border-box; width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--input-bg); color: var(--ink); font: inherit; font-size: 12px; line-height: 1.5; }
-.editor textarea { resize: vertical; }
+/* 高度由脚本按内容给（见 lib/autoGrow）：框自己不再滚，滚动只留在 .body。 */
+.editor textarea { overflow: hidden; resize: none; }
 .transition, .collection { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin: 0; padding: 12px; border: 1px solid var(--line); border-radius: 9px; }
 .transition legend, .collection legend { padding: 0 5px; color: var(--ink); font-size: 12px; font-weight: 650; }
 .transition label { display: flex; flex-direction: column; gap: 5px; }

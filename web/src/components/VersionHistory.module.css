@@ -133,8 +133,6 @@
   border-radius: var(--radius-sm);
   padding: var(--space-3);
   margin: var(--space-2) 0 0;
-  max-height: 260px;
-  overflow-y: auto;
   font-family: var(--font-editor);
   font-size: var(--text-body);
   line-height: 1.7;
