@@ -3,6 +3,10 @@
  * 档案形状沿用 StyleProfile（与 project_settings.style_profile 同构），库里取出来直接写进书，
  * 不需要转换。已有项只允许改名与改备注——PATCH 不收 profile，改档案只走新建流，免得为改
  * 档案里一个键再开一个端点。所以档案编辑器只在「新建」里可编辑，看已有项时是只读的。
+ *
+ * 展示口径：主区只放**写作文笔**（叙事声音 / 对话 / 场景 / 衔接 / 节奏 / 用词 / 情绪 / 习惯
+ * 八维 + 视角与禁忌），统计层的数字（句长分布 / 段落结构 / 高频词串）收进折叠的「统计指纹」。
+ * 以前不分主次，把档案的原始键名连统计一起摊成一张表单，看着像配置文件而不是文风。
  */
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -16,47 +20,113 @@ import type { Project } from '../types'
 import shell from './SettingsPage.module.css'
 import styles from './StyleLibraryPage.module.css'
 
-/** 档案里每个键按值的形状给一种控件；认不出的形状（嵌套对象、混合数组）只读展示——
- *  那是统计层的中间结果，手改没有意义，但也不能因为不认识就把这个键丢了。 */
-function ProfileField({ label, value, readOnly, onChange }: {
+/** 文笔八维：与后端 prompts._STYLE_PROSE_DIMS 同一份口径（键 → 中文名，顺序即展示顺序）。
+ *  那边负责给模型看，这边给人看，键名改动要两边一起改。 */
+const PROSE_DIMS: Array<[string, string]> = [
+  ['narrative_voice', '叙事声音与语气'],
+  ['dialogue_style', '对话风格'],
+  ['scene_description', '场景描写特征'],
+  ['transitions', '转折与衔接手法'],
+  ['pacing', '节奏特征'],
+  ['diction', '词汇偏好'],
+  ['emotional_expression', '情绪表达方式'],
+  ['distinctive_habits', '独特习惯'],
+]
+
+/** 主区的键与中文名，顺序即展示顺序：文笔八维在前，短约束在后，清单收尾。 */
+const MAIN_ORDER: Array<[string, string]> = [
+  ['pov', '视角'],
+  ...PROSE_DIMS,
+  ['sentence_style', '句式风格'],
+  ['lexicon_tendency', '词汇修辞倾向'],
+  ['dialogue', '对话腔调'],
+  ['forbidden', '禁用表达（每行一条）'],
+  ['reference_excerpts', '样本摘录（每行一条）'],
+]
+
+/** 统计层的键（确定性测量）：认得出的给中文名，认不出的原样显示键名——不能因为不认识就丢。 */
+const STAT_LABELS: Record<string, string> = {
+  sentence_len_dist: '句长分布',
+  dialogue_ratio: '对话占比',
+  para_stats: '段落结构',
+  frequent_words: '高频词串',
+  source: '来源',
+}
+
+/** 只认这两种形状：字符串与字符串数组。数字 / 嵌套对象是统计层的中间结果，手改没有意义。 */
+function editable(value: unknown): value is string | string[] {
+  return typeof value === 'string'
+    || (Array.isArray(value) && value.every((entry) => typeof entry === 'string'))
+}
+
+/** 统计值一行化：数组用顿号连，别的原样 JSON——嵌套对象也得看得见。 */
+function describe(value: unknown): string {
+  if (Array.isArray(value)) return value.join('、')
+  return typeof value === 'string' ? value : JSON.stringify(value)
+}
+
+function MainField({ label, value, readOnly, onChange }: {
   label: string
-  value: unknown
+  value: string | string[]
   readOnly: boolean
   onChange: (next: unknown) => void
 }) {
-  if (Array.isArray(value) && value.every((entry) => typeof entry === 'string')) {
+  const lines = Array.isArray(value)
+  // 看已有项是读，不是填表：串成一段话/一串条目，别把八维摊成八个只读输入框。
+  if (readOnly) {
     return (
-      <label>
-        <span>{label}</span>
-        <textarea className="input" rows={3} aria-label={label} readOnly={readOnly}
-                  value={value.join('\n')}
-                  onChange={(e) => onChange(e.target.value.split('\n').filter((line) => line.trim() !== ''))} />
-      </label>
-    )
-  }
-  if (typeof value === 'number') {
-    return (
-      <label>
-        <span>{label}</span>
-        <input className="input" type="number" aria-label={label} readOnly={readOnly} value={value}
-               onChange={(e) => onChange(e.target.value === '' ? 0 : Number(e.target.value))} />
-      </label>
-    )
-  }
-  if (typeof value === 'string') {
-    return (
-      <label>
-        <span>{label}</span>
-        <textarea className="input" rows={2} aria-label={label} readOnly={readOnly} value={value}
-                  onChange={(e) => onChange(e.target.value)} />
-      </label>
+      <div className={styles.field}>
+        <span className={styles.fieldLabel}>{label}</span>
+        {lines
+          ? <ul className={styles.fieldList}>{value.map((entry) => <li key={entry}>{entry}</li>)}</ul>
+          : <p className={styles.fieldText}>{value}</p>}
+      </div>
     )
   }
   return (
-    <div className={styles.readonly}>
+    <label>
       <span>{label}</span>
-      <code>{JSON.stringify(value)}</code>
-    </div>
+      <textarea className="input" rows={lines ? 3 : 2} aria-label={label}
+                value={lines ? value.join('\n') : value}
+                onChange={(e) => onChange(lines
+                  ? e.target.value.split('\n').filter((line) => line.trim() !== '')
+                  : e.target.value)} />
+    </label>
+  )
+}
+
+/** 档案正文：主区放文笔，统计指纹折起来。新建与查看共用，两边看到的东西才是同一份。 */
+function ProfileFields({ profile, readOnly, onChange }: {
+  profile: Record<string, unknown>
+  readOnly: boolean
+  onChange: (key: string, next: unknown) => void
+}) {
+  const main = MAIN_ORDER.filter(([key]) => editable(profile[key]))
+  const shown = new Set(main.map(([key]) => key))
+  // extract_error 是页面上单独的降级提示，不是档案的一部分。
+  const stats = Object.keys(profile).filter((key) => !shown.has(key) && key !== 'extract_error')
+
+  return (
+    <>
+      {main.length > 0 && <h3 className={styles.blockTitle}>文笔</h3>}
+      {main.map(([key, label]) => (
+        <MainField key={key} label={label} value={profile[key] as string | string[]}
+                   readOnly={readOnly} onChange={(next) => onChange(key, next)} />
+      ))}
+      {stats.length > 0 && (
+        <details className={styles.stats}>
+          <summary>统计指纹（句长 / 段落 / 高频词——样本的确定性测量，不作为文笔）</summary>
+          <div className={styles.statList}>
+            {stats.map((key) => (
+              <div className={styles.stat} key={key}>
+                <span>{STAT_LABELS[key] ?? key}</span>
+                <code>{describe(profile[key])}</code>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </>
   )
 }
 
@@ -208,12 +278,10 @@ export default function StyleLibraryPage() {
                   <div className="banner banner-warning" role="alert">{draft.extract_error}</div>
                 )}
 
-                {draft !== null && Object.entries(draft)
-                  .filter(([key]) => key !== 'extract_error')
-                  .map(([key, value]) => (
-                    <ProfileField key={key} label={key} value={value} readOnly={false}
-                                  onChange={(next) => setDraft((prev) => ({ ...(prev ?? {}), [key]: next }))} />
-                  ))}
+                {draft !== null && (
+                  <ProfileFields profile={draft} readOnly={false}
+                                 onChange={(key, next) => setDraft((prev) => ({ ...(prev ?? {}), [key]: next }))} />
+                )}
 
                 <label>
                   <span>文风名</span>
@@ -260,10 +328,7 @@ export default function StyleLibraryPage() {
                     </div>
                   </>
                 )}
-                {Object.entries(selected.profile).map(([key, value]) => (
-                  <ProfileField key={key} label={key} value={value} readOnly
-                                onChange={() => undefined} />
-                ))}
+                <ProfileFields profile={selected.profile} readOnly onChange={() => undefined} />
               </div>
             )}
           </div>

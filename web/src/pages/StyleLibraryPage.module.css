@@ -44,24 +44,80 @@
   min-width: 0;
 }
 
-.detail label {
+.detail label,
+.newBox label {
   display: flex;
   flex-direction: column;
   gap: 2px;
   font-size: 0.85em;
 }
 
-.readonly {
+.blockTitle {
+  margin: 6px 0 0;
+  color: var(--ink-subtle);
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* 只读档案：一条一条读下去，不摆成表单。 */
+.field {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 0.85em;
-  opacity: 0.8;
 }
 
-.readonly code {
+.fieldLabel {
+  color: var(--ink-subtle);
+  font-size: 0.8em;
+}
+
+.fieldText {
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.fieldList {
+  margin: 0;
+  padding-left: 1.2em;
+  color: var(--ink);
+  line-height: 1.7;
+}
+
+/* 统计指纹：折叠在最后，标题一行说明它是测量值、不是文笔。 */
+.stats {
+  margin-top: 6px;
+  font-size: 0.85em;
+}
+
+.stats summary {
+  color: var(--ink-subtle);
+  cursor: pointer;
+}
+
+.statList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.stat {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+.stat span {
+  color: var(--ink-subtle);
+}
+
+.stat code {
   font-size: 0.9em;
-  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .actions {

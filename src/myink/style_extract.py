@@ -4,7 +4,8 @@
 - 统计层（analyze_sample_stats）：纯函数、确定性——句长三档分布 / 平均句长 / 对话密度 /
   段落结构 / 高频 2-gram 词串（无分词时的稳定信号，jieba 留后续升级）；
 - LLM 提炼（extract_style_profile）：一次 extract 档调用（便宜快模型），提炼统计层量不到
-  的语义（pov / 句式 / 词汇修辞 / 对话腔调 / 禁忌清单 / 样本摘录），失败降级回统计层
+  的**写作文笔**——叙事声音 / 对话 / 场景描写 / 衔接 / 节奏 / 用词 / 情绪表达 / 独特习惯
+  八维（每维带原文例句），另加叙事视角、禁忌清单、样本摘录，失败降级回统计层
   （§6.12 不 500、不阻塞——端点只回统计草稿 + extract_error）。
 
 合并（merge_style_draft）：统计字段 + LLM 语义字段 + source="sample" 标记，作为
@@ -30,7 +31,15 @@ _TOP_GRAMS = 8
 _STOP_CHARS = "的了是在我有不被人这一也他就都个你我们它们来里着过说看为以和与或但并还又很更最非没呢吗吧啊呀哦嗯其此那这而于向对从把被"
 
 # LLM 提炼键（merge 只收这些，不覆盖统计层产出；validate 按类型通用归一）
-_LLM_TEXT_KEYS = ("pov", "sentence_style", "lexicon_tendency", "dialogue")
+# 中间八项是文笔八维（prompts._STYLE_PROSE_DIMS，与前端 PROSE_DIMS 同口径）；末尾三项是
+# 文风库与种子书档案的既有键，样本提取的提示词已不再产出，但模型偶尔还是会给——收着不亏：
+# 老档案与预设包里的这些键照样能进 merge 与注入。
+_LLM_TEXT_KEYS = (
+    "pov",
+    "narrative_voice", "dialogue_style", "scene_description", "transitions",
+    "pacing", "diction", "emotional_expression", "distinctive_habits",
+    "sentence_style", "lexicon_tendency", "dialogue",
+)
 _LLM_LIST_KEYS = ("forbidden", "reference_excerpts")
 
 
@@ -134,7 +143,7 @@ def extract_style_profile(samples: list[str], stats: dict, *,
 def merge_style_draft(stats: dict, llm_profile: dict, *, extract_error: str | None = None) -> dict:
     """合并统计层 + LLM 语义 → StyleProfile 草稿（source="sample" 标记；LLM 缺失只回统计层）。
 
-    LLM 键只收规划固定的语义键（pov/句式/词汇/对话/禁忌/摘录），不覆盖统计层产出
+    LLM 键只收规划固定的语义键（文笔八维 + 视角 / 禁忌 / 摘录），不覆盖统计层产出
     （frequent_words/节奏字段以统计为准——生成侧指导，不进 L1 阈值，§7.12 决策 5）。
     """
     draft: dict = dict(stats)

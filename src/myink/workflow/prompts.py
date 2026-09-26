@@ -567,8 +567,22 @@ def _reference_section(genre_pack: dict | None) -> str:
     return reference_hint(genre_pack)
 
 
+# 文笔八维（§7.12 样本提取）：键 → 中文名，元组顺序即注入顺序。与前端 StyleLibraryPage
+# 的 PROSE_DIMS 是同一份口径，键名改动要两边一起改。
+_STYLE_PROSE_DIMS = (
+    ("narrative_voice", "叙事声音与语气"),
+    ("dialogue_style", "对话风格"),
+    ("scene_description", "场景描写特征"),
+    ("transitions", "转折与衔接手法"),
+    ("pacing", "节奏特征"),
+    ("diction", "词汇偏好"),
+    ("emotional_expression", "情绪表达方式"),
+    ("distinctive_habits", "独特习惯"),
+)
+
+
 def _style_section(style_profile: dict | None, target_words: int | None) -> str:
-    """文风档案注入段（§7.12 / §8.6 生成约束）：字数目标 + 句式/词汇约束 + 对话要求 + 风格示范。
+    """文风档案注入段（§7.12 / §8.6 生成约束）：字数目标 + 句式/词汇约束 + 文笔八维 + 风格示范。
 
     样本提取的 lexicon_tendency / reference_excerpts / frequent_words / 节奏基线
     缺键则跳过。列表键经 _profile_list 类型守卫。fatigue_words 不注入。
@@ -588,14 +602,18 @@ def _style_section(style_profile: dict | None, target_words: int | None) -> str:
         parts.append(f"句式要求：{sp['sentence_style']}。")
     if sp.get("lexicon_tendency"):
         parts.append(f"词汇修辞倾向：{sp['lexicon_tendency']}。")
+    if sp.get("dialogue"):
+        parts.append(f"对话要求：{sp['dialogue']}。")
+    dims = _style_prose_dims(sp)
+    if dims:
+        parts.append("文笔要求（照样本提炼，逐条贴合；引文只作示范，不得照抄）：\n"
+                     + "\n".join(f"- {label}：{text}" for label, text in dims))
     forbidden = _profile_list(sp, "forbidden")
     if forbidden:
         parts.append("表述禁忌（必须避免）：" + "；".join(forbidden) + "。")
     freq = _profile_list(sp, "frequent_words")
     if freq:
         parts.append("高频词节制（避免机械复用）：" + "、".join(freq) + "。")
-    if sp.get("dialogue"):
-        parts.append(f"对话要求：{sp['dialogue']}。")
     rhythm = _rhythm_reference(sp)
     if rhythm:
         parts.append(rhythm)
@@ -832,19 +850,41 @@ def global_audit_messages(ctx: dict, window: tuple[int, int]) -> list[dict]:
 
 SYSTEM_STYLE_EXTRACT = """你是长篇网文创作系统的【文风提炼 Agent】。把作者提交的样本正文提炼成该书可复用的文风档案草稿（§7.12 样本提取）。
 输入：① 作者样本（1–2 篇）；② 对样本的确定性统计（句长分布 / 对话密度 / 段落结构 / 高频词串——数字只作参考，语义提炼以样本正文为准）。
-输出严格 JSON 对象：
+提炼对象**只有写作的文笔**：叙事声音、对话、场景描写、衔接、节奏、用词、情绪表达这些笔触特征。
+**不要**提炼题材、情节、人物设定、世界观——那些不属于文风，写这些只会挤掉真正要模仿的东西。
+输出严格 JSON 对象（八维各 1–2 句、必须带原文例句）：
 {
   "pov": "叙事人称与视角（如：第三人称限知、以主角为主；样本无稳定倾向写「未从样本提炼」）",
-  "sentence_style": "句式与节奏习惯（长短句偏好 / 段落疏密 / 避免机械交替；样本无稳定倾向写「未从样本提炼」）",
-  "lexicon_tendency": "词汇与修辞倾向（用词色彩 / 意象 / 比喻习惯）",
-  "dialogue": "对话腔调要求（角色区分度 / 口语化程度）",
+  "narrative_voice": "叙事声音与语气（冷峻/热烈/讽刺/温情……，并点明它靠什么句法或词语达成），附 1–2 句原文例句",
+  "dialogue_style": "对话风格（角色说话的共性：句子长短、口头禅倾向、方言痕迹、对话节奏），附 1–2 句原文例句",
+  "scene_description": "场景描写特征（五感偏好、意象选择、描写密度、环境与情绪的关联方式），附 1–2 句原文例句",
+  "transitions": "转折与衔接手法（场景怎么切、时间跳跃怎么处理、段落间怎么过渡），附 1–2 句原文例句",
+  "pacing": "节奏特征（长短句分布、段落长度偏好、高潮与舒缓怎么交替），附 1–2 句原文例句",
+  "diction": "词汇偏好（特色高频用词、比喻与修辞倾向、口语化程度），附 1–2 句原文例句",
+  "emotional_expression": "情绪表达方式（直白抒情还是动作外化、内心独白的频率与风格），附 1–2 句原文例句",
+  "distinctive_habits": "独特习惯（值得模仿的个人写作习惯；没有就写「未从样本提炼」）",
   "forbidden": ["样本中反复暴露的滥俗 / AI 味表达（2–4 条，具体可执行）"],
   "reference_excerpts": ["1–2 段最能代表该文风的样本原文（逐字摘自样本，供写章作风格示范）"]
 }
 规则：
 - 只提炼样本中真实、反复出现的特征，不臆造；样本信息不足的字段填「未从样本提炼」或省略该键；
+- 八维分析必须落在原文的实际特征上，不许泛泛而谈（「语言优美」「描写生动」这类等于没写）；
 - forbidden 只列样本里确实反复出现 / 暴露问题的表达，宁缺毋滥；
 - reference_excerpts 必须逐字摘自样本原文（不得改写、不得拼接），1–2 段即可。"""
+
+
+def _style_prose_dims(sp: dict) -> list[tuple[str, str]]:
+    """文笔八维（§7.12 样本提取）：键 → 中文名，顺序即注入顺序。缺键 / 空串跳过。
+
+    与前端 StyleLibraryPage 的 PROSE_DIMS 同一份口径——那边负责给人看，这边负责给模型看，
+    键名改动要两边一起改。
+    """
+    dims = []
+    for key, label in _STYLE_PROSE_DIMS:
+        val = sp.get(key)
+        if isinstance(val, str) and val.strip():
+            dims.append((label, val.strip()))
+    return dims
 
 
 def style_extract_messages(samples: list[str], stats: dict) -> list[dict]:
