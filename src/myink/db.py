@@ -39,6 +39,14 @@ _admin_engine: Engine = create_engine(
 
 _SessionLocal = sessionmaker(bind=_engine, expire_on_commit=False, autoflush=False)
 
+# Long-lived creation locks must not consume the pool used by auth and CRUD.
+# Saturation fails fast; a separate small pool also bounds concurrent planning.
+_creation_lock_engine: Engine = create_engine(
+    normalize_localhost_database_url(settings.database_url),
+    pool_size=4, max_overflow=0, pool_timeout=0, pool_pre_ping=True,
+)
+_CreationLockSession = sessionmaker(bind=_creation_lock_engine)
+
 
 def get_engine() -> Engine:
     return _engine
@@ -54,6 +62,10 @@ def session_factory() -> sessionmaker[Session]:
 
 def new_session() -> Session:
     return _SessionLocal()
+
+
+def new_creation_lock_session() -> Session:
+    return _CreationLockSession()
 
 
 @contextmanager
@@ -269,6 +281,39 @@ def ensure_user_environment() -> None:
         conn.execute(text(
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS environment JSONB "
             "NOT NULL DEFAULT '{}'::jsonb"
+        ))
+
+
+def ensure_style_library_schema() -> None:
+    """Add legacy library metadata and uniqueness without replacing user content."""
+    with get_admin_engine().begin() as conn:
+        _upgrade_style_library_schema(conn)
+
+
+def _upgrade_style_library_schema(conn) -> None:
+    # Prevent inserts between the duplicate check and constraint installation.
+    conn.execute(text("LOCK TABLE style_library_items IN SHARE ROW EXCLUSIVE MODE"))
+    duplicate = conn.execute(text("""
+        SELECT user_id FROM style_library_items GROUP BY user_id, name
+        HAVING count(*) > 1 LIMIT 1
+    """)).first()
+    if duplicate is not None:
+        raise RuntimeError(
+            "style_library_items contains duplicate names for one user; "
+            "resolve the names before retrying init. No library items were deleted."
+        )
+    conn.execute(text(
+        "ALTER TABLE style_library_items ADD COLUMN IF NOT EXISTS note "
+        "VARCHAR(200) NOT NULL DEFAULT ''"
+    ))
+    exists = conn.scalar(text("""
+        SELECT 1 FROM pg_constraint WHERE conrelid = 'style_library_items'::regclass
+        AND conname = 'uq_style_library_user_name'
+    """))
+    if not exists:
+        conn.execute(text(
+            "ALTER TABLE style_library_items ADD CONSTRAINT uq_style_library_user_name "
+            "UNIQUE (user_id, name)"
         ))
 
 

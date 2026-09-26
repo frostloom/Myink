@@ -156,19 +156,22 @@ def generate_short_creation_turn(history: list[dict], card: dict, *,
                                  user_id, db=None) -> tuple[str, dict, str | None, ModelResponse]:
     """建书对话一回合：一次 planner json_mode 调用，回 (reply, 卡增量, error, resp)。
 
-    **不抛、不清卡**：解析失败时把模型原文当 reply 交出去、增量回空 dict（调用方保留现值）、
+    模型/解析失败不清卡；准入失败抛 GateError / EnqueueUnavailable，由 API 返回 429/503。
+    解析失败时把模型原文当 reply 交出去、增量回空 dict（调用方保留现值）、
     error 记进消息。用户重说一句就能接着聊，而不是丢掉整场对话。
 
     resp 一并交出去，是为了让调用方把 model_id / token / 花费逐条落进会话消息里。
     """
+    from myink.model_admission import generate_account_model
     from myink.providers import make_user_chain
     from myink.providers.base import ModelResponse
     from myink.short import creation
     from myink.workflow import nodes, prompts
 
     messages = prompts.short_creation_messages(history, card)
-    resp = make_user_chain("planner", user_id).generate(
-        messages, json_mode=True, max_tokens=nodes._MAX_TOKENS["short_creation"])
+    resp = generate_account_model(
+        make_user_chain("planner", user_id), user_id=user_id, messages=messages,
+        json_mode=True, max_tokens=nodes._MAX_TOKENS["short_creation"])
     if db is not None:
         nodes.record_run(db, user_id=user_id, task_id=None, node="short_creation",
                          role="Planner", resp=resp, error=resp.error, messages=messages,

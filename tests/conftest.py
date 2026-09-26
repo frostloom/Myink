@@ -103,6 +103,11 @@ def _no_rate_limits(monkeypatch):
 
     monkeypatch.setattr(rl, "settings", replace(rl.settings, rate_per_sec=10**9, rate_burst=10**9))
     monkeypatch.setattr(rl, "AUTH_RATE_MAX", 10**9)
+    # Business suites share one test Redis/cost bucket. Admission limits have
+    # dedicated real-Redis tests which install their own small thresholds.
+    import myink.model_admission as admission
+    monkeypatch.setattr(admission, "settings", replace(
+        admission.settings, daily_budget=10**9, account_model_calls_daily=10**9))
 
 
 @pytest.fixture

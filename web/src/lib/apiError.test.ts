@@ -3,6 +3,13 @@ import { expect, it } from 'vitest'
 import { formatApiError, formatErrorText } from './apiError'
 import { ApiError } from './api'
 
+it('distinguishes busy creation and account model limits from book task limits', () => {
+  expect(formatApiError(new ApiError(409, 'SESSION_BUSY', null))).toContain('建书操作正在处理')
+  expect(formatApiError(new ApiError(503, 'CREATION_CAPACITY_EXCEEDED', null))).toContain('建书服务正忙')
+  expect(formatApiError(new ApiError(429, 'ACCOUNT_MODEL_BUSY', null))).toContain('账号')
+  expect(formatApiError(new ApiError(429, 'ACCOUNT_MODEL_QUOTA_EXCEEDED', null))).toContain('建书与文风')
+})
+
 it('maps queue codes and HTTP status to Chinese', () => {
   expect(formatApiError(new ApiError(429, 'CONCURRENCY_LIMIT', null))).toBe('本书已有进行中的任务，请稍候')
   expect(formatApiError(new ApiError(503, 'enqueue_failed', null))).toBe('写作任务没能进入队列，请稍后重试')
