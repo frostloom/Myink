@@ -336,6 +336,25 @@ def test_reset_removes_todays_orphan_draft_book(temp_user):
         assert db.get(Project, uuid.UUID(pid)) is None, "当日这张没写完的草稿书该被一并清掉"
 
 
+def test_reset_takes_the_orphan_drafts_agent_runs_with_it(temp_user):
+    """agent_runs 没有 FK：清掉草稿书时得把它的调用记录一起带走。
+
+    不带的话，管理面板的全局花费会比各用户之和多出这块无归属调用（口径见 delete_project
+    的同款处理）。那本书还没有任务/章节，所以只需补这一步。
+    """
+    pid = _seed_session_on_an_orphan_draft_book(temp_user)
+    with new_session() as db:                    # agent_runs 无 RLS，普通会话就能写
+        db.add(AgentRun(project_id=uuid.UUID(pid), node="short_plan",
+                        role="Planner", cost_est=0.01))
+        db.commit()
+    assert client.delete("/api/v1/short/creation",
+                         headers=identity_headers(temp_user)).status_code == 200
+    with new_session() as db:
+        assert db.scalar(select(AgentRun.id)
+                         .where(AgentRun.project_id == uuid.UUID(pid))) is None, \
+            "草稿书被清掉后，它的调用记录不该还留在全局花费里"
+
+
 def test_reset_keeps_a_book_that_already_has_tasks(temp_user):
     """书一旦有任务就是「正在写」——宁可漏删，也不许重置对话把它带走。"""
     pid = _seed_session_on_an_orphan_draft_book(temp_user)
@@ -377,13 +396,15 @@ _FULL_CARD = {field: "有" for field in creation.REQUIRED_CARD_FIELDS} | {
 
 
 def _short_outline(chapter_count: int = 3) -> dict:
-    """一份能过 `validate_short_outline` 的最小短篇方案。
+    """一份 `SYSTEM_SHORT_PLAN` 实际会产出的最小短篇方案。
 
-    章数必须与 `_FULL_CARD` 的 `chapter_count` 对上（这里都是 3），否则落库那步的校验会拒。
+    刻意**不带** `chapter_count`：提示词里的 JSON 契约没有这个字段，模型也就不会给。
+    章数由调用方（用户卡上归一后的值）决定，必须与 `_FULL_CARD` 的 `chapter_count` 对上
+    （这里都是 3），否则落库那步的校验会拒。
     """
     chapters = [{"chapter_seq": i, "title": f"第 {i} 章", "goal": f"第 {i} 章的目标"}
                 for i in range(1, chapter_count + 1)]
-    return {"objective": "林砚查清父亲之死并让青溪渡停航", "chapter_count": chapter_count,
+    return {"objective": "林砚查清父亲之死并让青溪渡停航",
             "volumes": [{"volume_seq": 1, "title": "全篇 · 最后一班渡船", "goal": "让渡口停航",
                          "chapter_start": 1, "chapter_end": chapter_count, "chapters": chapters}]}
 
@@ -403,8 +424,10 @@ def _seed_session(user: str, card: dict | None = None):
 def test_commit_builds_a_ready_short_book_with_a_persisted_plan(temp_user, chain_stub):
     chain_stub([_PLAN_JSON])
     _seed_session(temp_user)
-    out = client.post("/api/v1/short/creation/commit", json={},
-                      headers=identity_headers(temp_user)).json()
+    resp = client.post("/api/v1/short/creation/commit", json={},
+                       headers=identity_headers(temp_user))
+    assert resp.status_code == 200, resp.text
+    out = resp.json()
     with new_session() as db:
         project = db.get(Project, uuid.UUID(out["project_id"]))
         assert project.form == "short"
@@ -414,6 +437,9 @@ def test_commit_builds_a_ready_short_book_with_a_persisted_plan(temp_user, chain
     with tenant_session(out["project_id"]) as tdb:
         outline = get_volume_outline(tdb, uuid.UUID(out["project_id"]), 1)
     assert outline is not None and len(outline.outline["volumes"][0]["chapters"]) == 3
+    # 模型不给 chapter_count，落库前必须补上：`short_runner` 取整篇章数时先读这份方案，
+    # 读不到才回退到 creation_context——让方案自己说清楚篇幅，别留这个隐式依赖。
+    assert outline.outline["chapter_count"] == 3
 
 
 def test_commit_refuses_an_incomplete_card(temp_user):

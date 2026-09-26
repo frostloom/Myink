@@ -21,10 +21,11 @@ from myink.book_setup import generate_short_creation_turn
 from myink.creation import validate_short_outline
 from myink.db import new_session, tenant_session
 from myink.memory.repository import get_settings
-from myink.models import (Chapter, Project, ProjectSettings, ShortCreationMessage,
+from myink.models import (AgentRun, Chapter, Project, ProjectSettings, ShortCreationMessage,
                           ShortCreationSession, Task, User)
 from myink.short import creation
 from myink.short.form import resolve_short_lengths
+from myink.workflow.outline import build_persisted_short_outline
 
 router = APIRouter(prefix="/api/v1/short/creation", tags=["short-creation"])
 
@@ -144,6 +145,10 @@ def reset_session(user_id: str = Depends(require_user)) -> dict:
         if session is not None:
             book = _orphan_draft_book(db, uid, session.book_id)
             if book is not None:
+                # agent_runs 没有 FK：只删 projects 会留下一堆无归属调用，管理面板的全局花费
+                # 就对不上各用户之和（口径见 delete_project，这里那本书还没有任务/章节，
+                # 所以只剩这一步要补）。
+                db.execute(sa_delete(AgentRun).where(AgentRun.project_id == book.id))
                 db.delete(book)
             db.execute(sa_delete(ShortCreationMessage)
                        .where(ShortCreationMessage.session_id == session.id))
@@ -210,6 +215,13 @@ def commit(body: ShortCreationCommitBody, user_id: str = Depends(require_user)) 
         # 更像人话的说法，而形状校验统一回「形状不合规」。
         raise HTTPException(status_code=502,
                             detail=f"PLAN_FAILED: {patch.get('outline_error') or '方案为空'}")
+    # 模型按 SYSTEM_SHORT_PLAN 那份 JSON 契约输出，里面**没有** chapter_count；篇幅的真相在
+    # 用户卡上，归一后就是这里的 chapters。过一次与向导落库同一个 builder（put_outline 的短篇
+    # 分支也用它）：补上 chapter_count、重编卷号。不补的话下面那道形状闸永远拒——它读的正是
+    # 这个字段，于是「确认开写」100% 变成 PLAN_FAILED，用户被卡死在方案卡上。
+    outline = build_persisted_short_outline(
+        objective=outline.get("objective") or "", volumes=outline.get("volumes") or [],
+        premise=premise, chapter_count=chapters, storyline="")
     try:
         # 逐章细纲缺章、卷不连续这类形状问题，原本要等到第 3 步落库才炸，那里抛的是
         # 400 OUTLINE_INCOMPLETE——它的文案指向长篇设定页的那张「全书目标/每卷目标」表单，
