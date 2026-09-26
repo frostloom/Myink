@@ -10,7 +10,6 @@ import { ChapterList } from '../components/ChapterList'
 import { GenerationPanel } from '../components/GenerationPanel'
 import { LessonsPanel } from '../components/LessonsPanel'
 import { ProjectRail } from '../components/ProjectRail'
-import { ShortStoryPanel } from '../components/ShortStoryPanel'
 import { TaskTimeline } from '../components/TaskTimeline'
 import { StreamingChapterView } from '../components/StreamingChapterView'
 import { useAuth } from '../context/AuthContext'
@@ -66,7 +65,11 @@ export default function WorkspacePage() {
   const pendingAutoOpen = useRef<{ taskId: string; chapterSeq: number | null } | null>(null)
   // 作品形态：短篇整篇一次成稿，没有「下一章」，也没有单章的记忆层与审核。
   // 它那条任务不属于任何一章，所以右栏按章过滤与按章取任务都得绕开。
-  const isShortBook = projects.find((p) => p.id === projectId)?.form === 'short'
+  const project = projects.find((p) => p.id === projectId)
+  const isShortBook = project?.form === 'short'
+  // 校正记忆只有长篇的逐章账本才吃得住。形态要等作品列表到手才知道，那之前先不摆——
+  // 短篇按它只会白跑一次抽取，宁可晚一帧出现，也别先摆错再撤。
+  const allowMemoryCorrection = project !== undefined && project.form !== 'short'
   // 短篇一次成稿：没有逐章方案要确认，也没有 Plan 阶段。后面几处「续跑后跳回计划视图」
   // 的调用点仍然会 setCenterView('plan')，所以判据必须落在渲染侧，而不是它们的调用侧。
   const showPlanView = !isShortBook && centerView === 'plan'
@@ -639,7 +642,6 @@ export default function WorkspacePage() {
     if (activeTaskId) { task.retry(); return }
     void startShortGeneration()
   }
-  const hasShortReview = visibleTaskRuns.some((run) => run.node === 'short_review')
   const isPendingChapter = selectedChapter?.id.startsWith('pending-chapter:') ?? false
   // 节点记录在 LLM 返回后才落库，写作进行中右栏会停在上一节点；用产物未完成态补一条实时步骤。
   // 仅任务在途时启用：终态/暂停下残留的未完成产物不该再显示「正在执行」。
@@ -836,6 +838,7 @@ export default function WorkspacePage() {
                   onSaved={handleSaved}
                   onMemoryChanged={loadCandidates}
                   refreshTick={refreshTick}
+                  allowMemoryCorrection={allowMemoryCorrection}
                 />
               )}
             </div>
@@ -847,6 +850,7 @@ export default function WorkspacePage() {
               onSaved={handleSaved}
               onMemoryChanged={loadCandidates}
               refreshTick={refreshTick}
+              allowMemoryCorrection={allowMemoryCorrection}
             />
           )
         ) : (
@@ -856,16 +860,29 @@ export default function WorkspacePage() {
               : '选择左侧章节开始编辑。'}
           </div>
         )}
-        {isShortBook && hasShortReview && (
-          <details className={styles.review}>
-            <summary>审稿结论</summary>
-            <ShortStoryPanel key={`short-${projectId}`} runs={visibleTaskRuns} />
-          </details>
-        )}
       </main>
 
-      {!isShortBook && (
       <aside className={styles.right} aria-label="生成与校验">
+        {isShortBook ? (
+          // 短篇右栏只留一条：这一篇有没有经过审核、花了多少，全在流转记录里。
+          // 整篇任务不属于任何一章，所以喂整篇 runs、chapterSeq 给 null（按章切会整块滤空）。
+          <TaskTimeline
+            key={`flow-${projectId}-short`}
+            taskId={activeTaskId}
+            phase={task.phase}
+            status={task.status}
+            nodes={visibleTaskNodes}
+            runs={visibleTaskRuns}
+            liveNode={liveNode}
+            progress={task.progress}
+            chapterSeq={null}
+            error={task.error}
+            onRetry={task.retry}
+            canControl={batchTotal !== null}
+            refresh={task.refresh}
+          />
+        ) : (
+          <>
         <GenerationPanel
           projectId={projectId}
           chapters={chapters}
@@ -901,8 +918,9 @@ export default function WorkspacePage() {
           referenceNames={candidateReferenceNames}
         />
         <LessonsPanel projectId={projectId} />
+          </>
+        )}
       </aside>
-      )}
     </div>
   )
 }
