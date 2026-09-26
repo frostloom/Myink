@@ -1493,6 +1493,28 @@ def test_parse_json_repairs_stray_quotes():
     assert _parse_json(double)["content"] == '他说:""'
 
 
+def test_parse_json_repairs_stray_quote_that_comma_follows():
+    """§6.12 输出容错：正文裸引号后面紧跟英文逗号，不能被当成字符串的真闭合。
+
+    真实输出（2026-09-26 短篇建书对话逼出）：模型用 ASCII 引号括术语，且这个引号后
+    恰好是一个英文逗号 —— ``他等的那班船终于"走了",他也真正离开了岸边。``。裸引号修复
+    只看「后随 `,`」就判定字符串在此闭合，后半句于是被当成结构解析，整串死在
+    ``Expecting property name enclosed in double quotes``（column 684），整轮对话白费。
+    """
+    from myink.workflow.nodes import _parse_json
+
+    raw = ('{"reply": "就按这个填满了，你看着改。", "card": {"working_title": "摆渡", '
+           '"emotional_payoff": "从荒诞的固执读到心疼，最后在他某夜自顾自"出航"的动作里被戳中", '
+           '"plot_sketch": "一、写渡口的日常。二、儿女要接他走。三、一个女孩扮作"乘客"来买票。'
+           '五、他等的那班船终于"走了",他也真正离开了岸边。", '
+           '"chapter_count": 5}}')
+    data = _parse_json(raw)
+    assert data["card"]["working_title"] == "摆渡"
+    assert data["card"]["emotional_payoff"] == "从荒诞的固执读到心疼，最后在他某夜自顾自\"出航\"的动作里被戳中"
+    assert data["card"]["plot_sketch"].endswith("他等的那班船终于\"走了\",他也真正离开了岸边。")
+    assert data["card"]["chapter_count"] == 5
+
+
 def test_parse_json_repair_noop_on_valid():
     """§6.12 输出容错：合法 JSON 走不到裸引号兜底，修复不改变解析结果。"""
     from myink.workflow.nodes import _parse_json

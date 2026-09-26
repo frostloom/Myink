@@ -483,10 +483,11 @@ def _parse_json(content: str) -> Any:
         if start == -1:
             raise
         raw_body = content[start:]
-        # 依次尝试最小修复：原结构 → 控制字符 → 裸引号+控制字符。每一种候选都允许
-        # 在明确的 JSON 值边界补漏逗号；不修改字符串内容，也不凭语义补字段。
+        # 依次尝试最小修复：原结构 → 控制字符 → 裸引号+控制字符 → 收紧的裸引号+控制字符。
+        # 每一种候选都允许在明确的 JSON 值边界补漏逗号；不修改字符串内容，也不凭语义补字段。
         candidates = [raw_body, _escape_control_chars(raw_body)]
         candidates.append(_escape_control_chars(_repair_stray_quotes(raw_body)))
+        candidates.append(_escape_control_chars(_repair_stray_quotes(raw_body, strict=True)))
         last_exc = original_exc
         seen: set[str] = set()
         for body in candidates:
@@ -577,13 +578,31 @@ def _escape_control_chars(s: str) -> str:
     return "".join(out)
 
 
-def _repair_stray_quotes(s: str) -> str:
+def _opens_json_token(s: str, i: int) -> bool:
+    """``s[i:]`` 跳过空白后，是否还能开始一个 JSON 键名或值。
+
+    只认 ASCII：全角数字之类在中文正文里是普通字，不是值。
+    """
+    n = len(s)
+    while i < n and s[i].isspace():
+        i += 1
+    if i >= n:
+        return False
+    return s[i] in '"{[-tfn}]' or s[i] in "0123456789"
+
+
+def _repair_stray_quotes(s: str, *, strict: bool = False) -> str:
     """JSON 字符串值内裸引号转义兜底（§6.12 输出容错）。
 
     DeepSeek 偶发在正文里用 ASCII 双引号（应转义而未转义）→ 字符串被提前闭合，
     json 报 ``Expecting ',' delimiter``。状态机：在字符串值内，裸 ``"`` 后跟 ``, : } ]``
     之一视为结构闭合符（保留），否则视为正文引号（补反斜杠转义）。已转义的 ``\\"``/``\\\\``/``\\uXXXX``
     原样跳过不误伤。仅在常规容错后兜底，合法 JSON 走不到这里。
+
+    ``strict`` 再收紧一处：后随 ``,``/``:`` 时还要看分隔符之后能不能开始下一个键或值，
+    不能就仍旧当正文引号。模型把术语括起来又紧跟英文逗号（``"走了",他也…``）时，
+    宽松版会把第二个引号认成真闭合、后半句当结构解析（2026-09-26 短篇建书逼出）。
+    收紧了可能误判真闭合，所以只在宽松版解析失败后作为**备选**再试一次。
     """
     out: list[str] = []
     in_str = False
@@ -603,7 +622,12 @@ def _repair_stray_quotes(s: str) -> str:
                 while j < n and s[j].isspace():
                     j += 1
                 nxt = s[j] if j < n else ""
-                if nxt in ',:}]':
+                closes = nxt in ',:}]'
+                if closes and strict and nxt in ',:':
+                    # `}`/`]` 之后不需要再看：闭合的就是整个对象/数组。`,``:` 则要确认
+                    # 后面确实接着下一个键或值，否则这个引号是正文里的裸引号。
+                    closes = _opens_json_token(s, j + 1)
+                if closes:
                     in_str = False  # 后随结构分隔符 → 真正的字符串闭合引号
                     out.append(ch)
                 else:
