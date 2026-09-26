@@ -100,9 +100,8 @@ services:
       # 也与 .env.example 保持单一真源。
       RATE_PER_SEC: ${RATE_PER_SEC:-20}
       RATE_BURST: ${RATE_BURST:-40}
-      # 扫榜灵感（§10：直连番茄公开榜单）+ MCP 客户端地址（留作后续接其他 MCP 工具）
+      # 扫榜灵感（§10：直连番茄公开榜单）
       RANKINGS_ENABLED: "1"
-      RANKINGS_MCP_URL: https://daosearch.io/api/mcp
     command: ["sh", "-c", "myink init && myink-api"]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8100/openapi.json')"]
@@ -135,7 +134,6 @@ services:
       RECALL_TOKEN_BUDGET: ${RECALL_TOKEN_BUDGET:-12000}
       # 扫榜灵感只用于建书前题材参考，不注入 worker 生成节点
       RANKINGS_ENABLED: "1"
-      RANKINGS_MCP_URL: https://daosearch.io/api/mcp
     command: ["myink-worker"]
     depends_on:
       myink-pg:
