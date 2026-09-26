@@ -50,6 +50,11 @@ export default function WorkspacePage() {
   const [centerView, setCenterView] = useState<'plan' | 'write'>('write')
   // 短篇整篇入队失败（建书页确认完跳进来那一次）→ 状态带给重试入口，不静默咽掉。
   const [shortStartFailed, setShortStartFailed] = useState(false)
+  const [shortSubmitting, setShortSubmitting] = useState(false)
+  const shortSubmitRef = useRef(false)
+  const shortRequestVersion = useRef(0)
+  const [shortHistory, setShortHistory] = useState<{ projectId: string; status: 'loading' | 'ready' | 'failed' }>({ projectId, status: 'loading' })
+  const [shortHistoryReload, setShortHistoryReload] = useState(0)
   const taskStartVersion = useRef(0)
   const shortStarted = useRef(false)
   const chapterMaterializeVersion = useRef(0)
@@ -67,6 +72,7 @@ export default function WorkspacePage() {
   // 它那条任务不属于任何一章，所以右栏按章过滤与按章取任务都得绕开。
   const project = projects.find((p) => p.id === projectId)
   const isShortBook = project?.form === 'short'
+  const shortHistoryStatus = shortHistory.projectId === projectId ? shortHistory.status : 'loading'
   // 校正记忆只有长篇的逐章账本才吃得住。形态要等作品列表到手才知道，那之前先不摆——
   // 短篇按它只会白跑一次抽取，宁可晚一帧出现，也别先摆错再撤。
   const allowMemoryCorrection = project !== undefined && project.form !== 'short'
@@ -174,6 +180,12 @@ export default function WorkspacePage() {
     setReleaseTarget(null)
     setReleaseResumeKey(null)
     setCenterView('write')
+    shortRequestVersion.current += 1
+    shortSubmitRef.current = false
+    shortStarted.current = false
+    setShortSubmitting(false)
+    setShortStartFailed(false)
+    setShortHistory({ projectId, status: 'loading' })
     selectedCidRef.current = null
     selectedChapterSeqRef.current = null
     latestPlanArtifactRef.current = null
@@ -365,22 +377,41 @@ export default function WorkspacePage() {
   // 不回查就会一边写着整篇、一边告诉用户「没能开始写」，而重试还会被并发闸 429 挡掉——
   // 状态说反了，唯一的出口还是个死按钮。
   const startShortGeneration = useCallback(async () => {
+    if (shortSubmitRef.current) return
+    const pid = projectId
+    const version = ++shortRequestVersion.current
+    const isCurrent = () => projectIdRef.current === pid && shortRequestVersion.current === version
+    shortSubmitRef.current = true
+    setShortSubmitting(true)
     try {
-      handleTaskStart((await api.generateShort(projectId)).task_id)
-      return
-    } catch {
-      // 落到回查：确认服务端到底有没有接上这次生成。
-    }
-    try {
-      const latest = (await api.listTasks(projectId)).find((task) => task.task_type === 'short_generate')
-      if (latest) {
-        handleTaskStart(latest.task_id)
+      try {
+        const response = await api.generateShort(pid)
+        if (!isCurrent()) return
+        handleTaskStart(response.task_id)
         return
+      } catch {
+        // 落到回查：确认服务端到底有没有接上这次生成。
+        if (!isCurrent()) return
       }
-    } catch {
-      // 回查也失败：只能按失败处理，把重试留给用户。
+      try {
+        const latest = (await api.listTasks(pid)).find((task) => task.task_type === 'short_generate')
+        if (!isCurrent()) return
+        if (latest) {
+          handleTaskStart(latest.task_id)
+          return
+        }
+      } catch {
+        if (!isCurrent()) return
+        // 结果不明时先核对历史，不能直接再发起一次整篇生成。
+        setShortHistory({ projectId: pid, status: 'failed' })
+      }
+      setShortStartFailed(true)
+    } finally {
+      if (isCurrent()) {
+        shortSubmitRef.current = false
+        setShortSubmitting(false)
+      }
     }
-    setShortStartFailed(true)
   }, [projectId, handleTaskStart])
 
   // 建书对话页确认完跳进来那一次：入队归本页（中间栏状态带上就是重试入口）。
@@ -390,7 +421,7 @@ export default function WorkspacePage() {
   // taskStartVersion 保证不会把我们刚接上的 taskId 又抹回 null）。
   useEffect(() => {
     // 先等 projects 到手：isShortBook 还是 false 的时候就抹标记，会把这次意图整个吞掉。
-    if (!isShortBook) return
+    if (!isShortBook || shortHistoryStatus !== 'ready') return
     if (handover.beginShortWriting && !shortStarted.current && activeTaskId === null) {
       shortStarted.current = true
       void startShortGeneration()
@@ -398,7 +429,7 @@ export default function WorkspacePage() {
     if (handover.planWarning || handover.beginShortWriting) {
       navigate(location.pathname, { replace: true, state: { planWarning: handover.planWarning ?? null } })
     }
-  }, [isShortBook, handover.beginShortWriting, handover.planWarning, activeTaskId,
+  }, [isShortBook, shortHistoryStatus, handover.beginShortWriting, handover.planWarning, activeTaskId,
       location.pathname, navigate, startShortGeneration])
 
   // 放行本章：resume 同一 task_id 续跑（§6.11 确认流收尾）。taskId 不变但 SSE 已关流，
@@ -514,6 +545,7 @@ export default function WorkspacePage() {
     if (!isShortBook) return
     let cancelled = false
     const requestVersion = taskStartVersion.current
+    setShortHistory({ projectId, status: 'loading' })
     api.listTasks(projectId)
       .then((tasks) => {
         if (cancelled || requestVersion !== taskStartVersion.current) return
@@ -523,10 +555,14 @@ export default function WorkspacePage() {
         setBatchTotal(null)
         setActiveChapterSeq(null)
         setReleaseTarget(null)
+        setShortHistory({ projectId, status: 'ready' })
       })
-      .catch(() => {})
+      .catch(() => {
+        if (cancelled || requestVersion !== taskStartVersion.current) return
+        setShortHistory({ projectId, status: 'failed' })
+      })
     return () => { cancelled = true }
-  }, [projectId, isShortBook])
+  }, [projectId, isShortBook, shortHistoryReload])
 
   // 每章只呈现一份状态流转：选章后加载覆盖该章的最新生成任务，实时和历史共用一条流程。
   useEffect(() => {
@@ -623,24 +659,60 @@ export default function WorkspacePage() {
   const hasPlan = planArtifact !== null || visibleTaskRuns.some((run) => (
     run.node === 'plan_chapter' && run.detail?.plan
   ))
-  // 短篇中间栏那条状态带：整篇任务只有一条线，四态够用（进行中 / 写完 / 失败 / 没开始）。
+  // done 仅代表任务结束；缺章、审稿降级和篇幅观测仍需作者检查。
+  const shortReviewRun = [...task.runs].reverse().find((run) => run.node === 'short_review' && run.detail?.short_review)
+  const shortReview = shortReviewRun?.detail?.short_review
+  const shortEmptyChapters = shortReviewRun?.detail?.empty_chapters ?? []
+  const shortLengthFindings = shortReviewRun?.detail?.length_findings ?? []
+  const shortNeedsCheck = Boolean(shortReview?.warning || shortReviewRun?.degraded || shortReviewRun?.error
+    || shortLengthFindings.length || (shortReview?.verdict === 'revise' && !shortReviewRun?.detail?.revised))
   const shortFailed = task.status === 'failed' || task.status === 'cancelled' || taskPhase === 'error'
-  const shortStatus = taskInFlight
-    ? '正在写整篇…'
-    : task.status === 'done'
-      ? '整篇写完了'
+  const shortStatus = shortHistoryStatus === 'loading' ? '正在查询写作任务…'
+    : shortHistoryStatus === 'failed' ? '未能确认写作状态，请重新查询'
+    : shortSubmitting
+    ? '正在提交写作任务…'
+    : taskInFlight
+      ? '正在写整篇…'
+      : task.status === 'done'
+      ? shortEmptyChapters.length ? '部分正文未完成'
+        : shortNeedsCheck ? '正文已生成，仍需检查'
+          : shortReview ? '整篇写完了' : '正文已生成，审稿记录待核实'
+      : task.status === 'cancelled' ? '这次写作已取消'
       : shortFailed
         ? '这次写作没能完成'
         : shortStartFailed
           ? '没能开始写'
           : '还没开始写'
   // 有任务在跑、或已经写完了，就不给重试/开写入口。
-  const canStartShort = !taskInFlight && task.status !== 'done'
-  const startShort = () => {
+  const canStartShort = shortHistoryStatus === 'ready' && !taskInFlight && task.status !== 'done' && task.status !== 'cancelled'
+  const startShort = async () => {
+    if (shortSubmitRef.current || !canStartShort) return
     setShortStartFailed(false)
-    // 有历史任务 → 续跑它（retry 复用同一 task_id）；没有 → 新起一次整篇生成。
-    if (activeTaskId) { task.retry(); return }
-    void startShortGeneration()
+    if (!activeTaskId) { await startShortGeneration(); return }
+    // 连接故障只重连；任务失败要调用服务端续跑，重连 SSE 不会启动 worker。
+    if (task.status !== 'failed' && task.status !== 'paused') { task.retry(); return }
+    const pid = projectId
+    const version = ++shortRequestVersion.current
+    const isCurrent = () => projectIdRef.current === pid && shortRequestVersion.current === version
+    shortSubmitRef.current = true
+    setShortSubmitting(true)
+    setError(null)
+    try {
+      await api.resumeTask(activeTaskId)
+      if (!isCurrent()) return
+      setReleaseResumeKey(Date.now())
+      task.refresh()
+    } catch (reason) {
+      if (!isCurrent()) return
+      setError(formatApiError(reason, '续跑失败，请重试'))
+      task.refresh()
+      task.retry()
+    } finally {
+      if (isCurrent()) {
+        shortSubmitRef.current = false
+        setShortSubmitting(false)
+      }
+    }
   }
   const isPendingChapter = selectedChapter?.id.startsWith('pending-chapter:') ?? false
   // 节点记录在 LLM 返回后才落库，写作进行中右栏会停在上一节点；用产物未完成态补一条实时步骤。
@@ -769,17 +841,53 @@ export default function WorkspacePage() {
       </aside>
 
       <main className={styles.main}>
-        {error && <div className="banner banner-error">{error}</div>}
+        {error && <div className="banner banner-error" role="alert">{error}</div>}
         {isShortBook && (
           <div className={styles.band} role="status">
             <span>{shortStatus}</span>
             {handover.planWarning && <span className={styles.bandWarn}>{handover.planWarning}</span>}
+            {shortHistoryStatus === 'failed' && (
+              <button type="button" className="btn btn-quiet" onClick={() => {
+                setShortHistory({ projectId, status: 'loading' })
+                setShortHistoryReload((tick) => tick + 1)
+              }}>重新查询任务</button>
+            )}
             {canStartShort && (
-              <button type="button" className="btn btn-quiet" onClick={startShort}>
+              <button type="button" className="btn btn-quiet" disabled={shortSubmitting} onClick={() => void startShort()}>
                 {shortStartFailed || shortFailed ? '重试' : '开始写'}
               </button>
             )}
           </div>
+        )}
+        {isShortBook && task.status === 'done' && shortReview && (
+          <section className={styles.shortResult} aria-label="整篇检查摘要">
+            {(shortEmptyChapters.length > 0 || shortNeedsCheck) && (
+              <div className={styles.resultWarning} role="alert">
+                {shortEmptyChapters.length > 0 && <p>第 {shortEmptyChapters.join('、')} 章仍缺正文，请在章节列表中查看并补齐。</p>}
+                {shortReview.warning && <p>{shortReview.warning}</p>}
+                {!shortReview.warning && (shortReviewRun?.degraded || shortReviewRun?.error) && <p>本次审稿未正常完成，请检查正文。</p>}
+                {shortLengthFindings.length > 0 && <p>{shortLengthFindings.length} 项篇幅偏差，请检查对应章节。</p>}
+                {shortReview.verdict === 'revise' && !shortReviewRun?.detail?.revised && <p>审稿建议修改，本次未完成改稿。</p>}
+              </div>
+            )}
+            {!shortReview.warning && !shortReviewRun?.degraded && !shortReviewRun?.error && (
+              <span className={styles.reviewSummary}>{shortReviewRun?.detail?.revised ? '已按审稿意见改稿' : shortReview.verdict === 'pass' ? '整篇审稿通过' : '有待修改意见'}</span>
+            )}
+            {(shortReview.issues.length > 0 || shortReview.suggestions.length > 0 || shortLengthFindings.length > 0) && (
+              <details className={styles.reviewDetails}>
+                <summary>查看检查意见</summary>
+                <ul>
+                  {[...shortReview.issues, ...shortReview.suggestions].map((item, index) => <li key={index}>{item}</li>)}
+                  {shortLengthFindings.map((finding, index) => (
+                    <li key={`length-${index}`}>
+                      {finding.evidence.map((item) => `第 ${item.chapter} 章：${item.quote}`).join('；')}
+                      {finding.suggestion && <span> · {finding.suggestion}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </section>
         )}
         {selectedChapter ? (
           showCreationWorkspace ? <div className={styles.creationWorkspace}>
