@@ -242,3 +242,58 @@ it('offers the style selector and a link to the library, with no inline import',
   expect(screen.queryByRole('button', { name: '导入文章存成我的文风' })).toBeNull()
   expect(screen.queryByLabelText('粘贴文章')).toBeNull()
 })
+
+it('opens the plan card as a modal that Escape and a backdrop click both close', async () => {
+  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+    messages: [], ready: true, session: { card: FULL_CARD },
+  }))
+  renderPage()
+  await openCard()
+  // 悬浮模态：不是右侧内嵌面板，遮罩盖住整页，焦点落在关闭键上。
+  const cardDialog = screen.getByRole('dialog', { name: '方案' })
+  expect(cardDialog.getAttribute('aria-modal')).toBe('true')
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: '关闭方案卡' }))
+
+  fireEvent.keyDown(document, { key: 'Escape' })
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  // 关掉之后「开始建书」回来，还能再开一次。
+  fireEvent.click(screen.getByRole('button', { name: '开始建书' }))
+  expect(await screen.findByRole('dialog')).toBeTruthy()
+  // 点卡里的东西不算点遮罩，不该关。
+  fireEvent.mouseDown(screen.getByLabelText('暂定名'))
+  expect(screen.getByRole('dialog')).toBeTruthy()
+  fireEvent.mouseDown(screen.getByRole('dialog').parentElement as HTMLElement)
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+})
+
+it('grows every field box to its content so the dialog keeps a single scrollbar', async () => {
+  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+    messages: [], ready: true, session: { card: FULL_CARD },
+  }))
+  // jsdom 量不出真实高度，把 scrollHeight 钉成非零值：接线在，每个框就都该拿到内联高。
+  const measured = vi.spyOn(Element.prototype, 'scrollHeight', 'get').mockReturnValue(180)
+  try {
+    renderPage()
+    await openCard()
+    const boxes = Array.from(screen.getByRole('dialog').querySelectorAll('textarea'))
+    expect(boxes.length).toBeGreaterThan(1)
+    // 框自己滚 + 弹窗体也滚 = 「能滚的页面里嵌能滚的小页面」，正是要清掉的那条。
+    for (const box of boxes) expect((box as HTMLTextAreaElement).style.height).toBe('180px')
+  } finally {
+    measured.mockRestore()
+  }
+})
+
+it('keeps the box editable and says it is replying while a turn is in flight', async () => {
+  let release: (value: ShortCreationPayload) => void = () => {}
+  vi.mocked(shortCreationApi.send).mockReturnValue(new Promise((resolve) => { release = resolve }))
+  renderPage()
+  const box = await screen.findByLabelText('对助手说')
+  fireEvent.change(box, { target: { value: '渡口的故事' } })
+  fireEvent.keyDown(box, { key: 'Enter' })
+  // 等回复的这几秒里输入框不能变成死的：想接着打下一句，或者改改再发。
+  expect(screen.getByRole('button', { name: '正在回复…' })).toBeTruthy()
+  expect((box as HTMLTextAreaElement).disabled).toBe(false)
+  release(payload({ messages: [], ready: false }))
+  await waitFor(() => expect(screen.getByRole('button', { name: '发送' })).toBeTruthy())
+})
