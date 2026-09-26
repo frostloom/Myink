@@ -7,6 +7,7 @@ import { api } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
 import { isValidNewPassword, NEW_PASSWORD_VALIDATION_MESSAGE } from '../lib/passwordPolicy'
 import type { Project } from '../types'
+import shell from './SettingsPage.module.css'
 import styles from './AccountPage.module.css'
 
 export default function AccountPage() {
@@ -56,86 +57,93 @@ export default function AccountPage() {
   }
 
   return (
-    <div className={styles.wrap}>
+    <div className={shell.wrap}>
       <ProjectRail projects={projects} onLogout={logout} />
-      <main className={styles.main}>
-        <header className={styles.header}>
-          <h1>账号</h1>
-          <p>查看当前账号并更新登录密码。</p>
-        </header>
-
-        <section className={`panel ${styles.section}`} aria-labelledby="current-account">
-          <h2 id="current-account">当前账号</h2>
-          <dl className={styles.account}>
+      <main className={shell.main}>
+        <div className={shell.inner}>
+          <header className={shell.header}>
             <div>
-              <dt>用户名</dt>
-              <dd>{guest ? '未登录' : session?.username}</dd>
+              <h1>账号</h1>
+              <p className={shell.hint}>查看当前账号并更新登录密码。</p>
             </div>
-            <div>
-              <dt>账号级别</dt>
-              <dd>{guest ? '—' : session?.tier ?? 'normal'}</dd>
-            </div>
-            <div>
-              <dt>账号角色</dt>
-              <dd>{guest ? '—' : session?.role ?? 'user'}</dd>
-            </div>
-          </dl>
-        </section>
+          </header>
 
-        {status === 'authenticated' && session?.role === 'admin' && session.roleVerified === true && (
-          <section className={`panel ${styles.section}`} aria-labelledby="admin-console">
-            <h2 id="admin-console">管理后台</h2>
-            <Link className="btn btn-secondary" to="/admin">打开管理后台</Link>
-          </section>
-        )}
+          <div className={styles.grid}>
+            <section className={`panel ${styles.card}`} aria-labelledby="current-account">
+              <h2 id="current-account">当前账号</h2>
+              <dl className={styles.account}>
+                <div>
+                  <dt>用户名</dt>
+                  <dd>{guest ? '未登录' : session?.username}</dd>
+                </div>
+                <div>
+                  <dt>账号级别</dt>
+                  <dd>{guest ? '—' : session?.tier ?? 'normal'}</dd>
+                </div>
+                <div>
+                  <dt>账号角色</dt>
+                  <dd>{guest ? '—' : session?.role ?? 'user'}</dd>
+                </div>
+              </dl>
+            </section>
 
-        <section className={`panel ${styles.section}`} aria-labelledby="change-password">
-          <h2 id="change-password">修改密码</h2>
-          <p className={styles.hint}>修改成功后，该账号在所有浏览器中的登录都会失效，需要重新登录。</p>
-          <form className={styles.form} onSubmit={submit}>
-            <label className={styles.field}>
-              <span>当前密码</span>
-              <input
-                className="input"
-                type="password"
-                value={currentPassword}
-                onChange={(event) => setCurrentPassword(event.target.value)}
-                autoComplete="current-password"
-              />
-            </label>
-            <label className={styles.field}>
-              <span>新密码</span>
-              <input
-                className="input"
-                type="password"
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-                autoComplete="new-password"
-              />
-            </label>
-            <label className={styles.field}>
-              <span>确认新密码</span>
-              <input
-                className="input"
-                type="password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                autoComplete="new-password"
-              />
-            </label>
-            {error && <div className="banner banner-error" role="alert">{error}</div>}
-            <button type="submit" className="btn btn-primary" disabled={busy}>
-              {busy ? '修改中…' : '修改密码'}
-            </button>
-          </form>
-        </section>
+            <section className={`panel ${styles.card}`} aria-labelledby="change-password">
+              <h2 id="change-password">修改密码</h2>
+              <p className={shell.hint}>修改成功后，该账号在所有浏览器中的登录都会失效，需要重新登录。</p>
+              <form className={styles.form} onSubmit={submit}>
+                <label className={styles.field}>
+                  <span>当前密码</span>
+                  <input
+                    className="input"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(event) => setCurrentPassword(event.target.value)}
+                    autoComplete="current-password"
+                  />
+                </label>
+                <label className={styles.field}>
+                  <span>新密码</span>
+                  <input
+                    className="input"
+                    type="password"
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    autoComplete="new-password"
+                  />
+                </label>
+                <label className={styles.field}>
+                  <span>确认新密码</span>
+                  <input
+                    className="input"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    autoComplete="new-password"
+                  />
+                </label>
+                {error && <div className="banner banner-error" role="alert">{error}</div>}
+                <button type="submit" className="btn btn-primary" disabled={busy}>
+                  {busy ? '修改中…' : '修改密码'}
+                </button>
+              </form>
+            </section>
 
-        <section className={`panel ${styles.section}`} aria-labelledby="password-help">
-          <h2 id="password-help">忘记密码</h2>
-          <p className={styles.hint}>
-            本地部署不提供邮件找回。请联系本机管理员，通过 Myink 管理命令为账号重设密码。
-          </p>
-        </section>
+            {status === 'authenticated' && session?.role === 'admin' && session.roleVerified === true && (
+              <section className={`panel ${styles.card} ${styles.wide}`} aria-labelledby="admin-console">
+                <h2 id="admin-console">管理后台</h2>
+                <p className={shell.hint}>查看全部作品的运行记录、成本与配额，管理账号与邀请码。</p>
+                <div><Link className="btn btn-secondary" to="/admin">打开管理后台</Link></div>
+              </section>
+            )}
+
+            <section className={`panel ${styles.card} ${styles.wide}`} aria-labelledby="password-help">
+              <h2 id="password-help">忘记密码</h2>
+              <p className={shell.hint}>
+                本地部署不提供邮件找回。请联系本机管理员，通过 Myink 管理命令为账号重设密码。
+              </p>
+            </section>
+          </div>
+        </div>
       </main>
     </div>
   )
