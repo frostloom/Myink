@@ -8,7 +8,7 @@
  * 八维 + 视角与禁忌），统计层的数字（句长分布 / 段落结构 / 高频词串）收进折叠的「统计指纹」。
  * 以前不分主次，把档案的原始键名连统计一起摊成一张表单，看着像配置文件而不是文风。
  */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
@@ -17,7 +17,6 @@ import { api } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
 import { styleLibraryApi, type StyleLibraryItem } from '../lib/styleLibraryApi'
 import type { Project } from '../types'
-import shell from './SettingsPage.module.css'
 import styles from './StyleLibraryPage.module.css'
 
 /** 文笔八维：与后端 prompts._STYLE_PROSE_DIMS 同一份口径（键 → 中文名，顺序即展示顺序）。
@@ -89,7 +88,7 @@ function MainField({ label, value, readOnly, onChange }: {
       <textarea className="input" rows={lines ? 3 : 2} aria-label={label}
                 value={lines ? value.join('\n') : value}
                 onChange={(e) => onChange(lines
-                  ? e.target.value.split('\n').filter((line) => line.trim() !== '')
+                  ? e.target.value.split('\n')
                   : e.target.value)} />
     </label>
   )
@@ -115,7 +114,7 @@ function ProfileFields({ profile, readOnly, onChange }: {
       ))}
       {stats.length > 0 && (
         <details className={styles.stats}>
-          <summary>统计指纹（句长 / 段落 / 高频词——样本的确定性测量，不作为文笔）</summary>
+          <summary>统计指纹 · 句长、段落与高频词</summary>
           <div className={styles.statList}>
             {stats.map((key) => (
               <div className={styles.stat} key={key}>
@@ -128,6 +127,20 @@ function ProfileFields({ profile, readOnly, onChange }: {
       )}
     </>
   )
+}
+
+function hasContent(value: unknown): boolean {
+  if (typeof value === 'string') return value.trim().length > 0
+  if (typeof value === 'number') return Number.isFinite(value)
+  if (Array.isArray(value)) return value.some(hasContent)
+  if (value !== null && typeof value === 'object') return Object.values(value).some(hasContent)
+  return false
+}
+
+function profileSummary(profile: Record<string, unknown>): string {
+  return ['narrative_voice', 'pacing', 'pov'].map((key) => profile[key])
+    .filter((value): value is string => typeof value === 'string' && value.trim() !== '')
+    .slice(0, 2).join(' · ')
 }
 
 export default function StyleLibraryPage() {
@@ -143,8 +156,12 @@ export default function StyleLibraryPage() {
   const [sampleText, setSampleText] = useState('')
   const [draft, setDraft] = useState<Record<string, unknown> | null>(null)
   const [newName, setNewName] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<'extract' | 'save' | 'rename' | 'delete' | null>(null)
+  const inFlight = useRef(false)
+  const [loading, setLoading] = useState(true)
+  const [extractedSample, setExtractedSample] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
 
   // rail 的书目：与别的页面同一个来源，拿不到就当空列表（rail 的分区链接照样在）。
   useEffect(() => {
@@ -153,30 +170,47 @@ export default function StyleLibraryPage() {
   }, [guest])
 
   const reload = useCallback(async () => {
+    setLoading(true)
+    setError(null)
     try {
       setItems((await styleLibraryApi.list(token)).items)
     } catch (reason) {
       setError(formatApiError(reason, '读不到文风库，请稍后重试'))
+    } finally {
+      setLoading(false)
     }
   }, [token])
 
   useEffect(() => { void reload() }, [reload])
 
-  const run = async (action: () => Promise<void>, fallback: string) => {
+  const run = async (operation: NonNullable<typeof busy>, action: () => Promise<void>, fallback: string) => {
+    if (inFlight.current) return
+    inFlight.current = true
     setError(null)
-    setBusy(true)
+    setMessage(null)
+    setBusy(operation)
     try {
       await action()
     } catch (reason) {
       setError(formatApiError(reason, fallback))
     } finally {
-      setBusy(false)
+      setBusy(null)
+      inFlight.current = false
     }
   }
 
   const selected = items.find((item) => item.id === selectedId) ?? null
   const builtins = items.filter((item) => item.builtin)
   const mine = items.filter((item) => !item.builtin)
+  const hasDraft = sampleText !== '' || draft !== null || newName !== ''
+  const usableDraft = draft !== null && Object.entries(draft)
+    .some(([key, value]) => key !== 'extract_error' && key !== 'source' && hasContent(value))
+  const sampleChanged = draft !== null && sampleText !== extractedSample
+  const canSave = usableDraft && newName.trim() !== '' && !sampleChanged
+  const busyMessage = busy === 'extract' ? '正在提取文风…'
+    : busy === 'save' ? '正在保存文风…'
+    : busy === 'rename' ? '正在保存修改…'
+    : busy === 'delete' ? '正在删除文风…' : null
 
   // 同一时刻只开一个面板：新建与查看互斥，页面上不会同时出现两个「文风名」。
   const openItem = (item: StyleLibraryItem) => {
@@ -184,153 +218,211 @@ export default function StyleLibraryPage() {
     setSelectedId(item.id)
     setName(item.name)
     setNote(item.note)
+    setError(null)
+    setMessage(null)
   }
 
   const openNew = () => {
     setSelectedId(null)
     setNewOpen(true)
-    setNewName('')
-    setSampleText('')
-    setDraft(null)
+    setError(null)
+    setMessage(null)
   }
 
-  const extract = () => void run(async () => {
+  const extract = () => sampleText.trim() !== '' && void run('extract', async () => {
     setDraft((await styleLibraryApi.extract(token, [sampleText])).draft)
+    setExtractedSample(sampleText)
   }, '提取失败，请重试')
 
-  const saveNew = () => void run(async () => {
+  const saveNew = () => canSave && void run('save', async () => {
     // extract_error 只是页面上的降级提示，不是档案的一部分，不落库。
     const { extract_error: _omit, ...profile } = draft ?? {}
-    const saved = await styleLibraryApi.save(token, { name: newName.trim(), profile })
+    // 编辑中保留空行，避免 Enter 被受控输入吞掉；仅在保存时整理已知清单。
+    for (const key of ['forbidden', 'reference_excerpts']) {
+      const value = profile[key]
+      if (Array.isArray(value) && value.every((entry) => typeof entry === 'string')) {
+        profile[key] = value.map((entry) => entry.trim()).filter((entry) => entry !== '')
+      }
+    }
+    const saved = await styleLibraryApi.save(token, {
+      name: newName.trim(), profile, sample_chars: Array.from(extractedSample).length,
+    })
     // 追加而不是重拉：列表已经按「内置在前」排好，插到末尾不会打乱。
     setItems((prev) => [...prev, saved])
     openItem(saved)
+    setNewName('')
+    setSampleText('')
+    setExtractedSample('')
+    setDraft(null)
+    setMessage('文风已保存，可在创作时选用。')
   }, '保存失败，请重试')
 
-  const rename = () => void run(async () => {
+  const rename = () => name.trim() !== '' && void run('rename', async () => {
     if (selected === null) return
     const next = await styleLibraryApi.patch(token, selected.id, { name: name.trim(), note })
     setItems((prev) => prev.map((item) => (item.id === next.id ? next : item)))
     setName(next.name)
     setNote(next.note)
-  }, '改名失败，请重试')
+    setMessage('名称与备注已保存。')
+  }, '保存修改失败，请重试')
 
-  const remove = (item: StyleLibraryItem) => void run(async () => {
+  const remove = (item: StyleLibraryItem) => void run('delete', async () => {
     if (!window.confirm(`删除文风「${item.name}」？`)) return
     await styleLibraryApi.remove(token, item.id)
     setItems((prev) => prev.filter((row) => row.id !== item.id))
     if (selectedId === item.id) setSelectedId(null)
+    setMessage('文风已删除。')
   }, '删除失败，请重试')
 
   const row = (item: StyleLibraryItem) => (
     <li key={item.id}>
-      <button type="button" aria-pressed={item.id === selectedId}
+      <button type="button" aria-label={item.name} aria-pressed={item.id === selectedId} disabled={busy !== null}
               className={item.id === selectedId ? `${styles.item} ${styles.itemOn}` : styles.item}
               onClick={() => openItem(item)}>
-        {item.name}
+        <span className={styles.itemName}>{item.name}</span>
+        <span className={styles.itemSummary}>{item.note || `文风 · ${profileSummary(item.profile) || '查看文笔与写作约束'}`}</span>
       </button>
     </li>
   )
 
   return (
-    <div className={shell.wrap}>
-      <ProjectRail projects={projects} onLogout={logout} />
-      <main className={shell.main}>
-        <div className={shell.inner}>
-          <header className={shell.header}>
+    <div className={styles.wrap}>
+      <div className={styles.rail}><ProjectRail projects={projects} onLogout={logout} /></div>
+      <main className={styles.main}>
+        <div className={styles.inner}>
+          <header className={styles.header}>
             <div>
+              <div className={styles.eyebrow}>写作资源</div>
               <h1>文风库</h1>
-              <div className={shell.crumb}>
-                <Link to="/long">返回长篇</Link>
-              </div>
+              <p className={styles.hint}>收藏写作风格，用于长篇与短篇创作。</p>
             </div>
+            <Link className={styles.back} to="/long">返回长篇</Link>
           </header>
 
-          {error && <div className="banner banner-error">{error}</div>}
-
           <div className={styles.layout}>
-            <div>
+            <aside className={styles.catalog} aria-label="文风目录">
+              <div className={styles.catalogHead}>
+                <h2>全部文风 <span>{items.length}</span></h2>
+                <button type="button" className="btn btn-secondary" disabled={busy !== null} onClick={openNew}>
+                  {hasDraft ? '继续新建文风' : '新建文风'}
+                </button>
+              </div>
+              {loading && <p className={styles.hint} role="status">正在加载文风库…</p>}
               <ul className={styles.list} aria-label="文风">
-                {builtins.length > 0 && <li className={styles.groupTitle}>内置</li>}
+                {builtins.length > 0 && <li className={styles.groupTitle}>内置文风 <span>{builtins.length}</span></li>}
                 {builtins.map(row)}
-                {mine.length > 0 && <li className={styles.groupTitle}>我的</li>}
+                <li className={styles.groupTitle}>我的文风 <span>{mine.length}</span></li>
                 {mine.map(row)}
               </ul>
-              <button type="button" className="btn btn-secondary" onClick={openNew}>新建文风</button>
-            </div>
+              {!loading && mine.length === 0 && <p className={styles.hint}>尚未保存个人文风</p>}
+            </aside>
 
             {newOpen ? (
-              <div className={styles.newBox}>
-                <label>
-                  <span>粘贴文章</span>
-                  <textarea className="input" rows={6} aria-label="粘贴文章" value={sampleText}
-                            placeholder="贴一段你想照着写的小说正文，越像你想写的那本就越好"
-                            onChange={(e) => setSampleText(e.target.value)} />
-                </label>
-                <div className={styles.actions}>
-                  <button type="button" className="btn btn-secondary" aria-label="提取文风"
-                          disabled={busy || sampleText.trim() === ''} onClick={extract}>
-                    提取文风
-                  </button>
+              <section className={styles.newBox} aria-label="新建文风">
+                <div className={styles.detailHead}>
+                  <div className={styles.eyebrow}>个人文风</div>
+                  <h2>{draft === null ? '从文章中提取文风' : '预览与调整'}</h2>
+                  <ol className={styles.steps} aria-label="新建步骤">
+                    <li aria-current={draft === null ? 'step' : undefined}>01 文章样本</li>
+                    <li aria-current={draft !== null ? 'step' : undefined}>02 文风预览</li>
+                    <li>03 保存选用</li>
+                  </ol>
                 </div>
-
+                <details className={styles.sample} open={draft === null}>
+                  <summary>{draft === null ? '文章样本' : `查看或更换样本 · ${Array.from(sampleText).length} 字`}</summary>
+                  <label>
+                    <span>粘贴文章</span>
+                    <textarea className="input" rows={9} aria-label="粘贴文章" value={sampleText} disabled={busy !== null}
+                              placeholder="粘贴具有代表性的小说正文，保留叙述、对话与场景描写。"
+                              onChange={(e) => setSampleText(e.target.value)} />
+                  </label>
+                  {draft !== null && <div className={styles.actions}>
+                    <button type="button" className="btn btn-secondary" aria-label="提取文风"
+                            disabled={busy !== null || sampleText.trim() === ''} onClick={extract}>
+                      {busy === 'extract' ? '提取中…' : '重新提取文风'}
+                    </button>
+                    <span className={styles.hint}>重新提取会替换当前文风预览。</span>
+                  </div>}
+                </details>
                 {typeof draft?.extract_error === 'string' && (
                   <div className="banner banner-warning" role="alert">{draft.extract_error}</div>
                 )}
-
                 {draft !== null && (
-                  <ProfileFields profile={draft} readOnly={false}
-                                 onChange={(key, next) => setDraft((prev) => ({ ...(prev ?? {}), [key]: next }))} />
+                  <fieldset className={styles.editorFields} disabled={busy !== null}>
+                    <label className={styles.nameField}>
+                      <span>文风名</span>
+                      <input className="input" aria-label="文风名" value={newName} maxLength={64} placeholder="例如：渡口白描"
+                             onChange={(e) => setNewName(e.target.value)} />
+                    </label>
+                    <p className={styles.hint}>调整提取结果后保存。已保存文风仅支持修改名称与备注。</p>
+                    <ProfileFields profile={draft} readOnly={false}
+                                   onChange={(key, next) => setDraft((prev) => ({ ...(prev ?? {}), [key]: next }))} />
+                  </fieldset>
                 )}
-
-                <label>
-                  <span>文风名</span>
-                  <input className="input" aria-label="文风名" value={newName} placeholder="给这套文风起个名字"
-                         onChange={(e) => setNewName(e.target.value)} />
-                </label>
-                <div className={styles.actions}>
-                  <button type="button" className="btn btn-primary" aria-label="保存文风"
-                          disabled={busy} onClick={saveNew}>
-                    保存文风
-                  </button>
-                  <button type="button" className="btn btn-quiet" onClick={() => setNewOpen(false)}>取消</button>
-                </div>
-              </div>
+              </section>
             ) : selected === null ? (
-              <p className={shell.hint}>从左边选一套文风看看，或者新建一套自己的。</p>
+              <section className={styles.empty}>
+                <span className={styles.eyebrow}>文笔 · 节奏 · 表达</span>
+                <h2>选择文风，查看写作特征</h2>
+                <p className={styles.hint}>选择文风查看叙事特点与样本摘录，或导入文章，提取自己的写作风格。</p>
+              </section>
             ) : (
-              <div className={styles.detail}>
-                <h2 className={shell.sectionTitle}>{selected.name}</h2>
-                {selected.builtin ? (
-                  <p className={shell.hint}>内置文风不能改。想要一版自己的，照着新建一套。</p>
-                ) : (
-                  <>
+              <section className={styles.detail} aria-label="文风详情">
+                <div className={styles.detailHead}>
+                  <div className={styles.eyebrow}>{selected.builtin ? '内置文风 · 只读' : '我的文风'}</div>
+                  <h2>{selected.name}</h2>
+                  {profileSummary(selected.profile) && <p className={styles.summary}>文风概要：{profileSummary(selected.profile)}</p>}
+                  {Array.isArray(selected.profile.reference_excerpts) && typeof selected.profile.reference_excerpts[0] === 'string' && (
+                    <blockquote className={styles.excerpt}>{selected.profile.reference_excerpts[0]}</blockquote>
+                  )}
+                </div>
+                {!selected.builtin && (
+                  <fieldset className={styles.metadata} disabled={busy !== null}>
                     <label>
                       <span>文风名</span>
-                      <input className="input" aria-label="文风名" value={name}
+                      <input className="input" aria-label="文风名" value={name} maxLength={64}
                              onChange={(e) => setName(e.target.value)} />
                     </label>
                     <label>
                       <span>备注</span>
-                      <input className="input" aria-label="备注" value={note}
-                             placeholder="这套文风是照着哪本、哪一篇提的"
+                      <input className="input" aria-label="备注" value={note} maxLength={200}
+                             placeholder="记录样本来源或适用题材"
                              onChange={(e) => setNote(e.target.value)} />
                     </label>
-                    <div className={styles.actions}>
-                      <button type="button" className="btn btn-primary" aria-label="重命名"
-                              disabled={busy} onClick={rename}>
-                        重命名
-                      </button>
-                      <button type="button" className="btn btn-quiet" aria-label="删除文风"
-                              disabled={busy} onClick={() => remove(selected)}>
-                        删除文风
-                      </button>
-                    </div>
-                  </>
+                  </fieldset>
                 )}
                 <ProfileFields profile={selected.profile} readOnly onChange={() => undefined} />
-              </div>
+              </section>
             )}
+          </div>
+        </div>
+        <div className={styles.actionBar}>
+          <div className={styles.feedback}>
+            {error ? <p className={styles.error} role="alert">{error}</p>
+              : <p role="status">{busyMessage || message || (newOpen
+                ? draft === null ? '先提取文章中的文笔与表达特征。'
+                  : sampleChanged ? '样本已更改，请重新提取后保存。'
+                    : !usableDraft ? '未提取到有效文风，请调整样本后重试。'
+                      : !newName.trim() ? '填写文风名后即可保存。' : '保存后可在长篇与短篇创作中选用。'
+                : selected?.builtin ? '内置文风可直接用于创作。'
+                  : selected ? '文风内容只读，可修改名称与备注。' : '选择文风，或从文章中提取。')}</p>}
+          </div>
+          <div className={styles.actions}>
+            {newOpen ? <>
+              <button type="button" className="btn btn-quiet" disabled={busy !== null} onClick={() => setNewOpen(false)}>暂存并关闭</button>
+              {draft === null
+                ? <button type="button" className="btn btn-primary" aria-label="提取文风"
+                          disabled={busy !== null || sampleText.trim() === ''} onClick={extract}>{busy === 'extract' ? '提取中…' : '提取文风'}</button>
+                : <button type="button" className="btn btn-primary" aria-label="保存文风"
+                          disabled={busy !== null || !canSave} onClick={saveNew}>{busy === 'save' ? '保存中…' : '保存文风'}</button>}
+            </> : selected && !selected.builtin ? <>
+              {selected.removable && <button type="button" className="btn btn-quiet" aria-label="删除文风"
+                      disabled={busy !== null} onClick={() => remove(selected)}>删除文风</button>}
+              <button type="button" className="btn btn-primary" aria-label="重命名"
+                      disabled={busy !== null || !name.trim() || (name === selected.name && note === selected.note)} onClick={rename}>
+                {busy === 'rename' ? '保存中…' : '保存修改'}
+              </button>
+            </> : error && <button type="button" className="btn btn-secondary" disabled={loading} onClick={() => void reload()}>重新加载</button>}
           </div>
         </div>
       </main>

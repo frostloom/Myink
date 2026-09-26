@@ -1,81 +1,258 @@
-/* 文风库页面自己的版式。外壳（wrap/main/inner/header/crumb/hint）复用
-   SettingsPage.module.css —— 与本目录其他账号级页面（主题、环境配置）同款。 */
+.wrap {
+  display: flex;
+  height: 100%;
+  min-width: 0;
+}
+
+.rail { flex-shrink: 0; }
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.inner {
+  flex: 1;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 42px 40px 48px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.header h1 {
+  margin: 6px 0 8px;
+  font-size: clamp(28px, 3vw, 36px);
+  line-height: 1.25;
+  letter-spacing: -0.04em;
+  color: var(--heading);
+}
+
+.eyebrow {
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+}
+
+.back {
+  flex-shrink: 0;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.hint {
+  max-width: 56ch;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--ink-muted);
+}
+
 .layout {
   display: grid;
-  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
-  gap: 20px;
+  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
+  gap: 36px;
   align-items: start;
+}
+
+.catalog { min-width: 0; }
+
+.catalogHead {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.catalogHead h2 {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.catalogHead h2 span,
+.groupTitle span {
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
 }
 
 .list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   margin: 0 0 12px;
   padding: 0;
   list-style: none;
 }
 
 .groupTitle {
-  margin: 8px 0 2px;
-  font-size: 0.8em;
-  opacity: 0.7;
+  display: flex;
+  justify-content: space-between;
+  margin: 22px 0 6px;
+  font-size: 12px;
+  color: var(--ink-muted);
 }
 
 .item {
-  width: 100%;
-  padding: 6px 8px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: none;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.itemOn {
-  border-color: var(--accent, #66f);
-}
-
-.detail {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 5px;
+  width: 100%;
+  padding: 14px 15px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease;
+}
+
+.item:hover:not(:disabled) { background: var(--surface-2); }
+.item:active:not(:disabled) { transform: translateY(1px); }
+.itemOn, .itemOn:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.item:disabled { cursor: wait; opacity: 0.65; }
+.item:focus-visible,
+.main summary:focus-visible,
+.back:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+.itemName { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.itemSummary {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.detail,
+.newBox {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
   min-width: 0;
+  padding: 28px 30px 32px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-1);
+}
+
+.detailHead h2,
+.empty h2 {
+  margin: 8px 0 0;
+  color: var(--heading);
+  font-size: 25px;
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.summary {
+  margin: 16px 0 0;
+  color: var(--ink-muted);
+  font-size: 14px;
+  line-height: 1.85;
+  overflow-wrap: anywhere;
+}
+
+.excerpt {
+  margin: 22px 0 0;
+  padding: 4px 0 4px 18px;
+  border-left: 2px solid var(--accent);
+  font-family: var(--font-editor);
+  font-size: 17px;
+  line-height: 1.9;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .detail label,
 .newBox label {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  font-size: 0.85em;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--ink-muted);
 }
 
+.detail textarea,
+.newBox textarea { resize: vertical; line-height: 1.8; }
+
+.editorFields,
+.metadata {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.metadata {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.nameField { max-width: 28rem; }
+
 .blockTitle {
-  margin: 6px 0 0;
-  color: var(--ink-subtle);
-  font-size: 0.85em;
+  margin: 4px 0 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 
-/* 只读档案：一条一条读下去，不摆成表单。 */
 .field {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: grid;
+  grid-template-columns: minmax(100px, 0.3fr) minmax(0, 1fr);
+  gap: 18px;
 }
 
 .fieldLabel {
-  color: var(--ink-subtle);
-  font-size: 0.8em;
+  padding-top: 2px;
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 1.8;
 }
 
 .fieldText {
   margin: 0;
   color: var(--ink);
-  line-height: 1.7;
+  font-size: 14px;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 
@@ -83,59 +260,122 @@
   margin: 0;
   padding-left: 1.2em;
   color: var(--ink);
-  line-height: 1.7;
+  font-size: 14px;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
 }
 
-/* 统计指纹：折叠在最后，标题一行说明它是测量值、不是文笔。 */
 .stats {
-  margin-top: 6px;
-  font-size: 0.85em;
+  margin-top: 8px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
 }
 
-.stats summary {
-  color: var(--ink-subtle);
+.stats summary,
+.sample summary {
+  color: var(--ink-muted);
+  line-height: 1.7;
   cursor: pointer;
 }
 
 .statList {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-top: 6px;
+  gap: 12px;
+  margin-top: 18px;
 }
 
 .stat {
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr);
-  gap: var(--space-3);
+  gap: 16px;
   align-items: baseline;
 }
 
 .stat span {
-  color: var(--ink-subtle);
+  color: var(--ink-muted);
 }
 
 .stat code {
-  font-size: 0.9em;
+  font-size: 12px;
   overflow-wrap: anywhere;
 }
 
-.actions {
+.steps {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
 }
+.steps [aria-current='step'] { color: var(--ink); font-weight: 600; }
+.sample { font-size: 13px; }
+.sample[open] > summary { margin-bottom: 14px; }
+.sample .actions { margin-top: 14px; }
 
-.newBox {
+.empty {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px;
-  border: 1px solid var(--line, #ddd);
-  border-radius: 10px;
+  justify-content: center;
+  gap: 18px;
+  min-height: 340px;
+  padding: 40px;
+  border-block: 1px solid var(--line);
 }
 
-@media (max-width: 900px) {
-  .layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.actionBar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-shrink: 0;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 40px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-1);
+}
+.feedback { min-width: 0; }
+.feedback p {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.feedback .error { color: var(--error); }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.actionBar .actions { flex-shrink: 0; }
+
+@media (max-width: 1100px) {
+  .inner { padding: 32px 24px 36px; }
+  .layout { grid-template-columns: minmax(175px, 220px) minmax(0, 1fr); gap: 24px; }
+  .detail, .newBox { padding: 24px; }
+  .metadata { grid-template-columns: minmax(0, 1fr); }
+  .field { grid-template-columns: minmax(0, 1fr); gap: 5px; }
+  .actionBar { padding-inline: 24px; }
+}
+
+@media (max-width: 760px) {
+  .rail { display: none; }
+  .inner { padding: 26px 20px 32px; }
+  .header { margin-bottom: 24px; }
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .catalogHead { flex-direction: row; align-items: center; }
+  .catalogHead h2 { gap: 12px; }
+  .detail, .newBox { padding: 22px 20px; }
+  .empty { min-height: 220px; padding: 24px 4px; }
+  .actionBar { flex-wrap: wrap; padding: 12px 20px max(12px, env(safe-area-inset-bottom)); }
+  .actionBar .actions { margin-left: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item { transition: none; }
+  .item:active:not(:disabled) { transform: none; }
 }

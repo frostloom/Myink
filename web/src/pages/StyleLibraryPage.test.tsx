@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import StyleLibraryPage from './StyleLibraryPage'
@@ -157,4 +157,124 @@ it('keeps the prose dimensions editable while drafting', async () => {
   expect(box.value).toBe('冷调')
   fireEvent.change(box, { target: { value: '冷调，尽量少用形容词' } })
   expect((screen.getByLabelText('叙事声音与语气') as HTMLTextAreaElement).value).toBe('冷调，尽量少用形容词')
+})
+
+it('does not offer saving before a sample has produced a profile', async () => {
+  vi.mocked(styleLibraryApi.list).mockResolvedValue({ items: [] })
+  renderPage()
+  fireEvent.click(await screen.findByRole('button', { name: '新建文风' }))
+  expect(screen.queryByRole('button', { name: '保存文风' })).toBeNull()
+  expect(styleLibraryApi.save).not.toHaveBeenCalled()
+})
+
+it('rejects an extracted profile containing only an error or blank prose', async () => {
+  vi.mocked(styleLibraryApi.list).mockResolvedValue({ items: [] })
+  vi.mocked(styleLibraryApi.extract).mockResolvedValue({
+    draft: { extract_error: '未能提取文风', narrative_voice: '   ', forbidden: [] },
+  })
+  renderPage()
+  fireEvent.click(await screen.findByRole('button', { name: '新建文风' }))
+  fireEvent.change(screen.getByLabelText('粘贴文章'), { target: { value: '渡口的老人守着最后一班船。' } })
+  fireEvent.click(screen.getByRole('button', { name: '提取文风' }))
+  await screen.findByLabelText('叙事声音与语气')
+  fireEvent.change(screen.getByLabelText('文风名'), { target: { value: '渡口' } })
+  expect((screen.getByRole('button', { name: '保存文风' }) as HTMLButtonElement).disabled).toBe(true)
+  fireEvent.click(screen.getByRole('button', { name: '保存文风' }))
+  expect(styleLibraryApi.save).not.toHaveBeenCalled()
+})
+
+it('preserves the sample, name and edited draft when browsing saved profiles', async () => {
+  vi.mocked(styleLibraryApi.list).mockResolvedValue({ items: [BUILTIN] })
+  vi.mocked(styleLibraryApi.extract).mockResolvedValue({ draft: { narrative_voice: '冷调' } })
+  renderPage()
+  await screen.findByRole('button', { name: '九州问天' })
+  fireEvent.click(screen.getByRole('button', { name: '新建文风' }))
+  fireEvent.change(screen.getByLabelText('粘贴文章'), { target: { value: '渡口的老人守着最后一班船。' } })
+  fireEvent.click(screen.getByRole('button', { name: '提取文风' }))
+  fireEvent.change(await screen.findByLabelText('叙事声音与语气'), { target: { value: '冷调，少用形容词' } })
+  fireEvent.change(screen.getByLabelText('文风名'), { target: { value: '渡口白描' } })
+  fireEvent.click(screen.getByRole('button', { name: '九州问天' }))
+  fireEvent.click(screen.getByRole('button', { name: '继续新建文风' }))
+  expect((screen.getByLabelText('粘贴文章') as HTMLTextAreaElement).value).toBe('渡口的老人守着最后一班船。')
+  expect((screen.getByLabelText('文风名') as HTMLInputElement).value).toBe('渡口白描')
+  expect((screen.getByLabelText('叙事声音与语气') as HTMLTextAreaElement).value).toBe('冷调，少用形容词')
+})
+
+it('locks extraction inputs and panel changes until the result is ready', async () => {
+  vi.mocked(styleLibraryApi.list).mockResolvedValue({ items: [BUILTIN] })
+  let finish!: (value: { draft: Record<string, unknown> }) => void
+  vi.mocked(styleLibraryApi.extract).mockImplementation(() => new Promise((resolve) => { finish = resolve }))
+  renderPage()
+  await screen.findByRole('button', { name: '九州问天' })
+  fireEvent.click(screen.getByRole('button', { name: '新建文风' }))
+  fireEvent.change(screen.getByLabelText('粘贴文章'), { target: { value: '渡口的老人守着最后一班船。' } })
+  fireEvent.click(screen.getByRole('button', { name: '提取文风' }))
+  expect((screen.getByLabelText('粘贴文章') as HTMLTextAreaElement).disabled).toBe(true)
+  expect((screen.getByRole('button', { name: '九州问天' }) as HTMLButtonElement).disabled).toBe(true)
+  expect(screen.getByRole('status').textContent).toContain('提取')
+  await act(async () => finish({ draft: { narrative_voice: '冷调' } }))
+  expect((screen.getByLabelText('叙事声音与语气') as HTMLTextAreaElement).value).toBe('冷调')
+  expect((screen.getByRole('button', { name: '九州问天' }) as HTMLButtonElement).disabled).toBe(false)
+})
+
+it('retains the edited profile on save failure and retries the same sample metadata', async () => {
+  vi.mocked(styleLibraryApi.list).mockResolvedValue({ items: [] })
+  vi.mocked(styleLibraryApi.extract).mockResolvedValue({ draft: { narrative_voice: '冷调' } })
+  vi.mocked(styleLibraryApi.save).mockRejectedValueOnce({ code: 'network_error', status: 0 })
+    .mockResolvedValueOnce({ ...BUILTIN, id: 'saved', name: '渡口', builtin: false, removable: true,
+      profile: { narrative_voice: '少用形容词' }, sample_chars: 6 })
+  renderPage()
+  fireEvent.click(await screen.findByRole('button', { name: '新建文风' }))
+  fireEvent.change(screen.getByLabelText('粘贴文章'), { target: { value: '渡口最后一船' } })
+  fireEvent.click(screen.getByRole('button', { name: '提取文风' }))
+  fireEvent.change(await screen.findByLabelText('叙事声音与语气'), { target: { value: '少用形容词' } })
+  expect((screen.getByRole('button', { name: '保存文风' }) as HTMLButtonElement).disabled).toBe(true)
+  fireEvent.change(screen.getByLabelText('文风名'), { target: { value: '渡口' } })
+  fireEvent.click(screen.getByRole('button', { name: '保存文风' }))
+  expect((await screen.findByRole('alert')).textContent).toContain('连接失败')
+  expect((screen.getByLabelText('叙事声音与语气') as HTMLTextAreaElement).value).toBe('少用形容词')
+  fireEvent.click(screen.getByRole('button', { name: '保存文风' }))
+  await screen.findByRole('button', { name: '渡口' })
+  expect(styleLibraryApi.save).toHaveBeenLastCalledWith('tok', {
+    name: '渡口', profile: { narrative_voice: '少用形容词' }, sample_chars: 6,
+  })
+})
+
+it('preserves newlines while entering list fields and normalizes only known lists when saving', async () => {
+  vi.mocked(styleLibraryApi.list).mockResolvedValue({ items: [] })
+  vi.mocked(styleLibraryApi.extract).mockResolvedValue({ draft: {
+    forbidden: ['网络流行语'], reference_excerpts: ['渡口。'],
+    custom_list: ['', '  保留未知字段原值  '],
+  } })
+  vi.mocked(styleLibraryApi.save).mockResolvedValue({
+    ...BUILTIN, id: 'saved-lists', name: '渡口', builtin: false, removable: true,
+    profile: { forbidden: ['网络流行语', '夸张比喻'], reference_excerpts: ['渡口。', '风停了。'],
+      custom_list: ['', '  保留未知字段原值  '] },
+  })
+  renderPage()
+  fireEvent.click(await screen.findByRole('button', { name: '新建文风' }))
+  fireEvent.change(screen.getByLabelText('粘贴文章'), { target: { value: '渡口。风停了。' } })
+  fireEvent.click(screen.getByRole('button', { name: '提取文风' }))
+  const forbidden = await screen.findByLabelText('禁用表达（每行一条）') as HTMLTextAreaElement
+  fireEvent.change(forbidden, { target: { value: '网络流行语\n' } })
+  expect(forbidden.value).toBe('网络流行语\n')
+  fireEvent.change(forbidden, { target: { value: forbidden.value + '夸张比喻' } })
+  expect(forbidden.value).toBe('网络流行语\n夸张比喻')
+
+  const excerpts = screen.getByLabelText('样本摘录（每行一条）') as HTMLTextAreaElement
+  fireEvent.change(excerpts, { target: { value: '渡口。\n' } })
+  expect(excerpts.value).toBe('渡口。\n')
+  fireEvent.change(excerpts, { target: { value: excerpts.value + '风停了。' } })
+  expect(excerpts.value).toBe('渡口。\n风停了。')
+
+  fireEvent.change(forbidden, { target: { value: '  网络流行语\n\n夸张比喻  \n' } })
+  fireEvent.change(excerpts, { target: { value: ' 渡口。 \n  \n风停了。\n' } })
+  fireEvent.change(screen.getByLabelText('文风名'), { target: { value: '渡口' } })
+  fireEvent.click(screen.getByRole('button', { name: '保存文风' }))
+  await screen.findByRole('button', { name: '渡口' })
+  expect(styleLibraryApi.save).toHaveBeenCalledWith('tok', {
+    name: '渡口', sample_chars: 7,
+    profile: { forbidden: ['网络流行语', '夸张比喻'], reference_excerpts: ['渡口。', '风停了。'],
+      custom_list: ['', '  保留未知字段原值  '] },
+  })
 })
