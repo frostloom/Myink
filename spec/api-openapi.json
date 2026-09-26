@@ -7082,7 +7082,6 @@
             "name": "user_id",
             "required": true,
             "schema": {
-              "format": "uuid",
               "title": "User Id",
               "type": "string"
             }
