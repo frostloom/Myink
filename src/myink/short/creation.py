@@ -105,7 +105,8 @@ def card_premise(card: dict) -> str:
     """拼成 `premise` 一段——方案生成器只吃一个字符串（`generate_short_plan` 的入参）。"""
     card = card or {}
     parts = [str(card.get("direction") or "").strip()]
-    for label, key in (("核心冲突", "conflict_core"), ("大致情节", "plot_sketch")):
+    for label, key in (("主角压力", "protagonist_pressure"), ("核心冲突", "conflict_core"),
+                       ("情绪回报", "emotional_payoff"), ("大致情节", "plot_sketch")):
         value = str(card.get(key) or "").strip()
         if value:
             parts.append(f"{label}：{value}")

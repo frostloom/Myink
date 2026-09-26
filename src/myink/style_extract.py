@@ -123,7 +123,13 @@ def extract_style_profile(samples: list[str], stats: dict, *,
     else:  # 无归属的纯提取（既有用法）——db 必为 None（上面的守卫保证）
         chain = make_chain("extract", db=db, project_id=project_id)
     messages = prompts.style_extract_messages(samples, stats)
-    resp = chain.generate(messages, json_mode=True, max_tokens=nodes._MAX_TOKENS["extract"])
+    if project_id is None and user_id is not None:
+        from myink.model_admission import generate_account_model
+
+        resp = generate_account_model(chain, user_id=user_id, messages=messages,
+                                      json_mode=True, max_tokens=nodes._MAX_TOKENS["extract"])
+    else:
+        resp = chain.generate(messages, json_mode=True, max_tokens=nodes._MAX_TOKENS["extract"])
     if db is not None:
         nodes.record_run(db, project_id=project_id, user_id=user_id, task_id=None,
                          node="style_extract", role="StyleExtract", resp=resp,

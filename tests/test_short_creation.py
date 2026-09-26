@@ -99,6 +99,32 @@ def test_card_premise_feeds_the_plan_generator_one_string():
     assert premise == "一句话方向\n\n核心冲突：核心冲突\n\n大致情节：大致情节"
 
 
+def test_card_premise_preserves_pressure_and_payoff():
+    premise = creation.card_premise({
+        "direction": "渡口", "protagonist_pressure": "必须在日落前还债",
+        "emotional_payoff": "父女终于和解",
+    })
+    assert "主角压力：必须在日落前还债" in premise
+    assert "情绪回报：父女终于和解" in premise
+
+
+def test_creation_capacity_keeps_business_connections_available(temp_user):
+    from contextlib import ExitStack
+    from sqlalchemy import text
+    import myink.db as db_module
+
+    with ExitStack() as stack:
+        for _ in range(4):
+            lock_db = stack.enter_context(db_module.new_creation_lock_session())
+            lock_db.execute(text("SELECT 1"))
+        with new_session() as db:
+            assert db.scalar(text("SELECT 1")) == 1
+        response = client.get("/api/v1/short/creation", headers=identity_headers(temp_user))
+        assert response.status_code == 503
+        assert response.json()["detail"] == "CREATION_CAPACITY_EXCEEDED"
+    assert client.get("/api/v1/short/creation", headers=identity_headers(temp_user)).status_code == 200
+
+
 def test_session_is_one_per_user_and_messages_are_ordered(temp_user):
     with new_session() as db:
         session = ShortCreationSession(user_id=uuid.UUID(temp_user), status="active",
@@ -521,6 +547,55 @@ def test_commit_survives_a_session_deleted_midway(temp_user, chain_stub, monkeyp
     with new_session() as db:                     # 书照常落库，只是收尾没写回
         assert db.scalar(select(ShortCreationSession)
                          .where(ShortCreationSession.user_id == uuid.UUID(temp_user))) is None
+
+
+def test_commit_rejects_overlapping_mutations_before_another_model_call(temp_user, monkeypatch):
+    from myink.api import routes_short_creation as mod
+    _seed_session(temp_user)
+    headers = identity_headers(temp_user)
+    overlapping = []
+    planning = []
+
+    def plan(*args, **kwargs):
+        planning.append(1)
+        if len(planning) == 1:
+            overlapping.append(client.post("/api/v1/short/creation/commit", json={}, headers=headers))
+            overlapping.append(client.delete("/api/v1/short/creation", headers=headers))
+            overlapping.append(client.post("/api/v1/short/creation/messages",
+                                            json={"content": "改成喜剧"}, headers=headers))
+        return {"outline_draft": _short_outline()}, {}
+
+    monkeypatch.setattr(mod._book, "_short_outline_draft", plan)
+    result = client.post("/api/v1/short/creation/commit", json={}, headers=headers)
+    assert [r.status_code for r in overlapping] == [409, 409, 409]
+    assert [r.json()["detail"] for r in overlapping] == ["SESSION_BUSY"] * 3
+    assert result.status_code == 200
+    assert len(planning) == 1
+
+
+def test_old_commit_cannot_mark_a_replacement_session_committed(temp_user, monkeypatch):
+    from myink.api import routes_short_creation as mod
+    _seed_session(temp_user)
+    replacement = []
+
+    def plan(*args, **kwargs):
+        with new_session() as db:
+            db.execute(sa_delete(ShortCreationSession).where(
+                ShortCreationSession.user_id == uuid.UUID(temp_user)))
+            fresh = ShortCreationSession(user_id=uuid.UUID(temp_user), status="active",
+                                         card=creation.default_card())
+            db.add(fresh)
+            db.commit()
+            replacement.append(fresh.id)
+        return {"outline_draft": _short_outline()}, {}
+
+    monkeypatch.setattr(mod._book, "_short_outline_draft", plan)
+    result = client.post("/api/v1/short/creation/commit", json={}, headers=identity_headers(temp_user))
+    assert result.status_code == 200
+    with new_session() as db:
+        fresh = db.get(ShortCreationSession, replacement[0])
+        assert fresh.status == "active"
+        assert fresh.book_id is None
 
 
 def test_commit_respects_the_daily_book_cap(temp_user, chain_stub, monkeypatch):

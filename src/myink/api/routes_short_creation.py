@@ -7,9 +7,11 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterator
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import delete as sa_delete, func, select
+from sqlalchemy import delete as sa_delete, func, select, text
+from sqlalchemy.exc import TimeoutError as PoolTimeout
 
 from myink.api import routes_book as _book
 from myink.api.auth import require_user
@@ -19,7 +21,7 @@ from myink.api.schemas import (OkOut, ShortCreationCommitBody, ShortCreationComm
                                ShortCreationOut, ShortCreationSessionOut)
 from myink.book_setup import generate_short_creation_turn
 from myink.creation import validate_short_outline
-from myink.db import new_session, tenant_session
+from myink.db import new_creation_lock_session, new_session, tenant_session
 from myink.memory.repository import get_settings
 from myink.models import (AgentRun, Chapter, Project, ProjectSettings, ShortCreationMessage,
                           ShortCreationSession, Task, User)
@@ -34,6 +36,24 @@ OPENING = ("想写个什么样的短篇？先说一句大方向就行——比�
            "我来陪你把它聊成能开写的方案。")
 
 _HISTORY_LIMIT = 20
+
+
+def _creation_user(user_id: str = Depends(require_user)) -> Iterator[str]:
+    """同一账号的建书操作互斥，锁覆盖模型调用及所有提交阶段。
+
+    独立事务持有 advisory lock：业务事务的 commit 不提前放锁；请求失败或进程断开
+    时数据库自动释放，不留下永久的 preparing 状态。不同账号使用不同锁。
+    """
+    with new_creation_lock_session() as lock_db:
+        try:
+            acquired = lock_db.scalar(text(
+                "SELECT pg_try_advisory_xact_lock(hashtextextended(:key, 0))"
+            ), {"key": f"short-creation:{user_id}"})
+        except PoolTimeout:
+            raise HTTPException(status_code=503, detail="CREATION_CAPACITY_EXCEEDED") from None
+        if not acquired:
+            raise HTTPException(status_code=409, detail="SESSION_BUSY")
+        yield user_id
 
 
 def _session(db, uid: uuid.UUID) -> ShortCreationSession | None:
@@ -80,7 +100,7 @@ def _payload(db, session: ShortCreationSession) -> dict:
 
 
 @router.get("", response_model=ShortCreationOut)
-def get_session(user_id: str = Depends(require_user)) -> dict:
+def get_session(user_id: str = Depends(_creation_user)) -> dict:
     uid = uuid.UUID(user_id)
     with new_session() as db:
         session = _open_session(db, uid)
@@ -89,7 +109,7 @@ def get_session(user_id: str = Depends(require_user)) -> dict:
 
 
 @router.post("/messages", response_model=ShortCreationOut)
-def post_message(body: ShortCreationMessageBody, user_id: str = Depends(require_user)) -> dict:
+def post_message(body: ShortCreationMessageBody, user_id: str = Depends(_creation_user)) -> dict:
     content = body.content.strip()
     if not content:
         raise HTTPException(status_code=400, detail="说点什么吧")
@@ -138,7 +158,7 @@ def _orphan_draft_book(db, uid: uuid.UUID, book_id) -> Project | None:
 
 
 @router.delete("", response_model=OkOut)
-def reset_session(user_id: str = Depends(require_user)) -> dict:
+def reset_session(user_id: str = Depends(_creation_user)) -> dict:
     uid = uuid.UUID(user_id)
     with new_session() as db:
         session = _session(db, uid)
@@ -158,7 +178,7 @@ def reset_session(user_id: str = Depends(require_user)) -> dict:
 
 
 @router.post("/commit", response_model=ShortCreationCommitOut)
-def commit(body: ShortCreationCommitBody, user_id: str = Depends(require_user)) -> dict:
+def commit(body: ShortCreationCommitBody, user_id: str = Depends(_creation_user)) -> dict:
     """确认开写：落书 + 出方案 + 落方案置 ready + 落文风。**不入队。**
 
     入队交给既有 POST /projects/{id}/short/generate——配额与成本估算只有那一条实现，
@@ -173,6 +193,7 @@ def commit(body: ShortCreationCommitBody, user_id: str = Depends(require_user)) 
             raise HTTPException(status_code=409, detail="SESSION_EMPTY")
         if session.status != "active":
             raise HTTPException(status_code=409, detail="SESSION_COMMITTED")
+        session_id = session.id
         card = creation.merge_user_card(session.card or {}, body.card or {})
         if not creation.card_ready(card):
             raise HTTPException(status_code=400, detail="CARD_INCOMPLETE")
@@ -237,9 +258,8 @@ def commit(body: ShortCreationCommitBody, user_id: str = Depends(require_user)) 
         _book._persist_short_outline(tdb, pid, outline)
         row = tdb.scalar(select(Project).where(Project.id == pid))
         row.creation_context = {**(row.creation_context or {}),
-                               "creation_conversation": {"direction": card["direction"],
-                                                         "conflict_core": card["conflict_core"],
-                                                         "plot_sketch": card["plot_sketch"]}}
+                               "creation_conversation": {
+                                   field: card[field] for field in creation.REQUIRED_CARD_FIELDS}}
         if style_item_id:
             profile, skill_pack, style_name = resolve_style_selection(tdb, uid, style_item_id)
             settings_row = get_settings(tdb, pid)
@@ -251,12 +271,11 @@ def commit(body: ShortCreationCommitBody, user_id: str = Depends(require_user)) 
             settings_row.version = (settings_row.version or 1) + 1
         tdb.commit()
 
-    # 4) 会话收尾。会话可能在步骤 1 之后被 DELETE /short/creation 删掉
-    # （用户在出方案那几秒里点了「重新开始」）——书与方案都已经落了，这一段的语义是
-    # 「成功」，不能因为收尾写不回去就把已经建好的书报成 500。
+    # 4) 只收尾最初那条会话；维护操作删除/替换会话也不能把新对话标成已完成。
     with new_session() as db:
         session = db.scalar(select(ShortCreationSession)
-                            .where(ShortCreationSession.user_id == uid))
+                            .where(ShortCreationSession.user_id == uid,
+                                   ShortCreationSession.id == session_id))
         if session is not None:
             session.status = "committed"
             session.book_id = pid

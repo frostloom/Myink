@@ -77,6 +77,10 @@ class Settings:
     book_quota_daily: int = field(default_factory=lambda: int(_env("BOOK_QUOTA_DAILY_CHAPTERS", "50") or "50"))
     daily_budget: float = field(default_factory=lambda: float(_env("DAILY_BUDGET_YUAN", "2.0") or "2.0"))
     cost_per_chapter: float = field(default_factory=lambda: float(_env("COST_PER_CHAPTER_YUAN", "0.05") or "0.05"))
+    # 无 task 的账号对话/文风提取：共享日成本，独立调用数和单用户并发租约。
+    account_model_calls_daily: int = field(default_factory=lambda: int(_env("ACCOUNT_MODEL_CALLS_DAILY", "60") or "60"))
+    account_model_lease_seconds: int = field(default_factory=lambda: int(_env("ACCOUNT_MODEL_LEASE_SECONDS", "900") or "900"))
+    account_model_unknown_cost: float = field(default_factory=lambda: float(_env("ACCOUNT_MODEL_UNKNOWN_COST_YUAN", "0.05") or "0.05"))
     # 入队消息的 RabbitMQ 优先级（tier=vip 插队；主队列 x-max-priority=10）
     priority_vip: int = field(default_factory=lambda: int(_env("PRIORITY_VIP", "9") or "9"))
     priority_normal: int = field(default_factory=lambda: int(_env("PRIORITY_NORMAL", "0") or "0"))
@@ -133,6 +137,12 @@ class Settings:
         return self.app_env == "prod"
 
     def validate(self) -> None:
+        import math
+
+        if self.account_model_calls_daily <= 0 or self.account_model_lease_seconds < 600:
+            raise ValueError("ACCOUNT_MODEL_CALLS_DAILY 必须为正，ACCOUNT_MODEL_LEASE_SECONDS 至少 600")
+        if not math.isfinite(self.account_model_unknown_cost) or self.account_model_unknown_cost <= 0:
+            raise ValueError("ACCOUNT_MODEL_UNKNOWN_COST_YUAN 必须为有限正数")
         if self.request_token_budget <= 1000:
             raise ValueError("REQUEST_TOKEN_BUDGET 必须大于 1000")
         if self.recall_token_budget <= 1000:

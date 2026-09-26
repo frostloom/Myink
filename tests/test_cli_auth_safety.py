@@ -18,7 +18,7 @@ def test_init_does_not_run_legacy_schema_cleanup(monkeypatch):
         "enable_row_level_security", "ensure_chapter_versions", "ensure_genre_pack",
         "ensure_global_audit_reports", "ensure_memory_candidate_kinds",
         "ensure_project_creation", "ensure_project_form", "ensure_storage_indexes", "ensure_unique_constraints", "ensure_user_auth_schema",
-        "ensure_user_environment", "ensure_user_role", "ensure_user_tier",
+        "ensure_user_environment", "ensure_user_role", "ensure_user_tier", "ensure_style_library_schema",
     ):
         monkeypatch.setattr(db, name, MagicMock())
     cleanup = MagicMock()
@@ -65,7 +65,7 @@ def test_init_default_runs_additive_setup_without_creating_demo_or_samples(monke
         "ensure_global_audit_reports", "ensure_memory_candidate_kinds",
         "ensure_project_creation", "ensure_project_form", "ensure_storage_indexes", "ensure_unique_constraints",
         "ensure_user_auth_schema", "ensure_user_environment", "ensure_user_role",
-        "ensure_user_tier",
+        "ensure_user_tier", "ensure_style_library_schema",
     ):
         migrations[name] = MagicMock()
         monkeypatch.setattr(db, name, migrations[name])
@@ -82,6 +82,7 @@ def test_init_default_runs_additive_setup_without_creating_demo_or_samples(monke
     samples.assert_not_called()
     migrations["ensure_user_role"].assert_called_once_with()
     migrations["ensure_project_form"].assert_called_once_with()
+    migrations["ensure_style_library_schema"].assert_called_once_with()
 
 
 def test_init_seed_flag_creates_demo_account_and_samples(monkeypatch):
@@ -98,7 +99,7 @@ def test_init_seed_flag_creates_demo_account_and_samples(monkeypatch):
         "ensure_global_audit_reports", "ensure_memory_candidate_kinds",
         "ensure_project_creation", "ensure_project_form", "ensure_storage_indexes", "ensure_unique_constraints",
         "ensure_user_auth_schema", "ensure_user_environment", "ensure_user_role",
-        "ensure_user_tier",
+        "ensure_user_tier", "ensure_style_library_schema",
     ):
         monkeypatch.setattr(db, name, MagicMock())
     monkeypatch.setattr(invitations, "ensure_invitation_schema", MagicMock())
