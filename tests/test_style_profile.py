@@ -49,6 +49,14 @@ _SAMPLE_1 = (
 
 _STYLE_PAYLOAD = {
     "pov": "第三人称限知，以主角林砚视角为主",
+    "narrative_voice": "克制的冷调，用短句与名词收束，避免形容词堆叠。例句：「他握紧剑柄，指尖发白，却没有退后半步。」",
+    "dialogue_style": "对话短促，口语化，角色腔调有区分。例句：「你来了。」他声音很轻。",
+    "scene_description": "偏重视觉与听觉，环境服务于压迫感。例句：「夜色如墨，城墙上的风裹着血腥气。」",
+    "transitions": "场景靠声音切入（马蹄声由远及近），不做时间跳接。",
+    "pacing": "短句为主，动作段落节奏紧，高潮处反而放长句。",
+    "diction": "冷色调意象，血腥与金属意象反复出现，少用成语。",
+    "emotional_expression": "情绪靠动作外化，几乎不写内心独白。",
+    "distinctive_habits": "常用「没有退后半步」这类否定式收束动作。",
     "sentence_style": "长短句交错，动作描写紧凑，段落偏短",
     "lexicon_tendency": "冷色调意象，血腥与金属意象反复出现",
     "dialogue": "对话短促，口语化，角色腔调有区分",
@@ -131,9 +139,37 @@ def test_extract_and_merge_keeps_semantic_and_stats(style_stub):
     assert draft["pov"] == _STYLE_PAYLOAD["pov"]
     assert draft["forbidden"] == _STYLE_PAYLOAD["forbidden"]
     assert draft["reference_excerpts"] == _STYLE_PAYLOAD["reference_excerpts"]
+    assert draft["narrative_voice"] == _STYLE_PAYLOAD["narrative_voice"], "文笔八维进草稿"
+    assert draft["distinctive_habits"] == _STYLE_PAYLOAD["distinctive_habits"]
     assert draft["sentence_len_dist"] == stats["sentence_len_dist"], "统计字段保留"
     assert draft["frequent_words"] == stats["frequent_words"]
     assert "extract_error" not in draft
+
+
+def test_merge_keeps_prose_dimensions_and_drops_non_string_ones():
+    """文笔八维进草稿；同一键给了非字符串（模型偶尔会）就不收，不覆盖统计层产出。"""
+    stats = analyze_sample_stats([_SAMPLE_1])
+    draft = merge_style_draft(stats, {
+        "narrative_voice": "冷调",
+        "pacing": "短句为主",
+        "diction": ["不是字符串"],          # 形状不符 → 丢
+        "frequent_words": ["模型瞎给的"],   # 统计层产出 → 不被 LLM 覆盖
+    })
+    assert draft["narrative_voice"] == "冷调"
+    assert draft["pacing"] == "短句为主"
+    assert "diction" not in draft
+    assert draft["frequent_words"] == stats["frequent_words"]
+
+
+def test_extract_prompt_asks_for_prose_dimensions():
+    """抽取的口径是「写作文笔」：八维必须落到提示词里，且明确不提炼题材与情节（§7.12）。"""
+    from myink.workflow.prompts import SYSTEM_STYLE_EXTRACT
+
+    for key in ("narrative_voice", "dialogue_style", "scene_description", "transitions",
+                "pacing", "diction", "emotional_expression", "distinctive_habits"):
+        assert key in SYSTEM_STYLE_EXTRACT, f"提示词缺文笔维度 {key}"
+    assert "原文例句" in SYSTEM_STYLE_EXTRACT, "八维必须要求原文例句佐证"
+    assert "不要**提炼题材" in SYSTEM_STYLE_EXTRACT, "必须挡住题材/情节混进文风档案"
 
 
 def test_extract_fallback_on_provider_error(style_stub):
@@ -281,6 +317,23 @@ def test_style_section_renders_new_keys():
     assert "高频词节制（避免机械复用）：夜色、冷笑" in section
     assert "凝望" not in section
     assert "节奏参考" in section and "对话占比约 40%" in section
+
+
+def test_style_section_renders_prose_dimensions():
+    """文笔八维按中文维度名注入写作提示词（§7.12：样本提来的文笔要真的用得上）。"""
+    profile = {
+        "narrative_voice": "克制的冷调，靠短句收束",
+        "dialogue_style": "对话短促，角色腔调有区分",
+        "distinctive_habits": "常用否定式收束动作",
+    }
+    section = _style_section(profile, None)
+    assert "文笔要求（照样本提炼，逐条贴合；引文只作示范，不得照抄）：" in section
+    assert "- 叙事声音与语气：克制的冷调，靠短句收束" in section
+    assert "- 对话风格：对话短促，角色腔调有区分" in section
+    assert "- 独特习惯：常用否定式收束动作" in section
+    # 没给的维度不占行（八维全缺时整段不出现）。
+    assert "场景描写特征" not in section
+    assert "文笔要求" not in _style_section({"pov": "第三人称"}, None)
 
 
 def test_style_section_legacy_keys_unchanged():

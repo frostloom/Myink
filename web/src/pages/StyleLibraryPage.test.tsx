@@ -37,12 +37,16 @@ function renderPage() {
   return render(<MemoryRouter><StyleLibraryPage /></MemoryRouter>)
 }
 
-it('lists the builtins first and renders their profile keys', async () => {
+it('lists the builtins first and reads their profile back as prose', async () => {
   vi.mocked(styleLibraryApi.list).mockResolvedValue({ items: [BUILTIN] })
   renderPage()
   fireEvent.click(await screen.findByRole('button', { name: '九州问天' }))
-  expect((await screen.findByLabelText('pov') as HTMLTextAreaElement).value).toBe('第三人称限知')
-  expect((await screen.findByLabelText('forbidden') as HTMLTextAreaElement).value).toBe('网络流行语')
+  // 看已有项是「读」：中文维度名 + 内容，不是一排只读输入框。
+  expect(await screen.findByText('第三人称限知')).toBeTruthy()
+  expect(screen.getByText('视角')).toBeTruthy()
+  expect(screen.getByText('禁用表达（每行一条）')).toBeTruthy()
+  expect(screen.getByText('网络流行语')).toBeTruthy()
+  expect(screen.queryByLabelText('视角')).toBeNull()
 })
 
 it('hides the delete action for a builtin', async () => {
@@ -114,4 +118,43 @@ it('renders a profile key it does not understand instead of dropping it', async 
   fireEvent.click(await screen.findByRole('button', { name: '怪档' }))
   expect(await screen.findByText('rhythm')).toBeTruthy()
   expect(screen.getByText('{"long_sentence":0.4}')).toBeTruthy()
+})
+
+it('names the eight prose dimensions in Chinese and folds the stats away', async () => {
+  const extracted = {
+    ...BUILTIN, id: 'mine-3', name: '渡口白描', builtin: false, removable: true,
+    profile: {
+      narrative_voice: '克制的冷调，靠短句与名词收束',
+      pacing: '短句为主，到高潮反而放长',
+      sentence_len_dist: { short: 0.5, mid: 0.4, long: 0.1 },
+      dialogue_ratio: 0.32,
+    },
+  }
+  vi.mocked(styleLibraryApi.list).mockResolvedValue({ items: [extracted] })
+  renderPage()
+  fireEvent.click(await screen.findByRole('button', { name: '渡口白描' }))
+  // 文笔在主区，按中文维度名读得出来。
+  expect(await screen.findByText('叙事声音与语气')).toBeTruthy()
+  expect(screen.getByText('克制的冷调，靠短句与名词收束')).toBeTruthy()
+  expect(screen.getByText('节奏特征')).toBeTruthy()
+  // 统计层收进折叠块，但仍在页面上——收起来不等于丢掉。
+  expect(screen.getByText(/统计指纹/)).toBeTruthy()
+  expect(screen.getByText('句长分布')).toBeTruthy()
+  expect(screen.getByText('对话占比')).toBeTruthy()
+})
+
+it('keeps the prose dimensions editable while drafting', async () => {
+  vi.mocked(styleLibraryApi.list).mockResolvedValue({ items: [] })
+  vi.mocked(styleLibraryApi.extract).mockResolvedValue({
+    draft: { narrative_voice: '冷调', sentence_len_dist: { short: 0.5 } },
+  })
+  renderPage()
+  fireEvent.click(await screen.findByRole('button', { name: '新建文风' }))
+  fireEvent.change(screen.getByLabelText('粘贴文章'), { target: { value: '渡口的老人守着最后一班船。' } })
+  fireEvent.click(screen.getByRole('button', { name: '提取文风' }))
+  // 草稿里模型给的东西要能改：文笔八维是可编辑的输入框。
+  const box = await screen.findByLabelText('叙事声音与语气') as HTMLTextAreaElement
+  expect(box.value).toBe('冷调')
+  fireEvent.change(box, { target: { value: '冷调，尽量少用形容词' } })
+  expect((screen.getByLabelText('叙事声音与语气') as HTMLTextAreaElement).value).toBe('冷调，尽量少用形容词')
 })
