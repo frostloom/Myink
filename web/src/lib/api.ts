@@ -262,6 +262,9 @@ export const api = {
   cancelTask: (tid: string) =>
     request<TaskControlResponse>('POST', `/tasks/${tid}/cancel`),
 
+  resumeTask: (tid: string) =>
+    request<TaskControlResponse>('POST', `/tasks/${tid}/resume`),
+
   // 项目任务历史（阶段 4 任务视图）：切书后展示该书过往任务（网关转发 Python）。
   // chapterSeq 非空 → 只列覆盖该章的任务 + 该章花费（右栏按章过滤，§11）。
   listTasks: (pid: string, chapterSeq?: number) =>

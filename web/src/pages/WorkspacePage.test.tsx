@@ -3,10 +3,13 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { afterEach, expect, it, vi } from 'vitest'
 import { api } from '../lib/api'
-import type { AgentRun, ChapterMeta } from '../types'
+import type { AgentRun, ChapterMeta, TaskStatus } from '../types'
 import WorkspacePage from './WorkspacePage'
 
 const liveTask = vi.hoisted(() => ({
+  status: 'running' as TaskStatus,
+  refresh: vi.fn(),
+  retry: vi.fn(),
   runs: [] as AgentRun[],
   artifacts: [] as Array<{
     artifactId: string
@@ -28,8 +31,8 @@ vi.mock('../context/AuthContext', () => ({
 
 vi.mock('../hooks/useTaskEvents', () => ({
   useTaskEvents: (taskId: string | null) => ({
-    phase: taskId ? 'running' : 'idle',
-    status: taskId ? 'running' : null,
+    phase: taskId ? (['done', 'failed', 'cancelled'].includes(liveTask.status) ? 'terminal' : 'running') : 'idle',
+    status: taskId ? liveTask.status : null,
     nodes: [],
     artifacts: taskId ? liveTask.artifacts : [],
     runs: taskId ? liveTask.runs : [],
@@ -38,8 +41,8 @@ vi.mock('../hooks/useTaskEvents', () => ({
     payload: {},
     lastEventId: null,
     stop: vi.fn(),
-    retry: vi.fn(),
-    refresh: vi.fn(),
+    retry: liveTask.retry,
+    refresh: liveTask.refresh,
   }),
 }))
 
@@ -116,6 +119,7 @@ vi.mock('../lib/api', async (importOriginal) => {
       listForeshadows: vi.fn(),
       listTasks: vi.fn(),
       generateShort: vi.fn(),
+      resumeTask: vi.fn(),
     },
   }
 })
@@ -134,6 +138,7 @@ afterEach(() => {
   vi.clearAllMocks()
   liveTask.artifacts = []
   liveTask.runs = []
+  liveTask.status = 'running'
   sessionStorage.clear()
 })
 
@@ -484,6 +489,185 @@ it('reads the whole-story review off the flow rail, not off a report under the b
   // 整篇任务不属于任何一章：按章切会把流转记录整块滤空，所以短篇这条喂的是整篇 runs。
   expect(screen.getByText('flow-runs-1')).toBeTruthy()
   expect(screen.getByText('timeline-task-short-chapter-none')).toBeTruthy()
+})
+
+it('shows missing chapters as an incomplete result even when the task is done', async () => {
+  mockShortBook([shortTask])
+  liveTask.status = 'done'
+  liveTask.runs = [{ ...shortReviewRun, detail: { ...shortReviewRun.detail, empty_chapters: [2, 5] } }]
+  renderWorkspace()
+  await waitFor(() => expect(screen.getByRole('status').textContent).toContain('部分正文未完成'))
+  expect(screen.queryByText('整篇写完了')).toBeNull()
+  expect(screen.getByRole('alert').textContent).toContain('第 2、5 章')
+  expect(screen.queryByRole('button', { name: '重试' })).toBeNull()
+  expect(api.generateShort).not.toHaveBeenCalled()
+})
+
+it('makes a degraded review visible without presenting it as a passed review', async () => {
+  mockShortBook([shortTask])
+  liveTask.status = 'done'
+  liveTask.runs = [{ ...shortReviewRun, detail: {
+    ...shortReviewRun.detail,
+    short_review: { verdict: 'pass', issues: [], suggestions: [], warning: '审稿结果无法解析，这一篇按通过处理' },
+  } }]
+  renderWorkspace()
+  await waitFor(() => expect(screen.getByRole('status').textContent).toContain('正文已生成，仍需检查'))
+  expect(screen.getByRole('alert').textContent).toContain('审稿结果无法解析')
+  expect(screen.queryByText('整篇写完了')).toBeNull()
+})
+
+it('uses the latest review and shows a compact revision summary', async () => {
+  mockShortBook([shortTask])
+  liveTask.status = 'done'
+  liveTask.runs = [
+    { ...shortReviewRun, detail: { ...shortReviewRun.detail, empty_chapters: [5] } },
+    { ...shortReviewRun, detail: { ...shortReviewRun.detail, revised: true,
+      short_review: { verdict: 'revise', issues: ['结尾动机不清楚'], suggestions: ['补充人物的抉择'], warning: null },
+    } },
+  ]
+  renderWorkspace()
+  await waitFor(() => expect(screen.getByRole('status').textContent).toContain('整篇写完了'))
+  expect(screen.getByText('已按审稿意见改稿')).toBeTruthy()
+  expect(screen.queryByText(/第 5 章仍缺正文/)).toBeNull()
+})
+
+it('resumes a failed short task through the server rather than only reconnecting its events', async () => {
+  mockShortBook([{ ...shortTask, status: 'failed' }])
+  liveTask.status = 'failed'
+  vi.mocked(api.resumeTask).mockResolvedValue({ task_id: 'task-short', status: 'queued', message: '已投递续跑消息' })
+  renderWorkspace()
+  fireEvent.click(await screen.findByRole('button', { name: '重试' }))
+  await waitFor(() => expect(api.resumeTask).toHaveBeenCalledWith('task-short'))
+  expect(api.generateShort).not.toHaveBeenCalled()
+})
+
+it('shows a resume failure and keeps the failed task retry available', async () => {
+  mockShortBook([{ ...shortTask, status: 'failed' }])
+  liveTask.status = 'failed'
+  vi.mocked(api.resumeTask).mockRejectedValue(new Error('offline'))
+  renderWorkspace()
+  fireEvent.click(await screen.findByRole('button', { name: '重试' }))
+  expect(await screen.findByRole('alert')).toBeTruthy()
+  await waitFor(() => expect((screen.getByRole('button', { name: '重试' }) as HTMLButtonElement).disabled).toBe(false))
+  expect(api.generateShort).not.toHaveBeenCalled()
+})
+
+it('blocks a second enqueue while the first start request is pending', async () => {
+  mockShortBook([])
+  vi.mocked(api.generateShort).mockReturnValue(new Promise(() => {}))
+  renderWorkspace()
+  const start = await screen.findByRole('button', { name: '开始写' })
+  fireEvent.click(start)
+  fireEvent.click(start)
+  expect(api.generateShort).toHaveBeenCalledTimes(1)
+  expect(screen.getByRole('status').textContent).toContain('正在提交写作任务')
+})
+
+it('shows chapter length evidence in the review details', async () => {
+  mockShortBook([shortTask])
+  liveTask.status = 'done'
+  liveTask.runs = [{ ...shortReviewRun, detail: { ...shortReviewRun.detail, length_findings: [{
+    conflict_key: 'short:length:2', conflict_type: 'short_length', severity: 'hint', scope: 'local', source: 'rule',
+    evidence: [{ chapter: 2, quote: '正文仅 320 字，目标 2000 字' }], suggestion: '检查第 2 章是否截断',
+  }] } }]
+  renderWorkspace()
+  await waitFor(() => expect(screen.getByRole('status').textContent).toContain('仍需检查'))
+  fireEvent.click(screen.getByText('查看检查意见'))
+  expect(screen.getByText(/正文仅 320 字/)).toBeTruthy()
+  expect(screen.getByText(/检查第 2 章是否截断/)).toBeTruthy()
+})
+
+it('reconnects task events when a resume was accepted but its response was lost', async () => {
+  mockShortBook([{ ...shortTask, status: 'failed' }])
+  liveTask.status = 'failed'
+  vi.mocked(api.resumeTask).mockRejectedValue(new Error('response lost'))
+  renderWorkspace()
+  fireEvent.click(await screen.findByRole('button', { name: '重试' }))
+  await waitFor(() => expect(liveTask.refresh).toHaveBeenCalled())
+  expect(liveTask.retry).toHaveBeenCalledTimes(1)
+  expect(api.generateShort).not.toHaveBeenCalled()
+})
+
+it('waits for history before offering generation or consuming an automatic start', async () => {
+  mockShortBook([])
+  let finish!: (tasks: typeof shortTask[]) => void
+  const pending = new Promise<typeof shortTask[]>((resolve) => { finish = resolve })
+  vi.mocked(api.listTasks).mockReturnValue(pending)
+  liveTask.status = 'done'
+  renderWorkspace({ beginShortWriting: true })
+  await screen.findByRole('status')
+  expect(screen.queryByRole('button', { name: '开始写' })).toBeNull()
+  expect(api.generateShort).not.toHaveBeenCalled()
+  await act(async () => { finish([shortTask]) })
+  await waitFor(() => expect(screen.getByText('timeline-task-short-chapter-none')).toBeTruthy())
+  expect(api.generateShort).not.toHaveBeenCalled()
+})
+
+it('offers only a history reload after task recovery fails', async () => {
+  mockShortBook([])
+  vi.mocked(api.listTasks).mockRejectedValue(new Error('offline'))
+  renderWorkspace()
+  const reload = await screen.findByRole('button', { name: '重新查询任务' })
+  expect(screen.queryByRole('button', { name: '开始写' })).toBeNull()
+  vi.mocked(api.listTasks).mockResolvedValue([shortTask])
+  liveTask.status = 'done'
+  fireEvent.click(reload)
+  await waitFor(() => expect(screen.getByText('timeline-task-short-chapter-none')).toBeTruthy())
+  expect(api.generateShort).not.toHaveBeenCalled()
+})
+
+it.each(['success', 'failure'] as const)('ignores a late generation %s after switching books', async (result) => {
+  mockShortBook([])
+  vi.mocked(api.listProjects).mockResolvedValue([shortProject, { ...shortProject, id: 'project-2', title: '另一篇' }])
+  let resolve!: (value: { task_id: string; trace_id: string; status: 'queued' }) => void
+  let reject!: (reason: Error) => void
+  vi.mocked(api.generateShort).mockImplementation(() => new Promise((res, rej) => { resolve = res; reject = rej }))
+  const router = renderWorkspace()
+  fireEvent.click(await screen.findByRole('button', { name: '开始写' }))
+  await act(async () => { await router.navigate('/projects/project-2') })
+  await waitFor(() => expect(screen.getByRole('status').textContent).toContain('还没开始写'))
+  const lookups = vi.mocked(api.listTasks).mock.calls.filter(([pid]) => pid === 'project-1').length
+  await act(async () => {
+    if (result === 'success') resolve({ task_id: 'task-old', trace_id: 'trace-old', status: 'queued' })
+    else reject(new Error('late failure'))
+  })
+  expect(screen.getByRole('status').textContent).toContain('还没开始写')
+  expect(screen.queryByText('timeline-task-old-chapter-none')).toBeNull()
+  expect(vi.mocked(api.listTasks).mock.calls.filter(([pid]) => pid === 'project-1')).toHaveLength(lookups)
+})
+
+it('keeps the current book submitting when the previous book request finishes', async () => {
+  mockShortBook([])
+  vi.mocked(api.listProjects).mockResolvedValue([shortProject, { ...shortProject, id: 'project-2', title: '另一篇' }])
+  let finishA!: (value: { task_id: string; trace_id: string; status: 'queued' }) => void
+  vi.mocked(api.generateShort).mockImplementation((pid) => pid === 'project-1'
+    ? new Promise((resolve) => { finishA = resolve }) : new Promise(() => {}))
+  const router = renderWorkspace()
+  fireEvent.click(await screen.findByRole('button', { name: '开始写' }))
+  await act(async () => { await router.navigate('/projects/project-2') })
+  fireEvent.click(await screen.findByRole('button', { name: '开始写' }))
+  await act(async () => { finishA({ task_id: 'old-task', trace_id: 'old', status: 'queued' }) })
+  expect(screen.getByRole('status').textContent).toContain('正在提交写作任务')
+  expect((screen.getByRole('button', { name: '开始写' }) as HTMLButtonElement).disabled).toBe(true)
+  expect(screen.queryByText('timeline-old-task-chapter-none')).toBeNull()
+})
+
+it('ignores a late reconciliation response after switching books', async () => {
+  mockShortBook([])
+  vi.mocked(api.listProjects).mockResolvedValue([shortProject, { ...shortProject, id: 'project-2', title: '另一篇' }])
+  let enqueued = false
+  let finish!: (tasks: typeof shortTask[]) => void
+  const pendingLookup = new Promise<typeof shortTask[]>((resolve) => { finish = resolve })
+  vi.mocked(api.listTasks).mockImplementation((pid) => pid === 'project-1' && enqueued ? pendingLookup : Promise.resolve([]))
+  vi.mocked(api.generateShort).mockImplementation(async () => { enqueued = true; throw new Error('timeout') })
+  const router = renderWorkspace()
+  fireEvent.click(await screen.findByRole('button', { name: '开始写' }))
+  await act(async () => { await Promise.resolve() })
+  await act(async () => { await router.navigate('/projects/project-2') })
+  await screen.findByRole('button', { name: '开始写' })
+  await act(async () => { finish([{ ...shortTask, task_id: 'late-recovered' }]) })
+  expect(screen.getByRole('status').textContent).toContain('还没开始写')
+  expect(screen.queryByText('timeline-late-recovered-chapter-none')).toBeNull()
 })
 
 it('still shows the long-form panels on a book without a form', async () => {

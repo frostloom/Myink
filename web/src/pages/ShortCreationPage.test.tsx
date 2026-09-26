@@ -186,6 +186,70 @@ it('starting over clears the conversation', async () => {
   await waitFor(() => expect(shortCreationApi.reset).toHaveBeenCalled())
 })
 
+it('prevents messages from being submitted from a committed session', async () => {
+  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+    session: { status: 'committed', book_id: 'p1', card: FULL_CARD }, ready: true,
+  }))
+  renderPage()
+  const box = await screen.findByLabelText('对助手说')
+  expect((box as HTMLTextAreaElement).disabled).toBe(true)
+  fireEvent.change(box, { target: { value: '继续写' } })
+  fireEvent.keyDown(box, { key: 'Enter' })
+  expect(shortCreationApi.send).not.toHaveBeenCalled()
+  expect((screen.getByRole('button', { name: '已开写' }) as HTMLButtonElement).disabled).toBe(true)
+})
+
+it('labels a pending commit as planning and locks the card against further changes', async () => {
+  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({ ready: true, session: { card: FULL_CARD } }))
+  vi.mocked(shortCreationApi.commit).mockReturnValue(new Promise(() => {}))
+  renderPage()
+  await openCard()
+  fireEvent.click(screen.getByRole('button', { name: '确认，开写' }))
+  expect(screen.getByRole('button', { name: '正在规划…' })).toBeTruthy()
+  expect((screen.getByLabelText('暂定名') as HTMLTextAreaElement).disabled).toBe(true)
+  expect(screen.queryByRole('button', { name: '正在回复…' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: '关闭方案卡' }))
+  expect(screen.getByText('正在规划章节…')).toBeTruthy()
+})
+
+it('labels resetting separately from waiting for an assistant reply', async () => {
+  vi.mocked(shortCreationApi.reset).mockReturnValue(new Promise(() => {}))
+  renderPage()
+  fireEvent.click(await screen.findByRole('button', { name: '重新开始' }))
+  expect(screen.getByRole('button', { name: '正在重置…' })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: '正在回复…' })).toBeNull()
+})
+
+it('keeps keyboard focus inside the modal and restores it to the opener', async () => {
+  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({ ready: true, session: { card: FULL_CARD } }))
+  renderPage()
+  const opener = await screen.findByRole('button', { name: '开始建书' })
+  opener.focus()
+  fireEvent.click(opener)
+  const close = screen.getByRole('button', { name: '关闭方案卡' })
+  const confirm = screen.getByRole('button', { name: '确认，开写' })
+  fireEvent.keyDown(close, { key: 'Tab', shiftKey: true })
+  expect(document.activeElement).toBe(confirm)
+  fireEvent.keyDown(confirm, { key: 'Tab' })
+  expect(document.activeElement).toBe(close)
+  fireEvent.keyDown(close, { key: 'Escape' })
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(document.activeElement).toBe(opener)
+})
+
+it('preserves the next draft typed while the previous message is in flight', async () => {
+  let release: (value: ShortCreationPayload) => void = () => {}
+  vi.mocked(shortCreationApi.send).mockReturnValue(new Promise((resolve) => { release = resolve }))
+  renderPage()
+  const box = await screen.findByLabelText('对助手说') as HTMLTextAreaElement
+  fireEvent.change(box, { target: { value: '先写渡口' } })
+  fireEvent.keyDown(box, { key: 'Enter' })
+  fireEvent.change(box, { target: { value: '再加一个摆渡人' } })
+  release(payload())
+  await waitFor(() => expect(screen.getByRole('button', { name: '发送' })).toBeTruthy())
+  expect(box.value).toBe('再加一个摆渡人')
+})
+
 it('keeps the rail so the creation page is not a dead end', async () => {
   renderPage()
   expect(await screen.findByRole('navigation', { name: '作品分区' })).toBeTruthy()

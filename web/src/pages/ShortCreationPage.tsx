@@ -80,13 +80,17 @@ export default function ShortCreationPage() {
   const [styleItemId, setStyleItemId] = useState('')
   const [styleItems, setStyleItems] = useState<StyleLibraryItem[]>([])
   const [draft, setDraft] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [operation, setOperation] = useState<'talk' | 'plan' | 'reset' | null>(null)
+  const busy = operation !== null
+  const operationRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [cardOpen, setCardOpen] = useState(false)
   const stream = useRef<HTMLDivElement>(null)
   const composer = useRef<HTMLTextAreaElement>(null)
   const cardBody = useRef<HTMLDivElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
+  const dialogRef = useRef<HTMLElement>(null)
+  const openerRef = useRef<HTMLButtonElement>(null)
 
   const apply = useCallback((next: ShortCreationPayload) => {
     setData(next)
@@ -128,37 +132,60 @@ export default function ShortCreationPage() {
     for (const el of cardBody.current.querySelectorAll('textarea')) autoGrow(el)
   }, [cardOpen, card])
 
-  // 弹窗：Esc 关，打开时焦点落在关闭键上（与 GuestPromptDialog 同款）。
+  // 焦点留在方案卡内，关闭后回到原入口，键盘用户可以接着聊。
   useEffect(() => {
     if (!cardOpen) return
+    const opener = openerRef.current
     closeRef.current?.focus()
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      event.stopPropagation()
-      setCardOpen(false)
+      if (event.key === 'Escape') {
+        event.stopPropagation()
+        setCardOpen(false)
+      }
+      if (event.key === 'Tab') {
+        const controls = dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), a[href], input:not(:disabled), textarea:not(:disabled), select:not(:disabled)',
+        )
+        if (!controls?.length) return
+        const first = controls[0]
+        const last = controls[controls.length - 1]
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault()
+          last.focus()
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault()
+          first.focus()
+        }
+      }
     }
     document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      opener?.focus()
+    }
   }, [cardOpen])
 
-  const run = async (action: () => Promise<void>, fallback: string) => {
+  const run = async (kind: 'talk' | 'plan' | 'reset', action: () => Promise<void>, fallback: string) => {
+    if (operationRef.current) return
+    operationRef.current = true
     setError(null)
-    setBusy(true)
+    setOperation(kind)
     try {
       await action()
     } catch (reason) {
       setError(formatApiError(reason, fallback))
     } finally {
-      setBusy(false)
+      operationRef.current = false
+      setOperation(null)
     }
   }
 
   const sendDraft = () => {
     const content = draft.trim()
-    if (!content || busy) return
-    void run(async () => {
+    if (!content || busy || data?.session.status !== 'active') return
+    void run('talk', async () => {
       apply(await shortCreationApi.send(token, content, card as Record<string, unknown>))
-      setDraft('')
+      setDraft((current) => current.trim() === content ? '' : current)
     }, '这句话没发出去，请重试')
   }
 
@@ -181,7 +208,7 @@ export default function ShortCreationPage() {
   const confirm = () => {
     // 已确认过的会话只会在后端 409；卡填满了也不给这个按钮真的发出去。
     if (committed) return
-    void run(async () => {
+    void run('plan', async () => {
       const out = await shortCreationApi.commit(token, card as Record<string, unknown>, styleItemId || null)
       // commit 只落书，入队归工作台：那边有状态带，入队失败就地给重试入口。
       navigate(`/projects/${out.project_id}`, {
@@ -190,8 +217,9 @@ export default function ShortCreationPage() {
     }, '确认失败，请重试')
   }
 
-  const restart = () => void run(async () => {
+  const restart = () => void run('reset', async () => {
     await shortCreationApi.reset(token)
+    setDraft('')
     await reload()
   }, '重置失败，请重试')
 
@@ -210,15 +238,21 @@ export default function ShortCreationPage() {
 
   return (
     <div className={styles.page}>
+      <div className={styles.background} inert={cardOpen}>
       <ProjectRail projects={projects} onLogout={logout} />
       <main className={styles.main}>
         <div className={styles.thread}>
           <header className={styles.head}>
             <div>
               <h1>新建短篇</h1>
-              <p className={styles.sub}>聊到方案齐了就能开写——一次生成整篇，不逐章推进。</p>
+              <p className={styles.sub} aria-live="polite">
+                {operation === 'plan' ? '正在规划章节…' : operation === 'reset' ? '正在准备新的对话…'
+                  : committed ? '已开写' : data.ready ? '方案已备好 · 等你确认' : '构思中 · 先聊聊故事'}
+              </p>
             </div>
-            <button type="button" className="btn btn-quiet" onClick={restart} disabled={busy}>重新开始</button>
+            <button type="button" className="btn btn-quiet" onClick={restart} disabled={busy}>
+              {operation === 'reset' ? '正在重置…' : '重新开始'}
+            </button>
           </header>
 
           <div className={styles.stream} ref={stream} aria-label="建书对话">
@@ -233,18 +267,25 @@ export default function ShortCreationPage() {
             {/* 三段式：先只聊；服务端说聊齐备了，才冒出这条路；点开才弹方案卡。
                 卡开着时收起来——它被模态盖在底下，再点一次也做不了什么（Modal 里的东西
                 就不该还能按）。关掉卡就回来。 */}
-            {data.ready && !committed && !cardOpen && (
-              <button type="button" className={`btn btn-primary ${styles.option}`}
-                      onClick={() => { setError(null); setCardOpen(true) }}>
-                开始建书
-              </button>
+            {data.ready && !committed && (
+              <section className={styles.proposal} hidden={cardOpen} aria-label="待确认方案">
+                <div>
+                  <small>待确认方案</small>
+                  <h2>{card.working_title || '你的短篇'}</h2>
+                  <p>{card.genre || '题材待定'} · {card.chapter_count ?? 5} 章 · 每章约 {lengths.chars} 字</p>
+                </div>
+                <button ref={openerRef} type="button" className={`btn btn-primary ${styles.option}`}
+                        disabled={busy} onClick={() => { setError(null); setCardOpen(true) }}>
+                  开始建书
+                </button>
+              </section>
             )}
           </div>
 
           {!cardOpen && errorBanner}
           {committed && (
             <div className="banner banner-warning" role="status">
-              这段建书对话已经开写过了，确认按钮不再生效；要写新的一篇，点右上角的「重新开始」。
+              已开写。新故事请点「重新开始」。
               {data.session.book_id && (
                 <>{' '}刚开写的那本在<Link to={`/projects/${data.session.book_id}`}>这里</Link>。</>
               )}
@@ -254,24 +295,26 @@ export default function ShortCreationPage() {
           <form className={styles.composer} onSubmit={submit}>
             <label>
               <textarea ref={composer} rows={3} aria-label="对助手说" className="input" value={draft}
+                        disabled={committed || operation === 'plan' || operation === 'reset'}
                         maxLength={4000} onChange={(event) => setDraft(event.target.value)}
                         onKeyDown={onKeyDown}
-                        placeholder="说说你想写的故事，或者说「就这样，开写吧」" />
+                        placeholder={committed ? '本次建书对话已结束' : '说说你想写的故事…'} />
             </label>
             <div className={styles.composerFoot}>
               <small className={styles.hint}>回车发送，Shift + 回车换行</small>
-              <button type="submit" className="btn btn-primary" disabled={busy || draft.trim() === ''}>
-                {busy ? '正在回复…' : '发送'}
+              <button type="submit" className="btn btn-primary" disabled={committed || busy || draft.trim() === ''}>
+                {committed ? '已开写' : operation === 'talk' ? '正在回复…' : '发送'}
               </button>
             </div>
           </form>
         </div>
       </main>
+      </div>
 
       {cardOpen && !committed && createPortal(
         <div className={styles.backdrop}
              onMouseDown={(event) => { if (event.target === event.currentTarget) setCardOpen(false) }}>
-          <section className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="plan-card-title">
+          <section ref={dialogRef} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="plan-card-title" aria-busy={operation === 'plan'}>
             <header className={styles.dialogHead}>
               <div>
                 <h2 id="plan-card-title">方案</h2>
@@ -286,6 +329,7 @@ export default function ShortCreationPage() {
                 <label key={key}>
                   <span>{label}{REQUIRED_TEXT.includes(key) ? '（必填）' : ''}</span>
                   <textarea className="input" rows={key === 'plot_sketch' ? 3 : 2}
+                            disabled={busy}
                             aria-label={label} value={String(card[key] ?? '')} maxLength={4000}
                             onChange={(event) => setCard({ ...card, [key]: event.target.value })} />
                 </label>
@@ -294,12 +338,14 @@ export default function ShortCreationPage() {
                 <label>
                   <span>章数（1–10）</span>
                   <input className="input" type="number" min={1} max={10} aria-label="章数"
+                         disabled={busy}
                          value={card.chapter_count ?? 5}
                          onChange={(event) => setCard({ ...card, chapter_count: Number(event.target.value) })} />
                 </label>
                 <label>
                   <span>每章字数（1000–8000）</span>
                   <input className="input" type="number" min={1000} max={8000} aria-label="每章字数"
+                         disabled={busy}
                          value={card.chars_per_chapter ?? 4000}
                          onChange={(event) => setCard({ ...card, chars_per_chapter: Number(event.target.value) })} />
                 </label>
@@ -312,6 +358,7 @@ export default function ShortCreationPage() {
               <label>
                 <span>文风（开写后不可改）</span>
                 <select className="input" aria-label="文风" value={styleItemId}
+                        disabled={busy}
                         onChange={(event) => setStyleItemId(event.target.value)}>
                   <option value="">不指定</option>
                   {styleItems.map((item) => (
@@ -329,7 +376,7 @@ export default function ShortCreationPage() {
               <Link to="/styles">去文风库添加</Link>
               <button type="button" className="btn btn-quiet" onClick={() => setCardOpen(false)}>再聊聊</button>
               <button type="button" className="btn btn-primary" disabled={!cardReady || busy} onClick={confirm}>
-                确认，开写
+                {operation === 'plan' ? '正在规划…' : '确认，开写'}
               </button>
             </footer>
           </section>

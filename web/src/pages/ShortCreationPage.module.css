@@ -1,7 +1,15 @@
 /* 左 rail + 一列聊天。方案卡是悬浮模态，不占版式（弹窗样式在文件末尾）。 */
 .page {
   height: 100%;
+  min-height: 0;
   display: flex;
+}
+
+.background {
+  height: 100%;
+  display: flex;
+  flex: 1;
+  min-width: 0;
 }
 
 /* 聊天列居中并限宽：一行字太宽了眼睛要来回扫，读起来累。 */
@@ -16,11 +24,11 @@
 
 .thread {
   width: 100%;
-  max-width: 880px;
+  max-width: 940px;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 0 24px;
+  padding: 0 clamp(20px, 4vw, 54px);
 }
 
 .head {
@@ -28,11 +36,15 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 28px 0 12px;
+  padding: 34px 0 22px;
+  border-bottom: 1px solid var(--line);
 }
 
 .head h1 {
   margin: 0;
+  font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
+  font-size: clamp(26px, 3vw, 34px);
+  letter-spacing: -0.04em;
 }
 
 .sub {
@@ -47,15 +59,18 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 0;
+  gap: 24px;
+  padding: 28px 0;
+  scrollbar-gutter: stable;
 }
 
 .turn {
-  max-width: 42em;
-  padding: 10px 12px;
-  border-radius: 10px;
+  max-width: min(100%, 38em);
+  padding: 14px 18px;
+  border-radius: 12px;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.9;
 }
 
 .turn p {
@@ -64,12 +79,14 @@
 
 .mine {
   align-self: flex-end;
-  background: var(--accent-soft, #eef2ff);
+  background: var(--accent-soft);
+  border-bottom-right-radius: 3px;
 }
 
 .theirs {
   align-self: flex-start;
-  background: var(--panel-soft, #f5f5f5);
+  padding-left: 0;
+  background: transparent;
 }
 
 .failed {
@@ -79,6 +96,39 @@
 
 .option {
   align-self: flex-start;
+  flex-shrink: 0;
+}
+
+.proposal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+  background: var(--surface-2);
+}
+
+.proposal[hidden] {
+  display: none;
+}
+
+.proposal small,
+.proposal p {
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+}
+
+.proposal h2 {
+  margin: 6px 0;
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+
+.proposal p {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 /* 输入条：整条是个卡片，输入框占满、按钮落在右下角。 */
@@ -145,7 +195,7 @@
 .dialog {
   display: flex;
   width: min(680px, calc(100vw - 32px));
-  max-height: min(88vh, 900px);
+  max-height: min(88dvh, 900px);
   flex-direction: column;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--line) 80%, #8d7f74);
@@ -232,6 +282,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  flex-wrap: wrap;
   padding: 14px 22px;
   border-top: 1px solid var(--line);
   background: var(--surface-2);
@@ -245,7 +296,68 @@
 }
 
 @media (max-width: 720px) {
+  .background {
+    --rail-width: 128px;
+  }
+  .thread {
+    padding: 0 16px;
+  }
+  .head {
+    flex-wrap: wrap;
+    padding-top: 22px;
+  }
+  .proposal {
+    flex-direction: column;
+    align-items: flex-start;
+  }
   .pair {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .page {
+    height: auto;
+    min-height: 100%;
+  }
+  .background {
+    flex-direction: column;
+  }
+  .background > aside {
+    width: 100%;
+    height: auto;
+    padding: 14px;
+  }
+  .background > aside nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .main {
+    flex: none;
+    min-height: 75dvh;
+    overflow: visible;
+  }
+  .stream {
+    overflow: visible;
+  }
+  .composerFoot {
+    gap: 8px;
+  }
+  .hint {
+    font-size: 11px;
+  }
+  .backdrop {
+    padding: 12px;
+  }
+  .dialog {
+    width: 100%;
+    max-height: 94dvh;
+  }
+  .dialogHead,
+  .dialogFoot {
+    padding: 16px;
+  }
+  .dialogBody {
+    padding: 0 16px 16px;
   }
 }
