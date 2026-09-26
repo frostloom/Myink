@@ -184,19 +184,6 @@
   color: var(--ink-muted);
 }
 
-/* 短篇的审稿结论：默认折起来贴在正文下方，想看再展开。 */
-.review {
-  margin-top: 12px;
-  padding: 8px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-}
-
-.review > summary {
-  cursor: pointer;
-  color: var(--ink-muted);
-}
-
 @media (max-width: 1159px) {
   .wrap {
     min-width: 0;
@@ -231,12 +218,15 @@
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto;
   }
+  /* 窄屏整页只有一条滚动条：不再给 rail 和章节列表截高——截高就成了「能滚的页面里
+     再嵌一个能滚的小列表」。≤1159 已把 .wrap 改成 height:auto，滚的是页面本身。 */
   .wrap > aside:first-child {
     grid-row: auto;
-    max-height: 220px;
+    max-height: none;
   }
   .chapters {
-    max-height: 240px;
+    max-height: none;
+    overflow: visible;
     margin: 12px;
   }
   .main {

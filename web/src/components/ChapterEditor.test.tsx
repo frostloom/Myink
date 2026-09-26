@@ -19,12 +19,13 @@ const chapter = (id = 'one', version = 1): ChapterDetail => ({
 })
 const callbacks = { onNotFound: vi.fn(), onSaved: vi.fn(), onMemoryChanged: vi.fn() }
 
-function mount() {
+function mount(allowMemoryCorrection = true) {
   const router = createMemoryRouter([{ path: '/:cid', Component: () => {
     const { cid = 'one' } = useParams()
     const [refreshTick, setRefreshTick] = useState(0)
     return <><button onClick={() => setRefreshTick((tick) => tick + 1)}>模拟生成完成</button>
-      <ChapterEditor {...callbacks} projectId="project" chapter={chapter(cid)} refreshTick={refreshTick} /></>
+      <ChapterEditor {...callbacks} projectId="project" chapter={chapter(cid)}
+        refreshTick={refreshTick} allowMemoryCorrection={allowMemoryCorrection} /></>
   } }], { initialEntries: ['/one'] })
   render(<RouterProvider router={router} />)
   return router
@@ -119,6 +120,16 @@ describe('章节编辑的草稿和版本保护', () => {
     const event = new Event('beforeunload', { cancelable: true })
     window.dispatchEvent(event)
     expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('短篇整篇成稿没有逐章记忆，就不摆那颗校正按钮', async () => {
+    mount(false)
+    await screen.findByRole('textbox', { name: '章节正文' })
+    // 校正记忆对的是长篇的账本；短篇按它只会白跑一次抽取，所以整颗藏掉。
+    expect(screen.queryByRole('button', { name: '校正记忆' })).toBeNull()
+    // 藏的是记忆那一颗，不是整排操作：删章与历史版本照旧。
+    expect(screen.getByRole('button', { name: '删除本章' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '历史版本' })).toBeTruthy()
   })
 
   it('生成刷新保留本地修改并提示冲突', async () => {

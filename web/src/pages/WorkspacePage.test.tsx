@@ -47,11 +47,11 @@ vi.mock('../components/ProjectRail', () => ({ ProjectRail: () => <div /> }))
 vi.mock('../components/LessonsPanel', () => ({ LessonsPanel: () => <div>lessons-panel</div> }))
 vi.mock('../components/AuditPanel', () => ({ AuditPanel: () => <div>audit-panel</div> }))
 vi.mock('../components/CandidatePanel', () => ({ CandidatePanel: () => <div>candidate-panel</div> }))
-vi.mock('../components/ShortStoryPanel', () => ({
-  ShortStoryPanel: ({ runs }: { runs: AgentRun[] }) => <div>short-review-{runs.length}</div>,
-}))
 vi.mock('../components/ChapterEditor', () => ({
-  ChapterEditor: ({ chapter }: { chapter: ChapterMeta }) => <div>editor-{chapter.chapter_seq}</div>,
+  ChapterEditor: ({ chapter, allowMemoryCorrection }: {
+    chapter: ChapterMeta
+    allowMemoryCorrection?: boolean
+  }) => <div><span>editor-{chapter.chapter_seq}</span><span>memory-correction-{String(allowMemoryCorrection)}</span></div>,
 }))
 vi.mock('../components/ChapterPlanPanel', () => ({
   ChapterPlanPanel: ({ taskId, chapterSeq, onConfirmed }: {
@@ -90,8 +90,16 @@ vi.mock('../components/GenerationPanel', () => ({
   ),
 }))
 vi.mock('../components/TaskTimeline', () => ({
-  TaskTimeline: ({ taskId, chapterSeq }: { taskId: string | null; chapterSeq: number | null }) => (
-    <div>timeline-{taskId ?? 'none'}-chapter-{chapterSeq ?? 'none'}</div>
+  TaskTimeline: ({ taskId, chapterSeq, runs }: {
+    taskId: string | null
+    chapterSeq: number | null
+    runs: AgentRun[]
+  }) => (
+    <div>
+      <div>timeline-{taskId ?? 'none'}-chapter-{chapterSeq ?? 'none'}</div>
+      {/* 流转记录拿到的 run 条数：钉住「短篇喂的是整篇 runs，不按章滤」。 */}
+      <span>flow-runs-{runs.length}</span>
+    </div>
   ),
 }))
 
@@ -380,15 +388,16 @@ function renderWorkspace(state?: Record<string, unknown>) {
   return router
 }
 
-it('renders no right column for a short book, and a status band instead', async () => {
+it('gives a short book the flow rail and a status band, but not the long-form panels', async () => {
   mockShortBook([])
   renderWorkspace()
 
-  // 短篇没有右栏那一整套：生成面板、章节流转、审计/候选/经验都不该出现。
   await waitFor(() => expect(screen.getByRole('status').textContent).toContain('还没开始写'))
   expect(screen.getByRole('button', { name: '开始写' })).toBeTruthy()
+  // 短篇也要答「这一篇有没有经过审核、花了多少」——流转记录就是那个出口，所以右栏留着。
+  expect(screen.getByText(/^timeline-/)).toBeTruthy()
+  // 长篇那一套照样不给：短篇没有逐章生成，也没有审计/候选/经验。
   expect(screen.queryByText('generation-panel')).toBeNull()
-  expect(screen.queryByText(/timeline-/)).toBeNull()
   expect(screen.queryByText('audit-panel')).toBeNull()
   expect(screen.queryByText('candidate-panel')).toBeNull()
   expect(screen.queryByText('lessons-panel')).toBeNull()
@@ -460,20 +469,21 @@ it('does not auto-start when the handover did not ask for it', async () => {
   expect(api.generateShort).not.toHaveBeenCalled()
 })
 
-it('keeps the whole-story review reachable after a chapter is picked on a short book', async () => {
+it('reads the whole-story review off the flow rail, not off a report under the body', async () => {
   mockShortBook([shortTask])
   liveTask.runs = [shortReviewRun]
   renderWorkspace()
 
-  // 整篇任务不属于任何一章：按章切会把审稿报告整块滤空，所以中栏用的是整表取到的 runs。
-  const review = await screen.findByText('short-review-1')
-  expect(review.closest('details')).toBeTruthy()
-  expect(screen.getByText('审稿结论')).toBeTruthy()
+  // 审稿结论那块长文删了：有没有经过审核，从流转记录里的 short_review 那一步看。
+  await waitFor(() => expect(screen.getByText('flow-runs-1')).toBeTruthy())
+  expect(screen.queryByText('审稿结论')).toBeNull()
 
   fireEvent.click(screen.getByRole('button', { name: 'chapter-2' }))
   await screen.findByText('write-page-2')
 
-  expect(screen.getByText('short-review-1')).toBeTruthy()
+  // 整篇任务不属于任何一章：按章切会把流转记录整块滤空，所以短篇这条喂的是整篇 runs。
+  expect(screen.getByText('flow-runs-1')).toBeTruthy()
+  expect(screen.getByText('timeline-task-short-chapter-none')).toBeTruthy()
 })
 
 it('still shows the long-form panels on a book without a form', async () => {
@@ -490,7 +500,6 @@ it('still shows the long-form panels on a book without a form', async () => {
   expect(screen.getByText('audit-panel')).toBeTruthy()
   expect(screen.getByText('candidate-panel')).toBeTruthy()
   expect(screen.getByText('lessons-panel')).toBeTruthy()
-  expect(screen.queryByText('short-review-0')).toBeNull()
 })
 
 it('never shows the plan stage for a short book', async () => {
@@ -506,4 +515,41 @@ it('never shows the plan stage for a short book', async () => {
   // 正向对照：nav 确实渲染出来了（正文阶段还在），证明下面那条 null 不是「整块没渲染」
   expect(await screen.findByRole('button', { name: /正文/ })).toBeTruthy()
   expect(screen.queryByRole('button', { name: /Plan/ })).toBeNull()
+})
+
+function mockLongBookWithForm(form: 'long' | undefined) {
+  vi.mocked(api.listProjects).mockResolvedValue([{ ...shortProject, form }])
+  vi.mocked(api.listChapters).mockResolvedValue(shortBookChapters())
+  vi.mocked(api.listCandidates).mockResolvedValue([])
+  vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] })
+  vi.mocked(api.listForeshadows).mockResolvedValue([])
+  vi.mocked(api.listTasks).mockResolvedValue([])
+}
+
+it('短篇成稿的编辑器不摆校正记忆，长篇照摆', async () => {
+  mockShortBook([])
+  renderWorkspace()
+  fireEvent.click(await screen.findByRole('button', { name: 'chapter-1' }))
+  expect(await screen.findByText('memory-correction-false')).toBeTruthy()
+})
+
+it('没有 form 的书按长篇走，校正记忆照旧在', async () => {
+  mockLongBookWithForm(undefined)
+  renderWorkspace()
+  fireEvent.click(await screen.findByRole('button', { name: 'chapter-1' }))
+  expect(await screen.findByText('memory-correction-true')).toBeTruthy()
+})
+
+it('形态还没到手时先不摆校正记忆，免得先摆错再撤', async () => {
+  // 作品列表迟到（甚至一直不回）时，isShortBook 还是 false；此时不能顺手按长篇把按钮摆出来。
+  vi.mocked(api.listProjects).mockImplementation(() => new Promise(() => {}))
+  vi.mocked(api.listChapters).mockResolvedValue(shortBookChapters())
+  vi.mocked(api.listCandidates).mockResolvedValue([])
+  vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] })
+  vi.mocked(api.listForeshadows).mockResolvedValue([])
+  vi.mocked(api.listTasks).mockResolvedValue([])
+  renderWorkspace()
+
+  fireEvent.click(await screen.findByRole('button', { name: 'chapter-1' }))
+  expect(await screen.findByText('memory-correction-false')).toBeTruthy()
 })

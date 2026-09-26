@@ -22,6 +22,8 @@ interface Props {
   onMemoryChanged: () => void
   /** 生成任务终态后自增 → 重新拉取正文（同章再生内容已更新） */
   refreshTick?: number
+  /** 短篇整篇成稿没有逐章账本，校正记忆只会白跑一次抽取 → 隐藏入口（默认显示） */
+  allowMemoryCorrection?: boolean
 }
 
 export function ChapterEditor(props: Props) {
@@ -36,6 +38,7 @@ function ChapterEditorBody({
   onSaved,
   onMemoryChanged,
   refreshTick = 0,
+  allowMemoryCorrection = true,
   draftKey,
 }: Props & { draftKey: string }) {
   const [restoreTick, setRestoreTick] = useState(0)
@@ -115,15 +118,17 @@ function ChapterEditorBody({
           </h2>
           {detail && (
             <div className={styles.actions}>
-              <button
-                type="button"
-                className="btn btn-quiet"
-                disabled={memBusy || delBusy || dirty || saving}
-                title={dirty ? '请先保存正文，再校正记忆' : undefined}
-                onClick={() => void correctMemory()}
-              >
-                {memBusy ? '校正中…' : '校正记忆'}
-              </button>
+              {allowMemoryCorrection && (
+                <button
+                  type="button"
+                  className="btn btn-quiet"
+                  disabled={memBusy || delBusy || dirty || saving}
+                  title={dirty ? '请先保存正文，再校正记忆' : undefined}
+                  onClick={() => void correctMemory()}
+                >
+                  {memBusy ? '校正中…' : '校正记忆'}
+                </button>
+              )}
               <button
                 type="button"
                 className={`btn ${styles.danger}`}
