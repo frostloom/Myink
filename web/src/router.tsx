@@ -1,5 +1,6 @@
 // 路由：/login 公开；其余挂 RequireAuth（无会话 → 只读的 GuestShell，不再跳登录）。
 import { createBrowserRouter, Navigate, Outlet, Link } from 'react-router-dom'
+import { FeedbackWidget } from './components/FeedbackWidget'
 import { GuestShell } from './components/GuestShell'
 import { useAuth } from './context/AuthContext'
 import { useGuest } from './hooks/useGuest'
@@ -36,7 +37,13 @@ function RequireAuth() {
   // 游客没有会话，也就没有可打开的作品：先挡住，页内那批挂载期请求一处都不会发。
   if (!session) return <GuestShell />
   // token 或账号改变即卸载整个受保护子树，旧 fetch 状态与 SSE 随组件清理一并丢弃。
-  return <Outlet key={`${session.userId}:${session.token}`} />
+  // 反馈挂件挂在 Outlet 之外：切页面时它不重挂，也就不会丢掉填了一半的反馈。
+  return (
+    <>
+      <FeedbackWidget />
+      <Outlet key={`${session.userId}:${session.token}`} />
+    </>
+  )
 }
 
 function RequireProject() {

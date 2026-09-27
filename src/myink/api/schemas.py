@@ -554,3 +554,34 @@ class ShortCreationCommitOut(BaseModel):
     lengths_compressed: bool
     plan_warning: str | None
     style_name: str | None
+
+
+class FeedbackAttachmentOut(BaseModel):
+    """附件元数据：字节在盘上，这里只给展示用的名字/类型/大小与取件下标。"""
+
+    index: int
+    name: str
+    mime: str
+    bytes: int
+
+
+class FeedbackOut(BaseModel):
+    id: str
+    username: str = ""
+    category: str
+    description: str
+    contact: str = ""
+    page_url: str = ""
+    status: str
+    attachments: list[FeedbackAttachmentOut] = Field(default_factory=list)
+    created_at: datetime
+
+
+class FeedbackListOut(BaseModel):
+    items: list[FeedbackOut]
+
+
+class FeedbackStatusBody(BaseModel):
+    """管理端改状态：只接受 open/resolved，路由里再校验取值。"""
+
+    status: str

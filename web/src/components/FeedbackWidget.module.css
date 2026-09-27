@@ -1,0 +1,464 @@
+/* 反馈挂件：吊在页顶的灯泡 + 悬浮反馈面板。
+   灯泡的暖色光池是这个设计系统里唯一的例外（见 DESIGN.md，已登记为允许项）：
+   它只在 hover / 面板打开时亮起，范围小、随距离衰减。 */
+
+.dock {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  /* 挂件只占灯泡那一小块，别把整个顶栏的点击都吃掉 */
+  pointer-events: none;
+}
+
+.bulb {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  pointer-events: auto;
+  line-height: 0;
+  filter: drop-shadow(0 5px 9px rgba(72, 58, 38, 0.16));
+}
+
+.bulb:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+/* 玻璃泡周围的暖光：唯一一处装饰性光晕，hover 微亮、打开时全亮 */
+.glow {
+  position: absolute;
+  left: 50%;
+  top: 55px;
+  width: 200px;
+  height: 200px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 217, 134, 0.5) 0%,
+    rgba(255, 206, 112, 0.22) 34%,
+    rgba(255, 200, 96, 0) 66%
+  );
+  opacity: 0;
+  transition: opacity 460ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.bulb:hover .glow {
+  opacity: 0.68;
+}
+
+.bulb.lit .glow {
+  opacity: 1;
+}
+
+.sway {
+  display: block;
+  transform-origin: 20px 0;
+  animation: fb-sway 7s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+@keyframes fb-sway {
+  0%, 100% { transform: rotate(-2.2deg); }
+  50% { transform: rotate(2.2deg); }
+}
+
+.glass {
+  transition: filter 420ms ease;
+}
+
+.filament {
+  stroke: #a2977f;
+  stroke-width: 1.1;
+  opacity: 0.32;
+  transition: stroke 420ms ease, opacity 420ms ease;
+}
+
+.bulb:hover .filament {
+  opacity: 0.75;
+}
+
+.bulb.lit .filament {
+  stroke: #f7b53c;
+  opacity: 1;
+}
+
+.bulb.lit .glass {
+  filter: brightness(1.07) saturate(1.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sway { animation: none; }
+  .glass, .filament, .glow { transition: none; }
+}
+
+/* ---- 面板 ---- */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5) var(--space-4);
+  background: color-mix(in srgb, var(--ink) 34%, transparent);
+  animation: fb-fade 200ms ease-out;
+}
+
+.dialog {
+  display: flex;
+  width: min(580px, 100%);
+  max-height: min(760px, calc(100vh - 2 * var(--space-5)));
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-lift);
+  animation: fb-rise 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes fb-fade {
+  from { opacity: 0; }
+}
+
+@keyframes fb-rise {
+  from { opacity: 0; transform: translateY(12px) scale(0.985); }
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-5) var(--space-3);
+}
+
+.head h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-heading);
+}
+
+.headHint {
+  margin: var(--space-1) 0 0;
+  color: var(--ink-subtle);
+  font-size: var(--text-small);
+  line-height: 1.6;
+}
+
+.close {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.close:hover {
+  background: var(--quiet-hover);
+  color: var(--ink);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--space-1);
+  padding: 0 var(--space-5);
+  border-bottom: 1px solid var(--line);
+}
+
+.tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ink-muted);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+}
+
+.tabs button[aria-pressed='true'] {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* 整个面板只有这一处滚动容器；textarea 用 autoGrow 自己长高，不再嵌第二条滚动条 */
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-5);
+}
+
+.form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.fieldLabel {
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+}
+
+.counter {
+  justify-self: end;
+  color: var(--ink-faint);
+  font-size: var(--text-small);
+}
+
+.segRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.seg {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--input-bg);
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease;
+}
+
+.seg:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.segActive {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.pickRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.pickLabel {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.pickInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.pickHint {
+  color: var(--ink-faint);
+  font-size: var(--text-small);
+}
+
+.pickedList {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.pickedItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.pickedThumb {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+}
+
+.pickedThumb img,
+.pickedThumb video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pickedMeta {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.pickedName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pickedSize {
+  color: var(--ink-subtle);
+  font-size: var(--text-small);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* ---- 我的反馈 ---- */
+
+.mine {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.mineHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.cardList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.card {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.cardTime {
+  margin-left: auto;
+  color: var(--ink-faint);
+  font-size: var(--text-small);
+}
+
+.cardText {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface-1);
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: border-color 180ms ease, color 180ms ease;
+}
+
+.chip:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.chip:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.chipIcon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
+.chipIcon[data-video='true'] {
+  color: var(--warning);
+}
+
+.chipName {
+  min-width: 0;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chipMeta {
+  flex: 0 0 auto;
+  color: var(--ink-faint);
+  font-size: var(--text-small);
+}
+
+@media (max-width: 520px) {
+  .backdrop {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .dialog {
+    width: 100%;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .chipName {
+    max-width: 140px;
+  }
+}

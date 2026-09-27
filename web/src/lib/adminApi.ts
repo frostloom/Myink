@@ -1,4 +1,5 @@
 import { authenticatedGet, authenticatedSend } from './api'
+import type { Feedback } from '../types'
 
 export interface AdminPage<T> {
   items: T[]
@@ -347,6 +348,10 @@ interface FindingFilters extends PageFilters {
   chapterSeq?: number
 }
 
+interface FeedbackFilters extends PageFilters {
+  status?: string
+}
+
 function query(entries: Array<[string, string | number | undefined]>): string {
   const params = new URLSearchParams()
   for (const [key, value] of entries) {
@@ -466,5 +471,16 @@ export const adminApi = {
   revokeInvitation: (token: string, invitationId: string, signal?: AbortSignal) =>
     authenticatedSend<{ ok: true }>(
       'POST', `/admin/invitations/${encodeURIComponent(invitationId)}/revoke`, token, undefined, signal,
+    ),
+
+  // 用户反馈（灯泡挂件落库的那张表）：列表带提交人与附件元数据，可标记已解决／撤回。
+  listFeedback: (token: string, filters: FeedbackFilters, signal?: AbortSignal) =>
+    authenticatedGet<AdminPage<Feedback>>(`/admin/feedback${query([
+      ['status', filters.status], ...paging(filters),
+    ])}`, token, signal),
+
+  setFeedbackStatus: (token: string, feedbackId: string, status: string, signal?: AbortSignal) =>
+    authenticatedSend<Feedback>(
+      'PATCH', `/admin/feedback/${encodeURIComponent(feedbackId)}`, token, { status }, signal,
     ),
 }

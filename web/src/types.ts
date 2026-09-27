@@ -763,3 +763,32 @@ export interface RankingsResponse {
   error: string | null
   items: RankingItem[]
 }
+
+/** 反馈附件元数据（→ Python FeedbackAttachmentOut）。字节在服务器盘上，按 id + index 取。 */
+export interface FeedbackAttachment {
+  index: number
+  name: string
+  mime: string
+  bytes: number
+}
+
+/** 一条用户反馈（→ Python FeedbackOut）。username 只有管理端列表才填。 */
+export interface Feedback {
+  id: string
+  username: string
+  /** bug / suggestion / other */
+  category: string
+  description: string
+  contact: string
+  /** 提交时所在页面路径，便于定位现场 */
+  page_url: string
+  /** open / resolved */
+  status: string
+  attachments: FeedbackAttachment[]
+  created_at: string
+}
+
+/** 本人反馈列表（GET /feedback → Python FeedbackListOut） */
+export interface FeedbackList {
+  items: Feedback[]
+}

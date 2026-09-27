@@ -870,6 +870,37 @@
         "title": "AdminPage[AdminUser]",
         "type": "object"
       },
+      "AdminPage_FeedbackOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AdminPage[FeedbackOut]",
+        "type": "object"
+      },
       "AdminProject": {
         "properties": {
           "chapter_count": {
@@ -2168,6 +2199,46 @@
         "title": "BatchGenerateBody",
         "type": "object"
       },
+      "Body_submit_api_v1_feedback_post": {
+        "properties": {
+          "category": {
+            "default": "bug",
+            "title": "Category",
+            "type": "string"
+          },
+          "contact": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Contact",
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "files": {
+            "default": [],
+            "items": {
+              "contentMediaType": "application/octet-stream",
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "page_url": {
+            "default": "",
+            "maxLength": 512,
+            "title": "Page Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "description"
+        ],
+        "title": "Body_submit_api_v1_feedback_post",
+        "type": "object"
+      },
       "BookOutlineOut": {
         "description": "整书大纲读取/落库结果（§11：无大纲 → outline null，不 500）。",
         "properties": {
@@ -3145,6 +3216,121 @@
           "rankings"
         ],
         "title": "EnvironmentOut",
+        "type": "object"
+      },
+      "FeedbackAttachmentOut": {
+        "description": "附件元数据：字节在盘上，这里只给展示用的名字/类型/大小与取件下标。",
+        "properties": {
+          "bytes": {
+            "title": "Bytes",
+            "type": "integer"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "mime": {
+            "title": "Mime",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "name",
+          "mime",
+          "bytes"
+        ],
+        "title": "FeedbackAttachmentOut",
+        "type": "object"
+      },
+      "FeedbackListOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "FeedbackListOut",
+        "type": "object"
+      },
+      "FeedbackOut": {
+        "properties": {
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackAttachmentOut"
+            },
+            "title": "Attachments",
+            "type": "array"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "contact": {
+            "default": "",
+            "title": "Contact",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "page_url": {
+            "default": "",
+            "title": "Page Url",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "username": {
+            "default": "",
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "category",
+          "description",
+          "status",
+          "created_at"
+        ],
+        "title": "FeedbackOut",
+        "type": "object"
+      },
+      "FeedbackStatusBody": {
+        "description": "管理端改状态：只接受 open/resolved，路由里再校验取值。",
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "FeedbackStatusBody",
         "type": "object"
       },
       "ForeshadowOut": {
@@ -5795,6 +5981,144 @@
         ]
       }
     },
+    "/api/v1/admin/feedback": {
+      "get": {
+        "description": "用户反馈列表。只读_transaction；`feedback` 表是账号级、无 RLS，按时间倒序即可。",
+        "operationId": "admin_feedback_api_v1_admin_feedback_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 16,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPage_FeedbackOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Feedback",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/feedback/{feedback_id}": {
+      "patch": {
+        "description": "标记已解决／撤回为待处理。写操作不复用只读 reporting session。",
+        "operationId": "admin_feedback_status_api_v1_admin_feedback__feedback_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "feedback_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Feedback Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackStatusBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Feedback Status",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/invitations": {
       "get": {
         "description": "只读列表。刻意不返回摘要（对管理员无用），明文码仅创建时可见一次。",
@@ -7459,6 +7783,133 @@
         "summary": "Test Environment Connection",
         "tags": [
           "environment"
+        ]
+      }
+    },
+    "/api/v1/feedback": {
+      "get": {
+        "description": "本人提交历史，新的在前。附件取件地址由前端按 id + index 拼。",
+        "operationId": "list_items_api_v1_feedback_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Items",
+        "tags": [
+          "feedback"
+        ]
+      },
+      "post": {
+        "description": "提交一条反馈。附件按 mime 分类限体积、整体限个数；全部写盘成功才落库。",
+        "operationId": "submit_api_v1_feedback_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_submit_api_v1_feedback_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Submit",
+        "tags": [
+          "feedback"
+        ]
+      }
+    },
+    "/api/v1/feedback/{feedback_id}/attachments/{index}": {
+      "get": {
+        "description": "取回附件。非本人（且非 admin）一律 404——不用 403，免得暴露「这条反馈存在」。",
+        "operationId": "read_attachment_api_v1_feedback__feedback_id__attachments__index__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "feedback_id",
+            "required": true,
+            "schema": {
+              "title": "Feedback Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "index",
+            "required": true,
+            "schema": {
+              "title": "Index",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Attachment",
+        "tags": [
+          "feedback"
         ]
       }
     },

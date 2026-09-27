@@ -30,12 +30,15 @@ from myink.api.admin_schemas import (
     AdminTaskChapter, AdminTaskDetail, AdminUser,
 )
 from myink.api.auth import _AuthenticatedUser, require_admin
-from myink.api.schemas import OkOut
+from myink.api.routes_feedback import _out as _feedback_out
+from myink.api.schemas import FeedbackOut, FeedbackStatusBody, OkOut
 from myink.db import get_admin_engine, new_session
 from myink.models import (
-    AdminAccessLog, AgentRun, Chapter, Character, Event, Fact, Foreshadow, GenerationSnapshot,
-    Invitation, PlotThread, Project, ProjectSettings, Task, User, VolumeOutline,
+    AdminAccessLog, AgentRun, Chapter, Character, Event, Fact, Feedback, Foreshadow,
+    GenerationSnapshot, Invitation, PlotThread, Project, ProjectSettings, Task, User,
+    VolumeOutline,
 )
+from myink.models.feedback import STATUSES as FEEDBACK_STATUSES
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 Limit = Annotated[int, Query(ge=1, le=100)]
@@ -651,3 +654,52 @@ def revoke_invitation_endpoint(
             raise HTTPException(404, "NOT_FOUND")
         db.commit()
     return {"ok": True}
+
+
+@router.get("/feedback", response_model=AdminPage[FeedbackOut], name="admin.feedback")
+def feedback_list(
+    db: DB,
+    status: Annotated[str | None, Query(max_length=16)] = None,
+    limit: Limit = 25,
+    offset: Offset = 0,
+):
+    """用户反馈列表。只读_transaction；`feedback` 表是账号级、无 RLS，按时间倒序即可。"""
+    stmt = select(Feedback)
+    if status in FEEDBACK_STATUSES:
+        stmt = stmt.where(Feedback.status == status)
+    total = db.scalar(select(func.count()).select_from(stmt.order_by(None).subquery()))
+    rows = db.scalars(
+        stmt.order_by(Feedback.created_at.desc(), Feedback.id.desc()).limit(limit).offset(offset)
+    ).all()
+    names: dict[uuid.UUID, str] = {}
+    if rows:
+        names = dict(db.execute(
+            select(User.id, User.username).where(User.id.in_([row.user_id for row in rows]))
+        ).all())
+    return {
+        "items": [_feedback_out(row, username=names.get(row.user_id, "")) for row in rows],
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+@router.patch("/feedback/{feedback_id}", response_model=FeedbackOut, name="admin.feedback_status")
+def set_feedback_status(
+    feedback_id: uuid.UUID,
+    body: FeedbackStatusBody,
+    request: Request,
+    actor: _AuthenticatedUser = Depends(require_admin),
+):
+    """标记已解决／撤回为待处理。写操作不复用只读 reporting session。"""
+    if body.status not in FEEDBACK_STATUSES:
+        raise HTTPException(400, "INVALID_STATUS")
+    _audit_or_fail(actor, request, "admin.feedback_status")
+    with new_session() as db:
+        item = db.get(Feedback, feedback_id)
+        if item is None:
+            raise HTTPException(404, "NOT_FOUND")
+        item.status = body.status
+        db.commit()
+        username = db.scalar(select(User.username).where(User.id == item.user_id)) or ""
+        return _feedback_out(item, username=username)

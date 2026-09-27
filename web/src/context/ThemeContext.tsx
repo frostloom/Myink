@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import {
   applyTheme,
   applyWallpaper,
+  DEFAULT_WALLPAPER,
   PRESET_LIMIT,
   nextPresetName,
   readActivePreset,
@@ -16,26 +17,33 @@ import {
   type ThemeId,
   type ThemeStyle,
   type WallpaperConfig,
+  type WallpaperKind,
 } from '../lib/theme'
 import { clearWallpaper, readWallpaper } from '../lib/themeImage'
+import { CanvasMedia } from '../components/CanvasMedia'
+
+/** 当前正铺着的背景。主题页要能「还原」回它，所以要留着句柄；url 为 null 表示什么都别铺。 */
+type Applied = { url: string | null; kind: WallpaperKind; config: WallpaperConfig }
 
 interface ThemeContextValue {
   theme: ThemeId
   presets: CustomPreset[]
   activePresetId: string | null
   style: ThemeStyle
-  wallpaperUrl: string | null
   setTheme: (id: Exclude<ThemeId, 'custom'>) => void
   selectPreset: (id: string) => void
   savePreset: (id: string, name: string, tokens: CustomThemeTokens, wallpaper: WallpaperConfig) => void
   deletePreset: (id: string) => void
   saveStyle: (style: ThemeStyle) => void
+  /** 主题页草稿的实时预览；传 null 还原成盘上那套。URL 由调用方持有，这里只管铺。 */
+  setWallpaperPreview: (preview: Applied | null) => void
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const objectUrl = useRef<string | null>(null)
+  const applied = useRef<Applied | null>(null)
   const [theme, setThemeState] = useState<ThemeId>(() => {
     const initial = readTheme()
     applyTheme(initial, readActivePreset()?.tokens, readThemeStyle())
@@ -43,35 +51,60 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   })
   const [store, setStore] = useState(() => readPresetStore())
   const [style, setStyleState] = useState<ThemeStyle>(() => readThemeStyle())
-  const [wallpaperUrl, setWallpaperUrl] = useState<string | null>(null)
+  const [video, setVideo] = useState<{ url: string; config: WallpaperConfig } | null>(null)
 
   const dropUrl = useCallback(() => {
     if (objectUrl.current) URL.revokeObjectURL(objectUrl.current)
     objectUrl.current = null
-    setWallpaperUrl(null)
+    applied.current = null
+    setVideo(null)
   }, [])
 
-  const showWallpaper = useCallback(async (id: string | null, apply: boolean) => {
+  const showWallpaper = useCallback(async (id: string | null) => {
     dropUrl()
     const preset = id ? readPresetStore().items.find((item) => item.id === id) ?? null : null
     const blob = preset ? await readWallpaper(preset.id) : null
     if (!blob) {
-      if (apply) applyWallpaper(null)
+      applyWallpaper(null)
       return
     }
     const url = URL.createObjectURL(blob)
     objectUrl.current = url
-    setWallpaperUrl(url)
-    if (apply) applyWallpaper(url, preset?.wallpaper)
+    const config = preset?.wallpaper ?? DEFAULT_WALLPAPER
+    applied.current = { url, kind: config.kind, config }
+    // 视频铺不到 body 的 CSS 背景上，改交给固定的 <video> 层
+    if (config.kind === 'video') {
+      applyWallpaper(null)
+      setVideo({ url, config })
+      return
+    }
+    applyWallpaper(url, config)
   }, [dropUrl])
 
   useEffect(() => {
     const current = readPresetStore()
-    void showWallpaper(readTheme() === 'custom' ? current.activeId : null, readTheme() === 'custom')
+    void showWallpaper(readTheme() === 'custom' ? current.activeId : null)
     return () => {
       if (objectUrl.current) URL.revokeObjectURL(objectUrl.current)
     }
   }, [showWallpaper])
+
+  // 预览与还原都走这里：还原用的是留着的那份句柄，不再回头读库，免得异步回来后盖掉草稿
+  const setWallpaperPreview = useCallback((preview: Applied | null) => {
+    const next = preview ?? applied.current
+    if (!next?.url) {
+      setVideo(null)
+      applyWallpaper(null)
+      return
+    }
+    if (next.kind === 'video') {
+      applyWallpaper(null)
+      setVideo({ url: next.url, config: next.config })
+      return
+    }
+    setVideo(null)
+    applyWallpaper(next.url, next.config)
+  }, [])
 
   const persist = useCallback((next: typeof store, nextTheme: ThemeId) => {
     writePresetStore(next)
@@ -83,7 +116,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setTheme = useCallback((id: Exclude<ThemeId, 'custom'>) => {
     applyTheme(id, undefined, style)
     persist(readPresetStore(), id)
-    void showWallpaper(null, true)
+    void showWallpaper(null)
   }, [persist, showWallpaper, style])
 
   const selectPreset = useCallback((id: string) => {
@@ -93,7 +126,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const next = { items: current.items, activeId: id }
     applyTheme('custom', preset.tokens, style)
     persist(next, 'custom')
-    void showWallpaper(id, true)
+    void showWallpaper(id)
   }, [persist, showWallpaper, style])
 
   // 新建的预设只在编辑器的草稿里存在，直到「保存这套」才第一次写盘；所以不存在的 id 要能插入。
@@ -118,7 +151,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const next = { items, activeId: id }
     applyTheme('custom', tokens, style)
     persist(next, 'custom')
-    void showWallpaper(id, true)
+    void showWallpaper(id)
   }, [persist, showWallpaper, style])
 
   // 字体与透明度是账号级的：官方三套一样跟着走，所以存完要按当前主题重新铺一遍
@@ -142,14 +175,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       applyTheme('paper', undefined, style)
       writeTheme('paper')
       setThemeState('paper')
-      void showWallpaper(null, true)
+      void showWallpaper(null)
       return
     }
     const preset = items.find((item) => item.id === activeId)
     if (!preset) return
     applyTheme('custom', preset.tokens, style)
     writeTheme('custom')
-    void showWallpaper(activeId, true)
+    void showWallpaper(activeId)
   }, [showWallpaper, style])
 
   const value = useMemo(
@@ -158,16 +191,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       presets: store.items,
       activePresetId: store.activeId,
       style,
-      wallpaperUrl,
       setTheme,
       selectPreset,
       savePreset,
       deletePreset,
       saveStyle,
+      setWallpaperPreview,
     }),
-    [theme, store, style, wallpaperUrl, setTheme, selectPreset, savePreset, deletePreset, saveStyle],
+    [theme, store, style, setTheme, selectPreset, savePreset, deletePreset, saveStyle, setWallpaperPreview],
   )
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+  return (
+    <ThemeContext.Provider value={value}>
+      {video && <CanvasMedia url={video.url} config={video.config} />}
+      {children}
+    </ThemeContext.Provider>
+  )
 }
 
 export function useTheme(): ThemeContextValue {

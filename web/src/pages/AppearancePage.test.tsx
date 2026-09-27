@@ -236,7 +236,7 @@ it('rejects a non-image wallpaper on the appearance page', async () => {
   fireEvent.change(screen.getByLabelText('上传背景图'), {
     target: { files: [new File(['nope'], 'x.txt', { type: 'text/plain' })] },
   })
-  expect(await screen.findByText('只要 jpg / png / webp / gif')).toBeTruthy()
+  expect(await screen.findByText('只要 jpg / png / webp / gif 图片或 mp4 / webm 视频')).toBeTruthy()
 })
 
 it('previews a picked wallpaper live and still keeps it out of storage', async () => {
@@ -251,8 +251,22 @@ it('previews a picked wallpaper live and still keeps it out of storage', async (
   expect(localStorage.getItem(PRESET_STORAGE_KEY)).toBeNull()
 })
 
-it('tiles the wallpaper instead of leaving blank bands, and zooms past the edges', async () => {
+it('puts a picked video on its own background layer instead of the CSS background', async () => {
   await newPreset()
+  fireEvent.change(screen.getByLabelText('上传背景图'), {
+    target: { files: [new File([new Uint8Array(8)], 'bg.mp4', { type: 'video/mp4' })] },
+  })
+
+  // CSS 背景放不了视频：整页那层不写变量，改成框里一层 + 页面一层 <video>
+  expect(cssVar('--canvas-image')).toBe('')
+  expect(stage().querySelector('video')).toBeTruthy()
+  expect(document.querySelectorAll('video')).toHaveLength(2)
+  // 视频没有平铺一说
+  expect(screen.queryByRole('button', { name: '平铺' })).toBeNull()
+  expect(localStorage.getItem(PRESET_STORAGE_KEY)).toBeNull()
+})
+
+it('tiles the wallpaper instead of leaving blank bands, and zooms past the edges', async () => {  await newPreset()
   fireEvent.change(screen.getByLabelText('上传背景图'), {
     target: { files: [new File([TINY_PNG], 'bg.png', { type: 'image/png' })] },
   })

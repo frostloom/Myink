@@ -10,7 +10,7 @@ Myink is a focused long-form fiction workbench for authors. The interface should
 - Visual density: medium. Keep the writing surface dominant and tool chrome compact.
 - Motion: restrained. Animate state changes and progress, never decorate empty space.
 - Shape language: 4px for controls, 8px for panels, 12px only for large framed surfaces.
-- Use one accent color consistently. Do not use gradients, glassmorphism, or decorative glow.
+- Use one accent color consistently. Do not use gradients, glassmorphism, or decorative glow. Two bounded exceptions exist: the feedback bulb's warm glow, and media backgrounds a user chooses for their own theme.
 - Prefer separators, spacing, and surface contrast over floating card stacks.
 
 ## Color Tokens
@@ -102,7 +102,7 @@ Represent the workflow as a vertical event timeline: queued, running, waiting fo
 
 Every async workflow must support queued, loading, progress, success, empty, failure, retry, and interrupted/reconnect states. Buttons need hover, focus, pressed, disabled, and pending states. Preserve user text during failures and show errors next to the relevant action.
 
-Use motion only for hierarchy, feedback, or state transition. Respect `prefers-reduced-motion`. Do not use continuous background animations.
+Use motion only for hierarchy, feedback, or state transition. Respect `prefers-reduced-motion`. The interface itself must not run continuous background animations. One exception: media backgrounds a user uploads for their own theme (an animated image or a video). Such a background always carries a scrim so text stays legible, and it holds on a still frame when `prefers-reduced-motion` is set.
 
 ## Product Screens
 

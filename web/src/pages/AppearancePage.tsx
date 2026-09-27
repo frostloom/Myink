@@ -11,7 +11,6 @@ import { api } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
 import {
   applyTheme,
-  applyWallpaper,
   clampChromeOpacity,
   clampPercent,
   clampWallpaperZoom,
@@ -28,13 +27,23 @@ import {
   THEME_FONT_SIZES,
   WALLPAPER_ZOOM_MAX,
   WALLPAPER_ZOOM_MIN,
+  type CustomPreset,
   type CustomTokenKey,
   type CustomThemeTokens,
   type ThemeId,
   type ThemeStyle,
   type WallpaperConfig,
 } from '../lib/theme'
-import { clearWallpaper, readWallpaper, wallpaperError, writeWallpaper } from '../lib/themeImage'
+import {
+  captureVideoPoster,
+  clearWallpaper,
+  readPoster,
+  readWallpaper,
+  wallpaperError,
+  wallpaperKindOf,
+  writePoster,
+  writeWallpaper,
+} from '../lib/themeImage'
 import {
   OFFICIAL_THEME_TOKENS,
   PINNED_WORKSPACE_PREVIEW,
@@ -47,8 +56,8 @@ const preview = PINNED_WORKSPACE_PREVIEW
 
 // 背景图预览框固定成 16:9，这样框里的铺法和整页一致，拖拽手感才对得上
 const STAGE_ASPECT = 16 / 9
-// 编辑器草稿。id 可能是还没落库的新预设；file / drop 是背景图草稿，保存时才写 IndexedDB。
-// dirty 只标记「改过」，用来判断退出时要不要拦一下
+// 编辑器草稿。id 可能是还没落库的新预设；file / drop / poster 是背景草稿，保存时才写 IndexedDB。
+// poster 是视频的首帧静帧（也就视频有）；dirty 只标记「改过」，用来判断退出时要不要拦一下
 type Editor = {
   id: string
   isNew: boolean
@@ -56,6 +65,7 @@ type Editor = {
   tokens: CustomThemeTokens
   wallpaper: WallpaperConfig
   file: File | null
+  poster: Blob | null
   drop: boolean
   dirty: boolean
 }
@@ -261,15 +271,18 @@ export default function AppearancePage() {
     presets,
     activePresetId,
     style,
-    wallpaperUrl,
     setTheme,
     selectPreset,
     savePreset,
     deletePreset,
     saveStyle,
+    setWallpaperPreview,
   } = useTheme()
   const [projects, setProjects] = useState<Project[]>([])
-  const [presetImages, setPresetImages] = useState<Record<string, string>>({})
+  // 预设背景分两样：媒体本身（图片或视频，编辑时播放/铺开用）与首帧静帧（卡片和对话框用，
+  // 免得一页里同时播好几段视频）。图片没有单独的静帧，直接共用媒体。
+  const [presetMedia, setPresetMedia] = useState<Record<string, string>>({})
+  const [presetPosters, setPresetPosters] = useState<Record<string, string>>({})
   const [banner, setBanner] = useState<string | null>(null)
   const [opened, setOpened] = useState<OpenedTheme | null>(null)
 
@@ -291,14 +304,14 @@ export default function AppearancePage() {
 
   const editing = editor !== null
   const activePreset = presets.find((item) => item.id === activePresetId) ?? null
-  const savedEditingImage = editor && !editor.isNew ? presetImages[editor.id] ?? null : null
-  const draftImage = editor
-    ? editor.file
-      ? draftUrl
-      : editor.drop
-        ? null
-        : savedEditingImage
-    : null
+  // 预设封面的静帧：视频用首帧，图片就是本体
+  const presetStill = (item: CustomPreset): string | null =>
+    (item.wallpaper.kind === 'video' ? presetPosters[item.id] : undefined) ?? presetMedia[item.id] ?? null
+  const savedEditingMedia = editor && !editor.isNew ? presetMedia[editor.id] ?? null : null
+  // 草稿背景的实际来源：刚选的文件、已保存的预设，或者被「去掉」清空
+  const draftMedia = editor ? (editor.file ? draftUrl : editor.drop ? null : savedEditingMedia) : null
+  const draftImage = editor?.wallpaper.kind === 'video' ? null : draftMedia
+  const draftVideo = editor?.wallpaper.kind === 'video' ? draftMedia : null
   const styleDirty = draftStyle.chromeOpacity !== style.chromeOpacity
     || draftStyle.font !== style.font
     || draftStyle.fontSize !== style.fontSize
@@ -308,9 +321,10 @@ export default function AppearancePage() {
 
   // 退出预览要回到的那套：即便中途点了删除，这里也始终是当前已保存的状态
   const restore = useCallback(() => {
+    // 背景交给 ThemeContext 按它手里那份句柄重铺：图片和视频两种它都认得
+    setWallpaperPreview(null)
     applyTheme(theme, activePreset?.tokens, style)
-    applyWallpaper(theme === 'custom' ? wallpaperUrl : null, activePreset?.wallpaper)
-  }, [theme, style, wallpaperUrl, activePreset])
+  }, [theme, style, activePreset, setWallpaperPreview])
   const restoreRef = useRef(restore)
   restoreRef.current = restore
 
@@ -347,16 +361,24 @@ export default function AppearancePage() {
     const created: string[] = []
     void Promise.all(presets.map(async (item) => {
       const blob = await readWallpaper(item.id)
-      if (!blob) return [item.id, ''] as const
-      const url = URL.createObjectURL(blob)
-      created.push(url)
-      return [item.id, url] as const
+      if (!blob) return null
+      const media = URL.createObjectURL(blob)
+      created.push(media)
+      if (item.wallpaper.kind !== 'video') return [item.id, media, ''] as const
+      const poster = await readPoster(item.id)
+      const still = poster ? URL.createObjectURL(poster) : ''
+      if (still) created.push(still)
+      return [item.id, media, still] as const
     })).then((entries) => {
+      const loaded = entries.filter((entry) => entry !== null)
       if (cancelled) {
         created.forEach((url) => URL.revokeObjectURL(url))
         return
       }
-      setPresetImages(Object.fromEntries(entries.filter(([, url]) => url)))
+      setPresetMedia(Object.fromEntries(loaded.map(([id, media]) => [id, media])))
+      setPresetPosters(Object.fromEntries(
+        loaded.filter(([, , still]) => still).map(([id, , still]) => [id, still]),
+      ))
     })
     return () => {
       cancelled = true
@@ -391,11 +413,12 @@ export default function AppearancePage() {
     if (!previewing) return
     if (editor) {
       applyTheme('custom', editor.tokens, draftStyle)
-      applyWallpaper(draftImage, editor.wallpaper)
+      // 视频草稿铺不成 CSS 背景，整页跟着换成视频层
+      setWallpaperPreview({ url: draftMedia, kind: editor.wallpaper.kind, config: editor.wallpaper })
       return
     }
     applyTheme(theme, activePreset?.tokens, draftStyle)
-  }, [previewing, editor, draftImage, draftStyle, theme, activePreset])
+  }, [previewing, editor, draftMedia, draftStyle, theme, activePreset, setWallpaperPreview])
 
   // 收起 / 保存 / 离开页面：把整页还原成盘上那套
   useEffect(() => {
@@ -443,6 +466,7 @@ export default function AppearancePage() {
       tokens: { ...DEFAULT_CUSTOM_TOKENS },
       wallpaper: { ...DEFAULT_WALLPAPER },
       file: null,
+      poster: null,
       drop: false,
       dirty: false,
     })
@@ -458,6 +482,7 @@ export default function AppearancePage() {
       tokens: { ...preset.tokens },
       wallpaper: { ...preset.wallpaper },
       file: null,
+      poster: null,
       drop: false,
       dirty: false,
     })
@@ -487,10 +512,24 @@ export default function AppearancePage() {
       return
     }
     setBanner(null)
+    const kind = wallpaperKindOf(file) ?? 'image'
     replaceDraftUrl(URL.createObjectURL(file))
-    const aspect = editor.wallpaper.aspect
-    patch({ file, drop: false })
-    void imageAspect(draftUrlRef.current ?? '', aspect).then((next) => {
+    // 视频没有平铺一说，换过来时把铺法拉回铺满
+    patch({
+      file,
+      poster: null,
+      drop: false,
+      wallpaper: { ...editor.wallpaper, kind, fit: kind === 'video' ? 'cover' : editor.wallpaper.fit },
+    })
+    if (kind === 'video') {
+      void captureVideoPoster(file).then(({ poster, aspect }) => {
+        setEditor((current) => (current?.file === file
+          ? { ...current, poster, wallpaper: { ...current.wallpaper, aspect: aspect ?? current.wallpaper.aspect } }
+          : current))
+      })
+      return
+    }
+    void imageAspect(draftUrlRef.current ?? '', editor.wallpaper.aspect).then((next) => {
       setEditor((current) => (current?.file === file
         ? { ...current, wallpaper: { ...current.wallpaper, aspect: next } }
         : current))
@@ -498,8 +537,10 @@ export default function AppearancePage() {
   }
 
   function onDropWallpaper() {
+    if (!editor) return
     replaceDraftUrl(null)
-    patch({ file: null, drop: true })
+    // 去掉之后就没有背景了，kind 跟着退回图片，避免整页留着一层空的视频
+    patch({ file: null, poster: null, drop: true, wallpaper: { ...editor.wallpaper, kind: 'image' } })
   }
 
   function onSave() {
@@ -523,7 +564,7 @@ export default function AppearancePage() {
       tokens,
       wallpaper: editor.wallpaper,
     }
-    // 背景图先落库再保存主题：保存会重新读盘，读到的是刚写进去的新图
+    // 背景先落库再保存主题：保存会重新读盘，读到的是刚写进去的新图
     const commit = () => {
       savePreset(saved.id, saved.name, saved.tokens, saved.wallpaper)
       // file / drop 留着不清：编辑期间草稿图才是整页背景的准头，清掉会闪一下空白
@@ -531,8 +572,12 @@ export default function AppearancePage() {
         ? { ...current, isNew: false, name: saved.name, tokens: saved.tokens, dirty: false }
         : current))
     }
-    if (editor.file) void writeWallpaper(editor.id, editor.file).then(commit)
-    else if (editor.drop) void clearWallpaper(editor.id).then(commit)
+    if (editor.file) {
+      // 视频连首帧静帧一起写：卡片列表用它当封面
+      const writes: Array<Promise<void>> = [writeWallpaper(editor.id, editor.file)]
+      if (editor.poster) writes.push(writePoster(editor.id, editor.poster))
+      void Promise.all(writes).then(commit)
+    } else if (editor.drop) void clearWallpaper(editor.id).then(commit)
     else commit()
   }
 
@@ -550,7 +595,7 @@ export default function AppearancePage() {
   }
 
   function onWallpaperPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
-    if (!editor || !draftImage) return
+    if (!editor || !draftMedia) return
     const box = event.currentTarget
     const boxWidth = box.clientWidth
     const boxHeight = box.clientHeight
@@ -604,7 +649,7 @@ export default function AppearancePage() {
         return {
           label: item.name,
           tokens: item.tokens,
-          image: presetImages[item.id] ?? null,
+          image: presetStill(item),
           wallpaper: item.wallpaper,
           active: theme === 'custom' && item.id === activePresetId,
           apply: () => selectPreset(item.id),
@@ -670,7 +715,7 @@ export default function AppearancePage() {
                     size="thumb"
                     tokens={item.tokens}
                     style={draftStyle}
-                    image={presetImages[item.id] ?? null}
+                    image={presetStill(item)}
                     wallpaper={item.wallpaper}
                   />
                   <span className={styles.themeCardMeta}>
@@ -814,23 +859,40 @@ export default function AppearancePage() {
 
                 <div className={styles.themeEditorCol}>
                   <div className={styles.themeField}>
-                    <span className={styles.fieldLabel}>背景图</span>
+                    <span className={styles.fieldLabel}>背景</span>
                     <div
                       className={styles.themeWallpaperStage}
-                      style={stageStyle(draftImage, editor.wallpaper)}
+                      style={draftVideo ? undefined : stageStyle(draftImage, editor.wallpaper)}
                       role="presentation"
                       onPointerDown={onWallpaperPointerDown}
                       onPointerMove={onWallpaperPointerMove}
                       onPointerUp={onWallpaperPointerUp}
                       onPointerCancel={onWallpaperPointerUp}
-                    />
+                    >
+                      {draftVideo && (
+                        <video
+                          className={styles.themeWallpaperVideo}
+                          src={draftVideo}
+                          autoPlay
+                          muted
+                          loop
+                          playsInline
+                          style={{
+                            objectPosition: `${editor.wallpaper.x}% ${editor.wallpaper.y}%`,
+                            transform: editor.wallpaper.zoom === 100
+                              ? undefined
+                              : `scale(${editor.wallpaper.zoom / 100})`,
+                          }}
+                        />
+                      )}
+                    </div>
                     <div className={styles.themeWallpaperActions}>
                       <label className={`btn btn-secondary ${styles.themeWallpaperPick}`}>
-                        {draftImage ? '换一张' : '选择图片'}
+                        {draftMedia ? '换一个' : '选择图片或视频'}
                         <input
                           className={styles.themeWallpaperInput}
                           type="file"
-                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
                           aria-label="上传背景图"
                           onChange={(event) => {
                             onPickWallpaper(event.target.files?.[0])
@@ -838,7 +900,7 @@ export default function AppearancePage() {
                           }}
                         />
                       </label>
-                      {draftImage && (
+                      {draftMedia && (
                         <button type="button" className="btn btn-quiet" onClick={onDropWallpaper}>
                           去掉
                         </button>
@@ -849,17 +911,19 @@ export default function AppearancePage() {
                   <div className={styles.themeWallpaperRow}>
                     <span className={styles.fieldLabel}>铺法</span>
                     <div className={styles.themeChoiceRow}>
-                      {([['cover', '铺满'], ['tile', '平铺']] as const).map(([fit, label]) => (
-                        <button
-                          key={fit}
-                          type="button"
-                          className={`${styles.themeChoice} ${styles.themeChoiceTight} ${editor.wallpaper.fit === fit ? styles.themeChoiceActive : ''}`}
-                          aria-pressed={editor.wallpaper.fit === fit}
-                          onClick={() => patchWallpaper({ fit })}
-                        >
-                          <span className={styles.themeChoiceLabel}>{label}</span>
-                        </button>
-                      ))}
+                      {([['cover', '铺满'], ['tile', '平铺']] as const)
+                        .filter(([fit]) => fit !== 'tile' || !draftVideo)
+                        .map(([fit, label]) => (
+                          <button
+                            key={fit}
+                            type="button"
+                            className={`${styles.themeChoice} ${styles.themeChoiceTight} ${editor.wallpaper.fit === fit ? styles.themeChoiceActive : ''}`}
+                            aria-pressed={editor.wallpaper.fit === fit}
+                            onClick={() => patchWallpaper({ fit })}
+                          >
+                            <span className={styles.themeChoiceLabel}>{label}</span>
+                          </button>
+                        ))}
                     </div>
                     <span className={styles.fieldLabel}>缩放</span>
                     <input

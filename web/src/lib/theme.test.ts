@@ -169,14 +169,14 @@ it('applies a wallpaper only as a CSS image variable', () => {
 })
 
 it('covers the viewport at any aspect and lets zoom push past the edges', () => {
-  applyWallpaper('blob:x', { fit: 'cover', zoom: 100, x: 50, y: 50, aspect: 2 })
+  applyWallpaper('blob:x', { kind: 'image', fit: 'cover', zoom: 100, x: 50, y: 50, aspect: 2 })
   expect(document.documentElement.style.getPropertyValue('--canvas-size')).toBe(
     'calc(max(100vw, 200vh) * 1) calc(max(50vw, 100vh) * 1)',
   )
   expect(document.documentElement.style.getPropertyValue('--canvas-position')).toBe('50% 50%')
   expect(document.documentElement.style.getPropertyValue('--canvas-repeat')).toBe('no-repeat')
 
-  applyWallpaper('blob:x', { fit: 'cover', zoom: 150, x: 0, y: 100, aspect: 2 })
+  applyWallpaper('blob:x', { kind: 'image', fit: 'cover', zoom: 150, x: 0, y: 100, aspect: 2 })
   expect(document.documentElement.style.getPropertyValue('--canvas-size')).toBe(
     'calc(max(100vw, 200vh) * 1.5) calc(max(50vw, 100vh) * 1.5)',
   )
@@ -188,7 +188,7 @@ it('covers the viewport at any aspect and lets zoom push past the edges', () => 
 })
 
 it('fills the side bands with copies instead of leaving them blank in tile mode', () => {
-  applyWallpaper('blob:x', { fit: 'tile', zoom: 100, x: 50, y: 50, aspect: 2 })
+  applyWallpaper('blob:x', { kind: 'image', fit: 'tile', zoom: 100, x: 50, y: 50, aspect: 2 })
   expect(document.documentElement.style.getPropertyValue('--canvas-repeat')).toBe('repeat')
   expect(document.documentElement.style.getPropertyValue('--canvas-size')).toBe('auto calc(100vh * 1)')
 })
@@ -196,10 +196,20 @@ it('fills the side bands with copies instead of leaving them blank in tile mode'
 it('repairs a broken wallpaper config instead of trusting it', () => {
   expect(parseWallpaper(null)).toEqual(DEFAULT_WALLPAPER)
   expect(parseWallpaper({ fit: 'stretch', zoom: 9000, x: -4, y: 999, aspect: 0 })).toEqual({
+    kind: 'image',
     fit: 'cover',
     zoom: 300,
     x: 0,
     y: 100,
     aspect: DEFAULT_WALLPAPER.aspect,
   })
+})
+
+it('reads an older preset without kind as an image, and never tiles a video', () => {
+  const legacy = parseWallpaper({ fit: 'tile', zoom: 120, x: 30, y: 70, aspect: 1.5 })
+  expect(legacy.kind).toBe('image')
+  expect(legacy.fit).toBe('tile')
+
+  const video = parseWallpaper({ kind: 'video', fit: 'tile', zoom: 120, x: 30, y: 70, aspect: 1 })
+  expect(video).toEqual({ kind: 'video', fit: 'cover', zoom: 120, x: 30, y: 70, aspect: 1 })
 })
