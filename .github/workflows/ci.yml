@@ -73,10 +73,16 @@ jobs:
         run: pip install -e '.[dev]'
       - name: Python 语法检查
         run: python -m compileall -q src tests
-      - name: 创建测试业务角色（checkout 后执行，避免 service 提前挂载空目录）
+      - name: 创建测试业务角色（与 compose 首启同一个脚本，checkout 后执行避免 service 提前挂载空目录）
         env:
+          # 脚本里 psql 只显式传 --username/--dbname，其余走 psql 自己的环境变量；
+          # 容器首启时是本地 socket + peer，CI 里数据库在另一个容器，所以要补 PGHOST/PGPASSWORD。
+          PGHOST: localhost
           PGPASSWORD: myink
-        run: psql -h localhost -U myink -d myink -v ON_ERROR_STOP=1 -f docker/initdb/01-roles.sql
+          POSTGRES_USER: myink
+          POSTGRES_DB: myink
+          MYINK_APP_PASSWORD: myink
+        run: sh docker/initdb/01-roles.sh
       - name: 初始化（建表 + RLS + seed，幂等）
         run: myink init --seed
       - name: 契约导出 + diff 闸（改响应模型未重新导出 spec 即红）

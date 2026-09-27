@@ -33,7 +33,7 @@ Agent 只输出候选，由编排层处理落库。低风险候选可自动确�
 
 ### 工程化
 
-- Caddy 边缘层承载 TLS / 前端静态托管 / 按路径分流；Go(Gin) 网关收缩为只服务 SSE 进度流；Python(FastAPI/LangGraph) 自验 JWT、跑三层闸门并独立扩缩容；RabbitMQ 承载异步任务/延迟重投/死信，Redis 承载限流/锁/SSE；Last-Event-ID 在事件保留窗口内追平
+- Caddy 边缘层承载 TLS / 前端静态托管 / 按路径分流；Python(FastAPI/LangGraph) 自验 JWT、跑三层闸门、提供 SSE 进度流并独立扩缩容；RabbitMQ 承载异步任务/延迟重投/死信，Redis 承载限流/锁/SSE；Last-Event-ID 在事件保留窗口内追平
 - 多租户隔离默认拒绝：PostgreSQL RLS + 事务级 `SET LOCAL` 杜绝连接池跨租户串数据，向量检索显式按项目过滤；过滤场景的召回质量需通过数据集验证，Python 自验 JWT + 应用层归属断言双保险
 - 已落地 MCP Client 标准协议接入起点 DaoSearch 外部榜单（Streamable HTTP，白名单 sanitize + 优雅降级样例），榜单仅作建书前的题材风向灵感工具、不进入记忆 / 事实层、不注入任何生成节点
 
@@ -43,7 +43,6 @@ Agent 只输出候选，由编排层处理落库。低风险候选可自动确�
 |---|---|
 | 推理编排 | Python 3.12 / FastAPI / LangGraph / SQLAlchemy |
 | 边缘层 | Caddy 2（TLS / 静态托管 / 按路径分流） |
-| 网关 | Go / Gin（只服务 SSE 进度流） |
 | 存储与队列 | PostgreSQL 16 + pgvector / Redis 7 / RabbitMQ 3.13 |
 | 前端 | React 19 / TypeScript / Vite / CSS Modules |
 | 部署 | Docker Compose 一键启动（单入口 80/443，Caddy） |
@@ -90,7 +89,6 @@ docker/           initdb 脚本
 
 - Python：编排、校验、租户隔离、版本并发冲突、上下文预算及 OpenAPI 契约回归。
 - 前端：工具函数与 jsdom 编辑器交互回归，另运行 TypeScript / Vite 构建。
-- Go：网关契约（仅剩两条直连 Python 的路径）、SSE 中继、闸门脚本语义参照与 RabbitMQ 集成测试；CI 拒绝静默跳过。
 - 契约：`myink contract export` 导出后提交 `spec/api-openapi.json`；CI 检查漂移。
 - `bash scripts/ci-local.sh` 使用独立临时基础设施，不改动开发作品库。设置 `SKIP_IMAGES=1` 可跳过镜像构建。详细环境见 [部署文档](docs/DEPLOY.md)。
 

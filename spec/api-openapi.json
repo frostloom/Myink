@@ -11349,6 +11349,7 @@
     },
     "/readyz": {
       "get": {
+        "description": "就绪探针。经 Caddy 的公网入口可达，所以对外只回 ok / fail，\n出错细节（可能带主机名、DSN）只进日志，不给匿名调用方。",
         "operationId": "readyz_readyz_get",
         "responses": {
           "200": {

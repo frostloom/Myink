@@ -72,15 +72,26 @@ export function AttachmentChip({ feedbackId, attachment }: {
 
   const open = async () => {
     if (state === 'busy') return
+    // 先同步开新页再取字节：跨过 await 之后浏览器就不认这次用户激活了，
+    // 大视频要拉很久，等回来再 window.open 会被弹窗拦截器静默丢掉。
+    const tab = window.open('', '_blank')
+    if (!tab) {
+      setState('error')
+      return
+    }
     setState('busy')
     try {
       const blob = await fetchFeedbackAttachment(feedbackId, attachment.index)
       const url = URL.createObjectURL(blob)
-      window.open(url, '_blank', 'noopener')
+      if (!tab.closed) {
+        tab.opener = null
+        tab.location.href = url
+      }
       // 立刻撤销会让新开的那页白屏，等它把字节读走再回收
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
       setState('idle')
     } catch {
+      tab.close()
       setState('error')
     }
   }
@@ -137,20 +148,37 @@ export function FeedbackWidget() {
 
   const bulbRef = useRef<HTMLButtonElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
+  const dialogRef = useRef<HTMLElement>(null)
   const descRef = useRef<HTMLTextAreaElement>(null)
   const wasOpen = useRef(false)
   const pickedRef = useRef(picked)
   pickedRef.current = picked
 
-  // 打开时焦点落到关闭按钮，Esc 收起；关掉后把焦点还给灯泡，键盘用户不会掉队
+  // 打开时焦点落到关闭按钮，Esc 收起，Tab 在面板内循环；关掉后把焦点还给灯泡，键盘用户不会掉队
   useEffect(() => {
     if (open) {
       wasOpen.current = true
       closeRef.current?.focus()
       const onKey = (event: KeyboardEvent) => {
-        if (event.key !== 'Escape') return
-        event.stopPropagation()
-        setOpen(false)
+        if (event.key === 'Escape') {
+          event.stopPropagation()
+          setOpen(false)
+          return
+        }
+        if (event.key !== 'Tab') return
+        const controls = dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), a[href], input:not(:disabled), textarea:not(:disabled), select:not(:disabled)',
+        )
+        if (!controls?.length) return
+        const first = controls[0]
+        const last = controls[controls.length - 1]
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault()
+          last.focus()
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault()
+          first.focus()
+        }
       }
       document.addEventListener('keydown', onKey)
       return () => document.removeEventListener('keydown', onKey)
@@ -302,6 +330,7 @@ export function FeedbackWidget() {
           }}
         >
           <section
+            ref={dialogRef}
             className={styles.dialog}
             role="dialog"
             aria-modal="true"
