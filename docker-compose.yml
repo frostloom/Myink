@@ -102,6 +102,10 @@ services:
       RATE_BURST: ${RATE_BURST:-40}
       # 扫榜灵感（§10：直连番茄公开榜单）
       RANKINGS_ENABLED: "1"
+      # 用户反馈附件落盘目录：必须是卷挂载点，否则重建容器就丢
+      FEEDBACK_DIR: /data/feedback
+    volumes:
+      - feedback-data:/data/feedback
     command: ["sh", "-c", "myink init && myink-api"]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8100/openapi.json')"]
@@ -189,3 +193,4 @@ volumes:
   rabbitmq-data:            # RabbitMQ 数据卷（拓扑参数变更时需清空重建，见 myink-rabbitmq 注释）
   caddy-data:               # Caddy 证书 / ACME 账户（删掉＝下次启动重新签发，见 myink-caddy 注释）
   caddy-config:             # Caddy 自动生成的运行配置
+  feedback-data:            # 用户反馈附件（问题描述里的图片/视频），不可重建，必须持久化

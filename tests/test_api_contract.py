@@ -79,15 +79,21 @@ PUBLIC_ENDPOINTS: list[tuple[str, str]] = [
     ("POST", "/api/v1/projects/{project_id}/global-audit"),
     ("GET", "/api/v1/projects/{project_id}/global-audit"),
     ("GET", "/api/v1/projects/{project_id}/global-audit/{report_id}"),
+    # 用户反馈（前端 FeedbackWidget：提交 / 我的反馈列表）
+    ("POST", "/api/v1/feedback"),
+    ("GET", "/api/v1/feedback"),
 ]
 
 # 探针（无业务消费方，不要求响应契约；Go 路径闸允许清单）。
 # SSE 进度流也在列：它回的是 `text/event-stream` 帧流，不是 JSON 信封，本来就没有响应
 # schema 可挂——真实契约（帧格式、12 个 data 键、410 回退信封）钉在 test_sse.py。
+# 反馈附件是二进制流（FileResponse，按 mime 回图片/视频字节），同理无 JSON 响应 schema；
+# 其归属隔离（跨用户 404、admin 豁免、越界下标 404）钉在 test_feedback.py。
 ALLOWLIST = {
     ("GET", "/healthz"),
     ("GET", "/readyz"),
     ("GET", "/api/v1/tasks/{task_id}/events"),
+    ("GET", "/api/v1/feedback/{feedback_id}/attachments/{index}"),
 }
 
 SPEC_PATH = pathlib.Path(__file__).resolve().parents[1] / "spec" / "api-openapi.json"

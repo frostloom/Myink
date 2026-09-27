@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Outlet, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
+import { AttachmentChip } from '../components/FeedbackWidget'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
 import { formatApiError } from '../lib/apiError'
@@ -21,6 +22,7 @@ import {
   taskStatusLabel,
   taskTypeLabel,
 } from '../lib/labels'
+import type { Feedback } from '../types'
 import { Analytics } from './admin/Analytics'
 import { RunTable } from './admin/RunDetail'
 import {
@@ -36,11 +38,11 @@ import {
 } from './admin/shared'
 import styles from './AdminPage.module.css'
 
-type Tab = 'overview' | 'analytics' | 'users' | 'projects' | 'tasks' | 'runs' | 'logs' | 'invites'
+type Tab = 'overview' | 'analytics' | 'users' | 'projects' | 'tasks' | 'runs' | 'logs' | 'invites' | 'feedback'
 
 const TABS: Array<[Tab, string]> = [
   ['overview', '概览'], ['analytics', '分析'], ['users', '用户'], ['projects', '作品'], ['tasks', '任务'],
-  ['runs', '全部运行'], ['logs', '访问日志'], ['invites', '邀请码'],
+  ['runs', '全部运行'], ['logs', '访问日志'], ['invites', '邀请码'], ['feedback', '反馈'],
 ]
 
 function OverviewView({ token, onForbidden }: { token: string; onForbidden: () => void }) {
@@ -391,6 +393,97 @@ function InvitesView({ token, onForbidden }: { token: string; onForbidden: () =>
   )
 }
 
+const FEEDBACK_CATEGORY_LABELS: Record<string, string> = {
+  bug: '问题故障',
+  suggestion: '功能建议',
+  other: '其他',
+}
+
+function FeedbackView({ token, onForbidden }: { token: string; onForbidden: () => void }) {
+  const [draftStatus, setDraftStatus] = useState('')
+  const [status, setStatus] = useState('')
+  const [offset, setOffset] = useState(0)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const load = useCallback(
+    (signal: AbortSignal) => adminApi.listFeedback(token, { status, limit: PAGE_SIZE, offset }, signal),
+    [offset, status, token],
+  )
+  const resource = useResource<PageResult<Feedback>>(load, onForbidden)
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault()
+    setOffset(0)
+    setStatus(draftStatus)
+  }
+
+  const setFeedbackStatus = (item: Feedback, next: string) => {
+    setError(null)
+    setBusy(item.id)
+    adminApi.setFeedbackStatus(token, item.id, next)
+      .then(() => resource.retry())
+      .catch((reason: unknown) => setError(formatApiError(reason, '状态更新失败，请稍后重试')))
+      .finally(() => setBusy(null))
+  }
+
+  return (
+    <section className={styles.view} aria-labelledby="feedback-heading">
+      <div className={styles.viewHead}>
+        <div><h2 id="feedback-heading">问题反馈</h2></div>
+        <RefreshButton onClick={resource.retry} />
+      </div>
+      <form className={styles.filters} aria-label="反馈筛选" onSubmit={submit}>
+        <label><span>状态</span>
+          <select className="input" value={draftStatus} onChange={(event) => setDraftStatus(event.target.value)}>
+            <option value="">全部</option>
+            <option value="open">待处理</option>
+            <option value="resolved">已解决</option>
+          </select>
+        </label>
+        <button className="btn btn-primary" type="submit">筛选</button>
+      </form>
+      {error && <div className="banner banner-error" role="alert"><span>{error}</span></div>}
+      <LoadState {...resource} empty={resource.data?.items.length === 0}>
+        {resource.data && <>
+          <div className={styles.tableWrap}><table><thead><tr>
+            <th>提交时间</th><th>用户</th><th>类型</th><th>描述</th><th>附件</th><th>状态</th><th>操作</th>
+          </tr></thead>
+            <tbody>{resource.data.items.map((item) => <tr key={item.id}>
+              <td>{formatDate(item.created_at)}</td>
+              <td>{item.username || '—'}</td>
+              <td>{FEEDBACK_CATEGORY_LABELS[item.category] ?? '其他'}</td>
+              <td className={styles.text}>
+                {item.description}
+                {item.contact && <small>联系方式：{item.contact}</small>}
+                {item.page_url && <small>页面：{item.page_url}</small>}
+              </td>
+              <td>
+                {item.attachments.length === 0 ? <span className={styles.muted}>—</span> : (
+                  <div className={styles.feedbackChips}>
+                    {item.attachments.map((attachment) => (
+                      <AttachmentChip key={attachment.index} feedbackId={item.id} attachment={attachment} />
+                    ))}
+                  </div>
+                )}
+              </td>
+              <td>{item.status === 'resolved'
+                ? <span className="badge badge-success">已解决</span>
+                : <span className="badge badge-warning">待处理</span>}</td>
+              <td className={styles.actions}>
+                {item.status === 'resolved'
+                  ? <button type="button" className="btn btn-quiet" disabled={busy === item.id}
+                    onClick={() => setFeedbackStatus(item, 'open')}>撤回</button>
+                  : <button type="button" className="btn btn-secondary" disabled={busy === item.id}
+                    onClick={() => setFeedbackStatus(item, 'resolved')}>标记已解决</button>}
+              </td>
+            </tr>)}</tbody></table></div>
+          <Pagination total={resource.data.total} offset={offset} onChange={setOffset} />
+        </>}
+      </LoadState>
+    </section>
+  )
+}
+
 /** 控制台首页：标签栏与当前标签的内容。tab 放在 URL 上，详情页返回时才能回到原来的标签。 */
 export function AdminConsole() {
   const { token, onForbidden } = useOutletContext<AdminOutletContext>()
@@ -419,6 +512,7 @@ export function AdminConsole() {
       {tab === 'runs' && <RunsView token={token} onForbidden={onForbidden} />}
       {tab === 'logs' && <LogsView token={token} onForbidden={onForbidden} />}
       {tab === 'invites' && <InvitesView token={token} onForbidden={onForbidden} />}
+      {tab === 'feedback' && <FeedbackView token={token} onForbidden={onForbidden} />}
     </>
   )
 }

@@ -133,11 +133,29 @@ class Settings:
     rankings_limit: int = field(default_factory=lambda: int(_env("RANKINGS_LIMIT", "10") or "10"))  # 展示条数 cap
     rankings_cache_ttl: int = field(default_factory=lambda: int(_env("RANKINGS_CACHE_TTL", "3600") or "3600"))  # 秒
 
+    # 用户反馈（问题描述 + 图片/视频佐证）：附件字节落盘，库表只存元数据。
+    # 默认目录在仓库下 .data/feedback；容器里由 compose 覆盖成卷挂载点 /data/feedback。
+    feedback_dir: str = field(
+        default_factory=lambda: _env("FEEDBACK_DIR", "") or str(_ROOT / ".data" / "feedback")
+    )
+    feedback_image_max_bytes: int = field(
+        default_factory=lambda: int(_env("FEEDBACK_IMAGE_MAX_BYTES", str(10 * 1024 * 1024)) or "0")
+    )
+    feedback_video_max_bytes: int = field(
+        default_factory=lambda: int(_env("FEEDBACK_VIDEO_MAX_BYTES", str(100 * 1024 * 1024)) or "0")
+    )
+    feedback_max_files: int = field(default_factory=lambda: int(_env("FEEDBACK_MAX_FILES", "4") or "4"))
+
     def is_prod(self) -> bool:
         return self.app_env == "prod"
 
     def validate(self) -> None:
         import math
+
+        if self.feedback_max_files <= 0:
+            raise ValueError("FEEDBACK_MAX_FILES 必须为正")
+        if self.feedback_image_max_bytes <= 0 or self.feedback_video_max_bytes <= 0:
+            raise ValueError("FEEDBACK_IMAGE_MAX_BYTES / FEEDBACK_VIDEO_MAX_BYTES 必须为正")
 
         if self.account_model_calls_daily <= 0 or self.account_model_lease_seconds < 600:
             raise ValueError("ACCOUNT_MODEL_CALLS_DAILY 必须为正，ACCOUNT_MODEL_LEASE_SECONDS 至少 600")

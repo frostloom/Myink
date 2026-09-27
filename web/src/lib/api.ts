@@ -18,6 +18,8 @@ import type {
   CreateProjectBody,
   DeleteChapterResponse,
   DeleteProjectResponse,
+  Feedback,
+  FeedbackList,
   GenerateResponse,
   AuditRunResponse,
   GlobalAuditReportDetail,
@@ -100,7 +102,9 @@ async function request<T>(
   const headers: Record<string, string> = { Accept: 'application/json' }
   const token = options?.token === undefined ? getToken() : options.token
   if (token) headers.Authorization = `Bearer ${token}`
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  // FormData 的 Content-Type 得留给浏览器写，它要自己拼 multipart 边界
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData
+  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json'
 
   const controller = new AbortController()
   const abortFromCaller = () => controller.abort()
@@ -116,7 +120,7 @@ async function request<T>(
     const res = await fetch(BASE + path, {
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: isForm ? (body as FormData) : body !== undefined ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     })
 
@@ -411,4 +415,28 @@ export const api = {
   // refresh=true 强制绕过进程内 TTL 缓存重拉（降级样例也可重试）。
   listRankings: (refresh = false) =>
     request<RankingsResponse>('GET', `/rankings${refresh ? '?refresh=true' : ''}`),
+
+  // 用户反馈（灯泡挂件）：提交是 multipart（描述 + 图片/视频附件），列表只含本人。
+  submitFeedback: (form: FormData, signal?: AbortSignal) =>
+    request<Feedback>('POST', '/feedback', form, { signal }),
+
+  listFeedback: (signal?: AbortSignal) =>
+    request<FeedbackList>('GET', '/feedback', undefined, { signal }),
+}
+
+/** 反馈附件是二进制流，不走 JSON 解包：取回原始 Blob 供预览或另存。 */
+export async function fetchFeedbackAttachment(
+  feedbackId: string,
+  index: number,
+  signal?: AbortSignal,
+): Promise<Blob> {
+  const token = getToken()
+  const headers: Record<string, string> = {}
+  if (token) headers.Authorization = `Bearer ${token}`
+  const res = await fetch(`${BASE}/feedback/${feedbackId}/attachments/${index}`, { headers, signal })
+  if (!res.ok) {
+    if (res.status === 401 && token) dispatchUnauthorized(token)
+    throw new ApiError(res.status, res.status === 404 ? 'not_found' : 'network_error', null)
+  }
+  return res.blob()
 }

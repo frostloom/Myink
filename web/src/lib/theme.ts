@@ -64,8 +64,11 @@ export type ThemeStyle = {
 }
 
 export type WallpaperFit = 'cover' | 'tile'
+/** 图片走 body 的 CSS 背景；视频要单独一层 <video>（CSS 背景放不了视频）。 */
+export type WallpaperKind = 'image' | 'video'
 
 export type WallpaperConfig = {
+  kind: WallpaperKind
   fit: WallpaperFit
   /** 铺满时在 cover 的基础上再放大，100 表示刚好铺满 */
   zoom: number
@@ -77,6 +80,7 @@ export type WallpaperConfig = {
 }
 
 export const DEFAULT_WALLPAPER: WallpaperConfig = {
+  kind: 'image',
   fit: 'cover',
   zoom: 100,
   x: 50,
@@ -281,8 +285,11 @@ export function parseWallpaper(raw: unknown): WallpaperConfig {
   const aspect = typeof item.aspect === 'number' && Number.isFinite(item.aspect) && item.aspect > 0
     ? item.aspect
     : DEFAULT_WALLPAPER.aspect
+  // 老预设没有 kind 字段，一律当图片；视频也不谈平铺
+  const kind: WallpaperKind = item.kind === 'video' ? 'video' : 'image'
   return {
-    fit: item.fit === 'tile' ? 'tile' : 'cover',
+    kind,
+    fit: kind === 'video' ? 'cover' : item.fit === 'tile' ? 'tile' : 'cover',
     zoom: clampWallpaperZoom(item.zoom ?? DEFAULT_WALLPAPER.zoom),
     x: clampPercent(item.x ?? DEFAULT_WALLPAPER.x, DEFAULT_WALLPAPER.x),
     y: clampPercent(item.y ?? DEFAULT_WALLPAPER.y, DEFAULT_WALLPAPER.y),
