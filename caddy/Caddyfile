@@ -28,6 +28,26 @@
 	# ⚠️ encode 绝不能提到站点级：它会给 text/event-stream 做压缩缓冲，
 	# 表现为「生成过程静默、结束时一次性吐出全部进度」。只在静态文件那两个块里开。
 
+	# 安全响应头。本服务是 SPA + 同源 API，页面从不被第三方内嵌，所以内嵌一律拒绝。
+	# HSTS 只在 HTTPS 下起作用（纯 HTTP 本地部署时浏览器忽略），写上不碍事。
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		# 只写这三条不会限制脚本/样式/连线的策略。完整 CSP 要给 index.html 里那段主题
+		# 引导内联脚本配哈希、还牵着 blob: 媒体层，得跟着构建产物走，留作后续单独一项。
+		Content-Security-Policy "frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
+	}
+
+	# 请求体上限：反馈附件最多 4 个 × 100MB 视频，这里留出 multipart 开销的余量。
+	# 不设的话任意路由都能被塞一个超大 body——Starlette 先按分片把整个请求落进临时文件，
+	# 路由里的体积校验是之后才跑的，单 VPS 会被写满盘。
+	request_body {
+		max_size 500MB
+	}
+
 	# 1) SSE 必须排在 /api/v1/* 之前 —— handle 块互斥且先匹配先赢，
 	#    否则下面的通配块会把 /tasks/*/events 一起吃掉，SSE 挂在那里不动。
 	handle /api/v1/tasks/*/events {

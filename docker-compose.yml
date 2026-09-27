@@ -7,6 +7,14 @@
 # `myink init --seed`；首个账号用 `myink create-invite` 发码注册。
 name: myink
 
+# 容器日志一律限大小：默认 json-file 驱动不轮转，单 VPS 上访问日志会把盘写满
+# （和 pgdata 同盘，写满即全站不可用）。
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   myink-pg:
     # 国内网络 daocloud 前缀更稳（docker.io 直连超时）；境外可用 PG_IMAGE=pgvector/pgvector:pg16 覆盖
@@ -14,8 +22,12 @@ services:
     container_name: myink-pg
     environment:
       POSTGRES_USER: myink
-      POSTGRES_PASSWORD: myink
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-myink}
       POSTGRES_DB: myink
+      # 只给首启的 initdb 用：给 myink_app 角色定的密码，必须与上面 API 的 DATABASE_URL 一致。
+      # 仅对全新数据卷生效（已有卷的角色密码不会跟着改）。
+      MYINK_APP_PASSWORD: ${MYINK_APP_PASSWORD:-myink}
+    logging: *default-logging
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
@@ -34,14 +46,21 @@ services:
     # 国内网络 daocloud 前缀更稳；境外可用 REDIS_IMAGE=redis:7-alpine 覆盖
     image: ${REDIS_IMAGE:-docker.m.daocloud.io/library/redis:7-alpine}
     container_name: myink-redis
+    environment:
+      # 只被下面的 requirepass 与健康检查读；业务侧凭据在 REDIS_URL 里。
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-myink}
+    # 队列锁、闸门令牌、心跳都在这上面，且同机其它进程也能连到 6379：
+    # 不加认证时任何本地进程都能改任务队列，所以默认就开。
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-myink}"]
     ports:
       - "127.0.0.1:6380:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
       interval: 3s
       timeout: 3s
       retries: 30
     restart: unless-stopped
+    logging: *default-logging
 
   # 阶段 6：RabbitMQ 任务队列（替代 Redis Streams 主队列 + ZSET 延迟 + 网关 dispatcher）。
   # guest/guest 仅限 loopback，compose 网络内必须建真实用户 myink/myink（RABBITMQ_DEFAULT_USER/PASS
@@ -52,10 +71,10 @@ services:
     container_name: myink-rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: myink
-      RABBITMQ_DEFAULT_PASS: myink
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-myink}
     ports:
       - "127.0.0.1:5672:5672"
-      - "127.0.0.1:15672:15672" # Management UI（myink/myink）
+      - "127.0.0.1:15672:15672" # Management UI（用户名 myink）
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
       - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
@@ -69,6 +88,7 @@ services:
       timeout: 10s
       retries: 30
     restart: unless-stopped
+    logging: *default-logging
 
   # Python API：只升级数据库，不在每次启动时重建示例账号（仅内部监听，网关转发入口）。
   # env_file 注入 .env（JWT / 加密主密钥等）；environment 显式覆盖网络相关项
@@ -85,11 +105,13 @@ services:
     container_name: myink-api
     env_file: .env
     environment:
-      APP_ENV: dev
-      DATABASE_URL: postgresql+psycopg://myink_app:myink@myink-pg:5432/myink
-      ADMIN_DATABASE_URL: postgresql+psycopg://myink:myink@myink-pg:5432/myink
-      REDIS_URL: redis://myink-redis:6379/0
-      AMQP_URL: amqp://myink:myink@myink-rabbitmq:5672/
+      # 正式部署在 .env 里写 APP_ENV=prod：config.py 的守卫会拒绝 dev 默认 JWT 密钥、
+      # 收紧校验。这里必须能从外部注入，否则 prod 守卫永远不生效。
+      APP_ENV: ${APP_ENV:-dev}
+      DATABASE_URL: postgresql+psycopg://myink_app:${MYINK_APP_PASSWORD:-myink}@myink-pg:5432/myink
+      ADMIN_DATABASE_URL: postgresql+psycopg://myink:${POSTGRES_PASSWORD:-myink}@myink-pg:5432/myink
+      REDIS_URL: redis://:${REDIS_PASSWORD:-myink}@myink-redis:6379/0
+      AMQP_URL: amqp://myink:${RABBITMQ_PASSWORD:-myink}@myink-rabbitmq:5672/
       API_HOST: 0.0.0.0
       API_PORT: "8100"
       # 向量默认关：bge-m3 首次要下载 ~2.2GB 模型，纯关系链路降级可用（config.py 声明）。开法见 docs/DEPLOY.md
@@ -121,6 +143,7 @@ services:
       myink-rabbitmq:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default-logging
 
   # Worker：消费 RabbitMQ 主队列跑 LangGraph（api/worker 共用同一 Python 镜像，仅 command 不同）。
   myink-worker:
@@ -128,11 +151,11 @@ services:
     container_name: myink-worker
     env_file: .env
     environment:
-      APP_ENV: dev
-      DATABASE_URL: postgresql+psycopg://myink_app:myink@myink-pg:5432/myink
-      ADMIN_DATABASE_URL: postgresql+psycopg://myink:myink@myink-pg:5432/myink
-      REDIS_URL: redis://myink-redis:6379/0
-      AMQP_URL: amqp://myink:myink@myink-rabbitmq:5672/
+      APP_ENV: ${APP_ENV:-dev}
+      DATABASE_URL: postgresql+psycopg://myink_app:${MYINK_APP_PASSWORD:-myink}@myink-pg:5432/myink
+      ADMIN_DATABASE_URL: postgresql+psycopg://myink:${POSTGRES_PASSWORD:-myink}@myink-pg:5432/myink
+      REDIS_URL: redis://:${REDIS_PASSWORD:-myink}@myink-redis:6379/0
+      AMQP_URL: amqp://myink:${RABBITMQ_PASSWORD:-myink}@myink-rabbitmq:5672/
       EMBED_ENABLED: "0"
       REQUEST_TOKEN_BUDGET: ${REQUEST_TOKEN_BUDGET:-64000}
       RECALL_TOKEN_BUDGET: ${RECALL_TOKEN_BUDGET:-12000}
@@ -149,6 +172,7 @@ services:
       myink-rabbitmq:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default-logging
 
   # Caddy 边缘层：TLS + 前端静态托管 + SPA 回退 + 按路径分流。
   # 原先由网关兼任的「公网入口 + 发前端」职责交到这里，网关收缩为只服务 SSE。
@@ -186,6 +210,7 @@ services:
       myink-api:
         condition: service_started
     restart: unless-stopped
+    logging: *default-logging
 
 volumes:
   pgdata:

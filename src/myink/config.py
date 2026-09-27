@@ -167,6 +167,13 @@ class Settings:
             raise RuntimeError("RECALL_TOKEN_BUDGET 必须大于预留的 1000 tokens")
         if self.is_prod() and self.jwt_secret == _DEV_JWT_SECRET:
             raise RuntimeError("APP_ENV=prod 时 JWT_SECRET 不能为 dev 默认值（生产密钥需显式注入）")
+        # 模型密钥的加密主密钥回落 JWT_SECRET 等于一把钥匙两用（docs/PROD-CREDENTIALS.md §1），
+        # 生产直接拒绝启动：这里漏配是静默降级，只有校验才能让它变响亮。
+        if self.is_prod() and not self.model_credential_key:
+            raise RuntimeError(
+                "APP_ENV=prod 时必须显式设置 MODEL_CREDENTIAL_KEY（openssl rand -base64 48），"
+                "不得回落到 JWT_SECRET；改动该值会使库中已有的模型密文无法解密，请与 docs/AUTH.md 的迁移步骤一起做"
+            )
 
 
 settings = Settings()

@@ -44,6 +44,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null)
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const objectUrl = useRef<string | null>(null)
   const applied = useRef<Applied | null>(null)
+  const seqRef = useRef(0)
   const [theme, setThemeState] = useState<ThemeId>(() => {
     const initial = readTheme()
     applyTheme(initial, readActivePreset()?.tokens, readThemeStyle())
@@ -61,9 +62,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const showWallpaper = useCallback(async (id: string | null) => {
+    // 连着切预设时两次读库会交错：拿到字节时先确认自己还是最后一次调用，
+    // 否则这次新建的 URL 会被后一次顶掉、再没人撤销（单个最大 50MB）。
+    const seq = ++seqRef.current
     dropUrl()
     const preset = id ? readPresetStore().items.find((item) => item.id === id) ?? null : null
     const blob = preset ? await readWallpaper(preset.id) : null
+    if (seq !== seqRef.current) return
     if (!blob) {
       applyWallpaper(null)
       return

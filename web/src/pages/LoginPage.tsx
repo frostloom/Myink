@@ -73,7 +73,7 @@ export default function LoginPage() {
       if (accepted) navigate('/long', { replace: true })
     } catch (err) {
       if (err instanceof ApiError && err.code === 'network_error') {
-        setError('无法连接服务，请确认网关（:8080）已启动')
+        setError('无法连接服务，请检查网络后重试')
       } else {
         setError(formatApiError(err, mode === 'login' ? '登录失败' : '注册失败'))
       }

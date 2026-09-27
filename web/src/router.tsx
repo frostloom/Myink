@@ -22,6 +22,22 @@ import ShortCreationPage from './pages/ShortCreationPage'
 import StyleLibraryPage from './pages/StyleLibraryPage'
 import WorkspacePage from './pages/WorkspacePage'
 
+// 渲染期抛错时的兜底页：不显示 React Router 自带的英文开发页（它会把错误堆栈摊在页面上）。
+// 给一个「回到首页」出口——出错的若是当前路由本身，只刷新会陷在同一个地址上出不来。
+function RouteErrorPage() {
+  return (
+    <div className="empty" role="alert">
+      <p>页面出错了，请刷新重试。</p>
+      <div>
+        <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>
+          刷新页面
+        </button>{' '}
+        <Link to="/" className="btn btn-quiet">回到首页</Link>
+      </div>
+    </div>
+  )
+}
+
 function RequireAuth() {
   const { session, status, validationError, revalidate, logout } = useAuth()
   if (status === 'checking') return <div className="empty">正在验证登录状态…</div>
@@ -61,9 +77,10 @@ function RequireProject() {
 }
 
 export const router = createBrowserRouter([
-  { path: '/login', element: <LoginPage /> },
+  { path: '/login', element: <LoginPage />, errorElement: <RouteErrorPage /> },
   {
     element: <RequireAuth />,
+    errorElement: <RouteErrorPage />,
     children: [
       { path: '/', element: <Navigate to="/long" replace /> },
       // 长篇与短篇是两条独立管道（后端 _assert_writable 也会拦错管道），前端从入口就分开。

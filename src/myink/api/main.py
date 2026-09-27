@@ -138,12 +138,15 @@ def healthz() -> dict:
 
 @app.get("/readyz")
 def readyz() -> dict:
+    """就绪探针。经 Caddy 的公网入口可达，所以对外只回 ok / fail，
+    出错细节（可能带主机名、DSN）只进日志，不给匿名调用方。"""
     checks = {}
     try:
         get_redis().ping()
         checks["redis"] = "ok"
     except Exception as exc:
-        checks["redis"] = f"fail: {exc}"
+        logger.warning("readyz: redis 不健康: %s", exc)
+        checks["redis"] = "fail"
     try:
         from sqlalchemy import text
 
@@ -151,14 +154,16 @@ def readyz() -> dict:
             db.execute(text("SELECT 1"))
         checks["db"] = "ok"
     except Exception as exc:
-        checks["db"] = f"fail: {exc}"
+        logger.warning("readyz: 数据库不健康: %s", exc)
+        checks["db"] = "fail"
     # worker 心跳：queue:heartbeat:* 有任一条即视为存活（等价网关 Ready 的 worker 项）。
     # 用 scan_iter 而不是 KEYS——KEYS 是全系统唯一的 O(N) 阻塞命令，没理由把它一起抄过来。
     try:
         alive = next(get_redis().scan_iter("queue:heartbeat:*", count=100), None)
-        checks["worker"] = "ok" if alive is not None else "fail: 无 worker 心跳"
+        checks["worker"] = "ok" if alive is not None else "fail"
     except Exception as exc:
-        checks["worker"] = f"fail: {exc}"
+        logger.warning("readyz: worker 心跳读不到: %s", exc)
+        checks["worker"] = "fail"
     ok = all(v == "ok" for v in checks.values())
     if not ok:
         return JSONResponse({"status": "degraded", "checks": checks}, status_code=503)

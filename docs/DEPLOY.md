@@ -15,7 +15,13 @@ docker compose up -d --build
 docker compose ps
 ```
 
-打开 http://localhost ，注册自己的账号。旧 `demo` 账号需管理员通过 `myink reset-password demo` 设置密码后才能访问其示例书，不存在公开默认密码。
+打开 http://localhost ，注册自己的账号。**注册需要邀请码，空库没有可用账号**，先发一个：
+
+```bash
+docker compose exec myink-api myink create-invite   # 打印一次明文码，默认 7 天有效、1 次使用
+```
+
+旧 `demo` 账号需管理员通过 `myink reset-password demo` 设置密码后才能访问其示例书，不存在公开默认密码。
 
 如需让用户在项目设置中保存自定义模型 API Key，请在首次使用前设置稳定的
 `MODEL_CREDENTIAL_KEY`。该值用于加密数据库中的模型密钥，部署后修改会使旧密钥无法解密；
@@ -24,15 +30,15 @@ Anthropic Messages 原生接口，请按服务商要求填写包含版本前缀�
 
 | 本机地址 | 服务 |
 |---|---|
-| 127.0.0.1:80 / :443 | Caddy 边缘层：前端静态产物、SPA 回退、TLS，把 `/api/v1/*` 分给 Python、`/api/v1/tasks/*/events` 分给 Go |
+| 127.0.0.1:80 / :443 | Caddy 边缘层：前端静态产物、SPA 回退、TLS、安全响应头，把 `/api/v1/*`（含 `/api/v1/tasks/*/events` 的 SSE）全部转给 Python |
 | 127.0.0.1:5432 | PostgreSQL + pgvector |
-| 127.0.0.1:6380 | Redis：限流、锁、心跳、SSE 事件 |
+| 127.0.0.1:6380 | Redis：限流、锁、心跳、SSE 事件（默认 requirepass，口令见 `.env` 的 `REDIS_PASSWORD`） |
 | 127.0.0.1:5672 | RabbitMQ：任务、延迟重投、死信 |
-| 127.0.0.1:15672 | RabbitMQ 管理界面，演示账号 myink/myink |
+| 127.0.0.1:15672 | RabbitMQ 管理界面（用户名 myink，口令见 `.env` 的 `RABBITMQ_PASSWORD`） |
 
 Python API 的 8100 端口仅在容器网络内开放（`expose`，不发布宿主机端口）。宿主机上唯一对外发布的是 Caddy：它按设计监听所有网卡的 80/443——那就是公网入口；PostgreSQL、Redis、RabbitMQ 只绑定回环地址。本机跑演示时 Caddy 对同局域网可达，要收口就配宿主防火墙，或把 compose 里 Caddy 的 `ports` 改成 `127.0.0.1:80:80` 这类形式。不要将这份演示配置原样开放到公网。
 
-首次启动由 `docker/initdb/01-roles.sql` 创建非超级用户 `myink_app`；API 启动时运行 `myink init`，创建表、RLS 与必要补丁（默认不建账号、不建示例数据）；启动不再自动清理遗留表/列。单独升级认证字段可用 `myink auth-upgrade`，不重命名旧账号、不迁移作品归属。已有数据库升级目前使用幂等补丁，尚无完整的 Alembic 版本迁移链。
+首次启动由 `docker/initdb/01-roles.sh` 创建非超级用户 `myink_app`（口令取 `MYINK_APP_PASSWORD`，默认 `myink`；只在**空数据卷**首启生效，已有卷要改口令得手工 `ALTER ROLE` 或重建卷）；API 启动时运行 `myink init`，创建表、RLS 与必要补丁（默认不建账号、不建示例数据）；启动不再自动清理遗留表/列。单独升级认证字段可用 `myink auth-upgrade`，不重命名旧账号、不迁移作品归属。已有数据库升级目前使用幂等补丁，尚无完整的 Alembic 版本迁移链。
 
 旧版 `style_library_items` 缺少的 `note` 列与 `(user_id, name)` 唯一约束现在由 `myink init` 增量补齐；原有档案 ID、名称、文风正文及引用保持不变。不要删表重建。如果同一用户已有重名档案，迁移会明确报错并保留全部数据，应先检查并人工处理这些重名，再重试；不会自动删档、合并或改名。不同用户可以使用同一个文风名。
 
@@ -75,11 +81,11 @@ bash scripts/ci-local.sh
 | AMQP_URL | amqp://myink:myink@127.0.0.1:15673/ |
 | JWT_SECRET | test-jwt-secret-at-least-32-bytes-long（脚本设置；CI 没有 `.env`，密钥短于 32 字节会让业务路由全判 503） |
 
-脚本依次执行 Python 语法检查、初始化、契约导出差异检查、Python 全量回归、Go vet/测试、前端 lint/交互测试/构建。模型和 embedding 使用替身，不产生真实模型费用。Go 的 SKIP 会被门禁判为失败。
+脚本依次执行 Python 语法检查、初始化、契约导出差异检查、Python 全量回归、前端 lint/交互测试/构建。模型和 embedding 使用替身，不产生真实模型费用。
 
 改动 API 后先执行 `myink contract export` 并提交 `spec/api-openapi.json`，再运行检查；未提交的契约变化会被 `git diff --exit-code` 拦截，这是预期行为。
 
-GitHub Actions 的 Python 和 Go job 均提供 RabbitMQ。PG 业务角色在 checkout 后通过 SQL 创建，避免服务容器早于 checkout 导致初始化脚本缺失。
+GitHub Actions 的 Python job 提供 RabbitMQ。PG 业务角色在 checkout 后通过 `docker/initdb/01-roles.sh` 创建，避免服务容器早于 checkout 导致初始化脚本缺失。
 
 国内镜像覆盖示例（只用于测试基础设施）：
 
