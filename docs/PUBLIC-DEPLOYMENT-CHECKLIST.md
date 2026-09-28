@@ -21,7 +21,7 @@
 
 | 项目 | 当前情况 | 上线前要求 |
 |---|---|---|
-| 公网入口 | Caddy 边缘层已就位（80/443、前端静态托管、按路径分流、SSE 无缓冲中继）；本地默认纯 HTTP，Compose 强制 APP_ENV=dev | 填真实域名走 ACME 自动签发续期；公网只开放 443（80 仅跳转/证书验证）；配置 HSTS 与安全响应头；Caddy 之前再加 CDN/云 LB 时必须配全局 trusted_proxies |
+| 公网入口 | Caddy 边缘层已就位（80/443、前端静态托管、按路径分流、SSE 无缓冲中继）；HSTS 与安全响应头已写在 `caddy/Caddyfile` 的 `header` 块；本地默认纯 HTTP，Compose 强制 APP_ENV=dev。域名/ACME 无需改代码：`docker-compose.yml` 已把 `SITE_ADDRESS` 参数化，填域名（不带协议）即走自动签发续期——但解析与 `SITE_ADDRESS` 必须同时到位，否则该 Host 返回 200 空页（白屏） | 填真实域名走 ACME 自动签发续期；公网只开放 443（80 仅跳转/证书验证）；在目标环境核对 HSTS 与安全响应头确实生效（配置已在仓库里）；Caddy 之前再加 CDN/云 LB 时必须配全局 trusted_proxies |
 | 内部服务 | Python API 只在容器网络内监听（`expose`）；它自己验 JWT，不读内部用户头；DB/Redis/RabbitMQ 绑定本机 | 不发布内部服务端口；隔离内部网络，限制 Caddy/API/worker 的访问关系；禁止绕过 Caddy 直连 Python——那会同时绕过 TLS 与限流 |
 | 浏览器令牌 | JWT 存于 localStorage，能被同源 JavaScript 读取 | 设计 HttpOnly + Secure + SameSite 的会话 Cookie，并配套 CSRF 防护；落实 CSP、XSS 防护及第三方依赖审查 |
 | 自定义模型/MCP 地址 | 出站地址守卫已统一到「探针 + 保存」两条路径，且只放行全球可路由地址（阻断云元数据 169.254.169.254 与阿里云 100.100.100.200；本部署不使用本地模型，内网与回环一并拒绝）。未处理重定向跟随、DNS 重绑定与出站代理 | 全部出站路径统一 SSRF 防护：阻断私网、回环、链路本地和元数据服务；处理 DNS 重绑定、重定向和 IPv6；优先允许列表/受控出站代理；本地模型须由管理员显式授权 |
