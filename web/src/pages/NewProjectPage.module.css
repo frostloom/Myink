@@ -234,3 +234,29 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ≤760：rail 折成顶部横条（规则在 ProjectRail.module.css），页面根转竖排让横条落到顶部。
+   必须写在文件最后：与别的 media 块同权重时靠源序取胜。 */
+@media (max-width: 760px) {
+  .wrap {
+    height: auto;
+    min-height: 100%;
+    flex-direction: column;
+  }
+  /* 向导里全是多列网格，窄屏一律压成一列——否则每列只剩百来个像素。
+     题材 chips（.genreChips）与 GenrePackFields 本来就是单列/flex-wrap，不用动。 */
+  .rowGrid,
+  .charGrid,
+  .rangeRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .inner {
+    padding: var(--space-4) var(--space-3) var(--space-6);
+  }
+  .section {
+    padding: var(--space-3);
+  }
+  .header {
+    flex-wrap: wrap;
+  }
+}

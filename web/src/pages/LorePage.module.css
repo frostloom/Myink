@@ -393,3 +393,13 @@
   font-size: var(--text-small);
   word-break: break-word;
 }
+
+/* ≤760：rail 折成顶部横条（规则在 ProjectRail.module.css），页面根转竖排让横条落到顶部。
+   必须写在文件最后：与别的 media 块同权重时靠源序取胜。 */
+@media (max-width: 760px) {
+  .wrap {
+    height: auto;
+    min-height: 100%;
+    flex-direction: column;
+  }
+}
