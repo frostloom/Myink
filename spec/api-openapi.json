@@ -3438,6 +3438,11 @@
             "title": "Selling Point",
             "type": "string"
           },
+          "setup_caps": {
+            "additionalProperties": true,
+            "title": "Setup Caps",
+            "type": "object"
+          },
           "source_id": {
             "anyOf": [
               {
@@ -3631,6 +3636,11 @@
             "default": "",
             "title": "Selling Point",
             "type": "string"
+          },
+          "setup_caps": {
+            "additionalProperties": true,
+            "title": "Setup Caps",
+            "type": "object"
           },
           "source_id": {
             "anyOf": [
@@ -5109,34 +5119,6 @@
         "title": "ShortCreationSessionOut",
         "type": "object"
       },
-      "SkillPresetOut": {
-        "properties": {
-          "genre": {
-            "title": "Genre",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "style_profile": {
-            "additionalProperties": true,
-            "title": "Style Profile",
-            "type": "object"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "genre"
-        ],
-        "title": "SkillPresetOut",
-        "type": "object"
-      },
       "StoryEventOut": {
         "description": "事件台账单条（§7.4 中期记忆全量：抽取节点落库后此前只写不读）。",
         "properties": {
@@ -5317,61 +5299,6 @@
         "title": "StyleLibrarySaveBody",
         "type": "object"
       },
-      "StyleProfileBody": {
-        "description": "文风档案（前端可编辑草稿后回传；dict 透传，落库前轻校验）。\n\nskill_pack：题材预设 marker（§7.12 预设导入原子写，值为预设 id）；None 保留现值。",
-        "properties": {
-          "profile": {
-            "additionalProperties": true,
-            "title": "Profile",
-            "type": "object"
-          },
-          "skill_pack": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Skill Pack"
-          }
-        },
-        "required": [
-          "profile"
-        ],
-        "title": "StyleProfileBody",
-        "type": "object"
-      },
-      "StyleProfileOut": {
-        "properties": {
-          "skill_pack": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Skill Pack"
-          },
-          "style_profile": {
-            "additionalProperties": true,
-            "title": "Style Profile",
-            "type": "object"
-          },
-          "version": {
-            "title": "Version",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "version"
-        ],
-        "title": "StyleProfileOut",
-        "type": "object"
-      },
       "StyleSampleBody": {
         "properties": {
           "samples": {
@@ -5383,23 +5310,6 @@
           }
         },
         "title": "StyleSampleBody",
-        "type": "object"
-      },
-      "StyleSamplesBody": {
-        "description": "作者样本（1–2 篇）。",
-        "properties": {
-          "samples": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Samples",
-            "type": "array"
-          }
-        },
-        "required": [
-          "samples"
-        ],
-        "title": "StyleSamplesBody",
         "type": "object"
       },
       "TaskControlOut": {
@@ -10291,122 +10201,6 @@
         ]
       }
     },
-    "/api/v1/projects/{project_id}/style-profile": {
-      "put": {
-        "description": "确认落库：编排层写 project_settings.style_profile + version 递增（§7.6 乐观版本号）。\n\n- 剔除瞬态诊断键 extract_error（草稿降级提示不落库）；\n- 剔除 fatigue_words / fatigue_patterns（不再注入提示，也不再按频率统计）；\n- body.skill_pack 非 None 时一并落 skill_pack（预设导入 = profile + marker 原子写）。",
-        "operationId": "put_style_profile_api_v1_projects__project_id__style_profile_put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "project_id",
-            "required": true,
-            "schema": {
-              "title": "Project Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/StyleProfileBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StyleProfileOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Put Style Profile",
-        "tags": [
-          "style"
-        ]
-      }
-    },
-    "/api/v1/projects/{project_id}/style-samples": {
-      "post": {
-        "description": "样本 → 统计层 + LLM 提炼 → 文风档案草稿（不落库）。\n\nextract 调用记 agent_runs（§6.8 成本透明）；agent_runs 无 RLS（观测表），普通连接可写。",
-        "operationId": "style_samples_api_v1_projects__project_id__style_samples_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "project_id",
-            "required": true,
-            "schema": {
-              "title": "Project Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/StyleSamplesBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StyleDraftOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Style Samples",
-        "tags": [
-          "style"
-        ]
-      }
-    },
     "/api/v1/projects/{project_id}/tasks": {
       "get": {
         "description": "项目任务历史（倒序）：全项目最近 50 条；按章节查询时扫描完整历史。\n\n轻量摘要不含 runs（重量留给 GET /tasks/{id}）；批次进度派生（persist 去重章数）。\nrequire_owner 归属断言由依赖挂载（§14.1 ③）；tasks 无 RLS 观测表，new_session 可查。\n\nchapter_seq 非空（§右栏按章过滤）：只返回覆盖该章的任务——单章按 chapter_seq 精确\n匹配、批次按 payload.start..start+size 范围覆盖；cost_total 随之收窄为该章 agent_runs\n切片（批次 = {batch_id}:ch{seq} 行，单章 = 全任务；批次 book 级 run 如 batch_plan 不计入章成本）。",
@@ -10712,37 +10506,6 @@
         "summary": "Post Message",
         "tags": [
           "short-creation"
-        ]
-      }
-    },
-    "/api/v1/skill-presets": {
-      "get": {
-        "description": "题材 Skill 预设列表（§7.12 预设包）：4 本种子书文风档案，设置页「预设导入」渲染。\n\n静态数据，但需身份：网关时代它挂在 secured 分组里（JWT 必带），换成 Caddy 直连\nPython 后必须把这一条性质显式补回来，否则任何匿名请求都能拿到整份预设正文。\nrequire_user（不是 require_owner）：无书可归属，与 /environment 同一档。\n预设 id 同时是 skill_pack marker。",
-        "operationId": "skill_presets_api_v1_skill_presets_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/SkillPresetOut"
-                  },
-                  "title": "Response Skill Presets Api V1 Skill Presets Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Skill Presets",
-        "tags": [
-          "style"
         ]
       }
     },

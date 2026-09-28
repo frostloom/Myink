@@ -44,10 +44,6 @@ import type {
   SetupBody,
   SetupConfirmResponse,
   SetupDraft,
-  SkillPreset,
-  StyleDraft,
-  StyleProfile,
-  StyleProfileResponse,
   StoryEvent,
   TaskControlResponse,
   TaskDetail,
@@ -323,8 +319,6 @@ export const api = {
   testConnection: (body: ModelProbeRequest) =>
     request<ConnectionTestResult>('POST', '/environment/test-connection', body),
 
-  listSkillPresets: () => request<SkillPreset[]>('GET', '/skill-presets'),
-
   listGenrePacks: () => request<import('../lib/genrePacks').GenreCatalogItem[]>('GET', '/genre-packs'),
 
   putGenrePack: (pid: string, fields: import('../lib/genrePacks').GenreFields) =>
@@ -332,15 +326,6 @@ export const api = {
 
   restoreGenrePack: (pid: string) =>
     request<import('../lib/genrePacks').BookGenrePack>('POST', `/projects/${pid}/genre-pack/restore`),
-
-  extractStyleSample: (pid: string, samples: string[]) =>
-    request<StyleDraft>('POST', `/projects/${pid}/style-samples`, { samples }),
-
-  putStyleProfile: (pid: string, profile: StyleProfile, skill_pack?: string) =>
-    request<StyleProfileResponse>(
-      'PUT', `/projects/${pid}/style-profile`,
-      skill_pack ? { profile, skill_pack } : { profile },
-    ),
 
   // 全局审计报告（阶段 4 审计视图）：手动触发 + 列表 + 详情（网关转发 Python）。
   triggerGlobalAudit: (pid: string) =>

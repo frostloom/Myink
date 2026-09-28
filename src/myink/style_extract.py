@@ -1,4 +1,4 @@
-"""文风样本提取（§7.12 文风档案闭环：统计层 + LLM 提炼 → 草稿 → 确认落库）。
+"""文风样本提取（§7.12 文风档案闭环：统计层 + LLM 提炼 → 草稿 → 命名保存进文风库）。
 
 分两层：
 - 统计层（analyze_sample_stats）：纯函数、确定性——句长三档分布 / 平均句长 / 对话密度 /
@@ -9,7 +9,7 @@
   （§6.12 不 500、不阻塞——端点只回统计草稿 + extract_error）。
 
 合并（merge_style_draft）：统计字段 + LLM 语义字段 + source="sample" 标记，作为
-StyleProfile 草稿返回前端；确认（PUT）走 routes_style 落 project_settings.style_profile。
+StyleProfile 草稿返回前端；用户在文风库页面命名后经 routes_style_library 落库。
 """
 
 from __future__ import annotations
@@ -169,17 +169,25 @@ def merge_style_draft(stats: dict, llm_profile: dict, *, extract_error: str | No
     return draft
 
 
+# 不属于文风档案本身的瞬态键，落库前一律剔除：extract_error 是「这一趟提取失败」的降级提示
+# （只用于页面弹黄条），fatigue_words / fatigue_patterns 是早期按词频统计的遗留键（现在既不
+# 注入提示也不参与统计）。剔除点放在这里而不是调用方——这是唯一的落库校验口，放调用方等于
+# 下一个调用方还得再记得一次（书那边的 PUT style-profile 被拆掉后就是丢过一次）。
+_TRANSIENT_PROFILE_KEYS = frozenset({"extract_error", "fatigue_words", "fatigue_patterns"})
+
+
 def validate_profile(profile) -> dict:
-    """PUT 落库前校验 + 类型轻归一（非 dict → ValueError 由端点转 400；用户 canon 不重写内容）。
+    """落库前校验 + 类型轻归一（非 dict → ValueError 由端点转 400；用户 canon 不重写内容）。
 
     仅做类型归一（str/list/dict/标量透传，**顶层** None 丢弃；嵌套结构原样透传——用户 canon
-    不递归改写），内容一字不动——用户是唯一 canon（§7.11）。
+    不递归改写），内容一字不动——用户是唯一 canon（§7.11）。例外只有 _TRANSIENT_PROFILE_KEYS：
+    那几个键属于「这一次提取」的过程，不属于这份档案。
     """
     if not isinstance(profile, dict):
         raise ValueError("文风档案必须是 JSON 对象")
     cleaned: dict = {}
     for key, val in profile.items():
-        if val is None:
+        if val is None or key in _TRANSIENT_PROFILE_KEYS:
             continue
         if isinstance(val, (str, int, float, bool)):
             cleaned[key] = val

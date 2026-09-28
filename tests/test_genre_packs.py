@@ -23,6 +23,7 @@ from myink.genre_catalog import (
     display_genre,
     format_prompt,
     is_managed_pack,
+    setup_capabilities,
     suggest_volume_count,
     volume_span_for,
 )
@@ -78,6 +79,24 @@ def test_volume_span_follows_pacing():
     assert suggest_volume_count(200, build_book_pack("xitong", None)) > suggest_volume_count(
         200, build_book_pack("xiuxian", None))
     assert 3 <= suggest_volume_count(80, None) <= 20
+
+
+def test_setup_capabilities_follow_genre():
+    """建书骨架的能力开关（§7.11）：等级阶梯/资源账本/年代考据各归各位。
+
+    修仙三样都要；都市日常一样都不要；未选题材全关（给最朴素的骨架）。
+    """
+    assert setup_capabilities(build_book_pack("xiuxian", None)) == {
+        "power_scaling": True, "numerical_system": True, "era_research": False}
+    assert setup_capabilities(build_book_pack("lishi-gudai", None)) == {
+        "power_scaling": False, "numerical_system": False, "era_research": True}
+    assert setup_capabilities(build_book_pack("dushi-richang", None)) == {
+        "power_scaling": False, "numerical_system": False, "era_research": False}
+    assert setup_capabilities(None) == {
+        "power_scaling": False, "numerical_system": False, "era_research": False}
+    # 根目录条目（键是 id 不是 source_id）也要认得出开关：建书页的选择器就靠它。
+    entry = next(item for item in catalog_entries() if item["id"] == "xiuxian")
+    assert entry["setup_caps"]["power_scaling"] is True
 
 
 def test_display_genre_locked_names():

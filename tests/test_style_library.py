@@ -238,6 +238,24 @@ def test_save_rejects_a_non_dict_profile(temp_user):
     assert [i for i in items if not i["builtin"]] == []  # 确认没落库
 
 
+def test_save_drops_transient_extraction_keys(temp_user):
+    """落库前剔除瞬态键：降级提示与早期词频键都不该跟着档案进库。
+
+    书那边的 PUT /projects/{id}/style-profile 原来在写库前 pop 掉这三个键，端点拆掉后
+    剔除点挪进了 validate_profile。这条守的是「挪过去了，而且真的生效」。
+    """
+    resp = client.post("/api/v1/style-library",
+                       json={"name": "渡口", "sample_chars": 12, "profile": {
+                           "pov": "第三人称限知", "extract_error": "模型这一趟没成功",
+                           "fatigue_words": ["凝望"], "fatigue_patterns": ["不禁"]}},
+                       headers=identity_headers(temp_user))
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["profile"] == {"pov": "第三人称限知"}
+    items = client.get("/api/v1/style-library", headers=identity_headers(temp_user)).json()["items"]
+    saved = next(i for i in items if not i["builtin"])
+    assert saved["profile"] == {"pov": "第三人称限知"}, "读回来也不该有那三个键"
+
+
 def test_extract_records_an_account_level_run(temp_user, style_stub):
     """没有作品的提取也要记账，且归属到账号（agent_runs.user_id）。"""
     style_stub({"pov": "第三人称限知"})

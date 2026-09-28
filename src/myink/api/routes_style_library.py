@@ -1,7 +1,8 @@
 """账号级文风库：导入文章 → 提取文风 → 命名保存 → 建书时选一次。
 
-与项目上的 `/projects/{pid}/style-samples` 的分工：那条是「给这本书导一份参考文风」，
-这条是「把文风留成我自己的资产」，后者不依赖任何作品，所以走 make_user_chain 记账。
+文风只在这里维护：书那边的 `/projects/{pid}/style-profile` 已经在建书时定死，没有
+改的入口。所以「给这本书导一份参考文风」不再成立——要调文风就改库里的这份档案，
+再建新书（`models/creation.py` 记着这条口径）。库项不依赖任何作品，走 make_user_chain 记账。
 """
 
 from __future__ import annotations

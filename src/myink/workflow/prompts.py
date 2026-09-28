@@ -908,18 +908,62 @@ def style_extract_messages(samples: list[str], stats: dict) -> list[dict]:
     ]
 
 
-SYSTEM_BOOK_SETUP = """你是长篇网文创作系统的【规划 Agent】。职责：根据作者的一句话梗概与题材偏好，产出本书的**设定骨架草稿**（§7.11 建书流程：提案→确认→落库，agent 只提案不篡改）。
-输出严格 JSON 对象（schema 见下），字段不许缺：
-{
-  "title": "书名建议（作者未定书名时给 2-8 字主标题；已定书名返回空串）",
-  "realm_order": ["境界/实力阶段按升序排列，非仙侠题材则给出实力/职业进阶序列"],
-  "world_rules": {"规则键": "规则值，如 时间/地域/禁制 等世界观硬性规定"},
-  "hard_constraints": ["写作必须遵守的硬约束，如 不可越级晋升、不得引入仙佛鬼神"],
-  "forces": [{"name": "势力名", "stance": "立场/主张", "resources": ["资源"]}],
-  "characters": [{"name": "人物名", "role": "主角/重要配角/反派", "race": "", "origin": "出身", "realm_cap": "实力上限（战力硬约束，非仙侠题材给定位）", "personality": "性格基调一句话"}],
-  "locations": [{"name": "关键地点名"}]
-}
-要求：骨架是**可编辑草稿**不是定稿——数量克制（核心 3-6 个角色、2-4 个势力、3-5 个地点即可），留白让作者后续补全；hard_constraints 必须是明确的、可执行的写作纪律，不是风格形容词；作者未定书名时 title 给出简练的主标题（2-8 字），已定书名则返回空串。"""
+_SETUP_RULES = (
+    "要求：骨架是**可编辑草稿**不是定稿——数量克制（核心 3-6 个角色、2-4 个势力、3-5 个地点即可），"
+    "留白让作者后续补全；hard_constraints 必须是明确的、可执行的写作纪律，不是风格形容词；"
+    "作者未定书名时 title 给出简练的主标题（2-8 字），已定书名则返回空串。"
+)
+
+
+def book_setup_system(caps: dict | None = None) -> str:
+    """建书设定骨架的系统提示：骨架字段随题材能力开关增减（§7.11，参考 inkos genre profile）。
+
+    caps 全关（或 None）= 最朴素的骨架：没有等级阶梯、没有资源账本、没有年代考据。
+    关掉的维度除了从 schema 里拿掉，还要补一句反口令——模型很容易照惯性把修仙那套填回来。
+    """
+    flags = caps if isinstance(caps, dict) else {}
+    power = bool(flags.get("power_scaling"))
+    numeric = bool(flags.get("numerical_system"))
+    era = bool(flags.get("era_research"))
+
+    char_fields = ['"name": "人物名"', '"role": "主角/重要配角/反派"',
+                   '"race": "种族（本题材只有人族时留空）"', '"origin": "出身"']
+    if power:
+        char_fields.append('"realm_cap": "实力上限（战力硬约束）"')
+    char_fields.append('"personality": "性格基调一句话"')
+
+    fields = ['"title": "书名建议（作者未定书名时给 2-8 字主标题；已定书名返回空串）"']
+    if power:
+        fields.append('"realm_order": ["等级/实力阶段按升序排列（境界、段位、军衔……按本题材的叫法）"]')
+    fields.append('"world_rules": {"规则键": "规则值，如 时间/地域/禁制/行业规矩 等世界观硬性规定"}')
+    fields.append('"hard_constraints": ["写作必须遵守的硬约束，如 不可越级晋升、不得引入仙佛鬼神"]')
+    fields.append('"forces": [{"name": "势力名", "stance": "立场/主张", "resources": ["资源"]}]')
+    fields.append('"characters": [{' + ", ".join(char_fields) + '}]')
+    fields.append('"locations": [{"name": "关键地点名"}]')
+
+    rules = [
+        _SETUP_RULES,
+        "势力按本题材的叫法（宗门/公司/家族/帮派/阵营），没有组织博弈的题材给 0-2 条就够，不要硬凑。",
+    ]
+    if power:
+        rules.append("本题材有等级/战力阶梯：realm_order 是可执行的战力硬约束，写手会拿它判越级；"
+                     "阶段名用本题材的叫法，不要照搬修仙境界。")
+    else:
+        rules.append("本题材**没有等级/战力阶梯**：不要给 realm_order，人物也不要 realm_cap。")
+    if numeric:
+        rules.append("本题材有可追踪的资源/数值账本：world_rules 里写清核心资源是什么、硬上限在哪、"
+                     "什么不可突破（写手会拿它防资源膨胀）。")
+    else:
+        rules.append("本题材**没有资源账本/数值面板**：不要造资源计量、属性表或等级数值。")
+    if era:
+        rules.append("本题材需要年代考据：world_rules 里写清时代锚（年代、地域、社会制度）"
+                     "与不可违背的年代限制（称谓、器物、制度）。")
+    return (
+        "你是长篇网文创作系统的【规划 Agent】。职责：根据作者的一句话梗概与题材偏好，"
+        "产出本书的**设定骨架草稿**（§7.11 建书流程：提案→确认→落库，agent 只提案不篡改）。\n"
+        "输出严格 JSON 对象（schema 见下），字段不许缺：\n{\n  "
+        + ",\n  ".join(fields) + "\n}\n" + "\n".join(rules)
+    )
 
 
 def book_setup_messages(genre: str, premise: str, *,
@@ -928,11 +972,15 @@ def book_setup_messages(genre: str, premise: str, *,
 
     json_mode 调用（prompt 含 "json" 字样）；Planner 复用（不新增 agent），生成的是
     可编辑骨架，不落库——用户逐项确认/修改后走 setup 端点落库。
+
+    骨架字段按题材能力开关增减（§7.11）：等级划分/资源账本/年代考据都不是通用维度。
     """
+    from myink.genre_catalog import setup_capabilities
+
     pack = _genre_section(genre_pack)
     extra = f"\n\n【本书题材包】\n{pack}" if pack else ""
     return [
-        {"role": "system", "content": SYSTEM_BOOK_SETUP},
+        {"role": "system", "content": book_setup_system(setup_capabilities(genre_pack))},
         {"role": "user", "content": f"【题材偏好】\n{genre}\n\n"
                                     f"【作者一句话梗概】\n{premise}{extra}\n\n"
                                     f"请产出本书设定骨架草稿（严格 JSON）。"},

@@ -444,26 +444,6 @@ export interface ConnectionTestResult {
   error: string | null
 }
 
-/** 题材 Skill 预设（skill-presets，routes_style.py；id 即 skill_pack marker） */
-export interface SkillPreset {
-  id: string
-  name: string
-  genre: string
-  style_profile: StyleProfile
-}
-
-/** 文风样本提取响应（style-samples：统计层 + LLM 提炼草稿；extract_error 为 LLM 降级提示） */
-export interface StyleDraft {
-  draft: StyleProfile & { extract_error?: string }
-}
-
-/** 文风档案确认落库响应（style-profile：确认 + 可选 skill_pack 原子写） */
-export interface StyleProfileResponse {
-  style_profile: StyleProfile
-  skill_pack: string | null
-  version: number
-}
-
 /** 全局审计报告（GET global-audit 列表项，routes_global_audit.py；findings 明细在详情） */
 export interface GlobalAuditReportSummary {
   report_id: string

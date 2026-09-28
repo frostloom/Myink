@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { afterEach, expect, it, vi } from 'vitest'
 import NewProjectPage from './NewProjectPage'
 import { api } from '../lib/api'
+import { emptyFields } from '../lib/genrePacks'
 import { styleLibraryApi } from '../lib/styleLibraryApi'
 import type { OutlineDraft, ProjectCreation } from '../types'
 
@@ -375,4 +376,39 @@ it('submits the selected style item id with the project', async () => {
 
   await waitFor(() => expect(api.createProject).toHaveBeenCalledTimes(1))
   expect(vi.mocked(api.createProject).mock.calls[0][0].style_item_id).toBe('mine-1')
+})
+
+// ---- 建书第②步：设定骨架因题材而异（§7.11，等级阶梯不是通用维度）----
+
+const GENRE_CHIPS = [
+  { ...emptyFields(), id: 'xiuxian', name: '修仙', group: '玄幻修仙',
+    setup_caps: { power_scaling: true, numerical_system: true, era_research: false } },
+  { ...emptyFields(), id: 'dushi-richang', name: '都市日常', group: '都市现代',
+    setup_caps: { power_scaling: false, numerical_system: false, era_research: false } },
+]
+
+async function createWithGenre(genreName: string) {
+  vi.mocked(api.listGenrePacks).mockResolvedValue(GENRE_CHIPS)
+  stubLongCreation()
+  renderPage('/long/new')
+  // 题材名在主题材与辅题材两处都出现，取主题材那一档（DOM 里先渲染的就是它）
+  const [primaryChip] = await screen.findAllByRole('button', { name: genreName })
+  fireEvent.click(primaryChip)
+  fillCreationBrief()
+  fireEvent.click(screen.getByRole('button', { name: '创建作品' }))
+  await screen.findByText('世界观规则（每行「键：值」）')
+}
+
+it('offers the realm ladder only for genres that have one', async () => {
+  await createWithGenre('修仙')
+  expect(screen.getByText('境界体系（每行一阶）')).toBeTruthy()
+})
+
+it('drops the realm ladder for genres without power scaling', async () => {
+  await createWithGenre('都市日常')
+  expect(screen.queryByText('境界体系（每行一阶）')).toBeNull()
+  // 通用骨架照旧：题材只决定有没有等级阶梯，不是把整块设定省掉
+  expect(screen.getByText('世界观规则（每行「键：值」）')).toBeTruthy()
+  expect(screen.getByText('核心人物')).toBeTruthy()
+  expect(screen.queryByPlaceholderText('境界上限')).toBeNull()
 })

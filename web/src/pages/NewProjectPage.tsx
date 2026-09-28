@@ -595,6 +595,11 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
 
   const sec = section ?? emptySection()
   const emptyDraft = section !== null && isSectionEmpty(sec)
+  // 设定骨架按题材增减（§7.11）：等级阶梯不是通用维度，都市日常/言情不该被排一套境界表。
+  // 三态：true 显示 / false 藏起来 / undefined（续建时还没认出题材）不藏——未知就不替用户做主，
+  // 草稿里已经有值的也一律不藏（不能让用户确认一份自己看不见的内容）。
+  const powerScaling = primary?.setup_caps?.power_scaling
+  const showRealmOrder = powerScaling !== false || sec.realm_order.length > 0
 
   return (
     <div className={styles.wrap}>
@@ -789,15 +794,17 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
 
               {section !== null && (
                 <div>
-                  <div className={styles.block}>
-                    <span className={styles.fieldLabel}>境界体系（每行一阶）</span>
-                    <textarea
-                      className="textarea"
-                      rows={Math.max(3, sec.realm_order.length)}
-                      value={arrayToLines(sec.realm_order)}
-                      onChange={(e) => updateSection({ realm_order: linesToArray(e.target.value) })}
-                    />
-                  </div>
+                  {showRealmOrder && (
+                    <div className={styles.block}>
+                      <span className={styles.fieldLabel}>境界体系（每行一阶）</span>
+                      <textarea
+                        className="textarea"
+                        rows={Math.max(3, sec.realm_order.length)}
+                        value={arrayToLines(sec.realm_order)}
+                        onChange={(e) => updateSection({ realm_order: linesToArray(e.target.value) })}
+                      />
+                    </div>
+                  )}
                   <div className={styles.block}>
                     <span className={styles.fieldLabel}>世界观规则（每行「键：值」）</span>
                     <textarea
@@ -881,18 +888,20 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
                             })
                           }
                         />
-                        <input
-                          className="input"
-                          placeholder="境界上限"
-                          value={c.realm_cap}
-                          onChange={(e) =>
-                            updateSection({
-                              characters: sec.characters.map((x, j) =>
-                                j === i ? { ...x, realm_cap: e.target.value } : x,
-                              ),
-                            })
-                          }
-                        />
+                        {(powerScaling !== false || c.realm_cap.trim() !== '') && (
+                          <input
+                            className="input"
+                            placeholder="境界上限"
+                            value={c.realm_cap}
+                            onChange={(e) =>
+                              updateSection({
+                                characters: sec.characters.map((x, j) =>
+                                  j === i ? { ...x, realm_cap: e.target.value } : x,
+                                ),
+                              })
+                            }
+                          />
+                        )}
                         <input
                           className="input"
                           placeholder="出身"

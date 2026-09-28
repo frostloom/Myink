@@ -1,44 +1,23 @@
-"""文风样本提取内部端点（§7.12 文风档案闭环：统计层 + LLM 提炼 → 草稿 → 确认落库）。
+"""建书时选文风：把选择器的值解析成落库用的档案。
 
-- POST /projects/{pid}/style-samples：作者样本 → 统计层（确定性）+ LLM 提炼（extract 档
-  一次调用）→ 合并返回 StyleProfile **草稿**（不落库）；LLM 失败降级只回统计层 +
-  extract_error（§6.12 不 500、不阻塞）；extract 调用记 agent_runs（§6.8 成本透明）。
-- PUT /projects/{pid}/style-profile：前端可编辑草稿后回传 → 校验 → 编排层落库
-  project_settings.style_profile + 递增 version（乐观版本号 §7.6）；
-  fatigue_words / fatigue_patterns 不落库。
-
-与 §7.11 设定治理权威模型一致：agent 只提案、用户确认是唯一 canon（不走记忆候选池）；
-数据流边界（§6.2）：确认 = 编排层写库入口，与 persist 同层。
+文风在建书那一刻定死——`project_settings.style_profile` 是当时那份档案的副本，
+没有「书内再改」的入口（见 models/creation.py 的口径）。所以这里只有读取侧：
+解析选择器的值，没有写 project_settings 的端点。
+样本提取与命名保存都在账号级文风库（routes_style_library.py）里做，书只负责选用；
+内置预设也由那个端点一起出（`builtin:<id>` 行），这里不再单列一份清单。
 """
 
 from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
 
-from myink.api.auth import require_owner, require_user
-from myink.api.schemas import SkillPresetOut, StyleDraftOut, StyleProfileOut
-from myink.db import new_session, tenant_session
-from myink.memory.repository import get_settings
-from myink.models import ProjectSettings, StyleLibraryItem
+from myink.models import StyleLibraryItem
 from myink.seed import STYLE_PRESETS
-from myink.style_extract import (
-    analyze_sample_stats,
-    clean_samples,
-    extract_style_profile,
-    merge_style_draft,
-    validate_profile,
-)
 
 router = APIRouter(prefix="/api/v1", tags=["style"])
-
-
-def _pid(project_id: str) -> uuid.UUID:
-    """path 里的 project_id 转 uuid（require_owner 已校验格式合法，此处仅类型转换）。"""
-    return uuid.UUID(project_id)
 
 
 def resolve_style_selection(db, uid: uuid.UUID, item_id: str) -> tuple[dict, str | None, str]:
@@ -63,90 +42,3 @@ def resolve_style_selection(db, uid: uuid.UUID, item_id: str) -> tuple[dict, str
     if item is None:
         raise HTTPException(status_code=404, detail="NOT_FOUND")
     return dict(item.profile), None, item.name
-
-
-class StyleSamplesBody(BaseModel):
-    """作者样本（1–2 篇）。"""
-
-    samples: list[str]
-
-
-@router.get("/skill-presets", dependencies=[Depends(require_user)],
-            response_model=list[SkillPresetOut])
-def skill_presets() -> list[dict]:
-    """题材 Skill 预设列表（§7.12 预设包）：4 本种子书文风档案，设置页「预设导入」渲染。
-
-    静态数据，但需身份：网关时代它挂在 secured 分组里（JWT 必带），换成 Caddy 直连
-    Python 后必须把这一条性质显式补回来，否则任何匿名请求都能拿到整份预设正文。
-    require_user（不是 require_owner）：无书可归属，与 /environment 同一档。
-    预设 id 同时是 skill_pack marker。
-    """
-    return [{"id": p["id"], "name": p["name"], "genre": p["genre"],
-             "style_profile": p["style_profile"]} for p in STYLE_PRESETS]
-
-
-@router.post("/projects/{project_id}/style-samples",
-             dependencies=[Depends(require_owner)], response_model=StyleDraftOut)
-def style_samples(project_id: str, body: StyleSamplesBody) -> dict:
-    """样本 → 统计层 + LLM 提炼 → 文风档案草稿（不落库）。
-
-    extract 调用记 agent_runs（§6.8 成本透明）；agent_runs 无 RLS（观测表），普通连接可写。
-    """
-    try:
-        samples = clean_samples(body.samples)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    stats = analyze_sample_stats(samples)
-    db = new_session()
-    try:
-        llm_profile, extract_error = extract_style_profile(samples, stats,
-                                                           project_id=project_id, db=db)
-        db.commit()
-    finally:
-        db.close()
-    draft = merge_style_draft(stats, llm_profile, extract_error=extract_error)
-    return {"draft": draft}
-
-
-class StyleProfileBody(BaseModel):
-    """文风档案（前端可编辑草稿后回传；dict 透传，落库前轻校验）。
-
-    skill_pack：题材预设 marker（§7.12 预设导入原子写，值为预设 id）；None 保留现值。
-    """
-
-    profile: dict
-    skill_pack: str | None = None
-
-
-@router.put("/projects/{project_id}/style-profile",
-            dependencies=[Depends(require_owner)], response_model=StyleProfileOut)
-def put_style_profile(project_id: str, body: StyleProfileBody) -> dict:
-    """确认落库：编排层写 project_settings.style_profile + version 递增（§7.6 乐观版本号）。
-
-    - 剔除瞬态诊断键 extract_error（草稿降级提示不落库）；
-    - 剔除 fatigue_words / fatigue_patterns（不再注入提示，也不再按频率统计）；
-    - body.skill_pack 非 None 时一并落 skill_pack（预设导入 = profile + marker 原子写）。
-    """
-    profile = dict(body.profile)
-    profile.pop("extract_error", None)
-    profile.pop("fatigue_words", None)
-    profile.pop("fatigue_patterns", None)
-    try:
-        profile = validate_profile(profile)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    with tenant_session(project_id) as db:
-        st = get_settings(db, _pid(project_id))
-        if st is None:
-            # 新行：列默认 version=1（本切片起计数）；已存在的行每次确认 +1
-            st = ProjectSettings(project_id=_pid(project_id), style_profile=profile, version=1)
-            db.add(st)
-        else:
-            st.style_profile = profile
-            st.version = (st.version or 1) + 1
-        if body.skill_pack is not None:
-            st.skill_pack = body.skill_pack
-        db.commit()
-        new_version = st.version
-    return {"style_profile": profile, "skill_pack": st.skill_pack, "version": new_version}

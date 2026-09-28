@@ -52,12 +52,9 @@ PUBLIC_ENDPOINTS: list[tuple[str, str]] = [
     ("GET", "/api/v1/projects/{project_id}/lessons"),
     ("POST", "/api/v1/projects/{project_id}/lessons/{lesson_id}/confirm"),
     ("POST", "/api/v1/projects/{project_id}/lessons/{lesson_id}/reject"),
-    ("GET", "/api/v1/skill-presets"),
     ("GET", "/api/v1/genre-packs"),
     ("PUT", "/api/v1/projects/{project_id}/genre-pack"),
     ("POST", "/api/v1/projects/{project_id}/genre-pack/restore"),
-    ("POST", "/api/v1/projects/{project_id}/style-samples"),
-    ("PUT", "/api/v1/projects/{project_id}/style-profile"),
     ("POST", "/api/v1/projects/{project_id}/setup-draft"),
     ("PUT", "/api/v1/projects/{project_id}/setup"),
     # 整书大纲（§11 建书 ③：草稿 / 确认落库 / 读取）
