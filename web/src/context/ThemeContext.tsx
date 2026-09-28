@@ -14,16 +14,18 @@ import {
   writeThemeStyle,
   type CustomPreset,
   type CustomThemeTokens,
+  type LampId,
   type ThemeId,
   type ThemeStyle,
   type WallpaperConfig,
   type WallpaperKind,
 } from '../lib/theme'
-import { clearWallpaper, readWallpaper } from '../lib/themeImage'
+import { clearWallpaper, readPoster, readWallpaper } from '../lib/themeImage'
 import { CanvasMedia } from '../components/CanvasMedia'
 
-/** 当前正铺着的背景。主题页要能「还原」回它，所以要留着句柄；url 为 null 表示什么都别铺。 */
-type Applied = { url: string | null; kind: WallpaperKind; config: WallpaperConfig }
+/** 当前正铺着的背景。主题页要能「还原」回它，所以要留着句柄；url 为 null 表示什么都别铺。
+ * poster 只有视频有：减少动态时用这张静帧，而不是停在经常发黑的第 0 秒。 */
+type Applied = { url: string | null; kind: WallpaperKind; config: WallpaperConfig; poster?: string | null }
 
 interface ThemeContextValue {
   theme: ThemeId
@@ -37,12 +39,16 @@ interface ThemeContextValue {
   saveStyle: (style: ThemeStyle) => void
   /** 主题页草稿的实时预览；传 null 还原成盘上那套。URL 由调用方持有，这里只管铺。 */
   setWallpaperPreview: (preview: Applied | null) => void
+  /** 吊灯草稿。主题页改灯型或开关灯光时，右上角那只灯立刻跟着变，离开页面就丢掉。 */
+  lampPreview: { lamp: LampId; light: boolean } | null
+  setLampPreview: (preview: { lamp: LampId; light: boolean } | null) => void
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const objectUrl = useRef<string | null>(null)
+  const posterUrl = useRef<string | null>(null)
   const applied = useRef<Applied | null>(null)
   const seqRef = useRef(0)
   const [theme, setThemeState] = useState<ThemeId>(() => {
@@ -52,11 +58,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   })
   const [store, setStore] = useState(() => readPresetStore())
   const [style, setStyleState] = useState<ThemeStyle>(() => readThemeStyle())
-  const [video, setVideo] = useState<{ url: string; config: WallpaperConfig } | null>(null)
+  const [lampPreview, setLampPreview] = useState<{ lamp: LampId; light: boolean } | null>(null)
+  const [video, setVideo] = useState<{ url: string; poster: string | null; config: WallpaperConfig } | null>(null)
 
   const dropUrl = useCallback(() => {
     if (objectUrl.current) URL.revokeObjectURL(objectUrl.current)
+    if (posterUrl.current) URL.revokeObjectURL(posterUrl.current)
     objectUrl.current = null
+    posterUrl.current = null
     applied.current = null
     setVideo(null)
   }, [])
@@ -69,20 +78,29 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const preset = id ? readPresetStore().items.find((item) => item.id === id) ?? null : null
     const blob = preset ? await readWallpaper(preset.id) : null
     if (seq !== seqRef.current) return
-    if (!blob) {
+    if (!blob || !preset) {
       applyWallpaper(null)
       return
     }
     const url = URL.createObjectURL(blob)
     objectUrl.current = url
-    const config = preset?.wallpaper ?? DEFAULT_WALLPAPER
-    applied.current = { url, kind: config.kind, config }
-    // 视频铺不到 body 的 CSS 背景上，改交给固定的 <video> 层
+    const config = preset.wallpaper ?? DEFAULT_WALLPAPER
+    // 视频铺不到 body 的 CSS 背景上，改交给固定的 <video> 层。静帧另读，减少动态时用它。
     if (config.kind === 'video') {
+      const posterBlob = await readPoster(preset.id)
+      if (seq !== seqRef.current) {
+        URL.revokeObjectURL(url)
+        if (objectUrl.current === url) objectUrl.current = null
+        return
+      }
+      const poster = posterBlob ? URL.createObjectURL(posterBlob) : null
+      posterUrl.current = poster
+      applied.current = { url, kind: 'video', config, poster }
       applyWallpaper(null)
-      setVideo({ url, config })
+      setVideo({ url, poster, config })
       return
     }
+    applied.current = { url, kind: config.kind, config, poster: null }
     applyWallpaper(url, config)
   }, [dropUrl])
 
@@ -91,6 +109,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     void showWallpaper(readTheme() === 'custom' ? current.activeId : null)
     return () => {
       if (objectUrl.current) URL.revokeObjectURL(objectUrl.current)
+      if (posterUrl.current) URL.revokeObjectURL(posterUrl.current)
     }
   }, [showWallpaper])
 
@@ -104,7 +123,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
     if (next.kind === 'video') {
       applyWallpaper(null)
-      setVideo({ url: next.url, config: next.config })
+      setVideo({ url: next.url, poster: next.poster ?? null, config: next.config })
       return
     }
     setVideo(null)
@@ -202,12 +221,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       deletePreset,
       saveStyle,
       setWallpaperPreview,
+      lampPreview,
+      setLampPreview,
     }),
-    [theme, store, style, setTheme, selectPreset, savePreset, deletePreset, saveStyle, setWallpaperPreview],
+    [theme, store, style, setTheme, selectPreset, savePreset, deletePreset, saveStyle, setWallpaperPreview, lampPreview],
   )
   return (
     <ThemeContext.Provider value={value}>
-      {video && <CanvasMedia url={video.url} config={video.config} />}
+      {video && <CanvasMedia url={video.url} poster={video.poster} config={video.config} />}
       {children}
     </ThemeContext.Provider>
   )

@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { ThemeProvider } from '../context/ThemeContext'
 import { api, ApiError } from '../lib/api'
 import type { Feedback } from '../types'
 import { FeedbackWidget } from './FeedbackWidget'
@@ -38,10 +39,25 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
+function renderWidget() {
+  render(
+    <ThemeProvider>
+      <MemoryRouter initialEntries={['/long']}><FeedbackWidget /></MemoryRouter>
+    </ThemeProvider>,
+  )
+}
+
 function openPanel() {
-  render(<MemoryRouter initialEntries={['/long']}><FeedbackWidget /></MemoryRouter>)
+  renderWidget()
   fireEvent.click(screen.getByRole('button', { name: '问题反馈' }))
 }
+
+it('hangs the default cube lamp with the light on', () => {
+  renderWidget()
+  const lamp = screen.getByRole('button', { name: '问题反馈' })
+  expect(lamp.getAttribute('data-lamp')).toBe('cube')
+  expect(lamp.getAttribute('data-light')).toBe('on')
+})
 
 it('必填校验拦住空描述，填好后带页面路径提交并在「我的反馈」里看到', async () => {
   vi.mocked(api.submitFeedback).mockResolvedValue(submitted)

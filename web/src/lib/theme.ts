@@ -3,6 +3,23 @@
 // 官方三套一样吃（见 ThemeStyle）。
 
 export const THEME_STORAGE_KEY = 'myink.theme'
+/** 吊灯在页面上的位置。x、y 都是 0 到 1：x 是水平中心，y 是灯罩离页顶的高度（也就是绳长）。拖完即写，不进主题草稿。 */
+export const LAMP_X_KEY = 'myink.theme.lampX'
+export const LAMP_POS_KEY = 'myink.theme.lampPos'
+export const DEFAULT_LAMP_X = 0.92
+export const DEFAULT_LAMP_Y = 0.12
+/** 灯罩离页顶比这还近，松手就收成顶部的小尖。 */
+export const LAMP_HIDE_PX = 22
+
+export type LampPlace = { x: number; y: number; hidden: boolean }
+
+/** 吊在页面上时，绳子单独画，画面从灯头开始。top 是 viewBox 里灯头的起点。 */
+export const LAMP_HANG: Record<LampId, { top: number; beam: string; cord: string }> = {
+  shade: { top: 168, beam: '72%', cord: '#c4b49a' },
+  cube: { top: 124, beam: '58%', cord: '#1c1c1c' },
+  globe: { top: 104, beam: '64%', cord: '#1c1c1c' },
+  cone: { top: 96, beam: '46%', cord: '#d5d5d5' },
+}
 export const CUSTOM_THEME_STORAGE_KEY = 'myink.theme.custom'
 export const PRESET_STORAGE_KEY = 'myink.theme.presets'
 export const STYLE_STORAGE_KEY = 'myink.theme.style'
@@ -56,11 +73,24 @@ export const THEME_FONT_SIZES: ReadonlyArray<{
 // 每套预设只管配色：底色/文字/纸/强调色
 export type CustomThemeTokens = Record<CustomTokenKey, string>
 
-// 字体与透明度不属于任何一套配色，它们是账号级的，官方三套一样跟着变
+// 字体、透明度、吊灯都不属于任何一套配色，它们是账号级的，官方三套一样跟着变。
+// 吊灯顺序对应四只参考：布罩、方灯、玻罩、喇叭。默认是第二只方灯，灯光默认开着。
+export const LAMP_IDS = ['shade', 'cube', 'globe', 'cone'] as const
+export type LampId = (typeof LAMP_IDS)[number]
+
+export const LAMPS: ReadonlyArray<{ id: LampId; label: string }> = [
+  { id: 'shade', label: '布罩' },
+  { id: 'cube', label: '方灯' },
+  { id: 'globe', label: '玻罩' },
+  { id: 'cone', label: '喇叭' },
+]
+
 export type ThemeStyle = {
   chromeOpacity: number
   font: ThemeFont
   fontSize: ThemeFontSize
+  lamp: LampId
+  lampLight: boolean
 }
 
 export type WallpaperFit = 'cover' | 'tile'
@@ -116,6 +146,8 @@ export const DEFAULT_THEME_STYLE: ThemeStyle = {
   chromeOpacity: 100,
   font: 'hei',
   fontSize: 'm',
+  lamp: 'cube',
+  lampLight: true,
 }
 
 // 外壳各层在设计上的基准不透明度。100% 时就是设计原样，往下拉每层乘同一个系数，
@@ -253,6 +285,10 @@ export function parseThemeStyle(raw: unknown): ThemeStyle {
   if (parsed.fontSize === 's' || parsed.fontSize === 'm' || parsed.fontSize === 'l' || parsed.fontSize === 'xl') {
     next.fontSize = parsed.fontSize
   }
+  if (typeof parsed.lamp === 'string' && (LAMP_IDS as readonly string[]).includes(parsed.lamp)) {
+    next.lamp = parsed.lamp as LampId
+  }
+  if (typeof parsed.lampLight === 'boolean') next.lampLight = parsed.lampLight
   return next
 }
 
@@ -267,6 +303,90 @@ export function readThemeStyle(): ThemeStyle {
 
 export function writeThemeStyle(style: ThemeStyle): void {
   localStorage.setItem(STYLE_STORAGE_KEY, JSON.stringify(style))
+}
+
+/** 灯不能拖出屏幕：左右各留一点，避免灯罩贴边之后点不到。 */
+export function clampLampX(value: number, viewportWidth = 1280): number {
+  const width = viewportWidth > 80 ? viewportWidth : 1280
+  const margin = 36 / width
+  const next = Number.isFinite(value) ? value : DEFAULT_LAMP_X
+  return Math.min(1 - margin, Math.max(margin, next))
+}
+
+export function readLampX(viewportWidth = 1280): number {
+  try {
+    const raw = localStorage.getItem(LAMP_X_KEY)
+    if (raw == null) return clampLampX(DEFAULT_LAMP_X, viewportWidth)
+    return clampLampX(Number(raw), viewportWidth)
+  } catch {
+    return clampLampX(DEFAULT_LAMP_X, viewportWidth)
+  }
+}
+
+export function writeLampX(value: number, viewportWidth = 1280): void {
+  localStorage.setItem(LAMP_X_KEY, String(clampLampX(value, viewportWidth)))
+}
+
+export function lampFixturePx(id: LampId, width = 104): number {
+  return width * (300 - LAMP_HANG[id].top) / 200
+}
+
+/** 灯罩不能拖出屏幕下沿。上沿不在这里卡：挨着页顶是「收起来」的区域。 */
+export function clampLampY(value: number, viewportHeight = 800, fixtureHeight = 80): number {
+  const height = viewportHeight > 80 ? viewportHeight : 800
+  const min = LAMP_HIDE_PX / height
+  const max = Math.max(min, (height - fixtureHeight - 12) / height)
+  const next = Number.isFinite(value) ? value : DEFAULT_LAMP_Y
+  return Math.min(max, Math.max(min, next))
+}
+
+/** 松手时：挨着页顶就藏起来，否则把绳长定在这个高度。 */
+export function settleLampDrop(y: number, viewportHeight = 800, fixtureHeight = 80): { y: number; hidden: boolean } {
+  const height = viewportHeight > 80 ? viewportHeight : 800
+  if (!Number.isFinite(y) || y * height < LAMP_HIDE_PX) return { y: 0, hidden: true }
+  return { y: clampLampY(y, height, fixtureHeight), hidden: false }
+}
+
+export function readLampPlace(viewportWidth = 1280, viewportHeight = 800, fixtureHeight = 80): LampPlace {
+  const fallbackX = () => {
+    try {
+      const legacy = localStorage.getItem(LAMP_X_KEY)
+      return legacy == null ? DEFAULT_LAMP_X : Number(legacy)
+    } catch {
+      return DEFAULT_LAMP_X
+    }
+  }
+  try {
+    const raw = localStorage.getItem(LAMP_POS_KEY)
+    if (!raw) {
+      return {
+        x: clampLampX(fallbackX(), viewportWidth),
+        y: DEFAULT_LAMP_Y,
+        hidden: false,
+      }
+    }
+    const parsed = JSON.parse(raw) as Partial<LampPlace>
+    const x = clampLampX(typeof parsed.x === 'number' ? parsed.x : fallbackX(), viewportWidth)
+    if (parsed.hidden === true) return { x, y: 0, hidden: true }
+    return {
+      x,
+      y: clampLampY(typeof parsed.y === 'number' ? parsed.y : DEFAULT_LAMP_Y, viewportHeight, fixtureHeight),
+      hidden: false,
+    }
+  } catch {
+    return { x: clampLampX(DEFAULT_LAMP_X, viewportWidth), y: DEFAULT_LAMP_Y, hidden: false }
+  }
+}
+
+export function writeLampPlace(place: LampPlace, viewportWidth = 1280, viewportHeight = 800, fixtureHeight = 80): void {
+  const next: LampPlace = place.hidden
+    ? { x: clampLampX(place.x, viewportWidth), y: 0, hidden: true }
+    : {
+      x: clampLampX(place.x, viewportWidth),
+      y: clampLampY(place.y, viewportHeight, fixtureHeight),
+      hidden: false,
+    }
+  localStorage.setItem(LAMP_POS_KEY, JSON.stringify(next))
 }
 
 export function clampWallpaperZoom(value: number): number {

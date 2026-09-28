@@ -3,6 +3,15 @@ import { afterEach, expect, it } from 'vitest'
 import {
   applyTheme,
   applyWallpaper,
+  clampLampX,
+  clampLampY,
+  DEFAULT_LAMP_X,
+  DEFAULT_LAMP_Y,
+  LAMP_POS_KEY,
+  LAMP_X_KEY,
+  readLampPlace,
+  settleLampDrop,
+  writeLampPlace,
   CUSTOM_THEME_STORAGE_KEY,
   DEFAULT_CUSTOM_TOKENS,
   DEFAULT_THEME_STYLE,
@@ -102,7 +111,7 @@ it('renames old 预设 labels to 自定义', () => {
 })
 
 it('fades the editor paper and the selections to the chrome opacity too', () => {
-  applyTheme('custom', DEFAULT_CUSTOM_TOKENS, { chromeOpacity: 40, font: 'kai', fontSize: 'l' })
+  applyTheme('custom', DEFAULT_CUSTOM_TOKENS, { ...DEFAULT_THEME_STYLE, chromeOpacity: 40, font: 'kai', fontSize: 'l' })
   expect(cssVar('--surface-1')).toBe('rgba(255, 253, 247, 0.34)')
   // 正文纸跟外壳同一个滑块，只是层级更高，靠亮度区分而不是靠不透明
   expect(cssVar('--editor')).toBe('rgba(255, 253, 247, 0.4)')
@@ -115,7 +124,7 @@ it('fades the editor paper and the selections to the chrome opacity too', () => 
 })
 
 it('gives the official themes the same font and opacity knobs', () => {
-  applyTheme('night', undefined, { chromeOpacity: 40, font: 'hei', fontSize: 'xl' })
+  applyTheme('night', undefined, { ...DEFAULT_THEME_STYLE, chromeOpacity: 40, font: 'hei', fontSize: 'xl' })
   expect(document.documentElement.getAttribute('data-theme')).toBe('night')
   expect(cssVar('--surface-1')).toBe('rgba(28, 28, 28, 0.4)')
   expect(cssVar('--editor')).toBe('rgba(24, 24, 24, 0.4)')
@@ -125,7 +134,7 @@ it('gives the official themes the same font and opacity knobs', () => {
   expect(cssVar('--text-editor')).toBe('21px')
 
   // 换回纸感：夜间的内联底色必须清掉，否则会盖住样式表
-  applyTheme('paper', undefined, { chromeOpacity: 40, font: 'hei', fontSize: 'xl' })
+  applyTheme('paper', undefined, { ...DEFAULT_THEME_STYLE, chromeOpacity: 40, font: 'hei', fontSize: 'xl' })
   expect(cssVar('--surface-1')).toBe('rgba(255, 255, 252, 0.34)')
   expect(cssVar('--editor')).toBe('rgba(255, 253, 247, 0.4)')
 })
@@ -143,15 +152,29 @@ it('leaves the official themes on the stylesheet at full opacity', () => {
 
 it('keeps font and opacity at the account level instead of inside a preset', () => {
   expect(readThemeStyle()).toEqual(DEFAULT_THEME_STYLE)
-  writeThemeStyle({ chromeOpacity: 55, font: 'kai', fontSize: 'l' })
-  expect(readThemeStyle()).toEqual({ chromeOpacity: 55, font: 'kai', fontSize: 'l' })
+  writeThemeStyle({ ...DEFAULT_THEME_STYLE, chromeOpacity: 55, font: 'kai', fontSize: 'l' })
+  expect(readThemeStyle()).toEqual({ ...DEFAULT_THEME_STYLE, chromeOpacity: 55, font: 'kai', fontSize: 'l' })
 
-  localStorage.setItem(STYLE_STORAGE_KEY, '{"chromeOpacity":900,"font":"comic","fontSize":"xxl"}')
+  localStorage.setItem(STYLE_STORAGE_KEY, '{"chromeOpacity":900,"font":"comic","fontSize":"xxl","lamp":"neon","lampLight":"yes"}')
   expect(readThemeStyle()).toEqual(DEFAULT_THEME_STYLE)
 })
 
+it('places the lamp anywhere and tucks it away when dragged to the ceiling', () => {
+  expect(readLampPlace(1000, 800, 80)).toEqual({ x: DEFAULT_LAMP_X, y: DEFAULT_LAMP_Y, hidden: false })
+  expect(clampLampX(-1, 1000)).toBeCloseTo(0.036)
+  expect(clampLampY(0.4, 800, 80)).toBeCloseTo(0.4)
+  expect(settleLampDrop(0.01, 800, 80)).toEqual({ y: 0, hidden: true })
+
+  localStorage.setItem(LAMP_X_KEY, '0.4')
+  expect(readLampPlace(1000, 800, 80).x).toBe(0.4)
+
+  writeLampPlace({ x: 0.3, y: 0, hidden: true }, 1000, 800, 80)
+  expect(JSON.parse(localStorage.getItem(LAMP_POS_KEY) || '{}').hidden).toBe(true)
+  expect(readLampPlace(1000, 800, 80)).toEqual({ x: 0.3, y: 0, hidden: true })
+})
+
 it('keeps a saved serif reading preference without applying it to small UI text', () => {
-  writeThemeStyle({ font: 'song', fontSize: 'm', chromeOpacity: 100 })
+  writeThemeStyle({ ...DEFAULT_THEME_STYLE, font: 'song', fontSize: 'm', chromeOpacity: 100 })
   applyTheme('paper', undefined, readThemeStyle())
   expect(cssVar('--font-editor')).toContain('SimSun')
   expect(cssVar('--font-ui')).toContain('sans-serif')

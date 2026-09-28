@@ -1,9 +1,11 @@
 // 账号级主题：官方主题 + 多套自定义。不绑具体书。
-// 页面分两块：配色与背景图跟着某套预设走；字体与透明度是账号级的，官方三套一样吃。
+// 页面分两块：配色与背景图跟着某套预设走；字体、透明度、吊灯是账号级的，官方三套一样吃。
 // 两块都是实时预览：改动立刻作用到整页，只有点保存才写盘；没保存就退出会回到进来之前的样子。
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { Link, useBlocker } from 'react-router-dom'
+import { PendantLamp } from '../components/PendantLamp'
 import { ProjectRail } from '../components/ProjectRail'
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { useGuest } from '../hooks/useGuest'
@@ -19,6 +21,7 @@ import {
   DEFAULT_WALLPAPER,
   hexToRgba,
   isHexColor,
+  LAMPS,
   newPresetId,
   nextPresetName,
   PRESET_LIMIT,
@@ -266,6 +269,7 @@ function WorkspacePreview(props: {
 export default function AppearancePage() {
   const { logout } = useAuth()
   const guest = useGuest()
+  const reducedMotion = usePrefersReducedMotion()
   const {
     theme,
     presets,
@@ -277,6 +281,7 @@ export default function AppearancePage() {
     deletePreset,
     saveStyle,
     setWallpaperPreview,
+    setLampPreview,
   } = useTheme()
   const [projects, setProjects] = useState<Project[]>([])
   // 预设背景分两样：媒体本身（图片或视频，编辑时播放/铺开用）与首帧静帧（卡片和对话框用，
@@ -315,9 +320,17 @@ export default function AppearancePage() {
   const styleDirty = draftStyle.chromeOpacity !== style.chromeOpacity
     || draftStyle.font !== style.font
     || draftStyle.fontSize !== style.fontSize
+    || draftStyle.lamp !== style.lamp
+    || draftStyle.lampLight !== style.lampLight
   const editorDirty = editor?.dirty ?? false
   const unsaved = editorDirty || styleDirty
   const previewing = editing || styleDirty
+
+  // 吊灯草稿直接作用到右上角那只灯，离开这一页就收回，没保存的选择不会留下来
+  useEffect(() => {
+    setLampPreview({ lamp: draftStyle.lamp, light: draftStyle.lampLight })
+    return () => setLampPreview(null)
+  }, [draftStyle.lamp, draftStyle.lampLight, setLampPreview])
 
   // 退出预览要回到的那套：即便中途点了删除，这里也始终是当前已保存的状态
   const restore = useCallback(() => {
@@ -413,8 +426,11 @@ export default function AppearancePage() {
     if (!previewing) return
     if (editor) {
       applyTheme('custom', editor.tokens, draftStyle)
-      // 视频草稿铺不成 CSS 背景，整页跟着换成视频层
-      setWallpaperPreview({ url: draftMedia, kind: editor.wallpaper.kind, config: editor.wallpaper })
+      // 已保存的文件还在从本机读：空 url 会把整页背景先擦掉，等读到再铺。
+      const waitingForSavedMedia = !editor.isNew && !editor.file && !editor.drop && !draftMedia
+      if (!waitingForSavedMedia) {
+        setWallpaperPreview({ url: draftMedia, kind: editor.wallpaper.kind, config: editor.wallpaper })
+      }
       return
     }
     applyTheme(theme, activePreset?.tokens, draftStyle)
@@ -793,20 +809,50 @@ export default function AppearancePage() {
                   </span>
                 </label>
 
-                <div className={styles.themeActions}>
-                  <button type="button" className="btn btn-primary" onClick={onSaveStyle} disabled={!styleDirty}>
-                    保存
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => setDraftStyle(style)}
-                    disabled={!styleDirty}
-                  >
-                    还原
-                  </button>
-                </div>
               </div>
+            </div>
+
+            <div className={styles.lampBlock}>
+              <h2 className={styles.sectionTitle}>吊灯</h2>
+              <div className={styles.lampGrid} role="group" aria-label="吊灯">
+                {LAMPS.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={draftStyle.lamp === item.id ? `${styles.lampCard} ${styles.lampCardActive}` : styles.lampCard}
+                    aria-label={item.label}
+                    aria-pressed={draftStyle.lamp === item.id}
+                    onClick={() => setDraftStyle((current) => ({ ...current, lamp: item.id }))}
+                  >
+                    <PendantLamp id={item.id} lit={draftStyle.lampLight} />
+                  </button>
+                ))}
+              </div>
+              <div className={styles.lampSwitch}>
+                <span className={styles.fieldLabel}>灯光</span>
+                <button
+                  type="button"
+                  className={`btn ${draftStyle.lampLight ? 'btn-primary' : 'btn-secondary'}`}
+                  aria-pressed={draftStyle.lampLight}
+                  onClick={() => setDraftStyle((current) => ({ ...current, lampLight: !current.lampLight }))}
+                >
+                  {draftStyle.lampLight ? '开' : '关'}
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.themeActions}>
+              <button type="button" className="btn btn-primary" onClick={onSaveStyle} disabled={!styleDirty}>
+                保存
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setDraftStyle(style)}
+                disabled={!styleDirty}
+              >
+                还原
+              </button>
             </div>
           </section>
 
@@ -873,7 +919,7 @@ export default function AppearancePage() {
                         <video
                           className={styles.themeWallpaperVideo}
                           src={draftVideo}
-                          autoPlay
+                          autoPlay={!reducedMotion}
                           muted
                           loop
                           playsInline
@@ -893,7 +939,7 @@ export default function AppearancePage() {
                           className={styles.themeWallpaperInput}
                           type="file"
                           accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
-                          aria-label="上传背景图"
+                          aria-label="上传背景"
                           onChange={(event) => {
                             onPickWallpaper(event.target.files?.[0])
                             event.target.value = ''

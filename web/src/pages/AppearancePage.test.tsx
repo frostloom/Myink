@@ -4,7 +4,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { afterEach, expect, it, vi } from 'vitest'
 import { ThemeProvider } from '../context/ThemeContext'
 import { api } from '../lib/api'
-import { PRESET_STORAGE_KEY, STYLE_STORAGE_KEY, THEME_STORAGE_KEY } from '../lib/theme'
+import { DEFAULT_THEME_STYLE, PRESET_STORAGE_KEY, STYLE_STORAGE_KEY, THEME_STORAGE_KEY } from '../lib/theme'
 import AppearancePage from './AppearancePage'
 
 vi.mock('../components/ProjectRail', () => ({ ProjectRail: () => <nav>项目</nav> }))
@@ -173,10 +173,34 @@ it('keeps font and opacity edits as a draft until they are saved', async () => {
 
   fireEvent.click(screen.getByRole('button', { name: '保存' }))
   expect(JSON.parse(localStorage.getItem(STYLE_STORAGE_KEY) || '{}')).toEqual({
+    ...DEFAULT_THEME_STYLE,
     chromeOpacity: 40,
     font: 'hei',
     fontSize: 'l',
   })
+})
+
+it('previews a pendant immediately and only stores it on save', async () => {
+  renderPage()
+  expect((await screen.findByRole('button', { name: '方灯' })).getAttribute('aria-pressed')).toBe('true')
+  const light = screen.getByRole('button', { name: '开' })
+  expect(light.getAttribute('aria-pressed')).toBe('true')
+
+  fireEvent.click(screen.getByRole('button', { name: '喇叭' }))
+  fireEvent.click(light)
+  expect(screen.getByRole('button', { name: '喇叭' }).getAttribute('aria-pressed')).toBe('true')
+  expect(light.textContent).toBe('关')
+  expect(light.getAttribute('aria-pressed')).toBe('false')
+  expect(localStorage.getItem(STYLE_STORAGE_KEY)).toBeNull()
+
+  fireEvent.click(screen.getByRole('button', { name: '还原' }))
+  expect(screen.getByRole('button', { name: '方灯' }).getAttribute('aria-pressed')).toBe('true')
+  expect(screen.getByRole('button', { name: '开' }).getAttribute('aria-pressed')).toBe('true')
+
+  fireEvent.click(screen.getByRole('button', { name: '布罩' }))
+  fireEvent.click(screen.getByRole('button', { name: '保存' }))
+  expect(JSON.parse(localStorage.getItem(STYLE_STORAGE_KEY) || '{}').lamp).toBe('shade')
+  expect(JSON.parse(localStorage.getItem(STYLE_STORAGE_KEY) || '{}').lampLight).toBe(true)
 })
 
 it('hands the font and opacity to the official themes too', async () => {
@@ -233,7 +257,7 @@ it('pins every theme card to the 万古魔尊 workspace preview', async () => {
 
 it('rejects a non-image wallpaper on the appearance page', async () => {
   await newPreset()
-  fireEvent.change(screen.getByLabelText('上传背景图'), {
+  fireEvent.change(screen.getByLabelText('上传背景'), {
     target: { files: [new File(['nope'], 'x.txt', { type: 'text/plain' })] },
   })
   expect(await screen.findByText('只要 jpg / png / webp / gif 图片或 mp4 / webm 视频')).toBeTruthy()
@@ -241,7 +265,7 @@ it('rejects a non-image wallpaper on the appearance page', async () => {
 
 it('previews a picked wallpaper live and still keeps it out of storage', async () => {
   await newPreset()
-  fireEvent.change(screen.getByLabelText('上传背景图'), {
+  fireEvent.change(screen.getByLabelText('上传背景'), {
     target: { files: [new File([TINY_PNG], 'bg.png', { type: 'image/png' })] },
   })
   // 选完图不弹预览、不写盘，但整页和框里立刻能看到
@@ -253,7 +277,7 @@ it('previews a picked wallpaper live and still keeps it out of storage', async (
 
 it('puts a picked video on its own background layer instead of the CSS background', async () => {
   await newPreset()
-  fireEvent.change(screen.getByLabelText('上传背景图'), {
+  fireEvent.change(screen.getByLabelText('上传背景'), {
     target: { files: [new File([new Uint8Array(8)], 'bg.mp4', { type: 'video/mp4' })] },
   })
 
@@ -267,7 +291,7 @@ it('puts a picked video on its own background layer instead of the CSS backgroun
 })
 
 it('tiles the wallpaper instead of leaving blank bands, and zooms past the edges', async () => {  await newPreset()
-  fireEvent.change(screen.getByLabelText('上传背景图'), {
+  fireEvent.change(screen.getByLabelText('上传背景'), {
     target: { files: [new File([TINY_PNG], 'bg.png', { type: 'image/png' })] },
   })
   // 铺满（默认）：按 cover 算尺寸，任何比例都不留白

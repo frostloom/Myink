@@ -16,5 +16,5 @@
 .scrim {
   position: absolute;
   inset: 0;
-  background: color-mix(in srgb, var(--canvas) 22%, transparent);
+  background: color-mix(in srgb, var(--canvas) 46%, transparent);
 }
