@@ -379,10 +379,45 @@ def test_world_characters_ownership(temp_project):
                           headers=_h(_demo_user_id())).status_code == 404
 
 
-# ---- 提示词契约（§7.11 AI 起名）：SYSTEM_BOOK_SETUP schema 含 title ----
+# ---- 提示词契约（§7.11 AI 起名）：设定骨架 schema 含 title，且随题材能力开关增减 ----
 
 def test_setup_prompt_ai_title_contract():
-    """AI 起名契约：SYSTEM_BOOK_SETUP 的 JSON schema 含 title 字段（书名留空由 Planner 建议）。"""
+    """AI 起名契约：骨架的 JSON schema 含 title 字段（书名留空由 Planner 建议）。"""
     from myink.workflow import prompts
-    assert '"title"' in prompts.SYSTEM_BOOK_SETUP, "schema 须含书名建议字段"
-    assert "已定书名返回空串" in prompts.SYSTEM_BOOK_SETUP, "已定书名时 title 返回空串（不覆盖作者决定）"
+    system = prompts.book_setup_system()
+    assert '"title"' in system, "schema 须含书名建议字段"
+    assert "已定书名返回空串" in system, "已定书名时 title 返回空串（不覆盖作者决定）"
+
+
+def test_setup_skeleton_follows_genre_capabilities():
+    """骨架因题材而异（§7.11）：等级阶梯/资源账本/年代考据只在对应题材出现。
+
+    修仙给 realm_order + realm_cap；都市日常一样都不给，且要有反口令挡住模型照惯性补。
+    """
+    from myink.workflow import prompts
+
+    xianxia = prompts.book_setup_system({"power_scaling": True, "numerical_system": True})
+    assert '"realm_order"' in xianxia and '"realm_cap"' in xianxia
+    assert "资源/数值账本" in xianxia and "没有资源账本" not in xianxia
+    assert '"realm_order"' not in prompts.book_setup_system(), "未选题材不给等级阶梯"
+
+    daily = prompts.book_setup_system({"numerical_system": False})
+    assert '"realm_order"' not in daily and '"realm_cap"' not in daily
+    assert "没有等级/战力阶梯" in daily, "关掉的维度要有反口令，不然模型会照修仙那套填"
+    # 通用骨架不随开关消失：世界规则/硬约束/势力/人物/地点对谁都在。
+    for key in ('"world_rules"', '"hard_constraints"', '"forces"', '"characters"', '"locations"'):
+        assert key in daily, f"通用骨架字段不该随题材消失：{key}"
+
+
+def test_setup_messages_pass_genre_capabilities():
+    """book_setup_messages 必须把题材包的开关喂给系统提示（不然开关只写在数据里没生效）。"""
+    from myink.genre_catalog import build_book_pack
+    from myink.workflow import prompts
+
+    pack = build_book_pack("dushi-richang", None)
+    system = prompts.book_setup_messages("都市日常", "开一家小面馆", genre_pack=pack)[0]["content"]
+    assert "没有等级/战力阶梯" in system
+
+    pack = build_book_pack("xiuxian", None)
+    system = prompts.book_setup_messages("修仙", "凡人少年入宗门", genre_pack=pack)[0]["content"]
+    assert '"realm_order"' in system

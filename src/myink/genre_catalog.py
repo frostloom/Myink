@@ -29,6 +29,20 @@ _SLOW_PACKS = frozenset({
     "kesulu", "minguo", "xihuan",
 })
 
+# 建书设定骨架的能力开关（§7.11，参考 inkos 的 genre profile 布尔位）：等级划分不是通用维度，
+# 都市日常/言情这类题材不该被排一套境界表。三个开关决定骨架里出不出现对应维度，未选题材全关。
+# 判定依据是各题材包自己的 mechanics（资源记账、理智值、票证、官职考据之类都在那儿写着）。
+POWER_SCALING_PACKS = frozenset({          # 有等级/战力阶梯 → realm_order + 人物 realm_cap
+    "xiuxian", "xitong", "gaowu", "xihuan", "wuxian", "moshi", "dushi-yineng",
+})
+NUMERICAL_PACKS = frozenset({              # 有可追踪的资源/数值账本 → world_rules 写核心资源与硬上限
+    "xiuxian", "xitong", "xihuan", "wuxian", "moshi", "kesulu", "zhongtian", "niandai",
+})
+ERA_RESEARCH_PACKS = frozenset({           # 需年代考据 → world_rules 写时代锚与年代禁区
+    "guyuan", "gongdou", "zhongtian", "minguo", "niandai", "kangzhan",
+    "lishi-gudai", "lishi-naodong",
+})
+
 FIELD_KEYS = (
     "selling_point", "subgenres", "taboos", "pacing", "satisfaction", "mechanics", "world_hints",
 )
@@ -635,6 +649,7 @@ def catalog_entries() -> list[dict[str, Any]]:
             root = PACKS[pid]
             item = {"id": pid, "name": root["name"], "group": root["group"]}
             item.update(deepcopy({k: root[k] for k in FIELD_KEYS}))
+            item["setup_caps"] = setup_capabilities({"source_id": pid})
             out.append(item)
     return out
 
@@ -751,6 +766,7 @@ def public_pack(pack: Any) -> dict[str, Any]:
     out = {k: deepcopy(pack.get(k)) for k in (
         "source_id", "source_name", "secondary_id", "secondary_name", *FIELD_KEYS,
     )}
+    out["setup_caps"] = setup_capabilities(pack)
     return out
 
 
@@ -876,3 +892,18 @@ def suggest_volume_count(chapter_count: int, pack: Any) -> int:
     span = max(1, volume_span_for(pack))
     n = max(3, int(round(int(chapter_count or 0) / span)))
     return min(n, 20)
+
+
+def setup_capabilities(pack: Any) -> dict[str, bool]:
+    """本书题材的建书能力开关：设定骨架里出不出现等级阶梯/资源账本/年代考据。
+
+    pack 可以是本书的题材包（`source_id`）或根目录条目（`id`）。取不到题材一律全关——
+    宁可给最朴素的骨架，让作者自己往上补，也不要替所有题材先排一套修仙模板。
+    """
+    data = pack if isinstance(pack, dict) else {}
+    sid = data.get("source_id") or data.get("primary_id") or data.get("id")
+    return {
+        "power_scaling": sid in POWER_SCALING_PACKS,
+        "numerical_system": sid in NUMERICAL_PACKS,
+        "era_research": sid in ERA_RESEARCH_PACKS,
+    }

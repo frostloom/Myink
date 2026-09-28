@@ -231,6 +231,8 @@ class GenrePackOut(BaseModel):
     satisfaction: list[str] = Field(default_factory=list)
     mechanics: list[str] = Field(default_factory=list)
     world_hints: list[str] = Field(default_factory=list)
+    # 建书设定骨架的能力开关（§7.11）：骨架字段与建书表单按它增减，不是所有题材都排一套境界表。
+    setup_caps: dict = Field(default_factory=dict)
 
 
 class GenreCatalogItemOut(GenrePackOut):
@@ -280,21 +282,8 @@ class EnvironmentOut(BaseModel):
     thinking_enabled: bool = False
 
 
-class SkillPresetOut(BaseModel):
-    id: str
-    name: str
-    genre: str
-    style_profile: dict = Field(default_factory=dict)
-
-
 class StyleDraftOut(BaseModel):
     draft: dict = Field(default_factory=dict)
-
-
-class StyleProfileOut(BaseModel):
-    style_profile: dict = Field(default_factory=dict)
-    skill_pack: str | None = None
-    version: int
 
 
 class AuditRunOut(BaseModel):

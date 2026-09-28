@@ -150,7 +150,7 @@ def test_every_business_route_has_an_identity_dependency():
     """结构化补强：每条业务路由的依赖闭包里必须有一个守卫。
 
     上面那个遍历会把 422 当关门，于是「忘挂守卫、但恰好要求请求体」的路由在那里看不出来。
-    这条不看响应，只看装配——也正是它能发现 /skill-presets、/genre-packs 那类
+    这条不看响应，只看装配——也正是它能发现 /genre-packs 那类
     「网关时代挂在 secured 里、换成 Caddy 直连后守卫丢失」的静默越权。
     """
     unguarded = sorted(
@@ -166,7 +166,7 @@ def test_the_structural_sweep_actually_sees_the_routers():
     paths = {route.path for route in _declared_routes()}
     assert len(paths) > 50, f"只看到 {len(paths)} 条路由，路由器可能没被取到"
     assert "/api/v1/projects/{project_id}/chapters" in paths
-    assert "/api/v1/skill-presets" in paths
+    assert "/api/v1/genre-packs" in paths
 
 
 def test_sweep_actually_covers_the_business_surface():

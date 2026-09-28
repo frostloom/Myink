@@ -21,6 +21,8 @@ export interface GenreCatalogItem extends GenreFields {
   id: string
   name: string
   group: string
+  /** 建书设定骨架的能力开关（§7.11）；缺省当全关 —— 最朴素的骨架 */
+  setup_caps?: Record<string, boolean>
 }
 
 export interface BookGenrePack extends GenreFields {
@@ -28,6 +30,7 @@ export interface BookGenrePack extends GenreFields {
   source_name: string
   secondary_id: string | null
   secondary_name: string | null
+  setup_caps?: Record<string, boolean>
 }
 
 export function emptyFields(): GenreFields {
