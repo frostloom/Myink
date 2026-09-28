@@ -98,3 +98,56 @@
   justify-content: space-between;
   padding: 0 var(--space-1);
 }
+
+/* 窄屏：整条 rail 折成顶部单行横向滚动条。
+   侧栏在每一页都是页面根容器（.wrap）的第一个 flex 子元素，各页在同一个断点把 .wrap 转成
+   竖排，横条就自然落到顶部——所以这里只管「把 rail 自己变横」，页面级布局不在这里重复。
+   子元素是 <nav> 与 <div> 混排（sections/nav/settings 是 nav，pageLinks/foot 是 div），
+   必须逐类点名：只写 nav 会漏掉后两个（ShortCreationPage 那处就是这么漏的，别照抄）。 */
+@media (max-width: 760px) {
+  .rail {
+    width: 100%;
+    height: auto;
+    align-self: stretch;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 2px;
+    overflow-x: auto;
+    padding: 6px 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    box-shadow: none;
+  }
+  .brand,
+  .sections,
+  .nav,
+  .pageLinks,
+  .settings,
+  .foot {
+    flex: 0 0 auto;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 2px;
+    padding: 0;
+    margin: 0;
+    border: 0;
+  }
+  .brand {
+    padding-right: var(--space-2);
+    font-size: 18px;
+  }
+  /* 基准里 .nav 是 flex:1 + overflow-y:auto——留在横向条上会把其余项推开，还多出一条纵向滚动条。 */
+  .nav {
+    overflow: visible;
+  }
+  .item {
+    min-height: 34px;
+    padding: 0 8px;
+  }
+  .userRow {
+    padding: 0;
+    gap: var(--space-2);
+  }
+}

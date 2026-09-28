@@ -809,7 +809,7 @@ export default function WorkspacePage() {
   }, [projects, projectId, navigate])
 
   return (
-    <div className={styles.wrap}>
+    <div className={styles.wrap} data-form={isShortBook ? 'short' : 'long'}>
       <ProjectRail projects={projects} onLogout={logout} />
 
       <aside className={styles.chapters} aria-label="章节列表">

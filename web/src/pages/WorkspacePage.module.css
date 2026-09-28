@@ -273,3 +273,45 @@
     margin: 0 12px 12px;
   }
 }
+
+/* ≤760：rail 折成顶部横条（规则在 ProjectRail.module.css）。这里把页面根从 ≤1159 的 grid
+   换回竖排 flex——两条同权重，靠源序取胜，所以必须写在文件最后；基准里的 min-width:1100px
+   也要一起清掉，只改 display 挡不住。 */
+@media (max-width: 760px) {
+  .wrap {
+    min-width: 0;
+    height: auto;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  /* ≤1159 给过 width:auto + grid-row:1/-1，比 .rail 自己的宽度规则权重高，在竖排 flex 下
+     要重新说清：撑满、不截高。 */
+  .wrap > aside:first-child {
+    width: 100%;
+    height: auto;
+    max-height: none;
+  }
+  /* 不截高、不收缩：章节列表本身已改成横向滚动条（ChapterList.module.css）。 */
+  .chapters {
+    flex: 0 0 auto;
+  }
+  /* 编辑器要占满一屏才谈得上「在手机上写」；≤650 那条 480px 太矮。 */
+  .main {
+    margin: 12px;
+    min-height: 72dvh;
+  }
+  .stageTabs {
+    padding: 8px 14px 0;
+  }
+  .stageTab,
+  .stageTabActive {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+  }
+  /* 短篇书的 .right 里只有 TaskTimeline，而它窄屏已隐藏——留着就是个空框。 */
+  .wrap[data-form='short'] .right {
+    display: none;
+  }
+}

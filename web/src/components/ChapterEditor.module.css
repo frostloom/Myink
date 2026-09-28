@@ -89,3 +89,21 @@
   color: var(--ink-subtle);
   font-size: var(--text-small);
 }
+
+/* ≤760：基准的 34px 外边距 + 38px 内边距在 390px 屏幕上吃掉约 144px，正文只剩两百多像素宽。
+   字号不动：--text-editor 是 17px，已经高于 iOS 聚焦自动放大的 16px 门槛。 */
+@media (max-width: 760px) {
+  .head {
+    padding: 18px 14px 0;
+  }
+  .title {
+    font-size: 20px;
+  }
+  .textarea {
+    margin: 0 14px;
+    padding: 16px 14px;
+  }
+  .foot {
+    padding: 0 14px 16px;
+  }
+}
