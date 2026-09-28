@@ -111,7 +111,7 @@ Caddy 要占用 80/443，宿主若已跑着 nginx，它会起不来。这一步*
 1. **先确认那台 nginx 没有在服务别的站点**。有的话只删对应的 vhost 文件，别卸载 nginx 包。
 2. 把 `docker-compose.yml` 里 `myink-caddy` 的 `ports` 临时改成 `"127.0.0.1:8081:80"`，`docker compose up -d --build myink-caddy`，用 `http://127.0.0.1:8081` 走一遍登录与生成，确认新入口自己是对的。
 3. 再停 nginx（`systemctl stop nginx`，确认后 `systemctl disable nginx`），把 `ports` 改回 `"80:80"` / `"443:443"` / `"443:443/udp"`，`docker compose up -d myink-caddy`。
-4. 域名解析指过来，`SITE_ADDRESS` 填域名（不带协议前缀），Caddy 自动申请续期证书；证书落在 `caddy-data` 卷里，**不要删这个卷**，否则重启会重签并可能撞 Let's Encrypt 速率限制。
+4. 域名解析指过来，`SITE_ADDRESS` 填域名（不带协议前缀），Caddy 自动申请续期证书；证书落在 `caddy-data` 卷里，**不要删这个卷**，否则重启会重签并可能撞 Let's Encrypt 速率限制。解析与 `SITE_ADDRESS` 要同时到位：只把域名解析过来、`SITE_ADDRESS` 还留着默认值时，Caddy 不认这个 Host，返回的是 **200 空页**（不报错），浏览器和手机上都表现为白屏，容易误判成前端有问题。
 
 回滚就是把 nginx 起回来、`ports` 改回 8081（第 1 步若删过 vhost，先把它恢复）：Caddy 与 API 都不持有跨启动的业务状态。
 
