@@ -578,6 +578,53 @@
   gap: var(--space-2);
 }
 
+.lampBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+
+.lampSwitch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.lampGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.lampCard {
+  display: grid;
+  place-items: start center;
+  height: 156px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: #ebe4d6;
+  cursor: pointer;
+}
+
+.lampCard svg {
+  width: 100px;
+  height: 150px;
+}
+
+.lampCard:hover {
+  border-color: var(--accent);
+}
+
+.lampCardActive {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -594,17 +641,6 @@
 .fieldLabel {
   font-size: var(--text-small);
   color: var(--ink-muted);
-}
-
-.readonly {
-  display: block;
-  padding: var(--space-2) var(--space-3);
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-small);
-  white-space: pre-wrap;
-  word-break: break-all;
 }
 
 .saveRow {
@@ -626,21 +662,6 @@
 
 .saveMsgError {
   color: var(--error);
-}
-
-.draftBox {
-  margin-top: var(--space-4);
-  padding: 22px 24px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface-2);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.draftTitle {
-  font-size: var(--text-heading);
 }
 
 .presetGrid {
@@ -801,7 +822,27 @@
     grid-template-columns: 1fr;
   }
 
+  .lampGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .keyField {
     grid-column: auto;
   }
+}
+
+/* ≤760：rail 折成顶部横条（规则在 ProjectRail.module.css），页面根转竖排让横条落到顶部。
+   min-width:0 必须一起给：基准里 .wrap 是 min-width:900px，只改 flex-direction 挡不住，
+   而这一处同时管着 import 了本文件的 AppearancePage / EnvironmentPage / AccountPage。
+   .inner 与 .section 的横 padding 也要一起收：两层各留 42px，390px 屏幕上叠起来吃掉 168px
+   （43%），正文和题材输入框只剩两百来像素。 */
+@media (max-width: 760px) {
+  .wrap {
+    min-width: 0;
+    height: auto;
+    min-height: 100%;
+    flex-direction: column;
+  }
+  .inner { padding: var(--space-4) var(--space-3) var(--space-6); }
+  .section { padding: var(--space-5) var(--space-3); }
 }

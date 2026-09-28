@@ -1,67 +1,144 @@
-/* 反馈挂件：吊在页顶的灯泡 + 悬浮反馈面板。
-   灯泡的暖色光池是这个设计系统里唯一的例外（见 DESIGN.md，已登记为允许项）：
-   它只在 hover / 面板打开时亮起，范围小、随距离衰减。 */
+/* 反馈挂件：吊灯可在整页拖动。绳子从页顶接到灯头，长度就是放下的高度。
+   拖到页顶会收成一个小尖；对着小尖再往下拖就拉出来。
+   暖光从灯罩往下淡开，没有硬边（见 DESIGN.md）。能点的只有灯罩或那个小尖。 */
 
 .dock {
   position: fixed;
   top: 0;
-  left: 50%;
-  transform: translateX(-50%);
   z-index: 30;
-  /* 挂件只占灯泡那一小块，别把整个顶栏的点击都吃掉 */
+  width: 0;
+  height: 0;
   pointer-events: none;
 }
 
-.bulb {
-  position: relative;
-  display: block;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  pointer-events: auto;
-  line-height: 0;
-  filter: drop-shadow(0 5px 9px rgba(72, 58, 38, 0.16));
-}
-
-.bulb:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 3px;
-  border-radius: var(--radius-sm);
-}
-
-/* 玻璃泡周围的暖光：唯一一处装饰性光晕，hover 微亮、打开时全亮 */
-.glow {
+.cord {
   position: absolute;
-  left: 50%;
-  top: 55px;
-  width: 200px;
-  height: 200px;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(255, 217, 134, 0.5) 0%,
-    rgba(255, 206, 112, 0.22) 34%,
-    rgba(255, 200, 96, 0) 66%
-  );
-  opacity: 0;
-  transition: opacity 460ms cubic-bezier(0.22, 1, 0.36, 1);
+  top: 0;
+  left: 0;
+  width: 1.6px;
+  transform: translateX(-50%);
+  background: var(--cord);
   pointer-events: none;
-  z-index: -1;
 }
 
-.bulb:hover .glow {
-  opacity: 0.68;
-}
-
-.bulb.lit .glow {
-  opacity: 1;
+.hang {
+  position: absolute;
+  left: 0;
+  width: 104px;
+  transform: translateX(-50%);
+  overflow: visible;
+  pointer-events: none;
 }
 
 .sway {
+  position: relative;
   display: block;
-  transform-origin: 20px 0;
+  transform-origin: top center;
+  pointer-events: none;
+}
+
+.fixture {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 104px;
+  height: calc(104px * var(--span) / 200);
+  overflow: hidden;
+}
+
+/* 从灯罩这一点向外淡开，边缘落到完全透明，不画一条分界。 */
+.glow {
+  position: absolute;
+  left: 50%;
+  top: var(--beam);
+  z-index: 0;
+  width: min(920px, 100vw);
+  height: 82vh;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 46% 72% at 50% 0%,
+    rgba(255, 246, 220, 0.5) 0%,
+    rgba(255, 232, 186, 0.28) 7%,
+    rgba(255, 216, 154, 0.14) 18%,
+    rgba(255, 206, 136, 0.06) 34%,
+    rgba(255, 198, 124, 0.02) 52%,
+    rgba(255, 190, 112, 0) 70%
+  );
+}
+
+.hit {
+  position: absolute;
+  left: 0;
+  width: 52px;
+  height: 44px;
+  transform: translateX(-50%);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: grab;
+  pointer-events: auto;
+}
+
+/* 收起后只留页顶的一个小尖。对准它按住往下拖，灯会跟着绳长拉出来。 */
+.tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 22px;
+  height: 16px;
+  transform: translateX(-50%);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: grab;
+  pointer-events: auto;
+}
+
+.tip::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 2px;
+  height: 7px;
+  transform: translateX(-50%);
+  background: var(--cord);
+}
+
+.tip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  transform: translateX(-50%);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--cord);
+}
+
+.tip:hover::before {
+  height: 11px;
+}
+
+.tip:hover::after {
+  top: 10px;
+}
+
+.hit:active,
+.tip:active {
+  cursor: grabbing;
+}
+
+.hit:focus,
+.hit:focus-visible,
+.tip:focus,
+.tip:focus-visible {
+  outline: none;
+}
+
+.dock:hover .sway,
+.swaying {
   animation: fb-sway 7s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
 }
 
@@ -70,33 +147,10 @@
   50% { transform: rotate(2.2deg); }
 }
 
-.glass {
-  transition: filter 420ms ease;
-}
-
-.filament {
-  stroke: #a2977f;
-  stroke-width: 1.1;
-  opacity: 0.32;
-  transition: stroke 420ms ease, opacity 420ms ease;
-}
-
-.bulb:hover .filament {
-  opacity: 0.75;
-}
-
-.bulb.lit .filament {
-  stroke: #f7b53c;
-  opacity: 1;
-}
-
-.bulb.lit .glass {
-  filter: brightness(1.07) saturate(1.08);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .sway { animation: none; }
-  .glass, .filament, .glow { transition: none; }
+  .sway,
+  .dock:hover .sway,
+  .swaying { animation: none; }
 }
 
 /* ---- 面板 ---- */
@@ -460,5 +514,15 @@
 
   .chipName {
     max-width: 140px;
+  }
+}
+
+/* ≤760：整个挂件不展示（用户口径：手机端不留灯泡）。
+   挂件是 router.tsx 里挂在 <Outlet> 之外的唯一实例，定位浮层就在 .dock 上，藏它即全局生效；
+   /theme 页那个 PendantLamp 是另起的实例、不带 .dock，不受影响。
+   代价：手机上也一并没有了反馈入口。要保留入口的话，改成只藏 .cord/.hang/.sway、留下可点的小尖。 */
+@media (max-width: 760px) {
+  .dock {
+    display: none;
   }
 }

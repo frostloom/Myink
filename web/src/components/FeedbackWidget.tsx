@@ -1,12 +1,24 @@
-// 问题反馈挂件：页面顶端吊着一只灯泡，点亮即打开反馈面板（描述 + 图片/视频佐证）。
+// 问题反馈挂件：页面右上角吊着一只灯，点它打开反馈面板（描述 + 图片/视频佐证）。
+// 灯型和灯光跟着账号主题走（见主题页）；灯光默认开着，关掉之后就不再铺那摊暖光。
 // 只挂在登录后的分支里（见 router.tsx 的 RequireAuth），游客看不到它。
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
+import { useTheme } from '../context/ThemeContext'
 import { api, fetchFeedbackAttachment } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
 import { autoGrow } from '../lib/autoGrow'
+import {
+  clampLampX,
+  LAMP_HANG,
+  lampFixturePx,
+  readLampPlace,
+  settleLampDrop,
+  writeLampPlace,
+  type LampPlace,
+} from '../lib/theme'
 import type { Feedback, FeedbackAttachment } from '../types'
+import { PendantLamp } from './PendantLamp'
 import styles from './FeedbackWidget.module.css'
 
 const CATEGORIES: ReadonlyArray<{ id: string; label: string }> = [
@@ -131,6 +143,24 @@ function FeedbackCard({ item }: { item: Feedback }) {
 
 export function FeedbackWidget() {
   const route = useLocation()
+  const { style, lampPreview } = useTheme()
+  const lamp = lampPreview?.lamp ?? style.lamp
+  const light = lampPreview?.light ?? style.lampLight
+  const [place, setPlace] = useState<LampPlace>(() => readLampPlace(
+    window.innerWidth,
+    window.innerHeight,
+    lampFixturePx(lamp),
+  ))
+  const placeRef = useRef(place)
+  const drag = useRef<{
+    pointerId: number
+    startX: number
+    startY: number
+    originX: number
+    originY: number
+    moved: boolean
+  } | null>(null)
+  const skipClick = useRef(false)
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState<'submit' | 'mine'>('submit')
 
@@ -154,10 +184,13 @@ export function FeedbackWidget() {
   const pickedRef = useRef(picked)
   pickedRef.current = picked
 
-  // 打开时焦点落到关闭按钮，Esc 收起，Tab 在面板内循环；关掉后把焦点还给灯泡，键盘用户不会掉队
+  // 打开时焦点落到关闭按钮，Esc 收起，Tab 在面板内循环；关掉后把焦点还给灯泡，键盘用户不会掉队。
+  // 同时锁住背后的页面，避免面板开着时正文还在滚。
   useEffect(() => {
     if (open) {
       wasOpen.current = true
+      const previousOverflow = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
       closeRef.current?.focus()
       const onKey = (event: KeyboardEvent) => {
         if (event.key === 'Escape') {
@@ -181,7 +214,10 @@ export function FeedbackWidget() {
         }
       }
       document.addEventListener('keydown', onKey)
-      return () => document.removeEventListener('keydown', onKey)
+      return () => {
+        document.body.style.overflow = previousOverflow
+        document.removeEventListener('keydown', onKey)
+      }
     }
     if (wasOpen.current) {
       wasOpen.current = false
@@ -271,55 +307,110 @@ export function FeedbackWidget() {
       .finally(() => setBusy(false))
   }
 
-  const lit = open
+  function moveLamp(next: LampPlace) {
+    placeRef.current = next
+    setPlace(next)
+  }
+
+  function onPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (event.button !== 0) return
+    const current = placeRef.current
+    drag.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: current.x,
+      originY: current.hidden ? 0 : current.y,
+      moved: false,
+    }
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }
+
+  function onPointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    const state = drag.current
+    if (!state || state.pointerId !== event.pointerId) return
+    const dx = event.clientX - state.startX
+    const dy = event.clientY - state.startY
+    if (Math.abs(dx) <= 4 && Math.abs(dy) <= 4) return
+    state.moved = true
+    const width = window.innerWidth || 1
+    const height = window.innerHeight || 1
+    const dropped = settleLampDrop(state.originY + dy / height, height, lampFixturePx(lamp))
+    moveLamp({
+      x: clampLampX(state.originX + dx / width, width),
+      y: dropped.y,
+      hidden: dropped.hidden,
+    })
+  }
+
+  function onPointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
+    const state = drag.current
+    if (!state || state.pointerId !== event.pointerId) return
+    drag.current = null
+    if (!state.moved) return
+    skipClick.current = true
+    const width = window.innerWidth || 1
+    const height = window.innerHeight || 1
+    const dropped = settleLampDrop(
+      state.originY + (event.clientY - state.startY) / height,
+      height,
+      lampFixturePx(lamp),
+    )
+    const next: LampPlace = {
+      x: clampLampX(state.originX + (event.clientX - state.startX) / width, width),
+      y: dropped.y,
+      hidden: dropped.hidden,
+    }
+    moveLamp(next)
+    writeLampPlace(next, width, height, lampFixturePx(lamp))
+  }
+
+  const hang = LAMP_HANG[lamp]
+  const cordPx = place.hidden ? 0 : place.y * (typeof window === 'undefined' ? 800 : window.innerHeight)
 
   return (
     <>
-      <div className={styles.dock}>
+      <div
+        className={styles.dock}
+        style={{
+          left: `${place.x * 100}%`,
+          ['--cord' as string]: hang.cord,
+          ['--beam' as string]: hang.beam,
+          ['--span' as string]: String(300 - hang.top),
+        }}
+      >
+        {!place.hidden && (
+          <>
+            <span className={styles.cord} style={{ height: cordPx }} />
+            <span className={styles.hang} style={{ top: cordPx }}>
+              <span className={open ? `${styles.sway} ${styles.swaying}` : styles.sway}>
+                {light && <span className={styles.glow} />}
+                <PendantLamp id={lamp} lit={light} hanging className={styles.fixture} />
+              </span>
+            </span>
+          </>
+        )}
         <button
           ref={bulbRef}
           type="button"
-          className={lit ? `${styles.bulb} ${styles.lit}` : styles.bulb}
+          className={place.hidden ? styles.tip : styles.hit}
+          style={place.hidden ? undefined : { top: cordPx + lampFixturePx(lamp) - 46 }}
+          data-lamp={lamp}
+          data-light={light && !place.hidden ? 'on' : 'off'}
+          data-hidden={place.hidden ? 'true' : 'false'}
           aria-label="问题反馈"
           aria-expanded={open}
-          title="问题反馈"
-          onClick={() => setOpen(true)}
-        >
-          <span className={styles.glow} aria-hidden="true" />
-          <span className={styles.sway}>
-            <svg viewBox="0 0 40 76" width="40" height="76" aria-hidden="true" focusable="false">
-              <defs>
-                <radialGradient id="fb-glass" cx="40%" cy="28%" r="76%">
-                  <stop offset="0%" stopColor="#fffbf1" />
-                  <stop offset="52%" stopColor="#fdf4d9" />
-                  <stop offset="100%" stopColor="#eaddb2" />
-                </radialGradient>
-                <linearGradient id="fb-socket" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#a69c8e" />
-                  <stop offset="42%" stopColor="#d2cabd" />
-                  <stop offset="100%" stopColor="#988f82" />
-                </linearGradient>
-              </defs>
-              <rect x="19" y="0" width="2" height="25" rx="1" fill="#8b8175" />
-              <rect x="13.5" y="24" width="13" height="11" rx="2.6" fill="url(#fb-socket)" />
-              <rect x="13.5" y="27" width="13" height="0.9" fill="#7f766a" opacity="0.5" />
-              <rect x="13.5" y="31" width="13" height="0.9" fill="#7f766a" opacity="0.5" />
-              <path d="M15 35 L25 35 L24.2 38 L15.8 38 Z" fill="#cbc3b6" />
-              <path
-                className={styles.glass}
-                d="M16 37 C12 42 8 47 8 55 A12 12 0 0 1 32 55 C32 47 28 42 24 37 Z"
-                fill="url(#fb-glass)"
-              />
-              <ellipse cx="15" cy="49" rx="3.1" ry="5" fill="#ffffff" opacity="0.6" transform="rotate(-18 15 49)" />
-              <path
-                className={styles.filament}
-                d="M16.5 39.5 v7.5 q1.75 3 3.5 0 q1.75 -3 3.5 0 v-7.5"
-                fill="none"
-                strokeLinecap="round"
-              />
-            </svg>
-          </span>
-        </button>
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onClick={() => {
+            if (skipClick.current || placeRef.current.hidden) {
+              skipClick.current = false
+              return
+            }
+            setOpen(true)
+          }}
+        />
       </div>
 
       {open && createPortal(

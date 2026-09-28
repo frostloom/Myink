@@ -10,7 +10,7 @@ Myink is a focused long-form fiction workbench for authors. The interface should
 - Visual density: medium. Keep the writing surface dominant and tool chrome compact.
 - Motion: restrained. Animate state changes and progress, never decorate empty space.
 - Shape language: 4px for controls, 8px for panels, 12px only for large framed surfaces.
-- Use one accent color consistently. Do not use gradients, glassmorphism, or decorative glow. Two bounded exceptions exist: the feedback bulb's warm glow, and media backgrounds a user chooses for their own theme.
+- Use one accent color consistently. Do not use gradients, glassmorphism, or decorative glow. Two bounded exceptions exist: the feedback lamp's downward beam (on by default, and the reader can turn it off in theme settings), and media backgrounds a user chooses for their own theme.
 - Prefer separators, spacing, and surface contrast over floating card stacks.
 
 ## Color Tokens
