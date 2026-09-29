@@ -42,6 +42,22 @@ def default_card() -> dict:
     return ShortCreationCard().model_dump()
 
 
+NEW_SESSION_TITLE = "新的短篇"
+_TITLE_MAX = 40
+
+
+def session_title(card: dict, first_user_message: str = "") -> str:
+    """会话列表里的显示名：优先卡上的暂定名，没有就取用户说的第一句话。
+
+    聊到一半的会话卡上往往还没名字，一列全叫「新的短篇」等于没有标题；用户自己那句话
+    至少能让他认出「这是我想写渡口的那条」。
+    """
+    title = " ".join(str((card or {}).get("working_title") or "").split())
+    if not title:
+        title = " ".join((first_user_message or "").split())
+    return title[:_TITLE_MAX] or NEW_SESSION_TITLE
+
+
 def _known(raw) -> dict:
     if not isinstance(raw, dict):
         return {}

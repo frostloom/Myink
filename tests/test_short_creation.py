@@ -1,4 +1,8 @@
-"""对话式短篇建书：先是纯逻辑（卡合并/就绪判定/premise），端点在后几个任务补。"""
+"""对话式短篇建书：先是纯逻辑（卡合并/就绪判定/premise），端点在后几个任务补。
+
+会话是多条的：一个短篇聊一条，旧的原样留着。所以每条端点都带 session_id——下面几个
+小 helper 只是把这个前缀包起来，用例里读起来还是「打开 / 说一句 / 确认 / 删掉」。
+"""
 
 from __future__ import annotations
 
@@ -12,7 +16,7 @@ from sqlalchemy import delete as sa_delete, select
 from conftest import identity_headers
 from myink.api.main import app
 from myink.book_setup import generate_short_creation_turn
-from myink.db import ensure_user_environment, new_session, tenant_session
+from myink.db import ensure_short_creation_sessions, ensure_user_environment, new_session, tenant_session
 from myink.memory.repository import get_settings, get_volume_outline
 from myink.models import (AgentRun, Chapter, Project, ShortCreationMessage,
                           ShortCreationSession, StyleLibraryItem, Task)
@@ -20,8 +24,9 @@ from myink.providers.base import ModelProvider, ModelResponse
 from myink.short import creation
 from myink.workflow import nodes, prompts
 
-# 建表是幂等的；不调它，单独跑本模块时 accounts 的 environment 列可能还没补上。
+# 建表是幂等的；不调它，单独跑本模块时 accounts 的 environment 列 / 会话的 title 列可能还没补上。
 ensure_user_environment()
+ensure_short_creation_sessions()
 client = TestClient(app)
 
 _STUB_TURN = ('{"reply": "主角最大的压力是什么？", "card": '
@@ -30,6 +35,38 @@ _STUB_TURN = ('{"reply": "主角最大的压力是什么？", "card": '
 # 模型这轮在暂定名上留空串：这是「没有新信息」，不是「清空」。
 _STUB_TURN_BLANK_TITLE = ('{"reply": "环境先放一放，主角的压力是什么？", "card": '
                           '{"working_title": "", "protagonist_pressure": "守着渡口的生计"}}')
+
+
+# ---- 端点小 helper：把多出来的会话前缀收在这一层 ----
+
+def _open(user: str) -> str:
+    """走一遍页面加载那条路（最近的一条，没有就新建），返回当前会话 id。"""
+    out = client.get("/api/v1/short/creation", headers=identity_headers(user)).json()
+    return out["session"]["id"]
+
+
+def _new(user: str) -> dict:
+    """另起一条会话，返回整个载荷。"""
+    return client.post("/api/v1/short/creation/sessions", headers=identity_headers(user)).json()
+
+
+def _showing(user: str, sid: str) -> dict:
+    return client.get(f"/api/v1/short/creation/sessions/{sid}",
+                      headers=identity_headers(user)).json()
+
+
+def _say(user: str, sid: str, body: dict):
+    return client.post(f"/api/v1/short/creation/sessions/{sid}/messages", json=body,
+                       headers=identity_headers(user))
+
+
+def _commit(user: str, sid: str, body: dict | None = None):
+    return client.post(f"/api/v1/short/creation/sessions/{sid}/commit", json=body or {},
+                       headers=identity_headers(user))
+
+
+def _remove(user: str, sid: str):
+    return client.delete(f"/api/v1/short/creation/sessions/{sid}", headers=identity_headers(user))
 
 
 def test_card_patch_drops_blanks_so_the_model_cannot_erase_user_edits():
@@ -108,24 +145,42 @@ def test_card_premise_preserves_pressure_and_payoff():
     assert "情绪回报：父女终于和解" in premise
 
 
-def test_creation_capacity_keeps_business_connections_available(temp_user):
+def test_session_title_prefers_the_card_then_the_first_thing_the_user_said():
+    """列表里的显示名：卡上有暂定名就用它，没有就退回用户自己那句话。
+
+    聊到一半的会话卡上往往还没名字，一列全叫「新的短篇」等于没有标题。
+    """
+    assert creation.session_title({"working_title": " 最后一班渡船 "}, "我想写个渡口") == "最后一班渡船"
+    assert creation.session_title({}, "  我想写个渡口的故事  ") == "我想写个渡口的故事"
+    assert creation.session_title({}, "   ") == creation.NEW_SESSION_TITLE
+    assert len(creation.session_title({}, "长" * 200)) == 40
+
+
+def test_creation_capacity_keeps_business_connections_available(temp_user, chain_stub):
+    """建书那把小锁池被占满时，业务连接照样能开；建书侧则如实回 503。
+
+    503 走的是**会话级**锁（改卡 / 确认开写那几条），不是页面加载——加载路径刻意不加锁，
+    否则一个标签页正在生成，就会把另一个标签页的首次打开打成 409。
+    """
     from contextlib import ExitStack
     from sqlalchemy import text
     import myink.db as db_module
 
+    chain_stub([_STUB_TURN])
+    sid = _open(temp_user)
     with ExitStack() as stack:
         for _ in range(4):
             lock_db = stack.enter_context(db_module.new_creation_lock_session())
             lock_db.execute(text("SELECT 1"))
         with new_session() as db:
             assert db.scalar(text("SELECT 1")) == 1
-        response = client.get("/api/v1/short/creation", headers=identity_headers(temp_user))
-        assert response.status_code == 503
-        assert response.json()["detail"] == "CREATION_CAPACITY_EXCEEDED"
-    assert client.get("/api/v1/short/creation", headers=identity_headers(temp_user)).status_code == 200
+        blocked = _say(temp_user, sid, {"content": "聊聊"})
+        assert blocked.status_code == 503
+        assert blocked.json()["detail"] == "CREATION_CAPACITY_EXCEEDED"
+    assert _say(temp_user, sid, {"content": "聊聊"}).status_code == 200
 
 
-def test_session_is_one_per_user_and_messages_are_ordered(temp_user):
+def test_messages_are_ordered_within_a_session(temp_user):
     with new_session() as db:
         session = ShortCreationSession(user_id=uuid.UUID(temp_user), status="active",
                                        card=creation.default_card())
@@ -149,15 +204,15 @@ def test_session_tables_have_no_project_id_column():
     assert "project_id" not in ShortCreationMessage.__table__.columns
 
 
-def test_session_user_id_is_unique(temp_user):
-    from sqlalchemy.exc import IntegrityError
+def test_one_account_can_keep_several_sessions(temp_user):
+    """多会话：user_id 上没有唯一约束——聊废一条就另起一条，旧的留着能翻回去看。"""
     with new_session() as db:
-        db.add(ShortCreationSession(user_id=uuid.UUID(temp_user), status="active", card={}))
+        db.add_all([ShortCreationSession(user_id=uuid.UUID(temp_user), status="active", card={}),
+                    ShortCreationSession(user_id=uuid.UUID(temp_user), status="active", card={})])
         db.commit()
-        db.add(ShortCreationSession(user_id=uuid.UUID(temp_user), status="active", card={}))
-        with pytest.raises(IntegrityError):
-            db.commit()
-        db.rollback()
+        rows = db.scalars(select(ShortCreationSession)
+                          .where(ShortCreationSession.user_id == uuid.UUID(temp_user))).all()
+    assert len(rows) == 2
 
 
 def test_short_creation_messages_carry_history_then_the_current_card():
@@ -271,14 +326,77 @@ def test_get_opens_a_session_with_a_fixed_greeting(temp_user):
     assert len(out["messages"]) == 1 and out["messages"][0]["role"] == "assistant"
     # 开场白不调模型：首次进页面不该等一次网络
     assert out["messages"][0]["model_id"] is None
+    # 列表和当前会话一起回：前端画那排可切换的会话不用再发一次请求
+    assert [s["id"] for s in out["sessions"]] == [out["session"]["id"]]
+    assert out["sessions"][0]["title"] == creation.NEW_SESSION_TITLE
+
+
+def test_a_new_conversation_leaves_the_previous_one_readable(temp_user):
+    """「新建会话」不是「重新开始」：旧对话一个字都不动，随时能切回去看。"""
+    sid = _open(temp_user)
+    client.post(f"/api/v1/short/creation/sessions/{sid}/messages",
+                json={"content": "我想写个渡口的故事"}, headers=identity_headers(temp_user))
+
+    out = _new(temp_user)
+    assert out["session"]["id"] != sid
+    assert len(out["messages"]) == 1                    # 新会话只剩开场白
+    assert {s["id"] for s in out["sessions"]} == {sid, out["session"]["id"]}
+
+    back = _showing(temp_user, sid)
+    assert "我想写个渡口的故事" in [m["content"] for m in back["messages"]]
+
+
+def test_each_conversation_keeps_its_own_card(temp_user, chain_stub):
+    """卡是会话级的：一条里改过的章数，不该跑到另一条里去。"""
+    chain_stub([_STUB_TURN])
+    first = _open(temp_user)
+    _say(temp_user, first, {"content": "渡口的故事", "card": {"chapter_count": 3}})
+    second = _new(temp_user)["session"]["id"]
+    assert _showing(temp_user, second)["session"]["card"]["chapter_count"] == 5
+    assert _showing(temp_user, first)["session"]["card"]["chapter_count"] == 3
+
+
+def test_another_users_conversation_is_a_404(temp_user):
+    """别人的会话回 404 而不是 403：403 与 404 的差别本身就在确认「这条存在」。"""
+    theirs = _open(temp_user)
+    with new_session() as db:
+        other = ShortCreationSession(user_id=uuid.uuid4(), status="active", card={})
+        db.add(other)
+        db.commit()
+        other_id = str(other.id)
+    assert client.get(f"/api/v1/short/creation/sessions/{other_id}",
+                      headers=identity_headers(temp_user)).status_code == 404
+    assert _showing(temp_user, theirs)["session"]["id"] == theirs
+
+
+def test_deleting_one_conversation_leaves_the_others(temp_user):
+    keep = _open(temp_user)
+    drop = _new(temp_user)["session"]["id"]
+    assert _remove(temp_user, drop).status_code == 200
+    with new_session() as db:
+        assert db.get(ShortCreationSession, uuid.UUID(drop)) is None
+        assert db.get(ShortCreationSession, uuid.UUID(keep)) is not None
+    # 页面加载这时回到还留着的那条，而不是又建一条
+    assert _open(temp_user) == keep
+    assert _showing(temp_user, keep)["session"]["id"] == keep
+
+
+def test_session_title_follows_the_first_message_then_the_cards_name(temp_user, chain_stub):
+    chain_stub([_STUB_TURN])
+    sid = _open(temp_user)
+    _say(temp_user, sid, {"content": "一个渡口老人等最后一班船"})
+    assert _showing(temp_user, sid)["sessions"][0]["title"] == "一个渡口老人等最后一班船"
+
+    # 模型在下一轮给出了暂定名：列表里的名字跟着换成它。
+    chain_stub(['{"reply": "好。", "card": {"working_title": "最后一班渡船"}}'])
+    _say(temp_user, sid, {"content": "就叫这个吧"})
+    assert _showing(temp_user, sid)["sessions"][0]["title"] == "最后一班渡船"
 
 
 def test_posting_a_message_appends_both_sides_and_updates_the_card(temp_user, chain_stub):
     chain_stub([_STUB_TURN])                       # 不装桩这轮拿不到方案卡增量
-    client.get("/api/v1/short/creation", headers=identity_headers(temp_user))
-    out = client.post("/api/v1/short/creation/messages",
-                      json={"content": "我想写个渡口故事"},
-                      headers=identity_headers(temp_user)).json()
+    sid = _open(temp_user)
+    out = _say(temp_user, sid, {"content": "我想写个渡口故事"}).json()
     assert [m["role"] for m in out["messages"]] == ["assistant", "user", "assistant"]
     assert out["messages"][-1]["content"] == "主角最大的压力是什么？"
     assert out["session"]["card"]["protagonist_pressure"].startswith("守着渡口")
@@ -288,17 +406,14 @@ def test_posting_a_message_appends_both_sides_and_updates_the_card(temp_user, ch
 def test_an_empty_model_field_keeps_what_the_user_already_wrote(temp_user, chain_stub):
     """Review Focus 1：模型在暂定名上回空串，不许冲掉用户已经写好的名字。
 
-    端点级的：handler 是「先合用户卡、再合模型卡」（`routes_short_creation.py:102→107`），
-    只测 `merge_model_card` 抓不到「两步顺序被写反」这类改动，所以必须走 POST /messages。
+    端点级的：handler 是「先合用户卡、再合模型卡」，只测 `merge_model_card` 抓不到
+    「两步顺序被写反」这类改动，所以必须走 POST /messages。
     第二轮**不带** card——带上就等于给实现留了「至少用户卡还兜着」的退路，顺序写反也照样绿。
     """
     chain_stub([_STUB_TURN_BLANK_TITLE])           # 不装桩这轮拿不到「空串」这个输入
-    client.post("/api/v1/short/creation/messages",
-                json={"content": "渡口，冷白描", "card": {"working_title": "渡口"}},
-                headers=identity_headers(temp_user))
-    out = client.post("/api/v1/short/creation/messages",
-                      json={"content": "接着说说环境"},
-                      headers=identity_headers(temp_user)).json()
+    sid = _open(temp_user)
+    _say(temp_user, sid, {"content": "渡口，冷白描", "card": {"working_title": "渡口"}})
+    out = _say(temp_user, sid, {"content": "接着说说环境"}).json()
     assert out["session"]["card"]["working_title"] == "渡口", "空串不该覆盖用户已写的值"
     # 同一轮里模型真正给了值的字段照常落下来（空串不留 ≠ 整张卡不留）
     assert out["session"]["card"]["protagonist_pressure"] == "守着渡口的生计"
@@ -306,19 +421,17 @@ def test_an_empty_model_field_keeps_what_the_user_already_wrote(temp_user, chain
 
 def test_ready_flips_only_when_all_seven_fields_are_filled(temp_user, chain_stub):
     chain_stub([_STUB_TURN])
-    client.get("/api/v1/short/creation", headers=identity_headers(temp_user))
+    sid = _open(temp_user)
     body = {"content": "都聊清了", "card": {field: "有" for field in creation.REQUIRED_CARD_FIELDS}}
-    out = client.post("/api/v1/short/creation/messages", json=body,
-                      headers=identity_headers(temp_user)).json()
+    out = _say(temp_user, sid, body).json()
     assert out["ready"] is True
 
 
 def test_a_bad_model_turn_keeps_the_session_alive(temp_user, chain_stub):
     """Review Focus 2：坏 JSON 不能 500，也不能丢会话。"""
     chain_stub(["这是一段没有 JSON 的散文。"])
-    client.get("/api/v1/short/creation", headers=identity_headers(temp_user))
-    resp = client.post("/api/v1/short/creation/messages", json={"content": "聊两句"},
-                       headers=identity_headers(temp_user))
+    sid = _open(temp_user)
+    resp = _say(temp_user, sid, {"content": "聊两句"})
     assert resp.status_code == 200
     out = resp.json()
     assert out["messages"][-1]["error"].startswith("parse_error")
@@ -326,16 +439,8 @@ def test_a_bad_model_turn_keeps_the_session_alive(temp_user, chain_stub):
     assert out["session"]["card"]["chapter_count"] == 5      # 卡没被毁
 
 
-def test_reset_clears_the_conversation(temp_user):
-    client.get("/api/v1/short/creation", headers=identity_headers(temp_user))
-    assert client.delete("/api/v1/short/creation", headers=identity_headers(temp_user)).status_code == 200
-    out = client.get("/api/v1/short/creation", headers=identity_headers(temp_user)).json()
-    assert len(out["messages"]) == 1                      # 只剩新的开场白
-    assert out["session"]["card"]["direction"] == ""
-
-
-def _seed_session_on_an_orphan_draft_book(user: str) -> str:
-    """会话 + 一本「当日建、还是 draft、无任务无章节」的书。
+def _seed_session_on_an_orphan_draft_book(user: str) -> tuple[str, str]:
+    """会话 + 一本「当日建、还是 draft、无任务无章节」的书，返回 (会话 id, 书 id)。
 
     commit 在第 1 步之后失败（比如出方案那步 502）就会留下这个形状：书在库里、额度被吃掉、
     对话里却什么都没成。这是 M-6 的场景，不是随便造的一本书。
@@ -347,72 +452,85 @@ def _seed_session_on_an_orphan_draft_book(user: str) -> str:
         project = _book._create_project_row(
             db, uid, title="半途的渡口", genre="悬疑", chapter_count=3,
             chars_per_chapter=4000, form="short")
-        db.add(ShortCreationSession(user_id=uid, status="active",
-                                    card=creation.default_card(), book_id=project.id))
+        session = ShortCreationSession(user_id=uid, status="active",
+                                       card=creation.default_card(), book_id=project.id)
+        db.add(session)
         db.commit()
-        return str(project.id)
+        return str(session.id), str(project.id)
 
 
-def test_reset_removes_todays_orphan_draft_book(temp_user):
-    """重置对话要把当日那本没写完的草稿书一起带走——它已经吃掉了当日建书额度。"""
-    pid = _seed_session_on_an_orphan_draft_book(temp_user)
-    assert client.delete("/api/v1/short/creation",
-                         headers=identity_headers(temp_user)).status_code == 200
+def test_deleting_an_unfinished_conversation_removes_todays_orphan_draft_book(temp_user):
+    """删对话要把当日那本没写完的草稿书一起带走——它已经吃掉了当日建书额度。"""
+    sid, pid = _seed_session_on_an_orphan_draft_book(temp_user)
+    assert _remove(temp_user, sid).status_code == 200
     with new_session() as db:
         assert db.get(Project, uuid.UUID(pid)) is None, "当日这张没写完的草稿书该被一并清掉"
 
 
-def test_reset_takes_the_orphan_drafts_agent_runs_with_it(temp_user):
+def test_deleting_takes_the_orphan_drafts_agent_runs_with_it(temp_user):
     """agent_runs 没有 FK：清掉草稿书时得把它的调用记录一起带走。
 
     不带的话，管理面板的全局花费会比各用户之和多出这块无归属调用（口径见 delete_project
     的同款处理）。那本书还没有任务/章节，所以只需补这一步。
     """
-    pid = _seed_session_on_an_orphan_draft_book(temp_user)
+    sid, pid = _seed_session_on_an_orphan_draft_book(temp_user)
     with new_session() as db:                    # agent_runs 无 RLS，普通会话就能写
         db.add(AgentRun(project_id=uuid.UUID(pid), node="short_plan",
                         role="Planner", cost_est=0.01))
         db.commit()
-    assert client.delete("/api/v1/short/creation",
-                         headers=identity_headers(temp_user)).status_code == 200
+    assert _remove(temp_user, sid).status_code == 200
     with new_session() as db:
         assert db.scalar(select(AgentRun.id)
                          .where(AgentRun.project_id == uuid.UUID(pid))) is None, \
             "草稿书被清掉后，它的调用记录不该还留在全局花费里"
 
 
-def test_reset_keeps_a_book_that_already_has_tasks(temp_user):
-    """书一旦有任务就是「正在写」——宁可漏删，也不许重置对话把它带走。"""
-    pid = _seed_session_on_an_orphan_draft_book(temp_user)
+def test_deleting_keeps_a_book_that_already_has_tasks(temp_user):
+    """书一旦有任务就是「正在写」——宁可漏删，也不许删对话把它带走。"""
+    sid, pid = _seed_session_on_an_orphan_draft_book(temp_user)
     with new_session() as db:                    # tasks 在 _NO_RLS_TABLES 里，普通会话就能写
         db.add(Task(project_id=uuid.UUID(pid), task_type="short_generate", status="queued"))
         db.commit()
-    assert client.delete("/api/v1/short/creation",
-                         headers=identity_headers(temp_user)).status_code == 200
+    assert _remove(temp_user, sid).status_code == 200
     with new_session() as db:
-        assert db.get(Project, uuid.UUID(pid)) is not None, "已经在写的书不该被重置带走"
+        assert db.get(Project, uuid.UUID(pid)) is not None, "已经在写的书不该被删对话带走"
 
 
-def test_reset_keeps_a_draft_book_that_already_has_chapters(temp_user):
+def test_deleting_keeps_a_draft_book_that_already_has_chapters(temp_user):
     """`chapters` 带 project_id（FORCE RLS）：只有进租户上下文才看得见行。
 
     在普通 new_session() 里查它，「没有章节」这道闸恒真（RLS 把行滤空）——守卫等于没写。
     这条用例就是钉住「守卫必须真的看得见章节」。
     """
-    pid = _seed_session_on_an_orphan_draft_book(temp_user)
+    sid, pid = _seed_session_on_an_orphan_draft_book(temp_user)
     with tenant_session(pid) as db:              # chapters 有 RLS，插入也要租户上下文
         db.add(Chapter(project_id=uuid.UUID(pid), chapter_seq=1, status="done"))
-    assert client.delete("/api/v1/short/creation",
-                         headers=identity_headers(temp_user)).status_code == 200
+    assert _remove(temp_user, sid).status_code == 200
     with new_session() as db:
         assert db.get(Project, uuid.UUID(pid)) is not None, "有章节的书不是孤儿草稿"
 
 
+def test_deleting_a_committed_conversation_keeps_the_book(temp_user, chain_stub):
+    """第一条会话确认开写、书也建好之后再删这条对话：书是成品，只删对话本身。"""
+    chain_stub([_PLAN_JSON])
+    sid = _seed_session(temp_user)
+    pid = _commit(temp_user, sid).json()["project_id"]
+    assert _remove(temp_user, sid).status_code == 200
+    with new_session() as db:
+        assert db.get(Project, uuid.UUID(pid)) is not None
+        assert db.get(ShortCreationSession, uuid.UUID(sid)) is None
+
+
 def test_messages_rejects_an_empty_content(temp_user):
-    client.get("/api/v1/short/creation", headers=identity_headers(temp_user))
-    resp = client.post("/api/v1/short/creation/messages", json={"content": "   "},
-                       headers=identity_headers(temp_user))
+    sid = _open(temp_user)
+    resp = _say(temp_user, sid, {"content": "   "})
     assert resp.status_code == 400
+
+
+def test_a_message_to_an_unknown_conversation_is_a_404(temp_user):
+    resp = _say(temp_user, str(uuid.uuid4()), {"content": "聊聊"})
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "SESSION_NOT_FOUND"
 
 
 _FULL_CARD = {field: "有" for field in creation.REQUIRED_CARD_FIELDS} | {
@@ -438,20 +556,21 @@ def _short_outline(chapter_count: int = 3) -> dict:
 _PLAN_JSON = json.dumps(_short_outline(), ensure_ascii=False)
 
 
-def _seed_session(user: str, card: dict | None = None):
-    """直接把会话摆好：这些用例验的是 commit，不验聊到这一步的过程。"""
+def _seed_session(user: str, card: dict | None = None) -> str:
+    """直接把会话摆好：这些用例验的是 commit，不验聊到这一步的过程。返回会话 id。"""
     with new_session() as db:
-        session = ShortCreationSession(user_id=uuid.UUID(user), status="active",
-                                       card=creation.merge_user_card(creation.default_card(), card or _FULL_CARD))
+        session = ShortCreationSession(
+            user_id=uuid.UUID(user), status="active",
+            card=creation.merge_user_card(creation.default_card(), card or _FULL_CARD))
         db.add(session)
         db.commit()
+        return str(session.id)
 
 
 def test_commit_builds_a_ready_short_book_with_a_persisted_plan(temp_user, chain_stub):
     chain_stub([_PLAN_JSON])
-    _seed_session(temp_user)
-    resp = client.post("/api/v1/short/creation/commit", json={},
-                       headers=identity_headers(temp_user))
+    sid = _seed_session(temp_user)
+    resp = _commit(temp_user, sid)
     assert resp.status_code == 200, resp.text
     out = resp.json()
     with new_session() as db:
@@ -468,10 +587,17 @@ def test_commit_builds_a_ready_short_book_with_a_persisted_plan(temp_user, chain
     assert outline.outline["chapter_count"] == 3
 
 
+def test_commit_titles_the_conversation_after_the_card_the_user_edited(temp_user, chain_stub):
+    """用户在方案卡里把名字改成别的（没发话），列表里的名字也得跟着改。"""
+    chain_stub([_PLAN_JSON])
+    sid = _seed_session(temp_user, _FULL_CARD | {"working_title": "改过的名字"})
+    _commit(temp_user, sid)
+    assert _showing(temp_user, sid)["sessions"][0]["title"] == "改过的名字"
+
+
 def test_commit_refuses_an_incomplete_card(temp_user):
-    _seed_session(temp_user, {"working_title": "半张卡"})
-    resp = client.post("/api/v1/short/creation/commit", json={},
-                       headers=identity_headers(temp_user))
+    sid = _seed_session(temp_user, {"working_title": "半张卡"})
+    resp = _commit(temp_user, sid)
     assert resp.status_code == 400
     assert resp.json()["detail"] == "CARD_INCOMPLETE"
 
@@ -479,17 +605,30 @@ def test_commit_refuses_an_incomplete_card(temp_user):
 def test_commit_twice_does_not_build_a_second_book(temp_user, chain_stub):
     """Review Focus 4 前半（手滑再点一次）：会话已 committed，第二次是 409，不会建出第二本。"""
     chain_stub([_PLAN_JSON])
-    _seed_session(temp_user)
-    first = client.post("/api/v1/short/creation/commit", json={},
-                        headers=identity_headers(temp_user)).json()
-    second = client.post("/api/v1/short/creation/commit", json={},
-                         headers=identity_headers(temp_user))
+    sid = _seed_session(temp_user)
+    first = _commit(temp_user, sid).json()
+    second = _commit(temp_user, sid)
     assert second.status_code == 409                     # 会话已 committed
     assert second.json()["detail"] == "SESSION_COMMITTED"
     with new_session() as db:
         assert db.query(Project).filter(Project.user_id == uuid.UUID(temp_user)).count() == 1
         assert db.scalar(select(ShortCreationSession.book_id)
-                         .where(ShortCreationSession.user_id == uuid.UUID(temp_user))) is not None
+                         .where(ShortCreationSession.id == uuid.UUID(sid))) is not None
+    assert first["project_id"]
+
+
+def test_another_conversation_can_still_be_committed_after_the_first_one(temp_user, chain_stub):
+    """多会话的正确性要点：一条开写完不封路，另一条照样能建书。"""
+    chain_stub([_PLAN_JSON])
+    first = _seed_session(temp_user)
+    assert _commit(temp_user, first).status_code == 200
+    second = _seed_session(temp_user)
+    assert _commit(temp_user, second).status_code == 200
+    with new_session() as db:
+        assert db.query(Project).filter(Project.user_id == uuid.UUID(temp_user)).count() == 2
+        rows = db.scalars(select(ShortCreationSession)
+                          .where(ShortCreationSession.id.in_([uuid.UUID(first), uuid.UUID(second)]))).all()
+    assert {row.status for row in rows} == {"committed"}
 
 
 def test_commit_retry_after_a_plan_failure_reuses_the_same_book(temp_user, chain_stub, monkeypatch):
@@ -510,13 +649,10 @@ def test_commit_retry_after_a_plan_failure_reuses_the_same_book(temp_user, chain
 
     monkeypatch.setattr(_book, "_short_outline_draft", flaky)
     chain_stub([_PLAN_JSON])                 # 只有第二次真的走到模型（第一次被 flaky 提前挡下）
-    _seed_session(temp_user)
-    first = client.post("/api/v1/short/creation/commit", json={},
-                        headers=identity_headers(temp_user))
+    sid = _seed_session(temp_user)
+    first = _commit(temp_user, sid)
     assert first.status_code == 502 and first.json()["detail"].startswith("PLAN_FAILED")
-    second = client.post("/api/v1/short/creation/commit", json={},
-                         headers=identity_headers(temp_user))
-    assert second.status_code == 200
+    assert _commit(temp_user, sid).status_code == 200
     with new_session() as db:
         assert db.query(Project).filter(Project.user_id == uuid.UUID(temp_user)).count() == 1
 
@@ -532,16 +668,15 @@ def test_commit_survives_a_session_deleted_midway(temp_user, chain_stub, monkeyp
     real = _mod._book._short_outline_draft
 
     def sabotage(*args, **kwargs):
-        with new_session() as db:                 # 模拟用户在出方案那几秒里点了「重新开始」
+        with new_session() as db:                 # 模拟用户在出方案那几秒里删掉了这条对话
             db.execute(sa_delete(ShortCreationMessage))
             db.execute(sa_delete(ShortCreationSession))
             db.commit()
         return real(*args, **kwargs)
 
     monkeypatch.setattr(_mod._book, "_short_outline_draft", sabotage)
-    _seed_session(temp_user)
-    resp = client.post("/api/v1/short/creation/commit", json={},
-                       headers=identity_headers(temp_user))
+    sid = _seed_session(temp_user)
+    resp = _commit(temp_user, sid)
     assert resp.status_code == 200, resp.text
     assert resp.json()["project_id"]
     with new_session() as db:                     # 书照常落库，只是收尾没写回
@@ -550,38 +685,53 @@ def test_commit_survives_a_session_deleted_midway(temp_user, chain_stub, monkeyp
 
 
 def test_commit_rejects_overlapping_mutations_before_another_model_call(temp_user, monkeypatch):
+    """同一条会话上并发的三件事一律 409：串行单位是「这条会话」，不能两个模型调用交错。"""
     from myink.api import routes_short_creation as mod
-    _seed_session(temp_user)
-    headers = identity_headers(temp_user)
+    sid = _seed_session(temp_user)
     overlapping = []
     planning = []
 
     def plan(*args, **kwargs):
         planning.append(1)
         if len(planning) == 1:
-            overlapping.append(client.post("/api/v1/short/creation/commit", json={}, headers=headers))
-            overlapping.append(client.delete("/api/v1/short/creation", headers=headers))
-            overlapping.append(client.post("/api/v1/short/creation/messages",
-                                            json={"content": "改成喜剧"}, headers=headers))
+            overlapping.append(_commit(temp_user, sid))
+            overlapping.append(_remove(temp_user, sid))
+            overlapping.append(_say(temp_user, sid, {"content": "改成喜剧"}))
         return {"outline_draft": _short_outline()}, {}
 
     monkeypatch.setattr(mod._book, "_short_outline_draft", plan)
-    result = client.post("/api/v1/short/creation/commit", json={}, headers=headers)
+    result = _commit(temp_user, sid)
     assert [r.status_code for r in overlapping] == [409, 409, 409]
     assert [r.json()["detail"] for r in overlapping] == ["SESSION_BUSY"] * 3
     assert result.status_code == 200
     assert len(planning) == 1
 
 
+def test_two_conversations_do_not_block_each_other(temp_user, monkeypatch):
+    """锁按会话分：一条正在出方案时，另一条照样能改卡发话（两个标签页各聊各的）。"""
+    from myink.api import routes_short_creation as mod
+    first = _seed_session(temp_user)
+    second = _seed_session(temp_user)
+    other_said = []
+
+    def plan(*args, **kwargs):
+        other_said.append(_say(temp_user, second, {"content": "我这条不受影响"}).status_code)
+        return {"outline_draft": _short_outline()}, {}
+
+    monkeypatch.setattr(mod._book, "_short_outline_draft", plan)
+    assert _commit(temp_user, first).status_code == 200
+    assert other_said == [200]
+
+
 def test_old_commit_cannot_mark_a_replacement_session_committed(temp_user, monkeypatch):
     from myink.api import routes_short_creation as mod
-    _seed_session(temp_user)
+    sid = _seed_session(temp_user)
     replacement = []
 
     def plan(*args, **kwargs):
         with new_session() as db:
             db.execute(sa_delete(ShortCreationSession).where(
-                ShortCreationSession.user_id == uuid.UUID(temp_user)))
+                ShortCreationSession.id == uuid.UUID(sid)))
             fresh = ShortCreationSession(user_id=uuid.UUID(temp_user), status="active",
                                          card=creation.default_card())
             db.add(fresh)
@@ -590,7 +740,7 @@ def test_old_commit_cannot_mark_a_replacement_session_committed(temp_user, monke
         return {"outline_draft": _short_outline()}, {}
 
     monkeypatch.setattr(mod._book, "_short_outline_draft", plan)
-    result = client.post("/api/v1/short/creation/commit", json={}, headers=identity_headers(temp_user))
+    result = _commit(temp_user, sid)
     assert result.status_code == 200
     with new_session() as db:
         fresh = db.get(ShortCreationSession, replacement[0])
@@ -606,14 +756,12 @@ def test_commit_respects_the_daily_book_cap(temp_user, chain_stub, monkeypatch):
     monkeypatch.setattr(routes_book, "settings",
                         replace(routes_book.settings, books_per_day_max=0))
     chain_stub([_PLAN_JSON])              # 上限在出方案之前就拦下，桩是保险不是必需
-    _seed_session(temp_user)
-    resp = client.post("/api/v1/short/creation/commit", json={},
-                       headers=identity_headers(temp_user))
+    sid = _seed_session(temp_user)
+    resp = _commit(temp_user, sid)
     assert resp.status_code == 429
     assert resp.json() == {"error": "BOOK_CNT_EXCEEDED"}
     with new_session() as db:                             # 会话没被弄脏，用户配好额度后能重来
-        assert db.scalar(select(ShortCreationSession)
-                         .where(ShortCreationSession.user_id == uuid.UUID(temp_user))).status == "active"
+        assert db.get(ShortCreationSession, uuid.UUID(sid)).status == "active"
 
 
 def test_commit_applies_a_library_style_and_rejects_someone_elses(temp_user, chain_stub):
@@ -622,31 +770,26 @@ def test_commit_applies_a_library_style_and_rejects_someone_elses(temp_user, cha
         mine = StyleLibraryItem(user_id=uuid.UUID(temp_user), name="渡口冷白描",
                                 profile={"pov": "第三人称限知"}, sample_chars=1200)
         # 「别人的」item 只需要一个不属于我的 owner：`StyleLibraryItem.user_id` 是普通索引、
-        # **没有外键**（`models/creation.py:29`），所以不必真建一个 User 行。建真 User 反而更糟——
+        # **没有外键**（`models/creation.py`），所以不必真建一个 User 行。建真 User 反而更糟——
         # 它会出现在管理面板不加筛选的用户列表里，而且没人清理它。
         theirs = StyleLibraryItem(user_id=uuid.uuid4(), name="别人的冷白描",
                                   profile={"pov": "第一人称"}, sample_chars=900)
         db.add_all([mine, theirs])
         db.commit()
         mine_id, other_item_id = str(mine.id), str(theirs.id)
-    _seed_session(temp_user)
-    out = client.post("/api/v1/short/creation/commit",
-                      json={"style_item_id": mine_id},
-                      headers=identity_headers(temp_user)).json()
+    sid = _seed_session(temp_user)
+    out = _commit(temp_user, sid, {"style_item_id": mine_id}).json()
     with tenant_session(out["project_id"]) as db:
         settings_row = get_settings(db, uuid.UUID(out["project_id"]))
         assert settings_row is not None and settings_row.style_profile["pov"] == "第三人称限知"
-        session = db.scalar(select(ShortCreationSession)
-                            .where(ShortCreationSession.user_id == uuid.UUID(temp_user)))
+        session = db.get(ShortCreationSession, uuid.UUID(sid))
         assert session.style_name == "渡口冷白描"
 
     # 借别人的 item id：404，不是 403、更不是静默忽略。
     # 必须用**另一账号名下真实存在**的 item。随手一个随机 uuid 只能证明「未知 id 被拒」——
     # 漏掉 `StyleLibraryItem.user_id == uid` 那个过滤的实现照样返回 404，用例就抓不到越权。
-    client.delete("/api/v1/short/creation", headers=identity_headers(temp_user))
-    _seed_session(temp_user)
-    resp = client.post("/api/v1/short/creation/commit", json={"style_item_id": other_item_id},
-                       headers=identity_headers(temp_user))
+    other = _seed_session(temp_user)
+    resp = _commit(temp_user, other, {"style_item_id": other_item_id})
     assert resp.status_code == 404
     # 「别人的」item 的 owner 是个随机 uuid，`temp_user` 的收尾按 user_id 删不到它——自己收干净。
     with new_session() as db:
@@ -656,10 +799,8 @@ def test_commit_applies_a_library_style_and_rejects_someone_elses(temp_user, cha
 
 def test_commit_accepts_a_builtin_preset_by_key(temp_user, chain_stub):
     chain_stub([_PLAN_JSON])
-    _seed_session(temp_user)
-    out = client.post("/api/v1/short/creation/commit",
-                      json={"style_item_id": "builtin:xianxia-jiuzhou"},
-                      headers=identity_headers(temp_user)).json()
+    sid = _seed_session(temp_user)
+    out = _commit(temp_user, sid, {"style_item_id": "builtin:xianxia-jiuzhou"}).json()
     with tenant_session(out["project_id"]) as db:
         settings_row = get_settings(db, uuid.UUID(out["project_id"]))
         assert settings_row is not None and settings_row.skill_pack == "xianxia-jiuzhou"
@@ -684,15 +825,13 @@ def test_commit_turns_a_malformed_plan_into_a_retryable_502(temp_user, chain_stu
     「重按复用同一本」，形状不合规与出方案失败是同一件事：可以再来一次。
     """
     chain_stub([json.dumps(_malformed_short_outline(), ensure_ascii=False)])
-    _seed_session(temp_user)
-    resp = client.post("/api/v1/short/creation/commit", json={},
-                       headers=identity_headers(temp_user))
+    sid = _seed_session(temp_user)
+    resp = _commit(temp_user, sid)
     assert resp.status_code == 502
     assert resp.json()["detail"].startswith("PLAN_FAILED")
     with new_session() as db:
         assert db.query(Project).filter(Project.user_id == uuid.UUID(temp_user)).count() == 1
         # 会话仍 active、book_id 已记下：重按一次就走复用那本的路，不会建出第二本。
-        row = db.scalar(select(ShortCreationSession)
-                        .where(ShortCreationSession.user_id == uuid.UUID(temp_user)))
+        row = db.get(ShortCreationSession, uuid.UUID(sid))
         assert row is not None and row.status == "active" and row.book_id is not None
         assert db.get(Project, row.book_id).creation_status != "ready"

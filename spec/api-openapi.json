@@ -5057,11 +5057,19 @@
           },
           "session": {
             "$ref": "#/components/schemas/ShortCreationSessionOut"
+          },
+          "sessions": {
+            "items": {
+              "$ref": "#/components/schemas/ShortCreationSummaryOut"
+            },
+            "title": "Sessions",
+            "type": "array"
           }
         },
         "required": [
           "session",
           "messages",
+          "sessions",
           "ready"
         ],
         "title": "ShortCreationOut",
@@ -5127,6 +5135,50 @@
           "book_id"
         ],
         "title": "ShortCreationSessionOut",
+        "type": "object"
+      },
+      "ShortCreationSummaryOut": {
+        "description": "会话列表项：切会话只用得上这几个字段，不必把每条的消息也拖出来。",
+        "properties": {
+          "book_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Book Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "status",
+          "book_id",
+          "updated_at"
+        ],
+        "title": "ShortCreationSummaryOut",
         "type": "object"
       },
       "StoryEventOut": {
@@ -10377,31 +10429,8 @@
       }
     },
     "/api/v1/short/creation": {
-      "delete": {
-        "operationId": "reset_session_api_v1_short_creation_delete",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OkOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "Reset Session",
-        "tags": [
-          "short-creation"
-        ]
-      },
       "get": {
+        "description": "回到建书页：打开最近聊过的那条；一条都没有就先开一条。\n\n刻意不加锁：这是页面加载路径，两个标签页同时进页面各建一条空会话只是碍眼，而在这里\n加锁会让「另一个标签页正在生成」把当前页面的首次加载打成 409——代价比收益大得多。",
         "operationId": "get_session_api_v1_short_creation_get",
         "responses": {
           "200": {
@@ -10426,10 +10455,144 @@
         ]
       }
     },
-    "/api/v1/short/creation/commit": {
+    "/api/v1/short/creation/sessions": {
+      "post": {
+        "description": "另起一条新会话。旧的原样留着——用户随时能翻回去看之前聊了什么。",
+        "operationId": "create_session_api_v1_short_creation_sessions_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShortCreationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Session",
+        "tags": [
+          "short-creation"
+        ]
+      }
+    },
+    "/api/v1/short/creation/sessions/{session_id}": {
+      "delete": {
+        "description": "删掉一条会话（连同它的消息）。**不碰已经开写成的书**——那本书是用户的成品，\n这里删的只是这段对话；只有「当日建的、还是 draft、没任务没章节」的孤儿草稿才一并带走\n（它吃掉了当日额度却什么都没产出，留着才是坑）。",
+        "operationId": "delete_session_api_v1_short_creation_sessions__session_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Session",
+        "tags": [
+          "short-creation"
+        ]
+      },
+      "get": {
+        "operationId": "open_session_api_v1_short_creation_sessions__session_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShortCreationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Open Session",
+        "tags": [
+          "short-creation"
+        ]
+      }
+    },
+    "/api/v1/short/creation/sessions/{session_id}/commit": {
       "post": {
         "description": "确认开写：落书 + 出方案 + 落方案置 ready + 落文风。**不入队。**\n\n入队交给既有 POST /projects/{id}/short/generate——配额与成本估算只有那一条实现，\n在这里再写一份就会出现第二个口径；而且分离之后，入队失败用户能在工作台点「开始写全篇」重来。",
-        "operationId": "commit_api_v1_short_creation_commit_post",
+        "operationId": "commit_api_v1_short_creation_sessions__session_id__commit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -10473,9 +10636,21 @@
         ]
       }
     },
-    "/api/v1/short/creation/messages": {
+    "/api/v1/short/creation/sessions/{session_id}/messages": {
       "post": {
-        "operationId": "post_message_api_v1_short_creation_messages_post",
+        "operationId": "post_message_api_v1_short_creation_sessions__session_id__messages_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {

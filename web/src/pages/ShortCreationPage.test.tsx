@@ -9,7 +9,8 @@ import ShortCreationPage from './ShortCreationPage'
 
 vi.mock('../context/AuthContext', () => ({ useAuth: vi.fn() }))
 vi.mock('../lib/shortCreationApi', () => ({
-  shortCreationApi: { get: vi.fn(), send: vi.fn(), commit: vi.fn(), reset: vi.fn() },
+  shortCreationApi: { open: vi.fn(), create: vi.fn(), openSession: vi.fn(), send: vi.fn(),
+                      commit: vi.fn(), remove: vi.fn() },
 }))
 vi.mock('../lib/styleLibraryApi', () => ({
   styleLibraryApi: { list: vi.fn() },
@@ -28,14 +29,21 @@ const session: ShortCreationPayload['session'] = {
 }
 
 // 覆盖项按需给：session 只给要改的字段（卡片就是这么在用例里补出来的）。
+// 会话列表默认跟着当前会话走——选择器是受控的，列表里没有当前 id 它就会显示空。
 function payload(over: {
   session?: Partial<ShortCreationPayload['session']>
   messages?: ShortCreationPayload['messages']
+  sessions?: ShortCreationPayload['sessions']
   ready?: boolean
 } = {}): ShortCreationPayload {
+  const current = { ...session, ...over.session }
   return {
-    session: { ...session, ...over.session },
+    session: current,
     messages: over.messages ?? [{ id: 1, role: 'assistant', content: '想写个什么样的短篇？', card: null, model_id: null, cost_est: 0, error: null, created_at: '2026-01-01T00:00:00Z' }],
+    sessions: over.sessions ?? [{
+      id: current.id, title: '新的短篇', status: current.status,
+      book_id: current.book_id, updated_at: '2026-01-01T00:00:00Z',
+    }],
     ready: over.ready ?? false,
   }
 }
@@ -66,14 +74,14 @@ beforeEach(() => {
     session: { token: 't', userId: 'u1', username: 'alice', tier: 'normal', role: 'user', roleVerified: true, expiresAt: Date.now() + 60000 },
     status: 'authenticated', revalidate: vi.fn(), logout: vi.fn(),
   } as unknown as ReturnType<typeof useAuth>)
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload())
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload())
   vi.mocked(styleLibraryApi.list).mockResolvedValue({ items: [] })
 })
 
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 
 it('keeps the card hidden until the server says it is ready', async () => {
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({ messages: [], ready: false }))
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({ messages: [], ready: false }))
   renderPage()
   // 第一段只有聊天：能说话，但既没有「开始建书」也没有方案卡。
   expect(await screen.findByLabelText('对助手说')).toBeTruthy()
@@ -82,7 +90,7 @@ it('keeps the card hidden until the server says it is ready', async () => {
 })
 
 it('shows the start option once ready, then the card, then commits and hands off to the workspace', async () => {
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({
     messages: [], ready: true, session: { card: { ...FULL_CARD, working_title: '渡口' } },
   }))
   vi.mocked(shortCreationApi.commit).mockResolvedValue({
@@ -107,7 +115,7 @@ it('shows the greeting and the editable plan card', async () => {
 })
 
 it('fills the card from the server and defaults the chapter count', async () => {
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({
     messages: [], ready: true, session: { card: { working_title: '渡口' } },
   }))
   renderPage()
@@ -116,7 +124,7 @@ it('fills the card from the server and defaults the chapter count', async () => 
 })
 
 it('disables confirm until every required field is filled', async () => {
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({
     messages: [], ready: true, session: { card: { working_title: '渡口' } },
   }))
   renderPage()
@@ -147,7 +155,7 @@ it('sends on Enter and leaves Shift+Enter to insert a newline', async () => {
   const box = await screen.findByLabelText('对助手说')
   fireEvent.change(box, { target: { value: '一个渡口的故事' } })
   fireEvent.keyDown(box, { key: 'Enter', shiftKey: false })
-  await waitFor(() => expect(shortCreationApi.send).toHaveBeenCalledWith('t', '一个渡口的故事', {}))
+  await waitFor(() => expect(shortCreationApi.send).toHaveBeenCalledWith('t', 's1', '一个渡口的故事', {}))
   fireEvent.change(box, { target: { value: '第二句' } })
   fireEvent.keyDown(box, { key: 'Enter', shiftKey: true })
   expect(shortCreationApi.send).toHaveBeenCalledTimes(1)
@@ -201,7 +209,7 @@ it('does not send on an Enter that is only committing an IME composition', async
 })
 
 it('does not offer a confirm once the session is committed', async () => {
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({
     messages: [], ready: true,
     session: { status: 'committed', book_id: 'p1', card: FULL_CARD },
   }))
@@ -211,19 +219,80 @@ it('does not offer a confirm once the session is committed', async () => {
   expect(screen.queryByRole('button', { name: '开始建书' })).toBeNull()
   expect(screen.queryByRole('button', { name: '确认，开写' })).toBeNull()
   const notice = screen.getByRole('status')
-  expect(notice.textContent).toContain('重新开始')
+  expect(notice.textContent).toContain('新建会话')
   expect(screen.getByRole('link', { name: '这里' }).getAttribute('href')).toBe('/projects/p1')
 })
 
-it('starting over clears the conversation', async () => {
-  vi.mocked(shortCreationApi.reset).mockResolvedValue({ ok: true })
+it('starts a second conversation without touching the first one', async () => {
+  const first = { id: 's1', title: '最后一班渡船', status: 'active' as const, book_id: null, updated_at: '2026-01-01T00:00:00Z' }
+  const second = { id: 's2', title: '新的短篇', status: 'active' as const, book_id: null, updated_at: '2026-01-02T00:00:00Z' }
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({ sessions: [first] }))
+  vi.mocked(shortCreationApi.create).mockResolvedValue(payload({
+    session: { id: 's2' }, messages: [], sessions: [second, first],
+  }))
   renderPage()
-  fireEvent.click(await screen.findByRole('button', { name: '重新开始' }))
-  await waitFor(() => expect(shortCreationApi.reset).toHaveBeenCalled())
+  fireEvent.click(await screen.findByRole('button', { name: '新建会话' }))
+  await waitFor(() => expect(shortCreationApi.create).toHaveBeenCalled())
+  // 两条都在列表里：新的那条是当前打开的，旧的原样留着能切回去。
+  await waitFor(() => expect((screen.getByLabelText('建书会话') as HTMLSelectElement).value).toBe('s2'))
+  const options = within(screen.getByLabelText('建书会话')).getAllByRole('option')
+  expect(options.map((o) => o.textContent)).toEqual(['新的短篇', '最后一班渡船'])
+})
+
+it('switches back to an earlier conversation and shows its own transcript', async () => {
+  const older = { id: 's0', title: '渡口旧稿', status: 'active' as const, book_id: null, updated_at: '2026-01-01T00:00:00Z' }
+  const newer = { id: 's1', title: '新的短篇', status: 'active' as const, book_id: null, updated_at: '2026-01-02T00:00:00Z' }
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({
+    messages: [{ id: 9, role: 'assistant', content: '这条是最新的', card: null, model_id: null, cost_est: 0, error: null, created_at: '2026-01-02T00:00:00Z' }],
+    sessions: [newer, older],
+  }))
+  vi.mocked(shortCreationApi.openSession).mockResolvedValue(payload({
+    session: { id: 's0', card: { working_title: '渡口旧稿' } }, sessions: [newer, older],
+    messages: [{ id: 1, role: 'user', content: '早先说过的渡口', card: null, model_id: null, cost_est: 0, error: null, created_at: '2026-01-01T00:00:00Z' }],
+  }))
+  renderPage()
+  expect(await screen.findByText('这条是最新的')).toBeTruthy()
+
+  fireEvent.change(screen.getByLabelText('建书会话'), { target: { value: 's0' } })
+  await waitFor(() => expect(shortCreationApi.openSession).toHaveBeenCalledWith('t', 's0'))
+  // 切过去看到的是那条会话自己的记录，不是上一条的。
+  expect(await screen.findByText('早先说过的渡口')).toBeTruthy()
+  expect(screen.queryByText('这条是最新的')).toBeNull()
+})
+
+it('deletes one conversation after confirming, leaving the others alone', async () => {
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+  try {
+    const older = { id: 's0', title: '渡口旧稿', status: 'active' as const, book_id: null, updated_at: '2026-01-01T00:00:00Z' }
+    const newer = { id: 's1', title: '最后一班渡船', status: 'active' as const, book_id: null, updated_at: '2026-01-02T00:00:00Z' }
+    // 删掉之后重新取最近的一条——剩下的是 older。
+    vi.mocked(shortCreationApi.remove).mockResolvedValue({ ok: true })
+    vi.mocked(shortCreationApi.open)
+      .mockResolvedValueOnce(payload({ sessions: [newer, older] }))
+      .mockResolvedValue(payload({ session: { id: 's0' }, sessions: [older] }))
+    renderPage()
+    fireEvent.click(await screen.findByRole('button', { name: '删除会话' }))
+    await waitFor(() => expect(shortCreationApi.remove).toHaveBeenCalledWith('t', 's1'))
+    expect(confirmSpy).toHaveBeenCalled()
+    await waitFor(() => expect((screen.getByLabelText('建书会话') as HTMLSelectElement).value).toBe('s0'))
+  } finally {
+    confirmSpy.mockRestore()
+  }
+})
+
+it('keeps the conversation when the delete confirmation is dismissed', async () => {
+  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  try {
+    renderPage()
+    fireEvent.click(await screen.findByRole('button', { name: '删除会话' }))
+    expect(shortCreationApi.remove).not.toHaveBeenCalled()
+  } finally {
+    confirmSpy.mockRestore()
+  }
 })
 
 it('prevents messages from being submitted from a committed session', async () => {
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({
     session: { status: 'committed', book_id: 'p1', card: FULL_CARD }, ready: true,
   }))
   renderPage()
@@ -236,7 +305,7 @@ it('prevents messages from being submitted from a committed session', async () =
 })
 
 it('labels a pending commit as planning and locks the card against further changes', async () => {
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({ ready: true, session: { card: FULL_CARD } }))
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({ ready: true, session: { card: FULL_CARD } }))
   vi.mocked(shortCreationApi.commit).mockReturnValue(new Promise(() => {}))
   renderPage()
   await openCard()
@@ -248,16 +317,17 @@ it('labels a pending commit as planning and locks the card against further chang
   expect(screen.getByText('正在规划章节…')).toBeTruthy()
 })
 
-it('labels resetting separately from waiting for an assistant reply', async () => {
-  vi.mocked(shortCreationApi.reset).mockReturnValue(new Promise(() => {}))
+it('labels opening a new conversation separately from waiting for an assistant reply', async () => {
+  vi.mocked(shortCreationApi.create).mockReturnValue(new Promise(() => {}))
   renderPage()
-  fireEvent.click(await screen.findByRole('button', { name: '重新开始' }))
-  expect(screen.getByRole('button', { name: '正在重置…' })).toBeTruthy()
+  fireEvent.click(await screen.findByRole('button', { name: '新建会话' }))
+  expect(screen.getByRole('button', { name: '正在新建…' })).toBeTruthy()
+  expect(screen.getByText('正在新建会话…')).toBeTruthy()
   expect(screen.queryByRole('button', { name: '正在回复…' })).toBeNull()
 })
 
 it('keeps keyboard focus inside the modal and restores it to the opener', async () => {
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({ ready: true, session: { card: FULL_CARD } }))
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({ ready: true, session: { card: FULL_CARD } }))
   renderPage()
   const opener = await screen.findByRole('button', { name: '开始建书' })
   opener.focus()
@@ -294,7 +364,7 @@ it('keeps the rail so the creation page is not a dead end', async () => {
 
 it('warns that the per-chapter figure will be compressed before commit', async () => {
   // 5 × 8000 超过全篇 20000 上限，后端会按 20000 // 5 = 4000 生成；卡上必须先说清楚。
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({
     messages: [], ready: true, session: { card: { chapter_count: 5, chars_per_chapter: 8000 } },
   }))
   renderPage()
@@ -303,7 +373,7 @@ it('warns that the per-chapter figure will be compressed before commit', async (
 })
 
 it('does not warn when the card fits under the whole-book cap', async () => {
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({
     messages: [], ready: true, session: { card: { chapter_count: 5, chars_per_chapter: 4000 } },
   }))
   renderPage()
@@ -314,7 +384,7 @@ it('does not warn when the card fits under the whole-book cap', async () => {
 it('does not warn when 章数 is fractional and truncation lands on the cap', async () => {
   // 卡上要是直接乘：5.5 × 4000 = 22000 > 20000 会说归一；后端先把卡片字段 int() 截成 5，
   // 5 × 4000 正好等于上限（不是 >），不压缩——卡上不该说要归一。
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({ messages: [], ready: true }))
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({ messages: [], ready: true }))
   renderPage()
   await openCard()
   fireEvent.change(screen.getByLabelText('章数'), { target: { value: '5.5' } })
@@ -324,7 +394,7 @@ it('does not warn when 章数 is fractional and truncation lands on the cap', as
 
 it('does not warn when 每章字数 is fractional and truncation lands on the cap', async () => {
   // 5 × 4000.5 = 20000.25 > 20000 会说归一；后端 int(4000.5) = 4000，5 × 4000 不超上限。
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({ messages: [], ready: true }))
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({ messages: [], ready: true }))
   renderPage()
   await openCard()
   fireEvent.change(screen.getByLabelText('章数'), { target: { value: '5' } })
@@ -333,7 +403,7 @@ it('does not warn when 每章字数 is fractional and truncation lands on the ca
 })
 
 it('offers the style selector and a link to the library, with no inline import', async () => {
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({ messages: [], ready: true }))
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({ messages: [], ready: true }))
   renderPage()
   await openCard()
   expect(screen.getByLabelText('文风')).toBeTruthy()
@@ -344,7 +414,7 @@ it('offers the style selector and a link to the library, with no inline import',
 })
 
 it('opens the plan card as a modal that Escape and a backdrop click both close', async () => {
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({
     messages: [], ready: true, session: { card: FULL_CARD },
   }))
   renderPage()
@@ -367,7 +437,7 @@ it('opens the plan card as a modal that Escape and a backdrop click both close',
 })
 
 it('grows every field box to its content so the dialog keeps a single scrollbar', async () => {
-  vi.mocked(shortCreationApi.get).mockResolvedValue(payload({
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({
     messages: [], ready: true, session: { card: FULL_CARD },
   }))
   // jsdom 量不出真实高度，把 scrollHeight 钉成非零值：接线在，每个框就都该拿到内联高。

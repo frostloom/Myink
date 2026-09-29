@@ -33,6 +33,8 @@
 
 .head {
   display: flex;
+  /* 挤不下时整组落到第二行；换行由这里决定，不由 .headActions 自己拆。 */
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
@@ -51,6 +53,30 @@
   margin: 4px 0 0;
   color: var(--ink-subtle);
   font-size: var(--text-small);
+}
+
+/* 页头右侧：会话选择器 + 新建 / 删除。三者是一体的，不给在组内拆行——`.headActions` 自己
+   一 `wrap`，它的固有宽度就只剩「剩下的地方」，选择器和按钮会被劈成两行。
+   按钮文字也不许折行：折行会让它的固有宽度缩到「新建 / 会话」两行那么窄，
+   组宽跟着虚低，选择器又被挤回去。挤不下时该让选择器去截断（它本就是显示名）。 */
+.headActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.headActions button {
+  white-space: nowrap;
+}
+
+/* 选择器宽度随标题长短伸缩，给个上限免得把整行撑开（同 .input 的框高与字体沿用）。 */
+.picker {
+  width: auto;
+  max-width: min(220px, 40vw);
+  min-width: 0;
 }
 
 .stream {
@@ -312,7 +338,6 @@
     padding: 0 16px;
   }
   .head {
-    flex-wrap: wrap;
     padding-top: 22px;
   }
   .proposal {
@@ -351,6 +376,12 @@
   }
   .composerFoot {
     gap: 8px;
+  }
+  /* 手机宽度下这一行真的不够（选择器 40vw + 两个按钮 ≈ 350px，390 视口只剩 6px 余量），
+     整组独占一行，再窄就允许组内拆行——总比横向溢出强。 */
+  .headActions {
+    width: 100%;
+    flex-wrap: wrap;
   }
   .hint {
     font-size: 11px;

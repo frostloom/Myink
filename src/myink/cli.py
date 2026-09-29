@@ -41,6 +41,7 @@ def init(
                           ensure_chapter_versions, ensure_genre_pack,
                           ensure_global_audit_reports, ensure_memory_candidate_kinds,
                           ensure_project_creation, ensure_project_form,
+                          ensure_short_creation_sessions,
                           ensure_storage_indexes, ensure_style_library_schema, ensure_unique_constraints,
                           ensure_user_auth_schema, ensure_user_environment,
                           ensure_user_role, ensure_user_tier, get_admin_engine)
@@ -67,6 +68,8 @@ def init(
     ensure_user_environment()
     console.print("[bold]1.561/3[/] 补齐文风库元数据与唯一约束（保留已有档案，幂等）...")
     ensure_style_library_schema()
+    console.print("[bold]1.563/3[/] 建书会话放开成多会话（去掉一账号一条的唯一约束，补 title，幂等）...")
+    ensure_short_creation_sessions()
     console.print("[bold]1.562/3[/] 补齐 agent_runs 归属列（project_id 可空 + user_id，账号级记账，幂等）...")
     ensure_agent_run_user()
     console.print("[bold]1.565/3[/] 补齐账号密码字段与规范用户名唯一索引（幂等）...")

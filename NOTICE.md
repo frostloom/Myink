@@ -30,6 +30,24 @@ Myink 整体以 **AGPL-3.0** 发布，许可全文见 [LICENSE](LICENSE)。
 
 - `web/src/pages/NewProjectPage.tsx` —— 一键建书（设定草稿与大纲草稿并行）、AI 起名。
 - `docs/SHORT-FORM.md` —— 短篇管道设计，文中引用了上游 `packages/core/src/pipeline/short-fiction-runner.ts` 等路径。
+- 短篇建书的**多会话**模型（2026-09 新增，`src/myink/short/creation.py`、
+  `src/myink/api/routes_short_creation.py`、`src/myink/models/creation.py`、
+  `web/src/pages/ShortCreationPage.tsx`）——「一条对话 = 一个可留档、可切换、可单独删除的会话」
+  这套模型参照上游同名设计：一条会话是一份带 `title` 与 `updatedAt` 的独立记录，
+  列表按 `updatedAt` 倒序，可新建、可切换、可只删其中一条；标题取用户第一句话（有了正式名再换）。
+  上游位置：`packages/core/src/interaction/session.ts`（会话结构）、
+  `book-session-store.ts`（落盘与标题生成）、`session-transcript.ts`（历史回灌）、
+  `packages/studio/src/components/Sidebar.tsx`（列表与「新建会话 / 重命名 / 删除」入口）、
+  以及 `packages/studio/src/api/server.ts` 的 `GET/POST/PUT/DELETE /api/v1/sessions` 路由组。
+
+  **本仓库自行实现，非代码移植**：Myink 的会话落在 PostgreSQL 表 `short_creation_sessions`
+  （上游是 `.inkos/sessions/<id>.jsonl` 文件），接口是 `/api/v1/short/creation/sessions/*`，
+  并发控制用会话粒度的 PostgreSQL advisory lock（上游无此限制），
+  删除确认用 `window.confirm`、切换用原生 `<select>`（上游是侧栏列表项）。
+  对齐的是「会话是独立可留档实体」这一条，代码为本仓库自写。
+
+  上游另有「新建会话可自带 `sessionId`」「`sessionKind` 区分会话类型」「`playMode`」等参数，
+  Myink 都没有——本仓库一个账号下的建书会话同质，不需要这层分类。
 
 ---
 
