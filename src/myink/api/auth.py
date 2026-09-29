@@ -362,12 +362,18 @@ def issue_token(body: _TokenRequest, response: Response) -> dict:
 
 @router.get("/auth/session", response_model=AuthSessionOut)
 def auth_session(response: Response, user: _AuthenticatedUser = Depends(_authenticated_user)) -> dict:
+    # 自检登录态 + 顺手续期：返回一张新令牌。写一篇两万字要几分钟，30 分钟的硬到期会在
+    # 写作中间把人踢出去；前端在旧令牌过期前调这里换新的，于是「标签页还开着」就等于
+    # 「不会掉线」。旧令牌不吊销——它本来就还没到期，吊销会打断正拿它跑的请求和 SSE 流；
+    # 真要即时踢人走 /auth/logout（自增 auth_version，所有设备立刻失效）。
     _no_store(response)
     return {
         "user_id": str(user.id),
         "username": user.username,
         "tier": user.tier,
         "role": user.role,
+        "token": create_access_token(user.id, user.tier, user.auth_version),
+        "expires_in": settings.jwt_ttl,
     }
 
 

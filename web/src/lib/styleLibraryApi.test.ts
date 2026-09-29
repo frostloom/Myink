@@ -6,8 +6,8 @@ import { styleLibraryApi } from './styleLibraryApi'
 
 beforeEach(() => {
   localStorage.clear()
-  // request() 在「传入 token 与 localStorage 会话不一致」时会抛 request_aborted，
-  // 所以调用点传的 token 必须与存票一致（同 adminApi.test.ts 的做法）。
+  // request() 只认「请求期间账号有没有被换掉」：调用点传的 token 与存票不同没关系
+  // （滑动续期就会换），但会话必须属于同一个账号，否则抛 request_aborted。
   localStorage.setItem('myink.session', JSON.stringify({
     token: 't', userId: 'u1', username: 'bob', tier: 'normal', role: 'user',
     roleVerified: false, expiresAt: null,

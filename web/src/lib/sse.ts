@@ -8,7 +8,7 @@
 // 终态 status∈{done,failed,awaiting_review,cancelled} 后网关关流；
 // 流过期（Redis key 被裁剪）网关回 410 JSON → 前端回退 GET /tasks/:id 快照。
 
-import { dispatchUnauthorized, getToken } from './token'
+import { dispatchUnauthorized, getSessionUserId, getToken } from './token'
 
 /** 单帧纯解析：切成 event/id/data 字段；注释行（心跳）忽略 */
 export interface ParsedSSEFrame {
@@ -133,7 +133,12 @@ export function openSSE(
   opts?: OpenSSEOptions,
 ): Promise<SSEResult> {
   const token = getToken()
-  const isStale = () => Boolean(opts?.signal?.aborted) || getToken() !== token
+  // 过时判定看账号不看令牌：滑动续期换了令牌但账号没换，拿令牌比会在续期那一刻把
+  // 正在跟的流判成 aborted——写作中途报错，而且丢的是一整条实时流。
+  // 续期后这条流仍持旧令牌，服务端会在旧令牌到期时正常收流（eof），由 hook 重连，
+  // 带上 last_event_id 从 Redis 补回缺口，不丢帧。
+  const identity = getSessionUserId()
+  const isStale = () => Boolean(opts?.signal?.aborted) || getSessionUserId() !== identity
   const sep = url.includes('?') ? '&' : '?'
   const fullUrl = opts?.lastEventId
     ? `${url}${sep}last_event_id=${encodeURIComponent(opts.lastEventId)}`

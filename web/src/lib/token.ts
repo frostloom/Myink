@@ -23,6 +23,16 @@ export function getToken(): string | null {
   return getSession()?.token ?? null
 }
 
+/**
+ * 当前会话属于哪个账号——请求/流的「过时」判定按它比，不按令牌字符串。
+ *
+ * 令牌会因滑动续期而轮换，账号却没换。拿令牌比会把续期当成换账号，于是续期一发生，
+ * 在途请求全被判成 aborted、正在跟的 SSE 也被主动关掉：写作中途报错，正是要避免的事。
+ */
+export function getSessionUserId(): string | null {
+  return getSession()?.userId ?? null
+}
+
 export function getSession(): StoredSession | null {
   const raw = localStorage.getItem(SESSION_STORAGE_KEY)
   if (raw) {
