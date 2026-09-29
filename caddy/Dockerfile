@@ -20,6 +20,10 @@ RUN npm run build
 # 阶段 2：Caddy 运行层（Caddyfile + dist）
 FROM ${CADDY_IMAGE}
 COPY caddy/Caddyfile /etc/caddy/Caddyfile
+# 站点块用 import 按 CADDY_SITE_TLS 选这两个片段（默认 tls-auto.caddyfile 是空操作）。
+# 必须一起 COPY：import 的目标文件在运行时要真的存在，缺了会在启动时找不到文件。
+COPY caddy/tls-auto.caddyfile /etc/caddy/tls-auto.caddyfile
+COPY caddy/tls-public-ip.caddyfile /etc/caddy/tls-public-ip.caddyfile
 COPY --from=web /app/web/dist /srv/web/dist
 # 构建期校验配置语法：Caddyfile 写错要在 build 就红，而不是留到部署时容器起不来。
 # 用默认 SITE_ADDRESS（http://localhost）校验 —— 语法不随取值变化，只有协议/证书那段不同。

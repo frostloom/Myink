@@ -126,6 +126,14 @@ def test_global_budget_blocks_another_account_before_model_io(admission, monkeyp
     assert call(module, Provider(callback=competing_account)).content == "ok"
 
 
+def test_zero_budget_never_blocks_model_io(admission, monkeypatch):
+    """0 = 不限：成本桶顶到天上也不拦（与 gates.lua 同语义，用户自带模型 Key 时默认如此）。"""
+    module, r, prefix = admission
+    monkeypatch.setattr(module, "settings", replace(module.settings, daily_budget=0))
+    r.set(module.cost_key(date.today().isoformat()), 10_000)
+    assert call(module, user="bob").content == "ok"
+
+
 def test_unknown_model_and_failed_call_keep_nonzero_reservation(admission):
     module, r, prefix = admission
     key = module.cost_key(date.today().isoformat())

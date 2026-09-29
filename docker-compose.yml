@@ -191,6 +191,11 @@ services:
     container_name: myink-caddy
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-http://localhost}
+      # 裸 IP 上 HTTPS 才需要的两项，默认值等于「不做任何覆盖」（见 caddy/Caddyfile 注释）：
+      #   CADDY_SITE_TLS   站点块 import 哪个 TLS 片段
+      #   CADDY_DEFAULT_SNI 客户端不发 SNI 时的选证书兜底（填公网 IP）
+      CADDY_SITE_TLS: ${CADDY_SITE_TLS:-tls-auto.caddyfile}
+      CADDY_DEFAULT_SNI: ${CADDY_DEFAULT_SNI:-localhost}
     ports:
       - "80:80"
       - "443:443"

@@ -9,14 +9,24 @@
 -- ARGV[2] = quota_deduct_n (单章=1, 批次=N), ARGV[3] = cost_est
 -- ARGV[4] = quota_max, ARGV[5] = cost_budget, ARGV[6] = book_quota_max, ARGV[7] = books_per_day_max
 -- ARGV[8] = project_id（bookcnt 集合成员，按书去重）
-local quota_used = tonumber(redis.call('GET', KEYS[1]) or '0')
+--
+-- 上限 <= 0 一律表示「不限」。模型 Key 是用户自己的，写多少章由用户付费，
+-- 所以 QUOTA / BOOK_QUOTA / DAILY_BUDGET 三项默认关（config.py 默认 0）；
+-- 想给自己部署设限的，把 env 填成正数即可，判断逻辑原样保留。
 local quota_deduct = tonumber(ARGV[2])
-if quota_used + quota_deduct > tonumber(ARGV[4]) then
-  return {-1, 'QUOTA_EXCEEDED', tostring(quota_used), tostring(quota_deduct)}
+local quota_max = tonumber(ARGV[4])
+if quota_max > 0 then
+  local quota_used = tonumber(redis.call('GET', KEYS[1]) or '0')
+  if quota_used + quota_deduct > quota_max then
+    return {-1, 'QUOTA_EXCEEDED', tostring(quota_used), tostring(quota_deduct)}
+  end
 end
-local book_quota_used = tonumber(redis.call('GET', KEYS[4]) or '0')
-if book_quota_used + quota_deduct > tonumber(ARGV[6]) then
-  return {-1, 'BOOK_QUOTA_EXCEEDED', tostring(book_quota_used), tostring(quota_deduct)}
+local book_quota_max = tonumber(ARGV[6])
+if book_quota_max > 0 then
+  local book_quota_used = tonumber(redis.call('GET', KEYS[4]) or '0')
+  if book_quota_used + quota_deduct > book_quota_max then
+    return {-1, 'BOOK_QUOTA_EXCEEDED', tostring(book_quota_used), tostring(quota_deduct)}
+  end
 end
 -- 每天最多 N 本不同书：SISMEMBER 判断是否新书（写命令 SADD 只能在全部检查通过后执行，
 -- 否则拒绝时集合已加成员，副作用残留）；对未加入的新书按 SCARD+1 预判超限。
@@ -29,10 +39,13 @@ local inflight = redis.call('SCARD', KEYS[2])
 if inflight > 0 then
   return {-2, 'CONCURRENCY_LIMIT', tostring(inflight)}
 end
-local cost_used = tonumber(redis.call('GET', KEYS[3]) or '0')
-local cost_est = tonumber(ARGV[3])
-if cost_used + cost_est > tonumber(ARGV[5]) then
-  return {-3, 'DAILY_BUDGET_EXCEEDED', tostring(cost_used), tostring(cost_est)}
+local cost_budget = tonumber(ARGV[5])
+if cost_budget > 0 then
+  local cost_used = tonumber(redis.call('GET', KEYS[3]) or '0')
+  local cost_est = tonumber(ARGV[3])
+  if cost_used + cost_est > cost_budget then
+    return {-3, 'DAILY_BUDGET_EXCEEDED', tostring(cost_used), tostring(cost_est)}
+  end
 end
 -- 通过：扣配额（用户 + 每书）、记书数（新书才加）、占并发。（XADD 已移除，入队走 RabbitMQ）
 redis.call('INCRBY', KEYS[1], quota_deduct)

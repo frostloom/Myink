@@ -16,15 +16,38 @@
 	# 想给 ACME 留联系邮箱就加一行 `email you@example.com`。刻意不写成
 	# `email {$CADDY_ACME_EMAIL:}` —— 环境变量为空时 Caddy 不会把该行丢掉，
 	# 而是解析成一个无参数指令然后启动失败（已实测）。
+	#
+	# 客户端没发 SNI 时用它来选证书。设成裸 IP 是给「https://<公网 IP>」用的：
+	# 浏览器/curl 对 IP 字面量通常不发 SNI（RFC 6066 不允许把 IP 写进 SNI），
+	# 没有这行就选不出证书。有 SNI 时这行完全不参与，所以留着不影响域名场景。
+	#
+	# 默认值必须是「非空」的：`default_sni {$X:}` 在 X 未设时是硬报错
+	# （wrong argument count），空值做不了条件开关（已实测）。localhost 是个安全占位：
+	# 纯 HTTP 场景压根没有 TLS 服务器，这行不会被用到。
+	default_sni {$CADDY_DEFAULT_SNI:localhost}
 }
 
-# SITE_ADDRESS 决定协议与证书，三种取值（Caddy 原生机制，不是自制开关）：
+# SITE_ADDRESS 决定协议与证书（Caddy 原生机制，不是自制开关）：
 #   http://localhost   → 纯 HTTP，监听 :80，不出证书（本地开发默认，零摩擦）
 #   localhost          → 自动 HTTPS + 自签证书（本地想看 TLS 行为时用，浏览器会警告）
 #   myink.example.com  → 自动 HTTPS，ACME 向 Let's Encrypt/ZeroSSL 申请并自动续期（生产）
+#   https://<公网 IP>   → 裸 IP 上 HTTPS，还要额外两个环境变量，见下。
 # 注意：不要试图用「把某个环境变量置空让 tls 那行消失」来切 HTTP —— 实测无效，
 # 站点地址是主机名时 Caddy 的 automatic HTTPS 照样开，只是把签发者从自签换成 ACME。
+#
+# 裸 IP 要拿公信证书（而不是浏览器报警的自签），另需两处，都由环境变量驱动，不改本文件：
+#   CADDY_SITE_TLS     选站点块要导入的 TLS 片段，默认 tls-auto.caddyfile（空操作）
+#   CADDY_DEFAULT_SNI  全局 default_sni，默认 localhost（占位，见全局块注释）
+# 片段与理由写在同目录 tls-public-ip.caddyfile 里：Caddy 隐式自动 HTTPS 会把 IP 指派给
+# internal 签发者，必须显式写 issuer 才能在 automation policy 非空时改走 ACME。
+# 这两处不能无条件写在站点块里——HTTP 站点带 tls 块会直接报错
+# （server ... is HTTP, but attempts to configure TLS connection policies，已实测）。
+# 完整步骤与回退见 docs/DEPLOY.md「备案未完成期间：裸 IP 上 HTTPS」。
 {$SITE_ADDRESS:http://localhost} {
+	# 站点级 TLS 覆盖。默认导入的片段只有注释 = 不改动自动 HTTPS 的签发者选择；
+	# 裸 IP 部署时把 CADDY_SITE_TLS 指向 tls-public-ip.caddyfile。
+	import {$CADDY_SITE_TLS:tls-auto.caddyfile}
+
 	# ⚠️ encode 绝不能提到站点级：它会给 text/event-stream 做压缩缓冲，
 	# 表现为「生成过程静默、结束时一次性吐出全部进度」。只在静态文件那两个块里开。
 
