@@ -1,0 +1,10 @@
+# 默认片段：不对站点做任何 TLS 覆盖，交给 Caddy 的自动 HTTPS 决定签发者。
+#
+#   http://localhost   → 纯 HTTP，没有 TLS 服务器，这个文件里的内容无关紧要
+#   localhost          → 自动 HTTPS + 自签（internal 签发者）
+#   myink.example.com  → 自动 HTTPS + ACME（Let's Encrypt / ZeroSSL），默认 profile
+#
+# 这个文件刻意只有注释。Caddy 的 `import` 导入一个只含注释的文件是空操作，
+# 于是它就能当「不覆盖」的默认值用——Caddyfile 没有条件语法，这是绕开它的办法。
+#
+# 裸 IP 场景见同目录的 tls-public-ip.caddyfile，用 CADDY_SITE_TLS 选中它。

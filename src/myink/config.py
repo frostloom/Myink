@@ -69,13 +69,20 @@ class Settings:
     max_tool_calls: int = 3  # 只读查证工具执行总数预算（§10：audit/write 工具循环封顶）
     batch_max_default: int = 5  # 批次上限默认（plan.md §6.11）
     batch_max_hard: int = field(default_factory=lambda: int(_env("BATCH_MAX_HARD", "20") or "20"))  # 批次硬上限
-    # 三层闸门（§13，gates.lua）参数：env 名与默认值照抄网关 config.go，让 .env 保持
-    # 单一真源；Go 退场后这里是唯一读取方。CONCURRENCY_LIMIT 刻意不搬——gates.lua 里
+    # 三层闸门（§13，gates.lua）参数：env 名沿用网关 config.go，让 .env 保持单一真源；
+    # Go 退场后这里是唯一读取方。CONCURRENCY_LIMIT 刻意不搬——gates.lua 里
     # 并发判定是硬编码的 `inflight > 0`，那个配置项从来没人读（网关侧也一样），
     # 搬过来只会让人以为并发数可调。
-    quota_daily: int = field(default_factory=lambda: int(_env("QUOTA_DAILY_CHAPTERS", "500") or "500"))
-    book_quota_daily: int = field(default_factory=lambda: int(_env("BOOK_QUOTA_DAILY_CHAPTERS", "50") or "50"))
-    daily_budget: float = field(default_factory=lambda: float(_env("DAILY_BUDGET_YUAN", "2.0") or "2.0"))
+    #
+    # **0 = 不限**（gates.lua / model_admission.py 都按这个语义判）。下面三项默认 0：
+    # 模型 Key 是用户自己的，写多少章由用户付费，没有理由由部署方设卡；想给自己部署
+    # 设限就填正数，判断逻辑原样保留。BOOKS_PER_DAY / ACCOUNT_MODEL_CALLS_DAILY 不在此列
+    # ——它们防的是刷建书、刷对话这类与 API Key 无关的滥用，仍然默认生效。
+    quota_daily: int = field(default_factory=lambda: int(_env("QUOTA_DAILY_CHAPTERS", "0") or "0"))
+    book_quota_daily: int = field(default_factory=lambda: int(_env("BOOK_QUOTA_DAILY_CHAPTERS", "0") or "0"))
+    daily_budget: float = field(default_factory=lambda: float(_env("DAILY_BUDGET_YUAN", "0") or "0"))
+    # 单章成本估价：只在日成本闸门开启（daily_budget > 0）时参与判断；闸门关着时它
+    # 仍然传给 gates.lua，但不影响放行。留着是为了重新开启闸门时不用回头补代码。
     cost_per_chapter: float = field(default_factory=lambda: float(_env("COST_PER_CHAPTER_YUAN", "0.05") or "0.05"))
     # 无 task 的账号对话/文风提取：共享日成本，独立调用数和单用户并发租约。
     account_model_calls_daily: int = field(default_factory=lambda: int(_env("ACCOUNT_MODEL_CALLS_DAILY", "60") or "60"))

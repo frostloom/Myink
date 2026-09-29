@@ -1,0 +1,20 @@
+# 裸 IP + 公信证书片段：只在 SITE_ADDRESS 是公网 IP 时导入（配 CADDY_SITE_TLS 用）。
+#
+# 为什么必须显式写 issuer：Caddy 的隐式自动 HTTPS 会把 IP 指派给 internal 签发者
+# （modules/caddyhttp/autohttps.go 的 shouldUseInternal）。它的判据是
+#   !SubjectQualifiesForPublicCert(标识) || （是 IP 且没有任何显式 automation policy）
+# 公网 IP 是「够格拿公信证书」的，所以前半截为 false，整条只剩后半截——
+# **只要站点块里出现显式 tls 指令，automation policy 就非空，于是不再走自签。**
+#
+# 为什么必须是 shortlived：Let's Encrypt 的 IP 证书只有短效一种（160 小时 ≈ 6.6 天），
+# 经 ACME profile 选择（RFC 8738 + ACME profiles 扩展）。Caddy 2.11.4 用的
+# certmagic v0.25.3 里 "api.letsencrypt.org" 已标记为支持 IP 证书；旧版 Caddy
+# （2.10.0 及更早）会报 "cannot have public IP certificate"，那是版本问题不是配置问题。
+#
+# 域名场景不要用这个片段：默认 profile 会给域名签发正常的 90 天证书，
+# 套上 shortlived 反而变成 6 天。
+tls {
+	issuer acme {
+		profile shortlived
+	}
+}

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from dataclasses import replace
 from datetime import date
 from types import SimpleNamespace
 
@@ -48,6 +49,20 @@ GATE_CODES = [
     "CONCURRENCY_LIMIT",
     "DAILY_BUDGET_EXCEEDED",
 ]
+
+# 章节数与成本三项默认 0 = 不限（用户自带模型 Key，见 config.py）。拒绝路径必须显式给
+# 有限值才跑得起来，所以这里自带一组阈值，顺带钉住「填了正数就仍然拦得住」。
+_FINITE_QUOTA = 500
+_FINITE_BOOK_QUOTA = 50
+_FINITE_BUDGET = 2.0
+
+
+@pytest.fixture
+def finite_gates(monkeypatch):
+    """把三项上限调成正数，让拒绝分支可用（默认值是不限，见上面说明）。"""
+    monkeypatch.setattr(enq, "settings", replace(
+        settings, quota_daily=_FINITE_QUOTA, book_quota_daily=_FINITE_BOOK_QUOTA,
+        daily_budget=_FINITE_BUDGET))
 
 _MESSAGE_KEYS = {"task_id", "task_type", "project_id", "user_id", "payload",
                  "trace_id", "request_id", "retry_count", "created_at"}
@@ -89,16 +104,16 @@ def _seed_gate(ctx, code: str) -> None:
     r, uid, pid, today = ctx.r, ctx.uid, ctx.pid, ctx.today
     r.delete(*ctx.fixed)
     if code == "QUOTA_EXCEEDED":
-        r.set(quota_key(uid, today), settings.quota_daily)
+        r.set(quota_key(uid, today), _FINITE_QUOTA)
     elif code == "BOOK_QUOTA_EXCEEDED":
-        r.set(book_quota_key(uid, pid, today), settings.book_quota_daily)
+        r.set(book_quota_key(uid, pid, today), _FINITE_BOOK_QUOTA)
     elif code == "BOOK_CNT_EXCEEDED":
         r.sadd(book_cnt_key(uid, today),
                *[str(uuid.uuid4()) for _ in range(settings.books_per_day_max)])
     elif code == "CONCURRENCY_LIMIT":
         r.sadd(inflight_key(uid, pid), str(uuid.uuid4()))
     elif code == "DAILY_BUDGET_EXCEEDED":
-        r.set(cost_key(today), settings.daily_budget)
+        r.set(cost_key(today), _FINITE_BUDGET)
 
 
 def _generate(ctx, **body):
@@ -113,7 +128,7 @@ def _capture_publish(monkeypatch, sink: dict) -> None:
 
 
 @pytest.mark.parametrize("code", GATE_CODES)
-def test_gate_rejections_use_the_error_envelope(book, code):
+def test_gate_rejections_use_the_error_envelope(book, finite_gates, code):
     """五种拒绝码都要走 `{"error": CODE}` 429 —— 前端 GATE_CODES 认这个键。
 
     这条是真端到端：真身份 → 真路由 → 真 gates.lua → 真 Redis 计数 → 真信封。
@@ -124,6 +139,23 @@ def test_gate_rejections_use_the_error_envelope(book, code):
     assert response.json() == {"error": code}
     # 闸门拒绝不得留下副作用：并发占位不该多出本任务的 id
     assert book.r.scard(inflight_key(book.uid, book.pid)) == (1 if code == "CONCURRENCY_LIMIT" else 0)
+
+
+def test_zero_limits_mean_unlimited(book, monkeypatch):
+    """0 = 不限：配额桶和成本桶顶到天上也不拦（用户自带模型 Key，写多少由用户付费）。
+
+    显式把三项调成 0，而不是靠环境默认——本地 `.env` 里可能还留着正数，
+    那样测到的就不是这条性质了。
+    """
+    monkeypatch.setattr(enq, "settings", replace(
+        settings, quota_daily=0, book_quota_daily=0, daily_budget=0))
+    r, uid, pid, today = book.r, book.uid, book.pid, book.today
+    r.set(quota_key(uid, today), 10_000)
+    r.set(book_quota_key(uid, pid, today), 10_000)
+    r.set(cost_key(today), 10_000)
+    monkeypatch.setattr(enq.amqp, "publish", lambda *a, **kw: None)
+
+    assert _generate(book).status_code == 202
 
 
 def test_draft_book_cannot_be_enqueued(book):

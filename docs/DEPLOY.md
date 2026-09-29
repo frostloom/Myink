@@ -104,6 +104,44 @@ SKIP_IMAGES=1 bash scripts/ci-local.sh
 
 Compose 默认 `EMBED_ENABLED=0`，关闭向量腿但仍可使用关系与关键词召回。启用需将 Dockerfile 安装改为 `pip install .[ml]`，重建镜像，并给 API/worker 配置 `EMBED_ENABLED=1`、首次下载时 `EMBED_ALLOW_DOWNLOAD=1`，持久化模型缓存。本地 embedding 会额外占用内存与磁盘。开关只对新写入生效，存量事件的向量要另跑一次 `myink embed-backfill --level event`（事实用 `--level world`，`--project` 可限定单本）补建；否则向量腿索引为空，召回静默退化成纯关键词，`recall_stats.vector_status` 会显示 `enabled_but_empty`。该命令幂等，可重复执行。
 
+## 备案未完成期间：裸 IP 上 HTTPS
+
+大陆服务器上用域名 + HTTPS 需要 ICP 备案；裸 IP 不涉及备案，所以备案批下来之前可以先只跑 IP。注意**域名实名认证通过 ≠ 备案通过**：实名认证未完成时域名会被注册商置为 `clientHold`，全球不解析，解析控制台里加了记录也只会显示「未生效」。
+
+登录要过公网传密码，明文 HTTP 不合适，所以这一步还是上 TLS。但**默认配置下裸 IP 拿到的是自签证书**（浏览器报警），不是公信证书——Caddy 的隐式自动 HTTPS 专门把 IP 指派给 internal 签发者。要拿 Let's Encrypt 的 IP 证书必须显式声明签发者。
+
+**不用改任何文件**，在 `.env` 里改三行即可：
+
+```bash
+SITE_ADDRESS=https://<公网 IP>              # 从 http://<公网 IP> 改过来
+CADDY_SITE_TLS=tls-public-ip.caddyfile      # 默认 tls-auto.caddyfile（空操作）
+CADDY_DEFAULT_SNI=<公网 IP>                  # 默认 localhost（占位）
+```
+
+然后 `docker compose up -d myink-caddy` 重建容器（改的是容器环境变量，不用重新 build 镜像；Caddyfile 是 COPY 进镜像的，只有改它才要 build）。
+
+三行分别解决三件事：
+
+1. `SITE_ADDRESS` 带 `https://` 前缀，Caddy 才在 :443 上起 TLS 服务器并在 :80 上开 HTTP→HTTPS 跳转。
+2. `CADDY_SITE_TLS` 让站点块 `import` 那个片段，片段里是 `tls { issuer acme { profile shortlived } }`。它必须显式——Caddy 把 IP 派给自签签发者的判据是「是 IP **且** 没有任何显式 automation policy」（`modules/caddyhttp/autohttps.go` 的 `shouldUseInternal`）；公网 IP 本身是够格拿公信证书的，所以只要站点块里出现 tls 指令，前半个条件就为假，于是改走 ACME。`shortlived` 不是可选优化：Let's Encrypt 的 IP 证书**只有短效一种**（160 小时 ≈ 6.6 天，RFC 8738 + ACME profiles）。
+3. `CADDY_DEFAULT_SNI` 是给「客户端不发 SNI」兜底的。RFC 6066 不允许把 IP 写进 SNI，Chrome 等浏览器对 `https://<IP>` 确实发空 SNI；没有这行握手选不出证书。它只在 SNI 为空时参与，所以域名场景留着也无害——但不能靠「设成空值让它失效」：`default_sni {$X:}` 在 X 未设时是硬报错，空默认值做不了条件开关（已实测）。
+
+片段本身写在 `caddy/tls-public-ip.caddyfile`（理由也在那），默认值是 `caddy/tls-auto.caddyfile`（只有注释 = 不改动签发者选择）。这样本地 `SITE_ADDRESS=http://localhost` 的纯 HTTP 模式不受影响——HTTP 站点带 `tls` 块会直接报错（`server ... is HTTP, but attempts to configure TLS connection policies`），所以那段必须在默认路径上缺席。
+
+安全组放行 80：ACME 的 http-01 校验由 Let's Encrypt 从境外回连你的 80 端口完成，不涉及 DNS、不涉及备案。证书落在 `caddy-data` 卷，别删——6 天有效期全靠自动续期，删卷会重签。
+
+**确认签成的是公信证书**（而不是自签）：
+
+```bash
+docker compose logs myink-caddy | grep -i obtained
+```
+
+`certificate obtained successfully` 后面的 `issuer` 要**不是** `local`。正常输出形如 `issuer":"acme-v02.api.letsencrypt.org-directory"`。
+
+**切回域名**：把上面三行恢复成 `SITE_ADDRESS=<域名>`（不带协议前缀）、`CADDY_SITE_TLS=tls-auto.caddyfile`、`CADDY_DEFAULT_SNI=localhost`，再 `docker compose up -d myink-caddy`。域名证书用默认 profile，不该跟着用 `shortlived`——套上会把 90 天证书压成 6 天。
+
+> 2026-09-29 在阿里云 ECS（62.234.106.6）实测走通：http-01 校验通过、`certificate obtained successfully` 且 issuer 为 `acme-v02.api.letsencrypt.org-directory`、证书 SAN 为 `IP Address:62.234.106.6`、有效期 6.6 天、`:80` 返回 308 跳转到 `https://`、`curl` 不带 `-k` 校验证书链通过（`ssl_verify_result=0`）。空 SNI 路径也有实证：Caddy 访问日志里出现浏览器请求 `"server_name": ""` 且返回 200。
+
 ## 切换公网入口（宿主已有 web 服务器时）
 
 Caddy 要占用 80/443，宿主若已跑着 nginx，它会起不来。这一步**手工做**，不要脚本化：

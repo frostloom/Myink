@@ -30,9 +30,13 @@ _ADMIT = """
 if redis.call('EXISTS', KEYS[1]) == 1 then return 'ACCOUNT_MODEL_BUSY' end
 local calls = tonumber(redis.call('GET', KEYS[2]) or '0')
 if calls >= tonumber(ARGV[2]) then return 'ACCOUNT_MODEL_QUOTA_EXCEEDED' end
-local cost = tonumber(redis.call('GET', KEYS[3]) or '0')
-if cost + tonumber(ARGV[3]) > tonumber(ARGV[4]) then
-  return 'DAILY_BUDGET_EXCEEDED'
+-- ARGV[4] <= 0 = 不限（与 gates.lua 同一语义：用户自带模型 Key 时默认不设成本上限）
+local budget = tonumber(ARGV[4])
+if budget > 0 then
+  local cost = tonumber(redis.call('GET', KEYS[3]) or '0')
+  if cost + tonumber(ARGV[3]) > budget then
+    return 'DAILY_BUDGET_EXCEEDED'
+  end
 end
 redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[5])
 redis.call('INCR', KEYS[2])
