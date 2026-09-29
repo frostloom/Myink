@@ -525,9 +525,20 @@ class ShortCreationSessionOut(BaseModel):
     book_id: UUID | None
 
 
+class ShortCreationSummaryOut(BaseModel):
+    """会话列表项：切会话只用得上这几个字段，不必把每条的消息也拖出来。"""
+
+    id: UUID
+    title: str
+    status: str
+    book_id: UUID | None
+    updated_at: datetime
+
+
 class ShortCreationOut(BaseModel):
     session: ShortCreationSessionOut
     messages: list[ShortCreationMessageOut]
+    sessions: list[ShortCreationSummaryOut]
     ready: bool
 
 

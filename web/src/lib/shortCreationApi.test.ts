@@ -26,27 +26,41 @@ function stubJson(body: unknown) {
   return fetchMock
 }
 
-it('reads the session from the creation endpoint', async () => {
-  const fetchMock = stubJson({ session: {}, messages: [], ready: false })
-  await shortCreationApi.get('t')
+it('reads the session list and the latest conversation on load', async () => {
+  const fetchMock = stubJson({ session: {}, messages: [], sessions: [], ready: false })
+  await shortCreationApi.open('t')
   expect(fetchMock).toHaveBeenCalledWith('/api/v1/short/creation',
     expect.objectContaining({ method: 'GET' }))
 })
 
-it('sends a message together with the current card', async () => {
-  const fetchMock = stubJson({ session: {}, messages: [], ready: false })
-  await shortCreationApi.send('t', '我想写渡口', { working_title: '渡船' })
-  expect(fetchMock).toHaveBeenCalledWith('/api/v1/short/creation/messages',
+it('creates an additional conversation', async () => {
+  const fetchMock = stubJson({ session: {}, messages: [], sessions: [], ready: false })
+  await shortCreationApi.create('t')
+  expect(fetchMock).toHaveBeenCalledWith('/api/v1/short/creation/sessions',
+    expect.objectContaining({ method: 'POST' }))
+})
+
+it('opens one named conversation', async () => {
+  const fetchMock = stubJson({ session: {}, messages: [], sessions: [], ready: false })
+  await shortCreationApi.openSession('t', 's-2')
+  expect(fetchMock).toHaveBeenCalledWith('/api/v1/short/creation/sessions/s-2',
+    expect.objectContaining({ method: 'GET' }))
+})
+
+it('sends a message to the conversation it belongs to, together with the current card', async () => {
+  const fetchMock = stubJson({ session: {}, messages: [], sessions: [], ready: false })
+  await shortCreationApi.send('t', 's-2', '我想写渡口', { working_title: '渡船' })
+  expect(fetchMock).toHaveBeenCalledWith('/api/v1/short/creation/sessions/s-2/messages',
     expect.objectContaining({
       method: 'POST',
       body: JSON.stringify({ content: '我想写渡口', card: { working_title: '渡船' } }),
     }))
 })
 
-it('commits with the card and the chosen style', async () => {
+it('commits the conversation it belongs to with the card and the chosen style', async () => {
   const fetchMock = stubJson({ project_id: 'p1' })
-  await shortCreationApi.commit('t', { working_title: '渡船' }, 'builtin:xianxia-jiuzhou')
-  expect(fetchMock).toHaveBeenCalledWith('/api/v1/short/creation/commit',
+  await shortCreationApi.commit('t', 's-2', { working_title: '渡船' }, 'builtin:xianxia-jiuzhou')
+  expect(fetchMock).toHaveBeenCalledWith('/api/v1/short/creation/sessions/s-2/commit',
     expect.objectContaining({
       method: 'POST',
       body: JSON.stringify({ card: { working_title: '渡船' },
@@ -54,9 +68,9 @@ it('commits with the card and the chosen style', async () => {
     }))
 })
 
-it('resets the conversation', async () => {
+it('deletes a single conversation', async () => {
   const fetchMock = stubJson({ ok: true })
-  await shortCreationApi.reset('t')
-  expect(fetchMock).toHaveBeenCalledWith('/api/v1/short/creation',
+  await shortCreationApi.remove('t', 's-2')
+  expect(fetchMock).toHaveBeenCalledWith('/api/v1/short/creation/sessions/s-2',
     expect.objectContaining({ method: 'DELETE' }))
 })

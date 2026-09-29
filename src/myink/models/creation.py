@@ -34,15 +34,20 @@ class StyleLibraryItem(Base, UUIDPkMixin, TimestampMixin):
 
 
 class ShortCreationSession(Base, UUIDPkMixin, TimestampMixin):
-    """每用户一条建书会话（一期不做多会话）。确认开写后 status='committed'。
+    """一条建书对话 = 一个短篇。用户可以同时留任意多条，聊废一条就另起一条。
 
     `book_id` 记下已建成的书：commit 重试时复用它，不会建出第二本（也没有 request_id 可依，
     这条会话本身就是幂等键）。不建外键——会话要能在书被删掉之后留档。
+
+    `title` 是列表里的显示名（卡上的暂定名，还没有就取用户第一句话），冗余存一份是为了让
+    列表查询不必回各条会话的消息表；`updated_at` 由 TimestampMixin 维护，列表按它倒序。
     """
 
     __tablename__ = "short_creation_sessions"
+    __table_args__ = (Index("ix_short_creation_sessions_user", "user_id", "updated_at"),)
 
-    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, unique=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    title: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
     card: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     book_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)

@@ -2,6 +2,10 @@
 
 一期只服务短篇。与 `routes_book.create_project` 的分工：那条是「有表单的一次性建书」，
 这条是「聊出来的建书」，两条都往 _create_project_row 落同一张表，上限与幂等口径共用。
+
+**会话是多条的**：一个短篇聊一条，聊废了就另起一条，旧的原样留着能翻回去看。所以读写一律
+带 session_id，不再有「本人唯一的那条会话」。`status` 仍只有 active / committed 两种——
+已开写的那条不必删，它自己会成为列表里的一条历史。
 """
 
 from __future__ import annotations
@@ -17,8 +21,7 @@ from myink.api import routes_book as _book
 from myink.api.auth import require_user
 from myink.api.routes_style import resolve_style_selection
 from myink.api.schemas import (OkOut, ShortCreationCommitBody, ShortCreationCommitOut,
-                               ShortCreationMessageBody, ShortCreationMessageOut,
-                               ShortCreationOut, ShortCreationSessionOut)
+                               ShortCreationMessageBody, ShortCreationOut)
 from myink.book_setup import generate_short_creation_turn
 from myink.creation import validate_short_outline
 from myink.db import new_creation_lock_session, new_session, tenant_session
@@ -36,19 +39,19 @@ OPENING = ("想写个什么样的短篇？先说一句大方向就行——比�
            "我来陪你把它聊成能开写的方案。")
 
 _HISTORY_LIMIT = 20
+# 会话列表的上限：它只是给人翻的，翻不到更早的也不影响任何东西。
+_LIST_LIMIT = 50
 
 
-def _creation_user(user_id: str = Depends(require_user)) -> Iterator[str]:
-    """同一账号的建书操作互斥，锁覆盖模型调用及所有提交阶段。
-
-    独立事务持有 advisory lock：业务事务的 commit 不提前放锁；请求失败或进程断开
-    时数据库自动释放，不留下永久的 preparing 状态。不同账号使用不同锁。
+def _advisory_lock(user_id: str, key: str) -> Iterator[str]:
+    """独立事务持有 advisory lock：业务事务的 commit 不提前放锁；请求失败或进程断开时
+    数据库自动释放，不留下永久的 preparing 状态。拿不到就直接 409，排队的请求没有意义。
     """
     with new_creation_lock_session() as lock_db:
         try:
             acquired = lock_db.scalar(text(
                 "SELECT pg_try_advisory_xact_lock(hashtextextended(:key, 0))"
-            ), {"key": f"short-creation:{user_id}"})
+            ), {"key": key})
         except PoolTimeout:
             raise HTTPException(status_code=503, detail="CREATION_CAPACITY_EXCEEDED") from None
         if not acquired:
@@ -56,23 +59,59 @@ def _creation_user(user_id: str = Depends(require_user)) -> Iterator[str]:
         yield user_id
 
 
-def _session(db, uid: uuid.UUID) -> ShortCreationSession | None:
-    return db.scalar(select(ShortCreationSession).where(ShortCreationSession.user_id == uid))
+def _session_user(session_id: uuid.UUID,
+                  user_id: str = Depends(require_user)) -> Iterator[str]:
+    """同一条会话的改动互斥，锁覆盖模型调用及所有提交阶段。
 
-
-def _open_session(db, uid: uuid.UUID) -> ShortCreationSession:
-    """取（没有则建）本人的会话。已确认开写过的会话照样返回——里面留着这本书的来龙去脉，
-    用户想再写一本时点「重新开始」清掉它，而不是让页面自动把对话抹了。
+    锁按**会话**分，不按账号分：多会话之后，串行化的正确性单位就是「一条会话」——两个
+    标签页各聊各的本来就该并行。当日建书上限那条读-改-写另有把关（commit 里锁用户行）。
     """
-    session = _session(db, uid)
-    if session is None:
-        session = ShortCreationSession(user_id=uid, status="active", card=creation.default_card())
-        db.add(session)
-        db.flush()
-        db.add(ShortCreationMessage(session_id=session.id, role="assistant", content=OPENING))
-    elif not (session.card or {}):
-        session.card = creation.default_card()
+    yield from _advisory_lock(user_id, f"short-creation:{user_id}:{session_id}")
+
+
+def _latest(db, uid: uuid.UUID) -> ShortCreationSession | None:
+    """最近动过的那条会话（列表与它的排序口径一致）。"""
+    return db.scalar(select(ShortCreationSession)
+                     .where(ShortCreationSession.user_id == uid)
+                     .order_by(ShortCreationSession.updated_at.desc(),
+                               ShortCreationSession.id.desc())
+                     .limit(1))
+
+
+def _new_session(db, uid: uuid.UUID) -> ShortCreationSession:
+    """开一条新会话并落开场白。"""
+    session = ShortCreationSession(user_id=uid, status="active",
+                                   title=creation.NEW_SESSION_TITLE,
+                                   card=creation.default_card())
+    db.add(session)
+    db.flush()
+    db.add(ShortCreationMessage(session_id=session.id, role="assistant", content=OPENING))
     return session
+
+
+def _matching(db, uid: uuid.UUID, session_id: uuid.UUID) -> ShortCreationSession:
+    """本人的那条会话，否则 404。
+
+    别人的会话与不存在的会话回同一个 404：403 与 404 的差别本身就在确认「这条存在」。
+    """
+    session = db.scalar(select(ShortCreationSession)
+                        .where(ShortCreationSession.id == session_id,
+                               ShortCreationSession.user_id == uid))
+    if session is None:
+        raise HTTPException(status_code=404, detail="SESSION_NOT_FOUND")
+    return session
+
+
+def _first_user_message(db, session_id: uuid.UUID) -> str:
+    return db.scalar(select(ShortCreationMessage.content)
+                     .where(ShortCreationMessage.session_id == session_id,
+                            ShortCreationMessage.role == "user")
+                     .order_by(ShortCreationMessage.id).limit(1)) or ""
+
+
+def _retitle(db, session: ShortCreationSession) -> None:
+    """标题跟着卡上的暂定名走；名字还没聊出来时退回用户的第一句话。"""
+    session.title = creation.session_title(session.card, _first_user_message(db, session.id))
 
 
 def _history(db, session_id: uuid.UUID) -> list[dict]:
@@ -83,7 +122,19 @@ def _history(db, session_id: uuid.UUID) -> list[dict]:
     return [{"role": row.role, "content": row.content} for row in rows[-_HISTORY_LIMIT:]]
 
 
-def _payload(db, session: ShortCreationSession) -> dict:
+def _summaries(db, uid: uuid.UUID) -> list[dict]:
+    rows = db.scalars(select(ShortCreationSession)
+                      .where(ShortCreationSession.user_id == uid)
+                      .order_by(ShortCreationSession.updated_at.desc(),
+                                ShortCreationSession.id.desc())
+                      .limit(_LIST_LIMIT)).all()
+    # title 可能是空的（存量行只按卡上的暂定名回填过，没名字的就空着），展示时补占位名。
+    return [{"id": row.id, "title": row.title or creation.NEW_SESSION_TITLE,
+             "status": row.status, "book_id": row.book_id, "updated_at": row.updated_at}
+            for row in rows]
+
+
+def _payload(db, session: ShortCreationSession, uid: uuid.UUID) -> dict:
     rows = db.scalars(select(ShortCreationMessage)
                       .where(ShortCreationMessage.session_id == session.id)
                       .order_by(ShortCreationMessage.id)).all()
@@ -95,28 +146,53 @@ def _payload(db, session: ShortCreationSession) -> dict:
         "messages": [{"id": row.id, "role": row.role, "content": row.content, "card": row.card,
                       "model_id": row.model_id, "cost_est": row.cost_est, "error": row.error,
                       "created_at": row.created_at} for row in rows],
+        # 列表随载荷一起回：切会话、新建之后前端都要立刻重画那排会话，没必要再多一次往返。
+        "sessions": _summaries(db, uid),
         "ready": creation.card_ready(card),
     }
 
 
 @router.get("", response_model=ShortCreationOut)
-def get_session(user_id: str = Depends(_creation_user)) -> dict:
+def get_session(user_id: str = Depends(require_user)) -> dict:
+    """回到建书页：打开最近聊过的那条；一条都没有就先开一条。
+
+    刻意不加锁：这是页面加载路径，两个标签页同时进页面各建一条空会话只是碍眼，而在这里
+    加锁会让「另一个标签页正在生成」把当前页面的首次加载打成 409——代价比收益大得多。
+    """
     uid = uuid.UUID(user_id)
     with new_session() as db:
-        session = _open_session(db, uid)
+        session = _latest(db, uid) or _new_session(db, uid)
         db.commit()
-        return _payload(db, session)
+        return _payload(db, session, uid)
 
 
-@router.post("/messages", response_model=ShortCreationOut)
-def post_message(body: ShortCreationMessageBody, user_id: str = Depends(_creation_user)) -> dict:
+@router.post("/sessions", response_model=ShortCreationOut)
+def create_session(user_id: str = Depends(require_user)) -> dict:
+    """另起一条新会话。旧的原样留着——用户随时能翻回去看之前聊了什么。"""
+    uid = uuid.UUID(user_id)
+    with new_session() as db:
+        session = _new_session(db, uid)
+        db.commit()
+        return _payload(db, session, uid)
+
+
+@router.get("/sessions/{session_id}", response_model=ShortCreationOut)
+def open_session(session_id: uuid.UUID, user_id: str = Depends(require_user)) -> dict:
+    uid = uuid.UUID(user_id)
+    with new_session() as db:
+        return _payload(db, _matching(db, uid, session_id), uid)
+
+
+@router.post("/sessions/{session_id}/messages", response_model=ShortCreationOut)
+def post_message(body: ShortCreationMessageBody, session_id: uuid.UUID,
+                 user_id: str = Depends(_session_user)) -> dict:
     content = body.content.strip()
     if not content:
         raise HTTPException(status_code=400, detail="说点什么吧")
     uid = uuid.UUID(user_id)
     db = new_session()
     try:
-        session = _open_session(db, uid)
+        session = _matching(db, uid, session_id)
         if session.status != "active":
             raise HTTPException(status_code=409, detail="SESSION_COMMITTED")
         # 用户改过的卡先落库：它既是这轮的输入，也是下一轮的现值。
@@ -126,12 +202,15 @@ def post_message(body: ShortCreationMessageBody, user_id: str = Depends(_creatio
         reply, patch, error, resp = generate_short_creation_turn(
             _history(db, session.id), session.card, user_id=uid, db=db)
         session.card = creation.merge_model_card(session.card, patch)
+        # 标题重算放在模型卡合并之后：这轮模型可能刚把暂定名聊出来；还没聊出来则退回用户
+        # 刚才那句话——那一条已经 flush 过了，读得到。
+        _retitle(db, session)
         db.add(ShortCreationMessage(
             session_id=session.id, role="assistant", content=reply, card=patch or None,
             model_id=resp.model_id, input_tokens=resp.input_tokens,
             output_tokens=resp.output_tokens, cost_est=resp.cost_est, error=error))
         db.commit()
-        return _payload(db, session)
+        return _payload(db, session, uid)
     finally:
         db.close()
 
@@ -157,28 +236,32 @@ def _orphan_draft_book(db, uid: uuid.UUID, book_id) -> Project | None:
     ))
 
 
-@router.delete("", response_model=OkOut)
-def reset_session(user_id: str = Depends(_creation_user)) -> dict:
+@router.delete("/sessions/{session_id}", response_model=OkOut)
+def delete_session(session_id: uuid.UUID,
+                   user_id: str = Depends(_session_user)) -> dict:
+    """删掉一条会话（连同它的消息）。**不碰已经开写成的书**——那本书是用户的成品，
+    这里删的只是这段对话；只有「当日建的、还是 draft、没任务没章节」的孤儿草稿才一并带走
+    （它吃掉了当日额度却什么都没产出，留着才是坑）。"""
     uid = uuid.UUID(user_id)
     with new_session() as db:
-        session = _session(db, uid)
-        if session is not None:
-            book = _orphan_draft_book(db, uid, session.book_id)
-            if book is not None:
-                # agent_runs 没有 FK：只删 projects 会留下一堆无归属调用，管理面板的全局花费
-                # 就对不上各用户之和（口径见 delete_project，这里那本书还没有任务/章节，
-                # 所以只剩这一步要补）。
-                db.execute(sa_delete(AgentRun).where(AgentRun.project_id == book.id))
-                db.delete(book)
-            db.execute(sa_delete(ShortCreationMessage)
-                       .where(ShortCreationMessage.session_id == session.id))
-            db.delete(session)
+        session = _matching(db, uid, session_id)
+        book = _orphan_draft_book(db, uid, session.book_id)
+        if book is not None:
+            # agent_runs 没有 FK：只删 projects 会留下一堆无归属调用，管理面板的全局花费
+            # 就对不上各用户之和（口径见 delete_project，这里那本书还没有任务/章节，
+            # 所以只剩这一步要补）。
+            db.execute(sa_delete(AgentRun).where(AgentRun.project_id == book.id))
+            db.delete(book)
+        db.execute(sa_delete(ShortCreationMessage)
+                   .where(ShortCreationMessage.session_id == session.id))
+        db.delete(session)
         db.commit()
     return {"ok": True}
 
 
-@router.post("/commit", response_model=ShortCreationCommitOut)
-def commit(body: ShortCreationCommitBody, user_id: str = Depends(_creation_user)) -> dict:
+@router.post("/sessions/{session_id}/commit", response_model=ShortCreationCommitOut)
+def commit(body: ShortCreationCommitBody, session_id: uuid.UUID,
+           user_id: str = Depends(_session_user)) -> dict:
     """确认开写：落书 + 出方案 + 落方案置 ready + 落文风。**不入队。**
 
     入队交给既有 POST /projects/{id}/short/generate——配额与成本估算只有那一条实现，
@@ -188,16 +271,18 @@ def commit(body: ShortCreationCommitBody, user_id: str = Depends(_creation_user)
     # 1) 会话 + 卡 + 归一后的篇幅
     with new_session() as db:
         session = db.scalar(select(ShortCreationSession)
-                            .where(ShortCreationSession.user_id == uid).with_for_update())
+                            .where(ShortCreationSession.id == session_id,
+                                   ShortCreationSession.user_id == uid).with_for_update())
         if session is None:
-            raise HTTPException(status_code=409, detail="SESSION_EMPTY")
+            raise HTTPException(status_code=404, detail="SESSION_NOT_FOUND")
         if session.status != "active":
             raise HTTPException(status_code=409, detail="SESSION_COMMITTED")
-        session_id = session.id
         card = creation.merge_user_card(session.card or {}, body.card or {})
         if not creation.card_ready(card):
             raise HTTPException(status_code=400, detail="CARD_INCOMPLETE")
         session.card = card
+        # 卡上最后改的名字可能从没发过言（就是在方案卡里改的），标题以卡为准。
+        _retitle(db, session)
         chapters, chars, compressed = resolve_short_lengths(
             int(card["chapter_count"]), int(card["chars_per_chapter"]))
         premise = creation.card_premise(card)
@@ -271,7 +356,7 @@ def commit(body: ShortCreationCommitBody, user_id: str = Depends(_creation_user)
             settings_row.version = (settings_row.version or 1) + 1
         tdb.commit()
 
-    # 4) 只收尾最初那条会话；维护操作删除/替换会话也不能把新对话标成已完成。
+    # 4) 只收尾发起的那条会话；期间用户在别的会话里做的事、乃至把这条删了，都不影响这次建书。
     with new_session() as db:
         session = db.scalar(select(ShortCreationSession)
                             .where(ShortCreationSession.user_id == uid,

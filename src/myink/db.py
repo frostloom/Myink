@@ -317,6 +317,31 @@ def _upgrade_style_library_schema(conn) -> None:
         ))
 
 
+def ensure_short_creation_sessions() -> None:
+    """建书会话放开成多会话（幂等）：去掉一账号一条的唯一约束，补 title 与列表索引。
+
+    模型侧 `user_id` 从 unique 改成普通列，而 create_all 只建新表、不 ALTER 已存在的表——
+    老库里那条 `uq_short_creation_sessions_user_id` 会一直留着，用户想聊第二个短篇就撞唯一键。
+    所以显式 DROP CONSTRAINT（它背后那条索引随之消失），再补一条 (user_id, updated_at) 复合索引：
+    它同时顶住「按账号取会话」与「按最近更新倒序」两个条件。
+
+    存量标题按卡上的暂定名回填；还没聊出名字的留空，读取时再回落第一条用户消息。
+    """
+    with get_admin_engine().begin() as conn:
+        _upgrade_short_creation_sessions(conn)
+
+
+def _upgrade_short_creation_sessions(conn) -> None:
+    conn.execute(text("ALTER TABLE short_creation_sessions "
+                      "DROP CONSTRAINT IF EXISTS uq_short_creation_sessions_user_id"))
+    conn.execute(text("ALTER TABLE short_creation_sessions ADD COLUMN IF NOT EXISTS title "
+                      "VARCHAR(64) NOT NULL DEFAULT ''"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_short_creation_sessions_user "
+                      "ON short_creation_sessions (user_id, updated_at)"))
+    conn.execute(text("UPDATE short_creation_sessions SET title = left(card->>'working_title', 64) "
+                      "WHERE title = '' AND coalesce(card->>'working_title', '') <> ''"))
+
+
 def ensure_agent_run_user() -> None:
     """agent_runs 归属放宽：project_id 可空 + 新增 user_id（账号级调用记账用）。
 

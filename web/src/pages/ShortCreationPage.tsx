@@ -69,6 +69,14 @@ function isReady(card: Partial<ShortCreationCard>): boolean {
   return REQUIRED_TEXT.every((field) => String(card[field] ?? '').trim() !== '')
 }
 
+/** 页头那行状态字。'talk' 不在表里：等回复时输入框还能用，页头不必再喊一遍。 */
+const OPERATION_LABEL: Record<string, string> = {
+  plan: '正在规划章节…',
+  create: '正在新建会话…',
+  switch: '正在打开…',
+  delete: '正在删除…',
+}
+
 export default function ShortCreationPage() {
   const { session, logout } = useAuth()
   const guest = useGuest()
@@ -82,7 +90,7 @@ export default function ShortCreationPage() {
   const [draft, setDraft] = useState('')
   // 已发出、还没等到服务端回话的那一句：先挂在对话流里，用户才看得见自己发过什么。
   const [pending, setPending] = useState<string | null>(null)
-  const [operation, setOperation] = useState<'talk' | 'plan' | 'reset' | null>(null)
+  const [operation, setOperation] = useState<'talk' | 'plan' | 'create' | 'switch' | 'delete' | null>(null)
   const busy = operation !== null
   const operationRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
@@ -102,7 +110,7 @@ export default function ShortCreationPage() {
 
   const reload = useCallback(async () => {
     try {
-      apply(await shortCreationApi.get(token))
+      apply(await shortCreationApi.open(token))
     } catch (reason) {
       setError(formatApiError(reason, '打不开建书对话，请稍后重试'))
     }
@@ -167,8 +175,8 @@ export default function ShortCreationPage() {
     }
   }, [cardOpen])
 
-  const run = async (kind: 'talk' | 'plan' | 'reset', action: () => Promise<void>,
-                     fallback: string, onError?: () => void) => {
+  const run = async (kind: 'talk' | 'plan' | 'create' | 'switch' | 'delete',
+                     action: () => Promise<void>, fallback: string, onError?: () => void) => {
     if (operationRef.current) return
     operationRef.current = true
     setError(null)
@@ -186,13 +194,15 @@ export default function ShortCreationPage() {
 
   const sendDraft = () => {
     const content = draft.trim()
-    if (!content || busy || data?.session.status !== 'active') return
+    if (!content || busy || !data || data.session.status !== 'active') return
+    // 会话 id 先取出来：发送期间用户仍可能去点别的会话，那不该把这句发到新会话里。
+    const sessionId = data.session.id
     // 自己的话立刻进流、输入框立刻清空。等服务端往返才显示的话，用户盯着一个还留着
     // 原话的输入框，会以为回车没生效。失败时再把原话放回输入框。
     setDraft('')
     setPending(content)
     void run('talk', async () => {
-      apply(await shortCreationApi.send(token, content, card as Record<string, unknown>))
+      apply(await shortCreationApi.send(token, sessionId, content, card as Record<string, unknown>))
       setPending(null)
     }, '这句话没发出去，请重试', () => {
       setPending(null)
@@ -218,9 +228,11 @@ export default function ShortCreationPage() {
 
   const confirm = () => {
     // 已确认过的会话只会在后端 409；卡填满了也不给这个按钮真的发出去。
-    if (committed) return
+    if (committed || !data) return
+    const sessionId = data.session.id
     void run('plan', async () => {
-      const out = await shortCreationApi.commit(token, card as Record<string, unknown>, styleItemId || null)
+      const out = await shortCreationApi.commit(token, sessionId, card as Record<string, unknown>,
+                                                styleItemId || null)
       // commit 只落书，入队归工作台：那边有状态带，入队失败就地给重试入口。
       navigate(`/projects/${out.project_id}`, {
         state: { beginShortWriting: true, planWarning: out.plan_warning },
@@ -228,11 +240,34 @@ export default function ShortCreationPage() {
     }, '确认失败，请重试')
   }
 
-  const restart = () => void run('reset', async () => {
-    await shortCreationApi.reset(token)
+  /** 另起一条会话：旧的原样留着，列表里随时能翻回去看。 */
+  const createSession = () => void run('create', async () => {
     setDraft('')
-    await reload()
-  }, '重置失败，请重试')
+    setError(null)
+    apply(await shortCreationApi.create(token))
+  }, '新建会话失败，请重试')
+
+  const switchTo = (sessionId: string) => {
+    if (busy || !data || sessionId === data.session.id) return
+    void run('switch', async () => {
+      setDraft('')
+      setError(null)
+      apply(await shortCreationApi.openSession(token, sessionId))
+    }, '打不开这条会话，请重试')
+  }
+
+  /** 删掉的只是这段对话：已经写成的作品不受影响，只有当日那张没写下去的草稿书一并带走。 */
+  const removeSession = () => {
+    if (!data) return
+    const sessionId = data.session.id
+    const title = data.sessions.find((s) => s.id === sessionId)?.title ?? '这段对话'
+    if (!window.confirm(`删除「${title}」？对话记录不可恢复，已经开写的作品不受影响。`)) return
+    void run('delete', async () => {
+      setDraft('')
+      await shortCreationApi.remove(token, sessionId)
+      await reload()
+    }, '删除失败，请重试')
+  }
 
   if (!data) {
     return (
@@ -244,6 +279,7 @@ export default function ShortCreationPage() {
   }
   const cardReady = !committed && isReady(card)
   const lengths = resolveShortLengths(card.chapter_count ?? 5, card.chars_per_chapter ?? 4000)
+  const busyLabel = operation ? OPERATION_LABEL[operation] : undefined
   // 错误只有一处可见：卡开着时进卡里（弹窗盖住了下面的 banner），否则留在对话上。
   const errorBanner = error !== null && <div className="banner banner-error" role="alert">{error}</div>
 
@@ -257,13 +293,27 @@ export default function ShortCreationPage() {
             <div>
               <h1>新建短篇</h1>
               <p className={styles.sub} aria-live="polite">
-                {operation === 'plan' ? '正在规划章节…' : operation === 'reset' ? '正在准备新的对话…'
-                  : committed ? '已开写' : data.ready ? '方案已备好 · 等你确认' : '构思中 · 先聊聊故事'}
+                {busyLabel ?? (committed ? '已开写'
+                  : data.ready ? '方案已备好 · 等你确认' : '构思中 · 先聊聊故事')}
               </p>
             </div>
-            <button type="button" className="btn btn-quiet" onClick={restart} disabled={busy}>
-              {operation === 'reset' ? '正在重置…' : '重新开始'}
-            </button>
+            <div className={styles.headActions}>
+              <select className={`input ${styles.picker}`} aria-label="建书会话"
+                      value={data.session.id} disabled={busy}
+                      onChange={(event) => switchTo(event.target.value)}>
+                {data.sessions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.title}{s.status === 'committed' ? '（已开写）' : ''}
+                  </option>
+                ))}
+              </select>
+              <button type="button" className="btn btn-quiet" onClick={createSession} disabled={busy}>
+                {operation === 'create' ? '正在新建…' : '新建会话'}
+              </button>
+              <button type="button" className="btn btn-quiet" onClick={removeSession} disabled={busy}>
+                {operation === 'delete' ? '正在删除…' : '删除会话'}
+              </button>
+            </div>
           </header>
 
           <div className={styles.stream} ref={stream} aria-label="建书对话">
@@ -302,7 +352,7 @@ export default function ShortCreationPage() {
           {!cardOpen && errorBanner}
           {committed && (
             <div className="banner banner-warning" role="status">
-              已开写。新故事请点「重新开始」。
+              已开写。想写新的，点「新建会话」；这段对话留着，随时能翻回来看。
               {data.session.book_id && (
                 <>{' '}刚开写的那本在<Link to={`/projects/${data.session.book_id}`}>这里</Link>。</>
               )}
@@ -312,7 +362,7 @@ export default function ShortCreationPage() {
           <form className={styles.composer} onSubmit={submit}>
             <label>
               <textarea ref={composer} rows={3} aria-label="对助手说" className="input" value={draft}
-                        disabled={committed || operation === 'plan' || operation === 'reset'}
+                        disabled={committed || (busy && operation !== 'talk')}
                         maxLength={4000} onChange={(event) => setDraft(event.target.value)}
                         onKeyDown={onKeyDown}
                         placeholder={committed ? '本次建书对话已结束' : '说说你想写的故事…'} />
