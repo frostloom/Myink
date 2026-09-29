@@ -2157,12 +2157,20 @@
       },
       "AuthSessionOut": {
         "properties": {
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          },
           "role": {
             "title": "Role",
             "type": "string"
           },
           "tier": {
             "title": "Tier",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
             "type": "string"
           },
           "user_id": {
@@ -2178,7 +2186,9 @@
           "user_id",
           "username",
           "tier",
-          "role"
+          "role",
+          "token",
+          "expires_in"
         ],
         "title": "AuthSessionOut",
         "type": "object"

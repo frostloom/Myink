@@ -82,3 +82,27 @@ it('discards a successful protected response after the browser switches tokens',
 
   await expect(pending).rejects.toMatchObject({ code: 'request_aborted' })
 })
+
+it('keeps a protected response when renewal rotates the token of the same account', async () => {
+  // 滑动续期后台每半小时换一次令牌。若按令牌字符串判过时，正在跑的请求会在那一刻
+  // 被判成 aborted——生成中的写操作会报错，而成稿是一次几分钟的调用。
+  localStorage.setItem('myink.session', JSON.stringify({
+    token: 'token-a', userId: 'user-a', username: 'alice', tier: 'normal', expiresAt: Date.now() + 60_000,
+  }))
+  let resolveBody!: (value: unknown) => void
+  const body = new Promise((resolve) => { resolveBody = resolve })
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: () => body,
+  }))
+
+  const pending = api.listProjects()
+  localStorage.setItem('myink.session', JSON.stringify({
+    token: 'token-a-renewed', userId: 'user-a', username: 'alice', tier: 'normal',
+    expiresAt: Date.now() + 1_800_000,
+  }))
+  resolveBody([])
+
+  await expect(pending).resolves.toEqual([])
+})

@@ -31,6 +31,9 @@ class AuthSessionOut(BaseModel):
     username: str
     tier: str
     role: str
+    # 会话自检顺手换的新令牌（滑动续期）。旧令牌不吊销，用到自然过期为止。
+    token: str
+    expires_in: int
 
 
 class OkOut(BaseModel):

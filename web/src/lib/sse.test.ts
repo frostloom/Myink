@@ -3,10 +3,11 @@
 import { dispatchUnauthorized } from './token'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const tokenState = vi.hoisted(() => ({ value: 'test-token' }))
+const tokenState = vi.hoisted(() => ({ value: 'test-token', identity: 'user-a' }))
 
 vi.mock('../lib/token', () => ({
   getToken: () => tokenState.value,
+  getSessionUserId: () => tokenState.identity,
   dispatchUnauthorized: vi.fn(),
 }))
 
@@ -95,6 +96,7 @@ describe('openSSE 流行为', () => {
 
   beforeEach(() => {
     tokenState.value = 'test-token'
+    tokenState.identity = 'user-a'
     mockDispatch.mockClear()
   })
   afterEach(() => {
@@ -174,15 +176,34 @@ describe('openSSE 流行为', () => {
     expect(mockDispatch).toHaveBeenCalledWith('test-token')
   })
 
-  it('discards a delayed 401 from the previous token without signing out the new account', async () => {
+  it('discards a delayed 401 from the previous account without signing out the new one', async () => {
     let resolveFetch!: (response: Response) => void
     globalThis.fetch = vi.fn().mockReturnValue(new Promise((resolve) => { resolveFetch = resolve }))
 
     const pending = openSSE('/x', () => {})
     tokenState.value = 'new-token'
+    tokenState.identity = 'user-b'
     resolveFetch(new Response('', { status: 401 }))
 
     await expect(pending).resolves.toEqual({ reason: 'aborted' })
+    expect(mockDispatch).not.toHaveBeenCalled()
+  })
+
+  it('keeps the stream open when renewal rotates the token of the same account', async () => {
+    // 滑动续期换令牌不换账号：正在跟的流不能被判成 aborted。写一篇两万字要几分钟，
+    // 续期落在中途就把实时正文整条掐断了——丢的不只是一条流，还有用户对「没卡死」的判断。
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      streamOf(
+        'event: node\nid: 1-0\ndata: {"type":"node","task_id":"t1","node":"write"}\n\n',
+        'event: status\nid: 2-0\ndata: {"type":"status","status":"done"}\n\n',
+      ),
+    )
+    const events: SSEEvent[] = []
+    const pending = openSSE('/x', (ev) => events.push(ev))
+    tokenState.value = 'renewed-token'
+
+    await expect(pending).resolves.toEqual({ reason: 'terminal' })
+    expect(events).toHaveLength(2)
     expect(mockDispatch).not.toHaveBeenCalled()
   })
 

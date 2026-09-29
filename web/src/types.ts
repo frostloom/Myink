@@ -14,6 +14,9 @@ export interface AuthSessionResponse {
   username: string
   tier: string
   role: 'user' | 'admin'
+  /** 自检顺手续期：服务端新签的令牌与它的有效期（秒） */
+  token: string
+  expires_in: number
 }
 
 export interface OkResponse {

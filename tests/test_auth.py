@@ -278,12 +278,22 @@ def test_login_and_session_have_exact_shapes_and_session_ignores_trusted_identit
             headers=_bearer(login.json()["token"]),
         )
         assert session.status_code == 200, session.text
-        assert session.json() == {
+        body = session.json()
+        assert {key: body[key] for key in ("user_id", "username", "tier", "role")} == {
             "user_id": account["user_id"],
             "username": account["username"],
             "tier": "normal",
             "role": "user",
         }
+        assert body["expires_in"] > 0
+        assert jwt.decode(body["token"], TEST_JWT_SECRET, algorithms=["HS256"])["sub"] == \
+            account["user_id"]
+        renewed = client.get("/api/v1/auth/session", headers=_bearer(body["token"]))
+        assert renewed.status_code == 200
+        # 续期不作废旧令牌：吊销它会打断正拿它跑的请求和 SSE 流
+        assert client.get(
+            "/api/v1/auth/session", headers=_bearer(login.json()["token"])
+        ).status_code == 200
         assert session.headers["cache-control"] == "no-store"
 
 

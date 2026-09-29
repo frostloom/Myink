@@ -22,6 +22,11 @@ import {
 
 export type AuthStatus = 'checking' | 'authenticated' | 'anonymous' | 'unavailable'
 
+/** 令牌到期前多久去换新的：留出重试余量，写作中途掉线的代价远大于多签一张令牌 */
+const RENEW_LEAD_MS = 5 * 60 * 1000
+/** 续期检查周期，兼作失败后的重试间隔 */
+const RENEW_POLL_MS = 60 * 1000
+
 interface AuthState {
   session: StoredSession | null
   status: AuthStatus
@@ -66,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const sessionRef = useRef<StoredSession | null>(initial.current)
   const generationRef = useRef(0)
   const validationRef = useRef<AbortController | null>(null)
+  const renewRef = useRef<AbortController | null>(null)
   const validateRunnerRef = useRef<(candidate: StoredSession) => void>(() => {})
 
   const applySession = useCallback((
@@ -74,7 +80,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     nextStatus: AuthStatus,
   ) => {
     const previous = sessionRef.current
-    if (previous?.token && previous.token !== next?.token) {
+    // 换账号才终止旧 token 的在途请求。滑动续期也换 token 但不换账号：那些请求拿的
+    // 旧令牌还没被吊销、本身完全有效，续期时打断它们等于把一次正常轮换变成报错。
+    if (previous?.token && previous.token !== next?.token
+      && previous.userId !== next?.userId) {
       abortRequestsForToken(previous.token)
     }
     sessionRef.current = next
@@ -143,6 +152,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [applySession, syncFromStorage])
   validateRunnerRef.current = validate
 
+  /**
+   * 滑动续期：拿手上的令牌去 /auth/session 换一张新的。
+   *
+   * 刻意不走 validate()：那条路会把 status 打回 checking（整页闪成「正在验证登录
+   * 状态…」），而且它的守卫按令牌比对，续期自己就会把自己判成过时。
+   */
+  const renewSession = useCallback(async () => {
+    const current = sessionRef.current
+    if (!current || renewRef.current) return
+    const controller = new AbortController()
+    renewRef.current = controller
+    try {
+      const remote = await api.getSession(current.token, controller.signal)
+      if (controller.signal.aborted) return
+      // 老版本后端只回身份、不回新令牌。宁可不续期也不能把会话写坏：缺 token 的会话会被
+      // getSession() 判成无效，等于当场把人登出——比不做续期还糟。
+      if (!remote.token || !(remote.expires_in > 0)) return
+      if (sessionRef.current?.token !== current.token) return
+      if (readStoredSession()?.token !== current.token) {
+        syncFromStorage()
+        return
+      }
+      applySession({
+        ...current,
+        token: remote.token,
+        username: remote.username,
+        tier: remote.tier,
+        role: remote.role,
+        roleVerified: true,
+        expiresAt: Date.now() + Math.max(0, remote.expires_in) * 1000,
+      }, true, 'authenticated')
+    } catch {
+      // 401 已由 api 层派发 unauthorized 统一登出；网络抖动不在这里处理——
+      // 留给下一个周期重试，只要还没到硬到期就不该动登录态。
+    } finally {
+      if (renewRef.current === controller) renewRef.current = null
+    }
+  }, [applySession, syncFromStorage])
+
   useEffect(() => {
     const onUnauthorized = (event: Event) => {
       const token = event instanceof CustomEvent
@@ -164,6 +212,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const onStorage = (event: StorageEvent) => {
       if (event.key !== SESSION_STORAGE_KEY) return
+      const stored = readStoredSession()
+      // 别的标签页刚续期（换了令牌、没换账号）：把新令牌同步过来即可，别走 validate——
+      // 那会把 status 打回 checking，正在写作的页面整页闪成「正在验证登录状态…」。
+      if (stored && stored.userId === sessionRef.current?.userId) {
+        ++generationRef.current
+        validationRef.current?.abort()
+        applySession(
+          { ...stored, roleVerified: sessionRef.current?.roleVerified ?? false },
+          false,
+          'authenticated',
+        )
+        return
+      }
       syncFromStorage()
     }
 
@@ -180,8 +241,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (status !== 'authenticated' || !session?.expiresAt) return
     const token = session.token
-    const timer = window.setTimeout(() => {
-      if (sessionRef.current?.token !== token) return
+    const expiresAt = session.expiresAt
+    const stillCurrent = () => sessionRef.current?.token === token
+
+    const expire = () => {
+      if (!stillCurrent()) return
       if (readStoredSession()?.token !== token) {
         syncFromStorage()
         return
@@ -189,9 +253,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ++generationRef.current
       validationRef.current?.abort()
       applySession(null, true, 'anonymous')
-    }, Math.max(0, session.expiresAt - Date.now()))
-    return () => window.clearTimeout(timer)
-  }, [applySession, session, status, syncFromStorage])
+    }
+
+    // 轮询而不是一次性定时器：失败的那次一分钟后再试。写一篇两万字要好几分钟，
+    // 一次网络抖动不该升级成写作掉线。真正到期还没换上才登出。
+    const tick = () => {
+      if (!stillCurrent()) return
+      if (Date.now() >= expiresAt) {
+        expire()
+        return
+      }
+      if (Date.now() >= expiresAt - RENEW_LEAD_MS) void renewSession()
+    }
+    const timer = window.setInterval(tick, RENEW_POLL_MS)
+    // 后台标签页的定时器会被节流到分钟级，电脑睡眠时根本不跑：回到前台立刻补一次
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') tick()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [applySession, renewSession, session, status, syncFromStorage])
 
   const authenticate = useCallback(async (
     action: 'login' | 'register',

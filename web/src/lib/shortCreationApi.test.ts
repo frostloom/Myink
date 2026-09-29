@@ -7,8 +7,9 @@ import { shortCreationApi } from './shortCreationApi'
 beforeEach(() => {
   localStorage.clear()
   vi.restoreAllMocks()
-  // 用例传的是显式 token，而 request() 在 api.ts:118 发完 fetch 之后会拿它和 getToken() 比
-  // （:145），不等就抛 request_aborted —— 200 也一样抛。不种这条会话，四个用例全都断言不到 fetch。
+  // 用例传的是显式 token，而 request() 发完 fetch 后会核对 localStorage 里的会话归属
+  // （api.ts:133、:146）：账号中途被换掉就抛 request_aborted，200 也一样抛。
+  // 种下会话让这些用例跑在「请求期间没有换账号」的真实条件下。
   localStorage.setItem('myink.session', JSON.stringify({
     token: 't', userId: 'u1', username: 'alice', tier: 'normal', expiresAt: null,
   }))

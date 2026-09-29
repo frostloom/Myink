@@ -54,7 +54,7 @@ import type {
   WritingLesson,
   WritingMode,
 } from '../types'
-import { dispatchUnauthorized, getToken } from './token'
+import { dispatchUnauthorized, getSessionUserId, getToken } from './token'
 
 const BASE = '/api/v1'
 
@@ -97,6 +97,9 @@ async function request<T>(
 ): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   const token = options?.token === undefined ? getToken() : options.token
+  // 按账号（userId）而不是令牌字符串判定响应是否已作废：滑动续期会换令牌但不换账号，
+  // 拿令牌比会把续期当换账号，把正在跑的请求判成 aborted。
+  const identityAtStart = getSessionUserId()
   if (token) headers.Authorization = `Bearer ${token}`
   // FormData 的 Content-Type 得留给浏览器写，它要自己拼 multipart 边界
   const isForm = typeof FormData !== 'undefined' && body instanceof FormData
@@ -127,7 +130,7 @@ async function request<T>(
       } catch {
         /* 非 JSON 响应：保留原始状态 */
       }
-      if (controller.signal.aborted || (token && getToken() !== token)) {
+      if (controller.signal.aborted || (token && getSessionUserId() !== identityAtStart)) {
         throw new ApiError(0, 'request_aborted', null)
       }
       const errorBody = parsed as { error?: string; detail?: unknown } | null
@@ -140,7 +143,7 @@ async function request<T>(
     }
 
     const parsed = (await res.json()) as T
-    if (controller.signal.aborted || (token && getToken() !== token)) {
+    if (controller.signal.aborted || (token && getSessionUserId() !== identityAtStart)) {
       throw new ApiError(0, 'request_aborted', null)
     }
     return parsed
