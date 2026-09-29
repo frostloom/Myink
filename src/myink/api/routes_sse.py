@@ -55,7 +55,9 @@ _BLOCK_SECONDS = 5.0
 
 # worker 侧 XADD 的扁平字段（processor.py / observer.py / enqueue.py 三处生产点）。
 _STR_FIELDS = ("task_id", "node", "status", "message", "stage", "artifact_id", "content", "artifact")
-_INT_FIELDS = ("chapter_seq", "attempt", "offset")
+# done/total：短篇每一步的阶段进度（short_runner._Progress 那条 event=progress）——
+# 成稿/改稿填累计字数与目标字数，审稿/补写只有阶段名、两个数都是 0。
+_INT_FIELDS = ("chapter_seq", "attempt", "offset", "done", "total")
 # 终态：worker 写成 event=status + 下面之一。收到即收流，前端据此停掉订阅。
 _TERMINAL = frozenset({"done", "failed", "awaiting_plan", "awaiting_review", "cancelled"})
 

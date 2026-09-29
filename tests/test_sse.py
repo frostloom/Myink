@@ -125,6 +125,15 @@ def test_decode_int_fields_tolerate_garbage():
     assert (ev["chapter_seq"], ev["attempt"], ev["offset"]) == (0, 0, 12)
 
 
+def test_decode_forwards_short_story_char_progress():
+    """短篇成稿的字数进度帧：done/total 是 int，前端环形进度条直接读这两个数。"""
+    ev = routes_sse._decode({"event": "progress", "task_id": "t", "stage": "short_write",
+                             "done": "4400", "total": "20000"})
+    assert ev["type"] == "progress"
+    assert (ev["done"], ev["total"]) == (4400, 20000)
+    assert ev["stage"] == "short_write"
+
+
 # ---- 鉴权与归属 ----
 
 def test_events_without_identity_is_401():
@@ -204,10 +213,11 @@ def test_events_forwards_frames_and_stops_at_terminal():
         # id 必须是 Redis 流 ID（断线重连靠它）
         assert all(f["id"] and "-" in f["id"] for f in parsed)
 
-        # data 载荷恒有 12 个键（与 sse.ts 的 SSEEvent 一一对应）
+        # data 载荷恒有 14 个键（与 sse.ts 的 SSEEvent 一一对应）
         assert set(parsed[1]["data"]) == {
             "type", "task_id", "node", "status", "message", "stage",
-            "chapter_seq", "attempt", "offset", "artifact_id", "content", "artifact",
+            "chapter_seq", "attempt", "offset", "done", "total", "artifact_id",
+            "content", "artifact",
         }
         assert parsed[1]["data"]["content"] == "===\n夜色沉沉\n"
         assert parsed[1]["data"]["chapter_seq"] == 1

@@ -1,0 +1,65 @@
+.ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  /* 定宽块，放进 text-align:center 的空态容器里不会自己居中 */
+  margin-inline: auto;
+}
+
+.svg {
+  position: absolute;
+  inset: 0;
+  /* 从 12 点开始顺时针长，与指针直觉一致 */
+  transform: rotate(-90deg);
+}
+
+.track {
+  stroke: var(--surface-3);
+}
+
+.fill {
+  stroke: var(--accent-hover);
+  /* 每帧都是整字数量，不加过渡会一格一格地跳 */
+  transition: stroke-dashoffset 600ms ease;
+}
+
+/* 没有刻度可言时（审稿/补写）：一段短弧转起来，说明还活着。 */
+.pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ring-spin 1.4s linear infinite, ring-breathe 1.4s ease-in-out infinite;
+}
+
+@keyframes ring-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ring-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.center {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.center strong {
+  font-size: 1.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.center span {
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fill { transition: none; }
+  .pulse { animation: none; opacity: 0.55; }
+}

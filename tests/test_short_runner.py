@@ -88,6 +88,39 @@ class _Stub(ModelProvider):
         return ModelResponse(content=item, model_id=model_id, input_tokens=100, output_tokens=200)
 
 
+class _PathStub(ModelProvider):
+    """记录每次调用走的是流式还是同步，两条路都按调用序返回同一份脚本。
+
+    「整篇调用必须流式」这条契约只有让两条路分别可观察才钉得住：只看返回值的话，
+    退回非流式照样能过。
+    """
+
+    def __init__(self, script: list):
+        self._script = script
+        self.calls: list[str] = []
+
+    def name(self) -> str:
+        return "short-runner-path-stub"
+
+    def _reply(self, model_id):
+        item = self._script[min(len(self.calls) - 1, len(self._script) - 1)]
+        if isinstance(item, Exception):
+            raise item
+        return ModelResponse(content=item, model_id=model_id, input_tokens=100, output_tokens=200)
+
+    def generate(self, messages, *, model_id, max_tokens=None, temperature=None,
+                 json_mode=False, tools=None, disable_thinking=False):
+        self.calls.append("sync")
+        return self._reply(model_id)
+
+    def generate_stream(self, messages, *, model_id, on_delta, on_reset=None, max_tokens=None,
+                        temperature=None, json_mode=False, tools=None, disable_thinking=False):
+        self.calls.append("stream")
+        resp = self._reply(model_id)
+        on_delta(resp.content)
+        return resp
+
+
 @pytest.fixture
 def stub(monkeypatch):
     import myink.providers as providers_mod
@@ -218,6 +251,40 @@ def test_the_writer_gets_the_whole_story_budget_in_one_call(short_project, stub)
     assert len(s.calls) == 2
     assert s.calls[0]["max_tokens"] == int(20000 * nodes._WRITE_TOKENS_PER_CHAR * 1.25)
     assert s.calls[0]["json_mode"] is False and s.calls[0]["disable_thinking"] is True
+
+
+def test_every_step_announces_itself_and_the_long_ones_stream_char_progress(short_project, monkeypatch):
+    """每一步都报一次开始，成稿/改稿随后按字数续报。
+
+    这两条整篇调用中途不落任何 agent_runs，观察线程只看得到「running」——不报进度，用户在
+    页面上没有任何东西能证明它还在动。审稿/补写是 JSON 小调用，没有字数可言，但**也得报
+    一条开始事件**：补写跑不跑取决于成稿有没有缺章，前端按「上一步完了该轮到谁」去猜会猜
+    错，于是显示成「正在补写」而实际在审稿。所以这里断言的是完整的五帧序列，不是「有没有
+    字数」。
+    """
+    import myink.providers as providers_mod
+    from myink.workflow.streaming import bind_artifact_sink
+
+    draft = _tagged(tag="字" * 200)
+    rewritten = _tagged(tag="改" * 200)
+    path_stub = _PathStub([draft, _review("revise"), rewritten])
+    monkeypatch.setattr(providers_mod, "default_provider", path_stub)
+
+    frames: list[dict] = []
+    with bind_artifact_sink(frames.append):
+        _run(short_project)
+
+    # 只有整篇调用走流式；审稿仍是同步小调用。
+    assert path_stub.calls == ["stream", "sync", "stream"]
+    total = ShortParams.resolve(CHAPTERS, 4000).total_chars
+    assert [(f["event"], f["stage"], int(f["done"]), int(f["total"])) for f in frames] == [
+        ("progress", "short_write", 0, total),          # 进成稿
+        ("progress", "short_write", len(draft), total),  # 成稿在长
+        ("progress", "short_review", 0, 0),              # 进审稿（没有字数可言）
+        ("progress", "short_revise", 0, total),          # 进改稿
+        ("progress", "short_revise", len(rewritten), total),
+    ]
+    assert {f["task_id"] for f in frames} == {TASK_ID}
 
 
 def test_the_review_is_one_editor_view_pass_over_the_whole_draft(short_project, stub):

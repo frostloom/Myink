@@ -76,7 +76,7 @@ it('replaces the full Plan page with live正文 before the model stream complete
   const waitForFinish = new Promise<void>((resolve) => { finishStream = resolve })
   const event = (patch: Partial<SSEEvent>): SSEEvent => ({
     type: 'artifact_delta', task_id: 'task-14', node: '', status: '', message: '',
-    stage: 'plan', chapter_seq: 14, attempt: 1, offset: 0,
+    stage: 'plan', chapter_seq: 14, attempt: 1, offset: 0, done: 0, total: 0,
     artifact_id: 'plan-1', content: '', artifact: '', ...patch,
   })
 

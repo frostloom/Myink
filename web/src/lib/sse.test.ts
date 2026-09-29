@@ -62,7 +62,7 @@ describe('parseData 载荷解析', () => {
       parseData('{"type":"node","task_id":"t1","node":"write","status":"","message":"m"}'),
     ).toEqual({
       type: 'node', task_id: 't1', node: 'write', status: '', message: 'm',
-      stage: '', chapter_seq: 0, attempt: 0, offset: 0,
+      stage: '', chapter_seq: 0, attempt: 0, offset: 0, done: 0, total: 0,
       artifact_id: '', content: '', artifact: '',
     })
   })

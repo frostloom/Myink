@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compactFlowRuns, groupFlowAttempts, liveStageNode } from './taskFlow'
+import { compactFlowRuns, groupFlowAttempts, liveStageNode, shortStageProgress } from './taskFlow'
 import type { AgentRun } from '../types'
 
 function run(node: string, overrides: Partial<AgentRun> = {}): AgentRun {
@@ -99,5 +99,39 @@ describe('liveStageNode', () => {
   it('stays empty once every artifact has settled', () => {
     expect(liveStageNode([run('plan_chapter'), run('write')], complete, complete)).toBeNull()
     expect(liveStageNode([], null, null)).toBeNull()
+  })
+})
+
+describe('shortStageProgress', () => {
+  it('scales char progress inside the 成稿 band, not across the whole ring', () => {
+    // 成稿只占 0–70%：整篇写完了还有审稿和可能的改稿，直接把字数当总进度会冲到 100%
+    expect(shortStageProgress({ stage: 'short_write', current: 0, total: 20000 })?.value).toBe(0)
+    expect(shortStageProgress({ stage: 'short_write', current: 10000, total: 20000 })?.value)
+      .toBeCloseTo(0.35)
+    expect(shortStageProgress({ stage: 'short_write', current: 20000, total: 20000 })?.value)
+      .toBeCloseTo(0.7)
+  })
+
+  it('parks at the stage floor when the step has no char count to report', () => {
+    // 审稿/补写只报一条开始事件（total=0）——停在阶段起点，让环自己转
+    const review = shortStageProgress({ stage: 'short_review', current: 0, total: 0 })
+    expect(review?.value).toBeCloseTo(0.8)
+    expect(review?.indeterminate).toBe(true)
+  })
+
+  it('is determinate while a step is reporting chars', () => {
+    expect(shortStageProgress({ stage: 'short_revise', current: 1, total: 20000 })?.indeterminate)
+      .toBe(false)
+  })
+
+  it('never exceeds the ring when a provider overruns the char budget', () => {
+    // 目标 2 万字写成 2.6 万是常事（末章收不住），进度条不能因此超过 100%
+    expect(shortStageProgress({ stage: 'short_revise', current: 26000, total: 20000 })?.value).toBe(1)
+  })
+
+  it('stays unknown until a stage arrives, and on stages this build does not know', () => {
+    // 不按「上一步完了该轮到谁」猜阶段：猜错会显示成「正在补写」而实际在审稿
+    expect(shortStageProgress(null)).toBeNull()
+    expect(shortStageProgress({ stage: 'short_whatever', current: 5, total: 10 })).toBeNull()
   })
 })

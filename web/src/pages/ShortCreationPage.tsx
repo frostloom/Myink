@@ -80,6 +80,8 @@ export default function ShortCreationPage() {
   const [styleItemId, setStyleItemId] = useState('')
   const [styleItems, setStyleItems] = useState<StyleLibraryItem[]>([])
   const [draft, setDraft] = useState('')
+  // 已发出、还没等到服务端回话的那一句：先挂在对话流里，用户才看得见自己发过什么。
+  const [pending, setPending] = useState<string | null>(null)
   const [operation, setOperation] = useState<'talk' | 'plan' | 'reset' | null>(null)
   const busy = operation !== null
   const operationRef = useRef(false)
@@ -165,7 +167,8 @@ export default function ShortCreationPage() {
     }
   }, [cardOpen])
 
-  const run = async (kind: 'talk' | 'plan' | 'reset', action: () => Promise<void>, fallback: string) => {
+  const run = async (kind: 'talk' | 'plan' | 'reset', action: () => Promise<void>,
+                     fallback: string, onError?: () => void) => {
     if (operationRef.current) return
     operationRef.current = true
     setError(null)
@@ -174,6 +177,7 @@ export default function ShortCreationPage() {
       await action()
     } catch (reason) {
       setError(formatApiError(reason, fallback))
+      onError?.()
     } finally {
       operationRef.current = false
       setOperation(null)
@@ -183,10 +187,17 @@ export default function ShortCreationPage() {
   const sendDraft = () => {
     const content = draft.trim()
     if (!content || busy || data?.session.status !== 'active') return
+    // 自己的话立刻进流、输入框立刻清空。等服务端往返才显示的话，用户盯着一个还留着
+    // 原话的输入框，会以为回车没生效。失败时再把原话放回输入框。
+    setDraft('')
+    setPending(content)
     void run('talk', async () => {
       apply(await shortCreationApi.send(token, content, card as Record<string, unknown>))
-      setDraft((current) => current.trim() === content ? '' : current)
-    }, '这句话没发出去，请重试')
+      setPending(null)
+    }, '这句话没发出去，请重试', () => {
+      setPending(null)
+      setDraft((current) => current || content)
+    })
   }
 
   const submit = (event: FormEvent) => {
@@ -264,6 +275,12 @@ export default function ShortCreationPage() {
                 {message.error && <small role="alert">这一轮没成功：{message.error}</small>}
               </div>
             ))}
+            {/* 已经发出去、还没等到回话的那句：先显示用户自己的话，助手回来再被真消息顶掉。 */}
+            {pending !== null && (
+              <div className={[styles.turn, styles.mine].join(' ')}>
+                <p>{pending}</p>
+              </div>
+            )}
             {/* 三段式：先只聊；服务端说聊齐备了，才冒出这条路；点开才弹方案卡。
                 卡开着时收起来——它被模态盖在底下，再点一次也做不了什么（Modal 里的东西
                 就不该还能按）。关掉卡就回来。 */}
