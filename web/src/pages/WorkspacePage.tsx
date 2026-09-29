@@ -10,15 +10,17 @@ import { ChapterList } from '../components/ChapterList'
 import { GenerationPanel } from '../components/GenerationPanel'
 import { LessonsPanel } from '../components/LessonsPanel'
 import { ProjectRail } from '../components/ProjectRail'
+import { RingProgress } from '../components/RingProgress'
 import { TaskTimeline } from '../components/TaskTimeline'
 import { StreamingChapterView } from '../components/StreamingChapterView'
 import { useAuth } from '../context/AuthContext'
 import { useTaskEvents } from '../hooks/useTaskEvents'
 import { api, ApiError } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
+import { nodeLabel } from '../lib/labels'
 import { isProjectDraft, projectHref } from '../lib/projectCreation'
 import { clearActiveWrite, readActiveWrite, writeActiveWrite } from '../lib/activeWrite'
-import { liveStageNode } from '../lib/taskFlow'
+import { liveStageNode, shortStageProgress } from '../lib/taskFlow'
 import { chapterToOpenForPendingTask, latestActiveGenerationTask, latestChapterAwaitingReview, latestGenerationTask, nodesForChapter, runsForChapter } from '../lib/taskChapter'
 import type { ChapterMeta, MemoryCandidate, Project, WritingMode } from '../types'
 import styles from './WorkspacePage.module.css'
@@ -667,12 +669,15 @@ export default function WorkspacePage() {
   const shortNeedsCheck = Boolean(shortReview?.warning || shortReviewRun?.degraded || shortReviewRun?.error
     || shortLengthFindings.length || (shortReview?.verdict === 'revise' && !shortReviewRun?.detail?.revised))
   const shortFailed = task.status === 'failed' || task.status === 'cancelled' || taskPhase === 'error'
+  // 短篇的实时阶段（成稿/补写/审稿/改稿），只来自 worker 报的 progress 事件——见
+  // `shortStageProgress`。没有它的时候说明还没跑到第一步，按成稿算。
+  const shortStage = shortStageProgress(task.shortProgress)
   const shortStatus = shortHistoryStatus === 'loading' ? '正在查询写作任务…'
     : shortHistoryStatus === 'failed' ? '未能确认写作状态，请重新查询'
     : shortSubmitting
     ? '正在提交写作任务…'
     : taskInFlight
-      ? '正在写整篇…'
+      ? shortStage ? `正在${nodeLabel(shortStage.stage)}…` : '正在写整篇…'
       : task.status === 'done'
       ? shortEmptyChapters.length ? '部分正文未完成'
         : shortNeedsCheck ? '正文已生成，仍需检查'
@@ -964,7 +969,18 @@ export default function WorkspacePage() {
         ) : (
           <div className="empty">
             {chapters.length === 0
-              ? (isShortBook ? '成稿还没出来。' : '还没有章节。在右侧发起首次生成。')
+              ? (isShortBook
+                ? (shortSubmitting || taskInFlight
+                  // 成稿是一次几分钟的整篇调用，这期间页面别处毫无变化——画个环，
+                  // 「还在写」和「卡住了」才分得开。
+                  ? <RingProgress
+                      value={shortStage?.value ?? 0}
+                      label={shortStage ? nodeLabel(shortStage.stage) : '成稿'}
+                      indeterminate={shortStage?.indeterminate ?? true}
+                      ariaLabel="短篇写作进度"
+                    />
+                  : '成稿还没出来。')
+                : '还没有章节。在右侧发起首次生成。')
               : '选择左侧章节开始编辑。'}
           </div>
         )}

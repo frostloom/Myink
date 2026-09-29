@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { shortCreationApi, type ShortCreationPayload } from '../lib/shortCreationApi'
@@ -151,6 +151,42 @@ it('sends on Enter and leaves Shift+Enter to insert a newline', async () => {
   fireEvent.change(box, { target: { value: '第二句' } })
   fireEvent.keyDown(box, { key: 'Enter', shiftKey: true })
   expect(shortCreationApi.send).toHaveBeenCalledTimes(1)
+})
+
+it('shows the user turn as soon as Enter is pressed, before the reply lands', async () => {
+  let release: (value: ShortCreationPayload) => void = () => {}
+  vi.mocked(shortCreationApi.send).mockReturnValue(new Promise((resolve) => { release = resolve }))
+  renderPage()
+  const box = await screen.findByLabelText('对助手说') as HTMLTextAreaElement
+  fireEvent.change(box, { target: { value: '一个渡口的故事' } })
+  fireEvent.keyDown(box, { key: 'Enter' })
+
+  // 服务端还没回话：自己的话已经在流里，输入框已经空了。
+  expect(screen.getByText('一个渡口的故事')).toBeTruthy()
+  expect(box.value).toBe('')
+
+  release(payload({
+    messages: payload().messages.concat([
+      { id: 2, role: 'user', content: '一个渡口的故事', card: null, model_id: null, cost_est: 0, error: null, created_at: '2026-01-01T00:00:01Z' },
+      { id: 3, role: 'assistant', content: '主角的压力是什么？', card: null, model_id: 'm', cost_est: 0.002, error: null, created_at: '2026-01-01T00:00:02Z' },
+    ]),
+  }))
+  expect(await screen.findByText('主角的压力是什么？')).toBeTruthy()
+  // 服务端的真消息接管之后，先前那句临时挂在流里的不能重复出现。
+  expect(screen.getAllByText('一个渡口的故事')).toHaveLength(1)
+})
+
+it('puts the message back in the composer when the send fails', async () => {
+  vi.mocked(shortCreationApi.send).mockRejectedValue(new Error('boom'))
+  renderPage()
+  const box = await screen.findByLabelText('对助手说') as HTMLTextAreaElement
+  fireEvent.change(box, { target: { value: '一个渡口的故事' } })
+  fireEvent.keyDown(box, { key: 'Enter' })
+  expect(box.value).toBe('')
+
+  await waitFor(() => expect(box.value).toBe('一个渡口的故事'))
+  // 发送失败：输入框拿回原话，对话流里不留那条临时消息。
+  expect(within(screen.getByLabelText('建书对话')).queryByText('一个渡口的故事')).toBeNull()
 })
 
 it('does not send on an Enter that is only committing an IME composition', async () => {

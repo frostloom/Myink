@@ -44,6 +44,9 @@ export interface TaskEventState {
   runs: AgentRun[]
   /** 批次进度 i/N（快照权威值；实时用 nodes 的 persist 去重计数近似） */
   progress: { current: number; total: number } | null
+  /** 短篇的阶段进度（成稿/改稿带字数，审稿/补写只有阶段名）。与 `progress` 分开：
+   *  那是长篇批次的 i/N，把短篇的字数填进去，右栏会显示成「批次 0/20000」。 */
+  shortProgress: { stage: string; current: number; total: number } | null
   error: string | null
   payload: Record<string, unknown>
   lastEventId: string | null
@@ -73,6 +76,9 @@ export function useTaskEvents(
   const [artifacts, setArtifacts] = useState<ArtifactState[]>([])
   const [runs, setRuns] = useState<AgentRun[]>([])
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
+  const [shortProgress, setShortProgress] = useState<
+    { stage: string; current: number; total: number } | null
+  >(null)
   const [error, setError] = useState<string | null>(null)
   const [payload, setPayload] = useState<Record<string, unknown>>({})
   const [lastEventId, setLastEventId] = useState<string | null>(null)
@@ -147,6 +153,7 @@ export function useTaskEvents(
     setStatus(null)
     setRuns([])
     setProgress(null)
+    setShortProgress(null)
     setError(null)
     setPayload({})
     setLastEventId(null)
@@ -174,6 +181,11 @@ export function useTaskEvents(
           // route/persist 刷新，写作完成后要等到审核结束才更新，期间一直停在上一节点。
           // 走合并窗口（SNAPSHOT_DEBOUNCE_MS）：节点密集时不会打出一串全量详情请求。
           scheduleSnapshot(tid)
+        }
+        if (ev.type === 'progress' && ev.stage) {
+          // 短篇整篇是分钟级的长调用，中途不落 agent_runs——这条事件是环形进度条唯一的
+          // 实时来源。重连时 Redis Stream 从头重放，末帧即最新进度。
+          setShortProgress({ stage: ev.stage, current: ev.done, total: ev.total })
         }
         if (ev.type.startsWith('artifact_') && ev.stage && ev.chapter_seq) {
           const key = `${ev.stage}:${ev.chapter_seq}`
@@ -335,6 +347,7 @@ export function useTaskEvents(
       setStatus(null)
       setRuns([])
       setProgress(null)
+      setShortProgress(null)
       setError(null)
       setPayload({})
       setLastEventId(null)
@@ -364,6 +377,7 @@ export function useTaskEvents(
     artifacts,
     runs,
     progress: effectiveProgress,
+    shortProgress,
     error,
     payload,
     lastEventId,

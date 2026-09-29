@@ -11,6 +11,7 @@ const liveTask = vi.hoisted(() => ({
   refresh: vi.fn(),
   retry: vi.fn(),
   runs: [] as AgentRun[],
+  shortProgress: null as { stage: string; current: number; total: number } | null,
   artifacts: [] as Array<{
     artifactId: string
     taskId: string
@@ -37,6 +38,7 @@ vi.mock('../hooks/useTaskEvents', () => ({
     artifacts: taskId ? liveTask.artifacts : [],
     runs: taskId ? liveTask.runs : [],
     progress: null,
+    shortProgress: taskId ? liveTask.shortProgress : null,
     error: null,
     payload: {},
     lastEventId: null,
@@ -139,6 +141,7 @@ afterEach(() => {
   liveTask.artifacts = []
   liveTask.runs = []
   liveTask.status = 'running'
+  liveTask.shortProgress = null
   sessionStorage.clear()
 })
 
@@ -375,9 +378,9 @@ function shortBookChapters(): ChapterMeta[] {
   }))
 }
 
-function mockShortBook(taskList: unknown[]) {
+function mockShortBook(taskList: unknown[], chapters: ChapterMeta[] = shortBookChapters()) {
   vi.mocked(api.listProjects).mockResolvedValue([shortProject])
-  vi.mocked(api.listChapters).mockResolvedValue(shortBookChapters())
+  vi.mocked(api.listChapters).mockResolvedValue(chapters)
   vi.mocked(api.listCandidates).mockResolvedValue([])
   vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] })
   vi.mocked(api.listForeshadows).mockResolvedValue([])
@@ -413,6 +416,33 @@ it('shows the plan warning on the short status band', async () => {
   renderWorkspace({ planWarning: '每章字数已按全篇上限归一' })
 
   expect((await screen.findByRole('status')).textContent).toContain('每章字数已按全篇上限归一')
+})
+
+it('rings the writing progress while a short book still has no chapters', async () => {
+  // 成稿是一次几分钟的整篇调用，这期间中间栏除了这个环什么都不会变——它就是「没卡死」的证据。
+  mockShortBook([{ ...shortTask, status: 'running' }], [])
+  liveTask.shortProgress = { stage: 'short_write', current: 10000, total: 20000 }
+
+  renderWorkspace()
+
+  const ring = await screen.findByRole('progressbar', { name: '短篇写作进度' })
+  // 成稿只占整条进度的 0–70%：写完还有审稿和改稿，字数过半不等于整篇过半
+  expect(ring.getAttribute('aria-valuenow')).toBe('35')
+  expect(screen.getByText('成稿')).toBeTruthy()
+  expect(screen.getByRole('status').textContent).toContain('正在成稿')
+})
+
+it('leaves the ring unnumbered while a step reports no char count', async () => {
+  mockShortBook([{ ...shortTask, status: 'running' }], [])
+  liveTask.shortProgress = { stage: 'short_review', current: 0, total: 0 }
+
+  renderWorkspace()
+
+  const ring = await screen.findByRole('progressbar', { name: '短篇写作进度' })
+  // 审稿没有字数可报：编一个百分比出来不如直说在审稿
+  expect(ring.getAttribute('aria-valuenow')).toBeNull()
+  expect(screen.getByText('审稿')).toBeTruthy()
+  expect(screen.getByRole('status').textContent).toContain('正在审稿')
 })
 
 it('auto-starts the short generation once on handover, then strips the intent', async () => {

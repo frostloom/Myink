@@ -27,6 +27,53 @@ from myink.short.form import SHORT_CHARS_MAX, ShortParams
 from myink.validation.short import observe_lengths
 from myink.workflow import nodes, prompts
 from myink.workflow.short_parse import find_empty_chapters, parse_short_draft, render_short_draft
+from myink.workflow.streaming import emit_artifact
+
+# 成稿/改稿的字数进度上报步长（字）。20000 字的一篇约 50 条事件，远在 SSE Stream
+# 的 maxlen=1000 之内；再密就是在给 Redis 白写帧。
+_PROGRESS_STEP = 400
+
+
+class _Progress:
+    """短篇每一步的上报：进这一步先报一条，成稿/改稿之后按字数续报。
+
+    四步里成稿和改稿是分钟级的整篇调用，中途不落任何 agent_runs——观察线程只看得到
+    「running」，用户盯着一个不动的页面自然会以为卡死。字数进度是唯一能证明它在动的东西。
+
+    审稿和补写也各报一条开始事件，**为的是让前端知道现在到底在哪一步**：这两步是否会
+    发生取决于成稿结果，前端按「上一步完了该轮到谁」去猜会猜错（成稿没缺章时补写根本不
+    跑），显示成「正在补写」而实际在审稿——宁可多两条帧，也不报一个错的阶段名。
+
+    纯观测：没有订阅者（CLI / 测试）时 `emit_artifact` 自动空转，写事件失败也不影响成稿。
+    `feed`/`reset` 是 `nodes._bounded_generate` 对 streamer 的全部要求（与 ArtifactEmitter
+    同形）；只有 `total > 0` 的整篇调用会被当 streamer 传进去。
+    """
+
+    def __init__(self, *, task_id: str, stage: str, total: int = 0):
+        self.task_id = task_id
+        self.stage = stage
+        self.total = max(int(total), 0)
+        self._chars = 0
+        self._reported = 0
+
+    def start(self) -> None:
+        self._report(self._chars)
+
+    def feed(self, text: str) -> None:
+        self._chars += len(text)
+        if self._chars - self._reported < _PROGRESS_STEP:
+            return
+        self._report(self._chars)
+
+    def reset(self) -> None:
+        # 降级链换模型：计数归零，不把上一家的输出算进这一家。
+        self._chars = 0
+        self._reported = 0
+
+    def _report(self, done: int) -> None:
+        self._reported = done
+        emit_artifact({"event": "progress", "task_id": self.task_id, "stage": self.stage,
+                       "done": done, "total": self.total})
 
 
 def run_short_story(*, project_id: str, task_id: str, form: ShortParams) -> dict:
@@ -49,7 +96,8 @@ def run_short_story(*, project_id: str, task_id: str, form: ShortParams) -> dict
                      messages=prompts.short_write_messages(brief), max_tokens=budget,
                      json_mode=False, disable_thinking=True,
                      detail={"chapter_count": form.chapter_count,
-                             "chars_per_chapter": form.chars_per_chapter})
+                             "chars_per_chapter": form.chars_per_chapter},
+                     total_chars=form.total_chars)
         if resp.error:
             return {"chapters": [], "empty_chapters": [], "length_findings": [],
                     "review": _pass_review(), "warning": None, "error": resp.error}
@@ -163,8 +211,9 @@ def _finish_short(db, project_id: str, task_id: str, brief: dict, bodies: list[s
     warning = warning or review_warning
     revised = False
     if review["verdict"] == "revise":
-        rewritten, rewrite_warning = _rewrite(db, project_id, task_id, brief, bodies,
-                                              review, budget)
+        rewritten, rewrite_warning = _rewrite(
+            db, project_id, task_id, brief, bodies, review, budget,
+            total_chars=form.total_chars)
         if rewritten is not None:
             bodies = rewritten
             revised = True
@@ -261,15 +310,23 @@ def _chapter_titles(outline: dict, chapter_count: int) -> list[str]:
 
 def _call(db, project_id: str, task_id: str, *, node: str, role: str, messages: list[dict],
           max_tokens: int, json_mode: bool, disable_thinking: bool = False,
-          detail: dict | None = None) -> ModelResponse:
+          detail: dict | None = None, total_chars: int = 0) -> ModelResponse:
     """一次 LLM 调用 + 一条 agent_runs（§6.8 成本透明）。
 
     角色分两套写法：配置角色名小写（`CONFIGURABLE_ROLES`），运行记录用大写标签
     （与 nodes/book_setup 一致，成本面板按标签聚合）。
+
+    参数 `node` 同时是进度事件里的阶段名——前端环形进度条按它定位到四步中的哪一步。
+
+    `total_chars` 只给成稿/改稿这两条整篇长调用：给了就走流式并按字数续报（否则等整段
+    回来才有个结果，中途什么都看不到），没给的就是审稿/补写这类一次性小调用，只报开始。
     """
+    progress = _Progress(task_id=task_id, stage=node, total=total_chars)
+    progress.start()
     resp = nodes._bounded_generate(
         make_chain(role.lower(), db=db, project_id=project_id), messages, json_mode=json_mode,
-        max_tokens=max_tokens, disable_thinking=disable_thinking)
+        max_tokens=max_tokens, disable_thinking=disable_thinking,
+        streamer=progress if total_chars > 0 else None)
     nodes.record_run(db, project_id=project_id, task_id=task_id, node=node, role=role,
                      resp=resp, error=resp.error, messages=messages,
                      detail={"form": "short", **(detail or {})})
@@ -333,7 +390,8 @@ def _review(db, project_id: str, task_id: str, brief: dict,
 
 
 def _rewrite(db, project_id: str, task_id: str, brief: dict, bodies: list[str],
-             review: dict, budget: int) -> tuple[list[str] | None, str | None]:
+             review: dict, budget: int, total_chars: int = 0
+             ) -> tuple[list[str] | None, str | None]:
     """改稿：整篇重写一次。返回 `(新正文, warning)`，None 表示保留首稿。
 
     重写没写成（报错 / 空输出 / 比首稿还缺章）都算失败——整篇重写是一次 2 万字的生成，
@@ -342,7 +400,7 @@ def _rewrite(db, project_id: str, task_id: str, brief: dict, bodies: list[str],
     resp = _call(db, project_id, task_id, node="short_revise", role="Writer",
                  messages=prompts.short_revise_messages(brief, render_short_draft(bodies), review),
                  max_tokens=budget, json_mode=False, disable_thinking=True,
-                 detail={"issues": len(review.get("issues") or [])})
+                 detail={"issues": len(review.get("issues") or [])}, total_chars=total_chars)
     if resp.error:
         return None, f"改稿未完成（{resp.error}），已保留首稿"
     rewritten = parse_short_draft(resp.content, brief["chapter_count"])

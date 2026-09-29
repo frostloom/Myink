@@ -64,7 +64,7 @@ it('loads the persisted snapshot immediately even when an old SSE stream stays o
 it('refreshes the run snapshot on every node event, not only at route/persist', async () => {
   const event = (patch: Partial<SSEEvent>): SSEEvent => ({
     type: 'node', task_id: 'flow-task', node: '', status: '', message: '',
-    stage: '', chapter_seq: 0, attempt: 0, offset: 0,
+    stage: '', chapter_seq: 0, attempt: 0, offset: 0, done: 0, total: 0,
     artifact_id: '', content: '', artifact: '', ...patch,
   })
   const running: TaskDetail = {
@@ -94,7 +94,7 @@ it('refreshes the run snapshot on every node event, not only at route/persist', 
 it('coalesces node-event snapshots instead of refetching on every node', async () => {
   const event = (patch: Partial<SSEEvent>): SSEEvent => ({
     type: 'node', task_id: 'burst-task', node: '', status: '', message: '',
-    stage: '', chapter_seq: 0, attempt: 0, offset: 0,
+    stage: '', chapter_seq: 0, attempt: 0, offset: 0, done: 0, total: 0,
     artifact_id: '', content: '', artifact: '', ...patch,
   })
   const base: TaskDetail = {
@@ -134,7 +134,7 @@ it('does not let a slow snapshot overwrite a newer SSE status', async () => {
   vi.mocked(openSSE).mockImplementation(async (_url, onEvent) => {
     onEvent({
       type: 'status', task_id: 'race-task', node: '', status: 'done', message: '',
-      stage: '', chapter_seq: 0, attempt: 0, offset: 0,
+      stage: '', chapter_seq: 0, attempt: 0, offset: 0, done: 0, total: 0,
       artifact_id: '', content: '', artifact: '',
     })
     return { reason: 'terminal' }
@@ -151,7 +151,7 @@ it('does not let a slow snapshot overwrite a newer SSE status', async () => {
 it('assembles replayable artifact deltas and exposes the completed plan', async () => {
   const event = (patch: Partial<SSEEvent>): SSEEvent => ({
     type: 'artifact_delta', task_id: 'stream-task', node: '', status: '', message: '',
-    stage: 'plan', chapter_seq: 17, attempt: 1, offset: 0,
+    stage: 'plan', chapter_seq: 17, attempt: 1, offset: 0, done: 0, total: 0,
     artifact_id: 'artifact-1', content: '', artifact: '', ...patch,
   })
   vi.mocked(api.getTask).mockResolvedValue({
@@ -186,7 +186,7 @@ it('publishes an incomplete write artifact before the SSE request finishes', asy
   const streamBlocked = new Promise<void>((resolve) => { releaseStream = resolve })
   const event = (patch: Partial<SSEEvent>): SSEEvent => ({
     type: 'artifact_delta', task_id: 'live-write-task', node: '', status: '', message: '',
-    stage: 'write', chapter_seq: 8, attempt: 1, offset: 0,
+    stage: 'write', chapter_seq: 8, attempt: 1, offset: 0, done: 0, total: 0,
     artifact_id: 'write-1', content: '', artifact: '', ...patch,
   })
   const runningDetail: TaskDetail = {
@@ -233,7 +233,7 @@ it('keeps following a resumed task when SSE first replays an old review terminal
     .mockImplementationOnce(async (_url, onEvent) => {
       onEvent({
         type: 'status', task_id: 'resumed-task', node: '', status: 'awaiting_review',
-        message: '', stage: '', chapter_seq: 0, attempt: 0, offset: 0,
+        message: '', stage: '', chapter_seq: 0, attempt: 0, offset: 0, done: 0, total: 0,
         artifact_id: '', content: '', artifact: '',
       })
       return { reason: 'terminal' }
@@ -241,7 +241,7 @@ it('keeps following a resumed task when SSE first replays an old review terminal
     .mockImplementationOnce(async (_url, onEvent) => {
       onEvent({
         type: 'status', task_id: 'resumed-task', node: '', status: 'done',
-        message: '', stage: '', chapter_seq: 0, attempt: 0, offset: 0,
+        message: '', stage: '', chapter_seq: 0, attempt: 0, offset: 0, done: 0, total: 0,
         artifact_id: '', content: '', artifact: '',
       })
       return { reason: 'terminal' }
@@ -274,6 +274,34 @@ it('stops reconnecting and adopts the snapshot when the stream eofs on a finishe
   expect(result.current.status).toBe('done')
   // 已完结任务的 run 历史必须仍然可回看，不能被这次收尾清掉
   await waitFor(() => expect(result.current.runs.map((run) => run.node)).toEqual(['write']))
+})
+
+it('routes the short story progress event to its own field, not the batch counter', async () => {
+  // 短篇整篇是一次分钟级调用，中途不落 agent_runs——这条事件是环形进度条唯一的实时来源。
+  // 必须落在 shortProgress 上：混进 progress 会让右栏显示成「批次 0/20000」。
+  vi.mocked(api.getTask).mockResolvedValue({
+    task_id: 'short-task', task_type: 'short_generate', status: 'running',
+    payload: {}, error: null, retry_count: 0, trace_id: null, chapter_seq: null,
+    batch_task_id: null, created_at: null, cost_total: 0, runs: [],
+  })
+  vi.mocked(openSSE).mockImplementation(async (_url, onEvent, opts) => {
+    onEvent({
+      type: 'progress', task_id: 'short-task', node: '', status: '', message: '',
+      stage: 'short_write', chapter_seq: 0, attempt: 0, offset: 0, done: 4400, total: 20000,
+      artifact_id: '', content: '', artifact: '',
+    })
+    return new Promise((resolve) => {
+      opts?.signal?.addEventListener('abort', () => resolve({ reason: 'aborted' }), { once: true })
+    })
+  })
+
+  const { result } = renderHook(() => useTaskEvents('short-task'))
+
+  await waitFor(() => expect(result.current.shortProgress).not.toBeNull())
+  expect(result.current.shortProgress).toEqual({
+    stage: 'short_write', current: 4400, total: 20000,
+  })
+  expect(result.current.progress).toBeNull()
 })
 
 it('keeps reconnecting when the stream expired but the task is still running', async () => {

@@ -96,6 +96,47 @@ export function liveStageNode(
   return null
 }
 
+/**
+ * 短篇四步在环形进度上的位置。权重不等：成稿是整篇一次写，占大头；审稿是小调用；
+ * 改稿只在审稿要求时才发生。补写常常根本不跑（成稿没缺章就跳过），跳过就不进这张表——
+ * 前端只认后端报的阶段名，不按「上一步完了该轮到谁」推。阶段名本身走 `nodeLabel`，
+ * 这里不另立一套说法。
+ */
+const SHORT_STAGES: Record<string, { from: number; to: number }> = {
+  short_write: { from: 0, to: 70 },
+  short_continue: { from: 70, to: 80 },
+  short_review: { from: 80, to: 92 },
+  short_revise: { from: 92, to: 100 },
+}
+
+export interface ShortStageProgress {
+  /** 0–1，直接喂 RingProgress。 */
+  value: number
+  /** 此刻在哪一步（`nodeLabel` 可直接渲染）。 */
+  stage: string
+  /** 这一步没有字数可报（审稿/补写）：环只转，不指刻度。 */
+  indeterminate: boolean
+}
+
+/**
+ * 短篇的实时阶段进度（`short_runner._Progress` 那条 event=progress）。
+ *
+ * 每一步开始都会报一条，成稿/改稿随后按累计字数续报。没有字数的那几步停在阶段起点——
+ * 刻度会停，但阶段名是对的，环在转，用户看得出是在审稿而不是卡死。
+ */
+export function shortStageProgress(
+  state: { stage: string; current: number; total: number } | null | undefined,
+): ShortStageProgress | null {
+  const stage = state ? SHORT_STAGES[state.stage] : undefined
+  if (!state || !stage) return null
+  const ratio = state.total > 0 ? Math.min(state.current / state.total, 1) : 0
+  return {
+    value: (stage.from + (stage.to - stage.from) * ratio) / 100,
+    stage: state.stage,
+    indeterminate: state.total <= 0,
+  }
+}
+
 function deriveHistoricalRoute(run: AgentRun, next: AgentRun | undefined, status: TaskStatus | null): string | null {
   if (next?.node === 'persist' || next?.node === 'summarize') return 'persist'
   if (next?.node === 'revise') return 'revise'

@@ -65,6 +65,10 @@ export interface SSEEvent {
   chapter_seq: number
   attempt: number
   offset: number
+  /** 短篇的阶段进度（event=progress）：已写字数 / 目标字数。审稿/补写这两步只报阶段名，
+   *  两个数都是 0；其余帧也恒为 0。 */
+  done: number
+  total: number
   artifact_id: string
   content: string
   artifact: string
@@ -84,6 +88,8 @@ export function parseData(data: string): SSEEvent | null {
       chapter_seq: typeof obj.chapter_seq === 'number' ? obj.chapter_seq : 0,
       attempt: typeof obj.attempt === 'number' ? obj.attempt : 0,
       offset: typeof obj.offset === 'number' ? obj.offset : 0,
+      done: typeof obj.done === 'number' ? obj.done : 0,
+      total: typeof obj.total === 'number' ? obj.total : 0,
       artifact_id: obj.artifact_id ?? '',
       content: obj.content ?? '',
       artifact: obj.artifact ?? '',
