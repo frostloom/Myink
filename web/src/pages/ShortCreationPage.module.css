@@ -55,10 +55,9 @@
   font-size: var(--text-small);
 }
 
-/* 页头右侧：会话选择器 + 新建 / 删除。三者是一体的，不给在组内拆行——`.headActions` 自己
-   一 `wrap`，它的固有宽度就只剩「剩下的地方」，选择器和按钮会被劈成两行。
-   按钮文字也不许折行：折行会让它的固有宽度缩到「新建 / 会话」两行那么窄，
-   组宽跟着虚低，选择器又被挤回去。挤不下时该让选择器去截断（它本就是显示名）。 */
+/* 页头右侧：历史 / 新建 / 删除。三者是一体的，不给在组内拆行——`.headActions` 自己
+   一 `wrap`，它的固有宽度就只剩「剩下的地方」，按钮会被劈成两行。
+   按钮文字也不许折行：折行会让它的固有宽度缩到「新建 / 会话」两行那么窄，组宽跟着虚低。 */
 .headActions {
   display: flex;
   align-items: center;
@@ -72,11 +71,61 @@
   white-space: nowrap;
 }
 
-/* 选择器宽度随标题长短伸缩，给个上限免得把整行撑开（同 .input 的框高与字体沿用）。 */
-.picker {
-  width: auto;
-  max-width: min(220px, 40vw);
-  min-width: 0;
+.caret {
+  margin-left: 6px;
+  font-size: 0.8em;
+  color: var(--ink-subtle);
+}
+
+/* 历史会话：收在页头那个折叠按钮里，展开后压在聊天区上方。列表自己滚，不把输入条顶下去，
+   再长也只在 220px 内——它是翻旧账的，不该跟正在聊的这段抢高度。 */
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 10px 0;
+  max-height: 220px;
+  overflow-y: auto;
+  list-style: none;
+  border-bottom: 1px solid var(--line);
+}
+
+.historyItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.historyItem:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+/* 正在看的这条：加底色 + 加粗，两种通道，不只靠颜色区分。 */
+.historyItem[aria-current='true'] {
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+.historyItem:disabled {
+  color: var(--ink-subtle);
+  cursor: default;
+}
+
+.historyTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .stream {
@@ -377,7 +426,7 @@
   .composerFoot {
     gap: 8px;
   }
-  /* 手机宽度下这一行真的不够（选择器 40vw + 两个按钮 ≈ 350px，390 视口只剩 6px 余量），
+  /* 手机宽度下这一行真的不够（历史 / 新建 / 删除三个按钮 ≈ 300px，390 视口所剩不多），
      整组独占一行，再窄就允许组内拆行——总比横向溢出强。 */
   .headActions {
     width: 100%;

@@ -40,7 +40,7 @@ _STUB_TURN_BLANK_TITLE = ('{"reply": "环境先放一放，主角的压力是什
 # ---- 端点小 helper：把多出来的会话前缀收在这一层 ----
 
 def _open(user: str) -> str:
-    """走一遍页面加载那条路（最近的一条，没有就新建），返回当前会话 id。"""
+    """走一遍页面加载那条路（最近一条**还没开写**的，没有就新建），返回当前会话 id。"""
     out = client.get("/api/v1/short/creation", headers=identity_headers(user)).json()
     return out["session"]["id"]
 
@@ -629,6 +629,35 @@ def test_another_conversation_can_still_be_committed_after_the_first_one(temp_us
         rows = db.scalars(select(ShortCreationSession)
                           .where(ShortCreationSession.id.in_([uuid.UUID(first), uuid.UUID(second)]))).all()
     assert {row.status for row in rows} == {"committed"}
+
+
+def test_reopening_the_page_lands_on_a_fresh_conversation_once_one_is_writing(temp_user, chain_stub):
+    """开写过的那条不再抢落点：重进建书页自动落到新会话。
+
+    一条会话只服务一本书，开写它就等于用完了，下次进页面自然要新开一条。旧会话不是被
+    删了，是降级成了历史：列表里还在，手动点还能翻回去看。
+    """
+    chain_stub([_PLAN_JSON])
+    written = _seed_session(temp_user)
+    assert _commit(temp_user, written).status_code == 200
+
+    out = client.get("/api/v1/short/creation", headers=identity_headers(temp_user)).json()
+    assert out["session"]["id"] != written
+    assert out["session"]["status"] == "active"
+    # 历史列表里两条都在，开写过的那条标着 committed 并挂着它建出来的书
+    listed = {s["id"]: s for s in out["sessions"]}
+    assert set(listed) == {written, out["session"]["id"]}
+    assert listed[written]["status"] == "committed"
+    assert listed[written]["book_id"] is not None
+    assert _showing(temp_user, written)["session"]["id"] == written
+
+
+def test_the_fresh_landing_is_reused_until_it_is_written(temp_user, chain_stub):
+    """连按两次刷新不该堆出一串空会话：第二次落到的还是第一次开的那条。"""
+    chain_stub([_PLAN_JSON])
+    written = _seed_session(temp_user)
+    _commit(temp_user, written)
+    assert _open(temp_user) == _open(temp_user)
 
 
 def test_commit_retry_after_a_plan_failure_reuses_the_same_book(temp_user, chain_stub, monkeypatch):

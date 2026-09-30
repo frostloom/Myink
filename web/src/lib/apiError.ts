@@ -38,7 +38,7 @@ const ERROR_CODES: Record<string, string> = {
   INVITATION_CODE_TAKEN: '该邀请码已被占用，请换一个',
   AUTH_SECRET_NOT_CONFIGURED: '认证服务尚未安全配置，请联系本机管理员设置 JWT_SECRET 后重启服务',
   PLAN_VERSION_CONFLICT: '章节计划已被更新，请刷新后再试',
-  SESSION_COMMITTED: '这段建书对话已经开写过了，请点「重新开始」另起一篇',
+  SESSION_COMMITTED: '这段建书对话已经开写过了，点「新建会话」另起一篇',
   SESSION_BUSY: '建书操作正在处理，请稍候再试',
   CREATION_CAPACITY_EXCEEDED: '建书服务正忙，请稍候再试',
   ACCOUNT_MODEL_BUSY: '账号已有模型请求正在处理，请稍候再试',

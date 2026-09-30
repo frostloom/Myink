@@ -95,6 +95,8 @@ export default function ShortCreationPage() {
   const operationRef = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [cardOpen, setCardOpen] = useState(false)
+  // 会话列表退居「历史」：落点是自动的（重进页面必落在那条还没开写的上），列表只是翻旧账用。
+  const [historyOpen, setHistoryOpen] = useState(false)
   const stream = useRef<HTMLDivElement>(null)
   const composer = useRef<HTMLTextAreaElement>(null)
   const cardBody = useRef<HTMLDivElement>(null)
@@ -256,6 +258,12 @@ export default function ShortCreationPage() {
     }, '打不开这条会话，请重试')
   }
 
+  /** 从历史列表里翻一条旧会话：翻完就把列表收起来，界面回到聊天本身。 */
+  const openFromHistory = (sessionId: string) => {
+    setHistoryOpen(false)
+    switchTo(sessionId)
+  }
+
   /** 删掉的只是这段对话：已经写成的作品不受影响，只有当日那张没写下去的草稿书一并带走。 */
   const removeSession = () => {
     if (!data) return
@@ -298,15 +306,11 @@ export default function ShortCreationPage() {
               </p>
             </div>
             <div className={styles.headActions}>
-              <select className={`input ${styles.picker}`} aria-label="建书会话"
-                      value={data.session.id} disabled={busy}
-                      onChange={(event) => switchTo(event.target.value)}>
-                {data.sessions.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.title}{s.status === 'committed' ? '（已开写）' : ''}
-                  </option>
-                ))}
-              </select>
+              <button type="button" className="btn btn-quiet" aria-expanded={historyOpen}
+                      onClick={() => setHistoryOpen((open) => !open)}>
+                历史会话
+                <span className={styles.caret} aria-hidden="true">{historyOpen ? '▾' : '▸'}</span>
+              </button>
               <button type="button" className="btn btn-quiet" onClick={createSession} disabled={busy}>
                 {operation === 'create' ? '正在新建…' : '新建会话'}
               </button>
@@ -315,6 +319,22 @@ export default function ShortCreationPage() {
               </button>
             </div>
           </header>
+
+          {/* 历史不是主控件：落点由后端自动决定（还没开写的那条），这里只负责翻旧账。 */}
+          {historyOpen && (
+            <ul className={styles.history} aria-label="历史会话">
+              {data.sessions.map((item) => (
+                <li key={item.id}>
+                  <button type="button" className={styles.historyItem} disabled={busy}
+                          aria-current={item.id === data.session.id ? 'true' : undefined}
+                          onClick={() => openFromHistory(item.id)}>
+                    <span className={styles.historyTitle}>{item.title}</span>
+                    {item.status === 'committed' && <span className="badge">已开写</span>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
 
           <div className={styles.stream} ref={stream} aria-label="建书对话">
             {data.messages.map((message) => (

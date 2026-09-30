@@ -6,6 +6,10 @@
 **会话是多条的**：一个短篇聊一条，聊废了就另起一条，旧的原样留着能翻回去看。所以读写一律
 带 session_id，不再有「本人唯一的那条会话」。`status` 仍只有 active / committed 两种——
 已开写的那条不必删，它自己会成为列表里的一条历史。
+
+**落点是自动的**：进建书页落在那条还没开写的会话上，一条都没有就新开一条；已开写的自动
+让位（`_latest_active`）。这是会话本意的直接推论——一条会话只服务一本书，开写它就等于用完了，
+留着它抢落点只会让人一进页面就撞上 409。
 """
 
 from __future__ import annotations
@@ -69,10 +73,14 @@ def _session_user(session_id: uuid.UUID,
     yield from _advisory_lock(user_id, f"short-creation:{user_id}:{session_id}")
 
 
-def _latest(db, uid: uuid.UUID) -> ShortCreationSession | None:
-    """最近动过的那条会话（列表与它的排序口径一致）。"""
+def _latest_active(db, uid: uuid.UUID) -> ShortCreationSession | None:
+    """最近动过的、还没开写的那条会话；都开写过了就返回 None，由调用方另起一条。
+
+    排序口径与 `_summaries` 一致，差的只是那个 status 条件。
+    """
     return db.scalar(select(ShortCreationSession)
-                     .where(ShortCreationSession.user_id == uid)
+                     .where(ShortCreationSession.user_id == uid,
+                            ShortCreationSession.status == "active")
                      .order_by(ShortCreationSession.updated_at.desc(),
                                ShortCreationSession.id.desc())
                      .limit(1))
@@ -154,14 +162,18 @@ def _payload(db, session: ShortCreationSession, uid: uuid.UUID) -> dict:
 
 @router.get("", response_model=ShortCreationOut)
 def get_session(user_id: str = Depends(require_user)) -> dict:
-    """回到建书页：打开最近聊过的那条；一条都没有就先开一条。
+    """回到建书页：自动落到最近那条**还没开写**的会话；没有就开一条。
+
+    已开写的会话不再抢落点。它已经不是「一段正在聊的建书对话」而是一本书了，继续往里
+    聊也没用（POST 消息会 409 SESSION_COMMITTED）。它仍在 sessions 列表里，要回看就手动点。
+    规则与建书会话的本意一致：一条会话只服务一本书，开写它就等于用完了——见模块 docstring。
 
     刻意不加锁：这是页面加载路径，两个标签页同时进页面各建一条空会话只是碍眼，而在这里
     加锁会让「另一个标签页正在生成」把当前页面的首次加载打成 409——代价比收益大得多。
     """
     uid = uuid.UUID(user_id)
     with new_session() as db:
-        session = _latest(db, uid) or _new_session(db, uid)
+        session = _latest_active(db, uid) or _new_session(db, uid)
         db.commit()
         return _payload(db, session, uid)
 
