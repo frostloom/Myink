@@ -58,18 +58,30 @@
 | `web/src/lib/apiError.test.ts` | 同步断言 |
 | `docker-compose.yml` | worker 去掉 `container_name`、改 `deploy.replicas: 2`（见 §2.9） |
 
-### 1.2 运维与硬化一批 —— ⏳ 本地已验证，**未提交、未部署**（2026-09-30 晚）
+### 1.2 运维与硬化一批 —— ✅ 2026-10-01 已提交并部署
 
 关掉了 §2.1 / §2.3 / §2.4 / §2.6 / §2.7 五条，外加一轮「去痕」（仓库里不再出现参照对象的名字，
 只剩 NOTICE.md / README.md / .gitignore / .dockerignore 里 AGPL 必要的那些）。
+
+分成三笔提交：`0f305dc` 运维与硬化、`70ce4fb` 账号维度限流、`b3c86f7` 去痕。已推送。
+
+部署证据：本地与线上两个镜像 ID 逐字节一致（`c4ba5a8a…` / `581b9feb…`，都带
+`org.opencontainers.image.revision=b3c86f7`）、服务器 compose 与本地 md5 相同、首页 bundle 哈希
+与镜像里的产物一致、`/readyz` 回 `ok`、`queue:tasks` 消费者 2 个、migrate 退出码 0、四个长驻
+进程都是 uid 10001、api 进程里 `get_admin_engine().url.username` = `myink_report` 而
+`get_engine()` = `myink_app`、worker 的 `ADMIN_DATABASE_URL` 为空。功能上也验了一条：对不存在的
+账号连打登录，第 11 次开始 429（`AUTH_ACCOUNT_MAX=10`），说明新代码确实在跑。
+
+线上准备按硬顺序做完：先补 `myink_report` 角色（验过读得到 6 用户 / 13 项目、`create table`
+被 `ReadOnlyTransaction` 拒），再 chown 三个命名卷到 10001，最后 `up -d`。**证书没被重签**
+（仍是 9-29 那张 LE IP 证书，10-06 到期），说明 chown 后 caddy 读写自己的 /data 正常。
+
+下面是提交前的本地验证证据与文件清单，留作查证。
 
 验证证据：`1388 passed, 5 xfailed`（在**与生产同一份依赖**的镜像上跑，SQLAlchemy 2.1.1）；
 `myink contract export` 后 `spec/api-openapi.json` 哈希不变（依赖升级没有改变对外契约）；
 开发栈整套 `up -d` 起来后 api/caddy healthy、migrate 退出码 0、三个长驻进程都是 uid 10001；
 备份脚本跑通并**真恢复到临时库**，38 张表行数与 24 条 RLS 策略逐项一致。
-
-上线顺序有硬约束（先建报表角色、先 chown 三个卷，再 `up -d`），步骤见
-[DEPLOY.md](DEPLOY.md) 的「生产运维」。
 
 ---
 
@@ -77,7 +89,7 @@
 
 按「真出事时的后果」排序，不按文档里的原始顺序。
 
-### 2.1 备份没有定时，也没演练过（唯一会真的丢数据）—— ✅ 脚本与恢复演练已做，**cron 还要在服务器上装**
+### 2.1 备份没有定时，也没演练过（唯一会真的丢数据）—— ✅ 脚本 / 演练 / cron 都已做，**只剩离机副本**
 
 `scripts/backup.sh`：一次 `pg_dump` + 轮转保留 14 份，产物写成 `.part` 再改名（半份不会被当成好备份），
 `gzip -t` 校验后才认，`sudo docker` 与 `docker` 自动探测（服务器要 sudo、开发机不要）。
@@ -85,8 +97,12 @@
 已实测：连跑三次、`KEEP=2` 后确实只剩 2 份、不残留 `.part`；**真恢复到临时库**后 38 张表行数与
 24 条 RLS 策略与线上逐项一致（恢复出来的库可直接顶上去，不用重建）。
 
-还差三步（服务器 `~/myink` 没有源码）：把 `backup.sh` / `create-report-role.sh` 拷过去、装 cron
-条目、再拉一份离机副本。命令见 [DEPLOY.md](DEPLOY.md)「备份与恢复」。下面是当时的现状描述。
+2026-10-01 服务器侧完成：`backup.sh` / `create-report-role.sh` 已拷到 `~/myink/`；cron 装好
+（`17 3 * * *`，写入前 crontab 为空、没覆盖任何东西）；上线前手工跑了一次，产物
+`myink-20261001000538.sql.gz` 2.7 MB，`sudo docker` 探测路径也验证到了。
+
+**还差**离机副本：备份和库在同一块盘上，挡不住整机故障。去向未定（拉本机 / 阿里云 OSS / 其他），
+定了之后在 `backup.sh` 后面接一步即可。下面是当时的现状描述。
 
 服务器 `~/myink/backups/` 里只有**一个**文件：`prod-before-zlx-migrate-20260929180025.sql.gz`，13 KB，2026-09-29 手工跑的迁移前备份。**没有定时任务**——`crontab -l` 只有腾讯云自己的 agent。
 
