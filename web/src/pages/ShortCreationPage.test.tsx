@@ -29,7 +29,7 @@ const session: ShortCreationPayload['session'] = {
 }
 
 // 覆盖项按需给：session 只给要改的字段（卡片就是这么在用例里补出来的）。
-// 会话列表默认跟着当前会话走——选择器是受控的，列表里没有当前 id 它就会显示空。
+// 会话列表默认跟着当前会话走，好让「当前这条」在历史里能被认出来。
 function payload(over: {
   session?: Partial<ShortCreationPayload['session']>
   messages?: ShortCreationPayload['messages']
@@ -67,6 +67,14 @@ function renderPage() {
 async function openCard() {
   fireEvent.click(await screen.findByRole('button', { name: '开始建书' }))
   return await screen.findByLabelText('暂定名')
+}
+
+/** 展开页头的「历史会话」，等它列出 `count` 条，返回那排按钮（顺序就是后端给的顺序）。 */
+async function openHistory(count = 1) {
+  fireEvent.click(screen.getByRole('button', { name: '历史会话' }))
+  const list = await screen.findByRole('list', { name: '历史会话' })
+  await waitFor(() => expect(within(list).getAllByRole('button')).toHaveLength(count))
+  return within(list).getAllByRole('button')
 }
 
 beforeEach(() => {
@@ -223,6 +231,25 @@ it('does not offer a confirm once the session is committed', async () => {
   expect(screen.getByRole('link', { name: '这里' }).getAttribute('href')).toBe('/projects/p1')
 })
 
+it('keeps the conversation list tucked away in history, and marks what is already writing', async () => {
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({
+    sessions: [
+      { id: 's1', title: '新的短篇', status: 'active', book_id: null, updated_at: '2026-01-02T00:00:00Z' },
+      { id: 's0', title: '最后一班渡船', status: 'committed', book_id: 'p1', updated_at: '2026-01-01T00:00:00Z' },
+    ],
+  }))
+  renderPage()
+  // 列表默认收着：落点是自动的，它不是页头那个「非选不可」的开关。
+  await screen.findByRole('button', { name: '历史会话' })
+  expect(screen.queryByRole('list', { name: '历史会话' })).toBeNull()
+
+  const items = await openHistory(2)
+  expect(items[0].getAttribute('aria-current')).toBe('true')        // 正在看的这条
+  expect(items[1].getAttribute('aria-current')).toBeNull()
+  expect(items[1].textContent).toContain('最后一班渡船')
+  expect(items[1].textContent).toContain('已开写')
+})
+
 it('starts a second conversation without touching the first one', async () => {
   const first = { id: 's1', title: '最后一班渡船', status: 'active' as const, book_id: null, updated_at: '2026-01-01T00:00:00Z' }
   const second = { id: 's2', title: '新的短篇', status: 'active' as const, book_id: null, updated_at: '2026-01-02T00:00:00Z' }
@@ -233,10 +260,11 @@ it('starts a second conversation without touching the first one', async () => {
   renderPage()
   fireEvent.click(await screen.findByRole('button', { name: '新建会话' }))
   await waitFor(() => expect(shortCreationApi.create).toHaveBeenCalled())
-  // 两条都在列表里：新的那条是当前打开的，旧的原样留着能切回去。
-  await waitFor(() => expect((screen.getByLabelText('建书会话') as HTMLSelectElement).value).toBe('s2'))
-  const options = within(screen.getByLabelText('建书会话')).getAllByRole('option')
-  expect(options.map((o) => o.textContent)).toEqual(['新的短篇', '最后一班渡船'])
+  // 两条都在历史里：新的那条标着「正在看」，旧的原样留着能翻回去。
+  const items = await openHistory(2)
+  expect(items.map((b) => b.textContent)).toEqual(['新的短篇', '最后一班渡船'])
+  expect(items[0].getAttribute('aria-current')).toBe('true')
+  expect(items[1].getAttribute('aria-current')).toBeNull()
 })
 
 it('switches back to an earlier conversation and shows its own transcript', async () => {
@@ -253,7 +281,8 @@ it('switches back to an earlier conversation and shows its own transcript', asyn
   renderPage()
   expect(await screen.findByText('这条是最新的')).toBeTruthy()
 
-  fireEvent.change(screen.getByLabelText('建书会话'), { target: { value: 's0' } })
+  const items = await openHistory(2)
+  fireEvent.click(items.find((b) => b.textContent === '渡口旧稿') as HTMLElement)
   await waitFor(() => expect(shortCreationApi.openSession).toHaveBeenCalledWith('t', 's0'))
   // 切过去看到的是那条会话自己的记录，不是上一条的。
   expect(await screen.findByText('早先说过的渡口')).toBeTruthy()
@@ -274,7 +303,10 @@ it('deletes one conversation after confirming, leaving the others alone', async 
     fireEvent.click(await screen.findByRole('button', { name: '删除会话' }))
     await waitFor(() => expect(shortCreationApi.remove).toHaveBeenCalledWith('t', 's1'))
     expect(confirmSpy).toHaveBeenCalled()
-    await waitFor(() => expect((screen.getByLabelText('建书会话') as HTMLSelectElement).value).toBe('s0'))
+    // 删完重新取最近的一条——剩下的是 older，且它就是现在这条。
+    const items = await openHistory(1)
+    expect(items[0].textContent).toBe('渡口旧稿')
+    expect(items[0].getAttribute('aria-current')).toBe('true')
   } finally {
     confirmSpy.mockRestore()
   }

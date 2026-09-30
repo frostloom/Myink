@@ -146,9 +146,17 @@ services:
     logging: *default-logging
 
   # Worker：消费 RabbitMQ 主队列跑 LangGraph（api/worker 共用同一 Python 镜像，仅 command 不同）。
+  # 开两份：prefetch=1 + 单线程消费，一个进程同时只跑一个任务（consumer.py），所以第二个用户
+  # 的书要等到第一个用户的任务跑完才动。多开一个进程，多本书才真正并行。
+  # 多实例是安全的：锁按资源分（lock:task:{id} / lock:book:{pid}），抢不到就是抢不到；
+  # 崩溃重投由 process() 先重查锁与 DB 状态兜住，重复投递不会跑两遍。
+  # 副本数写在这里而不是 `--scale`：--scale 不落盘，下一次 `docker compose up -d` 会缩回一份。
+  # 因此这里也不能有 container_name——它跟副本数互斥，写了就起不了第二个。
+  # 注意内存：EMBED_ENABLED=0 时一份约 110MB，开了本地 embedding 每份要再加约 2GB（bge-m3）。
   myink-worker:
     image: myink-api:local
-    container_name: myink-worker
+    deploy:
+      replicas: 2
     env_file: .env
     environment:
       APP_ENV: ${APP_ENV:-dev}
