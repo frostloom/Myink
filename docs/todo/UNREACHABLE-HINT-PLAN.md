@@ -1,5 +1,7 @@
 # 不可达提示施工单：把「连不上」和「被拒绝」分开，并给一句可操作的出路
 
+> **状态：未做。** 本文是施工单，开工前有「第十四节」三个问题待拍板。
+
 目标：当用户配置的模型服务（或 MCP 服务）因为**本部署所在网络**而不可达时，给他一句说清
 原因的提示，并指向可自行部署的仓库地址；同时**不再把"密钥错""模型名错"也混进这句话里**。
 
@@ -11,7 +13,7 @@
 
 ### 1.1 探针这条路——二分结构**已经在**，只是文案没分层
 
-[`probe.py:114-117`](../src/myink/providers/probe.py#L114-L117)：
+[`probe.py:114-117`](../../src/myink/providers/probe.py#L114-L117)：
 
 ```python
 except httpx.HTTPStatusError as exc:          # 上游回了非 2xx
@@ -20,9 +22,9 @@ except Exception as exc:                      # 压根没拿到响应
     return False, ..., _error_text(exc, api_key)
 ```
 
-- 第一支 `_status_error`（[:47](../src/myink/providers/probe.py#L47)）**会把上游 body 带出来**
+- 第一支 `_status_error`（[:47](../../src/myink/providers/probe.py#L47)）**会把上游 body 带出来**
   ——"模型不存在 / 鉴权方式不对 / 额度用尽"都能看到。**这条已经做得很好，本次不动它。**
-- 第二支 `_error_text`（[:43](../src/myink/providers/probe.py#L43)）**只有异常原文**：
+- 第二支 `_error_text`（[:43](../../src/myink/providers/probe.py#L43)）**只有异常原文**：
 
   ```python
   return _sanitize(str(exc) or exc.__class__.__name__, api_key)
@@ -30,12 +32,12 @@ except Exception as exc:                      # 压根没拿到响应
 
   这就是要改的地方。而**连接层失败恰恰是大陆网络环境下最常见的一类**，却最不好懂。
 
-`list_models`（[:70-84](../src/myink/providers/probe.py#L70-L84)）是同样的两分支结构，同样要改。
+`list_models`（[:70-84](../../src/myink/providers/probe.py#L70-L84)）是同样的两分支结构，同样要改。
 
 ### 1.2 生成期这条路——**完全另一条**，而且问题比文案严重得多
 
 用户不是在"点测试"时才用模型，**真正跑起来失败**发生在
-[`deepseek.py:180-185`](../src/myink/providers/deepseek.py#L180-L185)：
+[`deepseek.py:180-185`](../../src/myink/providers/deepseek.py#L180-L185)：
 
 ```python
 except Exception as exc:
@@ -50,19 +52,19 @@ return ModelResponse(content="", model_id=model_id, error=last_error, ...)
 
 1. **它不抛异常**，返回 `ModelResponse(error=<异常原文>)`。
 2. 常量是 `MAX_RETRIES = 3`、`BACKOFF_BASE = [1.0, 2.0, 4.0]`、`timeout=120.0`
-   （[:28-29](../src/myink/providers/deepseek.py#L28-L29)、[:83](../src/myink/providers/deepseek.py#L83)）。
+   （[:28-29](../../src/myink/providers/deepseek.py#L28-L29)、[:83](../../src/myink/providers/deepseek.py#L83)）。
    面对一个**不可达**的主机，最坏耗时 = 4 次 × 120s 超时 + (1+2+4)s 退避 ≈ **487 秒，超过 8 分钟**。
    `ConnectTimeout` 每次都会实实在在地等满 120 秒。
 3. **对连接层失败重试三次毫无意义**——主机不可达不会因为等 1 秒就可达。这 8 分钟是纯浪费。
 
 `resp.error` 随后被 **10 处以上**当字符串消费，链路完全一致：
-[`book_setup.py:35-36`](../src/myink/book_setup.py#L35-L36)、
-[`style_extract.py:115-116`](../src/myink/style_extract.py#L115-L116)、
-[`batch_graph.py:150-151`](../src/myink/workflow/batch_graph.py#L150-L151)、
-[`nodes.py:193`](../src/myink/workflow/nodes.py#L193) …
+[`book_setup.py:35-36`](../../src/myink/book_setup.py#L35-L36)、
+[`style_extract.py:115-116`](../../src/myink/style_extract.py#L115-L116)、
+[`batch_graph.py:150-151`](../../src/myink/workflow/batch_graph.py#L150-L151)、
+[`nodes.py:193`](../../src/myink/workflow/nodes.py#L193) …
 
 **这带来一个好消息**：`last_error = str(exc)` 是**所有生成期模型错误的唯一漏斗**（流式版本在
-[:307-313](../src/myink/providers/deepseek.py#L307-L313) 同形）。在这一处做分类，
+[:307-313](../../src/myink/providers/deepseek.py#L307-L313) 同形）。在这一处做分类，
 **下游十几处调用点一行都不用改**。
 
 ### 1.3 分类边界已经被 httpx 定义好了——实测确认
@@ -102,7 +104,7 @@ TransportError                                    ← 「没拿到合法 HTTP �
 ### 1.5 MCP 那条路——现在**检测不出来**（本次不做，见附录）
 
 mcp SDK 把所有协议层失败折叠成 `CancelledError`，`_fetch_remote`
-（[`rankings.py:224-228`](../src/myink/integrations/rankings.py#L224-L228)）只能报一句
+（[`rankings.py:224-228`](../../src/myink/integrations/rankings.py#L224-L228)）只能报一句
 "扫榜请求被取消"，**分不出"端点根本不存在（405 静态站）"和"网络抖动"**。
 要让它也走这套提示，得先在 `McpClient` 层把底层异常捞出来——那是独立的一块工作。
 
@@ -141,7 +143,7 @@ mcp SDK 把所有协议层失败折叠成 `CancelledError`，`_fetch_remote`
 """provider 错误分类：把「本部署连不上」和「上游拒绝了你」分开。
 
 判据用 httpx.TransportError —— 它精确等于「请求没拿到合法 HTTP 响应」，
-涵盖 DNS/TLS/连接/读超时/代理/协议错误（见 docs/UNREACHABLE-HINT-PLAN.md §1.3 实测）。
+涵盖 DNS/TLS/连接/读超时/代理/协议错误（见 docs/todo/UNREACHABLE-HINT-PLAN.md §1.3 实测）。
 上游回非 2xx 不算（那是 HTTPStatusError，自带可诊断的 body）。
 """
 
@@ -171,7 +173,7 @@ def unreachable_hint() -> str:
 
 ## 五、Phase 2 · 探针接上
 
-改 [`probe.py`](../src/myink/providers/probe.py) 两处（`test_connection` 的 :116-117、
+改 [`probe.py`](../../src/myink/providers/probe.py) 两处（`test_connection` 的 :116-117、
 `list_models` 的 :80-81），把 `_error_text` 换成：
 
 ```python
@@ -181,7 +183,7 @@ def _error_text(exc: Exception, api_key: str) -> str:
     return _sanitize(str(exc) or exc.__class__.__name__, api_key)
 ```
 
-**注意 `_MAX_ERROR_CHARS = 300`（[:18](../src/myink/providers/probe.py#L18)）**：
+**注意 `_MAX_ERROR_CHARS = 300`（[:18](../../src/myink/providers/probe.py#L18)）**：
 "本部署所在网络无法访问该服务（连接失败：ConnectTimeout）。可在你可控的网络中自行部署后使用：
 https://github.com/zlx05/Myink" 约 80-90 字，**放得下**，不用改 cap。但如果将来 URL 变长要留意。
 
@@ -191,7 +193,7 @@ https://github.com/zlx05/Myink" 约 80-90 字，**放得下**，不用改 cap。
 
 ## 六、Phase 3 · 生成期接上（单点改动）
 
-改 [`deepseek.py`](../src/myink/providers/deepseek.py) 的两处 `last_error = str(exc)`
+改 [`deepseek.py`](../../src/myink/providers/deepseek.py) 的两处 `last_error = str(exc)`
 （:181 非流式、:308 附近流式）为：
 
 ```python
@@ -209,8 +211,8 @@ last_error = unreachable_hint() if is_unreachable(exc) else str(exc)
 
 几乎不用动：
 
-- 模型连接的探针错误已经渲染在 [`EnvironmentPage.tsx:437-444`](../web/src/pages/EnvironmentPage.tsx#L437-L444)
-  的 `connMsg` 里；扫榜的在 [:528-530](../web/src/pages/EnvironmentPage.tsx#L528-L530) 的 `rankProbe.text` 里。
+- 模型连接的探针错误已经渲染在 [`EnvironmentPage.tsx:437-444`](../../web/src/pages/EnvironmentPage.tsx#L437-L444)
+  的 `connMsg` 里；扫榜的在 [:528-530](../../web/src/pages/EnvironmentPage.tsx#L528-L530) 的 `rankProbe.text` 里。
   **字符串换了，UI 自动跟上。**
 - **唯一要检查的**：`styles.saveMsg` / `probeStatus` 的容器**会不会把长文本挤爆或截断**
   （现在错误文案通常很短，加上自部署指引后会变长）。要真起前端看一眼——不许凭想象判定。
@@ -220,7 +222,7 @@ last_error = unreachable_hint() if is_unreachable(exc) else str(exc)
 
 ## 八、Phase 5 · 连接层失败不重试（**需你定，可独立跳过**）
 
-现在 [`deepseek.py:183`](../src/myink/providers/deepseek.py#L183) 对**所有**异常一视同仁地退避重试。
+现在 [`deepseek.py:183`](../../src/myink/providers/deepseek.py#L183) 对**所有**异常一视同仁地退避重试。
 对 `ConnectError` / `ConnectTimeout` 这类，重试是纯浪费——最坏 8 分钟（§1.2）。
 
 改法是循环体内提前跳出：
@@ -249,9 +251,9 @@ except Exception as exc:
 
 | 位置 | 改动 |
 |---|---|
-| [config.py](../src/myink/config.py) rankings 段附近 | 加 `self_host_url: str = field(default_factory=lambda: _env("SELF_HOST_URL", "") or "")` |
-| [.env](../.env) | 加 `SELF_HOST_URL=https://github.com/zlx05/Myink`（**部署在 ECS 时**） |
-| [.env.example](../.env.example) | 加上键 + 注释说明"本地部署留空即不显示自部署指引" |
+| [config.py](../../src/myink/config.py) rankings 段附近 | 加 `self_host_url: str = field(default_factory=lambda: _env("SELF_HOST_URL", "") or "")` |
+| [.env](../../.env) | 加 `SELF_HOST_URL=https://github.com/zlx05/Myink`（**部署在 ECS 时**） |
+| [.env.example](../../.env.example) | 加上键 + 注释说明"本地部署留空即不显示自部署指引" |
 | 本地开发 | `.env` 里留空 |
 
 **仓库地址现状（已核实）**：`https://github.com/zlx05/Myink`，**public**。
@@ -265,8 +267,8 @@ except Exception as exc:
 
 ## 十、测试
 
-现有：[`tests/test_model_probe.py`](../tests/test_model_probe.py)、
-[`tests/test_environment_routes.py`](../tests/test_environment_routes.py)。
+现有：[`tests/test_model_probe.py`](../../tests/test_model_probe.py)、
+[`tests/test_environment_routes.py`](../../tests/test_environment_routes.py)。
 
 **新增（对 `errors.py`，纯函数，最好测）**：
 
@@ -278,7 +280,7 @@ except Exception as exc:
    非空 → 含 URL。用 `monkeypatch` 改 settings。
 3. `_error_text` 分层：喂一个 `ConnectError` → 得到提示文案；喂一个普通 `ValueError` → 得到原文
    （**保证非连接类失败不被改写**）。
-4. **脱敏不回归**：密钥出现在异常文本里时仍被 `***` 替换（`_sanitize`，[:37-40](../src/myink/providers/probe.py#L37-L40)）。
+4. **脱敏不回归**：密钥出现在异常文本里时仍被 `***` 替换（`_sanitize`，[:37-40](../../src/myink/providers/probe.py#L37-L40)）。
 
 **新增（对生成期）**：
 
@@ -342,7 +344,7 @@ Phase 1-3 是一个原子批次；Phase 5 单独一笔提交，便于回滚。
    见 §八——收益是 8 分钟 → 2 分钟，代价是可能牺牲中转抖动的自愈。
 2. **`SELF_HOST_URL` 要不要真的配上？** 也就是说：ECS 上跑的时候，你想让用户看到
    "可在你可控的网络中自行部署"这句吗？还是只要"本部署所在网络无法访问该服务"这一句诊断就够了？
-   （见 §三——前者在面试场景是加分还是减分，是你的判断。）
+   （见 §三——前者在展示场景是加分还是减分，是你的判断。）
 3. **异常类名带不带？** 建议带短的（`ConnectTimeout`），便于搜索。
 
 ---
@@ -353,10 +355,10 @@ Phase 1-3 是一个原子批次；Phase 5 单独一笔提交，便于回滚。
 
 mcp SDK 把协议层失败统一折叠成 `CancelledError`（上一轮已实测：喂两个完全不同的死 URL，
 拿到的错误**逐字节相同**）。所以 `_fetch_remote` 现在分不出"端点不存在"和"网络抖动"——
-想分类就得先在 [`mcp.py`](../src/myink/integrations/mcp.py) 层把底层异常捞出来，
+想分类就得先在 [`mcp.py`](../../src/myink/integrations/mcp.py) 层把底层异常捞出来，
 可能要给 `McpClient` 包一层异常翻译。
 
-加上扫榜功能本身已搁置（[`docs/RANKINGS-MCP-SWAP-PLAN.md`](RANKINGS-MCP-SWAP-PLAN.md)），
+加上扫榜功能本身已搁置（[`docs/archive/RANKINGS-MCP-SWAP-PLAN.md`](../archive/RANKINGS-MCP-SWAP-PLAN.md)），
 **建议等你想捡起扫榜时和换源一起做**。届时这半可以直接复用本次的 `errors.py`。
 
 ---

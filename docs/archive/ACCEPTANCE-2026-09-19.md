@@ -1,5 +1,7 @@
 # 可读性、建书草稿、邀请注册验收
 
+> **状态：已完成（归档）。** 本文是当时的验收记录，结论不再更新；剩余事项见 [剩余待办](../REMAINING-WORK.md)。
+
 ## 已部署到本机
 
 入口：http://127.0.0.1:8080 。仅回环访问，未开放公网。
@@ -44,7 +46,7 @@ docker compose exec myink-api myink revoke-invite <invitation-id>
 
 ## 仍不具备直接公网上线条件
 
-完整静态排查见 [系统风险报告](superpowers/plans/2026-09-19-system-risk-review.md)。确认但未在本次扩大改造的风险：
+完整静态排查见 [系统风险报告](../superpowers/plans/2026-09-19-system-risk-review.md)。确认但未在本次扩大改造的风险：
 
 1. 用户配置的模型/MCP地址可访问服务器私网，需统一出站访问策略（SSRF边界）。
 2. 部分设定、大纲和探针调用同步执行，不经过worker的配额/并发与成本结算；预算也没有为在途任务预留金额。邀请码不是容量或成本硬上限。
@@ -56,4 +58,4 @@ docker compose exec myink-api myink revoke-invite <invitation-id>
 
 ## 终审闭环
 
-[终审快照](superpowers/plans/2026-09-19-final-review.md) 中两个P1已分别通过ready后非法大纲测试、创建重试/刷新幂等测试修复；两个P2测试缺口已补齐迁移与并发/迟到提案回归。最终全量结果以上表为准。独立系统风险报告列出的公网问题没有被这些通过结果自动消除。
+[终审快照](../superpowers/plans/2026-09-19-final-review.md) 中两个P1已分别通过ready后非法大纲测试、创建重试/刷新幂等测试修复；两个P2测试缺口已补齐迁移与并发/迟到提案回归。最终全量结果以上表为准。独立系统风险报告列出的公网问题没有被这些通过结果自动消除。

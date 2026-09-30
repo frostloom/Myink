@@ -75,7 +75,7 @@ Myink 现在走**严格契约**（Pydantic + `_parse_json` 挡坏数据、坏数
 
 **形态字段**
 
-`Project` 加一列记录管道归属（默认长篇，存量书零影响）。仓库已有幂等补列范式，见 [db.py:201](src/myink/db.py#L201) 的 `users.tier`。
+`Project` 加一列记录管道归属（默认长篇，存量书零影响）。仓库已有幂等补列范式，见 [db.py:201](../src/myink/db.py#L201) 的 `users.tier`。
 
 ## 五、参数
 
@@ -109,7 +109,7 @@ maxTokens = max(12288, ceil(章数 × 每章字数 × 2.2) + 4096)
 
 12 章 × 1000 字 → 30,496 token。
 
-Myink 侧这条路是通的：`MODEL_REGISTRY` 里 `deepseek-v4-flash` / `deepseek-v4-pro` 声明的输出上限是 384,000 token（[base.py:59-62](src/myink/providers/base.py#L59-L62)），而 `_bounded_generate` 只用 `request_token_budget=64000` 卡**输入**（[nodes.py:149-164](src/myink/workflow/nodes.py#L149-L164)），输出由 `max_tokens` 单独管。所以 2–3 万 token 的整篇输出没有制度性障碍。
+Myink 侧这条路是通的：`MODEL_REGISTRY` 里 `deepseek-v4-flash` / `deepseek-v4-pro` 声明的输出上限是 384,000 token（[base.py:59-62](../src/myink/providers/base.py#L59-L62)），而 `_bounded_generate` 只用 `request_token_budget=64000` 卡**输入**（[nodes.py:149-164](../src/myink/workflow/nodes.py#L149-L164)），输出由 `max_tokens` 单独管。所以 2–3 万 token 的整篇输出没有制度性障碍。
 
 但**不加总上限不行**：10 章 × 3000 字 = 3 万字 ≈ 4.3 万 token（Myink 的 1.43 系数）或 7 万（参照片保守的 2.2 系数），超出且后半段质量会塌。而超长单次输出最容易掉的正是审稿 prompt 专门盯的那个问题——**后半段泄气**。
 
@@ -120,7 +120,7 @@ Myink 侧这条路是通的：`MODEL_REGISTRY` 里 `deepseek-v4-flash` / `deepse
 - **输入夹取**：`boundedInteger` 把每章字数夹进 900–1200。
 - **事后观测区间**：`scaleRangeDelta` 以 `REFERENCE_TARGET=2200` 为基准缩放，soft `±300`、hard `±600`。目标 1000 字时 soft 864–1136、hard 728–1272。
 
-Myink 侧建议**复用现有的比值口径**（[service.py:24-25](src/myink/validation/service.py#L24-L25) 的 `_LEN_LOW_RATIO=0.8` / `_LEN_HIGH_RATIO=1.3`），不自造一套新系数；注意参照片的区间比这个更严。区间只记 observation，不阻塞——短篇没有 revise 循环去消化它。
+Myink 侧建议**复用现有的比值口径**（[service.py:24-25](../src/myink/validation/service.py#L24-L25) 的 `_LEN_LOW_RATIO=0.8` / `_LEN_HIGH_RATIO=1.3`），不自造一套新系数；注意参照片的区间比这个更严。区间只记 observation，不阻塞——短篇没有 revise 循环去消化它。
 
 ## 六、落地顺序
 

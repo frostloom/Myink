@@ -1,10 +1,14 @@
 # 公网部署前检查（2026-09-19）
 
+> **状态：已完成（归档；部分结论已过期）。** 未完成项已并入 [剩余待办](../REMAINING-WORK.md)，以那份为准。
+>
+> 已过期的两条：「密钥与基础设施凭据」一节说口令仍是默认值（实测四个口令均为 48 位随机值、Redis 已强制认证）；「当前结论」说本 Compose 不能开放公网（站点已于 2026-09-29 上线）。
+
 ## 当前结论
 
 密码认证与用户数据隔离已实现并完成回归，但**当前 Compose 仅适合本机验收，不能直接开放公网**。本次启动的网页入口为 `http://localhost`（Caddy 边缘层）。Python API 未发布宿主机端口；Caddy 是唯一发布端口的服务，且按设计监听所有网卡的 80/443，本机跑演示时对同局域网可达。以下未完成项不是已实现的安全保证。
 
-网站已实现独立的 `role=user/admin` 与只读管理面板；`tier=normal/vip` 仍只是写作优先级，不是管理权限。管理员功能和本次账号切换验收见 [管理面板说明](ADMIN.md) 与 [管理员验收记录](ADMIN-ACCEPTANCE-2026-09-19.md)。服务器管理员通过 `docker compose exec myink-api myink reset-password <用户名>` 重设密码；不能把 RabbitMQ/数据库管理凭据当成网站登录账号。
+网站已实现独立的 `role=user/admin` 与只读管理面板；`tier=normal/vip` 仍只是写作优先级，不是管理权限。管理员功能和本次账号切换验收见 [管理面板说明](../ADMIN.md) 与 [管理员验收记录](ADMIN-ACCEPTANCE-2026-09-19.md)。服务器管理员通过 `docker compose exec myink-api myink reset-password <用户名>` 重设密码；不能把 RabbitMQ/数据库管理凭据当成网站登录账号。
 
 ## 已有防护
 
