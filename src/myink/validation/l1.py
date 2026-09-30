@@ -9,7 +9,7 @@
 - 伏笔烂尾 / 主线停滞（样例 18/19/23/26/27）
 - 桥段重复向量近邻（样例 14，阴性 32 对照，§8.6）：事件向量近邻 + 呼应词豁免
 - 句式禁令（任何题材）：「不是…」紧跟「是…」（含拆成两句的「不是…。是…」）、连续排比，出现即 critical
-- 正文卫生（对齐 inkos post-write-validator 同类规则）：章节号指称（critical）、作者说教词 / 连续「了」字 / 段落过长（hint）
+- 正文卫生：章节号指称（critical）、作者说教词 / 连续「了」字 / 段落过长（hint）
 
 conflict_key = hash(类型+实体+位置)，跨修订轮稳定（§6.4）。
 """
@@ -51,12 +51,12 @@ _IS_PREFIX = "不只但于就还可总要倒单也便仍更全若虽既光自又
 _NOT_IS = re.compile(rf"(?<!是)不是[^。！？!?\n]{{0,40}}[。！？!?]*\s*(?<![{_IS_PREFIX}])是")
 _SENTENCE_END = re.compile(r"[。！？!?]+")
 
-# 正文卫生四则（对齐 inkos packages/core/src/agents/post-write-validator.ts 的同类硬规则）。
-# 阈值取 inkos 代码的**实际值**：其注释与代码不符处已逐条标注，以代码为准。
+# 正文卫生四则。
+# 阈值取参照实现的**实际值**：其注释与代码不符处已逐条标注，以代码为准。
 _CHAPTER_REF = re.compile(r"第\s*\d+\s*章|[Cc]hapter\s+\d+")
 _SERMON_WORDS = ("显然", "毋庸置疑", "不言而喻", "众所周知", "不难看出")
-_CONSECUTIVE_LE_MIN = 6        # inkos 注释写「3 句以上」，代码实为 >= 6
-_LONG_PARAGRAPH_CHARS = 300    # inkos 注释写「50-250 字为宜」，代码实为 > 300
+_CONSECUTIVE_LE_MIN = 6        # 参照实现的注释写「3 句以上」，代码实为 >= 6
+_LONG_PARAGRAPH_CHARS = 300    # 参照实现的注释写「50-250 字为宜」，代码实为 > 300
 _LONG_PARAGRAPH_MIN = 2        # 需 >= 2 个超长段落才报
 
 # 样例 14/32 阈值：桥段重复（事件向量近邻，§8.6）。跨章最小间隔 10（样例 14 ch5→ch15 恰在边界）；
@@ -418,7 +418,7 @@ class L1Validator:
 
     def prose_hygiene_check(self, session: Session, *, project_id: uuid.UUID,
                             chapter_seq: int, draft: str | None = None) -> list[Finding]:
-        """正文卫生四则（对齐 inkos post-write-validator 的同类规则）。
+        """正文卫生四则。
 
         章节号指称是正确性缺陷（角色不知道自己在第几章）→ critical，触发修订；
         说教词 / 连续「了」字 / 段落过长是文体提示 → hint，只记录不阻塞。

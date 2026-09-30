@@ -1,7 +1,7 @@
 # 扫榜换源：先关闭静默错误，外部前置不满足则暂缓切源
 
 > **2026-09-23 后续：换源已落地，本文的暂缓条件已绕开。** 不再走 MCP 工具发现/参数映射，
-> 改为直连番茄榜单公开接口（`src/myink/integrations/fanqie.py`，接口形状取自 inkos
+> 改为直连番茄榜单公开接口（`src/myink/integrations/fanqie.py`，接口形状取自参照实现
 > `packages/core/src/agents/radar-source.ts`）：无 MCP、无鉴权、无 sidecar，因而不需要上游
 > 许可证确认与 ECS sidecar 部署。`rankings_source` / `rankings_tool` 两个设置项及其死码删除；
 > MCP 客户端（`integrations/mcp.py`）与连通探针保留。以下为当时的决策记录，原文不改。

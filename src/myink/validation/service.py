@@ -112,7 +112,7 @@ class ValidationService:
                                                 candidates=candidates, draft=draft)
         findings += self.l1.prose_ban_check(session, project_id=project_id, chapter_seq=chapter_seq,
                                             draft=draft)
-        # 正文卫生（对齐 inkos post-write-validator）：章节号指称 critical 触发修订，其余三条 hint
+        # 正文卫生：章节号指称 critical 触发修订，其余三条 hint
         findings += self.l1.prose_hygiene_check(session, project_id=project_id,
                                                 chapter_seq=chapter_seq, draft=draft)
         # 阵营敌对（§8.4 L1 第 1 类，样例 2/40）：draft 依赖，service 编排；硬约束 critical 不阻塞生成

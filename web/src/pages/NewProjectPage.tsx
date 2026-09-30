@@ -307,7 +307,7 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
       setSearchParams({ draft: project.id }, { replace: true })
       setSavedTitle(finalTitle)
       void api.listProjects().then(setProjects).catch(() => {})
-      // InkOS 风格一键建书：设定草稿 + 整书大纲草稿并行生成（outline 只读 genre/premise，无需等设定确认）
+      // 一键建书：设定草稿 + 整书大纲草稿并行生成（outline 只读 genre/premise，无需等设定确认）
       const results = await Promise.all([regenerate(project.id, true), generateOutline(project.id, true)])
       setOk(results.every(Boolean)
         ? '作品草稿已保存，设定与整书大纲提案已生成，请编辑并确认。'
@@ -330,7 +330,7 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
       const resp = await api.setupDraft(forPid, premise.trim())
       setSection(splitDraft(resp.draft))
       setDraftError(resp.error)
-      // AI 起名（InkOS --title 可选同款）：书名留空时 Planner 在设定草稿带 title 建议，创建后回写
+      // AI 起名：书名留空时 Planner 在设定草稿带 title 建议，创建后回写
       const aiTitle = typeof resp.draft.title === 'string' ? resp.draft.title.trim() : ''
       if (!title.trim() && aiTitle) {
         setTitle(aiTitle)
@@ -472,7 +472,7 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
     }
   }
 
-  /** 确认全部并进入工作台（InkOS 风格一次落地）：设定未确认先落，再落大纲，再进入 */
+  /** 确认全部并进入工作台（一次落地）：设定未确认先落，再落大纲，再进入 */
   async function confirmAll() {
     if (!pid || !outline || !section || isSectionEmpty(section)) {
       setBanner('请先填写有效的设定与整书大纲')

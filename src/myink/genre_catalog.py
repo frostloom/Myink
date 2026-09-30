@@ -29,7 +29,7 @@ _SLOW_PACKS = frozenset({
     "kesulu", "minguo", "xihuan",
 })
 
-# 建书设定骨架的能力开关（§7.11，参考 inkos 的 genre profile 布尔位）：等级划分不是通用维度，
+# 建书设定骨架的能力开关（§7.11）：等级划分不是通用维度，
 # 都市日常/言情这类题材不该被排一套境界表。三个开关决定骨架里出不出现对应维度，未选题材全关。
 # 判定依据是各题材包自己的 mechanics（资源记账、理智值、票证、官职考据之类都在那儿写着）。
 POWER_SCALING_PACKS = frozenset({          # 有等级/战力阶梯 → realm_order + 人物 realm_cap

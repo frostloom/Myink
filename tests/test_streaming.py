@@ -97,7 +97,7 @@ def test_deepseek_stream_aggregates_text_usage_and_tool_calls():
 
 
 def test_stream_strips_leading_think_and_never_emits_reasoning():
-    """对齐 inkos：起始 think 块与 reasoning_details 都不经 on_delta 进正文。"""
+    """起始 think 块与 reasoning_details 都不经 on_delta 进正文。"""
     provider = DeepSeekProvider(api_key="test-key", base_url="https://invalid.local")
     chunks = [
         SimpleNamespace(

@@ -130,7 +130,7 @@ export default function ShortCreationPage() {
   useEffect(() => {
     if (stream.current) stream.current.scrollTop = stream.current.scrollHeight
   }, [data])
-  // 助手把卡聊回去（或「重新开始」清空）时，敞开着的卡要跟着收起来。
+  // 助手把卡聊回去（或「新建会话」清空）时，敞开着的卡要跟着收起来。
   useEffect(() => { if (!data?.ready) setCardOpen(false) }, [data?.ready])
   // 输入框随内容长高，到上限才内部滚动——不然写长句子只能在一个小格子里挪。
   useEffect(() => {

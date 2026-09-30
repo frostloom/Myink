@@ -916,7 +916,7 @@ _SETUP_RULES = (
 
 
 def book_setup_system(caps: dict | None = None) -> str:
-    """建书设定骨架的系统提示：骨架字段随题材能力开关增减（§7.11，参考 inkos genre profile）。
+    """建书设定骨架的系统提示：骨架字段随题材能力开关增减（§7.11）。
 
     caps 全关（或 None）= 最朴素的骨架：没有等级阶梯、没有资源账本、没有年代考据。
     关掉的维度除了从 schema 里拿掉，还要补一句反口令——模型很容易照惯性把修仙那套填回来。

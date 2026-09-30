@@ -32,7 +32,7 @@ BACKOFF_BASE = [1.0, 2.0, 4.0]
 
 
 def strip_thinking_text(text: str) -> str:
-    """去掉响应开头的完整 think 块（对齐 inkos：正文中间同名标签不动）。"""
+    """去掉响应开头的完整 think 块（正文中间的同名标签不动）。"""
     return strip_leading_think_block(text).strip()
 
 
@@ -134,7 +134,7 @@ class DeepSeekProvider(ModelProvider):
                     extract_openai_text_part(message.content),
                     reasoning=reasoning, json_mode=json_mode,
                 )
-                # inkos：思考与正文分家。JSON 才允许 content 空时借用 reasoning
+                # 思考与正文分家。JSON 才允许 content 空时借用 reasoning
                 #（audit 偶发把 JSON 丢进思考字段）；章节正文永不并入思考。
                 # 工具轮 content 空 + tool_calls 非空是正常情况，不触发空白兜底。
                 if not content.strip() and not getattr(message, "tool_calls", None):

@@ -1,4 +1,4 @@
-"""对齐 inkos think-tag-stripper：只剥响应起始处的完整 think 块。"""
+"""只剥响应起始处的完整 think 块。"""
 
 from myink.providers.think_tag_stripper import (
     LeadingThinkTagStripper,
