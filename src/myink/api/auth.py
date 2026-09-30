@@ -22,7 +22,8 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
-from myink.api.ratelimit import auth_rate_limit
+from myink.api.ratelimit import (account_auth_cleared, account_auth_failed, account_auth_guard,
+                                 auth_rate_limit)
 from myink.api.schemas import AuthResponse, AuthSessionOut, OkOut
 from myink.config import settings
 from myink.db import new_session
@@ -346,6 +347,8 @@ def issue_token(body: _TokenRequest, response: Response) -> dict:
         username = normalize_username(body.username)
     except (TypeError, ValueError, AttributeError):
         raise _invalid_credentials()
+    # 账号维度限流放在验密之前：换 IP（代理池）绕不过这个桶。见 ratelimit.account_auth_guard。
+    account_auth_guard(username)
     with new_session() as db:
         user = db.execute(
             select(User).where(func.lower(func.btrim(User.username)) == username)
@@ -354,8 +357,10 @@ def issue_token(body: _TokenRequest, response: Response) -> dict:
         with _password_capacity():
             password_matches = verify_password(body.password, stored_hash)
         if user is None or not password_matches:
+            account_auth_failed(username)
             raise _invalid_credentials()
         payload = _auth_response(user)
+    account_auth_cleared(username)
     _no_store(response)
     return payload
 
