@@ -18,7 +18,7 @@
 - **后端验证口径**：先 `source .local/env-test.sh`，用 conda `aiink` 的解释器（`$MYINK_PY`）。集成测试需要隔离的 PostgreSQL/Redis/RabbitMQ（`myink-auth-test` 栈）。
 - **前端真类型闸是 `npm run build`（`tsc -b && vite build`），不是 `npx tsc --noEmit`**（后者对着 solution 式 tsconfig 是假绿）。
 - **禁止 `git add .`**：`.superpowers/` 与 `gateway/` 未被 `.gitignore` 覆盖。一律显式路径 stage，提交前核 `git diff --cached --name-status`。
-- **公开侧去痕**：README / docs / 代码注释 / commit message 里不得出现「面试」「interview」，也不得出现参照对象的项目名；参照 `inkos/` 源码时只在本地读，不把它的名字写进仓库。
+- **公开侧去痕**：README / docs / 代码注释 / commit message 里不得出现「面试」「interview」，也不得出现参照对象的项目名；参照其源码时只在本地读取，不把它的名字写进仓库。
 - **后端不新增文件。**
 - 每个任务末尾提交，并按用户授权 `git push` 到 `origin/main`。
 - 短篇形态参数与后端同规：章数 1–10、每章字数 1000–8000、全篇 ≤ 20000 字。

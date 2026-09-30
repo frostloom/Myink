@@ -1,6 +1,6 @@
 # 短篇形态：整篇一次成稿
 
-2026-09-21。为 Myink 增加短篇形态的决策记录。参照实现是 [Narcooo/inkos](https://github.com/Narcooo/inkos) 的短篇管道（`packages/core/src/pipeline/short-fiction-runner.ts`、`agents/short-fiction.ts`、`prompts/short-fiction.ts`）。
+2026-09-21。为 Myink 增加短篇形态的决策记录。参照实现的短篇管道有三个文件：`pipeline/short-fiction-runner.ts`、`agents/short-fiction.ts`、`prompts/short-fiction.ts`。
 
 本文是**决策文档**：设计逻辑与分界不随代码演进失效；行号只作检索锚点。
 

@@ -63,7 +63,7 @@ def test_write_path_does_not_use_reasoning_as_chapter():
     )
     assert resp.error is not None
     assert "思考过程" in resp.error
-    # 思考开着也不把 reasoning 当章节（inkos：只拆字段，不并入正文）
+    # 思考开着也不把 reasoning 当章节（只拆字段，不并入正文）
     resp_on = p.generate(
         [{"role": "user", "content": "x"}], model_id="deepseek-flash",
         disable_thinking=False, json_mode=False,

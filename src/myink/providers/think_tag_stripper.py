@@ -1,4 +1,4 @@
-"""剥离响应起始处的完整 think 块（对齐 inkos issue #329）。
+"""剥离响应起始处的完整 think 块。
 
 部分 OpenAI 兼容服务（MiniMax M2.x、经网关代理的 DeepSeek-R1 类模型）会把
 思考内容以 <think> 标签内联在 content 开头。这里只剥「起始处的完整 think 块」：
@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 
-# 常见围栏。inkos 主路径是 <think>；另兼容 thinking / reasoning / MiniMax mm:think。
+# 常见围栏。主路径是 <think>；另兼容 thinking / reasoning / MiniMax mm:think。
 _TAG_PAIRS: tuple[tuple[str, str], ...] = (
     ("<think>", "</think>"),
     ("<thinking>", "</thinking>"),
@@ -87,7 +87,7 @@ def strip_leading_think_block(text: str) -> str:
 
 
 def isolate_response_body(content: str, *, reasoning: str = "", json_mode: bool = False) -> str:
-    """inkos 规则：正文只用 content；思考字段永不并入章节。
+    """正文只用 content；思考字段永不并入章节。
 
     JSON 结构化输出在 content 全空时才借用 reasoning（audit 偶发把 JSON 放进思考字段），
     且仍先剥开头 think 块。纯文本正文即使思考开着也不用 reasoning。

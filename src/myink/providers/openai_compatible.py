@@ -42,7 +42,7 @@ class OpenAICompatibleProvider(DeepSeekProvider):
         if self._keep_thinking_param:
             return kwargs
         extra: dict = {}
-        # inkos #329：能关的模型另说；关不掉或网关会内联 <think> 的，先拆到
+        # 能关思考的模型另说；关不掉或网关会内联 <think> 的，先拆到
         # reasoning_content / reasoning_details，正文只走 content。
         extra["reasoning_split"] = True
         if self._minimax and disable_thinking and _MINIMAX_M3.match(model_id):
