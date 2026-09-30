@@ -32,8 +32,9 @@ _engine: Engine = create_engine(
     pool_pre_ping=True,  # 回收失效连接
 )
 
-# 管理连接：DDL，以及 require_admin 之后 SET TRANSACTION READ ONLY 的报告查询。
-# 普通业务/worker 不使用（超级用户绕过 RLS）；报告角色的部署限制见 routes_admin.py。
+# 管理连接：DDL 与跨租户报表。部署上按容器分岔（见 config.admin_database_url 注释）：
+# myink-migrate 里是超级用户（建表），myink-api 里是只读报表角色（BYPASSRLS + 仅 SELECT +
+# 默认事务只读），myink-worker 不注入。业务路由一律走上面的 _engine（受 RLS 约束），不用这个。
 _admin_engine: Engine = create_engine(
     normalize_localhost_database_url(settings.admin_database_url), pool_pre_ping=True)
 

@@ -34,7 +34,12 @@ class Settings:
         )
         or "postgresql+psycopg://myink_app:myink@localhost:5432/myink"
     )
-    # DDL/迁移连接角色：表 owner 超级用户（仅 init/迁移/RLS 使用，业务不碰）
+    # 特权连接。三种部署角色共用这一个变量，靠 compose 给不同容器注入不同串来区分：
+    #   myink-migrate → 表 owner 超级用户，全栈唯一执行 DDL（`myink init`）的地方；
+    #   myink-api     → 只读报表角色（BYPASSRLS + 仅 SELECT + 默认事务只读），只服务
+    #                   /admin 的跨租户统计（routes_admin.admin_read_session）；
+    #   myink-worker  → 不注入，落到下面这个本机默认值，永远不会真正连上。
+    # 这样长期运行的进程都拿不到建表/改数据的能力。见 docs/DEPLOY.md「数据库最小权限」。
     admin_database_url: str = field(
         default_factory=lambda: _env(
             "ADMIN_DATABASE_URL",
