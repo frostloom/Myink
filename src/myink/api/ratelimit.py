@@ -1,12 +1,14 @@
 """粗粒度限流（网关退役后由 Python 接管）。
 
-两层，对应网关原有的两个限流器：
+三层，前两层对应网关原有的两个限流器，第三层是网关没有的账号维度：
 
 - :class:`GlobalRateLimit` —— 进程内令牌桶，等价 ``limiter.Middleware``。防外部刷接口。
 - :func:`auth_rate_limit` —— 按客户端 IP 分桶的登录/注册/改密限流，等价 ``AuthRateLimit``。
+- :func:`account_auth_guard` / :func:`account_auth_failed` —— 按**账号**分桶的登录失败计数。
+  IP 桶挡不住换代理池的攻击者：同一个人换 IP 就能对同一账号无限试密码。这个桶与 IP 无关。
 
 细粒度配额/并发/日成本仍然走 ``gates.lua``（§13），不在这里——那是按用户计账，
-这里的两个纯粹是防滥用的。uvicorn 目前单进程（``main.py`` 的 ``uvicorn.run`` 没有
+这里的几个纯粹是防滥用的。uvicorn 目前单进程（``main.py`` 的 ``uvicorn.run`` 没有
 ``workers=``），所以进程内桶与网关的行为一致；将来加 ``workers=`` 会让额度翻倍。
 """
 
@@ -25,7 +27,14 @@ from myink.worker.redis_client import get_redis
 # 窗口与上限原先与网关 auth.go 的 `EXPIRE ... 60` / `n > 20` 同源。写成模块常量而不是
 # 配置项，是因为当初要两端逐字对齐；网关退场后仍是常量——这两条不该随手调。
 AUTH_RATE_WINDOW = 60
-AUTH_RATE_MAX = 20
+# 20 → 60：这个桶按 IP 分，同一个 NAT / 公司出口后面的人**共用一个**，20 太低——一个人刷
+# 就能把同网段的其他人挡在登录页外。账号维度接管了「盯住单个账号」之后，IP 桶不必绷那么紧。
+AUTH_RATE_MAX = 60
+
+# 账号维度：一个账号每分钟允许的失败次数，跨 IP 生效，所以换代理池没用。
+# 只计失败：密码对的请求会先清计数再放行，正常用户不会被自己之前的输错拖住。
+_AUTH_ACCOUNT_PREFIX = "rate:auth-user:"
+AUTH_ACCOUNT_MAX = 10
 
 # 沿用网关 auth.go 的内联脚本（键名与窗口不变）：切流时在途计数直接接续，
 # 不会给暴力破解留一个「计数清零」的缝。
@@ -82,6 +91,41 @@ def auth_rate_limit(request: Request) -> None:
         raise ApiError(503, "auth_unavailable")
     if not isinstance(count, int) or isinstance(count, bool) or count > AUTH_RATE_MAX:
         raise ApiError(429, "auth_rate_limited", {"Retry-After": str(AUTH_RATE_WINDOW)})
+
+
+def _account_key(username: str) -> str:
+    return _AUTH_ACCOUNT_PREFIX + hashlib.sha256(username.encode()).hexdigest()
+
+
+def account_auth_guard(username: str) -> None:
+    """登录**验密之前**查：这个账号的失败次数到顶就拒。
+
+    放在验密之前是有意的——放在之后只能事后告知，挡不住猜测本身。代价是攻击者可以故意
+    刷别人的账号，让那个人在窗口内（60 秒）也登不进去。这条已知，退避 / 验证码 / 告警是
+    它的后续，见 ``docs/REMAINING-WORK.md``。Redis 不可用时同样失败关闭。
+    """
+    try:
+        count = get_redis().get(_account_key(username))
+    except Exception:
+        raise ApiError(503, "auth_unavailable")
+    if count is not None and int(count) >= AUTH_ACCOUNT_MAX:
+        raise ApiError(429, "auth_rate_limited", {"Retry-After": str(AUTH_RATE_WINDOW)})
+
+
+def account_auth_failed(username: str) -> None:
+    """记一次失败，与 IP 桶共用同一个 Lua 与窗口。"""
+    try:
+        get_redis().eval(_AUTH_WINDOW_LUA, 1, _account_key(username))
+    except Exception:
+        raise ApiError(503, "auth_unavailable")
+
+
+def account_auth_cleared(username: str) -> None:
+    """密码对了就清计数。清不掉只是这个计数留到 60 秒后过期，不该因此让登录失败。"""
+    try:
+        get_redis().delete(_account_key(username))
+    except Exception:
+        pass
 
 
 class GlobalRateLimit:

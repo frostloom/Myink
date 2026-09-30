@@ -7,14 +7,21 @@ TestClient 地址的几百次请求会到处 429。这里把阈值调回真实�
 from __future__ import annotations
 
 import hashlib
+import uuid
+from contextlib import contextmanager
 from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import delete as sa_delete
 from starlette.requests import Request
 
 from myink.api.main import app
 from myink.api.ratelimit import client_ip
+from myink.db import new_session
+from myink.invitations import create_invitation
+from myink.models import Invitation, Project, User
 from myink.worker.redis_client import get_redis
 
 client = TestClient(app)
@@ -107,3 +114,122 @@ def test_app_installs_the_global_token_bucket(monkeypatch):
     blocked = client.get("/healthz")
     assert blocked.status_code == 429
     assert blocked.json() == {"error": "rate_limited"}
+
+
+# --- 账号维度（网关时代没有的那一层） -----------------------------------------
+
+def _account_key(username: str) -> str:
+    from myink.api.ratelimit import _account_key as key
+
+    return key(username)
+
+
+def _forget_accounts(*usernames: str) -> None:
+    get_redis().delete(*[_account_key(name) for name in usernames])
+
+
+@contextmanager
+def _registered_account(*, password: str = "correct horse battery 1"):
+    """建一个真账号：验密成功那条路径需要它（IP 桶此时已被抬到无穷大）。"""
+    username = f"acct-{uuid.uuid4().hex[:12]}"
+    with new_session() as db:
+        invitation, code = create_invitation(
+            db, expires_at=datetime.now(timezone.utc) + timedelta(days=1))
+        db.commit()
+        invitation_id = invitation.id
+    created = client.post(
+        "/api/v1/auth/register",
+        json={"username": username, "password": password, "invitation_code": code},
+    )
+    assert created.status_code == 201, created.text
+    user_id = uuid.UUID(created.json()["user_id"])
+    try:
+        yield {"username": username, "password": password, "user_id": user_id}
+    finally:
+        with new_session() as db:
+            db.execute(sa_delete(Project).where(Project.user_id == user_id))
+            db.execute(sa_delete(User).where(User.id == user_id))
+            db.execute(sa_delete(Invitation).where(Invitation.id == invitation_id))
+            db.commit()
+
+
+def test_account_bucket_trips_across_different_client_ips(monkeypatch):
+    """换代理池绕不过去：同一个账号从三个不同地址试密码，第 N+1 次照样被拒。
+
+    IP 桶单独看是过不了的——每个地址只试了一次。
+    """
+    import myink.api.ratelimit as rl
+
+    monkeypatch.setattr(rl, "AUTH_ACCOUNT_MAX", 2)
+    monkeypatch.setattr(rl, "AUTH_RATE_MAX", 10**9)
+    username = f"victim-{uuid.uuid4().hex[:8]}"
+    body = {"username": username, "password": "wrong password 1"}
+    _forget_accounts(username)
+    try:
+        for hop in ("203.0.113.1", "203.0.113.2"):
+            assert client.post("/api/v1/auth/token", json=body,
+                               headers={"X-Myink-Client-IP": hop}).status_code == 401
+        blocked = client.post("/api/v1/auth/token", json=body,
+                              headers={"X-Myink-Client-IP": "203.0.113.3"})
+        assert blocked.status_code == 429
+        assert blocked.json() == {"error": "auth_rate_limited"}
+        assert blocked.headers["retry-after"] == "60"
+    finally:
+        _forget_accounts(username)
+
+
+def test_account_bucket_is_per_account(monkeypatch):
+    """一个账号被刷满了，不牵连别的账号。"""
+    import myink.api.ratelimit as rl
+
+    monkeypatch.setattr(rl, "AUTH_ACCOUNT_MAX", 1)
+    monkeypatch.setattr(rl, "AUTH_RATE_MAX", 10**9)
+    first, second = f"a-{uuid.uuid4().hex[:8]}", f"b-{uuid.uuid4().hex[:8]}"
+    _forget_accounts(first, second)
+    try:
+        wrong = {"password": "wrong password 1"}
+        assert client.post("/api/v1/auth/token",
+                           json={**wrong, "username": first}).status_code == 401
+        assert client.post("/api/v1/auth/token",
+                           json={**wrong, "username": first}).status_code == 429
+        assert client.post("/api/v1/auth/token",
+                           json={**wrong, "username": second}).status_code == 401
+    finally:
+        _forget_accounts(first, second)
+
+
+def test_successful_login_clears_the_account_counter(monkeypatch):
+    """密码对了先清计数再放行——正常用户不会被自己刚才的输错拖住。"""
+    import myink.api.ratelimit as rl
+
+    monkeypatch.setattr(rl, "AUTH_ACCOUNT_MAX", 3)
+    monkeypatch.setattr(rl, "AUTH_RATE_MAX", 10**9)
+    with _registered_account() as account:
+        username = account["username"]
+        _forget_accounts(username)
+        try:
+            for _ in range(2):
+                assert client.post(
+                    "/api/v1/auth/token",
+                    json={"username": username, "password": "wrong password 1"},
+                ).status_code == 401
+            assert get_redis().get(_account_key(username)) is not None
+            ok = client.post("/api/v1/auth/token",
+                             json={"username": username, "password": account["password"]})
+            assert ok.status_code == 200
+            assert get_redis().get(_account_key(username)) is None
+        finally:
+            _forget_accounts(username)
+
+
+def test_account_guard_fails_closed_when_redis_is_down(monkeypatch):
+    """账号桶与 IP 桶同一条纪律：Redis 不可用就 503，绝不放行。"""
+    import myink.api.ratelimit as rl
+
+    def _boom():
+        raise RuntimeError("redis down")
+
+    monkeypatch.setattr(rl, "get_redis", _boom)
+    with pytest.raises(rl.ApiError) as raised:
+        rl.account_auth_guard("someone")
+    assert (raised.value.status_code, raised.value.code) == (503, "auth_unavailable")
