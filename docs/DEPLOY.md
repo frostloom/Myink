@@ -96,6 +96,39 @@ RABBITMQ_IMAGE=docker.m.daocloud.io/library/rabbitmq:3.13-management \
 SKIP_IMAGES=1 bash scripts/ci-local.sh
 ```
 
+### 宿主没有 Python 时：在容器里跑
+
+`ci-local.sh` 用的是宿主 venv 里的 `python` / `myink`。宿主没装 Python 时改走容器：生产镜像
+再加 pytest。**测试镜像必须以生产镜像为底座**——否则会出现在 SQLAlchemy 2.0 上跑测试、线上跑
+2.1 的情况（2026-09-30 真的这样发生过一次，旧测试镜像是十天前建的）。
+
+```bash
+# 1) 建测试镜像（前提：docker compose build myink-api 已经跑过）
+docker build -t myink-api:pytest -f- . <<'EOF'
+FROM myink-api:local
+USER root          # 测试要把 spec/api-openapi.json 写回宿主挂载的仓库目录
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --index-url https://mirrors.aliyun.com/pypi/simple/ \
+    "pytest==8.4.2" "pytest-asyncio==1.4.0"
+EOF
+
+# 2) 起测试基础设施（tmpfs 数据，随时可重建）
+docker compose -p myink-test -f docker-compose.test.yml up -d --wait
+
+# 3) 初始化 → 导出契约 → 全量回归（env 同上表，容器网络里主机名换成服务名）
+docker run --rm --network myink-test_default -v "$PWD:/repo" -w /repo \
+  -e PYTHONPATH=/repo/src -e APP_ENV=test -e JWT_SECRET=test-jwt-secret-at-least-32-bytes-long \
+  -e DATABASE_URL=postgresql+psycopg://myink_app:myink@postgres:5432/myink \
+  -e ADMIN_DATABASE_URL=postgresql+psycopg://myink:myink@postgres:5432/myink \
+  -e REDIS_URL=redis://redis:6379/0 -e AMQP_URL=amqp://myink:myink@rabbitmq:5672/ \
+  -e EMBED_ENABLED=0 -e RANKINGS_ENABLED=0 \
+  myink-api:pytest sh -c 'myink init --seed && myink contract export && python -m pytest tests/ -q'
+```
+
+两个坑：测试库是 tmpfs，**每次 `--force-recreate` 都从空库开始，必须先 `myink init`**，
+否则收集阶段就报 `relation "users" does not exist`；契约那一步在容器里做不了
+`git diff --exit-code`（镜像里没有 git），导出后在宿主机上比对 `spec/api-openapi.json`。
+
 ## 上下文与向量配置
 
 `REQUEST_TOKEN_BUDGET=64000` 控制完整请求的估算输入上限，包含正文、提示词、记忆和工具 schema/返回。`RECALL_TOKEN_BUDGET=12000` 单独限制可选记忆的增量，不能充当整章正文预算。提示词另预留 1000 tokens 给纠错消息，write/audit 还按实际工具 schema 大小预留；发送前按模型注册表的上下文窗口减输出预留再次限制。估算不是精确 tokenizer，真实 usage 另行记录。超出完整请求上限时仍明确失败，不截断正文或硬约束。
@@ -153,6 +186,101 @@ Caddy 要占用 80/443，宿主若已跑着 nginx，它会起不来。这一步*
 
 回滚就是把 nginx 起回来、`ports` 改回 8081（第 1 步若删过 vhost，先把它恢复）：Caddy 与 API 都不持有跨启动的业务状态。
 
-## 仍需完成的生产工作
+## 生产运维
 
-HTTPS 已由 Caddy 承担（`SITE_ADDRESS` 填域名即自动签发续期）；Caddy 之前若再挂 CDN 或云 LB，必须配 Caddy 全局 `trusted_proxies` 并把客户端 IP 取值换成 `{client_ip}`，否则所有用户会塌进同一个限流桶（见 `.env.example`）。模型凭据用户级数据库权限加固、版本化数据库迁移、备份与恢复演练、集中监控和容量测试仍在后续范围。当前没有生产可用性或真实小说质量的保证；演示应使用已验证的机制与测试结果描述能力。
+下面四件事在服务器上各做一次；日常更新仍是「本地重建镜像 → 传 → `up -d`」。
+
+### 数据库最小权限：三个角色，各管一段
+
+建表、跨租户报表、业务读写这三件事的权限要求互相冲突，所以拆成三个角色，由 compose
+分别注入（见 `docker-compose.yml`）：
+
+| 角色 | 谁在用 | 能力 |
+| --- | --- | --- |
+| `myink`（表 owner） | 只有 `myink-migrate`（一次性 job） | 超级用户，全栈唯一能 DDL 的地方 |
+| `myink_app` | api / worker | `NOBYPASSRLS`，受租户策略约束 |
+| `myink_report` | api（仅 /admin 统计） | `BYPASSRLS` + 只授 `SELECT` + 默认事务只读 |
+
+于是 api 与 worker 都拿不到建表能力：api 的 `ADMIN_DATABASE_URL` 指向 `myink_report`，
+worker 里被显式置空（`env_file` 会把 `.env` 里的 owner 串注进去，所以必须显式压住）。
+
+全新数据卷由 `docker/initdb/01-roles.sh` 一次建好三个角色。**已经在跑的库**不会重跑那个脚本，
+要手工补 `myink_report`——先把同一口令写进 `.env`，再跑：
+
+```bash
+# 服务器 ~/myink 目录下（脚本随 docker-compose.yml 一起拷过去）
+echo "MYINK_REPORT_PASSWORD=<强随机值>" >> ~/myink/.env
+MYINK_REPORT_PASSWORD='<同一个值>' bash create-report-role.sh
+```
+
+验收：报表角色读得到全部租户的行，但写不进去任何东西。
+
+```bash
+sudo docker compose exec myink-pg psql -U myink_report -d myink -c 'select count(*) from projects'
+sudo docker compose exec myink-pg psql -U myink_report -d myink -c 'create table t(i int)'   # 期望报错
+```
+
+> RLS 只覆盖带 `project_id` 的表（`db.py` 的 `enable_rls`）。`users` / `projects` 是租户根表，
+> `invitations` / `feedback` / `short_creation_sessions` / `style_library_items` 等没有该列，
+> 它们靠应用层的 `user_id` 归属校验，不由数据库兜底——改这些表的查询时要自己带上条件。
+
+### 首次切非 root 容器：三个卷要 chown 一次
+
+api 与 caddy 现在以 uid 10001 运行（两个 Dockerfile 末尾）。**镜像内新建的目录**属主已经对了，
+但**已存在的命名卷**仍是 root，切换后 caddy 写不进 `/data`（证书存放处）会直接起不来。
+上线前做一次：
+
+```bash
+for v in myink_caddy-data myink_caddy-config myink_feedback-data; do
+    sudo docker run --rm -v "$v":/d alpine chown -R 10001:10001 /d
+done
+```
+
+全新部署不用做：空卷会继承镜像目录的属主。
+
+### 备份与恢复
+
+`backup.sh` 做一次 `pg_dump` 并轮转保留最近 14 份，落在 `~/myink/backups`。装 cron：
+
+```bash
+# 在服务器上执行（17 分而不是整点：整点机器上别的东西也在跑）
+mkdir -p ~/myink/backups
+( crontab -l 2>/dev/null; \
+  echo '17 3 * * * bash $HOME/myink/backup.sh >> $HOME/myink/backups/backup.log 2>&1' ) | crontab -
+crontab -l   # 确认写进去了
+```
+
+**恢复演练**——备份没验过就等于没有。恢复到库内另起的临时库，不要动 `myink`：
+
+```bash
+LATEST=$(ls -1t ~/myink/backups/myink-*.sql.gz | head -1)
+sudo docker compose exec -T myink-pg psql -U myink -d postgres -c 'drop database if exists myink_restore_check'
+sudo docker compose exec -T myink-pg psql -U myink -d postgres -c 'create database myink_restore_check'
+gunzip -c "$LATEST" | sudo docker compose exec -T myink-pg psql -U myink -d myink_restore_check
+# 两边策略数应当一样，说明 RLS 也跟着恢复了
+sudo docker compose exec -T myink-pg psql -U myink -d myink -c 'select count(*) from pg_policies'
+sudo docker compose exec -T myink-pg psql -U myink -d myink_restore_check -c 'select count(*) from pg_policies'
+sudo docker compose exec -T myink-pg psql -U myink -d postgres -c 'drop database myink_restore_check'
+```
+
+备份和库在同一块盘上，挡不住整机故障；离机副本见 `docs/REMAINING-WORK.md` §2.1。
+
+### 确认线上跑的是哪一版
+
+构建时带上 revision，之后不必再比对镜像 ID：
+
+```bash
+GIT_REVISION=$(git rev-parse --short HEAD) docker compose build myink-api myink-caddy
+sudo docker inspect myink-api --format '{{index .Config.Labels "org.opencontainers.image.revision"}}'
+```
+
+依赖版本同理钉在 `docker/constraints.txt`（整棵依赖树，含间接依赖）。**改了 `pyproject.toml`
+的依赖必须重新生成**，否则新依赖不受约束；命令写在那个文件的头部注释里。
+
+## 仍在后续范围
+
+HTTPS 已由 Caddy 承担（`SITE_ADDRESS` 填域名即自动签发续期）；Caddy 之前若再挂 CDN 或云 LB，
+必须配 Caddy 全局 `trusted_proxies` 并把客户端 IP 取值换成 `{client_ip}`，否则所有用户会塌进
+同一个限流桶（见 `.env.example`）。此外还有：集中监控与告警（需先定外部探活服务与告警渠道）、
+容量测试，以及两项已知的结构性欠账——前端凭据从 localStorage 换成 HttpOnly Cookie、/admin
+加 MFA。当前没有生产可用性或真实小说质量的保证；演示应使用已验证的机制与测试结果描述能力。

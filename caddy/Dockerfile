@@ -28,4 +28,17 @@ COPY --from=web /app/web/dist /srv/web/dist
 # 构建期校验配置语法：Caddyfile 写错要在 build 就红，而不是留到部署时容器起不来。
 # 用默认 SITE_ADDRESS（http://localhost）校验 —— 语法不随取值变化，只有协议/证书那段不同。
 RUN caddy validate --config /etc/caddy/Caddyfile
+
+# 非 root 运行（alpine 的 busybox adduser）。容器内非 root 也能绑 80/443：Docker 默认
+# 能力集里就有 NET_BIND_SERVICE。Caddy 要写的是 /data（证书 + ACME 账户）与 /config
+#（自动保存的运行配置），这两个在 compose 里都是命名卷——全新卷会继承这里的属主，
+# 已存在的卷仍是 root，切换前要 chown 一次，见 docs/DEPLOY.md。
+RUN addgroup -S -g 10001 caddy && adduser -S -D -H -u 10001 -G caddy caddy \
+    && chown -R caddy:caddy /data /config
+USER 10001
+
 EXPOSE 80 443 443/udp
+# 构建来源自证，与 Python 镜像同一套（compose 传 GIT_REVISION，读法见 docs/DEPLOY.md）。
+# 前端与后端是两个镜像，各自带同一个 revision，出问题时能确认「这页面对的是这版后端」。
+ARG GIT_REVISION=unknown
+LABEL org.opencontainers.image.revision=${GIT_REVISION}

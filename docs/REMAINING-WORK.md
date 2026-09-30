@@ -38,13 +38,13 @@
 
 ---
 
-## 1. 还没上线的代码（最紧的一条）
+## 1. 还没上线的代码
 
-**短篇建书改成多会话 + 自动落点**：本地已完成、已用 headless Chrome 端到端验证，但**未提交、未推送、未部署**。
+### 1.1 短篇建书改成多会话 + 自动落点 —— ✅ 2026-09-30 已提交并部署
 
-实测证据：线上 `myink-api` 容器内 `grep -c "_latest_active"` = `0`；运行中的 `myink-api:local` 镜像构建于 2026-09-29 23:47，早于这笔改动。仓库 HEAD = `origin/main` = `79c945a`。
-
-待提交的 9 个文件：
+已提交为 `79c945a`，已推送，已部署。部署证据：本地与线上镜像 ID 一致、服务器 `docker-compose.yml`
+与本地逐字节相同、线上 `index.html` 引用的 bundle 哈希与本地构建产物一致、`/readyz` 回 ok、
+`queue:tasks` 消费者 2 个。下面这份是提交前的文件清单，留作查证「那一次改了什么」。
 
 | 文件 | 改动 |
 |---|---|
@@ -56,9 +56,20 @@
 | `web/src/pages/ShortCreationPage.test.tsx` | 4 处断言改用 `aria-current`；新增 1 个测试 |
 | `web/src/lib/apiError.ts` | `SESSION_COMMITTED` 文案改为「点『新建会话』另起一篇」 |
 | `web/src/lib/apiError.test.ts` | 同步断言 |
-| `docker-compose.yml` | worker 去掉 `container_name`、改 `deploy.replicas: 2`（已单独上线，见 §2.9） |
+| `docker-compose.yml` | worker 去掉 `container_name`、改 `deploy.replicas: 2`（见 §2.9） |
 
-上线步骤（服务器 `~/myink` 没有源码、不是 git 仓库）：本地 `docker build` → `save`/`load` 传到服务器 → `docker compose up -d myink-api myink-worker`。注意 `docker-compose.yml` 已经在服务器上单独生效过（worker 副本数），**本地这份要一起传过去**，否则两个 worker 会在下次 `up` 时缩回一个。
+### 1.2 运维与硬化一批 —— ⏳ 本地已验证，**未提交、未部署**（2026-09-30 晚）
+
+关掉了 §2.1 / §2.3 / §2.4 / §2.6 / §2.7 五条，外加一轮「去痕」（仓库里不再出现参照对象的名字，
+只剩 NOTICE.md / README.md / .gitignore / .dockerignore 里 AGPL 必要的那些）。
+
+验证证据：`1388 passed, 5 xfailed`（在**与生产同一份依赖**的镜像上跑，SQLAlchemy 2.1.1）；
+`myink contract export` 后 `spec/api-openapi.json` 哈希不变（依赖升级没有改变对外契约）；
+开发栈整套 `up -d` 起来后 api/caddy healthy、migrate 退出码 0、三个长驻进程都是 uid 10001；
+备份脚本跑通并**真恢复到临时库**，38 张表行数与 24 条 RLS 策略逐项一致。
+
+上线顺序有硬约束（先建报表角色、先 chown 三个卷，再 `up -d`），步骤见
+[DEPLOY.md](DEPLOY.md) 的「生产运维」。
 
 ---
 
@@ -66,7 +77,16 @@
 
 按「真出事时的后果」排序，不按文档里的原始顺序。
 
-### 2.1 备份没有定时，也没演练过（唯一会真的丢数据）
+### 2.1 备份没有定时，也没演练过（唯一会真的丢数据）—— ✅ 脚本与恢复演练已做，**cron 还要在服务器上装**
+
+`scripts/backup.sh`：一次 `pg_dump` + 轮转保留 14 份，产物写成 `.part` 再改名（半份不会被当成好备份），
+`gzip -t` 校验后才认，`sudo docker` 与 `docker` 自动探测（服务器要 sudo、开发机不要）。
+
+已实测：连跑三次、`KEEP=2` 后确实只剩 2 份、不残留 `.part`；**真恢复到临时库**后 38 张表行数与
+24 条 RLS 策略与线上逐项一致（恢复出来的库可直接顶上去，不用重建）。
+
+还差三步（服务器 `~/myink` 没有源码）：把 `backup.sh` / `create-report-role.sh` 拷过去、装 cron
+条目、再拉一份离机副本。命令见 [DEPLOY.md](DEPLOY.md)「备份与恢复」。下面是当时的现状描述。
 
 服务器 `~/myink/backups/` 里只有**一个**文件：`prod-before-zlx-migrate-20260929180025.sql.gz`，13 KB，2026-09-29 手工跑的迁移前备份。**没有定时任务**——`crontab -l` 只有腾讯云自己的 agent。
 
@@ -75,7 +95,22 @@
 - 要做：`pg_dump` 定时化（每天一次 + 保留 N 份）→ **真恢复到临时库验一遍** → 备份文件拉离服务器（同机备份挡不住整机故障）。
 - 成本：最低。半天以内。
 
-### 2.2 没有监控告警
+### 2.2 没有监控告警 —— 方式已定（阿里云云监控 + 邮件），**待你注册并在控制台配**
+
+已经拍定：站点监控用**阿里云云监控的站点监控**（与 ECS 同账号同区域，国内裸 IP 探得到；
+境外探针如 UptimeRobot 探国内未备案的裸 IP 会时通时断、误报多），告警走**邮件**。
+
+要配三条：
+
+1. **站点监控**：探 `https://<站点地址>/readyz`，断言 HTTP 200。`/readyz` 在任一依赖不健康时
+   返回 **503 + `{"status":"degraded"}`**（`api/main.py:167`），所以判状态码就够了，不用做内容匹配。
+   连续 2 次失败再告警，避免抖动误报；探测点选国内多地。
+2. **磁盘水位**：主机磁盘 > 85% 告警。这条不是凑数——`pgdata` 与容器日志同盘，
+   日志写满盘 = 全站不可用（`docker-compose.yml` 顶部注释就是为此加的日志轮转）。
+3. **证书到期**：让证书过期前 7 天提醒。
+
+覆盖不到的部分要说清楚：站点监控能发现「从外面访问不到」，发现不了「能打开但登录不了」或者
+「某个功能静默出错」——那类只能靠日志与应用层指标，不在这一条的范围里。下面是当时的现状描述。
 
 `/readyz` 存在，刚验过返回 `{"status":"ok","checks":{"redis":"ok","db":"ok","worker":"ok"}}`，但**没有任何东西在轮询它**。
 
@@ -84,7 +119,23 @@
 - 起步做法：外部探活服务轮询 `/readyz`（顺带覆盖「整机挂掉」）+ 一条磁盘阈值 + 一条证书到期提醒。
 - 成本：一小时。
 
-### 2.3 DB 最小权限：运行进程同时握着绕过 RLS 的钥匙
+### 2.3 DB 最小权限：运行进程同时握着绕过 RLS 的钥匙 —— ✅ 2026-09-30 已做
+
+拆成三个角色，由 compose 按容器注入：`myink`（表属主超级用户）只在跑完即退的 `myink-migrate` 里出现；
+api 的 `ADMIN_DATABASE_URL` 指向新建的只读报表角色 `myink_report`（BYPASSRLS + 只授 SELECT +
+`default_transaction_read_only=on`）；worker 里该变量**显式置空**——`env_file` 会把 `.env` 里的
+owner 串注进来，光删掉那一行不够。
+
+已在开发栈实测：api 容器内 `get_admin_engine().url.username` = `myink_report`，读得到 2 个用户 /
+11 个项目，而 `create table` 被拒（`ReadOnlySqlTransaction`）；同库直接用该角色连，`INSERT` /
+`CREATE TABLE` / `DROP TABLE` 全被拒，对照 `myink_app` 不设租户仍是 0 行。
+
+备忘：RLS 只覆盖带 `project_id` 的表（`db.py` 的 `enable_rls`），`users` / `projects` 是租户根表，
+`invitations` / `feedback` / `short_creation_sessions` / `style_library_items` 等没有该列——这些靠
+应用层的 `user_id` 归属校验，**不由数据库兜底**。改这些表的查询时要自己带上条件。
+
+存量数据卷不会重跑 `initdb`，补角色的脚本是 `scripts/create-report-role.sh`；上线顺序见
+[DEPLOY.md](DEPLOY.md)。下面是当时的问题描述。
 
 **问题**：每个 api / worker 进程**同时**持有两把数据库连接。`DATABASE_URL` 用 `myink_app`（NOBYPASSRLS，受行级安全策略管），`ADMIN_DATABASE_URL` 用 `myink`（表属主，BYPASSRLS）。
 
@@ -93,7 +144,22 @@
 - 要做：迁移抽成跑完即退的一次性 job，只它拿管理员连接；运行时 api/worker 只留 `myink_app`；管理面板的只读报表另建最小权限角色。
 - 代价：属结构性改动，管理面板目前靠 admin 连接跑跨用户查询。**注意 [上线前检查报告](archive/LAUNCH-READINESS-2026-09-27.md) §三 的提醒**：PG 角色类变更只对全新数据卷首启生效，已有数据卷要手工 `ALTER ROLE`。
 
-### 2.4 防撞库只有 IP 维度，两个方向都会出问题
+### 2.4 防撞库只有 IP 维度，两个方向都会出问题 —— ✅ 2026-09-30 已加账号维度
+
+新增账号维度失败计数（`api/ratelimit.py` 的 `account_auth_guard` / `account_auth_failed` /
+`account_auth_cleared`）：按账号分桶、**跨 IP 生效**（换代理池绕不过）、**只计失败**（验密通过先清零
+再放行，正常用户不会被自己刚才的输错拖住），与 IP 桶共用同一个 Lua 与 60 秒窗口。
+
+IP 桶同时从 20 提到 60：那个桶按 IP 分，同一个 NAT / 公司出口后面的人**共用一个**，20 太低，
+一个人刷就能把同网段的人挡在登录页外；而「盯住单个账号」的职责已经交给账号维度了。
+
+新增 4 个测试（跨 IP 触发、账号之间互不牵连、成功后清零、Redis 挂了 fail-closed）。
+
+**已知残留，选择接受**：攻击者可以故意把某个账号刷满，让真正的用户 60 秒内登不进来（定向锁号）。
+退避 / 验证码 / 告警列为后续——窗口只有 60 秒且只计失败，代价可控。
+
+注册与改密**没有**加这个桶：注册是邀请制、改密要已登录的 token，除非以后放开注册或发现 token
+被滥用，不必再加一层。下面是当时的问题描述。
 
 **现状**：注册 / 登录 / 改密共享「每客户端地址每分钟 20 次」，桶按 Caddy 覆盖写入的 `X-Myink-Client-IP` 分（客户端伪造同名头无效，这层是好的）。**没有账号维度。**
 
@@ -115,13 +181,35 @@ JWT 存在 `localStorage`（键名 `myink.session`，`web/src/lib/token.ts:4`）
 
 所以最现实的入口不是自己代码，是**第三方依赖**。改成 Cookie 也不是换个存储位置，而是一整套联动：前端不再手动带 `Authorization` 头、后端读 Cookie、SSE 长连接跟着改、还要补 CSRF（Cookie 自动携带，反而开了新面）。
 
-### 2.6 镜像与依赖版本全都没锁
+### 2.6 镜像与依赖版本全都没锁 —— ✅ 2026-09-30 已锁定
+
+- `docker/constraints.txt`：整棵依赖树（含间接依赖）的精确版本，Dockerfile 用 `-c` 生效。
+  已验证镜像内 `pip freeze` 与锁文件 **77 个包逐行一致**。
+- 两个镜像都带 `org.opencontainers.image.revision` 标签（compose 传
+  `GIT_REVISION=$(git rev-parse --short HEAD)`），`docker inspect` 就能回答「线上跑的是哪一版」。
+- **顺带发现一个真问题**：本地 `myink-api:pytest` 是十天前建的，跑的是 SQLAlchemy **2.0.54**，
+  而锁文件让线上跑 **2.1.1**——在那之前，测试验的和线上跑的根本不是同一套依赖。现在测试镜像
+  以生产镜像为底座重建（配方见 [DEPLOY.md](DEPLOY.md)「自动化回归」），全套 1388 passed 是在 2.1.1 上跑的。
+
+仍缺：CI 里加一轮依赖与镜像扫描（pip-audit / trivy 之类）。下面是当时的现状描述。
 
 `pyproject.toml` 里依赖都是区间（`sqlalchemy>=2.0` 这种），今天构建和下周构建拿到的是不同版本；镜像 tag 是 `myink-api:local`，不指向任何 commit。也**没有**任何扫描（pip-audit / trivy 之类）。
 
 - 要做：加锁文件（`uv.lock` / `pip-compile`）、镜像 tag 带上 commit、CI 里加一轮依赖与镜像扫描。
 
-### 2.7 容器以 root 运行，且无资源上限
+### 2.7 容器以 root 运行，且无资源上限 —— ✅ 2026-09-30 已做
+
+两个 Dockerfile 都以 uid 10001 非 root 运行（api 侧 `useradd`、caddy 侧 `adduser`；容器内非 root
+绑 80/443 靠 Docker 默认能力集里的 `NET_BIND_SERVICE`）。compose 给 api / worker / caddy 加了
+`mem_limit` 与 `cpus`——是**天花板不是预留**（实测 api ~154MB、caddy ~21MB）；pg / redis / rabbitmq
+**刻意不设**：有状态服务被 OOM kill 比跑飞更糟。worker 那份注释另外写了「开 `EMBED_ENABLED`
+必须同时抬高它」。
+
+实测：两个镜像里 `id` 都是 10001；caddy 挂新卷起来后 80 端口回 200、`/data` 与 `/config` 都写得进；
+compose 起来后 api / worker / caddy 的 `HostConfig.Memory` 分别是 1g / 1g / 256m。
+
+一次性代价：**已存在的命名卷仍是 root**，切非 root 前要 chown 三个卷（caddy 写不进证书目录会直接
+起不来）。已在本机开发栈演练过，命令见 [DEPLOY.md](DEPLOY.md)。下面是当时的现状描述。
 
 `Dockerfile` 与 `caddy/Dockerfile` 都没有 `USER`，都是 root；`docker-compose.yml` 里没有任何 `mem_limit` / `cpus`（2026-09-30 新加的 `deploy: replicas` 只管副本数）。
 
@@ -209,7 +297,6 @@ JWT 存在 `localStorage`（键名 `myink.session`，`web/src/lib/token.ts:4`）
 
 | 项 | 说明 |
 |---|---|
-| 短篇页有一条过期注释 | `web/src/pages/ShortCreationPage.tsx:131` 的注释还写着「重新开始」，但控件已经改名成「新建会话」 |
 | 文档里有真实标识 | `docs/archive/ADMIN-ACCEPTANCE-2026-09-19.md` 含真实用户名与 UUID；提交元数据是个人邮箱。公网发布前可决定是否处理 |
 | git 历史含两个 39MB 二进制 | `gateway/bin/gateway.exe`，pack 共约 113MB 其中约 78MB 是这两个。属体积问题、非泄密；清理需改写历史（破坏性），留待决定 |
 | 死配置残留 | `config.py` 的 `worker_stream` / `worker_group` 无人读取；`scripts/ci-local.sh:21` 导出的 `REDIS_ADDR` 是 Go 时代遗物。按「不删既有死代码除非明确要求」处理 |
