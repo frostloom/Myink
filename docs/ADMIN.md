@@ -31,4 +31,4 @@ docker compose exec myink-api myink set-role zlx admin
 
 ## 公网部署边界
 
-当前管理查询复用 `ADMIN_DATABASE_URL`，在管理员鉴权后开启只读事务，普通连接和RLS规则不变。应用层只读事务不等于数据库凭据最小权限；公网加固应拆出专用只读报表角色，并完成 [公网检查清单](PUBLIC-DEPLOYMENT-CHECKLIST.md)。增加管理面板不代表已经完成全部公网安全加固。
+当前管理查询复用 `ADMIN_DATABASE_URL`，在管理员鉴权后开启只读事务，普通连接和RLS规则不变。应用层只读事务不等于数据库凭据最小权限；公网加固应拆出专用只读报表角色，并完成 [公网检查清单](archive/PUBLIC-DEPLOYMENT-CHECKLIST.md)。增加管理面板不代表已经完成全部公网安全加固。

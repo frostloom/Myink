@@ -1,7 +1,9 @@
 # 扫榜换源施工单：摘掉 daosearch，接入 fanqie-rank-mcp
 
+> **状态：已归档（目标已达成，但未按本文路线实施）。** 换源已在 2026-09-23 以直连上游公开接口的方式落地，本文描述的 sidecar 方案未采用，保留作当时的调研记录。
+
 配套阅读：本文是**施工单**（改哪里、按什么顺序）。设计口径与降级语义见
-[`src/myink/integrations/rankings.py`](../src/myink/integrations/rankings.py) 顶部 docstring 与
+[`src/myink/integrations/rankings.py`](../../src/myink/integrations/rankings.py) 顶部 docstring 与
 [`docs/PUBLIC-DEPLOYMENT-CHECKLIST.md`](PUBLIC-DEPLOYMENT-CHECKLIST.md)。
 
 ---
@@ -58,22 +60,22 @@ Myink 只需要前两个；后两个（书详情/章节正文）用不到，且�
 
 ### 拦路虎 1：出站守卫会拒绝内网 sidecar 地址 —— 这轮新发现，最硬的一个
 
-`_assert_host_allowed`（[routes_settings.py:94-115](../src/myink/api/routes_settings.py#L94-L115)）
+`_assert_host_allowed`（[routes_settings.py:94-115](../../src/myink/api/routes_settings.py#L94-L115)）
 只放行**全球可路由**地址，内网与回环**一律拒绝**（`_unsafe_address` 判据是 `not ip.is_global`，
-[routes_settings.py:78-91](../src/myink/api/routes_settings.py#L78-L91)）。注释写得很明确：
+[routes_settings.py:78-91](../../src/myink/api/routes_settings.py#L78-L91)）。注释写得很明确：
 
 > 原先私有段与回环**刻意放行**，为的是本地推理服务（如 127.0.0.1:11434 Ollama）；
 > 现已确认本部署不用本地模型，改为一律拒绝
 
-而这个守卫**已经覆盖扫榜地址**：[routes_environment.py:65](../src/myink/api/routes_environment.py#L65)
+而这个守卫**已经覆盖扫榜地址**：[routes_environment.py:65](../../src/myink/api/routes_environment.py#L65)
 的 `_validate_rankings` 里就调了它。
 
 **冲突点**：sidecar 在 compose 网络内的地址是 `http://myink-rankings-mcp:8765/mcp`，
 解析到 `172.x.x.x`；`127.0.0.1` 同理。两种都被拒。
 
-**而且不是"只有手动改才撞"**：`default_rankings()`（[environment.py:15-23](../src/myink/environment.py#L15-L23)）
+**而且不是"只有手动改才撞"**：`default_rankings()`（[environment.py:15-23](../../src/myink/environment.py#L15-L23)）
 会把 `.env` 的值当成表单初值下发，环境页 `load()` 直接 `setRankings(env.rankings)`；
-前端保存时**总是**发送 `mcp_url`（[EnvironmentPage.tsx:251](../web/src/pages/EnvironmentPage.tsx#L251)）。
+前端保存时**总是**发送 `mcp_url`（[EnvironmentPage.tsx:251](../../web/src/pages/EnvironmentPage.tsx#L251)）。
 于是：**只要 `.env` 指向内网 sidecar，任何用户点一下"保存扫榜配置"就会 400「请求地址指向内网/保留地址，已拒绝」。**
 
 注意 `.env` 默认值本身**不走**守卫（`_default_client_factory` 直接用 `settings.rankings_mcp_url`），
@@ -95,7 +97,7 @@ license: None      stars: 5      pushed: 2026-05-18      archived: False
 ```
 
 GitHub 上没有任何 LICENSE 文件，等于**保留所有权利**。严格讲，把它的代码复制进 Myink 仓库
-是没有授权的。Myink 是**面试作品**，会被人翻代码，这一条会被问到。
+是没有授权的。Myink 是**公开作品**，会被人翻代码，这一条会被问到。
 
 同时它也没有 PyPI 包、没有 Docker 镜像（`pypi.org/pypi/fanqie-rank-mcp/json` → 404），
 所以没有"依赖它而不复制它"的干净路径。
@@ -109,11 +111,11 @@ GitHub 上没有任何 LICENSE 文件，等于**保留所有权利**。严格讲
 
 两个缺陷叠加：
 
-1. `_find_tool`（[rankings.py:139-150](../src/myink/integrations/rankings.py#L139-L150)）按名字含
+1. `_find_tool`（[rankings.py:139-150](../../src/myink/integrations/rankings.py#L139-L150)）按名字含
    `"rank"` 模糊匹配。当前 server 的工具集里，`list_rankings` 会被选中。
-2. `_TOOL_ARGS`（[rankings.py:49-52](../src/myink/integrations/rankings.py#L49-L52)）按 **source**（`qidian`）
+2. `_TOOL_ARGS`（[rankings.py:49-52](../../src/myink/integrations/rankings.py#L49-L52)）按 **source**（`qidian`）
    给参，不是按 tool。而调用处是 `_TOOL_ARGS.get(st.rankings_source, {})`
-   （[rankings.py:212](../src/myink/integrations/rankings.py#L212)）——`source=qidian` 那套
+   （[rankings.py:212](../../src/myink/integrations/rankings.py#L212)）——`source=qidian` 那套
    `{"type":"hotsales","genre":"overall"}` 是 **DaoSearch 的词汇**，与番茄毫无关系。
 
 结果：调用 `list_rankings({type:"hotsales",...})` → FastMCP **静默忽略**多余实参 → 成功返回分组列表
@@ -221,8 +223,8 @@ mcp.run(transport="streamable-http")
 **不要给它 `env_file: .env`**。
 
 然后给 `myink-api` 加依赖，避免冷启动竞态（扫榜失败**只在成功时**写缓存，
-[rankings.py:196-197](../src/myink/integrations/rankings.py#L196-L197)；而前端挂载即预热
-[RankingsPanel.tsx:37-45](../web/src/components/RankingsPanel.tsx#L37-L45)，
+[rankings.py:196-197](../../src/myink/integrations/rankings.py#L196-L197)；而前端挂载即预热
+[RankingsPanel.tsx:37-45](../../web/src/components/RankingsPanel.tsx#L37-L45)，
 sidecar 没起来的第一屏会假降级，用户不点刷新就一直看着【示例】数据）：
 
 ```yaml
@@ -232,7 +234,7 @@ sidecar 没起来的第一屏会假降级，用户不点刷新就一直看着【
 ```
 
 `myink-worker` 那组 `RANKINGS_*` 环境变量是**残留**（扫榜只在 API 侧调用，worker 不注入生成节点
-——见 [docker-compose.yml:137](../docker-compose.yml#L137) 的注释），不必加依赖，顺手可以把那两行删掉。
+——见 [docker-compose.yml:137](../../docker-compose.yml#L137) 的注释），不必加依赖，顺手可以把那两行删掉。
 
 ---
 
@@ -243,28 +245,28 @@ sidecar 没起来的第一屏会假降级，用户不点刷新就一直看着【
 
 | 位置 | 现在 | 改成 |
 |---|---|---|
-| [config.py:126-127](../src/myink/config.py#L126-L127) | `https://daosearch.io/api/mcp` | `http://myink-rankings-mcp:8765/mcp` |
-| [config.py:131](../src/myink/config.py#L131) | `rankings_source="qidian"` | `rankings_ranking_id="1_2_1141"`（男频阅读榜·西方奇幻） |
-| [config.py:133](../src/myink/config.py#L133) | `rankings_tool=""` | `rankings_tool="get_ranking"`（**默认钉死，不靠模糊匹配**） |
-| [.env:47-56](../.env#L47-L56) | 同上 | 同上，注释一并改写 |
-| [docker-compose.yml:104-106](../docker-compose.yml#L104-L106) | 同上 | 同上 |
-| [environment.py:15-23, 26-48, 93-119](../src/myink/environment.py#L15) | `source` | `ranking_id` |
-| [schemas.py:263-269](../src/myink/api/schemas.py#L263-L269) | `RankingsConfigOut.source` | `ranking_id` |
-| [routes_environment.py:74-78](../src/myink/api/routes_environment.py#L74-L78) | 校验 `source` ≤32 | 校验 `ranking_id` 形如 `\d+_\d+_\d+` |
-| [types.ts:372-388](../web/src/types.ts#L372-L388) | `source` | `ranking_id` |
-| [EnvironmentPage.tsx:40-47, 472, 500](../web/src/pages/EnvironmentPage.tsx#L40-L47) | `source` 输入框 | `ranking_id` 输入框 + 改 placeholder |
+| [config.py:126-127](../../src/myink/config.py#L126-L127) | `https://daosearch.io/api/mcp` | `http://myink-rankings-mcp:8765/mcp` |
+| [config.py:131](../../src/myink/config.py#L131) | `rankings_source="qidian"` | `rankings_ranking_id="1_2_1141"`（男频阅读榜·西方奇幻） |
+| [config.py:133](../../src/myink/config.py#L133) | `rankings_tool=""` | `rankings_tool="get_ranking"`（**默认钉死，不靠模糊匹配**） |
+| [.env:47-56](../../.env#L47-L56) | 同上 | 同上，注释一并改写 |
+| [docker-compose.yml:104-106](../../docker-compose.yml#L104-L106) | 同上 | 同上 |
+| [environment.py:15-23, 26-48, 93-119](../../src/myink/environment.py#L15) | `source` | `ranking_id` |
+| [schemas.py:263-269](../../src/myink/api/schemas.py#L263-L269) | `RankingsConfigOut.source` | `ranking_id` |
+| [routes_environment.py:74-78](../../src/myink/api/routes_environment.py#L74-L78) | 校验 `source` ≤32 | 校验 `ranking_id` 形如 `\d+_\d+_\d+` |
+| [types.ts:372-388](../../web/src/types.ts#L372-L388) | `source` | `ranking_id` |
+| [EnvironmentPage.tsx:40-47, 472, 500](../../web/src/pages/EnvironmentPage.tsx#L40-L47) | `source` 输入框 | `ranking_id` 输入框 + 改 placeholder |
 
-**旧数据安全**：`merge_rankings` 对未知键是忽略 + 回落默认（[environment.py:26-48](../src/myink/environment.py#L26-L48)），
+**旧数据安全**：`merge_rankings` 对未知键是忽略 + 回落默认（[environment.py:26-48](../../src/myink/environment.py#L26-L48)），
 所以已存库的 `{source:"qidian"}` 会自然失效并落到新默认，**不需要数据迁移**。
 
 `rankings_cache_ttl` 不在用户可改范围内（`rankings_view_for_user` 固定取进程值，
-[environment.py:117](../src/myink/environment.py#L117)），不用动。
+[environment.py:117](../../src/myink/environment.py#L117)），不用动。
 
 ---
 
 ## 八、Phase 3 · 修静默垃圾（拦路虎 3）
 
-三处改动，都在 [rankings.py](../src/myink/integrations/rankings.py)：
+三处改动，都在 [rankings.py](../../src/myink/integrations/rankings.py)：
 
 1. **删掉 `_TOOL_ARGS`**（:49-52），换成按 **tool** 取参的纯函数：
 
@@ -292,15 +294,15 @@ sidecar 没起来的第一屏会假降级，用户不点刷新就一直看着【
    **关键**：绝不用 `{}` 兜底。`{}` 兜底正是静默垃圾的成因——调用成功，返回的却是别的东西。
 
 3. **`sanitize` 加一道防线**：`_extract_rows` 现在会把「有 `title` 的单个 dict」当一条记录
-   （[rankings.py:96-97](../src/myink/integrations/rankings.py#L96-L97)），这正是分组对象被误当书的原因。
+   （[rankings.py:96-97](../../src/myink/integrations/rankings.py#L96-L97)），这正是分组对象被误当书的原因。
    加一条：**若顶层是 list 且每项都是「有 `items` 列表、无 `rank`」的形状，视为分组容器 → 返回 `[]`**
    （→ 降级），而不是把组名当书名。这是兜底，防将来换榜单服务时重演。
 
    番茄的 `get_ranking` 返回 `{"books":[...]}`，`books` 已在 `_extract_rows` 的键集合里
-   （[rankings.py:93](../src/myink/integrations/rankings.py#L93)），不受影响。
+   （[rankings.py:93](../../src/myink/integrations/rankings.py#L93)），不受影响。
 
 4. **顺手修文案**：`except asyncio.CancelledError` 现在报"扫榜请求被取消"
-   （[rankings.py:224-228](../src/myink/integrations/rankings.py#L224-L228)）。mcp SDK 会把
+   （[rankings.py:224-228](../../src/myink/integrations/rankings.py#L224-L228)）。mcp SDK 会把
    **连接失败**也折叠成 `CancelledError`，所以 sidecar 挂掉时用户会看到一句和事实无关的话。
    改成「扫榜服务不可达（连接失败或被取消）」。这是小改动，但它是唯一会让运维误判的文案。
 
@@ -315,7 +317,7 @@ sidecar 没起来的第一屏会假降级，用户不点刷新就一直看着【
 ## 九、Phase 4 · 守卫例外（按 §三 选定的方案落地）
 
 **若选 A1**：给 `_assert_host_allowed` 加可选形参（**不要改它的默认语义**，它还被模型连接
-三条路径用着：[routes_settings.py:145, 243, 256](../src/myink/api/routes_settings.py#L145)）：
+三条路径用着：[routes_settings.py:145, 243, 256](../../src/myink/api/routes_settings.py#L145)）：
 
 ```python
 def _assert_host_allowed(base_url: str, *, allow_host: str | None = None) -> None:
@@ -328,8 +330,8 @@ def _assert_host_allowed(base_url: str, *, allow_host: str | None = None) -> Non
 ```
 
 调用点传 `allow_host=urlsplit(settings.rankings_mcp_url).hostname` ——
-[routes_environment.py:65](../src/myink/api/routes_environment.py#L65)（保存）与扫榜探针
-[routes_environment.py:162-188](../src/myink/api/routes_environment.py#L162-L188) 两条路径都要传，
+[routes_environment.py:65](../../src/myink/api/routes_environment.py#L65)（保存）与扫榜探针
+[routes_environment.py:162-188](../../src/myink/api/routes_environment.py#L162-L188) 两条路径都要传，
 否则又是"探针拦、保存不拦"那种分叉（守卫 docstring 自己警告过这一点）。
 
 **若选 A2**：环境页 `mcp_url` 改只读展示，`_validate_rankings` 忽略 `body.mcp_url`。
@@ -341,16 +343,16 @@ def _assert_host_allowed(base_url: str, *, allow_host: str | None = None) -> Non
 
 ## 十、Phase 5 · 前端
 
-- [EnvironmentPage.tsx:40-47](../web/src/pages/EnvironmentPage.tsx#L40-L47) `EMPTY_RANKINGS`：
+- [EnvironmentPage.tsx:40-47](../../web/src/pages/EnvironmentPage.tsx#L40-L47) `EMPTY_RANKINGS`：
   `mcp_url` 换默认值、`source` → `ranking_id`；:472 placeholder 同步；:500 那个"来源（source）"
   标签改成"榜单 ID"。
-- [EnvironmentPage.test.tsx:24](../web/src/pages/EnvironmentPage.test.tsx#L24) 的 fixture 同步。
+- [EnvironmentPage.test.tsx:24](../../web/src/pages/EnvironmentPage.test.tsx#L24) 的 fixture 同步。
 - **`RankingsPanel.tsx` 基本不用改**——它只读 `source`（remote/sample）、`items[].{rank,title,author,tags,hot}`，
   与榜单服务无关。唯一视觉变化见下。
 - **注意标签/热度会是大片空白**：番茄 `get_ranking` 只给 `rank/title/author/synopsis/cover`，
   **没有 `tags` 也没有 `hot`**。`sanitize` 的 allowlist 只放行 `{rank,title,author,tags,tag,hot}`
-  （[rankings.py:43](../src/myink/integrations/rankings.py#L43)），所以真实榜单每一行的右侧
-  （`tagsText` / `hotText`，[RankingsPanel.tsx:94-97](../web/src/components/RankingsPanel.tsx#L94-L97)）
+  （[rankings.py:43](../../src/myink/integrations/rankings.py#L43)），所以真实榜单每一行的右侧
+  （`tagsText` / `hotText`，[RankingsPanel.tsx:94-97](../../web/src/components/RankingsPanel.tsx#L94-L97)）
   会全是空的，而内置样例数据是有标签的——看起来会比现在的"降级态"更朴素。
 
   三个选项，**建议本次选 ①**：
@@ -366,7 +368,7 @@ def _assert_host_allowed(base_url: str, *, allow_host: str | None = None) -> Non
 
 ## 十一、Phase 6 · 测试
 
-改动集中在 [tests/test_rankings_mcp.py](../tests/test_rankings_mcp.py)：
+改动集中在 [tests/test_rankings_mcp.py](../../tests/test_rankings_mcp.py)：
 
 | 现有测试 | 处理 |
 |---|---|
@@ -404,13 +406,13 @@ src/myink/config.py:127
 
 文档侧：
 
-- [config.py:121-124](../src/myink/config.py#L121-L124) 与 [.env:47-49](../.env#L47-L49) 的注释
+- [config.py:121-124](../../src/myink/config.py#L121-L124) 与 [.env:47-49](../../.env#L47-L49) 的注释
   还写着"MCP 扫榜（plan.md §10）…拉取**起点**外部榜单"——起点已不成立，改写为番茄，并说明
   数据源是自托管 sidecar。
 - [PUBLIC-DEPLOYMENT-CHECKLIST.md:27](PUBLIC-DEPLOYMENT-CHECKLIST.md#L27) 的"自定义模型/MCP 地址"
   一行要补一句：扫榜 sidecar 走的是**运维预设白名单**例外（或按 A2 说明地址已只读），
   并说明该容器只 `expose` 未 `publish`。
-- [docs/DEPLOY.md](DEPLOY.md) 加 sidecar 的说明（首次 `docker compose up` 会自动带上，
+- [docs/DEPLOY.md](../DEPLOY.md) 加 sidecar 的说明（首次 `docker compose up` 会自动带上，
   但升级时要注意 `rankings-mcp/` 是新目录）。
 - `rankings-mcp/UPSTREAM.md` 记录来源、commit、拉取日期、license 处置结论。
 
@@ -433,7 +435,7 @@ src/myink/config.py:127
 | 风险 | 影响 | 处置 |
 |---|---|---|
 | **ECS 机房 IP 被番茄拦** | 方案作废 | Phase 0 先测，再决定要不要开工 |
-| **上游无 LICENSE** | 面试作品的法律瑕疵 | §三 拦路虎 2，你定 |
+| **上游无 LICENSE** | 公开作品的法律瑕疵 | §三 拦路虎 2，你定 |
 | **`a_bogus` 是番茄的私有签名算法** | 番茄改算法 → 榜单接口 401/参数错误 | 这是它能"无浏览器"的代价。`get_chapter_content` 那条路更脆（要 cookie），好在我们不用 |
 | 第三方代码进内网 | 供应链 | `expose` 不 `publish`、`/srv` 只读、不给 `env_file`、钉住 commit |
 | 守卫例外削弱 SSRF 防线 | 内网可达面变大 | A1 只放行"与运维预设 host 全等"的地址，不放开任意内网 |
