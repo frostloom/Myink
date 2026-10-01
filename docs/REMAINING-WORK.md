@@ -4,7 +4,7 @@
 
 - [公网部署前检查](archive/PUBLIC-DEPLOYMENT-CHECKLIST.md)（2026-09-19）的「上线阻断项」
 - [上线前检查报告](archive/LAUNCH-READINESS-2026-09-27.md) §四「已知残留风险」、§五「未能验证」
-- [内置平台密钥与免费额度方案](todo/PLATFORM-KEY-QUOTA-PLAN.md)（2026-09-30，设计已定、未实现）
+- [内置平台密钥与免费额度方案](todo/PLATFORM-KEY-QUOTA-PLAN.md)（2026-09-30 设计稿，其口径已被本文 §3 取代）
 
 上面三份是当时的快照，保留作历史记录；**结论以本文为准**（§0 列出了其中已经过期的两条）。
 每条都标了实测证据或明确标注「未验证」。
@@ -16,7 +16,7 @@
 - `docs/archive/` —— 已完成的施工单、验收记录与检查报告。都**没有删**，每份顶部标了状态；
   里面的结论是当时的，不再更新。
 - `docs/todo/` —— 未做方案的详细文档。三份，由本文汇总跟踪：
-  - [内置平台密钥与免费额度方案](todo/PLATFORM-KEY-QUOTA-PLAN.md) —— 见本文 §3
+  - [内置平台密钥与免费额度方案](todo/PLATFORM-KEY-QUOTA-PLAN.md) —— 早期设计稿，口径以本文 §3 为准（已实现、未上线）
   - [不可达提示施工单](todo/UNREACHABLE-HINT-PLAN.md) —— 把「本部署连不上」和「上游拒绝了你」
     分开提示，开工前有 3 个问题待拍板
   - [Jev 判定层](todo/JEV-JUDGE-LAYER.md) —— 决策记录，**暂缓非否决**，前置是先扩展
@@ -83,11 +83,13 @@
 开发栈整套 `up -d` 起来后 api/caddy healthy、migrate 退出码 0、三个长驻进程都是 uid 10001；
 备份脚本跑通并**真恢复到临时库**，38 张表行数与 24 条 RLS 策略逐项一致。
 
-### 1.3 管理员第二因子（TOTP）—— ✅ 2026-10-01 实现完成，**未提交、未上线**
+### 1.3 管理员第二因子（TOTP）—— ✅ 2026-10-01 已提交并部署
 
-关掉了 §2.8。细节、设计与上线注意都在 §2.8，这里只记一句部署口径：**动了
-`pyproject.toml` / `docker/constraints.txt`，两个镜像都要重建**；新列由一次性
-`myink-migrate` 里的 `myink init` 补上，服务器不需要新增环境变量。
+已提交为 `3b45ee5`（30 个文件，+1886/−70），未推送。细节与设计在 §2.8，部署证据在那一节末尾。
+
+部署口径：**动了 `pyproject.toml` / `docker/constraints.txt`，两个镜像都要重建**；新列由一次性
+`myink-migrate` 里的 `myink init` 补上，服务器不需要新增环境变量。`docker-compose.yml` 没动，
+服务器那份不用重传。
 
 ---
 
@@ -252,7 +254,7 @@ compose 起来后 api / worker / caddy 的 `HostConfig.Memory` 分别是 1g / 1g
 
 眼下不危险（两个 worker 各 108 MB、整个栈才用掉约 1.8 GB / 3.7 GB），但**没有任何上限**：哪天 `EMBED_ENABLED` 打开，每份 worker 要再加约 2 GB（bge-m3），无约束地乘上去。
 
-### 2.8 管理面板的第二因子（TOTP）—— ✅ 2026-10-01 实现完成，**未提交、未上线**
+### 2.8 管理面板的第二因子（TOTP）—— ✅ 2026-10-01 已提交并部署
 
 `/admin` 只有密码。这是全站唯一能跨用户读数据的地方，也是单点。
 
@@ -287,6 +289,15 @@ dev 库真跑过一遍 `myink init` 补列，浏览器真走完「登录 → 开
 上线注意：这次动了 `pyproject.toml` / `docker/constraints.txt`，**两个镜像都要重建**；
 新列由一次性 `myink-migrate` 里的 `myink init` 补上，服务器不需要新增任何环境变量。
 
+**2026-10-01 部署证据**（提交 `3b45ee5`）：部署前在**与生产同一份依赖**的 pytest 镜像上跑完整套，
+`1412 passed, 5 xfailed`；本地 build 的两个 amd64 镜像都带
+`org.opencontainers.image.revision=3b45ee5`，`docker save | load` 到服务器后镜像 ID 与本地
+逐字节一致（`f101d1384f78` / `7a8f0bffc23b`）；上线前 `users` 表 `totp%` 两列 **0 行**，
+`up -d` 后 migrate 退出码 0、两列就位；`/readyz` 回 200 ok；线上 API 里 5 条 MFA 路由都在；
+6 个存量账号 `totp_confirmed_at` 全为 NULL（**默认不生效**），拿错密码打 `/auth/token` 回的是
+普通 `401 {"detail":"INVALID_CREDENTIALS"}`、不是挑战形状；首页 bundle 里能读到「两步验证」「验证码」
+文案，说明前端产物也换了新的。
+
 ### 2.9 worker 副本数（2026-09-30 已做，留档）
 
 服务器 worker 从 1 份加到 **2 份**，因为已经有不止一个用户，而消费循环是 `prefetch=1` + 单线程（`worker/consumer.py`），一个进程同时只跑一个任务，多一本书就得排队等。
@@ -300,7 +311,7 @@ dev 库真跑过一遍 `myink init` 补列，浏览器真走完「登录 → 开
 
 ---
 
-## 3. 内置平台密钥与免费额度（设计已定，未实现）
+## 3. 内置平台密钥与免费额度（✅ 2026-10-01 实现完成，未上线）
 
 现状：模型密钥完全归用户，没配就是 `MissingModelProvider`（`providers/base.py:207`），报「请先在环境配置里添加模型连接」。新用户注册完第一件事就是去弄一个 API key，否则看不到产品能干什么。
 
@@ -334,30 +345,47 @@ dev 库真跑过一遍 `myink init` 补列，浏览器真走完「登录 → 开
 - **拒绝码**：新增 `PLATFORM_QUOTA_EXCEEDED`，沿用 429 + `{"error": code}` 信封（照抄 `_book_cnt_response`）。前端 `web/src/lib/apiError.ts` 的 `GATE_CODES` 加一行，文案直接说结论和下一步，**不写灰色小字说明**。引导入口是 `/environment`（不是 `SettingsPage`，那个是「本书创作设置」）。
 - **成本护栏（不打开就有真实账单风险）**：`QUOTA_DAILY_CHAPTERS=0` / `DAILY_BUDGET_YUAN=0` 这两个默认值成立的前提是「Key 是用户自己的」。一旦有平台密钥，这个前提没了，而 `rate:cost` 是**全体用户共用一个桶**。所以部署时必须把 `DAILY_BUDGET_YUAN` 设成正数（建议先 20，观察一周再调），并在 `config.validate()` 加一条 fail-closed：`is_prod() and platform_model_api_key and daily_budget <= 0` → 拒绝启动。
 
-### 3.4 待拍板
+### 3.4 已拍板（2026-10-01）
 
-1. **「30 章」与长篇现状冲突。** 现状长篇章数区间是 **50–1000**（`workflow/outline.py:8` 的 `CHAPTER_COUNT_MIN = 50`，`routes_book.py:81 _check_form_chapter_count()` 在用）。免费额度建的长篇若要 30 章封顶，就得为这类书放开区间。请确认「后续章节数量定到 30 章」是不是「免费建的长篇最多写 30 章」。
-2. **豁免范围**：`role=admin` 建议永久豁免（否则自己没法测）。`tier=vip` 要不要也豁免？
+1. **「30 章」= 免费建的长篇最多用平台密钥写 30 章**，累计、终身不重置。建书申报的章数区间 **50–1000 不动**——不改 `CHAPTER_COUNT_MIN`，也不给这类书开特例。
+2. **豁免范围只有 `role=admin`**，`tier=vip` 照常受限。
 
-### 3.5 改动的文件
+落地时另发现两处原设计没覆盖的缺陷，都已修并各有测试：
+
+- **额度必须先问「平台密钥到底配没配」。** 原判据只问「有没有自备连接」，于是没配 key 的部署（以及整个测试套）凭空获得 3 本上限。补 `platform_model_configured()`，凭据层与计费层共用。
+- **额度闸门不能挡住幂等重放。** 额度用完后重发同一个 `request_id`，原本回 429，而书其实已经在书架上了。长篇按 `request_id` 回溯已有作品，短篇先查 `session.book_id` 再判额度。
+
+### 3.5 改动的文件（实际）
 
 | 文件 | 改动 |
 |---|---|
-| `src/myink/config.py` | 6 个平台字段 + `validate()` 那条 fail-closed |
-| `src/myink/providers/__init__.py` | 抽 `_provider_for`；新增 `_platform_chain`；改 `_no_model_chain` |
-| `src/myink/models/project.py` | `User` 加两列 |
+| `src/myink/config.py` | 7 个平台字段 + `validate()` 两条 fail-closed（协议合法性、prod 必须有预算） |
+| `src/myink/providers/__init__.py` | 抽 `_provider_for`；新增 `_platform_chain` / `_fallback_chain` / `platform_model_configured` / `platform_key_active`；`_project_primary` 改返回 `(override, packed)` |
+| `src/myink/models/project.py` | `User` 加 `platform_short_used` / `platform_long_used` |
 | `src/myink/db.py` | `ensure_platform_quota()` + `_upgrade_platform_quota()` |
-| `src/myink/cli.py` | `init()` 里插一行升级调用 |
-| `src/myink/api/routes_short_creation.py` | commit 里扣减 |
-| `src/myink/api/routes_book.py` | create_project 里扣减 |
-| `web/src/lib/apiError.ts` | `GATE_CODES` 加一行 |
-| `.env.example` | 新增 6 个 env 的说明与示例值 |
+| `src/myink/cli.py` | `init()` / `auth-upgrade` 里插幂等升级 |
+| `src/myink/api/routes_book.py` | 建书判额度 + 扣减；抽 `_platform_quota_response` / `_find_by_request_id` |
+| `src/myink/api/routes_short_creation.py` | commit 判额度 + 扣减（放在 `session.book_id` 复用分支之后） |
+| `src/myink/api/routes_tasks.py` | 长篇两个入队口传 `platform_chapter_max` |
+| `src/myink/worker/gates.lua` | **新增第 6 道闸门** `rate:platformbook:{uid}:{pid}`（终身计数，不设 EXPIRE） |
+| `src/myink/worker/compensate.lua` | 同步回滚该键（仅在 max > 0 时） |
+| `src/myink/worker/redis_client.py` / `enqueue.py` | `platform_book_key()`；`platform_chapter_max` 参数（默认 0 = 不限） |
+| `web/src/lib/apiError.ts` | `GATE_CODES` 加 `PLATFORM_QUOTA_EXCEEDED` / `PLATFORM_CHAPTER_EXCEEDED` 两条 |
+| `.env.example` | 新增 7 个 env 的说明与示例值 |
 
 ### 3.6 明确不做
 
-不新建按维度的用量表；不动 `gates.lua` 与 `rate:*` 的语义（现有五项一并不改）；不给平台 key 做加密落库；不在页面常驻显示剩余次数；不动短篇/长篇的生成管道。
+不新建按维度的用量表；**其余五项闸门的语义一并不改**（第六项是新加的，不碰前五项）；不给平台 key 做加密落库；不在页面常驻显示剩余次数；不动短篇/长篇的生成管道。
 
-详细施工口径见 [PLATFORM-KEY-QUOTA-PLAN.md](todo/PLATFORM-KEY-QUOTA-PLAN.md)。
+### 3.7 上线口径
+
+服务器 `.env` 要加 `PLATFORM_MODEL_API_KEY` / `_BASE_URL` / `_NAME` / `_PROTOCOL` 四项，并把
+`DAILY_BUDGET_YUAN` 从 `0` 打开（配了平台密钥却不设预算，`validate()` 会 **fail-closed 拒绝启动**）。
+`rate:cost` 是全体用户共用一个桶，有了平台密钥后「Key 是用户自己的」这个前提不再成立，这一条是唯一有真金白银风险的地方。
+模型用 `deepseek-flash`（不在 `MODEL_REGISTRY`，上下文预算因此退回 `REQUEST_TOKEN_BUDGET` 而非 1M；价格走 `prices.py` 的 EXACT 表，是准的）。
+**平台密钥只进服务器本地 `.env`，不写进任何文档或提交。**
+
+详细施工口径见 [PLATFORM-KEY-QUOTA-PLAN.md](todo/PLATFORM-KEY-QUOTA-PLAN.md) 与新方案文件（`.claude/plans/`，未入库）。
 
 ---
 
