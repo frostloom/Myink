@@ -173,7 +173,7 @@ docker compose logs myink-caddy | grep -i obtained
 
 **切回域名**：把上面三行恢复成 `SITE_ADDRESS=<域名>`（不带协议前缀）、`CADDY_SITE_TLS=tls-auto.caddyfile`、`CADDY_DEFAULT_SNI=localhost`，再 `docker compose up -d myink-caddy`。域名证书用默认 profile，不该跟着用 `shortlived`——套上会把 90 天证书压成 6 天。
 
-> 2026-09-29 在阿里云 ECS（62.234.106.6）实测走通：http-01 校验通过、`certificate obtained successfully` 且 issuer 为 `acme-v02.api.letsencrypt.org-directory`、证书 SAN 为 `IP Address:62.234.106.6`、有效期 6.6 天、`:80` 返回 308 跳转到 `https://`、`curl` 不带 `-k` 校验证书链通过（`ssl_verify_result=0`）。空 SNI 路径也有实证：Caddy 访问日志里出现浏览器请求 `"server_name": ""` 且返回 200。
+> 2026-09-29 在腾讯云（62.234.106.6，北京 ap-beijing）实测走通：http-01 校验通过、`certificate obtained successfully` 且 issuer 为 `acme-v02.api.letsencrypt.org-directory`、证书 SAN 为 `IP Address:62.234.106.6`、有效期 6.6 天、`:80` 返回 308 跳转到 `https://`、`curl` 不带 `-k` 校验证书链通过（`ssl_verify_result=0`）。空 SNI 路径也有实证：Caddy 访问日志里出现浏览器请求 `"server_name": ""` 且返回 200。
 
 ## 切换公网入口（宿主已有 web 服务器时）
 
