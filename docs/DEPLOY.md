@@ -296,7 +296,8 @@ sudo docker inspect myink-api --format '{{index .Config.Labels "org.opencontaine
 
 HTTPS 已由 Caddy 承担（`SITE_ADDRESS` 填域名即自动签发续期）；Caddy 之前若再挂 CDN 或云 LB，
 必须配 Caddy 全局 `trusted_proxies` 并把客户端 IP 取值换成 `{client_ip}`，否则所有用户会塌进
-同一个限流桶（见 `.env.example`）。此外还有：集中监控与告警（探活与告警渠道已定，见
-[REMAINING-WORK.md](REMAINING-WORK.md) §2.2，**尚未在控制台配置**）、容量测试，以及两项已知的
-结构性欠账——前端凭据从 localStorage 换成 HttpOnly Cookie、/admin 加 MFA。当前没有生产可用性或
-真实小说质量的保证；演示应使用已验证的机制与测试结果描述能力。
+同一个限流桶（见 `.env.example`）。此外还有：站点可达性探活（实例的 CPU / 内存 / 硬盘告警
+**已在控制台配好**，云拨测仍待定，见 [REMAINING-WORK.md](REMAINING-WORK.md) §2.2）、容量测试，
+以及一项已知的结构性欠账——前端凭据从 localStorage 换成 HttpOnly Cookie。`/admin` 的第二因子
+（TOTP）已实现但**默认关闭**，要自己到账号页开启；机制与兜底命令见 [AUTH.md](AUTH.md)。
+当前没有生产可用性或真实小说质量的保证；演示应使用已验证的机制与测试结果描述能力。
