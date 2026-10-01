@@ -17,6 +17,14 @@ docker compose exec myink-api myink set-role zlx admin
 
 变更角色会撤销该账号旧会话，需要重新登录。降为普通用户时将最后一个参数改为 `user`。密码重设继续使用交互式 `myink reset-password`，不要把密码写入命令参数、源码或部署文件。
 
+管理员的第二因子（TOTP）在账号页自行开启，默认关闭。认证器丢了或换手机后，服务器上的这条命令是唯一入口：
+
+```sh
+docker compose exec myink-api myink mfa-disable zlx
+```
+
+它清掉密钥并撤销该账号全部会话，之后凭密码即可登录；确认无误后再用账号页重新绑一个新认证器。没有恢复码，也不要为了绕过它去手工改库。机制细节见 [AUTH.md](AUTH.md) 的「管理员第二因子」。
+
 容器启动使用 `myink init`：升级结构，但默认不建账号、不建示例书。只有确实需要开发示例数据时才手工运行 `myink init --seed`；不要在已有实际账号的库里用它补数据——它遇到缺失的 demo 账号会新建一个，而不是复用你现有的账号。
 
 ## 阅读指标

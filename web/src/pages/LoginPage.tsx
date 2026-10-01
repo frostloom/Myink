@@ -15,7 +15,7 @@ function passwordLength(value: string): number {
 }
 
 export default function LoginPage() {
-  const { login, register, notice } = useAuth()
+  const { login, register, completeMfa, notice } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   // 只读一次：/login 在 RequireAuth 之外，游客弹窗的「注册」必然是新挂载。
@@ -28,6 +28,9 @@ export default function LoginPage() {
   const [invitationCode, setInvitationCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  // 非空 = 密码已通过，停在第二步等验证码。存的是服务端给的挑战票，不是登录态。
+  const [mfaToken, setMfaToken] = useState<string | null>(null)
+  const [code, setCode] = useState('')
 
   function switchMode(next: Mode) {
     setMode(next)
@@ -35,6 +38,40 @@ export default function LoginPage() {
     setConfirmPassword('')
     setInvitationCode('')
     setError(null)
+  }
+
+  function backToLogin() {
+    setMfaToken(null)
+    setCode('')
+    setError(null)
+  }
+
+  function reportFailure(err: unknown, fallback: string) {
+    if (err instanceof ApiError && err.code === 'network_error') {
+      setError('无法连接服务，请检查网络后重试')
+      return
+    }
+    setError(formatApiError(err, fallback))
+  }
+
+  async function onSubmitCode(event: FormEvent) {
+    event.preventDefault()
+    if (!mfaToken) return
+    const trimmed = code.trim()
+    if (!/^\d{6}$/.test(trimmed)) {
+      setError('请输入 6 位验证码')
+      return
+    }
+
+    setBusy(true)
+    setError(null)
+    try {
+      if (await completeMfa(mfaToken, trimmed)) navigate('/long', { replace: true })
+    } catch (err) {
+      reportFailure(err, '验证码验证失败')
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function onSubmit(event: FormEvent) {
@@ -70,16 +107,47 @@ export default function LoginPage() {
       const accepted = mode === 'login'
         ? await login(name, password)
         : await register(name, password, invitation)
-      if (accepted) navigate('/long', { replace: true })
-    } catch (err) {
-      if (err instanceof ApiError && err.code === 'network_error') {
-        setError('无法连接服务，请检查网络后重试')
-      } else {
-        setError(formatApiError(err, mode === 'login' ? '登录失败' : '注册失败'))
+      if (accepted?.status === 'mfa') {
+        setMfaToken(accepted.mfaToken)
+        setCode('')
+        return
       }
+      if (accepted?.status === 'authenticated') navigate('/long', { replace: true })
+    } catch (err) {
+      reportFailure(err, mode === 'login' ? '登录失败' : '注册失败')
     } finally {
       setBusy(false)
     }
+  }
+
+  if (mfaToken) {
+    return (
+      <div className={styles.wrap}>
+        <form className={`panel ${styles.card}`} onSubmit={onSubmitCode}>
+          <h1>输入验证码</h1>
+          <label className={styles.field}>
+            <span>验证码</span>
+            <input
+              className="input"
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              spellCheck={false}
+              autoFocus
+            />
+          </label>
+          {error && <div className="banner banner-error" role="alert">{error}</div>}
+          <button className="btn btn-primary" type="submit" disabled={busy}>
+            {busy ? '验证中…' : '验证'}
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={backToLogin} disabled={busy}>
+            返回
+          </button>
+        </form>
+      </div>
+    )
   }
 
   return (

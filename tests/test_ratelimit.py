@@ -233,3 +233,51 @@ def test_account_guard_fails_closed_when_redis_is_down(monkeypatch):
     with pytest.raises(rl.ApiError) as raised:
         rl.account_auth_guard("someone")
     assert (raised.value.status_code, raised.value.code) == (503, "auth_unavailable")
+
+
+def _mfa_bucket_key(account: str) -> str:
+    from myink.api.ratelimit import _mfa_key as key
+
+    return key(account)
+
+
+def _forget_mfa(*accounts: str) -> None:
+    get_redis().delete(*[_mfa_bucket_key(account) for account in accounts])
+
+
+def test_second_factor_bucket_trips_per_account(monkeypatch):
+    """验码桶比登录更紧，而且按**账号 id** 分：一个人被刷满不牵连另一个账号。
+
+    键用 id 而不是用户名——验码请求里只有挑战票，拿不到用户名。所以这里直接测函数，
+    不走 HTTP：要走到那个桶得先有一张签名有效的挑战票（那属于 test_mfa.py 的正路）。
+    """
+    import myink.api.ratelimit as rl
+
+    monkeypatch.setattr(rl, "MFA_MAX", 3)
+    first, second = f"acct-{uuid.uuid4().hex}", f"acct-{uuid.uuid4().hex}"
+    _forget_mfa(first, second)
+    try:
+        for _ in range(3):
+            rl.mfa_failed(first)
+        with pytest.raises(rl.ApiError) as raised:
+            rl.mfa_guard(first)
+        assert (raised.value.status_code, raised.value.code) == (429, "auth_rate_limited")
+        assert raised.value.headers["Retry-After"] == "60"
+
+        rl.mfa_guard(second)  # 另一个账号不受牵连
+        rl.mfa_cleared(first)  # 验过了就清计数，正常用户不被自己刚才输错的一次拖住
+        rl.mfa_guard(first)
+    finally:
+        _forget_mfa(first, second)
+
+
+def test_second_factor_guard_fails_closed_when_redis_is_down(monkeypatch):
+    import myink.api.ratelimit as rl
+
+    def _boom():
+        raise RuntimeError("redis down")
+
+    monkeypatch.setattr(rl, "get_redis", _boom)
+    with pytest.raises(rl.ApiError) as raised:
+        rl.mfa_guard("someone")
+    assert (raised.value.status_code, raised.value.code) == (503, "auth_unavailable")

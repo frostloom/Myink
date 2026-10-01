@@ -25,6 +25,10 @@ const ERROR_CODES: Record<string, string> = {
   auth_rate_limited: '登录尝试过于频繁，请稍后再试',
   AUTH_CAPACITY_EXCEEDED: '认证服务正忙，请稍后再试',
   INVALID_CREDENTIALS: '用户名或密码不正确',
+  // 第二因子验不过（码错 / 码过期 / 挑战票过期，服务端刻意不区分）。与密码错分开报，
+  // 这样登录第二步说得出「验证码不正确」。
+  MFA_INVALID: '验证码不正确，请重新输入',
+  MFA_ALREADY_ENABLED: '第二因子已开启，请先关闭再重新设置',
   USERNAME_TAKEN: '该用户名已被使用',
   PROJECT_NOT_READY: '作品尚未完成建书，请先确认设定与整书大纲',
   SETUP_NOT_CONFIRMED: '请先确认作品设定，再确认整书大纲',

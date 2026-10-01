@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 import jwt
+import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, field_validator
@@ -23,8 +24,9 @@ from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from myink.api.ratelimit import (account_auth_cleared, account_auth_failed, account_auth_guard,
-                                 auth_rate_limit)
-from myink.api.schemas import AuthResponse, AuthSessionOut, OkOut
+                                 auth_rate_limit, mfa_cleared, mfa_failed, mfa_guard)
+from myink.api.schemas import (AuthResponse, AuthSessionOut, MfaChallengeOut, MfaCodeRequest,
+                               MfaEnrollOut, MfaStatusOut, MfaVerifyRequest, OkOut)
 from myink.config import settings
 from myink.db import new_session
 from myink.invitations import (
@@ -34,11 +36,18 @@ from myink.invitations import (
 )
 from myink.models import Project, User
 from myink.passwords import hash_password, validate_password, verify_password
+from myink.providers.credentials import decrypt_totp_secret, encrypt_totp_secret
 
 router = APIRouter(prefix="/api/v1", tags=["auth"])
 
 _ALG = "HS256"
 _ISS = "myink"
+# 第二因子挑战令牌用**另一个 issuer**。这样 `_decode_token`（要求 issuer=myink，见 `_ISS`）
+# 一行都不用改：挑战令牌天然过不了受保护路由，线上已发的 access token 也不会因此失效。
+# 比在 access token 上加 `purpose` 声明好——那条路要么改热路径校验，要么让存量 token 全失效。
+_MFA_ISS = "myink-mfa"
+_MFA_CHALLENGE_TTL = 300
+_TOTP_ISSUER = "Myink"
 _USERNAME_RE = re.compile(r"^[a-z0-9_-]{3,64}$", re.ASCII)
 _bearer = HTTPBearer(auto_error=False)
 _password_slots = threading.BoundedSemaphore(2)
@@ -52,6 +61,18 @@ def _invalid_credentials() -> HTTPException:
     return HTTPException(
         status_code=401,
         detail="INVALID_CREDENTIALS",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+def _mfa_invalid() -> HTTPException:
+    """第二因子验不过。密码错与这一步分开报：前端在第二步说「验证码不正确」才讲得通。
+
+    「码错」「码过期」「挑战票过期」仍然统一回这一个码——区分它们等于告诉攻击者密码对没对。
+    """
+    return HTTPException(
+        status_code=401,
+        detail="MFA_INVALID",
         headers={"Cache-Control": "no-store"},
     )
 
@@ -208,6 +229,12 @@ class _TokenClaims:
     expires_at: datetime
 
 
+class _MfaEnrollRequest(BaseModel):
+    # 开启第二因子会改变这个账号的登录方式，所以和改密一样要再验一次密码：
+    # 光有 token 就够的话，偷到 token 的人可以把自己的认证器绑上去，实现持久化占坑。
+    password: str
+
+
 @dataclass(frozen=True)
 class _AuthenticatedUser:
     id: uuid.UUID
@@ -216,6 +243,10 @@ class _AuthenticatedUser:
     role: str
     password_hash: str | None
     auth_version: int
+    # 下面两个随 `_load_identity` 那一次主键读一起拿到，省掉 MFA 路由的第二次查询。
+    # 带的是**密文**，明文只在 `_verify_code` 前一步解开。
+    totp_secret: str | None
+    totp_confirmed_at: datetime | None
 
 
 def _decode_token(token: str) -> _TokenClaims:
@@ -257,7 +288,79 @@ def _load_identity(claims: _TokenClaims) -> _AuthenticatedUser | None:
             role=user.role,
             password_hash=user.password_hash,
             auth_version=user.auth_version,
+            totp_secret=user.totp_secret,
+            totp_confirmed_at=user.totp_confirmed_at,
         )
+
+
+def _create_mfa_challenge(user: User) -> str:
+    """签一张只够用来验一次码的短票；它不是 access token（issuer 不同）。"""
+    require_auth_configuration()
+    now = datetime.now(timezone.utc)
+    return jwt.encode(
+        {
+            "sub": str(user.id),
+            "iss": _MFA_ISS,
+            "ver": user.auth_version,
+            "iat": now,
+            "exp": now + timedelta(seconds=_MFA_CHALLENGE_TTL),
+        },
+        settings.jwt_secret,
+        algorithm=_ALG,
+    )
+
+
+def _decode_challenge(token: str) -> _TokenClaims:
+    """只认挑战令牌。与 `_decode_token` 唯一的差别是 issuer，其余校验（含 `ver`）相同。"""
+    require_auth_configuration()
+    try:
+        claims = jwt.decode(
+            token,
+            settings.jwt_secret,
+            algorithms=[_ALG],
+            issuer=_MFA_ISS,
+            options={"require": ["sub", "iss", "iat", "exp", "ver"]},
+        )
+        user_id = uuid.UUID(claims["sub"])
+        auth_version = claims["ver"]
+        if isinstance(auth_version, bool) or not isinstance(auth_version, int) or auth_version < 1:
+            raise ValueError("invalid token version")
+        expires_at = datetime.fromtimestamp(claims["exp"], tz=timezone.utc)
+    except (jwt.PyJWTError, KeyError, TypeError, ValueError, AttributeError, OSError, OverflowError):
+        raise _mfa_invalid()
+    return _TokenClaims(user_id=user_id, auth_version=auth_version, expires_at=expires_at)
+
+
+def _mfa_enabled(user: User) -> bool:
+    """只有「已确认」才算开启。写进密钥但没确认的半成品不该把人锁在门外。"""
+    return user.totp_confirmed_at is not None and bool(user.totp_secret)
+
+
+def _confirmed_totp_secret(user: _AuthenticatedUser) -> str | None:
+    """已开启账号的密钥明文；没开启或解不开都返回 ``None``，调用方一律拒绝。"""
+    if user.totp_confirmed_at is None:
+        return None
+    return decrypt_totp_secret(user.totp_secret)
+
+
+def _verify_code(secret: str, code: str) -> bool:
+    """±1 个 30 秒窗口，容忍客户端时钟漂移。非法输入当作不匹配，不抛给上层。"""
+    candidate = code.strip()
+    if not candidate.isdigit():
+        return False
+    try:
+        # pyotp 解 base32 失败时抛 binascii.Error，它是 ValueError 的子类。
+        return pyotp.TOTP(secret).verify(candidate, valid_window=1)
+    except (ValueError, TypeError):
+        return False
+
+
+def _mfa_challenge_response(user: User) -> dict:
+    return {
+        "mfa_required": True,
+        "mfa_token": _create_mfa_challenge(user),
+        "expires_in": _MFA_CHALLENGE_TTL,
+    }
 
 
 def _decode_bearer(
@@ -338,7 +441,8 @@ def register(body: _RegisterRequest, response: Response) -> dict:
     return payload
 
 
-@router.post("/auth/token", response_model=AuthResponse, dependencies=[Depends(auth_rate_limit)])
+@router.post("/auth/token", response_model=AuthResponse | MfaChallengeOut,
+             dependencies=[Depends(auth_rate_limit)])
 def issue_token(body: _TokenRequest, response: Response) -> dict:
     require_auth_configuration()
     if not 1 <= len(body.password) <= 128:
@@ -359,7 +463,9 @@ def issue_token(body: _TokenRequest, response: Response) -> dict:
         if user is None or not password_matches:
             account_auth_failed(username)
             raise _invalid_credentials()
-        payload = _auth_response(user)
+        # 密码对了但开了第二因子：不发 token，改发一张挑战票。200 而不是 401——密码没错，
+        # 这不是错误；401 还会跟前端「带 token 的 401 就全局登出」的逻辑纠缠。
+        payload = _mfa_challenge_response(user) if _mfa_enabled(user) else _auth_response(user)
     account_auth_cleared(username)
     _no_store(response)
     return payload
@@ -427,3 +533,146 @@ def logout(
         db.commit()
     _no_store(response)
     return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# 第二因子（TOTP，`/admin` 用；机制见 docs/AUTH.md）
+#
+# 开启是**可选**的：没开启的账号登录行为与从前一字不差。一旦开启，登录就必须带验证码。
+# 认器丢了只有一条路——服务器上 `myink mfa-disable <用户名>`。
+# ---------------------------------------------------------------------------
+
+
+@router.get("/auth/mfa", response_model=MfaStatusOut)
+def mfa_status(response: Response, user: _AuthenticatedUser = Depends(require_admin)) -> dict:
+    """给账号页读状态用。刻意不并进 `/auth/session`：那个端点 60 秒轮询一次、形状被测试钉住。"""
+    _no_store(response)
+    return {"enabled": user.totp_confirmed_at is not None}
+
+
+@router.post("/auth/mfa/enroll", response_model=MfaEnrollOut,
+             dependencies=[Depends(auth_rate_limit)])
+def mfa_enroll(
+    body: _MfaEnrollRequest,
+    response: Response,
+    user: _AuthenticatedUser = Depends(require_admin),
+) -> dict:
+    """生成一个**待确认**的密钥；确认之前不影响登录。
+
+    已开启的账号不给重新注册（那等于用一次不带验证码的请求把第二因子换掉）——先关再开。
+    """
+    if user.totp_confirmed_at is not None:
+        raise HTTPException(status_code=409, detail="MFA_ALREADY_ENABLED")
+    with _password_capacity():
+        if not verify_password(body.password, user.password_hash):
+            raise _invalid_credentials()
+    secret = pyotp.random_base32()
+    with new_session() as db:
+        result = db.execute(
+            update(User)
+            .where(User.id == user.id, User.auth_version == user.auth_version)
+            .values(totp_secret=encrypt_totp_secret(secret))
+        )
+        if result.rowcount != 1:
+            db.rollback()
+            raise _invalid_credentials()
+        db.commit()
+    _no_store(response)
+    return {
+        "secret": secret,
+        "otpauth_uri": pyotp.TOTP(secret).provisioning_uri(
+            name=user.username, issuer_name=_TOTP_ISSUER
+        ),
+    }
+
+
+@router.post("/auth/mfa/confirm", response_model=OkOut,
+             dependencies=[Depends(auth_rate_limit)])
+def mfa_confirm(
+    body: MfaCodeRequest,
+    response: Response,
+    user: _AuthenticatedUser = Depends(require_admin),
+) -> dict:
+    """拿认证器里刚出现的一次码确认开启。
+
+    成功时**自增 auth_version**：`/auth/session` 是滑动续期（标签页开着就永不过期），
+    所以开启之前签发的 token 否则会一直有效，把第二因子整个绕过去。代价是当前会话掉线一次。
+    """
+    if user.totp_confirmed_at is not None:
+        raise HTTPException(status_code=409, detail="MFA_ALREADY_ENABLED")
+    account = str(user.id)
+    mfa_guard(account)
+    secret = decrypt_totp_secret(user.totp_secret)
+    if secret is None or not _verify_code(secret, body.code):
+        mfa_failed(account)
+        raise _mfa_invalid()
+    with new_session() as db:
+        result = db.execute(
+            update(User)
+            .where(User.id == user.id, User.auth_version == user.auth_version)
+            .values(totp_confirmed_at=func.now(), auth_version=User.auth_version + 1)
+        )
+        if result.rowcount != 1:
+            db.rollback()
+            raise _invalid_credentials()
+        db.commit()
+    mfa_cleared(account)
+    _no_store(response)
+    return {"ok": True}
+
+
+@router.post("/auth/mfa/disable", response_model=OkOut,
+             dependencies=[Depends(auth_rate_limit)])
+def mfa_disable(
+    body: MfaCodeRequest,
+    response: Response,
+    user: _AuthenticatedUser = Depends(require_admin),
+) -> dict:
+    """验一次码再关（拿不出码的去服务器跑 `myink mfa-disable`）。同时踢掉所有会话。"""
+    account = str(user.id)
+    mfa_guard(account)
+    secret = _confirmed_totp_secret(user)
+    if secret is None or not _verify_code(secret, body.code):
+        mfa_failed(account)
+        raise _mfa_invalid()
+    with new_session() as db:
+        result = db.execute(
+            update(User)
+            .where(User.id == user.id, User.auth_version == user.auth_version)
+            .values(totp_secret=None, totp_confirmed_at=None, auth_version=User.auth_version + 1)
+        )
+        if result.rowcount != 1:
+            db.rollback()
+            raise _invalid_credentials()
+        db.commit()
+    mfa_cleared(account)
+    _no_store(response)
+    return {"ok": True}
+
+
+@router.post("/auth/mfa/verify", response_model=AuthResponse,
+             dependencies=[Depends(auth_rate_limit)])
+def verify_mfa(body: MfaVerifyRequest, response: Response) -> dict:
+    """拿挑战票 + 一次码换正式 token。失败一律 401 MFA_INVALID。
+
+    不区分「码错」「码过期」「票过期」，不给攻击者任何区分信号；与密码错分开只是为了让
+    前端的第二步能说人话（票里已经有 sub，密码对没对这一步是已知的）。
+    """
+    require_auth_configuration()
+    claims = _decode_challenge(body.mfa_token)
+    account = str(claims.user_id)
+    mfa_guard(account)
+    with new_session() as db:
+        user = db.get(User, claims.user_id)
+        # 挑战票里的 ver 要跟库里再比一次：这中间改了密码/退出过，在途的票就该作废。
+        if user is None or user.auth_version != claims.auth_version or not _mfa_enabled(user):
+            mfa_failed(account)
+            raise _mfa_invalid()
+        secret = decrypt_totp_secret(user.totp_secret)
+        if secret is None or not _verify_code(secret, body.code):
+            mfa_failed(account)
+            raise _mfa_invalid()
+        payload = _auth_response(user)
+    mfa_cleared(account)
+    _no_store(response)
+    return payload

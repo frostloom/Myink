@@ -39,6 +39,14 @@ class User(Base, UUIDPkMixin, TimestampMixin):
         JSON, default=dict, nullable=False, server_default=text("'{}'"),
         comment="账号级环境配置（模型连接/路由 + MCP 扫榜）",
     )
+    # /admin 第二因子（TOTP）。两列而不是一列：「已写入密钥」与「已确认开启」是两件事，
+    # 只有 confirmed_at 非空才在登录时要求验证码——否则一次半途而废的开启尝试就会把人锁在门外。
+    totp_secret: Mapped[str | None] = mapped_column(
+        Text, nullable=True, comment="TOTP 密钥（密文，凭据域 mfa）",
+    )
+    totp_confirmed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, comment="第二因子确认开启的时刻；NULL = 未开启",
+    )
 
     __table_args__ = (
         CheckConstraint("role IN ('user', 'admin')", name="user_role"),

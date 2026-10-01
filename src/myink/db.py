@@ -395,6 +395,24 @@ def _upgrade_user_auth_schema(conn) -> None:
     ))
 
 
+def ensure_user_mfa_schema() -> None:
+    """Add the /admin second-factor columns (§2.8).
+
+    走 ``get_admin_engine()`` 缝而不是模块级 ``_admin_engine``，迁移测试才能把它指到
+    临时 schema 上（同 ``ensure_project_form``，见那里的 docstring）。
+    """
+    with get_admin_engine().begin() as conn:
+        _upgrade_user_mfa_schema(conn)
+
+
+def _upgrade_user_mfa_schema(conn) -> None:
+    """Run the MFA upgrade in the caller's transaction (also enables safe tests)."""
+    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret TEXT"))
+    conn.execute(text(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_confirmed_at TIMESTAMPTZ"
+    ))
+
+
 def ensure_unique_constraints() -> None:
     """为活库补齐 create_all 不会 ALTER 的唯一约束（幂等，阶段 5 迁移链前的过渡）。
 

@@ -22,6 +22,16 @@ import {
 
 export type AuthStatus = 'checking' | 'authenticated' | 'anonymous' | 'unavailable'
 
+/**
+ * 登录/注册的结果。
+ *
+ * `mfa` 不是失败：密码已经对了，只是还差第二因子——调用方该转去第二步，而不是报错。
+ * `null`（见 login/register 的返回类型）表示这次结果已被更新的登录态取代，调用方什么都不做。
+ */
+export type LoginResult =
+  | { status: 'authenticated' }
+  | { status: 'mfa'; mfaToken: string }
+
 /** 令牌到期前多久去换新的：留出重试余量，写作中途掉线的代价远大于多签一张令牌 */
 const RENEW_LEAD_MS = 5 * 60 * 1000
 /** 续期检查周期，兼作失败后的重试间隔 */
@@ -32,8 +42,15 @@ interface AuthState {
   status: AuthStatus
   validationError: string | null
   notice: string | null
-  login: (username: string, password: string) => Promise<boolean>
-  register: (username: string, password: string, invitationCode: string) => Promise<boolean>
+  login: (username: string, password: string) => Promise<LoginResult | null>
+  register: (username: string, password: string, invitationCode: string) => Promise<LoginResult | null>
+  /** 第二步：拿挑战票 + 一次验证码换令牌。走与登录同一条落会话路径。 */
+  completeMfa: (mfaToken: string, code: string) => Promise<boolean>
+  /**
+   * 服务端刚撤销了本机令牌（改密、开启/关闭第二因子），本机跟着退到登录页并给出提示。
+   * 不走 logout()：那个会拿已经死掉的令牌去打服务端，401 会被记成「联系不上服务器」。
+   */
+  endSession: (notice: string) => void
   logout: () => Promise<void>
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>
   revalidate: () => void
@@ -282,20 +299,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     username: string,
     password: string,
     invitationCode?: string,
-  ): Promise<boolean> => {
+  ): Promise<LoginResult | null> => {
     const generation = ++generationRef.current
     const storedTokenAtStart = readStoredSession()?.token ?? null
     const resp = action === 'login'
       ? await api.login(username, password)
       : await api.register(username, password, invitationCode ?? '')
-    if (generation !== generationRef.current) return false
+    if (generation !== generationRef.current) return null
     if ((readStoredSession()?.token ?? null) !== storedTokenAtStart) {
       syncFromStorage()
-      return false
+      return null
+    }
+    if ('mfa_required' in resp) {
+      // 密码对了但没带验证码：不发令牌，把挑战票交回给登录页。
+      return { status: 'mfa', mfaToken: resp.mfa_token }
     }
     setNotice(null)
     applySession(fromAuthResponse(resp), true, 'authenticated')
-    return true
+    return { status: 'authenticated' }
   }, [applySession, syncFromStorage])
 
   const login = useCallback(
@@ -309,6 +330,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ),
     [authenticate],
   )
+
+  const completeMfa = useCallback(async (mfaToken: string, code: string): Promise<boolean> => {
+    const generation = ++generationRef.current
+    const storedTokenAtStart = readStoredSession()?.token ?? null
+    const resp = await api.verifyMfa(mfaToken, code)
+    if (generation !== generationRef.current) return false
+    if ((readStoredSession()?.token ?? null) !== storedTokenAtStart) {
+      syncFromStorage()
+      return false
+    }
+    setNotice(null)
+    applySession(fromAuthResponse(resp), true, 'authenticated')
+    return true
+  }, [applySession, syncFromStorage])
+
+  const endSession = useCallback((message: string) => {
+    const current = sessionRef.current
+    ++generationRef.current
+    validationRef.current?.abort()
+    if (current) abortRequestsForToken(current.token)
+    setNotice(message)
+    applySession(null, true, 'anonymous')
+  }, [applySession])
 
   const logout = useCallback(async () => {
     const current = sessionRef.current
@@ -365,10 +409,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     notice,
     login,
     register,
+    completeMfa,
+    endSession,
     logout,
     changePassword,
     revalidate,
-  }), [session, status, validationError, notice, login, register, logout, changePassword, revalidate])
+  }), [session, status, validationError, notice, login, register, completeMfa, endSession,
+    logout, changePassword, revalidate])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 

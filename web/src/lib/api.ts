@@ -28,6 +28,9 @@ import type {
   LessonActionResponse,
   LoreEntity,
   MemoryCandidate,
+  MfaChallengeResponse,
+  MfaEnrollResponse,
+  MfaStatusResponse,
   ModelConnectionInput,
   ModelListResult,
   ModelProbeRequest,
@@ -177,8 +180,11 @@ export function authenticatedSend<T>(
 }
 
 export const api = {
+  // 开了第二因子的账号回的是挑战票而不是令牌，用 `mfa_required` 判别（见 types.ts）。
   login: (username: string, password: string) =>
-    request<AuthResponse>('POST', '/auth/token', { username, password }, { token: null }),
+    request<AuthResponse | MfaChallengeResponse>(
+      'POST', '/auth/token', { username, password }, { token: null },
+    ),
 
   register: (username: string, password: string, invitationCode: string) =>
     request<AuthResponse>('POST', '/auth/register', {
@@ -189,6 +195,25 @@ export const api = {
 
   getSession: (token: string, signal?: AbortSignal) =>
     request<AuthSessionResponse>('GET', '/auth/session', undefined, { token, signal }),
+
+  // 第二因子（§2.8，仅管理员；机制见 docs/AUTH.md）。verify 免身份——凭证是挑战票。
+  verifyMfa: (mfaToken: string, code: string) =>
+    request<AuthResponse>('POST', '/auth/mfa/verify', { mfa_token: mfaToken, code }, { token: null }),
+
+  mfaStatus: (token?: string) =>
+    request<MfaStatusResponse>('GET', '/auth/mfa', undefined, { token }),
+
+  // 开第二因子要再验一次密码：光有令牌就够的话，偷到令牌的人能绑上自己的认证器。
+  mfaEnroll: (password: string, token?: string) =>
+    request<MfaEnrollResponse>('POST', '/auth/mfa/enroll', { password }, { token }),
+
+  // confirm/disable 会自增 auth_version（踢掉开启前签发的所有令牌），所以本机令牌也会当场失效；
+  // 验证码输错是 401，不能让它触发全局登出——同 changePassword 的 dispatchAuthFailure: false。
+  mfaConfirm: (code: string, token?: string) =>
+    request<OkResponse>('POST', '/auth/mfa/confirm', { code }, { token, dispatchAuthFailure: false }),
+
+  mfaDisable: (code: string, token?: string) =>
+    request<OkResponse>('POST', '/auth/mfa/disable', { code }, { token, dispatchAuthFailure: false }),
 
   changePassword: (currentPassword: string, newPassword: string, token?: string) =>
     request<OkResponse>('POST', '/auth/password', {
