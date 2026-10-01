@@ -413,6 +413,27 @@ def _upgrade_user_mfa_schema(conn) -> None:
     ))
 
 
+def ensure_platform_quota() -> None:
+    """Add the built-in-key lifetime quota counters to ``users``.
+
+    create_all 只建新表、不 ALTER 已存在的表，所以老库这两列必须显式补，同其余
+    ``ensure_*``。走 ``get_admin_engine()`` 缝（不是模块级 ``_admin_engine``），
+    迁移测试才能把 DDL 指到临时 schema 上。
+    """
+    with get_admin_engine().begin() as conn:
+        _upgrade_platform_quota(conn)
+
+
+def _upgrade_platform_quota(conn) -> None:
+    """Run the platform-quota upgrade in the caller's transaction (enables safe tests)."""
+    conn.execute(text(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS platform_short_used INTEGER NOT NULL DEFAULT 0"
+    ))
+    conn.execute(text(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS platform_long_used INTEGER NOT NULL DEFAULT 0"
+    ))
+
+
 def ensure_unique_constraints() -> None:
     """为活库补齐 create_all 不会 ALTER 的唯一约束（幂等，阶段 5 迁移链前的过渡）。
 

@@ -47,6 +47,16 @@ class User(Base, UUIDPkMixin, TimestampMixin):
     totp_confirmed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, comment="第二因子确认开启的时刻；NULL = 未开启",
     )
+    # 部署方内置密钥的**终身**免费额度用量。不放 Redis：现有 rate:* 全是带 EXPIRE 86400 的
+    # 日桶，终身额度塞进同一命名空间迟早踩错；不放 users.environment：那个 JSON 是对外契约，
+    # 并发写整份还会互相覆盖。逐次明细已有 agent_runs，因此也不需要按维度的用量表。
+    # 原子性靠 create_project / 短篇 commit 里已有的 User 行锁（with_for_update）。
+    platform_short_used: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0", comment="已用掉的平台密钥免费短篇次数",
+    )
+    platform_long_used: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0", comment="已用掉的平台密钥免费长篇次数",
+    )
 
     __table_args__ = (
         CheckConstraint("role IN ('user', 'admin')", name="user_role"),

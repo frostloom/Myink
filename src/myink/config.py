@@ -105,6 +105,22 @@ class Settings:
     # 对齐网关 config.go BooksPerDay（双端同 env 防漂移），超限返回 429 BOOK_CNT_EXCEEDED。
     books_per_day_max: int = field(default_factory=lambda: int(_env("BOOKS_PER_DAY", "10") or "10"))
 
+    # 部署方内置模型密钥 + 新人终身免费额度：三项全填才生效（任一为空即回落现状——
+    # 用户没配 key 就是 MissingModelProvider）。平台 key 是**进程配置里的明文**，
+    # 从不写入 users.environment，所以结构上不会出现在 GET /environment 的返回里。
+    # 上面那三项默认 0（不限）成立的前提是「Key 是用户自己的」；一旦填了平台 key，
+    # 部署方就在为别人的写作付费，DAILY_BUDGET_YUAN 必须同时打开（validate 里有 fail-closed）。
+    platform_model_api_key: str = field(default_factory=lambda: _env("PLATFORM_MODEL_API_KEY", "") or "")
+    platform_model_base_url: str = field(default_factory=lambda: _env("PLATFORM_MODEL_BASE_URL", "") or "")
+    platform_model_name: str = field(default_factory=lambda: _env("PLATFORM_MODEL_NAME", "") or "")
+    platform_model_protocol: str = field(default_factory=lambda: _env("PLATFORM_MODEL_PROTOCOL", "openai") or "openai")
+    # 终身额度，不重置；只对「一个自备连接都没有」的账号生效，role=admin 永久豁免。
+    platform_short_quota: int = field(default_factory=lambda: int(_env("PLATFORM_SHORT_QUOTA", "10") or "10"))
+    platform_long_quota: int = field(default_factory=lambda: int(_env("PLATFORM_LONG_QUOTA", "3") or "3"))
+    # 单本免费长篇累计能用平台密钥写多少章（gates.lua 第 6 道闸门，终身计数）。
+    platform_chapters_per_book: int = field(
+        default_factory=lambda: int(_env("PLATFORM_CHAPTERS_PER_BOOK", "30") or "30"))
+
     # 阶段 2：Redis 队列 + worker（§阶段2；§5.3 Redis 只管可重建数据，终态落 DB）
     redis_url: str = field(default_factory=lambda: _env("REDIS_URL", "redis://localhost:6380/0") or "redis://localhost:6380/0")
     worker_stream: str = field(default_factory=lambda: _env("WORKER_STREAM", "queue:tasks") or "queue:tasks")
@@ -186,6 +202,19 @@ class Settings:
                 "APP_ENV=prod 时必须显式设置 MODEL_CREDENTIAL_KEY（openssl rand -base64 48），"
                 "不得回落到 JWT_SECRET；改动该值会使库中已有的模型密文无法解密，请与 docs/AUTH.md 的迁移步骤一起做"
             )
+        # 平台密钥一填，写多少章就不再由用户付费了，而 rate:cost 是全体用户共用一个桶。
+        # 这两条都是「漏配要响亮，不能静默降级」：前一条不设等于把账单敞开，
+        # 后一条不设的话 _platform_chain 会静默返回 None，部署方以为配好了、用户却用不了。
+        if self.platform_model_api_key:
+            if self.platform_model_protocol not in ("openai", "anthropic"):
+                raise RuntimeError(
+                    f"PLATFORM_MODEL_PROTOCOL 只能是 openai 或 anthropic（当前 {self.platform_model_protocol}）"
+                )
+            if self.is_prod() and self.daily_budget <= 0:
+                raise RuntimeError(
+                    "配置了 PLATFORM_MODEL_API_KEY 时 DAILY_BUDGET_YUAN 必须为正数："
+                    "内置密钥意味着由部署方付费，而 rate:cost 是全体用户共用的日成本桶"
+                )
 
 
 settings = Settings()

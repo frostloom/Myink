@@ -8,6 +8,9 @@ export const GATE_CODES: Record<string, string> = {
   CONCURRENCY_LIMIT: '本书已有进行中的任务，请稍候',
   DAILY_BUDGET_EXCEEDED: '当日全局成本预算已用完',
   BOOK_CNT_EXCEEDED: '今日新建作品数已达上限',
+  // 内置密钥的终身免费额度（用完才要求配自己的 key）
+  PLATFORM_QUOTA_EXCEEDED: '免费额度已用完，去环境配置里添加自己的密钥',
+  PLATFORM_CHAPTER_EXCEEDED: '本书的免费章节已写完，配置自己的密钥可继续写',
 }
 
 const ERROR_CODES: Record<string, string> = {

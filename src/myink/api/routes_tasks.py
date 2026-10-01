@@ -27,6 +27,7 @@ from myink.context_budget import estimate_tokens
 from myink.db import new_session
 from myink.models import AgentRun, Project, Task
 from myink.schemas import ChapterPlan
+from myink.providers import platform_key_active
 from myink.providers.base import effective_cost
 from myink.providers.connections import price_tables_from_packed
 from myink.worker import amqp
@@ -107,6 +108,16 @@ def _priority(tier: str) -> int:
     return settings.priority_vip if tier == "vip" else settings.priority_normal
 
 
+def _platform_chapter_max(identity: _AuthenticatedUser) -> int:
+    """本书的终身免费章数上限；不吃平台密钥就是 0（闸门连计数都不做，见 gates.lua）。
+
+    只喂给长篇的两个入队口（单章 / 批次）。短篇与续跑不传，逐字节不变。
+    """
+    if not platform_key_active(identity.id, identity.role):
+        return 0
+    return settings.platform_chapters_per_book
+
+
 @router.post("/projects/{project_id}/chapters/{chapter_id}/generate",
              dependencies=[Depends(require_owner)], response_model=TaskEnqueuedOut, status_code=202)
 def generate_chapter(project_id: str, chapter_id: str, body: ChapterGenerateBody,
@@ -131,7 +142,8 @@ def generate_chapter(project_id: str, chapter_id: str, body: ChapterGenerateBody
         payload["rewrite"] = True
     return enqueue(user_id=str(identity.id), project_id=project_id, task_type="chapter_generate",
                    payload=payload, quota_n=1, cost_est=settings.cost_per_chapter,
-                   priority=_priority(identity.tier))
+                   priority=_priority(identity.tier),
+                   platform_chapter_max=_platform_chapter_max(identity))
 
 
 @router.post("/projects/{project_id}/batches/generate",
@@ -149,7 +161,8 @@ def generate_batch(project_id: str, body: BatchGenerateBody,
     return enqueue(user_id=str(identity.id), project_id=project_id, task_type="batch_generate",
                    payload={"size": size, "start": start}, quota_n=size,
                    cost_est=settings.cost_per_chapter * size,
-                   priority=_priority(identity.tier))
+                   priority=_priority(identity.tier),
+                   platform_chapter_max=_platform_chapter_max(identity))
 
 
 @router.post("/projects/{project_id}/short/generate",

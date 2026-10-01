@@ -4,7 +4,7 @@
 闸门脚本 `gates.lua` / `compensate.lua` 就躺在模块旁边，
 `tests/test_enqueue_gates.py` 钉住其调用形状与失败语义（真跑 Redis + 真 Lua）。
 
-调用形状：5 KEYS / 8 ARGV，ARGV 全传字符串（脚本内部 `tonumber`）。**不要**去"修"
+调用形状：6 KEYS / 9 ARGV，ARGV 全传字符串（脚本内部 `tonumber`）。**不要**去"修"
 gates.lua 里那句硬编码的 `if inflight > 0`——`CONCURRENCY_LIMIT` 从来没人传过，
 这是与网关行为对齐时留下的有意为之（当初有 parity 测试防手滑）。
 
@@ -34,6 +34,7 @@ from myink.worker.redis_client import (
     cost_key,
     get_redis,
     inflight_key,
+    platform_book_key,
     quota_key,
     sse_key,
 )
@@ -66,7 +67,8 @@ class EnqueueUnavailable(Exception):
 
 
 def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
-            quota_n: int, cost_est: float, priority: int) -> dict:
+            quota_n: int, cost_est: float, priority: int,
+            platform_chapter_max: int = 0) -> dict:
     """闸门 + 入队。返回 `{"task_id", "trace_id", "status"}`（路由侧回 202）。
 
     顺序不可换：闸门 → 归属登记 → 发布 → SSE 种子帧。
@@ -76,6 +78,9 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
 
     日期桶用**本地**日期（同 worker 的 `date.today()` 与 Go 的 `time.Now()`）——
     换成 UTC 会让跨零点那一小段落到不同的 key 上，配额被静默放宽一倍。
+
+    `platform_chapter_max` 默认 0 = 不限，**其余入队点（短篇、批次外调用、续跑）逐字节不变**；
+    只有长篇生成的两个入口会传真实值。
     """
     today = date.today().isoformat()
     task_id = str(uuid.uuid4())
@@ -85,6 +90,7 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
         cost_key(today),
         book_quota_key(user_id, project_id, today),
         book_cnt_key(user_id, today),
+        platform_book_key(user_id, project_id),
     ]
     body = {
         "task_id": task_id,
@@ -101,7 +107,8 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
     r = get_redis()
     try:
         code, reason = _run_gates(r, keys, task_id=task_id, quota_n=quota_n,
-                                  cost_est=cost_est, project_id=project_id)
+                                  cost_est=cost_est, project_id=project_id,
+                                  platform_chapter_max=platform_chapter_max)
     except Exception as exc:
         raise EnqueueUnavailable("gates") from exc
     if code != 1:
@@ -111,14 +118,16 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
     try:
         r.set(f"queue:task-owner:{task_id}", owner, ex=_OWNER_TTL_S)
     except Exception as exc:
-        _compensate(r, keys, task_id=task_id, quota_n=quota_n)
+        _compensate(r, keys, task_id=task_id, quota_n=quota_n,
+                    platform_chapter_max=platform_chapter_max)
         raise EnqueueUnavailable("owner") from exc
 
     try:
         amqp.publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS, priority=priority)
     except (pika.exceptions.NackError, pika.exceptions.UnroutableError) as exc:
         # 确定失败：broker 明确拒收，消息一定不在队列里 → 回滚闸门
-        _compensate(r, keys, task_id=task_id, quota_n=quota_n)
+        _compensate(r, keys, task_id=task_id, quota_n=quota_n,
+                    platform_chapter_max=platform_chapter_max)
         raise EnqueueUnavailable("publish_rejected") from exc
     except Exception as exc:
         # 结果不明（confirm 超时/连接中断）：消息可能已入队。补偿会造成
@@ -130,28 +139,30 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
 
 
 def _run_gates(r, keys: list[str], *, task_id: str, quota_n: int, cost_est: float,
-               project_id: str) -> tuple[int, str]:
+               project_id: str, platform_chapter_max: int = 0) -> tuple[int, str]:
     """原子跑 gates.lua。通过 → (1, task_id)；拒绝 → (-N, 原因码)。"""
     res = r.eval(
         _GATES_LUA, len(keys), *keys,
         task_id, str(quota_n), str(cost_est),
         str(settings.quota_daily), str(settings.daily_budget),
         str(settings.book_quota_daily), str(settings.books_per_day_max),
-        project_id,
+        project_id, str(platform_chapter_max),
     )
     if not isinstance(res, (list, tuple)) or not res:
         raise RuntimeError(f"gates.lua 异常返回: {res!r}")
     return int(res[0]), (str(res[1]) if len(res) > 1 else "")
 
 
-def _compensate(r, keys: list[str], *, task_id: str, quota_n: int) -> None:
-    """回滚闸门副作用（用户配额 KEYS[1] + 每书配额 KEYS[4] + 并发占位 KEYS[2]）。
+def _compensate(r, keys: list[str], *, task_id: str, quota_n: int,
+                platform_chapter_max: int = 0) -> None:
+    """回滚闸门副作用（用户配额 KEYS[1] + 每书配额 KEYS[4] + 并发占位 KEYS[2] + 平台章数 KEYS[6]）。
 
     最佳努力：补偿失败只记日志，不掩盖原始错误。`compensate.lua` 故意不回滚
     `bookcnt`——撤销配额与并发即够，罕见多计一天书数次日自然清零（安全方向）。
     """
     try:
-        r.eval(_COMPENSATE_LUA, 3, keys[0], keys[3], keys[1], str(quota_n), task_id)
+        r.eval(_COMPENSATE_LUA, 4, keys[0], keys[3], keys[1], keys[5],
+               str(quota_n), task_id, str(platform_chapter_max))
     except Exception as exc:  # noqa: BLE001 —— 补偿是尽力而为，主错误更重要
         logger.warning("闸门补偿失败 task=%s: %s", task_id, exc)
 

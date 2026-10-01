@@ -71,3 +71,8 @@ def book_quota_key(user_id: str, project_id: str, date: str) -> str:
 
 def book_cnt_key(user_id: str, date: str) -> str:
     return f"rate:bookcnt:{user_id}:{date}"
+
+
+def platform_book_key(user_id: str, project_id: str) -> str:
+    """本书用平台密钥写过的章数。**没有日期段**——终身计数，闸门里不设 EXPIRE。"""
+    return f"rate:platformbook:{user_id}:{project_id}"

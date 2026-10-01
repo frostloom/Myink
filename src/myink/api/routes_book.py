@@ -50,6 +50,7 @@ from myink.memory.repository import (get_all_characters, get_character, get_char
 from myink.models import (AgentRun, Character, CharacterState, Entity, Event, Faction,
                           Foreshadow, Location, Project, ProjectSettings, Relation, Task,
                           VolumeOutline, User)
+from myink.providers import platform_key_active
 from myink.worker.redis_client import book_key, get_redis, inflight_key, lock_key, sse_key
 from myink.workflow.checkpointer import delete_threads
 from myink.workflow.outline import (CHAPTER_COUNT_MAX, CHAPTER_COUNT_MIN,
@@ -196,25 +197,46 @@ def _book_cnt_response() -> JSONResponse:
     return JSONResponse(status_code=429, content={"error": "BOOK_CNT_EXCEEDED"})
 
 
+def _platform_quota_response() -> JSONResponse:
+    """内置密钥的终身免费额度用完。同上：错误体必须是网关同款 {"error": code} 信封。"""
+    return JSONResponse(status_code=429, content={"error": "PLATFORM_QUOTA_EXCEEDED"})
+
+
+def _platform_quota_used_up(used: int, quota: int) -> bool:
+    """终身免费额度是否已用完。`quota <= 0` = 不限，与 gates.lua / model_admission 同一口径。
+
+    两条建书动线共用，免得长篇与短篇各写一份、日后只改一处。
+    """
+    return quota > 0 and used >= quota
+
+
+def _find_by_request_id(db, uid: uuid.UUID, request_id: uuid.UUID | None) -> Project | None:
+    """这条 request_id 是不是已经建过书了。幂等重发与额度判断都要用它。"""
+    if request_id is None:
+        return None
+    return db.scalar(select(Project).where(
+        Project.user_id == uid,
+        Project.creation_context["request_id"].as_string() == str(request_id),
+    ))
+
+
 def _create_project_row(db, uid: uuid.UUID, *, title: str, genre: str, premise: str = "",
                         chapter_count: int, chars_per_chapter: int, storyline: str = "",
                         target_words: int | None = None, form: str = "long",
                         genre_pack: dict | None = None,
-                        request_id: uuid.UUID | None = None) -> Project:
+                        request_id: uuid.UUID | None = None) -> tuple[Project, bool]:
     """建 Project 行 + 空 ProjectSettings。**每日上限与 request_id 幂等都在这里。**
 
     两条建书动线共用这一段——各写一份就会出现两种上限口径（对话建书能绕开表单建书的
     闸门，那是最糟的一类漏洞）。调用方负责先做完形态/章数/字数的白名单校验。
 
     request_id 命中已有作品时直接返回它（不计数、不新建），与调用方的响应形状无关。
+    返回的第二个值是「这次真的新建了吗」，调用方靠它决定要不要扣终身免费额度——
+    request_id 重放时返回的是旧行，重复扣一次就是把一次重试算成了两次免费长篇。
     """
-    if request_id is not None:
-        existing = db.scalar(select(Project).where(
-            Project.user_id == uid,
-            Project.creation_context["request_id"].as_string() == str(request_id),
-        ))
-        if existing is not None:
-            return existing
+    existing = _find_by_request_id(db, uid, request_id)
+    if existing is not None:
+        return existing, False
     today = func.date_trunc("day", func.now())
     created = db.query(Project).filter(
         Project.user_id == uid, Project.created_at >= today).count()
@@ -232,7 +254,7 @@ def _create_project_row(db, uid: uuid.UUID, *, title: str, genre: str, premise: 
     db.execute(text("SELECT set_config('app.tenant_id', :pid, true)"),
                {"pid": str(project.id)})
     db.add(ProjectSettings(project_id=project.id, genre_pack=genre_pack or {}))
-    return project
+    return project, True
 
 
 def _persist_short_outline(db, pid: uuid.UUID, payload: dict) -> None:
@@ -264,7 +286,8 @@ def create_project(body: CreateProjectBody,
 
     身份缺失/非法 → 403（fail closed，§14.1 ③）；当日建书数超限 → 429 BOOK_CNT_EXCEEDED
     （对齐网关 gates.lua rate:bookcnt 默认值，双端同 BOOKS_PER_DAY env；错误体用网关同款
-    {"error": code} 信封，前端 GATE_CODES 才能命中中文文案）。
+    {"error": code} 信封，前端 GATE_CODES 才能命中中文文案）；内置密钥的终身免费长篇
+    用完 → 429 PLATFORM_QUOTA_EXCEEDED。
     """
     if not user_id:
         raise HTTPException(status_code=403, detail="缺失身份（未携带已认证用户）")
@@ -280,8 +303,20 @@ def create_project(body: CreateProjectBody,
 
     with new_session() as db:
         # Serialize the daily count and insert for this user; creation is one transaction.
-        if db.scalar(select(User.id).where(User.id == uid).with_for_update()) is None:
+        # 同一把行锁也把终身免费额度的读-判-增串起来（下面那段）。
+        user = db.scalar(select(User).where(User.id == uid).with_for_update())
+        if user is None:
             raise HTTPException(status_code=403, detail="身份非法")
+        uses_platform = platform_key_active(uid, user.role)
+        if uses_platform and _platform_quota_used_up(user.platform_long_used,
+                                                    settings.platform_long_quota):
+            # 额度用完之后重发同一个 request_id 的，是「上一次其实成功了，客户端没收到」
+            # 这种重试——它不建新书，就不该被额度拦下（否则用户看到「额度已用完」，
+            # 而书其实已经在书架上了）。
+            replay = _find_by_request_id(db, uid, body.request_id)
+            if replay is not None:
+                return project_payload(replay)
+            return _platform_quota_response()
         target_words = _check_target_words(body.target_words, field="每章目标字数")
         genre_pack: dict = {}
         if "primary_id" in body.model_fields_set:
@@ -293,13 +328,18 @@ def create_project(body: CreateProjectBody,
         else:
             genre = body.genre.strip() or "仙侠玄幻"
         try:
-            project = _create_project_row(
+            project, inserted = _create_project_row(
                 db, uid, title=title, genre=genre, premise=body.premise,
                 chapter_count=body.chapter_count, chars_per_chapter=body.chars_per_chapter,
                 storyline=body.storyline, target_words=target_words, form=form,
                 genre_pack=genre_pack, request_id=body.request_id)
         except BookCountExceeded:
             return _book_cnt_response()
+        # 扣减刻意放在 _create_project_row 之后：它上面的 BookCountExceeded 分支直接 return，
+        # 不 commit 就整体回滚，额度不会被建书失败白白吃掉。request_id 重放（inserted=False）
+        # 返回的是已有作品，同样不重复扣。
+        if inserted and uses_platform:
+            user.platform_long_used += 1
         # 放在 try/except 之后：BookCountExceeded 分支已经 return，那里没有 project。
         style_item_id = (body.style_item_id or "").strip()
         if style_item_id:
