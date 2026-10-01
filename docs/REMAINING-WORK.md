@@ -16,7 +16,7 @@
 - `docs/archive/` —— 已完成的施工单、验收记录与检查报告。都**没有删**，每份顶部标了状态；
   里面的结论是当时的，不再更新。
 - `docs/todo/` —— 未做方案的详细文档。三份，由本文汇总跟踪：
-  - [内置平台密钥与免费额度方案](todo/PLATFORM-KEY-QUOTA-PLAN.md) —— 早期设计稿，口径以本文 §3 为准（已实现、未上线）
+  - [内置平台密钥与免费额度方案](todo/PLATFORM-KEY-QUOTA-PLAN.md) —— 早期设计稿，口径以本文 §3 为准（已实现、已上线）
   - [不可达提示施工单](todo/UNREACHABLE-HINT-PLAN.md) —— 把「本部署连不上」和「上游拒绝了你」
     分开提示，开工前有 3 个问题待拍板
   - [Jev 判定层](todo/JEV-JUDGE-LAYER.md) —— 决策记录，**暂缓非否决**，前置是先扩展
@@ -307,11 +307,11 @@ dev 库真跑过一遍 `myink init` 补列，浏览器真走完「登录 → 开
 - 实测：两个 worker_id 不同、`queue:tasks` 消费者数 1 → 2、`/readyz` 的 worker 项仍 `ok`、各占 108.3 MiB。
 - **不会提速的场景**：同一本书。`rate:inflight:{uid}:{pid}` 的 `inflight > 0` 硬检查加 `lock:book:{pid}` 把同书任务串行——这是有意的。
 - 注意：本地 dev 也会起两份（仓库只有一份 compose，没有 dev/prod 分叉）。
-- 与 §3 的耦合：多一个 worker 会让单个用户在共享的 `rate:cost` 桶上花得更快。当前 `DAILY_BUDGET_YUAN=0`（不限）且 Key 是用户自己的，所以现在没有账单风险；**§3 落地时必须同时给这个桶设上限**。
+- 与 §3 的耦合：多一个 worker 会让单个用户在共享的 `rate:cost` 桶上花得更快。当时 `DAILY_BUDGET_YUAN=0`（不限）且 Key 是用户自己的，所以没有账单风险；**该桶的上限已随 §3 上线一起打开（2026-10-01，20 元/日）**。
 
 ---
 
-## 3. 内置平台密钥与免费额度（✅ 2026-10-01 实现完成，未上线）
+## 3. 内置平台密钥与免费额度（✅ 2026-10-01 实现完成并上线）
 
 现状：模型密钥完全归用户，没配就是 `MissingModelProvider`（`providers/base.py:207`），报「请先在环境配置里添加模型连接」。新用户注册完第一件事就是去弄一个 API key，否则看不到产品能干什么。
 
@@ -377,15 +377,37 @@ dev 库真跑过一遍 `myink init` 补列，浏览器真走完「登录 → 开
 
 不新建按维度的用量表；**其余五项闸门的语义一并不改**（第六项是新加的，不碰前五项）；不给平台 key 做加密落库；不在页面常驻显示剩余次数；不动短篇/长篇的生成管道。
 
-### 3.7 上线口径
+### 3.7 上线口径与部署证据
 
-服务器 `.env` 要加 `PLATFORM_MODEL_API_KEY` / `_BASE_URL` / `_NAME` / `_PROTOCOL` 四项，并把
-`DAILY_BUDGET_YUAN` 从 `0` 打开（配了平台密钥却不设预算，`validate()` 会 **fail-closed 拒绝启动**）。
-`rate:cost` 是全体用户共用一个桶，有了平台密钥后「Key 是用户自己的」这个前提不再成立，这一条是唯一有真金白银风险的地方。
+服务器 `.env` 加了 `PLATFORM_MODEL_API_KEY` / `_BASE_URL` / `_NAME` / `_PROTOCOL` 四项，并把
+`DAILY_BUDGET_YUAN` 从 `0` 打开成 `20`（配了平台密钥却不设预算，`validate()` 会 **fail-closed 拒绝启动**）。
+改动前先把 `.env` 备份成 `.env.bak.*`。
+
+`rate:cost` 是**全体用户共用一个桶**，有了平台密钥后「Key 是用户自己的」这个前提不再成立，这一条是唯一
+有真金白银风险的地方。但要注意它是**全局**的：自备 Key 的用户的花费同样计入，所以这条同时也是所有人的
+日上限。上线前查了线上真实花费——最忙的一天（2026-09-30，48 次调用）全站合计 **0.26 元**，20 元有约
+80 倍余量，存量账号不会被它碰到。观察一周再调。
+
 模型用 `deepseek-flash`（不在 `MODEL_REGISTRY`，上下文预算因此退回 `REQUEST_TOKEN_BUDGET` 而非 1M；价格走 `prices.py` 的 EXACT 表，是准的）。
 **平台密钥只进服务器本地 `.env`，不写进任何文档或提交。**
 
 详细施工口径见 [PLATFORM-KEY-QUOTA-PLAN.md](todo/PLATFORM-KEY-QUOTA-PLAN.md) 与新方案文件（`.claude/plans/`，未入库）。
+
+**2026-10-01 部署证据**（提交 `aeac795`）：本地 build 的两个 amd64 镜像都带
+`org.opencontainers.image.revision=aeac795`，`docker save | load` 到服务器后镜像 ID 与本地逐字节一致
+（`d0a36a78bab1` / `64724002e32a`）；上线前 `users` 表 `platform%` 零列，`up -d` 后 migrate 退出码 0、
+两列就位（`integer NOT NULL DEFAULT 0`）；6 个存量账号的计数全为 0，`zlx` 是 admin（按 §3.4 豁免）；
+`/readyz` 回 `{"status":"ok","checks":{"redis":"ok","db":"ok","worker":"ok"}}`；首页 bundle 哈希与本地构建
+产物一致（`index-Dz9gaPWB.js`，里面能读到「免费额度已用完」「本书的免费章节已写完」两句新文案）；
+`queue:tasks` 消费者 2 个；三个长驻进程都是 uid 10001；api 的 `get_engine()` = `myink_app`、
+`get_admin_engine()` = `myink_report`，worker 的 `ADMIN_DATABASE_URL` 为空。
+
+**回归配方有个坑（已知，未修）**：测试容器挂载仓库根目录，`myink.config` 会读那里的 `.env`，所以本机
+`.env` 一旦填了 `PLATFORM_MODEL_API_KEY`，**旧测试套会红**——`tests/test_project_creation.py` 的
+`draft_book` 用的是 seed 出来的共享 `demo` 账号，它会按平台额度记满 3 本，第 4 个用例起 `POST /projects`
+全回 429 `PLATFORM_QUOTA_EXCEEDED`（表现为 `7 failed, 24 errors`）。这不是产品缺陷（本机 `.env` 清掉
+密钥即 `1439 passed, 5 xfailed`），但**配方依赖开发者本机 `.env`** 这件事本身是脆的；要修应让测试套默认
+把平台密钥关掉，而不是要求每个人记得加 `-e PLATFORM_MODEL_API_KEY=`。
 
 ---
 
