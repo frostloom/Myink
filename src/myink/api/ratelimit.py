@@ -36,6 +36,12 @@ AUTH_RATE_MAX = 60
 _AUTH_ACCOUNT_PREFIX = "rate:auth-user:"
 AUTH_ACCOUNT_MAX = 10
 
+# 第二因子验码：比登录更紧。6 位码配 ±1 个 30 秒窗口，5 次/分钟下爆破期望时间在月级；
+# 键按**账号 id** 分（验码请求里只有挑战令牌，没有用户名），前缀独立——UUID 与用户名
+# 塞进同一个前缀是以后排障的坑。
+_MFA_PREFIX = "rate:mfa:"
+MFA_MAX = 5
+
 # 沿用网关 auth.go 的内联脚本（键名与窗口不变）：切流时在途计数直接接续，
 # 不会给暴力破解留一个「计数清零」的缝。
 _AUTH_WINDOW_LUA = (
@@ -124,6 +130,39 @@ def account_auth_cleared(username: str) -> None:
     """密码对了就清计数。清不掉只是这个计数留到 60 秒后过期，不该因此让登录失败。"""
     try:
         get_redis().delete(_account_key(username))
+    except Exception:
+        pass
+
+
+def _mfa_key(account: str) -> str:
+    return _MFA_PREFIX + hashlib.sha256(account.encode()).hexdigest()
+
+
+def mfa_guard(account: str) -> None:
+    """验码之前查这个账号的失败次数，到顶就拒。语义与 :func:`account_auth_guard` 一致。
+
+    ``account`` 传账号 id（验码时只有挑战令牌，拿不到用户名）。Redis 不可用时失败关闭。
+    """
+    try:
+        count = get_redis().get(_mfa_key(account))
+    except Exception:
+        raise ApiError(503, "auth_unavailable")
+    if count is not None and int(count) >= MFA_MAX:
+        raise ApiError(429, "auth_rate_limited", {"Retry-After": str(AUTH_RATE_WINDOW)})
+
+
+def mfa_failed(account: str) -> None:
+    """记一次验码失败，与登录那几个桶共用同一段 Lua 与窗口。"""
+    try:
+        get_redis().eval(_AUTH_WINDOW_LUA, 1, _mfa_key(account))
+    except Exception:
+        raise ApiError(503, "auth_unavailable")
+
+
+def mfa_cleared(account: str) -> None:
+    """验过了就清计数，别让正常用户被自己刚才输错的一次拖住。"""
+    try:
+        get_redis().delete(_mfa_key(account))
     except Exception:
         pass
 

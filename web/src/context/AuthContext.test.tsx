@@ -14,6 +14,7 @@ vi.mock('../lib/api', () => ({
     getSession: vi.fn(),
     logout: vi.fn(),
     changePassword: vi.fn(),
+    verifyMfa: vi.fn(),
   },
 }))
 
@@ -34,10 +35,26 @@ function Probe() {
       <span data-testid="role">{auth.session?.role ?? 'none'}:{String(auth.session?.roleVerified ?? false)}</span>
       <button type="button" onClick={() => void auth.login(' Alice ', 'correct horse battery')}>login</button>
       <button type="button" onClick={() => void auth.register('Alice', 'correct horse battery', 'invite-123')}>register</button>
+      <button type="button" onClick={() => void auth.completeMfa('challenge-a', '123456')}>mfa</button>
       <button type="button" onClick={() => void auth.logout()}>logout</button>
     </div>
   )
 }
+
+it('stores the session returned by the second-factor exchange', async () => {
+  // 第二因子那一步走的是与登录同一段落会话逻辑：换了令牌、写了 localStorage、状态转 authenticated。
+  vi.mocked(api.verifyMfa).mockResolvedValue({
+    token: 'token-a', user_id: 'user-a', username: 'root', tier: 'normal', role: 'admin', expires_in: 3600,
+  })
+
+  render(<AuthProvider><Probe /></AuthProvider>)
+  fireEvent.click(screen.getByRole('button', { name: 'mfa' }))
+
+  await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('authenticated'))
+  expect(api.verifyMfa).toHaveBeenCalledWith('challenge-a', '123456')
+  expect(screen.getByTestId('identity').textContent).toBe('root')
+  expect(screen.getByTestId('role').textContent).toBe('admin:true')
+})
 
 it('forwards an invitation for registration without persisting it', async () => {
   vi.mocked(api.register).mockResolvedValue({

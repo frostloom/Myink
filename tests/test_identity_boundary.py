@@ -26,11 +26,13 @@ from myink.models import AgentRun, Project, User
 
 client = TestClient(app)
 
-# 不需要身份就能访问的路径：两个探针，以及两个签发端点
+# 不需要身份就能访问的路径：两个探针，以及三个签发端点
 # （没有令牌才需要拿令牌，它们靠 by-IP 的 auth_rate_limit 挡爆破）。
+# `/auth/mfa/verify` 没有令牌可用——它的凭证是密码那一步换来的挑战票（issuer 是 myink-mfa，
+# 过不了 _decode_token），所以身份守卫在这里本来就挂不上；挑战票自带 sub 且比 ver。
 OPEN_PATHS = {
     "/healthz", "/readyz",
-    "/api/v1/auth/register", "/api/v1/auth/token",
+    "/api/v1/auth/register", "/api/v1/auth/token", "/api/v1/auth/mfa/verify",
 }
 
 # 依赖闭包里出现任一名字即视为「挂了身份守卫」。

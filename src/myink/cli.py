@@ -44,7 +44,7 @@ def init(
                           ensure_short_creation_sessions,
                           ensure_storage_indexes, ensure_style_library_schema, ensure_unique_constraints,
                           ensure_user_auth_schema, ensure_user_environment,
-                          ensure_user_role, ensure_user_tier, get_admin_engine)
+                          ensure_user_mfa_schema, ensure_user_role, ensure_user_tier, get_admin_engine)
     from myink.invitations import ensure_invitation_schema
     from myink.seed import create_sample_books
 
@@ -74,6 +74,8 @@ def init(
     ensure_agent_run_user()
     console.print("[bold]1.565/3[/] 补齐账号密码字段与规范用户名唯一索引（幂等）...")
     ensure_user_auth_schema()
+    console.print("[bold]1.566/3[/] 补齐第二因子字段（users.totp_secret / totp_confirmed_at，幂等）...")
+    ensure_user_mfa_schema()
     ensure_invitation_schema()
     console.print("[bold]1.57/3[/] 补齐 project_settings.genre_pack（本书题材包，幂等）...")
     ensure_genre_pack()
@@ -117,15 +119,44 @@ def db_cleanup() -> None:
 @app.command("auth-upgrade")
 def auth_upgrade() -> None:
     """Safely add account-authentication schema without legacy cleanup."""
-    from myink.db import ensure_user_auth_schema, ensure_user_role
+    from myink.db import ensure_user_auth_schema, ensure_user_mfa_schema, ensure_user_role
     from myink.invitations import ensure_invitation_schema
     from myink.models.admin import ensure_admin_schema
 
     ensure_user_auth_schema()
+    ensure_user_mfa_schema()
     ensure_user_role()
     ensure_invitation_schema()
     ensure_admin_schema()
     console.print("[green]OK[/] 账号认证结构已安全升级；旧账号仍需重设密码")
+
+
+@app.command("mfa-disable")
+def mfa_disable(username: str) -> None:
+    """清掉某账号的第二因子密钥（认器丢了时的唯一入口）并撤销其所有会话。"""
+    from myink.api.auth import normalize_username
+    from myink.db import new_session
+    from myink.models import User
+
+    try:
+        canonical = normalize_username(username)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(1)
+    with new_session() as db:
+        result = db.execute(
+            update(User)
+            .where(func.lower(func.btrim(User.username)) == canonical)
+            .values(totp_secret=None, totp_confirmed_at=None, auth_version=User.auth_version + 1)
+        )
+        if result.rowcount != 1:
+            db.rollback()
+            console.print("[red]账号不存在[/]")
+            raise typer.Exit(1)
+        db.commit()
+    console.print(
+        f"[green]OK[/] {canonical} 的第二因子已关闭，旧 token 已全部失效；现在用密码即可登录"
+    )
 
 
 @app.command("set-role")

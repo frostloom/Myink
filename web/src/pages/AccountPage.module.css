@@ -60,3 +60,12 @@
 .form button {
   align-self: flex-start;
 }
+
+/* 第二因子的密钥 / otpauth 链接：要能一眼看出是「照抄的字符串」而不是句子，且可整段选中。 */
+.secret {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--text-small);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  user-select: all;
+}

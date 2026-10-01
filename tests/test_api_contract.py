@@ -27,6 +27,12 @@ PUBLIC_ENDPOINTS: list[tuple[str, str]] = [
     ("GET", "/api/v1/auth/session"),
     ("POST", "/api/v1/auth/password"),
     ("POST", "/api/v1/auth/logout"),
+    # 第二因子（§2.8）：verify 免身份（凭证是挑战票），其余四条都要管理员身份。
+    ("POST", "/api/v1/auth/mfa/verify"),
+    ("GET", "/api/v1/auth/mfa"),
+    ("POST", "/api/v1/auth/mfa/enroll"),
+    ("POST", "/api/v1/auth/mfa/confirm"),
+    ("POST", "/api/v1/auth/mfa/disable"),
     ("GET", "/api/v1/projects/{project_id}/access"),
     ("GET", "/api/v1/tasks/{task_id}/access"),
     ("GET", "/api/v1/projects"),
@@ -111,8 +117,14 @@ def _schema_has_fields(schema: dict[str, Any], components: dict[str, Any]) -> bo
 
     未挂 response_model 时 FastAPI 对 `-> list[dict]` 只给 {"type":"array","items":{}}——
     items 空即无契约。
+
+    `anyOf` 是并集签名（`/auth/token` 正常登录回 AuthResponse、开了第二因子回挑战票），
+    任一支有字段即算有契约——并集本身就是契约（前端按判别字段分支）。
     """
     schema = _resolve(schema, components)
+    for branch in schema.get("anyOf") or schema.get("oneOf") or []:
+        if _schema_has_fields(branch, components):
+            return True
     if schema.get("properties"):
         return True
     items = schema.get("items")

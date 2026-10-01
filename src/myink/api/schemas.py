@@ -36,6 +36,32 @@ class AuthSessionOut(BaseModel):
     expires_in: int
 
 
+class MfaChallengeOut(BaseModel):
+    """密码对了、但还需要第二因子。挑战令牌**不是** access token（issuer 不同）。"""
+
+    mfa_required: bool
+    mfa_token: str
+    expires_in: int
+
+
+class MfaEnrollOut(BaseModel):
+    secret: str
+    otpauth_uri: str
+
+
+class MfaStatusOut(BaseModel):
+    enabled: bool
+
+
+class MfaCodeRequest(BaseModel):
+    code: str
+
+
+class MfaVerifyRequest(BaseModel):
+    mfa_token: str
+    code: str
+
+
 class OkOut(BaseModel):
     ok: bool
 

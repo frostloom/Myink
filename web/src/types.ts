@@ -19,6 +19,28 @@ export interface AuthSessionResponse {
   expires_in: number
 }
 
+/**
+ * 密码对了但还差第二因子（§2.8 /admin TOTP）。
+ *
+ * `mfa_token` 不是令牌：它只能拿去换一次 `/auth/mfa/verify`，5 分钟失效，
+ * 且过不了任何需要 Bearer 的路由。所以这两个响应靠 `mfa_required` 判别，不能只看 token。
+ */
+export interface MfaChallengeResponse {
+  mfa_required: boolean
+  mfa_token: string
+  expires_in: number
+}
+
+/** 待确认的密钥：认证器 App 手输 `secret`，或整段粘 `otpauth_uri`（刻意不做二维码）。 */
+export interface MfaEnrollResponse {
+  secret: string
+  otpauth_uri: string
+}
+
+export interface MfaStatusResponse {
+  enabled: boolean
+}
+
 export interface OkResponse {
   ok: true
 }

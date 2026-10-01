@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, expect, it, vi } from 'vitest'
 import { useAuth } from '../context/AuthContext'
@@ -108,4 +108,70 @@ it('requires an ASCII letter and digit in an eight-character registration passwo
   fireEvent.click(screen.getByRole('button', { name: '创建账号' }))
   await screen.findByRole('button', { name: '创建账号' })
   expect(register).toHaveBeenCalledWith('alice', 'abcd1234', 'invite')
+})
+
+/** 走到第二步：登录回的是挑战票，页面切到验证码表单。 */
+async function renderCodeStep(completeMfa: ReturnType<typeof vi.fn>) {
+  const login = vi.fn().mockResolvedValue({ status: 'mfa', mfaToken: 'challenge-a' })
+  vi.mocked(useAuth).mockReturnValue({ login, completeMfa } as unknown as ReturnType<typeof useAuth>)
+  render(<MemoryRouter><LoginPage /></MemoryRouter>)
+
+  fireEvent.change(screen.getByLabelText('用户名'), { target: { value: 'root' } })
+  fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'correct horse battery' } })
+  fireEvent.click(screen.getByRole('button', { name: '登录' }))
+  await screen.findByRole('button', { name: '验证' })
+  return login
+}
+
+it('opens a code step when the password alone is not enough', async () => {
+  const completeMfa = vi.fn()
+  const login = await renderCodeStep(completeMfa)
+
+  expect(login).toHaveBeenCalledWith('root', 'correct horse battery')
+  // 密码对了但票还没换成令牌：这一步不该自作主张去验码，也不该留着密码框让人重复提交。
+  expect(completeMfa).not.toHaveBeenCalled()
+  expect(screen.queryByLabelText('密码')).toBeNull()
+})
+
+it('rejects a code that is not six digits without calling the server', async () => {
+  const completeMfa = vi.fn()
+  await renderCodeStep(completeMfa)
+
+  fireEvent.change(screen.getByLabelText('验证码'), { target: { value: '12345' } })
+  fireEvent.click(screen.getByRole('button', { name: '验证' }))
+
+  expect(screen.getByRole('alert').textContent).toContain('6 位验证码')
+  expect(completeMfa).not.toHaveBeenCalled()
+})
+
+it('exchanges the challenge ticket and the typed code for a session', async () => {
+  const completeMfa = vi.fn().mockResolvedValue(true)
+  await renderCodeStep(completeMfa)
+
+  fireEvent.change(screen.getByLabelText('验证码'), { target: { value: ' 123456 ' } })
+  fireEvent.click(screen.getByRole('button', { name: '验证' }))
+
+  await waitFor(() => expect(completeMfa).toHaveBeenCalledWith('challenge-a', '123456'))
+})
+
+it('surfaces a rejected code without leaving the code step', async () => {
+  const completeMfa = vi.fn().mockRejectedValue(
+    Object.assign(new Error('MFA_INVALID'), { code: 'MFA_INVALID', status: 401 }),
+  )
+  await renderCodeStep(completeMfa)
+
+  fireEvent.change(screen.getByLabelText('验证码'), { target: { value: '000000' } })
+  fireEvent.click(screen.getByRole('button', { name: '验证' }))
+
+  expect((await screen.findByRole('alert')).textContent).toContain('验证码不正确')
+  expect(screen.getByLabelText('验证码')).toBeTruthy()
+})
+
+it('returns to the credential form from the code step', async () => {
+  await renderCodeStep(vi.fn())
+
+  fireEvent.click(screen.getByRole('button', { name: '返回' }))
+
+  expect(screen.getByRole('button', { name: '登录' })).toBeTruthy()
+  expect(screen.queryByLabelText('验证码')).toBeNull()
 })

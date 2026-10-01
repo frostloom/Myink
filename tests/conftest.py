@@ -104,6 +104,7 @@ def _no_rate_limits(monkeypatch):
     monkeypatch.setattr(rl, "settings", replace(rl.settings, rate_per_sec=10**9, rate_burst=10**9))
     monkeypatch.setattr(rl, "AUTH_RATE_MAX", 10**9)
     monkeypatch.setattr(rl, "AUTH_ACCOUNT_MAX", 10**9)
+    monkeypatch.setattr(rl, "MFA_MAX", 10**9)
     # Business suites share one test Redis/cost bucket. Admission limits have
     # dedicated real-Redis tests which install their own small thresholds.
     import myink.model_admission as admission
