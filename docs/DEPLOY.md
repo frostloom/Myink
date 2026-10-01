@@ -248,6 +248,8 @@ mkdir -p ~/myink/backups
 ( crontab -l 2>/dev/null; \
   echo '17 3 * * * bash $HOME/myink/backup.sh >> $HOME/myink/backups/backup.log 2>&1' ) | crontab -
 crontab -l   # 确认写进去了
+# 装完等第一个触发点过了再看一眼日志，确认是真跑过而不是只写进了 crontab：
+cat ~/myink/backups/backup.log
 ```
 
 **恢复演练**——备份没验过就等于没有。恢复到库内另起的临时库，不要动 `myink`：
@@ -263,7 +265,20 @@ sudo docker compose exec -T myink-pg psql -U myink -d myink_restore_check -c 'se
 sudo docker compose exec -T myink-pg psql -U myink -d postgres -c 'drop database myink_restore_check'
 ```
 
-备份和库在同一块盘上，挡不住整机故障；离机副本见 `docs/REMAINING-WORK.md` §2.1。
+备份和库在同一块盘上，挡不住整机故障，所以本机再留一份离机副本：
+
+```bash
+# 在**本机**执行（不是服务器）。服务器侧的 cron 继续每天出备份。
+bash scripts/pull-backup.sh
+# 默认拉服务器 ~/myink/backups 里所有 *.sql.gz 到 ~/myink-backups/，
+# 落地后逐份 gzip -t 校验，本机按 KEEP（默认 14）轮转。
+```
+
+脚本只**读**服务器（rsync 同步 `*.sql.gz`），不在服务器上做任何事；本机轮转只删 `myink-`
+开头的日常份，手工的一次性备份（`prod-*.sql.gz`）不删。
+
+**本机这边也要挂个定时任务**，否则「这份副本没在跑」本身不会有人发现——注意 Mac 关机或睡眠时
+不会执行，靠它兜底的前提是那台机器常开。
 
 ### 确认线上跑的是哪一版
 
@@ -281,6 +296,7 @@ sudo docker inspect myink-api --format '{{index .Config.Labels "org.opencontaine
 
 HTTPS 已由 Caddy 承担（`SITE_ADDRESS` 填域名即自动签发续期）；Caddy 之前若再挂 CDN 或云 LB，
 必须配 Caddy 全局 `trusted_proxies` 并把客户端 IP 取值换成 `{client_ip}`，否则所有用户会塌进
-同一个限流桶（见 `.env.example`）。此外还有：集中监控与告警（需先定外部探活服务与告警渠道）、
-容量测试，以及两项已知的结构性欠账——前端凭据从 localStorage 换成 HttpOnly Cookie、/admin
-加 MFA。当前没有生产可用性或真实小说质量的保证；演示应使用已验证的机制与测试结果描述能力。
+同一个限流桶（见 `.env.example`）。此外还有：集中监控与告警（探活与告警渠道已定，见
+[REMAINING-WORK.md](REMAINING-WORK.md) §2.2，**尚未在控制台配置**）、容量测试，以及两项已知的
+结构性欠账——前端凭据从 localStorage 换成 HttpOnly Cookie、/admin 加 MFA。当前没有生产可用性或
+真实小说质量的保证；演示应使用已验证的机制与测试结果描述能力。
