@@ -27,11 +27,13 @@ from myink.api.routes_style import resolve_style_selection
 from myink.api.schemas import (OkOut, ShortCreationCommitBody, ShortCreationCommitOut,
                                ShortCreationMessageBody, ShortCreationOut)
 from myink.book_setup import generate_short_creation_turn
+from myink.config import settings
 from myink.creation import validate_short_outline
 from myink.db import new_creation_lock_session, new_session, tenant_session
 from myink.memory.repository import get_settings
 from myink.models import (AgentRun, Chapter, Project, ProjectSettings, ShortCreationMessage,
                           ShortCreationSession, Task, User)
+from myink.providers import platform_key_active
 from myink.short import creation
 from myink.short.form import resolve_short_lengths
 from myink.workflow.outline import build_persisted_short_outline
@@ -298,19 +300,30 @@ def commit(body: ShortCreationCommitBody, session_id: uuid.UUID,
         chapters, chars, compressed = resolve_short_lengths(
             int(card["chapter_count"]), int(card["chars_per_chapter"]))
         premise = creation.card_premise(card)
-        # 与表单建书同一把锁：当日上限的读-算-写不能被并发挤穿
-        if db.scalar(select(User.id).where(User.id == uid).with_for_update()) is None:
+        # 与表单建书同一把锁：当日上限的读-算-写不能被并发挤穿；同一把行锁也把终身免费
+        # 额度的读-判-增串起来。
+        user = db.scalar(select(User).where(User.id == uid).with_for_update())
+        if user is None:
             raise HTTPException(status_code=403, detail="身份非法")
         project = db.get(Project, session.book_id) if session.book_id else None
         if project is None:
+            uses_platform = platform_key_active(uid, user.role)
+            if uses_platform and _book._platform_quota_used_up(user.platform_short_used,
+                                                              settings.platform_short_quota):
+                return _book._platform_quota_response()
             try:
-                project = _book._create_project_row(
+                project, inserted = _book._create_project_row(
                     db, uid, title=card["working_title"], genre=card["genre"],
                     premise=premise, chapter_count=chapters, chars_per_chapter=chars,
                     form="short")
             except _book.BookCountExceeded:
                 return _book._book_cnt_response()
             session.book_id = project.id          # 先记下：后面任一步失败，重试复用它
+            # 同上：扣在建行之后、commit 之前，建书失败（BookCountExceeded 已 return）
+            # 不会白吃额度；重试时 session.book_id 已存在，走的是上面那条不扣减的分支
+            # ——那条也不受额度闸门约束，否则「出方案 502 重按一次」会被自己的额度挡住。
+            if inserted and uses_platform:
+                user.platform_short_used += 1
         pid = project.id
         db.commit()
 

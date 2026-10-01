@@ -5,10 +5,12 @@
 -- KEYS[3] = rate:cost:{date}            (String, 全局日成本已用, worker 终态累计)
 -- KEYS[4] = rate:bookquota:{uid}:{pid}:{date}  (String, 每书日配额已用；多书写书上限双层限制)
 -- KEYS[5] = rate:bookcnt:{uid}:{date}  (Set, 每用户每天碰过的去重书数；一天最多 N 本书)
+-- KEYS[6] = rate:platformbook:{uid}:{pid}  (String, 本书用平台密钥写过多少章；**终身计数，不设 EXPIRE**)
 -- ARGV[1] = task_id
 -- ARGV[2] = quota_deduct_n (单章=1, 批次=N), ARGV[3] = cost_est
 -- ARGV[4] = quota_max, ARGV[5] = cost_budget, ARGV[6] = book_quota_max, ARGV[7] = books_per_day_max
 -- ARGV[8] = project_id（bookcnt 集合成员，按书去重）
+-- ARGV[9] = platform_chapter_max（每本免费长篇能用平台密钥写多少章）
 --
 -- 上限 <= 0 一律表示「不限」。模型 Key 是用户自己的，写多少章由用户付费，
 -- 所以 QUOTA / BOOK_QUOTA / DAILY_BUDGET 三项默认关（config.py 默认 0）；
@@ -26,6 +28,17 @@ if book_quota_max > 0 then
   local book_quota_used = tonumber(redis.call('GET', KEYS[4]) or '0')
   if book_quota_used + quota_deduct > book_quota_max then
     return {-1, 'BOOK_QUOTA_EXCEEDED', tostring(book_quota_used), tostring(quota_deduct)}
+  end
+end
+-- 每本免费长篇的终身章数上限。上面五项都是日桶（次日/一小时后自然清零），只有这一项
+-- 不重置——「用完终身免费额度才要求配自己的 key」是产品口径。max <= 0 表示这本书不吃
+-- 平台密钥（用户自备 key，或 admin 豁免），此时**连计数都不做**：计数一旦混进自备 key 写的
+-- 章节，用户后来把 key 删掉就会被判定「额度已用完」，而他从没花过部署方一分钱。
+local platform_chapter_max = tonumber(ARGV[9])
+if platform_chapter_max > 0 then
+  local platform_used = tonumber(redis.call('GET', KEYS[6]) or '0')
+  if platform_used + quota_deduct > platform_chapter_max then
+    return {-5, 'PLATFORM_CHAPTER_EXCEEDED', tostring(platform_used), tostring(quota_deduct)}
   end
 end
 -- 每天最多 N 本不同书：SISMEMBER 判断是否新书（写命令 SADD 只能在全部检查通过后执行，
@@ -54,6 +67,10 @@ redis.call('INCRBY', KEYS[4], quota_deduct)
 if quota_deduct > 0 then redis.call('EXPIRE', KEYS[4], 86400) end
 redis.call('SADD', KEYS[5], ARGV[8])
 redis.call('EXPIRE', KEYS[5], 86400)
+-- 终身计数：刻意没有 EXPIRE。与上面那个 guard 成对，改一处必须改另一处。
+if platform_chapter_max > 0 then
+  redis.call('INCRBY', KEYS[6], quota_deduct)
+end
 redis.call('SADD', KEYS[2], ARGV[1])
 -- 并发闸门 TTL 安全网：worker 只在终态 SREM，retry→DLQ 泄漏/异常崩溃时
 -- 不释放会永久锁死本书（评审 A1）；1h 兜底过期，闸门让位书锁（worker 侧权威串行）。

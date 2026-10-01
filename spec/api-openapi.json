@@ -8261,7 +8261,7 @@
         "summary": "List Projects"
       },
       "post": {
-        "description": "创建作品：根表 Project + 空 ProjectSettings（不调 LLM，快；设定草稿走 setup-draft）。\n\n身份缺失/非法 → 403（fail closed，§14.1 ③）；当日建书数超限 → 429 BOOK_CNT_EXCEEDED\n（对齐网关 gates.lua rate:bookcnt 默认值，双端同 BOOKS_PER_DAY env；错误体用网关同款\n{\"error\": code} 信封，前端 GATE_CODES 才能命中中文文案）。",
+        "description": "创建作品：根表 Project + 空 ProjectSettings（不调 LLM，快；设定草稿走 setup-draft）。\n\n身份缺失/非法 → 403（fail closed，§14.1 ③）；当日建书数超限 → 429 BOOK_CNT_EXCEEDED\n（对齐网关 gates.lua rate:bookcnt 默认值，双端同 BOOKS_PER_DAY env；错误体用网关同款\n{\"error\": code} 信封，前端 GATE_CODES 才能命中中文文案）；内置密钥的终身免费长篇\n用完 → 429 PLATFORM_QUOTA_EXCEEDED。",
         "operationId": "create_project_api_v1_projects_post",
         "requestBody": {
           "content": {

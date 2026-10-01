@@ -1,7 +1,7 @@
 """三层闸门 + 入队（Python 接管网关原先独占的那条路径）。
 
 闸门脚本是 `src/myink/worker/gates.lua` / `compensate.lua`，所以这里测的是**调用形状与
-失败语义**：5 KEYS / 8 ARGV、五种拒绝码的 `{"error"}` 信封、
+失败语义**：6 KEYS / 9 ARGV、六种拒绝码的 `{"error"}` 信封、
 发布"确定失败"才补偿而"结果不明"不补偿。
 
 真跑 Redis（测试栈自带）而不是 stub ——KEYS 顺序或 ARGV 个数写错，只有真 Lua 抓得住。
@@ -22,6 +22,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from conftest import identity_headers
+from myink.api import routes_tasks
 from myink.api.main import app
 from myink.config import settings
 from myink.db import new_session
@@ -34,17 +35,19 @@ from myink.worker.redis_client import (
     cost_key,
     get_redis,
     inflight_key,
+    platform_book_key,
     quota_key,
     sse_key,
 )
 
 client = TestClient(app)
 
-# gates.lua 的检查顺序（配额 → 每书配额 → 书数 → 并发 → 日成本）；播种时必须只顶起
-# 目标那一个，否则会被前面那条先拦下，测的就不是本意了。
+# gates.lua 的检查顺序（配额 → 每书配额 → 平台章数 → 书数 → 并发 → 日成本）；播种时必须
+# 只顶起目标那一个，否则会被前面那条先拦下，测的就不是本意了。
 GATE_CODES = [
     "QUOTA_EXCEEDED",
     "BOOK_QUOTA_EXCEEDED",
+    "PLATFORM_CHAPTER_EXCEEDED",
     "BOOK_CNT_EXCEEDED",
     "CONCURRENCY_LIMIT",
     "DAILY_BUDGET_EXCEEDED",
@@ -55,6 +58,7 @@ GATE_CODES = [
 _FINITE_QUOTA = 500
 _FINITE_BOOK_QUOTA = 50
 _FINITE_BUDGET = 2.0
+_FINITE_PLATFORM_CHAPTERS = 3
 
 
 @pytest.fixture
@@ -63,6 +67,19 @@ def finite_gates(monkeypatch):
     monkeypatch.setattr(enq, "settings", replace(
         settings, quota_daily=_FINITE_QUOTA, book_quota_daily=_FINITE_BOOK_QUOTA,
         daily_budget=_FINITE_BUDGET))
+
+
+@pytest.fixture
+def platform_chapters(monkeypatch):
+    """让这本书被当成「在吃平台密钥」，并把终身章数上限调成有限值。
+
+    只打两个补丁、不动环境变量：`platform_key_active` 的判据（配没配 key、有没有自备连接、
+    是不是 admin）由 tests/test_platform_key_quota.py 专测，这里关心的是它接上之后
+    第 6 道闸门拦不拦得住、信封对不对。
+    """
+    monkeypatch.setattr(routes_tasks, "platform_key_active", lambda _uid, _role: True)
+    monkeypatch.setattr(routes_tasks, "settings", replace(
+        settings, platform_chapters_per_book=_FINITE_PLATFORM_CHAPTERS))
 
 _MESSAGE_KEYS = {"task_id", "task_type", "project_id", "user_id", "payload",
                  "trace_id", "request_id", "retry_count", "created_at"}
@@ -81,7 +98,8 @@ def book(temp_project):
     uid = str(user.id)
     today = date.today().isoformat()
     fixed = [quota_key(uid, today), inflight_key(uid, pid), cost_key(today),
-             book_quota_key(uid, pid, today), book_cnt_key(uid, today)]
+             book_quota_key(uid, pid, today), book_cnt_key(uid, today),
+             platform_book_key(uid, pid)]
     r = get_redis()
     before = set(r.scan_iter("queue:task-owner:*")) | set(r.scan_iter("queue:sse:*"))
     tier_before = user.tier
@@ -107,6 +125,8 @@ def _seed_gate(ctx, code: str) -> None:
         r.set(quota_key(uid, today), _FINITE_QUOTA)
     elif code == "BOOK_QUOTA_EXCEEDED":
         r.set(book_quota_key(uid, pid, today), _FINITE_BOOK_QUOTA)
+    elif code == "PLATFORM_CHAPTER_EXCEEDED":
+        r.set(platform_book_key(uid, pid), _FINITE_PLATFORM_CHAPTERS)
     elif code == "BOOK_CNT_EXCEEDED":
         r.sadd(book_cnt_key(uid, today),
                *[str(uuid.uuid4()) for _ in range(settings.books_per_day_max)])
@@ -128,8 +148,8 @@ def _capture_publish(monkeypatch, sink: dict) -> None:
 
 
 @pytest.mark.parametrize("code", GATE_CODES)
-def test_gate_rejections_use_the_error_envelope(book, finite_gates, code):
-    """五种拒绝码都要走 `{"error": CODE}` 429 —— 前端 GATE_CODES 认这个键。
+def test_gate_rejections_use_the_error_envelope(book, finite_gates, platform_chapters, code):
+    """六种拒绝码都要走 `{"error": CODE}` 429 —— 前端 GATE_CODES 认这个键。
 
     这条是真端到端：真身份 → 真路由 → 真 gates.lua → 真 Redis 计数 → 真信封。
     """

@@ -40,7 +40,7 @@ def init(
     from myink.db import (enable_row_level_security, ensure_agent_run_user,
                           ensure_chapter_versions, ensure_genre_pack,
                           ensure_global_audit_reports, ensure_memory_candidate_kinds,
-                          ensure_project_creation, ensure_project_form,
+                          ensure_platform_quota, ensure_project_creation, ensure_project_form,
                           ensure_short_creation_sessions,
                           ensure_storage_indexes, ensure_style_library_schema, ensure_unique_constraints,
                           ensure_user_auth_schema, ensure_user_environment,
@@ -76,6 +76,8 @@ def init(
     ensure_user_auth_schema()
     console.print("[bold]1.566/3[/] 补齐第二因子字段（users.totp_secret / totp_confirmed_at，幂等）...")
     ensure_user_mfa_schema()
+    console.print("[bold]1.567/3[/] 补齐内置密钥终身额度计数（users.platform_short_used / platform_long_used，幂等）...")
+    ensure_platform_quota()
     ensure_invitation_schema()
     console.print("[bold]1.57/3[/] 补齐 project_settings.genre_pack（本书题材包，幂等）...")
     ensure_genre_pack()
@@ -119,12 +121,14 @@ def db_cleanup() -> None:
 @app.command("auth-upgrade")
 def auth_upgrade() -> None:
     """Safely add account-authentication schema without legacy cleanup."""
-    from myink.db import ensure_user_auth_schema, ensure_user_mfa_schema, ensure_user_role
+    from myink.db import (ensure_platform_quota, ensure_user_auth_schema,
+                          ensure_user_mfa_schema, ensure_user_role)
     from myink.invitations import ensure_invitation_schema
     from myink.models.admin import ensure_admin_schema
 
     ensure_user_auth_schema()
     ensure_user_mfa_schema()
+    ensure_platform_quota()
     ensure_user_role()
     ensure_invitation_schema()
     ensure_admin_schema()

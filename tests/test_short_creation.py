@@ -449,7 +449,7 @@ def _seed_session_on_an_orphan_draft_book(user: str) -> tuple[str, str]:
 
     uid = uuid.UUID(user)
     with new_session() as db:
-        project = _book._create_project_row(
+        project, _ = _book._create_project_row(
             db, uid, title="半途的渡口", genre="悬疑", chapter_count=3,
             chars_per_chapter=4000, form="short")
         session = ShortCreationSession(user_id=uid, status="active",
