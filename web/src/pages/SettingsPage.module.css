@@ -607,7 +607,7 @@
   overflow: hidden;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
-  background: #ebe4d6;
+  background: var(--surface-2);
   cursor: pointer;
 }
 
@@ -766,7 +766,7 @@
 
 .compactField em {
   margin-left: 5px;
-  color: #4f7d5c;
+  color: var(--ink-subtle);
   font-style: normal;
 }
 
@@ -828,6 +828,15 @@
 
   .keyField {
     grid-column: auto;
+  }
+}
+
+/* 761–900：rail 在这一档还是竖排（≤760 才折成顶部横条），但基准里的 min-width:900px
+   会顶出横向滚动——768 视口实测溢出 132px。这一档只放掉 min-width，布局方向不动。
+   本文件同时管着 AppearancePage / EnvironmentPage / AccountPage 三个页面。 */
+@media (max-width: 900px) {
+  .wrap {
+    min-width: 0;
   }
 }
 

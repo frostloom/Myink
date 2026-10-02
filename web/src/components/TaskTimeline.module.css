@@ -7,7 +7,7 @@
 .headerMeta { justify-content: flex-end; }
 .title { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; }
 .chapter { color: var(--ink-subtle); font-size: 11px; white-space: nowrap; }
-.cost { color: #587861; font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cost { color: var(--ink); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .caret { width: 12px; color: var(--ink-subtle); font-size: 11px; text-align: center; flex-shrink: 0; }
 .body { display: flex; min-width: 0; flex-direction: column; gap: 14px; padding: 14px 16px 18px; border-top: 1px solid var(--line); }
 .summary { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--ink-subtle); font-size: 11px; font-variant-numeric: tabular-nums; }
@@ -21,13 +21,13 @@
 .step { position: relative; display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 10px; min-width: 0; padding-bottom: 16px; }
 .step:last-child { padding-bottom: 0; }
 .step:not(:last-child)::before { position: absolute; top: 12px; bottom: 0; left: 5px; width: 1px; background: var(--line-strong); content: ''; }
-.dot { position: relative; z-index: 1; width: 11px; height: 11px; margin-top: 4px; border: 2px solid #9ab9a2; border-radius: 50%; background: var(--surface-1); box-shadow: 0 0 0 3px var(--surface-1); }
+.dot { position: relative; z-index: 1; width: 11px; height: 11px; margin-top: 4px; border: 2px solid var(--line-strong); border-radius: 50%; background: var(--surface-1); box-shadow: 0 0 0 3px var(--surface-1); }
 .dotLive { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .dotError { border-color: var(--error); background: var(--error); }
 .stepMain { min-width: 0; }
 .stepHead { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 8px; min-width: 0; color: var(--ink); font-size: 13px; }
 .stepHead strong { min-width: 0; overflow-wrap: anywhere; }
-.route { max-width: 180px; color: #587861; font-size: 11px; font-weight: 500; line-height: 1.45; text-align: right; overflow-wrap: anywhere; }
+.route { max-width: 180px; color: var(--ink-muted); font-size: 11px; font-weight: 500; line-height: 1.45; text-align: right; overflow-wrap: anywhere; }
 .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; min-width: 0; margin: 7px 0 0; padding: 7px 9px; border-radius: 7px; background: color-mix(in srgb, var(--surface-2) 76%, transparent); }
 .metrics > div { min-width: 0; }
 .metrics dt, .metrics dd { margin: 0; overflow-wrap: anywhere; }

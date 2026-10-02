@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../../lib/api'
 import { formatApiError } from '../../lib/apiError'
+import { formatDuration as formatDurationMs } from '../../lib/duration'
 import type { AdminMetrics, CapturedData } from '../../lib/adminApi'
 import { asRecord, fieldLabel, isInternalKey } from '../../lib/snapshotView'
 import styles from '../AdminPage.module.css'
@@ -185,10 +186,9 @@ export function formatCost(value: number): string {
   return value.toFixed(4)
 }
 
+/** 管理台口径：0 表示没记录到耗时，出破折号而不是「0 ms」。 */
 export function formatDuration(value: number): string {
-  if (value === 0) return '—'
-  if (value < 1000) return `${value} ms`
-  return `${(value / 1000).toFixed(2)} 秒`
+  return value === 0 ? '—' : formatDurationMs(value)
 }
 
 export function formatDate(value: string): string {

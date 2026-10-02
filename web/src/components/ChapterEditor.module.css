@@ -15,7 +15,7 @@
 
 .title {
   font-size: 26px;
-  color: #443c38;
+  color: var(--heading);
 }
 
 .headRow {
@@ -32,9 +32,13 @@
   flex-wrap: wrap;
 }
 
-.danger {
+/* 用 button.danger 提一级权重：global.css 在 main.tsx 里排在 router 之后，同权重时 .btn 会盖掉
+   模块规则。不加这一级，下面的 border-color 失效，按钮还会露出 UA 的 ButtonFace——
+   paper 下是 #efefef 灰块，night 下 color-scheme: dark 把它翻成 #6b6b6b，配 --error 只剩 1.79:1。 */
+button.danger {
   color: var(--error);
   border-color: var(--error);
+  background: transparent;
 }
 
 .metaRow {

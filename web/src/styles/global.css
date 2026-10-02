@@ -69,6 +69,12 @@ a:hover {
   outline-offset: 1px;
 }
 
+/* 浏览器原生控件（滑杆的进度轨与滑块、勾选框）。
+   不设这一条，滑杆就用 UA 默认蓝，是页面上唯一不属于本主题的颜色。 */
+:root {
+  accent-color: var(--link-hover);
+}
+
 /* ---- 按钮（DESIGN §Components） ---- */
 .btn {
   display: inline-flex;
@@ -81,8 +87,7 @@ a:hover {
   border: 1px solid transparent;
   cursor: pointer;
   font-weight: 500;
-  box-shadow: var(--shadow-soft);
-  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
 }
 .btn:disabled {
   opacity: 0.5;
@@ -96,12 +101,9 @@ a:hover {
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
-  box-shadow: 0 8px 16px rgba(100, 145, 107, 0.25);
-  transform: translateY(-1px);
 }
 .btn-primary:active:not(:disabled) {
   background: var(--accent-pressed);
-  transform: translateY(0);
 }
 .btn-secondary {
   background: var(--lavender-soft);
@@ -110,8 +112,7 @@ a:hover {
   box-shadow: var(--shadow-soft);
 }
 .btn-secondary:hover:not(:disabled) {
-  border-color: #cfc2e0;
-  transform: translateY(-1px);
+  border-color: var(--line-strong);
 }
 .btn-quiet {
   background: transparent;

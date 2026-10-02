@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { api } from '../lib/api'
 import { formatApiError, formatErrorText } from '../lib/apiError'
+import { formatDuration } from '../lib/duration'
 import { nodeLabel, taskStatusLabel, taskStatusTone } from '../lib/labels'
 import { compactFlowRuns, groupFlowAttempts } from '../lib/taskFlow'
 import type { TaskPhase } from '../hooks/useTaskEvents'
@@ -254,14 +255,6 @@ function emptyTaskMessage(status: TaskStatus | null): string {
     case 'paused': return '任务已暂停，尚未记录执行步骤。'
     default: return '任务已创建，等待第一个步骤开始。'
   }
-}
-
-function formatDuration(milliseconds: number): string {
-  if (milliseconds < 1000) return `${milliseconds} ms`
-  if (milliseconds < 60_000) return `${(milliseconds / 1000).toFixed(1)} 秒`
-  const minutes = Math.floor(milliseconds / 60_000)
-  const seconds = Math.round((milliseconds % 60_000) / 1000)
-  return `${minutes} 分 ${seconds} 秒`
 }
 
 function phaseTone(phase: TaskPhase): string {

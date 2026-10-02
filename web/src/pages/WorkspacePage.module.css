@@ -1,7 +1,6 @@
 .wrap {
   height: 100%;
   display: flex;
-  min-width: 1100px;
 }
 
 .chapters {
@@ -275,8 +274,7 @@
 }
 
 /* ≤760：rail 折成顶部横条（规则在 ProjectRail.module.css）。这里把页面根从 ≤1159 的 grid
-   换回竖排 flex——两条同权重，靠源序取胜，所以必须写在文件最后；基准里的 min-width:1100px
-   也要一起清掉，只改 display 挡不住。 */
+   换回竖排 flex——两条同权重，靠源序取胜，所以必须写在文件最后。 */
 @media (max-width: 760px) {
   .wrap {
     min-width: 0;
