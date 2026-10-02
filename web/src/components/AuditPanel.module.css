@@ -174,8 +174,8 @@
   overflow-wrap: anywhere;
 }
 
-/* ≤760：审稿面板在手机上不展示——工作台窄屏只留读与写。 */
-@media (max-width: 760px) {
+/* ≤640：审稿面板在手机上不展示——工作台窄屏只留读与写。 */
+@media (max-width: 640px) {
   .panel {
     display: none;
   }

@@ -361,14 +361,3 @@
   .counts { grid-template-columns: 1fr 1fr; }
   .pagination { justify-content: space-between; }
 }
-
-/* 640–760 这段本来没人管：上面 ≤640 已把 .wrap 换成 display:block 整块堆叠，这里只把
-   640–760 也拉齐成竖排，让 rail 横条落到顶部。刻意不写 display——写了会盖掉上面那条
-   display:block，反而把 ≤640 已处理好的布局改回去。 */
-@media (max-width: 760px) {
-  .wrap {
-    height: auto;
-    min-height: 100%;
-    flex-direction: column;
-  }
-}

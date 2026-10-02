@@ -99,12 +99,13 @@
   padding: 0 var(--space-1);
 }
 
-/* 窄屏：整条 rail 折成顶部单行横向滚动条。
+/* 窄屏（640 档）：整条 rail 折成顶部单行横向滚动条。
    侧栏在每一页都是页面根容器（.wrap）的第一个 flex 子元素，各页在同一个断点把 .wrap 转成
    竖排，横条就自然落到顶部——所以这里只管「把 rail 自己变横」，页面级布局不在这里重复。
+   640 以上 rail 一直是竖排：所以各页原本挤在 641–900 这段的调整归到 900 档，不跟折叠一起走 640 档。
    子元素是 <nav> 与 <div> 混排（sections/nav/settings 是 nav，pageLinks/foot 是 div），
    必须逐类点名：只写 nav 会漏掉后两个（ShortCreationPage 那处就是这么漏的，别照抄）。 */
-@media (max-width: 760px) {
+@media (max-width: 640px) {
   .rail {
     width: 100%;
     height: auto;

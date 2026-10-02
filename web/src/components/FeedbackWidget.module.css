@@ -499,7 +499,9 @@
   font-size: var(--text-small);
 }
 
-@media (max-width: 520px) {
+/* 420 档：手机极限才把弹窗铺成无边全屏。.dialog 基准是 min(580px, 100%)，所以 421–640 这段
+   仍然居中带圆角——把它并到 640 会让六百来像素宽的弹窗也变成全屏，反而更难看。 */
+@media (max-width: 420px) {
   .backdrop {
     align-items: stretch;
     padding: 0;
@@ -517,11 +519,11 @@
   }
 }
 
-/* ≤760：整个挂件不展示（用户口径：手机端不留灯泡）。
+/* ≤640：整个挂件不展示（用户口径：手机端不留灯泡）。
    挂件是 router.tsx 里挂在 <Outlet> 之外的唯一实例，定位浮层就在 .dock 上，藏它即全局生效；
    /theme 页那个 PendantLamp 是另起的实例、不带 .dock，不受影响。
    代价：手机上也一并没有了反馈入口。要保留入口的话，改成只藏 .cord/.hang/.sway、留下可点的小尖。 */
-@media (max-width: 760px) {
+@media (max-width: 640px) {
   .dock {
     display: none;
   }

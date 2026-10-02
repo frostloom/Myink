@@ -180,9 +180,56 @@ sudo docker load` 后服务器 `.Id` 逐字节相同、`revision=3e670ae`；`up 
 搜到 tokens 原文那段 `data-theme='night'`——证明唯一源在产物里确实是原文。
 
 **尚未做（第二批余下）**：§3.5 断点归并（25 个 `@media` 值收到 420/640/900/1200，逐页迁移；删
-`WorkspacePage.module.css` 的 `min-width: 1100px`）、§3.6 吊灯默认停靠位碰撞避让与手机端反馈入口找回、
+`WorkspacePage.module.css` 的 `min-width: 1100px`）（→ 已完成，见 §1.6）、§3.6 吊灯默认停靠位碰撞避让与手机端反馈入口找回、
 §3.7 四处结构重构（项目库 / 工作台 / 管理台 / 左栏）、16 个无 media query 的 module 补响应式与 390px
 触控目标（工作台一页 24 个）、`DESIGN.md` 改写成承认纸感方向。
+
+### 1.6 前端第二批 3.5（断点归并）—— ✅ 2026-10-02 已提交并推送，**未上线**（随第二批一起上线）
+
+改动前实测是 **11 种取值 / 28 处 `@media` 宽度查询**（计划 §二 记的「25 个」偏低，`900px` 那档当时已有 3 处）；
+现在只剩四档：**420（2 处）/ 640（15 处）/ 900（6 处）/ 1200（4 处）**，共 27 处——净减 1 处：删掉两块死码
+（见下）、`NewProjectPage` 原来混写的一块拆成两条。其余非宽度条件只剩 4 条 `prefers-reduced-motion` 和 1 条 `max-height: 620px`（候选面板的高度，不属宽度阶梯）。
+四档的语义写在 `tokens.css` 的 `/* 布局 */` 注释里（media query 用不了 CSS 变量，只能靠文档约束）：
+1200 桌面多栏收窄、900 内容列被挤窄、640 rail 折成顶部横条、420 手机极限。
+
+
+**不是换数字，是按语义分两类**：「挤窄」跟内容列宽走 900，「折叠」跟 rail 走 640——原来 15 处 `760` 里
+两类混在一起。逐条判定后：
+
+- 折叠类 → 640：`ProjectRail`（rail 变横条，各页跟着翻竖排）、`ProjectsPage`、`AuditPage`、`LorePage`、
+  `StyleLibraryPage`、`WorkspacePage`、`ChapterList`（章节折成横向滚动条）、`AuditPanel`/`TaskTimeline`
+  （窄屏隐藏次要面板）、`FeedbackWidget` 的 `.dock`。
+- 挤窄类 → 900：`ChapterEditor`（收 padding + 标题降一档）、`ShortCreationPage`（`--rail-width: 128px`、
+  方案卡与字段对折）、`NewProjectPage` 与 `SettingsPage` 里原本混写的两块**拆开**：网格压一列 / 收 padding
+  归 900，翻布局方向归 640。
+- → 1200：`SettingsPage` 的 1050、`StyleLibraryPage` 的 1100、`TaskTimeline` 的 1280、`WorkspacePage` 的 1159。
+- → 420：`FeedbackWidget` 弹窗 520、`ShortCreationPage` 480。
+
+**两处刻意偏离计划表**（计划表写 520→640）：`.dialog` 基准是 `min(580px, 100%)`，并到 640 会让六百来像素宽的
+弹窗也变成无边全屏，反而更难看，所以放满只在 420。`StyleLibraryPage` 的 760 归到 640 时顺带修掉一个真缺陷：
+那一块原本写的是 `.rail { display: none }`，而 `.rail` 包的就是 `ProjectRail`——**手机上整条导航被藏掉，
+除了浏览器返回没有出路**。改成和其他页一致的 `.wrap` 翻竖排，导航落在顶部横条里（390 截图已确认）。
+
+**删掉的两处死码**：`AdminPage` 的 640–760 过渡块（rail 归到 640 之后，641–760 本就该保持 row，
+而它写的 `flex-direction: column` 在 ≤640 的 `display: block` 下也是空转）；`WorkspacePage` ≤640 里
+`min-width: 0`、`grid-template-*`、`grid-column`、`.main { min-height: 480px }` 等被覆盖或无效的声明——
+原来 ≤650 与 ≤760 两块归到同一档，条件相同，合成一块。`SettingsPage` ≤640 的 `min-width: 0` 同样冗余（900 档那条已覆盖）。
+
+**一处连带后果**：挂件从「≤760 隐藏」变成「≤640 隐藏」，所以 641–760（平板竖屏）这段现在会露出吊灯，
+而这段文字栏变窄，正文与操作按钮更容易进入灯的位置。§3.6 的停靠位避让因此更吃重，不是可选项。
+
+**验证门**：`npm run lint` 无 error（只有既有 warning）；`npx vitest run` 55 文件 / 438 用例全绿；
+`npm run build` 干净。真浏览器两轮：
+
+- **边界巡检**（11 页 × 15 档 = 165 次读数，含四档两侧 1201/1200、901/900、641/640、421/420，以及这次行为
+  变了的 768/700/641）：横向溢出 **全 0**，JS 异常 **0 条**，rail 在 641–1200 一律 `column`（宽 184 / 工作台的
+  140 列 / 短篇的 128）、≤640 一律 `row`。
+- **记分卡** 3 主题 × 4 视口 × 6 页 = 72 组合：横向溢出 0、对比度 fail 0，字号与圆角「不在阶梯上」两项均为
+  「无」；工作台 390 的触控小目标 24 个，与 §8.3 记录的数字逐主题一致——本步既没修好也没弄坏它们（那是 §3.7）。
+- 逐张看了 10 张图（`/long` 641、工作台 641/700、`/theme` 1201 与 1200、`/admin` 700、`/styles` 390、
+  `/short/new` 641、工作台设置 700）：1200 与 1201 的差异只是「界面透明度」从右列掉到下方，不是跳坏；
+  `/admin` 700 去掉过渡块后仍是 rail 竖排 + 读数 2 列。
+
 
 ---
 

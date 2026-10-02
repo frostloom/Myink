@@ -54,12 +54,12 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ≤760：章节列表折成单行横向滚动条。竖排的话几十章就把编辑器推到几千像素之外；而按
-   WorkspacePage.module.css ≤650 已写明的口径，窄屏只留一条纵向滚动条（不做「页面里再嵌
+/* ≤640：章节列表折成单行横向滚动条。竖排的话几十章就把编辑器推到几千像素之外；而按
+   WorkspacePage.module.css ≤640 已写明的口径，窄屏只留一条纵向滚动条（不做「页面里再嵌
    一个能滚的列表」），所以这里走横轴。
    .item 的底改在 :not(.active) 上：同权重下本块在 .active 之后，直接写 .item 会把选中态
    的高亮盖掉。 */
-@media (max-width: 760px) {
+@media (max-width: 640px) {
   .list {
     flex-direction: row;
     gap: 6px;
