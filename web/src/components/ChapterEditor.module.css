@@ -94,9 +94,10 @@ button.danger {
   font-size: var(--text-small);
 }
 
-/* ≤760：基准的 34px 外边距 + 38px 内边距在 390px 屏幕上吃掉约 144px，正文只剩两百多像素宽。
+/* 900 档：内容列被挤窄。基准的 34px 外边距 + 38px 内边距在 390px 屏幕上吃掉约 144px，正文只剩
+   两百多像素宽；641–900 这段 rail 还是竖排，编辑列同样不够宽，所以收 padding 走 900 而不是 640。
    字号不动：--text-editor 是 17px，已经高于 iOS 聚焦自动放大的 16px 门槛。 */
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .head {
     padding: 18px 14px 0;
   }

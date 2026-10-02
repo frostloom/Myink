@@ -818,7 +818,7 @@
   font-size: var(--text-heading);
 }
 
-@media (max-width: 1050px) {
+@media (max-width: 1200px) {
   .connectionHead,
   .connectionGrid,
   .themeEditor {
@@ -834,27 +834,25 @@
   }
 }
 
-/* 761–900：rail 在这一档还是竖排（≤760 才折成顶部横条），但基准里的 min-width:900px
-   会顶出横向滚动——768 视口实测溢出 132px。这一档只放掉 min-width，布局方向不动。
+/* 900 档：内容列被挤窄。761–900 这段 rail 仍是竖排，而基准的 min-width:900px 会顶出横向
+   滚动（768 视口实测溢出 132px），所以先放掉 min-width；两层各 42px 的横 padding 也在这段
+   收掉——390px 屏上它们叠起来吃掉 168px（43%）。布局方向不动，那是 640 档的事。
    本文件同时管着 AppearancePage / EnvironmentPage / AccountPage 三个页面。 */
 @media (max-width: 900px) {
   .wrap {
     min-width: 0;
   }
+  .inner { padding: var(--space-4) var(--space-3) var(--space-6); }
+  .section { padding: var(--space-5) var(--space-3); }
 }
 
-/* ≤760：rail 折成顶部横条（规则在 ProjectRail.module.css），页面根转竖排让横条落到顶部。
-   min-width:0 必须一起给：基准里 .wrap 是 min-width:900px，只改 flex-direction 挡不住，
-   而这一处同时管着 import 了本文件的 AppearancePage / EnvironmentPage / AccountPage。
-   .inner 与 .section 的横 padding 也要一起收：两层各留 42px，390px 屏幕上叠起来吃掉 168px
-   （43%），正文和题材输入框只剩两百来像素。 */
-@media (max-width: 760px) {
+/* ≤640：rail 折成顶部横条（规则在 ProjectRail.module.css），页面根转竖排让横条落到顶部。
+   这里不再重复放 min-width:0——上面 900 档那条在 ≤640 同样生效。
+   这一处同样管着 import 了本文件的外观 / 环境 / 账号三页。 */
+@media (max-width: 640px) {
   .wrap {
-    min-width: 0;
     height: auto;
     min-height: 100%;
     flex-direction: column;
   }
-  .inner { padding: var(--space-4) var(--space-3) var(--space-6); }
-  .section { padding: var(--space-5) var(--space-3); }
 }

@@ -38,7 +38,7 @@
 .stepError { margin: 6px 0 0; color: var(--error); font-size: var(--text-small); line-height: 1.55; overflow-wrap: anywhere; }
 .controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-top: 10px; border-top: 1px dashed var(--line); }
 .ctrlError { color: var(--error); font-size: var(--text-small); overflow-wrap: anywhere; }
-@media (max-width: 1280px) { .route { max-width: 140px; } .metrics { gap: 6px; padding-inline: 7px; } }
+@media (max-width: 1200px) { .route { max-width: 140px; } .metrics { gap: 6px; padding-inline: 7px; } }
 
-/* ≤760：节点流转（进度/重试/暂停恢复）在手机上不展示——工作台窄屏只留读与写。 */
-@media (max-width: 760px) { .panel { display: none; } }
+/* ≤640：节点流转（进度/重试/暂停恢复）在手机上不展示——工作台窄屏只留读与写。 */
+@media (max-width: 640px) { .panel { display: none; } }

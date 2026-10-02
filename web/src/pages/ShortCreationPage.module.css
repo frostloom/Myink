@@ -371,16 +371,17 @@
   font-size: var(--text-small);
 }
 
-/* ≤760：rail 折成顶部横条（规则在 ProjectRail.module.css）。横条是 width:100%，外层不同时转竖排，
-   在 row 里就会把聊天列挤成 0——原 ≤480 只覆盖到 480，481–760 这段没人管，在这里补上。
+/* ≤640：rail 折成顶部横条（规则在 ProjectRail.module.css）。横条是 width:100%，外层不同时转竖排，
+   在 row 里就会把聊天列挤成 0——原 ≤480 只覆盖到 480，481–640 这段没人管，在这里补上。
    只翻方向、不动高度：整列仍是「顶部横条 + 满高聊天」，输入条照旧钉在底部。 */
-@media (max-width: 760px) {
+@media (max-width: 640px) {
   .background {
     flex-direction: column;
   }
 }
 
-@media (max-width: 720px) {
+/* 900 档：内容列被挤窄——rail 收窄、聊天列去掉大 padding、方案卡与字段对折成一列。 */
+@media (max-width: 900px) {
   .background {
     --rail-width: 128px;
   }
@@ -399,13 +400,11 @@
   }
 }
 
-@media (max-width: 480px) {
+/* 420 档：手机极限。`.background` 的竖排不再重复——≤640 那条已经覆盖这一段。 */
+@media (max-width: 420px) {
   .page {
     height: auto;
     min-height: 100%;
-  }
-  .background {
-    flex-direction: column;
   }
   .background > aside {
     width: 100%;

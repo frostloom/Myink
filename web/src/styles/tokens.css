@@ -80,6 +80,12 @@
   --editor-line-height: 1.8;
 
   /* 布局 */
+  /* 断点是字面量约定，只有四档（media query 用不了 CSS 变量，所以只能靠文档约束）：
+       1200 桌面多栏收窄；
+       900  内容列被挤窄——收 padding、多列压一列、rail 变窄；
+       640  rail 折成顶部横条、页面根转竖排、隐藏次要面板；
+       420  手机极限——弹窗铺满、按钮组允许换行。
+     「挤窄」跟的是内容列宽，「折叠」跟的是 rail，两者不同档，不要混写在同一个 media 块里。 */
   --rail-width: 184px;
   --chapters-width: 216px;
   --right-panel-width: clamp(360px, 25vw, 430px);
