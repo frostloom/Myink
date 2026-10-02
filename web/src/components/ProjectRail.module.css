@@ -99,6 +99,17 @@
   padding: 0 var(--space-1);
 }
 
+/* 「反馈」是 <button> 而不是链接（它只派发事件），所以要摘掉 UA 的按钮底与边框，
+   否则它会在一排 rail 链接里露出灰块——就是 §8.2 第 2 条记过的 ButtonFace 那个坑。
+   这几条写在 button.item 上而不是共用的 .item 上：.item 里多数项是链接，不需要这套复位。 */
+button.item {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 /* 窄屏（640 档）：整条 rail 折成顶部单行横向滚动条。
    侧栏在每一页都是页面根容器（.wrap）的第一个 flex 子元素，各页在同一个断点把 .wrap 转成
    竖排，横条就自然落到顶部——所以这里只管「把 rail 自己变横」，页面级布局不在这里重复。
@@ -151,5 +162,22 @@
   .userRow {
     padding: 0;
     gap: var(--space-2);
+  }
+  /* 反馈入口钉在横条右边缘：手机上要横向滚动才能找到的入口等于没有入口
+     （§二 记的「rail 变横向滚动条、内容被裁且无提示」就是这条老毛病）。
+     三条都是「别露出滚过去的条目底色」这一件事：得垫上 rail 底色（选择器必须写成
+     button.item.feedbackPin，单类压不过上面 button.item 的 background: transparent）、
+     right 用 -12px（0 会停在右内边距内侧，那条槽照样露底）、圆角归零（8px 圆角在右上角
+     留几个像素的空）。实测漏出来的是当前那本书的 .active 淡绿底。 */
+  button.item.feedbackPin {
+    position: sticky;
+    right: -12px;
+    background: var(--rail-bg);
+    border-left: 1px solid var(--line);
+    border-radius: 0;
+  }
+  /* 上面的规则（0,2,1）压过了共用的 .item:hover（0,2,0），hover 得重说一遍。 */
+  button.item.feedbackPin:hover {
+    background: var(--rail-item-hover);
   }
 }

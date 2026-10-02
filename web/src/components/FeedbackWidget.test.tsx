@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { ThemeProvider } from '../context/ThemeContext'
 import { api, ApiError } from '../lib/api'
 import type { Feedback } from '../types'
-import { FeedbackWidget } from './FeedbackWidget'
+import { FEEDBACK_OPEN_EVENT, FeedbackWidget } from './FeedbackWidget'
 
 vi.mock('../lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../lib/api')>()
@@ -125,4 +125,39 @@ it('「我的反馈」列出本人历史并显示附件取件入口', async () =
   expect(await screen.findByText('生成时第 3 章卡住了')).toBeTruthy()
   expect(screen.getByText('已解决')).toBeTruthy()
   expect(screen.getByRole('button', { name: /现场截图\.png/ })).toBeTruthy()
+})
+
+it('opens the panel from the rail’s labelled entry', () => {
+  // 手机端没有灯泡、桌面上灯的点击区又常让位：左栏那颗「反馈」只派发事件，挂件是全站唯一实例，这里是唯一接点。
+  renderWidget()
+  expect(screen.queryByLabelText('问题描述')).toBeNull()
+  fireEvent(window, new Event(FEEDBACK_OPEN_EVENT))
+  expect(screen.getByLabelText('问题描述')).toBeTruthy()
+})
+
+it('灯压住控件时把这一点击让给那个控件，没压住才自己开面板', () => {
+  renderWidget()
+  const lampButton = screen.getByRole('button', { name: '问题反馈' })
+  const rival = document.createElement('button')
+  rival.textContent = '刷新当前视图'
+  const seen = vi.fn()
+  rival.addEventListener('click', seen)
+  document.body.appendChild(rival)
+  const original = document.elementsFromPoint
+
+  // jsdom 不实现 elementsFromPoint（也没有排版），所以直接伪造命中栈。
+  document.elementsFromPoint = vi.fn(() => [rival])
+  fireEvent.click(lampButton)
+  const openedWhileBlocked = screen.queryByLabelText('问题描述') !== null
+
+  document.elementsFromPoint = vi.fn(() => [lampButton])
+  fireEvent.click(lampButton)
+  const openedWhileFree = screen.queryByLabelText('问题描述') !== null
+
+  document.elementsFromPoint = original
+  rival.remove()
+
+  expect(seen).toHaveBeenCalledTimes(1)
+  expect(openedWhileBlocked).toBe(false)
+  expect(openedWhileFree).toBe(true)
 })
