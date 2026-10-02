@@ -1,20 +1,27 @@
 /* DESIGN.md 设计令牌（阶段 4 前端设计系统）：
-   深色壳传达系统层级，编辑面用纸张色承载长读长写。单一 accent，无渐变/玻璃拟态。 */
+   纸感浅色为默认外壳，编辑面在纸感上再亮一档承载长读长写。单一 accent，无渐变/玻璃拟态。 */
 
 :root {
-  /* 表面 */
-  --canvas: #f6f3e9;
-  --surface-1: rgba(255, 255, 252, 0.86);
-  --surface-2: #f4f0e8;
-  --surface-3: #ece8de;
+  /* 表面：四档明度台阶，由深到浅 —— 画布 / 凹槽 / 面板 / 正文纸。
+     每一档都是不透明色：面板原先用 rgba(255,255,252,.86) 之类叠在画布上，得到第五种
+     几乎同色的奶油，层次反而糊掉。现在靠明度差 + 1px 分隔线分层。
+     代价是 100% 不透明度下面板不再透出背景图；要透出把「界面透明度」往下拉。 */
+  --canvas: #efeadd;
+  --surface-1: #fbf8f1;
+  --surface-2: #f6f2e8;
+  /* 纸感下凹槽与次级带是同一档（只有 2 处调用者：反馈缩略图占位、环形进度轨道）。
+     名字留着，是为了不给 33 个 module 改名；夜与高对比里这两档仍然分开。 */
+  --surface-3: #f6f2e8;
   --line: #e8e1d5;
   --line-strong: #d8cfc0;
 
-  /* 文字 */
+  /* 文字：四级墨色，相邻两级大约差 5–6 个 L*，肉眼能分出主 / 次 / 三级 / 提示。
+     原来看上去只有两种灰，因为 --ink-subtle 与 --ink-faint 只差 3 个 L*。
+     L* 上限被对比度卡住：提示色在面板底(--surface-1)上刚好 4.5:1，不能再浅。 */
   --ink: #3f3a36;
-  --ink-muted: #625d58;
-  --ink-subtle: #706962;
-  --ink-faint: #78716a;
+  --ink-muted: #5d5650;
+  --ink-subtle: #6d645d;
+  --ink-faint: #7a7068;
 
   /* 强调（单一 accent） */
   --accent: #9fd8ad;
@@ -22,8 +29,6 @@
   --accent-pressed: #7ab88d;
   --focus: #6eab7f;
   --accent-soft: #e2f3df;
-  --peach-soft: #fbe3de;
-  --lavender-soft: #ebe5f4;
 
   /* 语义色。纸底很亮，这三个当文字用时必须压到 4.5:1 以上（原值只有 2.4–3.0:1，
      每一条 banner / badge / 状态行都读不清）。夜主题底是暗的，那边本来就达标，不动。 */
@@ -32,14 +37,16 @@
   --error: #a8443c;
 
   /* 编辑面（纸张色，长读长写） */
-  --editor: #fffdf7;
+  --editor: #fffdf9;
   --editor-ink: #514a43;
   --editor-muted: #817970;
 
-  /* 半径：4px 控件 / 8px 面板 / 12px 大框面 */
+  /* 半径只有三档：8 控件 / 12 面板 / 16 大框面。
+     （原来实际渲染出 13 种：4/6/7/8/9/10/12/14/16/20px + 胶囊 + 圆 + 一个 calc。
+       999px 与 50% 留着——那是胶囊和圆的形状语义，不是尺寸档次。） */
   --radius-sm: 8px;
-  --radius-md: 16px;
-  --radius-lg: 20px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
 
   /* 间距（基准 4px） */
   --space-1: 4px;
@@ -56,11 +63,19 @@
     'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', sans-serif;
   --font-editor: 'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', 'Heiti SC', sans-serif;
 
-  /* 排版 */
+  /* 排版：6 级阶梯，全部跟着「阅读字号」旋钮走。
+     body / small / heading / editor 四档由 lib/theme.ts 按档位内联覆盖；
+     micro 挂在 small 上（带 11px 下限），title / display 挂在 body 上——挂 heading 试过，
+     因为 heading 与 body 本身的比值四档不一（1.23→1.38），显示级会跟着走偏（2.34→2.61）。
+     乘数是「中」档下的 20px 与 34px（原 h1 的字面值），所以默认档不改变外观，
+     换档时比例恒定：原来 h1 硬编码 34px，用户把正文调到「小」，标题不缩，比例反而被拉大。
+     11px 是下限：低于这个号的中文在普通 DPI 屏幕上发虚，原来有 8/9/10px 三处。 */
   --text-body: 14px;
   --text-small: 12px;
+  --text-micro: max(11px, calc(var(--text-small) - 1px));
   --text-heading: 18px;
-  --text-title: 18px;
+  --text-title: calc(var(--text-body) * 1.43);
+  --text-display: calc(var(--text-body) * 2.44);
   --text-editor: 17px;
   --editor-line-height: 1.8;
 
@@ -75,15 +90,18 @@
   /* 派生：标题 / 链接 / 按钮字色 / 输入底，方便整套换肤 */
   --heading: var(--ink);
   /* --accent 是块面用色（底色），落在纸底上只有 1.47:1，当文字读不了。
-     凡是要拿强调色写字的地方一律用 --accent-ink；下面每种主题各给一个够 4.5:1 的值。 */
-  --accent-ink: #4d7357;
+     凡是要拿强调色写字的地方一律用 --accent-ink；下面每种主题各给一个够 4.5:1 的值。
+     原来是 #4d7357：它是对老画布 #f6f3e9 定的（4.84:1）。画布压深到 #efeadd 后只剩 4.48:1，
+     所以跟着压一档，现在最差的画布底上也有 4.90:1。 */
+  --accent-ink: #476d50;
   /* 原来是 #5e946c（3.19:1）：比基准的 --accent-ink 还浅，hover 反而更难读，故压深一档。 */
   --link-hover: #3f6249;
   --btn-primary-ink: #365544;
   --btn-primary-border: #b4dfbd;
-  --btn-secondary-border: #ded5ea;
-  --input-bg: rgba(255, 255, 252, 0.78);
-  --rail-bg: rgba(255, 255, 252, 0.77);
+  /* 原来是 #ded5ea（淡紫）。收回单一 accent 后，次级按钮的边框就是普通分隔线色。 */
+  --btn-secondary-border: #d8cfc0;
+  --input-bg: #fbf8f1;
+  --rail-bg: #fbf8f1;
   --rail-item-hover: #f3efe6;
   --rail-active-ink: #4d7357;
   --quiet-hover: #f0ece4;
@@ -101,16 +119,14 @@ html[data-theme='night'] {
   --line: #333333;
   --line-strong: #454545;
   --ink: #e6e6e6;
-  --ink-muted: #a3a3a3;
-  --ink-subtle: #a0a0a0;
-  --ink-faint: #969696;
+  --ink-muted: #b4b4b4;
+  --ink-subtle: #a6a6a6;
+  --ink-faint: #989898;
   --accent: #7dba90;
   --accent-hover: #6eab81;
   --accent-pressed: #5f9c72;
   --focus: #7dba90;
   --accent-soft: #1e2a22;
-  --peach-soft: #2a2220;
-  --lavender-soft: #22222a;
   --success: #7ec89a;
   --warning: #c9a15a;
   --error: #d0807c;
@@ -128,7 +144,7 @@ html[data-theme='night'] {
   --link-hover: #9dceb0;
   --btn-primary-ink: #102016;
   --btn-primary-border: #5f8f6e;
-  --btn-secondary-border: #3a3844;
+  --btn-secondary-border: #454545;
   --input-bg: #1c1c1c;
   --rail-bg: #161616;
   --rail-item-hover: #2a2a2a;
@@ -155,8 +171,6 @@ html[data-theme='contrast'] {
   --accent-pressed: #124f26;
   --focus: #145c2c;
   --accent-soft: #d9f0e0;
-  --peach-soft: #f8d7d0;
-  --lavender-soft: #e6e0f0;
   --success: #157a38;
   --warning: #8a5a00;
   --error: #a32020;
@@ -182,7 +196,7 @@ html[data-theme='custom'] {
   color-scheme: light;
   /* 自选配色的强调色只有用户自己那一个候选，只能跟着 --accent 走（JS 内联注入，见 theme.ts）。
      既是今天的实际效果，也别无选择——用户挑的色值本身满不满 4.5:1 由他决定。 */
-  --accent-ink: var(--accent, #4d7357);
+  --accent-ink: var(--accent, #476d50);
 }
 
 /* severity / status 分级色（文字+icon+色三通道，不单靠颜色传达结果）。

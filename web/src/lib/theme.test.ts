@@ -13,20 +13,25 @@ import {
   settleLampDrop,
   writeLampPlace,
   CUSTOM_THEME_STORAGE_KEY,
+  CUSTOM_INLINE_VARS,
   DEFAULT_CUSTOM_TOKENS,
   DEFAULT_THEME_STYLE,
   DEFAULT_WALLPAPER,
   PRESET_STORAGE_KEY,
+  SHELL_TOKEN_NAMES,
   STYLE_STORAGE_KEY,
   isHexColor,
   nextPresetName,
+  officialThemeColor,
   parseWallpaper,
   readActivePreset,
   readPresetStore,
   readTheme,
   readThemeStyle,
   THEME_FONTS,
+  THEME_SHELLS,
   THEME_STORAGE_KEY,
+  TOKENS_CSS_VAR_NAMES,
   writePresetStore,
   writeTheme,
   writeThemeStyle,
@@ -135,8 +140,9 @@ it('gives the official themes the same font and opacity knobs', () => {
 
   // 换回纸感：夜间的内联底色必须清掉，否则会盖住样式表
   applyTheme('paper', undefined, { ...DEFAULT_THEME_STYLE, chromeOpacity: 40, font: 'hei', fontSize: 'xl' })
-  expect(cssVar('--surface-1')).toBe('rgba(255, 255, 252, 0.34)')
-  expect(cssVar('--editor')).toBe('rgba(255, 253, 247, 0.4)')
+  // 面板底现在是不透明色（见 tokens.css），所以拉低透明度时 alpha 就等于档位本身，不再乘 0.86
+  expect(cssVar('--surface-1')).toBe('rgba(251, 248, 241, 0.4)')
+  expect(cssVar('--editor')).toBe('rgba(255, 253, 249, 0.4)')
 })
 
 it('leaves the official themes on the stylesheet at full opacity', () => {
@@ -157,6 +163,35 @@ it('keeps font and opacity at the account level instead of inside a preset', () 
 
   localStorage.setItem(STYLE_STORAGE_KEY, '{"chromeOpacity":900,"font":"comic","fontSize":"xxl","lamp":"neon","lampLight":"yes"}')
   expect(readThemeStyle()).toEqual(DEFAULT_THEME_STYLE)
+})
+
+it('keeps every shell token defined in tokens.css for all three official themes', () => {
+  // 这 13 个是透明度滑杆要稀释的层。任何一处在某个主题块里漏写，THEME_SHELLS 就会拿到空值，
+  // 那一层在拉低透明度时静默不生效——所以宁可红。
+  expect(SHELL_TOKEN_NAMES).toHaveLength(13)
+  for (const [theme, pairs] of Object.entries(THEME_SHELLS)) {
+    expect(pairs.map(([name]) => name)).toEqual([...SHELL_TOKEN_NAMES])
+    for (const [name, value] of pairs) {
+      expect(value, `${theme} 主题里 ${name} 没在 tokens.css 定义`).not.toBe('')
+      expect(TOKENS_CSS_VAR_NAMES.has(name), `${name} 不在 tokens.css 里`).toBe(true)
+    }
+  }
+})
+
+it('only clears variables that tokens.css actually defines', () => {
+  // 退出自定义主题时逐个 removeProperty。清单里混进一个不存在的名字不会报错，
+  // 但真正的名字漏了就会被上一套的自定义色盖住——所以清单里的每一项都必须在 tokens.css 里有出处。
+  expect(CUSTOM_INLINE_VARS.length).toBeGreaterThan(0)
+  expect(CUSTOM_INLINE_VARS.filter((name) => !TOKENS_CSS_VAR_NAMES.has(name))).toEqual([])
+})
+
+it('derives the display tiers from the knob-driven ones', () => {
+  // 阅读字号旋钮只写 body / small / heading / editor 四档；micro / title / display 在 tokens.css
+  // 里用 calc 挂在它们身上，所以换档时比例恒定。原来 h1 硬编码 34px，正文调到「小」标题不缩。
+  // jsdom 不求值 calc，这里断言的是依赖关系；算出来的像素值由浏览器记分卡核。
+  expect(officialThemeColor('paper', '--text-micro')).toContain('var(--text-small)')
+  expect(officialThemeColor('paper', '--text-title')).toContain('var(--text-body)')
+  expect(officialThemeColor('paper', '--text-display')).toContain('var(--text-body)')
 })
 
 it('places the lamp anywhere and tucks it away when dragged to the ceiling', () => {

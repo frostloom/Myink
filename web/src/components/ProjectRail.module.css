@@ -13,7 +13,7 @@
 .brand {
   display: block;
   padding: 0 var(--space-2) 22px;
-  font-size: 20px;
+  font-size: var(--text-title);
   font-weight: 600;
   color: var(--ink);
 }
@@ -44,7 +44,7 @@
   align-items: center;
   min-height: 40px;
   padding: 0 var(--space-2);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   color: var(--ink-muted);
   text-decoration: none;
 }
@@ -136,7 +136,7 @@
   }
   .brand {
     padding-right: var(--space-2);
-    font-size: 18px;
+    font-size: var(--text-heading);
   }
   /* 基准里 .nav 是 flex:1 + overflow-y:auto——留在横向条上会把其余项推开，还多出一条纵向滚动条。 */
   .nav {

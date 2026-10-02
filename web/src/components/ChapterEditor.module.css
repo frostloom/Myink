@@ -14,7 +14,7 @@
 }
 
 .title {
-  font-size: 26px;
+  font-size: var(--text-display);
   color: var(--heading);
 }
 
@@ -64,7 +64,7 @@ button.danger {
   margin: 0 34px;
   padding: 28px 38px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--editor);
   color: var(--editor-ink);
   font-family: var(--font-editor);
@@ -101,7 +101,7 @@ button.danger {
     padding: 18px 14px 0;
   }
   .title {
-    font-size: 20px;
+    font-size: var(--text-title);
   }
   .textarea {
     margin: 0 14px;

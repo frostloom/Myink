@@ -27,13 +27,13 @@
 .toggle:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 4px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .heading {
   min-width: 0;
   color: var(--ink);
-  font-size: 17px;
+  font-size: var(--text-heading);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -41,7 +41,7 @@
 .next,
 .caret {
   color: var(--ink-subtle);
-  font-size: 11px;
+  font-size: var(--text-micro);
   white-space: nowrap;
 }
 
@@ -94,16 +94,16 @@
 .modeSwitch legend {
   padding: 0 4px;
   color: var(--ink-muted);
-  font-size: 11px;
+  font-size: var(--text-micro);
 }
 
 .modeSwitch button {
   min-width: 0;
   padding: 7px 8px;
   border: 1px solid transparent;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--text-small);
   cursor: pointer;
 }
 
@@ -127,7 +127,7 @@
 .modeSwitch span {
   grid-column: 1 / -1;
   color: var(--ink-subtle);
-  font-size: 11px;
+  font-size: var(--text-micro);
   line-height: 1.45;
   text-align: center;
 }
@@ -135,7 +135,7 @@
 .batchDisabled {
   margin: 0;
   color: var(--ink-subtle);
-  font-size: 11px;
+  font-size: var(--text-micro);
   line-height: 1.5;
 }
 
@@ -149,9 +149,11 @@
 .batchRow input {
   width: 64px;
   padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--line);
+  /* 和全站其他输入框同一套（global.css 的 .input）：原来这个框是桃色底 + 更浅的边框，
+     是 accent 之外的第三个色相，纯装饰。 */
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
-  background: var(--peach-soft);
+  background: var(--input-bg);
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }

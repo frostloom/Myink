@@ -1,6 +1,7 @@
 // 账号级外观：官方三套写在 tokens.css；自定义是多套预设，写到 html 的 CSS 变量。
 // 分两块：配色/背景图是每套预设自己的（见 CustomPreset），字体与透明度是账号级的，
 // 官方三套一样吃（见 ThemeStyle）。
+import TOKENS_SOURCE from '../styles/tokens.css?raw'
 
 export const THEME_STORAGE_KEY = 'myink.theme'
 /** 吊灯在页面上的位置。x、y 都是 0 到 1：x 是水平中心，y 是灯罩离页顶的高度（也就是绳长）。拖完即写，不进主题草稿。 */
@@ -172,89 +173,89 @@ const ACCENT_LAYERS: ReadonlyArray<readonly [string, number]> = [
   ['--accent-soft', 0.6],
   ['--badge-success-bg', 0.45],
   ['--badge-success-border', 0.85],
-  ['--lavender-soft', 0.35],
-  ['--peach-soft', 0.35],
 ]
 
-// 官方三套的外壳色板，与 tokens.css 一一对应。透明度滑杆就是把这些底色按比例稀释；
-// 100% 时整块跳过，官方主题完全走样式表，跟以前一模一样。
-const THEME_SHELLS: Record<Exclude<ThemeId, 'custom'>, ReadonlyArray<readonly [string, string]>> = {
-  paper: [
-    ['--editor', '#fffdf7'],
-    ['--surface-1', 'rgba(255, 255, 252, 0.86)'],
-    ['--surface-2', '#f4f0e8'],
-    ['--surface-3', '#ece8de'],
-    ['--rail-bg', 'rgba(255, 255, 252, 0.77)'],
-    ['--input-bg', 'rgba(255, 255, 252, 0.78)'],
-    ['--rail-item-hover', '#f3efe6'],
-    ['--quiet-hover', '#f0ece4'],
-    ['--line', '#e8e1d5'],
-    ['--line-strong', '#d8cfc0'],
-    ['--accent-soft', '#e2f3df'],
-    ['--badge-success-bg', '#eef9ee'],
-    ['--badge-success-border', '#add3b9'],
-    ['--lavender-soft', '#ebe5f4'],
-    ['--peach-soft', '#fbe3de'],
-  ],
-  night: [
-    ['--editor', '#181818'],
-    ['--surface-1', '#1c1c1c'],
-    ['--surface-2', '#242424'],
-    ['--surface-3', '#2c2c2c'],
-    ['--rail-bg', '#161616'],
-    ['--input-bg', '#1c1c1c'],
-    ['--rail-item-hover', '#2a2a2a'],
-    ['--quiet-hover', '#2a2a2a'],
-    ['--line', '#333333'],
-    ['--line-strong', '#454545'],
-    ['--accent-soft', '#1e2a22'],
-    ['--badge-success-bg', '#1e2a22'],
-    ['--badge-success-border', '#5f8f6e'],
-    ['--lavender-soft', '#22222a'],
-    ['--peach-soft', '#2a2220'],
-  ],
-  contrast: [
-    ['--editor', '#ffffff'],
-    ['--surface-1', '#ffffff'],
-    ['--surface-2', '#f4f4f4'],
-    ['--surface-3', '#ebebeb'],
-    ['--rail-bg', '#f7f7f7'],
-    ['--input-bg', '#ffffff'],
-    ['--rail-item-hover', '#ececec'],
-    ['--quiet-hover', '#ececec'],
-    ['--line', '#c8c8c8'],
-    ['--line-strong', '#8a8a8a'],
-    ['--accent-soft', '#d9f0e0'],
-    ['--badge-success-bg', '#e3f5e8'],
-    ['--badge-success-border', '#1f7a3a'],
-    ['--lavender-soft', '#e6e0f0'],
-    ['--peach-soft', '#f8d7d0'],
-  ],
+// ---- tokens.css 是外壳色的唯一源 ----
+// THEME_SHELLS 与 CUSTOM_INLINE_VARS 原来把同一批变量名在这里又抄了一遍：抄漏一个就静默漂移，
+// 而透明度滑杆恰好靠这份清单的**字面量**做稀释，所以两边必须逐字一致，偏偏没有任何东西保证。
+// 现在改成从 tokens.css 的原文解析。`?raw` 拿到的是源文件文本（不是构建后的 CSS），
+// 所以值和作者写下的一致，`rgba(255, 255, 252, 0.86)` 这种写法也原样保留。
+function stripCssComments(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, '')
 }
 
-const CUSTOM_INLINE_VARS = [
-  ...CUSTOM_TOKEN_FIELDS.map((field) => field.css),
+function cssBlockBody(css: string, selector: string): string {
+  const at = css.indexOf(`${selector} {`)
+  if (at < 0) return ''
+  const open = css.indexOf('{', at)
+  const close = css.indexOf('}', open)
+  return open < 0 || close < 0 ? '' : css.slice(open + 1, close)
+}
+
+function cssDeclarations(body: string): Map<string, string> {
+  const out = new Map<string, string>()
+  for (const part of body.split(';')) {
+    const colon = part.indexOf(':')
+    if (colon < 0) continue
+    const name = part.slice(0, colon).trim()
+    const value = part.slice(colon + 1).trim()
+    if (name.startsWith('--') && value) out.set(name, value)
+  }
+  return out
+}
+
+const TOKENS_CSS = stripCssComments(TOKENS_SOURCE)
+
+const THEME_TOKEN_BLOCKS: Record<Exclude<ThemeId, 'custom'>, Map<string, string>> = {
+  paper: cssDeclarations(cssBlockBody(TOKENS_CSS, ':root')),
+  night: cssDeclarations(cssBlockBody(TOKENS_CSS, "html[data-theme='night']")),
+  contrast: cssDeclarations(cssBlockBody(TOKENS_CSS, "html[data-theme='contrast']")),
+}
+
+/** tokens.css 里出现过的每一个自定义属性名。给漂移测试做存在性校验用。 */
+export const TOKENS_CSS_VAR_NAMES: ReadonlySet<string> = new Set(
+  Array.from(TOKENS_CSS.matchAll(/(--[a-z0-9-]+)\s*:/gi), (match) => match[1]),
+)
+
+/** 官方主题在 tokens.css 里的原色值。外观预览靠它取色——原来 lib/themePreview.ts 把
+ *  这五个色又手抄了一遍，改 CSS 时预览就和真实渲染不一致。 */
+export function officialThemeColor(id: Exclude<ThemeId, 'custom'>, name: string): string {
+  return THEME_TOKEN_BLOCKS[id].get(name) ?? ''
+}
+
+/** 外壳那批变量名，顺序沿用上面三张层表。它同时是官方主题要内联涂的底色清单，
+ *  和自定义主题要派生、要清理的那批名字。基准不透明度不在名字里，仍在三张层表上。 */
+export const SHELL_TOKEN_NAMES: ReadonlyArray<string> = [
+  ...SHELL_LAYERS,
+  ...INK_LAYERS,
+  ...ACCENT_LAYERS,
+].map(([name]) => name)
+
+// 官方三套的外壳色板，值全部来自 tokens.css。透明度滑杆就是把这些底色按比例稀释；
+// 100% 时整块跳过，官方主题完全走样式表，跟以前一模一样。
+export const THEME_SHELLS: Record<Exclude<ThemeId, 'custom'>, ReadonlyArray<readonly [string, string]>> = {
+  paper: SHELL_TOKEN_NAMES.map((name) => [name, THEME_TOKEN_BLOCKS.paper.get(name) ?? ''] as const),
+  night: SHELL_TOKEN_NAMES.map((name) => [name, THEME_TOKEN_BLOCKS.night.get(name) ?? ''] as const),
+  contrast: SHELL_TOKEN_NAMES.map((name) => [name, THEME_TOKEN_BLOCKS.contrast.get(name) ?? ''] as const),
+}
+
+// 自定义主题由 applyCustomPaint 派生、必须自己算出来的那几个色。剩下的外壳层与字体字号
+// 直接复用 SHELL_TOKEN_NAMES 与字号档位，不在这里另抄一遍。
+const CUSTOM_DERIVED_VARS = [
   '--accent-hover',
   '--accent-pressed',
-  '--accent-soft',
   '--focus',
   '--btn-primary-border',
   '--btn-primary-ink',
   '--heading',
   '--link-hover',
-  '--surface-1',
-  '--surface-2',
-  '--surface-3',
-  '--rail-bg',
-  '--rail-item-hover',
-  '--input-bg',
-  '--quiet-hover',
-  '--line',
-  '--line-strong',
-  '--badge-success-bg',
-  '--badge-success-border',
-  '--lavender-soft',
-  '--peach-soft',
+] as const
+
+// 退出自定义主题时按这份清单逐个 removeProperty：漏一个，上一套的自定义色就会盖住样式表。
+export const CUSTOM_INLINE_VARS: ReadonlyArray<string> = [
+  ...CUSTOM_TOKEN_FIELDS.map((field) => field.css),
+  ...CUSTOM_DERIVED_VARS,
+  ...SHELL_TOKEN_NAMES,
   '--font-ui',
   '--font-editor',
   '--text-editor',
@@ -592,6 +593,11 @@ function isDarkHex(hex: string): boolean {
   return (r * 299 + g * 587 + b * 114) / 1000 < 128
 }
 
+/** 主按钮的字色：底色暗就用白字，亮就压回深墨。预设配色只给了 accent，字色靠这条规则算。 */
+export function primaryInkFor(accent: string): string {
+  return isDarkHex(accent) ? '#ffffff' : '#242019'
+}
+
 function round2(value: number): number {
   return Math.round(Math.min(1, Math.max(0, value)) * 100) / 100
 }
@@ -654,7 +660,7 @@ function applyCustomPaint(root: HTMLElement, colors: CustomThemeTokens, alpha: n
   root.style.setProperty('--link-hover', shadeHex(accent, 0.9))
   root.style.setProperty('--focus', accent)
   root.style.setProperty('--btn-primary-border', shadeHex(accent, 0.82))
-  root.style.setProperty('--btn-primary-ink', isDarkHex(accent) ? '#ffffff' : '#242019')
+  root.style.setProperty('--btn-primary-ink', primaryInkFor(accent))
 }
 
 export function applyTheme(

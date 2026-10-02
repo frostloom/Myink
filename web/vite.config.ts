@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 // 阶段 4 前端工作台：开发期经 /api 代理到本地边缘（Caddy，:80）——同源，无 CORS。
@@ -15,5 +15,10 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  test: {
+    // 默认 vitest 会把 .css 一律换成空桩，连 `?raw` 也一起吃掉（lib/theme.ts 靠 ?raw 读
+    // tokens.css 当外壳色的唯一源）。打开后 CSS 走正常管线，?raw 拿到真实文本。
+    css: true,
   },
 })

@@ -44,8 +44,7 @@
 
 .head h1 {
   margin: 0;
-  font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
-  font-size: clamp(26px, 3vw, 34px);
+  font-size: var(--text-display);
   letter-spacing: -0.04em;
 }
 
@@ -73,6 +72,7 @@
 
 .caret {
   margin-left: 6px;
+  /* 折叠尖号要跟着所在行的字号走，所以这里是相对值而不是阶梯档。 */
   font-size: 0.8em;
   color: var(--ink-subtle);
 }
@@ -99,7 +99,7 @@
   width: 100%;
   padding: 8px 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -142,7 +142,7 @@
 .turn {
   max-width: min(100%, 38em);
   padding: 14px 18px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   line-height: 1.9;
@@ -165,8 +165,9 @@
 }
 
 .failed {
-  border: 1px solid var(--danger, #c00);
-  font-size: 0.85em;
+  /* --danger 在这个仓库里根本不存在，之前一直吃的是 #c00 这个兜底字面值；语义色是 --error。 */
+  border: 1px solid var(--error);
+  font-size: var(--text-small);
 }
 
 .option {
@@ -181,7 +182,7 @@
   gap: 18px;
   padding: 20px;
   border-left: 3px solid var(--accent);
-  border-radius: 0 10px 10px 0;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   background: var(--surface-2);
 }
 
@@ -197,7 +198,7 @@
 
 .proposal h2 {
   margin: 6px 0;
-  font-size: 20px;
+  font-size: var(--text-title);
   overflow-wrap: anywhere;
 }
 
@@ -214,7 +215,7 @@
   margin-bottom: 20px;
   padding: 12px 14px 10px;
   border: 1px solid var(--line-strong);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: var(--surface-1);
 }
 
@@ -274,7 +275,7 @@
   flex-direction: column;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--line) 80%, #8d7f74);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: var(--surface-1);
   box-shadow: 0 24px 70px rgba(48, 42, 38, 0.2);
 }
@@ -290,7 +291,7 @@
 .dialogHead h2 {
   margin: 0;
   color: var(--ink);
-  font-size: 18px;
+  font-size: var(--text-title);
 }
 
 .dialogHead p {
@@ -311,7 +312,7 @@
   color: var(--ink-muted);
   cursor: pointer;
   font: inherit;
-  font-size: 20px;
+  font-size: var(--text-heading);
   line-height: 1;
 }
 
@@ -433,7 +434,7 @@
     flex-wrap: wrap;
   }
   .hint {
-    font-size: 11px;
+    font-size: var(--text-micro);
   }
   .backdrop {
     padding: 12px;
