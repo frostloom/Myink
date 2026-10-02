@@ -127,13 +127,62 @@ sudo docker load` 之后服务器上的 `.Id` 与本地逐字节一致（`df24ad
   视口溢出 132px，新增 `@media (max-width: 900px)` 修掉（该文件同时管着外观/账号/环境/工作台设置四页）。
 
 **尚未做（第二批）**：设计系统与信息架构——把 `tokens.css` 与 `lib/theme.ts` 里那 6 份互相漂移的
-变量名清单收成单一源、表面阶梯与圆角/断点收敛、吊灯默认停靠位的碰撞避让、手机端反馈入口找回，以及
+变量名清单收成单一源（→ 已完成，见 §1.5）、表面阶梯与圆角/断点收敛、吊灯默认停靠位的碰撞避让、手机端反馈入口找回，以及
 项目库 / 工作台 / 管理台 / 左栏四处结构重构。清单、判据与优先序在计划文件 §三。
 
 **顺带核实的一条既有事实（非本批引入）**：`web/src/components/TaskHistory.tsx` 无人引用——没有 import、
 没有测试、没有懒加载，整块被 tree-shaking 从产物里去掉，它的 `_cost_` / `_live_` / `_progress_` 在 JS 与
 CSS 里都不存在（对照：同批改的 `_chapter_` / `_badge_` / `_chipOn_` 都在）。属既有死代码，按
 「不删既有死代码除非明确要求」留在原处。
+
+### 1.5 前端第二批 3.1–3.4（设计系统）—— ✅ 2026-10-02 已提交、已推送、已上线
+
+两笔提交：`3a12332`（28 文件 +397/−300，§3.1–§3.4 本体）与 `3e670ae`（三条抢时序的用例）。
+**只动前端**，与 §1.4 同一套部署路径：重建 `myink-caddy` 即可，`docker-compose.yml` 与服务器 `.env`
+都没碰。
+
+**落地内容**（判据与逐条依据在计划文件 §三）：
+
+- **§3.1 唯一源**：`lib/theme.ts` 的 `THEME_SHELLS` / `CUSTOM_INLINE_VARS` / 三张 `*_LAYERS` 表改为从
+  `tokens.css?raw` 解析派生，配一组漂移断言（三套官方主题变量名集合相等、派生键等于解析结果）。
+  等价性不是看代码断的：透明度 100%→20% 每档 × 三主题 × 全部外壳变量共 285 个读数与改动前逐格比对
+  为零差异，另留阳性对照证明探针真在量东西。`vite.config.ts` 因此开了 `test.css`——vitest 默认把
+  `.css` 一律桩掉，连 `?raw` 也一起吃掉。
+- **§3.2 表面阶梯**：10 种近似奶油收成 4 级明度台阶，面板底不再用 `rgba` 叠在画布上；`--ink` 四级按
+  L\* 拉开；删 `--lavender-soft` / `--peach-soft`，次级按钮与生成面板输入框收回单一 accent。
+- **§3.3 排版**：6 级阶梯全部挂到「阅读字号」旋钮（`micro` 挂 `small` 带 11px 下限，`title` / `display`
+  挂 `body`——挂 `heading` 试过又改回来，因为 `heading`/`body` 本身四档 1.23→1.38，显示级会漂到 2.34→2.61）；
+  `src/` 里字面 `font-size` 清零（38 处上阶梯），短篇的衬线 h1 与两处 `clamp()` 换 token，`h1` 在 ≤640
+  降到 `title` 一档。
+- **§3.4 圆角**：实际渲染的 13 种收成 3 档 + 胶囊/圆，44 处字面值归位；`LoginPage` 的 `calc()` 搬回阶梯
+  （外 12 / 内 8 / 3px padding 同心），不是删掉。
+- 顺带修一处潜伏 bug：短篇失败条的 `var(--danger, #c00)`——`--danger` 本仓从未存在，那条边框一直是兜底
+  字面值 `#c00`，改成语义色 `--error`。
+
+**两处需要留意的后果**（是既定口径的结果，不是新缺陷）：① 面板底改不透明后，「界面透明度」拉到 100% 时
+背景图不再从面板后透出，要透就往下拉；② paper 的 `--accent-ink` 从 `#4d7357` 压到 `#476d50`——画布压深到
+`#efeadd` 后原值只剩 4.48:1。
+
+**验证门**：`npm run lint` 无 error；`npx vitest run` 438 用例**连跑 5 遍全绿**（第一遍偶发 1 红，追出
+三处「用首帧就在的元素当门、随后对数据做一次性的读」的断言，`NewProjectPage` / `LorePage` / `AccountPage`，
+`3e670ae` 改成重试；产品代码零改动）；`npm run build` 干净。记分卡 3 主题 × 4 视口 × 6 页 = 72 组合：
+横向溢出 0、对比度 fail 0，并给记分卡加了两条硬判据——计算后的字号必须落在阶梯上、圆角必须落在三档上，
+实测两项均无越界（豁免三处：`/theme` 的「永」字样本按设计显示 15/19/21、折叠尖号的 `0.8em`、预览 mock 内部）。
+
+**2026-10-02 部署证据**（`GIT_REVISION=3e670ae`）：本地 amd64 镜像
+`sha256:381bd16f33134337e025966312c631323bb3a6bb41abfb2e0517ddb314ca19f6`，`docker save | gzip | ssh |
+sudo docker load` 后服务器 `.Id` 逐字节相同、`revision=3e670ae`；`up -d myink-caddy` 后 `Up (healthy)`；
+`/readyz` 三项全 ok；首页引用 `index-BStu73px.css` + `index-sp3spasG.js`，与本机 `npm run build` 同哈希。
+线上 CSS 里 `--radius-sm/md/lg` 是 8/12/16，`--text-display: calc(var(--text-body) * 2.44)` 与
+`--text-micro: max(11px, calc(var(--text-small) - 1px))` 在位，`lavender-soft` / `peach-soft` 出现 0 次。
+`?raw` 派生是运行时机制，所以另跑了一次**生产真浏览器**冒烟（无登录态，`/`、`/login`、`/long`、`/theme`、
+`/admin`）：控制台异常 0 条、横向溢出 0、`--canvas` 为 `#efeadd`、`--accent-ink` 为 `#476d50`，bundle 里能
+搜到 tokens 原文那段 `data-theme='night'`——证明唯一源在产物里确实是原文。
+
+**尚未做（第二批余下）**：§3.5 断点归并（25 个 `@media` 值收到 420/640/900/1200，逐页迁移；删
+`WorkspacePage.module.css` 的 `min-width: 1100px`）、§3.6 吊灯默认停靠位碰撞避让与手机端反馈入口找回、
+§3.7 四处结构重构（项目库 / 工作台 / 管理台 / 左栏）、16 个无 media query 的 module 补响应式与 390px
+触控目标（工作台一页 24 个）、`DESIGN.md` 改写成承认纸感方向。
 
 ---
 
