@@ -91,6 +91,50 @@
 `myink-migrate` 里的 `myink init` 补上，服务器不需要新增环境变量。`docker-compose.yml` 没动，
 服务器那份不用重传。
 
+### 1.4 前端第一批品质缺陷 —— ✅ 2026-10-02 已提交并部署
+
+两个前端提交：缺陷修复 `13ccbf5`，以及紧随其后的一处 token 迁移 `1107971`（两者的完整依据与实测
+记录在计划文件 `transient-sniffing-barto.md` §八）。**只动前端**：`docker-compose.yml` 与 `.env` 都没动，
+要重建的只有 `myink-caddy`（它的 Dockerfile 里跑 `npm ci && npm run build`，把 `web/dist` 打进镜像、
+由 Caddy 直接服务），服务器那份 `docker-compose.yml` 不用重传。
+
+**2026-10-02 部署证据**（前端提交 `1107971`，`GIT_REVISION=1107971`）：本地 amd64 镜像
+`sha256:df24ada8a4a5db8e5a05f59d83ec9f224e9a28e12016177ce36bb776c39e57a7`，`docker save | gzip | ssh |
+sudo docker load` 之后服务器上的 `.Id` 与本地逐字节一致（`df24ada8a4a5`），
+`org.opencontainers.image.revision=1107971`、`Architecture=amd64`；`up -d myink-caddy` 后立即
+`running healthy`；`/readyz` 回 `{"status":"ok","checks":{"redis":"ok","db":"ok","worker":"ok"}}`；
+站点 HTTP/2 200，首页引用 `index-Cmq00yoH.js` + `index-DGZBr-Rm.css`——**与镜像内部构建产出的哈希
+逐字相同**，说明镜像里那份 `npm run build` 与本机构建可复现。线上 CSS 里 `--accent-ink` 四套定义齐全
+（`#4d7357` / `#7dba90` / `#1f7a3a` / `var(--accent,#4d7357)`），11 条 `var(--accent-ink)` 规则在位，
+旧值 `#5e946c` 出现 0 次。
+
+这批修掉的（都能在计划文件 §八找到实测数字）：
+
+- **默认主题下基础链接与状态文字只有 1.47:1**（最严重的一处）。`--accent` 是块面用色，落在纸底上
+  当文字读不了，但全仓 14 处把 `color` 指向了它。新增文字安全的 `--accent-ink`：paper `#4d7357`（4.84:1）、
+  night `#7dba90`、contrast `#1f7a3a`（后两者与各自 `--accent` 同值，外观零变化）。顺带压深 paper 的
+  `--link-hover`（`#5e946c` 只有 3.19:1，比基准色还浅，hover 反而更难读；改 `#3f6249` 后实测 6.19:1）。
+- 夜主题下 4 处硬编码色（编辑器标题、候选面板提示、时间线成本与路由、设置页卡片与说明）。
+- 编辑器「删除本章」（`.danger`）：`main.tsx` 先 import `router` 再 import `global.css`，同权重时全局
+  `.btn` 覆盖模块规则，于是边框失效、按钮露出 UA `ButtonFace`（night 下被 `color-scheme: dark` 翻成
+  `#6b6b6b`，配 `--error` 只剩 1.79:1）。改成 `button.danger` 提一级权重。
+- `accent-color` 全仓未设 → 滑杆是浏览器默认蓝；`favicon.svg` 还是 Vite 模板的紫色闪电；删掉零引用的
+  `public/icons.svg`。
+- 两份不一致的耗时格式化（管理台会显示「1323.31 秒」）合并到 `lib/duration.ts`。
+- `.btn-quiet` 不再带投影、主按钮 hover 去掉通用的上浮+发光、`--heading` 去紫、删掉短篇的
+  「回车发送，Shift + 回车换行」灰字。
+- 移动端：左栏导航项触控高 34 → 44px（原比基准 40 还小）；设置页 `.wrap { min-width: 900px }` 让 768
+  视口溢出 132px，新增 `@media (max-width: 900px)` 修掉（该文件同时管着外观/账号/环境/工作台设置四页）。
+
+**尚未做（第二批）**：设计系统与信息架构——把 `tokens.css` 与 `lib/theme.ts` 里那 6 份互相漂移的
+变量名清单收成单一源、表面阶梯与圆角/断点收敛、吊灯默认停靠位的碰撞避让、手机端反馈入口找回，以及
+项目库 / 工作台 / 管理台 / 左栏四处结构重构。清单、判据与优先序在计划文件 §三。
+
+**顺带核实的一条既有事实（非本批引入）**：`web/src/components/TaskHistory.tsx` 无人引用——没有 import、
+没有测试、没有懒加载，整块被 tree-shaking 从产物里去掉，它的 `_cost_` / `_live_` / `_progress_` 在 JS 与
+CSS 里都不存在（对照：同批改的 `_chapter_` / `_badge_` / `_chipOn_` 都在）。属既有死代码，按
+「不删既有死代码除非明确要求」留在原处。
+
 ---
 
 ## 2. 生产环境安全与运维
