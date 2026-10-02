@@ -25,10 +25,11 @@
   --peach-soft: #fbe3de;
   --lavender-soft: #ebe5f4;
 
-  /* 语义色 */
-  --success: #5fa878;
-  --warning: #c7944d;
-  --error: #c67873;
+  /* 语义色。纸底很亮，这三个当文字用时必须压到 4.5:1 以上（原值只有 2.4–3.0:1，
+     每一条 banner / badge / 状态行都读不清）。夜主题底是暗的，那边本来就达标，不动。 */
+  --success: #2f7346;
+  --warning: #8a5a10;
+  --error: #a8443c;
 
   /* 编辑面（纸张色，长读长写） */
   --editor: #fffdf7;
@@ -72,7 +73,7 @@
   --shadow-lift: 0 15px 32px rgba(95, 77, 58, 0.14), 0 3px 7px rgba(95, 77, 58, 0.07);
 
   /* 派生：标题 / 链接 / 按钮字色 / 输入底，方便整套换肤 */
-  --heading: #4e4364;
+  --heading: var(--ink);
   --link-hover: #5e946c;
   --btn-primary-ink: #365544;
   --btn-primary-border: #b4dfbd;
@@ -118,7 +119,7 @@ html[data-theme='night'] {
   --sev-major: #e1b66b;
   --sev-minor: #8cc8b4;
   --sev-hint: #8d969f;
-  --heading: #f2f2f2;
+  --heading: var(--ink);
   --link-hover: #9dceb0;
   --btn-primary-ink: #102016;
   --btn-primary-border: #5f8f6e;
@@ -157,7 +158,7 @@ html[data-theme='contrast'] {
   --editor: #ffffff;
   --editor-ink: #111111;
   --editor-muted: #444444;
-  --heading: #111111;
+  --heading: var(--ink);
   --link-hover: #145c2c;
   --btn-primary-ink: #ffffff;
   --btn-primary-border: #145c2c;
@@ -175,10 +176,11 @@ html[data-theme='custom'] {
   color-scheme: light;
 }
 
-/* severity / status 分级色（文字+icon+色三通道，不单靠颜色传达结果） */
+/* severity / status 分级色（文字+icon+色三通道，不单靠颜色传达结果）。
+   这几个是当文字用的，浅底上同样得压到 4.5:1 以上；原来是 1.8–2.7:1，等于只剩图标通道。 */
 :root {
-  --sev-critical: #e48686;
-  --sev-major: #e1b66b;
-  --sev-minor: #8cc8b4;
-  --sev-hint: #8d969f;
+  --sev-critical: #a83a44;
+  --sev-major: #8f5f0a;
+  --sev-minor: #2d6b58;
+  --sev-hint: #5f6870;
 }

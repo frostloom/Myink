@@ -388,7 +388,6 @@ export default function ShortCreationPage() {
                         placeholder={committed ? '本次建书对话已结束' : '说说你想写的故事…'} />
             </label>
             <div className={styles.composerFoot}>
-              <small className={styles.hint}>回车发送，Shift + 回车换行</small>
               <button type="submit" className="btn btn-primary" disabled={committed || busy || draft.trim() === ''}>
                 {committed ? '已开写' : operation === 'talk' ? '正在回复…' : '发送'}
               </button>
