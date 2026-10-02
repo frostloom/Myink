@@ -150,7 +150,8 @@ it('confirms enrollment with a code and drops the stale session', async () => {
   // 还显示着登录态，而每个请求都已经是 401。
   await waitFor(() => expect(endSession).toHaveBeenCalled())
   // 还得站到登录页上：留在本页只会被 GuestShell 接管，那句提示一个字都看不到。
-  expect(screen.getByTestId('path').textContent).toBe('/login')
+  // 跳转落在 endSession 之后的一拍，所以这句要重试读，读一次会偶发拿到 '/'.
+  await waitFor(() => expect(screen.getByTestId('path').textContent).toBe('/login'))
 })
 
 it('keeps the session when the confirmation code is rejected', async () => {
