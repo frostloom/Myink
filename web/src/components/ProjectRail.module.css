@@ -18,7 +18,7 @@
   color: var(--ink);
 }
 .brand:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .sections {

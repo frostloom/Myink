@@ -227,7 +227,7 @@
 
 .chipOn {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .chip:disabled {

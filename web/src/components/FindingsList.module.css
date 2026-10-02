@@ -51,7 +51,7 @@
 .chapter {
   border: none;
   background: none;
-  color: var(--accent);
+  color: var(--accent-ink);
   cursor: pointer;
   padding: 0;
 }

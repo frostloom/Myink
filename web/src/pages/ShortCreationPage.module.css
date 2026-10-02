@@ -316,7 +316,7 @@
 }
 
 .close:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .close:focus-visible {

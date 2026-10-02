@@ -478,7 +478,7 @@
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .chipIcon[data-video='true'] {

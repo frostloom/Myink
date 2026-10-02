@@ -206,7 +206,7 @@
 .reviewDetails summary {
   width: fit-content;
   cursor: pointer;
-  color: var(--accent);
+  color: var(--accent-ink);
   padding: 4px 0;
 }
 

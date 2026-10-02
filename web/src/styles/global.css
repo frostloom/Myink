@@ -56,7 +56,7 @@ select {
 }
 
 a {
-  color: var(--accent);
+  color: var(--accent-ink);
   text-decoration: none;
 }
 a:hover {
@@ -196,7 +196,7 @@ a:hover {
   border-color: var(--error);
 }
 .badge-accent {
-  color: var(--accent);
+  color: var(--accent-ink);
   border-color: var(--accent);
 }
 
