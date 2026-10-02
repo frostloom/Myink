@@ -32,7 +32,7 @@
 
 .header h1 {
   margin: 6px 0 8px;
-  font-size: clamp(28px, 3vw, 36px);
+  font-size: var(--text-display);
   line-height: 1.25;
   letter-spacing: -0.04em;
   color: var(--heading);
@@ -40,7 +40,7 @@
 
 .eyebrow {
   color: var(--ink-muted);
-  font-size: 12px;
+  font-size: var(--text-small);
   font-weight: 500;
   letter-spacing: 0.08em;
 }
@@ -48,14 +48,14 @@
 .back {
   flex-shrink: 0;
   margin-top: 8px;
-  font-size: 13px;
+  font-size: var(--text-small);
   color: var(--ink-muted);
 }
 
 .hint {
   max-width: 56ch;
   margin: 0;
-  font-size: 13px;
+  font-size: var(--text-small);
   line-height: 1.75;
   color: var(--ink-muted);
 }
@@ -82,14 +82,14 @@
   justify-content: space-between;
   margin: 0;
   color: var(--ink);
-  font-size: 15px;
+  font-size: var(--text-body);
   font-weight: 600;
 }
 
 .catalogHead h2 span,
 .groupTitle span {
   color: var(--ink-muted);
-  font-size: 12px;
+  font-size: var(--text-small);
   font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
@@ -107,7 +107,7 @@
   display: flex;
   justify-content: space-between;
   margin: 22px 0 6px;
-  font-size: 12px;
+  font-size: var(--text-small);
   color: var(--ink-muted);
 }
 
@@ -118,7 +118,7 @@
   width: 100%;
   padding: 14px 15px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--ink);
   text-align: left;
@@ -137,14 +137,14 @@
 .main summary:focus-visible,
 .back:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
-.itemName { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.itemName { font-size: var(--text-body); font-weight: 600; overflow-wrap: anywhere; }
 .itemSummary {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
   color: var(--ink-muted);
-  font-size: 12px;
+  font-size: var(--text-small);
   line-height: 1.7;
   overflow-wrap: anywhere;
 }
@@ -157,7 +157,7 @@
   min-width: 0;
   padding: 28px 30px 32px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--surface-1);
 }
 
@@ -165,7 +165,7 @@
 .empty h2 {
   margin: 8px 0 0;
   color: var(--heading);
-  font-size: 25px;
+  font-size: var(--text-title);
   font-weight: 600;
   line-height: 1.45;
   letter-spacing: -0.025em;
@@ -176,7 +176,7 @@
 .summary {
   margin: 16px 0 0;
   color: var(--ink-muted);
-  font-size: 14px;
+  font-size: var(--text-body);
   line-height: 1.85;
   overflow-wrap: anywhere;
 }
@@ -186,7 +186,7 @@
   padding: 4px 0 4px 18px;
   border-left: 2px solid var(--accent);
   font-family: var(--font-editor);
-  font-size: 17px;
+  font-size: var(--text-editor);
   line-height: 1.9;
   color: var(--ink);
   white-space: pre-wrap;
@@ -199,7 +199,7 @@
   flex-direction: column;
   gap: 8px;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--text-small);
   color: var(--ink-muted);
 }
 
@@ -229,7 +229,7 @@
   padding-bottom: 10px;
   border-bottom: 1px solid var(--line);
   color: var(--ink);
-  font-size: 15px;
+  font-size: var(--text-body);
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -243,14 +243,14 @@
 .fieldLabel {
   padding-top: 2px;
   color: var(--ink-muted);
-  font-size: 12px;
+  font-size: var(--text-small);
   line-height: 1.8;
 }
 
 .fieldText {
   margin: 0;
   color: var(--ink);
-  font-size: 14px;
+  font-size: var(--text-body);
   line-height: 1.9;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
@@ -260,7 +260,7 @@
   margin: 0;
   padding-left: 1.2em;
   color: var(--ink);
-  font-size: 14px;
+  font-size: var(--text-body);
   line-height: 1.9;
   overflow-wrap: anywhere;
 }
@@ -269,7 +269,7 @@
   margin-top: 8px;
   padding-top: 18px;
   border-top: 1px solid var(--line);
-  font-size: 12px;
+  font-size: var(--text-small);
 }
 
 .stats summary,
@@ -298,7 +298,7 @@
 }
 
 .stat code {
-  font-size: 12px;
+  font-size: var(--text-small);
   overflow-wrap: anywhere;
 }
 
@@ -309,12 +309,12 @@
   margin: 22px 0 0;
   padding: 0;
   list-style: none;
-  font-size: 12px;
+  font-size: var(--text-small);
   font-variant-numeric: tabular-nums;
   color: var(--ink-muted);
 }
 .steps [aria-current='step'] { color: var(--ink); font-weight: 600; }
-.sample { font-size: 13px; }
+.sample { font-size: var(--text-small); }
 .sample[open] > summary { margin-bottom: 14px; }
 .sample .actions { margin-top: 14px; }
 
@@ -345,7 +345,7 @@
 .feedback p {
   margin: 0;
   color: var(--ink-muted);
-  font-size: 13px;
+  font-size: var(--text-small);
   line-height: 1.6;
   overflow-wrap: anywhere;
 }

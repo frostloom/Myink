@@ -25,6 +25,7 @@ import {
   newPresetId,
   nextPresetName,
   PRESET_LIMIT,
+  primaryInkFor,
   THEMES,
   THEME_FONTS,
   THEME_FONT_SIZES,
@@ -51,6 +52,7 @@ import {
   OFFICIAL_THEME_TOKENS,
   PINNED_WORKSPACE_PREVIEW,
   WORKSPACE_PREVIEW_SIZE,
+  type PreviewTokens,
 } from '../lib/themePreview'
 import type { Project } from '../types'
 import styles from './SettingsPage.module.css'
@@ -101,7 +103,7 @@ function stageStyle(image: string | null, config: WallpaperConfig): CSSPropertie
 }
 
 function previewStyle(
-  tokens: CustomThemeTokens,
+  tokens: PreviewTokens,
   style: ThemeStyle,
   image: string | null,
   wallpaper: WallpaperConfig,
@@ -115,10 +117,15 @@ function previewStyle(
     '--preview-ink': tokens.ink,
     '--preview-editor-ink': tokens.editorInk,
     '--preview-accent': tokens.accent,
-    // 和整页一样：外壳和纸都跟着透明度走，纸的层级更高所以始终更实
-    '--preview-chrome': hexToRgba(tokens.editor, mix(alpha * 0.86)),
+    // 和整页一样：外壳和纸都跟着透明度走。官方主题的面板底是独立一档不透明色（tokens.css），
+    // 预设配色没有这一档，只能继续拿纸色按 0.86 摊薄——和 applyCustomPaint 同一套。
+    '--preview-chrome': tokens.surface
+      ? hexToRgba(tokens.surface, mix(alpha))
+      : hexToRgba(tokens.editor, mix(alpha * 0.86)),
     '--preview-editor': hexToRgba(tokens.editor, mix(alpha)),
     '--preview-accent-soft': hexToRgba(tokens.accent, mix(alpha * 0.34)),
+    // 主按钮的字色。原来这里拿画布色当字用，预览把一个读不了的按钮当成产品样子展示。
+    '--preview-btn-ink': tokens.btnInk ?? primaryInkFor(tokens.accent),
     '--preview-font': face.css,
     '--preview-editor-size': size.editor,
     '--preview-image': image ? `url("${image}")` : 'none',
@@ -136,7 +143,7 @@ function imageAspect(url: string, fallback: number): Promise<number> {
 }
 
 function WorkspacePreview(props: {
-  tokens: CustomThemeTokens
+  tokens: PreviewTokens
   style: ThemeStyle
   image: string | null
   wallpaper: WallpaperConfig

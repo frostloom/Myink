@@ -1,27 +1,28 @@
+import { officialThemeColor } from './theme'
 import type { CustomThemeTokens, ThemeId } from './theme'
 
-export const OFFICIAL_THEME_TOKENS: Record<Exclude<ThemeId, 'custom'>, CustomThemeTokens> = {
-  paper: {
-    canvas: '#f6f3e9',
-    ink: '#3f3a36',
-    editor: '#fffdf7',
-    editorInk: '#514a43',
-    accent: '#9fd8ad',
-  },
-  night: {
-    canvas: '#121212',
-    ink: '#e6e6e6',
-    editor: '#181818',
-    editorInk: '#e6e6e6',
-    accent: '#7dba90',
-  },
-  contrast: {
-    canvas: '#ffffff',
-    ink: '#141414',
-    editor: '#ffffff',
-    editorInk: '#111111',
-    accent: '#1f7a3a',
-  },
+/** 预览除了 CustomThemeTokens 那五个色，还想知道面板底与主按钮字色。
+ *  官方主题从 tokens.css 取；预设配色没有这两项，由 AppearancePage 按同一条规则现算。 */
+export type PreviewTokens = CustomThemeTokens & { surface?: string; btnInk?: string }
+
+function officialPreviewTokens(id: Exclude<ThemeId, 'custom'>): PreviewTokens {
+  return {
+    canvas: officialThemeColor(id, '--canvas'),
+    ink: officialThemeColor(id, '--ink'),
+    editor: officialThemeColor(id, '--editor'),
+    editorInk: officialThemeColor(id, '--editor-ink'),
+    accent: officialThemeColor(id, '--accent'),
+    surface: officialThemeColor(id, '--surface-1'),
+    btnInk: officialThemeColor(id, '--btn-primary-ink'),
+  }
+}
+
+// 值一律取自 tokens.css（见 lib/theme.ts）。这里原来手抄了一份五个色的表，
+// 改 tokens.css 时预览不会跟着走，展示出来的就不是产品真正的样子。
+export const OFFICIAL_THEME_TOKENS: Record<Exclude<ThemeId, 'custom'>, PreviewTokens> = {
+  paper: officialPreviewTokens('paper'),
+  night: officialPreviewTokens('night'),
+  contrast: officialPreviewTokens('contrast'),
 }
 
 export const WORKSPACE_PREVIEW_SIZE = { width: 1320, height: 540 }

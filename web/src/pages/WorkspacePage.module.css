@@ -28,7 +28,7 @@
   margin: 0;
   margin-right: auto;
   color: var(--ink-muted);
-  font-size: 16px;
+  font-size: var(--text-heading);
 }
 
 .main {
@@ -78,13 +78,13 @@
 
 .stageTab span,
 .stageTabActive span {
-  font-size: 13px;
+  font-size: var(--text-small);
   font-weight: 700;
 }
 
 .stageTab small,
 .stageTabActive small {
-  font-size: 10px;
+  font-size: var(--text-micro);
 }
 
 .stageTabActive {
@@ -120,7 +120,7 @@
 .generatingChapter h2 {
   margin: 16px 0 8px;
   color: var(--text);
-  font-size: 26px;
+  font-size: var(--text-display);
 }
 
 .generatingChapter p {
@@ -138,7 +138,7 @@
   border-radius: 999px;
   background: var(--badge-success-bg);
   color: var(--success);
-  font-size: 13px;
+  font-size: var(--text-small);
   font-weight: 650;
 }
 
@@ -174,7 +174,7 @@
   padding: 14px 20px;
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
-  font-size: 14px;
+  font-size: var(--text-body);
   flex-shrink: 0;
 }
 

@@ -37,14 +37,21 @@ h3 {
 }
 
 h1 {
-  font-size: 34px;
+  font-size: var(--text-display);
   color: var(--heading);
 }
 h2 {
-  font-size: 20px;
+  font-size: var(--text-title);
 }
 h3 {
   font-size: var(--text-heading);
+}
+
+/* 34px 级页标题在 390px 宽上必然折两行，窄屏降到 title 一档。断点用 §3.5 的四档阶梯。 */
+@media (max-width: 640px) {
+  h1 {
+    font-size: var(--text-title);
+  }
 }
 
 button,
@@ -106,13 +113,16 @@ a:hover {
   background: var(--accent-pressed);
 }
 .btn-secondary {
-  background: var(--lavender-soft);
+  /* 原来底色是淡紫(--lavender-soft)——accent 之外的第二个色相，收回单一 accent：
+     次级按钮用阶梯上比面板暗一档的 --surface-2 做实底，边框是普通分隔线色。 */
+  background: var(--surface-2);
   color: var(--ink);
   border-color: var(--btn-secondary-border);
   box-shadow: var(--shadow-soft);
 }
 .btn-secondary:hover:not(:disabled) {
-  border-color: var(--line-strong);
+  /* 边框基准值已经等于 --line-strong，再改成它是空操作，故 hover 往深一档走。 */
+  border-color: var(--ink-subtle);
 }
 .btn-quiet {
   background: transparent;

@@ -211,7 +211,7 @@ it('hands the font and opacity to the official themes too', async () => {
   expect(cssVar('--font-ui')).toContain('sans-serif')
   expect(cssVar('--font-ui')).not.toContain('Kaiti')
   fireEvent.change(screen.getByLabelText('界面透明度'), { target: { value: '40' } })
-  expect(cssVar('--surface-1')).toBe('rgba(255, 255, 252, 0.34)')
+  expect(cssVar('--surface-1')).toBe('rgba(251, 248, 241, 0.4)')
 
   fireEvent.click(screen.getByRole('button', { name: '还原' }))
   expect(cssVar('--font-editor')).toContain('Microsoft YaHei')

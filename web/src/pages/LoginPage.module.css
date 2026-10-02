@@ -24,7 +24,9 @@
   grid-template-columns: 1fr 1fr;
   padding: 3px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
+  /* 外框 12、内页 8：3px 的 padding 正好让内外圆角同心。
+     原来这里是 calc(--radius-sm - 2px)，算出来第 13 种半径；把它搬回阶梯上。 */
+  border-radius: var(--radius-md);
   background: var(--input-bg);
 }
 
@@ -32,7 +34,7 @@
 .tabActive {
   min-height: 38px;
   border: 0;
-  border-radius: calc(var(--radius-sm) - 2px);
+  border-radius: var(--radius-sm);
   color: var(--ink-muted);
   background: transparent;
   cursor: pointer;

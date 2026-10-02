@@ -39,7 +39,7 @@
 }
 
 .sectionTitle {
-  font-size: 18px;
+  font-size: var(--text-heading);
 }
 
 .field {
@@ -91,7 +91,7 @@
 .volumeFold,
 .stageFold {
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--surface-1);
 }
 
@@ -128,7 +128,7 @@
   flex: 1;
   min-width: 0;
   color: var(--ink);
-  font-size: 16px;
+  font-size: var(--text-body);
   font-weight: 650;
 }
 
@@ -174,7 +174,7 @@
 }
 
 .lockedGenre {
-  font-size: 15px;
+  font-size: var(--text-body);
   font-weight: 600;
   color: var(--ink);
 }

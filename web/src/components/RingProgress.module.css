@@ -48,14 +48,14 @@
 }
 
 .center strong {
-  font-size: 1.75rem;
+  font-size: var(--text-title);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
 
 .center span {
-  font-size: 0.8125rem;
+  font-size: var(--text-small);
   color: var(--ink-muted);
 }
 

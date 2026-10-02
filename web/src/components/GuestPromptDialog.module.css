@@ -15,7 +15,7 @@
   flex-direction: column;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--line) 80%, #8d7f74);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: var(--surface-1);
   box-shadow: 0 24px 70px rgba(48, 42, 38, 0.2);
 }
@@ -31,7 +31,7 @@
 .head h2 {
   margin: 0;
   color: var(--ink);
-  font-size: 18px;
+  font-size: var(--text-title);
 }
 
 .close {
@@ -46,7 +46,7 @@
   color: var(--ink-muted);
   cursor: pointer;
   font: inherit;
-  font-size: 20px;
+  font-size: var(--text-heading);
   line-height: 1;
 }
 
