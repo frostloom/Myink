@@ -76,8 +76,9 @@ it('renders the event ledger with summaries and participant names', async () => 
 
   renderPage()
 
-  expect(await screen.findByText('事件台账')).toBeTruthy()
-  expect(screen.getByText('林晚于青云山夺剑')).toBeTruthy()
+  // 「事件台账」标题不依赖数据、首帧就在，拿它当门等于没等——要等就等数据本身。
+  expect(await screen.findByText('林晚于青云山夺剑')).toBeTruthy()
+  expect(screen.getByText('事件台账')).toBeTruthy()
   expect(screen.getByText('林晚')).toBeTruthy()
   expect(screen.getByText('沈岳')).toBeTruthy()
 })

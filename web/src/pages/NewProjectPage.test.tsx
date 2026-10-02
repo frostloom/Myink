@@ -347,9 +347,12 @@ it('lists the builtin style before mine, each marked with where it comes from', 
   renderPage('/long/new')
 
   const select = await screen.findByLabelText('文风')
-  expect(Array.from(select.querySelectorAll('option')).map((o) => o.textContent)).toEqual([
-    '不指定', '九州问天（内置）', '渡口白描（我的）',
-  ])
+  // 选项由 useEffect 里的异步 list() 填，而 select 首帧就在，所以这里必须重试断言。
+  await waitFor(() =>
+    expect(Array.from(select.querySelectorAll('option')).map((o) => o.textContent)).toEqual([
+      '不指定', '九州问天（内置）', '渡口白描（我的）',
+    ]),
+  )
 })
 
 it('defaults to no style and sends null', async () => {
