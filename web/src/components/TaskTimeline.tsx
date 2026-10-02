@@ -139,7 +139,7 @@ export function TaskTimeline({
                 <span>
                   {attempts.length > 0
                     ? `${attempts.length} 次生成 · ${displayRunCount} 个阶段`
-                    : `本次 ${displayNodes.length} 个阶段`}
+                    : `本次 ${displayNodes.length + (pendingNode ? 1 : 0)} 个阶段`}
                 </span>
                 {totalDuration > 0 && <span>{formatDuration(totalDuration)}</span>}
                 {progress && <span>批次 {progress.current}/{progress.total}</span>}

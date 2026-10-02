@@ -95,15 +95,18 @@ vi.mock('../components/GenerationPanel', () => ({
   ),
 }))
 vi.mock('../components/TaskTimeline', () => ({
-  TaskTimeline: ({ taskId, chapterSeq, runs }: {
+  TaskTimeline: ({ taskId, chapterSeq, runs, liveNode }: {
     taskId: string | null
     chapterSeq: number | null
     runs: AgentRun[]
+    liveNode: string | null
   }) => (
     <div>
       <div>timeline-{taskId ?? 'none'}-chapter-{chapterSeq ?? 'none'}</div>
       {/* 流转记录拿到的 run 条数：钉住「短篇喂的是整篇 runs，不按章滤」。 */}
       <span>flow-runs-{runs.length}</span>
+      {/* 在跑但还没落库的那一步：短篇整篇共用一次写库，右栏的实时性全靠它。 */}
+      <span>flow-live-{liveNode ?? 'none'}</span>
     </div>
   ),
 }))
@@ -443,6 +446,17 @@ it('leaves the ring unnumbered while a step reports no char count', async () => 
   expect(ring.getAttribute('aria-valuenow')).toBeNull()
   expect(screen.getByText('审稿')).toBeTruthy()
   expect(screen.getByRole('status').textContent).toContain('正在审稿')
+})
+
+it('hands the in-flight short stage to the flow rail too, not only to the ring', async () => {
+  // 短篇整篇共用一次写库：agent_runs 到四步跑完才提交，右栏在这期间一条 node 事件都收不到，
+  // 于是忙的是环、右栏从头到尾停在「任务已创建，等待第一个步骤开始」。阶段名要同时喂给两边。
+  mockShortBook([{ ...shortTask, status: 'running' }], [])
+  liveTask.shortProgress = { stage: 'short_review', current: 0, total: 0 }
+
+  renderWorkspace()
+
+  expect(await screen.findByText('flow-live-short_review')).toBeTruthy()
 })
 
 it('auto-starts the short generation once on handover, then strips the intent', async () => {

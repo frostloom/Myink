@@ -722,8 +722,14 @@ export default function WorkspacePage() {
   const isPendingChapter = selectedChapter?.id.startsWith('pending-chapter:') ?? false
   // 节点记录在 LLM 返回后才落库，写作进行中右栏会停在上一节点；用产物未完成态补一条实时步骤。
   // 仅任务在途时启用：终态/暂停下残留的未完成产物不该再显示「正在执行」。
+  //
+  // 短篇走另一条源：整篇四步共用一次写库，agent_runs 到整篇跑完才提交，右栏在此期间一条
+  // node 事件都收不到，`liveStageNode` 那套按产物流推导也没有输入。唯一的实时来源是 progress
+  // 事件的阶段名（与环形进度条同一个），所以这里直接把 `shortProgress.stage` 当作在跑的那一步。
   const liveNode = taskIsCreating
-    ? liveStageNode(visibleTaskRuns, planArtifact, writeArtifact)
+    ? isShortBook
+      ? task.shortProgress?.stage ?? null
+      : liveStageNode(visibleTaskRuns, planArtifact, writeArtifact)
     : null
   const showCreationWorkspace = Boolean(selectedChapter && (hasPlan || taskIsCreating || isPendingChapter))
   const canOpenWrite = Boolean(
