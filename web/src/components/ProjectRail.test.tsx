@@ -1,20 +1,24 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { Project } from '../types'
+import { FEEDBACK_OPEN_EVENT } from './FeedbackWidget'
 import { ProjectRail } from './ProjectRail'
 
 const currentSession = vi.hoisted(() => ({ value: {
   username: 'alice', tier: 'normal', role: 'user' as 'user' | 'admin', roleVerified: true,
 } }))
+// 默认已登录：只有「反馈入口对游客要不要出现」这一条用例需要切走，afterEach 会还原。
+const currentStatus = vi.hoisted(() => ({ value: 'authenticated' as 'authenticated' | 'unauthenticated' }))
 
 vi.mock('../context/AuthContext', () => ({
-  useAuth: () => ({ session: currentSession.value, status: 'authenticated' }),
+  useAuth: () => ({ session: currentSession.value, status: currentStatus.value }),
 }))
 
 afterEach(() => {
   cleanup()
+  currentStatus.value = 'authenticated'
 })
 
 function renderRail(path: string, projects: Project[]) {
@@ -135,4 +139,22 @@ it('links to the style library only on global pages', () => {
   // 与「环境配置」「主题」同一条闸：进书之后这三条都不该在。
   renderRail('/projects/p1', [])
   expect(screen.queryByRole('link', { name: '文风库' })).toBeNull()
+})
+
+it('puts a labelled feedback entry in the rail, whatever the lamp is doing', () => {
+  renderRail('/long', [])
+  // 灯只是捷径：手机端整只被藏掉，桌面上它的点击区压住控件时那一下还要让给控件。
+  // 这条入口不持有表单状态，点它只派发事件，面板由挂在 <Outlet> 之外的唯一挂件实例接住。
+  const entry = screen.getByRole('button', { name: '反馈' })
+  const seen = vi.fn()
+  window.addEventListener(FEEDBACK_OPEN_EVENT, seen)
+  fireEvent.click(entry)
+  window.removeEventListener(FEEDBACK_OPEN_EVENT, seen)
+  expect(seen).toHaveBeenCalledTimes(1)
+})
+
+it('keeps the feedback entry away from guests, who cannot submit', () => {
+  currentStatus.value = 'unauthenticated'
+  renderRail('/long', [])
+  expect(screen.queryByRole('button', { name: '反馈' })).toBeNull()
 })

@@ -39,6 +39,49 @@ const MAX_FILES = 4
 const DESCRIPTION_MAX = 2000
 const CONTACT_MAX = 200
 
+/**
+ * 左栏那颗带标签的「反馈」按钮派发这个事件，由这里（全站唯一的挂件实例）接住。
+ * 灯不是可靠的入口：手机端整只被 display:none 掉（用户口径，见 FeedbackWidget.module.css ≤640），
+ * 桌面上它的点击区又常常压在页面控件上——那一下会让给控件（见 lampRival），灯自己不开面板。
+ */
+export const FEEDBACK_OPEN_EVENT = 'myink:feedback'
+
+const INTERACTIVE_SELECTOR = 'a,button,input,select,textarea,summary,label,[role="button"],[contenteditable]'
+
+function sampleCorners(rect: DOMRect): Array<[number, number]> {
+  const inset = 6
+  return [
+    [(rect.left + rect.right) / 2, (rect.top + rect.bottom) / 2],
+    [rect.left + inset, rect.top + inset],
+    [rect.right - inset, rect.top + inset],
+    [rect.left + inset, rect.bottom - inset],
+    [rect.right - inset, rect.bottom - inset],
+  ]
+}
+
+/**
+ * 灯的点击区（那颗 52×44 的 .hit，不是 104px 的灯罩——灯罩是 pointer-events:none，压根抢不到点击）
+ * 底下压着的最上层可点元素；没有就返回 null。
+ *
+ * 只判可交互元素，不判正文：这是文字产品，灯罩压住段落是吊灯的常态，压住按钮才是事故。
+ * 判定放在点击这一刻而不是挂载时——内容是异步渲染的（项目卡的链接 fetch 回来才存在），
+ * 挂载时量到的空位在半秒后就过期了。
+ */
+function lampRival(button: HTMLElement): HTMLElement | null {
+  // jsdom 没有排版，也不实现 elementsFromPoint：测试环境按「没压到东西」处理。
+  if (typeof document.elementsFromPoint !== 'function') return null
+  for (const [x, y] of sampleCorners(button.getBoundingClientRect())) {
+    if (x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight) continue
+    for (const el of document.elementsFromPoint(x, y)) {
+      const node = el as HTMLElement
+      if (node.closest('[data-lamp]') || node.closest(`.${styles.dock}`)) continue
+      const rival = node.closest<HTMLElement>(INTERACTIVE_SELECTOR)
+      if (rival) return rival
+    }
+  }
+  return null
+}
+
 /** 客户端先拦一道：限额与服务端一致，别让用户等上传完了才被拒。 */
 function fileError(file: File): string | null {
   if (IMAGE_TYPES.has(file.type)) {
@@ -231,6 +274,13 @@ export function FeedbackWidget() {
     pickedRef.current.forEach((item) => URL.revokeObjectURL(item.url))
   }, [])
 
+  // 左栏那颗「反馈」按钮只派发事件，表单状态全在这里——挂件是全站唯一的实例。
+  useEffect(() => {
+    const onOpen = () => setOpen(true)
+    window.addEventListener(FEEDBACK_OPEN_EVENT, onOpen)
+    return () => window.removeEventListener(FEEDBACK_OPEN_EVENT, onOpen)
+  }, [])
+
   useEffect(() => {
     if (!open || tab !== 'mine' || mine !== null) return
     const controller = new AbortController()
@@ -403,9 +453,17 @@ export function FeedbackWidget() {
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
-          onClick={() => {
+          onClick={(event) => {
             if (skipClick.current || placeRef.current.hidden) {
               skipClick.current = false
+              return
+            }
+            // 灯的点击区压住别的控件时，这一下归那个控件：灯是装饰，不能替页面吃掉点击。
+            // 不搬灯——实测在满版内容的页面上（项目库、管理台）往左让多少格都还在内容里，
+            // 而在能挪开的页面上它会挪到正文列中间，比压住按钮更难看。拖动不受影响。
+            const rival = lampRival(event.currentTarget)
+            if (rival) {
+              rival.click()
               return
             }
             setOpen(true)

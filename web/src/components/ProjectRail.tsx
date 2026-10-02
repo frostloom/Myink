@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useGuest } from '../hooks/useGuest'
 import { isProjectDraft } from '../lib/projectCreation'
 import type { Project } from '../types'
+import { FEEDBACK_OPEN_EVENT } from './FeedbackWidget'
 import styles from './ProjectRail.module.css'
 
 interface Props {
@@ -106,6 +107,22 @@ export function ProjectRail({ projects, onLogout }: Props) {
             <span className={styles.title}>文风库</span>
           </NavLink>
         </nav>
+      )}
+      {/* 反馈的可靠通路。灯是这条通路的捷径，但不是通路本身：手机端整只灯被 display:none 掉
+          （用户口径：手机上不留灯泡），桌面上灯的点击区又常常压在页面控件上、那一下要让给控件
+          （见 FeedbackWidget 的 lampRival）。所以两个情形都得有一个带标签的入口在导航里。
+          它是 <button> 不是链接：不持有表单状态，只派发事件，面板由 <Outlet> 之外那个唯一挂件实例接住。
+          放在 .foot 之外、foot 之前：窄屏里整条 rail 是横向滚动条，只有 rail 的直接子元素才钉得住
+          （sticky 的容器是它自己那一格，藏在 foot 里就跟着 foot 一起滚出视口，实测 390 下 x=633）。
+          游客不出现——提交反馈的接口要 require_user，给条走不通的路不如不给。 */}
+      {status === 'authenticated' && (
+        <button
+          type="button"
+          className={`${styles.item} ${styles.feedbackPin}`}
+          onClick={() => window.dispatchEvent(new Event(FEEDBACK_OPEN_EVENT))}
+        >
+          <span className={styles.title}>反馈</span>
+        </button>
       )}
       <div className={styles.foot}>
         {status === 'authenticated' && session?.role === 'admin' && session.roleVerified === true && (
