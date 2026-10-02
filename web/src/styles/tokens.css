@@ -74,7 +74,11 @@
 
   /* 派生：标题 / 链接 / 按钮字色 / 输入底，方便整套换肤 */
   --heading: var(--ink);
-  --link-hover: #5e946c;
+  /* --accent 是块面用色（底色），落在纸底上只有 1.47:1，当文字读不了。
+     凡是要拿强调色写字的地方一律用 --accent-ink；下面每种主题各给一个够 4.5:1 的值。 */
+  --accent-ink: #4d7357;
+  /* 原来是 #5e946c（3.19:1）：比基准的 --accent-ink 还浅，hover 反而更难读，故压深一档。 */
+  --link-hover: #3f6249;
   --btn-primary-ink: #365544;
   --btn-primary-border: #b4dfbd;
   --btn-secondary-border: #ded5ea;
@@ -120,6 +124,7 @@ html[data-theme='night'] {
   --sev-minor: #8cc8b4;
   --sev-hint: #8d969f;
   --heading: var(--ink);
+  --accent-ink: #7dba90;
   --link-hover: #9dceb0;
   --btn-primary-ink: #102016;
   --btn-primary-border: #5f8f6e;
@@ -159,6 +164,7 @@ html[data-theme='contrast'] {
   --editor-ink: #111111;
   --editor-muted: #444444;
   --heading: var(--ink);
+  --accent-ink: #1f7a3a;
   --link-hover: #145c2c;
   --btn-primary-ink: #ffffff;
   --btn-primary-border: #145c2c;
@@ -174,6 +180,9 @@ html[data-theme='contrast'] {
 
 html[data-theme='custom'] {
   color-scheme: light;
+  /* 自选配色的强调色只有用户自己那一个候选，只能跟着 --accent 走（JS 内联注入，见 theme.ts）。
+     既是今天的实际效果，也别无选择——用户挑的色值本身满不满 4.5:1 由他决定。 */
+  --accent-ink: var(--accent, #4d7357);
 }
 
 /* severity / status 分级色（文字+icon+色三通道，不单靠颜色传达结果）。
