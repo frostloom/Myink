@@ -37,7 +37,11 @@
   margin: 0 auto var(--space-5);
   display: flex;
   gap: var(--space-1);
-  overflow-x: auto;
+  /* 换行而不是横向滚动：9 个标签在 890px 以下一行装不下，原来 overflow-x 会把
+     「邀请码」「反馈」裁得只剩半个字，又没有任何滚动条线索——摸不到的标签等于没有。
+     标签条是「选一」不是「翻一页」。不给 ≤900 单独开 media query：那会在 901 留下
+     十来 px 的悬崖，而中文字宽随字体回退而变；换行是自适应的，宽屏本来就一行放得下。 */
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--line);
 }
 
@@ -76,63 +80,59 @@
   margin: 0 0 var(--space-3);
 }
 
-.counts,
-.metrics {
+/* 读数带：每个数字是一条读数，用 1px 竖线分隔、用字号分主次。
+   原来 9 条读数各装在一个带边框的盒子里，且主次两组同为 --text-heading——
+   盒子把「一组读数」切碎成 9 个控件，字号又不分主次，所以既密又平。
+   竖线统一画在每条读数左边（不给首条开例外）：换行时行首也有线，
+   不必按列数用 nth-child 说「谁是行首」，档位改动只动列数。
+   「任务状态」原来是另一个面板里的一颗颗胶囊——它同样是读数，所以并成第三条带；
+   胶囊只是换了圆角的盒子，而且一千多 px 宽的面板里只装两条读数，空得离谱。 */
+.readout,
+.metrics,
+.statuses {
   display: grid;
-  gap: var(--space-3);
+  column-gap: var(--space-3);
+  row-gap: var(--space-4);
   margin: 0;
 }
-
-.counts {
-  grid-template-columns: repeat(4, minmax(130px, 1fr));
+.readout {
+  grid-template-columns: repeat(9, minmax(0, 1fr));
 }
-
 .metrics {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  margin-top: var(--space-4);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+/* 状态有几条是数据说了算（排队中/完成/失败/已暂停…），所以按内容宽度左向排，
+   不定死列数；空的轨道由 auto-fit 收起，不会把两条读数拉到全宽。 */
+.statuses {
+  grid-template-columns: repeat(auto-fit, minmax(120px, max-content));
+}
+.readout > div,
+.metrics > div,
+.statuses > div {
+  min-width: 0;
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--line);
 }
 
-.counts div,
-.metrics div {
-  background: var(--surface-1);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-}
-
-.counts dt,
+.readout dt,
 .metrics dt,
+.statuses dt,
 .summaryList dt {
   color: var(--ink-subtle);
   font-size: var(--text-small);
 }
 
-.counts dd,
-.metrics dd {
+.readout dd,
+.metrics dd,
+.statuses dd {
   margin: var(--space-1) 0 0;
-  font-size: var(--text-heading);
   font-weight: 600;
   overflow-wrap: anywhere;
+  font-size: var(--text-body);
 }
-
-.statusCounts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin: var(--space-3) 0 0;
-}
-
-.statusCounts div {
-  display: flex;
-  gap: var(--space-2);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: var(--space-1) var(--space-3);
-}
-
-.statusCounts dd {
-  margin: 0;
-  font-weight: 600;
+/* 主读数（实体计数）比次读数大一档——原来两组同为 --text-heading，主次分不出来。 */
+.readout .lead dd {
+  font-size: var(--text-title);
 }
 
 .filters {
@@ -347,9 +347,18 @@
   padding: var(--space-6);
 }
 
+/* 读数带的列数（§3.5 阶梯）。1200 以下九列必然挤，改成三列三行；
+   640 以下两列，9 条/5 条都是奇数，最后一条摊满一行收尾，
+   免得「节点耗时」这种孤条一个人占一行、右边空一块。 */
+@media (max-width: 1200px) {
+  .readout,
+  .metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 900px) {
   .main { padding: var(--space-4); }
-  .counts { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
   .split { grid-template-columns: minmax(0, 1fr); }
 }
 
@@ -358,6 +367,20 @@
   .wrap > aside { width: 100%; height: auto; min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); }
   .main { overflow: visible; padding: var(--space-3); }
   .header, .viewHead, .detailHead { flex-direction: column; }
-  .counts { grid-template-columns: 1fr 1fr; }
+  .readout,
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .readout > div:last-child,
+  .metrics > div:last-child {
+    grid-column: 1 / -1;
+  }
   .pagination { justify-content: space-between; }
+}
+
+@media (max-width: 420px) {
+  .readout,
+  .metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

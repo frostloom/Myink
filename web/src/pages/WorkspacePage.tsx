@@ -19,6 +19,7 @@ import { api, ApiError } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
 import { nodeLabel } from '../lib/labels'
 import { isProjectDraft, projectHref } from '../lib/projectCreation'
+import { readSidePanelOpen, writeSidePanelOpen } from '../lib/sidePanel'
 import { clearActiveWrite, readActiveWrite, writeActiveWrite } from '../lib/activeWrite'
 import { liveStageNode, shortStageProgress } from '../lib/taskFlow'
 import { chapterToOpenForPendingTask, latestActiveGenerationTask, latestChapterAwaitingReview, latestGenerationTask, nodesForChapter, runsForChapter } from '../lib/taskChapter'
@@ -50,6 +51,9 @@ export default function WorkspacePage() {
   // 放行复用同一 task_id 续跑，SSE 需强制重连（useTaskEvents resumeKey 触发）
   const [releaseResumeKey, setReleaseResumeKey] = useState<number | null>(null)
   const [centerView, setCenterView] = useState<'plan' | 'write'>('write')
+  // 右栏默认收起（§3.7b）。任务在跑时不强制展开：要看进度的人本来就开着它，
+  // 收起来是他自己按的，页面不该跟他抢这个开关。
+  const [sidePanelOpen, setSidePanelOpen] = useState(readSidePanelOpen)
   // 短篇整篇入队失败（建书页确认完跳进来那一次）→ 状态带给重试入口，不静默咽掉。
   const [shortStartFailed, setShortStartFailed] = useState(false)
   const [shortSubmitting, setShortSubmitting] = useState(false)
@@ -819,6 +823,12 @@ export default function WorkspacePage() {
       })
   }, [projects, projectId, navigate])
 
+  const toggleSidePanel = useCallback(() => {
+    const next = !sidePanelOpen
+    setSidePanelOpen(next)
+    writeSidePanelOpen(next)
+  }, [sidePanelOpen])
+
   return (
     <div className={styles.wrap} data-form={isShortBook ? 'short' : 'long'}>
       <ProjectRail projects={projects} onLogout={logout} />
@@ -992,64 +1002,76 @@ export default function WorkspacePage() {
         )}
       </main>
 
-      <aside className={styles.right} aria-label="生成与校验">
-        {isShortBook ? (
-          // 短篇右栏只留一条：这一篇有没有经过审核、花了多少，全在流转记录里。
-          // 整篇任务不属于任何一章，所以喂整篇 runs、chapterSeq 给 null（按章切会整块滤空）。
-          <TaskTimeline
-            key={`flow-${projectId}-short`}
-            taskId={activeTaskId}
-            phase={task.phase}
-            status={task.status}
-            nodes={visibleTaskNodes}
-            runs={visibleTaskRuns}
-            liveNode={liveNode}
-            progress={task.progress}
-            chapterSeq={null}
-            error={task.error}
-            onRetry={task.retry}
-            canControl={batchTotal !== null}
-            refresh={task.refresh}
-          />
-        ) : (
-          <>
-        <GenerationPanel
-          projectId={projectId}
-          chapters={chapters}
-          selectedChapter={selectedChapter}
-          taskBusy={taskInFlight}
-          onTaskStart={handleTaskStart}
-        />
-        <TaskTimeline
-          key={`flow-${projectId}-${selectedSeq ?? 'none'}`}
-          taskId={activeTaskId}
-          phase={task.phase}
-          status={task.status}
-          nodes={visibleTaskNodes}
-          runs={visibleTaskRuns}
-          liveNode={liveNode}
-          progress={task.progress}
-          chapterSeq={selectedSeq}
-          error={task.error}
-          onRetry={task.retry}
-          canControl={batchTotal !== null}
-          refresh={task.refresh}
-        />
-        <AuditPanel key={`audit-${projectId}-${selectedSeq ?? 'none'}`} runs={visibleTaskRuns} onNavigateChapter={handleNavigateChapter} />
-        <CandidatePanel
-          key={`${projectId}:${selectedSeq ?? 'none'}`}
-          projectId={projectId}
-          chapterSeq={selectedSeq}
-          chapterStatus={selectedChapter?.status}
-          candidates={candidates}
-          onChanged={loadCandidates}
-          releaseTarget={releaseTarget}
-          onReleased={handleRelease}
-          referenceNames={candidateReferenceNames}
-        />
-        <LessonsPanel projectId={projectId} />
-          </>
-        )}
+      <aside className={sidePanelOpen ? styles.right : styles.rightDock} aria-label="生成与校验">
+        <button
+          type="button"
+          className={`btn btn-quiet ${styles.dockToggle}`}
+          aria-expanded={sidePanelOpen}
+          aria-controls="workspace-side-body"
+          onClick={toggleSidePanel}
+        >
+          {sidePanelOpen ? '收起面板' : '生成与校验'}
+        </button>
+        {/* 收起只是不呈现，不卸载：候选记忆与审核意见里有输入到一半的草稿和展开状态。 */}
+        <div className={styles.rightBody} id="workspace-side-body" hidden={!sidePanelOpen}>
+          {isShortBook ? (
+            // 短篇右栏只留一条：这一篇有没有经过审核、花了多少，全在流转记录里。
+            // 整篇任务不属于任何一章，所以喂整篇 runs、chapterSeq 给 null（按章切会整块滤空）。
+            <TaskTimeline
+              key={`flow-${projectId}-short`}
+              taskId={activeTaskId}
+              phase={task.phase}
+              status={task.status}
+              nodes={visibleTaskNodes}
+              runs={visibleTaskRuns}
+              liveNode={liveNode}
+              progress={task.progress}
+              chapterSeq={null}
+              error={task.error}
+              onRetry={task.retry}
+              canControl={batchTotal !== null}
+              refresh={task.refresh}
+            />
+          ) : (
+            <>
+              <GenerationPanel
+                projectId={projectId}
+                chapters={chapters}
+                selectedChapter={selectedChapter}
+                taskBusy={taskInFlight}
+                onTaskStart={handleTaskStart}
+              />
+              <TaskTimeline
+                key={`flow-${projectId}-${selectedSeq ?? 'none'}`}
+                taskId={activeTaskId}
+                phase={task.phase}
+                status={task.status}
+                nodes={visibleTaskNodes}
+                runs={visibleTaskRuns}
+                liveNode={liveNode}
+                progress={task.progress}
+                chapterSeq={selectedSeq}
+                error={task.error}
+                onRetry={task.retry}
+                canControl={batchTotal !== null}
+                refresh={task.refresh}
+              />
+              <AuditPanel key={`audit-${projectId}-${selectedSeq ?? 'none'}`} runs={visibleTaskRuns} onNavigateChapter={handleNavigateChapter} />
+              <CandidatePanel
+                key={`${projectId}:${selectedSeq ?? 'none'}`}
+                projectId={projectId}
+                chapterSeq={selectedSeq}
+                chapterStatus={selectedChapter?.status}
+                candidates={candidates}
+                onChanged={loadCandidates}
+                releaseTarget={releaseTarget}
+                onReleased={handleRelease}
+                referenceNames={candidateReferenceNames}
+              />
+              <LessonsPanel projectId={projectId} />
+            </>
+          )}
+        </div>
       </aside>
     </div>
   )

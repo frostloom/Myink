@@ -169,14 +169,21 @@ export function FieldRows({ rows }: { rows: Array<[string, ReactNode]> }) {
   )
 }
 
+/** 模型用量五条读数的唯一口径：概览页把它们并进实体计数那一条带，用户详情单独成带。 */
+export function metricEntries(value: AdminMetrics): Array<[string, string]> {
+  return [
+    ['运行数', value.run_count.toLocaleString()],
+    ['输入 token', value.input_tokens.toLocaleString()],
+    ['输出 token', value.output_tokens.toLocaleString()],
+    ['预估成本', formatCost(value.cost_est)],
+    ['节点耗时', formatDuration(value.duration_ms)],
+  ]
+}
+
 export function Metrics({ value }: { value: AdminMetrics }) {
   return (
     <dl className={styles.metrics}>
-      <div><dt>运行数</dt><dd>{value.run_count.toLocaleString()}</dd></div>
-      <div><dt>输入 token</dt><dd>{value.input_tokens.toLocaleString()}</dd></div>
-      <div><dt>输出 token</dt><dd>{value.output_tokens.toLocaleString()}</dd></div>
-      <div><dt>预估成本</dt><dd>{formatCost(value.cost_est)}</dd></div>
-      <div><dt>节点耗时</dt><dd>{formatDuration(value.duration_ms)}</dd></div>
+      {metricEntries(value).map(([label, text]) => <div key={label}><dt>{label}</dt><dd>{text}</dd></div>)}
     </dl>
   )
 }

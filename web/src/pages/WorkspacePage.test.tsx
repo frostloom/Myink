@@ -146,6 +146,8 @@ afterEach(() => {
   liveTask.status = 'running'
   liveTask.shortProgress = null
   sessionStorage.clear()
+  // 右栏展开偏好会跨用例残留，下一个用例就该从「默认收起」开始了。
+  localStorage.clear()
 })
 
 it('keeps auto Plan full-page until the first real Write artifact then flips once', async () => {
@@ -165,6 +167,8 @@ it('keeps auto Plan full-page until the first real Write artifact then flips onc
   render(<RouterProvider router={router} />)
 
   fireEvent.click(await screen.findByRole('button', { name: 'chapter-12' }))
+  // 右栏默认收起（§3.7b），发起生成要先把它点开。
+  fireEvent.click(screen.getByRole('button', { name: '生成与校验' }))
   fireEvent.click(screen.getByRole('button', { name: 'start-13' }))
   expect(await screen.findByText('plan-page-13')).toBeTruthy()
   expect(screen.queryByText('write-page-13')).toBeNull()
@@ -215,6 +219,7 @@ it('creates and selects chapter 13 before showing its task flow', async () => {
 
   fireEvent.click(await screen.findByRole('button', { name: 'chapter-12' }))
   await screen.findByText('editor-12')
+  fireEvent.click(screen.getByRole('button', { name: '生成与校验' }))
   fireEvent.click(screen.getByRole('button', { name: 'start-13' }))
 
   expect(await screen.findByText('plan-page-13')).toBeTruthy()
@@ -234,6 +239,31 @@ it('creates and selects chapter 13 before showing its task flow', async () => {
   fireEvent.click(screen.getByRole('button', { name: /正文/ }))
   expect(await screen.findByText('write-page-13')).toBeTruthy()
   expect(screen.queryByText('plan-page-13')).toBeNull()
+})
+
+// 右栏默认收起（§3.7b）：正文列要有 720px，工具面板不该常驻三成视口。
+// 判据是「可达」而不是「在不在 DOM 里」——内容仍挂在树上（面板里有输入到一半的草稿），
+// 但收起状态下按 role 查不到，才算真的收起来了。
+it('starts with the tool panel out of the way and opens it on demand', async () => {
+  vi.mocked(api.listProjects).mockResolvedValue([])
+  vi.mocked(api.listChapters).mockResolvedValue([chapter12])
+  vi.mocked(api.listCandidates).mockResolvedValue([])
+  vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] })
+  vi.mocked(api.listForeshadows).mockResolvedValue([])
+  vi.mocked(api.listTasks).mockResolvedValue([])
+
+  const router = createMemoryRouter(
+    [{ path: '/projects/:projectId', element: <WorkspacePage /> }],
+    { initialEntries: ['/projects/project-1'] },
+  )
+  render(<RouterProvider router={router} />)
+
+  fireEvent.click(await screen.findByRole('button', { name: 'chapter-12' }))
+  expect(screen.queryByRole('button', { name: 'start-13' })).toBeNull()
+
+  fireEvent.click(screen.getByRole('button', { name: '生成与校验' }))
+  expect(screen.getByRole('button', { name: 'start-13' })).toBeTruthy()
+  expect(localStorage.getItem('myink.sidePanel')).toBe('open')
 })
 
 it('ignores a late chapter list from the previous book after switching projects', async () => {

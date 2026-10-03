@@ -67,6 +67,7 @@
   align-items: baseline;
   gap: 8px;
   min-width: 112px;
+  min-height: 40px;
   padding: 9px 14px 10px;
   border: 0;
   border-bottom: 2px solid transparent;
@@ -142,27 +143,69 @@
   font-weight: 650;
 }
 
-.right {
-  width: var(--right-panel-width);
+/* 右栏两态（§3.7b）：展开是工具面板，收起是一条 44px 的竖排 dock。
+   五个工具面板不必一直占着三成视口，而正文列要有 720px 才读得下去。
+   dock 就立在面板自己原来的位置上，比在标题栏另开一个按钮诚实——中间那个分支
+   （「还没有章节」）根本没有标题栏，按钮会跟着内容消失。
+   默认收起，展开与否记在 localStorage。 */
+.right,
+.rightDock {
   flex-shrink: 0;
   margin: 18px 18px 18px 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--surface-1);
   box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.right {
+  width: var(--right-panel-width);
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-gutter: stable;
   padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
 .right > * {
   width: 100%;
   min-width: 0;
   flex-shrink: 0;
+}
+
+.rightDock {
+  /* 44px 是手机触控下限，竖排按钮要铺满整条宽度，所以宽度里另算 1px 边框。
+     align-self: flex-start：收成一条标签，不是一根通顶的空柱子——柱子会把「这里
+     本来有东西」说得太响，而标签就是说「点这里展开」。 */
+  width: calc(44px + 2px);
+  align-self: flex-start;
+  align-items: center;
+  padding: 12px 0;
+}
+
+/* 收起时内容留在树上（面板里的草稿、展开的分组不被丢弃），只是不呈现。 */
+.rightBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* .rightBody 的 display: flex 权重高于 UA 的 [hidden]，收起必须自己说一遍。 */
+.rightBody[hidden] {
+  display: none;
+}
+
+.right .dockToggle {
+  width: auto;
+  align-self: flex-end;
+}
+
+.rightDock .dockToggle {
+  writing-mode: vertical-rl;
+  width: 100%;
 }
 
 /* 短篇中间栏顶上的细状态带：进行中/写完/失败/没开始，一行说完，重试就在旁边。 */
@@ -249,6 +292,14 @@
     margin: 0 12px 12px 8px;
     overflow-y: visible;
   }
+  .rightDock {
+    /* 展开时占满这一行，收起时只剩一条标签——不 justify-self 的话它会停在行首
+       （章节列表正下方），读起来像从列表上掉下来的碎片。展开态的「收起面板」在
+       行尾，收起态也该在行尾，两者才是同一个开关。 */
+    grid-column: 2 / -1;
+    justify-self: end;
+    margin: 0 12px 12px 8px;
+  }
 }
 
 /* ≤640：rail 折成顶部横条（规则在 ProjectRail.module.css），页面根从 ≤1200 的三列 grid 换回竖排
@@ -285,6 +336,19 @@
   .right {
     margin: 0 12px 12px;
   }
+  /* 竖排 dock 在竖排页面上不做竖排：横过来占满一条才按得到。
+     基准的 align-self: flex-start 在横排 flex 里管的是水平轴，会把它缩成标签宽，
+     这里要显式撑回去。 */
+  .rightDock {
+    width: auto;
+    align-self: stretch;
+    padding: 0;
+    margin: 0 12px 12px;
+  }
+  .rightDock .dockToggle {
+    writing-mode: horizontal-tb;
+    min-height: 44px;
+  }
   .stageTabs {
     padding: 8px 14px 0;
   }
@@ -294,8 +358,10 @@
     min-width: 0;
     justify-content: center;
   }
-  /* 短篇书的 .right 里只有 TaskTimeline，而它窄屏已隐藏——留着就是个空框。 */
-  .wrap[data-form='short'] .right {
+  /* 短篇书的右栏里只有 TaskTimeline，而它窄屏已隐藏——留着就是个空框，
+     收起态的那条 dock 同理，点开还是空框。 */
+  .wrap[data-form='short'] .right,
+  .wrap[data-form='short'] .rightDock {
     display: none;
   }
 }

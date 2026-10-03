@@ -22,62 +22,132 @@
   margin: 0;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--space-4);
-}
-
 .sectionTitle {
-  margin: 24px 0 16px;
+  margin: var(--space-5) 0 var(--space-4);
 }
 
-.card {
+/* 书单：单列分隔线行，≥1200 起最多两列。不铺面板底（原 auto-fill 卡片网格是设计文档
+   明令避免的「通用三卡网格」），层次全靠 1px 分隔线与留白。 */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.row {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-5);
-  color: var(--ink);
-  text-decoration: none;
-  transition: border-color 120ms ease;
-}
-.card:hover {
-  border-color: var(--accent);
+  align-items: center;
+  gap: var(--space-4);
+  border-bottom: 1px solid var(--line);
 }
 
+/* 整行是链接，删除是它的兄弟按钮——原先按钮嵌在 <Link> 里，既是嵌套可交互元素，
+   也得靠 stopPropagation 防止误导航。 */
+.rowLink {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  /* 上下留白记在链接上而不是 .row 上：记在 .row 上时，可点的只有那一行字（实测 27px），
+     行高却被另一个元素撑着——有无「删除」的两种行（正式作品 / 待完成作品）因此差 13px。
+     记在这里，整条带子都是目标（实测 75px），两种行同高。 */
+  padding: var(--space-5) 0;
+  text-decoration: none;
+}
 .title {
+  /* 颜色写在这些子节点上而不是 .rowLink 上：global.css 的 a / a:hover 与本模块的引入顺序
+     不定，同权重时谁赢看不出来（§8.2 的 .danger 就是这么被吃的）。 */
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--ink);
+  font-size: var(--text-heading);
+  font-weight: 600;
 }
-
+.rowLink:hover .title {
+  color: var(--link-hover);
+}
 .meta {
+  flex: 0 0 auto;
   color: var(--ink-subtle);
   font-size: var(--text-small);
+}
+.arrow {
+  flex: 0 0 auto;
+  color: var(--ink-subtle);
 }
 
 .del {
-  align-self: flex-start;
-  margin-top: var(--space-1);
-  padding: var(--space-1) var(--space-2);
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: none;
+  background: transparent;
   color: var(--ink-subtle);
   font-size: var(--text-small);
   cursor: pointer;
+}
+
+/* 「删除」平时收起，整行 hover 或行内任一元素拿到焦点才显形；用 opacity 而不是 display：
+   按钮一直占着宽度，标题的省略号位置不会在 hover 时跳。
+   收起这件事写在 (hover: hover) 里——触屏上没有 hover，默认就该是显形的，
+   把隐藏做成「只有能悬停的设备才启用」而不是「触屏上覆盖回来」，判据才不会被反向漏掉。 */
+@media (hover: hover) {
+  .del {
+    opacity: 0;
+    transition:
+      opacity 120ms ease,
+      color 120ms ease,
+      border-color 120ms ease;
+  }
+  .row:hover .del,
+  .row:focus-within .del {
+    opacity: 1;
+  }
 }
 .del:hover {
   color: var(--error);
   border-color: var(--error);
 }
 
-/* ≤640：rail 折成顶部横条（规则在 ProjectRail.module.css），页面根转竖排让横条落到顶部。
-   必须写在文件最后：与别的 media 块同权重时靠源序取胜。 */
+/* ≤640：rail 折成顶部横条（规则在 ProjectRail.module.css），页面根转竖排让横条落到顶部。 */
 @media (max-width: 640px) {
   .wrap {
     height: auto;
     min-height: 100%;
     flex-direction: column;
+  }
+  /* 一行塞不下「书名 + 类型·进度 + 箭头」：改两行网格，箭头留在书名那一行的右端。
+     让 meta 自己换行的话，「→」会在个别行掉成孤零零的一行（实测深渊天梯那本），
+     而且行高忽高忽低——固定两行反而整齐。 */
+  .rowLink {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--space-3);
+    row-gap: 2px;
+    /* 基准的 24px 上下是为桌面单行配的；手机上这行本来就两行高，照抄会把每条撑到 90px。 */
+    padding: var(--space-4) 0;
+  }
+  .meta {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .arrow {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .del {
+    min-height: 44px;
+  }
+}
+
+/* ≥1200 才起两列：书单在两列里仍是「一行一本」，不是卡片墙。 */
+@media (min-width: 1200px) {
+  .list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-6);
   }
 }

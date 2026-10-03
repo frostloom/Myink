@@ -1,6 +1,6 @@
 // 左 rail：长篇/短篇两个分区 + 该书目的作品列表；进书后是设定/创作设置/全局审计；全局页才露出环境配置、主题和文风库。
 // data-guest-exempt：未登录时整条 rail 仍是可用导航（GuestShell 的拦截器放行此子树）。
-import { NavLink, useLocation, useParams } from 'react-router-dom'
+import { Link, NavLink, useLocation, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useGuest } from '../hooks/useGuest'
 import { isProjectDraft } from '../lib/projectCreation'
@@ -33,21 +33,31 @@ export function ProjectRail({ projects, onLogout }: Props) {
       <NavLink to="/long" className={styles.brand}>
         Myink
       </NavLink>
+      {/* 模式与内容是两件事（§3.7d）。原来 长篇/短篇 与书名用同一套 .item，进书之后
+          既看不出自己在哪种模式（两条都不亮，因为 NavLink 只按路径判 active），又容易把
+          模式误读成某一页。现在模式是顶部分段控件：当前模式用中性描边，绿色留给「你正在
+          读的这一项」——任一时刻最多一处绿。
+          这里用 Link 而不是 NavLink：NavLink 会把 aria-current 收敛成「自己那条路径命中才给」
+          （源码里 `isActive ? ariaCurrentProp : void 0`），而进书后恰恰是路径不命中、模式却
+          正在生效的那个情形——那时读屏最需要知道当前分区。 */}
       <nav className={styles.sections} aria-label="作品分区">
-        <NavLink
+        <Link
           to="/long"
-          className={({ isActive }) => (isActive ? `${styles.item} ${styles.active}` : styles.item)}
+          aria-current={section === 'long' ? 'true' : undefined}
+          className={section === 'long' ? `${styles.sectionItem} ${styles.sectionCurrent}` : styles.sectionItem}
         >
           <span className={styles.title}>长篇</span>
-        </NavLink>
-        <NavLink
+        </Link>
+        <Link
           to="/short"
-          className={({ isActive }) => (isActive ? `${styles.item} ${styles.active}` : styles.item)}
+          aria-current={section === 'short' ? 'true' : undefined}
+          className={section === 'short' ? `${styles.sectionItem} ${styles.sectionCurrent}` : styles.sectionItem}
         >
           <span className={styles.title}>短篇</span>
-        </NavLink>
+        </Link>
       </nav>
       <nav className={styles.nav} aria-label="作品列表">
+        {books.length > 0 && <span className={styles.groupHead} aria-hidden="true">作品</span>}
         {books.map((p) => (
           <NavLink
             key={p.id}
@@ -59,7 +69,8 @@ export function ProjectRail({ projects, onLogout }: Props) {
         ))}
       </nav>
       {projectId && !isShortBook && (
-        <div className={styles.pageLinks}>
+        <nav className={styles.pageLinks} aria-label="本书页面">
+          <span className={styles.groupHead} aria-hidden="true">本书</span>
           <NavLink
             to={`/projects/${projectId}/lore`}
             className={({ isActive }) =>
@@ -84,10 +95,11 @@ export function ProjectRail({ projects, onLogout }: Props) {
           >
             <span className={styles.title}>全局审计</span>
           </NavLink>
-        </div>
+        </nav>
       )}
       {!projectId && (
         <nav className={styles.settings} aria-label="全局设置">
+          <span className={styles.groupHead} aria-hidden="true">全局</span>
           <NavLink
             to="/environment"
             className={({ isActive }) => (isActive ? `${styles.item} ${styles.active}` : styles.item)}

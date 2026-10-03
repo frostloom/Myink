@@ -1,6 +1,5 @@
-// 长篇 / 短篇各一张列表：左 rail + 「新建长篇/短篇」+ 项目卡（title/genre/current_chapter → 进入工作台）。
+// 长篇 / 短篇各是一张书单：左 rail + 「新建长篇/短篇」+ 分隔线行（title/genre/current_chapter → 进入工作台）。
 import { useCallback, useEffect, useState } from 'react'
-import type { MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
@@ -37,12 +36,11 @@ export default function ProjectsPage({ form = 'long' }: { form?: 'long' | 'short
     void loadProjects()
   }, [loadProjects])
 
-  // 整本书删除（阶段 6 硬删）：卡片是整块 <Link>，删除按钮必须截断冒泡防误导航。
+  // 整本书删除（阶段 6 硬删）：按钮与整行链接是兄弟节点（不是嵌套的可交互元素），
+  // 所以不需要再截断冒泡。
   // 有进行中任务 → Python 409（本书需先暂停/取消），前端给中文横幅。
   const handleDelete = useCallback(
-    (e: MouseEvent, p: Project) => {
-      e.preventDefault()
-      e.stopPropagation()
+    (p: Project) => {
       if (!window.confirm(`删除《${p.title}》？全书正文、记忆、向量与任务记录将一并移除，不可撤销。`)) return
       api
         .deleteProject(p.id)
@@ -84,38 +82,48 @@ export default function ProjectsPage({ form = 'long' }: { form?: 'long' | 'short
           <>
           <h2 className={styles.sectionTitle}>正式作品</h2>
           {mine.every(isProjectDraft) && <p className="empty">尚无已完成建书的作品，请先完成下方草稿。</p>}
-          <div className={styles.grid}>
+          <ul className={styles.list}>
             {mine.filter((p) => !isProjectDraft(p)).map((p) => (
-              <Link key={p.id} to={projectHref(p)} className={`panel ${styles.card}`}>
-                <h2 className={styles.title}>{p.title}</h2>
-                <div className={styles.meta}>
-                  {p.genre} · 已写至第 {p.current_chapter} 章
-                </div>
+              <li key={p.id} className={styles.row}>
+                <Link to={projectHref(p)} className={styles.rowLink}>
+                  <span className={styles.title}>{p.title}</span>
+                  <span className={styles.meta}>
+                    {p.genre} · 已写至第 {p.current_chapter} 章
+                  </span>
+                  <span className={styles.arrow} aria-hidden="true">
+                    →
+                  </span>
+                </Link>
                 <button
                   type="button"
                   className={styles.del}
-                  onClick={(e) => handleDelete(e, p)}
+                  onClick={() => handleDelete(p)}
                   aria-label={`删除《${p.title}》`}
                   title="删除本书"
                 >
                   删除
                 </button>
-              </Link>
+              </li>
             ))}
-          </div>
+          </ul>
           {mine.some(isProjectDraft) && (
             <section aria-label="待完成作品">
               <h2 className={styles.sectionTitle}>待完成作品</h2>
-              <p className={styles.meta}>草稿已保留。确认设定和整书大纲后，才会进入正式作品并开放写作。</p>
-              <div className={styles.grid}>
+              <ul className={styles.list}>
                 {mine.filter(isProjectDraft).map((p) => (
-                  <Link key={p.id} to={projectHref(p)} className={`panel ${styles.card}`}>
-                    <h3>{p.title}</h3>
-                    <span className={styles.meta}>{p.creation_status === 'setup_confirmed' ? '设定已确认 · 待确认大纲' : '待完成设定与大纲'}</span>
-                    <span>继续创建 →</span>
-                  </Link>
+                  <li key={p.id} className={styles.row}>
+                    <Link to={projectHref(p)} className={styles.rowLink}>
+                      <span className={styles.title}>{p.title}</span>
+                      <span className={styles.meta}>
+                        {p.creation_status === 'setup_confirmed' ? '设定已确认 · 待确认大纲' : '待完成设定与大纲'}
+                      </span>
+                      <span className={styles.arrow} aria-hidden="true">
+                        →
+                      </span>
+                    </Link>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </section>
           )}
           </>
