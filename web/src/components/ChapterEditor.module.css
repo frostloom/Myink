@@ -1,6 +1,13 @@
 .editor {
+  /* 正文列（§3.7b）：整块编辑器限宽到「文字 720 + 内边距 + 边框 + 两侧留白」，居中。
+     限在 .editor 而不是只限 textarea，是为了让标题行与正文边线在任何视口下都对齐——
+     原来 textarea 的 34px 外边距与 head 的 34px 内边距是同一件事写了两遍，所以一起换成变量。 */
+  --editor-gutter: 34px;
   flex: 1;
   min-height: 0;
+  width: 100%;
+  max-width: calc(var(--measure-surface) + var(--editor-gutter) * 2);
+  margin-inline: auto;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -10,7 +17,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: 28px 34px 0;
+  padding: 28px var(--editor-gutter) 0;
 }
 
 .title {
@@ -61,8 +68,8 @@ button.danger {
 
 .textarea {
   flex: 1;
-  margin: 0 34px;
-  padding: 28px 38px;
+  margin: 0 var(--editor-gutter);
+  padding: 28px var(--measure-pad);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--editor);
@@ -81,7 +88,7 @@ button.danger {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 34px 24px;
+  padding: 0 var(--editor-gutter) 24px;
 }
 
 .dirty {
@@ -98,17 +105,21 @@ button.danger {
    两百多像素宽；641–900 这段 rail 还是竖排，编辑列同样不够宽，所以收 padding 走 900 而不是 640。
    字号不动：--text-editor 是 17px，已经高于 iOS 聚焦自动放大的 16px 门槛。 */
 @media (max-width: 900px) {
+  /* 留白换成一档：改 --editor-gutter 一个数，正文列宽公式跟着走，
+     不必再在 head / textarea / foot 三处重复写 14px。 */
+  .editor {
+    --editor-gutter: 14px;
+  }
   .head {
-    padding: 18px 14px 0;
+    padding-top: 18px;
   }
   .title {
     font-size: var(--text-title);
   }
   .textarea {
-    margin: 0 14px;
     padding: 16px 14px;
   }
   .foot {
-    padding: 0 14px 16px;
+    padding-bottom: 16px;
   }
 }

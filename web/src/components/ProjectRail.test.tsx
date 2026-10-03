@@ -107,6 +107,28 @@ it('lists long and short as separate sections and filters the books to the one y
   expect(bookList.queryByText('长篇一')).toBeNull()
 })
 
+// 模式与内容分层（§3.7d）：进书之后「当前是哪种模式」必须读得出来，而它不能占用绿色——
+// 绿色只表示「你正在读这一项」，一处。断言 aria-current 而不是 class：分段控件的选中态
+// 是样式，当前模式是语义，样式会改，语义不该改。
+it('marks the current mode from the book you are in, not from the path', () => {
+  const long = renderRail('/projects/l1', twoForms)
+  expect(screen.getByRole('link', { name: '长篇' }).getAttribute('aria-current')).toBe('true')
+  expect(screen.getByRole('link', { name: '短篇' }).getAttribute('aria-current')).toBeNull()
+  long.unmount()
+
+  renderRail('/projects/s1', twoForms)
+  expect(screen.getByRole('link', { name: '短篇' }).getAttribute('aria-current')).toBe('true')
+  expect(screen.getByRole('link', { name: '长篇' }).getAttribute('aria-current')).toBeNull()
+})
+
+// 全局页把两种模式的书一起列出来（下面那条用例），所以那时没有「当前模式」可标。
+it('leaves both modes unmarked outside any section', () => {
+  renderRail('/theme', twoForms)
+  for (const name of ['长篇', '短篇']) {
+    expect(screen.getByRole('link', { name }).getAttribute('aria-current')).toBeNull()
+  }
+})
+
 it('lists both forms on pages that have no section context', () => {
   renderRail('/theme', twoForms)
   const list = within(screen.getByRole('navigation', { name: '作品列表' }))

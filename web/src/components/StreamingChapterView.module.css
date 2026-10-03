@@ -1,10 +1,16 @@
 .wrap {
+  /* 与 ChapterEditor 同一把正文尺：限宽到 720px 文字 + 内边距 + 两侧留白，居中。
+     限在 .wrap（而不是里面的 .paper）让标题行与纸面边线在任何视口下都对齐。 */
+  --view-gutter: 34px;
   flex: 1;
   display: flex;
   min-height: 0;
   flex-direction: column;
   gap: 14px;
-  padding: 22px 34px 24px;
+  width: 100%;
+  max-width: calc(var(--measure-surface) + var(--view-gutter) * 2);
+  margin-inline: auto;
+  padding: 22px var(--view-gutter) 24px;
 }
 
 .head {
@@ -52,7 +58,7 @@
   flex: 1;
   min-height: 260px;
   overflow-y: auto;
-  padding: 28px 38px;
+  padding: 28px var(--measure-pad);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--editor);

@@ -8,6 +8,9 @@
   flex-direction: column;
   padding: 24px 8px 14px;
   box-shadow: 4px 0 20px rgba(95, 77, 58, 0.05);
+  /* 窗口很矮时（<~520px）固定组本身就已经放不下，让整条 rail 可滚，好过把页脚的「登出」
+     裁掉一截。正常情况下内容不超高，这条不产生滚动条。 */
+  overflow-y: auto;
 }
 
 .brand {
@@ -21,22 +24,65 @@
   color: var(--accent-ink);
 }
 
+/* 模式控件（§3.7d）：一个盒子装两格，形状上就与下面的书列不同——书列是「一列条目」，
+   模式是「二选一的开关」。当前模式用中性描边而不是绿色，绿色只表示「你正在读这一项」。 */
 .sections {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: 0 0 var(--space-3);
-  border-bottom: 1px solid var(--line);
-  margin-bottom: var(--space-3);
+  gap: 2px;
+  margin: 0 var(--space-2) var(--space-3);
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.sectionItem,
+.sectionCurrent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  color: var(--ink-muted);
+  font-size: var(--text-body);
+  text-decoration: none;
+}
+.sectionItem:hover {
+  background: var(--rail-item-hover);
+  color: var(--ink);
+}
+.sectionCurrent {
+  background: var(--surface-1);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font-weight: 650;
 }
 
 .nav {
-  flex: 1;
+  /* 原来是 flex: 1：四本书下面的余量全被这个列表吃掉，中间空一大片，把「本书」「全局」
+     推到首屏之外。改成可收缩的自然高度——书少不撑空档，书多则自己滚动（min-height: 0
+     是收缩的前提）。余量改由 .foot 的 margin-top: auto 兜住，落在页脚上方而不是列表中间。
+     但 min-height 不能真是 0：窗口矮到 ~500px 时收缩会把书单整个抹平（实测 1440×480 下
+     列表高 0），所以留两条的地板；地板撑不进 rail 时由 rail 自己的纵向滚动兜着。 */
+  flex: 0 1 auto;
+  min-height: 84px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 0;
+}
+
+/* 组标题：与条目文字同左缘（.item 的 padding 是 --space-2）。窄屏横条里藏掉，见 640 档。 */
+.groupHead {
+  margin: 0;
+  padding: 4px var(--space-2) 0;
+  color: var(--ink-subtle);
+  font-size: var(--text-small);
+  font-weight: 650;
 }
 
 .item {
@@ -86,6 +132,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  /* 组列表改成自然高度后，剩下的余量由这里兜住：空白落在页脚之上（读作侧栏页脚本该在底部），
+     而不是落在书单中间（读作界面坏了一半）。 */
+  margin-top: auto;
   padding: var(--space-3) var(--space-2) 0;
   border-top: 1px solid var(--line);
   color: var(--ink-subtle);
@@ -114,8 +163,8 @@ button.item {
    侧栏在每一页都是页面根容器（.wrap）的第一个 flex 子元素，各页在同一个断点把 .wrap 转成
    竖排，横条就自然落到顶部——所以这里只管「把 rail 自己变横」，页面级布局不在这里重复。
    640 以上 rail 一直是竖排：所以各页原本挤在 641–900 这段的调整归到 900 档，不跟折叠一起走 640 档。
-   子元素是 <nav> 与 <div> 混排（sections/nav/settings 是 nav，pageLinks/foot 是 div），
-   必须逐类点名：只写 nav 会漏掉后两个（ShortCreationPage 那处就是这么漏的，别照抄）。 */
+   子元素是 <a>、<nav> 与 <div> 混排（brand 是链接，foot 是 div，其余各组是 nav），
+   必须逐类点名：只按标签选择器写会漏掉后两类（ShortCreationPage 那处就是这么漏的，别照抄）。 */
 @media (max-width: 640px) {
   .rail {
     width: 100%;
@@ -150,12 +199,37 @@ button.item {
     padding-right: var(--space-2);
     font-size: var(--text-heading);
   }
-  /* 基准里 .nav 是 flex:1 + overflow-y:auto——留在横向条上会把其余项推开，还多出一条纵向滚动条。 */
+  /* 基准里 .nav 是 flex:1 + overflow-y:auto——留在横向条上会把其余项推开，还多出一条纵向滚动条。
+     基准的 min-height: 84px（书单地板）在横排里会变成横条的高度地板，把 61px 的条撑成 96px。 */
   .nav {
     overflow: visible;
+    min-height: 0;
+  }
+  /* 组标题在一条横向滚动带里没有承载分组（看不见上下），只是让本来就滚不完的条更长。 */
+  .groupHead {
+    display: none;
   }
   .item {
     /* 基准是 40px，这里原来反而压到 34px——手机上这是唯一的导航，触控目标不能比桌面还小。 */
+    min-height: 44px;
+    padding: 0 8px;
+  }
+  /* 模式对在窄屏同样成立：盒子留底色、去描边（上面的复位已把 border 归零），
+     一眼能看出这两条是一组开关而不是两本书。
+     钉在左缘与下面钉在右缘的「反馈」是同一手法，也因此照抄它的三个数：left 用 -12px
+     （实测 left: 0 停在 12px 内边距的内侧，滚过来的书名从那条槽里露出来）、圆角归零
+     （否则圆角缺口里漏半个字）、左内边距 10px 补回被 -12 吃掉的缩进。
+     必须抬 z-index：粘性元素本身不建层叠上下文，后面的条目会照直压过来。 */
+  .sections {
+    position: sticky;
+    left: -12px;
+    z-index: 1;
+    padding: 2px 2px 2px 10px;
+    border-radius: 0;
+    border-right: 1px solid var(--line);
+  }
+  .sectionItem,
+  .sectionCurrent {
     min-height: 44px;
     padding: 0 8px;
   }

@@ -30,7 +30,7 @@ import {
   formatCost,
   formatDate,
   LoadState,
-  Metrics,
+  metricEntries,
   PAGE_SIZE,
   Pagination,
   RefreshButton,
@@ -58,21 +58,27 @@ function OverviewView({ token, onForbidden }: { token: string; onForbidden: () =
       <LoadState {...resource} empty={!value}>
         {value && (
           <>
-            <dl className={styles.counts}>
-              <div><dt>用户</dt><dd>{value.user_count}</dd></div>
-              <div><dt>作品</dt><dd>{value.project_count}</dd></div>
-              <div><dt>章节</dt><dd>{value.chapter_count}</dd></div>
-              <div><dt>任务</dt><dd>{value.task_count}</dd></div>
+            {/* 一条读数带：前四条是主读数（实体计数），后五条是次读数（模型用量），
+                主次只差一档字号，不套盒子、也不拆成两个面板。 */}
+            <dl className={styles.readout}>
+              <div className={styles.lead}><dt>用户</dt><dd>{value.user_count}</dd></div>
+              <div className={styles.lead}><dt>作品</dt><dd>{value.project_count}</dd></div>
+              <div className={styles.lead}><dt>章节</dt><dd>{value.chapter_count}</dd></div>
+              <div className={styles.lead}><dt>任务</dt><dd>{value.task_count}</dd></div>
+              {metricEntries(value.metrics).map(([label, text]) => (
+                <div key={label}><dt>{label}</dt><dd>{text}</dd></div>
+              ))}
             </dl>
-            <div className={`panel ${styles.panel}`}><h3>运行指标</h3><Metrics value={value.metrics} /></div>
-            <div className={`panel ${styles.panel}`}>
-              <h3>任务状态</h3>
-              {Object.keys(value.task_status_counts).length === 0
-                ? <div className="empty">暂无状态统计</div>
-                : <dl className={styles.statusCounts}>{Object.entries(value.task_status_counts).map(([name, count]) => (
-                  <div key={name}><dt>{taskStatusLabel(name)}</dt><dd>{count}</dd></div>
-                ))}</dl>}
-            </div>
+            {/* 状态计数条数由数据决定（排队中/完成/失败…），所以另起一条带。 */}
+            {Object.keys(value.task_status_counts).length === 0
+              ? <div className="empty">暂无状态统计</div>
+              : (
+                <dl className={styles.statuses}>
+                  {Object.entries(value.task_status_counts).map(([name, count]) => (
+                    <div key={name}><dt>{taskStatusLabel(name)}</dt><dd>{count}</dd></div>
+                  ))}
+                </dl>
+              )}
           </>
         )}
       </LoadState>

@@ -53,3 +53,12 @@ it('keeps unfinished books out of the writing rail', async () => {
   expect(within(rail).queryByText('长篇草稿')).toBeNull()
   expect(within(rail).getByText('长篇正式书')).toBeTruthy()
 })
+
+// 书单行整行可点，「删除」是它的兄弟而不是子孙：可交互元素套可交互元素既是非法 HTML，
+// 也得靠 stopPropagation 才能不误导航（重构前就是这样）。
+it('renders delete as a sibling of the row link, not wrapped inside it', async () => {
+  renderPage('long')
+  const dels = await screen.findAllByRole('button', { name: /^删除《/ })
+  expect(dels.length).toBeGreaterThan(0)
+  for (const d of dels) expect(d.closest('a')).toBeNull()
+})
