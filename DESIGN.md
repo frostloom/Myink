@@ -96,6 +96,10 @@ is a fixed multiple of it, so the proportions never shift when the text gets big
 | `--text-micro` | `max(11px, small − 1px)` | the smallest thing allowed on screen |
 | `--text-editor` | 15 / 17 / 19 / 21 | prose |
 
+At ≤640 a page title drops to `--text-title` (the display size is a desktop measure). A module that pins
+`--text-display` on its own `h1` outranks that global rule by specificity, so it must repeat the drop —
+`/styles` shipped without it and was 34.16px on a phone while every other page sat at 20.02px.
+
 Tiers (小 / 中 / 大 / 特大 → `s / m / l / xl`): body 13/14/15/16, small 11/12/13/14, heading 16/18/20/22,
 editor 15/17/19/21, editor line-height 1.8. `title` and `display` are anchored to `body`, not to `heading`:
 heading-to-body itself varies 1.23→1.38 across the tiers, and anchoring there made the page title drift
