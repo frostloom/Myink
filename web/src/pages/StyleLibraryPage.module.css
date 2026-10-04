@@ -380,6 +380,9 @@
   }
   .inner { padding: 26px 20px 32px; }
   .header { margin-bottom: 24px; }
+  /* 上面的 `.header h1` 把 --text-display 写死在模块里，特异性盖过 global.css 的窄屏降档，
+     实测 390 上全站只有这一页的页级标题还是 34.16px。 */
+  .header h1 { font-size: var(--text-title); }
   .back { min-height: 44px; }
   .layout { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .catalogHead { flex-direction: row; align-items: center; }
