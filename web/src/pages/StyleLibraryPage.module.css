@@ -48,6 +48,11 @@
 .back {
   flex-shrink: 0;
   margin-top: 8px;
+  /* 与 SettingsPage 的面包屑同理：12px 行内链接的盒子实测 18px 高，够不着 40 判据。
+     .header 是 flex，.back 是被块化的 item，所以 min-height 生效。 */
+  display: flex;
+  align-items: center;
+  min-height: 40px;
   font-size: var(--text-small);
   color: var(--ink-muted);
 }
@@ -375,6 +380,7 @@
   }
   .inner { padding: 26px 20px 32px; }
   .header { margin-bottom: 24px; }
+  .back { min-height: 44px; }
   .layout { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .catalogHead { flex-direction: row; align-items: center; }
   .catalogHead h2 { gap: 12px; }

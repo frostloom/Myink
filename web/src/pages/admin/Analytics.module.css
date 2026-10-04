@@ -1,4 +1,8 @@
 /* 与管理页同版式；分析页自带一份，避免两个组件互相 import 对方的 CSS module。 */
+/* 版式四档都不分：`.view` 是 `max-width: var(--content-max)` 的流式列（实测 1440 / 390 下 1192 / 366）。
+   宽表 `min-width: 780px` 住在 `.tableWrap { width: 100%; overflow-x: auto }` 里——实测包装层
+   1440 / 390 / 320 三档宽 1192 / 366 / 296，对应横向滚动量 0 / 416 / 486，页面级横向溢出始终 0。
+   表在这里是「可横向滚的账本」，不是压不动的定宽块，所以不给它开窄屏档。 */
 .view {
   max-width: var(--content-max);
   margin: 0 auto;

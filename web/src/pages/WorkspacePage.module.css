@@ -302,6 +302,34 @@
   }
 }
 
+/* 900 档：三列 grid 在 768 宽上只给正文留下 432px（实测每行 22.1 个汉字），两条侧栏
+   （rail 140 + 章节 170）加起来比正文还宽。章节列表在这里从网格里摘出来，横过来放到
+   正文下面（折条规则在 ChapterList.module.css 的 900 档），rail 保持竖排——手机上它已经
+   折成顶部横条（≤640），平板上 140px 还容得下条目文字。
+   .main 必须显式写 grid-column/grid-row：章节离开第一行后，自动放置会把它推到新行去。
+   .right / .rightDock 的 grid-column: 2 / -1 在两列网格下就等于第 2 列，只需换行。 */
+@media (max-width: 900px) {
+  .wrap {
+    grid-template-columns: 140px minmax(280px, 1fr);
+  }
+  .main {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .chapters {
+    grid-column: 2;
+    grid-row: 2;
+    width: auto;
+    max-height: none;
+    overflow: visible;
+    margin: 0 12px 12px;
+  }
+  .right,
+  .rightDock {
+    grid-row: 3;
+  }
+}
+
 /* ≤640：rail 折成顶部横条（规则在 ProjectRail.module.css），页面根从 ≤1200 的三列 grid 换回竖排
    flex，横条落到顶部。原来这是两块（≤650 把 grid 压成一列、≤760 再换成 flex 竖排），归到同一档
    之后合成一块——两块的 media 条件既然相同，留着就是「看着像两个断点、其实是一个」。
@@ -356,6 +384,7 @@
   .stageTabActive {
     flex: 1;
     min-width: 0;
+    min-height: 44px;
     justify-content: center;
   }
   /* 短篇书的右栏里只有 TaskTimeline，而它窄屏已隐藏——留着就是个空框，

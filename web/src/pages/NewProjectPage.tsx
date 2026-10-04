@@ -675,7 +675,7 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
                 ))}
               </div>
               <details className={styles.genreDetails}>
-                <summary>题材详情（默认折叠，可按自己的想法改）</summary>
+                <summary>题材详情</summary>
                 <fieldset disabled={busy === 'restore' || pid !== null} style={{ border: 0, padding: 0, margin: 0 }}>
                   <GenrePackFields value={genreFields} onChange={setGenreFields} />
                 </fieldset>

@@ -54,12 +54,26 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ≤640：章节列表折成单行横向滚动条。竖排的话几十章就把编辑器推到几千像素之外；而按
-   WorkspacePage.module.css ≤640 已写明的口径，窄屏只留一条纵向滚动条（不做「页面里再嵌
-   一个能滚的列表」），所以这里走横轴。
+/* 1200 这一档起收起字数：章节列仍是 216px 的竖排，「第 1 章 · 2,726 字 · 已确认」三段
+   装不进一行，徽章掉到第二行，每条从 40px 变成 56px——和上下两档都对不上。状态徽章是
+   要看的，字数不是。≤900 折成横条后三段装得下，但这条规则继续留着：手机上一条 chip
+   该说的是「第几章、什么状态」。 */
+@media (max-width: 1200px) {
+  .words {
+    display: none;
+  }
+}
+
+/* ≤900：章节列表折成单行横向滚动条。竖排的话几十章就把编辑器推到几千像素之外；而按
+   WorkspacePage.module.css 的口径，窄屏只留一条纵向滚动条（不做「页面里再嵌一个能滚的
+   列表」），所以这里走横轴。原先只在 ≤640 折，平板（768）上正文被 170px 的章节列压到
+   每行 22 个字，于是和 WorkspacePage 的 900 档一起换行。
+   64vw / 42vw 换成 min(…, 定值)：手机上算出来就是原来那两个数（249.6 / 163.8），
+   平板上则封顶在 250 / 164，不会把一条 chip 撑成半屏宽。
    .item 的底改在 :not(.active) 上：同权重下本块在 .active 之后，直接写 .item 会把选中态
    的高亮盖掉。 */
-@media (max-width: 640px) {
+
+@media (max-width: 900px) {
   .list {
     flex-direction: row;
     gap: 6px;
@@ -69,8 +83,7 @@
   .item {
     flex: 0 0 auto;
     flex-wrap: nowrap;
-    max-width: 64vw;
-    min-height: 36px;
+    max-width: min(64vw, 250px);
     padding: 6px 10px;
   }
   .item:not(.active) {
@@ -79,6 +92,15 @@
   }
   .title {
     flex: 0 1 auto;
-    max-width: 42vw;
+    max-width: min(42vw, 164px);
+  }
+}
+
+/* 手机端把触控高提回 44：上面的折条把 40px 的基准压成了 36px（横条里只有一行，
+   矮一点能多塞两章），但 36px 够不着自己的手机门槛。641–900 走桌面判据（≥40），
+   所以基准的 40px 留着不动，只在这一档抬。 */
+@media (max-width: 640px) {
+  .item {
+    min-height: 44px;
   }
 }

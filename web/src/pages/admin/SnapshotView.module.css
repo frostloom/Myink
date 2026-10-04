@@ -1,4 +1,7 @@
 /* 布局类（tableWrap/pre/muted）取自 AdminPage.module.css，此处只放快照页自己的类。 */
+/* 版式四档都不分：宽表 `min-width: 720px` 同样住在 `.tableWrap { width: 100%; overflow-x: auto }` 里。
+   这一页要先在分析页点开某章才有真实实例，所以按本页的真实哈希类 `_tableWrap_1e2vk_*` 注入一张
+   长表来量：包装层 1440 / 390 / 320 宽 1192 / 366 / 296，横向滚动量 0 / 356 / 426，页面级溢出 0。 */
 .snapshot {
   display: grid;
   gap: var(--space-4);

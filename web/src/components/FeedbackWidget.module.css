@@ -44,6 +44,13 @@
   width: 104px;
   height: calc(104px * var(--span) / 200);
   overflow: hidden;
+  transition: opacity 160ms ease;
+}
+
+/* 手伸到灯下、灯罩又正压着可点的东西时淡出（判据在 FeedbackWidget.tsx 的 shaded 态）。
+   只淡灯罩不淡光：光一让位，整片正文跟着忽明忽暗，比压住一个按钮难看得多。 */
+.hang[data-shaded='true'] .fixture {
+  opacity: 0.16;
 }
 
 /* 从灯罩这一点向外淡开，边缘落到完全透明，不画一条分界。 */

@@ -31,6 +31,15 @@
   color: var(--ink-muted);
 }
 
+/* 「返回工作台」是行内链接，行内盒不吃 min-height，实测 15px——全页最小的目标。
+   inline-flex（不是 flex）：这一档 .crumb 是普通块，flex 会把链接拉成一整行宽，
+   选中文字时误点整条空白。 */
+.crumb a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+}
+
 .section {
   padding: var(--space-5);
   display: flex;
@@ -62,9 +71,11 @@
 }
 
 .cardHead {
+  /* 卡片头就是「展开这条设定」的开关，实测 25px（padding: 0 + 徽章行框）。 */
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  min-height: 40px;
   background: none;
   border: none;
   cursor: pointer;
@@ -401,5 +412,10 @@
     height: auto;
     min-height: 100%;
     flex-direction: column;
+  }
+  /* 这一页的可点项只有面包屑与卡片头两处，都从桌面的 40 提到手机的 44。 */
+  .crumb a,
+  .cardHead {
+    min-height: 44px;
   }
 }

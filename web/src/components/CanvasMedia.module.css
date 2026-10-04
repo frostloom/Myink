@@ -1,3 +1,6 @@
+/* 版式不分 420 / 640 / 900 / 1200：`.canvas` 是 `position: fixed; inset: 0`，盒子定义就是视口本身
+   ——实测三档渲染为 1440x900 / 390x844 / 320x844，与视口逐位相同；`.video` 同盒（`object-fit: cover`
+   裁掉多余），`overflow: hidden` 使它不可能顶出页面（页面级横向溢出实测 0）。media query 无从下笔。 */
 .canvas {
   position: fixed;
   inset: 0;

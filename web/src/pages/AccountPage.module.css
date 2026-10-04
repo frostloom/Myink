@@ -69,3 +69,12 @@
   overflow-wrap: anywhere;
   user-select: all;
 }
+
+/* 420 档：auto-fit 的 340px 地板在更窄的设备上比内容区还宽，实测 320 宽时把 <main> 撑出
+   一条 32px 的横向滚动（360 起就没有，所以是这一档的事）。本页只有两块卡片，
+   小屏上摞着读更顺，不必为「并排」保住那个地板。 */
+@media (max-width: 420px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useGuest } from '../hooks/useGuest'
 import { api } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
+import { roleLabel, tierLabel } from '../lib/labels'
 import { isValidNewPassword, NEW_PASSWORD_VALIDATION_MESSAGE } from '../lib/passwordPolicy'
 import type { Project } from '../types'
 import shell from './SettingsPage.module.css'
@@ -175,11 +176,11 @@ export default function AccountPage() {
                 </div>
                 <div>
                   <dt>账号级别</dt>
-                  <dd>{guest ? '—' : session?.tier ?? 'normal'}</dd>
+                  <dd>{guest ? '—' : tierLabel(session?.tier ?? 'normal')}</dd>
                 </div>
                 <div>
                   <dt>账号角色</dt>
-                  <dd>{guest ? '—' : session?.role ?? 'user'}</dd>
+                  <dd>{guest ? '—' : roleLabel(session?.role ?? 'user')}</dd>
                 </div>
               </dl>
             </section>

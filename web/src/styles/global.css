@@ -142,6 +142,9 @@ a:hover {
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
+  /* 8+8 的内边距 + 17px 行框 = 实测 35px，比 .btn 的 40 矮一档，也和桌面判据（≥40）不达标。
+     textarea 本来远高于此，这条只是地板。 */
+  min-height: 40px;
   font-family: inherit;
   font-size: var(--text-body);
 }
@@ -154,6 +157,16 @@ a:hover {
 .input::placeholder,
 .textarea::placeholder {
   color: var(--ink-faint);
+}
+
+/* 手机档：主控件都住在 40 这一档，触屏按不准（§五判据：手机 ≥44、桌面 ≥40）。
+   只在这一档抬，桌面的 40 够用，全局改成 44 会让每个工具栏都变胖。 */
+@media (max-width: 640px) {
+  .btn,
+  .input,
+  .textarea {
+    min-height: 44px;
+  }
 }
 
 /* ---- 面板 ---- */

@@ -70,6 +70,7 @@
   bottom: 0;
   display: block;
   margin: 18px 0 0 auto;
+  min-height: 40px;
   padding: 7px 12px;
   border: 1px solid var(--badge-success-border);
   border-radius: 999px;
@@ -118,6 +119,32 @@
   color: var(--ink-subtle);
   font-size: var(--text-micro);
   text-align: right;
+}
+
+/* 900 档：这一面和 ChapterEditor 是同一条正文列的两个状态（生成中 / 已落盘），
+   所以两处的留白必须一起换档——基准的 34px 外边距 + 38px 内边距在 390px 上吃掉 144px，
+   实测正文只剩 220px（每行 12.9 个汉字），而同一槽位的编辑器是 308px。
+   1200 / 420 两档在此豁免：max-width 公式在 866px 就封顶，420–640 与 640 档行为一致。 */
+@media (max-width: 900px) {
+  .wrap {
+    --view-gutter: 14px;
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+  .head h2 {
+    font-size: var(--text-title);
+  }
+  /* 横向 14px 与编辑器的 textarea 对齐（两边的文字起点都是 41px）；
+     纵向留 20px：纸面是预览、不是输入框，但 28px 上下在短视口上太贵。 */
+  .paper {
+    padding: 20px 14px;
+  }
+}
+
+@media (max-width: 640px) {
+  .followButton {
+    min-height: 44px;
+  }
 }
 
 @keyframes blink { 50% { opacity: 0; } }

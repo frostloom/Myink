@@ -9,6 +9,7 @@ import { WorldGraph } from '../components/WorldGraph'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
+import { chapterStatusLabel } from '../lib/labels'
 import type {
   BookOutline,
   ChapterMeta,
@@ -132,7 +133,9 @@ function CharacterCardBlock({
     <article className={`panel ${styles.card}`}>
       <button type="button" className={styles.cardHead} onClick={onToggle}>
         <span className={styles.cardName}>{card.name}</span>
-        <span className="badge badge-accent">{card.realm_cap}</span>
+        {/* 「无」是后端为没有战力阶梯的题材写的哨兵（routes_book.py:560、nodes.py:1455），
+            一条「没有约束」不该戴全卡最响的那颗胶囊。 */}
+        <span className={card.realm_cap === '无' ? 'badge' : 'badge badge-accent'}>{card.realm_cap}</span>
         {card.race && <span className="badge">{card.race}</span>}
         <span className={styles.cardArrow}>{expanded ? '▾' : '▸'}</span>
       </button>
@@ -379,7 +382,7 @@ export default function LorePage() {
                     <li key={c.id} className={styles.entityItem}>
                       <span className={styles.entityHead}>
                         <span className={styles.entityName}>第 {c.chapter_seq} 章</span>
-                        <span className="badge">{c.status}</span>
+                        <span className="badge">{chapterStatusLabel(c.status)}</span>
                         {c.word_count != null && (
                           <span className={styles.entityDesc}>{c.word_count} 字</span>
                         )}

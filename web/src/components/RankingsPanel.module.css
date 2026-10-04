@@ -11,6 +11,9 @@
 }
 
 .toggle {
+  /* 实测 21px（padding: 0，高度就是行框）。旁边那颗「刷新」是全局 .btn（40/44），
+     所以 .head 这一行本来就比 21 高——把开关补到同一档，一分钱版面费不花。 */
+  min-height: 40px;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -128,4 +131,13 @@
   color: var(--ink-subtle);
   font-size: var(--text-small);
   line-height: 1.7;
+}
+
+/* 版式不分 420 / 900 / 1200 三档：面板整体住在 `width: 100%` 的书单列里，条目是 flex 行
+   （.info 带 min-width: 0、书名省略号截断），没有任何定宽。实测 360 宽时页面级横向溢出 0。
+   唯一的分档是下面这条触控地板。 */
+@media (max-width: 640px) {
+  .toggle {
+    min-height: 44px;
+  }
 }
