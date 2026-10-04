@@ -205,6 +205,9 @@
 }
 
 .genreDetails summary {
+  /* 实测 18px。summary 是 list-item 盒，min-height 生效；不能改 display: flex——
+     那会把展开三角（::marker 只在 display 含 list-item 时生成）弄没。 */
+  min-height: 40px;
   cursor: pointer;
   margin-bottom: var(--space-2);
 }
@@ -216,6 +219,10 @@
 }
 
 .chip {
+  /* 实测 23px（2px 上下内边距 + 13px 行框），是全站最小的一批可点项，而它选的是整本书的题材。
+     chip 的宽度不含这 20px 高度，换行只看宽度，所以行列数不变（实测 74 个 chip：1440 档
+     10 行、390 档 22 行，改动前后一致）；代价就是这一整块题材墙按行数等比变高。 */
+  min-height: 40px;
   padding: 2px 10px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -262,5 +269,9 @@
     height: auto;
     min-height: 100%;
     flex-direction: column;
+  }
+  .chip,
+  .genreDetails summary {
+    min-height: 44px;
   }
 }

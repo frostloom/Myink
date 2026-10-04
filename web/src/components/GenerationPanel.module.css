@@ -10,6 +10,10 @@
 }
 
 .toggle {
+  /* 实测 27px（padding: 0，高度是 grid 行框）。右栏每一节的开关都是同一种写法，
+     五处一起补地板；手机档只写在窄屏真的可见的面板上（AuditPanel / TaskTimeline
+     整块在 ≤640 隐藏，给它们写手机档是空写）。 */
+  min-height: 40px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
@@ -177,4 +181,13 @@
 
 .cost {
   color: var(--ink-subtle);
+}
+
+/* 版式不分 420 / 900 / 1200 三档：面板自身 `min-width: 0` + `overflow: hidden`，
+   开关行是 `minmax(0, 1fr) auto auto`，控件走全局 .btn/.input 的流式宽度；
+   实测 320 宽（右栏五节全开）时页面级横向溢出 0。这一档只管开关的触控地板。 */
+@media (max-width: 640px) {
+  .toggle {
+    min-height: 44px;
+  }
 }

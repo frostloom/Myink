@@ -1,3 +1,6 @@
+/* 版式不分 420 / 900 / 1200：`width: min(26rem, calc(100vw - 32px))` 已经把窄屏包进去了——
+   实测 1440 / 390 / 320 三档分别是 416 / 358 / 288，页面级横向溢出 0。
+   条内的「关闭」是全局 `.btn`，手机 44 由 styles/global.css 的 ≤640 地板统一管。 */
 .region {
   position: fixed;
   z-index: 900; /* 高于正文，低于现有 GuestPromptDialog 的 1000 */

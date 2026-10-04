@@ -197,6 +197,8 @@ button.item {
   }
   .brand {
     padding-right: var(--space-2);
+    /* 横条上的品牌也是可点的（回 /long），实测 27px 高，是那条带上最矮的目标。 */
+    min-height: 44px;
     font-size: var(--text-heading);
   }
   /* 基准里 .nav 是 flex:1 + overflow-y:auto——留在横向条上会把其余项推开，还多出一条纵向滚动条。

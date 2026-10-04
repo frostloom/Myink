@@ -8,6 +8,8 @@
 }
 
 .toggle {
+  /* 右栏开关同族，桌面 40 / 手机 44；实测 21px，理由写在 GenerationPanel.module.css。 */
+  min-height: 40px;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -73,4 +75,13 @@
 .actions {
   display: flex;
   gap: var(--space-2);
+}
+
+/* 版式不分 420 / 900 / 1200 三档：这一节整块是 `min-width: 0` 的竖排 flex，
+   没有任何定宽；实测 320 宽（右栏五节全开）时页面级横向溢出 0。
+   这一档只管开关的触控地板。 */
+@media (max-width: 640px) {
+  .toggle {
+    min-height: 44px;
+  }
 }

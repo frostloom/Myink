@@ -21,3 +21,13 @@
   color: var(--ink-subtle);
   font-size: var(--text-small);
 }
+
+/* 640 档：宽度是 100%（实测 1440 / 390 / 320 分别是 782 / 292 / 222），只有高度是定值 460。
+   460 在桌面上约占视口一半，在 844 高的手机上占 55%，而下面还有一整页设定卡片。
+   收成 320 让画布接近正方形（292×320）——力导向图在窄长盒子里只会把节点挤出视野。
+   改高度是安全的：WorldGraph.tsx 挂了 ResizeObserver → chart.resize()，ECharts 自己重排。 */
+@media (max-width: 640px) {
+  .canvas {
+    height: 320px;
+  }
+}

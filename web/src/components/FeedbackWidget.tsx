@@ -12,6 +12,7 @@ import {
   clampLampX,
   LAMP_HANG,
   lampFixturePx,
+  lampFixtureRect,
   readLampPlace,
   settleLampDrop,
   writeLampPlace,
@@ -48,6 +49,9 @@ export const FEEDBACK_OPEN_EVENT = 'myink:feedback'
 
 const INTERACTIVE_SELECTOR = 'a,button,input,select,textarea,summary,label,[role="button"],[contenteditable]'
 
+/** 灯罩淡出只认「看得见的开关」：多行输入与正文不算对手——灯罩压住段落是吊灯的常态。 */
+const LAMP_SHADE_SELECTOR = 'a,button,select,input,summary,label,[role="button"]'
+
 function sampleCorners(rect: DOMRect): Array<[number, number]> {
   const inset = 6
   return [
@@ -60,24 +64,36 @@ function sampleCorners(rect: DOMRect): Array<[number, number]> {
 }
 
 /**
+ * 某一个点上压着的最上层可点元素；没有就返回 null。`selector` 允许换判据：点击让位用
+ * `INTERACTIVE_SELECTOR`（什么都能抢），灯罩淡出用 `LAMP_SHADE_SELECTOR`（正文不算对手）。
+ *
+ * 只判可交互元素，不判正文：这是文字产品，灯罩压住段落是吊灯的常态，压住按钮才是事故。
+ * 灯自己不算对手——`.hit` 带 `data-lamp`，整条 dock 也在排除之列，否则手伸过去拿灯会把灯弄没。
+ */
+function pointRival(x: number, y: number, selector = INTERACTIVE_SELECTOR): HTMLElement | null {
+  // jsdom 没有排版，也不实现 elementsFromPoint：测试环境按「没压到东西」处理。
+  if (typeof document.elementsFromPoint !== 'function') return null
+  for (const el of document.elementsFromPoint(x, y)) {
+    const node = el as HTMLElement
+    if (node.closest('[data-lamp]') || node.closest(`.${styles.dock}`)) continue
+    const rival = node.closest<HTMLElement>(selector)
+    if (rival) return rival
+  }
+  return null
+}
+
+/**
  * 灯的点击区（那颗 52×44 的 .hit，不是 104px 的灯罩——灯罩是 pointer-events:none，压根抢不到点击）
  * 底下压着的最上层可点元素；没有就返回 null。
  *
- * 只判可交互元素，不判正文：这是文字产品，灯罩压住段落是吊灯的常态，压住按钮才是事故。
  * 判定放在点击这一刻而不是挂载时——内容是异步渲染的（项目卡的链接 fetch 回来才存在），
  * 挂载时量到的空位在半秒后就过期了。
  */
 function lampRival(button: HTMLElement): HTMLElement | null {
-  // jsdom 没有排版，也不实现 elementsFromPoint：测试环境按「没压到东西」处理。
-  if (typeof document.elementsFromPoint !== 'function') return null
   for (const [x, y] of sampleCorners(button.getBoundingClientRect())) {
     if (x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight) continue
-    for (const el of document.elementsFromPoint(x, y)) {
-      const node = el as HTMLElement
-      if (node.closest('[data-lamp]') || node.closest(`.${styles.dock}`)) continue
-      const rival = node.closest<HTMLElement>(INTERACTIVE_SELECTOR)
-      if (rival) return rival
-    }
+    const rival = pointRival(x, y)
+    if (rival) return rival
   }
   return null
 }
@@ -205,6 +221,7 @@ export function FeedbackWidget() {
   } | null>(null)
   const skipClick = useRef(false)
   const [open, setOpen] = useState(false)
+  const [shaded, setShaded] = useState(false)
   const [tab, setTab] = useState<'submit' | 'mine'>('submit')
 
   const [category, setCategory] = useState('bug')
@@ -357,6 +374,32 @@ export function FeedbackWidget() {
       .finally(() => setBusy(false))
   }
 
+  /**
+   * 手伸到灯下、而灯罩正压着可点的东西时，把灯罩淡下去。点击让位早就做了（见下面的 onClick），
+   * 这一条补的是眼睛那一半：同一个判据（pointRival）、同一条规矩（「灯罩压在按钮上是事故」）。
+   *
+   * 灯罩矩形用 `lampFixtureRect()` 算，不是量 DOM：灯是 fixed 的，位置只跟视口有关，
+   * 而 `.sway` 的 ±2.2° 摆动会让量到的盒子每帧漂 3px 出头——判「手在不在罩下」用不着那份精度。
+   * 只听鼠标：触屏的滑动会让人在手机上把灯一闪一闪，而 ≤640 整只灯本来就不在场。
+   */
+  useEffect(() => {
+    if (place.hidden || open) {
+      setShaded(false)
+      return
+    }
+    function onWindowPointerMove(event: PointerEvent) {
+      if (event.pointerType !== 'mouse') return
+      const box = lampFixtureRect(placeRef.current, lamp, window.innerWidth, window.innerHeight)
+      const inside = event.clientX >= box.left
+        && event.clientX <= box.right
+        && event.clientY >= box.top
+        && event.clientY <= box.bottom
+      setShaded(inside && pointRival(event.clientX, event.clientY, LAMP_SHADE_SELECTOR) !== null)
+    }
+    window.addEventListener('pointermove', onWindowPointerMove)
+    return () => window.removeEventListener('pointermove', onWindowPointerMove)
+  }, [lamp, open, place.hidden])
+
   function moveLamp(next: LampPlace) {
     placeRef.current = next
     setPlace(next)
@@ -432,7 +475,7 @@ export function FeedbackWidget() {
         {!place.hidden && (
           <>
             <span className={styles.cord} style={{ height: cordPx }} />
-            <span className={styles.hang} style={{ top: cordPx }}>
+            <span className={styles.hang} style={{ top: cordPx }} data-shaded={shaded ? 'true' : undefined}>
               <span className={open ? `${styles.sway} ${styles.swaying}` : styles.sway}>
                 {light && <span className={styles.glow} />}
                 <PendantLamp id={lamp} lit={light} hanging className={styles.fixture} />

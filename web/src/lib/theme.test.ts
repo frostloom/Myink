@@ -9,6 +9,7 @@ import {
   DEFAULT_LAMP_Y,
   LAMP_POS_KEY,
   LAMP_X_KEY,
+  lampFixtureRect,
   readLampPlace,
   settleLampDrop,
   writeLampPlace,
@@ -270,4 +271,15 @@ it('reads an older preset without kind as an image, and never tiles a video', ()
 
   const video = parseWallpaper({ kind: 'video', fit: 'tile', zoom: 120, x: 30, y: 70, aspect: 1 })
   expect(video).toEqual({ kind: 'video', fit: 'cover', zoom: 120, x: 30, y: 70, aspect: 1 })
+})
+
+it('puts the lamp shade where the stylesheet puts it', () => {
+  // 1440×900 的默认停靠位，与真浏览器里量到的 .fixture 盒子逐位对得上
+  // （headless Chrome 1440×900：x 1273 / y 108 / 104×92）。「手伸到灯下就淡出」全靠这个矩形，
+  // 而它是用 JS 复算 CSS 的几何——两边各写一份，所以必须有一处钉住它们没散开。
+  const rect = lampFixtureRect({ x: DEFAULT_LAMP_X, y: DEFAULT_LAMP_Y, hidden: false }, 'cube', 1440, 900)
+  expect(rect.left).toBeCloseTo(1272.8, 1)
+  expect(rect.top).toBeCloseTo(108, 1)
+  expect(rect.right).toBeCloseTo(1376.8, 1)
+  expect(rect.bottom).toBeCloseTo(199.52, 1)
 })

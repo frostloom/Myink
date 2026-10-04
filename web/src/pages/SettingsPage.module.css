@@ -36,6 +36,15 @@
   color: var(--ink-muted);
 }
 
+/* 面包屑链接是 12px 行内文本，实测盒子高 18px——连桌面的 40 判据都不到。
+   它是 .crumb 的 flex item，会被块化，所以 min-height 生效；再让自己的文字
+   在这条带子里垂直居中，看起来不像是硬撑高的。 */
+.crumb a {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+}
+
 .section {
   padding: 34px 42px;
   display: flex;
@@ -413,6 +422,14 @@
 
 .themeSwatchRow input[type='range'] {
   flex: 1;
+}
+
+/* 滑杆的命中区就是它自己那个盒子，UA 默认只有 16px 高——桌面用鼠标都难点准。
+   把盒子加高、外观不动（轨道与滑块仍在盒子里居中），是这一处最小的修法。
+   两条滑杆（界面透明度 / 壁纸缩放）分别住在 flex:1 与自己的类里，所以并排列出。 */
+.themeSwatchRow input[type='range'],
+.themeWallpaperZoom {
+  min-height: 40px;
 }
 
 .themeChoiceRow {
@@ -854,5 +871,12 @@
     height: auto;
     min-height: 100%;
     flex-direction: column;
+  }
+  .themeSwatchRow input[type='range'],
+  .themeWallpaperZoom {
+    min-height: 44px;
+  }
+  .crumb a {
+    min-height: 44px;
   }
 }

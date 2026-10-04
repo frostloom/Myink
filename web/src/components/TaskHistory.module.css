@@ -1,3 +1,5 @@
+/* 版式四档都不分：TaskHistory.tsx 无人引用（见 docs/REMAINING-WORK.md §1.4），
+   构建产物里看不见这些类。按「不删既有死代码」留在原处，也不给它补断点。 */
 .panel {
   display: flex;
   flex-direction: column;

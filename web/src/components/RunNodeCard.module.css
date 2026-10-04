@@ -1,3 +1,5 @@
+/* 版式四档都不分：这张卡片只被 TaskHistory（死代码，见 §1.4）与 ReviewFlow.test.tsx 引用，
+   页面上不出现，出现不了也量不到，所以不给它补断点。 */
 .card {
   display: flex;
   flex-direction: column;

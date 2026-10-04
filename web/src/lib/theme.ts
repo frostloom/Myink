@@ -11,6 +11,8 @@ export const DEFAULT_LAMP_X = 0.92
 export const DEFAULT_LAMP_Y = 0.12
 /** 灯罩离页顶比这还近，松手就收成顶部的小尖。 */
 export const LAMP_HIDE_PX = 22
+/** 灯罩宽（CSS px）。与 `FeedbackWidget.module.css` 的 `.fixture { width: 104px }` 同值。 */
+export const LAMP_FIXTURE_W = 104
 
 export type LampPlace = { x: number; y: number; hidden: boolean }
 
@@ -328,8 +330,26 @@ export function writeLampX(value: number, viewportWidth = 1280): void {
   localStorage.setItem(LAMP_X_KEY, String(clampLampX(value, viewportWidth)))
 }
 
-export function lampFixturePx(id: LampId, width = 104): number {
+export function lampFixturePx(id: LampId, width = LAMP_FIXTURE_W): number {
   return width * (300 - LAMP_HANG[id].top) / 200
+}
+
+/**
+ * 灯罩在视口里的矩形（视口坐标、CSS px）。算出来而不是量出来的：灯是 `position: fixed`，
+ * 它的位置只跟视口有关、跟内容无关，所以不必等 DOM——`.hang` 落在 left: x·vw 上再
+ * `translateX(-50%)`，顶边在绳长 y·vh 处（收成小尖时 y 就是 0）。
+ */
+export function lampFixtureRect(
+  place: LampPlace,
+  id: LampId,
+  viewportWidth: number,
+  viewportHeight: number,
+): { left: number; top: number; right: number; bottom: number } {
+  const width = viewportWidth > 0 ? viewportWidth : 1
+  const height = viewportHeight > 0 ? viewportHeight : 1
+  const left = place.x * width - LAMP_FIXTURE_W / 2
+  const top = place.y * height
+  return { left, top, right: left + LAMP_FIXTURE_W, bottom: top + lampFixturePx(id) }
 }
 
 /** 灯罩不能拖出屏幕下沿。上沿不在这里卡：挨着页顶是「收起来」的区域。 */

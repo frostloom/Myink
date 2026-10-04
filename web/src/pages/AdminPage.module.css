@@ -379,8 +379,11 @@
 }
 
 @media (max-width: 420px) {
+  /* 420 这一档不再退回单列：九条读数竖着摊开要 600px 高，等于「全局概览」在手机上
+     没有读数带、只有一条长清单。实测每条最长的值是「638,199」/「22 分 3 秒」——
+     两列时列宽 165px（(366 − 12) / 2 − 12 内边距），换行阈值的 5 倍余量，撑不破。 */
   .readout,
   .metrics {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

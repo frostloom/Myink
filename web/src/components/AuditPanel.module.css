@@ -10,6 +10,9 @@
 }
 
 .toggle {
+  /* 右栏开关同族，桌面 40（实测 27px）。不配手机档：文件末尾的 ≤640 把整块 .panel 隐藏了，
+     给不在场的元素写地板是空写。 */
+  min-height: 40px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;

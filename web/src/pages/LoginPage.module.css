@@ -6,6 +6,9 @@
 }
 
 .card {
+  /* 版式不分档：卡片是 width:100% + max-width:360px，实测 1440→320 一路自适应，
+     页面级横向溢出 0，卡片顶部也从没被居中裁掉（最短的 320x700 下 y=154）。
+     这一页唯一的分档是文件末尾的触控地板。 */
   width: 100%;
   max-width: 360px;
   padding: var(--space-6);
@@ -32,7 +35,9 @@
 
 .tab,
 .tabActive {
-  min-height: 38px;
+  /* 38 是这一页唯一的定高控件，两档判据（桌面 40 / 手机 44）都不够——它又是「登录 / 注册」
+     这种一改就切换身份的开关，按偏了代价最高。 */
+  min-height: 40px;
   border: 0;
   border-radius: var(--radius-sm);
   color: var(--ink-muted);
@@ -52,4 +57,11 @@
   gap: var(--space-2);
   color: var(--ink-muted);
   font-size: var(--text-small);
+}
+
+@media (max-width: 640px) {
+  .tab,
+  .tabActive {
+    min-height: 44px;
+  }
 }

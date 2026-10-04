@@ -10,6 +10,8 @@
 }
 
 .toggle {
+  /* 右栏开关同族，桌面 40 / 手机 44；实测 27px，理由写在 GenerationPanel.module.css。 */
+  min-height: 40px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -313,5 +315,13 @@
 
   .modalBackdrop {
     padding: 12px;
+  }
+}
+
+/* 版式不分 420 / 900 / 1200 三档：面板与弹层都是 min-width: 0 的流式盒，
+   实测 320 宽时页面级横向溢出 0。这一档只管触控地板。 */
+@media (max-width: 640px) {
+  .toggle {
+    min-height: 44px;
   }
 }

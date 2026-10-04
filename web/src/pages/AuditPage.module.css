@@ -23,6 +23,16 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
+  /* 390 实测：「触发审计」被挤成两行（17px×2 装进 44px 的按钮），「返回工作台」同样断成
+     两截。挤压发生在 440–480 之间，开一个 420 档盖不住——而且这里真正的主角是标题行
+     自己的宽度，不是视口宽。改成让标题行换行：按钮宁可掉到下一行，也不把标签拆断。
+     nowrap 是换行的前提：中文按字可断，不 nowrap 时 min-content 只有一个字，
+     flex 永远算不出「装不下」，于是只会压、不会换。 */
+  flex-wrap: wrap;
+}
+
+.header > button {
+  white-space: nowrap;
 }
 
 .crumb {
@@ -32,6 +42,26 @@
   gap: var(--space-2);
   font-size: var(--text-small);
   color: var(--ink-muted);
+}
+
+.crumb {
+  margin-top: var(--space-1);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-small);
+  color: var(--ink-muted);
+}
+
+/* 「返回工作台」实测 36px：.crumb 是 flex，链接已被块化，所以只需给高度地板。
+   与 /lore 的面包屑同值——同一个开关不该在两页按起来手感不同。
+   nowrap + 上面的 wrap：窄屏让说明文字自己掉到下一行，而不是把入口名拆成两截。 */
+.crumb a {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  white-space: nowrap;
 }
 
 .list {
@@ -125,5 +155,8 @@
     height: auto;
     min-height: 100%;
     flex-direction: column;
+  }
+  .crumb a {
+    min-height: 44px;
   }
 }

@@ -1,6 +1,6 @@
 .panel { display: flex; min-width: 0; flex-direction: column; overflow: hidden; }
 .head { padding: 14px 16px; }
-.toggle { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.toggle { min-height: 40px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
 .toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: var(--radius-sm); }
 .headingGroup, .headerMeta { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .headingGroup { flex-wrap: wrap; }
