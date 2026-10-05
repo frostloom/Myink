@@ -497,7 +497,7 @@ export function FeedbackWidget() {
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onClick={(event) => {
-            if (skipClick.current || placeRef.current.hidden) {
+            if (skipClick.current) {
               skipClick.current = false
               return
             }
@@ -512,6 +512,21 @@ export function FeedbackWidget() {
             setOpen(true)
           }}
         />
+        {/* 桌面上反馈的入口就是这只灯（导航里那一行只在窄屏回来）。手放到灯上、或用键盘 Tab 到它，
+            灯罩下面浮出一块「反馈」小牌。做成能点的牌而不是一行字，是因为纯字样点不到，而灯罩
+            自己那一下按上面的规矩要让给底下的控件——实测 /long 的默认停位正压在第 4 张作品卡上，
+            那时唯一的入口必须仍在。小牌是灯罩底下的实心控件（dock 的 z-index 30），不吃让位规矩。
+            收起来只剩页顶那个小尖时不浮牌：牌会贴在页头上，压住真正的页面控件。 */}
+        {!place.hidden && (
+          <button
+            type="button"
+            className={styles.tag}
+            style={{ top: cordPx + lampFixturePx(lamp) - 2 }}
+            onClick={() => setOpen(true)}
+          >
+            反馈
+          </button>
+        )}
       </div>
 
       {open && createPortal(

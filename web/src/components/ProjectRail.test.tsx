@@ -163,11 +163,15 @@ it('links to the style library only on global pages', () => {
   expect(screen.queryByRole('link', { name: '文风库' })).toBeNull()
 })
 
-it('puts a labelled feedback entry in the rail, whatever the lamp is doing', () => {
+it('keeps the rail feedback row in the DOM for the band where there is no lamp', () => {
+  // 2026-10-05 口径：桌面上的入口是灯下那块「反馈」小牌（FeedbackWidget），导航里这一行收掉；
+  // 但 ≤640 整只灯被藏（.dock display:none），那里必须还有带标签的入口。谁显示是 media query 管的。
+  // 这里按文字查而不是按角色查，不是图省事：本仓库 vitest 开了 `css: true`（vite.config.ts，为了让
+  // lib/theme.ts 的 tokens.css?raw 读到真文本），CSS Module 因此真的注入 jsdom，.feedbackPin 的基准
+  // display:none 把这一行从可访问性树里摘掉了——实测连 `getByRole(..., { hidden: true })` 都查不到
+  // （隐藏子树不参与可访问名计算，name 算出来是空串）。按文字查守的正是我想守的那件事：DOM 里有这一行。
   renderRail('/long', [])
-  // 灯只是捷径：手机端整只被藏掉，桌面上它的点击区压住控件时那一下还要让给控件。
-  // 这条入口不持有表单状态，点它只派发事件，面板由挂在 <Outlet> 之外的唯一挂件实例接住。
-  const entry = screen.getByRole('button', { name: '反馈' })
+  const entry = screen.getByText('反馈').closest('button') as HTMLButtonElement
   const seen = vi.fn()
   window.addEventListener(FEEDBACK_OPEN_EVENT, seen)
   fireEvent.click(entry)
@@ -178,5 +182,7 @@ it('puts a labelled feedback entry in the rail, whatever the lamp is doing', () 
 it('keeps the feedback entry away from guests, who cannot submit', () => {
   currentStatus.value = 'unauthenticated'
   renderRail('/long', [])
-  expect(screen.queryByRole('button', { name: '反馈' })).toBeNull()
+  // 同上一条按文字查：游客那一档要断言的是「DOM 里根本没有」，若按角色查，被 CSS 藏住的
+  // 登录态入口同样查不到，这条就变成假通过。
+  expect(screen.queryByText('反馈')).toBeNull()
 })
