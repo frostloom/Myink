@@ -59,6 +59,18 @@ it('hangs the default cube lamp with the light on', () => {
   expect(lamp.getAttribute('data-light')).toBe('on')
 })
 
+// 桌面上反馈的入口就是这只灯（导航里那一行只在窄屏回来）。显不显示是 CSS 的事（jsdom 看不见
+// media query 与 :hover），这里能断言的是硬的那半：牌在 DOM 里、点它开面板、且它不跟灯抢名字。
+it('hangs a clickable 反馈 tag under the lamp', () => {
+  renderWidget()
+  const tag = screen.getByRole('button', { name: '反馈' })
+  expect(tag.textContent).toBe('反馈')
+  fireEvent.click(tag)
+  expect(screen.getByRole('dialog')).toBeTruthy()
+  // 灯罩自己被点时那一下可能要让给底下的控件（lampRival），小牌不让：它是灯罩底下的实心控件。
+  expect(screen.getByRole('button', { name: '问题反馈' })).toBeTruthy()
+})
+
 it('必填校验拦住空描述，填好后带页面路径提交并在「我的反馈」里看到', async () => {
   vi.mocked(api.submitFeedback).mockResolvedValue(submitted)
   vi.mocked(api.listFeedback).mockResolvedValue({ items: [submitted] })

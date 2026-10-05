@@ -6,10 +6,11 @@
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  padding: 24px 8px 14px;
+  /* 下内边距挪到 .foot 自己身上：页脚要钉在底边（sticky），钉的位置是滚动容器的内边距边，
+     留在这里会在页脚底下露出一条 14px 的缝，滚过去的书名就从那条缝里透出来。 */
+  padding: 24px 8px 0;
   box-shadow: 4px 0 20px rgba(95, 77, 58, 0.05);
-  /* 窗口很矮时（<~520px）固定组本身就已经放不下，让整条 rail 可滚，好过把页脚的「登出」
-     裁掉一截。正常情况下内容不超高，这条不产生滚动条。 */
+  /* 唯一的滚动面。窗口很矮或书很多时，超出的部分由这里滚，不在书单里再套一层小滚动窗。 */
   overflow-y: auto;
 }
 
@@ -62,14 +63,13 @@
 }
 
 .nav {
-  /* 原来是 flex: 1：四本书下面的余量全被这个列表吃掉，中间空一大片，把「本书」「全局」
-     推到首屏之外。改成可收缩的自然高度——书少不撑空档，书多则自己滚动（min-height: 0
-     是收缩的前提）。余量改由 .foot 的 margin-top: auto 兜住，落在页脚上方而不是列表中间。
-     但 min-height 不能真是 0：窗口矮到 ~500px 时收缩会把书单整个抹平（实测 1440×480 下
-     列表高 0），所以留两条的地板；地板撑不进 rail 时由 rail 自己的纵向滚动兜着。 */
-  flex: 0 1 auto;
-  min-height: 84px;
-  overflow-y: auto;
+  /* 书单按自然高度铺开，一列到底，不给自己套内层滚动窗。
+     上一版是 `flex: 0 1 auto` + `min-height: 84px` + `overflow-y: auto`：窗口 900 高、
+     13 本长篇（自然高实测 592px）时它被压回 84px 的地板，一次只看得见两本书，找一个书名
+     要在小窗里划很久——书越多越明显，而「书多」正是这个产品的使用常态。
+     缩不下去的部分交给整条 rail 滚（见 .rail 的 overflow-y），页脚钉住常驻。
+     不写 flex-grow：余量落在 .foot 的 margin-top: auto 上（书单与「全局」之间不留空洞）。 */
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -135,10 +135,15 @@
   /* 组列表改成自然高度后，剩下的余量由这里兜住：空白落在页脚之上（读作侧栏页脚本该在底部），
      而不是落在书单中间（读作界面坏了一半）。 */
   margin-top: auto;
-  padding: var(--space-3) var(--space-2) 0;
+  padding: var(--space-3) var(--space-2) 14px;
   border-top: 1px solid var(--line);
   color: var(--ink-subtle);
   font-size: var(--text-small);
+  /* 书单整列铺开后会滚出视口，而「账号 / 登出」是随时要用的常驻控件，所以钉在底边。
+     钉住就必须不透明：不然滚过去的书名会从这条底下透出来（窄屏横条里那两处 sticky 同一个坑）。 */
+  position: sticky;
+  bottom: 0;
+  background: var(--rail-bg);
 }
 
 .userRow {
@@ -157,6 +162,13 @@ button.item {
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+/* 桌面上反馈的入口就是那只灯本身（悬停 / 键盘聚焦浮出「反馈」字样，见 FeedbackWidget），
+   导航里这一行是同一条路的第二个入口，收掉。它只在灯被整只藏掉的那一档回来——见下面 640 档
+   重新显示并钉在横条右缘（手机端没有灯，不留这条就等于没有入口）。 */
+.feedbackPin {
+  display: none;
 }
 
 /* 窄屏（640 档）：整条 rail 折成顶部单行横向滚动条。
@@ -194,18 +206,14 @@ button.item {
     padding: 0;
     margin: 0;
     border: 0;
+    /* 页脚在竖排里钉底边（sticky bottom），横条里没有纵向可滚，留着只会挡住右缘的钉位。 */
+    position: static;
   }
   .brand {
     padding-right: var(--space-2);
     /* 横条上的品牌也是可点的（回 /long），实测 27px 高，是那条带上最矮的目标。 */
     min-height: 44px;
     font-size: var(--text-heading);
-  }
-  /* 基准里 .nav 是 flex:1 + overflow-y:auto——留在横向条上会把其余项推开，还多出一条纵向滚动条。
-     基准的 min-height: 84px（书单地板）在横排里会变成横条的高度地板，把 61px 的条撑成 96px。 */
-  .nav {
-    overflow: visible;
-    min-height: 0;
   }
   /* 组标题在一条横向滚动带里没有承载分组（看不见上下），只是让本来就滚不完的条更长。 */
   .groupHead {
@@ -246,6 +254,8 @@ button.item {
      right 用 -12px（0 会停在右内边距内侧，那条槽照样露底）、圆角归零（8px 圆角在右上角
      留几个像素的空）。实测漏出来的是当前那本书的 .active 淡绿底。 */
   button.item.feedbackPin {
+    /* 基准把这一行收掉了（桌面用灯），窄屏没有灯，这里把它放回来。 */
+    display: flex;
     position: sticky;
     right: -12px;
     background: var(--rail-bg);

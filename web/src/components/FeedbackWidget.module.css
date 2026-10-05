@@ -138,10 +138,64 @@
 }
 
 .hit:focus,
-.hit:focus-visible,
-.tip:focus,
-.tip:focus-visible {
+.tip:focus {
   outline: none;
+}
+
+/* 现在这只灯是桌面上反馈的唯一入口，键盘走到它必须看得见。 */
+.hit:focus-visible,
+.tip:focus-visible,
+.tag:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+/* 手放到灯上（或键盘 Tab 到灯）时浮出的小牌：桌面上反馈的入口就写在这只灯身上，
+   导航里那一行不再重复。默认既不显示也不吃点击；浮出时是灯罩正下方一个 40px 高的实心控件。
+   做成牌而不是一行字：一行字点不到，而灯罩自己那一下按让位规矩可能要交给底下的控件。
+   描边用 --line-strong 并压一道 --shadow-soft：它浮在别人的内容上，而 /long 书单那一行是透明的
+   分隔线行，牌底对页面底只有 1.11:1、描边 --line 只有 1.07:1（换 --line-strong 也才 1.23:1），
+   「这里悬着一块」主要是投影说出来的。 */
+.tag {
+  position: absolute;
+  left: 0;
+  transform: translateX(-50%);
+  min-width: 56px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-soft);
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--text-small);
+  font-weight: 650;
+  line-height: 1.35;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease;
+}
+
+/* 两条各管一头：指针从灯罩走向小牌会穿过两者之间那 2px 的缝，落在缝里时谁都不算被悬停，
+   靠这两条接上（小牌自己那一条让它 stay 住，不会一移动就闪没）。 */
+.hit:hover ~ .tag,
+.tag:hover,
+.hit:focus-visible ~ .tag,
+.tag:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.tag:hover {
+  background: var(--quiet-hover);
+  color: var(--ink);
+}
+
+.tag:active {
+  background: var(--surface-2);
 }
 
 .dock:hover .sway,

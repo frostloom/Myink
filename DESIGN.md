@@ -154,6 +154,14 @@ green means "you are reading this one", and only one thing can be green at a tim
 mark — which is a link — is held to that same 44px so it is not the shortest thing on the strip. Do not turn
 every navigation item into a card.
 
+Vertical space goes to the works list first. It is one column laid out at its natural height and the rail
+itself is the only scroll surface; the identity foot (`管理后台 / 账号 / 用户名 · 登出`) is pinned to the
+bottom so signing out never costs a scroll. The list must not be squeezed into an inner scroll window — that
+was `flex: 0 1 auto` with an 84px floor, which on a 16-book account left a 428px box at 900px of height and
+248px at 720px: five books inside a slot inside a sidebar, scrolling a second time inside the scroll. What
+that space comes out of is the `全局` group, which now scrolls with the list instead of holding a band of
+its own above the fold.
+
 ### Chapter Workspace
 
 The chapter view has three clear zones: chapter navigation, the writing surface, and contextual inspection.
@@ -238,14 +246,24 @@ for a control the shade is sitting on and the shade fades to a ghost, so the acc
 instant instead of the whole session. The click yield and the fade are one rule enforced twice, and only the
 shade fades: the beam is light, and light that flinches would flash the entire page.
 
+A yielding control cannot be the only way in, so the lamp carries a non-yielding one: reaching for the shade
+(or tabbing to it) floats a small `反馈` tag out from under it. The tag is an ordinary opaque 40px control
+inside the dock's stacking context — filled, hairline-edged and shadowed like the rest of the floating chrome,
+because it lands on content that is not its own — so it is not transparent over somebody else's button and has
+no rival to yield to; clicking it always opens the panel. It appears only while the lamp is being reached for and takes
+no pointer events otherwise, so a resting lamp still lets the page through. This is why there is no second
+labelled feedback row in the rail: on desktop the entry is the lamp plus its tag, and duplicating it in the
+navigation was one more permanent row for a rare action. Below `640` the whole dock is hidden by the reader's
+standing preference, and there the labelled rail row is the entry, pinned to the right end of the band (hiding
+a lamp must not hide feedback). When the reader stashes the lamp at the top edge only the nub is left: the tag
+does not appear there (it would sit on the page header), dragging the nub down pulls the lamp back out, and
+clicking it without dragging opens the panel — it is the control whose accessible name is 问题反馈, so that
+name has to be true in both states. Guests get none of it — submitting feedback requires a user.
+
 The lamp never moves out of the way itself — on a full-bleed page there is nowhere to move to. Only the reader
 moves it: a drag writes its position, kept as a fraction of the viewport (so it survives a resize) and clamped
 so it cannot leave the screen, and released within 22px of the top edge it puts itself away. That is the one
-lamp setting the app stores; it never rewrites the position on its own. At `640` it is hidden by the
-reader's own standing preference, but hiding the lamp must not hide feedback: on that band the entry is a
-labelled 反馈 button pinned to the right end of the rail (hiding the whole dock used to take the function down
-with the decoration). Desktop keeps that button too, because an entry that yields clicks is not a dependable
-entry. Guests get neither — submitting feedback requires a user.
+lamp setting the app stores; it never rewrites the position on its own.
 
 ## Product Screens
 
