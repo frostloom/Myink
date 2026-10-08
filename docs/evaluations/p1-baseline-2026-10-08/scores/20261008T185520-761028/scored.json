@@ -1,0 +1,950 @@
+[
+  {
+    "case_id": "continuity.completed_entry_replayed",
+    "case_sha256": "62d27086a2d09db4fc98ce341e21384a11e8226747622f9c88d07439ecee739c",
+    "execution": "completed",
+    "coverage": "implemented",
+    "attempted": true,
+    "prompt_sha256": "ecc27dfe2fb330eaa2db5ec9a7a8da8a3b8c6a33225172dddd694dee278aa52a",
+    "input_tokens": 799,
+    "output_tokens": 394,
+    "cost_est": 0.00475,
+    "cost_status": "estimated",
+    "raw_output": "{\n  \"verdict\": \"rewrite\",\n  \"findings\": [\n    {\n      \"conflict_key\": \"continuity_gym_door_reentry\",\n      \"conflict_type\": \"timeline\",\n      \"severity\": \"major\",\n      \"scope\": \"local\",\n      \"evidence\": [\n        {\n          \"chapter\": 5,\n          \"quote\": \"沈砚已经跨进体育馆，铁门在身后关上。周野的伤腿还在流血，他扶着周野坐到长椅上，向值班医生挥手。\"\n        },\n        {\n          \"chapter\": 6,\n          \"quote\": \"体育馆的铁门半掩着。沈砚站在门外推了推，门被铁链拴住了。他敲门报上姓名，等守卫解开铁链，才扶着周野走进去。\"\n        }\n      ],\n      \"confidence\": 0.95,\n      \"suggestion\": \"删除重演进门/拴链/报姓名/等守卫开门的段落，直接从上一章章尾已完成的动作接续：沈砚已扶着周野坐到长椅上、已向值班医生挥手，本章开头应写医生上前查看伤腿、取纱布包扎等救治动作，保持时间与空间连续。\"\n    }\n  ],\n  \"reasons\": [\n    \"本章开头重演了上一章章尾已经完成的进门、扶周野入内、向医生求助等动作，造成明确的接续断裂与机械重复，属 major 问题。\",\n    \"章节计划目标为“在体育馆内救治周野”，但正文把大量篇幅用于重复进门流程，救治内容单薄，需按接续位置重写开头并补足救治过程。\",\n    \"无世界观硬约束与伏笔冲突，问题集中在局部接续，故路由为 rewrite（local 级修改）。\"\n  ],\n  \"confidence\": 0.95\n}",
+    "model_id": "deepseek-flash",
+    "finish_reason": "stop",
+    "wall_ms": 4938,
+    "polarity": "positive",
+    "category": "continuity",
+    "label_status": "proposed",
+    "review": "provisional",
+    "output_valid": true,
+    "verdict_match": true,
+    "automatic_pass": true,
+    "confirmed_pass": null,
+    "candidates": {
+      "0": [
+        "completed_entry_replayed"
+      ]
+    },
+    "evidence": {
+      "0": [
+        true,
+        true
+      ]
+    },
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "duplicates": 0,
+    "valid_quotes": 2,
+    "total_quotes": 2,
+    "findings_without_quotes": 0,
+    "verdict": {
+      "verdict": "rewrite",
+      "replan_target": null,
+      "findings": [
+        {
+          "finding_id": null,
+          "conflict_key": "continuity_gym_door_reentry",
+          "conflict_type": "timeline",
+          "severity": "major",
+          "scope": "local",
+          "source": "L1",
+          "evidence": [
+            {
+              "chapter": 5,
+              "quote": "沈砚已经跨进体育馆，铁门在身后关上。周野的伤腿还在流血，他扶着周野坐到长椅上，向值班医生挥手。"
+            },
+            {
+              "chapter": 6,
+              "quote": "体育馆的铁门半掩着。沈砚站在门外推了推，门被铁链拴住了。他敲门报上姓名，等守卫解开铁链，才扶着周野走进去。"
+            }
+          ],
+          "confidence": 0.95,
+          "suggestion": "删除重演进门/拴链/报姓名/等守卫开门的段落，直接从上一章章尾已完成的动作接续：沈砚已扶着周野坐到长椅上、已向值班医生挥手，本章开头应写医生上前查看伤腿、取纱布包扎等救治动作，保持时间与空间连续。"
+        }
+      ],
+      "reasons": [
+        "本章开头重演了上一章章尾已经完成的进门、扶周野入内、向医生求助等动作，造成明确的接续断裂与机械重复，属 major 问题。",
+        "章节计划目标为“在体育馆内救治周野”，但正文把大量篇幅用于重复进门流程，救治内容单薄，需按接续位置重写开头并补足救治过程。",
+        "无世界观硬约束与伏笔冲突，问题集中在局部接续，故路由为 rewrite（local 级修改）。"
+      ],
+      "confidence": 0.95
+    }
+  },
+  {
+    "case_id": "continuity.justified_recovery_and_time_jump",
+    "case_sha256": "2a3e84caeb82049821fe7f61780a8b53a1f2110e538ef7fbe522f5044507173f",
+    "execution": "completed",
+    "coverage": "implemented",
+    "attempted": true,
+    "prompt_sha256": "18517ae901c4e799327f4da248c8d90c6b7360833022f65a04a8458326f8ea63",
+    "input_tokens": 812,
+    "output_tokens": 140,
+    "cost_est": 0.002744,
+    "cost_status": "estimated",
+    "raw_output": "{\"verdict\": \"pass\", \"findings\": [], \"reasons\": [\"本章紧接前章章尾：沈砚因失血昏厥后苏醒，妹妹守候、医生留观、守卫交班均与前章衔接自然，无重演已完成动作。\", \"剧情推进符合章节计划：恢复意识并准备寻找药品，通过药品只够用到中午、圈出药房位置完成目标，无主线偏移。\", \"人设与节奏合理：醒来先摸绷带、问清药品存量再行动，符合失血后谨慎状态；篇幅短但信息完整，无冗余修订必要。\"], \"confidence\": 0.95}",
+    "model_id": "deepseek-flash",
+    "finish_reason": "stop",
+    "wall_ms": 2359,
+    "polarity": "negative",
+    "category": "continuity",
+    "label_status": "proposed",
+    "review": "provisional",
+    "output_valid": true,
+    "verdict_match": true,
+    "automatic_pass": true,
+    "confirmed_pass": null,
+    "candidates": {},
+    "evidence": {},
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "duplicates": 0,
+    "valid_quotes": 0,
+    "total_quotes": 0,
+    "findings_without_quotes": 0,
+    "verdict": {
+      "verdict": "pass",
+      "replan_target": null,
+      "findings": [],
+      "reasons": [
+        "本章紧接前章章尾：沈砚因失血昏厥后苏醒，妹妹守候、医生留观、守卫交班均与前章衔接自然，无重演已完成动作。",
+        "剧情推进符合章节计划：恢复意识并准备寻找药品，通过药品只够用到中午、圈出药房位置完成目标，无主线偏移。",
+        "人设与节奏合理：醒来先摸绷带、问清药品存量再行动，符合失血后谨慎状态；篇幅短但信息完整，无冗余修订必要。"
+      ],
+      "confidence": 0.95
+    }
+  },
+  {
+    "case_id": "continuity.mechanical_opening_repeated",
+    "case_sha256": "664080f335409aa7234ca32908781cde708a2244f299ecc5ce15c70e76a76191",
+    "execution": "completed",
+    "coverage": "implemented",
+    "attempted": true,
+    "prompt_sha256": "12cd532014acaa83a06bda3b4ba3642844f568563a49190bcfe577c37dc10c0e",
+    "input_tokens": 832,
+    "output_tokens": 642,
+    "cost_est": 0.0068,
+    "cost_status": "estimated",
+    "raw_output": "{\n  \"verdict\": \"rewrite\",\n  \"findings\": [\n    {\n      \"conflict_key\": \"opening_repetition_ch4\",\n      \"conflict_type\": \"style\",\n      \"severity\": \"major\",\n      \"scope\": \"local\",\n      \"evidence\": [\n        {\"chapter\": 4, \"quote\": \"清晨的冷风贴着门缝钻进来，沈砚揉了揉酸痛的肩，掀开毯子坐起。屋里很静，只有远处传来几声咳嗽。他看了一眼窗外灰白的天，伸手摸了摸衣袋里的匕首。\"},\n        {\"chapter\": 6, \"quote\": \"清晨的凉风顺着门缝钻进来，沈砚揉着发酸的肩，掀开毯子坐了起来。房间很安静，远处只有几声咳嗽。他望了一眼窗外灰白的天空，伸手摸向衣袋里的匕首。\"}\n      ],\n      \"confidence\": 0.95,\n      \"suggestion\": \"第6章开头与第4章开头为近义改写（冷风/凉风、揉肩、掀毯、咳嗽、灰白天、摸匕首逐项对应），属机械重复。应改写为承接第5章章尾的接续动作：直接从沈砚放好药品、离开医生处、走向院内守卫领取巡查任务写起，删去与第4章雷同的起床场景。\"\n    },\n    {\n      \"conflict_key\": \"continuity_prev_tail\",\n      \"conflict_type\": \"plotline\",\n      \"severity\": \"major\",\n      \"scope\": \"local\",\n      \"evidence\": [\n        {\"chapter\": 5, \"quote\": \"沈砚把搜来的药品放进箱子，医生示意他去院内找守卫领取当天的任务。\"},\n        {\"chapter\": 6, \"quote\": \"随后他走到院里，找到守卫，领到了今天巡查围墙的任务。\"}\n      ],\n      \"confidence\": 0.9,\n      \"suggestion\": \"第5章章尾已明确沈砚在医生处被示意去找守卫领任务，第6章却插入一段与第4章雷同的起床场景，造成时间线回退与接续断裂。应删去起床段，改为紧接第5章章尾：沈砚从医生处出来，径直去院内找守卫领取巡查围墙任务，并补足领取过程的具体互动。\"\n    }\n  ],\n  \"reasons\": [\n    \"本章计划仅要求『领取当天巡查任务』，正文确实完成了该目标，主线无偏移。\",\n    \"但开头与第4章开头为近义改写的同一套路，属机械重复，应报 major。\",\n    \"第5章章尾已让沈砚在医生处被示意去找守卫领任务，本章却插入起床场景，造成接续断裂与时间线回退，应报 major。\",\n    \"两处问题均为句段级接续改写，无需推翻本章规划，故 verdict=rewrite 而非 replan。\"\n  ],\n  \"confidence\": 0.9\n}",
+    "model_id": "deepseek-flash",
+    "finish_reason": "stop",
+    "wall_ms": 4359,
+    "polarity": "positive",
+    "category": "continuity",
+    "label_status": "proposed",
+    "review": "provisional",
+    "output_valid": true,
+    "verdict_match": true,
+    "automatic_pass": false,
+    "confirmed_pass": null,
+    "candidates": {
+      "0": [
+        "mechanical_opening_repeated"
+      ],
+      "1": []
+    },
+    "evidence": {
+      "0": [
+        true,
+        true
+      ],
+      "1": [
+        true,
+        true
+      ]
+    },
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "duplicates": 0,
+    "valid_quotes": 4,
+    "total_quotes": 4,
+    "findings_without_quotes": 0,
+    "verdict": {
+      "verdict": "rewrite",
+      "replan_target": null,
+      "findings": [
+        {
+          "finding_id": null,
+          "conflict_key": "opening_repetition_ch4",
+          "conflict_type": "style",
+          "severity": "major",
+          "scope": "local",
+          "source": "L1",
+          "evidence": [
+            {
+              "chapter": 4,
+              "quote": "清晨的冷风贴着门缝钻进来，沈砚揉了揉酸痛的肩，掀开毯子坐起。屋里很静，只有远处传来几声咳嗽。他看了一眼窗外灰白的天，伸手摸了摸衣袋里的匕首。"
+            },
+            {
+              "chapter": 6,
+              "quote": "清晨的凉风顺着门缝钻进来，沈砚揉着发酸的肩，掀开毯子坐了起来。房间很安静，远处只有几声咳嗽。他望了一眼窗外灰白的天空，伸手摸向衣袋里的匕首。"
+            }
+          ],
+          "confidence": 0.95,
+          "suggestion": "第6章开头与第4章开头为近义改写（冷风/凉风、揉肩、掀毯、咳嗽、灰白天、摸匕首逐项对应），属机械重复。应改写为承接第5章章尾的接续动作：直接从沈砚放好药品、离开医生处、走向院内守卫领取巡查任务写起，删去与第4章雷同的起床场景。"
+        },
+        {
+          "finding_id": null,
+          "conflict_key": "continuity_prev_tail",
+          "conflict_type": "plotline",
+          "severity": "major",
+          "scope": "local",
+          "source": "L1",
+          "evidence": [
+            {
+              "chapter": 5,
+              "quote": "沈砚把搜来的药品放进箱子，医生示意他去院内找守卫领取当天的任务。"
+            },
+            {
+              "chapter": 6,
+              "quote": "随后他走到院里，找到守卫，领到了今天巡查围墙的任务。"
+            }
+          ],
+          "confidence": 0.9,
+          "suggestion": "第5章章尾已明确沈砚在医生处被示意去找守卫领任务，第6章却插入一段与第4章雷同的起床场景，造成时间线回退与接续断裂。应删去起床段，改为紧接第5章章尾：沈砚从医生处出来，径直去院内找守卫领取巡查围墙任务，并补足领取过程的具体互动。"
+        }
+      ],
+      "reasons": [
+        "本章计划仅要求『领取当天巡查任务』，正文确实完成了该目标，主线无偏移。",
+        "但开头与第4章开头为近义改写的同一套路，属机械重复，应报 major。",
+        "第5章章尾已让沈砚在医生处被示意去找守卫领任务，本章却插入起床场景，造成接续断裂与时间线回退，应报 major。",
+        "两处问题均为句段级接续改写，无需推翻本章规划，故 verdict=rewrite 而非 replan。"
+      ],
+      "confidence": 0.9
+    }
+  },
+  {
+    "case_id": "continuity.natural_same_scene_continuation",
+    "case_sha256": "ad399aa5b33367403fd8571b4f0f25b3ec30e1dc8c8928e9c51957f4cf1e8848",
+    "execution": "completed",
+    "coverage": "implemented",
+    "attempted": true,
+    "prompt_sha256": "883b09626bff0885f77e822e5c2a46ad109828da4c42c7c968de48ef74387a6c",
+    "input_tokens": 827,
+    "output_tokens": 154,
+    "cost_est": 0.002886,
+    "cost_status": "estimated",
+    "raw_output": "{\"verdict\": \"pass\", \"findings\": [], \"reasons\": [\"本章紧接前章章尾：沈砚接过螺丝刀、卡住门闩、搬长椅顶门、兽爪缩回，动作链条完整，无重演或断裂。\", \"章节计划目标为‘兄妹守住体育馆后门’，正文以门被顶住、兽爪缩回、兄妹轮流盯守收束，目标达成且无主线偏移。\", \"无世界观硬约束、伏笔、人物状态快照可供比对，未发现可判定的矛盾。\", \"内容质量：衔接自然，兄妹分工与对话符合危机场景，节奏紧凑，无冗余修订必要。\"], \"confidence\": 0.9}",
+    "model_id": "deepseek-flash",
+    "finish_reason": "stop",
+    "wall_ms": 2407,
+    "polarity": "negative",
+    "category": "continuity",
+    "label_status": "proposed",
+    "review": "provisional",
+    "output_valid": true,
+    "verdict_match": true,
+    "automatic_pass": true,
+    "confirmed_pass": null,
+    "candidates": {},
+    "evidence": {},
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "duplicates": 0,
+    "valid_quotes": 0,
+    "total_quotes": 0,
+    "findings_without_quotes": 0,
+    "verdict": {
+      "verdict": "pass",
+      "replan_target": null,
+      "findings": [],
+      "reasons": [
+        "本章紧接前章章尾：沈砚接过螺丝刀、卡住门闩、搬长椅顶门、兽爪缩回，动作链条完整，无重演或断裂。",
+        "章节计划目标为‘兄妹守住体育馆后门’，正文以门被顶住、兽爪缩回、兄妹轮流盯守收束，目标达成且无主线偏移。",
+        "无世界观硬约束、伏笔、人物状态快照可供比对，未发现可判定的矛盾。",
+        "内容质量：衔接自然，兄妹分工与对话符合危机场景，节奏紧凑，无冗余修订必要。"
+      ],
+      "confidence": 0.9
+    }
+  },
+  {
+    "case_id": "continuity.pending_threat_dropped",
+    "case_sha256": "e68cf8b409f238f43c29ce93117ec1776ac1fc61a54a8a4111754a6abe7b64b6",
+    "execution": "completed",
+    "coverage": "implemented",
+    "attempted": true,
+    "prompt_sha256": "a632e00b9fd8ed4d8937ab2a6eea27639c8b78c519f37d76484345db7585475d",
+    "input_tokens": 796,
+    "output_tokens": 639,
+    "cost_est": 0.006704,
+    "cost_status": "estimated",
+    "raw_output": "{\n  \"verdict\": \"rewrite\",\n  \"findings\": [\n    {\n      \"conflict_key\": \"continuity_ch6_door_defense\",\n      \"conflict_type\": \"plotline\",\n      \"severity\": \"critical\",\n      \"scope\": \"structural\",\n      \"evidence\": [\n        {\n          \"chapter\": 5,\n          \"quote\": \"兽爪从门缝探了进来，门闩正一点点弯折。沈砚抵住铁门，朝妹妹伸手：“把那把螺丝刀给我，快！”妹妹抓起工具。\"\n        },\n        {\n          \"chapter\": 6,\n          \"quote\": \"晚上十一点刚过，沈棠把最后一口糖水喂给沈砚。他躺在长椅上，揉了揉酸痛的肩。体育馆里很安静，兄妹聊起从前的晚饭，接着清点了明天要带的食物。沈砚打了个哈欠，决定先睡一会儿。\"\n        }\n      ],\n      \"confidence\": 0.98,\n      \"suggestion\": \"本章开头必须紧接第5章章尾的危机：先写沈砚用螺丝刀抵住/加固门闩、与妹妹合力顶门、兽爪退去或门被暂时封死的过程，交代危机如何解除（或至少暂时缓解），再进入糖水、聊天、清点食物等安静场景。不能跳过门闩弯折、兽爪探入的未完成动作直接切到深夜休息。\"\n    },\n    {\n      \"conflict_key\": \"plan_ch6_goal_missing\",\n      \"conflict_type\": \"plotline\",\n      \"severity\": \"major\",\n      \"scope\": \"structural\",\n      \"evidence\": [\n        {\n          \"chapter\": 6,\n          \"quote\": \"晚上十一点刚过，沈棠把最后一口糖水喂给沈砚。他躺在长椅上，揉了揉酸痛的肩。体育馆里很安静，兄妹聊起从前的晚饭，接着清点了明天要带的食物。沈砚打了个哈欠，决定先睡一会儿。\"\n        }\n      ],\n      \"confidence\": 0.9,\n      \"suggestion\": \"章节计划要求“兄妹守住体育馆后门”，但正文只写休息与闲聊，未呈现守门行动。应补写守住后门的具体过程（轮值、加固、击退或对峙），使本章目标落地。\"\n    }\n  ],\n  \"reasons\": [\n    \"第5章章尾处于兽爪探入门缝、门闩弯折的紧急动作中，第6章开头却直接跳到晚上十一点后的安静休息场景，未交代危机如何解除，构成明确的接续断裂，需 rewrite。\",\n    \"本章未完成章节计划的核心目标“兄妹守住体育馆后门”，剧情推进缺失，需按计划补写守门行动。\",\n    \"建议先接续第5章危机动作，再自然过渡到休息与清点食物，避免重演已完成动作或丢弃未完成危险。\"\n  ],\n  \"confidence\": 0.96\n}",
+    "model_id": "deepseek-flash",
+    "finish_reason": "stop",
+    "wall_ms": 4359,
+    "polarity": "positive",
+    "category": "continuity",
+    "label_status": "proposed",
+    "review": "provisional",
+    "output_valid": true,
+    "verdict_match": true,
+    "automatic_pass": false,
+    "confirmed_pass": null,
+    "candidates": {
+      "0": [
+        "pending_threat_dropped"
+      ],
+      "1": []
+    },
+    "evidence": {
+      "0": [
+        true,
+        true
+      ],
+      "1": [
+        true
+      ]
+    },
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "duplicates": 0,
+    "valid_quotes": 3,
+    "total_quotes": 3,
+    "findings_without_quotes": 0,
+    "verdict": {
+      "verdict": "rewrite",
+      "replan_target": null,
+      "findings": [
+        {
+          "finding_id": null,
+          "conflict_key": "continuity_ch6_door_defense",
+          "conflict_type": "plotline",
+          "severity": "critical",
+          "scope": "structural",
+          "source": "L1",
+          "evidence": [
+            {
+              "chapter": 5,
+              "quote": "兽爪从门缝探了进来，门闩正一点点弯折。沈砚抵住铁门，朝妹妹伸手：“把那把螺丝刀给我，快！”妹妹抓起工具。"
+            },
+            {
+              "chapter": 6,
+              "quote": "晚上十一点刚过，沈棠把最后一口糖水喂给沈砚。他躺在长椅上，揉了揉酸痛的肩。体育馆里很安静，兄妹聊起从前的晚饭，接着清点了明天要带的食物。沈砚打了个哈欠，决定先睡一会儿。"
+            }
+          ],
+          "confidence": 0.98,
+          "suggestion": "本章开头必须紧接第5章章尾的危机：先写沈砚用螺丝刀抵住/加固门闩、与妹妹合力顶门、兽爪退去或门被暂时封死的过程，交代危机如何解除（或至少暂时缓解），再进入糖水、聊天、清点食物等安静场景。不能跳过门闩弯折、兽爪探入的未完成动作直接切到深夜休息。"
+        },
+        {
+          "finding_id": null,
+          "conflict_key": "plan_ch6_goal_missing",
+          "conflict_type": "plotline",
+          "severity": "major",
+          "scope": "structural",
+          "source": "L1",
+          "evidence": [
+            {
+              "chapter": 6,
+              "quote": "晚上十一点刚过，沈棠把最后一口糖水喂给沈砚。他躺在长椅上，揉了揉酸痛的肩。体育馆里很安静，兄妹聊起从前的晚饭，接着清点了明天要带的食物。沈砚打了个哈欠，决定先睡一会儿。"
+            }
+          ],
+          "confidence": 0.9,
+          "suggestion": "章节计划要求“兄妹守住体育馆后门”，但正文只写休息与闲聊，未呈现守门行动。应补写守住后门的具体过程（轮值、加固、击退或对峙），使本章目标落地。"
+        }
+      ],
+      "reasons": [
+        "第5章章尾处于兽爪探入门缝、门闩弯折的紧急动作中，第6章开头却直接跳到晚上十一点后的安静休息场景，未交代危机如何解除，构成明确的接续断裂，需 rewrite。",
+        "本章未完成章节计划的核心目标“兄妹守住体育馆后门”，剧情推进缺失，需按计划补写守门行动。",
+        "建议先接续第5章危机动作，再自然过渡到休息与清点食物，避免重演已完成动作或丢弃未完成危险。"
+      ],
+      "confidence": 0.96
+    }
+  },
+  {
+    "case_id": "logic.allegiance",
+    "case_sha256": "588933a2b9f5e3fe7aad8719a0fc83e89c821c1ede5dbceb27414ed921187712",
+    "execution": "completed",
+    "coverage": "implemented",
+    "attempted": true,
+    "prompt_sha256": "7ee603ab8f1aaa5249848ba996b86903bc4a75a9483e293aa2c89d976d009f1f",
+    "input_tokens": 714,
+    "output_tokens": 391,
+    "cost_est": 0.004556,
+    "cost_status": "estimated",
+    "raw_output": "{\n  \"verdict\": \"rewrite\",\n  \"findings\": [\n    {\n      \"conflict_key\": \"linchuan_contract_status\",\n      \"conflict_type\": \"character_state\",\n      \"severity\": \"critical\",\n      \"scope\": \"structural\",\n      \"evidence\": [\n        {\n          \"chapter\": 1,\n          \"quote\": \"林川已正式退出北桥检修队，合同解除且未重新入职。\"\n        },\n        {\n          \"chapter\": 2,\n          \"quote\": \"林川的合同并未解除，他始终是北桥检修队的现任正式员工，今天仍以队员身份领薪。\"\n        }\n      ],\n      \"confidence\": 1.0,\n      \"suggestion\": \"本章开头直接与前章章尾事实矛盾，必须重写。建议将第2章开头改为承接前章：林川已解除合同、离开北桥检修队，本章应描写他离开后的处境、去向或新冲突；若确需保留其队员身份，则必须在前章或本章内给出明确的重新入职/合同恢复的因果交代，不能无过渡地推翻已写正文。\"\n    }\n  ],\n  \"reasons\": [\n    \"本章正文与【近期上下文】prev_chapter_tail 直接冲突：前章已明确林川合同解除、退出检修队，本章却称合同未解除、仍是现任正式员工并领薪，属于人物状态/剧情事实的硬性接续断裂。\",\n    \"该矛盾为 critical 级，且涉及整章立足点（人物身份与处境），需结构性改写而非句段微调，故判定 rewrite。\",\n    \"无章节计划、无世界观硬约束、无剧情上下文，无法从规划层面判定为蓝图走偏，因此不触发 replan。\"\n  ],\n  \"confidence\": 1.0\n}",
+    "model_id": "deepseek-flash",
+    "finish_reason": "stop",
+    "wall_ms": 3171,
+    "polarity": "positive",
+    "category": "allegiance",
+    "label_status": "proposed",
+    "review": "provisional",
+    "output_valid": true,
+    "verdict_match": true,
+    "automatic_pass": true,
+    "confirmed_pass": null,
+    "candidates": {
+      "0": [
+        "allegiance"
+      ]
+    },
+    "evidence": {
+      "0": [
+        true,
+        true
+      ]
+    },
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "duplicates": 0,
+    "valid_quotes": 2,
+    "total_quotes": 2,
+    "findings_without_quotes": 0,
+    "verdict": {
+      "verdict": "rewrite",
+      "replan_target": null,
+      "findings": [
+        {
+          "finding_id": null,
+          "conflict_key": "linchuan_contract_status",
+          "conflict_type": "character_state",
+          "severity": "critical",
+          "scope": "structural",
+          "source": "L1",
+          "evidence": [
+            {
+              "chapter": 1,
+              "quote": "林川已正式退出北桥检修队，合同解除且未重新入职。"
+            },
+            {
+              "chapter": 2,
+              "quote": "林川的合同并未解除，他始终是北桥检修队的现任正式员工，今天仍以队员身份领薪。"
+            }
+          ],
+          "confidence": 1.0,
+          "suggestion": "本章开头直接与前章章尾事实矛盾，必须重写。建议将第2章开头改为承接前章：林川已解除合同、离开北桥检修队，本章应描写他离开后的处境、去向或新冲突；若确需保留其队员身份，则必须在前章或本章内给出明确的重新入职/合同恢复的因果交代，不能无过渡地推翻已写正文。"
+        }
+      ],
+      "reasons": [
+        "本章正文与【近期上下文】prev_chapter_tail 直接冲突：前章已明确林川合同解除、退出检修队，本章却称合同未解除、仍是现任正式员工并领薪，属于人物状态/剧情事实的硬性接续断裂。",
+        "该矛盾为 critical 级，且涉及整章立足点（人物身份与处境），需结构性改写而非句段微调，故判定 rewrite。",
+        "无章节计划、无世界观硬约束、无剧情上下文，无法从规划层面判定为蓝图走偏，因此不触发 replan。"
+      ],
+      "confidence": 1.0
+    }
+  },
+  {
+    "case_id": "logic.capability_restored",
+    "case_sha256": "648aea6bdaf28ac82e1801aa9df478b993f174618fc43f43a2218a3606faaa80",
+    "execution": "completed",
+    "coverage": "implemented",
+    "attempted": true,
+    "prompt_sha256": "acc63f06856202f025a1c04cb4eb20775ef8da33afecf1b8221e026ee92e00fe",
+    "input_tokens": 735,
+    "output_tokens": 164,
+    "cost_est": 0.002782,
+    "cost_status": "estimated",
+    "raw_output": "{\"verdict\": \"pass\", \"findings\": [], \"reasons\": [\"本章仅两句，描述许宁装入新电池、按下开关，林川等待自检完成后读取测量结果，与上一章章尾（外接电源已断开、电池已取出）形成合理接续：先恢复供电再测量，无重演已完成动作。\", \"符合世界观硬约束：仪器需外接电源或装入电池才能测量，本章通过装入电池恢复供能，未引入其他供能方式。\", \"无章节计划、无伏笔与剧情线可对照，未发现主线偏移、人设或节奏问题。\", \"内容过短但无明确冲突或断裂，按规则不制造冗余修订，判定 pass。\"], \"confidence\": 0.9}",
+    "model_id": "deepseek-flash",
+    "finish_reason": "stop",
+    "wall_ms": 2641,
+    "polarity": "negative",
+    "category": "capability",
+    "label_status": "proposed",
+    "review": "provisional",
+    "output_valid": true,
+    "verdict_match": true,
+    "automatic_pass": true,
+    "confirmed_pass": null,
+    "candidates": {},
+    "evidence": {},
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "duplicates": 0,
+    "valid_quotes": 0,
+    "total_quotes": 0,
+    "findings_without_quotes": 0,
+    "verdict": {
+      "verdict": "pass",
+      "replan_target": null,
+      "findings": [],
+      "reasons": [
+        "本章仅两句，描述许宁装入新电池、按下开关，林川等待自检完成后读取测量结果，与上一章章尾（外接电源已断开、电池已取出）形成合理接续：先恢复供电再测量，无重演已完成动作。",
+        "符合世界观硬约束：仪器需外接电源或装入电池才能测量，本章通过装入电池恢复供能，未引入其他供能方式。",
+        "无章节计划、无伏笔与剧情线可对照，未发现主线偏移、人设或节奏问题。",
+        "内容过短但无明确冲突或断裂，按规则不制造冗余修订，判定 pass。"
+      ],
+      "confidence": 0.9
+    }
+  },
+  {
+    "case_id": "logic.capability_rule",
+    "case_sha256": "184e935feb8c6e38d633813cd6a55b8c0da0f2c0732003772c436e2f08cc0471",
+    "execution": "completed",
+    "coverage": "implemented",
+    "attempted": true,
+    "prompt_sha256": "a0020de45f1e3160ca18c7a6c8c931e174f071d8a648de03d647294ed7fa320a",
+    "input_tokens": 734,
+    "output_tokens": 319,
+    "cost_est": 0.00402,
+    "cost_status": "estimated",
+    "raw_output": "{\n  \"verdict\": \"rewrite\",\n  \"findings\": [\n    {\n      \"conflict_key\": \"instrument_power_source\",\n      \"conflict_type\": \"item_rule\",\n      \"severity\": \"critical\",\n      \"scope\": \"local\",\n      \"evidence\": [\n        {\n          \"chapter\": 2,\n          \"quote\": \"没有接入任何电源，仪器却持续正常测量，林川直接读出了实时电流值。\"\n        },\n        {\n          \"chapter\": 1,\n          \"quote\": \"林川检查了仪器：外接电源已断开，电池也已取出。\"\n        }\n      ],\n      \"confidence\": 1.0,\n      \"suggestion\": \"本章直接让仪器在无电源状态下正常工作，违反世界观硬约束“该仪器必须外接电源或装入电池才能测量，没有其他供能方式”。需改写为仪器因断电而无法测量，或补充符合硬约束的供能方式（如重新接电/装电池），并据此调整林川读出电流值的情节。\"\n    }\n  ],\n  \"reasons\": [\n    \"本章核心情节（仪器无电源仍正常测量）与世界观硬约束直接冲突，属于设定规则违背，必须修订。\",\n    \"无章节计划，无法判断主线推进，但硬约束冲突已构成 critical 问题，故路由为 rewrite。\",\n    \"冲突为句段级设定矛盾，可通过局部改写解决，scope 定为 local。\"\n  ],\n  \"confidence\": 1.0\n}",
+    "model_id": "deepseek-flash",
+    "finish_reason": "stop",
+    "wall_ms": 3188,
+    "polarity": "positive",
+    "category": "capability",
+    "label_status": "proposed",
+    "review": "provisional",
+    "output_valid": true,
+    "verdict_match": true,
+    "automatic_pass": true,
+    "confirmed_pass": null,
+    "candidates": {
+      "0": [
+        "capability_rule"
+      ]
+    },
+    "evidence": {
+      "0": [
+        true,
+        true
+      ]
+    },
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "duplicates": 0,
+    "valid_quotes": 2,
+    "total_quotes": 2,
+    "findings_without_quotes": 0,
+    "verdict": {
+      "verdict": "rewrite",
+      "replan_target": null,
+      "findings": [
+        {
+          "finding_id": null,
+          "conflict_key": "instrument_power_source",
+          "conflict_type": "item_rule",
+          "severity": "critical",
+          "scope": "local",
+          "source": "L1",
+          "evidence": [
+            {
+              "chapter": 2,
+              "quote": "没有接入任何电源，仪器却持续正常测量，林川直接读出了实时电流值。"
+            },
+            {
+              "chapter": 1,
+              "quote": "林川检查了仪器：外接电源已断开，电池也已取出。"
+            }
+          ],
+          "confidence": 1.0,
+          "suggestion": "本章直接让仪器在无电源状态下正常工作，违反世界观硬约束“该仪器必须外接电源或装入电池才能测量，没有其他供能方式”。需改写为仪器因断电而无法测量，或补充符合硬约束的供能方式（如重新接电/装电池），并据此调整林川读出电流值的情节。"
+        }
+      ],
+      "reasons": [
+        "本章核心情节（仪器无电源仍正常测量）与世界观硬约束直接冲突，属于设定规则违背，必须修订。",
+        "无章节计划，无法判断主线推进，但硬约束冲突已构成 critical 问题，故路由为 rewrite。",
+        "冲突为句段级设定矛盾，可通过局部改写解决，scope 定为 local。"
+      ],
+      "confidence": 1.0
+    }
+  },
+  {
+    "case_id": "logic.destroyed_item",
+    "case_sha256": "b348a9495ed3664b7a3c97f398e92e463102fdddf18bcd04465ed6402dc56558",
+    "execution": "completed",
+    "coverage": "implemented",
+    "attempted": true,
+    "prompt_sha256": "83c29ba1eeaf5a32082e1c7c4d1bafd268e8a40f479dc96c4ea994175b599977",
+    "input_tokens": 714,
+    "output_tokens": 267,
+    "cost_est": 0.003564,
+    "cost_status": "estimated",
+    "raw_output": "{\"verdict\":\"rewrite\",\"findings\":[{\"conflict_key\":\"item_state_wan_yong_biao\",\"conflict_type\":\"item_rule\",\"severity\":\"critical\",\"scope\":\"local\",\"evidence\":[{\"chapter\":1,\"quote\":\"林川唯一的万用表已烧成无法修复的残骸，他尚未获取替代品。\"},{\"chapter\":2,\"quote\":\"林川拿起那只完好无损的旧万用表，接上探针，顺利测出了电压。\"}],\"confidence\":0.98,\"suggestion\":\"删除或改写本章开头：万用表在第1章已烧毁且未获得替代品，不能直接出现“完好无损的旧万用表”。应改为林川先设法获取/修复替代万用表（或改用其他测量手段），再写测电压；若本章意图就是“获得替代品”，需补上获取过程与来源。\"}],\"reasons\":[\"第2章正文与第1章章尾存在硬性物品状态冲突：唯一万用表已烧毁且无替代品，本章却直接使用完好万用表，属接续断裂。\",\"该冲突为句段级可修复问题，无需推翻整章规划，故路由 rewrite 而非 replan。\"],\"confidence\":0.95}",
+    "model_id": "deepseek-flash",
+    "finish_reason": "stop",
+    "wall_ms": 2703,
+    "polarity": "positive",
+    "category": "item",
+    "label_status": "proposed",
+    "review": "provisional",
+    "output_valid": true,
+    "verdict_match": true,
+    "automatic_pass": true,
+    "confirmed_pass": null,
+    "candidates": {
+      "0": [
+        "destroyed_item"
+      ]
+    },
+    "evidence": {
+      "0": [
+        true,
+        true
+      ]
+    },
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "duplicates": 0,
+    "valid_quotes": 2,
+    "total_quotes": 2,
+    "findings_without_quotes": 0,
+    "verdict": {
+      "verdict": "rewrite",
+      "replan_target": null,
+      "findings": [
+        {
+          "finding_id": null,
+          "conflict_key": "item_state_wan_yong_biao",
+          "conflict_type": "item_rule",
+          "severity": "critical",
+          "scope": "local",
+          "source": "L1",
+          "evidence": [
+            {
+              "chapter": 1,
+              "quote": "林川唯一的万用表已烧成无法修复的残骸，他尚未获取替代品。"
+            },
+            {
+              "chapter": 2,
+              "quote": "林川拿起那只完好无损的旧万用表，接上探针，顺利测出了电压。"
+            }
+          ],
+          "confidence": 0.98,
+          "suggestion": "删除或改写本章开头：万用表在第1章已烧毁且未获得替代品，不能直接出现“完好无损的旧万用表”。应改为林川先设法获取/修复替代万用表（或改用其他测量手段），再写测电压；若本章意图就是“获得替代品”，需补上获取过程与来源。"
+        }
+      ],
+      "reasons": [
+        "第2章正文与第1章章尾存在硬性物品状态冲突：唯一万用表已烧毁且无替代品，本章却直接使用完好万用表，属接续断裂。",
+        "该冲突为句段级可修复问题，无需推翻整章规划，故路由 rewrite 而非 replan。"
+      ],
+      "confidence": 0.95
+    }
+  },
+  {
+    "case_id": "logic.first_visit",
+    "case_sha256": "2d539ded7126f594d8a3670ee403c4b18b793189af2c97622b13082cca5fb7aa",
+    "execution": "completed",
+    "coverage": "implemented",
+    "attempted": true,
+    "prompt_sha256": "edbfd94376a6f12e82613ce6cdfdb9f12fdb5e6abb2203d84d9ca082081a7cdc",
+    "input_tokens": 707,
+    "output_tokens": 282,
+    "cost_est": 0.00367,
+    "cost_status": "estimated",
+    "raw_output": "{\"verdict\":\"rewrite\",\"findings\":[{\"conflict_key\":\"continuity_northbridge_first_visit\",\"conflict_type\":\"timeline\",\"severity\":\"major\",\"scope\":\"local\",\"evidence\":[{\"chapter\":1,\"quote\":\"昨晚林川已在北桥站办理登记，今天再次来到原站房。\"},{\"chapter\":2,\"quote\":\"这是林川有生以来第一次来到北桥站，此前他从未到过这里。\"}],\"confidence\":0.95,\"suggestion\":\"删除或改写“第一次来到北桥站/从未到过这里”的表述，改为承接前章的“再次来到原站房”，例如：林川再次走进北桥站原站房，昨晚办理登记的情形还留在记忆里。随后直接推进本章新动作，避免重演抵达/登记。\"}],\"reasons\":[\"本章开头与前一章章尾直接矛盾：前章已写林川昨晚在北桥站办理登记，本章却称其有生以来第一次来到北桥站。\",\"该矛盾属于明确的接续断裂，会破坏时间线与人物经历连续性，需按 local 范围改写开头接续句。\",\"除该接续问题外，本章正文信息过少，无法判断其他剧情线推进；本次仅要求修复接续矛盾，不升级为整章重规划。\"],\"confidence\":0.95}",
+    "model_id": "deepseek-flash",
+    "finish_reason": "stop",
+    "wall_ms": 2688,
+    "polarity": "positive",
+    "category": "visit",
+    "label_status": "proposed",
+    "review": "provisional",
+    "output_valid": true,
+    "verdict_match": true,
+    "automatic_pass": true,
+    "confirmed_pass": null,
+    "candidates": {
+      "0": [
+        "first_visit"
+      ]
+    },
+    "evidence": {
+      "0": [
+        true,
+        true
+      ]
+    },
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "duplicates": 0,
+    "valid_quotes": 2,
+    "total_quotes": 2,
+    "findings_without_quotes": 0,
+    "verdict": {
+      "verdict": "rewrite",
+      "replan_target": null,
+      "findings": [
+        {
+          "finding_id": null,
+          "conflict_key": "continuity_northbridge_first_visit",
+          "conflict_type": "timeline",
+          "severity": "major",
+          "scope": "local",
+          "source": "L1",
+          "evidence": [
+            {
+              "chapter": 1,
+              "quote": "昨晚林川已在北桥站办理登记，今天再次来到原站房。"
+            },
+            {
+              "chapter": 2,
+              "quote": "这是林川有生以来第一次来到北桥站，此前他从未到过这里。"
+            }
+          ],
+          "confidence": 0.95,
+          "suggestion": "删除或改写“第一次来到北桥站/从未到过这里”的表述，改为承接前章的“再次来到原站房”，例如：林川再次走进北桥站原站房，昨晚办理登记的情形还留在记忆里。随后直接推进本章新动作，避免重演抵达/登记。"
+        }
+      ],
+      "reasons": [
+        "本章开头与前一章章尾直接矛盾：前章已写林川昨晚在北桥站办理登记，本章却称其有生以来第一次来到北桥站。",
+        "该矛盾属于明确的接续断裂，会破坏时间线与人物经历连续性，需按 local 范围改写开头接续句。",
+        "除该接续问题外，本章正文信息过少，无法判断其他剧情线推进；本次仅要求修复接续矛盾，不升级为整章重规划。"
+      ],
+      "confidence": 0.95
+    }
+  },
+  {
+    "case_id": "logic.former_member",
+    "case_sha256": "e46ba2081b607964944a138bcf4387ed3f6ccaaff6f0f470d4a722d02973eb6a",
+    "execution": "completed",
+    "coverage": "implemented",
+    "attempted": true,
+    "prompt_sha256": "365672ef237851761e56037d33206fc3917c3357d23871923e1544ce38e126bf",
+    "input_tokens": 707,
+    "output_tokens": 136,
+    "cost_est": 0.002502,
+    "cost_status": "estimated",
+    "raw_output": "{\"verdict\": \"pass\", \"findings\": [], \"reasons\": [\"本章内容与近期上下文一致：林川已退出北桥检修队，本章以外部维修承包人身份递交报价单，明确说明自己不再属于检修队，接续自然，无矛盾。\", \"无章节计划、无世界观硬约束、无开放伏笔与剧情线可对照，无法判定主线偏移或伏笔遗漏。\", \"内容为单场景动作，衔接顺畅，人设与身份状态一致，节奏无异常。\", \"未发现跨章重演、接续断裂或机械重复问题。\"], \"confidence\": 0.6}",
+    "model_id": "deepseek-flash",
+    "finish_reason": "stop",
+    "wall_ms": 2484,
+    "polarity": "negative",
+    "category": "allegiance",
+    "label_status": "proposed",
+    "review": "provisional",
+    "output_valid": true,
+    "verdict_match": true,
+    "automatic_pass": true,
+    "confirmed_pass": null,
+    "candidates": {},
+    "evidence": {},
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "duplicates": 0,
+    "valid_quotes": 0,
+    "total_quotes": 0,
+    "findings_without_quotes": 0,
+    "verdict": {
+      "verdict": "pass",
+      "replan_target": null,
+      "findings": [],
+      "reasons": [
+        "本章内容与近期上下文一致：林川已退出北桥检修队，本章以外部维修承包人身份递交报价单，明确说明自己不再属于检修队，接续自然，无矛盾。",
+        "无章节计划、无世界观硬约束、无开放伏笔与剧情线可对照，无法判定主线偏移或伏笔遗漏。",
+        "内容为单场景动作，衔接顺畅，人设与身份状态一致，节奏无异常。",
+        "未发现跨章重演、接续断裂或机械重复问题。"
+      ],
+      "confidence": 0.6
+    }
+  },
+  {
+    "case_id": "logic.promise_completed",
+    "case_sha256": "c38457d73456506c54487ea75f7431c724423f1a35be80980babcda2aa96ab40",
+    "execution": "completed",
+    "coverage": "implemented",
+    "attempted": true,
+    "prompt_sha256": "540c61576a795e18d712ae4e838ff13ec3acac952f5ee647eb65f3f3d1aaa50b",
+    "input_tokens": 714,
+    "output_tokens": 165,
+    "cost_est": 0.002748,
+    "cost_status": "estimated",
+    "raw_output": "{\"verdict\": \"pass\", \"findings\": [], \"reasons\": [\"本章为第2章，无章节计划、无世界观硬约束、无剧情上下文与伏笔，审核范围仅限与上一章章尾的接续一致性。\", \"上一章章尾为林川承诺修好水泵但检修尚未开始、水泵完全损坏；本章开头直接写林川拆开水泵、更换电容、重新接线并试运行成功，随后告知许宁承诺完成，动作承接自然，无重演已完成动作、无丢弃未完成请求、无时间地点或视角的无交代跳变。\", \"本章内容为单一场景的完整小闭环，节奏紧凑，未发现人设、逻辑或结构问题，无需修订。\"], \"confidence\": 0.9}",
+    "model_id": "deepseek-flash",
+    "finish_reason": "stop",
+    "wall_ms": 2735,
+    "polarity": "negative",
+    "category": "promise",
+    "label_status": "proposed",
+    "review": "provisional",
+    "output_valid": true,
+    "verdict_match": true,
+    "automatic_pass": true,
+    "confirmed_pass": null,
+    "candidates": {},
+    "evidence": {},
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "duplicates": 0,
+    "valid_quotes": 0,
+    "total_quotes": 0,
+    "findings_without_quotes": 0,
+    "verdict": {
+      "verdict": "pass",
+      "replan_target": null,
+      "findings": [],
+      "reasons": [
+        "本章为第2章，无章节计划、无世界观硬约束、无剧情上下文与伏笔，审核范围仅限与上一章章尾的接续一致性。",
+        "上一章章尾为林川承诺修好水泵但检修尚未开始、水泵完全损坏；本章开头直接写林川拆开水泵、更换电容、重新接线并试运行成功，随后告知许宁承诺完成，动作承接自然，无重演已完成动作、无丢弃未完成请求、无时间地点或视角的无交代跳变。",
+        "本章内容为单一场景的完整小闭环，节奏紧凑，未发现人设、逻辑或结构问题，无需修订。"
+      ],
+      "confidence": 0.9
+    }
+  },
+  {
+    "case_id": "logic.replacement_item",
+    "case_sha256": "b1cf0577d1b2f859647e5d7ff164e9b024e0d2781f7aef82d40722605cdfe0b2",
+    "execution": "completed",
+    "coverage": "implemented",
+    "attempted": true,
+    "prompt_sha256": "259c52287c77b5b2431308743b70524868bcfc2af976fca92591b81826fa7ab3",
+    "input_tokens": 716,
+    "output_tokens": 114,
+    "cost_est": 0.002344,
+    "cost_status": "estimated",
+    "raw_output": "{\"verdict\": \"pass\", \"findings\": [], \"reasons\": [\"本章仅两句，承接前章结尾'万用表烧成残骸'，交代了领新表、收残骸、重新测量的后续动作，接续自然，无重演已完成动作。\", \"无章节计划、无世界观硬约束、无伏笔与剧情线可对照，未发现主线偏移或设定冲突。\", \"内容过短但无明确质量问题，按规则不制造冗余修订。\"], \"confidence\": 0.6}",
+    "model_id": "deepseek-flash",
+    "finish_reason": "stop",
+    "wall_ms": 2406,
+    "polarity": "negative",
+    "category": "item",
+    "label_status": "proposed",
+    "review": "provisional",
+    "output_valid": true,
+    "verdict_match": true,
+    "automatic_pass": true,
+    "confirmed_pass": null,
+    "candidates": {},
+    "evidence": {},
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "duplicates": 0,
+    "valid_quotes": 0,
+    "total_quotes": 0,
+    "findings_without_quotes": 0,
+    "verdict": {
+      "verdict": "pass",
+      "replan_target": null,
+      "findings": [],
+      "reasons": [
+        "本章仅两句，承接前章结尾'万用表烧成残骸'，交代了领新表、收残骸、重新测量的后续动作，接续自然，无重演已完成动作。",
+        "无章节计划、无世界观硬约束、无伏笔与剧情线可对照，未发现主线偏移或设定冲突。",
+        "内容过短但无明确质量问题，按规则不制造冗余修订。"
+      ],
+      "confidence": 0.6
+    }
+  },
+  {
+    "case_id": "logic.return_visit",
+    "case_sha256": "33e9b5bd63cc0579256eec5e1752201816ff9c8b64e8e95cd8bc7ccb7216c8f8",
+    "execution": "completed",
+    "coverage": "implemented",
+    "attempted": true,
+    "prompt_sha256": "043423a630659197f0dd08b783ceac8a80ec4cffe055500a3ad144d5f13a1e49",
+    "input_tokens": 702,
+    "output_tokens": 200,
+    "cost_est": 0.003004,
+    "cost_status": "estimated",
+    "raw_output": "{\"verdict\": \"pass\", \"findings\": [], \"reasons\": [\"本章仅有一句正文，内容为林川推开站房门并取出昨晚留下的登记回执，与【近期上下文】中'昨晚林川已在北桥站办理登记，今天再次来到原站房'完全一致，属于合理的同场景接续，未重演已完成动作，也未丢弃未完成请求或危险。\", \"无章节计划、无世界观硬约束、无确定性校验结果、无剧情上下文与开放伏笔，缺乏可对照的规划或伏笔依据，无法判定主线偏移或伏笔未收。\", \"无人物状态快照与设定实体，无法核实人设或设定冲突；无近期章节开头参照，无法判定近义改写套路。\", \"未发现衔接断裂、机械重复、时间地点或视角无交代改变等问题，按规则不制造冗余修订，判定 pass。\"], \"confidence\": 0.6}",
+    "model_id": "deepseek-flash",
+    "finish_reason": "stop",
+    "wall_ms": 2844,
+    "polarity": "negative",
+    "category": "visit",
+    "label_status": "proposed",
+    "review": "provisional",
+    "output_valid": true,
+    "verdict_match": true,
+    "automatic_pass": true,
+    "confirmed_pass": null,
+    "candidates": {},
+    "evidence": {},
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "duplicates": 0,
+    "valid_quotes": 0,
+    "total_quotes": 0,
+    "findings_without_quotes": 0,
+    "verdict": {
+      "verdict": "pass",
+      "replan_target": null,
+      "findings": [],
+      "reasons": [
+        "本章仅有一句正文，内容为林川推开站房门并取出昨晚留下的登记回执，与【近期上下文】中'昨晚林川已在北桥站办理登记，今天再次来到原站房'完全一致，属于合理的同场景接续，未重演已完成动作，也未丢弃未完成请求或危险。",
+        "无章节计划、无世界观硬约束、无确定性校验结果、无剧情上下文与开放伏笔，缺乏可对照的规划或伏笔依据，无法判定主线偏移或伏笔未收。",
+        "无人物状态快照与设定实体，无法核实人设或设定冲突；无近期章节开头参照，无法判定近义改写套路。",
+        "未发现衔接断裂、机械重复、时间地点或视角无交代改变等问题，按规则不制造冗余修订，判定 pass。"
+      ],
+      "confidence": 0.6
+    }
+  },
+  {
+    "case_id": "logic.unfulfilled_promise",
+    "case_sha256": "f28a79298e2c1c34f516d9b2fb9a1bcf124f6847b9c177ee3806932fef3e0138",
+    "execution": "completed",
+    "coverage": "implemented",
+    "attempted": true,
+    "prompt_sha256": "a61412eee2ba23ebf6dd60053d5d3112840015668d7314cd9afdbfce6ded7a6f",
+    "input_tokens": 710,
+    "output_tokens": 289,
+    "cost_est": 0.003732,
+    "cost_status": "estimated",
+    "raw_output": "{\n  \"verdict\": \"rewrite\",\n  \"findings\": [\n    {\n      \"conflict_key\": \"plotline_pump_promise_contradiction\",\n      \"conflict_type\": \"plotline\",\n      \"severity\": \"critical\",\n      \"scope\": \"structural\",\n      \"evidence\": [\n        {\n          \"chapter\": 1,\n          \"quote\": \"林川承诺修好水泵，但检修尚未开始，水泵仍完全损坏。\"\n        },\n        {\n          \"chapter\": 2,\n          \"quote\": \"检修还没开始，大家就确认林川已经兑现修好水泵的承诺，水泵已经恢复运作。\"\n        }\n      ],\n      \"confidence\": 0.95,\n      \"suggestion\": \"删除或重写本章开头，不能跳过检修过程直接宣布水泵恢复运作。应描写林川实际开始检修、遇到困难并逐步修复水泵的过程，或至少交代检修如何完成，使承诺兑现具备因果链条。\"\n    }\n  ],\n  \"reasons\": [\n    \"第1章结尾明确水泵仍完全损坏且检修尚未开始，第2章开头却直接确认水泵已恢复运作，构成因果断裂和承诺兑现过程缺失。\",\n    \"该矛盾属于结构性剧情问题，需重写本章开头以衔接前章并补全检修过程。\"\n  ],\n  \"confidence\": 0.95\n}",
+    "model_id": "deepseek-flash",
+    "finish_reason": "stop",
+    "wall_ms": 2750,
+    "polarity": "positive",
+    "category": "promise",
+    "label_status": "proposed",
+    "review": "provisional",
+    "output_valid": true,
+    "verdict_match": true,
+    "automatic_pass": true,
+    "confirmed_pass": null,
+    "candidates": {
+      "0": [
+        "unfulfilled_promise"
+      ]
+    },
+    "evidence": {
+      "0": [
+        true,
+        true
+      ]
+    },
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "duplicates": 0,
+    "valid_quotes": 2,
+    "total_quotes": 2,
+    "findings_without_quotes": 0,
+    "verdict": {
+      "verdict": "rewrite",
+      "replan_target": null,
+      "findings": [
+        {
+          "finding_id": null,
+          "conflict_key": "plotline_pump_promise_contradiction",
+          "conflict_type": "plotline",
+          "severity": "critical",
+          "scope": "structural",
+          "source": "L1",
+          "evidence": [
+            {
+              "chapter": 1,
+              "quote": "林川承诺修好水泵，但检修尚未开始，水泵仍完全损坏。"
+            },
+            {
+              "chapter": 2,
+              "quote": "检修还没开始，大家就确认林川已经兑现修好水泵的承诺，水泵已经恢复运作。"
+            }
+          ],
+          "confidence": 0.95,
+          "suggestion": "删除或重写本章开头，不能跳过检修过程直接宣布水泵恢复运作。应描写林川实际开始检修、遇到困难并逐步修复水泵的过程，或至少交代检修如何完成，使承诺兑现具备因果链条。"
+        }
+      ],
+      "reasons": [
+        "第1章结尾明确水泵仍完全损坏且检修尚未开始，第2章开头却直接确认水泵已恢复运作，构成因果断裂和承诺兑现过程缺失。",
+        "该矛盾属于结构性剧情问题，需重写本章开头以衔接前章并补全检修过程。"
+      ],
+      "confidence": 0.95
+    }
+  }
+]

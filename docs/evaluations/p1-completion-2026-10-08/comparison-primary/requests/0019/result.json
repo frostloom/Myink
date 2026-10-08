@@ -1,0 +1,38 @@
+{
+  "request_index": 19,
+  "case_id": "injury_continuity",
+  "variant": "full",
+  "repetition": 1,
+  "prompt_sha256": "158169565e9f6103b0ba8cddde2f4811f8bb564b5accc32748d2bd91af7a76f1",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 60,
+    "max_cost_yuan": 5.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 4096,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T11:50:17.985615+00:00",
+  "execution": "completed",
+  "raw_output": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁爬上观测站屋顶，在东南角找到防水层裂缝与鼓包，并发现一处旧补丁和女儿墙内侧的可疑折痕，许宁用防水胶带做了临时封堵，并记下结构问题待查。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"item\",\n        \"old_value\": \"\",\n        \"new_value\": \"手电、防水胶带（剩余部分）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"item\",\n        \"old_value\": \"\",\n        \"new_value\": \"记录本、圆珠笔\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.8,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"knowledge\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶东南角防水层老化开裂、存在鼓包与旧补丁，女儿墙内侧有可疑折痕疑似结构问题；观测站归属待查\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.8\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.75,\n      \"payload\": {\n        \"description\": \"屋顶女儿墙内侧卷材上的可疑折痕，疑似底下结构被顶起又压回，许宁判断结构可能有问题，需回头找人来看。\",\n        \"trigger\": {\n          \"actor\": \"许宁\",\n          \"action\": \"发现并记录\",\n          \"object\": \"女儿墙内侧卷材折痕\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.75\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.7,\n      \"payload\": {\n        \"description\": \"许宁提出观测站归谁管需要查一下，观测站的归属与管理者身份尚未明确。\",\n        \"trigger\": {\n          \"actor\": \"许宁\",\n          \"action\": \"提出查证\",\n          \"object\": \"观测站归属\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.7\n      }\n    }\n  ]\n}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁爬上观测站屋顶，在东南角找到防水层裂缝与鼓包，并发现一处旧补丁和女儿墙内侧的可疑折痕，许宁用防水胶带做了临时封堵，并记下结构问题待查。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"item\",\n        \"old_value\": \"\",\n        \"new_value\": \"手电、防水胶带（剩余部分）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"item\",\n        \"old_value\": \"\",\n        \"new_value\": \"记录本、圆珠笔\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.8,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"knowledge\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶东南角防水层老化开裂、存在鼓包与旧补丁，女儿墙内侧有可疑折痕疑似结构问题；观测站归属待查\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.8\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.75,\n      \"payload\": {\n        \"description\": \"屋顶女儿墙内侧卷材上的可疑折痕，疑似底下结构被顶起又压回，许宁判断结构可能有问题，需回头找人来看。\",\n        \"trigger\": {\n          \"actor\": \"许宁\",\n          \"action\": \"发现并记录\",\n          \"object\": \"女儿墙内侧卷材折痕\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.75\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.7,\n      \"payload\": {\n        \"description\": \"许宁提出观测站归谁管需要查一下，观测站的归属与管理者身份尚未明确。\",\n        \"trigger\": {\n          \"actor\": \"许宁\",\n          \"action\": \"提出查证\",\n          \"object\": \"观测站归属\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.7\n      }\n    }\n  ]\n}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 2375,
+  "output_tokens": 862,
+  "cost_est": 0.011646,
+  "cost_status": "estimated",
+  "wall_ms": 4547
+}

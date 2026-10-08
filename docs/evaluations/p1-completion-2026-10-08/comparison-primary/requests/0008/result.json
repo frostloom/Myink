@@ -1,0 +1,38 @@
+{
+  "request_index": 8,
+  "case_id": "meter_replacement",
+  "variant": "full",
+  "repetition": 1,
+  "prompt_sha256": "dac54e09e798151ae20495d9817e0787ca36dcd6d71500e8ae002e5d83db8a6e",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 60,
+    "max_cost_yuan": 5.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 1024,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T11:49:14.712189+00:00",
+  "execution": "completed",
+  "raw_output": "{\"summary\": \"林川与许宁排查检修台线路故障，拆开面板发现墙缝渗水沿线槽流入接线盒，接口密封胶开裂。工具间里旧万用表没电，许宁翻出一台未登记的新数字万用表，来源不明。测量确认靠墙一段线芯因长期泡水氧化断路，绝缘层失效，需整条更换。林川决定先断电隔离该段，待雨停再查墙外进水点，并注意到墙缝水痕不止一处，渗水已持续多日。\"}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\"summary\": \"林川与许宁排查检修台线路故障，拆开面板发现墙缝渗水沿线槽流入接线盒，接口密封胶开裂。工具间里旧万用表没电，许宁翻出一台未登记的新数字万用表，来源不明。测量确认靠墙一段线芯因长期泡水氧化断路，绝缘层失效，需整条更换。林川决定先断电隔离该段，待雨停再查墙外进水点，并注意到墙缝水痕不止一处，渗水已持续多日。\"}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 855,
+  "output_tokens": 119,
+  "cost_est": 0.002662,
+  "cost_status": "estimated",
+  "wall_ms": 3234
+}

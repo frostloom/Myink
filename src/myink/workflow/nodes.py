@@ -247,15 +247,14 @@ def _run_tool_loop(db: Session, state: ChapterState, node: str, role: str, chain
 
     单循环 + 条件最终轮：工具轮无 tool_calls 就直接用其 content（单轮，与无工具
     完全一致）；只有实际调了工具才追加「无 tools」最终轮输出最终结果。预算以工具执行
-    总数计，超预算先把已发起的工具执行完再进最终轮（保证消息历史合法：不存在无 tool
-    结果的 assistant tool_calls）。最终轮按节点区分输出格式：final_json=True（audit）
+    总数计，预算外调用返回明确错误而不执行（仍为每个 tool_call 回传结果，保持消息合法）。
+    最终轮按节点区分输出格式：final_json=True（audit）
     强制严格 JSON；final_json=False（write）要求纯文本正文（=== CONTENT === 标记）。
     """
     messages = list(messages)
-    used_tool = False
     tool_count = 0
     tool_trace: list[dict] = []
-    while True:
+    while tool_count < max_tool_calls:
         resp = _bounded_generate(
             chain, messages, json_mode=False, max_tokens=max_tokens, tools=tools,
             streamer=streamer,
@@ -270,14 +269,24 @@ def _run_tool_loop(db: Session, state: ChapterState, node: str, role: str, chain
             # 带 tool_calls 的 assistant content 只是查证过程说明，不属于最终 Plan/正文。
             # 下一轮生成前清空前端产物，避免把“我先查询……”混进用户看到的正文。
             streamer.reset()
-        used_tool = True
         messages.append(_assistant_tool_calls_message(resp))
         for tc in resp.tool_calls:
-            result = execute_tool(db, uuid.UUID(state["project_id"]), tc["name"], tc.get("arguments") or {})
-            tool_trace.append({"tool": tc["name"], "arguments": tc.get("arguments") or {},
-                               "result": result[:200]})
+            arguments = tc.get("arguments") or {}
+            if isinstance(arguments, dict):
+                arguments = dict(arguments)
+                if tc["name"] in ("inspect_character", "inspect_facts") and state.get("chapter_seq"):
+                    arguments.setdefault("chapter_seq", state["chapter_seq"])
+            skipped = tool_count >= max_tool_calls
+            if skipped:
+                result = json.dumps({"error": "TOOL_BUDGET_EXCEEDED: 工具执行预算已用尽，此调用未执行。"}, ensure_ascii=False)
+            else:
+                result = execute_tool(db, uuid.UUID(state["project_id"]), tc["name"], arguments)
+                tool_count += 1
+            trace_item = {"tool": tc["name"], "arguments": arguments, "result": result[:200]}
+            if skipped:
+                trace_item["skipped"] = True
+            tool_trace.append(trace_item)
             messages.append({"role": "tool", "tool_call_id": tc["id"], "content": result})
-            tool_count += 1
         if tool_count >= max_tool_calls:
             break
     # 条件最终轮：去掉 tools（§10：最终轮带 tools 会诱导再次调工具）。按节点分输出格式：

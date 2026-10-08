@@ -1,0 +1,38 @@
+{
+  "request_index": 38,
+  "case_id": "injury_continuity",
+  "variant": "no_hybrid",
+  "repetition": 1,
+  "prompt_sha256": "b514d09b0de1c501f461a674564ec7e7e052aeaa03a45a73137b36464837b47e",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 60,
+    "max_cost_yuan": 5.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 6000,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T11:51:42.660972+00:00",
+  "execution": "completed",
+  "raw_output": "{\n  \"goals\": [\n    \"推进林川与许宁在观测站检查屋顶漏水位置的主线任务\",\n    \"通过协作方式展现两人在现实身体状态下的配合与限制\",\n    \"为后续可能的维修或外部求助埋下线索\"\n  ],\n  \"scenes\": [\n    {\n      \"location_id\": \"观测站楼梯口\",\n      \"participants\": [\"林川\", \"许宁\"],\n      \"goal\": \"确定检查屋顶漏水的具体方案与分工\",\n      \"time\": \"紧接上一章结尾\"\n    },\n    {\n      \"location_id\": \"观测站屋顶\",\n      \"participants\": [\"林川\", \"许宁\"],\n      \"goal\": \"找到漏水位置并记录现场情况\",\n      \"time\": \"上一场景后不久\"\n    }\n  ],\n  \"characters\": [\n    {\n      \"character_id\": \"林川\",\n      \"expected_state\": {\n        \"location\": \"观测站屋顶\"\n      }\n    },\n    {\n      \"character_id\": \"许宁\",\n      \"expected_state\": {\n        \"location\": \"观测站屋顶\"\n      }\n    }\n  ],\n  \"hooks_to_plant\": [\n    \"屋顶漏水处附近发现一处非自然破损痕迹，暗示可能有外部因素\",\n    \"许宁在检查中体力不支，暗示其身体状态比表面更差\"\n  ],\n  \"hooks_to_resolve\": [],\n  \"expected_events\": [\n    \"林川和许宁从楼梯口出发，携带现有工具前往屋顶\",\n    \"两人在屋顶找到漏水位置，确认是防水层老化开裂\",\n    \"林川尝试用现有材料临时封堵，许宁在旁协助并记录\",\n    \"过程中许宁出现明显疲惫，林川调整分工让其负责较轻的工作\",\n    \"临时封堵完成，但两人意识到需要专业维修或更换材料\"\n  ],\n  \"hard_constraints\": [\n    \"现实题材，无超能力，所有行动必须符合普通人身体状态\",\n    \"现有设备状态和伤势不能无缘由改变\",\n    \"全章仅林川和许宁两名人物出场\",\n    \"没有医学奇迹，许宁的疲惫不会突然消失或恶化到危及生命\",\n    \"协作方式必须符合两人当前身体条件，不能出现超出能力的高危动作\"\n  ],\n  \"transition\": {\n    \"mode\": \"continue\",\n    \"anchor_quote\": \"林川和许宁在观测站楼梯口商量如何检查屋顶。\",\n    \"pending_action\": \"两人尚未出发去屋顶，检查方案刚商量完\",\n    \"opening_beat\": \"林川从楼梯口旁的杂物间取出防水胶带和手电筒，许宁接过记录本，两人一前一后走上通往屋顶的检修梯。\",\n    \"bridge\": \"直接接续上一场景，从商量转入行动，通过取工具和上梯的动作自然过渡。\"\n  }\n}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\n  \"goals\": [\n    \"推进林川与许宁在观测站检查屋顶漏水位置的主线任务\",\n    \"通过协作方式展现两人在现实身体状态下的配合与限制\",\n    \"为后续可能的维修或外部求助埋下线索\"\n  ],\n  \"scenes\": [\n    {\n      \"location_id\": \"观测站楼梯口\",\n      \"participants\": [\"林川\", \"许宁\"],\n      \"goal\": \"确定检查屋顶漏水的具体方案与分工\",\n      \"time\": \"紧接上一章结尾\"\n    },\n    {\n      \"location_id\": \"观测站屋顶\",\n      \"participants\": [\"林川\", \"许宁\"],\n      \"goal\": \"找到漏水位置并记录现场情况\",\n      \"time\": \"上一场景后不久\"\n    }\n  ],\n  \"characters\": [\n    {\n      \"character_id\": \"林川\",\n      \"expected_state\": {\n        \"location\": \"观测站屋顶\"\n      }\n    },\n    {\n      \"character_id\": \"许宁\",\n      \"expected_state\": {\n        \"location\": \"观测站屋顶\"\n      }\n    }\n  ],\n  \"hooks_to_plant\": [\n    \"屋顶漏水处附近发现一处非自然破损痕迹，暗示可能有外部因素\",\n    \"许宁在检查中体力不支，暗示其身体状态比表面更差\"\n  ],\n  \"hooks_to_resolve\": [],\n  \"expected_events\": [\n    \"林川和许宁从楼梯口出发，携带现有工具前往屋顶\",\n    \"两人在屋顶找到漏水位置，确认是防水层老化开裂\",\n    \"林川尝试用现有材料临时封堵，许宁在旁协助并记录\",\n    \"过程中许宁出现明显疲惫，林川调整分工让其负责较轻的工作\",\n    \"临时封堵完成，但两人意识到需要专业维修或更换材料\"\n  ],\n  \"hard_constraints\": [\n    \"现实题材，无超能力，所有行动必须符合普通人身体状态\",\n    \"现有设备状态和伤势不能无缘由改变\",\n    \"全章仅林川和许宁两名人物出场\",\n    \"没有医学奇迹，许宁的疲惫不会突然消失或恶化到危及生命\",\n    \"协作方式必须符合两人当前身体条件，不能出现超出能力的高危动作\"\n  ],\n  \"transition\": {\n    \"mode\": \"continue\",\n    \"anchor_quote\": \"林川和许宁在观测站楼梯口商量如何检查屋顶。\",\n    \"pending_action\": \"两人尚未出发去屋顶，检查方案刚商量完\",\n    \"opening_beat\": \"林川从楼梯口旁的杂物间取出防水胶带和手电筒，许宁接过记录本，两人一前一后走上通往屋顶的检修梯。\",\n    \"bridge\": \"直接接续上一场景，从商量转入行动，通过取工具和上梯的动作自然过渡。\"\n  }\n}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 1171,
+  "output_tokens": 607,
+  "cost_est": 0.007198,
+  "cost_status": "estimated",
+  "wall_ms": 4657
+}

@@ -1,0 +1,525 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "conflict-samples:01",
+      "title": "战力越界",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_01_realm_over_cap"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:02",
+      "title": "阵营敌对",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_02_faction_hostility"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:03",
+      "title": "时间线（死而复生）",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_03_death_and_resurrection"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:04",
+      "title": "地点移动",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_04_location_without_transport"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "有相关检出，但类别/严重度与规范不完全一致",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:05",
+      "title": "人物身份（首次来访矛盾）",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_05_first_visit_contradiction"
+      },
+      "coverage": "gap",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "xfail 记录检测机制缺口",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:06",
+      "title": "物品/规则（已毁再现）",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_06_destroyed_item_reappears"
+      },
+      "coverage": "gap",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "xfail 记录检测机制缺口",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:07",
+      "title": "伏笔/承诺（未兑现当已兑现）",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_07_promise_unfulfilled_claimed"
+      },
+      "coverage": "gap",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "xfail 记录检测机制缺口",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:08",
+      "title": "能力规则（越级用秘法）",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_08_capability_rule_violation"
+      },
+      "coverage": "gap",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "xfail 记录检测机制缺口",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:09",
+      "title": "势力归属",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_09_faction_allegiance"
+      },
+      "coverage": "gap",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "xfail 记录检测机制缺口",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:10",
+      "title": "境界突破（跳级）",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_10_realm_skip_grade"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:11",
+      "title": "战力通胀",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_11_power_inflation"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:12",
+      "title": "人设漂移",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_12_persona_drift"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:13",
+      "title": "大纲偏差（预期事件未发生）",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_13_outline_deviation"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:14",
+      "title": "桥段重复",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_14_bridge_repeat_l1"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:15",
+      "title": "AI 味复发",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_15_ai_style_repeat"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:16",
+      "title": "状态失真·伤/位置（§7.7 人物状态台账）— 点级·阳性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_16_injury_flip_no_transition"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:17",
+      "title": "关系演变矛盾·敌对→结盟（§7.8 人物关系动态）— 点级·阳性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_17_relation_flip_no_record"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:18",
+      "title": "伏笔烂尾·planted 无触碰（§7.9 伏笔治理）— 长线级·阳性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_18_foreshadow_planted_stall"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:19",
+      "title": "剧情线停滞·主线（§7.9 / §8.6 线程债务）— 长线级·阳性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_19_main_thread_stall"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:20",
+      "title": "状态失真·目标（§7.7 人物状态台账）— 点级·阳性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_20_goal_flip_no_transition"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:21",
+      "title": "状态失真·身份（§7.7 人物状态台账）— 点级·阳性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_21_identity_no_source"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:22",
+      "title": "关系演变矛盾·师徒→敌对（§7.8 人物关系动态）— 点级·阳性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_22_relation_fallout_no_record"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:23",
+      "title": "伏笔烂尾·developing 无推进（§7.9 伏笔治理）— 长线级·阳性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_23_foreshadow_developing_stall"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:24",
+      "title": "状态失真·合法演化（§7.7 人物状态台账）— 点级·阴性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_24_injury_valid_transition"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "negative"
+    },
+    {
+      "id": "conflict-samples:25",
+      "title": "关系演变矛盾·合法结盟（§7.8 人物关系动态）— 点级·阴性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_25_relation_valid_reconciliation"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "negative"
+    },
+    {
+      "id": "conflict-samples:26",
+      "title": "伏笔·合法长沉（§7.9 伏笔治理）— 长线级·阴性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_26_foreshadow_legit_long_buried"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "negative"
+    },
+    {
+      "id": "conflict-samples:27",
+      "title": "剧情线·支线休眠（§7.9 / §8.6 线程债务）— 长线级·阴性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_27_side_thread_dormant"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "negative"
+    },
+    {
+      "id": "conflict-samples:28",
+      "title": "地点移动·合法（样例 4 对照）— 点级·阴性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_28_location_transport_legal"
+      },
+      "coverage": "gap",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "真空阴性：入口未充分覆盖，不算正常放行证据",
+      "polarity": "negative"
+    },
+    {
+      "id": "conflict-samples:29",
+      "title": "首次来访·合法（样例 5 对照）— 点级·阴性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_29_revisit_legal"
+      },
+      "coverage": "gap",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "真空阴性：入口未充分覆盖，不算正常放行证据",
+      "polarity": "negative"
+    },
+    {
+      "id": "conflict-samples:30",
+      "title": "物品·合法重铸（样例 6 对照）— 点级·阴性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_30_reforged_item_legal"
+      },
+      "coverage": "gap",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "真空阴性：入口未充分覆盖，不算正常放行证据",
+      "polarity": "negative"
+    },
+    {
+      "id": "conflict-samples:31",
+      "title": "战力·合法大跳（样例 11 对照）— 长线级·阴性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_31_power_single_jump_legal"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "negative"
+    },
+    {
+      "id": "conflict-samples:32",
+      "title": "桥段·刻意呼应（样例 14 对照）— 长线级·阴性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_32_bridge_callback_exempt"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "negative"
+    },
+    {
+      "id": "conflict-samples:33",
+      "title": "关系台账·重复活跃（§7.8）— 点级·阳性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_33_relation_duplicate_active"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:34",
+      "title": "关系台账·矛盾活跃（§7.8）— 点级·阳性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_34_relation_contradiction_active"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:35",
+      "title": "关系台账·单行活跃 / 临时盟约窗口（§7.8）— 点级·阴性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_35_relation_single_active_legal"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "negative"
+    },
+    {
+      "id": "conflict-samples:36",
+      "title": "人设·变故铺垫后的性格转变（样例 12 对照）— 长线级·阴性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_36_persona_justified_change"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "negative"
+    },
+    {
+      "id": "conflict-samples:37",
+      "title": "桥段·无词表标记的刻意呼应（样例 32 的 L2 对照）— 长线级·阴性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_37_bridge_unmarked_echo"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "negative"
+    },
+    {
+      "id": "conflict-samples:38",
+      "title": "文风·全书风格漂移（样例 15 的 L2 对照）— 长线级·阳性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_38_volume_drift"
+      },
+      "coverage": "gap",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "名称错配：测试实际覆盖卷规划偏移，不能算文风漂移验证",
+      "polarity": "positive"
+    },
+    {
+      "id": "conflict-samples:39",
+      "title": "文风·场景节奏合法变化（样例 38 对照）— 长线级·阴性",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_39_style_scene_variation"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "negative"
+    },
+    {
+      "id": "conflict-samples:40",
+      "title": "阵营·临时联手合法（样例 2 对照）— 点级·阴性（2026-08-13 补漏切片新增，评测集自生长 §16）",
+      "source": "spec/conflict-samples.md",
+      "test": {
+        "path": "tests/test_conflict_sample_suite.py",
+        "function": "test_sample_40_faction_temp_alliance_legal"
+      },
+      "coverage": "implemented",
+      "evidence_kind": "mechanism_with_model_stub",
+      "note": "机制套件；模型/embedding 为替身，未在本轮重跑",
+      "polarity": "negative"
+    }
+  ]
+}

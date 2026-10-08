@@ -1,0 +1,13 @@
+
+> web@0.0.0 test
+> vitest run
+
+
+ RUN  v4.1.10 E:/github项目/Myink/web
+
+
+ Test Files  57 passed (57)
+      Tests  453 passed (453)
+   Start at  19:49:38
+   Duration  24.92s (transform 12.88s, setup 0ms, import 66.22s, tests 46.68s, environment 142.84s)
+

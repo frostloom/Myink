@@ -1,0 +1,16 @@
+{
+  "case_id": "continuity.justified_recovery_and_time_jump",
+  "case_sha256": "2a3e84caeb82049821fe7f61780a8b53a1f2110e538ef7fbe522f5044507173f",
+  "execution": "completed",
+  "coverage": "implemented",
+  "attempted": true,
+  "prompt_sha256": "18517ae901c4e799327f4da248c8d90c6b7360833022f65a04a8458326f8ea63",
+  "input_tokens": 812,
+  "output_tokens": 140,
+  "cost_est": 0.002744,
+  "cost_status": "estimated",
+  "raw_output": "{\"verdict\": \"pass\", \"findings\": [], \"reasons\": [\"本章紧接前章章尾：沈砚因失血昏厥后苏醒，妹妹守候、医生留观、守卫交班均与前章衔接自然，无重演已完成动作。\", \"剧情推进符合章节计划：恢复意识并准备寻找药品，通过药品只够用到中午、圈出药房位置完成目标，无主线偏移。\", \"人设与节奏合理：醒来先摸绷带、问清药品存量再行动，符合失血后谨慎状态；篇幅短但信息完整，无冗余修订必要。\"], \"confidence\": 0.95}",
+  "model_id": "deepseek-flash",
+  "finish_reason": "stop",
+  "wall_ms": 2359
+}

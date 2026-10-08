@@ -1,0 +1,16 @@
+{
+  "case_id": "logic.former_member",
+  "case_sha256": "e46ba2081b607964944a138bcf4387ed3f6ccaaff6f0f470d4a722d02973eb6a",
+  "execution": "completed",
+  "coverage": "implemented",
+  "attempted": true,
+  "prompt_sha256": "365672ef237851761e56037d33206fc3917c3357d23871923e1544ce38e126bf",
+  "input_tokens": 707,
+  "output_tokens": 136,
+  "cost_est": 0.002502,
+  "cost_status": "estimated",
+  "raw_output": "{\"verdict\": \"pass\", \"findings\": [], \"reasons\": [\"本章内容与近期上下文一致：林川已退出北桥检修队，本章以外部维修承包人身份递交报价单，明确说明自己不再属于检修队，接续自然，无矛盾。\", \"无章节计划、无世界观硬约束、无开放伏笔与剧情线可对照，无法判定主线偏移或伏笔遗漏。\", \"内容为单场景动作，衔接顺畅，人设与身份状态一致，节奏无异常。\", \"未发现跨章重演、接续断裂或机械重复问题。\"], \"confidence\": 0.6}",
+  "model_id": "deepseek-flash",
+  "finish_reason": "stop",
+  "wall_ms": 2484
+}

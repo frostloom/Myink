@@ -1,0 +1,15 @@
+
+> web@0.0.0 lint
+> oxlint src vite.config.ts
+
+src/router.tsx:27:10: warning react(only-export-components): Fast refresh only works when a file only exports components. Move your component(s) to a separate file.
+src/router.tsx:41:10: warning react(only-export-components): Fast refresh only works when a file only exports components. Move your component(s) to a separate file.
+src/router.tsx:65:10: warning react(only-export-components): Fast refresh only works when a file only exports components. Move your component(s) to a separate file.
+src/context/ThemeContext.tsx:237:17: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/pages/admin/shared.tsx:20:17: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/pages/admin/shared.tsx:173:17: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/pages/admin/shared.tsx:192:17: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/pages/admin/shared.tsx:197:17: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/pages/admin/shared.tsx:201:17: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/context/AuthContext.tsx:422:17: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/components/TaskHistory.tsx:63:30: warning react-hooks(exhaustive-deps): React Hook useEffect has a missing dependency: 'selectedSeq' help: Either include it or remove the dependency array.

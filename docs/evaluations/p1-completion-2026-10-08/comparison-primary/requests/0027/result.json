@@ -1,0 +1,49 @@
+{
+  "request_index": 27,
+  "case_id": "injury_continuity",
+  "variant": "full",
+  "repetition": 1,
+  "prompt_sha256": "f256b4486369ab15c678976d98e4469a6099692ec4c0443189c8526e98422f8d",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 60,
+    "max_cost_yuan": 5.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 6000,
+    "json_mode": false
+  },
+  "started_at": "2026-10-08T11:50:55.750812+00:00",
+  "execution": "completed",
+  "raw_output": "",
+  "model_id": "deepseek-flash",
+  "tool_calls": [
+    {
+      "id": "call_00_Av73dzAFRsMsguSjOC2n9659",
+      "name": "inspect_plot_threads",
+      "arguments": {}
+    },
+    {
+      "id": "call_01_zMBE5CkpZVw57aFT5JXf7100",
+      "name": "inspect_foreshadows",
+      "arguments": {}
+    }
+  ],
+  "raw_response_content": "",
+  "response_projection": {
+    "source": "reasoning_fallback",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "tool_calls",
+  "input_tokens": 3660,
+  "output_tokens": 41,
+  "cost_est": 0.007648,
+  "cost_status": "estimated",
+  "wall_ms": 2094
+}

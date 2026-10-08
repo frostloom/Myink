@@ -1,0 +1,23 @@
+{
+  "keyword": {
+    "cases": 8,
+    "required_hits": 6,
+    "required_total": 7,
+    "future_leaks": 0,
+    "tenant_leaks": 0
+  },
+  "vector_fixture": {
+    "cases": 8,
+    "required_hits": 6,
+    "required_total": 7,
+    "future_leaks": 0,
+    "tenant_leaks": 0
+  },
+  "rrf_fixture": {
+    "cases": 8,
+    "required_hits": 7,
+    "required_total": 7,
+    "future_leaks": 0,
+    "tenant_leaks": 0
+  }
+}

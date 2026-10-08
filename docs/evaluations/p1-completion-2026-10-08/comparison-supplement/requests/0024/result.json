@@ -1,0 +1,38 @@
+{
+  "request_index": 24,
+  "case_id": "injury_continuity",
+  "variant": "full",
+  "repetition": 2,
+  "prompt_sha256": "40e7226a7b940fba909ae65de6a97d66172067ae6fbae4f5b1a209c443cfa7c0",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 40,
+    "max_cost_yuan": 2.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 6000,
+    "json_mode": false
+  },
+  "started_at": "2026-10-08T12:10:29.297071+00:00",
+  "execution": "completed",
+  "raw_output": "```json\n{\n  \"verdict\": \"pass\",\n  \"findings\": [],\n  \"reasons\": [\n    \"对照章节计划：三场景（楼梯口分工→屋顶排查→阁楼确认渗水路径）全部落地，顺序与计划一致，无主线偏移。\",\n    \"伏笔埋设到位：屋顶旧修补痕迹（发黑接缝、木椽发软）暗示长期缺乏维护；阁楼角落防水布下的方正轮廓与金属扣件对应计划中'未打开的旧设备/文件'，且两人按计划决定先完成修补，未提前揭开。\",\n    \"接续正确：开头直接承接上一章楼梯口对话（'林川把话说了一半就停住'），以取工具、上梯动作完成场景转换，未重演已完成动作，未丢弃未完成请求。\",\n    \"人设与身体状态合理：林川先试力再上梯、退梯时由许宁报级数，许宁扶梯脚、递工具、记录，分工符合普通人身体状态，无高危动作、无医学奇迹。\",\n    \"全章仅林川、许宁两人出场，符合硬约束；设备与伤势无无缘由变化。\",\n    \"确定性校验 0 findings，无跨章矛盾证据。\",\n    \"与近期章节开头（第20章）虽同为楼梯口场景，但本章为直接接续而非近义改写，属合理同场景延续，不构成机械重复。\"\n  ],\n  \"confidence\": 0.9\n}\n```",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "```json\n{\n  \"verdict\": \"pass\",\n  \"findings\": [],\n  \"reasons\": [\n    \"对照章节计划：三场景（楼梯口分工→屋顶排查→阁楼确认渗水路径）全部落地，顺序与计划一致，无主线偏移。\",\n    \"伏笔埋设到位：屋顶旧修补痕迹（发黑接缝、木椽发软）暗示长期缺乏维护；阁楼角落防水布下的方正轮廓与金属扣件对应计划中'未打开的旧设备/文件'，且两人按计划决定先完成修补，未提前揭开。\",\n    \"接续正确：开头直接承接上一章楼梯口对话（'林川把话说了一半就停住'），以取工具、上梯动作完成场景转换，未重演已完成动作，未丢弃未完成请求。\",\n    \"人设与身体状态合理：林川先试力再上梯、退梯时由许宁报级数，许宁扶梯脚、递工具、记录，分工符合普通人身体状态，无高危动作、无医学奇迹。\",\n    \"全章仅林川、许宁两人出场，符合硬约束；设备与伤势无无缘由变化。\",\n    \"确定性校验 0 findings，无跨章矛盾证据。\",\n    \"与近期章节开头（第20章）虽同为楼梯口场景，但本章为直接接续而非近义改写，属合理同场景延续，不构成机械重复。\"\n  ],\n  \"confidence\": 0.9\n}\n```",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 3396,
+  "output_tokens": 325,
+  "cost_est": 0.009392,
+  "cost_status": "estimated",
+  "wall_ms": 3594
+}

@@ -1,0 +1,1853 @@
+........................................................................ [  4%]
+........................................................................ [  9%]
+........................................................................ [ 14%]
+....................xxxxx............................................... [ 19%]
+........................................................................ [ 23%]
+........................................................................ [ 28%]
+........................................................................ [ 33%]
+........................................................................ [ 38%]
+........................................................................ [ 43%]
+........................................................................ [ 47%]
+........................................................................ [ 52%]
+........................................................................ [ 57%]
+........................................................................ [ 62%]
+........................................................................ [ 67%]
+........................................................................ [ 71%]
+........................................................................ [ 76%]
+........................................................................ [ 81%]
+........................................................................ [ 86%]
+........................................................................ [ 91%]
+........................................................................ [ 95%]
+.............................................................            [100%]
+============================== warnings summary ===============================
+tests/test_identity_boundary.py::test_token_signed_with_another_algorithm_is_rejected[HS512]
+  D:\mnist_data\ancanda\Lib\site-packages\jwt\api_jwt.py:147: InsecureKeyLengthWarning: The HMAC key is 38 bytes long, which is below the minimum recommended length of 64 bytes for SHA512. See RFC 7518 Section 3.2.
+    return self._jws.encode(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=================================== PASSES ====================================
+_________________________ test_embedder_raises_skips __________________________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.validation.l1:l1.py:399 桥段重复向量近邻失败，跳过（加分项不阻塞）: embedding 加载失败
+_______________ test_node_summarize_llm_failure_keeps_heuristic _______________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.workflow.nodes:nodes.py:1360 章节摘要生成失败（保留启发式）: '_FailingChain' object has no attribute 'chain'
+________________ test_init_does_not_run_legacy_schema_cleanup _________________
+---------------------------- Captured stdout call -----------------------------
+1/3 建表（PostgreSQL + pgvector）...
+1.5/3 补齐唯一约束 + 组合索引/HNSW（幂等，评审 A6/存储建议）...
+1.53/3 补齐 projects.form（作品形态：long 长篇 / short 短篇，幂等）...
+1.55/3 补齐 users.tier（阶段 6 VIP 优先级，幂等）...
+1.555/3 补齐 users.role（user/admin 独立权限，幂等）...
+1.56/3 补齐 users.environment（账号级环境配置，幂等）...
+1.561/3 补齐文风库元数据与唯一约束（保留已有档案，幂等）...
+1.563/3 建书会话放开成多会话（去掉一账号一条的唯一约束，补 title，幂等）...
+1.562/3 补齐 agent_runs 归属列（project_id 可空 + 
+user_id，账号级记账，幂等）...
+1.565/3 补齐账号密码字段与规范用户名唯一索引（幂等）...
+1.566/3 补齐第二因子字段（users.totp_secret / totp_confirmed_at，幂等）...
+1.567/3 补齐内置密钥终身额度计数（users.platform_short_used / 
+platform_long_used，幂等）...
+1.57/3 补齐 project_settings.genre_pack（本书题材包，幂等）...
+1.6/3 补齐记忆候选 kind 枚举（memory_removal，阶段 3 编辑校正）...
+1.7/3 补齐全局审计报告表（global_audit_reports，阶段 3 长线治理）...
+1.8/3 补齐章节版本表（chapter_versions，阶段 4 历史/回退）...
+2/3 启用 RLS 主强制（FORCE ROW LEVEL SECURITY）...
+3/3 写入 demo 种子（《九州问天》+ 示例书）...
+✓ 初始化完成。demo project_id = demo-project
+___________________ test_embed_backfill_event_is_idempotent ___________________
+---------------------------- Captured stdout call -----------------------------
+OK 扫描 1 本书，补建 1 条 event 向量
+OK 扫描 1 本书，补建 0 条 event 向量
+_________________ test_embed_backfill_world_skips_hard_facts __________________
+---------------------------- Captured stdout call -----------------------------
+OK 扫描 1 本书，补建 1 条 world 向量
+_____________ test_embed_backfill_refuses_when_embedding_disabled _____________
+---------------------------- Captured stdout call -----------------------------
+EMBED_ENABLED=0：向量化关闭，回填不会产生任何索引
+__________________ test_embed_backfill_rejects_unknown_level __________________
+---------------------------- Captured stdout call -----------------------------
+level 只能是 event 或 world
+_____________ test_definite_publish_failure_rolls_the_gates_back ______________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.api.main:main.py:100 入队失败（publish_rejected）: 0 message(s) NACKed
+__________ test_ambiguous_publish_failure_leaves_the_gates_deducted ___________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.api.main:main.py:100 入队失败（publish_ambiguous）: confirm timeout
+_________________ test_run_preserves_failure_and_no_overwrite _________________
+---------------------------- Captured stdout call -----------------------------
+demo.bad: timeout
+demo.good: timeout
+______________ test_budget_stop_is_saved_for_each_unstarted_case ______________
+---------------------------- Captured stdout call -----------------------------
+demo.bad: completed
+demo.good: budget_stopped
+_______________ test_interrupted_run_can_score_preserved_prefix _______________
+---------------------------- Captured stdout call -----------------------------
+{
+  "report": "E:\\github项目\\Myink\\.local\\pytest-p1-full\\test_interrupted_run_can_score0\\scores\\20261008T201816-82d425\\report.html",
+  "summary": {
+    "planned": 2,
+    "attempted": 0,
+    "completed": 1,
+    "execution_counts": {
+      "completed": 1,
+      "not_run": 1
+    },
+    "review_counts": {
+      "provisional": 2
+    },
+    "label_counts": {
+      "reviewed": 2
+    },
+    "provisional_automatic": {
+      "passed": 1,
+      "denominator": 1,
+      "note": "候选匹配，不是人工确认的准确率"
+    },
+    "confirmed": {
+      "cases": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "precision": null,
+      "recall": null,
+      "positive_detection": null,
+      "negative_false_positive": null,
+      "overall_success": null
+    },
+    "evidence": {
+      "valid_quotes": 2,
+      "total_quotes": 2,
+      "findings_without_quotes": 0
+    },
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "estimated_cost_yuan": 0,
+      "unknown_usage_runs": 0
+    },
+    "categories": {
+      "item": {
+        "runs": 2,
+        "automatic_passed": 1
+      }
+    }
+  }
+}
+
+_______________ test_torn_jsonl_tail_recovers_durable_artifact ________________
+---------------------------- Captured stdout call -----------------------------
+Partial JSONL tail detected; preserved source unchanged, recovered durable artifact if consistent.
+____ test_direct_full_and_ablation_preserve_all_outputs_and_persisted_body ____
+---------------------------- Captured stdout call -----------------------------
+fixture/1/direct: completed / generated
+fixture/1/full: completed / persisted
+fixture/1/no_hybrid: completed / persisted
+fixture/2/direct: completed / generated
+fixture/2/full: completed / persisted
+fixture/2/no_hybrid: completed / persisted
+------------------------------ Captured log call ------------------------------
+WARNING  myink.memory.recall:recall.py:425 事件向量召回已启用但索引为空，本次退化为纯关键词召回（需先回填）
+WARNING  myink.memory.recall:recall.py:425 事件向量召回已启用但索引为空，本次退化为纯关键词召回（需先回填）
+WARNING  myink.memory.recall:recall.py:425 事件向量召回已启用但索引为空，本次退化为纯关键词召回（需先回填）
+WARNING  myink.memory.recall:recall.py:425 事件向量召回已启用但索引为空，本次退化为纯关键词召回（需先回填）
+________________________ test_batch_failure_and_resume ________________________
+------------------------------ Captured log call ------------------------------
+ERROR    myink.workflow.batch_graph:batch_graph.py:240 单章 4 失败: write 失败
+________________________ test_write_rejects_tool_noise ________________________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.workflow.nodes:nodes.py:417 write 输出不合格（attempt=0/2）: ValueError: 正文跑偏（工具调用文本而非正文）
+WARNING  myink.workflow.nodes:nodes.py:417 write 输出不合格（attempt=1/2）: ValueError: 正文跑偏（工具调用文本而非正文）
+WARNING  myink.workflow.nodes:nodes.py:417 write 输出不合格（attempt=2/2）: ValueError: 正文跑偏（工具调用文本而非正文）
+_______________________ test_deepseek_tool_call_parsing _______________________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.providers.deepseek:deepseek.py:168 tool_calls.arguments 解析失败: 'not-json'
+________________________ test_llm_failure_non_blocking ________________________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.validation.global_audit:global_audit.py:261 卷推进审计失败（不阻塞，marker 已推进）: audit 判定失败
+________________________ test_endpoint_llm_failure_502 ________________________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.validation.global_audit:global_audit.py:261 卷推进审计失败（不阻塞，marker 已推进）: audit 判定失败
+____________________________ test_cap_8_judgments _____________________________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.validation.ledger_l2:ledger_l2.py:117 ledger_l2 判定集达 cap=8，丢弃其余候选（ch7）
+_________ test_settlement_failure_keeps_reservation_and_bounded_lease _________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.model_admission:model_admission.py:158 Account model finalization unavailable; reservation retained owner=3b73578908764ea4b52c8dae84bcc681
+Traceback (most recent call last):
+  File "E:\github项目\Myink\src\myink\model_admission.py", line 156, in generate_account_model
+    r.eval(_FINISH, 3, lock, cost, receipt, owner, charge, _BUCKET_TTL)
+  File "E:\github项目\Myink\tests\test_model_admission.py", line 190, in eval
+    raise ConnectionError("settlement unavailable")
+ConnectionError: settlement unavailable
+____________ test_llm_checked_retries_parse_failure_then_succeeds _____________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.workflow.nodes:nodes.py:417 plan_chapter 输出不合格（attempt=0/2）: JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+______________ test_llm_checked_all_fail_returns_error_at_limit _______________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.workflow.nodes:nodes.py:417 write 输出不合格（attempt=0/2）: JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+WARNING  myink.workflow.nodes:nodes.py:417 write 输出不合格（attempt=1/2）: JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+WARNING  myink.workflow.nodes:nodes.py:417 write 输出不合格（attempt=2/2）: JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+________________ test_llm_checked_text_mode_default_corrective ________________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.workflow.nodes:nodes.py:417 write 输出不合格（attempt=0/2）: ValueError: 正文为空
+_________________ test_llm_checked_text_noise_triggers_retry __________________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.workflow.nodes:nodes.py:417 write 输出不合格（attempt=0/2）: ValueError: 正文跑偏（工具调用文本而非正文）
+___________________ test_node_plan_chapter_retries_bad_json ___________________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.workflow.nodes:nodes.py:417 plan_chapter 输出不合格（attempt=0/2）: JSONDecodeError: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)
+_________ test_plan_cast_rejects_empty_cast_and_keeps_state_untouched _________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.workflow.nodes:nodes.py:417 plan_cast 输出不合格（attempt=0/2）: ValidationError: 1 validation error for ChapterCast
+cast
+  List should have at least 1 item after validation, not 0 [type=too_short, input_value=[], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.13/v/too_short
+WARNING  myink.workflow.nodes:nodes.py:417 plan_cast 输出不合格（attempt=1/2）: ValidationError: 1 validation error for ChapterCast
+cast
+  List should have at least 1 item after validation, not 0 [type=too_short, input_value=[], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.13/v/too_short
+WARNING  myink.workflow.nodes:nodes.py:417 plan_cast 输出不合格（attempt=2/2）: ValidationError: 1 validation error for ChapterCast
+cast
+  List should have at least 1 item after validation, not 0 [type=too_short, input_value=[], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.13/v/too_short
+____ test_short_commit_spends_one_and_keeps_it_even_if_the_plan_step_fails ____
+------------------------------ Captured log call ------------------------------
+WARNING  myink.providers.deepseek:deepseek.py:188 DeepSeek 调用失败(attempt=0): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.deepseek:deepseek.py:188 DeepSeek 调用失败(attempt=1): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.deepseek:deepseek.py:188 DeepSeek 调用失败(attempt=2): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.deepseek:deepseek.py:188 DeepSeek 调用失败(attempt=3): 未能连接模型服务，请检查服务地址、代理和部署网络。
+________ test_short_recommit_reuses_the_book_and_skips_the_quota_gate _________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.providers.deepseek:deepseek.py:188 DeepSeek 调用失败(attempt=0): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.deepseek:deepseek.py:188 DeepSeek 调用失败(attempt=1): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.deepseek:deepseek.py:188 DeepSeek 调用失败(attempt=2): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.deepseek:deepseek.py:188 DeepSeek 调用失败(attempt=3): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.deepseek:deepseek.py:188 DeepSeek 调用失败(attempt=0): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.deepseek:deepseek.py:188 DeepSeek 调用失败(attempt=1): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.deepseek:deepseek.py:188 DeepSeek 调用失败(attempt=2): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.deepseek:deepseek.py:188 DeepSeek 调用失败(attempt=3): 未能连接模型服务，请检查服务地址、代理和部署网络。
+_________________ test_delete_project_survives_redis_failure __________________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.api.routes_book:routes_book.py:401 删书守卫：书锁探测失败（按无锁处理）project_id=9080aae4-7f21-47fa-910b-20294f5f990f err=redis down
+WARNING  myink.api.routes_book:routes_book.py:464 删除书籍：Redis 残留清理失败 project_id=9080aae4-7f21-47fa-910b-20294f5f990f
+______________ test_write_path_does_not_use_reasoning_as_chapter ______________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.providers.deepseek:deepseek.py:143 正文只有思考链（attempt=0/3），丢弃 reasoning 后重试
+WARNING  myink.providers.deepseek:deepseek.py:143 正文只有思考链（attempt=1/3），丢弃 reasoning 后重试
+WARNING  myink.providers.deepseek:deepseek.py:143 正文只有思考链（attempt=2/3），丢弃 reasoning 后重试
+WARNING  myink.providers.deepseek:deepseek.py:143 正文只有思考链（attempt=0/3），丢弃 reasoning 后重试
+WARNING  myink.providers.deepseek:deepseek.py:143 正文只有思考链（attempt=1/3），丢弃 reasoning 后重试
+WARNING  myink.providers.deepseek:deepseek.py:143 正文只有思考链（attempt=2/3），丢弃 reasoning 后重试
+________________________ test_both_empty_returns_error ________________________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.providers.deepseek:deepseek.py:152 DeepSeek 返回空白/空内容（attempt=0/3），快速重试
+WARNING  myink.providers.deepseek:deepseek.py:152 DeepSeek 返回空白/空内容（attempt=1/3），快速重试
+WARNING  myink.providers.deepseek:deepseek.py:152 DeepSeek 返回空白/空内容（attempt=2/3），快速重试
+____________________ test_empty_content_retries_then_error ____________________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.providers.deepseek:deepseek.py:152 DeepSeek 返回空白/空内容（attempt=0/3），快速重试
+WARNING  myink.providers.deepseek:deepseek.py:152 DeepSeek 返回空白/空内容（attempt=1/3），快速重试
+WARNING  myink.providers.deepseek:deepseek.py:152 DeepSeek 返回空白/空内容（attempt=2/3），快速重试
+____ test_generation_error_is_safe_and_retry_count_unchanged[False-openai] ____
+------------------------------ Captured log call ------------------------------
+WARNING  myink.providers.deepseek:deepseek.py:188 DeepSeek 调用失败(attempt=0): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.deepseek:deepseek.py:188 DeepSeek 调用失败(attempt=1): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.deepseek:deepseek.py:188 DeepSeek 调用失败(attempt=2): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.deepseek:deepseek.py:188 DeepSeek 调用失败(attempt=3): 未能连接模型服务，请检查服务地址、代理和部署网络。
+__ test_generation_error_is_safe_and_retry_count_unchanged[False-anthropic] ___
+------------------------------ Captured log call ------------------------------
+WARNING  myink.providers.anthropic:anthropic.py:178 Anthropic 调用失败(attempt=0): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.anthropic:anthropic.py:178 Anthropic 调用失败(attempt=1): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.anthropic:anthropic.py:178 Anthropic 调用失败(attempt=2): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.anthropic:anthropic.py:178 Anthropic 调用失败(attempt=3): 未能连接模型服务，请检查服务地址、代理和部署网络。
+____ test_generation_error_is_safe_and_retry_count_unchanged[True-openai] _____
+------------------------------ Captured log call ------------------------------
+WARNING  myink.providers.deepseek:deepseek.py:317 DeepSeek 流式调用失败(attempt=0): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.deepseek:deepseek.py:317 DeepSeek 流式调用失败(attempt=1): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.deepseek:deepseek.py:317 DeepSeek 流式调用失败(attempt=2): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.deepseek:deepseek.py:317 DeepSeek 流式调用失败(attempt=3): 未能连接模型服务，请检查服务地址、代理和部署网络。
+___ test_generation_error_is_safe_and_retry_count_unchanged[True-anthropic] ___
+------------------------------ Captured log call ------------------------------
+WARNING  myink.providers.anthropic:anthropic.py:270 Anthropic 流式调用失败(attempt=0): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.anthropic:anthropic.py:270 Anthropic 流式调用失败(attempt=1): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.anthropic:anthropic.py:270 Anthropic 流式调用失败(attempt=2): 未能连接模型服务，请检查服务地址、代理和部署网络。
+WARNING  myink.providers.anthropic:anthropic.py:270 Anthropic 流式调用失败(attempt=3): 未能连接模型服务，请检查服务地址、代理和部署网络。
+__________ test_partial_stream_still_resets_on_each_failure[openai] ___________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.providers.deepseek:deepseek.py:317 DeepSeek 流式调用失败(attempt=0): 模型通信中断或响应协议异常，请稍后重试。
+WARNING  myink.providers.deepseek:deepseek.py:317 DeepSeek 流式调用失败(attempt=1): 模型通信中断或响应协议异常，请稍后重试。
+WARNING  myink.providers.deepseek:deepseek.py:317 DeepSeek 流式调用失败(attempt=2): 模型通信中断或响应协议异常，请稍后重试。
+WARNING  myink.providers.deepseek:deepseek.py:317 DeepSeek 流式调用失败(attempt=3): 模型通信中断或响应协议异常，请稍后重试。
+_________ test_partial_stream_still_resets_on_each_failure[anthropic] _________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.providers.anthropic:anthropic.py:270 Anthropic 流式调用失败(attempt=0): 模型通信中断或响应协议异常，请稍后重试。
+WARNING  myink.providers.anthropic:anthropic.py:270 Anthropic 流式调用失败(attempt=1): 模型通信中断或响应协议异常，请稍后重试。
+WARNING  myink.providers.anthropic:anthropic.py:270 Anthropic 流式调用失败(attempt=2): 模型通信中断或响应协议异常，请稍后重试。
+WARNING  myink.providers.anthropic:anthropic.py:270 Anthropic 流式调用失败(attempt=3): 模型通信中断或响应协议异常，请稍后重试。
+______________ test_service_unexpected_error_degrades_to_sample _______________
+------------------------------ Captured log call ------------------------------
+ERROR    myink.integrations.rankings:rankings.py:203 扫榜降级（未预期异常）
+Traceback (most recent call last):
+  File "E:\github项目\Myink\src\myink\integrations\rankings.py", line 184, in _fetch_remote
+    rows = await self._fetcher(timeout=st.rankings_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\github项目\Myink\tests\test_rankings_mcp.py", line 64, in __call__
+    raise self.rows
+RuntimeError: 神秘错误
+_________ test_keyword_leg_follows_the_cast_not_the_whole_book_roster _________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.memory.recall:recall.py:425 事件向量召回已启用但索引为空，本次退化为纯关键词召回（需先回填）
+__________________ test_hybrid_recall_degrade_embedder_fails __________________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.memory.recall:recall.py:431 向量腿召回失败，降级为关键词腿/纯关系: embedding 加载失败
+_________________ test_embed_enabled_but_empty_flags_degraded _________________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.memory.recall:recall.py:425 事件向量召回已启用但索引为空，本次退化为纯关键词召回（需先回填）
+__________________ test_batch_reflexion_distills_and_grades ___________________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.memory.recall:recall.py:425 事件向量召回已启用但索引为空，本次退化为纯关键词召回（需先回填）
+WARNING  myink.memory.recall:recall.py:425 事件向量召回已启用但索引为空，本次退化为纯关键词召回（需先回填）
+_______________ test_reflexion_llm_failure_does_not_block_batch _______________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.memory.recall:recall.py:425 事件向量召回已启用但索引为空，本次退化为纯关键词召回（需先回填）
+WARNING  myink.memory.recall:recall.py:425 事件向量召回已启用但索引为空，本次退化为纯关键词召回（需先回填）
+____________________ test_reflexion_batch_rerun_idempotent ____________________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.memory.recall:recall.py:425 事件向量召回已启用但索引为空，本次退化为纯关键词召回（需先回填）
+WARNING  myink.memory.recall:recall.py:425 事件向量召回已启用但索引为空，本次退化为纯关键词召回（需先回填）
+__________________ test_maybe_reflexion_interval_and_swallow __________________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.worker.processor:processor.py:402 章节窗口复盘失败（不阻塞任务）: db down
+_________________ test_unknown_and_failed_tools_return_errors _________________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.workflow.tools:tools.py:171 工具 inspect_character 执行失败: invalid fixture
+_____ test_worker_rejects_forged_ownership_before_dispatch[foreign_user] ______
+------------------------------ Captured log call ------------------------------
+WARNING  myink.worker.processor:processor.py:499 拒绝任务归属不匹配的消息: 063c37fe-5809-443e-8c49-c68f6d03a9cf
+_____ test_worker_rejects_forged_ownership_before_dispatch[missing_user] ______
+------------------------------ Captured log call ------------------------------
+WARNING  myink.worker.processor:processor.py:499 拒绝任务归属不匹配的消息: b9d8caf4-e8f5-480c-a4f2-876784550a32
+_____ test_worker_rejects_forged_ownership_before_dispatch[task_project] ______
+------------------------------ Captured log call ------------------------------
+WARNING  myink.worker.processor:processor.py:499 拒绝任务归属不匹配的消息: 836555ca-242d-4a76-9f9d-b52104b259a9
+____ test_consumer_requeues_transient_ownership_database_failure[initial] _____
+------------------------------ Captured log call ------------------------------
+WARNING  myink.worker.consumer:consumer.py:62 任务归属暂时无法验证，保留消息: delivery=7
+____ test_consumer_requeues_transient_ownership_database_failure[process] _____
+------------------------------ Captured log call ------------------------------
+WARNING  myink.worker.consumer:consumer.py:82 任务前置检查暂时失败，保留消息: task=78c6ad88-d0e1-451a-99c4-ffb0f8c8ab9e
+_______ test_consumer_rejects_foreign_message_without_publishing_events _______
+------------------------------ Captured log call ------------------------------
+WARNING  myink.worker.consumer:consumer.py:67 拒绝非法任务消息或归属不匹配: delivery=7
+______________________ test_process_retry_classification ______________________
+------------------------------ Captured log call ------------------------------
+WARNING  myink.worker.processor:processor.py:435 可重试失败，将退避重投: 35565c39-9f28-4c8c-ab3c-df522f261757 err=PG 连接瞬断
+____________________ test_process_batch_write_order_guard _____________________
+------------------------------ Captured log call ------------------------------
+ERROR    myink.worker.processor:processor.py:442 不可重试失败: 50b8616a-2d94-461f-b633-394ca1614f4b err=章节顺序校验失败：只能写第 1 章（已写到第 0 章），收到第 0 章。重写已写章节 / 跳章会破坏上下文连续性。
+ERROR    myink.worker.processor:processor.py:442 不可重试失败: 91a86e65-63b6-4145-bed6-d1b420207e6e err=章节顺序校验失败：只能写第 1 章（已写到第 0 章），收到第 2 章。重写已写章节 / 跳章会破坏上下文连续性。
+=========================== short test summary info ===========================
+PASSED tests/test_admin.py::test_admin_authority_and_no_store[missing-401]
+PASSED tests/test_admin.py::test_admin_authority_and_no_store[forged-401]
+PASSED tests/test_admin.py::test_admin_authority_and_no_store[user-403]
+PASSED tests/test_admin.py::test_admin_authority_and_no_store[admin-200]
+PASSED tests/test_admin.py::test_admin_reads_cross_user_paginated_metadata_and_exact_batch_sums
+PASSED tests/test_admin.py::test_admin_project_detail_matches_its_list_row_and_404s_on_unknown
+PASSED tests/test_admin.py::test_admin_revocation_and_validation_errors
+PASSED tests/test_admin.py::test_admin_read_connection_rejects_writes_and_audit_fails_closed
+PASSED tests/test_admin.py::test_context_limits_legacy_missing_and_owner_aggregates
+PASSED tests/test_admin.py::test_actual_registration_and_login_accept_exactly_eight_characters
+PASSED tests/test_admin.py::test_admin_run_read_bounds_and_scrubs_lossless_business_detail
+PASSED tests/test_admin.py::test_user_cost_includes_account_level_runs
+PASSED tests/test_admin.py::test_admin_runs_list_excludes_orphan_rows
+PASSED tests/test_admin.py::test_admin_user_detail_returns_one_user
+PASSED tests/test_admin.py::test_admin_user_detail_matches_the_list_row
+PASSED tests/test_admin.py::test_admin_user_detail_404s_on_an_unknown_id
+PASSED tests/test_admin.py::test_admin_user_detail_404s_on_a_malformed_id
+PASSED tests/test_admin.py::test_overview_metrics_agree_with_the_runs_list
+PASSED tests/test_admin.py::test_overview_drops_runs_that_have_no_owner
+PASSED tests/test_admin_analytics.py::test_task_averages_are_two_level_not_per_run
+PASSED tests/test_admin_analytics.py::test_generation_tasks_count_chapters_without_book_level_runs
+PASSED tests/test_admin_analytics.py::test_chapter_breakdown_attaches_snapshot_refs_without_shipping_text
+PASSED tests/test_admin_analytics.py::test_snapshot_detail_is_the_only_endpoint_that_ships_text
+PASSED tests/test_admin_analytics.py::test_findings_flatten_from_validate_snapshots_with_filters
+PASSED tests/test_admin_analytics.py::test_analytics_reads_require_admin[users]
+PASSED tests/test_admin_analytics.py::test_analytics_reads_require_admin[generation-tasks]
+PASSED tests/test_admin_analytics.py::test_analytics_reads_require_admin[chapters]
+PASSED tests/test_admin_analytics.py::test_analytics_reads_require_admin[findings]
+PASSED tests/test_admin_analytics.py::test_analytics_reads_require_admin[snapshots]
+PASSED tests/test_admin_analytics.py::test_analytics_reads_are_audited_and_bounded
+PASSED tests/test_admin_invitations.py::test_digest_is_keyed_hmac_not_a_bare_hash
+PASSED tests/test_admin_invitations.py::test_admin_creates_custom_code_with_label_and_list_never_leaks_it
+PASSED tests/test_admin_invitations.py::test_duplicate_custom_code_conflicts
+PASSED tests/test_admin_invitations.py::test_custom_code_length_bounds[abc-400]
+PASSED tests/test_admin_invitations.py::test_custom_code_length_bounds[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-201]
+PASSED tests/test_admin_invitations.py::test_custom_code_length_bounds[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-422]
+PASSED tests/test_admin_invitations.py::test_create_body_bounds[body0]
+PASSED tests/test_admin_invitations.py::test_create_body_bounds[body1]
+PASSED tests/test_admin_invitations.py::test_create_body_bounds[body2]
+PASSED tests/test_admin_invitations.py::test_create_body_bounds[body3]
+PASSED tests/test_admin_invitations.py::test_invitation_endpoints_reject_non_admins[missing-401]
+PASSED tests/test_admin_invitations.py::test_invitation_endpoints_reject_non_admins[forged-401]
+PASSED tests/test_admin_invitations.py::test_invitation_endpoints_reject_non_admins[user-403]
+PASSED tests/test_admin_invitations.py::test_admin_happy_path_reaches_create_list_and_revoke
+PASSED tests/test_admin_invitations.py::test_revoke_is_idempotent
+PASSED tests/test_admin_invitations.py::test_invitation_writes_are_audited
+PASSED tests/test_admin_invitations.py::test_write_audit_fails_closed_so_no_code_is_minted
+PASSED tests/test_admin_invitations.py::test_custom_code_registers_an_account_and_revocation_blocks_the_rest
+PASSED tests/test_admin_observability.py::test_capture_bounds_credentials_and_original_data
+PASSED tests/test_admin_observability.py::test_long_text_followed_by_public_url_has_bounded_scrubbing_time
+PASSED tests/test_admin_observability.py::test_url_credentials_are_redacted_before_clipping_without_touching_public_urls
+PASSED tests/test_admin_observability.py::test_adjacent_json_url_credentials_are_all_scrubbed
+PASSED tests/test_admin_observability.py::test_adjacent_url_delimiters_cannot_hide_the_next_credentials[,]
+PASSED tests/test_admin_observability.py::test_adjacent_url_delimiters_cannot_hide_the_next_credentials[;]
+PASSED tests/test_admin_observability.py::test_adjacent_url_delimiters_cannot_hide_the_next_credentials[',']
+PASSED tests/test_admin_observability.py::test_adjacent_public_url_does_not_hide_following_private_url
+PASSED tests/test_admin_observability.py::test_actual_provider_messages_outputs_and_detail_merge_are_captured
+PASSED tests/test_admin_observability.py::test_named_session_credentials_and_stored_truncation_survive_merges
+PASSED tests/test_admin_observability.py::test_tool_round_and_final_record_exact_inputs_and_outputs
+PASSED tests/test_admin_observability.py::test_recall_and_refreshed_cast_capture_actual_context
+PASSED tests/test_admin_observability.py::test_oversized_control_details_remain_lossless_for_later_consumers
+PASSED tests/test_api.py::test_list_projects_returns_books
+PASSED tests/test_api.py::test_list_chapters_fields_valid
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/auth/token]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/auth/register]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/auth/session]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/auth/password]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/auth/logout]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/auth/mfa/verify]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/auth/mfa]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/auth/mfa/enroll]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/auth/mfa/confirm]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/auth/mfa/disable]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects/{project_id}/access]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/tasks/{task_id}/access]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/projects]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects/{project_id}/creation]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[PUT-/api/v1/projects/{project_id}]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[DELETE-/api/v1/projects/{project_id}]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects/{project_id}/chapters]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects/{project_id}/chapters/{chapter_id}]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[PUT-/api/v1/projects/{project_id}/chapters/{chapter_id}/content]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects/{project_id}/chapters/{chapter_id}/versions]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/projects/{project_id}/chapters/{chapter_id}/versions/{version}/restore]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/projects/{project_id}/chapters/{chapter_id}/correct-memory]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[DELETE-/api/v1/projects/{project_id}/chapters/{chapter_id}]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/tasks/{task_id}]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/tasks/{task_id}/pause]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/tasks/{task_id}/resume]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/tasks/{task_id}/cancel]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects/{project_id}/tasks]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects/{project_id}/candidates]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/projects/{project_id}/candidates/{candidate_id}/confirm]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/projects/{project_id}/candidates/{candidate_id}/reject]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects/{project_id}/lessons]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/projects/{project_id}/lessons/{lesson_id}/confirm]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/projects/{project_id}/lessons/{lesson_id}/reject]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/genre-packs]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[PUT-/api/v1/projects/{project_id}/genre-pack]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/projects/{project_id}/genre-pack/restore]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/projects/{project_id}/setup-draft]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[PUT-/api/v1/projects/{project_id}/setup]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/projects/{project_id}/outline-draft]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[PUT-/api/v1/projects/{project_id}/outline]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects/{project_id}/outline]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects/{project_id}/world]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects/{project_id}/characters]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects/{project_id}/characters/{character_id}/state-history]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects/{project_id}/events]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects/{project_id}/entities]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects/{project_id}/graph]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects/{project_id}/foreshadows]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/rankings]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects/{project_id}/settings]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[PUT-/api/v1/projects/{project_id}/settings]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/environment]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[PUT-/api/v1/environment]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/projects/{project_id}/global-audit]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects/{project_id}/global-audit]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/projects/{project_id}/global-audit/{report_id}]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[POST-/api/v1/feedback]
+PASSED tests/test_api_contract.py::test_covered_endpoint_has_response_schema[GET-/api/v1/feedback]
+PASSED tests/test_api_contract.py::test_no_uncovered_business_route
+PASSED tests/test_api_contract.py::test_openapi_matches_committed_spec
+PASSED tests/test_auth.py::test_register_canonicalizes_username_hashes_password_and_returns_exact_shape
+PASSED tests/test_auth.py::test_registration_rejects_duplicate_canonical_username
+PASSED tests/test_auth.py::test_registration_rejects_invalid_usernames[ab]
+PASSED tests/test_auth.py::test_registration_rejects_invalid_usernames[has space]
+PASSED tests/test_auth.py::test_registration_rejects_invalid_usernames[\u7528\u6237\u540d]
+PASSED tests/test_auth.py::test_registration_rejects_invalid_usernames[\u212aelvin]
+PASSED tests/test_auth.py::test_registration_rejects_invalid_usernames[punctuation!]
+PASSED tests/test_auth.py::test_registration_rejects_invalid_new_passwords[a1short]
+PASSED tests/test_auth.py::test_registration_rejects_invalid_new_passwords[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+PASSED tests/test_auth.py::test_registration_rejects_invalid_new_passwords[abcdefgh]
+PASSED tests/test_auth.py::test_registration_rejects_invalid_new_passwords[12345678]
+PASSED tests/test_auth.py::test_passwordless_unknown_and_wrong_credentials_share_one_unauthorized_response
+PASSED tests/test_auth.py::test_login_rejects_out_of_bounds_passwords_as_invalid_credentials[]
+PASSED tests/test_auth.py::test_login_rejects_out_of_bounds_passwords_as_invalid_credentials[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+PASSED tests/test_auth.py::test_auth_hash_capacity_exhaustion_fails_fast
+PASSED tests/test_auth.py::test_login_and_session_have_exact_shapes_and_session_ignores_trusted_identity_header
+PASSED tests/test_auth.py::test_session_rejects_jwt_missing_or_mismatching_required_claims_for_existing_user
+PASSED tests/test_auth.py::test_weak_auth_secret_fails_closed_before_authentication_or_registration
+PASSED tests/test_auth.py::test_logout_atomically_invalidates_old_token
+PASSED tests/test_auth.py::test_password_change_atomically_revokes_token_and_requires_new_password
+PASSED tests/test_auth.py::test_password_change_rejects_wrong_current_password_without_revoking_token
+PASSED tests/test_auth.py::test_auth_schema_upgrade_is_additive_idempotent_and_preserves_legacy_books
+PASSED tests/test_auth.py::test_auth_schema_upgrade_fails_without_rewriting_duplicate_normalized_legacy_names
+PASSED tests/test_auth.py::test_interactive_admin_reset_preserves_books_and_revokes_existing_token
+PASSED tests/test_auth.py::test_login_accepts_a_legacy_hash_that_does_not_meet_new_password_rules
+PASSED tests/test_auth.py::test_require_admin_uses_strict_bearer_authentication_and_current_database_role
+PASSED tests/test_auth.py::test_set_role_changes_only_an_existing_account_and_revokes_its_sessions
+PASSED tests/test_auth.py::test_owner_access_own_project
+PASSED tests/test_auth.py::test_owner_rejects_foreign_project
+PASSED tests/test_auth.py::test_owner_fail_closed_without_identity
+PASSED tests/test_auth.py::test_owner_rejects_invalid_identity
+PASSED tests/test_auth.py::test_owner_missing_project_404
+PASSED tests/test_auth.py::test_list_projects_only_own
+PASSED tests/test_auth.py::test_list_projects_fail_closed_without_identity
+PASSED tests/test_auth_smoke_safety.py::test_smoke_rejects_non_test_redis_before_http[redis://localhost:6380/0]
+PASSED tests/test_auth_smoke_safety.py::test_smoke_rejects_non_test_redis_before_http[redis://127.0.0.1:16380/1]
+PASSED tests/test_auth_smoke_safety.py::test_smoke_rejects_non_test_redis_before_http[redis://192.0.2.10:16380/0]
+PASSED tests/test_autocard.py::test_character_card_routes_to_pool_and_entity_auto_persists
+PASSED tests/test_autocard.py::test_confirm_character_card_writes_character_and_alias
+PASSED tests/test_autocard.py::test_character_card_dedup_skips_existing_name
+PASSED tests/test_autocard.py::test_character_card_dedup_via_alias
+PASSED tests/test_autocard.py::test_new_entity_invalid_type_skipped
+PASSED tests/test_autocard.py::test_extract_character_card_drops_existing_name
+PASSED tests/test_autocard.py::test_extract_character_card_keeps_new_name
+PASSED tests/test_autocard.py::test_empty_name_card_does_not_block_auto
+PASSED tests/test_autocard.py::test_new_entity_auto_persist_dedup
+PASSED tests/test_autocard.py::test_list_entities_endpoint
+PASSED tests/test_book_setup.py::test_create_project_creates_project_and_settings
+PASSED tests/test_book_setup.py::test_create_project_empty_title_400
+PASSED tests/test_book_setup.py::test_create_project_fail_closed
+PASSED tests/test_book_setup.py::test_create_project_daily_quota_429
+PASSED tests/test_book_setup.py::test_setup_draft_returns_draft_not_persisted
+PASSED tests/test_book_setup.py::test_setup_draft_degraded_on_provider_error
+PASSED tests/test_book_setup.py::test_setup_draft_degraded_on_bad_json
+PASSED tests/test_book_setup.py::test_setup_draft_empty_premise_400
+PASSED tests/test_book_setup.py::test_setup_draft_ownership
+PASSED tests/test_book_setup.py::test_put_setup_persists_and_upserts_by_name
+PASSED tests/test_book_setup.py::test_put_setup_increments_version
+PASSED tests/test_book_setup.py::test_put_setup_creates_settings_when_missing
+PASSED tests/test_book_setup.py::test_put_setup_ownership
+PASSED tests/test_book_setup.py::test_world_empty_defaults_on_no_settings
+PASSED tests/test_book_setup.py::test_world_characters_ownership
+PASSED tests/test_book_setup.py::test_setup_prompt_ai_title_contract
+PASSED tests/test_book_setup.py::test_setup_skeleton_follows_genre_capabilities
+PASSED tests/test_book_setup.py::test_setup_messages_pass_genre_capabilities
+PASSED tests/test_bridge_repeat.py::test_sample14_bridge_repeat_detected
+PASSED tests/test_bridge_repeat.py::test_sample14_similar_not_identical_detected
+PASSED tests/test_bridge_repeat.py::test_low_similarity_not_detected
+PASSED tests/test_bridge_repeat.py::test_sample32_callback_exempt
+PASSED tests/test_bridge_repeat.py::test_candidate_summary_marker_exempts
+PASSED tests/test_bridge_repeat.py::test_within_gap_not_detected[12-15-3]
+PASSED tests/test_bridge_repeat.py::test_within_gap_not_detected[5-14-9]
+PASSED tests/test_bridge_repeat.py::test_gap_boundary_detected
+PASSED tests/test_bridge_repeat.py::test_self_current_chapter_excluded
+PASSED tests/test_bridge_repeat.py::test_multiple_candidates_at_most_one_finding
+PASSED tests/test_bridge_repeat.py::test_no_event_candidates_skip
+PASSED tests/test_bridge_repeat.py::test_no_vector_data_skip
+PASSED tests/test_bridge_repeat.py::test_embedder_raises_skips
+PASSED tests/test_bridge_repeat.py::test_service_wiring_appends_finding
+PASSED tests/test_chapter_delete.py::test_delete_chapter_cascades_tail_and_memories
+PASSED tests/test_chapter_delete.py::test_delete_tail_rolls_back_current_chapter
+PASSED tests/test_chapter_delete.py::test_delete_all_chapters_resets_progress
+PASSED tests/test_chapter_delete.py::test_delete_chapter_missing_404
+PASSED tests/test_chapter_delete.py::test_delete_keeps_earlier_chapter_memories
+PASSED tests/test_chapter_delete.py::test_delete_purges_entities_introduced_in_deleted_tail
+PASSED tests/test_chapter_delete.py::test_delete_purges_characters_only_in_deleted_tail
+PASSED tests/test_chapter_delete.py::test_delete_purge_cleans_dangling_relation_and_keeps_earlier_registry
+PASSED tests/test_chapter_summary.py::test_node_summarize_writes_llm_summary
+PASSED tests/test_chapter_summary.py::test_node_summarize_skips_non_confirmed
+PASSED tests/test_chapter_summary.py::test_node_summarize_llm_failure_keeps_heuristic
+PASSED tests/test_chapter_summary.py::test_finalize_awaiting_review_keeps_event_summary
+PASSED tests/test_chapter_summary.py::test_runner_finalize_appends_node_summarize
+PASSED tests/test_chapter_versions.py::test_save_chapter_snapshots_previous_versions
+PASSED tests/test_chapter_versions.py::test_review_draft_is_visible_and_final_confirmation_does_not_duplicate_version
+PASSED tests/test_chapter_versions.py::test_put_content_snapshots_and_increments
+PASSED tests/test_chapter_versions.py::test_restore_rolls_back_content_and_leaves_revert_trace
+PASSED tests/test_chapter_versions.py::test_versions_missing_chapter_or_version_404
+PASSED tests/test_chapter_versions.py::test_version_duplicate_insert_rejected_by_constraint
+PASSED tests/test_chapter_versions.py::test_delete_chapter_cascades_versions
+PASSED tests/test_chapter_versions.py::test_stale_editor_cannot_overwrite_newer_content
+PASSED tests/test_chapter_versions.py::test_two_simultaneous_saves_only_one_wins
+PASSED tests/test_checkpointer_reconnect.py::test_checkpointer_normalizes_localhost_for_background_pool_workers
+PASSED tests/test_checkpointer_reconnect.py::test_checkpointer_uses_health_checked_pool
+PASSED tests/test_cli_auth_safety.py::test_init_does_not_run_legacy_schema_cleanup
+PASSED tests/test_cli_auth_safety.py::test_db_cleanup_command_runs_the_legacy_cleanup
+PASSED tests/test_cli_auth_safety.py::test_init_default_runs_additive_setup_without_creating_demo_or_samples
+PASSED tests/test_cli_auth_safety.py::test_init_seed_flag_creates_demo_account_and_samples
+PASSED tests/test_conflict_sample_suite.py::test_sample_01_realm_over_cap
+PASSED tests/test_conflict_sample_suite.py::test_sample_02_faction_hostility
+PASSED tests/test_conflict_sample_suite.py::test_sample_03_death_and_resurrection
+PASSED tests/test_conflict_sample_suite.py::test_sample_04_location_without_transport
+PASSED tests/test_conflict_sample_suite.py::test_sample_40_faction_temp_alliance_legal
+PASSED tests/test_conflict_sample_suite.py::test_sample_10_realm_skip_grade
+PASSED tests/test_conflict_sample_suite.py::test_sample_11_power_inflation
+PASSED tests/test_conflict_sample_suite.py::test_sample_12_persona_drift
+PASSED tests/test_conflict_sample_suite.py::test_sample_13_outline_deviation
+PASSED tests/test_conflict_sample_suite.py::test_sample_14_bridge_repeat_l1
+PASSED tests/test_conflict_sample_suite.py::test_sample_15_ai_style_repeat
+PASSED tests/test_conflict_sample_suite.py::test_sample_16_injury_flip_no_transition
+PASSED tests/test_conflict_sample_suite.py::test_sample_17_relation_flip_no_record
+PASSED tests/test_conflict_sample_suite.py::test_sample_18_foreshadow_planted_stall
+PASSED tests/test_conflict_sample_suite.py::test_sample_19_main_thread_stall
+PASSED tests/test_conflict_sample_suite.py::test_sample_20_goal_flip_no_transition
+PASSED tests/test_conflict_sample_suite.py::test_sample_21_identity_no_source
+PASSED tests/test_conflict_sample_suite.py::test_sample_22_relation_fallout_no_record
+PASSED tests/test_conflict_sample_suite.py::test_sample_23_foreshadow_developing_stall
+PASSED tests/test_conflict_sample_suite.py::test_sample_24_injury_valid_transition
+PASSED tests/test_conflict_sample_suite.py::test_sample_25_relation_valid_reconciliation
+PASSED tests/test_conflict_sample_suite.py::test_sample_26_foreshadow_legit_long_buried
+PASSED tests/test_conflict_sample_suite.py::test_sample_27_side_thread_dormant
+PASSED tests/test_conflict_sample_suite.py::test_sample_28_location_transport_legal
+PASSED tests/test_conflict_sample_suite.py::test_sample_29_revisit_legal
+PASSED tests/test_conflict_sample_suite.py::test_sample_30_reforged_item_legal
+PASSED tests/test_conflict_sample_suite.py::test_sample_31_power_single_jump_legal
+PASSED tests/test_conflict_sample_suite.py::test_sample_32_bridge_callback_exempt
+PASSED tests/test_conflict_sample_suite.py::test_sample_33_relation_duplicate_active
+PASSED tests/test_conflict_sample_suite.py::test_sample_34_relation_contradiction_active
+PASSED tests/test_conflict_sample_suite.py::test_sample_35_relation_single_active_legal
+PASSED tests/test_conflict_sample_suite.py::test_sample_36_persona_justified_change
+PASSED tests/test_conflict_sample_suite.py::test_sample_37_bridge_unmarked_echo
+PASSED tests/test_conflict_sample_suite.py::test_sample_38_volume_drift
+PASSED tests/test_conflict_sample_suite.py::test_sample_39_style_scene_variation
+PASSED tests/test_conflict_sample_suite.py::test_metric_baseline_constants
+PASSED tests/test_context_budget.py::test_optional_memory_trimmed_without_mutating_shared_context
+PASSED tests/test_context_budget.py::test_required_content_over_budget_is_never_silently_truncated
+PASSED tests/test_context_budget.py::test_public_prompt_builders_enforce_final_message_budget[plan]
+PASSED tests/test_context_budget.py::test_public_prompt_builders_enforce_final_message_budget[write]
+PASSED tests/test_context_budget.py::test_public_prompt_builders_enforce_final_message_budget[extract]
+PASSED tests/test_context_budget.py::test_public_prompt_builders_enforce_final_message_budget[audit]
+PASSED tests/test_context_budget.py::test_public_prompt_builders_enforce_final_message_budget[revise]
+PASSED tests/test_context_budget.py::test_tool_results_over_budget_stop_before_calling_provider
+PASSED tests/test_context_budget.py::test_small_prompt_is_unchanged
+PASSED tests/test_context_budget.py::test_prompt_reserves_actual_tool_schema_size[write]
+PASSED tests/test_context_budget.py::test_prompt_reserves_actual_tool_schema_size[audit]
+PASSED tests/test_context_budget.py::test_manual_memory_correction_returns_budget_error_without_model_call
+PASSED tests/test_context_budget.py::test_full_length_chapter_survives_all_post_write_stages[3500]
+PASSED tests/test_context_budget.py::test_full_length_chapter_survives_all_post_write_stages[6000]
+PASSED tests/test_context_budget.py::test_full_length_chapter_survives_all_post_write_stages[10000]
+PASSED tests/test_continuity.py::test_recall_uses_exact_predecessor_even_with_current_and_future
+PASSED tests/test_continuity.py::test_missing_predecessor_does_not_pretend_older_chapter_is_previous
+PASSED tests/test_continuity.py::test_excerpt_preserves_scene_not_title_and_tail_keeps_action_context
+PASSED tests/test_continuity.py::test_all_creation_stages_receive_boundary_evidence
+PASSED tests/test_continuity.py::test_transition_schema_and_anchor_verification
+PASSED tests/test_continuity.py::test_generated_transition_anchor_repair_is_narrow_and_exact
+PASSED tests/test_continuity.py::test_revision_reextracts_memory_and_clears_old_findings
+PASSED tests/test_continuity.py::test_failed_semantic_audit_stays_for_review_and_explicit_resume_finishes
+PASSED tests/test_correction.py::test_diff_style_edit_keeps_all_no_churn
+PASSED tests/test_correction.py::test_diff_removed_beat_becomes_removal
+PASSED tests/test_correction.py::test_diff_new_plot_beat_added
+PASSED tests/test_correction.py::test_diff_character_state_exact_key
+PASSED tests/test_correction.py::test_apply_changeset_to_pool_idempotent
+PASSED tests/test_correction.py::test_apply_memory_removal_event_deletes_embedding
+PASSED tests/test_correction.py::test_apply_memory_removal_fact_closes_expired
+PASSED tests/test_correction.py::test_apply_memory_removal_state_and_relation_close
+PASSED tests/test_correction.py::test_apply_memory_removal_foreshadow_deletes
+PASSED tests/test_correction.py::test_apply_memory_removal_already_gone_idempotent
+PASSED tests/test_correction.py::test_confirm_candidate_memory_removal_via_pool
+PASSED tests/test_correction.py::test_extract_candidates_from_draft_shared_with_node
+PASSED tests/test_correction.py::test_correct_memory_style_edit_noop
+PASSED tests/test_correction.py::test_correct_memory_removed_beat_produces_removal
+PASSED tests/test_correction.py::test_correct_memory_no_content_400
+PASSED tests/test_correction.py::test_update_chapter_content_increments_version
+PASSED tests/test_cost.py::test_lookup_prices_official_families
+PASSED tests/test_cost.py::test_deepseek_official_offpeak_cny
+PASSED tests/test_cost.py::test_openai_and_anthropic_convert_usd
+PASSED tests/test_cost.py::test_model_response_uses_official_price
+PASSED tests/test_cost.py::test_connection_prices_override_catalog
+PASSED tests/test_cost.py::test_effective_cost_keeps_stored_and_backfills_zero
+PASSED tests/test_creation_migration.py::test_project_creation_upgrade_uses_active_schema_and_preserves_legacy_books
+PASSED tests/test_custom_providers.py::test_anthropic_url_and_message_conversion_support_json_and_tools
+PASSED tests/test_custom_providers.py::test_anthropic_stream_forwards_text_and_collects_usage
+PASSED tests/test_custom_providers.py::test_openai_compatible_payload_does_not_send_deepseek_extension
+PASSED tests/test_custom_providers.py::test_openai_compatible_keeps_thinking_off_on_deepseek_host
+PASSED tests/test_custom_providers.py::test_minimax_requests_reasoning_split
+PASSED tests/test_debt_checks.py::test_sample18_foreshadow_planted_no_trigger_long_untouched
+PASSED tests/test_debt_checks.py::test_sample18_not_yet_untouched_within_threshold
+PASSED tests/test_debt_checks.py::test_sample26_foreshadow_with_trigger_long_sleep_ok
+PASSED tests/test_debt_checks.py::test_sample23_foreshadow_developing_stalled
+PASSED tests/test_debt_checks.py::test_sample23_developing_within_threshold_ok
+PASSED tests/test_debt_checks.py::test_sample19_main_thread_stalled
+PASSED tests/test_debt_checks.py::test_sample19_main_thread_within_threshold_ok
+PASSED tests/test_debt_checks.py::test_sample27_side_thread_dormant_ok
+PASSED tests/test_debt_checks.py::test_closed_or_resolved_not_flagged
+PASSED tests/test_debt_checks.py::test_no_progress_anchor_not_flagged
+PASSED tests/test_debt_checks.py::test_resolved_foreshadow_not_in_open_pool
+PASSED tests/test_embed_backfill.py::test_pgvector_upsert_is_idempotent
+PASSED tests/test_embed_backfill.py::test_embed_backfill_event_is_idempotent
+PASSED tests/test_embed_backfill.py::test_embed_backfill_world_skips_hard_facts
+PASSED tests/test_embed_backfill.py::test_embed_backfill_refuses_when_embedding_disabled
+PASSED tests/test_embed_backfill.py::test_embed_backfill_rejects_unknown_level
+PASSED tests/test_enqueue_gates.py::test_gate_rejections_use_the_error_envelope[QUOTA_EXCEEDED]
+PASSED tests/test_enqueue_gates.py::test_gate_rejections_use_the_error_envelope[BOOK_QUOTA_EXCEEDED]
+PASSED tests/test_enqueue_gates.py::test_gate_rejections_use_the_error_envelope[PLATFORM_CHAPTER_EXCEEDED]
+PASSED tests/test_enqueue_gates.py::test_gate_rejections_use_the_error_envelope[BOOK_CNT_EXCEEDED]
+PASSED tests/test_enqueue_gates.py::test_gate_rejections_use_the_error_envelope[CONCURRENCY_LIMIT]
+PASSED tests/test_enqueue_gates.py::test_gate_rejections_use_the_error_envelope[DAILY_BUDGET_EXCEEDED]
+PASSED tests/test_enqueue_gates.py::test_zero_limits_mean_unlimited
+PASSED tests/test_enqueue_gates.py::test_draft_book_cannot_be_enqueued
+PASSED tests/test_enqueue_gates.py::test_invalid_writing_mode_is_rejected_before_the_gate
+PASSED tests/test_enqueue_gates.py::test_success_returns_202_with_a_dispatchable_message
+PASSED tests/test_enqueue_gates.py::test_vip_tier_gets_the_priority_boost
+PASSED tests/test_enqueue_gates.py::test_owner_record_and_sse_seed_exist_before_the_202
+PASSED tests/test_enqueue_gates.py::test_definite_publish_failure_rolls_the_gates_back
+PASSED tests/test_enqueue_gates.py::test_ambiguous_publish_failure_leaves_the_gates_deducted
+PASSED tests/test_enqueue_gates.py::test_batch_size_is_clamped_and_start_defaults_to_one
+PASSED tests/test_enqueue_gates.py::test_produced_menus_reach_the_right_dispatch_branch[chapter_generate-payload0-chapter]
+PASSED tests/test_enqueue_gates.py::test_produced_menus_reach_the_right_dispatch_branch[batch_generate-payload1-batch]
+PASSED tests/test_enqueue_gates.py::test_produced_menus_reach_the_right_dispatch_branch[short_generate-payload2-short]
+PASSED tests/test_enqueue_gates.py::test_short_generate_enqueues_one_whole_story_task
+PASSED tests/test_enqueue_gates.py::test_a_long_book_cannot_ask_for_a_short_generate
+PASSED tests/test_enqueue_gates.py::test_a_short_book_cannot_be_driven_through_the_long_pipeline
+PASSED tests/test_enqueue_gates.py::test_resume_publishes_the_branch_its_task_type_maps_to[chapter_generate-chapter_resume]
+PASSED tests/test_enqueue_gates.py::test_resume_publishes_the_branch_its_task_type_maps_to[batch_generate-batch_resume]
+PASSED tests/test_enqueue_gates.py::test_resume_publishes_the_branch_its_task_type_maps_to[short_generate-short_resume]
+PASSED tests/test_enqueue_gates.py::test_the_lua_scripts_ship_next_to_the_module
+PASSED tests/test_environment_routes.py::test_environment_roundtrip_models_and_rankings
+PASSED tests/test_environment_routes.py::test_environment_connection_prices_roundtrip_and_chain
+PASSED tests/test_environment_routes.py::test_environment_rejects_partial_prices
+PASSED tests/test_environment_routes.py::test_environment_omitting_fields_preserves_them
+PASSED tests/test_environment_routes.py::test_environment_rejects_invalid_role_and_rankings
+PASSED tests/test_environment_routes.py::test_environment_save_rejects_non_global_model_host
+PASSED tests/test_environment_routes.py::test_environment_saves_audit_summarize_and_thinking
+PASSED tests/test_environment_routes.py::test_make_chain_prefers_user_environment_over_project
+PASSED tests/test_environment_routes.py::test_probe_reuses_environment_connection_key
+PASSED tests/test_environment_routes.py::test_environment_requires_auth
+PASSED tests/test_environment_routes.py::test_save_raw_unknown_user
+PASSED tests/test_evaluation.py::test_evidence_candidate_is_not_human_confirmation
+PASSED tests/test_evaluation.py::test_forged_evidence_does_not_match[3-\u65e7\u8868\u5df2\u6bc1\u3002]
+PASSED tests/test_evaluation.py::test_forged_evidence_does_not_match[1-\u6839\u672c\u4e0d\u5b58\u5728\u7684\u53e5\u5b50]
+PASSED tests/test_evaluation.py::test_forged_evidence_does_not_match[1-]
+PASSED tests/test_evaluation.py::test_unrelated_rewrite_not_detection
+PASSED tests/test_evaluation.py::test_invalid_json_is_completed_output_failure
+PASSED tests/test_evaluation.py::test_review_can_confirm_only_valid_candidate
+PASSED tests/test_evaluation.py::test_duplicate_finding_not_two_true_positives
+PASSED tests/test_evaluation.py::test_negative_extra_finding_is_explicit_false_positive
+PASSED tests/test_evaluation.py::test_partial_review_remains_provisional
+PASSED tests/test_evaluation.py::test_empty_summary_na_and_provider_failure_in_denominator
+PASSED tests/test_evaluation.py::test_duplicate_ids_and_split_leak_rejected
+PASSED tests/test_evaluation.py::test_unknown_case_field_rejected
+PASSED tests/test_evaluation.py::test_budget_reserves_unknown_price_and_actual_usage
+PASSED tests/test_evaluation.py::test_cost_limit_stops_before_request
+PASSED tests/test_evaluation.py::test_dry_run_never_calls_model_or_creates_output
+PASSED tests/test_evaluation.py::test_run_preserves_failure_and_no_overwrite
+PASSED tests/test_evaluation.py::test_html_escapes_model_output
+PASSED tests/test_evaluation.py::test_budget_unknown_usage_keeps_reservation
+PASSED tests/test_evaluation.py::test_budget_deadline_stops_scheduling
+PASSED tests/test_evaluation.py::test_invalid_pointer_rejected
+PASSED tests/test_evaluation.py::test_duplicate_id_rejected
+PASSED tests/test_evaluation.py::test_review_dispute_not_formal_quality
+PASSED tests/test_evaluation.py::test_measured_results_not_rewritten_when_report_rebuilt
+PASSED tests/test_evaluation.py::test_migrated_cases_and_catalog_cover_existing_assets
+PASSED tests/test_evaluation.py::test_review_can_confirm_proposed_label_without_changing_source
+PASSED tests/test_evaluation.py::test_invalid_output_confirmed_failure_counts_missing_issue
+PASSED tests/test_evaluation.py::test_no_review_does_not_publish_zero_as_accuracy
+PASSED tests/test_evaluation.py::test_saved_recovery_does_not_claim_new_run
+PASSED tests/test_evaluation.py::test_extra_true_source_is_not_forged_quote
+PASSED tests/test_evaluation.py::test_one_finding_cannot_satisfy_two_issues
+PASSED tests/test_evaluation.py::test_malformed_review_rejected[review0]
+PASSED tests/test_evaluation.py::test_malformed_review_rejected[review1]
+PASSED tests/test_evaluation.py::test_budget_stop_is_saved_for_each_unstarted_case
+PASSED tests/test_evaluation.py::test_source_pointer_cannot_lie_about_text_or_chapter[/input/draft-1]
+PASSED tests/test_evaluation.py::test_source_pointer_cannot_lie_about_text_or_chapter[/label/review_note-1]
+PASSED tests/test_evaluation.py::test_config_rejects_ambiguous_types_and_nan[temperature-0.1]
+PASSED tests/test_evaluation.py::test_config_rejects_ambiguous_types_and_nan[max_calls-True]
+PASSED tests/test_evaluation.py::test_config_rejects_ambiguous_types_and_nan[deadline_seconds-nan]
+PASSED tests/test_evaluation.py::test_interrupted_run_can_score_preserved_prefix
+PASSED tests/test_evaluation.py::test_output_strictly_rejects_unknown_fields[{"verdict":"pass","findngs":[]}]
+PASSED tests/test_evaluation.py::test_output_strictly_rejects_unknown_fields[{"verdict":"pass","findings":[],"unknown":true}]
+PASSED tests/test_evaluation.py::test_output_strictly_rejects_unknown_fields[{"verdict":"rewrite","findings":[{"conflict_key":"k","conflict_type":"item_rule","severity":"major","evidence":[{"chapter":1,"quote":"\u65e7\u8868\u5df2\u6bc1\u3002","other":1}]}]}]
+PASSED tests/test_evaluation.py::test_human_rejection_controls_score_exit
+PASSED tests/test_evaluation.py::test_catalog_points_to_real_functions
+PASSED tests/test_evaluation.py::test_torn_jsonl_tail_recovers_durable_artifact
+PASSED tests/test_evaluation.py::test_case_snapshot_tampering_rejected
+PASSED tests/test_evaluation.py::test_live_adapter_disables_sdk_retries_and_marks_projection
+PASSED tests/test_evaluation_cases_extended.py::test_alias_error_and_replacement_share_group_and_distinct_labels
+PASSED tests/test_evaluation_comparison.py::test_all_roles_share_budget_and_denied_requests_do_not_call_sdk
+PASSED tests/test_evaluation_comparison.py::test_provider_timeout_is_saved_and_unknown_usage_holds_reservation
+PASSED tests/test_evaluation_comparison.py::test_blind_bundle_preserves_failures_and_separates_variant_key
+PASSED tests/test_evaluation_comparison.py::test_supplement_only_selects_budget_stopped_slots_and_validates_ids
+PASSED tests/test_evaluation_comparison.py::test_direct_context_keeps_previous_tail_and_alias_mapping
+PASSED tests/test_evaluation_comparison_integration.py::test_enabled_embedding_rejected_before_database_or_sdk
+PASSED tests/test_evaluation_comparison_integration.py::test_direct_full_and_ablation_preserve_all_outputs_and_persisted_body
+PASSED tests/test_evaluation_retrieval.py::test_missing_history_and_foreign_future_rows_are_not_quality_hits
+PASSED tests/test_evaluation_retrieval.py::test_empty_required_is_not_perfect_recall
+PASSED tests/test_evaluation_retrieval.py::test_retrieval_case_rejects_duplicate_and_unavailable_required_events
+PASSED tests/test_events_api.py::test_events_participants_resolved_to_names
+PASSED tests/test_events_api.py::test_events_ordered_desc_and_range_filter
+PASSED tests/test_events_api.py::test_events_expose_ledger_fields
+PASSED tests/test_events_api.py::test_events_empty_project
+PASSED tests/test_events_api.py::test_events_auth_matrix
+PASSED tests/test_events_api.py::test_state_history_includes_invalidated_rows
+PASSED tests/test_events_api.py::test_state_history_carries_change_fields
+PASSED tests/test_events_api.py::test_state_history_unknown_character_empty
+PASSED tests/test_events_api.py::test_state_history_invalid_character_id_400
+PASSED tests/test_events_api.py::test_state_history_auth_matrix
+PASSED tests/test_feedback.py::test_text_only_submission_and_own_list
+PASSED tests/test_feedback.py::test_image_and_video_attachments_round_trip
+PASSED tests/test_feedback.py::test_oversize_attachment_is_rejected_and_disk_is_cleaned
+PASSED tests/test_feedback.py::test_bad_mime_and_empty_description_and_too_many_files
+PASSED tests/test_feedback.py::test_attachment_is_owner_scoped_admin_exempt
+PASSED tests/test_feedback.py::test_admin_list_and_status_transition
+PASSED tests/test_flow.py::test_chapter_flow_auto_confirm
+PASSED tests/test_flow.py::test_rewrite_flow_invalidates_then_persists
+PASSED tests/test_flow.py::test_recall_context_has_foreshadows
+PASSED tests/test_flow.py::test_chapter_flow_power_violation
+PASSED tests/test_flow.py::test_confirm_resume_no_duplicate
+PASSED tests/test_flow.py::test_persist_skips_pool_handled_candidates
+PASSED tests/test_flow.py::test_batch_flow
+PASSED tests/test_flow.py::test_batch_review_resume_finalizes_chapter
+PASSED tests/test_flow.py::test_batch_plan_short_explicit_fail
+PASSED tests/test_flow.py::test_batch_failure_and_resume
+PASSED tests/test_flow.py::test_batch_pause_halt_and_resume
+PASSED tests/test_flow.py::test_batch_cancel_halt
+PASSED tests/test_flow.py::test_task_status_done
+PASSED tests/test_flow.py::test_audit_rewrite_loop
+PASSED tests/test_flow.py::test_audit_replan_chapter
+PASSED tests/test_flow.py::test_batch_shared_context
+PASSED tests/test_flow.py::test_audit_replan_batch
+PASSED tests/test_flow.py::test_audit_rewrite_loop_content_driven
+PASSED tests/test_flow.py::test_audit_replan_chapter_content_driven
+PASSED tests/test_flow.py::test_audit_tool_loop
+PASSED tests/test_flow.py::test_write_tool_loop
+PASSED tests/test_flow.py::test_write_rejects_tool_noise
+PASSED tests/test_flow.py::test_tool_budget_forced_exit
+PASSED tests/test_flow.py::test_tools_execute_readonly
+PASSED tests/test_flow.py::test_deepseek_tool_call_parsing
+PASSED tests/test_flow.py::test_parse_json_tolerates_raw_control_chars
+PASSED tests/test_flow.py::test_parse_json_preserves_structure_whitespace_after_escape
+PASSED tests/test_flow.py::test_parse_json_tolerates_trailing_junk_with_brace
+PASSED tests/test_flow.py::test_parse_json_repairs_missing_commas_at_value_boundaries
+PASSED tests/test_flow.py::test_parse_json_repairs_stray_quotes
+PASSED tests/test_flow.py::test_parse_json_repairs_stray_quote_that_comma_follows
+PASSED tests/test_flow.py::test_parse_json_repair_noop_on_valid
+PASSED tests/test_flow.py::test_parse_json_repairs_stray_quote_then_control_char
+PASSED tests/test_flow.py::test_split_marked_no_marker_returns_default
+PASSED tests/test_flow.py::test_split_marked_single_marker_takes_block
+PASSED tests/test_flow.py::test_split_marked_multiple_markers_sections
+PASSED tests/test_flow.py::test_split_marked_empty_block_after_marker
+PASSED tests/test_flow.py::test_split_marked_lowercase_and_chinese_markers
+PASSED tests/test_flow.py::test_content_block_prefers_content_then_named
+PASSED tests/test_flow.py::test_check_draft_strips_thinking_wrappers
+PASSED tests/test_flow.py::test_looks_like_tool_noise_detects_text_tool_calls
+PASSED tests/test_flow.py::test_coerce_str_lists_normalizes_llm_object_arrays
+PASSED tests/test_flow.py::test_storage_indexes_exist_and_idempotent
+PASSED tests/test_foreshadow_recovery.py::test_touch_advanced_develops
+PASSED tests/test_foreshadow_recovery.py::test_touch_resolved_sets_chapter
+PASSED tests/test_foreshadow_recovery.py::test_touch_resolved_not_reverted_by_advanced
+PASSED tests/test_foreshadow_recovery.py::test_touch_bad_or_missing_id_skipped
+PASSED tests/test_foreshadow_recovery.py::test_node_persist_awaiting_review_auto_persists_touch
+PASSED tests/test_foreshadow_recovery.py::test_node_persist_auto_updates_touch
+PASSED tests/test_foreshadow_recovery.py::test_extract_messages_injects_open_foreshadows
+PASSED tests/test_genre_packs.py::test_catalog_has_37_and_stable_ids
+PASSED tests/test_genre_packs.py::test_compose_secondary_keeps_primary_rules
+PASSED tests/test_genre_packs.py::test_volume_span_follows_pacing
+PASSED tests/test_genre_packs.py::test_setup_capabilities_follow_genre
+PASSED tests/test_genre_packs.py::test_display_genre_locked_names
+PASSED tests/test_genre_packs.py::test_secondary_prompt_is_seven_to_three_and_refine
+PASSED tests/test_genre_packs.py::test_book_pack_baseline_isolated_from_later_edits
+PASSED tests/test_genre_packs.py::test_create_without_primary_id_keeps_old_genre_string
+PASSED tests/test_genre_packs.py::test_create_with_pack_locks_name_and_stores_snapshot
+PASSED tests/test_genre_packs.py::test_secondary_requires_primary_400
+PASSED tests/test_genre_packs.py::test_old_book_cannot_put_genre_pack
+PASSED tests/test_global_audit.py::test_window_threshold_triggers
+PASSED tests/test_global_audit.py::test_window_resumes_after_prior_report
+PASSED tests/test_global_audit.py::test_no_outline_skips_llm
+PASSED tests/test_global_audit.py::test_volume_drift_detected
+PASSED tests/test_global_audit.py::test_volume_on_track_empty
+PASSED tests/test_global_audit.py::test_overflagging_guard_zero_false_positive
+PASSED tests/test_global_audit.py::test_llm_failure_non_blocking
+PASSED tests/test_global_audit.py::test_report_persisted_and_marker_advances
+PASSED tests/test_global_audit.py::test_batch_summary_surfaces_metrics
+PASSED tests/test_global_audit.py::test_below_threshold_no_report
+PASSED tests/test_global_audit.py::test_endpoint_global_audit
+PASSED tests/test_global_audit.py::test_endpoint_no_chapters_400
+PASSED tests/test_global_audit.py::test_endpoint_llm_failure_502
+PASSED tests/test_graph_api.py::test_graph_full_topology
+PASSED tests/test_graph_api.py::test_graph_node_fields
+PASSED tests/test_graph_api.py::test_graph_unifies_location_entity_and_registry
+PASSED tests/test_graph_api.py::test_persist_location_entity_mirrors_with_parent
+PASSED tests/test_graph_api.py::test_graph_empty_project
+PASSED tests/test_graph_api.py::test_graph_missing_project_404
+PASSED tests/test_graph_api.py::test_graph_rejects_unknown_user
+PASSED tests/test_graph_api.py::test_graph_fail_closed_without_identity
+PASSED tests/test_graph_api.py::test_graph_rejects_invalid_identity
+PASSED tests/test_graph_api.py::test_foreshadows_ledger_all_statuses
+PASSED tests/test_graph_api.py::test_foreshadows_empty_project
+PASSED tests/test_graph_api.py::test_foreshadows_auth_matrix
+PASSED tests/test_graph_api.py::test_chapter_list_includes_summary
+PASSED tests/test_identity_boundary.py::test_every_business_route_rejects_anonymous_and_forged_identity
+PASSED tests/test_identity_boundary.py::test_every_business_route_has_an_identity_dependency
+PASSED tests/test_identity_boundary.py::test_the_structural_sweep_actually_sees_the_routers
+PASSED tests/test_identity_boundary.py::test_sweep_actually_covers_the_business_surface
+PASSED tests/test_identity_boundary.py::test_foreign_account_gets_403[GET-/chapters-None]
+PASSED tests/test_identity_boundary.py::test_foreign_account_gets_403[GET-/creation-None]
+PASSED tests/test_identity_boundary.py::test_foreign_account_gets_403[GET-/tasks-None]
+PASSED tests/test_identity_boundary.py::test_foreign_account_gets_403[GET-/outline-None]
+PASSED tests/test_identity_boundary.py::test_foreign_account_gets_403[PUT--body4]
+PASSED tests/test_identity_boundary.py::test_foreign_account_gets_403[DELETE--None]
+PASSED tests/test_identity_boundary.py::test_forged_plaintext_header_cannot_override_or_elevate
+PASSED tests/test_identity_boundary.py::test_logout_revokes_the_session_immediately
+PASSED tests/test_identity_boundary.py::test_bad_bearer_is_rejected_with_401[\u7b7e\u540d\u5408\u6cd5\u4f46\u8d26\u53f7\u4e0d\u5b58\u5728]
+PASSED tests/test_identity_boundary.py::test_bad_bearer_is_rejected_with_401[\u5df2\u8fc7\u671f]
+PASSED tests/test_identity_boundary.py::test_bad_bearer_is_rejected_with_401[issuer \u4e0d\u7b26]
+PASSED tests/test_identity_boundary.py::test_bad_bearer_is_rejected_with_401[sub \u4e0d\u662f UUID]
+PASSED tests/test_identity_boundary.py::test_bad_bearer_is_rejected_with_401[ver < 1]
+PASSED tests/test_identity_boundary.py::test_bad_bearer_is_rejected_with_401[ver \u4e0d\u662f\u6574\u6570]
+PASSED tests/test_identity_boundary.py::test_bad_bearer_is_rejected_with_401[ver \u662f bool\uff08int \u7684\u5b50\u7c7b\uff0c\u5fc5\u987b\u663e\u5f0f\u62d2\uff09]
+PASSED tests/test_identity_boundary.py::test_bad_bearer_is_rejected_with_401[\u7f3a ver]
+PASSED tests/test_identity_boundary.py::test_bad_bearer_is_rejected_with_401[\u7f3a exp]
+PASSED tests/test_identity_boundary.py::test_token_signed_with_another_algorithm_is_rejected[HS512]
+PASSED tests/test_identity_boundary.py::test_token_signed_with_another_algorithm_is_rejected[none]
+PASSED tests/test_identity_boundary.py::test_non_bearer_authorization_scheme_is_ignored[Basic]
+PASSED tests/test_identity_boundary.py::test_non_bearer_authorization_scheme_is_ignored[Token]
+PASSED tests/test_invalidation.py::test_invalidate_target_chapter_fully_invalidated
+PASSED tests/test_invalidation.py::test_invalidate_no_collateral_other_chapter
+PASSED tests/test_invalidation.py::test_invalidate_idempotent_noop
+PASSED tests/test_invalidation.py::test_invalidate_empty_chapter_noop
+PASSED tests/test_invalidation.py::test_invalidate_hard_fact_expired_removed_from_recall
+PASSED tests/test_invalidation.py::test_metric_compute_correctness
+PASSED tests/test_invalidation.py::test_persist_rewrite_invalidates_then_writes_no_duplicate
+PASSED tests/test_invalidation.py::test_confirm_candidate_sequence_does_not_lose_prior
+PASSED tests/test_invalidation.py::test_reapply_pool_for_rewrite_preserves_confirmed_excludes_rejected
+PASSED tests/test_invalidation.py::test_get_character_state_ignores_invalidated
+PASSED tests/test_invalidation.py::test_get_character_state_valid_from_boundary
+PASSED tests/test_invalidation.py::test_recall_after_invalidate_no_stale_keeps_other
+PASSED tests/test_invalidation.py::test_vector_store_delete_by_chapter
+PASSED tests/test_invitations.py::test_registration_requires_an_invitation_code
+PASSED tests/test_invitations.py::test_registration_rejects_an_unknown_invitation_without_creating_user
+PASSED tests/test_invitations.py::test_registration_rejects_expired_and_revoked_invitations
+PASSED tests/test_invitations.py::test_invitation_is_single_use_and_plaintext_is_never_stored
+PASSED tests/test_invitations.py::test_concurrent_redemption_allows_exactly_one_account
+PASSED tests/test_invitations.py::test_duplicate_username_rolls_back_redemption_for_later_use
+PASSED tests/test_invitations.py::test_response_construction_failure_rolls_back_user_and_redemption
+PASSED tests/test_invitations.py::test_cli_creates_256_bit_default_invitation_and_revokes_by_id
+PASSED tests/test_ledger_l2.py::test_judgment_set_empty_zero_llm_no_candidates
+PASSED tests/test_ledger_l2.py::test_judgment_set_empty_old_mismatch_ledger
+PASSED tests/test_ledger_l2.py::test_judgment_set_empty_realm_excluded
+PASSED tests/test_ledger_l2.py::test_positive_sample16_injury_flip
+PASSED tests/test_ledger_l2.py::test_positive_sample20_goal_flip
+PASSED tests/test_ledger_l2.py::test_positive_sample21_identity_no_source
+PASSED tests/test_ledger_l2.py::test_positive_relation_sample17
+PASSED tests/test_ledger_l2.py::test_positive_relation_sample22
+PASSED tests/test_ledger_l2.py::test_negative_sample24_valid_transition
+PASSED tests/test_ledger_l2.py::test_negative_sample25_valid_reconciliation
+PASSED tests/test_ledger_l2.py::test_guard_drops_bad_evidence
+PASSED tests/test_ledger_l2.py::test_guard_drops_low_confidence
+PASSED tests/test_ledger_l2.py::test_guard_drops_wrong_verdict
+PASSED tests/test_ledger_l2.py::test_guard_drops_unknown_key
+PASSED tests/test_ledger_l2.py::test_llm_failure_non_blocking
+PASSED tests/test_ledger_l2.py::test_cap_8_judgments
+PASSED tests/test_ledger_l2.py::test_messages_assembled
+PASSED tests/test_ledger_l2.py::test_node_validate_merges_l2_major
+PASSED tests/test_ledger_l2.py::test_merge_unresolved_keeps_l1_l2_and_overrides_same_key
+PASSED tests/test_ledger_l2.py::test_route_after_audit_l2_major_routing
+PASSED tests/test_ledger_l2.py::test_node_persist_l2_major_pools_candidates
+PASSED tests/test_manual_plan.py::test_manual_plan_waits_for_edit_and_resume_does_not_rerun_planner
+PASSED tests/test_manual_plan.py::test_manual_replan_pauses_again_and_keeps_both_plan_versions
+PASSED tests/test_manual_plan.py::test_plan_confirm_api_validates_checkpoint_and_queues_exact_edited_version
+PASSED tests/test_memory_layers.py::test_declared_nodes_are_all_covered
+PASSED tests/test_memory_layers.py::test_node_injects_exactly_the_declared_blocks[audit]
+PASSED tests/test_memory_layers.py::test_node_injects_exactly_the_declared_blocks[extract]
+PASSED tests/test_memory_layers.py::test_node_injects_exactly_the_declared_blocks[plan_cast]
+PASSED tests/test_memory_layers.py::test_node_injects_exactly_the_declared_blocks[plan_chapter]
+PASSED tests/test_memory_layers.py::test_node_injects_exactly_the_declared_blocks[revise]
+PASSED tests/test_memory_layers.py::test_node_injects_exactly_the_declared_blocks[summarize]
+PASSED tests/test_memory_layers.py::test_node_injects_exactly_the_declared_blocks[write]
+PASSED tests/test_memory_layers.py::test_write_lets_the_plan_carry_events_and_hooks
+PASSED tests/test_memory_layers.py::test_cast_stays_lean
+PASSED tests/test_memory_layers.py::test_declaration_covers_every_context_block
+PASSED tests/test_memory_layers.py::test_injections_only_name_declared_blocks
+PASSED tests/test_memory_layers.py::test_short_context_is_the_only_undeclarable_drop
+PASSED tests/test_memory_layers.py::test_drop_order_is_a_total_order
+PASSED tests/test_memory_layers.py::test_drop_order_drains_lower_orders_first
+PASSED tests/test_memory_layers.py::test_never_drops_hard_facts_or_short_context
+PASSED tests/test_mfa.py::test_an_admin_without_a_second_factor_logs_in_exactly_as_before
+PASSED tests/test_mfa.py::test_enrolling_requires_the_account_password_again
+PASSED tests/test_mfa.py::test_every_second_factor_endpoint_is_admin_only[GET-/api/v1/auth/mfa-None]
+PASSED tests/test_mfa.py::test_every_second_factor_endpoint_is_admin_only[POST-/api/v1/auth/mfa/enroll-body1]
+PASSED tests/test_mfa.py::test_every_second_factor_endpoint_is_admin_only[POST-/api/v1/auth/mfa/confirm-body2]
+PASSED tests/test_mfa.py::test_every_second_factor_endpoint_is_admin_only[POST-/api/v1/auth/mfa/disable-body3]
+PASSED tests/test_mfa.py::test_status_reports_whether_the_second_factor_is_confirmed
+PASSED tests/test_mfa.py::test_enrol_confirm_and_then_login_demands_a_code
+PASSED tests/test_mfa.py::test_a_non_numeric_code_is_rejected_instead_of_crashing
+PASSED tests/test_mfa.py::test_the_challenge_is_void_once_the_password_changes
+PASSED tests/test_mfa.py::test_an_enabled_second_factor_must_be_closed_before_re_enrolling
+PASSED tests/test_mfa.py::test_disabling_needs_a_valid_code
+PASSED tests/test_mfa.py::test_disabling_clears_the_secret_and_revokes_every_session
+PASSED tests/test_mfa.py::test_the_cli_is_the_way_back_when_the_authenticator_is_lost
+PASSED tests/test_mfa.py::test_the_cli_reports_an_unknown_account
+PASSED tests/test_mfa_migration.py::test_upgrade_adds_both_second_factor_columns_and_stays_idempotent
+PASSED tests/test_mfa_migration.py::test_upgrade_leaves_existing_accounts_unenrolled
+PASSED tests/test_model_admission.py::test_account_dialogue_does_not_bypass_admission[dialogue]
+PASSED tests/test_model_admission.py::test_account_dialogue_does_not_bypass_admission[style]
+PASSED tests/test_model_admission.py::test_unconfigured_model_never_consumes_shared_budget
+PASSED tests/test_model_admission.py::test_concurrent_calls_for_same_account_never_reach_provider
+PASSED tests/test_model_admission.py::test_shared_budget_reservation_reconciles_actual_cost
+PASSED tests/test_model_admission.py::test_global_budget_blocks_another_account_before_model_io
+PASSED tests/test_model_admission.py::test_zero_budget_never_blocks_model_io
+PASSED tests/test_model_admission.py::test_unknown_model_and_failed_call_keep_nonzero_reservation
+PASSED tests/test_model_admission.py::test_expired_owner_does_not_release_a_new_lease
+PASSED tests/test_model_admission.py::test_redis_failure_is_closed_before_provider
+PASSED tests/test_model_admission.py::test_success_after_retry_retains_allowance_for_unknown_attempts
+PASSED tests/test_model_admission.py::test_settlement_failure_keeps_reservation_and_bounded_lease
+PASSED tests/test_model_admission.py::test_unknown_price_configuration_cannot_disable_reservation
+PASSED tests/test_model_admission.py::test_partial_usage_retains_full_reservation[100-0]
+PASSED tests/test_model_admission.py::test_partial_usage_retains_full_reservation[0-200]
+PASSED tests/test_model_admission.py::test_slow_provider_keeps_lease_across_expiration_periods
+PASSED tests/test_model_admission.py::test_heartbeat_does_not_renew_a_replacement_owner
+PASSED tests/test_model_probe.py::test_list_models_openai_builds_models_url_and_dedupes
+PASSED tests/test_model_probe.py::test_list_models_anthropic_uses_v1_models_and_api_key_header
+PASSED tests/test_model_probe.py::test_list_models_returns_error_without_raising
+PASSED tests/test_model_probe.py::test_test_connection_openai_posts_chat_completions
+PASSED tests/test_model_probe.py::test_test_connection_anthropic_reads_text_blocks
+PASSED tests/test_model_probe.py::test_test_connection_reports_failure
+PASSED tests/test_model_probe.py::test_test_connection_reports_provider_reason_and_redacts_key
+PASSED tests/test_model_probe.py::test_list_models_surfaces_plain_text_error_body
+PASSED tests/test_model_probe.py::test_test_connection_rejects_non_object_json_body
+PASSED tests/test_model_probe.py::test_probe_error_redacts_api_key
+PASSED tests/test_model_probe.py::test_connection_failure_is_actionable[models-openai]
+PASSED tests/test_model_probe.py::test_connection_failure_is_actionable[models-anthropic]
+PASSED tests/test_model_probe.py::test_connection_failure_is_actionable[test-openai]
+PASSED tests/test_model_probe.py::test_connection_failure_is_actionable[test-anthropic]
+PASSED tests/test_model_probe.py::test_non_object_json_redacts_key_before_any_truncation[False-openai]
+PASSED tests/test_model_probe.py::test_non_object_json_redacts_key_before_any_truncation[False-anthropic]
+PASSED tests/test_model_probe.py::test_non_object_json_redacts_key_before_any_truncation[True-openai]
+PASSED tests/test_model_probe.py::test_non_object_json_redacts_key_before_any_truncation[True-anthropic]
+PASSED tests/test_multiprocess.py::test_hetero_book_parallel
+PASSED tests/test_multiprocess.py::test_same_book_serial
+PASSED tests/test_multiprocess.py::test_worker_kill_redelivers_checkpoint_without_duplicate_persist
+PASSED tests/test_node_retry.py::test_llm_checked_retries_parse_failure_then_succeeds
+PASSED tests/test_node_retry.py::test_llm_checked_all_fail_returns_error_at_limit
+PASSED tests/test_node_retry.py::test_llm_checked_passthrough_resp_error_no_retry
+PASSED tests/test_node_retry.py::test_llm_checked_text_mode_default_corrective
+PASSED tests/test_node_retry.py::test_llm_checked_text_noise_triggers_retry
+PASSED tests/test_node_retry.py::test_node_plan_chapter_retries_bad_json
+PASSED tests/test_node_retry.py::test_node_plan_chapter_repairs_missing_comma_without_model_retry
+PASSED tests/test_node_retry.py::test_node_plan_chapter_repairs_inexact_anchor_without_model_retry
+PASSED tests/test_outline.py::test_outline_draft_returns_draft_not_persisted
+PASSED tests/test_outline.py::test_outline_draft_degraded_on_provider_error
+PASSED tests/test_outline.py::test_outline_draft_degraded_on_bad_json
+PASSED tests/test_outline.py::test_outline_draft_degraded_wrong_shape
+PASSED tests/test_outline.py::test_outline_draft_validation_400
+PASSED tests/test_outline.py::test_outline_draft_ownership
+PASSED tests/test_outline.py::test_put_outline_persists_volumes_and_stages
+PASSED tests/test_outline.py::test_put_outline_legacy_chapters_become_stages
+PASSED tests/test_outline.py::test_put_outline_drops_blank_volume
+PASSED tests/test_outline.py::test_put_outline_overwrites_existing
+PASSED tests/test_outline.py::test_get_outline_empty_project_null
+PASSED tests/test_outline.py::test_outline_ownership_matrix
+PASSED tests/test_outline.py::test_normalize_outline_old_flat_shape_wrapped
+PASSED tests/test_outline.py::test_get_outline_normalizes_legacy_flat_shape
+PASSED tests/test_outline.py::test_plan_messages_injects_outline_slice
+PASSED tests/test_outline.py::test_plan_messages_no_outline_no_section
+PASSED tests/test_outline.py::test_write_messages_injects_outline_and_no_prev_opening
+PASSED tests/test_outline.py::test_outline_prompt_contract
+PASSED tests/test_outline.py::test_write_prompt_opening_contract
+PASSED tests/test_outline.py::test_plan_prompt_repetition_contract
+PASSED tests/test_passwords.py::test_scrypt_hash_uses_required_parameters_random_salt_and_constant_verification_contract
+PASSED tests/test_passwords.py::test_malformed_password_hash_is_rejected_without_error[]
+PASSED tests/test_passwords.py::test_malformed_password_hash_is_rejected_without_error[plaintext]
+PASSED tests/test_passwords.py::test_malformed_password_hash_is_rejected_without_error[scrypt$bad$8$1$salt$digest]
+PASSED tests/test_passwords.py::test_new_password_validation_enforces_length_and_ascii_letter_digit[a1short]
+PASSED tests/test_passwords.py::test_new_password_validation_enforces_length_and_ascii_letter_digit[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+PASSED tests/test_passwords.py::test_new_password_validation_enforces_length_and_ascii_letter_digit[abcdefgh]
+PASSED tests/test_passwords.py::test_new_password_validation_enforces_length_and_ascii_letter_digit[12345678]
+PASSED tests/test_passwords.py::test_new_password_validation_enforces_length_and_ascii_letter_digit[\u5bc6\u7801123456]
+PASSED tests/test_passwords.py::test_password_validation_accepts_eight_to_128_unicode_characters_and_symbols
+PASSED tests/test_plan_cast.py::test_explicit_scene_names_rank_without_any_chapter_outline
+PASSED tests/test_plan_cast.py::test_plan_cast_snapshots_follow_the_cast_not_the_roster
+PASSED tests/test_plan_cast.py::test_plan_cast_rejects_empty_cast_and_keeps_state_untouched
+PASSED tests/test_plan_cast.py::test_plan_cast_carries_replan_feedback_across_the_context_rebuild
+PASSED tests/test_platform_chapter_limit.py::test_zero_means_unlimited_and_the_key_is_never_even_created
+PASSED tests/test_platform_chapter_limit.py::test_the_chapter_that_would_exceed_the_limit_is_refused
+PASSED tests/test_platform_chapter_limit.py::test_the_refusal_is_a_read_not_a_write
+PASSED tests/test_platform_chapter_limit.py::test_the_counter_never_expires
+PASSED tests/test_platform_chapter_limit.py::test_a_batch_is_charged_its_whole_size
+PASSED tests/test_platform_chapter_limit.py::test_a_batch_larger_than_the_whole_limit_is_refused_outright
+PASSED tests/test_platform_chapter_limit.py::test_definite_publish_failure_gives_the_chapter_back
+PASSED tests/test_platform_chapter_limit.py::test_compensation_leaves_the_counter_alone_when_it_was_never_counted
+PASSED tests/test_platform_key_quota.py::test_without_a_platform_key_everything_stays_unconfigured
+PASSED tests/test_platform_key_quota.py::test_the_platform_key_serves_an_account_without_any_connection
+PASSED tests/test_platform_key_quota.py::test_a_connection_without_a_route_is_still_unconfigured
+PASSED tests/test_platform_key_quota.py::test_a_role_that_is_never_configurable_does_not_reach_the_platform_key
+PASSED tests/test_platform_key_quota.py::test_a_broken_own_connection_does_not_fall_back_to_the_platform_key
+PASSED tests/test_platform_key_quota.py::test_admin_is_never_on_the_platform_key
+PASSED tests/test_platform_key_quota.py::test_the_lifetime_quota_stops_the_fourth_free_book
+PASSED tests/test_platform_key_quota.py::test_a_resend_with_the_same_request_id_is_not_charged_twice
+PASSED tests/test_platform_key_quota.py::test_a_refused_creation_does_not_burn_quota
+PASSED tests/test_platform_key_quota.py::test_admin_creates_books_without_spending_the_quota
+PASSED tests/test_platform_key_quota.py::test_without_a_platform_key_books_are_never_capped
+PASSED tests/test_platform_key_quota.py::test_an_account_with_its_own_connection_is_not_charged
+PASSED tests/test_platform_key_quota.py::test_short_commit_is_refused_when_the_short_quota_is_gone
+PASSED tests/test_platform_key_quota.py::test_short_commit_spends_one_and_keeps_it_even_if_the_plan_step_fails
+PASSED tests/test_platform_key_quota.py::test_short_recommit_reuses_the_book_and_skips_the_quota_gate
+PASSED tests/test_platform_quota_migration.py::test_upgrade_adds_both_counters_as_zero_and_is_idempotent
+PASSED tests/test_platform_quota_migration.py::test_upgrade_keeps_existing_usage
+PASSED tests/test_platform_quota_migration.py::test_the_counters_are_writable_after_the_upgrade
+PASSED tests/test_project_creation.py::test_new_project_is_draft_and_resume_is_owned
+PASSED tests/test_project_creation.py::test_setup_alone_does_not_allow_writing
+PASSED tests/test_project_creation.py::test_outline_requires_confirmed_setup
+PASSED tests/test_project_creation.py::test_empty_outline_cannot_promote_but_valid_confirmation_can
+PASSED tests/test_project_creation.py::test_generated_proposals_survive_reload_without_becoming_canon
+PASSED tests/test_project_creation.py::test_worker_also_rejects_unfinished_project
+PASSED tests/test_project_creation.py::test_ready_project_rejects_empty_outline_update
+PASSED tests/test_project_creation.py::test_creation_request_retry_returns_same_project
+PASSED tests/test_project_creation.py::test_parallel_and_late_proposals_preserve_confirmed_state
+PASSED tests/test_project_creation.py::test_create_project_writes_the_chosen_builtin_style
+PASSED tests/test_project_creation.py::test_create_project_without_style_item_id_keeps_settings_empty
+PASSED tests/test_project_creation.py::test_create_project_rejects_a_stranger_style_item_id
+PASSED tests/test_project_delete.py::test_delete_project_cascades_everything
+PASSED tests/test_project_delete.py::test_delete_project_refuses_running_task
+PASSED tests/test_project_delete.py::test_delete_project_cancels_non_running_tasks[queued]
+PASSED tests/test_project_delete.py::test_delete_project_cancels_non_running_tasks[paused]
+PASSED tests/test_project_delete.py::test_delete_project_cancels_non_running_tasks[awaiting_plan]
+PASSED tests/test_project_delete.py::test_delete_project_cancels_non_running_tasks[awaiting_review]
+PASSED tests/test_project_delete.py::test_delete_project_ignores_leftover_inflight_key
+PASSED tests/test_project_delete.py::test_delete_project_refuses_while_worker_holds_book_lock
+PASSED tests/test_project_delete.py::test_delete_project_survives_redis_failure
+PASSED tests/test_project_delete.py::test_delete_project_missing_404
+PASSED tests/test_project_delete.py::test_delete_project_rejects_unknown_user
+PASSED tests/test_project_delete.py::test_delete_project_fail_closed_without_identity
+PASSED tests/test_project_delete.py::test_delete_project_rejects_invalid_identity
+PASSED tests/test_project_delete.py::test_delete_threads_clears_checkpoint_tables
+PASSED tests/test_project_update.py::test_create_project_with_target_words
+PASSED tests/test_project_update.py::test_list_projects_includes_target_words
+PASSED tests/test_project_update.py::test_create_project_invalid_target_words_400
+PASSED tests/test_project_update.py::test_update_project_target_words
+PASSED tests/test_project_update.py::test_update_project_clear_target_words
+PASSED tests/test_project_update.py::test_update_project_out_of_range_400
+PASSED tests/test_project_update.py::test_update_project_owner_matrix
+PASSED tests/test_prompt_settings.py::test_render_setting_known_type
+PASSED tests/test_prompt_settings.py::test_render_setting_none_description_has_no_none_literal
+PASSED tests/test_prompt_settings.py::test_render_setting_unknown_type_does_not_raise
+PASSED tests/test_prompt_settings.py::test_setting_block_in_plan_write_audit
+PASSED tests/test_prompt_settings.py::test_setting_block_not_in_extract
+PASSED tests/test_prompt_settings.py::test_missing_setting_key_renders_empty_placeholder
+PASSED tests/test_prose_hygiene.py::test_chapter_refs_matches_arabic_chapter_number_forms
+PASSED tests/test_prose_hygiene.py::test_chapter_refs_ignores_chinese_numerals_and_dedupes
+PASSED tests/test_prose_hygiene.py::test_chapter_ref_is_critical_so_it_blocks
+PASSED tests/test_prose_hygiene.py::test_sermon_words_reports_each_hit
+PASSED tests/test_prose_hygiene.py::test_sermon_is_hint_only
+PASSED tests/test_prose_hygiene.py::test_consecutive_le_at_threshold_is_flagged
+PASSED tests/test_prose_hygiene.py::test_consecutive_le_below_threshold_is_silent
+PASSED tests/test_prose_hygiene.py::test_consecutive_le_resets_on_sentence_without_le
+PASSED tests/test_prose_hygiene.py::test_long_paragraphs_boundary_is_strictly_over_300
+PASSED tests/test_prose_hygiene.py::test_single_long_paragraph_is_not_enough
+PASSED tests/test_prose_hygiene.py::test_two_long_paragraphs_are_flagged_as_hint
+PASSED tests/test_prose_hygiene.py::test_clean_draft_produces_nothing
+PASSED tests/test_prose_hygiene.py::test_empty_draft_produces_nothing
+PASSED tests/test_prose_hygiene.py::test_all_four_rules_can_fire_together
+PASSED tests/test_provider.py::test_leading_think_block_stripped_from_chapter
+PASSED tests/test_provider.py::test_content_nonempty_passthrough
+PASSED tests/test_provider.py::test_write_path_does_not_use_reasoning_as_chapter
+PASSED tests/test_provider.py::test_reasoning_content_fallback
+PASSED tests/test_provider.py::test_blank_content_falls_back
+PASSED tests/test_provider.py::test_both_empty_returns_error
+PASSED tests/test_provider.py::test_empty_content_retries_then_error
+PASSED tests/test_provider.py::test_finish_reason_exposed_when_truncated
+PASSED tests/test_provider.py::test_finish_reason_none_when_sdk_omits_it
+PASSED tests/test_provider_error_integration.py::test_generation_error_is_safe_and_retry_count_unchanged[False-openai]
+PASSED tests/test_provider_error_integration.py::test_generation_error_is_safe_and_retry_count_unchanged[False-anthropic]
+PASSED tests/test_provider_error_integration.py::test_generation_error_is_safe_and_retry_count_unchanged[True-openai]
+PASSED tests/test_provider_error_integration.py::test_generation_error_is_safe_and_retry_count_unchanged[True-anthropic]
+PASSED tests/test_provider_error_integration.py::test_partial_stream_still_resets_on_each_failure[openai]
+PASSED tests/test_provider_error_integration.py::test_partial_stream_still_resets_on_each_failure[anthropic]
+PASSED tests/test_provider_errors.py::test_real_transport_types[ConnectError-\u672a\u80fd\u8fde\u63a5\u6a21\u578b\u670d\u52a1-httpx]
+PASSED tests/test_provider_errors.py::test_real_transport_types[ConnectTimeout-\u672a\u80fd\u8fde\u63a5\u6a21\u578b\u670d\u52a1-httpx]
+PASSED tests/test_provider_errors.py::test_real_transport_types[ProxyError-\u672a\u80fd\u8fde\u63a5\u6a21\u578b\u670d\u52a1-httpx]
+PASSED tests/test_provider_errors.py::test_real_transport_types[ReadTimeout-\u6a21\u578b\u8bf7\u6c42\u8d85\u65f6-httpx]
+PASSED tests/test_provider_errors.py::test_real_transport_types[WriteTimeout-\u6a21\u578b\u8bf7\u6c42\u8d85\u65f6-httpx]
+PASSED tests/test_provider_errors.py::test_real_transport_types[PoolTimeout-\u7b49\u5f85\u53ef\u7528\u8fde\u63a5\u8d85\u65f6-httpx]
+PASSED tests/test_provider_errors.py::test_real_transport_types[InvalidURL-\u6a21\u578b\u8fde\u63a5\u914d\u7f6e\u65e0\u6548-httpx]
+PASSED tests/test_provider_errors.py::test_real_transport_types[UnsupportedProtocol-\u6a21\u578b\u8fde\u63a5\u914d\u7f6e\u65e0\u6548-httpx]
+PASSED tests/test_provider_errors.py::test_real_transport_types[LocalProtocolError-\u6a21\u578b\u8fde\u63a5\u914d\u7f6e\u65e0\u6548-httpx]
+PASSED tests/test_provider_errors.py::test_real_transport_types[ReadError-\u6a21\u578b\u901a\u4fe1\u4e2d\u65ad-httpx]
+PASSED tests/test_provider_errors.py::test_real_transport_types[WriteError-\u6a21\u578b\u901a\u4fe1\u4e2d\u65ad-httpx]
+PASSED tests/test_provider_errors.py::test_real_transport_types[CloseError-\u6a21\u578b\u901a\u4fe1\u4e2d\u65ad-httpx]
+PASSED tests/test_provider_errors.py::test_real_transport_types[RemoteProtocolError-\u6a21\u578b\u901a\u4fe1\u4e2d\u65ad-httpx]
+PASSED tests/test_provider_errors.py::test_sdk_wrapper_uses_specific_cause[ReadTimeout-\u6a21\u578b\u8bf7\u6c42\u8d85\u65f6-httpx]
+PASSED tests/test_provider_errors.py::test_sdk_wrapper_uses_specific_cause[InvalidURL-\u6a21\u578b\u8fde\u63a5\u914d\u7f6e\u65e0\u6548-httpx]
+PASSED tests/test_provider_errors.py::test_sdk_wrapper_uses_specific_cause[ConnectError-\u672a\u80fd\u8fde\u63a5\u6a21\u578b\u670d\u52a1-httpx]
+PASSED tests/test_provider_errors.py::test_sdk_defaults_and_cyclic_cause
+PASSED tests/test_provider_errors.py::test_status_preserves_reason_without_network_hint[False-401]
+PASSED tests/test_provider_errors.py::test_status_preserves_reason_without_network_hint[False-402]
+PASSED tests/test_provider_errors.py::test_status_preserves_reason_without_network_hint[False-404]
+PASSED tests/test_provider_errors.py::test_status_preserves_reason_without_network_hint[False-429]
+PASSED tests/test_provider_errors.py::test_status_preserves_reason_without_network_hint[False-500]
+PASSED tests/test_provider_errors.py::test_status_preserves_reason_without_network_hint[False-503]
+PASSED tests/test_provider_errors.py::test_status_preserves_reason_without_network_hint[True-401]
+PASSED tests/test_provider_errors.py::test_status_preserves_reason_without_network_hint[True-402]
+PASSED tests/test_provider_errors.py::test_status_preserves_reason_without_network_hint[True-404]
+PASSED tests/test_provider_errors.py::test_status_preserves_reason_without_network_hint[True-429]
+PASSED tests/test_provider_errors.py::test_status_preserves_reason_without_network_hint[True-500]
+PASSED tests/test_provider_errors.py::test_status_preserves_reason_without_network_hint[True-503]
+PASSED tests/test_provider_errors.py::test_invalid_guidance_omitted[]
+PASSED tests/test_provider_errors.py::test_invalid_guidance_omitted[javascript:alert(1)]
+PASSED tests/test_provider_errors.py::test_invalid_guidance_omitted[ftp://example.test]
+PASSED tests/test_provider_errors.py::test_invalid_guidance_omitted[https://user:pass@example.test]
+PASSED tests/test_provider_errors.py::test_invalid_guidance_omitted[https://]
+PASSED tests/test_provider_errors.py::test_invalid_guidance_omitted[https://[bad]
+PASSED tests/test_provider_errors.py::test_invalid_guidance_omitted[https://example.test:bad]
+PASSED tests/test_provider_errors.py::test_invalid_guidance_omitted[https://example.test/\nsecret]
+PASSED tests/test_provider_errors.py::test_guidance_and_redaction_before_limit
+PASSED tests/test_rankings_fanqie.py::test_two_boards_merge_hot_first_then_dark_horse
+PASSED tests/test_rankings_fanqie.py::test_category_v2_preferred_then_category_then_board_only
+PASSED tests/test_rankings_fanqie.py::test_heat_label[12345678-\u70ed\u5ea6 1235\u4e07]
+PASSED tests/test_rankings_fanqie.py::test_heat_label[10000-\u70ed\u5ea6 1\u4e07]
+PASSED tests/test_rankings_fanqie.py::test_heat_label[9999-\u70ed\u5ea6 9999]
+PASSED tests/test_rankings_fanqie.py::test_heat_label[0-\u70ed\u5ea6 0]
+PASSED tests/test_rankings_fanqie.py::test_heat_label[None-]
+PASSED tests/test_rankings_fanqie.py::test_heat_label[abc-]
+PASSED tests/test_rankings_fanqie.py::test_heat_label[8765-\u70ed\u5ea6 8765]
+PASSED tests/test_rankings_fanqie.py::test_single_board_http_error_drops_only_that_board
+PASSED tests/test_rankings_fanqie.py::test_single_board_network_error_drops_only_that_board
+PASSED tests/test_rankings_fanqie.py::test_single_board_empty_result_drops_only_that_board
+PASSED tests/test_rankings_fanqie.py::test_both_boards_fail_raises_with_both_reasons
+PASSED tests/test_rankings_fanqie.py::test_both_boards_empty_raises
+PASSED tests/test_rankings_fanqie.py::test_malformed_payload_is_a_failure_not_a_crash[payload0]
+PASSED tests/test_rankings_fanqie.py::test_malformed_payload_is_a_failure_not_a_crash[payload1]
+PASSED tests/test_rankings_fanqie.py::test_malformed_payload_is_a_failure_not_a_crash[payload2]
+PASSED tests/test_rankings_fanqie.py::test_malformed_payload_is_a_failure_not_a_crash[payload3]
+PASSED tests/test_rankings_fanqie.py::test_missing_fields_and_non_dict_items_do_not_crash
+PASSED tests/test_rankings_fanqie.py::test_rows_survive_sanitize_with_board_name_first
+PASSED tests/test_rankings_mcp.py::test_mcp_call_tool_flattens_text_blocks_and_initializes
+PASSED tests/test_rankings_mcp.py::test_mcp_list_tools_normalizes_names
+PASSED tests/test_rankings_mcp.py::test_mcp_call_tool_is_error_raises
+PASSED tests/test_rankings_mcp.py::test_mcp_call_tool_no_text_raises
+PASSED tests/test_rankings_mcp.py::test_mcp_call_tool_structured_content_fallback
+PASSED tests/test_rankings_mcp.py::test_sanitize_allowlist_and_normalizes
+PASSED tests/test_rankings_mcp.py::test_sanitize_accepts_json_string_input
+PASSED tests/test_rankings_mcp.py::test_sanitize_non_json_text_returns_empty
+PASSED tests/test_rankings_mcp.py::test_sanitize_control_chars_stripped
+PASSED tests/test_rankings_mcp.py::test_sanitize_limit_caps
+PASSED tests/test_rankings_mcp.py::test_sanitize_missing_rank_backfills_by_position
+PASSED tests/test_rankings_mcp.py::test_service_disabled_returns_sample_without_fetch
+PASSED tests/test_rankings_mcp.py::test_service_remote_returns_sanitized_items
+PASSED tests/test_rankings_mcp.py::test_categories_in_mixed_results_are_not_books[<lambda>0]
+PASSED tests/test_rankings_mcp.py::test_categories_in_mixed_results_are_not_books[<lambda>1]
+PASSED tests/test_rankings_mcp.py::test_categories_in_mixed_results_are_not_books[<lambda>2]
+PASSED tests/test_rankings_mcp.py::test_single_category_container_is_not_expanded_into_books
+PASSED tests/test_rankings_mcp.py::test_invalid_categories_are_not_cached_as_remote_success
+PASSED tests/test_rankings_mcp.py::test_service_caches_within_ttl_and_refresh_bypasses
+PASSED tests/test_rankings_mcp.py::test_service_ttl_expiry_refetches
+PASSED tests/test_rankings_mcp.py::test_service_fanqie_error_degrades_to_sample
+PASSED tests/test_rankings_mcp.py::test_service_unexpected_error_degrades_to_sample
+PASSED tests/test_rankings_mcp.py::test_service_cancelled_error_degrades_to_sample
+PASSED tests/test_rankings_mcp.py::test_service_no_valid_items_degrades_to_sample
+PASSED tests/test_rankings_mcp.py::test_facade_fetch_rankings_shape
+PASSED tests/test_rankings_mcp.py::test_rankings_endpoint_200_shape
+PASSED tests/test_rankings_mcp.py::test_rankings_endpoint_refresh_param_passed
+PASSED tests/test_rankings_mcp.py::test_rankings_endpoint_ownership
+PASSED tests/test_ratelimit.py::test_client_ip_reads_only_a_stamped_single_address[headers0-10.0.0.1-203.0.113.9]
+PASSED tests/test_ratelimit.py::test_client_ip_reads_only_a_stamped_single_address[headers1-10.0.0.1-::1]
+PASSED tests/test_ratelimit.py::test_client_ip_reads_only_a_stamped_single_address[headers2-10.0.0.1-10.0.0.1]
+PASSED tests/test_ratelimit.py::test_client_ip_reads_only_a_stamped_single_address[headers3-10.0.0.1-10.0.0.1]
+PASSED tests/test_ratelimit.py::test_client_ip_reads_only_a_stamped_single_address[headers4-10.0.0.1-10.0.0.1]
+PASSED tests/test_ratelimit.py::test_client_ip_reads_only_a_stamped_single_address[headers5-10.0.0.1-10.0.0.1]
+PASSED tests/test_ratelimit.py::test_client_ip_reads_only_a_stamped_single_address[headers6-None-unknown]
+PASSED tests/test_ratelimit.py::test_auth_rate_limit_trips_at_threshold
+PASSED tests/test_ratelimit.py::test_auth_rate_limit_buckets_by_stamped_client_ip
+PASSED tests/test_ratelimit.py::test_auth_rate_limit_fails_closed_when_redis_is_down
+PASSED tests/test_ratelimit.py::test_app_installs_the_global_token_bucket
+PASSED tests/test_ratelimit.py::test_account_bucket_trips_across_different_client_ips
+PASSED tests/test_ratelimit.py::test_account_bucket_is_per_account
+PASSED tests/test_ratelimit.py::test_successful_login_clears_the_account_counter
+PASSED tests/test_ratelimit.py::test_account_guard_fails_closed_when_redis_is_down
+PASSED tests/test_ratelimit.py::test_second_factor_bucket_trips_per_account
+PASSED tests/test_ratelimit.py::test_second_factor_guard_fails_closed_when_redis_is_down
+PASSED tests/test_recall_alias.py::test_canonical_participant_recalls_event_written_with_alias
+PASSED tests/test_recall_hybrid.py::test_rrf_fuse_pure_overlap_order
+PASSED tests/test_recall_hybrid.py::test_rrf_fuse_pure_empty_leg
+PASSED tests/test_recall_hybrid.py::test_rrf_fuse_pure_dual_hit_beats_single
+PASSED tests/test_recall_hybrid.py::test_rrf_fuse_pure_k_relative_order_stable
+PASSED tests/test_recall_hybrid.py::test_persist_indexes_world_event_levels
+PASSED tests/test_recall_hybrid.py::test_hybrid_recall_event_tags_and_order
+PASSED tests/test_recall_hybrid.py::test_keyword_leg_follows_the_cast_not_the_whole_book_roster
+PASSED tests/test_recall_hybrid.py::test_hybrid_recall_degrade_embedder_fails
+PASSED tests/test_recall_hybrid.py::test_hybrid_recall_reports_vector_disabled
+PASSED tests/test_recall_hybrid.py::test_hybrid_recall_degrade_both_legs_empty
+PASSED tests/test_recall_hybrid.py::test_embed_enabled_but_empty_flags_degraded
+PASSED tests/test_recall_hybrid.py::test_recall_stats_skipped_no_prev
+PASSED tests/test_recall_hybrid.py::test_recall_stats_fields
+PASSED tests/test_recall_settings.py::test_first_seen_gate_excludes_this_chapter_and_later
+PASSED tests/test_recall_settings.py::test_scene_location_name_ranks_first
+PASSED tests/test_recall_settings.py::test_entity_sharing_character_name_is_excluded
+PASSED tests/test_recall_settings.py::test_description_none_becomes_empty_string_not_none_literal
+PASSED tests/test_recall_settings.py::test_no_entities_yields_empty_list
+PASSED tests/test_recall_settings.py::test_capped_at_max_settings
+PASSED tests/test_reference_corpus.py::test_corpus_is_installed
+PASSED tests/test_reference_corpus.py::test_every_pack_has_a_template
+PASSED tests/test_reference_corpus.py::test_genre_template_path_resolves_and_rejects
+PASSED tests/test_reference_corpus.py::test_index_lists_files_when_path_absent
+PASSED tests/test_reference_corpus.py::test_reads_a_template
+PASSED tests/test_reference_corpus.py::test_section_slice_narrows_the_read
+PASSED tests/test_reference_corpus.py::test_unknown_section_lists_available_sections
+PASSED tests/test_reference_corpus.py::test_path_traversal_is_refused
+PASSED tests/test_reference_corpus.py::test_missing_file_reports_error
+PASSED tests/test_reference_corpus.py::test_big_table_is_truncated
+PASSED tests/test_reference_corpus.py::test_package_data_covers_every_corpus_file
+PASSED tests/test_reference_corpus.py::test_sections_list_is_top_level_only
+PASSED tests/test_reference_corpus.py::test_reference_hint_points_at_this_books_template
+PASSED tests/test_reference_corpus.py::test_tool_is_registered_and_dispatches
+PASSED tests/test_reference_corpus.py::test_write_prompt_carries_the_pointer
+PASSED tests/test_reflexion.py::test_batch_reflexion_distills_and_grades
+PASSED tests/test_reflexion.py::test_reflexion_no_findings_shortcircuits
+PASSED tests/test_reflexion.py::test_reflexion_llm_failure_does_not_block_batch
+PASSED tests/test_reflexion.py::test_reflexion_batch_rerun_idempotent
+PASSED tests/test_reflexion.py::test_reflexion_recurrence_metric
+PASSED tests/test_reflexion.py::test_reflexion_evolves_existing
+PASSED tests/test_reflexion.py::test_lessons_injected_into_plan_and_write
+PASSED tests/test_reflexion.py::test_lessons_injection_cap
+PASSED tests/test_reflexion.py::test_confirm_lesson_and_reject
+PASSED tests/test_reflexion.py::test_lessons_api
+PASSED tests/test_reflexion.py::test_chapter_window_reflexion_distills
+PASSED tests/test_reflexion.py::test_chapter_window_reflexion_no_findings_shortcircuits
+PASSED tests/test_reflexion.py::test_chapter_window_includes_batch_subthreads
+PASSED tests/test_reflexion.py::test_maybe_reflexion_interval_and_swallow
+PASSED tests/test_review_routing.py::test_independent_route_budgets[pass-2-1-persist]
+PASSED tests/test_review_routing.py::test_independent_route_budgets[rewrite-0-1-revise]
+PASSED tests/test_review_routing.py::test_independent_route_budgets[rewrite-2-0-needs_review]
+PASSED tests/test_review_routing.py::test_independent_route_budgets[replan-2-0-replan_chapter]
+PASSED tests/test_review_routing.py::test_independent_route_budgets[replan-0-1-needs_review]
+PASSED tests/test_review_routing.py::test_independent_route_budgets[None-0-0-needs_review]
+PASSED tests/test_review_routing.py::test_rejected_setting_revises_and_reaudits
+PASSED tests/test_review_routing.py::test_pending_candidates_cannot_be_silently_accepted
+PASSED tests/test_review_routing.py::test_non_fantasy_still_checks_resurrection
+PASSED tests/test_review_routing.py::test_proposal_identity_ignores_extraction_metadata
+PASSED tests/test_review_routing.py::test_replan_retains_actionable_feedback
+PASSED tests/test_review_routing.py::test_audit_pass_with_major_finding_does_not_bypass_route
+PASSED tests/test_review_routing.py::test_review_pool_does_not_count_as_completed_chapter
+PASSED tests/test_revision_patches.py::test_exact_patch_preserves_surroundings
+PASSED tests/test_revision_patches.py::test_ambiguous_exact_match_is_rejected[\u65e7\u5251\u4e0e\u65e7\u5251-\u65e7\u5251]
+PASSED tests/test_revision_patches.py::test_ambiguous_exact_match_is_rejected[aaaa-aaa]
+PASSED tests/test_revision_patches.py::test_fuzzy_whitespace_preserves_unrelated_formatting
+PASSED tests/test_revision_patches.py::test_short_fuzzy_target_is_not_safe
+PASSED tests/test_revision_patches.py::test_individual_missing_patch_is_skipped
+PASSED tests/test_revision_patches.py::test_applied_spans_report_only_the_patches_that_landed
+PASSED tests/test_revision_patches.py::test_reverted_apply_reports_no_spans[patches0]
+PASSED tests/test_revision_patches.py::test_reverted_apply_reports_no_spans[patches1]
+PASSED tests/test_revision_patches.py::test_below_half_reverts_every_change
+PASSED tests/test_revision_patches.py::test_empty_or_unchanged_patch_is_not_applied[patches0]
+PASSED tests/test_revision_patches.py::test_empty_or_unchanged_patch_is_not_applied[patches1]
+PASSED tests/test_revision_patches.py::test_empty_or_unchanged_patch_is_not_applied[patches2]
+PASSED tests/test_revision_patches.py::test_patches_cannot_target_earlier_generated_text
+PASSED tests/test_revision_patches.py::test_overlapping_ranges_do_not_corrupt_text
+PASSED tests/test_revision_patches.py::test_large_patch_cannot_disguise_full_rewrite[\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532-\u4e59]
+PASSED tests/test_revision_patches.py::test_large_patch_cannot_disguise_full_rewrite[\u7532-\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59\u4e59]
+PASSED tests/test_revision_patches.py::test_large_patch_cannot_disguise_full_rewrite[\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532\u7532-\u4e59]
+PASSED tests/test_revision_patches.py::test_parse_only_patch_section_and_allow_deletion
+PASSED tests/test_revision_patches.py::test_full_content_mixed_with_patch_is_rejected[CONTENT]
+PASSED tests/test_revision_patches.py::test_full_content_mixed_with_patch_is_rejected[REVISED_CONTENT]
+PASSED tests/test_revision_patches.py::test_malformed_declarations_count_toward_failure_ratio[--- PATCH 2 ---\nTARGET_TEXT:\n\u574f\u5757\n--- END PATCH ---]
+PASSED tests/test_revision_patches.py::test_malformed_declarations_count_toward_failure_ratio[--- PATCH 2 ---\nTARGET_TEXT:\n\u574f\u5757]
+PASSED tests/test_revision_patches.py::test_malformed_declarations_count_toward_failure_ratio[--- PATCH x ---\nTARGET_TEXT:\n\u574f\u5757\nREPLACEMENT_TEXT:\n\u65b0\n--- END PATCH ---]
+PASSED tests/test_revision_patches.py::test_mode_requires_explicit_local_blockers[findings0-patch]
+PASSED tests/test_revision_patches.py::test_mode_requires_explicit_local_blockers[findings1-full]
+PASSED tests/test_revision_patches.py::test_mode_requires_explicit_local_blockers[findings2-full]
+PASSED tests/test_revision_patches.py::test_mode_requires_explicit_local_blockers[findings3-full]
+PASSED tests/test_revision_patches.py::test_mode_requires_explicit_local_blockers[findings4-full]
+PASSED tests/test_revision_patches.py::test_mode_requires_explicit_local_blockers[findings5-patch]
+PASSED tests/test_revision_patches.py::test_audit_cannot_override_structural_rule_scope
+PASSED tests/test_revision_patches.py::test_rule_summary_without_corresponding_findings_is_conservative
+PASSED tests/test_revision_patches.py::test_omitted_scope_does_not_route_structural_issue_to_patch
+PASSED tests/test_revision_scope.py::test_local_critical_cannot_pass_or_consume_rewrite_budget
+PASSED tests/test_revision_scope.py::test_nonlocal_keeps_original_rewrite_budget[structural]
+PASSED tests/test_revision_scope.py::test_nonlocal_keeps_original_rewrite_budget[unknown]
+PASSED tests/test_revision_scope.py::test_nonlocal_keeps_original_rewrite_budget[None]
+PASSED tests/test_revision_scope.py::test_semantic_local_rewrite_uses_patch
+PASSED tests/test_revision_scope.py::test_word_count_only_rule_does_not_become_a_hard_gate
+PASSED tests/test_revision_scope.py::test_replan_clears_patch_transients
+PASSED tests/test_revision_scope.py::test_new_attempt_clears_checkpoint_patch_transients
+PASSED tests/test_revision_scope.py::test_patch_node_preserves_text_records_metrics_and_budget
+PASSED tests/test_revision_scope.py::test_rejected_output_retains_original_and_does_not_claim_fixed[=== CONTENT ===\n\u6574\u7ae0\u6539\u574f]
+PASSED tests/test_revision_scope.py::test_rejected_output_retains_original_and_does_not_claim_fixed[=== PATCHES ===\n--- PATCH 1 ---\nTARGET_TEXT:\n\u6839\u672c\u6ca1\u6709\u8fd9\u4e2a\u53e5\u5b50\nREPLACEMENT_TEXT:\n\u4ed6\u63e1\u7740\u9752\u5251\u3002\n--- END PATCH ---\n=== RESPONSES ===\n[{"conflict_key":"ban","outcome":"fixed","note":"\u5251\u540d\u5df2\u7edf\u4e00"}]]
+PASSED tests/test_revision_scope.py::test_partly_malformed_output_cannot_claim_all_responses_fixed
+PASSED tests/test_revision_scope.py::test_real_graph_reextracts_and_reaudits_before_persist
+PASSED tests/test_run_ownership.py::test_record_run_accepts_account_only_ownership
+PASSED tests/test_run_ownership.py::test_record_run_refuses_a_row_with_no_owner
+PASSED tests/test_run_ownership.py::test_owner_ids_normalizes_both_forms
+PASSED tests/test_seed.py::test_sample_books_idempotent
+PASSED tests/test_seed.py::test_sample_books_have_full_setting
+PASSED tests/test_settings_routes.py::test_make_chain_without_user_model_does_not_use_builtin
+PASSED tests/test_settings_routes.py::test_make_chain_ignores_invalid_or_builtin_model_route
+PASSED tests/test_settings_routes.py::test_settings_roundtrip_full_replace
+PASSED tests/test_settings_routes.py::test_settings_rejects_invalid_role_and_model
+PASSED tests/test_settings_routes.py::test_settings_omitting_routes_preserves_them
+PASSED tests/test_settings_routes.py::test_custom_model_connection_is_encrypted_redacted_and_routable
+PASSED tests/test_settings_routes.py::test_updating_custom_connection_with_blank_key_preserves_secret
+PASSED tests/test_settings_routes.py::test_custom_connection_validation_rejects_missing_key_and_unsafe_url
+PASSED tests/test_settings_routes.py::test_probe_endpoints_forward_inline_key_and_shape
+PASSED tests/test_settings_routes.py::test_probe_reuses_stored_connection_key_when_blank
+PASSED tests/test_settings_routes.py::test_probe_rejects_bad_url_missing_key_and_missing_model
+PASSED tests/test_settings_routes.py::test_probe_rejects_non_global_hosts
+PASSED tests/test_settings_routes.py::test_probe_allows_global_hosts
+PASSED tests/test_settings_routes.py::test_settings_save_rejects_non_global_model_host
+PASSED tests/test_settings_routes.py::test_global_audit_read_endpoints_shape
+PASSED tests/test_short_creation.py::test_card_patch_drops_blanks_so_the_model_cannot_erase_user_edits
+PASSED tests/test_short_creation.py::test_merge_model_card_keeps_the_users_value_when_the_model_sends_blank
+PASSED tests/test_short_creation.py::test_merge_user_card_honors_a_deliberate_clear
+PASSED tests/test_short_creation.py::test_card_normalize_keeps_numbers_and_drops_unknown_keys
+PASSED tests/test_short_creation.py::test_a_quoted_number_is_read_as_a_number
+PASSED tests/test_short_creation.py::test_non_finite_numbers_are_ignored_not_fatal
+PASSED tests/test_short_creation.py::test_numbers_never_land_in_text_fields
+PASSED tests/test_short_creation.py::test_card_ready_needs_all_seven_text_fields
+PASSED tests/test_short_creation.py::test_default_card_carries_the_short_form_defaults
+PASSED tests/test_short_creation.py::test_card_premise_feeds_the_plan_generator_one_string
+PASSED tests/test_short_creation.py::test_card_premise_preserves_pressure_and_payoff
+PASSED tests/test_short_creation.py::test_session_title_prefers_the_card_then_the_first_thing_the_user_said
+PASSED tests/test_short_creation.py::test_creation_capacity_keeps_business_connections_available
+PASSED tests/test_short_creation.py::test_messages_are_ordered_within_a_session
+PASSED tests/test_short_creation.py::test_session_tables_have_no_project_id_column
+PASSED tests/test_short_creation.py::test_one_account_can_keep_several_sessions
+PASSED tests/test_short_creation.py::test_short_creation_messages_carry_history_then_the_current_card
+PASSED tests/test_short_creation.py::test_short_creation_prompt_is_a_collaborator_not_a_questionnaire
+PASSED tests/test_short_creation.py::test_short_creation_prompt_imposes_the_product_rules
+PASSED tests/test_short_creation.py::test_short_creation_turn_budget_is_smaller_than_a_plan
+PASSED tests/test_short_creation.py::test_short_creation_turn_returns_reply_and_card
+PASSED tests/test_short_creation.py::test_short_creation_turn_survives_bad_json
+PASSED tests/test_short_creation.py::test_short_creation_turn_records_an_account_level_run
+PASSED tests/test_short_creation.py::test_get_opens_a_session_with_a_fixed_greeting
+PASSED tests/test_short_creation.py::test_a_new_conversation_leaves_the_previous_one_readable
+PASSED tests/test_short_creation.py::test_each_conversation_keeps_its_own_card
+PASSED tests/test_short_creation.py::test_another_users_conversation_is_a_404
+PASSED tests/test_short_creation.py::test_deleting_one_conversation_leaves_the_others
+PASSED tests/test_short_creation.py::test_session_title_follows_the_first_message_then_the_cards_name
+PASSED tests/test_short_creation.py::test_posting_a_message_appends_both_sides_and_updates_the_card
+PASSED tests/test_short_creation.py::test_an_empty_model_field_keeps_what_the_user_already_wrote
+PASSED tests/test_short_creation.py::test_ready_flips_only_when_all_seven_fields_are_filled
+PASSED tests/test_short_creation.py::test_a_bad_model_turn_keeps_the_session_alive
+PASSED tests/test_short_creation.py::test_deleting_an_unfinished_conversation_removes_todays_orphan_draft_book
+PASSED tests/test_short_creation.py::test_deleting_takes_the_orphan_drafts_agent_runs_with_it
+PASSED tests/test_short_creation.py::test_deleting_keeps_a_book_that_already_has_tasks
+PASSED tests/test_short_creation.py::test_deleting_keeps_a_draft_book_that_already_has_chapters
+PASSED tests/test_short_creation.py::test_deleting_a_committed_conversation_keeps_the_book
+PASSED tests/test_short_creation.py::test_messages_rejects_an_empty_content
+PASSED tests/test_short_creation.py::test_a_message_to_an_unknown_conversation_is_a_404
+PASSED tests/test_short_creation.py::test_commit_builds_a_ready_short_book_with_a_persisted_plan
+PASSED tests/test_short_creation.py::test_commit_titles_the_conversation_after_the_card_the_user_edited
+PASSED tests/test_short_creation.py::test_commit_refuses_an_incomplete_card
+PASSED tests/test_short_creation.py::test_commit_twice_does_not_build_a_second_book
+PASSED tests/test_short_creation.py::test_another_conversation_can_still_be_committed_after_the_first_one
+PASSED tests/test_short_creation.py::test_reopening_the_page_lands_on_a_fresh_conversation_once_one_is_writing
+PASSED tests/test_short_creation.py::test_the_fresh_landing_is_reused_until_it_is_written
+PASSED tests/test_short_creation.py::test_commit_retry_after_a_plan_failure_reuses_the_same_book
+PASSED tests/test_short_creation.py::test_commit_survives_a_session_deleted_midway
+PASSED tests/test_short_creation.py::test_commit_rejects_overlapping_mutations_before_another_model_call
+PASSED tests/test_short_creation.py::test_two_conversations_do_not_block_each_other
+PASSED tests/test_short_creation.py::test_old_commit_cannot_mark_a_replacement_session_committed
+PASSED tests/test_short_creation.py::test_commit_respects_the_daily_book_cap
+PASSED tests/test_short_creation.py::test_commit_applies_a_library_style_and_rejects_someone_elses
+PASSED tests/test_short_creation.py::test_commit_accepts_a_builtin_preset_by_key
+PASSED tests/test_short_creation.py::test_commit_turns_a_malformed_plan_into_a_retryable_502
+PASSED tests/test_short_creation_migration.py::test_upgrade_lets_one_account_keep_several_sessions
+PASSED tests/test_short_creation_migration.py::test_upgrade_backfills_titles_from_the_card_and_leaves_the_rest_empty
+PASSED tests/test_short_creation_migration.py::test_upgrade_clips_a_long_legacy_title_and_adds_the_list_index
+PASSED tests/test_short_form.py::test_new_project_declares_long_form_default
+PASSED tests/test_short_form.py::test_ensure_project_form_is_idempotent_and_backfills_legacy_books
+PASSED tests/test_short_form.py::test_short_form_constants_match_the_spec
+PASSED tests/test_short_form.py::test_resolve_short_lengths_follows_the_parameter_table[1-8000-expected0]
+PASSED tests/test_short_form.py::test_resolve_short_lengths_follows_the_parameter_table[2-8000-expected1]
+PASSED tests/test_short_form.py::test_resolve_short_lengths_follows_the_parameter_table[5-4000-expected2]
+PASSED tests/test_short_form.py::test_resolve_short_lengths_follows_the_parameter_table[10-2000-expected3]
+PASSED tests/test_short_form.py::test_resolve_short_lengths_follows_the_parameter_table[10-8000-expected4]
+PASSED tests/test_short_form.py::test_resolve_short_lengths_follows_the_parameter_table[1-5000-expected5]
+PASSED tests/test_short_form.py::test_resolve_short_lengths_clamps_to_the_declared_ranges[0-2000-expected0]
+PASSED tests/test_short_form.py::test_resolve_short_lengths_clamps_to_the_declared_ranges[99-1000-expected1]
+PASSED tests/test_short_form.py::test_resolve_short_lengths_clamps_to_the_declared_ranges[5-200-expected2]
+PASSED tests/test_short_form.py::test_resolve_short_lengths_clamps_to_the_declared_ranges[5-99999-expected3]
+PASSED tests/test_short_parse.py::test_the_tagged_heading_is_what_the_writer_is_asked_for
+PASSED tests/test_short_parse.py::test_a_drifting_title_marker_line_is_tolerated
+PASSED tests/test_short_parse.py::test_the_preamble_before_the_first_marker_is_dropped
+PASSED tests/test_short_parse.py::test_three_levels_of_markers_all_split_into_the_same_chapters[block-marker]
+PASSED tests/test_short_parse.py::test_three_levels_of_markers_all_split_into_the_same_chapters[markdown-heading]
+PASSED tests/test_short_parse.py::test_three_levels_of_markers_all_split_into_the_same_chapters[number-prefix]
+PASSED tests/test_short_parse.py::test_the_marker_line_itself_is_dropped_from_the_body
+PASSED tests/test_short_parse.py::test_a_chapter_the_model_forgot_becomes_an_empty_slot_not_a_shift
+PASSED tests/test_short_parse.py::test_a_gap_in_the_numbering_still_places_chapters_by_their_number
+PASSED tests/test_short_parse.py::test_document_order_wins_when_the_numbering_is_unusable
+PASSED tests/test_short_parse.py::test_no_marker_at_all_falls_back_to_an_even_split
+PASSED tests/test_short_parse.py::test_a_numbered_line_inside_plain_prose_is_not_mistaken_for_a_chapter_marker
+PASSED tests/test_short_parse.py::test_a_numbered_list_that_starts_at_one_is_still_trusted
+PASSED tests/test_short_parse.py::test_even_split_never_drops_the_tail
+PASSED tests/test_short_parse.py::test_degenerate_text_returns_empty_slots_instead_of_raising[]
+PASSED tests/test_short_parse.py::test_degenerate_text_returns_empty_slots_instead_of_raising[   \n\n  ]
+PASSED tests/test_short_parse.py::test_degenerate_text_returns_empty_slots_instead_of_raising[\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57\u6ca1\u6709\u6362\u884c\u7684\u8fde\u7eed\u6587\u5b57]
+PASSED tests/test_short_parse.py::test_fewer_markers_than_chapters_still_returns_the_asked_length
+PASSED tests/test_short_parse.py::test_render_short_draft_puts_the_marker_lines_back
+PASSED tests/test_short_parse.py::test_render_short_draft_skips_the_empty_slots
+PASSED tests/test_short_parse.py::test_find_empty_chapters_reports_one_based_numbers
+PASSED tests/test_short_parse.py::test_find_empty_chapters_treats_whitespace_as_empty
+PASSED tests/test_short_parse.py::test_find_empty_chapters_is_empty_when_every_chapter_has_a_body
+PASSED tests/test_short_persist.py::test_a_five_chapter_draft_lands_as_five_confirmed_rows
+PASSED tests/test_short_persist.py::test_the_current_versions_are_not_history_rows
+PASSED tests/test_short_persist.py::test_the_short_form_writes_no_summary_and_no_confirmation_pool
+PASSED tests/test_short_persist.py::test_the_rewrite_lands_as_a_second_whole_work_version
+PASSED tests/test_short_persist.py::test_only_the_chapters_that_have_a_body_land
+PASSED tests/test_short_persist.py::test_a_failed_run_persists_nothing
+PASSED tests/test_short_plan.py::test_short_plan_messages_carry_the_three_hard_requirements
+PASSED tests/test_short_plan.py::test_short_plan_messages_state_the_resolved_lengths
+PASSED tests/test_short_plan.py::test_short_plan_messages_omit_storyline_when_blank
+PASSED tests/test_short_plan.py::test_short_plan_review_messages_ask_only_for_a_verdict
+PASSED tests/test_short_plan.py::test_validate_short_outline_accepts_one_volume_with_per_chapter_detail
+PASSED tests/test_short_plan.py::test_validate_short_outline_rejects_chapter_count_outside_one_to_ten[0]
+PASSED tests/test_short_plan.py::test_validate_short_outline_rejects_chapter_count_outside_one_to_ten[11]
+PASSED tests/test_short_plan.py::test_validate_short_outline_rejects_more_than_one_volume
+PASSED tests/test_short_plan.py::test_validate_short_outline_rejects_volume_not_covering_the_whole_book
+PASSED tests/test_short_plan.py::test_validate_short_outline_rejects_blank_objective
+PASSED tests/test_short_plan.py::test_validate_short_outline_rejects_volume_without_goal
+PASSED tests/test_short_plan.py::test_validate_short_outline_requires_contiguous_non_empty_chapters[no-chapters]
+PASSED tests/test_short_plan.py::test_validate_short_outline_requires_contiguous_non_empty_chapters[empty-chapters]
+PASSED tests/test_short_plan.py::test_validate_short_outline_requires_contiguous_non_empty_chapters[missing-chapter]
+PASSED tests/test_short_plan.py::test_validate_short_outline_requires_contiguous_non_empty_chapters[non-contiguous-seq]
+PASSED tests/test_short_plan.py::test_validate_short_outline_requires_contiguous_non_empty_chapters[blank-goal]
+PASSED tests/test_short_plan.py::test_generate_short_plan_records_one_planner_run
+PASSED tests/test_short_plan.py::test_review_short_plan_records_a_planner_run
+PASSED tests/test_short_plan.py::test_generate_short_plan_passes_the_revision_reason_into_the_prompt
+PASSED tests/test_short_plan.py::test_review_short_plan_degrades_to_pass_without_raising
+PASSED tests/test_short_plan.py::test_generate_short_plan_degrades_on_bad_json
+PASSED tests/test_short_plan.py::test_generate_short_plan_requires_project_id_for_run_recording
+PASSED tests/test_short_routes.py::test_create_project_records_the_form_and_keeps_the_draft_lifecycle
+PASSED tests/test_short_routes.py::test_create_project_defaults_to_long_form_for_legacy_clients
+PASSED tests/test_short_routes.py::test_the_project_payload_carries_the_form
+PASSED tests/test_short_routes.py::test_create_project_rejects_chapter_count_outside_the_form_range[short-11]
+PASSED tests/test_short_routes.py::test_create_project_rejects_chapter_count_outside_the_form_range[short-50]
+PASSED tests/test_short_routes.py::test_create_project_rejects_chapter_count_outside_the_form_range[long-5]
+PASSED tests/test_short_routes.py::test_create_project_rejects_chapter_count_outside_the_form_range[long-49]
+PASSED tests/test_short_routes.py::test_create_project_rejects_unknown_form
+PASSED tests/test_short_routes.py::test_outline_draft_picks_the_chapter_range_from_the_books_own_form
+PASSED tests/test_short_routes.py::test_short_outline_draft_runs_plan_then_review_and_ships_the_first_version
+PASSED tests/test_short_routes.py::test_short_outline_draft_rerolls_once_with_the_review_reason
+PASSED tests/test_short_routes.py::test_short_outline_draft_keeps_v1_when_the_review_still_objects
+PASSED tests/test_short_routes.py::test_short_outline_draft_skips_the_review_when_the_plan_call_failed
+PASSED tests/test_short_routes.py::test_short_outline_draft_reports_the_compressed_lengths
+PASSED tests/test_short_routes.py::test_short_outline_draft_leaves_a_fitting_length_alone
+PASSED tests/test_short_routes.py::test_short_outline_requires_confirmed_setup
+PASSED tests/test_short_routes.py::test_confirming_a_short_outline_keeps_the_per_chapter_plan
+PASSED tests/test_short_routes.py::test_confirming_a_short_outline_rejects_a_payload_the_short_writer_cannot_use[long-shaped]
+PASSED tests/test_short_routes.py::test_confirming_a_short_outline_rejects_a_payload_the_short_writer_cannot_use[two-volumes]
+PASSED tests/test_short_routes.py::test_confirming_a_short_outline_rejects_a_payload_the_short_writer_cannot_use[no-per-chapter]
+PASSED tests/test_short_routes.py::test_confirming_a_short_outline_rejects_a_payload_the_short_writer_cannot_use[missing-chapter]
+PASSED tests/test_short_routes.py::test_long_books_still_go_through_the_long_validator
+PASSED tests/test_short_runner.py::test_a_clean_draft_stops_after_the_review
+PASSED tests/test_short_runner.py::test_the_rewrite_runs_only_when_the_review_says_revise
+PASSED tests/test_short_runner.py::test_the_three_steps_record_agent_runs_with_their_own_nodes_and_roles
+PASSED tests/test_short_runner.py::test_the_writer_sees_the_confirmed_plan_and_the_marker_contract
+PASSED tests/test_short_runner.py::test_the_writer_gets_the_whole_story_budget_in_one_call
+PASSED tests/test_short_runner.py::test_every_step_announces_itself_and_the_long_ones_stream_char_progress
+PASSED tests/test_short_runner.py::test_the_review_is_one_editor_view_pass_over_the_whole_draft
+PASSED tests/test_short_runner.py::test_the_rewrite_prompt_demands_a_complete_rewrite
+PASSED tests/test_short_runner.py::test_a_failed_draft_call_returns_an_error_without_asking_for_a_review
+PASSED tests/test_short_runner.py::test_a_failed_rewrite_keeps_the_first_draft_and_warns
+PASSED tests/test_short_runner.py::test_a_rewrite_that_lost_a_chapter_is_treated_as_a_failure
+PASSED tests/test_short_runner.py::test_an_unusable_review_falls_back_to_pass_and_skips_the_rewrite[broken-json]
+PASSED tests/test_short_runner.py::test_an_unusable_review_falls_back_to_pass_and_skips_the_rewrite[wrong-case]
+PASSED tests/test_short_runner.py::test_an_unusable_review_falls_back_to_pass_and_skips_the_rewrite[missing-verdict]
+PASSED tests/test_short_runner.py::test_a_forgotten_chapter_is_reported_as_empty
+PASSED tests/test_short_runner.py::test_the_review_judges_the_reassembled_draft_not_the_raw_output
+PASSED tests/test_short_runner.py::test_a_gap_triggers_one_continuation_that_fills_the_missing_chapter
+PASSED tests/test_short_runner.py::test_the_continuation_is_attempted_at_most_once
+PASSED tests/test_short_runner.py::test_a_truncated_draft_is_completed_by_one_continuation
+PASSED tests/test_short_runner.py::test_a_draft_cut_off_at_the_token_ceiling_is_flagged_even_with_no_empty_chapter
+PASSED tests/test_short_runner.py::test_a_successful_continuation_does_not_erase_the_truncation_trace
+PASSED tests/test_short_runner.py::test_a_truncated_rewrite_is_flagged_too
+PASSED tests/test_short_runner.py::test_a_plan_chapter_without_a_sequence_number_does_not_crash_the_run
+PASSED tests/test_short_runner.py::test_each_chapter_is_measured_against_its_length_target
+PASSED tests/test_short_runner.py::test_the_lengths_come_from_the_confirmed_plan_and_the_creation_context
+PASSED tests/test_short_runner.py::test_the_lengths_fall_back_to_the_creation_context_when_the_plan_has_no_count
+PASSED tests/test_short_runner.py::test_a_long_book_has_no_short_params
+PASSED tests/test_short_runner.py::test_the_review_result_is_recorded_on_the_review_run
+PASSED tests/test_short_runner.py::test_a_clean_pass_is_recorded_without_a_warning
+PASSED tests/test_short_runner.py::test_the_review_run_carries_the_empty_chapters_and_the_length_observations
+PASSED tests/test_short_runner.py::test_the_review_run_says_whether_the_rewrite_landed
+PASSED tests/test_short_runner.py::test_a_resume_with_a_persisted_draft_goes_straight_to_the_review
+PASSED tests/test_short_runner.py::test_a_resume_without_a_persisted_draft_runs_the_whole_thing
+PASSED tests/test_short_runner.py::test_a_resume_treats_a_partial_draft_as_no_draft
+PASSED tests/test_short_runner.py::test_a_resume_rewrites_and_lands_through_the_same_tail
+PASSED tests/test_short_runner.py::test_the_short_path_carries_none_of_the_long_form_machinery
+PASSED tests/test_short_validation.py::test_a_chapter_inside_the_band_produces_no_finding
+PASSED tests/test_short_validation.py::test_the_band_edges_are_inclusive[3200]
+PASSED tests/test_short_validation.py::test_the_band_edges_are_inclusive[4000]
+PASSED tests/test_short_validation.py::test_the_band_edges_are_inclusive[5200]
+PASSED tests/test_short_validation.py::test_a_short_chapter_is_reported_as_an_observation_not_a_gate
+PASSED tests/test_short_validation.py::test_a_long_chapter_is_reported_too
+PASSED tests/test_short_validation.py::test_findings_are_numbered_by_chapter_position
+PASSED tests/test_short_validation.py::test_an_empty_chapter_is_left_to_the_continuation
+PASSED tests/test_short_validation.py::test_no_target_means_no_observation[0]
+PASSED tests/test_short_validation.py::test_no_target_means_no_observation[None]
+PASSED tests/test_snapshots.py::test_sections_split_on_line_leading_labels
+PASSED tests/test_snapshots.py::test_inline_label_mention_does_not_split
+PASSED tests/test_snapshots.py::test_static_material_keeps_hash_instead_of_text
+PASSED tests/test_snapshots.py::test_unknown_section_is_kept_in_full
+PASSED tests/test_snapshots.py::test_section_over_cap_is_truncated_but_still_hashed
+PASSED tests/test_snapshots.py::test_prompt_budget_degrades_later_sections_to_hash
+PASSED tests/test_snapshots.py::test_real_sized_prompt_is_kept_whole
+PASSED tests/test_snapshots.py::test_real_sized_row_survives_row_capture
+PASSED tests/test_snapshots.py::test_budget_floor_omits_the_section_instead_of_keeping_a_sliver
+PASSED tests/test_snapshots.py::test_recall_excerpt_prefers_content_over_provenance
+PASSED tests/test_snapshots.py::test_recall_keeps_empty_groups_as_zero
+PASSED tests/test_snapshots.py::test_recall_stats_keep_scalars_and_dicts
+PASSED tests/test_snapshots.py::test_output_projection_is_length_hash_and_excerpt
+PASSED tests/test_snapshots.py::test_finalize_scrubs_credentials_and_keeps_earlier_flags
+PASSED tests/test_snapshots.py::test_write_snapshot_keeps_dynamic_sections_and_hashes_static_ones
+PASSED tests/test_snapshots.py::test_patch_snapshot_merges_applied_spans_into_the_prompt_row
+PASSED tests/test_snapshots.py::test_same_stage_rerun_keeps_one_row_per_plan_version
+PASSED tests/test_snapshots.py::test_snapshot_skips_unstaged_nodes_and_missing_keys
+PASSED tests/test_snapshots.py::test_snapshot_payload_scrubs_credentials
+PASSED tests/test_sse.py::test_parse_last_event_id_matches_gateway[None-0-0]
+PASSED tests/test_sse.py::test_parse_last_event_id_matches_gateway[-0-0]
+PASSED tests/test_sse.py::test_parse_last_event_id_matches_gateway[5-0-0]
+PASSED tests/test_sse.py::test_parse_last_event_id_matches_gateway[5--5-0]
+PASSED tests/test_sse.py::test_parse_last_event_id_matches_gateway[-3-0-0]
+PASSED tests/test_sse.py::test_parse_last_event_id_matches_gateway[abc-1-0-0]
+PASSED tests/test_sse.py::test_parse_last_event_id_matches_gateway[1_x-2-0-0]
+PASSED tests/test_sse.py::test_parse_last_event_id_matches_gateway[\u0661\u0662-\u0663-0-0]
+PASSED tests/test_sse.py::test_parse_last_event_id_matches_gateway[---0-0]
+PASSED tests/test_sse.py::test_parse_last_event_id_matches_gateway[17-2-17-2]
+PASSED tests/test_sse.py::test_parse_last_event_id_matches_gateway[17-9-17-9]
+PASSED tests/test_sse.py::test_parse_last_event_id_matches_gateway[17-abc-17-0]
+PASSED tests/test_sse.py::test_parse_last_event_id_normalizes_leading_plus
+PASSED tests/test_sse.py::test_decode_drops_frames_without_event_field
+PASSED tests/test_sse.py::test_decode_int_fields_tolerate_garbage
+PASSED tests/test_sse.py::test_decode_forwards_short_story_char_progress
+PASSED tests/test_sse.py::test_events_without_identity_is_401
+PASSED tests/test_sse.py::test_events_with_invalid_task_id_is_400
+PASSED tests/test_sse.py::test_events_unknown_task_is_404
+PASSED tests/test_sse.py::test_events_foreign_task_is_403
+PASSED tests/test_sse.py::test_events_missing_stream_returns_410_envelope
+PASSED tests/test_sse.py::test_events_forwards_frames_and_stops_at_terminal
+PASSED tests/test_sse.py::test_events_skips_historical_terminal_frame
+PASSED tests/test_sse.py::test_events_lone_terminal_frame_is_delivered
+PASSED tests/test_sse.py::test_replay_from_last_event_id_is_exclusive_and_lossless
+PASSED tests/test_sse.py::test_keepalive_is_sent_while_idle
+PASSED tests/test_sse.py::test_stream_closes_when_session_is_revoked
+PASSED tests/test_sse.py::test_stream_is_capped_by_token_expiry
+PASSED tests/test_sse.py::test_every_terminal_status_closes_the_stream[done]
+PASSED tests/test_sse.py::test_every_terminal_status_closes_the_stream[failed]
+PASSED tests/test_sse.py::test_every_terminal_status_closes_the_stream[awaiting_plan]
+PASSED tests/test_sse.py::test_every_terminal_status_closes_the_stream[awaiting_review]
+PASSED tests/test_sse.py::test_every_terminal_status_closes_the_stream[cancelled]
+PASSED tests/test_state_changes.py::test_detail_falls_back_to_previous_row_new_value
+PASSED tests/test_state_changes.py::test_detail_prefers_row_old_value
+PASSED tests/test_state_changes.py::test_detail_has_no_old_value_for_single_row_field
+PASSED tests/test_state_changes.py::test_detail_respects_time_window_and_invalidation
+PASSED tests/test_state_changes.py::test_get_character_state_unchanged_by_detail
+PASSED tests/test_state_changes.py::test_recall_snapshot_carries_only_real_transitions
+PASSED tests/test_state_changes.py::test_recall_drops_unchanged_field_from_state_changes
+PASSED tests/test_state_changes.py::test_render_entity_appends_change_clause
+PASSED tests/test_state_changes.py::test_render_entity_without_state_changes_key_is_unchanged
+PASSED tests/test_state_relation_checks.py::test_persist_relation_change_closes_prior_active_row
+PASSED tests/test_state_relation_checks.py::test_persist_relation_change_honors_payload_valid_to
+PASSED tests/test_state_relation_checks.py::test_persist_relation_change_only_closes_same_ordered_pair
+PASSED tests/test_state_relation_checks.py::test_persist_relation_change_incomplete_payload_skipped
+PASSED tests/test_state_relation_checks.py::test_persist_relation_change_missing_type_skipped
+PASSED tests/test_state_relation_checks.py::test_l1_relation_ledger_duplicate_active_fires
+PASSED tests/test_state_relation_checks.py::test_l1_relation_ledger_contradiction_active_fires
+PASSED tests/test_state_relation_checks.py::test_l1_relation_ledger_both_dup_and_contradiction
+PASSED tests/test_state_relation_checks.py::test_l1_relation_ledger_clean_single_row_no_fire
+PASSED tests/test_state_relation_checks.py::test_l1_relation_ledger_empty_no_fire
+PASSED tests/test_state_relation_checks.py::test_l1_candidate_old_value_mismatch_fires
+PASSED tests/test_state_relation_checks.py::test_l1_candidate_old_value_match_no_fire
+PASSED tests/test_state_relation_checks.py::test_l1_candidate_old_value_empty_ledger_skip
+PASSED tests/test_state_relation_checks.py::test_l1_candidate_realm_not_double_fired
+PASSED tests/test_state_relation_checks.py::test_l1_relation_change_old_value_mismatch_fires
+PASSED tests/test_state_relation_checks.py::test_l1_relation_change_old_value_match_no_fire
+PASSED tests/test_state_relation_checks.py::test_l1_relation_change_ledger_missing_skip
+PASSED tests/test_state_relation_checks.py::test_l1_relation_change_ambiguity_skip
+PASSED tests/test_state_transition.py::test_incremental_item_state_is_merged_with_ledger_value
+PASSED tests/test_state_transition.py::test_non_cumulative_goal_is_not_merged
+PASSED tests/test_state_transition.py::test_explicit_item_removal_is_not_blindly_appended
+PASSED tests/test_state_transition.py::test_persist_rechecks_current_ledger_and_merges_old_incremental_candidate
+PASSED tests/test_streaming.py::test_artifact_emitter_chunks_with_replay_offsets
+PASSED tests/test_streaming.py::test_deepseek_stream_aggregates_text_usage_and_tool_calls
+PASSED tests/test_streaming.py::test_stream_strips_leading_think_and_never_emits_reasoning
+PASSED tests/test_style_library.py::test_style_library_item_roundtrip
+PASSED tests/test_style_library.py::test_style_library_has_no_project_id_column
+PASSED tests/test_style_library.py::test_style_library_item_note_roundtrip
+PASSED tests/test_style_library.py::test_style_library_duplicate_name_rejected
+PASSED tests/test_style_library.py::test_get_returns_the_four_builtins_first
+PASSED tests/test_style_library.py::test_save_round_trips_the_note
+PASSED tests/test_style_library.py::test_crud_is_scoped_to_the_owner
+PASSED tests/test_style_library.py::test_rejects_a_duplicate_name
+PASSED tests/test_style_library.py::test_delete_of_a_builtin_or_a_stranger_is_404
+PASSED tests/test_style_library.py::test_extract_needs_at_least_one_non_blank_sample
+PASSED tests/test_style_library.py::test_save_rejects_a_blank_name
+PASSED tests/test_style_library.py::test_save_rejects_a_non_dict_profile
+PASSED tests/test_style_library.py::test_save_drops_transient_extraction_keys
+PASSED tests/test_style_library.py::test_extract_records_an_account_level_run
+PASSED tests/test_style_library.py::test_patch_renames_and_edits_the_note
+PASSED tests/test_style_library.py::test_patch_only_touches_the_supplied_fields
+PASSED tests/test_style_library.py::test_patch_renaming_to_its_own_name_is_allowed
+PASSED tests/test_style_library.py::test_patch_rejects_a_duplicate_name
+PASSED tests/test_style_library.py::test_patch_rejects_a_blank_name
+PASSED tests/test_style_library.py::test_patch_of_a_builtin_or_a_stranger_is_404
+PASSED tests/test_style_library_migration.py::test_upgrade_preserves_ids_and_profiles_and_is_idempotent
+PASSED tests/test_style_library_migration.py::test_duplicate_legacy_names_stop_upgrade_without_deleting_or_renaming
+PASSED tests/test_style_library_migration.py::test_different_users_can_keep_the_same_style_name
+PASSED tests/test_style_profile.py::test_stats_wellformed_and_deterministic
+PASSED tests/test_style_profile.py::test_extract_and_merge_keeps_semantic_and_stats
+PASSED tests/test_style_profile.py::test_merge_keeps_prose_dimensions_and_drops_non_string_ones
+PASSED tests/test_style_profile.py::test_extract_prompt_asks_for_prose_dimensions
+PASSED tests/test_style_profile.py::test_extract_fallback_on_provider_error
+PASSED tests/test_style_profile.py::test_extract_fallback_on_bad_json
+PASSED tests/test_style_profile.py::test_validate_profile_normalizes_types
+PASSED tests/test_style_profile.py::test_validate_profile_drops_transient_keys
+PASSED tests/test_style_profile.py::test_style_section_renders_new_keys
+PASSED tests/test_style_profile.py::test_style_section_renders_prose_dimensions
+PASSED tests/test_style_profile.py::test_style_section_legacy_keys_unchanged
+PASSED tests/test_style_profile.py::test_split_sentences_no_semicolon_boundary
+PASSED tests/test_style_profile.py::test_style_section_str_list_keys_safe
+PASSED tests/test_style_profile.py::test_extract_style_profile_records_an_account_level_run
+PASSED tests/test_style_profile.py::test_extract_style_profile_without_any_owner_still_extracts
+PASSED tests/test_style_profile.py::test_extract_style_profile_with_db_but_no_owner_is_rejected
+PASSED tests/test_style_profile.py::test_ownerless_extraction_routes_through_the_account_level_chain
+PASSED tests/test_style_profile.py::test_resolve_style_selection_prefers_builtin_then_library
+PASSED tests/test_style_profile.py::test_resolve_style_selection_404s_on_garbage
+PASSED tests/test_style_profile.py::test_resolve_style_selection_will_not_read_a_stranger_item
+PASSED tests/test_style_repeat.py::test_prose_evidence_includes_right_clause_without_next_sentence[\u3002]
+PASSED tests/test_style_repeat.py::test_prose_evidence_includes_right_clause_without_next_sentence[\uff01]
+PASSED tests/test_style_repeat.py::test_prose_evidence_includes_right_clause_without_next_sentence[\uff1f]
+PASSED tests/test_style_repeat.py::test_prose_evidence_includes_right_clause_without_next_sentence[!]
+PASSED tests/test_style_repeat.py::test_prose_evidence_includes_right_clause_without_next_sentence[?]
+PASSED tests/test_style_repeat.py::test_prose_evidence_includes_right_clause_without_next_sentence[\n]
+PASSED tests/test_style_repeat.py::test_prose_evidence_includes_right_clause_without_next_sentence[\r\n]
+PASSED tests/test_style_repeat.py::test_not_but_evidence_includes_right_clause_at_end_of_text
+PASSED tests/test_style_repeat.py::test_prose_evidence_keeps_original_whitespace
+PASSED tests/test_style_repeat.py::test_long_prose_evidence_is_bounded_and_remains_an_exact_excerpt
+PASSED tests/test_style_repeat.py::test_prose_evidence_bounds_whitespace_inside_the_detected_match
+PASSED tests/test_style_repeat.py::test_prose_evidence_does_not_cross_a_newline_inside_the_match
+PASSED tests/test_style_repeat.py::test_not_but_is_critical
+PASSED tests/test_style_repeat.py::test_not_comma_is_critical
+PASSED tests/test_style_repeat.py::test_not_is_without_a_comma_is_critical
+PASSED tests/test_style_repeat.py::test_not_is_across_two_sentences_is_critical[\u4ed6\u4e0d\u662f\u61e6\u5f31\u3002\u662f\u4e0d\u60f3\u8fde\u7d2f\u522b\u4eba\u3002-\u4e0d\u662f\u61e6\u5f31\u3002\u662f\u4e0d\u60f3\u8fde\u7d2f\u522b\u4eba]
+PASSED tests/test_style_repeat.py::test_not_is_across_two_sentences_is_critical[\u4ed6\u4e0d\u662f\u61e6\u5f31\uff01\u662f\u4e0d\u60f3\u8fde\u7d2f\u522b\u4eba\u3002-\u4e0d\u662f\u61e6\u5f31\uff01\u662f\u4e0d\u60f3\u8fde\u7d2f\u522b\u4eba]
+PASSED tests/test_style_repeat.py::test_not_is_across_two_sentences_is_critical[\u4ed6\u4e0d\u662f\u61e6\u5f31\uff1f\u662f\u4e0d\u60f3\u8fde\u7d2f\u522b\u4eba\u3002-\u4e0d\u662f\u61e6\u5f31\uff1f\u662f\u4e0d\u60f3\u8fde\u7d2f\u522b\u4eba]
+PASSED tests/test_style_repeat.py::test_not_is_across_two_sentences_is_critical[\u4ed6\u4e0d\u662f\u61e6\u5f31\u3002\n\u662f\u4e0d\u60f3\u8fde\u7d2f\u522b\u4eba\u3002-\u4e0d\u662f\u61e6\u5f31\u3002]
+PASSED tests/test_style_repeat.py::test_not_is_across_two_sentences_is_critical[\u4ed6\u4e0d\u662f\u61e6\u5f31\u3002\n\n\u662f\u4e0d\u60f3\u8fde\u7d2f\u522b\u4eba\u3002-\u4e0d\u662f\u61e6\u5f31\u3002]
+PASSED tests/test_style_repeat.py::test_second_sentence_not_opening_with_shi_passes[\u8fd9\u4e0d\u662f\u61e6\u5f31\u3002\u8fd9\u662f\u514b\u5236\u3002]
+PASSED tests/test_style_repeat.py::test_second_sentence_not_opening_with_shi_passes[\u4ed6\u4e0d\u662f\u61e6\u5f31\u3002\u8fd9\u53ea\u662f\u514b\u5236\u3002]
+PASSED tests/test_style_repeat.py::test_second_sentence_not_opening_with_shi_passes[\u4ed6\u4e0d\u662f\u61e6\u5f31\u3002\u4ed6\u77e5\u9053\u81ea\u5df1\u5728\u6015\u3002]
+PASSED tests/test_style_repeat.py::test_words_containing_shi_pass[\u4ed6\u4e0d\u662f\u4e0d\u60f3\u53bb\uff0c\u53ea\u662f\u6ca1\u65f6\u95f4\u3002]
+PASSED tests/test_style_repeat.py::test_words_containing_shi_pass[\u4ed6\u4e0d\u662f\u4e0d\u77e5\u9053\u8f7b\u91cd\uff0c\u5c31\u662f\u4e0d\u80af\u4f4e\u5934\u3002]
+PASSED tests/test_style_repeat.py::test_words_containing_shi_pass[\u4ed6\u4e0d\u662f\u4e0d\u6015\uff0c\u4f46\u662f\u4e0d\u80fd\u9000\u3002]
+PASSED tests/test_style_repeat.py::test_words_containing_shi_pass[\u8fd9\u5230\u5e95\u662f\u4e0d\u662f\u771f\u7684\uff1f]
+PASSED tests/test_style_repeat.py::test_words_containing_shi_pass[\u4ed6\u4e0d\u662f\u4e0d\u60f3\u53bb\uff0c\u4e5f\u4e0d\u662f\u4e0d\u613f\u610f\u3002]
+PASSED tests/test_style_repeat.py::test_parallel_clauses_critical
+PASSED tests/test_style_repeat.py::test_plain_words_and_negation_pass
+PASSED tests/test_style_repeat.py::test_no_draft_skips
+PASSED tests/test_style_repeat.py::test_service_wiring_blocks
+PASSED tests/test_task_history.py::test_task_detail_returns_every_persisted_run_beyond_old_200_limit
+PASSED tests/test_task_history.py::test_chapter_query_finds_old_task_after_more_than_50_newer_project_tasks
+PASSED tests/test_tasks_list.py::test_list_tasks_shape_and_desc_order
+PASSED tests/test_tasks_list.py::test_list_tasks_empty_project_returns_empty
+PASSED tests/test_tasks_list.py::test_list_tasks_batch_progress_derived
+PASSED tests/test_tasks_list.py::test_list_tasks_cost_total_single_and_batch
+PASSED tests/test_tasks_list.py::test_get_task_cost_total
+PASSED tests/test_tasks_list.py::test_list_tasks_chapter_filter
+PASSED tests/test_tasks_list.py::test_list_tasks_ownership_matrix
+PASSED tests/test_tasks_list.py::test_list_tasks_project_missing_404
+PASSED tests/test_tasks_list.py::test_list_tasks_invalid_project_id_400
+PASSED tests/test_tasks_list.py::test_get_task_backfills_zero_cost_for_deepseek_flash
+PASSED tests/test_think_tag_stripper.py::test_strip_complete_leading_block_and_following_whitespace
+PASSED tests/test_think_tag_stripper.py::test_strip_leading_block_preceded_by_whitespace
+PASSED tests/test_think_tag_stripper.py::test_leaves_mid_text_occurrences_untouched
+PASSED tests/test_think_tag_stripper.py::test_leaves_unterminated_leading_block_untouched
+PASSED tests/test_think_tag_stripper.py::test_plain_text_unchanged
+PASSED tests/test_think_tag_stripper.py::test_stream_suppresses_leading_block_split_across_chunks
+PASSED tests/test_think_tag_stripper.py::test_stream_emits_once_prefix_diverges
+PASSED tests/test_think_tag_stripper.py::test_stream_passes_plain_text_immediately
+PASSED tests/test_think_tag_stripper.py::test_isolate_never_merges_reasoning_into_prose
+PASSED tests/test_think_tag_stripper.py::test_stream_flush_returns_unterminated_block
+PASSED tests/test_tool_boundaries.py::test_one_response_cannot_exceed_execution_budget[0]
+PASSED tests/test_tool_boundaries.py::test_one_response_cannot_exceed_execution_budget[1]
+PASSED tests/test_tool_boundaries.py::test_one_response_cannot_exceed_execution_budget[3]
+PASSED tests/test_tool_boundaries.py::test_budget_is_shared_across_rounds
+PASSED tests/test_tool_boundaries.py::test_chapter_default_is_bound_from_state[None-inspect_character]
+PASSED tests/test_tool_boundaries.py::test_chapter_default_is_bound_from_state[None-inspect_facts]
+PASSED tests/test_tool_boundaries.py::test_chapter_default_is_bound_from_state[4-inspect_character]
+PASSED tests/test_tool_boundaries.py::test_chapter_default_is_bound_from_state[4-inspect_facts]
+PASSED tests/test_tool_boundaries.py::test_character_tool_reads_bound_historical_state
+PASSED tests/test_tool_boundaries.py::test_unknown_and_failed_tools_return_errors
+PASSED tests/test_tool_boundaries.py::test_tool_error_can_be_followed_by_valid_lookup_without_restarting_budget
+PASSED tests/test_tool_boundaries.py::test_model_project_argument_cannot_override_server_scope
+PASSED tests/test_user_chain.py::test_user_chain_uses_the_account_route_and_its_prices
+PASSED tests/test_user_chain.py::test_user_chain_falls_back_from_planner_to_writer
+PASSED tests/test_user_chain.py::test_user_chain_falls_back_from_extract_to_planner_then_writer
+PASSED tests/test_user_chain.py::test_user_chain_without_any_route_is_unconfigured
+PASSED tests/test_user_isolation.py::test_task_endpoints_reject_non_owner[foreign-GET--None]
+PASSED tests/test_user_isolation.py::test_task_endpoints_reject_non_owner[foreign-POST-/pause-None]
+PASSED tests/test_user_isolation.py::test_task_endpoints_reject_non_owner[foreign-POST-/resume-None]
+PASSED tests/test_user_isolation.py::test_task_endpoints_reject_non_owner[foreign-POST-/cancel-None]
+PASSED tests/test_user_isolation.py::test_task_endpoints_reject_non_owner[foreign-POST-/plan/confirm-body4]
+PASSED tests/test_user_isolation.py::test_task_endpoints_reject_non_owner[missing-GET--None]
+PASSED tests/test_user_isolation.py::test_task_endpoints_reject_non_owner[missing-POST-/pause-None]
+PASSED tests/test_user_isolation.py::test_task_endpoints_reject_non_owner[missing-POST-/resume-None]
+PASSED tests/test_user_isolation.py::test_task_endpoints_reject_non_owner[missing-POST-/cancel-None]
+PASSED tests/test_user_isolation.py::test_task_endpoints_reject_non_owner[missing-POST-/plan/confirm-body4]
+PASSED tests/test_user_isolation.py::test_owner_can_read_own_task
+PASSED tests/test_user_isolation.py::test_pending_task_access_uses_enqueue_owner_record
+PASSED tests/test_user_isolation.py::test_project_access_checks_owner
+PASSED tests/test_user_isolation.py::test_book_views_reject_other_account[chapters]
+PASSED tests/test_user_isolation.py::test_book_views_reject_other_account[world]
+PASSED tests/test_user_isolation.py::test_book_views_reject_other_account[characters]
+PASSED tests/test_user_isolation.py::test_book_views_reject_other_account[settings]
+PASSED tests/test_user_isolation.py::test_book_views_reject_other_account[tasks]
+PASSED tests/test_user_isolation.py::test_book_views_reject_other_account[candidates]
+PASSED tests/test_user_isolation.py::test_book_views_reject_other_account[lessons]
+PASSED tests/test_user_isolation.py::test_book_views_reject_other_account[events]
+PASSED tests/test_user_isolation.py::test_book_views_reject_other_account[graph]
+PASSED tests/test_user_isolation.py::test_book_views_reject_other_account[outline]
+PASSED tests/test_user_isolation.py::test_rls_and_root_lists_do_not_cross_accounts
+PASSED tests/test_user_isolation.py::test_worker_rejects_forged_ownership_before_dispatch[foreign_user]
+PASSED tests/test_user_isolation.py::test_worker_rejects_forged_ownership_before_dispatch[missing_user]
+PASSED tests/test_user_isolation.py::test_worker_rejects_forged_ownership_before_dispatch[task_project]
+PASSED tests/test_user_isolation.py::test_consumer_requeues_transient_ownership_database_failure[initial]
+PASSED tests/test_user_isolation.py::test_consumer_requeues_transient_ownership_database_failure[process]
+PASSED tests/test_user_isolation.py::test_consumer_rejects_foreign_message_without_publishing_events
+PASSED tests/test_worker.py::test_database_disconnects_are_retryable
+PASSED tests/test_worker.py::test_process_materialize_and_done
+PASSED tests/test_worker.py::test_worker_publishes_artifact_while_dispatch_is_still_running
+PASSED tests/test_worker.py::test_manual_plan_worker_waits_without_releasing_gate_then_resumes
+PASSED tests/test_worker.py::test_stale_plan_resume_cannot_approve_a_new_replan_version
+PASSED tests/test_worker.py::test_cancel_awaiting_plan_releases_gate_and_marks_empty_chapter
+PASSED tests/test_worker.py::test_process_idempotent_skip_done
+PASSED tests/test_worker.py::test_process_cancel_skips_and_wins
+PASSED tests/test_worker.py::test_process_batch_pause_publishes_paused
+PASSED tests/test_worker.py::test_process_resume_settles_terminal_status
+PASSED tests/test_worker.py::test_process_retry_classification
+PASSED tests/test_worker.py::test_process_batch_write_order_guard
+PASSED tests/test_worker.py::test_short_generate_dispatches_to_the_short_pipeline
+PASSED tests/test_worker.py::test_short_resume_dispatches_to_the_resume_entry
+PASSED tests/test_worker.py::test_a_retried_short_task_resumes_instead_of_rebuying_the_whole_story
+PASSED tests/test_worker.py::test_a_failed_short_draft_fails_the_task_without_landing_anything
+PASSED tests/test_worker.py::test_process_lock_prevents_dup
+PASSED tests/test_worker.py::test_process_lock_reclaims_zombie
+PASSED tests/test_worker.py::test_process_lock_reclaims_legacy_format
+PASSED tests/test_worker.py::test_lock_release_does_not_delete_other_owner
+PASSED tests/test_worker.py::test_lock_heartbeat_renews_ttl
+PASSED tests/test_worker.py::test_lock_release_reclaims_stale_value_same_worker
+PASSED tests/test_worker.py::test_lock_release_keeps_taken_over_lock
+PASSED tests/test_worker.py::test_book_lock_hetero_book_parallel
+PASSED tests/test_worker.py::test_book_lock_release_cas
+PASSED tests/test_worker.py::test_process_book_lock_defers_same_book
+PASSED tests/test_worker.py::test_process_book_lock_released_on_done
+PASSED tests/test_worker.py::test_process_stable_worker_id_for_locks
+PASSED tests/test_worker.py::test_guard_rewrite_allows_confirmed
+PASSED tests/test_worker.py::test_guard_rewrite_rejects_missing_or_beyond
+PASSED tests/test_worker.py::test_guard_rewrite_rejects_awaiting_review
+PASSED tests/test_worker.py::test_guard_no_rewrite_stays_strict
+PASSED tests/test_worker.py::test_guard_resumes_empty_placeholder_without_skipping_chapter
+PASSED tests/test_worker.py::test_dispatch_materializes_target_chapter_before_writing
+PASSED tests/test_worker.py::test_batch_runner_materializes_each_chapter_before_its_subgraph
+XFAIL tests/test_conflict_sample_suite.py::test_sample_05_first_visit_contradiction - 首测记录（漏检）：样例 5 首次来访矛盾——L1 事件-经历比对机制未实现
+XFAIL tests/test_conflict_sample_suite.py::test_sample_06_destroyed_item_reappears - 首测记录（漏检）：样例 6 已毁物品再现——L1 item_rule 机制未实现
+XFAIL tests/test_conflict_sample_suite.py::test_sample_07_promise_unfulfilled_claimed - 首测记录（漏检）：样例 7 伏笔未兑现当已兑现——L1 foreshadow-兑现比对机制未实现
+XFAIL tests/test_conflict_sample_suite.py::test_sample_08_capability_rule_violation - 首测记录（漏检）：样例 8 能力规则越级用秘法——L1 power-规则前置校验机制未实现
+XFAIL tests/test_conflict_sample_suite.py::test_sample_09_faction_allegiance - 首测记录（漏检）：样例 9 势力归属——需 extract 补归属/faction 候选或 facts 归属类联动（数据模型边界：relations 端点仅 character id、无势力归属知识）
+1496 passed, 5 xfailed, 1 warning in 360.56s (0:06:00)

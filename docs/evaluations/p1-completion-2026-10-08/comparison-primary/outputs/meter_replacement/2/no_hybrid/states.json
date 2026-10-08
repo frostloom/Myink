@@ -1,0 +1,2852 @@
+[
+  {
+    "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+    "chapter_seq": 21,
+    "task_id": "def32ae6-d9eb-4b4f-af36-cfa242166904",
+    "user_instruction": "林川与许宁在现实世界的山间观测站检修供电，查出漏水接线盒。需要测量时必须交代可用仪器来源，全章仅两名人物。"
+  },
+  {
+    "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+    "chapter_seq": 21,
+    "task_id": "def32ae6-d9eb-4b4f-af36-cfa242166904",
+    "user_instruction": "林川与许宁在现实世界的山间观测站检修供电，查出漏水接线盒。需要测量时必须交代可用仪器来源，全章仅两名人物。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "draft": null,
+    "candidates": [],
+    "report": null,
+    "unresolved": [],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": null
+  },
+  {
+    "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+    "chapter_seq": 21,
+    "task_id": "def32ae6-d9eb-4b4f-af36-cfa242166904",
+    "user_instruction": "林川与许宁在现实世界的山间观测站检修供电，查出漏水接线盒。需要测量时必须交代可用仪器来源，全章仅两名人物。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "a0b3101d-e69c-4c2d-bbd5-1fc7fe08e9f9",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "e5381f0b-5965-4f00-9216-5ef5c9cb2240",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ad7ec167-7d55-407a-b15e-a75153a62283",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "f74381fb-35be-4b58-a9f8-7f8b06e6d77c",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ae3d0f1f-c6c1-4759-8224-d9dcad99b028",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ed3eb3de-dfa9-4023-9c7a-f2010e8decec",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "22b1b1ff-014c-42af-8e08-3a29617240d6",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "d19fbcbc-fa00-4e1a-a905-7b64c20a6f12",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "809c50ac-d8c3-4fbf-afb3-63022f73aef3",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "a4b95380-ae4f-41ed-b7b0-f3cbcbdc4bff",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "c0342ecf-0df6-4c28-81b4-d11dbc7b8fc4",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的山间观测站检修供电，查出漏水接线盒。需要测量时必须交代可用仪器来源，全章仅两名人物。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        }
+      ],
+      "entity_snapshots": [],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 2761,
+      "recall_stats": {
+        "hybrid_status": "disabled_by_evaluation"
+      }
+    },
+    "draft": null,
+    "candidates": [],
+    "report": null,
+    "unresolved": [],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "a0b3101d-e69c-4c2d-bbd5-1fc7fe08e9f9",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": null
+  },
+  {
+    "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+    "chapter_seq": 21,
+    "task_id": "def32ae6-d9eb-4b4f-af36-cfa242166904",
+    "user_instruction": "林川与许宁在现实世界的山间观测站检修供电，查出漏水接线盒。需要测量时必须交代可用仪器来源，全章仅两名人物。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "a0b3101d-e69c-4c2d-bbd5-1fc7fe08e9f9",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "e5381f0b-5965-4f00-9216-5ef5c9cb2240",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ad7ec167-7d55-407a-b15e-a75153a62283",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "f74381fb-35be-4b58-a9f8-7f8b06e6d77c",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ae3d0f1f-c6c1-4759-8224-d9dcad99b028",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ed3eb3de-dfa9-4023-9c7a-f2010e8decec",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "22b1b1ff-014c-42af-8e08-3a29617240d6",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "d19fbcbc-fa00-4e1a-a905-7b64c20a6f12",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "809c50ac-d8c3-4fbf-afb3-63022f73aef3",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "a4b95380-ae4f-41ed-b7b0-f3cbcbdc4bff",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "c0342ecf-0df6-4c28-81b4-d11dbc7b8fc4",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的山间观测站检修供电，查出漏水接线盒。需要测量时必须交代可用仪器来源，全章仅两名人物。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        }
+      ],
+      "entity_snapshots": [
+        {
+          "character_id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        },
+        {
+          "character_id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        }
+      ],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 3223,
+      "recall_stats": {
+        "hybrid_status": "disabled_by_evaluation"
+      }
+    },
+    "cast": {
+      "cast": [
+        "林川",
+        "许宁"
+      ],
+      "locations": [
+        "山间观测站",
+        "检修台",
+        "接线盒"
+      ]
+    },
+    "draft": null,
+    "candidates": [],
+    "report": null,
+    "unresolved": [],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "a0b3101d-e69c-4c2d-bbd5-1fc7fe08e9f9",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": null
+  },
+  {
+    "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+    "chapter_seq": 21,
+    "task_id": "def32ae6-d9eb-4b4f-af36-cfa242166904",
+    "user_instruction": "林川与许宁在现实世界的山间观测站检修供电，查出漏水接线盒。需要测量时必须交代可用仪器来源，全章仅两名人物。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "a0b3101d-e69c-4c2d-bbd5-1fc7fe08e9f9",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "e5381f0b-5965-4f00-9216-5ef5c9cb2240",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ad7ec167-7d55-407a-b15e-a75153a62283",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "f74381fb-35be-4b58-a9f8-7f8b06e6d77c",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ae3d0f1f-c6c1-4759-8224-d9dcad99b028",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ed3eb3de-dfa9-4023-9c7a-f2010e8decec",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "22b1b1ff-014c-42af-8e08-3a29617240d6",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "d19fbcbc-fa00-4e1a-a905-7b64c20a6f12",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "809c50ac-d8c3-4fbf-afb3-63022f73aef3",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "a4b95380-ae4f-41ed-b7b0-f3cbcbdc4bff",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "c0342ecf-0df6-4c28-81b4-d11dbc7b8fc4",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的山间观测站检修供电，查出漏水接线盒。需要测量时必须交代可用仪器来源，全章仅两名人物。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        }
+      ],
+      "entity_snapshots": [
+        {
+          "character_id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        },
+        {
+          "character_id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        }
+      ],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 3223,
+      "recall_stats": {
+        "hybrid_status": "disabled_by_evaluation"
+      }
+    },
+    "cast": {
+      "cast": [
+        "林川",
+        "许宁"
+      ],
+      "locations": [
+        "山间观测站",
+        "检修台",
+        "接线盒"
+      ]
+    },
+    "plan": {
+      "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+      "chapter_seq": 21,
+      "goals": [
+        "推进林川与许宁在观测站检修供电的主线任务",
+        "通过排查漏水接线盒揭示观测站设备老化问题",
+        "在现实题材框架内展现两人协作与专业判断"
+      ],
+      "scenes": [
+        {
+          "location_id": "山间观测站检修台",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "从检修台出发，沿线路排查供电故障，定位漏水接线盒并评估修复方案",
+          "time": "第20章雨后傍晚（紧接上一章）"
+        },
+        {
+          "location_id": "观测站外墙接线盒处",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "打开接线盒确认漏水点，使用站内现有仪器测量绝缘电阻和电压，判断能否临时恢复供电",
+          "time": "同上，排查后不久"
+        }
+      ],
+      "characters": [
+        {
+          "character_id": "林川",
+          "expected_state": {
+            "location": "山间观测站检修台及外墙接线盒处"
+          }
+        },
+        {
+          "character_id": "许宁",
+          "expected_state": {
+            "location": "山间观测站检修台及外墙接线盒处"
+          }
+        }
+      ],
+      "hooks_to_plant": [
+        "接线盒漏水可能不是偶发问题，暗示观测站线路整体老化，为后续更大故障或维护困境埋线",
+        "许宁在测量时提到某件仪器的校准记录异常，暗示设备管理存在疏漏"
+      ],
+      "hooks_to_resolve": [],
+      "expected_events": [
+        "林川和许宁从检修台开始逐段排查供电线路",
+        "两人发现外墙接线盒密封失效导致漏水短路",
+        "许宁从站内工具柜取出万用表和绝缘电阻测试仪，交代仪器来源",
+        "两人测量并确认接线盒内线路绝缘不合格，无法直接通电",
+        "林川提出临时跨接方案，许宁评估风险后同意尝试",
+        "章末以临时恢复部分供电但接线盒仍存在隐患收束，或发现更严重的线路问题"
+      ],
+      "hard_constraints": [
+        "现实题材，无超能力，所有设备状态和伤势不能无缘由改变",
+        "全章仅林川和许宁两名人物出场",
+        "需要测量时必须交代可用仪器来源（如站内工具柜、随身工具包等）",
+        "供电尚未恢复的现状不能凭空解决，修复过程须符合基本电气安全逻辑",
+        "雨仍未停的天气条件需保持连贯"
+      ],
+      "transition": {
+        "mode": "continue",
+        "anchor_quote": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。",
+        "pending_action": "供电尚未恢复，需要继续排查故障点",
+        "opening_beat": "林川从检修台旁的工具柜中取出万用表和手电筒，招呼许宁沿线路走向外墙接线盒，开始逐段排查",
+        "bridge": "直接接续上一章场景，从检修台移动到外墙接线盒处，以排查动作推进"
+      }
+    },
+    "draft": null,
+    "candidates": [],
+    "report": null,
+    "unresolved": [],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "a0b3101d-e69c-4c2d-bbd5-1fc7fe08e9f9",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": null
+  },
+  {
+    "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+    "chapter_seq": 21,
+    "task_id": "def32ae6-d9eb-4b4f-af36-cfa242166904",
+    "user_instruction": "林川与许宁在现实世界的山间观测站检修供电，查出漏水接线盒。需要测量时必须交代可用仪器来源，全章仅两名人物。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "a0b3101d-e69c-4c2d-bbd5-1fc7fe08e9f9",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "e5381f0b-5965-4f00-9216-5ef5c9cb2240",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ad7ec167-7d55-407a-b15e-a75153a62283",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "f74381fb-35be-4b58-a9f8-7f8b06e6d77c",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ae3d0f1f-c6c1-4759-8224-d9dcad99b028",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ed3eb3de-dfa9-4023-9c7a-f2010e8decec",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "22b1b1ff-014c-42af-8e08-3a29617240d6",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "d19fbcbc-fa00-4e1a-a905-7b64c20a6f12",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "809c50ac-d8c3-4fbf-afb3-63022f73aef3",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "a4b95380-ae4f-41ed-b7b0-f3cbcbdc4bff",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "c0342ecf-0df6-4c28-81b4-d11dbc7b8fc4",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的山间观测站检修供电，查出漏水接线盒。需要测量时必须交代可用仪器来源，全章仅两名人物。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        }
+      ],
+      "entity_snapshots": [
+        {
+          "character_id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        },
+        {
+          "character_id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        }
+      ],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 3223,
+      "recall_stats": {
+        "hybrid_status": "disabled_by_evaluation"
+      }
+    },
+    "cast": {
+      "cast": [
+        "林川",
+        "许宁"
+      ],
+      "locations": [
+        "山间观测站",
+        "检修台",
+        "接线盒"
+      ]
+    },
+    "plan": {
+      "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+      "chapter_seq": 21,
+      "goals": [
+        "推进林川与许宁在观测站检修供电的主线任务",
+        "通过排查漏水接线盒揭示观测站设备老化问题",
+        "在现实题材框架内展现两人协作与专业判断"
+      ],
+      "scenes": [
+        {
+          "location_id": "山间观测站检修台",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "从检修台出发，沿线路排查供电故障，定位漏水接线盒并评估修复方案",
+          "time": "第20章雨后傍晚（紧接上一章）"
+        },
+        {
+          "location_id": "观测站外墙接线盒处",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "打开接线盒确认漏水点，使用站内现有仪器测量绝缘电阻和电压，判断能否临时恢复供电",
+          "time": "同上，排查后不久"
+        }
+      ],
+      "characters": [
+        {
+          "character_id": "林川",
+          "expected_state": {
+            "location": "山间观测站检修台及外墙接线盒处"
+          }
+        },
+        {
+          "character_id": "许宁",
+          "expected_state": {
+            "location": "山间观测站检修台及外墙接线盒处"
+          }
+        }
+      ],
+      "hooks_to_plant": [
+        "接线盒漏水可能不是偶发问题，暗示观测站线路整体老化，为后续更大故障或维护困境埋线",
+        "许宁在测量时提到某件仪器的校准记录异常，暗示设备管理存在疏漏"
+      ],
+      "hooks_to_resolve": [],
+      "expected_events": [
+        "林川和许宁从检修台开始逐段排查供电线路",
+        "两人发现外墙接线盒密封失效导致漏水短路",
+        "许宁从站内工具柜取出万用表和绝缘电阻测试仪，交代仪器来源",
+        "两人测量并确认接线盒内线路绝缘不合格，无法直接通电",
+        "林川提出临时跨接方案，许宁评估风险后同意尝试",
+        "章末以临时恢复部分供电但接线盒仍存在隐患收束，或发现更严重的线路问题"
+      ],
+      "hard_constraints": [
+        "现实题材，无超能力，所有设备状态和伤势不能无缘由改变",
+        "全章仅林川和许宁两名人物出场",
+        "需要测量时必须交代可用仪器来源（如站内工具柜、随身工具包等）",
+        "供电尚未恢复的现状不能凭空解决，修复过程须符合基本电气安全逻辑",
+        "雨仍未停的天气条件需保持连贯"
+      ],
+      "transition": {
+        "mode": "continue",
+        "anchor_quote": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。",
+        "pending_action": "供电尚未恢复，需要继续排查故障点",
+        "opening_beat": "林川从检修台旁的工具柜中取出万用表和手电筒，招呼许宁沿线路走向外墙接线盒，开始逐段排查",
+        "bridge": "直接接续上一章场景，从检修台移动到外墙接线盒处，以排查动作推进"
+      }
+    },
+    "draft": "林川拉开工具柜最下层抽屉，万用表压在一卷生料带下面，表笔的绝缘皮裂了一道口子，他用指腹蹭了蹭铜芯，确认没断。手电筒挂在柜门内侧，他取下来按了两下，光柱发黄，但够用。许宁已经把配电箱的进线开关拨到断开位，又用验电笔在端子排上逐相点过，确认无电，才朝他点头。\n\n两人沿着墙根往东走。雨丝斜着扫进来，檐下那条电缆桥架积了薄薄一层水，每隔几步就有一处固定卡扣松脱，线缆垂下来，贴着墙面。林川用手电照着走，许宁跟在半步之后，手里捏着那张手绘的线路走向图，是上一任值守员留下的，纸边已经发脆。\n\n“这里。”许宁停下，指着一处桥架接头。手电光下，接头处的防水胶带鼓着泡，边缘翘起，水正顺着线缆外皮往里渗。林川伸手摸了一下墙面，指腹沾到潮气，再往上，墙砖缝里有一道细裂纹，雨水正沿着裂纹往下淌，正好落在接线盒上方。\n\n接线盒是铸铁的，四个角锈得发黑。林川用螺丝刀卸下盖板，一股潮气混着焦糊味涌出来。盒内端子排上凝着水珠，有一相接线柱周围发绿，铜绿顺着线芯爬了半寸。许宁凑近看，眉头压下来：“密封圈老化，压不紧了。水从进线孔倒灌进来，不是一天两天的事。”\n\n“先测绝缘。”林川把万用表递给她，自己打着手电。许宁把表拨到电阻档，一根表笔搭在接线柱上，另一根碰接地端子，读数跳了几下，停在零点几兆欧。她没说话，又换了一相，读数更低。第三相干脆是通的。\n\n“绝缘不合格，直接送电就是短路。”许宁把表笔收回来，在裤腿上蹭了蹭手指，“工具柜里还有台绝缘电阻测试仪，老式的摇表，我拿过来复核一下。”\n\n她折回检修台，林川留在原地，用手电照着盒内那排端子。线芯的绝缘层在弯折处已经发硬开裂，不止这一处。他顺着桥架往远处照，每隔几米就有一个接线盒，铸铁外壳在雨里泛着同样的暗红锈色。这站建了有些年头了。\n\n许宁回来时怀里抱着那台摇表，木壳，摇柄上的漆磨得只剩铜色。她把测试线接好，匀速摇动手柄，表针缓缓爬升，又慢慢回落。她盯着刻度看了几秒，报出数字，比万用表测的还低。\n\n“整段线路都够呛。”她把摇表搁在干燥的台阶上，“临时送电的话，只能把这一相甩开，从备用回路上跨接一根线过来，先保住照明和通信。但跨接线得从桥架里走，接头必须做防水。”\n\n林川蹲下来，用手电照着盒底那根备用线芯，外皮完好，没进水。“这根能用。我从工具柜拿防水胶带和热缩管，接头做在盒外，避开漏水点。”\n\n许宁没立刻应。她重新验了一遍电，确认备用回路确实断开，才说：“跨接可以，但这是临时措施。接线盒不换，下次下雨还得漏。而且——”她顿了顿，指了指摇表，“这台仪器上次校准是两年前，标签都褪色了。测出来的数只能当参考，不能当依据。”\n\n林川把盖板虚扣回去，挡住直灌的雨水。“先恢复照明，天亮再报修。你记一下校准的事，回头一并写进故障报告。”\n\n许宁从工具袋里摸出笔记本，就着手电光记了两行。雨还在下，檐口的水线连成一片。林川剪断备用线芯，剥出铜丝，许宁递过防水胶带，两人蹲在接线盒旁，一个缠一个压，胶带一圈压着一圈，缠到第三层时，手电光晃了一下，电池快没电了。",
+    "candidates": [],
+    "report": null,
+    "unresolved": [],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "a0b3101d-e69c-4c2d-bbd5-1fc7fe08e9f9",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": null
+  },
+  {
+    "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+    "chapter_seq": 21,
+    "task_id": "def32ae6-d9eb-4b4f-af36-cfa242166904",
+    "user_instruction": "林川与许宁在现实世界的山间观测站检修供电，查出漏水接线盒。需要测量时必须交代可用仪器来源，全章仅两名人物。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "a0b3101d-e69c-4c2d-bbd5-1fc7fe08e9f9",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "e5381f0b-5965-4f00-9216-5ef5c9cb2240",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ad7ec167-7d55-407a-b15e-a75153a62283",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "f74381fb-35be-4b58-a9f8-7f8b06e6d77c",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ae3d0f1f-c6c1-4759-8224-d9dcad99b028",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ed3eb3de-dfa9-4023-9c7a-f2010e8decec",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "22b1b1ff-014c-42af-8e08-3a29617240d6",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "d19fbcbc-fa00-4e1a-a905-7b64c20a6f12",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "809c50ac-d8c3-4fbf-afb3-63022f73aef3",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "a4b95380-ae4f-41ed-b7b0-f3cbcbdc4bff",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "c0342ecf-0df6-4c28-81b4-d11dbc7b8fc4",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的山间观测站检修供电，查出漏水接线盒。需要测量时必须交代可用仪器来源，全章仅两名人物。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        }
+      ],
+      "entity_snapshots": [
+        {
+          "character_id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        },
+        {
+          "character_id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        }
+      ],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 3223,
+      "recall_stats": {
+        "hybrid_status": "disabled_by_evaluation"
+      }
+    },
+    "cast": {
+      "cast": [
+        "林川",
+        "许宁"
+      ],
+      "locations": [
+        "山间观测站",
+        "检修台",
+        "接线盒"
+      ]
+    },
+    "plan": {
+      "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+      "chapter_seq": 21,
+      "goals": [
+        "推进林川与许宁在观测站检修供电的主线任务",
+        "通过排查漏水接线盒揭示观测站设备老化问题",
+        "在现实题材框架内展现两人协作与专业判断"
+      ],
+      "scenes": [
+        {
+          "location_id": "山间观测站检修台",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "从检修台出发，沿线路排查供电故障，定位漏水接线盒并评估修复方案",
+          "time": "第20章雨后傍晚（紧接上一章）"
+        },
+        {
+          "location_id": "观测站外墙接线盒处",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "打开接线盒确认漏水点，使用站内现有仪器测量绝缘电阻和电压，判断能否临时恢复供电",
+          "time": "同上，排查后不久"
+        }
+      ],
+      "characters": [
+        {
+          "character_id": "林川",
+          "expected_state": {
+            "location": "山间观测站检修台及外墙接线盒处"
+          }
+        },
+        {
+          "character_id": "许宁",
+          "expected_state": {
+            "location": "山间观测站检修台及外墙接线盒处"
+          }
+        }
+      ],
+      "hooks_to_plant": [
+        "接线盒漏水可能不是偶发问题，暗示观测站线路整体老化，为后续更大故障或维护困境埋线",
+        "许宁在测量时提到某件仪器的校准记录异常，暗示设备管理存在疏漏"
+      ],
+      "hooks_to_resolve": [],
+      "expected_events": [
+        "林川和许宁从检修台开始逐段排查供电线路",
+        "两人发现外墙接线盒密封失效导致漏水短路",
+        "许宁从站内工具柜取出万用表和绝缘电阻测试仪，交代仪器来源",
+        "两人测量并确认接线盒内线路绝缘不合格，无法直接通电",
+        "林川提出临时跨接方案，许宁评估风险后同意尝试",
+        "章末以临时恢复部分供电但接线盒仍存在隐患收束，或发现更严重的线路问题"
+      ],
+      "hard_constraints": [
+        "现实题材，无超能力，所有设备状态和伤势不能无缘由改变",
+        "全章仅林川和许宁两名人物出场",
+        "需要测量时必须交代可用仪器来源（如站内工具柜、随身工具包等）",
+        "供电尚未恢复的现状不能凭空解决，修复过程须符合基本电气安全逻辑",
+        "雨仍未停的天气条件需保持连贯"
+      ],
+      "transition": {
+        "mode": "continue",
+        "anchor_quote": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。",
+        "pending_action": "供电尚未恢复，需要继续排查故障点",
+        "opening_beat": "林川从检修台旁的工具柜中取出万用表和手电筒，招呼许宁沿线路走向外墙接线盒，开始逐段排查",
+        "bridge": "直接接续上一章场景，从检修台移动到外墙接线盒处，以排查动作推进"
+      }
+    },
+    "draft": "林川拉开工具柜最下层抽屉，万用表压在一卷生料带下面，表笔的绝缘皮裂了一道口子，他用指腹蹭了蹭铜芯，确认没断。手电筒挂在柜门内侧，他取下来按了两下，光柱发黄，但够用。许宁已经把配电箱的进线开关拨到断开位，又用验电笔在端子排上逐相点过，确认无电，才朝他点头。\n\n两人沿着墙根往东走。雨丝斜着扫进来，檐下那条电缆桥架积了薄薄一层水，每隔几步就有一处固定卡扣松脱，线缆垂下来，贴着墙面。林川用手电照着走，许宁跟在半步之后，手里捏着那张手绘的线路走向图，是上一任值守员留下的，纸边已经发脆。\n\n“这里。”许宁停下，指着一处桥架接头。手电光下，接头处的防水胶带鼓着泡，边缘翘起，水正顺着线缆外皮往里渗。林川伸手摸了一下墙面，指腹沾到潮气，再往上，墙砖缝里有一道细裂纹，雨水正沿着裂纹往下淌，正好落在接线盒上方。\n\n接线盒是铸铁的，四个角锈得发黑。林川用螺丝刀卸下盖板，一股潮气混着焦糊味涌出来。盒内端子排上凝着水珠，有一相接线柱周围发绿，铜绿顺着线芯爬了半寸。许宁凑近看，眉头压下来：“密封圈老化，压不紧了。水从进线孔倒灌进来，不是一天两天的事。”\n\n“先测绝缘。”林川把万用表递给她，自己打着手电。许宁把表拨到电阻档，一根表笔搭在接线柱上，另一根碰接地端子，读数跳了几下，停在零点几兆欧。她没说话，又换了一相，读数更低。第三相干脆是通的。\n\n“绝缘不合格，直接送电就是短路。”许宁把表笔收回来，在裤腿上蹭了蹭手指，“工具柜里还有台绝缘电阻测试仪，老式的摇表，我拿过来复核一下。”\n\n她折回检修台，林川留在原地，用手电照着盒内那排端子。线芯的绝缘层在弯折处已经发硬开裂，不止这一处。他顺着桥架往远处照，每隔几米就有一个接线盒，铸铁外壳在雨里泛着同样的暗红锈色。这站建了有些年头了。\n\n许宁回来时怀里抱着那台摇表，木壳，摇柄上的漆磨得只剩铜色。她把测试线接好，匀速摇动手柄，表针缓缓爬升，又慢慢回落。她盯着刻度看了几秒，报出数字，比万用表测的还低。\n\n“整段线路都够呛。”她把摇表搁在干燥的台阶上，“临时送电的话，只能把这一相甩开，从备用回路上跨接一根线过来，先保住照明和通信。但跨接线得从桥架里走，接头必须做防水。”\n\n林川蹲下来，用手电照着盒底那根备用线芯，外皮完好，没进水。“这根能用。我从工具柜拿防水胶带和热缩管，接头做在盒外，避开漏水点。”\n\n许宁没立刻应。她重新验了一遍电，确认备用回路确实断开，才说：“跨接可以，但这是临时措施。接线盒不换，下次下雨还得漏。而且——”她顿了顿，指了指摇表，“这台仪器上次校准是两年前，标签都褪色了。测出来的数只能当参考，不能当依据。”\n\n林川把盖板虚扣回去，挡住直灌的雨水。“先恢复照明，天亮再报修。你记一下校准的事，回头一并写进故障报告。”\n\n许宁从工具袋里摸出笔记本，就着手电光记了两行。雨还在下，檐口的水线连成一片。林川剪断备用线芯，剥出铜丝，许宁递过防水胶带，两人蹲在接线盒旁，一个缠一个压，胶带一圈压着一圈，缠到第三层时，手电光晃了一下，电池快没电了。",
+    "candidates": [
+      {
+        "kind": "event",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "summary": "林川与许宁在雨中山间观测站沿电缆桥架排查供电故障，发现接线盒密封圈老化、雨水倒灌导致绝缘不合格，决定用备用回路跨接临时恢复照明。",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "source_chapter": 21,
+          "confidence": 0.95
+        },
+        "confidence": 0.95,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "field": "location",
+          "old_value": "",
+          "new_value": "山间观测站电缆桥架检修现场",
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "field": "location",
+          "old_value": "",
+          "new_value": "山间观测站电缆桥架检修现场",
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "field": "knowledge",
+          "old_value": "",
+          "new_value": "掌握观测站供电线路故障情况：接线盒密封圈老化、雨水倒灌、绝缘不合格，需用备用回路跨接临时恢复照明，天亮后报修",
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "field": "knowledge",
+          "old_value": "",
+          "new_value": "掌握观测站供电线路故障情况：接线盒密封圈老化、雨水倒灌、绝缘不合格；并记录绝缘电阻测试仪校准过期一事，需写入故障报告",
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "fact",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "content": "观测站供电线路的接线盒密封圈老化、雨水倒灌，导致绝缘不合格，直接送电会短路；接线盒不更换则下次下雨仍会漏水。",
+          "category": "规则",
+          "is_hard": false,
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      },
+      {
+        "kind": "fact",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "content": "观测站的绝缘电阻测试仪（老式摇表）上次校准是两年前，标签褪色，测量数值只能作参考，不能作依据。",
+          "category": "规则",
+          "is_hard": false,
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "foreshadow",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "description": "接线盒密封圈老化、接线盒未更换，本次仅作临时跨接，下次下雨仍会漏水，隐患未除。",
+          "trigger": {
+            "actor": "许宁",
+            "action": "指出接线盒不换下次下雨还得漏",
+            "object": "接线盒"
+          },
+          "source_chapter": 21,
+          "confidence": 0.7
+        },
+        "confidence": 0.7,
+        "status": "pending"
+      },
+      {
+        "kind": "foreshadow",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "description": "绝缘电阻测试仪校准过期两年，许宁记下此事要写进故障报告，可能引出后续追责或设备更换。",
+          "trigger": {
+            "actor": "许宁",
+            "action": "记录校准过期一事",
+            "object": "绝缘电阻测试仪校准记录"
+          },
+          "source_chapter": 21,
+          "confidence": 0.65
+        },
+        "confidence": 0.65,
+        "status": "pending"
+      },
+      {
+        "kind": "new_entity",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "entity_type": "location",
+          "name": "山间观测站",
+          "description": "建了有些年头的山间观测站，供电线路沿墙根电缆桥架敷设，多处接线盒锈蚀漏水。"
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "new_entity",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "entity_type": "item",
+          "name": "绝缘电阻测试仪",
+          "description": "老式摇表，木壳、摇柄漆磨至铜色，用于复核线路绝缘，上次校准为两年前。"
+        },
+        "confidence": 0.8,
+        "status": "pending"
+      }
+    ],
+    "report": null,
+    "unresolved": [],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "a0b3101d-e69c-4c2d-bbd5-1fc7fe08e9f9",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": null
+  },
+  {
+    "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+    "chapter_seq": 21,
+    "task_id": "def32ae6-d9eb-4b4f-af36-cfa242166904",
+    "user_instruction": "林川与许宁在现实世界的山间观测站检修供电，查出漏水接线盒。需要测量时必须交代可用仪器来源，全章仅两名人物。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "a0b3101d-e69c-4c2d-bbd5-1fc7fe08e9f9",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "e5381f0b-5965-4f00-9216-5ef5c9cb2240",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ad7ec167-7d55-407a-b15e-a75153a62283",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "f74381fb-35be-4b58-a9f8-7f8b06e6d77c",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ae3d0f1f-c6c1-4759-8224-d9dcad99b028",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ed3eb3de-dfa9-4023-9c7a-f2010e8decec",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "22b1b1ff-014c-42af-8e08-3a29617240d6",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "d19fbcbc-fa00-4e1a-a905-7b64c20a6f12",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "809c50ac-d8c3-4fbf-afb3-63022f73aef3",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "a4b95380-ae4f-41ed-b7b0-f3cbcbdc4bff",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "c0342ecf-0df6-4c28-81b4-d11dbc7b8fc4",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的山间观测站检修供电，查出漏水接线盒。需要测量时必须交代可用仪器来源，全章仅两名人物。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        }
+      ],
+      "entity_snapshots": [
+        {
+          "character_id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        },
+        {
+          "character_id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        }
+      ],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 3223,
+      "recall_stats": {
+        "hybrid_status": "disabled_by_evaluation"
+      }
+    },
+    "cast": {
+      "cast": [
+        "林川",
+        "许宁"
+      ],
+      "locations": [
+        "山间观测站",
+        "检修台",
+        "接线盒"
+      ]
+    },
+    "plan": {
+      "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+      "chapter_seq": 21,
+      "goals": [
+        "推进林川与许宁在观测站检修供电的主线任务",
+        "通过排查漏水接线盒揭示观测站设备老化问题",
+        "在现实题材框架内展现两人协作与专业判断"
+      ],
+      "scenes": [
+        {
+          "location_id": "山间观测站检修台",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "从检修台出发，沿线路排查供电故障，定位漏水接线盒并评估修复方案",
+          "time": "第20章雨后傍晚（紧接上一章）"
+        },
+        {
+          "location_id": "观测站外墙接线盒处",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "打开接线盒确认漏水点，使用站内现有仪器测量绝缘电阻和电压，判断能否临时恢复供电",
+          "time": "同上，排查后不久"
+        }
+      ],
+      "characters": [
+        {
+          "character_id": "林川",
+          "expected_state": {
+            "location": "山间观测站检修台及外墙接线盒处"
+          }
+        },
+        {
+          "character_id": "许宁",
+          "expected_state": {
+            "location": "山间观测站检修台及外墙接线盒处"
+          }
+        }
+      ],
+      "hooks_to_plant": [
+        "接线盒漏水可能不是偶发问题，暗示观测站线路整体老化，为后续更大故障或维护困境埋线",
+        "许宁在测量时提到某件仪器的校准记录异常，暗示设备管理存在疏漏"
+      ],
+      "hooks_to_resolve": [],
+      "expected_events": [
+        "林川和许宁从检修台开始逐段排查供电线路",
+        "两人发现外墙接线盒密封失效导致漏水短路",
+        "许宁从站内工具柜取出万用表和绝缘电阻测试仪，交代仪器来源",
+        "两人测量并确认接线盒内线路绝缘不合格，无法直接通电",
+        "林川提出临时跨接方案，许宁评估风险后同意尝试",
+        "章末以临时恢复部分供电但接线盒仍存在隐患收束，或发现更严重的线路问题"
+      ],
+      "hard_constraints": [
+        "现实题材，无超能力，所有设备状态和伤势不能无缘由改变",
+        "全章仅林川和许宁两名人物出场",
+        "需要测量时必须交代可用仪器来源（如站内工具柜、随身工具包等）",
+        "供电尚未恢复的现状不能凭空解决，修复过程须符合基本电气安全逻辑",
+        "雨仍未停的天气条件需保持连贯"
+      ],
+      "transition": {
+        "mode": "continue",
+        "anchor_quote": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。",
+        "pending_action": "供电尚未恢复，需要继续排查故障点",
+        "opening_beat": "林川从检修台旁的工具柜中取出万用表和手电筒，招呼许宁沿线路走向外墙接线盒，开始逐段排查",
+        "bridge": "直接接续上一章场景，从检修台移动到外墙接线盒处，以排查动作推进"
+      }
+    },
+    "draft": "林川拉开工具柜最下层抽屉，万用表压在一卷生料带下面，表笔的绝缘皮裂了一道口子，他用指腹蹭了蹭铜芯，确认没断。手电筒挂在柜门内侧，他取下来按了两下，光柱发黄，但够用。许宁已经把配电箱的进线开关拨到断开位，又用验电笔在端子排上逐相点过，确认无电，才朝他点头。\n\n两人沿着墙根往东走。雨丝斜着扫进来，檐下那条电缆桥架积了薄薄一层水，每隔几步就有一处固定卡扣松脱，线缆垂下来，贴着墙面。林川用手电照着走，许宁跟在半步之后，手里捏着那张手绘的线路走向图，是上一任值守员留下的，纸边已经发脆。\n\n“这里。”许宁停下，指着一处桥架接头。手电光下，接头处的防水胶带鼓着泡，边缘翘起，水正顺着线缆外皮往里渗。林川伸手摸了一下墙面，指腹沾到潮气，再往上，墙砖缝里有一道细裂纹，雨水正沿着裂纹往下淌，正好落在接线盒上方。\n\n接线盒是铸铁的，四个角锈得发黑。林川用螺丝刀卸下盖板，一股潮气混着焦糊味涌出来。盒内端子排上凝着水珠，有一相接线柱周围发绿，铜绿顺着线芯爬了半寸。许宁凑近看，眉头压下来：“密封圈老化，压不紧了。水从进线孔倒灌进来，不是一天两天的事。”\n\n“先测绝缘。”林川把万用表递给她，自己打着手电。许宁把表拨到电阻档，一根表笔搭在接线柱上，另一根碰接地端子，读数跳了几下，停在零点几兆欧。她没说话，又换了一相，读数更低。第三相干脆是通的。\n\n“绝缘不合格，直接送电就是短路。”许宁把表笔收回来，在裤腿上蹭了蹭手指，“工具柜里还有台绝缘电阻测试仪，老式的摇表，我拿过来复核一下。”\n\n她折回检修台，林川留在原地，用手电照着盒内那排端子。线芯的绝缘层在弯折处已经发硬开裂，不止这一处。他顺着桥架往远处照，每隔几米就有一个接线盒，铸铁外壳在雨里泛着同样的暗红锈色。这站建了有些年头了。\n\n许宁回来时怀里抱着那台摇表，木壳，摇柄上的漆磨得只剩铜色。她把测试线接好，匀速摇动手柄，表针缓缓爬升，又慢慢回落。她盯着刻度看了几秒，报出数字，比万用表测的还低。\n\n“整段线路都够呛。”她把摇表搁在干燥的台阶上，“临时送电的话，只能把这一相甩开，从备用回路上跨接一根线过来，先保住照明和通信。但跨接线得从桥架里走，接头必须做防水。”\n\n林川蹲下来，用手电照着盒底那根备用线芯，外皮完好，没进水。“这根能用。我从工具柜拿防水胶带和热缩管，接头做在盒外，避开漏水点。”\n\n许宁没立刻应。她重新验了一遍电，确认备用回路确实断开，才说：“跨接可以，但这是临时措施。接线盒不换，下次下雨还得漏。而且——”她顿了顿，指了指摇表，“这台仪器上次校准是两年前，标签都褪色了。测出来的数只能当参考，不能当依据。”\n\n林川把盖板虚扣回去，挡住直灌的雨水。“先恢复照明，天亮再报修。你记一下校准的事，回头一并写进故障报告。”\n\n许宁从工具袋里摸出笔记本，就着手电光记了两行。雨还在下，檐口的水线连成一片。林川剪断备用线芯，剥出铜丝，许宁递过防水胶带，两人蹲在接线盒旁，一个缠一个压，胶带一圈压着一圈，缠到第三层时，手电光晃了一下，电池快没电了。",
+    "candidates": [
+      {
+        "kind": "event",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "summary": "林川与许宁在雨中山间观测站沿电缆桥架排查供电故障，发现接线盒密封圈老化、雨水倒灌导致绝缘不合格，决定用备用回路跨接临时恢复照明。",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "source_chapter": 21,
+          "confidence": 0.95
+        },
+        "confidence": 0.95,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "field": "location",
+          "old_value": "",
+          "new_value": "山间观测站电缆桥架检修现场",
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "field": "location",
+          "old_value": "",
+          "new_value": "山间观测站电缆桥架检修现场",
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "field": "knowledge",
+          "old_value": "",
+          "new_value": "掌握观测站供电线路故障情况：接线盒密封圈老化、雨水倒灌、绝缘不合格，需用备用回路跨接临时恢复照明，天亮后报修",
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "field": "knowledge",
+          "old_value": "",
+          "new_value": "掌握观测站供电线路故障情况：接线盒密封圈老化、雨水倒灌、绝缘不合格；并记录绝缘电阻测试仪校准过期一事，需写入故障报告",
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "fact",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "content": "观测站供电线路的接线盒密封圈老化、雨水倒灌，导致绝缘不合格，直接送电会短路；接线盒不更换则下次下雨仍会漏水。",
+          "category": "规则",
+          "is_hard": false,
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      },
+      {
+        "kind": "fact",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "content": "观测站的绝缘电阻测试仪（老式摇表）上次校准是两年前，标签褪色，测量数值只能作参考，不能作依据。",
+          "category": "规则",
+          "is_hard": false,
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "foreshadow",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "description": "接线盒密封圈老化、接线盒未更换，本次仅作临时跨接，下次下雨仍会漏水，隐患未除。",
+          "trigger": {
+            "actor": "许宁",
+            "action": "指出接线盒不换下次下雨还得漏",
+            "object": "接线盒"
+          },
+          "source_chapter": 21,
+          "confidence": 0.7
+        },
+        "confidence": 0.7,
+        "status": "pending"
+      },
+      {
+        "kind": "foreshadow",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "description": "绝缘电阻测试仪校准过期两年，许宁记下此事要写进故障报告，可能引出后续追责或设备更换。",
+          "trigger": {
+            "actor": "许宁",
+            "action": "记录校准过期一事",
+            "object": "绝缘电阻测试仪校准记录"
+          },
+          "source_chapter": 21,
+          "confidence": 0.65
+        },
+        "confidence": 0.65,
+        "status": "pending"
+      },
+      {
+        "kind": "new_entity",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "entity_type": "location",
+          "name": "山间观测站",
+          "description": "建了有些年头的山间观测站，供电线路沿墙根电缆桥架敷设，多处接线盒锈蚀漏水。"
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "new_entity",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "entity_type": "item",
+          "name": "绝缘电阻测试仪",
+          "description": "老式摇表，木壳、摇柄漆磨至铜色，用于复核线路绝缘，上次校准为两年前。"
+        },
+        "confidence": 0.8,
+        "status": "pending"
+      }
+    ],
+    "report": {
+      "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+      "chapter_seq": 21,
+      "findings": [
+        {
+          "finding_id": null,
+          "conflict_key": "len:21",
+          "conflict_type": "style",
+          "severity": "major",
+          "scope": "local",
+          "source": "L1",
+          "evidence": [
+            {
+              "chapter": 21,
+              "quote": "正文 1247 字，目标 800 字（区间 640–1040）"
+            }
+          ],
+          "confidence": null,
+          "suggestion": "本章字数过长：目标 800 字，请压缩/扩写到 640–1040 字区间"
+        }
+      ],
+      "summary": {
+        "total": 1,
+        "critical": 0,
+        "resolved": 0
+      }
+    },
+    "unresolved": [
+      {
+        "finding_id": null,
+        "conflict_key": "len:21",
+        "conflict_type": "style",
+        "severity": "major",
+        "scope": "local",
+        "source": "L1",
+        "evidence": [
+          {
+            "chapter": 21,
+            "quote": "正文 1247 字，目标 800 字（区间 640–1040）"
+          }
+        ],
+        "confidence": null,
+        "suggestion": "本章字数过长：目标 800 字，请压缩/扩写到 640–1040 字区间"
+      }
+    ],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "a0b3101d-e69c-4c2d-bbd5-1fc7fe08e9f9",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": null
+  },
+  {
+    "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+    "chapter_seq": 21,
+    "task_id": "def32ae6-d9eb-4b4f-af36-cfa242166904",
+    "user_instruction": "林川与许宁在现实世界的山间观测站检修供电，查出漏水接线盒。需要测量时必须交代可用仪器来源，全章仅两名人物。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "a0b3101d-e69c-4c2d-bbd5-1fc7fe08e9f9",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "e5381f0b-5965-4f00-9216-5ef5c9cb2240",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ad7ec167-7d55-407a-b15e-a75153a62283",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "f74381fb-35be-4b58-a9f8-7f8b06e6d77c",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ae3d0f1f-c6c1-4759-8224-d9dcad99b028",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ed3eb3de-dfa9-4023-9c7a-f2010e8decec",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "22b1b1ff-014c-42af-8e08-3a29617240d6",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "d19fbcbc-fa00-4e1a-a905-7b64c20a6f12",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "809c50ac-d8c3-4fbf-afb3-63022f73aef3",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "a4b95380-ae4f-41ed-b7b0-f3cbcbdc4bff",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "c0342ecf-0df6-4c28-81b4-d11dbc7b8fc4",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的山间观测站检修供电，查出漏水接线盒。需要测量时必须交代可用仪器来源，全章仅两名人物。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        }
+      ],
+      "entity_snapshots": [
+        {
+          "character_id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        },
+        {
+          "character_id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        }
+      ],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 3223,
+      "recall_stats": {
+        "hybrid_status": "disabled_by_evaluation"
+      }
+    },
+    "cast": {
+      "cast": [
+        "林川",
+        "许宁"
+      ],
+      "locations": [
+        "山间观测站",
+        "检修台",
+        "接线盒"
+      ]
+    },
+    "plan": {
+      "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+      "chapter_seq": 21,
+      "goals": [
+        "推进林川与许宁在观测站检修供电的主线任务",
+        "通过排查漏水接线盒揭示观测站设备老化问题",
+        "在现实题材框架内展现两人协作与专业判断"
+      ],
+      "scenes": [
+        {
+          "location_id": "山间观测站检修台",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "从检修台出发，沿线路排查供电故障，定位漏水接线盒并评估修复方案",
+          "time": "第20章雨后傍晚（紧接上一章）"
+        },
+        {
+          "location_id": "观测站外墙接线盒处",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "打开接线盒确认漏水点，使用站内现有仪器测量绝缘电阻和电压，判断能否临时恢复供电",
+          "time": "同上，排查后不久"
+        }
+      ],
+      "characters": [
+        {
+          "character_id": "林川",
+          "expected_state": {
+            "location": "山间观测站检修台及外墙接线盒处"
+          }
+        },
+        {
+          "character_id": "许宁",
+          "expected_state": {
+            "location": "山间观测站检修台及外墙接线盒处"
+          }
+        }
+      ],
+      "hooks_to_plant": [
+        "接线盒漏水可能不是偶发问题，暗示观测站线路整体老化，为后续更大故障或维护困境埋线",
+        "许宁在测量时提到某件仪器的校准记录异常，暗示设备管理存在疏漏"
+      ],
+      "hooks_to_resolve": [],
+      "expected_events": [
+        "林川和许宁从检修台开始逐段排查供电线路",
+        "两人发现外墙接线盒密封失效导致漏水短路",
+        "许宁从站内工具柜取出万用表和绝缘电阻测试仪，交代仪器来源",
+        "两人测量并确认接线盒内线路绝缘不合格，无法直接通电",
+        "林川提出临时跨接方案，许宁评估风险后同意尝试",
+        "章末以临时恢复部分供电但接线盒仍存在隐患收束，或发现更严重的线路问题"
+      ],
+      "hard_constraints": [
+        "现实题材，无超能力，所有设备状态和伤势不能无缘由改变",
+        "全章仅林川和许宁两名人物出场",
+        "需要测量时必须交代可用仪器来源（如站内工具柜、随身工具包等）",
+        "供电尚未恢复的现状不能凭空解决，修复过程须符合基本电气安全逻辑",
+        "雨仍未停的天气条件需保持连贯"
+      ],
+      "transition": {
+        "mode": "continue",
+        "anchor_quote": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。",
+        "pending_action": "供电尚未恢复，需要继续排查故障点",
+        "opening_beat": "林川从检修台旁的工具柜中取出万用表和手电筒，招呼许宁沿线路走向外墙接线盒，开始逐段排查",
+        "bridge": "直接接续上一章场景，从检修台移动到外墙接线盒处，以排查动作推进"
+      }
+    },
+    "draft": "林川拉开工具柜最下层抽屉，万用表压在一卷生料带下面，表笔的绝缘皮裂了一道口子，他用指腹蹭了蹭铜芯，确认没断。手电筒挂在柜门内侧，他取下来按了两下，光柱发黄，但够用。许宁已经把配电箱的进线开关拨到断开位，又用验电笔在端子排上逐相点过，确认无电，才朝他点头。\n\n两人沿着墙根往东走。雨丝斜着扫进来，檐下那条电缆桥架积了薄薄一层水，每隔几步就有一处固定卡扣松脱，线缆垂下来，贴着墙面。林川用手电照着走，许宁跟在半步之后，手里捏着那张手绘的线路走向图，是上一任值守员留下的，纸边已经发脆。\n\n“这里。”许宁停下，指着一处桥架接头。手电光下，接头处的防水胶带鼓着泡，边缘翘起，水正顺着线缆外皮往里渗。林川伸手摸了一下墙面，指腹沾到潮气，再往上，墙砖缝里有一道细裂纹，雨水正沿着裂纹往下淌，正好落在接线盒上方。\n\n接线盒是铸铁的，四个角锈得发黑。林川用螺丝刀卸下盖板，一股潮气混着焦糊味涌出来。盒内端子排上凝着水珠，有一相接线柱周围发绿，铜绿顺着线芯爬了半寸。许宁凑近看，眉头压下来：“密封圈老化，压不紧了。水从进线孔倒灌进来，不是一天两天的事。”\n\n“先测绝缘。”林川把万用表递给她，自己打着手电。许宁把表拨到电阻档，一根表笔搭在接线柱上，另一根碰接地端子，读数跳了几下，停在零点几兆欧。她没说话，又换了一相，读数更低。第三相干脆是通的。\n\n“绝缘不合格，直接送电就是短路。”许宁把表笔收回来，在裤腿上蹭了蹭手指，“工具柜里还有台绝缘电阻测试仪，老式的摇表，我拿过来复核一下。”\n\n她折回检修台，林川留在原地，用手电照着盒内那排端子。线芯的绝缘层在弯折处已经发硬开裂，不止这一处。他顺着桥架往远处照，每隔几米就有一个接线盒，铸铁外壳在雨里泛着同样的暗红锈色。这站建了有些年头了。\n\n许宁回来时怀里抱着那台摇表，木壳，摇柄上的漆磨得只剩铜色。她把测试线接好，匀速摇动手柄，表针缓缓爬升，又慢慢回落。她盯着刻度看了几秒，报出数字，比万用表测的还低。\n\n“整段线路都够呛。”她把摇表搁在干燥的台阶上，“临时送电的话，只能把这一相甩开，从备用回路上跨接一根线过来，先保住照明和通信。但跨接线得从桥架里走，接头必须做防水。”\n\n林川蹲下来，用手电照着盒底那根备用线芯，外皮完好，没进水。“这根能用。我从工具柜拿防水胶带和热缩管，接头做在盒外，避开漏水点。”\n\n许宁没立刻应。她重新验了一遍电，确认备用回路确实断开，才说：“跨接可以，但这是临时措施。接线盒不换，下次下雨还得漏。而且——”她顿了顿，指了指摇表，“这台仪器上次校准是两年前，标签都褪色了。测出来的数只能当参考，不能当依据。”\n\n林川把盖板虚扣回去，挡住直灌的雨水。“先恢复照明，天亮再报修。你记一下校准的事，回头一并写进故障报告。”\n\n许宁从工具袋里摸出笔记本，就着手电光记了两行。雨还在下，檐口的水线连成一片。林川剪断备用线芯，剥出铜丝，许宁递过防水胶带，两人蹲在接线盒旁，一个缠一个压，胶带一圈压着一圈，缠到第三层时，手电光晃了一下，电池快没电了。",
+    "candidates": [
+      {
+        "kind": "event",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "summary": "林川与许宁在雨中山间观测站沿电缆桥架排查供电故障，发现接线盒密封圈老化、雨水倒灌导致绝缘不合格，决定用备用回路跨接临时恢复照明。",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "source_chapter": 21,
+          "confidence": 0.95
+        },
+        "confidence": 0.95,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "field": "location",
+          "old_value": "",
+          "new_value": "山间观测站电缆桥架检修现场",
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "field": "location",
+          "old_value": "",
+          "new_value": "山间观测站电缆桥架检修现场",
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "field": "knowledge",
+          "old_value": "",
+          "new_value": "掌握观测站供电线路故障情况：接线盒密封圈老化、雨水倒灌、绝缘不合格，需用备用回路跨接临时恢复照明，天亮后报修",
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "field": "knowledge",
+          "old_value": "",
+          "new_value": "掌握观测站供电线路故障情况：接线盒密封圈老化、雨水倒灌、绝缘不合格；并记录绝缘电阻测试仪校准过期一事，需写入故障报告",
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "fact",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "content": "观测站供电线路的接线盒密封圈老化、雨水倒灌，导致绝缘不合格，直接送电会短路；接线盒不更换则下次下雨仍会漏水。",
+          "category": "规则",
+          "is_hard": false,
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      },
+      {
+        "kind": "fact",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "content": "观测站的绝缘电阻测试仪（老式摇表）上次校准是两年前，标签褪色，测量数值只能作参考，不能作依据。",
+          "category": "规则",
+          "is_hard": false,
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "foreshadow",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "description": "接线盒密封圈老化、接线盒未更换，本次仅作临时跨接，下次下雨仍会漏水，隐患未除。",
+          "trigger": {
+            "actor": "许宁",
+            "action": "指出接线盒不换下次下雨还得漏",
+            "object": "接线盒"
+          },
+          "source_chapter": 21,
+          "confidence": 0.7
+        },
+        "confidence": 0.7,
+        "status": "pending"
+      },
+      {
+        "kind": "foreshadow",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "description": "绝缘电阻测试仪校准过期两年，许宁记下此事要写进故障报告，可能引出后续追责或设备更换。",
+          "trigger": {
+            "actor": "许宁",
+            "action": "记录校准过期一事",
+            "object": "绝缘电阻测试仪校准记录"
+          },
+          "source_chapter": 21,
+          "confidence": 0.65
+        },
+        "confidence": 0.65,
+        "status": "pending"
+      },
+      {
+        "kind": "new_entity",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "entity_type": "location",
+          "name": "山间观测站",
+          "description": "建了有些年头的山间观测站，供电线路沿墙根电缆桥架敷设，多处接线盒锈蚀漏水。"
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "new_entity",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "entity_type": "item",
+          "name": "绝缘电阻测试仪",
+          "description": "老式摇表，木壳、摇柄漆磨至铜色，用于复核线路绝缘，上次校准为两年前。"
+        },
+        "confidence": 0.8,
+        "status": "pending"
+      }
+    ],
+    "report": {
+      "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+      "chapter_seq": 21,
+      "findings": [
+        {
+          "finding_id": null,
+          "conflict_key": "len:21",
+          "conflict_type": "style",
+          "severity": "major",
+          "scope": "local",
+          "source": "L1",
+          "evidence": [
+            {
+              "chapter": 21,
+              "quote": "正文 1247 字，目标 800 字（区间 640–1040）"
+            }
+          ],
+          "confidence": null,
+          "suggestion": "本章字数过长：目标 800 字，请压缩/扩写到 640–1040 字区间"
+        }
+      ],
+      "summary": {
+        "total": 1,
+        "critical": 0,
+        "resolved": 0
+      }
+    },
+    "unresolved": [
+      {
+        "finding_id": null,
+        "conflict_key": "len:21",
+        "conflict_type": "style",
+        "severity": "major",
+        "scope": "local",
+        "source": "L1",
+        "evidence": [
+          {
+            "chapter": 21,
+            "quote": "正文 1247 字，目标 800 字（区间 640–1040）"
+          }
+        ],
+        "confidence": null,
+        "suggestion": "本章字数过长：目标 800 字，请压缩/扩写到 640–1040 字区间"
+      }
+    ],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "a0b3101d-e69c-4c2d-bbd5-1fc7fe08e9f9",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": "call budget exhausted"
+  },
+  {
+    "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+    "chapter_seq": 21,
+    "task_id": "def32ae6-d9eb-4b4f-af36-cfa242166904",
+    "user_instruction": "林川与许宁在现实世界的山间观测站检修供电，查出漏水接线盒。需要测量时必须交代可用仪器来源，全章仅两名人物。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "a0b3101d-e69c-4c2d-bbd5-1fc7fe08e9f9",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "e5381f0b-5965-4f00-9216-5ef5c9cb2240",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ad7ec167-7d55-407a-b15e-a75153a62283",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "f74381fb-35be-4b58-a9f8-7f8b06e6d77c",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ae3d0f1f-c6c1-4759-8224-d9dcad99b028",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "ed3eb3de-dfa9-4023-9c7a-f2010e8decec",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "22b1b1ff-014c-42af-8e08-3a29617240d6",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "d19fbcbc-fa00-4e1a-a905-7b64c20a6f12",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "809c50ac-d8c3-4fbf-afb3-63022f73aef3",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "a4b95380-ae4f-41ed-b7b0-f3cbcbdc4bff",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "c0342ecf-0df6-4c28-81b4-d11dbc7b8fc4",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的山间观测站检修供电，查出漏水接线盒。需要测量时必须交代可用仪器来源，全章仅两名人物。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。"
+        }
+      ],
+      "entity_snapshots": [
+        {
+          "character_id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        },
+        {
+          "character_id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        }
+      ],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 3223,
+      "recall_stats": {
+        "hybrid_status": "disabled_by_evaluation"
+      }
+    },
+    "cast": {
+      "cast": [
+        "林川",
+        "许宁"
+      ],
+      "locations": [
+        "山间观测站",
+        "检修台",
+        "接线盒"
+      ]
+    },
+    "plan": {
+      "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+      "chapter_seq": 21,
+      "goals": [
+        "推进林川与许宁在观测站检修供电的主线任务",
+        "通过排查漏水接线盒揭示观测站设备老化问题",
+        "在现实题材框架内展现两人协作与专业判断"
+      ],
+      "scenes": [
+        {
+          "location_id": "山间观测站检修台",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "从检修台出发，沿线路排查供电故障，定位漏水接线盒并评估修复方案",
+          "time": "第20章雨后傍晚（紧接上一章）"
+        },
+        {
+          "location_id": "观测站外墙接线盒处",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "打开接线盒确认漏水点，使用站内现有仪器测量绝缘电阻和电压，判断能否临时恢复供电",
+          "time": "同上，排查后不久"
+        }
+      ],
+      "characters": [
+        {
+          "character_id": "林川",
+          "expected_state": {
+            "location": "山间观测站检修台及外墙接线盒处"
+          }
+        },
+        {
+          "character_id": "许宁",
+          "expected_state": {
+            "location": "山间观测站检修台及外墙接线盒处"
+          }
+        }
+      ],
+      "hooks_to_plant": [
+        "接线盒漏水可能不是偶发问题，暗示观测站线路整体老化，为后续更大故障或维护困境埋线",
+        "许宁在测量时提到某件仪器的校准记录异常，暗示设备管理存在疏漏"
+      ],
+      "hooks_to_resolve": [],
+      "expected_events": [
+        "林川和许宁从检修台开始逐段排查供电线路",
+        "两人发现外墙接线盒密封失效导致漏水短路",
+        "许宁从站内工具柜取出万用表和绝缘电阻测试仪，交代仪器来源",
+        "两人测量并确认接线盒内线路绝缘不合格，无法直接通电",
+        "林川提出临时跨接方案，许宁评估风险后同意尝试",
+        "章末以临时恢复部分供电但接线盒仍存在隐患收束，或发现更严重的线路问题"
+      ],
+      "hard_constraints": [
+        "现实题材，无超能力，所有设备状态和伤势不能无缘由改变",
+        "全章仅林川和许宁两名人物出场",
+        "需要测量时必须交代可用仪器来源（如站内工具柜、随身工具包等）",
+        "供电尚未恢复的现状不能凭空解决，修复过程须符合基本电气安全逻辑",
+        "雨仍未停的天气条件需保持连贯"
+      ],
+      "transition": {
+        "mode": "continue",
+        "anchor_quote": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。",
+        "pending_action": "供电尚未恢复，需要继续排查故障点",
+        "opening_beat": "林川从检修台旁的工具柜中取出万用表和手电筒，招呼许宁沿线路走向外墙接线盒，开始逐段排查",
+        "bridge": "直接接续上一章场景，从检修台移动到外墙接线盒处，以排查动作推进"
+      }
+    },
+    "draft": "林川拉开工具柜最下层抽屉，万用表压在一卷生料带下面，表笔的绝缘皮裂了一道口子，他用指腹蹭了蹭铜芯，确认没断。手电筒挂在柜门内侧，他取下来按了两下，光柱发黄，但够用。许宁已经把配电箱的进线开关拨到断开位，又用验电笔在端子排上逐相点过，确认无电，才朝他点头。\n\n两人沿着墙根往东走。雨丝斜着扫进来，檐下那条电缆桥架积了薄薄一层水，每隔几步就有一处固定卡扣松脱，线缆垂下来，贴着墙面。林川用手电照着走，许宁跟在半步之后，手里捏着那张手绘的线路走向图，是上一任值守员留下的，纸边已经发脆。\n\n“这里。”许宁停下，指着一处桥架接头。手电光下，接头处的防水胶带鼓着泡，边缘翘起，水正顺着线缆外皮往里渗。林川伸手摸了一下墙面，指腹沾到潮气，再往上，墙砖缝里有一道细裂纹，雨水正沿着裂纹往下淌，正好落在接线盒上方。\n\n接线盒是铸铁的，四个角锈得发黑。林川用螺丝刀卸下盖板，一股潮气混着焦糊味涌出来。盒内端子排上凝着水珠，有一相接线柱周围发绿，铜绿顺着线芯爬了半寸。许宁凑近看，眉头压下来：“密封圈老化，压不紧了。水从进线孔倒灌进来，不是一天两天的事。”\n\n“先测绝缘。”林川把万用表递给她，自己打着手电。许宁把表拨到电阻档，一根表笔搭在接线柱上，另一根碰接地端子，读数跳了几下，停在零点几兆欧。她没说话，又换了一相，读数更低。第三相干脆是通的。\n\n“绝缘不合格，直接送电就是短路。”许宁把表笔收回来，在裤腿上蹭了蹭手指，“工具柜里还有台绝缘电阻测试仪，老式的摇表，我拿过来复核一下。”\n\n她折回检修台，林川留在原地，用手电照着盒内那排端子。线芯的绝缘层在弯折处已经发硬开裂，不止这一处。他顺着桥架往远处照，每隔几米就有一个接线盒，铸铁外壳在雨里泛着同样的暗红锈色。这站建了有些年头了。\n\n许宁回来时怀里抱着那台摇表，木壳，摇柄上的漆磨得只剩铜色。她把测试线接好，匀速摇动手柄，表针缓缓爬升，又慢慢回落。她盯着刻度看了几秒，报出数字，比万用表测的还低。\n\n“整段线路都够呛。”她把摇表搁在干燥的台阶上，“临时送电的话，只能把这一相甩开，从备用回路上跨接一根线过来，先保住照明和通信。但跨接线得从桥架里走，接头必须做防水。”\n\n林川蹲下来，用手电照着盒底那根备用线芯，外皮完好，没进水。“这根能用。我从工具柜拿防水胶带和热缩管，接头做在盒外，避开漏水点。”\n\n许宁没立刻应。她重新验了一遍电，确认备用回路确实断开，才说：“跨接可以，但这是临时措施。接线盒不换，下次下雨还得漏。而且——”她顿了顿，指了指摇表，“这台仪器上次校准是两年前，标签都褪色了。测出来的数只能当参考，不能当依据。”\n\n林川把盖板虚扣回去，挡住直灌的雨水。“先恢复照明，天亮再报修。你记一下校准的事，回头一并写进故障报告。”\n\n许宁从工具袋里摸出笔记本，就着手电光记了两行。雨还在下，檐口的水线连成一片。林川剪断备用线芯，剥出铜丝，许宁递过防水胶带，两人蹲在接线盒旁，一个缠一个压，胶带一圈压着一圈，缠到第三层时，手电光晃了一下，电池快没电了。",
+    "candidates": [
+      {
+        "kind": "event",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "summary": "林川与许宁在雨中山间观测站沿电缆桥架排查供电故障，发现接线盒密封圈老化、雨水倒灌导致绝缘不合格，决定用备用回路跨接临时恢复照明。",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "source_chapter": 21,
+          "confidence": 0.95
+        },
+        "confidence": 0.95,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "field": "location",
+          "old_value": "",
+          "new_value": "山间观测站电缆桥架检修现场",
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "field": "location",
+          "old_value": "",
+          "new_value": "山间观测站电缆桥架检修现场",
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "9f85c3ad-de8d-4044-810c-8bf58f5ae936",
+          "field": "knowledge",
+          "old_value": "",
+          "new_value": "掌握观测站供电线路故障情况：接线盒密封圈老化、雨水倒灌、绝缘不合格，需用备用回路跨接临时恢复照明，天亮后报修",
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "49ac3df9-490c-4528-a969-d1d67096e5b2",
+          "field": "knowledge",
+          "old_value": "",
+          "new_value": "掌握观测站供电线路故障情况：接线盒密封圈老化、雨水倒灌、绝缘不合格；并记录绝缘电阻测试仪校准过期一事，需写入故障报告",
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "fact",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "content": "观测站供电线路的接线盒密封圈老化、雨水倒灌，导致绝缘不合格，直接送电会短路；接线盒不更换则下次下雨仍会漏水。",
+          "category": "规则",
+          "is_hard": false,
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      },
+      {
+        "kind": "fact",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "content": "观测站的绝缘电阻测试仪（老式摇表）上次校准是两年前，标签褪色，测量数值只能作参考，不能作依据。",
+          "category": "规则",
+          "is_hard": false,
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "foreshadow",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "description": "接线盒密封圈老化、接线盒未更换，本次仅作临时跨接，下次下雨仍会漏水，隐患未除。",
+          "trigger": {
+            "actor": "许宁",
+            "action": "指出接线盒不换下次下雨还得漏",
+            "object": "接线盒"
+          },
+          "source_chapter": 21,
+          "confidence": 0.7
+        },
+        "confidence": 0.7,
+        "status": "pending"
+      },
+      {
+        "kind": "foreshadow",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "description": "绝缘电阻测试仪校准过期两年，许宁记下此事要写进故障报告，可能引出后续追责或设备更换。",
+          "trigger": {
+            "actor": "许宁",
+            "action": "记录校准过期一事",
+            "object": "绝缘电阻测试仪校准记录"
+          },
+          "source_chapter": 21,
+          "confidence": 0.65
+        },
+        "confidence": 0.65,
+        "status": "pending"
+      },
+      {
+        "kind": "new_entity",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "entity_type": "location",
+          "name": "山间观测站",
+          "description": "建了有些年头的山间观测站，供电线路沿墙根电缆桥架敷设，多处接线盒锈蚀漏水。"
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "new_entity",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "entity_type": "item",
+          "name": "绝缘电阻测试仪",
+          "description": "老式摇表，木壳、摇柄漆磨至铜色，用于复核线路绝缘，上次校准为两年前。"
+        },
+        "confidence": 0.8,
+        "status": "pending"
+      }
+    ],
+    "report": {
+      "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+      "chapter_seq": 21,
+      "findings": [
+        {
+          "finding_id": null,
+          "conflict_key": "len:21",
+          "conflict_type": "style",
+          "severity": "major",
+          "scope": "local",
+          "source": "L1",
+          "evidence": [
+            {
+              "chapter": 21,
+              "quote": "正文 1247 字，目标 800 字（区间 640–1040）"
+            }
+          ],
+          "confidence": null,
+          "suggestion": "本章字数过长：目标 800 字，请压缩/扩写到 640–1040 字区间"
+        }
+      ],
+      "summary": {
+        "total": 1,
+        "critical": 0,
+        "resolved": 0
+      }
+    },
+    "unresolved": [
+      {
+        "finding_id": null,
+        "conflict_key": "len:21",
+        "conflict_type": "style",
+        "severity": "major",
+        "scope": "local",
+        "source": "L1",
+        "evidence": [
+          {
+            "chapter": 21,
+            "quote": "正文 1247 字，目标 800 字（区间 640–1040）"
+          }
+        ],
+        "confidence": null,
+        "suggestion": "本章字数过长：目标 800 字，请压缩/扩写到 640–1040 字区间"
+      }
+    ],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "a0b3101d-e69c-4c2d-bbd5-1fc7fe08e9f9",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": "call budget exhausted"
+  }
+]

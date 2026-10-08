@@ -1,0 +1,16 @@
+{
+  "case_id": "continuity.natural_same_scene_continuation",
+  "case_sha256": "ad399aa5b33367403fd8571b4f0f25b3ec30e1dc8c8928e9c51957f4cf1e8848",
+  "execution": "completed",
+  "coverage": "implemented",
+  "attempted": true,
+  "prompt_sha256": "883b09626bff0885f77e822e5c2a46ad109828da4c42c7c968de48ef74387a6c",
+  "input_tokens": 827,
+  "output_tokens": 154,
+  "cost_est": 0.002886,
+  "cost_status": "estimated",
+  "raw_output": "{\"verdict\": \"pass\", \"findings\": [], \"reasons\": [\"本章紧接前章章尾：沈砚接过螺丝刀、卡住门闩、搬长椅顶门、兽爪缩回，动作链条完整，无重演或断裂。\", \"章节计划目标为‘兄妹守住体育馆后门’，正文以门被顶住、兽爪缩回、兄妹轮流盯守收束，目标达成且无主线偏移。\", \"无世界观硬约束、伏笔、人物状态快照可供比对，未发现可判定的矛盾。\", \"内容质量：衔接自然，兄妹分工与对话符合危机场景，节奏紧凑，无冗余修订必要。\"], \"confidence\": 0.9}",
+  "model_id": "deepseek-flash",
+  "finish_reason": "stop",
+  "wall_ms": 2407
+}

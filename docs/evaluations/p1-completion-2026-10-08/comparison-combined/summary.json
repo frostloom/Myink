@@ -1,0 +1,14 @@
+{
+  "planned_outputs": 12,
+  "completed_outputs": 12,
+  "retained_attempts": 16,
+  "retained_budget_stops": 4,
+  "actual_requests": 99,
+  "estimated_cost_yuan": 1.017986,
+  "quality_status": "pending_independent_review",
+  "limits": [
+    "historical direct inputs omitted previous_tail and explicit alias mapping; not a fair quality superiority comparison",
+    "vector embeddings disabled; no single-chapter Reflexion ablation",
+    "completed generation may still await author review; not end-to-end persistence success"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "case_id": "logic.return_visit",
+  "case_sha256": "33e9b5bd63cc0579256eec5e1752201816ff9c8b64e8e95cd8bc7ccb7216c8f8",
+  "execution": "completed",
+  "coverage": "implemented",
+  "attempted": true,
+  "prompt_sha256": "043423a630659197f0dd08b783ceac8a80ec4cffe055500a3ad144d5f13a1e49",
+  "input_tokens": 702,
+  "output_tokens": 200,
+  "cost_est": 0.003004,
+  "cost_status": "estimated",
+  "raw_output": "{\"verdict\": \"pass\", \"findings\": [], \"reasons\": [\"本章仅有一句正文，内容为林川推开站房门并取出昨晚留下的登记回执，与【近期上下文】中'昨晚林川已在北桥站办理登记，今天再次来到原站房'完全一致，属于合理的同场景接续，未重演已完成动作，也未丢弃未完成请求或危险。\", \"无章节计划、无世界观硬约束、无确定性校验结果、无剧情上下文与开放伏笔，缺乏可对照的规划或伏笔依据，无法判定主线偏移或伏笔未收。\", \"无人物状态快照与设定实体，无法核实人设或设定冲突；无近期章节开头参照，无法判定近义改写套路。\", \"未发现衔接断裂、机械重复、时间地点或视角无交代改变等问题，按规则不制造冗余修订，判定 pass。\"], \"confidence\": 0.6}",
+  "model_id": "deepseek-flash",
+  "finish_reason": "stop",
+  "wall_ms": 2844
+}

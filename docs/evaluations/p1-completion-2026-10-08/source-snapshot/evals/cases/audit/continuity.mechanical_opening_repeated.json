@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "id": "continuity.mechanical_opening_repeated",
+  "group_id": "continuity.mechanical_opening_repeated",
+  "split": "development",
+  "mode": "audit",
+  "category": "continuity",
+  "polarity": "positive",
+  "source": {
+    "path": "scripts/eval-continuity.py",
+    "case_name": "mechanical_opening_repeated",
+    "adapted_from": []
+  },
+  "input": {
+    "chapter_seq": 6,
+    "context": {
+      "short_context": [
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 5,
+          "tail": "沈砚把搜来的药品放进箱子，医生示意他去院内找守卫领取当天的任务。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 4,
+          "text": "清晨的冷风贴着门缝钻进来，沈砚揉了揉酸痛的肩，掀开毯子坐起。屋里很静，只有远处传来几声咳嗽。他看了一眼窗外灰白的天，伸手摸了摸衣袋里的匕首。"
+        }
+      ]
+    },
+    "plan": {
+      "goals": [
+        "领取当天巡查任务"
+      ],
+      "expected_events": [
+        "领取当天巡查任务"
+      ]
+    },
+    "draft": "清晨的凉风顺着门缝钻进来，沈砚揉着发酸的肩，掀开毯子坐了起来。房间很安静，远处只有几声咳嗽。他望了一眼窗外灰白的天空，伸手摸向衣袋里的匕首。随后他走到院里，找到守卫，领到了今天巡查围墙的任务。"
+  },
+  "expected": {
+    "allowed_verdicts": [
+      "rewrite"
+    ],
+    "required_issues": [
+      {
+        "id": "mechanical_opening_repeated",
+        "description": "已完成动作不得重演、未解决威胁不得无交代丢弃、开头不得机械重复；合理衔接与恢复不得误报",
+        "allowed_conflict_types": [
+          "plotline",
+          "timeline",
+          "style"
+        ],
+        "allowed_severities": [
+          "major",
+          "critical"
+        ],
+        "evidence_sources": [
+          {
+            "chapter": 4,
+            "pointer": "/input/context/recent_openings/0/text"
+          },
+          {
+            "chapter": 6,
+            "pointer": "/input/draft"
+          }
+        ]
+      }
+    ],
+    "forbidden_issues": []
+  },
+  "label": {
+    "status": "proposed",
+    "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+    "reviewer": null
+  }
+}

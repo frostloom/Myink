@@ -1,0 +1,16 @@
+{
+  "case_id": "logic.first_visit",
+  "case_sha256": "2d539ded7126f594d8a3670ee403c4b18b793189af2c97622b13082cca5fb7aa",
+  "execution": "completed",
+  "coverage": "implemented",
+  "attempted": true,
+  "prompt_sha256": "edbfd94376a6f12e82613ce6cdfdb9f12fdb5e6abb2203d84d9ca082081a7cdc",
+  "input_tokens": 707,
+  "output_tokens": 282,
+  "cost_est": 0.00367,
+  "cost_status": "estimated",
+  "raw_output": "{\"verdict\":\"rewrite\",\"findings\":[{\"conflict_key\":\"continuity_northbridge_first_visit\",\"conflict_type\":\"timeline\",\"severity\":\"major\",\"scope\":\"local\",\"evidence\":[{\"chapter\":1,\"quote\":\"昨晚林川已在北桥站办理登记，今天再次来到原站房。\"},{\"chapter\":2,\"quote\":\"这是林川有生以来第一次来到北桥站，此前他从未到过这里。\"}],\"confidence\":0.95,\"suggestion\":\"删除或改写“第一次来到北桥站/从未到过这里”的表述，改为承接前章的“再次来到原站房”，例如：林川再次走进北桥站原站房，昨晚办理登记的情形还留在记忆里。随后直接推进本章新动作，避免重演抵达/登记。\"}],\"reasons\":[\"本章开头与前一章章尾直接矛盾：前章已写林川昨晚在北桥站办理登记，本章却称其有生以来第一次来到北桥站。\",\"该矛盾属于明确的接续断裂，会破坏时间线与人物经历连续性，需按 local 范围改写开头接续句。\",\"除该接续问题外，本章正文信息过少，无法判断其他剧情线推进；本次仅要求修复接续矛盾，不升级为整章重规划。\"],\"confidence\":0.95}",
+  "model_id": "deepseek-flash",
+  "finish_reason": "stop",
+  "wall_ms": 2688
+}

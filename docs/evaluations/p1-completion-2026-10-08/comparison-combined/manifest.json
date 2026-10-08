@@ -1,0 +1,24 @@
+{
+  "mode": "offline_comparison_assembly",
+  "sources": [
+    {
+      "directory": "E:\\github项目\\Myink\\.local\\evaluation-runs\\p1-comparison-2026-10-08",
+      "hashes": {
+        "run.json": "cb2640f73456375a95e52e76fb1af64e4a5e3944eb2b5a9c729793f2b0ccbf78",
+        "results.json": "e2d9c2142ab39f54e898f80b924a12e19001746d386f9c1593f9ba592de0221a",
+        "manifest.json": "411c1b3f30d1f998444cc353fcbd90e9c64768a5ee3de14f380550a78dc78d6f"
+      }
+    },
+    {
+      "directory": "E:\\github项目\\Myink\\.local\\evaluation-runs\\p1-comparison-supplement-2026-10-08",
+      "hashes": {
+        "run.json": "67f0773dbc31dcc686ee9dcbea825f800d14bec95654449529ddef9901085d32",
+        "results.json": "abe95d40eb3830fb5000be235afbd2c1f1ccb2291749db347e4dc058650b6640",
+        "manifest.json": "b78f510ee25c11fb181a26472bda999513484920a949934d563474a4d6ebf81e"
+      }
+    }
+  ],
+  "assembler_sha256": "9f1267f9f7ce96f79ef41d1dde0d000c052a30e1456c24753732aecb966a4d99",
+  "blind_seed": 20261008,
+  "api_requests": 0
+}

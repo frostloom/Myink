@@ -1,0 +1,38 @@
+{
+  "request_index": 37,
+  "case_id": "injury_continuity",
+  "variant": "no_hybrid",
+  "repetition": 2,
+  "prompt_sha256": "0cf04b6bb3ac411fec3820e65903428d3c36e151c12e7dd910c67b00fcc0eb2c",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 40,
+    "max_cost_yuan": 2.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 4096,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T12:11:38.224198+00:00",
+  "execution": "completed",
+  "raw_output": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁在观测站通过检修梯登上屋顶，找到东侧靠排水口处油毡裂缝及气象传感器支架底座渗水点，用胶带做临时标记，并商定次日用硬纸板挡板临时遮雨、等补给车换油毡。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"injury\",\n        \"old_value\": \"\",\n        \"new_value\": \"右肩旧伤未愈，撕胶带、下梯时右肩吃不住劲，需换左手发力\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"knowledge\",\n        \"old_value\": \"\",\n        \"new_value\": \"已知观测站屋顶东侧靠排水口油毡有约一拃长裂缝，气象传感器支架底座渗水，螺栓锈死不可动，需等补给车换整块油毡\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"knowledge\",\n        \"old_value\": \"\",\n        \"new_value\": \"已知屋顶东侧油毡裂缝与传感器支架渗水情况，并在记录簿上记下裂缝、渗水、临时胶带标记及未动螺栓等项\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"fact\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"content\": \"观测站屋顶东侧靠排水口处油毡有一道约一拃长的裂缝，正上方气象传感器支架底座螺栓孔周围渗水，水顺支架流下；螺栓锈死不可动，需等下周补给车带新油毡和密封胶更换整块油毡。\",\n        \"category\": \"规则\",\n        \"is_hard\": false,\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"fact\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"content\": \"气象台每天要读观测站这组气象传感器数据，湿气进入会导致读数飘移，因此渗水问题不能久拖。\",\n        \"category\": \"规则\",\n        \"is_hard\": false,\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.7,\n      \"payload\": {\n        \"description\": \"林川与许宁约定次日用硬纸板挡板罩住传感器支架底座临时挡雨，撑到下周补给车来换油毡；若明早下雨则先报修、数据停一天。此事尚未执行，存在后续回收空间。\",\n        \"trigger\": {\n          \"actor\": \"林川\",\n          \"action\": \"约定次日安装挡板临时遮雨\",\n          \"object\": \"气象传感器支架底座\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.7\n      }\n    }\n  ]\n}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁在观测站通过检修梯登上屋顶，找到东侧靠排水口处油毡裂缝及气象传感器支架底座渗水点，用胶带做临时标记，并商定次日用硬纸板挡板临时遮雨、等补给车换油毡。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"injury\",\n        \"old_value\": \"\",\n        \"new_value\": \"右肩旧伤未愈，撕胶带、下梯时右肩吃不住劲，需换左手发力\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"knowledge\",\n        \"old_value\": \"\",\n        \"new_value\": \"已知观测站屋顶东侧靠排水口油毡有约一拃长裂缝，气象传感器支架底座渗水，螺栓锈死不可动，需等补给车换整块油毡\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"knowledge\",\n        \"old_value\": \"\",\n        \"new_value\": \"已知屋顶东侧油毡裂缝与传感器支架渗水情况，并在记录簿上记下裂缝、渗水、临时胶带标记及未动螺栓等项\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"fact\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"content\": \"观测站屋顶东侧靠排水口处油毡有一道约一拃长的裂缝，正上方气象传感器支架底座螺栓孔周围渗水，水顺支架流下；螺栓锈死不可动，需等下周补给车带新油毡和密封胶更换整块油毡。\",\n        \"category\": \"规则\",\n        \"is_hard\": false,\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"fact\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"content\": \"气象台每天要读观测站这组气象传感器数据，湿气进入会导致读数飘移，因此渗水问题不能久拖。\",\n        \"category\": \"规则\",\n        \"is_hard\": false,\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.7,\n      \"payload\": {\n        \"description\": \"林川与许宁约定次日用硬纸板挡板罩住传感器支架底座临时挡雨，撑到下周补给车来换油毡；若明早下雨则先报修、数据停一天。此事尚未执行，存在后续回收空间。\",\n        \"trigger\": {\n          \"actor\": \"林川\",\n          \"action\": \"约定次日安装挡板临时遮雨\",\n          \"object\": \"气象传感器支架底座\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.7\n      }\n    }\n  ]\n}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 2410,
+  "output_tokens": 893,
+  "cost_est": 0.011964,
+  "cost_status": "estimated",
+  "wall_ms": 4781
+}

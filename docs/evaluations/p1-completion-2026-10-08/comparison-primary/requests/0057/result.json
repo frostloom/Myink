@@ -1,0 +1,38 @@
+{
+  "request_index": 57,
+  "case_id": "meter_replacement",
+  "variant": "no_hybrid",
+  "repetition": 2,
+  "prompt_sha256": "616a6c0ecfbeadc25b80ed616ec8c1c566e5ace7f0c4af8c2434db60b6ce5ee3",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 60,
+    "max_cost_yuan": 5.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 1024,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T11:53:20.493603+00:00",
+  "execution": "completed",
+  "raw_output": "{\"cast\": [\"林川\", \"许宁\"], \"locations\": [\"山间观测站\", \"检修台\", \"接线盒\"]}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\"cast\": [\"林川\", \"许宁\"], \"locations\": [\"山间观测站\", \"检修台\", \"接线盒\"]}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 820,
+  "output_tokens": 29,
+  "cost_est": 0.001872,
+  "cost_status": "estimated",
+  "wall_ms": 1688
+}

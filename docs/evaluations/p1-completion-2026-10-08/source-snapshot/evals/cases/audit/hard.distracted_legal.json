@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "id": "hard.distracted_legal",
+  "group_id": "hard.distracted",
+  "split": "development",
+  "mode": "audit",
+  "category": "distractor",
+  "polarity": "negative",
+  "source": {
+    "path": "evals/ADDED-CASES.md",
+    "case_name": "distracted_legal",
+    "adapted_from": []
+  },
+  "input": {
+    "chapter_seq": 3,
+    "context": {
+      "short_context": [
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 1,
+          "tail": "林川唯一的旧万用表烧毁，尚无替代品。"
+        },
+        {
+          "kind": "history",
+          "chapter": 2,
+          "text": "昨夜雨声很大，许宁记录了风向。蓝色雨衣挂在门边。"
+        }
+      ],
+      "long_term_facts": [
+        {
+          "content": "老林是林川的别名。故事为现实题材。",
+          "is_hard": true
+        }
+      ]
+    },
+    "plan": {},
+    "draft": "林川从仓库领到新的万用表，用新表完成测量；旧表仍在废品箱中。"
+  },
+  "expected": {
+    "allowed_verdicts": [
+      "pass"
+    ],
+    "required_issues": [],
+    "forbidden_issues": [
+      "不能把明确换新或合法康复当成旧状态冲突"
+    ]
+  },
+  "label": {
+    "status": "proposed",
+    "reviewer": null,
+    "review_note": "本轮合成，维护者需确认标签和类型。"
+  }
+}

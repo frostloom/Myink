@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "id": "continuity.pending_threat_dropped",
+  "group_id": "continuity.threat",
+  "split": "development",
+  "mode": "audit",
+  "category": "continuity",
+  "polarity": "positive",
+  "source": {
+    "path": "scripts/eval-continuity.py",
+    "case_name": "pending_threat_dropped",
+    "adapted_from": []
+  },
+  "input": {
+    "chapter_seq": 6,
+    "context": {
+      "short_context": [
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 5,
+          "tail": "兽爪从门缝探了进来，门闩正一点点弯折。沈砚抵住铁门，朝妹妹伸手：“把那把螺丝刀给我，快！”妹妹抓起工具。"
+        }
+      ],
+      "recent_openings": []
+    },
+    "plan": {
+      "goals": [
+        "兄妹守住体育馆后门"
+      ],
+      "expected_events": [
+        "兄妹守住体育馆后门"
+      ]
+    },
+    "draft": "晚上十一点刚过，沈棠把最后一口糖水喂给沈砚。他躺在长椅上，揉了揉酸痛的肩。体育馆里很安静，兄妹聊起从前的晚饭，接着清点了明天要带的食物。沈砚打了个哈欠，决定先睡一会儿。"
+  },
+  "expected": {
+    "allowed_verdicts": [
+      "rewrite"
+    ],
+    "required_issues": [
+      {
+        "id": "pending_threat_dropped",
+        "description": "已完成动作不得重演、未解决威胁不得无交代丢弃、开头不得机械重复；合理衔接与恢复不得误报",
+        "allowed_conflict_types": [
+          "plotline",
+          "timeline",
+          "style"
+        ],
+        "allowed_severities": [
+          "major",
+          "critical"
+        ],
+        "evidence_sources": [
+          {
+            "chapter": 5,
+            "pointer": "/input/context/short_context/0/tail"
+          },
+          {
+            "chapter": 6,
+            "pointer": "/input/draft"
+          }
+        ]
+      }
+    ],
+    "forbidden_issues": []
+  },
+  "label": {
+    "status": "proposed",
+    "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+    "reviewer": null
+  }
+}

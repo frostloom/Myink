@@ -1,0 +1,76 @@
+{
+  "identity": {
+    "system_identifier": "7694257730369818664",
+    "database": "myink",
+    "port": 15432,
+    "business_role": "myink_app"
+  },
+  "projects": [
+    {
+      "project_id": "994e3dab-5eb4-4e64-9ffc-c8422d3fa97e",
+      "remaining_projects": 0,
+      "remaining_agent_runs": 0,
+      "orphan_runs_removed": 13
+    },
+    {
+      "project_id": "e650a330-03b7-4942-a4bc-cd07ac6441e9",
+      "remaining_projects": 0,
+      "remaining_agent_runs": 0,
+      "orphan_runs_removed": 12
+    },
+    {
+      "project_id": "d5a7b378-35ba-4d5a-900e-bca03aa358be",
+      "remaining_projects": 0,
+      "remaining_agent_runs": 0,
+      "orphan_runs_removed": 35
+    },
+    {
+      "project_id": "08ddf0b0-e680-491a-b57c-71f16d732687",
+      "remaining_projects": 0,
+      "remaining_agent_runs": 0,
+      "orphan_runs_removed": 22
+    },
+    {
+      "project_id": "4992a9c8-4e56-4522-95d0-cf4a34656148",
+      "remaining_projects": 0,
+      "remaining_agent_runs": 0,
+      "orphan_runs_removed": 13
+    },
+    {
+      "project_id": "750eaeee-bee6-4913-9201-6d1c3862bc7c",
+      "remaining_projects": 0,
+      "remaining_agent_runs": 0,
+      "orphan_runs_removed": 10
+    },
+    {
+      "project_id": "68ff55b7-bb89-4868-b0e9-96cd7c1dc177",
+      "remaining_projects": 0,
+      "remaining_agent_runs": 0,
+      "orphan_runs_removed": 5
+    },
+    {
+      "project_id": "e13909be-f26e-4c69-b8e0-825502308ab2",
+      "remaining_projects": 0,
+      "remaining_agent_runs": 0,
+      "orphan_runs_removed": 5
+    },
+    {
+      "project_id": "d5d88229-4e0c-4f5f-952a-a842869654b9",
+      "remaining_projects": 0,
+      "remaining_agent_runs": 0,
+      "orphan_runs_removed": 0
+    },
+    {
+      "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+      "remaining_projects": 0,
+      "remaining_agent_runs": 0,
+      "orphan_runs_removed": 0
+    },
+    {
+      "project_id": "e76901bd-5a42-412d-832e-76a925c91b8c",
+      "remaining_projects": 0,
+      "remaining_agent_runs": 0,
+      "orphan_runs_removed": 0
+    }
+  ]
+}

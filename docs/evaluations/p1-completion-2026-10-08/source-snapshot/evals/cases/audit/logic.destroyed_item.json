@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "id": "logic.destroyed_item",
+  "group_id": "logic.item",
+  "split": "development",
+  "mode": "audit",
+  "category": "item",
+  "polarity": "positive",
+  "source": {
+    "path": "scripts/eval-logic.py",
+    "case_name": "destroyed_item",
+    "adapted_from": [
+      "conflict-samples:06"
+    ]
+  },
+  "input": {
+    "chapter_seq": 2,
+    "context": {
+      "short_context": [
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 1,
+          "tail": "林川唯一的万用表已烧成无法修复的残骸，他尚未获取替代品。"
+        }
+      ],
+      "long_term_facts": []
+    },
+    "plan": {},
+    "draft": "林川拿起那只完好无损的旧万用表，接上探针，顺利测出了电压。"
+  },
+  "expected": {
+    "allowed_verdicts": [
+      "rewrite"
+    ],
+    "required_issues": [
+      {
+        "id": "destroyed_item",
+        "description": "毁坏的旧物直接再现；明确更换新物不得误报",
+        "allowed_conflict_types": [
+          "item_rule"
+        ],
+        "allowed_severities": [
+          "major",
+          "critical"
+        ],
+        "evidence_sources": [
+          {
+            "chapter": 1,
+            "pointer": "/input/context/short_context/0/tail"
+          },
+          {
+            "chapter": 2,
+            "pointer": "/input/draft"
+          }
+        ]
+      }
+    ],
+    "forbidden_issues": []
+  },
+  "label": {
+    "status": "proposed",
+    "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+    "reviewer": null
+  }
+}

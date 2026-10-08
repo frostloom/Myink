@@ -1,0 +1,38 @@
+{
+  "request_index": 47,
+  "case_id": "injury_continuity",
+  "variant": "no_hybrid",
+  "repetition": 1,
+  "prompt_sha256": "5601669c8f5e48d117a6202562a31cf1b68892ee15196c3d7d6cc7b1526b6c23",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 60,
+    "max_cost_yuan": 5.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 4096,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T11:52:30.496820+00:00",
+  "execution": "completed",
+  "raw_output": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁在观测站屋顶东北角发现防水卷材鼓包漏水，林川用胶带临时封堵，并在裂缝深处发现一截带规则折角的锈蚀金属。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶（东北角漏水处）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶（东北角漏水处）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"injury\",\n        \"old_value\": \"\",\n        \"new_value\": \"爬梯与蹲坐后膝盖僵硬，需扶墙站稳\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"description\": \"屋顶裂缝深处嵌着一小截锈蚀金属，边缘有规则折角，像从某块板材上断下来的，暗示非自然开裂，许宁想拍照留存。\",\n        \"trigger\": {\n          \"actor\": \"林川\",\n          \"action\": \"用刮刀挑开卷材裂缝发现\",\n          \"object\": \"带规则折角的锈蚀金属残片\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"new_entity\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.8,\n      \"payload\": {\n        \"entity_type\": \"location\",\n        \"name\": \"观测站屋顶\",\n        \"description\": \"观测站平屋顶，铺老式沥青防水卷材，东北角有漏水鼓包，边缘堆压顶砖。\",\n        \"parent\": \"观测站\"\n      }\n    }\n  ]\n}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁在观测站屋顶东北角发现防水卷材鼓包漏水，林川用胶带临时封堵，并在裂缝深处发现一截带规则折角的锈蚀金属。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶（东北角漏水处）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶（东北角漏水处）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"injury\",\n        \"old_value\": \"\",\n        \"new_value\": \"爬梯与蹲坐后膝盖僵硬，需扶墙站稳\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"description\": \"屋顶裂缝深处嵌着一小截锈蚀金属，边缘有规则折角，像从某块板材上断下来的，暗示非自然开裂，许宁想拍照留存。\",\n        \"trigger\": {\n          \"actor\": \"林川\",\n          \"action\": \"用刮刀挑开卷材裂缝发现\",\n          \"object\": \"带规则折角的锈蚀金属残片\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"new_entity\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.8,\n      \"payload\": {\n        \"entity_type\": \"location\",\n        \"name\": \"观测站屋顶\",\n        \"description\": \"观测站平屋顶，铺老式沥青防水卷材，东北角有漏水鼓包，边缘堆压顶砖。\",\n        \"parent\": \"观测站\"\n      }\n    }\n  ]\n}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 2193,
+  "output_tokens": 648,
+  "cost_est": 0.00957,
+  "cost_status": "estimated",
+  "wall_ms": 4078
+}

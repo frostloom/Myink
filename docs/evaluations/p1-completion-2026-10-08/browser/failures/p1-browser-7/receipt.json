@@ -1,0 +1,229 @@
+{
+  "kind": "chromium_frontend_e2e_with_synthetic_api",
+  "checks": [
+    "login",
+    "plan_confirmation",
+    "partial_body_before_stream_completion",
+    "second_body_chunk",
+    "sse_reconnect_cursor",
+    "human_rejection_after_reload",
+    "resume_request"
+  ],
+  "api_calls": [
+    {
+      "endpoint": "/auth/token",
+      "method": "POST"
+    },
+    {
+      "endpoint": "/auth/session",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/lessons",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/graph",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/foreshadows",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/tasks",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1/events",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1/plan/confirm",
+      "method": "POST"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1/events",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1/events",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/auth/session",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/lessons",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/graph",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/foreshadows",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/tasks",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/tasks",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1/events",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/tasks",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates/candidate-p1/reject",
+      "method": "POST"
+    },
+    {
+      "endpoint": "/batches/task-p1/resume",
+      "method": "POST"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1/events",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/auth/session",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/lessons",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/graph",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/foreshadows",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/tasks",
+      "method": "GET"
+    }
+  ],
+  "unknown_routes": [],
+  "page_errors": [],
+  "limits": [
+    "API/SSE controlled fixture, not deployed backend E2E",
+    "No real model or database calls"
+  ],
+  "passed": false,
+  "error": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('textbox', { name: '章节正文' }) to be visible\u001b[22m\n\n    at main (E:\\github项目\\Myink\\scripts\\evaluate-browser.cjs:105:78)",
+  "sent_frames": [
+    {
+      "id": 1,
+      "frame": "id: 1-0\ndata: {\"task_id\":\"task-p1\",\"node\":\"write\",\"status\":\"running\",\"message\":\"\",\"stage\":\"\",\"chapter_seq\":1,\"attempt\":1,\"offset\":0,\"artifact_id\":\"draft-p1\",\"type\":\"status\"}\n\n"
+    },
+    {
+      "id": 2,
+      "frame": "id: 2-0\ndata: {\"task_id\":\"task-p1\",\"node\":\"\",\"status\":\"\",\"message\":\"\",\"stage\":\"write\",\"chapter_seq\":1,\"attempt\":1,\"offset\":0,\"artifact_id\":\"draft-p1\",\"type\":\"artifact_reset\"}\n\n"
+    },
+    {
+      "id": 3,
+      "frame": "id: 3-0\ndata: {\"task_id\":\"task-p1\",\"node\":\"\",\"status\":\"\",\"message\":\"\",\"stage\":\"write\",\"chapter_seq\":1,\"attempt\":1,\"offset\":0,\"artifact_id\":\"draft-p1\",\"type\":\"artifact_delta\",\"content\":\"增量第一段：林川扶住栏杆。\"}\n\n"
+    },
+    {
+      "id": 4,
+      "frame": "id: 4-0\ndata: {\"task_id\":\"task-p1\",\"node\":\"\",\"status\":\"\",\"message\":\"\",\"stage\":\"write\",\"chapter_seq\":1,\"attempt\":1,\"offset\":13,\"artifact_id\":\"draft-p1\",\"type\":\"artifact_delta\",\"content\":\"增量第二段：许宁关掉电源。\"}\n\n"
+    }
+  ],
+  "stream_count": 0
+}

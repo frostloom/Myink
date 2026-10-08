@@ -1,0 +1,123 @@
+{
+  "planned_outputs": 12,
+  "actual_requests": 60,
+  "cost_reserved_or_estimated_yuan": 0.591484,
+  "completed_outputs": 8,
+  "quality_status": "pending_independent_review",
+  "variants": {
+    "direct": [
+      {
+        "case_id": "meter_replacement",
+        "repetition": 1,
+        "execution": "completed",
+        "outcome": "generated",
+        "requests": 1,
+        "cost": 0.009242,
+        "chars": 1293
+      },
+      {
+        "case_id": "injury_continuity",
+        "repetition": 1,
+        "execution": "completed",
+        "outcome": "generated",
+        "requests": 1,
+        "cost": 0.010418,
+        "chars": 1515
+      },
+      {
+        "case_id": "meter_replacement",
+        "repetition": 2,
+        "execution": "completed",
+        "outcome": "generated",
+        "requests": 1,
+        "cost": 0.009618,
+        "chars": 1347
+      },
+      {
+        "case_id": "injury_continuity",
+        "repetition": 2,
+        "execution": "budget_stopped",
+        "outcome": "failed",
+        "requests": 0,
+        "cost": 0,
+        "chars": 0
+      }
+    ],
+    "full": [
+      {
+        "case_id": "meter_replacement",
+        "repetition": 1,
+        "execution": "completed",
+        "outcome": "persisted",
+        "requests": 7,
+        "cost": 0.054434,
+        "chars": 991
+      },
+      {
+        "case_id": "injury_continuity",
+        "repetition": 1,
+        "execution": "completed",
+        "outcome": "awaiting_review",
+        "requests": 21,
+        "cost": 0.234714,
+        "chars": 1243
+      },
+      {
+        "case_id": "meter_replacement",
+        "repetition": 2,
+        "execution": "completed",
+        "outcome": "persisted",
+        "requests": 7,
+        "cost": 0.054168,
+        "chars": 1007
+      },
+      {
+        "case_id": "injury_continuity",
+        "repetition": 2,
+        "execution": "budget_stopped",
+        "outcome": "incomplete",
+        "requests": 0,
+        "cost": 0,
+        "chars": 0
+      }
+    ],
+    "no_hybrid": [
+      {
+        "case_id": "meter_replacement",
+        "repetition": 1,
+        "execution": "completed",
+        "outcome": "persisted",
+        "requests": 6,
+        "cost": 0.050884,
+        "chars": 1182
+      },
+      {
+        "case_id": "injury_continuity",
+        "repetition": 1,
+        "execution": "completed",
+        "outcome": "awaiting_review",
+        "requests": 12,
+        "cost": 0.131906,
+        "chars": 1149
+      },
+      {
+        "case_id": "meter_replacement",
+        "repetition": 2,
+        "execution": "budget_stopped",
+        "outcome": "incomplete",
+        "requests": 4,
+        "cost": 0.0361,
+        "chars": 1247
+      },
+      {
+        "case_id": "injury_continuity",
+        "repetition": 2,
+        "execution": "budget_stopped",
+        "outcome": "incomplete",
+        "requests": 0,
+        "cost": 0,
+        "chars": 0
+      }
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+F                                                                        [100%]
+================================== FAILURES ===================================
+___________ test_enabled_embedding_rejected_before_database_or_sdk ____________
+
+tmp_path = WindowsPath('E:/github项目/Myink/.local/pytest-embed-guard-red2/test_enabled_embedding_rejecte0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000219AAAA5490>
+
+    def test_enabled_embedding_rejected_before_database_or_sdk(tmp_path, monkeypatch):
+        import pytest
+        from myink.config import settings
+        spec=importlib.util.spec_from_file_location('comparison_guard',Path('scripts/evaluate-comparison.py'))
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        from dataclasses import replace
+        monkeypatch.setattr(module,'settings',replace(settings,embed_enabled=True),raising=False)
+        def blocked():raise ValueError('database must not be touched')
+        monkeypatch.setattr(module,'require_isolated_database',blocked)
+>       with pytest.raises(ValueError,match='EMBED_ENABLED=0'):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'EMBED_ENABLED=0'
+E         Actual message: 'database must not be touched'
+
+tests\test_evaluation_comparison_integration.py:18: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_evaluation_comparison_integration.py::test_enabled_embedding_rejected_before_database_or_sdk
+1 failed in 11.60s
+Exception ignored in: <function Console.__del__ at 0x00000219A4FC07C0>
+Traceback (most recent call last):
+  File "D:\mnist_data\ancanda\Lib\site-packages\pyreadline3\console\console.py", line 255, in __del__
+OSError: [WinError -1073741816] Windows Error 0xc0000008

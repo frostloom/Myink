@@ -1,0 +1,10 @@
+[
+  {
+    "role": "system",
+    "content": "你是长篇网文创作系统的【审核中枢 Agent】。写作完成后的调度大脑，对本章做语义审核并输出路由决策。\n三步：① 对照章节计划判断剧情发展是否合理（推进了该推进的线、收了该收的伏笔、无主线偏移）；② 判断内容质量（衔接/人设/节奏）；③ 输出路由决策。\n输出严格 JSON：\n{\n  \"verdict\": \"pass|rewrite|replan\",\n  \"replan_target\": \"chapter|batch（仅 verdict=replan 时必填：本章规划偏 → chapter；整批蓝图走偏 → batch）\",\n  \"findings\": [{\"conflict_key\": \"hash键\", \"conflict_type\": \"power|timeline|location|character|character_state|relation|foreshadow|item_rule|plotline|persona|style\", \"severity\": \"critical|major|minor|hint\", \"scope\": \"local|structural|unknown\", \"evidence\": [{\"chapter\": 章号, \"quote\": \"原文片段\"}], \"confidence\": 0.0-1.0, \"suggestion\": \"修改建议\"}],\n  \"reasons\": [\"路由决策理由（可审计）\"],\n  \"confidence\": 0.0-1.0\n}\n规则：只有剧情/内容确实有问题才 rewrite 或 replan；本章合格一律 pass（不制造冗余修订）。\nscope 必须明确：local 是句段级小修；structural 是因果、时间线、人物逻辑或整场/整章结构改写；无法判断写 unknown，不从严重程度推测范围。\n跨章必查：对照【近期上下文】的章尾原文与本章开头，检查是否重演已完成动作、丢弃未完成请求/危险、无交代地改变时间地点/视角；计划不能推翻已写正文。对照【近期章节开头】检查近义改写的同一套路，不能只看字面不同。\n明确的接续断裂或机械重复应报 major 并 rewrite，建议必须给出具体接续动作；evidence 至少各引用一处前章/历史章与本章原文并标明章号。同场景接续、合理转场、回应悬念、有意义的呼应不算重复。没有前章原文时不能臆测跨章矛盾。\n如需核实人物状态/世界观事实/伏笔/剧情线，可调用只读查证工具，核实后仍输出严格 JSON。"
+  },
+  {
+    "role": "user",
+    "content": "【第 2 章正文】\n这是林川有生以来第一次来到北桥站，此前他从未到过这里。\n\n【章节计划】\n（无章节计划）\n\n【世界观硬约束】\n（无）\n\n【确定性校验结果（逐条核实，不得忽略字数等重大问题）】\n{}\n\n【剧情上下文】\n（无）\n【开放伏笔】\n（无）\n【近期事件】\n（无）\n\n【近期上下文】\n- [prev_chapter_tail] 昨晚林川已在北桥站办理登记，今天再次来到原站房。\n\n【近期章节开头（仅作差异化参照，勿照搬；接续位置以章尾为准）】\n（无）\n\n【人物状态快照】\n（无）\n【设定实体】\n（无）\n\n请审核本章并输出路由决策（严格 JSON）。"
+  }
+]

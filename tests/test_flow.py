@@ -1203,7 +1203,7 @@ def test_audit_tool_loop(project_id, monkeypatch):
     assert result.get("persisted") is True
     trace = result.get("tool_trace") or []
     assert len(trace) == 1, f"tool_trace 应 1 条工具调用，实际 {trace}"
-    assert trace[0]["tool"] == "inspect_character" and trace[0]["arguments"] == {"name": "林砚"}, trace
+    assert trace[0]["tool"] == "inspect_character" and trace[0]["arguments"] == {"name": "林砚", "chapter_seq": 1}, trace
     with tenant_session(project_id) as db:
         audit_runs = db.query(AgentRun).filter(AgentRun.task_id == thread,
                                                AgentRun.node == "audit").count()

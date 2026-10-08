@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-08T10:51:41.374373+00:00",
+  "config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "max_tokens": 2000,
+    "max_calls": 20,
+    "max_cost_yuan": 5.0,
+    "deadline_seconds": 600,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "price_source": "repository DeepSeek idle table x2 conservative reservation; not supplier invoice"
+  },
+  "mode": "audit",
+  "status": "finished",
+  "cases_sha256": "bdfb550e8b08d5434baaf0ba8e8324ba0b9040f91ccca3c80bd5f1fadaa1ef34",
+  "case_ids": [
+    "continuity.completed_entry_replayed",
+    "continuity.justified_recovery_and_time_jump",
+    "continuity.mechanical_opening_repeated",
+    "continuity.natural_same_scene_continuation",
+    "continuity.pending_threat_dropped",
+    "logic.allegiance",
+    "logic.capability_restored",
+    "logic.capability_rule",
+    "logic.destroyed_item",
+    "logic.first_visit",
+    "logic.former_member",
+    "logic.promise_completed",
+    "logic.replacement_item",
+    "logic.return_visit",
+    "logic.unfulfilled_promise"
+  ],
+  "limits_note": "no SDK retries; input reservation uses conservative UTF-8 byte estimate; cost is local estimate, not invoice",
+  "results_sha256": "126bc2feb62ca0f17d5af21bd05b59ade5d5bd9dcbae3eafbc704bdad5e5bf63",
+  "commit": "326c4b366cdae38c374d253b12340c63615133c1",
+  "dirty": true,
+  "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "source_hashes": {
+    "src/myink/workflow/prompts.py": "47caaacc2bb0043d4f67d33c4141172d8e2078b930102018a8f6b02516c88a21",
+    "src/myink/schemas/contract.py": "ad1bc7abef169ad5e33ba39608491bd1a8425985e127b282332364fce5bd2101",
+    "src/myink/evaluation/cases.py": "17a00668af973549322a5f2c0939deb1caea1d5132bae07554562a1aff09dc67",
+    "src/myink/evaluation/reporting.py": "6530ac52dff5ee497dbbdd44eb280c99bbdb89631c8f7f075f161615c5c987ba",
+    "src/myink/evaluation/runner.py": "61db88e21430c9aa3f22d0c3f513244d2fafc1685d0b30b7391819047262b80c",
+    "src/myink/evaluation/scoring.py": "8fbf401bdb965cae0374f0d4cef3b7f7f6066a2474f45cf90c96292c6aa9e551",
+    "src/myink/evaluation/__init__.py": "74e0c6489cfa6aae5697eac77e359515d7ae574efb4857dd264e82635e42fe80"
+  },
+  "dependencies": {
+    "pydantic": "2.13.4",
+    "openai": "2.47.0"
+  },
+  "actual_requests": 15,
+  "cost_reserved_or_estimated_yuan": 0.056805999999999975,
+  "finished_at": "2026-10-08T10:52:27.828205+00:00"
+}

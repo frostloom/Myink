@@ -1,0 +1,43 @@
+F                                                                        [100%]
+================================== FAILURES ===================================
+_________ test_live_adapter_disables_sdk_retries_and_marks_projection _________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001F464A4B0E0>
+
+    def test_live_adapter_disables_sdk_retries_and_marks_projection(monkeypatch):
+        from types import SimpleNamespace
+        from myink.evaluation.runner import deepseek_call
+        secret='sk-synthetic-secret12345';monkeypatch.setenv('DEEPSEEK_API_KEY',secret)
+        captured={}
+        class Client:
+            def __init__(self,**kwargs):
+                captured.update(kwargs);self.chat=SimpleNamespace(completions=SimpleNamespace(create=self.create))
+            def __enter__(self):return self
+            def __exit__(self,*args):pass
+            def create(self,**kwargs):
+                captured['request']=kwargs
+                return SimpleNamespace(model='actual-model',usage=SimpleNamespace(prompt_tokens=11,completion_tokens=9),
+                    choices=[SimpleNamespace(finish_reason='stop',message=SimpleNamespace(content=json.dumps(
+                        {'verdict':'pass','findings':[],'reasons':[secret]}),reasoning_content=None,
+                        tool_calls=[SimpleNamespace(id='call-1',function=SimpleNamespace(name='query',arguments=json.dumps({'nested':[{'echo':secret}]})))]))])
+        monkeypatch.setattr('openai.OpenAI',Client)
+        config={'model':'deepseek-v4-flash','max_tokens':100,'temperature':.1,'timeout_seconds':5,
+                'prices':{'input':2,'output':8}}
+        row=deepseek_call([{'role':'user','content':'audit'}],config)
+        assert captured['max_retries']==0 and captured['timeout']==5
+        assert row['model_id']=='actual-model' and row['cost_status']=='estimated'
+        assert secret not in row['raw_output'] and secret not in row['raw_response_content']
+>       assert secret not in json.dumps(row['tool_calls'])
+E       assert 'sk-synthetic-secret12345' not in '[{"id": "ca...t12345"}]}}]'
+E         
+E         'sk-synthetic-secret12345' is contained here:
+E           {"echo": "sk-synthetic-secret12345"}]}}]
+
+tests\test_evaluation.py:348: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_evaluation.py::test_live_adapter_disables_sdk_retries_and_marks_projection
+1 failed in 13.80s
+Exception ignored in: <function Console.__del__ at 0x000001F45FF607C0>
+Traceback (most recent call last):
+  File "D:\mnist_data\ancanda\Lib\site-packages\pyreadline3\console\console.py", line 256, in __del__
+OSError: [WinError -1073741816] Windows Error 0xc0000008

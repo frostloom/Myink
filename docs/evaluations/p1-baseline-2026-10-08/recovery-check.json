@@ -1,0 +1,22 @@
+{
+  "mode": "recovery_saved_evidence",
+  "source": "docs/evaluations/workflow-recovery-2026-10-08-live.json",
+  "source_sha256": "ca126645a51a8b3ac866c01dfb2f49dacb1489ba512146df44a5f0a7bc45b2ea",
+  "checks": {
+    "full_drafts_present": true,
+    "fault_not_in_original": true,
+    "fault_in_revision_input": true,
+    "fault_removed": true,
+    "no_final_error": true,
+    "review_completed": true,
+    "audit_pass": true,
+    "revision_pipeline_exercised": true,
+    "chapter_equals_final": true,
+    "initial_version_retained": true,
+    "rejection_applied": true
+  },
+  "deterministic_pass": true,
+  "semantic_review": "pending",
+  "memory_invalidation": "inspect valid/expired rows individually; not inferred from counts",
+  "note": "Rechecks a saved live run; does not execute a model, prove natural-error frequency or test provider/worker outages."
+}

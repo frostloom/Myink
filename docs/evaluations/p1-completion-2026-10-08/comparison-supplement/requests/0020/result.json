@@ -1,0 +1,38 @@
+{
+  "request_index": 20,
+  "case_id": "injury_continuity",
+  "variant": "full",
+  "repetition": 2,
+  "prompt_sha256": "b18ac94fbac9303a1068362229b1ca91ddf4600aa4fd9aed6b7317217b36c446",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 40,
+    "max_cost_yuan": 2.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 1024,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T12:10:10.373335+00:00",
+  "execution": "completed",
+  "raw_output": "{\"cast\": [\"林川\", \"许宁\"], \"locations\": [\"观测站\", \"观测站屋顶\", \"观测站楼梯口\"]}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\"cast\": [\"林川\", \"许宁\"], \"locations\": [\"观测站\", \"观测站屋顶\", \"观测站楼梯口\"]}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 803,
+  "output_tokens": 30,
+  "cost_est": 0.001846,
+  "cost_status": "estimated",
+  "wall_ms": 1797
+}

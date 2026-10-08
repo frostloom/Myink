@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "id": "logic.return_visit",
+  "group_id": "logic.visit",
+  "split": "development",
+  "mode": "audit",
+  "category": "visit",
+  "polarity": "negative",
+  "source": {
+    "path": "scripts/eval-logic.py",
+    "case_name": "return_visit",
+    "adapted_from": [
+      "conflict-samples:05"
+    ]
+  },
+  "input": {
+    "chapter_seq": 2,
+    "context": {
+      "short_context": [
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 1,
+          "tail": "昨晚林川已在北桥站办理登记，今天再次来到原站房。"
+        }
+      ],
+      "long_term_facts": []
+    },
+    "plan": {},
+    "draft": "林川推开熟悉的站房门，取出昨晚留下的登记回执。"
+  },
+  "expected": {
+    "allowed_verdicts": [
+      "pass"
+    ],
+    "required_issues": [],
+    "forbidden_issues": [
+      "首次来访与既有经历矛盾；正常重访不得误报"
+    ]
+  },
+  "label": {
+    "status": "proposed",
+    "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+    "reviewer": null
+  }
+}

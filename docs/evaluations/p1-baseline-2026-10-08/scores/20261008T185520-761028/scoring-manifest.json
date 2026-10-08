@@ -1,0 +1,23 @@
+{
+  "results_sha256": "126bc2feb62ca0f17d5af21bd05b59ade5d5bd9dcbae3eafbc704bdad5e5bf63",
+  "review_sha256": null,
+  "scorer_provenance": {
+    "commit": "326c4b366cdae38c374d253b12340c63615133c1",
+    "dirty": true,
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "source_hashes": {
+      "src/myink/workflow/prompts.py": "47caaacc2bb0043d4f67d33c4141172d8e2078b930102018a8f6b02516c88a21",
+      "src/myink/schemas/contract.py": "ad1bc7abef169ad5e33ba39608491bd1a8425985e127b282332364fce5bd2101",
+      "src/myink/evaluation/cases.py": "17a00668af973549322a5f2c0939deb1caea1d5132bae07554562a1aff09dc67",
+      "src/myink/evaluation/recovery.py": "c8c39cfbd69f0b5ffcff87e1f94ee847bc4612b5a85f3f3c885b427e50c43fb6",
+      "src/myink/evaluation/reporting.py": "12306282ba0478c5d39610d32acfc122c75516c40c42eca77b33e241a0120c90",
+      "src/myink/evaluation/runner.py": "61db88e21430c9aa3f22d0c3f513244d2fafc1685d0b30b7391819047262b80c",
+      "src/myink/evaluation/scoring.py": "1b82eeffef615f6541a04ab9267b73e82483d41fbca81722d00cf1ce050c15fa",
+      "src/myink/evaluation/__init__.py": "74e0c6489cfa6aae5697eac77e359515d7ae574efb4857dd264e82635e42fe80"
+    },
+    "dependencies": {
+      "pydantic": "2.13.4",
+      "openai": "2.47.0"
+    }
+  }
+}

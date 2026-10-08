@@ -1,0 +1,119 @@
+{
+  "results_sha256": "126bc2feb62ca0f17d5af21bd05b59ade5d5bd9dcbae3eafbc704bdad5e5bf63",
+  "actor_kind": "human",
+  "cases": {
+    "continuity.completed_entry_replayed": {
+      "reviewer": "",
+      "label_confirmed": false,
+      "decisions": {
+        "0": {
+          "kind": "disputed"
+        }
+      }
+    },
+    "continuity.justified_recovery_and_time_jump": {
+      "reviewer": "",
+      "label_confirmed": false,
+      "decisions": {}
+    },
+    "continuity.mechanical_opening_repeated": {
+      "reviewer": "",
+      "label_confirmed": false,
+      "decisions": {
+        "0": {
+          "kind": "disputed"
+        },
+        "1": {
+          "kind": "disputed"
+        }
+      }
+    },
+    "continuity.natural_same_scene_continuation": {
+      "reviewer": "",
+      "label_confirmed": false,
+      "decisions": {}
+    },
+    "continuity.pending_threat_dropped": {
+      "reviewer": "",
+      "label_confirmed": false,
+      "decisions": {
+        "0": {
+          "kind": "disputed"
+        },
+        "1": {
+          "kind": "disputed"
+        }
+      }
+    },
+    "logic.allegiance": {
+      "reviewer": "",
+      "label_confirmed": false,
+      "decisions": {
+        "0": {
+          "kind": "disputed"
+        }
+      }
+    },
+    "logic.capability_restored": {
+      "reviewer": "",
+      "label_confirmed": false,
+      "decisions": {}
+    },
+    "logic.capability_rule": {
+      "reviewer": "",
+      "label_confirmed": false,
+      "decisions": {
+        "0": {
+          "kind": "disputed"
+        }
+      }
+    },
+    "logic.destroyed_item": {
+      "reviewer": "",
+      "label_confirmed": false,
+      "decisions": {
+        "0": {
+          "kind": "disputed"
+        }
+      }
+    },
+    "logic.first_visit": {
+      "reviewer": "",
+      "label_confirmed": false,
+      "decisions": {
+        "0": {
+          "kind": "disputed"
+        }
+      }
+    },
+    "logic.former_member": {
+      "reviewer": "",
+      "label_confirmed": false,
+      "decisions": {}
+    },
+    "logic.promise_completed": {
+      "reviewer": "",
+      "label_confirmed": false,
+      "decisions": {}
+    },
+    "logic.replacement_item": {
+      "reviewer": "",
+      "label_confirmed": false,
+      "decisions": {}
+    },
+    "logic.return_visit": {
+      "reviewer": "",
+      "label_confirmed": false,
+      "decisions": {}
+    },
+    "logic.unfulfilled_promise": {
+      "reviewer": "",
+      "label_confirmed": false,
+      "decisions": {
+        "0": {
+          "kind": "disputed"
+        }
+      }
+    }
+  }
+}

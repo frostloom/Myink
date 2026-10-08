@@ -1,0 +1,23 @@
+{
+  "request_index": 38,
+  "case_id": "injury_continuity",
+  "variant": "no_hybrid",
+  "repetition": 2,
+  "prompt_sha256": "5b373dae4d5640e245d039964accab17e4aa3e66986df502362b474801faeb28",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 40,
+    "max_cost_yuan": 2.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 6000,
+    "json_mode": false
+  },
+  "started_at": "2026-10-08T12:11:43.202956+00:00",
+  "execution": "inflight_unknown"
+}

@@ -1,0 +1,5 @@
+ai-gateway-redis 0.0.0.0:6381->6379/tcp, [::]:6381->6379/tcp
+ai-gateway-mysql 0.0.0.0:3307->3306/tcp, [::]:3307->3306/tcp
+new-api 0.0.0.0:3002->3000/tcp, [::]:3002->3000/tcp
+postgres 5432/tcp
+redis 6379/tcp

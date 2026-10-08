@@ -1,0 +1,38 @@
+{
+  "request_index": 23,
+  "case_id": "injury_continuity",
+  "variant": "full",
+  "repetition": 1,
+  "prompt_sha256": "6ac997324be7e4bf3e7e1e2e13d026f67cb21892e93477e5d73ef568ddee70fb",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 60,
+    "max_cost_yuan": 5.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 4096,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T11:50:35.708640+00:00",
+  "execution": "completed",
+  "raw_output": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁爬上观测站屋顶，在东南角找到防水层老化开裂导致的漏水点，并发现一处旧补丁和女儿墙转角处的异常折痕，随后用防水胶带做了临时封堵。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"item\",\n        \"old_value\": \"\",\n        \"new_value\": \"手电、防水胶带（剩余部分）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"item\",\n        \"old_value\": \"\",\n        \"new_value\": \"记录本、圆珠笔\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"fact\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"content\": \"观测站屋顶东南角防水层老化开裂，裂口进水导致卷材鼓包，是漏水根源；附近另有一处封边开裂的旧补丁，女儿墙内侧转角处卷材有异常折痕，疑似底下结构问题。\",\n        \"category\": \"规则\",\n        \"is_hard\": false,\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.8,\n      \"payload\": {\n        \"description\": \"女儿墙内侧转角处卷材有浅浅折痕，沥青受力不均，许宁判断底下结构可能有问题，先记下待查。\",\n        \"trigger\": {\n          \"actor\": \"许宁\",\n          \"action\": \"发现并记录异常折痕\",\n          \"object\": \"女儿墙转角卷材折痕\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.8\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.75,\n      \"payload\": {\n        \"description\": \"许宁提出观测站归谁管需要查一下，为后续查明观测站归属埋下线索。\",\n        \"trigger\": {\n          \"actor\": \"许宁\",\n          \"action\": \"提出查观测站归属\",\n          \"object\": \"观测站管理权\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.75\n      }\n    },\n    {\n      \"kind\": \"new_entity\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"entity_type\": \"location\",\n        \"name\": \"观测站屋顶\",\n        \"description\": \"观测站平屋顶，铺沥青卷材，东南角靠女儿墙处防水层老化开裂漏水。\",\n        \"parent\": \"观测站\"\n      }\n    }\n  ]\n}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁爬上观测站屋顶，在东南角找到防水层老化开裂导致的漏水点，并发现一处旧补丁和女儿墙转角处的异常折痕，随后用防水胶带做了临时封堵。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"item\",\n        \"old_value\": \"\",\n        \"new_value\": \"手电、防水胶带（剩余部分）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"item\",\n        \"old_value\": \"\",\n        \"new_value\": \"记录本、圆珠笔\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"fact\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"content\": \"观测站屋顶东南角防水层老化开裂，裂口进水导致卷材鼓包，是漏水根源；附近另有一处封边开裂的旧补丁，女儿墙内侧转角处卷材有异常折痕，疑似底下结构问题。\",\n        \"category\": \"规则\",\n        \"is_hard\": false,\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.8,\n      \"payload\": {\n        \"description\": \"女儿墙内侧转角处卷材有浅浅折痕，沥青受力不均，许宁判断底下结构可能有问题，先记下待查。\",\n        \"trigger\": {\n          \"actor\": \"许宁\",\n          \"action\": \"发现并记录异常折痕\",\n          \"object\": \"女儿墙转角卷材折痕\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.8\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.75,\n      \"payload\": {\n        \"description\": \"许宁提出观测站归谁管需要查一下，为后续查明观测站归属埋下线索。\",\n        \"trigger\": {\n          \"actor\": \"许宁\",\n          \"action\": \"提出查观测站归属\",\n          \"object\": \"观测站管理权\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.75\n      }\n    },\n    {\n      \"kind\": \"new_entity\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"entity_type\": \"location\",\n        \"name\": \"观测站屋顶\",\n        \"description\": \"观测站平屋顶，铺沥青卷材，东南角靠女儿墙处防水层老化开裂漏水。\",\n        \"parent\": \"观测站\"\n      }\n    }\n  ]\n}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 2351,
+  "output_tokens": 958,
+  "cost_est": 0.012366,
+  "cost_status": "estimated",
+  "wall_ms": 4656
+}

@@ -1,0 +1,14 @@
+{
+  "case_id": "injury_continuity",
+  "variant": "direct",
+  "repetition": 2,
+  "execution": "budget_stopped",
+  "draft": "",
+  "outcome": "failed",
+  "error": "call budget exhausted",
+  "finish_reason": null,
+  "wall_ms": 0,
+  "requests": 0,
+  "estimated_cost_yuan": 0,
+  "quality_status": "pending_independent_review"
+}

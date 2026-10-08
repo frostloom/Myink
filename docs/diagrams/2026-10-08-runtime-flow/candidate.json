@@ -1,0 +1,361 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Myink 项目：请求、Agent 执行与结果交付",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "output": "docs/diagrams/2026-10-08-runtime-flow/2026-10-08-runtime-flow.html",
+    "repository": {
+      "url": "https://github.com/zlx05/Myink.git",
+      "revision": "326c4b366cdae38c374d253b12340c63615133c1"
+    }
+  },
+  "lanes": [
+    {
+      "id": "entry",
+      "label": "请求与异步调度"
+    },
+    {
+      "id": "generation",
+      "label": "业务生成与人工控制"
+    },
+    {
+      "id": "persistence",
+      "label": "结果与记忆"
+    },
+    {
+      "id": "delivery",
+      "label": "进度与交付"
+    }
+  ],
+  "mainPath": [
+    "ui",
+    "api",
+    "gates",
+    "queue",
+    "worker"
+  ],
+  "nodes": [
+    {
+      "id": "ui",
+      "lane": "entry",
+      "col": 0,
+      "label": "作者工作台",
+      "sublabel": "长篇 / 短篇",
+      "type": "frontend",
+      "width": 142,
+      "sources": [
+        {
+          "path": "web/src/pages/WorkspacePage.tsx",
+          "line": 29,
+          "end_line": 37
+        }
+      ]
+    },
+    {
+      "id": "api",
+      "lane": "entry",
+      "col": 1,
+      "label": "API 鉴权与归属",
+      "sublabel": "校验作品可写",
+      "type": "security",
+      "width": 142,
+      "sources": [
+        {
+          "path": "src/myink/api/routes_tasks.py",
+          "line": 123,
+          "end_line": 148
+        }
+      ]
+    },
+    {
+      "id": "gates",
+      "lane": "entry",
+      "col": 2,
+      "label": "额度与并发闸门",
+      "sublabel": "登记归属后发布",
+      "type": "security",
+      "width": 142,
+      "sources": [
+        {
+          "path": "src/myink/worker/enqueue.py",
+          "line": 69,
+          "end_line": 137
+        }
+      ]
+    },
+    {
+      "id": "queue",
+      "lane": "entry",
+      "col": 3,
+      "label": "RabbitMQ 队列",
+      "sublabel": "异步任务与延迟重投",
+      "type": "messagebus",
+      "width": 142,
+      "sources": [
+        {
+          "path": "src/myink/worker/consumer.py",
+          "line": 49,
+          "end_line": 125
+        }
+      ]
+    },
+    {
+      "id": "worker",
+      "lane": "entry",
+      "col": 4,
+      "label": "Worker 执行",
+      "sublabel": "归属验证 / 任务分发",
+      "type": "backend",
+      "width": 142,
+      "sources": [
+        {
+          "path": "src/myink/worker/consumer.py",
+          "line": 79,
+          "end_line": 115
+        }
+      ]
+    },
+    {
+      "id": "long",
+      "lane": "generation",
+      "col": 3,
+      "label": "长篇状态图",
+      "sublabel": "单章 / 批次子图",
+      "type": "backend",
+      "width": 142,
+      "sources": [
+        {
+          "path": "src/myink/workflow/runner.py",
+          "line": 20,
+          "end_line": 110
+        }
+      ]
+    },
+    {
+      "id": "short",
+      "lane": "generation",
+      "col": 5,
+      "label": "短篇生成链",
+      "sublabel": "成稿 / 补写 / 审改",
+      "type": "backend",
+      "width": 142,
+      "sources": [
+        {
+          "path": "src/myink/workflow/short_runner.py",
+          "line": 79,
+          "end_line": 127
+        }
+      ]
+    },
+    {
+      "id": "wait",
+      "lane": "generation",
+      "col": 1,
+      "label": "人工等待与恢复",
+      "sublabel": "计划确认 / 候选处理",
+      "type": "security",
+      "width": 142,
+      "sources": [
+        {
+          "path": "src/myink/api/routes_tasks.py",
+          "line": 464,
+          "end_line": 539
+        }
+      ]
+    },
+    {
+      "id": "memory",
+      "lane": "persistence",
+      "col": 2,
+      "label": "长篇正文与记忆",
+      "sublabel": "候选确认 / 有效期",
+      "type": "database",
+      "width": 142,
+      "sources": [
+        {
+          "path": "src/myink/workflow/nodes.py",
+          "line": 1218,
+          "end_line": 1323
+        }
+      ]
+    },
+    {
+      "id": "book",
+      "lane": "persistence",
+      "col": 5,
+      "label": "短篇正文落库",
+      "sublabel": "独立持久化入口",
+      "type": "database",
+      "width": 142,
+      "sources": [
+        {
+          "path": "src/myink/workflow/short_runner.py",
+          "line": 238,
+          "end_line": 278
+        }
+      ]
+    },
+    {
+      "id": "batch",
+      "lane": "persistence",
+      "col": 3,
+      "label": "批次复盘与审计",
+      "sublabel": "Reflexion / 全局审计",
+      "type": "backend",
+      "width": 142,
+      "sources": [
+        {
+          "path": "src/myink/workflow/batch_graph.py",
+          "line": 413,
+          "end_line": 416
+        }
+      ]
+    },
+    {
+      "id": "events",
+      "lane": "delivery",
+      "col": 4,
+      "label": "Redis Stream + SSE",
+      "sublabel": "归属校验与窗口回放",
+      "type": "messagebus",
+      "width": 142,
+      "sources": [
+        {
+          "path": "src/myink/api/routes_sse.py",
+          "line": 207,
+          "end_line": 241
+        }
+      ]
+    },
+    {
+      "id": "view",
+      "lane": "delivery",
+      "col": 5,
+      "label": "正文与执行记录",
+      "sublabel": "增量展示 / 历史节点",
+      "type": "frontend",
+      "width": 142,
+      "sources": [
+        {
+          "path": "web/src/components/TaskTimeline.tsx",
+          "line": 65,
+          "end_line": 130
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "ui-api",
+      "from": "ui",
+      "to": "api"
+    },
+    {
+      "id": "api-gates",
+      "from": "api",
+      "to": "gates"
+    },
+    {
+      "id": "gates-queue",
+      "from": "gates",
+      "to": "queue"
+    },
+    {
+      "id": "queue-worker",
+      "from": "queue",
+      "to": "worker"
+    },
+    {
+      "id": "worker-long",
+      "from": "worker",
+      "to": "long",
+      "label": "长篇",
+      "role": "branch"
+    },
+    {
+      "id": "worker-short",
+      "from": "worker",
+      "to": "short",
+      "label": "短篇",
+      "role": "branch"
+    },
+    {
+      "id": "long-memory",
+      "from": "long",
+      "to": "memory"
+    },
+    {
+      "id": "long-wait",
+      "from": "long",
+      "to": "wait",
+      "label": "需人工确认",
+      "role": "branch",
+      "fromSide": "left",
+      "toSide": "right",
+      "route": "straight"
+    },
+    {
+      "id": "wait-long",
+      "from": "wait",
+      "to": "long",
+      "label": "确认后恢复",
+      "role": "return",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "route": "bottom-channel",
+      "channelY": 306
+    },
+    {
+      "id": "memory-batch",
+      "from": "memory",
+      "to": "batch",
+      "label": "批次收尾"
+    },
+    {
+      "id": "short-book",
+      "from": "short",
+      "to": "book"
+    },
+    {
+      "id": "worker-events",
+      "from": "worker",
+      "to": "events",
+      "label": "进度事件",
+      "role": "async"
+    },
+    {
+      "id": "events-view",
+      "from": "events",
+      "to": "view",
+      "label": "SSE"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "观测与持久化",
+      "items": [
+        "PostgreSQL 保存任务、正文、记忆与运行记录；checkpoint 支持相应恢复路径",
+        "API/Worker 记录节点 usage、耗时和估算成本，选择性快照支持排障"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "业务分支",
+      "items": [
+        "短篇链不等同长篇三层记忆与候选确认；审稿失败可携 warning 保留稿件",
+        "批次收尾才运行 Reflexion / 全局审计；单章细节见配套说明"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "外部与证据边界",
+      "items": [
+        "Caddy 提供统一入口，Go 网关已退出主架构",
+        "MCP 榜单仅为建书灵感，未接入生成节点；本图源固定到 326c4b3"
+      ]
+    }
+  ]
+}

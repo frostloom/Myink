@@ -247,3 +247,46 @@ def test_same_book_serial(two_workers):
         assert overlap == 0, "同书任务应串行（书锁保证 defer→接棒），overlap 应 ==0"
     finally:
         _cleanup([book], [t1, t2])
+
+
+def test_worker_kill_redelivers_checkpoint_without_duplicate_persist(two_workers):
+    """Kill after write, let RabbitMQ redeliver and lease expire, then duplicate the same message."""
+    from myink.db import tenant_session
+    from myink.models import Chapter
+    r=get_redis();book=_make_test_project(_demo_project_id(),'CRASH')
+    tid=_enqueue(book,1,'crash');killed=None
+    try:
+        deadline=time.time()+40
+        while time.time()<deadline:
+            with new_session() as db:
+                ready=db.query(AgentRun).filter_by(task_id=tid,node='write').count()>0
+            value=r.get(lock_key(tid))
+            if ready and value:
+                owner=json.loads(value)['worker_id']
+                killed=next(p for p in two_workers if owner.endswith('-'+str(p.pid)))
+                killed.kill();killed.wait(timeout=10);break
+            time.sleep(.1)
+        assert killed is not None,'worker did not reach write checkpoint before crash'
+        assert _wait_status(tid,timeout=120)=='done'
+        with tenant_session(book) as db:
+            chapter=db.query(Chapter).filter_by(chapter_seq=1).one()
+            assert chapter.content and chapter.status=='confirmed'
+        with new_session() as db:
+            persists=db.query(AgentRun).filter_by(task_id=tid,node='persist').count()
+            assert persists==1
+            owner_id=str(db.get(Project,uuid.UUID(book)).user_id)
+        body={'task_id':tid,'task_type':'chapter_generate','project_id':book,'user_id':owner_id,
+              'payload':{'seq':1},'trace_id':tid,'request_id':tid,'retry_count':0}
+        amqp.publish(json.dumps(body),amqp.KEY_TASKS)
+        deadline=time.time()+15
+        while time.time()<deadline:
+            with amqp.connect() as conn:
+                pending=conn.channel().queue_declare(amqp.main_queue(),passive=True).method.message_count
+            if pending==0 and not r.exists(lock_key(tid)) and not r.exists(book_key(book)):break
+            time.sleep(.2)
+        with new_session() as db:
+            assert db.query(AgentRun).filter_by(task_id=tid,node='persist').count()==1
+            assert db.get(Task,uuid.UUID(tid)).status=='done'
+        assert not r.exists(lock_key(tid)) and not r.exists(book_key(book))
+    finally:
+        _cleanup([book],[tid])

@@ -1,0 +1,38 @@
+{
+  "request_index": 23,
+  "case_id": "injury_continuity",
+  "variant": "full",
+  "repetition": 2,
+  "prompt_sha256": "b804cb73bf1107f76aafca416424e30b87fac9343ea66a17a5caf00f7e6e60b1",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 40,
+    "max_cost_yuan": 2.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 4096,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T12:10:24.879495+00:00",
+  "execution": "completed",
+  "raw_output": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁在观测站检查屋顶漏水，林川上屋顶用防水胶带临时封堵东侧第三排靠烟囱的裂缝，并发现北角瓦下木椽发软；随后两人进入阁楼，确认烟囱位置渗水、椽条需更换，许宁用记号笔标出修补范围。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"summary\": \"许宁在阁楼角落发现几块旧木板，上面盖着灰绿色防水布，布下鼓出方正轮廓并露出金属扣件一角；林川表示不知情，让先别动，两人未揭开查看。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站（屋顶及阁楼）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站（屋顶下方及阁楼）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.8,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"injury\",\n        \"old_value\": \"\",\n        \"new_value\": \"掌心被瓦棱硌出红痕\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.8\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"description\": \"阁楼角落旧木板堆上盖着灰绿色防水布，布下鼓出方正轮廓并露出金属扣件一角，林川与许宁未揭开查看，许宁心中留下印象。\",\n        \"trigger\": {\n          \"actor\": \"许宁\",\n          \"action\": \"发现\",\n          \"object\": \"防水布下的方正轮廓与金属扣件\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"new_entity\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"entity_type\": \"location\",\n        \"name\": \"观测站\",\n        \"description\": \"林川与许宁所在的旧式建筑，屋顶为水泥瓦、有阁楼与烟囱，存在漏水问题。\",\n        \"parent\": \"\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    }\n  ]\n}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁在观测站检查屋顶漏水，林川上屋顶用防水胶带临时封堵东侧第三排靠烟囱的裂缝，并发现北角瓦下木椽发软；随后两人进入阁楼，确认烟囱位置渗水、椽条需更换，许宁用记号笔标出修补范围。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"summary\": \"许宁在阁楼角落发现几块旧木板，上面盖着灰绿色防水布，布下鼓出方正轮廓并露出金属扣件一角；林川表示不知情，让先别动，两人未揭开查看。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站（屋顶及阁楼）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站（屋顶下方及阁楼）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.8,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"injury\",\n        \"old_value\": \"\",\n        \"new_value\": \"掌心被瓦棱硌出红痕\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.8\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"description\": \"阁楼角落旧木板堆上盖着灰绿色防水布，布下鼓出方正轮廓并露出金属扣件一角，林川与许宁未揭开查看，许宁心中留下印象。\",\n        \"trigger\": {\n          \"actor\": \"许宁\",\n          \"action\": \"发现\",\n          \"object\": \"防水布下的方正轮廓与金属扣件\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"new_entity\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"entity_type\": \"location\",\n        \"name\": \"观测站\",\n        \"description\": \"林川与许宁所在的旧式建筑，屋顶为水泥瓦、有阁楼与烟囱，存在漏水问题。\",\n        \"parent\": \"\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    }\n  ]\n}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 2112,
+  "output_tokens": 808,
+  "cost_est": 0.010688,
+  "cost_status": "estimated",
+  "wall_ms": 4266
+}

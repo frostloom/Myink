@@ -1,0 +1,45 @@
+{
+  "mode": "retrieval",
+  "identity": {
+    "system_identifier": "7694257730369818664",
+    "database": "myink",
+    "port": 15432,
+    "business_role": "myink_app"
+  },
+  "cleaned_cases": [
+    "canonical_history",
+    "alias_only",
+    "alias_query",
+    "distractor_names",
+    "other_project_only",
+    "future_only",
+    "escaped_name",
+    "two_required"
+  ],
+  "cases_sha256": "da656ed7b04c1569784158df99ef49ea293996412eed6af31586d413187a7bb1",
+  "commit": "326c4b366cdae38c374d253b12340c63615133c1",
+  "dirty": true,
+  "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "source_hashes": {
+    "src/myink/workflow/prompts.py": "47caaacc2bb0043d4f67d33c4141172d8e2078b930102018a8f6b02516c88a21",
+    "src/myink/schemas/contract.py": "ad1bc7abef169ad5e33ba39608491bd1a8425985e127b282332364fce5bd2101",
+    "src/myink/evaluation/cases.py": "760610e87c04a8db830b887c8934fd28e1d47c3fd0ac66bc1de668942a34e345",
+    "src/myink/evaluation/comparison.py": "abf694d96caf07e1aa637cd4ce3204958726be3fe2c258c6ec1d8cc3a3b7dd85",
+    "src/myink/evaluation/isolation.py": "b162923c2f0c9d5ad5bc3bd7d4e404dff125da53c56ff74898be1718a742bbd3",
+    "src/myink/evaluation/recovery.py": "c8c39cfbd69f0b5ffcff87e1f94ee847bc4612b5a85f3f3c885b427e50c43fb6",
+    "src/myink/evaluation/reporting.py": "58e86f92f25a3e5486cb008e0ba27ea2b11c965fd0e795ae931ba003d41ff37f",
+    "src/myink/evaluation/retrieval.py": "ee409e074682dbc59ef3dd564a66ee965ceabf1199354f7c8c954123cdbd8cd3",
+    "src/myink/evaluation/runner.py": "dc452700d888ccb0494c2bc7491b6b6457189b1d17551a9ec7a574e745f8473e",
+    "src/myink/evaluation/scoring.py": "55f762d87548e8f6c957366162df1c6c53baf8f2815b70e67f14aad490c94170",
+    "src/myink/evaluation/__init__.py": "74e0c6489cfa6aae5697eac77e359515d7ae574efb4857dd264e82635e42fe80"
+  },
+  "dependencies": {
+    "pydantic": "2.13.4",
+    "openai": "2.47.0"
+  },
+  "limits": [
+    "8 synthetic tasks, labels proposed",
+    "keyword uses production SQL; vectors are deterministic lexical fixtures, not bge semantic quality",
+    "measures final production context including 10 recent events; K varies, per-case returned_unique recorded"
+  ]
+}

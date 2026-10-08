@@ -1,0 +1,65 @@
+{
+  "request_index": 30,
+  "case_id": "injury_continuity",
+  "variant": "no_hybrid",
+  "repetition": 2,
+  "prompt_sha256": "5b9ca3933f948de5b56ab90a165930bc26d1523b0a1f85ab9e05bd96f214549f",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 40,
+    "max_cost_yuan": 2.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 6000,
+    "json_mode": false
+  },
+  "started_at": "2026-10-08T12:10:55.959285+00:00",
+  "execution": "completed",
+  "raw_output": "I'll verify the key facts before deciding.",
+  "model_id": "deepseek-flash",
+  "tool_calls": [
+    {
+      "id": "call_00_DohqFIlzHFp0bSMW3Dl33389",
+      "name": "inspect_character",
+      "arguments": {
+        "name": "林川",
+        "chapter_seq": 21
+      }
+    },
+    {
+      "id": "call_01_iLFjewtmRKepC0Opv8Rq1471",
+      "name": "inspect_character",
+      "arguments": {
+        "name": "许宁",
+        "chapter_seq": 21
+      }
+    },
+    {
+      "id": "call_02_VmBVA1DgFqzSGBIAyKTe0134",
+      "name": "inspect_plot_threads",
+      "arguments": {}
+    },
+    {
+      "id": "call_03_yrL5aDYIaCyjA8Xu2DEC7280",
+      "name": "inspect_foreshadows",
+      "arguments": {}
+    }
+  ],
+  "raw_response_content": "I'll verify the key facts before deciding.",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "tool_calls",
+  "input_tokens": 3801,
+  "output_tokens": 145,
+  "cost_est": 0.008762,
+  "cost_status": "estimated",
+  "wall_ms": 2672
+}

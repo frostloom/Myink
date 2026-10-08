@@ -1,0 +1,38 @@
+{
+  "request_index": 29,
+  "case_id": "injury_continuity",
+  "variant": "no_hybrid",
+  "repetition": 2,
+  "prompt_sha256": "98adce2d030135fa40afefe2cc6bbf100c60b2b2f377c7207232f63c5f9c049d",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 40,
+    "max_cost_yuan": 2.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 4096,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T12:10:50.868507+00:00",
+  "execution": "completed",
+  "raw_output": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁在观测站通过检修梯登上屋顶，发现东侧油毡裂缝（约十五厘米），位于气象传感器支架底座下方，渗水沿支架流至排水口；两人用防水胶带做十字临时标记，未处理锈死螺栓，并在记录簿上登记，等待下周补给车带来新油毡和密封胶。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶（东侧油毡裂缝处）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站室内（检修梯下方扶梯）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"injury\",\n        \"old_value\": \"\",\n        \"new_value\": \"右肩旧伤未愈，抬重物时仍会皱眉\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"fact\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"content\": \"观测站屋顶东侧油毡存在约十五厘米裂缝，位于气象传感器支架底座下方，渗水沿支架流至排水口；已用防水胶带做十字临时标记，螺栓锈死未处理，需等下周补给车带来新油毡和密封胶更换整块油毡。\",\n        \"category\": \"规则\",\n        \"is_hard\": false,\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.75,\n      \"payload\": {\n        \"description\": \"屋顶油毡裂缝仅用胶带临时标记，撑不了几天；若这几天下雨，气象传感器数据可能受影响，需等下周补给车带来新油毡和密封胶才能彻底维修。\",\n        \"trigger\": {\n          \"actor\": \"林川\",\n          \"action\": \"用防水胶带临时标记油毡裂缝\",\n          \"object\": \"屋顶东侧油毡裂缝\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.75\n      }\n    }\n  ]\n}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁在观测站通过检修梯登上屋顶，发现东侧油毡裂缝（约十五厘米），位于气象传感器支架底座下方，渗水沿支架流至排水口；两人用防水胶带做十字临时标记，未处理锈死螺栓，并在记录簿上登记，等待下周补给车带来新油毡和密封胶。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶（东侧油毡裂缝处）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站室内（检修梯下方扶梯）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"injury\",\n        \"old_value\": \"\",\n        \"new_value\": \"右肩旧伤未愈，抬重物时仍会皱眉\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"fact\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"content\": \"观测站屋顶东侧油毡存在约十五厘米裂缝，位于气象传感器支架底座下方，渗水沿支架流至排水口；已用防水胶带做十字临时标记，螺栓锈死未处理，需等下周补给车带来新油毡和密封胶更换整块油毡。\",\n        \"category\": \"规则\",\n        \"is_hard\": false,\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.75,\n      \"payload\": {\n        \"description\": \"屋顶油毡裂缝仅用胶带临时标记，撑不了几天；若这几天下雨，气象传感器数据可能受影响，需等下周补给车带来新油毡和密封胶才能彻底维修。\",\n        \"trigger\": {\n          \"actor\": \"林川\",\n          \"action\": \"用防水胶带临时标记油毡裂缝\",\n          \"object\": \"屋顶东侧油毡裂缝\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.75\n      }\n    }\n  ]\n}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 2223,
+  "output_tokens": 730,
+  "cost_est": 0.010286,
+  "cost_status": "estimated",
+  "wall_ms": 4938
+}

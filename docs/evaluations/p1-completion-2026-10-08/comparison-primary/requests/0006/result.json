@@ -1,0 +1,49 @@
+{
+  "request_index": 6,
+  "case_id": "meter_replacement",
+  "variant": "full",
+  "repetition": 1,
+  "prompt_sha256": "b3646defe48dc61a2b2ad3ecc3b96cd28c98250dfbb321766916688b34cb55a4",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 60,
+    "max_cost_yuan": 5.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 6000,
+    "json_mode": false
+  },
+  "started_at": "2026-10-08T11:49:05.092115+00:00",
+  "execution": "completed",
+  "raw_output": "",
+  "model_id": "deepseek-flash",
+  "tool_calls": [
+    {
+      "id": "call_00_Ma5fL0MCeS9JQCBIyiua3493",
+      "name": "inspect_plot_threads",
+      "arguments": {}
+    },
+    {
+      "id": "call_01_ewYrnUJX2TolZDcsx3Z47928",
+      "name": "inspect_foreshadows",
+      "arguments": {}
+    }
+  ],
+  "raw_response_content": "",
+  "response_projection": {
+    "source": "reasoning_fallback",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "tool_calls",
+  "input_tokens": 3646,
+  "output_tokens": 41,
+  "cost_est": 0.00762,
+  "cost_status": "estimated",
+  "wall_ms": 2656
+}

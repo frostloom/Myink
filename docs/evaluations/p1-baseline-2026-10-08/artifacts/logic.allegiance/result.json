@@ -1,0 +1,16 @@
+{
+  "case_id": "logic.allegiance",
+  "case_sha256": "588933a2b9f5e3fe7aad8719a0fc83e89c821c1ede5dbceb27414ed921187712",
+  "execution": "completed",
+  "coverage": "implemented",
+  "attempted": true,
+  "prompt_sha256": "7ee603ab8f1aaa5249848ba996b86903bc4a75a9483e293aa2c89d976d009f1f",
+  "input_tokens": 714,
+  "output_tokens": 391,
+  "cost_est": 0.004556,
+  "cost_status": "estimated",
+  "raw_output": "{\n  \"verdict\": \"rewrite\",\n  \"findings\": [\n    {\n      \"conflict_key\": \"linchuan_contract_status\",\n      \"conflict_type\": \"character_state\",\n      \"severity\": \"critical\",\n      \"scope\": \"structural\",\n      \"evidence\": [\n        {\n          \"chapter\": 1,\n          \"quote\": \"林川已正式退出北桥检修队，合同解除且未重新入职。\"\n        },\n        {\n          \"chapter\": 2,\n          \"quote\": \"林川的合同并未解除，他始终是北桥检修队的现任正式员工，今天仍以队员身份领薪。\"\n        }\n      ],\n      \"confidence\": 1.0,\n      \"suggestion\": \"本章开头直接与前章章尾事实矛盾，必须重写。建议将第2章开头改为承接前章：林川已解除合同、离开北桥检修队，本章应描写他离开后的处境、去向或新冲突；若确需保留其队员身份，则必须在前章或本章内给出明确的重新入职/合同恢复的因果交代，不能无过渡地推翻已写正文。\"\n    }\n  ],\n  \"reasons\": [\n    \"本章正文与【近期上下文】prev_chapter_tail 直接冲突：前章已明确林川合同解除、退出检修队，本章却称合同未解除、仍是现任正式员工并领薪，属于人物状态/剧情事实的硬性接续断裂。\",\n    \"该矛盾为 critical 级，且涉及整章立足点（人物身份与处境），需结构性改写而非句段微调，故判定 rewrite。\",\n    \"无章节计划、无世界观硬约束、无剧情上下文，无法从规划层面判定为蓝图走偏，因此不触发 replan。\"\n  ],\n  \"confidence\": 1.0\n}",
+  "model_id": "deepseek-flash",
+  "finish_reason": "stop",
+  "wall_ms": 3171
+}

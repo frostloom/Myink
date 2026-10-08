@@ -1,0 +1,20 @@
+{
+  "case_id": "injury_continuity",
+  "variant": "no_hybrid",
+  "repetition": 2,
+  "execution": "budget_stopped",
+  "draft": "",
+  "outcome": "incomplete",
+  "error": "call budget exhausted",
+  "database": {
+    "content": null,
+    "status": null
+  },
+  "database_matches_draft": false,
+  "system_audit": null,
+  "tool_trace": [],
+  "wall_ms": 266,
+  "requests": 0,
+  "estimated_cost_yuan": 0,
+  "quality_status": "pending_independent_review"
+}

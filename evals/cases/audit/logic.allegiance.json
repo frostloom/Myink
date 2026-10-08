@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "id": "logic.allegiance",
+  "group_id": "logic.allegiance",
+  "split": "holdout",
+  "mode": "audit",
+  "category": "allegiance",
+  "polarity": "positive",
+  "source": {
+    "path": "scripts/eval-logic.py",
+    "case_name": "allegiance",
+    "adapted_from": [
+      "conflict-samples:09"
+    ]
+  },
+  "input": {
+    "chapter_seq": 2,
+    "context": {
+      "short_context": [
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 1,
+          "tail": "林川已正式退出北桥检修队，合同解除且未重新入职。"
+        }
+      ],
+      "long_term_facts": []
+    },
+    "plan": {},
+    "draft": "林川的合同并未解除，他始终是北桥检修队的现任正式员工，今天仍以队员身份领薪。"
+  },
+  "expected": {
+    "allowed_verdicts": [
+      "rewrite"
+    ],
+    "required_issues": [
+      {
+        "id": "allegiance",
+        "description": "解除身份却直接声称从未解除；外部承包身份不得误报",
+        "allowed_conflict_types": [
+          "character_state",
+          "faction",
+          "character"
+        ],
+        "allowed_severities": [
+          "major",
+          "critical"
+        ],
+        "evidence_sources": [
+          {
+            "chapter": 1,
+            "pointer": "/input/context/short_context/0/tail"
+          },
+          {
+            "chapter": 2,
+            "pointer": "/input/draft"
+          }
+        ]
+      }
+    ],
+    "forbidden_issues": []
+  },
+  "label": {
+    "status": "proposed",
+    "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+    "reviewer": null
+  }
+}

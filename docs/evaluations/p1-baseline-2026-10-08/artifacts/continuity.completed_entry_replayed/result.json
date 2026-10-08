@@ -1,0 +1,16 @@
+{
+  "case_id": "continuity.completed_entry_replayed",
+  "case_sha256": "62d27086a2d09db4fc98ce341e21384a11e8226747622f9c88d07439ecee739c",
+  "execution": "completed",
+  "coverage": "implemented",
+  "attempted": true,
+  "prompt_sha256": "ecc27dfe2fb330eaa2db5ec9a7a8da8a3b8c6a33225172dddd694dee278aa52a",
+  "input_tokens": 799,
+  "output_tokens": 394,
+  "cost_est": 0.00475,
+  "cost_status": "estimated",
+  "raw_output": "{\n  \"verdict\": \"rewrite\",\n  \"findings\": [\n    {\n      \"conflict_key\": \"continuity_gym_door_reentry\",\n      \"conflict_type\": \"timeline\",\n      \"severity\": \"major\",\n      \"scope\": \"local\",\n      \"evidence\": [\n        {\n          \"chapter\": 5,\n          \"quote\": \"沈砚已经跨进体育馆，铁门在身后关上。周野的伤腿还在流血，他扶着周野坐到长椅上，向值班医生挥手。\"\n        },\n        {\n          \"chapter\": 6,\n          \"quote\": \"体育馆的铁门半掩着。沈砚站在门外推了推，门被铁链拴住了。他敲门报上姓名，等守卫解开铁链，才扶着周野走进去。\"\n        }\n      ],\n      \"confidence\": 0.95,\n      \"suggestion\": \"删除重演进门/拴链/报姓名/等守卫开门的段落，直接从上一章章尾已完成的动作接续：沈砚已扶着周野坐到长椅上、已向值班医生挥手，本章开头应写医生上前查看伤腿、取纱布包扎等救治动作，保持时间与空间连续。\"\n    }\n  ],\n  \"reasons\": [\n    \"本章开头重演了上一章章尾已经完成的进门、扶周野入内、向医生求助等动作，造成明确的接续断裂与机械重复，属 major 问题。\",\n    \"章节计划目标为“在体育馆内救治周野”，但正文把大量篇幅用于重复进门流程，救治内容单薄，需按接续位置重写开头并补足救治过程。\",\n    \"无世界观硬约束与伏笔冲突，问题集中在局部接续，故路由为 rewrite（local 级修改）。\"\n  ],\n  \"confidence\": 0.95\n}",
+  "model_id": "deepseek-flash",
+  "finish_reason": "stop",
+  "wall_ms": 4938
+}

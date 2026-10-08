@@ -1,0 +1,16 @@
+{
+  "case_id": "logic.capability_rule",
+  "case_sha256": "184e935feb8c6e38d633813cd6a55b8c0da0f2c0732003772c436e2f08cc0471",
+  "execution": "completed",
+  "coverage": "implemented",
+  "attempted": true,
+  "prompt_sha256": "a0020de45f1e3160ca18c7a6c8c931e174f071d8a648de03d647294ed7fa320a",
+  "input_tokens": 734,
+  "output_tokens": 319,
+  "cost_est": 0.00402,
+  "cost_status": "estimated",
+  "raw_output": "{\n  \"verdict\": \"rewrite\",\n  \"findings\": [\n    {\n      \"conflict_key\": \"instrument_power_source\",\n      \"conflict_type\": \"item_rule\",\n      \"severity\": \"critical\",\n      \"scope\": \"local\",\n      \"evidence\": [\n        {\n          \"chapter\": 2,\n          \"quote\": \"没有接入任何电源，仪器却持续正常测量，林川直接读出了实时电流值。\"\n        },\n        {\n          \"chapter\": 1,\n          \"quote\": \"林川检查了仪器：外接电源已断开，电池也已取出。\"\n        }\n      ],\n      \"confidence\": 1.0,\n      \"suggestion\": \"本章直接让仪器在无电源状态下正常工作，违反世界观硬约束“该仪器必须外接电源或装入电池才能测量，没有其他供能方式”。需改写为仪器因断电而无法测量，或补充符合硬约束的供能方式（如重新接电/装电池），并据此调整林川读出电流值的情节。\"\n    }\n  ],\n  \"reasons\": [\n    \"本章核心情节（仪器无电源仍正常测量）与世界观硬约束直接冲突，属于设定规则违背，必须修订。\",\n    \"无章节计划，无法判断主线推进，但硬约束冲突已构成 critical 问题，故路由为 rewrite。\",\n    \"冲突为句段级设定矛盾，可通过局部改写解决，scope 定为 local。\"\n  ],\n  \"confidence\": 1.0\n}",
+  "model_id": "deepseek-flash",
+  "finish_reason": "stop",
+  "wall_ms": 3188
+}
