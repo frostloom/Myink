@@ -1,0 +1,16 @@
+{
+  "case_id": "logic.unfulfilled_promise",
+  "case_sha256": "f28a79298e2c1c34f516d9b2fb9a1bcf124f6847b9c177ee3806932fef3e0138",
+  "execution": "completed",
+  "coverage": "implemented",
+  "attempted": true,
+  "prompt_sha256": "a61412eee2ba23ebf6dd60053d5d3112840015668d7314cd9afdbfce6ded7a6f",
+  "input_tokens": 710,
+  "output_tokens": 289,
+  "cost_est": 0.003732,
+  "cost_status": "estimated",
+  "raw_output": "{\n  \"verdict\": \"rewrite\",\n  \"findings\": [\n    {\n      \"conflict_key\": \"plotline_pump_promise_contradiction\",\n      \"conflict_type\": \"plotline\",\n      \"severity\": \"critical\",\n      \"scope\": \"structural\",\n      \"evidence\": [\n        {\n          \"chapter\": 1,\n          \"quote\": \"林川承诺修好水泵，但检修尚未开始，水泵仍完全损坏。\"\n        },\n        {\n          \"chapter\": 2,\n          \"quote\": \"检修还没开始，大家就确认林川已经兑现修好水泵的承诺，水泵已经恢复运作。\"\n        }\n      ],\n      \"confidence\": 0.95,\n      \"suggestion\": \"删除或重写本章开头，不能跳过检修过程直接宣布水泵恢复运作。应描写林川实际开始检修、遇到困难并逐步修复水泵的过程，或至少交代检修如何完成，使承诺兑现具备因果链条。\"\n    }\n  ],\n  \"reasons\": [\n    \"第1章结尾明确水泵仍完全损坏且检修尚未开始，第2章开头却直接确认水泵已恢复运作，构成因果断裂和承诺兑现过程缺失。\",\n    \"该矛盾属于结构性剧情问题，需重写本章开头以衔接前章并补全检修过程。\"\n  ],\n  \"confidence\": 0.95\n}",
+  "model_id": "deepseek-flash",
+  "finish_reason": "stop",
+  "wall_ms": 2750
+}

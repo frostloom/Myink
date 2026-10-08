@@ -1,0 +1,16 @@
+{
+  "case_id": "continuity.mechanical_opening_repeated",
+  "case_sha256": "664080f335409aa7234ca32908781cde708a2244f299ecc5ce15c70e76a76191",
+  "execution": "completed",
+  "coverage": "implemented",
+  "attempted": true,
+  "prompt_sha256": "12cd532014acaa83a06bda3b4ba3642844f568563a49190bcfe577c37dc10c0e",
+  "input_tokens": 832,
+  "output_tokens": 642,
+  "cost_est": 0.0068,
+  "cost_status": "estimated",
+  "raw_output": "{\n  \"verdict\": \"rewrite\",\n  \"findings\": [\n    {\n      \"conflict_key\": \"opening_repetition_ch4\",\n      \"conflict_type\": \"style\",\n      \"severity\": \"major\",\n      \"scope\": \"local\",\n      \"evidence\": [\n        {\"chapter\": 4, \"quote\": \"清晨的冷风贴着门缝钻进来，沈砚揉了揉酸痛的肩，掀开毯子坐起。屋里很静，只有远处传来几声咳嗽。他看了一眼窗外灰白的天，伸手摸了摸衣袋里的匕首。\"},\n        {\"chapter\": 6, \"quote\": \"清晨的凉风顺着门缝钻进来，沈砚揉着发酸的肩，掀开毯子坐了起来。房间很安静，远处只有几声咳嗽。他望了一眼窗外灰白的天空，伸手摸向衣袋里的匕首。\"}\n      ],\n      \"confidence\": 0.95,\n      \"suggestion\": \"第6章开头与第4章开头为近义改写（冷风/凉风、揉肩、掀毯、咳嗽、灰白天、摸匕首逐项对应），属机械重复。应改写为承接第5章章尾的接续动作：直接从沈砚放好药品、离开医生处、走向院内守卫领取巡查任务写起，删去与第4章雷同的起床场景。\"\n    },\n    {\n      \"conflict_key\": \"continuity_prev_tail\",\n      \"conflict_type\": \"plotline\",\n      \"severity\": \"major\",\n      \"scope\": \"local\",\n      \"evidence\": [\n        {\"chapter\": 5, \"quote\": \"沈砚把搜来的药品放进箱子，医生示意他去院内找守卫领取当天的任务。\"},\n        {\"chapter\": 6, \"quote\": \"随后他走到院里，找到守卫，领到了今天巡查围墙的任务。\"}\n      ],\n      \"confidence\": 0.9,\n      \"suggestion\": \"第5章章尾已明确沈砚在医生处被示意去找守卫领任务，第6章却插入一段与第4章雷同的起床场景，造成时间线回退与接续断裂。应删去起床段，改为紧接第5章章尾：沈砚从医生处出来，径直去院内找守卫领取巡查围墙任务，并补足领取过程的具体互动。\"\n    }\n  ],\n  \"reasons\": [\n    \"本章计划仅要求『领取当天巡查任务』，正文确实完成了该目标，主线无偏移。\",\n    \"但开头与第4章开头为近义改写的同一套路，属机械重复，应报 major。\",\n    \"第5章章尾已让沈砚在医生处被示意去找守卫领任务，本章却插入起床场景，造成接续断裂与时间线回退，应报 major。\",\n    \"两处问题均为句段级接续改写，无需推翻本章规划，故 verdict=rewrite 而非 replan。\"\n  ],\n  \"confidence\": 0.9\n}",
+  "model_id": "deepseek-flash",
+  "finish_reason": "stop",
+  "wall_ms": 4359
+}

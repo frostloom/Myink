@@ -1,0 +1,16 @@
+{
+  "case_id": "logic.promise_completed",
+  "case_sha256": "c38457d73456506c54487ea75f7431c724423f1a35be80980babcda2aa96ab40",
+  "execution": "completed",
+  "coverage": "implemented",
+  "attempted": true,
+  "prompt_sha256": "540c61576a795e18d712ae4e838ff13ec3acac952f5ee647eb65f3f3d1aaa50b",
+  "input_tokens": 714,
+  "output_tokens": 165,
+  "cost_est": 0.002748,
+  "cost_status": "estimated",
+  "raw_output": "{\"verdict\": \"pass\", \"findings\": [], \"reasons\": [\"本章为第2章，无章节计划、无世界观硬约束、无剧情上下文与伏笔，审核范围仅限与上一章章尾的接续一致性。\", \"上一章章尾为林川承诺修好水泵但检修尚未开始、水泵完全损坏；本章开头直接写林川拆开水泵、更换电容、重新接线并试运行成功，随后告知许宁承诺完成，动作承接自然，无重演已完成动作、无丢弃未完成请求、无时间地点或视角的无交代跳变。\", \"本章内容为单一场景的完整小闭环，节奏紧凑，未发现人设、逻辑或结构问题，无需修订。\"], \"confidence\": 0.9}",
+  "model_id": "deepseek-flash",
+  "finish_reason": "stop",
+  "wall_ms": 2735
+}

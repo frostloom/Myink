@@ -1,0 +1,697 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "canonical_history",
+      "group_id": "canonical_history",
+      "split": "development",
+      "canonical": "林川",
+      "aliases": [],
+      "participants": [
+        "林川"
+      ],
+      "query": "林川将万用表烧毁残骸封存",
+      "events": [
+        {
+          "id": "needed",
+          "chapter": 1,
+          "summary": "林川将万用表烧毁残骸封存"
+        },
+        {
+          "id": "noise10",
+          "chapter": 10,
+          "summary": "许宁记录第10次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise11",
+          "chapter": 11,
+          "summary": "许宁记录第11次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise12",
+          "chapter": 12,
+          "summary": "许宁记录第12次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise13",
+          "chapter": 13,
+          "summary": "许宁记录第13次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise14",
+          "chapter": 14,
+          "summary": "许宁记录第14次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise15",
+          "chapter": 15,
+          "summary": "许宁记录第15次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise16",
+          "chapter": 16,
+          "summary": "许宁记录第16次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise17",
+          "chapter": 17,
+          "summary": "许宁记录第17次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise18",
+          "chapter": 18,
+          "summary": "许宁记录第18次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise19",
+          "chapter": 19,
+          "summary": "许宁记录第19次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise20",
+          "chapter": 20,
+          "summary": "许宁记录第20次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise21",
+          "chapter": 21,
+          "summary": "许宁记录第21次普通天气观测，仪器状态无变化。"
+        }
+      ],
+      "required": [
+        "needed"
+      ],
+      "label": "proposed"
+    },
+    {
+      "id": "alias_only",
+      "group_id": "alias_only",
+      "split": "development",
+      "canonical": "林川",
+      "aliases": [
+        "老林"
+      ],
+      "participants": [
+        "林川"
+      ],
+      "query": "老林将万用表烧毁残骸封存",
+      "events": [
+        {
+          "id": "needed",
+          "chapter": 1,
+          "summary": "老林将万用表烧毁残骸封存"
+        },
+        {
+          "id": "noise10",
+          "chapter": 10,
+          "summary": "许宁记录第10次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise11",
+          "chapter": 11,
+          "summary": "许宁记录第11次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise12",
+          "chapter": 12,
+          "summary": "许宁记录第12次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise13",
+          "chapter": 13,
+          "summary": "许宁记录第13次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise14",
+          "chapter": 14,
+          "summary": "许宁记录第14次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise15",
+          "chapter": 15,
+          "summary": "许宁记录第15次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise16",
+          "chapter": 16,
+          "summary": "许宁记录第16次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise17",
+          "chapter": 17,
+          "summary": "许宁记录第17次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise18",
+          "chapter": 18,
+          "summary": "许宁记录第18次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise19",
+          "chapter": 19,
+          "summary": "许宁记录第19次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise20",
+          "chapter": 20,
+          "summary": "许宁记录第20次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise21",
+          "chapter": 21,
+          "summary": "许宁记录第21次普通天气观测，仪器状态无变化。"
+        }
+      ],
+      "required": [
+        "needed"
+      ],
+      "label": "proposed"
+    },
+    {
+      "id": "alias_query",
+      "group_id": "alias_query",
+      "split": "development",
+      "canonical": "林川",
+      "aliases": [
+        "老林"
+      ],
+      "participants": [
+        "老林"
+      ],
+      "query": "林川将损坏接线盒封存",
+      "events": [
+        {
+          "id": "needed",
+          "chapter": 1,
+          "summary": "林川将损坏接线盒封存"
+        },
+        {
+          "id": "noise10",
+          "chapter": 10,
+          "summary": "许宁记录第10次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise11",
+          "chapter": 11,
+          "summary": "许宁记录第11次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise12",
+          "chapter": 12,
+          "summary": "许宁记录第12次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise13",
+          "chapter": 13,
+          "summary": "许宁记录第13次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise14",
+          "chapter": 14,
+          "summary": "许宁记录第14次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise15",
+          "chapter": 15,
+          "summary": "许宁记录第15次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise16",
+          "chapter": 16,
+          "summary": "许宁记录第16次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise17",
+          "chapter": 17,
+          "summary": "许宁记录第17次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise18",
+          "chapter": 18,
+          "summary": "许宁记录第18次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise19",
+          "chapter": 19,
+          "summary": "许宁记录第19次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise20",
+          "chapter": 20,
+          "summary": "许宁记录第20次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise21",
+          "chapter": 21,
+          "summary": "许宁记录第21次普通天气观测，仪器状态无变化。"
+        }
+      ],
+      "required": [
+        "needed"
+      ],
+      "label": "proposed"
+    },
+    {
+      "id": "distractor_names",
+      "group_id": "distractor_names",
+      "split": "development",
+      "canonical": "林川",
+      "aliases": [],
+      "participants": [
+        "林川"
+      ],
+      "query": "林川将损坏接线盒封存",
+      "events": [
+        {
+          "id": "needed",
+          "chapter": 1,
+          "summary": "林川将损坏接线盒封存"
+        },
+        {
+          "id": "noise10",
+          "chapter": 10,
+          "summary": "许宁记录第10次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise11",
+          "chapter": 11,
+          "summary": "许宁记录第11次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise12",
+          "chapter": 12,
+          "summary": "许宁记录第12次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise13",
+          "chapter": 13,
+          "summary": "许宁记录第13次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise14",
+          "chapter": 14,
+          "summary": "许宁记录第14次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise15",
+          "chapter": 15,
+          "summary": "许宁记录第15次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise16",
+          "chapter": 16,
+          "summary": "许宁记录第16次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise17",
+          "chapter": 17,
+          "summary": "许宁记录第17次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise18",
+          "chapter": 18,
+          "summary": "许宁记录第18次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise19",
+          "chapter": 19,
+          "summary": "许宁记录第19次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise20",
+          "chapter": 20,
+          "summary": "许宁记录第20次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise21",
+          "chapter": 21,
+          "summary": "许宁记录第21次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "named_noise22",
+          "chapter": 22,
+          "summary": "林川喝水休息，未涉及损坏设备。"
+        },
+        {
+          "id": "named_noise23",
+          "chapter": 23,
+          "summary": "林川喝水休息，未涉及损坏设备。"
+        },
+        {
+          "id": "named_noise24",
+          "chapter": 24,
+          "summary": "林川喝水休息，未涉及损坏设备。"
+        },
+        {
+          "id": "named_noise25",
+          "chapter": 25,
+          "summary": "林川喝水休息，未涉及损坏设备。"
+        },
+        {
+          "id": "named_noise26",
+          "chapter": 26,
+          "summary": "林川喝水休息，未涉及损坏设备。"
+        },
+        {
+          "id": "named_noise27",
+          "chapter": 27,
+          "summary": "林川喝水休息，未涉及损坏设备。"
+        }
+      ],
+      "required": [
+        "needed"
+      ],
+      "label": "proposed"
+    },
+    {
+      "id": "other_project_only",
+      "group_id": "other_project_only",
+      "split": "development",
+      "canonical": "林川",
+      "aliases": [],
+      "participants": [
+        "林川"
+      ],
+      "query": "林川检修仪器",
+      "events": [
+        {
+          "id": "noise10",
+          "chapter": 10,
+          "summary": "许宁记录第10次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise11",
+          "chapter": 11,
+          "summary": "许宁记录第11次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise12",
+          "chapter": 12,
+          "summary": "许宁记录第12次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise13",
+          "chapter": 13,
+          "summary": "许宁记录第13次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise14",
+          "chapter": 14,
+          "summary": "许宁记录第14次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise15",
+          "chapter": 15,
+          "summary": "许宁记录第15次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise16",
+          "chapter": 16,
+          "summary": "许宁记录第16次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise17",
+          "chapter": 17,
+          "summary": "许宁记录第17次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise18",
+          "chapter": 18,
+          "summary": "许宁记录第18次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise19",
+          "chapter": 19,
+          "summary": "许宁记录第19次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise20",
+          "chapter": 20,
+          "summary": "许宁记录第20次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise21",
+          "chapter": 21,
+          "summary": "许宁记录第21次普通天气观测，仪器状态无变化。"
+        }
+      ],
+      "required": [],
+      "label": "proposed"
+    },
+    {
+      "id": "future_only",
+      "group_id": "future_only",
+      "split": "development",
+      "canonical": "林川",
+      "aliases": [],
+      "participants": [
+        "林川"
+      ],
+      "query": "林川检修仪器",
+      "events": [
+        {
+          "id": "noise10",
+          "chapter": 10,
+          "summary": "许宁记录第10次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise11",
+          "chapter": 11,
+          "summary": "许宁记录第11次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise12",
+          "chapter": 12,
+          "summary": "许宁记录第12次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise13",
+          "chapter": 13,
+          "summary": "许宁记录第13次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise14",
+          "chapter": 14,
+          "summary": "许宁记录第14次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise15",
+          "chapter": 15,
+          "summary": "许宁记录第15次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise16",
+          "chapter": 16,
+          "summary": "许宁记录第16次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise17",
+          "chapter": 17,
+          "summary": "许宁记录第17次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise18",
+          "chapter": 18,
+          "summary": "许宁记录第18次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise19",
+          "chapter": 19,
+          "summary": "许宁记录第19次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise20",
+          "chapter": 20,
+          "summary": "许宁记录第20次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise21",
+          "chapter": 21,
+          "summary": "许宁记录第21次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "future",
+          "chapter": 35,
+          "summary": "林川找到了新万用表"
+        }
+      ],
+      "required": [],
+      "label": "proposed"
+    },
+    {
+      "id": "escaped_name",
+      "group_id": "escaped_name",
+      "split": "development",
+      "canonical": "林%川_",
+      "aliases": [],
+      "participants": [
+        "林%川_"
+      ],
+      "query": "林%川_确认绝缘损坏",
+      "events": [
+        {
+          "id": "needed",
+          "chapter": 1,
+          "summary": "林%川_确认绝缘损坏"
+        },
+        {
+          "id": "noise10",
+          "chapter": 10,
+          "summary": "许宁记录第10次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise11",
+          "chapter": 11,
+          "summary": "许宁记录第11次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise12",
+          "chapter": 12,
+          "summary": "许宁记录第12次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise13",
+          "chapter": 13,
+          "summary": "许宁记录第13次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise14",
+          "chapter": 14,
+          "summary": "许宁记录第14次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise15",
+          "chapter": 15,
+          "summary": "许宁记录第15次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise16",
+          "chapter": 16,
+          "summary": "许宁记录第16次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise17",
+          "chapter": 17,
+          "summary": "许宁记录第17次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise18",
+          "chapter": 18,
+          "summary": "许宁记录第18次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise19",
+          "chapter": 19,
+          "summary": "许宁记录第19次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise20",
+          "chapter": 20,
+          "summary": "许宁记录第20次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise21",
+          "chapter": 21,
+          "summary": "许宁记录第21次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "wildcard",
+          "chapter": 25,
+          "summary": "林甲川乙做无关观察"
+        }
+      ],
+      "required": [
+        "needed"
+      ],
+      "label": "proposed"
+    },
+    {
+      "id": "two_required",
+      "group_id": "two_required",
+      "split": "development",
+      "canonical": "林川",
+      "aliases": [],
+      "participants": [
+        "林川"
+      ],
+      "query": "林川损坏万用表",
+      "events": [
+        {
+          "id": "needed",
+          "chapter": 1,
+          "summary": "林川损坏万用表"
+        },
+        {
+          "id": "noise10",
+          "chapter": 10,
+          "summary": "许宁记录第10次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise11",
+          "chapter": 11,
+          "summary": "许宁记录第11次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise12",
+          "chapter": 12,
+          "summary": "许宁记录第12次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise13",
+          "chapter": 13,
+          "summary": "许宁记录第13次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise14",
+          "chapter": 14,
+          "summary": "许宁记录第14次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise15",
+          "chapter": 15,
+          "summary": "许宁记录第15次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise16",
+          "chapter": 16,
+          "summary": "许宁记录第16次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise17",
+          "chapter": 17,
+          "summary": "许宁记录第17次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise18",
+          "chapter": 18,
+          "summary": "许宁记录第18次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise19",
+          "chapter": 19,
+          "summary": "许宁记录第19次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise20",
+          "chapter": 20,
+          "summary": "许宁记录第20次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "noise21",
+          "chapter": 21,
+          "summary": "许宁记录第21次普通天气观测，仪器状态无变化。"
+        },
+        {
+          "id": "second",
+          "chapter": 2,
+          "summary": "林川扭伤左膝，短期不得负重"
+        }
+      ],
+      "required": [
+        "needed",
+        "second"
+      ],
+      "label": "proposed"
+    }
+  ]
+}

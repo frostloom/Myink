@@ -1,0 +1,70 @@
+桥段重复向量近邻失败，跳过（加分项不阻塞）: embedding 已禁用（EMBED_ENABLED=0），由调用方降级
+桥段重复向量近邻失败，跳过（加分项不阻塞）: embedding 已禁用（EMBED_ENABLED=0），由调用方降级
+桥段重复向量近邻失败，跳过（加分项不阻塞）: embedding 已禁用（EMBED_ENABLED=0），由调用方降级
+桥段重复向量近邻失败，跳过（加分项不阻塞）: embedding 已禁用（EMBED_ENABLED=0），由调用方降级
+桥段重复向量近邻失败，跳过（加分项不阻塞）: embedding 已禁用（EMBED_ENABLED=0），由调用方降级
+meter_replacement/2/no_hybrid: completed / awaiting_review
+injury_continuity/2/direct: completed / generated
+桥段重复向量近邻失败，跳过（加分项不阻塞）: embedding 已禁用（EMBED_ENABLED=0），由调用方降级
+向量化失败（level=event），跳过索引（不影响落库）: embedding 已禁用（EMBED_ENABLED=0），由调用方降级
+向量化失败（level=event），跳过索引（不影响落库）: embedding 已禁用（EMBED_ENABLED=0），由调用方降级
+injury_continuity/2/full: completed / persisted
+桥段重复向量近邻失败，跳过（加分项不阻塞）: embedding 已禁用（EMBED_ENABLED=0），由调用方降级
+桥段重复向量近邻失败，跳过（加分项不阻塞）: embedding 已禁用（EMBED_ENABLED=0），由调用方降级
+桥段重复向量近邻失败，跳过（加分项不阻塞）: embedding 已禁用（EMBED_ENABLED=0），由调用方降级
+向量化失败（level=event），跳过索引（不影响落库）: embedding 已禁用（EMBED_ENABLED=0），由调用方降级
+向量化失败（level=world），跳过索引（不影响落库）: embedding 已禁用（EMBED_ENABLED=0），由调用方降级
+向量化失败（level=world），跳过索引（不影响落库）: embedding 已禁用（EMBED_ENABLED=0），由调用方降级
+injury_continuity/2/no_hybrid: completed / persisted
+{
+  "planned_outputs": 4,
+  "actual_requests": 39,
+  "cost_reserved_or_estimated_yuan": 0.42650199999999994,
+  "completed_outputs": 4,
+  "quality_status": "pending_independent_review",
+  "variants": {
+    "direct": [
+      {
+        "case_id": "injury_continuity",
+        "repetition": 2,
+        "execution": "completed",
+        "outcome": "generated",
+        "requests": 1,
+        "cost": 0.010234,
+        "chars": 1488
+      }
+    ],
+    "full": [
+      {
+        "case_id": "injury_continuity",
+        "repetition": 2,
+        "execution": "completed",
+        "outcome": "persisted",
+        "requests": 6,
+        "cost": 0.043254,
+        "chars": 1021
+      }
+    ],
+    "no_hybrid": [
+      {
+        "case_id": "meter_replacement",
+        "repetition": 2,
+        "execution": "completed",
+        "outcome": "awaiting_review",
+        "requests": 18,
+        "cost": 0.210232,
+        "chars": 1379
+      },
+      {
+        "case_id": "injury_continuity",
+        "repetition": 2,
+        "execution": "completed",
+        "outcome": "persisted",
+        "requests": 14,
+        "cost": 0.16278199999999998,
+        "chars": 1487
+      }
+    ]
+  }
+}
+

@@ -1,0 +1,57 @@
+{
+  "request_index": 44,
+  "case_id": "injury_continuity",
+  "variant": "no_hybrid",
+  "repetition": 1,
+  "prompt_sha256": "36d5d860f16e64b22fd6b676d21887d0bde6e54a192348737f86e103ffe7255f",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 60,
+    "max_cost_yuan": 5.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 6000,
+    "json_mode": false
+  },
+  "started_at": "2026-10-08T11:52:17.528247+00:00",
+  "execution": "completed",
+  "raw_output": "",
+  "model_id": "deepseek-flash",
+  "tool_calls": [
+    {
+      "id": "call_00_AQMyMq89aXlNaRLL45zs1367",
+      "name": "inspect_character",
+      "arguments": {
+        "name": "许宁",
+        "chapter_seq": 21
+      }
+    },
+    {
+      "id": "call_01_BqhOreDW9IrUYISEQznD9974",
+      "name": "inspect_plot_threads",
+      "arguments": {}
+    },
+    {
+      "id": "call_02_ZIAbfDpO2AsJkA6kqjJp8082",
+      "name": "inspect_foreshadows",
+      "arguments": {}
+    }
+  ],
+  "raw_response_content": "",
+  "response_projection": {
+    "source": "reasoning_fallback",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "tool_calls",
+  "input_tokens": 3649,
+  "output_tokens": 89,
+  "cost_est": 0.00801,
+  "cost_status": "estimated",
+  "wall_ms": 2266
+}

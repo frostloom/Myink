@@ -1,0 +1,38 @@
+{
+  "request_index": 53,
+  "case_id": "meter_replacement",
+  "variant": "full",
+  "repetition": 2,
+  "prompt_sha256": "e851b2ac72406fc3b7a942b1b1284fdedc6bec4a251c0aa2a80d71b138cccf3a",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 60,
+    "max_cost_yuan": 5.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 4096,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T11:53:04.533137+00:00",
+  "execution": "completed",
+  "raw_output": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁在山间观测站检修供电，发现检修台底部接线盒进水锈蚀、一段线路烧断，用万用表测出断点并重新接线、封胶，合闸后配电箱指示灯亮但灯仍不亮，电未送出。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"山间观测站\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"山间观测站\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"item\",\n        \"old_value\": \"\",\n        \"new_value\": \"一份未写完、未签名的设备检修记录（折起收在口袋）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.8,\n      \"payload\": {\n        \"description\": \"工具间抽屉底压着一份设备检修记录，日期栏填到一半就断、签名处空着，暗示上个月有人来过观测站却未完成记录，来历不明。\",\n        \"trigger\": {\n          \"actor\": \"许宁\",\n          \"action\": \"发现并收起\",\n          \"object\": \"未写完、未签名的设备检修记录\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.8\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.75,\n      \"payload\": {\n        \"description\": \"合闸后配电箱指示灯亮、电已送到，但灯不亮、电未送出，墙内线管仍滴水，暗示线路另有隐患或异常。\",\n        \"trigger\": {\n          \"actor\": \"林川\",\n          \"action\": \"合闸后排查\",\n          \"object\": \"配电箱与墙内线管\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.75\n      }\n    },\n    {\n      \"kind\": \"new_entity\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"entity_type\": \"location\",\n        \"name\": \"山间观测站\",\n        \"description\": \"林川与许宁检修供电的观测站，含走廊、工具间、检修台与配电箱等设施。\"\n      }\n    },\n    {\n      \"kind\": \"new_entity\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"entity_type\": \"item\",\n        \"name\": \"万用表\",\n        \"description\": \"工具间上次检修留下的黄色外壳万用表，表笔缠橡皮筋，电池完好，用于测通断与绝缘。\"\n      }\n    }\n  ]\n}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁在山间观测站检修供电，发现检修台底部接线盒进水锈蚀、一段线路烧断，用万用表测出断点并重新接线、封胶，合闸后配电箱指示灯亮但灯仍不亮，电未送出。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"山间观测站\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"山间观测站\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"item\",\n        \"old_value\": \"\",\n        \"new_value\": \"一份未写完、未签名的设备检修记录（折起收在口袋）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.8,\n      \"payload\": {\n        \"description\": \"工具间抽屉底压着一份设备检修记录，日期栏填到一半就断、签名处空着，暗示上个月有人来过观测站却未完成记录，来历不明。\",\n        \"trigger\": {\n          \"actor\": \"许宁\",\n          \"action\": \"发现并收起\",\n          \"object\": \"未写完、未签名的设备检修记录\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.8\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.75,\n      \"payload\": {\n        \"description\": \"合闸后配电箱指示灯亮、电已送到，但灯不亮、电未送出，墙内线管仍滴水，暗示线路另有隐患或异常。\",\n        \"trigger\": {\n          \"actor\": \"林川\",\n          \"action\": \"合闸后排查\",\n          \"object\": \"配电箱与墙内线管\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.75\n      }\n    },\n    {\n      \"kind\": \"new_entity\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"entity_type\": \"location\",\n        \"name\": \"山间观测站\",\n        \"description\": \"林川与许宁检修供电的观测站，含走廊、工具间、检修台与配电箱等设施。\"\n      }\n    },\n    {\n      \"kind\": \"new_entity\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"entity_type\": \"item\",\n        \"name\": \"万用表\",\n        \"description\": \"工具间上次检修留下的黄色外壳万用表，表笔缠橡皮筋，电池完好，用于测通断与绝缘。\"\n      }\n    }\n  ]\n}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 2048,
+  "output_tokens": 869,
+  "cost_est": 0.011048,
+  "cost_status": "estimated",
+  "wall_ms": 4860
+}

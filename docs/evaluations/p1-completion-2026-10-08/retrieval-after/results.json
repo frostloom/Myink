@@ -1,0 +1,2814 @@
+[
+  {
+    "case_id": "canonical_history",
+    "variant": "keyword",
+    "embedding_kind": "disabled",
+    "metrics": {
+      "required": 1,
+      "hit": 1,
+      "returned_unique": 11,
+      "recall_at_k": 1.0,
+      "irrelevant_ratio": 0.9090909090909091,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 2792,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "b775505c-de22-4957-8aeb-3732526f0bb3",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "1ec202cb-cab6-4d84-ac0e-7b644cca1bbe",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "f620f327-cfc8-4160-b1e8-aed3e7c9e738",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "b268d5ff-f647-43b8-98c3-6c2c6d5a6294",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "a64f77e5-2fcd-4d3a-9b5f-b988a3ca587a",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "ac1bb0e3-aa47-4908-af54-c70e69baeb29",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "8253fb9f-403f-47f1-aaec-23e615e13d31",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "aa11b4d6-5e50-4f84-a52a-5d137c3bdfe7",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "9dc6e33b-4d1e-462a-a766-4103404701ae",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "39396102-1483-48d4-943b-f0f309057b67",
+        "chapter": 12,
+        "confidence": 1.0,
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "806ba8c2-f2a4-4455-aa82-85c86cf35d1a",
+        "chapter": 1,
+        "confidence": 1.0,
+        "recalled_by": "keyword",
+        "summary": "林川将万用表烧毁残骸封存",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      }
+    ],
+    "stats": {
+      "vector_hits": 0,
+      "keyword_hits": 1,
+      "fused_total": 1,
+      "recall_tokens_est": 16,
+      "context_tokens_est": 336,
+      "share": 0.0476,
+      "vector_status": "disabled",
+      "keyword_status": "ok",
+      "degrade_reason": "vector_disabled"
+    },
+    "wall_ms": 109.314
+  },
+  {
+    "case_id": "canonical_history",
+    "variant": "vector_fixture",
+    "embedding_kind": "lexical_fixture_not_semantic",
+    "metrics": {
+      "required": 1,
+      "hit": 1,
+      "returned_unique": 12,
+      "recall_at_k": 1.0,
+      "irrelevant_ratio": 0.9166666666666666,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 3078,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "b775505c-de22-4957-8aeb-3732526f0bb3",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "1ec202cb-cab6-4d84-ac0e-7b644cca1bbe",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "f620f327-cfc8-4160-b1e8-aed3e7c9e738",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "b268d5ff-f647-43b8-98c3-6c2c6d5a6294",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "a64f77e5-2fcd-4d3a-9b5f-b988a3ca587a",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "ac1bb0e3-aa47-4908-af54-c70e69baeb29",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "8253fb9f-403f-47f1-aaec-23e615e13d31",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "aa11b4d6-5e50-4f84-a52a-5d137c3bdfe7",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "9dc6e33b-4d1e-462a-a766-4103404701ae",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "39396102-1483-48d4-943b-f0f309057b67",
+        "chapter": 12,
+        "confidence": 1.0,
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "806ba8c2-f2a4-4455-aa82-85c86cf35d1a",
+        "chapter": 1,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "林川将万用表烧毁残骸封存",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "f7e0d523-f6ae-404d-a38e-0b07b4ac75a5",
+        "chapter": 11,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第11次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      }
+    ],
+    "stats": {
+      "vector_hits": 5,
+      "keyword_hits": 0,
+      "fused_total": 2,
+      "recall_tokens_est": 48,
+      "context_tokens_est": 368,
+      "share": 0.1304,
+      "vector_status": "ok",
+      "keyword_status": "empty",
+      "degrade_reason": "keyword_empty"
+    },
+    "wall_ms": 64.262
+  },
+  {
+    "case_id": "canonical_history",
+    "variant": "rrf_fixture",
+    "embedding_kind": "lexical_fixture_not_semantic",
+    "metrics": {
+      "required": 1,
+      "hit": 1,
+      "returned_unique": 12,
+      "recall_at_k": 1.0,
+      "irrelevant_ratio": 0.9166666666666666,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 3089,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "b775505c-de22-4957-8aeb-3732526f0bb3",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "1ec202cb-cab6-4d84-ac0e-7b644cca1bbe",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "f620f327-cfc8-4160-b1e8-aed3e7c9e738",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "b268d5ff-f647-43b8-98c3-6c2c6d5a6294",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "a64f77e5-2fcd-4d3a-9b5f-b988a3ca587a",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "ac1bb0e3-aa47-4908-af54-c70e69baeb29",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "8253fb9f-403f-47f1-aaec-23e615e13d31",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "aa11b4d6-5e50-4f84-a52a-5d137c3bdfe7",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "9dc6e33b-4d1e-462a-a766-4103404701ae",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "39396102-1483-48d4-943b-f0f309057b67",
+        "chapter": 12,
+        "confidence": 1.0,
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "806ba8c2-f2a4-4455-aa82-85c86cf35d1a",
+        "chapter": 1,
+        "confidence": 1.0,
+        "recalled_by": "keyword+vector",
+        "summary": "林川将万用表烧毁残骸封存",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      },
+      {
+        "event_id": "f7e0d523-f6ae-404d-a38e-0b07b4ac75a5",
+        "chapter": 11,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第11次普通天气观测，仪器状态无变化。",
+        "project_id": "c881c787-99de-478b-8d4c-08aad35dd9e3"
+      }
+    ],
+    "stats": {
+      "vector_hits": 5,
+      "keyword_hits": 1,
+      "fused_total": 2,
+      "recall_tokens_est": 48,
+      "context_tokens_est": 368,
+      "share": 0.1304,
+      "vector_status": "ok",
+      "keyword_status": "ok",
+      "degrade_reason": null
+    },
+    "wall_ms": 64.307
+  },
+  {
+    "case_id": "alias_only",
+    "variant": "keyword",
+    "embedding_kind": "disabled",
+    "metrics": {
+      "required": 1,
+      "hit": 1,
+      "returned_unique": 11,
+      "recall_at_k": 1.0,
+      "irrelevant_ratio": 0.9090909090909091,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 2792,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "7b1b9e1a-cb07-4e74-9438-dc947bc16947",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "2e8bf9d2-a83c-4596-9141-ee1f99a271c0",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "aabbb5e9-a53c-42cb-9f3a-c7ba138108de",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "113f2826-5b82-4ed7-9ea1-a74ed8795e4a",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "c467046b-449f-4151-ae65-dc147fbdcf52",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "b459b189-f826-4ee5-8a9b-559658fd2788",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "9b7d2b69-c34b-48ee-804b-d6f024f779b3",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "10e2d6c1-5628-47b0-bad2-afa57096c582",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "25c9f3d5-7c8a-4448-a75f-f4b4c023df91",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "b2d4cbe0-e36f-46b7-9977-61565fe95043",
+        "chapter": 12,
+        "confidence": 1.0,
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "0191a244-8da7-41e4-a860-4013a7653143",
+        "chapter": 1,
+        "confidence": 1.0,
+        "recalled_by": "keyword",
+        "summary": "老林将万用表烧毁残骸封存",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      }
+    ],
+    "stats": {
+      "vector_hits": 0,
+      "keyword_hits": 1,
+      "fused_total": 1,
+      "recall_tokens_est": 16,
+      "context_tokens_est": 336,
+      "share": 0.0476,
+      "vector_status": "disabled",
+      "keyword_status": "ok",
+      "degrade_reason": "vector_disabled"
+    },
+    "wall_ms": 51.809
+  },
+  {
+    "case_id": "alias_only",
+    "variant": "vector_fixture",
+    "embedding_kind": "lexical_fixture_not_semantic",
+    "metrics": {
+      "required": 1,
+      "hit": 1,
+      "returned_unique": 12,
+      "recall_at_k": 1.0,
+      "irrelevant_ratio": 0.9166666666666666,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 3078,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "7b1b9e1a-cb07-4e74-9438-dc947bc16947",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "2e8bf9d2-a83c-4596-9141-ee1f99a271c0",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "aabbb5e9-a53c-42cb-9f3a-c7ba138108de",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "113f2826-5b82-4ed7-9ea1-a74ed8795e4a",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "c467046b-449f-4151-ae65-dc147fbdcf52",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "b459b189-f826-4ee5-8a9b-559658fd2788",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "9b7d2b69-c34b-48ee-804b-d6f024f779b3",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "10e2d6c1-5628-47b0-bad2-afa57096c582",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "25c9f3d5-7c8a-4448-a75f-f4b4c023df91",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "b2d4cbe0-e36f-46b7-9977-61565fe95043",
+        "chapter": 12,
+        "confidence": 1.0,
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "0191a244-8da7-41e4-a860-4013a7653143",
+        "chapter": 1,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "老林将万用表烧毁残骸封存",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "84b74336-978c-44e5-86ac-368528ffe58c",
+        "chapter": 11,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第11次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      }
+    ],
+    "stats": {
+      "vector_hits": 5,
+      "keyword_hits": 0,
+      "fused_total": 2,
+      "recall_tokens_est": 48,
+      "context_tokens_est": 368,
+      "share": 0.1304,
+      "vector_status": "ok",
+      "keyword_status": "empty",
+      "degrade_reason": "keyword_empty"
+    },
+    "wall_ms": 45.485
+  },
+  {
+    "case_id": "alias_only",
+    "variant": "rrf_fixture",
+    "embedding_kind": "lexical_fixture_not_semantic",
+    "metrics": {
+      "required": 1,
+      "hit": 1,
+      "returned_unique": 12,
+      "recall_at_k": 1.0,
+      "irrelevant_ratio": 0.9166666666666666,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 3089,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "7b1b9e1a-cb07-4e74-9438-dc947bc16947",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "2e8bf9d2-a83c-4596-9141-ee1f99a271c0",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "aabbb5e9-a53c-42cb-9f3a-c7ba138108de",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "113f2826-5b82-4ed7-9ea1-a74ed8795e4a",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "c467046b-449f-4151-ae65-dc147fbdcf52",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "b459b189-f826-4ee5-8a9b-559658fd2788",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "9b7d2b69-c34b-48ee-804b-d6f024f779b3",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "10e2d6c1-5628-47b0-bad2-afa57096c582",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "25c9f3d5-7c8a-4448-a75f-f4b4c023df91",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "b2d4cbe0-e36f-46b7-9977-61565fe95043",
+        "chapter": 12,
+        "confidence": 1.0,
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "0191a244-8da7-41e4-a860-4013a7653143",
+        "chapter": 1,
+        "confidence": 1.0,
+        "recalled_by": "keyword+vector",
+        "summary": "老林将万用表烧毁残骸封存",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      },
+      {
+        "event_id": "84b74336-978c-44e5-86ac-368528ffe58c",
+        "chapter": 11,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第11次普通天气观测，仪器状态无变化。",
+        "project_id": "200b2bd0-975f-4628-b19a-21932110bc87"
+      }
+    ],
+    "stats": {
+      "vector_hits": 5,
+      "keyword_hits": 1,
+      "fused_total": 2,
+      "recall_tokens_est": 48,
+      "context_tokens_est": 368,
+      "share": 0.1304,
+      "vector_status": "ok",
+      "keyword_status": "ok",
+      "degrade_reason": null
+    },
+    "wall_ms": 70.531
+  },
+  {
+    "case_id": "alias_query",
+    "variant": "keyword",
+    "embedding_kind": "disabled",
+    "metrics": {
+      "required": 1,
+      "hit": 1,
+      "returned_unique": 11,
+      "recall_at_k": 1.0,
+      "irrelevant_ratio": 0.9090909090909091,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 2789,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "61da945d-f5b0-4341-bb8f-d19d2bb83e15",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "00b42800-ead6-44bb-b1b8-85eed99f60a9",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "f5de37cd-4b92-47f6-a04c-737829c23e4a",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "b5a79e93-79d7-408b-8824-0d3e0bcd1fa2",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "00b05e4c-3d95-4ebe-9272-4b013f9e9210",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "6914b27e-62ae-4981-9926-bc5e118bcd26",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "9be38495-a969-471c-abd4-bc84a22c6a9d",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "b6f841bb-b329-48b3-8ffe-f12e3b40aa15",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "fcd3a906-173f-4674-9938-c1c50fdcfde4",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "f9c5d99f-5f12-4743-aaab-37e9d3355f51",
+        "chapter": 12,
+        "confidence": 1.0,
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "45d8800a-a2b3-4bb1-9d22-786a84f6ed62",
+        "chapter": 1,
+        "confidence": 1.0,
+        "recalled_by": "keyword",
+        "summary": "林川将损坏接线盒封存",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      }
+    ],
+    "stats": {
+      "vector_hits": 0,
+      "keyword_hits": 1,
+      "fused_total": 1,
+      "recall_tokens_est": 14,
+      "context_tokens_est": 334,
+      "share": 0.0419,
+      "vector_status": "disabled",
+      "keyword_status": "ok",
+      "degrade_reason": "vector_disabled"
+    },
+    "wall_ms": 56.675
+  },
+  {
+    "case_id": "alias_query",
+    "variant": "vector_fixture",
+    "embedding_kind": "lexical_fixture_not_semantic",
+    "metrics": {
+      "required": 1,
+      "hit": 1,
+      "returned_unique": 13,
+      "recall_at_k": 1.0,
+      "irrelevant_ratio": 0.9230769230769231,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 3362,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "61da945d-f5b0-4341-bb8f-d19d2bb83e15",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "00b42800-ead6-44bb-b1b8-85eed99f60a9",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "f5de37cd-4b92-47f6-a04c-737829c23e4a",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "b5a79e93-79d7-408b-8824-0d3e0bcd1fa2",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "00b05e4c-3d95-4ebe-9272-4b013f9e9210",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "6914b27e-62ae-4981-9926-bc5e118bcd26",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "9be38495-a969-471c-abd4-bc84a22c6a9d",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "b6f841bb-b329-48b3-8ffe-f12e3b40aa15",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "fcd3a906-173f-4674-9938-c1c50fdcfde4",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "f9c5d99f-5f12-4743-aaab-37e9d3355f51",
+        "chapter": 12,
+        "confidence": 1.0,
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "45d8800a-a2b3-4bb1-9d22-786a84f6ed62",
+        "chapter": 1,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "林川将损坏接线盒封存",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "4e59be3b-af30-4048-b2d1-c1a1ff605781",
+        "chapter": 11,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第11次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "5c8b9afc-1ee7-418d-bfb3-ca551d1716d4",
+        "chapter": 10,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第10次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      }
+    ],
+    "stats": {
+      "vector_hits": 5,
+      "keyword_hits": 0,
+      "fused_total": 3,
+      "recall_tokens_est": 78,
+      "context_tokens_est": 398,
+      "share": 0.196,
+      "vector_status": "ok",
+      "keyword_status": "empty",
+      "degrade_reason": "keyword_empty"
+    },
+    "wall_ms": 49.689
+  },
+  {
+    "case_id": "alias_query",
+    "variant": "rrf_fixture",
+    "embedding_kind": "lexical_fixture_not_semantic",
+    "metrics": {
+      "required": 1,
+      "hit": 1,
+      "returned_unique": 13,
+      "recall_at_k": 1.0,
+      "irrelevant_ratio": 0.9230769230769231,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 3373,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "61da945d-f5b0-4341-bb8f-d19d2bb83e15",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "00b42800-ead6-44bb-b1b8-85eed99f60a9",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "f5de37cd-4b92-47f6-a04c-737829c23e4a",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "b5a79e93-79d7-408b-8824-0d3e0bcd1fa2",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "00b05e4c-3d95-4ebe-9272-4b013f9e9210",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "6914b27e-62ae-4981-9926-bc5e118bcd26",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "9be38495-a969-471c-abd4-bc84a22c6a9d",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "b6f841bb-b329-48b3-8ffe-f12e3b40aa15",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "fcd3a906-173f-4674-9938-c1c50fdcfde4",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "f9c5d99f-5f12-4743-aaab-37e9d3355f51",
+        "chapter": 12,
+        "confidence": 1.0,
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "45d8800a-a2b3-4bb1-9d22-786a84f6ed62",
+        "chapter": 1,
+        "confidence": 1.0,
+        "recalled_by": "keyword+vector",
+        "summary": "林川将损坏接线盒封存",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "4e59be3b-af30-4048-b2d1-c1a1ff605781",
+        "chapter": 11,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第11次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      },
+      {
+        "event_id": "5c8b9afc-1ee7-418d-bfb3-ca551d1716d4",
+        "chapter": 10,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第10次普通天气观测，仪器状态无变化。",
+        "project_id": "9020b56f-9b6d-46fc-9748-a25e0c9a256d"
+      }
+    ],
+    "stats": {
+      "vector_hits": 5,
+      "keyword_hits": 1,
+      "fused_total": 3,
+      "recall_tokens_est": 78,
+      "context_tokens_est": 398,
+      "share": 0.196,
+      "vector_status": "ok",
+      "keyword_status": "ok",
+      "degrade_reason": null
+    },
+    "wall_ms": 61.228
+  },
+  {
+    "case_id": "distractor_names",
+    "variant": "keyword",
+    "embedding_kind": "disabled",
+    "metrics": {
+      "required": 1,
+      "hit": 0,
+      "returned_unique": 10,
+      "recall_at_k": 0.0,
+      "irrelevant_ratio": 1.0,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 2453,
+      "missing_ids": [
+        "3f1f1bc6-5756-49b8-80c0-bb3868289362"
+      ]
+    },
+    "returned": [
+      {
+        "event_id": "cef71807-dfd1-47ee-91e3-8507488a207a",
+        "chapter": 27,
+        "confidence": 1.0,
+        "summary": "林川喝水休息，未涉及损坏设备。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "d4ce7e05-bbf0-4732-9cae-973e5c6825c0",
+        "chapter": 26,
+        "confidence": 1.0,
+        "summary": "林川喝水休息，未涉及损坏设备。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "ab2bdd9a-4dbd-4a3d-94de-6eca84b07c64",
+        "chapter": 25,
+        "confidence": 1.0,
+        "summary": "林川喝水休息，未涉及损坏设备。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "307e861b-d0d0-4eb2-b4ff-e1d84b107e0d",
+        "chapter": 24,
+        "confidence": 1.0,
+        "summary": "林川喝水休息，未涉及损坏设备。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "0e84942c-c95c-4442-b7cc-1f23e79bc809",
+        "chapter": 23,
+        "confidence": 1.0,
+        "summary": "林川喝水休息，未涉及损坏设备。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "9b5484ca-5899-4dce-86c5-e4045dbc9f6e",
+        "chapter": 22,
+        "confidence": 1.0,
+        "summary": "林川喝水休息，未涉及损坏设备。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "48ab21d4-122d-4539-8b94-0b9d118a5e68",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "1f90ab3c-884f-43d9-8952-19c6a4b1d4a7",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "e964a43b-48d2-485d-9393-18363857cb49",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "876ce0f7-28bc-489f-a547-0ee0883aac9f",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      }
+    ],
+    "stats": {
+      "vector_hits": 0,
+      "keyword_hits": 5,
+      "fused_total": 0,
+      "recall_tokens_est": 0,
+      "context_tokens_est": 254,
+      "share": 0.0,
+      "vector_status": "disabled",
+      "keyword_status": "ok",
+      "degrade_reason": "vector_disabled"
+    },
+    "wall_ms": 51.965
+  },
+  {
+    "case_id": "distractor_names",
+    "variant": "vector_fixture",
+    "embedding_kind": "lexical_fixture_not_semantic",
+    "metrics": {
+      "required": 1,
+      "hit": 1,
+      "returned_unique": 15,
+      "recall_at_k": 1.0,
+      "irrelevant_ratio": 0.9333333333333333,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 3869,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "cef71807-dfd1-47ee-91e3-8507488a207a",
+        "chapter": 27,
+        "confidence": 1.0,
+        "summary": "林川喝水休息，未涉及损坏设备。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "d4ce7e05-bbf0-4732-9cae-973e5c6825c0",
+        "chapter": 26,
+        "confidence": 1.0,
+        "summary": "林川喝水休息，未涉及损坏设备。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "ab2bdd9a-4dbd-4a3d-94de-6eca84b07c64",
+        "chapter": 25,
+        "confidence": 1.0,
+        "summary": "林川喝水休息，未涉及损坏设备。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "307e861b-d0d0-4eb2-b4ff-e1d84b107e0d",
+        "chapter": 24,
+        "confidence": 1.0,
+        "summary": "林川喝水休息，未涉及损坏设备。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "0e84942c-c95c-4442-b7cc-1f23e79bc809",
+        "chapter": 23,
+        "confidence": 1.0,
+        "summary": "林川喝水休息，未涉及损坏设备。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "9b5484ca-5899-4dce-86c5-e4045dbc9f6e",
+        "chapter": 22,
+        "confidence": 1.0,
+        "summary": "林川喝水休息，未涉及损坏设备。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "48ab21d4-122d-4539-8b94-0b9d118a5e68",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "1f90ab3c-884f-43d9-8952-19c6a4b1d4a7",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "e964a43b-48d2-485d-9393-18363857cb49",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "876ce0f7-28bc-489f-a547-0ee0883aac9f",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "3f1f1bc6-5756-49b8-80c0-bb3868289362",
+        "chapter": 1,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "林川将损坏接线盒封存",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "39de2af3-2dd1-4559-ae42-eac4fa68e46d",
+        "chapter": 11,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第11次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "06a5711b-d751-42f7-8268-4ac093fe672e",
+        "chapter": 12,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "97bde33f-ba14-4578-a8e2-72fb2c8632de",
+        "chapter": 13,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "78a11fb1-48fd-409d-bee3-c71c60aee212",
+        "chapter": 10,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第10次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      }
+    ],
+    "stats": {
+      "vector_hits": 5,
+      "keyword_hits": 0,
+      "fused_total": 5,
+      "recall_tokens_est": 142,
+      "context_tokens_est": 396,
+      "share": 0.3586,
+      "vector_status": "ok",
+      "keyword_status": "empty",
+      "degrade_reason": "keyword_empty"
+    },
+    "wall_ms": 50.905
+  },
+  {
+    "case_id": "distractor_names",
+    "variant": "rrf_fixture",
+    "embedding_kind": "lexical_fixture_not_semantic",
+    "metrics": {
+      "required": 1,
+      "hit": 1,
+      "returned_unique": 15,
+      "recall_at_k": 1.0,
+      "irrelevant_ratio": 0.9333333333333333,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 3869,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "cef71807-dfd1-47ee-91e3-8507488a207a",
+        "chapter": 27,
+        "confidence": 1.0,
+        "summary": "林川喝水休息，未涉及损坏设备。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "d4ce7e05-bbf0-4732-9cae-973e5c6825c0",
+        "chapter": 26,
+        "confidence": 1.0,
+        "summary": "林川喝水休息，未涉及损坏设备。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "ab2bdd9a-4dbd-4a3d-94de-6eca84b07c64",
+        "chapter": 25,
+        "confidence": 1.0,
+        "summary": "林川喝水休息，未涉及损坏设备。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "307e861b-d0d0-4eb2-b4ff-e1d84b107e0d",
+        "chapter": 24,
+        "confidence": 1.0,
+        "summary": "林川喝水休息，未涉及损坏设备。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "0e84942c-c95c-4442-b7cc-1f23e79bc809",
+        "chapter": 23,
+        "confidence": 1.0,
+        "summary": "林川喝水休息，未涉及损坏设备。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "9b5484ca-5899-4dce-86c5-e4045dbc9f6e",
+        "chapter": 22,
+        "confidence": 1.0,
+        "summary": "林川喝水休息，未涉及损坏设备。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "48ab21d4-122d-4539-8b94-0b9d118a5e68",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "1f90ab3c-884f-43d9-8952-19c6a4b1d4a7",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "e964a43b-48d2-485d-9393-18363857cb49",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "876ce0f7-28bc-489f-a547-0ee0883aac9f",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "3f1f1bc6-5756-49b8-80c0-bb3868289362",
+        "chapter": 1,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "林川将损坏接线盒封存",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "39de2af3-2dd1-4559-ae42-eac4fa68e46d",
+        "chapter": 11,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第11次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "06a5711b-d751-42f7-8268-4ac093fe672e",
+        "chapter": 12,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "97bde33f-ba14-4578-a8e2-72fb2c8632de",
+        "chapter": 13,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      },
+      {
+        "event_id": "78a11fb1-48fd-409d-bee3-c71c60aee212",
+        "chapter": 10,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第10次普通天气观测，仪器状态无变化。",
+        "project_id": "b6ed9a71-f52b-4d2f-b5e5-57e69e1485a1"
+      }
+    ],
+    "stats": {
+      "vector_hits": 5,
+      "keyword_hits": 5,
+      "fused_total": 5,
+      "recall_tokens_est": 142,
+      "context_tokens_est": 396,
+      "share": 0.3586,
+      "vector_status": "ok",
+      "keyword_status": "ok",
+      "degrade_reason": null
+    },
+    "wall_ms": 51.761
+  },
+  {
+    "case_id": "other_project_only",
+    "variant": "keyword",
+    "embedding_kind": "disabled",
+    "metrics": {
+      "required": 0,
+      "hit": 0,
+      "returned_unique": 10,
+      "recall_at_k": null,
+      "irrelevant_ratio": 1.0,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 2520,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "8d01da03-e280-4bf1-8ee1-4c19fe3c446b",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "fbdcc8dd-cce0-461a-bd26-1d4a749c645c",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "a20335db-8985-4eae-ac36-97a4af6ce13a",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "b74c8e80-cbe8-4d03-8fe1-e18785c607ca",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "456b950b-c5d7-4229-a235-ab6d597ec5d7",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "cd79f7aa-8149-4fea-a231-f0988536d281",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "97f242c4-7831-44d5-bcdb-4bde260fdea7",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "e7e05d24-3389-4b1f-a28f-dc8713a7c14a",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "bd3e9172-01d8-4398-84f6-69b3ff9493c2",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "67d2ffdc-e320-4e76-ba01-832f40150a00",
+        "chapter": 12,
+        "confidence": 1.0,
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      }
+    ],
+    "stats": {
+      "vector_hits": 0,
+      "keyword_hits": 0,
+      "fused_total": 0,
+      "recall_tokens_est": 0,
+      "context_tokens_est": 320,
+      "share": 0.0,
+      "vector_status": "disabled",
+      "keyword_status": "empty",
+      "degrade_reason": "vector_disabled+keyword_empty"
+    },
+    "wall_ms": 47.139
+  },
+  {
+    "case_id": "other_project_only",
+    "variant": "vector_fixture",
+    "embedding_kind": "lexical_fixture_not_semantic",
+    "metrics": {
+      "required": 0,
+      "hit": 0,
+      "returned_unique": 12,
+      "recall_at_k": null,
+      "irrelevant_ratio": 1.0,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 3094,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "8d01da03-e280-4bf1-8ee1-4c19fe3c446b",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "fbdcc8dd-cce0-461a-bd26-1d4a749c645c",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "a20335db-8985-4eae-ac36-97a4af6ce13a",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "b74c8e80-cbe8-4d03-8fe1-e18785c607ca",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "456b950b-c5d7-4229-a235-ab6d597ec5d7",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "cd79f7aa-8149-4fea-a231-f0988536d281",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "97f242c4-7831-44d5-bcdb-4bde260fdea7",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "e7e05d24-3389-4b1f-a28f-dc8713a7c14a",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "bd3e9172-01d8-4398-84f6-69b3ff9493c2",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "67d2ffdc-e320-4e76-ba01-832f40150a00",
+        "chapter": 12,
+        "confidence": 1.0,
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "8895637c-5f69-44bc-a555-2314ef04e342",
+        "chapter": 11,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第11次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "673938de-fb79-4d06-8c09-5c9267e29d55",
+        "chapter": 10,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第10次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      }
+    ],
+    "stats": {
+      "vector_hits": 5,
+      "keyword_hits": 0,
+      "fused_total": 2,
+      "recall_tokens_est": 64,
+      "context_tokens_est": 384,
+      "share": 0.1667,
+      "vector_status": "ok",
+      "keyword_status": "empty",
+      "degrade_reason": "keyword_empty"
+    },
+    "wall_ms": 43.871
+  },
+  {
+    "case_id": "other_project_only",
+    "variant": "rrf_fixture",
+    "embedding_kind": "lexical_fixture_not_semantic",
+    "metrics": {
+      "required": 0,
+      "hit": 0,
+      "returned_unique": 12,
+      "recall_at_k": null,
+      "irrelevant_ratio": 1.0,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 3094,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "8d01da03-e280-4bf1-8ee1-4c19fe3c446b",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "fbdcc8dd-cce0-461a-bd26-1d4a749c645c",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "a20335db-8985-4eae-ac36-97a4af6ce13a",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "b74c8e80-cbe8-4d03-8fe1-e18785c607ca",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "456b950b-c5d7-4229-a235-ab6d597ec5d7",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "cd79f7aa-8149-4fea-a231-f0988536d281",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "97f242c4-7831-44d5-bcdb-4bde260fdea7",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "e7e05d24-3389-4b1f-a28f-dc8713a7c14a",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "bd3e9172-01d8-4398-84f6-69b3ff9493c2",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "67d2ffdc-e320-4e76-ba01-832f40150a00",
+        "chapter": 12,
+        "confidence": 1.0,
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "8895637c-5f69-44bc-a555-2314ef04e342",
+        "chapter": 11,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第11次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      },
+      {
+        "event_id": "673938de-fb79-4d06-8c09-5c9267e29d55",
+        "chapter": 10,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第10次普通天气观测，仪器状态无变化。",
+        "project_id": "432ff1c6-dd07-4512-a665-b33e6b7fa689"
+      }
+    ],
+    "stats": {
+      "vector_hits": 5,
+      "keyword_hits": 0,
+      "fused_total": 2,
+      "recall_tokens_est": 64,
+      "context_tokens_est": 384,
+      "share": 0.1667,
+      "vector_status": "ok",
+      "keyword_status": "empty",
+      "degrade_reason": "keyword_empty"
+    },
+    "wall_ms": 56.779
+  },
+  {
+    "case_id": "future_only",
+    "variant": "keyword",
+    "embedding_kind": "disabled",
+    "metrics": {
+      "required": 0,
+      "hit": 0,
+      "returned_unique": 10,
+      "recall_at_k": null,
+      "irrelevant_ratio": 1.0,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 2520,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "974fa7d9-6f41-4537-a7d8-873acade19e6",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "0bb99e9a-4b05-42a0-a81c-52e807c4366b",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "84907680-9018-418f-807b-f64200288584",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "401f0528-52ca-404a-8507-705e0b36b549",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "12aba2da-7875-4108-8ac5-1bdbf6ada50f",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "2d101801-fe7d-4100-9d25-f6bbf30bcee8",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "1ae76708-5a41-4fec-b0ce-7143de4729c3",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "fea1ca44-94c3-4246-9824-2e8a442721b8",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "3a1db6e1-2031-48dd-924c-640a7b37dbb0",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "5efb9697-dc28-4b67-9aca-3fca8312188b",
+        "chapter": 12,
+        "confidence": 1.0,
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      }
+    ],
+    "stats": {
+      "vector_hits": 0,
+      "keyword_hits": 1,
+      "fused_total": 1,
+      "recall_tokens_est": 12,
+      "context_tokens_est": 332,
+      "share": 0.0361,
+      "vector_status": "disabled",
+      "keyword_status": "ok",
+      "degrade_reason": "vector_disabled"
+    },
+    "wall_ms": 159.804
+  },
+  {
+    "case_id": "future_only",
+    "variant": "vector_fixture",
+    "embedding_kind": "lexical_fixture_not_semantic",
+    "metrics": {
+      "required": 0,
+      "hit": 0,
+      "returned_unique": 12,
+      "recall_at_k": null,
+      "irrelevant_ratio": 1.0,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 3094,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "974fa7d9-6f41-4537-a7d8-873acade19e6",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "0bb99e9a-4b05-42a0-a81c-52e807c4366b",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "84907680-9018-418f-807b-f64200288584",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "401f0528-52ca-404a-8507-705e0b36b549",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "12aba2da-7875-4108-8ac5-1bdbf6ada50f",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "2d101801-fe7d-4100-9d25-f6bbf30bcee8",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "1ae76708-5a41-4fec-b0ce-7143de4729c3",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "fea1ca44-94c3-4246-9824-2e8a442721b8",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "3a1db6e1-2031-48dd-924c-640a7b37dbb0",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "5efb9697-dc28-4b67-9aca-3fca8312188b",
+        "chapter": 12,
+        "confidence": 1.0,
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "52b7f592-ebb6-4f09-a10a-f55dcddfb7d3",
+        "chapter": 11,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第11次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "6be7198e-0a10-4d20-8fc2-2aaef7fbee0d",
+        "chapter": 10,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第10次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      }
+    ],
+    "stats": {
+      "vector_hits": 5,
+      "keyword_hits": 0,
+      "fused_total": 2,
+      "recall_tokens_est": 64,
+      "context_tokens_est": 384,
+      "share": 0.1667,
+      "vector_status": "ok",
+      "keyword_status": "empty",
+      "degrade_reason": "keyword_empty"
+    },
+    "wall_ms": 44.537
+  },
+  {
+    "case_id": "future_only",
+    "variant": "rrf_fixture",
+    "embedding_kind": "lexical_fixture_not_semantic",
+    "metrics": {
+      "required": 0,
+      "hit": 0,
+      "returned_unique": 12,
+      "recall_at_k": null,
+      "irrelevant_ratio": 1.0,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 3094,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "974fa7d9-6f41-4537-a7d8-873acade19e6",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "0bb99e9a-4b05-42a0-a81c-52e807c4366b",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "84907680-9018-418f-807b-f64200288584",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "401f0528-52ca-404a-8507-705e0b36b549",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "12aba2da-7875-4108-8ac5-1bdbf6ada50f",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "2d101801-fe7d-4100-9d25-f6bbf30bcee8",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "1ae76708-5a41-4fec-b0ce-7143de4729c3",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "fea1ca44-94c3-4246-9824-2e8a442721b8",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "3a1db6e1-2031-48dd-924c-640a7b37dbb0",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "5efb9697-dc28-4b67-9aca-3fca8312188b",
+        "chapter": 12,
+        "confidence": 1.0,
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "52b7f592-ebb6-4f09-a10a-f55dcddfb7d3",
+        "chapter": 11,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第11次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      },
+      {
+        "event_id": "6be7198e-0a10-4d20-8fc2-2aaef7fbee0d",
+        "chapter": 10,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第10次普通天气观测，仪器状态无变化。",
+        "project_id": "8ac7f55c-0cf1-49ee-8191-24b3b740cc10"
+      }
+    ],
+    "stats": {
+      "vector_hits": 5,
+      "keyword_hits": 1,
+      "fused_total": 3,
+      "recall_tokens_est": 76,
+      "context_tokens_est": 396,
+      "share": 0.1919,
+      "vector_status": "ok",
+      "keyword_status": "ok",
+      "degrade_reason": null
+    },
+    "wall_ms": 69.965
+  },
+  {
+    "case_id": "escaped_name",
+    "variant": "keyword",
+    "embedding_kind": "disabled",
+    "metrics": {
+      "required": 1,
+      "hit": 1,
+      "returned_unique": 11,
+      "recall_at_k": 1.0,
+      "irrelevant_ratio": 0.9090909090909091,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 2770,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "ce310a3e-8208-45f6-97bb-c452572932c0",
+        "chapter": 25,
+        "confidence": 1.0,
+        "summary": "林甲川乙做无关观察",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "882a7ffc-2bec-4854-86d7-092bf0f54d42",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "60028714-c0fb-430e-9ab5-b53ef60ee4b0",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "517b040a-ec48-4d77-9e46-ccb7e2c8abf3",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "04493b6a-2729-4547-8f19-1d3afc31a21b",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "beb8defe-2d39-41ab-9e62-922f5e1530dd",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "1628588d-ad6d-4402-96f8-8a8a6cfdb380",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "244295ff-7a0b-426f-98ce-d0614bbce56a",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "58ddd1e3-008f-463b-876b-9916a5ffac71",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "e52d8e08-2925-4ce1-b813-8cae241a608a",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "95a74b84-eba6-4cd6-9f38-c6485a921d6c",
+        "chapter": 1,
+        "confidence": 1.0,
+        "recalled_by": "keyword",
+        "summary": "林%川_确认绝缘损坏",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      }
+    ],
+    "stats": {
+      "vector_hits": 0,
+      "keyword_hits": 1,
+      "fused_total": 1,
+      "recall_tokens_est": 14,
+      "context_tokens_est": 314,
+      "share": 0.0446,
+      "vector_status": "disabled",
+      "keyword_status": "ok",
+      "degrade_reason": "vector_disabled"
+    },
+    "wall_ms": 51.471
+  },
+  {
+    "case_id": "escaped_name",
+    "variant": "vector_fixture",
+    "embedding_kind": "lexical_fixture_not_semantic",
+    "metrics": {
+      "required": 1,
+      "hit": 1,
+      "returned_unique": 13,
+      "recall_at_k": 1.0,
+      "irrelevant_ratio": 0.9230769230769231,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 3342,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "ce310a3e-8208-45f6-97bb-c452572932c0",
+        "chapter": 25,
+        "confidence": 1.0,
+        "summary": "林甲川乙做无关观察",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "882a7ffc-2bec-4854-86d7-092bf0f54d42",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "60028714-c0fb-430e-9ab5-b53ef60ee4b0",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "517b040a-ec48-4d77-9e46-ccb7e2c8abf3",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "04493b6a-2729-4547-8f19-1d3afc31a21b",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "beb8defe-2d39-41ab-9e62-922f5e1530dd",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "1628588d-ad6d-4402-96f8-8a8a6cfdb380",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "244295ff-7a0b-426f-98ce-d0614bbce56a",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "58ddd1e3-008f-463b-876b-9916a5ffac71",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "e52d8e08-2925-4ce1-b813-8cae241a608a",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "95a74b84-eba6-4cd6-9f38-c6485a921d6c",
+        "chapter": 1,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "林%川_确认绝缘损坏",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "00eaf974-ea32-4423-856c-62b6d3af1c31",
+        "chapter": 11,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第11次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "12aeca06-3078-45ca-862b-a5b9fbf0b540",
+        "chapter": 12,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      }
+    ],
+    "stats": {
+      "vector_hits": 5,
+      "keyword_hits": 0,
+      "fused_total": 3,
+      "recall_tokens_est": 78,
+      "context_tokens_est": 378,
+      "share": 0.2063,
+      "vector_status": "ok",
+      "keyword_status": "empty",
+      "degrade_reason": "keyword_empty"
+    },
+    "wall_ms": 52.187
+  },
+  {
+    "case_id": "escaped_name",
+    "variant": "rrf_fixture",
+    "embedding_kind": "lexical_fixture_not_semantic",
+    "metrics": {
+      "required": 1,
+      "hit": 1,
+      "returned_unique": 13,
+      "recall_at_k": 1.0,
+      "irrelevant_ratio": 0.9230769230769231,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 3353,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "ce310a3e-8208-45f6-97bb-c452572932c0",
+        "chapter": 25,
+        "confidence": 1.0,
+        "summary": "林甲川乙做无关观察",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "882a7ffc-2bec-4854-86d7-092bf0f54d42",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "60028714-c0fb-430e-9ab5-b53ef60ee4b0",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "517b040a-ec48-4d77-9e46-ccb7e2c8abf3",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "04493b6a-2729-4547-8f19-1d3afc31a21b",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "beb8defe-2d39-41ab-9e62-922f5e1530dd",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "1628588d-ad6d-4402-96f8-8a8a6cfdb380",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "244295ff-7a0b-426f-98ce-d0614bbce56a",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "58ddd1e3-008f-463b-876b-9916a5ffac71",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "e52d8e08-2925-4ce1-b813-8cae241a608a",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "95a74b84-eba6-4cd6-9f38-c6485a921d6c",
+        "chapter": 1,
+        "confidence": 1.0,
+        "recalled_by": "keyword+vector",
+        "summary": "林%川_确认绝缘损坏",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "00eaf974-ea32-4423-856c-62b6d3af1c31",
+        "chapter": 11,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第11次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      },
+      {
+        "event_id": "12aeca06-3078-45ca-862b-a5b9fbf0b540",
+        "chapter": 12,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "900a7b87-74b7-459c-81fe-d47c436c38f2"
+      }
+    ],
+    "stats": {
+      "vector_hits": 5,
+      "keyword_hits": 1,
+      "fused_total": 3,
+      "recall_tokens_est": 78,
+      "context_tokens_est": 378,
+      "share": 0.2063,
+      "vector_status": "ok",
+      "keyword_status": "ok",
+      "degrade_reason": null
+    },
+    "wall_ms": 63.81
+  },
+  {
+    "case_id": "two_required",
+    "variant": "keyword",
+    "embedding_kind": "disabled",
+    "metrics": {
+      "required": 2,
+      "hit": 2,
+      "returned_unique": 12,
+      "recall_at_k": 1.0,
+      "irrelevant_ratio": 0.8333333333333334,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 3058,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "99368581-0465-4180-af87-cafff5389ec8",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "baacb75f-e6fe-4f56-b86b-749050198987",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "67bdac6c-8d06-4d53-9089-8ed0bb3dd65b",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "be16f9f7-48ca-45ba-8301-ac5dd4adf924",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "f12f04da-37dc-4199-9a53-6cb895c7ce78",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "98cdcc0d-fb9c-4fe3-a5b5-e890b90f73a1",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "deebd54a-0a9b-419e-9a2f-69c562a9d71c",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "4fb7e9b1-086a-45e0-bc0c-279bb6649eb9",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "ca918457-7dc4-4d18-8244-4b6cbc6c4e0b",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "50637f29-7a92-4e74-9682-a1e8e81b13e0",
+        "chapter": 12,
+        "confidence": 1.0,
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "c00c0f94-e911-4429-b41a-e31fbd0b0009",
+        "chapter": 2,
+        "confidence": 1.0,
+        "recalled_by": "keyword",
+        "summary": "林川扭伤左膝，短期不得负重",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "1419d7e0-28fb-4976-8a36-a766d2ef6e74",
+        "chapter": 1,
+        "confidence": 1.0,
+        "recalled_by": "keyword",
+        "summary": "林川损坏万用表",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      }
+    ],
+    "stats": {
+      "vector_hits": 0,
+      "keyword_hits": 2,
+      "fused_total": 2,
+      "recall_tokens_est": 27,
+      "context_tokens_est": 347,
+      "share": 0.0778,
+      "vector_status": "disabled",
+      "keyword_status": "ok",
+      "degrade_reason": "vector_disabled"
+    },
+    "wall_ms": 49.561
+  },
+  {
+    "case_id": "two_required",
+    "variant": "vector_fixture",
+    "embedding_kind": "lexical_fixture_not_semantic",
+    "metrics": {
+      "required": 2,
+      "hit": 1,
+      "returned_unique": 13,
+      "recall_at_k": 0.5,
+      "irrelevant_ratio": 0.9230769230769231,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 3358,
+      "missing_ids": [
+        "c00c0f94-e911-4429-b41a-e31fbd0b0009"
+      ]
+    },
+    "returned": [
+      {
+        "event_id": "99368581-0465-4180-af87-cafff5389ec8",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "baacb75f-e6fe-4f56-b86b-749050198987",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "67bdac6c-8d06-4d53-9089-8ed0bb3dd65b",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "be16f9f7-48ca-45ba-8301-ac5dd4adf924",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "f12f04da-37dc-4199-9a53-6cb895c7ce78",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "98cdcc0d-fb9c-4fe3-a5b5-e890b90f73a1",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "deebd54a-0a9b-419e-9a2f-69c562a9d71c",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "4fb7e9b1-086a-45e0-bc0c-279bb6649eb9",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "ca918457-7dc4-4d18-8244-4b6cbc6c4e0b",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "50637f29-7a92-4e74-9682-a1e8e81b13e0",
+        "chapter": 12,
+        "confidence": 1.0,
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "1419d7e0-28fb-4976-8a36-a766d2ef6e74",
+        "chapter": 1,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "林川损坏万用表",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "afc88c05-ff67-4f34-b15d-727099ee4998",
+        "chapter": 11,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第11次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "9b1fee6c-1f24-435b-87ce-cc9b24912e8d",
+        "chapter": 10,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第10次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      }
+    ],
+    "stats": {
+      "vector_hits": 5,
+      "keyword_hits": 0,
+      "fused_total": 3,
+      "recall_tokens_est": 73,
+      "context_tokens_est": 393,
+      "share": 0.1858,
+      "vector_status": "ok",
+      "keyword_status": "empty",
+      "degrade_reason": "keyword_empty"
+    },
+    "wall_ms": 46.236
+  },
+  {
+    "case_id": "two_required",
+    "variant": "rrf_fixture",
+    "embedding_kind": "lexical_fixture_not_semantic",
+    "metrics": {
+      "required": 2,
+      "hit": 2,
+      "returned_unique": 14,
+      "recall_at_k": 1.0,
+      "irrelevant_ratio": 0.8571428571428571,
+      "future_leaks": 0,
+      "tenant_leaks": 0,
+      "tokens_est": 3642,
+      "missing_ids": []
+    },
+    "returned": [
+      {
+        "event_id": "99368581-0465-4180-af87-cafff5389ec8",
+        "chapter": 21,
+        "confidence": 1.0,
+        "summary": "许宁记录第21次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "baacb75f-e6fe-4f56-b86b-749050198987",
+        "chapter": 20,
+        "confidence": 1.0,
+        "summary": "许宁记录第20次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "67bdac6c-8d06-4d53-9089-8ed0bb3dd65b",
+        "chapter": 19,
+        "confidence": 1.0,
+        "summary": "许宁记录第19次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "be16f9f7-48ca-45ba-8301-ac5dd4adf924",
+        "chapter": 18,
+        "confidence": 1.0,
+        "summary": "许宁记录第18次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "f12f04da-37dc-4199-9a53-6cb895c7ce78",
+        "chapter": 17,
+        "confidence": 1.0,
+        "summary": "许宁记录第17次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "98cdcc0d-fb9c-4fe3-a5b5-e890b90f73a1",
+        "chapter": 16,
+        "confidence": 1.0,
+        "summary": "许宁记录第16次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "deebd54a-0a9b-419e-9a2f-69c562a9d71c",
+        "chapter": 15,
+        "confidence": 1.0,
+        "summary": "许宁记录第15次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "4fb7e9b1-086a-45e0-bc0c-279bb6649eb9",
+        "chapter": 14,
+        "confidence": 1.0,
+        "summary": "许宁记录第14次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "ca918457-7dc4-4d18-8244-4b6cbc6c4e0b",
+        "chapter": 13,
+        "confidence": 1.0,
+        "summary": "许宁记录第13次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "50637f29-7a92-4e74-9682-a1e8e81b13e0",
+        "chapter": 12,
+        "confidence": 1.0,
+        "summary": "许宁记录第12次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "1419d7e0-28fb-4976-8a36-a766d2ef6e74",
+        "chapter": 1,
+        "confidence": 1.0,
+        "recalled_by": "keyword+vector",
+        "summary": "林川损坏万用表",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "c00c0f94-e911-4429-b41a-e31fbd0b0009",
+        "chapter": 2,
+        "confidence": 1.0,
+        "recalled_by": "keyword",
+        "summary": "林川扭伤左膝，短期不得负重",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "afc88c05-ff67-4f34-b15d-727099ee4998",
+        "chapter": 11,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第11次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      },
+      {
+        "event_id": "9b1fee6c-1f24-435b-87ce-cc9b24912e8d",
+        "chapter": 10,
+        "confidence": 1.0,
+        "recalled_by": "vector",
+        "summary": "许宁记录第10次普通天气观测，仪器状态无变化。",
+        "project_id": "15b72e58-79e9-447e-9224-96cf510c4154"
+      }
+    ],
+    "stats": {
+      "vector_hits": 5,
+      "keyword_hits": 2,
+      "fused_total": 4,
+      "recall_tokens_est": 91,
+      "context_tokens_est": 411,
+      "share": 0.2214,
+      "vector_status": "ok",
+      "keyword_status": "ok",
+      "degrade_reason": null
+    },
+    "wall_ms": 55.705
+  }
+]

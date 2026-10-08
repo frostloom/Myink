@@ -1,0 +1,16 @@
+{
+  "case_id": "logic.capability_restored",
+  "case_sha256": "648aea6bdaf28ac82e1801aa9df478b993f174618fc43f43a2218a3606faaa80",
+  "execution": "completed",
+  "coverage": "implemented",
+  "attempted": true,
+  "prompt_sha256": "acc63f06856202f025a1c04cb4eb20775ef8da33afecf1b8221e026ee92e00fe",
+  "input_tokens": 735,
+  "output_tokens": 164,
+  "cost_est": 0.002782,
+  "cost_status": "estimated",
+  "raw_output": "{\"verdict\": \"pass\", \"findings\": [], \"reasons\": [\"本章仅两句，描述许宁装入新电池、按下开关，林川等待自检完成后读取测量结果，与上一章章尾（外接电源已断开、电池已取出）形成合理接续：先恢复供电再测量，无重演已完成动作。\", \"符合世界观硬约束：仪器需外接电源或装入电池才能测量，本章通过装入电池恢复供能，未引入其他供能方式。\", \"无章节计划、无伏笔与剧情线可对照，未发现主线偏移、人设或节奏问题。\", \"内容过短但无明确冲突或断裂，按规则不制造冗余修订，判定 pass。\"], \"confidence\": 0.9}",
+  "model_id": "deepseek-flash",
+  "finish_reason": "stop",
+  "wall_ms": 2641
+}

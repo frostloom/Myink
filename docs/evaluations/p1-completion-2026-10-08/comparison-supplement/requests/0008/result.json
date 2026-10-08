@@ -1,0 +1,38 @@
+{
+  "request_index": 8,
+  "case_id": "meter_replacement",
+  "variant": "no_hybrid",
+  "repetition": 2,
+  "prompt_sha256": "35fbf38b05fe47dbf8b55e76cf6e635235c65fba0cd390d6f04a3cf5f85d3213",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 40,
+    "max_cost_yuan": 2.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 6000,
+    "json_mode": false
+  },
+  "started_at": "2026-10-08T12:09:09.990021+00:00",
+  "execution": "completed",
+  "raw_output": "```json\n{\n  \"verdict\": \"rewrite\",\n  \"findings\": [\n    {\n      \"conflict_key\": \"len:21\",\n      \"conflict_type\": \"style\",\n      \"severity\": \"major\",\n      \"scope\": \"local\",\n      \"evidence\": [\n        {\"chapter\": 21, \"quote\": \"正文 1544 字，目标 800 字（区间 640–1040）\"}\n      ],\n      \"confidence\": 0.95,\n      \"suggestion\": \"本章超出目标区间约 50%。建议压缩：合并排查过程的重复描写（手电扫墙、水痕描写出现两次），精简工具操作细节（剥线/压端子/紧固可一句带过），保留故障定位、型号不符的伏笔、临时跳接决策与记录本三处关键节点，压到 640–1040 字。\"\n    }\n  ],\n  \"reasons\": [\n    \"剧情推进合格：完成从检修台到外墙接线盒的排查、定位漏水短路点、万用表来源交代（检修台标准工具柜）、临时跳接恢复供电、记录待申领防水型整盒，主线任务与计划一致，无主线偏移。\",\n    \"接续正常：开头直接承接第20章章尾检修台场景，未重演已完成动作，未丢弃未完成请求，天气（雨未停）与人物（仅林川、许宁）约束均满足。\",\n    \"伏笔植入到位：接线盒型号不符、许宁熟悉备件清单，符合计划 hooks_to_plant。\",\n    \"唯一问题为字数超标（1544 字 vs 目标 800 字，区间 640–1040），属句段级压缩问题，故 rewrite 且 scope=local，无需重规划。\"\n  ],\n  \"confidence\": 0.9\n}\n```",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "```json\n{\n  \"verdict\": \"rewrite\",\n  \"findings\": [\n    {\n      \"conflict_key\": \"len:21\",\n      \"conflict_type\": \"style\",\n      \"severity\": \"major\",\n      \"scope\": \"local\",\n      \"evidence\": [\n        {\"chapter\": 21, \"quote\": \"正文 1544 字，目标 800 字（区间 640–1040）\"}\n      ],\n      \"confidence\": 0.95,\n      \"suggestion\": \"本章超出目标区间约 50%。建议压缩：合并排查过程的重复描写（手电扫墙、水痕描写出现两次），精简工具操作细节（剥线/压端子/紧固可一句带过），保留故障定位、型号不符的伏笔、临时跳接决策与记录本三处关键节点，压到 640–1040 字。\"\n    }\n  ],\n  \"reasons\": [\n    \"剧情推进合格：完成从检修台到外墙接线盒的排查、定位漏水短路点、万用表来源交代（检修台标准工具柜）、临时跳接恢复供电、记录待申领防水型整盒，主线任务与计划一致，无主线偏移。\",\n    \"接续正常：开头直接承接第20章章尾检修台场景，未重演已完成动作，未丢弃未完成请求，天气（雨未停）与人物（仅林川、许宁）约束均满足。\",\n    \"伏笔植入到位：接线盒型号不符、许宁熟悉备件清单，符合计划 hooks_to_plant。\",\n    \"唯一问题为字数超标（1544 字 vs 目标 800 字，区间 640–1040），属句段级压缩问题，故 rewrite 且 scope=local，无需重规划。\"\n  ],\n  \"confidence\": 0.9\n}\n```",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 3836,
+  "output_tokens": 396,
+  "cost_est": 0.01084,
+  "cost_status": "estimated",
+  "wall_ms": 3844
+}

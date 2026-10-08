@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "id": "logic.replacement_item",
+  "group_id": "logic.item",
+  "split": "development",
+  "mode": "audit",
+  "category": "item",
+  "polarity": "negative",
+  "source": {
+    "path": "scripts/eval-logic.py",
+    "case_name": "replacement_item",
+    "adapted_from": [
+      "conflict-samples:06"
+    ]
+  },
+  "input": {
+    "chapter_seq": 2,
+    "context": {
+      "short_context": [
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 1,
+          "tail": "林川唯一的万用表已烧成无法修复的残骸。"
+        }
+      ],
+      "long_term_facts": []
+    },
+    "plan": {},
+    "draft": "许宁从工具库领来一只新万用表。林川把旧表残骸收进废物箱，再用新表测量。"
+  },
+  "expected": {
+    "allowed_verdicts": [
+      "pass"
+    ],
+    "required_issues": [],
+    "forbidden_issues": [
+      "毁坏的旧物直接再现；明确更换新物不得误报"
+    ]
+  },
+  "label": {
+    "status": "proposed",
+    "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+    "reviewer": null
+  }
+}

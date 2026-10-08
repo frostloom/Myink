@@ -1,0 +1,889 @@
+[
+  {
+    "schema_version": 1,
+    "id": "continuity.completed_entry_replayed",
+    "group_id": "continuity.completed_entry_replayed",
+    "split": "development",
+    "mode": "audit",
+    "category": "continuity",
+    "polarity": "positive",
+    "source": {
+      "path": "scripts/eval-continuity.py",
+      "case_name": "completed_entry_replayed",
+      "adapted_from": []
+    },
+    "input": {
+      "chapter_seq": 6,
+      "context": {
+        "short_context": [
+          {
+            "kind": "prev_chapter_tail",
+            "chapter": 5,
+            "tail": "沈砚已经跨进体育馆，铁门在身后关上。周野的伤腿还在流血，他扶着周野坐到长椅上，向值班医生挥手。"
+          }
+        ],
+        "recent_openings": []
+      },
+      "plan": {
+        "goals": [
+          "在体育馆内救治周野"
+        ],
+        "expected_events": [
+          "在体育馆内救治周野"
+        ]
+      },
+      "draft": "体育馆的铁门半掩着。沈砚站在门外推了推，门被铁链拴住了。他敲门报上姓名，等守卫解开铁链，才扶着周野走进去。值班医生正在长椅旁，沈砚向医生求助。医生拿来纱布，替周野包扎了伤腿。"
+    },
+    "expected": {
+      "allowed_verdicts": [
+        "rewrite"
+      ],
+      "required_issues": [
+        {
+          "id": "completed_entry_replayed",
+          "description": "已完成动作不得重演、未解决威胁不得无交代丢弃、开头不得机械重复；合理衔接与恢复不得误报",
+          "allowed_conflict_types": [
+            "plotline",
+            "timeline",
+            "style"
+          ],
+          "allowed_severities": [
+            "major",
+            "critical"
+          ],
+          "evidence_sources": [
+            {
+              "chapter": 5,
+              "pointer": "/input/context/short_context/0/tail"
+            },
+            {
+              "chapter": 6,
+              "pointer": "/input/draft"
+            }
+          ]
+        }
+      ],
+      "forbidden_issues": []
+    },
+    "label": {
+      "status": "proposed",
+      "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+      "reviewer": null
+    }
+  },
+  {
+    "schema_version": 1,
+    "id": "continuity.justified_recovery_and_time_jump",
+    "group_id": "continuity.justified_recovery_and_time_jump",
+    "split": "development",
+    "mode": "audit",
+    "category": "continuity",
+    "polarity": "negative",
+    "source": {
+      "path": "scripts/eval-continuity.py",
+      "case_name": "justified_recovery_and_time_jump",
+      "adapted_from": []
+    },
+    "input": {
+      "chapter_seq": 6,
+      "context": {
+        "short_context": [
+          {
+            "kind": "prev_chapter_tail",
+            "chapter": 5,
+            "tail": "守卫将袭击者赶出院子，反锁了门。医生说止血成功，需要留观。沈砚听见妹妹答应守着他，随后因失血昏了过去。"
+          }
+        ],
+        "recent_openings": []
+      },
+      "plan": {
+        "goals": [
+          "沈砚恢复意识并准备寻找药品"
+        ],
+        "expected_events": [
+          "沈砚恢复意识并准备寻找药品"
+        ]
+      },
+      "draft": "床头的输液袋已换过一次。沈砚睁开眼，先摸到左臂新缠的绷带，妹妹从椅子上直起身：“天亮了，医生说你没再出血。”院门外有守卫交班的脚步声。他让妹妹扶自己坐起，问清药品只够用到中午，便在地图上圈出了附近药房的位置。"
+    },
+    "expected": {
+      "allowed_verdicts": [
+        "pass"
+      ],
+      "required_issues": [],
+      "forbidden_issues": [
+        "已完成动作不得重演、未解决威胁不得无交代丢弃、开头不得机械重复；合理衔接与恢复不得误报"
+      ]
+    },
+    "label": {
+      "status": "proposed",
+      "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+      "reviewer": null
+    }
+  },
+  {
+    "schema_version": 1,
+    "id": "continuity.mechanical_opening_repeated",
+    "group_id": "continuity.mechanical_opening_repeated",
+    "split": "development",
+    "mode": "audit",
+    "category": "continuity",
+    "polarity": "positive",
+    "source": {
+      "path": "scripts/eval-continuity.py",
+      "case_name": "mechanical_opening_repeated",
+      "adapted_from": []
+    },
+    "input": {
+      "chapter_seq": 6,
+      "context": {
+        "short_context": [
+          {
+            "kind": "prev_chapter_tail",
+            "chapter": 5,
+            "tail": "沈砚把搜来的药品放进箱子，医生示意他去院内找守卫领取当天的任务。"
+          }
+        ],
+        "recent_openings": [
+          {
+            "chapter": 4,
+            "text": "清晨的冷风贴着门缝钻进来，沈砚揉了揉酸痛的肩，掀开毯子坐起。屋里很静，只有远处传来几声咳嗽。他看了一眼窗外灰白的天，伸手摸了摸衣袋里的匕首。"
+          }
+        ]
+      },
+      "plan": {
+        "goals": [
+          "领取当天巡查任务"
+        ],
+        "expected_events": [
+          "领取当天巡查任务"
+        ]
+      },
+      "draft": "清晨的凉风顺着门缝钻进来，沈砚揉着发酸的肩，掀开毯子坐了起来。房间很安静，远处只有几声咳嗽。他望了一眼窗外灰白的天空，伸手摸向衣袋里的匕首。随后他走到院里，找到守卫，领到了今天巡查围墙的任务。"
+    },
+    "expected": {
+      "allowed_verdicts": [
+        "rewrite"
+      ],
+      "required_issues": [
+        {
+          "id": "mechanical_opening_repeated",
+          "description": "已完成动作不得重演、未解决威胁不得无交代丢弃、开头不得机械重复；合理衔接与恢复不得误报",
+          "allowed_conflict_types": [
+            "plotline",
+            "timeline",
+            "style"
+          ],
+          "allowed_severities": [
+            "major",
+            "critical"
+          ],
+          "evidence_sources": [
+            {
+              "chapter": 4,
+              "pointer": "/input/context/recent_openings/0/text"
+            },
+            {
+              "chapter": 6,
+              "pointer": "/input/draft"
+            }
+          ]
+        }
+      ],
+      "forbidden_issues": []
+    },
+    "label": {
+      "status": "proposed",
+      "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+      "reviewer": null
+    }
+  },
+  {
+    "schema_version": 1,
+    "id": "continuity.natural_same_scene_continuation",
+    "group_id": "continuity.threat",
+    "split": "development",
+    "mode": "audit",
+    "category": "continuity",
+    "polarity": "negative",
+    "source": {
+      "path": "scripts/eval-continuity.py",
+      "case_name": "natural_same_scene_continuation",
+      "adapted_from": []
+    },
+    "input": {
+      "chapter_seq": 6,
+      "context": {
+        "short_context": [
+          {
+            "kind": "prev_chapter_tail",
+            "chapter": 5,
+            "tail": "兽爪从门缝探了进来，门闩正一点点弯折。沈砚抵住铁门，朝妹妹伸手：“把那把螺丝刀给我，快！”妹妹抓起工具。"
+          }
+        ],
+        "recent_openings": []
+      },
+      "plan": {
+        "goals": [
+          "兄妹守住体育馆后门"
+        ],
+        "expected_events": [
+          "兄妹守住体育馆后门"
+        ]
+      },
+      "draft": "螺丝刀落进掌心，沈砚反手把刀杆插进门闩下方的锁孔。铁门又撞了一下，刀杆弯了，却卡住了继续外滑的门闩。“去搬长椅。”他对沈棠说。妹妹拖来长椅，两人把椅背顶在门上。那只兽爪终于缩了回去，兄妹趁撞击声暂歇，退到立柱后，轮流盯着后门。"
+    },
+    "expected": {
+      "allowed_verdicts": [
+        "pass"
+      ],
+      "required_issues": [],
+      "forbidden_issues": [
+        "已完成动作不得重演、未解决威胁不得无交代丢弃、开头不得机械重复；合理衔接与恢复不得误报"
+      ]
+    },
+    "label": {
+      "status": "proposed",
+      "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+      "reviewer": null
+    }
+  },
+  {
+    "schema_version": 1,
+    "id": "continuity.pending_threat_dropped",
+    "group_id": "continuity.threat",
+    "split": "development",
+    "mode": "audit",
+    "category": "continuity",
+    "polarity": "positive",
+    "source": {
+      "path": "scripts/eval-continuity.py",
+      "case_name": "pending_threat_dropped",
+      "adapted_from": []
+    },
+    "input": {
+      "chapter_seq": 6,
+      "context": {
+        "short_context": [
+          {
+            "kind": "prev_chapter_tail",
+            "chapter": 5,
+            "tail": "兽爪从门缝探了进来，门闩正一点点弯折。沈砚抵住铁门，朝妹妹伸手：“把那把螺丝刀给我，快！”妹妹抓起工具。"
+          }
+        ],
+        "recent_openings": []
+      },
+      "plan": {
+        "goals": [
+          "兄妹守住体育馆后门"
+        ],
+        "expected_events": [
+          "兄妹守住体育馆后门"
+        ]
+      },
+      "draft": "晚上十一点刚过，沈棠把最后一口糖水喂给沈砚。他躺在长椅上，揉了揉酸痛的肩。体育馆里很安静，兄妹聊起从前的晚饭，接着清点了明天要带的食物。沈砚打了个哈欠，决定先睡一会儿。"
+    },
+    "expected": {
+      "allowed_verdicts": [
+        "rewrite"
+      ],
+      "required_issues": [
+        {
+          "id": "pending_threat_dropped",
+          "description": "已完成动作不得重演、未解决威胁不得无交代丢弃、开头不得机械重复；合理衔接与恢复不得误报",
+          "allowed_conflict_types": [
+            "plotline",
+            "timeline",
+            "style"
+          ],
+          "allowed_severities": [
+            "major",
+            "critical"
+          ],
+          "evidence_sources": [
+            {
+              "chapter": 5,
+              "pointer": "/input/context/short_context/0/tail"
+            },
+            {
+              "chapter": 6,
+              "pointer": "/input/draft"
+            }
+          ]
+        }
+      ],
+      "forbidden_issues": []
+    },
+    "label": {
+      "status": "proposed",
+      "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+      "reviewer": null
+    }
+  },
+  {
+    "schema_version": 1,
+    "id": "logic.allegiance",
+    "group_id": "logic.allegiance",
+    "split": "holdout",
+    "mode": "audit",
+    "category": "allegiance",
+    "polarity": "positive",
+    "source": {
+      "path": "scripts/eval-logic.py",
+      "case_name": "allegiance",
+      "adapted_from": [
+        "conflict-samples:09"
+      ]
+    },
+    "input": {
+      "chapter_seq": 2,
+      "context": {
+        "short_context": [
+          {
+            "kind": "prev_chapter_tail",
+            "chapter": 1,
+            "tail": "林川已正式退出北桥检修队，合同解除且未重新入职。"
+          }
+        ],
+        "long_term_facts": []
+      },
+      "plan": {},
+      "draft": "林川的合同并未解除，他始终是北桥检修队的现任正式员工，今天仍以队员身份领薪。"
+    },
+    "expected": {
+      "allowed_verdicts": [
+        "rewrite"
+      ],
+      "required_issues": [
+        {
+          "id": "allegiance",
+          "description": "解除身份却直接声称从未解除；外部承包身份不得误报",
+          "allowed_conflict_types": [
+            "character_state",
+            "faction",
+            "character"
+          ],
+          "allowed_severities": [
+            "major",
+            "critical"
+          ],
+          "evidence_sources": [
+            {
+              "chapter": 1,
+              "pointer": "/input/context/short_context/0/tail"
+            },
+            {
+              "chapter": 2,
+              "pointer": "/input/draft"
+            }
+          ]
+        }
+      ],
+      "forbidden_issues": []
+    },
+    "label": {
+      "status": "proposed",
+      "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+      "reviewer": null
+    }
+  },
+  {
+    "schema_version": 1,
+    "id": "logic.capability_restored",
+    "group_id": "logic.capability",
+    "split": "holdout",
+    "mode": "audit",
+    "category": "capability",
+    "polarity": "negative",
+    "source": {
+      "path": "scripts/eval-logic.py",
+      "case_name": "capability_restored",
+      "adapted_from": [
+        "conflict-samples:08"
+      ]
+    },
+    "input": {
+      "chapter_seq": 2,
+      "context": {
+        "short_context": [
+          {
+            "kind": "prev_chapter_tail",
+            "chapter": 1,
+            "tail": "林川检查了仪器：外接电源已断开，电池也已取出。"
+          }
+        ],
+        "long_term_facts": [
+          {
+            "content": "该仪器必须外接电源或装入电池才能测量，没有其他供能方式。",
+            "is_hard": true
+          }
+        ]
+      },
+      "plan": {},
+      "draft": "许宁装入新电池，按下开关。林川等自检完成后，才读取测量结果。"
+    },
+    "expected": {
+      "allowed_verdicts": [
+        "pass"
+      ],
+      "required_issues": [],
+      "forbidden_issues": [
+        "无供能却正常使用；补足供能条件不得误报"
+      ]
+    },
+    "label": {
+      "status": "proposed",
+      "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+      "reviewer": null
+    }
+  },
+  {
+    "schema_version": 1,
+    "id": "logic.capability_rule",
+    "group_id": "logic.capability",
+    "split": "holdout",
+    "mode": "audit",
+    "category": "capability",
+    "polarity": "positive",
+    "source": {
+      "path": "scripts/eval-logic.py",
+      "case_name": "capability_rule",
+      "adapted_from": [
+        "conflict-samples:08"
+      ]
+    },
+    "input": {
+      "chapter_seq": 2,
+      "context": {
+        "short_context": [
+          {
+            "kind": "prev_chapter_tail",
+            "chapter": 1,
+            "tail": "林川检查了仪器：外接电源已断开，电池也已取出。"
+          }
+        ],
+        "long_term_facts": [
+          {
+            "content": "该仪器必须外接电源或装入电池才能测量，没有其他供能方式。",
+            "is_hard": true
+          }
+        ]
+      },
+      "plan": {},
+      "draft": "没有接入任何电源，仪器却持续正常测量，林川直接读出了实时电流值。"
+    },
+    "expected": {
+      "allowed_verdicts": [
+        "rewrite"
+      ],
+      "required_issues": [
+        {
+          "id": "capability_rule",
+          "description": "无供能却正常使用；补足供能条件不得误报",
+          "allowed_conflict_types": [
+            "item_rule",
+            "power"
+          ],
+          "allowed_severities": [
+            "major",
+            "critical"
+          ],
+          "evidence_sources": [
+            {
+              "chapter": 1,
+              "pointer": "/input/context/short_context/0/tail"
+            },
+            {
+              "chapter": 2,
+              "pointer": "/input/draft"
+            }
+          ]
+        }
+      ],
+      "forbidden_issues": []
+    },
+    "label": {
+      "status": "proposed",
+      "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+      "reviewer": null
+    }
+  },
+  {
+    "schema_version": 1,
+    "id": "logic.destroyed_item",
+    "group_id": "logic.item",
+    "split": "development",
+    "mode": "audit",
+    "category": "item",
+    "polarity": "positive",
+    "source": {
+      "path": "scripts/eval-logic.py",
+      "case_name": "destroyed_item",
+      "adapted_from": [
+        "conflict-samples:06"
+      ]
+    },
+    "input": {
+      "chapter_seq": 2,
+      "context": {
+        "short_context": [
+          {
+            "kind": "prev_chapter_tail",
+            "chapter": 1,
+            "tail": "林川唯一的万用表已烧成无法修复的残骸，他尚未获取替代品。"
+          }
+        ],
+        "long_term_facts": []
+      },
+      "plan": {},
+      "draft": "林川拿起那只完好无损的旧万用表，接上探针，顺利测出了电压。"
+    },
+    "expected": {
+      "allowed_verdicts": [
+        "rewrite"
+      ],
+      "required_issues": [
+        {
+          "id": "destroyed_item",
+          "description": "毁坏的旧物直接再现；明确更换新物不得误报",
+          "allowed_conflict_types": [
+            "item_rule"
+          ],
+          "allowed_severities": [
+            "major",
+            "critical"
+          ],
+          "evidence_sources": [
+            {
+              "chapter": 1,
+              "pointer": "/input/context/short_context/0/tail"
+            },
+            {
+              "chapter": 2,
+              "pointer": "/input/draft"
+            }
+          ]
+        }
+      ],
+      "forbidden_issues": []
+    },
+    "label": {
+      "status": "proposed",
+      "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+      "reviewer": null
+    }
+  },
+  {
+    "schema_version": 1,
+    "id": "logic.first_visit",
+    "group_id": "logic.visit",
+    "split": "development",
+    "mode": "audit",
+    "category": "visit",
+    "polarity": "positive",
+    "source": {
+      "path": "scripts/eval-logic.py",
+      "case_name": "first_visit",
+      "adapted_from": [
+        "conflict-samples:05"
+      ]
+    },
+    "input": {
+      "chapter_seq": 2,
+      "context": {
+        "short_context": [
+          {
+            "kind": "prev_chapter_tail",
+            "chapter": 1,
+            "tail": "昨晚林川已在北桥站办理登记，今天再次来到原站房。"
+          }
+        ],
+        "long_term_facts": []
+      },
+      "plan": {},
+      "draft": "这是林川有生以来第一次来到北桥站，此前他从未到过这里。"
+    },
+    "expected": {
+      "allowed_verdicts": [
+        "rewrite"
+      ],
+      "required_issues": [
+        {
+          "id": "first_visit",
+          "description": "首次来访与既有经历矛盾；正常重访不得误报",
+          "allowed_conflict_types": [
+            "plotline",
+            "character",
+            "timeline"
+          ],
+          "allowed_severities": [
+            "major",
+            "critical"
+          ],
+          "evidence_sources": [
+            {
+              "chapter": 1,
+              "pointer": "/input/context/short_context/0/tail"
+            },
+            {
+              "chapter": 2,
+              "pointer": "/input/draft"
+            }
+          ]
+        }
+      ],
+      "forbidden_issues": []
+    },
+    "label": {
+      "status": "proposed",
+      "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+      "reviewer": null
+    }
+  },
+  {
+    "schema_version": 1,
+    "id": "logic.former_member",
+    "group_id": "logic.allegiance",
+    "split": "holdout",
+    "mode": "audit",
+    "category": "allegiance",
+    "polarity": "negative",
+    "source": {
+      "path": "scripts/eval-logic.py",
+      "case_name": "former_member",
+      "adapted_from": [
+        "conflict-samples:09"
+      ]
+    },
+    "input": {
+      "chapter_seq": 2,
+      "context": {
+        "short_context": [
+          {
+            "kind": "prev_chapter_tail",
+            "chapter": 1,
+            "tail": "林川已正式退出北桥检修队，合同解除且未重新入职。"
+          }
+        ],
+        "long_term_facts": []
+      },
+      "plan": {},
+      "draft": "林川以外部维修承包人的身份递交报价单，说明自己已经不属于检修队。"
+    },
+    "expected": {
+      "allowed_verdicts": [
+        "pass"
+      ],
+      "required_issues": [],
+      "forbidden_issues": [
+        "解除身份却直接声称从未解除；外部承包身份不得误报"
+      ]
+    },
+    "label": {
+      "status": "proposed",
+      "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+      "reviewer": null
+    }
+  },
+  {
+    "schema_version": 1,
+    "id": "logic.promise_completed",
+    "group_id": "logic.promise",
+    "split": "development",
+    "mode": "audit",
+    "category": "promise",
+    "polarity": "negative",
+    "source": {
+      "path": "scripts/eval-logic.py",
+      "case_name": "promise_completed",
+      "adapted_from": [
+        "conflict-samples:07"
+      ]
+    },
+    "input": {
+      "chapter_seq": 2,
+      "context": {
+        "short_context": [
+          {
+            "kind": "prev_chapter_tail",
+            "chapter": 1,
+            "tail": "林川承诺修好水泵，但检修尚未开始，水泵仍完全损坏。"
+          }
+        ],
+        "long_term_facts": []
+      },
+      "plan": {},
+      "draft": "林川拆开水泵，更换烧毁的电容，重新接线。试运行成功后，他才告诉许宁承诺完成了。"
+    },
+    "expected": {
+      "allowed_verdicts": [
+        "pass"
+      ],
+      "required_issues": [],
+      "forbidden_issues": [
+        "尚未履行却直接认定完成；实际修复后完成承诺不得误报"
+      ]
+    },
+    "label": {
+      "status": "proposed",
+      "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+      "reviewer": null
+    }
+  },
+  {
+    "schema_version": 1,
+    "id": "logic.replacement_item",
+    "group_id": "logic.item",
+    "split": "development",
+    "mode": "audit",
+    "category": "item",
+    "polarity": "negative",
+    "source": {
+      "path": "scripts/eval-logic.py",
+      "case_name": "replacement_item",
+      "adapted_from": [
+        "conflict-samples:06"
+      ]
+    },
+    "input": {
+      "chapter_seq": 2,
+      "context": {
+        "short_context": [
+          {
+            "kind": "prev_chapter_tail",
+            "chapter": 1,
+            "tail": "林川唯一的万用表已烧成无法修复的残骸。"
+          }
+        ],
+        "long_term_facts": []
+      },
+      "plan": {},
+      "draft": "许宁从工具库领来一只新万用表。林川把旧表残骸收进废物箱，再用新表测量。"
+    },
+    "expected": {
+      "allowed_verdicts": [
+        "pass"
+      ],
+      "required_issues": [],
+      "forbidden_issues": [
+        "毁坏的旧物直接再现；明确更换新物不得误报"
+      ]
+    },
+    "label": {
+      "status": "proposed",
+      "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+      "reviewer": null
+    }
+  },
+  {
+    "schema_version": 1,
+    "id": "logic.return_visit",
+    "group_id": "logic.visit",
+    "split": "development",
+    "mode": "audit",
+    "category": "visit",
+    "polarity": "negative",
+    "source": {
+      "path": "scripts/eval-logic.py",
+      "case_name": "return_visit",
+      "adapted_from": [
+        "conflict-samples:05"
+      ]
+    },
+    "input": {
+      "chapter_seq": 2,
+      "context": {
+        "short_context": [
+          {
+            "kind": "prev_chapter_tail",
+            "chapter": 1,
+            "tail": "昨晚林川已在北桥站办理登记，今天再次来到原站房。"
+          }
+        ],
+        "long_term_facts": []
+      },
+      "plan": {},
+      "draft": "林川推开熟悉的站房门，取出昨晚留下的登记回执。"
+    },
+    "expected": {
+      "allowed_verdicts": [
+        "pass"
+      ],
+      "required_issues": [],
+      "forbidden_issues": [
+        "首次来访与既有经历矛盾；正常重访不得误报"
+      ]
+    },
+    "label": {
+      "status": "proposed",
+      "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+      "reviewer": null
+    }
+  },
+  {
+    "schema_version": 1,
+    "id": "logic.unfulfilled_promise",
+    "group_id": "logic.promise",
+    "split": "development",
+    "mode": "audit",
+    "category": "promise",
+    "polarity": "positive",
+    "source": {
+      "path": "scripts/eval-logic.py",
+      "case_name": "unfulfilled_promise",
+      "adapted_from": [
+        "conflict-samples:07"
+      ]
+    },
+    "input": {
+      "chapter_seq": 2,
+      "context": {
+        "short_context": [
+          {
+            "kind": "prev_chapter_tail",
+            "chapter": 1,
+            "tail": "林川承诺修好水泵，但检修尚未开始，水泵仍完全损坏。"
+          }
+        ],
+        "long_term_facts": []
+      },
+      "plan": {},
+      "draft": "检修还没开始，大家就确认林川已经兑现修好水泵的承诺，水泵已经恢复运作。"
+    },
+    "expected": {
+      "allowed_verdicts": [
+        "rewrite"
+      ],
+      "required_issues": [
+        {
+          "id": "unfulfilled_promise",
+          "description": "尚未履行却直接认定完成；实际修复后完成承诺不得误报",
+          "allowed_conflict_types": [
+            "plotline",
+            "foreshadow"
+          ],
+          "allowed_severities": [
+            "major",
+            "critical"
+          ],
+          "evidence_sources": [
+            {
+              "chapter": 1,
+              "pointer": "/input/context/short_context/0/tail"
+            },
+            {
+              "chapter": 2,
+              "pointer": "/input/draft"
+            }
+          ]
+        }
+      ],
+      "forbidden_issues": []
+    },
+    "label": {
+      "status": "proposed",
+      "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+      "reviewer": null
+    }
+  }
+]

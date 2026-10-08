@@ -1,0 +1,1881 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Myink · P1 审核基线</title><style>body{margin:0;background:#f5f3ed;color:#20352a;font:16px/1.7 system-ui,"Microsoft YaHei",sans-serif}
+main{max-width:1050px;margin:auto;padding:24px}header,article{background:white;border:1px solid #ccd5ce;padding:20px;margin:18px 0;border-radius:8px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.7 monospace}summary{cursor:pointer}h1{font-size:32px}h2{font-size:22px}</style>
+<main><header><h1>P1 · 固定文本审核基线</h1><p>自动结果只验证类型、证据来源和决策，语义判断需人工复核。confirmed 为正式复核口径；分母为零显示 null / N/A。</p>
+<p>所有失败与中止记录均保留；本报告不是直接生成与完整系统的效果对照，也不是向量召回评测。</p><pre>{
+  &quot;planned&quot;: 15,
+  &quot;attempted&quot;: 15,
+  &quot;completed&quot;: 15,
+  &quot;execution_counts&quot;: {
+    &quot;completed&quot;: 15
+  },
+  &quot;review_counts&quot;: {
+    &quot;provisional&quot;: 15
+  },
+  &quot;label_counts&quot;: {
+    &quot;proposed&quot;: 15
+  },
+  &quot;provisional_automatic&quot;: {
+    &quot;passed&quot;: 13,
+    &quot;denominator&quot;: 15,
+    &quot;note&quot;: &quot;候选匹配，不是人工确认的准确率&quot;
+  },
+  &quot;confirmed&quot;: {
+    &quot;cases&quot;: 0,
+    &quot;tp&quot;: 0,
+    &quot;fp&quot;: 0,
+    &quot;fn&quot;: 0,
+    &quot;precision&quot;: null,
+    &quot;recall&quot;: null,
+    &quot;positive_detection&quot;: null,
+    &quot;negative_false_positive&quot;: null,
+    &quot;overall_success&quot;: null
+  },
+  &quot;evidence&quot;: {
+    &quot;valid_quotes&quot;: 19,
+    &quot;total_quotes&quot;: 19,
+    &quot;findings_without_quotes&quot;: 0
+  },
+  &quot;usage&quot;: {
+    &quot;input_tokens&quot;: 11219,
+    &quot;output_tokens&quot;: 4296,
+    &quot;estimated_cost_yuan&quot;: 0.056806,
+    &quot;unknown_usage_runs&quot;: 0
+  },
+  &quot;categories&quot;: {
+    &quot;allegiance&quot;: {
+      &quot;runs&quot;: 2,
+      &quot;automatic_passed&quot;: 2
+    },
+    &quot;capability&quot;: {
+      &quot;runs&quot;: 2,
+      &quot;automatic_passed&quot;: 2
+    },
+    &quot;continuity&quot;: {
+      &quot;runs&quot;: 5,
+      &quot;automatic_passed&quot;: 3
+    },
+    &quot;item&quot;: {
+      &quot;runs&quot;: 2,
+      &quot;automatic_passed&quot;: 2
+    },
+    &quot;promise&quot;: {
+      &quot;runs&quot;: 2,
+      &quot;automatic_passed&quot;: 2
+    },
+    &quot;visit&quot;: {
+      &quot;runs&quot;: 2,
+      &quot;automatic_passed&quot;: 2
+    }
+  }
+}
+</pre></header><article><h2>continuity.completed_entry_replayed</h2><p>执行：completed · 复核：provisional · 暂定自动通过：True</p><details><summary>输入背景、正文与预期问题</summary><pre>{
+  &quot;input&quot;: {
+    &quot;chapter_seq&quot;: 6,
+    &quot;context&quot;: {
+      &quot;short_context&quot;: [
+        {
+          &quot;kind&quot;: &quot;prev_chapter_tail&quot;,
+          &quot;chapter&quot;: 5,
+          &quot;tail&quot;: &quot;沈砚已经跨进体育馆，铁门在身后关上。周野的伤腿还在流血，他扶着周野坐到长椅上，向值班医生挥手。&quot;
+        }
+      ],
+      &quot;recent_openings&quot;: []
+    },
+    &quot;plan&quot;: {
+      &quot;goals&quot;: [
+        &quot;在体育馆内救治周野&quot;
+      ],
+      &quot;expected_events&quot;: [
+        &quot;在体育馆内救治周野&quot;
+      ]
+    },
+    &quot;draft&quot;: &quot;体育馆的铁门半掩着。沈砚站在门外推了推，门被铁链拴住了。他敲门报上姓名，等守卫解开铁链，才扶着周野走进去。值班医生正在长椅旁，沈砚向医生求助。医生拿来纱布，替周野包扎了伤腿。&quot;
+  },
+  &quot;expected&quot;: {
+    &quot;allowed_verdicts&quot;: [
+      &quot;rewrite&quot;
+    ],
+    &quot;required_issues&quot;: [
+      {
+        &quot;id&quot;: &quot;completed_entry_replayed&quot;,
+        &quot;description&quot;: &quot;已完成动作不得重演、未解决威胁不得无交代丢弃、开头不得机械重复；合理衔接与恢复不得误报&quot;,
+        &quot;allowed_conflict_types&quot;: [
+          &quot;plotline&quot;,
+          &quot;timeline&quot;,
+          &quot;style&quot;
+        ],
+        &quot;allowed_severities&quot;: [
+          &quot;major&quot;,
+          &quot;critical&quot;
+        ],
+        &quot;evidence_sources&quot;: [
+          {
+            &quot;chapter&quot;: 5,
+            &quot;pointer&quot;: &quot;/input/context/short_context/0/tail&quot;
+          },
+          {
+            &quot;chapter&quot;: 6,
+            &quot;pointer&quot;: &quot;/input/draft&quot;
+          }
+        ]
+      }
+    ],
+    &quot;forbidden_issues&quot;: []
+  },
+  &quot;label&quot;: {
+    &quot;status&quot;: &quot;proposed&quot;,
+    &quot;review_note&quot;: &quot;从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。&quot;,
+    &quot;reviewer&quot;: null
+  }
+}
+</pre></details><details><summary>查看模型实际输出</summary><pre>{
+  &quot;verdict&quot;: &quot;rewrite&quot;,
+  &quot;findings&quot;: [
+    {
+      &quot;conflict_key&quot;: &quot;continuity_gym_door_reentry&quot;,
+      &quot;conflict_type&quot;: &quot;timeline&quot;,
+      &quot;severity&quot;: &quot;major&quot;,
+      &quot;scope&quot;: &quot;local&quot;,
+      &quot;evidence&quot;: [
+        {
+          &quot;chapter&quot;: 5,
+          &quot;quote&quot;: &quot;沈砚已经跨进体育馆，铁门在身后关上。周野的伤腿还在流血，他扶着周野坐到长椅上，向值班医生挥手。&quot;
+        },
+        {
+          &quot;chapter&quot;: 6,
+          &quot;quote&quot;: &quot;体育馆的铁门半掩着。沈砚站在门外推了推，门被铁链拴住了。他敲门报上姓名，等守卫解开铁链，才扶着周野走进去。&quot;
+        }
+      ],
+      &quot;confidence&quot;: 0.95,
+      &quot;suggestion&quot;: &quot;删除重演进门/拴链/报姓名/等守卫开门的段落，直接从上一章章尾已完成的动作接续：沈砚已扶着周野坐到长椅上、已向值班医生挥手，本章开头应写医生上前查看伤腿、取纱布包扎等救治动作，保持时间与空间连续。&quot;
+    }
+  ],
+  &quot;reasons&quot;: [
+    &quot;本章开头重演了上一章章尾已经完成的进门、扶周野入内、向医生求助等动作，造成明确的接续断裂与机械重复，属 major 问题。&quot;,
+    &quot;章节计划目标为“在体育馆内救治周野”，但正文把大量篇幅用于重复进门流程，救治内容单薄，需按接续位置重写开头并补足救治过程。&quot;,
+    &quot;无世界观硬约束与伏笔冲突，问题集中在局部接续，故路由为 rewrite（local 级修改）。&quot;
+  ],
+  &quot;confidence&quot;: 0.95
+}</pre></details><details><summary>实际输出、证据检查与复核结果</summary><pre>{
+  &quot;case_id&quot;: &quot;continuity.completed_entry_replayed&quot;,
+  &quot;case_sha256&quot;: &quot;62d27086a2d09db4fc98ce341e21384a11e8226747622f9c88d07439ecee739c&quot;,
+  &quot;execution&quot;: &quot;completed&quot;,
+  &quot;coverage&quot;: &quot;implemented&quot;,
+  &quot;attempted&quot;: true,
+  &quot;prompt_sha256&quot;: &quot;ecc27dfe2fb330eaa2db5ec9a7a8da8a3b8c6a33225172dddd694dee278aa52a&quot;,
+  &quot;input_tokens&quot;: 799,
+  &quot;output_tokens&quot;: 394,
+  &quot;cost_est&quot;: 0.00475,
+  &quot;cost_status&quot;: &quot;estimated&quot;,
+  &quot;model_id&quot;: &quot;deepseek-flash&quot;,
+  &quot;finish_reason&quot;: &quot;stop&quot;,
+  &quot;wall_ms&quot;: 4938,
+  &quot;polarity&quot;: &quot;positive&quot;,
+  &quot;category&quot;: &quot;continuity&quot;,
+  &quot;label_status&quot;: &quot;proposed&quot;,
+  &quot;review&quot;: &quot;provisional&quot;,
+  &quot;output_valid&quot;: true,
+  &quot;verdict_match&quot;: true,
+  &quot;automatic_pass&quot;: true,
+  &quot;confirmed_pass&quot;: null,
+  &quot;candidates&quot;: {
+    &quot;0&quot;: [
+      &quot;completed_entry_replayed&quot;
+    ]
+  },
+  &quot;evidence&quot;: {
+    &quot;0&quot;: [
+      true,
+      true
+    ]
+  },
+  &quot;tp&quot;: 0,
+  &quot;fp&quot;: 0,
+  &quot;fn&quot;: 1,
+  &quot;duplicates&quot;: 0,
+  &quot;valid_quotes&quot;: 2,
+  &quot;total_quotes&quot;: 2,
+  &quot;findings_without_quotes&quot;: 0,
+  &quot;verdict&quot;: {
+    &quot;verdict&quot;: &quot;rewrite&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [
+      {
+        &quot;finding_id&quot;: null,
+        &quot;conflict_key&quot;: &quot;continuity_gym_door_reentry&quot;,
+        &quot;conflict_type&quot;: &quot;timeline&quot;,
+        &quot;severity&quot;: &quot;major&quot;,
+        &quot;scope&quot;: &quot;local&quot;,
+        &quot;source&quot;: &quot;L1&quot;,
+        &quot;evidence&quot;: [
+          {
+            &quot;chapter&quot;: 5,
+            &quot;quote&quot;: &quot;沈砚已经跨进体育馆，铁门在身后关上。周野的伤腿还在流血，他扶着周野坐到长椅上，向值班医生挥手。&quot;
+          },
+          {
+            &quot;chapter&quot;: 6,
+            &quot;quote&quot;: &quot;体育馆的铁门半掩着。沈砚站在门外推了推，门被铁链拴住了。他敲门报上姓名，等守卫解开铁链，才扶着周野走进去。&quot;
+          }
+        ],
+        &quot;confidence&quot;: 0.95,
+        &quot;suggestion&quot;: &quot;删除重演进门/拴链/报姓名/等守卫开门的段落，直接从上一章章尾已完成的动作接续：沈砚已扶着周野坐到长椅上、已向值班医生挥手，本章开头应写医生上前查看伤腿、取纱布包扎等救治动作，保持时间与空间连续。&quot;
+      }
+    ],
+    &quot;reasons&quot;: [
+      &quot;本章开头重演了上一章章尾已经完成的进门、扶周野入内、向医生求助等动作，造成明确的接续断裂与机械重复，属 major 问题。&quot;,
+      &quot;章节计划目标为“在体育馆内救治周野”，但正文把大量篇幅用于重复进门流程，救治内容单薄，需按接续位置重写开头并补足救治过程。&quot;,
+      &quot;无世界观硬约束与伏笔冲突，问题集中在局部接续，故路由为 rewrite（local 级修改）。&quot;
+    ],
+    &quot;confidence&quot;: 0.95
+  }
+}
+</pre></details></article><article><h2>continuity.justified_recovery_and_time_jump</h2><p>执行：completed · 复核：provisional · 暂定自动通过：True</p><details><summary>输入背景、正文与预期问题</summary><pre>{
+  &quot;input&quot;: {
+    &quot;chapter_seq&quot;: 6,
+    &quot;context&quot;: {
+      &quot;short_context&quot;: [
+        {
+          &quot;kind&quot;: &quot;prev_chapter_tail&quot;,
+          &quot;chapter&quot;: 5,
+          &quot;tail&quot;: &quot;守卫将袭击者赶出院子，反锁了门。医生说止血成功，需要留观。沈砚听见妹妹答应守着他，随后因失血昏了过去。&quot;
+        }
+      ],
+      &quot;recent_openings&quot;: []
+    },
+    &quot;plan&quot;: {
+      &quot;goals&quot;: [
+        &quot;沈砚恢复意识并准备寻找药品&quot;
+      ],
+      &quot;expected_events&quot;: [
+        &quot;沈砚恢复意识并准备寻找药品&quot;
+      ]
+    },
+    &quot;draft&quot;: &quot;床头的输液袋已换过一次。沈砚睁开眼，先摸到左臂新缠的绷带，妹妹从椅子上直起身：“天亮了，医生说你没再出血。”院门外有守卫交班的脚步声。他让妹妹扶自己坐起，问清药品只够用到中午，便在地图上圈出了附近药房的位置。&quot;
+  },
+  &quot;expected&quot;: {
+    &quot;allowed_verdicts&quot;: [
+      &quot;pass&quot;
+    ],
+    &quot;required_issues&quot;: [],
+    &quot;forbidden_issues&quot;: [
+      &quot;已完成动作不得重演、未解决威胁不得无交代丢弃、开头不得机械重复；合理衔接与恢复不得误报&quot;
+    ]
+  },
+  &quot;label&quot;: {
+    &quot;status&quot;: &quot;proposed&quot;,
+    &quot;review_note&quot;: &quot;从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。&quot;,
+    &quot;reviewer&quot;: null
+  }
+}
+</pre></details><details><summary>查看模型实际输出</summary><pre>{&quot;verdict&quot;: &quot;pass&quot;, &quot;findings&quot;: [], &quot;reasons&quot;: [&quot;本章紧接前章章尾：沈砚因失血昏厥后苏醒，妹妹守候、医生留观、守卫交班均与前章衔接自然，无重演已完成动作。&quot;, &quot;剧情推进符合章节计划：恢复意识并准备寻找药品，通过药品只够用到中午、圈出药房位置完成目标，无主线偏移。&quot;, &quot;人设与节奏合理：醒来先摸绷带、问清药品存量再行动，符合失血后谨慎状态；篇幅短但信息完整，无冗余修订必要。&quot;], &quot;confidence&quot;: 0.95}</pre></details><details><summary>实际输出、证据检查与复核结果</summary><pre>{
+  &quot;case_id&quot;: &quot;continuity.justified_recovery_and_time_jump&quot;,
+  &quot;case_sha256&quot;: &quot;2a3e84caeb82049821fe7f61780a8b53a1f2110e538ef7fbe522f5044507173f&quot;,
+  &quot;execution&quot;: &quot;completed&quot;,
+  &quot;coverage&quot;: &quot;implemented&quot;,
+  &quot;attempted&quot;: true,
+  &quot;prompt_sha256&quot;: &quot;18517ae901c4e799327f4da248c8d90c6b7360833022f65a04a8458326f8ea63&quot;,
+  &quot;input_tokens&quot;: 812,
+  &quot;output_tokens&quot;: 140,
+  &quot;cost_est&quot;: 0.002744,
+  &quot;cost_status&quot;: &quot;estimated&quot;,
+  &quot;model_id&quot;: &quot;deepseek-flash&quot;,
+  &quot;finish_reason&quot;: &quot;stop&quot;,
+  &quot;wall_ms&quot;: 2359,
+  &quot;polarity&quot;: &quot;negative&quot;,
+  &quot;category&quot;: &quot;continuity&quot;,
+  &quot;label_status&quot;: &quot;proposed&quot;,
+  &quot;review&quot;: &quot;provisional&quot;,
+  &quot;output_valid&quot;: true,
+  &quot;verdict_match&quot;: true,
+  &quot;automatic_pass&quot;: true,
+  &quot;confirmed_pass&quot;: null,
+  &quot;candidates&quot;: {},
+  &quot;evidence&quot;: {},
+  &quot;tp&quot;: 0,
+  &quot;fp&quot;: 0,
+  &quot;fn&quot;: 0,
+  &quot;duplicates&quot;: 0,
+  &quot;valid_quotes&quot;: 0,
+  &quot;total_quotes&quot;: 0,
+  &quot;findings_without_quotes&quot;: 0,
+  &quot;verdict&quot;: {
+    &quot;verdict&quot;: &quot;pass&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [],
+    &quot;reasons&quot;: [
+      &quot;本章紧接前章章尾：沈砚因失血昏厥后苏醒，妹妹守候、医生留观、守卫交班均与前章衔接自然，无重演已完成动作。&quot;,
+      &quot;剧情推进符合章节计划：恢复意识并准备寻找药品，通过药品只够用到中午、圈出药房位置完成目标，无主线偏移。&quot;,
+      &quot;人设与节奏合理：醒来先摸绷带、问清药品存量再行动，符合失血后谨慎状态；篇幅短但信息完整，无冗余修订必要。&quot;
+    ],
+    &quot;confidence&quot;: 0.95
+  }
+}
+</pre></details></article><article><h2>continuity.mechanical_opening_repeated</h2><p>执行：completed · 复核：provisional · 暂定自动通过：False</p><details><summary>输入背景、正文与预期问题</summary><pre>{
+  &quot;input&quot;: {
+    &quot;chapter_seq&quot;: 6,
+    &quot;context&quot;: {
+      &quot;short_context&quot;: [
+        {
+          &quot;kind&quot;: &quot;prev_chapter_tail&quot;,
+          &quot;chapter&quot;: 5,
+          &quot;tail&quot;: &quot;沈砚把搜来的药品放进箱子，医生示意他去院内找守卫领取当天的任务。&quot;
+        }
+      ],
+      &quot;recent_openings&quot;: [
+        {
+          &quot;chapter&quot;: 4,
+          &quot;text&quot;: &quot;清晨的冷风贴着门缝钻进来，沈砚揉了揉酸痛的肩，掀开毯子坐起。屋里很静，只有远处传来几声咳嗽。他看了一眼窗外灰白的天，伸手摸了摸衣袋里的匕首。&quot;
+        }
+      ]
+    },
+    &quot;plan&quot;: {
+      &quot;goals&quot;: [
+        &quot;领取当天巡查任务&quot;
+      ],
+      &quot;expected_events&quot;: [
+        &quot;领取当天巡查任务&quot;
+      ]
+    },
+    &quot;draft&quot;: &quot;清晨的凉风顺着门缝钻进来，沈砚揉着发酸的肩，掀开毯子坐了起来。房间很安静，远处只有几声咳嗽。他望了一眼窗外灰白的天空，伸手摸向衣袋里的匕首。随后他走到院里，找到守卫，领到了今天巡查围墙的任务。&quot;
+  },
+  &quot;expected&quot;: {
+    &quot;allowed_verdicts&quot;: [
+      &quot;rewrite&quot;
+    ],
+    &quot;required_issues&quot;: [
+      {
+        &quot;id&quot;: &quot;mechanical_opening_repeated&quot;,
+        &quot;description&quot;: &quot;已完成动作不得重演、未解决威胁不得无交代丢弃、开头不得机械重复；合理衔接与恢复不得误报&quot;,
+        &quot;allowed_conflict_types&quot;: [
+          &quot;plotline&quot;,
+          &quot;timeline&quot;,
+          &quot;style&quot;
+        ],
+        &quot;allowed_severities&quot;: [
+          &quot;major&quot;,
+          &quot;critical&quot;
+        ],
+        &quot;evidence_sources&quot;: [
+          {
+            &quot;chapter&quot;: 4,
+            &quot;pointer&quot;: &quot;/input/context/recent_openings/0/text&quot;
+          },
+          {
+            &quot;chapter&quot;: 6,
+            &quot;pointer&quot;: &quot;/input/draft&quot;
+          }
+        ]
+      }
+    ],
+    &quot;forbidden_issues&quot;: []
+  },
+  &quot;label&quot;: {
+    &quot;status&quot;: &quot;proposed&quot;,
+    &quot;review_note&quot;: &quot;从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。&quot;,
+    &quot;reviewer&quot;: null
+  }
+}
+</pre></details><details><summary>查看模型实际输出</summary><pre>{
+  &quot;verdict&quot;: &quot;rewrite&quot;,
+  &quot;findings&quot;: [
+    {
+      &quot;conflict_key&quot;: &quot;opening_repetition_ch4&quot;,
+      &quot;conflict_type&quot;: &quot;style&quot;,
+      &quot;severity&quot;: &quot;major&quot;,
+      &quot;scope&quot;: &quot;local&quot;,
+      &quot;evidence&quot;: [
+        {&quot;chapter&quot;: 4, &quot;quote&quot;: &quot;清晨的冷风贴着门缝钻进来，沈砚揉了揉酸痛的肩，掀开毯子坐起。屋里很静，只有远处传来几声咳嗽。他看了一眼窗外灰白的天，伸手摸了摸衣袋里的匕首。&quot;},
+        {&quot;chapter&quot;: 6, &quot;quote&quot;: &quot;清晨的凉风顺着门缝钻进来，沈砚揉着发酸的肩，掀开毯子坐了起来。房间很安静，远处只有几声咳嗽。他望了一眼窗外灰白的天空，伸手摸向衣袋里的匕首。&quot;}
+      ],
+      &quot;confidence&quot;: 0.95,
+      &quot;suggestion&quot;: &quot;第6章开头与第4章开头为近义改写（冷风/凉风、揉肩、掀毯、咳嗽、灰白天、摸匕首逐项对应），属机械重复。应改写为承接第5章章尾的接续动作：直接从沈砚放好药品、离开医生处、走向院内守卫领取巡查任务写起，删去与第4章雷同的起床场景。&quot;
+    },
+    {
+      &quot;conflict_key&quot;: &quot;continuity_prev_tail&quot;,
+      &quot;conflict_type&quot;: &quot;plotline&quot;,
+      &quot;severity&quot;: &quot;major&quot;,
+      &quot;scope&quot;: &quot;local&quot;,
+      &quot;evidence&quot;: [
+        {&quot;chapter&quot;: 5, &quot;quote&quot;: &quot;沈砚把搜来的药品放进箱子，医生示意他去院内找守卫领取当天的任务。&quot;},
+        {&quot;chapter&quot;: 6, &quot;quote&quot;: &quot;随后他走到院里，找到守卫，领到了今天巡查围墙的任务。&quot;}
+      ],
+      &quot;confidence&quot;: 0.9,
+      &quot;suggestion&quot;: &quot;第5章章尾已明确沈砚在医生处被示意去找守卫领任务，第6章却插入一段与第4章雷同的起床场景，造成时间线回退与接续断裂。应删去起床段，改为紧接第5章章尾：沈砚从医生处出来，径直去院内找守卫领取巡查围墙任务，并补足领取过程的具体互动。&quot;
+    }
+  ],
+  &quot;reasons&quot;: [
+    &quot;本章计划仅要求『领取当天巡查任务』，正文确实完成了该目标，主线无偏移。&quot;,
+    &quot;但开头与第4章开头为近义改写的同一套路，属机械重复，应报 major。&quot;,
+    &quot;第5章章尾已让沈砚在医生处被示意去找守卫领任务，本章却插入起床场景，造成接续断裂与时间线回退，应报 major。&quot;,
+    &quot;两处问题均为句段级接续改写，无需推翻本章规划，故 verdict=rewrite 而非 replan。&quot;
+  ],
+  &quot;confidence&quot;: 0.9
+}</pre></details><details><summary>实际输出、证据检查与复核结果</summary><pre>{
+  &quot;case_id&quot;: &quot;continuity.mechanical_opening_repeated&quot;,
+  &quot;case_sha256&quot;: &quot;664080f335409aa7234ca32908781cde708a2244f299ecc5ce15c70e76a76191&quot;,
+  &quot;execution&quot;: &quot;completed&quot;,
+  &quot;coverage&quot;: &quot;implemented&quot;,
+  &quot;attempted&quot;: true,
+  &quot;prompt_sha256&quot;: &quot;12cd532014acaa83a06bda3b4ba3642844f568563a49190bcfe577c37dc10c0e&quot;,
+  &quot;input_tokens&quot;: 832,
+  &quot;output_tokens&quot;: 642,
+  &quot;cost_est&quot;: 0.0068,
+  &quot;cost_status&quot;: &quot;estimated&quot;,
+  &quot;model_id&quot;: &quot;deepseek-flash&quot;,
+  &quot;finish_reason&quot;: &quot;stop&quot;,
+  &quot;wall_ms&quot;: 4359,
+  &quot;polarity&quot;: &quot;positive&quot;,
+  &quot;category&quot;: &quot;continuity&quot;,
+  &quot;label_status&quot;: &quot;proposed&quot;,
+  &quot;review&quot;: &quot;provisional&quot;,
+  &quot;output_valid&quot;: true,
+  &quot;verdict_match&quot;: true,
+  &quot;automatic_pass&quot;: false,
+  &quot;confirmed_pass&quot;: null,
+  &quot;candidates&quot;: {
+    &quot;0&quot;: [
+      &quot;mechanical_opening_repeated&quot;
+    ],
+    &quot;1&quot;: []
+  },
+  &quot;evidence&quot;: {
+    &quot;0&quot;: [
+      true,
+      true
+    ],
+    &quot;1&quot;: [
+      true,
+      true
+    ]
+  },
+  &quot;tp&quot;: 0,
+  &quot;fp&quot;: 0,
+  &quot;fn&quot;: 1,
+  &quot;duplicates&quot;: 0,
+  &quot;valid_quotes&quot;: 4,
+  &quot;total_quotes&quot;: 4,
+  &quot;findings_without_quotes&quot;: 0,
+  &quot;verdict&quot;: {
+    &quot;verdict&quot;: &quot;rewrite&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [
+      {
+        &quot;finding_id&quot;: null,
+        &quot;conflict_key&quot;: &quot;opening_repetition_ch4&quot;,
+        &quot;conflict_type&quot;: &quot;style&quot;,
+        &quot;severity&quot;: &quot;major&quot;,
+        &quot;scope&quot;: &quot;local&quot;,
+        &quot;source&quot;: &quot;L1&quot;,
+        &quot;evidence&quot;: [
+          {
+            &quot;chapter&quot;: 4,
+            &quot;quote&quot;: &quot;清晨的冷风贴着门缝钻进来，沈砚揉了揉酸痛的肩，掀开毯子坐起。屋里很静，只有远处传来几声咳嗽。他看了一眼窗外灰白的天，伸手摸了摸衣袋里的匕首。&quot;
+          },
+          {
+            &quot;chapter&quot;: 6,
+            &quot;quote&quot;: &quot;清晨的凉风顺着门缝钻进来，沈砚揉着发酸的肩，掀开毯子坐了起来。房间很安静，远处只有几声咳嗽。他望了一眼窗外灰白的天空，伸手摸向衣袋里的匕首。&quot;
+          }
+        ],
+        &quot;confidence&quot;: 0.95,
+        &quot;suggestion&quot;: &quot;第6章开头与第4章开头为近义改写（冷风/凉风、揉肩、掀毯、咳嗽、灰白天、摸匕首逐项对应），属机械重复。应改写为承接第5章章尾的接续动作：直接从沈砚放好药品、离开医生处、走向院内守卫领取巡查任务写起，删去与第4章雷同的起床场景。&quot;
+      },
+      {
+        &quot;finding_id&quot;: null,
+        &quot;conflict_key&quot;: &quot;continuity_prev_tail&quot;,
+        &quot;conflict_type&quot;: &quot;plotline&quot;,
+        &quot;severity&quot;: &quot;major&quot;,
+        &quot;scope&quot;: &quot;local&quot;,
+        &quot;source&quot;: &quot;L1&quot;,
+        &quot;evidence&quot;: [
+          {
+            &quot;chapter&quot;: 5,
+            &quot;quote&quot;: &quot;沈砚把搜来的药品放进箱子，医生示意他去院内找守卫领取当天的任务。&quot;
+          },
+          {
+            &quot;chapter&quot;: 6,
+            &quot;quote&quot;: &quot;随后他走到院里，找到守卫，领到了今天巡查围墙的任务。&quot;
+          }
+        ],
+        &quot;confidence&quot;: 0.9,
+        &quot;suggestion&quot;: &quot;第5章章尾已明确沈砚在医生处被示意去找守卫领任务，第6章却插入一段与第4章雷同的起床场景，造成时间线回退与接续断裂。应删去起床段，改为紧接第5章章尾：沈砚从医生处出来，径直去院内找守卫领取巡查围墙任务，并补足领取过程的具体互动。&quot;
+      }
+    ],
+    &quot;reasons&quot;: [
+      &quot;本章计划仅要求『领取当天巡查任务』，正文确实完成了该目标，主线无偏移。&quot;,
+      &quot;但开头与第4章开头为近义改写的同一套路，属机械重复，应报 major。&quot;,
+      &quot;第5章章尾已让沈砚在医生处被示意去找守卫领任务，本章却插入起床场景，造成接续断裂与时间线回退，应报 major。&quot;,
+      &quot;两处问题均为句段级接续改写，无需推翻本章规划，故 verdict=rewrite 而非 replan。&quot;
+    ],
+    &quot;confidence&quot;: 0.9
+  }
+}
+</pre></details></article><article><h2>continuity.natural_same_scene_continuation</h2><p>执行：completed · 复核：provisional · 暂定自动通过：True</p><details><summary>输入背景、正文与预期问题</summary><pre>{
+  &quot;input&quot;: {
+    &quot;chapter_seq&quot;: 6,
+    &quot;context&quot;: {
+      &quot;short_context&quot;: [
+        {
+          &quot;kind&quot;: &quot;prev_chapter_tail&quot;,
+          &quot;chapter&quot;: 5,
+          &quot;tail&quot;: &quot;兽爪从门缝探了进来，门闩正一点点弯折。沈砚抵住铁门，朝妹妹伸手：“把那把螺丝刀给我，快！”妹妹抓起工具。&quot;
+        }
+      ],
+      &quot;recent_openings&quot;: []
+    },
+    &quot;plan&quot;: {
+      &quot;goals&quot;: [
+        &quot;兄妹守住体育馆后门&quot;
+      ],
+      &quot;expected_events&quot;: [
+        &quot;兄妹守住体育馆后门&quot;
+      ]
+    },
+    &quot;draft&quot;: &quot;螺丝刀落进掌心，沈砚反手把刀杆插进门闩下方的锁孔。铁门又撞了一下，刀杆弯了，却卡住了继续外滑的门闩。“去搬长椅。”他对沈棠说。妹妹拖来长椅，两人把椅背顶在门上。那只兽爪终于缩了回去，兄妹趁撞击声暂歇，退到立柱后，轮流盯着后门。&quot;
+  },
+  &quot;expected&quot;: {
+    &quot;allowed_verdicts&quot;: [
+      &quot;pass&quot;
+    ],
+    &quot;required_issues&quot;: [],
+    &quot;forbidden_issues&quot;: [
+      &quot;已完成动作不得重演、未解决威胁不得无交代丢弃、开头不得机械重复；合理衔接与恢复不得误报&quot;
+    ]
+  },
+  &quot;label&quot;: {
+    &quot;status&quot;: &quot;proposed&quot;,
+    &quot;review_note&quot;: &quot;从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。&quot;,
+    &quot;reviewer&quot;: null
+  }
+}
+</pre></details><details><summary>查看模型实际输出</summary><pre>{&quot;verdict&quot;: &quot;pass&quot;, &quot;findings&quot;: [], &quot;reasons&quot;: [&quot;本章紧接前章章尾：沈砚接过螺丝刀、卡住门闩、搬长椅顶门、兽爪缩回，动作链条完整，无重演或断裂。&quot;, &quot;章节计划目标为‘兄妹守住体育馆后门’，正文以门被顶住、兽爪缩回、兄妹轮流盯守收束，目标达成且无主线偏移。&quot;, &quot;无世界观硬约束、伏笔、人物状态快照可供比对，未发现可判定的矛盾。&quot;, &quot;内容质量：衔接自然，兄妹分工与对话符合危机场景，节奏紧凑，无冗余修订必要。&quot;], &quot;confidence&quot;: 0.9}</pre></details><details><summary>实际输出、证据检查与复核结果</summary><pre>{
+  &quot;case_id&quot;: &quot;continuity.natural_same_scene_continuation&quot;,
+  &quot;case_sha256&quot;: &quot;ad399aa5b33367403fd8571b4f0f25b3ec30e1dc8c8928e9c51957f4cf1e8848&quot;,
+  &quot;execution&quot;: &quot;completed&quot;,
+  &quot;coverage&quot;: &quot;implemented&quot;,
+  &quot;attempted&quot;: true,
+  &quot;prompt_sha256&quot;: &quot;883b09626bff0885f77e822e5c2a46ad109828da4c42c7c968de48ef74387a6c&quot;,
+  &quot;input_tokens&quot;: 827,
+  &quot;output_tokens&quot;: 154,
+  &quot;cost_est&quot;: 0.002886,
+  &quot;cost_status&quot;: &quot;estimated&quot;,
+  &quot;model_id&quot;: &quot;deepseek-flash&quot;,
+  &quot;finish_reason&quot;: &quot;stop&quot;,
+  &quot;wall_ms&quot;: 2407,
+  &quot;polarity&quot;: &quot;negative&quot;,
+  &quot;category&quot;: &quot;continuity&quot;,
+  &quot;label_status&quot;: &quot;proposed&quot;,
+  &quot;review&quot;: &quot;provisional&quot;,
+  &quot;output_valid&quot;: true,
+  &quot;verdict_match&quot;: true,
+  &quot;automatic_pass&quot;: true,
+  &quot;confirmed_pass&quot;: null,
+  &quot;candidates&quot;: {},
+  &quot;evidence&quot;: {},
+  &quot;tp&quot;: 0,
+  &quot;fp&quot;: 0,
+  &quot;fn&quot;: 0,
+  &quot;duplicates&quot;: 0,
+  &quot;valid_quotes&quot;: 0,
+  &quot;total_quotes&quot;: 0,
+  &quot;findings_without_quotes&quot;: 0,
+  &quot;verdict&quot;: {
+    &quot;verdict&quot;: &quot;pass&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [],
+    &quot;reasons&quot;: [
+      &quot;本章紧接前章章尾：沈砚接过螺丝刀、卡住门闩、搬长椅顶门、兽爪缩回，动作链条完整，无重演或断裂。&quot;,
+      &quot;章节计划目标为‘兄妹守住体育馆后门’，正文以门被顶住、兽爪缩回、兄妹轮流盯守收束，目标达成且无主线偏移。&quot;,
+      &quot;无世界观硬约束、伏笔、人物状态快照可供比对，未发现可判定的矛盾。&quot;,
+      &quot;内容质量：衔接自然，兄妹分工与对话符合危机场景，节奏紧凑，无冗余修订必要。&quot;
+    ],
+    &quot;confidence&quot;: 0.9
+  }
+}
+</pre></details></article><article><h2>continuity.pending_threat_dropped</h2><p>执行：completed · 复核：provisional · 暂定自动通过：False</p><details><summary>输入背景、正文与预期问题</summary><pre>{
+  &quot;input&quot;: {
+    &quot;chapter_seq&quot;: 6,
+    &quot;context&quot;: {
+      &quot;short_context&quot;: [
+        {
+          &quot;kind&quot;: &quot;prev_chapter_tail&quot;,
+          &quot;chapter&quot;: 5,
+          &quot;tail&quot;: &quot;兽爪从门缝探了进来，门闩正一点点弯折。沈砚抵住铁门，朝妹妹伸手：“把那把螺丝刀给我，快！”妹妹抓起工具。&quot;
+        }
+      ],
+      &quot;recent_openings&quot;: []
+    },
+    &quot;plan&quot;: {
+      &quot;goals&quot;: [
+        &quot;兄妹守住体育馆后门&quot;
+      ],
+      &quot;expected_events&quot;: [
+        &quot;兄妹守住体育馆后门&quot;
+      ]
+    },
+    &quot;draft&quot;: &quot;晚上十一点刚过，沈棠把最后一口糖水喂给沈砚。他躺在长椅上，揉了揉酸痛的肩。体育馆里很安静，兄妹聊起从前的晚饭，接着清点了明天要带的食物。沈砚打了个哈欠，决定先睡一会儿。&quot;
+  },
+  &quot;expected&quot;: {
+    &quot;allowed_verdicts&quot;: [
+      &quot;rewrite&quot;
+    ],
+    &quot;required_issues&quot;: [
+      {
+        &quot;id&quot;: &quot;pending_threat_dropped&quot;,
+        &quot;description&quot;: &quot;已完成动作不得重演、未解决威胁不得无交代丢弃、开头不得机械重复；合理衔接与恢复不得误报&quot;,
+        &quot;allowed_conflict_types&quot;: [
+          &quot;plotline&quot;,
+          &quot;timeline&quot;,
+          &quot;style&quot;
+        ],
+        &quot;allowed_severities&quot;: [
+          &quot;major&quot;,
+          &quot;critical&quot;
+        ],
+        &quot;evidence_sources&quot;: [
+          {
+            &quot;chapter&quot;: 5,
+            &quot;pointer&quot;: &quot;/input/context/short_context/0/tail&quot;
+          },
+          {
+            &quot;chapter&quot;: 6,
+            &quot;pointer&quot;: &quot;/input/draft&quot;
+          }
+        ]
+      }
+    ],
+    &quot;forbidden_issues&quot;: []
+  },
+  &quot;label&quot;: {
+    &quot;status&quot;: &quot;proposed&quot;,
+    &quot;review_note&quot;: &quot;从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。&quot;,
+    &quot;reviewer&quot;: null
+  }
+}
+</pre></details><details><summary>查看模型实际输出</summary><pre>{
+  &quot;verdict&quot;: &quot;rewrite&quot;,
+  &quot;findings&quot;: [
+    {
+      &quot;conflict_key&quot;: &quot;continuity_ch6_door_defense&quot;,
+      &quot;conflict_type&quot;: &quot;plotline&quot;,
+      &quot;severity&quot;: &quot;critical&quot;,
+      &quot;scope&quot;: &quot;structural&quot;,
+      &quot;evidence&quot;: [
+        {
+          &quot;chapter&quot;: 5,
+          &quot;quote&quot;: &quot;兽爪从门缝探了进来，门闩正一点点弯折。沈砚抵住铁门，朝妹妹伸手：“把那把螺丝刀给我，快！”妹妹抓起工具。&quot;
+        },
+        {
+          &quot;chapter&quot;: 6,
+          &quot;quote&quot;: &quot;晚上十一点刚过，沈棠把最后一口糖水喂给沈砚。他躺在长椅上，揉了揉酸痛的肩。体育馆里很安静，兄妹聊起从前的晚饭，接着清点了明天要带的食物。沈砚打了个哈欠，决定先睡一会儿。&quot;
+        }
+      ],
+      &quot;confidence&quot;: 0.98,
+      &quot;suggestion&quot;: &quot;本章开头必须紧接第5章章尾的危机：先写沈砚用螺丝刀抵住/加固门闩、与妹妹合力顶门、兽爪退去或门被暂时封死的过程，交代危机如何解除（或至少暂时缓解），再进入糖水、聊天、清点食物等安静场景。不能跳过门闩弯折、兽爪探入的未完成动作直接切到深夜休息。&quot;
+    },
+    {
+      &quot;conflict_key&quot;: &quot;plan_ch6_goal_missing&quot;,
+      &quot;conflict_type&quot;: &quot;plotline&quot;,
+      &quot;severity&quot;: &quot;major&quot;,
+      &quot;scope&quot;: &quot;structural&quot;,
+      &quot;evidence&quot;: [
+        {
+          &quot;chapter&quot;: 6,
+          &quot;quote&quot;: &quot;晚上十一点刚过，沈棠把最后一口糖水喂给沈砚。他躺在长椅上，揉了揉酸痛的肩。体育馆里很安静，兄妹聊起从前的晚饭，接着清点了明天要带的食物。沈砚打了个哈欠，决定先睡一会儿。&quot;
+        }
+      ],
+      &quot;confidence&quot;: 0.9,
+      &quot;suggestion&quot;: &quot;章节计划要求“兄妹守住体育馆后门”，但正文只写休息与闲聊，未呈现守门行动。应补写守住后门的具体过程（轮值、加固、击退或对峙），使本章目标落地。&quot;
+    }
+  ],
+  &quot;reasons&quot;: [
+    &quot;第5章章尾处于兽爪探入门缝、门闩弯折的紧急动作中，第6章开头却直接跳到晚上十一点后的安静休息场景，未交代危机如何解除，构成明确的接续断裂，需 rewrite。&quot;,
+    &quot;本章未完成章节计划的核心目标“兄妹守住体育馆后门”，剧情推进缺失，需按计划补写守门行动。&quot;,
+    &quot;建议先接续第5章危机动作，再自然过渡到休息与清点食物，避免重演已完成动作或丢弃未完成危险。&quot;
+  ],
+  &quot;confidence&quot;: 0.96
+}</pre></details><details><summary>实际输出、证据检查与复核结果</summary><pre>{
+  &quot;case_id&quot;: &quot;continuity.pending_threat_dropped&quot;,
+  &quot;case_sha256&quot;: &quot;e68cf8b409f238f43c29ce93117ec1776ac1fc61a54a8a4111754a6abe7b64b6&quot;,
+  &quot;execution&quot;: &quot;completed&quot;,
+  &quot;coverage&quot;: &quot;implemented&quot;,
+  &quot;attempted&quot;: true,
+  &quot;prompt_sha256&quot;: &quot;a632e00b9fd8ed4d8937ab2a6eea27639c8b78c519f37d76484345db7585475d&quot;,
+  &quot;input_tokens&quot;: 796,
+  &quot;output_tokens&quot;: 639,
+  &quot;cost_est&quot;: 0.006704,
+  &quot;cost_status&quot;: &quot;estimated&quot;,
+  &quot;model_id&quot;: &quot;deepseek-flash&quot;,
+  &quot;finish_reason&quot;: &quot;stop&quot;,
+  &quot;wall_ms&quot;: 4359,
+  &quot;polarity&quot;: &quot;positive&quot;,
+  &quot;category&quot;: &quot;continuity&quot;,
+  &quot;label_status&quot;: &quot;proposed&quot;,
+  &quot;review&quot;: &quot;provisional&quot;,
+  &quot;output_valid&quot;: true,
+  &quot;verdict_match&quot;: true,
+  &quot;automatic_pass&quot;: false,
+  &quot;confirmed_pass&quot;: null,
+  &quot;candidates&quot;: {
+    &quot;0&quot;: [
+      &quot;pending_threat_dropped&quot;
+    ],
+    &quot;1&quot;: []
+  },
+  &quot;evidence&quot;: {
+    &quot;0&quot;: [
+      true,
+      true
+    ],
+    &quot;1&quot;: [
+      true
+    ]
+  },
+  &quot;tp&quot;: 0,
+  &quot;fp&quot;: 0,
+  &quot;fn&quot;: 1,
+  &quot;duplicates&quot;: 0,
+  &quot;valid_quotes&quot;: 3,
+  &quot;total_quotes&quot;: 3,
+  &quot;findings_without_quotes&quot;: 0,
+  &quot;verdict&quot;: {
+    &quot;verdict&quot;: &quot;rewrite&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [
+      {
+        &quot;finding_id&quot;: null,
+        &quot;conflict_key&quot;: &quot;continuity_ch6_door_defense&quot;,
+        &quot;conflict_type&quot;: &quot;plotline&quot;,
+        &quot;severity&quot;: &quot;critical&quot;,
+        &quot;scope&quot;: &quot;structural&quot;,
+        &quot;source&quot;: &quot;L1&quot;,
+        &quot;evidence&quot;: [
+          {
+            &quot;chapter&quot;: 5,
+            &quot;quote&quot;: &quot;兽爪从门缝探了进来，门闩正一点点弯折。沈砚抵住铁门，朝妹妹伸手：“把那把螺丝刀给我，快！”妹妹抓起工具。&quot;
+          },
+          {
+            &quot;chapter&quot;: 6,
+            &quot;quote&quot;: &quot;晚上十一点刚过，沈棠把最后一口糖水喂给沈砚。他躺在长椅上，揉了揉酸痛的肩。体育馆里很安静，兄妹聊起从前的晚饭，接着清点了明天要带的食物。沈砚打了个哈欠，决定先睡一会儿。&quot;
+          }
+        ],
+        &quot;confidence&quot;: 0.98,
+        &quot;suggestion&quot;: &quot;本章开头必须紧接第5章章尾的危机：先写沈砚用螺丝刀抵住/加固门闩、与妹妹合力顶门、兽爪退去或门被暂时封死的过程，交代危机如何解除（或至少暂时缓解），再进入糖水、聊天、清点食物等安静场景。不能跳过门闩弯折、兽爪探入的未完成动作直接切到深夜休息。&quot;
+      },
+      {
+        &quot;finding_id&quot;: null,
+        &quot;conflict_key&quot;: &quot;plan_ch6_goal_missing&quot;,
+        &quot;conflict_type&quot;: &quot;plotline&quot;,
+        &quot;severity&quot;: &quot;major&quot;,
+        &quot;scope&quot;: &quot;structural&quot;,
+        &quot;source&quot;: &quot;L1&quot;,
+        &quot;evidence&quot;: [
+          {
+            &quot;chapter&quot;: 6,
+            &quot;quote&quot;: &quot;晚上十一点刚过，沈棠把最后一口糖水喂给沈砚。他躺在长椅上，揉了揉酸痛的肩。体育馆里很安静，兄妹聊起从前的晚饭，接着清点了明天要带的食物。沈砚打了个哈欠，决定先睡一会儿。&quot;
+          }
+        ],
+        &quot;confidence&quot;: 0.9,
+        &quot;suggestion&quot;: &quot;章节计划要求“兄妹守住体育馆后门”，但正文只写休息与闲聊，未呈现守门行动。应补写守住后门的具体过程（轮值、加固、击退或对峙），使本章目标落地。&quot;
+      }
+    ],
+    &quot;reasons&quot;: [
+      &quot;第5章章尾处于兽爪探入门缝、门闩弯折的紧急动作中，第6章开头却直接跳到晚上十一点后的安静休息场景，未交代危机如何解除，构成明确的接续断裂，需 rewrite。&quot;,
+      &quot;本章未完成章节计划的核心目标“兄妹守住体育馆后门”，剧情推进缺失，需按计划补写守门行动。&quot;,
+      &quot;建议先接续第5章危机动作，再自然过渡到休息与清点食物，避免重演已完成动作或丢弃未完成危险。&quot;
+    ],
+    &quot;confidence&quot;: 0.96
+  }
+}
+</pre></details></article><article><h2>logic.allegiance</h2><p>执行：completed · 复核：provisional · 暂定自动通过：True</p><details><summary>输入背景、正文与预期问题</summary><pre>{
+  &quot;input&quot;: {
+    &quot;chapter_seq&quot;: 2,
+    &quot;context&quot;: {
+      &quot;short_context&quot;: [
+        {
+          &quot;kind&quot;: &quot;prev_chapter_tail&quot;,
+          &quot;chapter&quot;: 1,
+          &quot;tail&quot;: &quot;林川已正式退出北桥检修队，合同解除且未重新入职。&quot;
+        }
+      ],
+      &quot;long_term_facts&quot;: []
+    },
+    &quot;plan&quot;: {},
+    &quot;draft&quot;: &quot;林川的合同并未解除，他始终是北桥检修队的现任正式员工，今天仍以队员身份领薪。&quot;
+  },
+  &quot;expected&quot;: {
+    &quot;allowed_verdicts&quot;: [
+      &quot;rewrite&quot;
+    ],
+    &quot;required_issues&quot;: [
+      {
+        &quot;id&quot;: &quot;allegiance&quot;,
+        &quot;description&quot;: &quot;解除身份却直接声称从未解除；外部承包身份不得误报&quot;,
+        &quot;allowed_conflict_types&quot;: [
+          &quot;character_state&quot;,
+          &quot;faction&quot;,
+          &quot;character&quot;
+        ],
+        &quot;allowed_severities&quot;: [
+          &quot;major&quot;,
+          &quot;critical&quot;
+        ],
+        &quot;evidence_sources&quot;: [
+          {
+            &quot;chapter&quot;: 1,
+            &quot;pointer&quot;: &quot;/input/context/short_context/0/tail&quot;
+          },
+          {
+            &quot;chapter&quot;: 2,
+            &quot;pointer&quot;: &quot;/input/draft&quot;
+          }
+        ]
+      }
+    ],
+    &quot;forbidden_issues&quot;: []
+  },
+  &quot;label&quot;: {
+    &quot;status&quot;: &quot;proposed&quot;,
+    &quot;review_note&quot;: &quot;从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。&quot;,
+    &quot;reviewer&quot;: null
+  }
+}
+</pre></details><details><summary>查看模型实际输出</summary><pre>{
+  &quot;verdict&quot;: &quot;rewrite&quot;,
+  &quot;findings&quot;: [
+    {
+      &quot;conflict_key&quot;: &quot;linchuan_contract_status&quot;,
+      &quot;conflict_type&quot;: &quot;character_state&quot;,
+      &quot;severity&quot;: &quot;critical&quot;,
+      &quot;scope&quot;: &quot;structural&quot;,
+      &quot;evidence&quot;: [
+        {
+          &quot;chapter&quot;: 1,
+          &quot;quote&quot;: &quot;林川已正式退出北桥检修队，合同解除且未重新入职。&quot;
+        },
+        {
+          &quot;chapter&quot;: 2,
+          &quot;quote&quot;: &quot;林川的合同并未解除，他始终是北桥检修队的现任正式员工，今天仍以队员身份领薪。&quot;
+        }
+      ],
+      &quot;confidence&quot;: 1.0,
+      &quot;suggestion&quot;: &quot;本章开头直接与前章章尾事实矛盾，必须重写。建议将第2章开头改为承接前章：林川已解除合同、离开北桥检修队，本章应描写他离开后的处境、去向或新冲突；若确需保留其队员身份，则必须在前章或本章内给出明确的重新入职/合同恢复的因果交代，不能无过渡地推翻已写正文。&quot;
+    }
+  ],
+  &quot;reasons&quot;: [
+    &quot;本章正文与【近期上下文】prev_chapter_tail 直接冲突：前章已明确林川合同解除、退出检修队，本章却称合同未解除、仍是现任正式员工并领薪，属于人物状态/剧情事实的硬性接续断裂。&quot;,
+    &quot;该矛盾为 critical 级，且涉及整章立足点（人物身份与处境），需结构性改写而非句段微调，故判定 rewrite。&quot;,
+    &quot;无章节计划、无世界观硬约束、无剧情上下文，无法从规划层面判定为蓝图走偏，因此不触发 replan。&quot;
+  ],
+  &quot;confidence&quot;: 1.0
+}</pre></details><details><summary>实际输出、证据检查与复核结果</summary><pre>{
+  &quot;case_id&quot;: &quot;logic.allegiance&quot;,
+  &quot;case_sha256&quot;: &quot;588933a2b9f5e3fe7aad8719a0fc83e89c821c1ede5dbceb27414ed921187712&quot;,
+  &quot;execution&quot;: &quot;completed&quot;,
+  &quot;coverage&quot;: &quot;implemented&quot;,
+  &quot;attempted&quot;: true,
+  &quot;prompt_sha256&quot;: &quot;7ee603ab8f1aaa5249848ba996b86903bc4a75a9483e293aa2c89d976d009f1f&quot;,
+  &quot;input_tokens&quot;: 714,
+  &quot;output_tokens&quot;: 391,
+  &quot;cost_est&quot;: 0.004556,
+  &quot;cost_status&quot;: &quot;estimated&quot;,
+  &quot;model_id&quot;: &quot;deepseek-flash&quot;,
+  &quot;finish_reason&quot;: &quot;stop&quot;,
+  &quot;wall_ms&quot;: 3171,
+  &quot;polarity&quot;: &quot;positive&quot;,
+  &quot;category&quot;: &quot;allegiance&quot;,
+  &quot;label_status&quot;: &quot;proposed&quot;,
+  &quot;review&quot;: &quot;provisional&quot;,
+  &quot;output_valid&quot;: true,
+  &quot;verdict_match&quot;: true,
+  &quot;automatic_pass&quot;: true,
+  &quot;confirmed_pass&quot;: null,
+  &quot;candidates&quot;: {
+    &quot;0&quot;: [
+      &quot;allegiance&quot;
+    ]
+  },
+  &quot;evidence&quot;: {
+    &quot;0&quot;: [
+      true,
+      true
+    ]
+  },
+  &quot;tp&quot;: 0,
+  &quot;fp&quot;: 0,
+  &quot;fn&quot;: 1,
+  &quot;duplicates&quot;: 0,
+  &quot;valid_quotes&quot;: 2,
+  &quot;total_quotes&quot;: 2,
+  &quot;findings_without_quotes&quot;: 0,
+  &quot;verdict&quot;: {
+    &quot;verdict&quot;: &quot;rewrite&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [
+      {
+        &quot;finding_id&quot;: null,
+        &quot;conflict_key&quot;: &quot;linchuan_contract_status&quot;,
+        &quot;conflict_type&quot;: &quot;character_state&quot;,
+        &quot;severity&quot;: &quot;critical&quot;,
+        &quot;scope&quot;: &quot;structural&quot;,
+        &quot;source&quot;: &quot;L1&quot;,
+        &quot;evidence&quot;: [
+          {
+            &quot;chapter&quot;: 1,
+            &quot;quote&quot;: &quot;林川已正式退出北桥检修队，合同解除且未重新入职。&quot;
+          },
+          {
+            &quot;chapter&quot;: 2,
+            &quot;quote&quot;: &quot;林川的合同并未解除，他始终是北桥检修队的现任正式员工，今天仍以队员身份领薪。&quot;
+          }
+        ],
+        &quot;confidence&quot;: 1.0,
+        &quot;suggestion&quot;: &quot;本章开头直接与前章章尾事实矛盾，必须重写。建议将第2章开头改为承接前章：林川已解除合同、离开北桥检修队，本章应描写他离开后的处境、去向或新冲突；若确需保留其队员身份，则必须在前章或本章内给出明确的重新入职/合同恢复的因果交代，不能无过渡地推翻已写正文。&quot;
+      }
+    ],
+    &quot;reasons&quot;: [
+      &quot;本章正文与【近期上下文】prev_chapter_tail 直接冲突：前章已明确林川合同解除、退出检修队，本章却称合同未解除、仍是现任正式员工并领薪，属于人物状态/剧情事实的硬性接续断裂。&quot;,
+      &quot;该矛盾为 critical 级，且涉及整章立足点（人物身份与处境），需结构性改写而非句段微调，故判定 rewrite。&quot;,
+      &quot;无章节计划、无世界观硬约束、无剧情上下文，无法从规划层面判定为蓝图走偏，因此不触发 replan。&quot;
+    ],
+    &quot;confidence&quot;: 1.0
+  }
+}
+</pre></details></article><article><h2>logic.capability_restored</h2><p>执行：completed · 复核：provisional · 暂定自动通过：True</p><details><summary>输入背景、正文与预期问题</summary><pre>{
+  &quot;input&quot;: {
+    &quot;chapter_seq&quot;: 2,
+    &quot;context&quot;: {
+      &quot;short_context&quot;: [
+        {
+          &quot;kind&quot;: &quot;prev_chapter_tail&quot;,
+          &quot;chapter&quot;: 1,
+          &quot;tail&quot;: &quot;林川检查了仪器：外接电源已断开，电池也已取出。&quot;
+        }
+      ],
+      &quot;long_term_facts&quot;: [
+        {
+          &quot;content&quot;: &quot;该仪器必须外接电源或装入电池才能测量，没有其他供能方式。&quot;,
+          &quot;is_hard&quot;: true
+        }
+      ]
+    },
+    &quot;plan&quot;: {},
+    &quot;draft&quot;: &quot;许宁装入新电池，按下开关。林川等自检完成后，才读取测量结果。&quot;
+  },
+  &quot;expected&quot;: {
+    &quot;allowed_verdicts&quot;: [
+      &quot;pass&quot;
+    ],
+    &quot;required_issues&quot;: [],
+    &quot;forbidden_issues&quot;: [
+      &quot;无供能却正常使用；补足供能条件不得误报&quot;
+    ]
+  },
+  &quot;label&quot;: {
+    &quot;status&quot;: &quot;proposed&quot;,
+    &quot;review_note&quot;: &quot;从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。&quot;,
+    &quot;reviewer&quot;: null
+  }
+}
+</pre></details><details><summary>查看模型实际输出</summary><pre>{&quot;verdict&quot;: &quot;pass&quot;, &quot;findings&quot;: [], &quot;reasons&quot;: [&quot;本章仅两句，描述许宁装入新电池、按下开关，林川等待自检完成后读取测量结果，与上一章章尾（外接电源已断开、电池已取出）形成合理接续：先恢复供电再测量，无重演已完成动作。&quot;, &quot;符合世界观硬约束：仪器需外接电源或装入电池才能测量，本章通过装入电池恢复供能，未引入其他供能方式。&quot;, &quot;无章节计划、无伏笔与剧情线可对照，未发现主线偏移、人设或节奏问题。&quot;, &quot;内容过短但无明确冲突或断裂，按规则不制造冗余修订，判定 pass。&quot;], &quot;confidence&quot;: 0.9}</pre></details><details><summary>实际输出、证据检查与复核结果</summary><pre>{
+  &quot;case_id&quot;: &quot;logic.capability_restored&quot;,
+  &quot;case_sha256&quot;: &quot;648aea6bdaf28ac82e1801aa9df478b993f174618fc43f43a2218a3606faaa80&quot;,
+  &quot;execution&quot;: &quot;completed&quot;,
+  &quot;coverage&quot;: &quot;implemented&quot;,
+  &quot;attempted&quot;: true,
+  &quot;prompt_sha256&quot;: &quot;acc63f06856202f025a1c04cb4eb20775ef8da33afecf1b8221e026ee92e00fe&quot;,
+  &quot;input_tokens&quot;: 735,
+  &quot;output_tokens&quot;: 164,
+  &quot;cost_est&quot;: 0.002782,
+  &quot;cost_status&quot;: &quot;estimated&quot;,
+  &quot;model_id&quot;: &quot;deepseek-flash&quot;,
+  &quot;finish_reason&quot;: &quot;stop&quot;,
+  &quot;wall_ms&quot;: 2641,
+  &quot;polarity&quot;: &quot;negative&quot;,
+  &quot;category&quot;: &quot;capability&quot;,
+  &quot;label_status&quot;: &quot;proposed&quot;,
+  &quot;review&quot;: &quot;provisional&quot;,
+  &quot;output_valid&quot;: true,
+  &quot;verdict_match&quot;: true,
+  &quot;automatic_pass&quot;: true,
+  &quot;confirmed_pass&quot;: null,
+  &quot;candidates&quot;: {},
+  &quot;evidence&quot;: {},
+  &quot;tp&quot;: 0,
+  &quot;fp&quot;: 0,
+  &quot;fn&quot;: 0,
+  &quot;duplicates&quot;: 0,
+  &quot;valid_quotes&quot;: 0,
+  &quot;total_quotes&quot;: 0,
+  &quot;findings_without_quotes&quot;: 0,
+  &quot;verdict&quot;: {
+    &quot;verdict&quot;: &quot;pass&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [],
+    &quot;reasons&quot;: [
+      &quot;本章仅两句，描述许宁装入新电池、按下开关，林川等待自检完成后读取测量结果，与上一章章尾（外接电源已断开、电池已取出）形成合理接续：先恢复供电再测量，无重演已完成动作。&quot;,
+      &quot;符合世界观硬约束：仪器需外接电源或装入电池才能测量，本章通过装入电池恢复供能，未引入其他供能方式。&quot;,
+      &quot;无章节计划、无伏笔与剧情线可对照，未发现主线偏移、人设或节奏问题。&quot;,
+      &quot;内容过短但无明确冲突或断裂，按规则不制造冗余修订，判定 pass。&quot;
+    ],
+    &quot;confidence&quot;: 0.9
+  }
+}
+</pre></details></article><article><h2>logic.capability_rule</h2><p>执行：completed · 复核：provisional · 暂定自动通过：True</p><details><summary>输入背景、正文与预期问题</summary><pre>{
+  &quot;input&quot;: {
+    &quot;chapter_seq&quot;: 2,
+    &quot;context&quot;: {
+      &quot;short_context&quot;: [
+        {
+          &quot;kind&quot;: &quot;prev_chapter_tail&quot;,
+          &quot;chapter&quot;: 1,
+          &quot;tail&quot;: &quot;林川检查了仪器：外接电源已断开，电池也已取出。&quot;
+        }
+      ],
+      &quot;long_term_facts&quot;: [
+        {
+          &quot;content&quot;: &quot;该仪器必须外接电源或装入电池才能测量，没有其他供能方式。&quot;,
+          &quot;is_hard&quot;: true
+        }
+      ]
+    },
+    &quot;plan&quot;: {},
+    &quot;draft&quot;: &quot;没有接入任何电源，仪器却持续正常测量，林川直接读出了实时电流值。&quot;
+  },
+  &quot;expected&quot;: {
+    &quot;allowed_verdicts&quot;: [
+      &quot;rewrite&quot;
+    ],
+    &quot;required_issues&quot;: [
+      {
+        &quot;id&quot;: &quot;capability_rule&quot;,
+        &quot;description&quot;: &quot;无供能却正常使用；补足供能条件不得误报&quot;,
+        &quot;allowed_conflict_types&quot;: [
+          &quot;item_rule&quot;,
+          &quot;power&quot;
+        ],
+        &quot;allowed_severities&quot;: [
+          &quot;major&quot;,
+          &quot;critical&quot;
+        ],
+        &quot;evidence_sources&quot;: [
+          {
+            &quot;chapter&quot;: 1,
+            &quot;pointer&quot;: &quot;/input/context/short_context/0/tail&quot;
+          },
+          {
+            &quot;chapter&quot;: 2,
+            &quot;pointer&quot;: &quot;/input/draft&quot;
+          }
+        ]
+      }
+    ],
+    &quot;forbidden_issues&quot;: []
+  },
+  &quot;label&quot;: {
+    &quot;status&quot;: &quot;proposed&quot;,
+    &quot;review_note&quot;: &quot;从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。&quot;,
+    &quot;reviewer&quot;: null
+  }
+}
+</pre></details><details><summary>查看模型实际输出</summary><pre>{
+  &quot;verdict&quot;: &quot;rewrite&quot;,
+  &quot;findings&quot;: [
+    {
+      &quot;conflict_key&quot;: &quot;instrument_power_source&quot;,
+      &quot;conflict_type&quot;: &quot;item_rule&quot;,
+      &quot;severity&quot;: &quot;critical&quot;,
+      &quot;scope&quot;: &quot;local&quot;,
+      &quot;evidence&quot;: [
+        {
+          &quot;chapter&quot;: 2,
+          &quot;quote&quot;: &quot;没有接入任何电源，仪器却持续正常测量，林川直接读出了实时电流值。&quot;
+        },
+        {
+          &quot;chapter&quot;: 1,
+          &quot;quote&quot;: &quot;林川检查了仪器：外接电源已断开，电池也已取出。&quot;
+        }
+      ],
+      &quot;confidence&quot;: 1.0,
+      &quot;suggestion&quot;: &quot;本章直接让仪器在无电源状态下正常工作，违反世界观硬约束“该仪器必须外接电源或装入电池才能测量，没有其他供能方式”。需改写为仪器因断电而无法测量，或补充符合硬约束的供能方式（如重新接电/装电池），并据此调整林川读出电流值的情节。&quot;
+    }
+  ],
+  &quot;reasons&quot;: [
+    &quot;本章核心情节（仪器无电源仍正常测量）与世界观硬约束直接冲突，属于设定规则违背，必须修订。&quot;,
+    &quot;无章节计划，无法判断主线推进，但硬约束冲突已构成 critical 问题，故路由为 rewrite。&quot;,
+    &quot;冲突为句段级设定矛盾，可通过局部改写解决，scope 定为 local。&quot;
+  ],
+  &quot;confidence&quot;: 1.0
+}</pre></details><details><summary>实际输出、证据检查与复核结果</summary><pre>{
+  &quot;case_id&quot;: &quot;logic.capability_rule&quot;,
+  &quot;case_sha256&quot;: &quot;184e935feb8c6e38d633813cd6a55b8c0da0f2c0732003772c436e2f08cc0471&quot;,
+  &quot;execution&quot;: &quot;completed&quot;,
+  &quot;coverage&quot;: &quot;implemented&quot;,
+  &quot;attempted&quot;: true,
+  &quot;prompt_sha256&quot;: &quot;a0020de45f1e3160ca18c7a6c8c931e174f071d8a648de03d647294ed7fa320a&quot;,
+  &quot;input_tokens&quot;: 734,
+  &quot;output_tokens&quot;: 319,
+  &quot;cost_est&quot;: 0.00402,
+  &quot;cost_status&quot;: &quot;estimated&quot;,
+  &quot;model_id&quot;: &quot;deepseek-flash&quot;,
+  &quot;finish_reason&quot;: &quot;stop&quot;,
+  &quot;wall_ms&quot;: 3188,
+  &quot;polarity&quot;: &quot;positive&quot;,
+  &quot;category&quot;: &quot;capability&quot;,
+  &quot;label_status&quot;: &quot;proposed&quot;,
+  &quot;review&quot;: &quot;provisional&quot;,
+  &quot;output_valid&quot;: true,
+  &quot;verdict_match&quot;: true,
+  &quot;automatic_pass&quot;: true,
+  &quot;confirmed_pass&quot;: null,
+  &quot;candidates&quot;: {
+    &quot;0&quot;: [
+      &quot;capability_rule&quot;
+    ]
+  },
+  &quot;evidence&quot;: {
+    &quot;0&quot;: [
+      true,
+      true
+    ]
+  },
+  &quot;tp&quot;: 0,
+  &quot;fp&quot;: 0,
+  &quot;fn&quot;: 1,
+  &quot;duplicates&quot;: 0,
+  &quot;valid_quotes&quot;: 2,
+  &quot;total_quotes&quot;: 2,
+  &quot;findings_without_quotes&quot;: 0,
+  &quot;verdict&quot;: {
+    &quot;verdict&quot;: &quot;rewrite&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [
+      {
+        &quot;finding_id&quot;: null,
+        &quot;conflict_key&quot;: &quot;instrument_power_source&quot;,
+        &quot;conflict_type&quot;: &quot;item_rule&quot;,
+        &quot;severity&quot;: &quot;critical&quot;,
+        &quot;scope&quot;: &quot;local&quot;,
+        &quot;source&quot;: &quot;L1&quot;,
+        &quot;evidence&quot;: [
+          {
+            &quot;chapter&quot;: 2,
+            &quot;quote&quot;: &quot;没有接入任何电源，仪器却持续正常测量，林川直接读出了实时电流值。&quot;
+          },
+          {
+            &quot;chapter&quot;: 1,
+            &quot;quote&quot;: &quot;林川检查了仪器：外接电源已断开，电池也已取出。&quot;
+          }
+        ],
+        &quot;confidence&quot;: 1.0,
+        &quot;suggestion&quot;: &quot;本章直接让仪器在无电源状态下正常工作，违反世界观硬约束“该仪器必须外接电源或装入电池才能测量，没有其他供能方式”。需改写为仪器因断电而无法测量，或补充符合硬约束的供能方式（如重新接电/装电池），并据此调整林川读出电流值的情节。&quot;
+      }
+    ],
+    &quot;reasons&quot;: [
+      &quot;本章核心情节（仪器无电源仍正常测量）与世界观硬约束直接冲突，属于设定规则违背，必须修订。&quot;,
+      &quot;无章节计划，无法判断主线推进，但硬约束冲突已构成 critical 问题，故路由为 rewrite。&quot;,
+      &quot;冲突为句段级设定矛盾，可通过局部改写解决，scope 定为 local。&quot;
+    ],
+    &quot;confidence&quot;: 1.0
+  }
+}
+</pre></details></article><article><h2>logic.destroyed_item</h2><p>执行：completed · 复核：provisional · 暂定自动通过：True</p><details><summary>输入背景、正文与预期问题</summary><pre>{
+  &quot;input&quot;: {
+    &quot;chapter_seq&quot;: 2,
+    &quot;context&quot;: {
+      &quot;short_context&quot;: [
+        {
+          &quot;kind&quot;: &quot;prev_chapter_tail&quot;,
+          &quot;chapter&quot;: 1,
+          &quot;tail&quot;: &quot;林川唯一的万用表已烧成无法修复的残骸，他尚未获取替代品。&quot;
+        }
+      ],
+      &quot;long_term_facts&quot;: []
+    },
+    &quot;plan&quot;: {},
+    &quot;draft&quot;: &quot;林川拿起那只完好无损的旧万用表，接上探针，顺利测出了电压。&quot;
+  },
+  &quot;expected&quot;: {
+    &quot;allowed_verdicts&quot;: [
+      &quot;rewrite&quot;
+    ],
+    &quot;required_issues&quot;: [
+      {
+        &quot;id&quot;: &quot;destroyed_item&quot;,
+        &quot;description&quot;: &quot;毁坏的旧物直接再现；明确更换新物不得误报&quot;,
+        &quot;allowed_conflict_types&quot;: [
+          &quot;item_rule&quot;
+        ],
+        &quot;allowed_severities&quot;: [
+          &quot;major&quot;,
+          &quot;critical&quot;
+        ],
+        &quot;evidence_sources&quot;: [
+          {
+            &quot;chapter&quot;: 1,
+            &quot;pointer&quot;: &quot;/input/context/short_context/0/tail&quot;
+          },
+          {
+            &quot;chapter&quot;: 2,
+            &quot;pointer&quot;: &quot;/input/draft&quot;
+          }
+        ]
+      }
+    ],
+    &quot;forbidden_issues&quot;: []
+  },
+  &quot;label&quot;: {
+    &quot;status&quot;: &quot;proposed&quot;,
+    &quot;review_note&quot;: &quot;从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。&quot;,
+    &quot;reviewer&quot;: null
+  }
+}
+</pre></details><details><summary>查看模型实际输出</summary><pre>{&quot;verdict&quot;:&quot;rewrite&quot;,&quot;findings&quot;:[{&quot;conflict_key&quot;:&quot;item_state_wan_yong_biao&quot;,&quot;conflict_type&quot;:&quot;item_rule&quot;,&quot;severity&quot;:&quot;critical&quot;,&quot;scope&quot;:&quot;local&quot;,&quot;evidence&quot;:[{&quot;chapter&quot;:1,&quot;quote&quot;:&quot;林川唯一的万用表已烧成无法修复的残骸，他尚未获取替代品。&quot;},{&quot;chapter&quot;:2,&quot;quote&quot;:&quot;林川拿起那只完好无损的旧万用表，接上探针，顺利测出了电压。&quot;}],&quot;confidence&quot;:0.98,&quot;suggestion&quot;:&quot;删除或改写本章开头：万用表在第1章已烧毁且未获得替代品，不能直接出现“完好无损的旧万用表”。应改为林川先设法获取/修复替代万用表（或改用其他测量手段），再写测电压；若本章意图就是“获得替代品”，需补上获取过程与来源。&quot;}],&quot;reasons&quot;:[&quot;第2章正文与第1章章尾存在硬性物品状态冲突：唯一万用表已烧毁且无替代品，本章却直接使用完好万用表，属接续断裂。&quot;,&quot;该冲突为句段级可修复问题，无需推翻整章规划，故路由 rewrite 而非 replan。&quot;],&quot;confidence&quot;:0.95}</pre></details><details><summary>实际输出、证据检查与复核结果</summary><pre>{
+  &quot;case_id&quot;: &quot;logic.destroyed_item&quot;,
+  &quot;case_sha256&quot;: &quot;b348a9495ed3664b7a3c97f398e92e463102fdddf18bcd04465ed6402dc56558&quot;,
+  &quot;execution&quot;: &quot;completed&quot;,
+  &quot;coverage&quot;: &quot;implemented&quot;,
+  &quot;attempted&quot;: true,
+  &quot;prompt_sha256&quot;: &quot;83c29ba1eeaf5a32082e1c7c4d1bafd268e8a40f479dc96c4ea994175b599977&quot;,
+  &quot;input_tokens&quot;: 714,
+  &quot;output_tokens&quot;: 267,
+  &quot;cost_est&quot;: 0.003564,
+  &quot;cost_status&quot;: &quot;estimated&quot;,
+  &quot;model_id&quot;: &quot;deepseek-flash&quot;,
+  &quot;finish_reason&quot;: &quot;stop&quot;,
+  &quot;wall_ms&quot;: 2703,
+  &quot;polarity&quot;: &quot;positive&quot;,
+  &quot;category&quot;: &quot;item&quot;,
+  &quot;label_status&quot;: &quot;proposed&quot;,
+  &quot;review&quot;: &quot;provisional&quot;,
+  &quot;output_valid&quot;: true,
+  &quot;verdict_match&quot;: true,
+  &quot;automatic_pass&quot;: true,
+  &quot;confirmed_pass&quot;: null,
+  &quot;candidates&quot;: {
+    &quot;0&quot;: [
+      &quot;destroyed_item&quot;
+    ]
+  },
+  &quot;evidence&quot;: {
+    &quot;0&quot;: [
+      true,
+      true
+    ]
+  },
+  &quot;tp&quot;: 0,
+  &quot;fp&quot;: 0,
+  &quot;fn&quot;: 1,
+  &quot;duplicates&quot;: 0,
+  &quot;valid_quotes&quot;: 2,
+  &quot;total_quotes&quot;: 2,
+  &quot;findings_without_quotes&quot;: 0,
+  &quot;verdict&quot;: {
+    &quot;verdict&quot;: &quot;rewrite&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [
+      {
+        &quot;finding_id&quot;: null,
+        &quot;conflict_key&quot;: &quot;item_state_wan_yong_biao&quot;,
+        &quot;conflict_type&quot;: &quot;item_rule&quot;,
+        &quot;severity&quot;: &quot;critical&quot;,
+        &quot;scope&quot;: &quot;local&quot;,
+        &quot;source&quot;: &quot;L1&quot;,
+        &quot;evidence&quot;: [
+          {
+            &quot;chapter&quot;: 1,
+            &quot;quote&quot;: &quot;林川唯一的万用表已烧成无法修复的残骸，他尚未获取替代品。&quot;
+          },
+          {
+            &quot;chapter&quot;: 2,
+            &quot;quote&quot;: &quot;林川拿起那只完好无损的旧万用表，接上探针，顺利测出了电压。&quot;
+          }
+        ],
+        &quot;confidence&quot;: 0.98,
+        &quot;suggestion&quot;: &quot;删除或改写本章开头：万用表在第1章已烧毁且未获得替代品，不能直接出现“完好无损的旧万用表”。应改为林川先设法获取/修复替代万用表（或改用其他测量手段），再写测电压；若本章意图就是“获得替代品”，需补上获取过程与来源。&quot;
+      }
+    ],
+    &quot;reasons&quot;: [
+      &quot;第2章正文与第1章章尾存在硬性物品状态冲突：唯一万用表已烧毁且无替代品，本章却直接使用完好万用表，属接续断裂。&quot;,
+      &quot;该冲突为句段级可修复问题，无需推翻整章规划，故路由 rewrite 而非 replan。&quot;
+    ],
+    &quot;confidence&quot;: 0.95
+  }
+}
+</pre></details></article><article><h2>logic.first_visit</h2><p>执行：completed · 复核：provisional · 暂定自动通过：True</p><details><summary>输入背景、正文与预期问题</summary><pre>{
+  &quot;input&quot;: {
+    &quot;chapter_seq&quot;: 2,
+    &quot;context&quot;: {
+      &quot;short_context&quot;: [
+        {
+          &quot;kind&quot;: &quot;prev_chapter_tail&quot;,
+          &quot;chapter&quot;: 1,
+          &quot;tail&quot;: &quot;昨晚林川已在北桥站办理登记，今天再次来到原站房。&quot;
+        }
+      ],
+      &quot;long_term_facts&quot;: []
+    },
+    &quot;plan&quot;: {},
+    &quot;draft&quot;: &quot;这是林川有生以来第一次来到北桥站，此前他从未到过这里。&quot;
+  },
+  &quot;expected&quot;: {
+    &quot;allowed_verdicts&quot;: [
+      &quot;rewrite&quot;
+    ],
+    &quot;required_issues&quot;: [
+      {
+        &quot;id&quot;: &quot;first_visit&quot;,
+        &quot;description&quot;: &quot;首次来访与既有经历矛盾；正常重访不得误报&quot;,
+        &quot;allowed_conflict_types&quot;: [
+          &quot;plotline&quot;,
+          &quot;character&quot;,
+          &quot;timeline&quot;
+        ],
+        &quot;allowed_severities&quot;: [
+          &quot;major&quot;,
+          &quot;critical&quot;
+        ],
+        &quot;evidence_sources&quot;: [
+          {
+            &quot;chapter&quot;: 1,
+            &quot;pointer&quot;: &quot;/input/context/short_context/0/tail&quot;
+          },
+          {
+            &quot;chapter&quot;: 2,
+            &quot;pointer&quot;: &quot;/input/draft&quot;
+          }
+        ]
+      }
+    ],
+    &quot;forbidden_issues&quot;: []
+  },
+  &quot;label&quot;: {
+    &quot;status&quot;: &quot;proposed&quot;,
+    &quot;review_note&quot;: &quot;从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。&quot;,
+    &quot;reviewer&quot;: null
+  }
+}
+</pre></details><details><summary>查看模型实际输出</summary><pre>{&quot;verdict&quot;:&quot;rewrite&quot;,&quot;findings&quot;:[{&quot;conflict_key&quot;:&quot;continuity_northbridge_first_visit&quot;,&quot;conflict_type&quot;:&quot;timeline&quot;,&quot;severity&quot;:&quot;major&quot;,&quot;scope&quot;:&quot;local&quot;,&quot;evidence&quot;:[{&quot;chapter&quot;:1,&quot;quote&quot;:&quot;昨晚林川已在北桥站办理登记，今天再次来到原站房。&quot;},{&quot;chapter&quot;:2,&quot;quote&quot;:&quot;这是林川有生以来第一次来到北桥站，此前他从未到过这里。&quot;}],&quot;confidence&quot;:0.95,&quot;suggestion&quot;:&quot;删除或改写“第一次来到北桥站/从未到过这里”的表述，改为承接前章的“再次来到原站房”，例如：林川再次走进北桥站原站房，昨晚办理登记的情形还留在记忆里。随后直接推进本章新动作，避免重演抵达/登记。&quot;}],&quot;reasons&quot;:[&quot;本章开头与前一章章尾直接矛盾：前章已写林川昨晚在北桥站办理登记，本章却称其有生以来第一次来到北桥站。&quot;,&quot;该矛盾属于明确的接续断裂，会破坏时间线与人物经历连续性，需按 local 范围改写开头接续句。&quot;,&quot;除该接续问题外，本章正文信息过少，无法判断其他剧情线推进；本次仅要求修复接续矛盾，不升级为整章重规划。&quot;],&quot;confidence&quot;:0.95}</pre></details><details><summary>实际输出、证据检查与复核结果</summary><pre>{
+  &quot;case_id&quot;: &quot;logic.first_visit&quot;,
+  &quot;case_sha256&quot;: &quot;2d539ded7126f594d8a3670ee403c4b18b793189af2c97622b13082cca5fb7aa&quot;,
+  &quot;execution&quot;: &quot;completed&quot;,
+  &quot;coverage&quot;: &quot;implemented&quot;,
+  &quot;attempted&quot;: true,
+  &quot;prompt_sha256&quot;: &quot;edbfd94376a6f12e82613ce6cdfdb9f12fdb5e6abb2203d84d9ca082081a7cdc&quot;,
+  &quot;input_tokens&quot;: 707,
+  &quot;output_tokens&quot;: 282,
+  &quot;cost_est&quot;: 0.00367,
+  &quot;cost_status&quot;: &quot;estimated&quot;,
+  &quot;model_id&quot;: &quot;deepseek-flash&quot;,
+  &quot;finish_reason&quot;: &quot;stop&quot;,
+  &quot;wall_ms&quot;: 2688,
+  &quot;polarity&quot;: &quot;positive&quot;,
+  &quot;category&quot;: &quot;visit&quot;,
+  &quot;label_status&quot;: &quot;proposed&quot;,
+  &quot;review&quot;: &quot;provisional&quot;,
+  &quot;output_valid&quot;: true,
+  &quot;verdict_match&quot;: true,
+  &quot;automatic_pass&quot;: true,
+  &quot;confirmed_pass&quot;: null,
+  &quot;candidates&quot;: {
+    &quot;0&quot;: [
+      &quot;first_visit&quot;
+    ]
+  },
+  &quot;evidence&quot;: {
+    &quot;0&quot;: [
+      true,
+      true
+    ]
+  },
+  &quot;tp&quot;: 0,
+  &quot;fp&quot;: 0,
+  &quot;fn&quot;: 1,
+  &quot;duplicates&quot;: 0,
+  &quot;valid_quotes&quot;: 2,
+  &quot;total_quotes&quot;: 2,
+  &quot;findings_without_quotes&quot;: 0,
+  &quot;verdict&quot;: {
+    &quot;verdict&quot;: &quot;rewrite&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [
+      {
+        &quot;finding_id&quot;: null,
+        &quot;conflict_key&quot;: &quot;continuity_northbridge_first_visit&quot;,
+        &quot;conflict_type&quot;: &quot;timeline&quot;,
+        &quot;severity&quot;: &quot;major&quot;,
+        &quot;scope&quot;: &quot;local&quot;,
+        &quot;source&quot;: &quot;L1&quot;,
+        &quot;evidence&quot;: [
+          {
+            &quot;chapter&quot;: 1,
+            &quot;quote&quot;: &quot;昨晚林川已在北桥站办理登记，今天再次来到原站房。&quot;
+          },
+          {
+            &quot;chapter&quot;: 2,
+            &quot;quote&quot;: &quot;这是林川有生以来第一次来到北桥站，此前他从未到过这里。&quot;
+          }
+        ],
+        &quot;confidence&quot;: 0.95,
+        &quot;suggestion&quot;: &quot;删除或改写“第一次来到北桥站/从未到过这里”的表述，改为承接前章的“再次来到原站房”，例如：林川再次走进北桥站原站房，昨晚办理登记的情形还留在记忆里。随后直接推进本章新动作，避免重演抵达/登记。&quot;
+      }
+    ],
+    &quot;reasons&quot;: [
+      &quot;本章开头与前一章章尾直接矛盾：前章已写林川昨晚在北桥站办理登记，本章却称其有生以来第一次来到北桥站。&quot;,
+      &quot;该矛盾属于明确的接续断裂，会破坏时间线与人物经历连续性，需按 local 范围改写开头接续句。&quot;,
+      &quot;除该接续问题外，本章正文信息过少，无法判断其他剧情线推进；本次仅要求修复接续矛盾，不升级为整章重规划。&quot;
+    ],
+    &quot;confidence&quot;: 0.95
+  }
+}
+</pre></details></article><article><h2>logic.former_member</h2><p>执行：completed · 复核：provisional · 暂定自动通过：True</p><details><summary>输入背景、正文与预期问题</summary><pre>{
+  &quot;input&quot;: {
+    &quot;chapter_seq&quot;: 2,
+    &quot;context&quot;: {
+      &quot;short_context&quot;: [
+        {
+          &quot;kind&quot;: &quot;prev_chapter_tail&quot;,
+          &quot;chapter&quot;: 1,
+          &quot;tail&quot;: &quot;林川已正式退出北桥检修队，合同解除且未重新入职。&quot;
+        }
+      ],
+      &quot;long_term_facts&quot;: []
+    },
+    &quot;plan&quot;: {},
+    &quot;draft&quot;: &quot;林川以外部维修承包人的身份递交报价单，说明自己已经不属于检修队。&quot;
+  },
+  &quot;expected&quot;: {
+    &quot;allowed_verdicts&quot;: [
+      &quot;pass&quot;
+    ],
+    &quot;required_issues&quot;: [],
+    &quot;forbidden_issues&quot;: [
+      &quot;解除身份却直接声称从未解除；外部承包身份不得误报&quot;
+    ]
+  },
+  &quot;label&quot;: {
+    &quot;status&quot;: &quot;proposed&quot;,
+    &quot;review_note&quot;: &quot;从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。&quot;,
+    &quot;reviewer&quot;: null
+  }
+}
+</pre></details><details><summary>查看模型实际输出</summary><pre>{&quot;verdict&quot;: &quot;pass&quot;, &quot;findings&quot;: [], &quot;reasons&quot;: [&quot;本章内容与近期上下文一致：林川已退出北桥检修队，本章以外部维修承包人身份递交报价单，明确说明自己不再属于检修队，接续自然，无矛盾。&quot;, &quot;无章节计划、无世界观硬约束、无开放伏笔与剧情线可对照，无法判定主线偏移或伏笔遗漏。&quot;, &quot;内容为单场景动作，衔接顺畅，人设与身份状态一致，节奏无异常。&quot;, &quot;未发现跨章重演、接续断裂或机械重复问题。&quot;], &quot;confidence&quot;: 0.6}</pre></details><details><summary>实际输出、证据检查与复核结果</summary><pre>{
+  &quot;case_id&quot;: &quot;logic.former_member&quot;,
+  &quot;case_sha256&quot;: &quot;e46ba2081b607964944a138bcf4387ed3f6ccaaff6f0f470d4a722d02973eb6a&quot;,
+  &quot;execution&quot;: &quot;completed&quot;,
+  &quot;coverage&quot;: &quot;implemented&quot;,
+  &quot;attempted&quot;: true,
+  &quot;prompt_sha256&quot;: &quot;365672ef237851761e56037d33206fc3917c3357d23871923e1544ce38e126bf&quot;,
+  &quot;input_tokens&quot;: 707,
+  &quot;output_tokens&quot;: 136,
+  &quot;cost_est&quot;: 0.002502,
+  &quot;cost_status&quot;: &quot;estimated&quot;,
+  &quot;model_id&quot;: &quot;deepseek-flash&quot;,
+  &quot;finish_reason&quot;: &quot;stop&quot;,
+  &quot;wall_ms&quot;: 2484,
+  &quot;polarity&quot;: &quot;negative&quot;,
+  &quot;category&quot;: &quot;allegiance&quot;,
+  &quot;label_status&quot;: &quot;proposed&quot;,
+  &quot;review&quot;: &quot;provisional&quot;,
+  &quot;output_valid&quot;: true,
+  &quot;verdict_match&quot;: true,
+  &quot;automatic_pass&quot;: true,
+  &quot;confirmed_pass&quot;: null,
+  &quot;candidates&quot;: {},
+  &quot;evidence&quot;: {},
+  &quot;tp&quot;: 0,
+  &quot;fp&quot;: 0,
+  &quot;fn&quot;: 0,
+  &quot;duplicates&quot;: 0,
+  &quot;valid_quotes&quot;: 0,
+  &quot;total_quotes&quot;: 0,
+  &quot;findings_without_quotes&quot;: 0,
+  &quot;verdict&quot;: {
+    &quot;verdict&quot;: &quot;pass&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [],
+    &quot;reasons&quot;: [
+      &quot;本章内容与近期上下文一致：林川已退出北桥检修队，本章以外部维修承包人身份递交报价单，明确说明自己不再属于检修队，接续自然，无矛盾。&quot;,
+      &quot;无章节计划、无世界观硬约束、无开放伏笔与剧情线可对照，无法判定主线偏移或伏笔遗漏。&quot;,
+      &quot;内容为单场景动作，衔接顺畅，人设与身份状态一致，节奏无异常。&quot;,
+      &quot;未发现跨章重演、接续断裂或机械重复问题。&quot;
+    ],
+    &quot;confidence&quot;: 0.6
+  }
+}
+</pre></details></article><article><h2>logic.promise_completed</h2><p>执行：completed · 复核：provisional · 暂定自动通过：True</p><details><summary>输入背景、正文与预期问题</summary><pre>{
+  &quot;input&quot;: {
+    &quot;chapter_seq&quot;: 2,
+    &quot;context&quot;: {
+      &quot;short_context&quot;: [
+        {
+          &quot;kind&quot;: &quot;prev_chapter_tail&quot;,
+          &quot;chapter&quot;: 1,
+          &quot;tail&quot;: &quot;林川承诺修好水泵，但检修尚未开始，水泵仍完全损坏。&quot;
+        }
+      ],
+      &quot;long_term_facts&quot;: []
+    },
+    &quot;plan&quot;: {},
+    &quot;draft&quot;: &quot;林川拆开水泵，更换烧毁的电容，重新接线。试运行成功后，他才告诉许宁承诺完成了。&quot;
+  },
+  &quot;expected&quot;: {
+    &quot;allowed_verdicts&quot;: [
+      &quot;pass&quot;
+    ],
+    &quot;required_issues&quot;: [],
+    &quot;forbidden_issues&quot;: [
+      &quot;尚未履行却直接认定完成；实际修复后完成承诺不得误报&quot;
+    ]
+  },
+  &quot;label&quot;: {
+    &quot;status&quot;: &quot;proposed&quot;,
+    &quot;review_note&quot;: &quot;从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。&quot;,
+    &quot;reviewer&quot;: null
+  }
+}
+</pre></details><details><summary>查看模型实际输出</summary><pre>{&quot;verdict&quot;: &quot;pass&quot;, &quot;findings&quot;: [], &quot;reasons&quot;: [&quot;本章为第2章，无章节计划、无世界观硬约束、无剧情上下文与伏笔，审核范围仅限与上一章章尾的接续一致性。&quot;, &quot;上一章章尾为林川承诺修好水泵但检修尚未开始、水泵完全损坏；本章开头直接写林川拆开水泵、更换电容、重新接线并试运行成功，随后告知许宁承诺完成，动作承接自然，无重演已完成动作、无丢弃未完成请求、无时间地点或视角的无交代跳变。&quot;, &quot;本章内容为单一场景的完整小闭环，节奏紧凑，未发现人设、逻辑或结构问题，无需修订。&quot;], &quot;confidence&quot;: 0.9}</pre></details><details><summary>实际输出、证据检查与复核结果</summary><pre>{
+  &quot;case_id&quot;: &quot;logic.promise_completed&quot;,
+  &quot;case_sha256&quot;: &quot;c38457d73456506c54487ea75f7431c724423f1a35be80980babcda2aa96ab40&quot;,
+  &quot;execution&quot;: &quot;completed&quot;,
+  &quot;coverage&quot;: &quot;implemented&quot;,
+  &quot;attempted&quot;: true,
+  &quot;prompt_sha256&quot;: &quot;540c61576a795e18d712ae4e838ff13ec3acac952f5ee647eb65f3f3d1aaa50b&quot;,
+  &quot;input_tokens&quot;: 714,
+  &quot;output_tokens&quot;: 165,
+  &quot;cost_est&quot;: 0.002748,
+  &quot;cost_status&quot;: &quot;estimated&quot;,
+  &quot;model_id&quot;: &quot;deepseek-flash&quot;,
+  &quot;finish_reason&quot;: &quot;stop&quot;,
+  &quot;wall_ms&quot;: 2735,
+  &quot;polarity&quot;: &quot;negative&quot;,
+  &quot;category&quot;: &quot;promise&quot;,
+  &quot;label_status&quot;: &quot;proposed&quot;,
+  &quot;review&quot;: &quot;provisional&quot;,
+  &quot;output_valid&quot;: true,
+  &quot;verdict_match&quot;: true,
+  &quot;automatic_pass&quot;: true,
+  &quot;confirmed_pass&quot;: null,
+  &quot;candidates&quot;: {},
+  &quot;evidence&quot;: {},
+  &quot;tp&quot;: 0,
+  &quot;fp&quot;: 0,
+  &quot;fn&quot;: 0,
+  &quot;duplicates&quot;: 0,
+  &quot;valid_quotes&quot;: 0,
+  &quot;total_quotes&quot;: 0,
+  &quot;findings_without_quotes&quot;: 0,
+  &quot;verdict&quot;: {
+    &quot;verdict&quot;: &quot;pass&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [],
+    &quot;reasons&quot;: [
+      &quot;本章为第2章，无章节计划、无世界观硬约束、无剧情上下文与伏笔，审核范围仅限与上一章章尾的接续一致性。&quot;,
+      &quot;上一章章尾为林川承诺修好水泵但检修尚未开始、水泵完全损坏；本章开头直接写林川拆开水泵、更换电容、重新接线并试运行成功，随后告知许宁承诺完成，动作承接自然，无重演已完成动作、无丢弃未完成请求、无时间地点或视角的无交代跳变。&quot;,
+      &quot;本章内容为单一场景的完整小闭环，节奏紧凑，未发现人设、逻辑或结构问题，无需修订。&quot;
+    ],
+    &quot;confidence&quot;: 0.9
+  }
+}
+</pre></details></article><article><h2>logic.replacement_item</h2><p>执行：completed · 复核：provisional · 暂定自动通过：True</p><details><summary>输入背景、正文与预期问题</summary><pre>{
+  &quot;input&quot;: {
+    &quot;chapter_seq&quot;: 2,
+    &quot;context&quot;: {
+      &quot;short_context&quot;: [
+        {
+          &quot;kind&quot;: &quot;prev_chapter_tail&quot;,
+          &quot;chapter&quot;: 1,
+          &quot;tail&quot;: &quot;林川唯一的万用表已烧成无法修复的残骸。&quot;
+        }
+      ],
+      &quot;long_term_facts&quot;: []
+    },
+    &quot;plan&quot;: {},
+    &quot;draft&quot;: &quot;许宁从工具库领来一只新万用表。林川把旧表残骸收进废物箱，再用新表测量。&quot;
+  },
+  &quot;expected&quot;: {
+    &quot;allowed_verdicts&quot;: [
+      &quot;pass&quot;
+    ],
+    &quot;required_issues&quot;: [],
+    &quot;forbidden_issues&quot;: [
+      &quot;毁坏的旧物直接再现；明确更换新物不得误报&quot;
+    ]
+  },
+  &quot;label&quot;: {
+    &quot;status&quot;: &quot;proposed&quot;,
+    &quot;review_note&quot;: &quot;从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。&quot;,
+    &quot;reviewer&quot;: null
+  }
+}
+</pre></details><details><summary>查看模型实际输出</summary><pre>{&quot;verdict&quot;: &quot;pass&quot;, &quot;findings&quot;: [], &quot;reasons&quot;: [&quot;本章仅两句，承接前章结尾&#x27;万用表烧成残骸&#x27;，交代了领新表、收残骸、重新测量的后续动作，接续自然，无重演已完成动作。&quot;, &quot;无章节计划、无世界观硬约束、无伏笔与剧情线可对照，未发现主线偏移或设定冲突。&quot;, &quot;内容过短但无明确质量问题，按规则不制造冗余修订。&quot;], &quot;confidence&quot;: 0.6}</pre></details><details><summary>实际输出、证据检查与复核结果</summary><pre>{
+  &quot;case_id&quot;: &quot;logic.replacement_item&quot;,
+  &quot;case_sha256&quot;: &quot;b1cf0577d1b2f859647e5d7ff164e9b024e0d2781f7aef82d40722605cdfe0b2&quot;,
+  &quot;execution&quot;: &quot;completed&quot;,
+  &quot;coverage&quot;: &quot;implemented&quot;,
+  &quot;attempted&quot;: true,
+  &quot;prompt_sha256&quot;: &quot;259c52287c77b5b2431308743b70524868bcfc2af976fca92591b81826fa7ab3&quot;,
+  &quot;input_tokens&quot;: 716,
+  &quot;output_tokens&quot;: 114,
+  &quot;cost_est&quot;: 0.002344,
+  &quot;cost_status&quot;: &quot;estimated&quot;,
+  &quot;model_id&quot;: &quot;deepseek-flash&quot;,
+  &quot;finish_reason&quot;: &quot;stop&quot;,
+  &quot;wall_ms&quot;: 2406,
+  &quot;polarity&quot;: &quot;negative&quot;,
+  &quot;category&quot;: &quot;item&quot;,
+  &quot;label_status&quot;: &quot;proposed&quot;,
+  &quot;review&quot;: &quot;provisional&quot;,
+  &quot;output_valid&quot;: true,
+  &quot;verdict_match&quot;: true,
+  &quot;automatic_pass&quot;: true,
+  &quot;confirmed_pass&quot;: null,
+  &quot;candidates&quot;: {},
+  &quot;evidence&quot;: {},
+  &quot;tp&quot;: 0,
+  &quot;fp&quot;: 0,
+  &quot;fn&quot;: 0,
+  &quot;duplicates&quot;: 0,
+  &quot;valid_quotes&quot;: 0,
+  &quot;total_quotes&quot;: 0,
+  &quot;findings_without_quotes&quot;: 0,
+  &quot;verdict&quot;: {
+    &quot;verdict&quot;: &quot;pass&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [],
+    &quot;reasons&quot;: [
+      &quot;本章仅两句，承接前章结尾&#x27;万用表烧成残骸&#x27;，交代了领新表、收残骸、重新测量的后续动作，接续自然，无重演已完成动作。&quot;,
+      &quot;无章节计划、无世界观硬约束、无伏笔与剧情线可对照，未发现主线偏移或设定冲突。&quot;,
+      &quot;内容过短但无明确质量问题，按规则不制造冗余修订。&quot;
+    ],
+    &quot;confidence&quot;: 0.6
+  }
+}
+</pre></details></article><article><h2>logic.return_visit</h2><p>执行：completed · 复核：provisional · 暂定自动通过：True</p><details><summary>输入背景、正文与预期问题</summary><pre>{
+  &quot;input&quot;: {
+    &quot;chapter_seq&quot;: 2,
+    &quot;context&quot;: {
+      &quot;short_context&quot;: [
+        {
+          &quot;kind&quot;: &quot;prev_chapter_tail&quot;,
+          &quot;chapter&quot;: 1,
+          &quot;tail&quot;: &quot;昨晚林川已在北桥站办理登记，今天再次来到原站房。&quot;
+        }
+      ],
+      &quot;long_term_facts&quot;: []
+    },
+    &quot;plan&quot;: {},
+    &quot;draft&quot;: &quot;林川推开熟悉的站房门，取出昨晚留下的登记回执。&quot;
+  },
+  &quot;expected&quot;: {
+    &quot;allowed_verdicts&quot;: [
+      &quot;pass&quot;
+    ],
+    &quot;required_issues&quot;: [],
+    &quot;forbidden_issues&quot;: [
+      &quot;首次来访与既有经历矛盾；正常重访不得误报&quot;
+    ]
+  },
+  &quot;label&quot;: {
+    &quot;status&quot;: &quot;proposed&quot;,
+    &quot;review_note&quot;: &quot;从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。&quot;,
+    &quot;reviewer&quot;: null
+  }
+}
+</pre></details><details><summary>查看模型实际输出</summary><pre>{&quot;verdict&quot;: &quot;pass&quot;, &quot;findings&quot;: [], &quot;reasons&quot;: [&quot;本章仅有一句正文，内容为林川推开站房门并取出昨晚留下的登记回执，与【近期上下文】中&#x27;昨晚林川已在北桥站办理登记，今天再次来到原站房&#x27;完全一致，属于合理的同场景接续，未重演已完成动作，也未丢弃未完成请求或危险。&quot;, &quot;无章节计划、无世界观硬约束、无确定性校验结果、无剧情上下文与开放伏笔，缺乏可对照的规划或伏笔依据，无法判定主线偏移或伏笔未收。&quot;, &quot;无人物状态快照与设定实体，无法核实人设或设定冲突；无近期章节开头参照，无法判定近义改写套路。&quot;, &quot;未发现衔接断裂、机械重复、时间地点或视角无交代改变等问题，按规则不制造冗余修订，判定 pass。&quot;], &quot;confidence&quot;: 0.6}</pre></details><details><summary>实际输出、证据检查与复核结果</summary><pre>{
+  &quot;case_id&quot;: &quot;logic.return_visit&quot;,
+  &quot;case_sha256&quot;: &quot;33e9b5bd63cc0579256eec5e1752201816ff9c8b64e8e95cd8bc7ccb7216c8f8&quot;,
+  &quot;execution&quot;: &quot;completed&quot;,
+  &quot;coverage&quot;: &quot;implemented&quot;,
+  &quot;attempted&quot;: true,
+  &quot;prompt_sha256&quot;: &quot;043423a630659197f0dd08b783ceac8a80ec4cffe055500a3ad144d5f13a1e49&quot;,
+  &quot;input_tokens&quot;: 702,
+  &quot;output_tokens&quot;: 200,
+  &quot;cost_est&quot;: 0.003004,
+  &quot;cost_status&quot;: &quot;estimated&quot;,
+  &quot;model_id&quot;: &quot;deepseek-flash&quot;,
+  &quot;finish_reason&quot;: &quot;stop&quot;,
+  &quot;wall_ms&quot;: 2844,
+  &quot;polarity&quot;: &quot;negative&quot;,
+  &quot;category&quot;: &quot;visit&quot;,
+  &quot;label_status&quot;: &quot;proposed&quot;,
+  &quot;review&quot;: &quot;provisional&quot;,
+  &quot;output_valid&quot;: true,
+  &quot;verdict_match&quot;: true,
+  &quot;automatic_pass&quot;: true,
+  &quot;confirmed_pass&quot;: null,
+  &quot;candidates&quot;: {},
+  &quot;evidence&quot;: {},
+  &quot;tp&quot;: 0,
+  &quot;fp&quot;: 0,
+  &quot;fn&quot;: 0,
+  &quot;duplicates&quot;: 0,
+  &quot;valid_quotes&quot;: 0,
+  &quot;total_quotes&quot;: 0,
+  &quot;findings_without_quotes&quot;: 0,
+  &quot;verdict&quot;: {
+    &quot;verdict&quot;: &quot;pass&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [],
+    &quot;reasons&quot;: [
+      &quot;本章仅有一句正文，内容为林川推开站房门并取出昨晚留下的登记回执，与【近期上下文】中&#x27;昨晚林川已在北桥站办理登记，今天再次来到原站房&#x27;完全一致，属于合理的同场景接续，未重演已完成动作，也未丢弃未完成请求或危险。&quot;,
+      &quot;无章节计划、无世界观硬约束、无确定性校验结果、无剧情上下文与开放伏笔，缺乏可对照的规划或伏笔依据，无法判定主线偏移或伏笔未收。&quot;,
+      &quot;无人物状态快照与设定实体，无法核实人设或设定冲突；无近期章节开头参照，无法判定近义改写套路。&quot;,
+      &quot;未发现衔接断裂、机械重复、时间地点或视角无交代改变等问题，按规则不制造冗余修订，判定 pass。&quot;
+    ],
+    &quot;confidence&quot;: 0.6
+  }
+}
+</pre></details></article><article><h2>logic.unfulfilled_promise</h2><p>执行：completed · 复核：provisional · 暂定自动通过：True</p><details><summary>输入背景、正文与预期问题</summary><pre>{
+  &quot;input&quot;: {
+    &quot;chapter_seq&quot;: 2,
+    &quot;context&quot;: {
+      &quot;short_context&quot;: [
+        {
+          &quot;kind&quot;: &quot;prev_chapter_tail&quot;,
+          &quot;chapter&quot;: 1,
+          &quot;tail&quot;: &quot;林川承诺修好水泵，但检修尚未开始，水泵仍完全损坏。&quot;
+        }
+      ],
+      &quot;long_term_facts&quot;: []
+    },
+    &quot;plan&quot;: {},
+    &quot;draft&quot;: &quot;检修还没开始，大家就确认林川已经兑现修好水泵的承诺，水泵已经恢复运作。&quot;
+  },
+  &quot;expected&quot;: {
+    &quot;allowed_verdicts&quot;: [
+      &quot;rewrite&quot;
+    ],
+    &quot;required_issues&quot;: [
+      {
+        &quot;id&quot;: &quot;unfulfilled_promise&quot;,
+        &quot;description&quot;: &quot;尚未履行却直接认定完成；实际修复后完成承诺不得误报&quot;,
+        &quot;allowed_conflict_types&quot;: [
+          &quot;plotline&quot;,
+          &quot;foreshadow&quot;
+        ],
+        &quot;allowed_severities&quot;: [
+          &quot;major&quot;,
+          &quot;critical&quot;
+        ],
+        &quot;evidence_sources&quot;: [
+          {
+            &quot;chapter&quot;: 1,
+            &quot;pointer&quot;: &quot;/input/context/short_context/0/tail&quot;
+          },
+          {
+            &quot;chapter&quot;: 2,
+            &quot;pointer&quot;: &quot;/input/draft&quot;
+          }
+        ]
+      }
+    ],
+    &quot;forbidden_issues&quot;: []
+  },
+  &quot;label&quot;: {
+    &quot;status&quot;: &quot;proposed&quot;,
+    &quot;review_note&quot;: &quot;从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。&quot;,
+    &quot;reviewer&quot;: null
+  }
+}
+</pre></details><details><summary>查看模型实际输出</summary><pre>{
+  &quot;verdict&quot;: &quot;rewrite&quot;,
+  &quot;findings&quot;: [
+    {
+      &quot;conflict_key&quot;: &quot;plotline_pump_promise_contradiction&quot;,
+      &quot;conflict_type&quot;: &quot;plotline&quot;,
+      &quot;severity&quot;: &quot;critical&quot;,
+      &quot;scope&quot;: &quot;structural&quot;,
+      &quot;evidence&quot;: [
+        {
+          &quot;chapter&quot;: 1,
+          &quot;quote&quot;: &quot;林川承诺修好水泵，但检修尚未开始，水泵仍完全损坏。&quot;
+        },
+        {
+          &quot;chapter&quot;: 2,
+          &quot;quote&quot;: &quot;检修还没开始，大家就确认林川已经兑现修好水泵的承诺，水泵已经恢复运作。&quot;
+        }
+      ],
+      &quot;confidence&quot;: 0.95,
+      &quot;suggestion&quot;: &quot;删除或重写本章开头，不能跳过检修过程直接宣布水泵恢复运作。应描写林川实际开始检修、遇到困难并逐步修复水泵的过程，或至少交代检修如何完成，使承诺兑现具备因果链条。&quot;
+    }
+  ],
+  &quot;reasons&quot;: [
+    &quot;第1章结尾明确水泵仍完全损坏且检修尚未开始，第2章开头却直接确认水泵已恢复运作，构成因果断裂和承诺兑现过程缺失。&quot;,
+    &quot;该矛盾属于结构性剧情问题，需重写本章开头以衔接前章并补全检修过程。&quot;
+  ],
+  &quot;confidence&quot;: 0.95
+}</pre></details><details><summary>实际输出、证据检查与复核结果</summary><pre>{
+  &quot;case_id&quot;: &quot;logic.unfulfilled_promise&quot;,
+  &quot;case_sha256&quot;: &quot;f28a79298e2c1c34f516d9b2fb9a1bcf124f6847b9c177ee3806932fef3e0138&quot;,
+  &quot;execution&quot;: &quot;completed&quot;,
+  &quot;coverage&quot;: &quot;implemented&quot;,
+  &quot;attempted&quot;: true,
+  &quot;prompt_sha256&quot;: &quot;a61412eee2ba23ebf6dd60053d5d3112840015668d7314cd9afdbfce6ded7a6f&quot;,
+  &quot;input_tokens&quot;: 710,
+  &quot;output_tokens&quot;: 289,
+  &quot;cost_est&quot;: 0.003732,
+  &quot;cost_status&quot;: &quot;estimated&quot;,
+  &quot;model_id&quot;: &quot;deepseek-flash&quot;,
+  &quot;finish_reason&quot;: &quot;stop&quot;,
+  &quot;wall_ms&quot;: 2750,
+  &quot;polarity&quot;: &quot;positive&quot;,
+  &quot;category&quot;: &quot;promise&quot;,
+  &quot;label_status&quot;: &quot;proposed&quot;,
+  &quot;review&quot;: &quot;provisional&quot;,
+  &quot;output_valid&quot;: true,
+  &quot;verdict_match&quot;: true,
+  &quot;automatic_pass&quot;: true,
+  &quot;confirmed_pass&quot;: null,
+  &quot;candidates&quot;: {
+    &quot;0&quot;: [
+      &quot;unfulfilled_promise&quot;
+    ]
+  },
+  &quot;evidence&quot;: {
+    &quot;0&quot;: [
+      true,
+      true
+    ]
+  },
+  &quot;tp&quot;: 0,
+  &quot;fp&quot;: 0,
+  &quot;fn&quot;: 1,
+  &quot;duplicates&quot;: 0,
+  &quot;valid_quotes&quot;: 2,
+  &quot;total_quotes&quot;: 2,
+  &quot;findings_without_quotes&quot;: 0,
+  &quot;verdict&quot;: {
+    &quot;verdict&quot;: &quot;rewrite&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [
+      {
+        &quot;finding_id&quot;: null,
+        &quot;conflict_key&quot;: &quot;plotline_pump_promise_contradiction&quot;,
+        &quot;conflict_type&quot;: &quot;plotline&quot;,
+        &quot;severity&quot;: &quot;critical&quot;,
+        &quot;scope&quot;: &quot;structural&quot;,
+        &quot;source&quot;: &quot;L1&quot;,
+        &quot;evidence&quot;: [
+          {
+            &quot;chapter&quot;: 1,
+            &quot;quote&quot;: &quot;林川承诺修好水泵，但检修尚未开始，水泵仍完全损坏。&quot;
+          },
+          {
+            &quot;chapter&quot;: 2,
+            &quot;quote&quot;: &quot;检修还没开始，大家就确认林川已经兑现修好水泵的承诺，水泵已经恢复运作。&quot;
+          }
+        ],
+        &quot;confidence&quot;: 0.95,
+        &quot;suggestion&quot;: &quot;删除或重写本章开头，不能跳过检修过程直接宣布水泵恢复运作。应描写林川实际开始检修、遇到困难并逐步修复水泵的过程，或至少交代检修如何完成，使承诺兑现具备因果链条。&quot;
+      }
+    ],
+    &quot;reasons&quot;: [
+      &quot;第1章结尾明确水泵仍完全损坏且检修尚未开始，第2章开头却直接确认水泵已恢复运作，构成因果断裂和承诺兑现过程缺失。&quot;,
+      &quot;该矛盾属于结构性剧情问题，需重写本章开头以衔接前章并补全检修过程。&quot;
+    ],
+    &quot;confidence&quot;: 0.95
+  }
+}
+</pre></details></article></main></html>

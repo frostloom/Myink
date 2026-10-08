@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "id": "continuity.completed_entry_replayed",
+  "group_id": "continuity.completed_entry_replayed",
+  "split": "development",
+  "mode": "audit",
+  "category": "continuity",
+  "polarity": "positive",
+  "source": {
+    "path": "scripts/eval-continuity.py",
+    "case_name": "completed_entry_replayed",
+    "adapted_from": []
+  },
+  "input": {
+    "chapter_seq": 6,
+    "context": {
+      "short_context": [
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 5,
+          "tail": "沈砚已经跨进体育馆，铁门在身后关上。周野的伤腿还在流血，他扶着周野坐到长椅上，向值班医生挥手。"
+        }
+      ],
+      "recent_openings": []
+    },
+    "plan": {
+      "goals": [
+        "在体育馆内救治周野"
+      ],
+      "expected_events": [
+        "在体育馆内救治周野"
+      ]
+    },
+    "draft": "体育馆的铁门半掩着。沈砚站在门外推了推，门被铁链拴住了。他敲门报上姓名，等守卫解开铁链，才扶着周野走进去。值班医生正在长椅旁，沈砚向医生求助。医生拿来纱布，替周野包扎了伤腿。"
+  },
+  "expected": {
+    "allowed_verdicts": [
+      "rewrite"
+    ],
+    "required_issues": [
+      {
+        "id": "completed_entry_replayed",
+        "description": "已完成动作不得重演、未解决威胁不得无交代丢弃、开头不得机械重复；合理衔接与恢复不得误报",
+        "allowed_conflict_types": [
+          "plotline",
+          "timeline",
+          "style"
+        ],
+        "allowed_severities": [
+          "major",
+          "critical"
+        ],
+        "evidence_sources": [
+          {
+            "chapter": 5,
+            "pointer": "/input/context/short_context/0/tail"
+          },
+          {
+            "chapter": 6,
+            "pointer": "/input/draft"
+          }
+        ]
+      }
+    ],
+    "forbidden_issues": []
+  },
+  "label": {
+    "status": "proposed",
+    "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+    "reviewer": null
+  }
+}

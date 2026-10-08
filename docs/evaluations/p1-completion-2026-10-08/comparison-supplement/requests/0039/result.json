@@ -1,0 +1,38 @@
+{
+  "request_index": 39,
+  "case_id": "injury_continuity",
+  "variant": "no_hybrid",
+  "repetition": 2,
+  "prompt_sha256": "f19b695aae5bc714a7201b942d1cdcb22ef73e8774901e6376f85c2af1574377",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 40,
+    "max_cost_yuan": 2.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 1024,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T12:11:49.808835+00:00",
+  "execution": "completed",
+  "raw_output": "{\"summary\":\"林川与许宁登上屋顶检修，发现东侧油毡靠排水口处裂开一拃长口子，水痕源自气象传感器支架底座渗漏。林川右肩旧伤发作，改用膝盖抵住胶带卷撕贴，勉强做出十字标记，未敢动锈死的螺栓。下梯时许宁以肩顶住铁条护他落地。两人商定次日由许宁上梯固定挡板、林川裁板，若下雨则先报修、数据停一天，并记录待补给车带新油毡与密封胶。\"}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\"summary\":\"林川与许宁登上屋顶检修，发现东侧油毡靠排水口处裂开一拃长口子，水痕源自气象传感器支架底座渗漏。林川右肩旧伤发作，改用膝盖抵住胶带卷撕贴，勉强做出十字标记，未敢动锈死的螺栓。下梯时许宁以肩顶住铁条护他落地。两人商定次日由许宁上梯固定挡板、林川裁板，若下雨则先报修、数据停一天，并记录待补给车带新油毡与密封胶。\"}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 1190,
+  "output_tokens": 127,
+  "cost_est": 0.003396,
+  "cost_status": "estimated",
+  "wall_ms": 2906
+}

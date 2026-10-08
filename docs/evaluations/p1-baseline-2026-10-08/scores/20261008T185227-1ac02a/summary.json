@@ -1,0 +1,67 @@
+{
+  "planned": 15,
+  "attempted": 15,
+  "completed": 15,
+  "execution_counts": {
+    "completed": 15
+  },
+  "review_counts": {
+    "provisional": 15
+  },
+  "label_counts": {
+    "proposed": 15
+  },
+  "provisional_automatic": {
+    "passed": 13,
+    "denominator": 15,
+    "note": "候选匹配，不是人工确认的准确率"
+  },
+  "confirmed": {
+    "cases": 0,
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "precision": null,
+    "recall": null,
+    "positive_detection": null,
+    "negative_false_positive": null,
+    "overall_success": 0.0
+  },
+  "evidence": {
+    "valid_quotes": 18,
+    "total_quotes": 19,
+    "findings_without_quotes": 0
+  },
+  "usage": {
+    "input_tokens": 11219,
+    "output_tokens": 4296,
+    "estimated_cost_yuan": 0.056806,
+    "unknown_usage_runs": 0
+  },
+  "categories": {
+    "allegiance": {
+      "runs": 2,
+      "automatic_passed": 2
+    },
+    "capability": {
+      "runs": 2,
+      "automatic_passed": 2
+    },
+    "continuity": {
+      "runs": 5,
+      "automatic_passed": 3
+    },
+    "item": {
+      "runs": 2,
+      "automatic_passed": 2
+    },
+    "promise": {
+      "runs": 2,
+      "automatic_passed": 2
+    },
+    "visit": {
+      "runs": 2,
+      "automatic_passed": 2
+    }
+  }
+}

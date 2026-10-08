@@ -1,0 +1,38 @@
+{
+  "request_index": 40,
+  "case_id": "injury_continuity",
+  "variant": "no_hybrid",
+  "repetition": 1,
+  "prompt_sha256": "779989a0e7ca382c0ff2660c10b053886dacdfde44a23e2c49ec27faf8ee4273",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 60,
+    "max_cost_yuan": 5.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 4096,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T11:51:54.888802+00:00",
+  "execution": "completed",
+  "raw_output": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁在观测站屋顶东北角发现防水卷材鼓包漏水，用胶带临时封堵，并在裂缝深处发现一截带规则折角的锈蚀金属，疑似非自然开裂。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶（东北角漏水处）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶（东北角漏水处）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"injury\",\n        \"old_value\": \"\",\n        \"new_value\": \"体力偏弱，爬梯时呼吸加重，蹲坐后膝盖发僵，需扶墙站稳\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"description\": \"屋顶裂缝深处嵌着一小截锈蚀金属，边缘有规则折角，像是从某块板材上断下来的，暗示漏水并非自然开裂，可能另有隐情。\",\n        \"trigger\": {\n          \"actor\": \"林川\",\n          \"action\": \"用刮刀挑开卷材、探入裂缝\",\n          \"object\": \"裂缝深处的锈蚀金属断片\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.7,\n      \"payload\": {\n        \"description\": \"许宁想给裂缝中的金属断片拍照留存，此事尚未完成，可能引出后续调查。\",\n        \"trigger\": {\n          \"actor\": \"许宁\",\n          \"action\": \"提出拍照\",\n          \"object\": \"金属断片简图与现场\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.7\n      }\n    },\n    {\n      \"kind\": \"new_entity\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.8,\n      \"payload\": {\n        \"entity_type\": \"item\",\n        \"name\": \"锈蚀金属断片\",\n        \"description\": \"嵌在观测站屋顶裂缝深处的一小截金属，锈得发暗，边缘有规则折角，疑似从某块板材上断裂下来。\"\n      }\n    }\n  ]\n}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁在观测站屋顶东北角发现防水卷材鼓包漏水，用胶带临时封堵，并在裂缝深处发现一截带规则折角的锈蚀金属，疑似非自然开裂。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶（东北角漏水处）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"观测站屋顶（东北角漏水处）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"injury\",\n        \"old_value\": \"\",\n        \"new_value\": \"体力偏弱，爬梯时呼吸加重，蹲坐后膝盖发僵，需扶墙站稳\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"description\": \"屋顶裂缝深处嵌着一小截锈蚀金属，边缘有规则折角，像是从某块板材上断下来的，暗示漏水并非自然开裂，可能另有隐情。\",\n        \"trigger\": {\n          \"actor\": \"林川\",\n          \"action\": \"用刮刀挑开卷材、探入裂缝\",\n          \"object\": \"裂缝深处的锈蚀金属断片\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.7,\n      \"payload\": {\n        \"description\": \"许宁想给裂缝中的金属断片拍照留存，此事尚未完成，可能引出后续调查。\",\n        \"trigger\": {\n          \"actor\": \"许宁\",\n          \"action\": \"提出拍照\",\n          \"object\": \"金属断片简图与现场\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.7\n      }\n    },\n    {\n      \"kind\": \"new_entity\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.8,\n      \"payload\": {\n        \"entity_type\": \"item\",\n        \"name\": \"锈蚀金属断片\",\n        \"description\": \"嵌在观测站屋顶裂缝深处的一小截金属，锈得发暗，边缘有规则折角，疑似从某块板材上断裂下来。\"\n      }\n    }\n  ]\n}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 2196,
+  "output_tokens": 778,
+  "cost_est": 0.010616,
+  "cost_status": "estimated",
+  "wall_ms": 4500
+}

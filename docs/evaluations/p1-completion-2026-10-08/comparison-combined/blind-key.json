@@ -1,0 +1,98 @@
+[
+  {
+    "blind_id": "B001",
+    "case_id": "injury_continuity",
+    "variant": "no_hybrid",
+    "repetition": 2
+  },
+  {
+    "blind_id": "B002",
+    "case_id": "injury_continuity",
+    "variant": "direct",
+    "repetition": 2
+  },
+  {
+    "blind_id": "B003",
+    "case_id": "injury_continuity",
+    "variant": "full",
+    "repetition": 2
+  },
+  {
+    "blind_id": "B004",
+    "case_id": "meter_replacement",
+    "variant": "no_hybrid",
+    "repetition": 2
+  },
+  {
+    "blind_id": "B005",
+    "case_id": "injury_continuity",
+    "variant": "no_hybrid",
+    "repetition": 2
+  },
+  {
+    "blind_id": "B006",
+    "case_id": "injury_continuity",
+    "variant": "no_hybrid",
+    "repetition": 1
+  },
+  {
+    "blind_id": "B007",
+    "case_id": "meter_replacement",
+    "variant": "direct",
+    "repetition": 2
+  },
+  {
+    "blind_id": "B008",
+    "case_id": "injury_continuity",
+    "variant": "full",
+    "repetition": 2
+  },
+  {
+    "blind_id": "B009",
+    "case_id": "meter_replacement",
+    "variant": "no_hybrid",
+    "repetition": 2
+  },
+  {
+    "blind_id": "B010",
+    "case_id": "meter_replacement",
+    "variant": "full",
+    "repetition": 1
+  },
+  {
+    "blind_id": "B011",
+    "case_id": "injury_continuity",
+    "variant": "full",
+    "repetition": 1
+  },
+  {
+    "blind_id": "B012",
+    "case_id": "meter_replacement",
+    "variant": "no_hybrid",
+    "repetition": 1
+  },
+  {
+    "blind_id": "B013",
+    "case_id": "injury_continuity",
+    "variant": "direct",
+    "repetition": 1
+  },
+  {
+    "blind_id": "B014",
+    "case_id": "meter_replacement",
+    "variant": "full",
+    "repetition": 2
+  },
+  {
+    "blind_id": "B015",
+    "case_id": "meter_replacement",
+    "variant": "direct",
+    "repetition": 1
+  },
+  {
+    "blind_id": "B016",
+    "case_id": "injury_continuity",
+    "variant": "direct",
+    "repetition": 2
+  }
+]

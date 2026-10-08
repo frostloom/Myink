@@ -1,0 +1,22 @@
+{
+  "status": "pass",
+  "artifact": "docs/interview/agent-execution.html",
+  "sha256": "2c12df4733a0a5a19a98a06de77a01d61617996c39d732af7d0ee17f65d7f12c",
+  "browser": "Chrome headless / CDP",
+  "checks": [
+    {
+      "width": 1440,
+      "nodes": 18,
+      "filters": "pass",
+      "expand": "pass",
+      "overflow": "pass"
+    },
+    {
+      "width": 390,
+      "nodes": 18,
+      "filters": "pass",
+      "expand": "pass",
+      "overflow": "pass"
+    }
+  ]
+}

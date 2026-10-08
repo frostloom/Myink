@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "id": "continuity.natural_same_scene_continuation",
+  "group_id": "continuity.threat",
+  "split": "development",
+  "mode": "audit",
+  "category": "continuity",
+  "polarity": "negative",
+  "source": {
+    "path": "scripts/eval-continuity.py",
+    "case_name": "natural_same_scene_continuation",
+    "adapted_from": []
+  },
+  "input": {
+    "chapter_seq": 6,
+    "context": {
+      "short_context": [
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 5,
+          "tail": "兽爪从门缝探了进来，门闩正一点点弯折。沈砚抵住铁门，朝妹妹伸手：“把那把螺丝刀给我，快！”妹妹抓起工具。"
+        }
+      ],
+      "recent_openings": []
+    },
+    "plan": {
+      "goals": [
+        "兄妹守住体育馆后门"
+      ],
+      "expected_events": [
+        "兄妹守住体育馆后门"
+      ]
+    },
+    "draft": "螺丝刀落进掌心，沈砚反手把刀杆插进门闩下方的锁孔。铁门又撞了一下，刀杆弯了，却卡住了继续外滑的门闩。“去搬长椅。”他对沈棠说。妹妹拖来长椅，两人把椅背顶在门上。那只兽爪终于缩了回去，兄妹趁撞击声暂歇，退到立柱后，轮流盯着后门。"
+  },
+  "expected": {
+    "allowed_verdicts": [
+      "pass"
+    ],
+    "required_issues": [],
+    "forbidden_issues": [
+      "已完成动作不得重演、未解决威胁不得无交代丢弃、开头不得机械重复；合理衔接与恢复不得误报"
+    ]
+  },
+  "label": {
+    "status": "proposed",
+    "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+    "reviewer": null
+  }
+}

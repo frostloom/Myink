@@ -1,0 +1,16 @@
+{
+  "case_id": "continuity.pending_threat_dropped",
+  "case_sha256": "e68cf8b409f238f43c29ce93117ec1776ac1fc61a54a8a4111754a6abe7b64b6",
+  "execution": "completed",
+  "coverage": "implemented",
+  "attempted": true,
+  "prompt_sha256": "a632e00b9fd8ed4d8937ab2a6eea27639c8b78c519f37d76484345db7585475d",
+  "input_tokens": 796,
+  "output_tokens": 639,
+  "cost_est": 0.006704,
+  "cost_status": "estimated",
+  "raw_output": "{\n  \"verdict\": \"rewrite\",\n  \"findings\": [\n    {\n      \"conflict_key\": \"continuity_ch6_door_defense\",\n      \"conflict_type\": \"plotline\",\n      \"severity\": \"critical\",\n      \"scope\": \"structural\",\n      \"evidence\": [\n        {\n          \"chapter\": 5,\n          \"quote\": \"兽爪从门缝探了进来，门闩正一点点弯折。沈砚抵住铁门，朝妹妹伸手：“把那把螺丝刀给我，快！”妹妹抓起工具。\"\n        },\n        {\n          \"chapter\": 6,\n          \"quote\": \"晚上十一点刚过，沈棠把最后一口糖水喂给沈砚。他躺在长椅上，揉了揉酸痛的肩。体育馆里很安静，兄妹聊起从前的晚饭，接着清点了明天要带的食物。沈砚打了个哈欠，决定先睡一会儿。\"\n        }\n      ],\n      \"confidence\": 0.98,\n      \"suggestion\": \"本章开头必须紧接第5章章尾的危机：先写沈砚用螺丝刀抵住/加固门闩、与妹妹合力顶门、兽爪退去或门被暂时封死的过程，交代危机如何解除（或至少暂时缓解），再进入糖水、聊天、清点食物等安静场景。不能跳过门闩弯折、兽爪探入的未完成动作直接切到深夜休息。\"\n    },\n    {\n      \"conflict_key\": \"plan_ch6_goal_missing\",\n      \"conflict_type\": \"plotline\",\n      \"severity\": \"major\",\n      \"scope\": \"structural\",\n      \"evidence\": [\n        {\n          \"chapter\": 6,\n          \"quote\": \"晚上十一点刚过，沈棠把最后一口糖水喂给沈砚。他躺在长椅上，揉了揉酸痛的肩。体育馆里很安静，兄妹聊起从前的晚饭，接着清点了明天要带的食物。沈砚打了个哈欠，决定先睡一会儿。\"\n        }\n      ],\n      \"confidence\": 0.9,\n      \"suggestion\": \"章节计划要求“兄妹守住体育馆后门”，但正文只写休息与闲聊，未呈现守门行动。应补写守住后门的具体过程（轮值、加固、击退或对峙），使本章目标落地。\"\n    }\n  ],\n  \"reasons\": [\n    \"第5章章尾处于兽爪探入门缝、门闩弯折的紧急动作中，第6章开头却直接跳到晚上十一点后的安静休息场景，未交代危机如何解除，构成明确的接续断裂，需 rewrite。\",\n    \"本章未完成章节计划的核心目标“兄妹守住体育馆后门”，剧情推进缺失，需按计划补写守门行动。\",\n    \"建议先接续第5章危机动作，再自然过渡到休息与清点食物，避免重演已完成动作或丢弃未完成危险。\"\n  ],\n  \"confidence\": 0.96\n}",
+  "model_id": "deepseek-flash",
+  "finish_reason": "stop",
+  "wall_ms": 4359
+}

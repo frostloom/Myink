@@ -1,0 +1,56 @@
+{
+  "request_index": 20,
+  "case_id": "injury_continuity",
+  "variant": "full",
+  "repetition": 1,
+  "prompt_sha256": "f76a510a5616a6f9a2ab48558ca3a5a472904bc0ecdb2c829ae49ca1cb83bf9b",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 60,
+    "max_cost_yuan": 5.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 6000,
+    "json_mode": false
+  },
+  "started_at": "2026-10-08T11:50:22.716404+00:00",
+  "execution": "completed",
+  "raw_output": "",
+  "model_id": "deepseek-flash",
+  "tool_calls": [
+    {
+      "id": "call_00_WayvkWSjJ6ksMOeoNZsP9306",
+      "name": "inspect_plot_threads",
+      "arguments": {}
+    },
+    {
+      "id": "call_01_NlZqYZFxYQZWL8jBCfXV4503",
+      "name": "inspect_foreshadows",
+      "arguments": {}
+    },
+    {
+      "id": "call_02_sFfN9jl71SIAcCMdBRcS8604",
+      "name": "inspect_facts",
+      "arguments": {
+        "query": "观测站"
+      }
+    }
+  ],
+  "raw_response_content": "",
+  "response_projection": {
+    "source": "reasoning_fallback",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "tool_calls",
+  "input_tokens": 3917,
+  "output_tokens": 72,
+  "cost_est": 0.00841,
+  "cost_status": "estimated",
+  "wall_ms": 2172
+}

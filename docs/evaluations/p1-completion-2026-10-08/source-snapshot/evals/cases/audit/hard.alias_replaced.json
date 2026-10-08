@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "id": "hard.alias_replaced",
+  "group_id": "hard.alias",
+  "split": "development",
+  "mode": "audit",
+  "category": "alias",
+  "polarity": "negative",
+  "source": {
+    "path": "evals/ADDED-CASES.md",
+    "case_name": "alias_replaced",
+    "adapted_from": []
+  },
+  "input": {
+    "chapter_seq": 3,
+    "context": {
+      "short_context": [
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 1,
+          "tail": "林川唯一的旧万用表已经烧毁，尚未取得任何替代品。"
+        }
+      ],
+      "long_term_facts": [
+        {
+          "content": "老林是林川的别名。故事为现实题材。",
+          "is_hard": true
+        }
+      ]
+    },
+    "plan": {},
+    "draft": "老林领到一只新的万用表，把旧表残骸封存后，用新表测出了电压。"
+  },
+  "expected": {
+    "allowed_verdicts": [
+      "pass"
+    ],
+    "required_issues": [],
+    "forbidden_issues": [
+      "不能把明确换新或合法康复当成旧状态冲突"
+    ]
+  },
+  "label": {
+    "status": "proposed",
+    "reviewer": null,
+    "review_note": "本轮合成，维护者需确认标签和类型。"
+  }
+}

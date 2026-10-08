@@ -1,0 +1,23 @@
+{
+  "request_index": 8,
+  "case_id": "meter_replacement",
+  "variant": "full",
+  "repetition": 1,
+  "prompt_sha256": "dac54e09e798151ae20495d9817e0787ca36dcd6d71500e8ae002e5d83db8a6e",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 60,
+    "max_cost_yuan": 5.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 1024,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T11:49:14.712189+00:00",
+  "execution": "inflight_unknown"
+}

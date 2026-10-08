@@ -1,0 +1,16 @@
+{
+  "case_id": "logic.replacement_item",
+  "case_sha256": "b1cf0577d1b2f859647e5d7ff164e9b024e0d2781f7aef82d40722605cdfe0b2",
+  "execution": "completed",
+  "coverage": "implemented",
+  "attempted": true,
+  "prompt_sha256": "259c52287c77b5b2431308743b70524868bcfc2af976fca92591b81826fa7ab3",
+  "input_tokens": 716,
+  "output_tokens": 114,
+  "cost_est": 0.002344,
+  "cost_status": "estimated",
+  "raw_output": "{\"verdict\": \"pass\", \"findings\": [], \"reasons\": [\"本章仅两句，承接前章结尾'万用表烧成残骸'，交代了领新表、收残骸、重新测量的后续动作，接续自然，无重演已完成动作。\", \"无章节计划、无世界观硬约束、无伏笔与剧情线可对照，未发现主线偏移或设定冲突。\", \"内容过短但无明确质量问题，按规则不制造冗余修订。\"], \"confidence\": 0.6}",
+  "model_id": "deepseek-flash",
+  "finish_reason": "stop",
+  "wall_ms": 2406
+}

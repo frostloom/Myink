@@ -1,0 +1,38 @@
+{
+  "request_index": 35,
+  "case_id": "injury_continuity",
+  "variant": "no_hybrid",
+  "repetition": 2,
+  "prompt_sha256": "24997db20ffda2333d6f861b08cc9802459f2d40a095db681f788be11a69d91a",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 40,
+    "max_cost_yuan": 2.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 6000,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T12:11:23.243727+00:00",
+  "execution": "completed",
+  "raw_output": "{\"verdict\": \"rewrite\", \"findings\": [{\"conflict_key\": \"dev:21:两人登上屋顶，实地检查并找到漏水\", \"conflict_type\": \"plotline\", \"severity\": \"major\", \"scope\": \"structural\", \"evidence\": [{\"chapter\": 21, \"quote\": \"预期事件「两人登上屋顶，实地检查并找到漏水位置」在正文中无对应\"}], \"confidence\": 0.9, \"suggestion\": \"正文实际已写林川登顶、发现东侧油毡裂缝与传感器底座渗水，但许宁全程留在梯下未登顶，与计划「两人登上屋顶」不符。建议二选一：① 改正文，让许宁在确认梯子稳固后也上屋面，两人共同查看裂缝与底座（保持她扶梯、护腰的谨慎分工）；② 改大纲，把该事件改为「林川登顶检查、许宁在检修口下方接应」，并在计划中同步修订。\"}, {\"conflict_key\": \"dev:21:两人采取符合身体状态的协作方式（\", \"conflict_type\": \"plotline\", \"severity\": \"major\", \"scope\": \"structural\", \"evidence\": [{\"chapter\": 21, \"quote\": \"预期事件「两人采取符合身体状态的协作方式（如一人扶梯、一人检查，或轮流作业）」在正文中无对应\"}], \"confidence\": 0.85, \"suggestion\": \"正文已写「许宁扶梯、林川上梯检查」并体现右肩旧伤限制，实质满足该事件，属校验器字面匹配失败。建议在计划中把该事件表述改为「一人扶梯一人检查，或轮流作业」，避免与正文措辞不一致导致的误报。\"}, {\"conflict_key\": \"dev:21:回到室内记录情况并商量后续维修\", \"conflict_type\": \"plotline\", \"severity\": \"major\", \"scope\": \"structural\", \"evidence\": [{\"chapter\": 21, \"quote\": \"预期事件「回到室内记录情况并商量后续维修」在正文中无对应\"}], \"confidence\": 0.85, \"suggestion\": \"正文已写许宁在记录簿上逐条登记裂缝、渗水、临时标记与未动螺栓，并商定等补给车带新油毡与密封胶、次日先加挡板。属字面匹配失败。建议计划中把该事件细化为「回室内登记漏水位置与临时处理，商定维修与数据停报方案」。\"}, {\"conflict_key\": \"len:21\", \"conflict_type\": \"style\", \"severity\": \"major\", \"scope\": \"local\", \"evidence\": [{\"chapter\": 21, \"quote\": \"正文 1540 字，目标 800 字（区间 640–1040）\"}], \"confidence\": 0.9, \"suggestion\": \"本章超出目标区间约 500 字。建议压缩重复的上下梯动作描写与工具清点细节，保留「右肩吃不住劲—换左手—许宁顶肩」这一核心协作段落，把登梯、贴胶带、下梯三段合并为两段，控制在 1000 字以内。\"}, {\"conflict_key\": \"96b12c6ea9e24b5f\", \"conflict_type\": \"style\", \"severity\": \"hint\", \"scope\": \"local\", \"evidence\": [{\"chapter\": 21, \"quote\": \"连续 7 句含「了」\"}], \"confidence\": 0.6, \"suggestion\": \"「找到了」「标记好了」「下去吧」等句尾「了」密集，建议保留最有力度的一处，其余改为无「了」句式，如「他朝下喊：东边靠排水口那块，油毡裂了一道口子」。\"}], \"reasons\": [\"剧情主线未偏移：本章按计划完成「楼梯口定方案→登顶查漏→回室内记录与商定维修」三段推进，现实题材、无超自然、仅两名人物出场，符合硬约束。\", \"人物状态一致：林川右肩旧伤在撕胶带、下梯时反复受限，许宁扶梯、顶肩、护腰的谨慎协作与两人「谨慎负责」人设吻合，无医学奇迹。\", \"跨章接续正常：本章开头直接接续上一章楼梯口商量，未重演已完成动作，未丢弃未完成请求，时间地点视角连续。\", \"确定性校验的三条 plotline major 属字面匹配失败（正文实质已覆盖），但字数超标（1540 vs 目标 800）为真实问题，需压缩；同时「两人登上屋顶」与正文「仅林川登顶」存在实质偏差，需作者二选一处理。\", \"综合判定为 rewrite：以压缩字数、修正登顶分工表述为主，不涉及整批蓝图偏移，故不 replan。\"] , \"confidence\": 0.82}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\"verdict\": \"rewrite\", \"findings\": [{\"conflict_key\": \"dev:21:两人登上屋顶，实地检查并找到漏水\", \"conflict_type\": \"plotline\", \"severity\": \"major\", \"scope\": \"structural\", \"evidence\": [{\"chapter\": 21, \"quote\": \"预期事件「两人登上屋顶，实地检查并找到漏水位置」在正文中无对应\"}], \"confidence\": 0.9, \"suggestion\": \"正文实际已写林川登顶、发现东侧油毡裂缝与传感器底座渗水，但许宁全程留在梯下未登顶，与计划「两人登上屋顶」不符。建议二选一：① 改正文，让许宁在确认梯子稳固后也上屋面，两人共同查看裂缝与底座（保持她扶梯、护腰的谨慎分工）；② 改大纲，把该事件改为「林川登顶检查、许宁在检修口下方接应」，并在计划中同步修订。\"}, {\"conflict_key\": \"dev:21:两人采取符合身体状态的协作方式（\", \"conflict_type\": \"plotline\", \"severity\": \"major\", \"scope\": \"structural\", \"evidence\": [{\"chapter\": 21, \"quote\": \"预期事件「两人采取符合身体状态的协作方式（如一人扶梯、一人检查，或轮流作业）」在正文中无对应\"}], \"confidence\": 0.85, \"suggestion\": \"正文已写「许宁扶梯、林川上梯检查」并体现右肩旧伤限制，实质满足该事件，属校验器字面匹配失败。建议在计划中把该事件表述改为「一人扶梯一人检查，或轮流作业」，避免与正文措辞不一致导致的误报。\"}, {\"conflict_key\": \"dev:21:回到室内记录情况并商量后续维修\", \"conflict_type\": \"plotline\", \"severity\": \"major\", \"scope\": \"structural\", \"evidence\": [{\"chapter\": 21, \"quote\": \"预期事件「回到室内记录情况并商量后续维修」在正文中无对应\"}], \"confidence\": 0.85, \"suggestion\": \"正文已写许宁在记录簿上逐条登记裂缝、渗水、临时标记与未动螺栓，并商定等补给车带新油毡与密封胶、次日先加挡板。属字面匹配失败。建议计划中把该事件细化为「回室内登记漏水位置与临时处理，商定维修与数据停报方案」。\"}, {\"conflict_key\": \"len:21\", \"conflict_type\": \"style\", \"severity\": \"major\", \"scope\": \"local\", \"evidence\": [{\"chapter\": 21, \"quote\": \"正文 1540 字，目标 800 字（区间 640–1040）\"}], \"confidence\": 0.9, \"suggestion\": \"本章超出目标区间约 500 字。建议压缩重复的上下梯动作描写与工具清点细节，保留「右肩吃不住劲—换左手—许宁顶肩」这一核心协作段落，把登梯、贴胶带、下梯三段合并为两段，控制在 1000 字以内。\"}, {\"conflict_key\": \"96b12c6ea9e24b5f\", \"conflict_type\": \"style\", \"severity\": \"hint\", \"scope\": \"local\", \"evidence\": [{\"chapter\": 21, \"quote\": \"连续 7 句含「了」\"}], \"confidence\": 0.6, \"suggestion\": \"「找到了」「标记好了」「下去吧」等句尾「了」密集，建议保留最有力度的一处，其余改为无「了」句式，如「他朝下喊：东边靠排水口那块，油毡裂了一道口子」。\"}], \"reasons\": [\"剧情主线未偏移：本章按计划完成「楼梯口定方案→登顶查漏→回室内记录与商定维修」三段推进，现实题材、无超自然、仅两名人物出场，符合硬约束。\", \"人物状态一致：林川右肩旧伤在撕胶带、下梯时反复受限，许宁扶梯、顶肩、护腰的谨慎协作与两人「谨慎负责」人设吻合，无医学奇迹。\", \"跨章接续正常：本章开头直接接续上一章楼梯口商量，未重演已完成动作，未丢弃未完成请求，时间地点视角连续。\", \"确定性校验的三条 plotline major 属字面匹配失败（正文实质已覆盖），但字数超标（1540 vs 目标 800）为真实问题，需压缩；同时「两人登上屋顶」与正文「仅林川登顶」存在实质偏差，需作者二选一处理。\", \"综合判定为 rewrite：以压缩字数、修正登顶分工表述为主，不涉及整批蓝图偏移，故不 replan。\"] , \"confidence\": 0.82}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 3837,
+  "output_tokens": 1077,
+  "cost_est": 0.01629,
+  "cost_status": "estimated",
+  "wall_ms": 7250
+}

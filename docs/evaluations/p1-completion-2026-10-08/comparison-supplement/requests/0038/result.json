@@ -1,0 +1,38 @@
+{
+  "request_index": 38,
+  "case_id": "injury_continuity",
+  "variant": "no_hybrid",
+  "repetition": 2,
+  "prompt_sha256": "5b373dae4d5640e245d039964accab17e4aa3e66986df502362b474801faeb28",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 40,
+    "max_cost_yuan": 2.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 6000,
+    "json_mode": false
+  },
+  "started_at": "2026-10-08T12:11:43.202956+00:00",
+  "execution": "completed",
+  "raw_output": "```json\n{\n  \"verdict\": \"pass\",\n  \"findings\": [\n    {\n      \"conflict_key\": \"dev:21:两人采取符合身体状态的协作方式（\",\n      \"conflict_type\": \"plotline\",\n      \"severity\": \"hint\",\n      \"scope\": \"local\",\n      \"evidence\": [\n        {\"chapter\": 21, \"quote\": \"许宁没再争，走到梯子底下，两手扣住最下面那级铁条，脚跟抵住墙根。\"},\n        {\"chapter\": 21, \"quote\": \"许宁在下面把肩膀顶上来，抵住他脚底那级铁条，等他踩实了才松。\"}\n      ],\n      \"confidence\": 0.9,\n      \"suggestion\": \"确定性校验判为「无对应」属误报：正文已完整呈现一人扶梯、一人上梯检查、下梯时许宁顶肩护脚的分工，且明确围绕林川右肩旧伤设计协作方式，符合预期事件。无需修改。\"\n    },\n    {\n      \"conflict_key\": \"dev:21:回到室内记录情况并商量后续维修\",\n      \"conflict_type\": \"plotline\",\n      \"severity\": \"hint\",\n      \"scope\": \"local\",\n      \"evidence\": [\n        {\"chapter\": 21, \"quote\": \"许宁已经翻出记录簿，摊在桌上，把东侧油毡裂缝、传感器支架渗水、临时胶带标记和未动螺栓几项一条条写下来。\"},\n        {\"chapter\": 21, \"quote\": \"「维修得等下周补给车来，带新油毡和密封胶。」她合上本子\"}\n      ],\n      \"confidence\": 0.9,\n      \"suggestion\": \"同样属误报：室内记录与维修安排（等补给车、明早加挡板、下雨则报修停数据一天）均已落地。无需修改。\"\n    },\n    {\n      \"conflict_key\": \"len:21\",\n      \"conflict_type\": \"style\",\n      \"severity\": \"minor\",\n      \"scope\": \"local\",\n      \"evidence\": [\n        {\"chapter\": 21, \"quote\": \"正文 1487 字，目标 800 字（区间 640–1040）\"}\n      ],\n      \"confidence\": 0.6,\n      \"suggestion\": \"字数超出目标区间约 45%，但内容无冗余注水，场景推进紧凑、无重复段落，属可接受的轻微超标；若需严格对齐字数，可压缩上梯/下梯的重复动作描写（如「每上一级，许宁的手就跟着往上挪一格」与下梯段可合并），不影响剧情完整性。\"\n    },\n    {\n      \"conflict_key\": \"96b12c6ea9e24b5f\",\n      \"conflict_type\": \"style\",\n      \"severity\": \"hint\",\n      \"scope\": \"local\",\n      \"evidence\": [\n        {\"chapter\": 21, \"quote\": \"连续 7 句含「了」\"}\n      ],\n      \"confidence\": 0.5,\n      \"suggestion\": \"「了」字密度偏高属文风微瑕，可在后续润色时替换部分为无「了」句式，不构成阻断性修订。\"\n    }\n  ],\n  \"reasons\": [\n    \"剧情线核对：本章完整推进「检查屋顶漏水」这一现实题材日常线，三场景（楼梯口→屋顶→室内）与章节计划逐一对应，无主线偏移。\",\n    \"预期事件核对：确定性校验标记的两条「无对应」经原文核实为误报——扶梯/顶肩的协作分工、室内记录与维修商量均在正文中有明确落点。\",\n    \"伏笔核对：计划要求埋设的两条钩子（漏水影响设备数据、身体状态限制）均已自然植入（传感器读数飘、右肩吃不住劲），无未回收伏笔遗留。\",\n    \"跨章衔接核对：本章开头「推开楼梯口窄门」直接接续上一章章尾「在楼梯口商量如何检查屋顶」，属同场景合理转场，未重演已完成动作，未丢弃未完成请求。\",\n    \"人设与硬约束核对：全章仅林川、许宁两人出场，无超自然元素、无医学奇迹，伤势（右肩）保持连续且限制行动方式，符合现实题材硬约束。\",\n    \"质量判断：节奏紧凑、细节扎实（工具清点、胶带贴法、下梯护脚），人物互动自然，无衔接断裂或机械重复，判定合格。\",\n    \"字数超标与「了」字密度均为轻微文风问题，不构成 rewrite 条件，按规则不制造冗余修订。\"\n  ],\n  \"confidence\": 0.85\n}\n```",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "```json\n{\n  \"verdict\": \"pass\",\n  \"findings\": [\n    {\n      \"conflict_key\": \"dev:21:两人采取符合身体状态的协作方式（\",\n      \"conflict_type\": \"plotline\",\n      \"severity\": \"hint\",\n      \"scope\": \"local\",\n      \"evidence\": [\n        {\"chapter\": 21, \"quote\": \"许宁没再争，走到梯子底下，两手扣住最下面那级铁条，脚跟抵住墙根。\"},\n        {\"chapter\": 21, \"quote\": \"许宁在下面把肩膀顶上来，抵住他脚底那级铁条，等他踩实了才松。\"}\n      ],\n      \"confidence\": 0.9,\n      \"suggestion\": \"确定性校验判为「无对应」属误报：正文已完整呈现一人扶梯、一人上梯检查、下梯时许宁顶肩护脚的分工，且明确围绕林川右肩旧伤设计协作方式，符合预期事件。无需修改。\"\n    },\n    {\n      \"conflict_key\": \"dev:21:回到室内记录情况并商量后续维修\",\n      \"conflict_type\": \"plotline\",\n      \"severity\": \"hint\",\n      \"scope\": \"local\",\n      \"evidence\": [\n        {\"chapter\": 21, \"quote\": \"许宁已经翻出记录簿，摊在桌上，把东侧油毡裂缝、传感器支架渗水、临时胶带标记和未动螺栓几项一条条写下来。\"},\n        {\"chapter\": 21, \"quote\": \"「维修得等下周补给车来，带新油毡和密封胶。」她合上本子\"}\n      ],\n      \"confidence\": 0.9,\n      \"suggestion\": \"同样属误报：室内记录与维修安排（等补给车、明早加挡板、下雨则报修停数据一天）均已落地。无需修改。\"\n    },\n    {\n      \"conflict_key\": \"len:21\",\n      \"conflict_type\": \"style\",\n      \"severity\": \"minor\",\n      \"scope\": \"local\",\n      \"evidence\": [\n        {\"chapter\": 21, \"quote\": \"正文 1487 字，目标 800 字（区间 640–1040）\"}\n      ],\n      \"confidence\": 0.6,\n      \"suggestion\": \"字数超出目标区间约 45%，但内容无冗余注水，场景推进紧凑、无重复段落，属可接受的轻微超标；若需严格对齐字数，可压缩上梯/下梯的重复动作描写（如「每上一级，许宁的手就跟着往上挪一格」与下梯段可合并），不影响剧情完整性。\"\n    },\n    {\n      \"conflict_key\": \"96b12c6ea9e24b5f\",\n      \"conflict_type\": \"style\",\n      \"severity\": \"hint\",\n      \"scope\": \"local\",\n      \"evidence\": [\n        {\"chapter\": 21, \"quote\": \"连续 7 句含「了」\"}\n      ],\n      \"confidence\": 0.5,\n      \"suggestion\": \"「了」字密度偏高属文风微瑕，可在后续润色时替换部分为无「了」句式，不构成阻断性修订。\"\n    }\n  ],\n  \"reasons\": [\n    \"剧情线核对：本章完整推进「检查屋顶漏水」这一现实题材日常线，三场景（楼梯口→屋顶→室内）与章节计划逐一对应，无主线偏移。\",\n    \"预期事件核对：确定性校验标记的两条「无对应」经原文核实为误报——扶梯/顶肩的协作分工、室内记录与维修商量均在正文中有明确落点。\",\n    \"伏笔核对：计划要求埋设的两条钩子（漏水影响设备数据、身体状态限制）均已自然植入（传感器读数飘、右肩吃不住劲），无未回收伏笔遗留。\",\n    \"跨章衔接核对：本章开头「推开楼梯口窄门」直接接续上一章章尾「在楼梯口商量如何检查屋顶」，属同场景合理转场，未重演已完成动作，未丢弃未完成请求。\",\n    \"人设与硬约束核对：全章仅林川、许宁两人出场，无超自然元素、无医学奇迹，伤势（右肩）保持连续且限制行动方式，符合现实题材硬约束。\",\n    \"质量判断：节奏紧凑、细节扎实（工具清点、胶带贴法、下梯护脚），人物互动自然，无衔接断裂或机械重复，判定合格。\",\n    \"字数超标与「了」字密度均为轻微文风问题，不构成 rewrite 条件，按规则不制造冗余修订。\"\n  ],\n  \"confidence\": 0.85\n}\n```",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 4092,
+  "output_tokens": 1031,
+  "cost_est": 0.016432,
+  "cost_status": "estimated",
+  "wall_ms": 6375
+}

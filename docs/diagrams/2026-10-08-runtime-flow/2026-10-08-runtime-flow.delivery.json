@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "ca25b922-447b-42ae-a32f-abaee6fa5997",
+  "status": "current",
+  "command": "deliver",
+  "type": "workflow",
+  "input": "E:\\github项目\\Myink\\docs\\diagrams\\2026-10-08-runtime-flow\\candidate.json",
+  "output": "E:\\github项目\\Myink\\docs\\diagrams\\2026-10-08-runtime-flow\\2026-10-08-runtime-flow.html",
+  "specification": {
+    "sha256": "8bbd89b15d984ec2a78ca7530745f1fa716c5d7abda9766c1bb853cef0c5d65e",
+    "bytes": 8211
+  },
+  "artifact": {
+    "sha256": "7263d7018eec030ca91584c031f5f5ee60ea67137920492688715c6abe242838",
+    "bytes": 768549
+  }
+}

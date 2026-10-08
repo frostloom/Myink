@@ -1,0 +1,25 @@
+{
+  "status": "pass",
+  "artifact": "E:\\github项目\\Myink\\docs\\interview\\agent-execution-live-2026-10-08.html",
+  "sha256": "8f67805a4954753caa94c4df8f3f898c957cde0b89459c87c83612b946420090",
+  "checks": [
+    {
+      "width": 1440,
+      "fullDrafts": "pass",
+      "nodes": 20,
+      "diff": "pass",
+      "anchors": "pass",
+      "expand": "pass",
+      "overflow": "pass"
+    },
+    {
+      "width": 390,
+      "fullDrafts": "pass",
+      "nodes": 20,
+      "diff": "pass",
+      "anchors": "pass",
+      "expand": "pass",
+      "overflow": "pass"
+    }
+  ]
+}

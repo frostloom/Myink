@@ -1,0 +1,16 @@
+{
+  "case_id": "logic.destroyed_item",
+  "case_sha256": "b348a9495ed3664b7a3c97f398e92e463102fdddf18bcd04465ed6402dc56558",
+  "execution": "completed",
+  "coverage": "implemented",
+  "attempted": true,
+  "prompt_sha256": "83c29ba1eeaf5a32082e1c7c4d1bafd268e8a40f479dc96c4ea994175b599977",
+  "input_tokens": 714,
+  "output_tokens": 267,
+  "cost_est": 0.003564,
+  "cost_status": "estimated",
+  "raw_output": "{\"verdict\":\"rewrite\",\"findings\":[{\"conflict_key\":\"item_state_wan_yong_biao\",\"conflict_type\":\"item_rule\",\"severity\":\"critical\",\"scope\":\"local\",\"evidence\":[{\"chapter\":1,\"quote\":\"林川唯一的万用表已烧成无法修复的残骸，他尚未获取替代品。\"},{\"chapter\":2,\"quote\":\"林川拿起那只完好无损的旧万用表，接上探针，顺利测出了电压。\"}],\"confidence\":0.98,\"suggestion\":\"删除或改写本章开头：万用表在第1章已烧毁且未获得替代品，不能直接出现“完好无损的旧万用表”。应改为林川先设法获取/修复替代万用表（或改用其他测量手段），再写测电压；若本章意图就是“获得替代品”，需补上获取过程与来源。\"}],\"reasons\":[\"第2章正文与第1章章尾存在硬性物品状态冲突：唯一万用表已烧毁且无替代品，本章却直接使用完好万用表，属接续断裂。\",\"该冲突为句段级可修复问题，无需推翻整章规划，故路由 rewrite 而非 replan。\"],\"confidence\":0.95}",
+  "model_id": "deepseek-flash",
+  "finish_reason": "stop",
+  "wall_ms": 2703
+}

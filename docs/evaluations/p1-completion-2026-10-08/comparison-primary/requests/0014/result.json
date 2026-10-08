@@ -1,0 +1,38 @@
+{
+  "request_index": 14,
+  "case_id": "meter_replacement",
+  "variant": "no_hybrid",
+  "repetition": 1,
+  "prompt_sha256": "5f433cf6b213f9d324462299c34e5c3d4cb779d1dbf9800f717421b355b6b995",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 60,
+    "max_cost_yuan": 5.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 1024,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T11:49:46.822458+00:00",
+  "execution": "completed",
+  "raw_output": "{\"summary\": \"林川与许宁冒雨排查观测站电路，沿外墙检查线管，发现一只锈蚀铁盒密封失效、进水短路，接线端子锈死、导线氧化断裂。两人用万用表确认线路断路，林川刮锈并临时缠胶带绝缘，但未接线，决定次日带新线和新密封圈再来。许宁指出备用保险丝仅剩一枚，且站内线路普遍老化，恐需整体更换。林川未回应，目光落在远处另一段松脱滴水的线管上。\"}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\"summary\": \"林川与许宁冒雨排查观测站电路，沿外墙检查线管，发现一只锈蚀铁盒密封失效、进水短路，接线端子锈死、导线氧化断裂。两人用万用表确认线路断路，林川刮锈并临时缠胶带绝缘，但未接线，决定次日带新线和新密封圈再来。许宁指出备用保险丝仅剩一枚，且站内线路普遍老化，恐需整体更换。林川未回应，目光落在远处另一段松脱滴水的线管上。\"}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 994,
+  "output_tokens": 118,
+  "cost_est": 0.002932,
+  "cost_status": "estimated",
+  "wall_ms": 4016
+}

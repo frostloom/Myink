@@ -1,0 +1,983 @@
+[
+  {
+    "project_id": "68ff55b7-bb89-4868-b0e9-96cd7c1dc177",
+    "chapter_seq": 21,
+    "task_id": "e88254d2-39cf-481a-847a-d6b615b684f0",
+    "user_instruction": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。"
+  },
+  {
+    "project_id": "68ff55b7-bb89-4868-b0e9-96cd7c1dc177",
+    "chapter_seq": 21,
+    "task_id": "e88254d2-39cf-481a-847a-d6b615b684f0",
+    "user_instruction": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "89927e02-adab-483a-bed2-8bb8a3387ae3",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "db16c7b0-0006-4527-9514-bbff516b01ce",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "89927e02-adab-483a-bed2-8bb8a3387ae3",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "db16c7b0-0006-4527-9514-bbff516b01ce",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "draft": null,
+    "candidates": [],
+    "report": null,
+    "unresolved": [],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": null
+  },
+  {
+    "project_id": "68ff55b7-bb89-4868-b0e9-96cd7c1dc177",
+    "chapter_seq": 21,
+    "task_id": "e88254d2-39cf-481a-847a-d6b615b684f0",
+    "user_instruction": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "89927e02-adab-483a-bed2-8bb8a3387ae3",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "db16c7b0-0006-4527-9514-bbff516b01ce",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "89927e02-adab-483a-bed2-8bb8a3387ae3",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "db16c7b0-0006-4527-9514-bbff516b01ce",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "5280e1e8-1cdb-47ce-932e-e8648fa579c5",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "2a75ec99-5111-4ac7-a264-7fde0165115c",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "0a77aee8-2e50-408a-adf8-848860f8b6f9",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "2ecbb8a4-03be-4eac-9d8a-5a6005cb6701",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "90a8c0a3-cca0-49d3-9b6b-82ab6c9cb5a7",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "7038378e-d20a-4895-ab59-3a6c2f6bc024",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "a7e7429f-8438-4117-88a6-670524303f1c",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "718540cd-db51-4e47-a1c1-93989a3d3f66",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "e849e1d2-b114-4c6c-a71c-2cf4b7f53bb8",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "6585f5ab-f48c-4612-a16e-313b23c28362",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "a72a9c68-3d92-48d7-b0f4-0eeb5dd30c93",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        }
+      ],
+      "entity_snapshots": [],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 2735,
+      "recall_stats": {
+        "vector_hits": 0,
+        "keyword_hits": 0,
+        "fused_total": 0,
+        "recall_tokens_est": 0,
+        "context_tokens_est": 411,
+        "share": 0.0,
+        "vector_status": "disabled",
+        "keyword_status": "no_terms",
+        "degrade_reason": "vector_disabled+keyword_no_terms"
+      }
+    },
+    "draft": null,
+    "candidates": [],
+    "report": null,
+    "unresolved": [],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "5280e1e8-1cdb-47ce-932e-e8648fa579c5",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": null
+  },
+  {
+    "project_id": "68ff55b7-bb89-4868-b0e9-96cd7c1dc177",
+    "chapter_seq": 21,
+    "task_id": "e88254d2-39cf-481a-847a-d6b615b684f0",
+    "user_instruction": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "89927e02-adab-483a-bed2-8bb8a3387ae3",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "db16c7b0-0006-4527-9514-bbff516b01ce",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "89927e02-adab-483a-bed2-8bb8a3387ae3",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "db16c7b0-0006-4527-9514-bbff516b01ce",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "5280e1e8-1cdb-47ce-932e-e8648fa579c5",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "2a75ec99-5111-4ac7-a264-7fde0165115c",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "0a77aee8-2e50-408a-adf8-848860f8b6f9",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "2ecbb8a4-03be-4eac-9d8a-5a6005cb6701",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "90a8c0a3-cca0-49d3-9b6b-82ab6c9cb5a7",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "7038378e-d20a-4895-ab59-3a6c2f6bc024",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "a7e7429f-8438-4117-88a6-670524303f1c",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "718540cd-db51-4e47-a1c1-93989a3d3f66",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "e849e1d2-b114-4c6c-a71c-2cf4b7f53bb8",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "6585f5ab-f48c-4612-a16e-313b23c28362",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "a72a9c68-3d92-48d7-b0f4-0eeb5dd30c93",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        }
+      ],
+      "entity_snapshots": [],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 2735,
+      "recall_stats": {
+        "vector_hits": 0,
+        "keyword_hits": 0,
+        "fused_total": 0,
+        "recall_tokens_est": 0,
+        "context_tokens_est": 411,
+        "share": 0.0,
+        "vector_status": "disabled",
+        "keyword_status": "no_terms",
+        "degrade_reason": "vector_disabled+keyword_no_terms"
+      }
+    },
+    "draft": null,
+    "candidates": [],
+    "report": null,
+    "unresolved": [],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "5280e1e8-1cdb-47ce-932e-e8648fa579c5",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": "call budget exhausted"
+  },
+  {
+    "project_id": "68ff55b7-bb89-4868-b0e9-96cd7c1dc177",
+    "chapter_seq": 21,
+    "task_id": "e88254d2-39cf-481a-847a-d6b615b684f0",
+    "user_instruction": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "89927e02-adab-483a-bed2-8bb8a3387ae3",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "db16c7b0-0006-4527-9514-bbff516b01ce",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "89927e02-adab-483a-bed2-8bb8a3387ae3",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "db16c7b0-0006-4527-9514-bbff516b01ce",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "5280e1e8-1cdb-47ce-932e-e8648fa579c5",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "2a75ec99-5111-4ac7-a264-7fde0165115c",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "0a77aee8-2e50-408a-adf8-848860f8b6f9",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "2ecbb8a4-03be-4eac-9d8a-5a6005cb6701",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "90a8c0a3-cca0-49d3-9b6b-82ab6c9cb5a7",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "7038378e-d20a-4895-ab59-3a6c2f6bc024",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "a7e7429f-8438-4117-88a6-670524303f1c",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "718540cd-db51-4e47-a1c1-93989a3d3f66",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "e849e1d2-b114-4c6c-a71c-2cf4b7f53bb8",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "6585f5ab-f48c-4612-a16e-313b23c28362",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "a72a9c68-3d92-48d7-b0f4-0eeb5dd30c93",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        }
+      ],
+      "entity_snapshots": [],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 2735,
+      "recall_stats": {
+        "vector_hits": 0,
+        "keyword_hits": 0,
+        "fused_total": 0,
+        "recall_tokens_est": 0,
+        "context_tokens_est": 411,
+        "share": 0.0,
+        "vector_status": "disabled",
+        "keyword_status": "no_terms",
+        "degrade_reason": "vector_disabled+keyword_no_terms"
+      }
+    },
+    "draft": null,
+    "candidates": [],
+    "report": null,
+    "unresolved": [],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "5280e1e8-1cdb-47ce-932e-e8648fa579c5",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": "call budget exhausted"
+  },
+  {
+    "project_id": "68ff55b7-bb89-4868-b0e9-96cd7c1dc177",
+    "chapter_seq": 21,
+    "task_id": "e88254d2-39cf-481a-847a-d6b615b684f0",
+    "user_instruction": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "89927e02-adab-483a-bed2-8bb8a3387ae3",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "db16c7b0-0006-4527-9514-bbff516b01ce",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "89927e02-adab-483a-bed2-8bb8a3387ae3",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "db16c7b0-0006-4527-9514-bbff516b01ce",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "5280e1e8-1cdb-47ce-932e-e8648fa579c5",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "2a75ec99-5111-4ac7-a264-7fde0165115c",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "0a77aee8-2e50-408a-adf8-848860f8b6f9",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "2ecbb8a4-03be-4eac-9d8a-5a6005cb6701",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "90a8c0a3-cca0-49d3-9b6b-82ab6c9cb5a7",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "7038378e-d20a-4895-ab59-3a6c2f6bc024",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "a7e7429f-8438-4117-88a6-670524303f1c",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "718540cd-db51-4e47-a1c1-93989a3d3f66",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "e849e1d2-b114-4c6c-a71c-2cf4b7f53bb8",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "6585f5ab-f48c-4612-a16e-313b23c28362",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "a72a9c68-3d92-48d7-b0f4-0eeb5dd30c93",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        }
+      ],
+      "entity_snapshots": [],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 2735,
+      "recall_stats": {
+        "vector_hits": 0,
+        "keyword_hits": 0,
+        "fused_total": 0,
+        "recall_tokens_est": 0,
+        "context_tokens_est": 411,
+        "share": 0.0,
+        "vector_status": "disabled",
+        "keyword_status": "no_terms",
+        "degrade_reason": "vector_disabled+keyword_no_terms"
+      }
+    },
+    "draft": null,
+    "candidates": [],
+    "report": {
+      "project_id": "68ff55b7-bb89-4868-b0e9-96cd7c1dc177",
+      "chapter_seq": 21,
+      "findings": [],
+      "summary": {
+        "total": 0,
+        "critical": 0,
+        "resolved": 0
+      }
+    },
+    "unresolved": [],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "5280e1e8-1cdb-47ce-932e-e8648fa579c5",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": "call budget exhausted"
+  },
+  {
+    "project_id": "68ff55b7-bb89-4868-b0e9-96cd7c1dc177",
+    "chapter_seq": 21,
+    "task_id": "e88254d2-39cf-481a-847a-d6b615b684f0",
+    "user_instruction": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "89927e02-adab-483a-bed2-8bb8a3387ae3",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "db16c7b0-0006-4527-9514-bbff516b01ce",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "89927e02-adab-483a-bed2-8bb8a3387ae3",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "db16c7b0-0006-4527-9514-bbff516b01ce",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "5280e1e8-1cdb-47ce-932e-e8648fa579c5",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "2a75ec99-5111-4ac7-a264-7fde0165115c",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "0a77aee8-2e50-408a-adf8-848860f8b6f9",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "2ecbb8a4-03be-4eac-9d8a-5a6005cb6701",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "90a8c0a3-cca0-49d3-9b6b-82ab6c9cb5a7",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "7038378e-d20a-4895-ab59-3a6c2f6bc024",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "a7e7429f-8438-4117-88a6-670524303f1c",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "718540cd-db51-4e47-a1c1-93989a3d3f66",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "e849e1d2-b114-4c6c-a71c-2cf4b7f53bb8",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "6585f5ab-f48c-4612-a16e-313b23c28362",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "a72a9c68-3d92-48d7-b0f4-0eeb5dd30c93",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        }
+      ],
+      "entity_snapshots": [],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 2735,
+      "recall_stats": {
+        "vector_hits": 0,
+        "keyword_hits": 0,
+        "fused_total": 0,
+        "recall_tokens_est": 0,
+        "context_tokens_est": 411,
+        "share": 0.0,
+        "vector_status": "disabled",
+        "keyword_status": "no_terms",
+        "degrade_reason": "vector_disabled+keyword_no_terms"
+      }
+    },
+    "draft": null,
+    "candidates": [],
+    "report": {
+      "project_id": "68ff55b7-bb89-4868-b0e9-96cd7c1dc177",
+      "chapter_seq": 21,
+      "findings": [],
+      "summary": {
+        "total": 0,
+        "critical": 0,
+        "resolved": 0
+      }
+    },
+    "unresolved": [],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "5280e1e8-1cdb-47ce-932e-e8648fa579c5",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": "call budget exhausted"
+  }
+]

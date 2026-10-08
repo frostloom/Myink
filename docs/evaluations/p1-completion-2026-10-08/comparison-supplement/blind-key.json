@@ -1,0 +1,26 @@
+[
+  {
+    "blind_id": "B001",
+    "case_id": "injury_continuity",
+    "variant": "direct",
+    "repetition": 2
+  },
+  {
+    "blind_id": "B002",
+    "case_id": "meter_replacement",
+    "variant": "no_hybrid",
+    "repetition": 2
+  },
+  {
+    "blind_id": "B003",
+    "case_id": "injury_continuity",
+    "variant": "full",
+    "repetition": 2
+  },
+  {
+    "blind_id": "B004",
+    "case_id": "injury_continuity",
+    "variant": "no_hybrid",
+    "repetition": 2
+  }
+]

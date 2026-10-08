@@ -1,0 +1,1856 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Myink · 本轮完整执行案例</title><style>
+:root{color-scheme:light dark;--bg:#f5f3ed;--ink:#20352a;--card:#fff;--line:#d0d8d0;--accent:#28654a}
+@media(prefers-color-scheme:dark){:root{--bg:#101b18;--ink:#e3ece6;--card:#192823;--line:#42584b;--accent:#9bd7b5}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.8 system-ui,"Microsoft YaHei",sans-serif}
+main{max-width:1120px;margin:auto;padding:30px 20px}h1{font-size:clamp(28px,5vw,40px);line-height:1.3}h2{font-size:24px}
+header,section,article{padding:22px;background:var(--card);border:1px solid var(--line);border-radius:8px;margin:18px 0}
+article{padding:12px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:15px/1.9 system-ui,"Microsoft YaHei",sans-serif}
+nav,.metrics{display:flex;gap:12px;flex-wrap:wrap}nav a,.metrics span{padding:7px 12px;border:1px solid var(--line);border-radius:5px}
+a{color:var(--accent)}summary{cursor:pointer;font-weight:600}details{margin:12px 0}.diff-wrap{overflow:auto}
+table.diff{border-collapse:collapse;font:13px/1.6 monospace;background:#fff;color:#222;width:100%}table.diff td,table.diff th{padding:4px;border:1px solid #ddd}
+.diff_header{background:#e8ece9}.diff_next{background:#e8ece9}.diff_add{background:#b5edc6}.diff_sub{background:#f6bab7}.diff_chg{background:#ffed95}
+section{scroll-margin-top:15px}</style><main><header><p>MYINK / 本轮真实模型执行 / 合成故事</p>
+<h1>雨夜检修：看见生成、反馈和修改</h1>
+<p>这次保存了完整初稿和修订稿。先读故事，再看脚本加入的问题句，最后核对修订结果。</p>
+<p>开始：2026-10-08T10:07:41.234312+00:00；结束：2026-10-08T10:08:49.825863+00:00（UTC）</p>
+<p>模型：deepseek-v4-flash · 20 条运行记录 · 输入 34549 / 输出 9130 tokens</p>
+<div class="metrics"><span>问题句移除：是</span><span>最终审核：pass</span>
+<span>正文与落库一致：是</span>
+<span>仍需人工处理：否</span></div>
+<p>本案例使用隔离数据库；人为加入的错误明确标注。它验证一条实际执行路径，不代表长期生成质量。</p></header><nav><a href="#task">任务</a><a href="#context">背景</a><a href="#plan">计划</a><a href="#initial">初稿</a><a href="#feedback">人工反馈</a><a href="#final">修订稿</a><a href="#diff">修改对比</a><a href="#saved">最终保存</a><a href="#timeline">运行过程</a></nav><section id="task"><h2>01 · 要完成什么</h2><p>这是实际送入章节工作流的写作指令和硬约束。</p><pre>{
+  &quot;写作指令&quot;: &quot;暴雨导致山间观测站停电。林川左膝扭伤，与许宁协作检查供电，最后找到漏水的接线盒。全章仅两名人物，避免另建人物。&quot;,
+  &quot;硬约束&quot;: [
+    &quot;故事发生在现实世界，没有超能力；人物伤势须有合理恢复过程。&quot;
+  ]
+}</pre></section><section id="context"><h2>02 · Agent 拿到了哪些背景</h2><p>人物来自本次合成作品库；context 是工作流实际使用的上下文。零条目表示本次无相关记忆。</p><pre>{
+  &quot;人物&quot;: [
+    {
+      &quot;id&quot;: &quot;84096adc-f77b-46a8-b61d-07b521b9b8d2&quot;,
+      &quot;name&quot;: &quot;林川&quot;,
+      &quot;realm_cap&quot;: &quot;普通人&quot;,
+      &quot;personality&quot;: &quot;谨慎负责的检修员&quot;
+    },
+    {
+      &quot;id&quot;: &quot;c0bbf6be-0cdf-4a09-9f91-f5a69ecd371d&quot;,
+      &quot;name&quot;: &quot;许宁&quot;,
+      &quot;realm_cap&quot;: &quot;普通人&quot;,
+      &quot;personality&quot;: &quot;谨慎负责的检修员&quot;
+    }
+  ],
+  &quot;召回上下文&quot;: {
+    &quot;long_term_facts&quot;: [
+      {
+        &quot;content&quot;: &quot;故事发生在现实世界，没有超能力；人物伤势须有合理恢复过程。&quot;,
+        &quot;source_chapter&quot;: null,
+        &quot;category&quot;: &quot;规则&quot;,
+        &quot;is_hard&quot;: true,
+        &quot;source&quot;: &quot;project_settings&quot;
+      }
+    ],
+    &quot;mid_term_events&quot;: [],
+    &quot;short_context&quot;: [
+      {
+        &quot;kind&quot;: &quot;user_instruction&quot;,
+        &quot;text&quot;: &quot;暴雨导致山间观测站停电。林川左膝扭伤，与许宁协作检查供电，最后找到漏水的接线盒。全章仅两名人物，避免另建人物。&quot;
+      }
+    ],
+    &quot;recent_openings&quot;: [],
+    &quot;entity_snapshots&quot;: [
+      {
+        &quot;character_id&quot;: &quot;84096adc-f77b-46a8-b61d-07b521b9b8d2&quot;,
+        &quot;name&quot;: &quot;林川&quot;,
+        &quot;realm_cap&quot;: &quot;普通人&quot;,
+        &quot;state&quot;: {},
+        &quot;state_changes&quot;: {},
+        &quot;personality&quot;: &quot;谨慎负责的检修员&quot;,
+        &quot;relations&quot;: []
+      },
+      {
+        &quot;character_id&quot;: &quot;c0bbf6be-0cdf-4a09-9f91-f5a69ecd371d&quot;,
+        &quot;name&quot;: &quot;许宁&quot;,
+        &quot;realm_cap&quot;: &quot;普通人&quot;,
+        &quot;state&quot;: {},
+        &quot;state_changes&quot;: {},
+        &quot;personality&quot;: &quot;谨慎负责的检修员&quot;,
+        &quot;relations&quot;: []
+      }
+    ],
+    &quot;setting_snapshots&quot;: [],
+    &quot;open_foreshadows&quot;: [],
+    &quot;plot_threads&quot;: [],
+    &quot;reflexions&quot;: [],
+    &quot;token_usage&quot;: 1074,
+    &quot;recall_stats&quot;: {
+      &quot;hybrid_status&quot;: &quot;skipped_no_prev&quot;
+    }
+  }
+}</pre></section><section id="plan"><h2>03 · 先决定怎么写</h2><p>以下是模型产生的出场规划与章节计划。</p><pre>{
+  &quot;出场规划&quot;: {
+    &quot;cast&quot;: [
+      &quot;林川&quot;,
+      &quot;许宁&quot;
+    ],
+    &quot;locations&quot;: [
+      &quot;山间观测站&quot;,
+      &quot;观测站配电间&quot;,
+      &quot;接线盒所在处&quot;
+    ]
+  },
+  &quot;章节计划&quot;: {
+    &quot;project_id&quot;: &quot;76d2b74b-d498-4e16-a2ca-959fb8174797&quot;,
+    &quot;chapter_seq&quot;: 1,
+    &quot;goals&quot;: [
+      &quot;推进林川与许宁在暴雨停电的观测站中排除供电故障的生存协作线&quot;,
+      &quot;建立两人在受限空间内的信任与分工关系&quot;
+    ],
+    &quot;scenes&quot;: [
+      {
+        &quot;location_id&quot;: &quot;山间观测站主控室&quot;,
+        &quot;participants&quot;: [
+          &quot;林川&quot;,
+          &quot;许宁&quot;
+        ],
+        &quot;goal&quot;: &quot;确认停电范围与备用电源状态，分派排查任务&quot;,
+        &quot;time&quot;: &quot;暴雨夜，停电后约十分钟&quot;
+      },
+      {
+        &quot;location_id&quot;: &quot;山间观测站走廊及配电间&quot;,
+        &quot;participants&quot;: [
+          &quot;林川&quot;,
+          &quot;许宁&quot;
+        ],
+        &quot;goal&quot;: &quot;沿线路逐段排查供电回路，发现接线盒漏水&quot;,
+        &quot;time&quot;: &quot;停电后半小时内&quot;
+      },
+      {
+        &quot;location_id&quot;: &quot;山间观测站配电间&quot;,
+        &quot;participants&quot;: [
+          &quot;林川&quot;,
+          &quot;许宁&quot;
+        ],
+        &quot;goal&quot;: &quot;处理漏水接线盒，恢复局部供电或做出临时处置决定&quot;,
+        &quot;time&quot;: &quot;停电后一小时内&quot;
+      }
+    ],
+    &quot;characters&quot;: [
+      {
+        &quot;character_id&quot;: &quot;林川&quot;,
+        &quot;expected_state&quot;: {
+          &quot;location&quot;: &quot;山间观测站配电间&quot;,
+          &quot;physical&quot;: &quot;左膝扭伤，行动受限，需借助支撑物移动&quot;,
+          &quot;mental&quot;: &quot;克制疼痛，专注排查故障，对许宁逐渐建立协作信任&quot;
+        }
+      },
+      {
+        &quot;character_id&quot;: &quot;许宁&quot;,
+        &quot;expected_state&quot;: {
+          &quot;location&quot;: &quot;山间观测站配电间&quot;,
+          &quot;physical&quot;: &quot;正常，但受暴雨和停电环境影响，体力消耗&quot;,
+          &quot;mental&quot;: &quot;主动承担探查任务，对林川的伤情保持关注但不过度干预&quot;
+        }
+      }
+    ],
+    &quot;hooks_to_plant&quot;: [
+      &quot;漏水接线盒的损坏程度可能超出临时处理范围，暗示后续需要外部支援或更大维修&quot;,
+      &quot;林川左膝扭伤在潮湿环境中可能加重，为后续行动受限埋下隐患&quot;
+    ],
+    &quot;hooks_to_resolve&quot;: [],
+    &quot;expected_events&quot;: [
+      &quot;暴雨导致观测站主电源跳闸，林川与许宁确认停电&quot;,
+      &quot;两人分工检查配电线路，林川因膝伤负责室内指挥，许宁负责探查&quot;,
+      &quot;发现走廊天花板渗水导致接线盒进水短路&quot;,
+      &quot;两人协作切断故障回路，尝试恢复部分供电&quot;,
+      &quot;章末以接线盒漏水源未根治或备用电源不足作为悬念收束&quot;
+    ],
+    &quot;hard_constraints&quot;: [
+      &quot;本章仅出现林川和许宁两名人物，不得引入新角色&quot;,
+      &quot;无超能力，所有故障排除须符合现实电气常识&quot;,
+      &quot;林川左膝扭伤须有合理恢复过程，本章内不得痊愈或奔跑&quot;,
+      &quot;暴雨和停电环境须保持前后一致，不得突然放晴或恢复市电&quot;
+    ],
+    &quot;transition&quot;: {
+      &quot;mode&quot;: &quot;opening&quot;,
+      &quot;anchor_quote&quot;: &quot;&quot;,
+      &quot;pending_action&quot;: &quot;&quot;,
+      &quot;opening_beat&quot;: &quot;暴雨声中，主控室灯光骤然熄灭，林川在黑暗中稳住身体，左膝传来一阵锐痛，许宁的声音从近处响起，确认彼此位置&quot;,
+      &quot;bridge&quot;: &quot;&quot;
+    }
+  }
+}</pre></section><section id="initial"><h2>04 · 首次生成的完整正文</h2><p>这是第一轮工作流结束时的正文，尚未加入用于测试的错误句。</p><pre>灯灭的那一瞬间，林川的手已经按在了桌沿上。
+
+黑暗来得毫无过渡，像有人把整座观测站从世界里摘了出去。雨声随即变得具体，铁皮屋顶被砸出连绵的闷响，窗玻璃嗡嗡发颤。他稳住上半身，重心本能地往右移，左膝还是迟了半拍才跟上，一阵锐痛从关节内侧扎上来，顺着大腿后侧爬到腰。他咬住后槽牙，把那股酸麻压回去，只让一声短促的吸气漏出来。
+
+“林川？”
+
+许宁的声音在右侧三步远的地方，没有慌乱，只是音调比平时高了一线。
+
+“在。”他应了一声，尽量让嗓音平稳，“别动，先确认脚下的东西。桌角在你左边一点。”
+
+一阵窸窣，大概是她在摸索。“碰到了。你那边？”
+
+“靠墙站着。”林川说，“手电在哪一格抽屉？”
+
+“我记得是第二格，你等下。”
+
+脚步声往储物柜方向去，走得很慢，每一步都先试探再落。黑暗中传来抽屉被拉开又推回的声响，第二个、第三个。许宁低声数着，语气像在给自己报账。
+
+“不对，第二格是记录本。”她说，“第三格，有了。”
+
+一束白光晃出来，先是打在天花板上，再压低，扫过主控台、仪器架、墙角那排铅蓄电池柜。光柱里全是浮尘，细密地翻涌。许宁转过身，光束在林川身上停了一下，落在他的左腿上。
+
+“你又跛了。”
+
+“老毛病。”林川避开那道视线，“先看市电。主闸箱在走廊尽头，控制面板上应该有指示。”
+
+许宁没接话，把手电递过来一半，自己攥着另一半，两人各持一端，像抬着一根看不见的杆子往门口走。走廊比主控室更暗，只有应急标识在墙上泛着微弱的绿。雨声在这里更响，像是从天花板内部长出来的。
+
+控制面板嵌在配电间外墙上，几排指示灯全黑。林川单手扶着墙，另一只手掀开面板外盖，指尖在断路器和漏电保护器的拨杆上一路摸过去。全部在合闸位。
+
+“总闸没跳。”他说，“市电是真的断了，不是室内故障。”
+
+“备用电源呢？电池柜不是独立的吗？”
+
+“测一下。”
+
+他们退回主控室。林川坐在椅子边缘，把左腿伸直，膝盖上那处热痛慢慢摊开。许宁把手电卡在仪器架上，对着铅蓄电池柜照。柜体上方的小显示屏黑着，按下测试键也没有反应。她又去查柜体侧面的电压表，指针纹丝不动。
+
+“没输出。”她说，“是电池组的问题，还是线路断了？”
+
+“都有可能。”林川盯着那个黑屏，“如果只是电池老化，主闸那边应该有市电。现在两个都没了，说明外部线路和备用回路同时出问题。雨太大，山里这种概率不低。”
+
+许宁沉默两秒，把手电从架子上取下来。“走廊顶上刚才有个地方在响，像是水声。我去看看。”
+
+“等等。”林川撑着椅子站起来，左膝一软，他用手掌摁住椅背，把身体的重量全压到右腿，“先定一下分工。你负责往前探查，我做记录和判断。每到一个节点回报一次，别一个人钻进去太深。”
+
+“你确定不一起走？”
+
+“我这腿拖不了十几分钟的路。”他说得干脆，没给自己留余地，“而且得有人守着面板，万一市电来了要立刻合闸。”
+
+许宁看了他一秒，点头，把那半截手电塞进他手里。“那你守着。我沿着走廊往配电间去，路上看接线盒。”
+
+“配电间的门锁着，钥匙在主控台第二层抽屉，铜的。”
+
+“知道。”
+
+她走出去。脚步声在走廊里逐渐拉远，随后被雨声盖住。林川把电筒光对准控制面板，每隔一会儿就扫一次，明知道不会有变化。他把注意力压在痛感以外的地方，让呼吸慢下来。膝盖的肿在裤管下一点点鼓起来，贴着皮肤发烫。
+
+约莫过了七八分钟，走廊里传来两声敲墙。约定的回报信号。
+
+“主控室到配电间这段，天花板有两处渗水。”许宁的声音从廊道里传回来，隔着雨有点发闷，“靠楼梯口那个接线盒外壳是湿的，我打开看了一眼，里面全是水珠。”
+
+“有没有焦味？”
+
+“有，很淡，混着雨腥味。盒子底下那片墙皮已经发黑。”
+
+林川在脑子里把线路图过了一遍。主控室到配电间这一段，走的是照明和电池柜充电回路，墙内暗线从天花板夹层穿过。渗水如果正好落在接线盒上，短路就是必然的。
+
+“别碰它。”他提高一点音量，“先回来，把工具和绝缘胶带带上。我过去。”
+
+“你过来？”
+
+“门我来开，图纸在我手上。那段线路两个回路有交叉，不能乱切。”
+
+她的脚步声折返。进门时手电光扫到他的腿，他正把膝盖往椅子外侧挪，动作不算自然。许宁什么都没问，从工具袋里抽出绝缘胶带、电工钳和一把drywall刀，顺手把一块折叠凳拍开，推到他手边。
+
+“拄着。”她说。
+
+林川接过来，折叠凳的腿在手里晃了晃，他试着用它当拐杖使。走得不快，但从主控室到配电间这一路还算稳。许宁走在前面半步，手电光照着地面，替他避开地上那摊已经积起来的水。走廊天花板每隔几步就有水痕，最严重的一处在配电间门口上方，水顺着墙往下爬，在门框边汇成一道细流。
+
+配电间比主控室更冷，空气里全是潮气。墙面上一排接线盒沿走廊延伸进来，许宁指的那个在靠里第二只，外壳全是水，边缘凝着水珠，往下滴。林川让她把总闸从配电间这边的分开关切下来，再逐节拔掉这段回路的支路熔断器。
+
+“只留电池柜充电那一路。”他说，“其余全断。”
+
+许宁照做，动作很快，每一路拔下都回头报一句。林川拄着折叠凳挪到接线盒前，先用干布擦了外壳，再用drywall刀沿着盒盖缝隙撬开。盖板一松，一股潮热的气味涌出来，里面线头全是水，接线柱表面起了白绿色的氧化物，其中一根线的绝缘皮已经发黑卷曲。盒底积了浅浅一层水。
+
+“进水短路。”他把手电凑近，“这根火线对地的绝缘坏了，等于直接接地。难怪跳。”
+
+“能修吗？”
+
+“换线头、吹干、做绝缘。临时能顶。”林川用钳子夹住发黑的线头，轻轻一拉，铜芯露出来，已经锈了半截，“问题是水从哪来。盒子上方天花板这块，你刚才说有两处渗水。”
+
+许宁把手电往上照。盒体正上方的水泥顶棚有一道细纹，水正从纹路里渗出来，一滴一滴，落在盒盖残存的斜面上。裂纹不长，但在往两侧走。
+
+“上面是屋面。”林川仰着头看了一会儿，“排水沟大概堵了。这雨再下几个小时，整段夹层都要泡。”
+
+两人沉默地让那滴水声填满这间小屋。许宁先开口：“先做临时处理？”
+
+“嗯。”他点头，“你把备用线头剥出来，我来做。做完先恢复电池柜那一路，看有没有电。”
+
+许宁蹲下来剥线，动作利落，铜芯露得齐整。林川一手扶盒体一手接线，湿冷的水顺着他的手腕往下淌。膝盖一直维持着半跪的姿势，热度、胀感、还有一点针扎似的跳，在骨缝里反复。他尽量把重心分散到右腿和手臂上，额头渗出一层薄汗。
+
+线接好，缠上三层绝缘胶带。林川让许宁把电池柜那一路合上，自己退到门口。
+
+啪的一声。
+
+柜体上方的小显示屏亮了，幽绿的背光在暗屋里格外刺眼。电压读数一点点往上爬，停在标称值以下一截。
+
+“有输出，但不稳。”林川盯着那个跳动的数字，“电池是旧的，撑不了多久。主机带不动，照明和应急可以开。”他伸手按了配电间门口那排开关，走廊应急灯接二连三亮起来，昏黄的光铺在湿漉漉的地面上。
+
+许宁松了半口气，随即又皱起眉。她指着接线盒上方那道水痕：“这个没根治。电池充电回路也在这段，水位再涨，迟早把刚接的线再泡了。”
+
+“知道。”林川说，“现在只能做围挡，把渗水引开，不让它落进盒子。今晚是顶不过大修的。”
+
+他去工具架上翻出一卷防潮布和几块废木条，许宁接手把布撑开，用木条在接线盒上方钉了个简易斜面，让水滴顺着布沿滑到墙角。做完这些，她退开一步，看了看，又用drywall刀在墙角地面划了一道小沟，引水往外流。
+
+“能撑几小时。”她说，“几小时之后呢？”
+
+林川没答。他靠在门框上，左腿伸直，膝盖比刚才肿得更明显，裤管绷紧了一圈。应急灯的光从他脚下一路铺到配电间深处，那条被临时修复的线路正发出细弱的电流声。外面雨没有停的意思，敲在铁皮屋顶上，比先前更密。
+
+许宁把手电关掉，省电。她走过来，目光在他膝盖上停了一下，又移开。
+
+“你歇着。”她说，“我去把走廊其他几处渗水点也标一下，画个图。明天——”
+
+她顿了一下。
+
+“明天要是雨停了，得上去看屋面。排水沟堵在哪，得有人爬上去。”
+
+林川顺着她的话往上看了一眼。那道天花板裂纹在昏光里像一条细黑的河，正缓慢地拓宽。电池柜的显示屏还亮着，电压读数又往下掉了一格。
+
+“雨不会停。”他说。
+
+许宁没接话，从抽屉里翻出铅笔和记录本，转身走进走廊。脚步声和着滴水声往前去。林川留在门口，一只手撑在门框上，另一只手攥着那卷剩下的绝缘胶带。胶带外圈冰凉，里面似乎还沾着方才渗进盒里的潮气。</pre></section><section id="feedback"><h2>05 · 人工反馈具体改什么</h2><p>为验证人工拒绝后的修订，评测脚本在初稿末尾加入下方错误句，再调用候选拒绝与审核恢复流程。</p><pre>{
+  &quot;人为加入的错误句&quot;: &quot;林川忽然获得了瞬间移动的超能力，眨眼就到了十公里外。&quot;,
+  &quot;拒绝理由&quot;: &quot;现实题材不允许瞬间移动；用人物实际检修动作推进。&quot;
+}</pre></section><details><summary>查看送入修订的完整正文（含注入错误）</summary><pre>灯灭的那一瞬间，林川的手已经按在了桌沿上。
+
+黑暗来得毫无过渡，像有人把整座观测站从世界里摘了出去。雨声随即变得具体，铁皮屋顶被砸出连绵的闷响，窗玻璃嗡嗡发颤。他稳住上半身，重心本能地往右移，左膝还是迟了半拍才跟上，一阵锐痛从关节内侧扎上来，顺着大腿后侧爬到腰。他咬住后槽牙，把那股酸麻压回去，只让一声短促的吸气漏出来。
+
+“林川？”
+
+许宁的声音在右侧三步远的地方，没有慌乱，只是音调比平时高了一线。
+
+“在。”他应了一声，尽量让嗓音平稳，“别动，先确认脚下的东西。桌角在你左边一点。”
+
+一阵窸窣，大概是她在摸索。“碰到了。你那边？”
+
+“靠墙站着。”林川说，“手电在哪一格抽屉？”
+
+“我记得是第二格，你等下。”
+
+脚步声往储物柜方向去，走得很慢，每一步都先试探再落。黑暗中传来抽屉被拉开又推回的声响，第二个、第三个。许宁低声数着，语气像在给自己报账。
+
+“不对，第二格是记录本。”她说，“第三格，有了。”
+
+一束白光晃出来，先是打在天花板上，再压低，扫过主控台、仪器架、墙角那排铅蓄电池柜。光柱里全是浮尘，细密地翻涌。许宁转过身，光束在林川身上停了一下，落在他的左腿上。
+
+“你又跛了。”
+
+“老毛病。”林川避开那道视线，“先看市电。主闸箱在走廊尽头，控制面板上应该有指示。”
+
+许宁没接话，把手电递过来一半，自己攥着另一半，两人各持一端，像抬着一根看不见的杆子往门口走。走廊比主控室更暗，只有应急标识在墙上泛着微弱的绿。雨声在这里更响，像是从天花板内部长出来的。
+
+控制面板嵌在配电间外墙上，几排指示灯全黑。林川单手扶着墙，另一只手掀开面板外盖，指尖在断路器和漏电保护器的拨杆上一路摸过去。全部在合闸位。
+
+“总闸没跳。”他说，“市电是真的断了，不是室内故障。”
+
+“备用电源呢？电池柜不是独立的吗？”
+
+“测一下。”
+
+他们退回主控室。林川坐在椅子边缘，把左腿伸直，膝盖上那处热痛慢慢摊开。许宁把手电卡在仪器架上，对着铅蓄电池柜照。柜体上方的小显示屏黑着，按下测试键也没有反应。她又去查柜体侧面的电压表，指针纹丝不动。
+
+“没输出。”她说，“是电池组的问题，还是线路断了？”
+
+“都有可能。”林川盯着那个黑屏，“如果只是电池老化，主闸那边应该有市电。现在两个都没了，说明外部线路和备用回路同时出问题。雨太大，山里这种概率不低。”
+
+许宁沉默两秒，把手电从架子上取下来。“走廊顶上刚才有个地方在响，像是水声。我去看看。”
+
+“等等。”林川撑着椅子站起来，左膝一软，他用手掌摁住椅背，把身体的重量全压到右腿，“先定一下分工。你负责往前探查，我做记录和判断。每到一个节点回报一次，别一个人钻进去太深。”
+
+“你确定不一起走？”
+
+“我这腿拖不了十几分钟的路。”他说得干脆，没给自己留余地，“而且得有人守着面板，万一市电来了要立刻合闸。”
+
+许宁看了他一秒，点头，把那半截手电塞进他手里。“那你守着。我沿着走廊往配电间去，路上看接线盒。”
+
+“配电间的门锁着，钥匙在主控台第二层抽屉，铜的。”
+
+“知道。”
+
+她走出去。脚步声在走廊里逐渐拉远，随后被雨声盖住。林川把电筒光对准控制面板，每隔一会儿就扫一次，明知道不会有变化。他把注意力压在痛感以外的地方，让呼吸慢下来。膝盖的肿在裤管下一点点鼓起来，贴着皮肤发烫。
+
+约莫过了七八分钟，走廊里传来两声敲墙。约定的回报信号。
+
+“主控室到配电间这段，天花板有两处渗水。”许宁的声音从廊道里传回来，隔着雨有点发闷，“靠楼梯口那个接线盒外壳是湿的，我打开看了一眼，里面全是水珠。”
+
+“有没有焦味？”
+
+“有，很淡，混着雨腥味。盒子底下那片墙皮已经发黑。”
+
+林川在脑子里把线路图过了一遍。主控室到配电间这一段，走的是照明和电池柜充电回路，墙内暗线从天花板夹层穿过。渗水如果正好落在接线盒上，短路就是必然的。
+
+“别碰它。”他提高一点音量，“先回来，把工具和绝缘胶带带上。我过去。”
+
+“你过来？”
+
+“门我来开，图纸在我手上。那段线路两个回路有交叉，不能乱切。”
+
+她的脚步声折返。进门时手电光扫到他的腿，他正把膝盖往椅子外侧挪，动作不算自然。许宁什么都没问，从工具袋里抽出绝缘胶带、电工钳和一把drywall刀，顺手把一块折叠凳拍开，推到他手边。
+
+“拄着。”她说。
+
+林川接过来，折叠凳的腿在手里晃了晃，他试着用它当拐杖使。走得不快，但从主控室到配电间这一路还算稳。许宁走在前面半步，手电光照着地面，替他避开地上那摊已经积起来的水。走廊天花板每隔几步就有水痕，最严重的一处在配电间门口上方，水顺着墙往下爬，在门框边汇成一道细流。
+
+配电间比主控室更冷，空气里全是潮气。墙面上一排接线盒沿走廊延伸进来，许宁指的那个在靠里第二只，外壳全是水，边缘凝着水珠，往下滴。林川让她把总闸从配电间这边的分开关切下来，再逐节拔掉这段回路的支路熔断器。
+
+“只留电池柜充电那一路。”他说，“其余全断。”
+
+许宁照做，动作很快，每一路拔下都回头报一句。林川拄着折叠凳挪到接线盒前，先用干布擦了外壳，再用drywall刀沿着盒盖缝隙撬开。盖板一松，一股潮热的气味涌出来，里面线头全是水，接线柱表面起了白绿色的氧化物，其中一根线的绝缘皮已经发黑卷曲。盒底积了浅浅一层水。
+
+“进水短路。”他把手电凑近，“这根火线对地的绝缘坏了，等于直接接地。难怪跳。”
+
+“能修吗？”
+
+“换线头、吹干、做绝缘。临时能顶。”林川用钳子夹住发黑的线头，轻轻一拉，铜芯露出来，已经锈了半截，“问题是水从哪来。盒子上方天花板这块，你刚才说有两处渗水。”
+
+许宁把手电往上照。盒体正上方的水泥顶棚有一道细纹，水正从纹路里渗出来，一滴一滴，落在盒盖残存的斜面上。裂纹不长，但在往两侧走。
+
+“上面是屋面。”林川仰着头看了一会儿，“排水沟大概堵了。这雨再下几个小时，整段夹层都要泡。”
+
+两人沉默地让那滴水声填满这间小屋。许宁先开口：“先做临时处理？”
+
+“嗯。”他点头，“你把备用线头剥出来，我来做。做完先恢复电池柜那一路，看有没有电。”
+
+许宁蹲下来剥线，动作利落，铜芯露得齐整。林川一手扶盒体一手接线，湿冷的水顺着他的手腕往下淌。膝盖一直维持着半跪的姿势，热度、胀感、还有一点针扎似的跳，在骨缝里反复。他尽量把重心分散到右腿和手臂上，额头渗出一层薄汗。
+
+线接好，缠上三层绝缘胶带。林川让许宁把电池柜那一路合上，自己退到门口。
+
+啪的一声。
+
+柜体上方的小显示屏亮了，幽绿的背光在暗屋里格外刺眼。电压读数一点点往上爬，停在标称值以下一截。
+
+“有输出，但不稳。”林川盯着那个跳动的数字，“电池是旧的，撑不了多久。主机带不动，照明和应急可以开。”他伸手按了配电间门口那排开关，走廊应急灯接二连三亮起来，昏黄的光铺在湿漉漉的地面上。
+
+许宁松了半口气，随即又皱起眉。她指着接线盒上方那道水痕：“这个没根治。电池充电回路也在这段，水位再涨，迟早把刚接的线再泡了。”
+
+“知道。”林川说，“现在只能做围挡，把渗水引开，不让它落进盒子。今晚是顶不过大修的。”
+
+他去工具架上翻出一卷防潮布和几块废木条，许宁接手把布撑开，用木条在接线盒上方钉了个简易斜面，让水滴顺着布沿滑到墙角。做完这些，她退开一步，看了看，又用drywall刀在墙角地面划了一道小沟，引水往外流。
+
+“能撑几小时。”她说，“几小时之后呢？”
+
+林川没答。他靠在门框上，左腿伸直，膝盖比刚才肿得更明显，裤管绷紧了一圈。应急灯的光从他脚下一路铺到配电间深处，那条被临时修复的线路正发出细弱的电流声。外面雨没有停的意思，敲在铁皮屋顶上，比先前更密。
+
+许宁把手电关掉，省电。她走过来，目光在他膝盖上停了一下，又移开。
+
+“你歇着。”她说，“我去把走廊其他几处渗水点也标一下，画个图。明天——”
+
+她顿了一下。
+
+“明天要是雨停了，得上去看屋面。排水沟堵在哪，得有人爬上去。”
+
+林川顺着她的话往上看了一眼。那道天花板裂纹在昏光里像一条细黑的河，正缓慢地拓宽。电池柜的显示屏还亮着，电压读数又往下掉了一格。
+
+“雨不会停。”他说。
+
+许宁没接话，从抽屉里翻出铅笔和记录本，转身走进走廊。脚步声和着滴水声往前去。林川留在门口，一只手撑在门框上，另一只手攥着那卷剩下的绝缘胶带。胶带外圈冰凉，里面似乎还沾着方才渗进盒里的潮气。
+林川忽然获得了瞬间移动的超能力，眨眼就到了十公里外。</pre></details><section id="final"><h2>06 · 修改后的完整正文</h2><p>这是修订复审后的实际正文。</p><pre>灯灭的那一瞬间，林川的手已经按在了桌沿上。
+
+黑暗来得毫无过渡，像有人把整座观测站从世界里摘了出去。雨声随即变得具体，铁皮屋顶被砸出连绵的闷响，窗玻璃嗡嗡发颤。他稳住上半身，重心本能地往右移，左膝还是迟了半拍才跟上，一阵锐痛从关节内侧扎上来，顺着大腿后侧爬到腰。他咬住后槽牙，把那股酸麻压回去，只让一声短促的吸气漏出来。
+
+“林川？”
+
+许宁的声音在右侧三步远的地方，没有慌乱，只是音调比平时高了一线。
+
+“在。”他应了一声，尽量让嗓音平稳，“别动，先确认脚下的东西。桌角在你左边一点。”
+
+一阵窸窣，大概是她在摸索。“碰到了。你那边？”
+
+“靠墙站着。”林川说，“手电在哪一格抽屉？”
+
+“我记得是第二格，你等下。”
+
+脚步声往储物柜方向去，走得很慢，每一步都先试探再落。黑暗中传来抽屉被拉开又推回的声响，第二个、第三个。许宁低声数着，语气像在给自己报账。
+
+“不对，第二格是记录本。”她说，“第三格，有了。”
+
+一束白光晃出来，先是打在天花板上，再压低，扫过主控台、仪器架、墙角那排铅蓄电池柜。光柱里全是浮尘，细密地翻涌。许宁转过身，光束在林川身上停了一下，落在他的左腿上。
+
+“你又跛了。”
+
+“老毛病。”林川避开那道视线，“先看市电。主闸箱在走廊尽头，控制面板上应该有指示。”
+
+许宁没接话，把手电递过来一半，自己攥着另一半，两人各持一端，像抬着一根看不见的杆子往门口走。走廊比主控室更暗，只有应急标识在墙上泛着微弱的绿。雨声在这里更响，像是从天花板内部长出来的。
+
+控制面板嵌在配电间外墙上，几排指示灯全黑。林川单手扶着墙，另一只手掀开面板外盖，指尖在断路器和漏电保护器的拨杆上一路摸过去。全部在合闸位。
+
+“总闸没跳。”他说，“市电是真的断了，不是室内故障。”
+
+“备用电源呢？电池柜不是独立的吗？”
+
+“测一下。”
+
+他们退回主控室。林川坐在椅子边缘，把左腿伸直，膝盖上那处热痛慢慢摊开。许宁把手电卡在仪器架上，对着铅蓄电池柜照。柜体上方的小显示屏黑着，按下测试键也没有反应。她又去查柜体侧面的电压表，指针纹丝不动。
+
+“没输出。”她说，“是电池组的问题，还是线路断了？”
+
+“都有可能。”林川盯着那个黑屏，“如果只是电池老化，主闸那边应该有市电。现在两个都没了，说明外部线路和备用回路同时出问题。雨太大，山里这种概率不低。”
+
+许宁沉默两秒，把手电从架子上取下来。“走廊顶上刚才有个地方在响，像是水声。我去看看。”
+
+“等等。”林川撑着椅子站起来，左膝一软，他用手掌摁住椅背，把身体的重量全压到右腿，“先定一下分工。你负责往前探查，我做记录和判断。每到一个节点回报一次，别一个人钻进去太深。”
+
+“你确定不一起走？”
+
+“我这腿拖不了十几分钟的路。”他说得干脆，没给自己留余地，“而且得有人守着面板，万一市电来了要立刻合闸。”
+
+许宁看了他一秒，点头，把那半截手电塞进他手里。“那你守着。我沿着走廊往配电间去，路上看接线盒。”
+
+“配电间的门锁着，钥匙在主控台第二层抽屉，铜的。”
+
+“知道。”
+
+她走出去。脚步声在走廊里逐渐拉远，随后被雨声盖住。林川把电筒光对准控制面板，每隔一会儿就扫一次，明知道不会有变化。他把注意力压在痛感以外的地方，让呼吸慢下来。膝盖的肿在裤管下一点点鼓起来，贴着皮肤发烫。
+
+约莫过了七八分钟，走廊里传来两声敲墙。约定的回报信号。
+
+“主控室到配电间这段，天花板有两处渗水。”许宁的声音从廊道里传回来，隔着雨有点发闷，“靠楼梯口那个接线盒外壳是湿的，我打开看了一眼，里面全是水珠。”
+
+“有没有焦味？”
+
+“有，很淡，混着雨腥味。盒子底下那片墙皮已经发黑。”
+
+林川在脑子里把线路图过了一遍。主控室到配电间这一段，走的是照明和电池柜充电回路，墙内暗线从天花板夹层穿过。渗水如果正好落在接线盒上，短路就是必然的。
+
+“别碰它。”他提高一点音量，“先回来，把工具和绝缘胶带带上。我过去。”
+
+“你过来？”
+
+“门我来开，图纸在我手上。那段线路两个回路有交叉，不能乱切。”
+
+她的脚步声折返。进门时手电光扫到他的腿，他正把膝盖往椅子外侧挪，动作不算自然。许宁什么都没问，从工具袋里抽出绝缘胶带、电工钳和一把裁纸刀，顺手把一块折叠凳拍开，推到他手边。
+
+“拄着。”她说。
+
+林川接过来，折叠凳的腿在手里晃了晃，他试着用它当拐杖使。走得不快，但从主控室到配电间这一路还算稳。许宁走在前面半步，手电光照着地面，替他避开地上那摊已经积起来的水。走廊天花板每隔几步就有水痕，最严重的一处在配电间门口上方，水顺着墙往下爬，在门框边汇成一道细流。
+
+配电间比主控室更冷，空气里全是潮气。墙面上一排接线盒沿走廊延伸进来，许宁指的那个在靠里第二只，外壳全是水，边缘凝着水珠，往下滴。林川让她把总闸从配电间这边的分开关切下来，再逐节拔掉这段回路的支路熔断器。
+
+“只留电池柜充电那一路。”他说，“其余全断。”
+
+许宁照做，动作很快，每一路拔下都回头报一句。林川拄着折叠凳挪到接线盒前，先用干布擦了外壳，再用裁纸刀沿着盒盖缝隙撬开。盖板一松，一股潮热的气味涌出来，里面线头全是水，接线柱表面起了白绿色的氧化物，其中一根线的绝缘皮已经发黑卷曲。盒底积了浅浅一层水。
+
+“进水短路。”他把手电凑近，“这根火线对地的绝缘坏了，等于直接接地。难怪跳。”
+
+“能修吗？”
+
+“换线头、吹干、做绝缘。临时能顶。”林川用钳子夹住发黑的线头，轻轻一拉，铜芯露出来，已经锈了半截，“问题是水从哪来。盒子上方天花板这块，你刚才说有两处渗水。”
+
+许宁把手电往上照。盒体正上方的水泥顶棚有一道细纹，水正从纹路里渗出来，一滴一滴，落在盒盖残存的斜面上。裂纹不长，但在往两侧走。
+
+“上面是屋面。”林川仰着头看了一会儿，“排水沟大概堵了。这雨再下几个小时，整段夹层都要泡。”
+
+两人沉默地让那滴水声填满这间小屋。许宁先开口：“先做临时处理？”
+
+“嗯。”他点头，“你把备用线头剥出来，我来做。做完先恢复电池柜那一路，看有没有电。”
+
+许宁蹲下来剥线，动作利落，铜芯露得齐整。林川一手扶盒体一手接线，湿冷的水顺着他的手腕往下淌。膝盖一直维持着半跪的姿势，热度、胀感、还有一点针扎似的跳，在骨缝里反复。他尽量把重心分散到右腿和手臂上，额头渗出一层薄汗。
+
+线接好，缠上三层绝缘胶带。林川让许宁把电池柜那一路合上，自己退到门口。
+
+啪的一声。
+
+柜体上方的小显示屏亮了，幽绿的背光在暗屋里格外刺眼。电压读数一点点往上爬，停在标称值以下一截。
+
+“有输出，但不稳。”林川盯着那个跳动的数字，“电池是旧的，撑不了多久。主机带不动，照明和应急可以开。”他伸手按了配电间门口那排开关，走廊应急灯接二连三亮起来，昏黄的光铺在湿漉漉的地面上。
+
+许宁松了半口气，随即又皱起眉。她指着接线盒上方那道水痕：“这个没根治。电池充电回路也在这段，水位再涨，迟早把刚接的线再泡了。”
+
+“知道。”林川说，“现在只能做围挡，把渗水引开，不让它落进盒子。今晚是顶不过大修的。”
+
+他去工具架上翻出一卷防潮布和几块废木条，许宁接手把布撑开，用木条在接线盒上方钉了个简易斜面，让水滴顺着布沿滑到墙角。做完这些，她退开一步，看了看，又用裁纸刀在墙角地面划了一道小沟，引水往外流。
+
+“能撑几小时。”她说，“几小时之后呢？”
+
+林川没答。他靠在门框上，左腿伸直，膝盖比刚才肿得更明显，裤管绷紧了一圈。应急灯的光从他脚下一路铺到配电间深处，那条被临时修复的线路正发出细弱的电流声。外面雨没有停的意思，敲在铁皮屋顶上，比先前更密。
+
+许宁把手电关掉，省电。她走过来，目光在他膝盖上停了一下，又移开。
+
+“你歇着。”她说，“我去把走廊其他几处渗水点也标一下，画个图。明天——”
+
+她顿了一下。
+
+“明天要是雨停了，得上去看屋面。排水沟堵在哪，得有人爬上去。”
+
+林川顺着她的话往上看了一眼。那道天花板裂纹在昏光里像一条细黑的河，正缓慢地拓宽。电池柜的显示屏还亮着，电压读数又往下掉了一格。
+
+“雨不会停。”他说。
+
+许宁没接话，从抽屉里翻出铅笔和记录本，转身走进走廊。脚步声和着滴水声往前去。林川留在门口，一只手撑在门框上，另一只手攥着那卷剩下的绝缘胶带。胶带外圈冰凉，里面似乎还沾着方才渗进盒里的潮气。他低头看了一眼自己的左膝，裤管下的轮廓比一小时前更圆了些。走廊尽头，许宁的笔尖划过纸面，沙沙地标下第一处渗水的位置。</pre></section><section id="diff"><h2>07 · 修订前后逐行对比</h2><p>红色为删除，绿色为新增，黄色为修改。正文可能整体重写；移除问题句之外的变化也如实保留。</p><div class="diff-wrap">
+    <table class="diff" id="difflib_chg_to0__top"
+           cellspacing="0" cellpadding="0" rules="groups" >
+        <colgroup></colgroup> <colgroup></colgroup> <colgroup></colgroup>
+        <colgroup></colgroup> <colgroup></colgroup> <colgroup></colgroup>
+        <thead><tr><th class="diff_next"><br /></th><th colspan="2" class="diff_header">送入修订的正文（含人为错误）</th><th class="diff_next"><br /></th><th colspan="2" class="diff_header">实际修订结果</th></tr></thead>
+        <tbody>
+            <tr><td class="diff_next" id="difflib_chg_to0__0"></td><td class="diff_header" id="from0_73">73</td><td nowrap="nowrap">“门我来开，图纸在我手上。那段线路两个回路有交叉，不能乱切。”</td><td class="diff_next"></td><td class="diff_header" id="to0_73">73</td><td nowrap="nowrap">“门我来开，图纸在我手上。那段线路两个回路有交叉，不能乱切。”</td></tr>
+            <tr><td class="diff_next"></td><td class="diff_header" id="from0_74">74</td><td nowrap="nowrap"></td><td class="diff_next"></td><td class="diff_header" id="to0_74">74</td><td nowrap="nowrap"></td></tr>
+            <tr><td class="diff_next"><a href="#difflib_chg_to0__1">n</a></td><td class="diff_header" id="from0_75">75</td><td nowrap="nowrap">她的脚步声折返。进门时手电光扫到他的腿，他正把膝盖往椅子外侧挪，动作不算自然。许宁什么都没问，从</td><td class="diff_next"><a href="#difflib_chg_to0__1">n</a></td><td class="diff_header" id="to0_75">75</td><td nowrap="nowrap">她的脚步声折返。进门时手电光扫到他的腿，他正把膝盖往椅子外侧挪，动作不算自然。许宁什么都没问，从</td></tr>
+            <tr><td class="diff_next"></td><td class="diff_header">></td><td nowrap="nowrap">工具袋里抽出绝缘胶带、电工钳和一把<span class="diff_chg">drywall</span>刀，顺手把一块折叠凳拍开，推到他手边。</td><td class="diff_next"></td><td class="diff_header">></td><td nowrap="nowrap">工具袋里抽出绝缘胶带、电工钳和一把<span class="diff_chg">裁纸</span>刀，顺手把一块折叠凳拍开，推到他手边。</td></tr>
+            <tr><td class="diff_next"></td><td class="diff_header" id="from0_76">76</td><td nowrap="nowrap"></td><td class="diff_next"></td><td class="diff_header" id="to0_76">76</td><td nowrap="nowrap"></td></tr>
+            <tr><td class="diff_next"></td><td class="diff_header" id="from0_77">77</td><td nowrap="nowrap">“拄着。”她说。</td><td class="diff_next"></td><td class="diff_header" id="to0_77">77</td><td nowrap="nowrap">“拄着。”她说。</td></tr>
+        </tbody>        
+        <tbody>
+            <tr><td class="diff_next" id="difflib_chg_to0__1"></td><td class="diff_header" id="from0_83">83</td><td nowrap="nowrap">“只留电池柜充电那一路。”他说，“其余全断。”</td><td class="diff_next"></td><td class="diff_header" id="to0_83">83</td><td nowrap="nowrap">“只留电池柜充电那一路。”他说，“其余全断。”</td></tr>
+            <tr><td class="diff_next"></td><td class="diff_header" id="from0_84">84</td><td nowrap="nowrap"></td><td class="diff_next"></td><td class="diff_header" id="to0_84">84</td><td nowrap="nowrap"></td></tr>
+            <tr><td class="diff_next"><a href="#difflib_chg_to0__2">n</a></td><td class="diff_header" id="from0_85">85</td><td nowrap="nowrap">许宁照做，动作很快，每一路拔下都回头报一句。林川拄着折叠凳挪到接线盒前，先用干布擦了外壳，再用<span class="diff_chg">d</span></td><td class="diff_next"><a href="#difflib_chg_to0__2">n</a></td><td class="diff_header" id="to0_85">85</td><td nowrap="nowrap">许宁照做，动作很快，每一路拔下都回头报一句。林川拄着折叠凳挪到接线盒前，先用干布擦了外壳，再用<span class="diff_chg">裁</span></td></tr>
+            <tr><td class="diff_next"></td><td class="diff_header">></td><td nowrap="nowrap"><span class="diff_chg">rywall</span>刀沿着盒盖缝隙撬开。盖板一松，一股潮热的气味涌出来，里面线头全是水，接线柱表面起了白</td><td class="diff_next"></td><td class="diff_header">></td><td nowrap="nowrap"><span class="diff_chg">纸</span>刀沿着盒盖缝隙撬开。盖板一松，一股潮热的气味涌出来，里面线头全是水，接线柱表面起了白绿色的氧化</td></tr>
+            <tr><td class="diff_next"></td><td class="diff_header">></td><td nowrap="nowrap">绿色的氧化物，其中一根线的绝缘皮已经发黑卷曲。盒底积了浅浅一层水。</td><td class="diff_next"></td><td class="diff_header">></td><td nowrap="nowrap">物，其中一根线的绝缘皮已经发黑卷曲。盒底积了浅浅一层水。</td></tr>
+            <tr><td class="diff_next"></td><td class="diff_header" id="from0_86">86</td><td nowrap="nowrap"></td><td class="diff_next"></td><td class="diff_header" id="to0_86">86</td><td nowrap="nowrap"></td></tr>
+            <tr><td class="diff_next"></td><td class="diff_header" id="from0_87">87</td><td nowrap="nowrap">“进水短路。”他把手电凑近，“这根火线对地的绝缘坏了，等于直接接地。难怪跳。”</td><td class="diff_next"></td><td class="diff_header" id="to0_87">87</td><td nowrap="nowrap">“进水短路。”他把手电凑近，“这根火线对地的绝缘坏了，等于直接接地。难怪跳。”</td></tr>
+        </tbody>        
+        <tbody>
+            <tr><td class="diff_next" id="difflib_chg_to0__2"></td><td class="diff_header" id="from0_113">113</td><td nowrap="nowrap">“知道。”林川说，“现在只能做围挡，把渗水引开，不让它落进盒子。今晚是顶不过大修的。”</td><td class="diff_next"></td><td class="diff_header" id="to0_113">113</td><td nowrap="nowrap">“知道。”林川说，“现在只能做围挡，把渗水引开，不让它落进盒子。今晚是顶不过大修的。”</td></tr>
+            <tr><td class="diff_next"></td><td class="diff_header" id="from0_114">114</td><td nowrap="nowrap"></td><td class="diff_next"></td><td class="diff_header" id="to0_114">114</td><td nowrap="nowrap"></td></tr>
+            <tr><td class="diff_next"><a href="#difflib_chg_to0__3">n</a></td><td class="diff_header" id="from0_115">115</td><td nowrap="nowrap">他去工具架上翻出一卷防潮布和几块废木条，许宁接手把布撑开，用木条在接线盒上方钉了个简易斜面，让水</td><td class="diff_next"><a href="#difflib_chg_to0__3">n</a></td><td class="diff_header" id="to0_115">115</td><td nowrap="nowrap">他去工具架上翻出一卷防潮布和几块废木条，许宁接手把布撑开，用木条在接线盒上方钉了个简易斜面，让水</td></tr>
+            <tr><td class="diff_next"></td><td class="diff_header">></td><td nowrap="nowrap">滴顺着布沿滑到墙角。做完这些，她退开一步，看了看，又用<span class="diff_chg">drywall</span>刀在墙角地面划了一道小沟，引</td><td class="diff_next"></td><td class="diff_header">></td><td nowrap="nowrap">滴顺着布沿滑到墙角。做完这些，她退开一步，看了看，又用<span class="diff_chg">裁纸</span>刀在墙角地面划了一道小沟，引水往外流。</td></tr>
+            <tr><td class="diff_next"></td><td class="diff_header">></td><td nowrap="nowrap">水往外流。</td><td class="diff_next"></td><td class="diff_header"></td><td nowrap="nowrap">&nbsp;</td></tr>
+            <tr><td class="diff_next"></td><td class="diff_header" id="from0_116">116</td><td nowrap="nowrap"></td><td class="diff_next"></td><td class="diff_header" id="to0_116">116</td><td nowrap="nowrap"></td></tr>
+            <tr><td class="diff_next"></td><td class="diff_header" id="from0_117">117</td><td nowrap="nowrap">“能撑几小时。”她说，“几小时之后呢？”</td><td class="diff_next"></td><td class="diff_header" id="to0_117">117</td><td nowrap="nowrap">“能撑几小时。”她说，“几小时之后呢？”</td></tr>
+        </tbody>        
+        <tbody>
+            <tr><td class="diff_next" id="difflib_chg_to0__3"></td><td class="diff_header" id="from0_131">131</td><td nowrap="nowrap">“雨不会停。”他说。</td><td class="diff_next"></td><td class="diff_header" id="to0_131">131</td><td nowrap="nowrap">“雨不会停。”他说。</td></tr>
+            <tr><td class="diff_next"></td><td class="diff_header" id="from0_132">132</td><td nowrap="nowrap"></td><td class="diff_next"></td><td class="diff_header" id="to0_132">132</td><td nowrap="nowrap"></td></tr>
+            <tr><td class="diff_next"><a href="#difflib_chg_to0__top">t</a></td><td class="diff_header" id="from0_133">133</td><td nowrap="nowrap">许宁没接话，从抽屉里翻出铅笔和记录本，转身走进走廊。脚步声和着滴水声往前去。林川留在门口，一只手</td><td class="diff_next"><a href="#difflib_chg_to0__top">t</a></td><td class="diff_header" id="to0_133">133</td><td nowrap="nowrap">许宁没接话，从抽屉里翻出铅笔和记录本，转身走进走廊。脚步声和着滴水声往前去。林川留在门口，一只手</td></tr>
+            <tr><td class="diff_next"></td><td class="diff_header">></td><td nowrap="nowrap">撑在门框上，另一只手攥着那卷剩下的绝缘胶带。胶带外圈冰凉，里面似乎还沾着方才渗进盒里的潮气。</td><td class="diff_next"></td><td class="diff_header">></td><td nowrap="nowrap">撑在门框上，另一只手攥着那卷剩下的绝缘胶带。胶带外圈冰凉，里面似乎还沾着方才渗进盒里的潮气。<span class="diff_add">他低</span></td></tr>
+            <tr><td class="diff_next"></td><td class="diff_header"></td><td nowrap="nowrap">&nbsp;</td><td class="diff_next"></td><td class="diff_header">></td><td nowrap="nowrap"><span class="diff_add">头看了一眼自己的左膝，裤管下的轮廓比一小时前更圆了些。走廊尽头，许宁的笔尖划过纸面，沙沙地标下第</span></td></tr>
+            <tr><td class="diff_next"></td><td class="diff_header"></td><td nowrap="nowrap">&nbsp;</td><td class="diff_next"></td><td class="diff_header">></td><td nowrap="nowrap"><span class="diff_add">一处渗水的位置。</span></td></tr>
+            <tr><td class="diff_next"></td><td class="diff_header" id="from0_134">134</td><td nowrap="nowrap"><span class="diff_sub">林川忽然获得了瞬间移动的超能力，眨眼就到了十公里外。</span></td><td class="diff_next"></td><td class="diff_header"></td><td nowrap="nowrap"></td></tr>
+        </tbody>
+    </table></div></section><section id="audit"><h2>08 · 为什么允许保存</h2><p>这是最终审核结论及实际规则检查结果。</p><pre>{
+  &quot;模型审核&quot;: {
+    &quot;verdict&quot;: &quot;pass&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [],
+    &quot;reasons&quot;: [
+      &quot;对照章节计划：三场戏（主控室确认停电与分工 / 走廊-配电间逐段排查 / 配电间处置接线盒）均有对应且顺序一致，单位与时间推进（停电后十分钟→半小时内→一小时内）合理，无主线偏移。&quot;,
+      &quot;L1 两条『预期事件无对应』为误报：正文明确写了断电拔支路熔断器、只留电池柜充电回路、换线头缠胶带后合闸恢复局部供电（显示屏亮起、应急灯点亮），也明确以渗水源未根治、电压读数下掉、『雨不会停』收束，功能上覆盖预期的两个事件节点。&quot;,
+      &quot;硬约束全部满足：仅林川、许宁两人；故障排查符合现实电气常识（合闸位正常→市电确断→电池柜无输出→渗水短路→切断故障回路）；左膝扭伤有合理过程（跛行、面部肿、借折叠凳当拐杖，未痊愈未奔跑）；暴雨停电环境前后一致，市电未恢复。&quot;,
+      &quot;人物逻辑与计划一致：林川克制疼痛、专注判断、逐步接受协作；许宁主动探查、标注渗水点、对伤情关注但不过度干预，结尾埋下明日上屋面巡查的后续引子。&quot;,
+      &quot;衔接：本章为开篇（transition.mode=opening），无前章正文，不适用跨章接续检查；开头即灯灭、黑暗中互相确认位置，与 opening_beat 一致；无前章原文，不存在重演或接续断裂。&quot;,
+      &quot;质量：节奏为单场景递进式排查，靠动作与细节（滴落的水、胶带、折叠凳、电压读数）推进，无机械重复段落，人设语气统一。&quot;
+    ],
+    &quot;confidence&quot;: 0.86
+  },
+  &quot;规则校验&quot;: {
+    &quot;project_id&quot;: &quot;76d2b74b-d498-4e16-a2ca-959fb8174797&quot;,
+    &quot;chapter_seq&quot;: 1,
+    &quot;findings&quot;: [
+      {
+        &quot;finding_id&quot;: null,
+        &quot;conflict_key&quot;: &quot;dev:1:两人协作切断故障回路，尝试恢复部&quot;,
+        &quot;conflict_type&quot;: &quot;plotline&quot;,
+        &quot;severity&quot;: &quot;major&quot;,
+        &quot;scope&quot;: &quot;structural&quot;,
+        &quot;source&quot;: &quot;L1&quot;,
+        &quot;evidence&quot;: [
+          {
+            &quot;chapter&quot;: 1,
+            &quot;quote&quot;: &quot;预期事件「两人协作切断故障回路，尝试恢复部分供电」在正文中无对应&quot;
+          }
+        ],
+        &quot;confidence&quot;: null,
+        &quot;suggestion&quot;: &quot;作者决策：改正文拉回 / 改大纲顺水推舟（§8.6）&quot;
+      },
+      {
+        &quot;finding_id&quot;: null,
+        &quot;conflict_key&quot;: &quot;dev:1:章末以接线盒漏水源未根治或备用电&quot;,
+        &quot;conflict_type&quot;: &quot;plotline&quot;,
+        &quot;severity&quot;: &quot;major&quot;,
+        &quot;scope&quot;: &quot;structural&quot;,
+        &quot;source&quot;: &quot;L1&quot;,
+        &quot;evidence&quot;: [
+          {
+            &quot;chapter&quot;: 1,
+            &quot;quote&quot;: &quot;预期事件「章末以接线盒漏水源未根治或备用电源不足作为悬念收束」在正文中无对应&quot;
+          }
+        ],
+        &quot;confidence&quot;: null,
+        &quot;suggestion&quot;: &quot;作者决策：改正文拉回 / 改大纲顺水推舟（§8.6）&quot;
+      }
+    ],
+    &quot;summary&quot;: {
+      &quot;total&quot;: 2,
+      &quot;critical&quot;: 0,
+      &quot;resolved&quot;: 0
+    }
+  }
+}</pre></section><section id="saved"><h2>09 · 数据库最后保存了什么</h2><p>以下是临时库实际导出的摘要、事实、人物状态、事件与候选。保留确认状态、失效字段和审核记录，不能把待确认或失效条目当成有效记忆。</p><pre>{
+  &quot;章节&quot;: [
+    {
+      &quot;project_id&quot;: &quot;76d2b74b-d498-4e16-a2ca-959fb8174797&quot;,
+      &quot;chapter_seq&quot;: 1,
+      &quot;title&quot;: null,
+      &quot;summary&quot;: &quot;暴雨夜观测站突然断电，林川与许宁在黑暗中摸到手电，确认市电和蓄电池组双双失效。林川腿伤复发行动不便，留守主控室指挥，许宁探查走廊，发现配电间接线盒因天花板渗水短路、绝缘层烧黑。林川拄折叠凳赶到，切断支路后临时换线、缠胶带，恢复电池柜供电，并搭建防潮布引开渗水，勉强撑住局面。许宁标出多处渗水点，雨势未歇，屋面排水沟堵塞尚待次日处理，电池电压持续走低。&quot;,
+      &quot;status&quot;: &quot;confirmed&quot;,
+      &quot;generation_source&quot;: &quot;auto&quot;,
+      &quot;version&quot;: 2,
+      &quot;id&quot;: &quot;1acada46-ee16-474d-82dc-84b79a31f1ab&quot;,
+      &quot;created_at&quot;: &quot;2026-10-08 10:08:20.097388+00:00&quot;,
+      &quot;updated_at&quot;: &quot;2026-10-08 10:08:46.805221+00:00&quot;
+    }
+  ],
+  &quot;事实&quot;: [
+    {
+      &quot;project_id&quot;: &quot;76d2b74b-d498-4e16-a2ca-959fb8174797&quot;,
+      &quot;content&quot;: &quot;观测站走廊天花板渗水（疑因屋面排水沟堵塞），导致墙面接线盒进水短路，使市电与备用电池充电回路同时失效&quot;,
+      &quot;category&quot;: &quot;规则&quot;,
+      &quot;is_hard&quot;: true,
+      &quot;source_chapter&quot;: 1,
+      &quot;confidence&quot;: 0.8,
+      &quot;confirm_status&quot;: &quot;expired&quot;,
+      &quot;valid_from&quot;: 1,
+      &quot;valid_to&quot;: 1,
+      &quot;id&quot;: &quot;670a7aa3-f935-44a6-bda1-d2ccebac3628&quot;,
+      &quot;created_at&quot;: &quot;2026-10-08 10:08:20.097388+00:00&quot;,
+      &quot;updated_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;
+    },
+    {
+      &quot;project_id&quot;: &quot;76d2b74b-d498-4e16-a2ca-959fb8174797&quot;,
+      &quot;content&quot;: &quot;观测站供电分市电与电池柜备用回路，两路同时失效才会出现全站断电。&quot;,
+      &quot;category&quot;: &quot;规则&quot;,
+      &quot;is_hard&quot;: false,
+      &quot;source_chapter&quot;: 1,
+      &quot;confidence&quot;: 0.85,
+      &quot;confirm_status&quot;: &quot;confirmed&quot;,
+      &quot;valid_from&quot;: 1,
+      &quot;valid_to&quot;: null,
+      &quot;id&quot;: &quot;f2930d99-9de8-4c0f-a88c-59d04be7effb&quot;,
+      &quot;created_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;,
+      &quot;updated_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;
+    },
+    {
+      &quot;project_id&quot;: &quot;76d2b74b-d498-4e16-a2ca-959fb8174797&quot;,
+      &quot;content&quot;: &quot;主控室到配电间段走照明与电池柜充电回路，墙内暗线经天花板夹层穿过，渗水落入接线盒即会短路。&quot;,
+      &quot;category&quot;: &quot;规则&quot;,
+      &quot;is_hard&quot;: false,
+      &quot;source_chapter&quot;: 1,
+      &quot;confidence&quot;: 0.8,
+      &quot;confirm_status&quot;: &quot;confirmed&quot;,
+      &quot;valid_from&quot;: 1,
+      &quot;valid_to&quot;: null,
+      &quot;id&quot;: &quot;27bbba96-a3f0-4799-ade3-091090a63c6e&quot;,
+      &quot;created_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;,
+      &quot;updated_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;
+    }
+  ],
+  &quot;人物状态&quot;: [
+    {
+      &quot;project_id&quot;: &quot;76d2b74b-d498-4e16-a2ca-959fb8174797&quot;,
+      &quot;character_id&quot;: &quot;84096adc-f77b-46a8-b61d-07b521b9b8d2&quot;,
+      &quot;chapter_seq&quot;: 1,
+      &quot;field&quot;: &quot;injury&quot;,
+      &quot;old_value&quot;: &quot;&quot;,
+      &quot;new_value&quot;: &quot;左膝旧伤复发（扭伤），关节肿胀发热，行动受限，需拄折叠凳行走&quot;,
+      &quot;source_chapter&quot;: 1,
+      &quot;confidence&quot;: 0.9,
+      &quot;valid_from&quot;: 1,
+      &quot;valid_to&quot;: 1,
+      &quot;id&quot;: &quot;162d7b21-b2dc-4536-93b6-84ea4bf03c77&quot;,
+      &quot;created_at&quot;: &quot;2026-10-08 10:08:20.097388+00:00&quot;,
+      &quot;updated_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;
+    },
+    {
+      &quot;project_id&quot;: &quot;76d2b74b-d498-4e16-a2ca-959fb8174797&quot;,
+      &quot;character_id&quot;: &quot;84096adc-f77b-46a8-b61d-07b521b9b8d2&quot;,
+      &quot;chapter_seq&quot;: 1,
+      &quot;field&quot;: &quot;location&quot;,
+      &quot;old_value&quot;: &quot;&quot;,
+      &quot;new_value&quot;: &quot;山间观测站（配电间门口）&quot;,
+      &quot;source_chapter&quot;: 1,
+      &quot;confidence&quot;: 0.7,
+      &quot;valid_from&quot;: 1,
+      &quot;valid_to&quot;: 1,
+      &quot;id&quot;: &quot;455e7e88-7172-4b8a-897b-2e3b869d2a11&quot;,
+      &quot;created_at&quot;: &quot;2026-10-08 10:08:20.097388+00:00&quot;,
+      &quot;updated_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;
+    },
+    {
+      &quot;project_id&quot;: &quot;76d2b74b-d498-4e16-a2ca-959fb8174797&quot;,
+      &quot;character_id&quot;: &quot;c0bbf6be-0cdf-4a09-9f91-f5a69ecd371d&quot;,
+      &quot;chapter_seq&quot;: 1,
+      &quot;field&quot;: &quot;location&quot;,
+      &quot;old_value&quot;: &quot;&quot;,
+      &quot;new_value&quot;: &quot;山间观测站（前往走廊标记渗水点）&quot;,
+      &quot;source_chapter&quot;: 1,
+      &quot;confidence&quot;: 0.7,
+      &quot;valid_from&quot;: 1,
+      &quot;valid_to&quot;: 1,
+      &quot;id&quot;: &quot;0a9cb3ea-dd56-444d-acf5-f7d029b3fc3b&quot;,
+      &quot;created_at&quot;: &quot;2026-10-08 10:08:20.097388+00:00&quot;,
+      &quot;updated_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;
+    },
+    {
+      &quot;project_id&quot;: &quot;76d2b74b-d498-4e16-a2ca-959fb8174797&quot;,
+      &quot;character_id&quot;: &quot;84096adc-f77b-46a8-b61d-07b521b9b8d2&quot;,
+      &quot;chapter_seq&quot;: 1,
+      &quot;field&quot;: &quot;injury&quot;,
+      &quot;old_value&quot;: &quot;&quot;,
+      &quot;new_value&quot;: &quot;左膝旧伤复发，停电行动中扭伤加重，膝部明显肿胀，行走跛行，无法长途行走&quot;,
+      &quot;source_chapter&quot;: 1,
+      &quot;confidence&quot;: 0.9,
+      &quot;valid_from&quot;: 1,
+      &quot;valid_to&quot;: null,
+      &quot;id&quot;: &quot;1393bea7-549d-4839-9e51-fdd4ea2086aa&quot;,
+      &quot;created_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;,
+      &quot;updated_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;
+    },
+    {
+      &quot;project_id&quot;: &quot;76d2b74b-d498-4e16-a2ca-959fb8174797&quot;,
+      &quot;character_id&quot;: &quot;84096adc-f77b-46a8-b61d-07b521b9b8d2&quot;,
+      &quot;chapter_seq&quot;: 1,
+      &quot;field&quot;: &quot;location&quot;,
+      &quot;old_value&quot;: &quot;&quot;,
+      &quot;new_value&quot;: &quot;山间观测站（主控室与配电间）&quot;,
+      &quot;source_chapter&quot;: 1,
+      &quot;confidence&quot;: 0.9,
+      &quot;valid_from&quot;: 1,
+      &quot;valid_to&quot;: null,
+      &quot;id&quot;: &quot;b9307145-d15d-4ecb-afff-efc3353f59cb&quot;,
+      &quot;created_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;,
+      &quot;updated_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;
+    },
+    {
+      &quot;project_id&quot;: &quot;76d2b74b-d498-4e16-a2ca-959fb8174797&quot;,
+      &quot;character_id&quot;: &quot;c0bbf6be-0cdf-4a09-9f91-f5a69ecd371d&quot;,
+      &quot;chapter_seq&quot;: 1,
+      &quot;field&quot;: &quot;location&quot;,
+      &quot;old_value&quot;: &quot;&quot;,
+      &quot;new_value&quot;: &quot;山间观测站（主控室与走廊，前往配电间方向）&quot;,
+      &quot;source_chapter&quot;: 1,
+      &quot;confidence&quot;: 0.9,
+      &quot;valid_from&quot;: 1,
+      &quot;valid_to&quot;: null,
+      &quot;id&quot;: &quot;8b3fbc1b-340b-455b-91ec-4ac863fe4315&quot;,
+      &quot;created_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;,
+      &quot;updated_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;
+    }
+  ],
+  &quot;事件&quot;: [
+    {
+      &quot;project_id&quot;: &quot;76d2b74b-d498-4e16-a2ca-959fb8174797&quot;,
+      &quot;summary&quot;: &quot;暴雨导致观测站市电与备用电池同时中断，全站陷入黑暗。&quot;,
+      &quot;participants&quot;: [
+        &quot;84096adc-f77b-46a8-b61d-07b521b9b8d2&quot;,
+        &quot;c0bbf6be-0cdf-4a09-9f91-f5a69ecd371d&quot;
+      ],
+      &quot;source_chapter&quot;: 1,
+      &quot;confidence&quot;: 0.95,
+      &quot;id&quot;: &quot;6dc068d1-d720-4bc3-baaa-1b14978587d3&quot;,
+      &quot;created_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;,
+      &quot;updated_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;
+    },
+    {
+      &quot;project_id&quot;: &quot;76d2b74b-d498-4e16-a2ca-959fb8174797&quot;,
+      &quot;summary&quot;: &quot;林川与许宁分工排查供电：林川守控制面板并判断市电确已断开，许宁前出探查渗水与接线盒。&quot;,
+      &quot;participants&quot;: [
+        &quot;84096adc-f77b-46a8-b61d-07b521b9b8d2&quot;,
+        &quot;c0bbf6be-0cdf-4a09-9f91-f5a69ecd371d&quot;
+      ],
+      &quot;source_chapter&quot;: 1,
+      &quot;confidence&quot;: 0.9,
+      &quot;id&quot;: &quot;3a8d1a3f-414e-4436-bc8a-e21067357126&quot;,
+      &quot;created_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;,
+      &quot;updated_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;
+    },
+    {
+      &quot;project_id&quot;: &quot;76d2b74b-d498-4e16-a2ca-959fb8174797&quot;,
+      &quot;summary&quot;: &quot;在配电间找到进水短路的接线盒：天花渗水滴入接线盒，火线对地绝缘损坏导致跳闸。&quot;,
+      &quot;participants&quot;: [
+        &quot;84096adc-f77b-46a8-b61d-07b521b9b8d2&quot;,
+        &quot;c0bbf6be-0cdf-4a09-9f91-f5a69ecd371d&quot;
+      ],
+      &quot;source_chapter&quot;: 1,
+      &quot;confidence&quot;: 0.9,
+      &quot;id&quot;: &quot;68f8301f-f609-4a18-96cc-9fbd8956a062&quot;,
+      &quot;created_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;,
+      &quot;updated_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;
+    },
+    {
+      &quot;project_id&quot;: &quot;76d2b74b-d498-4e16-a2ca-959fb8174797&quot;,
+      &quot;summary&quot;: &quot;林川与许宁临时更换线头、吹干并做绝缘处理，恢复电池柜充电回路，使应急照明恢复，但电池老化输出不稳。&quot;,
+      &quot;participants&quot;: [
+        &quot;84096adc-f77b-46a8-b61d-07b521b9b8d2&quot;,
+        &quot;c0bbf6be-0cdf-4a09-9f91-f5a69ecd371d&quot;
+      ],
+      &quot;source_chapter&quot;: 1,
+      &quot;confidence&quot;: 0.85,
+      &quot;id&quot;: &quot;6a55d06b-af1d-4853-af18-4d798a58763f&quot;,
+      &quot;created_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;,
+      &quot;updated_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;
+    },
+    {
+      &quot;project_id&quot;: &quot;76d2b74b-d498-4e16-a2ca-959fb8174797&quot;,
+      &quot;summary&quot;: &quot;用防潮布与木条搭建斜面导水、在墙角划引水沟，临时阻挡渗水进入接线盒，仅能撑数小时。&quot;,
+      &quot;participants&quot;: [
+        &quot;84096adc-f77b-46a8-b61d-07b521b9b8d2&quot;,
+        &quot;c0bbf6be-0cdf-4a09-9f91-f5a69ecd371d&quot;
+      ],
+      &quot;source_chapter&quot;: 1,
+      &quot;confidence&quot;: 0.85,
+      &quot;id&quot;: &quot;18e3ca8a-6bbb-4871-8e25-b8c6431cb49e&quot;,
+      &quot;created_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;,
+      &quot;updated_at&quot;: &quot;2026-10-08 10:08:46.659485+00:00&quot;
+    }
+  ],
+  &quot;候选与审核状态&quot;: [
+    {
+      &quot;project_id&quot;: &quot;76d2b74b-d498-4e16-a2ca-959fb8174797&quot;,
+      &quot;kind&quot;: &quot;fact&quot;,
+      &quot;source_chapter&quot;: 1,
+      &quot;payload&quot;: {
+        &quot;content&quot;: &quot;林川忽然获得了瞬间移动的超能力，眨眼就到了十公里外。&quot;
+      },
+      &quot;confidence&quot;: 1.0,
+      &quot;status&quot;: &quot;rejected&quot;,
+      &quot;review&quot;: {
+        &quot;mode&quot;: &quot;revise&quot;,
+        &quot;reason&quot;: &quot;现实题材不允许瞬间移动；用人物实际检修动作推进。&quot;,
+        &quot;applied&quot;: true
+      },
+      &quot;id&quot;: &quot;00baf6d1-1973-49ea-b68e-154d6a608f1d&quot;,
+      &quot;created_at&quot;: &quot;2026-10-08 10:08:23.339797+00:00&quot;,
+      &quot;updated_at&quot;: &quot;2026-10-08 10:08:49.804361+00:00&quot;
+    }
+  ]
+}</pre></section><section id="timeline"><h2>10 · 实际运行过程</h2><p>程序节点不调用模型，所以 tokens 为零；原始模型消息及运行详情放在展开项中，截断以记录中的标记为准。</p><article><h3>01 · load_state</h3><p>输入 0 / 输出 0 tokens · 耗时 0 ms</p><p>程序执行节点，执行统计见下方详情。</p><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;load_state&quot;,
+  &quot;input_tokens&quot;: 0,
+  &quot;output_tokens&quot;: 0,
+  &quot;model_id&quot;: null,
+  &quot;duration_ms&quot;: 0,
+  &quot;cost_est&quot;: 0.0,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;characters&quot;: 2,
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: false,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    }
+  }
+}</pre></details></article><article><h3>02 · recall</h3><p>输入 0 / 输出 0 tokens · 耗时 0 ms</p><p>程序执行节点，执行统计见下方详情。</p><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;recall&quot;,
+  &quot;input_tokens&quot;: 0,
+  &quot;output_tokens&quot;: 0,
+  &quot;model_id&quot;: null,
+  &quot;duration_ms&quot;: 0,
+  &quot;cost_est&quot;: 0.0,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;context&quot;: {
+      &quot;long_term_facts&quot;: [
+        {
+          &quot;content&quot;: &quot;故事发生在现实世界，没有超能力；人物伤势须有合理恢复过程。&quot;,
+          &quot;source_chapter&quot;: null,
+          &quot;category&quot;: &quot;规则&quot;,
+          &quot;is_hard&quot;: true,
+          &quot;source&quot;: &quot;project_settings&quot;
+        }
+      ],
+      &quot;mid_term_events&quot;: [],
+      &quot;short_context&quot;: [
+        {
+          &quot;kind&quot;: &quot;user_instruction&quot;,
+          &quot;text&quot;: &quot;暴雨导致山间观测站停电。林川左膝扭伤，与许宁协作检查供电，最后找到漏水的接线盒。全章仅两名人物，避免另建人物。&quot;
+        }
+      ],
+      &quot;recent_openings&quot;: [],
+      &quot;entity_snapshots&quot;: [],
+      &quot;setting_snapshots&quot;: [],
+      &quot;open_foreshadows&quot;: [],
+      &quot;plot_threads&quot;: [],
+      &quot;reflexions&quot;: [],
+      &quot;token_usage&quot;: 601,
+      &quot;recall_stats&quot;: {
+        &quot;hybrid_status&quot;: &quot;skipped_no_prev&quot;
+      }
+    },
+    &quot;facts&quot;: 1,
+    &quot;events&quot;: 0,
+    &quot;snapshots&quot;: 0,
+    &quot;settings&quot;: 0,
+    &quot;foreshadows&quot;: 0,
+    &quot;threads&quot;: 0,
+    &quot;context_tokens_est&quot;: 601,
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: false,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    }
+  }
+}</pre></details></article><article><h3>03 · plan_cast</h3><p>输入 411 / 输出 33 tokens · 耗时 3265 ms</p><p>模型调用记录；完整关键产物见上方计划、正文和审核区。</p><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;plan_cast&quot;,
+  &quot;input_tokens&quot;: 411,
+  &quot;output_tokens&quot;: 33,
+  &quot;model_id&quot;: &quot;deepseek-v4-flash&quot;,
+  &quot;duration_ms&quot;: 3265,
+  &quot;cost_est&quot;: 0.000543,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;response&quot;: {
+      &quot;content&quot;: &quot;{\&quot;cast\&quot;: [\&quot;林川\&quot;, \&quot;许宁\&quot;], \&quot;locations\&quot;: [\&quot;山间观测站\&quot;, \&quot;观测站配电间\&quot;, \&quot;接线盒所在处\&quot;]}&quot;,
+      &quot;tool_calls&quot;: null
+    },
+    &quot;messages&quot;: [
+      {
+        &quot;role&quot;: &quot;system&quot;,
+        &quot;content&quot;: &quot;你是长篇网文创作系统的【出场人物 Agent】。职责：在规划情节之前，先定下本章的出场人物与场景地点。\n输出严格 JSON 对象：\n{\n  \&quot;cast\&quot;: [\&quot;本章出场的人物名\&quot;],\n  \&quot;locations\&quot;: [\&quot;本章场景发生的地点名\&quot;]\n}\n规则：\n- cast 必须优先取自【现有角色名单】，不要另造名字；确有必要引入新人物时用新名字列出（他没有历史状态可查，属正常）。\n- 宁多勿漏。上一章结尾在场或被提及的人、本章要回收的伏笔牵涉的人、本章要推进的剧情线参与者，都要列上——多列一个人只是多取一份状态，漏列会让后续规划看不到他的当前处境。\n- locations 写本章场景的地点名，优先从【已有设定实体】里选；没有合适的再按世界设定新起名。\n- 只输出 JSON，不要解释文字、不要 markdown 代码块。\n\n【世界观硬约束】\n- [硬约束/事实] 故事发生在现实世界，没有超能力；人物伤势须有合理恢复过程。 （设定配置）\n【现有角色名单（cast 必须优先从中选）】\n林川、许宁\n【已有设定实体（locations 优先从中选）】\n（无）\n\n【前情事件】\n（无）\n【开放伏笔（待回收）】\n（无）\n【活跃剧情线】\n（无）&quot;
+      },
+      {
+        &quot;role&quot;: &quot;user&quot;,
+        &quot;content&quot;: &quot;【近期上下文】\n- [user_instruction] 暴雨导致山间观测站停电。林川左膝扭伤，与许宁协作检查供电，最后找到漏水的接线盒。全章仅两名人物，避免另建人物。\n\n【近期章节开头（仅作差异化参照，勿照搬；接续位置以章尾为准）】\n（无）\n\n请输出本章出场人物与场景地点（严格 JSON）。&quot;
+      }
+    ],
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: false,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    }
+  }
+}</pre></details></article><article><h3>04 · plan_cast</h3><p>输入 0 / 输出 0 tokens · 耗时 0 ms</p><p>程序执行节点，执行统计见下方详情。</p><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;plan_cast&quot;,
+  &quot;input_tokens&quot;: 0,
+  &quot;output_tokens&quot;: 0,
+  &quot;model_id&quot;: null,
+  &quot;duration_ms&quot;: 0,
+  &quot;cost_est&quot;: 0.0,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;context&quot;: {
+      &quot;long_term_facts&quot;: [
+        {
+          &quot;content&quot;: &quot;故事发生在现实世界，没有超能力；人物伤势须有合理恢复过程。&quot;,
+          &quot;source_chapter&quot;: null,
+          &quot;category&quot;: &quot;规则&quot;,
+          &quot;is_hard&quot;: true,
+          &quot;source&quot;: &quot;project_settings&quot;
+        }
+      ],
+      &quot;mid_term_events&quot;: [],
+      &quot;short_context&quot;: [
+        {
+          &quot;kind&quot;: &quot;user_instruction&quot;,
+          &quot;text&quot;: &quot;暴雨导致山间观测站停电。林川左膝扭伤，与许宁协作检查供电，最后找到漏水的接线盒。全章仅两名人物，避免另建人物。&quot;
+        }
+      ],
+      &quot;recent_openings&quot;: [],
+      &quot;entity_snapshots&quot;: [
+        {
+          &quot;character_id&quot;: &quot;84096adc-f77b-46a8-b61d-07b521b9b8d2&quot;,
+          &quot;name&quot;: &quot;林川&quot;,
+          &quot;realm_cap&quot;: &quot;普通人&quot;,
+          &quot;state&quot;: {},
+          &quot;state_changes&quot;: {},
+          &quot;personality&quot;: &quot;谨慎负责的检修员&quot;,
+          &quot;relations&quot;: []
+        },
+        {
+          &quot;character_id&quot;: &quot;c0bbf6be-0cdf-4a09-9f91-f5a69ecd371d&quot;,
+          &quot;name&quot;: &quot;许宁&quot;,
+          &quot;realm_cap&quot;: &quot;普通人&quot;,
+          &quot;state&quot;: {},
+          &quot;state_changes&quot;: {},
+          &quot;personality&quot;: &quot;谨慎负责的检修员&quot;,
+          &quot;relations&quot;: []
+        }
+      ],
+      &quot;setting_snapshots&quot;: [],
+      &quot;open_foreshadows&quot;: [],
+      &quot;plot_threads&quot;: [],
+      &quot;reflexions&quot;: [],
+      &quot;token_usage&quot;: 1074,
+      &quot;recall_stats&quot;: {
+        &quot;hybrid_status&quot;: &quot;skipped_no_prev&quot;
+      }
+    },
+    &quot;cast&quot;: [
+      &quot;林川&quot;,
+      &quot;许宁&quot;
+    ],
+    &quot;locations&quot;: [
+      &quot;山间观测站&quot;,
+      &quot;观测站配电间&quot;,
+      &quot;接线盒所在处&quot;
+    ],
+    &quot;snapshots&quot;: 2,
+    &quot;settings&quot;: 0,
+    &quot;recall_stats&quot;: {
+      &quot;hybrid_status&quot;: &quot;skipped_no_prev&quot;
+    },
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: false,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    }
+  }
+}</pre></details></article><article><h3>05 · plan_chapter</h3><p>输入 779 / 输出 707 tokens · 耗时 3453 ms</p><p>模型调用记录；完整关键产物见上方计划、正文和审核区。</p><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;plan_chapter&quot;,
+  &quot;input_tokens&quot;: 779,
+  &quot;output_tokens&quot;: 707,
+  &quot;model_id&quot;: &quot;deepseek-v4-flash&quot;,
+  &quot;duration_ms&quot;: 3453,
+  &quot;cost_est&quot;: 0.00284358,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;response&quot;: {
+      &quot;content&quot;: &quot;{\n  \&quot;goals\&quot;: [\n    \&quot;推进林川与许宁在暴雨停电的观测站中排除供电故障的生存协作线\&quot;,\n    \&quot;建立两人在受限空间内的信任与分工关系\&quot;\n  ],\n  \&quot;scenes\&quot;: [\n    {\n      \&quot;location_id\&quot;: \&quot;山间观测站主控室\&quot;,\n      \&quot;participants\&quot;: [\&quot;林川\&quot;, \&quot;许宁\&quot;],\n      \&quot;goal\&quot;: \&quot;确认停电范围与备用电源状态，分派排查任务\&quot;,\n      \&quot;time\&quot;: \&quot;暴雨夜，停电后约十分钟\&quot;\n    },\n    {\n      \&quot;location_id\&quot;: \&quot;山间观测站走廊及配电间\&quot;,\n      \&quot;participants\&quot;: [\&quot;林川\&quot;, \&quot;许宁\&quot;],\n      \&quot;goal\&quot;: \&quot;沿线路逐段排查供电回路，发现接线盒漏水\&quot;,\n      \&quot;time\&quot;: \&quot;停电后半小时内\&quot;\n    },\n    {\n      \&quot;location_id\&quot;: \&quot;山间观测站配电间\&quot;,\n      \&quot;participants\&quot;: [\&quot;林川\&quot;, \&quot;许宁\&quot;],\n      \&quot;goal\&quot;: \&quot;处理漏水接线盒，恢复局部供电或做出临时处置决定\&quot;,\n      \&quot;time\&quot;: \&quot;停电后一小时内\&quot;\n    }\n  ],\n  \&quot;characters\&quot;: [\n    {\n      \&quot;character_id\&quot;: \&quot;林川\&quot;,\n      \&quot;expected_state\&quot;: {\n        \&quot;location\&quot;: \&quot;山间观测站配电间\&quot;,\n        \&quot;physical\&quot;: \&quot;左膝扭伤，行动受限，需借助支撑物移动\&quot;,\n        \&quot;mental\&quot;: \&quot;克制疼痛，专注排查故障，对许宁逐渐建立协作信任\&quot;\n      }\n    },\n    {\n      \&quot;character_id\&quot;: \&quot;许宁\&quot;,\n      \&quot;expected_state\&quot;: {\n        \&quot;location\&quot;: \&quot;山间观测站配电间\&quot;,\n        \&quot;physical\&quot;: \&quot;正常，但受暴雨和停电环境影响，体力消耗\&quot;,\n        \&quot;mental\&quot;: \&quot;主动承担探查任务，对林川的伤情保持关注但不过度干预\&quot;\n      }\n    }\n  ],\n  \&quot;hooks_to_plant\&quot;: [\n    \&quot;漏水接线盒的损坏程度可能超出临时处理范围，暗示后续需要外部支援或更大维修\&quot;,\n    \&quot;林川左膝扭伤在潮湿环境中可能加重，为后续行动受限埋下隐患\&quot;\n  ],\n  \&quot;hooks_to_resolve\&quot;: [],\n  \&quot;expected_events\&quot;: [\n    \&quot;暴雨导致观测站主电源跳闸，林川与许宁确认停电\&quot;,\n    \&quot;两人分工检查配电线路，林川因膝伤负责室内指挥，许宁负责探查\&quot;,\n    \&quot;发现走廊天花板渗水导致接线盒进水短路\&quot;,\n    \&quot;两人协作切断故障回路，尝试恢复部分供电\&quot;,\n    \&quot;章末以接线盒漏水源未根治或备用电源不足作为悬念收束\&quot;\n  ],\n  \&quot;hard_constraints\&quot;: [\n    \&quot;本章仅出现林川和许宁两名人物，不得引入新角色\&quot;,\n    \&quot;无超能力，所有故障排除须符合现实电气常识\&quot;,\n    \&quot;林川左膝扭伤须有合理恢复过程，本章内不得痊愈或奔跑\&quot;,\n    \&quot;暴雨和停电环境须保持前后一致，不得突然放晴或恢复市电\&quot;\n  ],\n  \&quot;transition\&quot;: {\n    \&quot;mode\&quot;: \&quot;opening\&quot;,\n    \&quot;anchor_quote\&quot;: \&quot;\&quot;,\n    \&quot;pending_action\&quot;: \&quot;\&quot;,\n    \&quot;opening_beat\&quot;: \&quot;暴雨声中，主控室灯光骤然熄灭，林川在黑暗中稳住身体，左膝传来一阵锐痛，许宁的声音从近处响起，确认彼此位置\&quot;,\n    \&quot;bridge\&quot;: \&quot;\&quot;\n  }\n}&quot;,
+      &quot;tool_calls&quot;: null
+    },
+    &quot;messages&quot;: [
+      {
+        &quot;role&quot;: &quot;system&quot;,
+        &quot;content&quot;: &quot;你是长篇网文创作系统的【规划 Agent】。职责：为某一章产出结构化章节计划。\n输出严格 JSON 对象（schema 见下），字段不许缺：\n{\n  \&quot;goals\&quot;: [\&quot;推进哪条剧情线/目标\&quot;],\n  \&quot;scenes\&quot;: [{\&quot;location_id\&quot;: \&quot;地点名\&quot;, \&quot;participants\&quot;: [\&quot;人物名\&quot;], \&quot;goal\&quot;: \&quot;场景目标\&quot;, \&quot;time\&quot;: \&quot;剧情时间\&quot;}],\n  \&quot;characters\&quot;: [{\&quot;character_id\&quot;: \&quot;人物名\&quot;, \&quot;expected_state\&quot;: {\&quot;location\&quot;: \&quot;...\&quot;}}],\n  \&quot;hooks_to_plant\&quot;: [\&quot;本章要种的伏笔\&quot;],\n  \&quot;hooks_to_resolve\&quot;: [\&quot;须回收的开放伏笔\&quot;],\n  \&quot;expected_events\&quot;: [\&quot;本章预期发生的事件（大纲-正文偏差比对依据）\&quot;],\n  \&quot;hard_constraints\&quot;: [\&quot;本章必须遵守的硬约束\&quot;],\n  \&quot;transition\&quot;: {\&quot;mode\&quot;: \&quot;continue|time_jump|scene_cut|opening\&quot;, \&quot;anchor_quote\&quot;: \&quot;上一章结尾逐字短引，首章/无原文填空\&quot;, \&quot;pending_action\&quot;: \&quot;未完成动作/问题/危险，无则空\&quot;, \&quot;opening_beat\&quot;: \&quot;承接后的第一拍新进展\&quot;, \&quot;bridge\&quot;: \&quot;时空/视角变化的线索、悬念承接方式，直接接续可空\&quot;}\n}\n规则：\n- 开场节拍不得与上一章开场动作重复（如连续以「被吵醒」开场）；\n- 先读上一章结尾原文，再填 transition。已完成的进门/交接/抵达不能重演；未完成的请求/危险要回应或交代其延迟原因。大纲冲突时以前章正文为准，调整本章第一拍。\n- 合理跳时、切景、换视角可以使用，但须安排读者能理解的桥接线索，不能靠突兀的时间标签抹掉上一章危机。首章用 opening；缺少前章原文时不得编造 anchor_quote。\n- 【近期章节开头】只用于识别重复的句式、意象和开场套路，不是接续位置；持续同一场景和有意义的呼应允许，不为多样性强行换场。\n- 章末钩子必须是剧情推进或悬念事件，不得是「入睡/休息/原地等待」这类静止收束；\n- 【前情事件】中的历史相似事件仅供呼应/差异化参照，不得照搬其桥段结构；\n- JSON 数组项、对象字段之间必须使用英文逗号，字符串内部的双引号必须转义。\n\n【世界观硬约束】\n- [硬约束/事实] 故事发生在现实世界，没有超能力；人物伤势须有合理恢复过程。 （设定配置）\n【前情事件】\n（无）\n【出场人物状态快照】\n- [林川] 境界上限=普通人 状态={}\n- [许宁] 境界上限=普通人 状态={}\n【设定实体】\n（无）\n\n【开放伏笔（待回收，hooks_to_resolve 必须从中选，收/延/弃要明确）】\n（无）\n【活跃剧情线（hooks_to_plant 可补新钩子，但主线推进优先）】\n（无）\n【本书写作经验（reflexion 复盘，规划须遵守）】\n（无）&quot;
+      },
+      {
+        &quot;role&quot;: &quot;user&quot;,
+        &quot;content&quot;: &quot;【近期上下文】\n- [user_instruction] 暴雨导致山间观测站停电。林川左膝扭伤，与许宁协作检查供电，最后找到漏水的接线盒。全章仅两名人物，避免另建人物。\n\n【近期章节开头（仅作差异化参照，勿照搬；接续位置以章尾为准）】\n（无）\n\n请输出本章章节计划（严格 JSON）。&quot;
+      }
+    ],
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: false,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    },
+    &quot;writing_mode&quot;: &quot;auto&quot;,
+    &quot;plan_attempt&quot;: 1,
+    &quot;plan&quot;: {
+      &quot;project_id&quot;: &quot;76d2b74b-d498-4e16-a2ca-959fb8174797&quot;,
+      &quot;chapter_seq&quot;: 1,
+      &quot;goals&quot;: [
+        &quot;推进林川与许宁在暴雨停电的观测站中排除供电故障的生存协作线&quot;,
+        &quot;建立两人在受限空间内的信任与分工关系&quot;
+      ],
+      &quot;scenes&quot;: [
+        {
+          &quot;location_id&quot;: &quot;山间观测站主控室&quot;,
+          &quot;participants&quot;: [
+            &quot;林川&quot;,
+            &quot;许宁&quot;
+          ],
+          &quot;goal&quot;: &quot;确认停电范围与备用电源状态，分派排查任务&quot;,
+          &quot;time&quot;: &quot;暴雨夜，停电后约十分钟&quot;
+        },
+        {
+          &quot;location_id&quot;: &quot;山间观测站走廊及配电间&quot;,
+          &quot;participants&quot;: [
+            &quot;林川&quot;,
+            &quot;许宁&quot;
+          ],
+          &quot;goal&quot;: &quot;沿线路逐段排查供电回路，发现接线盒漏水&quot;,
+          &quot;time&quot;: &quot;停电后半小时内&quot;
+        },
+        {
+          &quot;location_id&quot;: &quot;山间观测站配电间&quot;,
+          &quot;participants&quot;: [
+            &quot;林川&quot;,
+            &quot;许宁&quot;
+          ],
+          &quot;goal&quot;: &quot;处理漏水接线盒，恢复局部供电或做出临时处置决定&quot;,
+          &quot;time&quot;: &quot;停电后一小时内&quot;
+        }
+      ],
+      &quot;characters&quot;: [
+        {
+          &quot;character_id&quot;: &quot;林川&quot;,
+          &quot;expected_state&quot;: {
+            &quot;location&quot;: &quot;山间观测站配电间&quot;,
+            &quot;physical&quot;: &quot;左膝扭伤，行动受限，需借助支撑物移动&quot;,
+            &quot;mental&quot;: &quot;克制疼痛，专注排查故障，对许宁逐渐建立协作信任&quot;
+          }
+        },
+        {
+          &quot;character_id&quot;: &quot;许宁&quot;,
+          &quot;expected_state&quot;: {
+            &quot;location&quot;: &quot;山间观测站配电间&quot;,
+            &quot;physical&quot;: &quot;正常，但受暴雨和停电环境影响，体力消耗&quot;,
+            &quot;mental&quot;: &quot;主动承担探查任务，对林川的伤情保持关注但不过度干预&quot;
+          }
+        }
+      ],
+      &quot;hooks_to_plant&quot;: [
+        &quot;漏水接线盒的损坏程度可能超出临时处理范围，暗示后续需要外部支援或更大维修&quot;,
+        &quot;林川左膝扭伤在潮湿环境中可能加重，为后续行动受限埋下隐患&quot;
+      ],
+      &quot;hooks_to_resolve&quot;: [],
+      &quot;expected_events&quot;: [
+        &quot;暴雨导致观测站主电源跳闸，林川与许宁确认停电&quot;,
+        &quot;两人分工检查配电线路，林川因膝伤负责室内指挥，许宁负责探查&quot;,
+        &quot;发现走廊天花板渗水导致接线盒进水短路&quot;,
+        &quot;两人协作切断故障回路，尝试恢复部分供电&quot;,
+        &quot;章末以接线盒漏水源未根治或备用电源不足作为悬念收束&quot;
+      ],
+      &quot;hard_constraints&quot;: [
+        &quot;本章仅出现林川和许宁两名人物，不得引入新角色&quot;,
+        &quot;无超能力，所有故障排除须符合现实电气常识&quot;,
+        &quot;林川左膝扭伤须有合理恢复过程，本章内不得痊愈或奔跑&quot;,
+        &quot;暴雨和停电环境须保持前后一致，不得突然放晴或恢复市电&quot;
+      ],
+      &quot;transition&quot;: {
+        &quot;mode&quot;: &quot;opening&quot;,
+        &quot;anchor_quote&quot;: &quot;&quot;,
+        &quot;pending_action&quot;: &quot;&quot;,
+        &quot;opening_beat&quot;: &quot;暴雨声中，主控室灯光骤然熄灭，林川在黑暗中稳住身体，左膝传来一阵锐痛，许宁的声音从近处响起，确认彼此位置&quot;,
+        &quot;bridge&quot;: &quot;&quot;
+      }
+    }
+  }
+}</pre></details></article><article><h3>06 · write</h3><p>输入 2247 / 输出 2304 tokens · 耗时 15156 ms</p><p>模型调用记录；完整关键产物见上方计划、正文和审核区。</p><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;write&quot;,
+  &quot;input_tokens&quot;: 2247,
+  &quot;output_tokens&quot;: 2304,
+  &quot;model_id&quot;: &quot;deepseek-v4-flash&quot;,
+  &quot;duration_ms&quot;: 15156,
+  &quot;cost_est&quot;: 0.00926094,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;tool_trace&quot;: [],
+    &quot;response&quot;: {
+      &quot;content&quot;: &quot;=== CONTENT ===\n灯灭的那一瞬间，林川的手已经按在了桌沿上。\n\n黑暗来得毫无过渡，像有人把整座观测站从世界里摘了出去。雨声随即变得具体，铁皮屋顶被砸出连绵的闷响，窗玻璃嗡嗡发颤。他稳住上半身，重心本能地往右移，左膝还是迟了半拍才跟上，一阵锐痛从关节内侧扎上来，顺着大腿后侧爬到腰。他咬住后槽牙，把那股酸麻压回去，只让一声短促的吸气漏出来。\n\n“林川？”\n\n许宁的声音在右侧三步远的地方，没有慌乱，只是音调比平时高了一线。\n\n“在。”他应了一声，尽量让嗓音平稳，“别动，先确认脚下的东西。桌角在你左边一点。”\n\n一阵窸窣，大概是她在摸索。“碰到了。你那边？”\n\n“靠墙站着。”林川说，“手电在哪一格抽屉？”\n\n“我记得是第二格，你等下。”\n\n脚步声往储物柜方向去，走得很慢，每一步都先试探再落。黑暗中传来抽屉被拉开又推回的声响，第二个、第三个。许宁低声数着，语气像在给自己报账。\n\n“不对，第二格是记录本。”她说，“第三格，有了。”\n\n一束白光晃出来，先是打在天花板上，再压低，扫过主控台、仪器架、墙角那排铅蓄电池柜。光柱里全是浮尘，细密地翻涌。许宁转过身，光束在林川身上停了一下，落在他的左腿上。\n\n“你又跛了。”\n\n“老毛病。”林川避开那道视线，“先看市电。主闸箱在走廊尽头，控制面板上应该有指示。”\n\n许宁没接话，把手电递过来一半，自己攥着另一半，两人各持一端，像抬着一根看不见的杆子往门口走。走廊比主控室更暗，只有应急标识在墙上泛着微弱的绿。雨声在这里更响，像是从天花板内部长出来的。\n\n控制面板嵌在配电间外墙上，几排指示灯全黑。林川单手扶着墙，另一只手掀开面板外盖，指尖在断路器和漏电保护器的拨杆上一路摸过去。全部在合闸位。\n\n“总闸没跳。”他说，“市电是真的断了，不是室内故障。”\n\n“备用电源呢？电池柜不是独立的吗？”\n\n“测一下。”\n\n他们退回主控室。林川坐在椅子边缘，把左腿伸直，膝盖上那处热痛慢慢摊开。许宁把手电卡在仪器架上，对着铅蓄电池柜照。柜体上方的小显示屏黑着，按下测试键也没有反应。她又去查柜体侧面的电压表，指针纹丝不动。\n\n“没输出。”她说，“是电池组的问题，还是线路断了？”\n\n“都有可能。”林川盯着那个黑屏，“如果只是电池老化，主闸那边应该有市电。现在两个都没了，说明外部线路和备用回路同时出问题。雨太大，山里这种概率不低。”\n\n许宁沉默两秒，把手电从架子上取下来。“走廊顶上刚才有个地方在响，像是水声。我去看看。”\n\n“等等。”林川撑着椅子站起来，左膝一软，他用手掌摁住椅背，把身体的重量全压到右腿，“先定一下分工。你负责往前探查，我做记录和判断。每到一个节点回报一次，别一个人钻进去太深。”\n\n“你确定不一起走？”\n\n“我这腿拖不了十几分钟的路。”他说得干脆，没给自己留余地，“而且得有人守着面板，万一市电来了要立刻合闸。”\n\n许宁看了他一秒，点头，把那半截手电塞进他手里。“那你守着。我沿着走廊往配电间去，路上看接线盒。”\n\n“配电间的门锁着，钥匙在主控台第二层抽屉，铜的。”\n\n“知道。”\n\n她走出去。脚步声在走廊里逐渐拉远，随后被雨声盖住。林川把电筒光对准控制面板，每隔一会儿就扫一次，明知道不会有变化。他把注意力压在痛感以外的地方，让呼吸慢下来。膝盖的肿在裤管下一点点鼓起来，贴着皮肤发烫。\n\n约莫过了七八分钟，走廊里传来两声敲墙。约定的回报信号。\n\n“主控室到配电间这段，天花板有两处渗水。”许宁的声音从廊道里传回来，隔着雨有点发闷，“靠楼梯口那个接线盒外壳是湿的，我打开看了一眼，里面全是水珠。”\n\n“有没有焦味？”\n\n“有，很淡，混着雨腥味。盒子底下那片墙皮已经发黑。”\n\n林川在脑子里把线路图过了一遍。主控室到配电间这一段，走的是照明和电池柜充电回路，墙内暗线从天花板夹层穿过。渗水如果正好落在接线盒上，短路就是必然的。\n\n“别碰它。”他提高一点音量，“先回来，把工具和绝缘胶带带上。我过去。”\n\n“你过来？”\n\n“门我来开，图纸在我手上。那段线路两个回路有交叉，不能乱切。”\n\n她的脚步声折返。进门时手电光扫到他的腿，他正把膝盖往椅子外侧挪，动作不算自然。许宁什么都没问，从工具袋里抽出绝缘胶带、电工钳和一把drywall刀，顺手把一块折叠凳拍开，推到他手边。\n\n“拄着。”她说。\n\n林川接过来，折叠凳的腿在手里晃了晃，他试着用它当拐杖使。走得不快，但从主控室到配电间这一路还算稳。许宁走在前面半步，手电光照着地面，替他避开地上那摊已经积起来的水。走廊天花板每隔几步就有水痕，最严重的一处在配电间门口上方，水顺着墙往下爬，在门框边汇成一道细流。\n\n配电间比主控室更冷，空气里全是潮气。墙面上一排接线盒沿走廊延伸进来，许宁指的那个在靠里第二只，外壳全是水，边缘凝着水珠，往下滴。林川让她把总闸从配电间这边的分开关切下来，再逐节拔掉这段回路的支路熔断器。\n\n“只留电池柜充电那一路。”他说，“其余全断。”\n\n许宁照做，动作很快，每一路拔下都回头报一句。林川拄着折叠凳挪到接线盒前，先用干布擦了外壳，再用drywall刀沿着盒盖缝隙撬开。盖板一松，一股潮热的气味涌出来，里面线头全是水，接线柱表面起了白绿色的氧化物，其中一根线的绝缘皮已经发黑卷曲。盒底积了浅浅一层水。\n\n“进水短路。”他把手电凑近，“这根火线对地的绝缘坏了，等于直接接地。难怪跳。”\n\n“能修吗？”\n\n“换线头、吹干、做绝缘。临时能顶。”林川用钳子夹住发黑的线头，轻轻一拉，铜芯露出来，已经锈了半截，“问题是水从哪来。盒子上方天花板这块，你刚才说有两处渗水。”\n\n许宁把手电往上照。盒体正上方的水泥顶棚有一道细纹，水正从纹路里渗出来，一滴一滴，落在盒盖残存的斜面上。裂纹不长，但在往两侧走。\n\n“上面是屋面。”林川仰着头看了一会儿，“排水沟大概堵了。这雨再下几个小时，整段夹层都要泡。”\n\n两人沉默地让那滴水声填满这间小屋。许宁先开口：“先做临时处理？”\n\n“嗯。”他点头，“你把备用线头剥出来，我来做。做完先恢复电池柜那一路，看有没有电。”\n\n许宁蹲下来剥线，动作利落，铜芯露得齐整。林川一手扶盒体一手接线，湿冷的水顺着他的手腕往下淌。膝盖一直维持着半跪的姿势，热度、胀感、还有一点针扎似的跳，在骨缝里反复。他尽量把重心分散到右腿和手臂上，额头渗出一层薄汗。\n\n线接好，缠上三层绝缘胶带。林川让许宁把电池柜那一路合上，自己退到门口。\n\n啪的一声。\n\n柜体上方的小显示屏亮了，幽绿的背光在暗屋里格外刺眼。电压读数一点点往上爬，停在标称值以下一截。\n\n“有输出，但不稳。”林川盯着那个跳动的数字，“电池是旧的，撑不了多久。主机带不动，照明和应急可以开。”他伸手按了配电间门口那排开关，走廊应急灯接二连三亮起来，昏黄的光铺在湿漉漉的地面上。\n\n许宁松了半口气，随即又皱起眉。她指着接线盒上方那道水痕：“这个没根治。电池充电回路也在这段，水位再涨，迟早把刚接的线再泡了。”\n\n“知道。”林川说，“现在只能做围挡，把渗水引开，不让它落进盒子。今晚是顶不过大修的。”\n\n他去工具架上[TRUNCATED]&quot;,
+      &quot;tool_calls&quot;: null
+    },
+    &quot;messages&quot;: [
+      {
+        &quot;role&quot;: &quot;system&quot;,
+        &quot;content&quot;: &quot;你是长篇网文创作系统的【写作 Agent】。依据章节计划写出正文。\n要求：严格遵循注入的设定与硬约束；贴合注入的文风档案与句式禁忌。\n句式禁令（任何题材、每一章都遵守）：\n- 不要写「不是……是……」：先否定再改口的对举一律不用，含「不是……而是……」与「不是……，是……」，拆成两句的「不是……。是……」也一样。\n- 不要写连续排比：同一句或相邻几句里，连续三个以上结构相同的分句。\n开篇规则：\n- 本章从【近期上下文】中上一章结尾片段的具体情境接续展开，不重新铺陈场景、不从头交代前情；\n- 避免以天色/时辰/天气作万能开场（如「清晨」「晨光」「夜色」）——除非该天色/天气与本章节拍直接相关（如「破晓时闭关突破」），否则直接用事件/动作/对话切入；\n- 各章开头不得与其他章共用开场景/意象/句式；\n- 上述规则禁止机械套用开场模板；同一场景的自然延续、有新意义的呼应允许。不要为了差异化强行换地点或视角。\n- 不得把「醒来/被叫醒/睁眼/天亮」等被动唤醒作万能开场动作；前章确已昏迷/入睡且恢复与剧情有关时允许醒来，但应迅速进入本章事件。\n- 执行章节计划 transition：上一章已完成的动作不得重做；悬而未决的请求、问话、威胁须得到反应。衔接应写动作的后果、人物的回答和下一步选择，避免复述章尾或用「上回说到」概述前情。\n- 时间、地点或视角有变化时，在开头自然给出桥接线索并处理原悬念，不能用一段天气/伤痛/环境描写把紧迫事件重置。\n收尾规则：\n- 章末不得以「入睡/合眼/闭眼/原地等待/天色将暗」这类静止收束作结尾——结尾必须落在剧情推进或悬念上（未完成的动作/关键对话/悬念画面/危险逼近）；禁止连续两章以同一类收尾动作作结（如两章都以主角入睡收尾）。\n如需核实人物状态/世界观事实/伏笔/剧情线，可调用只读查证工具，核实后仍直接输出正文。\n输出格式：先输出独立一行 === CONTENT ===，从下一行开始输出本章正文。\n正文为纯文本散文（含自然换行），禁止输出 JSON、禁止 markdown 代码块围栏。\n\n【世界观硬约束】\n- [硬约束/事实] 故事发生在现实世界，没有超能力；人物伤势须有合理恢复过程。 （设定配置）\n【人物状态快照】\n- [林川] 境界上限=普通人 状态={}\n- [许宁] 境界上限=普通人 状态={}\n【设定实体】\n（无）\n\n【文风要求（project_settings.style_profile）】\n目标篇幅：3000 字（约 4200 tokens）。实际输出请控制在 2400–3900 字区间，超限会被校验拦截并要求修订。\n\n【本书写作经验（reflexion 复盘，写作须遵守）】\n（无）&quot;
+      },
+      {
+        &quot;role&quot;: &quot;user&quot;,
+        &quot;content&quot;: &quot;【章节计划】\n{\n \&quot;project_id\&quot;: \&quot;76d2b74b-d498-4e16-a2ca-959fb8174797\&quot;,\n \&quot;chapter_seq\&quot;: 1,\n \&quot;goals\&quot;: [\n  \&quot;推进林川与许宁在暴雨停电的观测站中排除供电故障的生存协作线\&quot;,\n  \&quot;建立两人在受限空间内的信任与分工关系\&quot;\n ],\n \&quot;scenes\&quot;: [\n  {\n   \&quot;location_id\&quot;: \&quot;山间观测站主控室\&quot;,\n   \&quot;participants\&quot;: [\n    \&quot;林川\&quot;,\n    \&quot;许宁\&quot;\n   ],\n   \&quot;goal\&quot;: \&quot;确认停电范围与备用电源状态，分派排查任务\&quot;,\n   \&quot;time\&quot;: \&quot;暴雨夜，停电后约十分钟\&quot;\n  },\n  {\n   \&quot;location_id\&quot;: \&quot;山间观测站走廊及配电间\&quot;,\n   \&quot;participants\&quot;: [\n    \&quot;林川\&quot;,\n    \&quot;许宁\&quot;\n   ],\n   \&quot;goal\&quot;: \&quot;沿线路逐段排查供电回路，发现接线盒漏水\&quot;,\n   \&quot;time\&quot;: \&quot;停电后半小时内\&quot;\n  },\n  {\n   \&quot;location_id\&quot;: \&quot;山间观测站配电间\&quot;,\n   \&quot;participants\&quot;: [\n    \&quot;林川\&quot;,\n    \&quot;许宁\&quot;\n   ],\n   \&quot;goal\&quot;: \&quot;处理漏水接线盒，恢复局部供电或做出临时处置决定\&quot;,\n   \&quot;time\&quot;: \&quot;停电后一小时内\&quot;\n  }\n ],\n \&quot;characters\&quot;: [\n  {\n   \&quot;character_id\&quot;: \&quot;林川\&quot;,\n   \&quot;expected_state\&quot;: {\n    \&quot;location\&quot;: \&quot;山间观测站配电间\&quot;,\n    \&quot;physical\&quot;: \&quot;左膝扭伤，行动受限，需借助支撑物移动\&quot;,\n    \&quot;mental\&quot;: \&quot;克制疼痛，专注排查故障，对许宁逐渐建立协作信任\&quot;\n   }\n  },\n  {\n   \&quot;character_id\&quot;: \&quot;许宁\&quot;,\n   \&quot;expected_state\&quot;: {\n    \&quot;location\&quot;: \&quot;山间观测站配电间\&quot;,\n    \&quot;physical\&quot;: \&quot;正常，但受暴雨和停电环境影响，体力消耗\&quot;,\n    \&quot;mental\&quot;: \&quot;主动承担探查任务，对林川的伤情保持关注但不过度干预\&quot;\n   }\n  }\n ],\n \&quot;hooks_to_plant\&quot;: [\n  \&quot;漏水接线盒的损坏程度可能超出临时处理范围，暗示后续需要外部支援或更大维修\&quot;,\n  \&quot;林川左膝扭伤在潮湿环境中可能加重，为后续行动受限埋下隐患\&quot;\n ],\n \&quot;hooks_to_resolve\&quot;: [],\n \&quot;expected_events\&quot;: [\n  \&quot;暴雨导致观测站主电源跳闸，林川与许宁确认停电\&quot;,\n  \&quot;两人分工检查配电线路，林川因膝伤负责室内指挥，许宁负责探查\&quot;,\n  \&quot;发现走廊天花板渗水导致接线盒进水短路\&quot;,\n  \&quot;两人协作切断故障回路，尝试恢复部分供电\&quot;,\n  \&quot;章末以接线盒漏水源未根治或备用电源不足作为悬念收束\&quot;\n ],\n \&quot;hard_constraints\&quot;: [\n  \&quot;本章仅出现林川和许宁两名人物，不得引入新角色\&quot;,\n  \&quot;无超能力，所有故障排除须符合现实电气常识\&quot;,\n  \&quot;林川左膝扭伤须有合理恢复过程，本章内不得痊愈或奔跑\&quot;,\n  \&quot;暴雨和停电环境须保持前后一致，不得突然放晴或恢复市电\&quot;\n ],\n \&quot;transition\&quot;: {\n  \&quot;mode\&quot;: \&quot;opening\&quot;,\n  \&quot;anchor_quote\&quot;: \&quot;\&quot;,\n  \&quot;pending_action\&quot;: \&quot;\&quot;,\n  \&quot;opening_beat\&quot;: \&quot;暴雨声中，主控室灯光骤然熄灭，林川在黑暗中稳住身体，左膝传来一阵锐痛，许宁的声音从近处响起，确认彼此位置\&quot;,\n  \&quot;bridge\&quot;: \&quot;\&quot;\n }\n}\n\n【近期上下文】\n- [user_instruction] 暴雨导致山间观测站停电。林川左膝扭伤，与许宁协作检查供电，最后找到漏水的接线盒。全章仅两名人物，避免另建人物。\n\n【近期章节开头（仅作差异化参照，勿照搬；接续位置以章尾为准）】\n（无）\n请输出本章正文。&quot;
+      }
+    ],
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: true,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    }
+  }
+}</pre></details></article><article><h3>07 · extract</h3><p>输入 3652 / 输出 878 tokens · 耗时 3625 ms</p><p>模型调用记录；完整关键产物见上方计划、正文和审核区。</p><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;extract&quot;,
+  &quot;input_tokens&quot;: 3652,
+  &quot;output_tokens&quot;: 878,
+  &quot;model_id&quot;: &quot;deepseek-v4-flash&quot;,
+  &quot;duration_ms&quot;: 3625,
+  &quot;cost_est&quot;: 0.00358504,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;response&quot;: {
+      &quot;content&quot;: &quot;{\n  \&quot;candidates\&quot;: [\n    {\n      \&quot;kind\&quot;: \&quot;event\&quot;,\n      \&quot;source_chapter\&quot;: 1,\n      \&quot;confidence\&quot;: 0.95,\n      \&quot;payload\&quot;: {\n        \&quot;summary\&quot;: \&quot;暴雨夜观测站突然停电，林川与许宁在黑暗中协作排查。两人确认市电与备用电池组同时失效，随后在走廊发现天花板渗水导致靠里的接线盒进水短路。二人切断支路、更换线头、做绝缘处理，临时恢复电池柜供电，并用防潮布和木条做围挡引流。\&quot;,\n        \&quot;participants\&quot;: [\&quot;林川\&quot;, \&quot;许宁\&quot;],\n        \&quot;source_chapter\&quot;: 1,\n        \&quot;confidence\&quot;: 0.95\n      }\n    },\n    {\n      \&quot;kind\&quot;: \&quot;character_state\&quot;,\n      \&quot;source_chapter\&quot;: 1,\n      \&quot;confidence\&quot;: 0.9,\n      \&quot;payload\&quot;: {\n        \&quot;character_id\&quot;: \&quot;林川\&quot;,\n        \&quot;field\&quot;: \&quot;injury\&quot;,\n        \&quot;old_value\&quot;: \&quot;\&quot;,\n        \&quot;new_value\&quot;: \&quot;左膝旧伤复发（扭伤），关节肿胀发热，行动受限，需拄折叠凳行走\&quot;,\n        \&quot;source_chapter\&quot;: 1,\n        \&quot;confidence\&quot;: 0.9\n      }\n    },\n    {\n      \&quot;kind\&quot;: \&quot;character_state\&quot;,\n      \&quot;source_chapter\&quot;: 1,\n      \&quot;confidence\&quot;: 0.7,\n      \&quot;payload\&quot;: {\n        \&quot;character_id\&quot;: \&quot;林川\&quot;,\n        \&quot;field\&quot;: \&quot;location\&quot;,\n        \&quot;old_value\&quot;: \&quot;\&quot;,\n        \&quot;new_value\&quot;: \&quot;山间观测站（配电间门口）\&quot;,\n        \&quot;source_chapter\&quot;: 1,\n        \&quot;confidence\&quot;: 0.7\n      }\n    },\n    {\n      \&quot;kind\&quot;: \&quot;character_state\&quot;,\n      \&quot;source_chapter\&quot;: 1,\n      \&quot;confidence\&quot;: 0.7,\n      \&quot;payload\&quot;: {\n        \&quot;character_id\&quot;: \&quot;许宁\&quot;,\n        \&quot;field\&quot;: \&quot;location\&quot;,\n        \&quot;old_value\&quot;: \&quot;\&quot;,\n        \&quot;new_value\&quot;: \&quot;山间观测站（前往走廊标记渗水点）\&quot;,\n        \&quot;source_chapter\&quot;: 1,\n        \&quot;confidence\&quot;: 0.7\n      }\n    },\n    {\n      \&quot;kind\&quot;: \&quot;relation_change\&quot;,\n      \&quot;source_chapter\&quot;: 1,\n      \&quot;confidence\&quot;: 0.7,\n      \&quot;payload\&quot;: {\n        \&quot;source_id\&quot;: \&quot;林川\&quot;,\n        \&quot;target_id\&quot;: \&quot;许宁\&quot;,\n        \&quot;relation_type\&quot;: \&quot;ally\&quot;,\n        \&quot;old_value\&quot;: \&quot;\&quot;,\n        \&quot;new_value\&quot;: \&quot;协作搭档：分工探查与记录判断，共同处理停电故障\&quot;,\n        \&quot;source_chapter\&quot;: 1,\n        \&quot;confidence\&quot;: 0.7\n      }\n    },\n    {\n      \&quot;kind\&quot;: \&quot;fact\&quot;,\n      \&quot;source_chapter\&quot;: 1,\n      \&quot;confidence\&quot;: 0.8,\n      \&quot;payload\&quot;: {\n        \&quot;content\&quot;: \&quot;观测站走廊天花板渗水（疑因屋面排水沟堵塞），导致墙面接线盒进水短路，使市电与备用电池充电回路同时失效\&quot;,\n        \&quot;category\&quot;: \&quot;规则\&quot;,\n        \&quot;is_hard\&quot;: true,\n        \&quot;source_chapter\&quot;: 1,\n        \&quot;confidence\&quot;: 0.8\n      }\n    },\n    {\n      \&quot;kind\&quot;: \&quot;foreshadow\&quot;,\n      \&quot;source_chapter\&quot;: 1,\n      \&quot;confidence\&quot;: 0.8,\n      \&quot;payload\&quot;: {\n        \&quot;description\&quot;: \&quot;屋面排水沟疑似堵塞，渗水未根治，雨势持续，天花板裂纹仍在拓宽；若有人须爬屋面查看排水沟\&quot;,\n        \&quot;trigger\&quot;: {\&quot;actor\&quot;: \&quot;许宁\&quot;, \&quot;action\&quot;: \&quot;提出明日雨停后上屋面查看排水沟\&quot;, \&quot;object\&quot;: \&quot;屋面排水沟\&quot;},\n        \&quot;source_chapter\&quot;: 1,\n        \&quot;confidence\&quot;: 0.8\n      }\n    },\n    {\n      \&quot;kind\&quot;: \&quot;new_entity\&quot;,\n      \&quot;source_chapter\&quot;: 1,\n      \&quot;confidence\&quot;: 0.9,\n      \&quot;payload\&quot;: {\n        \&quot;entity_type\&quot;: \&quot;location\&quot;,\n        \&quot;name\&quot;: \&quot;山间观测站\&quot;,\n        \&quot;description\&quot;: \&quot;暴雨夜停电的山间观测站，含主控室、配电间、走廊等区域\&quot;,\n        \&quot;parent\&quot;: \&quot;山区\&quot;\n      }\n    }\n  ]\n}&quot;,
+      &quot;tool_calls&quot;: null
+    },
+    &quot;messages&quot;: [
+      {
+        &quot;role&quot;: &quot;system&quot;,
+        &quot;content&quot;: &quot;你是长篇网文创作系统的【记忆抽取 Agent】。从章节正文抽取结构化记忆候选。\n输出严格 JSON：{\&quot;candidates\&quot;: [\n  {\&quot;kind\&quot;: \&quot;event\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0, \&quot;payload\&quot;: {\&quot;summary\&quot;: \&quot;事件摘要\&quot;, \&quot;participants\&quot;: [\&quot;人物名\&quot;], \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0}},\n  {\&quot;kind\&quot;: \&quot;character_state\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0, \&quot;payload\&quot;: {\&quot;character_id\&quot;: \&quot;人物名\&quot;, \&quot;field\&quot;: \&quot;只能取 location|injury|realm|power|item|knowledge|goal|identity|alive 之一（境界变化用 realm，存活变化用 alive，位置用 location）\&quot;, \&quot;old_value\&quot;: \&quot;\&quot;, \&quot;new_value\&quot;: \&quot;\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0}},\n  {\&quot;kind\&quot;: \&quot;relation_change\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0, \&quot;payload\&quot;: {\&quot;source_id\&quot;: \&quot;人物名\&quot;, \&quot;target_id\&quot;: \&quot;人物名\&quot;, \&quot;relation_type\&quot;: \&quot;只能取 hostile|ally|master_student|located_in|owns|defeated_by|knows|promises|happened_at 之一\&quot;, \&quot;old_value\&quot;: \&quot;\&quot;, \&quot;new_value\&quot;: \&quot;\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0}},\n  {\&quot;kind\&quot;: \&quot;fact\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0, \&quot;payload\&quot;: {\&quot;content\&quot;: \&quot;长期事实\&quot;, \&quot;category\&quot;: \&quot;规则\&quot;, \&quot;is_hard\&quot;: false, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0}},\n  {\&quot;kind\&quot;: \&quot;foreshadow\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0, \&quot;payload\&quot;: {\&quot;description\&quot;: \&quot;本章新种下的伏笔（可回收的悬念/物件/承诺，能且应被后续回收）\&quot;, \&quot;trigger\&quot;: {\&quot;actor\&quot;: \&quot;触发者\&quot;, \&quot;action\&quot;: \&quot;动作\&quot;, \&quot;object\&quot;: \&quot;对象\&quot;}, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0}},\n  {\&quot;kind\&quot;: \&quot;plotline\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0, \&quot;payload\&quot;: {\&quot;thread_name\&quot;: \&quot;被推进的活跃剧情线名称（须匹配注入的活跃剧情线）\&quot;, \&quot;note\&quot;: \&quot;本章如何推进该线\&quot;}},\n  {\&quot;kind\&quot;: \&quot;character_card\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0, \&quot;payload\&quot;: {\&quot;name\&quot;: \&quot;新人物名\&quot;, \&quot;identity\&quot;: \&quot;身份/来历\&quot;, \&quot;role\&quot;: \&quot;与主角/势力的关系\&quot;, \&quot;personality\&quot;: \&quot;性格初步印象\&quot;, \&quot;importance\&quot;: \&quot;剧情作用简评\&quot;}},\n  {\&quot;kind\&quot;: \&quot;new_entity\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0, \&quot;payload\&quot;: {\&quot;entity_type\&quot;: \&quot;只能取 item|skill|location 之一（武器/功法技能/地点）\&quot;, \&quot;name\&quot;: \&quot;名称\&quot;, \&quot;description\&quot;: \&quot;一句话简介\&quot;, \&quot;parent\&quot;: \&quot;（仅 entity_type=location 时填）该地点的上级/所属区域名，用于图谱地点层级；无则省略\&quot;}},\n  {\&quot;kind\&quot;: \&quot;foreshadow_touch\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0, \&quot;payload\&quot;: {\&quot;foreshadow_id\&quot;: \&quot;（被推进/解决的伏笔 id，必须来自注入的【开放伏笔】列表中的 id）\&quot;, \&quot;outcome\&quot;: \&quot;advanced（本章推进其发展，伏笔更清晰）| resolved（本章彻底回收解决）\&quot;, \&quot;note\&quot;: \&quot;本章如何推进/解决该伏笔\&quot;}}\n]}\n顶层 confidence 必填。只抽确定事实，不猜。伏笔只抽「本章明确埋下的」——含糊提及不算，避免伏笔池噪声。\n伏笔回收（foreshadow_touch）只抽「正文明确推进（advanced）或彻底解决（resolved）了某条【开放伏笔】」；foreshadow_id 必须取自注入的开放伏笔 id，含糊提及 / 无法对应 → 不抽。\n剧情线推进（plotline）只在「本章正文确实推进了某条活跃剧情线」时才抽，thread_name 须与注入的活跃剧情线名一致（不新增线名）。\n关系变更（relation_change）只抽「正文明确发生的关系演变」（和解/决裂/结盟/逐出师门等）；old_value 须与注入的当前台账快照一致；正文仅表现关系现状而无演变 → 不抽。\n角色状态的 old_value 必须逐字复制【当前台账快照】中该字段的完整值；new_value 必须写变化后的完整最终状态。尤其 item/knowledge 禁止只写「新增……」「其余不变」等增量简称，必须保留原有内容并合并新增内容；若有失去/消耗，也必须输出删减后的完整清单。\n新人物卡片（character_card）只抽「本章首次出现且影响剧情的重要人物」（有名字、有台词、剧情上有作用）；已在【人物状态快照】中的人、纯龙套/一次性质 → 不抽（防待确认池噪声）。\n新设定实体（new_entity）抽「本章首次明确命名的武器/功法/技能/地点」，低风险自动登记；已有同名实体不重复抽。&quot;
+      },
+      {
+        &quot;role&quot;: &quot;user&quot;,
+        &quot;content&quot;: &quot;【章节正文】（第 1 章）\n灯灭的那一瞬间，林川的手已经按在了桌沿上。\n\n黑暗来得毫无过渡，像有人把整座观测站从世界里摘了出去。雨声随即变得具体，铁皮屋顶被砸出连绵的闷响，窗玻璃嗡嗡发颤。他稳住上半身，重心本能地往右移，左膝还是迟了半拍才跟上，一阵锐痛从关节内侧扎上来，顺着大腿后侧爬到腰。他咬住后槽牙，把那股酸麻压回去，只让一声短促的吸气漏出来。\n\n“林川？”\n\n许宁的声音在右侧三步远的地方，没有慌乱，只是音调比平时高了一线。\n\n“在。”他应了一声，尽量让嗓音平稳，“别动，先确认脚下的东西。桌角在你左边一点。”\n\n一阵窸窣，大概是她在摸索。“碰到了。你那边？”\n\n“靠墙站着。”林川说，“手电在哪一格抽屉？”\n\n“我记得是第二格，你等下。”\n\n脚步声往储物柜方向去，走得很慢，每一步都先试探再落。黑暗中传来抽屉被拉开又推回的声响，第二个、第三个。许宁低声数着，语气像在给自己报账。\n\n“不对，第二格是记录本。”她说，“第三格，有了。”\n\n一束白光晃出来，先是打在天花板上，再压低，扫过主控台、仪器架、墙角那排铅蓄电池柜。光柱里全是浮尘，细密地翻涌。许宁转过身，光束在林川身上停了一下，落在他的左腿上。\n\n“你又跛了。”\n\n“老毛病。”林川避开那道视线，“先看市电。主闸箱在走廊尽头，控制面板上应该有指示。”\n\n许宁没接话，把手电递过来一半，自己攥着另一半，两人各持一端，像抬着一根看不见的杆子往门口走。走廊比主控室更暗，只有应急标识在墙上泛着微弱的绿。雨声在这里更响，像是从天花板内部长出来的。\n\n控制面板嵌在配电间外墙上，几排指示灯全黑。林川单手扶着墙，另一只手掀开面板外盖，指尖在断路器和漏电保护器的拨杆上一路摸过去。全部在合闸位。\n\n“总闸没跳。”他说，“市电是真的断了，不是室内故障。”\n\n“备用电源呢？电池柜不是独立的吗？”\n\n“测一下。”\n\n他们退回主控室。林川坐在椅子边缘，把左腿伸直，膝盖上那处热痛慢慢摊开。许宁把手电卡在仪器架上，对着铅蓄电池柜照。柜体上方的小显示屏黑着，按下测试键也没有反应。她又去查柜体侧面的电压表，指针纹丝不动。\n\n“没输出。”她说，“是电池组的问题，还是线路断了？”\n\n“都有可能。”林川盯着那个黑屏，“如果只是电池老化，主闸那边应该有市电。现在两个都没了，说明外部线路和备用回路同时出问题。雨太大，山里这种概率不低。”\n\n许宁沉默两秒，把手电从架子上取下来。“走廊顶上刚才有个地方在响，像是水声。我去看看。”\n\n“等等。”林川撑着椅子站起来，左膝一软，他用手掌摁住椅背，把身体的重量全压到右腿，“先定一下分工。你负责往前探查，我做记录和判断。每到一个节点回报一次，别一个人钻进去太深。”\n\n“你确定不一起走？”\n\n“我这腿拖不了十几分钟的路。”他说得干脆，没给自己留余地，“而且得有人守着面板，万一市电来了要立刻合闸。”\n\n许宁看了他一秒，点头，把那半截手电塞进他手里。“那你守着。我沿着走廊往配电间去，路上看接线盒。”\n\n“配电间的门锁着，钥匙在主控台第二层抽屉，铜的。”\n\n“知道。”\n\n她走出去。脚步声在走廊里逐渐拉远，随后被雨声盖住。林川把电筒光对准控制面板，每隔一会儿就扫一次，明知道不会有变化。他把注意力压在痛感以外的地方，让呼吸慢下来。膝盖的肿在裤管下一点点鼓起来，贴着皮肤发烫。\n\n约莫过了七八分钟，走廊里传来两声敲墙。约定的回报信号。\n\n“主控室到配电间这段，天花板有两处渗水。”许宁的声音从廊道里传回来，隔着雨有点发闷，“靠楼梯口那个接线盒外壳是湿的，我打开看了一眼，里面全是水珠。”\n\n“有没有焦味？”\n\n“有，很淡，混着雨腥味。盒子底下那片墙皮已经发黑。”\n\n林川在脑子里把线路图过了一遍。主控室到配电间这一段，走的是照明和电池柜充电回路，墙内暗线从天花板夹层穿过。渗水如果正好落在接线盒上，短路就是必然的。\n\n“别碰它。”他提高一点音量，“先回来，把工具和绝缘胶带带上。我过去。”\n\n“你过来？”\n\n“门我来开，图纸在我手上。那段线路两个回路有交叉，不能乱切。”\n\n她的脚步声折返。进门时手电光扫到他的腿，他正把膝盖往椅子外侧挪，动作不算自然。许宁什么都没问，从工具袋里抽出绝缘胶带、电工钳和一把drywall刀，顺手把一块折叠凳拍开，推到他手边。\n\n“拄着。”她说。\n\n林川接过来，折叠凳的腿在手里晃了晃，他试着用它当拐杖使。走得不快，但从主控室到配电间这一路还算稳。许宁走在前面半步，手电光照着地面，替他避开地上那摊已经积起来的水。走廊天花板每隔几步就有水痕，最严重的一处在配电间门口上方，水顺着墙往下爬，在门框边汇成一道细流。\n\n配电间比主控室更冷，空气里全是潮气。墙面上一排接线盒沿走廊延伸进来，许宁指的那个在靠里第二只，外壳全是水，边缘凝着水珠，往下滴。林川让她把总闸从配电间这边的分开关切下来，再逐节拔掉这段回路的支路熔断器。\n\n“只留电池柜充电那一路。”他说，“其余全断。”\n\n许宁照做，动作很快，每一路拔下都回头报一句。林川拄着折叠凳挪到接线盒前，先用干布擦了外壳，再用drywall刀沿着盒盖缝隙撬开。盖板一松，一股潮热的气味涌出来，里面线头全是水，接线柱表面起了白绿色的氧化物，其中一根线的绝缘皮已经发黑卷曲。盒底积了浅浅一层水。\n\n“进水短路。”他把手电凑近，“这根火线对地的绝缘坏了，等于直接接地。难怪跳。”\n\n“能修吗？”\n\n“换线头、吹干、做绝缘。临时能顶。”林川用钳子夹住发黑的线头，轻轻一拉，铜芯露出来，已经锈了半截，“问题是水从哪来。盒子上方天花板这块，你刚才说有两处渗水。”\n\n许宁把手电往上照。盒体正上方的水泥顶棚有一道细纹，水正从纹路里渗出来，一滴一滴，落在盒盖残存的斜面上。裂纹不长，但在往两侧走。\n\n“上面是屋面。”林川仰着头看了一会儿，“排水沟大概堵了。这雨再下几个小时，整段夹层都要泡。”\n\n两人沉默地让那滴水声填满这间小屋。许宁先开口：“先做临时处理？”\n\n“嗯。”他点头，“你把备用线头剥出来，我来做。做完先恢复电池柜那一路，看有没有电。”\n\n许宁蹲下来剥线，动作利落，铜芯露得齐整。林川一手扶盒体一手接线，湿冷的水顺着他的手腕往下淌。膝盖一直维持着半跪的姿势，热度、胀感、还有一点针扎似的跳，在骨缝里反复。他尽量把重心分散到右腿和手臂上，额头渗出一层薄汗。\n\n线接好，缠上三层绝缘胶带。林川让许宁把电池柜那一路合上，自己退到门口。\n\n啪的一声。\n\n柜体上方的小显示屏亮了，幽绿的背光在暗屋里格外刺眼。电压读数一点点往上爬，停在标称值以下一截。\n\n“有输出，但不稳。”林川盯着那个跳动的数字，“电池是旧的，撑不了多久。主机带不动，照明和应急可以开。”他伸手按了配电间门口那排开关，走廊应急灯接二连三亮起来，昏黄的光铺在湿漉漉的地面上。\n\n许宁松了半口气，随即又皱起眉。她指着接线盒上方那道水痕：“这个没根治。电池充电回路也在这段，水位再涨，迟早把刚接的线再泡了。”\n\n“知道。”林川说，“现在只能做围挡，把渗水引开，不让它落进盒子。今晚是顶不过大修的。”\n\n他去工具架上翻出一卷防潮布和几块废木条，许宁接手把布撑开，用木条在接线盒上方钉了个简易斜面，让水滴顺着布沿滑到墙角。做完这些，她退开一步，看了看，又用drywall刀在墙角地面划了一道小沟，引水往外流。\n\n“能撑几小时。”她说，“几小时之后呢？”\n\n林川没答。他靠在门框上，左腿伸直，膝盖比刚才肿得更明显，裤管绷紧了一圈。应急灯的光从他脚下一路铺到配电间深处，那条被临时修复的线路正发出细弱的电流声。外面雨没有停的意思，敲在铁皮屋顶上，比先前更密。\n\n许宁把手电关掉，省电。她走过来，目光在他膝盖上停了一下，又移开。\n\n“你歇着。”她说，“我去把走廊其他几处渗水点也标一下，画个图。明天——”\n\n她顿了一下。\n\n“明天要是雨停了，得上去看屋面。排水沟堵在哪，得有人爬上去。”\n\n林川顺着她的话往上看了一眼。那道天花板裂纹在昏光里像一条细黑的河，正缓慢地拓宽。电池柜的显示屏还亮着，电压读数又往下掉了一格。\n\n“雨不会停。”他说。\n\n许宁没接话，从抽屉里翻出铅笔和记录本，转身走进走廊。脚步声和着滴水声往前去。林川留在门口，一只手撑在门框上，另一只手攥着那卷剩下的绝缘胶带。胶带外圈冰凉，里面似乎还沾着方才渗进盒里的潮气。\n\n【当前台账快照】（供校准 old_value / 产出 relation_change 候选）\n- [林川] 境界上限=普通人 状态={}\n- [许宁] 境界上限=普通人 状态={}\n\n请抽取记忆候选（严格 JSON）。&quot;
+      },
+      {
+        &quot;role&quot;: &quot;user&quot;,
+        &quot;content&quot;: &quot;作者评审意见：\n- [user_instruction] 暴雨导致山间观测站停电。林川左膝扭伤，与许宁协作检查供电，最后找到漏水的接线盒。全章仅两名人物，避免另建人物。&quot;
+      }
+    ],
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: false,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    }
+  }
+}</pre></details></article><article><h3>08 · validate</h3><p>输入 0 / 输出 0 tokens · 耗时 0 ms</p><p>程序执行节点，执行统计见下方详情。</p><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;validate&quot;,
+  &quot;input_tokens&quot;: 0,
+  &quot;output_tokens&quot;: 0,
+  &quot;model_id&quot;: null,
+  &quot;duration_ms&quot;: 0,
+  &quot;cost_est&quot;: 0.0,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;findings_total&quot;: 1,
+    &quot;critical&quot;: 0,
+    &quot;l2_major&quot;: 0,
+    &quot;unresolved&quot;: 1,
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: false,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    }
+  }
+}</pre></details></article><article><h3>09 · audit</h3><p>输入 4695 / 输出 523 tokens · 耗时 3469 ms</p><ul><li>确定性校验报出的 plotline 类型 finding 经核对为误报：章节计划 expected_events 中『章末以接线盒漏水源未根治或备用电源不足作为悬念收束』在正文中有明确对应——『这个没根治。电池充电回路也在这段，水位再涨，迟早把刚接的线再泡了』以及『电池柜的显示屏还亮着，电压读数又往下掉了一格』，并以『雨不会停』收束，悬念落地，不存在预期事件缺失。</li><li>计划三项场景（主控室确认停电与分工、走廊配电间逐段排查发现渗水接线盒、配电间处理并恢复局部供电）全部按序完成，剧情线推进方向与计划一致，无主线偏移。</li><li>两条 hooks_to_plant 均已埋设：漏水源未根治＋电池老化撑不久（后续需外部支援/大修），林川左膝在潮湿环境中持续肿胀加重（行动受限隐患），符合『埋下隐患』要求。</li><li>硬约束全部满足：全章仅林川、许宁两名人物；故障排查流程（合闸位检查、断路/漏电保护、熔断器逐路切断、绝缘破损导致对地短路的判断、剥线换头与绝缘处理、临时斜面引水围挡）符合现实电气常识，无超能力元素；林川左膝扭伤全程行动受限，需折叠凳作支撑，未痊愈或奔跑；暴雨与停电环境前后一致，市电始终未恢复。</li><li>规划中的 opening 转场节点与 opening_beat 一致，本章为开篇，无前章正文，不存在重演已完成动作、丢弃未完成请求或跨章接续断裂问题。</li><li>人物状态与计划 expected_state 吻合：林川克制疼痛、专注排查、以指挥与接线承担协作角色；许宁主动探查、关注伤情但不越界干预，分工信任关系建立自然。</li><li>节奏上以停电黑暗起笔、逐层排查、临时修复后余留未解悬念收束，信息密度与紧张感分布合理，无机械重复段落；对『跛脚』『膝盖肿胀』的复现属有意递进的伤势强调，非近义改写堆砌。</li></ul><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;audit&quot;,
+  &quot;input_tokens&quot;: 4695,
+  &quot;output_tokens&quot;: 523,
+  &quot;model_id&quot;: &quot;deepseek-v4-flash&quot;,
+  &quot;duration_ms&quot;: 3469,
+  &quot;cost_est&quot;: 0.0021859,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;tool_trace&quot;: [],
+    &quot;response&quot;: {
+      &quot;content&quot;: &quot;```json\n{\n  \&quot;verdict\&quot;: \&quot;pass\&quot;,\n  \&quot;findings\&quot;: [],\n  \&quot;reasons\&quot;: [\n    \&quot;确定性校验报出的 plotline 类型 finding 经核对为误报：章节计划 expected_events 中『章末以接线盒漏水源未根治或备用电源不足作为悬念收束』在正文中有明确对应——『这个没根治。电池充电回路也在这段，水位再涨，迟早把刚接的线再泡了』以及『电池柜的显示屏还亮着，电压读数又往下掉了一格』，并以『雨不会停』收束，悬念落地，不存在预期事件缺失。\&quot;,\n    \&quot;计划三项场景（主控室确认停电与分工、走廊配电间逐段排查发现渗水接线盒、配电间处理并恢复局部供电）全部按序完成，剧情线推进方向与计划一致，无主线偏移。\&quot;,\n    \&quot;两条 hooks_to_plant 均已埋设：漏水源未根治＋电池老化撑不久（后续需外部支援/大修），林川左膝在潮湿环境中持续肿胀加重（行动受限隐患），符合『埋下隐患』要求。\&quot;,\n    \&quot;硬约束全部满足：全章仅林川、许宁两名人物；故障排查流程（合闸位检查、断路/漏电保护、熔断器逐路切断、绝缘破损导致对地短路的判断、剥线换头与绝缘处理、临时斜面引水围挡）符合现实电气常识，无超能力元素；林川左膝扭伤全程行动受限，需折叠凳作支撑，未痊愈或奔跑；暴雨与停电环境前后一致，市电始终未恢复。\&quot;,\n    \&quot;规划中的 opening 转场节点与 opening_beat 一致，本章为开篇，无前章正文，不存在重演已完成动作、丢弃未完成请求或跨章接续断裂问题。\&quot;,\n    \&quot;人物状态与计划 expected_state 吻合：林川克制疼痛、专注排查、以指挥与接线承担协作角色；许宁主动探查、关注伤情但不越界干预，分工信任关系建立自然。\&quot;,\n    \&quot;节奏上以停电黑暗起笔、逐层排查、临时修复后余留未解悬念收束，信息密度与紧张感分布合理，无机械重复段落；对『跛脚』『膝盖肿胀』的复现属有意递进的伤势强调，非近义改写堆砌。\&quot;\n  ],\n  \&quot;confidence\&quot;: 0.93\n}\n```&quot;,
+      &quot;tool_calls&quot;: null
+    },
+    &quot;messages&quot;: [
+      {
+        &quot;role&quot;: &quot;system&quot;,
+        &quot;content&quot;: &quot;你是长篇网文创作系统的【审核中枢 Agent】。写作完成后的调度大脑，对本章做语义审核并输出路由决策。\n三步：① 对照章节计划判断剧情发展是否合理（推进了该推进的线、收了该收的伏笔、无主线偏移）；② 判断内容质量（衔接/人设/节奏）；③ 输出路由决策。\n输出严格 JSON：\n{\n  \&quot;verdict\&quot;: \&quot;pass|rewrite|replan\&quot;,\n  \&quot;replan_target\&quot;: \&quot;chapter|batch（仅 verdict=replan 时必填：本章规划偏 → chapter；整批蓝图走偏 → batch）\&quot;,\n  \&quot;findings\&quot;: [{\&quot;conflict_key\&quot;: \&quot;hash键\&quot;, \&quot;conflict_type\&quot;: \&quot;power|timeline|location|character|character_state|relation|foreshadow|item_rule|plotline|persona|style\&quot;, \&quot;severity\&quot;: \&quot;critical|major|minor|hint\&quot;, \&quot;scope\&quot;: \&quot;local|structural|unknown\&quot;, \&quot;evidence\&quot;: [{\&quot;chapter\&quot;: 章号, \&quot;quote\&quot;: \&quot;原文片段\&quot;}], \&quot;confidence\&quot;: 0.0-1.0, \&quot;suggestion\&quot;: \&quot;修改建议\&quot;}],\n  \&quot;reasons\&quot;: [\&quot;路由决策理由（可审计）\&quot;],\n  \&quot;confidence\&quot;: 0.0-1.0\n}\n规则：只有剧情/内容确实有问题才 rewrite 或 replan；本章合格一律 pass（不制造冗余修订）。\nscope 必须明确：local 是句段级小修；structural 是因果、时间线、人物逻辑或整场/整章结构改写；无法判断写 unknown，不从严重程度推测范围。\n跨章必查：对照【近期上下文】的章尾原文与本章开头，检查是否重演已完成动作、丢弃未完成请求/危险、无交代地改变时间地点/视角；计划不能推翻已写正文。对照【近期章节开头】检查近义改写的同一套路，不能只看字面不同。\n明确的接续断裂或机械重复应报 major 并 rewrite，建议必须给出具体接续动作；evidence 至少各引用一处前章/历史章与本章原文并标明章号。同场景接续、合理转场、回应悬念、有意义的呼应不算重复。没有前章原文时不能臆测跨章矛盾。\n如需核实人物状态/世界观事实/伏笔/剧情线，可调用只读查证工具，核实后仍输出严格 JSON。&quot;
+      },
+      {
+        &quot;role&quot;: &quot;user&quot;,
+        &quot;content&quot;: &quot;【第 1 章正文】\n灯灭的那一瞬间，林川的手已经按在了桌沿上。\n\n黑暗来得毫无过渡，像有人把整座观测站从世界里摘了出去。雨声随即变得具体，铁皮屋顶被砸出连绵的闷响，窗玻璃嗡嗡发颤。他稳住上半身，重心本能地往右移，左膝还是迟了半拍才跟上，一阵锐痛从关节内侧扎上来，顺着大腿后侧爬到腰。他咬住后槽牙，把那股酸麻压回去，只让一声短促的吸气漏出来。\n\n“林川？”\n\n许宁的声音在右侧三步远的地方，没有慌乱，只是音调比平时高了一线。\n\n“在。”他应了一声，尽量让嗓音平稳，“别动，先确认脚下的东西。桌角在你左边一点。”\n\n一阵窸窣，大概是她在摸索。“碰到了。你那边？”\n\n“靠墙站着。”林川说，“手电在哪一格抽屉？”\n\n“我记得是第二格，你等下。”\n\n脚步声往储物柜方向去，走得很慢，每一步都先试探再落。黑暗中传来抽屉被拉开又推回的声响，第二个、第三个。许宁低声数着，语气像在给自己报账。\n\n“不对，第二格是记录本。”她说，“第三格，有了。”\n\n一束白光晃出来，先是打在天花板上，再压低，扫过主控台、仪器架、墙角那排铅蓄电池柜。光柱里全是浮尘，细密地翻涌。许宁转过身，光束在林川身上停了一下，落在他的左腿上。\n\n“你又跛了。”\n\n“老毛病。”林川避开那道视线，“先看市电。主闸箱在走廊尽头，控制面板上应该有指示。”\n\n许宁没接话，把手电递过来一半，自己攥着另一半，两人各持一端，像抬着一根看不见的杆子往门口走。走廊比主控室更暗，只有应急标识在墙上泛着微弱的绿。雨声在这里更响，像是从天花板内部长出来的。\n\n控制面板嵌在配电间外墙上，几排指示灯全黑。林川单手扶着墙，另一只手掀开面板外盖，指尖在断路器和漏电保护器的拨杆上一路摸过去。全部在合闸位。\n\n“总闸没跳。”他说，“市电是真的断了，不是室内故障。”\n\n“备用电源呢？电池柜不是独立的吗？”\n\n“测一下。”\n\n他们退回主控室。林川坐在椅子边缘，把左腿伸直，膝盖上那处热痛慢慢摊开。许宁把手电卡在仪器架上，对着铅蓄电池柜照。柜体上方的小显示屏黑着，按下测试键也没有反应。她又去查柜体侧面的电压表，指针纹丝不动。\n\n“没输出。”她说，“是电池组的问题，还是线路断了？”\n\n“都有可能。”林川盯着那个黑屏，“如果只是电池老化，主闸那边应该有市电。现在两个都没了，说明外部线路和备用回路同时出问题。雨太大，山里这种概率不低。”\n\n许宁沉默两秒，把手电从架子上取下来。“走廊顶上刚才有个地方在响，像是水声。我去看看。”\n\n“等等。”林川撑着椅子站起来，左膝一软，他用手掌摁住椅背，把身体的重量全压到右腿，“先定一下分工。你负责往前探查，我做记录和判断。每到一个节点回报一次，别一个人钻进去太深。”\n\n“你确定不一起走？”\n\n“我这腿拖不了十几分钟的路。”他说得干脆，没给自己留余地，“而且得有人守着面板，万一市电来了要立刻合闸。”\n\n许宁看了他一秒，点头，把那半截手电塞进他手里。“那你守着。我沿着走廊往配电间去，路上看接线盒。”\n\n“配电间的门锁着，钥匙在主控台第二层抽屉，铜的。”\n\n“知道。”\n\n她走出去。脚步声在走廊里逐渐拉远，随后被雨声盖住。林川把电筒光对准控制面板，每隔一会儿就扫一次，明知道不会有变化。他把注意力压在痛感以外的地方，让呼吸慢下来。膝盖的肿在裤管下一点点鼓起来，贴着皮肤发烫。\n\n约莫过了七八分钟，走廊里传来两声敲墙。约定的回报信号。\n\n“主控室到配电间这段，天花板有两处渗水。”许宁的声音从廊道里传回来，隔着雨有点发闷，“靠楼梯口那个接线盒外壳是湿的，我打开看了一眼，里面全是水珠。”\n\n“有没有焦味？”\n\n“有，很淡，混着雨腥味。盒子底下那片墙皮已经发黑。”\n\n林川在脑子里把线路图过了一遍。主控室到配电间这一段，走的是照明和电池柜充电回路，墙内暗线从天花板夹层穿过。渗水如果正好落在接线盒上，短路就是必然的。\n\n“别碰它。”他提高一点音量，“先回来，把工具和绝缘胶带带上。我过去。”\n\n“你过来？”\n\n“门我来开，图纸在我手上。那段线路两个回路有交叉，不能乱切。”\n\n她的脚步声折返。进门时手电光扫到他的腿，他正把膝盖往椅子外侧挪，动作不算自然。许宁什么都没问，从工具袋里抽出绝缘胶带、电工钳和一把drywall刀，顺手把一块折叠凳拍开，推到他手边。\n\n“拄着。”她说。\n\n林川接过来，折叠凳的腿在手里晃了晃，他试着用它当拐杖使。走得不快，但从主控室到配电间这一路还算稳。许宁走在前面半步，手电光照着地面，替他避开地上那摊已经积起来的水。走廊天花板每隔几步就有水痕，最严重的一处在配电间门口上方，水顺着墙往下爬，在门框边汇成一道细流。\n\n配电间比主控室更冷，空气里全是潮气。墙面上一排接线盒沿走廊延伸进来，许宁指的那个在靠里第二只，外壳全是水，边缘凝着水珠，往下滴。林川让她把总闸从配电间这边的分开关切下来，再逐节拔掉这段回路的支路熔断器。\n\n“只留电池柜充电那一路。”他说，“其余全断。”\n\n许宁照做，动作很快，每一路拔下都回头报一句。林川拄着折叠凳挪到接线盒前，先用干布擦了外壳，再用drywall刀沿着盒盖缝隙撬开。盖板一松，一股潮热的气味涌出来，里面线头全是水，接线柱表面起了白绿色的氧化物，其中一根线的绝缘皮已经发黑卷曲。盒底积了浅浅一层水。\n\n“进水短路。”他把手电凑近，“这根火线对地的绝缘坏了，等于直接接地。难怪跳。”\n\n“能修吗？”\n\n“换线头、吹干、做绝缘。临时能顶。”林川用钳子夹住发黑的线头，轻轻一拉，铜芯露出来，已经锈了半截，“问题是水从哪来。盒子上方天花板这块，你刚才说有两处渗水。”\n\n许宁把手电往上照。盒体正上方的水泥顶棚有一道细纹，水正从纹路里渗出来，一滴一滴，落在盒盖残存的斜面上。裂纹不长，但在往两侧走。\n\n“上面是屋面。”林川仰着头看了一会儿，“排水沟大概堵了。这雨再下几个小时，整段夹层都要泡。”\n\n两人沉默地让那滴水声填满这间小屋。许宁先开口：“先做临时处理？”\n\n“嗯。”他点头，“你把备用线头剥出来，我来做。做完先恢复电池柜那一路，看有没有电。”\n\n许宁蹲下来剥线，动作利落，铜芯露得齐整。林川一手扶盒体一手接线，湿冷的水顺着他的手腕往下淌。膝盖一直维持着半跪的姿势，热度、胀感、还有一点针扎似的跳，在骨缝里反复。他尽量把重心分散到右腿和手臂上，额头渗出一层薄汗。\n\n线接好，缠上三层绝缘胶带。林川让许宁把电池柜那一路合上，自己退到门口。\n\n啪的一声。\n\n柜体上方的小显示屏亮了，幽绿的背光在暗屋里格外刺眼。电压读数一点点往上爬，停在标称值以下一截。\n\n“有输出，但不稳。”林川盯着那个跳动的数字，“电池是旧的，撑不了多久。主机带不动，照明和应急可以开。”他伸手按了配电间门口那排开关，走廊应急灯接二连三亮起来，昏黄的光铺在湿漉漉的地面上。\n\n许宁松了半口气，随即又皱起眉。她指着接线盒上方那道水痕：“这个没根治。电池充电回路也在这段，水位再涨，迟早把刚接的线再泡了。”\n\n“知道。”林川说，“现在只能做围挡，把渗水引开，不让它落进盒子。今晚是顶不过大修的。”\n\n他去工具架上翻出一卷防潮布和几块废木条，许宁接手把布撑开，用木条在接线盒上方钉了个简易斜面，让水滴顺着布沿滑到墙角。做完这些，她退开一步，看了看，又用drywall刀在墙角地面划了一道小沟，引水往外流。\n\n“能撑几小时。”她说，“几小时之后呢？”\n\n林川没答。他靠在门框上，左腿伸直，膝盖比刚才肿得更明显，裤管绷紧了一圈。应急灯的光从他脚下一路铺到配电间深处，那条被临时修复的线路正发出细弱的电流声。外面雨没有停的意思，敲在铁皮屋顶上，比先前更密。\n\n许宁把手电关掉，省电。她走过来，目光在他膝盖上停了一下，又移开。\n\n“你歇着。”她说，“我去把走廊其他几处渗水点也标一下，画个图。明天——”\n\n她顿了一下。\n\n“明天要是雨停了，得上去看屋面。排水沟堵在哪，得有人爬上去。”\n\n林川顺着她的话往上看了一眼。那道天花板裂纹在昏光里像一条细黑的河，正缓慢地拓宽。电池柜的显示屏还亮着，电压读数又往下掉了一格。\n\n“雨不会停。”他说。\n\n许宁没接话，从抽屉里翻出铅笔和记录本，转身走进走廊。脚步声和着滴水声往前去。林川留在门口，一只手撑在门框上，另一只手攥着那卷剩下的绝缘胶带。胶带外圈冰凉，里面似乎还沾着方才渗进盒里的潮气。\n\n【章节计划】\n{\n \&quot;project_id\&quot;: \&quot;76d2b74b-d498-4e16-a2ca-959fb8174797\&quot;,\n \&quot;chapter_seq\&quot;: 1,\n \&quot;goals\&quot;: [\n  \&quot;推进林川与许宁在暴雨停电的观测站中排除供电故障的生存协作线\&quot;,\n  \&quot;建立两人在受限空间内的信任与分工关系\&quot;\n ],\n \&quot;scenes\&quot;: [\n  {\n   \&quot;location_id\&quot;: \&quot;山间观测站主控室\&quot;,\n   \&quot;participants\&quot;: [\n    \&quot;林川\&quot;,\n    \&quot;许宁\&quot;\n   ],\n   \&quot;goal\&quot;: \&quot;确认停电范围与备用电源状态，分派排查任务\&quot;,\n   \&quot;time\&quot;: \&quot;暴雨夜，停电后约十分钟\&quot;\n  },\n  {\n   \&quot;location_id\&quot;: \&quot;山间观测站走廊及配电间\&quot;,\n   \&quot;participants\&quot;: [\n    \&quot;林川\&quot;,\n    \&quot;许宁\&quot;\n   ],\n   \&quot;goal\&quot;: \&quot;沿线路逐段排查供电回路，发现接线盒漏水\&quot;,\n   \&quot;time\&quot;: \&quot;停电后半小时内\&quot;\n  },\n  {\n   \&quot;location_id\&quot;: \&quot;山间观测站配电间\&quot;,\n   \&quot;participants\&quot;: [\n    \&quot;林川\&quot;,\n    \&quot;许宁\&quot;\n   ],\n   \&quot;goal\&quot;: \&quot;处理漏水接线盒，恢复局部供电或做出临时处置决定\&quot;,\n   \&quot;time\&quot;: \&quot;停电后一小时内\&quot;\n  }\n ],\n \&quot;characters\&quot;: [\n  {\n   \&quot;character_id\&quot;: \&quot;林川\&quot;,\n   \&quot;expected_state\&quot;: {\n    \&quot;location\&quot;: \&quot;山间观测站配电间\&quot;,\n    \&quot;physical\&quot;: \&quot;左膝扭伤，行动受限，需借助支撑物移动\&quot;,\n    \&quot;mental\&quot;: \&quot;克制疼痛，专注排查故障，对许宁逐渐建立协作信任\&quot;\n   }\n  },\n  {\n   \&quot;character_id\&quot;: \&quot;许宁\&quot;,\n   \&quot;expected_state\&quot;: {\n    \&quot;location\&quot;: \&quot;山间观测站配电间\&quot;,\n    \&quot;physical\&quot;: \&quot;正常，但受暴雨和停电环境影响[TRUNCATED]&quot;
+      }
+    ],
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: true,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    },
+    &quot;audit_verdict&quot;: {
+      &quot;verdict&quot;: &quot;pass&quot;,
+      &quot;replan_target&quot;: null,
+      &quot;findings&quot;: [],
+      &quot;reasons&quot;: [
+        &quot;确定性校验报出的 plotline 类型 finding 经核对为误报：章节计划 expected_events 中『章末以接线盒漏水源未根治或备用电源不足作为悬念收束』在正文中有明确对应——『这个没根治。电池充电回路也在这段，水位再涨，迟早把刚接的线再泡了』以及『电池柜的显示屏还亮着，电压读数又往下掉了一格』，并以『雨不会停』收束，悬念落地，不存在预期事件缺失。&quot;,
+        &quot;计划三项场景（主控室确认停电与分工、走廊配电间逐段排查发现渗水接线盒、配电间处理并恢复局部供电）全部按序完成，剧情线推进方向与计划一致，无主线偏移。&quot;,
+        &quot;两条 hooks_to_plant 均已埋设：漏水源未根治＋电池老化撑不久（后续需外部支援/大修），林川左膝在潮湿环境中持续肿胀加重（行动受限隐患），符合『埋下隐患』要求。&quot;,
+        &quot;硬约束全部满足：全章仅林川、许宁两名人物；故障排查流程（合闸位检查、断路/漏电保护、熔断器逐路切断、绝缘破损导致对地短路的判断、剥线换头与绝缘处理、临时斜面引水围挡）符合现实电气常识，无超能力元素；林川左膝扭伤全程行动受限，需折叠凳作支撑，未痊愈或奔跑；暴雨与停电环境前后一致，市电始终未恢复。&quot;,
+        &quot;规划中的 opening 转场节点与 opening_beat 一致，本章为开篇，无前章正文，不存在重演已完成动作、丢弃未完成请求或跨章接续断裂问题。&quot;,
+        &quot;人物状态与计划 expected_state 吻合：林川克制疼痛、专注排查、以指挥与接线承担协作角色；许宁主动探查、关注伤情但不越界干预，分工信任关系建立自然。&quot;,
+        &quot;节奏上以停电黑暗起笔、逐层排查、临时修复后余留未解悬念收束，信息密度与紧张感分布合理，无机械重复段落；对『跛脚』『膝盖肿胀』的复现属有意递进的伤势强调，非近义改写堆砌。&quot;
+      ],
+      &quot;confidence&quot;: 0.93
+    }
+  }
+}</pre></details></article><article><h3>10 · route</h3><p>输入 0 / 输出 0 tokens · 耗时 0 ms</p><ul><li>确定性校验报出的 plotline 类型 finding 经核对为误报：章节计划 expected_events 中『章末以接线盒漏水源未根治或备用电源不足作为悬念收束』在正文中有明确对应——『这个没根治。电池充电回路也在这段，水位再涨，迟早把刚接的线再泡了』以及『电池柜的显示屏还亮着，电压读数又往下掉了一格』，并以『雨不会停』收束，悬念落地，不存在预期事件缺失。</li><li>计划三项场景（主控室确认停电与分工、走廊配电间逐段排查发现渗水接线盒、配电间处理并恢复局部供电）全部按序完成，剧情线推进方向与计划一致，无主线偏移。</li><li>两条 hooks_to_plant 均已埋设：漏水源未根治＋电池老化撑不久（后续需外部支援/大修），林川左膝在潮湿环境中持续肿胀加重（行动受限隐患），符合『埋下隐患』要求。</li><li>硬约束全部满足：全章仅林川、许宁两名人物；故障排查流程（合闸位检查、断路/漏电保护、熔断器逐路切断、绝缘破损导致对地短路的判断、剥线换头与绝缘处理、临时斜面引水围挡）符合现实电气常识，无超能力元素；林川左膝扭伤全程行动受限，需折叠凳作支撑，未痊愈或奔跑；暴雨与停电环境前后一致，市电始终未恢复。</li><li>规划中的 opening 转场节点与 opening_beat 一致，本章为开篇，无前章正文，不存在重演已完成动作、丢弃未完成请求或跨章接续断裂问题。</li><li>人物状态与计划 expected_state 吻合：林川克制疼痛、专注排查、以指挥与接线承担协作角色；许宁主动探查、关注伤情但不越界干预，分工信任关系建立自然。</li><li>节奏上以停电黑暗起笔、逐层排查、临时修复后余留未解悬念收束，信息密度与紧张感分布合理，无机械重复段落；对『跛脚』『膝盖肿胀』的复现属有意递进的伤势强调，非近义改写堆砌。</li></ul><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;route&quot;,
+  &quot;input_tokens&quot;: 0,
+  &quot;output_tokens&quot;: 0,
+  &quot;model_id&quot;: null,
+  &quot;duration_ms&quot;: 0,
+  &quot;cost_est&quot;: 0.0,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;route&quot;: &quot;persist&quot;,
+    &quot;revision_count&quot;: 0,
+    &quot;patch_count&quot;: 0,
+    &quot;revise_mode&quot;: &quot;full&quot;,
+    &quot;patch_applied&quot;: 0,
+    &quot;patch_skipped&quot;: 0,
+    &quot;patch_rejected_reason&quot;: null,
+    &quot;replan_count&quot;: 0,
+    &quot;rule_summary&quot;: {
+      &quot;total&quot;: 1,
+      &quot;critical&quot;: 0,
+      &quot;resolved&quot;: 0
+    },
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: false,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    },
+    &quot;audit_verdict&quot;: {
+      &quot;verdict&quot;: &quot;pass&quot;,
+      &quot;replan_target&quot;: null,
+      &quot;findings&quot;: [],
+      &quot;reasons&quot;: [
+        &quot;确定性校验报出的 plotline 类型 finding 经核对为误报：章节计划 expected_events 中『章末以接线盒漏水源未根治或备用电源不足作为悬念收束』在正文中有明确对应——『这个没根治。电池充电回路也在这段，水位再涨，迟早把刚接的线再泡了』以及『电池柜的显示屏还亮着，电压读数又往下掉了一格』，并以『雨不会停』收束，悬念落地，不存在预期事件缺失。&quot;,
+        &quot;计划三项场景（主控室确认停电与分工、走廊配电间逐段排查发现渗水接线盒、配电间处理并恢复局部供电）全部按序完成，剧情线推进方向与计划一致，无主线偏移。&quot;,
+        &quot;两条 hooks_to_plant 均已埋设：漏水源未根治＋电池老化撑不久（后续需外部支援/大修），林川左膝在潮湿环境中持续肿胀加重（行动受限隐患），符合『埋下隐患』要求。&quot;,
+        &quot;硬约束全部满足：全章仅林川、许宁两名人物；故障排查流程（合闸位检查、断路/漏电保护、熔断器逐路切断、绝缘破损导致对地短路的判断、剥线换头与绝缘处理、临时斜面引水围挡）符合现实电气常识，无超能力元素；林川左膝扭伤全程行动受限，需折叠凳作支撑，未痊愈或奔跑；暴雨与停电环境前后一致，市电始终未恢复。&quot;,
+        &quot;规划中的 opening 转场节点与 opening_beat 一致，本章为开篇，无前章正文，不存在重演已完成动作、丢弃未完成请求或跨章接续断裂问题。&quot;,
+        &quot;人物状态与计划 expected_state 吻合：林川克制疼痛、专注排查、以指挥与接线承担协作角色；许宁主动探查、关注伤情但不越界干预，分工信任关系建立自然。&quot;,
+        &quot;节奏上以停电黑暗起笔、逐层排查、临时修复后余留未解悬念收束，信息密度与紧张感分布合理，无机械重复段落；对『跛脚』『膝盖肿胀』的复现属有意递进的伤势强调，非近义改写堆砌。&quot;
+      ],
+      &quot;confidence&quot;: 0.93
+    }
+  }
+}</pre></details></article><article><h3>11 · persist</h3><p>输入 0 / 输出 0 tokens · 耗时 0 ms</p><p>程序执行节点，执行统计见下方详情。</p><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;persist&quot;,
+  &quot;input_tokens&quot;: 0,
+  &quot;output_tokens&quot;: 0,
+  &quot;model_id&quot;: null,
+  &quot;duration_ms&quot;: 0,
+  &quot;cost_est&quot;: 0.0,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;candidates&quot;: 8,
+    &quot;status&quot;: &quot;auto_confirm&quot;,
+    &quot;rewrite&quot;: false,
+    &quot;invalidation&quot;: null,
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: false,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    }
+  }
+}</pre></details></article><article><h3>12 · summarize</h3><p>输入 2424 / 输出 138 tokens · 耗时 1765 ms</p><p>模型调用记录；完整关键产物见上方计划、正文和审核区。</p><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;summarize&quot;,
+  &quot;input_tokens&quot;: 2424,
+  &quot;output_tokens&quot;: 138,
+  &quot;model_id&quot;: &quot;deepseek-v4-flash&quot;,
+  &quot;duration_ms&quot;: 1765,
+  &quot;cost_est&quot;: 0.002976,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;response&quot;: {
+      &quot;content&quot;: &quot;{\&quot;summary\&quot;: \&quot;暴雨夜观测站突然断电，林川与许宁摸黑排查，发现市电与备用电池同时失效。林川左膝旧伤发作，行动受限，遂分工：许宁探查走廊，他留守定线路。查出配电间上方天花板渗水导致接线盒短路，两人切断支路、更换锈蚀线头、做临时绝缘，并用防潮布与木条围挡引水，勉强恢复电池柜供电和应急照明。然渗水未根治，电池老旧输出不稳，许宁标绘其他漏水点，林川判断雨势不会停，屋面排水沟堵塞成待解隐患。\&quot;}&quot;,
+      &quot;tool_calls&quot;: null
+    },
+    &quot;messages&quot;: [
+      {
+        &quot;role&quot;: &quot;system&quot;,
+        &quot;content&quot;: &quot;你是长篇网文创作系统的【章节摘要 Agent】。为刚落库的章节正文生成精炼摘要，用作短期记忆（下一章 recall 的上下文锚点）。\n输出严格 JSON：{\&quot;summary\&quot;: \&quot;80-150 字，概括本章主要剧情推进、关键事件与人物状态变化；不写章节号与标题；避免与前几章摘要重复措辞。\&quot;}&quot;
+      },
+      {
+        &quot;role&quot;: &quot;user&quot;,
+        &quot;content&quot;: &quot;【章节正文】（第 1 章）\n灯灭的那一瞬间，林川的手已经按在了桌沿上。\n\n黑暗来得毫无过渡，像有人把整座观测站从世界里摘了出去。雨声随即变得具体，铁皮屋顶被砸出连绵的闷响，窗玻璃嗡嗡发颤。他稳住上半身，重心本能地往右移，左膝还是迟了半拍才跟上，一阵锐痛从关节内侧扎上来，顺着大腿后侧爬到腰。他咬住后槽牙，把那股酸麻压回去，只让一声短促的吸气漏出来。\n\n“林川？”\n\n许宁的声音在右侧三步远的地方，没有慌乱，只是音调比平时高了一线。\n\n“在。”他应了一声，尽量让嗓音平稳，“别动，先确认脚下的东西。桌角在你左边一点。”\n\n一阵窸窣，大概是她在摸索。“碰到了。你那边？”\n\n“靠墙站着。”林川说，“手电在哪一格抽屉？”\n\n“我记得是第二格，你等下。”\n\n脚步声往储物柜方向去，走得很慢，每一步都先试探再落。黑暗中传来抽屉被拉开又推回的声响，第二个、第三个。许宁低声数着，语气像在给自己报账。\n\n“不对，第二格是记录本。”她说，“第三格，有了。”\n\n一束白光晃出来，先是打在天花板上，再压低，扫过主控台、仪器架、墙角那排铅蓄电池柜。光柱里全是浮尘，细密地翻涌。许宁转过身，光束在林川身上停了一下，落在他的左腿上。\n\n“你又跛了。”\n\n“老毛病。”林川避开那道视线，“先看市电。主闸箱在走廊尽头，控制面板上应该有指示。”\n\n许宁没接话，把手电递过来一半，自己攥着另一半，两人各持一端，像抬着一根看不见的杆子往门口走。走廊比主控室更暗，只有应急标识在墙上泛着微弱的绿。雨声在这里更响，像是从天花板内部长出来的。\n\n控制面板嵌在配电间外墙上，几排指示灯全黑。林川单手扶着墙，另一只手掀开面板外盖，指尖在断路器和漏电保护器的拨杆上一路摸过去。全部在合闸位。\n\n“总闸没跳。”他说，“市电是真的断了，不是室内故障。”\n\n“备用电源呢？电池柜不是独立的吗？”\n\n“测一下。”\n\n他们退回主控室。林川坐在椅子边缘，把左腿伸直，膝盖上那处热痛慢慢摊开。许宁把手电卡在仪器架上，对着铅蓄电池柜照。柜体上方的小显示屏黑着，按下测试键也没有反应。她又去查柜体侧面的电压表，指针纹丝不动。\n\n“没输出。”她说，“是电池组的问题，还是线路断了？”\n\n“都有可能。”林川盯着那个黑屏，“如果只是电池老化，主闸那边应该有市电。现在两个都没了，说明外部线路和备用回路同时出问题。雨太大，山里这种概率不低。”\n\n许宁沉默两秒，把手电从架子上取下来。“走廊顶上刚才有个地方在响，像是水声。我去看看。”\n\n“等等。”林川撑着椅子站起来，左膝一软，他用手掌摁住椅背，把身体的重量全压到右腿，“先定一下分工。你负责往前探查，我做记录和判断。每到一个节点回报一次，别一个人钻进去太深。”\n\n“你确定不一起走？”\n\n“我这腿拖不了十几分钟的路。”他说得干脆，没给自己留余地，“而且得有人守着面板，万一市电来了要立刻合闸。”\n\n许宁看了他一秒，点头，把那半截手电塞进他手里。“那你守着。我沿着走廊往配电间去，路上看接线盒。”\n\n“配电间的门锁着，钥匙在主控台第二层抽屉，铜的。”\n\n“知道。”\n\n她走出去。脚步声在走廊里逐渐拉远，随后被雨声盖住。林川把电筒光对准控制面板，每隔一会儿就扫一次，明知道不会有变化。他把注意力压在痛感以外的地方，让呼吸慢下来。膝盖的肿在裤管下一点点鼓起来，贴着皮肤发烫。\n\n约莫过了七八分钟，走廊里传来两声敲墙。约定的回报信号。\n\n“主控室到配电间这段，天花板有两处渗水。”许宁的声音从廊道里传回来，隔着雨有点发闷，“靠楼梯口那个接线盒外壳是湿的，我打开看了一眼，里面全是水珠。”\n\n“有没有焦味？”\n\n“有，很淡，混着雨腥味。盒子底下那片墙皮已经发黑。”\n\n林川在脑子里把线路图过了一遍。主控室到配电间这一段，走的是照明和电池柜充电回路，墙内暗线从天花板夹层穿过。渗水如果正好落在接线盒上，短路就是必然的。\n\n“别碰它。”他提高一点音量，“先回来，把工具和绝缘胶带带上。我过去。”\n\n“你过来？”\n\n“门我来开，图纸在我手上。那段线路两个回路有交叉，不能乱切。”\n\n她的脚步声折返。进门时手电光扫到他的腿，他正把膝盖往椅子外侧挪，动作不算自然。许宁什么都没问，从工具袋里抽出绝缘胶带、电工钳和一把drywall刀，顺手把一块折叠凳拍开，推到他手边。\n\n“拄着。”她说。\n\n林川接过来，折叠凳的腿在手里晃了晃，他试着用它当拐杖使。走得不快，但从主控室到配电间这一路还算稳。许宁走在前面半步，手电光照着地面，替他避开地上那摊已经积起来的水。走廊天花板每隔几步就有水痕，最严重的一处在配电间门口上方，水顺着墙往下爬，在门框边汇成一道细流。\n\n配电间比主控室更冷，空气里全是潮气。墙面上一排接线盒沿走廊延伸进来，许宁指的那个在靠里第二只，外壳全是水，边缘凝着水珠，往下滴。林川让她把总闸从配电间这边的分开关切下来，再逐节拔掉这段回路的支路熔断器。\n\n“只留电池柜充电那一路。”他说，“其余全断。”\n\n许宁照做，动作很快，每一路拔下都回头报一句。林川拄着折叠凳挪到接线盒前，先用干布擦了外壳，再用drywall刀沿着盒盖缝隙撬开。盖板一松，一股潮热的气味涌出来，里面线头全是水，接线柱表面起了白绿色的氧化物，其中一根线的绝缘皮已经发黑卷曲。盒底积了浅浅一层水。\n\n“进水短路。”他把手电凑近，“这根火线对地的绝缘坏了，等于直接接地。难怪跳。”\n\n“能修吗？”\n\n“换线头、吹干、做绝缘。临时能顶。”林川用钳子夹住发黑的线头，轻轻一拉，铜芯露出来，已经锈了半截，“问题是水从哪来。盒子上方天花板这块，你刚才说有两处渗水。”\n\n许宁把手电往上照。盒体正上方的水泥顶棚有一道细纹，水正从纹路里渗出来，一滴一滴，落在盒盖残存的斜面上。裂纹不长，但在往两侧走。\n\n“上面是屋面。”林川仰着头看了一会儿，“排水沟大概堵了。这雨再下几个小时，整段夹层都要泡。”\n\n两人沉默地让那滴水声填满这间小屋。许宁先开口：“先做临时处理？”\n\n“嗯。”他点头，“你把备用线头剥出来，我来做。做完先恢复电池柜那一路，看有没有电。”\n\n许宁蹲下来剥线，动作利落，铜芯露得齐整。林川一手扶盒体一手接线，湿冷的水顺着他的手腕往下淌。膝盖一直维持着半跪的姿势，热度、胀感、还有一点针扎似的跳，在骨缝里反复。他尽量把重心分散到右腿和手臂上，额头渗出一层薄汗。\n\n线接好，缠上三层绝缘胶带。林川让许宁把电池柜那一路合上，自己退到门口。\n\n啪的一声。\n\n柜体上方的小显示屏亮了，幽绿的背光在暗屋里格外刺眼。电压读数一点点往上爬，停在标称值以下一截。\n\n“有输出，但不稳。”林川盯着那个跳动的数字，“电池是旧的，撑不了多久。主机带不动，照明和应急可以开。”他伸手按了配电间门口那排开关，走廊应急灯接二连三亮起来，昏黄的光铺在湿漉漉的地面上。\n\n许宁松了半口气，随即又皱起眉。她指着接线盒上方那道水痕：“这个没根治。电池充电回路也在这段，水位再涨，迟早把刚接的线再泡了。”\n\n“知道。”林川说，“现在只能做围挡，把渗水引开，不让它落进盒子。今晚是顶不过大修的。”\n\n他去工具架上翻出一卷防潮布和几块废木条，许宁接手把布撑开，用木条在接线盒上方钉了个简易斜面，让水滴顺着布沿滑到墙角。做完这些，她退开一步，看了看，又用drywall刀在墙角地面划了一道小沟，引水往外流。\n\n“能撑几小时。”她说，“几小时之后呢？”\n\n林川没答。他靠在门框上，左腿伸直，膝盖比刚才肿得更明显，裤管绷紧了一圈。应急灯的光从他脚下一路铺到配电间深处，那条被临时修复的线路正发出细弱的电流声。外面雨没有停的意思，敲在铁皮屋顶上，比先前更密。\n\n许宁把手电关掉，省电。她走过来，目光在他膝盖上停了一下，又移开。\n\n“你歇着。”她说，“我去把走廊其他几处渗水点也标一下，画个图。明天——”\n\n她顿了一下。\n\n“明天要是雨停了，得上去看屋面。排水沟堵在哪，得有人爬上去。”\n\n林川顺着她的话往上看了一眼。那道天花板裂纹在昏光里像一条细黑的河，正缓慢地拓宽。电池柜的显示屏还亮着，电压读数又往下掉了一格。\n\n“雨不会停。”他说。\n\n许宁没接话，从抽屉里翻出铅笔和记录本，转身走进走廊。脚步声和着滴水声往前去。林川留在门口，一只手撑在门框上，另一只手攥着那卷剩下的绝缘胶带。胶带外圈冰凉，里面似乎还沾着方才渗进盒里的潮气。\n\n请生成章节摘要（严格 JSON）。&quot;
+      }
+    ],
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: false,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    }
+  }
+}</pre></details></article><article><h3>13 · revise</h3><p>输入 4118 / 输出 2486 tokens · 耗时 8875 ms</p><p>模型调用记录；完整关键产物见上方计划、正文和审核区。</p><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;revise&quot;,
+  &quot;input_tokens&quot;: 4118,
+  &quot;output_tokens&quot;: 2486,
+  &quot;model_id&quot;: &quot;deepseek-v4-flash&quot;,
+  &quot;duration_ms&quot;: 8875,
+  &quot;cost_est&quot;: 0.01002636,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;response&quot;: {
+      &quot;content&quot;: &quot;=== CONTENT ===\n灯灭的那一瞬间，林川的手已经按在了桌沿上。\n\n黑暗来得毫无过渡，像有人把整座观测站从世界里摘了出去。雨声随即变得具体，铁皮屋顶被砸出连绵的闷响，窗玻璃嗡嗡发颤。他稳住上半身，重心本能地往右移，左膝还是迟了半拍才跟上，一阵锐痛从关节内侧扎上来，顺着大腿后侧爬到腰。他咬住后槽牙，把那股酸麻压回去，只让一声短促的吸气漏出来。\n\n“林川？”\n\n许宁的声音在右侧三步远的地方，没有慌乱，只是音调比平时高了一线。\n\n“在。”他应了一声，尽量让嗓音平稳，“别动，先确认脚下的东西。桌角在你左边一点。”\n\n一阵窸窣，大概是她在摸索。“碰到了。你那边？”\n\n“靠墙站着。”林川说，“手电在哪一格抽屉？”\n\n“我记得是第二格，你等下。”\n\n脚步声往储物柜方向去，走得很慢，每一步都先试探再落。黑暗中传来抽屉被拉开又推回的声响，第二个、第三个。许宁低声数着，语气像在给自己报账。\n\n“不对，第二格是记录本。”她说，“第三格，有了。”\n\n一束白光晃出来，先是打在天花板上，再压低，扫过主控台、仪器架、墙角那排铅蓄电池柜。光柱里全是浮尘，细密地翻涌。许宁转过身，光束在林川身上停了一下，落在他的左腿上。\n\n“你又跛了。”\n\n“老毛病。”林川避开那道视线，“先看市电。主闸箱在走廊尽头，控制面板上应该有指示。”\n\n许宁没接话，把手电递过来一半，自己攥着另一半，两人各持一端，像抬着一根看不见的杆子往门口走。走廊比主控室更暗，只有应急标识在墙上泛着微弱的绿。雨声在这里更响，像是从天花板内部长出来的。\n\n控制面板嵌在配电间外墙上，几排指示灯全黑。林川单手扶着墙，另一只手掀开面板外盖，指尖在断路器和漏电保护器的拨杆上一路摸过去。全部在合闸位。\n\n“总闸没跳。”他说，“市电是真的断了，不是室内故障。”\n\n“备用电源呢？电池柜不是独立的吗？”\n\n“测一下。”\n\n他们退回主控室。林川坐在椅子边缘，把左腿伸直，膝盖上那处热痛慢慢摊开。许宁把手电卡在仪器架上，对着铅蓄电池柜照。柜体上方的小显示屏黑着，按下测试键也没有反应。她又去查柜体侧面的电压表，指针纹丝不动。\n\n“没输出。”她说，“是电池组的问题，还是线路断了？”\n\n“都有可能。”林川盯着那个黑屏，“如果只是电池老化，主闸那边应该有市电。现在两个都没了，说明外部线路和备用回路同时出问题。雨太大，山里这种概率不低。”\n\n许宁沉默两秒，把手电从架子上取下来。“走廊顶上刚才有个地方在响，像是水声。我去看看。”\n\n“等等。”林川撑着椅子站起来，左膝一软，他用手掌摁住椅背，把身体的重量全压到右腿，“先定一下分工。你负责往前探查，我做记录和判断。每到一个节点回报一次，别一个人钻进去太深。”\n\n“你确定不一起走？”\n\n“我这腿拖不了十几分钟的路。”他说得干脆，没给自己留余地，“而且得有人守着面板，万一市电来了要立刻合闸。”\n\n许宁看了他一秒，点头，把那半截手电塞进他手里。“那你守着。我沿着走廊往配电间去，路上看接线盒。”\n\n“配电间的门锁着，钥匙在主控台第二层抽屉，铜的。”\n\n“知道。”\n\n她走出去。脚步声在走廊里逐渐拉远，随后被雨声盖住。林川把电筒光对准控制面板，每隔一会儿就扫一次，明知道不会有变化。他把注意力压在痛感以外的地方，让呼吸慢下来。膝盖的肿在裤管下一点点鼓起来，贴着皮肤发烫。\n\n约莫过了七八分钟，走廊里传来两声敲墙。约定的回报信号。\n\n“主控室到配电间这段，天花板有两处渗水。”许宁的声音从廊道里传回来，隔着雨有点发闷，“靠楼梯口那个接线盒外壳是湿的，我打开看了一眼，里面全是水珠。”\n\n“有没有焦味？”\n\n“有，很淡，混着雨腥味。盒子底下那片墙皮已经发黑。”\n\n林川在脑子里把线路图过了一遍。主控室到配电间这一段，走的是照明和电池柜充电回路，墙内暗线从天花板夹层穿过。渗水如果正好落在接线盒上，短路就是必然的。\n\n“别碰它。”他提高一点音量，“先回来，把工具和绝缘胶带带上。我过去。”\n\n“你过来？”\n\n“门我来开，图纸在我手上。那段线路两个回路有交叉，不能乱切。”\n\n她的脚步声折返。进门时手电光扫到他的腿，他正把膝盖往椅子外侧挪，动作不算自然。许宁什么都没问，从工具袋里抽出绝缘胶带、电工钳和一把裁纸刀，顺手把一块折叠凳拍开，推到他手边。\n\n“拄着。”她说。\n\n林川接过来，折叠凳的腿在手里晃了晃，他试着用它当拐杖使。走得不快，但从主控室到配电间这一路还算稳。许宁走在前面半步，手电光照着地面，替他避开地上那摊已经积起来的水。走廊天花板每隔几步就有水痕，最严重的一处在配电间门口上方，水顺着墙往下爬，在门框边汇成一道细流。\n\n配电间比主控室更冷，空气里全是潮气。墙面上一排接线盒沿走廊延伸进来，许宁指的那个在靠里第二只，外壳全是水，边缘凝着水珠，往下滴。林川让她把总闸从配电间这边的分开关切下来，再逐节拔掉这段回路的支路熔断器。\n\n“只留电池柜充电那一路。”他说，“其余全断。”\n\n许宁照做，动作很快，每一路拔下都回头报一句。林川拄着折叠凳挪到接线盒前，先用干布擦了外壳，再用裁纸刀沿着盒盖缝隙撬开。盖板一松，一股潮热的气味涌出来，里面线头全是水，接线柱表面起了白绿色的氧化物，其中一根线的绝缘皮已经发黑卷曲。盒底积了浅浅一层水。\n\n“进水短路。”他把手电凑近，“这根火线对地的绝缘坏了，等于直接接地。难怪跳。”\n\n“能修吗？”\n\n“换线头、吹干、做绝缘。临时能顶。”林川用钳子夹住发黑的线头，轻轻一拉，铜芯露出来，已经锈了半截，“问题是水从哪来。盒子上方天花板这块，你刚才说有两处渗水。”\n\n许宁把手电往上照。盒体正上方的水泥顶棚有一道细纹，水正从纹路里渗出来，一滴一滴，落在盒盖残存的斜面上。裂纹不长，但在往两侧走。\n\n“上面是屋面。”林川仰着头看了一会儿，“排水沟大概堵了。这雨再下几个小时，整段夹层都要泡。”\n\n两人沉默地让那滴水声填满这间小屋。许宁先开口：“先做临时处理？”\n\n“嗯。”他点头，“你把备用线头剥出来，我来做。做完先恢复电池柜那一路，看有没有电。”\n\n许宁蹲下来剥线，动作利落，铜芯露得齐整。林川一手扶盒体一手接线，湿冷的水顺着他的手腕往下淌。膝盖一直维持着半跪的姿势，热度、胀感、还有一点针扎似的跳，在骨缝里反复。他尽量把重心分散到右腿和手臂上，额头渗出一层薄汗。\n\n线接好，缠上三层绝缘胶带。林川让许宁把电池柜那一路合上，自己退到门口。\n\n啪的一声。\n\n柜体上方的小显示屏亮了，幽绿的背光在暗屋里格外刺眼。电压读数一点点往上爬，停在标称值以下一截。\n\n“有输出，但不稳。”林川盯着那个跳动的数字，“电池是旧的，撑不了多久。主机带不动，照明和应急可以开。”他伸手按了配电间门口那排开关，走廊应急灯接二连三亮起来，昏黄的光铺在湿漉漉的地面上。\n\n许宁松了半口气，随即又皱起眉。她指着接线盒上方那道水痕：“这个没根治。电池充电回路也在这段，水位再涨，迟早把刚接的线再泡了。”\n\n“知道。”林川说，“现在只能做围挡，把渗水引开，不让它落进盒子。今晚是顶不过大修的。”\n\n他去工具架上翻出一卷防潮布和几块[TRUNCATED]&quot;,
+      &quot;tool_calls&quot;: null
+    },
+    &quot;messages&quot;: [
+      {
+        &quot;role&quot;: &quot;system&quot;,
+        &quot;content&quot;: &quot;你是长篇网文创作系统的【写作 Agent】。依据章节计划写出正文。\n要求：严格遵循注入的设定与硬约束；贴合注入的文风档案与句式禁忌。\n句式禁令（任何题材、每一章都遵守）：\n- 不要写「不是……是……」：先否定再改口的对举一律不用，含「不是……而是……」与「不是……，是……」，拆成两句的「不是……。是……」也一样。\n- 不要写连续排比：同一句或相邻几句里，连续三个以上结构相同的分句。\n开篇规则：\n- 本章从【近期上下文】中上一章结尾片段的具体情境接续展开，不重新铺陈场景、不从头交代前情；\n- 避免以天色/时辰/天气作万能开场（如「清晨」「晨光」「夜色」）——除非该天色/天气与本章节拍直接相关（如「破晓时闭关突破」），否则直接用事件/动作/对话切入；\n- 各章开头不得与其他章共用开场景/意象/句式；\n- 上述规则禁止机械套用开场模板；同一场景的自然延续、有新意义的呼应允许。不要为了差异化强行换地点或视角。\n- 不得把「醒来/被叫醒/睁眼/天亮」等被动唤醒作万能开场动作；前章确已昏迷/入睡且恢复与剧情有关时允许醒来，但应迅速进入本章事件。\n- 执行章节计划 transition：上一章已完成的动作不得重做；悬而未决的请求、问话、威胁须得到反应。衔接应写动作的后果、人物的回答和下一步选择，避免复述章尾或用「上回说到」概述前情。\n- 时间、地点或视角有变化时，在开头自然给出桥接线索并处理原悬念，不能用一段天气/伤痛/环境描写把紧迫事件重置。\n收尾规则：\n- 章末不得以「入睡/合眼/闭眼/原地等待/天色将暗」这类静止收束作结尾——结尾必须落在剧情推进或悬念上（未完成的动作/关键对话/悬念画面/危险逼近）；禁止连续两章以同一类收尾动作作结（如两章都以主角入睡收尾）。\n如需核实人物状态/世界观事实/伏笔/剧情线，可调用只读查证工具，核实后仍直接输出正文。\n输出格式：先输出独立一行 === CONTENT ===，从下一行开始输出本章正文。\n正文为纯文本散文（含自然换行），禁止输出 JSON、禁止 markdown 代码块围栏。\n\n【世界观硬约束】\n- [硬约束/事实] 故事发生在现实世界，没有超能力；人物伤势须有合理恢复过程。 （设定配置）\n【人物状态快照】\n- [林川] 境界上限=普通人 状态={}\n- [许宁] 境界上限=普通人 状态={}\n【设定实体】\n（无）\n\n【文风要求（project_settings.style_profile）】\n目标篇幅：3000 字（约 4200 tokens）。实际输出请控制在 2400–3900 字区间，超限会被校验拦截并要求修订。\n\n【本书写作经验（reflexion 复盘，写作须遵守）】\n（无）\n\n你是长篇网文创作系统的【修订 Agent】。按校验发现逐条修订正文。\n输出格式：先输出独立一行 === CONTENT ===，从下一行开始输出修订后全文（纯文本散文，\n禁止 JSON、禁止 markdown 代码块围栏）。全部修订完成后，再输出独立一行 === RESPONSES ===，\n下一行输出严格 JSON 数组：[{\&quot;conflict_key\&quot;: \&quot;key\&quot;, \&quot;outcome\&quot;: \&quot;fixed|cannot_fix|dispute\&quot;, \&quot;note\&quot;: \&quot;说明\&quot;}]&quot;
+      },
+      {
+        &quot;role&quot;: &quot;user&quot;,
+        &quot;content&quot;: &quot;【章节计划】\n{\n \&quot;project_id\&quot;: \&quot;76d2b74b-d498-4e16-a2ca-959fb8174797\&quot;,\n \&quot;chapter_seq\&quot;: 1,\n \&quot;goals\&quot;: [\n  \&quot;推进林川与许宁在暴雨停电的观测站中排除供电故障的生存协作线\&quot;,\n  \&quot;建立两人在受限空间内的信任与分工关系\&quot;\n ],\n \&quot;scenes\&quot;: [\n  {\n   \&quot;location_id\&quot;: \&quot;山间观测站主控室\&quot;,\n   \&quot;participants\&quot;: [\n    \&quot;林川\&quot;,\n    \&quot;许宁\&quot;\n   ],\n   \&quot;goal\&quot;: \&quot;确认停电范围与备用电源状态，分派排查任务\&quot;,\n   \&quot;time\&quot;: \&quot;暴雨夜，停电后约十分钟\&quot;\n  },\n  {\n   \&quot;location_id\&quot;: \&quot;山间观测站走廊及配电间\&quot;,\n   \&quot;participants\&quot;: [\n    \&quot;林川\&quot;,\n    \&quot;许宁\&quot;\n   ],\n   \&quot;goal\&quot;: \&quot;沿线路逐段排查供电回路，发现接线盒漏水\&quot;,\n   \&quot;time\&quot;: \&quot;停电后半小时内\&quot;\n  },\n  {\n   \&quot;location_id\&quot;: \&quot;山间观测站配电间\&quot;,\n   \&quot;participants\&quot;: [\n    \&quot;林川\&quot;,\n    \&quot;许宁\&quot;\n   ],\n   \&quot;goal\&quot;: \&quot;处理漏水接线盒，恢复局部供电或做出临时处置决定\&quot;,\n   \&quot;time\&quot;: \&quot;停电后一小时内\&quot;\n  }\n ],\n \&quot;characters\&quot;: [\n  {\n   \&quot;character_id\&quot;: \&quot;林川\&quot;,\n   \&quot;expected_state\&quot;: {\n    \&quot;location\&quot;: \&quot;山间观测站配电间\&quot;,\n    \&quot;physical\&quot;: \&quot;左膝扭伤，行动受限，需借助支撑物移动\&quot;,\n    \&quot;mental\&quot;: \&quot;克制疼痛，专注排查故障，对许宁逐渐建立协作信任\&quot;\n   }\n  },\n  {\n   \&quot;character_id\&quot;: \&quot;许宁\&quot;,\n   \&quot;expected_state\&quot;: {\n    \&quot;location\&quot;: \&quot;山间观测站配电间\&quot;,\n    \&quot;physical\&quot;: \&quot;正常，但受暴雨和停电环境影响，体力消耗\&quot;,\n    \&quot;mental\&quot;: \&quot;主动承担探查任务，对林川的伤情保持关注但不过度干预\&quot;\n   }\n  }\n ],\n \&quot;hooks_to_plant\&quot;: [\n  \&quot;漏水接线盒的损坏程度可能超出临时处理范围，暗示后续需要外部支援或更大维修\&quot;,\n  \&quot;林川左膝扭伤在潮湿环境中可能加重，为后续行动受限埋下隐患\&quot;\n ],\n \&quot;hooks_to_resolve\&quot;: [],\n \&quot;expected_events\&quot;: [\n  \&quot;暴雨导致观测站主电源跳闸，林川与许宁确认停电\&quot;,\n  \&quot;两人分工检查配电线路，林川因膝伤负责室内指挥，许宁负责探查\&quot;,\n  \&quot;发现走廊天花板渗水导致接线盒进水短路\&quot;,\n  \&quot;两人协作切断故障回路，尝试恢复部分供电\&quot;,\n  \&quot;章末以接线盒漏水源未根治或备用电源不足作为悬念收束\&quot;\n ],\n \&quot;hard_constraints\&quot;: [\n  \&quot;本章仅出现林川和许宁两名人物，不得引入新角色\&quot;,\n  \&quot;无超能力，所有故障排除须符合现实电气常识\&quot;,\n  \&quot;林川左膝扭伤须有合理恢复过程，本章内不得痊愈或奔跑\&quot;,\n  \&quot;暴雨和停电环境须保持前后一致，不得突然放晴或恢复市电\&quot;\n ],\n \&quot;transition\&quot;: {\n  \&quot;mode\&quot;: \&quot;opening\&quot;,\n  \&quot;anchor_quote\&quot;: \&quot;\&quot;,\n  \&quot;pending_action\&quot;: \&quot;\&quot;,\n  \&quot;opening_beat\&quot;: \&quot;暴雨声中，主控室灯光骤然熄灭，林川在黑暗中稳住身体，左膝传来一阵锐痛，许宁的声音从近处响起，确认彼此位置\&quot;,\n  \&quot;bridge\&quot;: \&quot;\&quot;\n }\n}\n\n【近期上下文】\n- [user_instruction] 暴雨导致山间观测站停电。林川左膝扭伤，与许宁协作检查供电，最后找到漏水的接线盒。全章仅两名人物，避免另建人物。\n- [user_instruction] 作者已否定以下设定；修订正文及其因果影响，禁止换一种说法重新引入。\n- fact: {\&quot;content\&quot;: \&quot;林川忽然获得了瞬间移动的超能力，眨眼就到了十公里外。\&quot;}；理由：现实题材不允许瞬间移动；用人物实际检修动作推进。\n\n【近期章节开头（仅作差异化参照，勿照搬；接续位置以章尾为准）】\n（无）\n\n【第 1 章待修正文】\n灯灭的那一瞬间，林川的手已经按在了桌沿上。\n\n黑暗来得毫无过渡，像有人把整座观测站从世界里摘了出去。雨声随即变得具体，铁皮屋顶被砸出连绵的闷响，窗玻璃嗡嗡发颤。他稳住上半身，重心本能地往右移，左膝还是迟了半拍才跟上，一阵锐痛从关节内侧扎上来，顺着大腿后侧爬到腰。他咬住后槽牙，把那股酸麻压回去，只让一声短促的吸气漏出来。\n\n“林川？”\n\n许宁的声音在右侧三步远的地方，没有慌乱，只是音调比平时高了一线。\n\n“在。”他应了一声，尽量让嗓音平稳，“别动，先确认脚下的东西。桌角在你左边一点。”\n\n一阵窸窣，大概是她在摸索。“碰到了。你那边？”\n\n“靠墙站着。”林川说，“手电在哪一格抽屉？”\n\n“我记得是第二格，你等下。”\n\n脚步声往储物柜方向去，走得很慢，每一步都先试探再落。黑暗中传来抽屉被拉开又推回的声响，第二个、第三个。许宁低声数着，语气像在给自己报账。\n\n“不对，第二格是记录本。”她说，“第三格，有了。”\n\n一束白光晃出来，先是打在天花板上，再压低，扫过主控台、仪器架、墙角那排铅蓄电池柜。光柱里全是浮尘，细密地翻涌。许宁转过身，光束在林川身上停了一下，落在他的左腿上。\n\n“你又跛了。”\n\n“老毛病。”林川避开那道视线，“先看市电。主闸箱在走廊尽头，控制面板上应该有指示。”\n\n许宁没接话，把手电递过来一半，自己攥着另一半，两人各持一端，像抬着一根看不见的杆子往门口走。走廊比主控室更暗，只有应急标识在墙上泛着微弱的绿。雨声在这里更响，像是从天花板内部长出来的。\n\n控制面板嵌在配电间外墙上，几排指示灯全黑。林川单手扶着墙，另一只手掀开面板外盖，指尖在断路器和漏电保护器的拨杆上一路摸过去。全部在合闸位。\n\n“总闸没跳。”他说，“市电是真的断了，不是室内故障。”\n\n“备用电源呢？电池柜不是独立的吗？”\n\n“测一下。”\n\n他们退回主控室。林川坐在椅子边缘，把左腿伸直，膝盖上那处热痛慢慢摊开。许宁把手电卡在仪器架上，对着铅蓄电池柜照。柜体上方的小显示屏黑着，按下测试键也没有反应。她又去查柜体侧面的电压表，指针纹丝不动。\n\n“没输出。”她说，“是电池组的问题，还是线路断了？”\n\n“都有可能。”林川盯着那个黑屏，“如果只是电池老化，主闸那边应该有市电。现在两个都没了，说明外部线路和备用回路同时出问题。雨太大，山里这种概率不低。”\n\n许宁沉默两秒，把手电从架子上取下来。“走廊顶上刚才有个地方在响，像是水声。我去看看。”\n\n“等等。”林川撑着椅子站起来，左膝一软，他用手掌摁住椅背，把身体的重量全压到右腿，“先定一下分工。你负责往前探查，我做记录和判断。每到一个节点回报一次，别一个人钻进去太深。”\n\n“你确定不一起走？”\n\n“我这腿拖不了十几分钟的路。”他说得干脆，没给自己留余地，“而且得有人守着面板，万一市电来了要立刻合闸。”\n\n许宁看了他一秒，点头，把那半截手电塞进他手里。“那你守着。我沿着走廊往配电间去，路上看接线盒。”\n\n“配电间的门锁着，钥匙在主控台第二层抽屉，铜的。”\n\n“知道。”\n\n她走出去。脚步声在走廊里逐渐拉远，随后被雨声盖住。林川把电筒光对准控制面板，每隔一会儿就扫一次，明知道不会有变化。他把注意力压在痛感以外的地方，让呼吸慢下来。膝盖的肿在裤管下一点点鼓起来，贴着皮肤发烫。\n\n约莫过了七八分钟，走廊里传来两声敲墙。约定的回报信号。\n\n“主控室到配电间这段，天花板有两处渗水。”许宁的声音从廊道里传回来，隔着雨有点发闷，“靠楼梯口那个接线盒外壳是湿的，我打开看了一眼，里面全是水珠。”\n\n“有没有焦味？”\n\n“有，很淡，混着雨腥味。盒子底下那片墙皮已经发黑。”\n\n林川在脑子里把线路图过了一遍。主控室到配电间这一段，走的是照明和电池柜充电回路，墙内暗线从天花板夹层穿过。渗水如果正好落在接线盒上，短路就是必然的。\n\n“别碰它。”他提高一点音量，“先回来，把工具和绝缘胶带带上。我过去。”\n\n“你过来？”\n\n“门我来开，图纸在我手上。那段线路两个回路有交叉，不能乱切。”\n\n她的脚步声折返。进门时手电光扫到他的腿，他正把膝盖往椅子外侧挪，动作不算自然。许宁什么都没问，从工具袋里抽出绝缘胶带、电工钳和一把drywall刀，顺手把一块折叠凳拍开，推到他手边。\n\n“拄着。”她说。\n\n林川接过来，折叠凳的腿在手里晃了晃，他试着用它当拐杖使。走得不快，但从主控室到配电间这一路还算稳。许宁走在前面半步，手电光照着地面，替他避开地上那摊已经积起来的水。走廊天花板每隔几步就有水痕，最严重的一处在配电间门口上方，水顺着墙往下爬，在门框边汇成一道细流。\n\n配电间比主控室更冷，空气里全是潮气。墙面上一排接线盒沿走廊延伸进来，许宁指的那个在靠里第二只，外壳全是水，边缘凝着水珠，往下滴。林川让她把[TRUNCATED]&quot;
+      }
+    ],
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: true,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    }
+  }
+}</pre></details></article><article><h3>14 · extract</h3><p>输入 3758 / 输出 1455 tokens · 耗时 5577 ms</p><p>模型调用记录；完整关键产物见上方计划、正文和审核区。</p><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;extract&quot;,
+  &quot;input_tokens&quot;: 3758,
+  &quot;output_tokens&quot;: 1455,
+  &quot;model_id&quot;: &quot;deepseek-v4-flash&quot;,
+  &quot;duration_ms&quot;: 5577,
+  &quot;cost_est&quot;: 0.00589516,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;response&quot;: {
+      &quot;content&quot;: &quot;{\&quot;candidates\&quot;: [{\&quot;kind\&quot;: \&quot;character_card\&quot;, \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.95, \&quot;payload\&quot;: {\&quot;name\&quot;: \&quot;林川\&quot;, \&quot;identity\&quot;: \&quot;山间观测站值守人员，掌握线路图纸与技术判断\&quot;, \&quot;role\&quot;: \&quot;主角，瘸腿（左膝旧伤），负责记录、判断与电气检修\&quot;, \&quot;personality\&quot;: \&quot;冷静、克制、务实的行动者，习惯把痛感压下去、优先安排分工\&quot;, \&quot;importance\&quot;: \&quot;本章核心视角人物，主导停电故障的排查与临时修复\&quot;}}, {\&quot;kind\&quot;: \&quot;character_card\&quot;, \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.95, \&quot;payload\&quot;: {\&quot;name\&quot;: \&quot;许宁\&quot;, \&quot;identity\&quot;: \&quot;与林川共事的观测站人员\&quot;, \&quot;role\&quot;: \&quot;主角搭档，负责前出探查、剥线与渗水标记\&quot;, \&quot;personality\&quot;: \&quot;动作利落、沉着细致，观察敏锐（注意到林川跛行）\&quot;, \&quot;importance\&quot;: \&quot;本章唯一协作人物，与林川共同完成线路抢修\&quot;}}, {\&quot;kind\&quot;: \&quot;new_entity\&quot;, \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.9, \&quot;payload\&quot;: {\&quot;entity_type\&quot;: \&quot;location\&quot;, \&quot;name\&quot;: \&quot;山间观测站\&quot;, \&quot;description\&quot;: \&quot;位于山中、带主控室与配电间的观测站，铁皮屋顶，配备铅蓄电池柜与应急照明。\&quot;}}, {\&quot;kind\&quot;: \&quot;new_entity\&quot;, \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.85, \&quot;payload\&quot;: {\&quot;entity_type\&quot;: \&quot;location\&quot;, \&quot;name\&quot;: \&quot;配电间\&quot;, \&quot;description\&quot;: \&quot;观测站内设总闸分开关与一排接线盒的配电房间，本章漏水短路点所在地。\&quot;, \&quot;parent\&quot;: \&quot;山间观测站\&quot;}}, {\&quot;kind\&quot;: \&quot;character_state\&quot;, \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.9, \&quot;payload\&quot;: {\&quot;character_id\&quot;: \&quot;林川\&quot;, \&quot;field\&quot;: \&quot;injury\&quot;, \&quot;old_value\&quot;: \&quot;\&quot;, \&quot;new_value\&quot;: \&quot;左膝旧伤复发，停电行动中扭伤加重，膝部明显肿胀，行走跛行，无法长途行走\&quot;, \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.9}}, {\&quot;kind\&quot;: \&quot;character_state\&quot;, \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.9, \&quot;payload\&quot;: {\&quot;character_id\&quot;: \&quot;林川\&quot;, \&quot;field\&quot;: \&quot;location\&quot;, \&quot;old_value\&quot;: \&quot;\&quot;, \&quot;new_value\&quot;: \&quot;山间观测站（主控室与配电间）\&quot;, \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.9}}, {\&quot;kind\&quot;: \&quot;character_state\&quot;, \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.9, \&quot;payload\&quot;: {\&quot;character_id\&quot;: \&quot;许宁\&quot;, \&quot;field\&quot;: \&quot;location\&quot;, \&quot;old_value\&quot;: \&quot;\&quot;, \&quot;new_value\&quot;: \&quot;山间观测站（主控室与走廊，前往配电间方向）\&quot;, \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.9}}, {\&quot;kind\&quot;: \&quot;event\&quot;, \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.95, \&quot;payload\&quot;: {\&quot;summary\&quot;: \&quot;暴雨导致观测站市电与备用电池同时中断，全站陷入黑暗。\&quot;, \&quot;participants\&quot;: [\&quot;林川\&quot;, \&quot;许宁\&quot;], \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.95}}, {\&quot;kind\&quot;: \&quot;event\&quot;, \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.9, \&quot;payload\&quot;: {\&quot;summary\&quot;: \&quot;林川与许宁分工排查供电：林川守控制面板并判断市电确已断开，许宁前出探查渗水与接线盒。\&quot;, \&quot;participants\&quot;: [\&quot;林川\&quot;, \&quot;许宁\&quot;], \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.9}}, {\&quot;kind\&quot;: \&quot;event\&quot;, \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.9, \&quot;payload\&quot;: {\&quot;summary\&quot;: \&quot;在配电间找到进水短路的接线盒：天花渗水滴入接线盒，火线对地绝缘损坏导致跳闸。\&quot;, \&quot;participants\&quot;: [\&quot;林川\&quot;, \&quot;许宁\&quot;], \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.9}}, {\&quot;kind\&quot;: \&quot;event\&quot;, \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.85, \&quot;payload\&quot;: {\&quot;summary\&quot;: \&quot;林川与许宁临时更换线头、吹干并做绝缘处理，恢复电池柜充电回路，使应急照明恢复，但电池老化输出不稳。\&quot;, \&quot;participants\&quot;: [\&quot;林川\&quot;, \&quot;许宁\&quot;], \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.85}}, {\&quot;kind\&quot;: \&quot;event\&quot;, \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.85, \&quot;payload\&quot;: {\&quot;summary\&quot;: \&quot;用防潮布与木条搭建斜面导水、在墙角划引水沟，临时阻挡渗水进入接线盒，仅能撑数小时。\&quot;, \&quot;participants\&quot;: [\&quot;林川\&quot;, \&quot;许宁\&quot;], \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.85}}, {\&quot;kind\&quot;: \&quot;foreshadow\&quot;, \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.8, \&quot;payload\&quot;: {\&quot;description\&quot;: \&quot;屋面排水沟堵塞导致渗水浸入夹层与接线盒，需雨停后爬屋面排查根因，否则线路会再次被泡。\&quot;, \&quot;trigger\&quot;: {\&quot;actor\&quot;: \&quot;许宁\&quot;, \&quot;action\&quot;: \&quot;标记渗水并提出上屋面检查排水沟\&quot;, \&quot;object\&quot;: \&quot;屋面排水沟\&quot;}, \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.8}}, {\&quot;kind\&quot;: \&quot;foreshadow\&quot;, \&quot;source_chapter\&quot;: 1, \&quot;confidence\&quot;: 0.75, \&quot;payload\&quot;: {\&quot;description\&quot;: \&quot;电池组老化、输出不稳，只能支撑照明与应急，撑不了多久，主机[TRUNCATED]&quot;,
+      &quot;tool_calls&quot;: null
+    },
+    &quot;messages&quot;: [
+      {
+        &quot;role&quot;: &quot;system&quot;,
+        &quot;content&quot;: &quot;你是长篇网文创作系统的【记忆抽取 Agent】。从章节正文抽取结构化记忆候选。\n输出严格 JSON：{\&quot;candidates\&quot;: [\n  {\&quot;kind\&quot;: \&quot;event\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0, \&quot;payload\&quot;: {\&quot;summary\&quot;: \&quot;事件摘要\&quot;, \&quot;participants\&quot;: [\&quot;人物名\&quot;], \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0}},\n  {\&quot;kind\&quot;: \&quot;character_state\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0, \&quot;payload\&quot;: {\&quot;character_id\&quot;: \&quot;人物名\&quot;, \&quot;field\&quot;: \&quot;只能取 location|injury|realm|power|item|knowledge|goal|identity|alive 之一（境界变化用 realm，存活变化用 alive，位置用 location）\&quot;, \&quot;old_value\&quot;: \&quot;\&quot;, \&quot;new_value\&quot;: \&quot;\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0}},\n  {\&quot;kind\&quot;: \&quot;relation_change\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0, \&quot;payload\&quot;: {\&quot;source_id\&quot;: \&quot;人物名\&quot;, \&quot;target_id\&quot;: \&quot;人物名\&quot;, \&quot;relation_type\&quot;: \&quot;只能取 hostile|ally|master_student|located_in|owns|defeated_by|knows|promises|happened_at 之一\&quot;, \&quot;old_value\&quot;: \&quot;\&quot;, \&quot;new_value\&quot;: \&quot;\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0}},\n  {\&quot;kind\&quot;: \&quot;fact\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0, \&quot;payload\&quot;: {\&quot;content\&quot;: \&quot;长期事实\&quot;, \&quot;category\&quot;: \&quot;规则\&quot;, \&quot;is_hard\&quot;: false, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0}},\n  {\&quot;kind\&quot;: \&quot;foreshadow\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0, \&quot;payload\&quot;: {\&quot;description\&quot;: \&quot;本章新种下的伏笔（可回收的悬念/物件/承诺，能且应被后续回收）\&quot;, \&quot;trigger\&quot;: {\&quot;actor\&quot;: \&quot;触发者\&quot;, \&quot;action\&quot;: \&quot;动作\&quot;, \&quot;object\&quot;: \&quot;对象\&quot;}, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0}},\n  {\&quot;kind\&quot;: \&quot;plotline\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0, \&quot;payload\&quot;: {\&quot;thread_name\&quot;: \&quot;被推进的活跃剧情线名称（须匹配注入的活跃剧情线）\&quot;, \&quot;note\&quot;: \&quot;本章如何推进该线\&quot;}},\n  {\&quot;kind\&quot;: \&quot;character_card\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0, \&quot;payload\&quot;: {\&quot;name\&quot;: \&quot;新人物名\&quot;, \&quot;identity\&quot;: \&quot;身份/来历\&quot;, \&quot;role\&quot;: \&quot;与主角/势力的关系\&quot;, \&quot;personality\&quot;: \&quot;性格初步印象\&quot;, \&quot;importance\&quot;: \&quot;剧情作用简评\&quot;}},\n  {\&quot;kind\&quot;: \&quot;new_entity\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0, \&quot;payload\&quot;: {\&quot;entity_type\&quot;: \&quot;只能取 item|skill|location 之一（武器/功法技能/地点）\&quot;, \&quot;name\&quot;: \&quot;名称\&quot;, \&quot;description\&quot;: \&quot;一句话简介\&quot;, \&quot;parent\&quot;: \&quot;（仅 entity_type=location 时填）该地点的上级/所属区域名，用于图谱地点层级；无则省略\&quot;}},\n  {\&quot;kind\&quot;: \&quot;foreshadow_touch\&quot;, \&quot;source_chapter\&quot;: 章号, \&quot;confidence\&quot;: 0.0-1.0, \&quot;payload\&quot;: {\&quot;foreshadow_id\&quot;: \&quot;（被推进/解决的伏笔 id，必须来自注入的【开放伏笔】列表中的 id）\&quot;, \&quot;outcome\&quot;: \&quot;advanced（本章推进其发展，伏笔更清晰）| resolved（本章彻底回收解决）\&quot;, \&quot;note\&quot;: \&quot;本章如何推进/解决该伏笔\&quot;}}\n]}\n顶层 confidence 必填。只抽确定事实，不猜。伏笔只抽「本章明确埋下的」——含糊提及不算，避免伏笔池噪声。\n伏笔回收（foreshadow_touch）只抽「正文明确推进（advanced）或彻底解决（resolved）了某条【开放伏笔】」；foreshadow_id 必须取自注入的开放伏笔 id，含糊提及 / 无法对应 → 不抽。\n剧情线推进（plotline）只在「本章正文确实推进了某条活跃剧情线」时才抽，thread_name 须与注入的活跃剧情线名一致（不新增线名）。\n关系变更（relation_change）只抽「正文明确发生的关系演变」（和解/决裂/结盟/逐出师门等）；old_value 须与注入的当前台账快照一致；正文仅表现关系现状而无演变 → 不抽。\n角色状态的 old_value 必须逐字复制【当前台账快照】中该字段的完整值；new_value 必须写变化后的完整最终状态。尤其 item/knowledge 禁止只写「新增……」「其余不变」等增量简称，必须保留原有内容并合并新增内容；若有失去/消耗，也必须输出删减后的完整清单。\n新人物卡片（character_card）只抽「本章首次出现且影响剧情的重要人物」（有名字、有台词、剧情上有作用）；已在【人物状态快照】中的人、纯龙套/一次性质 → 不抽（防待确认池噪声）。\n新设定实体（new_entity）抽「本章首次明确命名的武器/功法/技能/地点」，低风险自动登记；已有同名实体不重复抽。&quot;
+      },
+      {
+        &quot;role&quot;: &quot;user&quot;,
+        &quot;content&quot;: &quot;【章节正文】（第 1 章）\n灯灭的那一瞬间，林川的手已经按在了桌沿上。\n\n黑暗来得毫无过渡，像有人把整座观测站从世界里摘了出去。雨声随即变得具体，铁皮屋顶被砸出连绵的闷响，窗玻璃嗡嗡发颤。他稳住上半身，重心本能地往右移，左膝还是迟了半拍才跟上，一阵锐痛从关节内侧扎上来，顺着大腿后侧爬到腰。他咬住后槽牙，把那股酸麻压回去，只让一声短促的吸气漏出来。\n\n“林川？”\n\n许宁的声音在右侧三步远的地方，没有慌乱，只是音调比平时高了一线。\n\n“在。”他应了一声，尽量让嗓音平稳，“别动，先确认脚下的东西。桌角在你左边一点。”\n\n一阵窸窣，大概是她在摸索。“碰到了。你那边？”\n\n“靠墙站着。”林川说，“手电在哪一格抽屉？”\n\n“我记得是第二格，你等下。”\n\n脚步声往储物柜方向去，走得很慢，每一步都先试探再落。黑暗中传来抽屉被拉开又推回的声响，第二个、第三个。许宁低声数着，语气像在给自己报账。\n\n“不对，第二格是记录本。”她说，“第三格，有了。”\n\n一束白光晃出来，先是打在天花板上，再压低，扫过主控台、仪器架、墙角那排铅蓄电池柜。光柱里全是浮尘，细密地翻涌。许宁转过身，光束在林川身上停了一下，落在他的左腿上。\n\n“你又跛了。”\n\n“老毛病。”林川避开那道视线，“先看市电。主闸箱在走廊尽头，控制面板上应该有指示。”\n\n许宁没接话，把手电递过来一半，自己攥着另一半，两人各持一端，像抬着一根看不见的杆子往门口走。走廊比主控室更暗，只有应急标识在墙上泛着微弱的绿。雨声在这里更响，像是从天花板内部长出来的。\n\n控制面板嵌在配电间外墙上，几排指示灯全黑。林川单手扶着墙，另一只手掀开面板外盖，指尖在断路器和漏电保护器的拨杆上一路摸过去。全部在合闸位。\n\n“总闸没跳。”他说，“市电是真的断了，不是室内故障。”\n\n“备用电源呢？电池柜不是独立的吗？”\n\n“测一下。”\n\n他们退回主控室。林川坐在椅子边缘，把左腿伸直，膝盖上那处热痛慢慢摊开。许宁把手电卡在仪器架上，对着铅蓄电池柜照。柜体上方的小显示屏黑着，按下测试键也没有反应。她又去查柜体侧面的电压表，指针纹丝不动。\n\n“没输出。”她说，“是电池组的问题，还是线路断了？”\n\n“都有可能。”林川盯着那个黑屏，“如果只是电池老化，主闸那边应该有市电。现在两个都没了，说明外部线路和备用回路同时出问题。雨太大，山里这种概率不低。”\n\n许宁沉默两秒，把手电从架子上取下来。“走廊顶上刚才有个地方在响，像是水声。我去看看。”\n\n“等等。”林川撑着椅子站起来，左膝一软，他用手掌摁住椅背，把身体的重量全压到右腿，“先定一下分工。你负责往前探查，我做记录和判断。每到一个节点回报一次，别一个人钻进去太深。”\n\n“你确定不一起走？”\n\n“我这腿拖不了十几分钟的路。”他说得干脆，没给自己留余地，“而且得有人守着面板，万一市电来了要立刻合闸。”\n\n许宁看了他一秒，点头，把那半截手电塞进他手里。“那你守着。我沿着走廊往配电间去，路上看接线盒。”\n\n“配电间的门锁着，钥匙在主控台第二层抽屉，铜的。”\n\n“知道。”\n\n她走出去。脚步声在走廊里逐渐拉远，随后被雨声盖住。林川把电筒光对准控制面板，每隔一会儿就扫一次，明知道不会有变化。他把注意力压在痛感以外的地方，让呼吸慢下来。膝盖的肿在裤管下一点点鼓起来，贴着皮肤发烫。\n\n约莫过了七八分钟，走廊里传来两声敲墙。约定的回报信号。\n\n“主控室到配电间这段，天花板有两处渗水。”许宁的声音从廊道里传回来，隔着雨有点发闷，“靠楼梯口那个接线盒外壳是湿的，我打开看了一眼，里面全是水珠。”\n\n“有没有焦味？”\n\n“有，很淡，混着雨腥味。盒子底下那片墙皮已经发黑。”\n\n林川在脑子里把线路图过了一遍。主控室到配电间这一段，走的是照明和电池柜充电回路，墙内暗线从天花板夹层穿过。渗水如果正好落在接线盒上，短路就是必然的。\n\n“别碰它。”他提高一点音量，“先回来，把工具和绝缘胶带带上。我过去。”\n\n“你过来？”\n\n“门我来开，图纸在我手上。那段线路两个回路有交叉，不能乱切。”\n\n她的脚步声折返。进门时手电光扫到他的腿，他正把膝盖往椅子外侧挪，动作不算自然。许宁什么都没问，从工具袋里抽出绝缘胶带、电工钳和一把裁纸刀，顺手把一块折叠凳拍开，推到他手边。\n\n“拄着。”她说。\n\n林川接过来，折叠凳的腿在手里晃了晃，他试着用它当拐杖使。走得不快，但从主控室到配电间这一路还算稳。许宁走在前面半步，手电光照着地面，替他避开地上那摊已经积起来的水。走廊天花板每隔几步就有水痕，最严重的一处在配电间门口上方，水顺着墙往下爬，在门框边汇成一道细流。\n\n配电间比主控室更冷，空气里全是潮气。墙面上一排接线盒沿走廊延伸进来，许宁指的那个在靠里第二只，外壳全是水，边缘凝着水珠，往下滴。林川让她把总闸从配电间这边的分开关切下来，再逐节拔掉这段回路的支路熔断器。\n\n“只留电池柜充电那一路。”他说，“其余全断。”\n\n许宁照做，动作很快，每一路拔下都回头报一句。林川拄着折叠凳挪到接线盒前，先用干布擦了外壳，再用裁纸刀沿着盒盖缝隙撬开。盖板一松，一股潮热的气味涌出来，里面线头全是水，接线柱表面起了白绿色的氧化物，其中一根线的绝缘皮已经发黑卷曲。盒底积了浅浅一层水。\n\n“进水短路。”他把手电凑近，“这根火线对地的绝缘坏了，等于直接接地。难怪跳。”\n\n“能修吗？”\n\n“换线头、吹干、做绝缘。临时能顶。”林川用钳子夹住发黑的线头，轻轻一拉，铜芯露出来，已经锈了半截，“问题是水从哪来。盒子上方天花板这块，你刚才说有两处渗水。”\n\n许宁把手电往上照。盒体正上方的水泥顶棚有一道细纹，水正从纹路里渗出来，一滴一滴，落在盒盖残存的斜面上。裂纹不长，但在往两侧走。\n\n“上面是屋面。”林川仰着头看了一会儿，“排水沟大概堵了。这雨再下几个小时，整段夹层都要泡。”\n\n两人沉默地让那滴水声填满这间小屋。许宁先开口：“先做临时处理？”\n\n“嗯。”他点头，“你把备用线头剥出来，我来做。做完先恢复电池柜那一路，看有没有电。”\n\n许宁蹲下来剥线，动作利落，铜芯露得齐整。林川一手扶盒体一手接线，湿冷的水顺着他的手腕往下淌。膝盖一直维持着半跪的姿势，热度、胀感、还有一点针扎似的跳，在骨缝里反复。他尽量把重心分散到右腿和手臂上，额头渗出一层薄汗。\n\n线接好，缠上三层绝缘胶带。林川让许宁把电池柜那一路合上，自己退到门口。\n\n啪的一声。\n\n柜体上方的小显示屏亮了，幽绿的背光在暗屋里格外刺眼。电压读数一点点往上爬，停在标称值以下一截。\n\n“有输出，但不稳。”林川盯着那个跳动的数字，“电池是旧的，撑不了多久。主机带不动，照明和应急可以开。”他伸手按了配电间门口那排开关，走廊应急灯接二连三亮起来，昏黄的光铺在湿漉漉的地面上。\n\n许宁松了半口气，随即又皱起眉。她指着接线盒上方那道水痕：“这个没根治。电池充电回路也在这段，水位再涨，迟早把刚接的线再泡了。”\n\n“知道。”林川说，“现在只能做围挡，把渗水引开，不让它落进盒子。今晚是顶不过大修的。”\n\n他去工具架上翻出一卷防潮布和几块废木条，许宁接手把布撑开，用木条在接线盒上方钉了个简易斜面，让水滴顺着布沿滑到墙角。做完这些，她退开一步，看了看，又用裁纸刀在墙角地面划了一道小沟，引水往外流。\n\n“能撑几小时。”她说，“几小时之后呢？”\n\n林川没答。他靠在门框上，左腿伸直，膝盖比刚才肿得更明显，裤管绷紧了一圈。应急灯的光从他脚下一路铺到配电间深处，那条被临时修复的线路正发出细弱的电流声。外面雨没有停的意思，敲在铁皮屋顶上，比先前更密。\n\n许宁把手电关掉，省电。她走过来，目光在他膝盖上停了一下，又移开。\n\n“你歇着。”她说，“我去把走廊其他几处渗水点也标一下，画个图。明天——”\n\n她顿了一下。\n\n“明天要是雨停了，得上去看屋面。排水沟堵在哪，得有人爬上去。”\n\n林川顺着她的话往上看了一眼。那道天花板裂纹在昏光里像一条细黑的河，正缓慢地拓宽。电池柜的显示屏还亮着，电压读数又往下掉了一格。\n\n“雨不会停。”他说。\n\n许宁没接话，从抽屉里翻出铅笔和记录本，转身走进走廊。脚步声和着滴水声往前去。林川留在门口，一只手撑在门框上，另一只手攥着那卷剩下的绝缘胶带。胶带外圈冰凉，里面似乎还沾着方才渗进盒里的潮气。他低头看了一眼自己的左膝，裤管下的轮廓比一小时前更圆了些。走廊尽头，许宁的笔尖划过纸面，沙沙地标下第一处渗水的位置。\n\n【当前台账快照】（供校准 old_value / 产出 relation_change 候选）\n- [林川] 境界上限=普通人 状态={}\n- [许宁] 境界上限=普通人 状态={}\n\n请抽取记忆候选（严格 JSON）。&quot;
+      },
+      {
+        &quot;role&quot;: &quot;user&quot;,
+        &quot;content&quot;: &quot;作者评审意见：\n- [user_instruction] 暴雨导致山间观测站停电。林川左膝扭伤，与许宁协作检查供电，最后找到漏水的接线盒。全章仅两名人物，避免另建人物。\n- [user_instruction] 作者已否定以下设定；修订正文及其因果影响，禁止换一种说法重新引入。\n- fact: {\&quot;content\&quot;: \&quot;林川忽然获得了瞬间移动的超能力，眨眼就到了十公里外。\&quot;}；理由：现实题材不允许瞬间移动；用人物实际检修动作推进。&quot;
+      }
+    ],
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: true,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    }
+  }
+}</pre></details></article><article><h3>15 · validate</h3><p>输入 0 / 输出 0 tokens · 耗时 0 ms</p><p>程序执行节点，执行统计见下方详情。</p><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;validate&quot;,
+  &quot;input_tokens&quot;: 0,
+  &quot;output_tokens&quot;: 0,
+  &quot;model_id&quot;: null,
+  &quot;duration_ms&quot;: 0,
+  &quot;cost_est&quot;: 0.0,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;findings_total&quot;: 2,
+    &quot;critical&quot;: 0,
+    &quot;l2_major&quot;: 0,
+    &quot;unresolved&quot;: 2,
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: false,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    }
+  }
+}</pre></details></article><article><h3>16 · audit</h3><p>输入 4923 / 输出 56 tokens · 耗时 469 ms</p><p>模型调用记录；完整关键产物见上方计划、正文和审核区。</p><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;audit&quot;,
+  &quot;input_tokens&quot;: 4923,
+  &quot;output_tokens&quot;: 56,
+  &quot;model_id&quot;: &quot;deepseek-v4-flash&quot;,
+  &quot;duration_ms&quot;: 469,
+  &quot;cost_est&quot;: 0.00032246000000000005,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;tool_trace&quot;: [],
+    &quot;response&quot;: {
+      &quot;content&quot;: &quot;&quot;,
+      &quot;tool_calls&quot;: [
+        {
+          &quot;id&quot;: &quot;call_00_m55gIVfGl314FDpyGXUu5477&quot;,
+          &quot;name&quot;: &quot;inspect_facts&quot;,
+          &quot;arguments&quot;: {
+            &quot;query&quot;: &quot;观测站&quot;
+          }
+        },
+        {
+          &quot;id&quot;: &quot;call_01_MT86WwZxO4X6l1w6T0Sv3944&quot;,
+          &quot;name&quot;: &quot;inspect_plot_threads&quot;,
+          &quot;arguments&quot;: {}
+        }
+      ]
+    },
+    &quot;messages&quot;: [
+      {
+        &quot;role&quot;: &quot;system&quot;,
+        &quot;content&quot;: &quot;你是长篇网文创作系统的【审核中枢 Agent】。写作完成后的调度大脑，对本章做语义审核并输出路由决策。\n三步：① 对照章节计划判断剧情发展是否合理（推进了该推进的线、收了该收的伏笔、无主线偏移）；② 判断内容质量（衔接/人设/节奏）；③ 输出路由决策。\n输出严格 JSON：\n{\n  \&quot;verdict\&quot;: \&quot;pass|rewrite|replan\&quot;,\n  \&quot;replan_target\&quot;: \&quot;chapter|batch（仅 verdict=replan 时必填：本章规划偏 → chapter；整批蓝图走偏 → batch）\&quot;,\n  \&quot;findings\&quot;: [{\&quot;conflict_key\&quot;: \&quot;hash键\&quot;, \&quot;conflict_type\&quot;: \&quot;power|timeline|location|character|character_state|relation|foreshadow|item_rule|plotline|persona|style\&quot;, \&quot;severity\&quot;: \&quot;critical|major|minor|hint\&quot;, \&quot;scope\&quot;: \&quot;local|structural|unknown\&quot;, \&quot;evidence\&quot;: [{\&quot;chapter\&quot;: 章号, \&quot;quote\&quot;: \&quot;原文片段\&quot;}], \&quot;confidence\&quot;: 0.0-1.0, \&quot;suggestion\&quot;: \&quot;修改建议\&quot;}],\n  \&quot;reasons\&quot;: [\&quot;路由决策理由（可审计）\&quot;],\n  \&quot;confidence\&quot;: 0.0-1.0\n}\n规则：只有剧情/内容确实有问题才 rewrite 或 replan；本章合格一律 pass（不制造冗余修订）。\nscope 必须明确：local 是句段级小修；structural 是因果、时间线、人物逻辑或整场/整章结构改写；无法判断写 unknown，不从严重程度推测范围。\n跨章必查：对照【近期上下文】的章尾原文与本章开头，检查是否重演已完成动作、丢弃未完成请求/危险、无交代地改变时间地点/视角；计划不能推翻已写正文。对照【近期章节开头】检查近义改写的同一套路，不能只看字面不同。\n明确的接续断裂或机械重复应报 major 并 rewrite，建议必须给出具体接续动作；evidence 至少各引用一处前章/历史章与本章原文并标明章号。同场景接续、合理转场、回应悬念、有意义的呼应不算重复。没有前章原文时不能臆测跨章矛盾。\n如需核实人物状态/世界观事实/伏笔/剧情线，可调用只读查证工具，核实后仍输出严格 JSON。&quot;
+      },
+      {
+        &quot;role&quot;: &quot;user&quot;,
+        &quot;content&quot;: &quot;【第 1 章正文】\n灯灭的那一瞬间，林川的手已经按在了桌沿上。\n\n黑暗来得毫无过渡，像有人把整座观测站从世界里摘了出去。雨声随即变得具体，铁皮屋顶被砸出连绵的闷响，窗玻璃嗡嗡发颤。他稳住上半身，重心本能地往右移，左膝还是迟了半拍才跟上，一阵锐痛从关节内侧扎上来，顺着大腿后侧爬到腰。他咬住后槽牙，把那股酸麻压回去，只让一声短促的吸气漏出来。\n\n“林川？”\n\n许宁的声音在右侧三步远的地方，没有慌乱，只是音调比平时高了一线。\n\n“在。”他应了一声，尽量让嗓音平稳，“别动，先确认脚下的东西。桌角在你左边一点。”\n\n一阵窸窣，大概是她在摸索。“碰到了。你那边？”\n\n“靠墙站着。”林川说，“手电在哪一格抽屉？”\n\n“我记得是第二格，你等下。”\n\n脚步声往储物柜方向去，走得很慢，每一步都先试探再落。黑暗中传来抽屉被拉开又推回的声响，第二个、第三个。许宁低声数着，语气像在给自己报账。\n\n“不对，第二格是记录本。”她说，“第三格，有了。”\n\n一束白光晃出来，先是打在天花板上，再压低，扫过主控台、仪器架、墙角那排铅蓄电池柜。光柱里全是浮尘，细密地翻涌。许宁转过身，光束在林川身上停了一下，落在他的左腿上。\n\n“你又跛了。”\n\n“老毛病。”林川避开那道视线，“先看市电。主闸箱在走廊尽头，控制面板上应该有指示。”\n\n许宁没接话，把手电递过来一半，自己攥着另一半，两人各持一端，像抬着一根看不见的杆子往门口走。走廊比主控室更暗，只有应急标识在墙上泛着微弱的绿。雨声在这里更响，像是从天花板内部长出来的。\n\n控制面板嵌在配电间外墙上，几排指示灯全黑。林川单手扶着墙，另一只手掀开面板外盖，指尖在断路器和漏电保护器的拨杆上一路摸过去。全部在合闸位。\n\n“总闸没跳。”他说，“市电是真的断了，不是室内故障。”\n\n“备用电源呢？电池柜不是独立的吗？”\n\n“测一下。”\n\n他们退回主控室。林川坐在椅子边缘，把左腿伸直，膝盖上那处热痛慢慢摊开。许宁把手电卡在仪器架上，对着铅蓄电池柜照。柜体上方的小显示屏黑着，按下测试键也没有反应。她又去查柜体侧面的电压表，指针纹丝不动。\n\n“没输出。”她说，“是电池组的问题，还是线路断了？”\n\n“都有可能。”林川盯着那个黑屏，“如果只是电池老化，主闸那边应该有市电。现在两个都没了，说明外部线路和备用回路同时出问题。雨太大，山里这种概率不低。”\n\n许宁沉默两秒，把手电从架子上取下来。“走廊顶上刚才有个地方在响，像是水声。我去看看。”\n\n“等等。”林川撑着椅子站起来，左膝一软，他用手掌摁住椅背，把身体的重量全压到右腿，“先定一下分工。你负责往前探查，我做记录和判断。每到一个节点回报一次，别一个人钻进去太深。”\n\n“你确定不一起走？”\n\n“我这腿拖不了十几分钟的路。”他说得干脆，没给自己留余地，“而且得有人守着面板，万一市电来了要立刻合闸。”\n\n许宁看了他一秒，点头，把那半截手电塞进他手里。“那你守着。我沿着走廊往配电间去，路上看接线盒。”\n\n“配电间的门锁着，钥匙在主控台第二层抽屉，铜的。”\n\n“知道。”\n\n她走出去。脚步声在走廊里逐渐拉远，随后被雨声盖住。林川把电筒光对准控制面板，每隔一会儿就扫一次，明知道不会有变化。他把注意力压在痛感以外的地方，让呼吸慢下来。膝盖的肿在裤管下一点点鼓起来，贴着皮肤发烫。\n\n约莫过了七八分钟，走廊里传来两声敲墙。约定的回报信号。\n\n“主控室到配电间这段，天花板有两处渗水。”许宁的声音从廊道里传回来，隔着雨有点发闷，“靠楼梯口那个接线盒外壳是湿的，我打开看了一眼，里面全是水珠。”\n\n“有没有焦味？”\n\n“有，很淡，混着雨腥味。盒子底下那片墙皮已经发黑。”\n\n林川在脑子里把线路图过了一遍。主控室到配电间这一段，走的是照明和电池柜充电回路，墙内暗线从天花板夹层穿过。渗水如果正好落在接线盒上，短路就是必然的。\n\n“别碰它。”他提高一点音量，“先回来，把工具和绝缘胶带带上。我过去。”\n\n“你过来？”\n\n“门我来开，图纸在我手上。那段线路两个回路有交叉，不能乱切。”\n\n她的脚步声折返。进门时手电光扫到他的腿，他正把膝盖往椅子外侧挪，动作不算自然。许宁什么都没问，从工具袋里抽出绝缘胶带、电工钳和一把裁纸刀，顺手把一块折叠凳拍开，推到他手边。\n\n“拄着。”她说。\n\n林川接过来，折叠凳的腿在手里晃了晃，他试着用它当拐杖使。走得不快，但从主控室到配电间这一路还算稳。许宁走在前面半步，手电光照着地面，替他避开地上那摊已经积起来的水。走廊天花板每隔几步就有水痕，最严重的一处在配电间门口上方，水顺着墙往下爬，在门框边汇成一道细流。\n\n配电间比主控室更冷，空气里全是潮气。墙面上一排接线盒沿走廊延伸进来，许宁指的那个在靠里第二只，外壳全是水，边缘凝着水珠，往下滴。林川让她把总闸从配电间这边的分开关切下来，再逐节拔掉这段回路的支路熔断器。\n\n“只留电池柜充电那一路。”他说，“其余全断。”\n\n许宁照做，动作很快，每一路拔下都回头报一句。林川拄着折叠凳挪到接线盒前，先用干布擦了外壳，再用裁纸刀沿着盒盖缝隙撬开。盖板一松，一股潮热的气味涌出来，里面线头全是水，接线柱表面起了白绿色的氧化物，其中一根线的绝缘皮已经发黑卷曲。盒底积了浅浅一层水。\n\n“进水短路。”他把手电凑近，“这根火线对地的绝缘坏了，等于直接接地。难怪跳。”\n\n“能修吗？”\n\n“换线头、吹干、做绝缘。临时能顶。”林川用钳子夹住发黑的线头，轻轻一拉，铜芯露出来，已经锈了半截，“问题是水从哪来。盒子上方天花板这块，你刚才说有两处渗水。”\n\n许宁把手电往上照。盒体正上方的水泥顶棚有一道细纹，水正从纹路里渗出来，一滴一滴，落在盒盖残存的斜面上。裂纹不长，但在往两侧走。\n\n“上面是屋面。”林川仰着头看了一会儿，“排水沟大概堵了。这雨再下几个小时，整段夹层都要泡。”\n\n两人沉默地让那滴水声填满这间小屋。许宁先开口：“先做临时处理？”\n\n“嗯。”他点头，“你把备用线头剥出来，我来做。做完先恢复电池柜那一路，看有没有电。”\n\n许宁蹲下来剥线，动作利落，铜芯露得齐整。林川一手扶盒体一手接线，湿冷的水顺着他的手腕往下淌。膝盖一直维持着半跪的姿势，热度、胀感、还有一点针扎似的跳，在骨缝里反复。他尽量把重心分散到右腿和手臂上，额头渗出一层薄汗。\n\n线接好，缠上三层绝缘胶带。林川让许宁把电池柜那一路合上，自己退到门口。\n\n啪的一声。\n\n柜体上方的小显示屏亮了，幽绿的背光在暗屋里格外刺眼。电压读数一点点往上爬，停在标称值以下一截。\n\n“有输出，但不稳。”林川盯着那个跳动的数字，“电池是旧的，撑不了多久。主机带不动，照明和应急可以开。”他伸手按了配电间门口那排开关，走廊应急灯接二连三亮起来，昏黄的光铺在湿漉漉的地面上。\n\n许宁松了半口气，随即又皱起眉。她指着接线盒上方那道水痕：“这个没根治。电池充电回路也在这段，水位再涨，迟早把刚接的线再泡了。”\n\n“知道。”林川说，“现在只能做围挡，把渗水引开，不让它落进盒子。今晚是顶不过大修的。”\n\n他去工具架上翻出一卷防潮布和几块废木条，许宁接手把布撑开，用木条在接线盒上方钉了个简易斜面，让水滴顺着布沿滑到墙角。做完这些，她退开一步，看了看，又用裁纸刀在墙角地面划了一道小沟，引水往外流。\n\n“能撑几小时。”她说，“几小时之后呢？”\n\n林川没答。他靠在门框上，左腿伸直，膝盖比刚才肿得更明显，裤管绷紧了一圈。应急灯的光从他脚下一路铺到配电间深处，那条被临时修复的线路正发出细弱的电流声。外面雨没有停的意思，敲在铁皮屋顶上，比先前更密。\n\n许宁把手电关掉，省电。她走过来，目光在他膝盖上停了一下，又移开。\n\n“你歇着。”她说，“我去把走廊其他几处渗水点也标一下，画个图。明天——”\n\n她顿了一下。\n\n“明天要是雨停了，得上去看屋面。排水沟堵在哪，得有人爬上去。”\n\n林川顺着她的话往上看了一眼。那道天花板裂纹在昏光里像一条细黑的河，正缓慢地拓宽。电池柜的显示屏还亮着，电压读数又往下掉了一格。\n\n“雨不会停。”他说。\n\n许宁没接话，从抽屉里翻出铅笔和记录本，转身走进走廊。脚步声和着滴水声往前去。林川留在门口，一只手撑在门框上，另一只手攥着那卷剩下的绝缘胶带。胶带外圈冰凉，里面似乎还沾着方才渗进盒里的潮气。他低头看了一眼自己的左膝，裤管下的轮廓比一小时前更圆了些。走廊尽头，许宁的笔尖划过纸面，沙沙地标下第一处渗水的位置。\n\n【章节计划】\n{\n \&quot;project_id\&quot;: \&quot;76d2b74b-d498-4e16-a2ca-959fb8174797\&quot;,\n \&quot;chapter_seq\&quot;: 1,\n \&quot;goals\&quot;: [\n  \&quot;推进林川与许宁在暴雨停电的观测站中排除供电故障的生存协作线\&quot;,\n  \&quot;建立两人在受限空间内的信任与分工关系\&quot;\n ],\n \&quot;scenes\&quot;: [\n  {\n   \&quot;location_id\&quot;: \&quot;山间观测站主控室\&quot;,\n   \&quot;participants\&quot;: [\n    \&quot;林川\&quot;,\n    \&quot;许宁\&quot;\n   ],\n   \&quot;goal\&quot;: \&quot;确认停电范围与备用电源状态，分派排查任务\&quot;,\n   \&quot;time\&quot;: \&quot;暴雨夜，停电后约十分钟\&quot;\n  },\n  {\n   \&quot;location_id\&quot;: \&quot;山间观测站走廊及配电间\&quot;,\n   \&quot;participants\&quot;: [\n    \&quot;林川\&quot;,\n    \&quot;许宁\&quot;\n   ],\n   \&quot;goal\&quot;: \&quot;沿线路逐段排查供电回路，发现接线盒漏水\&quot;,\n   \&quot;time\&quot;: \&quot;停电后半小时内\&quot;\n  },\n  {\n   \&quot;location_id\&quot;: \&quot;山间观测站配电间\&quot;,\n   \&quot;participants\&quot;: [\n    \&quot;林川\&quot;,\n    \&quot;许宁\&quot;\n   ],\n   \&quot;goal\&quot;: \&quot;处理漏水接线盒，恢复局部供电或做出临时处置决定\&quot;,\n   \&quot;time\&quot;: \&quot;停电后一小时内\&quot;\n  }\n ],\n \&quot;characters\&quot;: [\n  {\n   \&quot;character_id\&quot;: \&quot;林川\&quot;,\n   \&quot;expected_state\&quot;: {\n    \&quot;location\&quot;: \&quot;山间观测站配电间\&quot;,\n    \&quot;physical\&quot;: \&quot;左膝扭伤，行动受限，需借助支撑物移动\&quot;,\n    \&quot;mental\&quot;: \&quot;克制疼痛，专注排查故障，对许宁逐渐建立协作信任\&quot;\n   }\n  },\n  {\n   \&quot;character_id\&quot;: \&quot;许宁\&quot;,\n   \&quot;expected_state\&quot;: {\n    \&quot;location\&quot;: [TRUNCATED]&quot;
+      }
+    ],
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: true,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    }
+  }
+}</pre></details></article><article><h3>17 · audit</h3><p>输入 5077 / 输出 414 tokens · 耗时 3266 ms</p><ul><li>对照章节计划：三场戏（主控室确认停电与分工 / 走廊-配电间逐段排查 / 配电间处置接线盒）均有对应且顺序一致，单位与时间推进（停电后十分钟→半小时内→一小时内）合理，无主线偏移。</li><li>L1 两条『预期事件无对应』为误报：正文明确写了断电拔支路熔断器、只留电池柜充电回路、换线头缠胶带后合闸恢复局部供电（显示屏亮起、应急灯点亮），也明确以渗水源未根治、电压读数下掉、『雨不会停』收束，功能上覆盖预期的两个事件节点。</li><li>硬约束全部满足：仅林川、许宁两人；故障排查符合现实电气常识（合闸位正常→市电确断→电池柜无输出→渗水短路→切断故障回路）；左膝扭伤有合理过程（跛行、面部肿、借折叠凳当拐杖，未痊愈未奔跑）；暴雨停电环境前后一致，市电未恢复。</li><li>人物逻辑与计划一致：林川克制疼痛、专注判断、逐步接受协作；许宁主动探查、标注渗水点、对伤情关注但不过度干预，结尾埋下明日上屋面巡查的后续引子。</li><li>衔接：本章为开篇（transition.mode=opening），无前章正文，不适用跨章接续检查；开头即灯灭、黑暗中互相确认位置，与 opening_beat 一致；无前章原文，不存在重演或接续断裂。</li><li>质量：节奏为单场景递进式排查，靠动作与细节（滴落的水、胶带、折叠凳、电压读数）推进，无机械重复段落，人设语气统一。</li></ul><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;audit&quot;,
+  &quot;input_tokens&quot;: 5077,
+  &quot;output_tokens&quot;: 414,
+  &quot;model_id&quot;: &quot;deepseek-v4-flash&quot;,
+  &quot;duration_ms&quot;: 3266,
+  &quot;cost_est&quot;: 0.00175754,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;tool_trace&quot;: [
+      {
+        &quot;tool&quot;: &quot;inspect_facts&quot;,
+        &quot;arguments&quot;: {
+          &quot;query&quot;: &quot;观测站&quot;,
+          &quot;chapter_seq&quot;: 1
+        },
+        &quot;result&quot;: &quot;{\&quot;count\&quot;: 1, \&quot;facts\&quot;: [{\&quot;content\&quot;: \&quot;观测站走廊天花板渗水（疑因屋面排水沟堵塞），导致墙面接线盒进水短路，使市电与备用电池充电回路同时失效\&quot;, \&quot;category\&quot;: \&quot;规则\&quot;, \&quot;is_hard\&quot;: true, \&quot;source_chapter\&quot;: 1}]}&quot;
+      },
+      {
+        &quot;tool&quot;: &quot;inspect_plot_threads&quot;,
+        &quot;arguments&quot;: {},
+        &quot;result&quot;: &quot;{\&quot;count\&quot;: 0, \&quot;threads\&quot;: []}&quot;
+      }
+    ],
+    &quot;response&quot;: {
+      &quot;content&quot;: &quot;{\n  \&quot;verdict\&quot;: \&quot;pass\&quot;,\n  \&quot;reasons\&quot;: [\n    \&quot;对照章节计划：三场戏（主控室确认停电与分工 / 走廊-配电间逐段排查 / 配电间处置接线盒）均有对应且顺序一致，单位与时间推进（停电后十分钟→半小时内→一小时内）合理，无主线偏移。\&quot;,\n    \&quot;L1 两条『预期事件无对应』为误报：正文明确写了断电拔支路熔断器、只留电池柜充电回路、换线头缠胶带后合闸恢复局部供电（显示屏亮起、应急灯点亮），也明确以渗水源未根治、电压读数下掉、『雨不会停』收束，功能上覆盖预期的两个事件节点。\&quot;,\n    \&quot;硬约束全部满足：仅林川、许宁两人；故障排查符合现实电气常识（合闸位正常→市电确断→电池柜无输出→渗水短路→切断故障回路）；左膝扭伤有合理过程（跛行、面部肿、借折叠凳当拐杖，未痊愈未奔跑）；暴雨停电环境前后一致，市电未恢复。\&quot;,\n    \&quot;人物逻辑与计划一致：林川克制疼痛、专注判断、逐步接受协作；许宁主动探查、标注渗水点、对伤情关注但不过度干预，结尾埋下明日上屋面巡查的后续引子。\&quot;,\n    \&quot;衔接：本章为开篇（transition.mode=opening），无前章正文，不适用跨章接续检查；开头即灯灭、黑暗中互相确认位置，与 opening_beat 一致；无前章原文，不存在重演或接续断裂。\&quot;,\n    \&quot;质量：节奏为单场景递进式排查，靠动作与细节（滴落的水、胶带、折叠凳、电压读数）推进，无机械重复段落，人设语气统一。\&quot;\n  ],\n  \&quot;confidence\&quot;: 0.86\n}&quot;,
+      &quot;tool_calls&quot;: null
+    },
+    &quot;messages&quot;: [
+      {
+        &quot;role&quot;: &quot;system&quot;,
+        &quot;content&quot;: &quot;你是长篇网文创作系统的【审核中枢 Agent】。写作完成后的调度大脑，对本章做语义审核并输出路由决策。\n三步：① 对照章节计划判断剧情发展是否合理（推进了该推进的线、收了该收的伏笔、无主线偏移）；② 判断内容质量（衔接/人设/节奏）；③ 输出路由决策。\n输出严格 JSON：\n{\n  \&quot;verdict\&quot;: \&quot;pass|rewrite|replan\&quot;,\n  \&quot;replan_target\&quot;: \&quot;chapter|batch（仅 verdict=replan 时必填：本章规划偏 → chapter；整批蓝图走偏 → batch）\&quot;,\n  \&quot;findings\&quot;: [{\&quot;conflict_key\&quot;: \&quot;hash键\&quot;, \&quot;conflict_type\&quot;: \&quot;power|timeline|location|character|character_state|relation|foreshadow|item_rule|plotline|persona|style\&quot;, \&quot;severity\&quot;: \&quot;critical|major|minor|hint\&quot;, \&quot;scope\&quot;: \&quot;local|structural|unknown\&quot;, \&quot;evidence\&quot;: [{\&quot;chapter\&quot;: 章号, \&quot;quote\&quot;: \&quot;原文片段\&quot;}], \&quot;confidence\&quot;: 0.0-1.0, \&quot;suggestion\&quot;: \&quot;修改建议\&quot;}],\n  \&quot;reasons\&quot;: [\&quot;路由决策理由（可审计）\&quot;],\n  \&quot;confidence\&quot;: 0.0-1.0\n}\n规则：只有剧情/内容确实有问题才 rewrite 或 replan；本章合格一律 pass（不制造冗余修订）。\nscope 必须明确：local 是句段级小修；structural 是因果、时间线、人物逻辑或整场/整章结构改写；无法判断写 unknown，不从严重程度推测范围。\n跨章必查：对照【近期上下文】的章尾原文与本章开头，检查是否重演已完成动作、丢弃未完成请求/危险、无交代地改变时间地点/视角；计划不能推翻已写正文。对照【近期章节开头】检查近义改写的同一套路，不能只看字面不同。\n明确的接续断裂或机械重复应报 major 并 rewrite，建议必须给出具体接续动作；evidence 至少各引用一处前章/历史章与本章原文并标明章号。同场景接续、合理转场、回应悬念、有意义的呼应不算重复。没有前章原文时不能臆测跨章矛盾。\n如需核实人物状态/世界观事实/伏笔/剧情线，可调用只读查证工具，核实后仍输出严格 JSON。&quot;
+      },
+      {
+        &quot;role&quot;: &quot;user&quot;,
+        &quot;content&quot;: &quot;【第 1 章正文】\n灯灭的那一瞬间，林川的手已经按在了桌沿上。\n\n黑暗来得毫无过渡，像有人把整座观测站从世界里摘了出去。雨声随即变得具体，铁皮屋顶被砸出连绵的闷响，窗玻璃嗡嗡发颤。他稳住上半身，重心本能地往右移，左膝还是迟了半拍才跟上，一阵锐痛从关节内侧扎上来，顺着大腿后侧爬到腰。他咬住后槽牙，把那股酸麻压回去，只让一声短促的吸气漏出来。\n\n“林川？”\n\n许宁的声音在右侧三步远的地方，没有慌乱，只是音调比平时高了一线。\n\n“在。”他应了一声，尽量让嗓音平稳，“别动，先确认脚下的东西。桌角在你左边一点。”\n\n一阵窸窣，大概是她在摸索。“碰到了。你那边？”\n\n“靠墙站着。”林川说，“手电在哪一格抽屉？”\n\n“我记得是第二格，你等下。”\n\n脚步声往储物柜方向去，走得很慢，每一步都先试探再落。黑暗中传来抽屉被拉开又推回的声响，第二个、第三个。许宁低声数着，语气像在给自己报账。\n\n“不对，第二格是记录本。”她说，“第三格，有了。”\n\n一束白光晃出来，先是打在天花板上，再压低，扫过主控台、仪器架、墙角那排铅蓄电池柜。光柱里全是浮尘，细密地翻涌。许宁转过身，光束在林川身上停了一下，落在他的左腿上。\n\n“你又跛了。”\n\n“老毛病。”林川避开那道视线，“先看市电。主闸箱在走廊尽头，控制面板上应该有指示。”\n\n许宁没接话，把手电递过来一半，自己攥着另一半，两人各持一端，像抬着一根看不见的杆子往门口走。走廊比主控室更暗，只有应急标识在墙上泛着微弱的绿。雨声在这里更响，像是从天花板内部长出来的。\n\n控制面板嵌在配电间外墙上，几排指示灯全黑。林川单手扶着墙，另一只手掀开面板外盖，指尖在断路器和漏电保护器的拨杆上一路摸过去。全部在合闸位。\n\n“总闸没跳。”他说，“市电是真的断了，不是室内故障。”\n\n“备用电源呢？电池柜不是独立的吗？”\n\n“测一下。”\n\n他们退回主控室。林川坐在椅子边缘，把左腿伸直，膝盖上那处热痛慢慢摊开。许宁把手电卡在仪器架上，对着铅蓄电池柜照。柜体上方的小显示屏黑着，按下测试键也没有反应。她又去查柜体侧面的电压表，指针纹丝不动。\n\n“没输出。”她说，“是电池组的问题，还是线路断了？”\n\n“都有可能。”林川盯着那个黑屏，“如果只是电池老化，主闸那边应该有市电。现在两个都没了，说明外部线路和备用回路同时出问题。雨太大，山里这种概率不低。”\n\n许宁沉默两秒，把手电从架子上取下来。“走廊顶上刚才有个地方在响，像是水声。我去看看。”\n\n“等等。”林川撑着椅子站起来，左膝一软，他用手掌摁住椅背，把身体的重量全压到右腿，“先定一下分工。你负责往前探查，我做记录和判断。每到一个节点回报一次，别一个人钻进去太深。”\n\n“你确定不一起走？”\n\n“我这腿拖不了十几分钟的路。”他说得干脆，没给自己留余地，“而且得有人守着面板，万一市电来了要立刻合闸。”\n\n许宁看了他一秒，点头，把那半截手电塞进他手里。“那你守着。我沿着走廊往配电间去，路上看接线盒。”\n\n“配电间的门锁着，钥匙在主控台第二层抽屉，铜的。”\n\n“知道。”\n\n她走出去。脚步声在走廊里逐渐拉远，随后被雨声盖住。林川把电筒光对准控制面板，每隔一会儿就扫一次，明知道不会有变化。他把注意力压在痛感以外的地方，让呼吸慢下来。膝盖的肿在裤管下一点点鼓起来，贴着皮肤发烫。\n\n约莫过了七八分钟，走廊里传来两声敲墙。约定的回报信号。\n\n“主控室到配电间这段，天花板有两处渗水。”许宁的声音从廊道里传回来，隔着雨有点发闷，“靠楼梯口那个接线盒外壳是湿的，我打开看了一眼，里面全是水珠。”\n\n“有没有焦味？”\n\n“有，很淡，混着雨腥味。盒子底下那片墙皮已经发黑。”\n\n林川在脑子里把线路图过了一遍。主控室到配电间这一段，走的是照明和电池柜充电回路，墙内暗线从天花板夹层穿过。渗水如果正好落在接线盒上，短路就是必然的。\n\n“别碰它。”他提高一点音量，“先回来，把工具和绝缘胶带带上。我过去。”\n\n“你过来？”\n\n“门我来开，图纸在我手上。那段线路两个回路有交叉，不能乱切。”\n\n她的脚步声折返。进门时手电光扫到他的腿，他正把膝盖往椅子外侧挪，动作不算自然。许宁什么都没问，从工具袋里抽出绝缘胶带、电工钳和一把裁纸刀，顺手把一块折叠凳拍开，推到他手边。\n\n“拄着。”她说。\n\n林川接过来，折叠凳的腿在手里晃了晃，他试着用它当拐杖使。走得不快，但从主控室到配电间这一路还算稳。许宁走在前面半步，手电光照着地面，替他避开地上那摊已经积起来的水。走廊天花板每隔几步就有水痕，最严重的一处在配电间门口上方，水顺着墙往下爬，在门框边汇成一道细流。\n\n配电间比主控室更冷，空气里全是潮气。墙面上一排接线盒沿走廊延伸进来，许宁指的那个在靠里第二只，外壳全是水，边缘凝着水珠，往下滴。林川让她把总闸从配电间这边的分开关切下来，再逐节拔掉这段回路的支路熔断器。\n\n“只留电池柜充电那一路。”他说，“其余全断。”\n\n许宁照做，动作很快，每一路拔下都回头报一句。林川拄着折叠凳挪到接线盒前，先用干布擦了外壳，再用裁纸刀沿着盒盖缝隙撬开。盖板一松，一股潮热的气味涌出来，里面线头全是水，接线柱表面起了白绿色的氧化物，其中一根线的绝缘皮已经发黑卷曲。盒底积了浅浅一层水。\n\n“进水短路。”他把手电凑近，“这根火线对地的绝缘坏了，等于直接接地。难怪跳。”\n\n“能修吗？”\n\n“换线头、吹干、做绝缘。临时能顶。”林川用钳子夹住发黑的线头，轻轻一拉，铜芯露出来，已经锈了半截，“问题是水从哪来。盒子上方天花板这块，你刚才说有两处渗水。”\n\n许宁把手电往上照。盒体正上方的水泥顶棚有一道细纹，水正从纹路里渗出来，一滴一滴，落在盒盖残存的斜面上。裂纹不长，但在往两侧走。\n\n“上面是屋面。”林川仰着头看了一会儿，“排水沟大概堵了。这雨再下几个小时，整段夹层都要泡。”\n\n两人沉默地让那滴水声填满这间小屋。许宁先开口：“先做临时处理？”\n\n“嗯。”他点头，“你把备用线头剥出来，我来做。做完先恢复电池柜那一路，看有没有电。”\n\n许宁蹲下来剥线，动作利落，铜芯露得齐整。林川一手扶盒体一手接线，湿冷的水顺着他的手腕往下淌。膝盖一直维持着半跪的姿势，热度、胀感、还有一点针扎似的跳，在骨缝里反复。他尽量把重心分散到右腿和手臂上，额头渗出一层薄汗。\n\n线接好，缠上三层绝缘胶带。林川让许宁把电池柜那一路合上，自己退到门口。\n\n啪的一声。\n\n柜体上方的小显示屏亮了，幽绿的背光在暗屋里格外刺眼。电压读数一点点往上爬，停在标称值以下一截。\n\n“有输出，但不稳。”林川盯着那个跳动的数字，“电池是旧的，撑不了多久。主机带不动，照明和应急可以开。”他伸手按了配电间门口那排开关，走廊应急灯接二连三亮起来，昏黄的光铺在湿漉漉的地面上。\n\n许宁松了半口气，随即又皱起眉。她指着接线盒上方那道水痕：“这个没根治。电池充电回路也在这段，水位再涨，迟早把刚接的线再泡了。”\n\n“知道。”林川说，“现在只能做围挡，把渗水引开，不让它落进盒子。今晚是顶不过大修的。”\n\n他去工具架上翻出一卷防潮布和几块废木条，许宁接手把布撑开，用木条在接线盒上方钉了个简易斜面，让水滴顺着布沿滑到墙角。做完这些，她退开一步，看了看，又用裁纸刀在墙角地面划了一道小沟，引水往外流。\n\n“能撑几小时。”她说，“几小时之后呢？”\n\n林川没答。他靠在门框上，左腿伸直，膝盖比刚才肿得更明显，裤管绷紧了一圈。应急灯的光从他脚下一路铺到配电间深处，那条被临时修复的线路正发出细弱的电流声。外面雨没有停的意思，敲在铁皮屋顶上，比先前更密。\n\n许宁把手电关掉，省电。她走过来，目光在他膝盖上停了一下，又移开。\n\n“你歇着。”她说，“我去把走廊其他几处渗水点也标一下，画个图。明天——”\n\n她顿了一下。\n\n“明天要是雨停了，得上去看屋面。排水沟堵在哪，得有人爬上去。”\n\n林川顺着她的话往上看了一眼。那道天花板裂纹在昏光里像一条细黑的河，正缓慢地拓宽。电池柜的显示屏还亮着，电压读数又往下掉了一格。\n\n“雨不会停。”他说。\n\n许宁没接话，从抽屉里翻出铅笔和记录本，转身走进走廊。脚步声和着滴水声往前去。林川留在门口，一只手撑在门框上，另一只手攥着那卷剩下的绝缘胶带。胶带外圈冰凉，里面似乎还沾着方才渗进盒里的潮气。他低头看了一眼自己的左膝，裤管下的轮廓比一小时前更圆了些。走廊尽头，许宁的笔尖划过纸面，沙沙地标下第一处渗水的位置。\n\n【章节计划】\n{\n \&quot;project_id\&quot;: \&quot;76d2b74b-d498-4e16-a2ca-959fb8174797\&quot;,\n \&quot;chapter_seq\&quot;: 1,\n \&quot;goals\&quot;: [\n  \&quot;推进林川与许宁在暴雨停电的观测站中排除供电故障的生存协作线\&quot;,\n  \&quot;建立两人在受限空间内的信任与分工关系\&quot;\n ],\n \&quot;scenes\&quot;: [\n  {\n   \&quot;location_id\&quot;: \&quot;山间观测站主控室\&quot;,\n   \&quot;participants\&quot;: [\n    \&quot;林川\&quot;,\n    \&quot;许宁\&quot;\n   ],\n   \&quot;goal\&quot;: \&quot;确认停电范围与备用电源状态，分派排查任务\&quot;,\n   \&quot;time\&quot;: \&quot;暴雨夜，停电后约十分钟\&quot;\n  },\n  {\n   \&quot;location_id\&quot;: \&quot;山间观测站走廊及配电间\&quot;,\n   \&quot;participants\&quot;: [\n    \&quot;林川\&quot;,\n    \&quot;许宁\&quot;\n   ],\n   \&quot;goal\&quot;: \&quot;沿线路逐段排查供电回路，发现接线盒漏水\&quot;,\n   \&quot;time\&quot;: \&quot;停电后半小时内\&quot;\n  },\n  {\n   \&quot;location_id\&quot;: \&quot;山间观测站配电间\&quot;,\n   \&quot;participants\&quot;: [\n    \&quot;林川\&quot;,\n    \&quot;许宁\&quot;\n   ],\n   \&quot;goal\&quot;: \&quot;处理漏水接线盒，恢复局部供电或做出临时处置决定\&quot;,\n   \&quot;time\&quot;: \&quot;停电后一小时内\&quot;\n  }\n ],\n \&quot;characters\&quot;: [\n  {\n   \&quot;character_id\&quot;: \&quot;林川\&quot;,\n   \&quot;expected_state\&quot;: {\n    \&quot;location\&quot;: \&quot;山间观测站配电间\&quot;,\n    \&quot;physical\&quot;: \&quot;左膝扭伤，行动受限，需借助支撑物移动\&quot;,\n    \&quot;mental\&quot;: \&quot;克制疼痛，专注排查故障，对许宁逐渐建立协作信任\&quot;\n   }\n  },\n  {\n   \&quot;character_id\&quot;: \&quot;许宁\&quot;,\n   \&quot;expected_state\&quot;: {\n    \&quot;location\&quot;: [TRUNCATED]&quot;
+      },
+      {
+        &quot;role&quot;: &quot;assistant&quot;,
+        &quot;content&quot;: &quot;&quot;,
+        &quot;tool_calls&quot;: [
+          {
+            &quot;id&quot;: &quot;call_00_m55gIVfGl314FDpyGXUu5477&quot;,
+            &quot;type&quot;: &quot;function&quot;,
+            &quot;function&quot;: {
+              &quot;name&quot;: &quot;inspect_facts&quot;,
+              &quot;arguments&quot;: &quot;{\&quot;query\&quot;: \&quot;观测站\&quot;}&quot;
+            }
+          },
+          {
+            &quot;id&quot;: &quot;call_01_MT86WwZxO4X6l1w6T0Sv3944&quot;,
+            &quot;type&quot;: &quot;function&quot;,
+            &quot;function&quot;: {
+              &quot;name&quot;: &quot;inspect_plot_threads&quot;,
+              &quot;arguments&quot;: &quot;{}&quot;
+            }
+          }
+        ]
+      },
+      {
+        &quot;role&quot;: &quot;tool&quot;,
+        &quot;tool_call_id&quot;: &quot;call_00_m55gIVfGl314FDpyGXUu5477&quot;,
+        &quot;content&quot;: &quot;{\&quot;count\&quot;: 1, \&quot;facts\&quot;: [{\&quot;content\&quot;: \&quot;观测站走廊天花板渗水（疑因屋面排水沟堵塞），导致墙面接线盒进水短路，使市电与备用电池充电回路同时失效\&quot;, \&quot;category\&quot;: \&quot;规则\&quot;, \&quot;is_hard\&quot;: true, \&quot;source_chapter\&quot;: 1}]}&quot;
+      },
+      {
+        &quot;role&quot;: &quot;tool&quot;,
+        &quot;tool_call_id&quot;: &quot;call_01_MT86WwZxO4X6l1w6T0Sv3944&quot;,
+        &quot;content&quot;: &quot;{\&quot;count\&quot;: 0, \&quot;threads\&quot;: []}&quot;
+      }
+    ],
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: true,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    },
+    &quot;audit_verdict&quot;: {
+      &quot;verdict&quot;: &quot;pass&quot;,
+      &quot;replan_target&quot;: null,
+      &quot;findings&quot;: [],
+      &quot;reasons&quot;: [
+        &quot;对照章节计划：三场戏（主控室确认停电与分工 / 走廊-配电间逐段排查 / 配电间处置接线盒）均有对应且顺序一致，单位与时间推进（停电后十分钟→半小时内→一小时内）合理，无主线偏移。&quot;,
+        &quot;L1 两条『预期事件无对应』为误报：正文明确写了断电拔支路熔断器、只留电池柜充电回路、换线头缠胶带后合闸恢复局部供电（显示屏亮起、应急灯点亮），也明确以渗水源未根治、电压读数下掉、『雨不会停』收束，功能上覆盖预期的两个事件节点。&quot;,
+        &quot;硬约束全部满足：仅林川、许宁两人；故障排查符合现实电气常识（合闸位正常→市电确断→电池柜无输出→渗水短路→切断故障回路）；左膝扭伤有合理过程（跛行、面部肿、借折叠凳当拐杖，未痊愈未奔跑）；暴雨停电环境前后一致，市电未恢复。&quot;,
+        &quot;人物逻辑与计划一致：林川克制疼痛、专注判断、逐步接受协作；许宁主动探查、标注渗水点、对伤情关注但不过度干预，结尾埋下明日上屋面巡查的后续引子。&quot;,
+        &quot;衔接：本章为开篇（transition.mode=opening），无前章正文，不适用跨章接续检查；开头即灯灭、黑暗中互相确认位置，与 opening_beat 一致；无前章原文，不存在重演或接续断裂。&quot;,
+        &quot;质量：节奏为单场景递进式排查，靠动作与细节（滴落的水、胶带、折叠凳、电压读数）推进，无机械重复段落，人设语气统一。&quot;
+      ],
+      &quot;confidence&quot;: 0.86
+    }
+  }
+}</pre></details></article><article><h3>18 · route</h3><p>输入 0 / 输出 0 tokens · 耗时 0 ms</p><ul><li>对照章节计划：三场戏（主控室确认停电与分工 / 走廊-配电间逐段排查 / 配电间处置接线盒）均有对应且顺序一致，单位与时间推进（停电后十分钟→半小时内→一小时内）合理，无主线偏移。</li><li>L1 两条『预期事件无对应』为误报：正文明确写了断电拔支路熔断器、只留电池柜充电回路、换线头缠胶带后合闸恢复局部供电（显示屏亮起、应急灯点亮），也明确以渗水源未根治、电压读数下掉、『雨不会停』收束，功能上覆盖预期的两个事件节点。</li><li>硬约束全部满足：仅林川、许宁两人；故障排查符合现实电气常识（合闸位正常→市电确断→电池柜无输出→渗水短路→切断故障回路）；左膝扭伤有合理过程（跛行、面部肿、借折叠凳当拐杖，未痊愈未奔跑）；暴雨停电环境前后一致，市电未恢复。</li><li>人物逻辑与计划一致：林川克制疼痛、专注判断、逐步接受协作；许宁主动探查、标注渗水点、对伤情关注但不过度干预，结尾埋下明日上屋面巡查的后续引子。</li><li>衔接：本章为开篇（transition.mode=opening），无前章正文，不适用跨章接续检查；开头即灯灭、黑暗中互相确认位置，与 opening_beat 一致；无前章原文，不存在重演或接续断裂。</li><li>质量：节奏为单场景递进式排查，靠动作与细节（滴落的水、胶带、折叠凳、电压读数）推进，无机械重复段落，人设语气统一。</li></ul><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;route&quot;,
+  &quot;input_tokens&quot;: 0,
+  &quot;output_tokens&quot;: 0,
+  &quot;model_id&quot;: null,
+  &quot;duration_ms&quot;: 0,
+  &quot;cost_est&quot;: 0.0,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;route&quot;: &quot;persist&quot;,
+    &quot;revision_count&quot;: 1,
+    &quot;patch_count&quot;: 0,
+    &quot;revise_mode&quot;: &quot;full&quot;,
+    &quot;patch_applied&quot;: 0,
+    &quot;patch_skipped&quot;: 0,
+    &quot;patch_rejected_reason&quot;: null,
+    &quot;replan_count&quot;: 0,
+    &quot;rule_summary&quot;: {
+      &quot;total&quot;: 2,
+      &quot;critical&quot;: 0,
+      &quot;resolved&quot;: 0
+    },
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: false,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    },
+    &quot;audit_verdict&quot;: {
+      &quot;verdict&quot;: &quot;pass&quot;,
+      &quot;replan_target&quot;: null,
+      &quot;findings&quot;: [],
+      &quot;reasons&quot;: [
+        &quot;对照章节计划：三场戏（主控室确认停电与分工 / 走廊-配电间逐段排查 / 配电间处置接线盒）均有对应且顺序一致，单位与时间推进（停电后十分钟→半小时内→一小时内）合理，无主线偏移。&quot;,
+        &quot;L1 两条『预期事件无对应』为误报：正文明确写了断电拔支路熔断器、只留电池柜充电回路、换线头缠胶带后合闸恢复局部供电（显示屏亮起、应急灯点亮），也明确以渗水源未根治、电压读数下掉、『雨不会停』收束，功能上覆盖预期的两个事件节点。&quot;,
+        &quot;硬约束全部满足：仅林川、许宁两人；故障排查符合现实电气常识（合闸位正常→市电确断→电池柜无输出→渗水短路→切断故障回路）；左膝扭伤有合理过程（跛行、面部肿、借折叠凳当拐杖，未痊愈未奔跑）；暴雨停电环境前后一致，市电未恢复。&quot;,
+        &quot;人物逻辑与计划一致：林川克制疼痛、专注判断、逐步接受协作；许宁主动探查、标注渗水点、对伤情关注但不过度干预，结尾埋下明日上屋面巡查的后续引子。&quot;,
+        &quot;衔接：本章为开篇（transition.mode=opening），无前章正文，不适用跨章接续检查；开头即灯灭、黑暗中互相确认位置，与 opening_beat 一致；无前章原文，不存在重演或接续断裂。&quot;,
+        &quot;质量：节奏为单场景递进式排查，靠动作与细节（滴落的水、胶带、折叠凳、电压读数）推进，无机械重复段落，人设语气统一。&quot;
+      ],
+      &quot;confidence&quot;: 0.86
+    }
+  }
+}</pre></details></article><article><h3>19 · persist</h3><p>输入 0 / 输出 0 tokens · 耗时 0 ms</p><p>程序执行节点，执行统计见下方详情。</p><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;persist&quot;,
+  &quot;input_tokens&quot;: 0,
+  &quot;output_tokens&quot;: 0,
+  &quot;model_id&quot;: null,
+  &quot;duration_ms&quot;: 0,
+  &quot;cost_est&quot;: 0.0,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;candidates&quot;: 14,
+    &quot;status&quot;: &quot;auto_confirm&quot;,
+    &quot;rewrite&quot;: true,
+    &quot;invalidation&quot;: {
+      &quot;facts_closed&quot;: 1,
+      &quot;states_closed&quot;: 3,
+      &quot;relations_closed&quot;: 1,
+      &quot;events_deleted&quot;: 1,
+      &quot;foreshadows_closed&quot;: 1,
+      &quot;embeddings_deleted&quot;: 0
+    },
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: false,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    }
+  }
+}</pre></details></article><article><h3>20 · summarize</h3><p>输入 2465 / 输出 136 tokens · 耗时 1547 ms</p><p>模型调用记录；完整关键产物见上方计划、正文和审核区。</p><details><summary>查看实际运行记录</summary><pre>{
+  &quot;node&quot;: &quot;summarize&quot;,
+  &quot;input_tokens&quot;: 2465,
+  &quot;output_tokens&quot;: 136,
+  &quot;model_id&quot;: &quot;deepseek-v4-flash&quot;,
+  &quot;duration_ms&quot;: 1547,
+  &quot;cost_est&quot;: 0.0005933,
+  &quot;error&quot;: null,
+  &quot;detail&quot;: {
+    &quot;response&quot;: {
+      &quot;content&quot;: &quot;{\&quot;summary\&quot;: \&quot;暴雨夜观测站突然断电，林川与许宁在黑暗中摸到手电，确认市电和蓄电池组双双失效。林川腿伤复发行动不便，留守主控室指挥，许宁探查走廊，发现配电间接线盒因天花板渗水短路、绝缘层烧黑。林川拄折叠凳赶到，切断支路后临时换线、缠胶带，恢复电池柜供电，并搭建防潮布引开渗水，勉强撑住局面。许宁标出多处渗水点，雨势未歇，屋面排水沟堵塞尚待次日处理，电池电压持续走低。\&quot;}&quot;,
+      &quot;tool_calls&quot;: null
+    },
+    &quot;messages&quot;: [
+      {
+        &quot;role&quot;: &quot;system&quot;,
+        &quot;content&quot;: &quot;你是长篇网文创作系统的【章节摘要 Agent】。为刚落库的章节正文生成精炼摘要，用作短期记忆（下一章 recall 的上下文锚点）。\n输出严格 JSON：{\&quot;summary\&quot;: \&quot;80-150 字，概括本章主要剧情推进、关键事件与人物状态变化；不写章节号与标题；避免与前几章摘要重复措辞。\&quot;}&quot;
+      },
+      {
+        &quot;role&quot;: &quot;user&quot;,
+        &quot;content&quot;: &quot;【章节正文】（第 1 章）\n灯灭的那一瞬间，林川的手已经按在了桌沿上。\n\n黑暗来得毫无过渡，像有人把整座观测站从世界里摘了出去。雨声随即变得具体，铁皮屋顶被砸出连绵的闷响，窗玻璃嗡嗡发颤。他稳住上半身，重心本能地往右移，左膝还是迟了半拍才跟上，一阵锐痛从关节内侧扎上来，顺着大腿后侧爬到腰。他咬住后槽牙，把那股酸麻压回去，只让一声短促的吸气漏出来。\n\n“林川？”\n\n许宁的声音在右侧三步远的地方，没有慌乱，只是音调比平时高了一线。\n\n“在。”他应了一声，尽量让嗓音平稳，“别动，先确认脚下的东西。桌角在你左边一点。”\n\n一阵窸窣，大概是她在摸索。“碰到了。你那边？”\n\n“靠墙站着。”林川说，“手电在哪一格抽屉？”\n\n“我记得是第二格，你等下。”\n\n脚步声往储物柜方向去，走得很慢，每一步都先试探再落。黑暗中传来抽屉被拉开又推回的声响，第二个、第三个。许宁低声数着，语气像在给自己报账。\n\n“不对，第二格是记录本。”她说，“第三格，有了。”\n\n一束白光晃出来，先是打在天花板上，再压低，扫过主控台、仪器架、墙角那排铅蓄电池柜。光柱里全是浮尘，细密地翻涌。许宁转过身，光束在林川身上停了一下，落在他的左腿上。\n\n“你又跛了。”\n\n“老毛病。”林川避开那道视线，“先看市电。主闸箱在走廊尽头，控制面板上应该有指示。”\n\n许宁没接话，把手电递过来一半，自己攥着另一半，两人各持一端，像抬着一根看不见的杆子往门口走。走廊比主控室更暗，只有应急标识在墙上泛着微弱的绿。雨声在这里更响，像是从天花板内部长出来的。\n\n控制面板嵌在配电间外墙上，几排指示灯全黑。林川单手扶着墙，另一只手掀开面板外盖，指尖在断路器和漏电保护器的拨杆上一路摸过去。全部在合闸位。\n\n“总闸没跳。”他说，“市电是真的断了，不是室内故障。”\n\n“备用电源呢？电池柜不是独立的吗？”\n\n“测一下。”\n\n他们退回主控室。林川坐在椅子边缘，把左腿伸直，膝盖上那处热痛慢慢摊开。许宁把手电卡在仪器架上，对着铅蓄电池柜照。柜体上方的小显示屏黑着，按下测试键也没有反应。她又去查柜体侧面的电压表，指针纹丝不动。\n\n“没输出。”她说，“是电池组的问题，还是线路断了？”\n\n“都有可能。”林川盯着那个黑屏，“如果只是电池老化，主闸那边应该有市电。现在两个都没了，说明外部线路和备用回路同时出问题。雨太大，山里这种概率不低。”\n\n许宁沉默两秒，把手电从架子上取下来。“走廊顶上刚才有个地方在响，像是水声。我去看看。”\n\n“等等。”林川撑着椅子站起来，左膝一软，他用手掌摁住椅背，把身体的重量全压到右腿，“先定一下分工。你负责往前探查，我做记录和判断。每到一个节点回报一次，别一个人钻进去太深。”\n\n“你确定不一起走？”\n\n“我这腿拖不了十几分钟的路。”他说得干脆，没给自己留余地，“而且得有人守着面板，万一市电来了要立刻合闸。”\n\n许宁看了他一秒，点头，把那半截手电塞进他手里。“那你守着。我沿着走廊往配电间去，路上看接线盒。”\n\n“配电间的门锁着，钥匙在主控台第二层抽屉，铜的。”\n\n“知道。”\n\n她走出去。脚步声在走廊里逐渐拉远，随后被雨声盖住。林川把电筒光对准控制面板，每隔一会儿就扫一次，明知道不会有变化。他把注意力压在痛感以外的地方，让呼吸慢下来。膝盖的肿在裤管下一点点鼓起来，贴着皮肤发烫。\n\n约莫过了七八分钟，走廊里传来两声敲墙。约定的回报信号。\n\n“主控室到配电间这段，天花板有两处渗水。”许宁的声音从廊道里传回来，隔着雨有点发闷，“靠楼梯口那个接线盒外壳是湿的，我打开看了一眼，里面全是水珠。”\n\n“有没有焦味？”\n\n“有，很淡，混着雨腥味。盒子底下那片墙皮已经发黑。”\n\n林川在脑子里把线路图过了一遍。主控室到配电间这一段，走的是照明和电池柜充电回路，墙内暗线从天花板夹层穿过。渗水如果正好落在接线盒上，短路就是必然的。\n\n“别碰它。”他提高一点音量，“先回来，把工具和绝缘胶带带上。我过去。”\n\n“你过来？”\n\n“门我来开，图纸在我手上。那段线路两个回路有交叉，不能乱切。”\n\n她的脚步声折返。进门时手电光扫到他的腿，他正把膝盖往椅子外侧挪，动作不算自然。许宁什么都没问，从工具袋里抽出绝缘胶带、电工钳和一把裁纸刀，顺手把一块折叠凳拍开，推到他手边。\n\n“拄着。”她说。\n\n林川接过来，折叠凳的腿在手里晃了晃，他试着用它当拐杖使。走得不快，但从主控室到配电间这一路还算稳。许宁走在前面半步，手电光照着地面，替他避开地上那摊已经积起来的水。走廊天花板每隔几步就有水痕，最严重的一处在配电间门口上方，水顺着墙往下爬，在门框边汇成一道细流。\n\n配电间比主控室更冷，空气里全是潮气。墙面上一排接线盒沿走廊延伸进来，许宁指的那个在靠里第二只，外壳全是水，边缘凝着水珠，往下滴。林川让她把总闸从配电间这边的分开关切下来，再逐节拔掉这段回路的支路熔断器。\n\n“只留电池柜充电那一路。”他说，“其余全断。”\n\n许宁照做，动作很快，每一路拔下都回头报一句。林川拄着折叠凳挪到接线盒前，先用干布擦了外壳，再用裁纸刀沿着盒盖缝隙撬开。盖板一松，一股潮热的气味涌出来，里面线头全是水，接线柱表面起了白绿色的氧化物，其中一根线的绝缘皮已经发黑卷曲。盒底积了浅浅一层水。\n\n“进水短路。”他把手电凑近，“这根火线对地的绝缘坏了，等于直接接地。难怪跳。”\n\n“能修吗？”\n\n“换线头、吹干、做绝缘。临时能顶。”林川用钳子夹住发黑的线头，轻轻一拉，铜芯露出来，已经锈了半截，“问题是水从哪来。盒子上方天花板这块，你刚才说有两处渗水。”\n\n许宁把手电往上照。盒体正上方的水泥顶棚有一道细纹，水正从纹路里渗出来，一滴一滴，落在盒盖残存的斜面上。裂纹不长，但在往两侧走。\n\n“上面是屋面。”林川仰着头看了一会儿，“排水沟大概堵了。这雨再下几个小时，整段夹层都要泡。”\n\n两人沉默地让那滴水声填满这间小屋。许宁先开口：“先做临时处理？”\n\n“嗯。”他点头，“你把备用线头剥出来，我来做。做完先恢复电池柜那一路，看有没有电。”\n\n许宁蹲下来剥线，动作利落，铜芯露得齐整。林川一手扶盒体一手接线，湿冷的水顺着他的手腕往下淌。膝盖一直维持着半跪的姿势，热度、胀感、还有一点针扎似的跳，在骨缝里反复。他尽量把重心分散到右腿和手臂上，额头渗出一层薄汗。\n\n线接好，缠上三层绝缘胶带。林川让许宁把电池柜那一路合上，自己退到门口。\n\n啪的一声。\n\n柜体上方的小显示屏亮了，幽绿的背光在暗屋里格外刺眼。电压读数一点点往上爬，停在标称值以下一截。\n\n“有输出，但不稳。”林川盯着那个跳动的数字，“电池是旧的，撑不了多久。主机带不动，照明和应急可以开。”他伸手按了配电间门口那排开关，走廊应急灯接二连三亮起来，昏黄的光铺在湿漉漉的地面上。\n\n许宁松了半口气，随即又皱起眉。她指着接线盒上方那道水痕：“这个没根治。电池充电回路也在这段，水位再涨，迟早把刚接的线再泡了。”\n\n“知道。”林川说，“现在只能做围挡，把渗水引开，不让它落进盒子。今晚是顶不过大修的。”\n\n他去工具架上翻出一卷防潮布和几块废木条，许宁接手把布撑开，用木条在接线盒上方钉了个简易斜面，让水滴顺着布沿滑到墙角。做完这些，她退开一步，看了看，又用裁纸刀在墙角地面划了一道小沟，引水往外流。\n\n“能撑几小时。”她说，“几小时之后呢？”\n\n林川没答。他靠在门框上，左腿伸直，膝盖比刚才肿得更明显，裤管绷紧了一圈。应急灯的光从他脚下一路铺到配电间深处，那条被临时修复的线路正发出细弱的电流声。外面雨没有停的意思，敲在铁皮屋顶上，比先前更密。\n\n许宁把手电关掉，省电。她走过来，目光在他膝盖上停了一下，又移开。\n\n“你歇着。”她说，“我去把走廊其他几处渗水点也标一下，画个图。明天——”\n\n她顿了一下。\n\n“明天要是雨停了，得上去看屋面。排水沟堵在哪，得有人爬上去。”\n\n林川顺着她的话往上看了一眼。那道天花板裂纹在昏光里像一条细黑的河，正缓慢地拓宽。电池柜的显示屏还亮着，电压读数又往下掉了一格。\n\n“雨不会停。”他说。\n\n许宁没接话，从抽屉里翻出铅笔和记录本，转身走进走廊。脚步声和着滴水声往前去。林川留在门口，一只手撑在门框上，另一只手攥着那卷剩下的绝缘胶带。胶带外圈冰凉，里面似乎还沾着方才渗进盒里的潮气。他低头看了一眼自己的左膝，裤管下的轮廓比一小时前更圆了些。走廊尽头，许宁的笔尖划过纸面，沙沙地标下第一处渗水的位置。\n\n请生成章节摘要（严格 JSON）。&quot;
+      }
+    ],
+    &quot;_capture&quot;: {
+      &quot;scope&quot;: &quot;telemetry_only&quot;,
+      &quot;truncated&quot;: false,
+      &quot;redacted&quot;: false,
+      &quot;limits&quot;: {
+        &quot;max_depth&quot;: 10,
+        &quot;max_items&quot;: 80,
+        &quot;max_text&quot;: 16000,
+        &quot;max_bytes&quot;: 65536
+      }
+    }
+  }
+}</pre></details></article></section><section id="source"><h2>来源与限制</h2><p>完整机器可读记录及内容摘要校验。</p><pre>{
+  &quot;来源&quot;: &quot;docs/evaluations/workflow-recovery-2026-10-08-live.json&quot;,
+  &quot;SHA-256&quot;: &quot;ca126645a51a8b3ac866c01dfb2f49dacb1489ba512146df44a5f0a7bc45b2ea&quot;,
+  &quot;task_id&quot;: &quot;16038633-8431-4969-8d94-96499fb894b1&quot;,
+  &quot;限制&quot;: [
+    &quot;仅一个合成案例；embedding 关闭，不能证明语义召回质量&quot;,
+    &quot;成本为应用估算，不是供应商账单；遥测 detail 可能有截断标记&quot;
+  ]
+}</pre></section></main></html>

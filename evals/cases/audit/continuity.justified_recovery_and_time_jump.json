@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "id": "continuity.justified_recovery_and_time_jump",
+  "group_id": "continuity.justified_recovery_and_time_jump",
+  "split": "development",
+  "mode": "audit",
+  "category": "continuity",
+  "polarity": "negative",
+  "source": {
+    "path": "scripts/eval-continuity.py",
+    "case_name": "justified_recovery_and_time_jump",
+    "adapted_from": []
+  },
+  "input": {
+    "chapter_seq": 6,
+    "context": {
+      "short_context": [
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 5,
+          "tail": "守卫将袭击者赶出院子，反锁了门。医生说止血成功，需要留观。沈砚听见妹妹答应守着他，随后因失血昏了过去。"
+        }
+      ],
+      "recent_openings": []
+    },
+    "plan": {
+      "goals": [
+        "沈砚恢复意识并准备寻找药品"
+      ],
+      "expected_events": [
+        "沈砚恢复意识并准备寻找药品"
+      ]
+    },
+    "draft": "床头的输液袋已换过一次。沈砚睁开眼，先摸到左臂新缠的绷带，妹妹从椅子上直起身：“天亮了，医生说你没再出血。”院门外有守卫交班的脚步声。他让妹妹扶自己坐起，问清药品只够用到中午，便在地图上圈出了附近药房的位置。"
+  },
+  "expected": {
+    "allowed_verdicts": [
+      "pass"
+    ],
+    "required_issues": [],
+    "forbidden_issues": [
+      "已完成动作不得重演、未解决威胁不得无交代丢弃、开头不得机械重复；合理衔接与恢复不得误报"
+    ]
+  },
+  "label": {
+    "status": "proposed",
+    "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+    "reviewer": null
+  }
+}

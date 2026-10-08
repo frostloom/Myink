@@ -1,0 +1,38 @@
+{
+  "request_index": 21,
+  "case_id": "injury_continuity",
+  "variant": "full",
+  "repetition": 2,
+  "prompt_sha256": "b514d09b0de1c501f461a674564ec7e7e052aeaa03a45a73137b36464837b47e",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 40,
+    "max_cost_yuan": 2.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 6000,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T12:10:12.297822+00:00",
+  "execution": "completed",
+  "raw_output": "{\n  \"goals\": [\n    \"推进林川与许宁在观测站检查屋顶漏水位置的协作行动线\",\n    \"在现实题材约束下展现两人基于身体状态的合理分工与配合\",\n    \"通过漏水问题暴露观测站维护困境，为后续日常运营冲突埋线\"\n  ],\n  \"scenes\": [\n    {\n      \"location_id\": \"观测站楼梯口\",\n      \"participants\": [\"林川\", \"许宁\"],\n      \"goal\": \"确定检查屋顶漏水的具体方案与分工，准备工具\",\n      \"time\": \"接上一章，白天\"\n    },\n    {\n      \"location_id\": \"观测站屋顶\",\n      \"participants\": [\"林川\", \"许宁\"],\n      \"goal\": \"实地排查漏水点，林川负责高处检查，许宁负责地面记录与工具传递\",\n      \"time\": \"紧接上一场景\"\n    },\n    {\n      \"location_id\": \"观测站阁楼/天花板夹层\",\n      \"participants\": [\"林川\", \"许宁\"],\n      \"goal\": \"从内部确认漏水渗透路径，标记需要修补的位置\",\n      \"time\": \"紧接屋顶检查后\"\n    }\n  ],\n  \"characters\": [\n    {\n      \"character_id\": \"林川\",\n      \"expected_state\": {\n        \"location\": \"观测站屋顶及阁楼\"\n      }\n    },\n    {\n      \"character_id\": \"许宁\",\n      \"expected_state\": {\n        \"location\": \"观测站屋顶及阁楼\"\n      }\n    }\n  ],\n  \"hooks_to_plant\": [\n    \"屋顶漏水点附近发现一处旧修补痕迹，暗示观测站长期缺乏维护\",\n    \"许宁在阁楼角落发现一箱被防水布盖住的旧设备或文件，暂未打开\"\n  ],\n  \"hooks_to_resolve\": [],\n  \"expected_events\": [\n    \"林川和许宁在楼梯口商定检查方案，分配工具与职责\",\n    \"两人上屋顶，林川检查高处瓦片和接缝，许宁在地面递工具并记录\",\n    \"发现一处明显漏水点，林川用防水胶带做临时处理\",\n    \"两人进入阁楼从内部确认渗水路径，标记修补位置\",\n    \"许宁在阁楼角落注意到被防水布盖住的旧箱子，但两人决定先完成修补\"\n  ],\n  \"hard_constraints\": [\n    \"现实题材，无超能力，无医学奇迹\",\n    \"全章仅林川和许宁两名人物出场\",\n    \"设备状态和伤势不能无缘由改变\",\n    \"协作方式必须符合两人普通人的身体状态，不出现超出常理的高危动作\"\n  ],\n  \"transition\": {\n    \"mode\": \"continue\",\n    \"anchor_quote\": \"林川和许宁在观测站楼梯口商量如何检查屋顶。\",\n    \"pending_action\": \"两人尚未开始检查屋顶，方案未定\",\n    \"opening_beat\": \"林川提出从外部屋顶和内部阁楼双向排查，许宁点头并去取工具袋\",\n    \"bridge\": \"直接接续楼梯口对话，以取工具、上楼梯的动作衔接场景转换\"\n  }\n}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\n  \"goals\": [\n    \"推进林川与许宁在观测站检查屋顶漏水位置的协作行动线\",\n    \"在现实题材约束下展现两人基于身体状态的合理分工与配合\",\n    \"通过漏水问题暴露观测站维护困境，为后续日常运营冲突埋线\"\n  ],\n  \"scenes\": [\n    {\n      \"location_id\": \"观测站楼梯口\",\n      \"participants\": [\"林川\", \"许宁\"],\n      \"goal\": \"确定检查屋顶漏水的具体方案与分工，准备工具\",\n      \"time\": \"接上一章，白天\"\n    },\n    {\n      \"location_id\": \"观测站屋顶\",\n      \"participants\": [\"林川\", \"许宁\"],\n      \"goal\": \"实地排查漏水点，林川负责高处检查，许宁负责地面记录与工具传递\",\n      \"time\": \"紧接上一场景\"\n    },\n    {\n      \"location_id\": \"观测站阁楼/天花板夹层\",\n      \"participants\": [\"林川\", \"许宁\"],\n      \"goal\": \"从内部确认漏水渗透路径，标记需要修补的位置\",\n      \"time\": \"紧接屋顶检查后\"\n    }\n  ],\n  \"characters\": [\n    {\n      \"character_id\": \"林川\",\n      \"expected_state\": {\n        \"location\": \"观测站屋顶及阁楼\"\n      }\n    },\n    {\n      \"character_id\": \"许宁\",\n      \"expected_state\": {\n        \"location\": \"观测站屋顶及阁楼\"\n      }\n    }\n  ],\n  \"hooks_to_plant\": [\n    \"屋顶漏水点附近发现一处旧修补痕迹，暗示观测站长期缺乏维护\",\n    \"许宁在阁楼角落发现一箱被防水布盖住的旧设备或文件，暂未打开\"\n  ],\n  \"hooks_to_resolve\": [],\n  \"expected_events\": [\n    \"林川和许宁在楼梯口商定检查方案，分配工具与职责\",\n    \"两人上屋顶，林川检查高处瓦片和接缝，许宁在地面递工具并记录\",\n    \"发现一处明显漏水点，林川用防水胶带做临时处理\",\n    \"两人进入阁楼从内部确认渗水路径，标记修补位置\",\n    \"许宁在阁楼角落注意到被防水布盖住的旧箱子，但两人决定先完成修补\"\n  ],\n  \"hard_constraints\": [\n    \"现实题材，无超能力，无医学奇迹\",\n    \"全章仅林川和许宁两名人物出场\",\n    \"设备状态和伤势不能无缘由改变\",\n    \"协作方式必须符合两人普通人的身体状态，不出现超出常理的高危动作\"\n  ],\n  \"transition\": {\n    \"mode\": \"continue\",\n    \"anchor_quote\": \"林川和许宁在观测站楼梯口商量如何检查屋顶。\",\n    \"pending_action\": \"两人尚未开始检查屋顶，方案未定\",\n    \"opening_beat\": \"林川提出从外部屋顶和内部阁楼双向排查，许宁点头并去取工具袋\",\n    \"bridge\": \"直接接续楼梯口对话，以取工具、上楼梯的动作衔接场景转换\"\n  }\n}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 1171,
+  "output_tokens": 675,
+  "cost_est": 0.007742,
+  "cost_status": "estimated",
+  "wall_ms": 5109
+}

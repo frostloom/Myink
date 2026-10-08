@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "id": "logic.capability_restored",
+  "group_id": "logic.capability",
+  "split": "holdout",
+  "mode": "audit",
+  "category": "capability",
+  "polarity": "negative",
+  "source": {
+    "path": "scripts/eval-logic.py",
+    "case_name": "capability_restored",
+    "adapted_from": [
+      "conflict-samples:08"
+    ]
+  },
+  "input": {
+    "chapter_seq": 2,
+    "context": {
+      "short_context": [
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 1,
+          "tail": "林川检查了仪器：外接电源已断开，电池也已取出。"
+        }
+      ],
+      "long_term_facts": [
+        {
+          "content": "该仪器必须外接电源或装入电池才能测量，没有其他供能方式。",
+          "is_hard": true
+        }
+      ]
+    },
+    "plan": {},
+    "draft": "许宁装入新电池，按下开关。林川等自检完成后，才读取测量结果。"
+  },
+  "expected": {
+    "allowed_verdicts": [
+      "pass"
+    ],
+    "required_issues": [],
+    "forbidden_issues": [
+      "无供能却正常使用；补足供能条件不得误报"
+    ]
+  },
+  "label": {
+    "status": "proposed",
+    "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+    "reviewer": null
+  }
+}

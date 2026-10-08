@@ -1,0 +1,160 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Myink · Agent 历史执行案例</title><style>
+:root{color-scheme:light dark;--bg:#f5f3ed;--ink:#202d29;--card:#fff;--line:#ccd5ce;--accent:#28654a}
+@media(prefers-color-scheme:dark){:root{--bg:#101b18;--ink:#e3ece6;--card:#192823;--line:#42584b;--accent:#9bd7b5}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.7 system-ui,"Microsoft YaHei",sans-serif}
+main{max-width:1000px;margin:auto;padding:40px 24px}h1{font-size:clamp(28px,5vw,44px);line-height:1.2}h2{font-size:22px}
+article,header,aside{padding:20px;border:1px solid var(--line);background:var(--card);margin:18px 0;border-radius:8px}
+aside{border-left:4px solid var(--accent)}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}code{overflow-wrap:anywhere}
+button,select{font:inherit;padding:9px;border:1px solid var(--line);border-radius:4px;background:var(--card);color:var(--ink)}
+nav{display:flex;flex-wrap:wrap;gap:12px;align-items:center}a{color:var(--accent)}[hidden]{display:none}
+</style><main><header><p>MYINK / 历史真实模型记录 / 合成现实题材</p><h1>从生成到人工拒绝，再到修订落库</h1>
+<p>离线浏览已保存证据，不会调用模型、读取作品库或重跑任务。来源是仓库已有的历史评测，不能当作 2026-10-08 新执行结果或长篇质量结论。</p>
+<p>原始记录未包含完整初稿、完整修订稿、全部请求和模型版本/耗时/价格字段，故不能展示逐字 diff、核算成本或精确复现模型响应。空 detail 代表没有留存。</p>
+<p>当前图已新增 plan_cast 等步骤；本页忠实保留历史记录的节点顺序。</p><p>来源：docs/evaluations/workflow-recovery.json<br>SHA-256：<code>482513e27021ac9602e71de15ae31aa530caae0ecca8c43dd85728cef148dd5b</code></p>
+<pre>{
+  &quot;fixture&quot;: &quot;纯合成现实题材，不含用户小说内容&quot;,
+  &quot;initial&quot;: {
+    &quot;chars&quot;: 2841,
+    &quot;needs_review&quot;: false
+  },
+  &quot;final_chars&quot;: 3283,
+  &quot;error&quot;: null,
+  &quot;needs_review&quot;: false,
+  &quot;bad_sentence_removed&quot;: true
+}</pre></header>
+<nav aria-label="案例筛选"><label>显示 <select id="filter"><option value="all">全部节点</option><option value="audit">审核与查证</option><option value="route">路由</option><option value="revise">人工修订</option><option value="persist">落库</option></select></label><button id="expand" type="button">展开全部证据</button><span id="count" aria-live="polite"></span></nav>
+<article data-stage="load_state"><h2>01 · 加载作品状态</h2><p><code>load_state</code> · 输入 0 / 输出 0 tokens</p><ul></ul><details><summary>查看已留存原始 detail</summary><pre>{
+  &quot;characters&quot;: 2
+}</pre></details></article><article data-stage="recall"><h2>02 · 召回记忆</h2><p><code>recall</code> · 输入 0 / 输出 0 tokens</p><ul></ul><details><summary>查看已留存原始 detail</summary><pre>{
+  &quot;facts&quot;: 1,
+  &quot;events&quot;: 0,
+  &quot;snapshots&quot;: 2,
+  &quot;foreshadows&quot;: 0,
+  &quot;threads&quot;: 0,
+  &quot;context_tokens_est&quot;: 980
+}</pre></details></article><article data-stage="plan_chapter"><h2>03 · 规划章节</h2><p><code>plan_chapter</code> · 输入 745 / 输出 582 tokens</p><ul></ul><details><summary>查看已留存原始 detail</summary><pre>{}</pre></details></article><article data-stage="write"><h2>04 · 生成正文</h2><p><code>write</code> · 输入 1866 / 输出 2041 tokens</p><ul></ul><details><summary>查看已留存原始 detail</summary><pre>{
+  &quot;tool_trace&quot;: []
+}</pre></details></article><article data-stage="extract"><h2>05 · 抽取候选</h2><p><code>extract</code> · 输入 3311 / 输出 726 tokens</p><ul></ul><details><summary>查看已留存原始 detail</summary><pre>{}</pre></details></article><article data-stage="validate"><h2>06 · 规则校验</h2><p><code>validate</code> · 输入 0 / 输出 0 tokens</p><ul></ul><details><summary>查看已留存原始 detail</summary><pre>{
+  &quot;findings_total&quot;: 1,
+  &quot;critical&quot;: 0,
+  &quot;l2_major&quot;: 0,
+  &quot;unresolved&quot;: 1
+}</pre></details></article><article data-stage="audit"><h2>07 · 模型审核 / 工具查证</h2><p><code>audit</code> · 输入 3842 / 输出 65 tokens</p><ul></ul><details><summary>查看已留存原始 detail</summary><pre>{
+  &quot;tool_trace&quot;: []
+}</pre></details></article><article data-stage="audit"><h2>08 · 模型审核 / 工具查证</h2><p><code>audit</code> · 输入 3436 / 输出 228 tokens</p><ul><li>计划要求：修复观测站供电、发现漏水接线盒、林川与许宁协作处理危机并以此埋下外力破坏与天气异常的伏笔。本章严格按此展开，主线未被偏移。</li><li>场景推进由检查到修复、再到部分恢复供电，节奏环环相扣，无机械重复或中断；结尾以风力仪晃动意象成功搭建悬悬念，收束自然。</li><li>林川刻意克制膝伤、许宁从纠正操作到专业受挫、互相补位等细节，保持两人性格区分，符合真实世界约束，无超自然手段。</li><li>接线盒凹痕与预制胶皮的伏笔已按计划植入，未刻意提前解释，铺垫适度且不冲突。</li><li>全章仅出现林川与许宁，未引入新人物；历史数据与接续逻辑暂无跨章矛盾，无不可复查的篡改动作。</li></ul><details><summary>查看已留存原始 detail</summary><pre>{
+  &quot;tool_trace&quot;: [
+    {
+      &quot;tool&quot;: &quot;inspect_facts&quot;,
+      &quot;arguments&quot;: {},
+      &quot;result&quot;: &quot;{\&quot;count\&quot;: 0, \&quot;facts\&quot;: []}&quot;
+    },
+    {
+      &quot;tool&quot;: &quot;inspect_plot_threads&quot;,
+      &quot;arguments&quot;: {},
+      &quot;result&quot;: &quot;{\&quot;count\&quot;: 0, \&quot;threads\&quot;: []}&quot;
+    },
+    {
+      &quot;tool&quot;: &quot;inspect_foreshadows&quot;,
+      &quot;arguments&quot;: {},
+      &quot;result&quot;: &quot;{\&quot;count\&quot;: 0, \&quot;foreshadows\&quot;: []}&quot;
+    }
+  ],
+  &quot;audit_verdict&quot;: {
+    &quot;verdict&quot;: &quot;pass&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [],
+    &quot;reasons&quot;: [
+      &quot;计划要求：修复观测站供电、发现漏水接线盒、林川与许宁协作处理危机并以此埋下外力破坏与天气异常的伏笔。本章严格按此展开，主线未被偏移。&quot;,
+      &quot;场景推进由检查到修复、再到部分恢复供电，节奏环环相扣，无机械重复或中断；结尾以风力仪晃动意象成功搭建悬悬念，收束自然。&quot;,
+      &quot;林川刻意克制膝伤、许宁从纠正操作到专业受挫、互相补位等细节，保持两人性格区分，符合真实世界约束，无超自然手段。&quot;,
+      &quot;接线盒凹痕与预制胶皮的伏笔已按计划植入，未刻意提前解释，铺垫适度且不冲突。&quot;,
+      &quot;全章仅出现林川与许宁，未引入新人物；历史数据与接续逻辑暂无跨章矛盾，无不可复查的篡改动作。&quot;
+    ],
+    &quot;confidence&quot;: 0.97
+  }
+}</pre></details></article><article data-stage="route"><h2>09 · 路由决定</h2><p><code>route</code> · 输入 0 / 输出 0 tokens</p><ul><li>计划要求：修复观测站供电、发现漏水接线盒、林川与许宁协作处理危机并以此埋下外力破坏与天气异常的伏笔。本章严格按此展开，主线未被偏移。</li><li>场景推进由检查到修复、再到部分恢复供电，节奏环环相扣，无机械重复或中断；结尾以风力仪晃动意象成功搭建悬悬念，收束自然。</li><li>林川刻意克制膝伤、许宁从纠正操作到专业受挫、互相补位等细节，保持两人性格区分，符合真实世界约束，无超自然手段。</li><li>接线盒凹痕与预制胶皮的伏笔已按计划植入，未刻意提前解释，铺垫适度且不冲突。</li><li>全章仅出现林川与许宁，未引入新人物；历史数据与接续逻辑暂无跨章矛盾，无不可复查的篡改动作。</li></ul><details><summary>查看已留存原始 detail</summary><pre>{
+  &quot;route&quot;: &quot;persist&quot;,
+  &quot;audit_verdict&quot;: {
+    &quot;verdict&quot;: &quot;pass&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [],
+    &quot;reasons&quot;: [
+      &quot;计划要求：修复观测站供电、发现漏水接线盒、林川与许宁协作处理危机并以此埋下外力破坏与天气异常的伏笔。本章严格按此展开，主线未被偏移。&quot;,
+      &quot;场景推进由检查到修复、再到部分恢复供电，节奏环环相扣，无机械重复或中断；结尾以风力仪晃动意象成功搭建悬悬念，收束自然。&quot;,
+      &quot;林川刻意克制膝伤、许宁从纠正操作到专业受挫、互相补位等细节，保持两人性格区分，符合真实世界约束，无超自然手段。&quot;,
+      &quot;接线盒凹痕与预制胶皮的伏笔已按计划植入，未刻意提前解释，铺垫适度且不冲突。&quot;,
+      &quot;全章仅出现林川与许宁，未引入新人物；历史数据与接续逻辑暂无跨章矛盾，无不可复查的篡改动作。&quot;
+    ],
+    &quot;confidence&quot;: 0.97
+  },
+  &quot;revision_count&quot;: 0,
+  &quot;replan_count&quot;: 0,
+  &quot;rule_summary&quot;: {
+    &quot;total&quot;: 1,
+    &quot;critical&quot;: 0,
+    &quot;resolved&quot;: 0
+  }
+}</pre></details></article><article data-stage="persist"><h2>10 · 落库</h2><p><code>persist</code> · 输入 0 / 输出 0 tokens</p><ul></ul><details><summary>查看已留存原始 detail</summary><pre>{
+  &quot;candidates&quot;: 7,
+  &quot;status&quot;: &quot;auto_confirm&quot;,
+  &quot;rewrite&quot;: false,
+  &quot;invalidation&quot;: null
+}</pre></details></article><article data-stage="summarize"><h2>11 · 摘要沉淀</h2><p><code>summarize</code> · 输入 2158 / 输出 89 tokens</p><ul></ul><details><summary>查看已留存原始 detail</summary><pre>{}</pre></details></article><article data-stage="revise"><h2>12 · 人工拒绝后的修订</h2><p><code>revise</code> · 输入 3633 / 输出 2408 tokens</p><aside>评测脚本人为植入“瞬间移动”设定，作者以现实题材不允许此设定为由拒绝；此处进入修订。该操作说明来自 scripts/eval-workflow-recovery.py，并非日志新增的事件。</aside><ul></ul><details><summary>查看已留存原始 detail</summary><pre>{}</pre></details></article><article data-stage="extract"><h2>13 · 抽取候选</h2><p><code>extract</code> · 输入 3684 / 输出 798 tokens</p><ul></ul><details><summary>查看已留存原始 detail</summary><pre>{}</pre></details></article><article data-stage="validate"><h2>14 · 规则校验</h2><p><code>validate</code> · 输入 0 / 输出 0 tokens</p><ul></ul><details><summary>查看已留存原始 detail</summary><pre>{
+  &quot;findings_total&quot;: 0,
+  &quot;critical&quot;: 0,
+  &quot;l2_major&quot;: 0,
+  &quot;unresolved&quot;: 0
+}</pre></details></article><article data-stage="audit"><h2>15 · 模型审核 / 工具查证</h2><p><code>audit</code> · 输入 4215 / 输出 350 tokens</p><ul><li>剧情符合章节计划：本章完整覆盖了计划中的场景与目标，即检查/发现/修复接线盒漏水并恢复关键供电，动作推进主线，无主线偏移。</li><li>完成了埋设伏笔的任务：接线盒铝壳上规整的撬压凹痕、被剪子铰过（齐口横断）而不是扯断的胶皮，人物『不剪断』的判断为外力破坏线索埋点，与『这雨是怎么来的』的异常天气疑问呼应，均符合 hooks_to_plant。</li><li>人设一致：林川左膝扭伤全程受限（重心压右脚、撑膝借力、腿抖、扶凳站起），符合硬约束；许宁自称看资料不碰电却需动手，与章内『她会用电』的合理表现平衡得当。两个人物全程在场，无新增人物。</li><li>现实题材无超自然介入：修复全部通过实际动手（剥线、压线鼻、浇封树脂、合闸试电）完成，符合物理逻辑，杜绝瞬间移动类超自然设定。</li><li>回应悬念与合理收尾：末段林川对外力痕迹的警戒、对持续暴雨与排水沟/中继器的安排，为下一夜留下自然承接，收束了本章推进的线路，无遗留未完成请求。</li><li>序章无前置章节或开放伏笔，单章内部冲突点（如树脂见水起壳、铝线混铜端子过紧易发热）均已在文中给出专业应对，未产生矛盾。</li></ul><details><summary>查看已留存原始 detail</summary><pre>{
+  &quot;tool_trace&quot;: [],
+  &quot;audit_verdict&quot;: {
+    &quot;verdict&quot;: &quot;pass&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [],
+    &quot;reasons&quot;: [
+      &quot;剧情符合章节计划：本章完整覆盖了计划中的场景与目标，即检查/发现/修复接线盒漏水并恢复关键供电，动作推进主线，无主线偏移。&quot;,
+      &quot;完成了埋设伏笔的任务：接线盒铝壳上规整的撬压凹痕、被剪子铰过（齐口横断）而不是扯断的胶皮，人物『不剪断』的判断为外力破坏线索埋点，与『这雨是怎么来的』的异常天气疑问呼应，均符合 hooks_to_plant。&quot;,
+      &quot;人设一致：林川左膝扭伤全程受限（重心压右脚、撑膝借力、腿抖、扶凳站起），符合硬约束；许宁自称看资料不碰电却需动手，与章内『她会用电』的合理表现平衡得当。两个人物全程在场，无新增人物。&quot;,
+      &quot;现实题材无超自然介入：修复全部通过实际动手（剥线、压线鼻、浇封树脂、合闸试电）完成，符合物理逻辑，杜绝瞬间移动类超自然设定。&quot;,
+      &quot;回应悬念与合理收尾：末段林川对外力痕迹的警戒、对持续暴雨与排水沟/中继器的安排，为下一夜留下自然承接，收束了本章推进的线路，无遗留未完成请求。&quot;,
+      &quot;序章无前置章节或开放伏笔，单章内部冲突点（如树脂见水起壳、铝线混铜端子过紧易发热）均已在文中给出专业应对，未产生矛盾。&quot;
+    ],
+    &quot;confidence&quot;: 0.97
+  }
+}</pre></details></article><article data-stage="route"><h2>16 · 路由决定</h2><p><code>route</code> · 输入 0 / 输出 0 tokens</p><ul><li>剧情符合章节计划：本章完整覆盖了计划中的场景与目标，即检查/发现/修复接线盒漏水并恢复关键供电，动作推进主线，无主线偏移。</li><li>完成了埋设伏笔的任务：接线盒铝壳上规整的撬压凹痕、被剪子铰过（齐口横断）而不是扯断的胶皮，人物『不剪断』的判断为外力破坏线索埋点，与『这雨是怎么来的』的异常天气疑问呼应，均符合 hooks_to_plant。</li><li>人设一致：林川左膝扭伤全程受限（重心压右脚、撑膝借力、腿抖、扶凳站起），符合硬约束；许宁自称看资料不碰电却需动手，与章内『她会用电』的合理表现平衡得当。两个人物全程在场，无新增人物。</li><li>现实题材无超自然介入：修复全部通过实际动手（剥线、压线鼻、浇封树脂、合闸试电）完成，符合物理逻辑，杜绝瞬间移动类超自然设定。</li><li>回应悬念与合理收尾：末段林川对外力痕迹的警戒、对持续暴雨与排水沟/中继器的安排，为下一夜留下自然承接，收束了本章推进的线路，无遗留未完成请求。</li><li>序章无前置章节或开放伏笔，单章内部冲突点（如树脂见水起壳、铝线混铜端子过紧易发热）均已在文中给出专业应对，未产生矛盾。</li></ul><details><summary>查看已留存原始 detail</summary><pre>{
+  &quot;route&quot;: &quot;persist&quot;,
+  &quot;audit_verdict&quot;: {
+    &quot;verdict&quot;: &quot;pass&quot;,
+    &quot;replan_target&quot;: null,
+    &quot;findings&quot;: [],
+    &quot;reasons&quot;: [
+      &quot;剧情符合章节计划：本章完整覆盖了计划中的场景与目标，即检查/发现/修复接线盒漏水并恢复关键供电，动作推进主线，无主线偏移。&quot;,
+      &quot;完成了埋设伏笔的任务：接线盒铝壳上规整的撬压凹痕、被剪子铰过（齐口横断）而不是扯断的胶皮，人物『不剪断』的判断为外力破坏线索埋点，与『这雨是怎么来的』的异常天气疑问呼应，均符合 hooks_to_plant。&quot;,
+      &quot;人设一致：林川左膝扭伤全程受限（重心压右脚、撑膝借力、腿抖、扶凳站起），符合硬约束；许宁自称看资料不碰电却需动手，与章内『她会用电』的合理表现平衡得当。两个人物全程在场，无新增人物。&quot;,
+      &quot;现实题材无超自然介入：修复全部通过实际动手（剥线、压线鼻、浇封树脂、合闸试电）完成，符合物理逻辑，杜绝瞬间移动类超自然设定。&quot;,
+      &quot;回应悬念与合理收尾：末段林川对外力痕迹的警戒、对持续暴雨与排水沟/中继器的安排，为下一夜留下自然承接，收束了本章推进的线路，无遗留未完成请求。&quot;,
+      &quot;序章无前置章节或开放伏笔，单章内部冲突点（如树脂见水起壳、铝线混铜端子过紧易发热）均已在文中给出专业应对，未产生矛盾。&quot;
+    ],
+    &quot;confidence&quot;: 0.97
+  },
+  &quot;revision_count&quot;: 1,
+  &quot;replan_count&quot;: 0,
+  &quot;rule_summary&quot;: {
+    &quot;total&quot;: 0,
+    &quot;critical&quot;: 0,
+    &quot;resolved&quot;: 0
+  }
+}</pre></details></article><article data-stage="persist"><h2>17 · 落库</h2><p><code>persist</code> · 输入 0 / 输出 0 tokens</p><ul></ul><details><summary>查看已留存原始 detail</summary><pre>{
+  &quot;candidates&quot;: 8,
+  &quot;status&quot;: &quot;auto_confirm&quot;,
+  &quot;rewrite&quot;: true,
+  &quot;invalidation&quot;: {
+    &quot;facts_closed&quot;: 1,
+    &quot;states_closed&quot;: 2,
+    &quot;relations_closed&quot;: 1,
+    &quot;events_deleted&quot;: 1,
+    &quot;foreshadows_closed&quot;: 1,
+    &quot;embeddings_deleted&quot;: 0
+  }
+}</pre></details></article><article data-stage="summarize"><h2>18 · 摘要沉淀</h2><p><code>summarize</code> · 输入 2466 / 输出 90 tokens</p><ul></ul><details><summary>查看已留存原始 detail</summary><pre>{}</pre></details></article><footer><p>讲解顺序：目标与现实约束 → 召回 → 计划与正文 → 工具和审核 → 实际路由 → 人工拒绝 → 修订/重新抽取/复审 → 落库时旧记忆失效。</p><p>配套说明：<a href="../INTERVIEW-ROADMAP.md">优化路线</a> · <a href="../DEMO.md">演示步骤与证据边界</a></p></footer></main>
+<script>const articles=[...document.querySelectorAll('article')];const filter=document.getElementById('filter');function apply(){let n=0;for(const a of articles){a.hidden=filter.value!=='all'&&a.dataset.stage!==filter.value;if(!a.hidden)n++;}document.getElementById('count').textContent=n+' / '+articles.length+' 个节点';}filter.addEventListener('change',apply);document.getElementById('expand').addEventListener('click',()=>{const ds=[...document.querySelectorAll('article:not([hidden]) details')];const open=ds.some(d=>!d.open);for(const d of ds)d.open=open;document.getElementById('expand').textContent=open?'收起证据':'展开全部证据';});apply();</script></html>

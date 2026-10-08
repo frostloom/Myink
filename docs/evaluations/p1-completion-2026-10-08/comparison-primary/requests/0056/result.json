@@ -1,0 +1,38 @@
+{
+  "request_index": 56,
+  "case_id": "meter_replacement",
+  "variant": "full",
+  "repetition": 2,
+  "prompt_sha256": "00e9059cf0a20d0b58279b179aa0c80abc38c009ae69ca8e97f8d77423508422",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 60,
+    "max_cost_yuan": 5.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 1024,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T11:53:17.466730+00:00",
+  "execution": "completed",
+  "raw_output": "{\"summary\": \"林川与许宁检修渗水接线盒，发现端子锈蚀、绝缘皮开裂，用万用表测出靠墙一段线路烧断。两人剪线重压端子、贴防水胶带封盒，复测绝缘合格后合闸，灯却未亮。配电箱指示灯正常，说明电已送到但未输出，墙内线管仍在滴水。许宁在工具间抽屉翻出一份未填完、无签名的设备检修记录，折起收进口袋，两人决定先修电再查此事。\"}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\"summary\": \"林川与许宁检修渗水接线盒，发现端子锈蚀、绝缘皮开裂，用万用表测出靠墙一段线路烧断。两人剪线重压端子、贴防水胶带封盒，复测绝缘合格后合闸，灯却未亮。配电箱指示灯正常，说明电已送到但未输出，墙内线管仍在滴水。许宁在工具间抽屉翻出一份未填完、无签名的设备检修记录，折起收进口袋，两人决定先修电再查此事。\"}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 826,
+  "output_tokens": 120,
+  "cost_est": 0.002612,
+  "cost_status": "estimated",
+  "wall_ms": 2812
+}

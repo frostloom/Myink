@@ -779,7 +779,7 @@ def test_sample_37_bridge_unmarked_echo(temp_project, monkeypatch):
     assert rep["status"] == "completed" and rep["findings"] == [], rep["findings"]
 
 
-def test_sample_38_style_drift(temp_project, monkeypatch):
+def test_sample_38_volume_drift(temp_project, monkeypatch):
     """样例 38 阳性：窗口内容偏离卷规划 → volume/hint/structural/L2。"""
     _seed_outline(temp_project, end=10)
     _seed_style_book(temp_project, 5, 5)

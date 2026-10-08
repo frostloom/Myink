@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "id": "hard.alias_destroyed",
+  "group_id": "hard.alias",
+  "split": "development",
+  "mode": "audit",
+  "category": "alias",
+  "polarity": "positive",
+  "source": {
+    "path": "evals/ADDED-CASES.md",
+    "case_name": "alias_destroyed",
+    "adapted_from": []
+  },
+  "input": {
+    "chapter_seq": 3,
+    "context": {
+      "short_context": [
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 1,
+          "tail": "林川唯一的旧万用表已经烧毁，尚未取得任何替代品。"
+        }
+      ],
+      "long_term_facts": [
+        {
+          "content": "老林是林川的别名。故事为现实题材。",
+          "is_hard": true
+        }
+      ]
+    },
+    "plan": {},
+    "draft": "老林拿起那只完好无损的旧万用表，正常测出了电压。"
+  },
+  "expected": {
+    "allowed_verdicts": [
+      "rewrite"
+    ],
+    "required_issues": [
+      {
+        "id": "destroyed_old_meter",
+        "description": "唯一旧万用表已毁且无替换，却直接正常使用",
+        "allowed_conflict_types": [
+          "item_rule"
+        ],
+        "allowed_severities": [
+          "major",
+          "critical"
+        ],
+        "evidence_sources": [
+          {
+            "chapter": 1,
+            "pointer": "/input/context/short_context/0/tail"
+          },
+          {
+            "chapter": 3,
+            "pointer": "/input/draft"
+          }
+        ]
+      }
+    ],
+    "forbidden_issues": []
+  },
+  "label": {
+    "status": "proposed",
+    "reviewer": null,
+    "review_note": "本轮合成，维护者需确认标签和类型。"
+  }
+}

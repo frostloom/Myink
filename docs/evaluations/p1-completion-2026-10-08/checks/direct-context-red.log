@@ -1,0 +1,16 @@
+F                                                                        [100%]
+================================== FAILURES ===================================
+__________ test_direct_context_keeps_previous_tail_and_alias_mapping __________
+
+    def test_direct_context_keeps_previous_tail_and_alias_mapping():
+>       from myink.evaluation.comparison import direct_context
+E       ImportError: cannot import name 'direct_context' from 'myink.evaluation.comparison' (E:\github项目\Myink\src\myink\evaluation\comparison.py)
+
+tests\test_evaluation_comparison.py:52: ImportError
+=========================== short test summary info ===========================
+FAILED tests/test_evaluation_comparison.py::test_direct_context_keeps_previous_tail_and_alias_mapping
+1 failed in 11.72s
+Exception ignored in: <function Console.__del__ at 0x000002AD77CB07C0>
+Traceback (most recent call last):
+  File "D:\mnist_data\ancanda\Lib\site-packages\pyreadline3\console\console.py", line 255, in __del__
+OSError: [WinError -1073741816] Windows Error 0xc0000008

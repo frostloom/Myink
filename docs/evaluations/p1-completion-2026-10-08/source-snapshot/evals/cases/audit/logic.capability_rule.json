@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "id": "logic.capability_rule",
+  "group_id": "logic.capability",
+  "split": "holdout",
+  "mode": "audit",
+  "category": "capability",
+  "polarity": "positive",
+  "source": {
+    "path": "scripts/eval-logic.py",
+    "case_name": "capability_rule",
+    "adapted_from": [
+      "conflict-samples:08"
+    ]
+  },
+  "input": {
+    "chapter_seq": 2,
+    "context": {
+      "short_context": [
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 1,
+          "tail": "林川检查了仪器：外接电源已断开，电池也已取出。"
+        }
+      ],
+      "long_term_facts": [
+        {
+          "content": "该仪器必须外接电源或装入电池才能测量，没有其他供能方式。",
+          "is_hard": true
+        }
+      ]
+    },
+    "plan": {},
+    "draft": "没有接入任何电源，仪器却持续正常测量，林川直接读出了实时电流值。"
+  },
+  "expected": {
+    "allowed_verdicts": [
+      "rewrite"
+    ],
+    "required_issues": [
+      {
+        "id": "capability_rule",
+        "description": "无供能却正常使用；补足供能条件不得误报",
+        "allowed_conflict_types": [
+          "item_rule",
+          "power"
+        ],
+        "allowed_severities": [
+          "major",
+          "critical"
+        ],
+        "evidence_sources": [
+          {
+            "chapter": 1,
+            "pointer": "/input/context/short_context/0/tail"
+          },
+          {
+            "chapter": 2,
+            "pointer": "/input/draft"
+          }
+        ]
+      }
+    ],
+    "forbidden_issues": []
+  },
+  "label": {
+    "status": "proposed",
+    "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+    "reviewer": null
+  }
+}

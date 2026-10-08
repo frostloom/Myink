@@ -30,7 +30,7 @@ from myink.config import settings
 from myink.memory import repository as repo
 from myink.memory.embedder import get_embedder
 from myink.memory.vector_store import PgvectorStore
-from myink.models import Chapter, Character, EmbeddingRow, Event, MemoryCandidate
+from myink.models import Alias, Chapter, Character, EmbeddingRow, Event, MemoryCandidate
 from myink.schemas import RetrievedContext
 from myink.context_budget import estimate_tokens
 from myink.validation.continuity import opening_excerpt
@@ -339,6 +339,18 @@ def _keyword_event_leg(session: Session, project_id: uuid.UUID,
     但显式 project_id 过滤 + LIMIT 封顶（§14.1 坑 1 / MVP 量级可接受，pg_trgm 列后续）。"""
     if not terms:
         return []
+    # 历史摘要可能用别名，本章 cast 通常使用 canonical 名。只展开本项目已登记的
+    # 人物别名，不从模型猜测称呼；保留原术语优先级和统一上限。
+    alias_ids = select(Alias.entity_id).where(Alias.project_id == project_id, Alias.alias.in_(terms))
+    characters = session.execute(select(Character).where(
+        Character.project_id == project_id,
+        or_(Character.name.in_(terms), Character.id.in_(alias_ids)),
+    ).order_by(Character.name).limit(_MAX_KEYWORD_TERMS)).scalars().all()
+    if characters:
+        aliases = session.execute(select(Alias.alias).where(
+            Alias.project_id == project_id, Alias.entity_id.in_([c.id for c in characters]),
+        ).order_by(Alias.alias).limit(_MAX_KEYWORD_TERMS)).scalars().all()
+        terms = _terms([*terms, *(c.name for c in characters), *aliases])
     patterns = [f"%{_esc_like(t)}%" for t in terms]
     rows = session.execute(
         select(Event).where(

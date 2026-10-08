@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "id": "logic.first_visit",
+  "group_id": "logic.visit",
+  "split": "development",
+  "mode": "audit",
+  "category": "visit",
+  "polarity": "positive",
+  "source": {
+    "path": "scripts/eval-logic.py",
+    "case_name": "first_visit",
+    "adapted_from": [
+      "conflict-samples:05"
+    ]
+  },
+  "input": {
+    "chapter_seq": 2,
+    "context": {
+      "short_context": [
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 1,
+          "tail": "昨晚林川已在北桥站办理登记，今天再次来到原站房。"
+        }
+      ],
+      "long_term_facts": []
+    },
+    "plan": {},
+    "draft": "这是林川有生以来第一次来到北桥站，此前他从未到过这里。"
+  },
+  "expected": {
+    "allowed_verdicts": [
+      "rewrite"
+    ],
+    "required_issues": [
+      {
+        "id": "first_visit",
+        "description": "首次来访与既有经历矛盾；正常重访不得误报",
+        "allowed_conflict_types": [
+          "plotline",
+          "character",
+          "timeline"
+        ],
+        "allowed_severities": [
+          "major",
+          "critical"
+        ],
+        "evidence_sources": [
+          {
+            "chapter": 1,
+            "pointer": "/input/context/short_context/0/tail"
+          },
+          {
+            "chapter": 2,
+            "pointer": "/input/draft"
+          }
+        ]
+      }
+    ],
+    "forbidden_issues": []
+  },
+  "label": {
+    "status": "proposed",
+    "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+    "reviewer": null
+  }
+}

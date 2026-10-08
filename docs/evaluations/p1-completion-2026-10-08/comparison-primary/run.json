@@ -1,0 +1,284 @@
+{
+  "started_at": "2026-10-08T11:48:34.212850+00:00",
+  "identity": {
+    "system_identifier": "7694257730369818664",
+    "database": "myink",
+    "port": 15432,
+    "business_role": "myink_app"
+  },
+  "config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 60,
+    "max_cost_yuan": 5.0,
+    "deadline_seconds": 1800
+  },
+  "embedding_enabled": false,
+  "sdk_retries": 0,
+  "cases": [
+    {
+      "id": "meter_replacement",
+      "group_id": "meter_replacement",
+      "split": "development",
+      "characters": [
+        "林川",
+        "许宁"
+      ],
+      "aliases": {
+        "林川": [
+          "老林"
+        ]
+      },
+      "history": [
+        {
+          "chapter": 1,
+          "summary": "老林唯一的旧万用表已经烧成残骸，未取得替代品。"
+        },
+        {
+          "chapter": 2,
+          "summary": "许宁记录第2次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 3,
+          "summary": "许宁记录第3次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 4,
+          "summary": "许宁记录第4次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 5,
+          "summary": "许宁记录第5次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 6,
+          "summary": "许宁记录第6次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 7,
+          "summary": "许宁记录第7次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 8,
+          "summary": "许宁记录第8次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 9,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 10,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 11,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 12,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 13,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 14,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 15,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 16,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 17,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 18,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "previous_tail": "林川和许宁站在观测站检修台旁，雨仍未停，供电尚未恢复。",
+      "constraints": [
+        "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。"
+      ],
+      "instruction": "林川与许宁在现实世界的山间观测站检修供电，查出漏水接线盒。需要测量时必须交代可用仪器来源，全章仅两名人物。",
+      "target_words": 800,
+      "expected": [
+        "必要历史事实不被无理由违背",
+        "目标动作得到完成",
+        "合法换新/协作不能误报"
+      ],
+      "label": "proposed"
+    },
+    {
+      "id": "injury_continuity",
+      "group_id": "injury_continuity",
+      "split": "development",
+      "characters": [
+        "林川",
+        "许宁"
+      ],
+      "aliases": {
+        "林川": [
+          "老林"
+        ]
+      },
+      "history": [
+        {
+          "chapter": 1,
+          "summary": "老林左膝扭伤，医生要求本周不能奔跑或攀爬，许宁知道此事。"
+        },
+        {
+          "chapter": 2,
+          "summary": "许宁记录第2次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 3,
+          "summary": "许宁记录第3次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 4,
+          "summary": "许宁记录第4次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 5,
+          "summary": "许宁记录第5次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 6,
+          "summary": "许宁记录第6次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 7,
+          "summary": "许宁记录第7次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 8,
+          "summary": "许宁记录第8次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 9,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 10,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 11,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 12,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 13,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 14,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 15,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 16,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 17,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "chapter": 18,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "previous_tail": "林川和许宁在观测站楼梯口商量如何检查屋顶。",
+      "constraints": [
+        "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。"
+      ],
+      "instruction": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。",
+      "target_words": 800,
+      "expected": [
+        "必要历史事实不被无理由违背",
+        "目标动作得到完成",
+        "合法换新/协作不能误报"
+      ],
+      "label": "proposed"
+    }
+  ],
+  "commit": "326c4b366cdae38c374d253b12340c63615133c1",
+  "dirty": true,
+  "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "source_hashes": {
+    "src/myink/workflow/prompts.py": "47caaacc2bb0043d4f67d33c4141172d8e2078b930102018a8f6b02516c88a21",
+    "src/myink/schemas/contract.py": "ad1bc7abef169ad5e33ba39608491bd1a8425985e127b282332364fce5bd2101",
+    "src/myink/evaluation/cases.py": "760610e87c04a8db830b887c8934fd28e1d47c3fd0ac66bc1de668942a34e345",
+    "src/myink/evaluation/comparison.py": "abf694d96caf07e1aa637cd4ce3204958726be3fe2c258c6ec1d8cc3a3b7dd85",
+    "src/myink/evaluation/isolation.py": "b162923c2f0c9d5ad5bc3bd7d4e404dff125da53c56ff74898be1718a742bbd3",
+    "src/myink/evaluation/recovery.py": "c8c39cfbd69f0b5ffcff87e1f94ee847bc4612b5a85f3f3c885b427e50c43fb6",
+    "src/myink/evaluation/reporting.py": "58e86f92f25a3e5486cb008e0ba27ea2b11c965fd0e795ae931ba003d41ff37f",
+    "src/myink/evaluation/retrieval.py": "ee409e074682dbc59ef3dd564a66ee965ceabf1199354f7c8c954123cdbd8cd3",
+    "src/myink/evaluation/runner.py": "dc452700d888ccb0494c2bc7491b6b6457189b1d17551a9ec7a574e745f8473e",
+    "src/myink/evaluation/scoring.py": "55f762d87548e8f6c957366162df1c6c53baf8f2815b70e67f14aad490c94170",
+    "src/myink/evaluation/__init__.py": "74e0c6489cfa6aae5697eac77e359515d7ae574efb4857dd264e82635e42fe80",
+    "src/myink/workflow/batch_graph.py": "c2d08272bb70b2e8e767c0f00fef4adee6e80320bd4bc56e3fd4291274ee65b8",
+    "src/myink/workflow/chapter_graph.py": "6f036b61e64d29e6aa6bf5a8a053be558313958e3b8edab8630721917782e009",
+    "src/myink/workflow/checkpointer.py": "b996e417ce56bbaf7a7425ec11b35c709e11bb2821118446b967e033e6299637",
+    "src/myink/workflow/nodes.py": "085f72320bf004f2512b5757a2f1df817cb7498baec18a7e75a1ca9c812481be",
+    "src/myink/workflow/outline.py": "4207d02f182790cdcf38d924d3bde3fcae05a4599fc374d1e945e3ad042123db",
+    "src/myink/workflow/patches.py": "79c144defb4348dac8efc57e904a165639fd3fc3db86233c82cccd38d12d92d4",
+    "src/myink/workflow/review.py": "b4ee0d70628c805ff97a393c84a5ee937584918b7448b2e3b1a09880ffc0a0e4",
+    "src/myink/workflow/runner.py": "c9cc12cb04737746c326d16ed08d6a8afc6c89166936928cc3ca871d9fe8cf40",
+    "src/myink/workflow/short_parse.py": "a74dffc63ab3078cdcfbd4750e76df3b89e9bd81eb4054fbfabb428805a25946",
+    "src/myink/workflow/short_runner.py": "876f73baeb81bc11b402070791af251863f0e2c48fb00cae67c3ce233ed49cfa",
+    "src/myink/workflow/state.py": "3229ec311c7e0eb806851cd8e3b7f14f7a56d05b80b42a113349052d099dbe1f",
+    "src/myink/workflow/streaming.py": "ab381201ffdc815da867ba7c281f52d06a105129686b371482c62f378c460f86",
+    "src/myink/workflow/tools.py": "a95b3f681d71dfcb0a67cbe5c79a5546985c1e788918a348ffb7a479c23cc2e8",
+    "src/myink/workflow/__init__.py": "782fb70018230b1d7fd847e7d3b9d3c105780dbda2e437f8dcebe281d339f1bf",
+    "src/myink/memory/correction.py": "7b7f2284c939c07afb5d3c3870f6cd9ef85f9d3a8e0347be832fe939fb5f1015",
+    "src/myink/memory/embedder.py": "5fc3c0d0a621ec013ed986fdab39dbe81b96d0ad8e333f1b7d7291734c99b580",
+    "src/myink/memory/invalidation.py": "cc46d22be9adc66dd5ca287f71f224d143e7d1b3d142b2f704a420964b14c4aa",
+    "src/myink/memory/recall.py": "567de9a461e582365f866a29a5b43ba783a575c8bfff2bbdf2c96b4b2a849880",
+    "src/myink/memory/repository.py": "9b625636388ed1933a609f034aaabaa68c066b542e40a292ff3ab20aa926db11",
+    "src/myink/memory/vector_store.py": "b81e33107b02552daa47028132b6a1637fad4288614159f5a8bf5f920ede1007",
+    "src/myink/memory/__init__.py": "c7783c9072de0fe88b4306c775fce30818066554c9673c5ef3e60d4182f69365",
+    "src/myink/providers/anthropic.py": "389aa7a962b16c7caf5efd131de89e3845d25a462eda9309385da259b2b1a1ac",
+    "src/myink/providers/base.py": "7d468fb369932353f20b1b0e7589ae7b18fcf7eb27942dc539cc59ea76752733",
+    "src/myink/providers/connections.py": "528fbdb2e54efaa7835699cc4fc9c03492f7c8dc04c1dcfecfca645090465210",
+    "src/myink/providers/credentials.py": "b96b9652c82de82c4bc535d199a8b00109c5f84b22c0d2617d916d69f5b42bd2",
+    "src/myink/providers/deepseek.py": "e3ba61d44c83e3d9fc59e877c7e0384775a0bf8345097e713586415c84d548fd",
+    "src/myink/providers/errors.py": "61842c1b226f47a1b310dbea15dfc8cbd4dd1a0502bea9119a52defe29e3c36d",
+    "src/myink/providers/openai_compatible.py": "4ee4e58d85f59c4b2660f8298cafcf6bb525d8f873c7bc34a830e4bbe8d76881",
+    "src/myink/providers/prices.py": "22500a44b2fd951b007813d00a50e8c46b16b5d2cefbd4978e5732b833415159",
+    "src/myink/providers/probe.py": "413386388f66a0bf0c778521d50cb3b21e83830df41f6690b3810baeca65c2e0",
+    "src/myink/providers/think_tag_stripper.py": "4cce5120781886562c55336c9746fbe58f45f75e521f0daa5563cc7baf0e799a",
+    "src/myink/providers/__init__.py": "950b58889dc662b1e49770b19a59ff99e487304a51ee2006a2d2f353ab33d68e",
+    "src/myink/validation/continuity.py": "67c64350e929c9e3418b379cf361616ff50fc13b068d51b158daa030b1727a37",
+    "src/myink/validation/global_audit.py": "da1e044eb87d2f58a272e2d9b5561ef20c2b8cb5be4bc394096c7077f84d108e",
+    "src/myink/validation/l1.py": "a1c8716cfbc018a55d8d1a60ede053472382ac8023f7e0c56b4cb293346567c6",
+    "src/myink/validation/ledger_l2.py": "137bda02562e95633f6c931b1488b49db52e6404594ad27ebe77a39ad7dde282",
+    "src/myink/validation/service.py": "b9dec2b24b6351b43f286caabc2b403b856743b8a8b181584ae75c091eec4582",
+    "src/myink/validation/short.py": "2c305201a4ebd78a3ffa4c0aa535a35e1597f77da51c70b8a386ad414bc662eb",
+    "src/myink/validation/__init__.py": "7d01cd18a8fb738ba352d4e7b4b3769e8fd39ccd27aad0e1869a7ffd86f3f31f"
+  },
+  "dependencies": {
+    "pydantic": "2.13.4",
+    "openai": "2.47.0"
+  }
+}

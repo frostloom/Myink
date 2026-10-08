@@ -1,0 +1,38 @@
+{
+  "request_index": 25,
+  "case_id": "injury_continuity",
+  "variant": "full",
+  "repetition": 2,
+  "prompt_sha256": "9b772c62ae65f16444d8265c9abf06e189d3547410832ac0f6afc0478f1efc69",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 40,
+    "max_cost_yuan": 2.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 1024,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T12:10:33.107911+00:00",
+  "execution": "completed",
+  "raw_output": "{\"summary\": \"林川与许宁配合检修老屋漏水：他上屋顶查瓦缝、用防水胶带临时封堵东侧烟囱旁裂缝，并发现北角瓦下木椽发软；许宁在下方递工具、记录方位与尺寸。随后两人进入阁楼，确认烟囱处椽条水渍严重、需更换，许宁用记号笔标出修补范围。离开前，许宁手电扫到角落防水布下露出金属扣件的方正轮廓，林川制止她翻动，称先处理渗水，但那物件已在她心里留下疑团。\"}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\"summary\": \"林川与许宁配合检修老屋漏水：他上屋顶查瓦缝、用防水胶带临时封堵东侧烟囱旁裂缝，并发现北角瓦下木椽发软；许宁在下方递工具、记录方位与尺寸。随后两人进入阁楼，确认烟囱处椽条水渍严重、需更换，许宁用记号笔标出修补范围。离开前，许宁手电扫到角落防水布下露出金属扣件的方正轮廓，林川制止她翻动，称先处理渗水，但那物件已在她心里留下疑团。\"}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 892,
+  "output_tokens": 133,
+  "cost_est": 0.002848,
+  "cost_status": "estimated",
+  "wall_ms": 3219
+}

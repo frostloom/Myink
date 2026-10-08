@@ -1,0 +1,38 @@
+{
+  "request_index": 16,
+  "case_id": "meter_replacement",
+  "variant": "no_hybrid",
+  "repetition": 2,
+  "prompt_sha256": "d25ccff2f56eb447131e578fd75917ea7382c499cb62bda8962a1f68939f3741",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 40,
+    "max_cost_yuan": 2.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 4096,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T12:09:50.328458+00:00",
+  "execution": "completed",
+  "raw_output": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁在雨中排查观测站跳闸故障，发现东墙接线盒密封圈老化进水、端子烧蚀短路，用短接线临时跳接后恢复供电，并记录需上报申领防水型备件。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"山间观测站\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"山间观测站\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"knowledge\",\n        \"old_value\": \"\",\n        \"new_value\": \"熟悉观测站主缆走向与接线盒位置；曾翻看过检修柜备件清单，记得清单上接线盒应为防水型\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"fact\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"content\": \"观测站东墙接线盒实际安装的是普通型而非备件清单所记的防水型，密封圈规格不符、老化快，导致雨水渗入端子排造成短路跳闸。\",\n        \"category\": \"规则\",\n        \"is_hard\": false,\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"description\": \"型号不符的接线盒仍挂在墙上，仅用短接线临时跳接，备件柜无防水型库存，需上报申领更换，隐患未除。\",\n        \"trigger\": {\n          \"actor\": \"林川\",\n          \"action\": \"临时跳接并记录待更换\",\n          \"object\": \"外墙接线盒\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"new_entity\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"entity_type\": \"location\",\n        \"name\": \"山间观测站\",\n        \"description\": \"位于山间的观测站，设有检修台、配电箱、观测室与气象杆，主缆沿东墙至外墙拐角接线盒分路供电。\"\n      }\n    }\n  ]\n}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁在雨中排查观测站跳闸故障，发现东墙接线盒密封圈老化进水、端子烧蚀短路，用短接线临时跳接后恢复供电，并记录需上报申领防水型备件。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"山间观测站\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"山间观测站\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"knowledge\",\n        \"old_value\": \"\",\n        \"new_value\": \"熟悉观测站主缆走向与接线盒位置；曾翻看过检修柜备件清单，记得清单上接线盒应为防水型\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"fact\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"content\": \"观测站东墙接线盒实际安装的是普通型而非备件清单所记的防水型，密封圈规格不符、老化快，导致雨水渗入端子排造成短路跳闸。\",\n        \"category\": \"规则\",\n        \"is_hard\": false,\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"description\": \"型号不符的接线盒仍挂在墙上，仅用短接线临时跳接，备件柜无防水型库存，需上报申领更换，隐患未除。\",\n        \"trigger\": {\n          \"actor\": \"林川\",\n          \"action\": \"临时跳接并记录待更换\",\n          \"object\": \"外墙接线盒\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"new_entity\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"entity_type\": \"location\",\n        \"name\": \"山间观测站\",\n        \"description\": \"位于山间的观测站，设有检修台、配电箱、观测室与气象杆，主缆沿东墙至外墙拐角接线盒分路供电。\"\n      }\n    }\n  ]\n}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 2344,
+  "output_tokens": 766,
+  "cost_est": 0.010816,
+  "cost_status": "estimated",
+  "wall_ms": 4266
+}

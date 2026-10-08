@@ -1,0 +1,38 @@
+{
+  "request_index": 5,
+  "case_id": "meter_replacement",
+  "variant": "full",
+  "repetition": 1,
+  "prompt_sha256": "92f5bbb2822c91e9db3fbd4c6ab372ba48f8407d63e7a1b7a7589faa80168b53",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 60,
+    "max_cost_yuan": 5.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 4096,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T11:48:59.797596+00:00",
+  "execution": "completed",
+  "raw_output": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁在观测站检修供电线路，发现墙缝渗水导致接线盒进水、线芯氧化断路，决定先断电隔离该段线路，等雨停再查墙外进水点。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"山间观测站（检修台/工具间一带）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"山间观测站（检修台/工具间一带）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"item\",\n        \"old_value\": \"\",\n        \"new_value\": \"一台新数字万用表（上个月购入，来源不明）、一台旧万用表（电池没电）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"fact\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"content\": \"观测站工具间抽屉里有一台上个月购入、采购单上未记录的新数字万用表，来源不明。\",\n        \"category\": \"规则\",\n        \"is_hard\": false,\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.7,\n      \"payload\": {\n        \"description\": \"工具间抽屉里出现一台上个月购入、采购单上未记录的新数字万用表，站里只有林川和许宁两人，来源不明。\",\n        \"trigger\": {\n          \"actor\": \"许宁\",\n          \"action\": \"在工具间抽屉深处发现\",\n          \"object\": \"来源不明的新数字万用表\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.7\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.65,\n      \"payload\": {\n        \"description\": \"墙缝渗水不止一处，往上还有两道深浅不一的水痕，说明渗水已持续多日，墙外进水点尚未查明。\",\n        \"trigger\": {\n          \"actor\": \"林川\",\n          \"action\": \"用手电照见墙缝中多处水痕\",\n          \"object\": \"墙缝渗水点\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.65\n      }\n    },\n    {\n      \"kind\": \"new_entity\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"entity_type\": \"location\",\n        \"name\": \"山间观测站\",\n        \"description\": \"林川与许宁所在的观测站，内有检修台、工具间，铁皮屋顶，供电线路经墙缝渗水受损。\"\n      }\n    }\n  ]\n}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁在观测站检修供电线路，发现墙缝渗水导致接线盒进水、线芯氧化断路，决定先断电隔离该段线路，等雨停再查墙外进水点。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"山间观测站（检修台/工具间一带）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"location\",\n        \"old_value\": \"\",\n        \"new_value\": \"山间观测站（检修台/工具间一带）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"item\",\n        \"old_value\": \"\",\n        \"new_value\": \"一台新数字万用表（上个月购入，来源不明）、一台旧万用表（电池没电）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"fact\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"content\": \"观测站工具间抽屉里有一台上个月购入、采购单上未记录的新数字万用表，来源不明。\",\n        \"category\": \"规则\",\n        \"is_hard\": false,\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.7,\n      \"payload\": {\n        \"description\": \"工具间抽屉里出现一台上个月购入、采购单上未记录的新数字万用表，站里只有林川和许宁两人，来源不明。\",\n        \"trigger\": {\n          \"actor\": \"许宁\",\n          \"action\": \"在工具间抽屉深处发现\",\n          \"object\": \"来源不明的新数字万用表\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.7\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.65,\n      \"payload\": {\n        \"description\": \"墙缝渗水不止一处，往上还有两道深浅不一的水痕，说明渗水已持续多日，墙外进水点尚未查明。\",\n        \"trigger\": {\n          \"actor\": \"林川\",\n          \"action\": \"用手电照见墙缝中多处水痕\",\n          \"object\": \"墙缝渗水点\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.65\n      }\n    },\n    {\n      \"kind\": \"new_entity\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"entity_type\": \"location\",\n        \"name\": \"山间观测站\",\n        \"description\": \"林川与许宁所在的观测站，内有检修台、工具间，铁皮屋顶，供电线路经墙缝渗水受损。\"\n      }\n    }\n  ]\n}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 2077,
+  "output_tokens": 889,
+  "cost_est": 0.011266,
+  "cost_status": "estimated",
+  "wall_ms": 5016
+}

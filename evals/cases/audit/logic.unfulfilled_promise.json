@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "id": "logic.unfulfilled_promise",
+  "group_id": "logic.promise",
+  "split": "development",
+  "mode": "audit",
+  "category": "promise",
+  "polarity": "positive",
+  "source": {
+    "path": "scripts/eval-logic.py",
+    "case_name": "unfulfilled_promise",
+    "adapted_from": [
+      "conflict-samples:07"
+    ]
+  },
+  "input": {
+    "chapter_seq": 2,
+    "context": {
+      "short_context": [
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 1,
+          "tail": "林川承诺修好水泵，但检修尚未开始，水泵仍完全损坏。"
+        }
+      ],
+      "long_term_facts": []
+    },
+    "plan": {},
+    "draft": "检修还没开始，大家就确认林川已经兑现修好水泵的承诺，水泵已经恢复运作。"
+  },
+  "expected": {
+    "allowed_verdicts": [
+      "rewrite"
+    ],
+    "required_issues": [
+      {
+        "id": "unfulfilled_promise",
+        "description": "尚未履行却直接认定完成；实际修复后完成承诺不得误报",
+        "allowed_conflict_types": [
+          "plotline",
+          "foreshadow"
+        ],
+        "allowed_severities": [
+          "major",
+          "critical"
+        ],
+        "evidence_sources": [
+          {
+            "chapter": 1,
+            "pointer": "/input/context/short_context/0/tail"
+          },
+          {
+            "chapter": 2,
+            "pointer": "/input/draft"
+          }
+        ]
+      }
+    ],
+    "forbidden_issues": []
+  },
+  "label": {
+    "status": "proposed",
+    "review_note": "从既有合成案例迁移；类型别名为暂定允许集合，正式指标前需维护者复核。",
+    "reviewer": null
+  }
+}

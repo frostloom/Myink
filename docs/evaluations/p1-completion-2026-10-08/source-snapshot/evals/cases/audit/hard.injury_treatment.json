@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "id": "hard.injury_treatment",
+  "group_id": "hard.injury",
+  "split": "development",
+  "mode": "audit",
+  "category": "legal_change",
+  "polarity": "negative",
+  "source": {
+    "path": "evals/ADDED-CASES.md",
+    "case_name": "injury_treatment",
+    "adapted_from": []
+  },
+  "input": {
+    "chapter_seq": 3,
+    "context": {
+      "short_context": [
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 1,
+          "tail": "林川左膝扭伤，医生要求八周内避免负重。"
+        }
+      ],
+      "long_term_facts": [
+        {
+          "content": "老林是林川的别名。故事为现实题材。",
+          "is_hard": true
+        }
+      ]
+    },
+    "plan": {},
+    "draft": "八周休养后，林川复查确认恢复，医生允许正常步行。他走到窗前，仍避免剧烈运动。"
+  },
+  "expected": {
+    "allowed_verdicts": [
+      "pass"
+    ],
+    "required_issues": [],
+    "forbidden_issues": [
+      "不能把明确换新或合法康复当成旧状态冲突"
+    ]
+  },
+  "label": {
+    "status": "proposed",
+    "reviewer": null,
+    "review_note": "本轮合成，维护者需确认标签和类型。"
+  }
+}

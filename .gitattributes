@@ -1,0 +1,7 @@
+# Evaluation archives bind SHA-256 to exact bytes; preserve them on all platforms.
+docs/evaluations/p1-baseline-2026-10-08/** -text -whitespace
+docs/evaluations/p1-completion-2026-10-08/** -text -whitespace
+# Generated presentation HTML can retain renderer formatting.
+docs/interview/*.html -whitespace
+# Archify exports and validation receipts also describe the original file bytes.
+docs/diagrams/** -text -whitespace

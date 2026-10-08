@@ -73,6 +73,8 @@ jobs:
         run: pip install -e '.[dev]'
       - name: Python 语法检查
         run: python -m compileall -q src tests
+      - name: 评测案例与覆盖清单校验（无模型调用）
+        run: python scripts/evaluate.py validate
       - name: 创建测试业务角色（与 compose 首启同一个脚本，checkout 后执行避免 service 提前挂载空目录）
         env:
           # 脚本里 psql 只显式传 --username/--dbname，其余走 psql 自己的环境变量；

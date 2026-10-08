@@ -1,0 +1,3092 @@
+[
+  {
+    "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+    "chapter_seq": 21,
+    "task_id": "9e117b58-1a5c-4c05-beaf-339d76be3def",
+    "user_instruction": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。"
+  },
+  {
+    "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+    "chapter_seq": 21,
+    "task_id": "9e117b58-1a5c-4c05-beaf-339d76be3def",
+    "user_instruction": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "draft": null,
+    "candidates": [],
+    "report": null,
+    "unresolved": [],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": null
+  },
+  {
+    "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+    "chapter_seq": 21,
+    "task_id": "9e117b58-1a5c-4c05-beaf-339d76be3def",
+    "user_instruction": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "794fcb78-f624-4b93-9988-addef7f1849e",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "861b5ab4-362a-4e51-ada5-0fd5bc79c86b",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "99b4d503-9116-4eb4-89b8-223e9058d163",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "1e7180bf-21d7-497e-b97b-f2783736e257",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "f1134e05-98d2-4bbf-8d57-215471511c83",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "2ed8cf53-f35d-417c-84e8-6be02548403f",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "9570efb0-be89-4ef1-b4c8-7da0e6225200",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "b4a43109-9227-4bdf-82b2-b214fdfa5789",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "cba469c1-bd8f-4038-972d-585f8553e62c",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "12423853-1e4d-4f20-90ce-b6e6a89ffefd",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "b5fe71cb-6df1-4fc1-ae8e-2eba38560b66",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        }
+      ],
+      "entity_snapshots": [],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 2735,
+      "recall_stats": {
+        "vector_hits": 0,
+        "keyword_hits": 0,
+        "fused_total": 0,
+        "recall_tokens_est": 0,
+        "context_tokens_est": 411,
+        "share": 0.0,
+        "vector_status": "disabled",
+        "keyword_status": "no_terms",
+        "degrade_reason": "vector_disabled+keyword_no_terms"
+      }
+    },
+    "draft": null,
+    "candidates": [],
+    "report": null,
+    "unresolved": [],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "794fcb78-f624-4b93-9988-addef7f1849e",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": null
+  },
+  {
+    "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+    "chapter_seq": 21,
+    "task_id": "9e117b58-1a5c-4c05-beaf-339d76be3def",
+    "user_instruction": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "794fcb78-f624-4b93-9988-addef7f1849e",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "861b5ab4-362a-4e51-ada5-0fd5bc79c86b",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "99b4d503-9116-4eb4-89b8-223e9058d163",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "1e7180bf-21d7-497e-b97b-f2783736e257",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "f1134e05-98d2-4bbf-8d57-215471511c83",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "2ed8cf53-f35d-417c-84e8-6be02548403f",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "9570efb0-be89-4ef1-b4c8-7da0e6225200",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "b4a43109-9227-4bdf-82b2-b214fdfa5789",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "cba469c1-bd8f-4038-972d-585f8553e62c",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "12423853-1e4d-4f20-90ce-b6e6a89ffefd",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "b5fe71cb-6df1-4fc1-ae8e-2eba38560b66",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        }
+      ],
+      "entity_snapshots": [
+        {
+          "character_id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        },
+        {
+          "character_id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        }
+      ],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 3197,
+      "recall_stats": {
+        "vector_hits": 0,
+        "keyword_hits": 5,
+        "fused_total": 0,
+        "recall_tokens_est": 0,
+        "context_tokens_est": 411,
+        "share": 0.0,
+        "vector_status": "disabled",
+        "keyword_status": "ok",
+        "degrade_reason": "vector_disabled"
+      }
+    },
+    "cast": {
+      "cast": [
+        "林川",
+        "许宁"
+      ],
+      "locations": [
+        "观测站",
+        "观测站屋顶",
+        "观测站楼梯口"
+      ]
+    },
+    "draft": null,
+    "candidates": [],
+    "report": null,
+    "unresolved": [],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "794fcb78-f624-4b93-9988-addef7f1849e",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": null
+  },
+  {
+    "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+    "chapter_seq": 21,
+    "task_id": "9e117b58-1a5c-4c05-beaf-339d76be3def",
+    "user_instruction": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "794fcb78-f624-4b93-9988-addef7f1849e",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "861b5ab4-362a-4e51-ada5-0fd5bc79c86b",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "99b4d503-9116-4eb4-89b8-223e9058d163",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "1e7180bf-21d7-497e-b97b-f2783736e257",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "f1134e05-98d2-4bbf-8d57-215471511c83",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "2ed8cf53-f35d-417c-84e8-6be02548403f",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "9570efb0-be89-4ef1-b4c8-7da0e6225200",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "b4a43109-9227-4bdf-82b2-b214fdfa5789",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "cba469c1-bd8f-4038-972d-585f8553e62c",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "12423853-1e4d-4f20-90ce-b6e6a89ffefd",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "b5fe71cb-6df1-4fc1-ae8e-2eba38560b66",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        }
+      ],
+      "entity_snapshots": [
+        {
+          "character_id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        },
+        {
+          "character_id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        }
+      ],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 3197,
+      "recall_stats": {
+        "vector_hits": 0,
+        "keyword_hits": 5,
+        "fused_total": 0,
+        "recall_tokens_est": 0,
+        "context_tokens_est": 411,
+        "share": 0.0,
+        "vector_status": "disabled",
+        "keyword_status": "ok",
+        "degrade_reason": "vector_disabled"
+      }
+    },
+    "cast": {
+      "cast": [
+        "林川",
+        "许宁"
+      ],
+      "locations": [
+        "观测站",
+        "观测站屋顶",
+        "观测站楼梯口"
+      ]
+    },
+    "plan": {
+      "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+      "chapter_seq": 21,
+      "goals": [
+        "推进林川与许宁在观测站检查屋顶漏水位置的协作行动线",
+        "在现实题材约束下展现两人基于身体状态的合理分工与配合",
+        "通过漏水问题暴露观测站维护困境，为后续日常运营冲突埋线"
+      ],
+      "scenes": [
+        {
+          "location_id": "观测站楼梯口",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "确定检查屋顶漏水的具体方案与分工，准备工具",
+          "time": "接上一章，白天"
+        },
+        {
+          "location_id": "观测站屋顶",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "实地排查漏水点，林川负责高处检查，许宁负责地面记录与工具传递",
+          "time": "紧接上一场景"
+        },
+        {
+          "location_id": "观测站阁楼/天花板夹层",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "从内部确认漏水渗透路径，标记需要修补的位置",
+          "time": "紧接屋顶检查后"
+        }
+      ],
+      "characters": [
+        {
+          "character_id": "林川",
+          "expected_state": {
+            "location": "观测站屋顶及阁楼"
+          }
+        },
+        {
+          "character_id": "许宁",
+          "expected_state": {
+            "location": "观测站屋顶及阁楼"
+          }
+        }
+      ],
+      "hooks_to_plant": [
+        "屋顶漏水点附近发现一处旧修补痕迹，暗示观测站长期缺乏维护",
+        "许宁在阁楼角落发现一箱被防水布盖住的旧设备或文件，暂未打开"
+      ],
+      "hooks_to_resolve": [],
+      "expected_events": [
+        "林川和许宁在楼梯口商定检查方案，分配工具与职责",
+        "两人上屋顶，林川检查高处瓦片和接缝，许宁在地面递工具并记录",
+        "发现一处明显漏水点，林川用防水胶带做临时处理",
+        "两人进入阁楼从内部确认渗水路径，标记修补位置",
+        "许宁在阁楼角落注意到被防水布盖住的旧箱子，但两人决定先完成修补"
+      ],
+      "hard_constraints": [
+        "现实题材，无超能力，无医学奇迹",
+        "全章仅林川和许宁两名人物出场",
+        "设备状态和伤势不能无缘由改变",
+        "协作方式必须符合两人普通人的身体状态，不出现超出常理的高危动作"
+      ],
+      "transition": {
+        "mode": "continue",
+        "anchor_quote": "林川和许宁在观测站楼梯口商量如何检查屋顶。",
+        "pending_action": "两人尚未开始检查屋顶，方案未定",
+        "opening_beat": "林川提出从外部屋顶和内部阁楼双向排查，许宁点头并去取工具袋",
+        "bridge": "直接接续楼梯口对话，以取工具、上楼梯的动作衔接场景转换"
+      }
+    },
+    "draft": null,
+    "candidates": [],
+    "report": null,
+    "unresolved": [],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "794fcb78-f624-4b93-9988-addef7f1849e",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": null
+  },
+  {
+    "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+    "chapter_seq": 21,
+    "task_id": "9e117b58-1a5c-4c05-beaf-339d76be3def",
+    "user_instruction": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "794fcb78-f624-4b93-9988-addef7f1849e",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "861b5ab4-362a-4e51-ada5-0fd5bc79c86b",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "99b4d503-9116-4eb4-89b8-223e9058d163",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "1e7180bf-21d7-497e-b97b-f2783736e257",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "f1134e05-98d2-4bbf-8d57-215471511c83",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "2ed8cf53-f35d-417c-84e8-6be02548403f",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "9570efb0-be89-4ef1-b4c8-7da0e6225200",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "b4a43109-9227-4bdf-82b2-b214fdfa5789",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "cba469c1-bd8f-4038-972d-585f8553e62c",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "12423853-1e4d-4f20-90ce-b6e6a89ffefd",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "b5fe71cb-6df1-4fc1-ae8e-2eba38560b66",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        }
+      ],
+      "entity_snapshots": [
+        {
+          "character_id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        },
+        {
+          "character_id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        }
+      ],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 3197,
+      "recall_stats": {
+        "vector_hits": 0,
+        "keyword_hits": 5,
+        "fused_total": 0,
+        "recall_tokens_est": 0,
+        "context_tokens_est": 411,
+        "share": 0.0,
+        "vector_status": "disabled",
+        "keyword_status": "ok",
+        "degrade_reason": "vector_disabled"
+      }
+    },
+    "cast": {
+      "cast": [
+        "林川",
+        "许宁"
+      ],
+      "locations": [
+        "观测站",
+        "观测站屋顶",
+        "观测站楼梯口"
+      ]
+    },
+    "plan": {
+      "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+      "chapter_seq": 21,
+      "goals": [
+        "推进林川与许宁在观测站检查屋顶漏水位置的协作行动线",
+        "在现实题材约束下展现两人基于身体状态的合理分工与配合",
+        "通过漏水问题暴露观测站维护困境，为后续日常运营冲突埋线"
+      ],
+      "scenes": [
+        {
+          "location_id": "观测站楼梯口",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "确定检查屋顶漏水的具体方案与分工，准备工具",
+          "time": "接上一章，白天"
+        },
+        {
+          "location_id": "观测站屋顶",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "实地排查漏水点，林川负责高处检查，许宁负责地面记录与工具传递",
+          "time": "紧接上一场景"
+        },
+        {
+          "location_id": "观测站阁楼/天花板夹层",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "从内部确认漏水渗透路径，标记需要修补的位置",
+          "time": "紧接屋顶检查后"
+        }
+      ],
+      "characters": [
+        {
+          "character_id": "林川",
+          "expected_state": {
+            "location": "观测站屋顶及阁楼"
+          }
+        },
+        {
+          "character_id": "许宁",
+          "expected_state": {
+            "location": "观测站屋顶及阁楼"
+          }
+        }
+      ],
+      "hooks_to_plant": [
+        "屋顶漏水点附近发现一处旧修补痕迹，暗示观测站长期缺乏维护",
+        "许宁在阁楼角落发现一箱被防水布盖住的旧设备或文件，暂未打开"
+      ],
+      "hooks_to_resolve": [],
+      "expected_events": [
+        "林川和许宁在楼梯口商定检查方案，分配工具与职责",
+        "两人上屋顶，林川检查高处瓦片和接缝，许宁在地面递工具并记录",
+        "发现一处明显漏水点，林川用防水胶带做临时处理",
+        "两人进入阁楼从内部确认渗水路径，标记修补位置",
+        "许宁在阁楼角落注意到被防水布盖住的旧箱子，但两人决定先完成修补"
+      ],
+      "hard_constraints": [
+        "现实题材，无超能力，无医学奇迹",
+        "全章仅林川和许宁两名人物出场",
+        "设备状态和伤势不能无缘由改变",
+        "协作方式必须符合两人普通人的身体状态，不出现超出常理的高危动作"
+      ],
+      "transition": {
+        "mode": "continue",
+        "anchor_quote": "林川和许宁在观测站楼梯口商量如何检查屋顶。",
+        "pending_action": "两人尚未开始检查屋顶，方案未定",
+        "opening_beat": "林川提出从外部屋顶和内部阁楼双向排查，许宁点头并去取工具袋",
+        "bridge": "直接接续楼梯口对话，以取工具、上楼梯的动作衔接场景转换"
+      }
+    },
+    "draft": "林川把话说了一半就停住，伸手在楼梯扶手上比了个高度：“外面看瓦，里面看梁，两头对，漏点跑不掉。”许宁点头，转身去工具间取工具袋，回来时肩上挎着帆布带，手里还多拎了一卷防水胶带和一支记号笔。\n\n“你上屋顶，我在下面递东西、记位置。”她把工具袋往地上一放，拉链拉开，扳手、手电、卷尺排得整齐，“梯子我检查过了，第二节横档有点松，踩的时候靠外侧。”\n\n林川应了一声，先上。铁梯贴着外墙，他每踩一级都先试力，到檐口时停住，手掌撑住瓦沿，把身体带上去，动作不快，胜在稳。许宁在下面扶着梯脚，等他上了屋面才松手，退开两步仰头看。\n\n屋顶是旧式水泥瓦，几处接缝发黑。林川沿着屋脊一侧慢慢挪，鞋底蹭着瓦面，遇到松动的地方就用脚尖轻点，确认不塌再落重心。许宁在下头跟着他的位置走，手里捏着卷尺和记号笔。\n\n“东侧第三排，靠烟囱那道缝。”林川蹲下，手指按进瓦片间的裂口，指腹沾了一层湿泥，“这里往下渗。”\n\n许宁记下方位，把防水胶带抛上去。林川接住，撕开一段，顺着裂缝压实，又用掌根来回碾了两遍。临时处理只能挡一阵，他心里清楚，但眼下先把水截住。\n\n“还有一处。”他往北角挪，掀开一片翘起的瓦，底下木椽的颜色比别处深，边缘发软。许宁在下面把卷尺递上去，他量了长度，报数，她记。\n\n下屋顶比上去更费神。林川背对梯子，一级一级退，许宁在下面报着还剩几级。落地时他甩了甩手腕，掌心被瓦棱硌出红痕。\n\n阁楼入口在走廊尽头，一块活动木板，推开时扬起细灰。许宁先探头，手电光扫过横梁和椽条，光柱里浮着尘粒。林川跟上来，两人一前一后踩着搁栅走，脚下是薄薄一层保温棉。\n\n“烟囱位置对得上。”许宁把手电照向一根椽条，水渍从瓦缝一路洇下来，在木头上留下深色纹路，到中段散成几道细流，滴在下方的接水盆里。盆是旧的，盆底积了浅浅一层，边上结着水垢。\n\n林川伸手摸椽条，指节叩了两下，声音发闷。“这段得换，现在只能先标出来。”许宁用记号笔在渗水线两侧画了框，又写上日期。\n\n她转身时手电扫过角落，光停住了。那里堆着几块旧木板，最上面盖着一张灰绿色防水布，布下鼓出一个方正的轮廓，边角露出金属扣件的一角。\n\n“那是什么？”她问。\n\n林川看过去，摇头：“不知道，先别动。”他指了指刚画好的框，“把这个弄完再说。”\n\n许宁应了，把防水布重新掖好，回到渗水的位置。两人对着椽条又核了一遍走向，确认修补范围，才顺着搁栅往回走。木板合上时，阁楼重新暗下去，只有那方防水布下的轮廓，还留在许宁脑子里。",
+    "candidates": [],
+    "report": null,
+    "unresolved": [],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "794fcb78-f624-4b93-9988-addef7f1849e",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": null
+  },
+  {
+    "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+    "chapter_seq": 21,
+    "task_id": "9e117b58-1a5c-4c05-beaf-339d76be3def",
+    "user_instruction": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "794fcb78-f624-4b93-9988-addef7f1849e",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "861b5ab4-362a-4e51-ada5-0fd5bc79c86b",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "99b4d503-9116-4eb4-89b8-223e9058d163",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "1e7180bf-21d7-497e-b97b-f2783736e257",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "f1134e05-98d2-4bbf-8d57-215471511c83",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "2ed8cf53-f35d-417c-84e8-6be02548403f",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "9570efb0-be89-4ef1-b4c8-7da0e6225200",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "b4a43109-9227-4bdf-82b2-b214fdfa5789",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "cba469c1-bd8f-4038-972d-585f8553e62c",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "12423853-1e4d-4f20-90ce-b6e6a89ffefd",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "b5fe71cb-6df1-4fc1-ae8e-2eba38560b66",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        }
+      ],
+      "entity_snapshots": [
+        {
+          "character_id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        },
+        {
+          "character_id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        }
+      ],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 3197,
+      "recall_stats": {
+        "vector_hits": 0,
+        "keyword_hits": 5,
+        "fused_total": 0,
+        "recall_tokens_est": 0,
+        "context_tokens_est": 411,
+        "share": 0.0,
+        "vector_status": "disabled",
+        "keyword_status": "ok",
+        "degrade_reason": "vector_disabled"
+      }
+    },
+    "cast": {
+      "cast": [
+        "林川",
+        "许宁"
+      ],
+      "locations": [
+        "观测站",
+        "观测站屋顶",
+        "观测站楼梯口"
+      ]
+    },
+    "plan": {
+      "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+      "chapter_seq": 21,
+      "goals": [
+        "推进林川与许宁在观测站检查屋顶漏水位置的协作行动线",
+        "在现实题材约束下展现两人基于身体状态的合理分工与配合",
+        "通过漏水问题暴露观测站维护困境，为后续日常运营冲突埋线"
+      ],
+      "scenes": [
+        {
+          "location_id": "观测站楼梯口",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "确定检查屋顶漏水的具体方案与分工，准备工具",
+          "time": "接上一章，白天"
+        },
+        {
+          "location_id": "观测站屋顶",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "实地排查漏水点，林川负责高处检查，许宁负责地面记录与工具传递",
+          "time": "紧接上一场景"
+        },
+        {
+          "location_id": "观测站阁楼/天花板夹层",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "从内部确认漏水渗透路径，标记需要修补的位置",
+          "time": "紧接屋顶检查后"
+        }
+      ],
+      "characters": [
+        {
+          "character_id": "林川",
+          "expected_state": {
+            "location": "观测站屋顶及阁楼"
+          }
+        },
+        {
+          "character_id": "许宁",
+          "expected_state": {
+            "location": "观测站屋顶及阁楼"
+          }
+        }
+      ],
+      "hooks_to_plant": [
+        "屋顶漏水点附近发现一处旧修补痕迹，暗示观测站长期缺乏维护",
+        "许宁在阁楼角落发现一箱被防水布盖住的旧设备或文件，暂未打开"
+      ],
+      "hooks_to_resolve": [],
+      "expected_events": [
+        "林川和许宁在楼梯口商定检查方案，分配工具与职责",
+        "两人上屋顶，林川检查高处瓦片和接缝，许宁在地面递工具并记录",
+        "发现一处明显漏水点，林川用防水胶带做临时处理",
+        "两人进入阁楼从内部确认渗水路径，标记修补位置",
+        "许宁在阁楼角落注意到被防水布盖住的旧箱子，但两人决定先完成修补"
+      ],
+      "hard_constraints": [
+        "现实题材，无超能力，无医学奇迹",
+        "全章仅林川和许宁两名人物出场",
+        "设备状态和伤势不能无缘由改变",
+        "协作方式必须符合两人普通人的身体状态，不出现超出常理的高危动作"
+      ],
+      "transition": {
+        "mode": "continue",
+        "anchor_quote": "林川和许宁在观测站楼梯口商量如何检查屋顶。",
+        "pending_action": "两人尚未开始检查屋顶，方案未定",
+        "opening_beat": "林川提出从外部屋顶和内部阁楼双向排查，许宁点头并去取工具袋",
+        "bridge": "直接接续楼梯口对话，以取工具、上楼梯的动作衔接场景转换"
+      }
+    },
+    "draft": "林川把话说了一半就停住，伸手在楼梯扶手上比了个高度：“外面看瓦，里面看梁，两头对，漏点跑不掉。”许宁点头，转身去工具间取工具袋，回来时肩上挎着帆布带，手里还多拎了一卷防水胶带和一支记号笔。\n\n“你上屋顶，我在下面递东西、记位置。”她把工具袋往地上一放，拉链拉开，扳手、手电、卷尺排得整齐，“梯子我检查过了，第二节横档有点松，踩的时候靠外侧。”\n\n林川应了一声，先上。铁梯贴着外墙，他每踩一级都先试力，到檐口时停住，手掌撑住瓦沿，把身体带上去，动作不快，胜在稳。许宁在下面扶着梯脚，等他上了屋面才松手，退开两步仰头看。\n\n屋顶是旧式水泥瓦，几处接缝发黑。林川沿着屋脊一侧慢慢挪，鞋底蹭着瓦面，遇到松动的地方就用脚尖轻点，确认不塌再落重心。许宁在下头跟着他的位置走，手里捏着卷尺和记号笔。\n\n“东侧第三排，靠烟囱那道缝。”林川蹲下，手指按进瓦片间的裂口，指腹沾了一层湿泥，“这里往下渗。”\n\n许宁记下方位，把防水胶带抛上去。林川接住，撕开一段，顺着裂缝压实，又用掌根来回碾了两遍。临时处理只能挡一阵，他心里清楚，但眼下先把水截住。\n\n“还有一处。”他往北角挪，掀开一片翘起的瓦，底下木椽的颜色比别处深，边缘发软。许宁在下面把卷尺递上去，他量了长度，报数，她记。\n\n下屋顶比上去更费神。林川背对梯子，一级一级退，许宁在下面报着还剩几级。落地时他甩了甩手腕，掌心被瓦棱硌出红痕。\n\n阁楼入口在走廊尽头，一块活动木板，推开时扬起细灰。许宁先探头，手电光扫过横梁和椽条，光柱里浮着尘粒。林川跟上来，两人一前一后踩着搁栅走，脚下是薄薄一层保温棉。\n\n“烟囱位置对得上。”许宁把手电照向一根椽条，水渍从瓦缝一路洇下来，在木头上留下深色纹路，到中段散成几道细流，滴在下方的接水盆里。盆是旧的，盆底积了浅浅一层，边上结着水垢。\n\n林川伸手摸椽条，指节叩了两下，声音发闷。“这段得换，现在只能先标出来。”许宁用记号笔在渗水线两侧画了框，又写上日期。\n\n她转身时手电扫过角落，光停住了。那里堆着几块旧木板，最上面盖着一张灰绿色防水布，布下鼓出一个方正的轮廓，边角露出金属扣件的一角。\n\n“那是什么？”她问。\n\n林川看过去，摇头：“不知道，先别动。”他指了指刚画好的框，“把这个弄完再说。”\n\n许宁应了，把防水布重新掖好，回到渗水的位置。两人对着椽条又核了一遍走向，确认修补范围，才顺着搁栅往回走。木板合上时，阁楼重新暗下去，只有那方防水布下的轮廓，还留在许宁脑子里。",
+    "candidates": [
+      {
+        "kind": "event",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "summary": "林川与许宁在观测站检查屋顶漏水，林川上屋顶用防水胶带临时封堵东侧第三排靠烟囱的裂缝，并发现北角瓦下木椽发软；随后两人进入阁楼，确认烟囱位置渗水、椽条需更换，许宁用记号笔标出修补范围。",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "source_chapter": 21,
+          "confidence": 0.95
+        },
+        "confidence": 0.95,
+        "status": "pending"
+      },
+      {
+        "kind": "event",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "summary": "许宁在阁楼角落发现几块旧木板，上面盖着灰绿色防水布，布下鼓出方正轮廓并露出金属扣件一角；林川表示不知情，让先别动，两人未揭开查看。",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "field": "location",
+          "old_value": "",
+          "new_value": "观测站（屋顶及阁楼）",
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "field": "location",
+          "old_value": "",
+          "new_value": "观测站（屋顶下方及阁楼）",
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "field": "injury",
+          "old_value": "",
+          "new_value": "掌心被瓦棱硌出红痕",
+          "source_chapter": 21,
+          "confidence": 0.8
+        },
+        "confidence": 0.8,
+        "status": "pending"
+      },
+      {
+        "kind": "foreshadow",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "description": "阁楼角落旧木板堆上盖着灰绿色防水布，布下鼓出方正轮廓并露出金属扣件一角，林川与许宁未揭开查看，许宁心中留下印象。",
+          "trigger": {
+            "actor": "许宁",
+            "action": "发现",
+            "object": "防水布下的方正轮廓与金属扣件"
+          },
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "new_entity",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "entity_type": "location",
+          "name": "观测站",
+          "description": "林川与许宁所在的旧式建筑，屋顶为水泥瓦、有阁楼与烟囱，存在漏水问题。",
+          "parent": "",
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      }
+    ],
+    "report": null,
+    "unresolved": [],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "794fcb78-f624-4b93-9988-addef7f1849e",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": null
+  },
+  {
+    "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+    "chapter_seq": 21,
+    "task_id": "9e117b58-1a5c-4c05-beaf-339d76be3def",
+    "user_instruction": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "794fcb78-f624-4b93-9988-addef7f1849e",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "861b5ab4-362a-4e51-ada5-0fd5bc79c86b",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "99b4d503-9116-4eb4-89b8-223e9058d163",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "1e7180bf-21d7-497e-b97b-f2783736e257",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "f1134e05-98d2-4bbf-8d57-215471511c83",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "2ed8cf53-f35d-417c-84e8-6be02548403f",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "9570efb0-be89-4ef1-b4c8-7da0e6225200",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "b4a43109-9227-4bdf-82b2-b214fdfa5789",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "cba469c1-bd8f-4038-972d-585f8553e62c",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "12423853-1e4d-4f20-90ce-b6e6a89ffefd",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "b5fe71cb-6df1-4fc1-ae8e-2eba38560b66",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        }
+      ],
+      "entity_snapshots": [
+        {
+          "character_id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        },
+        {
+          "character_id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        }
+      ],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 3197,
+      "recall_stats": {
+        "vector_hits": 0,
+        "keyword_hits": 5,
+        "fused_total": 0,
+        "recall_tokens_est": 0,
+        "context_tokens_est": 411,
+        "share": 0.0,
+        "vector_status": "disabled",
+        "keyword_status": "ok",
+        "degrade_reason": "vector_disabled"
+      }
+    },
+    "cast": {
+      "cast": [
+        "林川",
+        "许宁"
+      ],
+      "locations": [
+        "观测站",
+        "观测站屋顶",
+        "观测站楼梯口"
+      ]
+    },
+    "plan": {
+      "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+      "chapter_seq": 21,
+      "goals": [
+        "推进林川与许宁在观测站检查屋顶漏水位置的协作行动线",
+        "在现实题材约束下展现两人基于身体状态的合理分工与配合",
+        "通过漏水问题暴露观测站维护困境，为后续日常运营冲突埋线"
+      ],
+      "scenes": [
+        {
+          "location_id": "观测站楼梯口",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "确定检查屋顶漏水的具体方案与分工，准备工具",
+          "time": "接上一章，白天"
+        },
+        {
+          "location_id": "观测站屋顶",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "实地排查漏水点，林川负责高处检查，许宁负责地面记录与工具传递",
+          "time": "紧接上一场景"
+        },
+        {
+          "location_id": "观测站阁楼/天花板夹层",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "从内部确认漏水渗透路径，标记需要修补的位置",
+          "time": "紧接屋顶检查后"
+        }
+      ],
+      "characters": [
+        {
+          "character_id": "林川",
+          "expected_state": {
+            "location": "观测站屋顶及阁楼"
+          }
+        },
+        {
+          "character_id": "许宁",
+          "expected_state": {
+            "location": "观测站屋顶及阁楼"
+          }
+        }
+      ],
+      "hooks_to_plant": [
+        "屋顶漏水点附近发现一处旧修补痕迹，暗示观测站长期缺乏维护",
+        "许宁在阁楼角落发现一箱被防水布盖住的旧设备或文件，暂未打开"
+      ],
+      "hooks_to_resolve": [],
+      "expected_events": [
+        "林川和许宁在楼梯口商定检查方案，分配工具与职责",
+        "两人上屋顶，林川检查高处瓦片和接缝，许宁在地面递工具并记录",
+        "发现一处明显漏水点，林川用防水胶带做临时处理",
+        "两人进入阁楼从内部确认渗水路径，标记修补位置",
+        "许宁在阁楼角落注意到被防水布盖住的旧箱子，但两人决定先完成修补"
+      ],
+      "hard_constraints": [
+        "现实题材，无超能力，无医学奇迹",
+        "全章仅林川和许宁两名人物出场",
+        "设备状态和伤势不能无缘由改变",
+        "协作方式必须符合两人普通人的身体状态，不出现超出常理的高危动作"
+      ],
+      "transition": {
+        "mode": "continue",
+        "anchor_quote": "林川和许宁在观测站楼梯口商量如何检查屋顶。",
+        "pending_action": "两人尚未开始检查屋顶，方案未定",
+        "opening_beat": "林川提出从外部屋顶和内部阁楼双向排查，许宁点头并去取工具袋",
+        "bridge": "直接接续楼梯口对话，以取工具、上楼梯的动作衔接场景转换"
+      }
+    },
+    "draft": "林川把话说了一半就停住，伸手在楼梯扶手上比了个高度：“外面看瓦，里面看梁，两头对，漏点跑不掉。”许宁点头，转身去工具间取工具袋，回来时肩上挎着帆布带，手里还多拎了一卷防水胶带和一支记号笔。\n\n“你上屋顶，我在下面递东西、记位置。”她把工具袋往地上一放，拉链拉开，扳手、手电、卷尺排得整齐，“梯子我检查过了，第二节横档有点松，踩的时候靠外侧。”\n\n林川应了一声，先上。铁梯贴着外墙，他每踩一级都先试力，到檐口时停住，手掌撑住瓦沿，把身体带上去，动作不快，胜在稳。许宁在下面扶着梯脚，等他上了屋面才松手，退开两步仰头看。\n\n屋顶是旧式水泥瓦，几处接缝发黑。林川沿着屋脊一侧慢慢挪，鞋底蹭着瓦面，遇到松动的地方就用脚尖轻点，确认不塌再落重心。许宁在下头跟着他的位置走，手里捏着卷尺和记号笔。\n\n“东侧第三排，靠烟囱那道缝。”林川蹲下，手指按进瓦片间的裂口，指腹沾了一层湿泥，“这里往下渗。”\n\n许宁记下方位，把防水胶带抛上去。林川接住，撕开一段，顺着裂缝压实，又用掌根来回碾了两遍。临时处理只能挡一阵，他心里清楚，但眼下先把水截住。\n\n“还有一处。”他往北角挪，掀开一片翘起的瓦，底下木椽的颜色比别处深，边缘发软。许宁在下面把卷尺递上去，他量了长度，报数，她记。\n\n下屋顶比上去更费神。林川背对梯子，一级一级退，许宁在下面报着还剩几级。落地时他甩了甩手腕，掌心被瓦棱硌出红痕。\n\n阁楼入口在走廊尽头，一块活动木板，推开时扬起细灰。许宁先探头，手电光扫过横梁和椽条，光柱里浮着尘粒。林川跟上来，两人一前一后踩着搁栅走，脚下是薄薄一层保温棉。\n\n“烟囱位置对得上。”许宁把手电照向一根椽条，水渍从瓦缝一路洇下来，在木头上留下深色纹路，到中段散成几道细流，滴在下方的接水盆里。盆是旧的，盆底积了浅浅一层，边上结着水垢。\n\n林川伸手摸椽条，指节叩了两下，声音发闷。“这段得换，现在只能先标出来。”许宁用记号笔在渗水线两侧画了框，又写上日期。\n\n她转身时手电扫过角落，光停住了。那里堆着几块旧木板，最上面盖着一张灰绿色防水布，布下鼓出一个方正的轮廓，边角露出金属扣件的一角。\n\n“那是什么？”她问。\n\n林川看过去，摇头：“不知道，先别动。”他指了指刚画好的框，“把这个弄完再说。”\n\n许宁应了，把防水布重新掖好，回到渗水的位置。两人对着椽条又核了一遍走向，确认修补范围，才顺着搁栅往回走。木板合上时，阁楼重新暗下去，只有那方防水布下的轮廓，还留在许宁脑子里。",
+    "candidates": [
+      {
+        "kind": "event",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "summary": "林川与许宁在观测站检查屋顶漏水，林川上屋顶用防水胶带临时封堵东侧第三排靠烟囱的裂缝，并发现北角瓦下木椽发软；随后两人进入阁楼，确认烟囱位置渗水、椽条需更换，许宁用记号笔标出修补范围。",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "source_chapter": 21,
+          "confidence": 0.95
+        },
+        "confidence": 0.95,
+        "status": "pending"
+      },
+      {
+        "kind": "event",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "summary": "许宁在阁楼角落发现几块旧木板，上面盖着灰绿色防水布，布下鼓出方正轮廓并露出金属扣件一角；林川表示不知情，让先别动，两人未揭开查看。",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "field": "location",
+          "old_value": "",
+          "new_value": "观测站（屋顶及阁楼）",
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "field": "location",
+          "old_value": "",
+          "new_value": "观测站（屋顶下方及阁楼）",
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "field": "injury",
+          "old_value": "",
+          "new_value": "掌心被瓦棱硌出红痕",
+          "source_chapter": 21,
+          "confidence": 0.8
+        },
+        "confidence": 0.8,
+        "status": "pending"
+      },
+      {
+        "kind": "foreshadow",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "description": "阁楼角落旧木板堆上盖着灰绿色防水布，布下鼓出方正轮廓并露出金属扣件一角，林川与许宁未揭开查看，许宁心中留下印象。",
+          "trigger": {
+            "actor": "许宁",
+            "action": "发现",
+            "object": "防水布下的方正轮廓与金属扣件"
+          },
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "new_entity",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "entity_type": "location",
+          "name": "观测站",
+          "description": "林川与许宁所在的旧式建筑，屋顶为水泥瓦、有阁楼与烟囱，存在漏水问题。",
+          "parent": "",
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      }
+    ],
+    "report": {
+      "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+      "chapter_seq": 21,
+      "findings": [],
+      "summary": {
+        "total": 0,
+        "critical": 0,
+        "resolved": 0
+      }
+    },
+    "unresolved": [],
+    "audit_verdict": null,
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "794fcb78-f624-4b93-9988-addef7f1849e",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": null
+  },
+  {
+    "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+    "chapter_seq": 21,
+    "task_id": "9e117b58-1a5c-4c05-beaf-339d76be3def",
+    "user_instruction": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "794fcb78-f624-4b93-9988-addef7f1849e",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "861b5ab4-362a-4e51-ada5-0fd5bc79c86b",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "99b4d503-9116-4eb4-89b8-223e9058d163",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "1e7180bf-21d7-497e-b97b-f2783736e257",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "f1134e05-98d2-4bbf-8d57-215471511c83",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "2ed8cf53-f35d-417c-84e8-6be02548403f",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "9570efb0-be89-4ef1-b4c8-7da0e6225200",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "b4a43109-9227-4bdf-82b2-b214fdfa5789",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "cba469c1-bd8f-4038-972d-585f8553e62c",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "12423853-1e4d-4f20-90ce-b6e6a89ffefd",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "b5fe71cb-6df1-4fc1-ae8e-2eba38560b66",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        }
+      ],
+      "entity_snapshots": [
+        {
+          "character_id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        },
+        {
+          "character_id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        }
+      ],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 3197,
+      "recall_stats": {
+        "vector_hits": 0,
+        "keyword_hits": 5,
+        "fused_total": 0,
+        "recall_tokens_est": 0,
+        "context_tokens_est": 411,
+        "share": 0.0,
+        "vector_status": "disabled",
+        "keyword_status": "ok",
+        "degrade_reason": "vector_disabled"
+      }
+    },
+    "cast": {
+      "cast": [
+        "林川",
+        "许宁"
+      ],
+      "locations": [
+        "观测站",
+        "观测站屋顶",
+        "观测站楼梯口"
+      ]
+    },
+    "plan": {
+      "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+      "chapter_seq": 21,
+      "goals": [
+        "推进林川与许宁在观测站检查屋顶漏水位置的协作行动线",
+        "在现实题材约束下展现两人基于身体状态的合理分工与配合",
+        "通过漏水问题暴露观测站维护困境，为后续日常运营冲突埋线"
+      ],
+      "scenes": [
+        {
+          "location_id": "观测站楼梯口",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "确定检查屋顶漏水的具体方案与分工，准备工具",
+          "time": "接上一章，白天"
+        },
+        {
+          "location_id": "观测站屋顶",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "实地排查漏水点，林川负责高处检查，许宁负责地面记录与工具传递",
+          "time": "紧接上一场景"
+        },
+        {
+          "location_id": "观测站阁楼/天花板夹层",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "从内部确认漏水渗透路径，标记需要修补的位置",
+          "time": "紧接屋顶检查后"
+        }
+      ],
+      "characters": [
+        {
+          "character_id": "林川",
+          "expected_state": {
+            "location": "观测站屋顶及阁楼"
+          }
+        },
+        {
+          "character_id": "许宁",
+          "expected_state": {
+            "location": "观测站屋顶及阁楼"
+          }
+        }
+      ],
+      "hooks_to_plant": [
+        "屋顶漏水点附近发现一处旧修补痕迹，暗示观测站长期缺乏维护",
+        "许宁在阁楼角落发现一箱被防水布盖住的旧设备或文件，暂未打开"
+      ],
+      "hooks_to_resolve": [],
+      "expected_events": [
+        "林川和许宁在楼梯口商定检查方案，分配工具与职责",
+        "两人上屋顶，林川检查高处瓦片和接缝，许宁在地面递工具并记录",
+        "发现一处明显漏水点，林川用防水胶带做临时处理",
+        "两人进入阁楼从内部确认渗水路径，标记修补位置",
+        "许宁在阁楼角落注意到被防水布盖住的旧箱子，但两人决定先完成修补"
+      ],
+      "hard_constraints": [
+        "现实题材，无超能力，无医学奇迹",
+        "全章仅林川和许宁两名人物出场",
+        "设备状态和伤势不能无缘由改变",
+        "协作方式必须符合两人普通人的身体状态，不出现超出常理的高危动作"
+      ],
+      "transition": {
+        "mode": "continue",
+        "anchor_quote": "林川和许宁在观测站楼梯口商量如何检查屋顶。",
+        "pending_action": "两人尚未开始检查屋顶，方案未定",
+        "opening_beat": "林川提出从外部屋顶和内部阁楼双向排查，许宁点头并去取工具袋",
+        "bridge": "直接接续楼梯口对话，以取工具、上楼梯的动作衔接场景转换"
+      }
+    },
+    "draft": "林川把话说了一半就停住，伸手在楼梯扶手上比了个高度：“外面看瓦，里面看梁，两头对，漏点跑不掉。”许宁点头，转身去工具间取工具袋，回来时肩上挎着帆布带，手里还多拎了一卷防水胶带和一支记号笔。\n\n“你上屋顶，我在下面递东西、记位置。”她把工具袋往地上一放，拉链拉开，扳手、手电、卷尺排得整齐，“梯子我检查过了，第二节横档有点松，踩的时候靠外侧。”\n\n林川应了一声，先上。铁梯贴着外墙，他每踩一级都先试力，到檐口时停住，手掌撑住瓦沿，把身体带上去，动作不快，胜在稳。许宁在下面扶着梯脚，等他上了屋面才松手，退开两步仰头看。\n\n屋顶是旧式水泥瓦，几处接缝发黑。林川沿着屋脊一侧慢慢挪，鞋底蹭着瓦面，遇到松动的地方就用脚尖轻点，确认不塌再落重心。许宁在下头跟着他的位置走，手里捏着卷尺和记号笔。\n\n“东侧第三排，靠烟囱那道缝。”林川蹲下，手指按进瓦片间的裂口，指腹沾了一层湿泥，“这里往下渗。”\n\n许宁记下方位，把防水胶带抛上去。林川接住，撕开一段，顺着裂缝压实，又用掌根来回碾了两遍。临时处理只能挡一阵，他心里清楚，但眼下先把水截住。\n\n“还有一处。”他往北角挪，掀开一片翘起的瓦，底下木椽的颜色比别处深，边缘发软。许宁在下面把卷尺递上去，他量了长度，报数，她记。\n\n下屋顶比上去更费神。林川背对梯子，一级一级退，许宁在下面报着还剩几级。落地时他甩了甩手腕，掌心被瓦棱硌出红痕。\n\n阁楼入口在走廊尽头，一块活动木板，推开时扬起细灰。许宁先探头，手电光扫过横梁和椽条，光柱里浮着尘粒。林川跟上来，两人一前一后踩着搁栅走，脚下是薄薄一层保温棉。\n\n“烟囱位置对得上。”许宁把手电照向一根椽条，水渍从瓦缝一路洇下来，在木头上留下深色纹路，到中段散成几道细流，滴在下方的接水盆里。盆是旧的，盆底积了浅浅一层，边上结着水垢。\n\n林川伸手摸椽条，指节叩了两下，声音发闷。“这段得换，现在只能先标出来。”许宁用记号笔在渗水线两侧画了框，又写上日期。\n\n她转身时手电扫过角落，光停住了。那里堆着几块旧木板，最上面盖着一张灰绿色防水布，布下鼓出一个方正的轮廓，边角露出金属扣件的一角。\n\n“那是什么？”她问。\n\n林川看过去，摇头：“不知道，先别动。”他指了指刚画好的框，“把这个弄完再说。”\n\n许宁应了，把防水布重新掖好，回到渗水的位置。两人对着椽条又核了一遍走向，确认修补范围，才顺着搁栅往回走。木板合上时，阁楼重新暗下去，只有那方防水布下的轮廓，还留在许宁脑子里。",
+    "candidates": [
+      {
+        "kind": "event",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "summary": "林川与许宁在观测站检查屋顶漏水，林川上屋顶用防水胶带临时封堵东侧第三排靠烟囱的裂缝，并发现北角瓦下木椽发软；随后两人进入阁楼，确认烟囱位置渗水、椽条需更换，许宁用记号笔标出修补范围。",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "source_chapter": 21,
+          "confidence": 0.95
+        },
+        "confidence": 0.95,
+        "status": "pending"
+      },
+      {
+        "kind": "event",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "summary": "许宁在阁楼角落发现几块旧木板，上面盖着灰绿色防水布，布下鼓出方正轮廓并露出金属扣件一角；林川表示不知情，让先别动，两人未揭开查看。",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "field": "location",
+          "old_value": "",
+          "new_value": "观测站（屋顶及阁楼）",
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "field": "location",
+          "old_value": "",
+          "new_value": "观测站（屋顶下方及阁楼）",
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "field": "injury",
+          "old_value": "",
+          "new_value": "掌心被瓦棱硌出红痕",
+          "source_chapter": 21,
+          "confidence": 0.8
+        },
+        "confidence": 0.8,
+        "status": "pending"
+      },
+      {
+        "kind": "foreshadow",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "description": "阁楼角落旧木板堆上盖着灰绿色防水布，布下鼓出方正轮廓并露出金属扣件一角，林川与许宁未揭开查看，许宁心中留下印象。",
+          "trigger": {
+            "actor": "许宁",
+            "action": "发现",
+            "object": "防水布下的方正轮廓与金属扣件"
+          },
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "new_entity",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "entity_type": "location",
+          "name": "观测站",
+          "description": "林川与许宁所在的旧式建筑，屋顶为水泥瓦、有阁楼与烟囱，存在漏水问题。",
+          "parent": "",
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      }
+    ],
+    "report": {
+      "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+      "chapter_seq": 21,
+      "findings": [],
+      "summary": {
+        "total": 0,
+        "critical": 0,
+        "resolved": 0
+      }
+    },
+    "unresolved": [],
+    "audit_verdict": {
+      "verdict": "pass",
+      "replan_target": null,
+      "findings": [],
+      "reasons": [
+        "对照章节计划：三场景（楼梯口分工→屋顶排查→阁楼确认渗水路径）全部落地，顺序与计划一致，无主线偏移。",
+        "伏笔埋设到位：屋顶旧修补痕迹（发黑接缝、木椽发软）暗示长期缺乏维护；阁楼角落防水布下的方正轮廓与金属扣件对应计划中'未打开的旧设备/文件'，且两人按计划决定先完成修补，未提前揭开。",
+        "接续正确：开头直接承接上一章楼梯口对话（'林川把话说了一半就停住'），以取工具、上梯动作完成场景转换，未重演已完成动作，未丢弃未完成请求。",
+        "人设与身体状态合理：林川先试力再上梯、退梯时由许宁报级数，许宁扶梯脚、递工具、记录，分工符合普通人身体状态，无高危动作、无医学奇迹。",
+        "全章仅林川、许宁两人出场，符合硬约束；设备与伤势无无缘由变化。",
+        "确定性校验 0 findings，无跨章矛盾证据。",
+        "与近期章节开头（第20章）虽同为楼梯口场景，但本章为直接接续而非近义改写，属合理同场景延续，不构成机械重复。"
+      ],
+      "confidence": 0.9
+    },
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "794fcb78-f624-4b93-9988-addef7f1849e",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": null
+  },
+  {
+    "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+    "chapter_seq": 21,
+    "task_id": "9e117b58-1a5c-4c05-beaf-339d76be3def",
+    "user_instruction": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "794fcb78-f624-4b93-9988-addef7f1849e",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "861b5ab4-362a-4e51-ada5-0fd5bc79c86b",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "99b4d503-9116-4eb4-89b8-223e9058d163",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "1e7180bf-21d7-497e-b97b-f2783736e257",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "f1134e05-98d2-4bbf-8d57-215471511c83",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "2ed8cf53-f35d-417c-84e8-6be02548403f",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "9570efb0-be89-4ef1-b4c8-7da0e6225200",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "b4a43109-9227-4bdf-82b2-b214fdfa5789",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "cba469c1-bd8f-4038-972d-585f8553e62c",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "12423853-1e4d-4f20-90ce-b6e6a89ffefd",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "b5fe71cb-6df1-4fc1-ae8e-2eba38560b66",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        }
+      ],
+      "entity_snapshots": [
+        {
+          "character_id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        },
+        {
+          "character_id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        }
+      ],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 3197,
+      "recall_stats": {
+        "vector_hits": 0,
+        "keyword_hits": 5,
+        "fused_total": 0,
+        "recall_tokens_est": 0,
+        "context_tokens_est": 411,
+        "share": 0.0,
+        "vector_status": "disabled",
+        "keyword_status": "ok",
+        "degrade_reason": "vector_disabled"
+      }
+    },
+    "cast": {
+      "cast": [
+        "林川",
+        "许宁"
+      ],
+      "locations": [
+        "观测站",
+        "观测站屋顶",
+        "观测站楼梯口"
+      ]
+    },
+    "plan": {
+      "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+      "chapter_seq": 21,
+      "goals": [
+        "推进林川与许宁在观测站检查屋顶漏水位置的协作行动线",
+        "在现实题材约束下展现两人基于身体状态的合理分工与配合",
+        "通过漏水问题暴露观测站维护困境，为后续日常运营冲突埋线"
+      ],
+      "scenes": [
+        {
+          "location_id": "观测站楼梯口",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "确定检查屋顶漏水的具体方案与分工，准备工具",
+          "time": "接上一章，白天"
+        },
+        {
+          "location_id": "观测站屋顶",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "实地排查漏水点，林川负责高处检查，许宁负责地面记录与工具传递",
+          "time": "紧接上一场景"
+        },
+        {
+          "location_id": "观测站阁楼/天花板夹层",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "从内部确认漏水渗透路径，标记需要修补的位置",
+          "time": "紧接屋顶检查后"
+        }
+      ],
+      "characters": [
+        {
+          "character_id": "林川",
+          "expected_state": {
+            "location": "观测站屋顶及阁楼"
+          }
+        },
+        {
+          "character_id": "许宁",
+          "expected_state": {
+            "location": "观测站屋顶及阁楼"
+          }
+        }
+      ],
+      "hooks_to_plant": [
+        "屋顶漏水点附近发现一处旧修补痕迹，暗示观测站长期缺乏维护",
+        "许宁在阁楼角落发现一箱被防水布盖住的旧设备或文件，暂未打开"
+      ],
+      "hooks_to_resolve": [],
+      "expected_events": [
+        "林川和许宁在楼梯口商定检查方案，分配工具与职责",
+        "两人上屋顶，林川检查高处瓦片和接缝，许宁在地面递工具并记录",
+        "发现一处明显漏水点，林川用防水胶带做临时处理",
+        "两人进入阁楼从内部确认渗水路径，标记修补位置",
+        "许宁在阁楼角落注意到被防水布盖住的旧箱子，但两人决定先完成修补"
+      ],
+      "hard_constraints": [
+        "现实题材，无超能力，无医学奇迹",
+        "全章仅林川和许宁两名人物出场",
+        "设备状态和伤势不能无缘由改变",
+        "协作方式必须符合两人普通人的身体状态，不出现超出常理的高危动作"
+      ],
+      "transition": {
+        "mode": "continue",
+        "anchor_quote": "林川和许宁在观测站楼梯口商量如何检查屋顶。",
+        "pending_action": "两人尚未开始检查屋顶，方案未定",
+        "opening_beat": "林川提出从外部屋顶和内部阁楼双向排查，许宁点头并去取工具袋",
+        "bridge": "直接接续楼梯口对话，以取工具、上楼梯的动作衔接场景转换"
+      }
+    },
+    "draft": "林川把话说了一半就停住，伸手在楼梯扶手上比了个高度：“外面看瓦，里面看梁，两头对，漏点跑不掉。”许宁点头，转身去工具间取工具袋，回来时肩上挎着帆布带，手里还多拎了一卷防水胶带和一支记号笔。\n\n“你上屋顶，我在下面递东西、记位置。”她把工具袋往地上一放，拉链拉开，扳手、手电、卷尺排得整齐，“梯子我检查过了，第二节横档有点松，踩的时候靠外侧。”\n\n林川应了一声，先上。铁梯贴着外墙，他每踩一级都先试力，到檐口时停住，手掌撑住瓦沿，把身体带上去，动作不快，胜在稳。许宁在下面扶着梯脚，等他上了屋面才松手，退开两步仰头看。\n\n屋顶是旧式水泥瓦，几处接缝发黑。林川沿着屋脊一侧慢慢挪，鞋底蹭着瓦面，遇到松动的地方就用脚尖轻点，确认不塌再落重心。许宁在下头跟着他的位置走，手里捏着卷尺和记号笔。\n\n“东侧第三排，靠烟囱那道缝。”林川蹲下，手指按进瓦片间的裂口，指腹沾了一层湿泥，“这里往下渗。”\n\n许宁记下方位，把防水胶带抛上去。林川接住，撕开一段，顺着裂缝压实，又用掌根来回碾了两遍。临时处理只能挡一阵，他心里清楚，但眼下先把水截住。\n\n“还有一处。”他往北角挪，掀开一片翘起的瓦，底下木椽的颜色比别处深，边缘发软。许宁在下面把卷尺递上去，他量了长度，报数，她记。\n\n下屋顶比上去更费神。林川背对梯子，一级一级退，许宁在下面报着还剩几级。落地时他甩了甩手腕，掌心被瓦棱硌出红痕。\n\n阁楼入口在走廊尽头，一块活动木板，推开时扬起细灰。许宁先探头，手电光扫过横梁和椽条，光柱里浮着尘粒。林川跟上来，两人一前一后踩着搁栅走，脚下是薄薄一层保温棉。\n\n“烟囱位置对得上。”许宁把手电照向一根椽条，水渍从瓦缝一路洇下来，在木头上留下深色纹路，到中段散成几道细流，滴在下方的接水盆里。盆是旧的，盆底积了浅浅一层，边上结着水垢。\n\n林川伸手摸椽条，指节叩了两下，声音发闷。“这段得换，现在只能先标出来。”许宁用记号笔在渗水线两侧画了框，又写上日期。\n\n她转身时手电扫过角落，光停住了。那里堆着几块旧木板，最上面盖着一张灰绿色防水布，布下鼓出一个方正的轮廓，边角露出金属扣件的一角。\n\n“那是什么？”她问。\n\n林川看过去，摇头：“不知道，先别动。”他指了指刚画好的框，“把这个弄完再说。”\n\n许宁应了，把防水布重新掖好，回到渗水的位置。两人对着椽条又核了一遍走向，确认修补范围，才顺着搁栅往回走。木板合上时，阁楼重新暗下去，只有那方防水布下的轮廓，还留在许宁脑子里。",
+    "candidates": [
+      {
+        "kind": "event",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "summary": "林川与许宁在观测站检查屋顶漏水，林川上屋顶用防水胶带临时封堵东侧第三排靠烟囱的裂缝，并发现北角瓦下木椽发软；随后两人进入阁楼，确认烟囱位置渗水、椽条需更换，许宁用记号笔标出修补范围。",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "source_chapter": 21,
+          "confidence": 0.95
+        },
+        "confidence": 0.95,
+        "status": "pending"
+      },
+      {
+        "kind": "event",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "summary": "许宁在阁楼角落发现几块旧木板，上面盖着灰绿色防水布，布下鼓出方正轮廓并露出金属扣件一角；林川表示不知情，让先别动，两人未揭开查看。",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "field": "location",
+          "old_value": "",
+          "new_value": "观测站（屋顶及阁楼）",
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "field": "location",
+          "old_value": "",
+          "new_value": "观测站（屋顶下方及阁楼）",
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "field": "injury",
+          "old_value": "",
+          "new_value": "掌心被瓦棱硌出红痕",
+          "source_chapter": 21,
+          "confidence": 0.8
+        },
+        "confidence": 0.8,
+        "status": "pending"
+      },
+      {
+        "kind": "foreshadow",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "description": "阁楼角落旧木板堆上盖着灰绿色防水布，布下鼓出方正轮廓并露出金属扣件一角，林川与许宁未揭开查看，许宁心中留下印象。",
+          "trigger": {
+            "actor": "许宁",
+            "action": "发现",
+            "object": "防水布下的方正轮廓与金属扣件"
+          },
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "new_entity",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "entity_type": "location",
+          "name": "观测站",
+          "description": "林川与许宁所在的旧式建筑，屋顶为水泥瓦、有阁楼与烟囱，存在漏水问题。",
+          "parent": "",
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      }
+    ],
+    "report": {
+      "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+      "chapter_seq": 21,
+      "findings": [],
+      "summary": {
+        "total": 0,
+        "critical": 0,
+        "resolved": 0
+      }
+    },
+    "unresolved": [],
+    "audit_verdict": {
+      "verdict": "pass",
+      "replan_target": null,
+      "findings": [],
+      "reasons": [
+        "对照章节计划：三场景（楼梯口分工→屋顶排查→阁楼确认渗水路径）全部落地，顺序与计划一致，无主线偏移。",
+        "伏笔埋设到位：屋顶旧修补痕迹（发黑接缝、木椽发软）暗示长期缺乏维护；阁楼角落防水布下的方正轮廓与金属扣件对应计划中'未打开的旧设备/文件'，且两人按计划决定先完成修补，未提前揭开。",
+        "接续正确：开头直接承接上一章楼梯口对话（'林川把话说了一半就停住'），以取工具、上梯动作完成场景转换，未重演已完成动作，未丢弃未完成请求。",
+        "人设与身体状态合理：林川先试力再上梯、退梯时由许宁报级数，许宁扶梯脚、递工具、记录，分工符合普通人身体状态，无高危动作、无医学奇迹。",
+        "全章仅林川、许宁两人出场，符合硬约束；设备与伤势无无缘由变化。",
+        "确定性校验 0 findings，无跨章矛盾证据。",
+        "与近期章节开头（第20章）虽同为楼梯口场景，但本章为直接接续而非近义改写，属合理同场景延续，不构成机械重复。"
+      ],
+      "confidence": 0.9
+    },
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "794fcb78-f624-4b93-9988-addef7f1849e",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": false,
+    "needs_review": false,
+    "error": null
+  },
+  {
+    "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+    "chapter_seq": 21,
+    "task_id": "9e117b58-1a5c-4c05-beaf-339d76be3def",
+    "user_instruction": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。",
+    "settings": {},
+    "characters": [
+      {
+        "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+        "name": "林川",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      },
+      {
+        "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+        "name": "许宁",
+        "realm_cap": "普通人",
+        "personality": "谨慎负责"
+      }
+    ],
+    "chapter_plan_input": {
+      "characters": [
+        {
+          "id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        },
+        {
+          "id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "personality": "谨慎负责"
+        }
+      ],
+      "world_rules": {}
+    },
+    "style_profile": {},
+    "genre_pack": {},
+    "target_words": 800,
+    "context": {
+      "long_term_facts": [
+        {
+          "fact_id": "794fcb78-f624-4b93-9988-addef7f1849e",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ],
+      "mid_term_events": [
+        {
+          "event_id": "861b5ab4-362a-4e51-ada5-0fd5bc79c86b",
+          "chapter": 18,
+          "confidence": 1.0,
+          "summary": "许宁记录第18次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "99b4d503-9116-4eb4-89b8-223e9058d163",
+          "chapter": 17,
+          "confidence": 1.0,
+          "summary": "许宁记录第17次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "1e7180bf-21d7-497e-b97b-f2783736e257",
+          "chapter": 16,
+          "confidence": 1.0,
+          "summary": "许宁记录第16次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "f1134e05-98d2-4bbf-8d57-215471511c83",
+          "chapter": 15,
+          "confidence": 1.0,
+          "summary": "许宁记录第15次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "2ed8cf53-f35d-417c-84e8-6be02548403f",
+          "chapter": 14,
+          "confidence": 1.0,
+          "summary": "许宁记录第14次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "9570efb0-be89-4ef1-b4c8-7da0e6225200",
+          "chapter": 13,
+          "confidence": 1.0,
+          "summary": "许宁记录第13次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "b4a43109-9227-4bdf-82b2-b214fdfa5789",
+          "chapter": 12,
+          "confidence": 1.0,
+          "summary": "许宁记录第12次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "cba469c1-bd8f-4038-972d-585f8553e62c",
+          "chapter": 11,
+          "confidence": 1.0,
+          "summary": "许宁记录第11次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "12423853-1e4d-4f20-90ce-b6e6a89ffefd",
+          "chapter": 10,
+          "confidence": 1.0,
+          "summary": "许宁记录第10次普通天气观测，没有设备更换或伤势变化。"
+        },
+        {
+          "event_id": "b5fe71cb-6df1-4fc1-ae8e-2eba38560b66",
+          "chapter": 9,
+          "confidence": 1.0,
+          "summary": "许宁记录第9次普通天气观测，没有设备更换或伤势变化。"
+        }
+      ],
+      "short_context": [
+        {
+          "kind": "prev_chapter_summary",
+          "chapter": 20,
+          "summary": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "prev_chapter_tail",
+          "chapter": 20,
+          "tail": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        },
+        {
+          "kind": "user_instruction",
+          "text": "林川与许宁在现实世界的观测站找到屋顶漏水位置，采取符合身体状态的协作方式。全章仅两名人物，没有医学奇迹。"
+        }
+      ],
+      "recent_openings": [
+        {
+          "chapter": 20,
+          "text": "林川和许宁在观测站楼梯口商量如何检查屋顶。"
+        }
+      ],
+      "entity_snapshots": [
+        {
+          "character_id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "name": "林川",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        },
+        {
+          "character_id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "name": "许宁",
+          "realm_cap": "普通人",
+          "state": {},
+          "state_changes": {},
+          "personality": "谨慎负责",
+          "relations": []
+        }
+      ],
+      "setting_snapshots": [],
+      "open_foreshadows": [],
+      "plot_threads": [],
+      "reflexions": [],
+      "token_usage": 3197,
+      "recall_stats": {
+        "vector_hits": 0,
+        "keyword_hits": 5,
+        "fused_total": 0,
+        "recall_tokens_est": 0,
+        "context_tokens_est": 411,
+        "share": 0.0,
+        "vector_status": "disabled",
+        "keyword_status": "ok",
+        "degrade_reason": "vector_disabled"
+      }
+    },
+    "cast": {
+      "cast": [
+        "林川",
+        "许宁"
+      ],
+      "locations": [
+        "观测站",
+        "观测站屋顶",
+        "观测站楼梯口"
+      ]
+    },
+    "plan": {
+      "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+      "chapter_seq": 21,
+      "goals": [
+        "推进林川与许宁在观测站检查屋顶漏水位置的协作行动线",
+        "在现实题材约束下展现两人基于身体状态的合理分工与配合",
+        "通过漏水问题暴露观测站维护困境，为后续日常运营冲突埋线"
+      ],
+      "scenes": [
+        {
+          "location_id": "观测站楼梯口",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "确定检查屋顶漏水的具体方案与分工，准备工具",
+          "time": "接上一章，白天"
+        },
+        {
+          "location_id": "观测站屋顶",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "实地排查漏水点，林川负责高处检查，许宁负责地面记录与工具传递",
+          "time": "紧接上一场景"
+        },
+        {
+          "location_id": "观测站阁楼/天花板夹层",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "goal": "从内部确认漏水渗透路径，标记需要修补的位置",
+          "time": "紧接屋顶检查后"
+        }
+      ],
+      "characters": [
+        {
+          "character_id": "林川",
+          "expected_state": {
+            "location": "观测站屋顶及阁楼"
+          }
+        },
+        {
+          "character_id": "许宁",
+          "expected_state": {
+            "location": "观测站屋顶及阁楼"
+          }
+        }
+      ],
+      "hooks_to_plant": [
+        "屋顶漏水点附近发现一处旧修补痕迹，暗示观测站长期缺乏维护",
+        "许宁在阁楼角落发现一箱被防水布盖住的旧设备或文件，暂未打开"
+      ],
+      "hooks_to_resolve": [],
+      "expected_events": [
+        "林川和许宁在楼梯口商定检查方案，分配工具与职责",
+        "两人上屋顶，林川检查高处瓦片和接缝，许宁在地面递工具并记录",
+        "发现一处明显漏水点，林川用防水胶带做临时处理",
+        "两人进入阁楼从内部确认渗水路径，标记修补位置",
+        "许宁在阁楼角落注意到被防水布盖住的旧箱子，但两人决定先完成修补"
+      ],
+      "hard_constraints": [
+        "现实题材，无超能力，无医学奇迹",
+        "全章仅林川和许宁两名人物出场",
+        "设备状态和伤势不能无缘由改变",
+        "协作方式必须符合两人普通人的身体状态，不出现超出常理的高危动作"
+      ],
+      "transition": {
+        "mode": "continue",
+        "anchor_quote": "林川和许宁在观测站楼梯口商量如何检查屋顶。",
+        "pending_action": "两人尚未开始检查屋顶，方案未定",
+        "opening_beat": "林川提出从外部屋顶和内部阁楼双向排查，许宁点头并去取工具袋",
+        "bridge": "直接接续楼梯口对话，以取工具、上楼梯的动作衔接场景转换"
+      }
+    },
+    "draft": "林川把话说了一半就停住，伸手在楼梯扶手上比了个高度：“外面看瓦，里面看梁，两头对，漏点跑不掉。”许宁点头，转身去工具间取工具袋，回来时肩上挎着帆布带，手里还多拎了一卷防水胶带和一支记号笔。\n\n“你上屋顶，我在下面递东西、记位置。”她把工具袋往地上一放，拉链拉开，扳手、手电、卷尺排得整齐，“梯子我检查过了，第二节横档有点松，踩的时候靠外侧。”\n\n林川应了一声，先上。铁梯贴着外墙，他每踩一级都先试力，到檐口时停住，手掌撑住瓦沿，把身体带上去，动作不快，胜在稳。许宁在下面扶着梯脚，等他上了屋面才松手，退开两步仰头看。\n\n屋顶是旧式水泥瓦，几处接缝发黑。林川沿着屋脊一侧慢慢挪，鞋底蹭着瓦面，遇到松动的地方就用脚尖轻点，确认不塌再落重心。许宁在下头跟着他的位置走，手里捏着卷尺和记号笔。\n\n“东侧第三排，靠烟囱那道缝。”林川蹲下，手指按进瓦片间的裂口，指腹沾了一层湿泥，“这里往下渗。”\n\n许宁记下方位，把防水胶带抛上去。林川接住，撕开一段，顺着裂缝压实，又用掌根来回碾了两遍。临时处理只能挡一阵，他心里清楚，但眼下先把水截住。\n\n“还有一处。”他往北角挪，掀开一片翘起的瓦，底下木椽的颜色比别处深，边缘发软。许宁在下面把卷尺递上去，他量了长度，报数，她记。\n\n下屋顶比上去更费神。林川背对梯子，一级一级退，许宁在下面报着还剩几级。落地时他甩了甩手腕，掌心被瓦棱硌出红痕。\n\n阁楼入口在走廊尽头，一块活动木板，推开时扬起细灰。许宁先探头，手电光扫过横梁和椽条，光柱里浮着尘粒。林川跟上来，两人一前一后踩着搁栅走，脚下是薄薄一层保温棉。\n\n“烟囱位置对得上。”许宁把手电照向一根椽条，水渍从瓦缝一路洇下来，在木头上留下深色纹路，到中段散成几道细流，滴在下方的接水盆里。盆是旧的，盆底积了浅浅一层，边上结着水垢。\n\n林川伸手摸椽条，指节叩了两下，声音发闷。“这段得换，现在只能先标出来。”许宁用记号笔在渗水线两侧画了框，又写上日期。\n\n她转身时手电扫过角落，光停住了。那里堆着几块旧木板，最上面盖着一张灰绿色防水布，布下鼓出一个方正的轮廓，边角露出金属扣件的一角。\n\n“那是什么？”她问。\n\n林川看过去，摇头：“不知道，先别动。”他指了指刚画好的框，“把这个弄完再说。”\n\n许宁应了，把防水布重新掖好，回到渗水的位置。两人对着椽条又核了一遍走向，确认修补范围，才顺着搁栅往回走。木板合上时，阁楼重新暗下去，只有那方防水布下的轮廓，还留在许宁脑子里。",
+    "candidates": [
+      {
+        "kind": "event",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "summary": "林川与许宁在观测站检查屋顶漏水，林川上屋顶用防水胶带临时封堵东侧第三排靠烟囱的裂缝，并发现北角瓦下木椽发软；随后两人进入阁楼，确认烟囱位置渗水、椽条需更换，许宁用记号笔标出修补范围。",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "source_chapter": 21,
+          "confidence": 0.95
+        },
+        "confidence": 0.95,
+        "status": "pending"
+      },
+      {
+        "kind": "event",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "summary": "许宁在阁楼角落发现几块旧木板，上面盖着灰绿色防水布，布下鼓出方正轮廓并露出金属扣件一角；林川表示不知情，让先别动，两人未揭开查看。",
+          "participants": [
+            "林川",
+            "许宁"
+          ],
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "field": "location",
+          "old_value": "",
+          "new_value": "观测站（屋顶及阁楼）",
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "8836ec08-1513-42b7-ac21-186d60bf425b",
+          "field": "location",
+          "old_value": "",
+          "new_value": "观测站（屋顶下方及阁楼）",
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "character_state",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "character_id": "2b8cf50c-8a44-46cb-8445-0734d0777738",
+          "field": "injury",
+          "old_value": "",
+          "new_value": "掌心被瓦棱硌出红痕",
+          "source_chapter": 21,
+          "confidence": 0.8
+        },
+        "confidence": 0.8,
+        "status": "pending"
+      },
+      {
+        "kind": "foreshadow",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "description": "阁楼角落旧木板堆上盖着灰绿色防水布，布下鼓出方正轮廓并露出金属扣件一角，林川与许宁未揭开查看，许宁心中留下印象。",
+          "trigger": {
+            "actor": "许宁",
+            "action": "发现",
+            "object": "防水布下的方正轮廓与金属扣件"
+          },
+          "source_chapter": 21,
+          "confidence": 0.85
+        },
+        "confidence": 0.85,
+        "status": "pending"
+      },
+      {
+        "kind": "new_entity",
+        "project_id": null,
+        "source_chapter": 21,
+        "payload": {
+          "entity_type": "location",
+          "name": "观测站",
+          "description": "林川与许宁所在的旧式建筑，屋顶为水泥瓦、有阁楼与烟囱，存在漏水问题。",
+          "parent": "",
+          "source_chapter": 21,
+          "confidence": 0.9
+        },
+        "confidence": 0.9,
+        "status": "pending"
+      }
+    ],
+    "report": {
+      "project_id": "67d42c99-4a2d-4589-aa56-561e3aa5dc92",
+      "chapter_seq": 21,
+      "findings": [],
+      "summary": {
+        "total": 0,
+        "critical": 0,
+        "resolved": 0
+      }
+    },
+    "unresolved": [],
+    "audit_verdict": {
+      "verdict": "pass",
+      "replan_target": null,
+      "findings": [],
+      "reasons": [
+        "对照章节计划：三场景（楼梯口分工→屋顶排查→阁楼确认渗水路径）全部落地，顺序与计划一致，无主线偏移。",
+        "伏笔埋设到位：屋顶旧修补痕迹（发黑接缝、木椽发软）暗示长期缺乏维护；阁楼角落防水布下的方正轮廓与金属扣件对应计划中'未打开的旧设备/文件'，且两人按计划决定先完成修补，未提前揭开。",
+        "接续正确：开头直接承接上一章楼梯口对话（'林川把话说了一半就停住'），以取工具、上梯动作完成场景转换，未重演已完成动作，未丢弃未完成请求。",
+        "人设与身体状态合理：林川先试力再上梯、退梯时由许宁报级数，许宁扶梯脚、递工具、记录，分工符合普通人身体状态，无高危动作、无医学奇迹。",
+        "全章仅林川、许宁两人出场，符合硬约束；设备与伤势无无缘由变化。",
+        "确定性校验 0 findings，无跨章矛盾证据。",
+        "与近期章节开头（第20章）虽同为楼梯口场景，但本章为直接接续而非近义改写，属合理同场景延续，不构成机械重复。"
+      ],
+      "confidence": 0.9
+    },
+    "replan_count": 0,
+    "replan_batch": false,
+    "shared_context": {
+      "hard_facts": [
+        {
+          "fact_id": "794fcb78-f624-4b93-9988-addef7f1849e",
+          "source_chapter": 1,
+          "content": "故事为现实题材，无超能力；现有设备状态和伤势不能无缘由改变。",
+          "category": null,
+          "is_hard": true
+        }
+      ]
+    },
+    "revision_count": 0,
+    "patch_count": 0,
+    "revise_mode": "full",
+    "patch_applied": 0,
+    "patch_skipped": 0,
+    "patch_rejected_reason": null,
+    "persisted": true,
+    "needs_review": false,
+    "error": null
+  }
+]

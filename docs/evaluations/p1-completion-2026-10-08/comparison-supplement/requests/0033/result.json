@@ -1,0 +1,38 @@
+{
+  "request_index": 33,
+  "case_id": "injury_continuity",
+  "variant": "no_hybrid",
+  "repetition": 2,
+  "prompt_sha256": "7afb057dbea1a03ee02b755e93a569239484e77ad50e9cb11c5b99c1ce07579e",
+  "request_config": {
+    "model": "deepseek-v4-flash",
+    "temperature": 0.1,
+    "prices": {
+      "input": 2.0,
+      "input_cache_hit": 0.04,
+      "output": 8.0
+    },
+    "max_calls": 40,
+    "max_cost_yuan": 2.0,
+    "deadline_seconds": 1800,
+    "max_tokens": 4096,
+    "json_mode": true
+  },
+  "started_at": "2026-10-08T12:11:15.280240+00:00",
+  "execution": "completed",
+  "raw_output": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁在观测站屋顶找到东侧油毡裂缝及气象传感器支架渗水点，用胶带做临时标记，并商定次日用挡板临时防雨、等补给车换油毡。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"injury\",\n        \"old_value\": \"\",\n        \"new_value\": \"右肩有旧伤，抬举用力时疼痛、吃不住劲（上梯撕胶带、下梯时明显）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"goal\",\n        \"old_value\": \"\",\n        \"new_value\": \"次日用硬纸板挡板罩住气象传感器支架底座，撑到下周补给车带来新油毡和密封胶\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"goal\",\n        \"old_value\": \"\",\n        \"new_value\": \"今晚量准挡板尺寸，次日一早由她上梯固定挡板；若下雨则先报修、数据停一天\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"fact\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"content\": \"观测站屋顶东侧靠排水口处油毡有一拃长裂缝，正上方气象传感器支架底座螺栓孔周围渗水，水顺支架流下导致油毡受潮；维修需等下周补给车带来新油毡和密封胶。\",\n        \"category\": \"规则\",\n        \"is_hard\": false,\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"fact\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"content\": \"气象台每天要读观测站这组气象传感器数据，湿气进入会使读数飘移。\",\n        \"category\": \"规则\",\n        \"is_hard\": false,\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.7,\n      \"payload\": {\n        \"description\": \"屋顶油毡裂缝与传感器支架渗水尚未真正修复，仅做临时胶带标记与挡板防雨，需等下周补给车带来新油毡和密封胶；若期间下雨，气象数据可能受影响甚至停报。\",\n        \"trigger\": {\n          \"actor\": \"林川\",\n          \"action\": \"用胶带标记裂缝并计划加挡板临时防雨\",\n          \"object\": \"屋顶油毡裂缝与气象传感器支架\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.7\n      }\n    },\n    {\n      \"kind\": \"new_entity\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.8,\n      \"payload\": {\n        \"entity_type\": \"location\",\n        \"name\": \"观测站屋顶\",\n        \"description\": \"观测站顶部的屋面，铺老式油毡，东侧靠排水口处有裂缝，设有气象传感器支架底座与检修口。\",\n        \"parent\": \"观测站\"\n      }\n    }\n  ]\n}",
+  "model_id": "deepseek-flash",
+  "tool_calls": null,
+  "raw_response_content": "{\n  \"candidates\": [\n    {\n      \"kind\": \"event\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.95,\n      \"payload\": {\n        \"summary\": \"林川与许宁在观测站屋顶找到东侧油毡裂缝及气象传感器支架渗水点，用胶带做临时标记，并商定次日用挡板临时防雨、等补给车换油毡。\",\n        \"participants\": [\"林川\", \"许宁\"],\n        \"source_chapter\": 21,\n        \"confidence\": 0.95\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"injury\",\n        \"old_value\": \"\",\n        \"new_value\": \"右肩有旧伤，抬举用力时疼痛、吃不住劲（上梯撕胶带、下梯时明显）\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"林川\",\n        \"field\": \"goal\",\n        \"old_value\": \"\",\n        \"new_value\": \"次日用硬纸板挡板罩住气象传感器支架底座，撑到下周补给车带来新油毡和密封胶\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"character_state\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"character_id\": \"许宁\",\n        \"field\": \"goal\",\n        \"old_value\": \"\",\n        \"new_value\": \"今晚量准挡板尺寸，次日一早由她上梯固定挡板；若下雨则先报修、数据停一天\",\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"fact\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.9,\n      \"payload\": {\n        \"content\": \"观测站屋顶东侧靠排水口处油毡有一拃长裂缝，正上方气象传感器支架底座螺栓孔周围渗水，水顺支架流下导致油毡受潮；维修需等下周补给车带来新油毡和密封胶。\",\n        \"category\": \"规则\",\n        \"is_hard\": false,\n        \"source_chapter\": 21,\n        \"confidence\": 0.9\n      }\n    },\n    {\n      \"kind\": \"fact\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.85,\n      \"payload\": {\n        \"content\": \"气象台每天要读观测站这组气象传感器数据，湿气进入会使读数飘移。\",\n        \"category\": \"规则\",\n        \"is_hard\": false,\n        \"source_chapter\": 21,\n        \"confidence\": 0.85\n      }\n    },\n    {\n      \"kind\": \"foreshadow\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.7,\n      \"payload\": {\n        \"description\": \"屋顶油毡裂缝与传感器支架渗水尚未真正修复，仅做临时胶带标记与挡板防雨，需等下周补给车带来新油毡和密封胶；若期间下雨，气象数据可能受影响甚至停报。\",\n        \"trigger\": {\n          \"actor\": \"林川\",\n          \"action\": \"用胶带标记裂缝并计划加挡板临时防雨\",\n          \"object\": \"屋顶油毡裂缝与气象传感器支架\"\n        },\n        \"source_chapter\": 21,\n        \"confidence\": 0.7\n      }\n    },\n    {\n      \"kind\": \"new_entity\",\n      \"source_chapter\": 21,\n      \"confidence\": 0.8,\n      \"payload\": {\n        \"entity_type\": \"location\",\n        \"name\": \"观测站屋顶\",\n        \"description\": \"观测站顶部的屋面，铺老式油毡，东侧靠排水口处有裂缝，设有气象传感器支架底座与检修口。\",\n        \"parent\": \"观测站\"\n      }\n    }\n  ]\n}",
+  "response_projection": {
+    "source": "message.content",
+    "scrubbed": false,
+    "normalized": false
+  },
+  "finish_reason": "stop",
+  "input_tokens": 2448,
+  "output_tokens": 948,
+  "cost_est": 0.01248,
+  "cost_status": "estimated",
+  "wall_ms": 5297
+}
