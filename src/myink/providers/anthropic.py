@@ -19,6 +19,9 @@ from myink.providers.think_tag_stripper import (
     looks_like_unclosed_think,
 )
 
+
+from myink.task_budget import (reserve_attempt, finish_attempt, TaskBudgetPaused, TaskBudgetUnavailable, budget_sleep)
+
 logger = logging.getLogger(__name__)
 MAX_RETRIES = 3
 BACKOFF_BASE = [1.0, 2.0, 4.0]
@@ -145,12 +148,20 @@ class AnthropicProvider(ModelProvider):
         payload = self._payload(messages, model_id=model_id, max_tokens=max_tokens,
                                 temperature=temperature, json_mode=json_mode,
                                 tools=tools, stream=False)
+        if disable_thinking:
+            payload["thinking"] = {"type": "disabled"}
         last_error: str | None = None
         for attempt in range(MAX_RETRIES + 1):
+            permit = reserve_attempt(model_id, messages, payload['max_tokens'], tools=tools)
             try:
-                response = self._client.post(self._url, headers=self._headers(), json=payload)
+                timeout = {'timeout': min(120.0, permit.remaining_seconds())} if permit else {}
+                response = self._client.post(self._url, headers=self._headers(), json=payload, **timeout)
                 response.raise_for_status()
                 data = response.json()
+                usage = data.get('usage', {})
+                finish_attempt(permit, ModelResponse(content='', model_id=model_id,
+                    input_tokens=int(usage.get('input_tokens', 0) or 0),
+                    output_tokens=int(usage.get('output_tokens', 0) or 0)))
                 content = isolate_response_body("".join(
                     block.get("text", "") for block in data.get("content", [])
                     if block.get("type") == "text"
@@ -171,13 +182,16 @@ class AnthropicProvider(ModelProvider):
                     duration_ms=int((time.monotonic() - t0) * 1000),
                     retry_count=attempt, tool_calls=calls,
                 )
+            except (TaskBudgetPaused, TaskBudgetUnavailable):
+                raise
             except Exception as exc:
+                finish_attempt(permit)
                 last_error = format_provider_error(
                     exc, api_key=self._api_key, self_host_url=settings.self_host_url,
                 )
                 logger.warning("Anthropic 调用失败(attempt=%d): %s", attempt, last_error)
                 if attempt < MAX_RETRIES:
-                    time.sleep(BACKOFF_BASE[min(attempt, len(BACKOFF_BASE) - 1)])
+                    budget_sleep(permit, BACKOFF_BASE[min(attempt, len(BACKOFF_BASE) - 1)])
         return ModelResponse(content="", model_id=model_id, error=last_error,
                              duration_ms=int((time.monotonic() - t0) * 1000))
 
@@ -194,6 +208,8 @@ class AnthropicProvider(ModelProvider):
         payload = self._payload(messages, model_id=model_id, max_tokens=max_tokens,
                                 temperature=temperature, json_mode=json_mode,
                                 tools=tools, stream=True)
+        if disable_thinking:
+            payload["thinking"] = {"type": "disabled"}
         last_error: str | None = None
         for attempt in range(MAX_RETRIES + 1):
             parts: list[str] = []
@@ -202,10 +218,14 @@ class AnthropicProvider(ModelProvider):
             output_tokens = 0
             emitted = False
             stripper = LeadingThinkTagStripper()
+            permit = reserve_attempt(model_id, messages, payload['max_tokens'], tools=tools)
             try:
-                with self._client.stream("POST", self._url, headers=self._headers(), json=payload) as response:
+                timeout = {"timeout": min(120.0, permit.remaining_seconds())} if permit else {}
+                with self._client.stream("POST", self._url, headers=self._headers(), json=payload, **timeout) as response:
                     response.raise_for_status()
                     for line in response.iter_lines():
+                        if permit:
+                            permit.remaining_seconds()
                         if not line.startswith("data: "):
                             continue
                         raw = line[6:]
@@ -240,6 +260,8 @@ class AnthropicProvider(ModelProvider):
                                 tool_parts[index]["arguments"] += delta.get("partial_json", "")
                         elif kind == "message_delta":
                             output_tokens = int(event.get("usage", {}).get("output_tokens", output_tokens) or 0)
+                finish_attempt(permit, ModelResponse(content='', model_id=model_id,
+                    input_tokens=input_tokens, output_tokens=output_tokens))
                 leftover = stripper.flush()
                 if leftover and not looks_like_unclosed_think(leftover):
                     parts.append(leftover)
@@ -263,7 +285,10 @@ class AnthropicProvider(ModelProvider):
                     duration_ms=int((time.monotonic() - t0) * 1000), retry_count=attempt,
                     tool_calls=calls or None,
                 )
+            except (TaskBudgetPaused, TaskBudgetUnavailable):
+                raise
             except Exception as exc:
+                finish_attempt(permit)
                 last_error = format_provider_error(
                     exc, api_key=self._api_key, self_host_url=settings.self_host_url,
                 )
@@ -271,6 +296,6 @@ class AnthropicProvider(ModelProvider):
                 if emitted and on_reset:
                     on_reset()
                 if attempt < MAX_RETRIES:
-                    time.sleep(BACKOFF_BASE[min(attempt, len(BACKOFF_BASE) - 1)])
+                    budget_sleep(permit, BACKOFF_BASE[min(attempt, len(BACKOFF_BASE) - 1)])
         return ModelResponse(content="", model_id=model_id, error=last_error,
                              duration_ms=int((time.monotonic() - t0) * 1000))

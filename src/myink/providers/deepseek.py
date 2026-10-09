@@ -24,6 +24,9 @@ from myink.providers.think_tag_stripper import (
     strip_leading_think_block,
 )
 
+
+from myink.task_budget import (reserve_attempt, finish_attempt, TaskBudgetPaused, TaskBudgetUnavailable, budget_sleep)
+
 logger = logging.getLogger(__name__)
 
 # 调用层兜底参数（§6.12）：指数退避重试 1s/2s/4s，上限 3 次
@@ -124,9 +127,17 @@ class DeepSeekProvider(ModelProvider):
 
         last_error: str | None = None
         for attempt in range(MAX_RETRIES + 1):
+            permit = reserve_attempt(model_id, messages, max_tokens or 8192, tools=tools)
+            if permit:
+                kwargs['max_tokens'] = max_tokens or 8192
+                kwargs['timeout'] = min(120.0, permit.remaining_seconds())
             try:
                 resp = self._client.chat.completions.create(**kwargs)
                 usage = resp.usage or type("U", (), {})()
+                finish_attempt(permit, ModelResponse(content="", model_id=model_id,
+                    input_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+                    output_tokens=getattr(usage, "completion_tokens", 0) or 0,
+                    cache_hit=bool(getattr(usage, "prompt_cache_hit_tokens", 0))))
                 choice = resp.choices[0]
                 message = choice.message
                 reasoning = _message_reasoning(message)
@@ -181,13 +192,16 @@ class DeepSeekProvider(ModelProvider):
                     finish_reason=getattr(choice, "finish_reason", None),
                     tool_calls=tool_calls,
                 )
+            except (TaskBudgetPaused, TaskBudgetUnavailable):
+                raise
             except Exception as exc:
+                finish_attempt(permit)
                 last_error = format_provider_error(
                     exc, api_key=self._api_key, self_host_url=settings.self_host_url,
                 )
                 logger.warning("DeepSeek 调用失败(attempt=%d): %s", attempt, last_error)
                 if attempt < MAX_RETRIES:
-                    time.sleep(BACKOFF_BASE[min(attempt, len(BACKOFF_BASE) - 1)])
+                    budget_sleep(permit, BACKOFF_BASE[min(attempt, len(BACKOFF_BASE) - 1)])
         return ModelResponse(content="", model_id=model_id, error=last_error, duration_ms=int((time.monotonic() - t0) * 1000))
 
     def generate_stream(self, messages: list[dict], *, model_id: str,
@@ -219,9 +233,16 @@ class DeepSeekProvider(ModelProvider):
             usage = None
             emitted = False
             stripper = LeadingThinkTagStripper()
+            permit = reserve_attempt(model_id, messages, max_tokens or 8192, tools=tools)
+            if permit:
+                kwargs['max_tokens'] = max_tokens or 8192
+                kwargs['timeout'] = min(120.0, permit.remaining_seconds())
+            stream = None
             try:
                 stream = self._client.chat.completions.create(**kwargs)
                 for chunk in stream:
+                    if permit:
+                        permit.remaining_seconds()
                     if getattr(chunk, "usage", None) is not None:
                         usage = chunk.usage
                     if not getattr(chunk, "choices", None):
@@ -247,6 +268,10 @@ class DeepSeekProvider(ModelProvider):
                             row["name"] += getattr(fn, "name", None) or ""
                             row["arguments"] += getattr(fn, "arguments", None) or ""
 
+                finish_attempt(permit, ModelResponse(content='', model_id=model_id,
+                    input_tokens=getattr(usage, 'prompt_tokens', 0) or 0,
+                    output_tokens=getattr(usage, 'completion_tokens', 0) or 0,
+                    cache_hit=bool(getattr(usage, 'prompt_cache_hit_tokens', 0))))
                 leftover = stripper.flush()
                 if leftover and not looks_like_unclosed_think(leftover):
                     emitted_parts.append(leftover)
@@ -310,7 +335,10 @@ class DeepSeekProvider(ModelProvider):
                     retry_count=attempt,
                     tool_calls=tool_calls,
                 )
+            except (TaskBudgetPaused, TaskBudgetUnavailable):
+                raise
             except Exception as exc:
+                finish_attempt(permit)
                 last_error = format_provider_error(
                     exc, api_key=self._api_key, self_host_url=settings.self_host_url,
                 )
@@ -318,7 +346,10 @@ class DeepSeekProvider(ModelProvider):
                 if emitted and on_reset:
                     on_reset()
                 if attempt < MAX_RETRIES:
-                    time.sleep(BACKOFF_BASE[min(attempt, len(BACKOFF_BASE) - 1)])
+                    budget_sleep(permit, BACKOFF_BASE[min(attempt, len(BACKOFF_BASE) - 1)])
+            finally:
+                if stream is not None and hasattr(stream, "close"):
+                    stream.close()
         return ModelResponse(
             content="", model_id=model_id, error=last_error,
             duration_ms=int((time.monotonic() - t0) * 1000),

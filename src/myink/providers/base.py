@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import Callable
 
 from myink.providers.prices import lookup_prices
+from myink.task_budget import budgeted_call, TaskBudgetPaused, TaskBudgetUnavailable
 
 
 def estimate_cost(
@@ -82,6 +83,7 @@ class ModelResponse:
     tool_calls: list[dict] | None = None
     # 连接上的自定义单价（¥/百万 token）；None 则回落到 lookup_prices(model_id)
     prices: dict[str, float] | None = None
+    budget_replayed: bool = False
 
     @property
     def cost_est(self) -> float:
@@ -128,6 +130,7 @@ class ModelProvider(ABC):
         ...
 
 
+
 class FallbackChain:
     """降级链：主 → 备 → 全局默认（§6.10/§6.12 调用层）。"""
 
@@ -149,6 +152,7 @@ class FallbackChain:
             resp.prices = self.prices
         return resp
 
+    @budgeted_call
     def generate(self, messages: list[dict], *, json_mode: bool = False, max_tokens: int | None = None,
                  temperature: float | None = None, tools: list[dict] | None = None,
                  disable_thinking: bool = False) -> ModelResponse:
@@ -165,10 +169,13 @@ class FallbackChain:
                 if resp.error is None:
                     return self._stamp(resp, degraded=i > 0)
                 last_error = resp.error
+            except (TaskBudgetPaused, TaskBudgetUnavailable):
+                raise
             except Exception as exc:  # 网络 / 超时 / 5xx → 试下一个
                 last_error = str(exc)
         return ModelResponse(content="", model_id=self.chain[-1], error=last_error)
 
+    @budgeted_call
     def generate_stream(self, messages: list[dict], *, on_delta: Callable[[str], None],
                         on_reset: Callable[[], None] | None = None,
                         json_mode: bool = False, max_tokens: int | None = None,
@@ -189,6 +196,8 @@ class FallbackChain:
                 if resp.error is None:
                     return self._stamp(resp, degraded=i > 0)
                 last_error = resp.error
+            except (TaskBudgetPaused, TaskBudgetUnavailable):
+                raise
             except Exception as exc:
                 last_error = str(exc)
         return ModelResponse(content="", model_id=self.chain[-1], error=last_error)
