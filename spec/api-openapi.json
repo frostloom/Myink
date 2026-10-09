@@ -3182,6 +3182,16 @@
               }
             ]
           },
+          "task_budget": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskBudgetLimits-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "thinking_enabled": {
             "anyOf": [
               {
@@ -3215,6 +3225,9 @@
           },
           "rankings": {
             "$ref": "#/components/schemas/RankingsConfigOut"
+          },
+          "task_budget": {
+            "$ref": "#/components/schemas/TaskBudgetLimits-Output"
           },
           "thinking_enabled": {
             "default": false,
@@ -4832,6 +4845,54 @@
         "title": "RejectCandidateIn",
         "type": "object"
       },
+      "ResumeBudgetBody": {
+        "additionalProperties": false,
+        "properties": {
+          "add_cost_yuan": {
+            "anyOf": [
+              {
+                "maximum": 9000000000000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,6}0*$",
+                "type": "string"
+              }
+            ],
+            "default": "0",
+            "title": "Add Cost Yuan"
+          },
+          "add_requests": {
+            "default": 0,
+            "maximum": 2000000000.0,
+            "minimum": 0.0,
+            "title": "Add Requests",
+            "type": "integer"
+          },
+          "add_runtime_seconds": {
+            "default": 0,
+            "maximum": 9000000000000.0,
+            "minimum": 0.0,
+            "title": "Add Runtime Seconds",
+            "type": "integer"
+          },
+          "operation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operation Id"
+          }
+        },
+        "title": "ResumeBudgetBody",
+        "type": "object"
+      },
       "SettingsBody": {
         "description": "两个字段都是「省略 = 保留现值，显式传（含 {} / []）= 整体替换」。\n\n原先 model_routes 省略会被当成空字典覆盖，只改连接的客户端会静默丢掉全部分角色配置。",
         "properties": {
@@ -5460,6 +5521,133 @@
         "title": "StyleSampleBody",
         "type": "object"
       },
+      "TaskBudgetLimits-Input": {
+        "additionalProperties": false,
+        "properties": {
+          "max_cost_yuan": {
+            "anyOf": [
+              {
+                "maximum": 9000000000000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,6}0*$",
+                "type": "string"
+              }
+            ],
+            "default": "5",
+            "title": "Max Cost Yuan"
+          },
+          "max_requests": {
+            "default": 100,
+            "minimum": 0.0,
+            "title": "Max Requests",
+            "type": "integer"
+          },
+          "max_runtime_seconds": {
+            "default": 1800,
+            "minimum": 0.0,
+            "title": "Max Runtime Seconds",
+            "type": "integer"
+          }
+        },
+        "title": "TaskBudgetLimits",
+        "type": "object"
+      },
+      "TaskBudgetLimits-Output": {
+        "additionalProperties": false,
+        "properties": {
+          "max_cost_yuan": {
+            "title": "Max Cost Yuan",
+            "type": "number"
+          },
+          "max_requests": {
+            "default": 100,
+            "minimum": 0.0,
+            "title": "Max Requests",
+            "type": "integer"
+          },
+          "max_runtime_seconds": {
+            "default": 1800,
+            "minimum": 0.0,
+            "title": "Max Runtime Seconds",
+            "type": "integer"
+          }
+        },
+        "title": "TaskBudgetLimits",
+        "type": "object"
+      },
+      "TaskBudgetView": {
+        "properties": {
+          "cost_reserved_yuan": {
+            "title": "Cost Reserved Yuan",
+            "type": "number"
+          },
+          "cost_used_yuan": {
+            "title": "Cost Used Yuan",
+            "type": "number"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/TaskBudgetLimits-Output"
+          },
+          "pause_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pause Reason"
+          },
+          "requests_used": {
+            "title": "Requests Used",
+            "type": "integer"
+          },
+          "resume_publication": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resume Publication"
+          },
+          "runtime_used_seconds": {
+            "title": "Runtime Used Seconds",
+            "type": "number"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limits",
+          "requests_used",
+          "cost_used_yuan",
+          "cost_reserved_yuan",
+          "runtime_used_seconds",
+          "version"
+        ],
+        "title": "TaskBudgetView",
+        "type": "object"
+      },
       "TaskControlOut": {
         "properties": {
           "message": {
@@ -5501,6 +5689,16 @@
               }
             ],
             "title": "Batch Task Id"
+          },
+          "budget": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskBudgetView"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "chapter_seq": {
             "anyOf": [
@@ -5665,6 +5863,16 @@
               }
             ],
             "title": "Batch Size"
+          },
+          "budget": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskBudgetView"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "chapter_seq": {
             "anyOf": [
@@ -11559,6 +11767,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ResumeBudgetBody"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {

@@ -573,7 +573,12 @@ def process(body: dict, worker_id: str | None = None) -> str:
         # 幂等 ②：查 DB 现状（tasks 无 RLS，普通连接可查）
         with new_session() as db:
             row = db.get(Task, uuid.UUID(task_id))
-            if row and row.status == "awaiting_plan" and task_type == "chapter_plan_resume" \
+            operation = (row.payload or {}).get("_budget_resume_operation") if row else None
+            if (operation and body.get("budget_operation_id") != operation
+                    and task_type != "chapter_plan_resume"):
+                decision = "waiting" if row.status in {"queued", "running"} else "skip"
+                logger.info("跳过旧预算续跑消息: %s", task_id)
+            elif row and row.status == "awaiting_plan" and task_type == "chapter_plan_resume" \
                     and int((body.get("payload") or {}).get("plan_attempt") or 0) != _latest_plan_attempt(db, task_id):
                 # RabbitMQ 至少一次投递可能重放上一版确认消息。若此时审核已 replan 到
                 # 新版，旧 Command(resume) 绝不能越过第二次人工确认；ACK 丢弃旧消息，

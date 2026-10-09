@@ -23,6 +23,7 @@ from pydantic import BaseModel, ValidationError
 from myink.api.auth import _AuthenticatedUser, current_identity, require_owner, require_user
 from myink.api.schemas import OkOut, TaskControlOut, TaskDetailOut, TaskEnqueuedOut, TaskSummaryOut
 from myink.config import settings
+from myink.task_budget import (ResumeBudgetBody, budget_view, extend_and_resume_budget, BudgetResumeError)
 from myink.context_budget import estimate_tokens
 from myink.db import new_session
 from myink.models import AgentRun, Project, Task
@@ -277,6 +278,7 @@ def _task_payload(task_id: str, with_runs: bool = True) -> dict:
         if task is None:
             raise HTTPException(status_code=404, detail=f"任务不存在: {task_id}")
         data = {
+            "budget": budget_view(task_id),
             "task_id": str(task.id),
             "task_type": task.task_type,
             "status": task.status,
@@ -396,6 +398,7 @@ def list_project_tasks(project_id: str, chapter_seq: int | None = None) -> list[
             if chapter_seq is not None and str(t.id) not in cost_by_task:
                 continue  # 不覆盖本章的任务过滤掉
             item: dict = {
+                "budget": budget_view(str(t.id)),
                 "task_id": str(t.id),
                 "task_type": t.task_type,
                 "status": t.status,
@@ -427,7 +430,15 @@ def pause_task(task_id: str) -> dict:
 
 
 @router.post("/tasks/{task_id}/resume", dependencies=[Depends(require_task_owner)], response_model=TaskControlOut)
-def resume_task(task_id: str) -> dict:
+def resume_task(task_id: str, body: ResumeBudgetBody | None = None,
+                user_id: str = Depends(require_user)) -> dict:
+    if budget_view(task_id) is not None:
+        try:
+            return extend_and_resume_budget(task_id, user_id, body or ResumeBudgetBody())
+        except BudgetResumeError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    if body and (body.add_requests or body.add_cost_yuan or body.add_runtime_seconds):
+        raise HTTPException(status_code=409, detail="旧任务未启用预算，不能追加")
     with new_session() as db:
         task = db.get(Task, _task_uuid(task_id))
         if task is None:

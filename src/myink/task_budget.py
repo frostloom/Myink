@@ -18,7 +18,7 @@ from decimal import Decimal
 import time
 import uuid
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_serializer, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_serializer, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
@@ -162,7 +162,11 @@ def budget_view(task_id) -> dict | None:
         elapsed = row.runtime_used_ms
         if row.active_since is not None:
             elapsed += max(0, int(round((min(time.time(), row.lease_until or time.time()) - row.active_since) * 1000)))
+        task = db.get(Task, row.task_id)
+        operation = (task.payload or {}).get("_budget_resume_operation")
+        receipt = _extension(db, task_id, "extension:" + operation) if operation else None
         return {
+            "resume_publication": receipt.response.get("publication") if receipt else None,
             "limits": dict(row.limits), "requests_used": row.requests_used,
             "cost_used_yuan": row.cost_used_micros / 1_000_000,
             "cost_reserved_yuan": row.cost_reserved_micros / 1_000_000,
@@ -604,3 +608,132 @@ def save_effect(db, identity, result):
     db.execute(insert(TaskBudgetCall).values(task_id=row.task_id, project_id=row.project_id,
                 operation_key=identity[0], input_hash=identity[1], response=result)
                .on_conflict_do_nothing(constraint="uq_task_budget_call"))
+
+
+class ResumeBudgetBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    operation_id: uuid.UUID | None = None
+    add_requests: StrictInt = Field(default=0, ge=0, le=2_000_000_000)
+    add_cost_yuan: Decimal = Field(default=Decimal("0"), ge=0, le=Decimal("9000000000000"),
+                                   decimal_places=6, allow_inf_nan=False)
+    add_runtime_seconds: StrictInt = Field(default=0, ge=0, le=9_000_000_000_000)
+
+    @field_validator("add_cost_yuan", mode="before")
+    @classmethod
+    def reject_bool_cost(cls, value):
+        if isinstance(value, bool):
+            raise ValueError("cost must be a number, not a boolean")
+        return value
+
+    @field_serializer("add_cost_yuan")
+    def serialize_cost(self, value):
+        return float(value)
+
+    @model_validator(mode="after")
+    def require_operation_id(self):
+        if (self.add_requests or self.add_cost_yuan or self.add_runtime_seconds) and not self.operation_id:
+            raise ValueError("追加预算必须提供 operation_id")
+        return self
+
+
+class BudgetResumeError(Exception):
+    def __init__(self, message, status_code=409):
+        super().__init__(message)
+        self.status_code = status_code
+
+
+def _extension(db, task_id, key):
+    return db.scalar(select(TaskBudgetCall).where(TaskBudgetCall.task_id == uuid.UUID(str(task_id)),
+                     TaskBudgetCall.operation_key == key, TaskBudgetCall.input_hash == "extension"))
+
+
+def _require_resume_room(row, limits, body):
+    if limits.max_requests and row.requests_used >= limits.max_requests:
+        raise BudgetResumeError("TASK_BUDGET_EXHAUSTED: 请追加请求次数后继续")
+    if limits.max_runtime_seconds and row.runtime_used_ms >= limits.max_runtime_seconds * 1000:
+        raise BudgetResumeError("TASK_BUDGET_EXHAUSTED: 请追加运行时间后继续")
+    if limits.max_cost_yuan and (row.cost_used_micros + row.cost_reserved_micros >= _micros(limits.max_cost_yuan)
+                                or (row.pause_reason == "cost_limit" and not body.add_cost_yuan)):
+        raise BudgetResumeError("TASK_BUDGET_EXHAUSTED: 剩余费用不足，请追加费用后继续")
+
+
+def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
+    """Append limits once, then publish once; unknown delivery never refunds limits."""
+    from myink.worker import amqp
+    import pika
+    body = ResumeBudgetBody.model_validate(body)
+    operation_id = str(body.operation_id or uuid.uuid4())
+    key = "extension:" + operation_id
+    params = body.model_dump(mode="json", exclude={"operation_id"})
+    with _ledger(task_id) as db:
+        task = db.scalar(select(Task).where(Task.id == uuid.UUID(str(task_id))).with_for_update())
+        row = _locked(db, task_id)
+        if row is None:
+            raise BudgetResumeError("TASK_BUDGET_NOT_ENABLED")
+        if str(row.user_id) != str(user_id):
+            raise BudgetResumeError("任务不属于此账号", 403)
+        receipt = _extension(db, task_id, key)
+        if receipt is not None:
+            stored = dict(receipt.response)
+            if stored["params"] != params:
+                raise BudgetResumeError("BUDGET_OPERATION_CONFLICT: 同一操作标识的参数不能改变")
+            if stored["publication"] in {"published", "sending", "uncertain"}:
+                return {"task_id":str(task_id), "status":task.status,
+                        "message": "预算操作已受理；请刷新任务状态，未重复追加或发布"}
+            if task.status not in {"paused", "failed", "awaiting_review"}:
+                raise BudgetResumeError("当前任务状态不可重新投递")
+        else:
+            adding = bool(body.add_requests or body.add_cost_yuan or body.add_runtime_seconds)
+            if task.status not in {"paused", "failed", "awaiting_review"} and not (
+                task.status == "queued" and not adding):
+                raise BudgetResumeError(f"当前状态不可追加或续跑: {task.status}")
+            if row.owner_token and (row.lease_until or 0) > time.time():
+                raise BudgetResumeError("TASK_STILL_RUNNING: 正在保存进度，请稍后继续")
+            old = TaskBudgetLimits.model_validate(row.limits)
+            try:
+                limits = TaskBudgetLimits(
+                    max_requests=old.max_requests + body.add_requests if old.max_requests else 0,
+                    max_cost_yuan=old.max_cost_yuan + body.add_cost_yuan if old.max_cost_yuan else 0,
+                    max_runtime_seconds=old.max_runtime_seconds + body.add_runtime_seconds if old.max_runtime_seconds else 0)
+            except ValueError as exc:
+                raise BudgetResumeError("追加后预算超出可保存范围", 422) from exc
+            _accrue(row, time.time())
+            _require_resume_room(row, limits, body)
+            row.limits = public_limits(limits)
+            row.version += 1
+            receipt = TaskBudgetCall(task_id=row.task_id, project_id=row.project_id,
+                         operation_key=key, input_hash="extension", response={})
+            db.add(receipt)
+        if row.owner_token and (row.lease_until or 0) > time.time():
+            raise BudgetResumeError("TASK_STILL_RUNNING: 正在保存进度，请稍后继续")
+        task.status = "queued"
+        task.error = None
+        task.payload = {**(task.payload or {}), "_budget_resume_operation":operation_id}
+        resume_type = {"batch_generate":"batch_resume", "short_generate":"short_resume"}.get(
+            task.task_type, "chapter_resume")
+        message = {"task_id":str(task_id), "task_type":resume_type, "project_id":str(task.project_id),
+                   "user_id":str(row.user_id), "payload":dict(task.payload),
+                   "trace_id":task.trace_id or str(task_id), "request_id":operation_id,
+                   "budget_operation_id":operation_id, "retry_count":0, "created_at":""}
+        receipt.response = {"params":params, "publication":"sending", "message":message}
+
+    try:
+        amqp.publish_once(json.dumps(message, ensure_ascii=False), amqp.KEY_TASKS)
+    except Exception as exc:
+        definite = isinstance(exc, (amqp.PublishNotSent, pika.exceptions.NackError,
+                                    pika.exceptions.UnroutableError))
+        with _ledger(task_id) as db:
+            task = db.scalar(select(Task).where(Task.id == uuid.UUID(str(task_id))).with_for_update())
+            _locked(db, task_id)
+            receipt = _extension(db, task_id, key)
+            receipt.response = {**receipt.response, "publication":"nack" if definite else "uncertain"}
+            if definite and task.status == "queued" and (task.payload or {}).get("_budget_resume_operation") == operation_id:
+                task.status = "paused"
+                task.error = "续跑投递被明确拒绝；额度已保留，可使用同一操作重试"
+        raise BudgetResumeError("BUDGET_PUBLISH_REJECTED: 使用同一操作重试" if definite else
+                               "BUDGET_PUBLISH_UNCERTAIN: 预算已保留，请刷新任务状态", 503) from exc
+    with _ledger(task_id) as db:
+        receipt = _extension(db, task_id, key)
+        receipt.response = {**receipt.response, "publication":"published"}
+        task = db.get(Task, uuid.UUID(str(task_id)))
+        return {"task_id":str(task_id), "status":task.status, "message":"已追加预算并投递续跑消息"}
