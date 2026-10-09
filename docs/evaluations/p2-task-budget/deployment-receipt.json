@@ -1,0 +1,50 @@
+{
+  "status": "deployed",
+  "revision": "c1f7a84",
+  "containers": [
+    {
+      "name": "myink-api",
+      "revision": "c1f7a84",
+      "state": "running",
+      "health": "healthy"
+    },
+    {
+      "name": "myink-caddy",
+      "revision": "c1f7a84",
+      "state": "running",
+      "health": "healthy"
+    },
+    {
+      "name": "myink-myink-worker-1",
+      "revision": "c1f7a84",
+      "state": "running",
+      "health": null
+    },
+    {
+      "name": "myink-myink-worker-2",
+      "revision": "c1f7a84",
+      "state": "running",
+      "health": null
+    }
+  ],
+  "readyz": {
+    "status": "ok",
+    "checks": {
+      "redis": "ok",
+      "db": "ok",
+      "worker": "ok"
+    }
+  },
+  "synthetic_smoke": {
+    "environment_saved": true,
+    "existing_snapshot_preserved": true,
+    "foreign_denied": true,
+    "paused_then_resumed": true,
+    "extension_replay_once": true,
+    "queue_confirmed": true,
+    "worker_done": true,
+    "requests_used": 2,
+    "external_model_requests": 0
+  },
+  "database_backup_bytes": 2475859
+}
