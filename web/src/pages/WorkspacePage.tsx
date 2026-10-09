@@ -1022,6 +1022,7 @@ export default function WorkspacePage() {
               taskId={activeTaskId}
               phase={task.phase}
               status={task.status}
+              budget={task.budget}
               nodes={visibleTaskNodes}
               runs={visibleTaskRuns}
               liveNode={liveNode}

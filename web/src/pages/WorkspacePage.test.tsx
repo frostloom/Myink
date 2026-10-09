@@ -38,6 +38,7 @@ vi.mock('../hooks/useTaskEvents', () => ({
     artifacts: taskId ? liveTask.artifacts : [],
     runs: taskId ? liveTask.runs : [],
     progress: null,
+    budget: { requests_used: 7 },
     shortProgress: taskId ? liveTask.shortProgress : null,
     error: null,
     payload: {},
@@ -95,16 +96,18 @@ vi.mock('../components/GenerationPanel', () => ({
   ),
 }))
 vi.mock('../components/TaskTimeline', () => ({
-  TaskTimeline: ({ taskId, chapterSeq, runs, liveNode }: {
+  TaskTimeline: ({ taskId, chapterSeq, runs, liveNode, budget }: {
     taskId: string | null
     chapterSeq: number | null
     runs: AgentRun[]
     liveNode: string | null
+    budget?: { requests_used: number }
   }) => (
     <div>
       <div>timeline-{taskId ?? 'none'}-chapter-{chapterSeq ?? 'none'}</div>
       {/* 流转记录拿到的 run 条数：钉住「短篇喂的是整篇 runs，不按章滤」。 */}
       <span>flow-runs-{runs.length}</span>
+      <span>flow-budget-{budget?.requests_used ?? 'missing'}</span>
       {/* 在跑但还没落库的那一步：短篇整篇共用一次写库，右栏的实时性全靠它。 */}
       <span>flow-live-{liveNode ?? 'none'}</span>
     </div>
@@ -810,4 +813,11 @@ it('形态还没到手时先不摆校正记忆，免得先摆错再撤', async (
 
   fireEvent.click(await screen.findByRole('button', { name: 'chapter-1' }))
   expect(await screen.findByText('memory-correction-false')).toBeTruthy()
+})
+
+it('passes the authoritative budget to the short workspace flow', async () => {
+  mockShortBook([shortTask])
+  renderWorkspace()
+  await screen.findByText('timeline-task-short-chapter-none')
+  expect(screen.getByText('flow-budget-7')).toBeTruthy()
 })

@@ -213,3 +213,11 @@ def test_resume_publish_lost_confirm_does_not_retry(monkeypatch):
     assert channel.basic_publish.call_args.kwargs["mandatory"] is True
     assert factory.call_args.args[0].connection_attempts == 1
     connection.close.assert_called_once()
+
+
+def test_resume_clears_active_pause_reason(paused_budget,monkeypatch):
+    tid,pid,uid=paused_budget
+    monkeypatch.setattr("myink.worker.amqp.publish_once",lambda *a,**kw:None)
+    response=client.post(f"/api/v1/tasks/{tid}/resume",json=_body(),headers=identity_headers(uid))
+    assert response.status_code == 200
+    assert budget_view(tid)["pause_reason"] is None

@@ -286,3 +286,67 @@ def test_openai_stream_closed_on_partial_failure(budget_task, monkeypatch):
         assert budget_view(tid)["cost_reserved_yuan"] > 0
     finally:
         provider._client.close()
+
+
+def test_cache_flag_cannot_discount_uncached_input(budget_task):
+    from myink.providers.base import ModelResponse
+    from myink.task_budget import _PRICES
+    tid,pid,uid=budget_task
+    ensure_task_budget(tid,pid,uid,{})
+    token=_PRICES.set({"input":10,"input_cache_hit":1,"output":10})
+    try:
+        with bind_task_budget(tid,"owner"):
+            permit=reserve_attempt("custom",[{"role":"user","content":"test"}],20)
+            finish_attempt(permit,ModelResponse(content="ok",model_id="custom",input_tokens=10000,output_tokens=1,cache_hit=True))
+        assert budget_view(tid)["cost_used_yuan"] >= 0.1
+    finally: _PRICES.reset(token)
+
+
+def test_partial_usage_retains_reserve(budget_task):
+    tid,pid,uid=budget_task
+    ensure_task_budget(tid,pid,uid,{})
+    provider=_provider(lambda request: httpx.Response(200,json={"content":[{"type":"text","text":"partial"}],"usage":{"input_tokens":10}}))
+    try:
+        with bind_task_budget(tid,"owner"):
+            provider.generate([{"role":"user","content":"test"}],model_id="deepseek-v4-flash",max_tokens=20)
+        assert budget_view(tid)["cost_reserved_yuan"] > 0
+        assert budget_view(tid)["cost_used_yuan"] == 0
+    finally: provider._client.close()
+
+
+def test_absolute_deadline_interrupts_trickled_http_body():
+    import time,threading
+    from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
+    from myink.task_budget import AttemptPermit,budget_io
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self,*args): pass
+        def do_GET(self):
+            self.send_response(200);self.send_header("Content-Length","20");self.end_headers()
+            try:
+                for _ in range(20):
+                    self.wfile.write(b"x");self.wfile.flush();time.sleep(0.08)
+            except OSError: pass
+    server=ThreadingHTTPServer(("127.0.0.1",0),Handler)
+    thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+    permit=AttemptPermit("t","a","owner",time.monotonic()+0.35,None)
+    started=time.monotonic()
+    try:
+        with pytest.raises(TaskBudgetPaused,match="time_limit"):
+            budget_io(permit,lambda:httpx.get(f"http://127.0.0.1:{server.server_port}/",timeout=0.25))
+        assert time.monotonic()-started < 0.8
+    finally: server.shutdown();server.server_close()
+
+
+def test_truncated_anthropic_stream_cannot_be_cached_as_success(budget_task,monkeypatch):
+    import myink.providers.anthropic as module
+    monkeypatch.setattr(module,"MAX_RETRIES",0)
+    tid,pid,uid=budget_task
+    ensure_task_budget(tid,pid,uid,{})
+    data='data: {"type":"message_start","message":{"usage":{"input_tokens":10}}}\n\ndata: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"partial"}}\n\n'
+    provider=_provider(lambda request:httpx.Response(200,text=data))
+    try:
+        with bind_task_budget(tid,"owner"):
+            response=provider.generate_stream([{"role":"user","content":"test"}],model_id="deepseek-v4-flash",max_tokens=20,on_delta=lambda _:None)
+        assert response.error
+        assert budget_view(tid)["cost_reserved_yuan"] > 0
+    finally: provider._client.close()

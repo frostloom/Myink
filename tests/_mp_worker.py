@@ -110,9 +110,15 @@ def _main() -> None:
     nodes_mod.get_embedder = lambda: FakeEmbedder()
     recall_mod.get_embedder = lambda: FakeEmbedder()
 
-    from myink.worker.consumer import run
-
-    run()
+    from myink.worker import consumer
+    original_process = consumer.process
+    def observed_process(body, **kwargs):
+        decision = original_process(body, **kwargs)
+        if body.get("test_probe"):
+            _R.set("mp:probe:" + body["test_probe"], decision, ex=60)
+        return decision
+    consumer.process = observed_process
+    consumer.run()
 
 
 if __name__ == "__main__":

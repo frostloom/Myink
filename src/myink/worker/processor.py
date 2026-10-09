@@ -262,7 +262,9 @@ def _dispatch(body: dict) -> dict:
         # 取 checkpoint 草稿直接落库正文，不走图重跑——LangGraph 1.2.9 resume 语义是
         # 整图从 START 重跑，确定性输入会再命中确认分流 → 永久 awaiting_review、正文
         # 永不落库（2026-08-17 用户实测：确认后点续跑变成重新生成）。
-        if _chapter_awaiting_review(project_id, seq) and not (budget_managed() and (budget_view(task_id) or {}).get("pause_reason")):
+        chapter_graph, _ = get_graphs()
+        pending = budget_managed() and bool(chapter_graph.get_state({"configurable": {"thread_id": task_id}}).next)
+        if _chapter_awaiting_review(project_id, seq) and not pending:
             return finalize_chapter_review(project_id=project_id, task_id=task_id, chapter_seq=seq)
         chapter_graph, _ = get_graphs()
         return resume_thread(

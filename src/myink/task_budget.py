@@ -149,7 +149,7 @@ def release_budget(task_id, owner_token) -> None:
         if row is None or row.owner_token != owner_token:
             return
         _accrue(row, time.time())
-        row.owner_token = None
+        # Retain the last generation as a status-report fencing token.
         row.active_since = None
         row.lease_until = None
 
@@ -330,12 +330,12 @@ def finish_attempt(permit, response=None) -> None:
                 raise TaskBudgetUnavailable("request receipt missing")
             if attempt.status != "reserved":
                 return
-            if response is None or permit.prices is None or response.input_tokens <= 0:
+            if response is None or permit.prices is None or response.input_tokens <= 0 or response.output_tokens < 0 or not response.usage_complete:
                 attempt.status = "unknown"
                 return  # Keep the conservative reservation exactly once.
             table = permit.prices
             charge = _micros((Decimal(response.input_tokens) * Decimal(str(
-                table["input_cache_hit"] if response.cache_hit else table["input"]))
+                max(table["input"], table["input_cache_hit"])))
                 + Decimal(response.output_tokens) * Decimal(str(table["output"]))) / 1_000_000)
             row.cost_reserved_micros -= attempt.reserved_micros
             row.cost_used_micros += charge
@@ -418,6 +418,64 @@ def budgeted_call(function):
 
 
 
+def budget_io(permit, operation):
+    """Bound total network consumption, including trickled incomplete chunks.
+
+    A supplier request already sent cannot be revoked. Its reservation remains
+    unknown on timeout; the daemon closes any late response and cannot settle it
+    or publish a result. No subsequent Agent node waits for this operation.
+    """
+    if permit is None or permit.deadline is None:
+        return operation()
+    completed = threading.Event()
+    abandoned = threading.Event()
+    result = []
+    def run():
+        try:
+            value = operation()
+            result.append((True, value))
+        except BaseException as exc:
+            result.append((False, exc))
+        finally:
+            completed.set()
+            if abandoned.is_set() and result and result[0][0]:
+                close = getattr(result[0][1], "close", None)
+                if close:
+                    try: close()
+                    except Exception: pass
+    threading.Thread(target=run, daemon=True, name="task-budget-network").start()
+    try:
+        if not completed.wait(permit.remaining_seconds()):
+            raise TaskBudgetPaused("time_limit", _OPERATION.get())
+        permit.remaining_seconds()
+    except TaskBudgetPaused:
+        abandoned.set()
+        raise
+    ok, value = result[0]
+    if not ok:
+        raise value
+    return value
+
+
+def budget_iter(permit, iterable):
+    iterator = iter(iterable)
+    sentinel = object()
+    while True:
+        value = budget_io(permit, lambda: next(iterator, sentinel))
+        if value is sentinel:
+            break
+        yield value
+
+
+@contextmanager
+def budget_stream(permit, manager):
+    response = budget_io(permit, manager.__enter__)
+    try:
+        yield response
+    finally:
+        manager.__exit__(None, None, None)
+
+
 def budget_sleep(permit, delay):
     if permit is None:
         time.sleep(delay)
@@ -460,7 +518,7 @@ def operation_for(state, node):
     return (f"{state.get('task_id') or state.get('batch_task_id')}:{node}:"
             f"ch{state.get('chapter_seq', state.get('position', 0))}:"
             f"r{state.get('revision_count', 0)}:p{state.get('patch_count', 0)}:"
-            f"re{state.get('replan_count', state.get('batch_replan_count', 0))}")
+            f"re{state.get('replan_count', state.get('batch_replan_count', 0))}:bg{state.get('batch_generation', 0)}")
 
 
 def budget_node(function, name=None):
@@ -706,6 +764,7 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
             db.add(receipt)
         if row.owner_token and (row.lease_until or 0) > time.time():
             raise BudgetResumeError("TASK_STILL_RUNNING: 正在保存进度，请稍后继续")
+        row.pause_reason = None
         task.status = "queued"
         task.error = None
         task.payload = {**(task.payload or {}), "_budget_resume_operation":operation_id}

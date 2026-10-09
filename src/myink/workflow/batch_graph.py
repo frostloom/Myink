@@ -227,6 +227,7 @@ def make_chapter_runner(chapter_graph):
             "chapter_seq": chapter_seq,
             "task_id": thread_id,
             "batch_goal": item.get("goal"),
+            "batch_generation": state.get("batch_replan_count", 0),
             # 批次级共享上下文（§6.11 共享池）：稳定部分（hard_facts）传后续章复用
             "shared_context": state.get("shared_context"),
         }
@@ -234,8 +235,12 @@ def make_chapter_runner(chapter_graph):
             config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 64}
             if budget_managed():
                 snap = chapter_graph.get_state(config)
-                if snap.values and (snap.next or not snap.values.get("error")):
+                if snap.values and snap.values.get("batch_generation", 0) == state.get("batch_replan_count", 0) and (snap.next or not snap.values.get("error")):
                     chapter_input = None
+                elif snap.values:
+                    from myink.workflow.chapter_graph import node_reset_replan
+                    chapter_input = {**node_reset_replan(snap.values), **chapter_input,
+                                     "replan_count": 0, "error": None, "needs_review": False}
             result = chapter_graph.invoke(
                 chapter_input, config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64}
             )

@@ -467,7 +467,7 @@ export default function EnvironmentPage() {
               ['max_cost_yuan', '任务费用上限（元）'],
               ['max_runtime_seconds', '任务运行上限（秒）'],
             ] as const).map(([key, label]) => <label key={key} className={styles.field}>
-              {label}<input type="number" min="0" step={key === 'max_cost_yuan' ? '0.000001' : '1'} value={taskBudget[key]}
+              {label}<input className="input" type="number" min="0" step={key === 'max_cost_yuan' ? '0.000001' : '1'} value={taskBudget[key]}
                 onChange={e => setTaskBudget(b => ({ ...b, [key]: Number(e.target.value) }))} />
             </label>)}
             <button type="button" className="btn" disabled={busy !== null} onClick={() => void saveBudget()}>保存任务预算</button>

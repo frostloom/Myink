@@ -84,6 +84,7 @@ class ModelResponse:
     # 连接上的自定义单价（¥/百万 token）；None 则回落到 lookup_prices(model_id)
     prices: dict[str, float] | None = None
     budget_replayed: bool = False
+    usage_complete: bool = True
 
     @property
     def cost_est(self) -> float:

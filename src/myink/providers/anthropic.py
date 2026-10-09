@@ -20,7 +20,7 @@ from myink.providers.think_tag_stripper import (
 )
 
 
-from myink.task_budget import (reserve_attempt, finish_attempt, TaskBudgetPaused, TaskBudgetUnavailable, budget_sleep)
+from myink.task_budget import (budget_io, budget_iter, budget_stream, reserve_attempt, finish_attempt, TaskBudgetPaused, TaskBudgetUnavailable, budget_sleep)
 
 logger = logging.getLogger(__name__)
 MAX_RETRIES = 3
@@ -155,13 +155,14 @@ class AnthropicProvider(ModelProvider):
             permit = reserve_attempt(model_id, messages, payload['max_tokens'], tools=tools)
             try:
                 timeout = {'timeout': min(120.0, permit.remaining_seconds())} if permit else {}
-                response = self._client.post(self._url, headers=self._headers(), json=payload, **timeout)
+                response = budget_io(permit, lambda: self._client.post(self._url, headers=self._headers(), json=payload, **timeout))
                 response.raise_for_status()
                 data = response.json()
                 usage = data.get('usage', {})
                 finish_attempt(permit, ModelResponse(content='', model_id=model_id,
                     input_tokens=int(usage.get('input_tokens', 0) or 0),
-                    output_tokens=int(usage.get('output_tokens', 0) or 0)))
+                    output_tokens=int(usage.get('output_tokens', 0) or 0),
+                    usage_complete='output_tokens' in usage and not usage.get('cache_creation_input_tokens') and not usage.get('cache_read_input_tokens')))
                 content = isolate_response_body("".join(
                     block.get("text", "") for block in data.get("content", [])
                     if block.get("type") == "text"
@@ -216,14 +217,17 @@ class AnthropicProvider(ModelProvider):
             tool_parts: dict[int, dict] = {}
             input_tokens = 0
             output_tokens = 0
+            usage_complete = False
+            stream_complete = False
+            cached_usage = False
             emitted = False
             stripper = LeadingThinkTagStripper()
             permit = reserve_attempt(model_id, messages, payload['max_tokens'], tools=tools)
             try:
                 timeout = {"timeout": min(120.0, permit.remaining_seconds())} if permit else {}
-                with self._client.stream("POST", self._url, headers=self._headers(), json=payload, **timeout) as response:
+                with budget_stream(permit, self._client.stream("POST", self._url, headers=self._headers(), json=payload, **timeout)) as response:
                     response.raise_for_status()
-                    for line in response.iter_lines():
+                    for line in budget_iter(permit, response.iter_lines()):
                         if permit:
                             permit.remaining_seconds()
                         if not line.startswith("data: "):
@@ -236,7 +240,11 @@ class AnthropicProvider(ModelProvider):
                         if kind == "error":
                             detail = event.get("error", {})
                             raise RuntimeError(str(detail.get("message") or "Anthropic 流式响应错误"))
+                        if kind == "message_stop":
+                            stream_complete = True
                         if kind == "message_start":
+                            raw_usage = event.get("message", {}).get("usage", {})
+                            cached_usage = bool(raw_usage.get("cache_creation_input_tokens") or raw_usage.get("cache_read_input_tokens"))
                             input_tokens = int(event.get("message", {}).get("usage", {}).get("input_tokens", 0) or 0)
                         elif kind == "content_block_start":
                             block = event.get("content_block", {})
@@ -259,9 +267,13 @@ class AnthropicProvider(ModelProvider):
                             elif delta.get("type") == "input_json_delta" and index in tool_parts:
                                 tool_parts[index]["arguments"] += delta.get("partial_json", "")
                         elif kind == "message_delta":
+                            usage_complete = "output_tokens" in event.get("usage", {})
                             output_tokens = int(event.get("usage", {}).get("output_tokens", output_tokens) or 0)
+                if permit and not stream_complete:
+                    raise RuntimeError('Anthropic stream ended without message_stop')
                 finish_attempt(permit, ModelResponse(content='', model_id=model_id,
-                    input_tokens=input_tokens, output_tokens=output_tokens))
+                    input_tokens=input_tokens, output_tokens=output_tokens,
+                    usage_complete=usage_complete and not cached_usage))
                 leftover = stripper.flush()
                 if leftover and not looks_like_unclosed_think(leftover):
                     parts.append(leftover)
