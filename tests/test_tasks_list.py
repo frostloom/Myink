@@ -79,7 +79,7 @@ def test_list_tasks_shape_and_desc_order(temp_project):
         assert first["error"] is None and first["created_at"] is not None
         assert set(first) == {"task_id", "task_type", "status", "chapter_seq",
                               "batch_size", "batch_current", "cost_total",
-                              "error", "created_at"}
+                              "error", "created_at", "budget"}
     finally:
         _cleanup(tids, temp_project)
 

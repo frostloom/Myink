@@ -132,3 +132,37 @@ def publish(body: str, routing_key: str, priority: int = 0, expiration_ms: int |
             if expiration_ms is not None:
                 properties.expiration = str(int(expiration_ms))
             ch.basic_publish(exchange=exchange(), routing_key=routing_key, body=body, properties=properties)
+
+
+class PublishNotSent(Exception):
+    """The resume message definitely did not reach the queue."""
+
+
+def publish_once(body: str, routing_key: str) -> None:
+    """No implicit retry after a lost confirm; bounded and mandatory delivery."""
+    connection = None
+    try:
+        params = pika.URLParameters(settings.amqp_url)
+        params.connection_attempts = 1
+        params.socket_timeout = 10
+        params.stack_timeout = 15
+        params.blocked_connection_timeout = 10
+        params.heartbeat = 30
+        try:
+            connection = pika.BlockingConnection(params)
+            channel = connection.channel()
+            declare_topology(channel)
+            channel.confirm_delivery()
+        except Exception as exc:
+            raise PublishNotSent("续跑队列连接未建立") from exc
+        try:
+            channel.basic_publish(exchange=exchange(), routing_key=routing_key, body=body,
+                                  properties=pika.BasicProperties(delivery_mode=2), mandatory=True)
+        except (pika.exceptions.NackError, pika.exceptions.UnroutableError) as exc:
+            raise PublishNotSent("续跑投递被拒绝") from exc
+    finally:
+        if connection is not None:
+            try:
+                connection.close()
+            except Exception:
+                pass

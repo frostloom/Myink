@@ -167,7 +167,20 @@ class TaskProgressOut(BaseModel):
     total: int
 
 
+class TaskBudgetView(BaseModel):
+    resume_publication: str | None = None
+    limits: TaskBudgetLimits
+    requests_used: int
+    cost_used_yuan: float
+    cost_reserved_yuan: float
+    runtime_used_seconds: float
+    pause_reason: str | None = None
+    stage: str | None = None
+    version: int
+
+
 class TaskDetailOut(BaseModel):
+    budget: TaskBudgetView | None = None
     task_id: str
     task_type: str
     status: str
@@ -204,6 +217,7 @@ class TaskSummaryOut(BaseModel):
     去重章数，total = payload.size。观测表（tasks 无 RLS），new_session 普通连接可查。
     """
 
+    budget: TaskBudgetView | None = None
     task_id: str
     task_type: str
     status: str
