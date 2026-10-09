@@ -1,0 +1,31 @@
+{
+  "synthetic": true,
+  "viewports": [
+    {
+      "width": 1440,
+      "scroll": 1440,
+      "body": true,
+      "resume": [
+        {
+          "operation_id": "2ff27d86-9f15-4996-b3fa-b23f02a77bee",
+          "add_requests": 2,
+          "add_cost_yuan": 0,
+          "add_runtime_seconds": 0
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "scroll": 390,
+      "body": true,
+      "resume": [
+        {
+          "operation_id": "36e019c4-2034-4652-8c3f-49d539278af4",
+          "add_requests": 2,
+          "add_cost_yuan": 0,
+          "add_runtime_seconds": 0
+        }
+      ]
+    }
+  ]
+}
