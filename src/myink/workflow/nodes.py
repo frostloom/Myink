@@ -8,6 +8,9 @@ function calling），写库只在 persist（编排层）发生。
 
 from __future__ import annotations
 
+from myink.task_budget import (budget_llm, budget_tool_call, effect_identity, load_effect, save_effect,
+                               TaskBudgetPaused, TaskBudgetUnavailable)
+
 import hashlib
 import json
 import logging
@@ -280,7 +283,8 @@ def _run_tool_loop(db: Session, state: ChapterState, node: str, role: str, chain
             if skipped:
                 result = json.dumps({"error": "TOOL_BUDGET_EXCEEDED: 工具执行预算已用尽，此调用未执行。"}, ensure_ascii=False)
             else:
-                result = execute_tool(db, uuid.UUID(state["project_id"]), tc["name"], arguments)
+                result = budget_tool_call({"id": tc["id"], "name": tc["name"], "arguments": arguments},
+                                          lambda: execute_tool(db, uuid.UUID(state["project_id"]), tc["name"], arguments))
                 tool_count += 1
             trace_item = {"tool": tc["name"], "arguments": arguments, "result": result[:200]}
             if skipped:
@@ -314,6 +318,7 @@ def _run_tool_loop(db: Session, state: ChapterState, node: str, role: str, chain
     return resp, tool_trace
 
 
+@budget_llm
 def _llm(db: Session, state: ChapterState, node: str, role: str, chain: FallbackChain,
          messages: list[dict], *, tools: list[dict] | None = None,
          detail: dict | None = None,
@@ -410,6 +415,8 @@ def _llm_checked(db: Session, state: ChapterState, node: str, role: str, chain: 
             if streamer is not None:
                 streamer.complete(value if node == "plan_chapter" else None)
             return resp, tool_trace, value, None
+        except (TaskBudgetPaused, TaskBudgetUnavailable):
+            raise
         except Exception as exc:
             last_exc = f"{type(exc).__name__}: {exc}"
             if streamer is not None:
@@ -1232,6 +1239,7 @@ def node_persist(state: ChapterState) -> ChapterState:
     """
     pid = state["project_id"]
     chapter_seq = state["chapter_seq"]
+    receipt = effect_identity(state, "persist")
     candidates = state.get("candidates", [])
     report = state.get("report") or {}
     critical = report.get("summary", {}).get("critical", 0) or 0
@@ -1253,6 +1261,9 @@ def node_persist(state: ChapterState) -> ChapterState:
         # 正文已写即推进已发生（低风险自动生效，§7.11 ④ 地点/物品/技能自动建档口径）；
         # plotline 连 CHECK 都不含，foreshadow_touch 是状态推进不改 canon。
         with tenant_session(pid) as db:
+            saved = load_effect(db, receipt)
+            if saved is not None:
+                return saved
             auto_candidates = [c for c in candidates
                                if c["kind"] in ("new_entity", "foreshadow_touch")]
             if auto_candidates:
@@ -1295,9 +1306,13 @@ def node_persist(state: ChapterState) -> ChapterState:
                                  "reason": "critical" if critical else
                                            "l2_major" if l2_major else
                                            "audit_failed" if audit_failed else "character_card"})
+            save_effect(db, receipt, {"persisted": True, "needs_review": True})
         return {"persisted": True, "needs_review": True}
 
     with tenant_session(pid) as db:
+        saved = load_effect(db, receipt)
+        if saved is not None:
+            return saved
         candidates = state.get("candidates", [])
         invalidation = None
         if state.get("rewrite"):
@@ -1323,6 +1338,7 @@ def node_persist(state: ChapterState) -> ChapterState:
         record_plain(db, project_id=pid, task_id=state.get("task_id"), node="persist",
                      detail={"candidates": len(candidates), "status": "auto_confirm",
                              "rewrite": bool(state.get("rewrite")), "invalidation": invalidation})
+        save_effect(db, receipt, {"persisted": True, "needs_review": False})
     return {"persisted": True, "needs_review": False}
 
 
@@ -1356,6 +1372,8 @@ def node_summarize(state: ChapterState) -> ChapterState:
             if not text:
                 return {}
             ch.summary = text
+    except (TaskBudgetPaused, TaskBudgetUnavailable):
+        raise
     except Exception as exc:
         logger.warning("章节摘要生成失败（保留启发式）: %s", exc)
         return {}
@@ -1689,6 +1707,8 @@ def _index_embedding(db: Session, *, project_id: uuid.UUID, level: str,
         PgvectorStore().upsert(db, project_id=project_id, level=level, source_id=source_id,
                                source_chapter=source_chapter,
                                model_version=model_version, embedding=emb)
+    except (TaskBudgetPaused, TaskBudgetUnavailable):
+        raise
     except Exception as exc:
         logger.warning("向量化失败（level=%s），跳过索引（不影响落库）: %s", level, exc)
 
@@ -1943,6 +1963,8 @@ def reflexion_for_chapter_window(*, project_id: str, end_chapter: int, task_id: 
             inserted, skipped = _persist_lessons(db, project_id, task_id, start, lessons, new_findings)
             return {"reflexion": {"findings": len(findings), "recurrences": recurrences,
                                   "lessons": inserted, "skipped_duplicates": skipped}}
+    except (TaskBudgetPaused, TaskBudgetUnavailable):
+        raise
     except Exception as exc:
         logger.warning("章节窗口复盘失败（不阻塞任务）: %s", exc)
         return {"reflexion": {"error": str(exc)}}
