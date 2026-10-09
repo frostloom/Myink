@@ -1,3 +1,4 @@
+import type { TaskBudgetLimits, ResumeBudgetBody } from '../types'
 // fetch 统一封装：Vite dev proxy 把 /api 转发到 Caddy（:80，见 vite.config.ts），生产同源。
 // 业务路由一律 Bearer（§14.1 ③）；非 2xx 统一抛 ApiError（code = {"error": code} 信封）。
 
@@ -290,8 +291,8 @@ export const api = {
   cancelTask: (tid: string) =>
     request<TaskControlResponse>('POST', `/tasks/${tid}/cancel`),
 
-  resumeTask: (tid: string) =>
-    request<TaskControlResponse>('POST', `/tasks/${tid}/resume`),
+  resumeTask: (tid: string, body?: ResumeBudgetBody) =>
+    request<TaskControlResponse>('POST', `/tasks/${tid}/resume`, body),
 
   // 项目任务历史（阶段 4 任务视图）：切书后展示该书过往任务（网关转发 Python）。
   // chapterSeq 非空 → 只列覆盖该章的任务 + 该章花费（右栏按章过滤，§11）。
@@ -338,6 +339,7 @@ export const api = {
     model_connections?: ModelConnectionInput[]
     rankings?: RankingsConfigInput
     thinking_enabled?: boolean
+    task_budget?: TaskBudgetLimits
   }) => request<EnvironmentSettings>('PUT', '/environment', body),
 
   // 模型连接探针（环境配置页）：拉取可用模型列表 / 联通测试。

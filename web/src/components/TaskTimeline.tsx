@@ -1,3 +1,4 @@
+import { TaskBudgetPanel } from './TaskBudgetPanel'
 // 当前章节唯一的状态流转图：实时节点与终态快照共用一条流程，逐节点展示耗时和费用。
 // 审核结论与人工设定确认由独立面板负责，避免三类信息混在同一组件。
 import { useState } from 'react'
@@ -7,10 +8,11 @@ import { formatDuration } from '../lib/duration'
 import { nodeLabel, taskStatusLabel, taskStatusTone } from '../lib/labels'
 import { compactFlowRuns, groupFlowAttempts } from '../lib/taskFlow'
 import type { TaskPhase } from '../hooks/useTaskEvents'
-import type { AgentRun, TaskStatus } from '../types'
+import type { AgentRun, TaskStatus, TaskBudgetView } from '../types'
 import styles from './TaskTimeline.module.css'
 
 export interface TaskTimelineProps {
+  budget?: TaskBudgetView | null
   taskId: string | null
   phase: TaskPhase
   status: TaskStatus | null
@@ -64,6 +66,7 @@ const ROUTE_LABELS: Record<string, string> = {
 
 export function TaskTimeline({
   taskId,
+  budget,
   phase,
   status,
   nodes,
@@ -92,7 +95,7 @@ export function TaskTimeline({
   const pendingNode = liveNode && liveNode !== renderedTail ? liveNode : null
   const totalCost = runs.reduce((sum, run) => sum + run.cost_est, 0)
   const totalDuration = runs.reduce((sum, run) => sum + run.duration_ms, 0)
-  const actions = canControl && status ? (STATUS_ACTIONS[status] ?? []) : []
+  const actions = canControl && status ? (STATUS_ACTIONS[status] ?? []).filter(a => !(a === 'resume' && budget?.pause_reason)) : []
   const tid = taskId
 
   async function control(action: BatchAction) {
@@ -132,6 +135,7 @@ export function TaskTimeline({
 
       {open && (
         <div className={styles.body}>
+          {taskId && status && <TaskBudgetPanel key={taskId} task={{ task_id: taskId, status, budget }} onResumed={refresh} />}
           {!taskId ? (
             <p className="empty">本章还没有生成记录。</p>
           ) : (

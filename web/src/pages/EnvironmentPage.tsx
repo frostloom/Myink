@@ -14,6 +14,7 @@ import type {
   ModelProbeRequest,
   Project,
   RankingsConfig,
+  TaskBudgetLimits,
 } from '../types'
 import styles from './SettingsPage.module.css'
 
@@ -54,6 +55,8 @@ export default function EnvironmentPage() {
   const [routeSel, setRouteSel] = useState<Record<string, string>>({})
   const [connectionDrafts, setConnectionDrafts] = useState<ModelConnectionDraft[]>([])
   const [probes, setProbes] = useState<Record<string, ProbeState>>({})
+  const [taskBudget, setTaskBudget] = useState<TaskBudgetLimits>({ max_requests: 100, max_cost_yuan: 5, max_runtime_seconds: 1800 })
+  const [budgetMessage, setBudgetMessage] = useState<SectionMsg>(null)
   const [rankings, setRankings] = useState<RankingsConfig>(EMPTY_RANKINGS)
   const [thinkingEnabled, setThinkingEnabled] = useState(false)
   const [notices, setNotices] = useState<ConnectionNotice[]>([])
@@ -108,6 +111,7 @@ export default function EnvironmentPage() {
         return [r.key, value.startsWith('custom:') ? value : '']
       })))
       setConnectionDrafts((env.model_connections ?? []).map((connection) => ({ ...connection, api_key: '' })))
+      setTaskBudget(env.task_budget ?? { max_requests: 100, max_cost_yuan: 5, max_runtime_seconds: 1800 })
       setRankings(env.rankings ?? EMPTY_RANKINGS)
       setThinkingEnabled(env.thinking_enabled === true)
       setProjects(proj)
@@ -286,6 +290,23 @@ export default function EnvironmentPage() {
     }
   }
 
+  async function saveBudget() {
+    const b = taskBudget
+    if (!Number.isSafeInteger(b.max_requests) || b.max_requests < 0 || b.max_requests > 2000000000 ||
+        !Number.isSafeInteger(b.max_runtime_seconds) || b.max_runtime_seconds < 0 || b.max_runtime_seconds > 9000000000000 ||
+        !Number.isFinite(b.max_cost_yuan) || b.max_cost_yuan < 0 || b.max_cost_yuan > 9000000000000 ||
+        Math.abs(b.max_cost_yuan * 1e6 - Math.round(b.max_cost_yuan * 1e6)) > 0.0001) {
+      setBudgetMessage({ tone: 'error', text: '预算必须为非负数；请求和秒数为整数，费用最多六位小数。' })
+      return
+    }
+    setBusy('budget')
+    try {
+      await api.updateEnvironment({ task_budget: b })
+      setBudgetMessage({ tone: 'ok', text: '已保存，仅影响新任务。' })
+    } catch (e) { setBudgetMessage({ tone: 'error', text: formatApiError(e) }) }
+    finally { setBusy(null) }
+  }
+
   return (
     <div className={styles.wrap}>
       <ConnectionNotices items={notices} onDismiss={(id) => setNotices((items) => items.filter((item) => item.id !== id))} />
@@ -436,6 +457,21 @@ export default function EnvironmentPage() {
                 {busy === 'routes' ? '保存中…' : '保存连接与路由'}
               </button>
             </div>
+          </section>
+
+          <section className={`panel ${styles.section}`}>
+            <h2 className={styles.sectionTitle}>任务总预算</h2>
+            <p>每次 Agent 任务共用预算，批次的所有章节累计计算。0 表示不限；修改只影响新任务。</p>
+            {([
+              ['max_requests', '任务请求上限'],
+              ['max_cost_yuan', '任务费用上限（元）'],
+              ['max_runtime_seconds', '任务运行上限（秒）'],
+            ] as const).map(([key, label]) => <label key={key} className={styles.field}>
+              {label}<input type="number" min="0" step={key === 'max_cost_yuan' ? '0.000001' : '1'} value={taskBudget[key]}
+                onChange={e => setTaskBudget(b => ({ ...b, [key]: Number(e.target.value) }))} />
+            </label>)}
+            <button type="button" className="btn" disabled={busy !== null} onClick={() => void saveBudget()}>保存任务预算</button>
+            {budgetMessage && <p role={budgetMessage.tone === 'error' ? 'alert' : 'status'}>{budgetMessage.text}</p>}
           </section>
 
           <section className={`panel ${styles.section}`}>

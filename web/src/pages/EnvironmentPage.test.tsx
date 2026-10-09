@@ -196,3 +196,15 @@ it('has no MCP address input or probe button left in the rankings section', asyn
   expect(screen.queryByRole('button', { name: '测试 MCP 连接' })).toBeNull()
   expect(screen.queryByText('MCP 服务')).toBeNull()
 })
+it('saves only the task budget defaults', async () => {
+  vi.mocked(api.getEnvironment).mockResolvedValue(emptyEnv)
+  vi.mocked(api.listProjects).mockResolvedValue([])
+  vi.mocked(api.updateEnvironment).mockResolvedValue(emptyEnv)
+  renderPage()
+  const requests = await screen.findByLabelText('任务请求上限')
+  fireEvent.change(requests, { target: { value: '120' } })
+  fireEvent.click(screen.getByRole('button', { name: '保存任务预算' }))
+  await waitFor(() => expect(api.updateEnvironment).toHaveBeenCalledWith({ task_budget: {
+    max_requests: 120, max_cost_yuan: 5, max_runtime_seconds: 1800,
+  } }))
+})
