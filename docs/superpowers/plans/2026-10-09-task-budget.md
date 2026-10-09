@@ -1,6 +1,6 @@
 # P2 Task Budget Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 给账号新任务提供可配置的请求、费用和运行时间上限，超限自动暂停，追加预算后复用成果继续执行。
 
@@ -47,12 +47,12 @@
 - `budget_view(task_id) -> dict | None`：限额、累计值、未确认预留、stage、pause_reason，供 Task 4 使用。
 - `claim_budget(task_id, owner_token)`、`renew_budget(task_id, owner_token)`、`release_budget(task_id, owner_token)`：短事务、行锁、所有者校验和累计运行时间。
 
-- [ ] 写失败测试：`test_defaults_and_partial_environment_update`，断言默认 100/5/1800、只更新预算不清模型路由、账号隔离。
-- [ ] 写参数校验测试：0 可用，负数/布尔值/NaN/Infinity/非法精度拒绝；环境配置保持既有省略语义。
-- [ ] 写数据库测试：`test_duplicate_snapshot_keeps_original_limits`、`test_legacy_task_without_snapshot_is_unmanaged`、`test_lease_rejects_stale_owner`、`test_runtime_survives_restart_excludes_pause`。
-- [ ] 运行并确认测试在缺少新接口或行为时失败；实现模型、幂等初始化/权限、配置读取及可信入队快照。
-- [ ] 运行初始化两次，确认新旧数据库兼容、RLS/归属和删除行为；针对性测试转绿。
-- [ ] 提交仅本任务相关文件：`feat: persist task budget configuration and ledger`。
+- [x] 写失败测试：`test_defaults_and_partial_environment_update`，断言默认 100/5/1800、只更新预算不清模型路由、账号隔离。
+- [x] 写参数校验测试：0 可用，负数/布尔值/NaN/Infinity/非法精度拒绝；环境配置保持既有省略语义。
+- [x] 写数据库测试：`test_duplicate_snapshot_keeps_original_limits`、`test_legacy_task_without_snapshot_is_unmanaged`、`test_lease_rejects_stale_owner`、`test_runtime_survives_restart_excludes_pause`。
+- [x] 运行并确认测试在缺少新接口或行为时失败；实现模型、幂等初始化/权限、配置读取及可信入队快照。
+- [x] 运行初始化两次，确认新旧数据库兼容、RLS/归属和删除行为；针对性测试转绿。
+- [x] 提交仅本任务相关文件：`feat: persist task budget configuration and ledger`。
 
 ## Task 2：实际请求准入、结算与调用成果
 
@@ -69,12 +69,12 @@
 - `load_call(operation_key, input_hash) -> ModelResponse | None`、`save_call(operation_key, input_hash, response) -> None`：输入摘要包含消息、工具、模型链、价格及生成参数；保存成功返回成果。
 - `AttemptPermit.remaining_seconds() -> float`：约束网络等待和重试退避，不允许租约丢失或余额不足后继续发请求。
 
-- [ ] 写失败测试：单节点重试消耗多次额度，1 次上限允许恰好一次，第二次不触 HTTP；不同模型 fallback、流式重试共享预算。
-- [ ] 写失败测试：受管理 OpenAI SDK 没有隐藏重试；Anthropic/DeepSeek 拦截前无网络调用；预算异常不被宽泛 catch 或 FallbackChain 吞掉。
-- [ ] 写失败测试：并发预留不超额；完整用量结算、缺失用量/断流保留预留、未知价格正数预留、账本故障不发请求。
-- [ ] 写失败测试：剩余秒数限制 HTTP 超时和退避；复用结果不增加请求/费用，输入和模型参数变化不复用。
-- [ ] 跑红测试后，接入每个实际 HTTP 尝试；预算作用域中禁用 SDK 内部重试。定价运算内部用整数微元/Decimal，展示才换单位。
-- [ ] 跑 Provider 全套相关测试，保留已有 thinking、工具、流式及错误脱敏行为；提交 `feat: enforce task budget before model requests`。
+- [x] 写失败测试：单节点重试消耗多次额度，1 次上限允许恰好一次，第二次不触 HTTP；不同模型 fallback、流式重试共享预算。
+- [x] 写失败测试：受管理 OpenAI SDK 没有隐藏重试；Anthropic/DeepSeek 拦截前无网络调用；预算异常不被宽泛 catch 或 FallbackChain 吞掉。
+- [x] 写失败测试：并发预留不超额；完整用量结算、缺失用量/断流保留预留、未知价格正数预留、账本故障不发请求。
+- [x] 写失败测试：剩余秒数限制 HTTP 超时和退避；复用结果不增加请求/费用，输入和模型参数变化不复用。
+- [x] 跑红测试后，接入每个实际 HTTP 尝试；预算作用域中禁用 SDK 内部重试。定价运算内部用整数微元/Decimal，展示才换单位。
+- [x] 跑 Provider 全套相关测试，保留已有 thinking、工具、流式及错误脱敏行为；提交 `feat: enforce task budget before model requests`。
 
 ## Task 3：安全暂停与长篇、批次、短篇恢复
 
@@ -90,12 +90,12 @@
 - `save_short_progress(task_id, stage, payload)` / `load_short_progress(task_id)`：持久化短篇成稿/补写/审稿/改稿位置及成果，以 TaskBudgetCall/任务数据复用，不另建调度器。
 - Worker 捕获 TaskBudgetPaused：保存 `paused`、pause_reason 和 stage，发送 SSE 元数据，不自动 retry；基础设施异常保留现场并报告，取消优先。
 
-- [ ] 写可计数 StubProvider 测试：单章在审核前超预算，恢复后正文调用次数仍为 1；验证真实图恢复语义而非只检查 payload。
-- [ ] 写工具循环测试：第二轮模型请求前暂停，第一次工具调用结果/模型结果恢复后可复用，无重复付费。
-- [ ] 写批次测试：第二章中途超预算，第一章没有重跑、子线程累计于父额度；最后审核/Reflexion 仍受限。
-- [ ] 写短篇测试：成稿→审稿前、审稿→改稿前暂停，服务重启后从对应阶段继续，已落库稿不重复覆盖版本。
-- [ ] 写异常传播测试：摘要、复盘、批次异常兜底都不吞预算暂停；重复队列消息与旧 Worker 不推进状态；手动取消不会被预算暂停覆盖。
-- [ ] 测试先红再修恢复入口、阶段持久化和预算作用域；测试转绿后提交 `feat: pause and resume agent workflows on budget limits`。
+- [x] 写可计数 StubProvider 测试：单章在审核前超预算，恢复后正文调用次数仍为 1；验证真实图恢复语义而非只检查 payload。
+- [x] 写工具循环测试：第二轮模型请求前暂停，第一次工具调用结果/模型结果恢复后可复用，无重复付费。
+- [x] 写批次测试：第二章中途超预算，第一章没有重跑、子线程累计于父额度；最后审核/Reflexion 仍受限。
+- [x] 写短篇测试：成稿→审稿前、审稿→改稿前暂停，服务重启后从对应阶段继续，已落库稿不重复覆盖版本。
+- [x] 写异常传播测试：摘要、复盘、批次异常兜底都不吞预算暂停；重复队列消息与旧 Worker 不推进状态；手动取消不会被预算暂停覆盖。
+- [x] 测试先红再修恢复入口、阶段持久化和预算作用域；测试转绿后提交 `feat: pause and resume agent workflows on budget limits`。
 
 ## Task 4：查询与幂等追加预算 API
 
@@ -110,10 +110,10 @@
 - `extend_and_resume_budget(task_id, user_id, body) -> dict`：同事务锁任务和预算，按 operation_id 幂等；记录操作收据和发布状态，确认失败与结果不明分别处理。
 - 无余量的预算暂停任务收到普通 resume 时返回 409，保持暂停并提示追加；没有超限的手动暂停按旧行为续跑。
 
-- [ ] 写红测试：他人不能查询或追加；done/cancelled 不可追加；已用值不归零；修改全局默认不改变旧任务。
-- [ ] 写红测试：双击同 operation_id、响应丢失重放、不同 operation_id 并发，追加一次、发布一次；同键不同参数 409。
-- [ ] 写红测试：发布 nack 可重试但不重复追加，发布确认超时不能撤销可能已生效状态，重投消息不能重新获取默认预算。
-- [ ] 实现验证与操作收据；导出契约并审查兼容性；针对性 API 测试转绿后提交 `feat: expose task budgets and idempotent extensions`。
+- [x] 写红测试：他人不能查询或追加；done/cancelled 不可追加；已用值不归零；修改全局默认不改变旧任务。
+- [x] 写红测试：双击同 operation_id、响应丢失重放、不同 operation_id 并发，追加一次、发布一次；同键不同参数 409。
+- [x] 写红测试：发布 nack 可重试但不重复追加，发布确认超时不能撤销可能已生效状态，重投消息不能重新获取默认预算。
+- [x] 实现验证与操作收据；导出契约并审查兼容性；针对性 API 测试转绿后提交 `feat: expose task budgets and idempotent extensions`。
 
 ## Task 5：环境页与任务预算交互
 
@@ -127,10 +127,10 @@
 - `api.resumeTask(tid, body?)` 支持既有空体与预算追加体，operation_id 在一次用户操作中保持稳定直到成功或明确放弃。
 - `TaskBudgetPanel({task, onResumed})` 展示三个维度、未确认预留、阶段/原因；可追加请求、元和分钟，分钟转整数秒。
 
-- [ ] 写红测试：环境页加载默认、只保存预算不改变模型路由；0 显示不限，非法值阻止提交。
-- [ ] 写红测试：预算暂停区别于手动暂停、追加错误提示、操作中防双击、重试保留 operation_id、刷新读取服务端账本。
-- [ ] 实现已有页面风格内的局部交互，不新增无关布局或管理端功能。
-- [ ] 运行针对性 Vitest，随后 lint/test/build；提交 `feat: configure and extend agent task budgets in UI`。
+- [x] 写红测试：环境页加载默认、只保存预算不改变模型路由；0 显示不限，非法值阻止提交。
+- [x] 写红测试：预算暂停区别于手动暂停、追加错误提示、操作中防双击、重试保留 operation_id、刷新读取服务端账本。
+- [x] 实现已有页面风格内的局部交互，不新增无关布局或管理端功能。
+- [x] 运行针对性 Vitest，随后 lint/test/build；提交 `feat: configure and extend agent task budgets in UI`。
 
 ## Task 6：整体验收、维护说明与发布
 
