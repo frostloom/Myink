@@ -229,3 +229,18 @@ def test_environment_requires_auth():
 def test_save_raw_unknown_user():
     with pytest.raises(LookupError):
         save_raw(uuid.uuid4(), {})
+
+def test_task_budget_environment_roundtrip_and_partial_update(temp_user):
+    assert get_environment(user_id=temp_user)["task_budget"] == {
+        "max_requests": 100, "max_cost_yuan": 5.0, "max_runtime_seconds": 1800,
+    }
+    put_environment(EnvironmentBody(task_budget={
+        "max_requests": 3, "max_cost_yuan": 2, "max_runtime_seconds": 60,
+    }), user_id=temp_user)
+    out = put_environment(EnvironmentBody(thinking_enabled=True), user_id=temp_user)
+    assert out["task_budget"]["max_requests"] == 3
+    assert out["thinking_enabled"] is True
+    out = put_environment(EnvironmentBody(task_budget={"max_requests": 4}), user_id=temp_user)
+    assert out["task_budget"] == {
+        "max_requests": 4, "max_cost_yuan": 2.0, "max_runtime_seconds": 60,
+    }

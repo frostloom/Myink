@@ -51,6 +51,7 @@ def packed_models(user_id: str | uuid.UUID) -> dict[str, Any] | None:
 
 def load_environment(user_id: str | uuid.UUID) -> dict[str, Any]:
     from myink.providers.connections import public_connections
+    from myink.task_budget import TaskBudgetLimits, public_limits
 
     raw = load_raw(user_id)
     routes, connections = unpack_model_settings(raw.get("models") if isinstance(raw.get("models"), dict) else {})
@@ -60,6 +61,7 @@ def load_environment(user_id: str | uuid.UUID) -> dict[str, Any]:
         "model_connections": public_connections(connections),
         "rankings": merge_rankings(raw.get("rankings")),
         "thinking_enabled": bool(raw.get("thinking_enabled")),
+        "task_budget": public_limits(TaskBudgetLimits.model_validate(raw.get("task_budget") or {})),
     }
 
 

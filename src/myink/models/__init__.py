@@ -48,9 +48,13 @@ from myink.models.project import (
 )
 from myink.models.runs import SNAPSHOT_STAGES, AgentRun, GenerationSnapshot, Task
 from myink.models.validation import Finding, ValidationReport
+from myink.models.task_budget import TaskBudget, TaskBudgetAttempt, TaskBudgetCall
 
 __all__ = [
     "Base",
+    "TaskBudget",
+    "TaskBudgetAttempt",
+    "TaskBudgetCall",
     "AdminAccessLog",
     "Invitation",
     # project

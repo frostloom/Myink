@@ -556,3 +556,14 @@ def ensure_legacy_schema_cleanup() -> None:
         conn.execute(text("DROP TABLE IF EXISTS chapter_outlines"))
         for table, column in dropped_columns:
             conn.execute(text(f"ALTER TABLE {table} DROP COLUMN IF EXISTS {column}"))
+
+
+
+def ensure_task_budget_schema() -> None:
+    """Add budget tables and RLS without changing existing task data."""
+    from myink.models.task_budget import TaskBudget, TaskBudgetAttempt, TaskBudgetCall
+    from myink.models.base import Base
+    with get_admin_engine().begin() as conn:
+        Base.metadata.create_all(conn, tables=[
+            TaskBudget.__table__, TaskBudgetAttempt.__table__, TaskBudgetCall.__table__])
+    enable_row_level_security()

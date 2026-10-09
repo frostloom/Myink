@@ -82,6 +82,12 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
     `platform_chapter_max` 默认 0 = 不限，**其余入队点（短篇、批次外调用、续跑）逐字节不变**；
     只有长篇生成的两个入口会传真实值。
     """
+    from myink.task_budget import snapshot_budget
+
+    try:
+        budget_snapshot = snapshot_budget(user_id)
+    except Exception as exc:
+        raise EnqueueUnavailable('task_budget_snapshot') from exc
     today = date.today().isoformat()
     task_id = str(uuid.uuid4())
     keys = [
@@ -98,6 +104,7 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
         "project_id": project_id,
         "user_id": user_id,
         "payload": payload,
+        "task_budget": budget_snapshot,
         "trace_id": task_id,
         "request_id": task_id,
         "retry_count": 0,
