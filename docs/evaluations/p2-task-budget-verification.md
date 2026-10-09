@@ -69,3 +69,5 @@
 - [部署回执](p2-task-budget/deployment-receipt.json) 保存实际容器版本、状态和合成测试结果。服务器备份目录与镜像标签保存在项目 .local/p2-deployment-receipt.json，仅本地保存运维信息。
 
 原工作目录已快进整合；既有 .gitignore、docs/DEPLOY.md 和无关未跟踪文件保留。已纳入提交的原 thinking 修复及批准的 P2 草稿另存 .local/p2-original-work-backup 和专用 Git stash，不覆盖无关修改。
+
+最终 Task 6 闸门再次检查已保存全量结果、补测结果、已上线代码与提交一致，以及实际公网 readyz；文档收尾没有重复运行全量套件。代价：该闸门依赖保留的测试日志与源码比较，而不是重新执行完整套件。原始日志、实施决策账本和独立审查 diff 保存在项目 .local/p2-task-budget-evidence-20261010。
