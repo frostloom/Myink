@@ -30,6 +30,7 @@ from typing import Any
 from langgraph.graph import END, START, StateGraph
 
 from myink.config import settings
+from myink.task_budget import budget_node, budget_managed, TaskBudgetPaused, TaskBudgetUnavailable
 from myink.db import tenant_session
 from myink.memory import repository as repo
 from myink.providers import make_chain
@@ -230,9 +231,16 @@ def make_chapter_runner(chapter_graph):
             "shared_context": state.get("shared_context"),
         }
         try:
+            config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 64}
+            if budget_managed():
+                snap = chapter_graph.get_state(config)
+                if snap.values and (snap.next or not snap.values.get("error")):
+                    chapter_input = None
             result = chapter_graph.invoke(
                 chapter_input, config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64}
             )
+        except (TaskBudgetPaused, TaskBudgetUnavailable):
+            raise
         except Exception as exc:  # 子图异常 → 抛中断，batch checkpoint 停在 chapter 节点可续跑
             logger.exception("单章 %s 失败", chapter_seq)
             raise BatchChapterError(f"单章 {chapter_seq} 失败: {exc}") from exc
@@ -322,6 +330,8 @@ def node_reflexion(state: BatchState) -> BatchState:
             inserted, skipped = nodes._persist_lessons(db, pid, batch_task_id, start, lessons, new_findings)
             return {"reflexion": {"findings": len(findings), "recurrences": recurrences,
                                   "lessons": inserted, "skipped_duplicates": skipped}}
+    except (TaskBudgetPaused, TaskBudgetUnavailable):
+        raise
     except Exception as exc:
         logger.warning("reflexion 复盘失败（不阻塞批次）: %s", exc)
         return {"reflexion": {"error": str(exc)}}
@@ -342,6 +352,8 @@ def node_global_audit(state: BatchState) -> BatchState:
                 return {"global_audit": {"triggered": False, "reason": "below_threshold"}}
             return {"global_audit": ga.run_global_audit(
                 db, pid, win, source="batch", source_batch_task_id=state["batch_task_id"])}
+    except (TaskBudgetPaused, TaskBudgetUnavailable):
+        raise
     except Exception as exc:
         logger.warning("全局审计失败（不阻塞批次）: %s", exc)
         return {"global_audit": {"error": str(exc)}}
@@ -385,13 +397,13 @@ def build_batch_graph(chapter_graph, checkpointer=None):
     node_run_chapter = make_chapter_runner(chapter_graph)
 
     g = StateGraph(BatchState)
-    g.add_node("batch_plan", node_batch_plan)
-    g.add_node("chapter", node_run_chapter)
-    g.add_node("bridge", lambda s: {"position": (s.get("position") or 0) + 1})
-    g.add_node("reset_replan_batch", node_reset_replan_batch)
-    g.add_node("reflexion", node_reflexion)
-    g.add_node("global_audit", node_global_audit)
-    g.add_node("batch_end", node_batch_end)
+    g.add_node("batch_plan", budget_node(node_batch_plan, "batch_plan"))
+    g.add_node("chapter", budget_node(node_run_chapter, "chapter"))
+    g.add_node("bridge", budget_node(lambda s: {"position": (s.get("position") or 0) + 1}, "bridge"))
+    g.add_node("reset_replan_batch", budget_node(node_reset_replan_batch, "reset_replan_batch"))
+    g.add_node("reflexion", budget_node(node_reflexion, "reflexion"))
+    g.add_node("global_audit", budget_node(node_global_audit, "global_audit"))
+    g.add_node("batch_end", budget_node(node_batch_end, "batch_end"))
 
     g.add_edge(START, "batch_plan")
     g.add_conditional_edges(

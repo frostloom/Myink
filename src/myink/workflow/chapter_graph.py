@@ -17,6 +17,7 @@ from __future__ import annotations
 from langgraph.graph import END, START, StateGraph
 
 from myink.config import settings
+from myink.task_budget import budget_node, budget_managed, TaskBudgetPaused, TaskBudgetUnavailable
 from myink.workflow import nodes
 from myink.workflow.state import ChapterState
 from myink.workflow.patches import resolve_revise_mode
@@ -101,21 +102,21 @@ def node_route(state: ChapterState) -> ChapterState:
 
 def build_chapter_graph(checkpointer=None, *, entry: str = "load_state"):
     g = StateGraph(ChapterState)
-    g.add_node("load_state", nodes.node_load_state)
-    g.add_node("recall", nodes.node_recall)
-    g.add_node("plan_cast", nodes.node_plan_cast)
-    g.add_node("plan_chapter", nodes.node_plan_chapter)
-    g.add_node("plan_gate", nodes.node_plan_gate)
-    g.add_node("write", nodes.node_write)
-    g.add_node("extract", nodes.node_extract)
-    g.add_node("validate", nodes.node_validate)
-    g.add_node("audit", nodes.node_audit)
-    g.add_node("revise", nodes.node_revise)
-    g.add_node("patch", nodes.node_patch)
-    g.add_node("persist", nodes.node_persist)
-    g.add_node("summarize", nodes.node_summarize)
-    g.add_node("reset_replan", node_reset_replan)
-    g.add_node("route", node_route)
+    g.add_node("load_state", budget_node(nodes.node_load_state, "load_state"))
+    g.add_node("recall", budget_node(nodes.node_recall, "recall"))
+    g.add_node("plan_cast", budget_node(nodes.node_plan_cast, "plan_cast"))
+    g.add_node("plan_chapter", budget_node(nodes.node_plan_chapter, "plan_chapter"))
+    g.add_node("plan_gate", budget_node(nodes.node_plan_gate, "plan_gate"))
+    g.add_node("write", budget_node(nodes.node_write, "write"))
+    g.add_node("extract", budget_node(nodes.node_extract, "extract"))
+    g.add_node("validate", budget_node(nodes.node_validate, "validate"))
+    g.add_node("audit", budget_node(nodes.node_audit, "audit"))
+    g.add_node("revise", budget_node(nodes.node_revise, "revise"))
+    g.add_node("patch", budget_node(nodes.node_patch, "patch"))
+    g.add_node("persist", budget_node(nodes.node_persist, "persist"))
+    g.add_node("summarize", budget_node(nodes.node_summarize, "summarize"))
+    g.add_node("reset_replan", budget_node(node_reset_replan, "reset_replan"))
+    g.add_node("route", budget_node(node_route, "route"))
 
     g.add_edge(START, entry)
     g.add_edge("load_state", "recall")

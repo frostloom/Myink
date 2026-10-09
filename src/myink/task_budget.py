@@ -420,3 +420,187 @@ def budget_sleep(permit, delay):
         return
     time.sleep(min(delay, permit.remaining_seconds()))
     permit.remaining_seconds()
+
+
+def budget_managed() -> bool:
+    return _SCOPE.get() is not None
+
+
+def _require_owner(row, scope):
+    if row is None or row.owner_token != scope.owner_token or (row.lease_until or 0) <= time.time():
+        raise TaskBudgetUnavailable("task execution lease lost")
+
+
+def guard_budget(stage=None):
+    """Node boundaries also stop local work after cancellation or elapsed time."""
+    scope = _SCOPE.get()
+    if scope is None:
+        return
+    with _ledger(scope.task_id) as db:
+        row = _locked(db, scope.task_id)
+        _require_owner(row, scope)
+        task = db.get(Task, row.task_id)
+        if task.status in {"paused", "cancelled"}:
+            raise TaskBudgetPaused("cancelled" if task.status == "cancelled" else
+                                   row.pause_reason or "manual_pause", stage)
+        _accrue(row, time.time())
+        limit = TaskBudgetLimits.model_validate(row.limits).max_runtime_seconds
+        row.stage = stage or _OPERATION.get() or row.stage
+        if limit and row.runtime_used_ms >= limit * 1000:
+            row.pause_reason = "time_limit"
+            db.commit()
+            raise TaskBudgetPaused("time_limit", row.stage)
+
+
+def operation_for(state, node):
+    return (f"{state.get('task_id') or state.get('batch_task_id')}:{node}:"
+            f"ch{state.get('chapter_seq', state.get('position', 0))}:"
+            f"r{state.get('revision_count', 0)}:p{state.get('patch_count', 0)}:"
+            f"re{state.get('replan_count', state.get('batch_replan_count', 0))}")
+
+
+def budget_node(function, name=None):
+    @wraps(function)
+    def wrapped(state, *args, **kwargs):
+        operation = operation_for(state, name or function.__name__)
+        with bind_budget_operation(operation):
+            guard_budget(operation)
+            return function(state, *args, **kwargs)
+    return wrapped
+
+
+def budget_llm(function):
+    @wraps(function)
+    def wrapped(db, state, node, *args, **kwargs):
+        with bind_budget_operation(operation_for(state, node)):
+            guard_budget()
+            return function(db, state, node, *args, **kwargs)
+    return wrapped
+
+
+def _load_progress(task_id, key):
+    scope = _SCOPE.get()
+    if scope is None:
+        return None
+    if str(task_id) != scope.task_id:
+        raise TaskBudgetUnavailable("progress task owner mismatch")
+    with _ledger(task_id) as db:
+        row = _locked(db, task_id)
+        _require_owner(row, scope)
+        call = db.scalar(select(TaskBudgetCall).where(TaskBudgetCall.task_id == row.task_id,
+                         TaskBudgetCall.operation_key == key, TaskBudgetCall.input_hash == "progress"))
+        return dict(call.response) if call else None
+
+
+def _save_progress(task_id, key, payload):
+    scope = _SCOPE.get()
+    if scope is None:
+        return
+    if str(task_id) != scope.task_id:
+        raise TaskBudgetUnavailable("progress task owner mismatch")
+    with _ledger(task_id) as db:
+        row = _locked(db, task_id)
+        _require_owner(row, scope)
+        db.execute(insert(TaskBudgetCall).values(task_id=row.task_id, project_id=row.project_id,
+                    operation_key=key, input_hash="progress", response=payload)
+                   .on_conflict_do_update(constraint="uq_task_budget_call", set_={"response": payload}))
+
+
+def save_short_progress(task_id, stage, payload):
+    _save_progress(task_id, "short:progress", {"stage": stage, **payload})
+
+
+def load_short_progress(task_id):
+    return _load_progress(task_id, "short:progress")
+
+
+def budget_tool_call(identity, execute):
+    scope = _SCOPE.get()
+    if scope is None:
+        return execute()
+    key = "tool:" + hashlib.sha256(json.dumps([_OPERATION.get(), identity],
+                                             sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    saved = _load_progress(scope.task_id, key)
+    if saved is not None:
+        return saved["result"]
+    guard_budget()
+    result = execute()
+    _save_progress(scope.task_id, key, {"result": result})
+    return result
+
+
+def record_budget_pause(task_id, exc, *, expected_owner=None):
+    with _ledger(task_id) as db:
+        task = db.scalar(select(Task).where(Task.id == uuid.UUID(str(task_id))).with_for_update())
+        row = _locked(db, task_id)
+        if task.status == "cancelled":
+            return "cancelled"
+        if row is not None and row.owner_token and expected_owner and row.owner_token != expected_owner:
+            return "superseded"
+        task.status = "paused"
+        task.error = str(exc)
+        if row is not None:
+            row.pause_reason = getattr(exc, "reason", "accounting_unavailable")
+            row.stage = getattr(exc, "stage", None) or row.stage
+        return "paused"
+
+
+def budget_execution(function):
+    """CLI entry points share the same scope as Worker entry points."""
+    import inspect
+    signature = inspect.signature(function)
+    @wraps(function)
+    def wrapped(*args, **kwargs):
+        if budget_managed():
+            return function(*args, **kwargs)
+        params = signature.bind(*args, **kwargs).arguments
+        task_id = params.get("task_id") or params.get("batch_task_id") or params.get("thread_id")
+        if not task_id:
+            return function(*args, **kwargs)
+        try:
+            tid = uuid.UUID(str(task_id))
+        except ValueError:
+            return function(*args, **kwargs)  # legacy CLI/test labels have no task ledger
+        with new_session() as db:
+            if db.get(Task, tid) is None:
+                return function(*args, **kwargs)
+        owner = uuid.uuid4().hex
+        try:
+            with bind_task_budget(task_id, owner):
+                return function(*args, **kwargs)
+        except (TaskBudgetPaused, TaskBudgetUnavailable) as exc:
+            record_budget_pause(task_id, exc, expected_owner=owner)
+            raise
+    return wrapped
+
+
+def effect_identity(state, node):
+    digest = hashlib.sha256(json.dumps(state, sort_keys=True, ensure_ascii=False,
+                                       default=str).encode()).hexdigest()
+    key = "effect:" + operation_for(state, node)
+    if len(key) > 255:
+        key = hashlib.sha256(key.encode()).hexdigest()
+    return key, digest
+
+
+def load_effect(db, identity):
+    """Lock the lease and receipt in the business transaction itself."""
+    scope = _SCOPE.get()
+    if scope is None:
+        return None
+    row = _locked(db, scope.task_id)
+    _require_owner(row, scope)
+    call = db.scalar(select(TaskBudgetCall).where(TaskBudgetCall.task_id == row.task_id,
+                     TaskBudgetCall.operation_key == identity[0], TaskBudgetCall.input_hash == identity[1]))
+    return dict(call.response) if call else None
+
+
+def save_effect(db, identity, result):
+    scope = _SCOPE.get()
+    if scope is None:
+        return
+    row = _locked(db, scope.task_id)
+    _require_owner(row, scope)
+    db.execute(insert(TaskBudgetCall).values(task_id=row.task_id, project_id=row.project_id,
+                operation_key=identity[0], input_hash=identity[1], response=result)
+               .on_conflict_do_nothing(constraint="uq_task_budget_call"))

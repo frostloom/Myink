@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import logging
+import json
 import os
 import socket
 import uuid
@@ -25,6 +26,9 @@ from psycopg import OperationalError as PsycopgOperationalError
 from sqlalchemy.exc import OperationalError as SQLAlchemyOperationalError
 
 from myink.config import settings
+from myink.task_budget import (bind_task_budget, budget_managed, budget_view,
+                               ensure_task_budget, record_budget_pause, bind_budget_operation,
+                               TaskBudgetPaused, TaskBudgetUnavailable)
 from myink.db import new_session
 from myink.models import Project, Task
 from myink.workflow.runner import (
@@ -182,6 +186,12 @@ def _dispatch(body: dict) -> dict:
     task_id = body["task_id"]
     task_type = body["task_type"]
     payload = body.get("payload") or {}
+    if budget_managed() and task_type in {"chapter_generate", "batch_generate"}:
+        chapter_graph, batch_graph = get_graphs()
+        graph = batch_graph if task_type == "batch_generate" else chapter_graph
+        snap = graph.get_state({"configurable": {"thread_id": task_id}})
+        if snap.values:
+            return resume_thread(graph, task_id, snap.values)
 
     if task_type == "chapter_generate":
         seq = _resolve_chapter_seq(project_id, payload)
@@ -252,7 +262,7 @@ def _dispatch(body: dict) -> dict:
         # 取 checkpoint 草稿直接落库正文，不走图重跑——LangGraph 1.2.9 resume 语义是
         # 整图从 START 重跑，确定性输入会再命中确认分流 → 永久 awaiting_review、正文
         # 永不落库（2026-08-17 用户实测：确认后点续跑变成重新生成）。
-        if _chapter_awaiting_review(project_id, seq):
+        if _chapter_awaiting_review(project_id, seq) and not (budget_managed() and (budget_view(task_id) or {}).get("pause_reason")):
             return finalize_chapter_review(project_id=project_id, task_id=task_id, chapter_seq=seq)
         chapter_graph, _ = get_graphs()
         return resume_thread(
@@ -361,7 +371,20 @@ def _accumulate_cost(body: dict) -> None:
     r = get_redis()
     try:
         from myink.models import AgentRun
-
+        budget = budget_view(body["task_id"])
+        if budget is not None:
+            total = budget["cost_used_yuan"] + budget["cost_reserved_yuan"]
+            r.eval("""
+                local old = tonumber(redis.call('GET', KEYS[2]) or '0')
+                local total = tonumber(ARGV[1])
+                local delta = math.max(0, total - old)
+                if delta > 0 then
+                    redis.call('INCRBYFLOAT', KEYS[1], delta)
+                    redis.call('SET', KEYS[2], total)
+                end
+                return 1
+            """, 2, cost_key(date.today().isoformat()), f"rate:taskcost:{body['task_id']}", total)
+            return
         with new_session() as db:
             rows = db.query(AgentRun).filter(AgentRun.task_id.like(f"{body['task_id']}%")).all()
             total = sum(r.cost_est for r in rows)
@@ -398,16 +421,38 @@ def _maybe_reflexion(project_id: str, chapter_seq: int, task_id: str) -> None:
     try:
         nodes.reflexion_for_chapter_window(project_id=project_id, end_chapter=chapter_seq,
                                            task_id=task_id)
+    except (TaskBudgetPaused, TaskBudgetUnavailable):
+        raise
     except Exception as exc:
         logger.warning("章节窗口复盘失败（不阻塞任务）: %s", exc)
 
 
 def _run(body: dict, task_id: str, task_type: str, project_id: str) -> str:
+    owner = uuid.uuid4().hex
+    try:
+        with bind_task_budget(task_id, owner):
+            return _run_bound(body, task_id, task_type, project_id)
+    except (TaskBudgetPaused, TaskBudgetUnavailable) as exc:
+        status = record_budget_pause(task_id, exc, expected_owner=owner)
+        if status == "superseded":
+            return "waiting"
+        _pub_status(task_id, status, {"budget": json.dumps(budget_view(task_id), ensure_ascii=False), "error": str(exc)})
+        return "terminal"
+
+
+def _run_bound(body: dict, task_id: str, task_type: str, project_id: str) -> str:
     """派发并分类终态（decision = terminal / waiting / retry，SSE 在此写）。"""
     _pub_status(task_id, "running")
     try:
         with bind_artifact_sink(lambda event: _pub_artifact(task_id, event)):
             result = _dispatch(body)
+            if (task_type in ("chapter_generate", "chapter_plan_resume", "chapter_resume")
+                and not any(result.get(key) for key in ("error", "manual_halt", "awaiting_plan", "needs_review"))):
+                seq = int((body.get("payload") or {}).get("seq") or result.get("chapter_seq") or 0)
+                with bind_budget_operation(f"{task_id}:chapter_reflexion:{seq}"):
+                    _maybe_reflexion(project_id, seq, task_id)
+    except (TaskBudgetPaused, TaskBudgetUnavailable):
+        raise
     except Exception as exc:
         # 批次 critical 冲突：resume 续跑时由图内节点抛出（首次运行在 runner
         # generate_batch 内 catch 置 awaiting_review）。置 awaiting_review 等人工
@@ -471,9 +516,6 @@ def _run(body: dict, task_id: str, task_type: str, project_id: str) -> str:
     else:
         _set_task_status(project_id, task_id, "done")
         _pub_status(task_id, "done")
-        # 单章流每 N 章复盘：SSE done 先发、复盘后跑（不延迟用户感知；批次流走 batch_end）
-        if task_type in ("chapter_generate", "chapter_plan_resume", "chapter_resume"):
-            _maybe_reflexion(project_id, int((body.get("payload") or {}).get("seq", 0)), task_id)
     return "terminal"
 
 
@@ -567,6 +609,10 @@ def process(body: dict, worker_id: str | None = None) -> str:
                 run_it = True
 
         if run_it:
+            with new_session() as db:
+                task = db.get(Task, uuid.UUID(task_id))
+                persisted_snapshot = (task.payload or {}).get("_task_budget")
+            ensure_task_budget(task_id, project_id, body["user_id"], persisted_snapshot)
             decision = _run(body, task_id, task_type, project_id)
 
     finally:

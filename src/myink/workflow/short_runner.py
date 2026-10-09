@@ -20,6 +20,8 @@ import uuid
 from sqlalchemy import select
 
 from myink.db import tenant_session
+from myink.task_budget import (bind_budget_operation, guard_budget, budget_managed,
+                               save_short_progress, load_short_progress, budget_execution)
 from myink.memory import repository as repo
 from myink.models import Chapter, Faction, Location
 from myink.providers import ModelResponse, make_chain
@@ -76,6 +78,7 @@ class _Progress:
                        "done": done, "total": self.total})
 
 
+@budget_execution
 def run_short_story(*, project_id: str, task_id: str, form: ShortParams) -> dict:
     """成稿 → 审稿 → 改稿。审稿说 pass 就到此为止，改稿零调用。
 
@@ -87,38 +90,48 @@ def run_short_story(*, project_id: str, task_id: str, form: ShortParams) -> dict
     - `warning` 是「降级但仍有稿」的痕迹（输出被长度上限截断、审稿坏了按通过、补写/改稿
       没成保留原样），必须回给用户看——静默降级比降级本身更糟。
     """
+    progress = load_short_progress(task_id)
     with tenant_session(project_id) as db:
+        if progress and progress["stage"] == "complete":
+            return progress["result"]
         outline = _outline(db, project_id)
-        brief = _load_brief(db, project_id, outline, form)
+        brief = progress["brief"] if progress else _load_brief(db, project_id, outline, form)
         budget = _budget(form)
+        if progress:
+            bodies, warning = progress["bodies"], progress.get("warning")
+        else:
+            resp = _call(db, project_id, task_id, node="short_write", role="Writer",
+                         messages=prompts.short_write_messages(brief), max_tokens=budget,
+                         json_mode=False, disable_thinking=True,
+                         detail={"chapter_count": form.chapter_count,
+                                 "chars_per_chapter": form.chars_per_chapter},
+                         total_chars=form.total_chars)
+            if resp.error:
+                return {"chapters": [], "empty_chapters": [], "length_findings": [],
+                        "review": _pass_review(), "warning": None, "error": resp.error}
+            bodies = parse_short_draft(resp.content, form.chapter_count)
 
-        resp = _call(db, project_id, task_id, node="short_write", role="Writer",
-                     messages=prompts.short_write_messages(brief), max_tokens=budget,
-                     json_mode=False, disable_thinking=True,
-                     detail={"chapter_count": form.chapter_count,
-                             "chars_per_chapter": form.chars_per_chapter},
-                     total_chars=form.total_chars)
-        if resp.error:
-            return {"chapters": [], "empty_chapters": [], "length_findings": [],
-                    "review": _pass_review(), "warning": None, "error": resp.error}
-        bodies = parse_short_draft(resp.content, form.chapter_count)
+            warning = _truncation_note(resp, "成稿")
 
-        warning = _truncation_note(resp, "成稿")
-        if find_empty_chapters(bodies):
+            save_short_progress(task_id, "written", {"brief": brief, "bodies": bodies, "warning": warning})
+        if find_empty_chapters(bodies) and (not progress or progress["stage"] == "written"):
             filled, continue_warning = _continue(db, project_id, task_id, brief, bodies, form)
             if filled is not None:
                 bodies = filled
             warning = warning or continue_warning
-
+            save_short_progress(task_id, "continued", {"brief": brief, "bodies": bodies, "warning": warning})
         return _finish_short(db, project_id, task_id, brief, bodies, form, budget, warning)
 
 
+@budget_execution
 def resume_short_story(*, project_id: str, task_id: str, form: ShortParams) -> dict:
     """续跑（§6.12）：成稿已落库就只接着审稿/改稿，否则整条从头跑。
 
     「已落库成稿」= 方案里每一章都有非空正文。缺章的半截稿不算成稿——那是落库本身断了，
     拿它当底稿接下去只会把缺章当「已写」，重跑一次成稿比修半截稿更确定。
     """
+    if load_short_progress(task_id):
+        return run_short_story(project_id=project_id, task_id=task_id, form=form)
     bodies = _persisted_bodies(project_id, form.chapter_count)
     if bodies is None:
         return run_short_story(project_id=project_id, task_id=task_id, form=form)
@@ -207,8 +220,14 @@ def _finish_short(db, project_id: str, task_id: str, brief: dict, bodies: list[s
     不新增端点、不改响应契约。空章、逐章字数观测、改没改也挂在这条 detail 上——它们同样
     只有走完三步才知道，而任务结果字典（`_dispatch` 的返回值）不落库，这里是唯一的出口。
     """
-    review, review_warning = _review(db, project_id, task_id, brief, bodies)
-    warning = warning or review_warning
+    progress = load_short_progress(task_id)
+    if progress and progress["stage"] == "reviewed":
+        review, warning = progress["review"], progress.get("warning")
+    else:
+        review, review_warning = _review(db, project_id, task_id, brief, bodies)
+        warning = warning or review_warning
+        save_short_progress(task_id, "reviewed", {"brief": brief, "bodies": bodies,
+                                                 "warning": warning, "review": review})
     revised = False
     if review["verdict"] == "revise":
         rewritten, rewrite_warning = _rewrite(
@@ -228,11 +247,13 @@ def _finish_short(db, project_id: str, task_id: str, brief: dict, bodies: list[s
                                     "length_findings": length_findings,
                                     "revised": revised})
     titles = _chapter_titles(brief.get("outline") or {}, form.chapter_count)
-    return {"chapters": [{"chapter_seq": i + 1, "title": titles[i], "body": bodies[i]}
+    result = {"chapters": [{"chapter_seq": i + 1, "title": titles[i], "body": bodies[i]}
                          for i in range(form.chapter_count)],
             "empty_chapters": empty_chapters,
             "length_findings": length_findings,
             "review": review, "warning": warning, "error": None}
+    save_short_progress(task_id, "complete", {"result": result})
+    return result
 
 
 def persist_short_story(*, project_id: str, result: dict) -> int:
@@ -251,7 +272,13 @@ def persist_short_story(*, project_id: str, result: dict) -> int:
         return 0
     with tenant_session(project_id) as db:
         pid = uuid.UUID(project_id)
+        if budget_managed():
+            guard_budget("short:persist")
         for row in rows:
+            if budget_managed():
+                existing = repo.get_chapter(db, pid, row["chapter_seq"])
+                if existing and existing.content == row["body"] and existing.title == row.get("title"):
+                    continue
             repo.save_chapter(db, project_id=pid, chapter_seq=row["chapter_seq"],
                               content=row["body"], title=row.get("title"),
                               generation_source="auto")
@@ -323,13 +350,21 @@ def _call(db, project_id: str, task_id: str, *, node: str, role: str, messages: 
     """
     progress = _Progress(task_id=task_id, stage=node, total=total_chars)
     progress.start()
-    resp = nodes._bounded_generate(
-        make_chain(role.lower(), db=db, project_id=project_id), messages, json_mode=json_mode,
-        max_tokens=max_tokens, disable_thinking=disable_thinking,
-        streamer=progress if total_chars > 0 else None)
-    nodes.record_run(db, project_id=project_id, task_id=task_id, node=node, role=role,
-                     resp=resp, error=resp.error, messages=messages,
-                     detail={"form": "short", **(detail or {})})
+    with bind_budget_operation(f"{task_id}:{node}"):
+        guard_budget()
+        resp = nodes._bounded_generate(
+            make_chain(role.lower(), db=db, project_id=project_id), messages, json_mode=json_mode,
+            max_tokens=max_tokens, disable_thinking=disable_thinking,
+            streamer=progress if total_chars > 0 else None)
+    if budget_managed():
+        with tenant_session(project_id) as trace_db:
+            nodes.record_run(trace_db, project_id=project_id, task_id=task_id, node=node, role=role,
+                             resp=resp, error=resp.error, messages=messages,
+                             detail={"form": "short", **(detail or {})})
+    else:
+        nodes.record_run(db, project_id=project_id, task_id=task_id, node=node, role=role,
+                         resp=resp, error=resp.error, messages=messages,
+                         detail={"form": "short", **(detail or {})})
     return resp
 
 

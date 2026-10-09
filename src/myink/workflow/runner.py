@@ -8,6 +8,7 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
 
 from myink.db import tenant_session
+from myink.task_budget import budget_managed, budget_execution, TaskBudgetPaused
 from myink.workflow import nodes
 from myink.workflow.batch_graph import build_batch_graph
 from myink.workflow.chapter_graph import build_chapter_graph
@@ -27,6 +28,7 @@ def get_graphs() -> tuple[CompiledStateGraph, CompiledStateGraph]:
     return _chapter_graph, _batch_graph
 
 
+@budget_execution
 def generate_chapter(*, project_id: str, chapter_seq: int, task_id: str | None = None,
                      user_instruction: str | None = None, rewrite: bool = False,
                      writing_mode: str = "auto") -> dict:
@@ -37,6 +39,11 @@ def generate_chapter(*, project_id: str, chapter_seq: int, task_id: str | None =
     """
     chapter_graph, _ = get_graphs()
     thread_id = task_id or str(uuid.uuid4())
+    config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 64}
+    if budget_managed() and chapter_graph.get_state(config).values:
+        result = chapter_graph.invoke(None, config=config)
+        _finish_chapter_result(project_id, thread_id, result)
+        return result
     result = chapter_graph.invoke(
         {
             "project_id": project_id,
@@ -52,6 +59,7 @@ def generate_chapter(*, project_id: str, chapter_seq: int, task_id: str | None =
     return result
 
 
+@budget_execution
 def resume_chapter_plan(*, project_id: str, task_id: str, approved_plan: dict) -> dict:
     """从 plan_gate 的动态 interrupt 恢复；不重新调用 Planner。"""
     chapter_graph, _ = get_graphs()
@@ -76,6 +84,7 @@ def _finish_chapter_result(project_id: str, task_id: str, result: dict) -> str:
     return status
 
 
+@budget_execution
 def generate_batch(*, project_id: str, size: int, start_chapter: int,
                    batch_task_id: str | None = None) -> dict:
     """自动写作批次（§6.11）。batch_task_id 作批次 thread_id，整批可续跑。
@@ -96,7 +105,15 @@ def generate_batch(*, project_id: str, size: int, start_chapter: int,
         "start_chapter": start_chapter,
     }
     try:
+        if budget_managed() and batch_graph.get_state({"configurable": {"thread_id": thread_id}}).values:
+            return resume_thread(batch_graph, thread_id, state)
         return batch_graph.invoke(state, config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
+    except TaskBudgetPaused as exc:
+        if exc.reason in {"manual_pause", "cancelled"}:
+            status = "cancelled" if exc.reason == "cancelled" else "paused"
+            _set_task_status(project_id, thread_id, status)
+            return {"manual_halt": status}
+        raise
     except BatchReviewError as exc:
         # critical 冲突转人工（§6.11）：任务置 awaiting_review，checkpoint 停在本章，
         # 人工确认候选后 resume 从本章续跑（不重跑已完成章）。
@@ -113,6 +130,7 @@ def generate_batch(*, project_id: str, size: int, start_chapter: int,
         return {"batch_failed": True, "error": str(exc)}
 
 
+@budget_execution
 def resume_thread(graph: CompiledStateGraph, thread_id: str, state: dict) -> dict:
     """从断点续跑（§6.12：批次中断/服务重启/人工暂停后）。
 
@@ -122,6 +140,8 @@ def resume_thread(graph: CompiledStateGraph, thread_id: str, state: dict) -> dic
     否则会冲回 0 重跑已完成章。外部 state 只补缺口（首次无 checkpoint 时兜底）。
     """
     snap = graph.get_state({"configurable": {"thread_id": thread_id}})
+    if budget_managed() and snap.values and (snap.next or not snap.values.get("error")):
+        return graph.invoke(None, config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
     resume_state = {**state, **(snap.values or {})}  # checkpoint 优先
     return graph.invoke(resume_state, config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
 
@@ -159,8 +179,7 @@ def new_task(*, project_id: str, task_type: str, payload: dict, chapter_seq: int
     from myink.models import Task, Project
     from myink.task_budget import ensure_task_budget, snapshot_budget
 
-    if task_id is None and budget_snapshot is None:
-        budget_snapshot = snapshot_budget()
+    use_owner_defaults = task_id is None and budget_snapshot is None
     stored_payload = dict(payload)
     if budget_snapshot is not None:
         stored_payload["_task_budget"] = budget_snapshot
@@ -169,6 +188,9 @@ def new_task(*, project_id: str, task_type: str, payload: dict, chapter_seq: int
         if project is None:
             raise ValueError("Project does not exist")
         owner_id = str(project.user_id)
+        if use_owner_defaults:
+            budget_snapshot = snapshot_budget(owner_id)
+            stored_payload["_task_budget"] = budget_snapshot
         task = Task(id=uuid.UUID(task_id) if task_id else uuid.uuid4(),
                     project_id=uuid.UUID(project_id), task_type=task_type,
                     payload=stored_payload, status=status, chapter_seq=chapter_seq,
