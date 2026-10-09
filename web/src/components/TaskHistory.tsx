@@ -1,3 +1,4 @@
+import { TaskBudgetPanel } from './TaskBudgetPanel'
 // 项目任务历史面板（阶段 4 任务视图）：切书后列出该书过往任务；点开任一条拉详情 →
 // 节点流转记录（RunNodeCard 逐节点 token/成本/耗时）+ 批次进度 + pause/resume/cancel 控制。
 // 实时流转仍走上方 TaskTimeline（SSE），此处管历史快照（根因 2/3：换书看任务 + 流转记录）。
@@ -115,7 +116,7 @@ export function TaskHistory({ projectId, activeTaskId, selectedSeq }: Props) {
     }
   }
 
-  const detailActions = detail ? (STATUS_ACTIONS[detail.status] ?? []) : []
+  const detailActions = detail ? (STATUS_ACTIONS[detail.status] ?? []).filter(a => !(a === 'resume' && detail.budget?.pause_reason)) : []
 
   return (
     <section className={`panel ${styles.panel}`}>
@@ -171,6 +172,7 @@ export function TaskHistory({ projectId, activeTaskId, selectedSeq }: Props) {
                         const shownCost = shownRuns.reduce((s, r) => s + r.cost_est, 0)
                         return (
                           <>
+                            <TaskBudgetPanel key={detail.task_id} task={detail} onResumed={() => { void api.getTask(detail.task_id).then(setDetail).catch(e => setError(formatApiError(e))); void api.listTasks(projectId, selectedSeq ?? undefined).then(setTasks).catch(e => setError(formatApiError(e))) }} />
                             <div className={styles.detailHead}>
                               {selectedSeq !== null ? (
                                 shownCost > 0 && (

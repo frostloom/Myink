@@ -1,0 +1,6 @@
+.panel { padding: 12px; margin: 12px 0; border: 1px solid var(--border); border-radius: 8px; overflow-wrap: anywhere; }
+.panel h3 { margin: 0 0 8px; }
+.panel p { font-size: 13px; line-height: 1.6; }
+.fields { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+.fields label { display: flex; flex: 1 1 130px; flex-direction: column; gap: 6px; font-size: 13px; }
+.fields input { width: 100%; min-width: 0; }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../lib/api'
 import { openSSE, type SSEEvent } from '../lib/sse'
-import type { AgentRun, TaskStatus } from '../types'
+import type { AgentRun, TaskStatus, TaskBudgetView } from '../types'
 
 export type TaskPhase =
   | 'idle'
@@ -34,6 +34,7 @@ export interface ArtifactState {
 }
 
 export interface TaskEventState {
+  budget?: TaskBudgetView | null
   phase: TaskPhase
   status: TaskStatus | null
   /** 实时节点流顺序（SSE 只带 node 名，无 token/cost 元数据） */
@@ -70,6 +71,7 @@ export function useTaskEvents(
   taskId: string | null,
   opts?: { batchTotal?: number; resumeKey?: number | null },
 ): TaskEventState {
+  const [budget, setBudget] = useState<TaskBudgetView | null>(null)
   const [phase, setPhase] = useState<TaskPhase>('idle')
   const [status, setStatus] = useState<TaskStatus | null>(null)
   const [nodes, setNodes] = useState<NodeEvent[]>([])
@@ -101,6 +103,7 @@ export function useTaskEvents(
       // 切章期间旧请求可能晚于新请求返回，不能让上一章快照覆盖当前章节。
       if (connectedTaskRef.current !== tid) return null
       setRuns(detail.runs)
+      setBudget(detail.budget ?? null)
       setPayload(detail.payload)
       setError(detail.error)
       if (detail.progress) setProgress(detail.progress)
@@ -152,6 +155,7 @@ export function useTaskEvents(
     setArtifacts([])
     setStatus(null)
     setRuns([])
+    setBudget(null)
     setProgress(null)
     setShortProgress(null)
     setError(null)
@@ -346,6 +350,7 @@ export function useTaskEvents(
       setArtifacts([])
       setStatus(null)
       setRuns([])
+    setBudget(null)
       setProgress(null)
       setShortProgress(null)
       setError(null)
@@ -371,6 +376,7 @@ export function useTaskEvents(
   }, [taskId, connect, fetchSnapshot, stop, opts?.resumeKey])
 
   return {
+    budget,
     phase,
     status,
     nodes,

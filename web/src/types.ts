@@ -278,7 +278,30 @@ export interface Finding {
   suggestion: string | null
 }
 
+export interface TaskBudgetLimits {
+  max_requests: number
+  max_cost_yuan: number
+  max_runtime_seconds: number
+}
+export interface TaskBudgetView {
+  limits: TaskBudgetLimits
+  requests_used: number
+  cost_used_yuan: number
+  cost_reserved_yuan: number
+  runtime_used_seconds: number
+  pause_reason: string | null
+  stage: string | null
+  version: number
+  resume_publication?: string | null
+}
+export interface ResumeBudgetBody {
+  operation_id: string
+  add_requests: number
+  add_cost_yuan: number
+  add_runtime_seconds: number
+}
 export interface TaskDetail {
+  budget?: TaskBudgetView | null
   task_id: string
   task_type: 'chapter_generate' | 'batch_generate' | string
   status: TaskStatus
@@ -299,6 +322,7 @@ export interface TaskDetail {
 /** 项目任务历史列表项（GET /projects/:pid/tasks → Python TaskSummaryOut，阶段 4 任务视图）。
  * 轻量摘要不含 runs，点开任一条再走 GET /tasks/:id 拉节点流转记录。 */
 export interface TaskSummary {
+  budget?: TaskBudgetView | null
   task_id: string
   task_type: 'chapter_generate' | 'batch_generate' | string
   status: TaskStatus
@@ -439,6 +463,7 @@ export interface RankingsConfigInput {
 
 /** 账号级环境配置（GET/PUT /environment） */
 export interface EnvironmentSettings {
+  task_budget?: TaskBudgetLimits
   model_routes: Record<string, string>
   model_connections: ModelConnection[]
   rankings: RankingsConfig
