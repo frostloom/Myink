@@ -82,7 +82,7 @@ def platform_chapters(monkeypatch):
         settings, platform_chapters_per_book=_FINITE_PLATFORM_CHAPTERS))
 
 _MESSAGE_KEYS = {"task_id", "task_type", "project_id", "user_id", "payload",
-                 "trace_id", "request_id", "retry_count", "created_at"}
+                 "trace_id", "request_id", "retry_count", "created_at", "task_budget"}
 
 
 @pytest.fixture

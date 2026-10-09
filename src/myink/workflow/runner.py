@@ -150,22 +150,34 @@ def finalize_chapter_review(*, project_id: str, task_id: str, chapter_seq: int) 
 
 def new_task(*, project_id: str, task_type: str, payload: dict, chapter_seq: int | None = None,
              task_id: str | None = None, trace_id: str | None = None,
-             status: str = "queued") -> str:
+             status: str = "queued", budget_snapshot: dict | None = None) -> str:
     """创建任务（DB 为最终权威，§5.3/§6.12 幂等键）。
 
     阶段 2 worker 物化队列消息时传入 task_id（幂等键，与 Redis 消息同 id）、trace_id；
     默认行为与阶段 1 完全一致（自生成 uuid、status=queued）。
     """
-    from myink.models import Task
+    from myink.models import Task, Project
+    from myink.task_budget import ensure_task_budget, snapshot_budget
 
+    if task_id is None and budget_snapshot is None:
+        budget_snapshot = snapshot_budget()
+    stored_payload = dict(payload)
+    if budget_snapshot is not None:
+        stored_payload["_task_budget"] = budget_snapshot
     with tenant_session(project_id) as db:
+        project = db.get(Project, uuid.UUID(project_id))
+        if project is None:
+            raise ValueError("Project does not exist")
+        owner_id = str(project.user_id)
         task = Task(id=uuid.UUID(task_id) if task_id else uuid.uuid4(),
                     project_id=uuid.UUID(project_id), task_type=task_type,
-                    payload=payload, status=status, chapter_seq=chapter_seq,
+                    payload=stored_payload, status=status, chapter_seq=chapter_seq,
                     trace_id=trace_id)
         db.add(task)
         db.flush()
-        return str(task.id)
+        created_id = str(task.id)
+    ensure_task_budget(created_id, project_id, owner_id, budget_snapshot)
+    return created_id
 
 
 def _set_task_status(project_id: str, task_id: str, status: str, error: str | None = None) -> None:

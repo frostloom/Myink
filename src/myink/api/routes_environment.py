@@ -15,6 +15,7 @@ from myink.api.routes_settings import (
 )
 from myink.api.schemas import ConnectionTestOut, EnvironmentOut, ModelListOut
 from myink.environment import load_environment, load_raw, save_raw
+from myink.task_budget import TaskBudgetLimits, public_limits
 from myink.providers import CONFIGURABLE_ROLES, probe
 from myink.providers.connections import (
     CUSTOM_ROUTE_PREFIX,
@@ -40,6 +41,7 @@ class EnvironmentBody(BaseModel):
     model_connections: list[ModelConnectionBody] | None = None
     rankings: RankingsBody | None = None
     thinking_enabled: bool | None = None
+    task_budget: TaskBudgetLimits | None = None
 
 
 def _validate_rankings(body: RankingsBody, existing: dict) -> dict:
@@ -107,6 +109,10 @@ def put_environment(body: EnvironmentBody, user_id: str = Depends(require_user))
     if body.rankings is not None:
         existing = raw.get("rankings") if isinstance(raw.get("rankings"), dict) else {}
         stored["rankings"] = _validate_rankings(body.rankings, existing)
+    if body.task_budget is not None:
+        existing = raw.get('task_budget') if isinstance(raw.get('task_budget'), dict) else {}
+        merged = {**existing, **body.task_budget.model_dump(exclude_unset=True)}
+        stored['task_budget'] = public_limits(TaskBudgetLimits.model_validate(merged))
     if body.thinking_enabled is not None:
         stored["thinking_enabled"] = bool(body.thinking_enabled)
     try:

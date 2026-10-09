@@ -16,6 +16,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from myink.task_budget import TaskBudgetLimits
+
 
 class AuthResponse(BaseModel):
     token: str
@@ -309,6 +311,7 @@ class EnvironmentOut(BaseModel):
     model_connections: list[dict] = Field(default_factory=list)
     rankings: RankingsConfigOut
     thinking_enabled: bool = False
+    task_budget: TaskBudgetLimits = Field(default_factory=TaskBudgetLimits)
 
 
 class StyleDraftOut(BaseModel):

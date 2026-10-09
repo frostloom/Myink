@@ -556,6 +556,7 @@ def process(body: dict, worker_id: str | None = None) -> str:
                     task_id=task_id,
                     trace_id=body.get("trace_id"),
                     status="running",
+                    budget_snapshot=body.get("task_budget"),
                 )
                 logger.info("物化新任务: %s (%s)", task_id, task_type)
                 run_it = True

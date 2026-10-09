@@ -79,6 +79,8 @@ def init(
     console.print("[bold]1.567/3[/] 补齐内置密钥终身额度计数（users.platform_short_used / platform_long_used，幂等）...")
     ensure_platform_quota()
     ensure_invitation_schema()
+    from myink.db import ensure_task_budget_schema
+    ensure_task_budget_schema()
     console.print("[bold]1.57/3[/] 补齐 project_settings.genre_pack（本书题材包，幂等）...")
     ensure_genre_pack()
     console.print("[bold]1.6/3[/] 补齐记忆候选 kind 枚举（memory_removal，阶段 3 编辑校正）...")
