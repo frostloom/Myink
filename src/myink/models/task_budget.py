@@ -41,4 +41,3 @@ class TaskBudgetCall(Base, UUIDPkMixin, TimestampMixin, TenantMixin):
     operation_key: Mapped[str] = mapped_column(String(255), nullable=False)
     input_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     response: Mapped[dict] = mapped_column(JSON, nullable=False)
-

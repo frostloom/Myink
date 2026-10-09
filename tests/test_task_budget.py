@@ -104,3 +104,7 @@ def test_runtime_survives_restart_excludes_pause(budget_task, monkeypatch):
     release_budget(tid, "b")
     assert budget_view(tid)["runtime_used_seconds"] == 7
 
+def test_cost_limit_fits_durable_currency_storage():
+    with pytest.raises(ValidationError):
+        TaskBudgetLimits(max_cost_yuan="1e1000")
+

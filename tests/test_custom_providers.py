@@ -3,11 +3,48 @@ from __future__ import annotations
 import json
 
 import httpx
+import pytest
 
 from myink.providers.anthropic import AnthropicProvider, _convert_messages, _messages_url
 from myink.providers.openai_compatible import (
     OpenAICompatibleProvider, is_deepseek_host, is_minimax_host,
 )
+
+
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize("disable_thinking", [False, True])
+def test_anthropic_respects_thinking_switch(stream, disable_thinking):
+    captured = []
+
+    def handle(request):
+        payload = json.loads(request.content)
+        captured.append(payload)
+        # A default-on thinking endpoint uses the short reply budget on reasoning.
+        if not stream:
+            blocks = ([{"type": "text", "text": "有效回复"}]
+                      if payload.get("thinking") == {"type": "disabled"}
+                      else [{"type": "thinking", "thinking": "分析"}])
+            return httpx.Response(200, json={"content": blocks, "usage": {}})
+        return httpx.Response(200, text='data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"有效回复"}}\n\n')
+
+    provider = AnthropicProvider(api_key="key", base_url="https://proxy.example/apps/anthropic")
+    provider._client.close()
+    provider._client = httpx.Client(transport=httpx.MockTransport(handle))
+    kwargs = {"model_id": "deepseek-v4.1-flash", "disable_thinking": disable_thinking}
+    try:
+        if stream:
+            response = provider.generate_stream([{"role": "user", "content": "聊一个短篇"}],
+                                                on_delta=lambda text: None, **kwargs)
+        else:
+            response = provider.generate([{"role": "user", "content": "聊一个短篇"}], **kwargs)
+        if disable_thinking:
+            assert captured[0].get("thinking") == {"type": "disabled"}
+            assert response.error is None
+            assert response.content == "有效回复"
+        else:
+            assert "thinking" not in captured[0]
+    finally:
+        provider._client.close()
 
 
 def test_anthropic_url_and_message_conversion_support_json_and_tools():
