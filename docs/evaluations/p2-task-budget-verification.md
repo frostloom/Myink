@@ -1,6 +1,6 @@
 # P2 任务总预算验收
 
-日期：2026-10-10。实现代码提交：c1f7a84；发布状态由部署回执确认。
+日期：2026-10-10。实现代码提交：c1f7a84；已推送 GitHub main 并部署上线。
 
 ## 自动验证
 
@@ -56,3 +56,16 @@
 - Final: Ruling: Multi-process test waits for test-only Worker process-return receipt instead of queue-ready count — twice-reproduced red was dequeue-before-lock acquisition observation race, not duplicate persistence — cost if wrong: test helper adds isolated Redis receipt, production consumer unchanged.
 
 - Final: Ruling: Arbitrary provider crash exactly-once is not guaranteed; externally configured tariffs are estimates; deployment/browser/doc coverage require actual evidence — matches achievable behavior and approved scope — cost if wrong: supplier-side idempotency/reconciliation would require separate work.
+
+
+## 发布结果
+
+- API、Caddy 前端与两份 Worker 镜像代码版本均为 c1f7a84；文档提交另外更新验收证据，不改变发布代码。
+- 构建采用仓库 Dockerfile 和 constraints 精确依赖。首次阿里云 pip 镜像源未返回 setuptools，改用 Dockerfile 支持的 PIP_INDEX_URL=https://pypi.org/simple 后构建成功；未更改项目依赖。
+- 两个镜像在传送前进行了运行层检查；API 镜像用隔离数据服务执行合成 API/队列/Worker smoke 通过。
+- 镜像归档上传前后 SHA256 相同；部署前检查队列空闲、停止 API/Worker，备份 PostgreSQL（2,475,859 字节）和旧 API/Caddy 镜像，再连续运行两次初始化、重建 API/Worker/前端。
+- 线上合成账号：环境配置保存、旧快照不变、他人访问拒绝、预算暂停、幂等追加、真实 RabbitMQ confirm、Worker 恢复完成均通过；累计 2 次 Stub 请求、0 次外部模型请求。账号、作品和独立队列已清理。
+- 公网 readyz 的 db/redis/worker 均 ok，公开首页 JS 包包含新预算 UI。Worker 没有容器 healthcheck，记录 running 并由 readyz 心跳检查确认，不把 null health 标为 healthy。
+- [部署回执](p2-task-budget/deployment-receipt.json) 保存实际容器版本、状态和合成测试结果。服务器备份目录与镜像标签保存在项目 .local/p2-deployment-receipt.json，仅本地保存运维信息。
+
+原工作目录已快进整合；既有 .gitignore、docs/DEPLOY.md 和无关未跟踪文件保留。已纳入提交的原 thinking 修复及批准的 P2 草稿另存 .local/p2-original-work-backup 和专用 Git stash，不覆盖无关修改。
