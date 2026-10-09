@@ -46,9 +46,9 @@ export function TaskBudgetPanel({ task, onResumed }: {
     {canExtend && <>
       <p>预算暂停：{REASONS[b.pause_reason!] ?? b.pause_reason}。追加后从保存的位置继续，累计消耗保留。</p>
       <div className={styles.fields}>
-        <label>追加请求次数<input type="number" min="0" step="1" value={requests} disabled={busy || !!pending.current} onChange={e => setRequests(Number(e.target.value))} /></label>
-        <label>追加费用（元）<input type="number" min="0" step="0.000001" value={yuan} disabled={busy || !!pending.current} onChange={e => setYuan(Number(e.target.value))} /></label>
-        <label>追加运行时间（分钟）<input type="number" min="0" step="1" value={minutes} disabled={busy || !!pending.current} onChange={e => setMinutes(Number(e.target.value))} /></label>
+        <label>追加请求次数<input className="input" type="number" min="0" step="1" value={requests} disabled={busy || !!pending.current} onChange={e => setRequests(Number(e.target.value))} /></label>
+        <label>追加费用（元）<input className="input" type="number" min="0" step="0.000001" value={yuan} disabled={busy || !!pending.current} onChange={e => setYuan(Number(e.target.value))} /></label>
+        <label>追加运行时间（分钟）<input className="input" type="number" min="0" step="1" value={minutes} disabled={busy || !!pending.current} onChange={e => setMinutes(Number(e.target.value))} /></label>
       </div>
       <button className="btn" disabled={busy} onClick={() => void resume()}>{busy ? '处理中…' : pending.current ? '重试本次恢复' : '追加并继续'}</button>
       {pending.current && !busy && <button className="btn btn-quiet" onClick={() => { pending.current = null; setError(null) }}>结束本次操作</button>}

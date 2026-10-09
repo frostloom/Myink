@@ -276,17 +276,19 @@ def test_worker_kill_redelivers_checkpoint_without_duplicate_persist(two_workers
             assert persists==1
             owner_id=str(db.get(Project,uuid.UUID(book)).user_id)
         body={'task_id':tid,'task_type':'chapter_generate','project_id':book,'user_id':owner_id,
-              'payload':{'seq':1},'trace_id':tid,'request_id':tid,'retry_count':0}
+              'payload':{'seq':1},'trace_id':tid,'request_id':tid,'retry_count':0,'test_probe':tid}
         amqp.publish(json.dumps(body),amqp.KEY_TASKS)
         deadline=time.time()+15
         while time.time()<deadline:
             with amqp.connect() as conn:
                 pending=conn.channel().queue_declare(amqp.main_queue(),passive=True).method.message_count
-            if pending==0 and not r.exists(lock_key(tid)) and not r.exists(book_key(book)):break
+            if pending==0 and r.get("mp:probe:"+tid)=="skip" and not r.exists(lock_key(tid)) and not r.exists(book_key(book)):break
             time.sleep(.2)
         with new_session() as db:
             assert db.query(AgentRun).filter_by(task_id=tid,node='persist').count()==1
             assert db.get(Task,uuid.UUID(tid)).status=='done'
+        assert r.get("mp:probe:"+tid)=="skip"
         assert not r.exists(lock_key(tid)) and not r.exists(book_key(book))
+        r.delete("mp:probe:"+tid)
     finally:
         _cleanup([book],[tid])

@@ -25,7 +25,7 @@ from myink.providers.think_tag_stripper import (
 )
 
 
-from myink.task_budget import (reserve_attempt, finish_attempt, TaskBudgetPaused, TaskBudgetUnavailable, budget_sleep)
+from myink.task_budget import (budget_io, budget_iter, reserve_attempt, finish_attempt, TaskBudgetPaused, TaskBudgetUnavailable, budget_sleep)
 
 logger = logging.getLogger(__name__)
 
@@ -132,12 +132,13 @@ class DeepSeekProvider(ModelProvider):
                 kwargs['max_tokens'] = max_tokens or 8192
                 kwargs['timeout'] = min(120.0, permit.remaining_seconds())
             try:
-                resp = self._client.chat.completions.create(**kwargs)
+                resp = budget_io(permit, lambda: self._client.chat.completions.create(**kwargs))
                 usage = resp.usage or type("U", (), {})()
                 finish_attempt(permit, ModelResponse(content="", model_id=model_id,
                     input_tokens=getattr(usage, "prompt_tokens", 0) or 0,
                     output_tokens=getattr(usage, "completion_tokens", 0) or 0,
-                    cache_hit=bool(getattr(usage, "prompt_cache_hit_tokens", 0))))
+                    cache_hit=bool(getattr(usage, "prompt_cache_hit_tokens", 0)),
+                    usage_complete=getattr(usage, "completion_tokens", None) is not None))
                 choice = resp.choices[0]
                 message = choice.message
                 reasoning = _message_reasoning(message)
@@ -239,8 +240,8 @@ class DeepSeekProvider(ModelProvider):
                 kwargs['timeout'] = min(120.0, permit.remaining_seconds())
             stream = None
             try:
-                stream = self._client.chat.completions.create(**kwargs)
-                for chunk in stream:
+                stream = budget_io(permit, lambda: self._client.chat.completions.create(**kwargs))
+                for chunk in budget_iter(permit, stream):
                     if permit:
                         permit.remaining_seconds()
                     if getattr(chunk, "usage", None) is not None:
@@ -271,7 +272,8 @@ class DeepSeekProvider(ModelProvider):
                 finish_attempt(permit, ModelResponse(content='', model_id=model_id,
                     input_tokens=getattr(usage, 'prompt_tokens', 0) or 0,
                     output_tokens=getattr(usage, 'completion_tokens', 0) or 0,
-                    cache_hit=bool(getattr(usage, 'prompt_cache_hit_tokens', 0))))
+                    cache_hit=bool(getattr(usage, 'prompt_cache_hit_tokens', 0)),
+                    usage_complete=getattr(usage, 'completion_tokens', None) is not None))
                 leftover = stripper.flush()
                 if leftover and not looks_like_unclosed_think(leftover):
                     emitted_parts.append(leftover)

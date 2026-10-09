@@ -36,6 +36,7 @@ class ChapterState(TypedDict, total=False):
 
     # plan_chapter 产物
     plan: dict  # ChapterPlan.model_dump()
+    batch_generation: int  # distinguish parent batch replans from resuming a child
     batch_goal: str | None  # 批次推进目标（§6.11）
 
     # write 产物

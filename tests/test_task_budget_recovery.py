@@ -337,3 +337,34 @@ def test_persist_receipt_covers_commit_before_checkpoint(budget_task):
         assert chapter.version == 1
         runs = db.scalars(select(AgentRun).where(AgentRun.task_id==tid,AgentRun.node=="persist")).all()
         assert len(runs) == 1
+
+
+def test_released_new_owner_fences_old_pause_report(budget_task):
+    from myink.task_budget import claim_budget,release_budget,record_budget_pause,TaskBudgetUnavailable
+    from myink.models import Task
+    tid,pid,uid=budget_task
+    ensure_task_budget(tid,pid,uid,{})
+    claim_budget(tid,"new");release_budget(tid,"new")
+    with tenant_session(pid) as db:
+        db.get(Task,uuid.UUID(tid)).status="done"
+    assert record_budget_pause(tid,TaskBudgetUnavailable("old"),expected_owner="old") == "superseded"
+    with tenant_session(pid) as db: assert db.get(Task,uuid.UUID(tid)).status == "done"
+
+
+def test_batch_replan_starts_new_child_generation(budget_task,monkeypatch):
+    from myink.workflow import batch_graph as batch
+    from myink.workflow.chapter_graph import build_chapter_graph
+    tid,pid,uid=budget_task
+    ensure_task_budget(tid,pid,uid,{})
+    seen=[]
+    monkeypatch.setattr(nodes,"node_write",lambda state: seen.append(state.get("batch_goal")) or {"draft":"draft","replan_batch":False,"audit_verdict":{"verdict":"pass"}})
+    for name in ("extract","validate","audit","persist","summarize"):
+        monkeypatch.setattr(nodes,"node_"+name,lambda state:{})
+    graph=build_chapter_graph(InMemorySaver(),entry="write")
+    run=batch.make_chapter_runner(graph)
+    state={"project_id":pid,"batch_task_id":tid,"start_chapter":1,"position":0,"size":1,"batch_plan":{"chapters":[{"seq":1,"goal":"old"}]}}
+    with bind_task_budget(tid,"owner"):
+        run(state)
+        state.update(batch_replan_count=1,batch_plan={"chapters":[{"seq":1,"goal":"new"}]})
+        run(state)
+    assert seen == ["old","new"]
