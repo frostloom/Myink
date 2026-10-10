@@ -130,3 +130,62 @@ def test_sampler_failure_finally_uses_owned_cancellation(monkeypatch,tmp_path):
     receipt=executor.execute('probe',{'state_dir':'E:/state','selection':'watchdog'},datetime.now(timezone.utc)+timedelta(seconds=30),ledger)
     assert receipt.status=='blocked'
     assert [c for c in calls if 'stop-heavy' in c][0][-2:]==[receipt.operation_id,'lab-test']
+
+
+@pytest.mark.parametrize('failure', ['stop_timeout', 'stop_oserror', 'probe_wait', 'stop_timeout_after_done'])
+def test_failed_probe_cleanup_still_cancels_owned_heavy(monkeypatch, tmp_path, failure):
+    import json
+    import subprocess
+    from types import SimpleNamespace
+    from ops.pi.resources import LIMITS
+    proof={'cgroup_version':2,'membership_verified':True,'ancestor_verified':True,**LIMITS['heavy']}
+    executor,ledger=_controller_fixture(monkeypatch,tmp_path,proof)
+    calls=[]
+    class Process:
+        pid=12345
+        returncode=None
+        terminated=False
+        killed=False
+        def poll(self): return self.returncode
+        def terminate(self): self.terminated=True
+        def wait(self, **kw):
+            if failure=='probe_wait': raise subprocess.TimeoutExpired('probe',2)
+            self.returncode=0
+        def kill(self): self.killed=True; self.returncode=137
+        def communicate(self, **kw): return b'',b''
+    probe,heavy=Process(),Process()
+    if failure=='stop_timeout_after_done':
+        heavy.returncode=0
+        monkeypatch.setattr(executor.uuid,'uuid4',lambda:'completed-operation')
+        (tmp_path.parent/'evidence'/'completed-operation.guest.json').write_text(json.dumps({'operation_id':'completed-operation','lab_uuid':'lab-test','status':'done'}))
+    (tmp_path.parent/'evidence'/'b7-host-server.json').write_text(json.dumps({'pid':probe.pid}))
+    processes=iter([probe,heavy])
+    monkeypatch.setattr(executor.subprocess,'CREATE_NO_WINDOW',0,raising=False)
+    monkeypatch.setattr(executor.subprocess,'Popen',lambda *a,**kw:next(processes))
+    def run(args,**kw):
+        calls.append(args)
+        if 'stop-probes' in args:
+            if failure in ('stop_timeout','stop_timeout_after_done'): raise subprocess.TimeoutExpired(args,10)
+            if failure=='stop_oserror': raise OSError('probe cleanup unavailable')
+        return SimpleNamespace(stdout=json.dumps({'lab_uuid':'lab-test','daemon_id':executor.DAEMON_ID,'kernel_proof':proof}),returncode=0)
+    monkeypatch.setattr(executor.subprocess,'run',run)
+    def sample():
+        if failure=='stop_timeout_after_done': return 10**10
+        raise OSError('primary sampler failure')
+    monkeypatch.setattr(executor,'host_available_memory',sample)
+    escaped=None
+    try:
+        receipt=executor.execute('test',{'state_dir':'E:/state'},datetime.now(timezone.utc)+timedelta(seconds=30),ledger)
+    except (OSError, subprocess.SubprocessError) as error:
+        escaped=error
+    assert escaped is None, 'cleanup exception bypassed remaining owned cleanup'
+    assert probe.terminated
+    if failure=='stop_timeout_after_done':
+        assert receipt.status=='failed' and receipt.evidence['reason']=='cleanup_unconfirmed'
+        saved=json.loads((tmp_path.parent/'evidence'/'completed-operation.receipt.json').read_text())
+        assert saved['status']=='failed'
+    else:
+        assert heavy.killed
+        assert [c for c in calls if 'stop-heavy' in c][0][-2:]==[receipt.operation_id,'lab-test']
+        assert receipt.status=='blocked' and receipt.evidence['reason']=='lab_preflight_failed'
+    assert receipt.evidence['cleanup_errors']
