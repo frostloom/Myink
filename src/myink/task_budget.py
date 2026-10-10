@@ -23,6 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
 from myink.db import new_session, tenant_session
+from myink.maintenance import require_admission_open, register_admission, intent_outcome
 from myink.models import Project, Task
 from myink.models.task_budget import TaskBudget, TaskBudgetAttempt, TaskBudgetCall
 
@@ -724,6 +725,7 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
     key = "extension:" + operation_id
     params = body.model_dump(mode="json", exclude={"operation_id"})
     with _ledger(task_id) as db:
+        require_admission_open(db)
         task = db.scalar(select(Task).where(Task.id == uuid.UUID(str(task_id))).with_for_update())
         row = _locked(db, task_id)
         if row is None:
@@ -774,13 +776,16 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
                    "user_id":str(row.user_id), "payload":dict(task.payload),
                    "trace_id":task.trace_id or str(task_id), "request_id":operation_id,
                    "budget_operation_id":operation_id, "retry_count":0, "created_at":""}
+        intent_id = register_admission(db, message, priority=0)
         receipt.response = {"params":params, "publication":"sending", "message":message}
 
+    intent_outcome(intent_id, message["project_id"], publication_state="unknown")
     try:
         amqp.publish_once(json.dumps(message, ensure_ascii=False), amqp.KEY_TASKS)
     except Exception as exc:
         definite = isinstance(exc, (amqp.PublishNotSent, pika.exceptions.NackError,
                                     pika.exceptions.UnroutableError))
+        intent_outcome(intent_id, message["project_id"], publication_state="rejected" if definite else "unknown")
         with _ledger(task_id) as db:
             task = db.scalar(select(Task).where(Task.id == uuid.UUID(str(task_id))).with_for_update())
             _locked(db, task_id)
@@ -791,6 +796,7 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
                 task.error = "续跑投递被明确拒绝；额度已保留，可使用同一操作重试"
         raise BudgetResumeError("BUDGET_PUBLISH_REJECTED: 使用同一操作重试" if definite else
                                "BUDGET_PUBLISH_UNCERTAIN: 预算已保留，请刷新任务状态", 503) from exc
+    intent_outcome(intent_id, message["project_id"], publication_state="published")
     with _ledger(task_id) as db:
         receipt = _extension(db, task_id, key)
         receipt.response = {**receipt.response, "publication":"published"}

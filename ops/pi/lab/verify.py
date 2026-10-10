@@ -1,5 +1,6 @@
 """Trusted private-lab runtime checks; configuration receipts alone authorize nothing."""
 import json
+import hashlib
 import os
 from pathlib import Path
 import shlex
@@ -30,8 +31,10 @@ def _configuration(info):
 
 def freeze_runtime(identity):
     # Called only after trusted provisioning (or explicit root-verified adoption), never on preflight.
-    names=identity['test_containers']+[identity['sandbox'],identity['gateway'],identity['project']+'-denied']
+    names=identity['test_containers']+identity.get('maintenance_containers',[])+[identity['sandbox'],identity['gateway'],identity['project']+'-denied']
     frozen={'lab_uuid':identity['lab_uuid'],'containers':{n:_configuration(_docker('inspect',n)[0]) for n in names}}
+    if identity.get('maintenance_snapshot'):
+        frozen['maintenance_snapshot']=identity['maintenance_snapshot']
     (BASE/'runtime-manifest.json').write_text(json.dumps(frozen))
     (BASE/'runtime-manifest.json').chmod(0o600)
 
@@ -74,12 +77,18 @@ def verify_runtime():
         proof=sample_resources(group)
         if not verify_limits(proof,group): raise ValueError('kernel proof missing')
         r[group+'_proof']=proof
+    infra=sample_resources('infra')
+    if (infra.get('memory.max')!=str(768*1024**2) or infra.get('memory.swap.max')!='0'
+            or infra.get('cpu.max')!='100000 100000'
+            or not infra.get('membership_verified') or not infra.get('ancestor_verified')):
+        raise ValueError('infra parent accounting drift')
+    r['infra_proof']=infra
     r['kernel_proof']=r['heavy_proof']
     manifest=BASE/'runtime-manifest.json'
     if manifest.is_symlink() or manifest.stat().st_uid!=0 or manifest.stat().st_mode & 0o022:
         raise ValueError('untrusted frozen configuration')
     frozen=json.loads(manifest.read_text())
-    names=r['test_containers']+[r['sandbox'],r['gateway'],r['project']+'-denied']
+    names=r['test_containers']+r.get('maintenance_containers',[])+[r['sandbox'],r['gateway'],r['project']+'-denied']
     if frozen['lab_uuid']!=r['lab_uuid'] or set(frozen['containers'])!=set(names):
         raise ValueError('foreign frozen resources')
     for name in names:
@@ -96,6 +105,32 @@ def verify_runtime():
             or candidate['host']['Dns']!=['127.0.0.1']
             or candidate['networks']!={r['project']+'-agent':'172.29.220.10'}):
         raise ValueError('sandbox isolation configuration missing')
+    for name in r.get('maintenance_containers', []):
+        info = _docker('inspect', name)[0]
+        if info['Config']['Labels'].get('myink.pi.owner') != 'maintenance-infra':
+            raise ValueError('maintenance owner missing')
+        if name.endswith('-entry'):
+            if (info['HostConfig']['CapAdd'] != ['CAP_NET_BIND_SERVICE'] or info['HostConfig']['CapDrop'] != ['ALL']
+                    or info['Config']['User'] != '65534:65534' or not info['HostConfig']['ReadonlyRootfs']
+                    or 'no-new-privileges' not in info['HostConfig']['SecurityOpt']
+                    or list(info['NetworkSettings']['Networks']) != [r['project']+'-maintenance']):
+                raise ValueError('stable maintenance entry policy drift')
+        if info['HostConfig']['Memory'] <= 0 or info['HostConfig']['MemorySwap'] != info['HostConfig']['Memory']:
+            raise ValueError('maintenance resource accounting missing')
+    if r.get('maintenance_containers'):
+        snapshot=r.get('maintenance_snapshot')
+        if not snapshot or frozen.get('maintenance_snapshot')!=snapshot:
+            raise ValueError('maintenance snapshot identity missing or drifted')
+        for filename,digest in snapshot['sha256'].items():
+            if filename not in ('maintenance.Caddyfile','maintenance.html') or hashlib.sha256((BASE/'maintenance'/filename).read_bytes()).hexdigest()!=digest:
+                raise ValueError('maintenance snapshot content drift')
+        net = _docker('network','inspect',r['project']+'-maintenance')[0]
+        if (net['Labels'].get('myink.pi.lab') != r['lab_uuid'] or net['EnableIPv6']
+                or net['Options'].get('com.docker.network.bridge.name') != 'pi-lab-maint'):
+            raise ValueError('maintenance network drift')
+        rules = _run('iptables','-S','DOCKER-USER').splitlines()
+        if '-A DOCKER-USER -i pi-lab-maint ! -o pi-lab-maint -j DROP' not in rules:
+            raise ValueError('maintenance egress deny missing')
     verify_firewall()
     return r
 

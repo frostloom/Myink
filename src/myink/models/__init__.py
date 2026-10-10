@@ -1,5 +1,6 @@
 """模型包：导入全部模型以注册到 Base.metadata（alembic autogenerate 依赖）。"""
 
+from myink.models.maintenance import MaintenanceControl, AdmissionIntent
 from myink.models.base import Base
 from myink.models.admin import AdminAccessLog
 from myink.models.invitation import Invitation
@@ -52,6 +53,8 @@ from myink.models.task_budget import TaskBudget, TaskBudgetAttempt, TaskBudgetCa
 
 __all__ = [
     "Base",
+    "MaintenanceControl",
+    "AdmissionIntent",
     "TaskBudget",
     "TaskBudgetAttempt",
     "TaskBudgetCall",

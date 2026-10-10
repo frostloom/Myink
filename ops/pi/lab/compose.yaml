@@ -23,13 +23,72 @@ services:
     cgroup_parent: myinkpi-heavy.slice
     environment: { RABBITMQ_DEFAULT_USER: myink, RABBITMQ_DEFAULT_PASS: synthetic-lab-only }
     networks: [fixtures]
+  # Independent persistent infra: never reuse/relabel the ephemeral fixtures above.
+  maintenance-postgres:
+    image: ${PI_PG_IMAGE:?verified digest required}
+    cgroup_parent: myinkpi-infra.slice
+    mem_limit: 256m
+    memswap_limit: 256m
+    cpus: 0.3
+    ports: ["127.0.0.1::5432"]
+    labels: { myink.pi.lab: '${PI_LAB_UUID:?required}', myink.pi.owner: maintenance-infra }
+    environment: { POSTGRES_PASSWORD: synthetic-lab-only, POSTGRES_DB: myink }
+    volumes: ["maintenance-pg-data:/var/lib/postgresql/data"]
+    networks: [maintenance]
+  maintenance-redis:
+    image: ${PI_REDIS_IMAGE:?verified digest required}
+    cgroup_parent: myinkpi-infra.slice
+    mem_limit: 96m
+    memswap_limit: 96m
+    cpus: 0.15
+    ports: ["127.0.0.1::6379"]
+    labels: { myink.pi.lab: '${PI_LAB_UUID:?required}', myink.pi.owner: maintenance-infra }
+    volumes: ["maintenance-redis-data:/data"]
+    networks: [maintenance]
+  maintenance-rabbit:
+    image: ${PI_RABBIT_IMAGE:?verified digest required}
+    cgroup_parent: myinkpi-infra.slice
+    mem_limit: 320m
+    memswap_limit: 320m
+    cpus: 0.4
+    ports: ["127.0.0.1::5672"]
+    labels: { myink.pi.lab: '${PI_LAB_UUID:?required}', myink.pi.owner: maintenance-infra }
+    environment: { RABBITMQ_DEFAULT_USER: myink, RABBITMQ_DEFAULT_PASS: synthetic-lab-only, RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: '+S 2:2' }
+    volumes: ["maintenance-rabbit-data:/var/lib/rabbitmq"]
+    networks: [maintenance]
+  maintenance-entry:
+    image: ${PI_CADDY_IMAGE:?verified digest required}
+    cgroup_parent: myinkpi-infra.slice
+    mem_limit: 96m
+    memswap_limit: 96m
+    cpus: 0.1
+    user: '65534:65534'
+    read_only: true
+    tmpfs: ['/tmp:size=8m', '/config:size=4m', '/data:size=4m']
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: [no-new-privileges]
+    ports: ["127.0.0.1::8080"]
+    labels: { myink.pi.lab: '${PI_LAB_UUID:?required}', myink.pi.owner: maintenance-infra }
+    volumes: ["./maintenance.Caddyfile:/maintenance/maintenance.Caddyfile:ro", "./maintenance.html:/maintenance/maintenance.html:ro"]
+    command: [caddy, run, --config, /maintenance/maintenance.Caddyfile, --adapter, caddyfile]
+    networks: [maintenance]
+
 networks:
+  maintenance:
+    labels: { myink.pi.lab: '${PI_LAB_UUID:?required}' }
   fixtures:
     # Dynamic loopback publishing requires a noninternal fixture bridge; provision.sh adds scoped egress DROP.
     internal: false
     labels: { myink.pi.lab: '${PI_LAB_UUID:?required}' }
 
 volumes:
+  maintenance-pg-data:
+    labels: { myink.pi.lab: '${PI_LAB_UUID:?required}', myink.pi.owner: maintenance-infra }
+  maintenance-redis-data:
+    labels: { myink.pi.lab: '${PI_LAB_UUID:?required}', myink.pi.owner: maintenance-infra }
+  maintenance-rabbit-data:
+    labels: { myink.pi.lab: '${PI_LAB_UUID:?required}', myink.pi.owner: maintenance-infra }
   pg-data:
     labels: { myink.pi.lab: '${PI_LAB_UUID:?required}' }
   redis-data:

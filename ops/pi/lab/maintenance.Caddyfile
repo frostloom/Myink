@@ -1,0 +1,13 @@
+{
+    admin off
+    auto_https off
+}
+:8080 {
+    root * /maintenance
+    header Retry-After "{{REOPEN_HTTP}}"
+    header Cache-Control "no-store"
+    rewrite * /maintenance.html
+    file_server {
+        status 503
+    }
+}

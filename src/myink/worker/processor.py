@@ -26,6 +26,7 @@ from psycopg import OperationalError as PsycopgOperationalError
 from sqlalchemy.exc import OperationalError as SQLAlchemyOperationalError
 
 from myink.config import settings
+from myink.maintenance import require_consumption_open, MaintenanceUnavailable
 from myink.task_budget import (bind_task_budget, budget_managed, budget_view,
                                ensure_task_budget, record_budget_pause, bind_budget_operation,
                                TaskBudgetPaused, TaskBudgetUnavailable)
@@ -36,7 +37,6 @@ from myink.workflow.runner import (
     generate_batch,
     generate_chapter,
     get_graphs,
-    new_task,
     resume_chapter_plan,
     resume_thread,
 )
@@ -574,7 +574,12 @@ def process(body: dict, worker_id: str | None = None) -> str:
     try:
         # 幂等 ②：查 DB 现状（tasks 无 RLS，普通连接可查）
         with new_session() as db:
-            row = db.get(Task, uuid.UUID(task_id))
+            try:
+                require_consumption_open(db)
+            except MaintenanceUnavailable:
+                decision = "waiting"  # preserve accepted identity and quota while connection returns it
+                raise
+            row = db.get(Task, uuid.UUID(task_id), with_for_update=True)
             operation = (row.payload or {}).get("_budget_resume_operation") if row else None
             if (operation and body.get("budget_operation_id") != operation
                     and task_type != "chapter_plan_resume"):
@@ -596,17 +601,15 @@ def process(body: dict, worker_id: str | None = None) -> str:
                 logger.info("跳过（已暂停，等 resume）: %s", task_id)
             elif row is None:
                 # 物化：DB 为最终权威（§5.3），幂等键 task_id 作 PK
-                new_task(
-                    project_id=project_id,
-                    task_type=task_type,
-                    payload={**(body.get("payload") or {}),
-                             "_gate_user_id": body.get("user_id") or ""},
-                    chapter_seq=(body.get("payload") or {}).get("seq"),
-                    task_id=task_id,
-                    trace_id=body.get("trace_id"),
-                    status="running",
-                    budget_snapshot=body.get("task_budget"),
-                )
+                stored_payload = {**(body.get("payload") or {}), "_gate_user_id": body.get("user_id") or ""}
+                if body.get("task_budget") is not None:
+                    stored_payload["_task_budget"] = body["task_budget"]
+                db.add(Task(id=uuid.UUID(task_id), project_id=uuid.UUID(project_id),
+                            task_type=task_type, payload=stored_payload,
+                            chapter_seq=(body.get("payload") or {}).get("seq"),
+                            trace_id=body.get("trace_id"), status="running"))
+                db.flush()
+                db.commit()
                 logger.info("物化新任务: %s (%s)", task_id, task_type)
                 run_it = True
             else:

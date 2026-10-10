@@ -27,6 +27,8 @@ from pathlib import Path
 import pika
 
 from myink.config import settings
+from myink.db import tenant_session
+from myink.maintenance import register_admission, intent_outcome
 from myink.worker import amqp
 from myink.worker.redis_client import (
     book_cnt_key,
@@ -71,7 +73,7 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
             platform_chapter_max: int = 0) -> dict:
     """闸门 + 入队。返回 `{"task_id", "trace_id", "status"}`（路由侧回 202）。
 
-    顺序不可换：闸门 → 归属登记 → 发布 → SSE 种子帧。
+    顺序不可换：持久登记 → 闸门 → 归属登记 → 发布 → SSE 种子帧。
 
     归属登记必须先于发布：SSE 可能在 worker 物化 Task 行之前就连上来，
     那时 `GET /tasks/{id}/access` 只能靠 `queue:task-owner:{id}` 判归属。
@@ -111,15 +113,27 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
         "created_at": int(time.time() * 1000),
     }
 
-    r = get_redis()
+    # Commit identity before ANY Redis gate/ownership or AMQP operation. This
+    # registration serializes with maintenance closure; it is not a PG/Redis tx.
+    with tenant_session(project_id) as db:
+        intent_id = register_admission(db, body, priority=priority, gates=True)
+    def outcome(**states):
+        try:
+            intent_outcome(intent_id, project_id, **states)
+        except Exception as exc:
+            raise EnqueueUnavailable("intent_outcome_unknown") from exc
+    outcome(gate_state="unknown")
     try:
+        r = get_redis()
         code, reason = _run_gates(r, keys, task_id=task_id, quota_n=quota_n,
                                   cost_est=cost_est, project_id=project_id,
                                   platform_chapter_max=platform_chapter_max)
     except Exception as exc:
         raise EnqueueUnavailable("gates") from exc
     if code != 1:
+        outcome(gate_state="rejected", publication_state="not_attempted")
         raise GateError(reason)
+    outcome(gate_state="accepted")
 
     owner = json.dumps({"user_id": user_id, "project_id": project_id})
     try:
@@ -127,20 +141,24 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
     except Exception as exc:
         _compensate(r, keys, task_id=task_id, quota_n=quota_n,
                     platform_chapter_max=platform_chapter_max)
+        outcome(publication_state="not_attempted")
         raise EnqueueUnavailable("owner") from exc
 
+    outcome(publication_state="unknown")
     try:
         amqp.publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS, priority=priority)
     except (pika.exceptions.NackError, pika.exceptions.UnroutableError) as exc:
         # 确定失败：broker 明确拒收，消息一定不在队列里 → 回滚闸门
         _compensate(r, keys, task_id=task_id, quota_n=quota_n,
                     platform_chapter_max=platform_chapter_max)
+        outcome(publication_state="rejected")
         raise EnqueueUnavailable("publish_rejected") from exc
     except Exception as exc:
         # 结果不明（confirm 超时/连接中断）：消息可能已入队。补偿会造成
         # "闸门已退而任务照跑"的重复扣费，所以这里刻意什么都不做。
         raise EnqueueUnavailable("publish_ambiguous") from exc
 
+    outcome(publication_state="published")
     _seed_sse(r, task_id)
     return {"task_id": task_id, "trace_id": task_id, "status": "queued"}
 
