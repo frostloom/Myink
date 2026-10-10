@@ -19,6 +19,8 @@ import uuid
 
 from sqlalchemy import select
 
+from myink.maintenance_pause import authorized_node, guard_maintenance
+from myink.task_budget import effect_identity, load_effect, save_effect, _SCOPE
 from myink.db import tenant_session
 from myink.task_budget import (bind_budget_operation, guard_budget, budget_managed,
                                save_short_progress, load_short_progress, budget_execution)
@@ -92,7 +94,7 @@ def run_short_story(*, project_id: str, task_id: str, form: ShortParams) -> dict
     """
     progress = load_short_progress(task_id)
     with tenant_session(project_id) as db:
-        if progress and progress["stage"] == "complete":
+        if progress and progress["stage"] in {"complete", "persisted"}:
             return progress["result"]
         outline = _outline(db, project_id)
         brief = progress["brief"] if progress else _load_brief(db, project_id, outline, form)
@@ -270,21 +272,29 @@ def persist_short_story(*, project_id: str, result: dict) -> int:
     rows = [c for c in (result.get("chapters") or []) if (c.get("body") or "").strip()]
     if not rows:
         return 0
-    with tenant_session(project_id) as db:
+    scope = _SCOPE.get()
+    identity = effect_identity({"task_id":scope.task_id if scope else None,"result":result}, "short_persist")
+    with authorized_node("short:persist"), tenant_session(project_id) as db:
         pid = uuid.UUID(project_id)
-        if budget_managed():
-            guard_budget("short:persist")
+        saved = load_effect(db, identity)
+        if saved is not None:
+            return saved["persisted"]
         for row in rows:
-            if budget_managed():
-                existing = repo.get_chapter(db, pid, row["chapter_seq"])
-                if existing and existing.content == row["body"] and existing.title == row.get("title"):
-                    continue
             repo.save_chapter(db, project_id=pid, chapter_seq=row["chapter_seq"],
                               content=row["body"], title=row.get("title"),
                               generation_source="auto")
         project = repo.get_project(db, pid)
         if project is not None:
             project.current_chapter = max(row["chapter_seq"] for row in rows)
+        save_effect(db, identity, {"persisted":len(rows)})
+        if scope:
+            from sqlalchemy.dialects.postgresql import insert
+            from myink.models.task_budget import TaskBudgetCall
+            payload={"stage":"persisted","result":result,"effect_key":identity[0]}
+            db.execute(insert(TaskBudgetCall).values(task_id=uuid.UUID(scope.task_id),project_id=pid,
+                operation_key="short:progress",input_hash="progress",response=payload).on_conflict_do_update(
+                constraint="uq_task_budget_call",set_={"response":payload}))
+    guard_maintenance("short:done")
     return len(rows)
 
 
@@ -335,7 +345,12 @@ def _chapter_titles(outline: dict, chapter_count: int) -> list[str]:
     return [titles.get(i) or f"第 {i} 章" for i in range(1, chapter_count + 1)]
 
 
-def _call(db, project_id: str, task_id: str, *, node: str, role: str, messages: list[dict],
+def _call(db, project_id, task_id, **kwargs):
+    with authorized_node(f"{task_id}:{kwargs['node']}"):
+        return _call_unchecked(db, project_id, task_id, **kwargs)
+
+
+def _call_unchecked(db, project_id: str, task_id: str, *, node: str, role: str, messages: list[dict],
           max_tokens: int, json_mode: bool, disable_thinking: bool = False,
           detail: dict | None = None, total_chars: int = 0) -> ModelResponse:
     """一次 LLM 调用 + 一条 agent_runs（§6.8 成本透明）。

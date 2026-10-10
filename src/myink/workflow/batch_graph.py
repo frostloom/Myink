@@ -31,6 +31,7 @@ from langgraph.graph import END, START, StateGraph
 
 from myink.config import settings
 from myink.task_budget import budget_node, budget_managed, TaskBudgetPaused, TaskBudgetUnavailable
+from myink.maintenance_pause import MaintenancePaused, invoke_graph
 from myink.db import tenant_session
 from myink.memory import repository as repo
 from myink.providers import make_chain
@@ -241,10 +242,8 @@ def make_chapter_runner(chapter_graph):
                     from myink.workflow.chapter_graph import node_reset_replan
                     chapter_input = {**node_reset_replan(snap.values), **chapter_input,
                                      "replan_count": 0, "error": None, "needs_review": False}
-            result = chapter_graph.invoke(
-                chapter_input, config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64}
-            )
-        except (TaskBudgetPaused, TaskBudgetUnavailable):
+            result = invoke_graph(chapter_graph, chapter_input, {"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
+        except (MaintenancePaused, TaskBudgetPaused, TaskBudgetUnavailable):
             raise
         except Exception as exc:  # 子图异常 → 抛中断，batch checkpoint 停在 chapter 节点可续跑
             logger.exception("单章 %s 失败", chapter_seq)
@@ -335,7 +334,7 @@ def node_reflexion(state: BatchState) -> BatchState:
             inserted, skipped = nodes._persist_lessons(db, pid, batch_task_id, start, lessons, new_findings)
             return {"reflexion": {"findings": len(findings), "recurrences": recurrences,
                                   "lessons": inserted, "skipped_duplicates": skipped}}
-    except (TaskBudgetPaused, TaskBudgetUnavailable):
+    except (MaintenancePaused, TaskBudgetPaused, TaskBudgetUnavailable):
         raise
     except Exception as exc:
         logger.warning("reflexion 复盘失败（不阻塞批次）: %s", exc)
@@ -357,7 +356,7 @@ def node_global_audit(state: BatchState) -> BatchState:
                 return {"global_audit": {"triggered": False, "reason": "below_threshold"}}
             return {"global_audit": ga.run_global_audit(
                 db, pid, win, source="batch", source_batch_task_id=state["batch_task_id"])}
-    except (TaskBudgetPaused, TaskBudgetUnavailable):
+    except (MaintenancePaused, TaskBudgetPaused, TaskBudgetUnavailable):
         raise
     except Exception as exc:
         logger.warning("全局审计失败（不阻塞批次）: %s", exc)

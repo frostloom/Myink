@@ -7,6 +7,7 @@ import uuid
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
 
+from myink.maintenance_pause import invoke_graph, MaintenancePaused
 from myink.db import tenant_session
 from myink.task_budget import budget_managed, budget_execution, TaskBudgetPaused
 from myink.workflow import nodes
@@ -41,10 +42,10 @@ def generate_chapter(*, project_id: str, chapter_seq: int, task_id: str | None =
     thread_id = task_id or str(uuid.uuid4())
     config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 64}
     if budget_managed() and chapter_graph.get_state(config).values:
-        result = chapter_graph.invoke(None, config=config)
+        result = invoke_graph(chapter_graph, None, config)
         _finish_chapter_result(project_id, thread_id, result)
         return result
-    result = chapter_graph.invoke(
+    result = invoke_graph(chapter_graph,
         {
             "project_id": project_id,
             "chapter_seq": chapter_seq,
@@ -53,7 +54,7 @@ def generate_chapter(*, project_id: str, chapter_seq: int, task_id: str | None =
             "rewrite": rewrite,
             "writing_mode": writing_mode,
         },
-        config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64},
+        {"configurable": {"thread_id": thread_id}, "recursion_limit": 64},
     )
     _finish_chapter_result(project_id, thread_id, result)
     return result
@@ -63,9 +64,9 @@ def generate_chapter(*, project_id: str, chapter_seq: int, task_id: str | None =
 def resume_chapter_plan(*, project_id: str, task_id: str, approved_plan: dict) -> dict:
     """从 plan_gate 的动态 interrupt 恢复；不重新调用 Planner。"""
     chapter_graph, _ = get_graphs()
-    result = chapter_graph.invoke(
+    result = invoke_graph(chapter_graph,
         Command(resume=approved_plan),
-        config={"configurable": {"thread_id": task_id}, "recursion_limit": 64},
+        {"configurable": {"thread_id": task_id}, "recursion_limit": 64},
     )
     _finish_chapter_result(project_id, task_id, result)
     return result
@@ -107,7 +108,7 @@ def generate_batch(*, project_id: str, size: int, start_chapter: int,
     try:
         if budget_managed() and batch_graph.get_state({"configurable": {"thread_id": thread_id}}).values:
             return resume_thread(batch_graph, thread_id, state)
-        return batch_graph.invoke(state, config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
+        return invoke_graph(batch_graph, state, {"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
     except TaskBudgetPaused as exc:
         if exc.reason in {"manual_pause", "cancelled"}:
             status = "cancelled" if exc.reason == "cancelled" else "paused"
@@ -141,9 +142,9 @@ def resume_thread(graph: CompiledStateGraph, thread_id: str, state: dict) -> dic
     """
     snap = graph.get_state({"configurable": {"thread_id": thread_id}})
     if budget_managed() and snap.values and (snap.next or not snap.values.get("error")):
-        return graph.invoke(None, config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
+        return invoke_graph(graph, None, {"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
     resume_state = {**state, **(snap.values or {})}  # checkpoint 优先
-    return graph.invoke(resume_state, config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
+    return invoke_graph(graph, resume_state, {"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
 
 
 def finalize_chapter_review(*, project_id: str, task_id: str, chapter_seq: int) -> dict:

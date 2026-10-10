@@ -171,6 +171,13 @@ if [[ $mode == execute ]]; then
       test/b8-red|test/b8-focused|test/b8-survival|test/b8-reconcile) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py) ;;
       test/b8-ci-collection|test/b8-guarded-collection) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py) ;;
       test/b8) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py tests/test_enqueue_gates.py tests/test_task_budget_routes.py tests/test_manual_plan.py) ;;
+      test/b9-red|test/b9) targets=(tests/test_maintenance_pause.py tests/test_maintenance_compatibility.py tests/test_task_budget_recovery.py tests/test_short_runner.py tests/test_worker.py tests/test_manual_plan.py) ;;
+      test/b9-pause|test/b9-wait|test/b9-identity) targets=(tests/test_maintenance_pause.py) ;;
+      test/b9-compatibility) targets=(tests/test_maintenance_compatibility.py) ;;
+      test/b9-recovery) targets=(tests/test_task_budget_recovery.py) ;;
+      test/b9-short) targets=(tests/test_short_runner.py) ;;
+      test/b9-worker) targets=(tests/test_worker.py) ;;
+      test/b9-plan) targets=(tests/test_manual_plan.py) ;;
       test/provenance) targets=(tests/test_run_provenance.py tests/test_admin_observability.py tests/test_run_ownership.py) ;;
       data-read/b7) targets=(ops/pi/tests/integration/test_db_reader_lab.py) ;;
       *) exit 64 ;;
@@ -178,7 +185,11 @@ if [[ $mode == execute ]]; then
     . "$base/test.env"
     opts=(--pi-lab)
     [[ $selection != provenance && $selection != b8 && $selection != b8-red && $selection != b8-focused && $selection != b8-survival && $selection != b8-reconcile && $selection != b8-ci-collection && $selection != b8-guarded-collection ]] || opts=()
+    [[ $selection != b9* ]] || opts=()
     python_args=(-m pytest "${targets[@]}" -q "${opts[@]}" -m "not pi_live" --tb=short)
+    [[ $selection != b9-identity ]] || python_args+=(-k "actual_control_drift or candidate_blocker or private_execution_roles")
+    [[ $selection != b9-wait ]] || python_args+=(-k "wait_race or actual_plan_interrupt")
+    [[ $selection != b9-red ]] || python_args=(-m pytest tests/test_maintenance_pause.py tests/test_maintenance_compatibility.py -q -m "not pi_live" --tb=short)
     [[ $selection != b8-red ]] || python_args+=(-k "generate_and_resume_denied or no_quota_charge or db_unavailable_fails_closed or worker_restart_does_not_consume")
     [[ $selection != b8-survival ]] || python_args+=(-k "maintenance_page_survives_candidate_failure")
     [[ $selection != b8-reconcile ]] || python_args+=(-k "uncertain_receipt")

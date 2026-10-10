@@ -30,6 +30,7 @@ from myink.maintenance import require_consumption_open, MaintenanceUnavailable
 from myink.task_budget import (bind_task_budget, budget_managed, budget_view,
                                ensure_task_budget, record_budget_pause, bind_budget_operation,
                                TaskBudgetPaused, TaskBudgetUnavailable)
+from myink.maintenance_pause import MaintenancePaused, confirm_exception
 from myink.db import new_session
 from myink.models import Project, Task
 from myink.workflow.runner import (
@@ -423,7 +424,7 @@ def _maybe_reflexion(project_id: str, chapter_seq: int, task_id: str) -> None:
     try:
         nodes.reflexion_for_chapter_window(project_id=project_id, end_chapter=chapter_seq,
                                            task_id=task_id)
-    except (TaskBudgetPaused, TaskBudgetUnavailable):
+    except (MaintenancePaused, TaskBudgetPaused, TaskBudgetUnavailable):
         raise
     except Exception as exc:
         logger.warning("章节窗口复盘失败（不阻塞任务）: %s", exc)
@@ -434,10 +435,21 @@ def _run(body: dict, task_id: str, task_type: str, project_id: str) -> str:
     try:
         with bind_task_budget(task_id, owner):
             return _run_bound(body, task_id, task_type, project_id)
+    except MaintenancePaused as exc:
+        try:
+            receipt=confirm_exception(exc)
+        except ValueError:
+            # A stronger wait or absent durable proof is not a safe certificate.
+            return "waiting"
+        _pub_status(task_id, receipt["status"], {"maintenance":json.dumps(receipt,ensure_ascii=False)})
+        return "waiting"
     except (TaskBudgetPaused, TaskBudgetUnavailable) as exc:
         status = record_budget_pause(task_id, exc, expected_owner=owner)
         if status == "superseded":
             return "waiting"
+        if getattr(exc,"checkpoints",None):
+            try: confirm_exception(exc)
+            except ValueError: pass
         _pub_status(task_id, status, {"budget": json.dumps(budget_view(task_id), ensure_ascii=False), "error": str(exc)})
         return "terminal"
 
@@ -453,7 +465,7 @@ def _run_bound(body: dict, task_id: str, task_type: str, project_id: str) -> str
                 seq = int((body.get("payload") or {}).get("seq") or result.get("chapter_seq") or 0)
                 with bind_budget_operation(f"{task_id}:chapter_reflexion:{seq}"):
                     _maybe_reflexion(project_id, seq, task_id)
-    except (TaskBudgetPaused, TaskBudgetUnavailable):
+    except (MaintenancePaused, TaskBudgetPaused, TaskBudgetUnavailable):
         raise
     except Exception as exc:
         # 批次 critical 冲突：resume 续跑时由图内节点抛出（首次运行在 runner
