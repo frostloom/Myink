@@ -13,6 +13,8 @@ from myink.models import Project, User, Task
 from myink.worker import enqueue as enq
 from myink.worker.redis_client import get_redis, quota_key, inflight_key
 
+pytestmark = pytest.mark.pi_lab
+
 client = TestClient(app)
 
 @pytest.fixture
@@ -340,3 +342,87 @@ def test_report_bootstrap_preserves_private_intent_boundary(maintenance_control)
         c.execute(text('SET ROLE myink_report'))
         with pytest.raises(Exception):c.execute(text('SELECT rebuild_payload FROM public.admission_intents'))
         c.rollback()
+
+
+def test_lab_collection_selectors():
+    import subprocess,sys
+    paths=['tests/test_maintenance_admission.py','tests/test_maintenance_worker_barrier.py']
+    results={}
+    for mode,selector in [('ordinary','not pi_lab and not pi_live'),('guarded','not pi_live')]:
+        result=subprocess.run([sys.executable,'-m','pytest',*paths,'--collect-only','-q','-m',selector],capture_output=True,text=True,timeout=60)
+        nodes=[line for line in result.stdout.splitlines() if line.startswith('tests/test_maintenance_') and '::' in line]
+        results[mode]={'returncode':result.returncode,'nodes':nodes,'stdout':result.stdout,'stderr':result.stderr}
+    from pathlib import Path
+    Path('/mnt/e/tools/myink-pi/evidence/b8-fix1-collection-native.json').write_text(json.dumps(results,indent=2))
+    assert not results['ordinary']['nodes']
+    assert results['ordinary']['returncode']==5
+    assert len(results['guarded']['nodes'])>=24 and results['guarded']['returncode']==0
+
+
+@pytest.mark.parametrize('fault',['matching','epoch','generation','deployment','owner','images','deadline','admission_open','consumer_open','unreadable','precommit_open'])
+def test_uncertain_receipt_fresh_readonly_reconciliation(maintenance_control,tmp_path,monkeypatch,fault):
+    from datetime import datetime
+    from pathlib import Path
+    from sqlalchemy import event
+    from sqlalchemy.orm import Session
+    from ops.pi.contracts import Identity
+    from ops.pi.ledger import Ledger
+    import ops.pi.maintenance as controller
+    engine=get_admin_engine()
+    expected=Identity('b8-synthetic',8,'trusted-fixture',{})
+    ledger=Ledger(tmp_path/'uncertain.sqlite')
+    now=datetime.fromisoformat('2026-10-12T02:00:00+08:00')
+    with engine.begin() as c:
+        c.execute(text("UPDATE public.maintenance_control SET image_ids='{}',admission_closed=false,consumer_blocked=false WHERE id=1"))
+    class AckLostSession(Session):
+        def commit(self):
+            if fault!='precommit_open':super().commit()
+            raise ConnectionError('synthetic commit acknowledgement lost' if fault!='precommit_open' else 'synthetic precommit disconnect')
+    with monkeypatch.context() as scoped:
+        scoped.setattr(controller,'Session',AckLostSession)
+        initial=controller.enter_maintenance(ledger,expected,now)
+    assert initial.status=='uncertain' and not initial.evidence['verified']
+    original=ledger.get(initial.operation_id)
+    with engine.connect() as c:
+        committed=dict(c.execute(text('SELECT * FROM public.maintenance_control WHERE id=1')).mappings().one())
+    assert committed['admission_closed']==(fault!='precommit_open')
+    if fault!='precommit_open':
+        assert committed['consumer_blocked'] and committed['epoch']==initial.evidence['maintenance_epoch']
+        assert committed['deadline']==datetime.fromisoformat(initial.evidence['deadline'])
+    mutations={'epoch':"epoch='other'",'generation':'generation=9','deployment':"deployment_id='other'",'owner':"owner='other'",'images':"image_ids='{\"other\":\"image\"}'",'deadline':"deadline='2026-10-12T07:00:00+08:00'",'admission_open':'admission_closed=false','consumer_open':'consumer_blocked=false'}
+    if fault in mutations:
+        with engine.begin() as c:c.execute(text('UPDATE public.maintenance_control SET '+mutations[fault]+' WHERE id=1'))
+    table='maintenance_control_unavailable' if fault=='unreadable' else 'maintenance_control'
+    if fault=='unreadable':
+        with engine.begin() as c:c.execute(text('ALTER TABLE public.maintenance_control RENAME TO maintenance_control_unavailable'))
+    with engine.connect() as c:before=dict(c.execute(text('SELECT * FROM public.'+table+' WHERE id=1')).mappings().one())
+    statements=[]
+    def observe(conn,cursor,statement,parameters,context,executemany):statements.append(statement)
+    class NoCommitSession(Session):
+        def commit(self):raise AssertionError('reconciliation must not commit')
+    event.listen(engine,'before_cursor_execute',observe)
+    try:
+        with monkeypatch.context() as scoped:
+            scoped.setattr(controller,'Session',NoCommitSession)
+            reconciled=controller.enter_maintenance(ledger,expected,now.replace(hour=3))
+    finally:
+        event.remove(engine,'before_cursor_execute',observe)
+        if fault=='unreadable':
+            with engine.begin() as c:c.execute(text('ALTER TABLE public.maintenance_control_unavailable RENAME TO maintenance_control'))
+    with engine.connect() as c:after=dict(c.execute(text('SELECT * FROM public.maintenance_control WHERE id=1')).mappings().one())
+    assert after==before and ledger.get(initial.operation_id)==original
+    proof={'fault':fault,'original':original,'committed':committed,'before':before,'after':after,'sql':statements,'status':reconciled.status,'evidence':reconciled.evidence}
+    Path('/mnt/e/tools/myink-pi/evidence/b8-fix1-pg-reconcile-'+fault+'.json').write_text(json.dumps(proof,indent=2,default=str))
+    assert reconciled.status==('done' if fault=='matching' else 'uncertain' if fault=='unreadable' else 'blocked')
+    assert reconciled.evidence['verified']==(fault=='matching')
+    assert any('SELECT' in sql.upper() for sql in statements)
+    assert any('TRANSACTION_READ_ONLY' in sql.upper() for sql in statements)
+    assert not any(sql.lstrip().upper().startswith(('INSERT','UPDATE','DELETE')) or 'FOR UPDATE' in sql.upper() or 'FOR SHARE' in sql.upper() for sql in statements)
+    reconciliation_id=reconciled.evidence['reconciliation_id']
+    uuid.UUID(reconciliation_id)
+    with ledger.transaction() as c:
+        rows=c.execute("SELECT payload FROM events WHERE kind='maintenance_reconciliation'").fetchall()
+    assert len(rows)==1
+    recorded=json.loads(rows[0][0])
+    assert recorded['reconciliation_id']==reconciliation_id and recorded['operation_id']==initial.operation_id
+    assert recorded['source_status']=='uncertain' and recorded['status']==reconciled.status
