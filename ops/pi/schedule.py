@@ -52,13 +52,15 @@ def next_action(ledger: Ledger | None, now: datetime, observations: Record, poli
                     deadline=deadline or end.isoformat(), tool_timeout_seconds=bound, remaining_seconds=w['remaining_seconds'],
                     reason=reason, target=target, allow_new_candidate=w['allow_new_candidate'])
 
-    def request(name):
-        r = record(name)
+    def request(name, reason=None, operation_id=None, target=None):
+        r = ledger.get(operation_id) if ledger is not None and operation_id else record(name)
         if r:
-            if verified(name):
+            if r['status'] == 'done' and r['evidence'].get('verified') is True:
                 return action('wait', reason='already_complete')
-            return action('reconcile', target=r['operation_id'])
-        result = action(name)
+            return action('reconcile', reason=reason, target=r['operation_id'])
+        result = action(name, reason=reason, target=target)
+        if operation_id:
+            result['operation_id'] = operation_id
         result['kind'] = name.split(':', 1)[0]
         return result
 
@@ -101,17 +103,18 @@ def next_action(ledger: Ledger | None, now: datetime, observations: Record, poli
         return request('post_backup')
     phase = observations.get('phase', 'analyze')
     if phase not in ('analyze', 'develop', 'test', 'build', 'publish'):
-        return action('report', reason='invalid_phase')
+        return request('report', reason='invalid_phase')
     if phase == 'publish':
         if published:
-            return action('report', reason='daily_publish_limit')
+            return request('report', reason='daily_publish_limit')
         if ledger is not None:
             with ledger.transaction() as connection:
                 gaps = connection.execute("SELECT operation_id FROM operations WHERE kind='backup_pending' AND status='done'").fetchall()
             for gap in gaps:
-                repair = ledger.get(gap['operation_id'].rsplit(':', 1)[0] + ':repair_backup')
+                repair_id = gap['operation_id'] + ':repair_backup'
+                repair = ledger.get(repair_id)
                 if not (repair and repair['status'] == 'done' and repair['evidence'].get('verified') is True):
-                    return action('repair_backup', target=gap['operation_id'])
+                    return request('repair_backup', operation_id=repair_id, target=gap['operation_id'])
     attempts, spent = totals(ledger, 'local-trial-1') if ledger is not None else (0, 0)
     if observations.get('budget_exhausted') is True or attempts >= policy.max_attempts or spent >= policy.budget_microyuan:
         return request('report')

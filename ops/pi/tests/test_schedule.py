@@ -197,3 +197,42 @@ def test_multicall_development_has_phase_deadline_and_individual_tool_timeout(le
     assert action["kind"] == "develop"
     assert action["deadline"] == "2026-10-11T03:15:00+08:00"
     assert action["tool_timeout_seconds"] == 120
+
+
+def test_cross_day_emitted_repair_receipt_clears_gap_and_allows_publish(ledger,policy):
+    p=candidate();gates(ledger,p,"2026-10-12")
+    receipt(ledger,"2026-10-12","pre_backup")
+    receipt(ledger,"2026-10-12","build:"+p.plan_hash)
+    receipt(ledger,"2026-10-10","backup_pending")
+    obs=dict(phase="publish",plan=p)
+    repair=schedule.next_action(ledger,now(day="2026-10-12"),obs,policy)
+    assert repair["kind"] == "repair_backup"
+    ledger.intent(repair["operation_id"],repair["kind"],{"gap":repair["target"]})
+    ledger.finish(Receipt(repair["operation_id"],"done",{"verified":True}))
+    assert schedule.next_action(ledger,now(day="2026-10-12"),obs,policy)["kind"] == "publish"
+
+
+def test_pending_gap_repair_reconciles_same_identity_across_days(ledger,policy):
+    receipt(ledger,"2026-10-10","backup_pending")
+    receipt(ledger,"2026-10-11","pre_backup")
+    receipt(ledger,"2026-10-12","pre_backup")
+    repair=schedule.next_action(ledger,now(),dict(phase="publish"),policy)
+    ledger.intent(repair["operation_id"],repair["kind"],{"gap":repair["target"]})
+    replay=schedule.next_action(ledger,now(day="2026-10-12"),dict(phase="publish"),policy)
+    assert replay["kind"] == "reconcile"
+    assert replay["target"] == repair["operation_id"]
+
+
+@pytest.mark.parametrize("phase",["invalid","publish"])
+@pytest.mark.parametrize("status,expected",[("pending","reconcile"),("done","wait")])
+def test_diagnostic_reports_use_durable_replay(ledger,policy,phase,status,expected):
+    receipt(ledger,"2026-10-11","pre_backup")
+    if phase == "publish":
+        receipt(ledger,"2026-10-11","publish")
+        receipt(ledger,"2026-10-11","post_backup")
+    key="maintenance:2026-10-11:report"
+    ledger.intent(key,"report",{})
+    if status == "done": ledger.finish(Receipt(key,"done",{"verified":True}))
+    action=schedule.next_action(ledger,now(),dict(phase=phase),policy)
+    assert action["kind"] == expected
+    if expected == "reconcile": assert action["target"] == key

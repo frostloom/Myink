@@ -29,6 +29,7 @@ class Plan:
     behavior: str
     reason: str | None = None
     change_types: tuple[str, ...] = ('behavior',)
+    evidence_domain: str = 'online'
 
     @property
     def plan_hash(self):
@@ -78,7 +79,10 @@ def validate_plan(plan: Plan, baseline: Record, policy: Policy) -> Receipt:
     if any(type(v) not in (int, float) or not math.isfinite(v) or not 0 < v <= 1
            for v in (plan.minimum_improvement, plan.severe_regression)):
         return _receipt(plan, 'invalid_threshold')
-    if (type(plan.sample_floor) is not int or plan.sample_floor < 20
+    if plan.evidence_domain not in ('synthetic', 'online'):
+        return _receipt(plan, 'invalid_evidence_domain')
+    floor = 5 if plan.evidence_domain == 'synthetic' else 20
+    if (type(plan.sample_floor) is not int or plan.sample_floor < floor
             or type(plan.call_estimate) is not int or not 0 <= plan.call_estimate <= policy.max_attempts
             or type(plan.time_estimate) is not int or plan.time_estimate <= 0):
         return _receipt(plan, 'invalid_estimate')
@@ -88,12 +92,17 @@ def validate_plan(plan: Plan, baseline: Record, policy: Policy) -> Receipt:
         return _receipt(plan, 'hard_scope_limit')
     if len(plan.files) > policy.soft_production_files and not plan.reason:
         return _receipt(plan, 'smaller_slice_or_reason')
-    counts = (baseline.get('paired_groups'), baseline.get('complete_tasks'), baseline.get('tail_samples'))
-    if (baseline.get('id') != plan.baseline or baseline.get('metric') != plan.metric
-            or baseline.get('config_hash') != plan.baseline_config_hash or any(type(v) is not int or v < 0 for v in counts)
-            or counts[0] < 5 or counts[1] < plan.sample_floor
-            or ('p95' in plan.metric.lower() and counts[2] < 100)):
+    # Missing domain is legacy online data until the A4 evidence producer is integrated.
+    domain = baseline.get('evidence_domain', 'online')
+    count = baseline.get('paired_groups' if plan.evidence_domain == 'synthetic' else 'complete_tasks')
+    if (domain != plan.evidence_domain or baseline.get('id') != plan.baseline
+            or baseline.get('metric') != plan.metric or baseline.get('config_hash') != plan.baseline_config_hash
+            or type(count) is not int or count < plan.sample_floor):
         return _receipt(plan, 'insufficient_baseline')
+    if 'p95' in plan.metric.lower():
+        tail = baseline.get('tail_samples')
+        if type(tail) is not int or tail < 100:
+            return _receipt(plan, 'insufficient_baseline')
     return _receipt(plan)
 
 
@@ -120,4 +129,5 @@ def check_diff(plan: Plan, diff: Record, policy: Policy) -> Receipt:
 
 def comparison_valid(plan: Plan, evidence: Record) -> bool:
     return (evidence.get('plan_hash') == plan.plan_hash and evidence.get('baseline') == plan.baseline
-            and evidence.get('config_hash') == plan.baseline_config_hash)
+            and evidence.get('config_hash') == plan.baseline_config_hash
+            and evidence.get('evidence_domain', 'online') == plan.evidence_domain)
