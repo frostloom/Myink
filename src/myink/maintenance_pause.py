@@ -38,6 +38,10 @@ class MaintenancePaused(Exception):
 def validate_compatibility(identity):
     if any(identity.get(k) != v for k, v in PROTOCOL.items()):
         raise ValueError("incompatible maintenance state protocol")
+    if identity.get("serialization", "jsonplus") != "jsonplus":
+        raise ValueError("unsupported maintenance serializer")
+    if identity.get("state_family", "chapter") not in {"chapter","short","batch","plan","review","tool"}:
+        raise ValueError("unsupported maintenance state family")
 
 
 def _locked(db, task_id):

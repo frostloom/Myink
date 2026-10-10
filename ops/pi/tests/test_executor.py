@@ -294,3 +294,18 @@ def test_runtime_rejects_infra_parent_limit_or_membership_drift(monkeypatch,tmp_
     monkeypatch.setattr(resources,'verify_limits',lambda *args:True)
     with pytest.raises(ValueError,match='infra parent'):
         verify.verify_runtime()
+
+
+@pytest.mark.parametrize('argument',['command','script','dsn','filename'])
+def test_b9_does_not_accept_client_executables_or_fixture_targets(argument):
+    receipt=execute('test',{'state_dir':'E:/state','selection':'b9-pause',argument:'client-supplied'},datetime.now(timezone.utc)+timedelta(seconds=30),None)
+    assert receipt.status=='blocked' and receipt.evidence['reason']=='untyped_arguments'
+
+
+@pytest.mark.parametrize('selection',['b9-pause;echo unsafe','tests/test_maintenance_pause.py','b9/arbitrary','b9-pause --override'])
+def test_b9_unknown_selection_remains_closed(monkeypatch,tmp_path,selection):
+    from ops.pi.resources import LIMITS
+    proof={'cgroup_version':2,'membership_verified':True,'ancestor_verified':True,**LIMITS['heavy']}
+    executor,ledger=_controller_fixture(monkeypatch,tmp_path,proof)
+    receipt=executor.execute('test',{'state_dir':'E:/state','selection':selection},datetime.now(timezone.utc)+timedelta(seconds=30),ledger)
+    assert receipt.status=='blocked' and receipt.evidence['reason']=='unknown_test_selection'
