@@ -127,7 +127,7 @@ assert ready_ref_after_wip_push == frozen_ready_ref
 assert required_skipped_check_does_not_authorize_merge is True
 ```
 
-- [ ] 写临时 bare remote 的 `test_wip_push_does_not_change_ready_slice`、`test_new_main_invalidates_checks`、`test_new_candidate_commit_unfreezes`、`test_skipped_check_blocks_merge`、`test_unrelated_local_changes_untouched`。输入含空格/中文路径的 repo 仍工作；分支为 `codex/pi/<experiment>/<slice>`，父 WIP 分支为 `codex/pi/<experiment>`。
+- [ ] 写临时 bare remote 的 `test_wip_push_does_not_change_ready_slice`、`test_new_main_invalidates_checks`、`test_new_candidate_commit_unfreezes`、`test_skipped_check_blocks_merge`、`test_unrelated_local_changes_untouched`。输入含空格/中文路径的 repo 仍工作；分支为 `codex/pi/<experiment>/<slice>`，父 WIP 分支为 `codex/pi/<experiment>/wip`，`slice_id=wip` 保留并拒绝。
 - [ ] 运行 `python -m pytest ops/pi/tests/test_git_flow.py -q`，预期 FAIL。
 - [ ] 实现工作分支与独立步骤分支、draft/ready 模拟 PR、准确 SHA 合并和新 revert 分支；保存 push/PR/CI/merge 分别的意图与回执，操作失联用 Git ref/PR 身份核对，不 force push。protected paths/额度/发布政策不能由普通优化提交改变。与人工变更合并冲突保留分支、废止证据；不擅自覆盖用户历史。
 - [ ] 重跑同文件并验证相同 SHA 的发布不被 Git 层当相同 deployment（B13 才决定部署归属）、模拟远端成功后丢回执能核对；预期 PASS。所有 Git 指向测试 bare remote，不用项目 origin。

@@ -166,6 +166,14 @@ def state_path_allowed(path, *, platform=None):
     return False
 
 
+def make_git_flow(ledger, config, plan, policy):
+    """Host-only setup; Git authority is never accepted by the model HTTP handler."""
+    from .git_flow import GitFlow
+    if not state_path_allowed(config.workspace_root):
+        raise LedgerBlocked('Git workspace must be an explicit absolute E drive path')
+    return GitFlow(ledger, config, plan, policy)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     commands = parser.add_subparsers(dest='command', required=True)
