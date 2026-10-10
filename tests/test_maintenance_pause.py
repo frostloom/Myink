@@ -440,3 +440,30 @@ def test_legacy_budgetless_checkpoint_cannot_falsely_confirm(pause_lab,budget_ta
     with tenant_session(pid) as db:
         assert execution_view(db,tid)['state']=='pause_requested'
         assert not candidate_allowed(db,'b9-test')
+
+
+def test_cached_short_receipt_exit_still_observes_pause(pause_lab,budget_task,monkeypatch):
+    from contextlib import contextmanager
+    from myink.workflow import short_runner
+    from myink.maintenance_pause import MaintenancePaused,confirm_exception
+    from myink.models import Chapter
+    tid,pid,uid=budget_task
+    ensure_task_budget(tid,pid,uid,{'max_requests':20})
+    result={'chapters':[{'chapter_seq':1,'title':'one','body':'cached body'}]}
+    original=short_runner.authorized_node
+    @contextmanager
+    def request_at_exit(stage):
+        with original(stage):
+            yield
+            request(pid,tid)
+    stopped=None
+    with bind_task_budget(tid,'cached-owner'):
+        assert short_runner.persist_short_story(project_id=pid,result=result)==1
+        monkeypatch.setattr(short_runner,'authorized_node',request_at_exit)
+        try:short_runner.persist_short_story(project_id=pid,result=result)
+        except MaintenancePaused as exc:stopped=exc
+    assert stopped is not None, 'cached node exit must return maintenance pause decision'
+    receipt=confirm_exception(stopped)
+    assert receipt['short_stage']=='persisted' and len(receipt['effects'])==1
+    with tenant_session(pid) as db:
+        assert db.scalar(select(Chapter).where(Chapter.project_id==uuid.UUID(pid))).version==1

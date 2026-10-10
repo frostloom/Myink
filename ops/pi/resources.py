@@ -56,19 +56,38 @@ def sample_resources(target_id):
     root = Path('/sys/fs/cgroup/myinkpi.slice') / f'myinkpi-{target_id}.slice'
     if not root.is_dir():
         raise ValueError('missing cgroup')
-    result = {'target_id': target_id, 'cgroup_version': 2, 'path': str(root)}
-    for key in ('memory.max', 'memory.swap.max', 'memory.current', 'memory.peak', 'cpu.max', 'cpu.stat', 'memory.events'):
-        result[key] = (root / key).read_text().strip()
-    pids = sorted({int(p) for path in root.rglob('cgroup.procs') for p in path.read_text().split()})
-    result['pids'] = pids
-    result['membership_verified'] = bool(pids) and all(
-        f'/myinkpi.slice/myinkpi-{target_id}.slice/' in Path(f'/proc/{p}/cgroup').read_text()
-        or Path(f'/proc/{p}/cgroup').read_text().strip().endswith(f'/myinkpi.slice/myinkpi-{target_id}.slice')
-        for p in pids)
-    # No hidden tighter/looser ancestor or non-v2 delegation is accepted.
-    result['ancestor_verified'] = (Path('/sys/fs/cgroup/cgroup.controllers').is_file()
-                                  and root.parent.name == 'myinkpi.slice')
-    return result
+    vanished = []
+    # Each vanished member invalidates the WHOLE sample. No partial PID list or
+    # earlier limit evidence survives; three immediate samples fit the caller's
+    # existing operation deadline. Live foreign members never authorize a retry.
+    for attempt in range(1, 4):
+        result = {'target_id': target_id, 'cgroup_version': 2, 'path': str(root)}
+        for key in ('memory.max', 'memory.swap.max', 'memory.current', 'memory.peak', 'cpu.max', 'cpu.stat', 'memory.events'):
+            result[key] = (root / key).read_text().strip()
+        pids = sorted({int(p) for path in root.rglob('cgroup.procs') for p in path.read_text().split()})
+        result['pids'] = pids
+        member = bool(pids)
+        missing = False
+        for pid in pids:
+            try:
+                cgroup = Path(f'/proc/{pid}/cgroup').read_text().strip()
+            except FileNotFoundError:
+                vanished.append({'attempt': attempt, 'pid': pid})
+                missing = True
+                break
+            if (f'/myinkpi.slice/myinkpi-{target_id}.slice/' not in cgroup
+                    and not cgroup.endswith(f'/myinkpi.slice/myinkpi-{target_id}.slice')):
+                member = False
+                break
+        if missing:
+            continue
+        result['membership_verified'] = member
+        result['ancestor_verified'] = (Path('/sys/fs/cgroup/cgroup.controllers').is_file()
+                                      and root.parent.name == 'myinkpi.slice')
+        result['sample_attempts'] = attempt
+        result['vanished_pids'] = vanished
+        return result
+    raise ValueError('resource membership churn exhausted: ' + json.dumps(vanished))
 
 
 def probe_environment(root):
