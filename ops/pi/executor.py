@@ -94,6 +94,7 @@ def execute(command_id, args, deadline, ledger):
     host_probe = None
     identity = None
     probes_started = False
+    receipt = None
     def remaining(cap=None):
         budget = min(COMMANDS[command_id] - (time.monotonic() - tool_started),
                      (deadline - datetime.now(timezone.utc)).total_seconds())
@@ -134,15 +135,18 @@ def execute(command_id, args, deadline, ledger):
                 if probe_file.exists() and json.loads(probe_file.read_text()).get('pid') == host_probe.pid:
                     break
                 if host_probe.poll() is not None:
-                    return blocked('host_probe_failed')
+                    receipt = blocked('host_probe_failed')
+                    return receipt
                 time.sleep(min(.05, remaining()))
             else:
-                return blocked('host_probe_failed')
+                receipt = blocked('host_probe_failed')
+                return receipt
             probes_started = True
             setup('prepare-probes', operation, identity['lab_uuid'], cap=30)
         run_budget = remaining()
         if run_budget < 1:
-            return blocked('deadline_expired')
+            receipt = blocked('deadline_expired')
+            return receipt
         ledger.append_event('tool_intent', {'operation_id': operation, 'command_id': command_id, 'lab_uuid': identity['lab_uuid']})
         # Script is installed root-owned from reviewed source; all args are finite IDs.
         command = ['wsl.exe', '-d', 'MyinkPiLab', '-u', 'root', '--', '/opt/myink-pi-lab/provision.sh',
@@ -186,22 +190,51 @@ def execute(command_id, args, deadline, ledger):
             evidence['reason'] = reason
             evidence['termination_proof'] = locals().get('termination_proof')
         receipt = Receipt(operation, 'failed' if reason or process.returncode else 'done', evidence)
-        (state.parent / 'evidence' / f'{operation}.receipt.json').write_text(json.dumps({'operation_id': operation, 'status': receipt.status, 'evidence': evidence}, indent=2), encoding='utf-8')
-        ledger.append_event('tool_receipt', {'operation_id': operation, 'status': receipt.status, **evidence})
         return receipt
     except subprocess.TimeoutExpired:
-        return blocked('deadline_expired')
+        receipt = blocked('deadline_expired')
+        return receipt
     except (KeyError, ValueError, OSError, subprocess.SubprocessError, RuntimeError):
-        return blocked('lab_preflight_failed')
+        receipt = blocked('lab_preflight_failed')
+        return receipt
     finally:
+        cleanup_errors = []
         if probes_started:
-            subprocess.run(['wsl.exe','-d','MyinkPiLab','-u','root','--','/opt/myink-pi-lab/provision.sh','stop-probes',operation,identity['lab_uuid']],timeout=10,capture_output=True,check=False)
-        if host_probe is not None and host_probe.poll() is None:
-            host_probe.terminate()
-            host_probe.wait(timeout=2)
-        if process is not None and process.poll() is None:
             try:
-                subprocess.run(['wsl.exe', '-d', 'MyinkPiLab', '-u', 'root', '--', '/opt/myink-pi-lab/provision.sh', 'stop-heavy', operation, identity['lab_uuid']], timeout=30, capture_output=True, check=True)
-            finally:
-                process.kill()
-                process.communicate(timeout=30)
+                subprocess.run(['wsl.exe','-d','MyinkPiLab','-u','root','--','/opt/myink-pi-lab/provision.sh','stop-probes',operation,identity['lab_uuid']],timeout=10,capture_output=True,check=True)
+            except (OSError, subprocess.SubprocessError) as error:
+                cleanup_errors.append({'step': 'stop_probes', 'error': type(error).__name__})
+        if host_probe is not None:
+            try:
+                if host_probe.poll() is None:
+                    host_probe.terminate()
+                    host_probe.wait(timeout=2)
+            except (OSError, subprocess.SubprocessError) as error:
+                cleanup_errors.append({'step': 'host_probe', 'error': type(error).__name__})
+                try:
+                    host_probe.kill()
+                    host_probe.wait(timeout=2)
+                except (OSError, subprocess.SubprocessError) as error:
+                    cleanup_errors.append({'step': 'host_probe_kill', 'error': type(error).__name__})
+        if process is not None:
+            try:
+                if process.poll() is None:
+                    try:
+                        subprocess.run(['wsl.exe', '-d', 'MyinkPiLab', '-u', 'root', '--', '/opt/myink-pi-lab/provision.sh', 'stop-heavy', operation, identity['lab_uuid']], timeout=30, capture_output=True, check=True)
+                    finally:
+                        try:
+                            process.kill()
+                        finally:
+                            process.communicate(timeout=30)
+            except (OSError, subprocess.SubprocessError) as error:
+                cleanup_errors.append({'step': 'owned_heavy', 'error': type(error).__name__})
+        if receipt is not None and (process is not None or cleanup_errors):
+            if cleanup_errors:
+                evidence = {**receipt.evidence, 'cleanup_errors': cleanup_errors}
+                evidence.setdefault('reason', 'cleanup_unconfirmed')
+                receipt = Receipt(operation, 'failed' if receipt.status == 'done' else receipt.status, evidence)
+            # Publish the final cleanup outcome rather than a premature done receipt.
+            (state.parent / 'evidence' / f'{operation}.receipt.json').write_text(json.dumps({'operation_id': operation, 'status': receipt.status, 'evidence': receipt.evidence}, indent=2), encoding='utf-8')
+            ledger.append_event('tool_receipt', {'operation_id': operation, 'status': receipt.status, **receipt.evidence})
+            if cleanup_errors:
+                return receipt
