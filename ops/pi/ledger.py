@@ -80,6 +80,9 @@ class Ledger:
             connection.row_factory = sqlite3.Row
             connection.execute('PRAGMA journal_mode=WAL')
             connection.execute('PRAGMA synchronous=FULL')
+            connection.execute('PRAGMA recursive_triggers=ON')
+            if connection.execute('PRAGMA recursive_triggers').fetchone()[0] != 1:
+                raise LedgerBlocked('ledger safeguards unavailable')
             connection.execute('BEGIN IMMEDIATE')
             yield connection
             connection.commit()
