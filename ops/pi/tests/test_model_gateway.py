@@ -15,6 +15,46 @@ def transport(handler):
     return send
 
 
+
+def _expire_during_entered_transport(ledger, policy, monkeypatch, send):
+    """Exercise acquisition expiry after real reservation, independent of disk speed."""
+    import threading
+    import time
+    elapsed = [0.0]
+    wall_start, monotonic_start = time.time(), time.monotonic()
+    monkeypatch.setattr(time, 'time', lambda: wall_start + elapsed[0])
+    monkeypatch.setattr(time, 'monotonic', lambda: monotonic_start + elapsed[0])
+    entered, release, finished = threading.Event(), threading.Event(), threading.Event()
+    results, errors = [], []
+    def blocked_send(body, timeout):
+        entered.set()
+        release.wait(3)
+        return send(body, timeout)
+    def forward():
+        try:
+            results.append(forward_messages(request(), 'local-trial-1', ledger=ledger,
+                                            policy=policy, transport=blocked_send))
+        except Exception as exc:
+            errors.append(exc)
+        finally:
+            finished.set()
+    caller = threading.Thread(target=forward, daemon=True)
+    caller.start()
+    try:
+        assert entered.wait(3), 'the actual transport acquisition must be entered'
+        assert not finished.is_set(), 'transport acquisition must still be blocked'
+        elapsed[0] = 120.001
+        release.set()
+        assert finished.wait(3)
+        assert errors == []
+        assert len(results) == 1 and results[0].status_code == 502
+        assert ledger.get(results[0].attempt_id)['payload']['deadline'] == wall_start + 120
+        return results[0]
+    finally:
+        release.set()
+        caller.join(3)
+
+
 def success(_):
     return httpx.Response(200, json=dict(id='provider-id', usage=dict(input_tokens=1, output_tokens=1,
                          cache_read_input_tokens=0, cache_creation_input_tokens=0)))
@@ -181,69 +221,85 @@ def test_deadline_exceeded_never_refunds(ledger, policy, monkeypatch):
     assert totals(ledger, 'local-trial-1') == (1, 10000)
 
 
-def test_blocked_transport_cannot_exceed_request_deadline(ledger, policy):
-    import threading
-    import time
-    release = threading.Event()
-    finished = threading.Event()
-    def send(body, timeout):
-        release.wait(1)
-        finished.set()
-        return httpx.Response(200, json={'usage':{}})
-    started = time.monotonic()
-    try:
-        result = forward_messages(request(), 'local-trial-1', ledger=ledger,
-                                  policy=replace(policy, timeout_seconds=0.05), transport=send)
-        assert time.monotonic() - started < 0.5
-        assert result.status_code == 502
-        assert totals(ledger, 'local-trial-1') == (1, 10000)
-    finally:
-        release.set()
-        finished.wait(1)
+def test_blocked_transport_cannot_exceed_request_deadline(ledger, policy, monkeypatch):
+    result = _expire_during_entered_transport(ledger, policy, monkeypatch,
+                                             lambda body, timeout: httpx.Response(200, json={'usage':{}}))
+    assert result.status_code == 502
+    assert ledger.get(result.attempt_id)['status'] == 'uncertain'
+    assert totals(ledger, 'local-trial-1') == (1, 10000)
 
 
-def test_blocked_stream_read_cannot_exceed_request_deadline(ledger, policy):
+
+def test_blocked_stream_read_cannot_exceed_request_deadline(ledger, policy, monkeypatch):
     import threading
     import time
-    release = threading.Event()
+    import ops.pi.model_gateway as gateway
+    elapsed = [0.0]
+    wall_start, monotonic_start = time.time(), time.monotonic()
+    monkeypatch.setattr(time, 'time', lambda: wall_start + elapsed[0])
+    monkeypatch.setattr(time, 'monotonic', lambda: monotonic_start + elapsed[0])
+    release, entered, finished = threading.Event(), threading.Event(), threading.Event()
+    delivered, errors = [], []
+    real_receive = gateway._DeadlineUpstream.receive
+    receive_calls = [0]
+    def receive_after_read_entry(upstream):
+        receive_calls[0] += 1
+        if receive_calls[0] > 1:
+            assert entered.wait(3), 'read entry precedes the remaining wait budget'
+            elapsed[0] = 119.95  # Only50ms remains on the original120s permit.
+        return real_receive(upstream)
+    monkeypatch.setattr(gateway._DeadlineUpstream, 'receive', receive_after_read_entry)
     class Blocked(httpx.SyncByteStream):
         def __iter__(self):
-            release.wait(1)
+            entered.set()
+            release.wait(3)
             yield b'event: ping\ndata: {"type":"ping"}\n\n'
+    # Real SQLite remains in this test; virtual time does not conflate its
+    # filesystem latency with the specific blocked-read phase being exercised.
     response = forward_messages(request() | dict(stream=True), 'local-trial-1', ledger=ledger,
-                                policy=replace(policy, timeout_seconds=0.05),
+                                policy=policy,
                                 transport=transport(lambda _: httpx.Response(200, stream=Blocked())))
-    started = time.monotonic()
+    assert response.status_code == 200
+    assert not isinstance(response.body, bytes)
+    assert ledger.get(response.attempt_id)['payload']['deadline'] == wall_start + 120
+    def consume():
+        try:
+            delivered.extend(response.body)
+        except Exception as exc:
+            errors.append(exc)
+        finally:
+            finished.set()
+    consumer = threading.Thread(target=consume, daemon=True)
+    consumer.start()
     try:
-        with pytest.raises(TimeoutError):
-            list(response.body)
-        assert time.monotonic() - started < 0.5
+        assert entered.wait(3), 'the actual upstream read must be entered'
+        assert not finished.is_set(), 'the upstream read must still be blocked'
+        assert finished.wait(3)
+        assert not release.is_set(), 'caller must time out while producer stays blocked'
+        assert len(errors) == 1 and isinstance(errors[0], TimeoutError)
+        assert delivered == []
+        assert ledger.get(response.attempt_id)['status'] == 'uncertain'
         assert totals(ledger, 'local-trial-1') == (1, 10000)
     finally:
         release.set()
+        consumer.join(3)
 
 
-def test_late_response_is_closed_without_refund(ledger, policy):
+
+def test_late_response_is_closed_without_refund(ledger, policy, monkeypatch):
     import threading
-    release = threading.Event()
     closed = threading.Event()
     class Late(httpx.SyncByteStream):
         def __iter__(self):
             yield b'{"usage":{"input_tokens":1,"output_tokens":1,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}'
         def close(self):
             closed.set()
-    def send(body, timeout):
-        release.wait(1)
-        return httpx.Response(200, stream=Late())
-    try:
-        response = forward_messages(request(), 'local-trial-1', ledger=ledger,
-                                    policy=replace(policy, timeout_seconds=0.05), transport=send)
-        assert response.status_code == 502
-        assert ledger.get(response.attempt_id)['status'] == 'uncertain'
-    finally:
-        release.set()
-    assert closed.wait(1)
+    response = _expire_during_entered_transport(ledger, policy, monkeypatch,
+                                              lambda body, timeout: httpx.Response(200, stream=Late()))
+    assert closed.wait(3)
+    assert ledger.get(response.attempt_id)['status'] == 'uncertain'
     assert totals(ledger, 'local-trial-1') == (1, 10000)
+
 
 
 def test_client_abandons_sse_no_refund(ledger, policy):
@@ -321,12 +377,8 @@ def test_cleanup_exception_never_leaks_background_context(ledger, policy, monkey
             yield b''
         def close(self):
             raise RuntimeError('sensitive-upstream-context')
-    import time
-    def late(body, timeout):
-        time.sleep(0.1)
-        return httpx.Response(200, stream=BrokenClose())
-    response = forward_messages(request(), 'local-trial-1', ledger=ledger,
-                                policy=replace(policy, timeout_seconds=0.05), transport=late)
+    response = _expire_during_entered_transport(ledger, policy, monkeypatch,
+                                              lambda body, timeout: httpx.Response(200, stream=BrokenClose()))
     for thread in threads:
         thread.join(1)
     assert failures == []
@@ -460,3 +512,29 @@ def test_late_header_write_marks_attempt_uncertain(ledger, policy, monkeypatch):
     with ledger.transaction() as connection:
         rows = list(connection.execute("SELECT status FROM operations WHERE kind='model-attempt'"))
     assert [r['status'] for r in rows] == ['uncertain']
+
+
+def test_expired_durable_permit_never_starts_transport(ledger, policy, monkeypatch):
+    import time
+    import ops.pi.model_gateway as gateway
+    elapsed = [0.0]
+    wall_start, monotonic_start = time.time(), time.monotonic()
+    monkeypatch.setattr(time, 'time', lambda: wall_start + elapsed[0])
+    monkeypatch.setattr(time, 'monotonic', lambda: monotonic_start + elapsed[0])
+    real_reserve = gateway.reserve
+    def slow_durable_reserve(*args):
+        permit = real_reserve(*args)
+        # The durable reservation commits after its existing absolute deadline.
+        elapsed[0] = policy.timeout_seconds + 1
+        return permit
+    monkeypatch.setattr(gateway, 'reserve', slow_durable_reserve)
+    calls = []
+    def send(body, timeout):
+        calls.append(body)
+        return httpx.Response(200, json={'usage':{}})
+    response = forward_messages(request() | dict(stream=True), 'local-trial-1', ledger=ledger,
+                                policy=policy, transport=send)
+    assert response.status_code == 502
+    assert calls == []
+    assert ledger.get(response.attempt_id)['status'] == 'uncertain'
+    assert totals(ledger, 'local-trial-1') == (1, 10000)
