@@ -26,6 +26,16 @@ _DEV_JWT_SECRET = "dev-jwt-secret-change-me"
 @dataclass(frozen=True)
 class Settings:
     app_env: str = field(default_factory=lambda: _env("APP_ENV", "dev") or "dev")
+    # Trusted deployment/template identifiers; absence means unknown provenance.
+    deployment_id: str = field(default_factory=lambda: _env("DEPLOYMENT_ID", "") or "")
+    deployment_generation: int = field(default_factory=lambda: int(_env("DEPLOYMENT_GENERATION", "0") or "0"))
+    deployment_owner: str = field(default_factory=lambda: _env("DEPLOYMENT_OWNER", "") or "")
+    deployment_image_ids: str = field(default_factory=lambda: _env("DEPLOYMENT_IMAGE_IDS", "") or "")
+    deployment_commit_sha: str = field(default_factory=lambda: _env("DEPLOYMENT_COMMIT_SHA", "") or "")
+    observation_schema_id: str = field(default_factory=lambda: _env("OBSERVATION_SCHEMA_ID", "") or "")
+    observation_prompt_id: str = field(default_factory=lambda: _env("OBSERVATION_PROMPT_ID", "") or "")
+    observation_rubric_id: str = field(default_factory=lambda: _env("OBSERVATION_RUBRIC_ID", "") or "")
+    observation_data_id: str = field(default_factory=lambda: _env("OBSERVATION_DATA_ID", "") or "")
     # 应用连接角色：非超级、NOBYPASSRLS（§14.1 坑：超级用户永远绕过 RLS）
     database_url: str = field(
         default_factory=lambda: _env(

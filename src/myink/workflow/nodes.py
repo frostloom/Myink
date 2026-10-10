@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 from myink import snapshot
 from myink.config import settings
 from myink.admin_observability import capture, capture_detail
+from myink.observability import run_provenance, run_measurement
 from myink.context_budget import ContextBudgetExceeded, estimate_tokens
 from myink.db import tenant_session
 from myink.memory import repository as repo
@@ -97,6 +98,11 @@ def record_run(db: Session, *, project_id: str | None = None, user_id=None,
     observed = {"response": {"content": resp.content, "tool_calls": resp.tool_calls}, **(detail or {})}
     if messages is not None:
         observed = {"messages": messages, **observed}
+    # Preserve caller detail. Trusted metadata occupies reserved append-only keys.
+    if "run_provenance" in observed or "measurement" in observed:
+        observed["observation_collision"] = True
+    observed.setdefault("run_provenance", run_provenance(settings))
+    observed.setdefault("measurement", run_measurement(resp))
     db.add(AgentRun(
         project_id=pid,
         user_id=uid,
@@ -138,7 +144,10 @@ def record_run_detail(db: Session, *, task_id: str | None, node: str, detail: di
            .filter(AgentRun.task_id == task_id, AgentRun.node == node)
            .order_by(AgentRun.id.desc()).first())
     if row:
-        row.detail = capture_detail({**(row.detail or {}), **detail})
+        # Later product annotations cannot rewrite the invocation's version facts.
+        annotations = {key: value for key, value in detail.items()
+                       if key not in {"run_provenance", "measurement", "observation_collision"}}
+        row.detail = capture_detail({**(row.detail or {}), **annotations})
 
 
 def record_snapshot(db: Session, *, state: ChapterState, stage: str,
