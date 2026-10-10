@@ -24,6 +24,9 @@ def run_provenance(settings) -> dict[str, Any]:
     """
     config = {key: getattr(settings, key, None) for key in _CONFIG_FIELDS}
     encoded = json.dumps(config, sort_keys=True, separators=(',', ':'), allow_nan=False)
+    complete_config = getattr(settings, 'observation_config_id', None)
+    if not isinstance(complete_config, str) or not re.fullmatch(r'[0-9a-f]{64}', complete_config):
+        complete_config = None
     generation = getattr(settings, 'deployment_generation', None)
     try:
         images = json.loads(getattr(settings, 'deployment_image_ids', '') or '{}')
@@ -37,7 +40,7 @@ def run_provenance(settings) -> dict[str, Any]:
                 owner=_identifier(getattr(settings, 'deployment_owner', None)),
                 image_ids=images or None, commit_sha=_identifier(getattr(settings, 'deployment_commit_sha', None)),
                 schema_id=_identifier(getattr(settings, 'observation_schema_id', None)),
-                config_id=sha256(encoded.encode()).hexdigest(),
+                settings_id=sha256(encoded.encode()).hexdigest(), config_id=complete_config,
                 prompt_id=_identifier(getattr(settings, 'observation_prompt_id', None)),
                 rubric_id=_identifier(getattr(settings, 'observation_rubric_id', None)),
                 data_id=_identifier(getattr(settings, 'observation_data_id', None)))
@@ -46,9 +49,15 @@ def run_provenance(settings) -> dict[str, Any]:
 def run_measurement(resp) -> dict[str, Any]:
     from myink.providers.prices import lookup_prices
     prices = resp.prices if resp.prices is not None else lookup_prices(resp.model_id)
-    known_cost = (prices is not None and resp.usage_complete
-                  and type(resp.cost_est) in (int, float) and math.isfinite(resp.cost_est))
+    tokens = (resp.input_tokens, resp.output_tokens)
+    usage_known = (resp.usage_complete and not resp.error
+                   and all(type(v) is int and v >= 0 for v in tokens) and sum(tokens) > 0)
+    prices_known = (isinstance(prices, dict)
+                    and all(type(prices.get(key)) in (int, float) and math.isfinite(prices[key])
+                            and prices[key] >= 0 for key in ('input', 'input_cache_hit', 'output')))
+    known_cost = (usage_known and prices_known
+                  and type(resp.cost_est) in (int, float) and math.isfinite(resp.cost_est) and resp.cost_est >= 0)
     return dict(version=1, model_id=resp.model_id, cost=known_cost,
                 latency=type(resp.duration_ms) in (int, float) and math.isfinite(resp.duration_ms)
                 and resp.duration_ms >= 0,
-                pricing_id=sha256(json.dumps(prices, sort_keys=True).encode()).hexdigest() if prices else None)
+                pricing_id=sha256(json.dumps(prices, sort_keys=True).encode()).hexdigest() if prices_known else None)

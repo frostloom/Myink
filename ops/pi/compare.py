@@ -11,10 +11,20 @@ def compare_windows(baseline: Record, candidate: Record, plan: Plan) -> Record:
                   baseline_identity=baseline.get('identity'), candidate_identity=candidate.get('identity'))
     def finish(status, reason):
         return {**result, 'status': status, 'reason': reason}
-    if baseline.get('id') != plan.baseline or baseline.get('config_hash') != plan.baseline_config_hash:
+    if baseline.get('id') != plan.baseline:
+        return finish('confounded', 'frozen_baseline_mismatch')
+    if not baseline.get('config_hash') or not candidate.get('config_hash'):
+        return finish('insufficient_evidence', 'unknown_complete_configuration')
+    if baseline['config_hash'] != plan.baseline_config_hash:
         return finish('confounded', 'frozen_baseline_mismatch')
     if any(s.get('confounders') for s in (baseline, candidate)):
         return finish('confounded', 'window_confounders')
+    if any('cost' in metric.lower() for metric in (plan.metric, *plan.guard_metrics)):
+        prices = [s.get('pricing_id') for s in (baseline, candidate)]
+        if any(not isinstance(p, str) or len(p) != 64 or any(c not in '0123456789abcdef' for c in p) for p in prices):
+            return finish('insufficient_evidence', 'unknown_pricing')
+        if prices[0] != prices[1]:
+            return finish('confounded', 'pricing_changed')
     fields = ('config_hash', 'prompt_hash', 'rubric_hash', 'data_hash', 'schema_id', 'model_ids')
     for key in fields:
         if baseline.get(key) and candidate.get(key) and baseline[key] != candidate[key]:

@@ -26,7 +26,7 @@ def snapshot(tasks, runs=(), **changes):
 
 def run(task='t', **changes):
     row = dict(task_id=task, node='write', model_id='actual', cost_est=0, duration_ms=10,
-               provenance=PROVENANCE, measurement=dict(cost=True, latency=True))
+               provenance=PROVENANCE, measurement=dict(cost=True, latency=True, pricing_id='a' * 64))
     row.update(changes)
     return row
 
@@ -103,9 +103,48 @@ def test_business_provenance_is_safe_and_survives_detail_capture(monkeypatch):
                                request_token_budget=100)
     provenance = run_provenance(settings)
     assert 'never-copy' not in str(provenance)
-    assert provenance['config_id'] and provenance['prompt_id'] == 'p'
+    assert provenance.get('settings_id') and provenance['config_id'] is None and provenance['prompt_id'] == 'p'
     detail = capture_detail(dict(run_provenance=provenance, measurement=dict(cost=True)))
     assert capture_detail({**detail, 'audit_verdict': {'ok': True}})['run_provenance'] == provenance
+
+
+def test_config_requires_trusted_complete_fingerprint(monkeypatch):
+    from pathlib import Path
+    from types import SimpleNamespace
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[3] / 'src'))
+    from myink.observability import run_provenance
+    for value in ('', 'not-a-digest', 'sk-not-a-valid-config-digest'):
+        assert run_provenance(SimpleNamespace(observation_config_id=value))['config_id'] is None
+    assert run_provenance(SimpleNamespace(observation_config_id='b' * 64))['config_id'] == 'b' * 64
+
+
+def test_pricing_is_projected_and_missing_or_mixed_is_explicit():
+    tasks = [dict(id='t', status='done')]
+    known, _ = snapshot(tasks, [run()])
+    assert known.get('pricing_id') == 'a' * 64
+    missing, _ = snapshot(tasks, [run(measurement=dict(cost=True, latency=True))])
+    assert missing['pricing_id'] is None
+    assert missing['measurements']['cost']['availability'] == 'unknown'
+    mixed, _ = snapshot(tasks, [run(), run(measurement=dict(cost=True, latency=True, pricing_id='b' * 64))])
+    assert mixed['pricing_id'] is None and 'mixed_pricing' in mixed['confounders']
+
+
+def test_incomplete_config_makes_snapshot_unknown():
+    s, _ = snapshot([dict(id='t', status='done')], [run(provenance={**PROVENANCE, 'config_id': None})])
+    assert s['config_hash'] is None and s['availability'] == 'unknown'
+
+
+def test_error_or_unproven_zero_usage_is_not_measured_cost(monkeypatch):
+    from pathlib import Path
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[3] / 'src'))
+    from myink.observability import run_measurement
+    from myink.providers.base import ModelResponse
+    assert run_measurement(ModelResponse(content='text', model_id='deepseek-v4-flash'))['cost'] is False
+    assert run_measurement(ModelResponse(content='', model_id='deepseek-v4-flash',
+                                         error='provider error', input_tokens=1))['cost'] is False
+    zero_prices = dict(input=0, input_cache_hit=0, output=0)
+    assert run_measurement(ModelResponse(content='text', model_id='custom', input_tokens=1,
+                                         prices=zero_prices))['cost'] is True
 
 
 @pytest.mark.parametrize('changes', [dict(end=NOW), dict(page_size=1001), dict(query_timeout_ms=5001), dict(evidence_domain='mixed')])

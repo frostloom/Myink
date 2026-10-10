@@ -9,6 +9,7 @@ from dataclasses import asdict
 from datetime import datetime
 import json
 import math
+import re
 from time import monotonic
 from typing import Callable
 
@@ -101,6 +102,7 @@ def collect_snapshot(reader: Callable, window: Record, identity: Identity) -> Re
     runs = defaultdict(list)
     versions = {key: set() for key in _VERSION_FIELDS}
     models, confounders, unknown = set(), [], False
+    pricing, pricing_unknown = set(), False
     for row in rows['agent_runs']:
         if row.get('observation_collision') is True:
             confounders.append('observation_collision')
@@ -110,6 +112,13 @@ def collect_snapshot(reader: Callable, window: Record, identity: Identity) -> Re
             confounders.append('orphan_or_cross_window_run')
             continue
         runs[group].append(row)
+        measurement = row.get('measurement')
+        price = measurement.get('pricing_id') if isinstance(measurement, dict) else None
+        if (isinstance(price, str) and re.fullmatch(r'[0-9a-f]{64}', price)
+                and measurement.get('cost') is True):
+            pricing.add(price)
+        else:
+            pricing_unknown = True
         provenance = row.get('provenance') or {}
         if not isinstance(provenance, dict):
             provenance = {}
@@ -137,6 +146,8 @@ def collect_snapshot(reader: Callable, window: Record, identity: Identity) -> Re
         confounders.append('mixed_versions')
     if truncated:
         confounders.append('query_truncated')
+    if len(pricing) > 1:
+        confounders.append('mixed_pricing')
     values = dict(cost=[], latency=[], node_time=[], quality=[])
     for group in completed:
         group_runs = runs[group]
@@ -144,7 +155,8 @@ def collect_snapshot(reader: Callable, window: Record, identity: Identity) -> Re
                                      ('node_time', 'duration_ms', 'latency')):
             if group_runs and all(isinstance(r.get('measurement'), dict)
                                   and r['measurement'].get(marker) is True and _number(r.get(column)) for r in group_runs):
-                values[name].append(sum(r[column] for r in group_runs))
+                if name != 'cost' or (not pricing_unknown and len(pricing) == 1):
+                    values[name].append(sum(r[column] for r in group_runs))
         starts = [t.get('created_at') for t in groups[group]]
         ends = [t.get('updated_at') for t in groups[group]]
         if (all(isinstance(v, datetime) and v.tzinfo is not None for v in starts + ends)
@@ -177,4 +189,6 @@ def collect_snapshot(reader: Callable, window: Record, identity: Identity) -> Re
                 config_hash=single('config_id'), prompt_hash=single('prompt_id'), rubric_hash=single('rubric_id'),
                 data_hash=single('data_id'), schema_id=single('schema_id'), model_ids=sorted(models),
                 version_range=version_range, confounders=sorted(set(confounders)),
+                pricing_id=next(iter(pricing)) if len(pricing) == 1 and not pricing_unknown else None,
+                pricing_range=sorted(pricing), pricing_availability='measured' if len(pricing) == 1 and not pricing_unknown else 'unknown',
                 availability='unknown' if unknown or not rows['agent_runs'] else 'measured')
