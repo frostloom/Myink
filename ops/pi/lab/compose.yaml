@@ -1,0 +1,38 @@
+# Template only: provision.sh pins locally verified image IDs and chooses unique lab UUID.
+services:
+  postgres:
+    ports: ["127.0.0.1::5432"]
+    volumes: ["pg-data:/var/lib/postgresql/data"]
+    image: ${PI_PG_IMAGE:?verified digest required}
+    labels: { myink.pi.lab: '${PI_LAB_UUID:?required}' }
+    cgroup_parent: myinkpi-heavy.slice
+    environment: { POSTGRES_PASSWORD: synthetic-lab-only, POSTGRES_DB: myink }
+    networks: [fixtures]
+  redis:
+    ports: ["127.0.0.1::6379"]
+    volumes: ["redis-data:/data"]
+    image: ${PI_REDIS_IMAGE:?verified digest required}
+    labels: { myink.pi.lab: '${PI_LAB_UUID:?required}' }
+    cgroup_parent: myinkpi-heavy.slice
+    networks: [fixtures]
+  rabbitmq:
+    ports: ["127.0.0.1::5672"]
+    volumes: ["rabbit-data:/var/lib/rabbitmq"]
+    image: ${PI_RABBIT_IMAGE:?verified digest required}
+    labels: { myink.pi.lab: '${PI_LAB_UUID:?required}' }
+    cgroup_parent: myinkpi-heavy.slice
+    environment: { RABBITMQ_DEFAULT_USER: myink, RABBITMQ_DEFAULT_PASS: synthetic-lab-only }
+    networks: [fixtures]
+networks:
+  fixtures:
+    # Dynamic loopback publishing requires a noninternal fixture bridge; provision.sh adds scoped egress DROP.
+    internal: false
+    labels: { myink.pi.lab: '${PI_LAB_UUID:?required}' }
+
+volumes:
+  pg-data:
+    labels: { myink.pi.lab: '${PI_LAB_UUID:?required}' }
+  redis-data:
+    labels: { myink.pi.lab: '${PI_LAB_UUID:?required}' }
+  rabbit-data:
+    labels: { myink.pi.lab: '${PI_LAB_UUID:?required}' }

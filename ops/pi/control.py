@@ -177,6 +177,12 @@ def make_git_flow(ledger, config, plan, policy):
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     commands = parser.add_subparsers(dest='command', required=True)
+    lab = commands.add_parser('lab')
+    lab_commands = lab.add_subparsers(dest='lab_command', required=True)
+    lab_preflight = lab_commands.add_parser('preflight')
+    lab_preflight.add_argument('--root', required=True, type=Path)
+    lab_up = lab_commands.add_parser('up')
+    lab_up.add_argument('--state-dir', required=True, type=Path)
     check = commands.add_parser('ledger-check')
     check.add_argument('--state-dir', required=True, type=Path)
     gateway = commands.add_parser('model-gateway')
@@ -194,6 +200,19 @@ def main(argv: list[str] | None = None) -> int:
     report.add_argument('--output', required=True, type=Path)
     args = parser.parse_args(argv)
     try:
+        if args.command == 'lab':
+            from dataclasses import asdict
+            from .resources import probe_environment
+            root = args.root if args.lab_command == 'preflight' else args.state_dir.parent
+            receipt = probe_environment(root)
+            if args.lab_command == 'up' and receipt.status == 'done':
+                import subprocess
+                completed = subprocess.run(['wsl.exe', '-d', 'MyinkPiLab', '-u', 'root', '--', '/opt/myink-pi-lab/provision.sh', 'preflight'], capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=120)
+                if completed.returncode:
+                    raise LedgerBlocked('lab resource preflight failed')
+                receipt = replace(receipt, evidence={**receipt.evidence, **json.loads(completed.stdout)})
+            print(json.dumps(asdict(receipt)))
+            return 0 if receipt.status == 'done' else 1
         if args.command == 'schedule':
             from .schedule import next_action
             result = next_action(None, datetime.fromisoformat(args.clock), {}, load_policy(args.policy))
