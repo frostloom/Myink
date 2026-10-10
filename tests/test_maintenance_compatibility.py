@@ -27,15 +27,22 @@ CASES = ('chapter','short','batch','plan','review','tool')
 
 
 def _runtime_identity(case):
-    import sys, importlib.metadata as metadata
+    import sys, importlib.metadata as metadata, importlib, hashlib
+    from pathlib import Path
     from myink.maintenance_pause import PROTOCOL, READ_ONLY_TOOLS
     from myink.workflow.checkpointer import build_checkpointer
     from myink.db import get_admin_engine
     from sqlalchemy import text
     with get_admin_engine().connect() as db:
         schema=[tuple(r) for r in db.execute(text("SELECT table_name,column_name,data_type,is_nullable FROM information_schema.columns WHERE table_schema='public' AND table_name IN ('maintenance_executions','task_budget_calls','checkpoints','checkpoint_writes','checkpoint_blobs') ORDER BY table_name,ordinal_position"))]
-    return {'python':sys.version,'interpreter':sys.executable,
-        'packages':{p:metadata.version(p) for p in ('langgraph','langgraph-checkpoint','langgraph-checkpoint-postgres','langchain-core','psycopg','SQLAlchemy','msgpack')},
+    serde=type(build_checkpointer().serde)
+    serde_module=importlib.import_module(serde.__module__)
+    backend=serde_module.ormsgpack
+    distributions=metadata.packages_distributions()[backend.__name__.split('.')[0]]
+    backend_identity={'module':backend.__name__,'distributions':{p:metadata.version(p) for p in distributions},
+        'serializer_file_sha256':hashlib.sha256(Path(serde_module.__file__).read_bytes()).hexdigest()}
+    return {'python':sys.version,'interpreter':sys.executable,'serializer_backend':backend_identity,
+        'packages':{p:metadata.version(p) for p in ('langgraph','langgraph-checkpoint','langgraph-checkpoint-postgres','langchain-core','psycopg','SQLAlchemy')},
         'serializer':type(build_checkpointer().serde).__module__+'.'+type(build_checkpointer().serde).__name__,
         'schema':schema,'protocol':PROTOCOL,'state_family':case,'state_set':CASES,'effect_keys':1,'read_only_tools':sorted(READ_ONLY_TOOLS)}
 
@@ -183,27 +190,42 @@ def test_two_distinct_executable_versions_restore_durable_state(pause_lab,budget
         env=dict(os.environ);env['PYTHONPATH']=str(root/'src')+':'+str(root/'tests')+':'+str(trusted)+':'+str(root)
         # The verifier stays native and sealed; business code must come from the
         # registered executable revision, independently in each process.
+        manifest=Path('/mnt/e/tools/myink-pi/evidence')/f'b9-{label}-source.json'
+        frozen=json.loads(manifest.read_text())
+        assert frozen['commit']==identity['commit'] and frozen['executable_sha256']==identity['executable_sha256']
         launcher='''import hashlib,json,runpy,sys
 from pathlib import Path
+from ops.pi.lab.verify import verify_test_environment
+verify_test_environment()
+frozen=json.loads(Path(sys.argv[3]).read_text())
+root=Path('/opt/myink-pi-lab/versions')/frozen['commit']
+for name,digest in frozen['hashes'].items():
+ assert hashlib.sha256((root/name).read_bytes()).hexdigest()==digest
+whole=hashlib.sha256(json.dumps(frozen['hashes'],sort_keys=True).encode()).hexdigest()
 import myink.maintenance_pause as executable
 source=Path(executable.__file__).resolve()
 assert str(source)==sys.argv[1]
 assert hashlib.sha256(source.read_bytes()).hexdigest()==sys.argv[2]
-print('B9_SOURCE:'+json.dumps({'path':str(source),'sha256':sys.argv[2]}),flush=True)
-sys.argv=sys.argv[3:]
+print('B9_SOURCE:'+json.dumps({'path':str(source),'sha256':sys.argv[2],'commit':frozen['commit'],
+ 'whole_source_sha256':whole,'file_count':len(frozen['hashes']),
+ 'harness':sys.argv[4],'harness_sha256':hashlib.sha256(Path(sys.argv[4]).read_bytes()).hexdigest()}),flush=True)
+sys.argv=sys.argv[4:]
 runpy.run_path(sys.argv[0],run_name='__main__')
 '''
         completed=subprocess.run([sys.executable,'-c',launcher,str(source),identity['executable_sha256'],
-            str(root/'tests/test_maintenance_compatibility.py'),case,phase,tid,pid],
+            str(manifest),str(trusted/'tests/test_maintenance_compatibility.py'),case,phase,tid,pid],
             cwd=trusted,env=env,text=True,capture_output=True,timeout=120)
         assert completed.returncode==0,completed.stdout+completed.stderr
         result=json.loads(next(l.removeprefix('B9_RESULT:') for l in completed.stdout.splitlines() if l.startswith('B9_RESULT:')))
         assert result['runtime']['state_family']==case
         imported=json.loads(next(l.removeprefix('B9_SOURCE:') for l in completed.stdout.splitlines() if l.startswith('B9_SOURCE:')))
-        assert imported=={'path':str(source),'sha256':identity['executable_sha256']}
+        assert imported=={'path':str(source),'sha256':identity['executable_sha256'],'commit':identity['commit'],
+            'whole_source_sha256':hashlib.sha256(json.dumps(frozen['hashes'],sort_keys=True).encode()).hexdigest(),
+            'file_count':len(frozen['hashes']),'harness':str(trusted/'tests/test_maintenance_compatibility.py'),
+            'harness_sha256':hashlib.sha256((trusted/'tests/test_maintenance_compatibility.py').read_bytes()).hexdigest()}
         results.append({**result,'source':identity,'imported_executable':imported})
     first,second=results
-    for key in ('python','interpreter','packages','schema','serializer','protocol','effect_keys','state_set','read_only_tools'):
+    for key in ('python','interpreter','packages','schema','serializer','serializer_backend','protocol','effect_keys','state_set','read_only_tools'):
         assert first['runtime'][key]==second['runtime'][key]
     assert first['budget']==second['budget']
     if case in {'chapter','tool'}:assert second['chapter_count']==second['memory_count']==second['effect_count']==1
