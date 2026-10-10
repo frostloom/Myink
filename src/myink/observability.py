@@ -51,13 +51,14 @@ def run_measurement(resp) -> dict[str, Any]:
     prices = resp.prices if resp.prices is not None else lookup_prices(resp.model_id)
     tokens = (resp.input_tokens, resp.output_tokens)
     usage_known = (resp.usage_complete and not resp.error
-                   and all(type(v) is int and v >= 0 for v in tokens) and sum(tokens) > 0)
+                   and all(type(v) is int and v >= 0 for v in tokens) and resp.input_tokens > 0
+                   and (not (resp.content or resp.tool_calls) or resp.output_tokens > 0))
     prices_known = (isinstance(prices, dict)
                     and all(type(prices.get(key)) in (int, float) and math.isfinite(prices[key])
                             and prices[key] >= 0 for key in ('input', 'input_cache_hit', 'output')))
     known_cost = (usage_known and prices_known
                   and type(resp.cost_est) in (int, float) and math.isfinite(resp.cost_est) and resp.cost_est >= 0)
-    return dict(version=1, model_id=resp.model_id, cost=known_cost,
+    return dict(version=1, kind='model', model_id=resp.model_id, cost=known_cost,
                 latency=type(resp.duration_ms) in (int, float) and math.isfinite(resp.duration_ms)
                 and resp.duration_ms >= 0,
                 pricing_id=sha256(json.dumps(prices, sort_keys=True).encode()).hexdigest() if prices_known else None)

@@ -29,9 +29,10 @@ def test_record_run_appends_versions_preserves_accounting_and_later_detail(monke
                              resp=resp, detail=original)
             nodes.record_run_detail(db, task_id=task_id, node='write',
                                     detail={'audit_verdict': {'ok': True}, 'run_provenance': {'deployment_id': 'forged'}})
+            nodes.record_plain(db, user_id=uid, task_id=task_id, node='persist', detail={'saved': True}, duration_ms=3)
             db.commit()
         with new_session() as db:
-            row = db.scalar(select(AgentRun).where(AgentRun.task_id == task_id))
+            row = db.scalar(select(AgentRun).where(AgentRun.task_id == task_id, AgentRun.node == 'write'))
             assert row.user_id == uid and row.project_id is None
             assert (row.input_tokens, row.output_tokens, row.cost_est) == (7, 9, .07)
             assert row.model_id == 'actual-fallback' and row.error is None
@@ -40,6 +41,11 @@ def test_record_run_appends_versions_preserves_accounting_and_later_detail(monke
             assert row.detail['run_provenance']['config_id']
             assert row.detail['measurement']['model_id'] == 'actual-fallback'
             assert row.detail['audit_verdict'] == {'ok': True}
+            plain = db.scalar(select(AgentRun).where(AgentRun.task_id == task_id, AgentRun.node == 'persist'))
+            assert plain.model_id is None and plain.cost_est == 0 and plain.input_tokens == plain.output_tokens == 0
+            assert plain.user_id == uid and plain.detail['saved'] is True
+            assert plain.detail['run_provenance']['config_id'] == 'b' * 64
+            assert plain.detail['measurement']['kind'] == 'deterministic' and plain.detail['measurement']['zero_cost'] is True
         assert original == dict(plan={'text': 'original'}, custom='retain')
     finally:
         with new_session() as db:

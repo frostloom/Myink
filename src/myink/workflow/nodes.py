@@ -124,11 +124,17 @@ def record_plain(db: Session, *, project_id: str | None = None, user_id=None,
     让前端流转图能画出完整真实链路，而非只画 LLM 环节。
     """
     pid, uid = _owner_ids(project_id=project_id, user_id=user_id)
+    observed = dict(detail or {})
+    if "run_provenance" in observed or "measurement" in observed:
+        observed["observation_collision"] = True
+    observed.setdefault("run_provenance", run_provenance(settings))
+    observed.setdefault("measurement", dict(version=1, kind="deterministic", zero_cost=True, cost=True,
+                                            latency=type(duration_ms) is int and duration_ms >= 0))
     db.add(AgentRun(
         project_id=pid, user_id=uid,
         task_id=task_id, node=node,
         input_tokens=0, output_tokens=0, duration_ms=duration_ms,
-        cost_est=0.0, detail=capture_detail(detail),
+        cost_est=0.0, detail=capture_detail(observed),
     ))
 
 
