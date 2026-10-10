@@ -31,7 +31,7 @@ def render_report(events: list[Record], snapshots: list[Record]) -> str:
     for snapshot in snapshots:
         measurements = snapshot.get('measurements') or {}
         cost = measurements.get('cost', {})
-        value = (cost.get('value') if cost.get('availability') == 'measured' else None) if 'cost' in measurements else snapshot.get('cost_cny')
+        value = cost.get('value') if cost.get('availability') == 'measured' else None
         known = type(value) in (int, float) and math.isfinite(value) and value >= 0
         lines.append(f"- {_text(snapshot.get('id'))}: cost={str(value) + ' CNY' if known else 'unknown'}; config={_text(snapshot.get('config_hash'))}; pricing={_text(snapshot.get('pricing_id'))}")
     if not snapshots:

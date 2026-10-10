@@ -212,6 +212,8 @@ def main(argv: list[str] | None = None) -> int:
                 events = [dict(kind=row['kind'], payload=ledger._decode(row['payload']))
                           for row in connection.execute('SELECT kind,payload FROM events ORDER BY id')]
             snapshots = [event['payload'] for event in events if event['kind'] == 'snapshot']
+            if args.output.suffix.lower() == '.json':
+                raise ValueError('report output must not use the JSON index extension')
             args.output.write_text(render_report(events, snapshots), encoding='utf-8')
             index = dict(schema_version=1, event_count=len(events), snapshot_count=len(snapshots),
                          pending_acceptance=PENDING_ACCEPTANCE, next_action='review blockers and gather pending acceptance evidence')
