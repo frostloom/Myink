@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "live_enabled": false,
+  "server_daily_enabled": false,
+  "model": "deepseek-v4.1-flash",
+  "protocol": "anthropic",
+  "base_url": "https://provider.example",
+  "max_attempts": 100,
+  "budget_microyuan": 10000000,
+  "timeout_seconds": 120,
+  "max_body_bytes": 65536,
+  "input_token_bound": 1000000,
+  "input_bound_source": "UNCONFIRMED: validate provider full context capacity and body constraints before enabling",
+  "input_bound_calibrated": false,
+  "max_tokens": 8192,
+  "price_source": "https://www.qianwenai.com/models/deepseek-v4.1-flash (confirmed peak input/output/cache-read; cache-write unconfirmed)",
+  "prices": {"input": "2", "output": "8", "cache_read": "0.2", "cache_write": null}
+}
