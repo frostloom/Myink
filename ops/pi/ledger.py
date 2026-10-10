@@ -3,6 +3,7 @@ from contextlib import contextmanager
 import json
 from pathlib import Path
 import sqlite3
+import time
 from typing import ContextManager
 
 from .contracts import Receipt, Record
@@ -76,13 +77,29 @@ class Ledger:
     def transaction(self) -> ContextManager[sqlite3.Connection]:
         connection = None
         try:
+            deadline = time.monotonic() + 30
             connection = sqlite3.connect(self.path, timeout=30, isolation_level=None)
             connection.row_factory = sqlite3.Row
-            connection.execute('PRAGMA journal_mode=WAL')
+            # SQLite can return BUSY immediately during the fresh-file WAL
+            # transition despite busy_timeout. Retry only this pre-BEGIN step.
+            while True:
+                remaining = max(0, deadline - time.monotonic())
+                connection.execute(f'PRAGMA busy_timeout={int(remaining * 1000)}')
+                try:
+                    connection.execute('PRAGMA journal_mode=WAL')
+                    break
+                except sqlite3.OperationalError as exc:
+                    remaining = deadline - time.monotonic()
+                    if getattr(exc, 'sqlite_errorcode', None) != sqlite3.SQLITE_BUSY or remaining <= 0:
+                        raise
+                    time.sleep(min(0.01, remaining))
             connection.execute('PRAGMA synchronous=FULL')
             connection.execute('PRAGMA recursive_triggers=ON')
             if connection.execute('PRAGMA recursive_triggers').fetchone()[0] != 1:
                 raise LedgerBlocked('ledger safeguards unavailable')
+            # WAL retries and BEGIN share the original contention wait budget.
+            remaining = max(0, deadline - time.monotonic())
+            connection.execute(f'PRAGMA busy_timeout={int(remaining * 1000)}')
             connection.execute('BEGIN IMMEDIATE')
             yield connection
             connection.commit()
