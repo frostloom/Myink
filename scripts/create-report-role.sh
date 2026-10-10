@@ -39,6 +39,9 @@ DO $$ BEGIN
     IF to_regclass('public.admission_intents') IS NOT NULL THEN
         REVOKE ALL ON public.admission_intents FROM myink_report;
     END IF;
+  IF to_regclass('public.maintenance_executions') IS NOT NULL THEN
+        REVOKE ALL ON public.maintenance_executions FROM myink_report;
+    END IF;
 END $$;
 ALTER DEFAULT PRIVILEGES FOR ROLE myink IN SCHEMA public
     GRANT SELECT ON TABLES TO myink_report;

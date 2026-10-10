@@ -2,7 +2,7 @@
 from __future__ import annotations
 import uuid
 from datetime import datetime
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, Integer, JSON, String, Uuid, func
+from sqlalchemy import BigInteger, Boolean, Float, ForeignKey, CheckConstraint, DateTime, Integer, JSON, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 from myink.models.base import Base
 
@@ -38,3 +38,19 @@ class AdmissionIntent(Base):
     gate_state: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
     publication_state: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class MaintenanceExecution(Base):
+    """Private per-task execution fence; deployment identity is independent."""
+    __tablename__ = "maintenance_executions"
+    task_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("tasks.id", ondelete="CASCADE"), primary_key=True)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    execution_generation: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    owner_token: Mapped[str | None] = mapped_column(String(64))
+    epoch: Mapped[str | None] = mapped_column(String(64))
+    deployment_generation: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    state: Mapped[str] = mapped_column(String(32), nullable=False, default="running")
+    requested_at: Mapped[float | None] = mapped_column(Float)
+    active_nodes: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    completed_nodes: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    receipt: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)

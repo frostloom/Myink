@@ -27,6 +27,7 @@ from myink.config import settings
 from myink.admin_observability import capture, capture_detail
 from myink.observability import run_provenance, run_measurement
 from myink.context_budget import ContextBudgetExceeded, estimate_tokens
+from myink.maintenance_pause import MaintenancePaused
 from myink.db import tenant_session
 from myink.memory import repository as repo
 from myink.memory.correction import apply_memory_removal
@@ -430,7 +431,7 @@ def _llm_checked(db: Session, state: ChapterState, node: str, role: str, chain: 
             if streamer is not None:
                 streamer.complete(value if node == "plan_chapter" else None)
             return resp, tool_trace, value, None
-        except (TaskBudgetPaused, TaskBudgetUnavailable):
+        except (MaintenancePaused, TaskBudgetPaused, TaskBudgetUnavailable):
             raise
         except Exception as exc:
             last_exc = f"{type(exc).__name__}: {exc}"
@@ -1387,7 +1388,7 @@ def node_summarize(state: ChapterState) -> ChapterState:
             if not text:
                 return {}
             ch.summary = text
-    except (TaskBudgetPaused, TaskBudgetUnavailable):
+    except (MaintenancePaused, TaskBudgetPaused, TaskBudgetUnavailable):
         raise
     except Exception as exc:
         logger.warning("章节摘要生成失败（保留启发式）: %s", exc)
@@ -1722,7 +1723,7 @@ def _index_embedding(db: Session, *, project_id: uuid.UUID, level: str,
         PgvectorStore().upsert(db, project_id=project_id, level=level, source_id=source_id,
                                source_chapter=source_chapter,
                                model_version=model_version, embedding=emb)
-    except (TaskBudgetPaused, TaskBudgetUnavailable):
+    except (MaintenancePaused, TaskBudgetPaused, TaskBudgetUnavailable):
         raise
     except Exception as exc:
         logger.warning("向量化失败（level=%s），跳过索引（不影响落库）: %s", level, exc)
@@ -1978,7 +1979,7 @@ def reflexion_for_chapter_window(*, project_id: str, end_chapter: int, task_id: 
             inserted, skipped = _persist_lessons(db, project_id, task_id, start, lessons, new_findings)
             return {"reflexion": {"findings": len(findings), "recurrences": recurrences,
                                   "lessons": inserted, "skipped_duplicates": skipped}}
-    except (TaskBudgetPaused, TaskBudgetUnavailable):
+    except (MaintenancePaused, TaskBudgetPaused, TaskBudgetUnavailable):
         raise
     except Exception as exc:
         logger.warning("章节窗口复盘失败（不阻塞任务）: %s", exc)

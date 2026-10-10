@@ -23,8 +23,9 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
 from myink.db import new_session, tenant_session
-from myink.maintenance import require_admission_open, register_admission, intent_outcome
+from myink.maintenance import lock_maintenance, require_admission_open, register_admission, intent_outcome
 from myink.models import Project, Task
+from myink.maintenance_pause import (bind_execution, authorized_node, guard_maintenance, fence_effect, MaintenancePaused, READ_ONLY_TOOLS)
 from myink.models.task_budget import TaskBudget, TaskBudgetAttempt, TaskBudgetCall
 
 LEASE_SECONDS = 60
@@ -105,6 +106,10 @@ def ensure_task_budget(task_id, project_id, user_id, snapshot: dict | None) -> N
 
 
 def _locked(db, task_id) -> TaskBudget | None:
+    if _SCOPE.get() is None:
+        lock_maintenance(db)
+        db.scalar(select(Task).where(Task.id == uuid.UUID(str(task_id))).with_for_update())
+    fence_effect(db)
     return db.scalar(select(TaskBudget).where(
         TaskBudget.task_id == uuid.UUID(str(task_id))).with_for_update())
 
@@ -146,7 +151,15 @@ def renew_budget(task_id, owner_token) -> None:
 
 def release_budget(task_id, owner_token) -> None:
     with _ledger(task_id) as db:
-        row = _locked(db, task_id)
+        lock_maintenance(db)
+        db.scalar(select(Task).where(Task.id==uuid.UUID(str(task_id))).with_for_update())
+        from myink.maintenance_pause import _SCOPE as execution_scope
+        from myink.models.maintenance import MaintenanceExecution
+        execution=execution_scope.get()
+        current=db.get(MaintenanceExecution,uuid.UUID(str(task_id)))
+        if execution and (current.owner_token!=execution.owner or current.execution_generation!=execution.generation):
+            return
+        row = db.scalar(select(TaskBudget).where(TaskBudget.task_id==uuid.UUID(str(task_id))).with_for_update())
         if row is None or row.owner_token != owner_token:
             return
         _accrue(row, time.time())
@@ -206,7 +219,7 @@ class AttemptPermit:
 
 
 @contextmanager
-def bind_task_budget(task_id, owner_token):
+def _bind_task_budget(task_id, owner_token):
     managed = claim_budget(task_id, owner_token)
     token = _SCOPE.set(BudgetScope(str(task_id), owner_token) if managed else None)
     stopped = threading.Event()
@@ -230,6 +243,13 @@ def bind_task_budget(task_id, owner_token):
         _SCOPE.reset(token)
         if managed:
             release_budget(task_id, owner_token)
+
+
+@contextmanager
+def bind_task_budget(task_id, owner_token):
+    with bind_execution(task_id, owner_token):
+        with _bind_task_budget(task_id, owner_token):
+            yield
 
 
 @contextmanager
@@ -527,8 +547,9 @@ def budget_node(function, name=None):
     def wrapped(state, *args, **kwargs):
         operation = operation_for(state, name or function.__name__)
         with bind_budget_operation(operation):
-            guard_budget(operation)
-            return function(state, *args, **kwargs)
+            with authorized_node(operation):
+                guard_budget(operation)
+                return function(state, *args, **kwargs)
     return wrapped
 
 
@@ -536,6 +557,7 @@ def budget_llm(function):
     @wraps(function)
     def wrapped(db, state, node, *args, **kwargs):
         with bind_budget_operation(operation_for(state, node)):
+            guard_maintenance(operation_for(state, node))
             guard_budget()
             return function(db, state, node, *args, **kwargs)
     return wrapped
@@ -581,11 +603,15 @@ def budget_tool_call(identity, execute):
     scope = _SCOPE.get()
     if scope is None:
         return execute()
+    from myink.workflow.tools import _EXECUTORS
+    if identity.get("name") not in READ_ONLY_TOOLS or identity.get("name") not in _EXECUTORS:
+        raise TaskBudgetUnavailable("tool lacks a verified effect contract")
     key = "tool:" + hashlib.sha256(json.dumps([_OPERATION.get(), identity],
                                              sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     saved = _load_progress(scope.task_id, key)
     if saved is not None:
         return saved["result"]
+    guard_maintenance("tool:" + identity["name"])
     guard_budget()
     result = execute()
     _save_progress(scope.task_id, key, {"result": result})
@@ -594,6 +620,7 @@ def budget_tool_call(identity, execute):
 
 def record_budget_pause(task_id, exc, *, expected_owner=None):
     with _ledger(task_id) as db:
+        lock_maintenance(db)
         task = db.scalar(select(Task).where(Task.id == uuid.UUID(str(task_id))).with_for_update())
         row = _locked(db, task_id)
         if task.status == "cancelled":
@@ -631,6 +658,8 @@ def budget_execution(function):
         try:
             with bind_task_budget(task_id, owner):
                 return function(*args, **kwargs)
+        except MaintenancePaused:
+            raise
         except (TaskBudgetPaused, TaskBudgetUnavailable) as exc:
             record_budget_pause(task_id, exc, expected_owner=owner)
             raise
