@@ -14,6 +14,15 @@ def test_incompatible_protocol_rejected():
     assert rejected, 'incompatible candidate must be refused'
 
 
+@pytest.mark.parametrize('identity',[{'serialization':'unsafe-new-serializer'}, {'state_family':'new-mutating-workflow'}])
+def test_new_serializer_and_state_family_are_rejected(identity):
+    from myink.maintenance_pause import validate_compatibility,PROTOCOL
+    rejected=False
+    try:validate_compatibility({**PROTOCOL,**identity})
+    except ValueError:rejected=True
+    assert rejected, 'unsupported serialized candidate state must be rejected'
+
+
 CASES = ('chapter','short','batch','plan','review','tool')
 
 
