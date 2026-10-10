@@ -20,15 +20,24 @@ def _expire_during_entered_transport(ledger, policy, monkeypatch, send):
     """Exercise acquisition expiry after real reservation, independent of disk speed."""
     import threading
     import time
+    import ops.pi.model_gateway as gateway
     elapsed = [0.0]
     wall_start, monotonic_start = time.time(), time.monotonic()
     monkeypatch.setattr(time, 'time', lambda: wall_start + elapsed[0])
     monkeypatch.setattr(time, 'monotonic', lambda: monotonic_start + elapsed[0])
     entered, release, finished = threading.Event(), threading.Event(), threading.Event()
     results, errors = [], []
+    producer_returned = threading.Event()
+    real_receive = gateway._DeadlineUpstream.receive
+    def receive_after_transport_entry(upstream):
+        assert entered.wait(3), 'transport entry precedes remaining acquisition wait'
+        elapsed[0] = 119.95  #50ms remains on the original120s permit.
+        return real_receive(upstream)
+    monkeypatch.setattr(gateway._DeadlineUpstream, 'receive', receive_after_transport_entry)
     def blocked_send(body, timeout):
         entered.set()
-        release.wait(3)
+        release.wait()  # Only finally may release the producer.
+        producer_returned.set()
         return send(body, timeout)
     def forward():
         try:
@@ -42,13 +51,15 @@ def _expire_during_entered_transport(ledger, policy, monkeypatch, send):
     caller.start()
     try:
         assert entered.wait(3), 'the actual transport acquisition must be entered'
-        assert not finished.is_set(), 'transport acquisition must still be blocked'
-        elapsed[0] = 120.001
-        release.set()
-        assert finished.wait(3)
+        assert not producer_returned.is_set(), 'the transport producer must remain blocked'
+        assert finished.wait(3), 'caller acquisition must return while producer stays blocked'
+        assert not release.is_set() and not producer_returned.is_set()
         assert errors == []
         assert len(results) == 1 and results[0].status_code == 502
-        assert ledger.get(results[0].attempt_id)['payload']['deadline'] == wall_start + 120
+        record = ledger.get(results[0].attempt_id)
+        assert record['payload']['deadline'] == wall_start + 120
+        assert record['status'] == 'uncertain'
+        assert totals(ledger, 'local-trial-1') == (1, 10000)
         return results[0]
     finally:
         release.set()
