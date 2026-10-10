@@ -1,4 +1,5 @@
 import argparse
+from datetime import datetime
 from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -176,8 +177,17 @@ def main(argv: list[str] | None = None) -> int:
     gateway.add_argument('--credential-file', required=True, type=Path)
     gateway.add_argument('--host', default='127.0.0.1')
     gateway.add_argument('--port', type=int, default=8765)
+    schedule = commands.add_parser('schedule')
+    schedule.add_argument('--clock', required=True)
+    schedule.add_argument('--simulate', required=True, action='store_true')
+    schedule.add_argument('--policy', type=Path, default=Path(__file__).with_name('policy.example.json'))
     args = parser.parse_args(argv)
     try:
+        if args.command == 'schedule':
+            from .schedule import next_action
+            result = next_action(None, datetime.fromisoformat(args.clock), {}, load_policy(args.policy))
+            print(json.dumps(result))
+            return 0
         state = args.state_dir
         if not state_path_allowed(state):
             raise LedgerBlocked('state directory must be an explicit absolute E drive path')

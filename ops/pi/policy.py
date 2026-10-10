@@ -24,6 +24,13 @@ class Policy:
     max_tokens: int
     price_source: str
     prices: dict
+    grace_seconds: int
+    soft_production_files: int
+    soft_production_lines: int
+    hard_tracked_files: int
+    hard_production_lines: int
+    protected_paths: list[str]
+    high_risk_types: list[str]
 
 
 def rate(value):
@@ -56,7 +63,8 @@ def load_policy(path):
         if type(getattr(p, key)) is not bool:
             raise ValueError('invalid policy flag')
     limits = dict(max_attempts=100, budget_microyuan=10000000, timeout_seconds=120,
-                  max_body_bytes=1048576, input_token_bound=1000000, max_tokens=1000000)
+                  grace_seconds=900, soft_production_files=3, soft_production_lines=150,
+                  hard_tracked_files=8, hard_production_lines=300, max_body_bytes=1048576, input_token_bound=1000000, max_tokens=1000000)
     for key, maximum in limits.items():
         value = getattr(p, key)
         if type(value) is not int or not 0 < value <= maximum:
@@ -80,4 +88,16 @@ def load_policy(path):
             rate(value)
         elif key != 'cache_write':
             raise ValueError('missing required price')
+    required = {'ops/pi', '.github', 'AGENTS.md', '.agents', '.codex', 'docs/team-workflow.md'}
+    if (not isinstance(p.protected_paths, list) or any(not isinstance(v, str) for v in p.protected_paths)
+            or not required.issubset(p.protected_paths)
+            or any(not isinstance(v, str) or not v or '\\' in v or ':' in v
+                   or any(part in ('', '.', '..') for part in v.split('/')) for v in p.protected_paths)
+            or p.soft_production_files > p.hard_tracked_files
+            or p.soft_production_lines > p.hard_production_lines):
+        raise ValueError('invalid plan policy')
+    risky = {'schema', 'authentication', 'billing', 'external_api', 'infrastructure', 'deployment', 'policy'}
+    if (not isinstance(p.high_risk_types, list) or any(not isinstance(v, str) for v in p.high_risk_types)
+            or not risky.issubset(p.high_risk_types)):
+        raise ValueError('invalid high risk policy')
     return p
