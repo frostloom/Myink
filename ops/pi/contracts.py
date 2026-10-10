@@ -19,6 +19,6 @@ class Identity:
 @dataclass(frozen=True)
 class Receipt:
     operation_id: str
-    status: Literal['done', 'failed', 'uncertain', 'blocked']
+    status: Literal['pending', 'done', 'failed', 'uncertain', 'blocked']
     evidence: Record
     schema_version: int = field(default=1, init=False)

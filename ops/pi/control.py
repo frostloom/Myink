@@ -189,6 +189,9 @@ def main(argv: list[str] | None = None) -> int:
     schedule.add_argument('--clock', required=True)
     schedule.add_argument('--simulate', required=True, action='store_true')
     schedule.add_argument('--policy', type=Path, default=Path(__file__).with_name('policy.example.json'))
+    report = commands.add_parser('report')
+    report.add_argument('--state-dir', required=True, type=Path)
+    report.add_argument('--output', required=True, type=Path)
     args = parser.parse_args(argv)
     try:
         if args.command == 'schedule':
@@ -201,6 +204,20 @@ def main(argv: list[str] | None = None) -> int:
             raise LedgerBlocked('state directory must be an explicit absolute E drive path')
         state.mkdir(parents=True, exist_ok=True)
         ledger = Ledger(state / 'ledger.sqlite')
+        if args.command == 'report':
+            from .reporting import render_report, PENDING_ACCEPTANCE
+            if not state_path_allowed(args.output):
+                raise LedgerBlocked('report output must be an explicit absolute E drive path')
+            with ledger.transaction() as connection:
+                events = [dict(kind=row['kind'], payload=ledger._decode(row['payload']))
+                          for row in connection.execute('SELECT kind,payload FROM events ORDER BY id')]
+            snapshots = [event['payload'] for event in events if event['kind'] == 'snapshot']
+            args.output.write_text(render_report(events, snapshots), encoding='utf-8')
+            index = dict(schema_version=1, event_count=len(events), snapshot_count=len(snapshots),
+                         pending_acceptance=PENDING_ACCEPTANCE, next_action='review blockers and gather pending acceptance evidence')
+            args.output.with_suffix('.json').write_text(json.dumps(index, ensure_ascii=False, indent=2), encoding='utf-8')
+            print(json.dumps(index, ensure_ascii=False))
+            return 0
         if args.command == 'model-gateway':
             policy = load_policy(args.policy)
             if not live_ready(policy) or not args.credential_file.is_absolute() or not 1 <= args.port <= 65535:
