@@ -115,3 +115,19 @@ def test_controlled_guest_and_windows_hosts_denied(lab_identity):
     wrongscope="import urllib.request,urllib.error; r=urllib.request.Request('http://172.29.220.2:8765/mock',headers={'Authorization':'Bearer synthetic-b7-token','X-Pi-Scope':'foreign'});\ntry: urllib.request.urlopen(r,timeout=2)\nexcept urllib.error.HTTPError as e: print(e.code)"
     result=docker('exec',lab_identity['sandbox'],'python','-c',wrongscope)
     assert result.stdout.strip()=='403'
+
+
+def test_inherited_foreign_database_urls_block_before_any_db_setup(tmp_path):
+    import os,sys
+    hook=tmp_path/'sitecustomize.py'
+    sentinel=tmp_path/'database-setup-called'
+    hook.write_text("import sqlalchemy\nfrom pathlib import Path\ndef blocked(*a,**kw):\n    Path("+repr(str(sentinel))+").write_text('unexpected DB setup')\n    raise AssertionError('DB fixture must not be called')\nsqlalchemy.create_engine=blocked\n")
+    environment=dict(os.environ)
+    environment['PYTHONPATH']=str(tmp_path)+os.pathsep+environment['PYTHONPATH']
+    environment['DATABASE_URL']='postgresql+psycopg://foreign@192.0.2.4/production'
+    environment['ADMIN_DATABASE_URL']=environment['DATABASE_URL']
+    result=subprocess.run([sys.executable,'-m','pytest','ops/pi/tests/integration/test_db_reader_lab.py','-q','--pi-lab'],
+                          env=environment,capture_output=True,text=True,timeout=60)
+    assert result.returncode==4,result.stdout+result.stderr
+    assert 'fresh owned operation/runtime and fixture endpoint proof required' in result.stderr
+    assert not sentinel.exists(),'foreign URL reached database fixture setup'

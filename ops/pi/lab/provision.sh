@@ -12,29 +12,10 @@ mode=${1:-up}
 if [[ $mode == preflight ]]; then
     cd "$base/trusted-source"
     export PYTHONPATH=$PWD/src:$PWD
-    /opt/myink-pi-venv/bin/python - "$base/lab-env.json" <<'PY'
-import json,sys,subprocess
-from ops.pi.resources import sample_resources,verify_limits
-r=json.load(open(sys.argv[1]))
-for group in ('agent','heavy'):
-    proof=sample_resources(group)
-    if not verify_limits(proof,group): raise SystemExit('kernel proof missing')
-    r[group+'_proof']=proof
-r['kernel_proof']=r['heavy_proof']
-for name in r['test_containers']+[r['sandbox'],r['gateway']]:
-    info=json.loads(subprocess.check_output(['docker','inspect',name]))[0]
-    if info['Config']['Labels'].get('myink.pi.lab')!=r['lab_uuid'] or not info['State']['Running']:
-        raise SystemExit('owned running resource proof missing')
-subprocess.run(['iptables','-C','INPUT','-i','pi-lab-agent','-j','DROP'],check=True)
-subprocess.run(['iptables','-C','DOCKER-USER','-i','pi-lab-agent','-j','MYINKPI_B7'],check=True)
-net=json.loads(subprocess.check_output(['docker','network','inspect',r['project']+'-agent']))[0]
-if not net['Internal'] or net['EnableIPv6']: raise SystemExit('private network mismatch')
-info=json.loads(subprocess.check_output(['docker','inspect',r['sandbox']]))[0]
-if info['Config']['User']!='65534:65534' or not info['HostConfig']['ReadonlyRootfs'] or info['HostConfig']['CapDrop']!=['ALL']:
-    raise SystemExit('sandbox privilege mismatch')
-if any(m['Source'] not in ['/opt/myink-pi-lab/candidates/'+r['lab_uuid'],'/opt/myink-pi-lab/policy'] or m['RW'] for m in info['Mounts']):
-    raise SystemExit('candidate mount mismatch')
-print(json.dumps(r))
+    /opt/myink-pi-venv/bin/python - <<'PY'
+import json
+from ops.pi.lab.verify import verify_runtime
+print(json.dumps(verify_runtime()))
 PY
     exit 0
 fi
@@ -69,12 +50,22 @@ PY
     iptables -X MYINKPI_B7
     exit 0
 fi
-if [[ $mode == prepare-probes ]]; then
-    if ! systemctl is-active --quiet myinkpi-guest-host-probe; then
-        systemctl reset-failed myinkpi-guest-host-probe 2>/dev/null || true
-        systemd-run --quiet --unit=myinkpi-guest-host-probe --slice=myinkpi-infra.slice -p RuntimeMaxSec=180 \
-          /opt/myink-pi-venv/bin/python "$base/gateway/server.py" 8080
+if [[ $mode == prepare-probes || $mode == stop-probes ]]; then
+    operation=${2:?}; lab_uuid=${3:?}
+    [[ $operation =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]
+    [[ $(/opt/myink-pi-venv/bin/python -c 'import json;print(json.load(open("/opt/myink-pi-lab/lab-env.json"))["lab_uuid"])') == "$lab_uuid" ]]
+    probe="myinkpi-host-probe-$operation"
+    description="myinkpi:$lab_uuid:$operation"
+    if [[ $mode == stop-probes ]]; then
+        if systemctl is-active --quiet "$probe"; then
+            [[ $(systemctl show "$probe" -p Description --value) == "$description" ]]
+            [[ $(systemctl show "$probe" -p ControlGroup --value) == /myinkpi.slice/myinkpi-infra.slice/* ]]
+            systemctl stop "$probe"
+        fi
+        exit 0
     fi
+    systemd-run --quiet --unit="$probe" --description="$description" --slice=myinkpi-infra.slice -p RuntimeMaxSec=180 \
+      /opt/myink-pi-venv/bin/python "$base/gateway/server.py" 8080
     /opt/myink-pi-venv/bin/python - <<'PY'
 from pathlib import Path
 import json,socket,subprocess,urllib.request
@@ -91,16 +82,13 @@ PY
     exit 0
 fi
 if [[ $mode == stop-heavy ]]; then
-    echo 1 > /sys/fs/cgroup/myinkpi.slice/myinkpi-heavy.slice/cgroup.kill
-    /opt/myink-pi-venv/bin/python - <<'PY'
-import pathlib,time,json
-root=pathlib.Path('/sys/fs/cgroup/myinkpi.slice/myinkpi-heavy.slice')
-for _ in range(30):
-    pids=[p for f in root.rglob('cgroup.procs') for p in f.read_text().split()]
-    if not pids: break
-    time.sleep(.1)
-if pids: raise SystemExit('heavy group not empty')
-print(json.dumps({'heavy_empty':True,'cgroup_events':(root/'cgroup.events').read_text().strip()}))
+    exec 8>"$base/ownership.lock"
+    flock -w 10 8 || exit 73
+    export PYTHONPATH="$base/trusted-source/src:$base/trusted-source"
+    /opt/myink-pi-venv/bin/python - "${2:?}" "${3:?}" <<'PY'
+import json,sys
+from ops.pi.lab.verify import cancel_owned
+print(json.dumps(cancel_owned(sys.argv[1],sys.argv[2])))
 PY
     exit 0
 fi
@@ -125,12 +113,15 @@ if [[ $mode == execute ]]; then
     [[ -z $(systemctl list-units 'myinkpi-test-*' --state=running --no-legend --no-pager) ]] || exit 73
     unit="myinkpi-test-$operation"
     export PYTHONPATH="$base/trusted-source/src:$base/trusted-source"
+    exec 8>"$base/ownership.lock"
+    flock -w 10 8 || exit 73
     /opt/myink-pi-venv/bin/python - "$unit" <<'PY'
 from pathlib import Path
 import sys,json
 base=Path('/opt/myink-pi-lab')
 r=json.loads((base/'lab-env.json').read_text())
-(base/'current-operation.json').write_text(json.dumps({'unit':sys.argv[1],'lab_uuid':r['lab_uuid'],'group':'heavy','operation_id':sys.argv[1].removeprefix('myinkpi-test-')}))
+from ops.pi.lab.verify import _write_owner
+_write_owner({'unit':sys.argv[1],'lab_uuid':r['lab_uuid'],'group':'heavy','operation_id':sys.argv[1].removeprefix('myinkpi-test-'),'status':'active'})
 PY
     watcher="myinkpi-watch-${unit#myinkpi-test-}"
     systemd-run --quiet --unit="$watcher" --slice=myinkpi-infra.slice -p RuntimeMaxSec="$((timeout+15))" \
@@ -138,9 +129,21 @@ PY
       /usr/bin/env PYTHONPATH="$PYTHONPATH" PYTHONPYCACHEPREFIX="$PYTHONPYCACHEPREFIX" \
       /opt/myink-pi-venv/bin/python -m ops.pi.resources watch-guest "$unit" "$timeout"
     # Stop only this watcher before releasing mutex, preventing a stale watcher from killing the next run.
-    trap 'systemctl stop "$watcher" >/dev/null 2>&1 || true' EXIT
+    finish_operation() {
+        systemctl stop "$watcher" >/dev/null 2>&1 || true
+        flock -w 10 8 || return 1
+        /opt/myink-pi-venv/bin/python - "$operation" <<'PY'
+from pathlib import Path
+import sys,json
+p=Path('/opt/myink-pi-lab/current-operation.json');r=json.loads(p.read_text())
+if r['operation_id']==sys.argv[1] and r['status']=='active':
+    from ops.pi.lab.verify import _write_owner
+    r['status']='completed';_write_owner(r)
+PY
+        flock -u 8
+    }
+    trap finish_operation EXIT
     # Bound the test controller and every descendant; fixture Docker scopes have explicit same parent.
-    set +e
     systemd-run --quiet --wait --pipe --collect --unit="$unit" \
       --slice=myinkpi-heavy.slice -p RuntimeMaxSec="$timeout" -p OOMScoreAdjust=-900 \
       --working-directory="$base/trusted-source" \
@@ -150,9 +153,16 @@ PY
       DATABASE_URL="$DATABASE_URL" ADMIN_DATABASE_URL="$ADMIN_DATABASE_URL" REDIS_URL="$REDIS_URL" \
       AMQP_URL="$AMQP_URL" QUEUE_PREFIX="$QUEUE_PREFIX" JWT_SECRET="$JWT_SECRET" EMBED_ENABLED=0 \
       PI_LAB_ENV="$base/lab-env.json" \
-      /opt/myink-pi-venv/bin/python "${python_args[@]}"
-    result=$?
-    set -e
+      /opt/myink-pi-venv/bin/python "${python_args[@]}" &
+    runner=$!
+    # Cancellation and a later start share this lock: publish/start is one guarded transition.
+    for i in $(seq 1 50); do
+        systemctl is-active --quiet "$unit" && break
+        kill -0 "$runner" 2>/dev/null || break
+        sleep .1
+    done
+    flock -u 8
+    if wait "$runner"; then result=0; else result=$?; fi
     for i in $(seq 1 30); do systemctl is-active --quiet "$watcher" || break; sleep .1; done
     systemctl stop "$watcher" >/dev/null 2>&1 || true
     exit "$result"
@@ -288,6 +298,12 @@ r=dict(schema_version=1,status='done',lab_uuid=uuid,project=project,daemon_id='3
        evidence_dir=evidence,python_image=image,kernel_proof=sample_resources('heavy'))
 open(path,'w').write(json.dumps(r,indent=2))
 open(evidence+'/identity.json','w').write(json.dumps(r,indent=2))
+PY
+/opt/myink-pi-venv/bin/python - <<'PY'
+import json
+from pathlib import Path
+from ops.pi.lab.verify import freeze_runtime
+freeze_runtime(json.loads(Path('/opt/myink-pi-lab/lab-env.json').read_text()))
 PY
 chmod 600 "$base/lab-env.json"
 cp "$base/lab-env.json" /mnt/e/tools/myink-pi/state/lab-env.json

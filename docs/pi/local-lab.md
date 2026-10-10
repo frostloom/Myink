@@ -55,3 +55,26 @@ objects. Historical anonymous recovery volumes from the authorized cold copy are
 retained. No general Docker prune or distribution shutdown is performed. The
 scoped Windows keepalive is a bounded local trial dependency, separate from Pi;
 only its recorded PID/start time may be cleaned up by its trusted owner.
+
+Review fix round 1 strengthens adoption: a root-owned frozen manifest is compared
+with every intended running container's immutable ID, image, mounts, privilege,
+network/IP/DNS and resource configuration, and its actual host PID must be inside
+the required parent. Effective candidate chain contents and first scoped INPUT/
+DOCKER-USER rules (including fixture deny) are checked on each preflight. Listing
+order does not change mount identity. DNS loopback-only configuration is required.
+
+Windows cancellation passes immutable operation/lab identity. Start, cancellation
+and completion share an ownership lock; cancellation checks the current owner,
+active unit and exact heavy group under that lock before any kill, and refuses a
+late cancellation for a previous run. Setup uses the minimum remaining command
+budget and phase deadline, with native timeout bounds and operation-owned probe
+cleanup. Guest monitoring remains separate infrastructure.
+
+Selected DB/integration tests require the fixed root-owned native initializer,
+a live owned operation containing the pytest process, a fresh runtime check, and
+full synthetic URLs bound to actual owned Docker loopback ports before fixtures.
+A supplied JSON receipt alone cannot authorize DDL or fixture writes. These fixed
+B7 initializer checks do not authorize arbitrary Pi candidate source; B12/C15
+must isolate candidate-authored checks in containers. Linux full ops offline
+validation remains pending for that later whole-group validation; no generic or
+ungated offline executor command was added.

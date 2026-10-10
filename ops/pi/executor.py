@@ -92,6 +92,23 @@ def execute(command_id, args, deadline, ledger):
         return blocked('trusted_windows_controller_required')
     process = None
     host_probe = None
+    identity = None
+    probes_started = False
+    def remaining(cap=None):
+        budget = min(COMMANDS[command_id] - (time.monotonic() - tool_started),
+                     (deadline - datetime.now(timezone.utc)).total_seconds())
+        if budget <= 0:
+            raise subprocess.TimeoutExpired(command_id, 0)
+        return min(budget, cap) if cap is not None else budget
+    def setup(mode, *args, cap):
+        budget=remaining(cap)
+        command=['wsl.exe','-d','MyinkPiLab','-u','root','--','timeout','--kill-after=1s',str(budget)+'s',
+                 '/opt/myink-pi-lab/provision.sh',mode,*args]
+        try:
+            return subprocess.run(command,capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=remaining(cap),check=True)
+        except subprocess.CalledProcessError as error:
+            if error.returncode==124: raise subprocess.TimeoutExpired(mode,budget) from error
+            raise
     try:
         state = Path(args['state_dir'])
         if state.drive.lower() != 'e:' or not state.is_absolute() or '..' in state.parts:
@@ -99,7 +116,7 @@ def execute(command_id, args, deadline, ledger):
         identity = json.loads((state / 'lab-env.json').read_text(encoding='utf-8'))
         if identity['daemon_id'] != DAEMON_ID or identity['distribution'] != 'MyinkPiLab':
             return blocked('foreign_lab')
-        preflight = subprocess.run(['wsl.exe', '-d', 'MyinkPiLab', '-u', 'root', '--', '/opt/myink-pi-lab/provision.sh', 'preflight'], capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=120, check=True)
+        preflight = setup('preflight', cap=120)
         fresh = json.loads(preflight.stdout)
         if fresh.get('lab_uuid') != identity['lab_uuid'] or fresh.get('daemon_id') != DAEMON_ID:
             return blocked('foreign_lab')
@@ -109,6 +126,7 @@ def execute(command_id, args, deadline, ledger):
         if selection not in ('b7', 'provenance', 'bootstrap', 'watchdog'):
             return blocked('unknown_test_selection')
         if selection == 'b7' and command_id in ('test', 'probe'):
+            remaining()
             probe_script = Path(__file__).parent / 'lab' / 'host-probe.py'
             host_probe = subprocess.Popen([sys.executable, str(probe_script), str(state)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW)
             probe_file = state.parent / 'evidence' / 'b7-host-server.json'
@@ -117,17 +135,18 @@ def execute(command_id, args, deadline, ledger):
                     break
                 if host_probe.poll() is not None:
                     return blocked('host_probe_failed')
-                time.sleep(.05)
+                time.sleep(min(.05, remaining()))
             else:
                 return blocked('host_probe_failed')
-            subprocess.run(['wsl.exe', '-d', 'MyinkPiLab', '-u', 'root', '--', '/opt/myink-pi-lab/provision.sh', 'prepare-probes'], capture_output=True, timeout=30, check=True)
-        remaining = min(COMMANDS[command_id] - (time.monotonic() - tool_started), (deadline - datetime.now(timezone.utc)).total_seconds())
-        if remaining < 1:
+            probes_started = True
+            setup('prepare-probes', operation, identity['lab_uuid'], cap=30)
+        run_budget = remaining()
+        if run_budget < 1:
             return blocked('deadline_expired')
         ledger.append_event('tool_intent', {'operation_id': operation, 'command_id': command_id, 'lab_uuid': identity['lab_uuid']})
         # Script is installed root-owned from reviewed source; all args are finite IDs.
         command = ['wsl.exe', '-d', 'MyinkPiLab', '-u', 'root', '--', '/opt/myink-pi-lab/provision.sh',
-                   'execute', command_id, selection, str(int(remaining)), operation]
+                   'execute', command_id, selection, str(int(run_budget)), operation]
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         watch, start = MemoryWatchdog(), time.monotonic()
         samples = []
@@ -137,11 +156,11 @@ def execute(command_id, args, deadline, ledger):
             samples.append(available)
             if watch.observe(available, time.monotonic()):
                 reason = 'host_low_memory'
-            if time.monotonic() - start >= remaining:
+            if time.monotonic() - start >= run_budget:
                 reason = 'deadline_expired'
             if reason:
                 termination = subprocess.run(['wsl.exe', '-d', 'MyinkPiLab', '-u', 'root', '--',
-                                '/opt/myink-pi-lab/provision.sh', 'stop-heavy'], timeout=30, check=True,
+                                '/opt/myink-pi-lab/provision.sh', 'stop-heavy', operation, identity['lab_uuid']], timeout=30, check=True,
                                capture_output=True)
                 termination_proof = json.loads(termination.stdout)
                 process.kill()
@@ -170,15 +189,19 @@ def execute(command_id, args, deadline, ledger):
         (state.parent / 'evidence' / f'{operation}.receipt.json').write_text(json.dumps({'operation_id': operation, 'status': receipt.status, 'evidence': evidence}, indent=2), encoding='utf-8')
         ledger.append_event('tool_receipt', {'operation_id': operation, 'status': receipt.status, **evidence})
         return receipt
+    except subprocess.TimeoutExpired:
+        return blocked('deadline_expired')
     except (KeyError, ValueError, OSError, subprocess.SubprocessError, RuntimeError):
         return blocked('lab_preflight_failed')
     finally:
+        if probes_started:
+            subprocess.run(['wsl.exe','-d','MyinkPiLab','-u','root','--','/opt/myink-pi-lab/provision.sh','stop-probes',operation,identity['lab_uuid']],timeout=10,capture_output=True,check=False)
         if host_probe is not None and host_probe.poll() is None:
             host_probe.terminate()
-            host_probe.wait(timeout=10)
+            host_probe.wait(timeout=2)
         if process is not None and process.poll() is None:
             try:
-                subprocess.run(['wsl.exe', '-d', 'MyinkPiLab', '-u', 'root', '--', '/opt/myink-pi-lab/provision.sh', 'stop-heavy'], timeout=30, capture_output=True, check=True)
+                subprocess.run(['wsl.exe', '-d', 'MyinkPiLab', '-u', 'root', '--', '/opt/myink-pi-lab/provision.sh', 'stop-heavy', operation, identity['lab_uuid']], timeout=30, capture_output=True, check=True)
             finally:
                 process.kill()
                 process.communicate(timeout=30)
