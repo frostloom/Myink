@@ -11,7 +11,9 @@ pytestmark = pytest.mark.pi_lab
 
 @pytest.fixture
 def metric_engine():
-    admin = create_engine(os.environ['ADMIN_DATABASE_URL'])
+    from ops.pi.lab.verify import verify_test_environment
+    _,environment=verify_test_environment()
+    admin = create_engine(environment['ADMIN_DATABASE_URL'])
     with admin.begin() as c:
         c.execute(text('CREATE SCHEMA IF NOT EXISTS pi_metrics'))
         c.execute(text("DO $$ BEGIN CREATE ROLE pi_b7_metrics LOGIN PASSWORD 'synthetic-metrics-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS; EXCEPTION WHEN duplicate_object THEN NULL; END $$"))
@@ -23,7 +25,7 @@ def metric_engine():
         c.execute(text("ALTER ROLE pi_b7_metrics SET statement_timeout='5s'"))
         c.execute(text("ALTER ROLE pi_b7_metrics SET search_path=pi_metrics,pg_catalog"))
     from sqlalchemy.engine import make_url
-    url = make_url(os.environ['ADMIN_DATABASE_URL']).set(username='pi_b7_metrics',password='synthetic-metrics-only')
+    url = make_url(environment['ADMIN_DATABASE_URL']).set(username='pi_b7_metrics',password='synthetic-metrics-only')
     engine = create_engine(url)
     yield admin,engine
     engine.dispose(); admin.dispose()

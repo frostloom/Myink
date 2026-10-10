@@ -1,7 +1,6 @@
 """Explicit opt-in gates run after pytest marker deselection."""
 import json
-import os
-from pathlib import Path
+import subprocess
 import pytest
 
 
@@ -22,15 +21,21 @@ def pytest_collection_modifyitems(config, items):
         # C14 has not accepted all B gates. Direct pytest cannot bypass it.
         raise pytest.UsageError('pi_live blocked: B acceptance and calibrated price/cumulative scope gates pending')
     if lab:
-        path = os.environ.get('PI_LAB_ENV', '')
         try:
-            receipt = json.loads(Path(path).read_text())
-            if receipt['daemon_id'] != '364e8400-3844-47e2-b86d-8b626332f61c' or receipt['status'] != 'done':
-                raise ValueError('unverified lab')
-        except (OSError, ValueError, KeyError):
-            raise pytest.UsageError('pi_lab blocked: successful private lab preflight required')
+            from ops.pi.lab.verify import verify_test_environment
+            if any(item.path.parent.name == 'integration' for item in lab):
+                identity,_ = verify_test_environment()
+            else:
+                # Windows installer/watchdog tests contain no DB fixture; still require fresh runtime.
+                result=subprocess.run(['wsl.exe','-d','MyinkPiLab','-u','root','--','/opt/myink-pi-lab/provision.sh','preflight'],capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=120,check=True)
+                identity=json.loads(result.stdout)
+            config._pi_lab_identity=identity
+        except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
+            reason=str(error) if isinstance(error,ValueError) else type(error).__name__
+            raise pytest.UsageError('pi_lab blocked: fresh owned operation/runtime and fixture endpoint proof required: '+reason)
+
 
 
 @pytest.fixture
-def lab_identity():
-    return json.loads(Path(os.environ['PI_LAB_ENV']).read_text())
+def lab_identity(request):
+    return request.config._pi_lab_identity
