@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import pytest
 from ops.pi.control import main
 
 
@@ -48,3 +49,22 @@ def test_cli_writes_markdown_and_index(tmp_path, monkeypatch, capsys):
 def test_unknown_measurement_cannot_be_replaced_with_legacy_cost():
     result = render([], [{'measurements': {'cost': {'availability': 'unknown', 'value': None}}, 'cost_cny': 0}])
     assert 'cost=unknown' in result and '0 CNY' not in result
+
+
+def test_legacy_zero_without_measurement_stays_unknown():
+    result = render([], [{'cost_cny': 0}])
+    assert 'cost=unknown' in result and '0 CNY' not in result
+
+
+def test_valid_measured_zero_remains_known():
+    result = render([], [{'measurements': {'cost': {'availability': 'measured', 'value': 0}}}])
+    assert 'cost=0 CNY' in result
+
+
+@pytest.mark.parametrize('suffix', ['.json', '.JSON'])
+def test_cli_rejects_json_output_before_writing(tmp_path, monkeypatch, suffix):
+    monkeypatch.setattr('ops.pi.control.state_path_allowed', lambda path: True)
+    output = tmp_path / ('daily' + suffix)
+    output.write_text('existing report', encoding='utf-8')
+    assert main(['report', '--state-dir', str(tmp_path), '--output', str(output)]) == 1
+    assert output.read_text(encoding='utf-8') == 'existing report'

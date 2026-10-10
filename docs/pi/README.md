@@ -13,7 +13,7 @@ WSL 对应 `/mnt/e/tools/myink-pi/state`；本轮状态、私有证据、依赖�
 ## 报告
 
 `python -m ops.pi.control report --state-dir E:/tools/myink-pi/state --output E:/tools/myink-pi/daily.md`
-输出 UTF-8 Markdown 与同名 `.json` 索引，目录须预先存在。CLI 返回下一动作、事件数、快照数与未验收项。
+输出 UTF-8 Markdown 与同名 `.json` 索引，目录须预先存在；`--output` 禁止使用 `.json` 扩展名（不区分大小写），避免报告与索引重名覆盖。CLI 返回下一动作、事件数、快照数与未验收项。
 账本追加 `snapshot` 事件携带 collect_snapshot 的安全汇总；报告只投影事件类型、操作 ID、状态及成本/配置/价格索引，保留每次失败，不以晚到成功覆盖。
 空账本示例：
 
