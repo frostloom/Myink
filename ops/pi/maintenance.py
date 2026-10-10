@@ -3,6 +3,7 @@ from dataclasses import asdict
 from datetime import datetime
 import hashlib
 import json
+import uuid
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 from .contracts import Identity, Receipt
@@ -21,11 +22,14 @@ def enter_maintenance(ledger: Ledger, expected: Identity, now: datetime) -> Rece
     ledger.intent(operation, "maintenance_admission", {"identity":identity, "maintenance_epoch":epoch,
                   "deadline":window["deadline"]})
     existing = ledger.get(operation)
-    if existing["status"] not in ("pending", "done"):
+    if existing["status"] not in ("pending", "done", "uncertain"):
         return Receipt(operation, existing["status"], existing["evidence"])
     evidence = {"maintenance_epoch":epoch, "deployment_generation":expected.generation,
                 "identity":identity, "deadline":window["deadline"], "verified":False}
-    revalidating = existing["status"] == "done"
+    revalidating = existing["status"] in ("done", "uncertain")
+    reconciling = existing["status"] == "uncertain"
+    if reconciling:
+        evidence["reconciliation_id"] = str(uuid.uuid4())
     status = "uncertain"
     try:
         with Session(get_admin_engine()) as db:
@@ -33,12 +37,17 @@ def enter_maintenance(ledger: Ledger, expected: Identity, now: datetime) -> Rece
             db.execute(text("SET LOCAL ROLE myink_maintenance_control"))
             db.execute(text("SET LOCAL lock_timeout = '5s'"))
             db.execute(text("SET LOCAL statement_timeout = '10s'"))
-            control = db.scalar(select(MaintenanceControl).where(MaintenanceControl.id == 1).with_for_update())
+            query = select(MaintenanceControl).where(MaintenanceControl.id == 1)
+            if revalidating:
+                db.execute(text("SET LOCAL transaction_read_only = on"))
+            else:
+                query = query.with_for_update()
+            control = db.scalar(query)
             if (not window["active"] or control is None
                     or control.deployment_id != expected.deployment_id or control.generation != expected.generation
                     or control.owner != expected.owner or control.image_ids != expected.image_ids
                     or (control.admission_closed and control.epoch != epoch)
-                    or (revalidating and (not control.admission_closed or not control.consumer_blocked
+                    or (revalidating and (control.epoch != epoch or not control.admission_closed or not control.consumer_blocked
                         or control.deadline != datetime.fromisoformat(window["deadline"])))):
                 status = "blocked"
                 evidence["reason"] = "identity_or_window_mismatch"
@@ -61,7 +70,10 @@ def enter_maintenance(ledger: Ledger, expected: Identity, now: datetime) -> Rece
         if revalidating:
             # The old terminal receipt stays immutable; current authority is a
             # separately recorded read-only identity check, never a cached grant.
-            ledger.append_event("maintenance_revalidation", {"operation_id":operation, "status":status, "evidence":evidence})
+            event = {"operation_id":operation, "status":status, "evidence":evidence}
+            if reconciling:
+                event.update(reconciliation_id=evidence["reconciliation_id"], source_status=existing["status"])
+            ledger.append_event("maintenance_reconciliation" if reconciling else "maintenance_revalidation", event)
         else:
             ledger.finish(receipt)
     except Exception:

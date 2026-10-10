@@ -168,7 +168,8 @@ if [[ $mode == execute ]]; then
     case "$command_id/$selection" in
       test/bootstrap|probe/watchdog) targets=() ;;
       probe/b7|test/b7) targets=(ops/pi/tests/integration/test_isolation.py) ;;
-      test/b8-red|test/b8-focused|test/b8-survival) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py) ;;
+      test/b8-red|test/b8-focused|test/b8-survival|test/b8-reconcile) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py) ;;
+      test/b8-ci-collection|test/b8-guarded-collection) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py) ;;
       test/b8) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py tests/test_enqueue_gates.py tests/test_task_budget_routes.py tests/test_manual_plan.py) ;;
       test/provenance) targets=(tests/test_run_provenance.py tests/test_admin_observability.py tests/test_run_ownership.py) ;;
       data-read/b7) targets=(ops/pi/tests/integration/test_db_reader_lab.py) ;;
@@ -176,10 +177,13 @@ if [[ $mode == execute ]]; then
     esac
     . "$base/test.env"
     opts=(--pi-lab)
-    [[ $selection != provenance && $selection != b8 && $selection != b8-red && $selection != b8-focused && $selection != b8-survival ]] || opts=()
+    [[ $selection != provenance && $selection != b8 && $selection != b8-red && $selection != b8-focused && $selection != b8-survival && $selection != b8-reconcile && $selection != b8-ci-collection && $selection != b8-guarded-collection ]] || opts=()
     python_args=(-m pytest "${targets[@]}" -q "${opts[@]}" -m "not pi_live" --tb=short)
     [[ $selection != b8-red ]] || python_args+=(-k "generate_and_resume_denied or no_quota_charge or db_unavailable_fails_closed or worker_restart_does_not_consume")
     [[ $selection != b8-survival ]] || python_args+=(-k "maintenance_page_survives_candidate_failure")
+    [[ $selection != b8-reconcile ]] || python_args+=(-k "uncertain_receipt")
+    [[ $selection != b8-ci-collection ]] || python_args=(-c "import pytest; result=pytest.main(['tests/test_maintenance_admission.py','tests/test_maintenance_worker_barrier.py','--collect-only','-q','-m','not pi_lab and not pi_live']); raise SystemExit(0 if result == 5 else 1)")
+    [[ $selection != b8-guarded-collection ]] || python_args=(-m pytest "${targets[@]}" --collect-only -q -m "not pi_live")
     [[ $selection != bootstrap ]] || python_args=(-m myink.cli init --seed)
     [[ $selection != watchdog ]] || python_args=(-c "import time;time.sleep(60)")
     [[ -z $(systemctl list-units 'myinkpi-test-*' --state=running --no-legend --no-pager) ]] || exit 73

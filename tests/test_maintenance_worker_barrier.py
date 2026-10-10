@@ -1,10 +1,13 @@
 """A restarted worker holds messages without executing during maintenance."""
 import json
+import pytest
 from types import SimpleNamespace
 import uuid
 from test_maintenance_admission import maintenance_control,book
 from myink.worker import consumer
 from myink.worker.redis_client import get_redis
+
+pytestmark = pytest.mark.pi_lab
 
 class Channel:
     def __init__(self):self.acks=[];self.nacks=[];self.stopped=False

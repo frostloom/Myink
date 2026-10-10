@@ -167,7 +167,7 @@ def execute(command_id, args, deadline, ledger):
         if not verify_limits(fresh.get('kernel_proof', {}), 'heavy'):
             return blocked('missing_cgroup_proof')
         selection = args.get('selection', 'b7')
-        if selection not in ('b7', 'provenance', 'bootstrap', 'watchdog', 'b8-red', 'b8-focused', 'b8-survival', 'b8'):
+        if selection not in ('b7', 'provenance', 'bootstrap', 'watchdog', 'b8-red', 'b8-focused', 'b8-survival', 'b8-reconcile', 'b8-ci-collection', 'b8-guarded-collection', 'b8'):
             return blocked('unknown_test_selection')
         if selection == 'b7' and command_id in ('test', 'probe'):
             remaining()
