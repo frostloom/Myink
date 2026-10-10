@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import time
+import threading
 import uuid
 
 from .contracts import Receipt
@@ -75,6 +76,47 @@ def stage_source(source, destination):
     return len(files)
 
 
+class _Diagnostics:
+    """Drain both pipes while the guardian runs; retain at most 4 MiB per stream."""
+    limit = 4 * 1024 * 1024
+
+    def __init__(self, process, state, operation):
+        self.threads = []
+        self.errors = []
+        self.truncated = []
+        for name in ('stdout', 'stderr'):
+            pipe = getattr(process, name, None)
+            if pipe is not None:
+                thread = threading.Thread(target=self._drain,
+                    args=(pipe, state / (operation + '.' + name), name), daemon=True)
+                thread.start()
+                self.threads.append(thread)
+
+    def _drain(self, pipe, path, name):
+        retained = 0
+        try:
+            with path.open('wb') as output:
+                while True:
+                    chunk = pipe.read(65536)
+                    if not chunk:
+                        break
+                    keep = chunk[:max(0, self.limit - retained)]
+                    output.write(keep)
+                    retained += len(keep)
+                    if len(keep) < len(chunk) and name not in self.truncated:
+                        self.truncated.append(name)
+        except OSError:
+            self.errors.append(name)
+        finally:
+            pipe.close()
+
+    def finish(self):
+        for thread in self.threads:
+            thread.join(timeout=2)
+        if self.errors or any(thread.is_alive() for thread in self.threads):
+            raise OSError('diagnostic drain unconfirmed')
+
+
 def execute(command_id, args, deadline, ledger):
     tool_started = time.monotonic()
     operation = str(uuid.uuid4())
@@ -91,6 +133,7 @@ def execute(command_id, args, deadline, ledger):
     if sys.platform != 'win32' or ledger is None:
         return blocked('trusted_windows_controller_required')
     process = None
+    diagnostics = None
     host_probe = None
     identity = None
     probes_started = False
@@ -124,7 +167,7 @@ def execute(command_id, args, deadline, ledger):
         if not verify_limits(fresh.get('kernel_proof', {}), 'heavy'):
             return blocked('missing_cgroup_proof')
         selection = args.get('selection', 'b7')
-        if selection not in ('b7', 'provenance', 'bootstrap', 'watchdog'):
+        if selection not in ('b7', 'provenance', 'bootstrap', 'watchdog', 'b8-red', 'b8-focused', 'b8-survival', 'b8'):
             return blocked('unknown_test_selection')
         if selection == 'b7' and command_id in ('test', 'probe'):
             remaining()
@@ -152,6 +195,7 @@ def execute(command_id, args, deadline, ledger):
         command = ['wsl.exe', '-d', 'MyinkPiLab', '-u', 'root', '--', '/opt/myink-pi-lab/provision.sh',
                    'execute', command_id, selection, str(int(run_budget)), operation]
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        diagnostics = _Diagnostics(process, state, operation)
         watch, start = MemoryWatchdog(), time.monotonic()
         samples = []
         reason = None
@@ -170,12 +214,19 @@ def execute(command_id, args, deadline, ledger):
                 process.kill()
                 break
             time.sleep(.2)
-        output, error = process.communicate(timeout=30)
+        if diagnostics.threads:
+            process.wait(timeout=30)
+            diagnostics.finish()
+            output = error = None
+        else:
+            output, error = process.communicate(timeout=30)
         evidence = {'command_id': command_id, 'lab_uuid': identity['lab_uuid'], 'host_min_available': min(samples) if samples else host_available_memory(),
                     'elapsed': time.monotonic() - start, 'returncode': process.returncode}
         # Persist diagnostic bytes in trusted state, never return candidate output to a model.
-        (state / f'{operation}.stdout').write_bytes(output)
-        (state / f'{operation}.stderr').write_bytes(error)
+        if output is not None:
+            (state / f'{operation}.stdout').write_bytes(output)
+            (state / f'{operation}.stderr').write_bytes(error)
+        evidence['diagnostics_truncated'] = diagnostics.truncated
         guest_file = state.parent / 'evidence' / f'{operation}.guest.json'
         if guest_file.exists():
             guest = json.loads(guest_file.read_text(encoding='utf-8'))
@@ -225,7 +276,11 @@ def execute(command_id, args, deadline, ledger):
                         try:
                             process.kill()
                         finally:
-                            process.communicate(timeout=30)
+                            if diagnostics is not None and diagnostics.threads:
+                                process.wait(timeout=30)
+                                diagnostics.finish()
+                            else:
+                                process.communicate(timeout=30)
             except (OSError, subprocess.SubprocessError) as error:
                 cleanup_errors.append({'step': 'owned_heavy', 'error': type(error).__name__})
         if receipt is not None and (process is not None or cleanup_errors):

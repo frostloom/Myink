@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from sqlalchemy import text
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ValidationError
@@ -27,6 +28,7 @@ from myink.task_budget import (ResumeBudgetBody, budget_view, extend_and_resume_
 from myink.context_budget import estimate_tokens
 from myink.db import new_session
 from myink.models import AgentRun, Project, Task
+from myink.maintenance import require_admission_open, register_admission, intent_outcome
 from myink.schemas import ChapterPlan
 from myink.providers import platform_key_active
 from myink.providers.base import effective_cost
@@ -432,6 +434,8 @@ def pause_task(task_id: str) -> dict:
 @router.post("/tasks/{task_id}/resume", dependencies=[Depends(require_task_owner)], response_model=TaskControlOut)
 def resume_task(task_id: str, body: ResumeBudgetBody | None = None,
                 user_id: str = Depends(require_user)) -> dict:
+    with new_session() as db:
+        require_admission_open(db)
     if budget_view(task_id) is not None:
         try:
             return extend_and_resume_budget(task_id, user_id, body or ResumeBudgetBody())
@@ -440,34 +444,28 @@ def resume_task(task_id: str, body: ResumeBudgetBody | None = None,
     if body and (body.add_requests or body.add_cost_yuan or body.add_runtime_seconds):
         raise HTTPException(status_code=409, detail="旧任务未启用预算，不能追加")
     with new_session() as db:
-        task = db.get(Task, _task_uuid(task_id))
+        require_admission_open(db)
+        task = db.get(Task, _task_uuid(task_id), with_for_update=True)
         if task is None:
             raise HTTPException(status_code=404, detail="任务不存在")
         if task.status not in _RESUMABLE:
             raise HTTPException(status_code=409, detail=f"当前状态不可续跑: {task.status}")
+        owner_id = str(db.get(Project, task.project_id).user_id)
+        project_id = str(task.project_id)
+        payload = dict(task.payload)
+        resume_type = {"batch_generate": "batch_resume", "short_generate": "short_resume"}.get(task.task_type, "chapter_resume")
+        message = {"task_id": task_id, "task_type": resume_type, "project_id": project_id,
+                   "user_id": owner_id, "payload": {**payload, "position": 0},
+                   "trace_id": task.trace_id or task_id, "request_id": task_id,
+                   "retry_count": 0, "created_at": ""}
+        db.execute(text("SELECT set_config('app.tenant_id', :pid, true)"), {"pid": project_id})
+        intent_id = register_admission(db, message, priority=0)
         task.status = "queued"
         task.error = None
-        payload = dict(task.payload)
-        owner_id = str(db.get(Project, task.project_id).user_id)
         db.commit()
-    # XADD 续跑消息（同 task_id → thread_id 断点续跑，§6.12）。
-    # 按任务类型分流：批次 → batch_resume（batch 图整批续跑）；短篇 → short_resume
-    # （成稿已落库就只接着审稿/改稿）；单章 → chapter_resume（chapter 图续跑该章，
-    # critical 转人工后 resume 走此路径重跑放行）。
-    resume_type = {"batch_generate": "batch_resume",
-                   "short_generate": "short_resume"}.get(task.task_type, "chapter_resume")
-    body = {
-        "task_id": task_id,
-        "task_type": resume_type,
-        "project_id": str(task.project_id),
-        "user_id": owner_id,
-        "payload": {**payload, "position": 0},
-        "trace_id": task.trace_id or task_id,
-        "request_id": task_id,
-        "retry_count": 0,
-        "created_at": "",
-    }
-    amqp.publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS)
+    intent_outcome(intent_id, project_id, publication_state="unknown")
+    amqp.publish(json.dumps(message, ensure_ascii=False), amqp.KEY_TASKS)
+    intent_outcome(intent_id, project_id, publication_state="published")
     return {"task_id": task_id, "status": "queued", "message": "已投递续跑消息"}
 
 
@@ -476,6 +474,7 @@ def confirm_task_plan(task_id: str, body: PlanConfirmBody) -> dict:
     """确认手动模式计划，用同一任务 ID 从 plan_gate 断点继续。"""
     tid = _task_uuid(task_id)
     with new_session() as db:
+        require_admission_open(db)
         # 锁住任务行，避免双击/多标签页同时确认同一版计划并重复投递。
         task = db.get(Task, tid, with_for_update=True)
         if task is None:
@@ -524,28 +523,18 @@ def confirm_task_plan(task_id: str, body: PlanConfirmBody) -> dict:
         project_id = str(task.project_id)
         owner_id = str(db.get(Project, task.project_id).user_id)
         trace_id = task.trace_id or task_id
+        message = {"task_id": task_id, "task_type": "chapter_plan_resume", "project_id": project_id,
+                   "user_id": owner_id, "payload": {**payload, "approved_plan": approved},
+                   "trace_id": trace_id, "request_id": task_id, "retry_count": 0, "created_at": ""}
+        db.execute(text("SELECT set_config('app.tenant_id', :pid, true)"), {"pid": project_id})
+        intent_id = register_admission(db, message, priority=0)
         db.commit()
-
-    message = {
-        "task_id": task_id,
-        "task_type": "chapter_plan_resume",
-        "project_id": project_id,
-        "user_id": owner_id,
-        "payload": {**payload, "approved_plan": approved},
-        "trace_id": trace_id,
-        "request_id": task_id,
-        "retry_count": 0,
-        "created_at": "",
-    }
+    intent_outcome(intent_id, project_id, publication_state="unknown")
     try:
         amqp.publish(json.dumps(message, ensure_ascii=False), amqp.KEY_TASKS)
     except Exception as exc:
-        with new_session() as db:
-            current = db.get(Task, tid)
-            if current and current.status == "queued":
-                current.status = "awaiting_plan"
-                db.commit()
-        raise HTTPException(status_code=503, detail="计划确认投递失败，请重试") from exc
+        raise HTTPException(status_code=503, detail="计划确认投递结果未确认，请刷新任务状态") from exc
+    intent_outcome(intent_id, project_id, publication_state="published")
     return {"task_id": task_id, "status": "queued", "message": "计划已确认，开始写作"}
 
 

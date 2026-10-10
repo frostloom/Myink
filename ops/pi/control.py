@@ -183,6 +183,8 @@ def main(argv: list[str] | None = None) -> int:
     lab_preflight.add_argument('--root', required=True, type=Path)
     lab_up = lab_commands.add_parser('up')
     lab_up.add_argument('--state-dir', required=True, type=Path)
+    lab_maintenance = lab_commands.add_parser('maintenance-up')
+    lab_maintenance.add_argument('--state-dir', required=True, type=Path)
     check = commands.add_parser('ledger-check')
     check.add_argument('--state-dir', required=True, type=Path)
     gateway = commands.add_parser('model-gateway')
@@ -205,9 +207,9 @@ def main(argv: list[str] | None = None) -> int:
             from .resources import probe_environment
             root = args.root if args.lab_command == 'preflight' else args.state_dir.parent
             receipt = probe_environment(root)
-            if args.lab_command == 'up' and receipt.status == 'done':
+            if args.lab_command in ('up', 'maintenance-up') and receipt.status == 'done':
                 import subprocess
-                completed = subprocess.run(['wsl.exe', '-d', 'MyinkPiLab', '-u', 'root', '--', '/opt/myink-pi-lab/provision.sh', 'preflight'], capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=120)
+                completed = subprocess.run(['wsl.exe', '-d', 'MyinkPiLab', '-u', 'root', '--', '/opt/myink-pi-lab/provision.sh', 'maintenance-up' if args.lab_command == 'maintenance-up' else 'preflight'], capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=120)
                 if completed.returncode:
                     raise LedgerBlocked('lab resource preflight failed')
                 receipt = replace(receipt, evidence={**receipt.evidence, **json.loads(completed.stdout)})

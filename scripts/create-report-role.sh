@@ -35,6 +35,11 @@ GRANT CONNECT ON DATABASE myink TO myink_report;
 GRANT USAGE ON SCHEMA public TO myink_report;
 -- 存量表直接授；后续新建的表由上面的默认权限兜住。
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO myink_report;
+DO $$ BEGIN
+    IF to_regclass('public.admission_intents') IS NOT NULL THEN
+        REVOKE ALL ON public.admission_intents FROM myink_report;
+    END IF;
+END $$;
 ALTER DEFAULT PRIVILEGES FOR ROLE myink IN SCHEMA public
     GRANT SELECT ON TABLES TO myink_report;
 SQL

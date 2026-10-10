@@ -567,3 +567,49 @@ def ensure_task_budget_schema() -> None:
         Base.metadata.create_all(conn, tables=[
             TaskBudget.__table__, TaskBudgetAttempt.__table__, TaskBudgetCall.__table__])
     enable_row_level_security()
+
+
+def ensure_maintenance_schema() -> None:
+    """Trusted additive bootstrap; runtime reads never recreate or open a barrier."""
+    from myink.models.maintenance import AdmissionIntent, MaintenanceControl
+    from myink.models.base import Base
+    with get_admin_engine().begin() as conn:
+        Base.metadata.create_all(conn, tables=[MaintenanceControl.__table__, AdmissionIntent.__table__])
+        conn.execute(text("ALTER TABLE public.maintenance_control ADD COLUMN IF NOT EXISTS image_ids JSON NOT NULL DEFAULT '{}'"))
+        conn.execute(text("INSERT INTO public.maintenance_control(id,epoch,deployment_id,generation,owner,image_ids,admission_closed,consumer_blocked) VALUES(1,'','initial',0,'bootstrap','{}',false,false) ON CONFLICT DO NOTHING"))
+        conn.execute(text("""
+            CREATE OR REPLACE FUNCTION public.myink_lock_maintenance()
+            RETURNS SETOF public.maintenance_control LANGUAGE sql SECURITY DEFINER
+            SET search_path = pg_catalog AS $$
+                SELECT * FROM public.maintenance_control WHERE id = 1 FOR SHARE
+            $$
+        """))
+        conn.execute(text("REVOKE ALL ON FUNCTION public.myink_lock_maintenance() FROM PUBLIC"))
+        for role in ("myink_maintenance_control", "myink_maintenance_stats"):
+            conn.execute(text(f"DO $$ BEGIN CREATE ROLE {role} NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS; EXCEPTION WHEN duplicate_object THEN NULL; END $$"))
+            privileged = conn.scalar(text("SELECT rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls FROM pg_roles WHERE rolname=:role"), {"role":role})
+            if privileged:
+                raise RuntimeError("maintenance role has unexpected administrative privileges")
+            conn.execute(text(f"GRANT USAGE ON SCHEMA public TO {role}"))
+        conn.execute(text("REVOKE ALL ON public.maintenance_control, public.admission_intents FROM PUBLIC, myink_maintenance_control, myink_maintenance_stats"))
+        conn.execute(text("GRANT SELECT ON public.maintenance_control TO myink_maintenance_control"))
+        conn.execute(text("GRANT UPDATE(epoch,deployment_id,generation,owner,image_ids,deadline,admission_closed,consumer_blocked) ON public.maintenance_control TO myink_maintenance_control"))
+        conn.execute(text("CREATE OR REPLACE VIEW public.maintenance_admission_counts AS SELECT epoch,deployment_generation,gate_state,publication_state,count(*) AS intents FROM public.admission_intents GROUP BY epoch,deployment_generation,gate_state,publication_state"))
+        conn.execute(text("GRANT SELECT ON public.maintenance_admission_counts TO myink_maintenance_stats"))
+        for role in ("myink_app", "myink"):
+            if conn.scalar(text("SELECT 1 FROM pg_roles WHERE rolname=:role"), {"role":role}):
+                owner = conn.scalar(text("SELECT pg_get_userbyid(relowner) FROM pg_class WHERE oid='public.maintenance_control'::regclass"))
+                if owner == role:
+                    # The migration owner cannot be reduced to an application role.
+                    continue
+                conn.execute(text(f"REVOKE ALL ON public.maintenance_control, public.admission_intents FROM {role}"))
+                conn.execute(text(f"GRANT SELECT ON public.maintenance_control TO {role}"))
+                conn.execute(text(f"GRANT EXECUTE ON FUNCTION public.myink_lock_maintenance() TO {role}"))
+                conn.execute(text(f"GRANT SELECT,INSERT ON public.admission_intents TO {role}"))
+                conn.execute(text(f"GRANT UPDATE(gate_state,publication_state) ON public.admission_intents TO {role}"))
+        if conn.scalar(text("SELECT 1 FROM pg_roles WHERE rolname='myink_report'")):
+            conn.execute(text("REVOKE ALL ON public.admission_intents FROM myink_report"))
+        conn.execute(text("ALTER TABLE public.admission_intents ENABLE ROW LEVEL SECURITY"))
+        conn.execute(text("ALTER TABLE public.admission_intents FORCE ROW LEVEL SECURITY"))
+        conn.execute(text("DROP POLICY IF EXISTS tenant_isolation ON public.admission_intents"))
+        conn.execute(text("CREATE POLICY tenant_isolation ON public.admission_intents USING(project_id = NULLIF(current_setting('app.tenant_id',true),'')::uuid)"))

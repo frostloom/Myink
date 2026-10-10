@@ -21,6 +21,7 @@ from functools import partial
 import pika
 
 from myink.config import settings
+from myink.maintenance import may_consume, MaintenanceUnavailable
 from myink.worker import amqp
 from myink.worker.observer import observe
 from myink.worker.processor import _is_retryable, process, valid_task_owner
@@ -48,6 +49,9 @@ def _heartbeat(r, worker_id: str) -> None:
 
 def _on_message(ch, method, properties, body_raw, r, worker_id: str) -> None:
     """单条任务：SSE 首事件 + observer 线程 + process + 决策（retry/defer/terminal/skip）。"""
+    if not may_consume():
+        ch.stop_consuming()
+        return
     try:
         body = json.loads(body_raw)
     except json.JSONDecodeError:
@@ -77,6 +81,9 @@ def _on_message(ch, method, properties, body_raw, r, worker_id: str) -> None:
     obs_thread.start()
     try:
         decision = process(body, worker_id=worker_id)
+    except MaintenanceUnavailable:
+        ch.stop_consuming()
+        return
     except Exception as exc:
         if _is_retryable(exc):
             logger.warning("任务前置检查暂时失败，保留消息: task=%s", task_id)
@@ -141,14 +148,19 @@ def run() -> None:
     while not _shutdown.is_set():
         conn = None
         try:
+            if not may_consume():
+                _shutdown.wait(settings.worker_heartbeat_interval)
+                continue
             conn = amqp.connect()
             ch = conn.channel()
             amqp.declare_topology(ch)
             # 同书串行、异书并行（§13）：单 worker 一次拉 1 条；多 worker 进程各自消费
             ch.basic_qos(prefetch_count=1)
+            if not may_consume():
+                continue
             ch.basic_consume(amqp.main_queue(), partial(_on_message, r=r, worker_id=worker_id))
             logger.info("开始消费 %s", amqp.main_queue())
-            while not _shutdown.is_set():
+            while not _shutdown.is_set() and may_consume():
                 # 阻塞处理事件（无事件时最多挂起 1s）；_on_message 内 process 长任务期间
                 # 天然阻塞——prefetch=1 不拉新消息，跑完当前任务才响应停机
                 conn.process_data_events(time_limit=1.0)

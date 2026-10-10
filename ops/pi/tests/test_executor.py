@@ -218,3 +218,79 @@ def test_failed_probe_cleanup_still_cancels_owned_heavy(monkeypatch, tmp_path, f
         assert receipt.evidence['publication_errors']
         assert receipt.evidence['publication']['file']==(failure not in ('file_failure','both_failure','done_file_failure','done_ledger_correction_failure'))
         assert receipt.evidence['publication']['ledger']==(failure not in ('ledger_failure','both_failure','done_ledger_failure','done_ledger_correction_failure'))
+
+
+def test_large_child_diagnostics_do_not_block_guardian(monkeypatch,tmp_path):
+    import subprocess,sys
+    from types import SimpleNamespace
+    from ops.pi.resources import LIMITS
+    proof={'cgroup_version':2,'membership_verified':True,'ancestor_verified':True,**LIMITS['heavy']}
+    executor,ledger=_controller_fixture(monkeypatch,tmp_path,proof)
+    real_popen=subprocess.Popen
+    def launch(*args,**kwargs):
+        return real_popen([sys.executable,'-c',"import os;os.write(1,b'O'*1048576);os.write(2,b'E'*1048576)"],**kwargs)
+    monkeypatch.setattr(executor.subprocess,'Popen',launch)
+    monkeypatch.setattr(executor,'host_available_memory',lambda:2**30)
+    receipt=executor.execute('test',{'state_dir':'E:/state','selection':'b8-red'},datetime.now(timezone.utc)+timedelta(seconds=2),ledger)
+    assert receipt.evidence['returncode']==0,receipt
+    assert (tmp_path/(receipt.operation_id+'.stdout')).read_bytes()==b'O'*1048576
+    assert (tmp_path/(receipt.operation_id+'.stderr')).read_bytes()==b'E'*1048576
+
+
+def test_child_diagnostics_truncate_without_stopping_pipe_drain(tmp_path):
+    import subprocess,sys
+    from ops.pi.executor import _Diagnostics
+    child=subprocess.Popen([sys.executable,'-c',"import os;os.write(1,b'O'*8388608);os.write(2,b'E'*8388608)"],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    diagnostics=_Diagnostics(child,tmp_path,'bounded')
+    assert child.wait(timeout=5)==0
+    diagnostics.finish()
+    assert set(diagnostics.truncated)=={'stdout','stderr'}
+    assert (tmp_path/'bounded.stdout').stat().st_size==4194304
+    assert (tmp_path/'bounded.stderr').stat().st_size==4194304
+
+
+@pytest.mark.parametrize('guarded,expected',[(False,'-mp-'),(True,'-pi-synthetic-')])
+def test_business_fixture_prefix_preserves_only_guarded_override(monkeypatch,guarded,expected):
+    import os
+    from pathlib import Path
+    monkeypatch.setenv('QUEUE_PREFIX','-pi-synthetic-')
+    if guarded:monkeypatch.setenv('PI_LAB_ENV','synthetic-guard')
+    else:monkeypatch.delenv('PI_LAB_ENV',raising=False)
+    prefix=(Path(__file__).parents[3]/'tests/conftest.py').read_text(encoding='utf-8').split('\nimport uuid',1)[0]
+    exec(compile(prefix,'tests/conftest.py','exec'),{})
+    assert os.environ['QUEUE_PREFIX']==expected
+
+
+@pytest.mark.parametrize('fault',['memory.max','memory.swap.max','cpu.max','membership_verified','ancestor_verified'])
+def test_runtime_rejects_infra_parent_limit_or_membership_drift(monkeypatch,tmp_path,fault):
+    import json
+    from types import SimpleNamespace
+    from ops.pi.lab import verify
+    from ops.pi import resources
+    # Drive the existing full verifier to acceptance with otherwise valid proof.
+    # Only the parent kernel accounting field is changed; no kernel mutation.
+    class TrustedPath:
+        def __init__(self,path):self.path=path
+        def __truediv__(self,name):return TrustedPath(self.path/name)
+        def read_text(self):return self.path.read_text()
+        def is_symlink(self):return False
+        def stat(self):return SimpleNamespace(st_uid=0,st_mode=0o100600)
+    identity={'daemon_id':verify.DAEMON,'lab_uuid':'owned','project':'project','test_containers':[],'sandbox':'agent','gateway':'gateway'}
+    candidate={'user':'65534:65534','host':{'ReadonlyRootfs':True,'CapDrop':['ALL'],'SecurityOpt':['no-new-privileges'],'Dns':['127.0.0.1']},'networks':{'project-agent':'172.29.220.10'}}
+    (tmp_path/'lab-env.json').write_text(json.dumps(identity))
+    (tmp_path/'runtime-manifest.json').write_text(json.dumps({'lab_uuid':'owned','containers':{'agent':candidate,'gateway':{},'project-denied':{}}}))
+    monkeypatch.setattr(verify,'BASE',TrustedPath(tmp_path))
+    monkeypatch.setattr(verify,'verify_container',lambda *args:None)
+    monkeypatch.setattr(verify,'verify_firewall',lambda:None)
+    def docker(*args):
+        if args[0]=='info':return {'ID':verify.DAEMON,'CgroupVersion':'2','CgroupDriver':'systemd','DockerRootDir':'/var/lib/docker'}
+        if args[0]=='inspect':return [{}]
+        suffix=args[2].removeprefix('project-')
+        return [{'Labels':{'myink.pi.lab':'owned'},'Internal':suffix=='agent','EnableIPv6':False,'Options':{'com.docker.network.bridge.name':'pi-lab-'+suffix}}]
+    monkeypatch.setattr(verify,'_docker',docker)
+    proof={'memory.max':str(768*1024**2),'memory.swap.max':'0','cpu.max':'100000 100000','membership_verified':True,'ancestor_verified':True}
+    proof[fault]=False if fault.endswith('verified') else 'unlimited'
+    monkeypatch.setattr(resources,'sample_resources',lambda group:proof if group=='infra' else {})
+    monkeypatch.setattr(resources,'verify_limits',lambda *args:True)
+    with pytest.raises(ValueError,match='infra parent'):
+        verify.verify_runtime()

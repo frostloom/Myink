@@ -17,7 +17,11 @@ os.environ["RANKINGS_ENABLED"] = "0"
 # 不碰开发栈无前缀真实队列（避免测试消息污染生产队列/被真实 worker 抢走）。
 # 必须在 myink.config 首次导入前设（settings 是 frozen 单例）——单在 test_multiprocess.py
 # 模块级设已太晚：conftest 的 myink.db 导入会先触发 settings 冻结。
-os.environ["QUEUE_PREFIX"] = "-mp-"
+# The sealed Pi runner supplies its own unique prefix; ordinary suites keep -mp-.
+if os.environ.get("PI_LAB_ENV"):
+    os.environ.setdefault("QUEUE_PREFIX", "-mp-")
+else:
+    os.environ["QUEUE_PREFIX"] = "-mp-"
 # 本地 compose 对外暴露的 RabbitMQ 用户。显式传入的 CI/开发环境配置仍优先。
 os.environ.setdefault("AMQP_URL", "amqp://myink:myink@localhost:5672/")
 
@@ -54,6 +58,13 @@ TEST_JWT_SECRET = "test-jwt-secret-at-least-32-bytes-long"
 # 旧套件用 _h("not-a-uuid") 表达同一件事（当时身份是明文头，可以随便塞垃圾）；
 # 现在身份是签名令牌，垃圾要塞在 Authorization 里才等效。
 INVALID_BEARER = {"Authorization": "Bearer not-a-jwt"}
+
+
+@pytest.fixture(autouse=True)
+def _guard_pi_test_environment():
+    if os.environ.get("PI_LAB_ENV"):
+        from ops.pi.lab.verify import verify_test_environment
+        verify_test_environment()
 
 
 @pytest.fixture(autouse=True)

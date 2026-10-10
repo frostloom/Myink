@@ -27,9 +27,9 @@ import json,sys,subprocess
 from pathlib import Path
 base=Path('/opt/myink-pi-lab'); r=json.loads((base/'lab-env.json').read_text())
 if sys.argv[1]!=r['lab_uuid']: raise SystemExit('cleanup UUID mismatch')
-names=r['test_containers']+[r['sandbox'],r['gateway'],r['project']+'-denied']
-networks=[r['project']+'-agent',r['project']+'-fixtures']
-volumes=[r['project']+'-'+k+'-data' for k in ('pg','redis','rabbit')]
+names=r['test_containers']+r.get('maintenance_containers',[])+[r['sandbox'],r['gateway'],r['project']+'-denied']
+networks=[r['project']+'-agent',r['project']+'-fixtures']+([r['project']+'-maintenance'] if r.get('maintenance_containers') else [])
+volumes=[r['project']+'-'+k+'-data' for k in ('pg','redis','rabbit')]+[n+'-data' for n in r.get('maintenance_containers',[]) if not n.endswith('-entry')]
 # Freeze and verify every object before the first effect; anonymous recovery volumes are retained.
 for kind,objects in [('container',names),('network',networks),('volume',volumes)]:
  for name in objects:
@@ -46,6 +46,7 @@ PY
     iptables -D INPUT -i pi-lab-agent -j DROP
     iptables -D DOCKER-USER -i pi-lab-agent -j MYINKPI_B7
     iptables -D DOCKER-USER -i pi-lab-fixtures ! -o pi-lab-fixtures -j DROP
+    iptables -C DOCKER-USER -i pi-lab-maint ! -o pi-lab-maint -j DROP 2>/dev/null && iptables -D DOCKER-USER -i pi-lab-maint ! -o pi-lab-maint -j DROP || true
     iptables -F MYINKPI_B7
     iptables -X MYINKPI_B7
     exit 0
@@ -92,6 +93,73 @@ print(json.dumps(cancel_owned(sys.argv[1],sys.argv[2])))
 PY
     exit 0
 fi
+if [[ $mode == maintenance-up ]]; then
+    flock -n 9 || exit 73
+    cd "$base/trusted-source"
+    export PYTHONPATH=$PWD/src:$PWD
+    /opt/myink-pi-venv/bin/python - <<'PY'
+from pathlib import Path
+import json,shutil,subprocess,time,hashlib
+from datetime import datetime,timedelta,timezone
+from email.utils import format_datetime
+from ops.pi.lab.verify import verify_runtime,_docker,_configuration,freeze_runtime
+base=Path('/opt/myink-pi-lab');r=verify_runtime();project=r['project'];lab=r['lab_uuid']
+if r.get('maintenance_containers'):raise SystemExit('persistent maintenance infra already prepared; verify instead')
+peak=2*1024**3;reserve=5*1024**3
+assert all(shutil.disk_usage(path).free>=peak+reserve for path in ('/','/mnt/e'))
+evidence=Path('/mnt/e/tools/myink-pi/evidence');before=json.loads((base/'runtime-manifest.json').read_text())
+(evidence/'b8-runtime-before.json').write_text(json.dumps(before,indent=2))
+images={kind:_docker('inspect',project+'-'+kind)[0]['Image'] for kind in ('pg','redis','rabbit')}
+images['entry']=_docker('image','inspect','sha256:f2a1290d0463aad60660d4ec134943f183ee2a5f6c3eb7bf32dd984f2f020772')[0]['Id']
+static=base/'maintenance';static.mkdir(exist_ok=False)
+now=datetime.now(timezone(timedelta(hours=8)));reopen=now.replace(hour=6,minute=0,second=0,microsecond=0)
+if reopen<=now:reopen+=timedelta(days=1)
+snapshot={'reopen_at':reopen.isoformat(),'retry_after':format_datetime(reopen.astimezone(timezone.utc),usegmt=True),'sha256':{}}
+for file in ('maintenance.Caddyfile','maintenance.html'):
+ content=(base/'trusted-source/ops/pi/lab'/file).read_text().replace('{{REOPEN_HTTP}}',snapshot['retry_after']).replace('{{REOPEN_AT}}',snapshot['reopen_at']).replace('{{REOPEN_DATE}}',reopen.date().isoformat())
+ (static/file).write_text(content);snapshot['sha256'][file]=hashlib.sha256(content.encode()).hexdigest()
+r['maintenance_snapshot']=snapshot
+network=project+'-maintenance'
+def run(*args):return subprocess.check_output(['docker','--host','unix:///var/run/docker.sock',*args],text=True,timeout=60).strip()
+run('network','create','--label','myink.pi.lab='+lab,'--opt','com.docker.network.bridge.name=pi-lab-maint',network)
+subprocess.run(['/usr/sbin/iptables','-A','DOCKER-USER','-i','pi-lab-maint','!','-o','pi-lab-maint','-j','DROP'],check=True)
+containers=[]
+for kind,port,memory,cpu in [('pg',5432,'256m','0.3'),('redis',6379,'96m','0.15'),('rabbit',5672,'320m','0.4'),('entry',8080,'96m','0.1')]:
+ name=project+'-maintenance-'+kind;containers.append(name)
+ args=['run','-d','--name',name,'--label','myink.pi.lab='+lab,'--label','myink.pi.owner=maintenance-infra',
+       '--cgroup-parent','myinkpi-infra.slice','--memory',memory,'--memory-swap',memory,'--cpus',cpu,
+       '--pids-limit','128','--network',network,'-p','127.0.0.1::'+str(port)]
+ if kind!='entry':
+  volume=name+'-data';run('volume','create','--label','myink.pi.lab='+lab,'--label','myink.pi.owner=maintenance-infra',volume)
+  destination={'pg':'/var/lib/postgresql/data','redis':'/data','rabbit':'/var/lib/rabbitmq'}[kind]
+  args+=['--mount','type=volume,source='+volume+',target='+destination]
+ if kind=='pg':args+=['-e','POSTGRES_PASSWORD=synthetic-lab-only','-e','POSTGRES_DB=myink','--shm-size','32m']
+ if kind=='rabbit':args+=['--hostname',name,'-e','RABBITMQ_DEFAULT_USER=myink','-e','RABBITMQ_DEFAULT_PASS=synthetic-lab-only','-e','RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=+S 2:2']
+ if kind=='entry':
+  args+=['--user','65534:65534','--read-only','--cap-drop','ALL','--cap-add','NET_BIND_SERVICE','--security-opt','no-new-privileges','--tmpfs','/tmp:size=8m','--tmpfs','/config:size=4m','--tmpfs','/data:size=4m',
+         '-v',str(static)+':/maintenance:ro',images[kind],'caddy','run','--config','/maintenance/maintenance.Caddyfile','--adapter','caddyfile']
+ else:args+=[images[kind]]
+ run(*args)
+ info=_docker('inspect',name)[0]
+ assert info['Image']==images[kind] and info['HostConfig']['CgroupParent']=='myinkpi-infra.slice'
+ assert info['Config']['Labels']['myink.pi.owner']=='maintenance-infra' and info['HostConfig']['Memory']>0
+ assert info['HostConfig']['MemorySwap']==info['HostConfig']['Memory']
+ assert '/myinkpi.slice/myinkpi-infra.slice/' in Path('/proc/'+str(info['State']['Pid'])+'/cgroup').read_text()
+# Preserve every previously frozen configuration; only the four new owned infra entries differ.
+for name,configuration in before['containers'].items():assert _configuration(_docker('inspect',name)[0])==configuration
+r['maintenance_containers']=containers;r['maintenance_images']=images
+(base/'lab-env.json').write_text(json.dumps(r,indent=2));(base/'lab-env.json').chmod(0o600)
+freeze_runtime(r)
+after=json.loads((base/'runtime-manifest.json').read_text())
+assert {name:after['containers'][name] for name in before['containers']}==before['containers']
+assert set(after['containers'])-set(before['containers'])==set(containers)
+(evidence/'b8-runtime-after.json').write_text(json.dumps(after,indent=2))
+(evidence/'b8-runtime-delta.json').write_text(json.dumps({'added':containers,'old_configuration_unchanged':True,'images':images,'planned_peak_bytes':peak,'reserve_bytes':reserve,'host_free_bytes':shutil.disk_usage('/mnt/e').free,'guest_free_bytes':shutil.disk_usage('/').free},indent=2))
+shutil.copyfile(base/'lab-env.json',Path('/mnt/e/tools/myink-pi/state/lab-env.json'))
+print(json.dumps(verify_runtime()))
+PY
+    exit 0
+fi
 if [[ $mode == execute ]]; then
     flock -n 9 || exit 73
     command_id=${2:?}; selection=${3:?}; timeout=${4:?}; operation=${5:?}
@@ -100,14 +168,18 @@ if [[ $mode == execute ]]; then
     case "$command_id/$selection" in
       test/bootstrap|probe/watchdog) targets=() ;;
       probe/b7|test/b7) targets=(ops/pi/tests/integration/test_isolation.py) ;;
+      test/b8-red|test/b8-focused|test/b8-survival) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py) ;;
+      test/b8) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py tests/test_enqueue_gates.py tests/test_task_budget_routes.py tests/test_manual_plan.py) ;;
       test/provenance) targets=(tests/test_run_provenance.py tests/test_admin_observability.py tests/test_run_ownership.py) ;;
       data-read/b7) targets=(ops/pi/tests/integration/test_db_reader_lab.py) ;;
       *) exit 64 ;;
     esac
     . "$base/test.env"
     opts=(--pi-lab)
-    [[ $selection != provenance ]] || opts=()
-    python_args=(-m pytest "${targets[@]}" -q "${opts[@]}" -m "not pi_live")
+    [[ $selection != provenance && $selection != b8 && $selection != b8-red && $selection != b8-focused && $selection != b8-survival ]] || opts=()
+    python_args=(-m pytest "${targets[@]}" -q "${opts[@]}" -m "not pi_live" --tb=short)
+    [[ $selection != b8-red ]] || python_args+=(-k "generate_and_resume_denied or no_quota_charge or db_unavailable_fails_closed or worker_restart_does_not_consume")
+    [[ $selection != b8-survival ]] || python_args+=(-k "maintenance_page_survives_candidate_failure")
     [[ $selection != bootstrap ]] || python_args=(-m myink.cli init --seed)
     [[ $selection != watchdog ]] || python_args=(-c "import time;time.sleep(60)")
     [[ -z $(systemctl list-units 'myinkpi-test-*' --state=running --no-legend --no-pager) ]] || exit 73
