@@ -69,8 +69,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: 安装依赖（dev extras，不装 ml/torch）
-        run: pip install -e '.[dev]'
+      # 与镜像同一把锁（docker/constraints.txt）。裸装会浮到新 pydantic，
+      # Decimal 的 JSON Schema 一变，下面的契约 diff 闸就红，而镜像仍是旧版本。
+      - name: 安装依赖（dev extras，不装 ml/torch；版本锁与镜像一致）
+        run: pip install -e '.[dev]' -c docker/constraints.txt
       - name: Python 语法检查
         run: python -m compileall -q src tests
       - name: 评测案例与覆盖清单校验（无模型调用）
