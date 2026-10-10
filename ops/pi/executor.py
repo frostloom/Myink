@@ -233,8 +233,33 @@ def execute(command_id, args, deadline, ledger):
                 evidence = {**receipt.evidence, 'cleanup_errors': cleanup_errors}
                 evidence.setdefault('reason', 'cleanup_unconfirmed')
                 receipt = Receipt(operation, 'failed' if receipt.status == 'done' else receipt.status, evidence)
-            # Publish the final cleanup outcome rather than a premature done receipt.
-            (state.parent / 'evidence' / f'{operation}.receipt.json').write_text(json.dumps({'operation_id': operation, 'status': receipt.status, 'evidence': receipt.evidence}, indent=2), encoding='utf-8')
-            ledger.append_event('tool_receipt', {'operation_id': operation, 'status': receipt.status, **receipt.evidence})
-            if cleanup_errors:
+            # File and ledger publication are independent; neither may mask cleanup.
+            publication_errors = []
+            publication = {'file': False, 'ledger': False}
+            receipt_file = state.parent / 'evidence' / f'{operation}.receipt.json'
+            try:
+                receipt_file.write_text(json.dumps({'operation_id': operation, 'status': receipt.status, 'evidence': receipt.evidence}, indent=2), encoding='utf-8')
+                publication['file'] = True
+            except OSError as error:
+                publication_errors.append({'step': 'receipt_file', 'error': type(error).__name__})
+                evidence = {**receipt.evidence, 'publication_errors': list(publication_errors)}
+                evidence.setdefault('reason', 'publication_unconfirmed')
+                receipt = Receipt(operation, 'failed' if receipt.status == 'done' else receipt.status, evidence)
+            try:
+                ledger.append_event('tool_receipt', {'operation_id': operation, 'status': receipt.status, **receipt.evidence})
+                publication['ledger'] = True
+            except (OSError, RuntimeError, ValueError) as error:
+                publication_errors.append({'step': 'receipt_ledger', 'error': type(error).__name__})
+            if publication_errors:
+                evidence = {**receipt.evidence, 'publication_errors': publication_errors, 'publication': dict(publication)}
+                evidence.setdefault('reason', 'publication_unconfirmed')
+                receipt = Receipt(operation, 'failed' if receipt.status == 'done' else receipt.status, evidence)
+                # If ledger publication failed, correct an already-written file honestly.
+                if publication['file'] and not publication['ledger']:
+                    try:
+                        receipt_file.write_text(json.dumps({'operation_id': operation, 'status': receipt.status, 'evidence': receipt.evidence}, indent=2), encoding='utf-8')
+                    except OSError as error:
+                        receipt.evidence['publication']['file'] = False
+                        publication_errors.append({'step': 'receipt_file_correction', 'error': type(error).__name__})
+            if cleanup_errors or publication_errors:
                 return receipt
