@@ -13,7 +13,7 @@ def test_record_run_appends_versions_preserves_accounting_and_later_detail(monke
     monkeypatch.setattr(nodes, 'settings', replace(settings, deployment_id='a4-test', deployment_generation=1,
                                                   deployment_owner='pi', observation_prompt_id='prompt-a4',
                                                   observation_rubric_id='rubric-a4', observation_data_id='data-a4',
-                                                  observation_schema_id='schema-a4'))
+                                                  observation_schema_id='schema-a4', observation_config_id='b' * 64))
     task_id = str(uuid.uuid4())
     original = dict(plan={'text': 'original'}, custom='retain')
     resp = ModelResponse(content='{}', model_id='actual-fallback', input_tokens=7, output_tokens=9,

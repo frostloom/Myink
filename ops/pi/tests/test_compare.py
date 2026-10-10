@@ -12,7 +12,7 @@ def compare_windows(*args):
 
 def evidence(**changes):
     s = dict(id='base-1', config_hash='config-1', prompt_hash='prompt-1', rubric_hash='rubric-1',
-             data_hash='data-1', schema_id='schema-1', model_ids=['actual'], evidence_domain='online',
+             data_hash='data-1', schema_id='schema-1', model_ids=['actual'], pricing_id='a' * 64, evidence_domain='online',
              identity=dict(deployment_id='deploy-1', generation=1, owner='human', image_ids={'api': 'old'}),
              complete_tasks=20, paired_group_ids=[], tail_samples=100, confounders=[], availability='measured',
              measurements=dict(latency=dict(value=100, availability='measured', samples=20, direction='lower'),
@@ -80,3 +80,20 @@ def test_measurement_sample_floor_cannot_be_replaced_by_completed_count():
 def test_cost_metric_cannot_prove_writing_quality_scope():
     b = evidence(); b['measurements']['cost'] = b['measurements']['latency']
     assert compare_windows(b, b, candidate(scope='writing_quality', metric='cost'))['status'] == 'insufficient_evidence'
+
+
+@pytest.mark.parametrize('guard', [False, True])
+def test_cost_target_or_guard_requires_stable_confirmed_pricing(guard):
+    b = evidence(); c = evidence()
+    for s in (b, c):
+        s['measurements']['cost'] = dict(value=1, availability='measured', samples=20, direction='lower')
+    plan = candidate(metric='latency' if guard else 'cost', guard_metrics=('cost',) if guard else ('errors',))
+    assert compare_windows(b, c, plan)['status'] == 'not_improved'
+    c['pricing_id'] = 'b' * 64
+    assert compare_windows(b, c, plan)['status'] == 'confounded'
+    c['pricing_id'] = None
+    assert compare_windows(b, c, plan)['status'] == 'insufficient_evidence'
+
+
+def test_unknown_complete_configuration_cannot_claim_matching():
+    assert compare_windows(evidence(config_hash=None), evidence(config_hash=None), candidate())['status'] == 'insufficient_evidence'
