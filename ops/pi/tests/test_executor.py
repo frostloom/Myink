@@ -132,7 +132,7 @@ def test_sampler_failure_finally_uses_owned_cancellation(monkeypatch,tmp_path):
     assert [c for c in calls if 'stop-heavy' in c][0][-2:]==[receipt.operation_id,'lab-test']
 
 
-@pytest.mark.parametrize('failure', ['stop_timeout', 'stop_oserror', 'probe_wait', 'stop_timeout_after_done'])
+@pytest.mark.parametrize('failure', ['stop_timeout', 'stop_oserror', 'probe_wait', 'stop_timeout_after_done', 'file_failure', 'ledger_failure', 'both_failure', 'done_file_failure', 'done_ledger_failure', 'done_ledger_correction_failure'])
 def test_failed_probe_cleanup_still_cancels_owned_heavy(monkeypatch, tmp_path, failure):
     import json
     import subprocess
@@ -154,7 +154,8 @@ def test_failed_probe_cleanup_still_cancels_owned_heavy(monkeypatch, tmp_path, f
         def kill(self): self.killed=True; self.returncode=137
         def communicate(self, **kw): return b'',b''
     probe,heavy=Process(),Process()
-    if failure=='stop_timeout_after_done':
+    completed = failure in ('stop_timeout_after_done','done_file_failure','done_ledger_failure','done_ledger_correction_failure')
+    if completed:
         heavy.returncode=0
         monkeypatch.setattr(executor.uuid,'uuid4',lambda:'completed-operation')
         (tmp_path.parent/'evidence'/'completed-operation.guest.json').write_text(json.dumps({'operation_id':'completed-operation','lab_uuid':'lab-test','status':'done'}))
@@ -165,27 +166,55 @@ def test_failed_probe_cleanup_still_cancels_owned_heavy(monkeypatch, tmp_path, f
     def run(args,**kw):
         calls.append(args)
         if 'stop-probes' in args:
-            if failure in ('stop_timeout','stop_timeout_after_done'): raise subprocess.TimeoutExpired(args,10)
+            if failure in ('stop_timeout','stop_timeout_after_done','file_failure','ledger_failure','both_failure'): raise subprocess.TimeoutExpired(args,10)
             if failure=='stop_oserror': raise OSError('probe cleanup unavailable')
         return SimpleNamespace(stdout=json.dumps({'lab_uuid':'lab-test','daemon_id':executor.DAEMON_ID,'kernel_proof':proof}),returncode=0)
     monkeypatch.setattr(executor.subprocess,'run',run)
     def sample():
-        if failure=='stop_timeout_after_done': return 10**10
+        if completed: return 10**10
         raise OSError('primary sampler failure')
     monkeypatch.setattr(executor,'host_available_memory',sample)
+    publications=[]
+    from pathlib import Path
+    original_write=Path.write_text
+    def write(path,*args,**kw):
+        if path.name.endswith('.receipt.json'):
+            publications.append('file')
+            if failure=='done_ledger_correction_failure' and publications.count('file')==2: raise OSError('correction unavailable')
+            if failure in ('file_failure','both_failure','done_file_failure'): raise OSError('receipt unavailable')
+        return original_write(path,*args,**kw)
+    monkeypatch.setattr(Path,'write_text',write)
+    def append(kind,payload):
+        if kind=='tool_receipt':
+            publications.append('ledger')
+            if failure in ('ledger_failure','both_failure','done_ledger_failure','done_ledger_correction_failure'): raise RuntimeError('ledger unavailable')
+    ledger.append_event=append
     escaped=None
     try:
         receipt=executor.execute('test',{'state_dir':'E:/state'},datetime.now(timezone.utc)+timedelta(seconds=30),ledger)
-    except (OSError, subprocess.SubprocessError) as error:
+    except (OSError, subprocess.SubprocessError, RuntimeError) as error:
         escaped=error
     assert escaped is None, 'cleanup exception bypassed remaining owned cleanup'
     assert probe.terminated
-    if failure=='stop_timeout_after_done':
-        assert receipt.status=='failed' and receipt.evidence['reason']=='cleanup_unconfirmed'
-        saved=json.loads((tmp_path.parent/'evidence'/'completed-operation.receipt.json').read_text())
-        assert saved['status']=='failed'
+    if completed:
+        assert receipt.status=='failed'
+        assert receipt.evidence['reason']==('cleanup_unconfirmed' if failure=='stop_timeout_after_done' else 'publication_unconfirmed')
+        if failure=='stop_timeout_after_done':
+            saved=json.loads((tmp_path.parent/'evidence'/'completed-operation.receipt.json').read_text())
+            assert saved['status']=='failed'
     else:
         assert heavy.killed
         assert [c for c in calls if 'stop-heavy' in c][0][-2:]==[receipt.operation_id,'lab-test']
         assert receipt.status=='blocked' and receipt.evidence['reason']=='lab_preflight_failed'
-    assert receipt.evidence['cleanup_errors']
+    if not completed or failure=='stop_timeout_after_done':
+        assert receipt.evidence['cleanup_errors']
+    if 'failure' in failure:
+        assert publications==(['file','ledger','file'] if failure in ('ledger_failure','done_ledger_failure','done_ledger_correction_failure') else ['file','ledger'])
+        if failure=='done_ledger_failure':
+            saved=json.loads((tmp_path.parent/'evidence'/'completed-operation.receipt.json').read_text())
+            assert saved['status']=='failed'
+        if failure=='done_ledger_correction_failure':
+            assert receipt.evidence['publication_errors'][-1]['step']=='receipt_file_correction'
+        assert receipt.evidence['publication_errors']
+        assert receipt.evidence['publication']['file']==(failure not in ('file_failure','both_failure','done_file_failure','done_ledger_correction_failure'))
+        assert receipt.evidence['publication']['ledger']==(failure not in ('ledger_failure','both_failure','done_ledger_failure','done_ledger_correction_failure'))
