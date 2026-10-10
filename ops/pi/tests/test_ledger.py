@@ -142,3 +142,34 @@ def test_replaced_safeguard_fails_closed(tmp_path):
         connection.execute('CREATE TRIGGER events_no_delete BEFORE DELETE ON events BEGIN SELECT 1; END')
     with pytest.raises(LedgerBlocked):
         Ledger(path)
+
+
+def test_replacement_cannot_overwrite_audit_event(tmp_path):
+    ledger = Ledger(tmp_path / 'ledger.sqlite')
+    event_id = ledger.append_event('original', {'ok': True})
+    with ledger.transaction() as connection:
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(
+                'INSERT OR REPLACE INTO events(id,kind,payload,schema_version) VALUES (?, ?, ?, 1)',
+                (event_id, 'replaced', '{}'),
+            )
+    with ledger.transaction() as connection:
+        row = connection.execute('SELECT kind,payload FROM events WHERE id=?', (event_id,)).fetchone()
+        assert tuple(row) == ('original', '{"ok":true}')
+        assert connection.execute('PRAGMA recursive_triggers').fetchone()[0] == 1
+
+
+def test_replacement_cannot_reset_completed_operation(tmp_path):
+    ledger = Ledger(tmp_path / 'ledger.sqlite')
+    ledger.intent('x', 'build', {'sha': 'a'})
+    ledger.finish(Receipt('x', 'done', {'image': 'a'}))
+    with ledger.transaction() as connection:
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(
+                "INSERT OR REPLACE INTO operations VALUES ('x','other','{}','pending',NULL,1)"
+            )
+    record = Ledger(tmp_path / 'ledger.sqlite').get('x')
+    assert record['kind'] == 'build'
+    assert record['payload'] == {'sha': 'a'}
+    assert record['status'] == 'done'
+    assert record['evidence'] == {'image': 'a'}
