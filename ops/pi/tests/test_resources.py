@@ -72,3 +72,60 @@ def test_guest_sampler_uses_available_not_free_memory(tmp_path):
     meminfo=tmp_path/'meminfo'
     meminfo.write_text('MemFree: 1 kB\nMemAvailable: 4096 kB\n')
     assert _guest_available_memory(meminfo)==4194304
+
+
+def _kernel_sample_fixture(monkeypatch,mode):
+    from ops.pi import resources
+    from pathlib import Path
+    state={'attempts':0,'limits':[]}
+    def read(path,*args,**kwargs):
+        name=str(path).replace('\\','/')
+        if name.endswith('/memory.max'):
+            state['attempts']+=1;state['limits'].append(state['attempts'])
+            return str((384 if mode=='drift' else 1536)*1024**2)
+        if name.endswith('/cgroup.procs'):return '' if mode=='empty' else '101 102'
+        if name.startswith('/proc/'):
+            if '/101/' in name and (mode=='churn' or mode=='transient' and state['attempts']==1):
+                raise FileNotFoundError(2,'vanished',name)
+            if '/101/' in name and mode=='permission':raise PermissionError(name)
+            return '0::/foreign' if mode=='foreign' else '0::/myinkpi.slice/myinkpi-heavy.slice/owned'
+        if name.endswith('/memory.swap.max'):return str(256*1024**2)
+        if name.endswith('/cpu.max'):return '200000 100000'
+        return '0'
+    monkeypatch.setattr(Path,'read_text',read)
+    monkeypatch.setattr(Path,'is_dir',lambda p:True)
+    monkeypatch.setattr(Path,'is_file',lambda p:True)
+    monkeypatch.setattr(Path,'rglob',lambda p,pattern:[p/'owned/cgroup.procs'])
+    return resources,state
+
+
+def test_transient_pid_requires_complete_fresh_resampling(monkeypatch):
+    resources,state=_kernel_sample_fixture(monkeypatch,'transient')
+    result=None
+    try:result=resources.sample_resources('heavy')
+    except FileNotFoundError:pass
+    assert result is not None, 'vanished sample must be discarded and wholly resampled'
+    assert state['limits']==[1,2] and result['sample_attempts']==2
+    assert result['vanished_pids']==[{'attempt':1,'pid':101}]
+    assert resources.verify_limits(result,'heavy')
+
+
+@pytest.mark.parametrize('mode',['foreign','empty','drift'])
+def test_live_foreign_pid_never_retries_or_authorizes(monkeypatch,mode):
+    resources,state=_kernel_sample_fixture(monkeypatch,mode)
+    result=resources.sample_resources('heavy')
+    assert not resources.verify_limits(result,'heavy') and state['attempts']==1
+
+
+def test_pid_churn_exhaustion_never_returns_partial_proof(monkeypatch):
+    resources,state=_kernel_sample_fixture(monkeypatch,'churn')
+    rejected=False
+    try:resources.sample_resources('heavy')
+    except (ValueError,FileNotFoundError):rejected=True
+    assert rejected and state['limits']==[1,2,3], 'exactly three complete samples then fail closed'
+
+
+def test_pid_permission_error_never_retries(monkeypatch):
+    resources,state=_kernel_sample_fixture(monkeypatch,'permission')
+    with pytest.raises(PermissionError):resources.sample_resources('heavy')
+    assert state['attempts']==1
