@@ -16,7 +16,11 @@ def policy(tmp_path):
                 max_attempts=100, budget_microyuan=10000000, timeout_seconds=120,
                 max_body_bytes=65536, input_token_bound=1000, input_bound_source='offline fixture',
                 input_bound_calibrated=False, max_tokens=1000, price_source='offline fixture',
-                prices=dict(input='2', output='8', cache_read='0.2', cache_write=None))
+                prices=dict(input='2', output='8', cache_read='0.2', cache_write=None),
+                grace_seconds=900, soft_production_files=3, soft_production_lines=150,
+                hard_tracked_files=8, hard_production_lines=300,
+                protected_paths=['ops/pi', '.github', 'AGENTS.md', '.agents', '.codex', 'docs/team-workflow.md'],
+                high_risk_types=['schema', 'authentication', 'billing', 'external_api', 'infrastructure', 'deployment', 'policy'])
     path = tmp_path / 'policy.json'
     path.write_text(json.dumps(data))
     return load_policy(path)
