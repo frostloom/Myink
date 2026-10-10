@@ -130,3 +130,18 @@ jobs:
         run: docker build -f Dockerfile -t myink-api:ci .
       - name: Caddy 镜像（node 构建 dist + Caddyfile，构建期 caddy validate 兜语法错）
         run: docker build -f caddy/Dockerfile -t myink-caddy:ci .
+
+  offline-ops:
+    name: Pi offline control gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install offline test dependencies
+        run: pip install pytest httpx
+      - name: Offline control tests (no business services or model calls)
+        run: python -m pytest ops/pi/tests/ -q -m 'not pi_lab and not pi_live'
+      - name: Pi syntax check
+        run: python -m compileall -q ops/pi
