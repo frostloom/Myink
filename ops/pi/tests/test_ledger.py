@@ -113,8 +113,11 @@ def test_malformed_record_fails_closed(tmp_path):
         Ledger(path)
 
 
-def test_cli_checks_storage_and_rejects_implicit_path(tmp_path, capsys):
-    from ops.pi.control import main
+def test_cli_checks_storage_and_rejects_implicit_path(tmp_path, capsys, monkeypatch):
+    from ops.pi import control
+    # Simulate the approved lab root while exercising real temporary SQLite.
+    monkeypatch.setattr(control, 'state_path_allowed', lambda state: state.is_absolute() and state == tmp_path)
+    main = control.main
     assert main(['ledger-check', '--state-dir', 'relative']) == 1
     assert 'blocked' in capsys.readouterr().out
     assert main(['ledger-check', '--state-dir', str(tmp_path)]) == 0
@@ -173,3 +176,19 @@ def test_replacement_cannot_reset_completed_operation(tmp_path):
     assert record['payload'] == {'sha': 'a'}
     assert record['status'] == 'done'
     assert record['evidence'] == {'image': 'a'}
+
+
+@pytest.mark.parametrize('path,platform,allowed', [('/mnt/e/tools/myink-pi/state', 'linux', True),
+                                                ('/mnt/e/tools/../outside', 'linux', False),
+                                                ('/mnt/evil/state', 'linux', False),
+                                                ('/mnt/c/tools/state', 'linux', False),
+                                                ('/tmp/state', 'linux', False),
+                                                ('relative', 'linux', False),
+                                                ('E:/tools/myink-pi/state', 'win32', True),
+                                                ('E:relative', 'win32', False),
+                                                ('C:/tools/state', 'win32', False)])
+def test_cli_state_boundary_maps_only_e_drive(path, platform, allowed):
+    from pathlib import PurePosixPath, PureWindowsPath
+    from ops.pi.control import state_path_allowed
+    candidate = PureWindowsPath(path) if platform == 'win32' else PurePosixPath(path)
+    assert state_path_allowed(candidate, platform=platform) is allowed

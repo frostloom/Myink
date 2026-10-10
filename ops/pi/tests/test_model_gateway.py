@@ -135,6 +135,11 @@ def test_live_disabled_cli_does_not_read_credentials(tmp_path, monkeypatch):
                 input_bound_calibrated=False, max_tokens=1000, price_source='offline fixture',
                 prices=dict(input='2', output='8', cache_read='0.2', cache_write=None))
     path.write_text(json.dumps(data))
+    monkeypatch.setattr(control, 'state_path_allowed', lambda state: state.is_absolute() and state == tmp_path)
+    from ops.pi.policy import load_policy
+    assert control.live_ready(load_policy(path)) is False
+    with pytest.raises(ValueError, match='live configuration incomplete'):
+        control.serve_gateway(None, load_policy(path), tmp_path / 'missing-secret.json')
     monkeypatch.setattr(control, 'serve_gateway', lambda *a, **k: pytest.fail('live server started'))
     assert control.main(['model-gateway', '--state-dir', str(tmp_path), '--policy', str(path),
                          '--credential-file', str(tmp_path / 'missing-secret.json')]) == 1
@@ -256,10 +261,11 @@ def test_trusted_server_transport_reads_only_credential_file(tmp_path, ledger, p
     import json
     from ops.pi import control
     live = replace(policy, live_enabled=True, input_bound_calibrated=True,
+                   base_url='https://maas.qianwenaiapi.com/apps/anthropic',
                    prices=policy.prices | dict(cache_write='2'))
     credential = tmp_path / 'trusted.json'
     credential.write_text(json.dumps(dict(PLATFORM_MODEL_API_KEY='test-credential',
-                                         PLATFORM_MODEL_BASE_URL='https://provider.example',
+                                         PLATFORM_MODEL_BASE_URL='https://maas.qianwenaiapi.com/apps/anthropic',
                                          PLATFORM_MODEL_NAME=live.model, PLATFORM_MODEL_PROTOCOL='anthropic')))
     monkeypatch.setenv('PLATFORM_MODEL_API_KEY', 'untrusted-environment')
     client_type = httpx.Client
@@ -292,7 +298,7 @@ def test_trusted_server_transport_reads_only_credential_file(tmp_path, ledger, p
             assert b'200 OK' in socket.output
     monkeypatch.setattr(control, 'ThreadingHTTPServer', Server)
     control.serve_gateway(ledger, live, credential)
-    assert str(requests[0].url) == 'https://provider.example/v1/messages'
+    assert str(requests[0].url) == 'https://maas.qianwenaiapi.com/apps/anthropic/v1/messages'
     assert requests[0].headers['x-api-key'] == 'test-credential'
     assert requests[0].headers['anthropic-version'] == '2023-06-01'
     assert totals(ledger, 'local-trial-1') == (1, 10)
@@ -325,3 +331,132 @@ def test_cleanup_exception_never_leaks_background_context(ledger, policy, monkey
         thread.join(1)
     assert failures == []
     assert totals(ledger, 'local-trial-1') == (1, 10000)
+
+
+def test_sse_missing_final_output_usage_never_refunds(ledger, policy):
+    class MissingFinal(httpx.SyncByteStream):
+        def __iter__(self):
+            yield b'data: {"type":"message_start","message":{"usage":{"input_tokens":1,"output_tokens":0,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}\n\n'
+            yield b'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"paid output"}}\n\n'
+            yield b'data: {"type":"message_stop"}\n\n'
+    response = forward_messages(request() | dict(stream=True), 'local-trial-1', ledger=ledger, policy=policy,
+                                transport=transport(lambda _: httpx.Response(200, stream=MissingFinal())))
+    assert b'paid output' in b''.join(response.body)
+    assert totals(ledger, 'local-trial-1') == (1, 10000)
+    assert ledger.get(response.attempt_id)['status'] == 'uncertain'
+
+
+def test_downstream_write_uses_remaining_absolute_deadline(ledger, policy, monkeypatch):
+    import io
+    import json
+    import time
+    from ops.pi import control
+    now = [time.monotonic()]
+    monkeypatch.setattr(time, 'monotonic', lambda: now[0])
+    class Socket:
+        def __init__(self):
+            body = json.dumps(request() | dict(stream=True)).encode()
+            self.raw = io.BytesIO(b'POST /v1/messages HTTP/1.0\r\nContent-Type: application/json\r\nContent-Length: ' + str(len(body)).encode() + b'\r\n\r\n' + body)
+            self.output = bytearray()
+            self.timeout = None
+            self.body_timeouts = []
+        def makefile(self, *args): return self.raw
+        def settimeout(self, value): self.timeout = value
+        def sendall(self, data):
+            if data.startswith(b'HTTP/'):
+                now[0] += 119
+            elif data.startswith(b'event:'):
+                self.body_timeouts.append(self.timeout)
+                if len(self.body_timeouts) == 1:
+                    now[0] += 0.5
+                else:
+                    # A late downstream write completes after the one absolute deadline.
+                    now[0] += 1
+            self.output.extend(data)
+    sock = Socket()
+    handler = control.make_gateway_handler(ledger, policy, transport(lambda _: httpx.Response(200, stream=Chunks())))
+    handler(sock, ('127.0.0.1', 1), object())
+    assert len(sock.body_timeouts) == 2
+    assert 0 < sock.body_timeouts[0] <= 1
+    assert 0 < sock.body_timeouts[1] <= 0.5
+    assert totals(ledger, 'local-trial-1') == (1, 10000)
+    with ledger.transaction() as connection:
+        rows = list(connection.execute("SELECT status FROM operations WHERE kind='model-attempt'"))
+    assert [r['status'] for r in rows] == ['uncertain']
+
+
+def test_sse_output_usage_before_paid_content_is_not_final(ledger, policy):
+    class EarlyUsage(httpx.SyncByteStream):
+        def __iter__(self):
+            yield b'data: {"type":"message_start","message":{"usage":{"input_tokens":1,"output_tokens":0,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}\n\n'
+            yield b'data: {"type":"message_delta","usage":{"output_tokens":0}}\n\n'
+            yield b'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"paid after usage"}}\n\n'
+            yield b'data: {"type":"message_stop"}\n\n'
+    response = forward_messages(request() | dict(stream=True), 'local-trial-1', ledger=ledger, policy=policy,
+                                transport=transport(lambda _: httpx.Response(200, stream=EarlyUsage())))
+    assert b'paid after usage' in b''.join(response.body)
+    assert totals(ledger, 'local-trial-1') == (1, 10000)
+
+
+@pytest.mark.parametrize('body_elapsed', [119, 121])
+def test_http_body_acquisition_shares_model_request_deadline(ledger, policy, monkeypatch, body_elapsed):
+    import io
+    import json
+    import time
+    from ops.pi import control
+    now = [time.monotonic()]
+    monkeypatch.setattr(time, 'monotonic', lambda: now[0])
+    class SlowInput(io.BytesIO):
+        def read(self, *args):
+            now[0] += body_elapsed
+            return super().read(*args)
+    class Socket:
+        def __init__(self):
+            body = json.dumps(request() | dict(stream=True)).encode()
+            self.raw = SlowInput(b'POST /v1/messages HTTP/1.0\r\nContent-Type: application/json\r\nContent-Length: ' + str(len(body)).encode() + b'\r\n\r\n' + body)
+            self.output = bytearray()
+        def makefile(self, *args): return self.raw
+        def settimeout(self, value): pass
+        def sendall(self, data): self.output.extend(data)
+    timeouts = []
+    mock = transport(lambda _: httpx.Response(200, stream=Chunks()))
+    def send(body, timeout):
+        timeouts.append(timeout)
+        return mock(body, timeout)
+    sock = Socket()
+    control.make_gateway_handler(ledger, policy, send)(sock, ('127.0.0.1', 1), object())
+    if body_elapsed < 120:
+        assert len(timeouts) == 1
+        assert 0 < timeouts[0] <= 1
+        assert b'200 OK' in sock.output
+        assert totals(ledger, 'local-trial-1') == (1, 10)
+    else:
+        assert timeouts == []
+        assert sock.output == b''
+        assert totals(ledger, 'local-trial-1') == (0, 0)
+
+
+def test_late_header_write_marks_attempt_uncertain(ledger, policy, monkeypatch):
+    import io
+    import json
+    import time
+    from ops.pi import control
+    now = [time.monotonic()]
+    monkeypatch.setattr(time, 'monotonic', lambda: now[0])
+    class Socket:
+        def __init__(self):
+            body = json.dumps(request() | dict(stream=True)).encode()
+            self.raw = io.BytesIO(b'POST /v1/messages HTTP/1.0\r\nContent-Type: application/json\r\nContent-Length: ' + str(len(body)).encode() + b'\r\n\r\n' + body)
+            self.writes = 0
+        def makefile(self, *args): return self.raw
+        def settimeout(self, value): pass
+        def sendall(self, data):
+            self.writes += 1
+            now[0] += 121
+    sock = Socket()
+    control.make_gateway_handler(ledger, policy, transport(lambda _: httpx.Response(200, stream=Chunks())))(sock, ('127.0.0.1', 1), object())
+    assert sock.writes == 1
+    assert totals(ledger, 'local-trial-1') == (1, 10000)
+    with ledger.transaction() as connection:
+        rows = list(connection.execute("SELECT status FROM operations WHERE kind='model-attempt'"))
+    assert [r['status'] for r in rows] == ['uncertain']

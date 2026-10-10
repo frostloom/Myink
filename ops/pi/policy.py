@@ -2,6 +2,7 @@
 from dataclasses import dataclass, fields
 from decimal import Decimal, InvalidOperation
 import json
+import re
 from urllib.parse import urlsplit
 
 
@@ -63,8 +64,14 @@ def load_policy(path):
     for key in ('model', 'input_bound_source', 'price_source'):
         if not isinstance(getattr(p, key), str) or not getattr(p, key).strip():
             raise ValueError('missing trusted source')
+    if (not isinstance(p.base_url, str) or any(c.isspace() or ord(c) < 32 for c in p.base_url)
+            or any(c in p.base_url for c in ('?', '#', '\\', '%'))):
+        raise ValueError('ambiguous provider endpoint')
     url = urlsplit(p.base_url)
-    if p.protocol != 'anthropic' or url.scheme != 'https' or not url.hostname or url.username or url.password or url.query or url.fragment or url.path not in ('', '/'):
+    safe_path = (url.path in ('', '/') or
+                 (re.fullmatch(r'/[A-Za-z0-9._~-]+(?:/[A-Za-z0-9._~-]+)*', url.path)
+                  and all(segment not in ('.', '..') for segment in url.path.split('/')[1:])))
+    if p.protocol != 'anthropic' or url.scheme != 'https' or not url.hostname or url.username is not None or url.password is not None or url.query or url.fragment or not safe_path:
         raise ValueError('unsupported provider endpoint')
     if not isinstance(p.prices, dict) or set(p.prices) != {'input', 'output', 'cache_read', 'cache_write'}:
         raise ValueError('invalid price dimensions')
