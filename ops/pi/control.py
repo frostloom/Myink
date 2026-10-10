@@ -1,7 +1,12 @@
 import argparse
+from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
+import socket
+import sys
+from threading import Timer
+import time
 
 import httpx
 
@@ -15,6 +20,34 @@ def live_ready(policy):
             and bool(policy.price_source.strip()) and all(v is not None for v in policy.prices.values()))
 
 
+class _DeadlineIO:
+    """Every socket operation shares the HTTP handler's absolute deadline."""
+    def __init__(self, wrapped, handler):
+        self.wrapped = wrapped
+        self.handler = handler
+
+    def __getattr__(self, name):
+        return getattr(self.wrapped, name)
+
+    def _call(self, name, *args):
+        self.handler.set_remaining_timeout()
+        result = getattr(self.wrapped, name)(*args)
+        self.handler.set_remaining_timeout()  # A late completion cannot resume settlement.
+        return result
+
+    def read(self, *args):
+        return self._call('read', *args)
+
+    def readline(self, *args):
+        return self._call('readline', *args)
+
+    def write(self, *args):
+        return self._call('write', *args)
+
+    def flush(self):
+        return self._call('flush')
+
+
 def make_gateway_handler(ledger, policy, transport):
     class Handler(BaseHTTPRequestHandler):
         protocol_version = 'HTTP/1.0'  # EOF framing supports streaming without buffering.
@@ -23,8 +56,36 @@ def make_gateway_handler(ledger, policy, transport):
             pass  # Never log request data, credentials, or upstream exceptions.
 
         def setup(self):
-            self.request.settimeout(policy.timeout_seconds)
+            self.deadline = time.monotonic() + policy.timeout_seconds
+            self.set_remaining_timeout()
             super().setup()
+            self.rfile = _DeadlineIO(self.rfile, self)
+            self.wfile = _DeadlineIO(self.wfile, self)
+            # A deadline watchdog also interrupts a real socket trickling within
+            # one buffered read, which could otherwise reset its per-recv timeout.
+            self.watchdog = Timer(self.remaining(), self.expire_socket)
+            self.watchdog.daemon = True
+            self.watchdog.start()
+
+        def remaining(self):
+            remaining = self.deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError('HTTP request deadline exceeded')
+            return remaining
+
+        def set_remaining_timeout(self):
+            self.request.settimeout(self.remaining())
+
+        def expire_socket(self):
+            self.close_connection = True
+            try:
+                self.request.shutdown(socket.SHUT_RDWR)
+            except (OSError, AttributeError):
+                pass
+
+        def finish(self):
+            self.watchdog.cancel()
+            super().finish()
 
         def do_POST(self):
             iterator = None
@@ -42,7 +103,13 @@ def make_gateway_handler(ledger, policy, transport):
                 if len(raw) != length:
                     raise ValueError('incomplete request')
                 body = json.loads(raw)
-                result = forward_messages(body, 'local-trial-1', ledger=ledger, policy=policy, transport=transport)
+                request_policy = replace(policy, timeout_seconds=self.remaining())
+                result = forward_messages(body, 'local-trial-1', ledger=ledger, policy=request_policy, transport=transport)
+                if result.attempt_id:
+                    permit_deadline = ledger.get(result.attempt_id)['payload']['deadline']
+                    self.deadline = min(self.deadline, time.monotonic() + max(0, permit_deadline - time.time()))
+                iterator = iter([result.body]) if isinstance(result.body, bytes) else iter(result.body)
+                self.set_remaining_timeout()
                 self.send_response(result.status_code)
                 for key, value in result.headers.items():
                     # Only explicit safe response headers survive the model boundary.
@@ -50,7 +117,6 @@ def make_gateway_handler(ledger, policy, transport):
                         self.send_header(key, value)
                 self.send_header('Connection', 'close')
                 self.end_headers()
-                iterator = iter([result.body]) if isinstance(result.body, bytes) else iter(result.body)
                 for chunk in iterator:
                     self.wfile.write(chunk)
                     self.wfile.flush()
@@ -87,6 +153,18 @@ def serve_gateway(ledger, policy, credential_file, host='127.0.0.1', port=8765):
             server.serve_forever()
 
 
+def state_path_allowed(path, *, platform=None):
+    """Current lab state is E: on Windows, or its /mnt/e WSL mount."""
+    platform = sys.platform if platform is None else platform
+    if not path.is_absolute() or '..' in path.parts:
+        return False
+    if platform == 'win32':
+        return path.drive.lower() == 'e:'
+    if platform.startswith('linux'):
+        return path.parts[:3] == ('/', 'mnt', 'e')
+    return False
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     commands = parser.add_subparsers(dest='command', required=True)
@@ -101,7 +179,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         state = args.state_dir
-        if not state.is_absolute() or state.drive.lower() != 'e:':
+        if not state_path_allowed(state):
             raise LedgerBlocked('state directory must be an explicit absolute E drive path')
         state.mkdir(parents=True, exist_ok=True)
         ledger = Ledger(state / 'ledger.sqlite')

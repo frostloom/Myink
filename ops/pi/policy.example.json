@@ -4,7 +4,7 @@
   "server_daily_enabled": false,
   "model": "deepseek-v4.1-flash",
   "protocol": "anthropic",
-  "base_url": "https://provider.example",
+  "base_url": "https://maas.qianwenaiapi.com/apps/anthropic",
   "max_attempts": 100,
   "budget_microyuan": 10000000,
   "timeout_seconds": 120,

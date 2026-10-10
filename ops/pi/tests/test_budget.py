@@ -110,3 +110,29 @@ def test_cache_read_uses_confirmed_decimal_rate(ledger, policy):
     settle(ledger, permit, dict(input_tokens=100, output_tokens=100,
                               cache_read_input_tokens=100, cache_creation_input_tokens=0))
     assert totals(ledger, 'local-trial-1') == (1, 1020)
+
+
+def test_trusted_provider_base_prefix_is_loaded(tmp_path, policy):
+    from dataclasses import asdict
+    data = asdict(policy)
+    data['base_url'] = 'https://maas.qianwenaiapi.com/apps/anthropic'
+    path = tmp_path / 'prefixed.json'
+    path.write_text(json.dumps(data))
+    assert load_policy(path).base_url == 'https://maas.qianwenaiapi.com/apps/anthropic'
+
+
+@pytest.mark.parametrize('base_url', ['https://user:pass@provider.example/apps/anthropic',
+                                    'https://provider.example/apps/anthropic?x=1',
+                                    'https://provider.example/apps/anthropic#fragment',
+                                    'https://provider.example/apps//anthropic',
+                                    'https://provider.example/apps/../anthropic',
+                                    'https://provider.example/apps/%2e%2e/anthropic',
+                                    'https://provider.example/apps\\anthropic',
+                                    'https://provider.example/apps/anthropic/'])
+def test_ambiguous_or_untrusted_base_prefix_rejected(tmp_path, policy, base_url):
+    from dataclasses import asdict
+    data = asdict(policy) | dict(base_url=base_url)
+    path = tmp_path / 'ambiguous.json'
+    path.write_text(json.dumps(data))
+    with pytest.raises(ValueError):
+        load_policy(path)

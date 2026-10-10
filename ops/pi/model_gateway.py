@@ -62,7 +62,7 @@ class _UsageCollector:
         self.buffer = b''
         self.usage = {}
         self.valid = True
-        self.started = self.stopped = False
+        self.started = self.stopped = self.final_output_usage = False
 
     def feed(self, chunk):
         if not self.valid:
@@ -98,11 +98,14 @@ class _UsageCollector:
                             or delta['output_tokens'] < self.usage.get('output_tokens', 0)):
                         raise ValueError('invalid usage delta')
                     self.usage.update(delta)
+                    self.final_output_usage = True
                 elif kind == 'message_stop':
                     if not self.started:
                         raise ValueError('stop without start')
                     self.stopped = True
-                elif kind not in ('ping', 'content_block_start', 'content_block_delta', 'content_block_stop'):
+                elif kind in ('content_block_start', 'content_block_delta', 'content_block_stop'):
+                    self.final_output_usage = False
+                elif kind != 'ping':
                     raise ValueError('unrecognized event')
             except (ValueError, TypeError, KeyError, AttributeError):
                 self.valid = False
@@ -110,7 +113,7 @@ class _UsageCollector:
                 return
 
     def complete(self):
-        return self.valid and self.started and self.stopped and not self.buffer.strip()
+        return self.valid and self.started and self.final_output_usage and self.stopped and not self.buffer.strip()
 
 
 class _DeadlineUpstream:
@@ -211,6 +214,26 @@ class _DeadlineUpstream:
         except Full:
             pass
 
+
+class _StreamBody:
+    """Closing an unstarted stream still closes transport and records uncertainty."""
+    def __init__(self, source, cleanup):
+        self.source = source
+        self.cleanup = cleanup
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return next(self.source)
+
+    def close(self):
+        try:
+            self.source.close()
+        finally:
+            self.cleanup()
+
+
 def _error(code):
     return GatewayResponse(code, {'content-type':'application/json'}, b'{"error":"request blocked"}', '')
 
@@ -241,6 +264,10 @@ def forward_messages(body: Record, scope_id: str, *, ledger: Ledger, policy: Pol
         upstream.close()
         settle(ledger, permit, unknown)
         return GatewayResponse(502, headers, b'{"error":"redirect refused"}', permit.attempt_id)
+
+    def finish_unknown():
+        upstream.close()
+        settle(ledger, permit, unknown)
 
     def chunks():
         buffer = bytearray()
@@ -274,11 +301,10 @@ def forward_messages(body: Record, scope_id: str, *, ledger: Ledger, policy: Pol
                     usage['provider_request_id'] = usage.get('provider_request_id', request_id)
                     settle(ledger, permit, usage)
         finally:
-            upstream.close()
-            settle(ledger, permit, unknown)
+            finish_unknown()
     iterator = chunks()
     if body.get('stream'):
-        return GatewayResponse(status, headers, iterator, permit.attempt_id)
+        return GatewayResponse(status, headers, _StreamBody(iterator, finish_unknown), permit.attempt_id)
     try:
         result = b''.join(iterator)
     except Exception:
