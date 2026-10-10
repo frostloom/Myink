@@ -52,7 +52,7 @@ def test_protected_path_and_risky_type_require_user_policy(policy):
 
 
 def test_insufficient_baseline_blocks(policy):
-    b = baseline(); b["paired_groups"] = 4
+    b = baseline(); b["complete_tasks"] = 19
     assert plans.validate_plan(candidate(), b, policy).status == "blocked"
 
 
@@ -118,3 +118,34 @@ def test_invalid_diff_collection_blocks(policy,files):
 @pytest.mark.parametrize("path", ["ops/pi./policy.py",".github /workflows/ci.yml","app/file.py\x00","app//worker.py"])
 def test_ambiguous_filesystem_path_fails_closed(policy,path):
     assert plans.validate_plan(candidate(files=(path,)),baseline(),policy).status == "blocked"
+
+
+def test_synthetic_only_baseline_uses_paired_floor_without_online_counts(policy):
+    p=candidate(evidence_domain="synthetic",sample_floor=5)
+    b=dict(id="base-1",metric="latency",config_hash="config-1",evidence_domain="synthetic",paired_groups=5)
+    assert plans.validate_plan(p,b,policy).status == "done"
+    b["paired_groups"]=4
+    assert plans.validate_plan(p,b,policy).status == "blocked"
+
+
+def test_online_floor_uses_complete_tasks_without_synthetic_or_tail_counts(policy):
+    p=candidate(evidence_domain="online")
+    b=dict(id="base-1",metric="latency",config_hash="config-1",evidence_domain="online",complete_tasks=20)
+    assert plans.validate_plan(p,b,policy).status == "done"
+    b["complete_tasks"]=19
+    assert plans.validate_plan(p,b,policy).status == "blocked"
+
+
+def test_evidence_domain_is_frozen_and_cannot_relabel_baseline(policy):
+    p=candidate(evidence_domain="online")
+    changed=replace(p,evidence_domain="synthetic",sample_floor=5)
+    assert p.plan_hash != replace(p,evidence_domain="synthetic").plan_hash
+    assert plans.validate_plan(changed,baseline(),policy).status == "blocked"
+
+
+def test_synthetic_p95_needs_tail_floor_only_for_tail_conclusion(policy):
+    p=candidate(evidence_domain="synthetic",sample_floor=5,metric="p95")
+    b=dict(id="base-1",metric="p95",config_hash="config-1",evidence_domain="synthetic",paired_groups=5)
+    assert plans.validate_plan(p,b,policy).status == "blocked"
+    b["tail_samples"]=100
+    assert plans.validate_plan(p,b,policy).status == "done"
