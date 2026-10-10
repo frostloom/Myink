@@ -405,3 +405,38 @@ def test_actual_private_execution_roles_and_both_report_bootstraps(pause_lab,bud
             db.execute(text('SET LOCAL ROLE myink_report'))
             assert not db.scalar(text("SELECT has_table_privilege(current_user,'public.maintenance_executions','SELECT')"))
             assert db.scalar(text('SELECT count(*) FROM projects'))>=1
+
+
+
+def test_legacy_budgetless_late_effect_is_fenced(pause_lab,budget_task):
+    from myink.maintenance_pause import expire_unconfirmed
+    from myink.task_budget import load_effect,save_effect
+    from myink.models import Chapter
+    tid,pid,uid=budget_task
+    with bind_task_budget(tid,'legacy-owner'):
+        request(pid,tid)
+        with tenant_session(pid) as db:expire_unconfirmed(db,tid,now=__import__('time').time()+901)
+        with tenant_session(pid) as db:
+            try:
+                load_effect(db,('effect:legacy-late','hash'))
+                db.add(Chapter(project_id=uuid.UUID(pid),chapter_seq=1,content='obsolete owner late write',status='confirmed'))
+                save_effect(db,('effect:legacy-late','hash'),{'persisted':True})
+            except TaskBudgetUnavailable:
+                pass
+    with tenant_session(pid) as db:
+        assert list(db.scalars(select(Chapter).where(Chapter.project_id==uuid.UUID(pid))))==[]
+
+
+def test_legacy_budgetless_checkpoint_cannot_falsely_confirm(pause_lab,budget_task):
+    from myink.maintenance_pause import MaintenancePaused,invoke_graph,confirm_exception,candidate_allowed,execution_view
+    tid,pid,uid=budget_task
+    graph=graph_fixture(pid,tid)
+    with bind_task_budget(tid,'legacy-owner'):
+        with pytest.raises(MaintenancePaused) as caught:invoke_graph(graph,chapter_state(pid,tid),{'configurable':{'thread_id':tid}})
+    rejected=False
+    try:confirm_exception(caught.value)
+    except ValueError:rejected=True
+    assert rejected, 'legacy checkpoint without durable effect ledger cannot certify safe pause'
+    with tenant_session(pid) as db:
+        assert execution_view(db,tid)['state']=='pause_requested'
+        assert not candidate_allowed(db,'b9-test')

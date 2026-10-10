@@ -223,6 +223,8 @@ def confirm_pause(db, task_id: str, checkpoint: dict, message: dict) -> dict:
         raise ValueError("stale maintenance confirmation")
     if task.status not in {"queued","running","paused","cancelled","awaiting_plan","awaiting_review"}:
         raise ValueError("task is already terminal")
+    if budget is None:
+        raise ValueError("legacy task lacks durable budget/effect bridge")
     waiting = (budget.pause_reason if budget else None) or (task.status if task.status not in {"queued","running"} else None)
     if db.scalar(select(TaskBudgetAttempt.id).where(TaskBudgetAttempt.task_id==task.id,
         TaskBudgetAttempt.owner_token==row.owner_token,TaskBudgetAttempt.status.in_(["reserved","unknown"])).limit(1)):

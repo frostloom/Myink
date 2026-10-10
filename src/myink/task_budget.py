@@ -677,6 +677,7 @@ def effect_identity(state, node):
 
 def load_effect(db, identity):
     """Lock the lease and receipt in the business transaction itself."""
+    fence_effect(db)
     scope = _SCOPE.get()
     if scope is None:
         return None
@@ -688,6 +689,7 @@ def load_effect(db, identity):
 
 
 def save_effect(db, identity, result):
+    fence_effect(db)
     scope = _SCOPE.get()
     if scope is None:
         return

@@ -172,7 +172,7 @@ if [[ $mode == execute ]]; then
       test/b8-ci-collection|test/b8-guarded-collection) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py) ;;
       test/b8) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py tests/test_enqueue_gates.py tests/test_task_budget_routes.py tests/test_manual_plan.py) ;;
       test/b9-red|test/b9) targets=(tests/test_maintenance_pause.py tests/test_maintenance_compatibility.py tests/test_task_budget_recovery.py tests/test_short_runner.py tests/test_worker.py tests/test_manual_plan.py) ;;
-      test/b9-pause|test/b9-wait|test/b9-identity) targets=(tests/test_maintenance_pause.py) ;;
+      test/b9-pause|test/b9-wait|test/b9-identity|test/b9-legacy) targets=(tests/test_maintenance_pause.py) ;;
       test/b9-compatibility|test/b9-protocol|test/b9-ci-collection|test/b9-guarded-collection) targets=(tests/test_maintenance_compatibility.py) ;;
       test/b9-recovery) targets=(tests/test_task_budget_recovery.py) ;;
       test/b9-short) targets=(tests/test_short_runner.py) ;;
@@ -187,6 +187,7 @@ if [[ $mode == execute ]]; then
     [[ $selection != provenance && $selection != b8 && $selection != b8-red && $selection != b8-focused && $selection != b8-survival && $selection != b8-reconcile && $selection != b8-ci-collection && $selection != b8-guarded-collection ]] || opts=()
     [[ $selection != b9* ]] || opts=()
     python_args=(-m pytest "${targets[@]}" -q "${opts[@]}" -m "not pi_live" --tb=short)
+    [[ $selection != b9-legacy ]] || python_args+=(-k "legacy_budgetless")
     [[ $selection != b9-protocol ]] || python_args+=(-k "new_serializer_and_state_family")
     [[ $selection != b9-ci-collection ]] || python_args=(-c "import pytest; result=pytest.main(['tests/test_maintenance_pause.py','tests/test_maintenance_compatibility.py','--collect-only','-q','-m','not pi_lab and not pi_live']); raise SystemExit(0 if result == 5 else 1)")
     [[ $selection != b9-guarded-collection ]] || python_args=(-m pytest tests/test_maintenance_pause.py tests/test_maintenance_compatibility.py --collect-only -q -m "not pi_live")

@@ -179,13 +179,29 @@ def test_two_distinct_executable_versions_restore_durable_state(pause_lab,budget
         root=Path('/opt/myink-pi-lab/versions')/identity['commit']
         source=root/'src/myink/maintenance_pause.py'
         assert hashlib.sha256(source.read_bytes()).hexdigest()==identity['executable_sha256']
-        env=dict(os.environ);env['PYTHONPATH']=str(root/'src')+':'+str(root/'tests')+':'+str(root)
-        completed=subprocess.run([sys.executable,str(root/'tests/test_maintenance_compatibility.py'),case,phase,tid,pid],
-            cwd=root,env=env,text=True,capture_output=True,timeout=120)
+        trusted=Path('/opt/myink-pi-lab/trusted-source')
+        env=dict(os.environ);env['PYTHONPATH']=str(root/'src')+':'+str(root/'tests')+':'+str(trusted)+':'+str(root)
+        # The verifier stays native and sealed; business code must come from the
+        # registered executable revision, independently in each process.
+        launcher='''import hashlib,json,runpy,sys
+from pathlib import Path
+import myink.maintenance_pause as executable
+source=Path(executable.__file__).resolve()
+assert str(source)==sys.argv[1]
+assert hashlib.sha256(source.read_bytes()).hexdigest()==sys.argv[2]
+print('B9_SOURCE:'+json.dumps({'path':str(source),'sha256':sys.argv[2]}),flush=True)
+sys.argv=sys.argv[3:]
+runpy.run_path(sys.argv[0],run_name='__main__')
+'''
+        completed=subprocess.run([sys.executable,'-c',launcher,str(source),identity['executable_sha256'],
+            str(root/'tests/test_maintenance_compatibility.py'),case,phase,tid,pid],
+            cwd=trusted,env=env,text=True,capture_output=True,timeout=120)
         assert completed.returncode==0,completed.stdout+completed.stderr
         result=json.loads(next(l.removeprefix('B9_RESULT:') for l in completed.stdout.splitlines() if l.startswith('B9_RESULT:')))
         assert result['runtime']['state_family']==case
-        results.append({**result,'source':identity})
+        imported=json.loads(next(l.removeprefix('B9_SOURCE:') for l in completed.stdout.splitlines() if l.startswith('B9_SOURCE:')))
+        assert imported=={'path':str(source),'sha256':identity['executable_sha256']}
+        results.append({**result,'source':identity,'imported_executable':imported})
     first,second=results
     for key in ('python','interpreter','packages','schema','serializer','protocol','effect_keys','state_set','read_only_tools'):
         assert first['runtime'][key]==second['runtime'][key]
