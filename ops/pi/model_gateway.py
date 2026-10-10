@@ -137,6 +137,8 @@ class _DeadlineUpstream:
     def _run(self, transport, body, timeout):
         response = None
         try:
+            if self.cancelled.is_set() or self.remaining() <= 0:
+                return  # A durable reservation may have exhausted its deadline.
             response = transport(body, timeout)
             if self.cancelled.is_set():
                 return
