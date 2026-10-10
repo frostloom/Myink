@@ -1,0 +1,184 @@
+"""Trusted typed command boundary. No client shell, executable or Docker context."""
+from datetime import datetime, timezone
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import time
+import uuid
+
+from .contracts import Receipt
+from .resources import MemoryWatchdog, host_available_memory, verify_limits
+
+COMMANDS = {'test': 2700, 'probe': 120, 'data-read': 120, 'git': 120, 'build': 2700, 'backup': 600, 'restore': 600}
+RESERVED = {'git', 'build', 'backup', 'restore'}
+EXCLUDED = {'.git', '.superpowers', '.env', '.agents', '.codex', '__pycache__', 'node_modules',
+            'credentials', 'backups', 'ledger.sqlite', 'ledger.sqlite-wal', 'ledger.sqlite-shm', 'policy.example.json'}
+ENVIRONMENT = {'DATABASE_URL', 'ADMIN_DATABASE_URL', 'REDIS_URL', 'AMQP_URL', 'QUEUE_PREFIX',
+               'JWT_SECRET', 'EMBED_ENABLED', 'PYTHONPATH', 'TMPDIR', 'PYTHONPYCACHEPREFIX'}
+DAEMON_ID = '364e8400-3844-47e2-b86d-8b626332f61c'
+
+
+def safe_source(root, path):
+    root = Path(root).resolve(strict=True)
+    relative = Path(path)
+    if relative.is_absolute() or '..' in relative.parts:
+        raise ValueError('source path escape')
+    candidate = root / relative
+    for part in (candidate, *candidate.parents):
+        if part == root:
+            break
+        if part.is_symlink() or (hasattr(part, 'is_junction') and part.is_junction()):
+            raise ValueError('source link rejected')
+    if not candidate.resolve().is_relative_to(root):
+        raise ValueError('source path escape')
+    return candidate
+
+
+def sandbox_environment(values):
+    return {k: str(v) for k, v in values.items() if k in ENVIRONMENT}
+
+
+def validate_daemon(expected, actual):
+    return bool(expected == DAEMON_ID and actual.get('ID') == expected
+                and actual.get('CgroupVersion') == '2' and actual.get('CgroupDriver') == 'systemd'
+                and actual.get('DockerRootDir') == '/var/lib/docker')
+
+
+def stage_source(source, destination):
+    """Fresh native candidate only; fail on links rather than following history/secrets."""
+    source, destination = Path(source).resolve(strict=True), Path(destination)
+    if destination.exists() or not str(destination).startswith('/opt/myink-pi-lab/candidates/'):
+        raise ValueError('fresh private candidate required')
+    files = []
+    for root, dirs, names in os.walk(source, followlinks=False):
+        rel = Path(root).relative_to(source)
+        for name in list(dirs):
+            if name in EXCLUDED or name.startswith('.env'):
+                dirs.remove(name)
+                continue
+            safe_source(source, rel / name)
+        for name in names:
+            if name in EXCLUDED or name.startswith('.env') or name.endswith(('.pem', '.key', '.sqlite')):
+                continue
+            path = safe_source(source, rel / name)
+            if path.stat().st_nlink != 1:
+                raise ValueError('hardlinked source rejected')
+            files.append((path, rel / name))
+    destination.mkdir(parents=True)
+    for path, relative in files:
+        target = destination / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(path, target)
+    return len(files)
+
+
+def execute(command_id, args, deadline, ledger):
+    tool_started = time.monotonic()
+    operation = str(uuid.uuid4())
+    blocked = lambda reason: Receipt(operation, 'blocked', {'reason': reason})
+    if command_id not in COMMANDS or not isinstance(args, dict):
+        return blocked('unknown_command')
+    if command_id in RESERVED:
+        return blocked('prerequisite_not_implemented')
+    if set(args) - {'state_dir', 'selection'}:
+        return blocked('untyped_arguments')
+    if (not isinstance(deadline, datetime) or deadline.tzinfo is None
+            or deadline <= datetime.now(timezone.utc)):
+        return blocked('deadline_expired')
+    if sys.platform != 'win32' or ledger is None:
+        return blocked('trusted_windows_controller_required')
+    process = None
+    host_probe = None
+    try:
+        state = Path(args['state_dir'])
+        if state.drive.lower() != 'e:' or not state.is_absolute() or '..' in state.parts:
+            return blocked('invalid_state_path')
+        identity = json.loads((state / 'lab-env.json').read_text(encoding='utf-8'))
+        if identity['daemon_id'] != DAEMON_ID or identity['distribution'] != 'MyinkPiLab':
+            return blocked('foreign_lab')
+        preflight = subprocess.run(['wsl.exe', '-d', 'MyinkPiLab', '-u', 'root', '--', '/opt/myink-pi-lab/provision.sh', 'preflight'], capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=120, check=True)
+        fresh = json.loads(preflight.stdout)
+        if fresh.get('lab_uuid') != identity['lab_uuid'] or fresh.get('daemon_id') != DAEMON_ID:
+            return blocked('foreign_lab')
+        if not verify_limits(fresh.get('kernel_proof', {}), 'heavy'):
+            return blocked('missing_cgroup_proof')
+        selection = args.get('selection', 'b7')
+        if selection not in ('b7', 'provenance', 'bootstrap', 'watchdog'):
+            return blocked('unknown_test_selection')
+        if selection == 'b7' and command_id in ('test', 'probe'):
+            probe_script = Path(__file__).parent / 'lab' / 'host-probe.py'
+            host_probe = subprocess.Popen([sys.executable, str(probe_script), str(state)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW)
+            probe_file = state.parent / 'evidence' / 'b7-host-server.json'
+            for _ in range(100):
+                if probe_file.exists() and json.loads(probe_file.read_text()).get('pid') == host_probe.pid:
+                    break
+                if host_probe.poll() is not None:
+                    return blocked('host_probe_failed')
+                time.sleep(.05)
+            else:
+                return blocked('host_probe_failed')
+            subprocess.run(['wsl.exe', '-d', 'MyinkPiLab', '-u', 'root', '--', '/opt/myink-pi-lab/provision.sh', 'prepare-probes'], capture_output=True, timeout=30, check=True)
+        remaining = min(COMMANDS[command_id] - (time.monotonic() - tool_started), (deadline - datetime.now(timezone.utc)).total_seconds())
+        if remaining < 1:
+            return blocked('deadline_expired')
+        ledger.append_event('tool_intent', {'operation_id': operation, 'command_id': command_id, 'lab_uuid': identity['lab_uuid']})
+        # Script is installed root-owned from reviewed source; all args are finite IDs.
+        command = ['wsl.exe', '-d', 'MyinkPiLab', '-u', 'root', '--', '/opt/myink-pi-lab/provision.sh',
+                   'execute', command_id, selection, str(int(remaining)), operation]
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        watch, start = MemoryWatchdog(), time.monotonic()
+        samples = []
+        reason = None
+        while process.poll() is None:
+            available = host_available_memory()
+            samples.append(available)
+            if watch.observe(available, time.monotonic()):
+                reason = 'host_low_memory'
+            if time.monotonic() - start >= remaining:
+                reason = 'deadline_expired'
+            if reason:
+                termination = subprocess.run(['wsl.exe', '-d', 'MyinkPiLab', '-u', 'root', '--',
+                                '/opt/myink-pi-lab/provision.sh', 'stop-heavy'], timeout=30, check=True,
+                               capture_output=True)
+                termination_proof = json.loads(termination.stdout)
+                process.kill()
+                break
+            time.sleep(.2)
+        output, error = process.communicate(timeout=30)
+        evidence = {'command_id': command_id, 'lab_uuid': identity['lab_uuid'], 'host_min_available': min(samples) if samples else host_available_memory(),
+                    'elapsed': time.monotonic() - start, 'returncode': process.returncode}
+        # Persist diagnostic bytes in trusted state, never return candidate output to a model.
+        (state / f'{operation}.stdout').write_bytes(output)
+        (state / f'{operation}.stderr').write_bytes(error)
+        guest_file = state.parent / 'evidence' / f'{operation}.guest.json'
+        if guest_file.exists():
+            guest = json.loads(guest_file.read_text(encoding='utf-8'))
+            if guest.get('operation_id') != operation or guest.get('lab_uuid') != identity['lab_uuid']:
+                raise ValueError('foreign guest receipt')
+            evidence['guest_watchdog'] = guest
+            if guest['status'] != 'done' and reason is None:
+                reason = guest['status']
+        elif reason is None:
+            reason = 'guest_sampler_receipt_missing'
+        if reason:
+            evidence['reason'] = reason
+            evidence['termination_proof'] = locals().get('termination_proof')
+        receipt = Receipt(operation, 'failed' if reason or process.returncode else 'done', evidence)
+        (state.parent / 'evidence' / f'{operation}.receipt.json').write_text(json.dumps({'operation_id': operation, 'status': receipt.status, 'evidence': evidence}, indent=2), encoding='utf-8')
+        ledger.append_event('tool_receipt', {'operation_id': operation, 'status': receipt.status, **evidence})
+        return receipt
+    except (KeyError, ValueError, OSError, subprocess.SubprocessError, RuntimeError):
+        return blocked('lab_preflight_failed')
+    finally:
+        if host_probe is not None and host_probe.poll() is None:
+            host_probe.terminate()
+            host_probe.wait(timeout=10)
+        if process is not None and process.poll() is None:
+            try:
+                subprocess.run(['wsl.exe', '-d', 'MyinkPiLab', '-u', 'root', '--', '/opt/myink-pi-lab/provision.sh', 'stop-heavy'], timeout=30, capture_output=True, check=True)
+            finally:
+                process.kill()
+                process.communicate(timeout=30)

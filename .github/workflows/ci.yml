@@ -94,7 +94,7 @@ jobs:
           myink contract export
           git diff --exit-code -- spec/api-openapi.json
       - name: 全量回归（LLM/embedding 使用替身）
-        run: python -m pytest tests/ -q
+        run: python -m pytest tests/ -q -m 'not pi_lab and not pi_live'
 
   # 前端：oxlint + vitest + tsc/vite build（工具函数单测 + jsdom 编辑器交互回归）。
   frontend:

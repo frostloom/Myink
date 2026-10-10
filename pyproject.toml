@@ -78,3 +78,8 @@ myink = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+
+markers = [
+    'pi_lab: private E-drive lab opt-in and preflight required',
+    'pi_live: paid opt-in plus all B/price/cumulative-scope gates required',
+]
