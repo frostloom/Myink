@@ -31,6 +31,7 @@ from myink.config import settings
 from myink.db import tenant_session
 from myink.maintenance import register_admission, intent_outcome
 from myink.worker import amqp
+from myink.worker.handoff import admission_lane
 from myink.worker.redis_client import (
     book_cnt_key,
     book_quota_key,
@@ -126,47 +127,65 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
             intent_outcome(intent_id, project_id, **states)
         except Exception as exc:
             raise EnqueueUnavailable("intent_outcome_unknown") from exc
-    outcome(gate_state="unknown")
-    try:
-        r = get_redis()
-        code, reason = _run_gates(r, keys, task_id=task_id, quota_n=quota_n,
-                                  cost_est=cost_est, project_id=project_id,
-                                  platform_chapter_max=platform_chapter_max, intent_id=str(intent_id))
-    except Exception as exc:
-        raise EnqueueUnavailable("gates") from exc
-    if code != 1:
-        outcome(gate_state="rejected", publication_state="not_attempted")
-        raise GateError(reason)
-    outcome(gate_state="accepted")
+    from myink.models.maintenance import AdmissionIntent,QueueHandoff
+    with admission_lane(intent_id,project_id) as lane:
+        if lane is None:raise EnqueueUnavailable("publication_lane_busy")
+        with tenant_session(project_id) as db:
+            current=db.get(AdmissionIntent,intent_id)
+            state=(current.gate_state,current.publication_state)
+        if state[1]=="published" and state[0] in ("accepted","not_required"):
+            return {"task_id":task_id,"trace_id":task_id,"status":"queued"}
+        if state[1]=="unknown" or state[0] in ("rejected","compensated"):
+            raise EnqueueUnavailable("publication_already_uncertain")
 
-    owner = json.dumps({"user_id": user_id, "project_id": project_id})
-    try:
-        r.set(f"queue:task-owner:{task_id}", owner, ex=_OWNER_TTL_S)
-    except Exception as exc:
-        outcome(gate_state="unknown",publication_state="not_attempted")
-        compensated=_compensate(r, keys, task_id=task_id, quota_n=quota_n,
-                    platform_chapter_max=platform_chapter_max, intent_id=str(intent_id))
-        outcome(gate_state="compensated" if compensated else "unknown")
-        raise EnqueueUnavailable("owner") from exc
+        def refund_if_definite(publication_state):
+            # Same lane, locked durable recheck: a nested/already-started replay
+            # leaves an original-linked outbox even when its confirm is unknown.
+            with tenant_session(project_id) as db:
+                current=db.get(AdmissionIntent,intent_id)
+                previous=db.get(QueueHandoff,"admission:"+str(intent_id))
+                possible=current.publication_state=="published" or previous is not None
+            if possible:return
+            outcome(gate_state="unknown",publication_state=publication_state)
+            compensated=_compensate(r,keys,task_id=task_id,quota_n=quota_n,
+                platform_chapter_max=platform_chapter_max,intent_id=str(intent_id))
+            outcome(gate_state="compensated" if compensated else "unknown")
 
-    outcome(publication_state="unknown")
-    try:
-        amqp.publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS, priority=priority)
-    except (pika.exceptions.NackError, pika.exceptions.UnroutableError) as exc:
-        # 确定失败：broker 明确拒收，消息一定不在队列里 → 回滚闸门
-        outcome(gate_state="unknown",publication_state="rejected")
-        compensated=_compensate(r, keys, task_id=task_id, quota_n=quota_n,
-                    platform_chapter_max=platform_chapter_max, intent_id=str(intent_id))
-        outcome(gate_state="compensated" if compensated else "unknown")
-        raise EnqueueUnavailable("publish_rejected") from exc
-    except Exception as exc:
-        # 结果不明（confirm 超时/连接中断）：消息可能已入队。补偿会造成
-        # "闸门已退而任务照跑"的重复扣费，所以这里刻意什么都不做。
-        raise EnqueueUnavailable("publish_ambiguous") from exc
+        outcome(gate_state="unknown")
+        try:
+            r = get_redis()
+            code, reason = _run_gates(r, keys, task_id=task_id, quota_n=quota_n,
+                                      cost_est=cost_est, project_id=project_id,
+                                      platform_chapter_max=platform_chapter_max, intent_id=str(intent_id))
+        except Exception as exc:
+            raise EnqueueUnavailable("gates") from exc
+        if code != 1:
+            outcome(gate_state="rejected", publication_state="not_attempted")
+            raise GateError(reason)
+        outcome(gate_state="accepted")
 
-    outcome(publication_state="published")
-    _seed_sse(r, task_id)
-    return {"task_id": task_id, "trace_id": task_id, "status": "queued"}
+        owner = json.dumps({"user_id": user_id, "project_id": project_id})
+        try:
+            r.set(f"queue:task-owner:{task_id}", owner, ex=_OWNER_TTL_S)
+        except Exception as exc:
+            refund_if_definite("not_attempted")
+            raise EnqueueUnavailable("owner") from exc
+
+        outcome(publication_state="unknown")
+        try:
+            amqp.publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS, priority=priority)
+        except (pika.exceptions.NackError, pika.exceptions.UnroutableError) as exc:
+            # 确定失败：broker 明确拒收，消息一定不在队列里 → 回滚闸门
+            refund_if_definite("rejected")
+            raise EnqueueUnavailable("publish_rejected") from exc
+        except Exception as exc:
+            # 结果不明（confirm 超时/连接中断）：消息可能已入队。补偿会造成
+            # "闸门已退而任务照跑"的重复扣费，所以这里刻意什么都不做。
+            raise EnqueueUnavailable("publish_ambiguous") from exc
+
+        outcome(publication_state="published")
+        _seed_sse(r, task_id)
+        return {"task_id": task_id, "trace_id": task_id, "status": "queued"}
 
 
 def _run_gates(r, keys: list[str], *, task_id: str, quota_n: int, cost_est: float,

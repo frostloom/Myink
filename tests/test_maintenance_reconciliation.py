@@ -203,7 +203,7 @@ def test_actual_fresh_census_covers_accepted_unmaterialized(temp_project):
         assert proof['verified'] and proof['unknown']==0 and body['task_id'] in proof['planned_task_ids']
         assert proof['queue_messages']==1
         deliveries,unknown=handoff._queue_census()
-        assert unknown==0 and [message for queue,message in deliveries]==[body]
+        assert unknown==0 and [message for queue,message,metadata in deliveries]==[body]
         from pathlib import Path
         operation=json.loads(Path(os.environ['B10_CENSUS_DESCRIPTOR']).read_text())['operation_id']
         Path('/mnt/e/tools/myink-pi/evidence/b10-census-'+operation+'.json').write_text(json.dumps({k:v for k,v in proof.items() if k!='pause_receipts'},indent=2))
@@ -257,3 +257,66 @@ def test_resume_bridge_trusted_adapter_uses_actual_application_role(resume_case,
             with engine.connect() as db:
                 assert db.scalar(text('SELECT count(*) FROM queue_handoffs'))==0
     finally:engine.dispose()
+
+
+@pytest.mark.parametrize('change',['operation','priority','expiration','message','correlation','dlq'])
+def test_review_census_invalid_predecessor_blocks_closed_barrier(temp_project,change):
+    import json
+    from sqlalchemy import text
+    from myink.db import get_admin_engine
+    from myink.worker import handoff,amqp
+    from myink.maintenance import intent_outcome,maintenance_view
+    with new_session() as db:uid=str(db.get(Project,uuid.UUID(temp_project)).user_id)
+    body={"task_id":str(uuid.uuid4()),"task_type":"chapter_generate","project_id":temp_project,"user_id":uid,"payload":{"seq":1},"request_id":str(uuid.uuid4()),"retry_count":0}
+    with tenant_session(temp_project) as db:intent=register_admission(db,body,priority=7)
+    amqp.publish_once(json.dumps(body),'tasks',priority=7)
+    intent_outcome(intent,temp_project,publication_state='published')
+    with get_admin_engine().begin() as db:db.execute(text("UPDATE maintenance_control SET admission_closed=true,consumer_blocked=true WHERE id=1"))
+    try:
+        with new_session() as db:baseline=handoff.reconcile_queue(db,maintenance_view(db)['epoch'])
+        # Add a duplicate original body with conflicting real broker metadata.
+        # Full retained global census/denominator stays intact, not filtered.
+        import pika
+        properties=pika.BasicProperties(delivery_mode=2,priority=6 if change=='priority' else 7,
+            message_id=str(uuid.uuid4()) if change=='message' else body['request_id'],
+            correlation_id=str(uuid.uuid4()) if change=='correlation' else body['task_id'],
+            expiration='50000' if change=='expiration' else None,
+            headers={'operation_id':'unknown-predecessor:'+body['task_id']} if change=='operation' else None)
+        with amqp.connect() as connection:
+            channel=connection.channel();amqp.declare_topology(channel);channel.confirm_delivery()
+            channel.basic_publish(exchange=amqp.dlx_exchange() if change=='dlq' else amqp.exchange(),
+                routing_key='dlq' if change=='dlq' else 'tasks',body=json.dumps(body),properties=properties,mandatory=True)
+        with new_session() as db:result=handoff.reconcile_queue(db,maintenance_view(db)['epoch'])
+        assert result['unknown']>=baseline['unknown']+1,"invalid actual broker predecessor contributed no unknown"
+        actual,uncertain=handoff._queue_census()
+        assert uncertain==0 and len([row for row in actual if row[1]==body])==2
+    finally:
+        with get_admin_engine().begin() as db:db.execute(text("UPDATE maintenance_control SET admission_closed=false,consumer_blocked=false WHERE id=1"))
+
+
+@pytest.mark.parametrize('field',['control','execution_deployment','receipt_deployment','execution'])
+def test_review_pause_generation_only_change_blocks_census(resume_case,monkeypatch,field):
+    from sqlalchemy import text
+    from myink.db import get_admin_engine
+    from myink.worker import handoff
+    from myink.maintenance import intent_outcome
+    from myink.models.maintenance import MaintenanceExecution
+    body,intent,graph,proof=resume_case;pid=body['project_id'];tid=body['task_id']
+    intent_outcome(intent,pid,publication_state='published')
+    actual=handoff._queue_census()
+    monkeypatch.setattr(handoff,'_queue_census',lambda:actual)
+    with get_admin_engine().begin() as db:db.execute(text("UPDATE maintenance_control SET admission_closed=true,consumer_blocked=true WHERE id=1"))
+    try:
+        with new_session() as db:baseline=handoff.reconcile_queue(db,'b9-test')
+        if field=='control':
+            with get_admin_engine().begin() as db:db.execute(text("UPDATE maintenance_control SET generation=generation+1 WHERE id=1"))
+        else:
+            with tenant_session(pid) as db:
+                row=db.get(MaintenanceExecution,uuid.UUID(tid))
+                if field=='execution_deployment':row.deployment_generation+=1
+                elif field=='execution':row.execution_generation+=1
+                else:row.receipt={**row.receipt,'deployment_generation':row.receipt['deployment_generation']+1}
+        with new_session() as db:result=handoff.reconcile_queue(db,'b9-test')
+        assert result['unknown']>=baseline['unknown']+1 and result['verified'] is False,"stale pause generation contributed no unknown"
+    finally:
+        with get_admin_engine().begin() as db:db.execute(text("UPDATE maintenance_control SET generation=9,admission_closed=false,consumer_blocked=false WHERE id=1"))

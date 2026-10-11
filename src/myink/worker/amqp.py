@@ -66,6 +66,17 @@ def connect() -> pika.BlockingConnection:
     return pika.BlockingConnection(params)
 
 
+
+def _publisher_connection():
+    params=pika.URLParameters(settings.amqp_url)
+    params.connection_attempts=1
+    params.socket_timeout=10
+    params.stack_timeout=15
+    params.blocked_connection_timeout=10
+    params.heartbeat=30
+    return pika.BlockingConnection(params)
+
+
 def declare_topology(ch: pika.channel.Channel) -> None:
     """幂等声明 5 项拓扑（重复声明安全；参数变更需清 RabbitMQ 数据卷）。"""
     ch.exchange_declare(exchange(), exchange_type="direct", durable=True)
@@ -112,7 +123,7 @@ def publish(body: str, routing_key: str, priority: int = 0, expiration_ms: int |
     with _publish_lock:
         try:
             if _publish_conn is None or _publish_conn.is_closed:
-                _publish_conn = connect()
+                _publish_conn = _publisher_connection()
             ch = _publish_conn.channel()
             declare_topology(ch)
             ch.confirm_delivery()  # 阻塞式 publisher confirm
@@ -141,14 +152,8 @@ def publish_once(body: str, routing_key: str, *, priority: int = 0, expiration_m
     """No implicit retry after a lost confirm; bounded and mandatory delivery."""
     connection = None
     try:
-        params = pika.URLParameters(settings.amqp_url)
-        params.connection_attempts = 1
-        params.socket_timeout = 10
-        params.stack_timeout = 15
-        params.blocked_connection_timeout = 10
-        params.heartbeat = 30
         try:
-            connection = pika.BlockingConnection(params)
+            connection = _publisher_connection()
             channel = connection.channel()
             declare_topology(channel)
             channel.confirm_delivery()

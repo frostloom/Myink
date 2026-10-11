@@ -16,6 +16,7 @@ import os
 import signal
 import socket
 import threading
+import time
 from functools import partial
 
 import pika
@@ -168,10 +169,14 @@ def run() -> None:
                 continue
             ch.basic_consume(amqp.main_queue(), partial(_on_message, r=r, worker_id=worker_id))
             logger.info("开始消费 %s", amqp.main_queue())
+            next_replay=time.monotonic()+5
             while not _shutdown.is_set() and may_consume():
                 # 阻塞处理事件（无事件时最多挂起 1s）；_on_message 内 process 长任务期间
                 # 天然阻塞——prefetch=1 不拉新消息，跑完当前任务才响应停机
                 conn.process_data_events(time_limit=1.0)
+                if not _shutdown.is_set() and time.monotonic()>=next_replay:
+                    replay_handoffs(max_operations=1)
+                    next_replay=time.monotonic()+5
         except (pika.exceptions.AMQPConnectionError, pika.exceptions.ChannelWrongStateError) as exc:
             logger.warning("RabbitMQ 连接/通道异常，5s 后重连: %s", exc)
         except Exception as exc:
