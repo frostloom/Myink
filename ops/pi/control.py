@@ -185,6 +185,10 @@ def main(argv: list[str] | None = None) -> int:
     lab_up.add_argument('--state-dir', required=True, type=Path)
     lab_maintenance = lab_commands.add_parser('maintenance-up')
     lab_maintenance.add_argument('--state-dir', required=True, type=Path)
+    recovery = commands.add_parser('backup-lab')
+    recovery.add_argument('--state-dir', required=True, type=Path)
+    recovery.add_argument('--phase', required=True, choices=('source','restore','verify'))
+    recovery.add_argument('--deadline', required=True)
     check = commands.add_parser('ledger-check')
     check.add_argument('--state-dir', required=True, type=Path)
     gateway = commands.add_parser('model-gateway')
@@ -224,7 +228,13 @@ def main(argv: list[str] | None = None) -> int:
         if not state_path_allowed(state):
             raise LedgerBlocked('state directory must be an explicit absolute E drive path')
         state.mkdir(parents=True, exist_ok=True)
-        ledger = Ledger(state / 'ledger.sqlite')
+        ledger = Ledger(state / ('b11-executor-ledger.sqlite' if args.command=='backup-lab' else 'ledger.sqlite'))
+        if args.command == 'backup-lab':
+            from dataclasses import asdict
+            from .executor import execute
+            receipt=execute('backup' if args.phase=='source' else 'restore', {'state_dir':str(state),'selection':'b11-'+args.phase},datetime.fromisoformat(args.deadline),ledger)
+            print(json.dumps(asdict(receipt)))
+            return 0 if receipt.status=='done' else 1
         if args.command == 'report':
             from .reporting import render_report, PENDING_ACCEPTANCE
             if not state_path_allowed(args.output):

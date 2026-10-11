@@ -14,7 +14,7 @@ from .contracts import Receipt
 from .resources import MemoryWatchdog, host_available_memory, verify_limits
 
 COMMANDS = {'test': 2700, 'probe': 120, 'data-read': 120, 'git': 120, 'build': 2700, 'backup': 600, 'restore': 600}
-RESERVED = {'git', 'build', 'backup', 'restore'}
+RESERVED = {'git', 'build'}
 EXCLUDED = {'.git', '.superpowers', '.env', '.agents', '.codex', '__pycache__', 'node_modules',
             'credentials', 'backups', 'ledger.sqlite', 'ledger.sqlite-wal', 'ledger.sqlite-shm', 'policy.example.json'}
 ENVIRONMENT = {'DATABASE_URL', 'ADMIN_DATABASE_URL', 'REDIS_URL', 'AMQP_URL', 'QUEUE_PREFIX',
@@ -167,7 +167,9 @@ def execute(command_id, args, deadline, ledger):
         if not verify_limits(fresh.get('kernel_proof', {}), 'heavy'):
             return blocked('missing_cgroup_proof')
         selection = args.get('selection', 'b7')
-        if selection not in ('b7', 'provenance', 'bootstrap', 'watchdog', 'b8-red', 'b8-focused', 'b8-survival', 'b8-reconcile', 'b8-ci-collection', 'b8-guarded-collection', 'b8', 'b10-resume', 'b10-census', 'b10-fresh', 'b10-identity', 'b10-red', 'b10-focused', 'b10', 'b10-ci-collection', 'b10-guarded-collection', 'b9-red', 'b9-pause', 'b9-wait', 'b9-identity', 'b9-protocol', 'b9-legacy', 'b9-cached', 'b9-entry', 'b9-plan-negative', 'b9-legacy-worker', 'b9-ci-collection', 'b9-guarded-collection', 'b9-compatibility', 'b9-recovery', 'b9-short', 'b9-short-budget', 'b9-worker', 'b9-plan', 'b9', 'b10-authority', 'b10-ops', 'b10-defer', 'b10-review-lane', 'b10-review', 'b10-role-diagnostic', 'b10-retained-queue', 'b10-retained-worker', 'b10-retained-gates', 'b10-retained-multiprocess'):
+        if command_id in ('backup','restore') and selection not in ({'backup':('b11-source',),'restore':('b11-restore','b11-verify')}[command_id]):
+            return blocked('unknown_backup_selection')
+        if selection not in ('b11-source', 'b11-restore', 'b11-verify', 'b7', 'provenance', 'bootstrap', 'watchdog', 'b8-red', 'b8-focused', 'b8-survival', 'b8-reconcile', 'b8-ci-collection', 'b8-guarded-collection', 'b8', 'b10-resume', 'b10-census', 'b10-fresh', 'b10-identity', 'b10-red', 'b10-focused', 'b10', 'b10-ci-collection', 'b10-guarded-collection', 'b9-red', 'b9-pause', 'b9-wait', 'b9-identity', 'b9-protocol', 'b9-legacy', 'b9-cached', 'b9-entry', 'b9-plan-negative', 'b9-legacy-worker', 'b9-ci-collection', 'b9-guarded-collection', 'b9-compatibility', 'b9-recovery', 'b9-short', 'b9-short-budget', 'b9-worker', 'b9-plan', 'b9', 'b10-authority', 'b10-ops', 'b10-defer', 'b10-review-lane', 'b10-review', 'b10-role-diagnostic', 'b10-retained-queue', 'b10-retained-worker', 'b10-retained-gates', 'b10-retained-multiprocess'):
             return blocked('unknown_test_selection')
         if selection == 'b7' and command_id in ('test', 'probe'):
             remaining()
