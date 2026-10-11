@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { normalize } from '../lab/pi-wire-guard.mjs';
+const payload = {model:'mock-model',max_tokens:64,stream:true,system:[{type:'text',text:'system',cache_control:{type:'ephemeral'}}],messages:[{role:'user',content:[{type:'text',text:'hello',cache_control:{type:'ephemeral'}}]}],thinking:{type:'adaptive'}};
+const result=normalize(payload);
+assert.deepEqual(result.thinking,{type:'disabled'});
+assert.deepEqual(result.system,[{type:'text',text:'system'}]);
+assert.deepEqual(result.messages,[{role:'user',content:[{type:'text',text:'hello'}]}]);
+assert.throws(()=>normalize({...payload,tools:[{name:'bash'}]}));
+assert.throws(()=>normalize({...payload,messages:[{role:'user',content:[{type:'image',source:{}}]}]}));
+assert.throws(()=>normalize({...payload,messages:[{role:'user',content:[{type:'text',text:'ok',unexpected:true}]}]}));
+console.log('wire guard: 6 assertions passed');
