@@ -171,7 +171,7 @@ if [[ $mode == execute ]]; then
       test/b8-red|test/b8-focused|test/b8-survival|test/b8-reconcile) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py) ;;
       test/b8-ci-collection|test/b8-guarded-collection) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py) ;;
       test/b8) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py tests/test_enqueue_gates.py tests/test_task_budget_routes.py tests/test_manual_plan.py) ;;
-      test/b10-role-diagnostic|test/b10-retained-queue|test/b10-retained-worker|test/b10-retained-gates|test/b10-retained-multiprocess) targets=() ;;
+      test/b10-review-lane|test/b10-review|test/b10-role-diagnostic|test/b10-retained-queue|test/b10-retained-worker|test/b10-retained-gates|test/b10-retained-multiprocess) targets=() ;;
       test/b10-defer) targets=(tests/test_queue_handoff.py) ;;
       test/b10-authority) targets=(tests/test_queue_handoff.py) ;;
       test/b10-ops) targets=(ops/pi/tests/test_executor.py) ;;
@@ -202,7 +202,7 @@ if [[ $mode == execute ]]; then
     [[ $selection != b10-resume ]] || python_args+=(-k "delay_without_ttl or incomplete_historical_delay or resume_bridge")
     [[ $selection != b10-census && $selection != b10-fresh && $selection != b10-defer ]] || python_args=(-c "from ops.pi.lab.verify import run_b10_census; run_b10_census('$selection')")
     [[ $selection != b10-identity ]] || python_args+=(-k "actual_sealed_frozen_prefix_drift_refused")
-    case $selection in b10-role-diagnostic|b10-retained-queue|b10-retained-worker|b10-retained-gates|b10-retained-multiprocess) python_args=(-c "from ops.pi.lab.verify import run_b10_retained; run_b10_retained('$selection')") ;; esac
+    case $selection in b10-review-lane|b10-review|b10-role-diagnostic|b10-retained-queue|b10-retained-worker|b10-retained-gates|b10-retained-multiprocess) python_args=(-c "from ops.pi.lab.verify import run_b10_retained; run_b10_retained('$selection')") ;; esac
     [[ $selection != b10-ci-collection ]] || python_args=(-c "import pytest; result=pytest.main(['tests/test_queue_handoff.py','tests/test_maintenance_reconciliation.py','--collect-only','-q','-m','not pi_lab and not pi_live']); raise SystemExit(0 if result == 5 else 1)")
     [[ $selection != b10-guarded-collection ]] || python_args=(-m pytest "${targets[@]}" --collect-only -q -m "not pi_live")
     [[ $selection != b9-plan-negative ]] || python_args+=(-k "explicit_plan_approval")

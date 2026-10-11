@@ -317,7 +317,7 @@ def test_b10_does_not_accept_client_fixture_or_executable(argument):
     assert receipt.status=='blocked' and receipt.evidence['reason']=='untyped_arguments'
 
 
-@pytest.mark.parametrize('selection',['b10-fresh;echo unsafe','tests/test_queue_handoff.py','b10/arbitrary','b10-census --override'])
+@pytest.mark.parametrize('selection',['b10-fresh;echo unsafe','tests/test_queue_handoff.py','b10/arbitrary','b10-census --override','b10-review;echo unsafe','b10-review-lane --override'])
 def test_b10_unknown_selection_remains_closed(monkeypatch,tmp_path,selection):
     from ops.pi.resources import LIMITS
     proof={'cgroup_version':2,'membership_verified':True,'ancestor_verified':True,**LIMITS['heavy']}

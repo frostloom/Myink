@@ -280,7 +280,7 @@ def run_b10_census(selection):
 
 
 B10_PARENT='ed2c61e6-d33b-4951-9d9a-fb05d06633e5'
-B10_RECHECKS={'b10-role-diagnostic':('tests/test_maintenance_reconciliation.py','-k','trusted_adapter_uses_actual_application_role'),
+B10_RECHECKS={'b10-review-lane':('tests/test_queue_handoff.py','-k','review_original_active'), 'b10-review':('tests/test_queue_handoff.py','tests/test_maintenance_reconciliation.py','-k','review_'), 'b10-role-diagnostic':('tests/test_maintenance_reconciliation.py','-k','trusted_adapter_uses_actual_application_role'),
     'b10-retained-queue':('tests/test_queue_handoff.py','tests/test_maintenance_reconciliation.py','-k','not actual_fresh_census'),
     'b10-retained-worker':('tests/test_worker.py',), 'b10-retained-gates':('tests/test_enqueue_gates.py',),
     'b10-retained-multiprocess':('tests/test_multiprocess.py',)}
