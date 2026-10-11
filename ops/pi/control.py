@@ -103,7 +103,7 @@ def make_gateway_handler(ledger, policy, transport, *, scope_token=None):
                         self.send_error(403)
                         return
                 lengths = self.headers.get_all('Content-Length', [])
-                if (self.path != '/v1/messages' or len(lengths) != 1
+                if (self.path not in ('/v1/messages', '/v1/messages?beta=true') or len(lengths) != 1
                         or not lengths[0].isdigit() or self.headers.get('Transfer-Encoding')
                         or self.headers.get('Content-Type', '').split(';')[0].strip().lower() != 'application/json'
                         or self.headers.get('X-Pi-Scope', 'local-trial-1') != 'local-trial-1'):
