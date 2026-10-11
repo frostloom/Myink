@@ -1,7 +1,10 @@
-# Pi 离线控制基础
+# Myink 管理员与 Pi 引擎
 
-本阶段是离线工程验证，不能作为云端或生产就绪验收。禁止真实邮件、短信和模型请求。
-A4 活库 SELECT reader、真实查询超时、collector SQL 待 B7；业务 tests/test_run_provenance、admin_observability、run_ownership 待后续验证。C16 raw usage presence pending。A5 Windows 和 Linux Git 验证完成不代表整个 A 阶段跨平台验收完成。
+管理员是 Myink 的组成部分，负责既有产品的稳定性、成本、速度、写作质量与体验；新功能方向由项目所有者决定。`Engine` 接口把管理员职责与具体 Agent 解耦，目前接入固定版本 Pi。预算、权限、备份与发布验收由控制程序管理。
+
+当前已完成 E 盘实际安装、真实 Pi 进程的模拟接口验证和受预算限制的真实模型只读源码分析。见 [本轮引入记录](pi-introduction-2026-10-11.md) 和 [安装与版本升级规范](pi-version-upgrade.md)。开发工具、质量对照和完整本地迭代闭环仍按 C15–C18 推进；当前没有生产 Pi。真实邮件、短信和线上自动迭代尚未启用。
+
+以下保留离线控制基础的操作说明。离线测试本身不发送模型请求；真实预览必须使用已授权的独立策略与累计账本，不能把模拟回执当成线上验收。A5 Windows 和 Linux Git 检查通过，也不代表整个 A 阶段跨平台验收完成。
 
 ## 启动与目录
 

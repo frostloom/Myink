@@ -21,7 +21,8 @@ Pi has 384 MiB, 0.5 CPU and zero swap. Every ephemeral test fixture, runner and
 descendant shares the 1536 MiB / 2 CPU / at most 256 MiB swap heavy parent. The
 mock gateway and watchdog are separately accounted infrastructure. Future stable
 maintenance services need their own infrastructure group. Test and build share
-a mutex while Pi remains alive. Both real Windows available physical memory and
+a mutex. Real Pi must clear queued work, abort and prove its owned process has exited
+before heavy tests or builds; resume is explicit after canonical receipt reconciliation. Both real Windows available physical memory and
 guest `/proc/meminfo` MemAvailable are sampled; ten continuous seconds below
 512 MiB kills the owned heavy group. The guest watcher binds a unique operation,
 lab UUID, active systemd unit and heavy group, and stops before releasing the lock.
@@ -78,3 +79,11 @@ B7 initializer checks do not authorize arbitrary Pi candidate source; B12/C15
 must isolate candidate-authored checks in containers. Linux full ops offline
 validation remains pending for that later whole-group validation; no generic or
 ungated offline executor command was added.
+
+
+Pinned Pi is now installed in the private E Linux project and actual text-only mock RPC has
+been exercised through the replaceable administrator `Engine` interface. See
+[pi-version-upgrade.md](pi-version-upgrade.md) for the exact lock, acquisition procedure,
+nonroot native-state bind required by DrvFS lock heartbeat semantics, reproducible mock runner,
+and pending real compatibility/controlled-release gates. The administrator role is
+`myink-administrator`; the installed engine does not supply controller authority.
