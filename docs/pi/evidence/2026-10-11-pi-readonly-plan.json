@@ -1,0 +1,52 @@
+{
+  "kind": "readonly_source_preview",
+  "source_commit": "8de9664561c66e7f30169b5dfa0da6bbdf97b274",
+  "input_sha256": "2058319471666b4b3afcf474e03685c4526cdb619c7311d35fe5293449cba5b1",
+  "session_sha256": "3185f69b9e225421df171df322d70dc647e5bfa6702458913975e0207f6a4878",
+  "evidence_domain": "source_only",
+  "implementation_status": "proposal_only_not_approved_for_execution",
+  "plan": {
+    "hypothesis": "在 ops/pi/metrics.py 的 collect_snapshot 读取循环中，若每一页请求都单独调用 reader（每次携带 read_only 与 timeout_ms），在页数接近 max_pages 时可能产生多次往返与重复的连接/查询开销；一个待验证的小优化是：在单次快照内复用同一 reader 会话或在同一 source 上合并后续页读取，以减少分页带来的总耗时，同时保持 page_size/page 契约与截断检测语义不变。",
+    "source_evidence": [
+      {
+        "path": "ops/pi/metrics.py",
+        "quote": "for page in range(pages):"
+      },
+      {
+        "path": "ops/pi/metrics.py",
+        "quote": "batch = list(reader(request))"
+      },
+      {
+        "path": "ops/pi/metrics.py",
+        "quote": "read_only=True, timeout_ms=timeout)"
+      }
+    ],
+    "baseline": {
+      "availability": "unknown",
+      "reason": "本次仅提供只读源码摘录，未采集任何在线或离线运行指标，分页读取的真实往返次数与耗时基线未测量，因此无法判定该改动的实际收益。"
+    },
+    "candidate_metrics": [
+      "单次快照中每页 reader 调用的平均耗时",
+      "单次快照完成读取的总墙钟时间",
+      "分页读取的往返次数与页数分布",
+      "超过 max_pages 触发 truncated 的比例",
+      "查询超时或 deadline exceeded 的触发次数"
+    ],
+    "tests": [
+      "构造 page_size 下恰好整页与不足整页两种数据，断言截断标志与结果集不变",
+      "用计数型 fake reader 断言每页请求参数（limit/offset/timeout_ms/read_only）与调用序列符合契约",
+      "注入慢 reader，验证 120 秒 deadline 仍能抛出 TimeoutError",
+      "空结果集与单页结果集下验证不产生多余读取",
+      "断言 reader 超出 page_size 或返回非 dict 时仍抛 ValueError"
+    ],
+    "risks": [
+      "复用会话可能引入跨页状态泄漏，破坏只读与超时约束",
+      "改变读取顺序可能影响 ORDER BY created_at, id 分页稳定性",
+      "收益可能被数据库端排序与 OFFSET 成本主导，优化无效",
+      "并发快照下会话复用可能争用连接或超时预算"
+    ],
+    "owner_decision": {
+      "new_features_require_owner": true
+    }
+  }
+}

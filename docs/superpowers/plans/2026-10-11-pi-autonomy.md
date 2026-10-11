@@ -4,7 +4,7 @@
 
 **Goal:** 在独立本机环境验证 Pi 分析、规划、开发、测试、候选发布、恢复和次日比较的完整闭环，为后续服务器启用提供证据。
 
-**Architecture:** Pi 通过官方 RPC 做判断，项目控制程序执行预算、资源隔离、备份、发布和恢复。控制程序使用 Python、SQLite 操作账本与类型化工具，业务任务暂停状态仍由 PostgreSQL 承载。先验证确定性协议，再建立独立服务，最后安装 E 盘 Pi 并进行有界实测。
+**Architecture:** Myink 管理员通过可替换的 `Engine` 执行分析与开发，当前引擎为 Pi 官方 RPC。项目控制程序执行预算、资源隔离、备份、发布和恢复，使用 Python、SQLite 操作账本与类型化工具；业务任务暂停状态仍由 PostgreSQL 承载。2026-10-11 按最新引入授权优先完成 E 盘 Pi 安装、真实进程模拟及有界只读分析，完整写入和发布闭环仍要求相关 A/B 门槛验收。
 
 **Tech Stack:** Python >=3.11、现有 Pydantic/SQLAlchemy/httpx/pytest、SQLite、PostgreSQL 16 + pgvector、Redis 7、RabbitMQ 3.13、Docker/Buildx、Linux cgroup/systemd、Pi v1.1.0 与 Node >=22.19；不安装 ML/embedding extras。
 
@@ -45,7 +45,7 @@
 | [B：维护恢复与本机基础设施](2026-10-11-pi-maintenance-lab.md) | B7–B13 | 实际隔离、暂停恢复、可靠消息交接、可恢复备份、串行构建、发布抢占 | 否；上游为本地模型替身 |
 | [C：Pi 集成与有界闭环](2026-10-11-pi-local-trial.md) | C14–C18 | E 盘固定版本 Pi、受控工具、公平比较、跨日诊断、实测报告 | 安全和价格门禁通过后才允许 |
 
-按 A → B → C 执行。子计划共享本文件的约束；任务代码放 `ops/pi/`，业务侧只增加必要的维护协议与观测挂点。`ops/pi/tests/` 单独收集，避免根 `tests/conftest.py` 导入业务数据库使离线测试依赖活库。业务集成测试仍放 `tests/` 并使用独立服务。不重构现有管理面板、不新建用户产品功能。
+完整闭环按 A → B → C 依赖验收；当前轻量引入的顺序调整与限制见 [C 计划](2026-10-11-pi-local-trial.md) 和 [引入记录](../../pi/pi-introduction-2026-10-11.md)。子计划共享本文件的约束；任务代码放 `ops/pi/`，业务侧只增加必要的维护协议与观测挂点。`ops/pi/tests/` 单独收集，避免根 `tests/conftest.py` 导入业务数据库使离线测试依赖活库。业务集成测试仍放 `tests/` 并使用独立服务。不重构现有管理面板、不新建用户产品功能。
 
 开发语言统一为 Python 控制程序；Pi 扩展为单个 TypeScript 文件，仅桥接受控工具。控制对象、接口、验证命令由各任务定义，不引入通用 Agent 平台。运行目录分为 `runtime/`、`cache/`、`pi-home/`、`sessions/`、`state/`、`evidence/`、`backups/`，全部在 E 盘，凭据只由信任侧进程读取。
 
