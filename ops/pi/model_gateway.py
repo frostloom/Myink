@@ -21,7 +21,7 @@ class GatewayResponse:
 
 
 def _validate(body, policy):
-    if not isinstance(body, dict) or set(body) - {'model', 'max_tokens', 'messages', 'system', 'stream', 'temperature', 'top_p', 'top_k', 'stop_sequences'}:
+    if not isinstance(body, dict) or set(body) - {'model', 'max_tokens', 'messages', 'system', 'stream', 'temperature', 'top_p', 'top_k', 'stop_sequences', 'thinking'}:
         raise ValueError('unsupported request fields')
     if body.get('model') != policy.model or type(body.get('max_tokens')) is not int or not 0 < body['max_tokens'] <= policy.max_tokens:
         raise ValueError('invalid model or max_tokens')
@@ -34,6 +34,8 @@ def _validate(body, policy):
         raise ValueError('invalid top_k')
     if 'stop_sequences' in body and (not isinstance(body['stop_sequences'], list) or not all(isinstance(v, str) for v in body['stop_sequences'])):
         raise ValueError('invalid stop_sequences')
+    if 'thinking' in body and body['thinking'] != {'type': 'disabled'}:
+        raise ValueError('unsupported thinking')
     messages = body.get('messages')
     if not isinstance(messages, list) or not messages:
         raise ValueError('messages required')
