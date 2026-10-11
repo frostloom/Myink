@@ -79,3 +79,47 @@ def enter_maintenance(ledger: Ledger, expected: Identity, now: datetime) -> Rece
     except Exception:
         return Receipt(operation, "uncertain", {**evidence, "verified":False, "reason":"ledger_outcome_unconfirmed"})
     return receipt
+
+
+def reconcile_queue(ledger: Ledger, expected: Identity, epoch: str) -> Receipt:
+    """Trusted adapter emits aggregate evidence without private rebuild payload."""
+    from myink.db import get_admin_engine
+    from myink.worker.handoff import reconcile_queue as business_reconcile
+    from myink.maintenance import maintenance_view
+    operation="queue-reconciliation:"+str(uuid.uuid4())
+    with Session(get_admin_engine()) as db:
+        control=maintenance_view(db)
+        if (control["deployment_id"]!=expected.deployment_id or control["generation"]!=expected.generation
+                or control["owner"]!=expected.owner or control["image_ids"]!=expected.image_ids):
+            result={"verified":False,"unknown":1,"reason":"identity_mismatch"}
+        else:result=business_reconcile(db,epoch)
+    evidence={key:result[key] for key in ("verified","unknown","planned","queue_messages","handoffs","epoch") if key in result}
+    receipt=Receipt(operation,"done" if result["verified"] else "blocked",evidence)
+    ledger.append_event("queue_reconciliation",{"operation_id":operation,"status":receipt.status,**evidence})
+    return receipt
+
+
+def resume_queue(ledger: Ledger,expected: Identity,epoch: str) -> Receipt:
+    """Trusted same-deployment adapter; commit durable bridge before any Rabbit effect."""
+    from myink.db import get_engine
+    from myink.maintenance import lock_maintenance
+    from myink.worker.handoff import resume_maintenance_handoffs,publish_handoff
+    from myink.models import Project
+    operation='queue-resume:'+str(uuid.uuid4())
+    try:
+        with Session(get_engine()) as db:
+            control=lock_maintenance(db)
+            if (control['deployment_id']!=expected.deployment_id or control['generation']!=expected.generation
+                    or control['owner']!=expected.owner or control['image_ids']!=expected.image_ids):raise ValueError('resume identity mismatch')
+            rows=[]
+            for project_id in db.scalars(select(Project.id)):
+                db.execute(text("SELECT set_config('app.tenant_id',:project,true)"),{'project':str(project_id)})
+                rows.extend(resume_maintenance_handoffs(db,epoch,expected.generation))
+            db.commit()
+        publications=[publish_handoff(row['operation_id']) for row in rows]
+        evidence={'verified':all(p['state']=='published' for p in publications),'resumed':len(rows),'epoch':epoch}
+        receipt=Receipt(operation,'done' if evidence['verified'] else 'uncertain',evidence)
+    except Exception as exc:
+        receipt=Receipt(operation,'blocked',{'verified':False,'reason':'resume_unconfirmed','error_class':type(exc).__name__})
+    ledger.append_event('queue_resume',{'operation_id':operation,'status':receipt.status,**receipt.evidence})
+    return receipt
