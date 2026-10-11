@@ -16,7 +16,6 @@ QUEUE_PREFIX 只用于测试隔离：对 exchange 与 queue 名统一加前缀�
 
 from __future__ import annotations
 
-import threading
 import json
 
 import pika
@@ -107,41 +106,32 @@ def declare_topology(ch: pika.channel.Channel) -> None:
     ch.queue_bind(dlq_queue(), dlx_exchange(), KEY_DLQ)
 
 
-# 模块级发布连接（publisher confirm）：API 路由线程池 / worker 重投共用，锁串行。
-_publish_lock = threading.Lock()
-_publish_conn: pika.BlockingConnection | None = None
-
-
 def publish(body: str, routing_key: str, priority: int = 0, expiration_ms: int | None = None) -> None:
-    """发布到 myink.tasks 交换机（持久化 + 优先级 + publisher confirm）。
+    """One bounded original publication; never reuse an idle unserviced connection.
 
-    routing_key: KEY_TASKS（主队列）/ KEY_DELAY（延迟退避）。expiration_ms 非空时设置
-    逐条 TTL（毫秒）——延迟队列 DLX 回主队列实现退避。
-    阻塞式 confirm：broker nack / 连接断开抛 pika 异常；连接失效自动重建。
+    Persistent, mandatory delivery with publisher confirm. A lost confirm may
+    already be delivered: propagate it without any hidden publication retry.
+    Keep definitive broker Nack/Unroutable exceptions for original compensation.
     """
-    global _publish_conn
-    with _publish_lock:
-        try:
-            if _publish_conn is None or _publish_conn.is_closed:
-                _publish_conn = _publisher_connection()
-            ch = _publish_conn.channel()
-            declare_topology(ch)
-            ch.confirm_delivery()  # 阻塞式 publisher confirm
-            decoded = json.loads(body)
-            properties = pika.BasicProperties(delivery_mode=2, priority=priority, message_id=str(decoded.get("request_id") or decoded.get("task_id")), correlation_id=str(decoded.get("task_id")))
-            if expiration_ms is not None:
-                properties.expiration = str(int(expiration_ms))
-            ch.basic_publish(exchange=exchange(), routing_key=routing_key, body=body, properties=properties, mandatory=True)
-        except pika.exceptions.AMQPError:
-            # A lost confirm may already be delivered. Preserve that ambiguity;
-            # the durable identity/outbox controls any later replay.
+    connection = None
+    try:
+        connection = _publisher_connection()
+        channel = connection.channel()
+        declare_topology(channel)
+        channel.confirm_delivery()
+        decoded = json.loads(body)
+        properties = pika.BasicProperties(delivery_mode=2, priority=priority,
+            expiration=str(int(expiration_ms)) if expiration_ms is not None else None,
+            message_id=str(decoded.get("request_id") or decoded.get("task_id")),
+            correlation_id=str(decoded.get("task_id")))
+        channel.basic_publish(exchange=exchange(), routing_key=routing_key, body=body,
+                              properties=properties, mandatory=True)
+    finally:
+        if connection is not None:
             try:
-                if _publish_conn is not None and not _publish_conn.is_closed:
-                    _publish_conn.close()
+                connection.close()
             except Exception:
                 pass
-            _publish_conn = None
-            raise
 
 
 class PublishNotSent(Exception):

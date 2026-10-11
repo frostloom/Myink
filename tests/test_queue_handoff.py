@@ -802,3 +802,130 @@ def test_review_bounded_replay_unknown_does_not_starve_next_original(admitted,mo
     with tenant_session(admitted['project_id']) as db:
         assert db.get(QueueHandoff,operations[0]).state=='unknown'
         assert db.get(QueueHandoff,operations[1]).state=='published'
+
+
+def test_review_original_active_publisher_confirms_after_idle(admitted,monkeypatch):
+    """Ordinary enqueue must not reuse an unserviced heartbeat-expired publisher."""
+    import os,time,subprocess,hashlib
+    from pathlib import Path
+    from myink.worker import amqp,enqueue as enq,handoff
+    from myink.worker.redis_client import get_redis
+    from myink.models.maintenance import AdmissionIntent
+    from ops.pi.lab.verify import verify_test_environment
+    verify_test_environment()
+    operation=json.loads(Path(os.environ['B10_CENSUS_DESCRIPTOR']).read_text())['operation_id']
+    case=admitted['task_id'];suffix=amqp._px()+'review-idle-'+operation+'-'+case
+    with new_session() as db:
+        original=db.get(Project,uuid.UUID(admitted['project_id']))
+        second_project=Project(user_id=original.user_id,title='b10-idle-'+case,genre=original.genre,target_words=original.target_words)
+        db.add(second_project);db.flush();second_pid=str(second_project.id)
+    names={'exchange':'myink.tasks'+suffix,'dlx_exchange':'myink.dlx'+suffix,
+        'main_queue':'queue:tasks'+suffix,'delay_queue':'queue:delay'+suffix,'dlq_queue':'queue:dlq'+suffix}
+    target=Path('/mnt/e/tools/myink-pi/evidence')/('b10-review-idle-'+operation+'-'+case)
+    proof={'operation_id':operation,'case_id':case,'case_body_hash':handoff.body_hash(admitted),'second_project_id':second_pid,'names':names,
+        'bindings':[['main_queue','exchange','tasks'],['delay_queue','exchange','delay'],['dlq_queue','dlx_exchange','dlq']],
+        'arguments':{'main_queue':{'x-max-priority':10,'x-dead-letter-exchange':names['dlx_exchange'],'x-dead-letter-routing-key':'dlq'},
+            'delay_queue':{'x-dead-letter-exchange':names['exchange'],'x-dead-letter-routing-key':'tasks'},'dlq_queue':{}},'originals':[]}
+    def save():target.with_suffix('.json').write_text(json.dumps(proof,indent=2))
+    save()  # Exact ownership/binding policy precedes the first declaration.
+    for name,value in names.items():monkeypatch.setattr(amqp,name,lambda _value=value:_value)
+    token='b10-review-idle:'+operation+':'+case;r=get_redis()
+    for name in ('quota_key','inflight_key','cost_key','book_quota_key','book_cnt_key','platform_book_key'):
+        monkeypatch.setattr(enq,name,lambda *a,_name=name:token+':'+_name+(':'+str(a[1]) if _name in ('inflight_key','book_quota_key','platform_book_key') else ''))
+    bodies=[];intents=[];inputs=[];register=enq.register_admission
+    def registration(db,body,**kw):
+        identity=register(db,body,**kw);bodies.append(dict(body));intents.append(identity);inputs.append(kw['quota_inputs'])
+        proof['originals'].append({'task_id':body['task_id'],'request_id':body['request_id'],'intent_id':str(identity),
+            'body_hash':handoff.body_hash(body),'original_date':kw['quota_inputs']['date']})
+        save();return identity
+    monkeypatch.setattr(enq,'register_admission',registration)
+    connections=[];connection_info=[];publisher=amqp._publisher_connection
+    def tracked_publisher():
+        name=operation+':'+case+':'+str(len(connections))
+        actual=amqp.pika.BlockingConnection
+        with monkeypatch.context() as scoped:
+            def named_connection(params):
+                params.client_properties={**(params.client_properties or {}),'connection_name':name}
+                return actual(params)
+            scoped.setattr(amqp.pika,'BlockingConnection',named_connection)
+            connection=publisher()
+        connections.append(connection)
+        connection_info.append({'connection_name':name,'client_socket_port':connection._impl._transport._sock.getsockname()[1],
+            'heartbeat':connection._impl.params.heartbeat})
+        connection_info[-1]['broker_connected']=broker_connection(name)
+        assert len(connection_info[-1]['broker_connected'])==1 and connection_info[-1]['broker_connected'][0]['timeout']==30
+        proof['connections']=list(connection_info);save();return connection
+    monkeypatch.setattr(amqp,'_publisher_connection',tracked_publisher)
+    rabbit='3f1103519d088bf17cc5ed28bbc4c7bc013b1449d876d48dc7a4d34873ad00f3'
+    def broker_connection(name):
+        verify_test_environment()
+        diagnostic_started=time.monotonic()
+        result=subprocess.run(['docker','exec',rabbit,'rabbitmqctl','-q','list_connections','peer_port','timeout','state','client_properties'],
+            capture_output=True,text=True,timeout=15,check=True)
+        diagnostic=target.with_name(target.name+'-native-'+str(len(proof.get('native_diagnostics',[])))).with_suffix('.log')
+        diagnostic.write_text(result.stdout+result.stderr)
+        proof.setdefault('native_diagnostics',[]).append({'path':str(diagnostic),'sha256':hashlib.sha256(diagnostic.read_bytes()).hexdigest(),
+            'returncode':result.returncode,'timeout_seconds':15,'elapsed_seconds':time.monotonic()-diagnostic_started})
+        matches=[line for line in result.stdout.splitlines() if name in line]
+        assert len(matches)<=1
+        return [{'peer_port':int(line.split()[0]),'timeout':int(line.split()[1]),'state':line.split()[2],'connection_name':name} for line in matches]
+    success=False
+    try:
+        first=enq.enqueue(user_id=admitted['user_id'],project_id=admitted['project_id'],task_type='chapter_generate',
+            payload={'seq':1},quota_n=2,cost_est=0,priority=7)
+        assert first['task_id']==bodies[0]['task_id'] and len(connections)==1
+        proof['first_local_closed']=connections[0].is_closed
+        proof['broker_before_idle']=broker_connection(connection_info[0]['connection_name'])
+        assert connection_info[0]['heartbeat']==30
+        if not proof['first_local_closed']:
+            assert len(proof['broker_before_idle'])==1 and proof['broker_before_idle'][0]['timeout']==30
+        proof['client_socket_broker_port_binding']='named connection; localhost published-port proxy may translate socket port'
+        started=time.monotonic()
+        while time.monotonic()-started<90:time.sleep(min(.5,max(0,90-(time.monotonic()-started))))
+        proof['idle_seconds']=time.monotonic()-started
+        proof['broker_after_idle']=broker_connection(connection_info[0]['connection_name'])
+        proof['local_closed_before_second']=connections[0].is_closed;save()
+        assert not proof['broker_after_idle'],'original publisher connection still present after heartbeat timeout'
+        second=enq.enqueue(user_id=admitted['user_id'],project_id=second_pid,task_type='chapter_generate',
+            payload={'seq':2},quota_n=2,cost_est=0,priority=7)
+        assert second['task_id']==bodies[1]['task_id']
+        assert int(r.get(inputs[0]['keys'][0]))==4
+        with new_session() as db:
+            assert all(db.get(AdmissionIntent,i).publication_state=='published' for i in intents)
+        # Real read+nack proves both exact originals/properties; no ACK/purge or
+        # fabricated processing just to erase a successful test's queued work.
+        with amqp.connect() as connection:
+            channel=connection.channel();tags=[];delivered=[]
+            try:
+                for _ in range(2):
+                    method,properties,raw=channel.basic_get(names['main_queue'],auto_ack=False)
+                    assert method is not None;tags.append(method.delivery_tag)
+                    body=json.loads(raw);delivered.append(body)
+                    assert properties.message_id==body['request_id'] and properties.correlation_id==body['task_id']
+                    assert properties.priority==7 and properties.delivery_mode==2 and properties.expiration is None
+                assert {handoff.body_hash(b) for b in delivered}=={handoff.body_hash(b) for b in bodies}
+                proof['broker_body_hashes']=[handoff.body_hash(b) for b in delivered]
+            finally:
+                for tag in tags:channel.basic_nack(tag,requeue=True)
+        assert len(connections)==2 and connections[0] is not connections[1]
+        success=True
+    except Exception as exc:
+        proof['error_type']=type(exc).__name__;proof['cause_type']=type(exc.__cause__).__name__ if exc.__cause__ else None
+        raise
+    finally:
+        proof['success']=success;proof['connections']=connection_info
+        proof['quota_after']=int(r.get(inputs[0]['keys'][0]) or 0) if inputs else None
+        with new_session() as db:
+            proof['intent_states']=[{'id':str(i),'gate':db.get(AdmissionIntent,i).gate_state,
+                'publication':db.get(AdmissionIntent,i).publication_state} for i in intents]
+        for connection in connections:
+            try:
+                if not connection.is_closed:connection.close()
+            except Exception:pass
+        verify_test_environment()
+        with amqp.connect() as connection:
+            channel=connection.channel()
+            proof['queues']={name:{'messages':(actual:=channel.queue_declare(names[name],passive=True).method).message_count,
+                'consumers':actual.consumer_count} for name in ('main_queue','delay_queue','dlq_queue')}
+        proof['disposition']='retained_original_queued_messages_and_admissions_no_processing_or_cleanup'
+        save()
