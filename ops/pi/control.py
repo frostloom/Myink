@@ -2,6 +2,7 @@ import argparse
 from datetime import datetime
 from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from hmac import compare_digest
 import json
 from pathlib import Path
 import socket
@@ -49,7 +50,10 @@ class _DeadlineIO:
         return self._call('flush')
 
 
-def make_gateway_handler(ledger, policy, transport):
+def make_gateway_handler(ledger, policy, transport, *, scope_token=None):
+    if scope_token is not None and (not isinstance(scope_token, str) or not 0 < len(scope_token) <= 4096
+                                   or any(not 33 <= ord(char) <= 126 for char in scope_token)):
+        raise ValueError('invalid scope token')
     class Handler(BaseHTTPRequestHandler):
         protocol_version = 'HTTP/1.0'  # EOF framing supports streaming without buffering.
 
@@ -91,6 +95,13 @@ def make_gateway_handler(ledger, policy, transport):
         def do_POST(self):
             iterator = None
             try:
+                if scope_token is not None:
+                    keys = self.headers.get_all('x-api-key', [])
+                    scopes = self.headers.get_all('X-Pi-Scope', [])
+                    if (len(keys) != 1 or scopes != ['local-trial-1']
+                            or not compare_digest(keys[0].encode('utf-8'), scope_token.encode('utf-8'))):
+                        self.send_error(403)
+                        return
                 lengths = self.headers.get_all('Content-Length', [])
                 if (self.path != '/v1/messages' or len(lengths) != 1
                         or not lengths[0].isdigit() or self.headers.get('Transfer-Encoding')
@@ -132,7 +143,7 @@ def make_gateway_handler(ledger, policy, transport):
     return Handler
 
 
-def serve_gateway(ledger, policy, credential_file, host='127.0.0.1', port=8765):
+def serve_gateway(ledger, policy, credential_file, host='127.0.0.1', port=8765, *, scope_token=None):
     if not live_ready(policy):
         raise ValueError('live configuration incomplete')
     credentials = json.loads(credential_file.read_text(encoding='utf-8'))
@@ -149,7 +160,7 @@ def serve_gateway(ledger, policy, credential_file, host='127.0.0.1', port=8765):
                                            headers={'x-api-key': credentials['PLATFORM_MODEL_API_KEY'],
                                                     'anthropic-version': '2023-06-01'}, timeout=timeout)
             return client.send(request, stream=True, follow_redirects=False)
-        with ThreadingHTTPServer((host, port), make_gateway_handler(ledger, policy, transport)) as server:
+        with ThreadingHTTPServer((host, port), make_gateway_handler(ledger, policy, transport, scope_token=scope_token)) as server:
             server.daemon_threads = True
             server.serve_forever()
 
