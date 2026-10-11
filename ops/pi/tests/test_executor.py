@@ -309,3 +309,18 @@ def test_b9_unknown_selection_remains_closed(monkeypatch,tmp_path,selection):
     executor,ledger=_controller_fixture(monkeypatch,tmp_path,proof)
     receipt=executor.execute('test',{'state_dir':'E:/state','selection':selection},datetime.now(timezone.utc)+timedelta(seconds=30),ledger)
     assert receipt.status=='blocked' and receipt.evidence['reason']=='unknown_test_selection'
+
+
+@pytest.mark.parametrize('argument',['command','script','dsn','filename','namespace','database'])
+def test_b10_does_not_accept_client_fixture_or_executable(argument):
+    receipt=execute('test',{'state_dir':'E:/state','selection':'b10-fresh',argument:'client-supplied'},datetime.now(timezone.utc)+timedelta(seconds=30),None)
+    assert receipt.status=='blocked' and receipt.evidence['reason']=='untyped_arguments'
+
+
+@pytest.mark.parametrize('selection',['b10-fresh;echo unsafe','tests/test_queue_handoff.py','b10/arbitrary','b10-census --override'])
+def test_b10_unknown_selection_remains_closed(monkeypatch,tmp_path,selection):
+    from ops.pi.resources import LIMITS
+    proof={'cgroup_version':2,'membership_verified':True,'ancestor_verified':True,**LIMITS['heavy']}
+    executor,ledger=_controller_fixture(monkeypatch,tmp_path,proof)
+    receipt=executor.execute('test',{'state_dir':'E:/state','selection':selection},datetime.now(timezone.utc)+timedelta(seconds=30),ledger)
+    assert receipt.status=='blocked' and receipt.evidence['reason']=='unknown_test_selection'

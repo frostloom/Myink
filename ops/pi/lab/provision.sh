@@ -171,6 +171,15 @@ if [[ $mode == execute ]]; then
       test/b8-red|test/b8-focused|test/b8-survival|test/b8-reconcile) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py) ;;
       test/b8-ci-collection|test/b8-guarded-collection) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py) ;;
       test/b8) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py tests/test_enqueue_gates.py tests/test_task_budget_routes.py tests/test_manual_plan.py) ;;
+      test/b10-role-diagnostic|test/b10-retained-queue|test/b10-retained-worker|test/b10-retained-gates|test/b10-retained-multiprocess) targets=() ;;
+      test/b10-defer) targets=(tests/test_queue_handoff.py) ;;
+      test/b10-authority) targets=(tests/test_queue_handoff.py) ;;
+      test/b10-ops) targets=(ops/pi/tests/test_executor.py) ;;
+      test/b10-resume) targets=(tests/test_queue_handoff.py tests/test_maintenance_reconciliation.py) ;;
+      test/b10-census|test/b10-fresh) targets=() ;;
+      test/b10-identity) targets=(tests/test_queue_handoff.py) ;;
+      test/b10-red|test/b10-focused|test/b10-ci-collection|test/b10-guarded-collection) targets=(tests/test_queue_handoff.py tests/test_maintenance_reconciliation.py) ;;
+      test/b10) targets=(tests/test_queue_handoff.py tests/test_maintenance_reconciliation.py tests/test_worker.py tests/test_enqueue_gates.py tests/test_multiprocess.py) ;;
       test/b9-red|test/b9) targets=(tests/test_maintenance_pause.py tests/test_maintenance_compatibility.py tests/test_task_budget_recovery.py tests/test_short_runner.py tests/test_worker.py tests/test_manual_plan.py) ;;
       test/b9-short-budget|test/b9-pause|test/b9-wait|test/b9-identity|test/b9-legacy|test/b9-cached|test/b9-entry|test/b9-plan-negative) targets=(tests/test_maintenance_pause.py) ;;
       test/b9-compatibility|test/b9-protocol|test/b9-ci-collection|test/b9-guarded-collection) targets=(tests/test_maintenance_compatibility.py) ;;
@@ -185,8 +194,17 @@ if [[ $mode == execute ]]; then
     . "$base/test.env"
     opts=(--pi-lab)
     [[ $selection != provenance && $selection != b8 && $selection != b8-red && $selection != b8-focused && $selection != b8-survival && $selection != b8-reconcile && $selection != b8-ci-collection && $selection != b8-guarded-collection ]] || opts=()
-    [[ $selection != b9* ]] || opts=()
+    [[ $selection != b9* && $selection != b10* ]] || opts=()
     python_args=(-m pytest "${targets[@]}" -q "${opts[@]}" -m "not pi_live" --tb=short)
+    [[ $selection != b10-defer ]] || python_args+=(-k "real_successive_defer")
+    [[ $selection != b10-authority ]] || python_args+=(-k "outbox_authority_cannot")
+    [[ $selection != b10-ops ]] || python_args+=(-k "b10")
+    [[ $selection != b10-resume ]] || python_args+=(-k "delay_without_ttl or incomplete_historical_delay or resume_bridge")
+    [[ $selection != b10-census && $selection != b10-fresh && $selection != b10-defer ]] || python_args=(-c "from ops.pi.lab.verify import run_b10_census; run_b10_census('$selection')")
+    [[ $selection != b10-identity ]] || python_args+=(-k "actual_sealed_frozen_prefix_drift_refused")
+    case $selection in b10-role-diagnostic|b10-retained-queue|b10-retained-worker|b10-retained-gates|b10-retained-multiprocess) python_args=(-c "from ops.pi.lab.verify import run_b10_retained; run_b10_retained('$selection')") ;; esac
+    [[ $selection != b10-ci-collection ]] || python_args=(-c "import pytest; result=pytest.main(['tests/test_queue_handoff.py','tests/test_maintenance_reconciliation.py','--collect-only','-q','-m','not pi_lab and not pi_live']); raise SystemExit(0 if result == 5 else 1)")
+    [[ $selection != b10-guarded-collection ]] || python_args=(-m pytest "${targets[@]}" --collect-only -q -m "not pi_live")
     [[ $selection != b9-plan-negative ]] || python_args+=(-k "explicit_plan_approval")
     [[ $selection != b9-entry ]] || python_args+=(-k "legacy_execution_scope_identity")
     [[ $selection != b9-legacy-worker ]] || python_args+=(-k "process_materialize_and_done or manual_plan_worker_waits or stale_plan_resume or cancel_awaiting_plan or process_idempotent_skip_done or process_lock_reclaims_zombie")

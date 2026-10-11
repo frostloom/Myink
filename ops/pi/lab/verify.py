@@ -169,8 +169,45 @@ def verify_test_environment():
               'REDIS_URL':f"redis://127.0.0.1:{ports['redis']}/0",
               'AMQP_URL':f"amqp://myink:synthetic-lab-only@127.0.0.1:{ports['rabbit']}/",
               'QUEUE_PREFIX':'-pi-'+r['lab_uuid']+'-','JWT_SECRET':'synthetic-b7-jwt-secret-at-least-32-bytes','EMBED_ENABLED':'0'}
-    if environment!=expected or any(os.environ.get(k)!=v for k,v in expected.items()):
+    if environment!=expected:
+        raise ValueError('original sealed fixture configuration drift')
+    if os.environ.get('B10_CENSUS_DESCRIPTOR'):
+        descriptor=BASE/('b10-census-'+operation+'.json')
+        if (os.environ['B10_CENSUS_DESCRIPTOR']!=str(descriptor) or descriptor.is_symlink()
+                or descriptor.stat().st_uid!=0 or descriptor.stat().st_mode & 0o077):
+            raise ValueError('untrusted B10 census descriptor')
+        proof=json.loads(descriptor.read_text())
+        creation=proof.get('ancestor_id',operation)
+        if creation!=operation:
+            if creation!=B10_PARENT or proof['selection'] not in B10_RECHECKS:raise ValueError('foreign retained B10 ancestry')
+            _b10_parent_evidence()
+            if any(hashlib.sha256((BASE/'trusted-source'/name).read_bytes()).hexdigest()!=digest for name,digest in proof['source_hashes'].items()):raise ValueError('retained B10 source drift')
+        database='myink_b10_'+uuid.UUID(creation).hex
+        prefix='-pi-'+r['lab_uuid']+'-b10-'+creation+'-'
+        if (proof['operation_id']!=operation or proof['lab_uuid']!=r['lab_uuid'] or proof['ports']!=ports
+                or proof['database']!=database or proof['prefix']!=prefix
+                or proof['selection'] not in ('b10-census','b10-defer','b10-fresh',*B10_RECHECKS)
+                or proof['redis_db']!={'b10-census':12,'b10-defer':13,'b10-fresh':14,**{name:14 for name in B10_RECHECKS}}[proof['selection']]):
+            raise ValueError('foreign B10 census identity')
+        expected={**expected,'DATABASE_URL':expected['DATABASE_URL'].rsplit('/',1)[0]+'/'+database,
+                  'ADMIN_DATABASE_URL':expected['ADMIN_DATABASE_URL'].rsplit('/',1)[0]+'/'+database,
+                  'REDIS_URL':expected['REDIS_URL'].rsplit('/',1)[0]+'/'+str(proof['redis_db']),'QUEUE_PREFIX':prefix}
+        import psycopg
+        with psycopg.connect(expected['ADMIN_DATABASE_URL'].replace('postgresql+psycopg:','postgresql:')) as db:
+            actual=db.execute('SELECT current_database(),system_identifier::text FROM pg_control_system()').fetchone()
+            roles=db.execute("SELECT rolname,rolsuper,rolbypassrls FROM pg_roles WHERE rolname IN ('postgres','myink') ORDER BY rolname").fetchall()
+        if list(actual)!=[database,proof['system_identifier']] or [list(v) for v in roles]!=proof['roles']:
+            raise ValueError('actual B10 PostgreSQL identity drift')
+        import redis
+        client=redis.Redis.from_url(expected['REDIS_URL'])
+        if not client.ping():raise ValueError('B10 Redis partition unavailable')
+    if any(os.environ.get(k)!=v for k,v in expected.items()):
         raise ValueError('foreign or inherited fixture environment')
+    if "myink.config" in sys.modules:
+        actual=sys.modules["myink.config"].settings
+        fields=(("database_url","DATABASE_URL"),("admin_database_url","ADMIN_DATABASE_URL"),("redis_url","REDIS_URL"),("amqp_url","AMQP_URL"),("queue_prefix","QUEUE_PREFIX"))
+        if any(getattr(actual,field)!=expected[key] for field,key in fields):
+            raise ValueError("frozen business fixture settings drift")
     return r,expected
 
 
@@ -204,3 +241,99 @@ def cancel_owned(operation, lab_uuid):
         time.sleep(.1)
     if pids: raise ValueError('heavy group not empty')
     return {'status':'done','operation_id':operation,'lab_uuid':lab_uuid,'heavy_empty':True,'cgroup_events':(root/'cgroup.events').read_text().strip()}
+
+
+def run_b10_census(selection):
+    """Fixed operation-derived partition on verified existing services, never reset history."""
+    if selection not in ('b10-census','b10-fresh','b10-defer'):raise ValueError('unknown finite B10 selection')
+    r,environment=verify_test_environment()
+    if 'myink.config' in sys.modules:raise ValueError('B10 namespace must precede business import')
+    operation=json.loads((BASE/'current-operation.json').read_text())['operation_id']
+    database='myink_b10_'+uuid.UUID(operation).hex
+    prefix='-pi-'+r['lab_uuid']+'-b10-'+operation+'-'
+    import psycopg,redis
+    from psycopg import sql
+    partition={'b10-census':12,'b10-defer':13,'b10-fresh':14}[selection]
+    client=redis.Redis.from_url(environment['REDIS_URL'].rsplit('/',1)[0]+'/'+str(partition))
+    if client.dbsize()!=0:raise ValueError('B10 reserved Redis partition has preexisting data')
+    with psycopg.connect(environment['ADMIN_DATABASE_URL'].replace('postgresql+psycopg:','postgresql:'),autocommit=True) as db:
+        system=db.execute('SELECT system_identifier::text FROM pg_control_system()').fetchone()[0]
+        roles=db.execute("SELECT rolname,rolsuper,rolbypassrls FROM pg_roles WHERE rolname IN ('postgres','myink') ORDER BY rolname").fetchall()
+        if not roles or not any(v==('postgres',True,True) for v in roles):raise ValueError('sealed PostgreSQL roles drift')
+        if db.execute('SELECT 1 FROM pg_database WHERE datname=%s',(database,)).fetchone():raise ValueError('B10 fresh database already exists')
+        db.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(database)))
+    ports={kind:int(environment[key].split('127.0.0.1:')[1].split('/')[0]) for kind,key in [('pg','DATABASE_URL'),('redis','REDIS_URL'),('rabbit','AMQP_URL')]}
+    descriptor=BASE/('b10-census-'+operation+'.json')
+    proof=dict(operation_id=operation,lab_uuid=r['lab_uuid'],database=database,prefix=prefix,redis_db=partition,selection=selection,ports=ports,system_identifier=system,roles=roles)
+    with descriptor.open('x') as stream:json.dump(proof,stream)
+    descriptor.chmod(0o600)
+    os.environ.update(B10_CENSUS_DESCRIPTOR=str(descriptor),DATABASE_URL=environment['DATABASE_URL'].rsplit('/',1)[0]+'/'+database,
+        ADMIN_DATABASE_URL=environment['ADMIN_DATABASE_URL'].rsplit('/',1)[0]+'/'+database,
+        REDIS_URL=environment['REDIS_URL'].rsplit('/',1)[0]+'/'+str(partition),QUEUE_PREFIX=prefix)
+    verify_test_environment()
+    subprocess.run([sys.executable,'-m','myink.cli','init','--seed'],check=True,timeout=150)
+    verify_test_environment()
+    commands=[[sys.executable,'-m','pytest','tests/test_maintenance_reconciliation.py','-q','-k','actual_fresh_census','--tb=short']]
+    if selection=='b10-defer':commands.append([sys.executable,'-m','pytest','tests/test_queue_handoff.py','-q','-k','real_successive_defer','--tb=short'])
+    if selection=='b10-fresh':commands.append([sys.executable,'-m','pytest','tests/test_queue_handoff.py','tests/test_maintenance_reconciliation.py','tests/test_worker.py','tests/test_enqueue_gates.py','tests/test_multiprocess.py','-q','-k','not actual_fresh_census','--tb=short'])
+    for command in commands:subprocess.run(command,check=True,timeout=400)
+
+
+B10_PARENT='ed2c61e6-d33b-4951-9d9a-fb05d06633e5'
+B10_RECHECKS={'b10-role-diagnostic':('tests/test_maintenance_reconciliation.py','-k','trusted_adapter_uses_actual_application_role'),
+    'b10-retained-queue':('tests/test_queue_handoff.py','tests/test_maintenance_reconciliation.py','-k','not actual_fresh_census'),
+    'b10-retained-worker':('tests/test_worker.py',), 'b10-retained-gates':('tests/test_enqueue_gates.py',),
+    'b10-retained-multiprocess':('tests/test_multiprocess.py',)}
+
+
+def _b10_parent_evidence():
+    evidence=Path('/mnt/e/tools/myink-pi/evidence')
+    hashes={B10_PARENT+'.receipt.json':'4473d639eb3d707cff07be1bf8dcb979b4e4b76fe77865f42a967f4eabeac3ed',
+        'b10-fresh-final-source.json':'19ca69e5b955c1001cf517b9ad2fccc6c8ffdd2534f51527eb531a73cc822888',
+        'b10-census-'+B10_PARENT+'.json':'b10da7e68fe123dfcbf8343fb4a0919ad55514d8aff26401901beeef0690d7b9'}
+    for name,digest in hashes.items():
+        if hashlib.sha256((evidence/name).read_bytes()).hexdigest()!=digest:raise ValueError('retained B10 creation evidence drift')
+    receipt=json.loads((evidence/(B10_PARENT+'.receipt.json')).read_text())
+    if receipt['operation_id']!=B10_PARENT or receipt['status']!='failed':raise ValueError('retained failed B10 provenance absent')
+    return json.loads((evidence/'b10-fresh-final-source.json').read_text())
+
+
+def run_b10_retained(selection):
+    """Finite failed-dataset diagnostics; retained unknowns never become admission proof."""
+    if selection not in B10_RECHECKS:raise ValueError('unknown retained B10 selection')
+    r,environment=verify_test_environment()
+    if 'myink.config' in sys.modules:raise ValueError('retained B10 identity must precede imports')
+    names=_b10_parent_evidence()
+    original=BASE/('b10-census-'+B10_PARENT+'.json')
+    if original.is_symlink() or original.stat().st_uid!=0 or original.stat().st_mode & 0o077:raise ValueError('untrusted original B10 descriptor')
+    proof=json.loads(original.read_text())
+    if proof['operation_id']!=B10_PARENT or proof['lab_uuid']!=r['lab_uuid'] or proof['selection']!='b10-fresh' or proof['redis_db']!=14:raise ValueError('foreign original B10 fixture')
+    operation=json.loads((BASE/'current-operation.json').read_text())['operation_id']
+    proof.update(operation_id=operation,ancestor_id=B10_PARENT,selection=selection,
+        source_hashes={name:hashlib.sha256((BASE/'trusted-source'/name).read_bytes()).hexdigest() for name in names})
+    descriptor=BASE/('b10-census-'+operation+'.json')
+    with descriptor.open('x') as stream:json.dump(proof,stream)
+    descriptor.chmod(0o600)
+    os.environ.update(B10_CENSUS_DESCRIPTOR=str(descriptor),DATABASE_URL=environment['DATABASE_URL'].rsplit('/',1)[0]+'/'+proof['database'],
+        ADMIN_DATABASE_URL=environment['ADMIN_DATABASE_URL'].rsplit('/',1)[0]+'/'+proof['database'],
+        REDIS_URL=environment['REDIS_URL'].rsplit('/',1)[0]+'/14',QUEUE_PREFIX=proof['prefix'])
+    verify_test_environment()
+    # Lossless private inventory includes original unknowns and every quota/lock/cache key.
+    import psycopg,redis
+    tables=('maintenance_control','admission_intents','queue_handoffs','tasks','maintenance_executions','task_budgets','task_budget_calls','checkpoints','checkpoint_writes')
+    inventory={'operation_id':operation,'ancestor_id':B10_PARENT,'descriptor':proof,'tables':{}}
+    with psycopg.connect(os.environ['ADMIN_DATABASE_URL'].replace('postgresql+psycopg:','postgresql:')) as db:
+        for table in tables:inventory['tables'][table]=db.execute('SELECT * FROM '+table).fetchall()
+    client=redis.Redis.from_url(os.environ['REDIS_URL'])
+    inventory['redis']=[{'key_hex':key.hex(),'dump_hex':client.dump(key).hex(),'ttl_ms':client.pttl(key)} for key in client.scan_iter()]
+    from myink.db import get_admin_engine
+    from sqlalchemy.orm import Session
+    from myink.worker.handoff import reconcile_queue,_queue_census
+    from myink.maintenance import maintenance_view
+    with Session(get_admin_engine()) as db:inventory['census']=reconcile_queue(db,maintenance_view(db)['epoch'])
+    inventory['deliveries'],inventory['broker_unknown']=_queue_census()
+    target=Path('/mnt/e/tools/myink-pi/evidence')/('b10-retained-'+operation+'.json')
+    raw=json.dumps(inventory,default=lambda value:{'bytes_hex':value.hex()} if isinstance(value,bytes) else str(value)).encode()
+    target.write_bytes(raw);target.with_suffix('.sha256').write_text(hashlib.sha256(raw).hexdigest())
+    verify_test_environment()
+    subprocess.run([sys.executable,'-m','pytest',*B10_RECHECKS[selection],'-q','--tb=short'],check=True,timeout=500)
