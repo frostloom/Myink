@@ -152,3 +152,51 @@ def test_pi_scope_authentication_rejected_before_body_and_reservation(ledger, po
 def test_pi_scope_token_must_be_bounded_nonempty_header_value(ledger, policy, token):
     with pytest.raises(ValueError, match='invalid scope token'):
         make_gateway_handler(ledger, policy, lambda *_: pytest.fail('invalid host token used'), scope_token=token)
+
+
+@pytest.fixture
+def pi_gateway_http(ledger, policy):
+    from http.server import ThreadingHTTPServer
+    from threading import Thread
+
+    def provider(req):
+        # The SDK beta suffix is accepted at the local boundary only; the
+        # existing upstream transport remains the canonical messages route.
+        assert req.url.path == '/v1/messages' and req.url.query == b''
+        assert totals(ledger, 'local-trial-1') == (1, 10000)
+        return httpx.Response(200, headers={'content-type': 'text/event-stream'},
+                              stream=PiStream(dict(input_tokens=7, output_tokens=0,
+                                                   cache_read_input_tokens=0, cache_creation_input_tokens=0)))
+
+    handler = make_gateway_handler(ledger, policy, transport(provider), scope_token='synthetic-preview-token')
+    with ThreadingHTTPServer(('127.0.0.1', 0), handler) as server:
+        server.daemon_threads = True
+        worker = Thread(target=server.serve_forever, kwargs={'poll_interval': 0.01}, daemon=True)
+        worker.start()
+        try:
+            with httpx.Client(trust_env=False, timeout=3) as client:
+                yield client, 'http://127.0.0.1:' + str(server.server_port)
+        finally:
+            server.shutdown()
+            worker.join(3)
+
+
+@pytest.mark.parametrize('route', ['/v1/messages', '/v1/messages?beta=true'])
+def test_pi_sdk_route_settles_exactly_one_authenticated_http_attempt(ledger, pi_gateway_http, route):
+    client, base = pi_gateway_http
+    response = client.post(base + route, headers={'x-api-key': 'synthetic-preview-token',
+                                                 'X-Pi-Scope': 'local-trial-1'}, json=pi_request())
+    assert response.status_code == 200
+    assert 'Reviewed.' in response.text
+    assert totals(ledger, 'local-trial-1') == (1, 54)
+
+
+@pytest.mark.parametrize('route', ['/v1/messages?beta=false', '/v1/messages?beta=true&x=1',
+                                  '/v1/messages?x=1', '/v1/messages?beta=true&beta=true',
+                                  '/v1/messages/count_tokens'])
+def test_pi_sdk_route_rejects_other_queries_before_reservation(ledger, pi_gateway_http, route):
+    client, base = pi_gateway_http
+    response = client.post(base + route, headers={'x-api-key': 'synthetic-preview-token',
+                                                 'X-Pi-Scope': 'local-trial-1'}, json=pi_request())
+    assert response.status_code == 400
+    assert totals(ledger, 'local-trial-1') == (0, 0)
