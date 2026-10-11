@@ -644,6 +644,14 @@ def budget_execution(function):
         if budget_managed():
             return function(*args, **kwargs)
         params = signature.bind(*args, **kwargs).arguments
+        from myink.maintenance_pause import _SCOPE as execution_scope
+        execution = execution_scope.get()
+        if execution is not None:
+            requested = [str(params[k]) for k in ("task_id", "batch_task_id", "thread_id") if params.get(k) is not None]
+            if (not requested or any(tid != execution.task_id for tid in requested)
+                    or ("project_id" in params and str(params["project_id"]) != execution.project_id)):
+                raise TaskBudgetUnavailable("nested maintenance execution identity mismatch")
+            return function(*args, **kwargs)
         task_id = params.get("task_id") or params.get("batch_task_id") or params.get("thread_id")
         if not task_id:
             return function(*args, **kwargs)

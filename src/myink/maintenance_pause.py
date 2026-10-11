@@ -310,7 +310,10 @@ def resume_maintenance_tasks(db, epoch: str, expected_generation: int) -> list[d
     for tid in ids:
         _,task,row=_locked(db,tid)
         budget=db.scalar(select(TaskBudget).where(TaskBudget.task_id==tid).with_for_update())
-        if row.state!='paused' or row.deployment_generation!=expected_generation or task.status!='paused' or task.error!='maintenance' or (budget and budget.pause_reason):
+        if (row.state!='paused' or row.deployment_generation!=expected_generation
+                or row.receipt.get('deployment_id')!=control['deployment_id']
+                or row.receipt.get('image_ids')!=control['image_ids']
+                or task.status!='paused' or task.error!='maintenance' or (budget and budget.pause_reason)):
             continue
         validate_compatibility(row.receipt.get('protocol',{}))
         if row.execution_generation!=row.receipt['generation']+1 or row.owner_token or row.active_nodes:
