@@ -23,6 +23,7 @@ from datetime import date
 
 from psycopg import InterfaceError as PsycopgInterfaceError
 from psycopg import OperationalError as PsycopgOperationalError
+from sqlalchemy import select
 from sqlalchemy.exc import OperationalError as SQLAlchemyOperationalError
 
 from myink.config import settings
@@ -31,7 +32,7 @@ from myink.task_budget import (bind_task_budget, budget_managed, budget_view,
                                ensure_task_budget, record_budget_pause, bind_budget_operation,
                                TaskBudgetPaused, TaskBudgetUnavailable)
 from myink.maintenance_pause import MaintenancePaused, confirm_exception
-from myink.db import new_session
+from myink.db import new_session, tenant_session
 from myink.models import Project, Task
 from myink.workflow.runner import (
     finalize_chapter_review,
@@ -545,8 +546,24 @@ def valid_task_owner(body: dict) -> bool:
         project = db.get(Project, project_id)
         if project is None or project.user_id != user_id:
             return False
+    from myink.worker.handoff import admission_for, QueueAuthorityUnknown
+    from myink.models.maintenance import AdmissionIntent
+    with tenant_session(project_id) as db:
         task = db.get(Task, task_id)
-        return task is None or task.project_id == project_id
+        if task is not None and task.project_id != project_id:
+            return False
+        if admission_for(db, body) is not None:
+            return True
+        if db.scalar(select(AdmissionIntent.id).where(AdmissionIntent.task_id == task_id)) is not None:
+            raise QueueAuthorityUnknown("intake identity or gate outcome unconfirmed")
+        if task is None:
+            raise QueueAuthorityUnknown("unmaterialized message has no durable intake")
+        stored = {key:value for key,value in (task.payload or {}).items()
+                  if key not in {"_gate_user_id","_task_budget","_budget_resume_operation"}}
+        if (task.task_type != body.get("task_type") or stored != (body.get("payload") or {})
+                or task.status not in {"queued","running"}):
+            raise QueueAuthorityUnknown("legacy message lacks matching runnable stored identity")
+        return True
 
 
 def process(body: dict, worker_id: str | None = None) -> str:
@@ -609,7 +626,7 @@ def process(body: dict, worker_id: str | None = None) -> str:
             elif row and row.status in ("done", "failed", "cancelled", "awaiting_review", "awaiting_plan") \
                     and not (row.status == "awaiting_plan" and task_type == "chapter_plan_resume"):
                 logger.info("跳过（已终态，去重）: %s status=%s", task_id, row.status)
-            elif row and row.status == "paused" and task_type != "batch_resume":
+            elif row and row.status == "paused":
                 logger.info("跳过（已暂停，等 resume）: %s", task_id)
             elif row is None:
                 # 物化：DB 为最终权威（§5.3），幂等键 task_id 作 PK

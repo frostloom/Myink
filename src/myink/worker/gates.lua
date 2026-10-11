@@ -15,19 +15,37 @@
 -- 上限 <= 0 一律表示「不限」。模型 Key 是用户自己的，写多少章由用户付费，
 -- 所以 QUOTA / BOOK_QUOTA / DAILY_BUDGET 三项默认关（config.py 默认 0）；
 -- 想给自己部署设限的，把 env 填成正数即可，判断逻辑原样保留。
+-- Optional seventh key binds this atomic charge/result to one durable intent.
+local marker = KEYS[7]
+local function finish(result)
+  if marker then
+    redis.call('SET', marker, cjson.encode({hash=ARGV[10],task=ARGV[1],quota=ARGV[2],platform=ARGV[9],keys=KEYS,result=result,state=result[1]==1 and 'accepted' or 'rejected'}))
+  end
+  return result
+end
+if marker then
+  local saved=redis.call('GET',marker)
+  if saved then
+    local receipt=cjson.decode(saved)
+    if receipt.hash~=ARGV[10] then return {-6,'INTENT_CONFLICT'} end
+    if receipt.state=='compensated' then return {-6,'INTENT_COMPENSATED'} end
+    return receipt.result
+  end
+  if ARGV[11]~='fresh' then return {-6,'GATE_UNKNOWN'} end
+end
 local quota_deduct = tonumber(ARGV[2])
 local quota_max = tonumber(ARGV[4])
 if quota_max > 0 then
   local quota_used = tonumber(redis.call('GET', KEYS[1]) or '0')
   if quota_used + quota_deduct > quota_max then
-    return {-1, 'QUOTA_EXCEEDED', tostring(quota_used), tostring(quota_deduct)}
+    return finish({-1, 'QUOTA_EXCEEDED', tostring(quota_used), tostring(quota_deduct)})
   end
 end
 local book_quota_max = tonumber(ARGV[6])
 if book_quota_max > 0 then
   local book_quota_used = tonumber(redis.call('GET', KEYS[4]) or '0')
   if book_quota_used + quota_deduct > book_quota_max then
-    return {-1, 'BOOK_QUOTA_EXCEEDED', tostring(book_quota_used), tostring(quota_deduct)}
+    return finish({-1, 'BOOK_QUOTA_EXCEEDED', tostring(book_quota_used), tostring(quota_deduct)})
   end
 end
 -- 每本免费长篇的终身章数上限。上面五项都是日桶（次日/一小时后自然清零），只有这一项
@@ -38,7 +56,7 @@ local platform_chapter_max = tonumber(ARGV[9])
 if platform_chapter_max > 0 then
   local platform_used = tonumber(redis.call('GET', KEYS[6]) or '0')
   if platform_used + quota_deduct > platform_chapter_max then
-    return {-5, 'PLATFORM_CHAPTER_EXCEEDED', tostring(platform_used), tostring(quota_deduct)}
+    return finish({-5, 'PLATFORM_CHAPTER_EXCEEDED', tostring(platform_used), tostring(quota_deduct)})
   end
 end
 -- 每天最多 N 本不同书：SISMEMBER 判断是否新书（写命令 SADD 只能在全部检查通过后执行，
@@ -46,18 +64,18 @@ end
 local is_new_book = redis.call('SISMEMBER', KEYS[5], ARGV[8])
 local book_cnt = redis.call('SCARD', KEYS[5])
 if is_new_book == 0 and book_cnt + 1 > tonumber(ARGV[7]) then
-  return {-4, 'BOOK_CNT_EXCEEDED', tostring(book_cnt)}
+  return finish({-4, 'BOOK_CNT_EXCEEDED', tostring(book_cnt)})
 end
 local inflight = redis.call('SCARD', KEYS[2])
 if inflight > 0 then
-  return {-2, 'CONCURRENCY_LIMIT', tostring(inflight)}
+  return finish({-2, 'CONCURRENCY_LIMIT', tostring(inflight)})
 end
 local cost_budget = tonumber(ARGV[5])
 if cost_budget > 0 then
   local cost_used = tonumber(redis.call('GET', KEYS[3]) or '0')
   local cost_est = tonumber(ARGV[3])
   if cost_used + cost_est > cost_budget then
-    return {-3, 'DAILY_BUDGET_EXCEEDED', tostring(cost_used), tostring(cost_est)}
+    return finish({-3, 'DAILY_BUDGET_EXCEEDED', tostring(cost_used), tostring(cost_est)})
   end
 end
 -- 通过：扣配额（用户 + 每书）、记书数（新书才加）、占并发。（XADD 已移除，入队走 RabbitMQ）
@@ -75,4 +93,4 @@ redis.call('SADD', KEYS[2], ARGV[1])
 -- 并发闸门 TTL 安全网：worker 只在终态 SREM，retry→DLQ 泄漏/异常崩溃时
 -- 不释放会永久锁死本书（评审 A1）；1h 兜底过期，闸门让位书锁（worker 侧权威串行）。
 redis.call('EXPIRE', KEYS[2], 3600)
-return {1, ARGV[1]}
+return finish({1, ARGV[1]})

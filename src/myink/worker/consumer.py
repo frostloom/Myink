@@ -23,6 +23,8 @@ import pika
 from myink.config import settings
 from myink.maintenance import may_consume, MaintenanceUnavailable
 from myink.worker import amqp
+from myink.db import tenant_session
+from myink.worker.handoff import record_handoff, publish_handoff, delivery_predecessor, replay_handoffs, body_hash, QueueAuthorityUnknown
 from myink.worker.observer import observe
 from myink.worker.processor import _is_retryable, process, valid_task_owner
 from myink.worker.redis_client import get_redis, sse_key
@@ -61,6 +63,13 @@ def _on_message(ch, method, properties, body_raw, r, worker_id: str) -> None:
 
     try:
         owner_valid = isinstance(body, dict) and valid_task_owner(body)
+        predecessor=None
+        if owner_valid:
+            with tenant_session(body["project_id"]) as db:
+                predecessor=delivery_predecessor(db,body,properties)
+    except QueueAuthorityUnknown:
+        ch.basic_nack(method.delivery_tag, requeue=False)
+        return
     except Exception as exc:
         if _is_retryable(exc):
             logger.warning("任务归属暂时无法验证，保留消息: delivery=%s", method.delivery_tag)
@@ -107,27 +116,25 @@ def _on_message(ch, method, properties, body_raw, r, worker_id: str) -> None:
         logger.warning("重试超限进 DLQ: task=%s retry=%s", task_id, body.get("retry_count"))
         return
 
-    ch.basic_ack(method.delivery_tag)
-    if decision == "retry":
+    if decision in ("retry", "defer"):
         retry_count = int(body.get("retry_count", 0))
-        backoff_s = settings.worker_backoff_base * (2 ** retry_count)
-        body["retry_count"] = retry_count + 1
-        amqp.publish(
-            json.dumps(body, ensure_ascii=False), amqp.KEY_DELAY,
-            priority=priority, expiration_ms=backoff_s * 1000,
-        )
-        logger.info("退避重投: %s +%ss (retry=%s)", task_id, backoff_s, retry_count + 1)
-    elif decision == "defer":
-        # 书忙固定退避：不计 retry_count（书忙是瞬态非失败）→ 永远不过 MaxRetries，
-        # 重投不经 DLQ；书锁释放后下次重投即执行。同书任务在多个 worker 间自然串行。
-        amqp.publish(
-            json.dumps(body, ensure_ascii=False), amqp.KEY_DELAY,
-            priority=priority, expiration_ms=settings.worker_defer_backoff_s * 1000,
-        )
-        logger.info("书忙退避重投: %s book=%s +%ss",
-                    task_id, body.get("project_id"), settings.worker_defer_backoff_s)
+        outgoing = dict(body)
+        if decision == "retry":
+            outgoing["retry_count"] = retry_count + 1
+            expiration = settings.worker_backoff_base * (2 ** retry_count) * 1000
+        else:
+            expiration = settings.worker_defer_backoff_s * 1000
+        operation = "handoff:" + body["project_id"] + ":" + decision + ":" + body_hash({"body":outgoing,"predecessor":predecessor})
+        with tenant_session(body["project_id"]) as db:
+            record_handoff(db,outgoing,"delay",operation,priority=priority,expiration_ms=expiration,predecessor_id=predecessor)
+        # The transaction context above has committed BEFORE acknowledging.
+        ch.basic_ack(method.delivery_tag)
+        publish_handoff(operation)
     elif decision == "terminal":
+        ch.basic_ack(method.delivery_tag)
         logger.info("任务完成: %s", task_id)
+    else:
+        ch.basic_ack(method.delivery_tag)
     # skip: 无事可做
 
 
@@ -151,6 +158,7 @@ def run() -> None:
             if not may_consume():
                 _shutdown.wait(settings.worker_heartbeat_interval)
                 continue
+            replay_handoffs()
             conn = amqp.connect()
             ch = conn.channel()
             amqp.declare_topology(ch)

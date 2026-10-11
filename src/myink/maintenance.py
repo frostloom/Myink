@@ -70,7 +70,7 @@ def may_consume(db=None) -> bool:
         return False
 
 
-def register_admission(db, message: dict, *, priority: int, gates=False) -> uuid.UUID:
+def register_admission(db, message: dict, *, priority: int, gates=False, quota_inputs=None) -> uuid.UUID:
     row = lock_maintenance(db)
     if row["admission_closed"]:
         raise MaintenanceUnavailable(row["deadline"])
@@ -80,7 +80,7 @@ def register_admission(db, message: dict, *, priority: int, gates=False) -> uuid
         project_id=uuid.UUID(message["project_id"]), epoch=row["epoch"],
         deployment_generation=row["generation"], deployment_id=row["deployment_id"], owner=row["owner"],
         payload_hash=hashlib.sha256(encoded.encode()).hexdigest(), rebuild_payload=json.loads(encoded),
-        priority=priority, gate_state="pending" if gates else "not_required", publication_state="pending")
+        priority=priority, quota_inputs=quota_inputs or {}, gate_state="pending" if gates else "not_required", publication_state="pending")
     db.add(intent)
     db.flush()
     return intent.id

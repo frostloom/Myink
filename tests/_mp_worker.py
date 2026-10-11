@@ -16,6 +16,10 @@ import os
 import sys
 import time
 
+if os.environ.get("PI_LAB_ENV"):
+    from ops.pi.lab.verify import verify_test_environment
+    verify_test_environment()
+
 # 子进程不保证 editable 安装，直接指到 src
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src"))
 
@@ -102,6 +106,41 @@ class StubProvider(ModelProvider):
 
 
 def _main() -> None:
+    intake=os.environ.get("B10_INTAKE")
+    if intake:
+        assert intake in {"intent-before-gate","gate-before-receipt","compensate-before-receipt","intake-confirm-before-receipt"}
+        assert os.environ.get("PI_LAB_ENV")
+        from myink.worker import enqueue as enq
+        from myink.worker import amqp
+        project=os.environ["B10_PROJECT"];user=os.environ["B10_USER"]
+        def hold(task,stage):
+            _R.set("b10:intake:"+project,json.dumps({"pid":os.getpid(),"task_id":task,"stage":stage}),ex=120)
+            time.sleep(90)
+            raise RuntimeError("intake boundary parent did not kill exact child")
+        gate=enq._run_gates
+        def gated(*args,**kwargs):
+            if intake=="intent-before-gate":hold(kwargs["task_id"],intake)
+            result=gate(*args,**kwargs)
+            if intake=="gate-before-receipt":hold(kwargs["task_id"],intake)
+            return result
+        enq._run_gates=gated
+        compensate=enq._compensate
+        def compensated(*args,**kwargs):
+            result=compensate(*args,**kwargs)
+            if intake=="compensate-before-receipt":hold(kwargs["task_id"],intake)
+            return result
+        enq._compensate=compensated
+        publish=amqp.publish
+        def published(body,routing_key,**kwargs):
+            if intake=="compensate-before-receipt":
+                return publish(body,"b10-unbound-route",**kwargs)
+            result=publish(body,routing_key,**kwargs)
+            if intake=="intake-confirm-before-receipt":hold(json.loads(body)["task_id"],intake)
+            return result
+        amqp.publish=published
+        enq.enqueue(user_id=user,project_id=project,task_type="chapter_generate",payload={"seq":1},quota_n=2,cost_est=0,priority=7,platform_chapter_max=10)
+        raise RuntimeError("intake unexpectedly completed without boundary")
+
     import myink.providers as providers_mod
     import myink.memory.recall as recall_mod
     import myink.workflow.nodes as nodes_mod
@@ -111,9 +150,37 @@ def _main() -> None:
     recall_mod.get_embedder = lambda: FakeEmbedder()
 
     from myink.worker import consumer
+    boundary=os.environ.get("B10_BOUNDARY")
+    target=os.environ.get("B10_TASK")
+    if boundary:
+        assert boundary in {"before-ack","outbox-before-ack","after-ack","confirm-before-receipt"}
+        assert target and os.environ.get("PI_LAB_ENV")
+        import pika
+        from myink.worker import amqp
+        def hold(stage):
+            _R.set("b10:boundary:"+target,json.dumps({"pid":os.getpid(),"stage":stage}),ex=120)
+            time.sleep(90)
+            raise RuntimeError("parent did not kill the exact boundary child")
+        original_ack=pika.adapters.blocking_connection.BlockingChannel.basic_ack
+        def ack(channel,*args,**kwargs):
+            if current[0]==target and boundary in {"before-ack","outbox-before-ack"}:hold(boundary)
+            result=original_ack(channel,*args,**kwargs)
+            if current[0]==target and boundary=="after-ack":hold(boundary)
+            return result
+        pika.adapters.blocking_connection.BlockingChannel.basic_ack=ack
+        original_publish=amqp.publish_once
+        def confirmed(body,*args,**kwargs):
+            result=original_publish(body,*args,**kwargs)
+            if json.loads(body).get("task_id")==target and boundary=="confirm-before-receipt":hold(boundary)
+            return result
+        amqp.publish_once=confirmed
+    current=[None]
     original_process = consumer.process
     def observed_process(body, **kwargs):
+        current[0]=body.get("task_id")
         decision = original_process(body, **kwargs)
+        if boundary and current[0]==target and boundary!="before-ack" and decision=="terminal":
+            decision="retry"
         if body.get("test_probe"):
             _R.set("mp:probe:" + body["test_probe"], decision, ex=60)
         return decision
