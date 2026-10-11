@@ -6,6 +6,8 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
+from contextlib import contextmanager
+from contextvars import ContextVar
 from sqlalchemy import select,text
 from myink.db import new_session,tenant_session
 from myink.maintenance import lock_maintenance
@@ -16,6 +18,46 @@ from myink.worker import amqp
 
 class QueueAuthorityUnknown(RuntimeError):
     """Retain this message for reconciliation; never grant execution."""
+
+
+
+_PUBLICATION_LANES=ContextVar("admission_publication_lanes",default={})
+
+
+@contextmanager
+def admission_lane(intent_id,project_id,*,reentrant=False):
+    """One original intent, bounded try-lock, physically closed on every exit."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import NullPool
+    from myink.db import get_engine
+    identity=str(uuid.UUID(str(intent_id)));project=str(uuid.UUID(str(project_id)))
+    active=_PUBLICATION_LANES.get()
+    if identity in active:
+        yield active[identity][1] if reentrant and active[identity][0]==project else None
+        return
+    key=int.from_bytes(hashlib.sha256(("myink-admission:"+identity).encode()).digest()[:8],"big",signed=True)
+    engine=create_engine(get_engine().url,poolclass=NullPool,connect_args={"connect_timeout":5},isolation_level="AUTOCOMMIT")
+    connection=None;acquired=False;token=None
+    try:
+        connection=engine.connect()
+        connection.execute(text("SET statement_timeout=5000"))
+        acquired=connection.scalar(text("SELECT pg_try_advisory_lock(:key)"),{"key":key})
+        if not acquired:
+            yield None
+            return
+        with tenant_session(project) as db:
+            intent=db.get(AdmissionIntent,uuid.UUID(identity))
+            if intent is None or str(intent.project_id)!=project:raise QueueAuthorityUnknown("unknown original publication lane")
+        token=_PUBLICATION_LANES.set({**active,identity:(project,connection)})
+        yield connection
+    finally:
+        if token is not None:_PUBLICATION_LANES.reset(token)
+        try:
+            if acquired:connection.execute(text("SELECT pg_advisory_unlock(:key)"),{"key":key})
+        finally:
+            try:
+                if connection is not None:connection.close()
+            finally:engine.dispose()
 
 
 def body_hash(body):
@@ -126,12 +168,27 @@ def _project_for(operation_id):
     with new_session() as db: projects=list(db.scalars(select(Project.id)))
     for pid in projects:
         with tenant_session(pid) as db:
-            if db.get(QueueHandoff,operation_id) is not None:return pid
+            row=db.get(QueueHandoff,operation_id)
+            if row is not None and row.project_id==pid:return pid
     raise QueueAuthorityUnknown("unknown handoff operation")
 
 
 def publish_handoff(operation_id:str):
     pid=_project_for(operation_id)
+    with tenant_session(pid) as db:
+        row=db.get(QueueHandoff,operation_id)
+        admission_id=row.admission_id
+    if admission_id is None:return _publish_handoff(operation_id,pid)
+    with admission_lane(admission_id,pid,reentrant=True) as lane:
+        if lane is None:return {"operation_id":operation_id,"state":"unknown"}
+        with tenant_session(pid) as db:
+            intent=db.get(AdmissionIntent,admission_id)
+            if intent.gate_state not in ("accepted","not_required") or intent.publication_state in ("rejected","not_attempted"):
+                return {"operation_id":operation_id,"state":"unknown"}
+        return _publish_handoff(operation_id,pid)
+
+
+def _publish_handoff(operation_id,pid):
     with tenant_session(pid) as db:
         row=db.get(QueueHandoff,operation_id,with_for_update=True)
         if row.state=="published":return {"operation_id":operation_id,"state":"published"}
@@ -172,33 +229,64 @@ def reconcile_admission_gate(intent_id,project_id):
     return state
 
 
-def replay_admissions(project_id):
+def replay_admissions(project_id,*,intent_ids=None):
     from myink.maintenance import intent_outcome
     from myink.worker.redis_client import get_redis
     with tenant_session(project_id) as db:
-        intents=list(db.scalars(select(AdmissionIntent).where(AdmissionIntent.publication_state.in_(("pending","unknown")))))
-        records=[(i.id,i.gate_state,dict(i.rebuild_payload),i.priority) for i in intents]
-    for intent_id,gate,body,priority in records:
-        if gate in ("pending","unknown"):
-            gate=reconcile_admission_gate(intent_id,project_id)
-        if gate not in ("accepted","not_required"):continue
-        with tenant_session(project_id) as db:
-            task=db.get(Task,uuid.UUID(body["task_id"]))
-            if task and task.status not in ("queued","running"):continue
-            operation="admission:"+str(intent_id)
-            record_handoff(db,body,"tasks",operation,priority=priority)
-        get_redis().set("queue:task-owner:"+body["task_id"],json.dumps({"user_id":body["user_id"],"project_id":body["project_id"]}),ex=86400)
-        receipt=publish_handoff(operation)
-        intent_outcome(intent_id,project_id,publication_state="published" if receipt["state"]=="published" else "unknown")
+        query=select(AdmissionIntent.id).where(AdmissionIntent.project_id==uuid.UUID(str(project_id)),
+            AdmissionIntent.publication_state.in_(("pending","unknown")))
+        if intent_ids is not None:query=query.where(AdmissionIntent.id.in_(intent_ids))
+        ids=list(db.scalars(query))
+    for intent_id in ids:
+        with admission_lane(intent_id,project_id) as lane:
+            if lane is None:continue
+            with tenant_session(project_id) as db:
+                intent=db.get(AdmissionIntent,intent_id)
+                if intent.publication_state not in ("pending","unknown"):continue
+                gate=intent.gate_state;body=dict(intent.rebuild_payload);priority=intent.priority
+            if gate in ("pending","unknown"):gate=reconcile_admission_gate(intent_id,project_id)
+            if gate not in ("accepted","not_required"):continue
+            with tenant_session(project_id) as db:
+                task=db.get(Task,uuid.UUID(body["task_id"]))
+                if task and task.status not in ("queued","running"):continue
+                operation="admission:"+str(intent_id)
+                record_handoff(db,body,"tasks",operation,priority=priority)
+            # Commit unknown before ownership/publish so a crash cannot authorize refund.
+            intent_outcome(intent_id,project_id,publication_state="unknown")
+            get_redis().set("queue:task-owner:"+body["task_id"],json.dumps({"user_id":body["user_id"],"project_id":body["project_id"]}),ex=86400)
+            receipt=publish_handoff(operation)
+            intent_outcome(intent_id,project_id,publication_state="published" if receipt["state"]=="published" else "unknown")
 
 
-def replay_handoffs():
-    with new_session() as db: projects=list(db.scalars(select(Project.id)))
+_REPLAY_POSITION=None
+
+
+def replay_handoffs(max_operations=20):
+    """Bounded fair scheduling; the volatile cursor grants no execution authority."""
+    global _REPLAY_POSITION
+    if type(max_operations) is not int or not 1<=max_operations<=20:raise ValueError("invalid replay batch")
+    with new_session() as db:projects=sorted(db.scalars(select(Project.id)),key=str)
+    if not projects:return
+    position=_REPLAY_POSITION
+    if position:
+        index=next((i for i,pid in enumerate(projects) if str(pid)>=position[0]),0)
+        projects=projects[index:]+projects[:index]
+    remaining=max_operations
     for pid in projects:
-        replay_admissions(pid)
-        with tenant_session(pid) as db:
-            operations=list(db.scalars(select(QueueHandoff.operation_id).where(QueueHandoff.state.in_(("pending","unknown")))))
-        for operation in operations:publish_handoff(operation)
+        for kind,model,column in (("admission",AdmissionIntent,AdmissionIntent.id),("handoff",QueueHandoff,QueueHandoff.operation_id)):
+            if position and str(pid)==position[0] and kind<position[1]:continue
+            with tenant_session(pid) as db:
+                states=AdmissionIntent.publication_state.in_(("pending","unknown")) if kind=="admission" else QueueHandoff.state.in_(("pending","unknown"))
+                query=select(column).where(model.project_id==pid,states)
+                if position and str(pid)==position[0] and kind==position[1]:
+                    query=query.where(column>(uuid.UUID(position[2]) if kind=="admission" else position[2]))
+                ids=list(db.scalars(query.order_by(column).limit(remaining)))
+            for identity in ids:
+                _REPLAY_POSITION=(str(pid),kind,str(identity));remaining-=1
+                if kind=="admission":replay_admissions(pid,intent_ids=[identity])
+                else:publish_handoff(identity)
+                if not remaining:return
+    _REPLAY_POSITION=None
 
 
 def _queue_census():
@@ -216,7 +304,10 @@ def _queue_census():
                     tags.append(method.delivery_tag)
                     try:body=json.loads(raw)
                     except (ValueError,TypeError):unknown+=1;continue
-                    deliveries.append((queue,body))
+                    metadata={key:getattr(properties,key,None) for key in
+                        ('message_id','correlation_id','priority','expiration','headers','delivery_mode')}
+                    metadata.update(exchange=method.exchange,routing_key=method.routing_key,redelivered=method.redelivered)
+                    deliveries.append((queue,body,metadata))
             finally:
                 for tag in tags:channel.basic_nack(tag,requeue=True)
     return deliveries,unknown
@@ -240,8 +331,15 @@ def reconcile_queue(db,epoch:str):
         if execution.state!="paused":continue
         receipt=execution.receipt
         if (not receipt or receipt.get("epoch")!=epoch or receipt.get("deployment_id")!=control["deployment_id"]
-                or receipt.get("image_ids")!=control["image_ids"] or execution.owner_token or execution.active_nodes):
+                or receipt.get("image_ids")!=control["image_ids"] or execution.owner_token or execution.active_nodes
+                or execution.epoch!=epoch or execution.deployment_generation!=control["generation"]
+                or receipt.get("deployment_generation")!=control["generation"]
+                or type(receipt.get("generation")) is not int
+                or execution.execution_generation!=receipt["generation"]+1):
             unknown+=1;continue
+        from myink.maintenance_pause import validate_compatibility
+        try:validate_compatibility(receipt.get("protocol",{}))
+        except (ValueError,TypeError,KeyError):unknown+=1;continue
         effects={str(effect.id) for effect in db.scalars(select(TaskBudgetCall).where(TaskBudgetCall.task_id==execution.task_id,TaskBudgetCall.operation_key.like("effect:%")))}
         if {effect["id"] for effect in receipt.get("effects",[])}!=effects:unknown+=1
         for checkpoint in receipt.get("checkpoints",[]):
@@ -255,10 +353,36 @@ def reconcile_queue(db,epoch:str):
     try:
         deliveries,uncertain=_queue_census();unknown+=uncertain
         present=set()
-        for queue,body in deliveries:
+        for queue,body,metadata in deliveries:
             if not isinstance(body,dict) or "task_id" not in body:unknown+=1;continue
             present.add(str(body["task_id"]));planned.add(str(body["task_id"]))
-            if admission_for(db,body) is None:unknown+=1
+            try:
+                intent=admission_for(db,body)
+                from types import SimpleNamespace
+                if queue==amqp.dlq_queue() or intent is None:
+                    raise QueueAuthorityUnknown("quarantined or unproven delivery")
+                if (metadata.get("delivery_mode")!=2 or metadata.get("exchange")!=amqp.exchange()
+                        or metadata.get("routing_key")!=("delay" if queue==amqp.delay_queue() else "tasks")):
+                    raise QueueAuthorityUnknown("delivery topology properties conflict")
+                if queue==amqp.delay_queue():
+                    operation=(metadata.get("headers") or {}).get("operation_id")
+                    previous=db.get(QueueHandoff,operation) if isinstance(operation,str) else None
+                    if (previous is None or previous.state not in ("unknown","published") or previous.destination!="delay"
+                            or previous.body_hash!=body_hash(body) or previous.task_id!=uuid.UUID(body["task_id"])
+                            or previous.project_id!=uuid.UUID(body["project_id"]) or previous.message_id!=metadata.get("message_id")
+                            or metadata.get("correlation_id")!=str(previous.task_id) or metadata.get("priority")!=previous.priority
+                            or not _delay_valid(body,previous.expiration_ms) or metadata.get("expiration")!=str(previous.expiration_ms)):
+                        raise QueueAuthorityUnknown("delay queue properties conflict")
+                    predecessor=operation
+                else:predecessor=delivery_predecessor(db,body,SimpleNamespace(**metadata))
+                if predecessor is None:
+                    if (queue!=amqp.main_queue() or metadata.get("priority")!=intent.priority
+                            or metadata.get("message_id")!=intent.message_id
+                            or metadata.get("correlation_id")!=str(intent.task_id)
+                            or metadata.get("expiration") is not None):
+                        raise QueueAuthorityUnknown("original delivery properties conflict")
+            except (QueueAuthorityUnknown,ValueError,TypeError,KeyError,AttributeError):
+                unknown+=1
         from myink.worker.redis_client import get_redis,lock_key,book_key
         r=get_redis()
         unknown+=sum(bool(r.exists(lock_key(str(t.id))) or r.exists(book_key(str(t.project_id)))) for t in tasks if t.status not in ("done","cancelled","failed"))

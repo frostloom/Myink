@@ -159,13 +159,13 @@ def _actual_rabbit_process_crash_handoff(admitted,boundary):
             with amqp.connect() as connection:
                 channel=connection.channel();main_empty=channel.queue_declare(amqp.main_queue(),passive=True).method.message_count==0
             deliveries,uncertain=handoff._queue_census()
-            empty=main_empty and not any(message.get("task_id")==body["task_id"] for queue,message in deliveries)
+            empty=main_empty and not any(message.get("task_id")==body["task_id"] for queue,message,metadata in deliveries)
             if published and empty:break
             time.sleep(.2)
         assert published and empty
         replacement.terminate();replacement.wait(timeout=10)
         deliveries,uncertain=handoff._queue_census()
-        assert uncertain==0 and not any(message.get("task_id")==body["task_id"] for queue,message in deliveries)
+        assert uncertain==0 and not any(message.get("task_id")==body["task_id"] for queue,message,metadata in deliveries)
         with tenant_session(body["project_id"]) as db:
             assert len(list(db.scalars(select(Chapter).where(Chapter.project_id==uuid.UUID(body["project_id"])))))==1
             effects=list(db.scalars(select(TaskBudgetCall).where(TaskBudgetCall.task_id==uuid.UUID(body["task_id"]),TaskBudgetCall.operation_key.like("effect:%"))))
@@ -375,7 +375,7 @@ def test_valid_unmaterialized_unknown_delivery_is_retained_in_dlq(temp_project):
             for tag in held:channel.basic_nack(tag,requeue=True)
         assert found
     deliveries,uncertain=handoff._queue_census()
-    assert uncertain==0 and (amqp.dlq_queue(),body) in deliveries
+    assert uncertain==0 and any(queue==amqp.dlq_queue() and message==body for queue,message,metadata in deliveries)
     with tenant_session(temp_project) as db:
         assert db.get(Task,uuid.UUID(body['task_id'])) is None
         from myink.maintenance import maintenance_view
@@ -471,7 +471,7 @@ def test_real_successive_defer_ttl_deliveries_keep_distinct_outboxes(admitted,mo
         finally:
             process.terminate();process.wait(timeout=10)
     deliveries,uncertain=handoff._queue_census()
-    assert uncertain==0 and not any(message.get('task_id')==admitted['task_id'] for queue,message in deliveries)
+    assert uncertain==0 and not any(message.get('task_id')==admitted['task_id'] for queue,message,metadata in deliveries)
     Path('/mnt/e/tools/myink-pi/evidence/b10-successive-'+admitted['task_id']+'.json').write_text(json.dumps({'task_id':admitted['task_id'],'message_id':admitted['request_id'],'operation_ids':operations,'child_pid':process.pid,'ttl_ms':5000,'priority':7,'retry_count':0,'effects':1,'task_budget_max_requests':20,'chapters':1,'memory_rows':1},indent=2))
 
 
@@ -508,3 +508,297 @@ def test_actual_broker_predecessor_identity_is_verified(admitted,change):
             assert found
         finally:
             for tag in held:channel.basic_nack(tag,requeue=True)
+
+
+@pytest.mark.parametrize('failure',['publish','owner'])
+def test_review_original_active_replay_cannot_publish_then_refund(temp_project,monkeypatch,failure):
+    import pika
+    from myink.worker import enqueue as enq,handoff,amqp
+    from myink.worker.redis_client import get_redis
+    from myink.models.maintenance import AdmissionIntent,QueueHandoff
+    r=get_redis();token='b10-review-lane:'+str(uuid.uuid4())
+    captured={};confirmed=[]
+    with new_session() as db:uid=str(db.get(Project,uuid.UUID(temp_project)).user_id)
+    register=enq.register_admission
+    def registration(db,body,**kw):
+        captured.update(body=dict(body),inputs=kw['quota_inputs'])
+        captured['intent']=register(db,body,**kw);return captured['intent']
+    monkeypatch.setattr(enq,'register_admission',registration)
+    for name in ('quota_key','inflight_key','cost_key','book_quota_key','book_cnt_key','platform_book_key'):
+        monkeypatch.setattr(enq,name,lambda *a,_name=name:token+':'+_name)
+    from test_maintenance_reconciliation import _grant_application_fixture,_bridge_session
+    _grant_application_fixture()
+    monkeypatch.setattr(handoff,'tenant_session',_bridge_session)
+    publish_once=amqp.publish_once
+    def confirmed_publish(*a,**kw):
+        publish_once(*a,**kw)
+        if json.loads(a[0])['task_id']==captured['body']['task_id']:confirmed.append(True)
+    monkeypatch.setattr(amqp,'publish_once',confirmed_publish)
+    def rejection(*a,**kw):
+        handoff.replay_admissions(temp_project)
+        raise pika.exceptions.NackError([])
+    class OwnerFailure:
+        def __getattr__(self,name):return getattr(r,name)
+        def set(self,key,*a,**kw):
+            if key.startswith('queue:task-owner:'):
+                handoff.replay_admissions(temp_project)
+                raise ConnectionError('actual owner cache write unavailable')
+            return r.set(key,*a,**kw)
+    if failure=='publish':monkeypatch.setattr(amqp,'publish',rejection)
+    else:monkeypatch.setattr(enq,'get_redis',lambda:OwnerFailure())
+    with pytest.raises(enq.EnqueueUnavailable):
+        enq.enqueue(user_id=uid,project_id=temp_project,task_type='chapter_generate',payload={'seq':1},quota_n=2,cost_est=0,priority=7)
+    inputs=captured['inputs'];charged=int(r.get(inputs['keys'][0]) or 0)
+    with tenant_session(temp_project) as db:
+        intent=db.get(AdmissionIntent,captured['intent'])
+        state=(intent.gate_state,intent.publication_state)
+    assert not (confirmed and charged==0),"replay confirmed but original compensated real quota"
+    if confirmed:assert state==('accepted','published') and charged==2
+    else:assert state[0]=='compensated' and charged==0
+    # Original evidence/charge markers/messages retained for controlled census.
+
+
+def test_review_publisher_recovers_while_consumer_connection_stays_healthy(admitted,monkeypatch):
+    import os,time,threading
+    from pathlib import Path
+    from myink.worker import amqp,handoff
+    from myink.worker.redis_client import get_redis
+    from myink.models.maintenance import QueueHandoff
+    from ops.pi.lab.verify import verify_test_environment
+    verify_test_environment()
+    operation=json.loads(Path(os.environ['B10_CENSUS_DESCRIPTOR']).read_text())['operation_id']
+    suffix=amqp._px()+'review-'+operation+'-'+admitted['task_id']
+    names={'exchange':'myink.tasks'+suffix,'dlx_exchange':'myink.dlx'+suffix,
+        'main_queue':'queue:tasks'+suffix,'delay_queue':'queue:delay'+suffix,'dlq_queue':'queue:dlq'+suffix}
+    topology={'operation_id':operation,'task_id':admitted['task_id'],'body_hash':handoff.body_hash(admitted),
+        'names':names,'bindings':[['main_queue','exchange','tasks'],['delay_queue','exchange','delay'],['dlq_queue','dlx_exchange','dlq']],
+        'arguments':{'main_queue':{'x-max-priority':10,'x-dead-letter-exchange':names['dlx_exchange'],'x-dead-letter-routing-key':'dlq'},
+            'delay_queue':{'x-dead-letter-exchange':names['exchange'],'x-dead-letter-routing-key':'tasks'},'dlq_queue':{}}}
+    Path('/mnt/e/tools/myink-pi/evidence/b10-review-topology-'+operation+'.json').write_text(json.dumps(topology,indent=2))
+    for name,value in names.items():monkeypatch.setattr(amqp,name,lambda _value=value:_value)
+    shutdown=threading.Event();monkeypatch.setattr(consumer,'_shutdown',shutdown)
+    monkeypatch.setattr(consumer.signal,'signal',lambda *a:None)
+    monkeypatch.setattr(consumer,'_heartbeat',lambda *a:None)
+    monkeypatch.setattr(consumer,'observe',lambda *a:None)
+    decisions=[]
+    def controlled_process(body,**kw):
+        assert body==admitted
+        decisions.append(body['task_id'])
+        if len(decisions)==1:return 'defer'
+        shutdown.set();return 'terminal'
+    monkeypatch.setattr(consumer,'process',controlled_process)
+    connections=[];connect=amqp.connect;publish_once=amqp.publish_once;failed=threading.Event()
+    def consumer_connect():
+        connection=connect();connections.append(connection);return connection
+    monkeypatch.setattr(amqp,'connect',consumer_connect)
+    def publisher_fault(body,destination,**kw):
+        if not failed.is_set():
+            # Real separately owned publisher channel is closed, while the real
+            # consumer remains open/subscribed; subsequent publication is real.
+            connection=connect();channel=connection.channel()
+            amqp.declare_topology(channel);channel.confirm_delivery();connection.close()
+            failed.set()
+            channel.basic_publish(exchange=amqp.exchange(),routing_key=destination,body=body)
+        return publish_once(body,destination,**kw)
+    monkeypatch.setattr(amqp,'publish_once',publisher_fault)
+    replays=[]
+    def own_replay(**options):
+        assert options.get("max_operations",20) in (1,20)
+        # Preserve global history: selected source is only this actual original
+        # outbox. Cadence + publish_handoff are production paths, not substitutes.
+        replays.append(time.monotonic())
+        with tenant_session(admitted['project_id']) as db:
+            ids=list(db.scalars(select(QueueHandoff.operation_id).where(QueueHandoff.task_id==uuid.UUID(admitted['task_id']),QueueHandoff.state.in_(('pending','unknown')))))
+        for identity in ids:handoff.publish_handoff(identity)
+    monkeypatch.setattr(consumer,'replay_handoffs',own_replay)
+    thread=threading.Thread(target=consumer.run);thread.start();success=False
+    try:
+        deadline=time.monotonic()+10
+        while time.monotonic()<deadline:
+            with connect() as c:
+                ch=c.channel();amqp.declare_topology(ch)
+                if ch.queue_declare(amqp.main_queue(),passive=True).method.consumer_count==1:break
+            time.sleep(.1)
+        assert len(connections)==1 and not connections[0].is_closed
+        publish_once(json.dumps(admitted),'tasks',priority=7)
+        assert failed.wait(10)
+        original_connection=connections[0]
+        deadline=time.monotonic()+25
+        while time.monotonic()<deadline and len(decisions)<2:time.sleep(.1)
+        assert len(decisions)==2,"ACKed unknown outbox stranded on healthy consumer after publisher recovery"
+        assert len(connections)==1 and connections[0] is original_connection
+        with tenant_session(admitted['project_id']) as db:
+            rows=list(db.scalars(select(QueueHandoff).where(QueueHandoff.task_id==uuid.UUID(admitted['task_id']))))
+            assert len(rows)==1 and rows[0].state=='published'
+        success=True
+    finally:
+        shutdown.set();thread.join(timeout=10);assert not thread.is_alive()
+        proof={'operation_id':operation,'task_id':admitted['task_id'],'topology':names,'success':success,
+            'consumer_connections':len(connections),'publisher_fault_real':failed.is_set(),'decisions':len(decisions),'replay_calls':len(replays)}
+        Path('/mnt/e/tools/myink-pi/evidence/b10-review-publisher-'+operation+'.json').write_text(json.dumps(proof,indent=2))
+        if success:
+            verify_test_environment()
+            with connect() as c:
+                ch=c.channel()
+                for name in ('main_queue','delay_queue','dlq_queue'):
+                    actual=ch.queue_declare(names[name],passive=True).method
+                    assert actual.consumer_count==0 and actual.message_count==0
+                    ch.queue_delete(names[name],if_unused=True,if_empty=True)
+                ch.exchange_delete(names['exchange'],if_unused=True);ch.exchange_delete(names['dlx_exchange'],if_unused=True)
+
+@pytest.mark.parametrize('prior',['published','unknown'])
+def test_review_replay_before_original_lane_preserves_original_charge(temp_project,monkeypatch,prior):
+    from contextlib import contextmanager
+    from myink.worker import enqueue as enq,handoff,amqp
+    from myink.worker.redis_client import get_redis
+    from myink.maintenance import intent_outcome
+    from myink.models.maintenance import AdmissionIntent
+    from test_maintenance_reconciliation import _grant_application_fixture,_bridge_session
+    _grant_application_fixture();monkeypatch.setattr(handoff,'tenant_session',_bridge_session)
+    r=get_redis();token='b10-review-before:'+str(uuid.uuid4());saved={}
+    with new_session() as db:uid=str(db.get(Project,uuid.UUID(temp_project)).user_id)
+    for name in ('quota_key','inflight_key','cost_key','book_quota_key','book_cnt_key','platform_book_key'):
+        monkeypatch.setattr(enq,name,lambda *a,_name=name:token+':'+_name)
+    register=enq.register_admission;lane=enq.admission_lane;actual=amqp.publish_once
+    def registration(db,body,**kw):
+        saved.update(body=dict(body),inputs=kw['quota_inputs'])
+        saved['intent']=register(db,body,**kw);return saved['intent']
+    monkeypatch.setattr(enq,'register_admission',registration)
+    @contextmanager
+    def before_original(intent_id,pid):
+        inputs=saved['inputs'];body=saved['body']
+        code,_=enq._run_gates(r,inputs['keys'],task_id=body['task_id'],quota_n=2,cost_est=0,project_id=pid,intent_id=str(intent_id))
+        assert code==1
+        intent_outcome(intent_id,pid,gate_state='accepted')
+        if prior=='unknown':
+            def uncertain(*a,**kw):actual(*a,**kw);raise ConnectionError('real confirmed delivery lost caller receipt')
+            monkeypatch.setattr(amqp,'publish_once',uncertain)
+        handoff.replay_admissions(pid,intent_ids=[intent_id])
+        with lane(intent_id,pid) as acquired:yield acquired
+    monkeypatch.setattr(enq,'admission_lane',before_original)
+    def forbidden(*a,**kw):raise AssertionError('original attempted publish/refund after another durable attempt')
+    monkeypatch.setattr(amqp,'publish',forbidden);monkeypatch.setattr(enq,'_compensate',forbidden)
+    if prior=='published':
+        result=enq.enqueue(user_id=uid,project_id=temp_project,task_type='chapter_generate',payload={'seq':1},quota_n=2,cost_est=0,priority=7)
+        assert result['task_id']==saved['body']['task_id']
+    else:
+        with pytest.raises(enq.EnqueueUnavailable):
+            enq.enqueue(user_id=uid,project_id=temp_project,task_type='chapter_generate',payload={'seq':1},quota_n=2,cost_est=0,priority=7)
+    with tenant_session(temp_project) as db:
+        intent=db.get(AdmissionIntent,saved['intent'])
+        assert intent.gate_state=='accepted' and intent.publication_state==prior and intent.rebuild_payload==saved['body']
+    assert int(r.get(saved['inputs']['keys'][0]))==2
+
+
+def test_review_owned_process_death_releases_lane_and_retains_unknown(temp_project,tmp_path):
+    import os,sys,time,subprocess
+    from sqlalchemy import text
+    from myink.worker import handoff
+    from myink.maintenance import intent_outcome
+    from myink.models.maintenance import AdmissionIntent,QueueHandoff
+    from myink.worker import enqueue as enq
+    from myink.worker.redis_client import get_redis
+    from myink.maintenance import register_admission
+    from datetime import date
+    from pathlib import Path
+    import hashlib
+    with new_session() as db:uid=str(db.get(Project,uuid.UUID(temp_project)).user_id)
+    admitted={"task_id":str(uuid.uuid4()),"request_id":str(uuid.uuid4()),"project_id":temp_project,"user_id":uid,
+        "task_type":"chapter_generate","payload":{"seq":1},"retry_count":0,"task_budget":{"max_requests":20}}
+    inputs={"keys":["b10-review-crash:"+admitted["task_id"]+":"+str(i) for i in range(6)],"date":date.today().isoformat(),
+        "task_id":admitted["task_id"],"user_id":uid,"project_id":temp_project,"quota_n":2,"cost_est":0,"platform_chapter_max":0,
+        "limits":[enq.settings.quota_daily,enq.settings.daily_budget,enq.settings.book_quota_daily,enq.settings.books_per_day_max]}
+    with tenant_session(temp_project) as db:intent_id=register_admission(db,admitted,priority=7,gates=True,quota_inputs=inputs)
+    r=get_redis();code,_=enq._run_gates(r,inputs["keys"],task_id=admitted["task_id"],quota_n=2,cost_est=0,project_id=temp_project,intent_id=str(intent_id))
+    assert code==1 and int(r.get(inputs["keys"][0]))==2
+    intent_outcome(intent_id,temp_project,gate_state="accepted")
+    ready=tmp_path/'lane-ready.json';log=tmp_path/'lane-child.log'
+    child_code="""import sys,time,json,os
+from pathlib import Path
+from sqlalchemy import text
+from ops.pi.lab.verify import verify_test_environment
+verify_test_environment()
+from myink.worker.handoff import admission_lane
+from myink.maintenance import intent_outcome
+intent,project,target=sys.argv[1:]
+with admission_lane(intent,project) as lane:
+ assert lane is not None
+ intent_outcome(intent,project,publication_state='unknown')
+ Path(target).write_text(json.dumps({'pid':os.getpid(),'backend':lane.scalar(text('SELECT pg_backend_pid()'))}))
+ time.sleep(40)
+"""
+    with log.open('w') as output:
+        child=subprocess.Popen([sys.executable,'-c',child_code,str(intent_id),admitted['project_id'],str(ready)],stdout=output,stderr=output)
+        try:
+            deadline=time.monotonic()+15
+            while not ready.exists() and child.poll() is None and time.monotonic()<deadline:time.sleep(.1)
+            assert ready.exists(),'owned child did not acquire actual lane'
+            proof=json.loads(ready.read_text());assert proof['pid']==child.pid
+            with new_session() as db:
+                assert db.scalar(text("SELECT count(*) FROM pg_locks WHERE pid=:pid AND locktype='advisory'"),{'pid':proof['backend']})==1
+            with handoff.admission_lane(intent_id,admitted['project_id']) as blocked:assert blocked is None
+            child.kill();child.wait(timeout=10);assert child.returncode<0
+            deadline=time.monotonic()+5
+            while time.monotonic()<deadline:
+                with new_session() as db:locks=db.scalar(text("SELECT count(*) FROM pg_locks WHERE pid=:pid AND locktype='advisory'"),{'pid':proof['backend']})
+                if locks==0:break
+                time.sleep(.1)
+            assert locks==0
+            with tenant_session(admitted['project_id']) as db:
+                row=db.get(AdmissionIntent,intent_id)
+                assert row.publication_state=='unknown' and row.gate_state=='accepted' and row.rebuild_payload==admitted and row.quota_inputs==inputs
+            assert int(r.get(inputs['keys'][0]))==2
+            handoff.replay_admissions(admitted['project_id'],intent_ids=[intent_id])
+            with tenant_session(admitted['project_id']) as db:
+                row=db.get(AdmissionIntent,intent_id);outbox=db.get(QueueHandoff,'admission:'+str(intent_id))
+                assert row.publication_state=='published' and row.gate_state=='accepted' and outbox.state=='published' and outbox.rebuild_payload==admitted and row.quota_inputs==inputs
+            assert int(r.get(inputs['keys'][0]))==2
+            # A successful clean lane physically disappears too, not pool return.
+            with handoff.admission_lane(intent_id,admitted['project_id']) as lane:
+                backend=lane.scalar(text('SELECT pg_backend_pid()'))
+            with new_session() as db:assert db.scalar(text('SELECT count(*) FROM pg_stat_activity WHERE pid=:pid'),{'pid':backend})==0
+            operation=json.loads(Path(os.environ['B10_CENSUS_DESCRIPTOR']).read_text())['operation_id']
+            proof.update(operation_id=operation,task_id=admitted['task_id'],intent_id=str(intent_id),body_hash=handoff.body_hash(admitted),
+                child_returncode=child.returncode,locks_after_death=locks,closed_backend=backend,quota_before=2,quota_after=int(r.get(inputs['keys'][0])),
+                original_date=inputs['date'],state='published')
+            target=Path('/mnt/e/tools/myink-pi/evidence')/('b10-review-lane-'+operation+'-'+admitted['task_id'])
+            target.with_suffix('.json').write_text(json.dumps(proof,indent=2))
+            target.with_suffix('.log').write_bytes(log.read_bytes())
+            target.with_suffix('.sha256').write_text(hashlib.sha256(log.read_bytes()).hexdigest())
+        finally:
+            if child.poll() is None:child.kill();child.wait(timeout=10)
+
+
+def test_review_bounded_replay_unknown_does_not_starve_next_original(admitted,monkeypatch):
+    from contextlib import contextmanager
+    from myink.worker import handoff,amqp
+    from myink.maintenance import register_admission,intent_outcome
+    from myink.models.maintenance import QueueHandoff,AdmissionIntent
+    body=dict(admitted,task_id=str(uuid.uuid4()),request_id=str(uuid.uuid4()))
+    with tenant_session(admitted['project_id']) as db:
+        first=db.scalar(select(AdmissionIntent).where(AdmissionIntent.task_id==uuid.UUID(admitted['task_id']))).id
+        second=register_admission(db,body,priority=7)
+    for identity in (first,second):intent_outcome(identity,admitted['project_id'],publication_state='published')
+    operations=['aa-review-unknown:'+admitted['task_id'],'zz-review-later:'+body['task_id']]
+    for original,operation in zip((admitted,body),operations):
+        with tenant_session(admitted['project_id']) as db:handoff.record_handoff(db,original,'tasks',operation,priority=7)
+    real=handoff.new_session
+    @contextmanager
+    def own_projects():
+        with real() as db:
+            class Selected:
+                def scalars(self,query):return db.scalars(query.where(Project.id==uuid.UUID(admitted['project_id'])))
+            yield Selected()
+    monkeypatch.setattr(handoff,'new_session',own_projects)
+    actual=amqp.publish_once;attempts=[]
+    def publish(raw,destination,**kw):
+        attempts.append(kw['operation_id'])
+        if kw['operation_id']==operations[0]:raise amqp.PublishNotSent('first remains unknown')
+        return actual(raw,destination,**kw)
+    monkeypatch.setattr(amqp,'publish_once',publish)
+    monkeypatch.setattr(handoff,'_REPLAY_POSITION',None)
+    handoff.replay_handoffs(max_operations=1);assert attempts==operations[:1]
+    handoff.replay_handoffs(max_operations=1);assert attempts==operations
+    with tenant_session(admitted['project_id']) as db:
+        assert db.get(QueueHandoff,operations[0]).state=='unknown'
+        assert db.get(QueueHandoff,operations[1]).state=='published'
