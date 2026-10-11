@@ -7,7 +7,9 @@ import json
 from pathlib import Path
 import threading
 import pytest
-from ops.pi.contracts import Identity
+from ops.pi.contracts import Identity, Receipt
+CONTEXT={'schema_context':'schema-v1','tool_context':'tools-v1'}
+NOW=datetime(2026,10,11,tzinfo=timezone.utc)
 from ops.pi.ledger import Ledger
 
 
@@ -54,7 +56,7 @@ def test_pre_failure_blocks_candidate_not_recovery(case):
         if action=='collect':raise OSError('dump failed')
         return artifacts(action,context)
     assert backup(case,fail).status=='failed'
-    assert not api().release_allowed(case[0],'release-1')
+    assert not api().release_allowed(case[0],'release-1',context=CONTEXT,now=NOW)
     assert api().release_allowed(case[0],'release-1',recovery=True)
 
 
@@ -63,16 +65,16 @@ def test_post_pending_blocks_next_release(case):
     pre=backup(case)
     m=json.loads(Path(pre.evidence['manifest_path']).read_text())
     restored=api().restore_check(m,{'clean':True,'system_identifier':'target','source_system_identifier':'source','collection_directory':str(Path(pre.evidence['manifest_path']).parent)},artifacts)
-    api().record_restore(case[0],pre,restored)
-    api().mark_released(case[0],'release-1',case[2]['post_identity'])
-    assert not api().release_allowed(case[0],'next-release')
+    api().record_restore(case[0],pre,restored,context=CONTEXT,now=NOW)
+    api().mark_released(case[0],'release-1',case[2]['post_identity'],context=CONTEXT,now=NOW)
+    assert not api().release_allowed(case[0],'next-release',context=CONTEXT,now=NOW)
     assert api().release_allowed(case[0],'next-release',recovery=True)
     post=backup(case,phase='POST')
     assert post.status=='done'
     m=json.loads(Path(post.evidence['manifest_path']).read_text())
     restored=api().restore_check(m,{'clean':True,'system_identifier':'target2','source_system_identifier':'source','collection_directory':str(Path(post.evidence['manifest_path']).parent)},artifacts)
-    api().record_restore(case[0],post,restored)
-    assert api().release_allowed(case[0],'next-release')
+    api().record_restore(case[0],post,restored,context=CONTEXT,now=NOW)
+    assert api().release_allowed(case[0],'next-release',context=CONTEXT,now=NOW)
 
 
 def manifest(pair,phase,age,**extra):
@@ -160,7 +162,7 @@ def test_cached_published_collection_tamper_refuses_revalidation(case):
 
 def test_missing_restore_receipt_blocks_candidate(case):
     assert backup(case).status=='done'
-    assert not api().release_allowed(case[0],'release-1')
+    assert not api().release_allowed(case[0],'release-1',context=CONTEXT,now=NOW)
 
 
 def test_restore_snapshot_identity_cannot_be_relabelled(case):
@@ -179,3 +181,76 @@ def test_failed_restore_does_not_fill_calendar_coverage():
     rows=[manifest('ok','PRE',0),manifest('failed','PRE',1,restore_status='failed')]
     gaps=api().calendar_gaps(rows,datetime(2026,10,11,0,tzinfo=timezone.utc))
     assert '2026-10-10' in gaps and '2026-10-11' not in gaps
+
+
+def qualified_restore(case,phase='PRE'):
+    receipt=backup(case,phase=phase);path=Path(receipt.evidence['manifest_path'])
+    result=api().restore_check(json.loads(path.read_text()),{'clean':True,'system_identifier':'target-'+phase,'source_system_identifier':'source','collection_directory':str(path.parent)},artifacts)
+    api().record_restore(case[0],receipt,result,context=CONTEXT,now=NOW)
+    return receipt
+
+
+def test_known_corrupt_pre_revokes_candidate_and_preserves_recovery(case):
+    receipt=qualified_restore(case)
+    assert api().release_allowed(case[0],'release-1',context=CONTEXT,now=NOW)
+    (Path(receipt.evidence['manifest_path']).parent/'attachment.bin').write_bytes(b'corrupt')
+    assert backup(case).status=='blocked'
+    assert not api().release_allowed(case[0],'release-1',context=CONTEXT,now=NOW)
+    with pytest.raises(ValueError):api().mark_released(case[0],'release-1',case[2]['post_identity'],context=CONTEXT,now=NOW)
+    assert api().release_allowed(case[0],'release-1',recovery=True)
+    assert case[0].get(receipt.operation_id)['status']=='done'
+
+
+def test_known_corrupt_post_reopens_debt_and_preserves_history(case):
+    qualified_restore(case);api().mark_released(case[0],'release-1',case[2]['post_identity'],context=CONTEXT,now=NOW)
+    receipt=qualified_restore(case,'POST')
+    assert api().release_allowed(case[0],'next-release',context=CONTEXT,now=NOW)
+    (Path(receipt.evidence['manifest_path']).parent/'attachment.bin').write_bytes(b'corrupt')
+    assert backup(case,phase='POST').status=='blocked'
+    assert not api().release_allowed(case[0],'next-release',context=CONTEXT,now=NOW)
+    assert api().release_allowed(case[0],'next-release',recovery=True)
+    assert case[0].get(receipt.operation_id)['status']=='done'
+
+
+def test_first_use_without_trusted_rehearsal_context_blocks_release(case):
+    qualified_restore(case)
+    assert not api().release_allowed(case[0],'release-1')
+    assert api().release_allowed(case[0],'release-1',recovery=True)
+
+
+@pytest.mark.parametrize('field',['schema_context','tool_context'])
+def test_changed_rehearsal_context_requires_new_actual_restore(case,field):
+    qualified_restore(case)
+    changed={**CONTEXT,field:'changed'}
+    assert not api().release_allowed(case[0],'release-1',context=changed,now=NOW)
+
+
+def test_virtual_weekly_expiry_and_future_clock_block_candidate(case):
+    qualified_restore(case)
+    assert api().release_allowed(case[0],'release-1',context=CONTEXT,now=NOW+timedelta(days=7,microseconds=-1))
+    assert not api().release_allowed(case[0],'release-1',context=CONTEXT,now=NOW+timedelta(days=7))
+    assert not api().release_allowed(case[0],'release-1',context=CONTEXT,now=NOW-timedelta(seconds=1))
+    assert api().release_allowed(case[0],'release-1',recovery=True,context=None)
+
+
+@pytest.mark.parametrize('status',['pending','failed'])
+def test_newer_pending_or_failed_rehearsal_blocks_prior_success(case,status):
+    receipt=qualified_restore(case)
+    new='restore:'+receipt.evidence['backup_id']+':new-attempt'
+    operation=api().start_rehearsal(case[0],receipt,new,context=CONTEXT)
+    if status=='failed':case[0].finish(Receipt(operation,'failed',{'reason':'actual_restore_failed'}))
+    assert not api().release_allowed(case[0],'release-1',context=CONTEXT,now=NOW)
+    assert api().release_allowed(case[0],'release-1',recovery=True)
+
+
+def test_legacy_restore_receipt_cannot_qualify_current_context(case):
+    receipt=backup(case);legacy='restore:'+receipt.evidence['backup_id']+':legacy'
+    api().record_restore(case[0],receipt,Receipt(legacy,'done',{'verified':True}),now=NOW)
+    assert not api().release_allowed(case[0],'release-1',context=CONTEXT,now=NOW)
+
+
+def test_done_without_verified_actual_restore_cannot_qualify(case):
+    receipt=backup(case);operation='restore:'+receipt.evidence['backup_id']+':unverified'
+    api().record_restore(case[0],receipt,Receipt(operation,'done',{'verified':False}),context=CONTEXT,now=NOW)
+    assert not api().release_allowed(case[0],'release-1',context=CONTEXT,now=NOW)
+    assert api().release_allowed(case[0],'release-1',recovery=True)

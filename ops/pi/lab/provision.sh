@@ -166,7 +166,7 @@ if [[ $mode == execute ]]; then
     [[ $operation =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]
     [[ $timeout =~ ^[0-9]+$ && $timeout -ge 1 && $timeout -le 2700 ]]
     case "$command_id/$selection" in
-      backup/b11-source|restore/b11-restore|restore/b11-verify) targets=() ;;
+      backup/b11-source|backup/b11-fresh|restore/b11-restore|restore/b11-verify|restore/b11-gate) targets=() ;;
       test/bootstrap|probe/watchdog) targets=() ;;
       probe/b7|test/b7) targets=(ops/pi/tests/integration/test_isolation.py) ;;
       test/b8-red|test/b8-focused|test/b8-survival|test/b8-reconcile) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py) ;;
@@ -223,7 +223,7 @@ if [[ $mode == execute ]]; then
     [[ $selection != b8-reconcile ]] || python_args+=(-k "uncertain_receipt")
     [[ $selection != b8-ci-collection ]] || python_args=(-c "import pytest; result=pytest.main(['tests/test_maintenance_admission.py','tests/test_maintenance_worker_barrier.py','--collect-only','-q','-m','not pi_lab and not pi_live']); raise SystemExit(0 if result == 5 else 1)")
     [[ $selection != b8-guarded-collection ]] || python_args=(-m pytest "${targets[@]}" --collect-only -q -m "not pi_live")
-    [[ $selection != b11-source && $selection != b11-restore && $selection != b11-verify ]] || python_args=(-c "from ops.pi.lab.backup_lab import prepare; prepare('$selection')")
+    [[ $selection != b11-source && $selection != b11-fresh && $selection != b11-restore && $selection != b11-verify && $selection != b11-gate ]] || python_args=(-c "from ops.pi.lab.backup_lab import prepare; prepare('$selection')")
     [[ $command_id != backup && $command_id != restore ]] || [[ $timeout -le 600 ]]
     [[ $selection != bootstrap ]] || python_args=(-m myink.cli init --seed)
     [[ $selection != watchdog ]] || python_args=(-c "import time;time.sleep(60)")

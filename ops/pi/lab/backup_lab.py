@@ -3,7 +3,7 @@ from dataclasses import asdict,replace
 from datetime import datetime,timezone,timedelta
 import base64,gzip,hashlib,json,os,secrets,shutil,subprocess,sys,time,uuid
 from pathlib import Path
-from ops.pi.backup import create_backup,restore_check,record_restore,mark_released,release_allowed,digest,encoded,private_path,verify_artifacts,durable_file
+from ops.pi.backup import create_backup,restore_check,record_restore,mark_released,release_allowed,start_rehearsal,digest,encoded,private_path,verify_artifacts,durable_file
 from ops.pi.contracts import Identity
 from ops.pi.ledger import Ledger
 from ops.pi.lab.verify import BASE,verify_runtime,verify_test_environment,_docker
@@ -12,6 +12,7 @@ PRIVATE=Path('/mnt/e/tools/myink-pi')
 COLLECTIONS=PRIVATE/'backups/collections'
 MATERIALS=BASE/'backup-materials'
 SOURCE=BASE/'b11-source.json'
+LEDGER_PATH=PRIVATE/'state/b11-backup-ledger.sqlite'
 ROLES=('myink','myink_app','myink_report','myink_maintenance_control','myink_maintenance_stats')
 
 
@@ -61,6 +62,8 @@ def bind_source(proof,r,environment):
 
 def initialize_source():
     r,environment=verify_test_environment()
+    from ops.pi.lab.backup_fresh import source_runtime
+    r=source_runtime(r)
     if SOURCE.exists() or 'myink.config' in sys.modules:raise ValueError('source claimed or business imported')
     import psycopg,redis
     from psycopg import sql
@@ -73,6 +76,7 @@ def initialize_source():
     with psycopg.connect(environment['ADMIN_DATABASE_URL'].replace('postgresql+psycopg:','postgresql:'),autocommit=True) as db:
         proof['system_identifier']=db.execute('SELECT system_identifier::text FROM pg_control_system()').fetchone()[0]
         if db.execute('SELECT 1 FROM pg_database WHERE datname=%s',(database,)).fetchone():raise ValueError('source DB exists')
+        Ledger(LEDGER_PATH).intent('source-initialization:'+creator,'source_initialization',creation_binding(proof))
         durable_file(SOURCE,encoded(proof));db.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(database)))
         for role,bypass in [('myink_app',False),('myink_report',True)]:
             attrs=db.execute('SELECT rolsuper,rolbypassrls FROM pg_roles WHERE rolname=%s',(role,)).fetchone()
@@ -142,20 +146,38 @@ def seed_dataset(material):
     return ids
 
 
+def initialize_and_pre():
+    initialize_source();observation=observe_created_source(initial=True)
+    boundary=get_boundary();pre,_,pair=identities()
+    receipt=create_backup(boundary.ledger,'PRE',pre,boundary,COLLECTIONS,pair=pair)
+    if receipt.status!='done':raise ValueError('first PRE unconfirmed')
+    return observation
+
+
 def prepare(selection):
+    if selection=='b11-gate':
+        from ops.pi.lab.backup_fresh import observe_retained_corruption
+        print(json.dumps(observe_retained_corruption()));return
+    if selection=='b11-fresh':
+        from ops.pi.lab.backup_fresh import run_fresh_trial
+        print(json.dumps(run_fresh_trial()));return
     if selection not in ('b11-source','b11-restore','b11-verify'):raise ValueError('unknown B11 selection')
     r,environment=verify_test_environment()
-    if selection=='b11-source':initialize_source()
+    if selection=='b11-source':
+        observation=initialize_and_pre()
     else:
         proof=json.loads(SOURCE.read_text());bind_source(proof,r,environment)
+        creation=Ledger(LEDGER_PATH).get('source-initialization:'+proof['creator_operation'])
+        observation=observe_created_source() if creation and creation['status']=='done' else observe_source()
     if selection=='b11-verify':
-        print(json.dumps(observe_source()));return
-    observe_source()
+        print(json.dumps(observation));return
     subprocess.run([sys.executable,'-m','pytest','ops/pi/tests/integration/test_restore.py','-q','-m','pi_lab','--pi-lab','--tb=short','-x','-vv'],check=True,timeout=540)
 
 
 def get_boundary(*,observing=False):
-    r,_=verify_test_environment();proof=json.loads(SOURCE.read_text())
+    r,_=verify_test_environment()
+    from ops.pi.lab.backup_fresh import source_runtime
+    r=source_runtime(r);proof=json.loads(SOURCE.read_text())
     os.environ['MODEL_CREDENTIAL_KEY']=(MATERIALS/proof['material_ref']/'model.key').read_text()
     boundary=Boundary(proof,r)
     if not observing:
@@ -170,7 +192,7 @@ def get_boundary(*,observing=False):
 class Boundary:
     def __init__(self,proof,r):
         self.proof=proof;self.runtime=r;self.material=private_path(MATERIALS,proof['material_ref'])
-        self.ledger=Ledger(PRIVATE/'state/b11-backup-ledger.sqlite');self.started=time.monotonic();self.target=None;self.owned_target=None
+        self.ledger=Ledger(LEDGER_PATH);self.started=time.monotonic();self.target=None;self.owned_target=None
 
     def capacity(self):
         import psycopg
@@ -207,7 +229,7 @@ class Boundary:
         directory=Path(context['directory'])
         if directory!=COLLECTIONS/hashlib.sha256(context['operation_id'].encode()).hexdigest():raise ValueError('foreign collection path')
         before=self.quiet(context['identity'])
-        dump=run('/usr/bin/docker','--host','unix:///var/run/docker.sock','exec',self.runtime['project']+'-pg','pg_dump','-U','postgres','-d',self.proof['database'])
+        dump=run('/usr/bin/docker','--host','unix:///var/run/docker.sock','exec',self.runtime.get('source_pg',self.runtime['project']+'-pg'),'pg_dump','-U','postgres','-d',self.proof['database'])
         if not dump.stdout or dump.stderr:raise ValueError('dump empty or stderr')
         durable_file(directory/'database.sql.gz.part',gzip.compress(dump.stdout,compresslevel=1))
         with gzip.open(directory/'database.sql.gz.part','rb') as f:
@@ -388,33 +410,35 @@ def identities():
 
 
 def run_actual_pair():
-    boundary=get_boundary();pre,post,pair=identities()
+    boundary=get_boundary();pre,post,pair=identities();context=rehearsal_context()
     pre_receipt=create_backup(boundary.ledger,'PRE',pre,boundary,COLLECTIONS,pair=pair)
     assert pre_receipt.status=='done',pre_receipt
     collection=Path(pre_receipt.evidence['manifest_path']).parent;m=json.loads((collection/'manifest.json').read_text())
     try:
         target=boundary.new_target(collection,'positive')
-        restored=restore_check(m,target,boundary);record_restore(boundary.ledger,pre_receipt,restored)
+        start_rehearsal(boundary.ledger,pre_receipt,'restore:'+m['backup_id']+':'+target['system_identifier'],context=context)
+        restored=restore_check(m,target,boundary);record_restore(boundary.ledger,pre_receipt,restored,context=context)
     finally:boundary.stop_owned_target(restored.status if 'restored' in locals() else 'failed')
     assert restored.status=='done',restored
     released=boundary.ledger.get('release:'+pair['release_pair_id'])
     if not released:
-        assert release_allowed(boundary.ledger,pair['release_pair_id'])
-        mark_released(boundary.ledger,pair['release_pair_id'],asdict(post))
+        assert release_allowed(boundary.ledger,pair['release_pair_id'],context=context)
+        mark_released(boundary.ledger,pair['release_pair_id'],asdict(post),context=context)
         import psycopg
         with psycopg.connect(os.environ['ADMIN_DATABASE_URL'].replace('postgresql+psycopg:','postgresql:')) as db:
             db.execute("UPDATE maintenance_control SET deployment_id='b11-post',generation=2 WHERE id=1 AND deployment_id='b11-pre' AND admission_closed AND consumer_blocked")
-    if not boundary.ledger.get('backup:'+pair['release_pair_id']+':POST'):assert not release_allowed(boundary.ledger,'next-release')
+    if not boundary.ledger.get('backup:'+pair['release_pair_id']+':POST'):assert not release_allowed(boundary.ledger,'next-release',context=context)
     post_receipt=create_backup(boundary.ledger,'POST',post,boundary,COLLECTIONS,pair=pair)
     assert post_receipt.status=='done',post_receipt
     post_collection=Path(post_receipt.evidence['manifest_path']).parent;post_manifest=json.loads((post_collection/'manifest.json').read_text())
     try:
         post_target=boundary.new_target(post_collection,'positive')
-        post_restore=restore_check(post_manifest,post_target,boundary);record_restore(boundary.ledger,post_receipt,post_restore)
+        start_rehearsal(boundary.ledger,post_receipt,'restore:'+post_manifest['backup_id']+':'+post_target['system_identifier'],context=context)
+        post_restore=restore_check(post_manifest,post_target,boundary);record_restore(boundary.ledger,post_receipt,post_restore,context=context)
     finally:boundary.stop_owned_target(post_restore.status if 'post_restore' in locals() else 'failed')
     assert post_restore.status=='done',post_restore
     boundary.quiet(asdict(post));assert_restored(os.environ['ADMIN_DATABASE_URL'].replace('postgresql+psycopg:','postgresql:'),post_collection,boundary.proof)
-    result={'pre':pre_receipt.status,'post':post_receipt.status,'restore':post_restore.status,'offsite_status':'not_configured',
+    result={'rehearsal_context':context,'pre':pre_receipt.status,'post':post_receipt.status,'restore':post_restore.status,'offsite_status':'not_configured',
         'census_unknown':boundary.census['unknown'],'source_unchanged':True,'pre_receipt':asdict(pre_receipt),'post_receipt':asdict(post_receipt),
         'restores':[asdict(restored),asdict(post_restore)],'source_descriptor_sha256':digest(SOURCE),'creator':boundary.proof['creator_operation'],
         'current_operation':current_operation(),'resources':sample_resources('heavy'),'capacity':boundary.capacity()}
@@ -476,4 +500,56 @@ def observe_source():
         raise
     boundary.ledger.finish(receipt)
     durable_file(PRIVATE/'evidence'/('b11-source-observation-'+current_operation()+'.json'),encoded(asdict(receipt)))
+    return asdict(receipt)
+
+
+def creation_binding(proof):
+    return {name:proof[name] for name in ('creator_operation','lab_uuid','database','prefix','redis_db','redis_initial_dbsize','service_ids','source_hashes','system_identifier')}
+
+
+def rehearsal_context():
+    source=BASE/'trusted-source'
+    schema=[source/'src/myink/db.py',*sorted((source/'src/myink/models').glob('*.py'))]
+    return {'schema_context':hashlib.sha256(encoded({str(p.relative_to(source)):digest(p) for p in schema})).hexdigest(),
+        'tool_context':hashlib.sha256(encoded({name:digest(source/name) for name in ('ops/pi/backup.py','ops/pi/lab/backup_lab.py','ops/pi/lab/verify.py')})).hexdigest()}
+
+
+def observe_created_source(*,initial=False):
+    """New initialized sources only; the historical failed-creator observer stays separate."""
+    from ops.pi.contracts import Receipt
+    from ops.pi.backup import revalidate_collection
+    boundary=get_boundary(observing=True);pre,post,pair=identities();creator=boundary.proof['creator_operation']
+    operation='source-verification:'+current_operation();creation_operation='source-initialization:'+creator
+    payload={'creator_operation':creator,'source_sha256':digest(SOURCE),'lab_uuid':boundary.runtime['lab_uuid'],
+        'verification_kind':'initial_current_creator' if initial else 'initialized_source_observation',
+        'current_source_hashes':{name:digest(BASE/'trusted-source'/name) for name in ('ops/pi/backup.py','ops/pi/lab/backup_lab.py','ops/pi/lab/verify.py')}}
+    boundary.ledger.intent(operation,'source_verification',payload)
+    try:
+        creation=boundary.ledger.get(creation_operation)
+        if not creation or creation['kind']!='source_initialization' or creation['payload']!=creation_binding(boundary.proof):raise ValueError('initialization authority missing')
+        if initial:
+            if creator!=current_operation() or creation['status']!='pending' or boundary.ledger.get('backup:'+pair['release_pair_id']+':PRE'):raise ValueError('not an exclusive first creator')
+            if any(digest(BASE/'trusted-source'/name)!=h for name,h in boundary.proof['source_hashes'].items()):raise ValueError('current creator source drift')
+        elif creation['status']!='done' or creation['evidence']['source_sha256']!=digest(SOURCE):raise ValueError('durable verified initialization required')
+        identity=post if boundary.ledger.get('release:'+pair['release_pair_id']) else pre
+        quiet=boundary.quiet(asdict(identity))
+        assertions=assert_restored(os.environ['ADMIN_DATABASE_URL'].replace('postgresql+psycopg:','postgresql:'),boundary.material,boundary.proof)
+        import redis
+        cardinality=redis.Redis.from_url(os.environ['REDIS_URL']).dbsize()
+        if cardinality!=0:raise ValueError('unexpected current synthetic Redis15 content')
+        evidence={**payload,**quiet,'assertions':assertions,'census':boundary.census,'redis15_current_cardinality':cardinality,'capacity':boundary.capacity(),
+            'original_creation_status':'verified_initialization_done','observed_source_status':'verified'}
+        if initial:
+            boundary.ledger.finish(Receipt(creation_operation,'done',{'source_sha256':digest(SOURCE),**creation_binding(boundary.proof),'assertions':assertions,'consistency_id':quiet['consistency_id']}))
+        else:
+            existing=boundary.ledger.get('backup:'+pair['release_pair_id']+':PRE')
+            if not existing or revalidate_collection(boundary.ledger,existing,COLLECTIONS).status!='done':raise ValueError('PRE publication reconciliation failed')
+            manifest=json.loads(Path(existing['evidence']['manifest_path']).read_text())
+            if manifest['consistency_id']!=quiet['consistency_id']:raise ValueError('PRE quiet point drift')
+            evidence.update(pre_manifest_sha256=existing['evidence']['manifest_sha256'],snapshot_hwm=manifest['ledger_snapshot'])
+        receipt=Receipt(operation,'done',evidence)
+    except Exception as exc:
+        receipt=Receipt(operation,'failed',{'reason':'created_source_verification_failed','error_class':type(exc).__name__})
+        boundary.ledger.finish(receipt);durable_file(PRIVATE/'evidence'/('b11-source-observation-'+current_operation()+'.json'),encoded(asdict(receipt)));raise
+    boundary.ledger.finish(receipt);durable_file(PRIVATE/'evidence'/('b11-source-observation-'+current_operation()+'.json'),encoded(asdict(receipt)))
     return asdict(receipt)

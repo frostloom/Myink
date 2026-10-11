@@ -171,10 +171,15 @@ def verify_test_environment():
               'QUEUE_PREFIX':'-pi-'+r['lab_uuid']+'-','JWT_SECRET':'synthetic-b7-jwt-secret-at-least-32-bytes','EMBED_ENABLED':'0'}
     if environment!=expected:
         raise ValueError('original sealed fixture configuration drift')
+    if os.environ.get('B11_FRESH_CONTEXT'):
+        from ops.pi.lab.backup_fresh import verify_context
+        expected=verify_context(r,expected,operation)
     if os.environ.get('B11_SOURCE_DESCRIPTOR'):
-        if os.environ['B11_SOURCE_DESCRIPTOR']!=str(BASE/'b11-source.json'):raise ValueError('foreign B11 descriptor')
+        descriptor=BASE/('b11-fresh-'+operation)/'source.json' if os.environ.get('B11_FRESH_CONTEXT') else BASE/'b11-source.json'
+        if os.environ['B11_SOURCE_DESCRIPTOR']!=str(descriptor):raise ValueError('foreign B11 descriptor')
         from ops.pi.lab.backup_lab import verify_source
-        expected=verify_source(r,expected,operation)
+        from ops.pi.lab.backup_fresh import source_runtime
+        expected=verify_source(source_runtime(r),expected,operation)
     if os.environ.get('B10_CENSUS_DESCRIPTOR'):
         descriptor=BASE/('b10-census-'+operation+'.json')
         if (os.environ['B10_CENSUS_DESCRIPTOR']!=str(descriptor) or descriptor.is_symlink()
