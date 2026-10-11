@@ -324,3 +324,19 @@ def test_b10_unknown_selection_remains_closed(monkeypatch,tmp_path,selection):
     executor,ledger=_controller_fixture(monkeypatch,tmp_path,proof)
     receipt=executor.execute('test',{'state_dir':'E:/state','selection':selection},datetime.now(timezone.utc)+timedelta(seconds=30),ledger)
     assert receipt.status=='blocked' and receipt.evidence['reason']=='unknown_test_selection'
+
+
+@pytest.mark.parametrize('command',['test','backup','restore','git','build','data-read'])
+def test_fix2_protocol_selector_cannot_run_as_other_command(monkeypatch,tmp_path,command):
+    from ops.pi.resources import LIMITS
+    proof={'cgroup_version':2,'membership_verified':True,'ancestor_verified':True,**LIMITS['heavy']}
+    executor,ledger=_controller_fixture(monkeypatch,tmp_path,proof)
+    receipt=executor.execute(command,{'state_dir':'E:/state','selection':'b11-fix2'},datetime.now(timezone.utc)+timedelta(seconds=30),ledger)
+    expected='prerequisite_not_implemented' if command in ('git','build') else 'unknown_backup_selection' if command in ('backup','restore') else 'unknown_test_selection'
+    assert receipt.status=='blocked' and receipt.evidence['reason']==expected
+
+
+@pytest.mark.parametrize('argument',['dsn','filename','retired_ids','references','script'])
+def test_fix2_protocol_selector_has_no_client_recovery_authority(argument):
+    receipt=execute('probe',{'state_dir':'E:/state','selection':'b11-fix2',argument:'client-value'},datetime.now(timezone.utc)+timedelta(seconds=30),None)
+    assert receipt.status=='blocked' and receipt.evidence['reason']=='untyped_arguments'

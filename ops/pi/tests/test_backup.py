@@ -19,9 +19,16 @@ def api():
     return backup
 
 
+def trusted_references(ledger,version=1,*,stable_ids=(),referenced_ids=(),context=CONTEXT,complete=True):
+    operation='recovery-references:'+str(version)
+    api().record_recovery_references(ledger,operation,version=version,context=context,complete=complete,stable_ids=stable_ids,referenced_ids=referenced_ids)
+    return operation
+
+
 @pytest.fixture
 def case(tmp_path):
     ledger=Ledger(tmp_path/'ledger.sqlite')
+    trusted_references(ledger)
     identity=Identity('old',1,'trusted',{'worker':'sha256:old'},commit_sha='frozen')
     pair={'release_pair_id':'release-1','pre_identity':asdict(identity),
           'post_identity':asdict(Identity('new',2,'trusted',{'worker':'sha256:new'},commit_sha='candidate')),
@@ -254,3 +261,155 @@ def test_done_without_verified_actual_restore_cannot_qualify(case):
     api().record_restore(case[0],receipt,Receipt(operation,'done',{'verified':False}),context=CONTEXT,now=NOW)
     assert not api().release_allowed(case[0],'release-1',context=CONTEXT,now=NOW)
     assert api().release_allowed(case[0],'release-1',recovery=True)
+
+
+def test_old_completed_post_is_not_a_permanent_weekly_obligation(case):
+    ledger,identity,pair,root=case
+    qualified_restore(case);api().mark_released(ledger,pair['release_pair_id'],pair['post_identity'],context=CONTEXT,now=NOW)
+    qualified_restore(case,'POST')
+    candidate=Identity('current-pre',3,'trusted',{'worker':'sha256:current'})
+    newpair={'release_pair_id':'current-pair','pre_identity':asdict(candidate),'post_identity':asdict(Identity('candidate',4,'trusted',{'worker':'sha256:candidate'})),'plan_hash':'b'*64}
+    newcase=(ledger,candidate,newpair,root)
+    receipt=backup(newcase);path=Path(receipt.evidence['manifest_path'])
+    result=api().restore_check(json.loads(path.read_text()),{'clean':True,'system_identifier':'current-target','source_system_identifier':'source','collection_directory':str(path.parent)},artifacts)
+    api().record_restore(ledger,receipt,result,context=CONTEXT,now=NOW+timedelta(days=8))
+    assert api().release_allowed(ledger,newpair['release_pair_id'],context=CONTEXT,now=NOW+timedelta(days=8)),'old completed POST should need availability, not another weekly restore'
+
+
+def test_missing_reference_inventory_is_not_explicit_empty(case):
+    ledger,identity,pair,root=case
+    orphan=Ledger(root.parent/'missing-references.sqlite');other=(orphan,identity,pair,root.parent/'orphan-backups')
+    qualified_restore(other)
+    assert not api().release_allowed(orphan,pair['release_pair_id'],context=CONTEXT,now=NOW),'missing trusted current reference inventory cannot authorize'
+    assert api().release_allowed(orphan,pair['release_pair_id'],recovery=True)
+
+
+@pytest.mark.parametrize('status',['pending','failed','uncertain'])
+def test_new_post_attempt_reopens_completed_debt(case,status):
+    qualified_restore(case);api().mark_released(case[0],'release-1',case[2]['post_identity'],context=CONTEXT,now=NOW)
+    receipt=qualified_restore(case,'POST')
+    operation=api().start_rehearsal_attempt(case[0],receipt,'011b2b82-9364-40e6-8b44-a865358cdfef',context=CONTEXT)
+    if status!='pending':case[0].finish(Receipt(operation,status,{'reason':'target_preparation_unconfirmed'}))
+    assert not api().release_allowed(case[0],'next-release',context=CONTEXT,now=NOW+timedelta(days=30))
+    assert api().release_allowed(case[0],'next-release',recovery=True)
+
+
+@pytest.mark.parametrize('change',['missing-completeness','context','unknown-reference','pending'])
+def test_current_reference_inventory_must_be_complete_bound_and_known(case,change):
+    qualified_restore(case);ledger=case[0]
+    if change=='pending':ledger.intent('recovery-references:2','recovery_reference_inventory',{'version':2,'context':CONTEXT,'complete':True,'stable_ids':[],'referenced_ids':[]})
+    else:trusted_references(ledger,2,complete=change!='missing-completeness',context={**CONTEXT,'tool_context':'changed'} if change=='context' else CONTEXT,referenced_ids=['unknown'] if change=='unknown-reference' else [])
+    assert not api().release_allowed(ledger,'release-1',context=CONTEXT,now=NOW)
+    assert api().release_allowed(ledger,'release-1',recovery=True)
+
+
+def historical_pairs(case):
+    ledger,_,_,root=case;cases=[]
+    for n in range(6):
+        pre=Identity('pre-'+str(n),n*2+1,'trusted',{'worker':'sha256:pre-'+str(n)})
+        pair={'release_pair_id':'history-'+str(n),'pre_identity':asdict(pre),'post_identity':asdict(Identity('post-'+str(n),n*2+2,'trusted',{'worker':'sha256:post-'+str(n)})),'plan_hash':'c'*64}
+        current=(ledger,pre,pair,root);cases.append(current)
+        qualified_restore(current);api().mark_released(ledger,pair['release_pair_id'],pair['post_identity'],context=CONTEXT,now=NOW);qualified_restore(current,'POST')
+    # Current candidate is fresh; historical POST proofs stay unchanged.
+    receipt=backup(cases[-1]);api().record_restore(ledger,receipt,Receipt('restore:'+receipt.evidence['backup_id']+':fresh-current','done',{'verified':True}),context=CONTEXT,now=NOW+timedelta(days=30))
+    return cases
+
+
+def test_classification_keeps_last_five_and_allows_only_eligible_archive(case):
+    cases=historical_pairs(case);ledger=case[0];clock=NOW+timedelta(days=30)
+    classified=api().classify_recovery_set(ledger,'classify:1',context=CONTEXT,now=clock)
+    oldest=[backup(cases[0],phase=phase).evidence['backup_id'] for phase in ('PRE','POST')]
+    assert classified.status=='done' and set(classified.evidence['archive_ids'])==set(oldest)
+    for phase in ('PRE','POST'):Path(backup(cases[0],phase=phase).evidence['manifest_path']).unlink()
+    assert api().release_allowed(ledger,cases[-1][2]['release_pair_id'],context=CONTEXT,now=clock)
+    assert ledger.get('classify:1')['status']=='done'
+    # Adding a trusted reference removes the exemption; it needs files and current proof.
+    trusted_references(ledger,2,referenced_ids=[oldest[1]])
+    assert not api().release_allowed(ledger,cases[-1][2]['release_pair_id'],context=CONTEXT,now=clock)
+    assert api().release_allowed(ledger,cases[-1][2]['release_pair_id'],recovery=True)
+
+
+def test_missing_unclassified_history_is_not_retirement(case):
+    cases=historical_pairs(case);receipt=backup(cases[0],phase='POST')
+    Path(receipt.evidence['manifest_path']).unlink()
+    assert not api().release_allowed(case[0],cases[-1][2]['release_pair_id'],context=CONTEXT,now=NOW+timedelta(days=30))
+
+
+def test_forged_archive_record_cannot_exempt_missing_history(case):
+    cases=historical_pairs(case);ledger=case[0];old=backup(cases[0],phase='POST')
+    payload={'references':{},'classified_at':NOW.isoformat(),'catalog':{}}
+    ledger.intent('forged','recovery_set_classification',payload)
+    ledger.finish(Receipt('forged','done',{'archive_ids':[old.evidence['backup_id']],'classification_sha256':'0'*64}))
+    Path(old.evidence['manifest_path']).unlink()
+    assert not api().release_allowed(ledger,cases[-1][2]['release_pair_id'],context=CONTEXT,now=NOW+timedelta(days=30))
+
+
+def test_archive_does_not_waive_reopened_post_debt(case):
+    cases=historical_pairs(case);ledger=case[0];clock=NOW+timedelta(days=30)
+    assert api().classify_recovery_set(ledger,'classify:1',context=CONTEXT,now=clock).status=='done'
+    receipt=backup(cases[0],phase='POST')
+    api().start_rehearsal_attempt(ledger,receipt,'011b2b82-9364-40e6-8b44-a865358cdfef',context=CONTEXT)
+    assert not api().release_allowed(ledger,cases[-1][2]['release_pair_id'],context=CONTEXT,now=clock)
+
+
+def test_retained_post_corruption_blocks_after_classification(case):
+    cases=historical_pairs(case);ledger=case[0];clock=NOW+timedelta(days=30)
+    assert api().classify_recovery_set(ledger,'classify:1',context=CONTEXT,now=clock).status=='done'
+    receipt=backup(cases[-1],phase='POST');(Path(receipt.evidence['manifest_path']).parent/'attachment.bin').write_bytes(b'known corruption')
+    assert not api().release_allowed(ledger,cases[-1][2]['release_pair_id'],context=CONTEXT,now=clock)
+    assert api().classify_recovery_set(ledger,'classify:2',context=CONTEXT,now=clock).status=='blocked'
+    assert ledger.get(receipt.operation_id)['status']=='done'
+
+
+@pytest.mark.parametrize('key',['stable_ids','referenced_ids'])
+def test_trusted_required_reference_needs_current_rehearsal(case,key):
+    receipt=qualified_restore(case);api().mark_released(case[0],'release-1',case[2]['post_identity'],context=CONTEXT,now=NOW);qualified_restore(case,'POST')
+    trusted_references(case[0],2,**{key:[receipt.evidence['backup_id']]})
+    assert api().release_allowed(case[0],'next-release',context=CONTEXT,now=NOW)
+    assert not api().release_allowed(case[0],'next-release',context=CONTEXT,now=NOW+timedelta(days=8))
+    assert api().release_allowed(case[0],'release-1',recovery=True)
+
+
+def test_current_mirror_manifest_corruption_closes_gate(case):
+    receipt=qualified_restore(case)
+    (case[3].parent/'mirror'/receipt.evidence['backup_id']/'manifest.json').write_bytes(b'corrupt')
+    assert not api().release_allowed(case[0],'release-1',context=CONTEXT,now=NOW)
+
+
+
+def test_unattested_empty_inventory_cannot_override_current_refs(case):
+    import hashlib
+    receipt=qualified_restore(case);trusted_references(case[0],2,stable_ids=[receipt.evidence['backup_id']])
+    payload={'version':3,'context':CONTEXT,'complete':True,'stable_ids':[],'referenced_ids':[]}
+    case[0].intent('untrusted-empty','recovery_reference_inventory',payload)
+    case[0].finish(Receipt('untrusted-empty','done',{'inventory_sha256':hashlib.sha256(api().encoded(payload)).hexdigest()}))
+    assert not api().release_allowed(case[0],'release-1',context=CONTEXT,now=NOW)
+    with pytest.raises(ValueError):trusted_references(case[0],2)
+
+
+def test_archive_classification_cannot_hide_retention_window_or_incomplete_pair(case):
+    cases=historical_pairs(case);ledger=case[0]
+    # Every point is in the current natural-date window, including the sixth pair.
+    assert api().classify_recovery_set(ledger,'classify-window',context=CONTEXT,now=NOW).evidence['archive_ids']==[]
+    pre=Identity('incomplete-pre',20,'trusted',{'worker':'sha256:incomplete'})
+    pair={'release_pair_id':'incomplete','pre_identity':asdict(pre),'post_identity':asdict(Identity('incomplete-post',21,'trusted',{'worker':'sha256:new'})),'plan_hash':'d'*64}
+    receipt=qualified_restore((ledger,pre,pair,case[3]))
+    classified=api().classify_recovery_set(ledger,'classify-old',context=CONTEXT,now=NOW+timedelta(days=30))
+    assert classified.status=='done' and receipt.evidence['backup_id'] not in classified.evidence['archive_ids']
+
+
+@pytest.mark.parametrize('entry',['gate','classification'])
+def test_current_references_advancing_during_validation_are_refused(case,monkeypatch,entry):
+    qualified_restore(case);ledger=case[0]
+    assert api().release_allowed(ledger,'release-1',context=CONTEXT,now=NOW)
+    original=api().revalidate_collection;advanced=False
+    def advance(*args,**kwargs):
+        nonlocal advanced
+        result=original(*args,**kwargs)
+        if not advanced:
+            advanced=True;trusted_references(ledger,2,complete=False)
+        return result
+    monkeypatch.setattr(api(),'revalidate_collection',advance)
+    if entry=='gate':assert not api().release_allowed(ledger,'release-1',context=CONTEXT,now=NOW),'refs changed while validation ran'
+    else:assert api().classify_recovery_set(ledger,'classify-race',context=CONTEXT,now=NOW).status=='blocked','changed inventory received canonical archive authority'
+    assert api().release_allowed(ledger,'release-1',recovery=True)

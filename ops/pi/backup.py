@@ -61,34 +61,185 @@ def mark_released(ledger,pair_id,candidate,*,context=None,now=None):
     ledger.finish(Receipt(operation,'done',{'post_pending':True}))
 
 
+def _records(ledger,kind):
+    with ledger.transaction() as db:
+        return [Ledger._record(row) for row in db.execute('SELECT * FROM operations WHERE kind=? ORDER BY rowid',(kind,))]
+
+
+def _hash(value):
+    return hashlib.sha256(encoded(value)).hexdigest()
+
+
+def _attested(ledger,kind,operation,sha):
+    with ledger.transaction() as db:
+        rows=[json.loads(row[0]) for row in db.execute('SELECT payload FROM events WHERE kind=?',(kind,))]
+    return [row for row in rows if row.get('operation_id')==operation]==[{'operation_id':operation,'sha256':sha}]
+
+
+def record_recovery_references(ledger,operation_id,*,version,context,complete,stable_ids,referenced_ids):
+    """Trusted controller inventory. Explicit complete-empty differs from omission."""
+    if (type(version) is not int or version<1 or not _rehearsal_context(context) or type(complete) is not bool
+            or any(not isinstance(v,str) or not v for v in [*stable_ids,*referenced_ids])):raise ValueError('invalid trusted reference inventory')
+    payload={'version':version,'context':context,'complete':complete,'stable_ids':sorted(set(stable_ids)),'referenced_ids':sorted(set(referenced_ids))}
+    old=_records(ledger,'recovery_reference_inventory')
+    if old and old[-1]['operation_id']!=operation_id and version<=old[-1]['payload']['version']:raise ValueError('reference version must advance')
+    existing=ledger.intent(operation_id,'recovery_reference_inventory',payload)
+    if existing['status']!='pending':return Receipt(operation_id,existing['status'],existing['evidence'])
+    known={row['payload']['backup_id'] for row in _records(ledger,'backup') if row['status']=='done'}
+    valid=complete and set(payload['stable_ids']+payload['referenced_ids']).issubset(known)
+    sha=_hash(payload)
+    if valid:ledger.append_event('recovery_references_verified',{'operation_id':operation_id,'sha256':sha})
+    receipt=Receipt(operation_id,'done' if valid else 'blocked',{'inventory_sha256':sha})
+    ledger.finish(receipt);return receipt
+
+
+def _current_references(ledger,context):
+    rows=_records(ledger,'recovery_reference_inventory')
+    if not rows:raise ValueError('trusted current references missing')
+    latest=rows[-1];payload=latest['payload']
+    if (latest['status']!='done' or set(payload)!={'version','context','complete','stable_ids','referenced_ids'}
+            or type(payload['version']) is not int or payload['version']<1 or payload['complete'] is not True
+            or payload['context']!=context or not _rehearsal_context(context)
+            or any(type(row['payload'].get('version')) is not int or row['payload']['version']>=payload['version'] for row in rows[:-1])
+            or latest['evidence'].get('inventory_sha256')!=_hash(payload)
+            or not _attested(ledger,'recovery_references_verified',latest['operation_id'],_hash(payload))):raise ValueError('references unknown or stale')
+    for key in ('stable_ids','referenced_ids'):
+        if not isinstance(payload[key],list) or any(not isinstance(v,str) or not v for v in payload[key]) or payload[key]!=sorted(set(payload[key])):raise ValueError('reference IDs invalid')
+    return latest
+
+
+def _latest_restore(ledger,backup):
+    matches=[row for row in _records(ledger,'restore_check') if row['payload'].get('backup_operation')==backup['operation_id']
+        and row['payload'].get('manifest_sha256')==backup['evidence']['manifest_sha256']]
+    return matches[-1] if matches else None
+
+
+def _completed_restore(row):
+    return bool(row and row['status']=='done' and row['evidence'].get('verified') is True)
+
+
+def _fresh_restore(row,context,now):
+    if not _completed_restore(row) or row['payload'].get('rehearsal_context')!=context:return False
+    try:completed=datetime.fromisoformat(row['evidence']['rehearsal_completed_at'])
+    except (KeyError,TypeError,ValueError):return False
+    return completed.tzinfo is not None and timedelta(0)<=now-completed<timedelta(days=7)
+
+
+def _manifest_binding(ledger,backup,manifest):
+    publication=_publication(ledger,backup['operation_id']);pair=ledger.get('release-pair:'+backup['payload']['release_pair_id'])
+    if (not publication or not pair or _hash(manifest)!=backup['evidence']['manifest_sha256']
+            or publication['manifest_sha256']!=backup['evidence']['manifest_sha256']
+            or manifest['backup_id']!=backup['payload']['backup_id'] or manifest['release_pair_id']!=backup['payload']['release_pair_id']
+            or manifest['phase']!=backup['payload']['phase'] or manifest['identity']!=backup['payload']['identity']
+            or pair['payload'][manifest['phase'].lower()+'_identity']!=manifest['identity']
+            or pair['payload']['plan_hash']!=manifest['plan_hash']):raise ValueError('immutable manifest binding missing')
+
+
+def _classification(ledger,row):
+    """A retained canonical classification is provenance, never a debt waiver."""
+    if row['status']!='done':return None
+    payload=row['payload'];evidence=row['evidence'];sha=_hash({'payload':payload,'archive_ids':evidence['archive_ids']})
+    if set(payload)!={'references','classified_at','catalog'} or evidence.get('classification_sha256')!=sha or not _attested(ledger,'recovery_set_classified',row['operation_id'],sha):return None
+    references=ledger.get(payload['references']['operation_id'])
+    if not references or references['status']!='done' or payload['references']!=_reference_binding(references) or not _attested(ledger,'recovery_references_verified',references['operation_id'],_hash(references['payload'])):return None
+    rows=[]
+    for operation,item in payload['catalog'].items():
+        backup=ledger.get(operation)
+        if not backup or backup['status']!='done':return None
+        _manifest_binding(ledger,backup,item['manifest'])
+        restore=ledger.get(item['restore_operation']) if item['restore_operation'] else None
+        if item['restore_sha256']!=(_hash(restore) if restore else None):return None
+        if restore and (restore['kind']!='restore_check' or restore['payload']['backup_operation']!=operation or restore['payload']['manifest_sha256']!=backup['evidence']['manifest_sha256']):return None
+        rows.append(_retention_manifest(item['manifest'],restore,references['payload']))
+    clock=datetime.fromisoformat(payload['classified_at'])
+    if clock.tzinfo is None or evidence['archive_ids']!=retention_candidates(rows,clock):return None
+    return row
+
+
+def _reference_binding(row):
+    return {'operation_id':row['operation_id'],'version':row['payload']['version'],'inventory_sha256':_hash(row['payload'])}
+
+
+def _retention_manifest(manifest,restore,references):
+    return {**manifest,'restore_status':'done' if _completed_restore(restore) else 'pending',
+        'stable':manifest['backup_id'] in references['stable_ids'],'referenced':manifest['backup_id'] in references['referenced_ids'],
+        'post_pending':not _completed_restore(restore)}
+
+
+def _recovery_catalog(ledger,references,*,allow_archive):
+    classifications=[]
+    if allow_archive:
+        for row in _records(ledger,'recovery_set_classification'):
+            verified=_classification(ledger,row)
+            if verified:classifications.append(verified)
+    catalog={};archives=set()
+    for backup in _records(ledger,'backup'):
+        if backup['status']!='done':continue
+        operation=backup['operation_id'];manifest=None
+        for row in classifications:
+            item=row['payload']['catalog'].get(operation)
+            if item:
+                manifest=item['manifest']
+                if manifest['backup_id'] in row['evidence']['archive_ids']:archives.add(manifest['backup_id'])
+        if manifest is None:manifest=json.loads(Path(backup['evidence']['manifest_path']).read_text())
+        _manifest_binding(ledger,backup,manifest)
+        catalog[operation]={'backup':backup,'manifest':manifest,'restore':_latest_restore(ledger,backup)}
+    ids={item['manifest']['backup_id'] for item in catalog.values()}
+    if not set(references['payload']['stable_ids']+references['payload']['referenced_ids']).issubset(ids):raise ValueError('unknown required reference')
+    return catalog,archives
+
+
+def classify_recovery_set(ledger,operation_id,*,context,now):
+    """Fixed trusted classification; derive eligible IDs, validate files first, delete nothing."""
+    if now.tzinfo is None:raise ValueError('aware classification clock required')
+    references=_current_references(ledger,context);catalog,_=_recovery_catalog(ledger,references,allow_archive=False)
+    payload={'references':_reference_binding(references),'classified_at':now.isoformat(),'catalog':{operation:{'manifest':item['manifest'],
+        'restore_operation':item['restore']['operation_id'] if item['restore'] else None,'restore_sha256':_hash(item['restore']) if item['restore'] else None}
+        for operation,item in catalog.items()}}
+    existing=ledger.intent(operation_id,'recovery_set_classification',payload)
+    if existing['status']!='pending':return Receipt(operation_id,existing['status'],existing['evidence'])
+    try:
+        _validate_recovery_set(ledger,catalog,set(),references,context,now,None)
+        archive_ids=retention_candidates([_retention_manifest(item['manifest'],item['restore'],references['payload']) for item in catalog.values()],now)
+        evidence={'archive_ids':archive_ids,'classification_sha256':_hash({'payload':payload,'archive_ids':archive_ids})}
+        if _reference_binding(_current_references(ledger,context))!=_reference_binding(references):raise ValueError('current references changed during validation')
+        ledger.append_event('recovery_set_classified',{'operation_id':operation_id,'sha256':evidence['classification_sha256']})
+        receipt=Receipt(operation_id,'done',evidence)
+    except (ValueError,OSError,KeyError,TypeError) as exc:receipt=Receipt(operation_id,'blocked',{'reason':'recovery_set_unconfirmed','error_class':type(exc).__name__})
+    ledger.finish(receipt);return receipt
+
+
+def _validate_recovery_set(ledger,catalog,archives,references,context,now,candidate_operation):
+    eligible=set(retention_candidates([_retention_manifest(item['manifest'],item['restore'],references['payload']) for item in catalog.values()],now))
+    fresh_ids=set(references['payload']['stable_ids']+references['payload']['referenced_ids'])
+    releases=_records(ledger,'release')
+    for release in releases:
+        if release['status']!='done':continue
+        post=catalog.get('backup:'+release['payload']['release_pair_id']+':POST')
+        if not post or not _completed_restore(post['restore']):raise ValueError('unresolved or reopened POST debt')
+    for operation,item in catalog.items():
+        backup=item['backup'];manifest=item['manifest'];restore=item['restore']
+        fresh=operation==candidate_operation or manifest['backup_id'] in fresh_ids
+        if restore and not _completed_restore(restore):raise ValueError('pending or failed recovery attempt')
+        if fresh and not _fresh_restore(restore,context,now):raise ValueError('required current qualification missing')
+        if manifest['backup_id'] in archives and manifest['backup_id'] in eligible and not fresh:continue
+        root=Path(backup['evidence']['manifest_path']).parent.parent
+        if revalidate_collection(ledger,backup,root).status!='done':raise ValueError('required recovery collection unavailable')
+
+
 def release_allowed(ledger,pair_id,*,recovery=False,context=None,now=None):
     if recovery:return True
     if not _rehearsal_context(context):return False
     now=now or datetime.now(timezone.utc)
     if now.tzinfo is None:return False
-    with ledger.transaction() as db:
-        releases=[Ledger._record(row) for row in db.execute("SELECT * FROM operations WHERE kind='release' AND status='done'")]
-        pair=Ledger._record(db.execute('SELECT * FROM operations WHERE operation_id=?',('release-pair:'+pair_id,)).fetchone())
-    def restored(backup):
-        if not backup or backup['status']!='done':return False
-        root=Path(backup['evidence']['manifest_path']).parent.parent
-        if revalidate_collection(ledger,backup,root).status!='done':return False
-        with ledger.transaction() as db:
-            checks=[Ledger._record(row) for row in db.execute("SELECT * FROM operations WHERE kind='restore_check' ORDER BY rowid")]
-        matching=[row for row in checks if row['payload']['backup_operation']==backup['operation_id'] and row['payload']['manifest_sha256']==backup['evidence']['manifest_sha256']]
-        if not matching or matching[-1]['status']!='done' or matching[-1]['evidence'].get('verified') is not True:return False
-        latest=matching[-1]
-        if latest['payload'].get('rehearsal_context')!=context:return False
-        try:completed=datetime.fromisoformat(latest['evidence']['rehearsal_completed_at'])
-        except (KeyError,TypeError,ValueError):return False
-        return completed.tzinfo is not None and timedelta(0)<=now-completed<timedelta(days=7)
-    for row in releases:
-        post=ledger.get('backup:'+row['payload']['release_pair_id']+':POST')
-        if not restored(post):return False
-    if pair:
-        pre=ledger.get('backup:'+pair_id+':PRE')
-        return restored(pre)
-    return bool(releases)
+    try:
+        references=_current_references(ledger,context);catalog,archives=_recovery_catalog(ledger,references,allow_archive=True)
+        pair=ledger.get('release-pair:'+pair_id);candidate='backup:'+pair_id+':PRE' if pair else None
+        if pair and candidate not in catalog:return False
+        _validate_recovery_set(ledger,catalog,archives,references,context,now,candidate)
+        if _reference_binding(_current_references(ledger,context))!=_reference_binding(references):return False
+        return bool(pair or any(row['status']=='done' for row in _records(ledger,'release')))
+    except (ValueError,OSError,KeyError,TypeError,json.JSONDecodeError):return False
 
 
 @contextmanager
@@ -261,12 +412,43 @@ def start_rehearsal(ledger,backup_receipt,restore_operation,*,context=None):
     return operation
 
 
-def record_restore(ledger,backup_receipt,restore_receipt,*,context=None,now=None):
+def start_rehearsal_attempt(ledger,backup_receipt,transport_operation,*,context):
+    """Claim a planned target before any preparation; no actual target ID is invented."""
+    if not _rehearsal_context(context):raise ValueError('trusted schema/tool context required')
+    transport=str(uuid.UUID(transport_operation));collection=Path(backup_receipt.evidence['manifest_path']).parent
+    case=str(uuid.uuid5(uuid.UUID(transport),'positive'+str(collection)))
+    operation='restore-check:attempt:'+case
+    ledger.intent(operation,'restore_check',{'backup_operation':backup_receipt.operation_id,'manifest_sha256':backup_receipt.evidence['manifest_sha256'],
+        'rehearsal_context':context,'planned_target':{'case_uuid':case,'operation_id':transport,'collection_id':backup_receipt.evidence['backup_id'],'fault':'positive'}})
+    return operation
+
+
+def bind_rehearsal_target(ledger,attempt_operation,target):
+    attempt=ledger.get(attempt_operation);planned=attempt['payload']['planned_target'];actual=ledger.get(target['target_operation'])
+    if attempt['status']!='pending' or not actual or actual['kind']!='restore_target' or any(actual['payload'].get(k)!=v for k,v in planned.items()):raise ValueError('verified target does not match planned attempt')
+    if not target['clean'] or target['system_identifier']==target['source_system_identifier']:raise ValueError('verified target must be clean/distinct')
+    with ledger.transaction() as db:created=[json.loads(v[0]) for v in db.execute("SELECT payload FROM events WHERE kind='restore_target_created'")]
+    bindings=[v for v in created if v['target_operation']==target['target_operation']]
+    if len(bindings)!=1 or bindings[0]['container_id']!=target['container_id']:raise ValueError('actual target creation binding missing')
+    ledger.append_event('rehearsal_target_verified',{'attempt_operation':attempt_operation,'target_operation':target['target_operation'],
+        'container_id':target['container_id'],'system_identifier':target['system_identifier'],'source_system_identifier':target['source_system_identifier'],'registry_sha256':bindings[0]['registry_sha256']})
+
+
+def record_restore(ledger,backup_receipt,restore_receipt,*,context=None,now=None,attempt_operation=None):
     """Immutable actual restore qualification, bound to context and completion clock."""
     now=now or datetime.now(timezone.utc)
     if now.tzinfo is None:raise ValueError('aware rehearsal clock required')
-    operation=start_rehearsal(ledger,backup_receipt,restore_receipt.operation_id,context=context)
-    ledger.finish(Receipt(operation,restore_receipt.status,{**restore_receipt.evidence,'rehearsal_completed_at':now.isoformat()}))
+    actual_target={}
+    if attempt_operation is None:operation=start_rehearsal(ledger,backup_receipt,restore_receipt.operation_id,context=context)
+    else:
+        operation=attempt_operation;attempt=ledger.get(operation)
+        if attempt['payload']['backup_operation']!=backup_receipt.operation_id or attempt['payload']['manifest_sha256']!=backup_receipt.evidence['manifest_sha256'] or attempt['payload']['rehearsal_context']!=context:raise ValueError('attempt binding mismatch')
+        with ledger.transaction() as db:targets=[json.loads(v[0]) for v in db.execute("SELECT payload FROM events WHERE kind='rehearsal_target_verified'")]
+        matches=[v for v in targets if v['attempt_operation']==operation]
+        if (len(matches)!=1 or restore_receipt.operation_id!='restore:'+backup_receipt.evidence['backup_id']+':'+matches[0]['system_identifier']
+                or restore_receipt.status=='done' and restore_receipt.evidence.get('target_system_identifier')!=matches[0]['system_identifier']):raise ValueError('actual restore identity missing')
+        actual_target={'actual_restore_operation':restore_receipt.operation_id,'verified_target':matches[0]}
+    ledger.finish(Receipt(operation,restore_receipt.status,{**restore_receipt.evidence,**actual_target,'rehearsal_completed_at':now.isoformat()}))
 
 
 def retention_candidates(manifests,now):
@@ -299,7 +481,9 @@ def revalidate_collection(ledger,existing,root):
         publication=_publication(ledger,operation)
         if not publication or digest(directory/'manifest.json')!=publication['manifest_sha256'] or publication['manifest_sha256']!=existing['evidence']['manifest_sha256']:raise ValueError('publication mismatch')
         manifest=json.loads((directory/'manifest.json').read_text())
-        verify_artifacts(manifest,directory);verify_artifacts(manifest,private_path(Path(root).parent/'mirror',manifest['backup_id']))
+        mirror=private_path(Path(root).parent/'mirror',manifest['backup_id'])
+        if digest(mirror/'manifest.json')!=publication['manifest_sha256']:raise ValueError('mirror manifest mismatch')
+        verify_artifacts(manifest,directory);verify_artifacts(manifest,mirror)
         ledger.append_event('backup_revalidation',{'operation_id':operation,'status':'done','manifest_sha256':publication['manifest_sha256']})
         return Receipt(operation,'done',existing['evidence'])
     except Exception as exc:
