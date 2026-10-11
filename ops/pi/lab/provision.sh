@@ -172,7 +172,7 @@ if [[ $mode == execute ]]; then
       test/b8-ci-collection|test/b8-guarded-collection) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py) ;;
       test/b8) targets=(tests/test_maintenance_admission.py tests/test_maintenance_worker_barrier.py tests/test_enqueue_gates.py tests/test_task_budget_routes.py tests/test_manual_plan.py) ;;
       test/b9-red|test/b9) targets=(tests/test_maintenance_pause.py tests/test_maintenance_compatibility.py tests/test_task_budget_recovery.py tests/test_short_runner.py tests/test_worker.py tests/test_manual_plan.py) ;;
-      test/b9-pause|test/b9-wait|test/b9-identity|test/b9-legacy|test/b9-cached|test/b9-entry|test/b9-plan-negative) targets=(tests/test_maintenance_pause.py) ;;
+      test/b9-short-budget|test/b9-pause|test/b9-wait|test/b9-identity|test/b9-legacy|test/b9-cached|test/b9-entry|test/b9-plan-negative) targets=(tests/test_maintenance_pause.py) ;;
       test/b9-compatibility|test/b9-protocol|test/b9-ci-collection|test/b9-guarded-collection) targets=(tests/test_maintenance_compatibility.py) ;;
       test/b9-recovery) targets=(tests/test_task_budget_recovery.py) ;;
       test/b9-short) targets=(tests/test_short_runner.py) ;;
@@ -190,6 +190,7 @@ if [[ $mode == execute ]]; then
     [[ $selection != b9-plan-negative ]] || python_args+=(-k "explicit_plan_approval")
     [[ $selection != b9-entry ]] || python_args+=(-k "legacy_execution_scope_identity")
     [[ $selection != b9-legacy-worker ]] || python_args+=(-k "process_materialize_and_done or manual_plan_worker_waits or stale_plan_resume or cancel_awaiting_plan or process_idempotent_skip_done or process_lock_reclaims_zombie")
+    [[ $selection != b9-short-budget ]] || python_args+=(-k "short_persist_runtime_boundary or short_persist_has_transactional_receipt or cached_short_receipt_exit")
     [[ $selection != b9-cached ]] || python_args+=(-k "cached_short_receipt_exit")
     [[ $selection != b9-legacy ]] || python_args+=(-k "legacy_budgetless")
     [[ $selection != b9-protocol ]] || python_args+=(-k "new_serializer_and_state_family")

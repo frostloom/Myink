@@ -600,3 +600,40 @@ def test_legacy_budgetless_registered_tool_contract(pause_lab,budget_task,monkey
     with tenant_session(pid) as db:
         assert db.get(TaskBudget,uuid.UUID(tid)) is None
         assert not db.scalar(select(TaskBudgetCall.id).where(TaskBudgetCall.task_id==uuid.UUID(tid)))
+
+
+@pytest.mark.parametrize('expired',[True,False])
+def test_short_persist_runtime_boundary_with_valid_owner_lease(pause_lab,budget_task,expired):
+    import time
+    from myink.workflow.short_runner import persist_short_story
+    from myink.models import Chapter,Project
+    from myink.models.task_budget import TaskBudget
+    from myink.task_budget import TaskBudgetPaused
+    tid,pid,uid=budget_task
+    ensure_task_budget(tid,pid,uid,{'max_requests':20,'max_runtime_seconds':60})
+    reason=None;persisted=None
+    with bind_task_budget(tid,'runtime-boundary-owner'):
+        with tenant_session(pid) as db:
+            budget=db.get(TaskBudget,uuid.UUID(tid))
+            budget.active_since=time.time()-61 if expired else time.time()
+            budget.runtime_used_ms=0
+            budget.lease_until=time.time()+60
+            assert budget.owner_token=='runtime-boundary-owner' and budget.lease_until>time.time()
+            assert (time.time()-budget.active_since>=60)==expired
+            original_limits=dict(budget.limits)
+            original_position=db.get(Project,uuid.UUID(pid)).current_chapter
+        try:persisted=persist_short_story(project_id=pid,result={'chapters':[{'chapter_seq':1,'title':'one','body':'runtime-boundary body'}]})
+        except TaskBudgetPaused as exc:reason=exc.reason
+    with tenant_session(pid) as db:
+        budget=db.get(TaskBudget,uuid.UUID(tid))
+        summary={'reason':reason,'durable_pause':budget.pause_reason,'persisted':persisted,
+            'chapters':len(list(db.scalars(select(Chapter).where(Chapter.project_id==uuid.UUID(pid))))),
+            'progress':len(list(db.scalars(select(TaskBudgetCall).where(TaskBudgetCall.task_id==uuid.UUID(tid),TaskBudgetCall.operation_key=='short:progress')))),
+            'effects':len(list(db.scalars(select(TaskBudgetCall).where(TaskBudgetCall.task_id==uuid.UUID(tid),TaskBudgetCall.operation_key.like('effect:%'))))),
+            'project_advanced':db.get(Project,uuid.UUID(pid)).current_chapter!=original_position}
+        assert budget.limits==original_limits and budget.requests_used==0 and budget.cost_used_micros==0
+        if expired:
+            assert summary=={'reason':'time_limit','durable_pause':'time_limit','persisted':None,'chapters':0,'progress':0,'effects':0,'project_advanced':False}, 'valid lease does not authorize persistence after runtime exhaustion'
+            assert budget.runtime_used_ms>=60000 and budget.stage=='short:persist'
+        else:
+            assert summary=={'reason':None,'durable_pause':None,'persisted':1,'chapters':1,'progress':1,'effects':1,'project_advanced':True}

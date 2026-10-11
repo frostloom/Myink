@@ -274,28 +274,30 @@ def persist_short_story(*, project_id: str, result: dict) -> int:
         return 0
     scope = _SCOPE.get()
     identity = effect_identity({"task_id":scope.task_id if scope else None,"result":result}, "short_persist")
-    with authorized_node("short:persist"), tenant_session(project_id) as db:
-        pid = uuid.UUID(project_id)
-        saved = load_effect(db, identity)
-        if saved is not None:
-            persisted = saved["persisted"]
-        else:
-            persisted = len(rows)
-            for row in rows:
-                repo.save_chapter(db, project_id=pid, chapter_seq=row["chapter_seq"],
-                                  content=row["body"], title=row.get("title"),
-                                  generation_source="auto")
-            project = repo.get_project(db, pid)
-            if project is not None:
-                project.current_chapter = max(row["chapter_seq"] for row in rows)
-            save_effect(db, identity, {"persisted":len(rows)})
-            if scope:
-                from sqlalchemy.dialects.postgresql import insert
-                from myink.models.task_budget import TaskBudgetCall
-                payload={"stage":"persisted","result":result,"effect_key":identity[0]}
-                db.execute(insert(TaskBudgetCall).values(task_id=uuid.UUID(scope.task_id),project_id=pid,
-                    operation_key="short:progress",input_hash="progress",response=payload).on_conflict_do_update(
-                    constraint="uq_task_budget_call",set_={"response":payload}))
+    with authorized_node("short:persist"):
+        guard_budget("short:persist")
+        with tenant_session(project_id) as db:
+            pid = uuid.UUID(project_id)
+            saved = load_effect(db, identity)
+            if saved is not None:
+                persisted = saved["persisted"]
+            else:
+                persisted = len(rows)
+                for row in rows:
+                    repo.save_chapter(db, project_id=pid, chapter_seq=row["chapter_seq"],
+                                      content=row["body"], title=row.get("title"),
+                                      generation_source="auto")
+                project = repo.get_project(db, pid)
+                if project is not None:
+                    project.current_chapter = max(row["chapter_seq"] for row in rows)
+                save_effect(db, identity, {"persisted":len(rows)})
+                if scope:
+                    from sqlalchemy.dialects.postgresql import insert
+                    from myink.models.task_budget import TaskBudgetCall
+                    payload={"stage":"persisted","result":result,"effect_key":identity[0]}
+                    db.execute(insert(TaskBudgetCall).values(task_id=uuid.UUID(scope.task_id),project_id=pid,
+                        operation_key="short:progress",input_hash="progress",response=payload).on_conflict_do_update(
+                        constraint="uq_task_budget_call",set_={"response":payload}))
     guard_maintenance("short:done")
     return persisted
 
