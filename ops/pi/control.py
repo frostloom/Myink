@@ -187,7 +187,7 @@ def main(argv: list[str] | None = None) -> int:
     lab_maintenance.add_argument('--state-dir', required=True, type=Path)
     recovery = commands.add_parser('backup-lab')
     recovery.add_argument('--state-dir', required=True, type=Path)
-    recovery.add_argument('--phase', required=True, choices=('source','restore','verify'))
+    recovery.add_argument('--phase', required=True, choices=('source','restore','verify','fresh','gate'))
     recovery.add_argument('--deadline', required=True)
     check = commands.add_parser('ledger-check')
     check.add_argument('--state-dir', required=True, type=Path)
@@ -232,7 +232,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == 'backup-lab':
             from dataclasses import asdict
             from .executor import execute
-            receipt=execute('backup' if args.phase=='source' else 'restore', {'state_dir':str(state),'selection':'b11-'+args.phase},datetime.fromisoformat(args.deadline),ledger)
+            receipt=execute('backup' if args.phase in ('source','fresh') else 'restore', {'state_dir':str(state),'selection':'b11-'+args.phase},datetime.fromisoformat(args.deadline),ledger)
             print(json.dumps(asdict(receipt)))
             return 0 if receipt.status=='done' else 1
         if args.command == 'report':

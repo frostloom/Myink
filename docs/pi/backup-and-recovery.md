@@ -92,3 +92,30 @@ selection running `python -m pytest ops/pi/tests/integration/test_restore.py -q
 controller/native ledger events, stdout/stderr, source manifests, capacity and
 resource receipts outside Git. The distinct source/test identities must be
 checked again after any code/tool/schema change before candidate authorization.
+
+
+The fresh source handler records a current-creator initialization intent before
+source effects, verifies the actual initialized dataset and closed quiescent
+control, and records initialization and source-verification receipts before the
+first PRE. Historical failed-creator reconciliation uses its separate observer;
+a ready descriptor alone never grants authority and partial initialization is
+never replayed. The finite `backup-lab --phase fresh` regression provisions one
+exclusive synthetic PG16/pgvector and Redis context under the existing heavy
+limits, verifies empty partitions and distinct system identity, then exercises
+this first-PRE path and two actual restores. Its fixtures and failure logs remain
+retained after ownership-checked STOP; the historical B11 source is unchanged.
+
+Candidate authorization requires current primary/mirror artifact and SQLite
+snapshot validation for PRE and all prior POST debt. Corruption appends a refusal
+and preserves the original receipt; it blocks `mark_released` and later candidates.
+Recovery remains permitted. A successful, explicitly verified actual restore
+must bind the trusted `schema_context` and `tool_context`, and complete less than
+seven days before the gate evaluation. Missing context, a schema/migration or
+tool change, weekly expiry, future timestamps and a later pending/failed rehearsal
+block authorization. The native handler derives these contexts from trusted
+schema and backup/restore source hashes and writes the rehearsal intent before
+import. Legacy context-free receipts remain history and require a new rehearsal.
+Task 13 must supply the current trusted contexts to this gate in the real release
+orchestrator; this finite trial does not enable a production scheduler. The
+application rollback and database-incident policy above still requires Task 13
+enforcement and is not certified by this backup task.

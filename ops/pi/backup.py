@@ -52,33 +52,43 @@ def persist_pair(ledger,pair):
     ledger.intent('release-pair:'+pair['release_pair_id'],'release_pair',pair)
 
 
-def mark_released(ledger,pair_id,candidate):
+def mark_released(ledger,pair_id,candidate,*,context=None,now=None):
     pair=ledger.get('release-pair:'+pair_id)
-    if pair is None or pair['payload']['post_identity']!=candidate or not release_allowed(ledger,pair_id):
+    if pair is None or pair['payload']['post_identity']!=candidate or not release_allowed(ledger,pair_id,context=context,now=now):
         raise ValueError('candidate requires verified PRE and matching pair')
     operation='release:'+pair_id
     ledger.intent(operation,'release',{'release_pair_id':pair_id,'candidate':candidate})
     ledger.finish(Receipt(operation,'done',{'post_pending':True}))
 
 
-def release_allowed(ledger,pair_id,*,recovery=False):
+def release_allowed(ledger,pair_id,*,recovery=False,context=None,now=None):
     if recovery:return True
+    if not _rehearsal_context(context):return False
+    now=now or datetime.now(timezone.utc)
+    if now.tzinfo is None:return False
     with ledger.transaction() as db:
         releases=[Ledger._record(row) for row in db.execute("SELECT * FROM operations WHERE kind='release' AND status='done'")]
         pair=Ledger._record(db.execute('SELECT * FROM operations WHERE operation_id=?',('release-pair:'+pair_id,)).fetchone())
     def restored(backup):
         if not backup or backup['status']!='done':return False
+        root=Path(backup['evidence']['manifest_path']).parent.parent
+        if revalidate_collection(ledger,backup,root).status!='done':return False
         with ledger.transaction() as db:
             checks=[Ledger._record(row) for row in db.execute("SELECT * FROM operations WHERE kind='restore_check' ORDER BY rowid")]
         matching=[row for row in checks if row['payload']['backup_operation']==backup['operation_id'] and row['payload']['manifest_sha256']==backup['evidence']['manifest_sha256']]
-        return bool(matching and matching[-1]['status']=='done')
+        if not matching or matching[-1]['status']!='done' or matching[-1]['evidence'].get('verified') is not True:return False
+        latest=matching[-1]
+        if latest['payload'].get('rehearsal_context')!=context:return False
+        try:completed=datetime.fromisoformat(latest['evidence']['rehearsal_completed_at'])
+        except (KeyError,TypeError,ValueError):return False
+        return completed.tzinfo is not None and timedelta(0)<=now-completed<timedelta(days=7)
     for row in releases:
         post=ledger.get('backup:'+row['payload']['release_pair_id']+':POST')
         if not restored(post):return False
     if pair:
         pre=ledger.get('backup:'+pair_id+':PRE')
         return restored(pre)
-    return True
+    return bool(releases)
 
 
 @contextmanager
@@ -237,11 +247,26 @@ def restore_check(manifest,target,executor)->Receipt:
         return Receipt(operation,'failed',{'reason':'restore_unconfirmed','error_class':type(exc).__name__})
 
 
-def record_restore(ledger,backup_receipt,restore_receipt):
-    """Immutable restore event, separate from the original collection manifest."""
-    operation='restore-check:'+restore_receipt.operation_id
-    ledger.intent(operation,'restore_check',{'backup_operation':backup_receipt.operation_id,'manifest_sha256':backup_receipt.evidence['manifest_sha256']})
-    ledger.finish(Receipt(operation,restore_receipt.status,restore_receipt.evidence))
+def _rehearsal_context(context):
+    return isinstance(context,dict) and set(context)=={'schema_context','tool_context'} and all(isinstance(v,str) and bool(v) for v in context.values())
+
+
+def start_rehearsal(ledger,backup_receipt,restore_operation,*,context=None):
+    """Intent before import; pending/failed/new-context rehearsals close the gate."""
+    if context is not None and not _rehearsal_context(context):raise ValueError('trusted schema/tool context required')
+    if not restore_operation.startswith('restore:'+backup_receipt.evidence['backup_id']+':'):raise ValueError('restore identity mismatch')
+    operation='restore-check:'+restore_operation
+    ledger.intent(operation,'restore_check',{'backup_operation':backup_receipt.operation_id,
+        'manifest_sha256':backup_receipt.evidence['manifest_sha256'],'rehearsal_context':context})
+    return operation
+
+
+def record_restore(ledger,backup_receipt,restore_receipt,*,context=None,now=None):
+    """Immutable actual restore qualification, bound to context and completion clock."""
+    now=now or datetime.now(timezone.utc)
+    if now.tzinfo is None:raise ValueError('aware rehearsal clock required')
+    operation=start_rehearsal(ledger,backup_receipt,restore_receipt.operation_id,context=context)
+    ledger.finish(Receipt(operation,restore_receipt.status,{**restore_receipt.evidence,'rehearsal_completed_at':now.isoformat()}))
 
 
 def retention_candidates(manifests,now):
@@ -275,6 +300,7 @@ def revalidate_collection(ledger,existing,root):
         if not publication or digest(directory/'manifest.json')!=publication['manifest_sha256'] or publication['manifest_sha256']!=existing['evidence']['manifest_sha256']:raise ValueError('publication mismatch')
         manifest=json.loads((directory/'manifest.json').read_text())
         verify_artifacts(manifest,directory);verify_artifacts(manifest,private_path(Path(root).parent/'mirror',manifest['backup_id']))
+        ledger.append_event('backup_revalidation',{'operation_id':operation,'status':'done','manifest_sha256':publication['manifest_sha256']})
         return Receipt(operation,'done',existing['evidence'])
     except Exception as exc:
         evidence={'reason':'collection_revalidation_failed','error_class':type(exc).__name__}
