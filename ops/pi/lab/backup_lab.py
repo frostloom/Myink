@@ -3,7 +3,7 @@ from dataclasses import asdict,replace
 from datetime import datetime,timezone,timedelta
 import base64,gzip,hashlib,json,os,secrets,shutil,subprocess,sys,time,uuid
 from pathlib import Path
-from ops.pi.backup import create_backup,restore_check,record_restore,mark_released,release_allowed,start_rehearsal,digest,encoded,private_path,verify_artifacts,durable_file
+from ops.pi.backup import create_backup,restore_check,record_restore,mark_released,release_allowed,start_rehearsal_attempt,bind_rehearsal_target,digest,encoded,private_path,verify_artifacts,durable_file
 from ops.pi.contracts import Identity
 from ops.pi.ledger import Ledger
 from ops.pi.lab.verify import BASE,verify_runtime,verify_test_environment,_docker
@@ -289,7 +289,7 @@ class Boundary:
             if db.execute("SELECT count(*) FROM pg_tables WHERE schemaname='public'").fetchone()[0]!=0 or system==self.proof['system_identifier']:raise ValueError('nonempty or source target')
             if db.execute('SHOW server_version_num').fetchone()[0][:2]!='16':raise ValueError('PG16 required')
         target={'clean':True,'system_identifier':system,'source_system_identifier':self.proof['system_identifier'],
-            'collection_directory':str(collection),'name':name,'volume':volume,'dsn':dsn,'fault':fault}
+            'collection_directory':str(collection),'name':name,'volume':volume,'dsn':dsn,'fault':fault,'target_operation':target_operation,'container_id':info['Id']}
         self.target=target
         durable_file(PRIVATE/'evidence'/('b11-target-'+suffix+'.json'),encoded({k:v for k,v in target.items() if k!='dsn'}))
         return target
@@ -409,16 +409,31 @@ def identities():
     return pre,post,{'release_pair_id':'b11-'+proof['creator_operation'],'pre_identity':asdict(pre),'post_identity':asdict(post),'plan_hash':hashlib.sha256(b'B11 synthetic backup transition').hexdigest()}
 
 
+def rehearse_collection(boundary,receipt,collection,manifest,context):
+    attempt=start_rehearsal_attempt(boundary.ledger,receipt,current_operation(),context=context)
+    restored=None
+    try:
+        target=boundary.new_target(collection,'positive')
+        bind_rehearsal_target(boundary.ledger,attempt,target)
+        restored=restore_check(manifest,target,boundary)
+    except Exception as exc:
+        boundary.ledger.finish(__import__('ops.pi.contracts',fromlist=['Receipt']).Receipt(attempt,'failed',{'reason':'target_preparation_or_rehearsal_failed','error_class':type(exc).__name__}))
+        raise
+    finally:
+        try:boundary.stop_owned_target(restored.status if restored else 'failed')
+        except Exception as exc:
+            if boundary.ledger.get(attempt)['status']=='pending':boundary.ledger.finish(__import__('ops.pi.contracts',fromlist=['Receipt']).Receipt(attempt,'uncertain',{'reason':'target_cleanup_unconfirmed','error_class':type(exc).__name__}))
+            raise
+    record_restore(boundary.ledger,receipt,restored,context=context,attempt_operation=attempt)
+    return restored
+
+
 def run_actual_pair():
     boundary=get_boundary();pre,post,pair=identities();context=rehearsal_context()
     pre_receipt=create_backup(boundary.ledger,'PRE',pre,boundary,COLLECTIONS,pair=pair)
     assert pre_receipt.status=='done',pre_receipt
     collection=Path(pre_receipt.evidence['manifest_path']).parent;m=json.loads((collection/'manifest.json').read_text())
-    try:
-        target=boundary.new_target(collection,'positive')
-        start_rehearsal(boundary.ledger,pre_receipt,'restore:'+m['backup_id']+':'+target['system_identifier'],context=context)
-        restored=restore_check(m,target,boundary);record_restore(boundary.ledger,pre_receipt,restored,context=context)
-    finally:boundary.stop_owned_target(restored.status if 'restored' in locals() else 'failed')
+    restored=rehearse_collection(boundary,pre_receipt,collection,m,context)
     assert restored.status=='done',restored
     released=boundary.ledger.get('release:'+pair['release_pair_id'])
     if not released:
@@ -431,11 +446,7 @@ def run_actual_pair():
     post_receipt=create_backup(boundary.ledger,'POST',post,boundary,COLLECTIONS,pair=pair)
     assert post_receipt.status=='done',post_receipt
     post_collection=Path(post_receipt.evidence['manifest_path']).parent;post_manifest=json.loads((post_collection/'manifest.json').read_text())
-    try:
-        post_target=boundary.new_target(post_collection,'positive')
-        start_rehearsal(boundary.ledger,post_receipt,'restore:'+post_manifest['backup_id']+':'+post_target['system_identifier'],context=context)
-        post_restore=restore_check(post_manifest,post_target,boundary);record_restore(boundary.ledger,post_receipt,post_restore,context=context)
-    finally:boundary.stop_owned_target(post_restore.status if 'post_restore' in locals() else 'failed')
+    post_restore=rehearse_collection(boundary,post_receipt,post_collection,post_manifest,context)
     assert post_restore.status=='done',post_restore
     boundary.quiet(asdict(post));assert_restored(os.environ['ADMIN_DATABASE_URL'].replace('postgresql+psycopg:','postgresql:'),post_collection,boundary.proof)
     result={'rehearsal_context':context,'pre':pre_receipt.status,'post':post_receipt.status,'restore':post_restore.status,'offsite_status':'not_configured',

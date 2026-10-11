@@ -4,7 +4,7 @@ from datetime import datetime,timezone,timedelta
 from pathlib import Path
 from ops.pi.lab import backup_lab as lab
 from ops.pi.lab.verify import _docker,_configuration,verify_runtime
-from ops.pi.backup import digest,durable_file,encoded,private_path,release_allowed,mark_released
+from ops.pi.backup import digest,durable_file,encoded,private_path,release_allowed,mark_released,record_recovery_references
 from ops.pi.contracts import Receipt
 from ops.pi.ledger import Ledger
 
@@ -190,11 +190,13 @@ def run_fresh_trial():
         observation=lab.initialize_and_pre()
         initial=ledger.get('source-initialization:'+value['operation_id'])
         if initial['status']!='done' or observation['evidence']['verification_kind']!='initial_current_creator':raise ValueError('fresh initialization authority absent')
+        # Only this newly verified isolated synthetic context has known complete-empty references.
+        record_recovery_references(ledger,'fresh-recovery-references:'+operation_id,version=1,context=lab.rehearsal_context(),complete=True,stable_ids=[],referenced_ids=[])
         result=lab.run_actual_pair();context_value=result['rehearsal_context'];clock=datetime.now(timezone.utc)
         assert release_allowed(ledger,'next-release',context=context_value,now=clock)
         assert not release_allowed(ledger,'next-release',context={**context_value,'tool_context':'changed'},now=clock)
         assert not release_allowed(ledger,'next-release',context={**context_value,'schema_context':'changed'},now=clock)
-        assert not release_allowed(ledger,'next-release',context=context_value,now=clock+timedelta(days=7))
+        assert not release_allowed(ledger,result['pre_receipt']['evidence']['release_pair_id'],context=context_value,now=clock+timedelta(days=7))
         assert release_allowed(ledger,'next-release',recovery=True)
         faults=[]
         for phase,pair_receipt in [('PRE',result['pre_receipt']),('POST',result['post_receipt'])]:
