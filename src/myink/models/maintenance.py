@@ -37,6 +37,7 @@ class AdmissionIntent(Base):
     priority: Mapped[int] = mapped_column(Integer, nullable=False)
     gate_state: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
     publication_state: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    quota_inputs: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
@@ -54,3 +55,22 @@ class MaintenanceExecution(Base):
     active_nodes: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     completed_nodes: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     receipt: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+
+
+class QueueHandoff(Base):
+    """Private immutable identity/payload plus mutable publication receipt."""
+    __tablename__ = "queue_handoffs"
+    operation_id: Mapped[str] = mapped_column(String(256), primary_key=True)
+    message_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    task_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    admission_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    body_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    destination: Mapped[str] = mapped_column(String(16), nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    rebuild_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    expiration_ms: Mapped[int | None] = mapped_column(BigInteger)
+    authority: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    predecessor_id: Mapped[str | None] = mapped_column(String(256))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

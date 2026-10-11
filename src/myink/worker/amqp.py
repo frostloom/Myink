@@ -17,6 +17,7 @@ QUEUE_PREFIX 只用于测试隔离：对 exchange 与 queue 名统一加前缀�
 from __future__ import annotations
 
 import threading
+import json
 
 import pika
 
@@ -113,32 +114,30 @@ def publish(body: str, routing_key: str, priority: int = 0, expiration_ms: int |
             if _publish_conn is None or _publish_conn.is_closed:
                 _publish_conn = connect()
             ch = _publish_conn.channel()
+            declare_topology(ch)
             ch.confirm_delivery()  # 阻塞式 publisher confirm
-            properties = pika.BasicProperties(delivery_mode=2, priority=priority)
+            decoded = json.loads(body)
+            properties = pika.BasicProperties(delivery_mode=2, priority=priority, message_id=str(decoded.get("request_id") or decoded.get("task_id")), correlation_id=str(decoded.get("task_id")))
             if expiration_ms is not None:
                 properties.expiration = str(int(expiration_ms))
-            ch.basic_publish(exchange=exchange(), routing_key=routing_key, body=body, properties=properties)
+            ch.basic_publish(exchange=exchange(), routing_key=routing_key, body=body, properties=properties, mandatory=True)
         except pika.exceptions.AMQPError:
-            # 连接/通道失效：重建连接重试一次；仍失败抛给调用方（API 侧 503）
+            # A lost confirm may already be delivered. Preserve that ambiguity;
+            # the durable identity/outbox controls any later replay.
             try:
                 if _publish_conn is not None and not _publish_conn.is_closed:
                     _publish_conn.close()
             except Exception:
                 pass
-            _publish_conn = connect()
-            ch = _publish_conn.channel()
-            ch.confirm_delivery()
-            properties = pika.BasicProperties(delivery_mode=2, priority=priority)
-            if expiration_ms is not None:
-                properties.expiration = str(int(expiration_ms))
-            ch.basic_publish(exchange=exchange(), routing_key=routing_key, body=body, properties=properties)
+            _publish_conn = None
+            raise
 
 
 class PublishNotSent(Exception):
     """The resume message definitely did not reach the queue."""
 
 
-def publish_once(body: str, routing_key: str) -> None:
+def publish_once(body: str, routing_key: str, *, priority: int = 0, expiration_ms: int | None = None, operation_id: str | None = None) -> None:
     """No implicit retry after a lost confirm; bounded and mandatory delivery."""
     connection = None
     try:
@@ -156,8 +155,14 @@ def publish_once(body: str, routing_key: str) -> None:
         except Exception as exc:
             raise PublishNotSent("续跑队列连接未建立") from exc
         try:
-            channel.basic_publish(exchange=exchange(), routing_key=routing_key, body=body,
-                                  properties=pika.BasicProperties(delivery_mode=2), mandatory=True)
+            decoded = json.loads(body)
+            properties = pika.BasicProperties(delivery_mode=2, priority=priority,
+                expiration=str(int(expiration_ms)) if expiration_ms is not None else None,
+                message_id=str(decoded.get("request_id") or decoded.get("task_id")),
+                correlation_id=str(decoded.get("task_id")),
+                headers={"operation_id":operation_id} if operation_id else None)
+            channel.basic_publish(exchange=dlx_exchange() if routing_key == KEY_DLQ else exchange(),
+                                  routing_key=routing_key, body=body, properties=properties, mandatory=True)
         except (pika.exceptions.NackError, pika.exceptions.UnroutableError) as exc:
             raise PublishNotSent("续跑投递被拒绝") from exc
     finally:

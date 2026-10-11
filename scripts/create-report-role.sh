@@ -39,6 +39,9 @@ DO $$ BEGIN
     IF to_regclass('public.admission_intents') IS NOT NULL THEN
         REVOKE ALL ON public.admission_intents FROM myink_report;
     END IF;
+  IF to_regclass('public.queue_handoffs') IS NOT NULL THEN
+        REVOKE ALL ON public.queue_handoffs FROM myink_report;
+    END IF;
   IF to_regclass('public.maintenance_executions') IS NOT NULL THEN
         REVOKE ALL ON public.maintenance_executions FROM myink_report;
     END IF;
