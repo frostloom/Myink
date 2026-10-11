@@ -601,11 +601,15 @@ def load_short_progress(task_id):
 
 def budget_tool_call(identity, execute):
     scope = _SCOPE.get()
-    if scope is None:
+    from myink.maintenance_pause import _SCOPE as execution_scope
+    if scope is None and execution_scope.get() is None:
         return execute()
     from myink.workflow.tools import _EXECUTORS
     if identity.get("name") not in READ_ONLY_TOOLS or identity.get("name") not in _EXECUTORS:
         raise TaskBudgetUnavailable("tool lacks a verified effect contract")
+    if scope is None:
+        guard_maintenance("tool:" + identity["name"])
+        return execute()
     key = "tool:" + hashlib.sha256(json.dumps([_OPERATION.get(), identity],
                                              sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     saved = _load_progress(scope.task_id, key)

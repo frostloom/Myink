@@ -576,3 +576,27 @@ def test_resume_control_drift_preserves_safe_pause(pause_lab,budget_task,drift):
         assert execution_view(db,tid)==original
         budget=db.get(TaskBudget,uuid.UUID(tid));task=db.get(Task,uuid.UUID(tid))
         assert (task.status,task.error,budget.requests_used,budget.cost_used_micros,budget.cost_reserved_micros,budget.pause_reason)==before
+
+
+@pytest.mark.parametrize('mode',['effectful','readonly','requested'])
+def test_legacy_budgetless_registered_tool_contract(pause_lab,budget_task,monkeypatch,mode):
+    from myink.workflow import tools
+    from myink.maintenance_pause import MaintenancePaused
+    from myink.models.task_budget import TaskBudget
+    tid,pid,uid=budget_task;effects=[]
+    name='new_effectful_tool' if mode=='effectful' else 'inspect_facts'
+    if mode=='effectful':monkeypatch.setitem(tools._EXECUTORS,name,lambda *a:effects.append('sent'))
+    with bind_task_budget(tid,'legacy-tool-owner'):
+        if mode=='requested':request(pid,tid)
+        def execute():
+            effects.append('execute')
+            with tenant_session(pid) as db:return tools.execute_tool(db,uuid.UUID(pid),name,{})
+        rejected=False
+        try:result=budget_tool_call({'name':name,'arguments':{}},execute)
+        except (TaskBudgetUnavailable,MaintenancePaused):rejected=True
+        assert rejected==(mode!='readonly'), 'actual registered tools require classification and pre-execute maintenance guard'
+        assert effects==(['execute'] if mode=='readonly' else [])
+        if mode=='readonly':assert 'facts' in result
+    with tenant_session(pid) as db:
+        assert db.get(TaskBudget,uuid.UUID(tid)) is None
+        assert not db.scalar(select(TaskBudgetCall.id).where(TaskBudgetCall.task_id==uuid.UUID(tid)))
