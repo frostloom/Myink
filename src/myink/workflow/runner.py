@@ -60,8 +60,71 @@ def generate_chapter(*, project_id: str, chapter_seq: int, task_id: str | None =
     return result
 
 
-@budget_execution
 def resume_chapter_plan(*, project_id: str, task_id: str, approved_plan: dict) -> dict:
+    """Validate explicit approval before claiming an awaiting-plan execution."""
+    from sqlalchemy import select
+    from langgraph.checkpoint.postgres import PostgresSaver
+    from myink.maintenance import require_admission_open
+    from myink.maintenance_pause import _SCOPE, _locked, fence_effect
+    from myink.models.task_budget import TaskBudget
+    from myink.schemas import ChapterPlan
+    from myink.task_budget import TaskBudgetUnavailable
+    from myink.validation.continuity import check_transition_anchor
+
+    graph, _ = get_graphs()
+    config = {"configurable": {"thread_id": task_id}}
+    scope = _SCOPE.get()
+    if scope is not None and (scope.task_id != task_id or scope.project_id != project_id):
+        raise TaskBudgetUnavailable("plan execution identity mismatch")
+    with tenant_session(project_id) as db:
+        require_admission_open(db)
+        control, task, execution = _locked(db, task_id)
+        if str(task.project_id) != project_id or task.status != ("running" if scope else "awaiting_plan"):
+            raise ValueError("task is not awaiting explicit plan approval")
+        if execution is None or execution.state not in {"running", "waiting"}:
+            raise TaskBudgetUnavailable("plan execution is not resumable")
+        if (execution.deployment_generation != control["generation"]
+                or execution.receipt.get("deployment_id") != control["deployment_id"]
+                or execution.receipt.get("image_ids") != control["image_ids"]):
+            raise TaskBudgetUnavailable("plan deployment identity changed")
+        if scope is not None:
+            fence_effect(db)
+        elif execution.owner_token or execution.active_nodes:
+            raise TaskBudgetUnavailable("plan execution still owned")
+        budget = db.scalar(select(TaskBudget).where(TaskBudget.task_id == task.id).with_for_update())
+        if budget is not None and (budget.pause_reason or budget.cost_reserved_micros
+                or (scope is None and budget.lease_until is not None)):
+            raise TaskBudgetUnavailable("plan budget is not resumable")
+        if not isinstance(graph.checkpointer, PostgresSaver):
+            raise ValueError("plan approval requires a durable checkpoint")
+        snapshot = graph.get_state(config)
+        saved = graph.checkpointer.get_tuple(config)
+        values = snapshot.values
+        if (saved is None or saved.config["configurable"].get("checkpoint_id")
+                != snapshot.config["configurable"].get("checkpoint_id")
+                or values.get("task_id") != task_id or values.get("project_id") != project_id
+                or values.get("writing_mode") != "manual" or snapshot.next != ("plan_gate",)):
+            raise ValueError("stale plan checkpoint identity")
+        interrupts = [item.value for node in snapshot.tasks if node.name == "plan_gate"
+                      for item in node.interrupts]
+        if len(interrupts) != 1 or interrupts[0] != {
+                "kind": "chapter_plan_review", "chapter_seq": values["chapter_seq"],
+                "attempt": values.get("replan_count", 0) + 1, "plan": values.get("plan") or {}}:
+            raise ValueError("no current plan approval interrupt")
+        plan = ChapterPlan.model_validate(approved_plan)
+        plan.project_id = uuid.UUID(project_id)
+        plan.chapter_seq = values["chapter_seq"]
+        normalized = plan.model_dump(mode="json")
+        check_transition_anchor(normalized, values.get("context") or {})
+        if scope is None:
+            # Maintenance -> task -> budget locks protect this explicit CAS.
+            task.status = "running"
+            task.error = None
+    return _resume_chapter_plan(project_id=project_id, task_id=task_id, approved_plan=normalized)
+
+
+@budget_execution
+def _resume_chapter_plan(*, project_id: str, task_id: str, approved_plan: dict) -> dict:
     """从 plan_gate 的动态 interrupt 恢复；不重新调用 Planner。"""
     chapter_graph, _ = get_graphs()
     result = invoke_graph(chapter_graph,

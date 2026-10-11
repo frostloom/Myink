@@ -467,3 +467,112 @@ def test_cached_short_receipt_exit_still_observes_pause(pause_lab,budget_task,mo
     assert receipt['short_stage']=='persisted' and len(receipt['effects'])==1
     with tenant_session(pid) as db:
         assert db.scalar(select(Chapter).where(Chapter.project_id==uuid.UUID(pid))).version==1
+
+
+@pytest.mark.parametrize('field',['task_id','batch_task_id','thread_id'])
+def test_legacy_execution_scope_identity_reuses_owner(pause_lab,budget_task,field):
+    from myink.task_budget import budget_execution,budget_managed
+    from myink.maintenance_pause import _SCOPE as execution_scope
+    from myink.models.task_budget import TaskBudget
+    tid,pid,uid=budget_task
+    @budget_execution
+    def entry(task_id=None,batch_task_id=None,thread_id=None,project_id=None):
+        return execution_scope.get()
+    with bind_task_budget(tid,'legacy-entry'):
+        assert not budget_managed()
+        bound=execution_scope.get()
+        assert entry(**{field:tid,'project_id':pid})==bound, 'nested unmanaged runner must retain actual execution owner'
+    with tenant_session(pid) as db:
+        assert db.get(Task,uuid.UUID(tid)).status=='queued'
+        assert db.get(TaskBudget,uuid.UUID(tid)) is None
+
+
+@pytest.mark.parametrize('mismatch',['task','project'])
+def test_legacy_execution_scope_identity_mismatch_is_rejected(pause_lab,budget_task,mismatch):
+    from myink.task_budget import budget_execution
+    from myink.models.task_budget import TaskBudget
+    tid,pid,uid=budget_task
+    calls=[]
+    @budget_execution
+    def entry(task_id,project_id):calls.append(task_id)
+    rejected=False
+    with bind_task_budget(tid,'legacy-entry'):
+        try:entry(task_id=str(uuid.uuid4()) if mismatch=='task' else tid,
+                  project_id=str(uuid.uuid4()) if mismatch=='project' else pid)
+        except TaskBudgetUnavailable:rejected=True
+    assert rejected and calls==[], 'a different identity must never inherit active execution authorization'
+    with tenant_session(pid) as db:
+        assert db.get(Task,uuid.UUID(tid)).status=='queued'
+        assert db.get(TaskBudget,uuid.UUID(tid)) is None
+
+
+@pytest.mark.parametrize('blocked',['cancelled','paused','awaiting_review','budget','maintenance','unconfirmed','foreign','closed','wrong_project','wrong_task','stale','invalid','anchor','drift'])
+def test_explicit_plan_approval_refuses_stronger_wait_or_stale_identity(pause_lab,budget_task,monkeypatch,blocked):
+    from langgraph.graph import StateGraph,START,END
+    from myink.workflow import nodes,runner
+    from myink.workflow.state import ChapterState
+    from myink.workflow.checkpointer import build_checkpointer
+    from myink.maintenance_pause import invoke_graph,MaintenancePaused,execution_view
+    from myink.maintenance import MaintenanceUnavailable
+    from myink.task_budget import TaskBudgetPaused
+    from myink.models.maintenance import MaintenanceExecution
+    from myink.models.task_budget import TaskBudget
+    tid,pid,uid=budget_task;ensure_task_budget(tid,pid,uid,{'max_requests':20})
+    plan={'goals':['approve'],'expected_events':['event']}
+    builder=StateGraph(ChapterState);builder.add_node('plan_gate',budget_node(nodes.node_plan_gate,'plan_gate'))
+    builder.add_edge(START,'plan_gate');builder.add_edge('plan_gate',END)
+    graph=builder.compile(checkpointer=build_checkpointer());config={'configurable':{'thread_id':tid}}
+    with bind_task_budget(tid,'plan-fixture'):
+        invoke_graph(graph,{'project_id':pid,'task_id':tid,'chapter_seq':1,'writing_mode':'manual','plan':plan,'context':{}},config)
+    monkeypatch.setattr(runner,'get_graphs',lambda:(graph,None))
+    call_tid,call_pid=tid,pid
+    with tenant_session(pid) as db:
+        task=db.get(Task,uuid.UUID(tid));task.status=blocked if blocked in {'cancelled','paused','awaiting_review'} else 'awaiting_plan';task.error='original-wait'
+        execution=db.get(MaintenanceExecution,uuid.UUID(tid))
+        if blocked in {'maintenance','unconfirmed'}:execution.state='paused' if blocked=='maintenance' else 'interruption_unconfirmed'
+        if blocked=='foreign':execution.owner_token='foreign-owner'
+        if blocked=='budget':db.get(TaskBudget,uuid.UUID(tid)).pause_reason='request_limit'
+        if blocked=='wrong_task':
+            call_tid=str(uuid.uuid4());db.add(Task(id=uuid.UUID(call_tid),project_id=uuid.UUID(pid),task_type='chapter_generate',payload={},status='awaiting_plan',error='original-wait'))
+        before=(task.status,task.error,db.get(TaskBudget,uuid.UUID(tid)).pause_reason)
+        before_execution=execution_view(db,tid)
+    if blocked=='wrong_project':call_pid=str(uuid.uuid4())
+    if blocked in {'closed','drift'}:
+        with get_admin_engine().begin() as db:
+            db.execute(text('UPDATE maintenance_control SET admission_closed=:closed,generation=:generation WHERE id=1'),{'closed':blocked=='closed','generation':10 if blocked=='drift' else 9})
+    if blocked=='stale':graph.update_state(config,{'plan':plan},as_node='plan_gate')
+    if blocked=='invalid':plan={'goals':[],'expected_events':['event']}
+    if blocked=='anchor':plan={**plan,'transition':{'mode':'continue','anchor_quote':'fabricated','pending_action':'','opening_beat':'beat','bridge':''}}
+    rejected=False
+    try:runner.resume_chapter_plan(project_id=call_pid,task_id=call_tid,approved_plan=plan)
+    except (ValueError,TaskBudgetPaused,TaskBudgetUnavailable,MaintenanceUnavailable,MaintenancePaused):rejected=True
+    assert rejected, 'explicit approval cannot override stronger wait or stale/mismatched identity'
+    with tenant_session(pid) as db:
+        task=db.get(Task,uuid.UUID(tid))
+        assert (task.status,task.error,db.get(TaskBudget,uuid.UUID(tid)).pause_reason)==before
+        assert execution_view(db,tid)==before_execution
+        if blocked=='wrong_task':
+            other=db.get(Task,uuid.UUID(call_tid));assert (other.status,other.error)==('awaiting_plan','original-wait')
+            assert db.get(TaskBudget,uuid.UUID(call_tid)) is None
+
+
+@pytest.mark.parametrize('drift',['deployment_id','image_ids'])
+def test_resume_control_drift_preserves_safe_pause(pause_lab,budget_task,drift):
+    from myink.maintenance_pause import resume_maintenance_tasks,execution_view
+    from myink.models.task_budget import TaskBudget
+    tid,pid,uid=budget_task
+    ensure_task_budget(tid,pid,uid,{'max_requests':20})
+    graph,receipt=confirmed_graph(pid,tid)
+    with tenant_session(pid) as db:
+        original=execution_view(db,tid)
+        budget=db.get(TaskBudget,uuid.UUID(tid))
+        before=(db.get(Task,uuid.UUID(tid)).status,db.get(Task,uuid.UUID(tid)).error,
+                budget.requests_used,budget.cost_used_micros,budget.cost_reserved_micros,budget.pause_reason)
+    with get_admin_engine().begin() as db:
+        if drift=='deployment_id':db.execute(text("UPDATE maintenance_control SET deployment_id=:deployment WHERE id=1"),{'deployment':str(uuid.uuid4())})
+        else:db.execute(text("UPDATE maintenance_control SET image_ids=CAST(:images AS json) WHERE id=1"),{'images':__import__('json').dumps({'api':str(uuid.uuid4())})})
+    with tenant_session(pid) as db:
+        assert resume_maintenance_tasks(db,'b9-test',9)==[], 'same numerical generation cannot authorize different deployment/images'
+        assert execution_view(db,tid)==original
+        budget=db.get(TaskBudget,uuid.UUID(tid));task=db.get(Task,uuid.UUID(tid))
+        assert (task.status,task.error,budget.requests_used,budget.cost_used_micros,budget.cost_reserved_micros,budget.pause_reason)==before
