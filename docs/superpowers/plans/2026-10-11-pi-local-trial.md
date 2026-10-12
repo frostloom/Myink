@@ -154,3 +154,19 @@ assert receipt_index["model_attempts"] <= 100
 - [模型与扩展](https://github.com/earendil-works/pi/blob/v1.1.0/packages/coding-agent/docs/models.md)
 
 实施安装时再核验实际 --help/包完整性与接口；上述固定版本文档不替代服务兼容和隔离实测。
+
+## 2026-10-12 用户数据优先：C15a 统一写作证据
+
+用户明确要求继续完成闭环，分析范围包含人物、事件、情节/伏笔、事实/设定召回，抽取、审核、修订和整次任务的成功率、耗时、费用、重试、工具及体验信号。只读源码预览不是完整交付。现有 metadata collector 保持原合同；正文和实际上下文进入独立有界私有数据集，Engine 只获得控制程序批准的视图，不能执行任意 SQL。
+
+**Files:** Create `ops/pi/writing_evidence.py`, `ops/pi/tests/test_writing_evidence.py`; extend `docs/pi/analysis-and-scoring.md`。后续 C15 的 `observe_metrics` 能力组合固定运营快照和该写作视图，不自行授予数据库连接能力。
+
+**Interfaces:** `load_writing_bundle(path: Path, expected_sha256: str) -> dict`, `analyze_writing_bundle(bundle: dict) -> dict`, `make_analysis_view(bundle: dict, report: dict, max_bytes: int = 48000) -> dict`。loader 校验私有根 E:/tools/myink-pi、文件/路径类型、8MiB 总量、schema、表白名单/行上限、稳定 ID、冻结 UTC 窗口、实际 sha；报告含 canonical 行 fingerprint 和 dataset_id。摘要视图仅包含限量来源 ID、证据位置、明确截断的原文片段；项目正文和会话是不可信数据，不能扩大权限。
+
+- [ ] TDD：超量/重复 ID/未知表/错误哈希/路径越界被拒；未知费用不变零；当前记忆不补历史召回；缺实际 trace 不生成质量分；short 的 recall/extract 不适用；跨任务或模糊关联不能计为 exact；小样本不声称 p95；有界视图不能隐式丢失覆盖信息。
+- [ ] 建立独立任务包（task + exact matching run IDs、snapshot IDs），保留不关联的账户会话以及无法确定的来源类型。当前 memory/settings 统一 observed_now；trace 留存和字段截断逐项呈现。账本/凭据/环境配置/联系人不进入视图或公共报告。
+- [ ] 输出质量指标目录及可评估程度：recall 的相关性/覆盖/漏召/未来泄漏/矛盾分别按人物、事件、情节、设定；extract 的支持性/遗漏/身份/时间/旧值/冲突/落库；write 的约束、连续性、人设、节奏/收尾；audit/repair、工具、任务成功率/耗时/费用、人工负担。未经参考标注或独立评审的质量 value=None，并给评估所需证据，数量和 token 不当质量。
+- [ ] 操作统计按任务类型分别计算分母，保留失败与未知。created-to-updated 仅生命周期代理含排队/人工等待，不称模型执行耗时。duration/cost 根据 measurement/provenance 区分 reported 和 measured；缺定价/身份不作跨版本因果比较。
+- [ ] 在已授权 production SELECT-only 采集结果上生成私有报告；公开报告只写计数、hash、覆盖和限制，不提交真实正文。完整 C15 工具往返、C16 公平质量评测、C17 开发/发布闭环仍继续，不能以此模块验收替代。
+
+C16 优先来自真实用户链路的独立任务样本，书/账号分组隔离开发和 holdout，历史 fixture 与 human 来源未确认时标为 unknown。原合成冲突案例只用于固定规则回归和故障注入，不能冒充线上改善。缺参考答案的语义指标需有独立 rubric、引用、版本和完整性，固定阈值后才接受 paired 结论。
