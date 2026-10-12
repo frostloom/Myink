@@ -63,6 +63,53 @@ def test_read_source_has_real_hash_and_positions_and_denies_forged_capability(tm
     assert call(broker,asdict(cap),'candidate_status',call_id='dict').status=='blocked'
 
 
+@pytest.mark.parametrize('start,end,actual_end,eof',[
+    (1,200,165,True),(1,165,165,True),(60,120,120,False),
+    (165,185,165,True),(165,165,165,True),
+])
+def test_read_source_clamps_valid_end_and_reports_exact_eof(tmp_path,policy,start,end,actual_end,eof):
+    broker,cap,root,_=setup(tmp_path,policy)
+    lines=[f'line {i}\n' for i in range(1,166)];raw=''.join(lines).encode()
+    (root/'app/worker.py').write_bytes(raw)
+    receipt=call(broker,cap,'read_source',dict(path='app/worker.py',start_line=start,end_line=end))
+    assert receipt.status=='done'
+    evidence=receipt.evidence
+    assert evidence['text']==''.join(lines[start-1:actual_end])
+    assert evidence['start_line']==start and evidence['end_line']==actual_end
+    assert evidence['requested_end_line']==end and evidence['total_lines']==165
+    assert evidence['eof'] is eof and evidence['untrusted_source'] is True
+    assert evidence['source_hash']==hashlib.sha256(raw).hexdigest()
+
+
+def test_read_source_last_line_without_newline_has_no_phantom_line(tmp_path,policy):
+    broker,cap,root,_=setup(tmp_path,policy)
+    (root/'app/worker.py').write_bytes(b'first\nlast')
+    receipt=call(broker,cap,'read_source',dict(path='app/worker.py',start_line=2,end_line=3))
+    assert receipt.status=='done'
+    assert receipt.evidence['text']=='last' and receipt.evidence['end_line']==2
+    assert receipt.evidence['total_lines']==2 and receipt.evidence['eof'] is True
+
+
+@pytest.mark.parametrize('start,end',[(166,180),(0,1),(2,1),(1,201),(True,1),(1,1.0),(1,'200')])
+def test_read_source_eof_does_not_widen_start_type_or_window(tmp_path,policy,start,end):
+    broker,cap,root,_=setup(tmp_path,policy)
+    (root/'app/worker.py').write_bytes(b'line\n'*165)
+    assert call(broker,cap,'read_source',dict(path='app/worker.py',start_line=start,end_line=end)).status=='blocked'
+
+
+def test_read_source_empty_file_has_no_valid_start(tmp_path,policy):
+    broker,cap,root,_=setup(tmp_path,policy)
+    (root/'app/worker.py').write_bytes(b'')
+    assert call(broker,cap,'read_source',dict(path='app/worker.py',start_line=1,end_line=1)).status=='blocked'
+
+
+def test_read_source_clamped_end_keeps_excerpt_byte_cap(tmp_path,policy):
+    broker,cap,root,_=setup(tmp_path,policy)
+    (root/'app/worker.py').write_bytes(b'x'*16385+b'\n')
+    receipt=call(broker,cap,'read_source',dict(path='app/worker.py',start_line=1,end_line=200))
+    assert receipt.status=='blocked' and receipt.evidence['reason']=='source excerpt too large'
+
+
 @pytest.mark.parametrize('path',['.env','backup/file.py','../app/worker.py','app\\worker.py','app/worker.py:stream','APP/worker.py','app//worker.py','ops/pi/policy.py','app/worker.py.','app/worker.py '])
 def test_secret_protected_and_ambiguous_paths_denied(tmp_path,policy,path):
     broker,cap,_,_=setup(tmp_path,policy)
