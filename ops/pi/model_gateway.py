@@ -1,5 +1,6 @@
 """Trusted Anthropic forwarding. No SDK retries, redirects, or client pricing."""
 from dataclasses import dataclass
+import hashlib
 import json
 import time
 from queue import Queue, Empty, Full
@@ -76,8 +77,42 @@ def _usage_snapshot(usage):
                                value=value if type(value) is int and 0 <= value <= 2**63 - 1 else None)
     extra_count = sum(key not in _BILLING_DIMENSIONS for key in values)
     recognized = sorted(key for key in _USAGE_METADATA_KEYS if key in values)
+    fingerprints = []
+    inspected = 0
+    for key in values:
+        if key in _BILLING_DIMENSIONS or key in _USAGE_METADATA_KEYS:
+            continue
+        inspected += 1
+        if inspected > 8 or not isinstance(key, str) or len(key) > 256:
+            continue
+        try:
+            encoded = key.encode('utf-8')
+        except UnicodeEncodeError:
+            continue
+        if len(encoded) <= 256:
+            fingerprints.append(hashlib.sha256(b'myink-pi-usage-key-v1\0' + encoded).hexdigest())
+    unrecognized_count = extra_count - len(recognized)
     return dict(dimensions=dimensions, recognized_extra_keys=recognized, extra_key_count=extra_count,
-                unrecognized_extra_key_count=extra_count - len(recognized))
+                unrecognized_extra_key_count=unrecognized_count,
+                unrecognized_extra_key_sha256=sorted(fingerprints),
+                unrecognized_extra_keys_unfingerprinted=unrecognized_count - len(fingerprints))
+
+
+def _usage_updates(usage, previous, required):
+    """Validate whole cumulative evidence before replacing any known counter."""
+    if (not isinstance(usage, dict) or len(usage) > len(_BILLING_DIMENSIONS)
+            or any(key not in _BILLING_DIMENSIONS for key in usage)):
+        raise ValueError('invalid usage')
+    updates = {}
+    for key in _BILLING_DIMENSIONS:
+        value = usage.get(key)
+        if value is None and key not in required:
+            continue  # Null or absent optional counters supply no numeric evidence.
+        if (type(value) is not int or not 0 <= value <= 2**63 - 1
+                or key in previous and value < previous[key]):
+            raise ValueError('invalid cumulative usage')
+        updates[key] = value
+    return updates
 
 
 _USAGE_OBSERVER_QUEUE = Queue(maxsize=6)
@@ -153,22 +188,20 @@ class _UsageCollector:
                         reason = 'duplicate_start'
                         raise ValueError('duplicate start')
                     self.started = True
-                    self.usage = item['message']['usage']
+                    usage = item['message']['usage']
                     if self.capture:
-                        self.raw_usage['message_start'] = _usage_snapshot(self.usage)
+                        self.raw_usage['message_start'] = _usage_snapshot(usage)
                     reason = 'invalid_start_usage'
-                    if not isinstance(self.usage, dict) or len(self.usage) > 8:
-                        raise ValueError('invalid usage')
+                    self.usage = _usage_updates(usage, {}, ('input_tokens', 'output_tokens'))
                 elif kind == 'message_delta':
                     delta = item['usage']
                     if self.capture:
                         self.raw_usage['message_delta'] = _usage_snapshot(delta)
                     reason = 'invalid_usage_delta'
-                    if (not self.started or not isinstance(delta, dict) or set(delta) != {'output_tokens'}
-                            or type(delta['output_tokens']) is not int
-                            or delta['output_tokens'] < self.usage.get('output_tokens', 0)):
+                    if not self.started:
                         raise ValueError('invalid usage delta')
-                    self.usage.update(delta)
+                    updates = _usage_updates(delta, self.usage, ('output_tokens',))
+                    self.usage.update(updates)
                     self.final_output_usage = True
                 elif kind == 'message_stop':
                     if not self.started:
