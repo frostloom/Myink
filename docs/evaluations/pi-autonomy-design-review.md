@@ -2,6 +2,8 @@
 
 日期：2026-10-11。范围：书面设计审查，不是实现验收。
 
+2026-10-12 最终交付补记：以下“当前未安装”和未运行测试属于原设计时点。后续已固定安装Pi，C16/C17源码通过审查；实际 `003` checker/Pi containment及真实Pi模拟协议通过，付费plan在2次HTTP/4次只读工具后因cache-input用量转换未通过现有严格解析器校验与预算不足停止，未获批计划、开发、judge或发布。自有进程、keeper和网关已停止。冻结源码离线825 passed/2个Windows符号链接SKIP/19项设施deselected（255.71s）早于admission修复；一次整分支源码审查发现的Important已由最小修复、17项真实SQLite查询验证（1.76s）及有限Approved复审关闭，PostgreSQL回归未运行。源码 `f4d905d311ba08eddcc4dc6e200f30816b74f1fc` 已由主代理提交/push并核对。C18 [分层报告](pi-local-trial/report.md)和索引保留失败及证据边界：仍partial、server_enabled=false、45项语义指标/11域unknown；B12过期packet03被拒未重试，实际服务故障矩阵、旧watchdog与生产未验收。管理员可替换Engine接口已实现，第二个引擎的运行时替换与两个假引擎合同测试未运行；本补记记录已取得证据，最终事实文档另由主代理复核。
+
 设计稿为 [Myink Pi 自主迭代设计](../superpowers/specs/2026-10-10-pi-autonomy-design.md)，保存在独立 worktree 的 `codex/pi-autonomy-design` 分支。代码基线为 `299672c`，当前没有安装 Pi、运行新模型实验、修改生产配置或发布代码。
 
 ## 调研依据
