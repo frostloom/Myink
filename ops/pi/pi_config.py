@@ -1,11 +1,12 @@
 """Fixed private Pi configuration; the controller supplies a scoped gateway token."""
 from pathlib import Path
+import hashlib
 from urllib.parse import urlsplit
 from .contracts import Record
 from .policy import Policy
 
 
-def make_pi_config(root: Path, gateway: Record, policy: Policy) -> Record:
+def make_pi_config(root: Path, gateway: Record, policy: Policy, *, controlled_tools=None) -> Record:
     root = Path(root)
     if not root.is_absolute() or '..' in root.parts or root.is_symlink():
         raise ValueError('private absolute root required')
@@ -37,4 +38,26 @@ def make_pi_config(root: Path, gateway: Record, policy: Policy) -> Record:
         '--models', 'myink-budget/' + policy.model, '--thinking', 'off', '--no-tools',
         '--no-builtin-tools', '--no-mcp', '--no-extensions', '--no-skills',
         '--no-prompt-templates', '--no-themes', '--no-context-files', '--no-approve']
+    if controlled_tools is not None:
+        from .tools import PHASE_TOOLS
+        expected = {'phase','extension_sha256','schema_sha256','guard_sha256','broker_url','scope_token'}
+        if (not isinstance(controlled_tools, dict) or set(controlled_tools) != expected
+                or controlled_tools['phase'] not in PHASE_TOOLS
+                or controlled_tools['broker_url'].rstrip('/') != gateway['base_url'].rstrip('/')):
+            raise ValueError('fixed controller tool profile required')
+        tool_token = controlled_tools['scope_token']
+        if not isinstance(tool_token, str) or not tool_token or len(tool_token) > 4096 or any(not 33 <= ord(c) <= 126 for c in tool_token):
+            raise ValueError('scoped broker token required')
+        extension = Path(__file__).parent / 'extensions/controlled-tools.ts'
+        for path, key in ((extension,'extension_sha256'), (extension.with_name('tool-schemas.json'),'schema_sha256'),
+                          (Path(__file__).parent/'lab/pi-wire-guard.mjs','guard_sha256')):
+            if path.is_symlink() or hashlib.sha256(path.read_bytes()).hexdigest() != controlled_tools[key]:
+                raise ValueError('pinned owned tool closure hash mismatch')
+        env.update(PI_TOOL_PHASE=controlled_tools['phase'],PI_TOOL_BROKER_URL=controlled_tools['broker_url'],
+                   PI_TOOL_SCOPE_TOKEN=tool_token)
+        models['providers']['myink-budget']['models'][0]['compat'] = {'supportsEagerToolInputStreaming': False}
+        # Suppress pinned SDK automatic beta features before strict wire validation.
+        models['providers']['myink-budget']['models'][0]['headers'] = {'anthropic-beta': ''}
+        args.remove('--no-tools')
+        args += ['-e',str(extension)]
     return {'env': env, 'settings': settings, 'models': models, 'args': args}

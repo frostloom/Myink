@@ -21,8 +21,14 @@ class GatewayResponse:
     attempt_id: str
 
 
-def _validate(body, policy):
-    if not isinstance(body, dict) or set(body) - {'model', 'max_tokens', 'messages', 'system', 'stream', 'temperature', 'top_p', 'top_k', 'stop_sequences', 'thinking'}:
+def _validate(body, policy, tool_allowlist=()):
+    allowed = {'model', 'max_tokens', 'messages', 'system', 'stream', 'temperature', 'top_p', 'top_k', 'stop_sequences', 'thinking'}
+    definitions = []
+    if tool_allowlist:
+        from .tools import tool_definitions
+        definitions = tool_definitions(tool_allowlist)
+        allowed.add('tools')
+    if not isinstance(body, dict) or set(body) - allowed:
         raise ValueError('unsupported request fields')
     if body.get('model') != policy.model or type(body.get('max_tokens')) is not int or not 0 < body['max_tokens'] <= policy.max_tokens:
         raise ValueError('invalid model or max_tokens')
@@ -40,18 +46,44 @@ def _validate(body, policy):
     messages = body.get('messages')
     if not isinstance(messages, list) or not messages:
         raise ValueError('messages required')
-    def content(value):
+    if definitions and body.get('tools') != definitions:
+        raise ValueError('untrusted tool declarations')
+    by_name = {d['name']:d for d in definitions}
+    pending, completed = {}, set()
+    def content(value, role='system'):
         if isinstance(value, str):
             return
         if not isinstance(value, list) or not value:
             raise ValueError('unsupported content')
         for block in value:
-            if not isinstance(block, dict) or set(block) != {'type', 'text'} or block['type'] != 'text' or not isinstance(block['text'], str):
+            if not isinstance(block, dict):
                 raise ValueError('unsupported content block')
+            if set(block) == {'type','text'} and block['type'] == 'text' and isinstance(block['text'],str):
+                continue
+            if definitions and role == 'assistant' and set(block) == {'type','id','name','input'} and block['type'] == 'tool_use':
+                from .tools import validate_schema
+                call_id, name = block['id'], block['name']
+                import re
+                if (not isinstance(call_id,str) or re.fullmatch(r'[A-Za-z0-9_-]{1,128}',call_id) is None
+                        or not isinstance(name,str) or name not in by_name or call_id in pending or call_id in completed):
+                    raise ValueError('untrusted tool use')
+                validate_schema(block['input'],by_name[name]['input_schema'])
+                pending[call_id]=name
+                continue
+            if definitions and role == 'user' and set(block) == {'type','tool_use_id','content','is_error'} and block['type'] == 'tool_result':
+                call_id=block['tool_use_id']
+                if not isinstance(call_id,str) or call_id not in pending or type(block['is_error']) is not bool:
+                    raise ValueError('unpaired tool result')
+                content(block['content'])
+                del pending[call_id]; completed.add(call_id)
+                continue
+            raise ValueError('unsupported content block')
     for message in messages:
         if not isinstance(message, dict) or set(message) != {'role', 'content'} or message['role'] not in ('user', 'assistant'):
             raise ValueError('unsupported message')
-        content(message['content'])
+        content(message['content'],message['role'])
+    if pending:
+        raise ValueError('pending tool at model request')
     if 'system' in body:
         content(body['system'])
     encoded = json.dumps(body, allow_nan=False, separators=(',', ':')).encode()
@@ -366,9 +398,9 @@ def _error(code):
 
 
 def forward_messages(body: Record, scope_id: str, *, ledger: Ledger, policy: Policy, transport: Callable,
-                     usage_observer: Callable[[Record], None] | None = None) -> GatewayResponse:
+                     usage_observer: Callable[[Record], None] | None = None, tool_allowlist=()) -> GatewayResponse:
     try:
-        _validate(body, policy)
+        _validate(body, policy, tool_allowlist)
     except (ValueError, TypeError, OverflowError):
         return _error(400)
     if policy.live_enabled and (not policy.input_bound_calibrated or not policy.input_bound_source.strip() or not policy.price_source.strip() or any(v is None for v in policy.prices.values())):
