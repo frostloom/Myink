@@ -1,5 +1,6 @@
 """Selected-lab authorization precedes database setup and rejects endpoint drift."""
 import json
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 import pytest
@@ -43,6 +44,9 @@ def _owned_test(monkeypatch,tmp_path):
     monkeypatch.setattr(verify,'_docker',docker)
     monkeypatch.setenv('PI_LAB_ENV',str(tmp_path/'lab-env.json'))
     for k,v in expected.items():monkeypatch.setenv(k,v)
+    config=sys.modules.get('myink.config')
+    if config is not None:
+        monkeypatch.setattr(config,'settings',config.Settings())
     return owner,expected
 
 
@@ -103,3 +107,26 @@ def test_docker_mount_listing_order_is_not_configuration_drift():
     original=verify._configuration(info)
     info['Mounts'].reverse()
     assert verify._configuration(info)==original
+
+
+def test_owned_fixture_refreshes_preloaded_business_settings(monkeypatch,tmp_path):
+    monkeypatch.setenv('DATABASE_URL','postgresql+psycopg://offline:offline@192.0.2.4:1/foreign')
+    monkeypatch.setenv('ADMIN_DATABASE_URL','postgresql+psycopg://offline:offline@192.0.2.4:1/foreign')
+    from myink import config
+    previous=config.Settings()
+    monkeypatch.setattr(config,'settings',previous)
+    _,expected=_owned_test(monkeypatch,tmp_path)
+    assert verify.verify_test_environment()[1]==expected
+    assert isinstance(config.settings,config.Settings) and config.settings is not previous
+    assert config.settings.database_url==expected['DATABASE_URL']
+    assert config.settings.admin_database_url==expected['ADMIN_DATABASE_URL']
+
+
+def test_owned_fixture_still_rejects_cached_business_settings_drift(monkeypatch,tmp_path):
+    from dataclasses import replace
+    from myink import config
+    _owned_test(monkeypatch,tmp_path)
+    monkeypatch.setattr(config,'settings',replace(config.settings,
+        database_url='postgresql+psycopg://offline:offline@192.0.2.4:1/foreign'))
+    with pytest.raises(ValueError,match='frozen business fixture settings drift'):
+        verify.verify_test_environment()
