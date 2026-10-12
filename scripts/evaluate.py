@@ -86,7 +86,18 @@ def score_run(path:Path,review_path:Path|None=None):
               'review_sha256':hashlib.sha256(review_path.read_bytes()).hexdigest() if review_path else None,
               'scorer_provenance':provenance(ROOT)}
     (target/'scoring-manifest.json').write_text(json_text(metadata),encoding='utf-8')
-    summary=write_report(target,scores)
+    if manifest.get('config',{}).get('transport')=='platform':
+        from ops.pi.evaluate import operational_metrics
+        import html
+        summary={'planned':len(cases),'completed':sum(r['execution']=='completed' for r in scoring_rows),
+            'provisional_automatic':{'passed':sum(s.get('automatic_pass') is True for s in scores)},
+            'confirmed':{'cases':0,'overall_success':None},
+            'operations':operational_metrics([{'execution':r['execution'],'output':r} for r in scoring_rows]),
+            'accounting_source':'canonical local-trial-1 gateway only','semantic_quality':'provisional automatic; no human confirmation'}
+        (target/'summary.json').write_text(json_text(summary),encoding='utf-8')
+        (target/'report.html').write_text('<!doctype html><meta charset="utf-8"><title>Platform audit evidence</title><pre>'+html.escape(json_text(summary))+'</pre>',encoding='utf-8')
+    else:
+        summary=write_report(target,scores)
     template={'results_sha256':digest(rows),'cases_sha256':case_hash,'actor_kind':'human','cases':{
         c.id:{'reviewer':'','label_confirmed':False,'decisions':{fid:{'kind':'disputed'} for fid in s['candidates']}}
         for c,s in zip(cases,scores)}}
@@ -102,6 +113,7 @@ def main():
     parser.add_argument('--config',type=Path,default=ROOT/'evals/configs/audit.json')
     parser.add_argument('--split',choices=['all','development','holdout'],default='all')
     parser.add_argument('--suite',choices=['audit'],default='audit')
+    parser.add_argument('--transport',choices=['legacy-deepseek','platform'],default='legacy-deepseek')
     parser.add_argument('--live',action='store_true')
     parser.add_argument('--run-dir',type=Path)
     parser.add_argument('--review',type=Path)
@@ -140,6 +152,20 @@ def main():
                 auxiliary[name]=len(values)
             print(f'{len(cases)} audit cases and {count} catalog entries valid; auxiliary: {auxiliary}');return 0
         config=json.loads(args.config.read_text(encoding='utf-8'))
+        if args.transport=='platform':
+            if any(getattr(args,key) is not None for key in ('max_calls','max_cost_yuan','deadline_seconds')):
+                raise ValueError('platform budget is controlled by canonical gateway, not CLI overrides')
+            from myink.evaluation.platform_call import platform_config, public_config, run_platform_cases
+            config=platform_config(config)
+            if args.command=='plan':
+                print(json_text({'case_ids':[c.id for c in cases],'config':public_config(config),
+                    'requests':len(cases),'network_calls':0,'database_required':False,
+                    'accounting_source':'canonical local-trial-1 gateway only'}));return 0
+            target=args.run_dir or ROOT/'.local/evaluation-runs'/(
+                datetime.now().astimezone().strftime('%Y%m%dT%H%M%S')+'-'+uuid.uuid4().hex[:6])
+            run_platform_cases(cases,target,config,live=args.live,repo_root=ROOT)
+            summary=score_run(target);print('Run directory:',target)
+            return quality_exit(summary)
         expected={'model','temperature','max_tokens','max_calls','max_cost_yuan','deadline_seconds'}
         if set(config)!=expected:raise ValueError('unknown/missing config fields')
         for key in ('max_calls','max_cost_yuan','deadline_seconds'):

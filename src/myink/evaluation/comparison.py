@@ -92,10 +92,12 @@ class BudgetedProvider(ModelProvider):
         self.active = {}
         self.records = []
 
-    def name(self): return 'evaluation-budgeted-deepseek'
+    def name(self): return 'evaluation-platform-gateway' if self.config.get('transport')=='platform' else 'evaluation-budgeted-deepseek'
 
     def generate(self, messages, *, model_id, max_tokens=None, temperature=None,
                  json_mode=False, tools=None, disable_thinking=False):
+        if self.config.get('transport')=='platform':
+            return self._generate_platform(messages,max_tokens=max_tokens,json_mode=json_mode,tools=tools)
         cap = min(max_tokens or 2000, 6000)
         config = {**self.config, 'max_tokens':cap, 'json_mode':json_mode, 'tools':tools,
                   'temperature':self.config['temperature']}
@@ -132,6 +134,43 @@ class BudgetedProvider(ModelProvider):
         save_manifest(self.directory,{'mode':'generation_compare','status':'running','inflight':None,
             'actual_requests':self.budget.calls,'cost_reserved_or_estimated_yuan':self.budget.spent})
         return response
+
+
+    def _generate_platform(self,messages,*,max_tokens,json_mode,tools):
+        from myink.evaluation.platform_call import platform_call, public_config
+        index=len(self.records)+1;path=self.directory/'requests'/f'{index:04d}'
+        path.mkdir(parents=True,exist_ok=False)
+        config={**self.config,'max_tokens':min(max_tokens or self.config['max_tokens'],self.config['max_tokens']),
+                'json_mode':json_mode,'tools':tools}
+        row={'request_index':index,**self.active,'prompt_sha256':digest(messages),
+             'request_config':public_config(config),'execution':'inflight_unknown'}
+        (path/'messages.json').write_text(json_text(messages),encoding='utf-8');save_manifest(path,row)
+        start=time.monotonic()
+        try:
+            caller=platform_call if self.call is deepseek_call else self.call
+            output=caller(messages,config);row.update(output)
+        except Exception as exc:
+            row.update(execution='timeout' if isinstance(exc,TimeoutError) else 'provider_error',
+                       error_kind=type(exc).__name__,cost_est=None,cost_status='unknown')
+        error=None if row.get('execution')=='completed' else row.get('execution','provider_error')
+        response=_PlatformResponse(content=row.get('raw_output',''),model_id=row.get('model_id') or '',
+            input_tokens=row.get('input_tokens') or 0,output_tokens=row.get('output_tokens') or 0,
+            error=error,tool_calls=row.get('tool_calls'),finish_reason=row.get('finish_reason'),
+            usage_complete=row.get('accounting_status')=='reconciled')
+        response.evaluation_cost=row.get('cost_est')
+        response.duration_ms=round((time.monotonic()-start)*1000);row['wall_ms']=response.duration_ms
+        (path/'result.json').write_text(json_text(row),encoding='utf-8');self.records.append(row)
+        save_manifest(self.directory,{'mode':'generation_compare','status':'running','inflight':None,
+            'actual_requests':None,  # canonical ledger alone supplies the actual upstream count
+            'accounting_source':'canonical local-trial-1 gateway only','cost_reserved_or_estimated_yuan':None})
+        return response
+
+
+class _PlatformResponse(ModelResponse):
+    @property
+    def cost_est(self):
+        # ModelResponse's legacy official-price fallback must never price this path.
+        return self.evaluation_cost
 
 
 def blind_bundle(outputs:list[dict], *, seed:int):

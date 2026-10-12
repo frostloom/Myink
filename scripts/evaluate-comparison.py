@@ -34,23 +34,28 @@ from myink.workflow.chapter_graph import build_chapter_graph
 def normalized(value): return json.loads(json.dumps(value,ensure_ascii=False,default=str))
 
 
-def run(directory, cases, *, live, max_calls, max_cost, selected_slots=None, supplement_source=None):
+def run(directory, cases, *, live, max_calls, max_cost, selected_slots=None, supplement_source=None, platform_config=None):
     if not live: raise ValueError('explicit --live required')
     if settings.embed_enabled: raise ValueError('comparison requires EMBED_ENABLED=0')
     cases = [ComparisonCase.model_validate(c).model_dump() for c in cases]
     identity = require_isolated_database()
     if len({c['id'] for c in cases}) != len(cases): raise ValueError('duplicate comparison case')
     directory.mkdir(parents=True,exist_ok=False)
-    config={'model':'deepseek-v4-flash','temperature':.1,
+    if platform_config is not None:
+        from myink.evaluation.platform_call import platform_config as selected_platform_config
+        config=selected_platform_config(platform_config);budget=None
+    else:
+        config={'model':'deepseek-v4-flash','temperature':.1,
             'prices':{k:v*2 for k,v in lookup_prices('deepseek-v4-flash').items()},
             'max_calls':max_calls,'max_cost_yuan':max_cost,'deadline_seconds':1800}
-    budget=Budget(max_calls=max_calls,max_cost_yuan=max_cost,deadline_seconds=1800)
+        budget=Budget(max_calls=max_calls,max_cost_yuan=max_cost,deadline_seconds=1800)
     provider=BudgetedProvider(directory,budget,config)
+    from myink.evaluation.platform_call import public_config
     source=provenance(Path.cwd())
     source['source_hashes'][Path(__file__).relative_to(Path.cwd()).as_posix()]=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     for base in ('src/myink/workflow','src/myink/memory','src/myink/providers','src/myink/validation'):
         source['source_hashes'].update({p.as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in Path(base).rglob('*.py')})
-    run_info={'started_at':datetime.now(timezone.utc).isoformat(),'identity':identity,'config':config,
+    run_info={'started_at':datetime.now(timezone.utc).isoformat(),'identity':identity,'config':public_config(config),
               'embedding_enabled':False,'sdk_retries':0,'cases':cases,
               'supplement_source':supplement_source,**source}
     (directory/'run.json').write_text(json_text(run_info),encoding='utf-8')
@@ -118,8 +123,10 @@ def run(directory, cases, *, live, max_calls, max_cost, selected_slots=None, sup
                             db.execute(delete(AgentRun).where(AgentRun.project_id==pid))
                             db.execute(delete(Project).where(Project.id==pid))
                         cleaned.append(str(pid))
+                costs=[r.get('cost_est') for r in provider.records[before:]]
+                estimated_cost=sum(costs) if costs and all(type(c) in (int,float) and 0<=c<float('inf') for c in costs) else None
                 row.update(wall_ms=round((time.monotonic()-started)*1000),requests=len(provider.records)-before,
-                    estimated_cost_yuan=sum(r.get('cost_est',0) for r in provider.records[before:]),quality_status='pending_independent_review')
+                    estimated_cost_yuan=estimated_cost,quality_status='pending_independent_review')
                 if row.get('error') and 'budget' in row['error']:row['execution']='budget_stopped'
                 (artifact/'result.json').write_text(json_text(row),encoding='utf-8')
                 outputs.append(row);(directory/'results.json').write_text(json_text(outputs),encoding='utf-8')
@@ -127,7 +134,7 @@ def run(directory, cases, *, live, max_calls, max_cost, selected_slots=None, sup
     blind,key=blind_bundle(outputs,seed=secrets.randbits(32))
     (directory/'blind-review.json').write_text(json_text(blind),encoding='utf-8')
     (directory/'blind-key.json').write_text(json_text(key),encoding='utf-8')
-    summary={'planned_outputs':len(selected_slots) if selected_slots is not None else len(cases)*6,'actual_requests':budget.calls,'cost_reserved_or_estimated_yuan':budget.spent,
+    summary={'planned_outputs':len(selected_slots) if selected_slots is not None else len(cases)*6,'actual_requests':(budget.calls if budget else None),'cost_reserved_or_estimated_yuan':(budget.spent if budget else None),
              'completed_outputs':sum(r['execution']=='completed' for r in outputs),'quality_status':'pending_independent_review',
              'variants':{v:[{'case_id':r['case_id'],'repetition':r['repetition'],'execution':r['execution'],'outcome':r['outcome'],
                          'requests':r['requests'],'cost':r['estimated_cost_yuan'],'chars':len(r['draft'])} for r in outputs if r['variant']==v] for v in ('direct','full','no_hybrid')}}
@@ -138,7 +145,7 @@ def run(directory, cases, *, live, max_calls, max_cost, selected_slots=None, sup
         parts.append('<article><h2>'+html.escape(f'{r["case_id"]} · {r["variant"]} · 第{r["repetition"]}次')+'</h2><p>'+html.escape(r['execution']+' / '+r['outcome'])+'</p><details><summary>完整正文</summary><pre>'+html.escape(r['draft'])+'</pre></details></article>')
     (directory/'report.html').write_text('\n'.join(parts),encoding='utf-8')
     save_manifest(directory,{**run_info,'status':'finished','finished_at':datetime.now(timezone.utc).isoformat(),
-        'actual_requests':budget.calls,'cost_reserved_or_estimated_yuan':budget.spent,'cleaned_project_ids':cleaned,
+        'actual_requests':(budget.calls if budget else None),'cost_reserved_or_estimated_yuan':(budget.spent if budget else None),'cleaned_project_ids':cleaned,
         'limitations':['2 synthetic tasks, 2 repetitions; not an external benchmark','direct receives same raw history and constraints, full retrieves production context','nonstreaming evaluation transport, no TTFT conclusion','single chapter: Reflexion is not exercised; vector embeddings disabled','quality remains pending; review blinded bundle before opening key']})
     return summary
 
@@ -147,9 +154,17 @@ if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('command',choices=['plan','run'])
     p.add_argument('--cases',type=Path,default=Path('evals/cases/comparison.json'))
     p.add_argument('--output',type=Path);p.add_argument('--live',action='store_true')
+    p.add_argument('--transport',choices=['legacy-deepseek','platform'],default='legacy-deepseek')
+    p.add_argument('--platform-config',type=Path)
     p.add_argument('--max-calls',type=int,default=60);p.add_argument('--max-cost-yuan',type=float,default=5)
     p.add_argument('--supplement-source',type=Path)
     a=p.parse_args();cases=json.loads(a.cases.read_text(encoding='utf-8'))['cases']
+    selected_platform=None
+    if a.transport=='platform':
+        if not a.platform_config:p.error('--platform-config required; canonical gateway owns budget')
+        from myink.evaluation.platform_call import platform_config as select_platform
+        selected_platform=select_platform(json.loads(a.platform_config.read_text(encoding='utf-8')))
+    elif a.platform_config:p.error('--platform-config requires --transport platform')
     slots=None; supplement=None
     if a.supplement_source:
         manifest=json.loads((a.supplement_source/'manifest.json').read_text(encoding='utf-8'))
@@ -165,4 +180,4 @@ if __name__=='__main__':
     if a.command=='plan':print(json_text({'tasks':[c['id'] for c in cases],'variants':['direct','full','no_hybrid'],'repetitions':2,'planned_outputs':len(slots) if slots is not None else len(cases)*6,'supplement_source':supplement,'max_calls':a.max_calls,'max_cost_yuan':a.max_cost_yuan,'requires':'approved isolated PostgreSQL identity; no business data'}))
     else:
         if not a.output:p.error('--output required')
-        print(json_text(run(a.output,cases,live=a.live,max_calls=a.max_calls,max_cost=a.max_cost_yuan,selected_slots=slots,supplement_source=supplement)))
+        print(json_text(run(a.output,cases,live=a.live,max_calls=a.max_calls,max_cost=a.max_cost_yuan,selected_slots=slots,supplement_source=supplement,platform_config=selected_platform)))
