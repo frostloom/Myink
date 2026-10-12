@@ -123,8 +123,17 @@ def _usage_snapshot(usage):
             continue
         if len(encoded) <= 256:
             fingerprints.append(hashlib.sha256(b'myink-pi-usage-key-v1\0' + encoded).hexdigest())
+    details = values.get('prompt_tokens_details')
+    exact_shape = isinstance(details, dict) and set(details) == {'cached_tokens'}
+    cached = details.get('cached_tokens') if isinstance(details, dict) else None
+    cached_valid = type(cached) is int and 0 <= cached <= 2**63 - 1
+    read = dimensions['cache_read_input_tokens']['value']
+    cache_details = dict(present='prompt_tokens_details' in values, exact_shape_valid=exact_shape,
+                         cached_tokens_valid=cached_valid, cached_tokens=cached if cached_valid else None,
+                         cache_read_equal=cached == read if exact_shape and cached_valid and read is not None else None)
     unrecognized_count = extra_count - len(recognized)
-    return dict(dimensions=dimensions, recognized_extra_keys=recognized, extra_key_count=extra_count,
+    return dict(dimensions=dimensions, prompt_tokens_details=cache_details,
+                recognized_extra_keys=recognized, extra_key_count=extra_count,
                 unrecognized_extra_key_count=unrecognized_count,
                 unrecognized_extra_key_sha256=sorted(fingerprints),
                 unrecognized_extra_keys_unfingerprinted=unrecognized_count - len(fingerprints))
@@ -138,9 +147,9 @@ def _usage_updates(usage, previous, required):
     if 'prompt_tokens_details' in usage:
         details = usage['prompt_tokens_details']
         if (not isinstance(details, dict) or set(details) != {'cached_tokens'}
-                or type(details['cached_tokens']) is not int or details['cached_tokens'] != 0
+                or type(details['cached_tokens']) is not int or not 0 <= details['cached_tokens'] <= 2**63 - 1
                 or type(usage.get('cache_read_input_tokens')) is not int
-                or usage['cache_read_input_tokens'] != 0):
+                or details['cached_tokens'] != usage['cache_read_input_tokens']):
             raise ValueError('unsupported cache breakdown')
     updates = {}
     for key in _BILLING_DIMENSIONS:
