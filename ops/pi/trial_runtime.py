@@ -7,6 +7,7 @@ import json
 from .contracts import Receipt
 from .engine import AdministratorContext
 from .ledger import Ledger, _json
+from .plans import Plan
 from .tools import PHASE_TOOLS, digest
 
 FENCE_ID = 'c17-phase-admission:local-trial-1'
@@ -143,6 +144,23 @@ def verify_stopped_phase(broker, receipt, session_bytes, transcript_bytes, *, st
         required={'propose_plan'} if broker.capability.phase=='plan' else {'apply_patch','run_check'} if broker.capability.phase=='develop' else set()
         if not required<=successful or broker.capability.phase=='develop' and source_before==source_after:
             raise ValueError('missing actual plan/patch/check')
+        proposed_plan=None
+        if broker.capability.phase=='plan':
+            proposals=[(call,results[call_id]['details']['receipt']) for call_id,call in calls.items() if call['name']=='propose_plan']
+            if len(proposals)!=1:raise ValueError('exactly one current authenticated proposal required')
+            call,actual=proposals[0]
+            data=dict(call['arguments']['plan'])
+            for key in ('files','slice_ids','guard_metrics','change_types'):
+                if key in data:
+                    if not isinstance(data[key],list):raise ValueError('Plan arrays required')
+                    data[key]=tuple(data[key])
+            plan=Plan(**data)
+            evidence=actual['evidence'];rules=evidence['rules']
+            if (actual['status']!='done' or rules['status']!='done' or rules['evidence'].get('verified') is not True
+                    or evidence.get('plan_hash')!=plan.plan_hash or rules['evidence'].get('plan_hash')!=plan.plan_hash
+                    or digest(evidence['plan'])!=digest(asdict(plan))):
+                raise ValueError('verified current proposal and computed hash required')
+            proposed_plan=dict(operation_id=actual['operation_id'],plan=evidence['plan'],plan_hash=plan.plan_hash)
         final_check=None
         if broker.capability.phase=='develop':
             cap=broker.capability
@@ -159,8 +177,10 @@ def verify_stopped_phase(broker, receipt, session_bytes, transcript_bytes, *, st
                     final_check=actual['operation_id']
             if final_check is None:
                 raise ValueError('successful unit check must cover final candidate after its last patch')
-        return dict(verified=True,mode='ACTUAL',session_sha256=sha256(session_bytes).hexdigest(),
+        result=dict(verified=True,mode='ACTUAL',session_sha256=sha256(session_bytes).hexdigest(),
             transcript_sha256=sha256(transcript_bytes).hexdigest(),source_before=source_before,source_after=source_after,
             verified_tool_calls=sorted(calls),required_tools=sorted(required),final_check_operation_id=final_check)
+        if proposed_plan is not None:result['proposed_plan']=proposed_plan
+        return result
     except (ValueError,KeyError,TypeError,AttributeError):
         return dict(verified=False,reason='root_phase_reconciliation_failed')
