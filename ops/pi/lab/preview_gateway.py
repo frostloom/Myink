@@ -77,6 +77,31 @@ def _private_path(path):
     return path
 
 
+def make_usage_observer(path):
+    """Opt-in private, exclusive diagnostic file; at most six bounded records."""
+    path = _private_path(path)
+    # Reserve the destination before any live request; never overwrite evidence.
+    descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    os.close(descriptor)
+    lock = Lock()
+    count = 0
+
+    def observe(item):
+        nonlocal count
+        encoded = json.dumps(item, allow_nan=False, separators=(',', ':')) + '\n'
+        if len(encoded.encode('utf-8')) > 8192:
+            return
+        with lock:
+            if count >= 6:
+                return
+            count += 1
+            with path.open('a', encoding='utf-8') as target:
+                target.write(encoded)
+                target.flush()
+                os.fsync(target.fileno())
+    return observe
+
+
 def _credentials(policy):
     if CREDENTIAL_FILE.stat().st_size > 16384:
         raise ValueError('invalid trusted credentials')
@@ -100,6 +125,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--scope-token-file', required=True, type=Path)
     parser.add_argument('--ready-file', required=True, type=Path)
+    parser.add_argument('--usage-diagnostic-file', type=Path)
     parser.add_argument('--deadline-seconds', type=int, default=180)
     args = parser.parse_args(argv)
     if (not sys.platform.startswith('linux') or os.geteuid() != 0
@@ -125,13 +151,14 @@ def main(argv=None):
                 or policy.max_tokens != 2048 or policy.input_token_bound != 1000000
                 or policy.max_body_bytes != 65536):
             raise ValueError('preview policy does not match reviewed bounds')
+        usage_observer = make_usage_observer(args.usage_diagnostic_file) if args.usage_diagnostic_file else None
         credentials = _credentials(policy)
         ledger = Ledger(LEDGER_FILE)
         before = _budget(ledger)
         with httpx.Client(transport=httpx.HTTPTransport(retries=0, trust_env=False), trust_env=False,
                           follow_redirects=False, timeout=policy.timeout_seconds) as client:
             send = make_preview_transport(ledger, policy, client, credentials, deadline=deadline)
-            handler = make_gateway_handler(ledger, policy, send, scope_token=token)
+            handler = make_gateway_handler(ledger, policy, send, scope_token=token, usage_observer=usage_observer)
             with ThreadingHTTPServer(('127.0.0.1', 8765), handler) as server:
                 server.daemon_threads = True
                 ready = dict(status='ready', pid=os.getpid(), host='127.0.0.1', port=8765,

@@ -50,7 +50,7 @@ class _DeadlineIO:
         return self._call('flush')
 
 
-def make_gateway_handler(ledger, policy, transport, *, scope_token=None):
+def make_gateway_handler(ledger, policy, transport, *, scope_token=None, usage_observer=None):
     if scope_token is not None and (not isinstance(scope_token, str) or not 0 < len(scope_token) <= 4096
                                    or any(not 33 <= ord(char) <= 126 for char in scope_token)):
         raise ValueError('invalid scope token')
@@ -116,7 +116,8 @@ def make_gateway_handler(ledger, policy, transport, *, scope_token=None):
                     raise ValueError('incomplete request')
                 body = json.loads(raw)
                 request_policy = replace(policy, timeout_seconds=self.remaining())
-                result = forward_messages(body, 'local-trial-1', ledger=ledger, policy=request_policy, transport=transport)
+                result = forward_messages(body, 'local-trial-1', ledger=ledger, policy=request_policy,
+                                          transport=transport, usage_observer=usage_observer)
                 if result.attempt_id:
                     permit_deadline = ledger.get(result.attempt_id)['payload']['deadline']
                     self.deadline = min(self.deadline, time.monotonic() + max(0, permit_deadline - time.time()))

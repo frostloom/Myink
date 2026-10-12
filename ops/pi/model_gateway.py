@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import json
 import time
 from queue import Queue, Empty, Full
-from threading import Event, Thread
+from threading import Event, Lock, Thread
 from typing import Callable, Iterator
 
 from .budget import BudgetDenied, reserve, settle
@@ -58,9 +58,68 @@ def _validate(body, policy):
         raise ValueError('request too large')
 
 
+_BILLING_DIMENSIONS = ('input_tokens', 'output_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens')
+_USAGE_METADATA_KEYS = frozenset(('cache_creation', 'server_tool_use', 'service_tier', 'inference_geo',
+                                 'speed', 'iterations', 'total_tokens', 'input_tokens_details', 'output_tokens_details'))
+
+
+def _usage_snapshot(usage):
+    """Finite key names and numeric evidence only; never copy provider strings."""
+    values = usage if isinstance(usage, dict) else {}
+    types = {type(None): 'null', bool: 'boolean', int: 'integer', float: 'number',
+             str: 'string', dict: 'object', list: 'array'}
+    dimensions = {}
+    for key in _BILLING_DIMENSIONS:
+        value = values.get(key)
+        dimensions[key] = dict(present=key in values,
+                               type=types.get(type(value), 'other') if key in values else 'missing',
+                               value=value if type(value) is int and 0 <= value <= 2**63 - 1 else None)
+    extra_count = sum(key not in _BILLING_DIMENSIONS for key in values)
+    recognized = sorted(key for key in _USAGE_METADATA_KEYS if key in values)
+    return dict(dimensions=dimensions, recognized_extra_keys=recognized, extra_key_count=extra_count,
+                unrecognized_extra_key_count=extra_count - len(recognized))
+
+
+_USAGE_OBSERVER_QUEUE = Queue(maxsize=6)
+_USAGE_OBSERVER_LOCK = Lock()
+_USAGE_OBSERVER_STARTED = False
+
+
+def _usage_observer_worker():
+    while True:
+        observer, evidence = _USAGE_OBSERVER_QUEUE.get()
+        try:
+            observer(evidence)
+        except Exception:
+            pass  # Evidence storage cannot affect a settled model attempt.
+        finally:
+            _USAGE_OBSERVER_QUEUE.task_done()
+
+
+def _dispatch_usage_observer(observer, evidence):
+    """One daemon, six queued snapshots; busy/startup/saturated evidence may drop."""
+    global _USAGE_OBSERVER_STARTED
+    if not _USAGE_OBSERVER_STARTED:
+        if not _USAGE_OBSERVER_LOCK.acquire(blocking=False):
+            return
+        try:
+            if not _USAGE_OBSERVER_STARTED:
+                Thread(target=_usage_observer_worker, name='pi-usage-observer', daemon=True).start()
+                _USAGE_OBSERVER_STARTED = True
+        finally:
+            _USAGE_OBSERVER_LOCK.release()
+    try:
+        _USAGE_OBSERVER_QUEUE.put_nowait((observer, evidence))
+    except Full:
+        pass  # No joining, storage wait, retry, or coverage guarantee.
+
+
 class _UsageCollector:
     """Bounded evidence collection never delays the bytes being forwarded."""
-    def __init__(self):
+    def __init__(self, capture=False):
+        self.capture = capture
+        self.raw_usage = {}
+        self.failure = None
         self.buffer = b''
         self.usage = {}
         self.valid = True
@@ -72,6 +131,7 @@ class _UsageCollector:
         # Bound before concatenation, including a single oversized upstream chunk.
         if len(self.buffer) + len(chunk) > 65536:
             self.valid = False
+            self.failure = 'event_too_large'
             self.buffer = b''
             return
         self.buffer += chunk
@@ -81,20 +141,29 @@ class _UsageCollector:
             data = b'\n'.join(line[5:].lstrip() for line in event.split(b'\n') if line.startswith(b'data:'))
             if not data:
                 continue
+            reason = 'malformed_event'
             try:
                 item = json.loads(data)
                 kind = item['type']
                 if self.stopped and kind != 'ping':
+                    reason = 'event_after_stop'
                     raise ValueError('event after stop')
                 if kind == 'message_start':
                     if self.started:
+                        reason = 'duplicate_start'
                         raise ValueError('duplicate start')
                     self.started = True
                     self.usage = item['message']['usage']
+                    if self.capture:
+                        self.raw_usage['message_start'] = _usage_snapshot(self.usage)
+                    reason = 'invalid_start_usage'
                     if not isinstance(self.usage, dict) or len(self.usage) > 8:
                         raise ValueError('invalid usage')
                 elif kind == 'message_delta':
                     delta = item['usage']
+                    if self.capture:
+                        self.raw_usage['message_delta'] = _usage_snapshot(delta)
+                    reason = 'invalid_usage_delta'
                     if (not self.started or not isinstance(delta, dict) or set(delta) != {'output_tokens'}
                             or type(delta['output_tokens']) is not int
                             or delta['output_tokens'] < self.usage.get('output_tokens', 0)):
@@ -103,16 +172,30 @@ class _UsageCollector:
                     self.final_output_usage = True
                 elif kind == 'message_stop':
                     if not self.started:
+                        reason = 'stop_without_start'
                         raise ValueError('stop without start')
                     self.stopped = True
                 elif kind in ('content_block_start', 'content_block_delta', 'content_block_stop'):
                     self.final_output_usage = False
                 elif kind != 'ping':
+                    reason = 'unrecognized_event'
                     raise ValueError('unrecognized event')
             except (ValueError, TypeError, KeyError, AttributeError):
+                self.failure = reason
                 self.valid = False
                 self.buffer = b''
                 return
+
+    def reason(self):
+        if self.failure:
+            return self.failure
+        if not self.started:
+            return 'missing_start'
+        if not self.final_output_usage:
+            return 'missing_final_output_usage'
+        if not self.stopped:
+            return 'missing_stop'
+        return 'trailing_data' if self.buffer.strip() else 'complete'
 
     def complete(self):
         return self.valid and self.started and self.final_output_usage and self.stopped and not self.buffer.strip()
@@ -242,7 +325,8 @@ def _error(code):
     return GatewayResponse(code, {'content-type':'application/json'}, b'{"error":"request blocked"}', '')
 
 
-def forward_messages(body: Record, scope_id: str, *, ledger: Ledger, policy: Policy, transport: Callable) -> GatewayResponse:
+def forward_messages(body: Record, scope_id: str, *, ledger: Ledger, policy: Policy, transport: Callable,
+                     usage_observer: Callable[[Record], None] | None = None) -> GatewayResponse:
     try:
         _validate(body, policy)
     except (ValueError, TypeError, OverflowError):
@@ -253,12 +337,30 @@ def forward_messages(body: Record, scope_id: str, *, ledger: Ledger, policy: Pol
         permit = reserve(ledger, scope_id, body, policy)
     except BudgetDenied:
         return _error(429)
+    collector = _UsageCollector(capture=usage_observer is not None)
+    outcome = 'stream_closed'
+    observed = False
+
+    def observe(reason):
+        nonlocal observed
+        if usage_observer is None or observed:
+            return
+        observed = True
+        try:
+            _dispatch_usage_observer(usage_observer, dict(attempt_id=permit.attempt_id, stream=bool(body.get('stream')),
+                                stream_started=collector.started, stream_stopped=collector.stopped,
+                                final_output_usage=collector.final_output_usage, parser_valid=collector.valid,
+                                parser_reason=collector.failure or reason, raw_usage=collector.raw_usage))
+        except Exception:
+            pass  # Optional evidence failure never changes the immutable settlement.
+
     upstream = _DeadlineUpstream(transport, body, policy.timeout_seconds, permit.deadline)
     try:
         response = upstream.response()
     except Exception:
         upstream.close()
         settle(ledger, permit, None)
+        observe('upstream_error')
         return GatewayResponse(502, {'content-type':'application/json'}, b'{"error":"upstream unavailable"}', permit.attempt_id)
     headers = {k:v for k,v in response.headers.items() if k.lower() in ('content-type', 'request-id', 'x-request-id')}
     request_id = response.headers.get('request-id', response.headers.get('x-request-id', ''))
@@ -267,27 +369,35 @@ def forward_messages(body: Record, scope_id: str, *, ledger: Ledger, policy: Pol
     if 300 <= status < 400:
         upstream.close()
         settle(ledger, permit, unknown)
+        observe('redirect_refused')
         return GatewayResponse(502, headers, b'{"error":"redirect refused"}', permit.attempt_id)
 
     def finish_unknown():
         upstream.close()
         settle(ledger, permit, unknown)
+        observe(outcome)
 
     def chunks():
+        nonlocal outcome
         buffer = bytearray()
-        collector = _UsageCollector()
         try:
             for chunk in upstream:
                 if time.time() > permit.deadline:
                     raise TimeoutError('model deadline exceeded')
                 if body.get('stream'):
+                    if collector.capture:
+                        collector.feed(chunk)
                     yield chunk
-                    collector.feed(chunk)
+                    if not collector.capture:
+                        collector.feed(chunk)
                 else:
                     if len(buffer) + len(chunk) > 1048576:
                         raise ValueError('response too large')
                     buffer.extend(chunk)
                     yield chunk
+            outcome = collector.reason() if body.get('stream') else 'invalid_response_usage'
+            if status != 200:
+                outcome = 'non_success_status'
             if status == 200 and time.time() <= permit.deadline:
                 if body.get('stream'):
                     if not collector.complete():
@@ -297,13 +407,21 @@ def forward_messages(body: Record, scope_id: str, *, ledger: Ledger, policy: Pol
                     try:
                         item = json.loads(buffer)
                         usage = item['usage']
+                        if collector.capture:
+                            collector.raw_usage['response'] = _usage_snapshot(usage)
+                        outcome = 'complete' if isinstance(usage, dict) else 'invalid_response_usage'
                         if isinstance(usage, dict):
                             usage['provider_request_id'] = item.get('id', request_id)
                     except (ValueError, KeyError, TypeError):
+                        collector.valid = False
+                        outcome = 'invalid_response_json'
                         return
                 if isinstance(usage, dict):
                     usage['provider_request_id'] = usage.get('provider_request_id', request_id)
                     settle(ledger, permit, usage)
+        except Exception:
+            outcome = 'upstream_error'
+            raise
         finally:
             finish_unknown()
     iterator = chunks()
