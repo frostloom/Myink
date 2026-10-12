@@ -62,7 +62,7 @@ def load_policy(path):
     for key in ('live_enabled', 'server_daily_enabled', 'input_bound_calibrated'):
         if type(getattr(p, key)) is not bool:
             raise ValueError('invalid policy flag')
-    limits = dict(max_attempts=100, budget_microyuan=10000000, timeout_seconds=120,
+    limits = dict(max_attempts=100, budget_microyuan=20000000, timeout_seconds=120,
                   grace_seconds=900, soft_production_files=3, soft_production_lines=150,
                   hard_tracked_files=8, hard_production_lines=300, max_body_bytes=1048576, input_token_bound=1000000, max_tokens=1000000)
     for key, maximum in limits.items():
