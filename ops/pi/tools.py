@@ -301,13 +301,16 @@ class ControlledTools:
                     or not 1 <= args['start_line'] <= args['end_line'] <= args['start_line'] + 199):
                 raise ToolDenied('bounded positive source positions required')
             raw = self._read(args['path']); lines = raw.decode().splitlines(keepends=True)
-            if args['end_line'] > len(lines):
+            if args['start_line'] > len(lines):
                 raise ToolDenied('source position outside file')
-            text = ''.join(lines[args['start_line'] - 1:args['end_line']])
+            end_line = min(args['end_line'], len(lines))
+            text = ''.join(lines[args['start_line'] - 1:end_line])
             if len(text.encode()) > 16384:
                 raise ToolDenied('source excerpt too large')
             return dict(path=args['path'], source_hash=sha256(raw).hexdigest(), text=text,
-                        start_line=args['start_line'], end_line=args['end_line'], untrusted_source=True)
+                        start_line=args['start_line'], end_line=end_line,
+                        requested_end_line=args['end_line'], total_lines=len(lines),
+                        eof=end_line == len(lines), untrusted_source=True)
         if name == 'propose_plan':
             self._fields(args, ('plan',))
             data = deepcopy(args['plan'])
