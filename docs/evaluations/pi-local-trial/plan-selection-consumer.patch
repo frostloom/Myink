@@ -1,0 +1,18 @@
+--- c19-host-runtime-008/phase_host.py
++++ c19-host-plan-selection-fix/phase_host.py
+@@ -294,11 +294,10 @@
+             comparison=read_json(paired['path'],4*1024**2,True)
+             if comparison.get('objective_passed') is not True or comparison.get('severe_guard_veto') is not False:raise ValueError('paired objective unsuccessful')
+         if phase=='plan':
+-            with ledger.transaction() as db:
+-                rows=[ledger._record(row) for row in db.execute("SELECT * FROM operations WHERE kind='controlled_tool' ORDER BY rowid")]
+-            proposals=[r for r in rows if r['status']=='done' and r['payload'].get('tool')=='propose_plan' and r['operation_id'].startswith('tool:'+label+':')]
+-            if len(proposals)!=1 or proposals[0]['evidence']['rules']['status']!='done':raise ValueError('exact single valid proposal required; no format retry')
+-            p=proposals[0]['evidence'];write_new(evidence/'proposed-plan.json',dict(plan=p['plan'],plan_hash=p['plan_hash'],operation_id=proposals[0]['operation_id'],source_sha256=file_sha(candidate/TARGET)))
++            proposal=result.get('proposed_plan')
++            if type(proposal) is not dict or set(proposal)!={'operation_id','plan','plan_hash'}:
++                raise ValueError('exact authenticated current proposal required; no format retry')
++            write_new(evidence/'proposed-plan.json',{**proposal,'source_sha256':file_sha(candidate/TARGET)})
+         write_new(evidence/'success.json',dict(verified=True,protocol_execution='ACTUAL',model_execution='SIMULATED' if mock else 'ACTUAL',canonical_ledger_used=not mock,
+           manifest_sha256=inputs['source_manifest_sha256'],reconciliation_sha256=file_sha(evidence/'reconciliation.json'),max_proof_bytes=narrow.max_proof,released=False,semantic_quality='unknown'))
+     except BaseException as exc:
