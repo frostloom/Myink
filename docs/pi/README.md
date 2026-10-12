@@ -2,11 +2,13 @@
 
 管理员是 Myink 的组成部分，负责既有产品的稳定性、成本、速度、写作质量与体验；新功能方向由项目所有者决定。`Engine` 接口把管理员职责与具体 Agent 解耦，目前接入固定版本 Pi。预算、权限、备份与发布验收由控制程序管理。
 
-当前已完成 E 盘实际安装、真实 Pi 进程的模拟接口验证和受预算限制的真实模型只读源码分析。见 [本轮引入记录](pi-introduction-2026-10-11.md) 和 [安装与版本升级规范](pi-version-upgrade.md)。开发工具、质量对照和完整本地迭代闭环仍按 C15–C18 推进；当前没有生产 Pi。真实邮件、短信和线上自动迭代尚未启用。
+当前已完成 E 盘实际安装、真实 Pi 进程的模拟接口验证和受预算限制的真实模型只读源码分析。见 [本轮引入记录](pi-introduction-2026-10-11.md) 和 [安装与版本升级规范](pi-version-upgrade.md)。最终主机试验 `003` 的 checker/Pi 隔离与真实 Pi 模拟协议已通过；付费规划执行2次HTTP和4次只读工具调用后因 cache-input 用量转换未通过现有严格解析器校验及剩余额度不足停止。累计6请求，未形成获批计划、业务补丁、实际质量对照或发布，全部自有进程、keeper 和网关已停止。完整本地迭代闭环仍未完成；当前没有生产 Pi。真实邮件、短信和线上自动迭代尚未启用。
 
 以下保留离线控制基础的操作说明。离线测试本身不发送模型请求；真实预览必须使用已授权的独立策略与累计账本，不能把模拟回执当成线上验收。A5 Windows 和 Linux Git 检查通过，也不代表整个 A 阶段跨平台验收完成。
 
 ## 启动与目录
+
+C18 分层状态与维护交接见[本机试验报告](../evaluations/pi-local-trial/report.md)、[证据索引](../evaluations/pi-local-trial/receipt-index.json)、[服务器启用清单](server-enablement.md)和[日报/事故通知](notifications.md)。当前为 partial：主机隔离与模拟协议已通过，合成基线机械检查实际失败，45项语义指标/11域仍 unknown。冻结源码离线825 passed、2个Windows符号链接SKIP、19个设施测试deselected；该结果早于 admission 修复，修复另有17项真实SQLite查询测试通过，PostgreSQL回归未运行。完整服务构建与生产启用仍未验收。报告中的旧 A 阶段固定 banner 是历史边界，不自动反映新主机事实。
 
 从仓库根运行 `python -m ops.pi.control ledger-check --state-dir E:/tools/myink-pi/state`。
 WSL 对应 `/mnt/e/tools/myink-pi/state`；本轮状态、私有证据、依赖、缓存均在 E 盘隔离目录，保护主工作区。

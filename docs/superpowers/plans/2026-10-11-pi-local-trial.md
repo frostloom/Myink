@@ -14,11 +14,13 @@
 
 用户明确授权实际引入 Pi 后，优先完成固定安装、真实进程的模拟 RPC，以及受累计预算控制的一次只读源码分析。该轻量预览使用隔离的非 root Pi、独立可信模型网关和固定源码摘录，不开放开发工具。它不要求先完成候选镜像构建，但不替代 B12/B13 的验收，也不授权代码写入、重型测试、发布或生产部署。
 
-管理员角色为 `myink-administrator`，Pi 是 `Engine` 的当前实现。C14 当前只交付安装、文本生命周期和只读分析入口；工具往返、恢复协调以及完整 C15–C18 仍待实施。当前证据与限制见 [引入记录](../../pi/pi-introduction-2026-10-11.md)。
+管理员角色为 `myink-administrator`，Pi 是 `Engine` 的当前实现。C14–C17 已交付固定安装、RPC、受控工具、评测与迭代控制源码；真实 `003` 通过模拟模型协议与只读调用，但付费plan失败，完整开发/发布/比较闭环仍未完成。当前证据与限制见 [引入记录](../../pi/pi-introduction-2026-10-11.md)。
 
 ## Global Constraints
 
-固定 Pi v1.1.0 与安装锁/完整性，不静默升级 latest。新运行时/缓存/会话/证据在 E 盘；首次实测累计最多 100 HTTP 请求、估算 10 元，含压缩、重试、评审和生成。平台 Anthropic/`deepseek-v4.1-flash` 的真实凭据仅预算入口持有。价格、隔离、资源或恢复检查不通过时不做付费闭环。规则严重错误不能被文风平均分抵消；至少 5 组配对，缺样本不发布。Git/邮件/云告警本轮仍是本地模拟，不部署线上。
+2026-10-12：C18 最终事实为 `final-host003`、partial，见[报告与索引](../../evaluations/pi-local-trial/report.md)。C16/C17源码通过审查，`003` checker/Pi隔离和安装Pi模拟协议通过；3次模型传输为SIMULATED。付费plan执行2次HTTP及4次只读工具后因cache-input用量转换未通过现有严格解析器校验，剩余1904248小于下次最坏预扣2016384，禁止继续。累计6请求、已扣或预留8095752（已知46344/未知8049408）microyuan，实际账单未知；无获批计划、补丁、develop、judge或release，全部自有进程/keeper/网关停止。合成基线机械检查实际失败，45个语义ID/11域仍unknown。离线825 passed/2个Windows符号链接SKIP/19项设施deselected（255.71s）来自 `f2516c4d8ecd63a1faaa5919e10c1c4a2a0c4a1f` 加9个pre-host文件并排除dirty B12，早于admission修复；修复在 `f4d905d311ba08eddcc4dc6e200f30816b74f1fc` 已提交/push，另有17项真实SQLite验证（1.76s）与有限Approved复审关闭整分支审查的Important，PostgreSQL回归未运行。最终事实文档仍待主代理独立复核。实际服务故障矩阵、B12构建发布、旧watchdog、真实质量配对与服务器启用仍 pending/blocked；下文未满足的真实验收勾选框保持未勾选。
+
+固定 Pi v1.1.0 与安装锁/完整性，不静默升级 latest。新运行时/缓存/会话/证据在 E 盘；首次实测累计最多 100 HTTP 请求、估算 10 元，含压缩、重试、评审和生成。平台 Anthropic/`deepseek-v4.1-flash` 的真实凭据仅预算入口持有。价格、隔离、资源或恢复检查不通过时不做付费闭环。规则严重错误不能被文风平均分抵消；至少 5 组配对，缺样本不发布。Pi自主GitHub流程仍为SIMULATED；主代理功能分支push为actual并独立核对。邮件/短信未配置，日报/事故告警未发送，不部署线上。
 
 ## Review Focus
 
