@@ -100,16 +100,23 @@ def _usage_snapshot(usage):
 
 def _usage_updates(usage, previous, required):
     """Validate whole cumulative evidence before replacing any known counter."""
-    if (not isinstance(usage, dict) or len(usage) > len(_BILLING_DIMENSIONS)
-            or any(key not in _BILLING_DIMENSIONS for key in usage)):
+    if (not isinstance(usage, dict) or len(usage) > len(_BILLING_DIMENSIONS) + 1
+            or any(key not in (*_BILLING_DIMENSIONS, 'prompt_tokens_details') for key in usage)):
         raise ValueError('invalid usage')
+    if 'prompt_tokens_details' in usage:
+        details = usage['prompt_tokens_details']
+        if (not isinstance(details, dict) or set(details) != {'cached_tokens'}
+                or type(details['cached_tokens']) is not int or details['cached_tokens'] != 0
+                or type(usage.get('cache_read_input_tokens')) is not int
+                or usage['cache_read_input_tokens'] != 0):
+            raise ValueError('unsupported cache breakdown')
     updates = {}
     for key in _BILLING_DIMENSIONS:
         value = usage.get(key)
         if value is None and key not in required:
             continue  # Null or absent optional counters supply no numeric evidence.
         if (type(value) is not int or not 0 <= value <= 2**63 - 1
-                or key in previous and value < previous[key]):
+                or key == 'output_tokens' and key in previous and value < previous[key]):
             raise ValueError('invalid cumulative usage')
         updates[key] = value
     return updates

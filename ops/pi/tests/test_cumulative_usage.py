@@ -114,8 +114,8 @@ def test_malformed_delta_is_rejected_without_partial_usage_mutation(dimension, i
     assert 'message_delta' in collector.raw_usage
 
 
-@pytest.mark.parametrize('dimension', DIMENSIONS)
-def test_each_decreasing_cumulative_counter_preserves_full_reservation(ledger, policy, dimension):
+@pytest.mark.parametrize('dimension', ['output_tokens'])
+def test_decreasing_output_counter_preserves_full_reservation(ledger, policy, dimension):
     start = dict.fromkeys(DIMENSIONS, 5)
     record, evidence = forward(ledger, replace(policy, prices=policy.prices | dict(cache_write='2')),
                                start, [dict.fromkeys(DIMENSIONS, 6) | {dimension: 4}])
@@ -187,3 +187,51 @@ def test_unknown_key_fingerprints_reach_only_opt_in_private_evidence(ledger, pol
     collector = _UsageCollector()
     collector.feed(event('message_start', FULL | {'synthetic_extra': 'PRIVATE'}))
     assert collector.raw_usage == {}
+
+
+@pytest.mark.parametrize('dimension',['input_tokens','cache_read_input_tokens','cache_creation_input_tokens'])
+def test_final_input_and_cache_replace_lower_start_totals(ledger,policy,dimension):
+    start=dict.fromkeys(DIMENSIONS,5); final=dict.fromkeys(DIMENSIONS,6)|{dimension:4}
+    configured=replace(policy,prices=policy.prices|dict(cache_write='2'))
+    record,evidence=forward(ledger,configured,start,[final])
+    assert record['status']=='done' and record['evidence']['usage_known'] is True
+    collector=_UsageCollector()
+    for chunk in CumulativeEvents(start,[final]):collector.feed(chunk)
+    assert collector.usage==final and evidence['parser_reason']=='complete'
+
+
+@pytest.mark.parametrize('location',['start','delta'])
+def test_explicit_redundant_zero_cache_details_settle_only_priced_counters(ledger,policy,location):
+    extra={'prompt_tokens_details':{'cached_tokens':0}}
+    start=FULL|extra if location=='start' else FULL
+    final=FINAL|extra if location=='delta' else FINAL
+    record,evidence=forward(ledger,policy,start,[final])
+    assert record['status']=='done' and totals(ledger,'local-trial-1')==(1,34)
+    assert evidence['parser_valid']
+    collector=_UsageCollector()
+    for chunk in CumulativeEvents(start,[final]):collector.feed(chunk)
+    assert collector.usage==FINAL and set(collector.usage)==set(DIMENSIONS)
+
+
+@pytest.mark.parametrize('details',[None,0,[],{}, {'cached_tokens':None},{'cached_tokens':True},
+    {'cached_tokens':0.0},{'cached_tokens':-1},{'cached_tokens':1},{'cached_tokens':0,'extra':0}])
+def test_nonexact_zero_cache_details_keep_full_reservation(ledger,policy,details):
+    record,evidence=forward(ledger,policy,FULL,[FINAL|{'prompt_tokens_details':details}])
+    assert record['status']=='uncertain' and totals(ledger,'local-trial-1')==(1,10000)
+    assert evidence['parser_reason']=='invalid_usage_delta'
+
+
+@pytest.mark.parametrize('cache',[None,True,0.0,1,'missing'])
+def test_zero_details_require_same_event_explicit_integer_zero_cache_read(ledger,policy,cache):
+    final=FINAL|{'prompt_tokens_details':{'cached_tokens':0},'cache_read_input_tokens':cache}
+    if cache=='missing':del final['cache_read_input_tokens']
+    record,_=forward(ledger,policy,FULL,[final])
+    assert record['status']=='uncertain' and totals(ledger,'local-trial-1')==(1,10000)
+
+
+def test_zero_details_cannot_replace_unknown_priced_cache_write(ledger,policy):
+    final=FINAL|{'prompt_tokens_details':{'cached_tokens':0}}
+    del final['cache_creation_input_tokens']
+    record,evidence=forward(ledger,policy,dict(input_tokens=5,output_tokens=0),[final])
+    assert record['status']=='uncertain' and totals(ledger,'local-trial-1')==(1,10000)
+    assert evidence['parser_valid'] and evidence['parser_reason']=='complete'
