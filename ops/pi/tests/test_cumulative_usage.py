@@ -215,14 +215,14 @@ def test_explicit_redundant_zero_cache_details_settle_only_priced_counters(ledge
 
 @pytest.mark.parametrize('details',[None,0,[],{}, {'cached_tokens':None},{'cached_tokens':True},
     {'cached_tokens':0.0},{'cached_tokens':-1},{'cached_tokens':1},{'cached_tokens':0,'extra':0}])
-def test_nonexact_zero_cache_details_keep_full_reservation(ledger,policy,details):
+def test_malformed_or_mismatched_cache_details_keep_full_reservation(ledger,policy,details):
     record,evidence=forward(ledger,policy,FULL,[FINAL|{'prompt_tokens_details':details}])
     assert record['status']=='uncertain' and totals(ledger,'local-trial-1')==(1,10000)
     assert evidence['parser_reason']=='invalid_usage_delta'
 
 
 @pytest.mark.parametrize('cache',[None,True,0.0,1,'missing'])
-def test_zero_details_require_same_event_explicit_integer_zero_cache_read(ledger,policy,cache):
+def test_zero_details_reject_missing_invalid_or_mismatched_same_event_cache_read(ledger,policy,cache):
     final=FINAL|{'prompt_tokens_details':{'cached_tokens':0},'cache_read_input_tokens':cache}
     if cache=='missing':del final['cache_read_input_tokens']
     record,_=forward(ledger,policy,FULL,[final])

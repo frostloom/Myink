@@ -162,3 +162,36 @@ def test_stalled_observer_does_not_block_paid_response_completion(ledger, policy
         release.set()
         caller.join(1)
         assert observed.wait(1)
+
+
+@pytest.mark.parametrize('details,read,want', [
+    ({'cached_tokens': 2688}, 2688, (True, True, 2688, True)),
+    ({'cached_tokens': 0}, 1, (True, True, 0, False)),
+    ({'cached_tokens': 1}, None, (True, True, 1, None)),
+    ({'cached_tokens': True}, 1, (True, False, None, None)),
+    ({'cached_tokens': 1.0}, 1, (True, False, None, None)),
+    ({'cached_tokens': 'PRIVATE'}, 1, (True, False, None, None)),
+    ({'cached_tokens': -1}, 1, (True, False, None, None)),
+    ({'cached_tokens': 2**63}, 1, (True, False, None, None)),
+    ({'cached_tokens': 2**63 - 1}, 2**63 - 1, (True, True, 2**63 - 1, True)),
+    ({'cached_tokens': 1, 'PRIVATE-NAME': 'PRIVATE'}, 1, (False, True, 1, None)),
+    ({'PRIVATE-NAME': 'PRIVATE'}, 1, (False, False, None, None)),
+    (None, 1, (False, False, None, None)),
+])
+def test_known_cache_detail_diagnostic_exports_only_bounded_shape_numeric_equality(details, read, want):
+    from ops.pi.model_gateway import _usage_snapshot
+    snapshot = _usage_snapshot(dict(prompt_tokens_details=details, cache_read_input_tokens=read))
+    facts = snapshot['prompt_tokens_details']
+    shape, valid, value, equal = want
+    assert facts == dict(present=True, exact_shape_valid=shape, cached_tokens_valid=valid,
+                         cached_tokens=value, cache_read_equal=equal)
+    assert 'PRIVATE' not in json.dumps(snapshot)
+    assert snapshot['unrecognized_extra_key_count'] == 1
+    assert len(snapshot['unrecognized_extra_key_sha256']) == 1
+
+
+def test_missing_known_cache_details_diagnostic_cannot_infer_from_cache_read():
+    from ops.pi.model_gateway import _usage_snapshot
+    assert _usage_snapshot({'cache_read_input_tokens': 2688})['prompt_tokens_details'] == dict(
+        present=False, exact_shape_valid=False, cached_tokens_valid=False,
+        cached_tokens=None, cache_read_equal=None)
