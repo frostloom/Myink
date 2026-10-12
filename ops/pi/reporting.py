@@ -23,7 +23,13 @@ def render_report(events: list[Record], snapshots: list[Record]) -> str:
         status = payload.get('status', 'unknown')
         operation = payload.get('operation_id', 'unknown')
         lines.append(f'- {_text(kind)} / {_text(operation)} / {_text(status)}')
-        if kind == 'receipt' and status == 'done' and (payload.get('evidence') or {}).get('released') is True:
+        evidence = payload.get('evidence') or {}
+        if kind == 'iteration_summary':
+            lines.append(f"  mode={_text(evidence.get('mode'))}; reservations={_text(evidence.get('counted_reservations'))}; charged/reserved microyuan={_text(evidence.get('charged_or_reserved_microyuan'))}; actual HTTP={_text(evidence.get('actual_http_attempts'))}; semantic quality={_text(evidence.get('semantic_quality'))}; next={_text(evidence.get('next_action'))}")
+            for stage in evidence.get('stage_receipts', []):
+                proof = stage.get('evidence') or {}
+                lines.append(f"  stage={_text(stage.get('operation_id'))}; status={_text(stage.get('status'))}; session={_text(proof.get('session_sha256'))}; source={_text(proof.get('source_sha256'))}; check={_text(proof.get('check_operation_id'))}")
+        if kind == 'receipt' and status == 'done' and evidence.get('released') is True and evidence.get('mode') != 'SIMULATED':
             released = True
     if not released:
         lines += ['', 'No release', 'Reason: no verified release receipt in this ledger.', 'Next action: review blockers and gather the pending acceptance evidence.']
