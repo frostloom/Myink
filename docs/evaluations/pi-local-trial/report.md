@@ -44,3 +44,7 @@ C18审查修正：上述历史运行的stdout未物理留存，故仅补录一�
 冷RSS/冷热峰值未测量。Pi384MiB、checker128MiB、50%CPU、swap0为配置上限；runtime binding仅观察。AF_INET/AF_INET6-only 的真实Pi协议及付费只读调用兼容已通过；localhost允许范围仍超过一个代理端口，不声称内核逐端口隔离。
 
 生产 `enabled=false`；主代理功能分支actual push与Pi自主GitHub模拟流程分列，没有main merge。日报/事故信号未真实发送。`reporting.py`旧A阶段固定banner保留，仅代表历史交付边界；空账本或模型事件不授予新验收。后续见[服务器清单](../../pi/server-enablement.md)、[通知](../../pi/notifications.md)、[升级](../../pi/pi-version-upgrade.md)。公共文件不含正文、账号、密钥或dump。
+
+## C19 本机累计额度更新
+
+2026-10-12用户授权后，既有local-trial-1已追加可信20元增补，仍累计最多100次请求；原6次请求与8095752微元估算费用/预留全部保持不变。本文上述003运行及10元额度为历史快照。当前增补实施、318项合并测试及证据参见[预算增补记录](budget-amendment-2026-10-12.md)。该更新没有宣称004实际开发、质量评估或部署完成，也不改变未来服务器每日10元默认值。
