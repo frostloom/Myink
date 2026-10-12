@@ -68,9 +68,9 @@ def admission_for(db,body):
     tid=uuid.UUID(body["task_id"])
     digest=body_hash(body)
     intents=list(db.scalars(select(AdmissionIntent).where(AdmissionIntent.task_id==tid)))
-    exact=next((i for i in intents if i.payload_hash==digest),None)
+    exact=[i for i in intents if i.payload_hash==digest]
     if exact:
-        return exact if exact.gate_state in ("accepted","not_required") and exact.publication_state not in ("rejected","not_attempted") else None
+        return next((i for i in exact if i.gate_state in ("accepted","not_required") and i.publication_state not in ("rejected","not_attempted")),None)
     delivery=db.scalar(select(QueueHandoff).where(QueueHandoff.task_id==tid,QueueHandoff.body_hash==digest))
     if delivery and delivery.admission_id:
         intent=db.get(AdmissionIntent,delivery.admission_id)
