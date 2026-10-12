@@ -13,7 +13,13 @@ from .engine import AdministratorContext, EngineSession
 
 
 class PiAdapter:
-    def __init__(self, command, *, cwd, env, config_hash):
+    def __init__(self, command, *, cwd, env, config_hash, authorized_tools=(), tool_verifier=None):
+        from .tools import TOOL_NAMES
+        if (not isinstance(authorized_tools, tuple) or len(set(authorized_tools)) != len(authorized_tools)
+                or any(n not in TOOL_NAMES for n in authorized_tools)
+                or bool(authorized_tools) != callable(tool_verifier)):
+            raise ValueError('fixed tool grant and authoritative receipt verifier required')
+        self.authorized_tools, self.tool_verifier = authorized_tools, tool_verifier
         self.command = list(command)
         self.cwd = Path(cwd)
         self.env = dict(env)
@@ -23,8 +29,10 @@ class PiAdapter:
 
     def _redact(self, value):
         text = str(value)
-        token = self.env.get('SCOPED_GATEWAY_TOKEN')
-        return text.replace(token, '[scoped-token]') if token else text
+        for key in ('SCOPED_GATEWAY_TOKEN','PI_TOOL_SCOPE_TOKEN'):
+            token = self.env.get(key)
+            if token: text = text.replace(token, '[scoped-token]')
+        return text
 
     def _read_stdout(self):
         try:
@@ -93,6 +101,32 @@ class PiAdapter:
                           and isinstance(r.get('message'), dict) and r['message'].get('role') == 'assistant']
             if not assistants:
                 return False
+            seen_calls, seen_results = set(), set()
+            for record in new_records:
+                msg = record.get('message', {})
+                if not isinstance(msg, dict):
+                    continue
+                if msg.get('role') == 'assistant':
+                    for block in msg.get('content', []):
+                        if isinstance(block, dict) and block.get('type') == 'toolCall':
+                            call_id = block.get('id')
+                            verified = self._verified_tools.get(call_id)
+                            if (not verified or call_id in seen_calls or block.get('name') != verified['name']
+                                    or block.get('arguments') != verified['args']):
+                                return False
+                            seen_calls.add(call_id)
+                if msg.get('role') == 'toolResult':
+                    call_id = msg.get('toolCallId')
+                    verified = self._verified_tools.get(call_id)
+                    if (not verified or call_id not in seen_calls or call_id in seen_results
+                            or msg.get('nestedCalls') or msg.get('toolName') != verified['name']
+                            or msg.get('details') != {'receipt':verified['receipt']}
+                            or msg.get('content') != verified['content']
+                            or msg.get('isError') != (verified['receipt']['status'] != 'done')):
+                        return False
+                    seen_results.add(call_id)
+            if seen_calls != set(self._verified_tools) or seen_results != seen_calls:
+                return False
             message = assistants[-1]
             blocks = message.get('content', [])
             return (message.get('stopReason') == 'stop' and not message.get('errorMessage')
@@ -135,7 +169,35 @@ class PiAdapter:
             if record.get('type') == 'message_end':
                 self._text = ''.join(b.get('text', '') for b in message.get('content', []) if isinstance(b, dict) and b.get('type') == 'text')
         if record.get('type', '').startswith('tool_'):
-            self._unexpected_tool = True
+            kind, call_id, name = record.get('type'), record.get('toolCallId'), record.get('toolName')
+            if (not isinstance(call_id, str) or '/' in call_id or record.get('parentToolCallId')
+                    or name not in self.authorized_tools):
+                self._unexpected_tool = True
+            elif kind == 'tool_execution_start':
+                if call_id in self._pending_tools or call_id in self._verified_tools or not isinstance(record.get('args'), dict):
+                    self._unexpected_tool = True
+                else:
+                    self._pending_tools[call_id] = {'name':name,'args':record['args']}
+            elif kind == 'tool_execution_end':
+                pending = self._pending_tools.get(call_id)
+                result = record.get('result', {})
+                receipt = result.get('details', {}).get('receipt') if isinstance(result, dict) and isinstance(result.get('details'), dict) else None
+                content = result.get('content') if isinstance(result, dict) else None
+                try:
+                    valid = (pending and pending['name'] == name and isinstance(receipt, dict)
+                             and record.get('isError') == (receipt.get('status') != 'done')
+                             and isinstance(content, list) and len(content) == 1 and set(content[0]) == {'type','text'}
+                             and content[0]['type'] == 'text' and json.loads(content[0]['text']) == receipt
+                             and self.tool_verifier(call_id,name,pending['args'],receipt))
+                except (ValueError, TypeError, KeyError, AttributeError):
+                    valid = False
+                if valid:
+                    self._verified_tools[call_id] = {**pending,'receipt':receipt,'content':content}
+                    del self._pending_tools[call_id]
+                else:
+                    self._unexpected_tool = True
+            else:
+                self._unexpected_tool = True
         if record.get('type') == 'response' and record.get('success') is False:
             self._errors = True
 
@@ -150,7 +212,8 @@ class PiAdapter:
         if (context.role != 'myink-administrator' or context.experiment_id != 'local-trial-1'
                 or context.budget_scope_id != 'local-trial-1' or not context.plan_id
                 or session.engine != 'pi' or session.config_hash != self.config_hash
-                or session.phase != phase or tools or deadline.tzinfo is None):
+                or session.phase != phase or tools != list(self.authorized_tools)
+                or (session.resume and self.authorized_tools) or deadline.tzinfo is None):
             raise ValueError('untrusted engine/session/context or tool grant')
         path = Path(session.session_path)
         if not path.is_absolute() or path.is_symlink() or '..' in path.parts:
@@ -173,6 +236,7 @@ class PiAdapter:
         self._records, self._writes = Queue(maxsize=256), Queue(maxsize=4)
         self._reader_error = self._writer_error = self._errors = self._aborted = self._settled = self._unexpected_tool = False
         self._text = ''
+        self._pending_tools, self._verified_tools = {}, {}
         self._stderr_bytes = 0
         self._stderr_prefix = bytearray()
         self._threads = []
@@ -224,7 +288,7 @@ class PiAdapter:
         io_failed = protocol_failed or self._transcript_error
         status = 'failed' if self._errors or stopped.evidence.get('returncode') not in (0, None) else 'pending'
         if (accepted and disposition == 'started' and self._settled and not self._aborted
-                and not self._errors and not self._unexpected_tool and exited
+                and not self._errors and not self._unexpected_tool and not self._pending_tools and exited
                 and stopped.evidence.get('returncode') == 0 and artifacts and not io_failed
                 and stopped.evidence['clear_abort_acknowledged'] and self._text.strip()):
             status = 'done'
@@ -234,6 +298,7 @@ class PiAdapter:
             'accepted': accepted, 'disposition': disposition, 'settled': self._settled,
             'aborted': self._aborted, 'errors': self._errors, 'protocol_failed': protocol_failed,
             'transcript_failed': self._transcript_error, 'session_valid': artifacts, 'unexpected_tool': self._unexpected_tool,
+            'verified_tool_calls':sorted(self._verified_tools), 'pending_tool_calls':sorted(self._pending_tools),
             'reason': reason, 'text': self._redact(self._text), 'transcript_path': str(transcript),
             'session_path': str(path), 'session_sha256': hashlib.sha256(path.read_bytes()).hexdigest() if artifacts else None,
             'stderr_bytes': self._stderr_bytes,

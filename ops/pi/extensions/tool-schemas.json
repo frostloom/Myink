@@ -1,0 +1,310 @@
+[
+  {
+    "name": "observe_metrics",
+    "description": "Read the controller prepared partial writing and operational snapshot.",
+    "input_schema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "read_source",
+    "description": "Read bounded UTF-8 source from the frozen exact tracked path allowlist.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "start_line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "end_line": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "path",
+        "start_line",
+        "end_line"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "propose_plan",
+    "description": "Persist an unapproved existing-behavior Plan; separate host review is required.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "plan": {
+          "type": "object",
+          "properties": {
+            "hypothesis": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "metric": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "baseline": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "baseline_config_hash": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "scope": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "compatibility": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "rollback": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "behavior": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "minItems": 1,
+              "maxItems": 8,
+              "uniqueItems": true
+            },
+            "slice_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "minItems": 1,
+              "maxItems": 8,
+              "uniqueItems": true
+            },
+            "guard_metrics": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "minItems": 1,
+              "maxItems": 8,
+              "uniqueItems": true
+            },
+            "change_types": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "minItems": 1,
+              "maxItems": 8,
+              "uniqueItems": true
+            },
+            "sample_floor": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000
+            },
+            "call_estimate": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000
+            },
+            "time_estimate": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000
+            },
+            "minimum_improvement": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "severe_regression": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "reason": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "evidence_domain": {
+              "type": "string",
+              "enum": [
+                "online",
+                "synthetic"
+              ]
+            }
+          },
+          "required": [
+            "hypothesis",
+            "metric",
+            "baseline",
+            "baseline_config_hash",
+            "scope",
+            "compatibility",
+            "rollback",
+            "behavior",
+            "files",
+            "slice_ids",
+            "guard_metrics",
+            "sample_floor",
+            "call_estimate",
+            "time_estimate",
+            "minimum_improvement",
+            "severe_regression"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "plan"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "apply_patch",
+    "description": "Apply approved exact replacements after all frozen identity and cumulative scope gates.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "plan_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "base": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "candidate_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "edits": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "source_hash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "old": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "new": {
+                "type": "string",
+                "maxLength": 32768
+              }
+            },
+            "required": [
+              "path",
+              "source_hash",
+              "old",
+              "new"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "plan_hash",
+        "base",
+        "candidate_hash",
+        "edits"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "run_check",
+    "description": "Request only unit, lint, or contract checks from a host fixed isolated executor.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "check_id": {
+          "type": "string",
+          "enum": [
+            "unit",
+            "lint",
+            "contract"
+          ]
+        },
+        "candidate_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "plan_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "check_id",
+        "candidate_hash",
+        "plan_hash"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "candidate_status",
+    "description": "Read the real frozen candidate version and authoritative receipts; no publish authority.",
+    "input_schema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  }
+]

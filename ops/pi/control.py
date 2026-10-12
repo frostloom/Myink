@@ -50,7 +50,7 @@ class _DeadlineIO:
         return self._call('flush')
 
 
-def make_gateway_handler(ledger, policy, transport, *, scope_token=None, usage_observer=None):
+def make_gateway_handler(ledger, policy, transport, *, scope_token=None, usage_observer=None, tool_broker=None):
     if scope_token is not None and (not isinstance(scope_token, str) or not 0 < len(scope_token) <= 4096
                                    or any(not 33 <= ord(char) <= 126 for char in scope_token)):
         raise ValueError('invalid scope token')
@@ -95,15 +95,16 @@ def make_gateway_handler(ledger, policy, transport, *, scope_token=None, usage_o
         def do_POST(self):
             iterator = None
             try:
-                if scope_token is not None:
+                request_token = tool_broker.token if tool_broker and self.path == '/v1/tools' else scope_token
+                if request_token is not None:
                     keys = self.headers.get_all('x-api-key', [])
                     scopes = self.headers.get_all('X-Pi-Scope', [])
                     if (len(keys) != 1 or scopes != ['local-trial-1']
-                            or not compare_digest(keys[0].encode('utf-8'), scope_token.encode('utf-8'))):
+                            or not compare_digest(keys[0].encode('utf-8'), request_token.encode('utf-8'))):
                         self.send_error(403)
                         return
                 lengths = self.headers.get_all('Content-Length', [])
-                if (self.path not in ('/v1/messages', '/v1/messages?beta=true') or len(lengths) != 1
+                if (self.path not in (('/v1/messages', '/v1/messages?beta=true', '/v1/tools') if tool_broker else ('/v1/messages', '/v1/messages?beta=true')) or len(lengths) != 1
                         or not lengths[0].isdigit() or self.headers.get('Transfer-Encoding')
                         or self.headers.get('Content-Type', '').split(';')[0].strip().lower() != 'application/json'
                         or self.headers.get('X-Pi-Scope', 'local-trial-1') != 'local-trial-1'):
@@ -115,9 +116,24 @@ def make_gateway_handler(ledger, policy, transport, *, scope_token=None, usage_o
                 if len(raw) != length:
                     raise ValueError('incomplete request')
                 body = json.loads(raw)
+                if self.path == '/v1/tools':
+                    keys = self.headers.get_all('x-api-key', [])
+                    scopes = self.headers.get_all('X-Pi-Scope', [])
+                    if len(keys) != 1 or scopes != ['local-trial-1'] or length > 32768:
+                        raise ValueError('invalid tool envelope')
+                    from dataclasses import asdict
+                    receipt = tool_broker.dispatch(keys[0], body)
+                    raw_receipt = json.dumps(asdict(receipt), ensure_ascii=True, allow_nan=False).encode()
+                    if len(raw_receipt) > 65536:
+                        raise ValueError('bounded tool receipt required')
+                    self.send_response(200); self.send_header('Content-Type','application/json')
+                    self.send_header('Content-Length',str(len(raw_receipt))); self.end_headers()
+                    self.wfile.write(raw_receipt)
+                    return
                 request_policy = replace(policy, timeout_seconds=self.remaining())
                 result = forward_messages(body, 'local-trial-1', ledger=ledger, policy=request_policy,
-                                          transport=transport, usage_observer=usage_observer)
+                                          transport=transport, usage_observer=usage_observer,
+                                          tool_allowlist=tool_broker.allowed_tools if tool_broker else ())
                 if result.attempt_id:
                     permit_deadline = ledger.get(result.attempt_id)['payload']['deadline']
                     self.deadline = min(self.deadline, time.monotonic() + max(0, permit_deadline - time.time()))
@@ -144,7 +160,7 @@ def make_gateway_handler(ledger, policy, transport, *, scope_token=None, usage_o
     return Handler
 
 
-def serve_gateway(ledger, policy, credential_file, host='127.0.0.1', port=8765, *, scope_token=None):
+def serve_gateway(ledger, policy, credential_file, host='127.0.0.1', port=8765, *, scope_token=None, tool_broker=None):
     if not live_ready(policy):
         raise ValueError('live configuration incomplete')
     credentials = json.loads(credential_file.read_text(encoding='utf-8'))
@@ -161,7 +177,7 @@ def serve_gateway(ledger, policy, credential_file, host='127.0.0.1', port=8765, 
                                            headers={'x-api-key': credentials['PLATFORM_MODEL_API_KEY'],
                                                     'anthropic-version': '2023-06-01'}, timeout=timeout)
             return client.send(request, stream=True, follow_redirects=False)
-        with ThreadingHTTPServer((host, port), make_gateway_handler(ledger, policy, transport, scope_token=scope_token)) as server:
+        with ThreadingHTTPServer((host, port), make_gateway_handler(ledger, policy, transport, scope_token=scope_token, tool_broker=tool_broker)) as server:
             server.daemon_threads = True
             server.serve_forever()
 
