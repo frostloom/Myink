@@ -108,6 +108,17 @@ def load_analysis_inputs(view_path, view_sha256, report_path, report_sha256, *, 
         view_sha256=view_sha256, report_sha256=report_sha256)}
 
 
+def indexed_evidence_view(view):
+    """Presentation copy only; stored evidence and citation validation stay unchanged."""
+    from copy import deepcopy
+    presented = deepcopy(view)
+    for evidence_index, item in enumerate(presented['evidence']):
+        item['evidence_index'] = evidence_index
+        for excerpt_index, excerpt in enumerate(item['excerpts']):
+            excerpt['excerpt_index'] = excerpt_index
+    return presented
+
+
 def build_writing_prompt(view, report):
     _validate_inputs(view, report)
     if len(_json(view).encode('utf-8')) > 36000:
@@ -121,7 +132,7 @@ def build_writing_prompt(view, report):
         'tools': 'Relevance, unsupported results, failure recovery; needs ordered complete calls/results.',
         'operations': 'Stored success/status, duration, cost, retries/tokens are reported or proxies, not measured causal improvements; unknown zero/cost stays unknown.',
         'experience': 'Manual burden, regeneration, acceptance; needs edit history and explicit author feedback.'}
-    data = dict(view=view, operations=report['operations'],
+    data = dict(view=indexed_evidence_view(view), operations=report['operations'],
         quality_catalog={k: dict(availability='unknown', value=None) for k in sorted(report['quality_catalog'])},
         family_rubrics=rubrics, rubric_detail='compact shared family rubric; metric-specific paragraphs omitted',
         permissions={'tools': [], 'new_features_require_owner': True})
@@ -133,7 +144,8 @@ def build_writing_prompt(view, report):
         'domains: exactly 11 objects, one per domain in ' + ','.join(DOMAINS) + '. Each exactly '
         '{domain,availability,observation,refs}; availability trace_observation|unknown. '
         'Observation concise Chinese <=70 chars recommended, <=180 required. refs max2; each exactly '
-        '{evidence_index,excerpt_index,quote} using zero-based DATA.view.evidence indices, '
+        '{evidence_index,excerpt_index,quote} using the explicit zero-based evidence_index and excerpt_index labels. '
+        'Source row id is not a list index. Copy a literal retained quote; never paraphrase it. '
         'continuous exact quote inside ONE excerpt, never join head/tail. quote <=80 chars recommended, <=256 required. '
         'Trace observations require refs except operations may cite the body-free report in prose. Unknown domains may have empty refs. '
         'No quality scores or semantic numeric baseline. hypothesis exactly '

@@ -236,3 +236,14 @@ def test_runner_serializes_invalid_unicode_as_pending_without_losing_evidence(st
     restored = json.loads(raw.decode('utf-8'))
     assert restored['status'] == 'pending' and restored['evidence'] == evidence
     assert b'\\ud800' in raw and raw.endswith(b'\n')
+
+
+def test_prompt_presents_explicit_zero_based_positions_without_mutating_frozen_view():
+    view,report=fixture(); original=deepcopy(view)
+    prompt=module().build_writing_prompt(view,report)
+    presented=json.loads(prompt.split('\nDATA\n',1)[1])['view']['evidence'][0]
+    assert presented['evidence_index']==0
+    assert [e['excerpt_index'] for e in presented['excerpts']]==[0,1]
+    assert presented['source']['id']==1 and view==original
+    result=plan(); result['hypothesis']['refs'][0]['evidence_index']=1
+    with pytest.raises(ValueError):module().validate_writing_analysis(result,view)
