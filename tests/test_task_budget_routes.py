@@ -119,6 +119,24 @@ def test_nack_retry_does_not_append_twice(paused_budget,monkeypatch):
     assert retry.status_code == 200,retry.text
     assert len(calls) == 2
     assert budget_view(tid)["limits"]["max_requests"] == 3
+    assert budget_view(tid)["requests_used"] == 1
+    message = json.loads(calls[1][0])
+    assert json.loads(calls[0][0]) == message
+    from sqlalchemy import select
+    from myink.models.maintenance import AdmissionIntent
+    from myink.worker.handoff import admission_for
+    from myink.worker.processor import valid_task_owner
+    with tenant_session(pid) as db:
+        attempts = list(db.scalars(select(AdmissionIntent).where(
+            AdmissionIntent.task_id == uuid.UUID(tid))))
+        assert len(attempts) == 2
+        assert {attempt.publication_state for attempt in attempts} == {"rejected", "published"}
+        published = next(attempt for attempt in attempts if attempt.publication_state == "published")
+        assert admission_for(db, message).id == published.id
+        assert db.get(Task, uuid.UUID(tid)).status == "queued"
+    # The consumer's ownership gate must accept the published retry rather than
+    # raise QueueAuthorityUnknown and choose its dead-letter branch.
+    assert valid_task_owner(message) is True
 
 
 def test_uncertain_confirm_never_refunds_or_republishes_same_operation(paused_budget,monkeypatch):
