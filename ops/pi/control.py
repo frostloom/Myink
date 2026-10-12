@@ -1,5 +1,5 @@
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from hmac import compare_digest
@@ -95,7 +95,8 @@ def make_gateway_handler(ledger, policy, transport, *, scope_token=None, usage_o
         def do_POST(self):
             iterator = None
             try:
-                request_token = tool_broker.token if tool_broker and self.path == '/v1/tools' else scope_token
+                tool_path = self.path in ('/v1/tools', '/v1/tool-proof')
+                request_token = tool_broker.token if tool_broker and tool_path else scope_token
                 if request_token is not None:
                     keys = self.headers.get_all('x-api-key', [])
                     scopes = self.headers.get_all('X-Pi-Scope', [])
@@ -104,7 +105,7 @@ def make_gateway_handler(ledger, policy, transport, *, scope_token=None, usage_o
                         self.send_error(403)
                         return
                 lengths = self.headers.get_all('Content-Length', [])
-                if (self.path not in (('/v1/messages', '/v1/messages?beta=true', '/v1/tools') if tool_broker else ('/v1/messages', '/v1/messages?beta=true')) or len(lengths) != 1
+                if (self.path not in (('/v1/messages', '/v1/messages?beta=true', '/v1/tools', '/v1/tool-proof') if tool_broker else ('/v1/messages', '/v1/messages?beta=true')) or len(lengths) != 1
                         or not lengths[0].isdigit() or self.headers.get('Transfer-Encoding')
                         or self.headers.get('Content-Type', '').split(';')[0].strip().lower() != 'application/json'
                         or self.headers.get('X-Pi-Scope', 'local-trial-1') != 'local-trial-1'):
@@ -112,10 +113,23 @@ def make_gateway_handler(ledger, policy, transport, *, scope_token=None, usage_o
                 length = int(lengths[0])
                 if not 0 < length <= policy.max_body_bytes:
                     raise ValueError('invalid body size')
+                if tool_path and length > 32768:
+                    raise ValueError('invalid tool body size')
                 raw = self.rfile.read(length)
                 if len(raw) != length:
                     raise ValueError('incomplete request')
-                body = json.loads(raw)
+                from .tool_proof import strict_json, validate_proof
+                body = strict_json(raw)
+                if self.path == '/v1/tool-proof':
+                    body = validate_proof(body)
+                    verified = tool_broker.lookup(body['call_id'], body['name'], body['arguments'], body['receipt']) is True
+                    result = json.dumps({'verified':verified}).encode('ascii')
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json')
+                    self.send_header('Content-Length', str(len(result)))
+                    self.end_headers()
+                    self.wfile.write(result)
+                    return
                 if self.path == '/v1/tools':
                     keys = self.headers.get_all('x-api-key', [])
                     scopes = self.headers.get_all('X-Pi-Scope', [])
@@ -205,6 +219,17 @@ def make_git_flow(ledger, config, plan, policy):
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     commands = parser.add_subparsers(dest='command', required=True)
+    trial = commands.add_parser('trial')
+    trial_commands = trial.add_subparsers(dest='trial_command', required=True)
+    trial_run = trial_commands.add_parser('run')
+    trial_run.add_argument('--state-dir', required=True, type=Path)
+    trial_run.add_argument('--policy', required=True, type=Path)
+    trial_run.add_argument('--scenario', required=True)
+    trial_run.add_argument('--experiment', default='local-trial-1')
+    trial_run.add_argument('--live', action='store_true')
+    trial_resume = trial_commands.add_parser('resume')
+    trial_resume.add_argument('--state-dir', required=True, type=Path)
+    trial_resume.add_argument('--experiment', required=True)
     lab = commands.add_parser('lab')
     lab_commands = lab.add_subparsers(dest='lab_command', required=True)
     lab_preflight = lab_commands.add_parser('preflight')
@@ -257,6 +282,20 @@ def main(argv: list[str] | None = None) -> int:
             raise LedgerBlocked('state directory must be an explicit absolute E drive path')
         state.mkdir(parents=True, exist_ok=True)
         ledger = Ledger(state / ('b11-executor-ledger.sqlite' if args.command=='backup-lab' else 'ledger.sqlite'))
+        if args.command == 'trial':
+            from dataclasses import asdict
+            from .iteration import simulate_trial, resume_simulated_trial
+            if args.trial_command == 'run':
+                load_policy(args.policy)
+                if args.live:
+                    print(json.dumps(dict(status='blocked', released=False,
+                        reason='live requires fresh host-composed runtime and downstream acceptance')))
+                    return 1
+                receipt = simulate_trial(ledger,args.scenario,args.experiment,datetime.now(timezone.utc))
+            else:
+                receipt = resume_simulated_trial(ledger,args.experiment)
+            print(json.dumps(asdict(receipt)))
+            return 0 if receipt.status=='done' else 1
         if args.command == 'backup-lab':
             from dataclasses import asdict
             from .executor import execute
