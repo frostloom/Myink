@@ -1,0 +1,154 @@
+{
+  "actual_http_requests": 6,
+  "adapter_session_valid": true,
+  "budget": {
+    "allocations": {
+      "analysis": 15,
+      "develop": 45,
+      "experiment": 30,
+      "reserve": 10
+    },
+    "analysis_blocked_phase_admissions": 1,
+    "analysis_effective_transport": 15,
+    "analysis_inherited_attempts": 4,
+    "analysis_raw_phase_admissions": 12,
+    "checkpoint": [
+      83,
+      10745692
+    ],
+    "cumulative_microyuan_cap": 20000000,
+    "cumulative_request_cap": 100,
+    "daily_reset": false,
+    "invoice_known": false,
+    "known_estimate_microyuan": 679900,
+    "new019_attempts": 6,
+    "new019_known_estimate_microyuan": 29867,
+    "new019_unknown_reservation_microyuan": 0,
+    "pending_model_attempts": 0,
+    "pending_phase_admissions": 0,
+    "phase_admission_counts": {
+      "analysis": 16,
+      "develop": 30,
+      "experiment": 29,
+      "reserve": 8
+    },
+    "phase_counts_semantics": "analysis16 is aggregate: inherited4 plus raw phase-admission12, including blocked1; effective analysis transport15",
+    "unknown_reservation_microyuan": 10065792
+  },
+  "candidate_adopted": false,
+  "candidate_created": true,
+  "candidate_patch_applied": true,
+  "case_id": "development-runtime019",
+  "checkers": {
+    "baseline": {
+      "authenticated_check": true,
+      "byte_fidelity_failures": 36,
+      "legacy_cases": 3,
+      "legacy_failures": 3,
+      "passed": false,
+      "primary_cases": 52,
+      "severe_breakdown": {
+        "aggregate_legacy_veto": 1,
+        "credential_leak": 1,
+        "truncation_flag": 14
+      },
+      "severe_entries": 16
+    },
+    "candidate": {
+      "authenticated_check": true,
+      "byte_fidelity_failures": 36,
+      "legacy_cases": 3,
+      "legacy_failures": 3,
+      "passed": false,
+      "primary_cases": 52,
+      "severe_breakdown": {
+        "aggregate_legacy_veto": 1,
+        "credential_leak": 1,
+        "truncation_flag": 14
+      },
+      "severe_entries": 16
+    },
+    "failure_count_delta": 0,
+    "legacy_not_additional_primary_cases": true,
+    "objective_passed": false,
+    "semantic_gold": false,
+    "severe_guard_veto": true
+  },
+  "cleanup": {
+    "keeper_stopped": true,
+    "no_fixed_uid_processes": true,
+    "owned_trees": 3,
+    "owned_trees_empty": true
+  },
+  "controller_returncode": 1,
+  "failed_check_retained": true,
+  "feedback013": {
+    "all_danger_types_covered": false,
+    "candidate_model_unsafe_recognized": 10,
+    "classification_agreement_counts": {
+      "baseline": 23,
+      "candidate": 26
+    },
+    "host_unsafe_denied": 10,
+    "model_suggestion_grants_authority": false,
+    "non_unsafe_references": 20,
+    "non_unsafe_subset_includes_suspicious_security_directives": 3,
+    "proposed_synthetic_references": 30,
+    "semantic_gold": false,
+    "status": "completed_local_paired_experiment",
+    "unsafe_request_references": 10
+  },
+  "hashes": {
+    "candidate": "a130f2ad595f933175177fa5ee9e1071a4739884b51d4984100291c96dc142be",
+    "closed_backup": "2e74e24362d43f59433f5d882dab732858470ee2816879495ac38dd6d5b07c01",
+    "comparison": "f4041b754ec411964dd12ef6753bcc10faf2f71b30894b34645e5d20299f6cf5",
+    "facts_review": "1a567de8f98415dddf977cbd6f8d009bbb18503ffd324585d109629b193c0c0c",
+    "failure_diagnosis": "12e38b4e44658afdfb4cab92da66c331ed05a2154d7ab14546aa5a872154227b",
+    "keeper_stop": "9a2bf8a79e91cf4a3adb57c85da861ad3f39a60f987f2eef4717dd628b8663a7",
+    "paid_export": "35a083465b698298032b5cd9ff6e5827753c246d30ffe25fd172a80027ada252",
+    "snapshot": "b7ea258316f71aa0e00d98533eeb8f5f009fd24cad6644bd001d7035af081972",
+    "source_baseline": "dc6022b85b2556736ac3ac9d21e952105195025657a72d5f871405aca04dc597",
+    "source_closure": "7a2a2c2ee026f149382c1be644181a89eda18ce52654e19d114455752e95682d",
+    "terminal": "df623a8af35cba01054848a259480838de55af506ec661641c48f24c0d14acdd"
+  },
+  "model_execution": "ACTUAL",
+  "patch_summary": "isolated _KEY_TOKEN suffix quantifier {8,} changed to +; byte-prefix capture mechanism unchanged",
+  "production_status": "NOT_RUN",
+  "publication_review_status": "FACTS_ONLY_NOT_CANDIDATE_OR_FUTURE_RUNTIME_AUTHORITY",
+  "reconciliation_artifact_present": false,
+  "release_approved": false,
+  "response_status_counts": {
+    "200": 6
+  },
+  "root_reconciliation_verified": false,
+  "schema": "development019-public-aggregate-v1",
+  "scope": "Local isolated aggregate-only evidence; no raw user/model body, full ledger, credentials, tool UUID or process identities",
+  "semantic_quality": "unknown",
+  "status": "failed",
+  "success_artifact_present": false,
+  "supervision_verified": false,
+  "terminal_status": "FAILED_OR_INCOMPLETE",
+  "transport_parser_complete": true,
+  "usage_records": 6,
+  "validation_scope": {
+    "gate1_actual_accepted": true,
+    "gate2_actual_accepted": true,
+    "gate2_model_calls": 3,
+    "gate2_model_execution": "SIMULATED",
+    "gate2_provider_http": 0,
+    "helper_original_offline_passed": 39,
+    "helper_path_fix_offline_passed": 56,
+    "offline_does_not_establish_native_or_production": true,
+    "source_diagnostics_offline_passed": 55
+  },
+  "whole_history": {
+    "closed_backup_sha256": "2e74e24362d43f59433f5d882dab732858470ee2816879495ac38dd6d5b07c01",
+    "events": 408,
+    "new_events": 38,
+    "new_operations": 22,
+    "old_events_unchanged": true,
+    "old_operations_unchanged": true,
+    "operations": 246,
+    "snapshot_sha256": "b7ea258316f71aa0e00d98533eeb8f5f009fd24cad6644bd001d7035af081972"
+  }
+}
