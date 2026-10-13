@@ -25,4 +25,4 @@ keeper 清理收据记录本轮精确 PID729 / start275695、同一环境 epoch�
 
 当前 source closure：`a48bea981b5114abbaebfa84a1491941938dd31b432b25e18eadb92fa234e378`。最终结果 raw SHA256：`c400b016141c8508dce4b595bf3634d07c9c1d2b5d14f1dfd1e74b21e53377ea`。完整快照 raw SHA256：`216fd8d4d1cbe3b598d526a24d22e861f55c1b80bbb6d55e40d5a56c9cd72295`。终态 checkpoint raw SHA256：`56d50f9cfbdec327ebf4c9893ec26725881ad80f9269bd1957c7eec351e90e52`。配对原始 manifest raw SHA256：`cadb0a4083448ffc7f9afd775a720693359a9f790eb306db47017f168ff11565`，labels SHA256：`8d571518411c1bdb9a8cfe5a962d99232080b8aa7d3917b5fc1bdd94f6656ca1`。
 
-公开聚合 JSON 仅包含计数、合成 case ID、分类/路由标签及 raw hash，不包含凭据、用户正文、完整账本或模型原始 hex。建议总 report 标题下增加这段最新状态摘要，再保留历史003的10元记录，以免读者将历史限制误读为当前20元累计额度。
+公开聚合 JSON 仅包含计数、合成 case ID、分类/路由标签及 raw hash，不包含凭据、用户正文、完整账本或模型原始 hex。
