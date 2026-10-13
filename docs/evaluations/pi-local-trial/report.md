@@ -1,10 +1,11 @@
 # Pi 本机试验交付报告
 
-最新进度（2026-10-14）：[020真实Pi开发](development-runtime020-2026-10-14.md)已发出4次真实请求、生成一处隔离补丁，但worker deadline中断，只有3条完整usage；最终status和冻结配对检查NOT_RUN，候选未采用。第四条未知请求已按原permit全额预留转uncertain，完整历史保留，待处理model/admission归零。[019开发](development-runtime019-2026-10-14.md)的配对失败也保留。没有main合并或生产启用。
+最新进度（2026-10-14，独立事实审查已冻结）：[021真实Pi开发](development-runtime021-2026-10-14.md)完成7次HTTP200、7条usage，两处隔离补丁、最终status与真实配对检查。adapter正常结束，但两侧checker result=failed/status=blocked，整体root reconciliation未通过，控制器rc1而非超时；候选未采用。52条主机械案例fidelity通过16→22、失败36→30；6个选中组的improved不等于全部通过，3条legacy fidelity失败仍触发绝对否决。没有main合并或生产启用。
 
-累计87/100次、20元累计上限：已知估算0.698292元、未知预留12.082176元、保守占用12.780468元，不是供应商账单。原阶段配额未变。正在源码准备下一次独立受控尝试，尚无新的模型结果承诺。[020聚合JSON](development-runtime020-2026-10-14.json)记录初始pending与恢复后完整快照、备份和审查hash。
+累计94/100次尝试、20元上限：已知估算0.743202元、未知预留12.082176元、保守占用12.825378元，不是供应商账单；本轮已知0.044910元、未知0。原预算与阶段配额保持，develop41/45、全局余6次，不能视为完整8-call新轮授权，不自动再试。旧历史完整保留，pending model/admission归零、合法scope/fence保留；keeper已停止。[021聚合JSON](development-runtime021-2026-10-14.json)记录物理证据与独立事实、诊断revision002哈希；独立事实审查只认可已记录失败，不准采用候选。[020失败及保守结算](development-runtime020-2026-10-14.md)仍保留。
 
-[013真实反馈配对](feedback-runtime013-2026-10-14.md)完成30条冻结合成参考：分类一致23→26，候选识别危险参考10/10，host拒绝危险参考10/10；不代表全危险覆盖。反馈不授予执行、回复、resolve或审批权，生产数据库接入NOT_RUN。[014写作实验](writing-runtime014-2026-10-14.md)的11域45指标语义改善仍unknown。下文原样保留历史快照，003的10元和停止状态仅属当时记录。
+[013反馈配对](feedback-runtime013-2026-10-14.md)完成30条合成参考：分类一致23→26，双方host危险参考拒绝10/10，不代表全危险覆盖；反馈不授予执行、回复、resolve或审批权，生产反馈数据库NOT_RUN。维护入口见[feedback-triage](../../pi/feedback-triage.md)。[014写作实验](writing-runtime014-2026-10-14.md)的11域45指标语义仍unknown；候选产品pytest、完整服务与生产未验收。下文原样保留历史快照，003的10元与停止状态仅属当时记录。
+
 
 状态：partial。本版为 `final-host003` 最终事实快照。主机 checker/Pi 隔离和真实 Pi 的模拟协议已通过；付费规划失败、完整业务服务与生产启用仍未验收，全部自有进程、keeper 和网关已停止。源码、真实进程协议替身、独立内核/checker、完整服务/镜像、生产启用分别验收。[机器可读索引](receipt-index.json)使用 passed/failed/blocked/not_run/simulated，引用私有证据 hash/path。
 

@@ -1,0 +1,149 @@
+{
+  "accounting": {
+    "allocations": {
+      "analysis": 15,
+      "develop": 45,
+      "experiment": 30,
+      "reserve": 10
+    },
+    "analysis_counts_semantics": "inherit4 plus raw12 including blocked1; effective transport15",
+    "automatic_retry": false,
+    "budget_microyuan": 20000000,
+    "conservative_total_microyuan": 12825378,
+    "cumulative_attempts": 94,
+    "current8call_plan_is_complete_new_round_authority": false,
+    "develop_attempts_remaining": 4,
+    "global_attempts_remaining": 6,
+    "invoice_known": false,
+    "known_estimate_microyuan": 743202,
+    "legal_scope_and_fence_pending_preserved": true,
+    "max_attempts": 100,
+    "new021_attempts": 7,
+    "new021_known_estimate_microyuan": 44910,
+    "new021_unknown_reservation_microyuan": 0,
+    "pending_model_attempts": 0,
+    "pending_phase_admissions": 0,
+    "phase_admission_counts": {
+      "analysis": 16,
+      "develop": 41,
+      "experiment": 29,
+      "reserve": 8
+    },
+    "unknown_reservation_microyuan": 12082176
+  },
+  "actual_http_requests": 7,
+  "adapter_session_valid": true,
+  "adapter_settled": true,
+  "adapter_status": "done",
+  "authenticated_tool_calls": 8,
+  "candidate_adopted": false,
+  "candidate_created": true,
+  "candidate_file_bytes": 8369,
+  "case_id": "development-runtime021",
+  "checks": {
+    "check_receipt_status": "blocked",
+    "check_receipts_verified": true,
+    "final_candidate_status": "done",
+    "full_services": "NOT_RUN",
+    "main_adopted": false,
+    "paired_checker": "ACTUAL_FAILED",
+    "product_regression_on_candidate": "NOT_RUN",
+    "production": "NOT_RUN",
+    "run_check": "ACTUAL_FAILED"
+  },
+  "cleanup": {
+    "keeper_stopped": true,
+    "owned_trees": 3,
+    "owned_trees_empty": true
+  },
+  "complete_usage_records": 7,
+  "controller_returncode": 1,
+  "controller_timeout": false,
+  "done_patches": 2,
+  "hashes": {
+    "baseline_check": "2815ed046e53ca4418194e43de6c4ca274202dea58eb83384871ff3d64400a78",
+    "candidate_aggregate": "6d606e9281a121a05012a4f8f25b27622f2b89e4dd594c17f01b508c7031a06a",
+    "candidate_check": "8485efd5c461748bc577d6e33ff3ccfa63f1c30d293b281906ffdcd2488954a8",
+    "candidate_file": "6fe3b4367326a349078c94c6b8cf6f0084fa936a2b683b5aa6e2940744056686",
+    "closed_backup": "a0082385284ee6ce97a8342c5e1b1d42a6068a045ee48e940f16066ec0823cd2",
+    "comparison": "19c07ed15fa8e047e4136621e49cf3018d9128d6b9fe53498e3fb312c617e480",
+    "facts_review": "b482d3998f6bef5befa63a9dd97606ba7aa44acd165c5b65e3e9232a8a1df7a2",
+    "failure_diagnosis_revision002": "46d29ed9f7cc319857162a08f9e27c27aefc70b0d92ca993467dc3d78d5c90a2",
+    "keeper_stop": "38b4d9bffc5a8d84af2b021aa87414f6aca333ba7546a2415350f31f658ace68",
+    "paid_export": "90eeaf9b42aa0cc1a68400536b1e97bf3482ffc0bcec430ded04bfda78abbd42",
+    "protected_before": "f5f2f1b47be0af25eed1d0a46f9378c683d9648fb5414de6101303c17e5d0743",
+    "snapshot": "c9524e51a6894c353fa0eecd35cc6fbfc5e003ff67437ee876112ff2d53a8ea1",
+    "source_baseline": "dc6022b85b2556736ac3ac9d21e952105195025657a72d5f871405aca04dc597",
+    "source_closure": "729524a3c50abe26db563f03ffbdf03efd5b1e4a9fea772598395c671dc1865b",
+    "terminal": "ead19d990537cf79e46eba83c0fef514417733e6659d9247258aea1e902db2e1"
+  },
+  "history": {
+    "approval_events": 2,
+    "approval_operations": 1,
+    "events": 481,
+    "new_events": 45,
+    "new_operations": 26,
+    "old_events_unchanged": true,
+    "old_operations_unchanged": true,
+    "old_unknown_preserved": true,
+    "operations": 288,
+    "protected_before_events": 436,
+    "protected_before_operations": 262
+  },
+  "mechanical": {
+    "baseline_fidelity_failed": 36,
+    "baseline_fidelity_passed": 16,
+    "baseline_legacy_fidelity": [
+      false,
+      false,
+      false
+    ],
+    "basic_and_maxtext_fixed": 12,
+    "candidate_fidelity_failed": 30,
+    "candidate_fidelity_passed": 22,
+    "candidate_legacy_fidelity": [
+      false,
+      false,
+      false
+    ],
+    "candidate_legacy_severe": [],
+    "cross_version_lift_claim": false,
+    "guard_values": {
+      "encoded_caps": 1,
+      "input_immutability": 1,
+      "redaction": 1
+    },
+    "legacy_absolute_veto": 1,
+    "legacy_cases": 3,
+    "net_fidelity_pass_delta": 6,
+    "primary_cases": 52,
+    "redaction12_new_failures": 6,
+    "selected_groups": 6,
+    "selected_macro_delta": 1,
+    "selected_macro_is_all52_pass": false,
+    "selected_macro_status": "improved",
+    "semantic_gold": false
+  },
+  "mechanical_pairing_status": "FAILED",
+  "model_execution": "ACTUAL",
+  "objective_passed": false,
+  "patch_diagnosis": "Character-length cutoff ignores actual escaped bytes; per-character JSON includes extra quotes. Regex consumes safe api_key= marker. No adoption; no raw text published.",
+  "physical_export": {
+    "bytes": 7778850,
+    "files": 27
+  },
+  "publication_review_status": "FACTS_REVIEWED_NOT_ADOPTED",
+  "release_approved": false,
+  "response_status_counts": {
+    "200": 7
+  },
+  "root_reconciliation_passed": false,
+  "root_reconciliation_record_present": false,
+  "schema": "development021-public-aggregate-v1",
+  "scope": "Local isolated aggregate only; no raw user/model body, full ledger, credentials or UUID",
+  "semantic_quality": "unknown",
+  "severe_guard_veto": true,
+  "status": "failed",
+  "success_record_present": false,
+  "supervision_verified": false
+}
