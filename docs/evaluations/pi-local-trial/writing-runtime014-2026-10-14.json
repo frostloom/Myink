@@ -1,0 +1,800 @@
+{
+  "artifact_status": "FINAL_ACTUAL_FACTS",
+  "budget": {
+    "accounting_phase": "experiment",
+    "historical_unknown_charges_preserved": true,
+    "max_cumulative_attempts": 100,
+    "max_cumulative_cny": 20,
+    "not_provider_bill": true,
+    "phase_allocations": {
+      "analysis": 15,
+      "develop": 45,
+      "experiment": 30,
+      "reserve": 10
+    },
+    "phase_counts": {
+      "analysis_effective_transport": 15,
+      "analysis_old_blocked": 1,
+      "analysis_raw": 16,
+      "develop": 13,
+      "experiment": 29,
+      "reserve": 8
+    },
+    "rpc_role": "analysis",
+    "terminal_fees": {
+      "cumulative_known_estimate_microyuan": 575877,
+      "historical_unknown_reservation_microyuan": 10065792,
+      "invoice_known": false,
+      "new014_known_estimate_microyuan": 189278
+    },
+    "terminal_totals": {
+      "conservative_microyuan": 10641669,
+      "cumulative_attempts": 66,
+      "events": 303,
+      "legitimate_pending_kinds": {
+        "model-scope": 1,
+        "phase-fence": 1,
+        "preview-fence": 1
+      },
+      "new_events": 32,
+      "new_operations": 21,
+      "old_events_unchanged": true,
+      "old_operations_unchanged": true,
+      "operations": 185,
+      "pending_model_attempts": 0,
+      "pending_phase_admissions": 0
+    }
+  },
+  "capture_limits": {
+    "associated_extract_tasks": 6,
+    "extract_runs": 24,
+    "historical_tail_recoverable": false,
+    "missing_raw_outputs": 15,
+    "raw_extraction_complete": 0,
+    "recall_remaining_completeness": "unknown, not failed recall",
+    "recall_runs": 17,
+    "recall_with_nontruncated_capture": 6,
+    "response_reserved_bytes": 18000,
+    "retained_json_string_encoded_bytes_range": [
+      5887,
+      11458
+    ],
+    "retained_raw_extraction_outputs": 9,
+    "string_characters_each_retained_extract": 2912,
+    "truncated_retained_raw_extraction_outputs": 9
+  },
+  "cleanup": {
+    "exact_keeper_pid": 745,
+    "exact_keeper_starttime": "871524",
+    "no_fixed_uid_processes": true,
+    "old_pid_signalled": false,
+    "raw_sha256": "e802311dc53c1d20a00e5778fabbd6581de072e103cdc445a4644e3a38235f95",
+    "same_environment_epoch_verified": true,
+    "stopped": true
+  },
+  "date": "2026-10-14",
+  "domains": [
+    {
+      "domain": "recall.events",
+      "name": "事件",
+      "quality_item_count": 5,
+      "semantic_quality_availability": "unknown",
+      "semantic_quality_value": null
+    },
+    {
+      "domain": "recall.plot",
+      "name": "情节",
+      "quality_item_count": 5,
+      "semantic_quality_availability": "unknown",
+      "semantic_quality_value": null
+    },
+    {
+      "domain": "recall.characters",
+      "name": "人物",
+      "quality_item_count": 5,
+      "semantic_quality_availability": "unknown",
+      "semantic_quality_value": null
+    },
+    {
+      "domain": "recall.facts",
+      "name": "事实",
+      "quality_item_count": 5,
+      "semantic_quality_availability": "unknown",
+      "semantic_quality_value": null
+    },
+    {
+      "domain": "extract",
+      "name": "抽取",
+      "quality_item_count": 7,
+      "semantic_quality_availability": "unknown",
+      "semantic_quality_value": null
+    },
+    {
+      "domain": "write",
+      "name": "正文",
+      "quality_item_count": 6,
+      "semantic_quality_availability": "unknown",
+      "semantic_quality_value": null
+    },
+    {
+      "domain": "audit",
+      "name": "审核",
+      "quality_item_count": 3,
+      "semantic_quality_availability": "unknown",
+      "semantic_quality_value": null
+    },
+    {
+      "domain": "repair",
+      "name": "修订",
+      "quality_item_count": 3,
+      "semantic_quality_availability": "unknown",
+      "semantic_quality_value": null
+    },
+    {
+      "domain": "tools",
+      "name": "工具",
+      "quality_item_count": 3,
+      "semantic_quality_availability": "unknown",
+      "semantic_quality_value": null
+    },
+    {
+      "domain": "operations",
+      "name": "任务运营",
+      "quality_item_count": 0,
+      "semantic_quality_availability": "unknown",
+      "semantic_quality_value": null
+    },
+    {
+      "domain": "experience",
+      "name": "体验（含短篇）",
+      "quality_item_count": 3,
+      "semantic_quality_availability": "unknown",
+      "semantic_quality_value": null
+    }
+  ],
+  "evidence_cutoff": "All10 paid stages,finalize,terminal snapshot and exact keeper cleanup verified",
+  "finalization": {
+    "automatic_execution": false,
+    "candidate_allowed": false,
+    "export_manifest_raw_sha256": "994cbe34d7cb9784dddba23f5034117146122c8381c0e32e45e50953170a57d6",
+    "finalizer_files": 4,
+    "model_output_or_analysis_repaired": false,
+    "paid_stage_files": 140,
+    "physical_export_files": 144,
+    "result_raw_sha256": "cdc4d5bc603690c32cc5f9384c93fcbff07a88f7e21a1b5b2e1f96e460a732b4",
+    "semantic_quality": "unknown",
+    "status": "COMPLETED",
+    "supervision_raw_sha256": "a2d007a14e88b939b872e2861968c5c4f5f676693fd3736edd23d7d742cf13d0"
+  },
+  "model_identity": {
+    "basis": "configuration only, not vendor weight attestation",
+    "model": "deepseek-v4.1-flash",
+    "provider": "qianwen-anthropic",
+    "revision": "configured-deepseek-v4.1-flash-2026-10-13"
+  },
+  "next_priority": {
+    "existing_target": "capture prefix byte accounting and credential scrub boundary",
+    "measure": "capture fidelity and redaction boundaries, not semantic writing quality",
+    "no_scope_expansion": true,
+    "preserve_caps_permissions_privacy": true,
+    "status": "prospective_only,not_execution_authority"
+  },
+  "operations": {
+    "chapter_generate": {
+      "degraded_runs": 0,
+      "lifecycle_proxy_ms": {
+        "availability": "reported_proxy",
+        "meaning": "created-to-updated includes queue/human wait; not model latency",
+        "p95": null,
+        "p95_availability": "insufficient_samples",
+        "samples": 19,
+        "value": 4717801.1588421045
+      },
+      "run_cost": {
+        "aggregation": "sum retained runs, not complete task cost/latency",
+        "availability": "unknown",
+        "denominator": 252,
+        "known_samples": 124,
+        "measured_samples": 0,
+        "reported_sum": 0.6164502000000001,
+        "value": null
+      },
+      "run_duration_ms": {
+        "aggregation": "sum retained runs, not complete task cost/latency",
+        "availability": "reported",
+        "denominator": 252,
+        "known_samples": 252,
+        "measured_samples": 0,
+        "reported_sum": 979537,
+        "value": 979537
+      },
+      "run_errors": 2,
+      "run_input_tokens": {
+        "aggregation": "sum retained runs, not complete task cost/latency",
+        "availability": "reported",
+        "denominator": 252,
+        "known_samples": 252,
+        "measured_samples": 0,
+        "reported_sum": 683878,
+        "value": 683878
+      },
+      "run_output_tokens": {
+        "aggregation": "sum retained runs, not complete task cost/latency",
+        "availability": "reported",
+        "denominator": 252,
+        "known_samples": 252,
+        "measured_samples": 0,
+        "reported_sum": 161280,
+        "value": 161280
+      },
+      "run_retries": {
+        "aggregation": "sum retained runs, not complete task cost/latency",
+        "availability": "reported",
+        "denominator": 252,
+        "known_samples": 252,
+        "measured_samples": 0,
+        "reported_sum": 0,
+        "value": 0
+      },
+      "status_counts": {
+        "done": 14,
+        "failed": 5
+      },
+      "success": {
+        "availability": "reported_status",
+        "denominator": 19,
+        "done": 14,
+        "failed": 5,
+        "meaning": "stored task status, not author acceptance",
+        "unknown": 0,
+        "value": 0.7368421052631579
+      },
+      "task_denominator": 19,
+      "task_retries": {
+        "availability": "reported",
+        "denominator": 19,
+        "known_samples": 19,
+        "value": 0
+      }
+    },
+    "short_generate": {
+      "degraded_runs": 0,
+      "lifecycle_proxy_ms": {
+        "availability": "reported_proxy",
+        "meaning": "created-to-updated includes queue/human wait; not model latency",
+        "p95": null,
+        "p95_availability": "insufficient_samples",
+        "samples": 8,
+        "value": 68063.701375
+      },
+      "run_cost": {
+        "aggregation": "sum retained runs, not complete task cost/latency",
+        "availability": "reported",
+        "denominator": 22,
+        "known_samples": 22,
+        "measured_samples": 0,
+        "reported_sum": 0.46727594,
+        "value": 0.46727594
+      },
+      "run_duration_ms": {
+        "aggregation": "sum retained runs, not complete task cost/latency",
+        "availability": "reported",
+        "denominator": 22,
+        "known_samples": 22,
+        "measured_samples": 0,
+        "reported_sum": 543799,
+        "value": 543799
+      },
+      "run_errors": 0,
+      "run_input_tokens": {
+        "aggregation": "sum retained runs, not complete task cost/latency",
+        "availability": "reported",
+        "denominator": 22,
+        "known_samples": 22,
+        "measured_samples": 0,
+        "reported_sum": 139738,
+        "value": 139738
+      },
+      "run_output_tokens": {
+        "aggregation": "sum retained runs, not complete task cost/latency",
+        "availability": "reported",
+        "denominator": 22,
+        "known_samples": 22,
+        "measured_samples": 0,
+        "reported_sum": 102917,
+        "value": 102917
+      },
+      "run_retries": {
+        "aggregation": "sum retained runs, not complete task cost/latency",
+        "availability": "reported",
+        "denominator": 22,
+        "known_samples": 22,
+        "measured_samples": 0,
+        "reported_sum": 0,
+        "value": 0
+      },
+      "status_counts": {
+        "done": 8
+      },
+      "success": {
+        "availability": "reported_status",
+        "denominator": 8,
+        "done": 8,
+        "failed": 0,
+        "meaning": "stored task status, not author acceptance",
+        "unknown": 0,
+        "value": 1.0
+      },
+      "task_denominator": 8,
+      "task_retries": {
+        "availability": "reported",
+        "denominator": 8,
+        "known_samples": 8,
+        "value": 0
+      }
+    }
+  },
+  "paired_results": {
+    "accepted_refs": 4,
+    "arms": {
+      "baseline": {
+        "accepted_refs": 2,
+        "invalid_unknown_responses": 4,
+        "not_run": 0,
+        "observed_responses": 5,
+        "planned_responses": 5,
+        "valid_responses": 1
+      },
+      "candidate": {
+        "accepted_refs": 2,
+        "invalid_unknown_responses": 4,
+        "not_run": 0,
+        "observed_responses": 5,
+        "planned_responses": 5,
+        "valid_responses": 1
+      }
+    },
+    "common_valid_pairs": 1,
+    "http200": 10,
+    "owned_cleanups": 10,
+    "planned_pairs": 5,
+    "planned_requests": 10,
+    "quality_lift": "unknown; operations observations are not semantic writing quality",
+    "schema_failed_responses": 8,
+    "schema_valid_responses": 2,
+    "usage_records": 10,
+    "valid_target_domains": [
+      "operations"
+    ],
+    "verified_exports": 10,
+    "verified_http_requests": 10
+  },
+  "publication_limits": [
+    "Only aggregates, synthetic pair IDs and source/result hashes; no prose/conversations/UUID/usernames/keys/raw_hex/ledger/grant bodies",
+    "Runtime success, strict analysis validity, literal quotation and semantic support are separate",
+    "No schema repair or retry; original failures and45unknown semantic fields preserved",
+    "015 genuine development remains pending separate ROOT binding/grant/fresh gates; no automatic run",
+    "No production/main/server/B12 acceptance or Git execution by report writer"
+  ],
+  "schema_version": 1,
+  "semantic_quality_catalog": {
+    "gold_available": false,
+    "items": 45,
+    "measured": 0,
+    "unknown": 45
+  },
+  "source_dataset": {
+    "agent_runs": 298,
+    "chapter_generate_tasks": 19,
+    "observed_now_not_historical_recall": true,
+    "projects": 13,
+    "retention_days": 30,
+    "short_generate_tasks": 8,
+    "source_authorship": "human versus historical fixture unverified",
+    "tables": {
+      "agent_runs": {
+        "cap": 400,
+        "possibly_truncated": false,
+        "rows": 298
+      },
+      "chapter_versions": {
+        "cap": 60,
+        "possibly_truncated": false,
+        "rows": 0
+      },
+      "chapters": {
+        "cap": 12,
+        "possibly_truncated": true,
+        "rows": 12
+      },
+      "character_states": {
+        "cap": 200,
+        "possibly_truncated": false,
+        "rows": 42
+      },
+      "characters": {
+        "cap": 200,
+        "possibly_truncated": false,
+        "rows": 22
+      },
+      "events": {
+        "cap": 200,
+        "possibly_truncated": false,
+        "rows": 36
+      },
+      "facts": {
+        "cap": 200,
+        "possibly_truncated": false,
+        "rows": 21
+      },
+      "findings": {
+        "cap": 200,
+        "possibly_truncated": false,
+        "rows": 0
+      },
+      "foreshadows": {
+        "cap": 200,
+        "possibly_truncated": false,
+        "rows": 27
+      },
+      "generation_snapshots": {
+        "cap": 100,
+        "possibly_truncated": false,
+        "rows": 20
+      },
+      "memory_candidates": {
+        "cap": 200,
+        "possibly_truncated": false,
+        "rows": 75
+      },
+      "plot_threads": {
+        "cap": 200,
+        "possibly_truncated": false,
+        "rows": 3
+      },
+      "project_settings": {
+        "cap": 50,
+        "possibly_truncated": false,
+        "rows": 13
+      },
+      "projects": {
+        "cap": 50,
+        "possibly_truncated": false,
+        "rows": 13
+      },
+      "short_creation_messages": {
+        "cap": 120,
+        "possibly_truncated": false,
+        "rows": 32
+      },
+      "short_creation_sessions": {
+        "cap": 6,
+        "possibly_truncated": true,
+        "rows": 6
+      },
+      "tasks": {
+        "cap": 50,
+        "possibly_truncated": false,
+        "rows": 27
+      },
+      "validation_reports": {
+        "cap": 100,
+        "possibly_truncated": false,
+        "rows": 0
+      }
+    },
+    "task_associated_runs": 274,
+    "tasks": 27,
+    "unassociated_runs": 24,
+    "window": {
+      "end": "2026-10-12T00:45:16+00:00",
+      "start": "2026-09-12T00:45:16+00:00"
+    }
+  },
+  "source_hashes": {
+    "bundle": "0f0184fc728d615718f03e2da433fa881b6b20f389a2b7091ed044aed9ded79a",
+    "factory": "141f8ef9178c5e5dfa7500d74d1f599821c06301008e5f3917b95c10ef4919c8",
+    "paired_manifest_content": "213c9cd8a16d0c647f343026d425c29376f5a5973b57c5545bb179afc99ef535",
+    "paired_manifest_raw": "847beab65e99c49d3fa288ce0a384d2d35ca26d17eb4f8e6998d56052e409a97",
+    "report": "0a58a5e69680379c93edfeec6bfe4bd629db32724811648efc67debf91ed65f6",
+    "runtime_source_artifact": "d02e17833f7ac451b3ab554d165e67aa319a35086772f10dd6e889b7e4599d10"
+  },
+  "stage01_diagnostic": {
+    "domain_names_valid": true,
+    "event_and_hypothesis_literal_quote_match": true,
+    "excerpt_characters": 6394,
+    "first_failure": "operations quote not contained in specified contiguous excerpt",
+    "independent_second_violation": "non-target operations marked trace_observation despite target recall.events",
+    "indices": [
+      0,
+      0
+    ],
+    "json_syntax_valid": true,
+    "match": false,
+    "quote_characters": 38,
+    "semantic_support": "provisional,unverified",
+    "whole_response_remains": "schema_failed,11unknown,0acceptedrefs"
+  },
+  "stages": [
+    {
+      "accepted_continuous_refs": 0,
+      "analysis_status": "schema_failed",
+      "arm": "baseline",
+      "automatic_execution": false,
+      "candidate_allowed": false,
+      "evidence_status": "VERIFIED_EXPORTED",
+      "execution": "ACTUAL",
+      "failure_kind": "ValueError",
+      "hashes": {
+        "analysis_receipt": "51e6001f54ecdbde1ef4dbf71e14e04d163fa204f5d0b71750ee85042a16e309",
+        "export_manifest": "0437ad11b89609d8307b159d093124831b35684c3cb9d2711f7678a7d2d506b5",
+        "model_output": "745387cafd527906391d08dd0f40ced3d8136cb92028ea38b42be0ac1c6f211b"
+      },
+      "http_requests": 1,
+      "http_status": [
+        200
+      ],
+      "owned_tree_empty": true,
+      "pair_id": "writing-pair-01",
+      "runtime_verified": true,
+      "semantic_quality": "unknown",
+      "stage": "paid-writing-01",
+      "supervision_verified": true,
+      "target_domain": "recall.events",
+      "unknown_domains": 11,
+      "usage_records": 1
+    },
+    {
+      "accepted_continuous_refs": 0,
+      "analysis_status": "schema_failed",
+      "arm": "candidate",
+      "automatic_execution": false,
+      "candidate_allowed": false,
+      "evidence_status": "VERIFIED_EXPORTED",
+      "execution": "ACTUAL",
+      "failure_kind": "ValueError",
+      "hashes": {
+        "analysis_receipt": "6b037c7321e6dadc12c7cfc8df23d281959462fc30ab6b301c6d845657bf7ef4",
+        "export_manifest": "43f991a66f257b028d90ed2934fdc0c8fba34f0dfc8d1fc2b169a321bb80d299",
+        "model_output": "3447d1b6b99b78dfdde32a1776aec64fb504e8f54ae2e2874974d7240524eca8"
+      },
+      "http_requests": 1,
+      "http_status": [
+        200
+      ],
+      "owned_tree_empty": true,
+      "pair_id": "writing-pair-01",
+      "runtime_verified": true,
+      "semantic_quality": "unknown",
+      "stage": "paid-writing-02",
+      "supervision_verified": true,
+      "target_domain": "recall.events",
+      "unknown_domains": 11,
+      "usage_records": 1
+    },
+    {
+      "accepted_continuous_refs": 0,
+      "analysis_status": "schema_failed",
+      "arm": "baseline",
+      "automatic_execution": false,
+      "candidate_allowed": false,
+      "evidence_status": "VERIFIED_EXPORTED",
+      "execution": "ACTUAL",
+      "failure_kind": "ValueError",
+      "hashes": {
+        "analysis_receipt": "fbf0731d3441b14767286fbda2c29952fc4e7ff908f98d92a7c519b6975187e9",
+        "export_manifest": "3aa98f665c5d28bb9e31ef420eadfed6afed0a8177153802aad3a2cd9bcbc3a6",
+        "model_output": "2ac815da3dc45dbedaf58c44a4949efefd9678a5f1c4b6ca385b92dfe1865efc"
+      },
+      "http_requests": 1,
+      "http_status": [
+        200
+      ],
+      "owned_tree_empty": true,
+      "pair_id": "writing-pair-02",
+      "runtime_verified": true,
+      "semantic_quality": "unknown",
+      "stage": "paid-writing-03",
+      "supervision_verified": true,
+      "target_domain": "recall.plot",
+      "unknown_domains": 11,
+      "usage_records": 1
+    },
+    {
+      "accepted_continuous_refs": 0,
+      "analysis_status": "schema_failed",
+      "arm": "candidate",
+      "automatic_execution": false,
+      "candidate_allowed": false,
+      "evidence_status": "VERIFIED_EXPORTED",
+      "execution": "ACTUAL",
+      "failure_kind": "ValueError",
+      "hashes": {
+        "analysis_receipt": "9af96b0fc07a9631a3092006e94866c179914ff11b7be26369d431a6fd4e579f",
+        "export_manifest": "7da105f0efaae9cc2a5adc61966ca4a70924e33f4d18919c2cabab9fe7f250f1",
+        "model_output": "c95127d656bb668473bc4b137f67ffb7550c824c1f3a92ce2c82efd8067a4c8e"
+      },
+      "http_requests": 1,
+      "http_status": [
+        200
+      ],
+      "owned_tree_empty": true,
+      "pair_id": "writing-pair-02",
+      "runtime_verified": true,
+      "semantic_quality": "unknown",
+      "stage": "paid-writing-04",
+      "supervision_verified": true,
+      "target_domain": "recall.plot",
+      "unknown_domains": 11,
+      "usage_records": 1
+    },
+    {
+      "accepted_continuous_refs": 0,
+      "analysis_status": "schema_failed",
+      "arm": "baseline",
+      "automatic_execution": false,
+      "candidate_allowed": false,
+      "evidence_status": "VERIFIED_EXPORTED",
+      "execution": "ACTUAL",
+      "failure_kind": "ValueError",
+      "hashes": {
+        "analysis_receipt": "ce0d9070565a167c512d7846956b512e6710272b9260470ff7584c98d14bb1d9",
+        "export_manifest": "83caa0fca279e811d3b23b94e32fa021736b1a2dc47e67d0117c633b466d121b",
+        "model_output": "9cdc8eaefb2d66d51924803ea5922495a82006de85c516534fe473fc39ca78a9"
+      },
+      "http_requests": 1,
+      "http_status": [
+        200
+      ],
+      "owned_tree_empty": true,
+      "pair_id": "writing-pair-03",
+      "runtime_verified": true,
+      "semantic_quality": "unknown",
+      "stage": "paid-writing-05",
+      "supervision_verified": true,
+      "target_domain": "recall.characters",
+      "unknown_domains": 11,
+      "usage_records": 1
+    },
+    {
+      "accepted_continuous_refs": 0,
+      "analysis_status": "schema_failed",
+      "arm": "candidate",
+      "automatic_execution": false,
+      "candidate_allowed": false,
+      "evidence_status": "VERIFIED_EXPORTED",
+      "execution": "ACTUAL",
+      "failure_kind": "ValueError",
+      "hashes": {
+        "analysis_receipt": "5b5ab74f3d515327f43497451c684bb131067b5572811c1413deefb0b21921a4",
+        "export_manifest": "328bb12a5ed6b2f9a1107332a50ac803f8dd68922ff36159c09ccf18db567bdd",
+        "model_output": "9b098e1c7aeeb6e9ee7f58cd8e90bb2296443414588a6a66043b653fb677285c"
+      },
+      "http_requests": 1,
+      "http_status": [
+        200
+      ],
+      "owned_tree_empty": true,
+      "pair_id": "writing-pair-03",
+      "runtime_verified": true,
+      "semantic_quality": "unknown",
+      "stage": "paid-writing-06",
+      "supervision_verified": true,
+      "target_domain": "recall.characters",
+      "unknown_domains": 11,
+      "usage_records": 1
+    },
+    {
+      "accepted_continuous_refs": 0,
+      "analysis_status": "schema_failed",
+      "arm": "baseline",
+      "automatic_execution": false,
+      "candidate_allowed": false,
+      "evidence_status": "VERIFIED_EXPORTED",
+      "execution": "ACTUAL",
+      "failure_kind": "ValueError",
+      "hashes": {
+        "analysis_receipt": "91146f85da64841233912a5168f738530011f05741c3e1006a28f288620776cc",
+        "export_manifest": "5fd5c940b8c0c5e23074dc402cf10682d8e8459f12d50e83f876d0f07a65c598",
+        "model_output": "e4549c8f3cd39660d0ed2f8a9e49ee674954e84699e2e8b4ac35acde856d5200"
+      },
+      "http_requests": 1,
+      "http_status": [
+        200
+      ],
+      "owned_tree_empty": true,
+      "pair_id": "writing-pair-04",
+      "runtime_verified": true,
+      "semantic_quality": "unknown",
+      "stage": "paid-writing-07",
+      "supervision_verified": true,
+      "target_domain": "extract",
+      "unknown_domains": 11,
+      "usage_records": 1
+    },
+    {
+      "accepted_continuous_refs": 0,
+      "analysis_status": "schema_failed",
+      "arm": "candidate",
+      "automatic_execution": false,
+      "candidate_allowed": false,
+      "evidence_status": "VERIFIED_EXPORTED",
+      "execution": "ACTUAL",
+      "failure_kind": "ValueError",
+      "hashes": {
+        "analysis_receipt": "d6af7aa4a15ba349a997a7d70631800e17f6c4665db776f6d534c71d560f4cc2",
+        "export_manifest": "fd29b1b1b6fec55716f752cbde6998433e7fe854357937bc2fb7f78cc0201f6a",
+        "model_output": "a0fcf4048d2a47fb9e65cb94546d239965baba8ef736fab1a50044006f75cf76"
+      },
+      "http_requests": 1,
+      "http_status": [
+        200
+      ],
+      "owned_tree_empty": true,
+      "pair_id": "writing-pair-04",
+      "runtime_verified": true,
+      "semantic_quality": "unknown",
+      "stage": "paid-writing-08",
+      "supervision_verified": true,
+      "target_domain": "extract",
+      "unknown_domains": 11,
+      "usage_records": 1
+    },
+    {
+      "accepted_continuous_refs": 2,
+      "analysis_status": "valid",
+      "arm": "baseline",
+      "automatic_execution": false,
+      "candidate_allowed": false,
+      "evidence_status": "VERIFIED_EXPORTED",
+      "execution": "ACTUAL",
+      "hashes": {
+        "analysis_receipt": "02b918b398135cad7278ea12a6dc0728603f96a964ecdc79c8c3481c340d389b",
+        "export_manifest": "0355671872f6a239ad42b0fbd8f41f2b1233ea8cb0280c0e018fcaa673637765",
+        "model_output": "ad28f477efd486bace3b53c75d47e80446eeb116456bd85d2c4b10e512562988"
+      },
+      "http_requests": 1,
+      "http_status": [
+        200
+      ],
+      "owned_tree_empty": true,
+      "pair_id": "writing-pair-05",
+      "runtime_verified": true,
+      "semantic_quality": "unknown",
+      "stage": "paid-writing-09",
+      "supervision_verified": true,
+      "target_domain": "operations",
+      "unknown_domains": 10,
+      "usage_records": 1
+    },
+    {
+      "accepted_continuous_refs": 2,
+      "analysis_status": "valid",
+      "arm": "candidate",
+      "automatic_execution": false,
+      "candidate_allowed": false,
+      "evidence_status": "VERIFIED_EXPORTED",
+      "execution": "ACTUAL",
+      "hashes": {
+        "analysis_receipt": "e57cd761d8edac1bb0aa9738a4077d59675179723b2fafc37c84f5c868214865",
+        "export_manifest": "06065fb214b269e64cdf9b4db86830855eb826f5c5f850610656cbb1197269c0",
+        "model_output": "b94fed74e1931a0386c9fae024625739f16d9eac56d08b94a3ed4cc64d9b00b8"
+      },
+      "http_requests": 1,
+      "http_status": [
+        200
+      ],
+      "owned_tree_empty": true,
+      "pair_id": "writing-pair-05",
+      "runtime_verified": true,
+      "semantic_quality": "unknown",
+      "stage": "paid-writing-10",
+      "supervision_verified": true,
+      "target_domain": "operations",
+      "unknown_domains": 10,
+      "usage_records": 1
+    }
+  ],
+  "terminal_status": "COMPLETED_RUNTIME_WITH_ANALYSIS_FAILURES",
+  "title": "本机Pi写作014：十阶段完成，语义质量仍unknown"
+}
