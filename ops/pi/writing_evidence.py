@@ -19,7 +19,7 @@ _CAPS = dict(tasks=50, projects=50, agent_runs=400, generation_snapshots=100,
              chapters=12, chapter_versions=60, memory_candidates=200, facts=200,
              events=200, character_states=200, characters=200, plot_threads=200,
              foreshadows=200, project_settings=50, validation_reports=100,
-             findings=200, short_creation_sessions=6, short_creation_messages=120)
+             findings=200, short_creation_sessions=6, short_creation_messages=120, feedback=50)
 _META = {'schema_version', 'collected_at', 'source', 'source_role', 'window', 'provenance_note'}
 _INTEGER_IDS = {'agent_runs', 'generation_snapshots', 'short_creation_messages'}
 _CURRENT = ('chapters', 'memory_candidates', 'facts', 'events', 'character_states',
@@ -88,6 +88,9 @@ def _validate(bundle):
             if not valid or identifier in seen:
                 raise ValueError('invalid or duplicate stable ID: ' + table)
             seen.add(identifier)
+    if 'feedback' in bundle:
+        from .feedback import validate_feedback_rows
+        validate_feedback_rows(bundle['feedback'], window)
     _encoded(bundle)  # Reject nonfinite values even for direct in-memory analysis.
 
 
@@ -501,6 +504,8 @@ def _evidence(bundle):
         for row in bundle.get(table, []):
             for field in fields:
                 add(table,row,'current_context',field,row.get(field),True)
+    for row in bundle.get('feedback', []):
+        add('feedback', row, 'experience', 'description', row['description'])
     return result
 
 
@@ -524,7 +529,7 @@ def make_analysis_view(bundle: dict, report: dict, max_bytes: int = 48000) -> di
         e['source']['id'], 0 if e['source']['path'] == 'trace.response.content' else
         1 if e['source']['path'] == 'trace.short_review' else 2))
     categories = ('recall.facts','recall.events','recall.characters','recall.plot','extract','audit','repair',
-                  'write','short_turn','brief','tools','recall','other_trace','current_context')
+                  'write','short_turn','brief','tools','recall','other_trace','current_context','experience')
     ordered = []
     while any(queues.values()):
         for category in categories:

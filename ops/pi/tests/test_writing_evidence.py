@@ -404,3 +404,21 @@ def test_short_turn_missing_session_or_invalid_role_stays_unavailable():
     assert refs[0]['role'] == 'unknown'
     assert refs[1]['session_id'] is None and refs[1]['session_association'] == 'unknown: invalid session ID'
     assert 'unexpected-secret-role' not in json.dumps(view) and 'arbitrary-secret-reference' not in json.dumps(view)
+
+
+def test_feedback_experience_bridge_is_finite_cited_and_body_only():
+    from ops.pi import feedback
+    from ops.pi.tests.test_feedback_reader import source_rows,WINDOW
+    assert api()._CAPS.get('feedback')==50
+    rows=source_rows();rows[0]['description']='删除按钮报错'
+    data=bundle();data['window']={k:v.isoformat() for k,v in WINDOW.items()};data['collected_at']=data['window']['end']
+    data['feedback']=feedback.make_feedback_snapshot(rows,WINDOW)['rows']
+    report=api().analyze_writing_bundle(data);view=api().make_analysis_view(data,report)
+    evidence=[item for item in view['evidence'] if item['category']=='experience']
+    assert len(evidence)==1 and evidence[0]['source']['table']=='feedback'
+    assert evidence[0]['source']['id']==data['feedback'][0]['id']
+    assert evidence[0]['source']['path']=='description'
+    assert len(report['quality_catalog'])==45 and all(v['availability']=='unknown' for v in report['quality_catalog'].values())
+    assert 'contact' not in json.dumps(view) and 'attachments' not in json.dumps(view)
+    data['feedback'][0]['contact']='private'
+    with pytest.raises(ValueError):api().analyze_writing_bundle(data)
