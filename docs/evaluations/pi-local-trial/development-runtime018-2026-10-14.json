@@ -1,0 +1,109 @@
+{
+  "actual_http_requests": null,
+  "budget": {
+    "allocations": {
+      "analysis": 15,
+      "develop": 45,
+      "experiment": 30,
+      "reserve": 10
+    },
+    "analysis_effective_transport": 15,
+    "analysis_inherited_blocked": 1,
+    "checkpoint": [
+      77,
+      10715825
+    ],
+    "cumulative_microyuan_cap": 20000000,
+    "cumulative_request_cap": 100,
+    "daily_reset": false,
+    "invoice_known": false,
+    "known_estimate_microyuan": 650033,
+    "new018_attempts": 0,
+    "new018_known_estimate_microyuan": 0,
+    "new018_unknown_reservation_microyuan": 0,
+    "pending_model_attempts": 0,
+    "pending_phase_admissions": 0,
+    "phase_admission_counts": {
+      "analysis": 16,
+      "develop": 24,
+      "experiment": 29,
+      "reserve": 8
+    },
+    "unknown_reservation_microyuan": 10065792
+  },
+  "candidate_adopted": false,
+  "candidate_checker": "NOT_RUN",
+  "candidate_created": false,
+  "candidate_patch_applied": false,
+  "candidate_source_sha256": null,
+  "case_id": "development-runtime018",
+  "failure_cause": {
+    "errno": null,
+    "host_returncode": null,
+    "hypothesis": "short-lived process measurement race; source-derived possibility, not established cause",
+    "observed_host_exception_class": "OSError",
+    "root_cause_confirmed": false,
+    "stage": "Pi containment Python probe before installed Pi RPC",
+    "syscall": "unknown"
+  },
+  "gate2_export_manifest_sha256": "534a3349054fd8e02e23e34342a75a735a3f41517d9d67d2f4d0ff2a3d22fea3",
+  "independent_private_review_hashes": {
+    "gate2_failure": "b21a7a20f9ed684fe6786b4d2afa30d2526d6ddaf1eb1c903457ef86a32f0be1",
+    "terminal_facts": "73a55b0a70fac7502f19ca85fd4605a26b74df66c835025bd7e98f8172541ecf"
+  },
+  "keeper_stop_sha256": "b9f371d0540867c229da7f2fe5f8b3510c7b31cc706ff1fea53a9d868bb82384",
+  "kernel_cleanup": {
+    "keeper_stopped": true,
+    "no_fixed_uid_processes": true,
+    "oom_kill": 0,
+    "overflow": false,
+    "owned_unit_cleanup_verified": true,
+    "owned_unit_count": 1,
+    "supervision_verified": false,
+    "task_returncode": 1,
+    "timed_out": false,
+    "tree_empty": true
+  },
+  "not_run_guard_verified": true,
+  "null_observation_fields_mean": "No paid outcome exists; NOT_RUN is established by the explicit unchanged-history and absent-paid/mock/approval guard, not a fabricated zero observation count.",
+  "paid_failure_record_present": false,
+  "paid_outcome_present": false,
+  "production_status": "NOT_RUN",
+  "provider_execution": "NOT_RUN",
+  "provider_not_run": true,
+  "publication_review_status": "FACTS_ONLY_NOT_RUNTIME_AUTHORITY",
+  "release_approved": false,
+  "schema_version": 1,
+  "scope": "local isolated aggregate-only trial; no raw model/user text/ledger rows/credentials/process identities; no production or paid continuation acceptance",
+  "semantic_quality": "unknown",
+  "source_after_sha256": "dc6022b85b2556736ac3ac9d21e952105195025657a72d5f871405aca04dc597",
+  "source_before_sha256": "dc6022b85b2556736ac3ac9d21e952105195025657a72d5f871405aca04dc597",
+  "source_closure_sha256": "bd03be20d4c75d2e3aeb6f728c4178d309dccebd0fdf0d30a425076f47ade23d",
+  "status": "failed",
+  "terminal_checkpoint_sha256": "5d63f531d64a979640c86220472dfefc780940957f92f46e4880cc7147816a8c",
+  "terminal_stage": "gate2",
+  "terminal_status": "FAILED_OR_INCOMPLETE",
+  "usage_records": null,
+  "validation_scope": {
+    "gate1_actual": true,
+    "gate2_accepted": false,
+    "gate2_actual_probe_started": true,
+    "gate2_installed_pi_rpc": "NOT_RUN",
+    "gate2_model_mock": "NOT_RUN",
+    "prospective019_actual_result": "NOT_CLAIMED",
+    "prospective019_cause_fixed": "NOT_CLAIMED",
+    "prospective019_source_passed": 55,
+    "prospective019_source_skipped": 0,
+    "quality_comparison": "NOT_RUN"
+  },
+  "whole_history": {
+    "backup_sha256": "74b1e5f62d8804a1f22b4ecd83731a0014b25f303e9170eed5f332d622a82b41",
+    "events": 370,
+    "new_events": 0,
+    "new_operations": 0,
+    "old_events_unchanged": true,
+    "old_operations_unchanged": true,
+    "operations": 224,
+    "snapshot_sha256": "e004330ec31337354edbf8934f294a53c5fe11e002cb9e57487079c18c34ea65"
+  }
+}
