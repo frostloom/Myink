@@ -1,0 +1,103 @@
+{
+  "actual_http_requests": 5,
+  "apply_patch_calls": 0,
+  "budget": {
+    "allocations": {
+      "analysis": 15,
+      "develop": 45,
+      "experiment": 30,
+      "reserve": 10
+    },
+    "checkpoint": [
+      71,
+      10676867
+    ],
+    "invoice_known": false,
+    "known_estimate_microyuan": 611075,
+    "new016_known_estimate_microyuan": 35198,
+    "pending_model_attempts": 0,
+    "pending_phase_admissions": 0,
+    "phase_admission_counts": {
+      "analysis": 16,
+      "develop": 18,
+      "experiment": 29,
+      "reserve": 8
+    },
+    "unknown_reservation_microyuan": 10065792
+  },
+  "candidate_adopted": false,
+  "case_id": "development-runtime016",
+  "keeper_stop_sha256": "b03fb270f961e5f10c6174bc0c76e1374f13dba156edfd38388308bea4b8475b",
+  "kernel_cleanup": {
+    "actual": true,
+    "oom_kill": 0,
+    "overflow": false,
+    "task_returncode": 1,
+    "timed_out": false,
+    "tree_empty": true
+  },
+  "last_model_stop_reason": "length",
+  "last_output_tokens": 2048,
+  "release_approved": false,
+  "response_status_counts": {
+    "200": 5
+  },
+  "run_check_calls": 0,
+  "schema_version": 1,
+  "scope": "local isolated trial; no primary/production changes; no raw transcript, user text or full ledger in this public artifact",
+  "semantic_quality": "unknown",
+  "source_after_sha256": "dc6022b85b2556736ac3ac9d21e952105195025657a72d5f871405aca04dc597",
+  "source_before_sha256": "dc6022b85b2556736ac3ac9d21e952105195025657a72d5f871405aca04dc597",
+  "status": "failed",
+  "terminal_checkpoint_sha256": "d53120146c1a021a03cb38252881832110dfa7f71a27102904dd37482f4f4f2e",
+  "tool_sequence": [
+    {
+      "range": [
+        1,
+        400
+      ],
+      "status": "blocked",
+      "tool": "read_source"
+    },
+    {
+      "before_patch": true,
+      "status": "done",
+      "tool": "candidate_status"
+    },
+    {
+      "range": [
+        1,
+        250
+      ],
+      "status": "blocked",
+      "tool": "read_source"
+    },
+    {
+      "range": [
+        1,
+        100
+      ],
+      "status": "done",
+      "tool": "read_source"
+    },
+    {
+      "range": [
+        100,
+        165
+      ],
+      "status": "done",
+      "tool": "read_source"
+    }
+  ],
+  "usage_records": 5,
+  "whole_history": {
+    "backup_sha256": "ae0abe343309ffb3438f0760e639b0ec34fbd84a520a1e739de90428785db560",
+    "events": 336,
+    "new_events": 33,
+    "new_operations": 19,
+    "old_events_unchanged": true,
+    "old_operations_unchanged": true,
+    "operations": 204,
+    "snapshot_sha256": "b8fc963349ecb2fd2a4d3fae8cc0b952bd9c50c3e41200dc9f734771f1e22e29"
+  }
+}
