@@ -8,7 +8,10 @@
       "reserve": 10
     },
     "analysis_effective_transport": 15,
-    "analysis_inherited_blocked": 1,
+    "analysis_blocked_phase_admissions": 1,
+    "analysis_inherited_attempts": 4,
+    "analysis_raw_phase_admissions": 12,
+    "phase_counts_semantics": "analysis16 aggregates inherited4 plus raw phase-admission12, including blocked1; effective analysis transport15",
     "checkpoint": [
       77,
       10715825

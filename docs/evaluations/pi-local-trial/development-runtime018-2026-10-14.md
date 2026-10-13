@@ -14,7 +14,7 @@ gate2的所属探针已经启动，宿主测得的部分资源信息符合既定
 
 本轮新增模型请求、已知估算、未知预留及canonical操作/事件均为0。累计仍77次尝试，已知估算650033微元（0.650033元）加历史未知预留10065792微元（10.065792元），保守占用10715825微元（10.715825元）。**估算与预留不是供应商账单；没有退款、重置或重分类。** 原100次/20元累计上限及15/45/30/10阶段分配不变，不是每日新额度。
 
-全历史仍224 operations/370 events，完整旧行和事件前缀不变。phase原始计数analysis16（含旧blocked1，有效transport15）、develop24、experiment29、reserve8。pending model-attempt/admission均0，合法历史scope/fence pending保留。基线仍DC；本轮未创建paid candidate，candidate hash为null，不能把未创建候选称为已检查或未修改候选。
+全历史仍224 operations/370 events，完整旧行和事件前缀不变。phase聚合计数analysis16＝继承4＋原始phase-admission12（其中blocked1，有效analysis transport15）、develop24、experiment29、reserve8。pending model-attempt/admission均0，合法历史scope/fence pending保留。基线仍DC；本轮未创建paid candidate，candidate hash为null，不能把未创建候选称为已检查或未修改候选。
 
 ROOT已保存本次只读事务的完整JSON、同事务备份与终态，再准确STOP。相同账本内容使本次备份SHA与历史内容一致，不表示旧gate或epoch可复用。native保护目录/文件与E镜像的作用不同：E只证明字节，不能证明权限。公开版本仅含安全聚合与哈希，不含完整账本、用户正文、模型输出、账号、密钥或调用UUID。
 
