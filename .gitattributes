@@ -10,3 +10,6 @@ docs/diagrams/** -text -whitespace
 ops/pi/feedback.py -text
 ops/pi/feedback_evaluation.py -text
 ops/pi/fixtures/feedback-safety-v1.json -text
+
+# The fixed Pi wire guard is bound to its original raw bytes across platforms.
+ops/pi/lab/pi-wire-guard.mjs -text
