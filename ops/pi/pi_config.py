@@ -60,4 +60,11 @@ def make_pi_config(root: Path, gateway: Record, policy: Policy, *, controlled_to
         models['providers']['myink-budget']['models'][0]['headers'] = {'anthropic-beta': ''}
         args.remove('--no-tools')
         args += ['-e',str(extension)]
+    else:
+        guard = Path(__file__).parent / 'lab/pi-wire-guard.mjs'
+        if (not guard.is_absolute() or any(part.is_symlink() for part in (guard, *guard.parents))
+                or not guard.is_file() or hashlib.sha256(guard.read_bytes()).hexdigest() !=
+                'eea0ee73c584f41624cf12d88141a12e4cfcfb958269731873a2a942996177f7'):
+            raise ValueError('pinned pure text wire guard required')
+        args += ['-e', str(guard)]
     return {'env': env, 'settings': settings, 'models': models, 'args': args}
