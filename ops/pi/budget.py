@@ -147,10 +147,165 @@ def amend_local_trial_budget(ledger: Ledger, scope_id: str, *, operation_id: str
         return Ledger._record(connection.execute('SELECT * FROM operations WHERE operation_id=?', (operation_id,)).fetchone())
 
 
+TRIAL_PHASE_ALLOCATIONS = {'analysis': 15, 'develop': 45, 'experiment': 30, 'reserve': 10}
+
+
+def _original_phase_fence(connection):
+    row = connection.execute('SELECT * FROM operations WHERE operation_id=?',
+                             ('c17-phase-admission:local-trial-1',)).fetchone()
+    if row is None or row['kind'] != 'phase-fence' or row['status'] != 'pending' or row['evidence'] is not None:
+        raise BudgetDenied('fee-only amendment requires original phase fence')
+    data = Ledger._decode(row['payload'])
+    inherited = data.get('inherited_analysis_attempts')
+    if (set(data) != {'scope_id', 'allocations', 'inherited_analysis_attempts'}
+            or data['scope_id'] != 'local-trial-1' or data['allocations'] != TRIAL_PHASE_ALLOCATIONS
+            or not isinstance(inherited, list) or len(inherited) > 15
+            or any(not _trusted_reference(v, 128) for v in inherited)
+            or len(set(inherited)) != len(inherited)):
+        raise BudgetDenied('invalid original phase fence')
+    return data
+
+
+def _validate_amendment_v2(payload):
+    fields = {'amendment_version', 'scope_id', 'expected_original_microyuan',
+              'expected_effective_microyuan', 'expected_effective_max_attempts',
+              'budget_microyuan', 'max_attempts', 'phase_allocations',
+              'authorization_reference', 'approved'}
+    if (set(payload) != fields or payload['scope_id'] != 'local-trial-1'
+            or payload['approved'] is not True
+            or not _trusted_reference(payload['authorization_reference'], 512)
+            or any(type(payload[k]) is not int for k in ('amendment_version',
+                'expected_original_microyuan', 'expected_effective_microyuan',
+                'expected_effective_max_attempts', 'budget_microyuan'))
+            or (payload['amendment_version'], payload['expected_original_microyuan'],
+                payload['expected_effective_microyuan'], payload['expected_effective_max_attempts'],
+                payload['budget_microyuan']) != (2, 10000000, 20000000, 100, 20000000)
+            or payload['max_attempts'] is not None or payload['phase_allocations'] is not None):
+        raise BudgetDenied('invalid trusted fee-only amendment')
+
+
+def _amendment_v2_evidence(payload):
+    return {k: payload[k] for k in ('amendment_version', 'approved', 'budget_microyuan',
+                                    'max_attempts', 'phase_allocations', 'authorization_reference')}
+
+
+def _effective_trial_limits(connection, original):
+    effective = _effective_budget(connection, original)  # original v1 approval remains independently valid
+    result = dict(max_attempts=original['max_attempts'], budget_microyuan=effective,
+                  phase_allocations=dict(TRIAL_PHASE_ALLOCATIONS))
+    rows = connection.execute("SELECT * FROM operations WHERE kind='model-budget-amendment-v2'").fetchall()
+    if not rows:
+        return result
+    if len(rows) != 1 or original != dict(max_attempts=100, budget_microyuan=10000000) or effective != 20000000:
+        raise BudgetDenied('invalid fee-only amendment history')
+    _original_phase_fence(connection)
+    row = rows[0]
+    payload = Ledger._decode(row['payload'])
+    _validate_amendment_v2(payload)
+    evidence = _amendment_v2_evidence(payload)
+    if (not _trusted_reference(row['operation_id'], 128) or row['status'] != 'done'
+            or row['evidence'] is None or _json(Ledger._decode(row['evidence'])) != _json(evidence)):
+        raise BudgetDenied('fee-only amendment lacks trusted approval receipt')
+    expected = [
+        ('intent', dict(operation_id=row['operation_id'], kind='model-budget-amendment-v2',
+                        payload=payload, schema_version=1)),
+        ('receipt', dict(operation_id=row['operation_id'], status='done', evidence=evidence, schema_version=1)),
+    ]
+    actual = []
+    for event in connection.execute("SELECT kind,payload FROM events WHERE kind IN ('intent','receipt') ORDER BY id"):
+        data = Ledger._decode(event['payload'])
+        if data.get('operation_id') == row['operation_id']:
+            actual.append((event['kind'], data))
+    if [(kind, _json(data)) for kind, data in actual] != [(kind, _json(data)) for kind, data in expected]:
+        raise BudgetDenied('fee-only amendment approval audit mismatch')
+    return dict(max_attempts=None, budget_microyuan=20000000, phase_allocations=None)
+
+
+def effective_limits_in_connection(connection, scope_id='local-trial-1'):
+    """SELECT-only limits for a host's existing snapshot transaction; no new scope."""
+    if scope_id != 'local-trial-1':
+        raise BudgetDenied('scope disabled')
+    row = connection.execute('SELECT * FROM operations WHERE operation_id=?',
+                             ('model-scope:' + scope_id,)).fetchone()
+    if row is None:
+        if connection.execute("SELECT 1 FROM operations WHERE kind IN ('model-budget-amendment','model-budget-amendment-v2')").fetchone():
+            raise BudgetDenied('amendment without original scope')
+        return dict(max_attempts=100, budget_microyuan=10000000,
+                    phase_allocations=dict(TRIAL_PHASE_ALLOCATIONS))
+    return _effective_trial_limits(connection, _scope_payload(row))
+
+
+def effective_trial_limits(ledger: Ledger, scope_id='local-trial-1'):
+    with ledger.transaction() as connection:
+        return effective_limits_in_connection(connection, scope_id)
+
+
+def amend_local_trial_budget_v2(ledger: Ledger, scope_id: str, *, operation_id: str,
+        expected_original_microyuan: int, expected_effective_microyuan: int,
+        expected_effective_max_attempts: int, budget_microyuan: int,
+        max_attempts: None, phase_allocations: None, authorization_reference: str,
+        approved: bool) -> Record:
+    """Trusted host only: append explicit fee-only authority, never a model tool/API.
+
+    Database schema1 and immutable original scope/v1/fence/attempts stay intact.
+    Null is an explicit removal of cumulative request quotas, not a new money pool.
+    The protected host ledger/policy and tool allowlist form the trust boundary.
+    """
+    payload = dict(amendment_version=2, scope_id=scope_id,
+        expected_original_microyuan=expected_original_microyuan,
+        expected_effective_microyuan=expected_effective_microyuan,
+        expected_effective_max_attempts=expected_effective_max_attempts,
+        budget_microyuan=budget_microyuan, max_attempts=max_attempts,
+        phase_allocations=phase_allocations, authorization_reference=authorization_reference,
+        approved=approved)
+    _validate_amendment_v2(payload)
+    if not _trusted_reference(operation_id, 128):
+        raise BudgetDenied('invalid fee-only amendment identity')
+    encoded = _json(payload)
+    evidence = _amendment_v2_evidence(payload)
+    with ledger.transaction() as connection:
+        row = connection.execute('SELECT * FROM operations WHERE operation_id=?',
+                                 ('model-scope:' + scope_id,)).fetchone()
+        original = _scope_payload(row)
+        existing = connection.execute('SELECT * FROM operations WHERE operation_id=?', (operation_id,)).fetchone()
+        if existing is not None and (existing['kind'] != 'model-budget-amendment-v2' or existing['payload'] != encoded):
+            raise OperationConflict('fee-only amendment identity conflict')
+        limits = _effective_trial_limits(connection, original)
+        if existing is not None:
+            return Ledger._record(existing)
+        if limits['max_attempts'] is None:
+            raise OperationConflict('fee-only amendment already approved')
+        if original != dict(max_attempts=100, budget_microyuan=10000000) or limits != dict(
+                max_attempts=100, budget_microyuan=20000000, phase_allocations=TRIAL_PHASE_ALLOCATIONS):
+            raise BudgetDenied('fee-only amendment requires original approved100/20 scope')
+        _original_phase_fence(connection)
+        for pending in connection.execute("SELECT kind,payload FROM operations WHERE status='pending' AND kind IN ('model-attempt','phase-admission')"):
+            if pending['kind'] == 'phase-admission' or Ledger._decode(pending['payload']).get('scope_id') == scope_id:
+                raise BudgetDenied('settle current model/phase transport before amendment')
+        connection.execute("INSERT INTO operations VALUES (?,'model-budget-amendment-v2',?,'pending',NULL,1)", (operation_id, encoded))
+        connection.execute('INSERT INTO events(kind,payload,schema_version) VALUES (?,?,1)',
+            ('intent', _json(dict(operation_id=operation_id, kind='model-budget-amendment-v2', payload=payload, schema_version=1))))
+        connection.execute("UPDATE operations SET status='done',evidence=? WHERE operation_id=?", (_json(evidence), operation_id))
+        connection.execute('INSERT INTO events(kind,payload,schema_version) VALUES (?,?,1)',
+            ('receipt', _json(dict(operation_id=operation_id, status='done', evidence=evidence, schema_version=1))))
+        return Ledger._record(connection.execute('SELECT * FROM operations WHERE operation_id=?', (operation_id,)).fetchone())
+
+
+def _policy_attempt_limit(policy):
+    if policy.max_attempts is None:
+        if policy.schema_version != 2 or policy.budget_microyuan != 20000000 or policy.server_daily_enabled:
+            raise BudgetDenied('explicit local fee-only policy required')
+        return None
+    if type(policy.max_attempts) is not int or policy.max_attempts <= 0 or policy.schema_version != 1:
+        raise BudgetDenied('invalid policy attempt limit')
+    return min(100, policy.max_attempts)
+
+
 def reserve(ledger: Ledger, scope_id: str, request: Record, policy: Policy) -> BudgetPermit:
     # No date-derived reset in this trial; future daily scopes remain disabled.
     if scope_id != 'local-trial-1':
         raise BudgetDenied('scope disabled')
+    policy_attempts = _policy_attempt_limit(policy)
     tokens = request.get('max_tokens')
     if type(tokens) is not int or not 0 < tokens <= policy.max_tokens:
         raise ValueError('invalid max_tokens')
@@ -163,13 +318,14 @@ def reserve(ledger: Ledger, scope_id: str, request: Record, policy: Policy) -> B
         scope_key = 'model-scope:' + scope_id
         scope = connection.execute('SELECT * FROM operations WHERE operation_id=?', (scope_key,)).fetchone()
         if scope is None:
-            scope_payload = dict(max_attempts=min(100, policy.max_attempts), budget_microyuan=min(10000000, policy.budget_microyuan))
+            scope_payload = dict(max_attempts=100 if policy_attempts is None else policy_attempts, budget_microyuan=min(10000000, policy.budget_microyuan))
             connection.execute("INSERT INTO operations VALUES (?,'model-scope',?,'pending',NULL,1)", (scope_key, _json(scope_payload)))
         else:
             scope_payload = _scope_payload(scope)
-        effective_budget = _effective_budget(connection, scope_payload)
+        limits = _effective_trial_limits(connection, scope_payload)
+        attempt_bounds = [v for v in (policy_attempts, limits['max_attempts']) if v is not None]
         count, used = _totals(connection, scope_id)
-        if count >= min(100, policy.max_attempts, scope_payload['max_attempts']) or used + amount > min(20000000, policy.budget_microyuan, effective_budget):
+        if (attempt_bounds and count >= min(attempt_bounds)) or used + amount > min(20000000, policy.budget_microyuan, limits['budget_microyuan']):
             raise BudgetDenied('trial budget exhausted')
         connection.execute("INSERT INTO operations VALUES (?,'model-attempt',?,'pending',NULL,1)", (permit.attempt_id, _json(payload)))
         connection.execute('INSERT INTO events(kind,payload,schema_version) VALUES (?,?,1)', ('model-reserved', _json(dict(attempt_id=permit.attempt_id, **payload))))

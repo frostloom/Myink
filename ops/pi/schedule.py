@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from .contracts import Record
 from .ledger import Ledger
 from .policy import Policy
-from .budget import totals
+from .budget import totals, effective_trial_limits
 from .plans import Plan
 
 SHANGHAI = timezone(timedelta(hours=8), 'Asia/Shanghai')
@@ -116,7 +116,14 @@ def next_action(ledger: Ledger | None, now: datetime, observations: Record, poli
                 if not (repair and repair['status'] == 'done' and repair['evidence'].get('verified') is True):
                     return request('repair_backup', operation_id=repair_id, target=gap['operation_id'])
     attempts, spent = totals(ledger, 'local-trial-1') if ledger is not None else (0, 0)
-    if observations.get('budget_exhausted') is True or attempts >= policy.max_attempts or spent >= policy.budget_microyuan:
+    attempt_limit = policy.max_attempts
+    money_limit = policy.budget_microyuan
+    if attempt_limit is None:
+        limits = effective_trial_limits(ledger) if ledger is not None else dict(max_attempts=100, budget_microyuan=10000000)
+        attempt_limit = limits['max_attempts']
+        money_limit = min(money_limit, limits['budget_microyuan'])
+    if (observations.get('budget_exhausted') is True
+            or (attempt_limit is not None and attempts >= attempt_limit) or spent >= money_limit):
         return request('report')
     if observations.get('target_met') is False:
         return request('diagnose')

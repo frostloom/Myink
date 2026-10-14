@@ -83,7 +83,8 @@ def validate_plan(plan: Plan, baseline: Record, policy: Policy) -> Receipt:
         return _receipt(plan, 'invalid_evidence_domain')
     floor = 5 if plan.evidence_domain == 'synthetic' else 20
     if (type(plan.sample_floor) is not int or plan.sample_floor < floor
-            or type(plan.call_estimate) is not int or not 0 <= plan.call_estimate <= policy.max_attempts
+            or type(plan.call_estimate) is not int or plan.call_estimate < 0
+            or (policy.max_attempts is not None and plan.call_estimate > policy.max_attempts)
             or type(plan.time_estimate) is not int or plan.time_estimate <= 0):
         return _receipt(plan, 'invalid_estimate')
     if plan.reason is not None and (not isinstance(plan.reason, str) or not plan.reason.strip()):

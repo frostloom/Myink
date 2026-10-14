@@ -4,6 +4,7 @@ from dataclasses import asdict
 from hashlib import sha256
 import json
 
+from .budget import effective_limits_in_connection
 from .contracts import Receipt
 from .engine import AdministratorContext
 from .ledger import Ledger, _json
@@ -55,12 +56,13 @@ def phase_transport(ledger, phase, transport):
             if len(outstanding)!=1 or outstanding[0]['status']!='pending':
                 raise ValueError('exactly one fresh canonical reservation required')
             attempt = outstanding[0]
+            allocations = effective_limits_in_connection(db)['phase_allocations']
             count = sum(r['payload']['category']==category for r in admissions)
             if category=='analysis': count += len(fence['inherited_analysis_attempts'])
             payload = dict(attempt_id=attempt['operation_id'], category=category, phase=phase, body_sha256=digest(body))
             operation = 'phase-admission:' + attempt['operation_id']
             db.execute("INSERT INTO operations VALUES (?,'phase-admission',?,'pending',NULL,1)",(operation,_json(payload)))
-        if count >= ALLOCATIONS[category]:
+        if allocations is not None and count >= allocations[category]:
             ledger.finish(Receipt(operation,'blocked',{'transport_invoked':False,'reason':'phase_allowance_exhausted'}))
             raise ValueError('phase allowance exhausted; reservation remains counted')
         try:
