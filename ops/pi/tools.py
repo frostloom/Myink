@@ -54,6 +54,77 @@ class ToolDenied(ValueError):
     pass
 
 
+class _CheckFailed(ValueError):
+    def __init__(self, evidence):
+        self.evidence = evidence
+
+
+def _failed_check_feedback(result, snapshot):
+    """Project the authenticated fixed capture report; never forward case text."""
+    denied = 'check receipt not verified for frozen candidate'
+    e = result.evidence
+    if (not isinstance(e, dict) or result.status != 'blocked' or e.get('verified') is not True
+            or e.get('mode') != 'ACTUAL' or e.get('result') != 'failed'
+            or any(e.get(k) != v or type(e.get(k)) is not type(v) for k, v in snapshot.items())
+            or not re.fullmatch(r'capture-check(?:-v2)?:[0-9a-f]{64}', result.operation_id)
+            or 'reason' in e or len(canonical(asdict(result)).encode()) > 32768
+            or e.get('paired_complete') is not True or e.get('paired_objective_passed') is not False
+            or type(e.get('severe_guard_veto')) is not bool):
+        raise ToolDenied(denied)
+    report = e.get('report')
+    if (not isinstance(report, dict) or report.get('verified') is not True
+            or type(report.get('passed')) is not bool or type(report.get('guards_clear')) is not bool):
+        raise ToolDenied(denied)
+    metric_names = ('trace_fidelity', 'redaction', 'encoded_caps', 'input_immutability')
+    rows = report.get('case_results')
+    if not isinstance(rows, dict) or not 1 <= len(rows) <= 128:
+        raise ToolDenied(denied)
+    metrics = {name:dict(pass_count=0, fail_count=0) for name in metric_names}
+    for row in rows.values():
+        if (not isinstance(row, dict) or set(row) != set(metric_names)
+                or any(type(v) is not int or v not in (0, 1) for v in row.values())):
+            raise ToolDenied(denied)
+        for name in metric_names:
+            metrics[name]['pass_count' if row[name] else 'fail_count'] += 1
+    known = {'byte_fidelity', 'input_mutation', 'encoded_cap', 'credential_leak', 'response_cap',
+             'data_reserve', 'truncation_flag', 'redaction_flag', 'key_redaction_or_public_value',
+             'lossless_controls', 'inherited_flags', 'response_lost_to_messages',
+             'unknown_not_fail_closed', 'cycle_not_bounded', 'conservative_full_token_removal_failed'}
+    codes = set()
+    groups = [report]
+    legacy = report.get('legacy_security')
+    if legacy is not None:
+        if not isinstance(legacy, dict) or type(legacy.get('passed')) is not bool:
+            raise ToolDenied(denied)
+        groups.append(legacy)
+    for group in groups:
+        for key in ('failures', 'severe'):
+            values = group.get(key)
+            if not isinstance(values, list) or len(values) > 512:
+                raise ToolDenied(denied)
+            for value in values:
+                if not isinstance(value, str) or len(value) > 256 or value.count(':') != 1:
+                    raise ToolDenied(denied)
+                case, code = value.split(':')
+                if not case or code not in known:
+                    raise ToolDenied(denied)
+                codes.add(code)
+    failed_cases = [value.split(':')[0] for value in report['failures']]
+    if (len(set(failed_cases)) != len(failed_cases)
+            or set(failed_cases) != {case for case,row in rows.items() if row['trace_fidelity'] == 0}
+            or any(value.split(':')[1] != 'byte_fidelity' for value in report['failures'])
+            or report['guards_clear'] != (not report['severe'])
+            or e['severe_guard_veto'] != (not report['guards_clear'])
+            or report['passed'] != (not any(group['failures'] or group['severe'] for group in groups))
+            or legacy is not None and legacy['passed'] != (not legacy['failures'] and not legacy['severe'])):
+        raise ToolDenied(denied)
+    return dict(check_feedback={**snapshot, 'result':'failed', 'verified':True, 'mode':'ACTUAL',
+                'metrics':{name:{'pass':v['pass_count'], 'fail':v['fail_count']} for name,v in metrics.items()},
+                'remediation_codes':sorted(codes), 'paired_complete':True,
+                'paired_objective_passed':False, 'severe_guard_veto':e['severe_guard_veto']},
+                check_operation_id=result.operation_id)
+
+
 class ControlledTools:
     def __init__(self, ledger, policy, *, capability, scope_token, identity, baseline,
                  metrics, checks=None, secret_values=()):
@@ -221,6 +292,13 @@ class ControlledTools:
                     evidence = self._execute(name, args)
                     receipt = Receipt(operation, 'done', dict(tool=name, input_hash=payload['input_hash'],
                         binding=self._binding, **evidence))
+                except _CheckFailed as exc:
+                    evidence = dict(tool=name, input_hash=payload['input_hash'], binding=self._binding,
+                                    reason='verified check failed', **exc.evidence)
+                    receipt = Receipt(operation, 'blocked', evidence)
+                    if len(canonical(asdict(receipt)).encode()) > 16384:
+                        receipt = Receipt(operation, 'blocked', dict(tool=name, input_hash=payload['input_hash'],
+                            binding=self._binding, reason='check feedback exceeds byte cap'))
                 except RuntimeError:
                     receipt = Receipt(operation, 'uncertain', dict(tool=name, input_hash=payload['input_hash'],
                         binding=self._binding, reason='side effect requires host reconciliation'))
@@ -337,7 +415,14 @@ class ControlledTools:
             snapshot = dict(candidate_hash=args['candidate_hash'], plan_hash=args['plan_hash'], base=self.capability.base,
                             candidate_id=self.capability.candidate_id, generation=self.capability.generation,
                             check_id=args['check_id'])
-            result = callback(deepcopy(snapshot))
+            try:
+                result = callback(deepcopy(snapshot))
+            except ToolDenied:
+                raise ToolDenied('check executor unavailable') from None
+            if args['candidate_hash'] != self.candidate_hash() or not self._current(self.capability):
+                raise ToolDenied('candidate or authority changed during check')
+            if isinstance(result, Receipt) and result.status == 'blocked':
+                raise _CheckFailed(_failed_check_feedback(result, snapshot))
             if (not isinstance(result, Receipt) or result.status != 'done'
                     or any(result.evidence.get(k) != v for k, v in snapshot.items())
                     or result.evidence.get('result') != 'passed'):
