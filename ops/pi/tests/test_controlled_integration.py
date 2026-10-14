@@ -67,7 +67,9 @@ def test_config_pins_only_owned_extension_schema_and_guard(tmp_path):
     assert legacy_model=={'id':'mock-model','name':'mock-model','reasoning':False,
         'input':['text'],'contextWindow':1000000,'maxTokens':64}
     assert {k:v for k,v in controlled_model.items() if k not in ('compat','headers')}==legacy_model
-    assert '--no-tools' in legacy['args'] and '-e' not in legacy['args']
+    assert '--no-tools' in legacy['args'] and '--no-builtin-tools' in legacy['args']
+    assert legacy['args'].count('-e') == 1 and legacy['args'][-2:] == ['-e', str(guard)]
+    assert str(extension) not in legacy['args']
     bad={**profile,'extension_sha256':'0'*64}
     with pytest.raises(ValueError):make_pi_config(tmp_path,{'base_url':'http://127.0.0.1:8088','scope_token':'model-only'},SimpleNamespace(model='mock-model',max_tokens=64),controlled_tools=bad)
 
