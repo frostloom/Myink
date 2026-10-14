@@ -1,0 +1,88 @@
+{
+  "schema": "pi-development-runtime023-summary-v1",
+  "status": "FAILED_OR_INCOMPLETE",
+  "candidate_accepted": false,
+  "final_candidate_sha256": "cfcc6a35cc8894a1e25a03b63f37b78d4afa856a5ab8395ead976be491a89e83",
+  "final_paired_check": "NOT_RUN",
+  "actual_http_requests": 12,
+  "upstream_status_counts": {
+    "200": 12
+  },
+  "usage_records": 12,
+  "local_final_error": {
+    "http_status": 400,
+    "upstream_attempt": false,
+    "cause": "request_body_limit_high_confidence_inference",
+    "reconstructed_body_bytes_without_system": 67266,
+    "wire_cap_bytes": 65536,
+    "exact_wire_captured": false
+  },
+  "checked_snapshots": [
+    {
+      "source_sha256": "e1f2e56b270af68a84a06464829dbb50aae0c3a355ae989ee614673c4f9a8646",
+      "primary_fidelity": {
+        "passed": 28,
+        "failed": 24
+      },
+      "other_primary_guards_each": {
+        "passed": 52,
+        "failed": 0
+      },
+      "legacy_passed": false
+    },
+    {
+      "source_sha256": "c740b2596703dec43cdfb8d24f45945c61d088cdb90d63e93f5a27a70c6ea43b",
+      "primary_fidelity": {
+        "passed": 28,
+        "failed": 24
+      },
+      "other_primary_guards_each": {
+        "passed": 52,
+        "failed": 0
+      },
+      "legacy_passed": false
+    }
+  ],
+  "final_product_regression": {
+    "counts": {
+      "tests": 17,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 17
+    },
+    "excluded": "one PostgreSQL-dependent integration test DESELECTED_NOT_RUN",
+    "baseline_unchanged": true
+  },
+  "cumulative": {
+    "attempts": 119,
+    "conservative_microyuan": 13015641,
+    "known_estimate_microyuan": 933465,
+    "historical_unknown_microyuan": 12082176,
+    "budget_microyuan": 20000000,
+    "remaining_microyuan": 6984359,
+    "requests_limit": null,
+    "phase_allocations": null,
+    "invoice_known": false
+  },
+  "this_round": {
+    "estimated_microyuan": 114618,
+    "new_unknown_microyuan": 0
+  },
+  "cleanup": {
+    "owned_trees_empty": 5,
+    "keeper_stopped": true
+  },
+  "semantic_quality": "unknown",
+  "release_approved": false,
+  "terminal_pins": {
+    "ledger-after023.json": "de11887f23a2e6d74fdec71a9381dbccd4fee2dfeb264c70df66db031837ee22",
+    "ledger-after023.sqlite": "16b195b6fda1340725276b0fa314f0eb57988eab7f6f6f4d8604a8b5eb08d430",
+    "terminal-checkpoint.json": "b86f357b534546fdcdaa98ddba00b1f34db9dd68fd82b5cd557f8a19f95245dc",
+    "keeper-stopped.json": "95d557f891e07af72d51777133379de46833182e9bac773e65c44a8b334566e8"
+  },
+  "review_pins": {
+    "facts": "00478a3fb779a0f10a503c21c14730b69d8017e12a54a34831c0544b5fe01cab",
+    "diagnosis": "faef3b887347e0b4fbfa2538f0b8b14f6cfbdf13d93307d04ded3b7be42b294a"
+  }
+}
