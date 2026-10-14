@@ -1,0 +1,84 @@
+{
+  "schema": "pi-development-runtime026-summary-v1",
+  "date": "2026-10-15",
+  "status": "FAILED_BEFORE_PI_PROTOCOL_AND_MODEL",
+  "gate1": {
+    "status": "PASSED",
+    "scope": "本轮前置门禁"
+  },
+  "gate2": {
+    "status": "FAILED",
+    "returncode": 1,
+    "verified": false,
+    "failure": {
+      "phase": "initial_pi_containment_probe",
+      "operation": "live_measure",
+      "error_type": "OSError",
+      "errno": 22,
+      "error_symbol": "EINVAL",
+      "failing_syscall": "unknown",
+      "root_cause": "unconfirmed"
+    },
+    "retained_files": 6,
+    "retained_bytes": 4071
+  },
+  "execution": {
+    "pi_protocol": "NOT_STARTED",
+    "pi_model": "NOT_STARTED",
+    "paid_development": "NOT_STARTED",
+    "business_repair": "NOT_STARTED",
+    "owner_approval_ledger_append": "NOT_STARTED",
+    "new_model_calls": 0,
+    "paid_develop_record_present": false,
+    "paid_candidate_present": false,
+    "basis": "ROOT只读观测与已冻结的门禁执行顺序"
+  },
+  "cumulative": {
+    "attempts": 122,
+    "operations": 390,
+    "events": 657,
+    "conservative_microyuan": 13063317,
+    "known_estimate_microyuan": 981141,
+    "historical_unknown_microyuan": 12082176,
+    "budget_microyuan": 20000000,
+    "remaining_microyuan": 6936683,
+    "invoice_known": false,
+    "basis": "ROOT只读观测；本摘要作者与失败留存审查者未重复读取当前native账本"
+  },
+  "this_round": {
+    "estimated_microyuan": 0,
+    "new_unknown_microyuan": 0,
+    "new_model_calls": 0
+  },
+  "cleanup": {
+    "owned_trees_empty": true,
+    "keeper_stopped": true,
+    "exact_keeper_pid": 731,
+    "exact_keeper_starttime": 6769039,
+    "no_fixed_uid_processes": true,
+    "old_pid_signalled": false,
+    "basis": "独立审查核对的保留停止凭据；清理成功不代表gate2通过"
+  },
+  "candidate_adopted": false,
+  "release_approved": false,
+  "autonomous_development_iteration_completed": false,
+  "product_regression": "NOT_RUN",
+  "full_ci": "NOT_RUN",
+  "semantic_quality": "unknown",
+  "terminal026": {
+    "bound": false,
+    "actual_paid_capture": "NOT_RUN"
+  },
+  "evidence": {
+    "root_retention": {
+      "artifact": "c26-prepaid-failure-retention.json",
+      "sha256": "1c266a03eed6e4753db7c10c7a05420662b8956329b139e0eb274191f49fa807"
+    },
+    "independent_failure_retention_review": {
+      "artifact": "c26-gate2-failure-review.md",
+      "sha256": "26895acbba56ae0fe2c278c537c06ace84fade03056dcfbf1df6658cdf3b867d",
+      "verdict": "Approved failure retention; gate2 failed and is not approved",
+      "scope": "失败留存审查，不授权付费启动、候选采用或发布"
+    }
+  }
+}
