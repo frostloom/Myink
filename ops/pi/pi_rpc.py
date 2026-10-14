@@ -13,12 +13,19 @@ from .engine import AdministratorContext, EngineSession
 
 
 class PiAdapter:
-    def __init__(self, command, *, cwd, env, config_hash, authorized_tools=(), tool_verifier=None):
+    def __init__(self, command, *, cwd, env, config_hash, authorized_tools=(), tool_verifier=None,
+                 max_length_continuations=0, continuation_guard=None):
         from .tools import TOOL_NAMES
         if (not isinstance(authorized_tools, tuple) or len(set(authorized_tools)) != len(authorized_tools)
                 or any(n not in TOOL_NAMES for n in authorized_tools)
                 or bool(authorized_tools) != callable(tool_verifier)):
             raise ValueError('fixed tool grant and authoritative receipt verifier required')
+        if (type(max_length_continuations) is not int or not 0 <= max_length_continuations <= 2
+                or max_length_continuations and not callable(continuation_guard)):
+            raise ValueError('bounded continuation requires an explicit local availability guard')
+        self.max_length_continuations = max_length_continuations
+        # Local lifecycle/count gate only. Existing gateway admission remains authoritative.
+        self.continuation_guard = continuation_guard
         self.authorized_tools, self.tool_verifier = authorized_tools, tool_verifier
         self.command = list(command)
         self.cwd = Path(cwd)
@@ -84,12 +91,13 @@ class PiAdapter:
         except (OSError, ValueError):
             self._transcript_error = True
 
-    def _valid_session(self, path, initial):
+    def _valid_session(self, path, initial, *, terminal_stop='stop'):
         try:
             if path.stat().st_size > 16 * 1024**2:
                 return False
             raw = path.read_bytes()
-            if not raw.endswith(b'\n') or (initial and not raw.startswith(initial)):
+            if (not raw.endswith(b'\n') or (initial and not raw.startswith(initial))
+                    or not raw.startswith(self._continuation_prefix)):
                 return False
             records = [json.loads(line) for line in raw.split(b'\n') if line]
             header = records[0]
@@ -129,9 +137,13 @@ class PiAdapter:
                 return False
             message = assistants[-1]
             blocks = message.get('content', [])
-            return (message.get('stopReason') == 'stop' and not message.get('errorMessage')
+            valid = (message.get('stopReason') == terminal_stop and not message.get('errorMessage')
                     and all(isinstance(b, dict) and b.get('type') == 'text' for b in blocks)
                     and ''.join(b.get('text', '') for b in blocks) == self._text and bool(self._text.strip()))
+            if valid and terminal_stop == 'length':
+                # Freeze the exact bytes we authenticated; never rebase tool enumeration's initial.
+                self._continuation_prefix = raw
+            return valid
         except (OSError, ValueError, KeyError, IndexError, AttributeError, TypeError):
             return False
 
@@ -167,6 +179,7 @@ class PiAdapter:
             if message.get('errorMessage') or message.get('stopReason') in ('error', 'aborted'):
                 self._errors = True
             if record.get('type') == 'message_end':
+                self._last_stop = message.get('stopReason')
                 self._text = ''.join(b.get('text', '') for b in message.get('content', []) if isinstance(b, dict) and b.get('type') == 'text')
         if record.get('type', '').startswith('tool_'):
             kind, call_id, name = record.get('type'), record.get('toolCallId'), record.get('toolName')
@@ -207,13 +220,64 @@ class PiAdapter:
             if record.get('type') == 'response' and record.get('id') == command_id:
                 return record
 
+    def _continuation_available(self, until):
+        try:
+            return self.continuation_guard() is True and time.monotonic() < until
+        except Exception:
+            self._errors = True
+            return False
+
+    def _continue_length(self, path, initial, until):
+        if (self._length_continuations >= self.max_length_continuations or self._last_stop != 'length'
+                or not self._settled or self._aborted or self._errors or self._unexpected_tool
+                or self._pending_tools or self._reader_error or self._writer_error or self._transcript_error
+                or self._process.poll() is not None or time.monotonic() >= until
+                or not self._valid_session(path, initial, terminal_stop='length')):
+            return False
+        if not self._continuation_available(until):
+            return False
+        state = self._response(self._send('get_state'), until)
+        data = state.get('data', {})
+        header = json.loads(self._continuation_prefix.split(b'\n', 1)[0])
+        if (state.get('command') != 'get_state' or state.get('success') is not True
+                or not isinstance(data, dict) or data.get('sessionFile') != str(path)
+                or data.get('sessionId') != header.get('id') or data.get('isStreaming') is not False
+                or data.get('isCompacting') is not False or type(data.get('pendingMessageCount')) is not int
+                or data['pendingMessageCount'] != 0 or self._errors or self._aborted
+                or self._unexpected_tool or self._pending_tools or self._transcript_error
+                or self._process.poll() is not None or self._last_stop != 'length'
+                or not self._valid_session(path, initial, terminal_stop='length')):
+            self._errors = True
+            return False
+        if (not self._continuation_available(until)
+                or not self._valid_session(path, initial, terminal_stop='length')
+                or time.monotonic() >= until):
+            return False
+        # Fixed ordinary instruction: no template, command expansion, new grant or budget.
+        instruction = ('Your last response ended at the output limit. Continue the existing authorized '
+                       'development task using the remaining allowance in this same session. Perform '
+                       'the pending authorized edit and required checks with the granted tools. Keep '
+                       'text concise; do not repeat analysis. If you cannot complete safely, report '
+                       'the blocker. Existing scope, deadlines and limits remain unchanged.')
+        self._settled = False
+        self._last_stop, self._text = None, ''
+        self._length_continuations += 1
+        response = self._response(self._send('prompt', message=instruction), until)
+        if (response.get('command') != 'prompt' or response.get('success') is not True
+                or not isinstance(response.get('data'), dict)
+                or response['data'].get('disposition') != 'started'):
+            self._errors = True
+            raise ValueError('continuation did not start')
+        return True
+
     def run_phase(self, *, phase: str, prompt: str, context: AdministratorContext,
                   session: EngineSession, deadline: datetime, tools: list[str]) -> Receipt:
         if (context.role != 'myink-administrator' or context.experiment_id != 'local-trial-1'
                 or context.budget_scope_id != 'local-trial-1' or not context.plan_id
                 or session.engine != 'pi' or session.config_hash != self.config_hash
                 or session.phase != phase or tools != list(self.authorized_tools)
-                or (session.resume and self.authorized_tools) or deadline.tzinfo is None):
+                or (session.resume and self.authorized_tools) or deadline.tzinfo is None
+                or self.max_length_continuations and (phase != 'develop' or session.resume)):
             raise ValueError('untrusted engine/session/context or tool grant')
         path = Path(session.session_path)
         if not path.is_absolute() or path.is_symlink() or '..' in path.parts:
@@ -236,6 +300,8 @@ class PiAdapter:
         self._records, self._writes = Queue(maxsize=256), Queue(maxsize=4)
         self._reader_error = self._writer_error = self._errors = self._aborted = self._settled = self._unexpected_tool = False
         self._text = ''
+        self._last_stop, self._length_continuations = None, 0
+        self._continuation_prefix = b''
         self._pending_tools, self._verified_tools = {}, {}
         self._stderr_bytes = 0
         self._stderr_prefix = bytearray()
@@ -262,8 +328,11 @@ class PiAdapter:
                 elif disposition != 'started':
                     reason = 'unexpected_prompt_disposition'
                 else:
-                    while not self._settled:
-                        self._next(until)
+                    while True:
+                        while not self._settled:
+                            self._next(until)
+                        if not self._continue_length(path, initial, until):
+                            break
                     reason = 'settled'
         except (Empty, EOFError, ValueError, OSError, Full):
             reason = 'deadline_or_protocol_failure'
@@ -299,6 +368,7 @@ class PiAdapter:
             'aborted': self._aborted, 'errors': self._errors, 'protocol_failed': protocol_failed,
             'transcript_failed': self._transcript_error, 'session_valid': artifacts, 'unexpected_tool': self._unexpected_tool,
             'verified_tool_calls':sorted(self._verified_tools), 'pending_tool_calls':sorted(self._pending_tools),
+            'length_continuations': self._length_continuations,
             'reason': reason, 'text': self._redact(self._text), 'transcript_path': str(transcript),
             'session_path': str(path), 'session_sha256': hashlib.sha256(path.read_bytes()).hexdigest() if artifacts else None,
             'stderr_bytes': self._stderr_bytes,
