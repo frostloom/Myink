@@ -4,7 +4,7 @@
 
 ## 最新状态（2026-10-14）
 
-本机试验改为累计 20 元费用上限、累计请求次数不限；保留历史未知预留与单轮时间、工具及资源边界。已补充 30 条合成反馈演示和 111 项相关通过测试。详见[预算与反馈记录](../evaluations/pi-local-trial/fee-only-budget-and-feedback-2026-10-14.md)。Pi 的实际代码修复与配对试验持续追加到[交付报告](../evaluations/pi-local-trial/report.md)；尚无生产 Pi。
+本机试验改为累计 20 元费用上限、累计请求次数不限；保留历史未知预留与单轮时间、工具及资源边界。已补充 30 条合成反馈演示和 111 项相关通过测试。详见[预算与反馈记录](../evaluations/pi-local-trial/fee-only-budget-and-feedback-2026-10-14.md)。[022真实开发](../evaluations/pi-local-trial/development-runtime022-2026-10-14.md)已跨过旧100次限制，但17项产品回归仍有4项失败，候选未采用。实际进度保存在[交付报告](../evaluations/pi-local-trial/report.md)；尚无生产 Pi。
 
 ## 历史引入与阶段验收
 
