@@ -8,8 +8,9 @@ from .writing_analysis import build_writing_prompt
 def build_phase_prompt(phase, evidence, limits):
     if (phase not in PHASE_TOOLS or not isinstance(evidence,dict) or not isinstance(limits,dict)
             or set(limits) != {'max_attempts','budget_microyuan','deadline'}
-            or type(limits['max_attempts']) is not int or not 1 <= limits['max_attempts'] <= 100
-            or type(limits['budget_microyuan']) is not int or not 1 <= limits['budget_microyuan'] <= 10000000
+            or (limits['max_attempts'] is not None and
+                (type(limits['max_attempts']) is not int or not 1 <= limits['max_attempts'] <= 100))
+            or type(limits['budget_microyuan']) is not int or not 1 <= limits['budget_microyuan'] <= 20000000
             or not isinstance(limits['deadline'],str) or not limits['deadline'].strip()):
         raise ValueError('fixed phase and controller limits required')
     data = dict(evidence=deepcopy(evidence),limits=deepcopy(limits),
