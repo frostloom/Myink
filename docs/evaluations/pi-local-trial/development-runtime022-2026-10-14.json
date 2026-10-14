@@ -1,0 +1,115 @@
+{
+  "budget": {
+    "attempts_after": 107,
+    "attempts_before": 94,
+    "charged_or_reserved_after_microyuan": 12901023,
+    "charged_or_reserved_before_microyuan": 12825378,
+    "cumulative_max_attempts": null,
+    "cumulative_max_microyuan": 20000000,
+    "historical_unknown_reservation_microyuan": 12082176,
+    "known_estimate_after_microyuan": 818847,
+    "known_estimate_before_microyuan": 743202,
+    "new_known_estimate_microyuan": 75645,
+    "new_unknown_reservation_microyuan": 0,
+    "phase_allocations": null,
+    "remaining_reservable_microyuan": 7098977,
+    "round_model_send_limit": 16,
+    "round_tool_call_limit": 60,
+    "supplier_invoice_known": false
+  },
+  "candidate_adopted": false,
+  "candidate_sha256": "4916393fccf36f4117d57ba169e977fa5c88a57074a9e363d8798a5a23414a7a",
+  "evidence": {
+    "export_path": "E:\\tools\\myink-pi\\evidence\\c20\\host-runtime-022\\paid-develop\\manifest.json",
+    "export_sha256": "c15dca406b91c44271213e73edf0c356376228b06e84a022391e07e1657d1d0a",
+    "independent_candidate_failure_review_sha256": "7df6be416913885595b151b029f38fe982c764f1917f110fe1902fb0ae41cbab",
+    "physical_files": 39,
+    "source_manifest_sha256": "63648b10989d3609788e6b1b4069638bf5aba52d50c118bf9140866f142af327"
+  },
+  "execution": "ACTUAL",
+  "model": {
+    "actual_http_requests": 13,
+    "response_status_counts": {
+      "200": 13
+    },
+    "tool_results": {
+      "apply_patch": 4,
+      "candidate_status": 3,
+      "read_source": 5,
+      "run_check": 2
+    },
+    "usage_records": 13
+  },
+  "not_run": [
+    "new_semantic_quality_judge",
+    "PostgreSQL_Redis_RabbitMQ_complete_services",
+    "Go",
+    "frontend",
+    "Docker_build",
+    "production_enable"
+  ],
+  "pairing": {
+    "absolute_veto": true,
+    "baseline_fidelity_failed": 36,
+    "baseline_fidelity_passed": 16,
+    "candidate_fidelity_failed": 30,
+    "candidate_fidelity_passed": 22,
+    "legacy_security_cases": 3,
+    "legacy_security_passed": false,
+    "primary_cases": 52,
+    "runs": 2,
+    "same_final_candidate": true,
+    "selected_group_mechanism_status": "not_improved",
+    "writing_quality_claim": false
+  },
+  "product_regression": {
+    "actual": true,
+    "deselected_not_run": 1,
+    "errors": 0,
+    "excluded_case": "test_recall_and_refreshed_cast_capture_actual_context",
+    "exclusion_reason": "requires isolated PostgreSQL; not run",
+    "failed": 4,
+    "passed": 13,
+    "receipt_path": "E:/tools/myink-pi/evidence/c20/capture-product-regression/candidate022-001/execution.json",
+    "receipt_sha256": "a1053cb6bf56b058575ebeb953b3be0f065169eaf120543749ccadfeb0cf3c8c",
+    "selected": 17,
+    "skipped": 0
+  },
+  "production_enabled": false,
+  "release_approved": false,
+  "root_supervision": {
+    "actual": true,
+    "adapter_done_is_not_root_success": true,
+    "all_owned_trees_empty": true,
+    "owned_tree_checks": 5,
+    "returncode": 1,
+    "root_reconciliation_success": false,
+    "termination_reason": null,
+    "verified": false
+  },
+  "round": "022",
+  "schema_version": 1,
+  "semantic_quality": "unknown",
+  "source_sha256": "dc6022b85b2556736ac3ac9d21e952105195025657a72d5f871405aca04dc597",
+  "status": "failed",
+  "terminal": {
+    "artifact_verification_sha256": "fda4b024038c5093eb39848201e559396a79a05766af4773973e25455b547667",
+    "backup_full_snapshot_equal": true,
+    "backup_integrity": "ok",
+    "backup_sha256": "fcf17d822cf9542372b82e9362ea898738188e484541b2573d1c035c2eaa870c",
+    "events": 558,
+    "keeper_exact_stopped": true,
+    "keeper_stop_sha256": "98930118c2aa4d6d8e7936b55509d04aaa2a5278abdc48b20ca456a57a2d55c9",
+    "native_ROOT600_and_E_bytes_equal": true,
+    "old_events_unchanged": true,
+    "old_operations_unchanged": true,
+    "operations": 333,
+    "pending_model_attempts": 0,
+    "pending_phase_admissions": 0,
+    "settled": true,
+    "snapshot_sha256": "8a54a21689052be3463ba789aaf6de39b8c7673056988db1d7811ac5c48bf1f0",
+    "status": "FAILED_OR_INCOMPLETE",
+    "terminal_metadata_sha256": "d0807026cabc50b838b95cd8be0dafeee189bcda64df66578d6c9c71a3bcc74a"
+  },
+  "trial": "local-trial-1"
+}
