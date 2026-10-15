@@ -1,0 +1,143 @@
+{
+  "schema": "myink-pi-development-runtime032-public-v1",
+  "date": "2026-10-15",
+  "round": "032",
+  "terminal_status": "FAILED_OR_INCOMPLETE",
+  "failure_reason": "Final candidate_status missing after final successful patch with current bound candidate hash",
+  "candidate": {
+    "path": "src/myink/admin_observability.py",
+    "sha256": "c29fbbaec1661ea829b35f7fe9b5f4e9119c7f1445859b37ebd8d0314b9f2531",
+    "author": "real Pi",
+    "independent_spec_review": "Approved",
+    "independent_quality_review": "Approved",
+    "adoption": "adopted_on_isolated_branch",
+    "adoption_commit": "48967cc9d2c5643c6e90ff40e1989e586552327c",
+    "adoption_branch": "codex/pi-autonomy-design",
+    "pushed": true
+  },
+  "product_checks": {
+    "native_primary_passed": 52,
+    "native_distinct_legacy_passed": 3,
+    "root_public_passed": 22,
+    "root_public_postgresql_deselected": 1,
+    "full_functional_ci": {
+      "attempt": "004",
+      "status": "COMPLETED_FAILED",
+      "result": "FAILED",
+      "business": {
+        "returncode": 1,
+        "seconds": 779.844,
+        "passed": 1586,
+        "failed": 10,
+        "skipped": 1,
+        "deselected": 159,
+        "xfailed": 5,
+        "errors": 0,
+        "junit_cases": 1602,
+        "capture_observability_passed": 23,
+        "candidate_failure_trace_observed": false,
+        "baseline_comparison_done": true,
+        "failure_categories": {
+          "cli_maintenance_privilege_mock": 3,
+          "batch_review_pause_resume": 2,
+          "windows_process_termination_returncode": 1,
+          "queue_authority_budget_resume_and_old_delivery": 3,
+          "consumer_transient_requeue": 1
+        },
+        "all_ten_failures_reproduced_on_same_environment_baseline": true
+      },
+      "offline_ops": {
+        "status": "COMPLETED",
+        "returncode": 0,
+        "passed": 1276,
+        "skipped": 2,
+        "deselected": 19,
+        "seconds": 349.993
+      },
+      "cleanup": {
+        "status": "COMPLETED",
+        "returncode": 0,
+        "seconds": 2.038
+      },
+      "exact_locked_ci_parity": false,
+      "functional_pass": false,
+      "returncode": 1,
+      "baseline_comparison": "COMPLETED_SAME_ENVIRONMENT_BASELINE_FAILURES_REPRODUCED",
+      "baseline_comparison_details": {
+        "selected_cases_per_arm": 33,
+        "dc": {
+          "passed": 16,
+          "failed": 17,
+          "returncode": 1
+        },
+        "c29f": {
+          "passed": 23,
+          "failed": 10,
+          "returncode": 1
+        },
+        "capture_cases": 23,
+        "capture_failed_to_passed": 7,
+        "passed_to_failed": 0,
+        "same_ten_failures": true,
+        "first_line_failure_signatures_match_full_business": true,
+        "skipped_per_arm": 0,
+        "errors_per_arm": 0,
+        "cleanup_verified_both_arms": true,
+        "distinct_compose_projects": true,
+        "limited_to_same_environment_and_selection": true,
+        "full_suite_waived": false,
+        "exact_locked_ci_parity": false
+      }
+    },
+    "synthetic_runner_source_checks": 13,
+    "synthetic_checks_are_product_tests": false
+  },
+  "retained_failed_ci_attempts": [
+    "001",
+    "002",
+    "003"
+  ],
+  "budget": {
+    "unit": "microyuan",
+    "operations": 611,
+    "events": 1033,
+    "model_attempts": 188,
+    "conservative_cumulative": 13603463,
+    "known_estimate": 1521287,
+    "historical_uncertain_reservation": 12082176,
+    "cap": 20000000,
+    "remaining_headroom": 6396537,
+    "global_request_count_cap": null,
+    "invoice_known": false,
+    "round_http_200": 11,
+    "round_usage_records": 11,
+    "round_known_estimate": 105158,
+    "round_new_uncertain_reservation": 0,
+    "pending_model_attempts": 0,
+    "pending_phase_admissions": 0,
+    "historical_other_pending_records": 3
+  },
+  "quality": {
+    "preparation_copy": "ACTUAL_COMPLETED",
+    "paid_comparison": "NOT_RUN",
+    "semantic_quality": "unknown",
+    "owner_review": "Approved for read-only observed owner facts; paid quality not run"
+  },
+  "release": {
+    "approved": false,
+    "server_daily": false,
+    "deployment": "NOT_DONE",
+    "rollback": "NOT_DONE",
+    "day2_comparison": "NOT_DONE",
+    "production_updated": false
+  },
+  "evidence_sha256": {
+    "terminal": "2e0b57e9c66cd417a0f50158fa504c5330bc5e427fae5c08856cca4a9e336f97",
+    "whole_ledger": "b8e0278b349e54910bdcbd09dc70384d2ce3c1b3e1b5490e83f0ec3e137de801",
+    "stop": "f7c201ad4e80995aa5228362dd73d28f985f496287a8179cf4ee5dbf9acc6769",
+    "candidate_review": "1558a3312ec6ee197e5569fc2b27c85e26fd100de032cb0f7a7e9d061029dcbc",
+    "facts_review": "a07d3059171df87f2845e8e543f0f65ac95ccb3115ad29be2450451c8e26966e",
+    "baseline_comparison": "786001c37a2c1ab40836c7e8c5aedc90f6a560a35b9e4f2dffd82c8fdff91993",
+    "baseline_result_review": "58eda0de681fb95671bcb5a227b16e442c3d165ab5e466a5d1ab65381a381e9d"
+  }
+}
