@@ -1,0 +1,399 @@
+{
+  "schema": "pi-development-runtime031-summary-v1",
+  "date": "2026-10-15",
+  "status": "VERIFIED_DEVELOP",
+  "document_status": "FROZEN",
+  "conclusion": "协议完成；候选独立审查RequestChanges，未采纳、未发布。",
+  "execution": {
+    "pi_paid_development": "ACTUAL",
+    "actual_requests": 10,
+    "http_200_responses": 10,
+    "usage_records": 10,
+    "usage_records_valid": 10,
+    "returncode": 0,
+    "accepted_phase": true,
+    "candidate_adopted": false,
+    "release_approved": false,
+    "semantic_quality": "unknown",
+    "invoice_known": false,
+    "autonomous_product_development_accepted": false
+  },
+  "frozen_session_limits": {
+    "model_requests": 16,
+    "tool_calls": 60,
+    "develop_budget_seconds": 285,
+    "output_tokens_per_request": 2048,
+    "incomplete_length_continuations": 2,
+    "argument_bytes": 8192,
+    "global_fee_authorization_removes_session_limits": false
+  },
+  "final_candidate": {
+    "artifact": "admin_observability.py",
+    "sha256": "d1e9cbc8c7885f6150a77adaf27f5da0c92e70cc98d72a58b377b9fce1ac53bd",
+    "bytes": 8844,
+    "seed_sha256": "fc36b866764639308b63945bab064165f62a90644c4d48c317bbb17c4f230a98",
+    "seed_bytes": 8707,
+    "seed_previously_failed_and_unadopted": true,
+    "scope_baseline_sha256": "dc6022b85b2556736ac3ac9d21e952105195025657a72d5f871405aca04dc597",
+    "scope_baseline_reset": false,
+    "same_hash_55_checks_passed": true,
+    "primary_cases": 52,
+    "legacy_security_cases": 3,
+    "all_primary_metrics_passed": true,
+    "legacy_security_passed": 3,
+    "paired_objective_passed": true,
+    "paired_severe_guard_veto": false,
+    "spec_verdict": "RequestChanges",
+    "quality_verdict": "RequestChanges",
+    "functional_approval": false,
+    "adopted": false
+  },
+  "intermediate_checks": {
+    "retained": true,
+    "earlier_candidate_blocked": true,
+    "earlier_pair_objective_passed": false,
+    "earlier_pair_severe_guard_veto": true,
+    "scope": "中间结果保留，不转移到最终源"
+  },
+  "product_regression": {
+    "status": "PASSED_SELECTED_CASES",
+    "executed": 17,
+    "passed": 17,
+    "failed": 0,
+    "deselected": 1,
+    "deselected_scope": "PostgreSQL-dependent case",
+    "returncode": 0,
+    "seconds": 12.92,
+    "isolated": true,
+    "prior_round_results_inherited": false,
+    "final_55_oracle_replaced": false
+  },
+  "boundary_reproduction": {
+    "status": "FAILED",
+    "returncode": 1,
+    "input": "A repeated 100 times",
+    "max_bytes": 680,
+    "available_bytes": 104,
+    "whole_encoded_bytes": 102,
+    "whole_fits": true,
+    "actual_truncated": true,
+    "retained_original_characters": 91,
+    "marker_characters": 11,
+    "original_characters_lost": 9,
+    "finding": "whole-fit文本仍按追加截断标记的成本二分，导致无需截断时丢失原文",
+    "acceptance_blocked": true
+  },
+  "supervision": {
+    "returncode": 0,
+    "verified": true,
+    "owned_trees": 5,
+    "owned_trees_empty": true,
+    "body_free_tool_results_reconciled": 11,
+    "edit_after_final_pass": false
+  },
+  "cumulative": {
+    "accounted_requests": 177,
+    "operations": 574,
+    "events": 970,
+    "conservative_microyuan": 13498305,
+    "known_estimate_microyuan": 1416129,
+    "historical_unknown_microyuan": 12082176,
+    "budget_microyuan": 20000000,
+    "remaining_microyuan": 6501695,
+    "remaining_is_arithmetic_not_live_balance": true,
+    "invoice_known": false,
+    "effective_max_attempts": null,
+    "effective_phase_allocations": null,
+    "pending_model_attempts": 0,
+    "pending_phase_admissions": 0,
+    "other_historical_pending_by_kind": {
+      "model-scope": 1,
+      "phase-fence": 1,
+      "preview-fence": 1
+    },
+    "after030_operations_unchanged": 539,
+    "after030_events_exact_ordered_prefix": 910,
+    "basis": "ROOT终态与闭库全行比对；摘要编写未新开native或SQLite连接"
+  },
+  "this_round": {
+    "actual_requests": 10,
+    "known_estimate_microyuan": 72383,
+    "new_unknown_microyuan": 0,
+    "new_operations": 35,
+    "new_events": 60
+  },
+  "cleanup": {
+    "owned_trees": 5,
+    "owned_trees_empty": true,
+    "captured_before_STOP": true,
+    "closed_backup_retained": true,
+    "closed_backup_whole_database_matches_snapshot": true,
+    "closed_backup_after030_prefix_unchanged": true,
+    "closed_backup_comparison_reported_by": "ROOT",
+    "keeper_stopped": true,
+    "no_fixed_uid_processes": true,
+    "old_pid_signalled": false,
+    "E_mirror_is_privacy_proof": false,
+    "canonical_mode_is_privacy_proof": false,
+    "independent_review_status": "APPROVED_RETENTION_ONLY",
+    "independent_closed_backup_full_rows_and_after030_prefix_verified": true,
+    "independent_poststop_status": "PASS_AFTER_CORRECTIVE_AUDIT",
+    "historical_and_current_epoch_equal": false,
+    "historical_pid1_starttime": 1763807,
+    "poststop_pid1_starttime": 2079959,
+    "historical_keeper_identity_absent": true
+  },
+  "accounting_retention": {
+    "settled": true,
+    "candidate_acceptance": false,
+    "release_approved": false,
+    "historical_unknown_reset": false,
+    "historical_unknown_refunded": false,
+    "historical_unknown_reclassified": false,
+    "independent_review_status": "APPROVED_RETENTION_ONLY",
+    "independent_review_sha256": "75cd027d70a015b700bf8ec27c1b2ed86ff8bc505d4b576448e6a04d1feb00d4",
+    "approval_scope": "实际VERIFIED_DEVELOP终态事实留存；候选拒绝、不采纳、不发布；不授予后续执行权限"
+  },
+  "retained_failures": [
+    {
+      "attempt": "C40 paid readiness read-only audit",
+      "classification": "审核脚本错误",
+      "cause": "将导出成员权限一律假定为0600；未打开canonical SQLite",
+      "resolution": "C41按已审查导出合同区分0444输入与0600证据，usage允许0644；只读核对通过",
+      "product_or_runtime_failure": false
+    },
+    {
+      "attempt": "terminal capture001",
+      "classification": "选择前置缺失",
+      "cause": "缺terminal export selection，在当前canonical读取前失败",
+      "resolution": "补选择前置后capture002成功；两个执行记录均保留"
+    },
+    {
+      "attempt": "C42 independent terminal facts audit",
+      "classification": "PARTIAL",
+      "returncode": 1,
+      "cause": "已完成闭库全行与历史前缀核对，随后错误要求当前PID1启动时间等于历史STOP epoch",
+      "resolution": "获准C43补审无SQLite连接，核实历史与当前epoch不同、旧keeper身份不存在且无固定UID残留",
+      "corrective_result": "PASS",
+      "failure_evidence_retained": true
+    }
+  ],
+  "infrastructure": {
+    "primary_failure_fidelity": {
+      "revision": "C36r1",
+      "independent_source_review": "Approved",
+      "focused_source_tests_passed": 8
+    },
+    "post_patch_source_hashes": {
+      "independent_source_review": "PASS",
+      "root_tests_passed": 77,
+      "root_tests_skipped": 0,
+      "root_existing_config_warnings": 1,
+      "commit": "7eab6134f45c7ac9b373ddcb94b7a812428eeb90",
+      "pushed_to_github": true
+    },
+    "runtime_source_tests": {
+      "passed": 74,
+      "scope": "模拟/离线SOURCE验证"
+    },
+    "terminal_r1_source_tests": {
+      "passed": 37,
+      "scope": "模拟/离线SOURCE验证"
+    },
+    "counts_are_business_acceptance_tests": false
+  },
+  "remaining_validation": {
+    "quality025_paid_product_comparison": "NOT_COMPLETED",
+    "writing_metric_semantics": "NOT_COMPLETED",
+    "build": "NOT_COMPLETED",
+    "release": "NOT_COMPLETED",
+    "day_2": "NOT_COMPLETED",
+    "full_CI": "NOT_RUN",
+    "Go": "NOT_RUN",
+    "frontend": "NOT_RUN",
+    "PostgreSQL_integration": "NOT_RUN",
+    "W18": "PRESERVED",
+    "RED": "PRESERVED",
+    "server_daily_enabled": false
+  },
+  "mainline_changed": false,
+  "online_system_changed": false,
+  "original_historical_evidence_preserved": true,
+  "next_work": {
+    "iteration": "fresh Pi032",
+    "scope": "仅修新whole-fit边界；保留031拒绝结论",
+    "private_55_and_product_17_frozen": true,
+    "original_DC_baseline_unchanged": true,
+    "performed_for_this_report": false
+  },
+  "publication": {
+    "body_free": true,
+    "private_absolute_paths_included": false,
+    "private_session_bodies_included": false,
+    "raw_case_bodies_included": false,
+    "credentials_included": false,
+    "hidden_gold_included": false,
+    "full_private_user_text_included": false,
+    "PII_included": false,
+    "raw_private_artifacts_uploaded": false,
+    "committed": false,
+    "pushed": false,
+    "pushed_to_github": false,
+    "released": false,
+    "basis": "本摘要生成时状态；基础设施既有提交单列"
+  },
+  "evidence": {
+    "candidate_review": {
+      "artifact": "c41-runtime031-candidate-review.md",
+      "sha256": "d3eeda1070eaca2cac41cf0382b391b88a5883fe6ee8b32969e5dcc33f3e83fc",
+      "bytes": 5623
+    },
+    "runtime_source_review": {
+      "artifact": "c37-runtime031-source-review.md",
+      "sha256": "632813b9d73f7634ee01bb400937884cf6b0bca1ce45e2cb07a1c6b3c0642f90",
+      "bytes": 13094
+    },
+    "terminal_source_r1_review": {
+      "artifact": "c38-terminal031-r1-review.md",
+      "sha256": "f4a0fc203e3a18f1d2ee54cd62a07cb172972c18ed503bb7408b098d742e2598",
+      "bytes": 9789
+    },
+    "terminal_binding_review": {
+      "artifact": "c41-terminal031-binding-review.md",
+      "sha256": "2269331b5ee65101c5a14b9a7d39b8f95bdf4ebd39b04111712f2c41e051d7fd",
+      "bytes": 4157
+    },
+    "primary_failure_source_review": {
+      "artifact": "c36-runtime-failure-evidence-r1-review.md",
+      "sha256": "0efeafdeed46b53ce68406f13a4502490a6f6ab17fda52521fda6eafbbd7ad47",
+      "bytes": 6838
+    },
+    "post_patch_hashes_review": {
+      "artifact": "c37-post-patch-hashes-review.md",
+      "sha256": "7d90d1f1b81371467d4800c8fdf92d2be7b06ebeea8831e375478b4973bfe7e1",
+      "bytes": 6061
+    },
+    "paid_export_manifest": {
+      "artifact": "host-runtime-031/paid-develop/manifest.json",
+      "sha256": "2ba9eb93c94f7987347c9ecbea642d15984b72d773bacea92cd65bc6bb0f814c",
+      "bytes": 7792,
+      "files": 42
+    },
+    "ledger_snapshot": {
+      "artifact": "host-runtime-031/ledger-after031.json",
+      "sha256": "f9d72b8e72bd93d7907fac9482208b8941ba73dbe772d6b13a503fda87d86488",
+      "bytes": 1520249
+    },
+    "ledger_backup": {
+      "artifact": "host-runtime-031/ledger-after031.sqlite",
+      "sha256": "f4c5c5e117b12157438e48911095c5671d37712c7b91a420e6d74e049da0a7d0",
+      "bytes": 1544192
+    },
+    "terminal_checkpoint": {
+      "artifact": "host-runtime-031/terminal-checkpoint.json",
+      "sha256": "61e4734c110b452a91760b79c5b87a3c132583a203cdebdfc05f4d199d4b0d73",
+      "bytes": 4820
+    },
+    "keeper_stop": {
+      "artifact": "host-runtime-031/keeper-stopped.json",
+      "sha256": "4881fa83924eab3f7c047b5ce8a1b2e62fbad9485587b62572a7b3ff6fe02f2d",
+      "bytes": 327
+    },
+    "closed_backup_audit": {
+      "artifact": "root-runtime031-closed-backup-audit-001/audit.json",
+      "sha256": "cf78c16f253a111117005308ae90a30754c3d73abbba374fe702a44a98a73f53",
+      "bytes": 504
+    },
+    "final_check": {
+      "artifact": "paid-checks-develop/develop-04-candidate/check.json",
+      "sha256": "98a0add9ce328c19221f523da0ca5faaa1d55c93ffac372b45c5c8832859df37",
+      "bytes": 6808
+    },
+    "final_pair": {
+      "artifact": "paid-checks-develop/pair-3/comparison.json",
+      "sha256": "bbf3d56ca1f913d0e560def6db0500e62221939bd6f38493c36bb2d4dd6c264b",
+      "bytes": 86217
+    },
+    "supervision": {
+      "artifact": "supervision-paid-develop/outcome.json",
+      "sha256": "dd9fefbfe0db93481e91bcb1dc2853eaebd1956ce521f29f957ee439db918905",
+      "bytes": 1000
+    },
+    "paid_outcome": {
+      "artifact": "paid-develop/outcome.json",
+      "sha256": "a40506ca36be045e75d4c16fc72239af6bf2a7c6f84f3e1b4c1c3d86a31017fb",
+      "bytes": 1932
+    },
+    "paid_success": {
+      "artifact": "paid-develop/success.json",
+      "sha256": "181e9c8971ee5f08721772c2d144918e70e7f824c5e6000ddb1bbf3fb3d9aea1",
+      "bytes": 349
+    },
+    "usage": {
+      "artifact": "paid-develop/usage.jsonl",
+      "sha256": "e0dc5f1f5cd6e34541d7dadc4c6cc4e26b6842d45b22b9ade853377671d7329c",
+      "bytes": 14726
+    },
+    "product_regression_execution": {
+      "artifact": "candidate031-001/execution.json",
+      "sha256": "134894d38d1696fa44d7253638a817f42c4adaaae174d72e75ec474f3dbb008f",
+      "bytes": 1113
+    },
+    "product_regression_result": {
+      "artifact": "candidate031-001/product.xml",
+      "sha256": "870d7a8162251a1e0b3bfbc07e2b089d5ac78cd0a22b8abb118db1d8c942fe3f",
+      "bytes": 2100
+    },
+    "boundary_reproduction_execution": {
+      "artifact": "candidate031-boundary-001/execution.json",
+      "sha256": "d96a908ff21e068f93d5cd01f8703b8b23611a4e00a654ed71b414d39b02fed9",
+      "bytes": 425
+    },
+    "boundary_reproduction_result": {
+      "artifact": "candidate031-boundary-001/stdout.json",
+      "sha256": "0c47ce34e9e49f9e6c3e79534dfb19c5d0fe52f466d71419cddc19fe5391cc3b",
+      "bytes": 272
+    },
+    "failed_readiness_audit": {
+      "artifact": "c40-paid031-readiness-audit/execution.json",
+      "sha256": "3d5e7f8214df87416c779998ec99a8ae500afb3a206a9c67718ad5ceb48ca66a",
+      "bytes": 895
+    },
+    "corrected_readiness_audit": {
+      "artifact": "c41-paid031-readiness-audit/execution.json",
+      "sha256": "796b883b17d1429f3558c095037e79ee7aa63e7e33ac5fbb3cdb497222d17944",
+      "bytes": 898
+    },
+    "failed_terminal_capture": {
+      "artifact": "root-runtime031-terminal-capture-001/execution.json",
+      "sha256": "6a1108e6d4c128ce7c5d447b701eb10643232247b4d26b109bcc6ba693c383ff",
+      "bytes": 601
+    },
+    "terminal_capture": {
+      "artifact": "root-runtime031-terminal-capture-002/execution.json",
+      "sha256": "2314d7abfdc9b8cbf01a01f17adf2e99aed76d0c842dfbe59dbfb8621122e79d",
+      "bytes": 512
+    },
+    "terminal_facts_review": {
+      "artifact": "c41-after031-terminal-facts-review.md",
+      "sha256": "75cd027d70a015b700bf8ec27c1b2ed86ff8bc505d4b576448e6a04d1feb00d4",
+      "bytes": 5805,
+      "scope": "Approved FOR retention only"
+    },
+    "partial_terminal_facts_audit": {
+      "artifact": "c42-after031-facts-audit/execution.json",
+      "sha256": "5021579e0ae915a784bfcf820046cd21bbac56ffcee7e76d59f299fda7847e35",
+      "bytes": 607
+    },
+    "poststop_corrective_audit": {
+      "artifact": "c43-after031-poststop-audit/execution.json",
+      "sha256": "7ab899bf099007015b319bd8d4262de4592238537559cbc3770262c7c78ed7c6",
+      "bytes": 555
+    },
+    "poststop_corrective_result": {
+      "artifact": "c43-after031-poststop-audit/stdout.json",
+      "sha256": "4db5eb15f74f91cf774be31110b214760a41207645cd8f082203227f7fe79bf5",
+      "bytes": 1283
+    }
+  }
+}
