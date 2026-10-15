@@ -1,0 +1,180 @@
+{
+  "schema": "pi-development-runtime027-summary-v1",
+  "date": "2026-10-15",
+  "status": "FAILED_OR_INCOMPLETE",
+  "execution": {
+    "pi_paid_development": "ACTUAL",
+    "actual_requests": 16,
+    "http_200_responses": 16,
+    "usage_records": 16,
+    "accepted_phase": false,
+    "candidate_adopted": false,
+    "release_approved": false,
+    "autonomous_development_iteration_completed": false
+  },
+  "intermediate_checks": {
+    "candidate_versions_checked": 3,
+    "primary_passes_each": 52,
+    "legacy_security_failures_each": 3,
+    "comparison_pairs": [
+      "pair-1",
+      "pair-3",
+      "pair-5"
+    ],
+    "mechanism_status_each": "improved",
+    "objective_passed_each": false,
+    "severe_guard_veto_each": true,
+    "release_allowed_each": false,
+    "scope": "三个中间版本；不能转用于最终候选哈希的通过证明"
+  },
+  "final_candidate": {
+    "artifact": "admin_observability.py",
+    "sha256": "8d1b6a2254a1e9b49a7a47976e23c96e1acf41211230afffe9d8c8a983ca84fb",
+    "bytes": 8554,
+    "same_hash_55_checks_passed": false,
+    "same_hash_55_check_status": "NOT_ESTABLISHED",
+    "static_import_safety": "safe to import in isolated product regression",
+    "functional_approval": false,
+    "findings": [
+      "相邻字母前缀导致Bearer脱敏契约失败",
+      "扩大后的非空白匹配存在吞掉正常结构化内容的静态风险"
+    ]
+  },
+  "product_regression": {
+    "status": "FAILED",
+    "candidate_sha256": "8d1b6a2254a1e9b49a7a47976e23c96e1acf41211230afffe9d8c8a983ca84fb",
+    "executed": 17,
+    "passed": 15,
+    "failed": 2,
+    "deselected": 1,
+    "deselected_reason": "PostgreSQL-dependent case",
+    "deselection_is_pass": false,
+    "returncode": 1,
+    "failed_contracts": [
+      "adjacent_prefix_bearer_secret_redaction",
+      "bearer_prefix_and_delimited_safe_tail_preservation"
+    ],
+    "provider_calls": 0,
+    "native_calls": 0,
+    "canonical_access": false,
+    "basis": "核对既有execution收据、固定候选哈希的入口及JUnit汇总；未重跑测试"
+  },
+  "failure": {
+    "retained_errors": [
+      {
+        "error_type": "ValueError",
+        "guard": "phase_guard"
+      },
+      {
+        "error_type": "FileNotFoundError",
+        "layer": "outer"
+      }
+    ],
+    "root_cause": "unconfirmed",
+    "causal_chain": "unknown",
+    "request_exhaustion_as_sole_root_cause": "not established",
+    "accepted_phase": false
+  },
+  "supervision": {
+    "returncode": 1,
+    "verified": false
+  },
+  "cumulative": {
+    "accounted_requests": 138,
+    "operations": 443,
+    "events": 747,
+    "conservative_microyuan": 13202570,
+    "known_estimate_microyuan": 1120394,
+    "historical_unknown_microyuan": 12082176,
+    "budget_microyuan": 20000000,
+    "remaining_microyuan": 6797430,
+    "invoice_known": false,
+    "basis": "独立终态留存审查；本摘要编写未重新读取当前native账本"
+  },
+  "this_round": {
+    "actual_requests": 16,
+    "known_estimate_microyuan": 139253,
+    "new_unknown_microyuan": 0
+  },
+  "cleanup": {
+    "owned_trees": 7,
+    "owned_trees_empty": true,
+    "keeper_stopped": true,
+    "no_fixed_uid_processes": true,
+    "old_pid_signalled": false,
+    "basis": "已核对的终态审查及停止凭据；不代表开发通过"
+  },
+  "accounting_retention": {
+    "settled": true,
+    "candidate_acceptance": false,
+    "release_approved": false,
+    "historical_unknown_reset": false
+  },
+  "remaining_validation": {
+    "real_product_quality_comparison": "NOT_COMPLETED",
+    "build": "NOT_COMPLETED",
+    "release": "NOT_COMPLETED",
+    "day_2": "NOT_COMPLETED",
+    "W18": "PRESERVED",
+    "RED": "PRESERVED"
+  },
+  "mainline_changed": false,
+  "online_system_changed": false,
+  "next_round": {
+    "round": "028",
+    "stage": "SOURCE_PREPARATION",
+    "execution_success_claim": false
+  },
+  "publication": {
+    "body_free": true,
+    "private_absolute_paths_included": false,
+    "raw_case_bodies_included": false,
+    "credentials_included": false,
+    "hidden_gold_included": false,
+    "committed": false,
+    "pushed": false,
+    "released": false
+  },
+  "evidence": {
+    "terminal_facts_review": {
+      "artifact": "c29-after027-terminal-facts-review.md",
+      "sha256": "1aa5ce54d78890eaf0499cebc08e768be447bf30a8fc9c4740036c5d106c6b48",
+      "scope": "exact failed terminal facts retention only"
+    },
+    "candidate_static_review": {
+      "artifact": "c29-candidate027-static-review.md",
+      "sha256": "c18640ab7dba931d21410690b40e44f60e9bc1f799592c91cadaec75c7c99dfe",
+      "scope": "static import safety, not functional approval"
+    },
+    "paid_export_manifest": {
+      "artifact": "manifest.json",
+      "sha256": "83cf7fe782c579cb08d88f0091025e0f6274eebdd56da7122bc81e9b244b41ad",
+      "files": 48,
+      "private_authority": false
+    },
+    "ledger_snapshot": {
+      "artifact": "ledger-after027.json",
+      "sha256": "ab9d182f7d37631f308ec1f9e56acfb08ffc89ad16e69d97b2149552fe85e10c"
+    },
+    "ledger_backup": {
+      "artifact": "ledger-after027.sqlite",
+      "sha256": "d5df7036b88753d6c48eef4158390dceccf10f1bf6ed2e5360da336ce77d383e"
+    },
+    "terminal_checkpoint": {
+      "artifact": "terminal-checkpoint.json",
+      "sha256": "66e62d7f7e00341ede30a813e73597ca05ef452486166da37e8ffde112246e45"
+    },
+    "keeper_stop": {
+      "artifact": "keeper-stopped.json",
+      "sha256": "061104706c46d42478c7d62a22fb5884f7e78444826ca0b8e5d5737268ef783a"
+    },
+    "product_execution": {
+      "artifact": "candidate027-001/execution.json",
+      "sha256": "59e32387f7b3e1187a88e0218cf88c294dc8b664cde475402965e4de5d5b9d9e"
+    },
+    "product_junit": {
+      "artifact": "candidate027-001/product.xml",
+      "sha256": "95013f8d0b501f0fcd3fee34a2bb3ffcc605d371eda8f44201ffaf9c17fab6ba"
+    }
+  }
+}
