@@ -1,0 +1,284 @@
+{
+  "schema": "pi-development-runtime030-summary-v1",
+  "date": "2026-10-15",
+  "status": "FAILED_OR_INCOMPLETE",
+  "execution": {
+    "pi_paid_development": "ACTUAL",
+    "actual_requests": 16,
+    "http_200_responses": 16,
+    "usage_records": 16,
+    "usage_records_valid": 16,
+    "returncode": 1,
+    "accepted_phase": false,
+    "candidate_adopted": false,
+    "release_approved": false,
+    "autonomous_development_iteration_completed": false
+  },
+  "frozen_session_limits": {
+    "model_requests": 16,
+    "tool_calls": 60,
+    "develop_budget_seconds": 285,
+    "output_tokens_per_request": 2048,
+    "global_fee_authorization_removes_session_limits": false
+  },
+  "intermediate_checks": {
+    "candidate_sha256": "63a40603d7743f1936aedfb04414f015461f9aeabf8af6ba978e1df5340c50c5",
+    "baseline_sha256": "dc6022b85b2556736ac3ac9d21e952105195025657a72d5f871405aca04dc597",
+    "status": "BLOCKED",
+    "comparison_pairs": [
+      "pair-1"
+    ],
+    "complete_paired_groups": 6,
+    "completed_outputs": 12,
+    "baseline_trace_fidelity_passed": 16,
+    "primary_cases": 52,
+    "trace_fidelity_passed": 34,
+    "trace_fidelity_failed": 18,
+    "redaction_passed": 52,
+    "encoded_caps_passed": 52,
+    "input_immutability_passed": 52,
+    "legacy_security_cases": 3,
+    "legacy_security_passed": 0,
+    "legacy_security_failures": 3,
+    "objective_passed": false,
+    "severe_guard_veto": true,
+    "release_allowed": false,
+    "scope": "中间源的真实配对检查；成绩不适用于最终源"
+  },
+  "final_candidate": {
+    "artifact": "admin_observability.py",
+    "sha256": "fc36b866764639308b63945bab064165f62a90644c4d48c317bbb17c4f230a98",
+    "bytes": 8707,
+    "same_hash_55_checks_passed": null,
+    "same_hash_55_check_status": "NO_MATCHING_RECEIPT_IN_REVIEWED_EXPORT",
+    "primary_cases": 52,
+    "legacy_security_cases": 3,
+    "trace_fidelity_passed": null,
+    "redaction_passed": null,
+    "encoded_caps_passed": null,
+    "input_immutability_passed": null,
+    "legacy_security_passed": null,
+    "static_import_safety": "safe for direct isolated import with trusted stdlib and disabled surrounding fixtures",
+    "static_functional_verdict": "REJECTED",
+    "functional_approval": false,
+    "findings": [
+      "普通前缀紧邻认证标记时仍泄露凭据",
+      "静态审查另发现本可完整保留的字符串可能被不必要截断"
+    ],
+    "exported_final_session_receipt_present": false,
+    "exported_final_adapter_receipt_present": false,
+    "native_session_files_exist": true,
+    "native_rpc_files_exist": true,
+    "native_session_rpc_forensic_review": "PENDING"
+  },
+  "product_regression": {
+    "status": "FAILED",
+    "candidate_sha256": "fc36b866764639308b63945bab064165f62a90644c4d48c317bbb17c4f230a98",
+    "executed": 17,
+    "passed": 15,
+    "failed": 2,
+    "deselected": 1,
+    "returncode": 1,
+    "deselected_scope": "PostgreSQL-dependent case",
+    "failure_class": "普通前缀紧邻认证标记时凭据未被移除",
+    "isolated": true,
+    "prior_round_results_inherited": false,
+    "final_55_oracle_replaced": false
+  },
+  "failure": {
+    "primary": {
+      "error_type": "ValueError",
+      "failure_operation": "phase_guard",
+      "unit_returncode": null,
+      "timed_out": false,
+      "overflow": false,
+      "oom_kill": 0
+    },
+    "secondary": {
+      "error_type": "FileNotFoundError",
+      "reason": "控制器在首要运行失败后读取缺失的worker receipt"
+    },
+    "session_request_cap_diagnosis": {
+      "classification": "STRONG_SOURCE_SUPPORTED_INFERENCE",
+      "request_limit": 16,
+      "observed_provider_sends": 16,
+      "local_seventeenth_denial_event_retained": false,
+      "seventeenth_provider_send_observed": false,
+      "terminal_admission_reason_retained": false
+    },
+    "accepted_phase": false,
+    "session_valid": null,
+    "session_valid_basis": "所读导出证据未含最终session/adapter接受凭据；native会话/RPC文件存在，取证核对尚未完成",
+    "runtime_failure_evidence_source_fix": "SEPARATE_PENDING_WORK",
+    "runtime_fix_completed": false
+  },
+  "supervision": {
+    "returncode": 1,
+    "verified": false,
+    "owned_trees": 3,
+    "owned_trees_independently_verified_empty": true
+  },
+  "cumulative": {
+    "accounted_requests": 167,
+    "operations": 539,
+    "events": 910,
+    "conservative_microyuan": 13425922,
+    "known_estimate_microyuan": 1343746,
+    "historical_unknown_microyuan": 12082176,
+    "budget_microyuan": 20000000,
+    "remaining_microyuan": 6574078,
+    "remaining_is_arithmetic_not_live_balance": true,
+    "invoice_known": false,
+    "effective_max_attempts": null,
+    "effective_phase_allocations": null,
+    "pending_model_attempts": 0,
+    "pending_phase_admissions": 0,
+    "other_historical_pending_by_kind": {
+      "model-scope": 1,
+      "phase-fence": 1,
+      "preview-fence": 1
+    },
+    "after028_operations_unchanged": 484,
+    "after028_events_exact_ordered_prefix": 816,
+    "basis": "ROOT终态记录及独立审查；本摘要编写未重新读取native或canonical账本"
+  },
+  "this_round": {
+    "actual_requests": 16,
+    "known_estimate_microyuan": 127741,
+    "new_unknown_microyuan": 0,
+    "new_operations": 55,
+    "new_events": 94
+  },
+  "cleanup": {
+    "owned_trees": 3,
+    "owned_trees_empty": true,
+    "captured_before_STOP": true,
+    "closed_backup_retained": true,
+    "closed_backup_whole_database_matches_snapshot": true,
+    "closed_backup_comparison_reported_by": "ROOT",
+    "keeper_stopped": true,
+    "no_fixed_uid_processes": true,
+    "old_pid_signalled": false,
+    "E_mirror_is_privacy_proof": false,
+    "canonical_mode_is_privacy_proof": false,
+    "basis": "终态捕获与STOP凭据；不代表开发通过或native隐私证明"
+  },
+  "accounting_retention": {
+    "settled": true,
+    "candidate_acceptance": false,
+    "release_approved": false,
+    "historical_unknown_reset": false,
+    "historical_unknown_refunded": false,
+    "historical_unknown_reclassified": false,
+    "approval_scope": "exact FAILED terminal facts retention only",
+    "independent_review_status": "APPROVED_FAILED_FACTS_RETENTION_ONLY"
+  },
+  "remaining_validation": {
+    "quality025_paid_product_comparison": "NOT_COMPLETED",
+    "writing_metric_semantics": "NOT_COMPLETED",
+    "build": "NOT_COMPLETED",
+    "release": "NOT_COMPLETED",
+    "day_2": "NOT_COMPLETED",
+    "full_CI": "NOT_RUN",
+    "Go": "NOT_RUN",
+    "frontend": "NOT_RUN",
+    "PostgreSQL_integration": "NOT_RUN",
+    "W18": "PRESERVED",
+    "RED": "PRESERVED",
+    "server_daily_enabled": false
+  },
+  "mainline_changed": false,
+  "online_system_changed": false,
+  "original028_029_evidence_preserved": true,
+  "next_work": {
+    "runtime_failure_evidence_source_fix": "PENDING_SEPARATE_TASK",
+    "new_paid_run": "NOT_PERFORMED_FOR_THIS_REPORT",
+    "execution_success_claim": false
+  },
+  "publication": {
+    "body_free": true,
+    "private_absolute_paths_included": false,
+    "raw_case_bodies_included": false,
+    "credentials_included": false,
+    "hidden_gold_included": false,
+    "full_private_user_text_included": false,
+    "PII_included": false,
+    "committed": false,
+    "pushed": false,
+    "pushed_to_github": false,
+    "released": false,
+    "basis": "记录生成时状态"
+  },
+  "evidence": {
+    "terminal_facts_review": {
+      "artifact": "c35-after030-terminal-facts-review.md",
+      "sha256": "5d8d8e70f7f2c4b6c568afb63a62a707c2e90281e3053e8ed8945633b14256be",
+      "scope": "exact FAILED terminal facts retention only; ROOT independently read and rehashed"
+    },
+    "paid_diagnosis": {
+      "artifact": "c35-paid030-diagnosis.md",
+      "sha256": "f2566726bf218df57b3afd1c9f7e1146a11457efc75a04940543b9d76073deec",
+      "scope": "observed primary failure, source-proven secondary failure, request-cap strong inference"
+    },
+    "candidate_static_review": {
+      "artifact": "c35-candidate030-static-review.md",
+      "sha256": "b635660f5e21fce09f7e501983e56834e1f11ddcd5133e4833e6959772d50c7b",
+      "scope": "isolated import safety, functional rejection"
+    },
+    "paid_export_manifest": {
+      "artifact": "manifest.json",
+      "sha256": "f0fc5973e6da7cce3b408db98f6a23c9ae105b5f73a7bdd91598d830e2cdea0e",
+      "files": 24,
+      "private_authority": false
+    },
+    "ledger_snapshot": {
+      "artifact": "ledger-after030.json",
+      "sha256": "94652283b7c2bab481504618868dbecd7d1680607cf8a02ce4d452581963d086"
+    },
+    "ledger_backup": {
+      "artifact": "ledger-after030.sqlite",
+      "sha256": "b9bf1ee96e506ba40df2704f2126c5fb5850412ca22a189b4177c5f6b14accb4"
+    },
+    "terminal_checkpoint": {
+      "artifact": "terminal-checkpoint.json",
+      "sha256": "d5b89f2c89e395be48f2a3a9577674c3668cbc0dd3ade23aa65077f923e52b6a"
+    },
+    "keeper_stop": {
+      "artifact": "keeper-stopped.json",
+      "sha256": "a444f60392bd0931d7ed8b037d77d4f81b8480a02dc2e081dbd1c0eb8f9912d8"
+    },
+    "baseline_check": {
+      "artifact": "develop-01-baseline/check.json",
+      "sha256": "7d83bb1a27811c6913a594570948cb3950555e783ec31fe3cb7acd89fa759ffa"
+    },
+    "intermediate_candidate_check": {
+      "artifact": "develop-02-candidate/check.json",
+      "sha256": "1815e37b25b07ff306f12f63a2ed88ee5b6a76179a40145306ab1e6f507ccf63",
+      "final_source_match": false
+    },
+    "paired_comparison": {
+      "artifact": "pair-1/comparison.json",
+      "sha256": "c3e5eaa2a1c04672b1ee769d6a4710d394635f3bfde4d0c8aeb3f4e1ee8d6ef5"
+    },
+    "paid_outcome": {
+      "artifact": "outcome.json",
+      "sha256": "ec00f8e8197fa6721bfdbc70ec356932bdacdb2c190af40350662591475d0b91"
+    },
+    "usage": {
+      "artifact": "usage.jsonl",
+      "sha256": "354afda2c34b6e67ff4b220f7bdf80d134546909f8ce6b24bf32ae240c3ee43d"
+    },
+    "supervision_outcome": {
+      "artifact": "supervision-outcome.json",
+      "sha256": "7936f06f0a40971a0719e03704b983b22b87b7f5e21aaaf32a615767d862b452"
+    },
+    "product_regression_execution": {
+      "artifact": "candidate030-001/execution.json",
+      "sha256": "a2c85fcdf2c1d1b77573eae9ddab76295063ffa017a9cc6c133818e4c5a2deaf"
+    },
+    "product_regression_result": {
+      "artifact": "candidate030-001/product.xml",
+      "sha256": "3da920ec800bad873af12b1239a8fc0df0df05e6fb9c71b4376bfe1bcf447c90"
+    }
+  }
+}
