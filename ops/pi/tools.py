@@ -495,7 +495,10 @@ class ControlledTools:
         if cleanup_failed:
             # The renames succeeded, but cleanup cannot prove a clean completion.
             raise RuntimeError('patch cleanup uncertain; host reconciliation required')
-        return dict(candidate_hash=self.candidate_hash(), files=changed_paths, scope=asdict(gate))
+        # One post-write snapshot binds per-file feedback to the aggregate receipt.
+        source_hashes = {p:sha256(self._read(p)).hexdigest() for p in self._base_sources}
+        return dict(candidate_hash=digest(source_hashes), files=changed_paths, scope=asdict(gate),
+                    source_hashes={p:source_hashes[p] for p in replacements})
 
 
 def tool_definitions(phase_or_names):
