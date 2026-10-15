@@ -19,7 +19,12 @@ _CONTROL_FIELDS = frozenset({"plan", "plan_attempt", "writing_mode", "audit_verd
 _REDACTED = "[REDACTED]"
 _TRUNCATED = "[TRUNCATED]"
 _KEY = re.compile(r"password|passwd|pwd|hash|apikey|accesstoken|refreshtoken|secret|authorization|credential|connectionstring", re.I)
-_BEARER = re.compile(r"\b(?:Bearer|Basic|API[-_ ]?Key)\s+[A-Za-z0-9._~+/=-]+", re.I)
+# Marker and its credential are removed entirely; the ordinary prefix stays,
+# the real delimiter and any safe tail are preserved. Bounded body, no broad
+# nonwhitespace match. An adjacent ordinary prefix must NOT hide the marker:
+# match the marker with NO left-boundary constraint and consume only the
+# marker plus its credential, leaving the prefix and any safe tail intact.
+_BEARER = re.compile(r"(?:Bearer|Basic|API[-_ ]?Key)\s+[A-Za-z0-9._~+/=:%@-]+", re.I)
 _ASSIGNMENT = re.compile(r'''(?i)(["']?(?:password|passwd|pwd|api[-_]?key|access[-_]?token|refresh[-_]?token|token|secret|authorization)["']?\s*[:=]\s*)(?:"[^"\n]*"|'[^'\n]*'|[^\s,;}]+)''')
 # Locate delimiters independently: an authority must never consume the next URL
 # candidate's scheme delimiter in compact serialized text. Both scans are linear.
@@ -84,9 +89,26 @@ def capture(value: object, *, max_bytes: int = 65536) -> dict:
             # Scrub before clipping to avoid retaining a partial credential.
             cleaned = scrub_text(item)
             redacted |= cleaned != item
-            max_chars = min(LIMITS["max_text"], max(0, (remaining - 64) // 6))
-            if len(cleaned) > max_chars:
-                cleaned = cleaned[:max_chars] + _TRUNCATED
+            # Fit the longest raw prefix by ACTUAL encoded JSON bytes (char
+            # estimates wrongly drop text that would have fit). The whole
+            # prefix plus the truncation marker is charged once, below.
+            budget = min(LIMITS["max_text"], len(cleaned))
+            whole = cleaned[:budget]
+            if budget == len(cleaned) and len(json.dumps(whole, ensure_ascii=True).encode()) <= remaining - 64:
+                # Whole scrubbed text fits: keep it intact, reserve no marker.
+                cleaned = whole
+            else:
+                # Otherwise charge a marker exactly once after the longest
+                # fitting prefix; a max_text clip also needs the marker.
+                lo, hi = 0, budget
+                while lo < hi:
+                    mid = (lo + hi + 1) // 2
+                    cost = len(json.dumps(cleaned[:mid] + _TRUNCATED, ensure_ascii=True).encode())
+                    if cost <= remaining - 64:
+                        lo = mid
+                    else:
+                        hi = mid - 1
+                cleaned = cleaned[:lo] + _TRUNCATED
                 truncated = True
             remaining -= len(json.dumps(cleaned, ensure_ascii=True).encode())
             return cleaned
