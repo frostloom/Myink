@@ -230,9 +230,9 @@ class AnthropicProvider(ModelProvider):
                     for line in budget_iter(permit, response.iter_lines()):
                         if permit:
                             permit.remaining_seconds()
-                        if not line.startswith("data: "):
+                        if not line.startswith("data:"):
                             continue
-                        raw = line[6:]
+                        raw = line[5:].removeprefix(" ")
                         if raw == "[DONE]":
                             continue
                         event = json.loads(raw)
