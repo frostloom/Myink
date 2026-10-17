@@ -28,6 +28,7 @@ import os
 if not os.environ.get("PI_LAB_ENV"):
     os.environ["QUEUE_PREFIX"] = "-mp-"
 
+import signal  # noqa: E402
 import subprocess  # noqa: E402
 import sys  # noqa: E402
 import tempfile  # noqa: E402
@@ -71,6 +72,14 @@ def two_workers():
     # 已删除临时项目的旧消息；只操作 QUEUE_PREFIX=-mp- 的测试队列。
     _purge_test_queues()
     procs, logs = [], []
+    executable = sys.executable
+    worker_env = {**os.environ, "PYTHONPATH": ROOT}
+    if os.name == "nt" and sys.prefix != sys.base_prefix:
+        # The Windows venv executable is a redirector: killing its PID can leave
+        # the actual worker alive. Run the interpreter directly but retain the
+        # venv configuration, so Popen.pid is the heartbeat/lock owner PID.
+        executable = sys._base_executable
+        worker_env["__PYVENV_LAUNCHER__"] = sys.executable
     launch = str(uuid.uuid4())
     if os.environ.get("PI_LAB_ENV"):
         from pathlib import Path
@@ -80,11 +89,11 @@ def two_workers():
         log_path = os.path.join(tempfile.gettempdir(), name)
         logf = open(log_path, "w", encoding="utf-8")
         p = subprocess.Popen(
-            [sys.executable, _MP_WORKER],
+            [executable, _MP_WORKER],
             cwd=ROOT,
             stdout=subprocess.DEVNULL,
             stderr=logf,
-            env={**os.environ, "PYTHONPATH": ROOT},
+            env=worker_env,
         )
         procs.append(p)
         logs.append(logf)
@@ -325,7 +334,9 @@ def test_worker_kill_retains_unconfirmed_checkpoint_without_duplicate_effects(tw
                 intent=db.scalar(sa_select(AdmissionIntent).where(AdmissionIntent.task_id==uuid.UUID(tid)))
                 original_body=dict(intent.rebuild_payload);original_hash=intent.payload_hash
                 assert original_body['task_id']==tid and original_body['request_id']==tid and body_hash(original_body)==original_hash
-            killed.kill();killed.wait(timeout=10);assert killed.returncode<0
+            killed.kill()
+            killed.wait(timeout=10)
+            assert killed.returncode == (1 if os.name == "nt" else -signal.SIGKILL)
             break
         time.sleep(.1)
     assert killed is not None,'worker did not reach real write before crash'
