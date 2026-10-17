@@ -40,7 +40,9 @@ def test_runtime_phase_requires_acceptance_before_engine(tmp_path):
     assert result.status=='blocked'
 
 
-@pytest.mark.parametrize('flow',['valid','patch_after_check','final_recheck','wrong_source','lint_only'])
+@pytest.mark.parametrize('flow',['valid','patch_after_check','final_recheck','wrong_source','lint_only',
+    'missing_status','status_before_check','stale_status','wrong_status_identity','wrong_status_base','wrong_status_generation',
+    'wrong_status_hash','published_status','missing_check_receipt'])
 def test_fixround1_stopped_phase_requires_check_of_final_candidate(tmp_path,policy,flow):
     """Real broker rows/patches; runner and stopped-process evidence are simulated."""
     from hashlib import sha256
@@ -63,14 +65,37 @@ def test_fixround1_stopped_phase_requires_check_of_final_candidate(tmp_path,poli
             'result':'passed','source_sha256':'0'*64 if flow=='wrong_source' else sha256(source.read_bytes()).hexdigest()})
     broker.checks={'unit':checker,'lint':checker}
     invoke('apply_patch',patch(broker,cap),'patch-a')
+    if flow in ('status_before_check','stale_status'):
+        invoke('candidate_status',{},'status-early')
     check_id='lint' if flow=='lint_only' else 'unit'
     invoke('run_check',dict(check_id=check_id,candidate_hash=broker.candidate_hash(),plan_hash=cap.plan.plan_hash),'check-a')
-    if flow in ('patch_after_check','final_recheck'):
+    if flow in ('patch_after_check','final_recheck','stale_status'):
         args=patch(broker,cap,old='value = 2',new='value = 3')
         args['edits'][0]['source_hash']=sha256(source.read_bytes()).hexdigest()
         invoke('apply_patch',args,'patch-b')
-        if flow=='final_recheck':
+        if flow in ('final_recheck','stale_status'):
             invoke('run_check',dict(check_id='unit',candidate_hash=broker.candidate_hash(),plan_hash=cap.plan.plan_hash),'check-b')
+    if flow not in ('missing_status','status_before_check','stale_status'):
+        if flow in ('wrong_status_identity','wrong_status_base','wrong_status_generation','wrong_status_hash','published_status','missing_check_receipt'):
+            from unittest.mock import patch as mock_patch
+            original=broker._execute
+            def wrong_identity(name,args):
+                value=original(name,args)
+                if name=='candidate_status':
+                    key,bad={
+                        'wrong_status_identity':('candidate_id','foreign-candidate'),
+                        'wrong_status_base':('base','foreign-base'),
+                        'wrong_status_generation':('generation',True),
+                        'wrong_status_hash':('candidate_hash','0'*64),
+                        'published_status':('published',True),
+                        'missing_check_receipt':('receipts',[]),
+                    }[flow]
+                    value[key]=bad
+                return value
+            with mock_patch.object(broker,'_execute',side_effect=wrong_identity):
+                invoke('candidate_status',{},'status-final')
+        else:
+            invoke('candidate_status',{},'status-final')
     session=b''.join(json.dumps(record).encode()+b'\n' for record in records)
     adapter=Receipt('adapter','done',dict(owned_pid=123,session_valid=True,clear_abort_acknowledged=True,
         session_sha256=sha256(session).hexdigest(),verified_tool_calls=sorted(call_ids)))

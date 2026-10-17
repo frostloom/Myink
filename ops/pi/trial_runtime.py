@@ -143,7 +143,7 @@ def verify_stopped_phase(broker, receipt, session_bytes, transcript_bytes, *, st
             if actual['status']=='done':
                 successful.add(call['name'])
                 successful_rows.append((result_positions[call_id],call,actual))
-        required={'propose_plan'} if broker.capability.phase=='plan' else {'apply_patch','run_check'} if broker.capability.phase=='develop' else set()
+        required={'propose_plan'} if broker.capability.phase=='plan' else {'apply_patch','run_check','candidate_status'} if broker.capability.phase=='develop' else set()
         if not required<=successful or broker.capability.phase=='develop' and source_before==source_after:
             raise ValueError('missing actual plan/patch/check')
         proposed_plan=None
@@ -163,7 +163,7 @@ def verify_stopped_phase(broker, receipt, session_bytes, transcript_bytes, *, st
                     or digest(evidence['plan'])!=digest(asdict(plan))):
                 raise ValueError('verified current proposal and computed hash required')
             proposed_plan=dict(operation_id=actual['operation_id'],plan=evidence['plan'],plan_hash=plan.plan_hash)
-        final_check=None
+        final_check=None; final_status=None
         if broker.capability.phase=='develop':
             cap=broker.capability
             current_hash=broker.candidate_hash()
@@ -171,17 +171,31 @@ def verify_stopped_phase(broker, receipt, session_bytes, transcript_bytes, *, st
                           base=cap.base,candidate_id=cap.candidate_id,generation=cap.generation,
                           source_sha256=source_after,result='passed',verified=True,mode='ACTUAL')
             last_patch=max(position for position,call,_ in successful_rows if call['name']=='apply_patch')
+            final_check_position=None
             for position,call,actual in successful_rows:
                 check=actual['evidence'].get('check')
                 if (call['name']=='run_check' and position>last_patch and isinstance(check,dict)
                         and call['arguments']==dict(check_id='unit',candidate_hash=current_hash,plan_hash=cap.plan.plan_hash)
                         and all(check.get(key)==value for key,value in expected.items())):
                     final_check=actual['operation_id']
+                    final_check_position=position
             if final_check is None:
                 raise ValueError('successful unit check must cover final candidate after its last patch')
+            status_identity=dict(candidate_id=cap.candidate_id,base=cap.base,generation=cap.generation,
+                                 candidate_hash=current_hash,published=False)
+            for position,call,actual in successful_rows:
+                if (call['name']=='candidate_status' and position>final_check_position and call['arguments']=={}
+                        and all(type(actual['evidence'].get(key)) is type(value)
+                                and actual['evidence'].get(key)==value for key,value in status_identity.items())
+                        and any(row==dict(operation_id=final_check,tool='run_check',status='done')
+                                for row in actual['evidence'].get('receipts',[]))):
+                    final_status=actual['operation_id']
+            if final_status is None:
+                raise ValueError('current bound candidate_status must follow final successful unit check')
         result=dict(verified=True,mode='ACTUAL',session_sha256=sha256(session_bytes).hexdigest(),
             transcript_sha256=sha256(transcript_bytes).hexdigest(),source_before=source_before,source_after=source_after,
             verified_tool_calls=sorted(calls),required_tools=sorted(required),final_check_operation_id=final_check)
+        if broker.capability.phase=='develop':result['final_candidate_status_operation_id']=final_status
         if proposed_plan is not None:result['proposed_plan']=proposed_plan
         return result
     except (ValueError,KeyError,TypeError,AttributeError):

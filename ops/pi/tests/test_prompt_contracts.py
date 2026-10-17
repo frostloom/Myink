@@ -71,3 +71,14 @@ def test_analysis_delivers_complete_strict_writing_contract_with_controlled_data
     assert 'operations may cite the body-free report in prose' not in instructions
     assert '\nDATA\n' not in prompt
     assert json.loads(data_text)['writing']['view']['evidence'][0]['evidence_index'] == 0
+
+
+def test_develop_instructions_require_current_status_after_final_successful_check():
+    prompt=module().build_phase_prompt('develop',{},
+        {'max_attempts':20,'budget_microyuan':5000000,'deadline':'fixed'})
+    instructions=prompt.split('\nCONTROLLED_DATA\n',1)[0]
+    assert 'After the last successful apply_patch' in instructions
+    assert 'run_check' in instructions and 'unit' in instructions
+    assert 'then call candidate_status' in instructions
+    assert 'A later patch invalidates both' in instructions
+    assert 'Do not finish before this sequence' in instructions
