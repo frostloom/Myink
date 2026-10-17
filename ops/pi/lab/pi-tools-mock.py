@@ -116,7 +116,7 @@ def main():
     agent=Path(config['env']['PI_CODING_AGENT_DIR'])
     for name,value in (('settings.json',config['settings']),('models.json',config['models'])):(agent/name).write_text(json.dumps(value))
     runtime=Path('/Users/a1/项目/Myink/myink-pi/runtime')
-    node=runtime/'node/node-v24.16.0-linux-x64/bin/node'
+    node=runtime/'node/node-v24.22.0-darwin-arm64/bin/node'
     package=runtime/'pi-project/node_modules/@earendil-works/pi-coding-agent'
     if json.loads((package/'package.json').read_text())['version']!='1.1.0':raise ValueError('pinned Pi1.1.0 required')
     config_hash=hashlib.sha256(json.dumps({k:v for k,v in config.items() if k!='env'},sort_keys=True).encode()).hexdigest()

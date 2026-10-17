@@ -3,7 +3,6 @@ import argparse
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
-import os
 from pathlib import Path
 
 from ops.pi.engine import AdministratorContext, EngineSession
@@ -11,7 +10,8 @@ from ops.pi.pi_config import make_pi_config
 from ops.pi.pi_rpc import PiAdapter
 from ops.pi.policy import load_policy
 from ops.pi.writing_analysis import (PRIVATE_ROOT, SYSTEM_PROMPT, _safe_path,
-    analysis_receipt, build_writing_prompt, load_analysis_inputs, preflight_request)
+    analysis_receipt, build_writing_prompt, load_analysis_inputs, preflight_request,
+    require_private_root)
 
 
 def serialize_receipt(output):
@@ -28,9 +28,7 @@ def main(argv=None):
     parser.add_argument('--gateway-port', required=True, type=int)
     parser.add_argument('--target-domain', required=True)
     args = parser.parse_args(argv)
-    if (not hasattr(os, 'getuid') or os.getuid() == 0
-            or args.root.parts[:3] != ('/', 'mnt', 'e')):
-        raise ValueError('contained nonroot private E run required')
+    require_private_root(args.root)
     root = _safe_path(args.root, PRIVATE_ROOT)
     if not root.is_dir() or not 1 <= args.gateway_port <= 65535:
         raise ValueError('private run directory and loopback port required')
@@ -60,7 +58,7 @@ def main(argv=None):
     for name, value in [('settings.json', config['settings']), ('models.json', config['models'])]:
         _safe_path(agent / name, PRIVATE_ROOT, existing=False).write_text(json.dumps(value), encoding='utf-8')
     cwd.mkdir(exist_ok=False)
-    node = Path('/Users/a1/项目/Myink/myink-pi/runtime/node/node-v24.16.0-linux-x64/bin/node')
+    node = Path('/Users/a1/项目/Myink/myink-pi/runtime/node/node-v24.22.0-darwin-arm64/bin/node')
     cli = Path('/Users/a1/项目/Myink/myink-pi/runtime/pi-project/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js')
     guard = Path(__file__).parent / 'pi-wire-guard.mjs'
     config_hash = hashlib.sha256(json.dumps({k: v for k, v in config.items() if k != 'env'},

@@ -44,6 +44,10 @@ def test_analysis_delivers_complete_strict_writing_contract_with_controlled_data
     # The delivered contract must survive assembly, not merely the indexed data.
     required = (
         'Return only strict JSON with exactly domains,hypothesis,owner_decision.',
+        'Do not wrap the JSON in a markdown fence.',
+        'No backtick characters.',
+        'Unknown domain observation example: "本轮不评价".',
+        'Do not invent, translate, or shorten a quote.',
         'domains: exactly 11 objects',
         'recall.events,recall.plot,recall.characters,recall.facts,extract,write,audit,repair,tools,operations,experience',
         '{domain,availability,observation,refs}', 'availability trace_observation|unknown',

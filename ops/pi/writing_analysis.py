@@ -1,6 +1,7 @@
 """Frozen writing-data analysis contract. Bodies never grant runtime capabilities."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import stat
@@ -34,6 +35,19 @@ def _json(value, *, ascii=False):
 
 def _digest(value):
     return isinstance(value, str) and re.fullmatch('[a-f0-9]{64}', value) is not None
+
+
+def require_private_root(root):
+    """Non-root runs stay inside the machine private directory."""
+    root = Path(root)
+    if (not hasattr(os, 'getuid') or os.getuid() == 0 or not root.is_absolute()
+            or '..' in root.parts or root.is_symlink()):
+        raise ValueError('contained nonroot private run required')
+    try:
+        root.resolve(strict=False).relative_to(Path(PRIVATE_ROOT).resolve(strict=True))
+    except (OSError, ValueError) as exc:
+        raise ValueError('contained nonroot private run required') from exc
+    return root
 
 
 def _safe_path(path, root, *, existing=True):
@@ -157,12 +171,17 @@ def build_writing_prompt(view, report, *, target_domain):
         'Selective/clipped/head-tail coverage and missing metrics stay explicit. No claim of completed improvement or release. '
         + scope + 'Target constraint: ' + DOMAIN_CONSTRAINTS[target_domain] + ' '
         'Return only strict JSON with exactly domains,hypothesis,owner_decision. '
+        'Do not wrap the JSON in a markdown fence. The first character is {. No backtick characters. '
         'domains: exactly 11 objects, one per domain in ' + ','.join(DOMAINS) + '. Each exactly '
         '{domain,availability,observation,refs}; availability trace_observation|unknown. '
-        'Observation concise Chinese <=70 chars recommended, <=180 required. refs max2; each exactly '
+        'Observation concise Chinese <=70 chars recommended, <=180 required. '
+        'Every domain observation is nonempty and at most 180 characters, including unknown domains. '
+        'Unknown domain observation example: "本轮不评价". '
+        'refs max2; each exactly '
         '{evidence_index,excerpt_index,quote} using the explicit zero-based evidence_index and excerpt_index labels. '
         'Source row id is not a list index. Copy a literal retained quote; never paraphrase it. '
         'continuous exact quote inside ONE excerpt, never join head/tail. quote <=80 chars recommended, <=256 required. '
+        'Do not invent, translate, or shorten a quote. If it is not already a contiguous substring, omit that ref. '
         'The aggregate report is not a numbered excerpt. DATA.operations has no evidence_index or excerpt_index; '
         'never quote its counts, status, or cost. '
         'Literal escape example: excerpt text line\\nnext must be quoted as line\\nnext, not a newline. '
