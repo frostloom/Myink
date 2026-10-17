@@ -16,9 +16,10 @@ from ops.pi.pi_rpc import PiAdapter
 
 def main():
     root=Path(sys.argv[1]).resolve()
-    node=Path('/Users/a1/项目/Myink/myink-pi/runtime/node/node-v24.16.0-linux-x64/bin/node')
+    node=Path('/Users/a1/项目/Myink/myink-pi/runtime/node/node-v24.22.0-darwin-arm64/bin/node')
     cli=Path('/Users/a1/项目/Myink/myink-pi/runtime/pi-project/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js')
-    assert os.getuid()!=0 and root.parts[:3]==('/','mnt','e')
+    from ops.pi.writing_analysis import require_private_root
+    require_private_root(root)
     wire=[]
     attempts=[]
     class Handler(BaseHTTPRequestHandler):

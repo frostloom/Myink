@@ -191,6 +191,34 @@ def test_ill_typed_json_schema_is_denied_as_validation_failure(mutation):
     with pytest.raises(ValueError): module().validate_writing_analysis(result, fixture()[0])
 
 
+def test_private_root_accepts_directory_inside_and_rejects_elsewhere(monkeypatch, tmp_path):
+    import os
+    mod = module()
+    monkeypatch.setattr(mod, 'PRIVATE_ROOT', tmp_path)
+    monkeypatch.setattr(os, 'getuid', lambda: 501, raising=False)
+    inside = tmp_path / 'runs'
+    inside.mkdir()
+    assert mod.require_private_root(inside) == inside
+    with pytest.raises(ValueError, match='private run'):
+        mod.require_private_root(Path('/tmp/not-myink-pi'))
+    monkeypatch.setattr(os, 'getuid', lambda: 0, raising=False)
+    with pytest.raises(ValueError, match='nonroot'):
+        mod.require_private_root(inside)
+
+
+def test_lab_runner_reaches_private_inputs_for_mac_root(monkeypatch):
+    import os
+    import runpy
+    path = Path(__file__).parents[1] / 'lab' / 'pi-writing-analysis.py'
+    monkeypatch.setattr(os, 'getuid', lambda: 501, raising=False)
+    main = runpy.run_path(str(path))['main']
+    with pytest.raises(ValueError, match='private path outside trusted root or missing'):
+        main(['--root', '/Users/a1/项目/Myink/myink-pi/runs/contract-gate-missing', '--input', '/not/read',
+              '--input-sha256', 'a'*64, '--report', '/not/read', '--report-sha256', 'b'*64,
+              '--policy', '/not/read', '--gateway-port', '1', '--scope-token-file', '/not/read',
+              '--target-domain', 'write'])
+
+
 def test_lab_runner_denies_root_before_loading_credentials_or_process(monkeypatch):
     import os
     import runpy
@@ -262,6 +290,10 @@ def test_prompt_contract_is_unique_per_target_and_keeps_validator():
         assert 'The aggregate report is not a numbered excerpt.' in prompt
         assert 'line\\nnext' in prompt
         assert '"rollback":"恢复旧提示"' in prompt
+        assert 'Do not wrap the JSON in a markdown fence.' in prompt
+        assert 'No backtick characters.' in prompt
+        assert 'Unknown domain observation example: "本轮不评价".' in prompt
+        assert 'Do not invent, translate, or shorten a quote.' in prompt
         assert 'rollback is one JSON string' in prompt
     with pytest.raises(ValueError):
         mod.build_writing_prompt(view, report, target_domain='invented')
@@ -270,6 +302,10 @@ def test_prompt_contract_is_unique_per_target_and_keeps_validator():
     array_rollback['hypothesis']['rollback'] = ['恢复旧提示']
     with pytest.raises(ValueError):
         mod.validate_writing_analysis(array_rollback, view)
+    empty_observation = plan()
+    empty_observation['domains'][1]['observation'] = ''
+    with pytest.raises(ValueError, match='domain assessment'):
+        mod.validate_writing_analysis(empty_observation, view)
 
 
 def test_prompt_presents_explicit_zero_based_positions_without_mutating_frozen_view():

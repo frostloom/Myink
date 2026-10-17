@@ -5,7 +5,6 @@ import argparse
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
-import os
 from pathlib import Path
 import re
 import sys
@@ -70,8 +69,8 @@ def main(argv=None):
     parser.add_argument('--scope-token-file',required=True,type=Path)
     args=parser.parse_args(argv)
     root=args.root
-    if os.getuid()==0 or not root.is_absolute() or root.parts[:3]!=('/','mnt','e') or root.is_symlink():
-        raise ValueError('contained nonroot private E run required')
+    from ops.pi.writing_analysis import require_private_root
+    require_private_root(root)
     raw=args.input.read_bytes()
     if len(raw)>65536 or not re.fullmatch('[a-f0-9]{64}',args.input_sha256) or hashlib.sha256(raw).hexdigest()!=args.input_sha256:
         raise ValueError('trusted snapshot hash/size mismatch')
@@ -89,7 +88,7 @@ def main(argv=None):
     (agent/'settings.json').write_text(json.dumps(config['settings']))
     (agent/'models.json').write_text(json.dumps(config['models']))
     cwd=root/'candidate'; cwd.mkdir(exist_ok=False)
-    node=Path('/Users/a1/项目/Myink/myink-pi/runtime/node/node-v24.16.0-linux-x64/bin/node')
+    node=Path('/Users/a1/项目/Myink/myink-pi/runtime/node/node-v24.22.0-darwin-arm64/bin/node')
     cli=Path('/Users/a1/项目/Myink/myink-pi/runtime/pi-project/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js')
     guard=Path(__file__).parent/'pi-wire-guard.mjs'
     config_hash=hashlib.sha256(json.dumps({k:v for k,v in config.items() if k!='env'},sort_keys=True).encode()+guard.read_bytes()).hexdigest()
