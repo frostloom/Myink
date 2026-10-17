@@ -320,3 +320,45 @@ def test_prompt_presents_explicit_zero_based_positions_without_mutating_frozen_v
     assert presented['source']['id']==1 and view==original
     result=plan(); result['hypothesis']['refs'][0]['evidence_index']=1
     with pytest.raises(ValueError):module().validate_writing_analysis(result,view)
+
+
+@pytest.mark.parametrize('text', [r'首行\n尾行', '首行\n尾行', r'他说：\"你好\"', r'C:\书库\第一章'],
+                         ids=['literal-backslash-n', 'newline', 'escaped-quotes', 'chinese-path'])
+@pytest.mark.parametrize('ensure_ascii', [False, True], ids=['utf8', 'ascii-escapes'])
+def test_literal_excerpt_roundtrip_preserves_escaping(text, ensure_ascii):
+    view, report = fixture()
+    view['evidence'][0]['excerpts'][0] = dict(
+        start_byte=0, end_byte=len(text.encode('utf-8')), text=text)
+    original = deepcopy(view)
+    prompt = module().build_writing_prompt(view, report, target_domain='write')
+    delivered = json.loads(prompt.split('\nDATA\n', 1)[1])['view']
+    assert delivered['evidence'][0]['excerpts'][0]['text'] == text
+    result = plan()
+    result['hypothesis']['refs'][0]['quote'] = text
+    raw = json.dumps(result, ensure_ascii=ensure_ascii)
+    accepted = module().parse_writing_analysis(raw, delivered)
+    assert accepted == result
+    assert accepted['hypothesis']['refs'][0]['quote'] == text
+    assert view == original
+
+
+@pytest.mark.parametrize('text,quote', [
+    (r'首行\n尾行', '首行\n尾行'),
+    ('首行\n尾行', r'首行\n尾行'),
+    (r'他说：\"你好\"', '他说："你好"'),
+    (r'C:\书库\第一章', 'C:书库第一章'),
+    ('start', 'startend'),
+], ids=['unescaped-newline', 'escaped-newline', 'unescaped-quotes',
+        'removed-backslashes', 'joined-excerpts'])
+def test_literal_excerpt_roundtrip_rejects_rewritten_or_joined_quotes(text, quote):
+    view, report = fixture()
+    view['evidence'][0]['excerpts'][0] = dict(
+        start_byte=0, end_byte=len(text.encode('utf-8')), text=text)
+    original = deepcopy(view)
+    prompt = module().build_writing_prompt(view, report, target_domain='write')
+    delivered = json.loads(prompt.split('\nDATA\n', 1)[1])['view']
+    result = plan()
+    result['hypothesis']['refs'][0]['quote'] = quote
+    with pytest.raises(ValueError, match='quote outside one contiguous retained excerpt'):
+        module().parse_writing_analysis(json.dumps(result, ensure_ascii=False), delivered)
+    assert view == original
