@@ -210,9 +210,23 @@ def test_old_delivery_cannot_advance_a_new_resume(paused_budget,monkeypatch):
     advanced = []
     monkeypatch.setattr(processor,"_dispatch",lambda body:advanced.append(body) or {})
     old = {"task_id":tid,"project_id":pid,"user_id":uid,"task_type":"chapter_generate","payload":{"seq":1},"task_budget":{"max_requests":999}}
-    assert processor.process(old) == "waiting"
+    from myink.worker import consumer
+    from myink.worker.handoff import QueueAuthorityUnknown
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    with pytest.raises(QueueAuthorityUnknown, match="intake identity"):
+        processor.process(old)
+    channel, redis = Mock(), Mock()
+    consumer._on_message(channel, SimpleNamespace(delivery_tag=7), None,
+                         json.dumps(old).encode(), redis, "stale-resume")
+    channel.basic_ack.assert_not_called()
+    channel.basic_nack.assert_called_once_with(7, requeue=False)
+    redis.xadd.assert_not_called()
     assert not advanced
     assert budget_view(tid)["limits"]["max_requests"] == 3
+    with tenant_session(pid) as db:
+        assert db.get(Task, uuid.UUID(tid)).status == "queued"
 
 
 def test_resume_publish_lost_confirm_does_not_retry(monkeypatch):

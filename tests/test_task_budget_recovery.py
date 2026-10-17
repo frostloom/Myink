@@ -189,7 +189,11 @@ def test_worker_budget_pause_is_terminal_without_retry(budget_task, monkeypatch)
         chain.generate([{"role":"user","content":"second"}], max_tokens=20)
         return {}
     monkeypatch.setattr(processor, "_dispatch", dispatch)
-    body = {"task_id":tid,"project_id":pid,"user_id":uid,"task_type":"chapter_generate","payload":{"seq":1}}
+    body = {"task_id":tid,"project_id":pid,"user_id":uid,"task_type":"chapter_generate",
+            "payload":{"seq":1},"request_id":tid}
+    from myink.maintenance import register_admission
+    with tenant_session(pid) as db:
+        register_admission(db, body, priority=0)
     assert processor.process(body) == "terminal"
     with tenant_session(pid) as db:
         assert db.get(Task, uuid.UUID(tid)).status == "paused"
@@ -222,7 +226,11 @@ def test_worker_cancellation_wins_budget_pause(budget_task, monkeypatch):
             db.get(Task, uuid.UUID(tid)).status = "cancelled"
         raise TaskBudgetPaused("request_limit", "audit")
     monkeypatch.setattr(processor, "_dispatch", dispatch)
-    body = {"task_id":tid,"project_id":pid,"user_id":uid,"task_type":"chapter_generate","payload":{"seq":1}}
+    body = {"task_id":tid,"project_id":pid,"user_id":uid,"task_type":"chapter_generate",
+            "payload":{"seq":1},"request_id":tid}
+    from myink.maintenance import register_admission
+    with tenant_session(pid) as db:
+        register_admission(db, body, priority=0)
     assert processor.process(body) == "terminal"
     with tenant_session(pid) as db:
         assert db.get(Task, uuid.UUID(tid)).status == "cancelled"
