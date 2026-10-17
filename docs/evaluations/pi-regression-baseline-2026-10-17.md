@@ -22,7 +22,7 @@ python -m pytest tests/test_worker.py tests/test_task_budget_recovery.py -q --tb
 | test_cli_auth_safety.py::test_init_default_runs_additive_setup_without_creating_demo_or_samples | 同上 |
 | test_cli_auth_safety.py::test_init_seed_flag_creates_demo_account_and_samples | 同上 |
 | test_flow.py::test_batch_review_resume_finalizes_chapter | 续跑审核阶段触发 `TaskBudgetPaused: manual_pause` |
-| test_flow.py::test_batch_pause_halt_and_resume | 总写作调用 4 次，预期 3 次；已完成节点被重复执行 |
+| test_flow.py::test_batch_pause_halt_and_resume | 总写作调用 4 次，预期 3 次；需区分已持久化节点与暂停后的未提交结果 |
 | test_task_budget_routes.py::test_old_delivery_cannot_advance_a_new_resume | 旧消息被持久准入身份校验拒绝，抛 QueueAuthorityUnknown；旧断言仍期待 waiting |
 | test_task_budget_recovery.py::test_worker_budget_pause_is_terminal_without_retry | 手工消息与持久任务 payload 不一致，未到达目标预算分支即被拒绝 |
 | test_task_budget_recovery.py::test_worker_cancellation_wins_budget_pause | 同上 |
@@ -39,7 +39,7 @@ python -m pytest tests/test_worker.py tests/test_task_budget_recovery.py -q --tb
 3. 更新过时消息 fixture/断言，使用真实持久准入，保留旧投递拒绝和瞬时错误重入队的安全要求。
 4. 全量业务、离线 ops 及相关 CI 门禁，完整列出失败、跳过和环境限制。
 
-本轮未完成修复，未运行全量 CI；保留 runtime032 历史结论。原工作区四个 ops/pi 文件的既有修改不纳入提交。
+基线诊断阶段尚未完成修复、未运行全量 CI；以下续记记录实际修复与验收，保留 runtime032 历史结论。原工作区四个 ops/pi 文件的既有修改不纳入提交。
 ## 小目标 1：初始化隔离与 Windows worker（2026-10-18）
 
 CLI 的三个初始化测试补齐 `ensure_maintenance_schema` mock，并断言默认初始化调用该迁移。真实角色权限检查未改。Windows venv 的多进程 fixture 直接启动 base executable，并用 `__PYVENV_LAUNCHER__` 保留依赖路径，确保测试持有实际 worker PID。kill 后分别要求 Windows 返回 1、POSIX 返回 -SIGKILL；checkpoint、owner、队列和重复副作用检查全部保留。
@@ -65,3 +65,43 @@ python -m pytest tests/test_task_budget_routes.py tests/test_task_budget_recover
 业务全量实测为 1612 passed、1 skipped、159 deselected、5 xfailed（495.44s），无 failed/error。离线 ops 首次全量出现额外一项失败：1421 passed、1 failed、2 skipped、19 deselected（485.73s）。该测试依赖固定 macOS 私有目录存在，在 Windows 上先被根目录校验拒绝，未到预期的缺失目录分支。在不含四个既有未提交修改的冻结快照中单项复现相同失败（1 failed，1.35s）。
 
 仅修正 `ops/pi/tests/test_writing_analysis.py`：用含中文路径的真实临时可信目录，仍调用实际权限和路径校验，要求缺失子运行目录返回原精确错误；测试改名说明实际覆盖范围。完整文件 41 passed、1 skipped（20.33s），跳过项因本机不能创建 symlink。独立审查无 Critical/Important/Minor。没有修改生产可信根或绕过安全校验；最终离线全量重验另记。
+
+## 最终验收：源版本与已完成检查（2026-10-18）
+
+业务全量针对 `1e60cad` 测试源码运行；随后 `c4af844` 仅增加 ops 测试修正和记录，未改变业务测试或产品代码。前端、契约和镜像所用产品源码与 `c4af844` 一致，已通过 `git diff --exit-code e210aac..c4af844 -- src web Dockerfile caddy pyproject.toml docker/constraints.txt` 核验。原工作区四个 ops 文件 SHA256 与开始时逐项一致，未进入提交。
+
+| 门禁 | 实测结果 |
+| --- | --- |
+| 业务全量 `pytest tests/ -q -m 'not pi_lab and not pi_live'` | 1612 passed、1 skipped、159 deselected、5 xfailed；495.44s，退出码 0 |
+| 前端 `npm ci`、`npm run lint` | 成功；保留已有 React refresh/effect 警告 |
+| 前端 `npm test` | 58 files、457 passed；162.81s，退出码 0 |
+| 前端 `npm run build` | tsc/Vite 成功；保留 bundle 大小警告 |
+| `compileall -q src tests ops/pi` | 成功 |
+| `scripts/evaluate.py validate` | audit 20、catalog 40、retrieval 8、comparison 2 案例校验成功，无模型请求 |
+| OpenAPI 导出与 `git diff --exit-code -- spec/api-openapi.json` | 成功，无契约漂移 |
+| API、Caddy 镜像构建 | 均成功；使用仓库支持的基础镜像代理参数 |
+
+业务普通 skip 是 `test_evaluation_comparison_integration.py::test_direct_full_and_ablation_preserve_all_outputs_and_persisted_body`：需要显式认可的 localhost:15432 数据库身份；本轮隔离库为 25432，不绕过安全校验。五项 xfail 为既有冲突样例 05–09，仍是未实现/已知缺口，不是通过。159 项按 CI 标记排除的 pi_lab/pi_live 未执行。业务警告包括 Starlette/AnyIO 弃用与负向 HS512 用例的短密钥提示。Windows 进程行为已实测，POSIX SIGKILL 分支未在 Linux 实测，不能声称 Ubuntu Actions 等价验证。
+
+镜像从 `e210aac` 的 `git archive` 构建，避免把私有 venv、日志或四项既有修改加入构建上下文；之后提交仅改测试和文档。首次官方 Python 基础源因 auth.docker.io 连接失败退出 1，失败日志保留；改用项目现有 `PYTHON_IMAGE/NODE_IMAGE/CADDY_IMAGE` 代理参数后退出码均为 0。镜像 revision 标签为 `e210aac`，不是对后续提交标签的伪装。未部署镜像。
+
+- API image ID：`sha256:0b68ac2c50d7b4cbe08ea351d44a6f5f04d5faa636a0e419a8ce915b0d31b6df`
+- Caddy image ID：`sha256:f6193f70ad6869a465cf78d8c97de1320a0a8a1a7d0e62b2c5e18b65a688a8ae`
+
+完整迭代差异 `d85d01c..1e60cad` 已独立审查，无 Critical/Important/Minor；额外路径修正 `c4af844` 另行独立审查通过。离线首次全量包含工作区既有四项修改，因此最终离线验收另从 `c4af844` 干净归档运行，不能拿选集或旧工作区结果替代。
+
+专属 Compose 项目 `myink-regression-20261017` 已 `down --volumes` 成功，按项目 label 查询容器为空；没有清理其他项目。原始日志和 JUnit 留存在本轮忽略的临时工作目录，不提交私有环境文件。GitHub 当前工作流仅 main push/PR 触发，功能分支推送不代表已运行远端 Actions。
+
+后续计划见 `docs/superpowers/plans/2026-10-18-pi-analysis-stability.md`，已独立审查，仅完成规划，尚未执行。当前提示已有部分 025 修正，后续先补真实缺口，再提供新模型、样本、费用和停止条件的预注册供审阅。当前所有门禁都不能证明写作语义质量提升，历史 032 失败终态与 025 质量方案未采纳结论保留。
+
+补充诊断：对照用的未修正 `e210aac` 干净归档全量为 1420 passed、2 failed、2 skipped、19 deselected（607.77s），除已知路径案例外，`test_pi_rpc.py::test_continuation_requires_started_ack_and_new_completion_events[queued]` 出现一次 0.6 秒启动/协议截止时间敏感失败。原 transcript 只有首个 prompt，随后进入 clear_queue/abort 清理时才收到首轮 started/message_end/settled；未发送预期第二个 prompt，不能把它算作续跑拒绝路径已测。该轮曾与其他离线检查重叠，日志保留；这不证明生产续跑缺陷，也不因后续成功而删除该次失败。最终快照结果另列。
+
+最终 `c4af84418de93cb077b734731dee0b536f9503f0` 干净归档执行 `python -m pytest ops/pi/tests/ -q --tb=short -ra -m 'not pi_lab and not pi_live'`：**1422 passed、2 skipped、19 deselected（548.14s），退出码 0**。两项 skip 分别是 `test_writing_analysis.py::test_symlink_intake_is_denied` 与 `test_writing_evidence.py::test_load_rejects_symlink_even_when_target_is_inside_root`，均因本机符号链接权限。未选入的 19 项 pi_lab/pi_live 不能算通过。该次包含此前 RPC queued 用例且通过，但没有修复其 0.6 秒测试截止时间，稳定性风险仍保留。
+
+验收结论：本轮十项历史回归测试修正及额外主机路径测试隔离已完成，当前选定 CI 标记范围的业务、离线 ops、前端与构建检查通过。这里的通过仅指已执行集合，没有把普通 skip、xfail、未选入设施测试、未运行 Linux 路径或付费质量实验计为通过。78 项锁匹配的继承 venv、Windows 主机、镜像代理和记录中的一次 RPC 时间敏感失败，使本轮不能标为完全等价 Ubuntu Actions 或无间歇失败。没有合并 main、部署或启用每日自治。
+
+对时间敏感 RPC queued 用例，随后在同一 `c4af844` 冻结归档中单独串行重跑 3 次，均 1 passed（13.30s、0.74s、10.04s）。未修改该测试或生产实现；这三次通过只说明未再次复现，不消除旧归档那一次失败或证明它已修复。
+
+关键本地证据 SHA256：业务 JUnit `b318046cb83f56e1947fe86d110b24f0278434aa32811d7134891b656035a9b7`；最终干净归档 ops JUnit `1cf54793c9ab971a5c008471245292a5035d5becbb1bf89c389ead0eb91d609e`。原始日志仍在忽略的工作目录。
+
+已推送的小目标：`58276a7` 基线与计划、`e210aac` CLI/Windows 进程、`3cd1c3d` 批次恢复、`1e60cad` 持久准入和预算恢复、`c4af844` 主机路径测试隔离；最终验收记录另行提交。分支保持 `codex/pi-autonomy-design`，不修改 main。
