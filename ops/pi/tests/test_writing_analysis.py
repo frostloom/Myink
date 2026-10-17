@@ -206,14 +206,17 @@ def test_private_root_accepts_directory_inside_and_rejects_elsewhere(monkeypatch
         mod.require_private_root(inside)
 
 
-def test_lab_runner_reaches_private_inputs_for_mac_root(monkeypatch):
+def test_lab_runner_denies_missing_run_inside_private_root(monkeypatch, tmp_path):
     import os
     import runpy
     path = Path(__file__).parents[1] / 'lab' / 'pi-writing-analysis.py'
+    private_root = tmp_path / '项目' / 'myink-pi'
+    private_root.mkdir(parents=True)
+    monkeypatch.setattr(module(), 'PRIVATE_ROOT', private_root)
     monkeypatch.setattr(os, 'getuid', lambda: 501, raising=False)
     main = runpy.run_path(str(path))['main']
     with pytest.raises(ValueError, match='private path outside trusted root or missing'):
-        main(['--root', '/Users/a1/项目/Myink/myink-pi/runs/contract-gate-missing', '--input', '/not/read',
+        main(['--root', str(private_root / 'runs' / 'contract-gate-missing'), '--input', '/not/read',
               '--input-sha256', 'a'*64, '--report', '/not/read', '--report-sha256', 'b'*64,
               '--policy', '/not/read', '--gateway-port', '1', '--scope-token-file', '/not/read',
               '--target-domain', 'write'])
