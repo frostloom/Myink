@@ -40,3 +40,8 @@ python -m pytest tests/test_worker.py tests/test_task_budget_recovery.py -q --tb
 4. 全量业务、离线 ops 及相关 CI 门禁，完整列出失败、跳过和环境限制。
 
 本轮未完成修复，未运行全量 CI；保留 runtime032 历史结论。原工作区四个 ops/pi 文件的既有修改不纳入提交。
+## 小目标 1：初始化隔离与 Windows worker（2026-10-18）
+
+CLI 的三个初始化测试补齐 `ensure_maintenance_schema` mock，并断言默认初始化调用该迁移。真实角色权限检查未改。Windows venv 的多进程 fixture 直接启动 base executable，并用 `__PYVENV_LAUNCHER__` 保留依赖路径，确保测试持有实际 worker PID。kill 后分别要求 Windows 返回 1、POSIX 返回 -SIGKILL；checkpoint、owner、队列和重复副作用检查全部保留。
+
+实测：两个完整文件共 7 passed（83.11s）。修正启动器后恢复旧负返回码断言，单项真实失败 `assert 1 < 0`（16.30s）；恢复新断言，完整 kill 场景 1 passed（57.81s）。独立只读审查未发现 Critical/Important/Minor。其余已知失败仍未修复，不能宣称业务全量通过。
