@@ -45,3 +45,8 @@ python -m pytest tests/test_worker.py tests/test_task_budget_recovery.py -q --tb
 CLI 的三个初始化测试补齐 `ensure_maintenance_schema` mock，并断言默认初始化调用该迁移。真实角色权限检查未改。Windows venv 的多进程 fixture 直接启动 base executable，并用 `__PYVENV_LAUNCHER__` 保留依赖路径，确保测试持有实际 worker PID。kill 后分别要求 Windows 返回 1、POSIX 返回 -SIGKILL；checkpoint、owner、队列和重复副作用检查全部保留。
 
 实测：两个完整文件共 7 passed（83.11s）。修正启动器后恢复旧负返回码断言，单项真实失败 `assert 1 < 0`（16.30s）；恢复新断言，完整 kill 场景 1 passed（57.81s）。独立只读审查未发现 Critical/Important/Minor。其余已知失败仍未修复，不能宣称业务全量通过。
+## 小目标 2：批次暂停和人工审核续跑（2026-10-18）
+
+实际调用链证明两项旧测试未跟上执行契约。人工审核测试直调 runner 前现在明确模拟 Worker 的 `running` 转换，不放宽 awaiting-review fence。手动暂停发生在第二次 provider 返回前，该结果尚未保存，恢复时需要重试；测试检查 ch3 已持久化、ch4 checkpoint 停在 write 且无 draft，再验证续跑后每章只有一条已记录的 write。总 provider 调用为 4，不把暂停后的未提交结果称为已完成节点。
+
+原两项失败已在基线观察；修正后 `python -m pytest tests/test_flow.py -q --tb=short` 为 43 passed（40.72s）。独立审查无 Critical/Important/Minor；业务生产逻辑未改动，全量验收仍在进行。
