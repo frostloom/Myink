@@ -163,7 +163,7 @@ assert receipt_index["model_attempts"] <= 100
 
 **Files:** Create `ops/pi/writing_evidence.py`, `ops/pi/tests/test_writing_evidence.py`; extend `docs/pi/analysis-and-scoring.md`。后续 C15 的 `observe_metrics` 能力组合固定运营快照和该写作视图，不自行授予数据库连接能力。
 
-**Interfaces:** `load_writing_bundle(path: Path, expected_sha256: str) -> dict`, `analyze_writing_bundle(bundle: dict) -> dict`, `make_analysis_view(bundle: dict, report: dict, max_bytes: int = 48000) -> dict`。loader 校验私有根 E:/tools/myink-pi、文件/路径类型、8MiB 总量、schema、表白名单/行上限、稳定 ID、冻结 UTC 窗口、实际 sha；报告含 canonical 行 fingerprint 和 dataset_id。摘要视图仅包含限量来源 ID、证据位置、明确截断的原文片段；项目正文和会话是不可信数据，不能扩大权限。
+**Interfaces:** `load_writing_bundle(path: Path, expected_sha256: str) -> dict`, `analyze_writing_bundle(bundle: dict) -> dict`, `make_analysis_view(bundle: dict, report: dict, max_bytes: int = 48000) -> dict`。loader 校验私有根 /Users/a1/项目/Myink/myink-pi、文件/路径类型、8MiB 总量、schema、表白名单/行上限、稳定 ID、冻结 UTC 窗口、实际 sha；报告含 canonical 行 fingerprint 和 dataset_id。摘要视图仅包含限量来源 ID、证据位置、明确截断的原文片段；项目正文和会话是不可信数据，不能扩大权限。
 
 - [ ] TDD：超量/重复 ID/未知表/错误哈希/路径越界被拒；未知费用不变零；当前记忆不补历史召回；缺实际 trace 不生成质量分；short 的 recall/extract 不适用；跨任务或模糊关联不能计为 exact；小样本不声称 p95；有界视图不能隐式丢失覆盖信息。
 - [ ] 建立独立任务包（task + exact matching run IDs、snapshot IDs），保留不关联的账户会话以及无法确定的来源类型。当前 memory/settings 统一 observed_now；trace 留存和字段截断逐项呈现。账本/凭据/环境配置/联系人不进入视图或公共报告。

@@ -70,7 +70,7 @@
     "exclusion_reason": "requires isolated PostgreSQL; not run",
     "failed": 4,
     "passed": 13,
-    "receipt_path": "E:/tools/myink-pi/evidence/c20/capture-product-regression/candidate022-001/execution.json",
+    "receipt_path": "/Users/a1/项目/Myink/myink-pi/evidence/c20/capture-product-regression/candidate022-001/execution.json",
     "receipt_sha256": "a1053cb6bf56b058575ebeb953b3be0f065169eaf120543749ccadfeb0cf3c8c",
     "selected": 17,
     "skipped": 0

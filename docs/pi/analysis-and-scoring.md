@@ -17,7 +17,7 @@ synthetic 配对至少 5 组，baseline/candidate 必须共享相同完整组 ID
 
 ## C15a 私有写作证据与 Engine 视图
 
-`ops/pi/writing_evidence.py` 接受固定采集器导出的 schema 1 JSON，表在根对象中，运行和快照的选择字段位于 `trace`。它不连接数据库，也不改变 metadata reader 的授权。可信控制程序调用 `load_writing_bundle(path, expected_sha256)`；默认私有根是 `E:/tools/myink-pi`。仅主机配置和测试可指定 `trusted_root`，不能接受 Engine 提交的路径根。加载器拒绝符号链接、非普通文件、越界路径、超过 8MiB、哈希不符、未知表、重复 JSON 字段、重复或无效主键、超出固定行上限及无效 UTC 冻结窗口。
+`ops/pi/writing_evidence.py` 接受固定采集器导出的 schema 1 JSON，表在根对象中，运行和快照的选择字段位于 `trace`。它不连接数据库，也不改变 metadata reader 的授权。可信控制程序调用 `load_writing_bundle(path, expected_sha256)`；默认私有根是 `/Users/a1/项目/Myink/myink-pi`。仅主机配置和测试可指定 `trusted_root`，不能接受 Engine 提交的路径根。加载器拒绝符号链接、非普通文件、越界路径、超过 8MiB、哈希不符、未知表、重复 JSON 字段、重复或无效主键、超出固定行上限及无效 UTC 冻结窗口。
 
 `analyze_writing_bundle` 输出正文之外的私有清单：原始文件 SHA256、dataset_id、每行 canonical JSON fingerprint、来源主键/版本/更新时间、表上限和任务包。UUID 与经过项目、章节范围验证的 `UUID:chN` 才能关联运行；快照章节与请求矛盾时保留为未关联。账户级 short_creation 运行没有 session 外键，不能凭时间把它连接到会话消息。批次别名可能出现在多个任务包内，类型级统计先去重运行 ID，不把快照再次计费。
 

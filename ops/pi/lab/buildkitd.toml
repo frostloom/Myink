@@ -1,0 +1,15 @@
+# Manually managed rootless daemon, explicit remote Buildx; never stock docker-container.
+insecure-entitlements = []
+
+[worker.oci]
+  enabled = true
+  rootless = true
+  noProcessSandbox = false
+  snapshotter = "native"
+  max-parallelism = 1
+
+[worker.containerd]
+  enabled = false
+
+[cdi]
+  disabled = true

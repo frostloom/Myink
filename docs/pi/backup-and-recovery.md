@@ -20,14 +20,14 @@ be reconciled against that event and verified mirror without rerunning the dump.
 Revalidation failures append a separate refusal and preserve original receipts.
 
 The lab stores collections and separately copied/hash-checked mirrors under
-`E:/tools/myink-pi/backups/{collections,mirror}`. Trusted synthetic materials live
+`/Users/a1/项目/Myink/myink-pi/backups/{collections,mirror}`. Trusted synthetic materials live
 inside the E-hosted MyinkPiLab VHD under `/opt/myink-pi-lab/backup-materials`.
 These collections include private keys and encrypted synthetic credentials: they
 must remain outside Git, candidate/build mounts, Pi and model context. The mirror
 uses the same physical disk: `offsite_status=not_configured` is explicit.
 
 Use the fixed controller `python -m ops.pi.control backup-lab --state-dir
-E:/tools/myink-pi/state --phase source|verify|restore --deadline <aware ISO time>`.
+/Users/a1/项目/Myink/myink-pi/state --phase source|verify|restore --deadline <aware ISO time>`.
 `source` is fresh-only: it claims one creator-derived PostgreSQL database and
 queue namespace on the original sealed services, and Redis15 only after native
 SELECT/PING and an entire-database empty check. It never flushes, reuses Redis14,

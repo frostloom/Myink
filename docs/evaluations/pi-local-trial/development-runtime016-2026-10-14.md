@@ -14,7 +14,7 @@ Pi 先请求读取 1–400 行和 1–250 行，两次超出工具的 200 行上
 
 终态捕获脚本首版误把候选路径当作 SOURCE 基线路径，读取时失败，尚未访问 canonical 或创建输出。旧脚本及失败观察已归档。仅修正两处固定路径/key，新增路径回归先 1 失败/4 通过，再 5 通过、无跳过；独立审查后真实捕获成功。完整 JSON 快照和同一只读事务的 SQLite 备份均保存，私有 native 输出为 ROOT0600；E 镜像只用于字节核对，不当作权限证明。
 
-公开聚合见 [JSON](development-runtime016-2026-10-14.json)。完整原始证据在 `E:/tools/myink-pi/evidence/c20/host-runtime-016/`，脚本、失败和回归证据在 `E:/tools/myink-pi/evidence/c20/development-root016-terminal/`。原始会话、账本、用户文本和凭据不上 Git。
+公开聚合见 [JSON](development-runtime016-2026-10-14.json)。完整原始证据在 `/Users/a1/项目/Myink/myink-pi/evidence/c20/host-runtime-016/`，脚本、失败和回归证据在 `/Users/a1/项目/Myink/myink-pi/evidence/c20/development-root016-terminal/`。原始会话、账本、用户文本和凭据不上 Git。
 
 ## 下一轮的最小修正
 

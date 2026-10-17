@@ -12,7 +12,7 @@ def module():
 
 def test_analyze_uses_indexed_frozen_writing_data_and_all_unknown_quality_dimensions():
     view,report=fixture();original=deepcopy(view)
-    prompt=module().build_phase_prompt('analysis',{'view':view,'report':report},
+    prompt=module().build_phase_prompt('analysis',{'view':view,'report':report,'target_domain':'write'},
         {'max_attempts':100,'budget_microyuan':10000000,'deadline':'fixed'})
     data=json.loads(prompt.rsplit('\nCONTROLLED_DATA\n',1)[1])
     assert data['writing']['view']['evidence'][0]['evidence_index']==0
@@ -38,7 +38,7 @@ def test_invalid_phase_and_model_supplied_permissions_are_rejected():
 
 def test_analysis_delivers_complete_strict_writing_contract_with_controlled_data_paths():
     view, report = fixture()
-    prompt = module().build_phase_prompt('analysis', {'view':view, 'report':report},
+    prompt = module().build_phase_prompt('analysis', {'view':view, 'report':report, 'target_domain':'recall.events'},
         {'max_attempts':100, 'budget_microyuan':10000000, 'deadline':'fixed'})
     instructions, data_text = prompt.rsplit('\nCONTROLLED_DATA\n', 1)
     # The delivered contract must survive assembly, not merely the indexed data.
@@ -50,7 +50,10 @@ def test_analysis_delivers_complete_strict_writing_contract_with_controlled_data
         '<=70 chars recommended, <=180 required', 'refs max2',
         '{evidence_index,excerpt_index,quote}', 'continuous exact quote inside ONE excerpt',
         'quote <=80 chars recommended, <=256 required',
-        'Trace observations require refs except operations', 'Unknown domains may have empty refs',
+        'only recall.events may be trace_observation', 'operations must stay unknown',
+        'The aggregate report is not a numbered excerpt.', 'line\\nnext',
+        'rollback is one JSON string', '"rollback":"恢复旧提示"',
+        'Unknown domains may have empty refs',
         '{change,refs,baseline,metrics,tests,rollback,risks}', 'at least one grounded ref',
         'change <=180 chars', 'baseline exactly {availability,reason}',
         'availability unknown|reported_status|reported_proxy', 'reason nonempty <=180 chars',
@@ -61,5 +64,6 @@ def test_analysis_delivers_complete_strict_writing_contract_with_controlled_data
     )
     for requirement in required:
         assert requirement in instructions, requirement
+    assert 'operations may cite the body-free report in prose' not in instructions
     assert '\nDATA\n' not in prompt
     assert json.loads(data_text)['writing']['view']['evidence'][0]['evidence_index'] == 0

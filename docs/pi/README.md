@@ -16,14 +16,14 @@
 
 C18 分层状态与维护交接见[本机试验报告](../evaluations/pi-local-trial/report.md)、[证据索引](../evaluations/pi-local-trial/receipt-index.json)、[服务器启用清单](server-enablement.md)和[日报/事故通知](notifications.md)。当前为 partial：主机隔离与模拟协议已通过，合成基线机械检查实际失败，45项语义指标/11域仍 unknown。冻结源码离线825 passed、2个Windows符号链接SKIP、19个设施测试deselected；该结果早于 admission 修复，修复另有17项真实SQLite查询测试通过，PostgreSQL回归未运行。完整服务构建与生产启用仍未验收。报告中的旧 A 阶段固定 banner 是历史边界，不自动反映新主机事实。
 
-从仓库根运行 `python -m ops.pi.control ledger-check --state-dir E:/tools/myink-pi/state`。
-WSL 对应 `/mnt/e/tools/myink-pi/state`；本轮状态、私有证据、依赖、缓存均在 E 盘隔离目录，保护主工作区。
+从仓库根运行 `python -m ops.pi.control ledger-check --state-dir /Users/a1/项目/Myink/myink-pi/state`。
+WSL 对应 `/Users/a1/项目/Myink/myink-pi/state`；本轮状态、私有证据、依赖、缓存均在 E 盘隔离目录，保护主工作区。
 `ops/pi/policy.example.json` 是配置起点；默认 live disabled。费用可信来源、价格、输入上界校准未具备时禁止真实请求。
 凭据仅由受信宿主加载 PLATFORM_MODEL_API_KEY/BASE_URL/NAME/PROTOCOL；模型 HTTP 接口不提供通知、Git、凭据或任意工具权限。不要将凭据写入报告、通知记录或版本库。
 
 ## 报告
 
-`python -m ops.pi.control report --state-dir E:/tools/myink-pi/state --output E:/tools/myink-pi/daily.md`
+`python -m ops.pi.control report --state-dir /Users/a1/项目/Myink/myink-pi/state --output /Users/a1/项目/Myink/myink-pi/daily.md`
 输出 UTF-8 Markdown 与同名 `.json` 索引，目录须预先存在；`--output` 禁止使用 `.json` 扩展名（不区分大小写），避免报告与索引重名覆盖。CLI 返回下一动作、事件数、快照数与未验收项。
 账本追加 `snapshot` 事件携带 collect_snapshot 的安全汇总；报告只投影事件类型、操作 ID、状态及成本/配置/价格索引，保留每次失败，不以晚到成功覆盖。
 空账本示例：

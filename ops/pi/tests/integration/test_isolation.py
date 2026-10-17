@@ -104,7 +104,7 @@ def test_heavy_mutex_and_runner_descendants(lab_identity):
 
 def test_controlled_guest_and_windows_hosts_denied(lab_identity):
     import urllib.request
-    hosts=json.loads(Path('/mnt/e/tools/myink-pi/evidence/b7-host-reachability.json').read_text())
+    hosts=json.loads(Path('/Users/a1/项目/Myink/myink-pi/evidence/b7-host-reachability.json').read_text())
     assert hosts['trusted_windows_host_status']==200
     opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
     for url in ('http://172.29.220.1:8080',hosts['url']):

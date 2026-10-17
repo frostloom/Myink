@@ -89,8 +89,8 @@ def main(argv=None):
     (agent/'settings.json').write_text(json.dumps(config['settings']))
     (agent/'models.json').write_text(json.dumps(config['models']))
     cwd=root/'candidate'; cwd.mkdir(exist_ok=False)
-    node=Path('/mnt/e/tools/myink-pi/runtime/node/node-v24.16.0-linux-x64/bin/node')
-    cli=Path('/mnt/e/tools/myink-pi/runtime/pi-project/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js')
+    node=Path('/Users/a1/项目/Myink/myink-pi/runtime/node/node-v24.16.0-linux-x64/bin/node')
+    cli=Path('/Users/a1/项目/Myink/myink-pi/runtime/pi-project/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js')
     guard=Path(__file__).parent/'pi-wire-guard.mjs'
     config_hash=hashlib.sha256(json.dumps({k:v for k,v in config.items() if k!='env'},sort_keys=True).encode()+guard.read_bytes()).hexdigest()
     command=[str(node),str(cli),*config['args'],'-e',str(guard)]

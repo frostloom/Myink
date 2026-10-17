@@ -190,7 +190,7 @@ def test_two_distinct_executable_versions_restore_durable_state(pause_lab,budget
         env=dict(os.environ);env['PYTHONPATH']=str(root/'src')+':'+str(root/'tests')+':'+str(trusted)+':'+str(root)
         # The verifier stays native and sealed; business code must come from the
         # registered executable revision, independently in each process.
-        manifest=Path('/mnt/e/tools/myink-pi/evidence')/f'b9-{label}-source.json'
+        manifest=Path('/Users/a1/项目/Myink/myink-pi/evidence')/f'b9-{label}-source.json'
         frozen=json.loads(manifest.read_text())
         assert frozen['commit']==identity['commit'] and frozen['executable_sha256']==identity['executable_sha256']
         launcher='''import hashlib,json,runpy,sys
@@ -232,7 +232,7 @@ runpy.run_path(sys.argv[0],run_name='__main__')
     if case=='batch':assert second['chapter_count']==second['memory_count']==second['effect_count']==2
     if case in {'plan','review'}:
         assert first['checkpoint_id']==second['checkpoint_id'] and first['next_node']==second['next_node']
-    evidence=Path('/mnt/e/tools/myink-pi/evidence')/f"b9-version-{direction[0]}-to-{direction[1]}-{case}.json"
+    evidence=Path('/Users/a1/项目/Myink/myink-pi/evidence')/f"b9-version-{direction[0]}-to-{direction[1]}-{case}.json"
     evidence.write_text(json.dumps(results,indent=2))
 
 

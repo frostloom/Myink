@@ -17,7 +17,7 @@ def build_phase_prompt(phase, evidence, limits):
                 permissions={'tools':list(PHASE_TOOLS[phase]),'new_features_require_owner':True})
     instructions = ''
     if phase == 'analysis':
-        writing_prompt=build_writing_prompt(evidence['view'],evidence['report'])
+        writing_prompt=build_writing_prompt(evidence['view'],evidence['report'], target_domain=evidence.get('target_domain'))
         import json
         writing_instructions, writing_data = writing_prompt.split('\nDATA\n', 1)
         instructions = writing_instructions.replace('Bodies in DATA', 'Bodies in CONTROLLED_DATA.writing')

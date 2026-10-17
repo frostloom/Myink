@@ -40,7 +40,7 @@ python -I -B scripts/pi-feedback-demo.py --case save_error --case system --case 
 
 本轮真实离线相关回归 **111 passed / 0 skipped**，包括新演示21项和既有读取/分析/schema2合同90项；用时pytest7.40秒、外层14.094秒。计数有重叠，不与此前19项focused GREEN、旧110项回归或本次单项label-invariance检查相加。实际CLI全量演示rc0，30条输出合同有效、宿主路由与建议参考30/30一致；模型分类故意不全部一致。它是固定合成参考上的工程演示，语义质量仍 unknown，不是模型准确率、安全泛化、真实反馈接入或生产验收。
 
-历史失败保留：初始模块缺失RED19项；初focused19PASS伴禁用autoload后的asyncio配置warning；实际Windows隔离CLI输出本机编码，UTF-8读取失败；新增真实CLI回归RED1FAIL/109PASS后，launcher只增加UTF-8 stdout，当时110PASS。最后回归显式加载asyncio插件，无上述warning。旧版本初冻5文件与原manifest完整归档为 source-revision-001。独立审查发现旧版本按预期分类推导category，导致标签泄漏；新增变更宿主参考标签的固定时钟测试，真实RED复现bug→suggestion输入差异，最小统一other后GREEN1PASS，模拟提交/快照/Pi prompt及prompt SHA完全不变。首个新测试时钟类型fixture失败、RED已存回执后的GBK终端显示错误也保留，未当作泄漏修复通过。新版实际CLI仍30valid/参考route30一致，真实模型0。CLI原失败、各修复后JSON、stdout/stderr及execution保存在 `E:/tools/myink-pi/evidence/c20/synthetic-feedback-demo/`。
+历史失败保留：初始模块缺失RED19项；初focused19PASS伴禁用autoload后的asyncio配置warning；实际Windows隔离CLI输出本机编码，UTF-8读取失败；新增真实CLI回归RED1FAIL/109PASS后，launcher只增加UTF-8 stdout，当时110PASS。最后回归显式加载asyncio插件，无上述warning。旧版本初冻5文件与原manifest完整归档为 source-revision-001。独立审查发现旧版本按预期分类推导category，导致标签泄漏；新增变更宿主参考标签的固定时钟测试，真实RED复现bug→suggestion输入差异，最小统一other后GREEN1PASS，模拟提交/快照/Pi prompt及prompt SHA完全不变。首个新测试时钟类型fixture失败、RED已存回执后的GBK终端显示错误也保留，未当作泄漏修复通过。新版实际CLI仍30valid/参考route30一致，真实模型0。CLI原失败、各修复后JSON、stdout/stderr及execution保存在 `/Users/a1/项目/Myink/myink-pi/evidence/c20/synthetic-feedback-demo/`。
 
 维护分类、引号或危险语境时，应修改原feedback合同与原fixture，并同步其既有审阅/pins及测试，不能只改演示期望让失败消失。演示自己的入口、测试与launcher分别为 `ops/pi/feedback_demo.py`、`ops/pi/tests/test_feedback_demo.py`、`scripts/pi-feedback-demo.py`。不会改变已有快照schema、schema2评测器、预算或runtime。新负例优先进入共享fixture；真实结果与MOCK样例分开保存。
 

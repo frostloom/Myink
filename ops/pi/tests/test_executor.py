@@ -340,3 +340,42 @@ def test_fix2_protocol_selector_cannot_run_as_other_command(monkeypatch,tmp_path
 def test_fix2_protocol_selector_has_no_client_recovery_authority(argument):
     receipt=execute('probe',{'state_dir':'E:/state','selection':'b11-fix2',argument:'client-value'},datetime.now(timezone.utc)+timedelta(seconds=30),None)
     assert receipt.status=='blocked' and receipt.evidence['reason']=='untyped_arguments'
+
+
+@pytest.mark.parametrize('args', [
+    {'state_dir': 'E:/state', 'selection': 'b12-runner-userns', 'operation_id': 'not-a-uuid'},
+    {'state_dir': 'E:/state', 'selection': 'b7', 'operation_id': '11111111-1111-4111-8111-111111111111'},
+    {'state_dir': 'E:/state', 'selection': 'b12-runner-userns', 'operation_id': '11111111-1111-4111-8111-111111111111', 'image': 'arbitrary'}])
+def test_b12_probe_does_not_grant_untyped_operation_or_image_authority(args):
+    result = execute('probe', args, datetime.now(timezone.utc) + timedelta(seconds=30), None)
+    assert result.status == 'blocked'
+
+
+@pytest.mark.parametrize('native_status,guest_status', [('blocked','done'), ('uncertain','uncertain')])
+def test_b12_probe_binds_approved_operation_and_native_blocked_receipt(monkeypatch, tmp_path, native_status, guest_status):
+    import json
+    from types import SimpleNamespace
+    from ops.pi.resources import LIMITS
+    proof = {'cgroup_version': 2, 'membership_verified': True, 'ancestor_verified': True, **LIMITS['heavy']}
+    executor, ledger = _controller_fixture(monkeypatch, tmp_path, proof)
+    operation = '11111111-1111-4111-8111-11111111111' + ('1' if native_status == 'blocked' else '2')
+    evidence = tmp_path.parent / 'evidence'
+    (evidence / (operation + '.guest.json')).write_text(json.dumps({'operation_id': operation, 'lab_uuid': 'lab-test', 'status': guest_status}))
+    native = evidence / ('b12-' + operation)
+    native.mkdir()
+    (native / 'native-receipt.json').write_text(json.dumps({'operation_id': operation, 'status': native_status, 'evidence': {
+        'scope': 'b12_runner_userns_capability', 'status': 'BLOCKED', 'reason': 'runner_default_userns_denied',
+        'lab_uuid': 'lab-test', 'daemon_id': executor.DAEMON_ID, 'source_hash': 'a' * 64,
+        'candidate_execution': False, 'executed_checks': 0, 'executed_images': 0, 'helper_completion_is_ci_pass': False}}))
+    calls = []
+    class Process:
+        returncode = 78
+        def poll(self): return self.returncode
+        def communicate(self, **kwargs): return b'', b''
+    monkeypatch.setattr(executor.subprocess, 'Popen', lambda argv, **kwargs: calls.append(argv) or Process())
+    result = executor.execute('probe', {'state_dir': 'E:/state', 'selection': 'b12-runner-userns', 'operation_id': operation},
+        datetime.now(timezone.utc) + timedelta(seconds=30), ledger)
+    assert result.operation_id == operation and result.status == native_status
+    assert calls[0][-1] == operation and calls[0][-3] == 'b12-runner-userns'
+    assert result.evidence['native']['evidence']['reason'] == 'runner_default_userns_denied'
+    assert result.evidence['native']['evidence']['helper_completion_is_ci_pass'] is False

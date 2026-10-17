@@ -129,3 +129,25 @@ def test_pid_permission_error_never_retries(monkeypatch):
     resources,state=_kernel_sample_fixture(monkeypatch,'permission')
     with pytest.raises(PermissionError):resources.sample_resources('heavy')
     assert state['attempts']==1
+
+
+def test_b12_watch_receipt_is_exclusive_and_preserves_old_aliases(tmp_path):
+    import json
+    from ops.pi import resources
+    operation = '11111111-1111-4111-8111-111111111111'
+    native, evidence = tmp_path / 'native', tmp_path / 'evidence'
+    (native / 'b12' / operation).mkdir(parents=True)
+    evidence.mkdir()
+    (native / 'guest-watchdog.json').write_text('old native')
+    (evidence / 'b7-guest-watchdog.json').write_text('old b7')
+    owner = {'group': 'b12', 'operation_id': operation}
+    result = {'operation_id': operation, 'status': 'done'}
+    resources._publish_guest_result(owner, result, native, evidence)
+    assert (native / 'guest-watchdog.json').read_text() == 'old native'
+    assert json.loads((evidence / (operation + '.guest.json')).read_text()) == result
+    assert json.loads((native / 'b12' / operation / 'guest-watchdog.json').read_text()) == result
+    assert (native / 'guest-watchdog.json').read_text() == 'old native'
+    assert (evidence / 'b7-guest-watchdog.json').read_text() == 'old b7'
+    with __import__('pytest').raises(FileExistsError):
+        resources._publish_guest_result(owner, {'status': 'changed'}, native, evidence)
+    assert json.loads((evidence / (operation + '.guest.json')).read_text()) == result

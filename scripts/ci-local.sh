@@ -15,18 +15,18 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 # 专用端口、临时 PG 数据，避免测试清理或 worker 抢队列影响开发作品。
-export DATABASE_URL=postgresql+psycopg://myink_app:myink@127.0.0.1:15432/myink
-export ADMIN_DATABASE_URL=postgresql+psycopg://myink:myink@127.0.0.1:15432/myink
-export REDIS_URL=redis://127.0.0.1:16380/0
-export REDIS_ADDR=127.0.0.1:16380
-export AMQP_URL=amqp://myink:myink@127.0.0.1:15673/
+export DATABASE_URL="${MYINK_TEST_DATABASE_URL:-postgresql+psycopg://myink_app:myink@127.0.0.1:${MYINK_TEST_PG_PORT:-15432}/myink}"
+export ADMIN_DATABASE_URL="${MYINK_TEST_ADMIN_DATABASE_URL:-postgresql+psycopg://myink:myink@127.0.0.1:${MYINK_TEST_PG_PORT:-15432}/myink}"
+export REDIS_URL="${MYINK_TEST_REDIS_URL:-redis://127.0.0.1:${MYINK_TEST_REDIS_PORT:-16380}/0}"
+export REDIS_ADDR="${MYINK_TEST_REDIS_ADDR:-127.0.0.1:${MYINK_TEST_REDIS_PORT:-16380}}"
+export AMQP_URL="${MYINK_TEST_AMQP_URL:-amqp://myink:myink@127.0.0.1:${MYINK_TEST_RABBIT_PORT:-15673}/}"
 export APP_ENV=test
 export EMBED_ENABLED=0
 export RANKINGS_ENABLED=0
 # 身份边界换血后 Python 自己验 JWT，密钥短于 32 字节 → require_auth_configuration 让业务路由全 503。
 # CI 没有 .env，必须显式给足长度（与 tests/conftest.py 的 TEST_JWT_SECRET 同值）。
 export JWT_SECRET=test-jwt-secret-at-least-32-bytes-long
-compose_test=(docker compose -p myink-test -f docker-compose.test.yml)
+compose_test=(docker compose -p "${MYINK_TEST_PROJECT:-myink-test}" -f docker-compose.test.yml)
 trap '"${compose_test[@]}" down --volumes >/dev/null 2>&1 || true' EXIT
 "${compose_test[@]}" up -d --wait
 
@@ -38,7 +38,7 @@ git diff --exit-code -- spec/api-openapi.json
 EMBED_ENABLED=0 python -m pytest tests/ -q
 
 echo "==> [2/3] 前端：lint + 单测 + 构建"
-(cd web && npm ci && npm run lint && npm test && npm run build)
+(cd web && npm ci && npm run lint && npm test -- --maxWorkers=1 --no-file-parallelism && npm run build)
 
 if [[ "${SKIP_IMAGES:-0}" != "1" ]]; then
   echo "==> [3/3] 镜像构建（Python + Caddy）"
@@ -50,4 +50,8 @@ else
   echo "==> [3/3] 镜像构建已跳过（SKIP_IMAGES=1）"
 fi
 
-echo "✔ CI 本地复现全部通过（与 .github/workflows/ci.yml 对齐）"
+if [[ "${SKIP_IMAGES:-0}" == "1" ]]; then
+  echo "✔ 已执行检查通过；镜像构建 SKIP，完整 CI 未验收"
+else
+  echo "✔ CI 本地复现全部通过（与 .github/workflows/ci.yml 对齐）"
+fi

@@ -35,6 +35,6 @@ Pi适配器进程正常结束、会话合法，不代表宿主最终验收成功
 
 ## 证据位置
 
-机器可读摘要见[022聚合记录](development-runtime022-2026-10-14.json)。私有真实执行与39个物理文件保存在 `E:/tools/myink-pi/evidence/c20/host-runtime-022/paid-develop/`；独立17项产品回归、实际stdout/JUnit和执行凭据在 `E:/tools/myink-pi/evidence/c20/capture-product-regression/candidate022-001/`。完整账本、备份、原始会话、真实正文及密钥不进入Git。
+机器可读摘要见[022聚合记录](development-runtime022-2026-10-14.json)。私有真实执行与39个物理文件保存在 `/Users/a1/项目/Myink/myink-pi/evidence/c20/host-runtime-022/paid-develop/`；独立17项产品回归、实际stdout/JUnit和执行凭据在 `/Users/a1/项目/Myink/myink-pi/evidence/c20/capture-product-regression/candidate022-001/`。完整账本、备份、原始会话、真实正文及密钥不进入Git。
 
 终态核对已完成：333条操作、558条事件，没有未结算的模型请求或阶段预留；原作用域和围栏记录保留。原审批后的完整操作和事件前缀未改变。宿主生成同一只读事务的一致性SQLite备份，关闭后重新读取验证完整性及全部行相等；原生私有文件与E盘镜像逐字节相同。本轮唯一保活进程已按PID及启动身份核对后停止。终态、备份、停止凭据及聚合哈希均在上述私有证据目录保留，不随公开报告推送。

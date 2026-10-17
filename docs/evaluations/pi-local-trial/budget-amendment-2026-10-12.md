@@ -28,10 +28,10 @@
 
 | 证据 | 路径与SHA256 |
 | --- | --- |
-| 可信增补完成凭据 | `E:/tools/myink-pi/evidence/c19/budget-amendment-001/root-grant.json`；`af4440f3a4bce0c178b7272a65990bb057eee3a32d16bd73f4142e78b0d81b9f` |
+| 可信增补完成凭据 | `/Users/a1/项目/Myink/myink-pi/evidence/c19/budget-amendment-001/root-grant.json`；`af4440f3a4bce0c178b7272a65990bb057eee3a32d16bd73f4142e78b0d81b9f` |
 | 新20元策略 | 同目录`policy-20.json`；`90ac5df4919cfa4a2c47d24689d2b28759e5826f946564811dbd03499a5fb14b` |
 | 保留的原10元策略 | 同目录`policy-original-10.json`；`3e98898c0dd14ce47c14b3931212591159635aa40fcf98ea4c0c23a34a2ae298` |
-| 合并测试执行回执 | `E:/tools/myink-pi/evidence/c19-root-combined-001/execution.json`；`2115dd5ac0594dbda3973df11120bb31955dee9e39cd9d59d348d3f62d1f053f` |
+| 合并测试执行回执 | `/Users/a1/项目/Myink/myink-pi/evidence/c19-root-combined-001/execution.json`；`2115dd5ac0594dbda3973df11120bb31955dee9e39cd9d59d348d3f62d1f053f` |
 
 原生E盘WSL权威备份及完整前后快照在 `/opt/myink-pi-lab/c19-budget-amendment-001/`，目录0700、文件0600。`ledger-before.sqlite` SHA256为 `a82f880e3c427ac755959089c037932975df21f02bf2d4058bcb2a36cec4ac99`。Windows导出只供检查，不作为POSIX权限证明。
 

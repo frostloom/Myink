@@ -26,7 +26,7 @@
   },
   "data": {
     "sha256": "0f0184fc728d615718f03e2da433fa881b6b20f389a2b7091ed044aed9ded79a",
-    "private_path": "E:/tools/myink-pi/evidence/writing-data-2026-10-12/trace-bundle-001.json",
+    "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/writing-data-2026-10-12/trace-bundle-001.json",
     "tasks": 27,
     "agent_runs": 298,
     "long_tasks": 19,
@@ -94,7 +94,7 @@
       "status": "passed",
       "scope": "fresh_kernel_checker",
       "detail": "ACTUAL003 checker containment passed; root gate1 approved; no business service acceptance",
-      "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/checker-acceptance.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-acceptance.json",
       "sha256": "ee6ebb8f863fe4977c1f2385c0f1840202554a8bb6a5aff4d448833dda3b3221",
       "execution_evidence_id": "c17_003_checker_acceptance"
     },
@@ -103,7 +103,7 @@
       "status": "passed",
       "scope": "actual_pi_protocol_model_simulated",
       "detail": "ACTUAL003 installed cross-UID Pi protocol passed; 3 model transports SIMULATED; root gate2 approved",
-      "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/gate2-protocol.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/gate2-protocol.json",
       "sha256": "21965c2256ab7904e21c1b34a9d95562a3307e8d1c5b4aa369c2495f35b50c72",
       "execution_evidence_id": "c17_003_protocol"
     },
@@ -112,7 +112,7 @@
       "status": "failed",
       "scope": "paid_model",
       "detail": "ACTUAL_FAILED: 2 HTTP + 4 read-only tools; cache-input usage transition rejected by current strict parser, then insufficient next reservation; no approved plan",
-      "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/outcome.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/outcome.json",
       "sha256": "5f8d94cd232a02312c1a3a7a7f0fcec03acc501aed88804f2a8ffd54b43aed0f",
       "execution_evidence_id": "c17_003_paid_outcome"
     },
@@ -136,7 +136,7 @@
       "source_path": "ops/pi/tests/integration/test_fault_matrix.py",
       "source_sha256": "a9667344d7ad8c369512e9687548c62021c3f1668d0be87b4121aac73c0ec833",
       "execution_evidence_id": "c18_green_execution_fixround1_001",
-      "private_path": "E:/tools/myink-pi/evidence/c18-delivery-fixround1-001/green.execution.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-delivery-fixround1-001/green.execution.json",
       "sha256": "8d72de52ccb61af0488b2dcd562d591b63b846d63c6628ac3733bc5007404481",
       "returncode": 0
     },
@@ -148,7 +148,7 @@
       "source_path": "ops/pi/tests/integration/test_fault_matrix.py",
       "source_sha256": "a9667344d7ad8c369512e9687548c62021c3f1668d0be87b4121aac73c0ec833",
       "execution_evidence_id": "c18_red_execution_fixround1_001",
-      "private_path": "E:/tools/myink-pi/evidence/c18-delivery-fixround1-001/red.execution.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-delivery-fixround1-001/red.execution.json",
       "sha256": "653b9f795df28f312d1e79156d6192118ece2ebe50a273845d6e72d8f0aa43ca",
       "returncode": 1
     },
@@ -157,7 +157,7 @@
       "status": "passed",
       "scope": "source_control_offline",
       "detail": "825 passed, 2 Windows symlink SKIP, 19 pi_lab deselected in 255.71s; before admission fix; frozen f2516c4d8ecd63a1faaa5919e10c1c4a2a0c4a1f plus 9 pre-host C18 files; dirty B12 excluded; first timeout180 retained",
-      "private_path": "E:/tools/myink-pi/evidence/c18-accepted-suite-002/execution.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-accepted-suite-002/execution.json",
       "sha256": "0f4392aca4e49985159540f96ff10fef710227f998a6bacafc513375b1c69a14",
       "execution_evidence_id": "c18_full_ops_execution_002",
       "returncode": 0
@@ -241,7 +241,7 @@
       "status": "passed",
       "scope": "fresh_kernel_checker",
       "detail": "ACTUAL003 Pi containment passed; no per-port kernel isolation claim",
-      "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/pi-acceptance.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-acceptance.json",
       "sha256": "f53d0ebfbc2d4cd147f51e561057136a2614b2608a43fbf4d2d9fe47a52a1edf",
       "execution_evidence_id": "c17_003_pi_acceptance"
     },
@@ -250,7 +250,7 @@
       "status": "failed",
       "scope": "mechanical_only",
       "detail": "ACTUAL_FAILED_VERIFIED synthetic baseline capture; no semantic improvement proven",
-      "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/paid-checks-plan/plan-01-baseline/check.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-checks-plan/plan-01-baseline/check.json",
       "sha256": "9cacb81b0f57b7071df65bb35ce08dec36f0456f0f149808c0a29efd805c6cd4",
       "execution_evidence_id": "c17_003_baseline_check"
     },
@@ -265,7 +265,7 @@
       "status": "passed",
       "scope": "focused_source_regression",
       "detail": "17 passed in 1.76s; real mapped SQLite tables and SQLAlchemy admission query; fix f4d905d311ba08eddcc4dc6e200f30816b74f1fc",
-      "private_path": "E:/tools/myink-pi/tmp/final-admission-fix-green-002/execution.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/tmp/final-admission-fix-green-002/execution.json",
       "sha256": "54071c592968fc31f0110855643e94f262256a6b3efaf0337e4cca646f6d7387",
       "execution_evidence_id": "admission_retry_green_002",
       "returncode": 0
@@ -288,46 +288,46 @@
       "id": "writing_bundle",
       "status": "passed",
       "scope": "observation_only",
-      "private_path": "E:/tools/myink-pi/evidence/writing-data-2026-10-12/trace-bundle-001.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/writing-data-2026-10-12/trace-bundle-001.json",
       "sha256": "0f0184fc728d615718f03e2da433fa881b6b20f389a2b7091ed044aed9ded79a"
     },
     {
       "id": "c15_protocol_004",
       "status": "simulated",
       "scope": "protocol_mock",
-      "private_path": "E:/tools/myink-pi/evidence/c15/controlled-tools-mock-004",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c15/controlled-tools-mock-004",
       "sha256": "5f7f8af91efc9436bfb498301f187b320d88ec2ea04cef33fef25249076c6432"
     },
     {
       "id": "native_binding",
       "status": "passed",
       "scope": "observation_only",
-      "private_path": "E:/tools/myink-pi/evidence/c17/native-runtime-binding-001.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/native-runtime-binding-001.json",
       "sha256": "006d43a4295de69131db510a8ef6c854d446c8ad2f2cae97050330898c9301d9"
     },
     {
       "id": "discovery_context",
       "status": "passed",
       "scope": "observation_only",
-      "private_path": "E:/tools/myink-pi/evidence/c17/root-selected-discovery-001.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/root-selected-discovery-001.json",
       "sha256": "8346ae1dcd09c1849da6be86fb728da1defa2b8cee8235d5f6574f536d074cb0"
     },
     {
       "id": "c18_green_execution_fixround1_001",
       "status": "passed",
       "scope": "source_control_offline",
-      "private_path": "E:/tools/myink-pi/evidence/c18-delivery-fixround1-001/green.execution.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-delivery-fixround1-001/green.execution.json",
       "sha256": "8d72de52ccb61af0488b2dcd562d591b63b846d63c6628ac3733bc5007404481",
       "returncode": 0,
       "expected_returncode": 0,
       "pytest_summary": "13 passed in 4.03s",
       "artifacts": [
         {
-          "private_path": "E:/tools/myink-pi/evidence/c18-delivery-fixround1-001/green.stdout.log",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-delivery-fixround1-001/green.stdout.log",
           "sha256": "a8fb35ca520b184b78c1034c7c5b30b033fbffbdbcb81f410243afd1454a8345"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c18-delivery-fixround1-001/green.stderr.log",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-delivery-fixround1-001/green.stderr.log",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         }
       ]
@@ -336,22 +336,22 @@
       "id": "c18_red_execution_fixround1_001",
       "status": "passed",
       "scope": "source_control_offline",
-      "private_path": "E:/tools/myink-pi/evidence/c18-delivery-fixround1-001/red.execution.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-delivery-fixround1-001/red.execution.json",
       "sha256": "653b9f795df28f312d1e79156d6192118ece2ebe50a273845d6e72d8f0aa43ca",
       "returncode": 1,
       "expected_returncode": 1,
       "pytest_summary": "3 failed, 10 deselected in 2.00s",
       "artifacts": [
         {
-          "private_path": "E:/tools/myink-pi/evidence/c18-delivery-fixround1-001/red.stdout.log",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-delivery-fixround1-001/red.stdout.log",
           "sha256": "90790c27f6465f3d68a3dca0e1dda6ac3987f9993e99ce4b3a55dd78e8b3a94d"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c18-delivery-fixround1-001/red.stderr.log",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-delivery-fixround1-001/red.stderr.log",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c18-delivery-fixround1-001/mutation.py",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-delivery-fixround1-001/mutation.py",
           "sha256": "72e85aba21acc8c6083572857785aaaa04b0b6f0fffe08bc30a42778e303852c"
         }
       ]
@@ -360,189 +360,189 @@
       "id": "c17_003_native_export",
       "status": "passed",
       "scope": "native_capture",
-      "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/export-manifest.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/export-manifest.json",
       "sha256": "441f645e04e67d5ce97365096929f34fe9f3585275a71df633ad6704ac0bd306",
       "file_count": 45,
       "source_manifest_sha256": "3a50daca02334383f9094cb86eb2fd16e3b5f71603560eb0da7898c5c3e47bc6",
       "artifacts": [
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/checker-acceptance.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-acceptance.json",
           "sha256": "ee6ebb8f863fe4977c1f2385c0f1840202554a8bb6a5aff4d448833dda3b3221"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/effective-envelope.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/effective-envelope.json",
           "sha256": "24f4794324291241deff857edc38ef1e947368969c47826d8087cb3ec1945b59"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/measured-proof.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/measured-proof.json",
           "sha256": "65dfdcfd763777bbca128d5c865c928135edc4a2f05b8e7b691e184ebcf64694"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/overflow-runtime.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/overflow-runtime.json",
           "sha256": "121dac5523a97e085dbce9ae5994a00e7f3fdeca5c5fbb239552306412a50e03"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/probe-runtime.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/probe-runtime.json",
           "sha256": "bcf26f1f40cc046e1a1fbc4102faa467baaa1926643364957bb959cb7f15eef8"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/probe-stdout.bin",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/probe-stdout.bin",
           "sha256": "0467f60e41bfea70bca057077168e380a2bc2bae3a2d556420b0db347fc1ec13"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/timeout-runtime.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/timeout-runtime.json",
           "sha256": "8e67fc65cfe35071b43b0eeded456e2c7ddce501e2e3dda6f8b0ebcf6f4f8d93"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/timeout-stdout.bin",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/timeout-stdout.bin",
           "sha256": "5937a7dcf7dd4da8a93f6216e1d2a15e4ee1248fc6de09745da11468371d82e0"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/gate1-review.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/gate1-review.json",
           "sha256": "6874f59b4e65a04bc3067b1eaa028977750a700d5368e1f83d19fbe1876ea73a"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/gate2-protocol.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/gate2-protocol.json",
           "sha256": "21965c2256ab7904e21c1b34a9d95562a3307e8d1c5b4aa369c2495f35b50c72"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/gate2-review.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/gate2-review.json",
           "sha256": "2410731b5fa5b0ed2a6492e89721d2b3b1d7b3ee70534c10e78ae023c42fb44c"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/adapter-receipt.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/adapter-receipt.json",
           "sha256": "e6923a462bd24fa50955b0a92ae1d60a12b98e6f895dc51498d9da300814fdad"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/outcome.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/outcome.json",
           "sha256": "f6cf1c9b0700b3dcc87b1ba07781b7078a9b50aeb409a98f94978c1684bbef6c"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/reconciliation.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/reconciliation.json",
           "sha256": "3d71b29c1e6a10046df0e041ff01735e02d3a10f772fe7f6e67b037062730cfc"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/rpc.jsonl",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/rpc.jsonl",
           "sha256": "12be364e45bfad430b2ddb4141ff3afc61111ecc3167549cd56cc0e19f7af712"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/session.jsonl",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/session.jsonl",
           "sha256": "2b0e8996847c5f11a8aa366f05eb818cea9d6c332fb8d3da02d06bc74975f5da"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/success.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/success.json",
           "sha256": "21965c2256ab7904e21c1b34a9d95562a3307e8d1c5b4aa369c2495f35b50c72"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/unit.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/unit.json",
           "sha256": "62a8c20bbf37dc5e743c77ad16e7727f23c200b6e9b50c63206c2c89b3e175e0"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/usage.jsonl",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/usage.jsonl",
           "sha256": "84696cac84c42cb2841f333edf8c08b80219b787d83c870c00cf2758d75ea4b2"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/paid-checks-plan/plan-01-baseline/bound-acceptance.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-checks-plan/plan-01-baseline/bound-acceptance.json",
           "sha256": "df2e844a756eaeb8e2ce8c2a7183416b5af79836958eaf29bc599b89f67f286c"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/paid-checks-plan/plan-01-baseline/check.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-checks-plan/plan-01-baseline/check.json",
           "sha256": "9cacb81b0f57b7071df65bb35ce08dec36f0456f0f149808c0a29efd805c6cd4"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/paid-checks-plan/plan-01-baseline/runtime.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-checks-plan/plan-01-baseline/runtime.json",
           "sha256": "5f015ae89f25bef1ae68f254bd838ffa3674065d0289416081b10acbb1a7064c"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan-review.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan-review.json",
           "sha256": "b7de0b9604540b866b1a8a632545e0665b90bde941e37fa8c7a4644180ec9969"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/adapter-receipt.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/adapter-receipt.json",
           "sha256": "72d728db580976f5f0dda175a84ed510090e720aa4e56480102cdd0a105487b3"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/failure.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/failure.json",
           "sha256": "77e7dc4f5aa9bc13ec142c0aeeaba1ce0afa4253ffdd78b4dc77625e00febe60"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/outcome.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/outcome.json",
           "sha256": "5f8d94cd232a02312c1a3a7a7f0fcec03acc501aed88804f2a8ffd54b43aed0f"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/reconciliation.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/reconciliation.json",
           "sha256": "2194c83eb99b0c6e43e1bd6f20eb102ff773b1af23c08a1b244f82bbd285197a"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/rpc.jsonl",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/rpc.jsonl",
           "sha256": "76ae4c93eeb362c01349c0f52fc21da2c2858052b609e4434cedde2d159eec3d"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/session.jsonl",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/session.jsonl",
           "sha256": "724d0926b89bf1cabb8952bce58e58edfd641881eed14445b545c4ca3531a6a9"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/unit.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/unit.json",
           "sha256": "e0c19e100ec06b4b39f2243df8008bb6df15598057261e87ea032f3ea962ea73"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/usage.jsonl",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/usage.jsonl",
           "sha256": "e0aa162512b9f363ad2476aa2d0da0fa44576387605f133ca4afbd9275837dc6"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/pi-acceptance.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-acceptance.json",
           "sha256": "f53d0ebfbc2d4cd147f51e561057136a2614b2608a43fbf4d2d9fe47a52a1edf"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/effective-envelope.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/effective-envelope.json",
           "sha256": "0d60d9ff016b57752cb4a00ce54a862b54a69730d1ad5b461770eb6a4a152789"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/measured-proof.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/measured-proof.json",
           "sha256": "123a438f9c4d36f47c9cec947f55d2a6595a64e4af091cce573b164a70ac8329"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/overflow-runtime.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/overflow-runtime.json",
           "sha256": "3cd8e6076252fbeead8318c3e29df196474ce1f6c98ab7cc72bed597e462d128"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/probe-runtime.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/probe-runtime.json",
           "sha256": "10d98304d0798577775e9b08b4bca73812806b982cef3100a7ecad1eb19db118"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/probe-stdout.bin",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/probe-stdout.bin",
           "sha256": "0467f60e41bfea70bca057077168e380a2bc2bae3a2d556420b0db347fc1ec13"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/timeout-runtime.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/timeout-runtime.json",
           "sha256": "de19d43f35b0703bd4573d96cbf2ea18dba2393c486e035e8c39b02e7ae8c6dc"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/timeout-stdout.bin",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/timeout-stdout.bin",
           "sha256": "6e86170de2576d5c33aef2d66f9e36a67a0aa1c9545a9300d921b707c3142b1d"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/supervision-gate1/controller-output.bin",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/supervision-gate1/controller-output.bin",
           "sha256": "3ed9788a3ec78d513c9cbcc69780106946c75533bc630c948235d4616c176512"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/supervision-gate1/outcome.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/supervision-gate1/outcome.json",
           "sha256": "12376aea140af6cb5fbc431a7d3ad8f860a7e0582aeb2047faae261aa4f1dfea"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/supervision-gate2/controller-output.bin",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/supervision-gate2/controller-output.bin",
           "sha256": "0b898a9d65ae0e116695700230a16c803b0cd609db48e624a9c8d955fb010422"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/supervision-gate2/outcome.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/supervision-gate2/outcome.json",
           "sha256": "f90081088660f669b909bb3d1f9c7a905af57723f75a2f528e6c6174c2eb242a"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/supervision-paid-plan/controller-output.bin",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/supervision-paid-plan/controller-output.bin",
           "sha256": "2c1499082497758101e41a245d6f1ea3bdd543d0d585e1108e8f150539fc297d"
         },
         {
-          "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/supervision-paid-plan/outcome.json",
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/supervision-paid-plan/outcome.json",
           "sha256": "cbc7df8843c89f0f20a93f888519a7a253203d8f7b3b615739283984acec2e5b"
         }
       ]
@@ -551,56 +551,56 @@
       "id": "c17_003_checker_acceptance",
       "status": "passed",
       "scope": "fresh_kernel_checker",
-      "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/checker-acceptance.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-acceptance.json",
       "sha256": "ee6ebb8f863fe4977c1f2385c0f1840202554a8bb6a5aff4d448833dda3b3221"
     },
     {
       "id": "c17_003_root_gate1",
       "status": "passed",
       "scope": "root_runtime_review",
-      "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/gate1-review.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/gate1-review.json",
       "sha256": "6874f59b4e65a04bc3067b1eaa028977750a700d5368e1f83d19fbe1876ea73a"
     },
     {
       "id": "c17_003_pi_acceptance",
       "status": "passed",
       "scope": "fresh_kernel_checker",
-      "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/pi-acceptance.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-acceptance.json",
       "sha256": "f53d0ebfbc2d4cd147f51e561057136a2614b2608a43fbf4d2d9fe47a52a1edf"
     },
     {
       "id": "c17_003_protocol",
       "status": "passed",
       "scope": "actual_pi_protocol_model_simulated",
-      "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/gate2-protocol.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/gate2-protocol.json",
       "sha256": "21965c2256ab7904e21c1b34a9d95562a3307e8d1c5b4aa369c2495f35b50c72"
     },
     {
       "id": "c17_003_root_gate2",
       "status": "passed",
       "scope": "root_runtime_review",
-      "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/gate2-review.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/gate2-review.json",
       "sha256": "2410731b5fa5b0ed2a6492e89721d2b3b1d7b3ee70534c10e78ae023c42fb44c"
     },
     {
       "id": "c17_003_paid_outcome",
       "status": "failed",
       "scope": "paid_model",
-      "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/outcome.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/outcome.json",
       "sha256": "5f8d94cd232a02312c1a3a7a7f0fcec03acc501aed88804f2a8ffd54b43aed0f"
     },
     {
       "id": "c17_003_paid_reconciliation",
       "status": "failed",
       "scope": "paid_model",
-      "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/reconciliation.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/reconciliation.json",
       "sha256": "2194c83eb99b0c6e43e1bd6f20eb102ff773b1af23c08a1b244f82bbd285197a"
     },
     {
       "id": "c17_003_paid_root_review",
       "status": "passed",
       "scope": "root_paid_phase_admission",
-      "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan-review.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan-review.json",
       "sha256": "b7de0b9604540b866b1a8a632545e0665b90bde941e37fa8c7a4644180ec9969",
       "detail": "Pre-execution permission for one paid plan attempt only; no approved generated plan or release. Subsequent paid outcome, reconciliation and supervision failed."
     },
@@ -608,42 +608,42 @@
       "id": "c17_003_baseline_check",
       "status": "failed",
       "scope": "mechanical_only",
-      "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/paid-checks-plan/plan-01-baseline/check.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-checks-plan/plan-01-baseline/check.json",
       "sha256": "9cacb81b0f57b7071df65bb35ce08dec36f0456f0f149808c0a29efd805c6cd4"
     },
     {
       "id": "c17_003_baseline_binding",
       "status": "passed",
       "scope": "capture_binding_only",
-      "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/proof/paid-checks-plan/plan-01-baseline/bound-acceptance.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-checks-plan/plan-01-baseline/bound-acceptance.json",
       "sha256": "df2e844a756eaeb8e2ce8c2a7183416b5af79836958eaf29bc599b89f67f286c"
     },
     {
       "id": "c17_003_supervision_gate1",
       "status": "passed",
       "scope": "runtime_supervision",
-      "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/supervision-gate1/outcome.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/supervision-gate1/outcome.json",
       "sha256": "12376aea140af6cb5fbc431a7d3ad8f860a7e0582aeb2047faae261aa4f1dfea"
     },
     {
       "id": "c17_003_supervision_gate2",
       "status": "passed",
       "scope": "runtime_supervision",
-      "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/supervision-gate2/outcome.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/supervision-gate2/outcome.json",
       "sha256": "f90081088660f669b909bb3d1f9c7a905af57723f75a2f528e6c6174c2eb242a"
     },
     {
       "id": "c17_003_supervision_paid",
       "status": "failed",
       "scope": "runtime_supervision",
-      "private_path": "E:/tools/myink-pi/evidence/c17/host-runtime-003/supervision-paid-plan/outcome.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/supervision-paid-plan/outcome.json",
       "sha256": "cbc7df8843c89f0f20a93f888519a7a253203d8f7b3b615739283984acec2e5b"
     },
     {
       "id": "c18_full_ops_execution_002",
       "status": "passed",
       "scope": "source_control_offline",
-      "private_path": "E:/tools/myink-pi/evidence/c18-accepted-suite-002/execution.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-accepted-suite-002/execution.json",
       "sha256": "0f4392aca4e49985159540f96ff10fef710227f998a6bacafc513375b1c69a14",
       "returncode": 0,
       "source_head": "f2516c4d8ecd63a1faaa5919e10c1c4a2a0c4a1f"
@@ -652,7 +652,7 @@
       "id": "admission_retry_green_002",
       "status": "passed",
       "scope": "focused_source_regression",
-      "private_path": "E:/tools/myink-pi/tmp/final-admission-fix-green-002/execution.json",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/tmp/final-admission-fix-green-002/execution.json",
       "sha256": "54071c592968fc31f0110855643e94f262256a6b3efaf0337e4cca646f6d7387",
       "returncode": 0,
       "source_head": "f4d905d311ba08eddcc4dc6e200f30816b74f1fc"

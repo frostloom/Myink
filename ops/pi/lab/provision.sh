@@ -70,14 +70,14 @@ if [[ $mode == prepare-probes || $mode == stop-probes ]]; then
     /opt/myink-pi-venv/bin/python - <<'PY'
 from pathlib import Path
 import json,socket,subprocess,urllib.request
-r=json.loads(Path('/mnt/e/tools/myink-pi/evidence/b7-host-server.json').read_text())
+r=json.loads(Path('/Users/a1/项目/Myink/myink-pi/evidence/b7-host-server.json').read_text())
 identity=json.loads(Path('/opt/myink-pi-lab/lab-env.json').read_text())
 if r.get('owner')!='B7-controlled-probe' or r.get('lab_uuid')!=identity['lab_uuid']: raise SystemExit('host probe ownership mismatch')
 gateway=json.loads(subprocess.check_output(['ip','-j','route','show','default']))[0]['gateway']
 url='http://'+gateway+':'+str(r['port'])
 status=urllib.request.build_opener(urllib.request.ProxyHandler({})).open(url,timeout=3).status
 receipt={'trusted_windows_host_status':status,'url':url,'trusted_dns_resolved':bool(socket.getaddrinfo('example.com',80)),'lab_uuid':identity['lab_uuid']}
-Path('/mnt/e/tools/myink-pi/evidence/b7-host-reachability.json').write_text(json.dumps(receipt,indent=2))
+Path('/Users/a1/项目/Myink/myink-pi/evidence/b7-host-reachability.json').write_text(json.dumps(receipt,indent=2))
 print(json.dumps(receipt))
 PY
     exit 0
@@ -107,7 +107,7 @@ base=Path('/opt/myink-pi-lab');r=verify_runtime();project=r['project'];lab=r['la
 if r.get('maintenance_containers'):raise SystemExit('persistent maintenance infra already prepared; verify instead')
 peak=2*1024**3;reserve=5*1024**3
 assert all(shutil.disk_usage(path).free>=peak+reserve for path in ('/','/mnt/e'))
-evidence=Path('/mnt/e/tools/myink-pi/evidence');before=json.loads((base/'runtime-manifest.json').read_text())
+evidence=Path('/Users/a1/项目/Myink/myink-pi/evidence');before=json.loads((base/'runtime-manifest.json').read_text())
 (evidence/'b8-runtime-before.json').write_text(json.dumps(before,indent=2))
 images={kind:_docker('inspect',project+'-'+kind)[0]['Image'] for kind in ('pg','redis','rabbit')}
 images['entry']=_docker('image','inspect','sha256:f2a1290d0463aad60660d4ec134943f183ee2a5f6c3eb7bf32dd984f2f020772')[0]['Id']
@@ -155,12 +155,21 @@ assert {name:after['containers'][name] for name in before['containers']}==before
 assert set(after['containers'])-set(before['containers'])==set(containers)
 (evidence/'b8-runtime-after.json').write_text(json.dumps(after,indent=2))
 (evidence/'b8-runtime-delta.json').write_text(json.dumps({'added':containers,'old_configuration_unchanged':True,'images':images,'planned_peak_bytes':peak,'reserve_bytes':reserve,'host_free_bytes':shutil.disk_usage('/mnt/e').free,'guest_free_bytes':shutil.disk_usage('/').free},indent=2))
-shutil.copyfile(base/'lab-env.json',Path('/mnt/e/tools/myink-pi/state/lab-env.json'))
+shutil.copyfile(base/'lab-env.json',Path('/Users/a1/项目/Myink/myink-pi/state/lab-env.json'))
 print(json.dumps(verify_runtime()))
 PY
     exit 0
 fi
+if [[ $mode == execute && ${2:-} == probe && ${3:-} == b12-runner-userns ]]; then
+    budget=${4:?}; operation=${5:?}
+    [[ $budget =~ ^[0-9]+$ && $budget -ge 1 && $budget -le 120 ]]
+    [[ $operation =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]
+    cd "$base/trusted-source"
+    export PYTHONPATH="$base/trusted-source/src:$base/trusted-source"
+    exec /opt/myink-pi-venv/bin/python -u -B -c "from ops.pi.lab.build_lab import execute_probe_controller; raise SystemExit(execute_probe_controller('$operation', $budget))"
+fi
 if [[ $mode == execute ]]; then
+    [[ ! -e $base/heavy.lock.uncertain ]] || exit 73
     flock -n 9 || exit 73
     command_id=${2:?}; selection=${3:?}; timeout=${4:?}; operation=${5:?}
     [[ $operation =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]
@@ -293,7 +302,7 @@ flock -n 9 || exit 73
 bash "$base/trusted-source/ops/pi/lab/cgroup-setup.sh"
 uuid=$(cat /proc/sys/kernel/random/uuid)
 project=myinkpi-${uuid:0:8}
-evidence=/mnt/e/tools/myink-pi/evidence/b7-$uuid
+evidence=/Users/a1/项目/Myink/myink-pi/evidence/b7-$uuid
 mkdir -p "$evidence" "$base/gateway" "$base/policy" "$base/candidates"
 trap 'code=$?; if [[ $code != 0 ]]; then printf "{\"status\":\"failed\",\"exit_code\":%s}\n" "$code" > "$evidence/provision-failure.json"; fi' EXIT
 python_image=$(docker image inspect docker.m.daocloud.io/library/python:3.12-slim --format '{{.Id}}')
@@ -348,7 +357,7 @@ r['nested_curl_denied']=curl.returncode==28
 import socket
 try: socket.getaddrinfo('example.com',80); r['external_dns_denied']=False
 except OSError: r['external_dns_denied']=True
-checks=[('/mnt/e/tools/myink-pi/state/credentials/platform-model.json','r'),('/root/.ssh/id_rsa','r'),
+checks=[('/Users/a1/项目/Myink/myink-pi/state/credentials/platform-model.json','r'),('/root/.ssh/id_rsa','r'),
         ('/primary/.env','r'),('/var/run/docker.sock','r'),('/source/.git/config','r'),
         ('/policy/probe.py','w'),('/source/.env','r'),('/mnt/e/github椤圭洰/Myink/.env','r'),('/mnt/c/Users/14341/.ssh/id_rsa','r')]
 n=0
@@ -425,6 +434,6 @@ from ops.pi.lab.verify import freeze_runtime
 freeze_runtime(json.loads(Path('/opt/myink-pi-lab/lab-env.json').read_text()))
 PY
 chmod 600 "$base/lab-env.json"
-cp "$base/lab-env.json" /mnt/e/tools/myink-pi/state/lab-env.json
+cp "$base/lab-env.json" /Users/a1/项目/Myink/myink-pi/state/lab-env.json
 iptables-save > "$evidence/firewall.txt"
 docker inspect "$project-agent" "$project-pg" "$project-redis" "$project-rabbit" > "$evidence/containers.json"

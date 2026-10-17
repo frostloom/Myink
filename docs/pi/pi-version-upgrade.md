@@ -46,8 +46,8 @@ forwards the canonical upstream `/v1/messages`, rejecting every other query.
 
 DrvFS allowed the nonroot process to create auth locks but rejected their timestamp heartbeat
 with EPERM. Use a fresh native directory owned uid/gid 65534, mode 0700, inside the independently
-verified Linux VHD at `E:/tools/myink-pi/runtime/wsl`; bind ONLY that run directory to its explicit
-`/mnt/e/tools/myink-pi/runtime/<run>` path inside the service. Do not remount host drives, change
+verified Linux VHD at `/Users/a1/项目/Myink/myink-pi/runtime/wsl`; bind ONLY that run directory to its explicit
+`/Users/a1/项目/Myink/myink-pi/runtime/<run>` path inside the service. Do not remount host drives, change
 global metadata, run Pi as root, or expose credentials/state/backups/main checkout. The host bind
 target is empty outside that service namespace. Export selected proof/session files from the
 native backend to a separate E evidence snapshot after exit.
@@ -73,7 +73,7 @@ FIXED_E_NODE ops/pi/tests/pi-wire-guard.test.mjs
 trusted source snapshot, reviewed policy, private scoped-token file and an already authorized
 loopback budget gateway. It gives no tools and produces an evidence-backed JSON proposal; source
 analysis is not measured runtime improvement, and new feature direction belongs to the owner.
-Canonical billing comes from `E:/tools/myink-pi/state/ledger.sqlite`, never Pi's catalog counters.
+Canonical billing comes from `/Users/a1/项目/Myink/myink-pi/state/ledger.sqlite`, never Pi's catalog counters.
 Only root-reviewed read-only preview eligibility can enable that call. At most six combined
 compatibility/analysis HTTP attempts consume the existing local-trial-1 quota, never a new scope.
 One real readonly source analysis subsequently completed through the gateway; see

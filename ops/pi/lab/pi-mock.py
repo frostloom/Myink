@@ -16,8 +16,8 @@ from ops.pi.pi_rpc import PiAdapter
 
 def main():
     root=Path(sys.argv[1]).resolve()
-    node=Path('/mnt/e/tools/myink-pi/runtime/node/node-v24.16.0-linux-x64/bin/node')
-    cli=Path('/mnt/e/tools/myink-pi/runtime/pi-project/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js')
+    node=Path('/Users/a1/项目/Myink/myink-pi/runtime/node/node-v24.16.0-linux-x64/bin/node')
+    cli=Path('/Users/a1/项目/Myink/myink-pi/runtime/pi-project/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js')
     assert os.getuid()!=0 and root.parts[:3]==('/','mnt','e')
     wire=[]
     attempts=[]

@@ -112,6 +112,30 @@ def _guest_available_memory(meminfo=Path('/proc/meminfo')):
     return int(value) * 1024
 
 
+def _cancel_watched(ownership):
+    if ownership.get('group') == 'b12':
+        from .lab.build_lab import cancel_b12_watch
+        return cancel_b12_watch(ownership)
+    Path('/sys/fs/cgroup/myinkpi.slice/myinkpi-heavy.slice/cgroup.kill').write_text('1')
+
+
+def _publish_guest_result(owner, result, base, evidence):
+    if owner.get('group') == 'b12':
+        import os
+        operation = str(uuid.UUID(owner['operation_id']))
+        paths = [base / 'b12' / operation / 'guest-watchdog.json', evidence / (operation + '.guest.json')]
+        if any(path.exists() or path.is_symlink() for path in paths):
+            raise FileExistsError('B12 guest evidence already exists')
+        for path in paths:
+            with path.open('x', encoding='utf-8') as output:
+                json.dump(result, output, indent=2)
+                output.flush()
+                os.fsync(output.fileno())
+        return
+    (base / 'guest-watchdog.json').write_text(json.dumps(result))
+    (evidence / (owner['operation_id'] + '.guest.json')).write_text(json.dumps(result, indent=2))
+    (evidence / 'b7-guest-watchdog.json').write_text(json.dumps(result, indent=2))
+
 def _watch_guest(unit, duration):
     import re
     import time
@@ -150,7 +174,7 @@ def _watch_guest(unit, duration):
                 if not active_owned():
                     result['status'] = 'ownership_lost'
                     break
-                Path('/sys/fs/cgroup/myinkpi.slice/myinkpi-heavy.slice/cgroup.kill').write_text('1')
+                _cancel_watched(ownership)
                 result['status'] = 'guest_low_memory'
                 break
             time.sleep(.2)
@@ -160,15 +184,13 @@ def _watch_guest(unit, duration):
         except (OSError, ValueError, KeyError, subprocess.SubprocessError):
             still_owned = False
         if still_owned:
-            Path('/sys/fs/cgroup/myinkpi.slice/myinkpi-heavy.slice/cgroup.kill').write_text('1')
+            _cancel_watched(ownership)
         result['status'] = 'sampler_failure'
     finally:
         result['minimum_available'] = min(samples) if samples else None
         result['elapsed'] = time.monotonic() - started
         result['finished_at'] = datetime.now(timezone.utc).isoformat()
-        (base / 'guest-watchdog.json').write_text(json.dumps(result))
-        Path('/mnt/e/tools/myink-pi/evidence/' + ownership['operation_id'] + '.guest.json').write_text(json.dumps(result, indent=2))
-        Path('/mnt/e/tools/myink-pi/evidence/b7-guest-watchdog.json').write_text(json.dumps(result, indent=2))
+        _publish_guest_result(ownership, result, base, Path('/Users/a1/项目/Myink/myink-pi/evidence'))
 
 
 if __name__ == '__main__':

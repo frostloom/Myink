@@ -40,7 +40,7 @@ def test_intent_survives_restart(tmp_path):
 - [ ] 写 `test_intent_survives_restart`：intent 后重开 Ledger，状态仍为 pending、payload 与版本一致；`test_done_is_immutable`：相同 done 回执幂等，不同结果禁止覆盖；`test_disk_error_blocks_mutation`：失败后不执行注入副作用。
 - [ ] 运行 `python -m pytest ops/pi/tests/test_ledger.py -q`，确认 FAIL 且原因为新模块/接口缺失。
 - [ ] 实现唯一 operation_id、事务、WAL、完整同步、只追加审计；启动做 integrity/schema 检查，版本不支持或损坏返回 blocked。intent 之后查现实状态并由专用工具核对；pending 不自动等同“未执行”。只创建显式 E 盘状态目录。
-- [ ] 重跑同一文件并增加两进程竞争同一 ID 测试；预期 PASS，无活库和网络。运行 `python -m ops.pi.control ledger-check --state-dir E:/tools/myink-pi/state/lab` 返回状态 JSON，禁止显示环境或凭据。
+- [ ] 重跑同一文件并增加两进程竞争同一 ID 测试；预期 PASS，无活库和网络。运行 `python -m ops.pi.control ledger-check --state-dir /Users/a1/项目/Myink/myink-pi/state/lab` 返回状态 JSON，禁止显示环境或凭据。
 - [ ] 审查与授权保存点：仅保存本任务文件；如本轮获得提交授权，提交 `feat: add durable Pi operation ledger`，否则保留未提交。
 
 ## Task 2: A2 请求预算和模型代理

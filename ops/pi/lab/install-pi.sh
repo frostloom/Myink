@@ -4,7 +4,7 @@ set -euo pipefail
 mode=${1:?resolve or acquire}; expected=${2:-}
 [[ $mode == resolve || $mode == acquire ]] || exit 64
 [[ $(uname -sm) == 'Linux x86_64' && $(id -u) == 0 ]] || exit 65
-base=/mnt/e/tools/myink-pi
+base=/Users/a1/项目/Myink/myink-pi
 node=$base/runtime/node/node-v24.16.0-linux-x64
 project=$base/runtime/pi-project
 [[ $($node/bin/node --version) == v24.16.0 ]]

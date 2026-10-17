@@ -288,7 +288,7 @@ def test_maintenance_page_survives_candidate_failure(monkeypatch,tmp_path):
         ledger=Ledger(Path('/opt/myink-pi-lab/maintenance-ledger.sqlite'))
         receipt=enter_maintenance(ledger,expected,deadline.replace(hour=2))
         assert receipt.status=='done' and receipt.evidence['verified']
-        Path('/mnt/e/tools/myink-pi/evidence/b8-persistent-barrier.json').write_text(json.dumps({'status':receipt.status,'evidence':receipt.evidence,'infra_ids':{name:info['Id'] for name,info in before.items()}},indent=2))
+        Path('/Users/a1/项目/Myink/myink-pi/evidence/b8-persistent-barrier.json').write_text(json.dumps({'status':receipt.status,'evidence':receipt.evidence,'infra_ids':{name:info['Id'] for name,info in before.items()}},indent=2))
     import socket,time,sys
     sock=socket.socket();sock.bind(('127.0.0.1',0));port=sock.getsockname()[1];sock.close()
     children=[subprocess.Popen([sys.executable,'-m','uvicorn','myink.api.main:app','--host','127.0.0.1','--port',str(port)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL),
@@ -353,7 +353,7 @@ def test_lab_collection_selectors():
         nodes=[line for line in result.stdout.splitlines() if line.startswith('tests/test_maintenance_') and '::' in line]
         results[mode]={'returncode':result.returncode,'nodes':nodes,'stdout':result.stdout,'stderr':result.stderr}
     from pathlib import Path
-    Path('/mnt/e/tools/myink-pi/evidence/b8-fix1-collection-native.json').write_text(json.dumps(results,indent=2))
+    Path('/Users/a1/项目/Myink/myink-pi/evidence/b8-fix1-collection-native.json').write_text(json.dumps(results,indent=2))
     assert not results['ordinary']['nodes']
     assert results['ordinary']['returncode']==5
     assert len(results['guarded']['nodes'])>=24 and results['guarded']['returncode']==0
@@ -412,7 +412,7 @@ def test_uncertain_receipt_fresh_readonly_reconciliation(maintenance_control,tmp
     with engine.connect() as c:after=dict(c.execute(text('SELECT * FROM public.maintenance_control WHERE id=1')).mappings().one())
     assert after==before and ledger.get(initial.operation_id)==original
     proof={'fault':fault,'original':original,'committed':committed,'before':before,'after':after,'sql':statements,'status':reconciled.status,'evidence':reconciled.evidence}
-    Path('/mnt/e/tools/myink-pi/evidence/b8-fix1-pg-reconcile-'+fault+'.json').write_text(json.dumps(proof,indent=2,default=str))
+    Path('/Users/a1/项目/Myink/myink-pi/evidence/b8-fix1-pg-reconcile-'+fault+'.json').write_text(json.dumps(proof,indent=2,default=str))
     assert reconciled.status==('done' if fault=='matching' else 'uncertain' if fault=='unreadable' else 'blocked')
     assert reconciled.evidence['verified']==(fault=='matching')
     assert any('SELECT' in sql.upper() for sql in statements)

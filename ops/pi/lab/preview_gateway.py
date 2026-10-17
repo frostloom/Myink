@@ -17,7 +17,7 @@ from ..ledger import Ledger, LedgerBlocked, _json
 from ..policy import load_policy
 
 
-ROOT = Path('/mnt/e/tools/myink-pi')
+ROOT = Path('/Users/a1/项目/Myink/myink-pi')
 POLICY_FILE = ROOT / 'evidence/c14/read-only-preview-policy.json'
 CREDENTIAL_FILE = ROOT / 'state/credentials/platform-model.json'
 LEDGER_FILE = ROOT / 'state/ledger.sqlite'
