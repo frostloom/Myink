@@ -1,0 +1,20 @@
+{
+  "model_id": "deepseek-v4-pro",
+  "requested_chars": 20000,
+  "requested_chapters": 10,
+  "max_tokens": 35750,
+  "content_chars": 18451,
+  "chapters_with_content": 10,
+  "output_tokens": 11905,
+  "input_tokens": 1354,
+  "finish_reason": "stop",
+  "duration_ms": 163453,
+  "cost_est_cny": 0.1668105,
+  "error": null,
+  "input_side": {
+    "write_estimated_tokens": 3321,
+    "write_budget": 64000,
+    "revise_estimated_tokens": 58050,
+    "revise_budget": 64000
+  }
+}
