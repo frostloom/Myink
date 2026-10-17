@@ -50,3 +50,13 @@ CLI 的三个初始化测试补齐 `ensure_maintenance_schema` mock，并断言�
 实际调用链证明两项旧测试未跟上执行契约。人工审核测试直调 runner 前现在明确模拟 Worker 的 `running` 转换，不放宽 awaiting-review fence。手动暂停发生在第二次 provider 返回前，该结果尚未保存，恢复时需要重试；测试检查 ch3 已持久化、ch4 checkpoint 停在 write 且无 draft，再验证续跑后每章只有一条已记录的 write。总 provider 调用为 4，不把暂停后的未提交结果称为已完成节点。
 
 原两项失败已在基线观察；修正后 `python -m pytest tests/test_flow.py -q --tb=short` 为 43 passed（40.72s）。独立审查无 Critical/Important/Minor；业务生产逻辑未改动，全量验收仍在进行。
+## 小目标 3：预算恢复与队列权威测试（2026-10-18）
+
+两项预算 worker 测试及瞬时归属查询故障测试注册真实持久准入，使消息通过初始权威检查后进入原定目标分支。旧投递测试保留 QueueAuthorityUnknown，进一步检查 consumer 不 ACK、送死信、不发 SSE、不 dispatch，预算上限和 queued 状态不变。没有 mock 掉持久消息身份或改变生产逻辑。
+
+```text
+python -m pytest tests/test_task_budget_routes.py tests/test_task_budget_recovery.py tests/test_user_isolation.py tests/test_queue_handoff.py -q --tb=short -m "not pi_lab and not pi_live"
+60 passed, 39 deselected, 1 warning (22.80s)
+```
+
+39 项设施测试按 CI 标记被排除，不能算通过；存在既有 Starlette/AnyIO 弃用警告。原四项失败已在基线观察，独立审查无 Critical/Important/Minor。完整业务回归及 offline ops 门禁另行记录。

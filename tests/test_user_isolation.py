@@ -160,6 +160,15 @@ def test_consumer_requeues_transient_ownership_database_failure(accounts_and_boo
     users, books = accounts_and_books
     body = {"task_id": str(uuid.uuid4()), "project_id": str(books[0].id),
             "user_id": str(users[0].id), "task_type": "chapter_generate", "payload": {"seq": 1}}
+    # Reach the intended ownership check with a genuine durable intake; an
+    # unknown message must still be rejected before processor.process runs.
+    from myink.db import tenant_session
+    from myink.maintenance import register_admission
+    body["request_id"] = body["task_id"]
+    with tenant_session(body["project_id"]) as db:
+        register_admission(db, body, priority=0)
+    assert processor.valid_task_owner(body) is True
+
     def disconnected(_body):
         raise OperationalError("temporary database disconnect")
     monkeypatch.setattr(consumer, "observe", lambda *args: None)
