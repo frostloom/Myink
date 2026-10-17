@@ -15,7 +15,7 @@
 2026-10-12 C18 最终事实为 `final-host003`、partial，详见[本机报告](../../evaluations/pi-local-trial/report.md)。C16/C17 源码已独立审查，真实 `003` checker/Pi containment和安装Pi的模拟协议通过；付费plan完成2次HTTP/4次只读工具后因cache-input用量转换未通过现有严格解析器校验及预算不足停止，未获批计划、未开发/评测/发布。累计6请求，已扣或预留8095752 microyuan，实际账单未知；全部自有进程、keeper、网关停止。冻结源码离线825 passed/2个Windows符号链接SKIP/19项设施deselected（255.71s）早于admission修复；修复另有17项真实SQLite查询验证（1.76s）及有限Approved复审，PostgreSQL回归未运行。B12过期packet03审批拒绝仍blocked、无重试换包装；完整服务/构建、实际故障矩阵、旧watchdog与生产启用不记完成。主代理功能分支actual push已核对 `f4d905d311ba08eddcc4dc6e200f30816b74f1fc`，Pi自主GitHub为SIMULATED，真实通知未配置/未发送；enabled=false。
 
 - 实施仅在 `codex/pi-autonomy-design` 隔离 worktree；保护 `E:/github项目/Myink` 主工作区的既有修改。
-- 新 Pi、Node、依赖、缓存、会话和私有证据位于 `E:/tools/myink-pi/`；当前不在服务器安装 Pi、不改 cron、不执行线上候选部署。
+- 新 Pi、Node、依赖、缓存、会话和私有证据位于 `/Users/a1/项目/Myink/myink-pi/`；当前不在服务器安装 Pi、不改 cron、不执行线上候选部署。
 - 首轮所有真实模型 HTTP 请求累计最多 100 次、估算 10 元，跨日不重置；未来服务器每天 100 次、估算 10 元不在本轮启用。
 - 模型读取 `PLATFORM_MODEL_API_KEY/BASE_URL/NAME/PROTOCOL`，当前为 Anthropic、`deepseek-v4.1-flash`；价格未得到该服务可信配置前不发真实请求。
 - 分析、压缩、重试、探测、评审和业务实验共用账本；预扣最坏估算费用，未知结果保留预留；恢复不依赖模型余额。

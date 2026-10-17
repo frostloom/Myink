@@ -30,6 +30,6 @@ python scripts/pi-feedback-demo.py
 
 ## 证据与边界
 
-私有预算实现及执行凭据：`E:/tools/myink-pi/evidence/c20/fee-only-budget/`、`E:/tools/myink-pi/evidence/c20/fee-only-amendment-002/`。合成演示源码冻结、CLI 输出与真实测试回执：`E:/tools/myink-pi/evidence/c20/synthetic-feedback-demo/`。一致性备份、完整账本、真实用户正文和密钥不进入 Git。
+私有预算实现及执行凭据：`/Users/a1/项目/Myink/myink-pi/evidence/c20/fee-only-budget/`、`/Users/a1/项目/Myink/myink-pi/evidence/c20/fee-only-amendment-002/`。合成演示源码冻结、CLI 输出与真实测试回执：`/Users/a1/项目/Myink/myink-pi/evidence/c20/synthetic-feedback-demo/`。一致性备份、完整账本、真实用户正文和密钥不进入 Git。
 
 本轮尚未部署生产 Pi，未运行完整 PostgreSQL/Redis/RabbitMQ、Go、前端或 Docker 构建验收。新的 Pi 业务修复仍须实际运行、同输入配对及产品回归通过后才能采纳。历史失败记录保留，后续结果追加独立报告。

@@ -20,7 +20,7 @@
 
 失败后完整账本快照SHA256：`d528a8f4a7776a1b88f3f3cd2acef820142733d916bbb889e78c52f02b5fe5e6`，123条操作、208条事件。真实失败阶段导出清单SHA256：`7f98d9404a9b47ac69a0f52c76245e050cb85460ec7d6533b14fbb27204cb74b`。独立根因审查SHA256：`da5d83fd56cb05a3d4b561e200e84bdcd0a4f6002afe34f69dbc8e7a92f3f374`。
 
-私有证据：`E:/tools/myink-pi/evidence/c20/host-runtime-010/paid-feedback-01-export2`、`root-manual-invocation010.py`、`umask-diagnosis.json`、`after010-failure-metadata.json`。完整账本、凭据、私有运行源码不进入公共仓库。
+私有证据：`/Users/a1/项目/Myink/myink-pi/evidence/c20/host-runtime-010/paid-feedback-01-export2`、`root-manual-invocation010.py`、`umask-diagnosis.json`、`after010-failure-metadata.json`。完整账本、凭据、私有运行源码不进入公共仓库。
 
 另有一次只读证据导出失败：固定诊断日志是root0644，原导出器要求0600；父目录实际root0700。有限导出补充只允许这类固定日志路径、检查所有私密父目录和所有者，再创建0600的独立副本。10项离线检查通过，实际29份Pi关卡证据导出成功；原部分导出未覆盖，原生权限未修改。它不改变验收或模型执行权限。
 

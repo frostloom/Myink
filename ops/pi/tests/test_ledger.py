@@ -214,7 +214,10 @@ def test_replacement_cannot_reset_completed_operation(tmp_path):
                                                 ('relative', 'linux', False),
                                                 ('E:/tools/myink-pi/state', 'win32', True),
                                                 ('E:relative', 'win32', False),
-                                                ('C:/tools/state', 'win32', False)])
+                                                ('C:/tools/state', 'win32', False),
+                                                ('/Users/a1/项目/Myink/myink-pi/state', 'darwin', True),
+                                                ('/Users/a1/项目/Myink/other', 'darwin', False),
+                                                ('/tmp/state', 'darwin', False)])
 def test_cli_state_boundary_maps_only_e_drive(path, platform, allowed):
     from pathlib import PurePosixPath, PureWindowsPath
     from ops.pi.control import state_path_allowed

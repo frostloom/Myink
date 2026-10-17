@@ -30,13 +30,13 @@ Pi 在 E 盘承载的 `MyinkPiLab` Linux VHD 内以 uid/gid 65534 运行。内�
 | --- | --- |
 | 隔离代码分支 | `codex/pi-autonomy-design` |
 | 隔离工作区 | `C:/Users/14341/.codex/worktrees/pi-autonomy-design/Myink` |
-| 固定 Node | `E:/tools/myink-pi/runtime/node/node-v24.16.0-linux-x64` |
-| 实际安装项目 | `E:/tools/myink-pi/runtime/pi-project` |
-| E 盘 Linux VHD | `E:/tools/myink-pi/runtime/wsl` |
-| 安装、锁与完整性证据 | `E:/tools/myink-pi/evidence/c14/` |
-| 成功真实进程模拟回执 | `E:/tools/myink-pi/evidence/c14/mock-003/` |
-| 真实只读预览回执、会话与预算 | `E:/tools/myink-pi/evidence/c14/preview-001/` |
-| 统一累计账本 | `E:/tools/myink-pi/state/ledger.sqlite` |
+| 固定 Node | `/Users/a1/项目/Myink/myink-pi/runtime/node/node-v24.16.0-linux-x64` |
+| 实际安装项目 | `/Users/a1/项目/Myink/myink-pi/runtime/pi-project` |
+| E 盘 Linux VHD | `/Users/a1/项目/Myink/myink-pi/runtime/wsl` |
+| 安装、锁与完整性证据 | `/Users/a1/项目/Myink/myink-pi/evidence/c14/` |
+| 成功真实进程模拟回执 | `/Users/a1/项目/Myink/myink-pi/evidence/c14/mock-003/` |
+| 真实只读预览回执、会话与预算 | `/Users/a1/项目/Myink/myink-pi/evidence/c14/preview-001/` |
+| 统一累计账本 | `/Users/a1/项目/Myink/myink-pi/state/ledger.sqlite` |
 | 真实上游配置 | 私有 `state/credentials/`，不进入 Git |
 
 主工作区已有未提交修改被保留；B12 未验收的构建改动没有纳入本轮提交。

@@ -22,7 +22,7 @@ result['proposed_plan'] == {
 
 ## 验证记录
 
-证据目录：`E:/tools/myink-pi/evidence/c19/plan-selection-fix/`。各子目录保留 execution.json、stdout、stderr；RED、失败的首次整套回归及后续 GREEN 均保留。以下测试集有重叠，不相加。
+证据目录：`/Users/a1/项目/Myink/myink-pi/evidence/c19/plan-selection-fix/`。各子目录保留 execution.json、stdout、stderr；RED、失败的首次整套回归及后续 GREEN 均保留。以下测试集有重叠，不相加。
 
 | 记录 | 实际结果 | 验证范围 |
 |---|---|---|

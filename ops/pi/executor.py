@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -125,8 +126,17 @@ def execute(command_id, args, deadline, ledger):
         return blocked('unknown_command')
     if command_id in RESERVED:
         return blocked('prerequisite_not_implemented')
-    if set(args) - {'state_dir', 'selection'}:
+    b12_probe = command_id == 'probe' and args.get('selection') == 'b12-runner-userns'
+    allowed_args = {'state_dir', 'selection', 'operation_id'} if b12_probe else {'state_dir', 'selection'}
+    if set(args) - allowed_args:
         return blocked('untyped_arguments')
+    if b12_probe:
+        try:
+            operation = str(uuid.UUID(args['operation_id']))
+            if operation != args['operation_id']:
+                raise ValueError('noncanonical_operation')
+        except (KeyError, ValueError, TypeError, AttributeError):
+            return blocked('untyped_operation')
     if (not isinstance(deadline, datetime) or deadline.tzinfo is None
             or deadline <= datetime.now(timezone.utc)):
         return blocked('deadline_expired')
@@ -170,7 +180,7 @@ def execute(command_id, args, deadline, ledger):
         if command_id in ('backup','restore') and selection not in ({'backup':('b11-source','b11-fresh'),'restore':('b11-restore','b11-verify','b11-gate')}[command_id]):
             return blocked('unknown_backup_selection')
         if selection=='b11-fix2' and command_id!='probe':return blocked('unknown_test_selection')
-        if selection not in ('b11-fix2', 'b11-source', 'b11-fresh', 'b11-restore', 'b11-verify', 'b11-gate', 'b7', 'provenance', 'bootstrap', 'watchdog', 'b8-red', 'b8-focused', 'b8-survival', 'b8-reconcile', 'b8-ci-collection', 'b8-guarded-collection', 'b8', 'b10-resume', 'b10-census', 'b10-fresh', 'b10-identity', 'b10-red', 'b10-focused', 'b10', 'b10-ci-collection', 'b10-guarded-collection', 'b9-red', 'b9-pause', 'b9-wait', 'b9-identity', 'b9-protocol', 'b9-legacy', 'b9-cached', 'b9-entry', 'b9-plan-negative', 'b9-legacy-worker', 'b9-ci-collection', 'b9-guarded-collection', 'b9-compatibility', 'b9-recovery', 'b9-short', 'b9-short-budget', 'b9-worker', 'b9-plan', 'b9', 'b10-authority', 'b10-ops', 'b10-defer', 'b10-review-lane', 'b10-review', 'b10-role-diagnostic', 'b10-retained-queue', 'b10-retained-worker', 'b10-retained-gates', 'b10-retained-multiprocess'):
+        if selection not in ('b12-runner-userns', 'b11-fix2', 'b11-source', 'b11-fresh', 'b11-restore', 'b11-verify', 'b11-gate', 'b7', 'provenance', 'bootstrap', 'watchdog', 'b8-red', 'b8-focused', 'b8-survival', 'b8-reconcile', 'b8-ci-collection', 'b8-guarded-collection', 'b8', 'b10-resume', 'b10-census', 'b10-fresh', 'b10-identity', 'b10-red', 'b10-focused', 'b10', 'b10-ci-collection', 'b10-guarded-collection', 'b9-red', 'b9-pause', 'b9-wait', 'b9-identity', 'b9-protocol', 'b9-legacy', 'b9-cached', 'b9-entry', 'b9-plan-negative', 'b9-legacy-worker', 'b9-ci-collection', 'b9-guarded-collection', 'b9-compatibility', 'b9-recovery', 'b9-short', 'b9-short-budget', 'b9-worker', 'b9-plan', 'b9', 'b10-authority', 'b10-ops', 'b10-defer', 'b10-review-lane', 'b10-review', 'b10-role-diagnostic', 'b10-retained-queue', 'b10-retained-worker', 'b10-retained-gates', 'b10-retained-multiprocess'):
             return blocked('unknown_test_selection')
         if selection == 'b7' and command_id in ('test', 'probe'):
             remaining()
@@ -243,7 +253,27 @@ def execute(command_id, args, deadline, ledger):
         if reason:
             evidence['reason'] = reason
             evidence['termination_proof'] = locals().get('termination_proof')
-        receipt = Receipt(operation, 'failed' if reason or process.returncode else 'done', evidence)
+        status = 'failed' if reason or process.returncode else 'done'
+        if b12_probe:
+            native_file = state.parent / 'evidence' / ('b12-' + operation) / 'native-receipt.json'
+            if not native_file.is_file() or native_file.is_symlink() or native_file.stat().st_nlink != 1:
+                raise ValueError('b12_native_receipt_missing')
+            native = json.loads(native_file.read_text(encoding='utf-8'))
+            facts = native['evidence']
+            if (native['operation_id'] != operation or native['status'] not in ('done', 'blocked', 'uncertain')
+                    or facts['scope'] != 'b12_runner_userns_capability' or facts['lab_uuid'] != identity['lab_uuid']
+                    or facts['daemon_id'] != DAEMON_ID or not re.fullmatch('[0-9a-f]{64}', facts['source_hash'])
+                    or facts['candidate_execution'] is not False or facts['executed_checks'] != 0
+                    or facts['executed_images'] != 0 or facts['helper_completion_is_ci_pass'] is not False):
+                raise ValueError('b12_native_receipt_unqualified')
+            evidence['native'] = native
+            if native['status'] == 'uncertain':
+                status = 'uncertain'
+            elif reason is None:
+                status = native['status']
+                if status == 'done' and process.returncode != 0:
+                    status = 'failed'
+        receipt = Receipt(operation, status, evidence)
         return receipt
     except subprocess.TimeoutExpired:
         receipt = blocked('deadline_expired')

@@ -150,13 +150,13 @@ def two_workers():
             rows=raw_client.xrange(key)
             raw=json.dumps({'operation_id':operation,'launch_id':launch,'task_id':tid,'prefix':amqp.main_queue(),
                 'body_hash':body_hash(body),'rows':[(ident.hex(),{k.hex():v.hex() for k,v in values.items()}) for ident,values in rows]},sort_keys=True).encode()
-            target=Path('/mnt/e/tools/myink-pi/evidence')/('b10-mp-sse-'+operation+'-'+launch+'-'+tid+'.json')
+            target=Path('/Users/a1/项目/Myink/myink-pi/evidence')/('b10-mp-sse-'+operation+'-'+launch+'-'+tid+'.json')
             target.write_bytes(raw);target.with_suffix('.sha256').write_text(hashlib.sha256(raw).hexdigest())
             raw_client.delete(key)
         for i in range(2):
             name=f"mp_worker_{operation}_{launch}_{i}.log"
             raw=Path(tempfile.gettempdir(),name).read_bytes()
-            target=Path('/mnt/e/tools/myink-pi/evidence')/name
+            target=Path('/Users/a1/项目/Myink/myink-pi/evidence')/name
             target.write_bytes(raw);target.with_suffix('.sha256').write_text(hashlib.sha256(raw).hexdigest())
     else:
         for k in set(r.keys("queue:sse:*")) - sse_before:r.delete(k)
@@ -378,6 +378,6 @@ def test_worker_kill_retains_unconfirmed_checkpoint_without_duplicate_effects(tw
             'checkpoint_sha256':[hashlib.sha256(row[1].encode("utf-8")).hexdigest() for row in checkpoints],
             'pending_write_rows':len(pending),'budget_state':budget_state,'effects':effect_ids,'reservations':reservation_states,
             'chapters':chapters,'memory':memory,'state':'interruption_unconfirmed','candidate_allowed':False,'control':control}
-        target=Path('/mnt/e/tools/myink-pi/evidence')/('b10-mp-unconfirmed-'+operation+'-'+tid+'.json')
+        target=Path('/Users/a1/项目/Myink/myink-pi/evidence')/('b10-mp-unconfirmed-'+operation+'-'+tid+'.json')
         target.write_text(json.dumps(proof,default=str,indent=2))
     # Preserve this original unresolved project/task/checkpoint/intake, including ordinary test mode.

@@ -13,7 +13,7 @@ import re
 import stat
 from uuid import UUID
 
-_PRIVATE_ROOT = Path('E:/tools/myink-pi')
+_PRIVATE_ROOT = Path('/Users/a1/项目/Myink/myink-pi')
 _MAX_BYTES = 8 * 1024 * 1024
 _CAPS = dict(tasks=50, projects=50, agent_runs=400, generation_snapshots=100,
              chapters=12, chapter_versions=60, memory_candidates=200, facts=200,

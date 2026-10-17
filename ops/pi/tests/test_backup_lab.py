@@ -162,7 +162,7 @@ def test_native_filesystem_refuses_foreign_distribution(tmp_path,monkeypatch):
     from types import SimpleNamespace
     from ops.pi.lab import backup_probe as probe
     private=tmp_path/'private';(private/'evidence').mkdir(parents=True)
-    proof={'distribution':'foreign','base_path':'E:/tools/myink-pi/runtime/wsl','root_filesystem':{'major_minor':'8:80','fs_type':'ext4','source':'/dev/sdf'}}
+    proof={'distribution':'foreign','base_path':'/Users/a1/项目/Myink/myink-pi/runtime/wsl','root_filesystem':{'major_minor':'8:80','fs_type':'ext4','source':'/dev/sdf'}}
     path=private/'evidence/b11-fix2-filesystem.json';raw=probe.encoded(proof);path.write_bytes(raw)
     RealPath=probe.Path
     monkeypatch.setattr(probe,'PRIVATE',private)

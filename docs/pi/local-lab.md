@@ -5,13 +5,13 @@ Task 7 uses only the private `MyinkPiLab` WSL distribution whose VHD is under
 `364e8400-3844-47e2-b86d-8b626332f61c`, Docker 29.1.3, systemd and cgroup v2
 before each operation. Existing arbitrary same-name distributions are refused.
 
-Run `python -m ops.pi.control lab preflight --root E:/tools/myink-pi` and
-`python -m ops.pi.control lab up --state-dir E:/tools/myink-pi/state` for identity
+Run `python -m ops.pi.control lab preflight --root /Users/a1/项目/Myink/myink-pi` and
+`python -m ops.pi.control lab up --state-dir /Users/a1/项目/Myink/myink-pi/state` for identity
 and fresh resource receipts. The latter adopts the already provisioned, verified
 lab; new provisioning requires the reviewed root-owned `provision.sh up` after
 trusted native source and pinned images have been prepared. Installation is
-fresh-only: `install.ps1 -Root E:/tools/myink-pi -Distribution MyinkPiLab -Rootfs
-E:/tools/myink-pi/cache/noble-wsl-amd64.wsl`. It checks the fixed official Canonical
+fresh-only: `install.ps1 -Root /Users/a1/项目/Myink/myink-pi -Distribution MyinkPiLab -Rootfs
+/Users/a1/项目/Myink/myink-pi/cache/noble-wsl-amd64.wsl`. It checks the fixed official Canonical
 hash against the official manifest and uses signed official Docker apt sources.
 It never overwrites an existing distro, changes global Docker context, reboots,
 or shuts down other distributions. A second fresh installation was not exercised;
@@ -47,7 +47,7 @@ Offline tests use `-m 'not pi_lab and not pi_live'`. Selected lab tests require
 live tests cannot bypass the remaining B-stage and price/cumulative scope gates.
 Actual isolation runs via the guarded Windows executor, not an unguarded shell.
 Per-operation stdout, stderr, controller receipts and guest receipts live under
-`E:/tools/myink-pi/state` and `E:/tools/myink-pi/evidence`; ledger exports retain
+`/Users/a1/项目/Myink/myink-pi/state` and `/Users/a1/项目/Myink/myink-pi/evidence`; ledger exports retain
 source event IDs. Mutable latest pointers are convenience only.
 
 Cleanup is explicit `provision.sh cleanup UUID`: it verifies frozen daemon,

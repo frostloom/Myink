@@ -8,7 +8,7 @@ from ops.pi.contracts import Identity
 from ops.pi.ledger import Ledger
 from ops.pi.lab.verify import BASE,verify_runtime,verify_test_environment,_docker
 from ops.pi.resources import sample_resources
-PRIVATE=Path('/mnt/e/tools/myink-pi')
+PRIVATE=Path('/Users/a1/项目/Myink/myink-pi')
 COLLECTIONS=PRIVATE/'backups/collections'
 MATERIALS=BASE/'backup-materials'
 SOURCE=BASE/'b11-source.json'

@@ -26,6 +26,7 @@ def main(argv=None):
     parser.add_argument('--input-sha256', required=True)
     parser.add_argument('--report-sha256', required=True)
     parser.add_argument('--gateway-port', required=True, type=int)
+    parser.add_argument('--target-domain', required=True)
     args = parser.parse_args(argv)
     if (not hasattr(os, 'getuid') or os.getuid() == 0
             or args.root.parts[:3] != ('/', 'mnt', 'e')):
@@ -37,7 +38,7 @@ def main(argv=None):
     if receipt_path.exists():
         raise ValueError('fresh private receipt required')
     loaded = load_analysis_inputs(args.input, args.input_sha256, args.report, args.report_sha256)
-    prompt = build_writing_prompt(loaded['view'], loaded['report'])
+    prompt = build_writing_prompt(loaded['view'], loaded['report'], target_domain=args.target_domain)
     policy = load_policy(_safe_path(args.policy, PRIVATE_ROOT))
     if (policy.max_attempts != 100 or policy.budget_microyuan != 10000000
             or policy.max_body_bytes != 65536 or policy.max_tokens != 2048
@@ -59,8 +60,8 @@ def main(argv=None):
     for name, value in [('settings.json', config['settings']), ('models.json', config['models'])]:
         _safe_path(agent / name, PRIVATE_ROOT, existing=False).write_text(json.dumps(value), encoding='utf-8')
     cwd.mkdir(exist_ok=False)
-    node = Path('/mnt/e/tools/myink-pi/runtime/node/node-v24.16.0-linux-x64/bin/node')
-    cli = Path('/mnt/e/tools/myink-pi/runtime/pi-project/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js')
+    node = Path('/Users/a1/项目/Myink/myink-pi/runtime/node/node-v24.16.0-linux-x64/bin/node')
+    cli = Path('/Users/a1/项目/Myink/myink-pi/runtime/pi-project/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js')
     guard = Path(__file__).parent / 'pi-wire-guard.mjs'
     config_hash = hashlib.sha256(json.dumps({k: v for k, v in config.items() if k != 'env'},
         sort_keys=True).encode() + guard.read_bytes()).hexdigest()

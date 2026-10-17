@@ -175,7 +175,7 @@ def _actual_rabbit_process_crash_handoff(admitted,boundary):
                 row=db.get(QueueHandoff,original_operation)
                 assert row.message_id==body["request_id"] and str(row.task_id)==body["task_id"]
         evidence={"boundary":boundary,"task_id":body["task_id"],"message_id":body["request_id"],"child_pid":process.pid,"replacement_pid":replacement.pid,"original_broker_count":queued,"effects":len(effects),"memory_rows":memory_before,"original_operation":original_operation if boundary!="before-ack" else None}
-        Path("/mnt/e/tools/myink-pi/evidence/b10-case-"+body["task_id"]+".json").write_text(json.dumps(evidence,indent=2))
+        Path("/Users/a1/项目/Myink/myink-pi/evidence/b10-case-"+body["task_id"]+".json").write_text(json.dumps(evidence,indent=2))
         print(json.dumps(evidence))
     finally:
         for process in processes:
@@ -299,7 +299,7 @@ def test_actual_intake_pg_redis_rabbit_crashes(temp_project,boundary):
                 unchanged=db.get(AdmissionIntent,intent_id)
                 assert str(unchanged.task_id)==tid and unchanged.payload_hash==original_hash and unchanged.publication_state=="published"
         evidence={"boundary":boundary,"task_id":tid,"intent_id":str(intent_id),"child_pid":process.pid,"state":state,"original_hash":original_hash,"original_date":inputs["date"],"quota_before":before_quota,"quota_after":int(r.get(inputs["keys"][0]) or 0)}
-        Path("/mnt/e/tools/myink-pi/evidence/b10-intake-case-"+tid+".json").write_text(json.dumps(evidence,indent=2))
+        Path("/Users/a1/项目/Myink/myink-pi/evidence/b10-intake-case-"+tid+".json").write_text(json.dumps(evidence,indent=2))
     finally:
         for process in processes:
             if process.poll() is None:
@@ -381,7 +381,7 @@ def test_valid_unmaterialized_unknown_delivery_is_retained_in_dlq(temp_project):
         from myink.maintenance import maintenance_view
         proof=handoff.reconcile_queue(db,maintenance_view(db)['epoch'])
         assert body['task_id'] in proof['planned_task_ids'] and proof['unknown']>0 and not proof['verified']
-    Path('/mnt/e/tools/myink-pi/evidence/b10-unknown-body-'+body['task_id']+'.json').write_text(json.dumps(body))
+    Path('/Users/a1/项目/Myink/myink-pi/evidence/b10-unknown-body-'+body['task_id']+'.json').write_text(json.dumps(body))
 
 
 def test_real_successive_defer_ttl_deliveries_keep_distinct_outboxes(admitted,monkeypatch,request):
@@ -406,7 +406,7 @@ def test_real_successive_defer_ttl_deliveries_keep_distinct_outboxes(admitted,mo
         raw=redis.Redis.from_url(settings.redis_url,decode_responses=False)
         values=raw.xrange(sse_key(admitted['task_id']))
         exported=json.dumps([[i.hex(),[[k.hex(),v.hex()] for k,v in fields.items()]] for i,fields in values],separators=(',',':')).encode()
-        path=Path('/mnt/e/tools/myink-pi/evidence/b10-sse-'+descriptor['operation_id']+'-'+admitted['task_id']+'.json')
+        path=Path('/Users/a1/项目/Myink/myink-pi/evidence/b10-sse-'+descriptor['operation_id']+'-'+admitted['task_id']+'.json')
         path.write_bytes(exported)
         path.with_suffix('.sha256').write_text(hashlib.sha256(exported).hexdigest())
         raw.delete(sse_key(admitted['task_id']))
@@ -472,7 +472,7 @@ def test_real_successive_defer_ttl_deliveries_keep_distinct_outboxes(admitted,mo
             process.terminate();process.wait(timeout=10)
     deliveries,uncertain=handoff._queue_census()
     assert uncertain==0 and not any(message.get('task_id')==admitted['task_id'] for queue,message,metadata in deliveries)
-    Path('/mnt/e/tools/myink-pi/evidence/b10-successive-'+admitted['task_id']+'.json').write_text(json.dumps({'task_id':admitted['task_id'],'message_id':admitted['request_id'],'operation_ids':operations,'child_pid':process.pid,'ttl_ms':5000,'priority':7,'retry_count':0,'effects':1,'task_budget_max_requests':20,'chapters':1,'memory_rows':1},indent=2))
+    Path('/Users/a1/项目/Myink/myink-pi/evidence/b10-successive-'+admitted['task_id']+'.json').write_text(json.dumps({'task_id':admitted['task_id'],'message_id':admitted['request_id'],'operation_ids':operations,'child_pid':process.pid,'ttl_ms':5000,'priority':7,'retry_count':0,'effects':1,'task_budget_max_requests':20,'chapters':1,'memory_rows':1},indent=2))
 
 
 @pytest.mark.parametrize('change',['operation','message','correlation','priority','expiration','body','pending'])
@@ -574,7 +574,7 @@ def test_review_publisher_recovers_while_consumer_connection_stays_healthy(admit
         'names':names,'bindings':[['main_queue','exchange','tasks'],['delay_queue','exchange','delay'],['dlq_queue','dlx_exchange','dlq']],
         'arguments':{'main_queue':{'x-max-priority':10,'x-dead-letter-exchange':names['dlx_exchange'],'x-dead-letter-routing-key':'dlq'},
             'delay_queue':{'x-dead-letter-exchange':names['exchange'],'x-dead-letter-routing-key':'tasks'},'dlq_queue':{}}}
-    Path('/mnt/e/tools/myink-pi/evidence/b10-review-topology-'+operation+'.json').write_text(json.dumps(topology,indent=2))
+    Path('/Users/a1/项目/Myink/myink-pi/evidence/b10-review-topology-'+operation+'.json').write_text(json.dumps(topology,indent=2))
     for name,value in names.items():monkeypatch.setattr(amqp,name,lambda _value=value:_value)
     shutdown=threading.Event();monkeypatch.setattr(consumer,'_shutdown',shutdown)
     monkeypatch.setattr(consumer.signal,'signal',lambda *a:None)
@@ -635,7 +635,7 @@ def test_review_publisher_recovers_while_consumer_connection_stays_healthy(admit
         shutdown.set();thread.join(timeout=10);assert not thread.is_alive()
         proof={'operation_id':operation,'task_id':admitted['task_id'],'topology':names,'success':success,
             'consumer_connections':len(connections),'publisher_fault_real':failed.is_set(),'decisions':len(decisions),'replay_calls':len(replays)}
-        Path('/mnt/e/tools/myink-pi/evidence/b10-review-publisher-'+operation+'.json').write_text(json.dumps(proof,indent=2))
+        Path('/Users/a1/项目/Myink/myink-pi/evidence/b10-review-publisher-'+operation+'.json').write_text(json.dumps(proof,indent=2))
         if success:
             verify_test_environment()
             with connect() as c:
@@ -761,7 +761,7 @@ with admission_lane(intent,project) as lane:
             proof.update(operation_id=operation,task_id=admitted['task_id'],intent_id=str(intent_id),body_hash=handoff.body_hash(admitted),
                 child_returncode=child.returncode,locks_after_death=locks,closed_backend=backend,quota_before=2,quota_after=int(r.get(inputs['keys'][0])),
                 original_date=inputs['date'],state='published')
-            target=Path('/mnt/e/tools/myink-pi/evidence')/('b10-review-lane-'+operation+'-'+admitted['task_id'])
+            target=Path('/Users/a1/项目/Myink/myink-pi/evidence')/('b10-review-lane-'+operation+'-'+admitted['task_id'])
             target.with_suffix('.json').write_text(json.dumps(proof,indent=2))
             target.with_suffix('.log').write_bytes(log.read_bytes())
             target.with_suffix('.sha256').write_text(hashlib.sha256(log.read_bytes()).hexdigest())
@@ -821,7 +821,7 @@ def test_review_original_active_publisher_confirms_after_idle(admitted,monkeypat
         db.add(second_project);db.flush();second_pid=str(second_project.id)
     names={'exchange':'myink.tasks'+suffix,'dlx_exchange':'myink.dlx'+suffix,
         'main_queue':'queue:tasks'+suffix,'delay_queue':'queue:delay'+suffix,'dlq_queue':'queue:dlq'+suffix}
-    target=Path('/mnt/e/tools/myink-pi/evidence')/('b10-review-idle-'+operation+'-'+case)
+    target=Path('/Users/a1/项目/Myink/myink-pi/evidence')/('b10-review-idle-'+operation+'-'+case)
     proof={'operation_id':operation,'case_id':case,'case_body_hash':handoff.body_hash(admitted),'second_project_id':second_pid,'names':names,
         'bindings':[['main_queue','exchange','tasks'],['delay_queue','exchange','delay'],['dlq_queue','dlx_exchange','dlq']],
         'arguments':{'main_queue':{'x-max-priority':10,'x-dead-letter-exchange':names['dlx_exchange'],'x-dead-letter-routing-key':'dlq'},

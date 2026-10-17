@@ -26,4 +26,4 @@
 
 模拟回调仅验证评估计算和失败保留机制，不代表真实模型性能。本提交不宣称真实模型对照完成，也没有进行 PostgreSQL 实际反馈读取、服务器 Pi 部署或产品发布。实际模型结果须单独追加带请求账本与实验输入哈希的验收记录。
 
-本地证据：`E:/tools/myink-pi/evidence/c20/focused-evaluation-001`、`feedback-evaluation`、`checkout-byte-probe-002`。这些私有证据不包含在公共GitHub提交中；不得提交凭据、原始用户数据、完整累计账本。
+本地证据：`/Users/a1/项目/Myink/myink-pi/evidence/c20/focused-evaluation-001`、`feedback-evaluation`、`checkout-byte-probe-002`。这些私有证据不包含在公共GitHub提交中；不得提交凭据、原始用户数据、完整累计账本。

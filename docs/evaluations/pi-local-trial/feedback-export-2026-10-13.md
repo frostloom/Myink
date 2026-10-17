@@ -25,7 +25,7 @@ Pi 的消费者使用已有 `load_feedback_snapshot(path, file_sha256, trusted_r
 
 反馈是账号级表，没有 project_id，不能依赖作品 RLS。部署必须使用非表所有者、非高权限、无继承/PUBLIC/default 写授权的专用读取角色；列 SELECT 授权和实际事务只读验收仍需单独完成。现有角色检查和客户端 READ ONLY/REPEATABLE READ、最多 5000ms 语句超时不能替代数据库权限审计。本次没有修改权限审计方法、创建角色或连接数据库。
 
-源码测试证据位于 `E:/tools/myink-pi/evidence/c20/feedback-export/`：
+源码测试证据位于 `/Users/a1/项目/Myink/myink-pi/evidence/c20/feedback-export/`：
 
 - `red/`：初次运行器 JUnit 路径转义错误，保留但不作为有效 RED 验收。
 - `red-002/`：实现前缺少导出入口，1 项预期失败。
@@ -41,6 +41,6 @@ Pi 的消费者使用已有 `load_feedback_snapshot(path, file_sha256, trusted_r
 
 ## ROOT 后续独立验证
 
-在干净 Git 基线叠加本批明确文件后，独立针对性验证为296项通过、2项现有Windows符号链接权限跳过（14.57秒）；未包含既有B12改动。证据：`E:/tools/myink-pi/evidence/c20/focused-export-001`。
+在干净 Git 基线叠加本批明确文件后，独立针对性验证为296项通过、2项现有Windows符号链接权限跳过（14.57秒）；未包含既有B12改动。证据：`/Users/a1/项目/Myink/myink-pi/evidence/c20/focused-export-001`。
 
-随后在真实隔离Linux文件系统运行7项合成烟测：0600私有输出、固定采集请求、脱敏快照/哈希回读、engine释放、禁止覆盖、真实软链接拒绝、公共可读父目录拒绝均通过。文件权限与路径检查是 ACTUAL_POSIX，数据库读取回调是明确模拟，零真实数据库/模型调用；该结果不替代PostgreSQL角色和SQL事务验收。证据：`E:/tools/myink-pi/evidence/c20/feedback-export-posix-smoke.json`。前面的未运行说明是源码冻结时的历史状态。
+随后在真实隔离Linux文件系统运行7项合成烟测：0600私有输出、固定采集请求、脱敏快照/哈希回读、engine释放、禁止覆盖、真实软链接拒绝、公共可读父目录拒绝均通过。文件权限与路径检查是 ACTUAL_POSIX，数据库读取回调是明确模拟，零真实数据库/模型调用；该结果不替代PostgreSQL角色和SQL事务验收。证据：`/Users/a1/项目/Myink/myink-pi/evidence/c20/feedback-export-posix-smoke.json`。前面的未运行说明是源码冻结时的历史状态。

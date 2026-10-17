@@ -206,7 +206,7 @@ def test_actual_fresh_census_covers_accepted_unmaterialized(temp_project):
         assert unknown==0 and [message for queue,message,metadata in deliveries]==[body]
         from pathlib import Path
         operation=json.loads(Path(os.environ['B10_CENSUS_DESCRIPTOR']).read_text())['operation_id']
-        Path('/mnt/e/tools/myink-pi/evidence/b10-census-'+operation+'.json').write_text(json.dumps({k:v for k,v in proof.items() if k!='pause_receipts'},indent=2))
+        Path('/Users/a1/项目/Myink/myink-pi/evidence/b10-census-'+operation+'.json').write_text(json.dumps({k:v for k,v in proof.items() if k!='pause_receipts'},indent=2))
     finally:
         with get_admin_engine().begin() as db:db.execute(text("UPDATE maintenance_control SET admission_closed=false,consumer_blocked=false WHERE id=1"))
 
@@ -244,7 +244,7 @@ def test_resume_bridge_trusted_adapter_uses_actual_application_role(resume_case,
             import os,json
             from pathlib import Path
             operation=json.loads(Path(os.environ['B10_CENSUS_DESCRIPTOR']).read_text())['operation_id']
-            Path('/mnt/e/tools/myink-pi/evidence/b10-role-denial-'+operation+'.txt').write_text(str(context.original_exception))
+            Path('/Users/a1/项目/Myink/myink-pi/evidence/b10-role-denial-'+operation+'.txt').write_text(str(context.original_exception))
         # Exit this scope before dependent fixture teardown; ordinary cleanup retains its own role.
         with monkeypatch.context() as scoped:
             scoped.setattr(database,'get_engine',lambda:engine)

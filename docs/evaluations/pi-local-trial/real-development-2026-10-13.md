@@ -20,7 +20,7 @@
 
 完整旧操作和事件前缀未变。开发后账本快照SHA256：`fb9044c8828067fb3d194f660b35c02c09a2e70d5cea65429e19c92ba7601dca`。真实阶段导出清单SHA256：`d8ec4c5f993964e2e7107b3cb389a908d2cd50853f4a969259dd45f3c40c03b2`。候选源码SHA256：`0f8d28286d58894f865acd5838ccfb7eb7cc917e420eb534bcbf208c7fb86a25`。
 
-独立事实复核SHA256：`a108cbdb6d751bc7521ca1296bb3a0b905c847bc6e743448907aab03bdf80846`。私有证据位于 `E:/tools/myink-pi/evidence/c20/host-runtime-009/paid-develop`，候选源码在 `E:/tools/myink-pi/evidence/c20/pi-candidate009.py`；公共提交不包含凭据、完整账本、原始用户内容或失败候选补丁。
+独立事实复核SHA256：`a108cbdb6d751bc7521ca1296bb3a0b905c847bc6e743448907aab03bdf80846`。私有证据位于 `/Users/a1/项目/Myink/myink-pi/evidence/c20/host-runtime-009/paid-develop`，候选源码在 `/Users/a1/项目/Myink/myink-pi/evidence/c20/pi-candidate009.py`；公共提交不包含凭据、完整账本、原始用户内容或失败候选补丁。
 
 ## 结论边界
 

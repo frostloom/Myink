@@ -52,7 +52,7 @@
 
 管理员的可替换 Engine 接口和 Pi 实现已完成，已有 Pi 会话归属保护；第二个实际引擎的运行时替换未运行，也没有两个假引擎的合同测试。此缺口留给后续具体适配器，不用两个自定义假引擎的自证断言宣称运行时兼容。
 
-C18审查修正：上述历史运行的stdout未物理留存，故仅补录一次相同范围的GREEN与既有变异RED，未重建历史日志。新结果为13 passed（4.03s，exit0）及3 failed/10 deselected（2.00s，预期exit1）。[索引](receipt-index.json)的两个passed检查现已绑定 `E:/tools/myink-pi/evidence/c18-delivery-fixround1-001/` 下的execution.json及SHA256；回执进一步绑定实际stdout/stderr、精确命令、进程环境覆盖、E盘临时目录、执行源码哈希和RED变异脚本。变异只在内存，运行前后源码一致；这仍是SIMULATED外部适配器的离线证据，不改变任何主机/服务验收状态。
+C18审查修正：上述历史运行的stdout未物理留存，故仅补录一次相同范围的GREEN与既有变异RED，未重建历史日志。新结果为13 passed（4.03s，exit0）及3 failed/10 deselected（2.00s，预期exit1）。[索引](receipt-index.json)的两个passed检查现已绑定 `/Users/a1/项目/Myink/myink-pi/evidence/c18-delivery-fixround1-001/` 下的execution.json及SHA256；回执进一步绑定实际stdout/stderr、精确命令、进程环境覆盖、E盘临时目录、执行源码哈希和RED变异脚本。变异只在内存，运行前后源码一致；这仍是SIMULATED外部适配器的离线证据，不改变任何主机/服务验收状态。
 
 冷RSS/冷热峰值未测量。Pi384MiB、checker128MiB、50%CPU、swap0为配置上限；runtime binding仅观察。AF_INET/AF_INET6-only 的真实Pi协议及付费只读调用兼容已通过；localhost允许范围仍超过一个代理端口，不声称内核逐端口隔离。
 

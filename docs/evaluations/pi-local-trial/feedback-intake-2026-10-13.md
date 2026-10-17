@@ -44,4 +44,4 @@ ON public.feedback TO myink_pi_reader;
 - 30条合成案例包含七类反馈、故意低估危险的模拟分类、引用/否定/混合请求。预期标签为可审阅的工程判断，不声称独立语义金标或真实模型准确率。
 - 真实 PostgreSQL 角色/服务集成与真实模型反馈质量评估在本记录生成时 NOT_RUN。未启用线上 Pi。
 
-原始测试和审查证据保留在 E:/tools/myink-pi/evidence/c20/feedback、focused-final-001、full-offline-001；私有审查报告在隔离工作区 .superpowers/sdd/2026-10-11-pi-local-trial。原始用户内容、凭据、账本和私有运行时不进入GitHub。
+原始测试和审查证据保留在 /Users/a1/项目/Myink/myink-pi/evidence/c20/feedback、focused-final-001、full-offline-001；私有审查报告在隔离工作区 .superpowers/sdd/2026-10-11-pi-local-trial。原始用户内容、凭据、账本和私有运行时不进入GitHub。

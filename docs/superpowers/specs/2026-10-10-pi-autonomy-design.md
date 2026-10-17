@@ -232,7 +232,7 @@ Pi 与评测入口由受控适配器读取这组配置，评测不再把过期 `
 
 ## E 盘实测和验收
 
-本机代码工作区使用当前 Codex 管理的 `pi-autonomy-design/Myink` worktree，分支为 `codex/pi-autonomy-design`。主工作区文件不修改；新运行工具使用 `E:/tools/myink-pi/`，其中分别存 runtime、包缓存、Pi 配置与会话、私有凭据引用和实验产物。安装时显式设置所有相关缓存与会话路径，禁止依赖默认用户目录。
+本机代码工作区使用当前 Codex 管理的 `pi-autonomy-design/Myink` worktree，分支为 `codex/pi-autonomy-design`。主工作区文件不修改；新运行工具使用 `/Users/a1/项目/Myink/myink-pi/`，其中分别存 runtime、包缓存、Pi 配置与会话、私有凭据引用和实验产物。安装时显式设置所有相关缓存与会话路径，禁止依赖默认用户目录。
 
 实测候选固定为官方 Pi v1.1.0，包名 `@earendil-works/pi-coding-agent`，Node 至少 22.19；安装前核验官方包、锁文件和完整性信息。确需新 Node 或 Linux 环境时也放 E 盘，不更换本机已有系统运行时。固定版本与当前官方接口不兼容时先修正实施方案，不静默切换到 latest。
 

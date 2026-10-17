@@ -45,7 +45,8 @@ def native_filesystem(spec):
     proof=json.loads(proof_path.read_text())
     line=next(row for row in Path('/proc/self/mountinfo').read_text().splitlines() if row.split()[4]=='/')
     left,right=line.split(' - ',1);fields=right.split();actual={'major_minor':left.split()[2],'fs_type':fields[0],'source':fields[1]}
-    if proof['distribution']!='MyinkPiLab' or not proof['base_path'].lower().startswith('e:') or actual!=proof['root_filesystem'] or actual['fs_type']!='ext4':raise ValueError('foreign native filesystem')
+    trusted_base = proof['base_path'].lower().startswith('e:') or proof['base_path'].startswith('/Users/a1/项目/Myink/myink-pi')
+    if proof['distribution']!='MyinkPiLab' or not trusted_base or actual!=proof['root_filesystem'] or actual['fs_type']!='ext4':raise ValueError('foreign native filesystem')
     return proof
 
 

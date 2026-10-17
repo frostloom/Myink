@@ -196,13 +196,22 @@ def serve_gateway(ledger, policy, credential_file, host='127.0.0.1', port=8765, 
             server.serve_forever()
 
 
+_MAC_LAB = '/Users/a1/项目/Myink/myink-pi'
+
+
 def state_path_allowed(path, *, platform=None):
-    """Current lab state is E: on Windows, or its /mnt/e WSL mount."""
+    """Lab state stays on E: for Windows, /mnt/e for WSL, or the Mac project folder."""
     platform = sys.platform if platform is None else platform
     if not path.is_absolute() or '..' in path.parts:
         return False
     if platform == 'win32':
         return path.drive.lower() == 'e:'
+    if platform == 'darwin':
+        try:
+            path.relative_to(_MAC_LAB)
+        except ValueError:
+            return False
+        return True
     if platform.startswith('linux'):
         return path.parts[:3] == ('/', 'mnt', 'e')
     return False

@@ -22,4 +22,4 @@
 - 失败但清理成功的监督记录：`fd6c0a89af6b3f1a26e18de8435b2eef42a59648bd18563db867827799829c2e`。
 - 独立事实审查：`0c95c3d09c73d5598c7c24d6c967b50dff1b1d09c86245ac776605d6a5f2f26a`。
 
-私有证据位于 `E:/tools/myink-pi/evidence/c20/host-runtime-011`。完整账本、凭据与私有启动脚本不提交GitHub。后续载荷兼容修复及新实验必须另有验证记录；本记录保留原始失败。生产Pi、真实PostgreSQL反馈读取、写作/召回/抽取语义质量对照与服务器发布仍未验收。
+私有证据位于 `/Users/a1/项目/Myink/myink-pi/evidence/c20/host-runtime-011`。完整账本、凭据与私有启动脚本不提交GitHub。后续载荷兼容修复及新实验必须另有验证记录；本记录保留原始失败。生产Pi、真实PostgreSQL反馈读取、写作/召回/抽取语义质量对照与服务器发布仍未验收。

@@ -29,6 +29,6 @@
 
 终态376条操作、632条事件，全历史前缀保留，没有待结算的模型请求或阶段预留；同一只读事务生成的完整JSON与关闭后的SQLite备份逐行相等。实际失败、两次配对、最后文件、反馈、原始会话、备份与停止凭据都保留，未经重置或退款。
 
-公开汇总见[机器记录](development-runtime023-2026-10-14.json)，失败反馈接口见[维护说明](../../pi/tool-feedback.md)。私有实际记录在 `E:/tools/myink-pi/evidence/c20/host-runtime-023/`，产品回归在 `E:/tools/myink-pi/evidence/c20/capture-product-regression/candidate023-001/`。私有正文、密钥、全量账本不推送Git。
+公开汇总见[机器记录](development-runtime023-2026-10-14.json)，失败反馈接口见[维护说明](../../pi/tool-feedback.md)。私有实际记录在 `/Users/a1/项目/Myink/myink-pi/evidence/c20/host-runtime-023/`，产品回归在 `/Users/a1/项目/Myink/myink-pi/evidence/c20/capture-product-regression/candidate023-001/`。私有正文、密钥、全量账本不推送Git。
 
 本轮没有完成真实语义质量评审、PostgreSQL/Redis/RabbitMQ、Go、前端、完整Docker构建、发布或次日对照。11域45项写作语义指标仍为unknown，生产Pi尚未启用。
