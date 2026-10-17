@@ -33,11 +33,11 @@
 
 **Interfaces:** 使用现有 `fixture()`、`plan()` 合成输入、`build_writing_prompt(view, report, target_domain=...)`、`parse_writing_analysis(text, view)` 和 `score_contract_output(result, view, target_domain)`；输出全部 11 域的正反合同覆盖表。
 
-- [ ] 对照已有测试建立覆盖表，已有覆盖不重复添加；记录未覆盖的具体输入与预期。
-- [ ] 缺口优先用参数化 `test_target_scope_accepts_only_selected_domain` 覆盖 11 个目标：目标合法引用可接受；每个非目标变为 trace_observation（携带有效引用，确保到达目标域 scorer）或 unknown 但持有 refs 都必须拒绝；operations 的空 refs 例外仅在其自身目标可接受。
-- [ ] 用 `test_literal_excerpt_roundtrip_preserves_escaping` 覆盖字面 `\\n`、真实换行、引号及中文的 JSON 编解码，真实单段 quote 接受，解转义或跨 excerpt 拼接拒绝，原 view 不变。结合现有数组 rollback、空 observation、重复 key 用例记录结果。
-- [ ] 对当前已满足的行为如实记录为契约补测，不伪造 RED；若发现真实缺陷，先保存失败，再最小修复，禁止放宽校验器。
-- [ ] 运行 `python -m pytest ops/pi/tests/test_writing_analysis.py ops/pi/tests/test_analysis_trial.py ops/pi/tests/test_prompt_contracts.py -q -ra`，独立审查并提交推送此目标。
+- [x] 对照已有测试建立覆盖表，已有覆盖不重复添加；记录未覆盖的具体输入与预期。
+- [x] 缺口优先用参数化 `test_target_scope_accepts_only_selected_domain` 覆盖 11 个目标：目标合法引用可接受；每个非目标变为 trace_observation（携带有效引用，确保到达目标域 scorer）或 unknown 但持有 refs 都必须拒绝；operations 的空 refs 例外仅在其自身目标可接受。
+- [x] 用 `test_literal_excerpt_roundtrip_preserves_escaping` 覆盖字面 `\\n`、真实换行、引号及中文的 JSON 编解码，真实单段 quote 接受，解转义或跨 excerpt 拼接拒绝，原 view 不变。结合现有数组 rollback、空 observation、重复 key 用例记录结果。
+- [x] 对当前已满足的行为如实记录为契约补测，不伪造 RED；若发现真实缺陷，先保存失败，再最小修复，禁止放宽校验器。
+- [x] 运行 `python -m pytest ops/pi/tests/test_writing_analysis.py ops/pi/tests/test_analysis_trial.py ops/pi/tests/test_prompt_contracts.py -q -ra`，独立审查并提交推送此目标。
 
 ### Task 2: 新实验预注册与执行边界
 
@@ -53,4 +53,4 @@
 
 ## 当前状态
 
-2026-10-18：待后续计划审阅，尚未执行 Task 1/2；本轮回归基线修复不因此被重新标为未完成。新付费对照、语义质量验收和上线均未授权执行。
+2026-10-18：用户已确认执行。Task 1 完成：新增 255 个合同案例，相关三文件 304 passed/1 skipped，干净归档离线全量 1677 passed/2 skipped/19 deselected；独立审查通过，无生产代码改动。Task 2 正准备预注册草案，真实输入、模型价格和执行门禁待核验，不发起付费请求。

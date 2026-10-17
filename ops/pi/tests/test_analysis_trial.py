@@ -3,6 +3,7 @@ from copy import deepcopy
 import importlib
 import importlib.util
 import inspect
+import json
 
 import pytest
 
@@ -59,3 +60,48 @@ def test_scorer_adds_target_rule_without_loosening_validator():
     array_rollback['hypothesis']['rollback'] = ['恢复旧提示']
     with pytest.raises(ValueError):
         mod.score_contract_output(array_rollback, view, 'extract')
+
+
+@pytest.mark.parametrize('target_domain', DOMAINS)
+def test_target_scope_accepts_only_selected_domain(target_domain):
+    from ops.pi.writing_analysis import parse_writing_analysis
+    view, _ = fixture()
+    original = deepcopy(view)
+    result = plan()
+    selected = result['domains'][DOMAINS.index(target_domain)]
+    selected.update(availability='trace_observation', refs=[
+        {'evidence_index': 0, 'excerpt_index': 0, 'quote': 'start'}])
+    parsed = parse_writing_analysis(json.dumps(result, ensure_ascii=False), view)
+    assert trial().score_contract_output(parsed, view, target_domain) == {
+        'valid': True, 'target_domain': target_domain}
+    assert view == original
+
+
+@pytest.mark.parametrize('target_domain,other_domain', [
+    (target, other) for target in DOMAINS for other in DOMAINS if target != other])
+@pytest.mark.parametrize('availability', ['trace_observation', 'unknown'])
+def test_target_scope_rejects_every_non_target_observation_or_reference(
+        target_domain, other_domain, availability):
+    from ops.pi.writing_analysis import parse_writing_analysis
+    view, _ = fixture()
+    result = plan()
+    other = result['domains'][DOMAINS.index(other_domain)]
+    other.update(availability=availability, refs=[
+        {'evidence_index': 0, 'excerpt_index': 0, 'quote': 'start'}])
+    # The base contract accepts these grounded fields; rejection must come from scope.
+    parsed = parse_writing_analysis(json.dumps(result, ensure_ascii=False), view)
+    with pytest.raises(ValueError, match='non-target domain must stay unknown'):
+        trial().score_contract_output(parsed, view, target_domain)
+
+
+@pytest.mark.parametrize('target_domain', DOMAINS)
+def test_only_operations_target_can_observe_without_references(target_domain):
+    view, _ = fixture()
+    result = plan()
+    result['domains'][DOMAINS.index(target_domain)]['availability'] = 'trace_observation'
+    if target_domain == 'operations':
+        assert trial().score_contract_output(result, view, target_domain) == {
+            'valid': True, 'target_domain': 'operations'}
+    else:
+        with pytest.raises(ValueError, match='finite grounded references required'):
+            trial().score_contract_output(result, view, target_domain)
