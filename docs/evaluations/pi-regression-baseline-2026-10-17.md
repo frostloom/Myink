@@ -60,3 +60,8 @@ python -m pytest tests/test_task_budget_routes.py tests/test_task_budget_recover
 ```
 
 39 项设施测试按 CI 标记被排除，不能算通过；存在既有 Starlette/AnyIO 弃用警告。原四项失败已在基线观察，独立审查无 Critical/Important/Minor。完整业务回归及 offline ops 门禁另行记录。
+## 小目标 4：离线分析测试的主机路径隔离（2026-10-18）
+
+业务全量实测为 1612 passed、1 skipped、159 deselected、5 xfailed（495.44s），无 failed/error。离线 ops 首次全量出现额外一项失败：1421 passed、1 failed、2 skipped、19 deselected（485.73s）。该测试依赖固定 macOS 私有目录存在，在 Windows 上先被根目录校验拒绝，未到预期的缺失目录分支。在不含四个既有未提交修改的冻结快照中单项复现相同失败（1 failed，1.35s）。
+
+仅修正 `ops/pi/tests/test_writing_analysis.py`：用含中文路径的真实临时可信目录，仍调用实际权限和路径校验，要求缺失子运行目录返回原精确错误；测试改名说明实际覆盖范围。完整文件 41 passed、1 skipped（20.33s），跳过项因本机不能创建 symlink。独立审查无 Critical/Important/Minor。没有修改生产可信根或绕过安全校验；最终离线全量重验另记。
