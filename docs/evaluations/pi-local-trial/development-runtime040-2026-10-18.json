@@ -1,0 +1,56 @@
+{
+  "schema": "myink-pi-development-runtime040-public-v1",
+  "date": "2026-10-18",
+  "status": "ACTUAL_DEVELOPMENT_REPLAY_VERIFIED_CANDIDATE_NOT_ADOPTED",
+  "purpose": "Controlled developer completion protocol on historical unadopted synthetic repair",
+  "model_execution": "ACTUAL",
+  "protocol_execution": "ACTUAL",
+  "model": "deepseek-v4.1-flash",
+  "source_manifest_sha256": "0e61789b7d72b002c7afa0e769d5e15a3682dba350bfc2098a700677e887270a",
+  "model_requests": 6,
+  "http_200": 6,
+  "estimated_added_microyuan": 44345,
+  "checkpoint_before": [
+    198,
+    13790345
+  ],
+  "checkpoint_after": [
+    204,
+    13834690
+  ],
+  "global_cap_microyuan": 20000000,
+  "supplemental_cap_microyuan": 5000000,
+  "fixed_checker_rows": 55,
+  "primary_cases": 52,
+  "legacy_security_cases": 3,
+  "complete_pairs": 6,
+  "objective_passed": true,
+  "severe_guard_veto": false,
+  "final_check_operation_id": "tool:paid-develop:toolu_ab9adf22d6d94b33afae02b9",
+  "final_candidate_status_operation_id": "tool:paid-develop:toolu_da7ada4af2db4e71a80c2910",
+  "source_before": "d1e9cbc8c7885f6150a77adaf27f5da0c92e70cc98d72a58b377b9fce1ac53bd",
+  "source_after": "686db07853447743fa2dc84148745449d1945ac20f72781d1ff2d0ac3a728cc2",
+  "verified_tool_calls": 6,
+  "exact_owned_units": 3,
+  "process_cleanup_verified": true,
+  "released": false,
+  "candidate_adopted": false,
+  "semantic_quality": "unknown",
+  "original_17_pytest_executed": false,
+  "limitations": [
+    "Replay against frozen original baseline, not a new improvement over the current Pi worktree.",
+    "No production task success, cost, latency or writing/recall/extraction semantic quality claim.",
+    "Fixed checker55 rows are not17 pytest business regressions; no such pytest run was verified.",
+    "Pi network containment permits localhost; per-port kernel filtering is not claimed."
+  ],
+  "artifacts": {
+    "paid-develop/success.json": "9261dcaa3ad749b6ee43624d7823dc7562634481c5c5425cf95b262b1eae47af",
+    "paid-develop/reconciliation.json": "9ac1d214e9d3cfdaf5a5fa23b50a7b58d8aa03ca566bcc4a4325f0e19b44279a",
+    "paid-develop/session.jsonl": "4b343dcf1623c22d14cde3461ea82366cecccb2e158ab8da04dc6c34f135cf60",
+    "paid-develop/rpc.jsonl": "e0d5a0ef81c9192c17291ce07b17db39742f4ec9c87283c78de67328c0a08eca",
+    "paid-develop/outcome.json": "2d18678869ad4b1acffed098e88b796e17f03df873111374fc846a2ca799f944",
+    "paid-checks-develop/pair-1/comparison.json": "942e1705f23654e4cd54f7ee29f96cbc3d8d21c99cedc6853c6a342ca41c7710",
+    "paid-supervision": "284da6c345a285f0744626b1d8eb569770cae87637dc325f3bf4645b87f04d5c",
+    "canonical-audit": "396dd580a88f0846f2a747401c289cba6a9c0ee726d4d3972e5e751522b71757"
+  }
+}
