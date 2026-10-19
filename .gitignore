@@ -33,6 +33,13 @@ htmlcov/
 inkos/
 
 # 内部工作文档（只留本地，不进公开仓库）
+/REMOTE-SERVER.local.md
 CLAUDE.md
 plan.md
 inte*view.md
+
+# 本地分支工作区
+/worktrees/
+
+# Pi 实验留在本机的状态和检查点，含凭证，不进版本库
+/myink-pi/
