@@ -40,9 +40,9 @@ def test_corruption_probe_uses_matching_canonical_candidate(case,monkeypatch):
 def test_preparation_failure_closes_prior_current_rehearsal(case,monkeypatch):
     import pytest
     from ops.pi.lab import backup_lab as lab
-    from ops.pi.tests.test_backup import qualified_restore,CONTEXT,api
+    from ops.pi.tests.test_backup import qualified_restore,CONTEXT,NOW,api
     ledger,pre,pair,root=case;qualified_restore(case);trace=[]
-    assert api().release_allowed(ledger,pair['release_pair_id'],context=CONTEXT)
+    assert api().release_allowed(ledger,pair['release_pair_id'],context=CONTEXT,now=NOW)
     class Boundary:
         def __init__(self):self.ledger=ledger
         def __call__(self,action,context):return artifacts(action,context)
@@ -55,8 +55,8 @@ def test_preparation_failure_closes_prior_current_rehearsal(case,monkeypatch):
     monkeypatch.setattr(lab,'current_operation',lambda:'ef92d9a8-dc88-48d1-bd33-bc3a158a2c31')
     with pytest.raises(ValueError,match='fixed readiness'):lab.run_actual_pair()
     assert trace==['preparation_failed','cleanup:failed']
-    assert not api().release_allowed(ledger,pair['release_pair_id'],context=CONTEXT),'prior success remained qualified after real handler preparation failure'
-    with pytest.raises(ValueError):api().mark_released(ledger,pair['release_pair_id'],pair['post_identity'],context=CONTEXT)
+    assert not api().release_allowed(ledger,pair['release_pair_id'],context=CONTEXT,now=NOW),'prior success remained qualified after real handler preparation failure'
+    with pytest.raises(ValueError):api().mark_released(ledger,pair['release_pair_id'],pair['post_identity'],context=CONTEXT,now=NOW)
     assert api().release_allowed(ledger,pair['release_pair_id'],recovery=True)
 
 
