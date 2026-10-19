@@ -2,7 +2,11 @@
 
 管理员是 Myink 的组成部分，负责既有产品的稳定性、成本、速度、写作质量与体验；新功能方向由项目所有者决定。`Engine` 接口把管理员职责与具体 Agent 解耦，目前接入固定版本 Pi。预算、权限、备份与发布验收由控制程序管理。
 
-## 最新状态（2026-10-14）
+## 最新状态（2026-10-20）
+
+当前Pi分支干净提交的离线控制模块回归为1687 passed、2个Windows符号链接权限SKIP、19个pi_lab/pi_live未选入；不是业务全量或生产验收。已核对025原输入/报告与累计预算，45项语义质量仍unknown。本轮未调用模型、未采纳候选、未部署。详见[基线与数据分析记录](../evaluations/pi-baseline-resume-2026-10-20.md)和[可核对回执](../evaluations/pi-retained-data-audit-2026-10-20.json)。下一步绑定当前真实Pi运行器做有限分析合同对照，完整自主迭代闭环尚未完成。
+
+## 历史状态（2026-10-14）
 
 本机试验改为累计 20 元费用上限、累计请求次数不限；保留历史未知预留与单轮时间、工具及资源边界。已补充 30 条合成反馈演示和 111 项相关通过测试。详见[预算与反馈记录](../evaluations/pi-local-trial/fee-only-budget-and-feedback-2026-10-14.md)。[022真实开发](../evaluations/pi-local-trial/development-runtime022-2026-10-14.md)已跨过旧100次限制，但17项产品回归仍有4项失败，候选未采用。实际进度保存在[交付报告](../evaluations/pi-local-trial/report.md)；尚无生产 Pi。
 

@@ -1,0 +1,265 @@
+{
+  "schema": "pi-retained-data-audit-v1",
+  "source_commit": "4083b69dec005765b620a596bee0b480b8c638b0",
+  "model_requests_this_audit": 0,
+  "automatic_execution": false,
+  "release_allowed": false,
+  "input_manifest_sha256": "646270e7ea7b58d76950050934f78afe5f4ee0a7fb87e322298e63b04bc5beb7",
+  "historical_report_raw_sha256": "0a58a5e69680379c93edfeec6bfe4bd629db32724811648efc67debf91ed65f6",
+  "historical_report_reproduced": false,
+  "current_report_sha256": "cf0c1d1da59664e7a5c8ad8650e5c517fc2380e72c20c8da43d3d46bfe03cbb4",
+  "historical_window": {
+    "start": "2026-09-12T00:45:16+00:00",
+    "end": "2026-10-12T00:45:16+00:00"
+  },
+  "counts": {
+    "tasks": 27,
+    "runs": 298,
+    "snapshots": 20
+  },
+  "stage_retention": {
+    "recall": {
+      "unknown": 13,
+      "retained": 6,
+      "not_applicable": 8
+    },
+    "extract": {
+      "unknown": 13,
+      "retained": 6,
+      "not_applicable": 8
+    },
+    "write": {
+      "unknown": 13,
+      "retained": 14
+    },
+    "audit": {
+      "unknown": 4,
+      "retained": 23
+    },
+    "repair": {
+      "unknown": 19,
+      "retained": 8
+    }
+  },
+  "operations": {
+    "chapter_generate": {
+      "task_denominator": 19,
+      "status_counts": {
+        "failed": 5,
+        "done": 14
+      },
+      "success": {
+        "value": 0.7368421052631579,
+        "availability": "reported_status",
+        "denominator": 19,
+        "done": 14,
+        "failed": 5,
+        "unknown": 0,
+        "meaning": "stored task status, not author acceptance"
+      },
+      "lifecycle_proxy_ms": {
+        "value": 4717801.1588421045,
+        "availability": "reported_proxy",
+        "samples": 19,
+        "p95": null,
+        "p95_availability": "insufficient_samples",
+        "meaning": "created-to-updated includes queue/human wait; not model latency"
+      },
+      "task_retries": {
+        "value": 0,
+        "known_samples": 19,
+        "denominator": 19,
+        "availability": "reported"
+      },
+      "run_cost": {
+        "value": null,
+        "availability": "unknown",
+        "known_samples": 124,
+        "measured_samples": 0,
+        "denominator": 252,
+        "reported_sum": 0.6164502000000001,
+        "aggregation": "sum retained runs, not complete task cost/latency"
+      },
+      "run_duration_ms": {
+        "value": 979537,
+        "availability": "reported",
+        "known_samples": 252,
+        "measured_samples": 0,
+        "denominator": 252,
+        "reported_sum": 979537,
+        "aggregation": "sum retained runs, not complete task cost/latency"
+      },
+      "run_input_tokens": {
+        "value": 683878,
+        "availability": "reported",
+        "known_samples": 252,
+        "measured_samples": 0,
+        "denominator": 252,
+        "reported_sum": 683878,
+        "aggregation": "sum retained runs, not complete task cost/latency"
+      },
+      "run_output_tokens": {
+        "value": 161280,
+        "availability": "reported",
+        "known_samples": 252,
+        "measured_samples": 0,
+        "denominator": 252,
+        "reported_sum": 161280,
+        "aggregation": "sum retained runs, not complete task cost/latency"
+      }
+    },
+    "short_generate": {
+      "task_denominator": 8,
+      "status_counts": {
+        "done": 8
+      },
+      "success": {
+        "value": 1.0,
+        "availability": "reported_status",
+        "denominator": 8,
+        "done": 8,
+        "failed": 0,
+        "unknown": 0,
+        "meaning": "stored task status, not author acceptance"
+      },
+      "lifecycle_proxy_ms": {
+        "value": 68063.701375,
+        "availability": "reported_proxy",
+        "samples": 8,
+        "p95": null,
+        "p95_availability": "insufficient_samples",
+        "meaning": "created-to-updated includes queue/human wait; not model latency"
+      },
+      "task_retries": {
+        "value": 0,
+        "known_samples": 8,
+        "denominator": 8,
+        "availability": "reported"
+      },
+      "run_cost": {
+        "value": 0.46727594,
+        "availability": "reported",
+        "known_samples": 22,
+        "measured_samples": 0,
+        "denominator": 22,
+        "reported_sum": 0.46727594,
+        "aggregation": "sum retained runs, not complete task cost/latency"
+      },
+      "run_duration_ms": {
+        "value": 543799,
+        "availability": "reported",
+        "known_samples": 22,
+        "measured_samples": 0,
+        "denominator": 22,
+        "reported_sum": 543799,
+        "aggregation": "sum retained runs, not complete task cost/latency"
+      },
+      "run_input_tokens": {
+        "value": 139738,
+        "availability": "reported",
+        "known_samples": 22,
+        "measured_samples": 0,
+        "denominator": 22,
+        "reported_sum": 139738,
+        "aggregation": "sum retained runs, not complete task cost/latency"
+      },
+      "run_output_tokens": {
+        "value": 102917,
+        "availability": "reported",
+        "known_samples": 22,
+        "measured_samples": 0,
+        "denominator": 22,
+        "reported_sum": 102917,
+        "aggregation": "sum retained runs, not complete task cost/latency"
+      }
+    }
+  },
+  "semantic_quality": {
+    "total": 45,
+    "unknown": 45,
+    "measured": 0
+  },
+  "groups": [
+    {
+      "domain": "recall.events",
+      "retained_evidence_rows": 1,
+      "view_sha256": "3605f1d93ddb65160697bb9c4e95b3a7cfb1f57f29d11b4348aaf65bfb481f81",
+      "freeze_sha256": "08ca1655cdc248ed559cb96835b7f1756abf76821b12abe0ac7797aeffbca664",
+      "baseline_prompt_sha256": "024c231b2a24444afc4de1858d89f4d82d936a94e0a238ea85dc99b8aaf5e744",
+      "candidate_prompt_sha256": "630cfcd6d7555d5fb53a690e5926200fbb31a8dcda854c2fbf9236081957cf61"
+    },
+    {
+      "domain": "recall.plot",
+      "retained_evidence_rows": 1,
+      "view_sha256": "3605f1d93ddb65160697bb9c4e95b3a7cfb1f57f29d11b4348aaf65bfb481f81",
+      "freeze_sha256": "08ca1655cdc248ed559cb96835b7f1756abf76821b12abe0ac7797aeffbca664",
+      "baseline_prompt_sha256": "024c231b2a24444afc4de1858d89f4d82d936a94e0a238ea85dc99b8aaf5e744",
+      "candidate_prompt_sha256": "2e5d173c9e57056564fa19754e6b7497a92c31dc09c3e816b1b02d9c397f3a0a"
+    },
+    {
+      "domain": "recall.characters",
+      "retained_evidence_rows": 1,
+      "view_sha256": "312d3722035d39e3d6265120b60e9bbaedf0f72314ac0ec7fdf5cc89e88beb9f",
+      "freeze_sha256": "f893a3c4789719ef00191405cb5b5d7f2315d7a17b08b60aff8017e88e8e6a99",
+      "baseline_prompt_sha256": "d94e7635fb3cc4e0122ce3db53df472ea43f7edcad167fff3b59f34e6782b151",
+      "candidate_prompt_sha256": "a4a6543a542204324c28bccd947de6e2b3328a5abcd0aa90f3d362c64331ae07"
+    },
+    {
+      "domain": "extract",
+      "retained_evidence_rows": 2,
+      "view_sha256": "d0564e7bf66919f4266a3b8a2f509c23a422508d07651ef616a0c51dfe814354",
+      "freeze_sha256": "ef7751a656cd9bd80ca87d8c6f39bdcb4234e826ef2500f53edfa718bf5c1def",
+      "baseline_prompt_sha256": "4e02db28f29133ba93b5f1eb4e431c9069ab60b00ad2b1cf86c41de0ea37b4a1",
+      "candidate_prompt_sha256": "48ae660109eca0e298639ed1d1c2cc644d7b2d637b6ff1ba999cccafad2944df"
+    },
+    {
+      "domain": "operations",
+      "retained_evidence_rows": 1,
+      "view_sha256": "c2678a16377fa8a12412bcbd212b5e78c1c5ba231048166ad2d1a1855026f148",
+      "freeze_sha256": "2ae33552f3795b832286558e38ef6b96e2e875d3333ed1f4a0404d4ba9ae717d",
+      "baseline_prompt_sha256": "055794ebc953c30b752bdfd3764eff10606cc433a6da6bb9f99771d0584a47b1",
+      "candidate_prompt_sha256": "71c02b571460d5e37556666151268771576865bf3ce2d403fa79fc456c91885d"
+    }
+  ],
+  "budget": {
+    "scope": "local-trial-1",
+    "attempts": 204,
+    "known_estimated_microyuan": 1752514,
+    "unknown_reserved_microyuan": 12082176,
+    "unknown_attempts": 6,
+    "conservative_occupancy_microyuan": 13834690,
+    "original_limit_microyuan": 20000000,
+    "remaining_microyuan": 6165310
+  },
+  "limitations": [
+    "Historical window only; not current production quality.",
+    "Stored status and lifecycle proxy are not acceptance or model latency.",
+    "No independent semantic labels; no semantic improvement or release claim.",
+    "Static prompt freeze is not a current Pi/SDK/cwd/containment execution grant."
+  ],
+  "historical_report_difference": {
+    "paths": [
+      "/dataset_id",
+      "/sources/feedback",
+      "/table_coverage/feedback"
+    ],
+    "explanation": "Current projection includes an empty feedback table and changes dataset identity; historical report is preserved. Operations and quality values match."
+  },
+  "offline_verification": {
+    "source_commit": "4083b69dec005765b620a596bee0b480b8c638b0",
+    "passed": 1687,
+    "skipped": 2,
+    "deselected": 19,
+    "failures": 0,
+    "errors": 0,
+    "exit_code": 0,
+    "elapsed_seconds": 488.6,
+    "selection": "ops/pi/tests/ -m \"not pi_lab and not pi_live\"",
+    "junit_raw_sha256": "dd52396c08a083a6e1bb00f42d2fc82df0dbe49212627d34e55da7a2ddad139c",
+    "log_raw_sha256": "f79bb699fc9cb28550017aad1cd49fcd02f660a8607b55185f42451d81683eb0",
+    "limitations": [
+      "Windows could not create symlinks in two tests.",
+      "No business integration CI, live provider, or production test."
+    ]
+  }
+}

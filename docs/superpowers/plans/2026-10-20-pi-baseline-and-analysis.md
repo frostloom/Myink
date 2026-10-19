@@ -37,7 +37,7 @@
 **Files:** docs/evaluations/pi-baseline-resume-2026-10-20.md；必要时仅按复现证据修改相关测试或分析实现。
 **Interfaces:** Task1提交的干净git archive、writing_evidence.analyze_writing_bundle、make_analysis_view、analysis_trial.freeze_contract_trial；不导入未经认证的候选代码。
 
-- [ ] 从提交归档运行完整 offline ops 测试，排除pi_lab/pi_live，保留JUnit和失败详情。Expected: 全部已选用例无失败；skip/deselected单列，环境失败先诊断。
-- [ ] 核对历史025冻结输入/报告哈希与当前累计账本，只读分析可用域、指标和缺失项。Expected: 不修改历史、不输出正文或凭据。
-- [ ] 对照现有预注册确认下一次真实分析所需的运行门禁和可执行性；若发现真实合同缺陷，先RED后最小修复，不放宽校验。
-- [ ] 当前目标完成后记录证据、审查、单独提交推送。缺少可比语义标签或合法运行门禁则明确剩余项，不以格式通过代替质量闭环。
+- [x] 从提交归档运行完整 offline ops 测试，排除pi_lab/pi_live，保留JUnit和失败详情。Expected: 全部已选用例无失败；skip/deselected单列，环境失败先诊断。
+- [x] 核对历史025冻结输入/报告哈希与当前累计账本，只读分析可用域、指标和缺失项。Expected: 不修改历史、不输出正文或凭据。
+- [x] 对照现有预注册确认下一次真实分析所需的运行门禁和可执行性；若发现真实合同缺陷，先RED后最小修复，不放宽校验。
+- 交付门槛：当前目标完成后记录证据、审查、单独提交推送；推送结果须以远程SHA核对，不由本计划复选框替代。缺少可比语义标签或合法运行门禁则明确剩余项，不以格式通过代替质量闭环。
