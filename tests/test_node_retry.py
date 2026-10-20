@@ -118,8 +118,9 @@ def test_llm_checked_text_noise_triggers_retry(monkeypatch):
     assert calls["n"] == 2
 
 
-def test_node_plan_chapter_retries_bad_json(temp_project, monkeypatch):
+def test_node_plan_chapter_retries_bad_json(temp_project, monkeypatch, stub_provider):
     """真实节点：plan_chapter 坏 JSON → _llm_checked 重发 → 落回 {"plan": ...}（chapter_seq 补全）。"""
+    stub_provider("金丹", "金丹")
     calls = _queued_llm(monkeypatch, ["not json{{", json.dumps(_PLAN, ensure_ascii=False)])
     out = nodes.node_plan_chapter({"project_id": temp_project, "chapter_seq": 1, "context": {}})
     assert "error" not in out, out.get("error")
@@ -128,8 +129,9 @@ def test_node_plan_chapter_retries_bad_json(temp_project, monkeypatch):
     assert calls["n"] == 2, "坏 JSON 应重发一次而不是直接判失败"
 
 
-def test_node_plan_chapter_repairs_missing_comma_without_model_retry(temp_project, monkeypatch):
+def test_node_plan_chapter_repairs_missing_comma_without_model_retry(temp_project, monkeypatch, stub_provider):
     """Planner 只漏一个结构逗号时本地修复，不能让用户看到整份 Plan 连续重写。"""
+    stub_provider("金丹", "金丹")
     malformed = json.dumps(_PLAN, ensure_ascii=False).replace('], "scenes"', '] "scenes"', 1)
     calls = _queued_llm(monkeypatch, [malformed])
 
@@ -140,8 +142,9 @@ def test_node_plan_chapter_repairs_missing_comma_without_model_retry(temp_projec
     assert calls["n"] == 1, "可确定修复的漏逗号不应再次调用 Planner"
 
 
-def test_node_plan_chapter_repairs_inexact_anchor_without_model_retry(temp_project, monkeypatch):
+def test_node_plan_chapter_repairs_inexact_anchor_without_model_retry(temp_project, monkeypatch, stub_provider):
     """生成计划误引或改写章尾时只替换证据字段，不重新规划场景。"""
+    stub_provider("金丹", "金丹")
     tail = "众人收好物资。\n桥下忽然传来三声短促的敲击，林眠抬手示意所有人噤声。"
     plan = {
         **_PLAN,

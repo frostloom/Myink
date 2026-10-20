@@ -157,13 +157,14 @@ def _stub_llm(monkeypatch, payload):
     return nodes
 
 
-def test_extract_character_card_drops_existing_name(temp_project, monkeypatch):
+def test_extract_character_card_drops_existing_name(temp_project, monkeypatch, stub_provider):
     """抽取侧去重（§7.11 ④，防 resume 死循环）：正文已建档人物再出卡 → 候选被丢弃。
 
     缺此守卫时 resume 重跑会把已确认角色反复抽成新卡 → persist 恒 has_card → 章节
     永远 awaiting_review、正文永远不落库。落库侧（_persist_candidates）去重已有，但
     进池前必须拦掉，否则 persist 的 has_card 检查仍会暂停。
     """
+    stub_provider("金丹", "金丹")
     with tenant_session(temp_project) as db:
         db.add(Character(project_id=uuid.UUID(temp_project), name="沈青", realm_cap="金丹"))
         db.flush()
@@ -179,8 +180,9 @@ def test_extract_character_card_drops_existing_name(temp_project, monkeypatch):
             f"已建档名字沈青不应再抽成新卡: {cands}"
 
 
-def test_extract_character_card_keeps_new_name(temp_project, monkeypatch):
+def test_extract_character_card_keeps_new_name(temp_project, monkeypatch, stub_provider):
     """未建档新名字正常出卡（不误杀）：新人物卡片候选应保留进待确认池。"""
+    stub_provider("金丹", "金丹")
     nodes = _stub_llm(monkeypatch, {"candidates": [
         {"kind": "character_card", "source_chapter": 1, "payload": dict(_CARD), "confidence": 0.9},
     ]})
