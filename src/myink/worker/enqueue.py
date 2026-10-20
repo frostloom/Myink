@@ -83,6 +83,9 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
     只有长篇生成的两个入口会传真实值。
     """
     from myink.task_budget import snapshot_budget
+    from myink.platform_readiness import require_operation_ready
+
+    require_operation_ready(task_type, user_id)
 
     try:
         budget_snapshot = snapshot_budget(user_id)

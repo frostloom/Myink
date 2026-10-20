@@ -109,6 +109,8 @@ def _central_chain(role, selections, thinking):
     config = load_configuration()
     if role not in CONFIGURABLE_ROLES:
         return _no_model_chain(thinking)
+    from myink.platform_readiness import require_ready
+    require_ready((role,), selections=selections, config=config)
     override = resolve_connection(role, selections, config)
     if override is not None:
         chain = _chain_from_override(override, thinking)

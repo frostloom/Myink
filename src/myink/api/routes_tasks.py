@@ -445,10 +445,12 @@ def resume_task(task_id: str, body: ResumeBudgetBody | None = None,
             raise HTTPException(status_code=404, detail="任务不存在")
         if task.status not in _RESUMABLE:
             raise HTTPException(status_code=409, detail=f"当前状态不可续跑: {task.status}")
+        from myink.platform_readiness import require_operation_ready
+        owner_id = str(db.get(Project, task.project_id).user_id)
+        require_operation_ready(task.task_type, owner_id)
         task.status = "queued"
         task.error = None
         payload = dict(task.payload)
-        owner_id = str(db.get(Project, task.project_id).user_id)
         db.commit()
     # XADD 续跑消息（同 task_id → thread_id 断点续跑，§6.12）。
     # 按任务类型分流：批次 → batch_resume（batch 图整批续跑）；短篇 → short_resume
@@ -485,6 +487,8 @@ def confirm_task_plan(task_id: str, body: PlanConfirmBody) -> dict:
         payload = dict(task.payload or {})
         if task.task_type != "chapter_generate" or payload.get("mode") != "manual":
             raise HTTPException(status_code=409, detail="该任务不是手动单章写作")
+        from myink.platform_readiness import require_operation_ready
+        require_operation_ready(task.task_type, str(db.get(Project, task.project_id).user_id))
         runs = (db.query(AgentRun)
                 .filter(AgentRun.task_id == task_id, AgentRun.node == "plan_chapter")
                 .order_by(AgentRun.id.desc()).all())

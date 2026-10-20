@@ -10,12 +10,13 @@ vi.mock('../../lib/api', () => ({
   ApiError: class ApiError extends Error { code='API_ERROR' },
   api:{listGenrePacks:vi.fn().mockResolvedValue([])},
 }))
-vi.mock('../../lib/platformApi', () => ({platformApi:{getConfiguration:vi.fn(),updateConfiguration:vi.fn(),listModels:vi.fn(),testConnection:vi.fn()}}))
+vi.mock('../../lib/platformApi', () => ({platformApi:{getReadiness:vi.fn(),getConfiguration:vi.fn(),updateConfiguration:vi.fn(),listModels:vi.fn(),testConnection:vi.fn()}}))
 const emptyEnv = { version:1, model_routes:{},model_connections:[],prompts:{},genre_packs:{} }
 
 const onForbidden = vi.fn()
 
 beforeEach(() => {
+  vi.mocked(platformApi.getReadiness).mockResolvedValue({ready:true, checks:[]})
   onForbidden.mockReset()
   Element.prototype.scrollIntoView = vi.fn()
 })
@@ -250,4 +251,30 @@ it('keeps edited admin defaults after a failed save', async () => {
  fireEvent.click(screen.getByRole('button',{name:'保存平台配置'}))
  await screen.findByRole('alert')
  expect((screen.getByLabelText('默认任务请求上限') as HTMLInputElement).value).toBe('160')
+})
+
+
+it('shows saved readiness and explicitly refreshes without losing unsaved drafts', async () => {
+  vi.mocked(platformApi.getConfiguration).mockResolvedValue({ ...emptyEnv, model_connections: [{
+    id:'test', name:'连接 A', protocol:'openai', base_url:'https://example.test', model:'writer',
+    has_api_key:true, enabled:true, user_visible:true,
+  }] })
+  vi.mocked(platformApi.getReadiness).mockResolvedValueOnce({ready:false, checks:[
+    {role:'audit',ready:false,reason:'credential_unavailable'},
+    {role:'writer',ready:true,reason:null},
+  ]}).mockResolvedValue({ready:true,checks:[{role:'audit',ready:true,reason:null}]})
+  renderPage()
+  await screen.findByText('凭据不可用，请重新保存密钥')
+  fireEvent.change(screen.getByLabelText('连接名称'),{target:{value:'尚未保存'}})
+  fireEvent.click(screen.getByRole('button',{name:'刷新就绪状态'}))
+  await screen.findByText('平台创作服务已就绪')
+  expect((screen.getByLabelText('连接名称') as HTMLInputElement).value).toBe('尚未保存')
+})
+
+it('keeps configuration editable when optional readiness endpoint is unavailable', async () => {
+  vi.mocked(platformApi.getConfiguration).mockResolvedValue(emptyEnv)
+  vi.mocked(platformApi.getReadiness).mockRejectedValue({status:404,code:'not_found'})
+  renderPage()
+  await screen.findByText('暂时无法读取就绪状态')
+  expect((screen.getByRole('button',{name:'保存平台配置'}) as HTMLButtonElement).disabled).toBe(false)
 })

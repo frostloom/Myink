@@ -284,10 +284,12 @@ def test_extract_style_profile_records_an_account_level_run(temp_user, style_stu
     assert row is not None and row.project_id is None and row.node == "style_extract"
 
 
-def test_extract_style_profile_without_any_owner_still_extracts():
+def test_extract_style_profile_without_any_owner_still_extracts(style_stub):
     """不记账的纯提取（既有用法）不能被归属检查误伤。"""
+    style_stub(_STYLE_PAYLOAD)
     profile, err = extract_style_profile([_SAMPLE_1], analyze_sample_stats([_SAMPLE_1]))
-    assert isinstance(profile, dict)
+    assert err is None
+    assert profile["pov"] == "第三人称限知，以主角林砚视角为主"
 
 
 def test_extract_style_profile_with_db_but_no_owner_is_rejected():
@@ -301,7 +303,7 @@ def test_ownerless_extraction_routes_through_the_account_level_chain(temp_user, 
     """有 user_id 无 project_id 必须走 make_user_chain（不是 make_chain(project_id=None)）。
 
     单纯装 style_stub 分辨不出来：make_chain 与 make_user_chain 在桩下返回同一条链。
-    这里盯调用本身。链未配置（无桩）→ 返回降级 error 即可，本测试只问「哪个构造函数被调」。
+    这里盯调用本身。链未配置（无桩）时按平台就绪规则拒绝，仍须选择正确的账号链。
     """
     import myink.providers as providers_mod
 
@@ -309,7 +311,9 @@ def test_ownerless_extraction_routes_through_the_account_level_chain(temp_user, 
     real = providers_mod.make_user_chain
     monkeypatch.setattr(providers_mod, "make_user_chain",
                         lambda role, uid: (called.append((role, uid)), real(role, uid))[1])
-    extract_style_profile([_SAMPLE_1], analyze_sample_stats([_SAMPLE_1]), user_id=temp_user)
+    from myink.platform_readiness import PlatformNotReady
+    with pytest.raises(PlatformNotReady):
+        extract_style_profile([_SAMPLE_1], analyze_sample_stats([_SAMPLE_1]), user_id=temp_user)
     assert called == [("extract", temp_user)]
 
 

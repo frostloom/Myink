@@ -204,7 +204,9 @@ def test_saved_empty_policy_disables_environment_model_fallback(monkeypatch):
     def forbidden(*args):
         pytest.fail('Deployment environment model must not bypass a saved platform policy')
     monkeypatch.setattr(providers, '_platform_chain', forbidden)
-    assert providers._central_chain('writer', {}, False).chain == ['unconfigured']
+    from myink.platform_readiness import PlatformNotReady
+    with pytest.raises(PlatformNotReady):
+        providers._central_chain('writer', {}, False)
 
 
 def test_runtime_policy_database_failure_does_not_fall_back(monkeypatch):
@@ -249,7 +251,8 @@ def test_omitted_backend_defaults_use_platform_writer_not_user_selection(monkeyp
 
 
 @pytest.mark.parametrize('genre, expected_pacing', [('修仙', 'Published pacing'), ('自定义题材', None)])
-def test_short_commit_uses_published_snapshot_on_creation_and_retry(monkeypatch, genre, expected_pacing):
+def test_short_commit_uses_published_snapshot_on_creation_and_retry(monkeypatch, genre, expected_pacing, stub_provider):
+    stub_provider("金丹", "金丹")
     from contextlib import contextmanager
     from types import SimpleNamespace
     from myink.api import routes_short_creation as routes

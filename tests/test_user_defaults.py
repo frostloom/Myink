@@ -141,6 +141,10 @@ def test_platform_defaults_reject_null_and_invalid_values(defaults):
 
 def test_ownerless_model_chains_use_default_thinking_without_account_lookup(configuration, monkeypatch):
     from myink import providers
+    from myink.providers.credentials import encrypt_api_key
+    configuration['connections'] = {'ready': {'enabled':True, 'protocol':'openai',
+        'base_url':'https://models.example.test', 'model':'writer', 'api_key_encrypted':encrypt_api_key('test')}}
+    configuration['model_routes'] = {'writer':'custom:ready'}
     def forbidden(uid):
         pytest.fail('Ownerless model chain must not load an account')
     monkeypatch.setattr(environment, 'load_raw', forbidden)

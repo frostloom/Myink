@@ -295,6 +295,8 @@ def commit(body: ShortCreationCommitBody, session_id: uuid.UUID,
         card = creation.merge_user_card(session.card or {}, body.card or {})
         if not creation.card_ready(card):
             raise HTTPException(status_code=400, detail="CARD_INCOMPLETE")
+        from myink.platform_readiness import require_operation_ready
+        require_operation_ready('short_commit', uid)
         session.card = card
         # 卡上最后改的名字可能从没发过言（就是在方案卡里改的），标题以卡为准。
         _retitle(db, session)

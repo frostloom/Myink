@@ -36,7 +36,11 @@ def platform_defaults(config=None) -> dict:
     if config is None:
         from myink.platform_configuration import load_configuration
         config = load_configuration()
-    return merge_defaults(config.get('user_defaults', {}))
+    try:
+        return merge_defaults(config.get('user_defaults', {}))
+    except (ValueError, TypeError, AttributeError):
+        from myink.platform_readiness import PlatformNotReady
+        raise PlatformNotReady() from None
 
 
 def effective_preferences(raw, config=None) -> dict:

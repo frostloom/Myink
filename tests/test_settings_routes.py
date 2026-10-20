@@ -51,11 +51,12 @@ def _set_routes(pid: str, routes: dict[str, str]) -> None:
 
 def test_make_chain_without_platform_model_does_not_use_builtin(temp_project):
     _isolate_from_account_env(temp_project)
-    chain = make_chain('writer', project_id=temp_project)
-    assert chain.chain == ['unconfigured']
-    assert chain.generate([{'role': 'user', 'content': 'x'}]).error
+    from myink.platform_readiness import PlatformNotReady
+    with pytest.raises(PlatformNotReady):
+        make_chain('writer', project_id=temp_project)
     with tenant_session(temp_project) as db:
-        assert make_chain('writer', project_id=temp_project, db=db).chain == ['unconfigured']
+        with pytest.raises(PlatformNotReady):
+            make_chain('writer', project_id=temp_project, db=db)
 
 
 def test_make_chain_ignores_legacy_project_credentials(temp_project):
@@ -66,7 +67,9 @@ def test_make_chain_ignores_legacy_project_credentials(temp_project):
     _set_routes(temp_project, pack_model_settings({'writer': f'custom:{cid}'}, {
         cid: {'name': 'Legacy', 'protocol': 'openai', 'base_url': 'https://models.example.com',
               'model': 'legacy-pro', 'api_key_encrypted': encrypt_api_key('legacy-secret')}}))
-    assert make_chain('writer', project_id=temp_project).chain == ['unconfigured']
+    from myink.platform_readiness import PlatformNotReady
+    with pytest.raises(PlatformNotReady):
+        make_chain('writer', project_id=temp_project)
     response = get_project_settings(temp_project)
     assert response['model_routes'] == {}
     assert response['model_connections'] == []

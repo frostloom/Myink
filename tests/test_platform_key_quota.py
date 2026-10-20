@@ -69,7 +69,9 @@ def _used(user: str, column: str) -> int:
 
 def test_without_a_platform_key_everything_stays_unconfigured(temp_user):
     """没配密钥：链照旧是 unconfigured，也不认为账号「在吃平台密钥」。"""
-    assert make_user_chain("planner", temp_user).chain == ["unconfigured"]
+    from myink.platform_readiness import PlatformNotReady
+    with pytest.raises(PlatformNotReady):
+        make_user_chain("planner", temp_user)
     assert platform_key_active(temp_user, "user") is False
 
 

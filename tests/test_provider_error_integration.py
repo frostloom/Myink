@@ -11,13 +11,14 @@ from myink.providers import anthropic, deepseek
 
 @pytest.mark.parametrize("kind", ["openai", "anthropic"])
 @pytest.mark.parametrize("stream", [False, True])
-def test_generation_error_is_safe_and_retry_count_unchanged(monkeypatch, caplog, kind, stream):
+@pytest.mark.parametrize("timeout", [False, True])
+def test_generation_error_is_safe_and_retry_count_unchanged(monkeypatch, caplog, kind, stream, timeout):
     module = deepseek if kind == "openai" else anthropic
     cls = deepseek.DeepSeekProvider if kind == "openai" else anthropic.AnthropicProvider
     provider = cls(api_key="sk-secret", base_url="https://example.test")
     provider._client.close()
     req = httpx.Request("POST", "https://example.test")
-    exc = httpx.ConnectError("private host sk-secret", request=req)
+    exc = (httpx.ReadTimeout if timeout else httpx.ConnectError)("private host sk-secret", request=req)
     if kind == "openai":
         wrapped = APIConnectionError(request=req)
         wrapped.__cause__ = exc
@@ -35,7 +36,7 @@ def test_generation_error_is_safe_and_retry_count_unchanged(monkeypatch, caplog,
             result = provider.generate_stream([{"role": "user", "content": "test"}], on_delta=Mock(), on_reset=resets, **kwargs)
         else:
             result = provider.generate([{"role": "user", "content": "test"}], **kwargs)
-    assert "未能连接模型服务" in result.error
+    assert ("模型请求超时" if timeout else "未能连接模型服务") in result.error
     assert "sk-secret" not in result.error + caplog.text
     assert "private host" not in result.error + caplog.text
     assert fail.call_count == 4
@@ -73,3 +74,52 @@ def test_partial_stream_still_resets_on_each_failure(monkeypatch, kind):
     assert resets.call_count == 4 and deltas.call_count == 4
     assert (create if kind == "openai" else stream).call_count == 4
     assert "模型通信中断" in result.error and "sk-secret" not in result.error
+
+
+@pytest.mark.parametrize('kind', ['openai', 'anthropic'])
+@pytest.mark.parametrize('stream', [False, True])
+@pytest.mark.parametrize('status,attempts', [(400,1), (401,1), (403,1), (404,1), (422,1), (408,4), (429,4), (500,4), (503,4)])
+def test_provider_status_retries_are_bounded_and_transient_only(monkeypatch, kind, stream, status, attempts):
+    from openai import APIStatusError
+    module = deepseek if kind == 'openai' else anthropic
+    cls = deepseek.DeepSeekProvider if kind == 'openai' else anthropic.AnthropicProvider
+    provider = cls(api_key='private-secret', base_url='https://example.test')
+    provider._client.close()
+    request = httpx.Request('POST', 'https://example.test')
+    response = httpx.Response(status, request=request, json={'error': {'message': 'private-secret rejected'}})
+    error = (APIStatusError('rejected', response=response, body=None) if kind == 'openai'
+             else httpx.HTTPStatusError('rejected', request=request, response=response))
+    calls = []
+    def fail(*a, **kw):
+        calls.append(kw)
+        raise error
+    provider._client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=fail)), post=fail, stream=fail)
+    waits = []
+    monkeypatch.setattr(module.time, 'sleep', waits.append)
+    if stream:
+        result = provider.generate_stream([{'role':'user', 'content':'test'}], model_id='test', on_delta=lambda text: None)
+    else:
+        result = provider.generate([{'role':'user', 'content':'test'}], model_id='test')
+    assert len(calls) == attempts
+    assert len(waits) == attempts - 1
+    assert 'private-secret' not in result.error
+
+
+@pytest.mark.parametrize('kind', ['openai', 'anthropic'])
+@pytest.mark.parametrize('stream', [False, True])
+def test_invalid_protocol_never_retries(monkeypatch, kind, stream):
+    module = deepseek if kind == 'openai' else anthropic
+    cls = deepseek.DeepSeekProvider if kind == 'openai' else anthropic.AnthropicProvider
+    provider = cls(api_key='secret', base_url='https://example.test')
+    provider._client.close()
+    calls = []
+    def fail(*a, **kw):
+        calls.append(kw)
+        raise httpx.UnsupportedProtocol('bad protocol')
+    provider._client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=fail)), post=fail, stream=fail)
+    monkeypatch.setattr(module.time, 'sleep', lambda *a: None)
+    if stream:
+        provider.generate_stream([], model_id='test', on_delta=lambda text: None)
+    else:
+        provider.generate([], model_id='test')
+    assert len(calls) == 1

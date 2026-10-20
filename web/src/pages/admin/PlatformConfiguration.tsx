@@ -4,7 +4,7 @@ import { Link, useOutletContext } from 'react-router-dom'
 import { ConnectionNotices, type ConnectionNotice } from '../../components/ConnectionNotices'
 import { GenrePackFields } from '../../components/GenrePackFields'
 import { composeFields, type GenreCatalogItem, type GenreFields } from '../../lib/genrePacks'
-import { platformApi, type PlatformConfigurationData, type PlatformConnectionInput } from '../../lib/platformApi'
+import { platformApi, type PlatformConfigurationData, type PlatformConnectionInput, type PlatformReadiness } from '../../lib/platformApi'
 import { api } from '../../lib/api'
 import { formatApiError } from '../../lib/apiError'
 import type {
@@ -24,6 +24,14 @@ const MODEL_ROLES = [
   { key: 'audit', label: '审核（audit）' },
   { key: 'summarize', label: '摘要（summarize）' },
 ]
+const READINESS_REASONS: Record<string, string> = {
+  model_unconfigured: '未配置可用模型',
+  defaults_invalid: '平台默认偏好无效，请检查保存的配置',
+  protocol_invalid: '接口协议无效',
+  model_invalid: '模型 id 无效',
+  address_invalid: '请求地址无效或不允许使用',
+  credential_unavailable: '凭据不可用，请重新保存密钥',
+}
 const EMPTY_ROUTE = { value: '', label: '未指定' }
 const DEFAULT_USER_PREFERENCES: UserDefaults = {
   thinking_enabled: false,
@@ -62,6 +70,9 @@ function normalizeGenreOverrides(
 
 export default function PlatformConfiguration() {
   const { onForbidden } = useOutletContext<AdminOutletContext>()
+  const [readiness, setReadiness] = useState<PlatformReadiness | null>(null)
+  const [readinessLoading, setReadinessLoading] = useState(false)
+  const [readinessUnavailable, setReadinessUnavailable] = useState(false)
   const [version, setVersion] = useState(0)
   const [userDefaults, setUserDefaults] = useState<UserDefaults>(DEFAULT_USER_PREFERENCES)
   const [loading, setLoading] = useState(true)
@@ -113,6 +124,19 @@ export default function PlatformConfiguration() {
       : null
   }
 
+  const refreshReadiness = useCallback(async () => {
+    setReadinessLoading(true)
+    try {
+      const result = await platformApi.getReadiness()
+      setReadiness(result)
+      setReadinessUnavailable(false)
+    } catch (err) {
+      setReadiness(null)
+      setReadinessUnavailable(true)
+      if ((err as { status?: number }).status === 403) onForbidden()
+    } finally { setReadinessLoading(false) }
+  }, [onForbidden])
+
   const load = useCallback(async () => {
     setBanner(null)
     setLoading(true)
@@ -142,7 +166,8 @@ export default function PlatformConfiguration() {
 
   useEffect(() => {
     void load()
-  }, [load])
+    void refreshReadiness()
+  }, [load, refreshReadiness])
 
   async function saveRoutes() {
     const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -192,6 +217,7 @@ export default function PlatformConfiguration() {
       setPrompts(saved.prompts)
       setGenrePacks(normalizeGenreOverrides(saved.genre_packs, catalog))
       notify('save', 'ok', '平台配置已保存', returnFocus)
+      void refreshReadiness()
     } catch (err) {
       if ((err as { status?: number }).status === 403) {
         onForbidden()
@@ -332,6 +358,21 @@ export default function PlatformConfiguration() {
             </button>
           </div>
           {loading && <p role="status">正在加载平台配置…</p>}
+          <section className={`panel ${styles.section}`} aria-label="平台就绪状态">
+            <h2 className={styles.sectionTitle}>平台就绪状态</h2>
+            <p className={styles.hint}>检查已保存配置，不调用模型服务。此状态不包含未保存的草稿，也不代表网络或凭据已通过服务商验证。</p>
+            <button type="button" className="btn btn-secondary" disabled={readinessLoading}
+              onClick={() => void refreshReadiness()}>刷新就绪状态</button>
+            {readinessLoading && <p role="status">正在检查就绪状态…</p>}
+            {readinessUnavailable && <p>暂时无法读取就绪状态</p>}
+            {readiness && <>
+              <p>{readiness.ready ? '平台创作服务已就绪' : '平台创作服务尚未就绪'}</p>
+              <ul>{readiness.checks.map((check) => <li key={check.role}>
+                {MODEL_ROLES.find((role) => role.key === check.role)?.label ?? check.role}：
+                {check.ready ? '就绪' : <span>{READINESS_REASONS[check.reason ?? ''] ?? '配置不可用'}</span>}
+              </li>)}</ul>
+            </>}
+          </section>
           <fieldset disabled={loading || !loaded || busy !== null} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
             <section className={`panel ${styles.section}`}>
               <div className={styles.connectionTitleRow}>

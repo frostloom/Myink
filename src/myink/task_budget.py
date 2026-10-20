@@ -745,6 +745,8 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
                         "message": "预算操作已受理；请刷新任务状态，未重复追加或发布"}
             if task.status not in {"paused", "failed", "awaiting_review"}:
                 raise BudgetResumeError("当前任务状态不可重新投递")
+            from myink.platform_readiness import require_operation_ready
+            require_operation_ready(task.task_type, user_id)
         else:
             adding = bool(body.add_requests or body.add_cost_yuan or body.add_runtime_seconds)
             if task.status not in {"paused", "failed", "awaiting_review"} and not (
@@ -752,6 +754,8 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
                 raise BudgetResumeError(f"当前状态不可追加或续跑: {task.status}")
             if row.owner_token and (row.lease_until or 0) > time.time():
                 raise BudgetResumeError("TASK_STILL_RUNNING: 正在保存进度，请稍后继续")
+            from myink.platform_readiness import require_operation_ready
+            require_operation_ready(task.task_type, user_id)
             old = TaskBudgetLimits.model_validate(row.limits)
             try:
                 limits = TaskBudgetLimits(

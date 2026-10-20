@@ -41,6 +41,7 @@ from myink.config import settings
 from myink.db import new_session, tenant_session
 from myink.models import Chapter, Project
 from myink.worker.enqueue import EnqueueUnavailable, GateError
+from myink.platform_readiness import PlatformNotReady
 from myink.worker.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
@@ -93,6 +94,11 @@ async def _api_error(_request: Request, exc: ApiError) -> JSONResponse:
 async def _gate_rejected(_request: Request, exc: GateError) -> JSONResponse:
     """三层闸门拒绝（配额/并发/成本/书数）→ 429，信封同 ApiError。"""
     return JSONResponse({"error": exc.code}, status_code=429)
+
+
+@app.exception_handler(PlatformNotReady)
+async def _platform_not_ready(_request: Request, _exc: PlatformNotReady) -> JSONResponse:
+    return JSONResponse({'error': 'PLATFORM_NOT_READY'}, status_code=503)
 
 
 @app.exception_handler(EnqueueUnavailable)

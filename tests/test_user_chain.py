@@ -56,4 +56,6 @@ def test_user_chain_without_any_platform_route_is_unconfigured(central_policy):
     config, selections = central_policy
     config['connections'] = {}
     config['model_routes'] = {}
-    assert make_user_chain('planner', uuid.uuid4()).chain == ['unconfigured']
+    from myink.platform_readiness import PlatformNotReady
+    with pytest.raises(PlatformNotReady):
+        make_user_chain('planner', uuid.uuid4())

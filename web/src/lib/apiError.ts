@@ -8,13 +8,14 @@ export const GATE_CODES: Record<string, string> = {
   CONCURRENCY_LIMIT: '本书已有进行中的任务，请稍候',
   DAILY_BUDGET_EXCEEDED: '当日全局成本预算已用完',
   BOOK_CNT_EXCEEDED: '今日新建作品数已达上限',
-  // 内置密钥的终身免费额度（用完才要求配自己的 key）
-  PLATFORM_QUOTA_EXCEEDED: '免费额度已用完，去环境配置里添加自己的密钥',
-  PLATFORM_CHAPTER_EXCEEDED: '本书的免费章节已写完，配置自己的密钥可继续写',
+  // 平台额度由管理员维护。
+  PLATFORM_QUOTA_EXCEEDED: '免费创作额度已用完，请联系管理员',
+  PLATFORM_CHAPTER_EXCEEDED: '本书免费章节额度已用完，请联系管理员',
 }
 
 const ERROR_CODES: Record<string, string> = {
   ...GATE_CODES,
+  PLATFORM_NOT_READY: '平台创作服务暂不可用，请稍后重试或联系管理员',
   enqueue_failed: '写作任务没能进入队列，请稍后重试',
   network_error: '网络连接失败，请检查网络后重试',
   invalid_body: '请求内容无效，请检查后重试',
@@ -80,6 +81,9 @@ export function formatErrorText(
   fallback = '请求失败，请重试',
 ): string {
   const raw = (code ?? '').trim()
+  if (/authentication fails|authentication_error|api[ _-]?key|模型密钥|模型连接配置无效|未能连接模型服务|invalid_request_error|error code:\s*40[123]|模型服务返回 HTTP 40[123]/i.test(raw)) {
+    return '平台创作服务暂不可用，请稍后重试或联系管理员'
+  }
   if (raw && looksLikeUserMessage(raw)) return raw
   if (raw && ERROR_CODES[raw]) return ERROR_CODES[raw]
   const numeric = Number(raw)
@@ -87,9 +91,6 @@ export function formatErrorText(
     return STATUS_MESSAGES[numeric]
   }
   if (status && STATUS_MESSAGES[status]) return STATUS_MESSAGES[status]
-  if (/authentication fails|authentication_error|api key[^\n]*invalid|invalid_request_error|error code:\s*401/i.test(raw)) {
-    return '模型密钥无效。请到环境配置检查 API Key。'
-  }
   return fallback
 }
 

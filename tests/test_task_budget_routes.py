@@ -16,7 +16,8 @@ client = TestClient(app)
 
 
 @pytest.fixture
-def paused_budget(budget_task):
+def paused_budget(budget_task, stub_provider):
+    stub_provider("金丹", "金丹")
     tid, pid, uid = budget_task
     ensure_task_budget(tid, pid, uid, {"max_requests":1})
     with tenant_session(pid) as db:

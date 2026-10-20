@@ -36,9 +36,16 @@ export interface PlatformConfigurationInput extends Omit<PlatformConfigurationDa
   genre_packs: Record<string, GenreFields>
 }
 
+export interface PlatformReadiness {
+  ready: boolean
+  checks: Array<{ role: string; ready: boolean; reason: string | null }>
+}
+
 const PATH = '/admin/configuration'
 
 export const platformApi = {
+  getReadiness: () =>
+    authenticatedGet<PlatformReadiness>(`${PATH}/readiness`, getToken() ?? ''),
   getConfiguration: () =>
     authenticatedGet<PlatformConfigurationData>(PATH, getToken() ?? ''),
   updateConfiguration: (body: PlatformConfigurationInput) =>

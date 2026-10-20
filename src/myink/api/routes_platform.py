@@ -8,6 +8,8 @@ from myink.platform_configuration import ConfigurationBody, ConfigurationOut, Mo
 from myink.providers import probe
 from myink.providers.credentials import decrypt_api_key
 
+from myink.platform_readiness import ReadinessOut, readiness
+
 router = APIRouter(prefix='/api/v1', tags=['platform'])
 
 
@@ -32,6 +34,14 @@ def get_configuration(request: Request, response: Response, actor: _Authenticate
     response.headers['Cache-Control'] = 'no-store'
     _audit_or_fail(actor, request, 'admin.configuration.read')
     return public_configuration()
+
+
+@router.get('/admin/configuration/readiness', response_model=ReadinessOut)
+def get_readiness(request: Request, response: Response,
+                  actor: _AuthenticatedUser = Depends(require_admin)) -> dict:
+    response.headers['Cache-Control'] = 'no-store'
+    _audit_or_fail(actor, request, 'admin.configuration.readiness')
+    return readiness()
 
 
 @router.put('/admin/configuration', response_model=ConfigurationOut, response_model_exclude_none=True)
