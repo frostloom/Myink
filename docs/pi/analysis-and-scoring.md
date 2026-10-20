@@ -86,3 +86,16 @@ C16 fix round 1：comparison 每输出费用仅在所有 receipt 都有有限非
 网关先认证，再检查请求封装并严格解析 JSON；仅 messages 两条现有路由调用 `request_guard(body)`，且只有返回字面布尔 `True` 才进入原 `forward_messages` 的预算预留/转发/结算。False、None、其他真值或异常统一返回无异常详情的403，拒绝请求不占用模型预算。工具和证明路由仍走原 broker；未配置函数的旧入口保持原行为。
 
 宿主应由冻结输入构建当前可信槽位，在函数中调用 `verify_contract_request(body, slot)` 并明确返回 True；随后仍由原账本执行每次预留，不能用校验函数代替计费。HTTP 服务使用线程并发，函数对共享槽位游标的校验和消费必须自行提供原子性及持久化；此接口不会阻止重复请求、自动推进游标或恢复进度。整轮次数/费用/时间上限、当前隔离证明、会话与进程树清理仍需宿主绑定。校验函数执行也受原 HTTP 总期限约束，但函数本身是可信宿主代码，不是可强制终止任意 Python 函数的沙箱。
+
+
+### 持久化槽位与 HTTP 防重放（2026-10-21）
+
+`ops/pi/analysis_run.py` 的 `AnalysisRun.create(ledger, run_id, slots, source_sha256=..., config_sha256=...)` 原子登记一轮身份和全部30槽。`slots` 来自 `prepare_contract_slots`；冻结全部请求及顺序，账本只保存身份和哈希，不保存提示或正文。`AnalysisRun.open(...)` 只能打开完全相同的持久记录，不能重建缺失槽位、覆盖原运行或改变源码/配置。复用现有 Ledger 的 WAL/FULL、BEGIN IMMEDIATE 和不可变回执，schema 不变。
+
+可信宿主用 `run.gateway_handler(slot_index, policy, transport, scope_token=...)` 构造已有 HTTP 网关，并为该槽位的新 Pi 会话配置同一个私有随机令牌。令牌应由宿主使用 `secrets.token_urlsafe(32)` 等方式产生，长度32–4096、可打印ASCII；只落盘令牌SHA256。每个槽位使用不同令牌，同一账本内禁止跨槽位或跨运行复用。部分 baseline 请求字节完全相同，所以仅有正文哈希无法辨别旧 HTTP 包；宿主必须在结束旧会话、确认退出并记录结果后，为下一槽建立新的处理器和会话，不能在保留旧令牌的服务中切换游标。
+
+`run.guard(slot_index)` 是底层正文校验原语。HTTP 路径优先使用上面的 `gateway_handler`，由既有认证先拒绝旧令牌，再在预算预留前原子校验、持久认领一次。线程/进程竞争只能有一个请求获准；相同请求重发、旧guard、漂移请求和乱序请求均拒绝。认领事务与后续模型预算预留是不同事务：即使认领后没有成功预留、没有发出请求或宿主崩溃，该槽位也已消耗准入机会，不能自动重试。
+
+宿主核对实际结果后调用 `run.finish(slot_index, status='done'|'failed'|'uncertain'|'blocked')`；done/failed 表示本槽已得到明确终态，允许下一槽，不能理解为合同有效或计费认证。uncertain/blocked 阻止后续槽位；终态不可改写。不填写终态的已认领槽位在 `snapshot()` 中保持 UNCERTAIN，不能因重启变成 NOT_RUN。恢复程序可以依据外部证据为尚未写入终态的认领记录结果，但此模块不执行自动核对或释放。`snapshot()` 返回完整30槽，包括 NOT_RUN，不含正文或令牌。
+
+该模块接通持久准入能力，不启动 Pi、不循环执行30槽，不授予新预算。当前有效的整轮预算/期限、原累计账本、准确运行时与实际文件身份、无工具分析、资源隔离和进程清理仍由可信宿主接入验收；不能将本地HTTP模拟视作付费实验许可或语义质量改善。
