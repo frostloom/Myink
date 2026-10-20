@@ -68,3 +68,11 @@ C16 fix round 1：comparison 每输出费用仅在所有 receipt 都有有限非
 抽取量表的独立比较集保存在冻结 case 中：`expected_mutations_status=independently_reviewed`、完整 `expected_mutations`（唯一 id、entity、attribute、chapter、old_value、new_value 及有效 source citations），且 `label_gaps` 无缺项。本量表采用保守的全比较集检查：各语义判断须有每个 expected id 的 source+extract_output 引用，唯一 item 集及 denominator 均匹配冻结比较集，才保留自动 provisional 分值；缺标签或证据仍 unknown。经独立核实的空集将 omission/persistence 记为 N/A、denominator=0、value=null；未标注空数组与它有区别，不给满分。其他空集判断保持 unknown。交付的合成资产没有独立抽取标签，仍不生成抽取语义分数。
 
 合成配对比较禁止目标和所有护栏中的 p95 指标：即使提供有限的确定性数值，六组合成数据也不能建立至少100个完整真实尾部任务的资格；比较返回 insufficient_evidence 且不公布 p95 delta。非 p95 机制目标继续按原冻结 Plan 检查。
+
+## 分析合同执行接入（2026-10-20）
+
+`ops/pi/analysis_execution.py` 的 `prepare_contract_slots(views, report, model=..., cwd=...)` 按现有5组、2臂、3次重复产生30个私有槽位。重复1/3为baseline→candidate，重复2反序；实际system包含共同cwd，提示/输入/报告/请求身份均冻结。`writing_analysis.build_analysis_request` 与原preflight共用请求构造，SDK及网关两种编码仍受65536字节限制。
+
+宿主用 `verify_contract_request(actual_body, slot)` 在实际网关转发前核对真实SDK请求；`run_contract_slot(... engine, session, deadline ...)` 在启动前重算槽位，拒绝输入/提示/模型/cwd漂移、旧会话和超过90秒deadline。调用现有Engine一次、无工具、无自动重试，原始私有回执保留；适配器done之后还需原严格解析及目标域评分。
+
+槽位和结果含正文，只能放私有目录；公开摘要只列ID、状态、数量和哈希。`contract_valid`仅表示该返回满足输出合同；不证明请求已付费记账、实际隔离或语义质量。`billing_verified=false`、45项语义unknown、`automatic_execution=false`、`release_allowed=false`保持。原宿主仍必须提供当前有效scope、原累计20元账本、每次预留、整轮deadline、严格隔离和进程树清理。不能将新接入层当作真实调用grant，不能重放旧040授权。

@@ -197,7 +197,7 @@ def build_writing_prompt(view, report, *, target_domain):
         '{"new_features_require_owner":true}. Keep compact within 2048 output tokens and 32768 UTF-8 bytes.\nDATA\n' + _json(data))
 
 
-def preflight_request(prompt, *, model, cwd):
+def build_analysis_request(prompt, *, model, cwd):
     """Pinned fresh no-tool Pi SDK payload after pi-wire-guard; count both encodings.
 
     Custom --system-prompt in Pi 1.1.0 appends only the cwd section when all
@@ -207,6 +207,12 @@ def preflight_request(prompt, *, model, cwd):
     body = dict(model=model, max_tokens=2048, stream=True, thinking={'type': 'disabled'},
                 messages=[{'role': 'user', 'content': [{'type': 'text', 'text': prompt}]}],
                 system=[{'type': 'text', 'text': system}])
+    return body
+
+
+def preflight_request(prompt, *, model, cwd):
+    """Count the same frozen request in SDK and gateway encodings."""
+    body = build_analysis_request(prompt, model=model, cwd=cwd)
     sizes = dict(sdk_utf8_bytes=len(_json(body).encode('utf-8')),
                  gateway_json_bytes=len(_json(body, ascii=True).encode('utf-8')))
     if max(sizes.values()) > 65536:
