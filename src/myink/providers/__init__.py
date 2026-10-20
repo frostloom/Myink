@@ -123,10 +123,10 @@ def _central_chain(role, selections, thinking):
 def make_chain(role: str, project_id=None, db=None) -> FallbackChain:
     if default_provider is not _BUILTIN_PROVIDER:
         return FallbackChain(default_provider, ['stub'])
-    from myink.environment import packed_models
+    from myink.environment import packed_models, thinking_enabled_for_user
     from myink.models import Project
     from myink.db import tenant_session
-    thinking = _thinking_enabled(project_id, db) if project_id else False
+    thinking = _thinking_enabled(project_id, db) if project_id else thinking_enabled_for_user(None)
     owner = None
     if project_id:
         if db is None:
@@ -162,7 +162,7 @@ def _thinking_enabled(project_id, db) -> bool:
     else:
         proj = db.get(Project, pid)
         owner = proj.user_id if proj is not None else None
-    return thinking_enabled_for_user(owner) if owner is not None else False
+    return thinking_enabled_for_user(owner)
 
 
 __all__ = [

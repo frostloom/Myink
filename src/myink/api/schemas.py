@@ -321,6 +321,7 @@ class RankingsConfigOut(BaseModel):
 class EnvironmentOut(BaseModel):
     """账号级环境配置（模型连接/路由 + 思考模式 + 扫榜）。"""
 
+    overridden_fields: list[str] = Field(default_factory=list)
     available_models: list[dict[str, str]] = Field(default_factory=list)
     model_routes: dict = Field(default_factory=dict)
     model_connections: list[dict] = Field(default_factory=list)

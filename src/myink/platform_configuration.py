@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from myink.db import new_session
 from myink.models.platform import PlatformConfiguration
 from myink.api.routes_settings import ModelConnectionBody
+from myink.user_defaults import UserDefaults, merge_defaults, platform_defaults
 
 USER_ROLES = frozenset({'writer', 'planner'})
 PLATFORM_ROLES = frozenset({'writer', 'planner', 'extract', 'validator_l2', 'audit', 'summarize'})
@@ -32,6 +33,7 @@ class GenreFields(BaseModel):
 
 class ConfigurationBody(BaseModel):
     model_config = ConfigDict(extra='forbid')
+    user_defaults: UserDefaults = Field(default_factory=UserDefaults)
     version: int = Field(ge=0)
     model_connections: list[PlatformConnectionBody]
     model_routes: dict[str, str]
@@ -63,6 +65,7 @@ class PlatformConnectionOut(BaseModel):
 
 
 class ConfigurationOut(BaseModel):
+    user_defaults: UserDefaults = Field(default_factory=UserDefaults)
     version: int
     model_connections: list[PlatformConnectionOut]
     model_routes: dict[str, str]
@@ -89,6 +92,7 @@ def public_configuration(config=None) -> dict:
         record = config['connections'][item['id']]
         item.update(enabled=record.get('enabled', True), user_visible=record.get('user_visible', True))
     return {'version': config['version'], 'model_connections': items,
+            'user_defaults': platform_defaults(config),
             **{k: deepcopy(config[k]) for k in ('model_routes', 'prompts', 'genre_packs')}}
 
 
@@ -119,7 +123,11 @@ def save_configuration(body: ConfigurationBody) -> dict:
         raw = fields.model_dump(exclude_unset=True, exclude_none=True)
         cleaned = _clean_fields(raw)
         genres[pid] = {key: cleaned[key] for key in raw}
-    document = {'connections': connections, 'model_routes': body.model_routes,
+    defaults = old.get('user_defaults', {})
+    if 'user_defaults' in body.model_fields_set:
+        defaults = merge_defaults(body.user_defaults.model_dump(mode='json', exclude_unset=True),
+                                  platform_defaults(old))
+    document = {'user_defaults': defaults, 'connections': connections, 'model_routes': body.model_routes,
                 'prompts': body.prompts, 'genre_packs': genres}
     with new_session() as db:
         if body.version == 0:

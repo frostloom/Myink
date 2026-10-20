@@ -63,11 +63,8 @@ def public_limits(limits: TaskBudgetLimits) -> dict:
 
 
 def budget_defaults(user_id=None) -> TaskBudgetLimits:
-    if user_id is None:
-        return TaskBudgetLimits()
-    from myink.environment import load_raw
-    raw = load_raw(user_id).get("task_budget")
-    return TaskBudgetLimits.model_validate(raw if isinstance(raw, dict) else {})
+    from myink.environment import preferences_for_user
+    return TaskBudgetLimits.model_validate(preferences_for_user(user_id)["task_budget"])
 
 
 def snapshot_budget(user_id=None) -> dict:
