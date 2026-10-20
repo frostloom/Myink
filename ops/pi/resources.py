@@ -190,7 +190,7 @@ def _watch_guest(unit, duration):
         result['minimum_available'] = min(samples) if samples else None
         result['elapsed'] = time.monotonic() - started
         result['finished_at'] = datetime.now(timezone.utc).isoformat()
-        _publish_guest_result(ownership, result, base, Path('/Users/a1/项目/Myink/myink-pi/evidence'))
+        _publish_guest_result(ownership, result, base, Path('/mnt/e/tools/myink-pi/evidence'))
 
 
 if __name__ == '__main__':

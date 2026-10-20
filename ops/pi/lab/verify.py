@@ -299,7 +299,7 @@ B10_RECHECKS={'b10-review-lane':('tests/test_queue_handoff.py','-k','review_orig
 
 
 def _b10_parent_evidence():
-    evidence=Path('/Users/a1/项目/Myink/myink-pi/evidence')
+    evidence=Path('/mnt/e/tools/myink-pi/evidence')
     hashes={B10_PARENT+'.receipt.json':'4473d639eb3d707cff07be1bf8dcb979b4e4b76fe77865f42a967f4eabeac3ed',
         'b10-fresh-final-source.json':'19ca69e5b955c1001cf517b9ad2fccc6c8ffdd2534f51527eb531a73cc822888',
         'b10-census-'+B10_PARENT+'.json':'b10da7e68fe123dfcbf8343fb4a0919ad55514d8aff26401901beeef0690d7b9'}
@@ -344,7 +344,7 @@ def run_b10_retained(selection):
     from myink.maintenance import maintenance_view
     with Session(get_admin_engine()) as db:inventory['census']=reconcile_queue(db,maintenance_view(db)['epoch'])
     inventory['deliveries'],inventory['broker_unknown']=_queue_census()
-    target=Path('/Users/a1/项目/Myink/myink-pi/evidence')/('b10-retained-'+operation+'.json')
+    target=Path('/mnt/e/tools/myink-pi/evidence')/('b10-retained-'+operation+'.json')
     raw=json.dumps(inventory,default=lambda value:{'bytes_hex':value.hex()} if isinstance(value,bytes) else str(value)).encode()
     target.write_bytes(raw);target.with_suffix('.sha256').write_text(hashlib.sha256(raw).hexdigest())
     verify_test_environment()

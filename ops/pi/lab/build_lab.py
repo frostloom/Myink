@@ -27,7 +27,7 @@ from ops.pi.lab.verify import BASE, _configuration, _docker, verify_runtime
 BUILDKIT_IMAGE = 'moby/buildkit@sha256:d947144c3dc4f827f8dacaaf98d622f0143465740075fa9790991bc381761dc9'
 DEPENDENCY_FILES = ('Dockerfile', 'caddy/Dockerfile', 'pyproject.toml', 'docker/constraints.txt',
                     'web/package.json', 'web/package-lock.json', '.dockerignore')
-PRIVATE = Path('/Users/a1/项目/Myink/myink-pi')
+PRIVATE = Path('/mnt/e/tools/myink-pi')
 FORBIDDEN_ENV = {'PI_LAB_ENV', 'DOCKER_HOST', 'DOCKER_CONFIG', 'PLATFORM_MODEL_API_KEY',
                  'PLATFORM_MODEL_BASE_URL', 'PLATFORM_MODEL_NAME', 'PLATFORM_MODEL_PROTOCOL'}
 ROLE_SQL = """
@@ -663,8 +663,7 @@ def _probe_filesystem():
     left, right = line.split(' - ', 1)
     fields = right.split()
     actual = {'major_minor': left.split()[2], 'fs_type': fields[0], 'source': fields[1]}
-    trusted_base = proof['base_path'].lower().startswith('e:') or proof['base_path'].startswith('/Users/a1/项目/Myink/myink-pi')
-    if proof['distribution'] != 'MyinkPiLab' or not trusted_base or actual != proof['root_filesystem']:
+    if proof['distribution'] != 'MyinkPiLab' or not proof['base_path'].lower().startswith('e:') or actual != proof['root_filesystem']:
         raise ValueError('b12_native_filesystem_unowned')
     return proof
 
