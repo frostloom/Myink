@@ -4,6 +4,8 @@
 
 ## 最新状态（2026-10-20）
 
+跨电脑继续开发先读[最新迁移交接](../HANDOFF-2026-10-20.md)：分支检查点、各文档用途、私有证据/运行时/账本清单及恢复顺序均在其中。最新功能`0d02318`已把可信宿主`request_guard`接到实际网关，在模型预算预留前校验请求；相关171项测试通过、无跳过，见[网关验收](../evaluations/pi-gateway-admission-2026-10-20.md)。持久槽位、防重放、整轮预算/期限及本轮严格隔离仍需接入。
+
 分析合同逐槽接入已完成：实际Pi1.1.0进程通过两臂本地合成网关验证，实际请求匹配、同system/cwd、新会话并退出0。相关回归402 passed、1个Windows符号链接SKIP；正式付费30槽对照尚未启动。见[运行接入记录](../evaluations/pi-analysis-runtime-2026-10-20.md)及[公开回执](../evaluations/pi-analysis-runtime-2026-10-20.json)。
 
 最近完整离线控制模块基线来自提交4083b69：1687 passed、2个Windows符号链接权限SKIP、19个pi_lab/pi_live未选入；早于本轮接入改动，不是当前全量或生产验收。已核对025输入/报告与累计账本；45项语义质量仍unknown，本轮无外部模型调用、无候选采纳、无部署。见[基线与数据分析记录](../evaluations/pi-baseline-resume-2026-10-20.md)。下一步接入当前宿主scope/预算/隔离验收后做有限真实分析对照，完整自主迭代闭环尚未完成。
@@ -23,7 +25,7 @@
 C18 分层状态与维护交接见[本机试验报告](../evaluations/pi-local-trial/report.md)、[证据索引](../evaluations/pi-local-trial/receipt-index.json)、[服务器启用清单](server-enablement.md)和[日报/事故通知](notifications.md)。当前为 partial：主机隔离与模拟协议已通过，合成基线机械检查实际失败，45项语义指标/11域仍 unknown。冻结源码离线825 passed、2个Windows符号链接SKIP、19个设施测试deselected；该结果早于 admission 修复，修复另有17项真实SQLite查询测试通过，PostgreSQL回归未运行。完整服务构建与生产启用仍未验收。报告中的旧 A 阶段固定 banner 是历史边界，不自动反映新主机事实。
 
 从仓库根运行 `python -m ops.pi.control ledger-check --state-dir /Users/a1/项目/Myink/myink-pi/state`。
-WSL 对应 `/Users/a1/项目/Myink/myink-pi/state`；本轮状态、私有证据、依赖、缓存均在 E 盘隔离目录，保护主工作区。
+以上命令是Mac私有根示例。原Windows私有根为`E:\tools\myink-pi`，WSL对应`/mnt/e/tools/myink-pi`，状态目录均为该根下的`state/`；Linux原生执行目录另在E盘WSL虚拟磁盘内，迁移映射见交接文档。本轮状态、私有证据、依赖、缓存均在E盘隔离环境，保护主工作区。
 `ops/pi/policy.example.json` 是配置起点；默认 live disabled。费用可信来源、价格、输入上界校准未具备时禁止真实请求。
 凭据仅由受信宿主加载 PLATFORM_MODEL_API_KEY/BASE_URL/NAME/PROTOCOL；模型 HTTP 接口不提供通知、Git、凭据或任意工具权限。不要将凭据写入报告、通知记录或版本库。
 
