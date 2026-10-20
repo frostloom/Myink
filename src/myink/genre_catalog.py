@@ -639,14 +639,20 @@ def get_root(pack_id: str | None) -> dict[str, Any] | None:
     resolved = resolve_pack_id(pack_id)
     if resolved is None:
         return None
-    return deepcopy(PACKS[resolved])
+    from myink.platform_configuration import load_configuration
+    root = deepcopy(PACKS[resolved])
+    root.update(load_configuration()['genre_packs'].get(resolved, {}))
+    return root
 
 
 def catalog_entries() -> list[dict[str, Any]]:
+    from myink.platform_configuration import load_configuration
+    config = load_configuration()
     out: list[dict[str, Any]] = []
     for _group, ids in GROUPS:
         for pid in ids:
-            root = PACKS[pid]
+            root = deepcopy(PACKS[pid])
+            root.update(config['genre_packs'].get(pid, {}))
             item = {"id": pid, "name": root["name"], "group": root["group"]}
             item.update(deepcopy({k: root[k] for k in FIELD_KEYS}))
             item["setup_caps"] = setup_capabilities({"source_id": pid})
@@ -752,6 +758,7 @@ def build_book_pack(primary_id: str | None, secondary_id: str | None,
         "secondary_name": secondary["name"] if secondary else None,
         **fields,
     }
+    pack["_secondary_snapshot"] = deepcopy(secondary)
     pack["baseline"] = deepcopy({k: pack[k] for k in (*FIELD_KEYS,)})
     return pack
 
@@ -827,7 +834,11 @@ def format_prompt(pack: Any) -> str:
         items = [str(x).strip() for x in (data.get(key) or []) if str(x).strip()]
         if items:
             parts.append(f"{label_cn}：" + "；".join(items))
-    secondary = get_root(data.get("secondary_id")) if data.get("secondary_id") else None
+    secondary_id = data.get('secondary_id')
+    # Existing snapshots never consume newly published global overrides.
+    # Legacy snapshots predate this marker and retain the bundled secondary rules.
+    secondary = (deepcopy(data['_secondary_snapshot']) if '_secondary_snapshot' in data
+                 else deepcopy(PACKS.get(secondary_id))) if secondary_id else None
     if secondary is not None:
         parts.append(
             "主辅比例：7:3。主线、节奏、禁忌和世界观遵循主题材。"

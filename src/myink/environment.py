@@ -9,7 +9,7 @@ from typing import Any
 from myink.config import settings
 from myink.db import new_session
 from myink.models import User
-from myink.providers.connections import keep_custom_routes, unpack_model_settings
+from myink.providers.connections import unpack_model_settings
 
 
 def default_rankings() -> dict[str, Any]:
@@ -50,15 +50,16 @@ def packed_models(user_id: str | uuid.UUID) -> dict[str, Any] | None:
 
 
 def load_environment(user_id: str | uuid.UUID) -> dict[str, Any]:
-    from myink.providers.connections import public_connections
     from myink.task_budget import TaskBudgetLimits, public_limits
 
     raw = load_raw(user_id)
-    routes, connections = unpack_model_settings(raw.get("models") if isinstance(raw.get("models"), dict) else {})
-    routes = keep_custom_routes(routes, connections)
+    routes, _ = unpack_model_settings(raw.get("models") if isinstance(raw.get("models"), dict) else {})
+    from myink.platform_configuration import catalog, clean_user_routes
+    routes = clean_user_routes(routes)
     return {
         "model_routes": routes,
-        "model_connections": public_connections(connections),
+        "model_connections": [],
+        "available_models": catalog()["models"],
         "rankings": merge_rankings(raw.get("rankings")),
         "thinking_enabled": bool(raw.get("thinking_enabled")),
         "task_budget": public_limits(TaskBudgetLimits.model_validate(raw.get("task_budget") or {})),

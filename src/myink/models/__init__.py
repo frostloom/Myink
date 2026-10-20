@@ -111,3 +111,5 @@ __all__ = [
     "GLOBAL_AUDIT_TRIGGERS",
     "SNAPSHOT_STAGES",
 ]
+
+from myink.models.platform import PlatformConfiguration

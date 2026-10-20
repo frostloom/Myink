@@ -215,7 +215,7 @@ DEFAULT_ROUTES: dict[str, list[str]] = {}
 
 
 class MissingModelProvider(ModelProvider):
-    """用户未配置连接时的显式失败，避免悄悄打 .env 里的内置 Key。"""
+    """Explicit failure when platform policy has no usable model for this role."""
 
     def generate(self, messages: list[dict], *, model_id: str, max_tokens: int | None = None,
                  temperature: float | None = None, json_mode: bool = False,
@@ -223,7 +223,7 @@ class MissingModelProvider(ModelProvider):
                  disable_thinking: bool = False) -> ModelResponse:
         return ModelResponse(
             content="", model_id=model_id,
-            error="请先在环境配置里添加模型连接，并为该角色指定模型",
+            error="请联系管理员配置并启用平台模型，再选择已发布模型",
         )
 
     def name(self) -> str:

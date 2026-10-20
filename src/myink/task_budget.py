@@ -386,6 +386,14 @@ def budgeted_call(function):
     """Wrap a logical fallback-chain call; providers meter each HTTP attempt."""
     @wraps(function)
     def wrapped(chain, messages, **kwargs):
+        addition = getattr(chain, 'system_addition', '')
+        if addition:
+            messages = [*messages, {'role': 'system', 'content': addition}]
+            from myink.config import settings
+            from myink.context_budget import ContextBudgetExceeded, estimate_tokens
+            request = {'messages': messages, 'tools': kwargs.get('tools') or []}
+            if estimate_tokens(request) > settings.request_token_budget:
+                raise ContextBudgetExceeded('CONTEXT_BUDGET_EXCEEDED: platform instructions exceed request budget')
         scope = _SCOPE.get()
         if scope is None:
             return function(chain, messages, **kwargs)

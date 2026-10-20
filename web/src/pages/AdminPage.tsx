@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Outlet, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
+import { AdminRail } from '../components/AdminRail'
 import { AttachmentChip } from '../components/FeedbackWidget'
-import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
 import { formatApiError } from '../lib/apiError'
 import {
@@ -541,7 +541,7 @@ export default function AdminPage() {
     // 未登录或非管理员：给一页带左 rail 的空态，而不是白屏（游客仍能从这里走回其它页）。
     return (
       <div className={styles.wrap}>
-        <ProjectRail projects={[]} onLogout={logout} />
+        <AdminRail onLogout={logout} />
         <main className={styles.main}>
           <div className="empty">只有管理员可以打开控制台。</div>
         </main>
@@ -558,7 +558,7 @@ export default function AdminPage() {
   }
   return (
     <div className={styles.wrap}>
-      <ProjectRail projects={[]} onLogout={logout} />
+      <AdminRail onLogout={logout} />
       <main className={styles.main}>
         <Outlet key={identity} context={{ token: session.token, onForbidden }} />
       </main>

@@ -415,3 +415,15 @@ it('drops the realm ladder for genres without power scaling', async () => {
   expect(screen.getByText('核心人物')).toBeTruthy()
   expect(screen.queryByPlaceholderText('境界上限')).toBeNull()
 })
+
+it('offers published genre selection without editable root fields', async () => {
+ vi.mocked(api.listGenrePacks).mockResolvedValue([{...emptyFields(),id:'fantasy',name:'奇幻',group:'幻想',selling_point:'平台发布卖点'}])
+ renderPage('/projects/new')
+ await screen.findAllByRole('button',{name:'奇幻'})
+ expect(screen.queryByLabelText('核心卖点')).toBeNull()
+ fireEvent.click(screen.getAllByRole('button',{name:'奇幻'})[0])
+ fillCreationBrief()
+ fireEvent.click(screen.getByRole('button',{name:'创建作品'}))
+ await waitFor(() => expect(api.createProject).toHaveBeenCalled())
+ expect(vi.mocked(api.createProject).mock.lastCall?.[0]).not.toHaveProperty('genre_fields')
+})

@@ -2745,6 +2745,98 @@
         "title": "CharacterStateChangeOut",
         "type": "object"
       },
+      "ConfigurationBody": {
+        "additionalProperties": false,
+        "properties": {
+          "genre_packs": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/GenreFields"
+            },
+            "title": "Genre Packs",
+            "type": "object"
+          },
+          "model_connections": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformConnectionBody"
+            },
+            "title": "Model Connections",
+            "type": "array"
+          },
+          "model_routes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Model Routes",
+            "type": "object"
+          },
+          "prompts": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Prompts",
+            "type": "object"
+          },
+          "version": {
+            "minimum": 0.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "model_connections",
+          "model_routes",
+          "prompts",
+          "genre_packs"
+        ],
+        "title": "ConfigurationBody",
+        "type": "object"
+      },
+      "ConfigurationOut": {
+        "properties": {
+          "genre_packs": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/GenreFields"
+            },
+            "title": "Genre Packs",
+            "type": "object"
+          },
+          "model_connections": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformConnectionOut"
+            },
+            "title": "Model Connections",
+            "type": "array"
+          },
+          "model_routes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Model Routes",
+            "type": "object"
+          },
+          "prompts": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Prompts",
+            "type": "object"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "model_connections",
+          "model_routes",
+          "prompts",
+          "genre_packs"
+        ],
+        "title": "ConfigurationOut",
+        "type": "object"
+      },
       "ConnectionProbeBody": {
         "description": "探针请求：未保存的新连接直接传明文 api_key；已保存连接可只给 connection_id 复用密钥。",
         "properties": {
@@ -3210,6 +3302,16 @@
       "EnvironmentOut": {
         "description": "账号级环境配置（模型连接/路由 + 思考模式 + 扫榜）。",
         "properties": {
+          "available_models": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Available Models",
+            "type": "array"
+          },
           "model_connections": {
             "items": {
               "additionalProperties": true,
@@ -3511,6 +3613,110 @@
           "group"
         ],
         "title": "GenreCatalogItemOut",
+        "type": "object"
+      },
+      "GenreFields": {
+        "additionalProperties": false,
+        "properties": {
+          "mechanics": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mechanics"
+          },
+          "pacing": {
+            "anyOf": [
+              {
+                "maxLength": 10000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pacing"
+          },
+          "satisfaction": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Satisfaction"
+          },
+          "selling_point": {
+            "anyOf": [
+              {
+                "maxLength": 10000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selling Point"
+          },
+          "subgenres": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subgenres"
+          },
+          "taboos": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taboos"
+          },
+          "world_hints": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "World Hints"
+          }
+        },
+        "title": "GenreFields",
         "type": "object"
       },
       "GenrePackFieldsBody": {
@@ -4290,6 +4496,30 @@
         "title": "MfaVerifyRequest",
         "type": "object"
       },
+      "ModelCatalogOut": {
+        "properties": {
+          "model_routes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Model Routes",
+            "type": "object"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/PublishedModel"
+            },
+            "title": "Models",
+            "type": "array"
+          }
+        },
+        "required": [
+          "models",
+          "model_routes"
+        ],
+        "title": "ModelCatalogOut",
+        "type": "object"
+      },
       "ModelConnectionBody": {
         "properties": {
           "api_key": {
@@ -4513,6 +4743,158 @@
         "title": "PlanConfirmBody",
         "type": "object"
       },
+      "PlatformConnectionBody": {
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "format": "password",
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "input_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Price"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "output_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Price"
+          },
+          "protocol": {
+            "enum": [
+              "openai",
+              "anthropic"
+            ],
+            "title": "Protocol",
+            "type": "string"
+          },
+          "user_visible": {
+            "default": true,
+            "title": "User Visible",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "protocol",
+          "base_url",
+          "model"
+        ],
+        "title": "PlatformConnectionBody",
+        "type": "object"
+      },
+      "PlatformConnectionOut": {
+        "properties": {
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "has_api_key": {
+            "title": "Has Api Key",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "input_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Price"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "output_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Price"
+          },
+          "protocol": {
+            "title": "Protocol",
+            "type": "string"
+          },
+          "user_visible": {
+            "title": "User Visible",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "protocol",
+          "base_url",
+          "model",
+          "has_api_key",
+          "enabled",
+          "user_visible"
+        ],
+        "title": "PlatformConnectionOut",
+        "type": "object"
+      },
       "ProjectCreationOut": {
         "properties": {
           "context": {
@@ -4664,6 +5046,24 @@
           }
         },
         "title": "ProjectUpdateBody",
+        "type": "object"
+      },
+      "PublishedModel": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "PublishedModel",
         "type": "object"
       },
       "RankingItemOut": {
@@ -6257,6 +6657,168 @@
         "summary": "Admin.Access Logs",
         "tags": [
           "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/configuration": {
+      "get": {
+        "operationId": "get_configuration_api_v1_admin_configuration_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigurationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Configuration",
+        "tags": [
+          "platform"
+        ]
+      },
+      "put": {
+        "operationId": "put_configuration_api_v1_admin_configuration_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigurationBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigurationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Put Configuration",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/v1/admin/configuration/models": {
+      "post": {
+        "operationId": "list_models_api_v1_admin_configuration_models_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionProbeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Models",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/v1/admin/configuration/test-connection": {
+      "post": {
+        "operationId": "test_connection_api_v1_admin_configuration_test_connection_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionProbeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionTestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Test Connection",
+        "tags": [
+          "platform"
         ]
       }
     },
@@ -8438,6 +9000,32 @@
         "summary": "List Genre Packs",
         "tags": [
           "genre"
+        ]
+      }
+    },
+    "/api/v1/model-catalog": {
+      "get": {
+        "operationId": "get_model_catalog_api_v1_model_catalog_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelCatalogOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Model Catalog",
+        "tags": [
+          "platform"
         ]
       }
     },

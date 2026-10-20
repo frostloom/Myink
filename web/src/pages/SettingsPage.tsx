@@ -7,8 +7,7 @@ import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
-import { GenrePackFields } from '../components/GenrePackFields'
-import { emptyFields, isManagedPack, type BookGenrePack, type GenreFields } from '../lib/genrePacks'
+import { isManagedPack, type BookGenrePack } from '../lib/genrePacks'
 import type { Project, ProjectSettings } from '../types'
 import styles from './SettingsPage.module.css'
 
@@ -18,7 +17,6 @@ export default function SettingsPage() {
 
   const [projects, setProjects] = useState<Project[]>([])
   const [settings, setSettings] = useState<ProjectSettings | null>(null)
-  const [genreDraft, setGenreDraft] = useState<GenreFields>(emptyFields())
   const [genrePack, setGenrePack] = useState<BookGenrePack | null>(null)
   // 每章目标字数（§6.9 三层字数控制；从 projects 取该书当前值，可改保存）
   const [targetWords, setTargetWords] = useState('3000')
@@ -36,18 +34,8 @@ export default function SettingsPage() {
       setSettings(s)
       if (isManagedPack(s.genre_pack)) {
         setGenrePack(s.genre_pack)
-        setGenreDraft({
-          selling_point: s.genre_pack.selling_point,
-          subgenres: s.genre_pack.subgenres,
-          taboos: s.genre_pack.taboos,
-          pacing: s.genre_pack.pacing,
-          satisfaction: s.genre_pack.satisfaction,
-          mechanics: s.genre_pack.mechanics,
-          world_hints: s.genre_pack.world_hints,
-        })
       } else {
         setGenrePack(null)
-        setGenreDraft(emptyFields())
       }
       setProjects(proj)
       const cur = proj.find((p) => p.id === projectId)
@@ -65,40 +53,6 @@ export default function SettingsPage() {
   function showError(err: unknown) {
     setOk(null)
     setBanner(formatApiError(err))
-  }
-
-  async function saveGenrePack() {
-    if (!genrePack) return
-    setBusy('genre')
-    setBanner(null)
-    setOk(null)
-    try {
-      const next = await api.putGenrePack(projectId, genreDraft)
-      setGenrePack(next)
-      await load()
-      setOk('本书题材已保存，之后写章/修订会用新字段')
-    } catch (err) {
-      showError(err)
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  async function restoreGenrePack() {
-    if (!genrePack) return
-    setBusy('genre-restore')
-    setBanner(null)
-    setOk(null)
-    try {
-      const next = await api.restoreGenrePack(projectId)
-      setGenrePack(next)
-      await load()
-      setOk('已恢复建书时的题材字段')
-    } catch (err) {
-      showError(err)
-    } finally {
-      setBusy(null)
-    }
   }
 
   async function saveTargetWords() {
@@ -154,25 +108,8 @@ export default function SettingsPage() {
                   根题材：{genrePack.source_name}
                   {genrePack.secondary_name ? ` · 辅题材：${genrePack.secondary_name}` : ''}
                 </p>
-                <GenrePackFields value={genreDraft} onChange={setGenreDraft} />
-                <div className={styles.saveRow}>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    disabled={busy !== null}
-                    onClick={() => void restoreGenrePack()}
-                  >
-                    {busy === 'genre-restore' ? '恢复中…' : '恢复建书时的题材字段'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    disabled={busy !== null}
-                    onClick={() => void saveGenrePack()}
-                  >
-                    {busy === 'genre' ? '保存中…' : '保存本书题材'}
-                  </button>
-                </div>
+                <p>{genrePack.selling_point}</p>
+                <p className={styles.hint}>题材由平台统一发布，本书保留建书时的快照。</p>
               </>
             ) : (
               <p className={styles.hint}>本书创建时未选题材包，不回填。新书请在建书页选择。</p>
@@ -202,7 +139,7 @@ export default function SettingsPage() {
               >
                 {busy === 'words' ? '保存中…' : '保存目标字数'}
               </button>
-              <Link className="btn btn-quiet" to="/environment">模型连接与扫榜</Link>
+              <Link className="btn btn-quiet" to="/environment">模型偏好与扫榜</Link>
             </div>
           </section>
         </div>

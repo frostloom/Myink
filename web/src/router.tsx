@@ -12,6 +12,7 @@ import { RunDetailPage } from './pages/admin/RunDetail'
 import { TaskDetailPage } from './pages/admin/TaskDetail'
 import { UserDetailPage } from './pages/admin/UserDetail'
 import AppearancePage from './pages/AppearancePage'
+import PlatformConfiguration from './pages/admin/PlatformConfiguration'
 import EnvironmentPage from './pages/EnvironmentPage'
 import LoginPage from './pages/LoginPage'
 import LorePage from './pages/LorePage'
@@ -76,13 +77,18 @@ function RequireProject() {
   return <Outlet />
 }
 
+function HomeRedirect() {
+  const {session} = useAuth()
+  return <Navigate to={session?.role === 'admin' && session.roleVerified ? '/admin' : '/long'} replace />
+}
+
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage />, errorElement: <RouteErrorPage /> },
   {
     element: <RequireAuth />,
     errorElement: <RouteErrorPage />,
     children: [
-      { path: '/', element: <Navigate to="/long" replace /> },
+      { path: '/', element: <HomeRedirect /> },
       // 长篇与短篇是两条独立管道（后端 _assert_writable 也会拦错管道），前端从入口就分开。
       { path: '/long', element: <ProjectsPage form="long" /> },
       { path: '/short', element: <ProjectsPage form="short" /> },
@@ -98,6 +104,7 @@ export const router = createBrowserRouter([
         element: <AdminPage />,
         children: [
           { index: true, element: <AdminConsole /> },
+          { path: 'configuration', element: <PlatformConfiguration /> },
           { path: 'projects/:projectId', element: <ProjectDetailPage /> },
           { path: 'tasks/:taskId', element: <TaskDetailPage /> },
           { path: 'runs/:runId', element: <RunDetailPage /> },

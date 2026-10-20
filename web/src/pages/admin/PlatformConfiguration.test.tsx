@@ -1,0 +1,219 @@
+// @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import PlatformConfiguration from './PlatformConfiguration'
+import { api } from '../../lib/api'
+import { platformApi } from '../../lib/platformApi'
+
+vi.mock('../../lib/api', () => ({
+  ApiError: class ApiError extends Error { code='API_ERROR' },
+  api:{listGenrePacks:vi.fn().mockResolvedValue([])},
+}))
+vi.mock('../../lib/platformApi', () => ({platformApi:{getConfiguration:vi.fn(),updateConfiguration:vi.fn(),listModels:vi.fn(),testConnection:vi.fn()}}))
+const emptyEnv = { version:1, model_routes:{},model_connections:[],prompts:{},genre_packs:{} }
+
+const onForbidden = vi.fn()
+
+beforeEach(() => {
+  onForbidden.mockReset()
+  Element.prototype.scrollIntoView = vi.fn()
+})
+
+afterEach(() => {
+  cleanup()
+  vi.clearAllMocks()
+})
+
+function renderPage() {
+  return render(
+    <MemoryRouter initialEntries={['/environment']}>
+      <Routes><Route element={<Outlet context={{token:"admin",onForbidden}} />}><Route path="/environment" element={<PlatformConfiguration />} /></Route></Routes>
+    </MemoryRouter>,
+  )
+}
+
+it('keeps the draft and presents failed saves in the notification region', async () => {
+  vi.mocked(platformApi.getConfiguration).mockResolvedValue({ ...emptyEnv, model_connections: [{
+    id: 'test', name: '连接 A', protocol: 'openai', base_url: 'https://example.test/v1',
+    model: 'writer', has_api_key: true, enabled:true,user_visible:true,
+  }] })
+  vi.mocked(platformApi.updateConfiguration).mockRejectedValue({ status: 500, code: '保存失败', body: null })
+  renderPage()
+  const name = await screen.findByLabelText('连接名称')
+  fireEvent.change(name, { target: { value: '新名称' } })
+  fireEvent.click(screen.getByRole('button', { name: '保存平台配置' }))
+  const notice = await screen.findByRole('alert')
+  expect(notice.textContent).toContain('保存失败')
+  expect(screen.getByRole('region', { name: '模型连接通知' }).contains(notice)).toBe(true)
+  fireEvent.click(screen.getByRole('button', { name: '关闭通知' }))
+  expect((name as HTMLInputElement).value).toBe('新名称')
+  expect(platformApi.updateConfiguration).toHaveBeenCalledTimes(1)
+})
+
+it.each(['models', 'test'] as const)('reports %s failures visibly without resubmitting on close', async (operation) => {
+  vi.mocked(platformApi.getConfiguration).mockResolvedValue({ ...emptyEnv, model_connections: [{
+    id: 'test', name: '连接 A', protocol: 'openai', base_url: 'https://example.test/v1',
+    model: 'writer', has_api_key: true, enabled:true,user_visible:true,
+  }] })
+  vi.mocked(platformApi.listModels).mockResolvedValue({ ok: false, models: [], error: '服务拒绝' })
+  vi.mocked(platformApi.testConnection).mockRejectedValue({ status: 500, code: '服务拒绝', body: null })
+  renderPage()
+  await screen.findByDisplayValue('连接 A')
+  const button = screen.getByRole('button', { name: operation === 'models' ? '获取模型列表' : '测试连接' })
+  fireEvent.click(button)
+  const notice = await screen.findByRole('alert')
+  expect(notice.textContent).toContain('服务拒绝')
+  expect(within(screen.getByRole('region', { name: '模型连接通知' })).getByRole('alert')).toBe(notice)
+  fireEvent.click(screen.getByRole('button', { name: '关闭通知' }))
+  expect(screen.queryByRole('alert')).toBeNull()
+  expect(operation === 'models' ? platformApi.listModels : platformApi.testConnection).toHaveBeenCalledTimes(1)
+})
+
+it('adds a network model and routes Writer through it without exposing saved keys', async () => {
+  vi.mocked(platformApi.getConfiguration).mockResolvedValue(emptyEnv)
+  vi.mocked(platformApi.updateConfiguration).mockResolvedValue(emptyEnv)
+  vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('11111111-1111-4111-8111-111111111111')
+
+  renderPage()
+  await screen.findByText(/尚未添加网络模型/)
+  fireEvent.click(screen.getByRole('button', { name: '添加网络模型' }))
+  fireEvent.change(screen.getByLabelText('连接名称'), { target: { value: '我的 GPT' } })
+  fireEvent.change(screen.getByLabelText('请求地址'), { target: { value: 'https://models.example.com/v1' } })
+  fireEvent.change(screen.getByLabelText('模型 id'), { target: { value: 'novel-pro' } })
+  fireEvent.change(screen.getByLabelText(/API Key/), { target: { value: 'secret-key' } })
+  fireEvent.change(screen.getByLabelText('写作（writer）'), {
+    target: { value: 'custom:11111111-1111-4111-8111-111111111111' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: '保存平台配置' }))
+
+  await waitFor(() => expect(platformApi.updateConfiguration).toHaveBeenCalledWith({
+    model_routes: { writer: 'custom:11111111-1111-4111-8111-111111111111' },
+    model_connections: [{
+      id: '11111111-1111-4111-8111-111111111111', name: '我的 GPT', protocol: 'openai',
+      base_url: 'https://models.example.com/v1', model: 'novel-pro', api_key: 'secret-key', enabled:true,user_visible:true,
+    }],
+    version: 1, prompts: {}, genre_packs: {},
+  }))
+})
+
+it('focuses and describes the missing field without saving', async () => {
+  vi.mocked(platformApi.getConfiguration).mockResolvedValue(emptyEnv)
+  vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('33333333-3333-4333-8333-333333333333')
+
+  renderPage()
+  await screen.findByText(/尚未添加网络模型/)
+  fireEvent.click(screen.getByRole('button', { name: '添加网络模型' }))
+  fireEvent.change(screen.getByLabelText('请求地址'), { target: { value: 'https://models.example.com/v1' } })
+  fireEvent.change(screen.getByLabelText('模型 id'), { target: { value: 'novel-pro' } })
+  fireEvent.change(screen.getByLabelText(/API Key/), { target: { value: 'secret-key' } })
+  fireEvent.click(screen.getByRole('button', { name: '保存平台配置' }))
+
+  const field = screen.getByLabelText('连接名称')
+  expect(document.activeElement).toBe(field)
+  expect(field.getAttribute('aria-invalid')).toBe('true')
+  expect(document.getElementById(field.getAttribute('aria-describedby') ?? '')?.textContent).toContain('连接名称')
+  expect(field.scrollIntoView).toHaveBeenCalled()
+  expect(platformApi.updateConfiguration).not.toHaveBeenCalled()
+})
+
+it('fetches the model list into the datalist and tests connectivity', async () => {
+  vi.mocked(platformApi.getConfiguration).mockResolvedValue(emptyEnv)
+  vi.mocked(platformApi.listModels).mockResolvedValue({ ok: true, models: ['novel-pro', 'novel-mini'], error: null })
+  vi.mocked(platformApi.testConnection).mockResolvedValue({ ok: true, latency_ms: 88, reply: 'pong', error: null })
+  vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('22222222-2222-4222-8222-222222222222')
+
+  renderPage()
+  await screen.findByText(/尚未添加网络模型/)
+  fireEvent.click(screen.getByRole('button', { name: '添加网络模型' }))
+  fireEvent.change(screen.getByLabelText('请求地址'), { target: { value: 'https://models.example.com/v1' } })
+  fireEvent.change(screen.getByLabelText('模型 id'), { target: { value: 'novel-pro' } })
+  fireEvent.change(screen.getByLabelText(/API Key/), { target: { value: 'secret-key' } })
+
+  fireEvent.click(screen.getByRole('button', { name: '获取模型列表' }))
+  await waitFor(() => expect(platformApi.listModels).toHaveBeenCalledWith({
+    protocol: 'openai', base_url: 'https://models.example.com/v1', model: 'novel-pro', api_key: 'secret-key',
+  }))
+  await screen.findByText('已获取 2 个模型')
+  const options = Array.from(document.querySelectorAll('datalist option'))
+    .map((option) => option.getAttribute('value'))
+  expect(options).toEqual(['novel-pro', 'novel-mini'])
+
+  fireEvent.click(screen.getByRole('button', { name: '测试连接' }))
+  await waitFor(() => expect(platformApi.testConnection).toHaveBeenCalled())
+  await waitFor(() => expect(screen.getByRole('status').textContent).toContain('连接正常 · 88 ms'))
+})
+
+it('does not offer built-in DeepSeek models in the role dropdowns', async () => {
+  vi.mocked(platformApi.getConfiguration).mockResolvedValue(emptyEnv)
+
+  renderPage()
+  const writer = await screen.findByLabelText('写作（writer）')
+  const labels = Array.from(writer.querySelectorAll('option')).map((option) => option.textContent)
+  expect(labels).toEqual(['未指定'])
+  expect(screen.getByLabelText('审核（audit）')).toBeTruthy()
+  expect(screen.getByLabelText('摘要（summarize）')).toBeTruthy()
+  expect(screen.queryByLabelText('思考模式')).toBeNull()
+  expect(screen.queryByText(/deepseek/i)).toBeNull()
+  expect(screen.queryByRole('button', { name: '填入 DeepSeek 官方地址' })).toBeNull()
+})
+
+
+it('saves publication flags, role prompts and version while preserving a blank saved credential', async () => {
+ vi.mocked(platformApi.getConfiguration).mockResolvedValue({...emptyEnv, model_connections:[{id:'one',name:'模型一',protocol:'openai',base_url:'https://example.test/v1',model:'writer',has_api_key:true,enabled:true,user_visible:true}]})
+ vi.mocked(platformApi.updateConfiguration).mockRejectedValue({status:409,code:'configuration_conflict'})
+ renderPage()
+ await screen.findByDisplayValue('模型一')
+ expect((screen.getByLabelText(/API Key/) as HTMLInputElement).value).toBe('')
+ fireEvent.click(screen.getByLabelText('向用户发布'))
+ fireEvent.change(screen.getByLabelText('写作（writer）追加指令'),{target:{value:'保持中文叙事'}})
+ fireEvent.click(screen.getByRole('button',{name:'保存平台配置'}))
+ await screen.findByText(/配置已被其他管理员更新/)
+ expect((screen.getByLabelText('写作（writer）追加指令') as HTMLTextAreaElement).value).toBe('保持中文叙事')
+ const body=vi.mocked(platformApi.updateConfiguration).mock.calls[0][0]
+ expect(body.version).toBe(1)
+ expect(body.prompts.writer).toBe('保持中文叙事')
+ expect(body.model_connections[0].user_visible).toBe(false)
+ expect(body.model_connections[0]).not.toHaveProperty('api_key')
+})
+
+it('keeps configuration disabled after a load failure and supports retry', async () => {
+ vi.mocked(platformApi.getConfiguration).mockRejectedValueOnce({status:503,code:'平台暂不可用'}).mockResolvedValue(emptyEnv)
+ renderPage()
+ await screen.findByRole('alert')
+ expect((screen.getByRole('button',{name:'保存平台配置'}) as HTMLButtonElement).disabled).toBe(true)
+ fireEvent.click(screen.getByRole('button',{name:'重新加载配置'}))
+ await waitFor(() => expect((screen.getByRole('button',{name:'保存平台配置'}) as HTMLButtonElement).disabled).toBe(false))
+})
+it('edits existing platform genres without sending catalog metadata', async () => {
+ vi.mocked(platformApi.getConfiguration).mockResolvedValue(emptyEnv)
+ vi.mocked(api.listGenrePacks).mockResolvedValue([{id:'fantasy',name:'奇幻',group:'幻想',selling_point:'原卖点',subgenres:[],taboos:[],pacing:'',satisfaction:[],mechanics:[],world_hints:[]}])
+ vi.mocked(platformApi.updateConfiguration).mockResolvedValue(emptyEnv)
+ renderPage()
+ await screen.findByDisplayValue('原卖点')
+ fireEvent.change(screen.getByLabelText('核心卖点'),{target:{value:'新卖点'}})
+ fireEvent.click(screen.getByRole('button',{name:'保存平台配置'}))
+ await waitFor(() => expect(platformApi.updateConfiguration).toHaveBeenCalled())
+ const pack=vi.mocked(platformApi.updateConfiguration).mock.calls[0][0].genre_packs.fantasy
+ expect(pack.selling_point).toBe('新卖点')
+ expect(pack).not.toHaveProperty('id')
+ expect(pack).not.toHaveProperty('group')
+})
+
+it('clears protected configuration through the admin gate when save permission is revoked', async () => {
+ vi.mocked(platformApi.getConfiguration).mockResolvedValue(emptyEnv)
+ vi.mocked(platformApi.updateConfiguration).mockRejectedValue({status:403,code:'forbidden'})
+ renderPage()
+ await waitFor(() => expect((screen.getByRole('button',{name:'保存平台配置'}) as HTMLButtonElement).disabled).toBe(false))
+ fireEvent.click(screen.getByRole('button',{name:'保存平台配置'}))
+ await waitFor(() => expect(onForbidden).toHaveBeenCalledTimes(1))
+})
+
+it('merges partial nullable genre overrides with published genre defaults', async () => {
+ vi.mocked(platformApi.getConfiguration).mockResolvedValue({...emptyEnv, genre_packs:{fantasy:{pacing:'管理员节奏',selling_point:null,subgenres:null,taboos:null,satisfaction:null,mechanics:null,world_hints:null}}} as never)
+ vi.mocked(api.listGenrePacks).mockResolvedValue([{id:'fantasy',name:'奇幻',group:'幻想',selling_point:'默认卖点',subgenres:[],taboos:['默认禁忌'],pacing:'默认节奏',satisfaction:[],mechanics:[],world_hints:[]}])
+ renderPage()
+ await screen.findByDisplayValue('管理员节奏')
+ expect(screen.getByDisplayValue('默认卖点')).toBeTruthy()
+ expect(screen.getByDisplayValue('默认禁忌')).toBeTruthy()
+})

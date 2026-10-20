@@ -26,6 +26,7 @@ from myink.api.routes_chapters import router as chapters_router
 from myink.api.routes_environment import router as environment_router
 from myink.api.routes_feedback import router as feedback_router
 from myink.api.routes_genre import router as genre_router
+from myink.api.routes_platform import router as platform_router
 from myink.api.routes_global_audit import router as global_audit_router
 from myink.api.routes_lessons import router as lessons_router
 from myink.api.routes_rankings import router as rankings_router
@@ -114,6 +115,7 @@ async def _aligned_http_error(request: Request, exc: StarletteHTTPException):
 
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(platform_router)
 app.include_router(book_router)
 app.include_router(tasks_router)
 app.include_router(sse_router)

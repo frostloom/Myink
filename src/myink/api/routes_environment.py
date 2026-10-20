@@ -11,19 +11,16 @@ from myink.api.routes_settings import (
     ModelConnectionBody,
     _assert_host_allowed,
     _clean_base_url,
-    connection_record,
+    audited_admin_probe,
 )
 from myink.api.schemas import ConnectionTestOut, EnvironmentOut, ModelListOut
 from myink.environment import load_environment, load_raw, save_raw
 from myink.task_budget import TaskBudgetLimits, public_limits
-from myink.providers import CONFIGURABLE_ROLES, probe
+from myink.providers import probe
 from myink.providers.connections import (
-    CUSTOM_ROUTE_PREFIX,
-    keep_custom_routes,
     pack_model_settings,
     unpack_model_settings,
 )
-from myink.providers.credentials import decrypt_api_key
 
 router = APIRouter(prefix="/api/v1", tags=["environment"])
 
@@ -61,30 +58,6 @@ def _validate_rankings(body: RankingsBody, existing: dict) -> dict:
     return merged
 
 
-def _apply_connections(
-    items: list[ModelConnectionBody], existing_connections: dict,
-) -> dict:
-    connections: dict = {}
-    seen: set[str] = set()
-    for item in items:
-        cid, rec = connection_record(item, existing_connections)
-        if cid in seen:
-            raise HTTPException(status_code=400, detail=f"模型连接 id 重复: {cid}")
-        seen.add(cid)
-        connections[cid] = rec
-    return connections
-
-
-def _validate_routes(routes: dict[str, str], connections: dict) -> None:
-    for role, model_ref in routes.items():
-        if role not in CONFIGURABLE_ROLES:
-            raise HTTPException(status_code=400,
-                                detail=f"不可配置的 role: {role}（仅 {sorted(CONFIGURABLE_ROLES)}）")
-        if model_ref.startswith(CUSTOM_ROUTE_PREFIX) and model_ref[len(CUSTOM_ROUTE_PREFIX):] in connections:
-            continue
-        raise HTTPException(status_code=400, detail=f"未知模型: {model_ref}")
-
-
 @router.get("/environment", response_model=EnvironmentOut)
 def get_environment(user_id: str = Depends(require_user)) -> dict:
     return load_environment(user_id)
@@ -92,20 +65,15 @@ def get_environment(user_id: str = Depends(require_user)) -> dict:
 
 @router.put("/environment", response_model=EnvironmentOut)
 def put_environment(body: EnvironmentBody, user_id: str = Depends(require_user)) -> dict:
+    from myink.platform_configuration import clean_user_routes, validate_user_routes
+    if 'model_connections' in body.model_fields_set:
+        raise HTTPException(403, 'Platform connections are managed by administrators')
     raw = load_raw(user_id)
-    existing_routes, existing_connections = unpack_model_settings(
-        raw.get("models") if isinstance(raw.get("models"), dict) else {},
-    )
-    routes = existing_routes if body.model_routes is None else body.model_routes
-    connections = existing_connections
-    if body.model_connections is not None:
-        connections = _apply_connections(body.model_connections, existing_connections)
-    if body.model_routes is None:
-        routes = keep_custom_routes(routes, connections)
-    _validate_routes(routes, connections)
-
+    existing_routes, _ = unpack_model_settings(raw.get('models') or {})
+    routes = clean_user_routes(existing_routes) if body.model_routes is None else body.model_routes
+    validate_user_routes(routes)
     stored = dict(raw)
-    stored["models"] = pack_model_settings(routes, connections)
+    stored['models'] = pack_model_settings(routes, {})
     if body.rankings is not None:
         existing = raw.get("rankings") if isinstance(raw.get("rankings"), dict) else {}
         stored["rankings"] = _validate_rankings(body.rankings, existing)
@@ -122,20 +90,12 @@ def put_environment(body: EnvironmentBody, user_id: str = Depends(require_user))
 
 
 def _probe_key(user_id: str, body: ConnectionProbeBody) -> str:
-    raw = body.api_key.get_secret_value().strip() if body.api_key else ""
-    if raw:
-        return raw
-    if body.connection_id:
-        _, connections = unpack_model_settings(load_raw(user_id).get("models"))
-        stored = connections.get(body.connection_id, {}).get("api_key_encrypted")
-        if stored:
-            key = decrypt_api_key(str(stored))
-            if key:
-                return key
-    raise HTTPException(status_code=400, detail="需要填写 API Key（或选择已保存密钥的连接）")
+    from myink.api.routes_platform import probe_key
+    return probe_key(body)
 
 
-@router.post("/environment/models", response_model=ModelListOut)
+
+@router.post("/environment/models", response_model=ModelListOut, dependencies=[Depends(audited_admin_probe)])
 def list_environment_models(
     body: ConnectionProbeBody, user_id: str = Depends(require_user),
 ) -> dict:
@@ -146,7 +106,7 @@ def list_environment_models(
     return {"ok": error is None, "models": models, "error": error}
 
 
-@router.post("/environment/test-connection", response_model=ConnectionTestOut)
+@router.post("/environment/test-connection", response_model=ConnectionTestOut, dependencies=[Depends(audited_admin_probe)])
 def test_environment_connection(
     body: ConnectionProbeBody, user_id: str = Depends(require_user),
 ) -> dict:

@@ -182,3 +182,11 @@ it('closes an enabled second factor with a code', async () => {
   await waitFor(() => expect(api.mfaDisable).toHaveBeenCalledWith('123456', 'token-a'))
   await waitFor(() => expect(endSession).toHaveBeenCalled())
 })
+
+it('keeps administrators in the management navigation while configuring account security', async () => {
+ vi.mocked(api.mfaStatus).mockResolvedValue({enabled:false})
+ renderAdminAs({})
+ expect(screen.getByRole('navigation',{name:'平台管理导航'})).toBeTruthy()
+ expect(screen.queryByRole('navigation',{name:'作品分区'})).toBeNull()
+ await waitFor(() => expect(api.listProjects).not.toHaveBeenCalled())
+})

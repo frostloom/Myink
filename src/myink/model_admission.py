@@ -71,6 +71,9 @@ return 1
 def _reservation(chain: FallbackChain, messages: list[dict], max_tokens: int) -> tuple[float, bool]:
     # UTF-8 bytes plus envelope allowance is deliberately more conservative than
     # the UI's character heuristic, including Chinese and custom tokenizers.
+    addition = getattr(chain, 'system_addition', '')
+    if addition:
+        messages = [*messages, {'role': 'system', 'content': addition}]
     input_bound = len(json.dumps(messages, ensure_ascii=False).encode("utf-8")) + 1024
     per_attempt = 0.0
     known = True

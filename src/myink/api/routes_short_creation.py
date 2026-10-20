@@ -31,6 +31,7 @@ from myink.config import settings
 from myink.creation import validate_short_outline
 from myink.db import new_creation_lock_session, new_session, tenant_session
 from myink.memory.repository import get_settings
+from myink.genre_catalog import build_book_pack, resolve_pack_id
 from myink.models import (AgentRun, Chapter, Project, ProjectSettings, ShortCreationMessage,
                           ShortCreationSession, Task, User)
 from myink.providers import platform_key_active
@@ -311,11 +312,13 @@ def commit(body: ShortCreationCommitBody, session_id: uuid.UUID,
             if uses_platform and _book._platform_quota_used_up(user.platform_short_used,
                                                               settings.platform_short_quota):
                 return _book._platform_quota_response()
+            primary_id = resolve_pack_id(card["genre"])
+            genre_pack = build_book_pack(primary_id, None) if primary_id else {}
             try:
                 project, inserted = _book._create_project_row(
                     db, uid, title=card["working_title"], genre=card["genre"],
                     premise=premise, chapter_count=chapters, chars_per_chapter=chars,
-                    form="short")
+                    form="short", genre_pack=genre_pack)
             except _book.BookCountExceeded:
                 return _book._book_cnt_response()
             session.book_id = project.id          # 先记下：后面任一步失败，重试复用它
@@ -327,6 +330,11 @@ def commit(body: ShortCreationCommitBody, session_id: uuid.UUID,
         pid = project.id
         db.commit()
 
+    # Reuse the persisted snapshot on retries even if global packs changed meanwhile.
+    with tenant_session(str(pid)) as tdb:
+        settings_row = get_settings(tdb, pid)
+        genre_pack = (settings_row.genre_pack if settings_row else {}) or {}
+
     # 2) 出方案 + 审纲（复用旧向导的短篇分支，含「被打回就重出一次」）
     db2 = new_session()
     try:
@@ -334,7 +342,7 @@ def commit(body: ShortCreationCommitBody, session_id: uuid.UUID,
             str(pid),
             _book.OutlineDraftBody(premise=premise, chapter_count=chapters,
                                    chars_per_chapter=chars, storyline=""),
-            card["genre"], {}, chapters, db2)
+            card["genre"], genre_pack, chapters, db2)
     finally:
         db2.close()
     outline = patch.get("outline_draft") or {}

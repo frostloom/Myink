@@ -424,3 +424,11 @@ it('keeps a taskless run row readable when the book is gone', async () => {
   expect(await screen.findByText('文风提炼')).toBeTruthy()
   expect(screen.getAllByText('—').length).toBeGreaterThan(0)
 })
+
+it('provides dedicated administration navigation with account access and no writing rail', async () => {
+ renderPage()
+ expect(await screen.findByRole('navigation', {name:'平台管理导航'})).toBeTruthy()
+ expect(screen.getByRole('link', {name:'模型与平台配置'}).getAttribute('href')).toBe('/admin/configuration')
+ expect(screen.getByRole('link', {name:'账号与安全'}).getAttribute('href')).toBe('/account')
+ expect(screen.queryByRole('link', {name:'长篇'})).toBeNull()
+})

@@ -463,6 +463,7 @@ export interface RankingsConfigInput {
 
 /** 账号级环境配置（GET/PUT /environment） */
 export interface EnvironmentSettings {
+  available_models?: Array<{ id: string; name: string }>
   task_budget?: TaskBudgetLimits
   model_routes: Record<string, string>
   model_connections: ModelConnection[]

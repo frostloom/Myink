@@ -1,13 +1,4 @@
-"""内置平台密钥：凭据层与计费层必须用**同一条**判据。
-
-判据钉死成一句：「只有『这个账号一个自备连接都没有』时才走平台密钥，也才受额度约束」。
-两边判据一旦不一致就会漏钱——「有连接但某个角色没配路由」这种半配置状态，如果取凭据时
-吃了平台密钥、记账时却认为他有自己的 key，就是无限量白用。所以这里两个方向都钉住。
-
-另一半是反向的：**没配内置密钥时不能按免费额度拦人**。那时用户手里既没有平台密钥也没有
-自备密钥，被拦下等于被一个不存在的额度卡死（默认额度只有 3 本长篇）。
-"""
-
+"""Platform-owned credentials and quota policy; legacy personal connections cannot bypass either."""
 from __future__ import annotations
 
 import uuid
@@ -21,7 +12,6 @@ import myink.config as config
 from conftest import identity_headers
 from myink.api import routes_book, routes_short_creation, routes_tasks
 from myink.api.main import app
-from myink.api.routes_environment import EnvironmentBody, ModelConnectionBody, put_environment
 from myink.db import ensure_user_environment, new_session
 from myink.environment import save_raw
 from myink.models import ShortCreationSession, User
@@ -52,19 +42,22 @@ def platform(monkeypatch):
             monkeypatch.setattr(module, "settings", patched)
         return patched
 
+    from myink.providers.openai_compatible import OpenAICompatibleProvider
+    from myink.providers.base import ModelResponse
+    monkeypatch.setattr(OpenAICompatibleProvider, 'generate',
+                        lambda *args, **kwargs: ModelResponse(content='', model_id='platform-pro',
+                                                              error='isolated platform failure'))
     return _apply
 
 
 def _install_connection(user: str, routes: dict) -> None:
-    """给账号配一个自备连接，只把 `routes` 里列出的角色指过去。"""
+    """Seed legacy storage directly; the writer API no longer accepts credentials."""
     cid = str(uuid.uuid4())
-    put_environment(EnvironmentBody(
-        model_connections=[ModelConnectionBody(
-            id=cid, name="私有", protocol="openai",
-            base_url="https://models.example.com/v1", model="novel-pro", api_key="k",
-        )],
-        model_routes={role: f"custom:{cid}" for role in routes},
-    ), user_id=user)
+    save_raw(user, {'models': pack_model_settings(
+        {role: f'custom:{cid}' for role in routes},
+        {cid: {'name': 'Legacy', 'protocol': 'openai', 'base_url': 'https://models.example.com/v1',
+               'model': 'legacy-model', 'api_key_encrypted': 'legacy-ciphertext'}},
+    )})
 
 
 def _used(user: str, column: str) -> int:
@@ -86,20 +79,11 @@ def test_the_platform_key_serves_an_account_without_any_connection(temp_user, pl
     assert platform_key_active(temp_user, "user") is True
 
 
-def test_a_connection_without_a_route_is_still_unconfigured(temp_user, platform):
-    """半配置状态：有连接、但没给这个角色配路由。
-
-    取凭据与记账必须**同时**认为「他有自己的 key」——一路吃平台密钥、一路认为他有 key，
-    就是本方案要堵的那条漏钱路。
-
-    问的是 `validator_l2` 而不是 `planner`：planner 按 `_USER_ROLE_FALLBACK` 会退到 writer，
-    连接恰好指了 writer，那样它是**配好了**的、测不出半配置。`validator_l2` 在
-    `CONFIGURABLE_ROLES` 里、又不在任何继承表里，只配 writer 时它才是真的没路由。
-    """
+def test_a_legacy_connection_cannot_bypass_platform_routing_or_quota(temp_user, platform):
     platform()
-    _install_connection(temp_user, {"writer": None})
-    assert make_user_chain("validator_l2", temp_user).chain == ["unconfigured"]
-    assert platform_key_active(temp_user, "user") is False
+    _install_connection(temp_user, {'writer': None})
+    assert make_user_chain('validator_l2', temp_user).chain == ['platform-pro']
+    assert platform_key_active(temp_user, 'user') is True
 
 
 def test_a_role_that_is_never_configurable_does_not_reach_the_platform_key(temp_user, platform):
@@ -112,22 +96,11 @@ def test_a_role_that_is_never_configurable_does_not_reach_the_platform_key(temp_
     assert make_chain("不存在的角色", None).chain == ["unconfigured"]
 
 
-def test_a_broken_own_connection_does_not_fall_back_to_the_platform_key(temp_user, platform):
-    """配了连接但解不开密钥：报 unconfigured，不偷偷替他付钱、也不掩盖他的配置错误。
-
-    密文直接写进 `users.environment`，不走 `put_environment`——那条路会拒空 api_key
-    （`connection_record` 的「新模型连接必须填写 API Key」），造不出「有连接但解不开」。
-    """
+def test_a_broken_legacy_connection_is_ignored_and_still_metered(temp_user, platform):
     platform()
-    cid = str(uuid.uuid4())
-    save_raw(temp_user, {"models": pack_model_settings(
-        {"planner": f"{CUSTOM_ROUTE_PREFIX}{cid}"},
-        {cid: {"name": "坏的", "protocol": "openai", "base_url": "https://x.example.com/v1",
-               "model": "m", "api_key_encrypted": "not-a-real-ciphertext"}},
-    )})
-    assert make_user_chain("planner", temp_user).chain == ["unconfigured"]
-    # 记账层同判据：他有连接（虽然坏了），所以不吃免费额度——与他配好连接时一样。
-    assert platform_key_active(temp_user, "user") is False
+    _install_connection(temp_user, {'planner': None})
+    assert make_user_chain('planner', temp_user).chain == ['platform-pro']
+    assert platform_key_active(temp_user, 'user') is True
 
 
 def test_admin_is_never_on_the_platform_key(platform):
@@ -192,13 +165,14 @@ def test_without_a_platform_key_books_are_never_capped(temp_user):
     assert _used(temp_user, "platform_long_used") == 0
 
 
-def test_an_account_with_its_own_connection_is_not_charged(temp_user, platform):
-    """自备连接的用户不受免费额度约束（额度是给「还没有 key 的人」的）。"""
+def test_legacy_personal_credentials_do_not_bypass_lifetime_quota(temp_user, platform):
     platform(platform_long_quota=1, books_per_day_max=1000)
-    _install_connection(temp_user, {"writer": None})
+    _install_connection(temp_user, {'writer': None})
     assert _create(temp_user).status_code == 200
-    assert _create(temp_user).status_code == 200
-    assert _used(temp_user, "platform_long_used") == 0
+    blocked = _create(temp_user)
+    assert blocked.status_code == 429
+    assert blocked.json() == {'error': 'PLATFORM_QUOTA_EXCEEDED'}
+    assert _used(temp_user, 'platform_long_used') == 1
 
 
 # ---- 计费层：短篇开写扣一次 ----
