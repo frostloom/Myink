@@ -5267,6 +5267,57 @@
         "title": "RankingsOut",
         "type": "object"
       },
+      "ReadinessCheck": {
+        "properties": {
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "ready",
+          "reason"
+        ],
+        "title": "ReadinessCheck",
+        "type": "object"
+      },
+      "ReadinessOut": {
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/ReadinessCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ready",
+          "checks"
+        ],
+        "title": "ReadinessOut",
+        "type": "object"
+      },
       "RejectCandidateIn": {
         "properties": {
           "mode": {
@@ -6850,6 +6901,32 @@
           }
         ],
         "summary": "List Models",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/v1/admin/configuration/readiness": {
+      "get": {
+        "operationId": "get_readiness_api_v1_admin_configuration_readiness_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Readiness",
         "tags": [
           "platform"
         ]
