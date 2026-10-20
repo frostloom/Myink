@@ -2776,6 +2776,9 @@
             "title": "Prompts",
             "type": "object"
           },
+          "user_defaults": {
+            "$ref": "#/components/schemas/UserDefaults-Input"
+          },
           "version": {
             "minimum": 0.0,
             "title": "Version",
@@ -2821,6 +2824,9 @@
             },
             "title": "Prompts",
             "type": "object"
+          },
+          "user_defaults": {
+            "$ref": "#/components/schemas/UserDefaults-Output"
           },
           "version": {
             "title": "Version",
@@ -3234,7 +3240,7 @@
         "type": "object"
       },
       "EnvironmentBody": {
-        "description": "省略字段 = 保留现值；显式传（含 {} / []）= 整体替换。",
+        "description": "省略字段保留覆盖，嵌套字段局部更新；恢复默认只移除指定覆盖。",
         "properties": {
           "model_connections": {
             "anyOf": [
@@ -3273,6 +3279,13 @@
                 "type": "null"
               }
             ]
+          },
+          "reset_preferences": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reset Preferences",
+            "type": "array"
           },
           "task_budget": {
             "anyOf": [
@@ -3324,6 +3337,13 @@
             "additionalProperties": true,
             "title": "Model Routes",
             "type": "object"
+          },
+          "overridden_fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Overridden Fields",
+            "type": "array"
           },
           "rankings": {
             "$ref": "#/components/schemas/RankingsConfigOut"
@@ -5176,6 +5196,29 @@
         "title": "RankingsConfigOut",
         "type": "object"
       },
+      "RankingsDefaults": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "limit": {
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "timeout": {
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Timeout",
+            "type": "integer"
+          }
+        },
+        "title": "RankingsDefaults",
+        "type": "object"
+      },
       "RankingsOut": {
         "description": "扫榜响应（§10）：source=remote（实时榜单）/ sample（降级样例）；error 为降级原因。",
         "properties": {
@@ -6331,6 +6374,42 @@
           "status"
         ],
         "title": "TaskSummaryOut",
+        "type": "object"
+      },
+      "UserDefaults-Input": {
+        "additionalProperties": false,
+        "properties": {
+          "rankings": {
+            "$ref": "#/components/schemas/RankingsDefaults"
+          },
+          "task_budget": {
+            "$ref": "#/components/schemas/TaskBudgetLimits-Input"
+          },
+          "thinking_enabled": {
+            "default": false,
+            "title": "Thinking Enabled",
+            "type": "boolean"
+          }
+        },
+        "title": "UserDefaults",
+        "type": "object"
+      },
+      "UserDefaults-Output": {
+        "additionalProperties": false,
+        "properties": {
+          "rankings": {
+            "$ref": "#/components/schemas/RankingsDefaults"
+          },
+          "task_budget": {
+            "$ref": "#/components/schemas/TaskBudgetLimits-Output"
+          },
+          "thinking_enabled": {
+            "default": false,
+            "title": "Thinking Enabled",
+            "type": "boolean"
+          }
+        },
+        "title": "UserDefaults",
         "type": "object"
       },
       "ValidationError": {
