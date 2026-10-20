@@ -50,10 +50,13 @@ class _DeadlineIO:
         return self._call('flush')
 
 
-def make_gateway_handler(ledger, policy, transport, *, scope_token=None, usage_observer=None, tool_broker=None):
+def make_gateway_handler(ledger, policy, transport, *, scope_token=None, usage_observer=None,
+                         tool_broker=None, request_guard=None):
     if scope_token is not None and (not isinstance(scope_token, str) or not 0 < len(scope_token) <= 4096
                                    or any(not 33 <= ord(char) <= 126 for char in scope_token)):
         raise ValueError('invalid scope token')
+    if request_guard is not None and (not callable(request_guard) or scope_token is None):
+        raise ValueError('request guard requires a callable and authenticated scope')
     class Handler(BaseHTTPRequestHandler):
         protocol_version = 'HTTP/1.0'  # EOF framing supports streaming without buffering.
 
@@ -144,6 +147,14 @@ def make_gateway_handler(ledger, policy, transport, *, scope_token=None, usage_o
                     self.send_header('Content-Length',str(len(raw_receipt))); self.end_headers()
                     self.wfile.write(raw_receipt)
                     return
+                if request_guard is not None:
+                    try:
+                        admitted = request_guard(body) is True
+                    except Exception:
+                        admitted = False
+                    if not admitted:
+                        self.send_error(403)
+                        return
                 request_policy = replace(policy, timeout_seconds=self.remaining())
                 result = forward_messages(body, 'local-trial-1', ledger=ledger, policy=request_policy,
                                           transport=transport, usage_observer=usage_observer,
@@ -174,7 +185,8 @@ def make_gateway_handler(ledger, policy, transport, *, scope_token=None, usage_o
     return Handler
 
 
-def serve_gateway(ledger, policy, credential_file, host='127.0.0.1', port=8765, *, scope_token=None, tool_broker=None):
+def serve_gateway(ledger, policy, credential_file, host='127.0.0.1', port=8765, *, scope_token=None,
+                  tool_broker=None, request_guard=None):
     if not live_ready(policy):
         raise ValueError('live configuration incomplete')
     credentials = json.loads(credential_file.read_text(encoding='utf-8'))
@@ -191,7 +203,8 @@ def serve_gateway(ledger, policy, credential_file, host='127.0.0.1', port=8765, 
                                            headers={'x-api-key': credentials['PLATFORM_MODEL_API_KEY'],
                                                     'anthropic-version': '2023-06-01'}, timeout=timeout)
             return client.send(request, stream=True, follow_redirects=False)
-        with ThreadingHTTPServer((host, port), make_gateway_handler(ledger, policy, transport, scope_token=scope_token, tool_broker=tool_broker)) as server:
+        with ThreadingHTTPServer((host, port), make_gateway_handler(ledger, policy, transport,
+                scope_token=scope_token, tool_broker=tool_broker, request_guard=request_guard)) as server:
             server.daemon_threads = True
             server.serve_forever()
 

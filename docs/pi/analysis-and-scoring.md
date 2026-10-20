@@ -78,3 +78,11 @@ C16 fix round 1：comparison 每输出费用仅在所有 receipt 都有有限非
 槽位和结果含正文，只能放私有目录；公开摘要只列ID、状态、数量和哈希。`contract_valid`仅表示该返回满足输出合同；不证明请求已付费记账、实际隔离或语义质量。`billing_verified=false`、45项语义unknown、`automatic_execution=false`、`release_allowed=false`保持。原宿主仍必须提供当前有效scope、原累计20元账本、每次预留、整轮deadline、严格隔离和进程树清理。不能将新接入层当作真实调用grant，不能重放旧040授权。
 
 可信序号由宿主的持久游标提供，接入层据此从固定顺序重算槽位；跨调用重放、累计次数与游标推进仍由宿主负责，不能把模型传入的序号当授权。
+
+### 实际网关的计费前校验（2026-10-20）
+
+`make_gateway_handler(..., request_guard=...)` 和 `serve_gateway(..., request_guard=...)` 接受可信宿主提供的校验函数；配置此函数时必须配置非空 `scope_token`。此接口不从 HTTP 参数装载函数，也不把通用 CLI 自动升级为实验授权。
+
+网关先认证，再检查请求封装并严格解析 JSON；仅 messages 两条现有路由调用 `request_guard(body)`，且只有返回字面布尔 `True` 才进入原 `forward_messages` 的预算预留/转发/结算。False、None、其他真值或异常统一返回无异常详情的403，拒绝请求不占用模型预算。工具和证明路由仍走原 broker；未配置函数的旧入口保持原行为。
+
+宿主应由冻结输入构建当前可信槽位，在函数中调用 `verify_contract_request(body, slot)` 并明确返回 True；随后仍由原账本执行每次预留，不能用校验函数代替计费。HTTP 服务使用线程并发，函数对共享槽位游标的校验和消费必须自行提供原子性及持久化；此接口不会阻止重复请求、自动推进游标或恢复进度。整轮次数/费用/时间上限、当前隔离证明、会话与进程树清理仍需宿主绑定。校验函数执行也受原 HTTP 总期限约束，但函数本身是可信宿主代码，不是可强制终止任意 Python 函数的沙箱。
