@@ -93,7 +93,7 @@ it('adds a network model and routes Writer through it without exposing saved key
       id: '11111111-1111-4111-8111-111111111111', name: '我的 GPT', protocol: 'openai',
       base_url: 'https://models.example.com/v1', model: 'novel-pro', api_key: 'secret-key', enabled:true,user_visible:true,
     }],
-    version: 1, prompts: {}, genre_packs: {},
+    version: 1, prompts: {}, genre_packs: {}, user_defaults: { thinking_enabled: false, task_budget: { max_requests: 100, max_cost_yuan: 5, max_runtime_seconds: 1800 }, rankings: { enabled: true, timeout: 10, limit: 10 } },
   }))
 })
 
@@ -216,4 +216,38 @@ it('merges partial nullable genre overrides with published genre defaults', asyn
  await screen.findByDisplayValue('管理员节奏')
  expect(screen.getByDisplayValue('默认卖点')).toBeTruthy()
  expect(screen.getByDisplayValue('默认禁忌')).toBeTruthy()
+})
+
+
+it('loads and edits admin defaults while preserving fetched leaves through connection saves', async () => {
+ const defaults = { thinking_enabled: true, task_budget: { max_requests: 220, max_cost_yuan: 0, max_runtime_seconds: 3000 }, rankings: { enabled: false, timeout: 14, limit: 22 } }
+ vi.mocked(platformApi.getConfiguration).mockResolvedValue({ ...emptyEnv, user_defaults: defaults, model_connections: [{id:'one',name:'模型一',protocol:'openai',base_url:'https://example.test/v1',model:'writer',has_api_key:true,enabled:true,user_visible:true}] } as never)
+ vi.mocked(platformApi.updateConfiguration).mockResolvedValue({ ...emptyEnv, version: 2, user_defaults: { ...defaults, task_budget: { ...defaults.task_budget, max_requests: 250 } } } as never)
+ renderPage()
+ await screen.findByDisplayValue('模型一')
+ expect((screen.getByLabelText('默认思考模式') as HTMLSelectElement).value).toBe('1')
+ expect((screen.getByLabelText('默认任务请求上限') as HTMLInputElement).value).toBe('220')
+ expect((screen.getByLabelText('默认启用扫榜') as HTMLSelectElement).value).toBe('0')
+ fireEvent.change(screen.getByLabelText('连接名称'), {target:{value:'更新连接'}})
+ fireEvent.click(screen.getByRole('button', {name:'保存平台配置'}))
+ await waitFor(() => expect(platformApi.updateConfiguration).toHaveBeenCalled())
+ expect(vi.mocked(platformApi.updateConfiguration).mock.calls[0][0]).toMatchObject({user_defaults:defaults})
+ await waitFor(() => expect((screen.getByLabelText('默认任务请求上限') as HTMLInputElement).value).toBe('250'))
+ fireEvent.change(screen.getByLabelText('默认思考模式'), {target:{value:'0'}})
+ fireEvent.change(screen.getByLabelText('默认任务费用上限（元）'), {target:{value:'8'}})
+ fireEvent.change(screen.getByLabelText('默认扫榜超时'), {target:{value:'20'}})
+ fireEvent.click(screen.getByRole('button', {name:'保存全部更改'}))
+ await waitFor(() => expect(platformApi.updateConfiguration).toHaveBeenCalledTimes(2))
+ expect(vi.mocked(platformApi.updateConfiguration).mock.calls[1][0]).toMatchObject({version:2,user_defaults:{thinking_enabled:false,task_budget:{max_requests:250,max_cost_yuan:8,max_runtime_seconds:3000},rankings:{enabled:false,timeout:20,limit:22}}})
+})
+
+it('keeps edited admin defaults after a failed save', async () => {
+ vi.mocked(platformApi.getConfiguration).mockResolvedValue(emptyEnv)
+ vi.mocked(platformApi.updateConfiguration).mockRejectedValue({status:500,code:'保存失败'})
+ renderPage()
+ await waitFor(() => expect((screen.getByRole('button',{name:'保存平台配置'}) as HTMLButtonElement).disabled).toBe(false))
+ fireEvent.change(screen.getByLabelText('默认任务请求上限'), {target:{value:'160'}})
+ fireEvent.click(screen.getByRole('button',{name:'保存平台配置'}))
+ await screen.findByRole('alert')
+ expect((screen.getByLabelText('默认任务请求上限') as HTMLInputElement).value).toBe('160')
 })

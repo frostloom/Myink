@@ -139,7 +139,7 @@ export default function SettingsPage() {
               >
                 {busy === 'words' ? '保存中…' : '保存目标字数'}
               </button>
-              <Link className="btn btn-quiet" to="/environment">模型偏好与扫榜</Link>
+              <Link className="btn btn-quiet" to="/environment">高级设置</Link>
             </div>
           </section>
         </div>

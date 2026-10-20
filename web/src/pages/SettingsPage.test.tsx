@@ -40,7 +40,7 @@ it('keeps genre information and generation settings, hosts no style editing', as
   expect(screen.queryByText('样本提取')).toBeNull()
   expect(screen.queryByText('题材预设')).toBeNull()
   expect(screen.queryByText('模型连接与路由')).toBeNull()
-  expect(screen.getByRole('link', { name: '模型偏好与扫榜' })).toBeTruthy()
+  expect(screen.getByRole('link', { name: '高级设置' })).toBeTruthy()
 })
 
 it('keeps published genre snapshots read only and never offers root editing or restore', async () => {

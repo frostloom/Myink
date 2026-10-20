@@ -6,6 +6,7 @@ import type {
   ModelConnectionInput,
   ModelListResult,
   ModelProbeRequest,
+  UserDefaults,
 } from '../types'
 import type { GenreFields } from './genrePacks'
 
@@ -23,6 +24,7 @@ type GenreFieldsResponse = { [Key in keyof GenreFields]?: GenreFields[Key] | nul
 
 export interface PlatformConfigurationData {
   version: number
+  user_defaults?: UserDefaults
   model_connections: PlatformConnection[]
   model_routes: Record<string, string>
   prompts: Record<string, string>

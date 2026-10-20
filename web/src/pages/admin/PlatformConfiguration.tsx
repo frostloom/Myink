@@ -11,6 +11,7 @@ import type {
   ConnectionTestResult,
   ModelConnection,
   ModelProbeRequest,
+  UserDefaults,
 } from '../../types'
 import type { AdminOutletContext } from './shared'
 import styles from '../SettingsPage.module.css'
@@ -24,6 +25,11 @@ const MODEL_ROLES = [
   { key: 'summarize', label: '摘要（summarize）' },
 ]
 const EMPTY_ROUTE = { value: '', label: '未指定' }
+const DEFAULT_USER_PREFERENCES: UserDefaults = {
+  thinking_enabled: false,
+  task_budget: { max_requests: 100, max_cost_yuan: 5, max_runtime_seconds: 1800 },
+  rankings: { enabled: true, timeout: 10, limit: 10 },
+}
 
 type ConnectionField = 'name' | 'base_url' | 'model' | 'api_key'
 type FieldProblem = { key: string; text: string } | null
@@ -57,6 +63,7 @@ function normalizeGenreOverrides(
 export default function PlatformConfiguration() {
   const { onForbidden } = useOutletContext<AdminOutletContext>()
   const [version, setVersion] = useState(0)
+  const [userDefaults, setUserDefaults] = useState<UserDefaults>(DEFAULT_USER_PREFERENCES)
   const [loading, setLoading] = useState(true)
   const [loaded, setLoaded] = useState(false)
   const [prompts, setPrompts] = useState<Record<string, string>>({})
@@ -109,9 +116,11 @@ export default function PlatformConfiguration() {
   const load = useCallback(async () => {
     setBanner(null)
     setLoading(true)
+    setLoaded(false)
     try {
       const [env, items] = await Promise.all([platformApi.getConfiguration(), api.listGenrePacks()])
       setVersion(env.version)
+      setUserDefaults(env.user_defaults ?? DEFAULT_USER_PREFERENCES)
       setPrompts(env.prompts)
       setGenrePacks(normalizeGenreOverrides(env.genre_packs, items))
       setCatalog(items)
@@ -175,9 +184,10 @@ export default function PlatformConfiguration() {
     }
     try {
       const saved = await platformApi.updateConfiguration({
-        version, model_routes: routes, model_connections: connections, prompts, genre_packs: genrePacks,
+        version, model_routes: routes, model_connections: connections, prompts, genre_packs: genrePacks, user_defaults: userDefaults,
       })
       setVersion(saved.version)
+      setUserDefaults(saved.user_defaults ?? userDefaults)
       setConnectionDrafts(saved.model_connections.map((connection) => ({ ...connection, api_key: '' })))
       setPrompts(saved.prompts)
       setGenrePacks(normalizeGenreOverrides(saved.genre_packs, catalog))
@@ -446,6 +456,46 @@ export default function PlatformConfiguration() {
               </div>
             </section>
 
+            <section className={`panel ${styles.section}`}>
+              <h2 className={styles.sectionTitle}>用户默认设置</h2>
+              <p className={styles.hint}>未设置个人偏好的用户将使用这些默认值；已有个人设置继续生效。预算修改仅影响新任务，已有任务保留原预算快照。</p>
+              <label className={styles.field}>
+                <span>默认思考模式</span>
+                <select className="input" value={userDefaults.thinking_enabled ? '1' : '0'}
+                  onChange={(e) => setUserDefaults((value) => ({ ...value, thinking_enabled: e.target.value === '1' }))}>
+                  <option value="0">关闭</option><option value="1">开启</option>
+                </select>
+              </label>
+              <h3>任务总预算</h3>
+              <p className={styles.hint}>0 表示不限，个人预算仍受平台配额和权限限制。</p>
+              {([
+                ['max_requests', '默认任务请求上限'],
+                ['max_cost_yuan', '默认任务费用上限（元）'],
+                ['max_runtime_seconds', '默认任务运行上限（秒）'],
+              ] as const).map(([key, label]) => (
+                <label key={key} className={styles.field}>
+                  <span>{label}</span>
+                  <input className="input" type="number" min="0" step={key === 'max_cost_yuan' ? '0.000001' : '1'}
+                    value={userDefaults.task_budget[key]}
+                    onChange={(e) => setUserDefaults((value) => ({ ...value, task_budget: { ...value.task_budget, [key]: Number(e.target.value) } }))} />
+                </label>
+              ))}
+              <h3>扫榜</h3>
+              <label className={styles.field}>
+                <span>默认启用扫榜</span>
+                <select className="input" value={userDefaults.rankings.enabled ? '1' : '0'}
+                  onChange={(e) => setUserDefaults((value) => ({ ...value, rankings: { ...value.rankings, enabled: e.target.value === '1' } }))}>
+                  <option value="1">开启</option><option value="0">关闭（只用示例数据）</option>
+                </select>
+              </label>
+              {([['timeout', '默认扫榜超时', 60], ['limit', '默认扫榜条数', 50]] as const).map(([key, label, max]) => (
+                <label key={key} className={styles.field}>
+                  <span>{label}</span>
+                  <input className="input" type="number" min="1" max={max} value={userDefaults.rankings[key]}
+                    onChange={(e) => setUserDefaults((value) => ({ ...value, rankings: { ...value.rankings, [key]: Number(e.target.value) } }))} />
+                </label>
+              ))}
+            </section>
             <section className={`panel ${styles.section}`}>
               <h2 className={styles.sectionTitle}>角色提示词</h2>
               <p className={styles.hint}>追加到系统指令中，结构化输出规则始终保留。留空使用内置提示词。</p>
