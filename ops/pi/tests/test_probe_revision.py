@@ -79,6 +79,15 @@ def test_new_slice_is_journaled_and_configured_before_start(monkeypatch, tmp_pat
     original_chmod=build_lab.os.chmod
     monkeypatch.setattr(build_lab.os, 'chmod', lambda path, mode, **kw: original_chmod(path, 0o444 if str(path).endswith('.slice') else mode, **kw))
     monkeypatch.setattr(build_lab, 'SYSTEMD_RUNTIME', tmp_path)
+    native_stat = Path.stat
+    def root_unit_stat(path, **kwargs):
+        value = native_stat(path, **kwargs)
+        if path == tmp_path / build_lab.owned_group(OP):
+            fields = list(value)
+            fields[4] = 0
+            return __import__('os').stat_result(fields)
+        return value
+    monkeypatch.setattr(Path, 'stat', root_unit_stat)
     monkeypatch.setattr(build_lab, '_probe_group', lambda op: tmp_path/'cgroup')
     events = []
     original = build_lab._durable_json
@@ -247,8 +256,10 @@ def test_partial_install_retains_original_bytes_and_durable_fence(monkeypatch,tm
     native_stat=Path.stat
     def stat(path,**kw):
         value=native_stat(path,**kw)
-        if path.name=='b12-probe':
-            fields=list(value); fields[0] &= ~0o077
+        if path.is_relative_to(base):
+            fields=list(value)
+            fields[4] = 0  # This fixture models the root-owned Linux native tree.
+            if path.name=='b12-probe': fields[0] &= ~0o077
             return __import__('os').stat_result(fields)
         return value
     monkeypatch.setattr(Path,'stat',stat)

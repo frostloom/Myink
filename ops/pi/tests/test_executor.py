@@ -358,6 +358,7 @@ def test_b12_probe_binds_approved_operation_and_native_blocked_receipt(monkeypat
     from ops.pi.resources import LIMITS
     proof = {'cgroup_version': 2, 'membership_verified': True, 'ancestor_verified': True, **LIMITS['heavy']}
     executor, ledger = _controller_fixture(monkeypatch, tmp_path, proof)
+    monkeypatch.setattr(executor, 'host_available_memory', lambda: 2**30)
     operation = '11111111-1111-4111-8111-11111111111' + ('1' if native_status == 'blocked' else '2')
     evidence = tmp_path.parent / 'evidence'
     (evidence / (operation + '.guest.json')).write_text(json.dumps({'operation_id': operation, 'lab_uuid': 'lab-test', 'status': guest_status}))

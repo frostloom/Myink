@@ -3,6 +3,28 @@ from types import SimpleNamespace
 from ops.pi.tests.test_backup import case,artifacts
 
 
+import pytest
+
+
+@pytest.fixture
+def root_owned_protocol(tmp_path, monkeypatch):
+    """Model the root-owned Linux lab only for this test's synthetic tree.
+
+    Keep links, modes and sizes real; do not weaken production ownership checks.
+    """
+    import os
+    from pathlib import Path
+    native_stat = Path.stat
+    def stat(path, **kwargs):
+        value = native_stat(path, **kwargs)
+        if path.is_relative_to(tmp_path):
+            fields = list(value)
+            fields[4] = 0  # st_uid in os.stat_result
+            return os.stat_result(fields)
+        return value
+    monkeypatch.setattr(Path, 'stat', stat)
+
+
 def test_fresh_creator_verification_then_first_pre_before_restore(case,monkeypatch):
     from ops.pi.lab import backup_lab as lab
     ledger,identity,pair,root=case;trace=[]
@@ -117,7 +139,7 @@ def test_cleanup_unknown_closes_verified_import_attempt(case,monkeypatch):
 
 
 
-def test_protocol_probe_retains_partial_output_on_child_timeout(tmp_path,monkeypatch):
+def test_protocol_probe_retains_partial_output_on_child_timeout(tmp_path,monkeypatch,root_owned_protocol):
     import hashlib,json,subprocess,pytest
     from collections import namedtuple
     from ops.pi.lab import backup_probe as probe
@@ -146,7 +168,7 @@ def test_protocol_probe_retains_partial_output_on_child_timeout(tmp_path,monkeyp
 
 
 
-def test_protocol_workspace_is_fixed_native_and_refuses_preexisting(tmp_path,monkeypatch):
+def test_protocol_workspace_is_fixed_native_and_refuses_preexisting(tmp_path,monkeypatch,root_owned_protocol):
     import pytest
     from ops.pi.lab import backup_probe as probe
     monkeypatch.setattr(probe,'BASE',tmp_path)
@@ -171,7 +193,7 @@ def test_native_filesystem_refuses_foreign_distribution(tmp_path,monkeypatch):
     with pytest.raises(ValueError,match='proof drift'):probe.native_filesystem({'filesystem_proof_sha256':'0'*64})
 
 
-def test_protocol_archive_verifies_members_and_preserves_native(tmp_path):
+def test_protocol_archive_verifies_members_and_preserves_native(tmp_path,root_owned_protocol):
     import json,tarfile
     from ops.pi.lab import backup_probe as probe
     work=tmp_path/'native';work.mkdir();(work/'data').mkdir();path=work/'data/artifact.bin';path.write_bytes(b'fixed protocol bytes')
@@ -187,7 +209,7 @@ def test_protocol_archive_verifies_members_and_preserves_native(tmp_path):
     assert not (root/'native-copy').exists()
 
 
-def test_protocol_archive_refuses_hardlink_or_budget(tmp_path):
+def test_protocol_archive_refuses_hardlink_or_budget(tmp_path,root_owned_protocol):
     import os,pytest
     from ops.pi.lab import backup_probe as probe
     work=tmp_path/'native';work.mkdir();path=work/'artifact.bin';path.write_bytes(b'fixed')
@@ -199,7 +221,7 @@ def test_protocol_archive_refuses_hardlink_or_budget(tmp_path):
     assert not (root/'native-fixture.tar').exists()
 
 
-def test_protocol_tmp_fixture_has_no_alias_and_refuses_unknown_or_duplicate(tmp_path,monkeypatch):
+def test_protocol_tmp_fixture_has_no_alias_and_refuses_unknown_or_duplicate(tmp_path,monkeypatch,root_owned_protocol):
     import hashlib,pytest
     from ops.pi.lab import backup_probe as probe
     private=tmp_path/'private';(private/'evidence').mkdir(parents=True)
@@ -219,7 +241,7 @@ def test_protocol_tmp_fixture_has_no_alias_and_refuses_unknown_or_duplicate(tmp_
     with pytest.raises(ValueError,match='spec drift'):probe.protocol_temporary_directory(nodeid)
 
 
-def test_protocol_tmp_fixture_refuses_changed_operation_and_foreign_root(tmp_path,monkeypatch):
+def test_protocol_tmp_fixture_refuses_changed_operation_and_foreign_root(tmp_path,monkeypatch,root_owned_protocol):
     import hashlib,pytest
     from ops.pi.lab import backup_probe as probe
     private=tmp_path/'private';(private/'evidence').mkdir(parents=True)
@@ -267,7 +289,7 @@ def protocol_harness(tmp_path,monkeypatch,after):
     return probe,private/'evidence'/('b11-fix2-'+operation)
 
 
-def test_protocol_final_guard_allows_observation_change(tmp_path,monkeypatch):
+def test_protocol_final_guard_allows_observation_change(tmp_path,monkeypatch,root_owned_protocol):
     import json
     probe,root=protocol_harness(tmp_path,monkeypatch,lambda value:None)
     result=probe.run_protocol_probe()
@@ -277,7 +299,7 @@ def test_protocol_final_guard_allows_observation_change(tmp_path,monkeypatch):
 
 import pytest
 @pytest.mark.parametrize('drift',['identity','cap','config','unknown_outer','unknown_proof','memory_events','path','membership'])
-def test_protocol_final_guard_refuses_safety_or_unknown_drift(tmp_path,monkeypatch,drift):
+def test_protocol_final_guard_refuses_safety_or_unknown_drift(tmp_path,monkeypatch,drift,root_owned_protocol):
     import json
     def mutate(value):
         if drift=='identity':value['lab_uuid']='foreign-lab'

@@ -77,5 +77,6 @@ def test_deep_valid_json_is_retained_as_whole_batch_unknown():
     raw = b'[' * depth + b'0' + b']' * depth
     assert len(raw) < 32768
     result = failed(raw, snapshot('button error'))
-    assert result['failure_kind'] == 'RecursionError'
+    # Decoder depth limits vary by Python build; either path rejects the batch.
+    assert result['failure_kind'] in ('RecursionError', 'ValueError')
     assert result['raw']['truncated'] is False
