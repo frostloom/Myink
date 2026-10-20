@@ -73,6 +73,8 @@ C16 fix round 1：comparison 每输出费用仅在所有 receipt 都有有限非
 
 `ops/pi/analysis_execution.py` 的 `prepare_contract_slots(views, report, model=..., cwd=...)` 按现有5组、2臂、3次重复产生30个私有槽位。重复1/3为baseline→candidate，重复2反序；实际system包含共同cwd，提示/输入/报告/请求身份均冻结。`writing_analysis.build_analysis_request` 与原preflight共用请求构造，SDK及网关两种编码仍受65536字节限制。
 
-宿主用 `verify_contract_request(actual_body, slot)` 在实际网关转发前核对真实SDK请求；`run_contract_slot(... engine, session, deadline ...)` 在启动前重算槽位，拒绝输入/提示/模型/cwd漂移、旧会话和超过90秒deadline。调用现有Engine一次、无工具、无自动重试，原始私有回执保留；适配器done之后还需原严格解析及目标域评分。
+宿主用 `verify_contract_request(actual_body, slot)` 在实际网关转发前核对真实SDK请求；`run_contract_slot(slot_index=宿主当前可信序号, ... engine, session, deadline ...)` 在启动前重算槽位，拒绝输入/提示/模型/cwd漂移、旧会话和超过90秒deadline。调用现有Engine一次、无工具、无自动重试，原始私有回执保留；适配器done之后还需原严格解析及目标域评分。
 
 槽位和结果含正文，只能放私有目录；公开摘要只列ID、状态、数量和哈希。`contract_valid`仅表示该返回满足输出合同；不证明请求已付费记账、实际隔离或语义质量。`billing_verified=false`、45项语义unknown、`automatic_execution=false`、`release_allowed=false`保持。原宿主仍必须提供当前有效scope、原累计20元账本、每次预留、整轮deadline、严格隔离和进程树清理。不能将新接入层当作真实调用grant，不能重放旧040授权。
+
+可信序号由宿主的持久游标提供，接入层据此从固定顺序重算槽位；跨调用重放、累计次数与游标推进仍由宿主负责，不能把模型传入的序号当授权。

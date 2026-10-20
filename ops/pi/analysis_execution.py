@@ -69,14 +69,19 @@ def verify_contract_request(body, slot):
     return slot['request_sha256']
 
 
-def run_contract_slot(*, slot, view, report, engine, session, deadline, model, cwd):
+def run_contract_slot(*, slot_index, slot, view, report, engine, session, deadline, model, cwd):
     """Run one fresh no-tool phase once; preserve invalid outputs, never repair.
 
-    Engine/gateway/session are host-owned. No loop, retry, budget scope creation,
+    Engine/gateway/session and expected slot_index are host-owned. The host
+    owns the durable cursor and prevents replay across invocations. No loop, retry, budget scope creation,
     provider transport or release capability is introduced here.
     """
-    expected = _slot(view, report, model=model, cwd=cwd, domain=slot.get('domain'),
-                     arm=slot.get('arm'), repeat=slot.get('repeat'))
+    if type(slot_index) is not int or not 0 <= slot_index < 30:
+        raise ValueError('trusted expected slot index required')
+    repeat, offset = divmod(slot_index, 10)
+    arms = ('candidate', 'baseline') if repeat == 1 else ('baseline', 'candidate')
+    expected = _slot(view, report, model=model, cwd=cwd, domain=GROUPS[offset // 2],
+                     arm=arms[offset % 2], repeat=repeat + 1)
     if _json(slot) != _json(expected):
         raise ValueError('slot identity or frozen input drift')
     path = Path(session.session_path)

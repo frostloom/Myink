@@ -45,7 +45,7 @@ class Engine:
 
 
 def run(tmp_path, slots, view, report, engine, **changes):
-    args = dict(slot=slots[0], view=view, report=report, engine=engine,
+    args = dict(slot_index=0, slot=slots[0], view=view, report=report, engine=engine,
         session=EngineSession('pi', 'a' * 64, 'analysis', tmp_path / 'new.jsonl'),
         deadline=datetime.now(timezone.utc) + timedelta(seconds=30),
         model='deepseek-v4.1-flash', cwd=tmp_path)
@@ -156,4 +156,12 @@ def test_invalid_session_or_deadline_never_launches(tmp_path, mode):
     elif mode == 'too_long': changes['deadline'] = now + timedelta(seconds=91)
     engine = Engine()
     with pytest.raises(ValueError): run(tmp_path, slots, view, report, engine, **changes)
+    assert not engine.calls
+
+
+def test_replacing_expected_slot_with_another_valid_slot_never_launches(tmp_path):
+    slots, view, report = prepared(tmp_path)
+    engine = Engine()
+    with pytest.raises(ValueError):
+        run(tmp_path, slots, view, report, engine, slot=slots[1])
     assert not engine.calls

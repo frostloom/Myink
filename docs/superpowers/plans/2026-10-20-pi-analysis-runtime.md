@@ -26,7 +26,7 @@
 ### Task 1: 有限槽位与单槽RPC接入
 
 **Files:** ops/pi/analysis_execution.py；ops/pi/tests/test_analysis_execution.py；docs/pi/analysis-and-scoring.md。
-**Interfaces:** prepare_contract_slots(views,report,model,cwd)、verify_contract_request(body,slot)、run_contract_slot(slot,view,report,engine,session,deadline,model,cwd)。
+**Interfaces:** prepare_contract_slots(views,report,model,cwd)、verify_contract_request(body,slot)、run_contract_slot(slot_index,slot,view,report,engine,session,deadline,model,cwd)。
 
 - [x] 先写测试：30槽固定顺序/同system、漂移拒绝且engine未调用、非目标结果失败、无重试、无效会话/deadline拒绝。运行看到缺少实现的RED。
 - [x] 最小实现，复用原提示/解析/评分及Engine协议；不创建新预算或权限接口。Expected: 定向测试通过。
@@ -38,10 +38,10 @@
 **Files:** ops/pi/lab/pi-analysis-contract-probe.py；相关测试；docs/evaluations/pi-analysis-runtime-2026-10-20.md。
 **Interfaces:** 使用Task1单槽API、make_pi_config和PiAdapter；loopback HTTP模拟仅回固定合成结果，不含真实数据或提供方密钥。
 
-- [ ] 先写探针边界测试并见RED：非回环/非固定路径请求、错误令牌、重复请求、坏payload不得被模拟成功掩盖。
-- [ ] 实现固定模拟探针，两臂顺序运行同cwd但新会话；原始请求/会话留私有目录，只公开摘要与哈希。
-- [ ] 在WSL以已有E盘Pi/Node实跑并记录真实进程、实际请求匹配、会话退出和共同评分；保留失败，环境阻碍不能算通过。
-- [ ] 最终独立审查两项改动，修复阻断；定向回归通过后单独提交推送。
+- [x] 先写探针边界测试并见RED：非回环/非固定路径请求、错误令牌、重复请求、坏payload不得被模拟成功掩盖。
+- [x] 实现固定模拟探针，两臂顺序运行同cwd但新会话；原始请求/会话留私有目录，只公开摘要与哈希。
+- [x] 在WSL以已有E盘Pi/Node实跑并记录真实进程、实际请求匹配、会话退出和共同评分；保留失败，环境阻碍不能算通过。
+- 最终交付门槛：独立审查两项改动，修复阻断；定向回归通过后单独提交推送，结果须核对远程SHA，不用本计划复选框替代。
 
 ## 后续边界
 

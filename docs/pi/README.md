@@ -4,7 +4,9 @@
 
 ## 最新状态（2026-10-20）
 
-当前Pi分支干净提交的离线控制模块回归为1687 passed、2个Windows符号链接权限SKIP、19个pi_lab/pi_live未选入；不是业务全量或生产验收。已核对025原输入/报告与累计预算，45项语义质量仍unknown。本轮未调用模型、未采纳候选、未部署。详见[基线与数据分析记录](../evaluations/pi-baseline-resume-2026-10-20.md)和[可核对回执](../evaluations/pi-retained-data-audit-2026-10-20.json)。下一步绑定当前真实Pi运行器做有限分析合同对照，完整自主迭代闭环尚未完成。
+分析合同逐槽接入已完成：实际Pi1.1.0进程通过两臂本地合成网关验证，实际请求匹配、同system/cwd、新会话并退出0。相关回归402 passed、1个Windows符号链接SKIP；正式付费30槽对照尚未启动。见[运行接入记录](../evaluations/pi-analysis-runtime-2026-10-20.md)及[公开回执](../evaluations/pi-analysis-runtime-2026-10-20.json)。
+
+最近完整离线控制模块基线来自提交4083b69：1687 passed、2个Windows符号链接权限SKIP、19个pi_lab/pi_live未选入；早于本轮接入改动，不是当前全量或生产验收。已核对025输入/报告与累计账本；45项语义质量仍unknown，本轮无外部模型调用、无候选采纳、无部署。见[基线与数据分析记录](../evaluations/pi-baseline-resume-2026-10-20.md)。下一步接入当前宿主scope/预算/隔离验收后做有限真实分析对照，完整自主迭代闭环尚未完成。
 
 ## 历史状态（2026-10-14）
 
