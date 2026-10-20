@@ -12,6 +12,9 @@ from myink.providers.credentials import decrypt_api_key
 class PlatformNotReady(Exception):
     """Public failures deliberately contain no administrator diagnostics."""
 
+    def __init__(self):
+        super().__init__("PLATFORM_NOT_READY")
+
 
 class ReadinessCheck(BaseModel):
     role: str

@@ -26,6 +26,13 @@ const BUDGET_FIELDS = [
 type SectionMsg = { tone: 'error' | 'ok'; text: string } | null
 type Preferences = UserDefaults & { model_routes: Record<string, string> }
 type PreferenceUpdate = Parameters<typeof api.updateEnvironment>[0]
+type PendingDrafts = { original: Preferences; draft: Preferences; committed: string[] }
+
+function preserveDrafts<T extends object>(server: T, draft: T, original: T, prefix: string, committed: string[]): T {
+  return Object.fromEntries((Object.keys(server) as Array<keyof T>).map((key) => [key,
+    draft[key] !== original[key] && !committed.includes(`${prefix}.${String(key)}`) ? draft[key] : server[key],
+  ])) as T
+}
 
 function changedFields<T extends object>(draft: T, original: T): Partial<T> {
   return Object.fromEntries((Object.keys(draft) as Array<keyof T>)
@@ -59,7 +66,7 @@ export default function EnvironmentPage() {
     ])
   }
 
-  const applyEnvironment = useCallback((env: EnvironmentSettings) => {
+  const applyEnvironment = useCallback((env: EnvironmentSettings, pending?: PendingDrafts) => {
     const routes = Object.fromEntries(MODEL_ROLES.map((role) => {
       const value = env.model_routes[role.key] ?? ''
       return [role.key, value.startsWith('custom:') ? value : '']
@@ -71,10 +78,11 @@ export default function EnvironmentPage() {
       thinking_enabled: env.thinking_enabled === true,
     }
     setOriginal(preferences)
-    setRouteSel(routes)
-    setTaskBudget(preferences.task_budget)
-    setRankings(preferences.rankings)
-    setThinkingEnabled(preferences.thinking_enabled)
+    setRouteSel(pending ? preserveDrafts(routes, pending.draft.model_routes, pending.original.model_routes, 'model_routes', pending.committed) : routes)
+    setTaskBudget(pending ? preserveDrafts(preferences.task_budget, pending.draft.task_budget, pending.original.task_budget, 'task_budget', pending.committed) : preferences.task_budget)
+    setRankings(pending ? preserveDrafts(preferences.rankings, pending.draft.rankings, pending.original.rankings, 'rankings', pending.committed) : preferences.rankings)
+    setThinkingEnabled(pending && pending.draft.thinking_enabled !== pending.original.thinking_enabled && !pending.committed.includes('thinking_enabled')
+      ? pending.draft.thinking_enabled : preferences.thinking_enabled)
     setAvailableModels(env.available_models ?? [])
     setOverriddenFields(env.overridden_fields)
     setBudgetMessage(null)
@@ -97,6 +105,12 @@ export default function EnvironmentPage() {
 
   useEffect(() => { void load() }, [load])
 
+  function applySavedEnvironment(env: EnvironmentSettings, committed: string[]) {
+    applyEnvironment(env, original ? {
+      original, draft: { model_routes: routeSel, task_budget: taskBudget, rankings, thinking_enabled: thinkingEnabled }, committed,
+    } : undefined)
+  }
+
   async function saveRoutes() {
     if (disabled || !original) return
     const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -106,7 +120,10 @@ export default function EnvironmentPage() {
     if (thinkingEnabled !== original.thinking_enabled) body.thinking_enabled = thinkingEnabled
     setBusy('routes')
     try {
-      applyEnvironment(await api.updateEnvironment(body))
+      applySavedEnvironment(await api.updateEnvironment(body), [
+        ...Object.keys(routes).map((key) => `model_routes.${key}`),
+        ...(body.thinking_enabled !== undefined ? ['thinking_enabled'] : []),
+      ])
       notify('save', 'ok', '模型偏好已保存', returnFocus)
     } catch (err) {
       notify('save', 'error', formatApiError(err), returnFocus)
@@ -126,7 +143,8 @@ export default function EnvironmentPage() {
     setBusy('rankings')
     setRankMsg(null)
     try {
-      applyEnvironment(await api.updateEnvironment({ rankings: changedFields(rankings, original.rankings) }))
+      const changes = changedFields(rankings, original.rankings)
+      applySavedEnvironment(await api.updateEnvironment({ rankings: changes }), Object.keys(changes).map((key) => `rankings.${key}`))
       setRankMsg({ tone: 'ok', text: '扫榜配置已保存' })
     } catch (err) {
       setRankMsg({ tone: 'error', text: formatApiError(err) })
@@ -146,7 +164,8 @@ export default function EnvironmentPage() {
     setBusy('budget')
     setBudgetMessage(null)
     try {
-      applyEnvironment(await api.updateEnvironment({ task_budget: changedFields(b, original.task_budget) }))
+      const changes = changedFields(b, original.task_budget)
+      applySavedEnvironment(await api.updateEnvironment({ task_budget: changes }), Object.keys(changes).map((key) => `task_budget.${key}`))
       setBudgetMessage({ tone: 'ok', text: '已保存，仅影响新任务。' })
     } catch (err) { setBudgetMessage({ tone: 'error', text: formatApiError(err) }) }
     finally { setBusy(null) }
@@ -157,7 +176,7 @@ export default function EnvironmentPage() {
     const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     setBusy(path)
     try {
-      applyEnvironment(await api.updateEnvironment({ reset_preferences: [path] }))
+      applySavedEnvironment(await api.updateEnvironment({ reset_preferences: [path] }), [path])
       notify('reset', 'ok', '已恢复平台默认', returnFocus)
     } catch (err) {
       notify('reset', 'error', formatApiError(err), returnFocus)

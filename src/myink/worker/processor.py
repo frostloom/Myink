@@ -31,6 +31,7 @@ from myink.task_budget import (bind_task_budget, budget_managed, budget_view,
                                TaskBudgetPaused, TaskBudgetUnavailable)
 from myink.db import new_session
 from myink.models import Project, Task
+from myink.platform_readiness import PlatformNotReady
 from myink.workflow.runner import (
     finalize_chapter_review,
     generate_batch,
@@ -455,6 +456,13 @@ def _run_bound(body: dict, task_id: str, task_type: str, project_id: str) -> str
                     _maybe_reflexion(project_id, seq, task_id)
     except (TaskBudgetPaused, TaskBudgetUnavailable):
         raise
+    except PlatformNotReady as exc:
+        from myink.workflow.runner import _set_task_status
+
+        _mark_empty_writing_chapters(body, "failed")
+        _set_task_status(project_id, task_id, "failed", str(exc))
+        _pub_status(task_id, "failed", {"error": str(exc)})
+        return "terminal"
     except Exception as exc:
         # 批次 critical 冲突：resume 续跑时由图内节点抛出（首次运行在 runner
         # generate_batch 内 catch 置 awaiting_review）。置 awaiting_review 等人工

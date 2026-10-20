@@ -135,7 +135,7 @@ export function TaskTimeline({
 
       {open && (
         <div className={styles.body}>
-          {taskId && status && <TaskBudgetPanel key={taskId} task={{ task_id: taskId, status, budget }} onResumed={refresh} />}
+          {taskId && status && <TaskBudgetPanel detailsCollapsed key={taskId} task={{ task_id: taskId, status, budget }} onResumed={refresh} />}
           {!taskId ? (
             <p className="empty">本章还没有生成记录。</p>
           ) : (

@@ -255,3 +255,40 @@ def test_budget_operation_replay_survives_later_unready_policy(policy, temp_proj
     assert extend_and_resume_budget(str(tid),uid,body)['status'] == 'queued'
     assert len(published) == 1
     assert budget_view(str(tid))['limits']['max_requests'] == 4
+
+
+
+def test_worker_role_disabled_after_admission_fails_privately_with_terminal_event(policy, temp_project, fake_embedder, monkeypatch):
+    from myink.db import new_session
+    from myink.models import Project, Task
+    from myink.platform_readiness import require_operation_ready
+    from myink.worker.processor import process
+    from myink.worker.redis_client import get_redis, sse_key, lock_key, book_key
+
+    tid = str(uuid.uuid4())
+    with new_session() as db:
+        uid = str(db.get(Project, uuid.UUID(temp_project)).user_id)
+    monkeypatch.setattr('myink.environment.packed_models', lambda owner: {})
+    policy['connections']['planner'] = dict(policy['connections']['good'])
+    policy['model_routes']['planner'] = 'custom:planner'
+    require_operation_ready('chapter_generate', uid)
+    # The admitted task loses its actual planning route while waiting for a worker.
+    policy['connections']['planner']['enabled'] = False
+    monkeypatch.setattr(providers, '_chain_from_override', lambda *a, **kw: pytest.fail('must not construct/call provider'))
+    body = dict(task_id=tid, project_id=temp_project, user_id=uid, task_type='chapter_generate',
+                payload={'seq': 1}, retry_count=0)
+    r = get_redis()
+    try:
+        assert process(body) == 'terminal'  # No retry/second paid attempt.
+        with new_session() as db:
+            task = db.get(Task, uuid.UUID(tid))
+            failure = (task.status, task.error)
+        frames = [frame for _, frame in r.xrange(sse_key(tid))]
+        assert (failure, frames[-1]) == (
+            ('failed', 'PLATFORM_NOT_READY'),
+            {'event': 'status', 'task_id': tid, 'status': 'failed', 'error': 'PLATFORM_NOT_READY'},
+        )
+        assert 'secret-value' not in repr(frames) and 'example.test' not in repr(frames)
+        assert process(body) == 'skip'  # Redelivery cannot repeat work after this failure.
+    finally:
+        r.delete(sse_key(tid), lock_key(tid), book_key(temp_project))
