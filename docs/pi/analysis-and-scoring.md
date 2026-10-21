@@ -99,3 +99,17 @@ C16 fix round 1：comparison 每输出费用仅在所有 receipt 都有有限非
 宿主核对实际结果后调用 `run.finish(slot_index, status='done'|'failed'|'uncertain'|'blocked')`；done/failed 表示本槽已得到明确终态，允许下一槽，不能理解为合同有效或计费认证。uncertain/blocked 阻止后续槽位；终态不可改写。不填写终态的已认领槽位在 `snapshot()` 中保持 UNCERTAIN，不能因重启变成 NOT_RUN。恢复程序可以依据外部证据为尚未写入终态的认领记录结果，但此模块不执行自动核对或释放。`snapshot()` 返回完整30槽，包括 NOT_RUN，不含正文或令牌。
 
 该模块接通持久准入能力，不启动 Pi、不循环执行30槽，不授予新预算。当前有效的整轮预算/期限、原累计账本、准确运行时与实际文件身份、无工具分析、资源隔离和进程清理仍由可信宿主接入验收；不能将本地HTTP模拟视作付费实验许可或语义质量改善。
+
+### 原累计账本、本轮费用与总期限（2026-10-21）
+
+新增 `run.bind_budget(policy, cap_microyuan=..., deadline=...)`，由可信宿主在认领任何槽位之前调用。`cap_microyuan` 是正整数微元（1元=1,000,000微元），最多20,000,000；`deadline` 是有限的绝对 Unix 秒数，首次绑定必须尚未到期。这两个值必须来自本次实际授权，API 不提供付费默认值。本轮没有确定或启用任何真实运行上限，也没有付费请求。
+
+绑定要求**已有原 local-trial-1 原始100次/10元 scope 及有效20元、fee-only修订**，冻结原scope/修订身份、整轮费用上限、绝对期限、全部policy字段及run/source/config/slots身份。空账本、缺失修订和替换scope均拒绝；不会自动创建一个新scope继续付费。绑定幂等，但不能提高/降低额度、改policy或延长期限；重启必须重新加载原账本，以同一组冻结输入调用 `AnalysisRun.open(...)`。`gateway_handler` 自动读取已有绑定，不能用新handler重置它。handler构建后新增绑定会使旧handler拒绝，不允许它继续按未绑定条件执行。
+
+实际调用链为 `AnalysisRun.gateway_handler → make_gateway_handler → forward_messages → reserve`。宿主专用 `analysis_slot` 上下文不来自HTTP正文；在原 `BEGIN IMMEDIATE` 事务内检查冻结身份、policy、已认领槽位、该槽无既有attempt、本轮费用和绝对期限，然后执行原累计额度检查及canonical `model-attempt` 插入。attempt只追加 `analysis_run_id/analysis_slot_index` 归属，仍由原 `settle` 计算完整usage费用或保留全额未知预留，不维护另一份钱账。本轮费用按明确归属的attempt求和，历史attempt的后续退款不会扩充本轮额度。只有HTTP剩余timeout可以小于冻结值，价格、输入上界、模型、provider及其他policy字段不能漂移。预留前深快照请求和policy，转发前也建立私有快照，避免宿主并发修改共享字典使计价、合同校验和实际发送不同。
+
+历史所有pending/unknown仍按原累计账本全额占用。**本轮**任一既有attempt pending/uncertain或usage不完整，后续预留必须停止，即使宿主误将对应槽标为done也不能继续计费。拒绝费用、到期等发生在认领之后时，认领仍消耗一次机会，不自动重试。已明确计费且宿主记录done/failed后，才可继续下一槽；超出本轮剩余额度或原累计余额均不发请求。
+
+预留后的permit期限取请求期限与整轮期限较早者，锁等待后再次核验整轮到期；传输timeout也取实际剩余时间。HTTP接收/发送使用受整轮期限限制的单调时钟watchdog，upstream获取与响应流沿用绝对/单调双重期限；到期关闭本地流、按未知结算，迟到usage不能退款。期限前已取得完整EOF/usage而SQLite提交等待跨期限，仍属于按时取得的证据。Python中已进入且无响应的自定义transport线程不能被强杀；它是daemon、迟到响应会关闭，真正进程清理仍需下一阶段的运行时隔离验收。
+
+底层未绑定 `guard`/`reserve`/`make_gateway_handler` 保留兼容，只有可信宿主可调用，不能作为付费运行入口。源码/config哈希的实际文件真实性、原账本私有路径、授权数值、全局时间源、随机令牌、Pi启动/新会话/退出、资源隔离与清理仍是宿主责任。该实现提供预算化的逐槽网关原语，尚未提供自动执行30槽的完整控制器。本地离线通过不等于严格隔离、付费30槽、45项语义质量或生产自治验收。

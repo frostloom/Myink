@@ -1,5 +1,5 @@
 """Trusted Anthropic forwarding. No SDK retries, redirects, or client pricing."""
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 import hashlib
 import json
 import time
@@ -9,7 +9,7 @@ from typing import Callable, Iterator
 
 from .budget import BudgetDenied, reserve, settle
 from .contracts import Record
-from .ledger import Ledger
+from .ledger import Ledger, _json
 from .policy import Policy
 
 
@@ -305,7 +305,7 @@ class _DeadlineUpstream:
         try:
             if self.cancelled.is_set() or self.remaining() <= 0:
                 return  # A durable reservation may have exhausted its deadline.
-            response = transport(body, timeout)
+            response = transport(body, min(timeout, self.remaining()))
             if self.cancelled.is_set():
                 return
             self.results.put(('response', response))
@@ -407,15 +407,19 @@ def _error(code):
 
 
 def forward_messages(body: Record, scope_id: str, *, ledger: Ledger, policy: Policy, transport: Callable,
-                     usage_observer: Callable[[Record], None] | None = None, tool_allowlist=()) -> GatewayResponse:
+                     usage_observer: Callable[[Record], None] | None = None, tool_allowlist=(), analysis_slot=None) -> GatewayResponse:
     try:
+        if analysis_slot is not None:
+            # The metered body and the actual transport must see the same input.
+            body = json.loads(_json(body))
+            policy = Policy(**asdict(policy))
         _validate(body, policy, tool_allowlist)
     except (ValueError, TypeError, OverflowError):
         return _error(400)
     if policy.live_enabled and (not policy.input_bound_calibrated or not policy.input_bound_source.strip() or not policy.price_source.strip() or any(v is None for v in policy.prices.values())):
         return _error(403)
     try:
-        permit = reserve(ledger, scope_id, body, policy)
+        permit = reserve(ledger, scope_id, body, policy, analysis_slot=analysis_slot)
     except BudgetDenied:
         return _error(429)
     collector = _UsageCollector(capture=usage_observer is not None)

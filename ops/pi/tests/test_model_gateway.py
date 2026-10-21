@@ -537,8 +537,8 @@ def test_expired_durable_permit_never_starts_transport(ledger, policy, monkeypat
     monkeypatch.setattr(time, 'time', lambda: wall_start + elapsed[0])
     monkeypatch.setattr(time, 'monotonic', lambda: monotonic_start + elapsed[0])
     real_reserve = gateway.reserve
-    def slow_durable_reserve(*args):
-        permit = real_reserve(*args)
+    def slow_durable_reserve(*args, **kwargs):
+        permit = real_reserve(*args, **kwargs)
         # The durable reservation commits after its existing absolute deadline.
         elapsed[0] = policy.timeout_seconds + 1
         return permit

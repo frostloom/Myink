@@ -1,5 +1,5 @@
 """Atomic shared trial reservations, using the ledger's immutable intents/receipts."""
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, replace
 from decimal import Decimal, ROUND_CEILING
 import time
 import uuid
@@ -301,10 +301,14 @@ def _policy_attempt_limit(policy):
     return min(100, policy.max_attempts)
 
 
-def reserve(ledger: Ledger, scope_id: str, request: Record, policy: Policy) -> BudgetPermit:
+def reserve(ledger: Ledger, scope_id: str, request: Record, policy: Policy, *, analysis_slot=None) -> BudgetPermit:
     # No date-derived reset in this trial; future daily scopes remain disabled.
     if scope_id != 'local-trial-1':
         raise BudgetDenied('scope disabled')
+    if analysis_slot is not None:
+        # Use one private snapshot for pricing, identity checks and the intent.
+        policy = Policy(**asdict(policy))
+        request = Ledger._decode(_json(request))
     policy_attempts = _policy_attempt_limit(policy)
     tokens = request.get('max_tokens')
     if type(tokens) is not int or not 0 < tokens <= policy.max_tokens:
@@ -315,6 +319,12 @@ def reserve(ledger: Ledger, scope_id: str, request: Record, policy: Policy) -> B
     payload = dict(scope_id=scope_id, reserved_microyuan=amount, deadline=permit.deadline,
                    prices=dict(policy.prices), input_token_bound=policy.input_token_bound, max_tokens=tokens)
     with ledger.transaction() as connection:
+        if analysis_slot is not None:
+            metadata, run_deadline = analysis_slot.authorize(connection, ledger, request, policy, amount)
+            if run_deadline is not None:
+                permit = replace(permit, deadline=min(permit.deadline, run_deadline))
+                payload['deadline'] = permit.deadline
+            payload.update(metadata)
         scope_key = 'model-scope:' + scope_id
         scope = connection.execute('SELECT * FROM operations WHERE operation_id=?', (scope_key,)).fetchone()
         if scope is None:

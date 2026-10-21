@@ -1,8 +1,9 @@
 """Durable, at-most-once slot admission. This is not a paid-run grant.
 
 Only the trusted host can create a run, bind a guard to a slot, or finish it.
-Budgeting, whole-run deadlines, containment and outcome verification stay with
-that host. An unfinished claim is uncertain, never permission to resend.
+The host can bind explicit whole-run limits to the canonical ledger.
+Containment and outcome verification remain with that host. An unfinished
+claim is uncertain, never permission to resend.
 """
 from hashlib import sha256
 import json
@@ -121,6 +122,11 @@ class AnalysisRun:
             states.append(dict(slot_index=index, slot_id=self._slots[index]['slot_id'], status=state))
         return states
 
+    def bind_budget(self, policy, *, cap_microyuan, deadline):
+        """Freeze explicit host limits before admission; never a paid-run grant."""
+        from .analysis_budget import bind_run_budget
+        bind_run_budget(self, policy, cap_microyuan=cap_microyuan, deadline=deadline)
+
     def gateway_handler(self, slot_index, policy, transport, *, scope_token):
         """Build the existing gateway with a distinct private token per slot.
 
@@ -147,8 +153,10 @@ class AnalysisRun:
                 elif (row['kind'] != kind or row['payload'] != _json(payload)
                       or row['status'] != 'pending' or row['evidence'] is not None):
                     raise OperationConflict('gateway token already bound to a different slot')
+        from .analysis_budget import AnalysisBudgetSlot
         return make_gateway_handler(self.ledger, policy, transport,
-            scope_token=scope_token, request_guard=self.guard(slot_index))
+            scope_token=scope_token, request_guard=self.guard(slot_index),
+            analysis_slot=AnalysisBudgetSlot(self, slot_index))
 
     def guard(self, slot_index):
         """Low-level body guard for a trusted host-selected slot.

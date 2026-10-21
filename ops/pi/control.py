@@ -51,7 +51,7 @@ class _DeadlineIO:
 
 
 def make_gateway_handler(ledger, policy, transport, *, scope_token=None, usage_observer=None,
-                         tool_broker=None, request_guard=None):
+                         tool_broker=None, request_guard=None, analysis_slot=None):
     if scope_token is not None and (not isinstance(scope_token, str) or not 0 < len(scope_token) <= 4096
                                    or any(not 33 <= ord(char) <= 126 for char in scope_token)):
         raise ValueError('invalid scope token')
@@ -64,7 +64,10 @@ def make_gateway_handler(ledger, policy, transport, *, scope_token=None, usage_o
             pass  # Never log request data, credentials, or upstream exceptions.
 
         def setup(self):
-            self.deadline = time.monotonic() + policy.timeout_seconds
+            duration = policy.timeout_seconds
+            if analysis_slot is not None and analysis_slot.deadline is not None:
+                duration = min(duration, max(0.001, analysis_slot.deadline - time.time()))
+            self.deadline = time.monotonic() + duration
             self.set_remaining_timeout()
             super().setup()
             self.rfile = _DeadlineIO(self.rfile, self)
@@ -158,7 +161,8 @@ def make_gateway_handler(ledger, policy, transport, *, scope_token=None, usage_o
                 request_policy = replace(policy, timeout_seconds=self.remaining())
                 result = forward_messages(body, 'local-trial-1', ledger=ledger, policy=request_policy,
                                           transport=transport, usage_observer=usage_observer,
-                                          tool_allowlist=tool_broker.allowed_tools if tool_broker else ())
+                                          tool_allowlist=tool_broker.allowed_tools if tool_broker else (),
+                                          analysis_slot=analysis_slot)
                 if result.attempt_id:
                     permit_deadline = ledger.get(result.attempt_id)['payload']['deadline']
                     self.deadline = min(self.deadline, time.monotonic() + max(0, permit_deadline - time.time()))
