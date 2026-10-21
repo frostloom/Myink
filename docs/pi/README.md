@@ -6,9 +6,11 @@
 
 Mac Python3.12环境已恢复；持久化30槽身份、原子认领、防重放、逐槽独立令牌已接入原累计账本、本轮显式费用上限与绝对期限。预留事务同时限制本轮和累计费用，重启不续期，本轮未知计费阻止继续；请求及policy私有快照保证计价与实际转发一致。见[本轮预算与期限验收](../evaluations/pi-run-budget-2026-10-21.md)。
 
-当前Mac Docker容器底座已通过4项固定合成Python探针：隔离、实际cgroup资源约束、超时及输出溢出的整个PID命名空间清理；4个容器停止并删除。新增41项定向通过，完整Pi离线1850 passed、0 skipped、19个pi_lab/pi_live未选入，语法检查与独立审查通过。见[隔离验收与边界](../evaluations/pi-container-containment-2026-10-21.md)及[机器回执](../evaluations/pi-container-containment-2026-10-21.json)。
+当前Mac Docker容器底座已通过隔离、实际资源限制、超时及输出溢出的整个PID命名空间清理。随后在相同边界内启动固定Linux ARM64 Node24.22.0/Pi1.1.0，通过有界stdio反向loopback接入宿主AnalysisRun预算网关；baseline/candidate两槽各一个请求由MockTransport接纳并已知结算，合同有效、新会话、无工具、退出0，两个容器均删除。30槽分母为2 DONE、28 NOT_RUN。见[容器底座](../evaluations/pi-container-containment-2026-10-21.md)、[真实Pi本地合成验收](../evaluations/pi-container-runtime-2026-10-21.md)及[机器回执](../evaluations/pi-container-runtime-2026-10-21.json)。
 
-下一目标是准备匹配Linux Node/Pi，在该容器边界内通过可信loopback通道接入逐槽预算网关，完成真实Pi本地合成执行。本轮没有启动真实Pi或外部模型实验，没有新增真实预算授权；pi_runtime_verified、production_ready及automatic_execution仍为false。45项语义质量仍unknown。
+当前完整Pi离线1892 passed、0 skipped、19个pi_lab/pi_live未选入；容器相关83项定向通过，语法检查通过。独立审查发现的两项来源闭包缺口已分别RED→GREEN修复，再跑最终真实验收和全量回归。`pi_runtime_verified=true`仅限固定本地合成协议，真实provider/计费、生产容量/checker隔离和45项语义质量仍未验收；production_ready、automatic_execution为false。本轮未调用外部模型或修改真实账本。
+
+下一目标是把容器执行纳入真实试验的可信宿主入口，核对原累计20元账本、冻结源/配置、价格和输入上界，再评估有限真实只读分析对照；本合成probe不接收真实provider或账本参数，不能充当付费launcher。
 
 ## 前一检查点（2026-10-20）
 

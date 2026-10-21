@@ -120,7 +120,9 @@ class ProbeHost:
             raise RuntimeError('container ID changed')
         return info
 
-    def create(self, mode, *, worker, source, foreign):
+    def create(self, mode, *, worker, source, foreign, interactive=False):
+        if type(interactive) is not bool:
+            raise ValueError('explicit interactive flag required')
         if mode not in KINDS:
             raise ValueError('fixed probe mode required')
         worker, source, foreign = map(_path, (worker,source,foreign))
@@ -145,6 +147,7 @@ class ProbeHost:
             '--env','PYTHONDONTWRITEBYTECODE=1','--env','HOME=/work',
             '--entrypoint','/usr/local/bin/python',self.image_id,'-I','-S','-u',
             '/probe/worker.py',mode,str(foreign)]
+        if interactive: args.insert(1, '--interactive')
         self.pending[name] = mode
         try:
             cid = self._call(*args).stdout.strip()
