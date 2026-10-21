@@ -1,0 +1,128 @@
+{
+  "automatic_execution": false,
+  "cases": [
+    {
+      "configured": true,
+      "elapsed": 1.0426288330054376,
+      "mode": "isolation",
+      "observed_pids": 0,
+      "output_bytes": 442,
+      "output_sha256": "357aa983c66cd04ee725b4c16eaca42b94d3612e1987e33736c11ff29bdf4939",
+      "passed": true,
+      "proof": {
+        "authenticated_mock": 200,
+        "foreign_files_denied": true,
+        "foreign_native_aliases_denied": true,
+        "gid": 65534,
+        "harness_write_denied": true,
+        "host_sockets_denied": true,
+        "ledger_credentials_sessions_denied": true,
+        "nested_network_denied": true,
+        "network_denied": true,
+        "no_capabilities": true,
+        "no_new_privileges": true,
+        "positive_source_read": true,
+        "positive_tmp_write": true,
+        "source_write_denied": true,
+        "uid": 65534,
+        "wrong_token": 403
+      },
+      "reason": "completed"
+    },
+    {
+      "configured": true,
+      "elapsed": 3.2621880829974543,
+      "mode": "resources",
+      "observed_pids": 0,
+      "output_bytes": 262,
+      "output_sha256": "45a531ec3884c1b6c764976355acbdd7cbb70ff53fe6041ea593177bbc5f73e3",
+      "passed": true,
+      "proof": {
+        "cpu_max": "50000 100000",
+        "guest_available_before": 1996845056,
+        "memory_child_returncode": -9,
+        "memory_max": 402653184,
+        "memory_peak": 402653184,
+        "oom_kills_delta": 1,
+        "pids_denied": true,
+        "pids_max": 64,
+        "pids_peak": 64,
+        "swap_max": 0,
+        "throttled_delta": 21
+      },
+      "reason": "completed"
+    },
+    {
+      "configured": true,
+      "elapsed": 2.3533038339955965,
+      "mode": "timeout",
+      "observed_pids": 3,
+      "output_bytes": 91,
+      "output_sha256": "9ecfa6429194962fe14809901743850e2425113638b95d4512cfb0c280e2aaad",
+      "passed": true,
+      "proof": {
+        "child_pid": 7,
+        "detached_descendants_ready": true,
+        "grandchild_pid": 8,
+        "parent_pid": 1
+      },
+      "reason": "timeout"
+    },
+    {
+      "configured": true,
+      "elapsed": 1.16666754099424,
+      "mode": "overflow",
+      "observed_pids": 3,
+      "output_bytes": 65536,
+      "output_sha256": "11847351e4b4af2acf9178f4c87c8685cac720938f7ac2b0ff3df8818e0ff5b7",
+      "passed": true,
+      "proof": {
+        "child_pid": 7,
+        "detached_descendants_ready": true,
+        "grandchild_pid": 8,
+        "parent_pid": 1
+      },
+      "reason": "output_overflow"
+    }
+  ],
+  "cleanup": [
+    {
+      "container_id": "63561dc96ec51efad3ad8e406d63a60829f888d85be1fe4a02786416d16aa60f",
+      "exit_code": 0,
+      "removed": true,
+      "stopped": true
+    },
+    {
+      "container_id": "cdb6ee581bd210b3e677fc7be8c17e0f41f42b9a1cfd020f79113a355c6e1e2a",
+      "exit_code": 0,
+      "removed": true,
+      "stopped": true
+    },
+    {
+      "container_id": "7a3bed71fd1f42fa6579f3d7359bd72fbd32cc32c40caedde01a98a1f0b05189",
+      "exit_code": 137,
+      "removed": true,
+      "stopped": true
+    },
+    {
+      "container_id": "e30d7b2691ed604a68047ea012af1a654efe101aa47d297e808359cdb6e8a719",
+      "exit_code": 137,
+      "removed": true,
+      "stopped": true
+    }
+  ],
+  "controller_sha256": "b521f683d4fb4015b0e4b76b6edf8cfd49007f1e10f19d16cf7208db5ca7eac3",
+  "daemon_id": "6a464461-31f4-4b73-bb3d-0f5e94024a27",
+  "endpoint_sha256": "d45e6afb1d9d24f38a6517bf5e3b59a7c3dd9f30b22e39f045464d3d30945684",
+  "failure_class": null,
+  "fixture_kind": "fixed_python_canaries",
+  "image_id": "sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1",
+  "mock_only": true,
+  "operation_id": "e2b98fbd-6a2a-4209-a716-44c34e824775",
+  "paid_requests": 0,
+  "pi_runtime_verified": false,
+  "production_ready": false,
+  "schema_version": 1,
+  "status": "passed",
+  "worker_sha256": "5facf516a4380b8e8d8e02f101027d381cb954691b32267855246f748f2038fb"
+}
