@@ -316,5 +316,19 @@
     "offline_passed": 1947,
     "offline_skipped": 0,
     "offline_deselected": 19
+  },
+  "review": {
+    "range": "79e214d..14956aa",
+    "independent": true,
+    "critical": 0,
+    "important": 0,
+    "minor": 0,
+    "targeted_passed": 324,
+    "supplemental_passed": 43,
+    "supplemental_environment_blocked": 11,
+    "full_suite_independently_rerun": false,
+    "private_state_independently_read": false,
+    "provider_or_docker_called": false,
+    "legacy_preview_modified": false
   }
 }

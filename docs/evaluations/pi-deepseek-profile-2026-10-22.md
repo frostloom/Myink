@@ -30,6 +30,8 @@
 
 新闭包源码及既有Linux依赖运行真实隔离Pi，actual001操作`4ef34cf1-3aea-45ee-a9cf-c500421096f6`：两臂各一个新会话，固定模型`deepseek-flash`，原合同及宿主重评分有效，Pi退出0。每槽HTTP状态`403/403/200/403`对应错token/请求漂移/唯一允许请求/重放。仅MockTransport提供合成答复，30槽为2 DONE/28 NOT_RUN；两个容器均退出0并删除，额外精确label的ps为空。闭包hash及无正文结果见同名JSON。
 
-独立审查待完成。本轮未调用真实DeepSeek模型、未在线验证密钥或provider账单；`billing_verified=false`、`production_ready=false`、`automatic_execution=false`。未运行业务Python/Go/web或设施CI。45项语义质量仍unknown；真实提供方usage字段适配不能用缺字段自动补0。
+独立审查覆盖`79e214d..14956aa`，无确认Critical/Important/Minor问题。审查者独立定向324 passed，补充网关43 passed；11项因审查沙箱禁止socket.bind受阻，未记为通过。审查未重跑完整离线或实际容器验收，也未访问私有配置/账本或核验外部来源；这些实际声明仍仅由实施方回执支持。既有lab preview旧凭据入口未改、未启用，后续复用需另行核对。本轮未调用真实DeepSeek模型、未在线验证密钥或provider账单；`billing_verified=false`、`production_ready=false`、`automatic_execution=false`。未运行业务Python/Go/web或设施CI。45项语义质量仍unknown；真实提供方usage字段适配不能用缺字段自动补0。
 
 下一阶段接入已固定的新provider/policy身份、本轮明确费用上限/绝对期限与原账本原子预留、可信容器生命周期。当前预检、配置切换与合成容器验收均不能作为付费启动授权。原main未合并或部署。
+
+审查裁定：沿用官方Anthropic兼容网关并保持历史冻结身份；若兼容判断错误，真实使用前须调整适配。私有配置/权限/账本及本地容器声明采用实施方实际回执，若记录不符须纠正配置或重跑验收。官方容量/价格来源不是usage或账单证明，真实发送前须重新核对。旧lab入口留待复用前单独加固。保持live关闭、不释放未知预留，代价是在线有效性、计费与质量继续未验证。无延期Minor。

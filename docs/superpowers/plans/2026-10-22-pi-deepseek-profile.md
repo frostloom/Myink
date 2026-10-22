@@ -45,4 +45,4 @@
 - [x] Step 3: 最小实现宿主凭据模块、预检绑定和默认模型切换。
 - [x] Step 4: 运行定向及全Pi离线、compileall/diff-check；Expected: 全通过，记录跳过/未选入。
 - [x] Step 5: 获取官方公开来源并SHA固定；私有备份/原子替换credentials、生成state/policy.json，实际只读预检并核对与CC-Switch同key；不输出key。刷新隔离源码，条件允许时新模型真实Pi合成容器验收。
-- [ ] Step 6: 独立审查，必要修复RED→GREEN；更新无正文记录，提交/推送/核对远程，更新myink记忆。
+- [x] Step 6: 独立审查，必要修复RED→GREEN；更新无正文记录，提交/推送/核对远程，更新myink记忆。
