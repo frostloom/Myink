@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-22",
+  "base_commit": "96400eff01e4123b6fd692368081846bad2c6caa",
+  "status": "offline_verified",
+  "new_tests": 22,
+  "red_observed_failures": 22,
+  "targeted": {
+    "passed": 216,
+    "seconds": 12.9
+  },
+  "offline": {
+    "passed": 2013,
+    "skipped": 0,
+    "deselected": 19,
+    "seconds": 56.93
+  },
+  "checks": {
+    "compileall": true,
+    "diff_check": true
+  },
+  "evidence_sha256": {
+    "red.log": "57dc6d4327458463be0464c0b2897082b608ccda9ab082fe68147b93ef2e5ea4",
+    "targeted.log": "2c8f65943580bc4f17ac9b63f4ad50828a3277a67a6b7e09194996fc503acc71",
+    "offline.log": "f635f617bdc0adf7570bcd1305ab2c0a8d5b530584e396fef3b9189c73f78e2b",
+    "offline.xml": "c96350cc194d18d6a440e5c4dc8d8eac6c681b04a0e16be747e6c65cd12c230e"
+  },
+  "integration_boundary": "fake_docker_real_stdio_loopback_http_sqlite_mock_provider",
+  "diagnostics": {
+    "mode": "best_effort_private",
+    "file_mode": "0600",
+    "parent_mode": "0700",
+    "max_record_bytes": 8192,
+    "max_write_attempts_per_slot_file": 1,
+    "async_worker_count": 1,
+    "async_queue_capacity": 6,
+    "storage_wait": false,
+    "retry": false,
+    "delivery_guaranteed": false,
+    "changes_settlement": false,
+    "public_receipt_contains_usage": false
+  },
+  "actual_credentials_read": false,
+  "canonical_ledger_read": false,
+  "canonical_ledger_modified": false,
+  "actual_docker_calls": 0,
+  "actual_linux_pi_rerun": false,
+  "paid_requests": 0,
+  "actual_live_enabled_changed": false,
+  "billing_verified": false,
+  "production_ready": false,
+  "automatic_execution": false
+}

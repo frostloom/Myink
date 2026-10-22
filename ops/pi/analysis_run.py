@@ -127,7 +127,7 @@ class AnalysisRun:
         from .analysis_budget import bind_run_budget
         bind_run_budget(self, policy, cap_microyuan=cap_microyuan, deadline=deadline)
 
-    def gateway_handler(self, slot_index, policy, transport, *, scope_token):
+    def gateway_handler(self, slot_index, policy, transport, *, scope_token, usage_observer=None):
         """Build the existing gateway with a distinct private token per slot.
 
         Persist only the token digest. The host supplies a fresh unguessable
@@ -155,7 +155,7 @@ class AnalysisRun:
                     raise OperationConflict('gateway token already bound to a different slot')
         from .analysis_budget import AnalysisBudgetSlot
         return make_gateway_handler(self.ledger, policy, transport,
-            scope_token=scope_token, request_guard=self.guard(slot_index),
+            scope_token=scope_token, usage_observer=usage_observer, request_guard=self.guard(slot_index),
             analysis_slot=AnalysisBudgetSlot(self, slot_index))
 
     def guard(self, slot_index):

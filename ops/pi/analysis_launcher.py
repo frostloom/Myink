@@ -30,6 +30,7 @@ from .control import live_ready
 from .ledger import Ledger, LedgerBlocked
 from .policy import load_policy
 from .provider_config import DEFAULT_MODEL, DEEPSEEK_BASE_URL, load_credentials
+from .usage_diagnostics import make_usage_observer
 
 
 _FIELDS = set('schema ledger_path policy_path credential_path input_path evidence_path root source docker '
@@ -149,7 +150,8 @@ def _slot(run, policy, config, inputs, slot, index, host, transport, root, prove
     if remaining() <= 0 or _hash(verify_source(Path(config['source']), config['runtime_sha256'])) != _hash(provenance):
         raise ValueError(_ERROR)
     row = dict(slot_index=index, slot_id=slot['slot_id'], http_statuses=[])
-    handler = run.gateway_handler(index, policy, transport, scope_token=token)
+    observer = make_usage_observer(root/f'slot-{index}-usage-private.jsonl', slot_index=index)
+    handler = run.gateway_handler(index, policy, transport, scope_token=token, usage_observer=observer)
     with ThreadingHTTPServer(('127.0.0.1', 0), handler) as server:
         server.daemon_threads = True
         thread = Thread(target=server.serve_forever, kwargs={'poll_interval': .01}, daemon=True); thread.start()
@@ -211,7 +213,8 @@ def launch(config, *, execute=False):
         config, policy, credentials, inputs, slots, provenance, diagnostic, host = _prepare(config)
         result = dict(status='checked', execution_requested=execute, launch_ready=live_ready(policy),
             planned_slots=30, selected_slots=2, production_ready=False, automatic_execution=False,
-            billing_verified=False, config_sha256=_hash(config), provenance=provenance,
+            billing_verified=False, usage_diagnostics='best_effort_private',
+            config_sha256=_hash(config), provenance=provenance,
             preflight=diagnostic, cases=[], cleanup=[])
         if not execute:
             return result
