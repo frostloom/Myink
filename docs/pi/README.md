@@ -1,5 +1,9 @@
 # Myink 管理员与 Pi 引擎
 
+## 显式单槽与只读清单（2026-10-22）
+
+启动器新增闭合v2清单，必填selected_slots=1或2；v1字段和两槽行为不变，选择绑定config hash。本次原真实输入默认check通过，明确只选1槽、拟定cap2.016384元/240秒；live=false、结果目录未创建、0真实模型请求/预留，原账本未变、保守余额2.093625元。检查完成于北京时间18:30:18、当次deadline18:34:14，过期清单不得重放。Pi离线2112 passed、0 skipped、19 deselected；实际Linux单槽合成1 DONE/29 NOT_RUN、单容器exit0删除，独立审查无Important。官方现有峰谷费率，policy仍以峰值保守预留。见[单槽预检记录](../evaluations/pi-single-slot-2026-10-22.md)。
+
 ## 有界 SSE 分块传递（2026-10-22）
 
 生产宿主/worker 已改为有背压的 start/chunk/end 传递：每块最多16KiB、200 SSE wire总量1MiB、最多1024块；错误正文仍64KiB，session/帧/预算/期限保持原限制。两端校验UTF-8/序号/结束计数，断管关闭source，清理保留首因。Pi离线2095 passed、0 skipped、19 deselected，独立审查无Important；真实Linux合成92000字节ping开销加有效SSE完成两槽，1MiB超限场景单槽安全停止并清理。0真实付费，原账本未变、余额2.093625元、global live=false；历史真实ValueError根因仍未知。见[分块传递验收](../evaluations/pi-stream-relay-2026-10-22.md)。
@@ -44,9 +48,9 @@ SSE usage 兼容 null/standard service_tier；非标准层级及无效用量仍�
 
 `python -m ops.pi.analysis_launcher --config /absolute/private/manifest.json` 默认只检查，不创建账本/目录，不联系Docker或provider。宿主清单固定所有原状态路径和scope/policy/input/evidence/code/runtime指纹、run_id、正整数cap_microyuan、未来600秒内绝对deadline，以及本地daemon/不可变image。路径须为绝对非符号链接路径，Docker CLI也使用解析后的真实路径；credentials保持0600/父目录0700。
 
-清单schema为`pi-analysis-launch-v1`，完整字段见`ops/pi/analysis_launcher.py`的`_FIELDS`。输入文件仅含五组`views`及`report`；证据记录schema为`pi-provider-evidence-v1`，固定policy_sha256、review_reference、valid_until以及price/input_bound原始文件path与sha256。所有expected摘要为canonical JSON SHA256，原始来源文件为原始字节SHA256；code/runtime使用既有闭包fingerprint。证据须覆盖deadline，但只表示宿主审阅声明，不自动验证provider最新价格、密钥在线有效性、usage语义或账单。
+清单支持`pi-analysis-launch-v1`（固定两槽）和`pi-analysis-launch-v2`（额外必填严格整数`selected_slots=1|2`）；其余完整字段见`ops/pi/analysis_launcher.py`的`_FIELDS`。输入文件仅含五组`views`及`report`；证据记录schema为`pi-provider-evidence-v1`，固定policy_sha256、review_reference、valid_until以及price/input_bound原始文件path与sha256。所有expected摘要为canonical JSON SHA256，原始来源文件为原始字节SHA256；code/runtime使用既有闭包fingerprint。证据须覆盖deadline，但只表示宿主审阅声明，不自动验证provider最新价格、密钥在线有效性、usage语义或账单。
 
-只有显式`--execute`且live_ready、余额/单次预留/证据/身份检查都满足时，才在原账本注册30槽并绑定本轮费用与期限；入口仅选择第一对槽，不自动恢复/重试。原子预留仍核对同scope/policy/请求、本轮和累计预算及期限，历史unknown完整预留不释放。worker只收到当槽冻结输入、局部token和期限；上游key和原ledger不进容器。宿主合同/session、已知结算、精确所属容器清理全部成功才前进；任一unknown或清理失败停止。
+只有显式`--execute`且live_ready、余额/单次预留/证据/身份检查都满足时，才在原账本注册30槽并绑定本轮费用与期限；入口按清单选择首槽或第一对槽，不自动恢复/重试。原子预留仍核对同scope/policy/请求、本轮和累计预算及期限，历史unknown完整预留不释放。worker只收到当槽冻结输入、局部token和期限；上游key和原ledger不进容器。宿主合同/session、已知结算、精确所属容器清理全部成功才前进；任一unknown或清理失败停止。
 
 新增44项先RED后GREEN（含审查修复）；修复前定向231 passed，修复后完整Pi离线1991 passed、0 skipped、19项设施/在线未选入，compileall/diff-check通过。实际私有policy仍live=false，未开启真实上游。修复后实际Linux Pi+MockTransport两槽通过、精确所属容器均清理；独立审查的一项session唯一性终态顺序问题已RED→GREEN修复。见[宿主入口验收](../evaluations/pi-analysis-launcher-2026-10-22.md)和[机器回执](../evaluations/pi-analysis-launcher-2026-10-22.json)，不把合成验收算成provider或生产验收。既有固定synthetic probe仍不接真实ledger/transport。
 

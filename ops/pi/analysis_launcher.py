@@ -1,4 +1,4 @@
-"""Explicit host-owned two-slot pilot. Default check never authorizes spending.
+"""Explicit host-owned one- or two-slot pilot. Default check never authorizes spending.
 
 A pinned evidence record is a host review declaration, not an online price,
 credential, usage or billing certificate. This module is never a model tool.
@@ -74,9 +74,16 @@ def _initial(config, inputs, slot, index, token):
                 report=inputs['report'], deadline=min(config['deadline'], time.time() + 45))
 
 
+def _selected_count(config):
+    return 2 if config['schema'] == 'pi-analysis-launch-v1' else config['selected_slots']
+
+
 def _prepare(config):
     config = strict_json(json.dumps(config, allow_nan=False))  # Caller cannot mutate this run.
-    if (not isinstance(config, dict) or set(config) != _FIELDS or config['schema'] != 'pi-analysis-launch-v1'
+    if (not isinstance(config, dict) or config.get('schema') not in ('pi-analysis-launch-v1', 'pi-analysis-launch-v2')
+            or set(config) != (_FIELDS | {'selected_slots'} if config['schema'] == 'pi-analysis-launch-v2' else _FIELDS)
+            or (config['schema'] == 'pi-analysis-launch-v2' and (type(config['selected_slots']) is not int
+                or config['selected_slots'] not in (1, 2)))
             or type(config['cap_microyuan']) is not int or not 0 < config['cap_microyuan'] <= 20000000
             or type(config['deadline']) not in (int, float) or not math.isfinite(config['deadline'])
             or not 0 < config['deadline'] - time.time() <= 600
@@ -105,7 +112,7 @@ def _prepare(config):
     if not isinstance(inputs, dict) or set(inputs) != {'views', 'report'} or _hash(inputs) != config['expected_input_sha256']:
         raise ValueError(_ERROR)
     slots = prepare_contract_slots(inputs['views'], inputs['report'], model=DEFAULT_MODEL, cwd=Path('/work/candidate'))
-    for index, slot in enumerate(slots[:2]):
+    for index, slot in enumerate(slots[:_selected_count(config)]):
         if len(json.dumps(_initial(config, inputs, slot, index, 'a'*64), ensure_ascii=True).encode()) + 1 > INITIAL_FRAME_LIMIT:
             raise ValueError(_ERROR)
     provenance = verify_source(Path(config['source']), config['runtime_sha256'])
@@ -223,7 +230,7 @@ def _slot(run, policy, config, inputs, slot, index, host, transport, root, prove
 def launch(config, *, execute=False):
     """Check by default. Only explicit trusted-host execution can mutate state.
 
-    All thirty slots are registered; this pilot selects only the first pair.
+    All thirty slots are registered; the manifest selects the first one or pair.
     A failed invocation is never resumed or retried by this entry point.
     """
     try:
@@ -231,7 +238,7 @@ def launch(config, *, execute=False):
             raise ValueError(_ERROR)
         config, policy, credentials, inputs, slots, provenance, diagnostic, host = _prepare(config)
         result = dict(status='checked', execution_requested=execute, launch_ready=live_ready(policy),
-            planned_slots=30, selected_slots=2, production_ready=False, automatic_execution=False,
+            planned_slots=30, selected_slots=_selected_count(config), production_ready=False, automatic_execution=False,
             billing_verified=False, usage_diagnostics='best_effort_private',
             config_sha256=_hash(config), provenance=provenance, failure_detail=None,
             preflight=diagnostic, cases=[], cleanup=[])
@@ -251,7 +258,7 @@ def launch(config, *, execute=False):
     progress = dict(slot_index=0, stage='provider_setup', reason='stage_failed', response_bytes=0, http_status=None)
     try:
         with _provider(policy, credentials) as transport:
-            for index, slot in enumerate(slots[:2]):
+            for index, slot in enumerate(slots[:_selected_count(config)]):
                 progress = dict(slot_index=index, stage='source_check', reason='stage_failed', response_bytes=0, http_status=None)
                 row, cid = _slot(run, policy, config, inputs, slot, index, host, transport, root, provenance, progress)
                 progress['stage'] = 'session_unique'

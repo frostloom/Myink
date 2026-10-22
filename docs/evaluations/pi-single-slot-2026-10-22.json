@@ -1,0 +1,194 @@
+{
+  "schema": "pi-single-slot-readiness-v1",
+  "date": "2026-10-22",
+  "base_commit": "1494119872d8507a9ecdabba27528098796a7a54",
+  "behavior": {
+    "v1_schema": "pi-analysis-launch-v1",
+    "v1_selected_slots": 2,
+    "v1_field_set_unchanged": true,
+    "v2_schema": "pi-analysis-launch-v2",
+    "v2_selected_slots_required": true,
+    "v2_allowed_selected_slots": [
+      1,
+      2
+    ],
+    "selection_type": "strict_integer_excluding_bool",
+    "prefix_selection_only": true,
+    "selection_bound_to_config_sha256": true,
+    "registered_slots": 30,
+    "retries": 0
+  },
+  "tests": {
+    "new_tests": 17,
+    "red_failed": 6,
+    "red_passed": 11,
+    "launcher_passed": 72,
+    "full_pi_offline_passed": 2112,
+    "skipped": 0,
+    "deselected": 19,
+    "compileall": true,
+    "diff_check": true,
+    "cli_help_verified_after_docstring_only_change": true
+  },
+  "independent_review": {
+    "critical": 0,
+    "important": 0,
+    "minor": 1,
+    "minor_cli_description_fixed": true,
+    "reviewer_launcher_tests_passed": 72
+  },
+  "linux_synthetic": {
+    "status": "completed",
+    "selected_slots": 1,
+    "done": 1,
+    "not_run": 29,
+    "operation_id": "3a1a69d9-d601-4271-afbb-fb7950a32583",
+    "synthetic_requests": 1,
+    "known_synthetic_microyuan": 834,
+    "paid_requests": 0,
+    "padded_sse_bytes": 92000,
+    "contract_valid": true,
+    "http_statuses": [
+      403,
+      403,
+      200,
+      403
+    ],
+    "cleanup": [
+      {
+        "container_id": "bedc441c0e07a82e9a73ce417e60b04c185615e2da90803a866e08032d55fdec",
+        "stopped": true,
+        "removed": true,
+        "exit_code": 0
+      }
+    ],
+    "exact_label_empty": true
+  },
+  "actual_input_check": {
+    "status": "single_slot_actual_inputs_checked_only",
+    "checked_at": "2026-10-22T10:30:18.593607+00:00",
+    "schema": "pi-analysis-launch-v2",
+    "planned_slots": 30,
+    "selected_slots": 1,
+    "selected_arm": "baseline",
+    "selected_slot_id": "r1:recall.events:baseline",
+    "initial_frame_bytes": 354925,
+    "input_file_bytes": 496153,
+    "config_sha256": "68ed6cf11acbdda68db482c0cc30682a20a20d2414204ffcbcbfeb1c03ce044c",
+    "input_sha256": "72c13d1a4c7d50dde071072406f8d4b901e1722771c85421c3b6a3ef358fd7a3",
+    "cap_microyuan": 2016384,
+    "max_request_reserved_microyuan": 2016384,
+    "remaining_after_full_unknown_microyuan": 77241,
+    "deadline_seconds": 240,
+    "deadline_utc": "2026-10-22T10:34:14.562232+00:00",
+    "launch_ready": false,
+    "result_root_absent": true,
+    "credentials_checked": true,
+    "canonical_logical_and_db_wal_bytes_unchanged": true,
+    "policy_credential_original_input_bytes_unchanged": true,
+    "actual_input_containers_created": 0,
+    "docker_read_only_calls": 2
+  },
+  "check_is_not_paid_permission": true,
+  "short_lived_manifest_requires_remint": true,
+  "source_provenance": {
+    "runtime_sha256": "6e169d5462405f59c070365267eec24fddc005a3c141819ba7a1f548a592c528",
+    "node_sha256": "719a43d185f3b6a59d8fcbba1ff06b93c75f76fb0bb9916f81d33921615d4cb5",
+    "lock_sha256": "fd0f5bd8aa13e01da8792b161d80502f32e1afd00103151fbcc21f4b3146785a",
+    "pi_cli_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+    "code_sha256": "295e2affc415c29a488128442a206611929613bdf3e0d47f4288b02b015766a7",
+    "controller_sha256": "7a448c22be4108329b7778fe56583732c9f2407ca9660c0c1a5b577a912e0f1d",
+    "worker_sha256": "80ca8e95b18d43c6f3f1eea0238967a9b93015c54ffbf3605df2645d818fcaff"
+  },
+  "official_sources": {
+    "fetched_at": "2026-10-22T10:25:58.504968+00:00",
+    "sources": [
+      {
+        "name": "pricing",
+        "url": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/",
+        "sha256": "556097caba8adfeeed6455714bffd731c7f60db520fcee06a922eba5840663a3",
+        "bytes": 26182
+      },
+      {
+        "name": "anthropic",
+        "url": "https://api-docs.deepseek.com/guides/anthropic_api",
+        "sha256": "19b5e723f1c65f609c010999cdf3cc1929327c4369c54b0151e8ea82dc3dd033",
+        "bytes": 33800
+      },
+      {
+        "name": "cache",
+        "url": "https://api-docs.deepseek.com/zh-cn/guides/kv_cache",
+        "sha256": "4c300649c617f75d8c4c2c23e88c9f0e310912c999da6671464622a609a328c0",
+        "bytes": 33246
+      }
+    ],
+    "price_assertions": {
+      "model": "deepseek-flash",
+      "context": "1M",
+      "input_yuan_per_million": "2",
+      "output": "8",
+      "cache_read": "0.04"
+    },
+    "anthropic_four_dimensions_documented": false
+  },
+  "pricing_review": {
+    "official_flash_revision": "DeepSeek-V4.1-Flash-1017",
+    "frozen_policy_basis": "peak_upper_bound",
+    "peak_yuan_per_million": {
+      "input": "2",
+      "output": "8",
+      "cache_read": "0.04"
+    },
+    "off_peak_yuan_per_million": {
+      "input": "1",
+      "output": "4",
+      "cache_read": "0.02"
+    },
+    "policy_changed": false,
+    "billing_verified": false,
+    "official_reviewed_at": "2026-10-22T10:32:30.365665+00:00"
+  },
+  "canonical_ledger": {
+    "sha256": "ad15cd10d7d4402945530021511a3f225139ce6d3cdaab29e234bb39d427a1e4",
+    "scope_sha256": "2218dd4133ffb7709f5d2c3812620a2ee7686ea57837983cf0495f0cd1099746",
+    "operations": 714,
+    "events": 1163
+  },
+  "canonical_accounting": {
+    "attempts": 210,
+    "known_attempts": 202,
+    "unknown_attempts": 8,
+    "pending_attempts": 0,
+    "known_charged_microyuan": 1791431,
+    "unknown_reserved_microyuan": 16114944,
+    "conservative_used_microyuan": 17906375,
+    "budget_microyuan": 20000000,
+    "conservative_remaining_microyuan": 2093625
+  },
+  "global_live_enabled": false,
+  "execute_invoked": false,
+  "paid_requests": 0,
+  "canonical_ledger_modified": false,
+  "provider_usage_semantics_verified": false,
+  "billing_verified": false,
+  "production_ready": false,
+  "automatic_execution": false,
+  "historical_real_valueerror_cause_proven": false,
+  "private_evidence_sha256": {
+    "official-sources.json": "2bc84dd5e6a34d7c24c2497fcc548267c16efc1f7f134ba52a1bb3c0cac7027d",
+    "pricing-review.json": "1a492c85ab717369f571e37bda99cf922cdc5d940f6ae8a4b64cfa12d092a0a5",
+    "synthetic-single.py": "ebc9167a05a7e29071f6afba0c4ac5f81efbf9ba7ead0297199a4ce25763a01b",
+    "synthetic.log": "678fd45b0f6369aa1e09e485e88abd6b4a7e15a1cf24bfd014b719afc343dc67",
+    "synthetic-reviewed.py": "0ff42a29da3710687c3f8a9b79615b187e171dfee6bd4abf879f0a23fd9b1f04",
+    "synthetic-reviewed.log": "051f09b8665d14a995caf10a44c2a1529e4c159cb3a5428b11478158798d9be0",
+    "synthetic-001/synthetic-acceptance.json": "1a106afad2ccfba1c3ff437384a68321c8fb7cc79c773e01765cdc68d7d6ce9f",
+    "synthetic-002/synthetic-acceptance.json": "de29dcbbbf61ecd1ddc85291f0ff66f7f790fd83f405fd8d8e0ebf3f847ff906",
+    "synthetic-002/provenance-after.json": "ccb3bb82598c76e3f3efb57cf2b44f9e239b93f61c365776264e1ec0f2b948db",
+    "check.log": "5873cc8d6cc2be3852116ca3acf6e0439cd80fbe866f3351bad7a0a28fed900b",
+    "check-001/receipt-private.json": "71337fbc350752c67e969774ad9870d63e0705064c38e5342e42c222caa87b75",
+    "check-001/check-receipt-private.json": "16997fd5c61b33dc5b2090a8c3d9ec7f2fc0d0306eec19a859ac8f1b06bb5b3b",
+    "check-001/manifest-check-private.json": "2a76c383294c0f1a494b01db88235a2d5e1a91acdcfd615704992406167ec4f6",
+    "check-001/provider-evidence-private.json": "abd9e827bf61c5994c91f1ab2811ffed6e06bae0ecf4890ae571a4cb7ba0c418",
+    "check-001/bound-recipe-private.json": "c3089fb09e76b5834817aeba99dab702b57a30013625a572e9c5792194221d3c"
+  }
+}

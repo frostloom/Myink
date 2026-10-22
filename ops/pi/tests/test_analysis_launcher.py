@@ -366,3 +366,81 @@ def test_large_valid_sse_completes_without_confusing_wire_bytes_with_session(set
     with ledger.transaction() as db:
         rows=db.execute("SELECT * FROM operations WHERE kind='model-attempt'").fetchall()
         assert len(rows)==2 and all(row['status']=='done' for row in rows)
+
+
+@pytest.mark.parametrize('selected',[1,2])
+def test_v2_selection_check_is_explicit_and_read_only(setup,monkeypatch,selected):
+    c,ledger,_,_,_=setup
+    before=ledger.path.read_bytes()
+    def forbidden(*a,**k):pytest.fail('check produced a side effect')
+    monkeypatch.setattr(api(),'Ledger',forbidden)
+    monkeypatch.setattr(api(),'_provider',forbidden)
+    monkeypatch.setattr(api().ProbeHost,'create',forbidden)
+    result=api().launch(c|dict(schema='pi-analysis-launch-v2',selected_slots=selected))
+    assert result['status']=='checked' and result['selected_slots']==selected
+    assert result['planned_slots']==30 and not result['execution_requested']
+    assert ledger.path.read_bytes()==before and not Path(c['root']).exists()
+
+
+def test_v2_single_slot_completes_without_trying_second_despite_available_budget(setup,monkeypatch):
+    c,ledger,_,_,_=setup
+    processes,calls,daemon=install_external_boundaries(monkeypatch)
+    result=api().launch(c|dict(schema='pi-analysis-launch-v2',selected_slots=1),execute=True)
+    assert result['status']=='completed' and result['selected_slots']==1
+    assert len(calls)==len(processes)==len(result['cases'])==len(result['cleanup'])==1
+    assert [s['status'] for s in result['slots']]==['DONE']+['NOT_RUN']*29
+    assert not daemon.objects and all(p.poll()==0 for p in processes)
+    with ledger.transaction() as db:
+        rows=db.execute("SELECT * FROM operations WHERE kind='model-attempt'").fetchall()
+        assert len(rows)==1 and rows[0]['status']=='done'
+        assert json.loads(rows[0]['payload'])['analysis_slot_index']==0
+
+
+def test_v2_single_unknown_keeps_reservation_and_other_slots_not_run(setup,monkeypatch):
+    c,ledger,_,_,_=setup
+    processes,calls,daemon=install_external_boundaries(monkeypatch,'unknown')
+    result=api().launch(c|dict(schema='pi-analysis-launch-v2',selected_slots=1),execute=True)
+    assert result['status']=='blocked' and len(calls)==len(processes)==1
+    assert [s['status'] for s in result['slots']]==['UNCERTAIN']+['NOT_RUN']*29
+    assert not daemon.objects
+    with ledger.transaction() as db:
+        rows=db.execute("SELECT * FROM operations WHERE kind='model-attempt'").fetchall()
+        assert len(rows)==1 and rows[0]['status']=='uncertain'
+        assert json.loads(rows[0]['evidence'])['charged_microyuan']==json.loads(rows[0]['payload'])['reserved_microyuan']
+
+
+@pytest.mark.parametrize('selection',[True,False,0,3,-1,1.0,'1',None,[],{}])
+def test_v2_invalid_selection_cannot_reach_writers(setup,monkeypatch,selection):
+    c,ledger,_,_,_=setup;before=ledger.path.read_bytes()
+    def forbidden(*a,**k):pytest.fail('invalid selection reached side effect')
+    monkeypatch.setattr(api(),'Ledger',forbidden)
+    monkeypatch.setattr(api(),'_provider',forbidden)
+    with pytest.raises(LedgerBlocked):api().launch(c|dict(schema='pi-analysis-launch-v2',selected_slots=selection),execute=True)
+    assert ledger.path.read_bytes()==before and not Path(c['root']).exists()
+
+
+def test_v2_missing_selection_and_v1_extra_selection_are_rejected(setup):
+    c,ledger,_,_,_=setup;before=ledger.path.read_bytes()
+    for change in (dict(schema='pi-analysis-launch-v2'),dict(selected_slots=1)):
+        with pytest.raises(LedgerBlocked):api().launch(c|change,execute=True)
+    assert ledger.path.read_bytes()==before and not Path(c['root']).exists()
+
+
+def test_v2_config_hash_binds_selected_count(setup):
+    c,_,_,_,_=setup
+    one=api().launch(c|dict(schema='pi-analysis-launch-v2',selected_slots=1))
+    two=api().launch(c|dict(schema='pi-analysis-launch-v2',selected_slots=2))
+    assert one['config_sha256']!=two['config_sha256']
+
+
+def test_v2_disabled_single_slot_cannot_execute(setup):
+    c,ledger,p,_,_=setup
+    p=replace(p,live_enabled=False)
+    Path(c['policy_path']).write_text(json.dumps(asdict(p)));c['expected_policy_sha256']=_hash(asdict(p))
+    e=json.loads(Path(c['evidence_path']).read_text());e['policy_sha256']=c['expected_policy_sha256']
+    Path(c['evidence_path']).write_text(json.dumps(e));c['expected_evidence_sha256']=_hash(e)
+    c|=dict(schema='pi-analysis-launch-v2',selected_slots=1)
+    before=ledger.path.read_bytes()
+    assert api().launch(c)['launch_ready'] is False
+    with pytest.raises(LedgerBlocked):api().launch(c,execute=True)
+    assert ledger.path.read_bytes()==before and not Path(c['root']).exists()
