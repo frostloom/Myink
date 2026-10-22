@@ -45,33 +45,7 @@ class Ledger:
                     connection.execute(statement)
             elif version != 1 or not {'operations', 'events'}.issubset(tables):
                 raise LedgerBlocked('unsupported ledger schema')
-            if connection.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
-                raise LedgerBlocked('ledger integrity check failed')
-            expected = {
-                'operations': ['operation_id', 'kind', 'payload', 'status', 'evidence', 'schema_version'],
-                'events': ['id', 'kind', 'payload', 'schema_version'],
-            }
-            for table, columns in expected.items():
-                if [row[1] for row in connection.execute(f'PRAGMA table_info({table})')] != columns:
-                    raise LedgerBlocked('unsupported ledger schema')
-                if connection.execute(f'SELECT 1 FROM {table} WHERE schema_version != 1 LIMIT 1').fetchone():
-                    raise LedgerBlocked('unsupported record version')
-            for row in connection.execute('SELECT * FROM operations'):
-                self._record(row)
-                if row['status'] not in ('pending', 'done', 'failed', 'uncertain', 'blocked'):
-                    raise LedgerBlocked('invalid operation status')
-                if (row['status'] == 'pending') != (row['evidence'] is None):
-                    raise LedgerBlocked('invalid operation receipt')
-            for row in connection.execute('SELECT payload FROM events'):
-                self._decode(row[0])
-            actual = {row[0]: row[1] for row in connection.execute(
-                "SELECT name, sql FROM sqlite_master WHERE type IN ('table', 'trigger')"
-            )}
-            for statement in _SCHEMA:
-                if statement.startswith('CREATE '):
-                    name = statement.split()[2].split('(')[0]
-                    if actual.get(name) != statement:
-                        raise LedgerBlocked('unsupported ledger schema')
+            validate_connection(connection)
 
     @contextmanager
     def transaction(self) -> ContextManager[sqlite3.Connection]:
@@ -170,3 +144,37 @@ class Ledger:
         with self.transaction() as connection:
             cursor = connection.execute('INSERT INTO events(kind,payload,schema_version) VALUES (?,?,1)', (kind, _json(payload)))
             return cursor.lastrowid
+
+
+def validate_connection(connection):
+    """SELECT-only validation shared with host read-only snapshot audits."""
+    version = connection.execute('PRAGMA user_version').fetchone()[0]
+    if version != 1:
+        raise LedgerBlocked('unsupported ledger schema')
+    if connection.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
+        raise LedgerBlocked('ledger integrity check failed')
+    expected = {
+        'operations': ['operation_id', 'kind', 'payload', 'status', 'evidence', 'schema_version'],
+        'events': ['id', 'kind', 'payload', 'schema_version'],
+    }
+    for table, columns in expected.items():
+        if [row[1] for row in connection.execute(f'PRAGMA table_info({table})')] != columns:
+            raise LedgerBlocked('unsupported ledger schema')
+        if connection.execute(f'SELECT 1 FROM {table} WHERE schema_version != 1 LIMIT 1').fetchone():
+            raise LedgerBlocked('unsupported record version')
+    for row in connection.execute('SELECT * FROM operations'):
+        Ledger._record(row)
+        if row['status'] not in ('pending', 'done', 'failed', 'uncertain', 'blocked'):
+            raise LedgerBlocked('invalid operation status')
+        if (row['status'] == 'pending') != (row['evidence'] is None):
+            raise LedgerBlocked('invalid operation receipt')
+    for row in connection.execute('SELECT payload FROM events'):
+        Ledger._decode(row[0])
+    actual = {row[0]: row[1] for row in connection.execute(
+        "SELECT name, sql FROM sqlite_master WHERE type IN ('table', 'trigger')"
+    )}
+    for statement in _SCHEMA:
+        if statement.startswith('CREATE '):
+            name = statement.split()[2].split('(')[0]
+            if actual.get(name) != statement:
+                raise LedgerBlocked('unsupported ledger schema')
