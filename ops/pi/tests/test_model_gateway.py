@@ -372,6 +372,7 @@ def test_trusted_server_transport_reads_only_credential_file(tmp_path, ledger, p
     assert str(requests[0].url) == 'https://maas.qianwenaiapi.com/apps/anthropic/v1/messages'
     assert requests[0].headers['x-api-key'] == 'test-credential'
     assert requests[0].headers['anthropic-version'] == '2023-06-01'
+    assert requests[0].headers['accept-encoding'] == 'identity'
     assert totals(ledger, 'local-trial-1') == (1, 10)
 
 
@@ -553,3 +554,75 @@ def test_expired_durable_permit_never_starts_transport(ledger, policy, monkeypat
     assert calls == []
     assert ledger.get(response.attempt_id)['status'] == 'uncertain'
     assert totals(ledger, 'local-trial-1') == (1, 10000)
+
+
+@pytest.mark.parametrize('encoding', ['gzip', 'deflate', 'br', 'zstd', 'gzip, identity', 'SECRET-ENCODING', ''])
+@pytest.mark.parametrize('streaming', [False, True])
+def test_encoded_upstream_is_blocked_before_body_read_without_refund(ledger, policy, encoding, streaming):
+    from ops.pi.tests.test_usage_diagnostics import Evidence
+    evidence = Evidence()
+    class Unreadable(httpx.SyncByteStream):
+        reads = 0
+        closed = False
+        def __iter__(self):
+            self.reads += 1
+            raise AssertionError('encoded bytes must never be read or decoded')
+            yield b''
+        def close(self): self.closed = True
+    upstream = Unreadable()
+    calls = []
+    def handler(req):
+        calls.append(req)
+        return httpx.Response(200, headers={'content-encoding': encoding, 'content-type': 'text/event-stream'}, stream=upstream)
+    response = forward_messages(request() | dict(stream=streaming), 'local-trial-1', ledger=ledger,
+        policy=policy, transport=transport(handler), usage_observer=evidence.append)
+    try:
+        assert response.status_code == 502
+        assert response.headers['content-type'] == 'application/json'
+        assert isinstance(response.body, bytes) and b'upstream' in response.body
+        assert len(calls) == 1 and upstream.reads == 0
+        assert ledger.get(response.attempt_id)['status'] == 'uncertain'
+        assert totals(ledger, 'local-trial-1') == (1, 10000)
+        assert evidence.ready.wait(1)
+        item = evidence[0]
+        assert item['parser_reason'] == 'unsupported_content_encoding'
+        assert not item['stream_started'] and item['raw_usage'] == {}
+        assert item['upstream_response'] == {'status_code': 200, 'content_encoding': encoding if encoding in ('gzip', 'deflate', 'br', 'zstd') else 'other'}
+        import json
+        assert 'SECRET' not in json.dumps(item)
+        import time
+        deadline = time.monotonic() + 1
+        while not upstream.closed and time.monotonic() < deadline: time.sleep(.005)
+        assert upstream.closed
+    finally:
+        if hasattr(response.body, 'close'): response.body.close()
+
+
+@pytest.mark.parametrize('encoding', [None, 'identity', ' Identity '])
+def test_identity_encoding_preserves_progressive_sse_and_known_settlement(ledger, policy, encoding):
+    headers = {'content-type': 'text/event-stream'}
+    if encoding is not None: headers['content-encoding'] = encoding
+    stream = Chunks()
+    response = forward_messages(request() | dict(stream=True), 'local-trial-1', ledger=ledger,
+        policy=policy, transport=transport(lambda _: httpx.Response(200, headers=headers, stream=stream)))
+    assert response.status_code == 200 and stream.reads == 0
+    assert b'message_stop' in b''.join(response.body)
+    assert ledger.get(response.attempt_id)['status'] == 'done'
+    assert totals(ledger, 'local-trial-1') == (1, 10)
+
+
+def test_launcher_provider_requests_uncompressed_response(policy, monkeypatch):
+    from ops.pi import analysis_launcher
+    client_type = httpx.Client
+    requests = []
+    def handler(req):
+        requests.append(req)
+        return success(req)
+    def client(**kwargs):
+        return client_type(transport=httpx.MockTransport(handler), **kwargs)
+    monkeypatch.setattr(analysis_launcher.httpx, 'Client', client)
+    with analysis_launcher._provider(policy, {'PLATFORM_MODEL_API_KEY': 'synthetic'}) as send:
+        response = send(request(), 1)
+        response.close()
+    assert len(requests) == 1
+    assert requests[0].headers['accept-encoding'] == 'identity'

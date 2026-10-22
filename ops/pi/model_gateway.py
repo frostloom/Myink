@@ -425,6 +425,7 @@ def forward_messages(body: Record, scope_id: str, *, ledger: Ledger, policy: Pol
     collector = _UsageCollector(capture=usage_observer is not None)
     outcome = 'stream_closed'
     observed = False
+    upstream_evidence = dict(status_code=None, content_encoding='unavailable')
 
     def observe(reason):
         nonlocal observed
@@ -435,7 +436,8 @@ def forward_messages(body: Record, scope_id: str, *, ledger: Ledger, policy: Pol
             _dispatch_usage_observer(usage_observer, dict(attempt_id=permit.attempt_id, stream=bool(body.get('stream')),
                                 stream_started=collector.started, stream_stopped=collector.stopped,
                                 final_output_usage=collector.final_output_usage, parser_valid=collector.valid,
-                                parser_reason=collector.failure or reason, raw_usage=collector.raw_usage))
+                                parser_reason=collector.failure or reason, raw_usage=collector.raw_usage,
+                                upstream_response=upstream_evidence))
         except Exception:
             pass  # Optional evidence failure never changes the immutable settlement.
 
@@ -451,11 +453,26 @@ def forward_messages(body: Record, scope_id: str, *, ledger: Ledger, policy: Pol
     request_id = response.headers.get('request-id', response.headers.get('x-request-id', ''))
     unknown = {'provider_request_id': request_id}
     status = response.status_code
+    # Forward only identity bytes. Raw streaming deliberately bypasses HTTPX's
+    # decompressor to avoid unbounded expansion before our existing size checks.
+    encoding = response.headers.get('content-encoding')
+    encoding = encoding.strip().lower() if encoding is not None and len(encoding) <= 32 else encoding
+    encoding_class = ('absent' if encoding is None else encoding
+                      if encoding in ('identity', 'gzip', 'deflate', 'br', 'zstd') else 'other')
+    upstream_evidence.update(status_code=status if type(status) is int and 100 <= status <= 599 else None,
+                             content_encoding=encoding_class)
     if 300 <= status < 400:
         upstream.close()
         settle(ledger, permit, unknown)
         observe('redirect_refused')
         return GatewayResponse(502, headers, b'{"error":"redirect refused"}', permit.attempt_id)
+
+    if encoding_class not in ('absent', 'identity'):
+        upstream.close()
+        settle(ledger, permit, unknown)
+        observe('unsupported_content_encoding')
+        return GatewayResponse(502, {'content-type': 'application/json'},
+                               b'{"error":"upstream encoding unsupported"}', permit.attempt_id)
 
     def finish_unknown():
         upstream.close()

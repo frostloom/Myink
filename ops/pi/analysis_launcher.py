@@ -129,7 +129,7 @@ def _provider(policy, credentials):
     with httpx.Client(trust_env=False, follow_redirects=False, timeout=policy.timeout_seconds) as client:
         def send(body, timeout):
             request = client.build_request('POST', policy.base_url + '/v1/messages', json=body,
-                headers={'x-api-key': credentials['PLATFORM_MODEL_API_KEY'], 'anthropic-version': '2023-06-01'}, timeout=timeout)
+                headers={'x-api-key': credentials['PLATFORM_MODEL_API_KEY'], 'anthropic-version': '2023-06-01', 'accept-encoding': 'identity'}, timeout=timeout)
             return client.send(request, stream=True, follow_redirects=False)
         yield send
 
