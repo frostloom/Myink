@@ -1,5 +1,9 @@
 # Myink 管理员与 Pi 引擎
 
+## 有界 SSE 分块传递（2026-10-22）
+
+生产宿主/worker 已改为有背压的 start/chunk/end 传递：每块最多16KiB、200 SSE wire总量1MiB、最多1024块；错误正文仍64KiB，session/帧/预算/期限保持原限制。两端校验UTF-8/序号/结束计数，断管关闭source，清理保留首因。Pi离线2095 passed、0 skipped、19 deselected，独立审查无Important；真实Linux合成92000字节ping开销加有效SSE完成两槽，1MiB超限场景单槽安全停止并清理。0真实付费，原账本未变、余额2.093625元、global live=false；历史真实ValueError根因仍未知。见[分块传递验收](../evaluations/pi-stream-relay-2026-10-22.md)。
+
 ## 标准层级兼容与宿主诊断（2026-10-22）
 
 SSE usage 兼容 null/standard service_tier；非标准层级及无效用量仍保留 unknown。启动器新增有限阶段/原因码和饱和字节数，清理失败保留首因；没有扩大 64 KiB 正文等边界。最终 Pi 离线 2071 passed、0 skipped、19 deselected，审查发现的首因覆盖已修复并复审；修复后实际 Linux Pi 合成标准两槽完成，超限场景单槽安全停止、容器全部删除。0 新增付费请求，原账本逻辑摘要未变、保守余额仍 2.093625 元、global live=false；上次真实 ValueError 根因仍未证实。见[本轮验收](../evaluations/pi-stage-tier-2026-10-22.md)。下一步先离线设计有界 SSE 传递，不补发旧槽或释放历史 unknown。

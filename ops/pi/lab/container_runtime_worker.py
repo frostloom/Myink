@@ -40,6 +40,41 @@ def prepare_initial(initial):
     return dict(initial,slot=slot,view=view,report=report,deadline=deadline,model=MODEL)
 
 
+def relay_handler(emit, readline):
+    """Fixed request route with incremental bounded host responses."""
+    from ops.pi.container_runtime import parse_frame
+    from ops.pi.relay_stream import receive_response
+    class Relay(BaseHTTPRequestHandler):
+        def log_message(self,*args):pass
+        def do_POST(self):
+            self.connection.settimeout(10)
+            started = False
+            try:
+                lengths=self.headers.get_all('Content-Length',[])
+                if (len(lengths)!=1 or not lengths[0].isdigit() or not 0<int(lengths[0])<=65536
+                        or self.headers.get('Transfer-Encoding')):
+                    raise ValueError('bounded HTTP body required')
+                body=self.rfile.read(int(lengths[0]))
+                if len(body)!=int(lengths[0]):raise ValueError('truncated HTTP body')
+                headers=[[k,v] for k,v in self.headers.raw_items() if k.lower() not in ('host','content-length')]
+                frame=dict(type='request',path=self.path,headers=headers,body=body.decode())
+                parse_frame(json.dumps(frame).encode());emit(frame)
+                def start(status):
+                    nonlocal started
+                    started = True
+                    self.send_response(status)
+                    self.send_header('Content-Type','text/event-stream' if status==200 else 'text/plain')
+                    self.send_header('Connection','close');self.end_headers()
+                def write(raw):
+                    self.wfile.write(raw);self.wfile.flush()
+                receive_response(readline,start,write)
+            except (ValueError,OSError,KeyError,TypeError) as exc:
+                print('relay rejected: '+type(exc).__name__,file=sys.stderr,flush=True)
+                if not started:self.send_error(400)
+            finally:self.close_connection=True
+    return Relay
+
+
 def main():
     sys.path.insert(0,'/source/code')
     from ops.pi.container_runtime import fixture, parse_frame, strict_json, FRAME_LIMIT, INITIAL_FRAME_LIMIT
@@ -57,37 +92,10 @@ def main():
         raw=json.dumps(value,ensure_ascii=True,allow_nan=False)
         if len(raw.encode())>FRAME_LIMIT:raise ValueError('bounded relay frame required')
         print(raw,flush=True)
-    class Relay(BaseHTTPRequestHandler):
-        def log_message(self,*args):pass
-        def do_POST(self):
-            self.connection.settimeout(10)
-            try:
-                lengths=self.headers.get_all('Content-Length',[])
-                if (len(lengths)!=1 or not lengths[0].isdigit() or not 0<int(lengths[0])<=65536
-                        or self.headers.get('Transfer-Encoding')):
-                    raise ValueError('bounded HTTP body required')
-                body=self.rfile.read(int(lengths[0]))
-                if len(body)!=int(lengths[0]):raise ValueError('truncated HTTP body')
-                headers=[[k,v] for k,v in self.headers.raw_items() if k.lower() not in ('host','content-length')]
-                frame=dict(type='request',path=self.path,headers=headers,body=body.decode())
-                parse_frame(json.dumps(frame).encode());emit(frame)
-                reply=strict_json(sys.stdin.buffer.readline(FRAME_LIMIT+1))
-                if (not isinstance(reply,dict) or set(reply)!={'status','body'} or type(reply['status']) is not int
-                        or reply['status'] not in (200,400,403,429,502) or not isinstance(reply['body'],str)
-                        or len(reply['body'].encode())>65536):
-                    raise ValueError('bounded gateway reply required')
-                raw=reply['body'].encode()
-                self.send_response(reply['status'])
-                self.send_header('Content-Type','text/event-stream' if reply['status']==200 else 'text/plain')
-                self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
-            except (ValueError,OSError,KeyError,TypeError) as exc:
-                print('relay rejected: '+type(exc).__name__+': '+str(exc),file=sys.stderr,flush=True)
-                self.send_error(400)
-            finally:self.close_connection=True
     root=Path('/work');cwd=root/'candidate';cwd.mkdir()
     view,report=initial['view'],initial['report']
     index=initial['slot_index'];slot=initial['slot']
-    server=HTTPServer(('127.0.0.1',0),Relay)
+    server=HTTPServer(('127.0.0.1',0),relay_handler(emit,sys.stdin.buffer.readline))
     thread=Thread(target=server.serve_forever,kwargs={'poll_interval':.01},daemon=True);thread.start()
     base=f'http://127.0.0.1:{server.server_port}'
     opener=build_opener(ProxyHandler({}))

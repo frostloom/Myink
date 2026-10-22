@@ -157,10 +157,13 @@ def test_worker_rejects_drift_or_unbounded_initial_frame(setup,what):
 CHILD=r'''
 import json,sys,hashlib
 from ops.pi.container_runtime import fixture
+from ops.pi.relay_stream import receive_response
 x=json.loads(sys.stdin.readline());s=x['slot'];token=x['token']
 def request(body,key):
  print(json.dumps(dict(type='request',path='/v1/messages',headers=[['x-api-key',key],['X-Pi-Scope','local-trial-1'],['Content-Type','application/json']],body=json.dumps(body))),flush=True)
- return json.loads(sys.stdin.readline())
+ status=[];chunks=[]
+ receive_response(sys.stdin.buffer.readline,status.append,chunks.append)
+ return dict(status=status[0],body=b''.join(chunks).decode())
 assert request(s['request'],'wrong')['status']==403
 assert request(s['request']|{'model':'foreign'},token)['status']==403
 request(s['request'],token)
@@ -264,7 +267,7 @@ def test_duplicate_session_never_becomes_second_durable_done(setup,monkeypatch):
 
 
 @pytest.mark.parametrize('cleanup_failure', ['none', 'remove', 'reconcile', 'slot'])
-@pytest.mark.parametrize('kind,reason,observed', [('overflow', 'response_size_limit', 65537), ('utf8', 'invalid_utf8', 1)])
+@pytest.mark.parametrize('kind,reason,observed', [('overflow', 'response_size_limit', 1048577), ('utf8', 'invalid_utf8', 1)])
 def test_relay_failure_records_bounded_reason_without_body_or_refund(setup, monkeypatch, kind, reason, observed, cleanup_failure):
     import httpx
     from ops.pi.tests.test_model_gateway import transport
@@ -278,7 +281,7 @@ def test_relay_failure_records_bounded_reason_without_body_or_refund(setup, monk
             if kind == 'utf8': yield b'\xff'
             else:
                 # Many small valid SSE pings overflow the aggregate relay cap.
-                for _ in range(4000): yield b'data: {"type":"ping"}\n\n'
+                for _ in range(50000): yield b'data: {"type":"ping"}\n\n'
     @contextmanager
     def provider(policy, credentials):
         def handler(req):
@@ -311,6 +314,11 @@ def test_invalid_result_has_distinct_stage_after_relay_success(setup, monkeypatc
     assert result['failure_detail']['reason']=='stage_failed'
     assert result['slots'][1]['status']=='NOT_RUN' and not daemon.objects
     assert all(p.poll()==0 for p in processes)
+    with ledger.transaction() as db:
+        rows=db.execute("SELECT * FROM operations WHERE kind='model-attempt'").fetchall()
+        assert len(rows)==1 and rows[0]['status']=='done'
+        assert json.loads(rows[0]['evidence'])['usage_known'] is True
+        assert json.loads(rows[0]['evidence'])['charged_microyuan']==834
 
 
 def test_unknown_usage_failure_is_distinct_from_valid_contract(setup, monkeypatch):
@@ -331,3 +339,30 @@ def test_unknown_usage_failure_is_distinct_from_valid_contract(setup, monkeypatc
     assert result['failure_detail']['reason']=='stage_failed'
     assert result['slots'][0]['status']=='UNCERTAIN' and result['slots'][1]['status']=='NOT_RUN'
     assert not daemon.objects and all(p.poll()==0 for p in processes)
+
+
+def test_large_valid_sse_completes_without_confusing_wire_bytes_with_session(setup,monkeypatch):
+    import httpx
+    c,ledger,_,_,_=setup
+    processes,calls,daemon=install_external_boundaries(monkeypatch)
+    @contextmanager
+    def provider(policy,credentials):
+        send,client=runtime.mock_transport(calls)
+        def padded(body,timeout):
+            reply=send(body,timeout)
+            class Stream(httpx.SyncByteStream):
+                def __iter__(self):
+                    for _ in range(4000):yield b'data: {"type":"ping"}\n\n'
+                    yield from reply.iter_raw()
+                def close(self):reply.close()
+            return httpx.Response(200,headers={'content-type':'text/event-stream'},stream=Stream())
+        try:yield padded
+        finally:client.close()
+    monkeypatch.setattr(api(),'_provider',provider)
+    result=api().launch(c,execute=True)
+    assert result['status']=='completed' and len(calls)==2 and result['failure_detail'] is None
+    assert [s['status'] for s in result['slots']]==['DONE','DONE']+['NOT_RUN']*28
+    assert not daemon.objects and all(p.poll()==0 for p in processes)
+    with ledger.transaction() as db:
+        rows=db.execute("SELECT * FROM operations WHERE kind='model-attempt'").fetchall()
+        assert len(rows)==2 and all(row['status']=='done' for row in rows)

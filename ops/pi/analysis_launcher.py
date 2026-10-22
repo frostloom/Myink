@@ -169,34 +169,20 @@ def _slot(run, policy, config, inputs, slot, index, host, transport, root, prove
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             with httpx.Client(trust_env=False, follow_redirects=False) as client:
                 def route(frame, seconds):
-                    progress.update(stage='relay', reason='stage_failed', response_bytes=0, http_status=None)
-                    timeout = min(seconds, remaining())
-                    if timeout <= 0:
-                        progress['reason'] = 'deadline_exceeded'
-                        raise TimeoutError(_ERROR)
-                    with client.stream('POST', f'http://127.0.0.1:{server.server_port}' + frame['path'],
-                            headers=frame['headers'], content=frame['body'].encode(), timeout=timeout) as reply:
-                        progress['http_status'] = reply.status_code
-                        body = bytearray()
-                        for chunk in reply.iter_bytes():
-                            # Saturated byte count, no bytes or exception text in receipts.
-                            size = len(body) + len(chunk)
-                            progress['response_bytes'] = min(size, 65537)
-                            if size > 65536:
-                                progress['reason'] = 'response_size_limit'
-                                raise ValueError(_ERROR)
-                            if remaining() <= 0:
-                                progress['reason'] = 'deadline_exceeded'
-                                raise TimeoutError(_ERROR)
-                            body.extend(chunk)
-                        row['http_statuses'].append(reply.status_code)
-                        try:
-                            text = body.decode('utf-8')
-                        except UnicodeDecodeError:
-                            progress['reason'] = 'invalid_utf8'
-                            raise
-                        progress.update(stage='exchange', reason='stage_failed')
-                        return dict(status=reply.status_code, body=text)
+                    from .relay_stream import ReplyStream, response_frames, CHUNK_LIMIT
+                    def frames():
+                        progress.update(stage='relay', reason='stage_failed', response_bytes=0, http_status=None)
+                        timeout = min(seconds, remaining())
+                        if timeout <= 0:
+                            progress['reason'] = 'deadline_exceeded'
+                            raise TimeoutError(_ERROR)
+                        with client.stream('POST', f'http://127.0.0.1:{server.server_port}' + frame['path'],
+                                headers=frame['headers'], content=frame['body'].encode(), timeout=timeout) as reply:
+                            progress['http_status'] = reply.status_code
+                            yield from response_frames(reply.status_code, reply.iter_bytes(chunk_size=CHUNK_LIMIT), remaining, progress)
+                            row['http_statuses'].append(reply.status_code)
+                            progress.update(stage='exchange', reason='stage_failed')
+                    return ReplyStream(frames())
                 progress['stage'] = 'exchange'
                 with (root/f'slot-{index}-attach-private.log').open('xb') as evidence:
                     frame = exchange(process, _initial(config, inputs, slot, index, token), route,

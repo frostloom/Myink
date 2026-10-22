@@ -105,7 +105,16 @@ def exchange(process, initial, route, *, seconds, evidence=None):
                 if requests>4: raise ValueError('relay request limit')
                 response=route(f,remaining())
                 remaining()
-                write(response)
+                from .relay_stream import ReplyStream
+                if isinstance(response, ReplyStream):
+                    try:
+                        for reply in response.frames:
+                            remaining()
+                            write(reply)
+                    finally:
+                        response.close()
+                else:
+                    write(response)
             else: final=f
         if len(pending)>FRAME_LIMIT: raise ValueError('container frame overflow')
     if pending or final is None: raise ValueError('incomplete container result')
