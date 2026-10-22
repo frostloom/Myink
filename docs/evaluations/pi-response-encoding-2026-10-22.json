@@ -101,5 +101,34 @@
     "synthetic-002/synthetic-acceptance.json": "4e278f3ca6a0c7c79632afd9f5fce99ae4026074c1bc51234472861b18628e65",
     "synthetic-002/provenance-after.json": "86ec99156214a5c4d2494ce8812185ff8fc7689a4f6d3303d2644f248eb459a3",
     "synthetic-compressed-001/synthetic-acceptance.json": "e572aba52f661385e7c5fd8dc5492b1a4bcebd852fb8f29329d64385dd3e4e11"
+  },
+  "post_fix_real_diagnostic": {
+    "status": "blocked_before_execution",
+    "automatic_approval_rejected": true,
+    "reason": "explicit_private_payload_disclosure_permission_required",
+    "destination": "DeepSeek",
+    "payload_categories": [
+      "private writing inputs",
+      "writing report"
+    ],
+    "new_real_requests": 0,
+    "local_check_status": "checked",
+    "local_check_launch_ready": false,
+    "canonical_ledger_unchanged": true,
+    "accounting_unchanged": {
+      "attempts": 209,
+      "known_attempts": 202,
+      "unknown_attempts": 7,
+      "pending_attempts": 0,
+      "known_charged_microyuan": 1791431,
+      "unknown_reserved_microyuan": 14098560,
+      "conservative_used_microyuan": 15889991,
+      "budget_microyuan": 20000000,
+      "conservative_remaining_microyuan": 4110009
+    },
+    "planned_max_requests": 2,
+    "planned_cap_microyuan": 4032768,
+    "planned_deadline_seconds": 240,
+    "check_receipt_sha256": "9df79e7bb812b8bd4600ab511a62299162f908741feb6e1cc1867acb1b832c9a"
   }
 }
