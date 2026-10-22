@@ -1,5 +1,9 @@
 # Myink 管理员与 Pi 引擎
 
+## 真实单槽结果（2026-10-22）
+
+用户批准后完成 1 次 DeepSeek Flash baseline 请求：上游200、完整SSE/usage与Pi会话通过，基础JSON/引用校验通过；因两个非目标领域被标为trace_observation，冻结目标合同失败，整体blocked/1 UNCERTAIN/29 NOT_RUN，不重试。model-attempt为done/usage_known=true，保守计费0.006034元，累计211次/203 known/8 unknown/0 pending、保守余额2.087591元。容器exit0删除、精确标签为空；global live=false。账户显示余额差0.00元不是账单证明，实际扣费未核定。未改生产代码；详情见[真实单槽验收](../evaluations/pi-live-single-slot-2026-10-22.md)。下方只读预检及更早余额均为历史快照。
+
 ## 显式单槽与只读清单（2026-10-22）
 
 启动器新增闭合v2清单，必填selected_slots=1或2；v1字段和两槽行为不变，选择绑定config hash。本次原真实输入默认check通过，明确只选1槽、拟定cap2.016384元/240秒；live=false、结果目录未创建、0真实模型请求/预留，原账本未变、保守余额2.093625元。检查完成于北京时间18:30:18、当次deadline18:34:14，过期清单不得重放。Pi离线2112 passed、0 skipped、19 deselected；实际Linux单槽合成1 DONE/29 NOT_RUN、单容器exit0删除，独立审查无Important。官方现有峰谷费率，policy仍以峰值保守预留。见[单槽预检记录](../evaluations/pi-single-slot-2026-10-22.md)。
