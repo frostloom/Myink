@@ -1,5 +1,9 @@
 # Myink 管理员与 Pi 引擎
 
+## 提示与评分口径核对（2026-10-22，离线）
+
+已核对原30槽/15对输入、system和参数一致，baseline共享模板与candidate分域模板始终使用相同基础validator及目标scorer。90个合成mock-engine正反例和396项既有相关测试通过，本轮0真实请求，原账本/输入/策略/回执字节不变，余额仍2.087591元。当前pilot按设计首个合同失败即停止，不能直接充当旧草案所述的完整30槽实验执行器；保留门禁和历史结果，后续需单独设计已知计费普通输出失败的记录与继续策略。详见[离线口径核对](../evaluations/pi-contract-audit-2026-10-22.md)。
+
 ## 真实单槽结果（2026-10-22）
 
 用户批准后完成 1 次 DeepSeek Flash baseline 请求：上游200、完整SSE/usage与Pi会话通过，基础JSON/引用校验通过；因两个非目标领域被标为trace_observation，冻结目标合同失败，整体blocked/1 UNCERTAIN/29 NOT_RUN，不重试。model-attempt为done/usage_known=true，保守计费0.006034元，累计211次/203 known/8 unknown/0 pending、保守余额2.087591元。容器exit0删除、精确标签为空；global live=false。账户显示余额差0.00元不是账单证明，实际扣费未核定。未改生产代码；详情见[真实单槽验收](../evaluations/pi-live-single-slot-2026-10-22.md)。下方只读预检及更早余额均为历史快照。
