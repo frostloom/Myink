@@ -25,7 +25,7 @@ from .analysis_preflight import audit
 from .analysis_run import AnalysisRun
 from .analysis_trial import GROUPS
 from .container_probe import ProbeHost, _path, _write, verify_inspect
-from .container_runtime import exchange, strict_json, verify_result, verify_source, FRAME_LIMIT
+from .container_runtime import exchange, strict_json, verify_result, verify_source, INITIAL_FRAME_LIMIT
 from .control import live_ready
 from .ledger import Ledger, LedgerBlocked
 from .policy import load_policy
@@ -106,7 +106,7 @@ def _prepare(config):
         raise ValueError(_ERROR)
     slots = prepare_contract_slots(inputs['views'], inputs['report'], model=DEFAULT_MODEL, cwd=Path('/work/candidate'))
     for index, slot in enumerate(slots[:2]):
-        if len(json.dumps(_initial(config, inputs, slot, index, 'a'*64), ensure_ascii=True).encode()) + 1 > FRAME_LIMIT:
+        if len(json.dumps(_initial(config, inputs, slot, index, 'a'*64), ensure_ascii=True).encode()) + 1 > INITIAL_FRAME_LIMIT:
             raise ValueError(_ERROR)
     provenance = verify_source(Path(config['source']), config['runtime_sha256'])
     if provenance['code_sha256'] != config['expected_code_sha256']:

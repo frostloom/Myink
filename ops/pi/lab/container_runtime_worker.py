@@ -17,13 +17,13 @@ def prepare_initial(initial):
     """Only trusted bounded frozen inputs, never provider or ledger settings."""
     import math
     import time
-    from ops.pi.container_runtime import fixture, FRAME_LIMIT
+    from ops.pi.container_runtime import fixture, INITIAL_FRAME_LIMIT
     from ops.pi.analysis_execution import MODEL, prepare_contract_slots, _hash
     from ops.pi.analysis_trial import GROUPS
     if (not isinstance(initial,dict) or type(initial.get('slot_index')) is not int
             or not 0<=initial['slot_index']<30 or not isinstance(initial.get('token'),str)
             or len(initial['token'])!=64 or any(not 33<=ord(c)<=126 for c in initial['token'])
-            or len(json.dumps(initial,ensure_ascii=True,allow_nan=False).encode())+1>FRAME_LIMIT):
+            or len(json.dumps(initial,ensure_ascii=True,allow_nan=False).encode())+1>INITIAL_FRAME_LIMIT):
         raise ValueError('bounded frozen slot required')
     if set(initial)=={'slot_index','token'} and initial['slot_index'] in (0,1):
         view,report=fixture().synthetic_inputs()
@@ -42,7 +42,7 @@ def prepare_initial(initial):
 
 def main():
     sys.path.insert(0,'/source/code')
-    from ops.pi.container_runtime import fixture, parse_frame, strict_json, FRAME_LIMIT
+    from ops.pi.container_runtime import fixture, parse_frame, strict_json, FRAME_LIMIT, INITIAL_FRAME_LIMIT
     from ops.pi.analysis_execution import MODEL, prepare_contract_slots, run_contract_slot
     from ops.pi.analysis_trial import GROUPS
     from ops.pi.pi_config import make_pi_config
@@ -52,7 +52,7 @@ def main():
     from ops.pi.lab.container_probe_worker import network_denied
     from types import SimpleNamespace
 
-    initial=prepare_initial(strict_json(sys.stdin.buffer.readline(FRAME_LIMIT+1)))
+    initial=prepare_initial(strict_json(sys.stdin.buffer.readline(INITIAL_FRAME_LIMIT+1)))
     def emit(value):
         raw=json.dumps(value,ensure_ascii=True,allow_nan=False)
         if len(raw.encode())>FRAME_LIMIT:raise ValueError('bounded relay frame required')

@@ -27,6 +27,7 @@ from .container_probe import ProbeHost, _path, _write, verify_inspect
 from .ledger import Ledger
 
 FRAME_LIMIT = 196608
+INITIAL_FRAME_LIMIT = 524288  # One full trusted host report, including newline.
 HEADER_NAMES = {'x-api-key','x-pi-scope','content-type','anthropic-version','anthropic-beta',
     'accept','accept-encoding','connection','user-agent','x-app','x-stainless-arch',
     'anthropic-dangerous-direct-browser-access','accept-language','sec-fetch-mode',
@@ -75,9 +76,9 @@ def exchange(process, initial, route, *, seconds, evidence=None):
         n=deadline-time.monotonic()
         if n<=0: raise TimeoutError('container execution expired')
         return n
-    def write(value):
+    def write(value, limit=FRAME_LIMIT):
         raw=json.dumps(value,ensure_ascii=True,allow_nan=False).encode()+b'\n'
-        if len(raw)>FRAME_LIMIT: raise ValueError('bounded reply required')
+        if len(raw)>limit: raise ValueError('bounded reply required')
         offset=0
         while offset<len(raw):
             _,ready,_=select.select([],[process.stdin],[],remaining())
@@ -85,7 +86,7 @@ def exchange(process, initial, route, *, seconds, evidence=None):
             offset+=os.write(process.stdin.fileno(),raw[offset:offset+4096])
     os.set_blocking(process.stdin.fileno(),False)
     os.set_blocking(process.stdout.fileno(),False)
-    write(initial)
+    write(initial, INITIAL_FRAME_LIMIT)
     pending=bytearray(); total=0; requests=0; final=None
     while True:
         ready,_,_=select.select([process.stdout],[],[],remaining())

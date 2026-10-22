@@ -148,7 +148,7 @@ def test_worker_rejects_drift_or_unbounded_initial_frame(setup,what):
     elif what=='drift':value['slot']['request']['model']='foreign'
     elif what=='index':value['slot_index']=True
     elif what=='extra':value['provider_key']='PRIVATE'
-    elif what=='oversize':value['report']['PRIVATE']='x'*196609
+    elif what=='oversize':value['report']['PRIVATE']='x'*524289
     else:value['token']='x\n'+'a'*62
     assert callable(getattr(worker(),'prepare_initial',None)), 'frozen worker input interface missing'
     with pytest.raises(ValueError):worker().prepare_initial(value)
