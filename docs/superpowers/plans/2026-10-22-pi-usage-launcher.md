@@ -42,4 +42,4 @@
 - [x] Step 5: Run `.venv/bin/python -m pytest ops/pi/tests/ -q -m 'not pi_lab and not pi_live'`; expect green, report all skips/deselections. Run compileall and diff-check, record actual evidence.
 - [x] Step 6: Update docs/evaluation with finite safety/delivery limitations, commit. task-done runs targeted new file and records task completion.
 - [x] Step 7: One independent whole-change review against96400ef; fix Important/Critical once with RED→GREEN and full suite. Record all declined judgments/rulings.
-- [ ] Step 8: Update myink memory, push Pi branch, preserve worktree and archive only current plan workspace.
+- [x] Step 8: Update myink memory, push Pi branch, preserve worktree and archive only current plan workspace.
