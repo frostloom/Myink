@@ -141,9 +141,14 @@ def _usage_snapshot(usage):
 
 def _usage_updates(usage, previous, required):
     """Validate whole cumulative evidence before replacing any known counter."""
-    if (not isinstance(usage, dict) or len(usage) > len(_BILLING_DIMENSIONS) + 1
-            or any(key not in (*_BILLING_DIMENSIONS, 'prompt_tokens_details') for key in usage)):
+    if (not isinstance(usage, dict) or len(usage) > len(_BILLING_DIMENSIONS) + 2
+            or any(key not in (*_BILLING_DIMENSIONS, 'prompt_tokens_details', 'service_tier') for key in usage)):
         raise ValueError('invalid usage')
+    # Only the frozen standard-price tier is metadata. Other tiers must not
+    # silently settle against this policy's prices; never retain its raw value.
+    tier = usage.get('service_tier')
+    if tier is not None and (type(tier) is not str or tier != 'standard'):
+        raise ValueError('unsupported service tier')
     if 'prompt_tokens_details' in usage:
         details = usage['prompt_tokens_details']
         if (not isinstance(details, dict) or set(details) != {'cached_tokens'}

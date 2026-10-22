@@ -195,3 +195,47 @@ def test_missing_known_cache_details_diagnostic_cannot_infer_from_cache_read():
     assert _usage_snapshot({'cache_read_input_tokens': 2688})['prompt_tokens_details'] == dict(
         present=False, exact_shape_valid=False, cached_tokens_valid=False,
         cached_tokens=None, cache_read_equal=None)
+
+
+@pytest.mark.parametrize('tier', [None, 'standard'])
+@pytest.mark.parametrize('where', ['start', 'delta', 'both'])
+def test_standard_service_tier_is_metadata_and_preserves_numeric_settlement(ledger, policy, tier, where):
+    evidence = Evidence()
+    usage, delta = dict(FULL), {'output_tokens': 1}
+    if where in ('start', 'both'): usage['service_tier'] = tier
+    if where in ('delta', 'both'): delta['service_tier'] = tier
+    response = forward_messages(request() | dict(stream=True), 'local-trial-1', ledger=ledger,
+        policy=policy, transport=transport(lambda _: httpx.Response(200, stream=Events(usage, delta))),
+        usage_observer=evidence.append)
+    assert b'message_stop' in b''.join(response.body)
+    assert ledger.get(response.attempt_id)['status'] == 'done'
+    assert totals(ledger, 'local-trial-1') == (1, 10)
+    assert evidence.ready.wait(1)
+    assert evidence[0]['parser_valid'] and evidence[0]['parser_reason'] == 'complete'
+    assert 'standard' not in json.dumps(evidence[0])
+
+
+@pytest.mark.parametrize('tier', ['priority', 'batch', 'SECRET', '', True, 1, {}, [], 'x'*1024])
+def test_nonstandard_or_malformed_service_tier_cannot_change_frozen_prices(ledger, policy, tier):
+    response = forward_messages(request() | dict(stream=True), 'local-trial-1', ledger=ledger,
+        policy=policy, transport=transport(lambda _: httpx.Response(200, stream=Events(FULL | {'service_tier': tier}, {'output_tokens': 1}))))
+    b''.join(response.body)
+    assert ledger.get(response.attempt_id)['status'] == 'uncertain'
+    assert totals(ledger, 'local-trial-1') == (1, 10000)
+
+
+@pytest.mark.parametrize('what', ['missing-cache', 'unknown-key', 'invalid-cache', 'truncated'])
+def test_standard_tier_never_repairs_missing_or_invalid_billing_evidence(ledger, policy, what):
+    usage = FULL | {'service_tier': 'standard'}
+    if what == 'missing-cache': del usage['cache_read_input_tokens']
+    elif what == 'unknown-key': usage['SECRET'] = 'secret'
+    elif what == 'invalid-cache': usage['cache_read_input_tokens'] = True
+    class Truncated(Events):
+        def __iter__(self):
+            yield next(iter(super().__iter__()))
+    stream = Truncated(usage, {'output_tokens': 1}) if what == 'truncated' else Events(usage, {'output_tokens': 1})
+    response = forward_messages(request() | dict(stream=True), 'local-trial-1', ledger=ledger,
+        policy=policy, transport=transport(lambda _: httpx.Response(200, stream=stream)))
+    b''.join(response.body)
+    assert ledger.get(response.attempt_id)['status'] == 'uncertain'
+    assert totals(ledger, 'local-trial-1') == (1, 10000)

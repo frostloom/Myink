@@ -144,7 +144,7 @@ def _known_attempt(run, index):
             raise LedgerBlocked(_ERROR)
 
 
-def _slot(run, policy, config, inputs, slot, index, host, transport, root, provenance):
+def _slot(run, policy, config, inputs, slot, index, host, transport, root, provenance, progress):
     token = uuid.uuid4().hex + uuid.uuid4().hex
     remaining = lambda: config['deadline'] - time.time()
     if remaining() <= 0 or _hash(verify_source(Path(config['source']), config['runtime_sha256'])) != _hash(provenance):
@@ -156,49 +156,82 @@ def _slot(run, policy, config, inputs, slot, index, host, transport, root, prove
         server.daemon_threads = True
         thread = Thread(target=server.serve_forever, kwargs={'poll_interval': .01}, daemon=True); thread.start()
         process = None
+        slot_failed = False
         try:
+            progress['stage'] = 'container_create'
             cid = host.create('isolation', worker=Path(__file__).parent/'lab/container_runtime_worker.py',
                 source=Path(config['source']), foreign=root/'not-mounted', interactive=True)
+            progress['stage'] = 'container_inspect'
             if not verify_inspect(host.inspect(cid)) or remaining() <= 0:
                 raise ValueError(_ERROR)
+            progress['stage'] = 'container_attach'
             process = subprocess.Popen(host.command + ['start', '-a', '-i', cid], stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             with httpx.Client(trust_env=False, follow_redirects=False) as client:
                 def route(frame, seconds):
+                    progress.update(stage='relay', reason='stage_failed', response_bytes=0, http_status=None)
                     timeout = min(seconds, remaining())
                     if timeout <= 0:
+                        progress['reason'] = 'deadline_exceeded'
                         raise TimeoutError(_ERROR)
                     with client.stream('POST', f'http://127.0.0.1:{server.server_port}' + frame['path'],
                             headers=frame['headers'], content=frame['body'].encode(), timeout=timeout) as reply:
+                        progress['http_status'] = reply.status_code
                         body = bytearray()
                         for chunk in reply.iter_bytes():
-                            body.extend(chunk)
-                            if len(body) > 65536 or remaining() <= 0:
+                            # Saturated byte count, no bytes or exception text in receipts.
+                            size = len(body) + len(chunk)
+                            progress['response_bytes'] = min(size, 65537)
+                            if size > 65536:
+                                progress['reason'] = 'response_size_limit'
                                 raise ValueError(_ERROR)
+                            if remaining() <= 0:
+                                progress['reason'] = 'deadline_exceeded'
+                                raise TimeoutError(_ERROR)
+                            body.extend(chunk)
                         row['http_statuses'].append(reply.status_code)
-                        return dict(status=reply.status_code, body=body.decode())
+                        try:
+                            text = body.decode('utf-8')
+                        except UnicodeDecodeError:
+                            progress['reason'] = 'invalid_utf8'
+                            raise
+                        progress.update(stage='exchange', reason='stage_failed')
+                        return dict(status=reply.status_code, body=text)
+                progress['stage'] = 'exchange'
                 with (root/f'slot-{index}-attach-private.log').open('xb') as evidence:
                     frame = exchange(process, _initial(config, inputs, slot, index, token), route,
                         seconds=min(60, remaining()), evidence=evidence)
+            progress['stage'] = 'result_write'
             _write(root/f'slot-{index}-private.json', frame)
+            progress['stage'] = 'result_verify'
             row.update(verify_result(frame, slot, inputs['views'][slot['domain']], inputs['report']))
+            progress['stage'] = 'http_sequence'
             if row['http_statuses'] != [403, 403, 200, 403] or remaining() <= 0:
                 raise ValueError(_ERROR)
+            progress['stage'] = 'usage_check'
             _known_attempt(run, index)
             return row, cid
+        except Exception:
+            slot_failed = True
+            raise
         finally:
             try:
-                if process is not None:
-                    try:
-                        if process.poll() is None:
-                            host.stop(cid)
-                    finally:
-                        if process.poll() is None:
-                            process.kill()
-                        process.wait(timeout=3)
-                        process.stdin.close(); process.stdout.close()
-            finally:
-                server.shutdown(); thread.join(2)
+                try:
+                    if process is not None:
+                        try:
+                            if process.poll() is None:
+                                host.stop(cid)
+                        finally:
+                            if process.poll() is None:
+                                process.kill()
+                            process.wait(timeout=3)
+                            process.stdin.close(); process.stdout.close()
+                finally:
+                    server.shutdown(); thread.join(2)
+            except Exception:
+                if not slot_failed:
+                    progress.update(stage='slot_cleanup', reason='stage_failed')
+                    raise  # Preserve an active primary failure and its bounded detail.
 
 
 def launch(config, *, execute=False):
@@ -214,7 +247,7 @@ def launch(config, *, execute=False):
         result = dict(status='checked', execution_requested=execute, launch_ready=live_ready(policy),
             planned_slots=30, selected_slots=2, production_ready=False, automatic_execution=False,
             billing_verified=False, usage_diagnostics='best_effort_private',
-            config_sha256=_hash(config), provenance=provenance,
+            config_sha256=_hash(config), provenance=provenance, failure_detail=None,
             preflight=diagnostic, cases=[], cleanup=[])
         if not execute:
             return result
@@ -229,20 +262,26 @@ def launch(config, *, execute=False):
         raise LedgerBlocked(_ERROR) from None
     result.update(status='blocked', operation_id=host.operation_id, failure_class=None)
     index = 0
+    progress = dict(slot_index=0, stage='provider_setup', reason='stage_failed', response_bytes=0, http_status=None)
     try:
         with _provider(policy, credentials) as transport:
             for index, slot in enumerate(slots[:2]):
-                row, cid = _slot(run, policy, config, inputs, slot, index, host, transport, root, provenance)
+                progress = dict(slot_index=index, stage='source_check', reason='stage_failed', response_bytes=0, http_status=None)
+                row, cid = _slot(run, policy, config, inputs, slot, index, host, transport, root, provenance, progress)
+                progress['stage'] = 'session_unique'
                 if any(previous['session_id'] == row['session_id'] for previous in result['cases']):
                     raise ValueError(_ERROR)
                 result['cases'].append(row)
+                progress['stage'] = 'container_cleanup'
                 cleaned = host.cleanup(cid); result['cleanup'].append(cleaned)
                 if cleaned['exit_code'] != 0:
                     raise ValueError(_ERROR)
+                progress['stage'] = 'slot_finish'
                 run.finish(index, status='done')
             result['status'] = 'completed'
     except Exception as exc:
         result['failure_class'] = type(exc).__name__
+        result['failure_detail'] = dict(progress)
         try:
             if run.snapshot()[index]['status'] == 'UNCERTAIN':
                 run.finish(index, status='uncertain')
@@ -252,7 +291,10 @@ def launch(config, *, execute=False):
         try:
             host.reconcile()
         except Exception as exc:
-            result['status'] = 'blocked'; result['failure_class'] = type(exc).__name__
+            result['status'] = 'blocked'
+            if result['failure_detail'] is None:
+                result['failure_class'] = type(exc).__name__
+                result['failure_detail'] = dict(progress, stage='container_reconcile', reason='stage_failed')
         for name, mode in host.pending.items():
             result['cleanup'].append(dict(name=name, mode=mode, removed=False, operation_id=host.operation_id))
         for cid in list(host.owned):
@@ -262,6 +304,8 @@ def launch(config, *, execute=False):
                 result['cleanup'].append(dict(container_id=cid, removed=False, failure_class=type(exc).__name__))
         if any(not row.get('removed') for row in result['cleanup']):
             result['status'] = 'blocked'
+            if result['failure_detail'] is None:
+                result['failure_detail'] = dict(progress, stage='container_cleanup', reason='stage_failed')
         try:
             result['slots'] = run.snapshot()
             _write(root/'receipt.json', result)

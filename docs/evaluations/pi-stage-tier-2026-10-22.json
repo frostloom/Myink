@@ -1,0 +1,160 @@
+{
+  "schema": "pi-stage-tier-diagnostics-v1",
+  "date": "2026-10-22",
+  "base_commit": "21b0ecc8406db8cb3908524490690a91fceda743",
+  "behavior": {
+    "sse_service_tier_accepted": [
+      null,
+      "standard"
+    ],
+    "nonstandard_tier_retains_unknown": true,
+    "numeric_usage_validation_unchanged": true,
+    "nonstream_behavior_unchanged": true,
+    "failure_detail_fields": [
+      "slot_index",
+      "stage",
+      "reason",
+      "response_bytes",
+      "http_status"
+    ],
+    "bounded_relay_reasons": [
+      "stage_failed",
+      "response_size_limit",
+      "deadline_exceeded",
+      "invalid_utf8"
+    ],
+    "response_byte_count_saturates_at": 65537,
+    "primary_failure_preserved_on_cleanup_error": true,
+    "last_response_metadata_may_describe_replay": true,
+    "relay_body_limit": 65536,
+    "reply_frame_limit": 196608,
+    "initial_frame_limit": 524288,
+    "retries": 0
+  },
+  "historical_real_valueerror_cause_proven": false,
+  "offline_overflow_mechanism_reproduced": true,
+  "tests": {
+    "targeted_passed": 185,
+    "full_pi_offline_passed": 2071,
+    "skipped": 0,
+    "deselected": 19,
+    "compileall": true,
+    "diff_check": true,
+    "initial_red": {
+      "failed": 10,
+      "passed": 13
+    },
+    "review_red": {
+      "failed": 6,
+      "passed": 2
+    },
+    "review_initial_green_test_assertion_failures": 2,
+    "corrected_fault_cleanup_expectation": true
+  },
+  "independent_review": {
+    "initial_important": 1,
+    "resolved_important": 1,
+    "unresolved_critical": 0,
+    "unresolved_important": 0,
+    "followup_combination_tests_passed": 8
+  },
+  "source_provenance": {
+    "runtime_sha256": "6e169d5462405f59c070365267eec24fddc005a3c141819ba7a1f548a592c528",
+    "node_sha256": "719a43d185f3b6a59d8fcbba1ff06b93c75f76fb0bb9916f81d33921615d4cb5",
+    "lock_sha256": "fd0f5bd8aa13e01da8792b161d80502f32e1afd00103151fbcc21f4b3146785a",
+    "pi_cli_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+    "code_sha256": "69e0e884938cb90300a8dad03d6fac83e3d0079402e386fba214994d40b31e49",
+    "controller_sha256": "de76af7fc6a0f0946f19000b6fb1cc4c6bac1dbb9951bdb2fe0c00b67ac55ead",
+    "worker_sha256": "752b21c9dd5f73e4b0fe78b3789ccf60afac7860aac1d759cc37d078f3aaae38"
+  },
+  "linux_standard": {
+    "status": "completed",
+    "failure_class": null,
+    "failure_detail": null,
+    "operation_id": "61005142-f631-4917-9c32-79a112b78c39",
+    "done": 2,
+    "uncertain": 0,
+    "not_run": 28,
+    "synthetic_requests": 2,
+    "production_provider_function": true,
+    "cleanup": [
+      {
+        "container_id": "8f858af6d391095339fead9eb1eea8d3fc1c13e0f5dec62baf8461b4885ebf70",
+        "stopped": true,
+        "removed": true,
+        "exit_code": 0
+      },
+      {
+        "container_id": "c5ef4762cb44433a7ddc223c43532f6c637c9c810b795da6bc872c46e5a589e0",
+        "stopped": true,
+        "removed": true,
+        "exit_code": 0
+      }
+    ],
+    "exact_label_empty": true
+  },
+  "linux_overflow": {
+    "status": "blocked",
+    "failure_class": "ValueError",
+    "failure_detail": {
+      "slot_index": 0,
+      "stage": "relay",
+      "reason": "response_size_limit",
+      "response_bytes": 65537,
+      "http_status": 200
+    },
+    "operation_id": "c5988a69-17e3-4d0b-87ad-33394f9fec4b",
+    "done": 0,
+    "uncertain": 1,
+    "not_run": 29,
+    "synthetic_requests": 1,
+    "production_provider_function": true,
+    "cleanup": [
+      {
+        "container_id": "ef5ba3fd94da6460288f946752df2edbd2bf9420037e2fecefd29ea13f1bc74e",
+        "stopped": true,
+        "removed": true,
+        "exit_code": 137
+      }
+    ],
+    "exact_label_empty": true
+  },
+  "standard_synthetic_charge_microyuan": 1668,
+  "overflow_synthetic_unknown_reserved_microyuan": 19384,
+  "paid_requests": 0,
+  "real_credential_read": false,
+  "canonical_ledger_modified": false,
+  "canonical_logical_snapshot_unchanged": true,
+  "canonical_accounting": {
+    "attempts": 210,
+    "known_attempts": 202,
+    "unknown_attempts": 8,
+    "pending_attempts": 0,
+    "known_charged_microyuan": 1791431,
+    "unknown_reserved_microyuan": 16114944,
+    "conservative_used_microyuan": 17906375,
+    "budget_microyuan": 20000000,
+    "conservative_remaining_microyuan": 2093625
+  },
+  "canonical_ledger": {
+    "sha256": "ad15cd10d7d4402945530021511a3f225139ce6d3cdaab29e234bb39d427a1e4",
+    "scope_sha256": "2218dd4133ffb7709f5d2c3812620a2ee7686ea57837983cf0495f0cd1099746",
+    "operations": 714,
+    "events": 1163
+  },
+  "global_live_enabled": false,
+  "billing_verified": false,
+  "provider_usage_semantics_verified": false,
+  "production_ready": false,
+  "automatic_execution": false,
+  "private_evidence_sha256": {
+    "standard-reviewed.log": "8958068e1f00e10fbfd56931e9238925f0f15670b53127fe4fe2f262734a5841",
+    "overflow-reviewed.log": "c1e0e7d16884aa56374e34c97c21bf1abd3becb99fe0f41d6f77a0756ae53b39",
+    "standard-002/synthetic-acceptance.json": "52ffc3f63a3cee4d96749b006e44b11327f5a0c315cf89a0b5d55eb194597033",
+    "standard-002/provenance-after.json": "cfb6c9a843e876bf02e50f46f8bf7469fdb71a33defcf95563dbdca4b3ced46e",
+    "overflow-001/synthetic-acceptance.json": "6fa780228e5e100b92683aab8537d481ac73b9055e699c14d7c0c5f5b41eb452",
+    "canonical-audit.json": "31b4b047c80b84672931acdd956dfd64560583a242f56e784b64ff49b1affbad",
+    "standard-reviewed.py": "17310c2740fb93a4a730a34cac2f4a356d024ece641f520d3732e69b57dc9291",
+    "overflow-reviewed.py": "0b318f1b64deddf755722dec12646bf12256de2dd798749a8cb63d6b91a0e8c0"
+  }
+}

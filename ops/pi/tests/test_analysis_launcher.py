@@ -261,3 +261,73 @@ def test_duplicate_session_never_becomes_second_durable_done(setup,monkeypatch):
     assert result['status']=='blocked' and len(calls)==2
     assert [s['status'] for s in result['slots']]==['DONE','UNCERTAIN']+['NOT_RUN']*28
     assert all(p.poll()==0 for p in processes) and not daemon.objects
+
+
+@pytest.mark.parametrize('cleanup_failure', ['none', 'remove', 'reconcile', 'slot'])
+@pytest.mark.parametrize('kind,reason,observed', [('overflow', 'response_size_limit', 65537), ('utf8', 'invalid_utf8', 1)])
+def test_relay_failure_records_bounded_reason_without_body_or_refund(setup, monkeypatch, kind, reason, observed, cleanup_failure):
+    import httpx
+    from ops.pi.tests.test_model_gateway import transport
+    c, ledger, _, _, _ = setup
+    processes, calls, daemon = install_external_boundaries(monkeypatch, 'cleanup-failure' if cleanup_failure=='remove' else 'known')
+    if cleanup_failure in ('reconcile', 'slot'):
+        def fail(*args): raise OSError('PRIVATE-cleanup-error')
+        monkeypatch.setattr(api().ProbeHost, 'reconcile' if cleanup_failure=='reconcile' else 'stop', fail)
+    class Stream(httpx.SyncByteStream):
+        def __iter__(self):
+            if kind == 'utf8': yield b'\xff'
+            else:
+                # Many small valid SSE pings overflow the aggregate relay cap.
+                for _ in range(4000): yield b'data: {"type":"ping"}\n\n'
+    @contextmanager
+    def provider(policy, credentials):
+        def handler(req):
+            calls.append('one')
+            return httpx.Response(200, headers={'content-type':'text/event-stream'}, stream=Stream())
+        yield transport(handler)
+    monkeypatch.setattr(api(), '_provider', provider)
+    result = api().launch(c, execute=True)
+    assert result['status'] == 'blocked' and len(calls) == 1
+    assert result['failure_detail'] == dict(slot_index=0, stage='relay', reason=reason, response_bytes=observed, http_status=200)
+    assert result['slots'][0]['status'] == 'UNCERTAIN' and result['slots'][1]['status'] == 'NOT_RUN'
+    assert result['failure_class'] == ('UnicodeDecodeError' if kind=='utf8' else 'ValueError')
+    if cleanup_failure not in ('remove', 'slot'): assert not daemon.objects
+    else: assert any(not row['removed'] for row in result['cleanup'])
+    assert all(p.poll() is not None for p in processes)
+    with ledger.transaction() as db:
+        rows=db.execute("SELECT * FROM operations WHERE kind='model-attempt'").fetchall()
+        assert len(rows)==1 and rows[0]['status']=='uncertain'
+        assert json.loads(rows[0]['evidence'])['charged_microyuan']==json.loads(rows[0]['payload'])['reserved_microyuan']
+    assert 'data:' not in json.dumps(result) and 'SECRET' not in json.dumps(result)
+
+
+def test_invalid_result_has_distinct_stage_after_relay_success(setup, monkeypatch):
+    c, ledger, _, _, _ = setup
+    monkeypatch.setattr(sys.modules[__name__], 'CHILD', CHILD.replace('contract_valid=True', 'contract_valid=False'))
+    processes, calls, daemon=install_external_boundaries(monkeypatch)
+    result=api().launch(c, execute=True)
+    assert result['status']=='blocked' and len(calls)==1
+    assert result['failure_detail']['stage']=='result_verify'
+    assert result['failure_detail']['reason']=='stage_failed'
+    assert result['slots'][1]['status']=='NOT_RUN' and not daemon.objects
+    assert all(p.poll()==0 for p in processes)
+
+
+def test_unknown_usage_failure_is_distinct_from_valid_contract(setup, monkeypatch):
+    import httpx
+    from ops.pi.tests.test_model_gateway import transport
+    c, ledger, _, _, _=setup
+    processes, calls, daemon=install_external_boundaries(monkeypatch)
+    @contextmanager
+    def provider(policy, credentials):
+        def handler(req):
+            calls.append('one')
+            return httpx.Response(200, stream=httpx.ByteStream(b'data: {"type":"ping"}\n\n'))
+        yield transport(handler)
+    monkeypatch.setattr(api(), '_provider', provider)
+    result=api().launch(c,execute=True)
+    assert result['status']=='blocked' and len(calls)==1
+    assert result['failure_detail']['stage']=='usage_check'
+    assert result['failure_detail']['reason']=='stage_failed'
+    assert result['slots'][0]['status']=='UNCERTAIN' and result['slots'][1]['status']=='NOT_RUN'
+    assert not daemon.objects and all(p.poll()==0 for p in processes)

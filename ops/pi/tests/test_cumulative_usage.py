@@ -133,8 +133,8 @@ def test_final_delta_requires_integer_output(ledger, policy, delta):
 
 
 @pytest.mark.parametrize('location', ['start', 'delta'])
-@pytest.mark.parametrize('extra', [{'service_tier': None}, {'output_tokens_details': {}}, {'synthetic_extra': 0}])
-def test_all_extra_keys_remain_uncertain_even_when_diagnostic_recognized(ledger, policy, location, extra):
+@pytest.mark.parametrize('extra', [{'service_tier': 'priority'}, {'output_tokens_details': {}}, {'synthetic_extra': 0}])
+def test_unsupported_extra_metadata_remains_uncertain(ledger, policy, location, extra):
     start = FULL | extra if location == 'start' else FULL
     delta = FINAL | extra if location == 'delta' else FINAL
     record, evidence = forward(ledger, policy, start, [delta])

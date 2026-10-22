@@ -1,5 +1,9 @@
 # Myink 管理员与 Pi 引擎
 
+## 标准层级兼容与宿主诊断（2026-10-22）
+
+SSE usage 兼容 null/standard service_tier；非标准层级及无效用量仍保留 unknown。启动器新增有限阶段/原因码和饱和字节数，清理失败保留首因；没有扩大 64 KiB 正文等边界。最终 Pi 离线 2071 passed、0 skipped、19 deselected，审查发现的首因覆盖已修复并复审；修复后实际 Linux Pi 合成标准两槽完成，超限场景单槽安全停止、容器全部删除。0 新增付费请求，原账本逻辑摘要未变、保守余额仍 2.093625 元、global live=false；上次真实 ValueError 根因仍未证实。见[本轮验收](../evaluations/pi-stage-tier-2026-10-22.md)。下一步先离线设计有界 SSE 传递，不补发旧槽或释放历史 unknown。
+
 ## 修复后真实诊断（2026-10-22）
 
 用户明确批准向DeepSeek发送本次私有输入/报告后，以新run、最多2请求/cap4.032768元/240秒执行。实际1请求200 SSE、编码absent，已解析message_start，未再UnicodeDecodeError；用量起始被service_tier额外字段拒绝，另有宿主ValueError具体触发点未确定，未取得结果帧/有效session。0 DONE/1 UNCERTAIN/29 NOT_RUN，第二槽未运行、不重试；容器exit137强制清理删除。新unknown完整预留2.016384元，累计210次/202 known/8 unknown/0 pending，保守余额2.093625元，全局live=false。账户可见余额少0.25元不是本请求核定账单。见[真实诊断](../evaluations/pi-live-encoding-2026-10-22.md)；下一步先离线定位宿主拒绝分支与metadata兼容，不再直接付费尝试。
