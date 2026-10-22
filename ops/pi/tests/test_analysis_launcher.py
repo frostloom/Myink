@@ -188,6 +188,7 @@ def install_external_boundaries(monkeypatch,mode='known'):
     def popen(command,**kw):
         if mode=='attach-failure':raise OSError('PRIVATE-attach-error')
         if mode=='timeout':script='import time;time.sleep(2)'
+        elif mode=='duplicate-session':script=CHILD.replace("id='session-'+str(x['slot_index'])","id='same-session'")
         else:script=CHILD
         process=real_popen([sys.executable,'-u','-c',script],**kw);processes.append(process);return process
     monkeypatch.setattr(m.subprocess,'Popen',popen)
@@ -251,3 +252,12 @@ def test_existing_ledger_mode_never_bootstraps_missing_or_empty_file(tmp_path,ki
     before=path.read_bytes() if path.exists() else None
     with pytest.raises(LedgerBlocked):Ledger(path,existing=True)
     assert (path.read_bytes() if path.exists() else None)==before
+
+
+def test_duplicate_session_never_becomes_second_durable_done(setup,monkeypatch):
+    c,ledger,_,_,_=setup
+    processes,calls,daemon=install_external_boundaries(monkeypatch,'duplicate-session')
+    result=api().launch(c,execute=True)
+    assert result['status']=='blocked' and len(calls)==2
+    assert [s['status'] for s in result['slots']]==['DONE','UNCERTAIN']+['NOT_RUN']*28
+    assert all(p.poll()==0 for p in processes) and not daemon.objects

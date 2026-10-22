@@ -10,7 +10,7 @@
 
 只有显式`--execute`且live_ready、余额/单次预留/证据/身份检查都满足时，才在原账本注册30槽并绑定本轮费用与期限；入口仅选择第一对槽，不自动恢复/重试。原子预留仍核对同scope/policy/请求、本轮和累计预算及期限，历史unknown完整预留不释放。worker只收到当槽冻结输入、局部token和期限；上游key和原ledger不进容器。宿主合同/session、已知结算、精确所属容器清理全部成功才前进；任一unknown或清理失败停止。
 
-新增43项先RED后GREEN；定向231 passed，完整Pi离线1990 passed、0 skipped、19项设施/在线未选入，compileall/diff-check通过。实际私有policy仍live=false，未开启真实上游。新入口的实际合成容器验收和独立审查另行记录，不把离线测试算成provider验收。既有固定synthetic probe仍不接真实ledger/transport。
+新增44项先RED后GREEN（含审查修复）；修复前定向231 passed，修复后完整Pi离线1991 passed、0 skipped、19项设施/在线未选入，compileall/diff-check通过。实际私有policy仍live=false，未开启真实上游。修复后实际Linux Pi+MockTransport两槽通过、精确所属容器均清理；独立审查的一项session唯一性终态顺序问题已RED→GREEN修复。见[宿主入口验收](../evaluations/pi-analysis-launcher-2026-10-22.md)和[机器回执](../evaluations/pi-analysis-launcher-2026-10-22.json)，不把合成验收算成provider或生产验收。既有固定synthetic probe仍不接真实ledger/transport。
 
 ## 最新状态（2026-10-22，DeepSeek切换）
 

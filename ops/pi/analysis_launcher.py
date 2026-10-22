@@ -230,13 +230,13 @@ def launch(config, *, execute=False):
         with _provider(policy, credentials) as transport:
             for index, slot in enumerate(slots[:2]):
                 row, cid = _slot(run, policy, config, inputs, slot, index, host, transport, root, provenance)
+                if any(previous['session_id'] == row['session_id'] for previous in result['cases']):
+                    raise ValueError(_ERROR)
                 result['cases'].append(row)
                 cleaned = host.cleanup(cid); result['cleanup'].append(cleaned)
                 if cleaned['exit_code'] != 0:
                     raise ValueError(_ERROR)
                 run.finish(index, status='done')
-            if len({r['session_id'] for r in result['cases']}) != 2:
-                raise ValueError(_ERROR)
             result['status'] = 'completed'
     except Exception as exc:
         result['failure_class'] = type(exc).__name__

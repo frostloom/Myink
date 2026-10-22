@@ -1,0 +1,602 @@
+{
+  "date": "2026-10-22",
+  "implementation_commit": "285e24b",
+  "scope": "trusted host two-slot synthetic acceptance",
+  "verification": {
+    "new_tdd_passed": 44,
+    "offline_passed": 1991,
+    "offline_skipped": 0,
+    "offline_deselected": 19,
+    "targeted_before_review_passed": 231,
+    "offline_seconds": 56.61
+  },
+  "first_attempt": {
+    "id": "actual001",
+    "status": "blocked-before-docker",
+    "reason": "symlink Docker CLI rejected"
+  },
+  "actual002": {
+    "result": {
+      "status": "completed",
+      "execution_requested": true,
+      "launch_ready": true,
+      "planned_slots": 30,
+      "selected_slots": 2,
+      "production_ready": false,
+      "automatic_execution": false,
+      "billing_verified": false,
+      "config_sha256": "184ae4ef9a05f121efaf2cc22aa5aa6b2ad3c6216b866d6fb080e56148783fa5",
+      "provenance": {
+        "runtime_sha256": "6e169d5462405f59c070365267eec24fddc005a3c141819ba7a1f548a592c528",
+        "node_sha256": "719a43d185f3b6a59d8fcbba1ff06b93c75f76fb0bb9916f81d33921615d4cb5",
+        "lock_sha256": "fd0f5bd8aa13e01da8792b161d80502f32e1afd00103151fbcc21f4b3146785a",
+        "pi_cli_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+        "code_sha256": "d7c120761c6b55802aee4fd3f04b2bd8c5e3fc1d01452f9ce96dc40ac59e7075",
+        "controller_sha256": "faef9055cf282c0d77a2e81816b9c88ceda6c50fe085e5afb407d02fa0599099",
+        "worker_sha256": "0958bd4528d441c478b91699a3a03e7740b5fae02b5bc304237a21726dc2d87a"
+      },
+      "preflight": {
+        "audit_valid": true,
+        "paid_admission": false,
+        "credentials_checked": true,
+        "ledger": {
+          "sha256": "5c7058ba59df48c423baaed8105aaa1d4b84c1ab1b9883d9676dacc6e903a5da",
+          "scope_sha256": "d19fd04db506168b7e971125b0a92118f923fe4aadbc9f5494d774c764fe7590",
+          "operations": 36,
+          "events": 37
+        },
+        "accounting": {
+          "attempts": 0,
+          "known_attempts": 0,
+          "unknown_attempts": 0,
+          "pending_attempts": 0,
+          "known_charged_microyuan": 0,
+          "unknown_reserved_microyuan": 0,
+          "conservative_used_microyuan": 0,
+          "budget_microyuan": 20000000,
+          "conservative_remaining_microyuan": 20000000
+        },
+        "policy": {
+          "sha256": "a92fa33150dc6dfdc2ed1da0c83ed7495959f03356149872f924ed712b7e2ab0",
+          "declared_live_ready": true,
+          "declared_input_bound_calibrated": true,
+          "input_token_bound": 1000,
+          "max_tokens": 2048,
+          "max_request_reserved_microyuan": 19384
+        },
+        "required_before_paid": [
+          "current_price_evidence_review",
+          "input_bound_evidence_review",
+          "frozen_source_config_and_container_provenance",
+          "explicit_run_cap_and_absolute_deadline",
+          "canonical_ledger_recheck_inside_reservation",
+          "trusted_container_paid_launcher_integration"
+        ]
+      },
+      "cases": [
+        {
+          "slot_index": 0,
+          "slot_id": "r1:recall.events:baseline",
+          "http_statuses": [
+            403,
+            403,
+            200,
+            403
+          ],
+          "contract_valid": true,
+          "session_sha256": "6a43eed6251482ab50e28563302859b7a59c086f8a784a8b73a40cbe37a04733",
+          "session_id": "01a161e4-56e2-73e9-8190-19967e48070a",
+          "process_exited": true,
+          "returncode": 0,
+          "request_sha256": "706d1923ac2eaddbea33e82169a18c18b7d7813b667da15419e8b5de77bbab62",
+          "runtime": {
+            "node": "v24.22.0",
+            "pi": "1.1.0",
+            "uid": 65534,
+            "machine": "aarch64",
+            "network_denied": true
+          }
+        },
+        {
+          "slot_index": 1,
+          "slot_id": "r1:recall.events:candidate",
+          "http_statuses": [
+            403,
+            403,
+            200,
+            403
+          ],
+          "contract_valid": true,
+          "session_sha256": "8bcf45a2c065be2323916659b261b6845244049f7e9c596459766b77516742e9",
+          "session_id": "01a161e4-82d8-73a5-aff6-d4b84819b5d8",
+          "process_exited": true,
+          "returncode": 0,
+          "request_sha256": "d7e40932021e97ec651e03f6c026b2161fa5562a6c1b18eeb722843a761225c8",
+          "runtime": {
+            "node": "v24.22.0",
+            "pi": "1.1.0",
+            "uid": 65534,
+            "machine": "aarch64",
+            "network_denied": true
+          }
+        }
+      ],
+      "cleanup": [
+        {
+          "container_id": "f071b9816dcaf659f33bbc6c00e254fbd37d3af8a3c61dbf142081963c57a11f",
+          "stopped": true,
+          "removed": true,
+          "exit_code": 0
+        },
+        {
+          "container_id": "881d1d257b671fb5d7536e4889ac3dd1ba400a4f2aff11da2dcd1ef8926a3c8a",
+          "stopped": true,
+          "removed": true,
+          "exit_code": 0
+        }
+      ],
+      "operation_id": "d005d7ea-3ab4-4492-8e99-ef25fe83bf49",
+      "failure_class": null,
+      "slots": [
+        {
+          "slot_index": 0,
+          "slot_id": "r1:recall.events:baseline",
+          "status": "DONE"
+        },
+        {
+          "slot_index": 1,
+          "slot_id": "r1:recall.events:candidate",
+          "status": "DONE"
+        },
+        {
+          "slot_index": 2,
+          "slot_id": "r1:recall.plot:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 3,
+          "slot_id": "r1:recall.plot:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 4,
+          "slot_id": "r1:recall.characters:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 5,
+          "slot_id": "r1:recall.characters:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 6,
+          "slot_id": "r1:extract:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 7,
+          "slot_id": "r1:extract:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 8,
+          "slot_id": "r1:operations:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 9,
+          "slot_id": "r1:operations:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 10,
+          "slot_id": "r2:recall.events:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 11,
+          "slot_id": "r2:recall.events:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 12,
+          "slot_id": "r2:recall.plot:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 13,
+          "slot_id": "r2:recall.plot:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 14,
+          "slot_id": "r2:recall.characters:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 15,
+          "slot_id": "r2:recall.characters:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 16,
+          "slot_id": "r2:extract:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 17,
+          "slot_id": "r2:extract:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 18,
+          "slot_id": "r2:operations:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 19,
+          "slot_id": "r2:operations:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 20,
+          "slot_id": "r3:recall.events:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 21,
+          "slot_id": "r3:recall.events:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 22,
+          "slot_id": "r3:recall.plot:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 23,
+          "slot_id": "r3:recall.plot:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 24,
+          "slot_id": "r3:recall.characters:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 25,
+          "slot_id": "r3:recall.characters:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 26,
+          "slot_id": "r3:extract:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 27,
+          "slot_id": "r3:extract:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 28,
+          "slot_id": "r3:operations:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 29,
+          "slot_id": "r3:operations:candidate",
+          "status": "NOT_RUN"
+        }
+      ]
+    },
+    "paid_requests": 0,
+    "real_credential_read": false,
+    "canonical_ledger_read": false,
+    "canonical_ledger_modified": false,
+    "synthetic_transport_calls": 2,
+    "cleanup_empty": true
+  },
+  "review": {
+    "range": "3078cf7..285e24b",
+    "independent": true,
+    "critical": 0,
+    "important": 1,
+    "important_fixed": 1,
+    "minor": 0,
+    "reviewer_tests_passed": 43,
+    "initial_sandbox_blocked": 3,
+    "blocked_resolved": true,
+    "fix_regression": "test_duplicate_session_never_becomes_second_durable_done",
+    "red_observed": true,
+    "green_observed": true,
+    "full_suite_after_fix": 1991,
+    "declined": [
+      "real credential/prices/usage/billing/quality",
+      "actual Docker/provider independent rerun",
+      "privileged arbitrary host replacement"
+    ]
+  },
+  "actual003_after_review": {
+    "result": {
+      "status": "completed",
+      "execution_requested": true,
+      "launch_ready": true,
+      "planned_slots": 30,
+      "selected_slots": 2,
+      "production_ready": false,
+      "automatic_execution": false,
+      "billing_verified": false,
+      "config_sha256": "1c42b8524257e724d0bf59eb9d18141ca50ece92779c02763acba19834ea6a1f",
+      "provenance": {
+        "runtime_sha256": "6e169d5462405f59c070365267eec24fddc005a3c141819ba7a1f548a592c528",
+        "node_sha256": "719a43d185f3b6a59d8fcbba1ff06b93c75f76fb0bb9916f81d33921615d4cb5",
+        "lock_sha256": "fd0f5bd8aa13e01da8792b161d80502f32e1afd00103151fbcc21f4b3146785a",
+        "pi_cli_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+        "code_sha256": "7ac4909a3a90c10bc7e1e015e5daf62f38b26854d90f72848ba9bce81481ac01",
+        "controller_sha256": "faef9055cf282c0d77a2e81816b9c88ceda6c50fe085e5afb407d02fa0599099",
+        "worker_sha256": "0958bd4528d441c478b91699a3a03e7740b5fae02b5bc304237a21726dc2d87a"
+      },
+      "preflight": {
+        "audit_valid": true,
+        "paid_admission": false,
+        "credentials_checked": true,
+        "ledger": {
+          "sha256": "608785f64cf1041dec41e5e726da30af318db736b2888ccf23a90a1ed6bcb7c2",
+          "scope_sha256": "d19fd04db506168b7e971125b0a92118f923fe4aadbc9f5494d774c764fe7590",
+          "operations": 36,
+          "events": 37
+        },
+        "accounting": {
+          "attempts": 0,
+          "known_attempts": 0,
+          "unknown_attempts": 0,
+          "pending_attempts": 0,
+          "known_charged_microyuan": 0,
+          "unknown_reserved_microyuan": 0,
+          "conservative_used_microyuan": 0,
+          "budget_microyuan": 20000000,
+          "conservative_remaining_microyuan": 20000000
+        },
+        "policy": {
+          "sha256": "a92fa33150dc6dfdc2ed1da0c83ed7495959f03356149872f924ed712b7e2ab0",
+          "declared_live_ready": true,
+          "declared_input_bound_calibrated": true,
+          "input_token_bound": 1000,
+          "max_tokens": 2048,
+          "max_request_reserved_microyuan": 19384
+        },
+        "required_before_paid": [
+          "current_price_evidence_review",
+          "input_bound_evidence_review",
+          "frozen_source_config_and_container_provenance",
+          "explicit_run_cap_and_absolute_deadline",
+          "canonical_ledger_recheck_inside_reservation",
+          "trusted_container_paid_launcher_integration"
+        ]
+      },
+      "cases": [
+        {
+          "slot_index": 0,
+          "slot_id": "r1:recall.events:baseline",
+          "http_statuses": [
+            403,
+            403,
+            200,
+            403
+          ],
+          "contract_valid": true,
+          "session_sha256": "fe56d1002c838d0746f823dda57c5a18f2a0ea1b7c49eb8892169a352b74a60b",
+          "session_id": "01a161ea-5ad2-766c-aa51-8207602c7b5e",
+          "process_exited": true,
+          "returncode": 0,
+          "request_sha256": "706d1923ac2eaddbea33e82169a18c18b7d7813b667da15419e8b5de77bbab62",
+          "runtime": {
+            "node": "v24.22.0",
+            "pi": "1.1.0",
+            "uid": 65534,
+            "machine": "aarch64",
+            "network_denied": true
+          }
+        },
+        {
+          "slot_index": 1,
+          "slot_id": "r1:recall.events:candidate",
+          "http_statuses": [
+            403,
+            403,
+            200,
+            403
+          ],
+          "contract_valid": true,
+          "session_sha256": "f74b4b2296e545d2edaa0b7588e6d28a46b8dbbb9d87ee8727c9a73ca39e297a",
+          "session_id": "01a161ea-7c80-74ce-9dc5-ab947dab6549",
+          "process_exited": true,
+          "returncode": 0,
+          "request_sha256": "d7e40932021e97ec651e03f6c026b2161fa5562a6c1b18eeb722843a761225c8",
+          "runtime": {
+            "node": "v24.22.0",
+            "pi": "1.1.0",
+            "uid": 65534,
+            "machine": "aarch64",
+            "network_denied": true
+          }
+        }
+      ],
+      "cleanup": [
+        {
+          "container_id": "ce25c539fde316073a0384fb28f90e69d56d345f90b2da800ff775a5897cce42",
+          "stopped": true,
+          "removed": true,
+          "exit_code": 0
+        },
+        {
+          "container_id": "2cfa35f8260805b25275ce499727686b7b92771319c8a5ed226f0dfe07b1443c",
+          "stopped": true,
+          "removed": true,
+          "exit_code": 0
+        }
+      ],
+      "operation_id": "a6c39e92-cb06-4be6-b8f6-5aaef9566b98",
+      "failure_class": null,
+      "slots": [
+        {
+          "slot_index": 0,
+          "slot_id": "r1:recall.events:baseline",
+          "status": "DONE"
+        },
+        {
+          "slot_index": 1,
+          "slot_id": "r1:recall.events:candidate",
+          "status": "DONE"
+        },
+        {
+          "slot_index": 2,
+          "slot_id": "r1:recall.plot:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 3,
+          "slot_id": "r1:recall.plot:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 4,
+          "slot_id": "r1:recall.characters:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 5,
+          "slot_id": "r1:recall.characters:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 6,
+          "slot_id": "r1:extract:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 7,
+          "slot_id": "r1:extract:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 8,
+          "slot_id": "r1:operations:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 9,
+          "slot_id": "r1:operations:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 10,
+          "slot_id": "r2:recall.events:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 11,
+          "slot_id": "r2:recall.events:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 12,
+          "slot_id": "r2:recall.plot:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 13,
+          "slot_id": "r2:recall.plot:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 14,
+          "slot_id": "r2:recall.characters:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 15,
+          "slot_id": "r2:recall.characters:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 16,
+          "slot_id": "r2:extract:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 17,
+          "slot_id": "r2:extract:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 18,
+          "slot_id": "r2:operations:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 19,
+          "slot_id": "r2:operations:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 20,
+          "slot_id": "r3:recall.events:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 21,
+          "slot_id": "r3:recall.events:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 22,
+          "slot_id": "r3:recall.plot:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 23,
+          "slot_id": "r3:recall.plot:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 24,
+          "slot_id": "r3:recall.characters:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 25,
+          "slot_id": "r3:recall.characters:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 26,
+          "slot_id": "r3:extract:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 27,
+          "slot_id": "r3:extract:candidate",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 28,
+          "slot_id": "r3:operations:baseline",
+          "status": "NOT_RUN"
+        },
+        {
+          "slot_index": 29,
+          "slot_id": "r3:operations:candidate",
+          "status": "NOT_RUN"
+        }
+      ]
+    },
+    "paid_requests": 0,
+    "real_credential_read": false,
+    "canonical_ledger_read": false,
+    "canonical_ledger_modified": false,
+    "synthetic_transport_calls": 2,
+    "cleanup_empty": true
+  }
+}

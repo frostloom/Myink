@@ -37,5 +37,5 @@
 - [x] Step 2: `.venv/bin/python -m pytest ops/pi/tests/test_analysis_launcher.py -q`；Expected: 接口缺失RED，保留日志。
 - [x] Step 3: 最小实现launch/check/provider上下文与精确清理、初始帧解析；Expected: 新测试GREEN。
 - [x] Step 4: 运行定向与完整Pi离线、compileall/diff-check；Expected: 全通过，明确19项未选入；提交功能。
-- [ ] Step 5: 刷新封闭源码到新私有snapshot，以固定Docker/Linux Pi+MockTransport验收新入口，原canonical账本/真实凭据/实际live不改；Expected: 两新session、2DONE/28NOT_RUN、计费已知、精确所属清理、0真实provider。
-- [ ] Step 6: 独立整段审查，一次RED→GREEN修复Important/Critical；更新验收/计划，提交推送核对远端，myink记忆完成/回查；归档本计划workspace。
+- [x] Step 5: 刷新封闭源码到新私有snapshot，以固定Docker/Linux Pi+MockTransport验收新入口，原canonical账本/真实凭据/实际live不改；Expected: 两新session、2DONE/28NOT_RUN、计费已知、精确所属清理、0真实provider。
+- [x] Step 6: 独立整段审查，一次RED→GREEN修复Important/Critical；更新验收/计划，提交推送核对远端，myink记忆完成/回查；归档本计划workspace。
