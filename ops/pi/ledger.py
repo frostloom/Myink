@@ -34,13 +34,14 @@ _SCHEMA = (
 
 
 class Ledger:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, *, existing=False):
         self.path = Path(path)
+        self._existing = existing
         # Parent creation is deliberately the caller's explicit responsibility.
         with self.transaction() as connection:
             version = connection.execute('PRAGMA user_version').fetchone()[0]
             tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-            if version == 0 and not tables:
+            if version == 0 and not tables and not existing:
                 for statement in _SCHEMA:
                     connection.execute(statement)
             elif version != 1 or not {'operations', 'events'}.issubset(tables):
@@ -52,8 +53,15 @@ class Ledger:
         connection = None
         try:
             deadline = time.monotonic() + 30
-            connection = sqlite3.connect(self.path, timeout=30, isolation_level=None)
+            target = self.path.absolute().as_uri() + '?mode=rw' if self._existing else self.path
+            connection = sqlite3.connect(target, uri=self._existing, timeout=30, isolation_level=None)
             connection.row_factory = sqlite3.Row
+            if self._existing:
+                # Validate an existing snapshot before journal PRAGMAs can write
+                # an SQLite header to an empty or replaced canonical file.
+                connection.execute('BEGIN')
+                validate_connection(connection)
+                connection.rollback()
             # SQLite can return BUSY immediately during the fresh-file WAL
             # transition despite busy_timeout. Retry only this pre-BEGIN step.
             while True:

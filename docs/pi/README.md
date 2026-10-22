@@ -2,6 +2,16 @@
 
 管理员是 Myink 的组成部分，负责既有产品的稳定性、成本、速度、写作质量与体验；新功能方向由项目所有者决定。`Engine` 接口把管理员职责与具体 Agent 解耦，目前接入固定版本 Pi。预算、权限、备份与发布验收由控制程序管理。
 
+## 可信宿主分析入口（2026-10-22）
+
+`python -m ops.pi.analysis_launcher --config /absolute/private/manifest.json` 默认只检查，不创建账本/目录，不联系Docker或provider。宿主清单固定所有原状态路径和scope/policy/input/evidence/code/runtime指纹、run_id、正整数cap_microyuan、未来600秒内绝对deadline，以及本地daemon/不可变image。路径须为绝对非符号链接路径，Docker CLI也使用解析后的真实路径；credentials保持0600/父目录0700。
+
+清单schema为`pi-analysis-launch-v1`，完整字段见`ops/pi/analysis_launcher.py`的`_FIELDS`。输入文件仅含五组`views`及`report`；证据记录schema为`pi-provider-evidence-v1`，固定policy_sha256、review_reference、valid_until以及price/input_bound原始文件path与sha256。所有expected摘要为canonical JSON SHA256，原始来源文件为原始字节SHA256；code/runtime使用既有闭包fingerprint。证据须覆盖deadline，但只表示宿主审阅声明，不自动验证provider最新价格、密钥在线有效性、usage语义或账单。
+
+只有显式`--execute`且live_ready、余额/单次预留/证据/身份检查都满足时，才在原账本注册30槽并绑定本轮费用与期限；入口仅选择第一对槽，不自动恢复/重试。原子预留仍核对同scope/policy/请求、本轮和累计预算及期限，历史unknown完整预留不释放。worker只收到当槽冻结输入、局部token和期限；上游key和原ledger不进容器。宿主合同/session、已知结算、精确所属容器清理全部成功才前进；任一unknown或清理失败停止。
+
+新增43项先RED后GREEN；定向231 passed，完整Pi离线1990 passed、0 skipped、19项设施/在线未选入，compileall/diff-check通过。实际私有policy仍live=false，未开启真实上游。新入口的实际合成容器验收和独立审查另行记录，不把离线测试算成provider验收。既有固定synthetic probe仍不接真实ledger/transport。
+
 ## 最新状态（2026-10-22，DeepSeek切换）
 
 按用户要求，宿主Pi私有凭据已改为CC-Switch Pi/DeepSeek的同一密钥，模型`deepseek-flash`，通过DeepSeek官方Anthropic兼容端点继续使用预算网关。密钥只在原私有state/credentials，目录0700/文件0600，未进入容器、Git或记忆；CC-Switch当前provider不变。当前策略为私有`state/policy.json`，历史冻结策略不改；后续入口必须显式选新策略。默认新分析注册已切新模型，原模型仅保留显式历史冻结兼容。

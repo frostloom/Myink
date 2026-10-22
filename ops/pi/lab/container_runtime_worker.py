@@ -13,6 +13,33 @@ from urllib.error import HTTPError
 from urllib.request import Request, build_opener, ProxyHandler
 
 
+def prepare_initial(initial):
+    """Only trusted bounded frozen inputs, never provider or ledger settings."""
+    import math
+    import time
+    from ops.pi.container_runtime import fixture, FRAME_LIMIT
+    from ops.pi.analysis_execution import MODEL, prepare_contract_slots, _hash
+    from ops.pi.analysis_trial import GROUPS
+    if (not isinstance(initial,dict) or type(initial.get('slot_index')) is not int
+            or not 0<=initial['slot_index']<30 or not isinstance(initial.get('token'),str)
+            or len(initial['token'])!=64 or any(not 33<=ord(c)<=126 for c in initial['token'])
+            or len(json.dumps(initial,ensure_ascii=True,allow_nan=False).encode())+1>FRAME_LIMIT):
+        raise ValueError('bounded frozen slot required')
+    if set(initial)=={'slot_index','token'} and initial['slot_index'] in (0,1):
+        view,report=fixture().synthetic_inputs()
+        deadline=time.time()+45
+        slot=prepare_contract_slots({g:view for g in GROUPS},report,model=MODEL,cwd=Path('/work/candidate'))[initial['slot_index']]
+    elif set(initial)=={'slot_index','token','slot','view','report','deadline'}:
+        view,report,deadline,slot=(initial[k] for k in ('view','report','deadline','slot'))
+        if (type(deadline) not in (int,float) or not math.isfinite(deadline)
+                or not 0<deadline-time.time()<=90):
+            raise ValueError('bounded absolute worker deadline required')
+        expected=prepare_contract_slots({g:view for g in GROUPS},report,model=MODEL,cwd=Path('/work/candidate'))[initial['slot_index']]
+        if _hash(expected)!=_hash(slot):raise ValueError('frozen worker input drift')
+    else:raise ValueError('fixed worker fields required')
+    return dict(initial,slot=slot,view=view,report=report,deadline=deadline,model=MODEL)
+
+
 def main():
     sys.path.insert(0,'/source/code')
     from ops.pi.container_runtime import fixture, parse_frame, strict_json, FRAME_LIMIT
@@ -25,11 +52,7 @@ def main():
     from ops.pi.lab.container_probe_worker import network_denied
     from types import SimpleNamespace
 
-    initial=strict_json(sys.stdin.buffer.readline(4096))
-    if (not isinstance(initial,dict) or set(initial)!={'slot_index','token'}
-            or type(initial['slot_index']) is not int or initial['slot_index'] not in (0,1)
-            or not isinstance(initial['token'],str) or len(initial['token'])!=64):
-        raise ValueError('fixed synthetic slot required')
+    initial=prepare_initial(strict_json(sys.stdin.buffer.readline(FRAME_LIMIT+1)))
     def emit(value):
         raw=json.dumps(value,ensure_ascii=True,allow_nan=False)
         if len(raw.encode())>FRAME_LIMIT:raise ValueError('bounded relay frame required')
@@ -62,9 +85,8 @@ def main():
                 self.send_error(400)
             finally:self.close_connection=True
     root=Path('/work');cwd=root/'candidate';cwd.mkdir()
-    view,report=fixture().synthetic_inputs()
-    slots=prepare_contract_slots({g:view for g in GROUPS},report,model=MODEL,cwd=cwd)
-    index=initial['slot_index'];slot=slots[index]
+    view,report=initial['view'],initial['report']
+    index=initial['slot_index'];slot=initial['slot']
     server=HTTPServer(('127.0.0.1',0),Relay)
     thread=Thread(target=server.serve_forever,kwargs={'poll_interval':.01},daemon=True);thread.start()
     base=f'http://127.0.0.1:{server.server_port}'
@@ -94,7 +116,7 @@ def main():
         engine=PiAdapter(command,cwd=cwd,env=env,config_hash=digest)
         result=run_contract_slot(slot_index=index,slot=slot,view=view,report=report,engine=engine,
             session=EngineSession('pi',digest,'analysis',session),model=MODEL,cwd=cwd,
-            deadline=datetime.now(timezone.utc)+timedelta(seconds=45))
+            deadline=datetime.fromtimestamp(initial['deadline'],timezone.utc))
         if result['engine_status']=='done':
             replay=negative(slot['request'],initial['token'])
             if replay!=403:raise ValueError('replay status '+str(replay))
