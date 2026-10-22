@@ -1,8 +1,12 @@
 # Myink 管理员与 Pi 引擎
 
+## 修复后真实诊断（2026-10-22）
+
+用户明确批准向DeepSeek发送本次私有输入/报告后，以新run、最多2请求/cap4.032768元/240秒执行。实际1请求200 SSE、编码absent，已解析message_start，未再UnicodeDecodeError；用量起始被service_tier额外字段拒绝，另有宿主ValueError具体触发点未确定，未取得结果帧/有效session。0 DONE/1 UNCERTAIN/29 NOT_RUN，第二槽未运行、不重试；容器exit137强制清理删除。新unknown完整预留2.016384元，累计210次/202 known/8 unknown/0 pending，保守余额2.093625元，全局live=false。账户可见余额少0.25元不是本请求核定账单。见[真实诊断](../evaluations/pi-live-encoding-2026-10-22.md)；下一步先离线定位宿主拒绝分支与metadata兼容，不再直接付费尝试。
+
 ## 响应编码修复（2026-10-22）
 
-生产入口显式要求未压缩响应；网关在读取正文前拒绝压缩或未知编码，固定502、保留unknown、不重试，并在私有诊断中记录有限编码类别。上次真实失败根因仍未证实。完整Pi离线2042 passed、0 skipped、19项未选入；独立审查无缺陷。真实Linux Pi合成identity两槽完成；忽略协商的gzip场景安全停止、第二槽未运行，三容器均exit0删除。修复及合成阶段0付费请求，canonical状态未改。见[编码修复验收](../evaluations/pi-response-encoding-2026-10-22.md)。 修复已推送078060c；后续真实诊断被自动审批在启动前拒绝，需明确批准把本次私有写作输入和报告发送给DeepSeek。本地只读check通过、launch_ready=false，新真实请求0，原账本仍209次、保守余额4.110009元。
+生产入口显式要求未压缩响应；网关在读取正文前拒绝压缩或未知编码，固定502、保留unknown、不重试，并在私有诊断中记录有限编码类别。上次真实失败根因仍未证实。完整Pi离线2042 passed、0 skipped、19项未选入；独立审查无缺陷。真实Linux Pi合成identity两槽完成；忽略协商的gzip场景安全停止、第二槽未运行，三容器均exit0删除。修复及合成阶段0付费请求，canonical状态未改。见[编码修复验收](../evaluations/pi-response-encoding-2026-10-22.md)。 修复已推送078060c。审批拦截后的明确授权与真实执行结果见上方最新诊断；之前只读check和209次/余额4.110009元是执行前快照。
 
 ## 最新真实诊断（2026-10-22）
 
