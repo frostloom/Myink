@@ -17,6 +17,7 @@ from .analysis_budget import _scope_identity
 from .control import live_ready
 from .ledger import Ledger, LedgerBlocked, OperationConflict, _json, validate_connection
 from .policy import load_policy, rate
+from .provider_config import load_credentials
 
 
 _REQUIRED = [
@@ -73,7 +74,8 @@ def _accounting(db):
                 conservative_remaining_microyuan=max(0, 20000000 - used))
 
 
-def audit(ledger_path, policy_path, *, expected_scope_sha256, expected_policy_sha256):
+def audit(ledger_path, policy_path, *, expected_scope_sha256, expected_policy_sha256,
+          credential_path=None):
     """Observe one consistent snapshot, without bootstrap, reservation or repair.
 
     Pins come from the trusted host, never from model input. Policy digest is
@@ -91,6 +93,8 @@ def audit(ledger_path, policy_path, *, expected_scope_sha256, expected_policy_sh
                 or policy.max_attempts is not None or policy.budget_microyuan != 20000000
                 or policy.server_daily_enabled):
             raise LedgerBlocked('policy identity mismatch')
+        if credential_path is not None:
+            load_credentials(credential_path, policy)
         path = Path(ledger_path).resolve(strict=True)
         db = sqlite3.connect(path.as_uri() + '?mode=ro', uri=True, isolation_level=None, timeout=5)
         db.row_factory = sqlite3.Row
@@ -114,6 +118,7 @@ def audit(ledger_path, policy_path, *, expected_scope_sha256, expected_policy_sh
             reserve = int((input_rate * policy.input_token_bound + rate(policy.prices['output'])
                            * policy.max_tokens).to_integral_value(rounding=ROUND_CEILING))
         return dict(audit_valid=True, paid_admission=False,
+            credentials_checked=credential_path is not None,
             ledger=dict(sha256=_sha(snapshot), scope_sha256=scope_sha,
                         operations=len(snapshot['operations']), events=len(snapshot['events'])),
             accounting=accounting,
@@ -136,12 +141,13 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ledger', required=True)
     parser.add_argument('--policy', required=True)
+    parser.add_argument('--credential-file')
     parser.add_argument('--scope-sha256', required=True)
     parser.add_argument('--policy-sha256', required=True)
     args = parser.parse_args(argv)
     try:
         result = audit(args.ledger, args.policy, expected_scope_sha256=args.scope_sha256,
-                       expected_policy_sha256=args.policy_sha256)
+                       expected_policy_sha256=args.policy_sha256, credential_path=args.credential_file)
     except LedgerBlocked:
         print(json.dumps(dict(audit_valid=False, paid_admission=False, error='analysis preflight blocked')))
         return 2

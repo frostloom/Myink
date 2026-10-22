@@ -9,13 +9,14 @@ from pathlib import Path
 
 from .analysis_trial import GROUPS, legacy_shared_writing_prompt, score_contract_output
 from .engine import AdministratorContext
+from .provider_config import DEFAULT_MODEL, ANALYSIS_MODELS
 from .writing_analysis import (
     _digest, _json, analysis_receipt, build_analysis_request, build_writing_prompt,
     preflight_request,
 )
 
 
-MODEL = 'deepseek-v4.1-flash'
+MODEL = DEFAULT_MODEL
 
 
 def _hash(value):
@@ -23,7 +24,7 @@ def _hash(value):
 
 
 def _slot(view, report, *, model, cwd, domain, arm, repeat):
-    if (model != MODEL or domain not in GROUPS or arm not in ('baseline', 'candidate')
+    if (model not in ANALYSIS_MODELS or domain not in GROUPS or arm not in ('baseline', 'candidate')
             or type(repeat) is not int or repeat not in (1, 2, 3)):
         raise ValueError('fixed model, group, arm and repetition required')
     cwd = Path(cwd)

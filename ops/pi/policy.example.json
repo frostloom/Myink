@@ -2,9 +2,9 @@
   "schema_version": 1,
   "live_enabled": false,
   "server_daily_enabled": false,
-  "model": "deepseek-v4.1-flash",
+  "model": "deepseek-flash",
   "protocol": "anthropic",
-  "base_url": "https://maas.qianwenaiapi.com/apps/anthropic",
+  "base_url": "https://api.deepseek.com/anthropic",
   "max_attempts": 100,
   "budget_microyuan": 10000000,
   "timeout_seconds": 120,
@@ -13,12 +13,12 @@
   "input_bound_source": "UNCONFIRMED: validate provider full context capacity and body constraints before enabling",
   "input_bound_calibrated": false,
   "max_tokens": 8192,
-  "price_source": "https://www.qianwenai.com/models/deepseek-v4.1-flash (confirmed peak input/output/cache-read; cache-write unconfirmed)",
+  "price_source": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/ (2026-10-22 peak CNY rates; cache_write uses full-input upper bound)",
   "prices": {
     "input": "2",
     "output": "8",
-    "cache_read": "0.2",
-    "cache_write": null
+    "cache_read": "0.04",
+    "cache_write": "2"
   },
   "grace_seconds": 900,
   "soft_production_files": 3,

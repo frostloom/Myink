@@ -15,6 +15,7 @@ import httpx
 from .ledger import Ledger, LedgerBlocked
 from .model_gateway import forward_messages
 from .policy import load_policy
+from .provider_config import load_credentials
 
 
 def live_ready(policy):
@@ -193,14 +194,7 @@ def serve_gateway(ledger, policy, credential_file, host='127.0.0.1', port=8765, 
                   tool_broker=None, request_guard=None):
     if not live_ready(policy):
         raise ValueError('live configuration incomplete')
-    credentials = json.loads(credential_file.read_text(encoding='utf-8'))
-    expected = {'PLATFORM_MODEL_API_KEY', 'PLATFORM_MODEL_BASE_URL', 'PLATFORM_MODEL_NAME', 'PLATFORM_MODEL_PROTOCOL'}
-    if (not isinstance(credentials, dict) or set(credentials) != expected
-            or not all(isinstance(v, str) and v.strip() for v in credentials.values())
-            or credentials['PLATFORM_MODEL_BASE_URL'].rstrip('/') != policy.base_url.rstrip('/')
-            or credentials['PLATFORM_MODEL_NAME'] != policy.model
-            or credentials['PLATFORM_MODEL_PROTOCOL'] != policy.protocol):
-        raise ValueError('invalid trusted credentials')
+    credentials = load_credentials(credential_file, policy)
     with httpx.Client(follow_redirects=False, trust_env=False, timeout=policy.timeout_seconds) as client:
         def transport(body, timeout):
             request = client.build_request('POST', policy.base_url.rstrip('/') + '/v1/messages', json=body,

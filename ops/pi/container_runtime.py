@@ -131,7 +131,7 @@ def synthetic_run(root):
     if root.exists(): raise ValueError('new synthetic ledger directory required')
     root.mkdir(mode=0o700)
     p=replace(load_policy(Path(__file__).with_name('policy.example.json')),schema_version=2,
-        max_attempts=None,budget_microyuan=20000000,base_url='https://provider.invalid',
+        max_attempts=None,budget_microyuan=20000000,base_url='https://provider.invalid',model=MODEL,
         live_enabled=False,input_token_bound=1000,input_bound_source='synthetic only',
         input_bound_calibrated=False,max_tokens=2048,timeout_seconds=60,
         price_source='synthetic only',prices=dict(input='2',output='8',cache_read='0.2',cache_write='3'))

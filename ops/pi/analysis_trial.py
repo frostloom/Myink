@@ -2,6 +2,8 @@
 import hashlib
 import json
 
+from .provider_config import DEFAULT_MODEL, ANALYSIS_MODELS
+
 from .writing_analysis import (
     DOMAINS, _json, _validate_inputs, build_writing_prompt, indexed_evidence_view,
     validate_writing_analysis,
@@ -72,8 +74,10 @@ def score_contract_output(result, view, target_domain):
     return {'valid': True, 'target_domain': target_domain}
 
 
-def freeze_contract_trial(view, report):
+def freeze_contract_trial(view, report, *, model=DEFAULT_MODEL):
     """Lock the five-group prompt comparison. This function cannot execute it."""
+    if model not in ANALYSIS_MODELS:
+        raise ValueError('fixed analysis model required')
     prompts = []
     for group in GROUPS:
         baseline = legacy_shared_writing_prompt(view, report)
@@ -82,7 +86,7 @@ def freeze_contract_trial(view, report):
                             baseline_prompt_sha256=_sha(baseline),
                             candidate_prompt_sha256=_sha(candidate)))
     record = dict(schema='analysis-contract-trial-v1', changed_factor='prompt', groups=list(GROUPS),
-                  model='deepseek-v4.1-flash', view_sha256=_sha(_json(view)),
+                  model=model, view_sha256=_sha(_json(view)),
                   report_sha256=_sha(_json(report)), prompts=prompts, primary_metric='contract_valid',
                   adopt_rule='candidate_valid_count > baseline_valid_count', semantic_metrics='unknown',
                   automatic_execution=False, release_allowed=False, validator='validate_writing_analysis')

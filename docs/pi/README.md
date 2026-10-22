@@ -2,7 +2,15 @@
 
 管理员是 Myink 的组成部分，负责既有产品的稳定性、成本、速度、写作质量与体验；新功能方向由项目所有者决定。`Engine` 接口把管理员职责与具体 Agent 解耦，目前接入固定版本 Pi。预算、权限、备份与发布验收由控制程序管理。
 
-## 最新状态（2026-10-22）
+## 最新状态（2026-10-22，DeepSeek切换）
+
+按用户要求，宿主Pi私有凭据已改为CC-Switch Pi/DeepSeek的同一密钥，模型`deepseek-flash`，通过DeepSeek官方Anthropic兼容端点继续使用预算网关。密钥只在原私有state/credentials，目录0700/文件0600，未进入容器、Git或记忆；CC-Switch当前provider不变。当前策略为私有`state/policy.json`，历史冻结策略不改；后续入口必须显式选新策略。默认新分析注册已切新模型，原模型仅保留显式历史冻结兼容。
+
+只读预检新增可选credential-file并验证身份绑定；原账本208次/保守余额6.126393元不变。官方价格/上下文与兼容资料已在私有证据中固定SHA，仍需真实usage/计费验收及本轮cap/deadline。当前live_enabled、paid_admission、production_ready、automatic_execution均false，付费请求0。见[DeepSeek切换验收](../evaluations/pi-deepseek-profile-2026-10-22.md)及[机器回执](../evaluations/pi-deepseek-profile-2026-10-22.json)。
+
+定向405通过，完整Pi离线1947 passed、0 skipped、19项设施/付费未选入。新闭包在固定Linux Node/Pi无网络容器中通过deepseek-flash本地合成两槽：合同有效、新会话、无工具、退出0，两容器均删除；不代表真实DeepSeek调用或计费通过，45项语义质量仍unknown。
+
+## 前一检查点（2026-10-22，只读预检）
 
 可信宿主入口的只读预检已补齐：单一SQLite只读事务核对完整账本schema/记录、原累计20元审批链、固定scope/policy身份及保守费用，输出无正文逻辑快照指纹；不创建scope或预留。真实账本当前208次、202次已知/6次未知、0 pending；已知费用1.791431元、未知完整预留12.082176元，保守余额6.126393元。两次只读观察相同，数据库及WAL字节未变。见[只读预检记录](../evaluations/pi-analysis-preflight-2026-10-22.md)及[机器回执](../evaluations/pi-analysis-preflight-2026-10-22.json)。
 
