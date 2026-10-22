@@ -633,5 +633,18 @@
     "offline_log": "50787b40e1087a1c86c8b957bafcaa85e0f1c2a95129dee7d4f8096aa9021bf3",
     "offline_full_log": "07ebca815b9263658eeec19ca5d4fa4e735f0b06cc8d51098d19114e76364170",
     "offline_junit": "7aa9fb65c6c04cefca972bc552280aa03f8b997fb6d224ab7b18d8d4e6049ad2"
+  },
+  "review": {
+    "critical": 0,
+    "important": 0,
+    "minor": 0,
+    "independent_tests_passed": 93,
+    "independent_test_seconds": 4.97,
+    "initial_sandbox_socket_failures": 8,
+    "approved_rerun": true,
+    "evidence_hashes_checked": 17,
+    "official_source_hashes_checked": 3,
+    "direct_canonical_state_access": false,
+    "new_docker_calls": false
   }
 }

@@ -27,5 +27,5 @@ INITIAL_FRAME_LIMIT524288 includes newline; subsequent FRAME_LIMIT196608, HTTP65
 - [x] Write tests for large full report through launch and worker, exact byte boundaries through real stdio child, drift and unchanged relay limits. Run targeted test: expect large initial cases fail under old196608 limit.
 - [x] Add minimal INITIAL_FRAME_LIMIT524288 initial-only handling, update existing oversize fixture above new cap. Run targeted tests: expect all pass.
 - [x] Freeze new source, actual Linux two-slot synthetic acceptance with300KB unused report metadata: expect full identities/diagnostics/settlement/cleanup pass. Rebind real five-group inputs and current source; default check must succeed with launch_ready=false and no result root, preserve protected original bytes. Keep all first failed preparation evidence.
-- [ ] Run full offline Pi suite and syntax/diff checks; expect no failures, record skips/deselections accurately. Publish no-secret evaluation with retained evidence SHA.
-- [ ] Independent final review, act on findings, commit/push Pi branch and update myink memory. No paid execution.
+- [x] Run full offline Pi suite and syntax/diff checks; expect no failures, record skips/deselections accurately. Publish no-secret evaluation with retained evidence SHA.
+- [x] Independent final review, act on findings, commit/push Pi branch and update myink memory. No paid execution.
