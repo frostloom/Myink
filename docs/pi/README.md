@@ -1,14 +1,18 @@
 # Myink 管理员与 Pi 引擎
 
+## 最新运行核验（2026-10-22，usage诊断）
+
+已将当前生产代码重新冻结为独立Linux快照，在实际Pi1.1.0/Node24.22.0无网络隔离容器中通过两槽MockTransport验收：两个新会话、合同/结算有效，两个0600私有诊断各1468字节，费用仅合成账本各834微元；两个容器退出0且按精确operation标签查无残留。首次验收脚本遗漏既有结算字段导致断言失败，证据保留；修正脚本后新目录复验通过，未改生产代码。0真实付费请求，真实usage/账单与生产验收仍未完成，诊断仍不保证交付。见[Linux验收记录](../evaluations/pi-usage-linux-2026-10-22.md)及[机器回执](../evaluations/pi-usage-linux-2026-10-22.json)。
+
 ## 宿主计量诊断接线（2026-10-22）
 
 `AnalysisRun.gateway_handler`新增可选可信宿主usage_observer，launcher固定为每槽在0700结果目录预建0600私有`slot-{index}-usage-private.jsonl`，每文件最多一条、8192字节，记录slot_index、attempt_id及既有网关已脱敏的计量字段存在性/数值；不保存请求、响应正文或token。初始化失败在当槽请求/容器创建前停止；回调错误不改变费用或终态。路径不能是符号链接，追加前核对原inode、普通文件、单硬链接及权限；原句柄保持到回调决定或观察器销毁，防止inode编号复用。
 
-诊断沿用既有单daemon、六条队列的异步观察器，可能因存储阻塞、队列满或进程退出而丢失；不等待、不重试、不将记录写入账本或公开receipt。公开usage_diagnostics=best_effort_private只说明采集模式，不能证明已有记录落盘，更不证明usage语义或账单正确。真实策略仍live=false；本轮仅合成测试，没有真实provider或LinuxPi容器验收。此前source-reviewed与私有草稿绑定旧代码，真实执行前必须重新冻结源码并生成当次配置。见[接线验收](../evaluations/pi-usage-launcher-2026-10-22.md)。
+诊断沿用既有单daemon、六条队列的异步观察器，可能因存储阻塞、队列满或进程退出而丢失；不等待、不重试、不将记录写入账本或公开receipt。公开usage_diagnostics=best_effort_private只说明采集模式，不能证明已有记录落盘，更不证明usage语义或账单正确。接线检查点仅完成离线合成测试；后续Linux容器合成复验见上节，真实provider仍未验收。原source-reviewed与私有草稿绑定旧代码；本次新建source-usage-reviewed用于合成验收，真实执行前仍须绑定当次配置。见[接线验收](../evaluations/pi-usage-launcher-2026-10-22.md)。
 
 ## 最新核验（2026-10-22，DeepSeek计量准备）
 
-官方价格/兼容/缓存资料已重新获取并固定摘要；原累计账本只读复核未变，保守剩余6.126393元。现有计量、缓存、预检及入口相关245项测试通过。准备了两槽4.10元、240秒的不可执行配置草稿；真实五组输入、审阅证据及绝对deadline尚未绑定。公开资料未明确Anthropic四维usage语义，不能补零或称真实计费已验收。保持live=false、0付费请求；下一步先离线接入安全usage诊断，再收集有界真实响应与账单证据。见[计量准备核验](../evaluations/pi-provider-readiness-2026-10-22.md)和[机器回执](../evaluations/pi-provider-readiness-2026-10-22.json)。
+官方价格/兼容/缓存资料已重新获取并固定摘要；原累计账本只读复核未变，保守剩余6.126393元。现有计量、缓存、预检及入口相关245项测试通过。准备了两槽4.10元、240秒的不可执行配置草稿；真实五组输入、审阅证据及绝对deadline尚未绑定。公开资料未明确Anthropic四维usage语义，不能补零或称真实计费已验收。保持live=false、0付费请求；安全usage诊断已接入并通过上节Linux合成复验；下一步准备有界真实响应与账单证据。见[计量准备核验](../evaluations/pi-provider-readiness-2026-10-22.md)和[机器回执](../evaluations/pi-provider-readiness-2026-10-22.json)。
 
 管理员是 Myink 的组成部分，负责既有产品的稳定性、成本、速度、写作质量与体验；新功能方向由项目所有者决定。`Engine` 接口把管理员职责与具体 Agent 解耦，目前接入固定版本 Pi。预算、权限、备份与发布验收由控制程序管理。
 

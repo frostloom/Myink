@@ -1,0 +1,149 @@
+{
+  "date": "2026-10-22",
+  "source_commit": "bcb4bc65e1733ca8014cc3622a9d0512370941b1",
+  "status": "linux_mock_verified",
+  "operation_id": "96ebb296-e7c2-4760-a5a3-afab7e289b90",
+  "provenance": {
+    "runtime_sha256": "6e169d5462405f59c070365267eec24fddc005a3c141819ba7a1f548a592c528",
+    "node_sha256": "719a43d185f3b6a59d8fcbba1ff06b93c75f76fb0bb9916f81d33921615d4cb5",
+    "lock_sha256": "fd0f5bd8aa13e01da8792b161d80502f32e1afd00103151fbcc21f4b3146785a",
+    "pi_cli_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+    "code_sha256": "b7384fca83214fd33c78e6df8140d7661f7960f722c724c15b97f405f6a6ef8a",
+    "controller_sha256": "faef9055cf282c0d77a2e81816b9c88ceda6c50fe085e5afb407d02fa0599099",
+    "worker_sha256": "0958bd4528d441c478b91699a3a03e7740b5fae02b5bc304237a21726dc2d87a"
+  },
+  "provenance_unchanged": true,
+  "default_check_root_absent": true,
+  "planned_slots": 30,
+  "done_slots": 2,
+  "not_run_slots": 28,
+  "synthetic_transport_calls": 2,
+  "paid_requests": 0,
+  "cases": [
+    {
+      "slot_index": 0,
+      "http_statuses": [
+        403,
+        403,
+        200,
+        403
+      ],
+      "contract_valid": true,
+      "session_id": "01a16230-fc70-7462-8cbb-ad90ec3d71c4",
+      "returncode": 0,
+      "runtime": {
+        "node": "v24.22.0",
+        "pi": "1.1.0",
+        "uid": 65534,
+        "machine": "aarch64",
+        "network_denied": true
+      }
+    },
+    {
+      "slot_index": 1,
+      "http_statuses": [
+        403,
+        403,
+        200,
+        403
+      ],
+      "contract_valid": true,
+      "session_id": "01a16231-1daf-7705-a372-d248f9dad237",
+      "returncode": 0,
+      "runtime": {
+        "node": "v24.22.0",
+        "pi": "1.1.0",
+        "uid": 65534,
+        "machine": "aarch64",
+        "network_denied": true
+      }
+    }
+  ],
+  "cleanup": [
+    {
+      "container_id": "ff5f3e5822579d5951952040b04f3d39d0301de81c7c4b64f3befe9e16d54f44",
+      "stopped": true,
+      "removed": true,
+      "exit_code": 0
+    },
+    {
+      "container_id": "7ba7559952fc1607f02e60455962915ab9c30bc8fdeac5844b49b50cfc64d877",
+      "stopped": true,
+      "removed": true,
+      "exit_code": 0
+    }
+  ],
+  "cleanup_empty": true,
+  "diagnostics": {
+    "mode": "best_effort_private",
+    "parent_mode": "0700",
+    "file_mode": "0600",
+    "records": [
+      {
+        "slot_index": 0,
+        "bytes": 1468,
+        "sha256": "a945f3c0505457687f7f5484585b861858322f9d90a9507df476fed0d117bcb1",
+        "charged_microyuan": 834
+      },
+      {
+        "slot_index": 1,
+        "bytes": 1468,
+        "sha256": "35d4927c9b4e51781de8e30a323c3fb0b87f1bc8e9af06834f5063c9e9bfbbaf",
+        "charged_microyuan": 834
+      }
+    ],
+    "records_per_slot": 1,
+    "max_record_bytes": 8192,
+    "distinct_attempts": true,
+    "ledger_correlated": true,
+    "parser_valid": true,
+    "start_usage": {
+      "input_tokens": 17,
+      "output_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation_input_tokens": 0
+    },
+    "final_output_tokens": 100,
+    "delivery_guaranteed": false,
+    "production_wait_added": false
+  },
+  "total_synthetic_charge_microyuan": 1668,
+  "real_credential_read": false,
+  "canonical_ledger_read": false,
+  "canonical_ledger_modified": false,
+  "actual_live_enabled_changed": false,
+  "billing_verified": false,
+  "provider_usage_semantics_verified": false,
+  "production_ready": false,
+  "automatic_execution": false,
+  "first_run": {
+    "status": "acceptance_harness_failed",
+    "launcher_status": "completed",
+    "cleanup_empty": true,
+    "synthetic_transport_calls": 2,
+    "paid_requests": 0,
+    "reason": "harness_exact_evidence_assertion_omitted_existing_empty_provider_request_id",
+    "production_code_changed": false,
+    "evidence_retained": true
+  },
+  "evidence_sha256": {
+    "harness": "e2dacb8c9751477ad10f74cee97ad13829214fad6d7153e72466f1735e9e09e8",
+    "log": "dc9a22f636dc6329e1ab837aca2d3a54e71b2fbf2b5f1c514737e9e665be9147",
+    "receipt": "910c43e1b59be192aae13d7c51b0cbf183f15b9aca3c15a0b8884a504f7c387c",
+    "provenance_before": "3e269b382fa61e7053cbfb49c816657c00203fe43c1e8f3421298375e41c4448",
+    "provenance_after": "3e269b382fa61e7053cbfb49c816657c00203fe43c1e8f3421298375e41c4448",
+    "first_harness": "fab0b722bc3a54e63c0c6f1f527e59aa47e74dbba2d54976b448708b8ef8dc1d",
+    "first_log": "fec71167ff3525e90a43e0906d88a311d9262f2a2b3273b4067fe130a6d27a20",
+    "first_receipt": "36475aa40e1cfb40fff88254a0683c15c04d711508133cbd421e6b56a6fc73b5"
+  },
+  "review": {
+    "critical": 0,
+    "important": 0,
+    "minor": 0,
+    "evidence_hashes_checked": 8,
+    "source_runtime_fingerprints_checked": 7,
+    "synthetic_ledger_read_only": true,
+    "new_docker_calls": false,
+    "production_tests_rerun": false
+  }
+}
