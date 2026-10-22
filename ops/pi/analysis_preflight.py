@@ -123,7 +123,8 @@ def audit(ledger_path, policy_path, *, expected_scope_sha256, expected_policy_sh
                         max_tokens=policy.max_tokens, max_request_reserved_microyuan=reserve),
             required_before_paid=list(_REQUIRED))
     except (OSError, sqlite3.DatabaseError, ValueError, TypeError, KeyError, ArithmeticError,
-            LedgerBlocked, OperationConflict):
+            RuntimeError, OperationConflict):
+        # RuntimeError includes Path.resolve symlink loops and JSON RecursionError.
         # Neither private rows/paths nor malformed policy text reach CLI errors.
         raise LedgerBlocked('analysis preflight blocked') from None
     finally:

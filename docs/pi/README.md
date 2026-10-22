@@ -6,7 +6,7 @@
 
 可信宿主入口的只读预检已补齐：单一SQLite只读事务核对完整账本schema/记录、原累计20元审批链、固定scope/policy身份及保守费用，输出无正文逻辑快照指纹；不创建scope或预留。真实账本当前208次、202次已知/6次未知、0 pending；已知费用1.791431元、未知完整预留12.082176元，保守余额6.126393元。两次只读观察相同，数据库及WAL字节未变。见[只读预检记录](../evaluations/pi-analysis-preflight-2026-10-22.md)及[机器回执](../evaluations/pi-analysis-preflight-2026-10-22.json)。
 
-历史策略所声明的价格/input bound仅供诊断，本次未独立复核成当前可信证据；paid_admission、production_ready、automatic_execution仍为false。下一阶段复核价格和输入上界、冻结源码/配置/容器来源与本轮费用/绝对期限，再连接原子预算预留及容器生命周期。本轮0付费请求，未运行新容器，45项语义质量仍unknown。
+新增32项预检测试通过；审查修复后完整Pi离线1924 passed、0 skipped、19项设施/付费测试未选入。独立审查的一项私有路径错误泄漏已RED→GREEN修复。历史策略所声明的价格/input bound仅供诊断，本次未独立复核成当前可信证据；paid_admission、production_ready、automatic_execution仍为false。下一阶段复核价格和输入上界、冻结源码/配置/容器来源与本轮费用/绝对期限，再连接原子预算预留及容器生命周期。本轮0付费请求，未运行新容器，45项语义质量仍unknown。
 
 ## 前一状态（2026-10-21）
 

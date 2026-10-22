@@ -17,10 +17,10 @@
 
 ## 验证与限制
 
-新增29项测试覆盖临时真实SQLite的已知/未知/pending汇总、完整身份漂移、缺失/空/损坏/schema篡改、审批事件缺失、bool/负金额/超预留与未知折扣拒绝、只读连接拒绝写入、活动WAL可见、并发写入不混入快照、无正文错误/CLI、异常Decimal价格和未定cache价格。最初27项观察到模块缺失而RED；实现后修正WAL测试保留连接未实际打开pager的夹具问题。异常指数价格另有RED→GREEN证据。日志及JUnit位于忽略的 `.local/pi-analysis-preflight/` 与本计划临时workspace。
+新增32项测试覆盖临时真实SQLite的已知/未知/pending汇总、完整身份漂移、缺失/空/损坏/schema篡改、审批事件缺失、bool/负金额/超预留与未知折扣拒绝、只读连接拒绝写入、活动WAL可见、并发写入不混入快照、无正文错误/CLI、异常Decimal价格、未定cache价格、循环符号链接和深层JSON。最初27项观察到模块缺失而RED；实现后修正WAL测试保留连接未实际打开pager的夹具问题。异常指数价格另有RED→GREEN证据。日志及JUnit位于忽略的 `.local/pi-analysis-preflight/` 与本计划临时workspace。
 
-最终完整Pi离线回归1921 passed、0 skipped、19个pi_lab/pi_live未选入（64.23秒）；预检29项通过，compileall与diff-check通过。独立审查待完成。
+审查前完整Pi离线回归1921 passed、0 skipped、19个pi_lab/pi_live未选入（64.23秒）；compileall与diff-check通过。独立审查发现一项Important：循环符号链接与深层JSON绕过固定错误边界，可能暴露私有路径；三项CLI回归分别RED后统一安全拒绝，32项定向GREEN。独立审查无Critical/Minor；审查环境另有125项通过、3项原HTTP测试因沙箱禁止loopback bind而阻塞，不计通过；主执行完整套包括这些HTTP测试。修复后最终完整Pi离线回归1924 passed、0 skipped、19个pi_lab/pi_live未选入（80.29秒），定向32 passed；compileall及diff-check通过。该问题按RED→GREEN修复，无待办审查发现。
 
-`audit_valid=true`仅表示所选账本内部校验与宿主给定身份匹配；指纹不是签名、canonical路径证明或锁。`declared_live_ready=true`与`declared_input_bound_calibrated=true`只投影历史策略声明，当前价格证据和输入上界尚未完成独立复核。`paid_admission`、`production_ready`、`automatic_execution`均为false。本轮未运行容器、实际provider、业务Python/Go/web或设施CI，也未改变原试验授权。完整45项语义质量仍unknown。
+`audit_valid=true`仅表示所选账本内部校验与宿主给定身份匹配；指纹不是签名、canonical路径证明或锁。超预算历史快照仍返回诊断完成，used保留完整值、remaining为0；audit_valid不表示预算足够。`declared_live_ready=true`与`declared_input_bound_calibrated=true`只投影历史策略声明，当前价格证据和输入上界尚未完成独立复核；历史input_bound_source所引用的provider-public-price.json在本机预期迁移位置不存在。`paid_admission`、`production_ready`、`automatic_execution`均为false。本轮未运行容器、实际provider、业务Python/Go/web或设施CI，也未改变原试验授权。完整45项语义质量仍unknown。
 
 下一阶段必须完成当前提供方价格/用量维度与输入上界证据审查，固定源码、配置和容器来源，并给定本轮费用与绝对期限；随后将这些条件与原账本的原子预留和容器生命周期连接。报告不能作为launcher令牌，合成容器probe仍不接受真实账本/provider参数。本次只读审计没有把容器合成验收升级为付费或生产验收。

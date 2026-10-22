@@ -217,3 +217,26 @@ def test_unpriced_cache_does_not_fabricate_a_reservation_estimate(setup):
     assert result['policy']['max_request_reserved_microyuan'] is None
     assert result['policy']['declared_live_ready'] is False
     assert result['paid_admission'] is False
+
+
+@pytest.mark.parametrize('fault', ['symlink-loop', 'nested-policy', 'nested-event'])
+def test_cli_malformed_private_input_never_emits_traceback(setup, tmp_path, fault):
+    ledger, _, path, pins = setup
+    target = ledger.path
+    if fault == 'symlink-loop':
+        target = tmp_path / 'PRIVATE-LEDGER-PATH'
+        target.symlink_to(target.name)
+    elif fault == 'nested-policy':
+        path.write_text('{"PRIVATE-POLICY":' + '[' * 20000 + '0' + ']' * 20000 + '}')
+    else:
+        with ledger.transaction() as db:
+            payload = '{"PRIVATE-EVENT":' + '[' * 20000 + '0' + ']' * 20000 + '}'
+            db.execute('INSERT INTO events(kind,payload,schema_version) VALUES (?,?,1)',
+                       ('private', payload))
+    result = subprocess.run([sys.executable, '-m', 'ops.pi.analysis_preflight',
+        '--ledger', str(target), '--policy', str(path),
+        '--scope-sha256', pins['expected_scope_sha256'],
+        '--policy-sha256', pins['expected_policy_sha256']], capture_output=True, text=True)
+    assert result.returncode == 2 and not result.stderr
+    assert json.loads(result.stdout) == dict(audit_valid=False, paid_admission=False,
+                                            error='analysis preflight blocked')

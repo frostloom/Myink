@@ -43,4 +43,4 @@
 - [x] Step 2: 运行 `.venv/bin/python -m pytest ops/pi/tests/test_analysis_preflight.py -q`；Expected: 新模块缺失导致失败。
 - [x] Step 3: 抽取原校验，最小实现只读入口与CLI；增加金额校验且未知预留不释放。
 - [x] Step 4: 运行定向及完整Pi离线测试、compileall、diff-check；Expected: 全通过、0 skipped，记录deselected。
-- [ ] Step 5: 对真实原账本运行只读预检，保存无正文回执与限制；独立审查后修复必要问题并验证，提交并推送Pi分支。
+- [x] Step 5: 对真实原账本运行只读预检，保存无正文回执与限制；独立审查后修复必要问题并验证，提交并推送Pi分支。
