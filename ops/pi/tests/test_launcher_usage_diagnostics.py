@@ -222,3 +222,51 @@ def test_callback_failure_or_stall_never_blocks_host_settlement(setup, monkeypat
     finally:
         release.set(); caller.join(3)
         assert drained.wait(2)
+
+
+def retained_descriptor(monkeypatch, path):
+    """Capture the actual created OS handle; all file operations remain real."""
+    module = importlib.import_module('ops.pi.usage_diagnostics')
+    original_open, descriptors = module.os.open, []
+    def opened(value, flags, *args, **kwargs):
+        fd = original_open(value, flags, *args, **kwargs)
+        if Path(value) == path and flags & os.O_EXCL:
+            descriptors.append(fd)
+        return fd
+    monkeypatch.setattr(module.os, 'open', opened)
+    return descriptors
+
+
+def test_unlinked_original_inode_stays_owned_until_callback_decides(tmp_path, monkeypatch):
+    path = tmp_path / 'usage.jsonl'
+    descriptors = retained_descriptor(monkeypatch, path)
+    observe = sink(path)
+    original = path.stat(); path.unlink()
+    # An open reference pins the unlinked inode so it cannot be reallocated to
+    # the replacement. Saving the inode number after closing is insufficient.
+    owned = os.fstat(descriptors[0])
+    assert owned.st_nlink == 0 and owned.st_ino == original.st_ino and owned.st_dev == original.st_dev
+    path.write_text('replacement'); path.chmod(0o600)
+    with pytest.raises(ValueError): observe({'parser_reason': 'complete'})
+    assert path.read_text() == 'replacement'
+    with pytest.raises(OSError): os.fstat(descriptors[0])
+
+
+@pytest.mark.parametrize('decision', ['discard', 'write', 'write-failure'])
+def test_original_descriptor_is_released_on_discard_or_attempt(tmp_path, monkeypatch, decision):
+    import gc
+    import weakref
+    path = tmp_path / 'usage.jsonl'
+    descriptors = retained_descriptor(monkeypatch, path)
+    observe = sink(path)
+    assert os.fstat(descriptors[0]).st_ino == path.stat().st_ino
+    if decision == 'write': observe({'parser_reason': 'complete'})
+    elif decision == 'write-failure':
+        path.chmod(0o644)
+        with pytest.raises(ValueError): observe({'parser_reason': 'complete'})
+    else:
+        reference = weakref.ref(observe)
+        del observe
+        gc.collect()
+        assert reference() is None
+    with pytest.raises(OSError): os.fstat(descriptors[0])

@@ -2,17 +2,17 @@
   "date": "2026-10-22",
   "base_commit": "96400eff01e4123b6fd692368081846bad2c6caa",
   "status": "offline_verified",
-  "new_tests": 22,
+  "new_tests": 26,
   "red_observed_failures": 22,
   "targeted": {
     "passed": 216,
     "seconds": 12.9
   },
   "offline": {
-    "passed": 2013,
+    "passed": 2017,
     "skipped": 0,
     "deselected": 19,
-    "seconds": 56.93
+    "seconds": 63.22
   },
   "checks": {
     "compileall": true,
@@ -22,7 +22,11 @@
     "red.log": "57dc6d4327458463be0464c0b2897082b608ccda9ab082fe68147b93ef2e5ea4",
     "targeted.log": "2c8f65943580bc4f17ac9b63f4ad50828a3277a67a6b7e09194996fc503acc71",
     "offline.log": "f635f617bdc0adf7570bcd1305ab2c0a8d5b530584e396fef3b9189c73f78e2b",
-    "offline.xml": "c96350cc194d18d6a440e5c4dc8d8eac6c681b04a0e16be747e6c65cd12c230e"
+    "offline.xml": "c96350cc194d18d6a440e5c4dc8d8eac6c681b04a0e16be747e6c65cd12c230e",
+    "review-red.log": "480e7726d6b5970c433f100c289e4f4ca9b138dfda35844a8cd171232feaa255",
+    "review-green.log": "1079501733d48fd61a5a8d8e784d2768510b14d708cc32adb8fd545d3327a4d8",
+    "offline-reviewed.log": "a79911b50f5402cf2576a15e2e1f9d003ef0e3788f0de5901aac240387c7bb66",
+    "offline-reviewed.xml": "1d3f78d24de07a2b479a680cd8355c35a6c3719508b1d9eb4d0f4048499cc0f3"
   },
   "integration_boundary": "fake_docker_real_stdio_loopback_http_sqlite_mock_provider",
   "diagnostics": {
@@ -37,7 +41,8 @@
     "retry": false,
     "delivery_guaranteed": false,
     "changes_settlement": false,
-    "public_receipt_contains_usage": false
+    "public_receipt_contains_usage": false,
+    "original_inode_pinned_until_decision_or_discard": true
   },
   "actual_credentials_read": false,
   "canonical_ledger_read": false,
@@ -48,5 +53,26 @@
   "actual_live_enabled_changed": false,
   "billing_verified": false,
   "production_ready": false,
-  "automatic_execution": false
+  "automatic_execution": false,
+  "pre_review_offline": {
+    "passed": 2013,
+    "skipped": 0,
+    "deselected": 19,
+    "seconds": 56.93
+  },
+  "review": {
+    "critical": 0,
+    "important": 1,
+    "important_fixed": 1,
+    "minor": 0,
+    "independent_tests_passed": 44,
+    "independent_test_seconds": 2.98,
+    "initial_sandbox_loopback_blocked": true,
+    "regression_red_failures": 4,
+    "final_new_tests_passed": 26,
+    "final_new_tests_seconds": 3.76,
+    "re_review": false,
+    "finding": "original_inode_reference_lifetime",
+    "fix": "retain_descriptor_until_attempt_or_observer_discard"
+  }
 }

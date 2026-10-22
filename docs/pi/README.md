@@ -2,7 +2,7 @@
 
 ## 宿主计量诊断接线（2026-10-22）
 
-`AnalysisRun.gateway_handler`新增可选可信宿主usage_observer，launcher固定为每槽在0700结果目录预建0600私有`slot-{index}-usage-private.jsonl`，每文件最多一条、8192字节，记录slot_index、attempt_id及既有网关已脱敏的计量字段存在性/数值；不保存请求、响应正文或token。初始化失败在当槽请求/容器创建前停止；回调错误不改变费用或终态。路径不能是符号链接，追加前核对原inode、普通文件、单硬链接及权限。
+`AnalysisRun.gateway_handler`新增可选可信宿主usage_observer，launcher固定为每槽在0700结果目录预建0600私有`slot-{index}-usage-private.jsonl`，每文件最多一条、8192字节，记录slot_index、attempt_id及既有网关已脱敏的计量字段存在性/数值；不保存请求、响应正文或token。初始化失败在当槽请求/容器创建前停止；回调错误不改变费用或终态。路径不能是符号链接，追加前核对原inode、普通文件、单硬链接及权限；原句柄保持到回调决定或观察器销毁，防止inode编号复用。
 
 诊断沿用既有单daemon、六条队列的异步观察器，可能因存储阻塞、队列满或进程退出而丢失；不等待、不重试、不将记录写入账本或公开receipt。公开usage_diagnostics=best_effort_private只说明采集模式，不能证明已有记录落盘，更不证明usage语义或账单正确。真实策略仍live=false；本轮仅合成测试，没有真实provider或LinuxPi容器验收。此前source-reviewed与私有草稿绑定旧代码，真实执行前必须重新冻结源码并生成当次配置。见[接线验收](../evaluations/pi-usage-launcher-2026-10-22.md)。
 

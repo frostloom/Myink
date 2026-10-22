@@ -7,6 +7,7 @@ import json
 import os
 import stat
 from threading import Lock
+import weakref
 
 from .container_probe import _path
 
@@ -21,8 +22,9 @@ def make_usage_observer(path, *, slot_index):
     fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
     try:
         original = os.fstat(fd)
-    finally:
+    except BaseException:
         os.close(fd)
+        raise
     lock, attempted = Lock(), False
 
     def observe(item):
@@ -35,20 +37,27 @@ def make_usage_observer(path, *, slot_index):
             if attempted:
                 return
             attempted = True  # Storage failure never earns another append attempt.
-            _path(path)
-            if stat.S_IMODE(path.parent.stat().st_mode) != 0o700:
-                raise ValueError('private usage parent changed')
-            fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_NOFOLLOW | os.O_NONBLOCK)
             try:
-                current = os.fstat(fd)
-                if (not stat.S_ISREG(current.st_mode) or current.st_nlink != 1
-                        or stat.S_IMODE(current.st_mode) != 0o600
-                        or (current.st_dev, current.st_ino) != (original.st_dev, original.st_ino)
-                        or current.st_size != 0):
-                    raise ValueError('private usage destination changed')
-                if os.write(fd, raw) != len(raw):
-                    raise OSError('incomplete private usage record')
-                os.fsync(fd)
+                _path(path)
+                if stat.S_IMODE(path.parent.stat().st_mode) != 0o700:
+                    raise ValueError('private usage parent changed')
+                fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_NOFOLLOW | os.O_NONBLOCK)
+                try:
+                    current = os.fstat(fd)
+                    if (not stat.S_ISREG(current.st_mode) or current.st_nlink != 1
+                            or stat.S_IMODE(current.st_mode) != 0o600
+                            or (current.st_dev, current.st_ino) != (original.st_dev, original.st_ino)
+                            or current.st_size != 0):
+                        raise ValueError('private usage destination changed')
+                    if os.write(fd, raw) != len(raw):
+                        raise OSError('incomplete private usage record')
+                    os.fsync(fd)
+                finally:
+                    os.close(fd)
             finally:
-                os.close(fd)
+                release_original()
+    # Keep the original inode allocated until the decision; an inode number
+    # alone is recyclable after unlink. Discarded/undelivered observers also
+    # release this handle, without waiting for the dispatcher or storage.
+    release_original = weakref.finalize(observe, os.close, fd)
     return observe
