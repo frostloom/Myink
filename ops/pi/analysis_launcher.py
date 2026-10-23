@@ -74,24 +74,30 @@ def _initial(config, inputs, slot, index, token):
                 report=inputs['report'], deadline=min(config['deadline'], time.time() + 45))
 
 
+def _is_trial(config):
+    return config['schema'] in ('pi-analysis-trial-v1', 'pi-analysis-trial-v2')
+
+
 def _selected_count(config):
-    if config['schema'] == 'pi-analysis-trial-v1':
+    if _is_trial(config):
         return 30
     return 2 if config['schema'] == 'pi-analysis-launch-v1' else config['selected_slots']
 
 
 def _prepare(config):
     config = strict_json(json.dumps(config, allow_nan=False))  # Caller cannot mutate this run.
-    if (not isinstance(config, dict) or config.get('schema') not in ('pi-analysis-launch-v1', 'pi-analysis-launch-v2', 'pi-analysis-trial-v1')
+    if (not isinstance(config, dict) or config.get('schema') not in ('pi-analysis-launch-v1', 'pi-analysis-launch-v2', 'pi-analysis-trial-v1', 'pi-analysis-trial-v2')
             or set(config) != (_FIELDS | ({'selected_slots'} if config['schema'] == 'pi-analysis-launch-v2'
+                else {'failure_policy', 'time_policy'} if config['schema'] == 'pi-analysis-trial-v2'
                 else {'failure_policy'} if config['schema'] == 'pi-analysis-trial-v1' else set()))
-            or (config['schema'] == 'pi-analysis-trial-v1'
+            or (config['schema'] == 'pi-analysis-trial-v2' and config['time_policy'] != 'bounded_trial_v1')
+            or (_is_trial(config)
                 and config['failure_policy'] != 'continue_known_contract_failure')
             or (config['schema'] == 'pi-analysis-launch-v2' and (type(config['selected_slots']) is not int
                 or config['selected_slots'] not in (1, 2)))
             or type(config['cap_microyuan']) is not int or not 0 < config['cap_microyuan'] <= 20000000
             or type(config['deadline']) not in (int, float) or not math.isfinite(config['deadline'])
-            or not 0 < config['deadline'] - time.time() <= 600
+            or not 0 < config['deadline'] - time.time() <= (3600 if config['schema'] == 'pi-analysis-trial-v2' else 600)
             or not isinstance(config['run_id'], str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,96}', config['run_id'])):
         raise ValueError(_ERROR)
     for key in _FIELDS:
@@ -156,14 +162,15 @@ def _known_attempt(run, index):
             raise LedgerBlocked(_ERROR)
 
 
-def _slot(run, policy, config, inputs, slot, index, host, transport, root, provenance, progress):
+def _slot(run, policy, config, inputs, slot, index, host, transport, root, provenance, progress, lifecycle=None):
     token = uuid.uuid4().hex + uuid.uuid4().hex
-    remaining = lambda: config['deadline'] - time.time()
+    remaining = lifecycle.check if lifecycle is not None else lambda: config['deadline'] - time.time()
     if remaining() <= 0 or _hash(verify_source(Path(config['source']), config['runtime_sha256'])) != _hash(provenance):
         raise ValueError(_ERROR)
     row = dict(slot_index=index, slot_id=slot['slot_id'], http_statuses=[])
     observer = make_usage_observer(root/f'slot-{index}-usage-private.jsonl', slot_index=index)
-    handler = run.gateway_handler(index, policy, transport, scope_token=token, usage_observer=observer)
+    handler = run.gateway_handler(index, policy, transport, scope_token=token, usage_observer=observer,
+        **({'cancel': lifecycle.cancel} if lifecycle is not None else {}))
     with ThreadingHTTPServer(('127.0.0.1', 0), handler) as server:
         server.daemon_threads = True
         thread = Thread(target=server.serve_forever, kwargs={'poll_interval': .01}, daemon=True); thread.start()
@@ -171,12 +178,14 @@ def _slot(run, policy, config, inputs, slot, index, host, transport, root, prove
         slot_failed = False
         try:
             progress['stage'] = 'container_create'
+            if lifecycle is not None: lifecycle.check()
             cid = host.create('isolation', worker=Path(__file__).parent/'lab/container_runtime_worker.py',
                 source=Path(config['source']), foreign=root/'not-mounted', interactive=True)
             progress['stage'] = 'container_inspect'
             if not verify_inspect(host.inspect(cid)) or remaining() <= 0:
                 raise ValueError(_ERROR)
             progress['stage'] = 'container_attach'
+            if lifecycle is not None: lifecycle.check()
             process = subprocess.Popen(host.command + ['start', '-a', '-i', cid], stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             with httpx.Client(trust_env=False, follow_redirects=False) as client:
@@ -198,11 +207,12 @@ def _slot(run, policy, config, inputs, slot, index, host, transport, root, prove
                 progress['stage'] = 'exchange'
                 with (root/f'slot-{index}-attach-private.log').open('xb') as evidence:
                     frame = exchange(process, _initial(config, inputs, slot, index, token), route,
-                        seconds=min(60, remaining()), evidence=evidence)
+                        seconds=min(60, remaining()), evidence=evidence,
+                        **({'cancel': lifecycle.cancel} if lifecycle is not None else {}))
             progress['stage'] = 'result_write'
             _write(root/f'slot-{index}-private.json', frame)
             progress['stage'] = 'result_verify'
-            if config['schema'] == 'pi-analysis-trial-v1':
+            if _is_trial(config):
                 from .analysis_trial_result import verify_trial_result
                 row.update(verify_trial_result(frame, slot, inputs['views'][slot['domain']], inputs['report']))
             else:
@@ -213,7 +223,8 @@ def _slot(run, policy, config, inputs, slot, index, host, transport, root, prove
             progress['stage'] = 'usage_check'
             _known_attempt(run, index)
             return row, cid
-        except Exception:
+        except BaseException:
+            if lifecycle is not None: lifecycle.begin_cleanup()
             slot_failed = True
             raise
         finally:
@@ -226,17 +237,25 @@ def _slot(run, policy, config, inputs, slot, index, host, transport, root, prove
                         finally:
                             if process.poll() is None:
                                 process.kill()
-                            process.wait(timeout=3)
+                            process.wait(timeout=min(3, lifecycle.cleanup_remaining()) if lifecycle is not None and slot_failed else 3)
                             process.stdin.close(); process.stdout.close()
                 finally:
-                    server.shutdown(); thread.join(2)
+                    if lifecycle is None:
+                        server.shutdown(); thread.join(2)
+                    else:
+                        lifecycle.shutdown_server(server, thread)
             except Exception:
                 if not slot_failed:
                     progress.update(stage='slot_cleanup', reason='stage_failed')
                     raise  # Preserve an active primary failure and its bounded detail.
 
 
-def launch(config, *, execute=False):
+def _execute_v2(config, policy, credentials, inputs, slots, provenance, host, result, lifecycle, signals):
+    from .analysis_trial_lifecycle import execute_trial
+    return execute_trial(config, policy, credentials, inputs, slots, provenance, host, result, lifecycle, signals=signals)
+
+
+def launch(config, *, execute=False, _signals=False):
     """Check by default. Only explicit trusted-host execution can mutate state.
 
     All thirty slots are registered; explicit trial manifests select all thirty.
@@ -246,16 +265,24 @@ def launch(config, *, execute=False):
     try:
         if type(execute) is not bool:
             raise ValueError(_ERROR)
+        config = strict_json(json.dumps(config, allow_nan=False))
+        from .analysis_lifecycle import Lifecycle
+        lifecycle = Lifecycle(config['deadline']) if isinstance(config, dict) and config.get('schema') == 'pi-analysis-trial-v2' else None
         config, policy, credentials, inputs, slots, provenance, diagnostic, host = _prepare(config)
         result = dict(status='checked', execution_requested=execute, launch_ready=live_ready(policy),
             planned_slots=30, selected_slots=_selected_count(config), production_ready=False, automatic_execution=False,
             billing_verified=False, usage_diagnostics='best_effort_private',
             config_sha256=_hash(config), provenance=provenance, failure_detail=None,
             preflight=diagnostic, cases=[], cleanup=[])
+        if lifecycle is not None:
+            result.update(time_policy=config['time_policy'], execution_deadline=config['deadline'],
+                cleanup_grace_seconds=120, stop_reason=None, cleanup_complete=None)
         if not execute:
             return result
         if not live_ready(policy):
             raise LedgerBlocked(_ERROR)
+        if lifecycle is not None:
+            return _execute_v2(config, policy, credentials, inputs, slots, provenance, host, result, lifecycle, _signals)
         ledger = Ledger(Path(config['ledger_path']), existing=True)
         run = AnalysisRun.create(ledger, config['run_id'], slots,
             source_sha256=_hash(provenance), config_sha256=_hash(config))
@@ -312,7 +339,7 @@ def launch(config, *, execute=False):
                 result['failure_detail'] = dict(progress, stage='container_cleanup', reason='stage_failed')
         try:
             result['slots'] = run.snapshot()
-            if config['schema'] == 'pi-analysis-trial-v1':
+            if _is_trial(config):
                 from .analysis_trial_result import summarize_trial
                 result['summary'] = summarize_trial(slots, result['slots'])
             _write(root/'receipt.json', result)
@@ -327,7 +354,7 @@ def main(argv=None):
     parser.add_argument('--execute', action='store_true')
     args = parser.parse_args(argv)
     try:
-        result = launch(strict_json(_read(args.config, 65536)), execute=args.execute)
+        result = launch(strict_json(_read(args.config, 65536)), execute=args.execute, _signals=True)
     except Exception:
         print(json.dumps(dict(status='blocked', error=_ERROR)))
         return 2

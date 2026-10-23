@@ -67,30 +67,34 @@ def parse_frame(raw):
     return f
 
 
-def exchange(process, initial, route, *, seconds, evidence=None):
+def exchange(process, initial, route, *, seconds, evidence=None, cancel=None):
     """One bounded attach lifetime. Caller must stop the container in finally."""
     if type(seconds) not in (int,float) or not math.isfinite(seconds) or not 0<seconds<=90:
         raise ValueError('bounded execution deadline required')
     deadline=time.monotonic()+seconds
     def remaining():
         n=deadline-time.monotonic()
-        if n<=0: raise TimeoutError('container execution expired')
+        if n<=0 or (cancel is not None and cancel.is_set()): raise TimeoutError('container execution expired')
         return n
     def write(value, limit=FRAME_LIMIT):
         raw=json.dumps(value,ensure_ascii=True,allow_nan=False).encode()+b'\n'
         if len(raw)>limit: raise ValueError('bounded reply required')
         offset=0
         while offset<len(raw):
-            _,ready,_=select.select([],[process.stdin],[],remaining())
-            if not ready: raise TimeoutError('container input stalled')
+            _,ready,_=select.select([],[process.stdin],[],min(.05, remaining()) if cancel is not None else remaining())
+            if not ready:
+                if cancel is not None: continue
+                raise TimeoutError('container input stalled')
             offset+=os.write(process.stdin.fileno(),raw[offset:offset+4096])
     os.set_blocking(process.stdin.fileno(),False)
     os.set_blocking(process.stdout.fileno(),False)
     write(initial, INITIAL_FRAME_LIMIT)
     pending=bytearray(); total=0; requests=0; final=None
     while True:
-        ready,_,_=select.select([process.stdout],[],[],remaining())
-        if not ready: raise TimeoutError('container output stalled')
+        ready,_,_=select.select([process.stdout],[],[],min(.05, remaining()) if cancel is not None else remaining())
+        if not ready:
+            if cancel is not None: continue
+            raise TimeoutError('container output stalled')
         chunk=os.read(process.stdout.fileno(),4096)
         if not chunk: break
         if evidence is not None: evidence.write(chunk[:max(0,1048576-total)])

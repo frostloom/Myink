@@ -127,7 +127,7 @@ class AnalysisRun:
         from .analysis_budget import bind_run_budget
         bind_run_budget(self, policy, cap_microyuan=cap_microyuan, deadline=deadline)
 
-    def gateway_handler(self, slot_index, policy, transport, *, scope_token, usage_observer=None):
+    def gateway_handler(self, slot_index, policy, transport, *, scope_token, usage_observer=None, cancel=None):
         """Build the existing gateway with a distinct private token per slot.
 
         Persist only the token digest. The host supplies a fresh unguessable
@@ -156,7 +156,7 @@ class AnalysisRun:
         from .analysis_budget import AnalysisBudgetSlot
         return make_gateway_handler(self.ledger, policy, transport,
             scope_token=scope_token, usage_observer=usage_observer, request_guard=self.guard(slot_index),
-            analysis_slot=AnalysisBudgetSlot(self, slot_index))
+            analysis_slot=AnalysisBudgetSlot(self, slot_index), cancel=cancel)
 
     def guard(self, slot_index):
         """Low-level body guard for a trusted host-selected slot.
@@ -180,7 +180,7 @@ class AnalysisRun:
             return True
         return admit
 
-    def finish(self, slot_index, *, status):
+    def finish(self, slot_index, *, status, check=None):
         """Host records a known outcome; this does not certify billing/quality.
 
         'done' and 'failed' allow the next slot. 'uncertain' and 'blocked' stop
@@ -199,7 +199,9 @@ class AnalysisRun:
                 if row['status'] == status:
                     return
                 raise OperationConflict('terminal slot outcome is immutable')
+            if check is not None: check()
             self._finish(db, operation_id, status, {'host_status': status})
+            if check is not None: check()
 
     def snapshot(self):
         """Return all thirty body-free states, including unrun slots."""

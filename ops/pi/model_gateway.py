@@ -293,8 +293,9 @@ class _DeadlineUpstream:
     A transport blocked inside its own I/O may finish later. Its response is
     closed then, and can never refund an attempt that timed out at this boundary.
     """
-    def __init__(self, transport, body, timeout, deadline):
+    def __init__(self, transport, body, timeout, deadline, cancel=None):
         self.deadline = deadline
+        self.host_cancel = cancel
         self.monotonic_deadline = time.monotonic() + max(0, deadline - time.time())
         self.commands = Queue(maxsize=1)
         self.results = Queue(maxsize=1)
@@ -305,17 +306,20 @@ class _DeadlineUpstream:
     def remaining(self):
         return min(self.deadline - time.time(), self.monotonic_deadline - time.monotonic())
 
+    def stopped(self):
+        return self.cancelled.is_set() or (self.host_cancel is not None and self.host_cancel.is_set())
+
     def _run(self, transport, body, timeout):
         response = None
         try:
-            if self.cancelled.is_set() or self.remaining() <= 0:
+            if self.stopped() or self.remaining() <= 0:
                 return  # A durable reservation may have exhausted its deadline.
             response = transport(body, min(timeout, self.remaining()))
-            if self.cancelled.is_set():
+            if self.stopped():
                 return
             self.results.put(('response', response))
             source = iter(response.iter_bytes() if response.is_stream_consumed else response.iter_raw())
-            while not self.cancelled.is_set():
+            while not self.stopped():
                 remaining = self.remaining()
                 if remaining <= 0:
                     return
@@ -323,18 +327,18 @@ class _DeadlineUpstream:
                     command = self.commands.get(timeout=remaining)
                 except Empty:
                     return
-                if command != 'next' or self.cancelled.is_set():
+                if command != 'next' or self.stopped():
                     return
                 try:
                     chunk = next(source)
                 except StopIteration:
                     self.results.put(('eof', None))
                     return
-                if self.cancelled.is_set():
+                if self.stopped():
                     return
                 self.results.put(('chunk', chunk))
         except Exception as exc:
-            if not self.cancelled.is_set():
+            if not self.stopped():
                 self.results.put(('error', exc))
         finally:
             if response is not None:
@@ -349,11 +353,23 @@ class _DeadlineUpstream:
             self.close()
             raise TimeoutError('model deadline exceeded')
         try:
-            kind, value = self.results.get(timeout=remaining)
+            while True:
+                if self.stopped():
+                    raise TimeoutError('model execution cancelled')
+                try:
+                    kind, value = self.results.get(timeout=min(remaining, .05) if self.host_cancel is not None else remaining)
+                    break
+                except Empty:
+                    if self.host_cancel is None or remaining <= .05:
+                        raise
+                    remaining = self.remaining()
+                    if remaining <= 0:
+                        raise
+
         except Empty:
             self.close()
             raise TimeoutError('model deadline exceeded') from None
-        if self.remaining() <= 0:
+        if self.stopped() or self.remaining() <= 0:
             self.close()
             raise TimeoutError('model deadline exceeded')
         if kind == 'error':
@@ -370,7 +386,7 @@ class _DeadlineUpstream:
         return self
 
     def __next__(self):
-        if self.cancelled.is_set():
+        if self.stopped():
             raise StopIteration
         self.commands.put_nowait('next')
         kind, value = self.receive()
@@ -412,7 +428,9 @@ def _error(code):
 
 
 def forward_messages(body: Record, scope_id: str, *, ledger: Ledger, policy: Policy, transport: Callable,
-                     usage_observer: Callable[[Record], None] | None = None, tool_allowlist=(), analysis_slot=None) -> GatewayResponse:
+                     usage_observer: Callable[[Record], None] | None = None, tool_allowlist=(), analysis_slot=None, cancel=None) -> GatewayResponse:
+    if cancel is not None and cancel.is_set():
+        return _error(403)
     try:
         if analysis_slot is not None:
             # The metered body and the actual transport must see the same input.
@@ -446,7 +464,7 @@ def forward_messages(body: Record, scope_id: str, *, ledger: Ledger, policy: Pol
         except Exception:
             pass  # Optional evidence failure never changes the immutable settlement.
 
-    upstream = _DeadlineUpstream(transport, body, policy.timeout_seconds, permit.deadline)
+    upstream = _DeadlineUpstream(transport, body, policy.timeout_seconds, permit.deadline, cancel=cancel)
     try:
         response = upstream.response()
     except Exception:

@@ -52,7 +52,7 @@ class _DeadlineIO:
 
 
 def make_gateway_handler(ledger, policy, transport, *, scope_token=None, usage_observer=None,
-                         tool_broker=None, request_guard=None, analysis_slot=None):
+                         tool_broker=None, request_guard=None, analysis_slot=None, cancel=None):
     if scope_token is not None and (not isinstance(scope_token, str) or not 0 < len(scope_token) <= 4096
                                    or any(not 33 <= ord(char) <= 126 for char in scope_token)):
         raise ValueError('invalid scope token')
@@ -151,6 +151,9 @@ def make_gateway_handler(ledger, policy, transport, *, scope_token=None, usage_o
                     self.send_header('Content-Length',str(len(raw_receipt))); self.end_headers()
                     self.wfile.write(raw_receipt)
                     return
+                if cancel is not None and cancel.is_set():
+                    self.send_error(403)
+                    return
                 if request_guard is not None:
                     try:
                         admitted = request_guard(body) is True
@@ -163,7 +166,7 @@ def make_gateway_handler(ledger, policy, transport, *, scope_token=None, usage_o
                 result = forward_messages(body, 'local-trial-1', ledger=ledger, policy=request_policy,
                                           transport=transport, usage_observer=usage_observer,
                                           tool_allowlist=tool_broker.allowed_tools if tool_broker else (),
-                                          analysis_slot=analysis_slot)
+                                          analysis_slot=analysis_slot, cancel=cancel)
                 if result.attempt_id:
                     permit_deadline = ledger.get(result.attempt_id)['payload']['deadline']
                     self.deadline = min(self.deadline, time.monotonic() + max(0, permit_deadline - time.time()))
