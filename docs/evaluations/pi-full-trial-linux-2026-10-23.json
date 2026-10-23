@@ -1,0 +1,330 @@
+{
+  "schema": "pi-full-trial-linux-synthetic-v1",
+  "date": "2026-10-23",
+  "node_version": "24.22.0",
+  "pi_version": "1.1.0",
+  "architecture": "linux-arm64",
+  "provenance": {
+    "runtime_sha256": "6e169d5462405f59c070365267eec24fddc005a3c141819ba7a1f548a592c528",
+    "node_sha256": "719a43d185f3b6a59d8fcbba1ff06b93c75f76fb0bb9916f81d33921615d4cb5",
+    "lock_sha256": "fd0f5bd8aa13e01da8792b161d80502f32e1afd00103151fbcc21f4b3146785a",
+    "pi_cli_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+    "code_sha256": "e87494cb9486b432acc5921047e3b886ebfd928014b858685f7cb555e300769b",
+    "controller_sha256": "7a448c22be4108329b7778fe56583732c9f2407ca9660c0c1a5b577a912e0f1d",
+    "worker_sha256": "80ca8e95b18d43c6f3f1eea0238967a9b93015c54ffbf3605df2645d818fcaff"
+  },
+  "real_containers": true,
+  "production_provider": true,
+  "external_http": "MockTransport",
+  "paid_requests": 0,
+  "canonical_ledger_read": false,
+  "canonical_ledger_modified": false,
+  "real_credentials_read": false,
+  "production_code_changed_this_stage": false,
+  "semantic_metrics": "unknown",
+  "production_ready": false,
+  "billing_verified": false,
+  "automatic_execution": false,
+  "release_allowed": false,
+  "cases": {
+    "mixed-thirty": {
+      "status": "completed",
+      "slot_counts": {
+        "FAILED": 3,
+        "DONE": 27
+      },
+      "summary": {
+        "planned_slots": 30,
+        "done": 27,
+        "failed": 3,
+        "uncertain": 0,
+        "blocked": 0,
+        "not_run": 0,
+        "by_arm": {
+          "baseline": {
+            "planned_slots": 15,
+            "done": 13,
+            "failed": 2,
+            "uncertain": 0,
+            "blocked": 0,
+            "not_run": 0
+          },
+          "candidate": {
+            "planned_slots": 15,
+            "done": 14,
+            "failed": 1,
+            "uncertain": 0,
+            "blocked": 0,
+            "not_run": 0
+          }
+        },
+        "by_domain": {
+          "recall.events": {
+            "planned_slots": 6,
+            "done": 4,
+            "failed": 2,
+            "uncertain": 0,
+            "blocked": 0,
+            "not_run": 0
+          },
+          "recall.plot": {
+            "planned_slots": 6,
+            "done": 5,
+            "failed": 1,
+            "uncertain": 0,
+            "blocked": 0,
+            "not_run": 0
+          },
+          "recall.characters": {
+            "planned_slots": 6,
+            "done": 6,
+            "failed": 0,
+            "uncertain": 0,
+            "blocked": 0,
+            "not_run": 0
+          },
+          "extract": {
+            "planned_slots": 6,
+            "done": 6,
+            "failed": 0,
+            "uncertain": 0,
+            "blocked": 0,
+            "not_run": 0
+          },
+          "operations": {
+            "planned_slots": 6,
+            "done": 6,
+            "failed": 0,
+            "uncertain": 0,
+            "blocked": 0,
+            "not_run": 0
+          }
+        }
+      },
+      "operation_id": "5f3e7632-f0d2-4336-99ee-c2336bce15ee",
+      "transport_calls": 30,
+      "containers_removed": 30,
+      "exact_label_empty": true,
+      "distinct_accepted_sessions": 30,
+      "known_synthetic_attempts": 30,
+      "unknown_synthetic_attempts": 0,
+      "known_synthetic_microyuan": 25020,
+      "unknown_reserved_synthetic_microyuan": 0,
+      "failure_detail": null,
+      "receipt_sha256": "a2cbfa71eff1a937aedcfd899fccd62bebba250aca6f3695ff07c01c28a8ec83"
+    },
+    "unknown-after-failure": {
+      "status": "blocked",
+      "slot_counts": {
+        "FAILED": 1,
+        "UNCERTAIN": 1,
+        "NOT_RUN": 28
+      },
+      "summary": {
+        "planned_slots": 30,
+        "done": 0,
+        "failed": 1,
+        "uncertain": 1,
+        "blocked": 0,
+        "not_run": 28,
+        "by_arm": {
+          "baseline": {
+            "planned_slots": 15,
+            "done": 0,
+            "failed": 1,
+            "uncertain": 0,
+            "blocked": 0,
+            "not_run": 14
+          },
+          "candidate": {
+            "planned_slots": 15,
+            "done": 0,
+            "failed": 0,
+            "uncertain": 1,
+            "blocked": 0,
+            "not_run": 14
+          }
+        },
+        "by_domain": {
+          "recall.events": {
+            "planned_slots": 6,
+            "done": 0,
+            "failed": 1,
+            "uncertain": 1,
+            "blocked": 0,
+            "not_run": 4
+          },
+          "recall.plot": {
+            "planned_slots": 6,
+            "done": 0,
+            "failed": 0,
+            "uncertain": 0,
+            "blocked": 0,
+            "not_run": 6
+          },
+          "recall.characters": {
+            "planned_slots": 6,
+            "done": 0,
+            "failed": 0,
+            "uncertain": 0,
+            "blocked": 0,
+            "not_run": 6
+          },
+          "extract": {
+            "planned_slots": 6,
+            "done": 0,
+            "failed": 0,
+            "uncertain": 0,
+            "blocked": 0,
+            "not_run": 6
+          },
+          "operations": {
+            "planned_slots": 6,
+            "done": 0,
+            "failed": 0,
+            "uncertain": 0,
+            "blocked": 0,
+            "not_run": 6
+          }
+        }
+      },
+      "operation_id": "c2c70036-d9db-4183-bcf1-6f1b432548bb",
+      "transport_calls": 2,
+      "containers_removed": 2,
+      "exact_label_empty": true,
+      "distinct_accepted_sessions": 1,
+      "known_synthetic_attempts": 1,
+      "unknown_synthetic_attempts": 1,
+      "known_synthetic_microyuan": 834,
+      "unknown_reserved_synthetic_microyuan": 19384,
+      "failure_detail": {
+        "slot_index": 1,
+        "stage": "result_verify",
+        "reason": "stage_failed",
+        "response_bytes": 32,
+        "http_status": 502
+      },
+      "receipt_sha256": "b204dd2a3ffb8eb50af8e5c90ecb109c07c820a733830a21717eeedb6261bc71"
+    },
+    "empty-output": {
+      "status": "blocked",
+      "slot_counts": {
+        "UNCERTAIN": 1,
+        "NOT_RUN": 29
+      },
+      "summary": {
+        "planned_slots": 30,
+        "done": 0,
+        "failed": 0,
+        "uncertain": 1,
+        "blocked": 0,
+        "not_run": 29,
+        "by_arm": {
+          "baseline": {
+            "planned_slots": 15,
+            "done": 0,
+            "failed": 0,
+            "uncertain": 1,
+            "blocked": 0,
+            "not_run": 14
+          },
+          "candidate": {
+            "planned_slots": 15,
+            "done": 0,
+            "failed": 0,
+            "uncertain": 0,
+            "blocked": 0,
+            "not_run": 15
+          }
+        },
+        "by_domain": {
+          "recall.events": {
+            "planned_slots": 6,
+            "done": 0,
+            "failed": 0,
+            "uncertain": 1,
+            "blocked": 0,
+            "not_run": 5
+          },
+          "recall.plot": {
+            "planned_slots": 6,
+            "done": 0,
+            "failed": 0,
+            "uncertain": 0,
+            "blocked": 0,
+            "not_run": 6
+          },
+          "recall.characters": {
+            "planned_slots": 6,
+            "done": 0,
+            "failed": 0,
+            "uncertain": 0,
+            "blocked": 0,
+            "not_run": 6
+          },
+          "extract": {
+            "planned_slots": 6,
+            "done": 0,
+            "failed": 0,
+            "uncertain": 0,
+            "blocked": 0,
+            "not_run": 6
+          },
+          "operations": {
+            "planned_slots": 6,
+            "done": 0,
+            "failed": 0,
+            "uncertain": 0,
+            "blocked": 0,
+            "not_run": 6
+          }
+        }
+      },
+      "operation_id": "752201d9-cc75-4420-859a-0cb3f7e41211",
+      "transport_calls": 1,
+      "containers_removed": 1,
+      "exact_label_empty": true,
+      "distinct_accepted_sessions": 0,
+      "known_synthetic_attempts": 1,
+      "unknown_synthetic_attempts": 0,
+      "known_synthetic_microyuan": 834,
+      "unknown_reserved_synthetic_microyuan": 0,
+      "failure_detail": {
+        "slot_index": 0,
+        "stage": "result_verify",
+        "reason": "stage_failed",
+        "response_bytes": 862,
+        "http_status": 200
+      },
+      "receipt_sha256": "fcc9262b339467f744848dbee5ccad77e9ff9ab1904c48b564fc876ef22806b4"
+    },
+    "legacy-pilot": {
+      "status": "blocked",
+      "slot_counts": {
+        "UNCERTAIN": 1,
+        "NOT_RUN": 29
+      },
+      "summary": null,
+      "operation_id": "484327a6-0a05-4622-9f9b-bb093591f1a8",
+      "transport_calls": 1,
+      "containers_removed": 1,
+      "exact_label_empty": true,
+      "distinct_accepted_sessions": 0,
+      "known_synthetic_attempts": 1,
+      "unknown_synthetic_attempts": 0,
+      "known_synthetic_microyuan": 834,
+      "unknown_reserved_synthetic_microyuan": 0,
+      "failure_detail": {
+        "slot_index": 0,
+        "stage": "result_verify",
+        "reason": "stage_failed",
+        "response_bytes": 349,
+        "http_status": 403
+      },
+      "receipt_sha256": "e380dcd6dc21cd20e4d4477a02f9188fa4cf14fce4d3c35bf672175e90c11d31"
+    }
+  },
+  "acceptance_script_sha256": "4185425e364f8ae75534bfbf900db88d6942f11e0d86b54dbd2f54f3fd1961e8",
+  "summary_sha256": "a5bd83b9efa9621a08c817a9d09f92e3f1efa35c8276cd20a865d77217ef0cdc",
+  "direct_synthetic_database_verified": true
+}

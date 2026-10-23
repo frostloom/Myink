@@ -1,4 +1,4 @@
-"""Explicit host-owned one- or two-slot pilot. Default check never authorizes spending.
+"""Explicit host-owned pilots and complete thirty-slot contract trials. Default check never authorizes spending.
 
 A pinned evidence record is a host review declaration, not an online price,
 credential, usage or billing certificate. This module is never a model tool.
@@ -75,13 +75,18 @@ def _initial(config, inputs, slot, index, token):
 
 
 def _selected_count(config):
+    if config['schema'] == 'pi-analysis-trial-v1':
+        return 30
     return 2 if config['schema'] == 'pi-analysis-launch-v1' else config['selected_slots']
 
 
 def _prepare(config):
     config = strict_json(json.dumps(config, allow_nan=False))  # Caller cannot mutate this run.
-    if (not isinstance(config, dict) or config.get('schema') not in ('pi-analysis-launch-v1', 'pi-analysis-launch-v2')
-            or set(config) != (_FIELDS | {'selected_slots'} if config['schema'] == 'pi-analysis-launch-v2' else _FIELDS)
+    if (not isinstance(config, dict) or config.get('schema') not in ('pi-analysis-launch-v1', 'pi-analysis-launch-v2', 'pi-analysis-trial-v1')
+            or set(config) != (_FIELDS | ({'selected_slots'} if config['schema'] == 'pi-analysis-launch-v2'
+                else {'failure_policy'} if config['schema'] == 'pi-analysis-trial-v1' else set()))
+            or (config['schema'] == 'pi-analysis-trial-v1'
+                and config['failure_policy'] != 'continue_known_contract_failure')
             or (config['schema'] == 'pi-analysis-launch-v2' and (type(config['selected_slots']) is not int
                 or config['selected_slots'] not in (1, 2)))
             or type(config['cap_microyuan']) is not int or not 0 < config['cap_microyuan'] <= 20000000
@@ -197,7 +202,11 @@ def _slot(run, policy, config, inputs, slot, index, host, transport, root, prove
             progress['stage'] = 'result_write'
             _write(root/f'slot-{index}-private.json', frame)
             progress['stage'] = 'result_verify'
-            row.update(verify_result(frame, slot, inputs['views'][slot['domain']], inputs['report']))
+            if config['schema'] == 'pi-analysis-trial-v1':
+                from .analysis_trial_result import verify_trial_result
+                row.update(verify_trial_result(frame, slot, inputs['views'][slot['domain']], inputs['report']))
+            else:
+                row.update(verify_result(frame, slot, inputs['views'][slot['domain']], inputs['report']))
             progress['stage'] = 'http_sequence'
             if row['http_statuses'] != [403, 403, 200, 403] or remaining() <= 0:
                 raise ValueError(_ERROR)
@@ -230,7 +239,8 @@ def _slot(run, policy, config, inputs, slot, index, host, transport, root, prove
 def launch(config, *, execute=False):
     """Check by default. Only explicit trusted-host execution can mutate state.
 
-    All thirty slots are registered; the manifest selects the first one or pair.
+    All thirty slots are registered; explicit trial manifests select all thirty.
+    Legacy pilot manifests still select only the first one or pair.
     A failed invocation is never resumed or retried by this entry point.
     """
     try:
@@ -267,10 +277,11 @@ def launch(config, *, execute=False):
                 result['cases'].append(row)
                 progress['stage'] = 'container_cleanup'
                 cleaned = host.cleanup(cid); result['cleanup'].append(cleaned)
-                if cleaned['exit_code'] != 0:
+                if (cleaned['exit_code'] != 0 or (config['schema'] == 'pi-analysis-trial-v1'
+                        and config['deadline'] <= time.time())):
                     raise ValueError(_ERROR)
                 progress['stage'] = 'slot_finish'
-                run.finish(index, status='done')
+                run.finish(index, status='done' if row['contract_valid'] else 'failed')
             result['status'] = 'completed'
     except Exception as exc:
         result['failure_class'] = type(exc).__name__
@@ -301,6 +312,9 @@ def launch(config, *, execute=False):
                 result['failure_detail'] = dict(progress, stage='container_cleanup', reason='stage_failed')
         try:
             result['slots'] = run.snapshot()
+            if config['schema'] == 'pi-analysis-trial-v1':
+                from .analysis_trial_result import summarize_trial
+                result['summary'] = summarize_trial(slots, result['slots'])
             _write(root/'receipt.json', result)
         except Exception:
             raise LedgerBlocked(_ERROR) from None
