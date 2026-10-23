@@ -31,3 +31,7 @@
 本阶段补上上一阶段的真实Linux运行时验收；未新增生产代码，所以没有重复运行未变化的2156项离线回归，上一阶段的2156 passed/19 deselected/0 skipped仍只对应当时代码和离线测试。根产品PostgreSQL/Redis/RabbitMQ集成、本轮真实provider效果/usage/账单和语义质量仍未验收。production_ready、billing_verified、automatic_execution、release_allowed仍false。
 
 代码与报告均保留在codex/pi-autonomy-design工作区，未提交/推送、未合并main或部署。若后续进入真实模型对照，应另行审阅当前源码快照、私有输入、价格与预算/期限；不能沿用本合成清单作为付费授权。
+
+## 提交及预检更新
+
+同日用户明确授权后，已将功能、测试与验收记录提交推送至Pi分支84744a2d；随后完成[真实输入只读预检与预算方案](pi-full-trial-preflight-2026-10-23.md)。没有真实模型请求。

@@ -25,3 +25,7 @@ summary从全部30个durable snapshot状态统计，含DONE/FAILED/UNCERTAIN/BLO
 ## 后续补验
 
 同日后续用户要求继续后，已补真实Linux容器合成验收：完整30槽27 DONE/3 FAILED，以及unknown/空输出/旧pilot停止场景均通过。该阶段未改生产代码，仍无真实模型消费。详见[真实容器验收](pi-full-trial-linux-2026-10-23.md)。
+
+## 提交及预检更新
+
+同日用户明确授权后，已将功能、测试与验收记录提交推送至Pi分支84744a2d；随后完成[真实输入只读预检与预算方案](pi-full-trial-preflight-2026-10-23.md)。没有真实模型请求。
