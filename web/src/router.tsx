@@ -13,6 +13,7 @@ import { TaskDetailPage } from './pages/admin/TaskDetail'
 import { UserDetailPage } from './pages/admin/UserDetail'
 import AppearancePage from './pages/AppearancePage'
 import PlatformConfiguration from './pages/admin/PlatformConfiguration'
+import WritingResources from './pages/admin/WritingResources'
 import EnvironmentPage from './pages/EnvironmentPage'
 import LoginPage from './pages/LoginPage'
 import LorePage from './pages/LorePage'
@@ -104,7 +105,34 @@ export const router = createBrowserRouter([
         element: <AdminPage />,
         children: [
           { index: true, element: <AdminConsole /> },
-          { path: 'configuration', element: <PlatformConfiguration /> },
+          {
+            path: 'configuration',
+            element: <Navigate to="/admin/models" replace />,
+          },
+          {
+            path: 'models',
+            element: <PlatformConfiguration section="models" />,
+          },
+          {
+            path: 'model-routes',
+            element: <PlatformConfiguration section="routes" />,
+          },
+          {
+            path: 'defaults',
+            element: <PlatformConfiguration section="defaults" />,
+          },
+          {
+            path: 'prompts',
+            element: <WritingResources key="prompts" scope="prompts" />,
+          },
+          {
+            path: 'genres',
+            element: <WritingResources key="genres" scope="genres" />,
+          },
+          {
+            path: 'writing-resources',
+            element: <WritingResources key="resources" />,
+          },
           { path: 'projects/:projectId', element: <ProjectDetailPage /> },
           { path: 'tasks/:taskId', element: <TaskDetailPage /> },
           { path: 'runs/:runId', element: <RunDetailPage /> },

@@ -918,3 +918,10 @@ def setup_capabilities(pack: Any) -> dict[str, bool]:
         "numerical_system": sid in NUMERICAL_PACKS,
         "era_research": sid in ERA_RESEARCH_PACKS,
     }
+
+
+_legacy_setup_capabilities = setup_capabilities
+def setup_capabilities(pack):
+    if isinstance(pack, dict) and "_resource_caps" in pack:
+        return dict(pack["_resource_caps"])
+    return _legacy_setup_capabilities(pack)

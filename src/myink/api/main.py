@@ -19,6 +19,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from myink.api.auth import current_user, require_owner
 from myink.api.auth import router as auth_router
 from myink.api.ratelimit import ApiError, GlobalRateLimit
+from myink.api.resource_limits import ResourceRequestLimit
 from myink.api.routes_admin import router as admin_router
 from myink.api.routes_book import router as book_router
 from myink.api.routes_candidates import router as candidates_router
@@ -82,6 +83,7 @@ async def admin_no_store(request, call_next):
 # 边缘交给 Caddy 之后前端与 API 同源（本地开发走 Vite 代理也是同源），没有任何跨源调用方，
 # 而 allow_headers=["*"] 等于允许任何站点朝这里发 Authorization——严格劣于没有。删掉。
 app.add_middleware(GlobalRateLimit)
+app.add_middleware(ResourceRequestLimit)
 
 
 @app.exception_handler(ApiError)
@@ -121,6 +123,10 @@ async def _aligned_http_error(request: Request, exc: StarletteHTTPException):
 
 app.include_router(auth_router)
 app.include_router(admin_router)
+from myink.api.routes_writing_resources import router as writing_resource_router
+from myink.api.routes_user_writing_resources import router as user_writing_resource_router
+app.include_router(writing_resource_router)
+app.include_router(user_writing_resource_router)
 app.include_router(platform_router)
 app.include_router(book_router)
 app.include_router(tasks_router)

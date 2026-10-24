@@ -83,6 +83,7 @@ beforeEach(() => {
   auth.revalidate.mockReset()
   // mockResolvedValue 不会清掉上一轮留下的 mockResolvedValueOnce 队列，必须逐个 mockReset。
   for (const fn of Object.values(adminApi)) vi.mocked(fn).mockReset()
+  vi.mocked(adminApi.getTrends).mockResolvedValue({ start_date: "2026-01-01", end_date: "2026-01-30", timezone: "UTC", items: [] })
   vi.mocked(adminApi.getOverview).mockResolvedValue({
     user_count: 4, project_count: 6, chapter_count: 18, task_count: 9,
     metrics, task_status_counts: { queued: 2, completed: 7 },
@@ -102,7 +103,7 @@ afterEach(() => {
 it('shows the global overview with labeled metrics and status counts', async () => {
   renderPage()
 
-  expect(await screen.findByRole('heading', { name: '管理员控制台' })).toBeTruthy()
+  expect(await screen.findByRole('heading', { name: '概览', level: 1 })).toBeTruthy()
   expect(await screen.findByText('4')).toBeTruthy()
   expect(screen.getByText('预估成本')).toBeTruthy()
   expect(screen.getByText('排队中')).toBeTruthy()
@@ -115,8 +116,10 @@ it('opens the tab named in the url instead of always landing on the overview', a
   })
   renderPage('/admin?tab=logs')
 
-  expect(await screen.findByText('admin.overview')).toBeTruthy()
-  expect(screen.getByRole('button', { name: '访问日志' }).getAttribute('aria-pressed')).toBe('true')
+  expect(await screen.findByText('查看平台概览')).toBeTruthy()
+  expect(screen.queryByText('admin.overview')).toBeNull()
+  expect(screen.queryByText('admin-1')).toBeNull()
+  expect(screen.getByRole('link', { name: '访问日志' }).getAttribute('aria-current')).toBe('page')
 })
 
 it('does not request or render protected data for a normal user', () => {
@@ -207,7 +210,7 @@ it('leaves the console for a book detail page and comes back to the projects tab
     content: '<script>不能执行</script>正文', summary: '章节摘要', version: 3,
   })
   const { router } = renderPage()
-  fireEvent.click(screen.getByRole('button', { name: '作品' }))
+  fireEvent.click(screen.getByRole('link', { name: '作品' }))
   fireEvent.click(await screen.findByRole('button', { name: '查看《山河册》' }))
 
   // 整页切换：地址变了，表格不在这一页了
@@ -274,7 +277,7 @@ it('leaves the console for a task detail page, keeping the node drilldown inline
     detail_missing: true, prompt_missing: true,
   })
   const { router } = renderPage()
-  fireEvent.click(screen.getByRole('button', { name: '任务' }))
+  fireEvent.click(screen.getByRole('link', { name: '任务' }))
   fireEvent.click(await screen.findByRole('button', { name: '查看任务 task-1' }))
 
   expect(router.state.location.pathname).toBe('/admin/tasks/task-1')
@@ -307,14 +310,14 @@ it('shows the task status fetched by id, not a stale list snapshot', async () =>
     })
   renderPage('/admin/tasks/task-refresh')
 
-  const heading = await screen.findByRole('heading', { name: '山河册 · 单章生成' })
+  const heading = await screen.findByRole('heading', { name: '山河册' })
   const detailSection = heading.closest('section')
   expect(detailSection).not.toBeNull()
-  expect(await screen.findByText('alice · 第 1 章 · 排队中')).toBeTruthy()
+  expect(await screen.findByText('排队中')).toBeTruthy()
 
   fireEvent.click(within(detailSection as HTMLElement).getByRole('button', { name: '刷新当前视图' }))
 
-  expect(await screen.findByText('alice · 第 1 章 · 完成')).toBeTruthy()
+  expect(await screen.findByText('完成')).toBeTruthy()
 })
 
 it('opens a run detail page from the runs table and from its url', async () => {
@@ -359,14 +362,16 @@ it('keeps taskless setup runs discoverable and loads access logs', async () => {
     total: 1, limit: 25, offset: 0,
   })
   renderPage()
-  fireEvent.click(screen.getByRole('button', { name: '全部运行' }))
+  fireEvent.click(screen.getByRole('link', { name: '全部运行' }))
   expect(await screen.findByText('#20')).toBeTruthy()
   expect(screen.getByText('0.0300')).toBeTruthy()
   expect(screen.getByRole('button', { name: '查看节点 book_setup #20' })).toBeTruthy()
 
-  fireEvent.click(screen.getByRole('button', { name: '访问日志' }))
-  expect(await screen.findByText('admin.overview')).toBeTruthy()
-  expect(screen.getByText('collection')).toBeTruthy()
+  fireEvent.click(screen.getByRole('link', { name: '访问日志' }))
+  expect(await screen.findByText('查看平台概览')).toBeTruthy()
+  expect(screen.queryByText('admin.overview')).toBeNull()
+  expect(screen.queryByText('admin-1')).toBeNull()
+  expect(screen.getByText('列表或平台汇总')).toBeTruthy()
 })
 
 it('lists users with their total spend and opens one user detail page', async () => {
@@ -387,7 +392,7 @@ it('lists users with their total spend and opens one user detail page', async ()
     }], total: 1, limit: 25, offset: 0,
   })
   const { router } = renderPage()
-  fireEvent.click(screen.getByRole('button', { name: '用户' }))
+  fireEvent.click(screen.getByRole('link', { name: '用户' }))
 
   expect(await screen.findByText('12.3456')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: '查看用户 alice' }))
@@ -428,7 +433,18 @@ it('keeps a taskless run row readable when the book is gone', async () => {
 it('provides dedicated administration navigation with account access and no writing rail', async () => {
  renderPage()
  expect(await screen.findByRole('navigation', {name:'平台管理导航'})).toBeTruthy()
- expect(screen.getByRole('link', {name:'模型与平台配置'}).getAttribute('href')).toBe('/admin/configuration')
+ expect(screen.getByRole('link', {name:'AI 模型'}).getAttribute('href')).toBe('/admin/models')
  expect(screen.getByRole('link', {name:'账号与安全'}).getAttribute('href')).toBe('/account')
  expect(screen.queryByRole('link', {name:'长篇'})).toBeNull()
+})
+
+it('exposes management views directly in the rail without a second tab bar', async () => {
+ renderPage()
+ await screen.findByRole('heading', {name:'概览',level:1})
+ expect(screen.queryByRole('navigation',{name:'管理视图'})).toBeNull()
+ expect(screen.getByRole('link',{name:'用户'}).getAttribute('href')).toBe('/admin?tab=users')
+ expect(screen.getByRole('link',{name:'模型分配'}).getAttribute('href')).toBe('/admin/model-routes')
+ expect(screen.getByRole('link',{name:'写作资源'}).getAttribute('href')).toBe('/admin/writing-resources')
+ expect(screen.queryByRole('link',{name:'提示词'})).toBeNull()
+ expect(screen.queryByRole('link',{name:'题材包'})).toBeNull()
 })

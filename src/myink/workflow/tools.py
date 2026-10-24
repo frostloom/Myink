@@ -136,6 +136,10 @@ def _inspect_facts(db: Session, project_id: uuid.UUID, args: dict) -> dict:
 # 定位、切片与截断都在 myink.reference_corpus，这里只是把它包成工具调用形式。
 
 def _read_genre_reference(db: Session, project_id: uuid.UUID, args: dict) -> dict:
+    from myink.writing_resource_runtime import configured, current_resources, reference_read
+    if configured() or "reference_library" in (current_resources() or {}):
+        return reference_read(str(args.get("path") or "").strip(),
+                              str(args.get("section") or "").strip() or None, db=db)
     return read_reference(
         str(args.get("path") or "").strip(),
         str(args.get("section") or "").strip() or None,

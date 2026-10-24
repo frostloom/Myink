@@ -129,6 +129,8 @@ class AnthropicProvider(ModelProvider):
         converted_tools = _convert_tools(tools)
         if converted_tools:
             payload["tools"] = converted_tools
+        elif tools == []:
+            payload["tool_choice"] = {"type": "none"}
         return payload
 
     def _headers(self) -> dict[str, str]:

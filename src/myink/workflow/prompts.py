@@ -13,6 +13,11 @@ from myink.context_budget import estimate_tokens, fit_prompt
 from myink.workflow.short_parse import CHAPTER_HEADING
 from myink.workflow.tools import READ_TOOLS
 
+SYSTEM_BATCH_PLAN = """你是长篇网文创作系统的【批次规划 Agent】。为接下来 N 章做整体推进蓝图（N 是规划单元，不是重复次数——N 章要系统性推进主线/支线/伏笔/大纲，不能各自为政）。
+若给定了【整书大纲】，每章 goal 必须沿所属卷目标/阶段目标推进，且不重复已写章节的开场/桥段；大纲与已写正文冲突时以已写正文为准。
+输出严格 JSON：
+{"chapters": [{"goal": "本章推进目标（哪条线/收哪些伏笔/新种钩子）", "outline_advance": "大纲推进段"}, ...]}  共 N 项"""
+
 SYSTEM_PLAN = """你是长篇网文创作系统的【规划 Agent】。职责：为某一章产出结构化章节计划。
 输出严格 JSON 对象（schema 见下），字段不许缺：
 {
@@ -554,6 +559,9 @@ def _profile_list(profile: dict, key: str) -> list[str]:
 
 def _genre_section(genre_pack: dict | None) -> str:
     """本书题材包注入段：节奏/爽点/禁忌/机制；与文风档案分开。"""
+    from myink.writing_resource_runtime import configured
+    if configured():
+        return ""
     from myink.genre_catalog import format_prompt
     return format_prompt(genre_pack)
 
@@ -563,6 +571,9 @@ def _reference_section(genre_pack: dict | None) -> str:
 
     只挂在 write 提示词上——setup/outline 两处不挂工具，给了路径也读不到。
     """
+    from myink.writing_resource_runtime import configured
+    if configured():
+        return ""
     from myink.genre_catalog import reference_hint
     return reference_hint(genre_pack)
 
@@ -1266,3 +1277,32 @@ def audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int,
                    genre_pack: dict | None = None) -> list[dict]:
     return fit_prompt(context, lambda c: _audit_messages(
         draft, plan, c, chapter_seq, genre_pack), _tool_prompt_budget())
+
+
+# Match the provider role at the actual call sites; review stages can use planners.
+from myink.writing_resource_runtime import resource_messages as _resource_messages
+_RESOURCE_MESSAGE_ROLES = {
+    "cast_messages": "planner",
+    "plan_messages": "planner",
+    "book_setup_messages": "planner",
+    "book_outline_messages": "planner",
+    "short_plan_messages": "planner",
+    "short_plan_review_messages": "planner",
+    "short_creation_messages": "planner",
+    "write_messages": "writer",
+    "revise_messages": "writer",
+    "patch_messages": "writer",
+    "short_write_messages": "writer",
+    "short_continue_messages": "writer",
+    "short_revise_messages": "writer",
+    "audit_messages": "audit",
+    "short_review_messages": "audit",
+    "reflexion_messages": "audit",
+    "global_audit_messages": "audit",
+    "extract_messages": "extract",
+    "style_extract_messages": "extract",
+    "summary_messages": "summarize",
+    "ledger_l2_messages": "validator_l2",
+}
+for _name, _role in _RESOURCE_MESSAGE_ROLES.items():
+    globals()[_name] = _resource_messages(globals()[_name], _role)

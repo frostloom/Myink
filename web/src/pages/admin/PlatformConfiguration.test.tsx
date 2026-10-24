@@ -83,7 +83,7 @@ it('adds a network model and routes Writer through it without exposing saved key
   fireEvent.change(screen.getByLabelText('请求地址'), { target: { value: 'https://models.example.com/v1' } })
   fireEvent.change(screen.getByLabelText('模型 id'), { target: { value: 'novel-pro' } })
   fireEvent.change(screen.getByLabelText(/API Key/), { target: { value: 'secret-key' } })
-  fireEvent.change(screen.getByLabelText('写作（writer）'), {
+  fireEvent.change(screen.getByLabelText('写作'), {
     target: { value: 'custom:11111111-1111-4111-8111-111111111111' },
   })
   fireEvent.click(screen.getByRole('button', { name: '保存平台配置' }))
@@ -145,15 +145,15 @@ it('fetches the model list into the datalist and tests connectivity', async () =
   await waitFor(() => expect(screen.getByRole('status').textContent).toContain('连接正常 · 88 ms'))
 })
 
-it('does not offer built-in DeepSeek models in the role dropdowns', async () => {
+it('does not invent a model when the configured catalog is empty', async () => {
   vi.mocked(platformApi.getConfiguration).mockResolvedValue(emptyEnv)
 
   renderPage()
-  const writer = await screen.findByLabelText('写作（writer）')
+  const writer = await screen.findByLabelText('写作')
   const labels = Array.from(writer.querySelectorAll('option')).map((option) => option.textContent)
-  expect(labels).toEqual(['未指定'])
-  expect(screen.getByLabelText('审核（audit）')).toBeTruthy()
-  expect(screen.getByLabelText('摘要（summarize）')).toBeTruthy()
+  expect(labels).toEqual(['请选择默认写作模型'])
+  expect(screen.getByLabelText('审核')).toBeTruthy()
+  expect(screen.getByLabelText('摘要')).toBeTruthy()
   expect(screen.queryByLabelText('思考模式')).toBeNull()
   expect(screen.queryByText(/deepseek/i)).toBeNull()
   expect(screen.queryByRole('button', { name: '填入 DeepSeek 官方地址' })).toBeNull()
@@ -167,10 +167,10 @@ it('saves publication flags, role prompts and version while preserving a blank s
  await screen.findByDisplayValue('模型一')
  expect((screen.getByLabelText(/API Key/) as HTMLInputElement).value).toBe('')
  fireEvent.click(screen.getByLabelText('向用户发布'))
- fireEvent.change(screen.getByLabelText('写作（writer）追加指令'),{target:{value:'保持中文叙事'}})
+ fireEvent.change(screen.getByLabelText('写作追加指令'),{target:{value:'保持中文叙事'}})
  fireEvent.click(screen.getByRole('button',{name:'保存平台配置'}))
  await screen.findByText(/配置已被其他管理员更新/)
- expect((screen.getByLabelText('写作（writer）追加指令') as HTMLTextAreaElement).value).toBe('保持中文叙事')
+ expect((screen.getByLabelText('写作追加指令') as HTMLTextAreaElement).value).toBe('保持中文叙事')
  const body=vi.mocked(platformApi.updateConfiguration).mock.calls[0][0]
  expect(body.version).toBe(1)
  expect(body.prompts.writer).toBe('保持中文叙事')

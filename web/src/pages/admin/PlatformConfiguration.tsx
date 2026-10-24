@@ -15,14 +15,16 @@ import type {
 } from '../../types'
 import type { AdminOutletContext } from './shared'
 import styles from '../SettingsPage.module.css'
+import ModelManagement from './ModelManagement'
+import PlatformResources from './PlatformResources'
 
 const MODEL_ROLES = [
-  { key: 'planner', label: '规划（planner）' },
-  { key: 'writer', label: '写作（writer）' },
-  { key: 'validator_l2', label: '语义校验（validator_l2）' },
-  { key: 'extract', label: '抽取（extract）' },
-  { key: 'audit', label: '审核（audit）' },
-  { key: 'summarize', label: '摘要（summarize）' },
+  { key: 'planner', label: '规划' },
+  { key: 'writer', label: '写作' },
+  { key: 'validator_l2', label: '语义校验' },
+  { key: 'extract', label: '抽取' },
+  { key: 'audit', label: '审核' },
+  { key: 'summarize', label: '摘要' },
 ]
 const READINESS_REASONS: Record<string, string> = {
   model_unconfigured: '未配置可用模型',
@@ -32,7 +34,6 @@ const READINESS_REASONS: Record<string, string> = {
   address_invalid: '请求地址无效或不允许使用',
   credential_unavailable: '凭据不可用，请重新保存密钥',
 }
-const EMPTY_ROUTE = { value: '', label: '未指定' }
 const DEFAULT_USER_PREFERENCES: UserDefaults = {
   thinking_enabled: false,
   task_budget: { max_requests: 100, max_cost_yuan: 5, max_runtime_seconds: 1800 },
@@ -43,6 +44,7 @@ type ConnectionField = 'name' | 'base_url' | 'model' | 'api_key'
 type FieldProblem = { key: string; text: string } | null
 
 type ModelConnectionDraft = ModelConnection & {
+  origin?: 'builtin' | 'custom'
   enabled: boolean
   user_visible: boolean
   api_key: string
@@ -68,7 +70,13 @@ function normalizeGenreOverrides(
   }))
 }
 
-export default function PlatformConfiguration() {
+type ConfigurationSection = 'models' | 'routes' | 'defaults' | 'prompts' | 'genres' | 'all'
+export default function PlatformConfiguration({ section = 'all' }: { section?: ConfigurationSection }) {
+  if (section === 'models') return <ModelManagement />
+  if (section === 'prompts' || section === 'genres') return <PlatformResources key={section} kind={section} />
+  return <ConfigurationSettings key={section} section={section} />
+}
+function ConfigurationSettings({ section }: { section: ConfigurationSection }) {
   const { onForbidden } = useOutletContext<AdminOutletContext>()
   const [readiness, setReadiness] = useState<PlatformReadiness | null>(null)
   const [readinessLoading, setReadinessLoading] = useState(false)
@@ -340,7 +348,7 @@ export default function PlatformConfiguration() {
         <div className={styles.inner}>
           <header className={styles.header}>
             <div>
-              <h1>模型与平台配置</h1>
+              <h1>{{ all: '模型与平台配置', models: 'AI 模型', routes: '模型分配', defaults: '用户默认设置', prompts: '提示词', genres: '题材包' }[section]}</h1>
               <div className={styles.crumb}>
                 <Link to="/admin">返回管理概览</Link>
               </div>
@@ -358,7 +366,7 @@ export default function PlatformConfiguration() {
             </button>
           </div>
           {loading && <p role="status">正在加载平台配置…</p>}
-          <section className={`panel ${styles.section}`} aria-label="平台就绪状态">
+          {(section === 'all' || section === 'routes') && <section className={`panel ${styles.section}`} aria-label="平台就绪状态">
             <h2 className={styles.sectionTitle}>平台就绪状态</h2>
             <p className={styles.hint}>检查已保存配置，不调用模型服务。此状态不包含未保存的草稿，也不代表网络或凭据已通过服务商验证。</p>
             <button type="button" className="btn btn-secondary" disabled={readinessLoading}
@@ -372,10 +380,10 @@ export default function PlatformConfiguration() {
                 {check.ready ? '就绪' : <span>{READINESS_REASONS[check.reason ?? ''] ?? '配置不可用'}</span>}
               </li>)}</ul>
             </>}
-          </section>
+          </section>}
           <fieldset disabled={loading || !loaded || busy !== null} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
-            <section className={`panel ${styles.section}`}>
-              <div className={styles.connectionTitleRow}>
+            {(section === 'all' || section === 'routes') && <section className={`panel ${styles.section}`}>
+              {section === 'all' && <><div className={styles.connectionTitleRow}>
                 <div>
                   <h2 className={styles.sectionTitle}>模型连接与路由</h2>
                 </div>
@@ -468,8 +476,10 @@ export default function PlatformConfiguration() {
                 </div>
               )}
 
+              </>}
               <div className={styles.routeDivider}>
-                <h3>每 Agent 主模型</h3>
+                <h3>任务模型分配</h3>
+                <p className={styles.hint}>为每个创作环节选择模型；未单独设置的环节跟随默认写作模型。内置模型与自建模型均可分配。</p>
               </div>
               <div className={styles.routeList}>
                 {MODEL_ROLES.map((r) => (
@@ -477,14 +487,15 @@ export default function PlatformConfiguration() {
                     <span className={styles.routeLabel}>{r.label}</span>
                     <select
                       className="input"
+                      aria-label={r.label}
                       value={routeSel[r.key] ?? ''}
                       onChange={(e) => setRouteSel((s) => ({ ...s, [r.key]: e.target.value }))}
                     >
                       {[
-                        EMPTY_ROUTE,
+                        { value: '', label: r.key === 'writer' ? '请选择默认写作模型' : '跟随默认写作模型' },
                         ...connectionDrafts.filter((connection) => connection.enabled).map((connection) => ({
                           value: `custom:${connection.id}`,
-                          label: `${connection.name.trim() || '未命名连接'} · ${connection.model.trim() || '未填写模型'}`,
+                          label: `${connection.origin === 'builtin' ? '内置 · ' : ''}${connection.name.trim() || '未命名连接'}${connection.name.trim() === connection.model.trim() ? '' : ` · ${connection.model.trim() || '未填写模型'}`}`,
                         })),
                       ].map((option) => (
                         <option key={option.value} value={option.value}>
@@ -495,9 +506,9 @@ export default function PlatformConfiguration() {
                   </label>
                 ))}
               </div>
-            </section>
+            </section>}
 
-            <section className={`panel ${styles.section}`}>
+            {(section === 'all' || section === 'defaults') && <section className={`panel ${styles.section}`}>
               <h2 className={styles.sectionTitle}>用户默认设置</h2>
               <p className={styles.hint}>未设置个人偏好的用户将使用这些默认值；已有个人设置继续生效。预算修改仅影响新任务，已有任务保留原预算快照。</p>
               <label className={styles.field}>
@@ -536,8 +547,8 @@ export default function PlatformConfiguration() {
                     onChange={(e) => setUserDefaults((value) => ({ ...value, rankings: { ...value.rankings, [key]: Number(e.target.value) } }))} />
                 </label>
               ))}
-            </section>
-            <section className={`panel ${styles.section}`}>
+            </section>}
+            {(section === 'all' || section === 'prompts') && <section className={`panel ${styles.section}`}>
               <h2 className={styles.sectionTitle}>角色提示词</h2>
               <p className={styles.hint}>追加到系统指令中，结构化输出规则始终保留。留空使用内置提示词。</p>
               {MODEL_ROLES.map((role) => (
@@ -547,8 +558,8 @@ export default function PlatformConfiguration() {
                     onChange={(e) => setPrompts((previous) => ({ ...previous, [role.key]: e.target.value }))} />
                 </label>
               ))}
-            </section>
-            <section className={`panel ${styles.section}`}>
+            </section>}
+            {(section === 'all' || section === 'genres') && <section className={`panel ${styles.section}`}>
               <h2 className={styles.sectionTitle}>平台题材包</h2>
               <label className={styles.field}>
                 <span>编辑根题材</span>
@@ -571,7 +582,7 @@ export default function PlatformConfiguration() {
                 })}>
                 移除此题材覆盖（保存后生效）
               </button>
-            </section>
+            </section>}
             <div className={styles.saveRow}>
               <button className="btn btn-primary" type="button" onClick={() => void saveRoutes()}>保存全部更改</button>
             </div>

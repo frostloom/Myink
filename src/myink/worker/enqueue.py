@@ -86,6 +86,16 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
     from myink.platform_readiness import require_operation_ready
 
     require_operation_ready(task_type, user_id)
+    from myink.db import tenant_session
+    from myink.writing_resources import capture_task_resources
+    from myink.writing_resource_runtime import current_resources
+    payload = dict(payload)
+    if "writing_resources" not in payload:
+        inherited = current_resources()
+        if inherited is None:
+            with tenant_session(project_id) as db:
+                inherited = capture_task_resources(db, project_id)
+        payload["writing_resources"] = inherited
 
     try:
         budget_snapshot = snapshot_budget(user_id)

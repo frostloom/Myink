@@ -108,6 +108,8 @@ class DeepSeekProvider(ModelProvider):
             kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
         if tools:
             kwargs["tools"] = tools
+        elif tools == []:
+            kwargs["tool_choice"] = "none"
         return kwargs
 
     def generate(self, messages: list[dict], *, model_id: str, max_tokens: int | None = None,

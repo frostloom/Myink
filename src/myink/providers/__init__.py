@@ -118,7 +118,20 @@ def _central_chain(role, selections, thinking):
         chain = _platform_chain(thinking) or _no_model_chain(thinking)
     else:
         chain = _no_model_chain(thinking)
-    chain.system_addition = config['prompts'].get(role, '')
+    from myink.writing_resource_runtime import configured, current_resources
+    snapshot = current_resources() or {}
+    role_body = snapshot.get('role_prompts', {}).get(role, {}).get('body', {})
+    if 'supplement' in role_body or 'legacy_role_supplements' in snapshot:
+        # Membership matters: an explicitly published empty supplement clears
+        # the legacy automatic addition; older publications still fall back.
+        text = (role_body['supplement'] if 'supplement' in role_body
+                else snapshot['legacy_role_supplements'].get(role, ''))
+        # Selected migrated copies already enter the message builder.
+        duplicate = configured() and any(s.get('body', {}).get('roles', {}).get(role) == text
+                                         for s in snapshot.get('selections', []))
+        chain.system_addition = '' if duplicate else text
+    else:
+        chain.system_addition = '' if configured() else config['prompts'].get(role, '')
     return chain
 
 

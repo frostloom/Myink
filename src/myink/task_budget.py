@@ -629,11 +629,14 @@ def budget_execution(function):
         except ValueError:
             return function(*args, **kwargs)  # legacy CLI/test labels have no task ledger
         with new_session() as db:
-            if db.get(Task, tid) is None:
+            task = db.get(Task, tid)
+            if task is None:
                 return function(*args, **kwargs)
+            resource_snapshot = (task.payload or {}).get("writing_resources")
         owner = uuid.uuid4().hex
         try:
-            with bind_task_budget(task_id, owner):
+            from myink.writing_resource_runtime import bind_resources
+            with bind_task_budget(task_id, owner), bind_resources(resource_snapshot):
                 return function(*args, **kwargs)
         except (TaskBudgetPaused, TaskBudgetUnavailable) as exc:
             record_budget_pause(task_id, exc, expected_owner=owner)

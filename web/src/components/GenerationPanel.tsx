@@ -17,12 +17,13 @@ interface Props {
   selectedChapter: ChapterMeta | null
   /** 当前书已有任务在规划/写作/等待人工时，阻止重复发起。 */
   taskBusy?: boolean
+  beforeGenerate?: () => Promise<boolean>
   /** 批次生成时带 batchTotal（时间线实时 i/N）；单章任务带 chapterSeq（右栏按章过滤） */
   onTaskStart: (taskId: string, batchTotal?: number, chapterSeq?: number, mode?: WritingMode) => void
 }
 
 export function GenerationPanel({
-  projectId, chapters, selectedChapter, taskBusy = false, onTaskStart,
+  projectId, chapters, selectedChapter, taskBusy = false, onTaskStart, beforeGenerate,
 }: Props) {
   const [open, setOpen] = useState(true)
   const [instruction, setInstruction] = useState('')
@@ -86,6 +87,7 @@ export function GenerationPanel({
     setBanner(null)
     setNotice(null)
     try {
+      if (beforeGenerate && !(await beforeGenerate())) return
       const resp = await api.generateChapter(projectId, tailId, {
         seq: nextSeq,
         mode,
@@ -109,6 +111,7 @@ export function GenerationPanel({
     setBanner(null)
     setNotice(null)
     try {
+      if (beforeGenerate && !(await beforeGenerate())) return
       const resp = await api.generateChapter(projectId, selectedChapter.id, {
         seq: selectedChapter.chapter_seq,
         rewrite: true,
@@ -130,6 +133,7 @@ export function GenerationPanel({
     setBanner(null)
     setNotice(null)
     try {
+      if (beforeGenerate && !(await beforeGenerate())) return
       const resp = await api.generateBatch(projectId, {
         size: batchN,
         start: batchStart,

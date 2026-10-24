@@ -5,6 +5,7 @@ from myink.api.routes_admin import _audit_or_fail
 from myink.api.routes_settings import ConnectionProbeBody, _clean_base_url, _assert_host_allowed
 from myink.api.schemas import ModelListOut, ConnectionTestOut
 from myink.platform_configuration import ConfigurationBody, ConfigurationOut, ModelCatalogOut, catalog, load_configuration, public_configuration, save_configuration
+from myink.prompt_catalog import PromptRoleTemplatesOut, prompt_catalog
 from myink.providers import probe
 from myink.providers.credentials import decrypt_api_key
 
@@ -34,6 +35,14 @@ def get_configuration(request: Request, response: Response, actor: _Authenticate
     response.headers['Cache-Control'] = 'no-store'
     _audit_or_fail(actor, request, 'admin.configuration.read')
     return public_configuration()
+
+
+@router.get('/admin/configuration/prompt-templates', response_model=list[PromptRoleTemplatesOut])
+def get_prompt_templates(request: Request, response: Response,
+                         actor: _AuthenticatedUser = Depends(require_admin)) -> list[dict]:
+    response.headers['Cache-Control'] = 'no-store'
+    _audit_or_fail(actor, request, 'admin.configuration.prompt_templates')
+    return prompt_catalog()
 
 
 @router.get('/admin/configuration/readiness', response_model=ReadinessOut)

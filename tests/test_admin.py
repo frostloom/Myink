@@ -142,7 +142,8 @@ def test_admin_revocation_and_validation_errors(admin_data):
     assert client.get(PREFIX+"/overview", headers=headers).status_code == 401
 
 
-def test_admin_read_connection_rejects_writes_and_audit_fails_closed(admin_data, monkeypatch):
+@pytest.mark.parametrize("endpoint", ["/overview", "/trends"])
+def test_admin_read_connection_rejects_writes_and_audit_fails_closed(admin_data, monkeypatch, endpoint):
     from myink.api import routes_admin
     with routes_admin.admin_read_session() as db:
         assert db.execute(text("SHOW transaction_read_only")).scalar_one() == "on"
@@ -151,7 +152,7 @@ def test_admin_read_connection_rejects_writes_and_audit_fails_closed(admin_data,
     def unavailable(*args, **kwargs):
         raise RuntimeError("Bearer DO-NOT-EXPOSE")
     monkeypatch.setattr(routes_admin, "write_access_log", unavailable)
-    response = client.get(PREFIX+"/overview", headers=bearer(admin_data[0][0]))
+    response = client.get(PREFIX+endpoint, headers=bearer(admin_data[0][0]))
     assert response.status_code == 503 and response.headers["cache-control"] == "no-store"
     assert "DO-NOT-EXPOSE" not in response.text
 
@@ -355,3 +356,41 @@ def test_overview_drops_runs_that_have_no_owner(admin_data):
         with new_session() as db:
             db.query(AgentRun).filter(AgentRun.id.in_(created)).delete()
             db.commit()
+
+
+@pytest.mark.parametrize("identity,status", [("missing", 401), ("forged", 401), ("user", 403), ("admin", 200)])
+def test_admin_trends_authority_and_no_store(admin_data, identity, status):
+    users, *_ = admin_data
+    headers = {} if identity == "missing" else {"X-Myink-User": str(users[0].id)} if identity == "forged" else bearer(users[identity == "user"])
+    response = client.get(PREFIX + "/trends", headers=headers)
+    assert response.status_code == status, response.text
+    assert response.headers["cache-control"] == "no-store"
+
+
+def test_admin_trends_real_utc_aggregation_and_audit(admin_data):
+    users, books, task, runs, chapters = admin_data
+    stamp = datetime(2001, 2, 2, 23, 59, tzinfo=timezone.utc)
+    with new_session() as db:
+        for model, ids in ((User, [u.id for u in users]), (Project, [b.id for b in books]),
+                           (Task, [task.id]), (AgentRun, [r.id for r in runs])):
+            db.query(model).filter(model.id.in_(ids)).update({"created_at": stamp}, synchronize_session=False)
+        db.commit()
+    for book in books:
+        with tenant_session(book.id) as db:
+            db.query(Chapter).filter(Chapter.project_id == book.id).update({"created_at": stamp})
+    headers = bearer(users[0])
+    response = client.get(PREFIX + "/trends?start_date=2001-02-01&end_date=2001-02-03", headers=headers)
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["timezone"] == "UTC"
+    assert [p["day"] for p in data["items"]] == ["2001-02-01", "2001-02-02", "2001-02-03"]
+    assert data["items"][0]["run_count"] == 0
+    point = data["items"][1]
+    assert point["user_count"] == 2 and point["project_count"] == 2 and point["task_count"] == 1
+    assert point["chapter_count"] == 2 and point["run_count"] == 5
+    assert point["input_tokens"] == 1115 and point["output_tokens"] == 2230
+    assert point["cost_est"] == pytest.approx(111.5)
+    logs = client.get(PREFIX + "/access-logs?limit=100", headers=headers).json()["items"]
+    assert any(row["action"] == "admin.trends" and row["actor_id"] == str(users[0].id) for row in logs)
+    invalid = client.get(PREFIX + "/trends?start_date=2001-02-03&end_date=2001-02-01", headers=headers)
+    assert invalid.status_code == 422

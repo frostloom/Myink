@@ -24,6 +24,7 @@ import {
 } from '../../lib/labels'
 import { severityClass } from '../../lib/snapshotView'
 import { SnapshotView } from './SnapshotView'
+import { AdminTrends } from './AdminTrends'
 import {
   FieldRows,
   formatCost,
@@ -87,8 +88,9 @@ function FindingsPanel({ token, projectId, onForbidden }: {
         <RefreshButton onClick={resource.retry} />
       </div>
       <form className={styles.filters} aria-label="发现筛选" onSubmit={submit}>
-        <label><span>严重度</span><input className="input" maxLength={16}
-          value={draftSeverity} onChange={(event) => setDraftSeverity(event.target.value)} /></label>
+        <label><span>严重度</span><select className="input" value={draftSeverity} onChange={(event) => setDraftSeverity(event.target.value)}>
+          <option value="">全部程度</option>{['critical','major','minor','hint'].map(severity => <option key={severity} value={severity}>{severityLabel(severity)}</option>)}
+        </select></label>
         <label><span>章号</span><input className="input" type="number" min={1}
           value={draftChapter} onChange={(event) => setDraftChapter(event.target.value)} /></label>
         <button className="btn btn-primary" type="submit">筛选</button>
@@ -329,6 +331,8 @@ export function Analytics({ token, onForbidden }: { token: string; onForbidden: 
         <div><h2 id="analytics-heading">分析</h2></div>
         <RefreshButton onClick={resource.retry} />
       </div>
+      <AdminTrends token={token} onForbidden={onForbidden} />
+      <h3>用户与作品明细</h3>
       <form className={styles.filters} role="search" aria-label="用户筛选" onSubmit={submit}>
         <label><span>搜索用户</span><input className="input" maxLength={128}
           value={draft} onChange={(event) => setDraft(event.target.value)} /></label>

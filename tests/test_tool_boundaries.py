@@ -46,9 +46,11 @@ def test_one_response_cannot_exceed_execution_budget(monkeypatch, budget):
     assert response.content == "final"
     if budget:
         final = chain.messages[-1]
-        replies = [m for m in final if m["role"] == "tool"]
+        assert not any(m.get('tool_calls') or m['role'] == 'tool' for m in final)
+        summary = next(m['content'] for m in final if '本环节已完成的只读查阅结果' in m.get('content', ''))
+        replies = json.loads(summary.split('\n', 1)[1])
         assert [m["tool_call_id"] for m in replies] == [f"c{i}" for i in range(5)]
-        assert all("TOOL_BUDGET_EXCEEDED" in m["content"] for m in replies[budget:])
+        assert all("TOOL_BUDGET_EXCEEDED" in m["result"] for m in replies[budget:])
         assert all(t.get("skipped") for t in trace[budget:])
 
 
@@ -103,7 +105,7 @@ def test_tool_error_can_be_followed_by_valid_lookup_without_restarting_budget(mo
     monkeypatch.setattr(nodes,'execute_tool',execute)
     response,trace=run_loop(monkeypatch,chain,2)
     assert response.content=='final'
-    replies=[m for batch in chain.messages for m in batch if m['role']=='tool']
+    replies=[{'content':m['content']} for batch in chain.messages for m in batch if m['role']=='tool' or '本环节已完成的只读查阅结果' in m.get('content','')]
     assert any('UNKNOWN_TOOL' in r['content'] for r in replies)
     assert any('injury' in r['content'] for r in replies)
     assert len(trace)==2

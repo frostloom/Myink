@@ -1,9 +1,11 @@
 """Central platform resources and published writer model selection policy."""
 from copy import deepcopy
+from typing import Literal
+from uuid import NAMESPACE_URL, uuid5
 
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import update
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
 from myink.db import new_session
@@ -52,6 +54,7 @@ class ModelCatalogOut(BaseModel):
 
 
 class PlatformConnectionOut(BaseModel):
+    origin: Literal['builtin', 'custom'] = 'custom'
     id: str
     name: str
     protocol: str
@@ -77,6 +80,47 @@ def empty_configuration():
     return {'version': 0, 'connections': {}, 'model_routes': {}, 'prompts': {}, 'genre_packs': {}}
 
 
+# A deployment model is imported once, then follows ordinary administrator policy.
+BUILTIN_MODEL_ID = str(uuid5(NAMESPACE_URL, 'myink:platform-deployment-model'))
+
+
+def initialize_builtin_model(db, deployment_settings=None) -> bool:
+    """Import deployment credentials during explicit CLI initialization, never API reads.
+
+    Caller owns the transaction. The durable marker prevents later initialization
+    from undoing an administrator's deletion or replacing edited credentials.
+    """
+    from myink.config import settings
+    from myink.providers.credentials import encrypt_api_key
+    deployment_settings = settings if deployment_settings is None else deployment_settings
+    if not (deployment_settings.platform_model_api_key and deployment_settings.platform_model_base_url
+            and deployment_settings.platform_model_name):
+        return False
+    row = db.scalar(select(PlatformConfiguration).where(PlatformConfiguration.id == 1).with_for_update())
+    document = deepcopy(row.document) if row else {k: v for k, v in empty_configuration().items() if k != 'version'}
+    if document.get('builtin_model_imported'):
+        return False
+    connections = document.setdefault('connections', {})
+    if BUILTIN_MODEL_ID not in connections:
+        connections[BUILTIN_MODEL_ID] = {
+            'name': deployment_settings.platform_model_name,
+            'model': deployment_settings.platform_model_name,
+            'protocol': deployment_settings.platform_model_protocol,
+            'base_url': deployment_settings.platform_model_base_url,
+            'api_key_encrypted': encrypt_api_key(deployment_settings.platform_model_api_key),
+            'enabled': True, 'user_visible': True, 'origin': 'builtin',
+        }
+    document.setdefault('model_routes', {}).setdefault('writer', f'custom:{BUILTIN_MODEL_ID}')
+    document['builtin_model_imported'] = True
+    if row:
+        row.document = document
+        row.version += 1
+    else:
+        db.add(PlatformConfiguration(id=1, version=1, document=document))
+    db.flush()
+    return True
+
+
 def load_configuration() -> dict:
     # Storage errors must propagate: falling back would silently bypass policy.
     with new_session() as db:
@@ -90,7 +134,8 @@ def public_configuration(config=None) -> dict:
     items = public_connections(config['connections'])
     for item in items:
         record = config['connections'][item['id']]
-        item.update(enabled=record.get('enabled', True), user_visible=record.get('user_visible', True))
+        item.update(enabled=record.get('enabled', True), user_visible=record.get('user_visible', True),
+                    origin=record.get('origin', 'custom'))
     return {'version': config['version'], 'model_connections': items,
             'user_defaults': platform_defaults(config),
             **{k: deepcopy(config[k]) for k in ('model_routes', 'prompts', 'genre_packs')}}
@@ -107,7 +152,8 @@ def save_configuration(body: ConfigurationBody) -> dict:
         cid, record = connection_record(item, old['connections'])
         if cid in connections:
             raise HTTPException(400, 'Duplicate connection id')
-        connections[cid] = {**record, 'enabled': item.enabled, 'user_visible': item.user_visible}
+        connections[cid] = {**record, 'enabled': item.enabled, 'user_visible': item.user_visible,
+                            'origin': old['connections'].get(cid, {}).get('origin', 'custom')}
     for role, ref in body.model_routes.items():
         if role not in PLATFORM_ROLES or not ref.startswith('custom:') or not connections.get(ref[7:], {}).get('enabled'):
             raise HTTPException(400, 'Routes must reference enabled platform models')
@@ -129,6 +175,8 @@ def save_configuration(body: ConfigurationBody) -> dict:
                                   platform_defaults(old))
     document = {'user_defaults': defaults, 'connections': connections, 'model_routes': body.model_routes,
                 'prompts': body.prompts, 'genre_packs': genres}
+    if old.get('builtin_model_imported'):
+        document['builtin_model_imported'] = True
     with new_session() as db:
         if body.version == 0:
             db.add(PlatformConfiguration(id=1, version=1, document=document))

@@ -26,6 +26,13 @@ const liveTask = vi.hoisted(() => ({
   }>,
 }))
 
+vi.mock('../lib/writingResources', async original => ({
+  ...await original<typeof import('../lib/writingResources')>(),
+  writingResources: {
+    updates: async () => ({items:[]}),
+    snapshot: async () => ({revision:0,configured:false,selections:[]}),
+  },
+}))
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({ logout: vi.fn(), session: { userId: 'test-user', username: 'alice' } }),
 }))
@@ -636,7 +643,7 @@ it('blocks a second enqueue while the first start request is pending', async () 
   const start = await screen.findByRole('button', { name: '开始写' })
   fireEvent.click(start)
   fireEvent.click(start)
-  expect(api.generateShort).toHaveBeenCalledTimes(1)
+  await waitFor(() => expect(api.generateShort).toHaveBeenCalledTimes(1))
   expect(screen.getByRole('status').textContent).toContain('正在提交写作任务')
 })
 

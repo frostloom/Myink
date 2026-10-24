@@ -11,6 +11,7 @@ import type {
 import type { GenreFields } from './genrePacks'
 
 export interface PlatformConnection extends ModelConnection {
+  origin?: 'builtin' | 'custom'
   enabled: boolean
   user_visible: boolean
 }
@@ -31,7 +32,8 @@ export interface PlatformConfigurationData {
   genre_packs: Record<string, GenreFieldsResponse>
 }
 
-export interface PlatformConfigurationInput extends Omit<PlatformConfigurationData, 'model_connections' | 'genre_packs'> {
+export interface PlatformConfigurationInput
+  extends Omit<PlatformConfigurationData, 'model_connections' | 'genre_packs'> {
   model_connections: PlatformConnectionInput[]
   genre_packs: Record<string, GenreFields>
 }
@@ -41,13 +43,19 @@ export interface PlatformReadiness {
   checks: Array<{ role: string; ready: boolean; reason: string | null }>
 }
 
+export interface PromptRoleTemplates {
+  role: string
+  templates: Array<{ id: string; title: string; content: string; source: string;
+    editable_content?: string; fixed_content?: string; description?: string; when?: string }>
+}
+
 const PATH = '/admin/configuration'
 
 export const platformApi = {
-  getReadiness: () =>
-    authenticatedGet<PlatformReadiness>(`${PATH}/readiness`, getToken() ?? ''),
-  getConfiguration: () =>
-    authenticatedGet<PlatformConfigurationData>(PATH, getToken() ?? ''),
+  getPromptTemplates: () =>
+    authenticatedGet<PromptRoleTemplates[]>(`${PATH}/prompt-templates`, getToken() ?? ''),
+  getReadiness: () => authenticatedGet<PlatformReadiness>(`${PATH}/readiness`, getToken() ?? ''),
+  getConfiguration: () => authenticatedGet<PlatformConfigurationData>(PATH, getToken() ?? ''),
   updateConfiguration: (body: PlatformConfigurationInput) =>
     authenticatedSend<PlatformConfigurationData>('PUT', PATH, getToken() ?? '', body),
   listModels: (body: ModelProbeRequest) =>

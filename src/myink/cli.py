@@ -54,6 +54,15 @@ def init(
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
     console.print("[bold]1/3[/] 建表（PostgreSQL + pgvector）...")
     Base.metadata.create_all(get_admin_engine())
+    from myink.db import ensure_writing_resource_snapshot_fk
+    ensure_writing_resource_snapshot_fk()
+    from sqlalchemy.orm import Session
+    from myink.writing_resources import initialize_builtin_resources
+    from myink.platform_configuration import initialize_builtin_model
+    with Session(get_admin_engine()) as resource_db:
+        initialize_builtin_resources(resource_db)
+        initialize_builtin_model(resource_db)
+        resource_db.commit()
     ensure_project_creation()
     console.print("[bold]1.5/3[/] 补齐唯一约束 + 组合索引/HNSW（幂等，评审 A6/存储建议）...")
     ensure_unique_constraints()

@@ -433,7 +433,8 @@ def _maybe_reflexion(project_id: str, chapter_seq: int, task_id: str) -> None:
 def _run(body: dict, task_id: str, task_type: str, project_id: str) -> str:
     owner = uuid.uuid4().hex
     try:
-        with bind_task_budget(task_id, owner):
+        from myink.writing_resource_runtime import bind_resources
+        with bind_task_budget(task_id, owner), bind_resources((body.get("payload") or {}).get("writing_resources") or {}):
             return _run_bound(body, task_id, task_type, project_id)
     except (TaskBudgetPaused, TaskBudgetUnavailable) as exc:
         status = record_budget_pause(task_id, exc, expected_owner=owner)
@@ -627,6 +628,8 @@ def process(body: dict, worker_id: str | None = None) -> str:
             with new_session() as db:
                 task = db.get(Task, uuid.UUID(task_id))
                 persisted_snapshot = (task.payload or {}).get("_task_budget")
+                body = {**body, "payload": {**(body.get("payload") or {}),
+                         "writing_resources": (task.payload or {}).get("writing_resources")}}
             ensure_task_budget(task_id, project_id, body["user_id"], persisted_snapshot)
             decision = _run(body, task_id, task_type, project_id)
 

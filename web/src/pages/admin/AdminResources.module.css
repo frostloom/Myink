@@ -1,0 +1,451 @@
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 40px 32px;
+  color: var(--ink);
+}
+.pageHead,
+.toolbar,
+.cardHead,
+.dialogHead,
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.pageHead h1 {
+  margin: 0;
+}
+.pageHead p,
+.address {
+  color: var(--ink-muted);
+}
+.toolbar {
+  margin: 28px 0;
+  flex-wrap: wrap;
+}
+.toolbar input:not([type="checkbox"]) {
+  flex: 1;
+  min-width: 200px;
+  max-width: 420px;
+}
+.toolbar span {
+  margin-right: auto;
+  color: var(--ink-muted);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 20px;
+}
+.card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  padding: 24px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.card h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  overflow-wrap: anywhere;
+}
+.card code,
+.address {
+  overflow-wrap: anywhere;
+}
+.address {
+  font-size: 0.85rem;
+  margin: 0;
+}
+.cardHead {
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+}
+.provider {
+  color: var(--accent);
+  font-weight: 600;
+}
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+.tags span {
+  background: var(--surface-2);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.card footer {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.empty {
+  border: 1px dashed var(--line-strong);
+  padding: 64px 24px;
+  text-align: center;
+  color: var(--ink-muted);
+  border-radius: var(--radius-md);
+}
+.dialog {
+  width: min(600px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  color: var(--ink);
+  box-shadow: var(--shadow-lift);
+}
+.dialog::backdrop {
+  background: rgb(0 0 0 / 40%);
+}
+.dialogHead {
+  margin-bottom: 20px;
+}
+.dialogHead h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+.fields {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.fields > label {
+  display: grid;
+  gap: 8px;
+}
+.fields > button {
+  justify-self: start;
+}
+.options,
+.probe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.actions {
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 16px;
+}
+.suggestions button {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .page {
+    padding: 24px 16px;
+  }
+  .pageHead {
+    align-items: flex-start;
+  }
+  .pageHead p {
+    max-width: 190px;
+  }
+  .dialog {
+    padding: 20px;
+  }
+}
+
+@media (min-width: 520px) {
+  .fields {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .fields > label:nth-child(3),
+  .fields > label:nth-child(6),
+  .fields > button,
+  .options,
+  .probe {
+    grid-column: 1 / -1;
+  }
+}
+.dialog .actions {
+  position: sticky;
+  bottom: -28px;
+  background: var(--surface-1);
+  padding-bottom: 20px;
+}
+.replacement {
+  display: grid;
+  gap: 8px;
+}
+.hint {
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+  margin: 0 0 20px;
+}
+@media (max-width: 640px) {
+  .dialog .actions {
+    bottom: -20px;
+  }
+}
+
+.resourceCard {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.resourceCard:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-soft);
+}
+.resourceCard:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.cardTitle {
+  font-size: 1.1rem;
+  overflow-wrap: anywhere;
+}
+.preview {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  font-size: 0.88rem;
+  line-height: 1.7;
+  color: var(--ink-muted);
+  min-height: 4.5em;
+}
+.editHint {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 0.8rem;
+  color: var(--accent);
+}
+.resourceFields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.resourceFields > label {
+  display: grid;
+  gap: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .resourceCard {
+    transition: none;
+  }
+}
+
+.templates {
+  margin: 20px 0 28px;
+}
+.templates h3 {
+  margin: 0 0 12px;
+}
+.templates details {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.templates summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.templateContent {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--surface-2);
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+.templates small {
+  display: block;
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.resourceTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 20px;
+}
+.resourceTabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.resourceTabs button[aria-pressed="true"] {
+  background: var(--surface-2);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.resourceTabs span {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+.resourceGrid {
+  grid-auto-rows: 1fr;
+}
+.resourceGrid .resourceCard {
+  gap: 16px;
+  min-height: 272px;
+  padding: 22px;
+}
+.resourceBadges {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+.resourceBadges > span:first-child {
+  color: var(--accent);
+  background: var(--surface-2);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.resourceGrid .cardTitle {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.5;
+}
+.resourceGrid .preview {
+  margin: 0;
+  max-height: 5.1em;
+}
+.resourceMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+.resourceGrid .editHint {
+  margin-top: 0;
+}
+.readableContent {
+  padding: 16px 20px;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  margin: 20px 0;
+}
+.readableContent dl {
+  margin: 0;
+}
+.readableContent dl > div + div {
+  margin-top: 20px;
+}
+.readableContent dt {
+  font-weight: 600;
+  color: var(--ink);
+}
+.readableContent dd {
+  margin: 6px 0 0;
+  color: var(--ink-muted);
+}
+.readableContent p {
+  white-space: pre-wrap;
+  margin: 6px 0;
+}
+.readableContent h4 {
+  margin: 14px 0 8px;
+}
+.resourceFields {
+  display: grid;
+  gap: 20px;
+}
+.resourceFields fieldset {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+.resourceFields legend {
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+  padding: 0 6px;
+}
+.resourceFields textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+@media (max-width: 900px) {
+  .pageHead {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .pageHead > button {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .pageHead h1 {
+    font-size: 1.8rem;
+  }
+  .pageHead p {
+    max-width: 100%;
+    line-height: 1.7;
+  }
+}
+
+.resourceTabs button[aria-pressed='true'],
+.resourceBadges > span:first-child,
+.resourceGrid .editHint {
+  color: var(--ink);
+}
+.pageHead > div { min-width: 0; }
+@media (max-width: 900px) {
+  .pageHead > div { flex: 1 1 100%; }
+  .pageHead p { overflow-wrap: anywhere; }
+}
+
+.dialog textarea { max-height: none; overflow-y: hidden; resize: none; }
+.dialog fieldset { min-width: 0; }
+
+.toolbar label { display: inline-flex; align-items: center; gap: 8px; }
+.usage { margin: 0; font-size: .82rem; line-height: 1.6; min-height: 2.8em; color: var(--ink-muted); overflow-wrap: anywhere; }
+.referenceEntries { display:grid; gap:12px; }
+.referenceEntry { background:var(--surface-1); border:1px solid var(--line); border-radius:var(--radius-sm); padding:16px; min-width:0; }
+.referenceEntry>summary { cursor:pointer; overflow-wrap:anywhere; }
+.referenceEntry>summary>strong { margin-left:6px; }
+.referenceEntry>summary>span { display:block; font-size:var(--text-small); color:var(--ink-subtle); margin-top:8px; }
+.referenceEntry[open]>summary { border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:16px; }

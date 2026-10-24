@@ -286,9 +286,11 @@ def chain_stub(monkeypatch):
 
 def test_short_creation_turn_returns_reply_and_card(temp_user, chain_stub):
     stub = chain_stub([_STUB_TURN])
-    reply, patch, error, resp = generate_short_creation_turn(
-        [{"role": "user", "content": "我想写个渡口故事"}], creation.default_card(),
-        user_id=temp_user)
+    from myink.writing_resource_runtime import bind_resources
+    with bind_resources({}):  # No knowledge library: preserve the single JSON call.
+        reply, patch, error, resp = generate_short_creation_turn(
+            [{"role": "user", "content": "我想写个渡口故事"}], creation.default_card(),
+            user_id=temp_user)
     assert error is None
     assert reply == "主角最大的压力是什么？"
     assert patch["protagonist_pressure"] == "守着渡口的生计，也守着不肯走的儿子"

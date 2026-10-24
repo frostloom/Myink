@@ -1,6 +1,5 @@
 // 创作设置页：本书题材字段 + 每章目标字数。
-// 文风不在这里——它在建书那一刻就选定了（project_settings.style_profile 是当时那份副本），
-// 建书后不可换；要改文风请去账号级文风库改档案，再建新书。
+// 原题材/文风保留建书历史；启用写作资源后，以当前资源快照为准。
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
@@ -10,6 +9,7 @@ import { formatApiError } from '../lib/apiError'
 import { isManagedPack, type BookGenrePack } from '../lib/genrePacks'
 import type { Project, ProjectSettings } from '../types'
 import styles from './SettingsPage.module.css'
+import { WritingResourcePicker } from '../components/WritingResourcePicker'
 
 export default function SettingsPage() {
   const { projectId = '' } = useParams()
@@ -100,8 +100,11 @@ export default function SettingsPage() {
           {banner && <div className="banner banner-error">{banner}</div>}
           {ok && <div className="banner banner-warning">{ok}</div>}
 
+          <WritingResourcePicker key={projectId} projectId={projectId} />
+
           <section className={`panel ${styles.section}`}>
             <h2 className={styles.sectionTitle}>本书题材</h2>
+            <p className={styles.hint}>以下为建书历史题材；启用写作资源后，当前题材与主辅顺序以「本书写作资源」中已保存的快照为准。</p>
             {genrePack ? (
               <>
                 <p className={styles.hint}>
@@ -109,7 +112,7 @@ export default function SettingsPage() {
                   {genrePack.secondary_name ? ` · 辅题材：${genrePack.secondary_name}` : ''}
                 </p>
                 <p>{genrePack.selling_point}</p>
-                <p className={styles.hint}>题材由平台统一发布，本书保留建书时的快照。</p>
+                <p className={styles.hint}>此处保留建书时的历史快照，不随资源选择更新。</p>
               </>
             ) : (
               <p className={styles.hint}>本书创建时未选题材包，不回填。新书请在建书页选择。</p>
