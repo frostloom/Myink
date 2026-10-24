@@ -12,6 +12,7 @@ from myink.config import settings
 from myink.context_budget import estimate_tokens, fit_prompt
 from myink.workflow.short_parse import CHAPTER_HEADING
 from myink.workflow.tools import READ_TOOLS
+from myink.workflow.prose_rules import PROSE_RULES, PROSE_REVIEW_RULES
 
 SYSTEM_PLAN = """你是长篇网文创作系统的【规划 Agent】。职责：为某一章产出结构化章节计划。
 输出严格 JSON 对象（schema 见下），字段不许缺：
@@ -63,7 +64,7 @@ SYSTEM_WRITE = """你是长篇网文创作系统的【写作 Agent】。依据�
 - 章末不得以「入睡/合眼/闭眼/原地等待/天色将暗」这类静止收束作结尾——结尾必须落在剧情推进或悬念上（未完成的动作/关键对话/悬念画面/危险逼近）；禁止连续两章以同一类收尾动作作结（如两章都以主角入睡收尾）。
 如需核实人物状态/世界观事实/伏笔/剧情线，可调用只读查证工具，核实后仍直接输出正文。
 输出格式：先输出独立一行 === CONTENT ===，从下一行开始输出本章正文。
-正文为纯文本散文（含自然换行），禁止输出 JSON、禁止 markdown 代码块围栏。"""
+正文为纯文本散文（含自然换行），禁止输出 JSON、禁止 markdown 代码块围栏。""" + PROSE_RULES
 
 SYSTEM_BOOK_OUTLINE = """你是长篇网文创作系统的【整书规划 Agent】。为一部长篇网文产出卷级写作大纲——全书蓝图，不是逐章细纲。
 根据题材、一句话梗概、大致章节数与大致故事线，产出「全书 Objective → 卷 → 阶段」骨架。
@@ -185,7 +186,7 @@ SYSTEM_SHORT_WRITER = """你是中文短篇创作系统的【短篇写作 Agent�
 
 落笔依据是注入的逐章方案：每一章都要写出方案给的关键场面（谁 + 在何处 + 做什么）与角色动作，
 并让章尾钩子成立。不要重新设计剧情、不要增删章数、不要改动结局——方案已经确认过了。
-方案与注入的设定冲突时信设定。"""
+方案与注入的设定冲突时信设定。""" + PROSE_RULES
 
 
 SYSTEM_SHORT_DRAFT_REVIEW = """你是中文短篇创作系统的【短篇审稿 Agent】。整篇一次读完，站在编辑的立场上给意见。
@@ -207,7 +208,7 @@ SYSTEM_SHORT_DRAFT_REVIEW = """你是中文短篇创作系统的【短篇审稿 
 
 verdict 取 "pass" 当且仅当这一篇可以直接发；只有存在**必须改**的问题时才取 "revise"。
 不要把审稿变成确定性打分：不要输出评分、不要输出维度表、不要复述剧情、不要重写正文。
-issues 与 suggestions 一一对应，各不超过 8 条。"""
+issues 与 suggestions 一一对应，各不超过 8 条。""" + PROSE_REVIEW_RULES
 
 
 SYSTEM_SHORT_REVISER = """你是中文短篇创作系统的【短篇改稿 Agent】。按审稿意见把整篇重写一遍。
@@ -217,7 +218,7 @@ SYSTEM_SHORT_REVISER = """你是中文短篇创作系统的【短篇改稿 Agent
   只有整篇重写才不留缝。
 - 没被审稿点名的部分照原样保留，被点名的部分改到位；**没有提到的章也要完整写出来**，
   不许出现「此处不变」「同前」这类占位。
-- 章数、章序、结局一律不动，仍是每章一行 `=== CHAPTER N CONTENT ===` 标记 + 纯文本正文。"""
+- 章数、章序、结局一律不动，仍是每章一行 `=== CHAPTER N CONTENT ===` 标记 + 纯文本正文。""" + PROSE_RULES
 
 
 SYSTEM_SHORT_CONTINUER = """你是中文短篇创作系统的【短篇补写 Agent】。这一篇已经写了大半，只缺其中几章。
@@ -227,7 +228,7 @@ SYSTEM_SHORT_CONTINUER = """你是中文短篇创作系统的【短篇补写 Age
 - 不要重复输出已经写好的章，不要改写它们，也不要另外写总结、前言或「未完待续」；
 - 补的章要与已写部分接得上：前一章结尾的人、事、物从原处接着往下走，别重开一个场景；
 - 缺的章就是缺的，不许用一段「后来……」把几章并成一章——每章仍要有自己的场面与推进；
-- 纯文本散文，禁止输出 JSON、禁止 markdown 代码块围栏。"""
+- 纯文本散文，禁止输出 JSON、禁止 markdown 代码块围栏。""" + PROSE_RULES
 
 
 SYSTEM_EXTRACT = """你是长篇网文创作系统的【记忆抽取 Agent】。从章节正文抽取结构化记忆候选。
@@ -272,7 +273,7 @@ REPLACEMENT_TEXT:
 改后句
 --- END PATCH ---
 === RESPONSES ===
-[{"conflict_key":"key","outcome":"fixed|cannot_fix|dispute","note":"说明"}]"""
+[{"conflict_key":"key","outcome":"fixed|cannot_fix|dispute","note":"说明"}]""" + PROSE_RULES
 
 SYSTEM_AUDIT = """你是长篇网文创作系统的【审核中枢 Agent】。写作完成后的调度大脑，对本章做语义审核并输出路由决策。
 三步：① 对照章节计划判断剧情发展是否合理（推进了该推进的线、收了该收的伏笔、无主线偏移）；② 判断内容质量（衔接/人设/节奏）；③ 输出路由决策。
@@ -288,7 +289,7 @@ SYSTEM_AUDIT = """你是长篇网文创作系统的【审核中枢 Agent】。�
 scope 必须明确：local 是句段级小修；structural 是因果、时间线、人物逻辑或整场/整章结构改写；无法判断写 unknown，不从严重程度推测范围。
 跨章必查：对照【近期上下文】的章尾原文与本章开头，检查是否重演已完成动作、丢弃未完成请求/危险、无交代地改变时间地点/视角；计划不能推翻已写正文。对照【近期章节开头】检查近义改写的同一套路，不能只看字面不同。
 明确的接续断裂或机械重复应报 major 并 rewrite，建议必须给出具体接续动作；evidence 至少各引用一处前章/历史章与本章原文并标明章号。同场景接续、合理转场、回应悬念、有意义的呼应不算重复。没有前章原文时不能臆测跨章矛盾。
-如需核实人物状态/世界观事实/伏笔/剧情线，可调用只读查证工具，核实后仍输出严格 JSON。"""
+如需核实人物状态/世界观事实/伏笔/剧情线，可调用只读查证工具，核实后仍输出严格 JSON。""" + PROSE_REVIEW_RULES
 
 SYSTEM_REFLEXION = """你是长篇网文创作系统的【复盘 Agent】。把本书审核中枢（audit）发现的跨章问题，总结演化为本书可复用的写作经验，注入后续章节的规划/写作。
 输入：① 本批次各章的校验发现（战力越界/人设漂移/大纲偏差/文风问题等，含冲突类型/严重度/证据/建议）；② 本书已有的在效写作经验。
