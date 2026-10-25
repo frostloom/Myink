@@ -1,6 +1,6 @@
 // 创作设置页：本书题材字段 + 每章目标字数。
 // 原题材/文风保留建书历史；启用写作资源后，以当前资源快照为准。
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
@@ -26,13 +26,16 @@ export default function SettingsPage() {
   const [banner, setBanner] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
+  const requestVersion = useRef(0)
+  const load = useCallback(async (version: number) => {
+    if (version !== requestVersion.current) return
     setBanner(null)
     try {
       const [s, proj] = await Promise.all([
         api.getSettings(projectId),
         api.listProjects(),
       ])
+      if (version !== requestVersion.current) return
       setSettings(s)
       if (isManagedPack(s.genre_pack)) {
         setGenrePack(s.genre_pack)
@@ -44,12 +47,20 @@ export default function SettingsPage() {
       // 该书已显式置空 → 回落默认 3000（与生成侧 or 3000 语义一致），不留上一本书残留值
       setTargetWords(cur?.target_words != null ? String(cur.target_words) : '3000')
     } catch (err) {
-      setBanner(formatApiError(err, '设置加载失败'))
+      if (version === requestVersion.current) setBanner(formatApiError(err, '设置加载失败'))
     }
   }, [projectId])
 
   useEffect(() => {
-    void load()
+    const version = ++requestVersion.current
+    setSettings(null)
+    setGenrePack(null)
+    setTargetWords('3000')
+    setBusy(null)
+    setBanner(null)
+    setOk(null)
+    void load(version)
+    return () => { requestVersion.current += 1 }
   }, [load])
 
   function showError(err: unknown) {
@@ -58,6 +69,9 @@ export default function SettingsPage() {
   }
 
   async function saveTargetWords() {
+    if (!settings) return
+    const version = requestVersion.current
+    const isCurrent = () => version === requestVersion.current
     const words = Number(targetWords)
     if (!Number.isInteger(words) || words < 500 || words > 20000) {
       setBanner('目标字数需为 500–20000 的整数')
@@ -68,12 +82,14 @@ export default function SettingsPage() {
     setOk(null)
     try {
       await api.updateProject(projectId, { target_words: words })
-      await load()
+      if (!isCurrent()) return
+      await load(version)
+      if (!isCurrent()) return
       setOk('目标字数已保存，对新生成章节生效')
     } catch (err) {
-      showError(err)
+      if (isCurrent()) showError(err)
     } finally {
-      setBusy(null)
+      if (isCurrent()) setBusy(null)
     }
   }
 
@@ -140,7 +156,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 className="btn btn-primary"
-                disabled={busy !== null}
+                disabled={busy !== null || !settings}
                 onClick={() => void saveTargetWords()}
               >
                 {busy === 'words' ? '保存中…' : '保存目标字数'}

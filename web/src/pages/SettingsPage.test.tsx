@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from 'react-router-dom'
 import { afterEach, expect, it, vi } from 'vitest'
 import SettingsPage from './SettingsPage'
 import { api } from '../lib/api'
@@ -51,4 +51,49 @@ it('keeps published genre snapshots read only and never offers root editing or r
  expect(screen.queryByRole('textbox')).toBeNull()
  expect(screen.queryByRole('button',{name:'保存本书题材'})).toBeNull()
  expect(screen.queryByRole('button',{name:'恢复建书时的题材字段'})).toBeNull()
+})
+
+
+it.each(['success', 'failure'] as const)('ignores a late project A settings %s after navigating to B', async (outcome) => {
+  let finish!: (value: Awaited<ReturnType<typeof api.getSettings>>) => void
+  let fail!: (error: Error) => void
+  const settings = { style_profile: {}, skill_pack: null, genre_pack: {}, model_routes: {}, model_connections: [], version: 1 }
+  vi.mocked(api.getSettings).mockImplementation(pid => pid === 'a'
+    ? new Promise((resolve, reject) => { finish = resolve; fail = reject }) : Promise.resolve(settings))
+  vi.mocked(api.listProjects).mockResolvedValue([
+    { id: 'a', title: 'A', genre: '悬疑', current_chapter: 0, target_words: 1500 },
+    { id: 'b', title: 'B', genre: '悬疑', current_chapter: 0, target_words: 6000 },
+  ])
+  const router = createMemoryRouter([{ path: '/projects/:projectId/settings', element: <SettingsPage /> }], { initialEntries: ['/projects/a/settings'] })
+  render(<RouterProvider router={router} />)
+  await act(async () => { await router.navigate('/projects/b/settings') })
+  await waitFor(() => expect((screen.getByRole('spinbutton') as HTMLInputElement).value).toBe('6000'))
+  await act(async () => { if (outcome === 'success') finish(settings); else fail(new Error('old load failure')) })
+  expect((screen.getByRole('spinbutton') as HTMLInputElement).value).toBe('6000')
+  expect(screen.queryByText('设置加载失败')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: '保存目标字数' }))
+  await waitFor(() => expect(api.updateProject).toHaveBeenCalledWith('b', { target_words: 6000 }))
+})
+
+it('isolates an old save failure from the new project save in progress', async () => {
+  let failA!: (error: Error) => void
+  vi.mocked(api.getSettings).mockResolvedValue({ style_profile: {}, skill_pack: null, genre_pack: {}, model_routes: {}, model_connections: [], version: 1 })
+  vi.mocked(api.listProjects).mockResolvedValue([
+    { id: 'a', title: 'A', genre: '悬疑', current_chapter: 0, target_words: 1500 },
+    { id: 'b', title: 'B', genre: '悬疑', current_chapter: 0, target_words: 6000 },
+  ])
+  vi.mocked(api.updateProject).mockImplementation(pid => pid === 'a'
+    ? new Promise((_resolve, reject) => { failA = reject }) : new Promise(() => {}))
+  const router = createMemoryRouter([{ path: '/projects/:projectId/settings', element: <SettingsPage /> }], { initialEntries: ['/projects/a/settings'] })
+  render(<RouterProvider router={router} />)
+  await waitFor(() => expect((screen.getByRole('spinbutton') as HTMLInputElement).value).toBe('1500'))
+  fireEvent.click(screen.getByRole('button', { name: '保存目标字数' }))
+  await act(async () => { await router.navigate('/projects/b/settings') })
+  await waitFor(() => expect((screen.getByRole('spinbutton') as HTMLInputElement).value).toBe('6000'))
+  const saveB = screen.getByRole('button', { name: '保存目标字数' }) as HTMLButtonElement
+  expect(saveB.disabled).toBe(false)
+  fireEvent.click(saveB)
+  await act(async () => failA(new Error('old save failure')))
+  expect(screen.queryByText('old save failure')).toBeNull()
+  expect((screen.getByRole('button', { name: '保存中…' }) as HTMLButtonElement).disabled).toBe(true)
 })
