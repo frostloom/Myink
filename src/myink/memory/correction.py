@@ -23,6 +23,7 @@ import uuid
 from sqlalchemy import delete as sa_delete, select
 from sqlalchemy.orm import Session
 
+from myink.memory.candidate_identity import same_proposal
 from myink.models import CharacterState, EmbeddingRow, Event, Fact, Foreshadow, MemoryCandidate, Relation
 
 # 自由文本宽松匹配阈值（字符级 SequenceMatcher 比率，0.85 容忍措辞抖动）
@@ -135,8 +136,15 @@ def diff_changeset(persisted: list[dict], new_candidates: list[dict]) -> dict:
     unmatched = list(persisted)
     added: list[dict] = []
     keep = 0
+    seen: list[dict] = []
     for cand in new_candidates:
         payload = cand.get("payload") or {}
+        # One extraction can repeat a proposal with different confidence or
+        # evidence metadata. Do not consume its live match then add it again.
+        if any(previous["kind"] == cand["kind"] and same_proposal(
+                cand["kind"], previous.get("payload") or {}, payload) for previous in seen):
+            continue
+        seen.append(cand)
         hit = next((m for m in unmatched if _matches(cand["kind"], payload, m)), None)
         if hit is not None:
             unmatched.remove(hit)

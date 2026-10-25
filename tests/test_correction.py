@@ -388,3 +388,33 @@ def test_correction_still_respects_explicit_rejection(temp_project):
         report = correction.correct_chapter_memory(db, project_id=uuid.UUID(temp_project),
                                                    chapter_seq=1, new_candidates=[candidate])
         assert report["pool"]["add_to_pool"] == 0
+
+
+@pytest.mark.parametrize("already_live", [False, True])
+def test_correction_deduplicates_one_extraction_before_matching(temp_project, already_live):
+    proposal = _cand("fact", {"content": "主角不能使用火系法术", "is_hard": True})
+    repeated = {**proposal, "confidence": .7, "payload": {**proposal["payload"], "confidence": .7}}
+    with tenant_session(temp_project) as db:
+        if already_live:
+            db.add(Fact(project_id=temp_project, source_chapter=1, content="主角不能使用火系法术",
+                        is_hard=True, confirm_status="confirmed"))
+            db.add(MemoryCandidate(project_id=temp_project, source_chapter=1, status="confirmed", **proposal))
+            db.flush()
+        report = correction.correct_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=1,
+                                                   new_candidates=[proposal, repeated])
+        assert report["changeset"]["keep"] == (1 if already_live else 0)
+        assert report["pool"]["add_to_pool"] == (0 if already_live else 1)
+        db.flush()
+        assert db.query(MemoryCandidate).filter_by(status="pending").count() == (0 if already_live else 1)
+
+
+def test_correction_does_not_merge_distinct_similar_facts(temp_project):
+    with tenant_session(temp_project) as db:
+        db.add(Fact(project_id=temp_project, source_chapter=1, content="主角只能使用火系法术",
+                    confirm_status="confirmed"))
+        db.flush()
+        report = correction.correct_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=1,
+            new_candidates=[_cand("fact", {"content": "主角只能使用火系法术"}),
+                            _cand("fact", {"content": "主角只能使用冰系法术"})])
+        assert report["changeset"]["keep"] == 1
+        assert report["pool"]["add_to_pool"] == 1
