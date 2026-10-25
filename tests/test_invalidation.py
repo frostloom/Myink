@@ -372,3 +372,20 @@ def test_rewrite_replay_respects_rejected_restoration(temp_project):
                                review={"mode": "revise", "applied": True}, **proposal))
         db.flush()
         assert nodes._reapply_pool_for_rewrite(db, temp_project, 1, [proposal]) == []
+
+
+def test_invalidating_later_relation_keeps_retained_same_chapter_rewrite(temp_project):
+    with tenant_session(temp_project) as db:
+        _relation_change(db, temp_project, 1, "ally")
+        _relation_change(db, temp_project, 2, "hostile")
+        invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=2)
+        for seq, relation_type in [(2, "hostile"), (3, "knows")]:
+            nodes._persist_candidates(db, temp_project, seq, [{"kind": "relation_change", "payload": {
+                "source_id": str(CID), "target_id": str(CID2), "relation_type": relation_type,
+                "valid_from": seq, "valid_to": 4}}])
+            db.flush()
+        invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=3)
+        assert repo.get_relations(db, uuid.UUID(temp_project)) == []
+        retained = db.query(Relation).filter_by(source_chapter=2).all()
+        assert len([r for r in retained if not r.properties.get("_chapter_invalidated")]) == 1
+        assert all(r.valid_to == 4 for r in retained if not r.properties.get("_chapter_invalidated"))

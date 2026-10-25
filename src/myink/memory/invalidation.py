@@ -110,8 +110,11 @@ def _invalidate_relations(db: Session, project_id: uuid.UUID, chapter_seq: int) 
         history = [r for r in rows if (r.source_id, r.target_id) == pair]
         if any(r.valid_to is None for r in history):
             continue
-        invalidated = {r.source_chapter for r in history
-                       if (r.properties or {}).get("_chapter_invalidated")}
+        # A rewrite can leave both invalidated old rows and retained new rows
+        # from the same chapter. Only a fully undone source removes its closure.
+        retained_sources = {r.source_chapter for r in history
+                            if not (r.properties or {}).get("_chapter_invalidated")}
+        invalidated = {r.source_chapter for r in history} - retained_sources
         retained = [r for r in history
                     if not (r.properties or {}).get("_chapter_invalidated")
                     and not (r.properties or {}).get("_memory_removed")
