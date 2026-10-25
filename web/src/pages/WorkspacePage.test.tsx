@@ -833,3 +833,31 @@ it('offers writing resource choices in the short-book workspace where the settin
  const link=await screen.findByRole('link',{name:'选择写作资源'})
  expect(link.getAttribute('href')).toContain('/settings#writing-resources')
 })
+
+
+it('keeps project B chapters when project A materialization polling finishes late', async () => {
+  let finish!: (chapters: ChapterMeta[]) => void
+  let calls = 0
+  const bChapter = { ...chapter12, id: 'b-8', chapter_seq: 8 }
+  vi.mocked(api.listProjects).mockResolvedValue([])
+  vi.mocked(api.listCandidates).mockResolvedValue([])
+  vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] })
+  vi.mocked(api.listForeshadows).mockResolvedValue([])
+  vi.mocked(api.listTasks).mockResolvedValue([])
+  vi.mocked(api.listChapters).mockImplementation(pid => {
+    if (pid === 'b') return Promise.resolve([bChapter])
+    calls += 1
+    return calls === 1 ? Promise.resolve([]) : new Promise(resolve => { finish = resolve })
+  })
+  const router = createMemoryRouter([{ path: '/projects/:projectId', element: <WorkspacePage /> }], { initialEntries: ['/projects/a'] })
+  render(<RouterProvider router={router} />)
+  await waitFor(() => expect(api.listChapters).toHaveBeenCalledWith('a'))
+  fireEvent.click(screen.getByRole('button', { name: '生成与校验' }))
+  fireEvent.click(screen.getByRole('button', { name: 'start-13' }))
+  await waitFor(() => expect(calls).toBeGreaterThan(1))
+  await act(async () => { await router.navigate('/projects/b') })
+  await screen.findByRole('button', { name: 'chapter-8' })
+  await act(async () => finish([{ ...chapter12, id: 'a-13', chapter_seq: 13 }]))
+  expect(screen.getByRole('button', { name: 'chapter-8' })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'chapter-13' })).toBeNull()
+})

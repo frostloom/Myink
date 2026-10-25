@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { api, ApiError } from '../lib/api'
 import type { ChapterMeta } from '../types'
@@ -29,6 +29,7 @@ const chapter: ChapterMeta = {
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
+  vi.restoreAllMocks()
 })
 
 it('shows the writing controls by default and starts the next chapter from a direct click', async () => {
@@ -202,4 +203,47 @@ it('manual mode is sent with the chapter request and disables batch generation',
     { seq: 17, mode: 'manual' },
   ))
   expect(onTaskStart).toHaveBeenCalledWith('manual-17', undefined, 17, 'manual')
+})
+
+
+it.each(['next', 'rewrite', 'batch'] as const)('ignores a late %s response after switching projects', async (action) => {
+  let finish!: (value: Awaited<ReturnType<typeof api.generateChapter>>) => void
+  const pending = new Promise<Awaited<ReturnType<typeof api.generateChapter>>>(resolve => { finish = resolve })
+  vi.mocked(api.generateChapter).mockReturnValue(pending)
+  vi.mocked(api.generateBatch).mockReturnValue(pending)
+  vi.spyOn(window, 'confirm').mockReturnValue(true)
+  const onTaskStart = vi.fn()
+  const props = { chapters: [chapter], selectedChapter: chapter, onTaskStart }
+  const view = render(<GenerationPanel {...props} projectId="a" />)
+  const label = action === 'next' ? '写下一章（第 17 章）' : action === 'rewrite' ? '重写第 16 章' : '发起批次'
+  fireEvent.click(screen.getByRole('button', { name: label }))
+  view.rerender(<GenerationPanel {...props} projectId="b" />)
+  await act(async () => finish({ task_id: 'task-a', trace_id: 'trace-a', status: 'queued' }))
+  expect(onTaskStart).not.toHaveBeenCalled()
+  expect(screen.queryByRole('status')).toBeNull()
+})
+
+it('does not send a request after an old project preflight finishes', async () => {
+  let finish!: (allowed: boolean) => void
+  const beforeGenerate = () => new Promise<boolean>(resolve => { finish = resolve })
+  const props = { chapters: [], selectedChapter: null, onTaskStart: vi.fn(), beforeGenerate }
+  const view = render(<GenerationPanel {...props} projectId="a" />)
+  fireEvent.click(screen.getByRole('button', { name: '写下一章（第 1 章）' }))
+  view.rerender(<GenerationPanel {...props} projectId="b" />)
+  await act(async () => finish(true))
+  expect(api.generateChapter).not.toHaveBeenCalled()
+})
+
+it('does not clear the new project busy state when an old request fails', async () => {
+  let fail!: (error: Error) => void
+  vi.mocked(api.generateChapter).mockImplementation(pid => pid === 'a'
+    ? new Promise((_resolve, reject) => { fail = reject }) : new Promise(() => {}))
+  const props = { chapters: [], selectedChapter: null, onTaskStart: vi.fn() }
+  const view = render(<GenerationPanel {...props} projectId="a" />)
+  fireEvent.click(screen.getByRole('button', { name: '写下一章（第 1 章）' }))
+  view.rerender(<GenerationPanel {...props} projectId="b" />)
+  fireEvent.click(screen.getByRole('button', { name: '写下一章（第 1 章）' }))
+  await act(async () => fail(new Error('old failure')))
+  expect(screen.queryByRole('alert')).toBeNull()
+  expect((screen.getByRole('button', { name: '发起中…' }) as HTMLButtonElement).disabled).toBe(true)
 })

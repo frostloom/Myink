@@ -364,6 +364,7 @@ export default function WorkspacePage() {
           if (materializeVersion !== chapterMaterializeVersion.current) return
           try {
             const list = await api.listChapters(projectId)
+            if (materializeVersion !== chapterMaterializeVersion.current) return
             const target = list.find((chapter) => chapter.chapter_seq === chapterSeq)
             if (target) {
               setChapters(list)
@@ -1042,6 +1043,7 @@ export default function WorkspacePage() {
           ) : (
             <>
               <GenerationPanel
+                key={`${accountId}:${projectId}`}
                 projectId={projectId}
                 chapters={chapters}
                 selectedChapter={selectedChapter}

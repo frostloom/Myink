@@ -1,7 +1,7 @@
 // 生成入口：写下一章（永远写「已写最大章 + 1」的下一未写章）+ 重写本章（仅 confirmed 章，
 // 带确认弹窗）+ 批次生成（N≤20，成本估算标注「估算」）。
 // 失败 → 中文横幅；成功 → onTaskStart(taskId) 交给时间线。
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api, ApiError } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
 import type { ChapterMeta, WritingMode } from '../types'
@@ -33,11 +33,14 @@ export function GenerationPanel({
   const [banner, setBanner] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
+  const requestVersion = useRef(0)
   useEffect(() => {
+    requestVersion.current += 1
     setInstruction('')
     setBusy(null)
     setBanner(null)
     setNotice(null)
+    return () => { requestVersion.current += 1 }
   }, [projectId])
 
   // 已写最大章序 + 下一章序号（空项目 → 1，与 worker _guard_write_order 语义一致）。
@@ -83,22 +86,26 @@ export function GenerationPanel({
   // 写下一章：空书也可写（第 1 章，写作指令透传）；tailId 恒非空（空书回退 projectId 占位）
   async function generateNextChapter() {
     if (busy) return
+    const version = requestVersion.current
+    const isCurrent = () => version === requestVersion.current
     setBusy('chapter')
     setBanner(null)
     setNotice(null)
     try {
       if (beforeGenerate && !(await beforeGenerate())) return
+      if (!isCurrent()) return
       const resp = await api.generateChapter(projectId, tailId, {
         seq: nextSeq,
         mode,
         ...(instruction.trim() ? { user_instruction: instruction.trim() } : {}),
       })
+      if (!isCurrent()) return
       onTaskStart(resp.task_id, undefined, nextSeq, mode)
       setNotice(`第 ${nextSeq} 章写作任务已创建，进度会显示在下方“章节流转”中。`)
     } catch (err) {
-      showError(err)
+      if (isCurrent()) showError(err)
     } finally {
-      setBusy(null)
+      if (isCurrent()) setBusy(null)
     }
   }
 
@@ -107,43 +114,51 @@ export function GenerationPanel({
   async function rewriteChapter() {
     if (!selectedChapter || selectedChapter.status !== 'confirmed' || busy) return
     if (!window.confirm(`重写第 ${selectedChapter.chapter_seq} 章？将失效重建该章相关记忆，不可撤销。`)) return
+    const version = requestVersion.current
+    const isCurrent = () => version === requestVersion.current
     setBusy('chapter')
     setBanner(null)
     setNotice(null)
     try {
       if (beforeGenerate && !(await beforeGenerate())) return
+      if (!isCurrent()) return
       const resp = await api.generateChapter(projectId, selectedChapter.id, {
         seq: selectedChapter.chapter_seq,
         rewrite: true,
         mode,
         ...(instruction.trim() ? { user_instruction: instruction.trim() } : {}),
       })
+      if (!isCurrent()) return
       onTaskStart(resp.task_id, undefined, selectedChapter.chapter_seq, mode)
       setNotice(`第 ${selectedChapter.chapter_seq} 章重写任务已创建，进度会显示在下方“章节流转”中。`)
     } catch (err) {
-      showError(err)
+      if (isCurrent()) showError(err)
     } finally {
-      setBusy(null)
+      if (isCurrent()) setBusy(null)
     }
   }
 
   async function generateBatch() {
     if (busy || mode === 'manual') return
+    const version = requestVersion.current
+    const isCurrent = () => version === requestVersion.current
     setBusy('batch')
     setBanner(null)
     setNotice(null)
     try {
       if (beforeGenerate && !(await beforeGenerate())) return
+      if (!isCurrent()) return
       const resp = await api.generateBatch(projectId, {
         size: batchN,
         start: batchStart,
       })
+      if (!isCurrent()) return
       onTaskStart(resp.task_id, batchN, batchStart)
       setNotice(`批次任务已创建，将从第 ${batchStart} 章开始写作。`)
     } catch (err) {
-      showError(err)
+      if (isCurrent()) showError(err)
     } finally {
-      setBusy(null)
+      if (isCurrent()) setBusy(null)
     }
   }
 
