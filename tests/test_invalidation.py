@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import uuid
 
+import pytest
+
 from myink.db import tenant_session
 from myink.memory import repository as repo
 from myink.memory.invalidation import invalidate_chapter_memory
@@ -389,3 +391,34 @@ def test_invalidating_later_relation_keeps_retained_same_chapter_rewrite(temp_pr
         retained = db.query(Relation).filter_by(source_chapter=2).all()
         assert len([r for r in retained if not r.properties.get("_chapter_invalidated")]) == 1
         assert all(r.valid_to == 4 for r in retained if not r.properties.get("_chapter_invalidated"))
+
+
+@pytest.mark.parametrize("later_decision", ["finite", "removed"])
+def test_middle_chapter_rewrite_respects_later_retained_relation(temp_project, later_decision):
+    from myink.memory.correction import apply_memory_removal
+    with tenant_session(temp_project) as db:
+        _relation_change(db, temp_project, 1, "ally")
+        _relation_change(db, temp_project, 2, "hostile")
+        nodes._persist_candidates(db, temp_project, 3, [{"kind": "relation_change", "payload": {
+            "source_id": str(CID), "target_id": str(CID2), "relation_type": "knows",
+            "valid_from": 3, "valid_to": 4 if later_decision == "finite" else None}}])
+        db.flush()
+        later = db.query(Relation).filter_by(source_chapter=3).one()
+        if later_decision == "removed":
+            assert apply_memory_removal(db, project_id=uuid.UUID(temp_project), chapter_seq=3,
+                payload={"memory_type": "relation", "memory_id": str(later.id)})
+            db.flush()
+        invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=2)
+        assert repo.get_relations(db, uuid.UUID(temp_project)) == []
+        assert not later.properties.get("_chapter_invalidated")
+        assert later.valid_to == (4 if later_decision == "finite" else 3)
+
+
+def test_relation_restore_uses_final_supersession_within_retained_chapter(temp_project):
+    with tenant_session(temp_project) as db:
+        _relation_change(db, temp_project, 1, "ally")
+        _relation_change(db, temp_project, 2, "hostile")
+        _relation_change(db, temp_project, 2, "knows")
+        _relation_change(db, temp_project, 3, "owns")
+        invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=3)
+        assert [r.relation_type for r in repo.get_relations(db, uuid.UUID(temp_project))] == ["knows"]

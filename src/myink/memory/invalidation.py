@@ -115,8 +115,12 @@ def _invalidate_relations(db: Session, project_id: uuid.UUID, chapter_seq: int) 
         retained_sources = {r.source_chapter for r in history
                             if not (r.properties or {}).get("_chapter_invalidated")}
         invalidated = {r.source_chapter for r in history} - retained_sources
+        # A later retained finite/removal decision is still a timeline barrier,
+        # even though it is not returned by the active-relation query.
+        latest_source = max(retained_sources, default=None)
         retained = [r for r in history
                     if not (r.properties or {}).get("_chapter_invalidated")
+                    and r.source_chapter == latest_source
                     and not (r.properties or {}).get("_memory_removed")
                     and (r.properties or {}).get("_superseded_by_chapter") in invalidated
                     and r.valid_to == (r.properties or {}).get("_superseded_by_chapter")]
