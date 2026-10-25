@@ -8,7 +8,10 @@ def same_proposal(kind: str, left: dict, right: dict) -> bool:
               "relation_change": ("source_id", "target_id", "relation_type"),
               "fact": ("content",), "event": ("summary",)}.get(kind)
     def normalize(value):
-        return re.sub(r"[\s，。！？、；：,.!?;:]", "", str(value or "")).casefold()
+        # Internal punctuation can encode a decimal, time, password or identifier.
+        # Ignore formatting and sentence endings, not semantic separators.
+        text = re.sub(r"\s+", "", str(value or "")).casefold()
+        return text.rstrip("。！？.!?；;")
     if fields:
         return all(normalize(left.get(k)) == normalize(right.get(k)) for k in fields)
     return left == right
