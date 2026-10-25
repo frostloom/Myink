@@ -1736,8 +1736,11 @@ def confirm_candidate(db: Session, project_id: str, candidate_id: uuid.UUID) -> 
     归属断言：tenant_session 已按 project_id RLS 隔离，此处再显式校验 project_id
     防歧义（双保险，§14.1）。非 pending 候选（已确认/已拒绝）返回 None 不可重复处理。
     """
-    cand = db.get(MemoryCandidate, candidate_id)
-    if cand is None or str(cand.project_id) != project_id or cand.status != "pending":
+    cand = db.scalar(select(MemoryCandidate).where(
+        MemoryCandidate.id == candidate_id,
+        MemoryCandidate.project_id == uuid.UUID(project_id),
+    ).with_for_update().execution_options(populate_existing=True))
+    if cand is None or cand.status != "pending":
         return None
     if cand.kind == "memory_removal":
         # 删除候选（阶段 3 编辑校正）：确认 = 按类型失效被删记忆，而非写新记忆。

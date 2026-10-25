@@ -15,6 +15,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 
 from myink.api.auth import require_owner
 from myink.api.schemas import CandidateActionOut, MemoryCandidateOut
@@ -77,8 +78,11 @@ def confirm_candidate(project_id: str, candidate_id: str) -> dict:
 def reject_candidate(project_id: str, candidate_id: str, body: RejectCandidateIn | None = None) -> dict:
     """拒绝候选（幻觉/误抽清理）。幂等：已处理候选返回 409。"""
     with tenant_session(project_id) as db:
-        cand = db.get(MemoryCandidate, _cand_id(candidate_id))
-        if cand is None or str(cand.project_id) != project_id:
+        cand = db.scalar(select(MemoryCandidate).where(
+            MemoryCandidate.id == _cand_id(candidate_id),
+            MemoryCandidate.project_id == uuid.UUID(project_id),
+        ).with_for_update().execution_options(populate_existing=True))
+        if cand is None:
             raise HTTPException(status_code=404, detail="候选不存在")
         if cand.status != "pending":
             raise HTTPException(status_code=409, detail=f"候选已处理: {cand.status}")
