@@ -442,3 +442,27 @@ def test_reworded_extraction_requires_review_rather_than_guessing_equivalence():
     changes = diff_changeset(persisted, [_cand("event", {"summary": "林砚于黑市查探玉佩的真相"})])
     assert len(changes["add"]) == len(changes["remove"]) == 1
     assert changes["keep"] == 0
+
+
+def test_repeated_correction_metadata_changes_create_one_pending_fact(temp_project, fake_embedder):
+    for confidence in [.9, .8]:
+        with tenant_session(temp_project) as db:
+            report = correction.correct_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=1,
+                new_candidates=[_cand("fact", {"content": "主角不能用火", "confidence": confidence})])
+            assert report["pool"]["add_to_pool"] == (1 if confidence == .9 else 0)
+    with tenant_session(temp_project) as db:
+        pending = db.query(MemoryCandidate).filter_by(status="pending").all()
+        assert len(pending) == 1
+        assert nodes.confirm_candidate(db, temp_project, pending[0].id) is not None
+    with tenant_session(temp_project) as db:
+        assert db.query(Fact).filter_by(content="主角不能用火", confirm_status="confirmed").count() == 1
+
+
+def test_repeated_correction_respects_rejection_with_changed_metadata(temp_project):
+    with tenant_session(temp_project) as db:
+        db.add(MemoryCandidate(project_id=temp_project, source_chapter=1, kind="fact", status="rejected",
+                               payload={"content": "明确拒绝", "confidence": .9}))
+        db.flush()
+        report = correction.correct_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=1,
+            new_candidates=[_cand("fact", {"content": "明确拒绝", "confidence": .8})])
+        assert report["pool"]["add_to_pool"] == 0

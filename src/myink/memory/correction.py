@@ -23,7 +23,7 @@ from sqlalchemy import delete as sa_delete, select
 from sqlalchemy.orm import Session
 
 from myink.memory.candidate_identity import same_proposal
-from myink.models import CharacterState, EmbeddingRow, Event, Fact, Foreshadow, MemoryCandidate, Relation
+from myink.models import CharacterState, EmbeddingRow, Event, Fact, Foreshadow, MemoryCandidate, Project, Relation
 
 _WHITESPACE = re.compile(r"\s+")
 
@@ -164,7 +164,8 @@ def _pool_has_duplicate(db: Session, project_id: uuid.UUID, chapter_seq: int,
             MemoryCandidate.status.in_(["pending", "rejected"]),
         )
     ).scalars().all()
-    return any(r.payload == cand["payload"] and not (r.review or {}).get("superseded") for r in rows)
+    return any(same_proposal(cand["kind"], r.payload, cand["payload"])
+               and not (r.review or {}).get("superseded") for r in rows)
 
 
 def apply_changeset_to_pool(db: Session, *, project_id: uuid.UUID, chapter_seq: int,
@@ -265,6 +266,11 @@ def correct_chapter_memory(db: Session, *, project_id: uuid.UUID, chapter_seq: i
     纯风格编辑（改语言/标点/句长）时新候选与已落库记忆逐条命中 → keep 全量、池零新增，
     no_op=True 实现「轻编辑默认零动作」；删改剧情内容时才产出 add/remove 候选待人工确认。
     """
+    # Extraction is already complete; hold this lock only for deterministic
+    # diff/pool work so overlapping corrections cannot both observe an empty pool.
+    # PostgreSQL NO KEY UPDATE keeps ordinary FK-backed writes compatible.
+    db.flush()
+    db.execute(select(Project.id).where(Project.id == project_id).with_for_update(key_share=True)).scalar_one_or_none()
     persisted = load_persisted_memories(db, project_id=project_id, chapter_seq=chapter_seq)
     changeset = diff_changeset(persisted, new_candidates)
     pool_stats = apply_changeset_to_pool(db, project_id=project_id,

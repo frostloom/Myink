@@ -87,3 +87,54 @@ def test_reject_cannot_overwrite_an_inflight_confirmation(temp_project, fake_emb
     with tenant_session(temp_project) as db:
         assert db.get(MemoryCandidate, cid).status == "confirmed"
         assert db.query(Fact).filter_by(content="只能批准一次").count() == 1
+
+
+def test_concurrent_corrections_create_one_pending_proposal(temp_project):
+    import uuid
+    from concurrent.futures import TimeoutError
+    from myink.memory import correction
+    ready = threading.Event()
+    def correct(db, confidence):
+        return correction.correct_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=1,
+            new_candidates=[{"kind": "fact", "payload": {"content": "并发校正事实", "confidence": confidence}}])
+    def second():
+        with tenant_session(temp_project) as db:
+            ready.set()
+            return correct(db, .8)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with tenant_session(temp_project) as first:
+            assert correct(first, .9)["pool"]["add_to_pool"] == 1
+            first.flush()
+            future = pool.submit(second)
+            try:
+                assert ready.wait(5)
+                try:
+                    future.result(timeout=.3)
+                except TimeoutError:
+                    pass
+                else:
+                    raise AssertionError("second correction completed before the first committed")
+            finally:
+                first.commit()
+        assert future.result(timeout=5)["pool"]["add_to_pool"] == 0
+    with tenant_session(temp_project) as db:
+        assert db.query(MemoryCandidate).filter_by(status="pending").count() == 1
+
+
+def test_correction_lock_allows_unrelated_chapter_candidate_inserts(temp_project):
+    import uuid
+    from myink.memory import correction
+    def correct():
+        with tenant_session(temp_project) as db:
+            return correction.correct_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=1,
+                new_candidates=[{"kind": "fact", "payload": {"content": "本章校正"}}])
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with tenant_session(temp_project) as writer:
+            writer.add(MemoryCandidate(project_id=temp_project, source_chapter=99, kind="fact",
+                                       payload={"content": "另一章节正在写入"}))
+            writer.flush()  # The actual FK check holds a project KEY SHARE lock.
+            future = pool.submit(correct)
+            try:
+                assert future.result(timeout=1)["pool"]["add_to_pool"] == 1
+            finally:
+                writer.commit()
