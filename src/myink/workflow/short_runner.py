@@ -352,19 +352,20 @@ def _call(db, project_id: str, task_id: str, *, node: str, role: str, messages: 
     progress.start()
     with bind_budget_operation(f"{task_id}:{node}"):
         guard_budget()
-        resp = nodes._bounded_generate(
-            make_chain(role.lower(), db=db, project_id=project_id), messages, json_mode=json_mode,
+        from myink.workflow.reference_access import generate_with_references
+        resp, tool_trace = generate_with_references(db, project_id, node, role,
+            make_chain(role.lower(), db=db, project_id=project_id), messages, task_id=task_id, json_mode=json_mode,
             max_tokens=max_tokens, disable_thinking=disable_thinking,
             streamer=progress if total_chars > 0 else None)
     if budget_managed():
         with tenant_session(project_id) as trace_db:
             nodes.record_run(trace_db, project_id=project_id, task_id=task_id, node=node, role=role,
                              resp=resp, error=resp.error, messages=messages,
-                             detail={"form": "short", **(detail or {})})
+                             detail={"form": "short", **(detail or {}), "tool_trace": tool_trace})
     else:
         nodes.record_run(db, project_id=project_id, task_id=task_id, node=node, role=role,
                          resp=resp, error=resp.error, messages=messages,
-                         detail={"form": "short", **(detail or {})})
+                         detail={"form": "short", **(detail or {}), "tool_trace": tool_trace})
     return resp
 
 

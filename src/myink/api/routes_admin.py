@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import uuid
 from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -27,7 +27,7 @@ from myink.api.admin_schemas import (
     AdminAccessLogOut, AdminChapter, AdminChapterDetail, AdminContext,
     AdminGenerationTask, AdminInvitation, AdminInvitationCreated, AdminOverview, AdminPage,
     AdminProject, AdminRun, AdminRunDetail, AdminSnapshot, AdminSnapshotFinding, AdminTask,
-    AdminTaskChapter, AdminTaskDetail, AdminUser,
+    AdminTaskChapter, AdminTaskDetail, AdminUser, AdminTrends,
 )
 from myink.api.auth import _AuthenticatedUser, require_admin
 from myink.api.routes_feedback import _out as _feedback_out
@@ -212,6 +212,41 @@ def overview(db: DB):
     metrics = db.execute(select(*_metric_columns(_ATTRIBUTED_RUN))).mappings().one()
     return {**counts, "metrics": dict(metrics), "task_status_counts": dict(db.execute(
         select(Task.status, func.count(Task.id)).group_by(Task.status)).all())}
+
+
+
+@router.get("/trends", response_model=AdminTrends, name="admin.trends")
+def trends(db: DB, start_date: date | None = None, end_date: date | None = None):
+    """New records by UTC creation day (inclusive), using the reporting connection."""
+    end_date = end_date or datetime.now(timezone.utc).date()
+    start_date = start_date or date.fromordinal(max(1, end_date.toordinal() - 29))
+    days = (end_date - start_date).days + 1
+    if not 1 <= days <= 90 or end_date == date.max:
+        raise HTTPException(422, "DATE_RANGE_MUST_BE_1_TO_90_DAYS")
+    start = datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc)
+    end = datetime.combine(end_date + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc)
+    points = {start_date + timedelta(days=i): dict(
+        day=start_date + timedelta(days=i), user_count=0, project_count=0,
+        chapter_count=0, task_count=0, run_count=0, input_tokens=0, output_tokens=0,
+        cost_est=0.0) for i in range(days)}
+    for model, field in ((User, "user_count"), (Project, "project_count"),
+                         (Chapter, "chapter_count"), (Task, "task_count")):
+        day = func.date(func.timezone("UTC", model.created_at)).label("day")
+        rows = db.execute(select(day, func.count(model.id).label("count"))
+                          .where(model.created_at >= start, model.created_at < end)
+                          .group_by(day)).mappings().all()
+        for row in rows:
+            points[row["day"]][field] = row["count"]
+    day = func.date(func.timezone("UTC", AgentRun.created_at)).label("day")
+    rows = db.execute(select(day, func.count(AgentRun.id).label("run_count"), *[
+        func.coalesce(func.sum(getattr(AgentRun, field)), 0).label(field)
+        for field in ("input_tokens", "output_tokens", "cost_est")])
+        .where(AgentRun.created_at >= start, AgentRun.created_at < end, _ATTRIBUTED_RUN)
+        .group_by(day)).mappings().all()
+    for row in rows:
+        points[row["day"]].update(dict(row))
+    return {"start_date": start_date, "end_date": end_date, "timezone": "UTC",
+            "items": list(points.values())}
 
 
 def _user_statement():

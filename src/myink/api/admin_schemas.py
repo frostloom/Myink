@@ -2,7 +2,7 @@
 
 除 `AdminInvitationCreated`（邀请码创建响应）外均为只读观测契约。
 """
-from datetime import datetime
+from datetime import date, datetime
 from typing import Generic, Literal, TypeVar
 from uuid import UUID
 
@@ -293,3 +293,22 @@ class AdminInvitationCreated(BaseModel):
     label: str | None
     expires_at: datetime
     max_redemptions: int
+
+
+class AdminTrendPoint(BaseModel):
+    day: date
+    user_count: int = 0
+    project_count: int = 0
+    chapter_count: int = 0
+    task_count: int = 0
+    run_count: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cost_est: float = 0
+
+
+class AdminTrends(BaseModel):
+    start_date: date
+    end_date: date
+    timezone: Literal["UTC"] = "UTC"
+    items: list[AdminTrendPoint]

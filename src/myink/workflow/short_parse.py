@@ -104,7 +104,9 @@ def _assemble(blocks: list[tuple[int, str]], n: int) -> list[str]:
         blocks = [(i + 1, body) for i, (_, body) in enumerate(blocks)]
     chapters = [""] * n
     for seq, body in blocks:
-        chapters[seq - 1] = body
+        # Extra model markers belong to the final requested slot; never lose paid text.
+        index = min(seq, n) - 1
+        chapters[index] = '\n\n'.join(part for part in (chapters[index], body) if part)
     return chapters
 
 

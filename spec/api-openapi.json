@@ -1903,6 +1903,94 @@
         "title": "AdminTaskDetail",
         "type": "object"
       },
+      "AdminTrendPoint": {
+        "properties": {
+          "chapter_count": {
+            "default": 0,
+            "title": "Chapter Count",
+            "type": "integer"
+          },
+          "cost_est": {
+            "default": 0,
+            "title": "Cost Est",
+            "type": "number"
+          },
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "input_tokens": {
+            "default": 0,
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "output_tokens": {
+            "default": 0,
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "project_count": {
+            "default": 0,
+            "title": "Project Count",
+            "type": "integer"
+          },
+          "run_count": {
+            "default": 0,
+            "title": "Run Count",
+            "type": "integer"
+          },
+          "task_count": {
+            "default": 0,
+            "title": "Task Count",
+            "type": "integer"
+          },
+          "user_count": {
+            "default": 0,
+            "title": "User Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day"
+        ],
+        "title": "AdminTrendPoint",
+        "type": "object"
+      },
+      "AdminTrends": {
+        "properties": {
+          "end_date": {
+            "format": "date",
+            "title": "End Date",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminTrendPoint"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "timezone": {
+            "const": "UTC",
+            "default": "UTC",
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_date",
+          "end_date",
+          "items"
+        ],
+        "title": "AdminTrends",
+        "type": "object"
+      },
       "AdminUser": {
         "properties": {
           "chapter_count": {
@@ -1962,6 +2050,30 @@
           "task_averages"
         ],
         "title": "AdminUser",
+        "type": "object"
+      },
+      "AdoptBody": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 0.0,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "updates": {
+            "items": {
+              "$ref": "#/components/schemas/UpdateTarget"
+            },
+            "maxItems": 200,
+            "title": "Updates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "updates",
+          "expected_revision"
+        ],
+        "title": "AdoptBody",
         "type": "object"
       },
       "AgentRunOut": {
@@ -2745,6 +2857,104 @@
         "title": "CharacterStateChangeOut",
         "type": "object"
       },
+      "ConfigurationBody": {
+        "additionalProperties": false,
+        "properties": {
+          "genre_packs": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/GenreFields"
+            },
+            "title": "Genre Packs",
+            "type": "object"
+          },
+          "model_connections": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformConnectionBody"
+            },
+            "title": "Model Connections",
+            "type": "array"
+          },
+          "model_routes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Model Routes",
+            "type": "object"
+          },
+          "prompts": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Prompts",
+            "type": "object"
+          },
+          "user_defaults": {
+            "$ref": "#/components/schemas/UserDefaults-Input"
+          },
+          "version": {
+            "minimum": 0.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "model_connections",
+          "model_routes",
+          "prompts",
+          "genre_packs"
+        ],
+        "title": "ConfigurationBody",
+        "type": "object"
+      },
+      "ConfigurationOut": {
+        "properties": {
+          "genre_packs": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/GenreFields"
+            },
+            "title": "Genre Packs",
+            "type": "object"
+          },
+          "model_connections": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformConnectionOut"
+            },
+            "title": "Model Connections",
+            "type": "array"
+          },
+          "model_routes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Model Routes",
+            "type": "object"
+          },
+          "prompts": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Prompts",
+            "type": "object"
+          },
+          "user_defaults": {
+            "$ref": "#/components/schemas/UserDefaults-Output"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "model_connections",
+          "model_routes",
+          "prompts",
+          "genre_packs"
+        ],
+        "title": "ConfigurationOut",
+        "type": "object"
+      },
       "ConnectionProbeBody": {
         "description": "探针请求：未保存的新连接直接传明文 api_key；已保存连接可只给 connection_id 复用密钥。",
         "properties": {
@@ -3027,6 +3237,48 @@
         "title": "CreateProjectBody",
         "type": "object"
       },
+      "CreateResource": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "additionalProperties": true,
+            "title": "Body",
+            "type": "object"
+          },
+          "kind": {
+            "enum": [
+              "reference",
+              "genre",
+              "genre_rule",
+              "style",
+              "writing_rule",
+              "expression_rule",
+              "role_prompt"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "source": {
+            "maxLength": 2000,
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "source",
+          "body"
+        ],
+        "title": "CreateResource",
+        "type": "object"
+      },
       "DeleteChapterOut": {
         "properties": {
           "current_chapter": {
@@ -3095,6 +3347,24 @@
         "title": "DeletedChapterOut",
         "type": "object"
       },
+      "DismissBody": {
+        "additionalProperties": false,
+        "properties": {
+          "updates": {
+            "items": {
+              "$ref": "#/components/schemas/UpdateTarget"
+            },
+            "maxItems": 200,
+            "title": "Updates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "updates"
+        ],
+        "title": "DismissBody",
+        "type": "object"
+      },
       "EntityCardOut": {
         "description": "设定实体卡片（§7.11 ④ 自动建档：武器/功法/技能/地点低风险自动登记）。",
         "properties": {
@@ -3142,7 +3412,7 @@
         "type": "object"
       },
       "EnvironmentBody": {
-        "description": "省略字段 = 保留现值；显式传（含 {} / []）= 整体替换。",
+        "description": "省略字段保留覆盖，嵌套字段局部更新；恢复默认只移除指定覆盖。",
         "properties": {
           "model_connections": {
             "anyOf": [
@@ -3182,6 +3452,13 @@
               }
             ]
           },
+          "reset_preferences": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reset Preferences",
+            "type": "array"
+          },
           "task_budget": {
             "anyOf": [
               {
@@ -3210,6 +3487,16 @@
       "EnvironmentOut": {
         "description": "账号级环境配置（模型连接/路由 + 思考模式 + 扫榜）。",
         "properties": {
+          "available_models": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Available Models",
+            "type": "array"
+          },
           "model_connections": {
             "items": {
               "additionalProperties": true,
@@ -3222,6 +3509,13 @@
             "additionalProperties": true,
             "title": "Model Routes",
             "type": "object"
+          },
+          "overridden_fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Overridden Fields",
+            "type": "array"
           },
           "rankings": {
             "$ref": "#/components/schemas/RankingsConfigOut"
@@ -3511,6 +3805,110 @@
           "group"
         ],
         "title": "GenreCatalogItemOut",
+        "type": "object"
+      },
+      "GenreFields": {
+        "additionalProperties": false,
+        "properties": {
+          "mechanics": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mechanics"
+          },
+          "pacing": {
+            "anyOf": [
+              {
+                "maxLength": 10000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pacing"
+          },
+          "satisfaction": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Satisfaction"
+          },
+          "selling_point": {
+            "anyOf": [
+              {
+                "maxLength": 10000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selling Point"
+          },
+          "subgenres": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subgenres"
+          },
+          "taboos": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taboos"
+          },
+          "world_hints": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "World Hints"
+          }
+        },
+        "title": "GenreFields",
         "type": "object"
       },
       "GenrePackFieldsBody": {
@@ -4290,6 +4688,30 @@
         "title": "MfaVerifyRequest",
         "type": "object"
       },
+      "ModelCatalogOut": {
+        "properties": {
+          "model_routes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Model Routes",
+            "type": "object"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/PublishedModel"
+            },
+            "title": "Models",
+            "type": "array"
+          }
+        },
+        "required": [
+          "models",
+          "model_routes"
+        ],
+        "title": "ModelCatalogOut",
+        "type": "object"
+      },
       "ModelConnectionBody": {
         "properties": {
           "api_key": {
@@ -4392,19 +4814,6 @@
           "ok"
         ],
         "title": "ModelListOut",
-        "type": "object"
-      },
-      "OkOut": {
-        "properties": {
-          "ok": {
-            "title": "Ok",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "ok"
-        ],
-        "title": "OkOut",
         "type": "object"
       },
       "OutlineConfirmBody": {
@@ -4511,6 +4920,167 @@
           "expected_attempt"
         ],
         "title": "PlanConfirmBody",
+        "type": "object"
+      },
+      "PlatformConnectionBody": {
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "format": "password",
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "input_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Price"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "output_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Price"
+          },
+          "protocol": {
+            "enum": [
+              "openai",
+              "anthropic"
+            ],
+            "title": "Protocol",
+            "type": "string"
+          },
+          "user_visible": {
+            "default": true,
+            "title": "User Visible",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "protocol",
+          "base_url",
+          "model"
+        ],
+        "title": "PlatformConnectionBody",
+        "type": "object"
+      },
+      "PlatformConnectionOut": {
+        "properties": {
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "has_api_key": {
+            "title": "Has Api Key",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "input_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Price"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "origin": {
+            "default": "custom",
+            "enum": [
+              "builtin",
+              "custom"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "output_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Price"
+          },
+          "protocol": {
+            "title": "Protocol",
+            "type": "string"
+          },
+          "user_visible": {
+            "title": "User Visible",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "protocol",
+          "base_url",
+          "model",
+          "has_api_key",
+          "enabled",
+          "user_visible"
+        ],
+        "title": "PlatformConnectionOut",
         "type": "object"
       },
       "ProjectCreationOut": {
@@ -4666,6 +5236,114 @@
         "title": "ProjectUpdateBody",
         "type": "object"
       },
+      "PromptRoleTemplatesOut": {
+        "properties": {
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/PromptTemplateOut"
+            },
+            "title": "Templates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "role",
+          "templates"
+        ],
+        "title": "PromptRoleTemplatesOut",
+        "type": "object"
+      },
+      "PromptTemplateOut": {
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "editable_content": {
+            "title": "Editable Content",
+            "type": "string"
+          },
+          "fixed_content": {
+            "title": "Fixed Content",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "when": {
+            "title": "When",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "content",
+          "source",
+          "editable_content",
+          "fixed_content",
+          "description",
+          "when"
+        ],
+        "title": "PromptTemplateOut",
+        "type": "object"
+      },
+      "Publish": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_generation": {
+            "minimum": 0.0,
+            "title": "Expected Generation",
+            "type": "integer"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_generation"
+        ],
+        "title": "Publish",
+        "type": "object"
+      },
+      "PublishedModel": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "PublishedModel",
+        "type": "object"
+      },
       "RankingItemOut": {
         "description": "扫榜单条（§10）：外部榜单已 sanitize（allowlist 字段，只作灵感参考）。",
         "properties": {
@@ -4776,6 +5454,29 @@
         "title": "RankingsConfigOut",
         "type": "object"
       },
+      "RankingsDefaults": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "limit": {
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "timeout": {
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Timeout",
+            "type": "integer"
+          }
+        },
+        "title": "RankingsDefaults",
+        "type": "object"
+      },
       "RankingsOut": {
         "description": "扫榜响应（§10）：source=remote（实时榜单）/ sample（降级样例）；error 为降级原因。",
         "properties": {
@@ -4824,6 +5525,57 @@
         "title": "RankingsOut",
         "type": "object"
       },
+      "ReadinessCheck": {
+        "properties": {
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "ready",
+          "reason"
+        ],
+        "title": "ReadinessCheck",
+        "type": "object"
+      },
+      "ReadinessOut": {
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/ReadinessCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ready",
+          "checks"
+        ],
+        "title": "ReadinessOut",
+        "type": "object"
+      },
       "RejectCandidateIn": {
         "properties": {
           "mode": {
@@ -4843,6 +5595,94 @@
           }
         },
         "title": "RejectCandidateIn",
+        "type": "object"
+      },
+      "ResourceList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ResourceOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ResourceList",
+        "type": "object"
+      },
+      "ResourceOut": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "additionalProperties": true,
+            "title": "Body",
+            "type": "object"
+          },
+          "current_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Version"
+          },
+          "generation": {
+            "title": "Generation",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "reference",
+              "genre",
+              "genre_rule",
+              "style",
+              "writing_rule",
+              "expression_rule",
+              "role_prompt"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "published",
+              "archived"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "source",
+          "status",
+          "generation",
+          "current_version",
+          "body"
+        ],
+        "title": "ResourceOut",
         "type": "object"
       },
       "ResumeBudgetBody": {
@@ -4891,6 +5731,243 @@
           }
         },
         "title": "ResumeBudgetBody",
+        "type": "object"
+      },
+      "RevisionList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RevisionOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "RevisionList",
+        "type": "object"
+      },
+      "RevisionOut": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "publish",
+              "rollback",
+              "initial"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "body": {
+            "additionalProperties": true,
+            "title": "Body",
+            "type": "object"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "reference",
+              "genre",
+              "genre_rule",
+              "style",
+              "writing_rule",
+              "expression_rule",
+              "role_prompt"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "name",
+          "source",
+          "kind",
+          "body",
+          "created_at",
+          "action",
+          "note"
+        ],
+        "title": "RevisionOut",
+        "type": "object"
+      },
+      "Rollback": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_generation": {
+            "minimum": 0.0,
+            "title": "Expected Generation",
+            "type": "integer"
+          },
+          "note": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Note",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_generation",
+          "version"
+        ],
+        "title": "Rollback",
+        "type": "object"
+      },
+      "SelectionBody": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 0.0,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "selections": {
+            "items": {
+              "$ref": "#/components/schemas/SelectionInput"
+            },
+            "maxItems": 200,
+            "title": "Selections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "expected_revision",
+          "selections"
+        ],
+        "title": "SelectionBody",
+        "type": "object"
+      },
+      "SelectionInput": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "origin": {
+            "enum": [
+              "platform",
+              "personal"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "personal_override": {
+            "default": false,
+            "title": "Personal Override",
+            "type": "boolean"
+          },
+          "resource_id": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Resource Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "origin",
+          "resource_id"
+        ],
+        "title": "SelectionInput",
+        "type": "object"
+      },
+      "SelectionOut": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "additionalProperties": true,
+            "title": "Body",
+            "type": "object"
+          },
+          "generation": {
+            "title": "Generation",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "reference",
+              "genre",
+              "genre_rule",
+              "style",
+              "writing_rule",
+              "expression_rule",
+              "role_prompt"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "origin": {
+            "enum": [
+              "platform",
+              "personal"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "personal_override": {
+            "title": "Personal Override",
+            "type": "boolean"
+          },
+          "resource_id": {
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "resource_id",
+          "origin",
+          "name",
+          "kind",
+          "version",
+          "generation",
+          "body",
+          "personal_override"
+        ],
+        "title": "SelectionOut",
         "type": "object"
       },
       "SettingsBody": {
@@ -5326,6 +6403,33 @@
           "updated_at"
         ],
         "title": "ShortCreationSummaryOut",
+        "type": "object"
+      },
+      "SnapshotOut": {
+        "additionalProperties": false,
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "selections": {
+            "items": {
+              "$ref": "#/components/schemas/SelectionOut"
+            },
+            "title": "Selections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "revision",
+          "configured",
+          "selections"
+        ],
+        "title": "SnapshotOut",
         "type": "object"
       },
       "StoryEventOut": {
@@ -5933,6 +7037,195 @@
         "title": "TaskSummaryOut",
         "type": "object"
       },
+      "UpdateList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/UpdateOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "UpdateList",
+        "type": "object"
+      },
+      "UpdateOut": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "publish",
+              "rollback"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "current_version": {
+            "title": "Current Version",
+            "type": "integer"
+          },
+          "dismissed": {
+            "title": "Dismissed",
+            "type": "boolean"
+          },
+          "kind": {
+            "enum": [
+              "reference",
+              "genre",
+              "genre_rule",
+              "style",
+              "writing_rule",
+              "expression_rule",
+              "role_prompt"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "resource_id": {
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "target_generation": {
+            "title": "Target Generation",
+            "type": "integer"
+          },
+          "target_version": {
+            "title": "Target Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "resource_id",
+          "name",
+          "kind",
+          "current_version",
+          "target_version",
+          "target_generation",
+          "action",
+          "note",
+          "dismissed"
+        ],
+        "title": "UpdateOut",
+        "type": "object"
+      },
+      "UpdateResource": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "additionalProperties": true,
+            "title": "Body",
+            "type": "object"
+          },
+          "expected_generation": {
+            "minimum": 0.0,
+            "title": "Expected Generation",
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "source": {
+            "maxLength": 2000,
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "draft",
+                  "archived"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "required": [
+          "expected_generation",
+          "name",
+          "source",
+          "body"
+        ],
+        "title": "UpdateResource",
+        "type": "object"
+      },
+      "UpdateTarget": {
+        "additionalProperties": false,
+        "properties": {
+          "resource_id": {
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "target_generation": {
+            "minimum": 1.0,
+            "title": "Target Generation",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "resource_id",
+          "target_generation"
+        ],
+        "title": "UpdateTarget",
+        "type": "object"
+      },
+      "UserDefaults-Input": {
+        "additionalProperties": false,
+        "properties": {
+          "rankings": {
+            "$ref": "#/components/schemas/RankingsDefaults"
+          },
+          "task_budget": {
+            "$ref": "#/components/schemas/TaskBudgetLimits-Input"
+          },
+          "thinking_enabled": {
+            "default": false,
+            "title": "Thinking Enabled",
+            "type": "boolean"
+          }
+        },
+        "title": "UserDefaults",
+        "type": "object"
+      },
+      "UserDefaults-Output": {
+        "additionalProperties": false,
+        "properties": {
+          "rankings": {
+            "$ref": "#/components/schemas/RankingsDefaults"
+          },
+          "task_budget": {
+            "$ref": "#/components/schemas/TaskBudgetLimits-Output"
+          },
+          "thinking_enabled": {
+            "default": false,
+            "title": "Thinking Enabled",
+            "type": "boolean"
+          }
+        },
+        "title": "UserDefaults",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -6184,6 +7477,33 @@
         ],
         "title": "_TokenRequest",
         "type": "object"
+      },
+      "myink__api__schemas__OkOut": {
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "OkOut",
+        "type": "object"
+      },
+      "myink__writing_resource_schemas__OkOut": {
+        "additionalProperties": false,
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "OkOut",
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -6257,6 +7577,224 @@
         "summary": "Admin.Access Logs",
         "tags": [
           "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/configuration": {
+      "get": {
+        "operationId": "get_configuration_api_v1_admin_configuration_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigurationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Configuration",
+        "tags": [
+          "platform"
+        ]
+      },
+      "put": {
+        "operationId": "put_configuration_api_v1_admin_configuration_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigurationBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigurationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Put Configuration",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/v1/admin/configuration/models": {
+      "post": {
+        "operationId": "list_models_api_v1_admin_configuration_models_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionProbeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Models",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/v1/admin/configuration/prompt-templates": {
+      "get": {
+        "operationId": "get_prompt_templates_api_v1_admin_configuration_prompt_templates_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PromptRoleTemplatesOut"
+                  },
+                  "title": "Response Get Prompt Templates Api V1 Admin Configuration Prompt Templates Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Prompt Templates",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/v1/admin/configuration/readiness": {
+      "get": {
+        "operationId": "get_readiness_api_v1_admin_configuration_readiness_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Readiness",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/v1/admin/configuration/test-connection": {
+      "post": {
+        "operationId": "test_connection_api_v1_admin_configuration_test_connection_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionProbeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionTestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Test Connection",
+        "tags": [
+          "platform"
         ]
       }
     },
@@ -6524,7 +8062,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OkOut"
+                  "$ref": "#/components/schemas/myink__api__schemas__OkOut"
                 }
               }
             },
@@ -7598,6 +9136,79 @@
         ]
       }
     },
+    "/api/v1/admin/trends": {
+      "get": {
+        "description": "New records by UTC creation day (inclusive), using the reporting connection.",
+        "operationId": "admin_trends_api_v1_admin_trends_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminTrends"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Trends",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/users": {
       "get": {
         "operationId": "admin_users_api_v1_admin_users_get",
@@ -7723,6 +9334,294 @@
         ]
       }
     },
+    "/api/v1/admin/writing-resources": {
+      "get": {
+        "operationId": "list_resources_api_v1_admin_writing_resources_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Resources",
+        "tags": [
+          "writing-resources"
+        ]
+      },
+      "post": {
+        "operationId": "create_api_v1_admin_writing_resources_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateResource"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create",
+        "tags": [
+          "writing-resources"
+        ]
+      }
+    },
+    "/api/v1/admin/writing-resources/{rid}": {
+      "put": {
+        "operationId": "edit_api_v1_admin_writing_resources__rid__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rid",
+            "required": true,
+            "schema": {
+              "title": "Rid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateResource"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Edit",
+        "tags": [
+          "writing-resources"
+        ]
+      }
+    },
+    "/api/v1/admin/writing-resources/{rid}/publish": {
+      "post": {
+        "operationId": "publish_api_v1_admin_writing_resources__rid__publish_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rid",
+            "required": true,
+            "schema": {
+              "title": "Rid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Publish"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Publish",
+        "tags": [
+          "writing-resources"
+        ]
+      }
+    },
+    "/api/v1/admin/writing-resources/{rid}/revisions": {
+      "get": {
+        "operationId": "revisions_api_v1_admin_writing_resources__rid__revisions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rid",
+            "required": true,
+            "schema": {
+              "title": "Rid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revisions",
+        "tags": [
+          "writing-resources"
+        ]
+      }
+    },
+    "/api/v1/admin/writing-resources/{rid}/rollback": {
+      "post": {
+        "operationId": "rollback_api_v1_admin_writing_resources__rid__rollback_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rid",
+            "required": true,
+            "schema": {
+              "title": "Rid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Rollback"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rollback",
+        "tags": [
+          "writing-resources"
+        ]
+      }
+    },
     "/api/v1/auth/logout": {
       "post": {
         "operationId": "logout_api_v1_auth_logout_post",
@@ -7731,7 +9630,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OkOut"
+                  "$ref": "#/components/schemas/myink__api__schemas__OkOut"
                 }
               }
             },
@@ -7795,7 +9694,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OkOut"
+                  "$ref": "#/components/schemas/myink__api__schemas__OkOut"
                 }
               }
             },
@@ -7842,7 +9741,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OkOut"
+                  "$ref": "#/components/schemas/myink__api__schemas__OkOut"
                 }
               }
             },
@@ -7977,7 +9876,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OkOut"
+                  "$ref": "#/components/schemas/myink__api__schemas__OkOut"
                 }
               }
             },
@@ -8441,6 +10340,159 @@
         ]
       }
     },
+    "/api/v1/model-catalog": {
+      "get": {
+        "operationId": "get_model_catalog_api_v1_model_catalog_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelCatalogOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Model Catalog",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/api/v1/my-writing-resources": {
+      "get": {
+        "operationId": "mine_api_v1_my_writing_resources_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Mine",
+        "tags": [
+          "writing-resources"
+        ]
+      },
+      "post": {
+        "operationId": "create_api_v1_my_writing_resources_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateResource"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create",
+        "tags": [
+          "writing-resources"
+        ]
+      }
+    },
+    "/api/v1/my-writing-resources/{rid}": {
+      "put": {
+        "operationId": "edit_api_v1_my_writing_resources__rid__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rid",
+            "required": true,
+            "schema": {
+              "title": "Rid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateResource"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Edit",
+        "tags": [
+          "writing-resources"
+        ]
+      }
+    },
     "/api/v1/projects": {
       "get": {
         "description": "项目列表（根表无 RLS，应用层按身份过滤：只返回自己的书，§14.1 ③）。\n\nidentity 缺失/非法 → 空列表（fail closed，不返回他人作品）。",
@@ -8647,7 +10699,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OkOut"
+                  "$ref": "#/components/schemas/myink__api__schemas__OkOut"
                 }
               }
             },
@@ -10904,6 +12956,269 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/writing-resources": {
+      "get": {
+        "operationId": "snapshot_api_v1_projects__project_id__writing_resources_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Snapshot",
+        "tags": [
+          "writing-resources"
+        ]
+      },
+      "put": {
+        "operationId": "select_resources_api_v1_projects__project_id__writing_resources_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Select Resources",
+        "tags": [
+          "writing-resources"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/writing-resources/adopt": {
+      "post": {
+        "operationId": "adopt_api_v1_projects__project_id__writing_resources_adopt_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdoptBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Adopt",
+        "tags": [
+          "writing-resources"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/writing-resources/dismiss": {
+      "post": {
+        "operationId": "dismiss_api_v1_projects__project_id__writing_resources_dismiss_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DismissBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/myink__writing_resource_schemas__OkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Dismiss",
+        "tags": [
+          "writing-resources"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/writing-resources/updates": {
+      "get": {
+        "operationId": "updates_api_v1_projects__project_id__writing_resources_updates_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Updates",
+        "tags": [
+          "writing-resources"
+        ]
+      }
+    },
     "/api/v1/rankings": {
       "get": {
         "description": "扫榜响应：source=remote（实时榜单）/ sample（降级样例），error 为降级原因。",
@@ -11028,7 +13343,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OkOut"
+                  "$ref": "#/components/schemas/myink__api__schemas__OkOut"
                 }
               }
             },
@@ -11356,7 +13671,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OkOut"
+                  "$ref": "#/components/schemas/myink__api__schemas__OkOut"
                 }
               }
             },
@@ -11507,7 +13822,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OkOut"
+                  "$ref": "#/components/schemas/myink__api__schemas__OkOut"
                 }
               }
             },
@@ -11814,6 +14129,32 @@
         "summary": "Resume Task",
         "tags": [
           "tasks"
+        ]
+      }
+    },
+    "/api/v1/writing-resources": {
+      "get": {
+        "operationId": "catalog_api_v1_writing_resources_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Catalog",
+        "tags": [
+          "writing-resources"
         ]
       }
     },

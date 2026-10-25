@@ -63,11 +63,8 @@ def public_limits(limits: TaskBudgetLimits) -> dict:
 
 
 def budget_defaults(user_id=None) -> TaskBudgetLimits:
-    if user_id is None:
-        return TaskBudgetLimits()
-    from myink.environment import load_raw
-    raw = load_raw(user_id).get("task_budget")
-    return TaskBudgetLimits.model_validate(raw if isinstance(raw, dict) else {})
+    from myink.environment import preferences_for_user
+    return TaskBudgetLimits.model_validate(preferences_for_user(user_id)["task_budget"])
 
 
 def snapshot_budget(user_id=None) -> dict:
@@ -386,6 +383,14 @@ def budgeted_call(function):
     """Wrap a logical fallback-chain call; providers meter each HTTP attempt."""
     @wraps(function)
     def wrapped(chain, messages, **kwargs):
+        addition = getattr(chain, 'system_addition', '')
+        if addition:
+            messages = [*messages, {'role': 'system', 'content': addition}]
+            from myink.config import settings
+            from myink.context_budget import ContextBudgetExceeded, estimate_tokens
+            request = {'messages': messages, 'tools': kwargs.get('tools') or []}
+            if estimate_tokens(request) > settings.request_token_budget:
+                raise ContextBudgetExceeded('CONTEXT_BUDGET_EXCEEDED: platform instructions exceed request budget')
         scope = _SCOPE.get()
         if scope is None:
             return function(chain, messages, **kwargs)
@@ -624,11 +629,14 @@ def budget_execution(function):
         except ValueError:
             return function(*args, **kwargs)  # legacy CLI/test labels have no task ledger
         with new_session() as db:
-            if db.get(Task, tid) is None:
+            task = db.get(Task, tid)
+            if task is None:
                 return function(*args, **kwargs)
+            resource_snapshot = (task.payload or {}).get("writing_resources")
         owner = uuid.uuid4().hex
         try:
-            with bind_task_budget(task_id, owner):
+            from myink.writing_resource_runtime import bind_resources
+            with bind_task_budget(task_id, owner), bind_resources(resource_snapshot):
                 return function(*args, **kwargs)
         except (TaskBudgetPaused, TaskBudgetUnavailable) as exc:
             record_budget_pause(task_id, exc, expected_owner=owner)
@@ -740,6 +748,8 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
                         "message": "预算操作已受理；请刷新任务状态，未重复追加或发布"}
             if task.status not in {"paused", "failed", "awaiting_review"}:
                 raise BudgetResumeError("当前任务状态不可重新投递")
+            from myink.platform_readiness import require_operation_ready
+            require_operation_ready(task.task_type, user_id)
         else:
             adding = bool(body.add_requests or body.add_cost_yuan or body.add_runtime_seconds)
             if task.status not in {"paused", "failed", "awaiting_review"} and not (
@@ -747,6 +757,8 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
                 raise BudgetResumeError(f"当前状态不可追加或续跑: {task.status}")
             if row.owner_token and (row.lease_until or 0) > time.time():
                 raise BudgetResumeError("TASK_STILL_RUNNING: 正在保存进度，请稍后继续")
+            from myink.platform_readiness import require_operation_ready
+            require_operation_ready(task.task_type, user_id)
             old = TaskBudgetLimits.model_validate(row.limits)
             try:
                 limits = TaskBudgetLimits(

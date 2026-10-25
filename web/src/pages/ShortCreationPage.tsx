@@ -228,7 +228,7 @@ export default function ShortCreationPage() {
   // 已确认过的会话不再是可写的（类型里 status 只有 active / committed 两种）。
   const committed = data !== null && data.session.status !== 'active'
 
-  const confirm = () => {
+  const confirm = (chooseResourcesFirst = false) => {
     // 已确认过的会话只会在后端 409；卡填满了也不给这个按钮真的发出去。
     if (committed || !data) return
     const sessionId = data.session.id
@@ -236,9 +236,15 @@ export default function ShortCreationPage() {
       const out = await shortCreationApi.commit(token, sessionId, card as Record<string, unknown>,
                                                 styleItemId || null)
       // commit 只落书，入队归工作台：那边有状态带，入队失败就地给重试入口。
-      navigate(`/projects/${out.project_id}`, {
-        state: { beginShortWriting: true, planWarning: out.plan_warning },
-      })
+      if (chooseResourcesFirst) {
+        navigate(`/projects/${out.project_id}/settings#writing-resources`, {
+          state: { configureBeforeWriting: true, planWarning: out.plan_warning },
+        })
+      } else {
+        navigate(`/projects/${out.project_id}`, {
+          state: { beginShortWriting: true, planWarning: out.plan_warning },
+        })
+      }
     }, '确认失败，请重试')
   }
 
@@ -461,7 +467,8 @@ export default function ShortCreationPage() {
             <footer className={styles.dialogFoot}>
               <Link to="/styles">去文风库添加</Link>
               <button type="button" className="btn btn-quiet" onClick={() => setCardOpen(false)}>再聊聊</button>
-              <button type="button" className="btn btn-primary" disabled={!cardReady || busy} onClick={confirm}>
+              <button type="button" className="btn btn-secondary" disabled={!cardReady || busy} onClick={() => confirm(true)}>确认方案，先选写作资源</button>
+              <button type="button" className="btn btn-primary" disabled={!cardReady || busy} onClick={() => confirm()}>
                 {operation === 'plan' ? '正在规划…' : '确认，开写'}
               </button>
             </footer>

@@ -12,7 +12,7 @@ import httpx
 
 from myink.config import settings
 from myink.providers.base import ModelProvider, ModelResponse
-from myink.providers.errors import format_provider_error
+from myink.providers.errors import format_provider_error, retryable_provider_error
 from myink.providers.think_tag_stripper import (
     LeadingThinkTagStripper,
     isolate_response_body,
@@ -129,6 +129,8 @@ class AnthropicProvider(ModelProvider):
         converted_tools = _convert_tools(tools)
         if converted_tools:
             payload["tools"] = converted_tools
+        elif tools == []:
+            payload["tool_choice"] = {"type": "none"}
         return payload
 
     def _headers(self) -> dict[str, str]:
@@ -191,6 +193,8 @@ class AnthropicProvider(ModelProvider):
                     exc, api_key=self._api_key, self_host_url=settings.self_host_url,
                 )
                 logger.warning("Anthropic 调用失败(attempt=%d): %s", attempt, last_error)
+                if not retryable_provider_error(exc):
+                    break
                 if attempt < MAX_RETRIES:
                     budget_sleep(permit, BACKOFF_BASE[min(attempt, len(BACKOFF_BASE) - 1)])
         return ModelResponse(content="", model_id=model_id, error=last_error,
@@ -307,6 +311,8 @@ class AnthropicProvider(ModelProvider):
                 logger.warning("Anthropic 流式调用失败(attempt=%d): %s", attempt, last_error)
                 if emitted and on_reset:
                     on_reset()
+                if not retryable_provider_error(exc):
+                    break
                 if attempt < MAX_RETRIES:
                     budget_sleep(permit, BACKOFF_BASE[min(attempt, len(BACKOFF_BASE) - 1)])
         return ModelResponse(content="", model_id=model_id, error=last_error,

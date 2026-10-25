@@ -212,3 +212,7 @@ def clean_samples(raw) -> list[str]:
     if sum(len(s) for s in samples) > MAX_TOTAL_CHARS:
         raise ValueError(f"样本总量不超过 {MAX_TOTAL_CHARS} 字")
     return samples
+
+
+from myink.writing_resource_runtime import project_resources as _project_resources
+extract_style_profile = _project_resources(extract_style_profile)

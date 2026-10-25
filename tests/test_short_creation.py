@@ -286,9 +286,11 @@ def chain_stub(monkeypatch):
 
 def test_short_creation_turn_returns_reply_and_card(temp_user, chain_stub):
     stub = chain_stub([_STUB_TURN])
-    reply, patch, error, resp = generate_short_creation_turn(
-        [{"role": "user", "content": "我想写个渡口故事"}], creation.default_card(),
-        user_id=temp_user)
+    from myink.writing_resource_runtime import bind_resources
+    with bind_resources({}):  # No knowledge library: preserve the single JSON call.
+        reply, patch, error, resp = generate_short_creation_turn(
+            [{"role": "user", "content": "我想写个渡口故事"}], creation.default_card(),
+            user_id=temp_user)
     assert error is None
     assert reply == "主角最大的压力是什么？"
     assert patch["protagonist_pressure"] == "守着渡口的生计，也守着不肯走的儿子"
@@ -331,8 +333,9 @@ def test_get_opens_a_session_with_a_fixed_greeting(temp_user):
     assert out["sessions"][0]["title"] == creation.NEW_SESSION_TITLE
 
 
-def test_a_new_conversation_leaves_the_previous_one_readable(temp_user):
+def test_a_new_conversation_leaves_the_previous_one_readable(temp_user, stub_provider):
     """「新建会话」不是「重新开始」：旧对话一个字都不动，随时能切回去看。"""
+    stub_provider("金丹", "金丹")
     sid = _open(temp_user)
     client.post(f"/api/v1/short/creation/sessions/{sid}/messages",
                 json={"content": "我想写个渡口的故事"}, headers=identity_headers(temp_user))
@@ -713,8 +716,9 @@ def test_commit_survives_a_session_deleted_midway(temp_user, chain_stub, monkeyp
                          .where(ShortCreationSession.user_id == uuid.UUID(temp_user))) is None
 
 
-def test_commit_rejects_overlapping_mutations_before_another_model_call(temp_user, monkeypatch):
+def test_commit_rejects_overlapping_mutations_before_another_model_call(temp_user, monkeypatch, stub_provider):
     """同一条会话上并发的三件事一律 409：串行单位是「这条会话」，不能两个模型调用交错。"""
+    stub_provider("金丹", "金丹")
     from myink.api import routes_short_creation as mod
     sid = _seed_session(temp_user)
     overlapping = []
@@ -736,8 +740,9 @@ def test_commit_rejects_overlapping_mutations_before_another_model_call(temp_use
     assert len(planning) == 1
 
 
-def test_two_conversations_do_not_block_each_other(temp_user, monkeypatch):
+def test_two_conversations_do_not_block_each_other(temp_user, monkeypatch, stub_provider):
     """锁按会话分：一条正在出方案时，另一条照样能改卡发话（两个标签页各聊各的）。"""
+    stub_provider("金丹", "金丹")
     from myink.api import routes_short_creation as mod
     first = _seed_session(temp_user)
     second = _seed_session(temp_user)
@@ -752,7 +757,8 @@ def test_two_conversations_do_not_block_each_other(temp_user, monkeypatch):
     assert other_said == [200]
 
 
-def test_old_commit_cannot_mark_a_replacement_session_committed(temp_user, monkeypatch):
+def test_old_commit_cannot_mark_a_replacement_session_committed(temp_user, monkeypatch, stub_provider):
+    stub_provider("金丹", "金丹")
     from myink.api import routes_short_creation as mod
     sid = _seed_session(temp_user)
     replacement = []

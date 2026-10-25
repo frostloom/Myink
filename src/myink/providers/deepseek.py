@@ -16,7 +16,7 @@ from openai import OpenAI
 
 from myink.config import settings
 from myink.providers.base import ModelProvider, ModelResponse
-from myink.providers.errors import format_provider_error
+from myink.providers.errors import format_provider_error, retryable_provider_error
 from myink.providers.think_tag_stripper import (
     LeadingThinkTagStripper,
     isolate_response_body,
@@ -108,6 +108,8 @@ class DeepSeekProvider(ModelProvider):
             kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
         if tools:
             kwargs["tools"] = tools
+        elif tools == []:
+            kwargs["tool_choice"] = "none"
         return kwargs
 
     def generate(self, messages: list[dict], *, model_id: str, max_tokens: int | None = None,
@@ -201,6 +203,8 @@ class DeepSeekProvider(ModelProvider):
                     exc, api_key=self._api_key, self_host_url=settings.self_host_url,
                 )
                 logger.warning("DeepSeek 调用失败(attempt=%d): %s", attempt, last_error)
+                if not retryable_provider_error(exc):
+                    break
                 if attempt < MAX_RETRIES:
                     budget_sleep(permit, BACKOFF_BASE[min(attempt, len(BACKOFF_BASE) - 1)])
         return ModelResponse(content="", model_id=model_id, error=last_error, duration_ms=int((time.monotonic() - t0) * 1000))
@@ -347,6 +351,8 @@ class DeepSeekProvider(ModelProvider):
                 logger.warning("DeepSeek 流式调用失败(attempt=%d): %s", attempt, last_error)
                 if emitted and on_reset:
                     on_reset()
+                if not retryable_provider_error(exc):
+                    break
                 if attempt < MAX_RETRIES:
                     budget_sleep(permit, BACKOFF_BASE[min(attempt, len(BACKOFF_BASE) - 1)])
             finally:

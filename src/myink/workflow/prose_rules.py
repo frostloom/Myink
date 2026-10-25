@@ -20,3 +20,21 @@ PROSE_REVIEW_RULES = """
 每个表达问题必须定位到原文具体句段，说明重复了什么或如何妨碍理解，并给出局部可执行的改法；没有证据不报，不用 AI 生成概率或自评分作理由。
 新增表达建议不改变既有硬禁令和剧情冲突的严重度。长篇中一般表达建议只报 style/minor 或 hint、scope=local，不凭这些建议触发 rewrite/replan；仅当问题持续妨碍场景理解且有充分原文证据时才报 major 并建议 rewrite，不为纯表达问题 replan。短篇仅把确实影响阅读、必须修改的表达问题纳入 issues，并在问题中引用原句；可选润色不应把 pass 改成 revise。
 """
+
+
+def with_legacy_prose(messages, stage):
+    """旧作品保留 main 默认表达规则；已配置作品仅使用冻结的可选资源。
+
+    在角色模板替换后追加，避免把可选表达建议误归为角色固定输出协议。
+    """
+    from copy import deepcopy
+
+    writing = {"write_messages", "revise_messages", "patch_messages",
+               "short_write_messages", "short_revise_messages", "short_continue_messages"}
+    reviewing = {"audit_messages", "short_review_messages"}
+    rules = PROSE_RULES if stage in writing else PROSE_REVIEW_RULES if stage in reviewing else ""
+    if not rules:
+        return messages
+    output = deepcopy(messages)
+    output[0]["content"] += rules
+    return output

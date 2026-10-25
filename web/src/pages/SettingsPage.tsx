@@ -1,24 +1,24 @@
 // 创作设置页：本书题材字段 + 每章目标字数。
-// 文风不在这里——它在建书那一刻就选定了（project_settings.style_profile 是当时那份副本），
-// 建书后不可换；要改文风请去账号级文风库改档案，再建新书。
+// 原题材/文风保留建书历史；启用写作资源后，以当前资源快照为准。
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
-import { GenrePackFields } from '../components/GenrePackFields'
-import { emptyFields, isManagedPack, type BookGenrePack, type GenreFields } from '../lib/genrePacks'
+import { isManagedPack, type BookGenrePack } from '../lib/genrePacks'
 import type { Project, ProjectSettings } from '../types'
 import styles from './SettingsPage.module.css'
+import { WritingResourcePicker } from '../components/WritingResourcePicker'
 
 export default function SettingsPage() {
   const { projectId = '' } = useParams()
+  const location = useLocation()
+  const beforeWriting = location.state?.configureBeforeWriting === true
   const { logout } = useAuth()
 
   const [projects, setProjects] = useState<Project[]>([])
   const [settings, setSettings] = useState<ProjectSettings | null>(null)
-  const [genreDraft, setGenreDraft] = useState<GenreFields>(emptyFields())
   const [genrePack, setGenrePack] = useState<BookGenrePack | null>(null)
   // 每章目标字数（§6.9 三层字数控制；从 projects 取该书当前值，可改保存）
   const [targetWords, setTargetWords] = useState('3000')
@@ -36,18 +36,8 @@ export default function SettingsPage() {
       setSettings(s)
       if (isManagedPack(s.genre_pack)) {
         setGenrePack(s.genre_pack)
-        setGenreDraft({
-          selling_point: s.genre_pack.selling_point,
-          subgenres: s.genre_pack.subgenres,
-          taboos: s.genre_pack.taboos,
-          pacing: s.genre_pack.pacing,
-          satisfaction: s.genre_pack.satisfaction,
-          mechanics: s.genre_pack.mechanics,
-          world_hints: s.genre_pack.world_hints,
-        })
       } else {
         setGenrePack(null)
-        setGenreDraft(emptyFields())
       }
       setProjects(proj)
       const cur = proj.find((p) => p.id === projectId)
@@ -65,40 +55,6 @@ export default function SettingsPage() {
   function showError(err: unknown) {
     setOk(null)
     setBanner(formatApiError(err))
-  }
-
-  async function saveGenrePack() {
-    if (!genrePack) return
-    setBusy('genre')
-    setBanner(null)
-    setOk(null)
-    try {
-      const next = await api.putGenrePack(projectId, genreDraft)
-      setGenrePack(next)
-      await load()
-      setOk('本书题材已保存，之后写章/修订会用新字段')
-    } catch (err) {
-      showError(err)
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  async function restoreGenrePack() {
-    if (!genrePack) return
-    setBusy('genre-restore')
-    setBanner(null)
-    setOk(null)
-    try {
-      const next = await api.restoreGenrePack(projectId)
-      setGenrePack(next)
-      await load()
-      setOk('已恢复建书时的题材字段')
-    } catch (err) {
-      showError(err)
-    } finally {
-      setBusy(null)
-    }
   }
 
   async function saveTargetWords() {
@@ -130,7 +86,7 @@ export default function SettingsPage() {
             <div>
               <h1>创作设置</h1>
               <div className={styles.crumb}>
-                <Link to={`/projects/${projectId}`}>返回工作台</Link>
+                <Link to={`/projects/${projectId}`} state={{planWarning:location.state?.planWarning}}>{beforeWriting ? '选好后返回工作台开写' : '返回工作台'}</Link>
                 {settings && <span className="badge">v{settings.version}</span>}
               </div>
             </div>
@@ -146,33 +102,20 @@ export default function SettingsPage() {
           {banner && <div className="banner banner-error">{banner}</div>}
           {ok && <div className="banner banner-warning">{ok}</div>}
 
+          {beforeWriting && <p className="banner">方案已确认，正文尚未开始生成。请勾选需要的资源并保存，再返回工作台点击“开始写”。{location.state?.planWarning && <span>{location.state.planWarning}</span>}</p>}
+          <WritingResourcePicker key={projectId} projectId={projectId} />
+
           <section className={`panel ${styles.section}`}>
             <h2 className={styles.sectionTitle}>本书题材</h2>
+            <p className={styles.hint}>以下为建书历史题材；启用写作资源后，当前题材与主辅顺序以「本书写作资源」中已保存的快照为准。</p>
             {genrePack ? (
               <>
                 <p className={styles.hint}>
                   根题材：{genrePack.source_name}
                   {genrePack.secondary_name ? ` · 辅题材：${genrePack.secondary_name}` : ''}
                 </p>
-                <GenrePackFields value={genreDraft} onChange={setGenreDraft} />
-                <div className={styles.saveRow}>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    disabled={busy !== null}
-                    onClick={() => void restoreGenrePack()}
-                  >
-                    {busy === 'genre-restore' ? '恢复中…' : '恢复建书时的题材字段'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    disabled={busy !== null}
-                    onClick={() => void saveGenrePack()}
-                  >
-                    {busy === 'genre' ? '保存中…' : '保存本书题材'}
-                  </button>
-                </div>
+                <p>{genrePack.selling_point}</p>
+                <p className={styles.hint}>此处保留建书时的历史快照，不随资源选择更新。</p>
               </>
             ) : (
               <p className={styles.hint}>本书创建时未选题材包，不回填。新书请在建书页选择。</p>
@@ -202,7 +145,7 @@ export default function SettingsPage() {
               >
                 {busy === 'words' ? '保存中…' : '保存目标字数'}
               </button>
-              <Link className="btn btn-quiet" to="/environment">模型连接与扫榜</Link>
+              <Link className="btn btn-quiet" to="/environment">高级设置</Link>
             </div>
           </section>
         </div>

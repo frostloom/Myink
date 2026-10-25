@@ -567,3 +567,23 @@ def ensure_task_budget_schema() -> None:
         Base.metadata.create_all(conn, tables=[
             TaskBudget.__table__, TaskBudgetAttempt.__table__, TaskBudgetCall.__table__])
     enable_row_level_security()
+
+
+def ensure_writing_resource_snapshot_fk() -> None:
+    """Upgrade pre-FK resource snapshots; only remove rows whose book was deleted."""
+    from sqlalchemy import inspect
+
+    with get_admin_engine().begin() as conn:
+        # Serialize upgrades and project deletion while repairing legacy orphan rows.
+        conn.execute(text("LOCK TABLE projects, project_writing_resources IN SHARE ROW EXCLUSIVE MODE"))
+        foreign_keys = inspect(conn).get_foreign_keys("project_writing_resources")
+        if any(fk['referred_table'] == 'projects'
+               and fk['constrained_columns'] == ['project_id']
+               and fk.get('options', {}).get('ondelete') == 'CASCADE'
+               for fk in foreign_keys):
+            return
+        conn.execute(text("DELETE FROM project_writing_resources r WHERE NOT EXISTS "
+                          "(SELECT 1 FROM projects p WHERE p.id = r.project_id)"))
+        conn.execute(text("ALTER TABLE project_writing_resources ADD CONSTRAINT "
+                          "fk_project_writing_resources_project FOREIGN KEY (project_id) "
+                          "REFERENCES projects(id) ON DELETE CASCADE"))

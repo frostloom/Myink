@@ -19,6 +19,7 @@ from myink.memory.repository import get_volume_outline
 from myink.models import Chapter, GlobalAuditReport
 from myink.providers import make_chain
 from myink.workflow.outline import covering_item, normalize_outline
+from myink.writing_resource_runtime import project_resources
 
 logger = logging.getLogger(__name__)
 
@@ -215,10 +216,12 @@ def _run_kind_llm(db: Session, project_id, task_id: str | None, window: tuple[in
                   messages: list[dict], *, detail: dict) -> tuple[list | None, str | None]:
     from myink.workflow import nodes
 
-    resp = make_chain("audit", db=db, project_id=str(project_id)).generate(
-        messages, json_mode=True, max_tokens=nodes._MAX_TOKENS["audit"])
+    from myink.workflow.reference_access import generate_with_references
+    resp, tool_trace = generate_with_references(db, str(project_id), "global_audit", "GlobalAudit",
+        make_chain("audit", db=db, project_id=str(project_id)), messages,
+        task_id=task_id, json_mode=True, max_tokens=nodes._MAX_TOKENS["audit"])
     nodes.record_run(db, project_id=project_id, task_id=task_id, node="global_audit",
-                     role="GlobalAudit", resp=resp, error=resp.error, detail=detail, messages=messages)
+                     role="GlobalAudit", resp=resp, error=resp.error, detail={**detail, **({"tool_trace":tool_trace} if tool_trace else {})}, messages=messages)
     if resp.error:
         return None, resp.error
     try:
@@ -229,6 +232,7 @@ def _run_kind_llm(db: Session, project_id, task_id: str | None, window: tuple[in
     return raw, None
 
 
+@project_resources
 def run_global_audit(db: Session, project_id, window: tuple[int, int], *,
                      source: str = "manual", source_batch_task_id: str | None = None) -> dict:
     """窗口内对照卷规划做一次推进审计。无大纲 / LLM 失败都不阻塞写作。"""

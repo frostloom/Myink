@@ -66,7 +66,7 @@ export default function LoginPage() {
     setBusy(true)
     setError(null)
     try {
-      if (await completeMfa(mfaToken, trimmed)) navigate('/long', { replace: true })
+      if (await completeMfa(mfaToken, trimmed)) navigate('/', { replace: true })
     } catch (err) {
       reportFailure(err, '验证码验证失败')
     } finally {
@@ -112,7 +112,7 @@ export default function LoginPage() {
         setCode('')
         return
       }
-      if (accepted?.status === 'authenticated') navigate('/long', { replace: true })
+      if (accepted?.status === 'authenticated') navigate('/', { replace: true })
     } catch (err) {
       reportFailure(err, mode === 'login' ? '登录失败' : '注册失败')
     } finally {

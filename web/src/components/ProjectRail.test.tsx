@@ -45,7 +45,7 @@ it('shows environment and appearance only on global pages, not inside a book', (
   const projects: Project[] = [{ id: 'p1', title: '第一本书', genre: '都市', current_chapter: 1, target_words: 3000 }]
 
   const { unmount } = renderRail('/projects', projects)
-  expect(screen.getByRole('link', { name: '环境配置' })).toBeTruthy()
+  expect(screen.getByRole('link', { name: '高级设置' })).toBeTruthy()
   expect(screen.getByRole('link', { name: '主题' })).toBeTruthy()
   expect(screen.getByRole('link', { name: '账号' })).toBeTruthy()
   expect(screen.getByText('alice')).toBeTruthy()
@@ -53,12 +53,12 @@ it('shows environment and appearance only on global pages, not inside a book', (
   unmount()
 
   const env = renderRail('/environment', projects)
-  expect(screen.getByRole('link', { name: '环境配置' })).toBeTruthy()
+  expect(screen.getByRole('link', { name: '高级设置' })).toBeTruthy()
   expect(screen.getByRole('link', { name: '主题' })).toBeTruthy()
   env.unmount()
 
   renderRail('/projects/p1', projects)
-  expect(screen.queryByRole('link', { name: '环境配置' })).toBeNull()
+  expect(screen.queryByRole('link', { name: '高级设置' })).toBeNull()
   expect(screen.queryByRole('link', { name: '主题' })).toBeNull()
   expect(screen.getByRole('link', { name: '账号' })).toBeTruthy()
   expect(screen.getByRole('link', { name: '创作设置' })).toBeTruthy()
@@ -158,7 +158,7 @@ it('links to the style library only on global pages', () => {
   expect(screen.getByRole('link', { name: '文风库' }).getAttribute('href')).toBe('/styles')
   unmount()
 
-  // 与「环境配置」「主题」同一条闸：进书之后这三条都不该在。
+  // 与「高级设置」「主题」同一条闸：进书之后这三条都不该在。
   renderRail('/projects/p1', [])
   expect(screen.queryByRole('link', { name: '文风库' })).toBeNull()
 })

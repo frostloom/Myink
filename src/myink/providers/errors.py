@@ -60,6 +60,16 @@ def _category(exc: Exception) -> str | None:
     return "timeout" if isinstance(exc, APITimeoutError) else "connection"
 
 
+def retryable_provider_error(exc: Exception) -> bool:
+    """Only transient HTTP statuses and transport failures merit another attempt."""
+    status = getattr(exc, 'status_code', None)
+    if status is None and isinstance(exc, _STATUS_TYPES):
+        status = exc.response.status_code
+    if isinstance(status, int):
+        return status in {408, 429} or 500 <= status <= 599
+    return _category(exc) in {'connection', 'timeout', 'pool', 'interrupted'}
+
+
 def _guidance_url(raw: str) -> str:
     if any(ord(char) < 33 for char in raw):
         return ""

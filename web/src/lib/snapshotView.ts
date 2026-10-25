@@ -9,12 +9,12 @@ import type {
 export type SnapshotSubView = 'prompt' | 'recall' | 'hardRules' | 'style' | 'findings' | 'patch'
 
 export const SUB_VIEW_LABELS: Record<SnapshotSubView, string> = {
-  prompt: '提示词',
-  recall: '召回文本块',
-  hardRules: '硬规则',
+  prompt: '创作要求',
+  recall: '前情与资料',
+  hardRules: '必守设定',
   style: '文风',
-  findings: '校验发现',
-  patch: '补丁',
+  findings: '发现的问题',
+  patch: '文字修改',
 }
 
 /** 硬约束与文风在渲染后的提示词里各是一个【…】节，靠标签名定位（同 snapshot.py 的口径）。 */

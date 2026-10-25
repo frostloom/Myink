@@ -31,6 +31,7 @@ from myink.task_budget import (bind_task_budget, budget_managed, budget_view,
                                TaskBudgetPaused, TaskBudgetUnavailable)
 from myink.db import new_session
 from myink.models import Project, Task
+from myink.platform_readiness import PlatformNotReady
 from myink.workflow.runner import (
     finalize_chapter_review,
     generate_batch,
@@ -432,7 +433,8 @@ def _maybe_reflexion(project_id: str, chapter_seq: int, task_id: str) -> None:
 def _run(body: dict, task_id: str, task_type: str, project_id: str) -> str:
     owner = uuid.uuid4().hex
     try:
-        with bind_task_budget(task_id, owner):
+        from myink.writing_resource_runtime import bind_resources
+        with bind_task_budget(task_id, owner), bind_resources((body.get("payload") or {}).get("writing_resources") or {}):
             return _run_bound(body, task_id, task_type, project_id)
     except (TaskBudgetPaused, TaskBudgetUnavailable) as exc:
         status = record_budget_pause(task_id, exc, expected_owner=owner)
@@ -455,6 +457,13 @@ def _run_bound(body: dict, task_id: str, task_type: str, project_id: str) -> str
                     _maybe_reflexion(project_id, seq, task_id)
     except (TaskBudgetPaused, TaskBudgetUnavailable):
         raise
+    except PlatformNotReady as exc:
+        from myink.workflow.runner import _set_task_status
+
+        _mark_empty_writing_chapters(body, "failed")
+        _set_task_status(project_id, task_id, "failed", str(exc))
+        _pub_status(task_id, "failed", {"error": str(exc)})
+        return "terminal"
     except Exception as exc:
         # 批次 critical 冲突：resume 续跑时由图内节点抛出（首次运行在 runner
         # generate_batch 内 catch 置 awaiting_review）。置 awaiting_review 等人工
@@ -619,6 +628,8 @@ def process(body: dict, worker_id: str | None = None) -> str:
             with new_session() as db:
                 task = db.get(Task, uuid.UUID(task_id))
                 persisted_snapshot = (task.payload or {}).get("_task_budget")
+                body = {**body, "payload": {**(body.get("payload") or {}),
+                         "writing_resources": (task.payload or {}).get("writing_resources")}}
             ensure_task_budget(task_id, project_id, body["user_id"], persisted_snapshot)
             decision = _run(body, task_id, task_type, project_id)
 

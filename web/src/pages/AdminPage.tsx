@@ -1,7 +1,8 @@
+import { AccessLogContent } from './admin/AccessLogContent'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Outlet, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom'
+import { AdminRail } from '../components/AdminRail'
 import { AttachmentChip } from '../components/FeedbackWidget'
-import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
 import { formatApiError } from '../lib/apiError'
 import {
@@ -18,11 +19,14 @@ import {
 } from '../lib/adminApi'
 import {
   creationStatusLabel,
+  tierLabel,
+  NODE_LABELS,
   taskChapterLabel,
   taskStatusLabel,
   taskTypeLabel,
 } from '../lib/labels'
 import type { Feedback } from '../types'
+import { AdminTrends } from './admin/AdminTrends'
 import { Analytics } from './admin/Analytics'
 import { RunTable } from './admin/RunDetail'
 import {
@@ -82,6 +86,7 @@ function OverviewView({ token, onForbidden }: { token: string; onForbidden: () =
           </>
         )}
       </LoadState>
+      <AdminTrends token={token} onForbidden={onForbidden} />
     </section>
   )
 }
@@ -111,7 +116,7 @@ function UsersView({ token, onForbidden }: { token: string; onForbidden: () => v
           </tr></thead>
             <tbody>{resource.data.items.map((user) => <tr key={user.id}>
               <td><strong>{user.username}</strong></td>
-              <td>{user.tier}</td>
+              <td>{tierLabel(user.tier)}</td>
               <td>{user.project_count}</td>
               <td>{user.chapter_count}</td>
               <td>{user.word_count.toLocaleString()}</td>
@@ -202,7 +207,9 @@ function TasksView({ token, onForbidden }: {
       <form className={styles.filters} aria-label="任务筛选" onSubmit={submit}>
         <label><span>用户 ID</span><input className="input" value={draft.userId} onChange={(event) => setDraft({ ...draft, userId: event.target.value })} /></label>
         <label><span>作品 ID</span><input className="input" value={draft.projectId} onChange={(event) => setDraft({ ...draft, projectId: event.target.value })} /></label>
-        <label><span>状态</span><input className="input" maxLength={32} value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value })} /></label>
+        <label><span>状态</span><select className="input" value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value })}>
+          <option value="">全部状态</option>{['queued','running','paused','awaiting_plan','awaiting_review','failed','cancelled','done'].map(status => <option key={status} value={status}>{taskStatusLabel(status)}</option>)}
+        </select></label>
         <button className="btn btn-primary" type="submit">筛选</button>
       </form>
       <LoadState {...resource} empty={resource.data?.items.length === 0}>
@@ -252,7 +259,9 @@ function RunsView({ token, onForbidden }: { token: string; onForbidden: () => vo
       <form className={styles.filters} aria-label="运行筛选" onSubmit={submit}>
         <label><span>用户 ID</span><input className="input" value={draft.userId} onChange={(event) => setDraft({ ...draft, userId: event.target.value })} /></label>
         <label><span>作品 ID</span><input className="input" value={draft.projectId} onChange={(event) => setDraft({ ...draft, projectId: event.target.value })} /></label>
-        <label><span>节点</span><input className="input" maxLength={64} value={draft.node} onChange={(event) => setDraft({ ...draft, node: event.target.value })} /></label>
+        <label><span>节点</span><select className="input" value={draft.node} onChange={(event) => setDraft({ ...draft, node: event.target.value })}>
+          <option value="">全部写作环节</option>{Object.entries(NODE_LABELS).map(([node, label]) => <option key={node} value={node}>{label}</option>)}
+        </select></label>
         <button className="btn btn-primary" type="submit">筛选</button>
       </form>
       <LoadState {...resource} empty={resource.data?.items.length === 0}>
@@ -275,7 +284,7 @@ function LogsView({ token, onForbidden }: { token: string; onForbidden: () => vo
       <LoadState {...resource} empty={resource.data?.items.length === 0}>
         {resource.data && <>
           <div className={styles.tableWrap}><table><thead><tr><th>时间</th><th>管理员</th><th>动作</th><th>目标</th></tr></thead>
-            <tbody>{resource.data.items.map((entry) => <tr key={entry.id}><td>{formatDate(entry.created_at)}</td><td>{entry.actor_id}</td><td>{entry.action}</td><td>{entry.target}</td></tr>)}</tbody></table></div>
+            <tbody>{resource.data.items.map((entry) => <tr key={entry.id}><td>{formatDate(entry.created_at)}</td><AccessLogContent entry={entry} /></tr>)}</tbody></table></div>
           <Pagination total={resource.data.total} offset={offset} onChange={setOffset} />
         </>}
       </LoadState>
@@ -493,23 +502,15 @@ function FeedbackView({ token, onForbidden }: { token: string; onForbidden: () =
 /** 控制台首页：标签栏与当前标签的内容。tab 放在 URL 上，详情页返回时才能回到原来的标签。 */
 export function AdminConsole() {
   const { token, onForbidden } = useOutletContext<AdminOutletContext>()
-  const [params, setParams] = useSearchParams()
+  const [params] = useSearchParams()
   const requested = params.get('tab')
   const tab = TABS.some(([id]) => id === requested) ? requested as Tab : 'overview'
   return (
     <>
       <header className={styles.header}>
-        <div><h1>管理员控制台</h1></div>
+        <div><h1>{TABS.find(([id]) => id === tab)?.[1] ?? '运营概览'}</h1></div>
       </header>
-      <nav className={styles.tabs} aria-label="管理视图">
-        {TABS.map(([id, label]) => <button
-          key={id}
-          type="button"
-          className={tab === id ? styles.activeTab : ''}
-          aria-pressed={tab === id}
-          onClick={() => setParams({ tab: id }, { replace: true })}
-        >{label}</button>)}
-      </nav>
+
       {tab === 'overview' && <OverviewView token={token} onForbidden={onForbidden} />}
       {tab === 'analytics' && <Analytics token={token} onForbidden={onForbidden} />}
       {tab === 'users' && <UsersView token={token} onForbidden={onForbidden} />}
@@ -541,7 +542,7 @@ export default function AdminPage() {
     // 未登录或非管理员：给一页带左 rail 的空态，而不是白屏（游客仍能从这里走回其它页）。
     return (
       <div className={styles.wrap}>
-        <ProjectRail projects={[]} onLogout={logout} />
+        <AdminRail onLogout={logout} />
         <main className={styles.main}>
           <div className="empty">只有管理员可以打开控制台。</div>
         </main>
@@ -558,7 +559,7 @@ export default function AdminPage() {
   }
   return (
     <div className={styles.wrap}>
-      <ProjectRail projects={[]} onLogout={logout} />
+      <AdminRail onLogout={logout} />
       <main className={styles.main}>
         <Outlet key={identity} context={{ token: session.token, onForbidden }} />
       </main>

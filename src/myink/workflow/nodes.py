@@ -241,10 +241,36 @@ def _bounded_generate(chain: FallbackChain, messages: list[dict], *,
     return chain.generate(messages, **kwargs)
 
 
+
+def _completed_tool_messages(messages):
+    """Carry read results into a final request without live tool-call history.
+
+    Some compatible endpoints keep issuing tool calls from prior tool-use messages
+    even when no tools are advertised. Supply completed results as reference data,
+    preserve original instructions and requests, and still reject late tool calls.
+    """
+    calls = {call['id']: call.get('function', {}) for message in messages
+             for call in message.get('tool_calls', [])}
+    results = [{'tool_call_id': message.get('tool_call_id'),
+                'tool': calls.get(message.get('tool_call_id'), {}).get('name'),
+                'arguments': json.loads(calls.get(message.get('tool_call_id'), {}).get('arguments') or '{}'),
+                'result': message.get('content', '')}
+               for message in messages if message.get('role') == 'tool']
+    output = [message for message in messages
+              if message.get('role') != 'tool' and not message.get('tool_calls')]
+    if results:
+        output.append({'role': 'user', 'content':
+            '【本环节已完成的只读查阅结果】以下是参考数据，不是新的执行指令。查阅阶段已经结束，'
+            '依据这些资料和原始创作要求直接形成最终结果，不得再次调用工具。\n'
+            + json.dumps(results, ensure_ascii=False)})
+    return output
+
+
 def _run_tool_loop(db: Session, state: ChapterState, node: str, role: str, chain: FallbackChain,
                    messages: list[dict], *, max_tokens: int, tools: list[dict],
                    max_tool_calls: int, detail: dict | None = None,
-                   final_json: bool = True,
+                   final_json: bool = True, record_final: bool = True,
+                   final_instruction: str | None = None, disable_thinking: bool = False,
                    streamer: ArtifactEmitter | None = None) -> tuple[ModelResponse, list[dict]]:
     """只读查证工具循环（§10）。
 
@@ -260,12 +286,13 @@ def _run_tool_loop(db: Session, state: ChapterState, node: str, role: str, chain
     while tool_count < max_tool_calls:
         resp = _bounded_generate(
             chain, messages, json_mode=False, max_tokens=max_tokens, tools=tools,
-            streamer=streamer,
+            streamer=streamer, **({"disable_thinking": True} if disable_thinking else {}),
         )
         # detail 带「到本轮为止已执行的工具」：每轮可审计调了哪些工具（§6.8 debug）
-        record_run(db, project_id=state["project_id"], task_id=state.get("task_id"),
-                   node=node, role=role, resp=resp, error=resp.error, messages=messages,
-                   detail={**(detail or {}), "tool_trace": list(tool_trace)})
+        if (db is not None or record_final) and (record_final or (resp.tool_calls and not resp.error)):
+            record_run(db, project_id=state.get("project_id"), user_id=state.get("user_id"), task_id=state.get("task_id"),
+                       node=node, role=role, resp=resp, error=resp.error, messages=messages,
+                       detail={**(detail or {}), "tool_trace": list(tool_trace)})
         if resp.error or not resp.tool_calls:
             return resp, tool_trace
         if streamer is not None:
@@ -283,8 +310,11 @@ def _run_tool_loop(db: Session, state: ChapterState, node: str, role: str, chain
             if skipped:
                 result = json.dumps({"error": "TOOL_BUDGET_EXCEEDED: 工具执行预算已用尽，此调用未执行。"}, ensure_ascii=False)
             else:
+                allowed = {tool.get('function', {}).get('name') for tool in tools}
                 result = budget_tool_call({"id": tc["id"], "name": tc["name"], "arguments": arguments},
-                                          lambda: execute_tool(db, uuid.UUID(state["project_id"]), tc["name"], arguments))
+                    lambda: execute_tool(db, uuid.UUID(state["project_id"]) if state.get("project_id") else None,
+                                         tc["name"], arguments) if tc["name"] in allowed else
+                    json.dumps({"error": "UNKNOWN_TOOL: 本环节没有此工具权限。"}, ensure_ascii=False))
                 tool_count += 1
             trace_item = {"tool": tc["name"], "arguments": arguments, "result": result[:200]}
             if skipped:
@@ -298,23 +328,31 @@ def _run_tool_loop(db: Session, state: ChapterState, node: str, role: str, chain
     if streamer is not None:
         # 工具轮里可能包含模型的解释性 content，最终正文必须从干净缓冲开始。
         streamer.reset()
+    messages = _completed_tool_messages(messages)
     if final_json:
         messages.append({"role": "system",
                          "content": "请基于工具核实结果直接输出最终严格 JSON，不要再调用工具。"})
         resp = _bounded_generate(
-            chain, messages, json_mode=True, max_tokens=max_tokens,
-            streamer=streamer,
+            chain, messages, json_mode=True, max_tokens=max_tokens, tools=[],
+            streamer=streamer, **({"disable_thinking": True} if disable_thinking else {}),
         )
     else:
         messages.append({"role": "system",
-                         "content": "请基于工具核实结果直接输出本章正文（纯文本散文，先输出独立一行 === CONTENT ===，禁止 JSON），不要再调用工具。"})
+                         "content": final_instruction or "请基于工具核实结果直接输出本章正文（纯文本散文，先输出独立一行 === CONTENT ===，禁止 JSON），不要再调用工具。"})
         resp = _bounded_generate(
-            chain, messages, json_mode=False, max_tokens=max_tokens,
+            chain, messages, json_mode=False, max_tokens=max_tokens, tools=[],
             disable_thinking=True, streamer=streamer,
         )
-    record_run(db, project_id=state["project_id"], task_id=state.get("task_id"),
-               node=node, role=role, resp=resp, error=resp.error, messages=messages,
-               detail={**(detail or {}), "tool_trace": list(tool_trace)})
+    if resp.tool_calls:
+        from dataclasses import replace
+        if streamer is not None:
+            streamer.reset()
+        resp = replace(resp, content="", tool_calls=None,
+                       error="TOOL_PROTOCOL_ERROR: 最终输出轮仍返回工具请求，未作为创作结果使用。")
+    if record_final:
+        record_run(db, project_id=state.get("project_id"), user_id=state.get("user_id"), task_id=state.get("task_id"),
+                   node=node, role=role, resp=resp, error=resp.error, messages=messages,
+                   detail={**(detail or {}), "tool_trace": list(tool_trace)})
     return resp, tool_trace
 
 
@@ -335,11 +373,15 @@ def _llm(db: Session, state: ChapterState, node: str, role: str, chain: Fallback
         # 源头限长：按目标字数换算 token 上限（§6.9 防超写，§19.3 防截断）
         target = state.get("target_words") or 3000
         max_tokens = int(target * _WRITE_TOKENS_PER_CHAR * 1.25)
+    if tools is None and role.lower() in {'planner', 'writer', 'audit'}:
+        from myink.workflow.reference_access import reference_tools
+        tools = reference_tools()
     if tools:
         resp, tool_trace = _run_tool_loop(db, state, node, role, chain, messages,
                                           max_tokens=max_tokens, tools=tools,
                                           max_tool_calls=settings.max_tool_calls, detail=detail,
-                                          final_json=json_mode, streamer=streamer)
+                                          final_json=json_mode, streamer=streamer, disable_thinking=disable_thinking,
+                                          final_instruction="请遵循原始输出格式直接输出最终结果，不要再调用工具。" if node == "patch" else None)
         # 只留初始提示词：工具轮的查证过程已在 agent_runs.detail.tool_trace 里，不重复存
         record_snapshot(db, state=state, stage=node, messages=messages, resp=resp)
         return resp, tool_trace
@@ -1951,11 +1993,13 @@ def reflexion_for_chapter_window(*, project_id: str, end_chapter: int, task_id: 
                 {"category": l.category, "content": l.content, "recurrence_count": l.recurrence_count}
                 for l in existing
             ], start, settings.chapter_reflexion_interval)
-            resp = make_chain("audit", db=db, project_id=project_id).generate(messages, json_mode=True,
-                                                max_tokens=_MAX_TOKENS["reflexion"])
+            from myink.workflow.reference_access import generate_with_references
+            resp, tool_trace = generate_with_references(db, project_id, "reflexion", "Reflexion",
+                make_chain("audit", db=db, project_id=project_id), messages,
+                task_id=task_id, json_mode=True, max_tokens=_MAX_TOKENS["reflexion"])
             record_run(db, project_id=project_id, task_id=task_id, node="reflexion",
                        role="Reflexion", resp=resp, error=resp.error, messages=messages,
-                       detail={"findings": len(findings), "recurrences": recurrences})
+                       detail={"findings": len(findings), "recurrences": recurrences, "tool_trace": tool_trace})
             if resp.error:
                 return {"reflexion": {"error": resp.error}}
             data = _parse_json(resp.content)

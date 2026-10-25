@@ -26,6 +26,13 @@ const liveTask = vi.hoisted(() => ({
   }>,
 }))
 
+vi.mock('../lib/writingResources', async original => ({
+  ...await original<typeof import('../lib/writingResources')>(),
+  writingResources: {
+    updates: async () => ({items:[]}),
+    snapshot: async () => ({revision:0,configured:false,selections:[]}),
+  },
+}))
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({ logout: vi.fn(), session: { userId: 'test-user', username: 'alice' } }),
 }))
@@ -636,7 +643,7 @@ it('blocks a second enqueue while the first start request is pending', async () 
   const start = await screen.findByRole('button', { name: '开始写' })
   fireEvent.click(start)
   fireEvent.click(start)
-  expect(api.generateShort).toHaveBeenCalledTimes(1)
+  await waitFor(() => expect(api.generateShort).toHaveBeenCalledTimes(1))
   expect(screen.getByRole('status').textContent).toContain('正在提交写作任务')
 })
 
@@ -820,4 +827,9 @@ it('passes the authoritative budget to the short workspace flow', async () => {
   renderWorkspace()
   await screen.findByText('timeline-task-short-chapter-none')
   expect(screen.getByText('flow-budget-7')).toBeTruthy()
+})
+it('offers writing resource choices in the short-book workspace where the settings navigation is hidden', async () => {
+ renderWorkspace()
+ const link=await screen.findByRole('link',{name:'选择写作资源'})
+ expect(link.getAttribute('href')).toContain('/settings#writing-resources')
 })

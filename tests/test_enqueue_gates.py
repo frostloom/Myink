@@ -86,11 +86,12 @@ _MESSAGE_KEYS = {"task_id", "task_type", "project_id", "user_id", "payload",
 
 
 @pytest.fixture
-def book(temp_project):
+def book(temp_project, stub_provider):
     """可写的书 + 车主 + 身份头；用完清掉本用例碰过的 Redis 键。
 
     `temp_project` 建的书 creation_status 取列默认值 legacy_ready，所以写闸门放行。
     """
+    stub_provider("金丹", "金丹")
     pid = temp_project
     with new_session() as db:
         owner = db.scalar(select(Project.user_id).where(Project.id == uuid.UUID(pid)))
@@ -298,7 +299,10 @@ def test_batch_size_is_clamped_and_start_defaults_to_one(book, monkeypatch):
     response = client.post(f"/api/v1/projects/{book.pid}/batches/generate",
                            json={"size": 9999, "start": 0}, headers=book.headers)
     assert response.status_code == 202, response.text
-    assert published["payload"] == {"size": settings.batch_max_hard, "start": 1}
+    payload = published["payload"]
+    assert payload["size"] == settings.batch_max_hard
+    assert payload["start"] == 1
+    _assert_automatic_role_snapshot(payload["writing_resources"])
     assert published["task_type"] == "batch_generate"
     # 扣的是钳制后的 size（闸门扣章数，不是请求里的 9999）
     assert int(book.r.get(quota_key(book.uid, book.today))) == settings.batch_max_hard
@@ -354,7 +358,10 @@ def test_short_generate_enqueues_one_whole_story_task(book, monkeypatch):
 
     assert response.status_code == 202, response.text
     assert published["task_type"] == "short_generate"
-    assert published["payload"] == {"chapter_count": 5, "chars_per_chapter": 2000}
+    payload = published["payload"]
+    assert payload["chapter_count"] == 5
+    assert payload["chars_per_chapter"] == 2000
+    _assert_automatic_role_snapshot(payload["writing_resources"])
     assert int(book.r.get(quota_key(book.uid, book.today))) == 5
 
 
@@ -430,3 +437,44 @@ def test_the_lua_scripts_ship_next_to_the_module():
         assert script.is_file(), f"{here} 里没有 {name}（package-data 漏了？）"
         assert script.read_text(encoding="utf-8").strip(), f"{name} 是空的"
     assert enqueue._GATES_LUA == (here / "gates.lua").read_text(encoding="utf-8")
+
+
+def _assert_automatic_role_snapshot(snapshot):
+    """Check admission data against actual publications and explicit phase scope."""
+    from myink.models.writing_resource import WritingResource
+    from myink.models.platform import PlatformConfiguration
+    phases = {
+        "writer": {"system_write", "system_revise", "system_revise_patch",
+                   "system_short_writer", "system_short_reviser", "system_short_continuer"},
+        "planner": {"system_batch_plan", "system_plan", "system_cast", "system_book_outline", "system_short_plan",
+                    "system_short_plan_review", "system_short_creation",
+                    "book_setup_000", "book_setup_001", "book_setup_010", "book_setup_011",
+                    "book_setup_100", "book_setup_101", "book_setup_110", "book_setup_111"},
+        "audit": {"system_audit", "system_reflexion", "system_global_audit", "system_short_draft_review"},
+        "extract": {"system_extract", "system_style_extract"},
+        "summarize": {"system_summarize"},
+        "validator_l2": {"system_ledger_l2"},
+    }
+    assert snapshot["configured"] is False
+    assert snapshot["revision"] == 0
+    assert snapshot["selections"] == []
+    assert set(snapshot["role_prompts"]) == set(phases)
+    with new_session() as db:
+        for role, expected_phases in phases.items():
+            frozen = snapshot["role_prompts"][role]
+            assert frozen["resource_id"] == "role-prompt:" + role
+            assert frozen["version"] >= 1
+            assert frozen["generation"] >= 1
+            assert frozen["body"]["role"] == role
+            frozen_phases = set(frozen["body"]["templates"])
+            assert not frozen_phases - expected_phases
+            # Existing immutable planner publications may predate batch planning.
+            assert expected_phases - frozen_phases <= {"system_batch_plan"}
+            assert all(isinstance(text, str) and text.strip()
+                       for text in frozen["body"]["templates"].values())
+            publication = db.get(WritingResource, frozen["resource_id"])
+            assert frozen["version"] == publication.current_version
+            assert frozen["generation"] == publication.publication["generation"]
+            assert frozen["body"] == publication.publication["body"]
+        policy = db.get(PlatformConfiguration, 1)
+        assert snapshot["legacy_role_supplements"] == (policy.document.get("prompts", {}) if policy else {})

@@ -1,13 +1,15 @@
 .wrap {
   height: 100%;
+  overflow-y: auto;
   display: flex;
+  align-items: flex-start;
   min-width: 0;
 }
 
 .main {
   flex: 1;
   min-width: 0;
-  overflow-y: auto;
+  overflow: visible;
   padding: var(--space-6);
 }
 
@@ -363,7 +365,7 @@
 }
 
 @media (max-width: 640px) {
-  .wrap { display: block; height: auto; min-height: 100%; }
+  .wrap { display: block; height: 100%; min-height: 0; }
   .wrap > aside { width: 100%; height: auto; min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); }
   .main { overflow: visible; padding: var(--space-3); }
   .header, .viewHead, .detailHead { flex-direction: column; }
@@ -387,3 +389,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+@media (max-width: 640px) {
+  .wrap { flex-direction: column; }
+  .main { padding: var(--space-3); }
+}
+
+.detailPageHead { flex-direction:row; align-items:center; }

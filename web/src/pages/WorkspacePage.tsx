@@ -1,7 +1,8 @@
+import { ResourceUpdates, type ResourceUpdateGate } from '../components/ResourceUpdates'
 // 工作台（三栏）：rail 项目切换 + 章节列表 | 章节编辑器 | 生成入口/时间线/校验报告/候选池。
 // 生成任务进度状态在页面级提升：useTaskEvents(activeTaskId)，终态 → 刷新章节列表。
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AuditPanel } from '../components/AuditPanel'
 import { CandidatePanel, type ReleaseTarget } from '../components/CandidatePanel'
 import { ChapterEditor } from '../components/ChapterEditor'
@@ -28,6 +29,7 @@ import styles from './WorkspacePage.module.css'
 
 export default function WorkspacePage() {
   const { projectId = '' } = useParams()
+  const resourceGate = useRef<ResourceUpdateGate>(null)
   const { logout, session } = useAuth()
   const accountId = session?.userId ?? ''
   const navigate = useNavigate()
@@ -390,6 +392,8 @@ export default function WorkspacePage() {
     shortSubmitRef.current = true
     setShortSubmitting(true)
     try {
+      if (resourceGate.current && !(await resourceGate.current.beforeGenerate())) return
+      if (!isCurrent()) return
       try {
         const response = await api.generateShort(pid)
         if (!isCurrent()) return
@@ -862,6 +866,8 @@ export default function WorkspacePage() {
       </aside>
 
       <main className={styles.main}>
+        <div className={styles.resourceEntry}><Link className="btn btn-secondary" to={`/projects/${projectId}/settings#writing-resources`}>选择写作资源</Link><span>题材包、题材规则、文风、创作与表达规则</span></div>
+        <ResourceUpdates key={projectId} projectId={projectId} gateRef={resourceGate} />
         {error && <div className="banner banner-error" role="alert">{error}</div>}
         {isShortBook && (
           <div className={styles.band} role="status">
@@ -1040,6 +1046,7 @@ export default function WorkspacePage() {
                 chapters={chapters}
                 selectedChapter={selectedChapter}
                 taskBusy={taskInFlight}
+                beforeGenerate={() => resourceGate.current?.beforeGenerate() ?? Promise.resolve(true)}
                 onTaskStart={handleTaskStart}
               />
               <TaskTimeline

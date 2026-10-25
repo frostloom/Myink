@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from myink.api.auth import require_user
 from myink.api.routes_settings import (
@@ -11,19 +11,16 @@ from myink.api.routes_settings import (
     ModelConnectionBody,
     _assert_host_allowed,
     _clean_base_url,
-    connection_record,
+    audited_admin_probe,
 )
 from myink.api.schemas import ConnectionTestOut, EnvironmentOut, ModelListOut
 from myink.environment import load_environment, load_raw, save_raw
-from myink.task_budget import TaskBudgetLimits, public_limits
-from myink.providers import CONFIGURABLE_ROLES, probe
+from myink.task_budget import TaskBudgetLimits
+from myink.providers import probe
 from myink.providers.connections import (
-    CUSTOM_ROUTE_PREFIX,
-    keep_custom_routes,
     pack_model_settings,
     unpack_model_settings,
 )
-from myink.providers.credentials import decrypt_api_key
 
 router = APIRouter(prefix="/api/v1", tags=["environment"])
 
@@ -35,19 +32,28 @@ class RankingsBody(BaseModel):
 
 
 class EnvironmentBody(BaseModel):
-    """省略字段 = 保留现值；显式传（含 {} / []）= 整体替换。"""
+    """省略字段保留覆盖，嵌套字段局部更新；恢复默认只移除指定覆盖。"""
 
     model_routes: dict[str, str] | None = None
     model_connections: list[ModelConnectionBody] | None = None
     rankings: RankingsBody | None = None
     thinking_enabled: bool | None = None
     task_budget: TaskBudgetLimits | None = None
+    reset_preferences: list[str] = Field(default_factory=list)
+
+    @field_validator('reset_preferences')
+    @classmethod
+    def validate_reset_paths(cls, paths):
+        supported = {'thinking_enabled', 'model_routes.writer', 'model_routes.planner'}
+        supported.update(f'task_budget.{key}' for key in TaskBudgetLimits.model_fields)
+        supported.update(f'rankings.{key}' for key in RankingsBody.model_fields)
+        if any(path not in supported for path in paths):
+            raise ValueError('Unknown preference reset path')
+        return paths
 
 
 def _validate_rankings(body: RankingsBody, existing: dict) -> dict:
-    from myink.environment import merge_rankings
-
-    merged = merge_rankings(existing)
+    merged = dict(existing)
     if body.enabled is not None:
         merged["enabled"] = body.enabled
     if body.timeout is not None:
@@ -61,30 +67,6 @@ def _validate_rankings(body: RankingsBody, existing: dict) -> dict:
     return merged
 
 
-def _apply_connections(
-    items: list[ModelConnectionBody], existing_connections: dict,
-) -> dict:
-    connections: dict = {}
-    seen: set[str] = set()
-    for item in items:
-        cid, rec = connection_record(item, existing_connections)
-        if cid in seen:
-            raise HTTPException(status_code=400, detail=f"模型连接 id 重复: {cid}")
-        seen.add(cid)
-        connections[cid] = rec
-    return connections
-
-
-def _validate_routes(routes: dict[str, str], connections: dict) -> None:
-    for role, model_ref in routes.items():
-        if role not in CONFIGURABLE_ROLES:
-            raise HTTPException(status_code=400,
-                                detail=f"不可配置的 role: {role}（仅 {sorted(CONFIGURABLE_ROLES)}）")
-        if model_ref.startswith(CUSTOM_ROUTE_PREFIX) and model_ref[len(CUSTOM_ROUTE_PREFIX):] in connections:
-            continue
-        raise HTTPException(status_code=400, detail=f"未知模型: {model_ref}")
-
-
 @router.get("/environment", response_model=EnvironmentOut)
 def get_environment(user_id: str = Depends(require_user)) -> dict:
     return load_environment(user_id)
@@ -92,27 +74,49 @@ def get_environment(user_id: str = Depends(require_user)) -> dict:
 
 @router.put("/environment", response_model=EnvironmentOut)
 def put_environment(body: EnvironmentBody, user_id: str = Depends(require_user)) -> dict:
+    from myink.platform_configuration import clean_user_routes, validate_user_routes
+    if 'model_connections' in body.model_fields_set:
+        raise HTTPException(403, 'Platform connections are managed by administrators')
+    supplied = {'thinking_enabled'} if 'thinking_enabled' in body.model_fields_set else set()
+    for group in ('rankings', 'task_budget', 'model_routes'):
+        value = getattr(body, group)
+        keys = value.keys() if isinstance(value, dict) else value.model_fields_set if value is not None else ()
+        supplied.update(f'{group}.{key}' for key in keys)
+    if supplied.intersection(body.reset_preferences):
+        raise HTTPException(400, 'Cannot reset and set the same preference')
     raw = load_raw(user_id)
-    existing_routes, existing_connections = unpack_model_settings(
-        raw.get("models") if isinstance(raw.get("models"), dict) else {},
-    )
-    routes = existing_routes if body.model_routes is None else body.model_routes
-    connections = existing_connections
-    if body.model_connections is not None:
-        connections = _apply_connections(body.model_connections, existing_connections)
-    if body.model_routes is None:
-        routes = keep_custom_routes(routes, connections)
-    _validate_routes(routes, connections)
-
+    existing_routes, _ = unpack_model_settings(raw.get('models') or {})
+    routes = clean_user_routes(existing_routes)
+    if body.model_routes is not None:
+        if not body.model_routes:
+            routes = {}
+        for role, ref in body.model_routes.items():
+            if not ref and role in ('writer', 'planner'):
+                routes.pop(role, None)
+            else:
+                routes[role] = ref
+    validate_user_routes(routes)
     stored = dict(raw)
-    stored["models"] = pack_model_settings(routes, connections)
+    for path in body.reset_preferences:
+        group, _, key = path.partition('.')
+        if group == 'model_routes':
+            routes.pop(key, None)
+        elif not key:
+            stored.pop(group, None)
+        elif isinstance(stored.get(group), dict):
+            values = dict(stored[group])
+            values.pop(key, None)
+            if values:
+                stored[group] = values
+            else:
+                stored.pop(group)
+    stored['models'] = pack_model_settings(routes, {})
     if body.rankings is not None:
-        existing = raw.get("rankings") if isinstance(raw.get("rankings"), dict) else {}
+        existing = stored.get("rankings") if isinstance(stored.get("rankings"), dict) else {}
         stored["rankings"] = _validate_rankings(body.rankings, existing)
     if body.task_budget is not None:
-        existing = raw.get('task_budget') if isinstance(raw.get('task_budget'), dict) else {}
-        merged = {**existing, **body.task_budget.model_dump(exclude_unset=True)}
-        stored['task_budget'] = public_limits(TaskBudgetLimits.model_validate(merged))
+        existing = stored.get('task_budget') if isinstance(stored.get('task_budget'), dict) else {}
+        stored['task_budget'] = {**existing, **body.task_budget.model_dump(mode='json', exclude_unset=True)}
     if body.thinking_enabled is not None:
         stored["thinking_enabled"] = bool(body.thinking_enabled)
     try:
@@ -122,20 +126,12 @@ def put_environment(body: EnvironmentBody, user_id: str = Depends(require_user))
 
 
 def _probe_key(user_id: str, body: ConnectionProbeBody) -> str:
-    raw = body.api_key.get_secret_value().strip() if body.api_key else ""
-    if raw:
-        return raw
-    if body.connection_id:
-        _, connections = unpack_model_settings(load_raw(user_id).get("models"))
-        stored = connections.get(body.connection_id, {}).get("api_key_encrypted")
-        if stored:
-            key = decrypt_api_key(str(stored))
-            if key:
-                return key
-    raise HTTPException(status_code=400, detail="需要填写 API Key（或选择已保存密钥的连接）")
+    from myink.api.routes_platform import probe_key
+    return probe_key(body)
 
 
-@router.post("/environment/models", response_model=ModelListOut)
+
+@router.post("/environment/models", response_model=ModelListOut, dependencies=[Depends(audited_admin_probe)])
 def list_environment_models(
     body: ConnectionProbeBody, user_id: str = Depends(require_user),
 ) -> dict:
@@ -146,7 +142,7 @@ def list_environment_models(
     return {"ok": error is None, "models": models, "error": error}
 
 
-@router.post("/environment/test-connection", response_model=ConnectionTestOut)
+@router.post("/environment/test-connection", response_model=ConnectionTestOut, dependencies=[Depends(audited_admin_probe)])
 def test_environment_connection(
     body: ConnectionProbeBody, user_id: str = Depends(require_user),
 ) -> dict:

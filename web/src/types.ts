@@ -461,8 +461,17 @@ export interface RankingsConfigInput {
   limit?: number
 }
 
+/** 管理员提供的默认偏好；用户覆盖按字段生效。 */
+export interface UserDefaults {
+  thinking_enabled: boolean
+  task_budget: TaskBudgetLimits
+  rankings: RankingsConfig
+}
+
 /** 账号级环境配置（GET/PUT /environment） */
 export interface EnvironmentSettings {
+  overridden_fields?: string[]
+  available_models?: Array<{ id: string; name: string }>
   task_budget?: TaskBudgetLimits
   model_routes: Record<string, string>
   model_connections: ModelConnection[]

@@ -121,7 +121,7 @@ def test_tool_loop_reuses_paid_result_and_read_result(budget_task, monkeypatch):
     def run():
         with tenant_session(pid) as db:
             return nodes._llm(db, state, "audit", "Audit", chain,
-                              [{"role":"user", "content":"check"}], tools=[{"type":"function"}])
+                              [{"role":"user", "content":"check"}], tools=[{"type":"function", "function":{"name":"inspect_facts"}}])
     with bind_task_budget(tid, "first"):
         with pytest.raises(TaskBudgetPaused):
             run()

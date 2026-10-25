@@ -1,10 +1,8 @@
-"""阶段 4 二次切片核心新功能回归（评审 M1 补齐）：每 Agent 模型路由 / 创作设置端点 / 审计读端点。
+"""Project settings redact legacy credentials; platform owns model configuration.
 
-- make_chain 只消费 custom: 连接；未配置 / 非法模型 → unconfigured，不再回落内置 DeepSeek；
-- settings GET/PUT 全量替换 + 非法 role/model 400 + 空 dict 清空；
-- global-audit 列表/详情形状对齐（列表只带计数、详情带 findings/抽样角色）。
+Legacy probe helpers retain their validation coverage; HTTP admin enforcement is
+covered in test_platform_configuration. Global audit reporting remains unchanged.
 """
-
 from __future__ import annotations
 
 import uuid
@@ -20,8 +18,6 @@ from myink.db import new_session, tenant_session
 from myink.memory.repository import get_settings
 from myink.models import GlobalAuditReport, Project, ProjectSettings, User
 from myink.providers import make_chain
-from myink.providers.connections import CONNECTIONS_KEY
-from myink.providers.credentials import decrypt_api_key
 
 FINDING = {"conflict_type": "persona_drift", "severity": "hint", "scope": "local",
            "source": "audit", "evidence": [{"chapter": 1, "quote": "……"}],
@@ -51,158 +47,63 @@ def _set_routes(pid: str, routes: dict[str, str]) -> None:
         db.commit()
 
 
-# ---- 每 Agent 模型路由（§6.10）----
+# ---- Project settings cannot bypass centralized model policy ----
 
-def test_make_chain_without_user_model_does_not_use_builtin(temp_project):
-    """未配置连接：明确报错，不再打 .env DeepSeek。"""
+def test_make_chain_without_platform_model_does_not_use_builtin(temp_project):
     _isolate_from_account_env(temp_project)
-    chain = make_chain("writer", project_id=temp_project)
-    assert chain.chain == ["unconfigured"]
-    resp = chain.generate([{"role": "user", "content": "x"}])
-    assert resp.error is not None and "环境配置" in resp.error
+    from myink.platform_readiness import PlatformNotReady
+    with pytest.raises(PlatformNotReady):
+        make_chain('writer', project_id=temp_project)
     with tenant_session(temp_project) as db:
-        assert make_chain("writer", project_id=temp_project, db=db).chain == ["unconfigured"]
+        with pytest.raises(PlatformNotReady):
+            make_chain('writer', project_id=temp_project, db=db)
 
 
-def test_make_chain_ignores_invalid_or_builtin_model_route(temp_project):
-    """非法模型 id / 已废弃内置 id → unconfigured，不静默换模型。"""
-    _isolate_from_account_env(temp_project)
-    _set_routes(temp_project, {"writer": "not-a-model", "extract": "deepseek-v4-pro"})
-    assert make_chain("writer", project_id=temp_project).chain == ["unconfigured"]
-    assert make_chain("extract", project_id=temp_project).chain == ["unconfigured"]
-
-
-# ---- 创作设置端点（GET/PUT）----
-
-def test_settings_roundtrip_full_replace(temp_project):
-    """PUT 全量替换 + version 递增；空 dict 清空回落默认链。"""
-    g0 = get_project_settings(temp_project)
-    assert g0["model_routes"] == {} and g0["version"] == 0
-
-    cid = str(uuid.uuid4())
-    conn = ModelConnectionBody(
-        id=cid, name="私有", protocol="openai",
-        base_url="https://models.example.com/v1", model="novel-pro", api_key="k",
-    )
-    put_project_settings(temp_project, SettingsBody(
-        model_connections=[conn], model_routes={"planner": f"custom:{cid}"}))
-    g1 = get_project_settings(temp_project)
-    assert g1["model_routes"] == {"planner": f"custom:{cid}"} and g1["version"] == 1
-
-    # 再 PUT 另一角色 → 全量替换（planner 被清）+ version 递增
-    put_project_settings(temp_project, SettingsBody(
-        model_connections=[conn], model_routes={"extract": f"custom:{cid}"}))
-    g2 = get_project_settings(temp_project)
-    assert g2["model_routes"] == {"extract": f"custom:{cid}"} and g2["version"] == 2
-
-    put_project_settings(temp_project, SettingsBody(model_routes={}))
-    g3 = get_project_settings(temp_project)
-    assert g3["model_routes"] == {} and g3["version"] == 3
-
-
-def test_settings_rejects_invalid_role_and_model(temp_project):
-    """非法 role（非可配置集）/ 非法模型 id → 400 且不污染现值。"""
-    with pytest.raises(HTTPException) as e1:
-        put_project_settings(temp_project, SettingsBody(model_routes={"not-a-role": "custom:x"}))
-    assert e1.value.status_code == 400
-    with pytest.raises(HTTPException) as e2:
-        put_project_settings(temp_project, SettingsBody(model_routes={"writer": "not-a-model"}))
-    assert e2.value.status_code == 400
-    assert get_project_settings(temp_project)["model_routes"] == {}
-
-
-def test_settings_omitting_routes_preserves_them(temp_project):
-    """省略 model_routes = 保留现值（与 connections 对称），显式 {} 才清空。
-
-    旧写法 `body.model_routes or {}` 分不清「没传」与「传空」：只改连接的客户端（或任何
-    绕过前端的调用）会静默清空全部分角色路由。
-    """
-    cid = str(uuid.uuid4())
-    put_project_settings(temp_project, SettingsBody(
-        model_connections=[ModelConnectionBody(
-            id=cid, name="私有", protocol="openai",
-            base_url="https://models.example.com/v1", model="novel-pro", api_key="k",
-        )],
-        model_routes={"writer": f"custom:{cid}"},
-    ))
-    assert put_project_settings(temp_project, SettingsBody())["model_routes"] == \
-        {"writer": f"custom:{cid}"}
-    assert put_project_settings(temp_project, SettingsBody(model_routes={}))["model_routes"] == {}
-
-
-def test_custom_model_connection_is_encrypted_redacted_and_routable(temp_project):
+def test_make_chain_ignores_legacy_project_credentials(temp_project):
     _isolate_from_account_env(temp_project)
     cid = str(uuid.uuid4())
-    result = put_project_settings(temp_project, SettingsBody(
-        model_connections=[ModelConnectionBody(
-            id=cid, name="私有 OpenAI", protocol="openai",
-            base_url="https://models.example.com/v1/", model="novel-pro",
-            api_key="secret-value",
-        )],
-        model_routes={"writer": f"custom:{cid}"},
-    ))
-
-    assert result["model_routes"] == {"writer": f"custom:{cid}"}
-    assert result["model_connections"] == [{
-        "id": cid, "name": "私有 OpenAI", "protocol": "openai",
-        "base_url": "https://models.example.com/v1", "model": "novel-pro",
-        "input_price": None, "output_price": None, "has_api_key": True,
-    }]
-    assert "secret-value" not in repr(result)
-    with tenant_session(temp_project) as db:
-        stored = get_settings(db, uuid.UUID(temp_project)).model_routes
-        encrypted = stored[CONNECTIONS_KEY][cid]["api_key_encrypted"]
-    assert encrypted != "secret-value"
-    assert decrypt_api_key(encrypted) == "secret-value"
-
-    chain = make_chain("writer", project_id=temp_project)
-    assert chain.chain == ["novel-pro"]
-    assert chain.providers[0].name() == "openai-compatible"
-    # 审核未单独配置时沿用 writer 的自备连接，不再打 .env DeepSeek
-    audit = make_chain("audit", project_id=temp_project)
-    assert audit.chain == ["novel-pro"]
-    assert audit.providers[0].name() == "openai-compatible"
+    from myink.providers.connections import pack_model_settings
+    from myink.providers.credentials import encrypt_api_key
+    _set_routes(temp_project, pack_model_settings({'writer': f'custom:{cid}'}, {
+        cid: {'name': 'Legacy', 'protocol': 'openai', 'base_url': 'https://models.example.com',
+              'model': 'legacy-pro', 'api_key_encrypted': encrypt_api_key('legacy-secret')}}))
+    from myink.platform_readiness import PlatformNotReady
+    with pytest.raises(PlatformNotReady):
+        make_chain('writer', project_id=temp_project)
+    response = get_project_settings(temp_project)
+    assert response['model_routes'] == {}
+    assert response['model_connections'] == []
+    assert 'legacy-secret' not in repr(response)
+    assert 'api_key_encrypted' not in repr(response)
 
 
-def test_updating_custom_connection_with_blank_key_preserves_secret(temp_project):
-    _isolate_from_account_env(temp_project)
+@pytest.mark.parametrize('payload', [
+    {'model_routes': {}}, {'model_connections': []},
+    {'model_routes': {'writer': 'not-a-model'}},
+    {'model_routes': {'not-a-role': 'custom:x'}},
+])
+def test_project_settings_rejects_any_model_mutation(temp_project, payload):
+    before = get_project_settings(temp_project)
+    with pytest.raises(HTTPException) as error:
+        put_project_settings(temp_project, SettingsBody(**payload))
+    assert error.value.status_code == 403
+    assert get_project_settings(temp_project) == before
+
+
+def test_empty_project_settings_preserves_existing_data(temp_project):
+    before = get_project_settings(temp_project)
+    assert put_project_settings(temp_project, SettingsBody()) == before
+
+
+def test_connection_validation_requires_key_and_rejects_credential_urls():
     cid = str(uuid.uuid4())
-    put_project_settings(temp_project, SettingsBody(
-        model_connections=[ModelConnectionBody(
-            id=cid, name="Claude", protocol="anthropic",
-            base_url="https://api.anthropic.com", model="claude-sonnet", api_key="first-key",
-        )],
-        model_routes={"planner": f"custom:{cid}"},
-    ))
-    put_project_settings(temp_project, SettingsBody(
-        model_connections=[ModelConnectionBody(
-            id=cid, name="Claude 新名称", protocol="anthropic",
-            base_url="https://api.anthropic.com/v1", model="claude-sonnet",
-        )],
-        model_routes={"planner": f"custom:{cid}"},
-    ))
-
-    chain = make_chain("planner", project_id=temp_project)
-    assert chain.providers[0].name() == "anthropic"
-    assert get_project_settings(temp_project)["model_connections"][0]["name"] == "Claude 新名称"
-
-
-def test_custom_connection_validation_rejects_missing_key_and_unsafe_url(temp_project):
-    cid = str(uuid.uuid4())
-    with pytest.raises(HTTPException, match="必须填写 API Key"):
-        put_project_settings(temp_project, SettingsBody(
-            model_connections=[ModelConnectionBody(
-                id=cid, name="无密钥", protocol="openai",
-                base_url="https://models.example.com/v1", model="m",
-            )],
-        ))
-    with pytest.raises(HTTPException, match="请求地址不能包含"):
-        put_project_settings(temp_project, SettingsBody(
-            model_connections=[ModelConnectionBody(
-                id=cid, name="错误地址", protocol="openai",
-                base_url="https://user:pass@models.example.com/v1?key=x", model="m", api_key="x",
-            )],
-        ))
+    with pytest.raises(HTTPException, match='必须填写 API Key'):
+        routes_settings.connection_record(ModelConnectionBody(
+            id=cid, name='No key', protocol='openai', base_url='https://8.8.8.8/v1', model='m'), {})
+    with pytest.raises(HTTPException, match='请求地址不能包含'):
+        routes_settings.connection_record(ModelConnectionBody(
+            id=cid, name='URL credentials', protocol='openai',
+            base_url='https://user:pass@models.example.com/v1?key=x', model='m', api_key='x'), {})
 
 
 # ---- 模型连接探针端点（POST settings/models + settings/test-connection）----
@@ -236,10 +137,9 @@ def test_probe_endpoints_forward_inline_key_and_shape(temp_project, monkeypatch)
 def test_probe_reuses_stored_connection_key_when_blank(temp_project, monkeypatch):
     """已保存连接留空 key：用 connection_id 取密文解密后调探针。"""
     cid = str(uuid.uuid4())
-    put_project_settings(temp_project, SettingsBody(
-        model_connections=[ModelConnectionBody(
-            id=cid, name="私有", protocol="openai",
-            base_url="https://models.example.com/v1", model="novel-pro", api_key="stored-secret")]))
+    from myink.providers.credentials import encrypt_api_key
+    monkeypatch.setattr('myink.api.routes_platform.load_configuration', lambda: {
+        'connections': {cid: {'api_key_encrypted': encrypt_api_key('stored-secret')}}})
     seen: dict = {}
 
     def fake_list(protocol, base_url, api_key):
@@ -264,7 +164,7 @@ def test_probe_rejects_bad_url_missing_key_and_missing_model(temp_project, monke
     with pytest.raises(HTTPException):
         routes_settings.list_connection_models(temp_project, routes_settings.ConnectionProbeBody(
             protocol="openai", base_url="not-a-url", api_key="k"))
-    with pytest.raises(HTTPException, match="API Key"):
+    with pytest.raises(HTTPException, match="(?i)API Key"):
         routes_settings.list_connection_models(temp_project, routes_settings.ConnectionProbeBody(
             protocol="openai", base_url="https://models.example.com/v1"))
     with pytest.raises(HTTPException, match="模型 id"):
@@ -308,19 +208,13 @@ def test_probe_allows_global_hosts(temp_project, monkeypatch):
     assert seen["url"] == "https://models.example.com/v1"
 
 
-def test_settings_save_rejects_non_global_model_host(temp_project):
-    """保存路径也要守：只在探针拦而保存不拦等于没拦——地址落库后由 worker 在生成时真打出去。"""
-    for risky in ("http://169.254.169.254/latest/meta-data",
-                  "http://100.100.100.200/latest/meta-data",
-                  "http://127.0.0.1:11434/v1", "http://192.168.1.20:8000/v1"):
-        with pytest.raises(HTTPException, match="内网/保留地址"):
-            put_project_settings(temp_project, SettingsBody(
-                model_connections=[ModelConnectionBody(
-                    id=str(uuid.uuid4()), name="风险地址", protocol="openai",
-                    base_url=risky, model="m", api_key="k",
-                )],
-            ))
-    assert get_project_settings(temp_project)["model_connections"] == []
+def test_platform_connection_record_rejects_non_global_model_host():
+    for risky in ('http://169.254.169.254/latest/meta-data', 'http://100.100.100.200/latest/meta-data',
+                  'http://127.0.0.1:11434/v1', 'http://192.168.1.20:8000/v1'):
+        with pytest.raises(HTTPException, match='内网/保留地址'):
+            routes_settings.connection_record(ModelConnectionBody(
+                id=str(uuid.uuid4()), name='Risky', protocol='openai',
+                base_url=risky, model='m', api_key='k'), {})
 
 
 # ---- 审计读端点（列表/详情）----

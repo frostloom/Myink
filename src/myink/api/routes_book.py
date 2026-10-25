@@ -321,7 +321,7 @@ def create_project(body: CreateProjectBody,
         genre_pack: dict = {}
         if "primary_id" in body.model_fields_set:
             try:
-                genre_pack = build_book_pack(body.primary_id, body.secondary_id, body.genre_fields)
+                genre_pack = build_book_pack(body.primary_id, body.secondary_id)
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
             genre = display_genre(body.primary_id, body.secondary_id)

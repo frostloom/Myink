@@ -39,8 +39,9 @@ def quiet_publish(monkeypatch):
 
 
 @pytest.fixture
-def book(temp_project):
+def book(temp_project, stub_provider):
     """temp_project 那本书 + 车主；用完把本用例碰过的 Redis 键清干净。"""
+    stub_provider("金丹", "金丹")
     pid = temp_project
     with new_session() as db:
         uid = str(db.scalar(select(Project.user_id).where(Project.id == uuid.UUID(pid))))

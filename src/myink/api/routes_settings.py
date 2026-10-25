@@ -8,30 +8,30 @@ import uuid
 from typing import Literal
 from urllib.parse import urlsplit
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, SecretStr
 
-from myink.api.auth import require_owner
+from myink.api.auth import require_owner, require_admin, _AuthenticatedUser
 from myink.api.schemas import ConnectionTestOut, ModelListOut, ProjectSettingsOut
 from myink.db import tenant_session
 from myink.memory.repository import get_settings
 from myink.models import ProjectSettings
-from myink.providers import CONFIGURABLE_ROLES, probe
-from myink.providers.connections import (
-    CUSTOM_ROUTE_PREFIX,
-    keep_custom_routes,
-    pack_model_settings,
-    public_connections,
-    unpack_model_settings,
-)
+from myink.providers import probe
 from myink.genre_catalog import public_pack
-from myink.providers.credentials import decrypt_api_key, encrypt_api_key
+from myink.providers.credentials import encrypt_api_key
 
 router = APIRouter(prefix="/api/v1", tags=["settings"])
 
 
 def _pid(project_id: str) -> uuid.UUID:
     return uuid.UUID(project_id)
+
+
+def audited_admin_probe(request: Request, response: Response,
+                        actor: _AuthenticatedUser = Depends(require_admin)):
+    from myink.api.routes_admin import _audit_or_fail
+    response.headers['Cache-Control'] = 'no-store'
+    _audit_or_fail(actor, request, 'admin.configuration.legacy_probe')
 
 
 class ModelConnectionBody(BaseModel):
@@ -159,7 +159,6 @@ def _response(st: ProjectSettings | None) -> dict:
             "style_profile": {}, "skill_pack": None, "genre_pack": {},
             "model_routes": {}, "model_connections": [], "version": 0,
         }
-    routes, connections = unpack_model_settings(st.model_routes)
     return {
         "style_profile": {
             key: value for key, value in (st.style_profile or {}).items()
@@ -167,8 +166,8 @@ def _response(st: ProjectSettings | None) -> dict:
         },
         "skill_pack": st.skill_pack,
         "genre_pack": public_pack(st.genre_pack),
-        "model_routes": keep_custom_routes(routes, connections),
-        "model_connections": public_connections(connections),
+        "model_routes": {},
+        "model_connections": [],
         "version": st.version or 0,
     }
 
@@ -183,64 +182,20 @@ def get_project_settings(project_id: str) -> dict:
 @router.put("/projects/{project_id}/settings",
             dependencies=[Depends(require_owner)], response_model=ProjectSettingsOut)
 def put_project_settings(project_id: str, body: SettingsBody) -> dict:
-    with tenant_session(project_id) as db:
-        st = get_settings(db, _pid(project_id))
-        existing_routes, existing_connections = unpack_model_settings(st.model_routes if st else None)
-        # 省略 model_routes = 保留现值（与 model_connections 对称）：旧写法 `or {}` 分不清
-        # 「没传」与「传空」，只改连接的客户端会把全部分角色路由清空。
-        routes = existing_routes if body.model_routes is None else body.model_routes
-        connections = existing_connections
-        if body.model_connections is not None:
-            connections = {}
-            seen: set[str] = set()
-            for item in body.model_connections:
-                cid, rec = connection_record(item, existing_connections)
-                if cid in seen:
-                    raise HTTPException(status_code=400, detail=f"模型连接 id 重复: {cid}")
-                seen.add(cid)
-                connections[cid] = rec
-        if body.model_routes is None:
-            routes = keep_custom_routes(routes, connections)
+    if body.model_fields_set & {'model_connections', 'model_routes'}:
+        raise HTTPException(403, 'Project model configuration is managed by administrators')
+    return get_project_settings(project_id)
 
-        for role, model_ref in routes.items():
-            if role not in CONFIGURABLE_ROLES:
-                raise HTTPException(status_code=400,
-                                    detail=f"不可配置的 role: {role}（仅 {sorted(CONFIGURABLE_ROLES)}）")
-            if model_ref.startswith(CUSTOM_ROUTE_PREFIX) and model_ref[len(CUSTOM_ROUTE_PREFIX):] in connections:
-                continue
-            raise HTTPException(status_code=400, detail=f"未知模型: {model_ref}")
-
-        stored = pack_model_settings(routes, connections)
-        if st is None:
-            st = ProjectSettings(project_id=_pid(project_id), model_routes=stored, version=1)
-            db.add(st)
-        else:
-            st.model_routes = stored
-            st.version = (st.version or 1) + 1
-        result = _response(st)
-        db.commit()
-        return result
 
 
 def _probe_key(project_id: str, body: ConnectionProbeBody) -> str:
-    """明文 api_key 优先；否则用 connection_id 取已存密文解密。都没有 → 400。"""
-    raw = body.api_key.get_secret_value().strip() if body.api_key else ""
-    if raw:
-        return raw
-    if body.connection_id:
-        with tenant_session(project_id) as db:
-            st = get_settings(db, _pid(project_id))
-            _, connections = unpack_model_settings(st.model_routes if st else None)
-        stored = connections.get(body.connection_id, {}).get("api_key_encrypted")
-        if stored:
-            key = decrypt_api_key(str(stored))
-            if key:
-                return key
-    raise HTTPException(status_code=400, detail="需要填写 API Key（或选择已保存密钥的连接）")
+    from myink.api.routes_platform import probe_key
+    return probe_key(body)
+
 
 
 @router.post("/projects/{project_id}/settings/models",
-             dependencies=[Depends(require_owner)], response_model=ModelListOut)
+             dependencies=[Depends(require_owner), Depends(audited_admin_probe)], response_model=ModelListOut)
 def list_connection_models(project_id: str, body: ConnectionProbeBody) -> dict:
     base_url = _clean_base_url(body.base_url)
     _assert_host_allowed(base_url)
@@ -250,7 +205,7 @@ def list_connection_models(project_id: str, body: ConnectionProbeBody) -> dict:
 
 
 @router.post("/projects/{project_id}/settings/test-connection",
-             dependencies=[Depends(require_owner)], response_model=ConnectionTestOut)
+             dependencies=[Depends(require_owner), Depends(audited_admin_probe)], response_model=ConnectionTestOut)
 def test_model_connection(project_id: str, body: ConnectionProbeBody) -> dict:
     model = (body.model or "").strip()
     if not model or len(model) > 160:

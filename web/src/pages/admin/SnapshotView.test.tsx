@@ -48,11 +48,11 @@ it('marks hash-only sections as retained by hash and never invents their text', 
   vi.mocked(adminApi.getSnapshot).mockResolvedValue(snapshot())
   renderSnapshot()
 
-  expect(await screen.findByText('选择性留存')).toBeTruthy()
+  expect(await screen.findByText('部分内容已留存')).toBeTruthy()
   expect(screen.getByText('内容已截断')).toBeTruthy()
-  expect(screen.getByText('仅存哈希')).toBeTruthy()
+  expect(screen.getByText('未保存正文')).toBeTruthy()
   expect(screen.getByText('题材参考文档')).toBeTruthy()
-  expect(screen.getByText(/原文未留存，仅 3000 字节/)).toBeTruthy()
+  expect(screen.getByText('此部分未保存正文，无法还原当时的具体内容。')).toBeTruthy()
   expect(screen.getByText('灵气不可外放')).toBeTruthy()
   expect(screen.getByText('他踏进山门。')).toBeTruthy()
 })
@@ -74,13 +74,13 @@ it('offers only the sub-views this stage actually captured', async () => {
   renderSnapshot()
 
   const nav = await screen.findByRole('navigation', { name: '快照子视图' })
-  expect(nav.textContent).toBe('召回文本块硬规则')
-  expect(screen.getByRole('button', { name: '召回文本块' }).getAttribute('aria-pressed')).toBe('true')
+  expect(nav.textContent).toBe('前情与资料必守设定')
+  expect(screen.getByRole('button', { name: '前情与资料' }).getAttribute('aria-pressed')).toBe('true')
 
-  fireEvent.click(screen.getByRole('button', { name: '硬规则' }))
+  fireEvent.click(screen.getByRole('button', { name: '必守设定' }))
   expect(await screen.findByText('灵气不可外放')).toBeTruthy()
-  expect(screen.getByText('台账侧标了硬约束的事实（1）')).toBeTruthy()
-  expect(screen.queryByText('提示词')).toBeNull()
+  expect(screen.getByText('作品中必须遵守的事实（1）')).toBeTruthy()
+  expect(screen.queryByText('创作要求')).toBeNull()
 })
 
 it('tells the operator a legacy row has no payload instead of showing empty tables', async () => {
@@ -93,7 +93,7 @@ it('tells the operator a legacy row has no payload instead of showing empty tabl
   }))
   renderSnapshot()
 
-  expect(await screen.findByText('这条记录早于快照上线，只剩标量遥测。')).toBeTruthy()
+  expect(await screen.findByText('这条旧记录未保存创作依据和输出内容，只能查看调用时间与用量。')).toBeTruthy()
   expect(screen.queryByRole('navigation', { name: '快照子视图' })).toBeNull()
   expect(screen.getByText(/写作 · 第 4 章 · 第 1 次/)).toBeTruthy()
 })
@@ -101,10 +101,31 @@ it('tells the operator a legacy row has no payload instead of showing empty tabl
 it('reloads the same snapshot when asked to refresh', async () => {
   vi.mocked(adminApi.getSnapshot).mockResolvedValue(snapshot())
   renderSnapshot()
-  await screen.findByText('选择性留存')
+  await screen.findByText('部分内容已留存')
 
   fireEvent.click(screen.getByRole('button', { name: '刷新当前视图' }))
 
   await waitFor(() => expect(adminApi.getSnapshot).toHaveBeenCalledTimes(2))
   expect(adminApi.getSnapshot).toHaveBeenLastCalledWith('token-admin', 31, expect.any(AbortSignal))
+})
+
+it('keeps fingerprints and collection details in diagnostics while showing readable prompt purposes', async () => {
+ vi.mocked(adminApi.getSnapshot).mockResolvedValue(snapshot())
+ renderSnapshot()
+ await screen.findByText('题材参考文档')
+ expect(screen.getAllByText('角色职责与创作要求').length).toBeGreaterThan(0)
+ expect(screen.queryByText('system')).toBeNull()
+ expect(screen.queryByText('仅存哈希')).toBeNull()
+ expect(screen.queryByText(/bbbbbbbbbbbb/)).toBeNull()
+ expect(screen.getByText('此部分未保存正文，无法还原当时的具体内容。')).toBeTruthy()
+})
+it('shows findings as problem cards and replacement content as before/after passages', async () => {
+ vi.mocked(adminApi.getSnapshot).mockResolvedValue(snapshot({payload:{...snapshot().payload,data:{findings:[{severity:'major',conflict_type:'timeline',scope:'local',source:'L1',suggestion:'统一回家时间',evidence:[{chapter:4,quote:'他在午后来到'}]}],applied_spans:[{target:'昨日清晨',replacement:'昨日午后'}]}}}))
+ renderSnapshot()
+ expect(await screen.findByText('统一回家时间')).toBeTruthy()
+ expect(screen.queryByRole('table')).toBeNull()
+ fireEvent.click(screen.getByRole('button',{name:'文字修改'}))
+ expect(screen.getByText('修改前')).toBeTruthy()
+ expect(screen.getByText('昨日清晨')).toBeTruthy()
+ expect(screen.getByText('修改后')).toBeTruthy()
 })

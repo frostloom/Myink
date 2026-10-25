@@ -7,6 +7,13 @@ import { openSSE, type SSEEvent } from '../lib/sse'
 import type { ChapterMeta, TaskDetail, TaskSummary } from '../types'
 import WorkspacePage from './WorkspacePage'
 
+vi.mock('../lib/writingResources', async original => ({
+  ...await original<typeof import('../lib/writingResources')>(),
+  writingResources: {
+    updates: async () => ({items:[]}),
+    snapshot: async () => ({revision:0,configured:false,selections:[]}),
+  },
+}))
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({ logout: vi.fn() }),
 }))

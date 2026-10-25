@@ -1,3 +1,4 @@
+import { ReadableContent } from './ReadableContent'
 /** 作品详情：章节元数据、受限上下文快照，以及章内下钻的全文。
  *
  * 样式取自 AdminPage.module.css，理由同 shared.tsx 的头顶注释。
@@ -15,10 +16,8 @@ import {
   LoadState,
   PAGE_SIZE,
   Pagination,
-  RecordFields,
   RefreshButton,
   useResource,
-  ValueText,
 } from './shared'
 import styles from '../AdminPage.module.css'
 
@@ -41,7 +40,7 @@ function ChapterDetailView({ token, projectId, chapterId, onForbidden }: {
         <h4>摘要</h4>
         {typeof value.summary === 'string' && value.summary !== ''
           ? <p className={styles.text}>{value.summary}</p>
-          : <RecordFields value={value.summary} />}
+          : <ReadableContent value={value.summary} />}
         <h4>全文</h4>
         {value.content
           ? <p className={styles.text}>{value.content}</p>
@@ -60,13 +59,13 @@ function ContextEntries({ collection, nameOf }: {
   return (
     <ul className={styles.plainList}>{collection.items.map((item, index) => {
       const record = asRecord(item.data)
-      if (!record) return <li key={index}><ValueText value={item.data} /></li>
+      if (!record) return <li key={index}><ReadableContent value={item.data} /></li>
       const resolved: Record<string, unknown> = { ...record }
       if (Array.isArray(resolved.participants)) {
         resolved.participants = resolved.participants
           .map((entry) => (typeof entry === 'string' ? nameOf(entry) : entry))
       }
-      return <li key={index}><RecordFields value={resolved} skip={['id']} /></li>
+      return <li key={index}><ReadableContent value={Object.fromEntries(Object.entries(resolved).filter(([key]) => key !== 'id'))} /></li>
     })}</ul>
   )
 }

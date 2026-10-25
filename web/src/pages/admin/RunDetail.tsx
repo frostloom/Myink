@@ -15,6 +15,8 @@ import {
   useResource,
 } from './shared'
 import styles from '../AdminPage.module.css'
+import layout from './ExecutionDetail.module.css'
+import {Disclosure,ExecutionContent,ExecutionError} from './ExecutionContent'
 
 export function RunTable({ runs, onSelect }: { runs: AdminRun[]; onSelect: (run: AdminRun) => void }) {
   return (
@@ -59,8 +61,16 @@ export function RunDetailView({ token, runId, onForbidden }: {
         </div>
         {value.detail_missing && <p className="banner banner-warning">旧记录未保存详情，无法重建。</p>}
         {value.prompt_missing && <p className="banner banner-warning">旧记录未保存提示词，无法重建。</p>}
-        <CapturedView value={value.detail} label="调试详情" />
-        <CapturedView value={value.error} label="错误详情" />
+        <dl className={layout.readings}>
+          <div><dt>输入 Token</dt><dd>{value.input_tokens.toLocaleString()}</dd></div>
+          <div><dt>输出 Token</dt><dd>{value.output_tokens.toLocaleString()}</dd></div>
+          <div><dt>预估成本</dt><dd>{formatCost(value.cost_est)}</dd></div>
+          <div><dt>调用重试</dt><dd>{value.retry_count}</dd></div>
+        </dl>
+        {Boolean(value.error.data) && <ExecutionError value={value.error} label="错误详情" />}
+        {(value.detail.truncated || value.detail.redacted) && <p className={layout.muted}>{value.detail.truncated && '内容已截断。'}{value.detail.redacted && '敏感信息已脱敏。'}</p>}
+        <ExecutionContent value={value.detail.data}/>
+        <Disclosure title="技术诊断"><CapturedView value={value.detail} raw label="原始运行记录" />{Boolean(value.error.data) && <CapturedView value={value.error} raw label="原始错误记录" />}</Disclosure>
       </article>}
     </LoadState>
   )

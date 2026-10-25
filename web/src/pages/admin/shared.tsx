@@ -1,3 +1,4 @@
+import { ReadableContent } from './ReadableContent'
 /** 管理控制台各视图共用的展示件与取数钩子。
  *
  * 样式仍取自 AdminPage.module.css：这些类（panel/tableWrap/drilldown…）本就是这个页面
@@ -114,7 +115,7 @@ export function DetailPage({ heading, backTab, children }: {
 }) {
   return (
     <section className={styles.view}>
-      <div className={styles.viewHead}>
+      <div className={`${styles.viewHead} ${styles.detailPageHead}`}>
         <div><h1>{heading}</h1></div>
         <Link to={`/admin?tab=${backTab}`} className="btn btn-secondary">返回</Link>
       </div>
@@ -203,11 +204,12 @@ export function formatDate(value: string): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN')
 }
 
-/** 一律按字段展示；只有拿不到结构的兜底才落回 JSON。 */
-export function CapturedView({ value, label, skip }: {
+/** 普通详情按创作用途整理；技术诊断显式请求原始字段。 */
+export function CapturedView({ value, label, skip, raw = false }: {
   value: CapturedData
   label: string
   skip?: string[]
+  raw?: boolean
 }) {
   const flagged = value.truncated || value.redacted
   return (
@@ -217,7 +219,7 @@ export function CapturedView({ value, label, skip }: {
         {value.truncated && <span className="badge badge-warning">内容已截断</span>}
         {value.redacted && <span className="badge badge-warning">敏感信息已脱敏</span>}
       </div>}
-      {typeof value.data === 'string'
+      {!raw ? <ReadableContent value={skip && asRecord(value.data) ? Object.fromEntries(Object.entries(asRecord(value.data)!).filter(([key]) => !skip.includes(key))) : value.data} /> : typeof value.data === 'string'
         ? (value.data === ''
           ? <p className={styles.muted}>无记录</p>
           : <p className={styles.text}>{value.data}</p>)

@@ -11,14 +11,10 @@ import { api } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
 import { isProjectDraft } from '../lib/projectCreation'
 import { styleLibraryApi, type StyleLibraryItem } from '../lib/styleLibraryApi'
-import { GenrePackFields } from '../components/GenrePackFields'
 import {
-  composeFields,
   displayGenre,
-  emptyFields,
   groupCatalog,
   type GenreCatalogItem,
-  type GenreFields,
 } from '../lib/genrePacks'
 import {
   emptySection,
@@ -105,7 +101,6 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
   const [catalog, setCatalog] = useState<GenreCatalogItem[]>([])
   const [primaryId, setPrimaryId] = useState<string | null>(null)
   const [secondaryId, setSecondaryId] = useState<string | null>(null)
-  const [genreFields, setGenreFields] = useState<GenreFields>(emptyFields())
   const [premise, setPremise] = useState('')
   // 作品形态：短篇走另一条生成管道（整篇一次成稿），章数/每章字数的区间都不同
   const [form, setForm] = useState<'long' | 'short'>(routeForm)
@@ -161,7 +156,6 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
     setSavedTitle('')
     setPrimaryId(null)
     setSecondaryId(null)
-    setGenreFields(emptyFields())
     setPremise('')
     setForm(routeForm)
     setTargetWords('3000')
@@ -231,16 +225,12 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
     const next = primaryId === id ? null : id
     setPrimaryId(next)
     setSecondaryId(null)
-    const nextPrimary = catalog.find((item) => item.id === next) ?? null
-    setGenreFields(composeFields(nextPrimary, null))
   }
 
   function pickSecondary(id: string) {
     if (!primaryId) return
     const next = secondaryId === id ? null : id
     setSecondaryId(next)
-    const nextSecondary = catalog.find((item) => item.id === next) ?? null
-    setGenreFields(composeFields(primary, nextSecondary))
   }
 
   async function createAndDraft() {
@@ -283,7 +273,6 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
         title: finalTitle,
         primary_id: primaryId,
         secondary_id: secondaryId,
-        genre_fields: genreFields,
         // 形态由入口决定，显式声明：短篇的篇幅走 chars_per_chapter（长篇的每章字数走 target_words），互不代填
         form,
         ...(isShort
@@ -674,12 +663,7 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
                   </div>
                 ))}
               </div>
-              <details className={styles.genreDetails}>
-                <summary>题材详情</summary>
-                <fieldset disabled={busy === 'restore' || pid !== null} style={{ border: 0, padding: 0, margin: 0 }}>
-                  <GenrePackFields value={genreFields} onChange={setGenreFields} />
-                </fieldset>
-              </details>
+              <p className={styles.hint}>题材字段由平台统一发布，新作品使用所选题材的最新版本。</p>
             </div>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>文风（可选）</span>

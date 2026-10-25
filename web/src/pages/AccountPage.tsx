@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { AdminRail } from '../components/AdminRail'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
 import { useGuest } from '../hooks/useGuest'
@@ -48,13 +49,13 @@ export default function AccountPage() {
   }, [isAdmin, session])
 
   useEffect(() => {
-    if (guest) return
+    if (guest || isAdmin) return
     let alive = true
     api.listProjects()
       .then((items) => { if (alive) setProjects(items) })
       .catch(() => { if (alive) setProjects([]) })
     return () => { alive = false }
-  }, [guest])
+  }, [guest, isAdmin])
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -156,7 +157,7 @@ export default function AccountPage() {
 
   return (
     <div className={shell.wrap}>
-      <ProjectRail projects={projects} onLogout={logout} />
+      {isAdmin ? <AdminRail onLogout={logout} /> : <ProjectRail projects={projects} onLogout={logout} />}
       <main className={shell.main}>
         <div className={shell.inner}>
           <header className={shell.header}>

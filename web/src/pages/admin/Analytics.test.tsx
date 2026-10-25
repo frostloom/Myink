@@ -18,6 +18,7 @@ vi.mock('../../lib/adminApi', async (importOriginal) => {
     ...actual,
     adminApi: {
       ...actual.adminApi,
+      getTrends: vi.fn().mockResolvedValue({start_date:'2026-01-01',end_date:'2026-01-30',timezone:'UTC',items:[]}),
       listUsers: vi.fn(),
       listProjects: vi.fn(),
       listGenerationTasks: vi.fn(),
@@ -168,7 +169,7 @@ it('filters findings by severity and chapter and keeps them pageable', async () 
   fireEvent.click(await screen.findByRole('button', { name: '分析 alice' }))
   fireEvent.click(await screen.findByRole('button', { name: '查看《山河册》的分析' }))
   expect(await screen.findByText(/第 2 章：铜镜亮了/)).toBeTruthy()
-  expect(screen.getByText('重大')).toBeTruthy()
+  expect(screen.getAllByText('重大').some(element => element.classList.contains('badge'))).toBe(true)
   expect(screen.getByText('势力设定')).toBeTruthy()
   expect(screen.getByText('局部')).toBeTruthy()
   expect(screen.getByText('确定性校验')).toBeTruthy()
@@ -193,4 +194,12 @@ it('clears the drill-down when the user list is re-searched', async () => {
   fireEvent.submit(screen.getByRole('search', { name: '用户筛选' }))
 
   await waitFor(() => expect(screen.queryByRole('heading', { name: 'alice 的作品' })).toBeNull())
+})
+
+it('opens daily trends on the data analysis page alongside user drill-down', async () => {
+  vi.mocked(adminApi.listUsers).mockResolvedValue(pageOf([]))
+  renderAnalytics()
+  expect(await screen.findByRole('heading', {name:'每日趋势'})).toBeTruthy()
+  expect(screen.getByRole('button', {name:'近7天'})).toBeTruthy()
+  expect(screen.getByRole('button', {name:'查询趋势'})).toBeTruthy()
 })

@@ -1,3 +1,4 @@
+import { tierLabel, roleLabel } from '../../lib/labels'
 /** 用户详情：这个人的总花费，以及构成它的每一次调用（含没有任何作品的那些）。 */
 import { useCallback, useState } from 'react'
 import { useOutletContext, useParams } from 'react-router-dom'
@@ -43,7 +44,7 @@ export function UserDetailPage() {
       <LoadState {...user} empty={!value}>
         {value && <div className={`panel ${styles.panel}`}>
           <h3>总花费 {formatCost(value.metrics.cost_est)}</h3>
-          <p>{value.tier} · {value.role} · 作品 {value.project_count} 本</p>
+          <p>{tierLabel(value.tier)} · {roleLabel(value.role)} · 作品 {value.project_count} 本</p>
           <Metrics value={value.metrics} />
         </div>}
       </LoadState>

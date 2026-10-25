@@ -187,6 +187,12 @@ def new_task(*, project_id: str, task_type: str, payload: dict, chapter_seq: int
         project = db.get(Project, uuid.UUID(project_id))
         if project is None:
             raise ValueError("Project does not exist")
+        from myink.writing_resources import capture_task_resources
+        from myink.writing_resource_runtime import current_resources
+        if "writing_resources" not in stored_payload:
+            inherited = current_resources()
+            stored_payload["writing_resources"] = (inherited if inherited is not None
+                                                    else capture_task_resources(db, project_id))
         owner_id = str(project.user_id)
         if use_owner_defaults:
             budget_snapshot = snapshot_budget(owner_id)

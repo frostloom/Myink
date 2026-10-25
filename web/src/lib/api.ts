@@ -339,7 +339,8 @@ export const api = {
     model_connections?: ModelConnectionInput[]
     rankings?: RankingsConfigInput
     thinking_enabled?: boolean
-    task_budget?: TaskBudgetLimits
+    task_budget?: Partial<TaskBudgetLimits>
+    reset_preferences?: string[]
   }) => request<EnvironmentSettings>('PUT', '/environment', body),
 
   // 模型连接探针（环境配置页）：拉取可用模型列表 / 联通测试。

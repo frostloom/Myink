@@ -7,7 +7,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from myink.api.auth import require_owner, require_user
+from myink.api.auth import require_owner, require_user, require_admin
 from myink.api.schemas import GenreCatalogItemOut, GenrePackOut
 from myink.db import tenant_session
 from myink.genre_catalog import (
@@ -53,7 +53,7 @@ def list_genre_packs() -> list[dict]:
 
 
 @router.put("/projects/{project_id}/genre-pack",
-            dependencies=[Depends(require_owner)], response_model=GenrePackOut)
+            dependencies=[Depends(require_owner), Depends(require_admin)], response_model=GenrePackOut)
 def put_genre_pack(project_id: str, body: GenrePackFieldsBody) -> dict:
     """只改本书字段，不能换根/辅题材。"""
     pid = _pid(project_id)
@@ -71,7 +71,7 @@ def put_genre_pack(project_id: str, body: GenrePackFieldsBody) -> dict:
 
 
 @router.post("/projects/{project_id}/genre-pack/restore",
-             dependencies=[Depends(require_owner)], response_model=GenrePackOut)
+             dependencies=[Depends(require_owner), Depends(require_admin)], response_model=GenrePackOut)
 def restore_genre_pack(project_id: str) -> dict:
     """恢复建书时那份字段（同一本书的 baseline）。"""
     pid = _pid(project_id)

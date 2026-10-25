@@ -27,7 +27,7 @@ it('maps queue codes and HTTP status to Chinese', () => {
 it('maps model authentication failures to Chinese', () => {
   expect(formatErrorText(
     "Error code: 401 - {'error': {'message': 'Authentication Fails, Your api key: ****-xxx is invalid'}}",
-  )).toBe('模型密钥无效。请到环境配置检查 API Key。')
+  )).toBe('平台创作服务暂不可用，请稍后重试或联系管理员')
 })
 
 it('keeps already-Chinese details and uses fallback for unknown errors', () => {
@@ -40,4 +40,15 @@ it('explains a committed creation session instead of a generic conflict', () => 
   expect(formatApiError(new ApiError(409, 'SESSION_COMMITTED', null)))
     .toBe('这段建书对话已经开写过了，点「新建会话」另起一篇')
   expect(formatApiError(new ApiError(409, 'Conflict', null))).toBe('内容已被其他人更新，请刷新后再试')
+})
+
+
+it('gives ordinary users safe service and quota guidance', () => {
+  const unavailable = '平台创作服务暂不可用，请稍后重试或联系管理员'
+  expect(formatErrorText('PLATFORM_NOT_READY',503)).toBe(unavailable)
+  expect(formatErrorText('模型服务返回 HTTP 401：invalid API key')).toBe(unavailable)
+  expect(formatErrorText('未提供 API Key')).toBe(unavailable)
+  expect(formatErrorText('模型连接配置无效，请检查服务地址、协议和请求配置。')).toBe(unavailable)
+  expect(formatErrorText('PLATFORM_QUOTA_EXCEEDED')).toBe('免费创作额度已用完，请联系管理员')
+  expect(formatErrorText('PLATFORM_CHAPTER_EXCEEDED')).toBe('本书免费章节额度已用完，请联系管理员')
 })

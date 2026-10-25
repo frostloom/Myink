@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import EnvironmentPage from './EnvironmentPage'
@@ -27,12 +27,19 @@ const emptyEnv = {
 
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn()
+  vi.mocked(api.updateEnvironment).mockReset()
 })
 
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
 })
+
+async function expandAdvanced() {
+  const button = await screen.findByRole('button', { name: '展开高级设置' })
+  fireEvent.click(button)
+  await waitFor(() => expect((screen.getByLabelText('思考模式') as HTMLSelectElement).disabled).toBe(false))
+}
 
 function renderPage() {
   return render(
@@ -42,147 +49,17 @@ function renderPage() {
   )
 }
 
-it('keeps the draft and presents failed saves in the notification region', async () => {
-  vi.mocked(api.getEnvironment).mockResolvedValue({ ...emptyEnv, model_connections: [{
-    id: 'test', name: '连接 A', protocol: 'openai', base_url: 'https://example.test/v1',
-    model: 'writer', has_api_key: true,
-  }] })
-  vi.mocked(api.listProjects).mockResolvedValue([])
-  vi.mocked(api.updateEnvironment).mockRejectedValue({ status: 500, code: '保存失败', body: null })
-  renderPage()
-  const name = await screen.findByLabelText('连接名称')
-  fireEvent.change(name, { target: { value: '新名称' } })
-  fireEvent.click(screen.getByRole('button', { name: '保存连接与路由' }))
-  const notice = await screen.findByRole('alert')
-  expect(notice.textContent).toContain('保存失败')
-  expect(screen.getByRole('region', { name: '模型连接通知' }).contains(notice)).toBe(true)
-  fireEvent.click(screen.getByRole('button', { name: '关闭通知' }))
-  expect((name as HTMLInputElement).value).toBe('新名称')
-  expect(api.updateEnvironment).toHaveBeenCalledTimes(1)
-})
-
-it.each(['models', 'test'] as const)('reports %s failures visibly without resubmitting on close', async (operation) => {
-  vi.mocked(api.getEnvironment).mockResolvedValue({ ...emptyEnv, model_connections: [{
-    id: 'test', name: '连接 A', protocol: 'openai', base_url: 'https://example.test/v1',
-    model: 'writer', has_api_key: true,
-  }] })
-  vi.mocked(api.listProjects).mockResolvedValue([])
-  vi.mocked(api.listModels).mockResolvedValue({ ok: false, models: [], error: '服务拒绝' })
-  vi.mocked(api.testConnection).mockRejectedValue({ status: 500, code: '服务拒绝', body: null })
-  renderPage()
-  await screen.findByDisplayValue('连接 A')
-  const button = screen.getByRole('button', { name: operation === 'models' ? '获取模型列表' : '测试连接' })
-  fireEvent.click(button)
-  const notice = await screen.findByRole('alert')
-  expect(notice.textContent).toContain('服务拒绝')
-  expect(within(screen.getByRole('region', { name: '模型连接通知' })).getByRole('alert')).toBe(notice)
-  fireEvent.click(screen.getByRole('button', { name: '关闭通知' }))
-  expect(screen.queryByRole('alert')).toBeNull()
-  expect(operation === 'models' ? api.listModels : api.testConnection).toHaveBeenCalledTimes(1)
-})
-
-it('adds a network model and routes Writer through it without exposing saved keys', async () => {
-  vi.mocked(api.getEnvironment).mockResolvedValue(emptyEnv)
-  vi.mocked(api.listProjects).mockResolvedValue([])
-  vi.mocked(api.updateEnvironment).mockResolvedValue(emptyEnv)
-  vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('11111111-1111-4111-8111-111111111111')
-
-  renderPage()
-  await screen.findByText(/尚未添加网络模型/)
-  fireEvent.click(screen.getByRole('button', { name: '添加网络模型' }))
-  fireEvent.change(screen.getByLabelText('连接名称'), { target: { value: '我的 GPT' } })
-  fireEvent.change(screen.getByLabelText('请求地址'), { target: { value: 'https://models.example.com/v1' } })
-  fireEvent.change(screen.getByLabelText('模型 id'), { target: { value: 'novel-pro' } })
-  fireEvent.change(screen.getByLabelText(/API Key/), { target: { value: 'secret-key' } })
-  fireEvent.change(screen.getByLabelText('写作（writer）'), {
-    target: { value: 'custom:11111111-1111-4111-8111-111111111111' },
-  })
-  fireEvent.click(screen.getByRole('button', { name: '保存连接与路由' }))
-
-  await waitFor(() => expect(api.updateEnvironment).toHaveBeenCalledWith({
-    model_routes: { writer: 'custom:11111111-1111-4111-8111-111111111111' },
-    model_connections: [{
-      id: '11111111-1111-4111-8111-111111111111', name: '我的 GPT', protocol: 'openai',
-      base_url: 'https://models.example.com/v1', model: 'novel-pro', api_key: 'secret-key',
-    }],
-    thinking_enabled: false,
-  }))
-})
-
-it('focuses and describes the missing field without saving', async () => {
-  vi.mocked(api.getEnvironment).mockResolvedValue(emptyEnv)
-  vi.mocked(api.listProjects).mockResolvedValue([])
-  vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('33333333-3333-4333-8333-333333333333')
-
-  renderPage()
-  await screen.findByText(/尚未添加网络模型/)
-  fireEvent.click(screen.getByRole('button', { name: '添加网络模型' }))
-  fireEvent.change(screen.getByLabelText('请求地址'), { target: { value: 'https://models.example.com/v1' } })
-  fireEvent.change(screen.getByLabelText('模型 id'), { target: { value: 'novel-pro' } })
-  fireEvent.change(screen.getByLabelText(/API Key/), { target: { value: 'secret-key' } })
-  fireEvent.click(screen.getByRole('button', { name: '保存连接与路由' }))
-
-  const field = screen.getByLabelText('连接名称')
-  expect(document.activeElement).toBe(field)
-  expect(field.getAttribute('aria-invalid')).toBe('true')
-  expect(document.getElementById(field.getAttribute('aria-describedby') ?? '')?.textContent).toContain('连接名称')
-  expect(field.scrollIntoView).toHaveBeenCalled()
-  expect(api.updateEnvironment).not.toHaveBeenCalled()
-})
-
-it('fetches the model list into the datalist and tests connectivity', async () => {
-  vi.mocked(api.getEnvironment).mockResolvedValue(emptyEnv)
-  vi.mocked(api.listProjects).mockResolvedValue([])
-  vi.mocked(api.listModels).mockResolvedValue({ ok: true, models: ['novel-pro', 'novel-mini'], error: null })
-  vi.mocked(api.testConnection).mockResolvedValue({ ok: true, latency_ms: 88, reply: 'pong', error: null })
-  vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('22222222-2222-4222-8222-222222222222')
-
-  renderPage()
-  await screen.findByText(/尚未添加网络模型/)
-  fireEvent.click(screen.getByRole('button', { name: '添加网络模型' }))
-  fireEvent.change(screen.getByLabelText('请求地址'), { target: { value: 'https://models.example.com/v1' } })
-  fireEvent.change(screen.getByLabelText('模型 id'), { target: { value: 'novel-pro' } })
-  fireEvent.change(screen.getByLabelText(/API Key/), { target: { value: 'secret-key' } })
-
-  fireEvent.click(screen.getByRole('button', { name: '获取模型列表' }))
-  await waitFor(() => expect(api.listModels).toHaveBeenCalledWith({
-    protocol: 'openai', base_url: 'https://models.example.com/v1', model: 'novel-pro', api_key: 'secret-key',
-  }))
-  await within(screen.getByRole('main')).findByText(/已获取 2 个模型/)
-  const options = Array.from(document.querySelectorAll('datalist option'))
-    .map((option) => option.getAttribute('value'))
-  expect(options).toEqual(['novel-pro', 'novel-mini'])
-
-  fireEvent.click(screen.getByRole('button', { name: '测试连接' }))
-  await waitFor(() => expect(api.testConnection).toHaveBeenCalled())
-  await within(screen.getByRole('main')).findByText(/连接正常 · 88 ms/)
-})
-
-it('does not offer built-in DeepSeek models in the role dropdowns', async () => {
-  vi.mocked(api.getEnvironment).mockResolvedValue(emptyEnv)
-  vi.mocked(api.listProjects).mockResolvedValue([])
-
-  renderPage()
-  const writer = await screen.findByLabelText('写作（writer）')
-  const labels = Array.from(writer.querySelectorAll('option')).map((option) => option.textContent)
-  expect(labels).toEqual(['未指定'])
-  expect(screen.getByLabelText('审核（audit）')).toBeTruthy()
-  expect(screen.getByLabelText('摘要（summarize）')).toBeTruthy()
-  expect(screen.getByLabelText('思考模式')).toBeTruthy()
-  expect(screen.queryByText(/deepseek/i)).toBeNull()
-  expect(screen.queryByRole('button', { name: '填入 DeepSeek 官方地址' })).toBeNull()
-})
-
 it('saves the rankings config without any MCP field', async () => {
   vi.mocked(api.getEnvironment).mockResolvedValue(emptyEnv)
   vi.mocked(api.listProjects).mockResolvedValue([])
   vi.mocked(api.updateEnvironment).mockResolvedValue(emptyEnv)
 
   renderPage()
+  await expandAdvanced()
   fireEvent.change(await screen.findByLabelText('扫榜超时'), { target: { value: '8' } })
   fireEvent.click(screen.getByRole('button', { name: '保存扫榜配置' }))
   await waitFor(() => expect(api.updateEnvironment).toHaveBeenCalledWith({
-    rankings: { enabled: true, timeout: 8, limit: 10 },
+    rankings: { timeout: 8 },
   }))
 })
 
@@ -191,6 +68,7 @@ it('has no MCP address input or probe button left in the rankings section', asyn
   vi.mocked(api.listProjects).mockResolvedValue([])
 
   renderPage()
+  await expandAdvanced()
   await screen.findByLabelText('扫榜超时')
   expect(screen.queryByLabelText('MCP 地址')).toBeNull()
   expect(screen.queryByRole('button', { name: '测试 MCP 连接' })).toBeNull()
@@ -201,10 +79,197 @@ it('saves only the task budget defaults', async () => {
   vi.mocked(api.listProjects).mockResolvedValue([])
   vi.mocked(api.updateEnvironment).mockResolvedValue(emptyEnv)
   renderPage()
+  await expandAdvanced()
   const requests = await screen.findByLabelText('任务请求上限')
   fireEvent.change(requests, { target: { value: '120' } })
   fireEvent.click(screen.getByRole('button', { name: '保存任务预算' }))
   await waitFor(() => expect(api.updateEnvironment).toHaveBeenCalledWith({ task_budget: {
-    max_requests: 120, max_cost_yuan: 5, max_runtime_seconds: 1800,
+    max_requests: 120,
   } }))
+})
+
+ it('offers only published models and saves user selections without connection credentials', async () => {
+  vi.mocked(api.getEnvironment).mockResolvedValue({ ...emptyEnv, available_models: [{id:'custom:published',name:'公开写作模型'}] } as never)
+  vi.mocked(api.listProjects).mockResolvedValue([])
+  vi.mocked(api.updateEnvironment).mockResolvedValue(emptyEnv)
+  renderPage()
+  await expandAdvanced()
+  await screen.findAllByRole('option', { name: '公开写作模型' })
+  expect(screen.queryByRole('button', {name:'添加网络模型'})).toBeNull()
+  expect(screen.queryByLabelText('请求地址')).toBeNull()
+  fireEvent.change(screen.getByLabelText('写作（writer）'), { target: { value: 'custom:published' } })
+  fireEvent.click(screen.getByRole('button', { name: '保存模型偏好' }))
+  await waitFor(() => expect(api.updateEnvironment).toHaveBeenCalledWith({ model_routes: {writer:'custom:published'} }))
+})
+
+
+it('hides all advanced controls until explicitly expanded and starts collapsed on reentry', async () => {
+  vi.mocked(api.getEnvironment).mockResolvedValue(emptyEnv)
+  vi.mocked(api.listProjects).mockResolvedValue([])
+  const view = renderPage()
+  const toggle = await screen.findByRole('button', { name: '展开高级设置' })
+  expect(toggle.getAttribute('aria-expanded')).toBe('false')
+  for (const label of ['思考模式', '写作（writer）', '任务请求上限', '扫榜超时']) {
+    expect(screen.queryByLabelText(label)).toBeNull()
+  }
+  fireEvent.click(toggle)
+  expect(toggle.getAttribute('aria-expanded')).toBe('true')
+  expect(await screen.findByLabelText('任务请求上限')).toBeTruthy()
+  fireEvent.change(screen.getByLabelText('任务请求上限'), { target: { value: '123' } })
+  fireEvent.click(screen.getByRole('button', { name: '收起高级设置' }))
+  expect(screen.queryByLabelText('任务请求上限')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: '展开高级设置' }))
+  expect((screen.getByLabelText('任务请求上限') as HTMLInputElement).value).toBe('123')
+  view.unmount()
+  renderPage()
+  expect(screen.getByRole('button', { name: '展开高级设置' }).getAttribute('aria-expanded')).toBe('false')
+})
+
+it('resets only one override and adopts server effective values and metadata', async () => {
+  vi.mocked(api.getEnvironment).mockResolvedValue({ ...emptyEnv,
+    task_budget: { max_requests: 0, max_cost_yuan: 7, max_runtime_seconds: 2000 },
+    overridden_fields: ['task_budget.max_requests', 'task_budget.max_cost_yuan'],
+  } as never)
+  vi.mocked(api.listProjects).mockResolvedValue([])
+  vi.mocked(api.updateEnvironment).mockResolvedValue({ ...emptyEnv,
+    task_budget: { max_requests: 180, max_cost_yuan: 7, max_runtime_seconds: 2400 },
+    thinking_enabled: true, overridden_fields: ['task_budget.max_cost_yuan'],
+  } as never)
+  renderPage()
+  await expandAdvanced()
+  fireEvent.click(screen.getByRole('button', { name: '恢复任务请求上限默认值' }))
+  await waitFor(() => expect(api.updateEnvironment).toHaveBeenCalledWith({ reset_preferences: ['task_budget.max_requests'] }))
+  await waitFor(() => expect((screen.getByLabelText('任务请求上限') as HTMLInputElement).value).toBe('180'))
+  expect((screen.getByLabelText('任务费用上限（元）') as HTMLInputElement).value).toBe('7')
+  expect((screen.getByLabelText('思考模式') as HTMLSelectElement).value).toBe('1')
+  expect((screen.getByRole('button', { name: '恢复任务请求上限默认值' }) as HTMLButtonElement).disabled).toBe(true)
+  expect((screen.getByRole('button', { name: '恢复任务费用上限（元）默认值' }) as HTMLButtonElement).disabled).toBe(false)
+})
+
+it('applies successful budget responses instead of freezing untouched inherited leaves', async () => {
+  vi.mocked(api.getEnvironment).mockResolvedValue({ ...emptyEnv, overridden_fields: [] } as never)
+  vi.mocked(api.listProjects).mockResolvedValue([])
+  vi.mocked(api.updateEnvironment).mockResolvedValue({ ...emptyEnv,
+    task_budget: { max_requests: 0, max_cost_yuan: 9, max_runtime_seconds: 3600 },
+    overridden_fields: ['task_budget.max_requests'],
+  } as never)
+  renderPage()
+  await expandAdvanced()
+  fireEvent.change(screen.getByLabelText('任务请求上限'), { target: { value: '0' } })
+  fireEvent.click(screen.getByRole('button', { name: '保存任务预算' }))
+  await waitFor(() => expect(api.updateEnvironment).toHaveBeenCalledWith({ task_budget: { max_requests: 0 } }))
+  await waitFor(() => expect((screen.getByLabelText('任务费用上限（元）') as HTMLInputElement).value).toBe('9'))
+  expect((screen.getByRole('button', { name: '恢复任务请求上限默认值' }) as HTMLButtonElement).disabled).toBe(false)
+})
+
+it('saves explicit false thinking without freezing either model route', async () => {
+  vi.mocked(api.getEnvironment).mockResolvedValue({ ...emptyEnv, thinking_enabled: true,
+    model_routes: { writer: 'custom:published' }, available_models: [{ id: 'custom:published', name: '模型' }],
+  })
+  vi.mocked(api.listProjects).mockResolvedValue([])
+  vi.mocked(api.updateEnvironment).mockResolvedValue(emptyEnv)
+  renderPage()
+  await expandAdvanced()
+  fireEvent.change(screen.getByLabelText('思考模式'), { target: { value: '0' } })
+  fireEvent.click(screen.getByRole('button', { name: '保存模型偏好' }))
+  await waitFor(() => expect(api.updateEnvironment).toHaveBeenCalledWith({ thinking_enabled: false }))
+})
+
+it('keeps draft values after failed save and reset', async () => {
+  vi.mocked(api.getEnvironment).mockResolvedValue({ ...emptyEnv, overridden_fields: ['rankings.timeout'] } as never)
+  vi.mocked(api.listProjects).mockResolvedValue([])
+  vi.mocked(api.updateEnvironment).mockRejectedValue({ status: 503, code: '保存失败' })
+  renderPage()
+  await expandAdvanced()
+  fireEvent.change(screen.getByLabelText('扫榜超时'), { target: { value: '8' } })
+  fireEvent.change(screen.getByLabelText('任务请求上限'), { target: { value: '0' } })
+  fireEvent.click(screen.getByRole('button', { name: '保存扫榜配置' }))
+  await screen.findByRole('alert')
+  expect((screen.getByLabelText('扫榜超时') as HTMLInputElement).value).toBe('8')
+  fireEvent.click(screen.getByRole('button', { name: '恢复扫榜超时默认值' }))
+  await waitFor(() => expect(api.updateEnvironment).toHaveBeenCalledTimes(2))
+  expect((screen.getByLabelText('扫榜超时') as HTMLInputElement).value).toBe('8')
+  expect((screen.getByLabelText('任务请求上限') as HTMLInputElement).value).toBe('0')
+})
+
+it('disables editing, saving and resetting after a loading failure until retry succeeds', async () => {
+  vi.mocked(api.getEnvironment).mockRejectedValueOnce({ status: 503, code: '加载失败' }).mockResolvedValue(emptyEnv)
+  vi.mocked(api.listProjects).mockResolvedValue([])
+  renderPage()
+  await screen.findByRole('alert')
+  fireEvent.click(screen.getByRole('button', { name: '展开高级设置' }))
+  expect((screen.getByLabelText('任务请求上限') as HTMLInputElement).disabled).toBe(true)
+  expect((screen.getByRole('button', { name: '保存任务预算' }) as HTMLButtonElement).disabled).toBe(true)
+  expect((screen.getByRole('button', { name: '恢复任务请求上限默认值' }) as HTMLButtonElement).disabled).toBe(true)
+  fireEvent.click(screen.getByRole('button', { name: '重新加载高级设置' }))
+  await waitFor(() => expect((screen.getByLabelText('任务请求上限') as HTMLInputElement).disabled).toBe(false))
+})
+
+
+it('preserves unrelated dirty leaves across a reset and subsequent section saves', async () => {
+  vi.mocked(api.getEnvironment).mockResolvedValue({ ...emptyEnv, thinking_enabled: true,
+    overridden_fields: ['rankings.timeout'],
+    available_models: [{ id: 'custom:published', name: '模型' }],
+  })
+  vi.mocked(api.listProjects).mockResolvedValue([])
+  vi.mocked(api.updateEnvironment)
+    .mockResolvedValueOnce({ ...emptyEnv, available_models: [{ id: 'custom:published', name: '模型' }], thinking_enabled: true, rankings: { enabled: true, timeout: 12, limit: 20 }, overridden_fields: [] })
+    .mockResolvedValueOnce({ ...emptyEnv, available_models: [{ id: 'custom:published', name: '模型' }], thinking_enabled: true, rankings: { enabled: false, timeout: 12, limit: 20 }, overridden_fields: ['thinking_enabled', 'rankings.enabled'] })
+    .mockResolvedValueOnce({ ...emptyEnv, available_models: [{ id: 'custom:published', name: '模型' }], thinking_enabled: true, task_budget: { max_requests: 0, max_cost_yuan: 8, max_runtime_seconds: 2400 },
+      rankings: { enabled: false, timeout: 12, limit: 20 }, overridden_fields: ['task_budget.max_requests', 'rankings.enabled'] })
+    .mockResolvedValueOnce({ ...emptyEnv, thinking_enabled: false, task_budget: { max_requests: 0, max_cost_yuan: 8, max_runtime_seconds: 2400 },
+      rankings: { enabled: false, timeout: 12, limit: 20 }, overridden_fields: ['thinking_enabled', 'task_budget.max_requests', 'rankings.enabled'] })
+  renderPage()
+  await expandAdvanced()
+  fireEvent.change(screen.getByLabelText('任务请求上限'), { target: { value: '0' } })
+  fireEvent.change(screen.getByLabelText('思考模式'), { target: { value: '0' } })
+  fireEvent.change(screen.getByLabelText('写作（writer）'), { target: { value: 'custom:published' } })
+  fireEvent.change(screen.getByLabelText('启用扫榜'), { target: { value: '0' } })
+  fireEvent.click(screen.getByRole('button', { name: '恢复扫榜超时默认值' }))
+  await waitFor(() => expect((screen.getByLabelText('扫榜超时') as HTMLInputElement).value).toBe('12'))
+  expect((screen.getByLabelText('任务请求上限') as HTMLInputElement).value).toBe('0')
+  expect((screen.getByLabelText('思考模式') as HTMLSelectElement).value).toBe('0')
+  expect((screen.getByLabelText('写作（writer）') as HTMLSelectElement).value).toBe('custom:published')
+  expect((screen.getByLabelText('启用扫榜') as HTMLSelectElement).value).toBe('0')
+  expect((screen.getByLabelText('扫榜条数') as HTMLInputElement).value).toBe('20')
+  expect((screen.getByRole('button', { name: '恢复扫榜超时默认值' }) as HTMLButtonElement).disabled).toBe(true)
+  fireEvent.click(screen.getByRole('button', { name: '保存扫榜配置' }))
+  await screen.findByText('扫榜配置已保存')
+  expect((screen.getByLabelText('任务请求上限') as HTMLInputElement).value).toBe('0')
+  expect((screen.getByLabelText('写作（writer）') as HTMLSelectElement).value).toBe('custom:published')
+  fireEvent.click(screen.getByRole('button', { name: '保存任务预算' }))
+  await screen.findByText('已保存，仅影响新任务。')
+  expect(vi.mocked(api.updateEnvironment).mock.calls.map(([body]) => body)).toEqual([
+    { reset_preferences: ['rankings.timeout'] }, { rankings: { enabled: false } }, { task_budget: { max_requests: 0 } },
+  ])
+  expect((screen.getByLabelText('任务费用上限（元）') as HTMLInputElement).value).toBe('8')
+  fireEvent.click(screen.getByRole('button', { name: '保存模型偏好' }))
+  await screen.findByText('模型偏好已保存')
+  expect(vi.mocked(api.updateEnvironment).mock.calls[3][0]).toEqual({ model_routes: { writer: 'custom:published' }, thinking_enabled: false })
+  expect((screen.getByLabelText('写作（writer）') as HTMLSelectElement).value).toBe('')
+  expect((screen.getByLabelText('思考模式') as HTMLSelectElement).value).toBe('0')
+  expect((screen.getByLabelText('任务请求上限') as HTMLInputElement).value).toBe('0')
+})
+
+it('replaces only the reset leaf with server values while retaining a dirty sibling for save', async () => {
+  vi.mocked(api.getEnvironment).mockResolvedValue({ ...emptyEnv,
+    task_budget: { max_requests: 100, max_cost_yuan: 5, max_runtime_seconds: 1800 },
+    overridden_fields: ['task_budget.max_requests'],
+  })
+  vi.mocked(api.listProjects).mockResolvedValue([])
+  vi.mocked(api.updateEnvironment)
+    .mockResolvedValueOnce({ ...emptyEnv, task_budget: { max_requests: 180, max_cost_yuan: 5, max_runtime_seconds: 2400 }, overridden_fields: [] })
+    .mockResolvedValueOnce({ ...emptyEnv, task_budget: { max_requests: 180, max_cost_yuan: 6, max_runtime_seconds: 2400 }, overridden_fields: ['task_budget.max_cost_yuan'] })
+  renderPage()
+  await expandAdvanced()
+  fireEvent.change(screen.getByLabelText('任务请求上限'), { target: { value: '0' } })
+  fireEvent.change(screen.getByLabelText('任务费用上限（元）'), { target: { value: '7' } })
+  fireEvent.click(screen.getByRole('button', { name: '恢复任务请求上限默认值' }))
+  await waitFor(() => expect((screen.getByLabelText('任务请求上限') as HTMLInputElement).value).toBe('180'))
+  expect((screen.getByLabelText('任务费用上限（元）') as HTMLInputElement).value).toBe('7')
+  expect((screen.getByLabelText('任务运行上限（秒）') as HTMLInputElement).value).toBe('2400')
+  fireEvent.click(screen.getByRole('button', { name: '保存任务预算' }))
+  await screen.findByText('已保存，仅影响新任务。')
+  expect(vi.mocked(api.updateEnvironment).mock.calls[1][0]).toEqual({ task_budget: { max_cost_yuan: 7 } })
+  expect((screen.getByLabelText('任务费用上限（元）') as HTMLInputElement).value).toBe('6')
 })
