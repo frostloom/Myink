@@ -18,19 +18,19 @@ export function StructuredTextField<T>({
 }: Props<T>) {
   const formatted = format(value)
   const [text, setText] = useState(formatted)
-  const lastEmitted = useRef(formatted)
+  const lastEmitted = useRef(value)
   useEffect(() => {
-    // External replacements reset the draft. Echoes of our own parsed value
-    // must preserve unfinished keys, separators and trailing empty lines.
-    if (formatted !== lastEmitted.current) {
-      lastEmitted.current = formatted
+    // Consumers retain the emitted structured value. A different object is an
+    // external replacement, even when its formatted content is unchanged.
+    if (value !== lastEmitted.current) {
+      lastEmitted.current = value
       setText(formatted)
     }
-  }, [formatted])
+  }, [formatted, value])
 
   function edit(nextText: string) {
     const next = parse(nextText)
-    lastEmitted.current = format(next)
+    lastEmitted.current = next
     setText(nextText)
     onChange(next)
   }

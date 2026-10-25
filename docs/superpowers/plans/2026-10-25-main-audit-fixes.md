@@ -1,6 +1,6 @@
 # Main audit fixes Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Resolve all eleven confirmed main audit defects, validating and pushing each fix separately.
 
@@ -31,11 +31,11 @@
 
 **Interfaces:** Consumes existing public entrypoints. Produces the same signatures with corrected behavior; no new cross-task API.
 
-- [ ] Write regression assertions: Deleting a chapter preserves manual and legacy characters; explicitly generated characters introduced in the deleted tail are removed.
-- [ ] Run the regression, expect FAIL on the audited defective behavior.
-- [ ] Implement the smallest correction in the listed production boundary.
-- [ ] Run regression, expect PASS; then `python -m pytest tests/ -q` using the isolated test environment, expect exit 0 (record skips/xfails).
-- [ ] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
+- [x] Write regression assertions: Deleting a chapter preserves manual and legacy characters; explicitly generated characters introduced in the deleted tail are removed.
+- [x] Run the regression, expect FAIL on the audited defective behavior.
+- [x] Implement the smallest correction in the listed production boundary.
+- [x] Run regression, expect PASS; then `python -m pytest tests/ -q` using the isolated test environment, expect exit 0 (record skips/xfails).
+- [x] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
 
 ### Task 2: Retain approved revision memory
 
@@ -43,11 +43,11 @@
 
 **Interfaces:** Consumes existing public entrypoints. Produces the same signatures with corrected behavior; no new cross-task API.
 
-- [ ] Write regression assertions: Review revision finalization retains newly approved memory, excludes rejected and superseded memory, and is idempotent.
-- [ ] Run the regression, expect FAIL on the audited defective behavior.
-- [ ] Implement the smallest correction in the listed production boundary.
-- [ ] Run regression, expect PASS; then `python -m pytest tests/ -q` using the isolated test environment, expect exit 0 (record skips/xfails).
-- [ ] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
+- [x] Write regression assertions: Review revision finalization retains newly approved memory, excludes rejected and superseded memory, and is idempotent.
+- [x] Run the regression, expect FAIL on the audited defective behavior.
+- [x] Implement the smallest correction in the listed production boundary.
+- [x] Run regression, expect PASS; then `python -m pytest tests/ -q` using the isolated test environment, expect exit 0 (record skips/xfails).
+- [x] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
 
 ### Task 3: Confirm retry publication before acknowledgement
 
@@ -55,11 +55,11 @@
 
 **Interfaces:** Consumes existing public entrypoints. Produces the same signatures with corrected behavior; no new cross-task API.
 
-- [ ] Write regression assertions: Retry and defer keep the original delivery recoverable until replacement publication succeeds.
-- [ ] Run the regression, expect FAIL on the audited defective behavior.
-- [ ] Implement the smallest correction in the listed production boundary.
-- [ ] Run regression, expect PASS; then `python -m pytest tests/ -q` using the isolated test environment, expect exit 0 (record skips/xfails).
-- [ ] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
+- [x] Write regression assertions: Retry and defer keep the original delivery recoverable until replacement publication succeeds.
+- [x] Run the regression, expect FAIL on the audited defective behavior.
+- [x] Implement the smallest correction in the listed production boundary.
+- [x] Run regression, expect PASS; then `python -m pytest tests/ -q` using the isolated test environment, expect exit 0 (record skips/xfails).
+- [x] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
 
 ### Task 4: Allow restoration of removed facts
 
@@ -67,11 +67,11 @@
 
 **Interfaces:** Consumes existing public entrypoints. Produces the same signatures with corrected behavior; no new cross-task API.
 
-- [ ] Write regression assertions: A fact confirmed then removed can be extracted again; pending and live duplicates remain deduplicated.
-- [ ] Run the regression, expect FAIL on the audited defective behavior.
-- [ ] Implement the smallest correction in the listed production boundary.
-- [ ] Run regression, expect PASS; then `python -m pytest tests/ -q` using the isolated test environment, expect exit 0 (record skips/xfails).
-- [ ] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
+- [x] Write regression assertions: A fact confirmed then removed can be extracted again; pending and live duplicates remain deduplicated.
+- [x] Run the regression, expect FAIL on the audited defective behavior.
+- [x] Implement the smallest correction in the listed production boundary.
+- [x] Run regression, expect PASS; then `python -m pytest tests/ -q` using the isolated test environment, expect exit 0 (record skips/xfails).
+- [x] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
 
 ### Task 5: Serialize candidate decisions
 
@@ -79,11 +79,11 @@
 
 **Interfaces:** Consumes existing public entrypoints. Produces the same signatures with corrected behavior; no new cross-task API.
 
-- [ ] Write regression assertions: Concurrent confirmations persist only one memory; confirm versus reject has one winner under PostgreSQL.
-- [ ] Run the regression, expect FAIL on the audited defective behavior.
-- [ ] Implement the smallest correction in the listed production boundary.
-- [ ] Run regression, expect PASS; then `python -m pytest tests/ -q` using the isolated test environment, expect exit 0 (record skips/xfails).
-- [ ] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
+- [x] Write regression assertions: Concurrent confirmations persist only one memory; confirm versus reject has one winner under PostgreSQL.
+- [x] Run the regression, expect FAIL on the audited defective behavior.
+- [x] Implement the smallest correction in the listed production boundary.
+- [x] Run regression, expect PASS; then `python -m pytest tests/ -q` using the isolated test environment, expect exit 0 (record skips/xfails).
+- [x] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
 
 ### Task 6: Restore prior relation after invalidation
 
@@ -91,11 +91,11 @@
 
 **Interfaces:** Consumes existing public entrypoints. Produces the same signatures with corrected behavior; no new cross-task API.
 
-- [ ] Write regression assertions: Invalidating a relation change restores the latest retained prior relation without reopening explicitly expired relations.
-- [ ] Run the regression, expect FAIL on the audited defective behavior.
-- [ ] Implement the smallest correction in the listed production boundary.
-- [ ] Run regression, expect PASS; then `python -m pytest tests/ -q` using the isolated test environment, expect exit 0 (record skips/xfails).
-- [ ] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
+- [x] Write regression assertions: Invalidating a relation change restores the latest retained prior relation without reopening explicitly expired relations.
+- [x] Run the regression, expect FAIL on the audited defective behavior.
+- [x] Implement the smallest correction in the listed production boundary.
+- [x] Run regression, expect PASS; then `python -m pytest tests/ -q` using the isolated test environment, expect exit 0 (record skips/xfails).
+- [x] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
 
 ### Task 7: Resume review finalization after budget pause
 
@@ -103,11 +103,11 @@
 
 **Interfaces:** Consumes existing public entrypoints. Produces the same signatures with corrected behavior; no new cross-task API.
 
-- [ ] Write regression assertions: A budget pause during summarization resumes the remaining phase without losing approvals or repeating persistence.
-- [ ] Run the regression, expect FAIL on the audited defective behavior.
-- [ ] Implement the smallest correction in the listed production boundary.
-- [ ] Run regression, expect PASS; then `python -m pytest tests/ -q` using the isolated test environment, expect exit 0 (record skips/xfails).
-- [ ] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
+- [x] Write regression assertions: A budget pause during summarization resumes the remaining phase without losing approvals or repeating persistence.
+- [x] Run the regression, expect FAIL on the audited defective behavior.
+- [x] Implement the smallest correction in the listed production boundary.
+- [x] Run regression, expect PASS; then `python -m pytest tests/ -q` using the isolated test environment, expect exit 0 (record skips/xfails).
+- [x] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
 
 ### Task 8: Preserve provider truncation reason
 
@@ -115,11 +115,11 @@
 
 **Interfaces:** Consumes existing public entrypoints. Produces the same signatures with corrected behavior; no new cross-task API.
 
-- [ ] Write regression assertions: Streaming and nonstreaming length termination yields the short draft truncation warning.
-- [ ] Run the regression, expect FAIL on the audited defective behavior.
-- [ ] Implement the smallest correction in the listed production boundary.
-- [ ] Run regression, expect PASS; then `python -m pytest tests/ -q` using the isolated test environment, expect exit 0 (record skips/xfails).
-- [ ] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
+- [x] Write regression assertions: Streaming and nonstreaming length termination yields the short draft truncation warning.
+- [x] Run the regression, expect FAIL on the audited defective behavior.
+- [x] Implement the smallest correction in the listed production boundary.
+- [x] Run regression, expect PASS; then `python -m pytest tests/ -q` using the isolated test environment, expect exit 0 (record skips/xfails).
+- [x] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
 
 ### Task 9: Ignore stale generation responses across projects
 
@@ -127,11 +127,11 @@
 
 **Interfaces:** Consumes existing public entrypoints. Produces the same signatures with corrected behavior; no new cross-task API.
 
-- [ ] Write regression assertions: Delayed chapter polling and generate/rewrite/batch responses from project A cannot alter project B.
-- [ ] Run the regression, expect FAIL on the audited defective behavior.
-- [ ] Implement the smallest correction in the listed production boundary.
-- [ ] Run regression, expect PASS; then `cd web && npm test && npm run lint && npm run build`, expect exit 0 (record skips/xfails).
-- [ ] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
+- [x] Write regression assertions: Delayed chapter polling and generate/rewrite/batch responses from project A cannot alter project B.
+- [x] Run the regression, expect FAIL on the audited defective behavior.
+- [x] Implement the smallest correction in the listed production boundary.
+- [x] Run regression, expect PASS; then `cd web && npm test && npm run lint && npm run build`, expect exit 0 (record skips/xfails).
+- [x] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
 
 ### Task 10: Preserve incomplete multiline form text
 
@@ -139,11 +139,11 @@
 
 **Interfaces:** Consumes existing public entrypoints. Produces the same signatures with corrected behavior; no new cross-task API.
 
-- [ ] Write regression assertions: Typing partial world rules and Enter then another list item preserves text and submits normalized arrays only on commit.
-- [ ] Run the regression, expect FAIL on the audited defective behavior.
-- [ ] Implement the smallest correction in the listed production boundary.
-- [ ] Run regression, expect PASS; then `cd web && npm test && npm run lint && npm run build`, expect exit 0 (record skips/xfails).
-- [ ] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
+- [x] Write regression assertions: Typing partial world rules and Enter then another list item preserves text and submits normalized arrays only on commit.
+- [x] Run the regression, expect FAIL on the audited defective behavior.
+- [x] Implement the smallest correction in the listed production boundary.
+- [x] Run regression, expect PASS; then `cd web && npm test && npm run lint && npm run build`, expect exit 0 (record skips/xfails).
+- [x] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
 
 ### Task 11: Ignore stale settings loads
 
@@ -151,11 +151,11 @@
 
 **Interfaces:** Consumes existing public entrypoints. Produces the same signatures with corrected behavior; no new cross-task API.
 
-- [ ] Write regression assertions: Late settings A cannot overwrite settings B or the payload saved to B.
-- [ ] Run the regression, expect FAIL on the audited defective behavior.
-- [ ] Implement the smallest correction in the listed production boundary.
-- [ ] Run regression, expect PASS; then `cd web && npm test && npm run lint && npm run build`, expect exit 0 (record skips/xfails).
-- [ ] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
+- [x] Write regression assertions: Late settings A cannot overwrite settings B or the payload saved to B.
+- [x] Run the regression, expect FAIL on the audited defective behavior.
+- [x] Implement the smallest correction in the listed production boundary.
+- [x] Run regression, expect PASS; then `cd web && npm test && npm run lint && npm run build`, expect exit 0 (record skips/xfails).
+- [x] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
 
 
 ## Final review followups
@@ -165,27 +165,37 @@
 **Files:** src/myink/workflow/nodes.py; tests/test_review_routing.py.
 **Interfaces:** Current-revision approvals and historical candidate decisions; preserve public APIs.
 
-- [ ] RED: duplicate confirmed fact/event history must yield one active memory; applied non-superseded rejected restoration must yield zero.
-- [ ] GREEN: filter rejected proposals first, replay each approved proposal once.
-- [ ] Verify targeted review tests, full `python -m pytest tests/ -q`; expect exit 0 and record skips/xfails.
-- [ ] Commit and push before task 13.
+- [x] RED: duplicate confirmed fact/event history must yield one active memory; applied non-superseded rejected restoration must yield zero.
+- [x] GREEN: filter rejected proposals first, replay each approved proposal once.
+- [x] Verify targeted review tests, full `python -m pytest tests/ -q`; expect exit 0 and record skips/xfails.
+- [x] Commit and push before task 13.
 
 ### Task 13: Distinguish retained same-chapter relation revisions
 
 **Files:** src/myink/memory/invalidation.py; tests/test_invalidation.py.
 **Interfaces:** Closure provenance from task 6, grouped per directed pair and source chapter.
 
-- [ ] RED: ch1 ally; ch2 hostile; invalidate ch2; rewrite ch2 hostile valid_to=4; ch3 knows valid_to=4; invalidate ch3; expect no active ally resurrection.
-- [ ] GREEN: only consider a source chapter undone when all its historical rows for that pair are invalidated.
-- [ ] Verify invalidation/deletion tests and full Python suite; expect exit 0.
-- [ ] Commit and push before task 14.
+- [x] RED: ch1 ally; ch2 hostile; invalidate ch2; rewrite ch2 hostile valid_to=4; ch3 knows valid_to=4; invalidate ch3; expect no active ally resurrection.
+- [x] GREEN: only consider a source chapter undone when all its historical rows for that pair are invalidated.
+- [x] Verify invalidation/deletion tests and full Python suite; expect exit 0.
+- [x] Commit and push before task 14.
 
 ### Task 14: Deduplicate repeated extraction against live memory
 
 **Files:** src/myink/memory/correction.py; tests/test_correction.py.
 **Interfaces:** Existing diff matching and candidate identity; keep confirmed-deleted fact restoration.
 
-- [ ] RED: live confirmed A and extraction [A,A] yield keep=1, zero additions; missing A repeated yields one pending proposal.
-- [ ] GREEN: deduplicate equivalent proposals within one extraction before matching.
-- [ ] Verify correction tests and full Python suite; expect exit 0.
-- [ ] Commit and push; preserve one final review pass, no recursive re-review.
+- [x] RED: live confirmed A and extraction [A,A] yield keep=1, zero additions; missing A repeated yields one pending proposal.
+- [x] GREEN: deduplicate equivalent proposals within one extraction before matching.
+- [x] Verify correction tests and full Python suite; expect exit 0.
+- [x] Commit and push; preserve one final review pass, no recursive re-review.
+
+### Task 15: Reset unfinished text on an equivalent external replacement
+
+**Files:** web/src/components/StructuredTextField.tsx and its regression test.
+**Interfaces:** Existing consumers retain the parsed value by reference; a new server/plan replacement supplies a new structured object.
+
+- [x] RED: editing an unfinished world-rule line or participant separator survives local echoes; externally replacing the same canonical value clears that unfinished text.
+- [x] GREEN: distinguish the actual emitted structured value from a new external value, rather than comparing formatted text alone.
+- [x] Verify the full frontend suite, lint and build; expect exit 0 with existing warnings recorded.
+- [x] Commit and push; no known review findings remain deferred.
