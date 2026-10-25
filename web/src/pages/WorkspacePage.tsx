@@ -2,7 +2,7 @@ import { ResourceUpdates, type ResourceUpdateGate } from '../components/Resource
 // 工作台（三栏）：rail 项目切换 + 章节列表 | 章节编辑器 | 生成入口/时间线/校验报告/候选池。
 // 生成任务进度状态在页面级提升：useTaskEvents(activeTaskId)，终态 → 刷新章节列表。
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { AuditPanel } from '../components/AuditPanel'
 import { CandidatePanel, type ReleaseTarget } from '../components/CandidatePanel'
 import { ChapterEditor } from '../components/ChapterEditor'
@@ -866,6 +866,7 @@ export default function WorkspacePage() {
       </aside>
 
       <main className={styles.main}>
+        <div className={styles.resourceEntry}><Link className="btn btn-secondary" to={`/projects/${projectId}/settings#writing-resources`}>选择写作资源</Link><span>题材包、题材规则、文风、创作与表达规则</span></div>
         <ResourceUpdates key={projectId} projectId={projectId} gateRef={resourceGate} />
         {error && <div className="banner banner-error" role="alert">{error}</div>}
         {isShortBook && (

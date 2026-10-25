@@ -394,3 +394,6 @@
     display: none;
   }
 }
+
+.resourceEntry { display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px; margin-bottom:16px; }
+.resourceEntry span { color:var(--ink-subtle); font-size:var(--text-small); overflow-wrap:anywhere; }

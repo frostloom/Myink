@@ -1,7 +1,7 @@
 // 创作设置页：本书题材字段 + 每章目标字数。
 // 原题材/文风保留建书历史；启用写作资源后，以当前资源快照为准。
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../lib/api'
@@ -13,6 +13,8 @@ import { WritingResourcePicker } from '../components/WritingResourcePicker'
 
 export default function SettingsPage() {
   const { projectId = '' } = useParams()
+  const location = useLocation()
+  const beforeWriting = location.state?.configureBeforeWriting === true
   const { logout } = useAuth()
 
   const [projects, setProjects] = useState<Project[]>([])
@@ -84,7 +86,7 @@ export default function SettingsPage() {
             <div>
               <h1>创作设置</h1>
               <div className={styles.crumb}>
-                <Link to={`/projects/${projectId}`}>返回工作台</Link>
+                <Link to={`/projects/${projectId}`} state={{planWarning:location.state?.planWarning}}>{beforeWriting ? '选好后返回工作台开写' : '返回工作台'}</Link>
                 {settings && <span className="badge">v{settings.version}</span>}
               </div>
             </div>
@@ -100,6 +102,7 @@ export default function SettingsPage() {
           {banner && <div className="banner banner-error">{banner}</div>}
           {ok && <div className="banner banner-warning">{ok}</div>}
 
+          {beforeWriting && <p className="banner">方案已确认，正文尚未开始生成。请勾选需要的资源并保存，再返回工作台点击“开始写”。{location.state?.planWarning && <span>{location.state.planWarning}</span>}</p>}
           <WritingResourcePicker key={projectId} projectId={projectId} />
 
           <section className={`panel ${styles.section}`}>

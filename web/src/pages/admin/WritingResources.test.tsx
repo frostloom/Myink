@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import {
   cleanup,
+  act,
   fireEvent,
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import WritingResources from './WritingResources'
@@ -276,9 +278,9 @@ it('separates automatic role prompts from selectable resources and explains when
   expect(await screen.findByText('角色提示词 · 自动生效')).toBeTruthy()
   expect(screen.getByText('可选写作资源')).toBeTruthy()
   expect(screen.getAllByText(/作品选用后生效/).length).toBeGreaterThan(0)
-  fireEvent.click(screen.getByRole('button', {name: '编辑 写作角色提示词'}))
+  fireEvent.click(await screen.findByRole('button', {name: '编辑 长篇正文写作'}))
   expect(await screen.findByLabelText('长篇正文写作 · 创作要求')).toBeTruthy()
-  expect(screen.getByText('生成长篇章节时')).toBeTruthy()
+  expect(screen.getByRole('dialog').textContent).toContain('生成长篇章节时')
   expect(screen.getByText('=== CONTENT ===')).toBeTruthy()
   expect(screen.queryByLabelText('来源')).toBeNull()
 })
@@ -289,7 +291,7 @@ it('saves role creative instructions through the same draft and publication life
   vi.mocked(writingResources.adminList).mockResolvedValue({items:[role]})
   vi.mocked(writingResources.save).mockResolvedValue(role)
   render(<WritingResources />)
-  fireEvent.click(await screen.findByRole('button', {name: '编辑 写作角色提示词'}))
+  fireEvent.click(await screen.findByRole('button', {name: '编辑 长篇正文写作'}))
   fireEvent.change(await screen.findByLabelText('长篇正文写作 · 创作要求'), {target:{value:'保留作者语气，以行动推进'}})
   fireEvent.click(screen.getByRole('button', {name:'保存草稿'}))
   await waitFor(() => expect(writingResources.save).toHaveBeenCalledWith('role-prompt:writer', {
@@ -306,7 +308,7 @@ it('brings a legacy automatic supplement into the role draft and allows explicit
   vi.mocked(writingResources.adminList).mockResolvedValue({items:[role]})
   vi.mocked(writingResources.save).mockResolvedValue(role)
   render(<WritingResources />)
-  fireEvent.click(await screen.findByRole('button', {name:'编辑 写作角色提示词'}))
+  fireEvent.click(await screen.findByRole('button', {name:'编辑 写作共用补充'}))
   const supplement = await screen.findByLabelText('各环节共用的补充要求') as HTMLTextAreaElement
   expect(supplement.value).toBe('旧平台共用要求')
   fireEvent.change(supplement, {target:{value:''}})
@@ -331,4 +333,141 @@ it('shows a readable explanation when a resource history request returns an inte
   fireEvent.click(await screen.findByRole('button', { name: '编辑 写作' }))
   expect(await screen.findByText('未找到相关内容')).toBeTruthy()
   expect(screen.queryByText('not_found')).toBeNull()
+})
+it('lists concrete prompt stages as separate cards and opens only the chosen stage', async () => {
+ vi.mocked(platformApi.getPromptTemplates).mockResolvedValue([{role:'writer',templates:[
+ {id:'system_write',title:'长篇正文写作',when:'生成长篇章节时',content:'长篇',source:'internal',editable_content:'长篇'},
+ {id:'system_short_writer',title:'短篇整篇写作',when:'短篇首次成稿时',content:'短篇',source:'internal',editable_content:'短篇'},
+ ]}])
+ vi.mocked(writingResources.adminList).mockResolvedValue({items:[{...resource,id:'writer',kind:'role_prompt',body:{role:'writer',supplement:'',templates:{system_write:'长篇',system_short_writer:'短篇'}}}]})
+ render(<WritingResources />)
+ fireEvent.click(await screen.findByRole('button',{name:'编辑 短篇整篇写作'}))
+ expect(await screen.findByLabelText('短篇整篇写作 · 创作要求')).toBeTruthy()
+ expect(screen.queryByLabelText('长篇正文写作 · 创作要求')).toBeNull()
+ expect(screen.queryByLabelText('各环节共用的补充要求')).toBeNull()
+ expect(screen.getByRole('button',{name:'编辑 长篇正文写作'})).toBeTruthy()
+})
+it('counts rendered prompt cards consistently in tabs and totals, including after searching', async () => {
+ vi.mocked(platformApi.getPromptTemplates).mockResolvedValue([{role:'writer',templates:[
+ {id:'system_write',title:'长篇正文写作',when:'生成长篇章节时',content:'长篇',source:'internal'},
+ {id:'system_short_writer',title:'短篇整篇写作',when:'短篇首次成稿时',content:'短篇',source:'internal'},
+ ]}])
+ vi.mocked(writingResources.adminList).mockResolvedValue({items:[resource,{...resource,id:'writer',kind:'role_prompt',body:{role:'writer',supplement:'',templates:{system_write:'长篇',system_short_writer:'短篇'}}}]})
+ render(<WritingResources />)
+ await screen.findByRole('button',{name:'编辑 短篇整篇写作'})
+ expect(screen.getAllByRole('button',{name:/^编辑 /})).toHaveLength(4)
+ expect(screen.getByRole('button',{name:/^全部\s*4$/})).toBeTruthy()
+ expect(screen.getByRole('button',{name:/^角色提示词\s*3$/})).toBeTruthy()
+ expect(screen.getByText('共 4 张卡片')).toBeTruthy()
+ expect(screen.getByText('2 个环节提示词 · 1 项共用补充，共 3 张卡片')).toBeTruthy()
+ fireEvent.click(screen.getByRole('button',{name:/^角色提示词\s*3$/}))
+ expect(screen.getAllByRole('button',{name:/^编辑 /})).toHaveLength(3)
+ expect(screen.getByText('共 3 张卡片')).toBeTruthy()
+ expect(screen.getByRole('button',{name:/^全部\s*4$/})).toBeTruthy()
+ fireEvent.click(screen.getByRole('button',{name:/^全部\s*4$/}))
+ fireEvent.change(screen.getByLabelText('搜索写作资源'),{target:{value:'短篇'}})
+ expect(screen.getAllByRole('button',{name:/^编辑 /})).toHaveLength(1)
+ expect(screen.getByRole('button',{name:/^全部\s*1$/})).toBeTruthy()
+ expect(screen.getByRole('button',{name:/^角色提示词\s*1$/})).toBeTruthy()
+ expect(screen.getByText('共 1 张卡片')).toBeTruthy()
+ expect(screen.queryByRole('button',{name:'编辑 写作共用补充'})).toBeNull()
+})
+
+function reviewRoleFixture() {
+  vi.mocked(platformApi.getPromptTemplates).mockResolvedValue([{role:'writer',templates:[
+    {id:'system_write',title:'长篇正文写作',when:'生成长篇章节时',content:'长篇',source:'internal'},
+    {id:'system_short_writer',title:'短篇整篇写作',when:'短篇首次成稿时',content:'短篇',source:'internal'},
+  ]}])
+  vi.mocked(writingResources.adminList).mockResolvedValue({items:[{...resource,id:'writer',kind:'role_prompt',body:{role:'writer',supplement:'',templates:{system_write:'长篇草稿要求',system_short_writer:'短篇草稿要求'}}}]})
+}
+it('clears the old stage title when creating a different resource', async () => {
+  reviewRoleFixture()
+  render(<WritingResources />)
+  fireEvent.click(await screen.findByRole('button',{name:'编辑 短篇整篇写作'}))
+  fireEvent.click(screen.getByRole('button',{name:'关闭'}))
+  fireEvent.click(screen.getByRole('button',{name:'新建资源'}))
+  expect(screen.getByRole('dialog',{name:'编辑新资源'})).toBeTruthy()
+})
+it('previews the entire role publication, including sibling stage drafts', async () => {
+  reviewRoleFixture()
+  render(<WritingResources />)
+  fireEvent.click(await screen.findByRole('button',{name:'编辑 短篇整篇写作'}))
+  await screen.findByLabelText('短篇整篇写作 · 创作要求')
+  fireEvent.click(screen.getByRole('button',{name:'预览发布'}))
+  const preview=within(screen.getByRole('dialog',{name:'发布预览'}))
+  expect(await preview.findByText('长篇草稿要求')).toBeTruthy()
+  expect(preview.getByText('短篇整篇写作')).toBeTruthy()
+})
+it('keeps metadata failures and retry visible while searching a stage name', async () => {
+  reviewRoleFixture()
+  vi.mocked(platformApi.getPromptTemplates).mockRejectedValue(new Error('offline'))
+  render(<WritingResources />)
+  await screen.findByRole('button',{name:'编辑 写作共用补充'})
+  fireEvent.change(screen.getByLabelText('搜索写作资源'),{target:{value:'短篇'}})
+  expect(await screen.findByRole('button',{name:'重新加载创作环节'})).toBeTruthy()
+  expect(screen.queryByText('没有匹配的资源，请调整搜索或筛选条件。')).toBeNull()
+})
+it('waits for all role preview content before enabling final publication', async () => {
+  reviewRoleFixture()
+  render(<WritingResources />)
+  fireEvent.click(await screen.findByRole('button',{name:'编辑 短篇整篇写作'}))
+  await screen.findByLabelText('短篇整篇写作 · 创作要求')
+  let resolvePreview!: (value:Awaited<ReturnType<typeof platformApi.getPromptTemplates>>) => void
+  vi.mocked(platformApi.getPromptTemplates).mockReturnValueOnce(new Promise(resolve => {resolvePreview=resolve}))
+  fireEvent.click(screen.getByRole('button',{name:'预览发布'}))
+  const confirm=screen.getByRole('button',{name:'确认发布'}) as HTMLButtonElement
+  expect(confirm.disabled).toBe(true)
+  expect(writingResources.publish).not.toHaveBeenCalled()
+  resolvePreview([{role:'writer',templates:[{id:'system_write',title:'长篇正文写作',content:'长篇',source:'internal'},{id:'system_short_writer',title:'短篇整篇写作',content:'短篇',source:'internal'}]}])
+  await waitFor(()=>expect(confirm.disabled).toBe(false))
+})
+it('shows history loading instead of claiming that a published role has no history', async () => {
+  reviewRoleFixture()
+  let resolveHistory!: (value:Awaited<ReturnType<typeof writingResources.revisions>>) => void
+  vi.mocked(writingResources.revisions).mockReturnValueOnce(new Promise(resolve => {resolveHistory=resolve}))
+  render(<WritingResources />)
+  fireEvent.click(await screen.findByRole('button',{name:'编辑 短篇整篇写作'}))
+  expect(screen.getByText('正在读取发布历史…')).toBeTruthy()
+  expect(screen.queryByText('尚无发布记录，发布后可在这里查看和回退。')).toBeNull()
+  resolveHistory({items:[]})
+  expect(await screen.findByText('尚无发布记录，发布后可在这里查看和回退。')).toBeTruthy()
+})
+
+it('previews all historical role stages before a bundle rollback', async () => {
+  reviewRoleFixture()
+  vi.mocked(writingResources.revisions).mockResolvedValue({items:[{version:1,name:'旧版写作',source:'builtin',body:{role:'writer',supplement:'历史共用补充',templates:{system_write:'历史长篇要求',system_short_writer:'历史短篇要求'}},action:'publish',created_at:'2026-10-24',note:''}]})
+  render(<WritingResources />)
+  fireEvent.click(await screen.findByRole('button',{name:'编辑 短篇整篇写作'}))
+  fireEvent.click(await screen.findByText(/v1 · 旧版写作/))
+  fireEvent.click(await screen.findByRole('button',{name:'预览回退至 v1'}))
+  const preview=within(screen.getByRole('dialog',{name:'发布预览'}))
+  expect(await preview.findByText('历史长篇要求')).toBeTruthy()
+  expect(preview.getByText('历史共用补充')).toBeTruthy()
+  expect(preview.getByText('短篇整篇写作')).toBeTruthy()
+  expect(writingResources.rollback).not.toHaveBeenCalled()
+})
+it('does not replace the current resource history with a late response from a previously closed resource', async () => {
+  vi.mocked(writingResources.adminList).mockResolvedValue({items:[resource,{...resource,id:'new',name:'新资源'}]})
+  let resolveOld!: (value:Awaited<ReturnType<typeof writingResources.revisions>>) => void
+  const old=new Promise<Awaited<ReturnType<typeof writingResources.revisions>>>(resolve=>{resolveOld=resolve})
+  const revision={version:1,name:'当前资源历史',source:'builtin',body:resource.body,action:'publish' as const,created_at:'2026-10-24',note:''}
+  vi.mocked(writingResources.revisions).mockImplementation(id=>id==='r'?old:Promise.resolve({items:[revision]}))
+  render(<WritingResources />)
+  fireEvent.click(await screen.findByRole('button',{name:'编辑 写作'}))
+  fireEvent.click(screen.getByRole('button',{name:'关闭'}))
+  fireEvent.click(screen.getByRole('button',{name:'编辑 新资源'}))
+  await screen.findByText(/v1 · 当前资源历史/)
+  await act(async()=>resolveOld({items:[{...revision,name:'已经关闭的资源历史'}]}))
+  expect(screen.queryByText(/v1 · 已经关闭的资源历史/)).toBeNull()
+  expect(screen.getByText(/v1 · 当前资源历史/)).toBeTruthy()
+})
+
+it('ignores a late history failure after closing the resource editor', async () => {
+  let rejectHistory!: (reason: Error) => void
+  vi.mocked(writingResources.revisions).mockReturnValueOnce(new Promise((_, reject) => {rejectHistory=reject}))
+  render(<WritingResources />)
+  fireEvent.click(await screen.findByRole('button',{name:'编辑 写作'}))
+  fireEvent.click(screen.getByRole('button',{name:'关闭'}))
+  await act(async()=>rejectHistory(new Error('closed history failed')))
+  expect(screen.queryByRole('alert')).toBeNull()
 })

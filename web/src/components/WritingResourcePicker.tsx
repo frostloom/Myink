@@ -1,5 +1,5 @@
 import { ResourceBodyFields } from './ResourceBodyFields'
-import { isSupportingReference, isLegacyRoleSupplement } from '../lib/resourceDisplay'
+import { isSupportingReference, isLegacyRoleSupplement, resourceUsage } from '../lib/resourceDisplay'
 import { useEffect, useState } from 'react'
 import {
   writingResources as api,
@@ -9,6 +9,7 @@ import {
   type ResourceSnapshot,
   type SelectionInput,
   type ResourceBody,
+  type ResourceKind,
 } from '../lib/writingResources'
 import { AdminDialog } from '../pages/admin/AdminDialog'
 import { ResourceUpdates } from './ResourceUpdates'
@@ -66,6 +67,37 @@ export function WritingResourcePicker({ projectId }: { projectId: string }) {
   const chosenGenres = chosen.filter(
     (entry) => chosenMetadata(entry)?.kind === 'genre',
   )
+  const resourceGroups: ResourceKind[] = ['genre', 'genre_rule', 'style', 'writing_rule', 'expression_rule', 'reference']
+  const groupDescriptions: Partial<Record<ResourceKind, string>> = {
+    genre: '决定本书的题材方向和基本写法；多选时可指定主题材。',
+    genre_rule: '例如修仙精调：规划时检查资源与突破代价，写正文时落实铺垫与收获，审稿时检查是否兑现。勾选、题材匹配并保存后，用于新发起的任务。',
+    style: '约定叙事声音、对话和描写习惯；作品自己的文风与样本优先。',
+    writing_rule: '例如章节衔接与收尾：下一次生成、续写或修订正文时使用；配置了规划或审核要求的规则，也会在对应环节使用。',
+    expression_rule: '例如中文小说表达、句式偏好：下一次写正文或改稿时约束表达，审稿时检查是否符合要求。可自行勾选或自定义。',
+    reference: '这是你自行维护的参考资料；平台写作知识库由 AI 按需查阅，无需勾选。',
+  }
+  function pinnedSelection(item: WritingResource, origin: 'platform' | 'personal') {
+    if (!chosen.some(entry => entry.origin === origin && entry.resource_id === item.id)) return undefined
+    return snapshot?.selections.find(entry => entry.origin === origin && entry.resource_id === item.id)
+  }
+  function effectiveResource(item: WritingResource, origin: 'platform' | 'personal'): WritingResource {
+    const choice = chosen.find(entry => entry.origin === origin && entry.resource_id === item.id)
+    const metadata = choice ? chosenMetadata(choice) : undefined
+    const body = choice?.personal_override && choice.body ? choice.body : metadata?.body ?? item.body
+    return {...item,body}
+  }
+  function genreRuleHint(item: WritingResource, origin: 'platform' | 'personal') {
+    const effective = effectiveResource(item, origin)
+    const ids = 'genre_ids' in effective.body ? effective.body.genre_ids ?? [] : []
+    if (item.kind !== 'genre_rule' || !ids.length) return null
+    const allGenres = [...catalog, ...personal, ...(snapshot?.selections ?? [])].filter(item => item.kind === 'genre' && 'catalog_id' in item.body)
+    const names = ids.map(id => allGenres.find(item => 'catalog_id' in item.body && item.body.catalog_id === id)?.name ?? '其他匹配题材')
+    const matches = chosenGenres.some(entry => {
+      const metadata = chosenMetadata(entry)
+      return metadata && 'catalog_id' in metadata.body && ids.includes(metadata.body.catalog_id)
+    })
+    return <><p>适用题材：{names.join('、')}</p><p>{matches ? '已匹配当前选择的题材，勾选此规则并保存后生效。' : '尚未匹配本书题材；仅选中此规则不会生效。'}</p></>
+  }
   function makePrimary(entry: SelectionInput) {
     setChosen((previous) => {
       const firstGenre = previous.findIndex(
@@ -142,14 +174,15 @@ export function WritingResourcePicker({ projectId }: { projectId: string }) {
   }
   return (
     <section
+      id="writing-resources"
       className="panel"
       style={{ padding: '1.5rem', marginBottom: '1rem' }}
     >
       <h2>本书写作资源</h2>
-      <p>选择题材、文风等平台资源或个人资源。角色提示词自动生效，写作知识库由AI按需查阅，无需勾选。个人修改仅保存在个人库或本书快照。</p>
+      <p>在下方分别选择题材包、题材规则、文风、创作规则和表达规则，点击“保存本书资源选择”后用于新发起的规划、写作和审核；正在运行的任务继续使用原版本。个人修改只属于你，不会同步到管理后台。</p><p>角色提示词按写作环节自动生效。知识库由 AI 根据本书题材与当前任务按需查阅，选择题材包不代表每次必读某份资料；已读取情况以执行记录为准。</p>
       {snapshot && !snapshot.configured && (
         <p>
-          尚未配置：继续使用建书时的原有题材和文风。首次保存选择后启用资源快照。
+          尚未配置：继续使用建书时的原有题材和文风。首次保存后以以下选择为准，请同时确认题材与文风。
         </p>
       )}
       {error && !editing && <p role="alert">{error}</p>}
@@ -176,7 +209,6 @@ export function WritingResourcePicker({ projectId }: { projectId: string }) {
       {snapshot?.selections.map((s) => (
         <p key={`${s.origin}:${s.resource_id}`}>
           {s.name} · {s.origin === 'platform' ? '平台' : '个人'} · v{s.version}{' '}
-          · 发布标识 {s.generation}
           {s.kind === 'genre' &&
             ` · 已保存${snapshot.selections.filter((entry) => entry.kind === 'genre')[0] === s ? '主题材' : '辅题材'}`}
           {s.personal_override ? ' · 个人覆盖（更新不会替换）' : ''}
@@ -241,7 +273,12 @@ export function WritingResourcePicker({ projectId }: { projectId: string }) {
       {(['platform', 'personal'] as const).map((origin) => (
         <section key={origin}>
           <h3>{origin === 'platform' ? '平台资源' : '我的资源'}</h3>
-          {(origin === 'platform' ? catalog : personal).map((item) => (
+          {resourceGroups.map(kind => {
+            const items = (origin === 'platform' ? catalog : personal).filter(item => item.kind === kind)
+            if (!items.length) return null
+            return <section key={kind} aria-label={`${origin === 'platform' ? '平台' : '个人'}${resourceKinds[kind]}`} style={{marginTop:24}}>
+              <h4>{resourceKinds[kind]} · {items.length} 项</h4><p>{groupDescriptions[kind]}</p>
+              {items.map((item) => (
             <div
               key={item.id}
               style={{
@@ -270,8 +307,11 @@ export function WritingResourcePicker({ projectId }: { projectId: string }) {
                   }
                 />{' '}
                 {item.name} · {resourceKinds[item.kind]} · v
-                {item.current_version}
+                {pinnedSelection(item, origin)?.version ?? item.current_version}
               </label>
+              {pinnedSelection(item, origin) && pinnedSelection(item, origin)?.version !== item.current_version && <p>平台另有 v{item.current_version}，采用更新后才会替换本书版本。</p>}
+              <p>{resourceUsage(effectiveResource(item, origin)).when}</p>
+              {genreRuleHint(item, origin)}
               <button
                 className="btn btn-quiet"
                 disabled={busy}
@@ -286,7 +326,8 @@ export function WritingResourcePicker({ projectId }: { projectId: string }) {
                 {item.name}
               </button>
             </div>
-          ))}
+          ))}</section>
+          })}
         </section>
       ))}
       <button

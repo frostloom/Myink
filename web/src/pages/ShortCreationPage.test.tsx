@@ -59,6 +59,7 @@ function renderPage() {
   const router = createMemoryRouter([
     { path: '/short/new', element: <ShortCreationPage /> },
     { path: '/projects/:projectId', element: <div>工作台</div> },
+    { path: '/projects/:projectId/settings', element: <div>写作资源选择</div> },
   ], { initialEntries: ['/short/new'] })
   return { ...render(<RouterProvider router={router} />), router }
 }
@@ -498,4 +499,14 @@ it('keeps the box editable and says it is replying while a turn is in flight', a
   expect((box as HTMLTextAreaElement).disabled).toBe(false)
   release(payload({ messages: [], ready: false }))
   await waitFor(() => expect(screen.getByRole('button', { name: '发送' })).toBeTruthy())
+})
+it('lets the author configure writing resources before the first short-story generation', async () => {
+ vi.mocked(shortCreationApi.open).mockResolvedValue(payload({messages:[],ready:true,session:{card:FULL_CARD}}))
+ vi.mocked(shortCreationApi.commit).mockResolvedValue({project_id:'p1',lengths_compressed:false,plan_warning:null,style_name:null})
+ const {router}=renderPage()
+ await openCard()
+ fireEvent.click(screen.getByRole('button',{name:'确认方案，先选写作资源'}))
+ await waitFor(()=>expect(router.state.location.pathname).toBe('/projects/p1/settings'))
+ expect(router.state.location.hash).toBe('#writing-resources')
+ expect(router.state.location.state).not.toHaveProperty('beginShortWriting',true)
 })

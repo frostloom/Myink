@@ -828,3 +828,8 @@ it('passes the authoritative budget to the short workspace flow', async () => {
   await screen.findByText('timeline-task-short-chapter-none')
   expect(screen.getByText('flow-budget-7')).toBeTruthy()
 })
+it('offers writing resource choices in the short-book workspace where the settings navigation is hidden', async () => {
+ renderWorkspace()
+ const link=await screen.findByRole('link',{name:'选择写作资源'})
+ expect(link.getAttribute('href')).toContain('/settings#writing-resources')
+})

@@ -313,5 +313,32 @@ it('keeps private reference choices while platform knowledge is automatic', asyn
   render(<WritingResourcePicker projectId="p" />)
   await screen.findByRole('checkbox', {name: /本书私人参考/})
   expect(screen.queryByText('平台人物写法')).toBeNull()
-  expect(screen.getByText(/写作知识库由AI按需查阅/)).toBeTruthy()
+  expect(screen.getByText(/知识库由 AI 根据本书题材与当前任务按需查阅/)).toBeTruthy()
+})
+it('groups selectable resources by purpose and explains genre-rule matching instead of hiding the choices', async () => {
+ vi.mocked(api.catalog).mockResolvedValue({items:[resource,
+  {...resource,id:'genre',name:'修仙',kind:'genre',body:{catalog_id:'xiuxian',fields:{}}},
+  {...resource,id:'refine',name:'修仙精调',kind:'genre_rule',body:{genre_ids:['xiuxian'],roles:{writer:'突破有代价'}}},
+  {...resource,id:'expression',name:'中文小说表达',kind:'expression_rule',body:{roles:{writer:'避免重复解释'}}},
+ ]} as Awaited<ReturnType<typeof api.catalog>>)
+ render(<WritingResourcePicker projectId="p" />)
+ expect(await screen.findByRole('region',{name:'平台题材规则'})).toBeTruthy()
+ expect(screen.getByRole('region',{name:'平台表达规则'})).toBeTruthy()
+ expect(screen.getByRole('region',{name:'平台创作规则'})).toBeTruthy()
+ expect(screen.getByText('适用题材：修仙')).toBeTruthy()
+ expect(screen.getByText('尚未匹配本书题材；仅选中此规则不会生效。')).toBeTruthy()
+})
+
+it.each([false,true])('uses the selected rule version for applicability, including personal override=%s', async (personal_override) => {
+  const genre={...resource,id:'g',name:'修仙',kind:'genre' as const,body:{catalog_id:'xiuxian',fields:{}}}
+  const rule={...resource,id:'refine',name:'修仙精调',kind:'genre_rule' as const,body:{genre_ids:['guize'],roles:{writer:'最新规则'}}}
+  vi.mocked(api.catalog).mockResolvedValue({items:[genre,rule,{...genre,id:'other',name:'规则怪谈',body:{catalog_id:'guize',fields:{}}}]} as Awaited<ReturnType<typeof api.catalog>>)
+  vi.mocked(api.snapshot).mockResolvedValue({...snapshot,selections:[
+    {...snapshot.selections[0],resource_id:'g',name:'修仙',kind:'genre',body:genre.body},
+    {...snapshot.selections[0],resource_id:'refine',name:'修仙精调',kind:'genre_rule',personal_override,body:{genre_ids:['xiuxian'],roles:{writer:'本书保留的规则'}}},
+  ]} as Awaited<ReturnType<typeof api.snapshot>>)
+  render(<WritingResourcePicker projectId="p" />)
+  expect(await screen.findByText('适用题材：修仙')).toBeTruthy()
+  expect(screen.getByText('已匹配当前选择的题材，勾选此规则并保存后生效。')).toBeTruthy()
+  expect(screen.queryByText('尚未匹配本书题材；仅选中此规则不会生效。')).toBeNull()
 })

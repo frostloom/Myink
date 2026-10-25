@@ -1,3 +1,4 @@
+import { platformApi, type PromptRoleTemplates } from '../../lib/platformApi'
 import { formatDate } from './shared'
 import { ResourceContent } from './ResourceContent'
 import { RolePromptFields } from './RolePromptFields'
@@ -13,7 +14,7 @@ import {
 } from '../../lib/resourceDisplay'
 import { emptyFields } from '../../lib/genrePacks'
 import { ResourceBodyFields } from '../../components/ResourceBodyFields'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import {
   writingResources as api,
@@ -48,8 +49,15 @@ export default function WritingResources({
   const title =
     scope === 'prompts' ? '提示词' : scope === 'genres' ? '题材包' : '写作资源'
   const [items, setItems] = useState<WritingResource[]>([])
+  const [promptCatalog, setPromptCatalog] = useState<PromptRoleTemplates[]>([])
+  const [promptError, setPromptError] = useState('')
+  const [promptRetry, setPromptRetry] = useState(0)
+  const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null)
   const [selected, setSelected] = useState<WritingResource | null>(null)
   const [history, setHistory] = useState<ResourceRevision[]>([])
+  const [historyStatus, setHistoryStatus] = useState<'loading' | 'ready' | 'error'>('ready')
+  const historyRequest = useRef(0)
+  const [previewReady, setPreviewReady] = useState(false)
   const [name, setName] = useState(''),
     [source, setSource] = useState(''),
     [body, setBody] = useState('')
@@ -63,18 +71,35 @@ export default function WritingResources({
   const [kind, setKind] = useState<ResourceKind>('reference')
   const selectableKinds: ResourceKind[] = allowedKinds.filter((k) => k !== 'role_prompt')
   const available = items.filter((item) => !isSupportingReference(item) && !isLegacyRoleSupplement(item) && (showArchived || item.status !== 'archived'))
-  const visible = available
-    .filter(
-      (i) =>
-        allowedKinds.includes(i.kind) &&
-        (filter === 'all' || i.kind === filter) &&
-        `${resourceTitle(i)} ${i.name} ${i.kind === 'role_prompt' && 'role' in i.body
-                ? writingRoles[i.body.role]?.purpose ?? resourceSummary(i.body).slice(0, 200)
-                : i.kind === 'reference' ? referencePurpose(i) : resourceSummary(i.body).slice(0, 200)}`
-          .toLowerCase()
-          .includes(search.trim().toLowerCase()),
-    )
-    .sort((a, b) => Number(isSourceNotice(a)) - Number(isSourceNotice(b)))
+  // Cards are the single display/count/search unit, including expanded role stages.
+  const cards: Array<{item:WritingResource; prompt?:{id:string;title:string;when?:string}}> = []
+  for (const item of available) {
+    if (!allowedKinds.includes(item.kind)) continue
+    if (item.kind !== 'role_prompt') {
+      cards.push({item})
+      continue
+    }
+    if (!('role' in item.body)) continue
+    const role = item.body.role
+    cards.push({item,prompt:{id:'__supplement__',title:`${writingRoles[role]?.name ?? '角色'}共用补充`,when:'仅在需要所有相关环节共用同一要求时编辑'}})
+    for (const template of promptCatalog.find(group => group.role === role)?.templates ?? []) {
+      cards.push({item,prompt:template})
+    }
+  }
+  const matchedCards = cards.filter(({item,prompt}) => {
+    const content = prompt && 'templates' in item.body
+      ? (prompt.id === '__supplement__' ? item.body.supplement ?? '' : item.body.templates[prompt.id] ?? '')
+      : item.kind === 'reference' ? referencePurpose(item) : resourceSummary(item.body).slice(0,200)
+    return `${prompt?.title ?? ''} ${prompt?.when ?? ''} ${resourceTitle(item)} ${item.name} ${content}`.toLowerCase().includes(search.trim().toLowerCase())
+  })
+  const visible = matchedCards.filter(({item}) => filter === 'all' || item.kind === filter)
+  const visiblePrompts = visible.filter(({item}) => item.kind === 'role_prompt').sort((a,b) => {
+    const order = Object.keys(writingRoles)
+    return order.indexOf('role' in a.item.body ? a.item.body.role : '') - order.indexOf('role' in b.item.body ? b.item.body.role : '')
+  })
+  const commonCount = visiblePrompts.filter(({prompt}) => prompt?.id === '__supplement__').length
+  const hasPromptResources = allowedKinds.includes('role_prompt') && available.some(item => item.kind === 'role_prompt')
+  const promptsLoading = hasPromptResources && !promptCatalog.length && !promptError
   function failure(e: unknown) {
     if ((e as { status?: number }).status === 403) onForbidden()
     setError(resourceError(e))
@@ -109,7 +134,22 @@ export default function WritingResources({
       live = false
     }
   }, [])
-  async function edit(item: WritingResource) {
+  useEffect(() => {
+    if (!hasPromptResources || promptCatalog.length) return
+    let live = true
+    platformApi.getPromptTemplates().then(catalog => {
+      if (!catalog.length) throw new Error('empty prompt catalog')
+      if (live) { setPromptCatalog(catalog); setPromptError('') }
+    })
+      .catch(() => { if (live) setPromptError('创作环节列表加载失败，请重新加载。') })
+    return () => { live = false }
+  }, [hasPromptResources, items, promptRetry, promptCatalog.length])
+  const selectedPromptTitle = selected?.kind !== 'role_prompt' ? undefined : selectedPromptId === '__supplement__'
+    ? `${selected && 'role' in selected.body ? writingRoles[selected.body.role]?.name ?? '角色' : '角色'}共用补充`
+    : promptCatalog.flatMap(group => group.templates).find(template => template.id === selectedPromptId)?.title
+  async function edit(item: WritingResource, promptId: string | null = null) {
+    const request = ++historyRequest.current
+    setSelectedPromptId(promptId)
     setSelected(item)
     setArchiving(false)
     setName(item.name)
@@ -118,12 +158,25 @@ export default function WritingResources({
     setPreview(null)
     setError('')
     setHistory([])
+    setHistoryStatus('loading')
     setNote('')
     try {
-      setHistory((await api.revisions(item.id)).items)
+      const revisions = await api.revisions(item.id)
+      if (request !== historyRequest.current) return
+      setHistory(revisions.items)
+      setHistoryStatus('ready')
     } catch (e) {
+      if (request !== historyRequest.current) return
+      setHistoryStatus('error')
       failure(e)
     }
+  }
+  function closeEditor() {
+    historyRequest.current += 1
+    setSelected(null)
+    setSelectedPromptId(null)
+    setPreview(null)
+    setError('')
   }
   async function save() {
     if (!selected) return
@@ -148,7 +201,7 @@ export default function WritingResources({
     }
   }
   async function release() {
-    if (!selected || !preview) return
+    if (!selected || !preview || (selected.kind === 'role_prompt' && !previewReady)) return
     setBusy(true)
     try {
       const saved =
@@ -160,8 +213,7 @@ export default function WritingResources({
               preview.version,
               note,
             )
-      setSelected(null)
-      setPreview(null)
+      closeEditor()
       setItems((old) => old.map((i) => (i.id === saved.id ? saved : i)))
       setError('')
     } catch (e) {
@@ -182,7 +234,7 @@ export default function WritingResources({
         status: 'archived',
       })
       setItems((old) => old.map((item) => item.id === saved.id ? saved : item))
-      setSelected(null)
+      closeEditor()
       setArchiving(false)
       setError('')
     } catch (error) {
@@ -196,13 +248,14 @@ export default function WritingResources({
     selected.name === name &&
     selected.source === source &&
     JSON.stringify(selected.body, null, 2) === body
-  function resourceCard(i: WritingResource) {
+  function resourceCard(i: WritingResource, prompt?: {id:string;title:string;when?:string}) {
+    const cardTitle = prompt?.title ?? resourceTitle(i)
     return (
           <button
-            key={i.id}
+            key={`${i.id}:${prompt?.id ?? 'resource'}`}
             className={`${styles.card} ${styles.resourceCard}`}
-            aria-label={`编辑 ${resourceTitle(i)}`}
-            onClick={() => void edit(i)}
+            aria-label={`编辑 ${cardTitle}`}
+            onClick={() => void edit(i, prompt?.id ?? null)}
           >
             <span className={styles.resourceBadges}>
               <span>{resourceKinds[i.kind]}</span>
@@ -214,14 +267,15 @@ export default function WritingResources({
                 }
               </span>
             </span>
-            <strong className={styles.cardTitle}>{resourceTitle(i)}</strong>
+            <strong className={styles.cardTitle}>{cardTitle}</strong>
             <span className={styles.preview}>
-              {i.kind === 'role_prompt' && 'role' in i.body
-                ? writingRoles[i.body.role]?.purpose ?? resourceSummary(i.body).slice(0, 200)
+              {prompt && 'templates' in i.body
+                ? (prompt.id === '__supplement__' ? i.body.supplement || '适用于此分工各环节的共用要求' : i.body.templates[prompt.id] || prompt.when || '点击编辑此环节的创作要求').slice(0,200)
+                : i.kind === 'role_prompt' && 'role' in i.body ? writingRoles[i.body.role]?.purpose ?? resourceSummary(i.body).slice(0, 200)
                 : i.kind === 'reference' ? referencePurpose(i) : resourceSummary(i.body).slice(0, 200)}
             </span>
             <span className={styles.tags}><span>{resourceUsage(i).activation}</span></span>
-            <span className={styles.usage}>{resourceUsage(i).when}</span>
+            <span className={styles.usage}>{prompt?.when ?? resourceUsage(i).when}</span>
             <span className={styles.resourceMeta}>
               {i.current_version ? `已发布 v${i.current_version}` : '尚未发布'}
 
@@ -240,6 +294,8 @@ export default function WritingResources({
         <button
           className="btn btn-primary"
           onClick={() => {
+            historyRequest.current += 1
+            setSelectedPromptId(null)
             setSelected({
               id: '',
               name: '',
@@ -256,6 +312,7 @@ export default function WritingResources({
             setBody(JSON.stringify(initialBody(selectableKinds[0])))
             setKind(selectableKinds[0])
             setHistory([])
+            setHistoryStatus('ready')
             setError('')
             setPreview(null)
           }}
@@ -268,7 +325,7 @@ export default function WritingResources({
         <input
           className="input"
           aria-label="搜索写作资源"
-          placeholder="搜索题材、文风、写作要求…"
+          placeholder="搜索创作环节、题材、文风或规则…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -295,48 +352,48 @@ export default function WritingResources({
             {label}
             <span>
               {
-                available.filter(
-                  (i) =>
-                    allowedKinds.includes(i.kind) &&
-                    (key === 'all' || i.kind === key),
-                ).length
+                matchedCards.filter(({item}) => key === 'all' || item.kind === key).length
               }
             </span>
           </button>
         ))}
       </div>
       <p className={styles.hint} role="status">
-        {loading ? '正在加载资源…' : `共 ${visible.length} 项资源`}
+        {loading || promptsLoading ? '正在加载资源与创作环节…' : `共 ${visible.length} 张卡片`}
       </p>
-      {!loading && visible.length === 0 && (
+      {hasPromptResources && promptError && <p role="alert">{promptError}部分环节尚未加载，搜索结果可能不完整。<button className="btn" onClick={() => setPromptRetry(value => value + 1)}>重新加载创作环节</button></p>}
+      {!loading && !promptsLoading && !promptError && visible.length === 0 && (
         <div className={styles.empty}>
           {search || filter !== 'all'
             ? '没有匹配的资源，请调整搜索或筛选条件。'
             : '暂无资源，点击“新建资源”开始添加。'}
         </div>
       )}
-      {visible.some((item) => item.kind === 'role_prompt') && <section aria-labelledby="automatic-prompts-heading">
-        <h2 id="automatic-prompts-heading">角色提示词 · 自动生效</h2>
-        <p>这里的角色指写作、规划、审核等AI分工，不是小说人物。进入对应环节时自动使用；草稿不会生效，发布后用于新发起的创作。</p>
-        <div className={`${styles.grid} ${styles.resourceGrid}`}>
-          {visible.filter((item) => item.kind === 'role_prompt').sort((a, b) => {
-            const order = Object.keys(writingRoles)
-            return order.indexOf('role' in a.body ? a.body.role : '') - order.indexOf('role' in b.body ? b.body.role : '')
-          }).map(resourceCard)}
-        </div>
+      {visiblePrompts.length > 0 && <section aria-labelledby="automatic-prompts-heading">
+        <h2 id="automatic-prompts-heading">角色提示词 · 自动生效</h2><p className={styles.hint}>{visiblePrompts.length - commonCount} 个环节提示词 · {commonCount} 项共用补充，共 {visiblePrompts.length} 张卡片</p>
+        <p>每张卡片对应一个具体环节，点击后只编辑该环节。共用补充单独列出；进入相应环节时自动使用已发布内容。</p>
+        {Object.entries(writingRoles).map(([role, description]) => {
+          const group = visiblePrompts.filter(({item}) => 'role' in item.body && item.body.role === role)
+          if (!group.length) return null
+          return <section key={role} className={styles.promptGroup} aria-label={`${description.name}环节提示词`}>
+            <div className={styles.promptGroupHead}><h3>{description.name}</h3><span>{group.length} 张卡片</span></div>
+            <p className={styles.hint}>{description.purpose}</p>
+            <div className={`${styles.grid} ${styles.resourceGrid}`}>{group.map(({item,prompt}) => resourceCard(item,prompt))}</div>
+          </section>
+        })}
       </section>}
-      {visible.some((item) => item.kind === 'reference') && <section aria-labelledby="reference-library-heading" style={{marginTop:32}}>
+      {visible.some(({item}) => item.kind === 'reference') && <section aria-labelledby="reference-library-heading" style={{marginTop:32}}>
         <h2 id="reference-library-heading">写作知识库 · AI按需查阅</h2>
         <p>这些是写作方法与示例，无需作者选择。人物设计与关系写法不是本书的人物名单或关系设定；本书实际人物与关系会随创作上下文使用。</p>
         <div className={`${styles.grid} ${styles.resourceGrid}`}>
-          {visible.filter((item) => item.kind === 'reference').map(resourceCard)}
+          {visible.filter(({item}) => item.kind === 'reference').map(({item}) => resourceCard(item))}
         </div>
       </section>}
       <section aria-labelledby="selectable-resources-heading" style={{marginTop:32}}>
         <h2 id="selectable-resources-heading">可选写作资源</h2>
         <p>作者为作品选用后生效，作品保留选定版本，平台更新由作者确认后采用。未配置资源的旧作品沿用原有默认规则。</p>
         <div className={`${styles.grid} ${styles.resourceGrid}`}>
-          {visible.filter((item) => item.kind !== 'role_prompt' && item.kind !== 'reference' && !isSupportingReference(item)).map(resourceCard)}
+          {visible.filter(({item}) => item.kind !== 'role_prompt' && item.kind !== 'reference').map(({item}) => resourceCard(item))}
         </div>
       </section>
       <section style={{marginTop:32}} aria-labelledby="private-writing-context-heading">
@@ -351,13 +408,9 @@ export default function WritingResources({
 
       {selected && (
         <AdminDialog
-          title={archiving ? '下架资源' : preview ? '发布预览' : `编辑${resourceTitle(selected) || '新资源'}`}
+          title={archiving ? '下架资源' : preview ? '发布预览' : `编辑${selectedPromptTitle ?? (resourceTitle(selected) || '新资源')}`}
           busy={busy}
-          onClose={() => {
-            setSelected(null)
-            setPreview(null)
-            setError('')
-          }}
+          onClose={closeEditor}
         >
           {archiving ? (
             <>
@@ -374,12 +427,14 @@ export default function WritingResources({
                   : '回退至历史版本 v' + preview.version}
                 。{['role_prompt', 'reference'].includes(selected.kind) ? '新发起的创作使用发布版本，已受理任务保留原版本。' : '历史版本保持不变，已有作品需主动采用更新。'}
               </p>
+              {selected.kind === 'role_prompt' && <p className="banner banner-warning">本次{preview === 'publish' ? '发布' : '回退'}会更新整个 AI 分工，下列全部环节和共用补充一起生效。请逐项核对后确认。</p>}
               <h3>
-                {preview === 'publish' ? resourceTitle(selected) : preview.name}
+                {selected.kind === 'role_prompt' ? `${resourceTitle(selected)}：全部环节与共用补充` : (preview === 'publish' ? resourceTitle(selected) : preview.name)}
               </h3>
               {selected.kind === 'role_prompt' && 'templates' in (preview === 'publish' ? selected.body : preview.body)
-                ? <RolePromptFields value={(preview === 'publish' ? selected.body : preview.body) as Extract<ResourceBody, {role:string}>} readOnly />
+                ? <RolePromptFields value={(preview === 'publish' ? selected.body : preview.body) as Extract<ResourceBody, {role:string}>} onReadyChange={setPreviewReady} readOnly />
                 : <ResourceContent body={preview === 'publish' ? selected.body : preview.body} />}
+              {selected.kind === 'role_prompt' && !previewReady && <p role="status">全部发布内容读取完成后，才可确认发布或回退。</p>}
               <label>
                 发布说明
                 <input
@@ -397,7 +452,7 @@ export default function WritingResources({
               </button>
               <button
                 className="btn btn-primary"
-                disabled={busy}
+                disabled={busy || (selected.kind === 'role_prompt' && !previewReady)}
                 onClick={() => void release()}
               >
                 {preview === 'publish' ? '确认发布' : '确认回退'}
@@ -405,15 +460,16 @@ export default function WritingResources({
             </>
           ) : (
             <>
+              {selected.kind === 'role_prompt' && <p>当前只编辑“{selectedPromptTitle}”。发布和回退仍按所属 AI 分工统一管理；发布前请核对该分工草稿中的其他修改。</p>}
               <fieldset disabled={busy} className={styles.resourceFields}>
-                <label>
+                {selected.kind !== 'role_prompt' && <label>
                   资源名称
                   <input
                     className="input"
                     value={['role_prompt', 'reference'].includes(selected.kind) ? resourceTitle({name, kind:selected.kind}) : name}
                     onChange={(e) => setName(e.target.value)}
                   />
-                </label>
+                </label>}
                 {!selected.id && (
                   <label>
                     资源类型
@@ -463,7 +519,7 @@ export default function WritingResources({
                   </label>
                 )}
                 {selected.kind === 'role_prompt' && 'templates' in JSON.parse(body)
-                  ? <RolePromptFields value={JSON.parse(body) as Extract<ResourceBody, {role:string}>} onChange={(value) => setBody(JSON.stringify(value, null, 2))} />
+                  ? <RolePromptFields value={JSON.parse(body) as Extract<ResourceBody, {role:string}>} templateId={selectedPromptId ?? undefined} onChange={(value) => setBody(JSON.stringify(value, null, 2))} />
                   : <ResourceBodyFields
                       kind={selected.id ? selected.kind : kind}
                       value={JSON.parse(body) as ResourceBody}
@@ -476,7 +532,7 @@ export default function WritingResources({
                 <button
                   className="btn"
                   disabled={busy}
-                  onClick={() => setSelected(null)}
+                  onClick={closeEditor}
                 >
                   取消
                 </button>
@@ -490,13 +546,15 @@ export default function WritingResources({
                 <button
                   className="btn btn-primary"
                   disabled={busy || !clean || !selected.id}
-                  onClick={() => setPreview('publish')}
+                  onClick={() => { setPreviewReady(false); setPreview('publish') }}
                 >
                   预览发布
                 </button>
               </footer>
               <h3>版本历史</h3>
-              {!history.length && (
+              {historyStatus === 'loading' && <p role="status">正在读取发布历史…</p>}
+              {historyStatus === 'error' && <p className={styles.hint}>发布历史未能加载，请关闭后重新打开此资源重试。</p>}
+              {historyStatus === 'ready' && !history.length && (
                 <p className={styles.hint}>
                   尚无发布记录，发布后可在这里查看和回退。
                 </p>
@@ -511,7 +569,7 @@ export default function WritingResources({
                   <button
                     className="btn"
                     disabled={busy}
-                    onClick={() => setPreview(h)}
+                    onClick={() => { setPreviewReady(false); setPreview(h) }}
                   >
                     预览回退至 v{h.version}
                   </button>

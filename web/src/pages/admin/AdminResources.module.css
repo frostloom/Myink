@@ -449,3 +449,9 @@
 .referenceEntry>summary>strong { margin-left:6px; }
 .referenceEntry>summary>span { display:block; font-size:var(--text-small); color:var(--ink-subtle); margin-top:8px; }
 .referenceEntry[open]>summary { border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:16px; }
+
+.promptGroup { margin-top:24px; min-width:0; }
+.promptGroupHead { display:flex; align-items:baseline; flex-wrap:wrap; gap:8px 16px; }
+.promptGroupHead h3 { margin:0; font-size:var(--text-heading); }
+.promptGroupHead span { color:var(--ink-muted); font-size:var(--text-small); }
+.promptGroup>.hint { margin:8px 0 16px; }
