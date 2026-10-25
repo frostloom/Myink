@@ -22,7 +22,7 @@ import uuid
 from sqlalchemy import delete as sa_delete, select
 from sqlalchemy.orm import Session
 
-from myink.memory.candidate_identity import same_proposal
+from myink.memory.candidate_identity import same_correction_proposal
 from myink.models import CharacterState, EmbeddingRow, Event, Fact, Foreshadow, MemoryCandidate, Project, Relation
 
 _WHITESPACE = re.compile(r"\s+")
@@ -133,7 +133,7 @@ def diff_changeset(persisted: list[dict], new_candidates: list[dict]) -> dict:
         payload = cand.get("payload") or {}
         # One extraction can repeat a proposal with different confidence or
         # evidence metadata. Do not consume its live match then add it again.
-        if any(previous["kind"] == cand["kind"] and same_proposal(
+        if any(previous["kind"] == cand["kind"] and same_correction_proposal(
                 cand["kind"], previous.get("payload") or {}, payload) for previous in seen):
             continue
         seen.append(cand)
@@ -164,7 +164,7 @@ def _pool_has_duplicate(db: Session, project_id: uuid.UUID, chapter_seq: int,
             MemoryCandidate.status.in_(["pending", "rejected"]),
         )
     ).scalars().all()
-    return any(same_proposal(cand["kind"], r.payload, cand["payload"])
+    return any(same_correction_proposal(cand["kind"], r.payload, cand["payload"])
                and not (r.review or {}).get("superseded") for r in rows)
 
 

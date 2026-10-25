@@ -24,53 +24,53 @@
 **Files:** src/myink/memory/correction.py; tests/test_correction.py.
 **Interfaces:** _sig, _close, diff_changeset and correct_chapter_memory retain their signatures.
 
-- [ ] Add RED regression: stored 1.5→15, can→cannot, changed actor and appended clause each yield add=1/remove=1/keep=0, no_op=False, with pending decisions.
-- [ ] Preserve whitespace/sentence-ending no-op; replace old wording-fuzzy expectation with explicit review-required wording change.
-- [ ] GREEN: compare conservative normalized text equality instead of substring/fuzzy similarity.
-- [ ] Run targeted correction/identity tests, then `python -m pytest tests/ -q`; expect exit 0, record skips/xfails.
-- [ ] Commit and push this fix before Task 2.
+- [x] Add RED regression: stored 1.5→15, can→cannot, changed actor and appended clause each yield add=1/remove=1/keep=0, no_op=False, with pending decisions.
+- [x] Preserve whitespace/sentence-ending no-op; replace old wording-fuzzy expectation with explicit review-required wording change.
+- [x] GREEN: compare conservative normalized text equality instead of substring/fuzzy similarity.
+- [x] Run targeted correction/identity tests, then `python -m pytest tests/ -q`; expect exit 0, record skips/xfails.
+- [x] Commit and push this fix before Task 2.
 
 ### Task 2: Deduplicate across correction transactions
 
 **Files:** src/myink/memory/correction.py; tests/test_correction.py; tests/test_candidate_concurrency.py.
 **Interfaces:** Existing proposal identity, candidate status and tenant transaction.
 
-- [ ] RED: two correction calls with payload confidence .9/.8 produce one pending candidate and one fact after approval; metadata-varied rejection remains rejected.
-- [ ] RED: overlapping correction transactions for a project yield one pending proposal.
-- [ ] GREEN: serialize correction transactions on project and compare proposal identity, including pending local additions; retain restoration behavior.
-- [ ] Run correction/concurrency regressions and full Python suite; expect exit 0.
-- [ ] Commit and push before Task 3.
+- [x] RED: two correction calls with payload confidence .9/.8 produce one pending candidate and one fact after approval; metadata-varied rejection remains rejected.
+- [x] RED: overlapping correction transactions for a project yield one pending proposal.
+- [x] GREEN: serialize correction transactions on project and compare proposal identity, including pending local additions; retain restoration behavior.
+- [x] Run correction/concurrency regressions and full Python suite; expect exit 0.
+- [x] Commit and push before Task 3.
 
 ### Task 3: Respect later retained relation versions
 
 **Files:** src/myink/memory/invalidation.py; tests/test_invalidation.py.
 **Interfaces:** Existing relation closure metadata and invalidation results.
 
-- [ ] RED: ch1 ally→ch2 hostile→ch3 knows(valid_to=4), rewriting ch2 without relation leaves no active ally and preserves ch3.
-- [ ] Cover explicit deletion, same-chapter supersession and cascade undo.
-- [ ] GREEN: restore only eligible latest retained source, respecting later finite/removal barriers.
-- [ ] Run invalidation/deletion tests and full Python suite; expect exit 0.
-- [ ] Commit and push before Task 4.
+- [x] RED: ch1 ally→ch2 hostile→ch3 knows(valid_to=4), rewriting ch2 without relation leaves no active ally and preserves ch3.
+- [x] Cover explicit deletion, same-chapter supersession and cascade undo.
+- [x] GREEN: restore only eligible latest retained source, respecting later finite/removal barriers.
+- [x] Run invalidation/deletion tests and full Python suite; expect exit 0.
+- [x] Commit and push before Task 4.
 
 ### Task 4: Bind resumed summaries to chapter content/version
 
 **Files:** src/myink/workflow/nodes.py; src/myink/workflow/runner.py; src/myink/workflow/state.py; tests/test_chapter_summary.py; tests/test_review_finalization_resume.py.
 **Interfaces:** ChapterState checkpoint and conditional summary persistence.
 
-- [ ] RED: actual historical restore while review summary paused retains restored content and summary on resume.
-- [ ] RED: edit/restore during summary generation prevents stale output write; unchanged content/version resumes normally.
-- [ ] GREEN: checkpoint summary version where known; check source body/version and conditionally update the same confirmed version after LLM returns, without holding an editing lock during LLM.
-- [ ] Run summary/review/budget tests and full Python suite; expect exit 0.
-- [ ] Run compileall, evaluate validate and contract diff; build final Python image. One independent read-only final review, resolve important findings by tests; no recursive re-review.
-- [ ] Commit and push, clean only own test resources, report evidence and limits.
+- [x] RED: actual historical restore while review summary paused retains restored content and summary on resume.
+- [x] RED: edit/restore during summary generation prevents stale output write; unchanged content/version resumes normally.
+- [x] GREEN: checkpoint summary version where known; check source body/version and conditionally update the same confirmed version after LLM returns, without holding an editing lock during LLM.
+- [x] Run summary/review/budget tests and full Python suite; expect exit 0.
+- [x] Run compileall, evaluate validate and contract diff; build final Python image. One independent read-only final review, resolve important findings by tests; no recursive re-review.
+- [x] Commit and push, clean only own test resources, report evidence and limits.
 
 ### Task 5: Preserve semantic details in correction proposal identity
 
 **Files:** src/myink/memory/candidate_identity.py; src/myink/memory/correction.py; tests/test_correction_proposal_identity.py.
 **Interfaces:** Keep coarse same_proposal for review rejection; correction compares complete semantic payload excluding explicit top-level metadata.
 
-- [ ] RED: pending/rejected relation valid_to, fact is_hard/category, event participants changes remain reviewable; same-extraction variants also remain distinct.
-- [ ] RED: foreshadow confidence changes alone produce one proposal, within one extraction and across calls.
-- [ ] GREEN: correction-specific identity preserves all semantic fields and formats known text fields; ignore only confidence/source_chapter/evidence metadata. Apply consistently to extraction and pool dedup.
-- [ ] Run related tests and full Python suite; compile/evaluation/contract and final image remain green. Resolve this one final-review Important finding without dispatching re-review.
-- [ ] Commit/push this followup, record all results and clean own test resources.
+- [x] RED: pending/rejected relation valid_to, fact is_hard/category, event participants changes remain reviewable; same-extraction variants also remain distinct.
+- [x] RED: foreshadow confidence changes alone produce one proposal, within one extraction and across calls.
+- [x] GREEN: correction-specific identity preserves all semantic fields and formats known text fields; ignore only confidence/source_chapter/evidence metadata. Apply consistently to extraction and pool dedup.
+- [x] Run related tests and full Python suite; compile/evaluation/contract and final image remain green. Resolve this one final-review Important finding without dispatching re-review.
+- [x] Commit/push this followup, record all results and clean own test resources.
