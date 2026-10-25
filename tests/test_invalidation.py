@@ -316,3 +316,48 @@ def test_vector_store_delete_by_chapter(temp_project):
         remaining = db.query(EmbeddingRow).filter(EmbeddingRow.project_id == uuid.UUID(temp_project)).count()
     assert n == 1
     assert remaining == 1
+
+
+def _relation_change(db, pid, seq, relation_type):
+    nodes._persist_candidates(db, pid, seq, [{"kind": "relation_change", "payload": {
+        "source_id": str(CID), "target_id": str(CID2), "relation_type": relation_type,
+        "valid_from": seq}}])
+    db.flush()
+
+
+def test_invalidating_relation_changes_restores_latest_retained_history(temp_project):
+    with tenant_session(temp_project) as db:
+        _relation_change(db, temp_project, 1, "ally")
+        _relation_change(db, temp_project, 2, "hostile")
+        _relation_change(db, temp_project, 3, "master_student")
+    with tenant_session(temp_project) as db:
+        # Ascending cascade is the real chapter deletion order.
+        invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=2)
+        assert [r.relation_type for r in repo.get_relations(db, uuid.UUID(temp_project))] == ["master_student"]
+        invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=3)
+        assert [r.relation_type for r in repo.get_relations(db, uuid.UUID(temp_project))] == ["ally"]
+        invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=3)
+        assert [r.relation_type for r in repo.get_relations(db, uuid.UUID(temp_project))] == ["ally"]
+
+
+def test_invalidating_relation_does_not_reopen_naturally_expired_history(temp_project):
+    with tenant_session(temp_project) as db:
+        db.add(Relation(project_id=temp_project, source_id=CID, target_id=CID2,
+                        relation_type="ally", source_chapter=1, valid_from=1, valid_to=2))
+        db.flush()
+        _relation_change(db, temp_project, 2, "hostile")
+        invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=2)
+        assert repo.get_relations(db, uuid.UUID(temp_project)) == []
+
+
+def test_invalidating_relation_does_not_restore_explicitly_removed_history(temp_project):
+    from myink.memory.correction import apply_memory_removal
+    with tenant_session(temp_project) as db:
+        _relation_change(db, temp_project, 1, "ally")
+        old = db.query(Relation).filter_by(source_chapter=1).one()
+        _relation_change(db, temp_project, 2, "hostile")
+        assert apply_memory_removal(db, project_id=uuid.UUID(temp_project), chapter_seq=2,
+                                    payload={"memory_type": "relation", "memory_id": str(old.id)})
+        db.flush()
+        invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=2)
+        assert repo.get_relations(db, uuid.UUID(temp_project)) == []

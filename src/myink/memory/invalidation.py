@@ -52,12 +52,7 @@ def invalidate_chapter_memory(db: Session, *, project_id: uuid.UUID, chapter_seq
     ).rowcount or 0
 
     # 3. 实体关系：时间窗关闭（§7.8 当前关系 = 最新一条 valid_to IS NULL）
-    relations_closed = db.execute(
-        sa_update(Relation)
-        .where(Relation.project_id == project_id, Relation.source_chapter == chapter_seq,
-               Relation.valid_to.is_(None))
-        .values(valid_to=chapter_seq)
-    ).rowcount or 0
+    relations_closed = _invalidate_relations(db, project_id, chapter_seq)
 
     # 4. 一次性事件：硬删（重写后旧事件 = 从未发生）
     events_deleted = db.execute(
@@ -91,6 +86,44 @@ def invalidate_chapter_memory(db: Session, *, project_id: uuid.UUID, chapter_seq
         "foreshadows_closed": foreshadows_closed,
         "embeddings_deleted": embeddings_deleted,
     }
+
+
+def _invalidate_relations(db: Session, project_id: uuid.UUID, chapter_seq: int) -> int:
+    """Undo recorded supersession, preserving natural expiry and explicit removals.
+
+    Closure provenance lives in relation properties. Unknown historical closures
+    remain closed; a matching date alone cannot prove why a relation expired.
+    """
+    db.flush()
+    rows = db.execute(select(Relation).where(Relation.project_id == project_id)).scalars().all()
+    affected = set()
+    closed = 0
+    for row in rows:
+        if row.source_chapter != chapter_seq:
+            continue
+        affected.add((row.source_id, row.target_id))
+        if row.valid_to is None:
+            row.valid_to = chapter_seq
+            closed += 1
+        row.properties = {**(row.properties or {}), "_chapter_invalidated": True}
+    for pair in affected:
+        history = [r for r in rows if (r.source_id, r.target_id) == pair]
+        if any(r.valid_to is None for r in history):
+            continue
+        invalidated = {r.source_chapter for r in history
+                       if (r.properties or {}).get("_chapter_invalidated")}
+        retained = [r for r in history
+                    if not (r.properties or {}).get("_chapter_invalidated")
+                    and not (r.properties or {}).get("_memory_removed")
+                    and (r.properties or {}).get("_superseded_by_chapter") in invalidated
+                    and r.valid_to == (r.properties or {}).get("_superseded_by_chapter")]
+        if retained:
+            previous = max(retained, key=lambda r: (r.source_chapter, r.created_at))
+            previous.valid_to = None
+            previous.properties = {k: v for k, v in (previous.properties or {}).items()
+                                   if k != "_superseded_by_chapter"}
+    db.flush()
+    return closed
 
 
 def purge_deleted_chapter_registry(db: Session, *, project_id: uuid.UUID, from_seq: int) -> dict:

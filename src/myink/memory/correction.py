@@ -244,6 +244,7 @@ def apply_memory_removal(db: Session, *, project_id: uuid.UUID, payload: dict,
         if r is None:
             return True
         r.valid_to = chapter_seq
+        r.properties = {**(r.properties or {}), "_memory_removed": True}
         return True
     if mtype == "foreshadow":
         fo = db.get(Foreshadow, mid)

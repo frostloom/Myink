@@ -1666,6 +1666,7 @@ def _close_active_relations(db: Session, project_id: uuid.UUID, source_id: uuid.
     ).all()
     for r in rows:
         r.valid_to = chapter_seq
+        r.properties = {**(r.properties or {}), "_superseded_by_chapter": chapter_seq}
     return len(rows)
 
 

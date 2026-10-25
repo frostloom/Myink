@@ -441,3 +441,10 @@
 ### 候选评审元数据（2026-09-08）
 
 `memory_candidates.review` 为可空 JSON：`mode=revise|memory_only`、`reason`、`applied`；旧稿候选作废记录 `superseded=true`。旧记录 NULL 保持原有仅拒绝记忆语义。拒绝默认 revise，恢复评审时修订正文并重新抽取、校验和审核。
+
+### 关系变更撤销来源
+
+关系的内部 `properties._superseded_by_chapter` 标识由哪章替代而关闭，
+`_chapter_invalidated` 标识来源章已失效，`_memory_removed` 保留作者明确删除决定。
+章节失效仅撤销有证据的替代关闭；支持多章按顺序失效后恢复最近保留关系。
+自然到期、明确删除和缺少关闭来源的旧数据不会自动重开。
