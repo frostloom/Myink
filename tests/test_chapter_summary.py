@@ -119,6 +119,9 @@ def test_runner_finalize_appends_node_summarize(temp_project, monkeypatch):
         def get_state(self, config):
             return _FakeSnap()
 
+        def update_state(self, config, values, *, as_node):
+            _FakeSnap.values = {**_FakeSnap.values, **values}
+
     calls = []
     monkeypatch.setattr(runner_mod, "get_graphs", lambda: (_FakeGraph(), None))
     monkeypatch.setattr(nodes, "finalize_awaiting_review",

@@ -161,10 +161,20 @@ def finalize_chapter_review(*, project_id: str, task_id: str, chapter_seq: int) 
     if not snap.values or not snap.values.get("draft"):
         raise ValueError(f"任务 {task_id} 无草稿 checkpoint，无法确认流收尾")
     from myink.workflow.review import resolve_review
-    result = resolve_review(chapter_graph, snap.values, task_id=task_id)
-    # 落库后追加 LLM 真摘要（§7 短期记忆）：finalize 路径不走图，这里单独补一次。
-    # node_summarize 自吞异常（失败保留启发式摘要），不阻塞确认流收尾。
+    config = {"configurable": {"thread_id": task_id}}
+    if snap.values.get("review_finalization_pending"):
+        result = dict(snap.values)
+    else:
+        result = resolve_review(chapter_graph, snap.values, task_id=task_id)
+        if result.get("needs_review"):
+            return result
+        # Persist the remaining phase before calling a budgeted provider. The
+        # chapter can already be confirmed when this call pauses or the worker dies.
+        result = {**result, "review_finalization_pending": True}
+        chapter_graph.update_state(config, result, as_node="summarize")
     nodes.node_summarize(result)
+    result = {**result, "needs_review": False, "review_finalization_pending": False}
+    chapter_graph.update_state(config, result, as_node="summarize")
     return result
 
 
