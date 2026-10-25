@@ -587,3 +587,9 @@ def ensure_writing_resource_snapshot_fk() -> None:
         conn.execute(text("ALTER TABLE project_writing_resources ADD CONSTRAINT "
                           "fk_project_writing_resources_project FOREIGN KEY (project_id) "
                           "REFERENCES projects(id) ON DELETE CASCADE"))
+
+
+def ensure_character_provenance() -> None:
+    """Preserve legacy/author characters; only new generated cards have provenance."""
+    with get_admin_engine().begin() as conn:
+        conn.execute(text("ALTER TABLE characters ADD COLUMN IF NOT EXISTS source_chapter INTEGER"))

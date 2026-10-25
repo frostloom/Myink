@@ -119,6 +119,7 @@ class Character(Base, UUIDPkMixin, TimestampMixin):
     project_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    source_chapter: Mapped[int | None] = mapped_column(Integer, comment="自动建档来源章；作者/历史基底为 NULL")
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     race: Mapped[str | None] = mapped_column(String(64))
     origin: Mapped[str | None] = mapped_column(String(255), comment="出身")

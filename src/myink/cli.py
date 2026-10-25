@@ -54,8 +54,9 @@ def init(
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
     console.print("[bold]1/3[/] 建表（PostgreSQL + pgvector）...")
     Base.metadata.create_all(get_admin_engine())
-    from myink.db import ensure_writing_resource_snapshot_fk
+    from myink.db import ensure_character_provenance, ensure_writing_resource_snapshot_fk
     ensure_writing_resource_snapshot_fk()
+    ensure_character_provenance()
     from sqlalchemy.orm import Session
     from myink.writing_resources import initialize_builtin_resources
     from myink.platform_configuration import initialize_builtin_model

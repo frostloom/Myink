@@ -61,6 +61,7 @@
 ```
 
 - 只存**不易变**信息；易变状态一律进 `character_states`（plan.md §7.7）。
+- 数据库内部 `source_chapter` 记录自动人物卡的来源章；作者设定和来源不明的历史数据为 NULL。删除章节只清理来源在删除范围内且未被保留章引用的自动卡，不能按首次出场推断作者基底。已有数据库通过 `myink init` 幂等补列，不回填猜测来源。
 - 别名不在本表：`aliases` 表（`alias` → `entity_id`）是唯一的归一化来源（plan.md §7.5）。
 
 ## 3. ChapterPlan — 章节计划（规划 agent 输出）

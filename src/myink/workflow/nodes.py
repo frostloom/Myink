@@ -1522,6 +1522,7 @@ def _persist_candidates(db: Session, pid: str, chapter_seq: int, candidates: lis
             personality = str(p.get("personality") or "").strip() or None
             if name and repo.get_character(db, project_id, name) is None:
                 char = Character(project_id=project_id, name=name, realm_cap="无",
+                                 source_chapter=chapter_seq,
                                  personality=personality,
                                  base_attrs={k: p.get(k) for k in ("identity", "role", "importance")
                                              if p.get(k) is not None and str(p.get(k)).strip()})

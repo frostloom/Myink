@@ -104,8 +104,8 @@ def purge_deleted_chapter_registry(db: Session, *, project_id: uuid.UUID, from_s
       → 硬删 + 相关 aliases；
     - characters：只出现在被删章节的人物（状态台账/关系/事件参与者三路引用合并，
       **最早出现章** >= from_seq）→ 硬删 + 相关 aliases + 其残留 state/relation 一并删，
-      防图谱出现指向不存在节点的悬空边；建书确认但未在任何章出现的人物无引用 → 保留
-      （无法判定为章节产物）；
+      防图谱出现指向不存在节点的悬空边；仅清理有 source_chapter 来源标记的人物，
+      作者设定与来源不明的历史人物始终保留；
     - 建书确认的势力/地点/世界观规则是用户基底，不在此清（用户拍板）。
 
     须在失效（invalidate_chapter_memory）之前调用——失效会硬删被删范围事件，而人物引用
@@ -187,4 +187,5 @@ def _characters_only_in_deleted_range(db: Session, project_id: uuid.UUID,
             except (ValueError, TypeError):
                 continue
     return [c.id for c in db.execute(select(Character).where(Character.project_id == project_id))
-            .scalars() if c.id in min_seen and min_seen[c.id] >= from_seq]
+            .scalars() if c.source_chapter is not None and c.source_chapter >= from_seq
+            and min_seen.get(c.id, c.source_chapter) >= from_seq]
