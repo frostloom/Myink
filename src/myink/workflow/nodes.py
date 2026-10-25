@@ -20,6 +20,7 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 from langgraph.types import interrupt
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from myink import snapshot
@@ -1364,6 +1365,22 @@ def node_persist(state: ChapterState) -> ChapterState:
             # 候选，防「已确认记忆被失效后又因 skip_pool_handled 不重写」而丢失。
             if not state.get("review_revision"):
                 candidates = _reapply_pool_for_rewrite(db, pid, chapter_seq, candidates)
+            elif state.get("summary_candidates") is not None:
+                # Review finalization rebuilds only approvals supported by this revision.
+                # Earlier drafts' confirmed rows remain history; replaying the whole pool
+                # would resurrect their removed/rejected settings.
+                current = state["summary_candidates"]
+                approved = db.execute(select(MemoryCandidate).where(
+                    MemoryCandidate.project_id == uuid.UUID(pid),
+                    MemoryCandidate.source_chapter == chapter_seq,
+                    MemoryCandidate.status == "confirmed",
+                )).scalars().all()
+                candidates = [*candidates, *[
+                    {"kind": row.kind, "payload": row.payload, "confidence": row.confidence}
+                    for row in approved
+                    if not (row.review or {}).get("superseded") and any(
+                        c["kind"] == row.kind and c["payload"] == row.payload for c in current)
+                ]]
             invalidation = invalidate_chapter_memory(db, project_id=uuid.UUID(pid),
                                                      chapter_seq=chapter_seq)
             _persist_candidates(db, pid, chapter_seq, candidates, skip_pool_handled=False)
