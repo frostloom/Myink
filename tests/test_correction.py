@@ -1,6 +1,6 @@
 """正文编辑 + 记忆增量校正（阶段 3 切片：编辑 → diff 变更集 → 确认池 → 删除候选失效）。
 
-- 纯风格编辑（改措辞/标点）→ 变更集 keep 全量、池零新增（no_op，轻编辑零动作）；
+- 纯格式编辑（空白/句末标点）→ 变更集 keep 全量、池零新增（no_op，轻编辑零动作）；
 - 删改剧情 → add 进池 / remove 以 memory_removal 候选进池，confirm 复用失效语义；
 - apply_memory_removal 各类型幂等（事件硬删+向量、事实 expired+时间窗、状态/关系关窗、伏笔删）；
 - confirm_candidate 分支处理删除候选；extract_candidates_from_draft 与节点共用抽取路径。
@@ -124,8 +124,8 @@ def _seed_foreshadow(pid: str, seq: int, description: str) -> str:
 
 # ---- diff 纯逻辑 ----
 
-def test_diff_style_edit_keeps_all_no_churn():
-    """纯风格编辑（措辞+标点改动）→ 语义不变，逐条命中 keep，零增删。"""
+def test_diff_format_edit_keeps_all_no_churn():
+    """仅空白/句末标点变化 → 逐条命中 keep，零增删。"""
     persisted = [
         {"memory_type": "event", "memory_id": "e1", "kind": "event",
          "display": "林砚于黑市查探玉佩真相", "text": correction._sig("林砚于黑市查探玉佩真相")},
@@ -133,7 +133,7 @@ def test_diff_style_edit_keeps_all_no_churn():
          "display": "玉佩气息异常，疑似与玉佩真相有关", "text": correction._sig("玉佩气息异常，疑似与玉佩真相有关")},
     ]
     candidates = [
-        _cand("event", {"summary": "林砚于黑市查探玉佩的真相。", "participants": ["林砚"]}),
+        _cand("event", {"summary": "林砚 于黑市查探玉佩真相。", "participants": ["林砚"]}),
         _cand("foreshadow", {"description": "玉佩气息异常，疑似与玉佩真相有关。", "trigger": {}}),
     ]
     cs = diff_changeset(persisted, candidates)
@@ -418,3 +418,27 @@ def test_correction_does_not_merge_distinct_similar_facts(temp_project):
                             _cand("fact", {"content": "主角只能使用冰系法术"})])
         assert report["changeset"]["keep"] == 1
         assert report["pool"]["add_to_pool"] == 1
+
+
+@pytest.mark.parametrize("old,new", [
+    ("长剑重1.5斤", "长剑重15斤"),
+    ("主角可以使用火系法术", "主角不可以使用火系法术"),
+    ("张三拿走了钥匙", "李四拿走了钥匙"),
+    ("主角可以进入禁地", "主角可以进入禁地但必须交出玉佩"),
+])
+def test_correction_requires_review_for_substantive_text_changes(temp_project, old, new):
+    _seed_fact(temp_project, 1, old)
+    with tenant_session(temp_project) as db:
+        report = correction.correct_chapter_memory(db, project_id=uuid.UUID(temp_project),
+            chapter_seq=1, new_candidates=[_cand("fact", {"content": new})])
+        assert report["changeset"] == {"add": 1, "remove": 1, "keep": 0}
+        assert report["pool"]["add_to_pool"] == report["pool"]["remove_to_pool"] == 1
+        assert not report["no_op"]
+
+
+def test_reworded_extraction_requires_review_rather_than_guessing_equivalence():
+    persisted = [{"memory_type": "event", "memory_id": "e1", "kind": "event",
+                  "text": correction._sig("林砚于黑市查探玉佩真相")}]
+    changes = diff_changeset(persisted, [_cand("event", {"summary": "林砚于黑市查探玉佩的真相"})])
+    assert len(changes["add"]) == len(changes["remove"]) == 1
+    assert changes["keep"] == 0
