@@ -157,3 +157,35 @@
 - [ ] Run regression, expect PASS; then `cd web && npm test && npm run lint && npm run build`, expect exit 0 (record skips/xfails).
 - [ ] Commit only this task and its tests/docs; push main normally; record SHA and verification in the ledger before proceeding.
 
+
+## Final review followups
+
+### Task 12: Deduplicate approved replay and respect rejected restorations
+
+**Files:** src/myink/workflow/nodes.py; tests/test_review_routing.py.
+**Interfaces:** Current-revision approvals and historical candidate decisions; preserve public APIs.
+
+- [ ] RED: duplicate confirmed fact/event history must yield one active memory; applied non-superseded rejected restoration must yield zero.
+- [ ] GREEN: filter rejected proposals first, replay each approved proposal once.
+- [ ] Verify targeted review tests, full `python -m pytest tests/ -q`; expect exit 0 and record skips/xfails.
+- [ ] Commit and push before task 13.
+
+### Task 13: Distinguish retained same-chapter relation revisions
+
+**Files:** src/myink/memory/invalidation.py; tests/test_invalidation.py.
+**Interfaces:** Closure provenance from task 6, grouped per directed pair and source chapter.
+
+- [ ] RED: ch1 ally; ch2 hostile; invalidate ch2; rewrite ch2 hostile valid_to=4; ch3 knows valid_to=4; invalidate ch3; expect no active ally resurrection.
+- [ ] GREEN: only consider a source chapter undone when all its historical rows for that pair are invalidated.
+- [ ] Verify invalidation/deletion tests and full Python suite; expect exit 0.
+- [ ] Commit and push before task 14.
+
+### Task 14: Deduplicate repeated extraction against live memory
+
+**Files:** src/myink/memory/correction.py; tests/test_correction.py.
+**Interfaces:** Existing diff matching and candidate identity; keep confirmed-deleted fact restoration.
+
+- [ ] RED: live confirmed A and extraction [A,A] yield keep=1, zero additions; missing A repeated yields one pending proposal.
+- [ ] GREEN: deduplicate equivalent proposals within one extraction before matching.
+- [ ] Verify correction tests and full Python suite; expect exit 0.
+- [ ] Commit and push; preserve one final review pass, no recursive re-review.

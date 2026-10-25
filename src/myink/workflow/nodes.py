@@ -1370,17 +1370,27 @@ def node_persist(state: ChapterState) -> ChapterState:
                 # Earlier drafts' confirmed rows remain history; replaying the whole pool
                 # would resurrect their removed/rejected settings.
                 current = state["summary_candidates"]
-                approved = db.execute(select(MemoryCandidate).where(
+                from myink.memory.candidate_identity import same_proposal
+                pool = db.execute(select(MemoryCandidate).where(
                     MemoryCandidate.project_id == uuid.UUID(pid),
                     MemoryCandidate.source_chapter == chapter_seq,
-                    MemoryCandidate.status == "confirmed",
-                )).scalars().all()
-                candidates = [*candidates, *[
-                    {"kind": row.kind, "payload": row.payload, "confidence": row.confidence}
-                    for row in approved
-                    if not (row.review or {}).get("superseded") and any(
-                        c["kind"] == row.kind and c["payload"] == row.payload for c in current)
-                ]]
+                ).order_by(MemoryCandidate.created_at.desc(), MemoryCandidate.id.desc())).scalars().all()
+                rejected = [r for r in pool if r.status == "rejected"
+                            and not (r.review or {}).get("superseded")]
+                candidates = list(candidates)
+                for row in pool:
+                    if row.status != "confirmed" or (row.review or {}).get("superseded"):
+                        continue
+                    if not any(c["kind"] == row.kind and c["payload"] == row.payload for c in current):
+                        continue
+                    if any(r.kind == row.kind and same_proposal(row.kind, r.payload, row.payload)
+                           for r in rejected):
+                        continue
+                    if any(c["kind"] == row.kind and same_proposal(row.kind, c["payload"], row.payload)
+                           for c in candidates):
+                        continue
+                    candidates.append({"kind": row.kind, "payload": row.payload, "confidence": row.confidence})
+
             invalidation = invalidate_chapter_memory(db, project_id=uuid.UUID(pid),
                                                      chapter_seq=chapter_seq)
             _persist_candidates(db, pid, chapter_seq, candidates, skip_pool_handled=False)
@@ -1711,6 +1721,8 @@ def _reapply_pool_for_rewrite(db: Session, pid: str, chapter_seq: int,
     ).scalars().all()
     pool_by_status: dict[str, list[dict]] = {}
     for row in pool:
+        if (row.review or {}).get("superseded"):
+            continue
         pool_by_status.setdefault(row.status, []).append(
             {"kind": row.kind, "payload": row.payload, "confidence": row.confidence})
 
@@ -1722,9 +1734,14 @@ def _reapply_pool_for_rewrite(db: Session, pid: str, chapter_seq: int,
             continue
         result.append(cand)
 
-    # 2) 补入池内已确认且 state 未再产出的项（防确认记忆在失效后被丢）
+    # 2) Historical approvals cannot override a later rejected restoration.
+    from myink.memory.candidate_identity import same_proposal
     for conf in pool_by_status.get("confirmed", []):
-        if not any(c["kind"] == conf["kind"] and c["payload"] == conf["payload"] for c in result):
+        if any(r["kind"] == conf["kind"] and same_proposal(conf["kind"], r["payload"], conf["payload"])
+               for r in pool_by_status.get("rejected", [])):
+            continue
+        if not any(c["kind"] == conf["kind"] and same_proposal(conf["kind"], c["payload"], conf["payload"])
+                   for c in result):
             result.append(conf)
     return result
 

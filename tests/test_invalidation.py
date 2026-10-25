@@ -361,3 +361,14 @@ def test_invalidating_relation_does_not_restore_explicitly_removed_history(temp_
         db.flush()
         invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=2)
         assert repo.get_relations(db, uuid.UUID(temp_project)) == []
+
+
+def test_rewrite_replay_respects_rejected_restoration(temp_project):
+    from myink.models import MemoryCandidate
+    proposal = {"kind": "fact", "payload": {"content": "不能恢复的旧事实"}}
+    with tenant_session(temp_project) as db:
+        db.add(MemoryCandidate(project_id=temp_project, source_chapter=1, status="confirmed", **proposal))
+        db.add(MemoryCandidate(project_id=temp_project, source_chapter=1, status="rejected",
+                               review={"mode": "revise", "applied": True}, **proposal))
+        db.flush()
+        assert nodes._reapply_pool_for_rewrite(db, temp_project, 1, [proposal]) == []
