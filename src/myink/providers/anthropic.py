@@ -103,6 +103,11 @@ def _convert_messages(messages: list[dict], json_mode: bool) -> tuple[str, list[
     return "\n\n".join(part for part in system_parts if part), converted
 
 
+def _finish_reason(reason: str | None) -> str | None:
+    return {"max_tokens": "length", "end_turn": "stop", "stop_sequence": "stop",
+            "tool_use": "tool_calls"}.get(reason, reason)
+
+
 class AnthropicProvider(ModelProvider):
     def __init__(self, *, api_key: str, base_url: str):
         self._api_key = api_key
@@ -184,6 +189,7 @@ class AnthropicProvider(ModelProvider):
                     output_tokens=int(usage.get("output_tokens", 0) or 0),
                     duration_ms=int((time.monotonic() - t0) * 1000),
                     retry_count=attempt, tool_calls=calls,
+                    finish_reason=_finish_reason(data.get("stop_reason")),
                 )
             except (TaskBudgetPaused, TaskBudgetUnavailable):
                 raise
@@ -223,6 +229,7 @@ class AnthropicProvider(ModelProvider):
             output_tokens = 0
             usage_complete = False
             stream_complete = False
+            finish_reason = None
             cached_usage = False
             emitted = False
             stripper = LeadingThinkTagStripper()
@@ -271,6 +278,7 @@ class AnthropicProvider(ModelProvider):
                             elif delta.get("type") == "input_json_delta" and index in tool_parts:
                                 tool_parts[index]["arguments"] += delta.get("partial_json", "")
                         elif kind == "message_delta":
+                            finish_reason = _finish_reason((event.get("delta") or {}).get("stop_reason")) or finish_reason
                             usage_complete = "output_tokens" in event.get("usage", {})
                             output_tokens = int(event.get("usage", {}).get("output_tokens", output_tokens) or 0)
                 if permit and not stream_complete:
@@ -300,6 +308,7 @@ class AnthropicProvider(ModelProvider):
                     input_tokens=input_tokens, output_tokens=output_tokens,
                     duration_ms=int((time.monotonic() - t0) * 1000), retry_count=attempt,
                     tool_calls=calls or None,
+                    finish_reason=finish_reason,
                 )
             except (TaskBudgetPaused, TaskBudgetUnavailable):
                 raise

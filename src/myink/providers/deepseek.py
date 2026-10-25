@@ -236,6 +236,7 @@ class DeepSeekProvider(ModelProvider):
             reasoning_parts: list[str] = []
             tool_parts: dict[int, dict[str, str]] = {}
             usage = None
+            finish_reason = None
             emitted = False
             stripper = LeadingThinkTagStripper()
             permit = reserve_attempt(model_id, messages, max_tokens or 8192, tools=tools)
@@ -252,6 +253,7 @@ class DeepSeekProvider(ModelProvider):
                         usage = chunk.usage
                     if not getattr(chunk, "choices", None):
                         continue
+                    finish_reason = getattr(chunk.choices[0], "finish_reason", None) or finish_reason
                     delta = chunk.choices[0].delta
                     text = extract_openai_text_part(getattr(delta, "content", None))
                     if text:
@@ -340,6 +342,7 @@ class DeepSeekProvider(ModelProvider):
                     duration_ms=int((time.monotonic() - t0) * 1000),
                     retry_count=attempt,
                     tool_calls=tool_calls,
+                    finish_reason=finish_reason,
                 )
             except (TaskBudgetPaused, TaskBudgetUnavailable):
                 raise
