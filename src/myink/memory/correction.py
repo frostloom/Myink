@@ -151,15 +151,20 @@ def diff_changeset(persisted: list[dict], new_candidates: list[dict]) -> dict:
 
 def _pool_has_duplicate(db: Session, project_id: uuid.UUID, chapter_seq: int,
                         cand: dict) -> bool:
-    """池内去重：同 kind+payload+章 的候选已存在（任意状态）则跳过（口径同 nodes）。"""
+    """Deduplicate unresolved/rejected proposals, not historical confirmations.
+
+    The changeset already excludes live memories. A confirmed proposal reaching
+    this boundary therefore describes removed/expired memory that may be restored.
+    """
     rows = db.execute(
         select(MemoryCandidate).where(
             MemoryCandidate.project_id == project_id,
             MemoryCandidate.kind == cand["kind"],
             MemoryCandidate.source_chapter == chapter_seq,
+            MemoryCandidate.status.in_(["pending", "rejected"]),
         )
     ).scalars().all()
-    return any(r.payload == cand["payload"] for r in rows)
+    return any(r.payload == cand["payload"] and not (r.review or {}).get("superseded") for r in rows)
 
 
 def apply_changeset_to_pool(db: Session, *, project_id: uuid.UUID, chapter_seq: int,

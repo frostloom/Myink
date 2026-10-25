@@ -352,3 +352,39 @@ def test_update_chapter_content_increments_version(temp_project):
 def _find_chapter_id(pid: str, seq: int) -> str:
     with tenant_session(pid) as db:
         return str(db.query(Chapter).filter(Chapter.chapter_seq == seq).first().id)
+
+
+def test_correction_can_restore_a_previously_confirmed_then_removed_fact(temp_project, fake_embedder):
+    pid = uuid.UUID(temp_project)
+    candidate = _cand("fact", {"content": "主角不能使用火系法术", "is_hard": True})
+    with tenant_session(temp_project) as db:
+        correction.correct_chapter_memory(db, project_id=pid, chapter_seq=1, new_candidates=[candidate])
+        db.flush()
+        first = db.query(MemoryCandidate).filter_by(kind="fact").one()
+        assert nodes.confirm_candidate(db, temp_project, first.id) is not None
+    with tenant_session(temp_project) as db:
+        correction.correct_chapter_memory(db, project_id=pid, chapter_seq=1, new_candidates=[])
+        db.flush()
+        removal = db.query(MemoryCandidate).filter_by(kind="memory_removal").one()
+        assert nodes.confirm_candidate(db, temp_project, removal.id) is not None
+    with tenant_session(temp_project) as db:
+        report = correction.correct_chapter_memory(db, project_id=pid, chapter_seq=1, new_candidates=[candidate])
+        assert report["pool"]["add_to_pool"] == 1
+        db.flush()
+        # A repeated extraction while it waits for confirmation is still idempotent.
+        repeated = correction.correct_chapter_memory(db, project_id=pid, chapter_seq=1, new_candidates=[candidate])
+        assert repeated["pool"]["add_to_pool"] == 0
+        pending = db.query(MemoryCandidate).filter_by(kind="fact", status="pending").one()
+        assert nodes.confirm_candidate(db, temp_project, pending.id) is not None
+    with tenant_session(temp_project) as db:
+        assert [f.content for f in db.query(Fact).filter_by(confirm_status="confirmed")] == ["主角不能使用火系法术"]
+
+
+def test_correction_still_respects_explicit_rejection(temp_project):
+    candidate = _cand("fact", {"content": "已明确拒绝"})
+    with tenant_session(temp_project) as db:
+        db.add(MemoryCandidate(project_id=temp_project, source_chapter=1, status="rejected", **candidate))
+        db.flush()
+        report = correction.correct_chapter_memory(db, project_id=uuid.UUID(temp_project),
+                                                   chapter_seq=1, new_candidates=[candidate])
+        assert report["pool"]["add_to_pool"] == 0
