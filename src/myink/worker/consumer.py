@@ -1,4 +1,4 @@
-"""消费循环：RabbitMQ 主队列 → process → ack → 可重试失败进延迟队列（TTL+DLX）。
+"""消费循环：RabbitMQ 主队列 → process → 确认重投后 ack → 可重试失败进延迟队列（TTL+DLX）。
 
 优雅停机（§17.2）：收 SIGTERM → 置 shutdown flag → 跑完当前任务（含 checkpoint）再退出；
 未 ack 消息在连接断开时自动 requeue，重启后重新消费（RabbitMQ 崩溃认领，替换网关 dispatcher）。
@@ -100,26 +100,29 @@ def _on_message(ch, method, properties, body_raw, r, worker_id: str) -> None:
         logger.warning("重试超限进 DLQ: task=%s retry=%s", task_id, body.get("retry_count"))
         return
 
+    if decision in {"retry", "defer"}:
+        if decision == "retry":
+            retry_count = int(body.get("retry_count", 0))
+            backoff_s = settings.worker_backoff_base * (2 ** retry_count)
+            body["retry_count"] = retry_count + 1
+        else:
+            # Book contention is transient, and does not consume retry attempts.
+            backoff_s = settings.worker_defer_backoff_s
+        try:
+            # publish blocks for the broker confirm. A crash before the ack can
+            # duplicate a delivery, which task idempotency handles; it cannot lose it.
+            amqp.publish(json.dumps(body, ensure_ascii=False), amqp.KEY_DELAY,
+                         priority=priority, expiration_ms=backoff_s * 1000)
+        except Exception:
+            logger.warning("延迟重投未确认，原消息重新入队: task=%s", task_id, exc_info=True)
+            ch.basic_nack(method.delivery_tag, requeue=True)
+            return
+        ch.basic_ack(method.delivery_tag)
+        logger.info("延迟重投: %s decision=%s +%ss", task_id, decision, backoff_s)
+        return
+
     ch.basic_ack(method.delivery_tag)
-    if decision == "retry":
-        retry_count = int(body.get("retry_count", 0))
-        backoff_s = settings.worker_backoff_base * (2 ** retry_count)
-        body["retry_count"] = retry_count + 1
-        amqp.publish(
-            json.dumps(body, ensure_ascii=False), amqp.KEY_DELAY,
-            priority=priority, expiration_ms=backoff_s * 1000,
-        )
-        logger.info("退避重投: %s +%ss (retry=%s)", task_id, backoff_s, retry_count + 1)
-    elif decision == "defer":
-        # 书忙固定退避：不计 retry_count（书忙是瞬态非失败）→ 永远不过 MaxRetries，
-        # 重投不经 DLQ；书锁释放后下次重投即执行。同书任务在多个 worker 间自然串行。
-        amqp.publish(
-            json.dumps(body, ensure_ascii=False), amqp.KEY_DELAY,
-            priority=priority, expiration_ms=settings.worker_defer_backoff_s * 1000,
-        )
-        logger.info("书忙退避重投: %s book=%s +%ss",
-                    task_id, body.get("project_id"), settings.worker_defer_backoff_s)
-    elif decision == "terminal":
+    if decision == "terminal":
         logger.info("任务完成: %s", task_id)
     # skip: 无事可做
 
