@@ -170,7 +170,13 @@ def finalize_chapter_review(*, project_id: str, task_id: str, chapter_seq: int) 
             return result
         # Persist the remaining phase before calling a budgeted provider. The
         # chapter can already be confirmed when this call pauses or the worker dies.
-        result = {**result, "review_finalization_pending": True}
+        with tenant_session(project_id) as db:
+            chapter = nodes.repo.get_chapter(db, uuid.UUID(project_id), chapter_seq)
+            summary_version = (chapter.version if chapter is not None
+                               and chapter.status == "confirmed" and chapter.content == result.get("draft")
+                               else None)
+        result = {**result, "review_finalization_pending": True,
+                  "summary_chapter_version": summary_version}
         chapter_graph.update_state(config, result, as_node="summarize")
     nodes.node_summarize(result)
     result = {**result, "needs_review": False, "review_finalization_pending": False}

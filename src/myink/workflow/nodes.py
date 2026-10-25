@@ -20,7 +20,7 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 from langgraph.types import interrupt
-from sqlalchemy import select
+from sqlalchemy import select, update as sa_update
 from sqlalchemy.orm import Session
 
 from myink import snapshot
@@ -1424,11 +1424,16 @@ def node_summarize(state: ChapterState) -> ChapterState:
     draft = state.get("draft")
     if not draft:
         return {}
+    expected_version = state.get("summary_chapter_version")
+    if state.get("review_finalization_pending") and expected_version is None:
+        return {}  # Old checkpoints cannot prove ownership of the current summary.
     try:
         with tenant_session(pid) as db:
             ch = repo.get_chapter(db, uuid.UUID(pid), seq)
-            if ch is None or ch.status != "confirmed":
-                return {}  # 非落库终态（awaiting_review 首跑等）不产摘要
+            if (ch is None or ch.status != "confirmed" or ch.content != draft
+                    or (expected_version is not None and ch.version != expected_version)):
+                return {}  # Do not summarize a stale checkpoint or non-final draft.
+            source_version = ch.version
             messages = prompts.summary_messages(draft, seq)
             resp, _ = _llm(db, state, "summarize", "Summarize",
                            make_chain("summarize", db=db, project_id=pid), messages,
@@ -1440,7 +1445,13 @@ def node_summarize(state: ChapterState) -> ChapterState:
             text = (data.get("summary") or "").strip() if isinstance(data, dict) else ""
             if not text:
                 return {}
-            ch.summary = text
+            # No chapter editing lock is held during the model request. Recheck
+            # both body and version atomically when the result is written.
+            db.execute(sa_update(Chapter).where(
+                Chapter.id == ch.id, Chapter.project_id == uuid.UUID(pid),
+                Chapter.status == "confirmed", Chapter.version == source_version,
+                Chapter.content == draft,
+            ).values(summary=text).execution_options(synchronize_session=False))
     except (TaskBudgetPaused, TaskBudgetUnavailable):
         raise
     except Exception as exc:

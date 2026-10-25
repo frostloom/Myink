@@ -71,6 +71,7 @@ class ChapterState(TypedDict, total=False):
 
     # persist 产物 / 失败
     persisted: bool
+    summary_chapter_version: int | None  # 已落库摘要来源版本；旧 checkpoint 无此字段
     review_finalization_pending: bool  # 已确认正文，尚需完成审核收尾摘要
     needs_review: bool  # 转人工（§6.11 确认分流）
     error: str | None

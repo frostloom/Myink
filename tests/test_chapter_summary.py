@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import uuid
 
+import pytest
+
 from myink.db import tenant_session
 from myink.models import Chapter
 from myink.providers.base import ModelResponse
@@ -132,3 +134,28 @@ def test_runner_finalize_appends_node_summarize(temp_project, monkeypatch):
     assert result["needs_review"] is False
     assert len(calls) == 1, "收尾后应补调 node_summarize"
     assert calls[0]["task_id"] == "t1" and calls[0]["draft"] == "正文草稿"
+
+
+@pytest.mark.parametrize("restored_content", ["恢复后的不同正文", "正文草稿"])
+def test_summary_does_not_overwrite_a_version_restored_during_model_call(temp_project, monkeypatch, restored_content):
+    from myink.api.routes_chapters import restore_chapter_version
+    from myink.models import ChapterVersion
+    _make_confirmed_chapter(temp_project)
+    with tenant_session(temp_project) as db:
+        chapter = db.query(Chapter).one()
+        chapter.version = 2
+        cid = chapter.id
+        db.add(ChapterVersion(project_id=temp_project, chapter_id=cid, version=1,
+                              content=restored_content, summary="历史版本的正确摘要"))
+    monkeypatch.setattr(nodes, "make_chain", lambda *a, **kw: None)
+    def generate(*args, **kwargs):
+        assert "正文草稿" in str(args[5])
+        restore_chapter_version(temp_project, str(cid), 1)
+        return ModelResponse(content='{"summary":"已过期的模型结果"}', model_id="stub"), None
+    monkeypatch.setattr(nodes, "_llm", generate)
+    nodes.node_summarize({"project_id": temp_project, "chapter_seq": 1, "draft": "正文草稿"})
+    with tenant_session(temp_project) as db:
+        chapter = db.get(Chapter, cid)
+        assert chapter.content == restored_content
+        assert chapter.summary == "历史版本的正确摘要"
+        assert chapter.version == 3

@@ -205,7 +205,7 @@ def test_real_workflow_call_site_matches_rule_role(monkeypatch, operation, expec
     @contextmanager
     def session(_): yield object()
     monkeypatch.setattr(nodes,"tenant_session",session)
-    monkeypatch.setattr(nodes.repo,"get_chapter",lambda *a:SimpleNamespace(status="confirmed",summary=""))
+    monkeypatch.setattr(nodes.repo,"get_chapter",lambda *a:SimpleNamespace(id=uuid.uuid4(),status="confirmed",content="draft",version=1,summary=""))
     monkeypatch.setattr(ledger_l2,"build_judgment_set",lambda *a,**kw:[{
         "kind":"character_state","key":"test","entity_name":"name","field":"location",
         "ledger":"old","new_value":"new"}])

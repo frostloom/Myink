@@ -63,3 +63,14 @@
 - [ ] Run summary/review/budget tests and full Python suite; expect exit 0.
 - [ ] Run compileall, evaluate validate and contract diff; build final Python image. One independent read-only final review, resolve important findings by tests; no recursive re-review.
 - [ ] Commit and push, clean only own test resources, report evidence and limits.
+
+### Task 5: Preserve semantic details in correction proposal identity
+
+**Files:** src/myink/memory/candidate_identity.py; src/myink/memory/correction.py; tests/test_correction_proposal_identity.py.
+**Interfaces:** Keep coarse same_proposal for review rejection; correction compares complete semantic payload excluding explicit top-level metadata.
+
+- [ ] RED: pending/rejected relation valid_to, fact is_hard/category, event participants changes remain reviewable; same-extraction variants also remain distinct.
+- [ ] RED: foreshadow confidence changes alone produce one proposal, within one extraction and across calls.
+- [ ] GREEN: correction-specific identity preserves all semantic fields and formats known text fields; ignore only confidence/source_chapter/evidence metadata. Apply consistently to extraction and pool dedup.
+- [ ] Run related tests and full Python suite; compile/evaluation/contract and final image remain green. Resolve this one final-review Important finding without dispatching re-review.
+- [ ] Commit/push this followup, record all results and clean own test resources.
