@@ -315,7 +315,10 @@ def commit(body: ShortCreationCommitBody, session_id: uuid.UUID,
                                                               settings.platform_short_quota):
                 return _book._platform_quota_response()
             primary_id = resolve_pack_id(card["genre"])
-            genre_pack = build_book_pack(primary_id, None) if primary_id else {}
+            try:
+                genre_pack = build_book_pack(primary_id, None) if primary_id else {}
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
             try:
                 project, inserted = _book._create_project_row(
                     db, uid, title=card["working_title"], genre=card["genre"],

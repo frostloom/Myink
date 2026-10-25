@@ -136,6 +136,8 @@ def test_runtime_uses_only_platform_and_prompt_reaches_budget(monkeypatch):
 
 
 def test_global_genre_overrides_snapshot_and_catalog(monkeypatch):
+    # 旧平台根配置仅用于写作资源尚未安装的兼容路径。
+    monkeypatch.setattr('myink.genre_catalog.published_genre_roots', lambda **kwargs: None)
     from myink import platform_configuration as pc
     from myink.genre_catalog import build_book_pack, get_root, catalog_entries
     config = pc.empty_configuration()
@@ -184,6 +186,8 @@ def test_platform_prompt_cannot_exceed_final_request_budget(monkeypatch):
 
 
 def test_existing_secondary_genre_snapshot_is_not_reconfigured(monkeypatch):
+    # 旧平台根配置仅用于写作资源尚未安装的兼容路径。
+    monkeypatch.setattr('myink.genre_catalog.published_genre_roots', lambda **kwargs: None)
     from myink import platform_configuration as pc
     from myink.genre_catalog import build_book_pack, format_prompt
     config = pc.empty_configuration()
@@ -252,6 +256,8 @@ def test_omitted_backend_defaults_use_platform_writer_not_user_selection(monkeyp
 
 @pytest.mark.parametrize('genre, expected_pacing', [('修仙', 'Published pacing'), ('自定义题材', None)])
 def test_short_commit_uses_published_snapshot_on_creation_and_retry(monkeypatch, genre, expected_pacing, stub_provider):
+    # 旧平台根配置仅用于写作资源尚未安装的兼容路径。
+    monkeypatch.setattr('myink.genre_catalog.published_genre_roots', lambda **kwargs: None)
     stub_provider("金丹", "金丹")
     from contextlib import contextmanager
     from types import SimpleNamespace

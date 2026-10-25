@@ -41,7 +41,7 @@ from myink.book_setup import (generate_book_outline, generate_book_setup,
 from myink.config import settings
 from myink.creation import (DRAFT_STATES, project_payload, save_proposal,
                             validate_creation_outline, validate_short_outline)
-from myink.genre_catalog import build_book_pack, display_genre, is_managed_pack
+from myink.genre_catalog import build_book_pack, is_managed_pack
 from myink.db import new_session, tenant_session
 from myink.short.form import (SHORT_CHAPTER_MAX, SHORT_CHAPTER_MIN, SHORT_CHARS_MAX,
                               resolve_short_lengths)
@@ -307,15 +307,13 @@ def create_project(body: CreateProjectBody,
         user = db.scalar(select(User).where(User.id == uid).with_for_update())
         if user is None:
             raise HTTPException(status_code=403, detail="身份非法")
+        # 成功请求的重放沿用已落库快照，不重新校验后来可能下架的题材。
+        replay = _find_by_request_id(db, uid, body.request_id)
+        if replay is not None:
+            return project_payload(replay)
         uses_platform = platform_key_active(uid, user.role)
         if uses_platform and _platform_quota_used_up(user.platform_long_used,
                                                     settings.platform_long_quota):
-            # 额度用完之后重发同一个 request_id 的，是「上一次其实成功了，客户端没收到」
-            # 这种重试——它不建新书，就不该被额度拦下（否则用户看到「额度已用完」，
-            # 而书其实已经在书架上了）。
-            replay = _find_by_request_id(db, uid, body.request_id)
-            if replay is not None:
-                return project_payload(replay)
             return _platform_quota_response()
         target_words = _check_target_words(body.target_words, field="每章目标字数")
         genre_pack: dict = {}
@@ -324,7 +322,9 @@ def create_project(body: CreateProjectBody,
                 genre_pack = build_book_pack(body.primary_id, body.secondary_id)
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
-            genre = display_genre(body.primary_id, body.secondary_id)
+            genre = genre_pack["source_name"]
+            if genre_pack.get("secondary_name"):
+                genre += "+" + genre_pack["secondary_name"]
         else:
             genre = body.genre.strip() or "仙侠玄幻"
         try:
