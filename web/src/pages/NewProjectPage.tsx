@@ -3,6 +3,7 @@
 // 布局复用 SettingsPage 的 wrap→rail→main→inner；分区编辑控件对齐 KeyField 风格。
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { StructuredTextField } from '../components/StructuredTextField'
 import { ProjectRail } from '../components/ProjectRail'
 import { RankingsPanel } from '../components/RankingsPanel'
 import { useAuth } from '../context/AuthContext'
@@ -781,30 +782,30 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
                   {showRealmOrder && (
                     <div className={styles.block}>
                       <span className={styles.fieldLabel}>境界体系（每行一阶）</span>
-                      <textarea
+                      <StructuredTextField
                         className="textarea"
                         rows={Math.max(3, sec.realm_order.length)}
-                        value={arrayToLines(sec.realm_order)}
-                        onChange={(e) => updateSection({ realm_order: linesToArray(e.target.value) })}
+                        value={sec.realm_order} format={arrayToLines} parse={linesToArray}
+                        onChange={(value) => updateSection({ realm_order: value })}
                       />
                     </div>
                   )}
                   <div className={styles.block}>
                     <span className={styles.fieldLabel}>世界观规则（每行「键：值」）</span>
-                    <textarea
+                    <StructuredTextField
                       className="textarea"
                       rows={Math.max(3, Object.keys(sec.world_rules).length)}
-                      value={worldRulesToText(sec.world_rules)}
-                      onChange={(e) => updateSection({ world_rules: textToWorldRules(e.target.value) })}
+                      value={sec.world_rules} format={worldRulesToText} parse={textToWorldRules}
+                      onChange={(value) => updateSection({ world_rules: value })}
                     />
                   </div>
                   <div className={styles.block}>
                     <span className={styles.fieldLabel}>硬约束（每行一条）</span>
-                    <textarea
+                    <StructuredTextField
                       className="textarea"
                       rows={Math.max(3, sec.hard_constraints.length)}
-                      value={arrayToLines(sec.hard_constraints)}
-                      onChange={(e) => updateSection({ hard_constraints: linesToArray(e.target.value) })}
+                      value={sec.hard_constraints} format={arrayToLines} parse={linesToArray}
+                      onChange={(value) => updateSection({ hard_constraints: value })}
                     />
                   </div>
 
@@ -1225,12 +1226,12 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
                           </label>
                           <label className={styles.field}>
                             <span className={styles.fieldLabel}>关键结果 KR（每行一条）</span>
-                            <textarea
+                            <StructuredTextField
                               className={`textarea ${styles.growArea}`}
                               rows={4}
                               placeholder="每行一条可验证结果"
-                              value={arrayToLines(v.key_results ?? [])}
-                              onChange={(e) => updateVolume(vi, { key_results: linesToArray(e.target.value) })}
+                              value={v.key_results ?? []} format={arrayToLines} parse={linesToArray}
+                              onChange={(value) => updateVolume(vi, { key_results: value })}
                             />
                           </label>
                           <label className={styles.field}>
@@ -1316,13 +1317,13 @@ export default function NewProjectPage({ form: routeForm = 'long' }: { form?: 'l
                                   </label>
                                   <label className={styles.field}>
                                     <span className={styles.fieldLabel}>阶段节拍（每行一条）</span>
-                                    <textarea
+                                    <StructuredTextField
                                       className={`textarea ${styles.growArea}`}
                                       rows={Math.max(4, s.beats?.length ?? 0)}
                                       placeholder="谁 + 在何处 + 做什么 + 导致什么"
-                                      value={arrayToLines(s.beats ?? [])}
-                                      onChange={(e) =>
-                                        updateStage(vi, si, { beats: linesToArray(e.target.value) })
+                                      value={s.beats ?? []} format={arrayToLines} parse={linesToArray}
+                                      onChange={(value) =>
+                                        updateStage(vi, si, { beats: value })
                                       }
                                     />
                                   </label>

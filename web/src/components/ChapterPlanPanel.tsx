@@ -11,6 +11,7 @@ import type {
   TaskStatus,
 } from '../types'
 import styles from './ChapterPlanPanel.module.css'
+import { StructuredTextField } from './StructuredTextField'
 
 interface Props {
   taskId: string | null
@@ -95,7 +96,7 @@ function PlanReadOnly({ plan }: { plan: ChapterPlan }) {
 
 function ListField({ label, value, onChange }: { label: string; value: string[]; onChange: (next: string[]) => void }) {
   return <label className={styles.field}><span>{label}<small>每行一条</small></span>
-    <textarea rows={2} value={listText(value)} onChange={(e) => onChange(textList(e.target.value))} />
+    <StructuredTextField rows={2} value={value} format={listText} parse={textList} onChange={onChange} />
   </label>
 }
 
@@ -134,7 +135,7 @@ function PlanEditor({ plan, onChange }: { plan: ChapterPlan; onChange: (next: Ch
       {plan.scenes.map((scene, index) => <div className={styles.item} key={index}>
         <input aria-label={`场景 ${index + 1} 地点`} placeholder="地点" value={scene.location_id} onChange={(e) => updateScene(index, { location_id: e.target.value })} />
         <input aria-label={`场景 ${index + 1} 时间`} placeholder="时间（可选）" value={scene.time ?? ''} onChange={(e) => updateScene(index, { time: e.target.value || null })} />
-        <input aria-label={`场景 ${index + 1} 人物`} className={styles.wide} placeholder="人物，用顿号或逗号分隔" value={scene.participants.join('、')} onChange={(e) => updateScene(index, { participants: e.target.value.split(/[、,，]/).map((v) => v.trim()).filter(Boolean) })} />
+        <StructuredTextField singleLine aria-label={`场景 ${index + 1} 人物`} className={styles.wide} placeholder="人物，用顿号或逗号分隔" value={scene.participants} format={(value) => value.join('、')} parse={(value) => value.split(/[、,，]/).map((v) => v.trim()).filter(Boolean)} onChange={(value) => updateScene(index, { participants: value })} />
         <textarea aria-label={`场景 ${index + 1} 目标`} className={styles.wide} rows={2} placeholder="场景目标" value={scene.goal} onChange={(e) => updateScene(index, { goal: e.target.value })} />
         <button type="button" onClick={() => update('scenes', plan.scenes.filter((_, i) => i !== index))}>移除场景</button>
       </div>)}
@@ -143,7 +144,7 @@ function PlanEditor({ plan, onChange }: { plan: ChapterPlan; onChange: (next: Ch
     {plan.characters.length > 0 && <fieldset className={styles.collection}><legend>人物预期状态</legend>
       {plan.characters.map((character, index) => <div className={styles.item} key={index}>
         <input aria-label={`人物 ${index + 1} 名称`} value={character.character_id} onChange={(e) => updateCharacter(index, { character_id: e.target.value })} />
-        <textarea aria-label={`人物 ${index + 1} 状态`} className={styles.wide} rows={2} value={stateText(character.expected_state)} onChange={(e) => updateCharacter(index, { expected_state: textState(e.target.value) })} />
+        <StructuredTextField aria-label={`人物 ${index + 1} 状态`} className={styles.wide} rows={2} value={character.expected_state} format={stateText} parse={textState} onChange={(value) => updateCharacter(index, { expected_state: value })} />
       </div>)}
     </fieldset>}
     <ListField label="预期事件" value={plan.expected_events} onChange={(value) => update('expected_events', value)} />

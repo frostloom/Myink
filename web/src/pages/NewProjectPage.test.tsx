@@ -427,3 +427,20 @@ it('offers published genre selection without editable root fields', async () => 
  await waitFor(() => expect(api.createProject).toHaveBeenCalled())
  expect(vi.mocked(api.createProject).mock.lastCall?.[0]).not.toHaveProperty('genre_fields')
 })
+
+it('preserves partial world rule keys and empty newlines during setup editing', async () => {
+  vi.mocked(api.getCreation).mockResolvedValue({
+    project: { id: 'draft-id', title: '草稿', genre: '悬疑', current_chapter: 0,
+      target_words: 3000, creation_status: 'draft' },
+    context: { premise: '故事', chapter_count: 50, setup_draft: { world_rules: {} } },
+  })
+  renderPage('/projects/new?draft=draft-id')
+  const label = await screen.findByText('世界观规则（每行「键：值」）')
+  const box = label.parentElement!.querySelector('textarea')!
+  fireEvent.change(box, { target: { value: '魔' } })
+  expect(box.value).toBe('魔')
+  fireEvent.change(box, { target: { value: box.value + '法：有代价\n' } })
+  expect(box.value).toBe('魔法：有代价\n')
+  fireEvent.change(box, { target: { value: box.value + '时间：不可逆' } })
+  expect(box.value).toBe('魔法：有代价\n时间：不可逆')
+})

@@ -110,3 +110,44 @@ it('can cancel a task that is waiting for plan confirmation', async () => {
   await waitFor(() => expect(api.cancelTask).toHaveBeenCalledWith('task-17'))
   expect(onCancelled).toHaveBeenCalledWith('task-17', 17)
 })
+
+it('preserves Enter and submits separate goals instead of merging them', async () => {
+  vi.mocked(api.confirmTaskPlan).mockResolvedValue({ task_id: 'task-17', status: 'queued' })
+  render(<ChapterPlanPanel taskId="task-17" chapterSeq={17} status="awaiting_plan"
+    runs={[run(1, plan('第一目标'))]} artifact={null} onConfirmed={() => {}} onCancelled={() => {}} />)
+  const goals = screen.getByLabelText(/本章目标/) as HTMLTextAreaElement
+  fireEvent.change(goals, { target: { value: '第一目标\n' } })
+  expect(goals.value).toBe('第一目标\n')
+  fireEvent.change(goals, { target: { value: goals.value + '第二目标\n' } })
+  fireEvent.click(screen.getByRole('button', { name: '确认计划并开始写作' }))
+  await waitFor(() => expect(api.confirmTaskPlan).toHaveBeenCalled())
+  expect(vi.mocked(api.confirmTaskPlan).mock.calls[0][1].goals).toEqual(['第一目标', '第二目标'])
+})
+
+it('preserves partial state keys while editing', async () => {
+  const value = { ...plan('目标'), characters: [{ character_id: '主角', expected_state: {} }] }
+  vi.mocked(api.confirmTaskPlan).mockResolvedValue({ task_id: 'task-17', status: 'queued' })
+  render(<ChapterPlanPanel taskId="task-17" chapterSeq={17} status="awaiting_plan"
+    runs={[run(1, value)]} artifact={null} onConfirmed={() => {}} onCancelled={() => {}} />)
+  const state = screen.getByLabelText('人物 1 状态') as HTMLTextAreaElement
+  fireEvent.change(state, { target: { value: '伤' } })
+  expect(state.value).toBe('伤')
+  fireEvent.change(state, { target: { value: '伤势：未愈\n' } })
+  fireEvent.click(screen.getByRole('button', { name: '确认计划并开始写作' }))
+  await waitFor(() => expect(api.confirmTaskPlan).toHaveBeenCalled())
+  const submitted = vi.mocked(api.confirmTaskPlan).mock.calls[0][1]
+  expect(submitted.characters[0].expected_state).toEqual({ 伤势: '未愈' })
+})
+
+it('preserves a participant delimiter until the next name is typed', async () => {
+  vi.mocked(api.confirmTaskPlan).mockResolvedValue({ task_id: 'task-17', status: 'queued' })
+  render(<ChapterPlanPanel taskId="task-17" chapterSeq={17} status="awaiting_plan"
+    runs={[run(1, plan('目标'))]} artifact={null} onConfirmed={() => {}} onCancelled={() => {}} />)
+  const people = screen.getByLabelText('场景 1 人物') as HTMLInputElement
+  fireEvent.change(people, { target: { value: '林尘、' } })
+  expect(people.value).toBe('林尘、')
+  fireEvent.change(people, { target: { value: people.value + '同伴' } })
+  fireEvent.click(screen.getByRole('button', { name: '确认计划并开始写作' }))
+  await waitFor(() => expect(api.confirmTaskPlan).toHaveBeenCalled())
+  expect(vi.mocked(api.confirmTaskPlan).mock.calls[0][1].scenes[0].participants).toEqual(['林尘', '同伴'])
+})
