@@ -1,0 +1,745 @@
+.............................................................................................................................................. [  7%]
+........................................................................ [ 10%]
+.......................................................................x [ 14%]
+xxxx.................................................................... [ 18%]
+........................................................................ [ 21%]
+................................F....................................... [ 25%]
+........................s............................................... [ 29%]
+........................................................................ [ 32%]
+........................................................................ [ 36%]
+........................................................................ [ 40%]
+..........................................................FFF.F.....F... [ 43%]
+................................EEEEEE.................................. [ 47%]
+........................................................................ [ 51%]
+........................................................................ [ 54%]
+........................................................................ [ 58%]
+........................................................................ [ 61%]
+........................................................................ [ 65%]
+...........FF........................................................... [ 69%]
+........................................................................ [ 72%]
+.......EFE.....EEEEEEEEEEEEEF........................................... [ 76%]
+........................................................................ [ 80%]
+........................................................................ [ 83%]
+.F...................................................................... [ 87%]
+........................................................................ [ 91%]
+........................................................................ [ 94%]
+........................................................................ [ 98%]
+..............................                                           [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of test_empty_outline_cannot_promote_but_valid_confirmation_can _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x114f73da0>
+
+    @pytest.fixture
+    def draft_book(monkeypatch):
+        import myink.api.routes_book as book
+        monkeypatch.setattr(book, "settings", replace(book.settings, books_per_day_max=100000))
+        with new_session() as db:
+            uid = db.scalar(select(User.id).where(User.username == "demo"))
+        headers = identity_headers(uid)
+        response = client.post("/api/v1/projects", headers=headers, json={
+            "title": f"draft-test-{uuid.uuid4().hex}", "premise": "保留的创作简报",
+            "chapter_count": 50, "storyline": "寻找真相",
+        })
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_project_creation.py:36: AssertionError
+_ ERROR at setup of test_generated_proposals_survive_reload_without_becoming_canon _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x116384320>
+
+    @pytest.fixture
+    def draft_book(monkeypatch):
+        import myink.api.routes_book as book
+        monkeypatch.setattr(book, "settings", replace(book.settings, books_per_day_max=100000))
+        with new_session() as db:
+            uid = db.scalar(select(User.id).where(User.username == "demo"))
+        headers = identity_headers(uid)
+        response = client.post("/api/v1/projects", headers=headers, json={
+            "title": f"draft-test-{uuid.uuid4().hex}", "premise": "保留的创作简报",
+            "chapter_count": 50, "storyline": "寻找真相",
+        })
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_project_creation.py:36: AssertionError
+________ ERROR at setup of test_worker_also_rejects_unfinished_project _________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x116386510>
+
+    @pytest.fixture
+    def draft_book(monkeypatch):
+        import myink.api.routes_book as book
+        monkeypatch.setattr(book, "settings", replace(book.settings, books_per_day_max=100000))
+        with new_session() as db:
+            uid = db.scalar(select(User.id).where(User.username == "demo"))
+        headers = identity_headers(uid)
+        response = client.post("/api/v1/projects", headers=headers, json={
+            "title": f"draft-test-{uuid.uuid4().hex}", "premise": "保留的创作简报",
+            "chapter_count": 50, "storyline": "寻找真相",
+        })
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_project_creation.py:36: AssertionError
+______ ERROR at setup of test_ready_project_rejects_empty_outline_update _______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x111e23aa0>
+
+    @pytest.fixture
+    def draft_book(monkeypatch):
+        import myink.api.routes_book as book
+        monkeypatch.setattr(book, "settings", replace(book.settings, books_per_day_max=100000))
+        with new_session() as db:
+            uid = db.scalar(select(User.id).where(User.username == "demo"))
+        headers = identity_headers(uid)
+        response = client.post("/api/v1/projects", headers=headers, json={
+            "title": f"draft-test-{uuid.uuid4().hex}", "premise": "保留的创作简报",
+            "chapter_count": 50, "storyline": "寻找真相",
+        })
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_project_creation.py:36: AssertionError
+______ ERROR at setup of test_creation_request_retry_returns_same_project ______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1163866f0>
+
+    @pytest.fixture
+    def draft_book(monkeypatch):
+        import myink.api.routes_book as book
+        monkeypatch.setattr(book, "settings", replace(book.settings, books_per_day_max=100000))
+        with new_session() as db:
+            uid = db.scalar(select(User.id).where(User.username == "demo"))
+        headers = identity_headers(uid)
+        response = client.post("/api/v1/projects", headers=headers, json={
+            "title": f"draft-test-{uuid.uuid4().hex}", "premise": "保留的创作简报",
+            "chapter_count": 50, "storyline": "寻找真相",
+        })
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_project_creation.py:36: AssertionError
+_ ERROR at setup of test_parallel_and_late_proposals_preserve_confirmed_state __
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x113c78bf0>
+
+    @pytest.fixture
+    def draft_book(monkeypatch):
+        import myink.api.routes_book as book
+        monkeypatch.setattr(book, "settings", replace(book.settings, books_per_day_max=100000))
+        with new_session() as db:
+            uid = db.scalar(select(User.id).where(User.username == "demo"))
+        headers = identity_headers(uid)
+        response = client.post("/api/v1/projects", headers=headers, json={
+            "title": f"draft-test-{uuid.uuid4().hex}", "premise": "保留的创作简报",
+            "chapter_count": 50, "storyline": "寻找真相",
+        })
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_project_creation.py:36: AssertionError
+_ ERROR at setup of test_create_project_records_the_form_and_keeps_the_draft_lifecycle _
+
+book_factory = <test_short_routes.BookFactory object at 0x116762f30>
+
+    @pytest.fixture
+    def short_book(book_factory):
+        """短篇草稿书（form=short，5 章）——短篇分支的默认起点。"""
+>       return book_factory(form="short", chapter_count=SHORT_CHAPTERS)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_short_routes.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_short_routes.BookFactory object at 0x116762f30>
+body = {'form': 'short', 'chapter_count': 5}
+
+    def __call__(self, **body) -> tuple[dict, dict]:
+        response = self.post(**body)
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_short_routes.py:71: AssertionError
+_________ ERROR at setup of test_the_project_payload_carries_the_form __________
+
+book_factory = <test_short_routes.BookFactory object at 0x116763b60>
+
+    @pytest.fixture
+    def short_book(book_factory):
+        """短篇草稿书（form=short，5 章）——短篇分支的默认起点。"""
+>       return book_factory(form="short", chapter_count=SHORT_CHAPTERS)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_short_routes.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_short_routes.BookFactory object at 0x116763b60>
+body = {'form': 'short', 'chapter_count': 5}
+
+    def __call__(self, **body) -> tuple[dict, dict]:
+        response = self.post(**body)
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_short_routes.py:71: AssertionError
+_ ERROR at setup of test_outline_draft_picks_the_chapter_range_from_the_books_own_form _
+
+book_factory = <test_short_routes.BookFactory object at 0x1167d1d90>
+
+    @pytest.fixture
+    def short_book(book_factory):
+        """短篇草稿书（form=short，5 章）——短篇分支的默认起点。"""
+>       return book_factory(form="short", chapter_count=SHORT_CHAPTERS)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_short_routes.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_short_routes.BookFactory object at 0x1167d1d90>
+body = {'form': 'short', 'chapter_count': 5}
+
+    def __call__(self, **body) -> tuple[dict, dict]:
+        response = self.post(**body)
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_short_routes.py:71: AssertionError
+_ ERROR at setup of test_short_outline_draft_runs_plan_then_review_and_ships_the_first_version _
+
+book_factory = <test_short_routes.BookFactory object at 0x116762b70>
+
+    @pytest.fixture
+    def short_book(book_factory):
+        """短篇草稿书（form=short，5 章）——短篇分支的默认起点。"""
+>       return book_factory(form="short", chapter_count=SHORT_CHAPTERS)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_short_routes.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_short_routes.BookFactory object at 0x116762b70>
+body = {'form': 'short', 'chapter_count': 5}
+
+    def __call__(self, **body) -> tuple[dict, dict]:
+        response = self.post(**body)
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_short_routes.py:71: AssertionError
+_ ERROR at setup of test_short_outline_draft_rerolls_once_with_the_review_reason _
+
+book_factory = <test_short_routes.BookFactory object at 0x117231c70>
+
+    @pytest.fixture
+    def short_book(book_factory):
+        """短篇草稿书（form=short，5 章）——短篇分支的默认起点。"""
+>       return book_factory(form="short", chapter_count=SHORT_CHAPTERS)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_short_routes.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_short_routes.BookFactory object at 0x117231c70>
+body = {'form': 'short', 'chapter_count': 5}
+
+    def __call__(self, **body) -> tuple[dict, dict]:
+        response = self.post(**body)
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_short_routes.py:71: AssertionError
+_ ERROR at setup of test_short_outline_draft_keeps_v1_when_the_review_still_objects _
+
+book_factory = <test_short_routes.BookFactory object at 0x117232de0>
+
+    @pytest.fixture
+    def short_book(book_factory):
+        """短篇草稿书（form=short，5 章）——短篇分支的默认起点。"""
+>       return book_factory(form="short", chapter_count=SHORT_CHAPTERS)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_short_routes.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_short_routes.BookFactory object at 0x117232de0>
+body = {'form': 'short', 'chapter_count': 5}
+
+    def __call__(self, **body) -> tuple[dict, dict]:
+        response = self.post(**body)
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_short_routes.py:71: AssertionError
+_ ERROR at setup of test_short_outline_draft_skips_the_review_when_the_plan_call_failed _
+
+book_factory = <test_short_routes.BookFactory object at 0x117221700>
+
+    @pytest.fixture
+    def short_book(book_factory):
+        """短篇草稿书（form=short，5 章）——短篇分支的默认起点。"""
+>       return book_factory(form="short", chapter_count=SHORT_CHAPTERS)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_short_routes.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_short_routes.BookFactory object at 0x117221700>
+body = {'form': 'short', 'chapter_count': 5}
+
+    def __call__(self, **body) -> tuple[dict, dict]:
+        response = self.post(**body)
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_short_routes.py:71: AssertionError
+__ ERROR at setup of test_short_outline_draft_reports_the_compressed_lengths ___
+
+book_factory = <test_short_routes.BookFactory object at 0x1172200b0>
+
+    @pytest.fixture
+    def short_book(book_factory):
+        """短篇草稿书（form=short，5 章）——短篇分支的默认起点。"""
+>       return book_factory(form="short", chapter_count=SHORT_CHAPTERS)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_short_routes.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_short_routes.BookFactory object at 0x1172200b0>
+body = {'form': 'short', 'chapter_count': 5}
+
+    def __call__(self, **body) -> tuple[dict, dict]:
+        response = self.post(**body)
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_short_routes.py:71: AssertionError
+___ ERROR at setup of test_short_outline_draft_leaves_a_fitting_length_alone ___
+
+book_factory = <test_short_routes.BookFactory object at 0x113c78410>
+
+    @pytest.fixture
+    def short_book(book_factory):
+        """短篇草稿书（form=short，5 章）——短篇分支的默认起点。"""
+>       return book_factory(form="short", chapter_count=SHORT_CHAPTERS)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_short_routes.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_short_routes.BookFactory object at 0x113c78410>
+body = {'form': 'short', 'chapter_count': 5}
+
+    def __call__(self, **body) -> tuple[dict, dict]:
+        response = self.post(**body)
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_short_routes.py:71: AssertionError
+________ ERROR at setup of test_short_outline_requires_confirmed_setup _________
+
+book_factory = <test_short_routes.BookFactory object at 0x1171d2450>
+
+    @pytest.fixture
+    def short_book(book_factory):
+        """短篇草稿书（form=short，5 章）——短篇分支的默认起点。"""
+>       return book_factory(form="short", chapter_count=SHORT_CHAPTERS)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_short_routes.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_short_routes.BookFactory object at 0x1171d2450>
+body = {'form': 'short', 'chapter_count': 5}
+
+    def __call__(self, **body) -> tuple[dict, dict]:
+        response = self.post(**body)
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_short_routes.py:71: AssertionError
+_ ERROR at setup of test_confirming_a_short_outline_keeps_the_per_chapter_plan _
+
+book_factory = <test_short_routes.BookFactory object at 0x1171f08c0>
+
+    @pytest.fixture
+    def short_book(book_factory):
+        """短篇草稿书（form=short，5 章）——短篇分支的默认起点。"""
+>       return book_factory(form="short", chapter_count=SHORT_CHAPTERS)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_short_routes.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_short_routes.BookFactory object at 0x1171f08c0>
+body = {'form': 'short', 'chapter_count': 5}
+
+    def __call__(self, **body) -> tuple[dict, dict]:
+        response = self.post(**body)
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_short_routes.py:71: AssertionError
+_ ERROR at setup of test_confirming_a_short_outline_rejects_a_payload_the_short_writer_cannot_use[long-shaped] _
+
+book_factory = <test_short_routes.BookFactory object at 0x116808aa0>
+
+    @pytest.fixture
+    def short_book(book_factory):
+        """短篇草稿书（form=short，5 章）——短篇分支的默认起点。"""
+>       return book_factory(form="short", chapter_count=SHORT_CHAPTERS)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_short_routes.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_short_routes.BookFactory object at 0x116808aa0>
+body = {'form': 'short', 'chapter_count': 5}
+
+    def __call__(self, **body) -> tuple[dict, dict]:
+        response = self.post(**body)
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_short_routes.py:71: AssertionError
+_ ERROR at setup of test_confirming_a_short_outline_rejects_a_payload_the_short_writer_cannot_use[two-volumes] _
+
+book_factory = <test_short_routes.BookFactory object at 0x117231850>
+
+    @pytest.fixture
+    def short_book(book_factory):
+        """短篇草稿书（form=short，5 章）——短篇分支的默认起点。"""
+>       return book_factory(form="short", chapter_count=SHORT_CHAPTERS)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_short_routes.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_short_routes.BookFactory object at 0x117231850>
+body = {'form': 'short', 'chapter_count': 5}
+
+    def __call__(self, **body) -> tuple[dict, dict]:
+        response = self.post(**body)
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_short_routes.py:71: AssertionError
+_ ERROR at setup of test_confirming_a_short_outline_rejects_a_payload_the_short_writer_cannot_use[no-per-chapter] _
+
+book_factory = <test_short_routes.BookFactory object at 0x117222c30>
+
+    @pytest.fixture
+    def short_book(book_factory):
+        """短篇草稿书（form=short，5 章）——短篇分支的默认起点。"""
+>       return book_factory(form="short", chapter_count=SHORT_CHAPTERS)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_short_routes.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_short_routes.BookFactory object at 0x117222c30>
+body = {'form': 'short', 'chapter_count': 5}
+
+    def __call__(self, **body) -> tuple[dict, dict]:
+        response = self.post(**body)
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_short_routes.py:71: AssertionError
+_ ERROR at setup of test_confirming_a_short_outline_rejects_a_payload_the_short_writer_cannot_use[missing-chapter] _
+
+book_factory = <test_short_routes.BookFactory object at 0x116762390>
+
+    @pytest.fixture
+    def short_book(book_factory):
+        """短篇草稿书（form=short，5 章）——短篇分支的默认起点。"""
+>       return book_factory(form="short", chapter_count=SHORT_CHAPTERS)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_short_routes.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_short_routes.BookFactory object at 0x116762390>
+body = {'form': 'short', 'chapter_count': 5}
+
+    def __call__(self, **body) -> tuple[dict, dict]:
+        response = self.post(**body)
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_short_routes.py:71: AssertionError
+=================================== FAILURES ===================================
+____________ test_environment_omitting_fields_preserves_preferences ____________
+
+temp_user = '39fd9c9d-bfe6-4c47-9572-ad23e4641e23'
+
+    def test_environment_omitting_fields_preserves_preferences(temp_user):
+        put_environment(EnvironmentBody(rankings={'enabled': False, 'timeout': 8, 'limit': 5},
+                                        thinking_enabled=True), user_id=temp_user)
+        out = put_environment(EnvironmentBody(), user_id=temp_user)
+        assert out['rankings'] == {'enabled': False, 'timeout': 8, 'limit': 5}
+        assert out['thinking_enabled'] is True
+        assert out['model_connections'] == []
+>       assert out['available_models'] == []
+E       AssertionError: assert [{'id': 'cust...xture-local'}] == []
+E         
+E         Left contains one more item: {'id': 'custom:34b7e0e4-fe0c-5399-9054-2d79053238e5', 'name': 'fixture-local'}
+E         Use -v to get more diff
+
+tests/test_environment_routes.py:17: AssertionError
+__________ test_without_a_platform_key_everything_stays_unconfigured ___________
+
+temp_user = 'ab136c48-b142-44fb-87dd-531a4c067990'
+
+    def test_without_a_platform_key_everything_stays_unconfigured(temp_user):
+        """没配密钥：链照旧是 unconfigured，也不认为账号「在吃平台密钥」。"""
+        from myink.platform_readiness import PlatformNotReady
+>       with pytest.raises(PlatformNotReady):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE PlatformNotReady
+
+tests/test_platform_key_quota.py:73: Failed
+________ test_the_platform_key_serves_an_account_without_any_connection ________
+
+temp_user = 'eb7ffccd-279b-4299-9c27-ded53648bdbd'
+platform = <function platform.<locals>._apply at 0x113cbec00>
+
+    def test_the_platform_key_serves_an_account_without_any_connection(temp_user, platform):
+        platform()
+>       assert make_user_chain("planner", temp_user).chain == ["platform-pro"]
+E       AssertionError: assert ['fixture-local'] == ['platform-pro']
+E         
+E         At index 0 diff: 'fixture-local' != 'platform-pro'
+E         Use -v to get more diff
+
+tests/test_platform_key_quota.py:80: AssertionError
+_______ test_a_legacy_connection_cannot_bypass_platform_routing_or_quota _______
+
+temp_user = '002d6e94-6bbf-4285-a575-e3ddec099579'
+platform = <function platform.<locals>._apply at 0x113cbc5e0>
+
+    def test_a_legacy_connection_cannot_bypass_platform_routing_or_quota(temp_user, platform):
+        platform()
+        _install_connection(temp_user, {'writer': None})
+>       assert make_user_chain('validator_l2', temp_user).chain == ['platform-pro']
+E       AssertionError: assert ['fixture-local'] == ['platform-pro']
+E         
+E         At index 0 diff: 'fixture-local' != 'platform-pro'
+E         Use -v to get more diff
+
+tests/test_platform_key_quota.py:87: AssertionError
+_________ test_a_broken_legacy_connection_is_ignored_and_still_metered _________
+
+temp_user = '32aae748-9c68-45ce-9aad-934456b36938'
+platform = <function platform.<locals>._apply at 0x113cbce00>
+
+    def test_a_broken_legacy_connection_is_ignored_and_still_metered(temp_user, platform):
+        platform()
+        _install_connection(temp_user, {'planner': None})
+>       assert make_user_chain('planner', temp_user).chain == ['platform-pro']
+E       AssertionError: assert ['fixture-local'] == ['platform-pro']
+E         
+E         At index 0 diff: 'fixture-local' != 'platform-pro'
+E         Use -v to get more diff
+
+tests/test_platform_key_quota.py:104: AssertionError
+______________ test_without_a_platform_key_books_are_never_capped ______________
+
+temp_user = '0c333d19-354e-4560-93ab-199f8de0249f'
+
+    def test_without_a_platform_key_books_are_never_capped(temp_user):
+        """没配内置密钥 → 不限额。默认那 3 本**只在有密钥时才存在**，否则是把人凭空拦住。"""
+        for _ in range(5):
+>           assert _create(temp_user).status_code == 200
+E           AssertionError: assert 429 == 200
+E            +  where 429 = <Response [429 Too Many Requests]>.status_code
+E            +    where <Response [429 Too Many Requests]> = _create('0c333d19-354e-4560-93ab-199f8de0249f')
+
+tests/test_platform_key_quota.py:166: AssertionError
+_________ test_make_chain_without_platform_model_does_not_use_builtin __________
+
+temp_project = 'c4e00ac5-2ef5-4c3a-8243-c3bcc18dd1d3'
+
+    def test_make_chain_without_platform_model_does_not_use_builtin(temp_project):
+        _isolate_from_account_env(temp_project)
+        from myink.platform_readiness import PlatformNotReady
+>       with pytest.raises(PlatformNotReady):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE PlatformNotReady
+
+tests/test_settings_routes.py:55: Failed
+______________ test_make_chain_ignores_legacy_project_credentials ______________
+
+temp_project = 'be10a4c7-25aa-4854-a773-61716ef41ba6'
+
+    def test_make_chain_ignores_legacy_project_credentials(temp_project):
+        _isolate_from_account_env(temp_project)
+        cid = str(uuid.uuid4())
+        from myink.providers.connections import pack_model_settings
+        from myink.providers.credentials import encrypt_api_key
+        _set_routes(temp_project, pack_model_settings({'writer': f'custom:{cid}'}, {
+            cid: {'name': 'Legacy', 'protocol': 'openai', 'base_url': 'https://models.example.com',
+                  'model': 'legacy-pro', 'api_key_encrypted': encrypt_api_key('legacy-secret')}}))
+        from myink.platform_readiness import PlatformNotReady
+>       with pytest.raises(PlatformNotReady):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE PlatformNotReady
+
+tests/test_settings_routes.py:71: Failed
+_________ test_create_project_defaults_to_long_form_for_legacy_clients _________
+
+book_factory = <test_short_routes.BookFactory object at 0x1167607d0>
+
+    def test_create_project_defaults_to_long_form_for_legacy_clients(book_factory):
+        """不传 form 的老客户端 = 长篇（与列 server_default 'long' 同一条语义）。"""
+>       project, headers = book_factory(chapter_count=50)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_short_routes.py:126: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_short_routes.BookFactory object at 0x1167607d0>
+body = {'chapter_count': 50}
+
+    def __call__(self, **body) -> tuple[dict, dict]:
+        response = self.post(**body)
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_short_routes.py:71: AssertionError
+_____________ test_long_books_still_go_through_the_long_validator ______________
+
+book_factory = <test_short_routes.BookFactory object at 0x1171f3f20>
+
+    def test_long_books_still_go_through_the_long_validator(book_factory):
+        """长篇分支逐字节不变：同一份短篇形状的 payload，到长篇书仍按长篇口径拒（5 章 < 50）。"""
+>       long_project, headers = book_factory(chapter_count=50)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_short_routes.py:358: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_short_routes.BookFactory object at 0x1171f3f20>
+body = {'chapter_count': 50}
+
+    def __call__(self, **body) -> tuple[dict, dict]:
+        response = self.post(**body)
+>       assert response.status_code == 200, response.text
+E       AssertionError: {"error":"PLATFORM_QUOTA_EXCEEDED"}
+E       assert 429 == 200
+E        +  where 429 = <Response [429 Too Many Requests]>.status_code
+
+tests/test_short_routes.py:71: AssertionError
+_______ test_ownerless_extraction_routes_through_the_account_level_chain _______
+
+temp_user = 'ab32a029-5539-4d7f-9a34-96881aca60ab'
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1129b6a20>
+
+    def test_ownerless_extraction_routes_through_the_account_level_chain(temp_user, monkeypatch):
+        """有 user_id 无 project_id 必须走 make_user_chain（不是 make_chain(project_id=None)）。
+    
+        单纯装 style_stub 分辨不出来：make_chain 与 make_user_chain 在桩下返回同一条链。
+        这里盯调用本身。链未配置（无桩）时按平台就绪规则拒绝，仍须选择正确的账号链。
+        """
+        import myink.providers as providers_mod
+    
+        called = []
+        real = providers_mod.make_user_chain
+        monkeypatch.setattr(providers_mod, "make_user_chain",
+                            lambda role, uid: (called.append((role, uid)), real(role, uid))[1])
+        from myink.platform_readiness import PlatformNotReady
+>       with pytest.raises(PlatformNotReady):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE PlatformNotReady
+
+tests/test_style_profile.py:315: Failed
+=============================== warnings summary ===============================
+../../../../../../tmp/myink-vue-real-venv-2305/lib/python3.12/site-packages/starlette/testclient.py:53
+  /tmp/myink-vue-real-venv-2305/lib/python3.12/site-packages/starlette/testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+tests/test_identity_boundary.py::test_token_signed_with_another_algorithm_is_rejected[HS512]
+  /tmp/myink-vue-real-venv-2305/lib/python3.12/site-packages/jwt/api_jwt.py:149: InsecureKeyLengthWarning: The HMAC key is 38 bytes long, which is below the minimum recommended length of 64 bytes for SHA512. See RFC 7518 Section 3.2.
+    return self._jws.encode(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_environment_routes.py::test_environment_omitting_fields_preserves_preferences
+FAILED tests/test_platform_key_quota.py::test_without_a_platform_key_everything_stays_unconfigured
+FAILED tests/test_platform_key_quota.py::test_the_platform_key_serves_an_account_without_any_connection
+FAILED tests/test_platform_key_quota.py::test_a_legacy_connection_cannot_bypass_platform_routing_or_quota
+FAILED tests/test_platform_key_quota.py::test_a_broken_legacy_connection_is_ignored_and_still_metered
+FAILED tests/test_platform_key_quota.py::test_without_a_platform_key_books_are_never_capped
+FAILED tests/test_settings_routes.py::test_make_chain_without_platform_model_does_not_use_builtin
+FAILED tests/test_settings_routes.py::test_make_chain_ignores_legacy_project_credentials
+FAILED tests/test_short_routes.py::test_create_project_defaults_to_long_form_for_legacy_clients
+FAILED tests/test_short_routes.py::test_long_books_still_go_through_the_long_validator
+FAILED tests/test_style_profile.py::test_ownerless_extraction_routes_through_the_account_level_chain
+ERROR tests/test_project_creation.py::test_empty_outline_cannot_promote_but_valid_confirmation_can
+ERROR tests/test_project_creation.py::test_generated_proposals_survive_reload_without_becoming_canon
+ERROR tests/test_project_creation.py::test_worker_also_rejects_unfinished_project
+ERROR tests/test_project_creation.py::test_ready_project_rejects_empty_outline_update
+ERROR tests/test_project_creation.py::test_creation_request_retry_returns_same_project
+ERROR tests/test_project_creation.py::test_parallel_and_late_proposals_preserve_confirmed_state
+ERROR tests/test_short_routes.py::test_create_project_records_the_form_and_keeps_the_draft_lifecycle
+ERROR tests/test_short_routes.py::test_the_project_payload_carries_the_form
+ERROR tests/test_short_routes.py::test_outline_draft_picks_the_chapter_range_from_the_books_own_form
+ERROR tests/test_short_routes.py::test_short_outline_draft_runs_plan_then_review_and_ships_the_first_version
+ERROR tests/test_short_routes.py::test_short_outline_draft_rerolls_once_with_the_review_reason
+ERROR tests/test_short_routes.py::test_short_outline_draft_keeps_v1_when_the_review_still_objects
+ERROR tests/test_short_routes.py::test_short_outline_draft_skips_the_review_when_the_plan_call_failed
+ERROR tests/test_short_routes.py::test_short_outline_draft_reports_the_compressed_lengths
+ERROR tests/test_short_routes.py::test_short_outline_draft_leaves_a_fitting_length_alone
+ERROR tests/test_short_routes.py::test_short_outline_requires_confirmed_setup
+ERROR tests/test_short_routes.py::test_confirming_a_short_outline_keeps_the_per_chapter_plan
+ERROR tests/test_short_routes.py::test_confirming_a_short_outline_rejects_a_payload_the_short_writer_cannot_use[long-shaped]
+ERROR tests/test_short_routes.py::test_confirming_a_short_outline_rejects_a_payload_the_short_writer_cannot_use[two-volumes]
+ERROR tests/test_short_routes.py::test_confirming_a_short_outline_rejects_a_payload_the_short_writer_cannot_use[no-per-chapter]
+ERROR tests/test_short_routes.py::test_confirming_a_short_outline_rejects_a_payload_the_short_writer_cannot_use[missing-chapter]
+11 failed, 1934 passed, 1 skipped, 5 xfailed, 2 warnings, 21 errors, 2 subtests passed in 250.07s (0:04:10)

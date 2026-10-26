@@ -140,34 +140,50 @@ def _is_terminal(event: dict[str, Any]) -> bool:
     return event["status"] in _TERMINAL
 
 
-def _replay(r, key: str, after: str) -> tuple[list[tuple[str, dict[str, Any]]], str]:
-    """追平已有帧，返回 (待发帧, 最后读到的流 ID)。"""
+def _replay(r, key: str, after: str) -> tuple[list[tuple[str, dict[str, Any]]], str, bool]:
+    """追平已有帧，返回 (待发帧, 最后读到的流 ID, 当前是否终态)。"""
     # XRANGE 起点默认包含自身，用 `(` 做严格大于，重连时不重复上一帧。
     entries = r.xrange(key, f"({after}", "+")
     decoded = [(sid, ev) for sid, fields in entries if (ev := _decode(fields)) is not None]
     last = decoded[-1][0] if decoded else after
+    # observer may publish summarize/metrics after a terminal status. Only a
+    # later authoritative status denotes a new lifecycle state, not a node tail.
+    status_indexes = [i for i, (_, ev) in enumerate(decoded) if ev["type"] == "status" and ev["status"]]
+    latest_status_index = status_indexes[-1] if status_indexes else -1
+    latest_status = decoded[latest_status_index][1] if status_indexes else None
+    if latest_status is None:
+        # A reconnect may already have acknowledged the terminal frame. Inspect
+        # prior status without re-emitting IDs at or before Last-Event-ID.
+        for _, fields in r.xrevrange(key, max=after, min="-"):
+            event = _decode(fields)
+            if event is not None and event["type"] == "status" and event["status"]:
+                latest_status = event
+                break
+    closed = latest_status is not None and _is_terminal(latest_status)
     frames = []
     for i, (sid, ev) in enumerate(decoded):
-        # 同一 task_id 会跨 awaiting_plan / awaiting_review 多次续跑；历史终态之后还有新
-        # 事件时必须跳过那个终态，否则浏览器在此提前关流，看不到后续正文。
-        if _is_terminal(ev) and i < len(decoded) - 1:
+        # 同一任务续跑后的新 status 才会替代历史终态；observer 尾帧不能使终态失效。
+        if _is_terminal(ev) and i < latest_status_index:
             continue
         frames.append((sid, ev))
         if _is_terminal(ev):
             break
-    return frames, last
+    return frames, last, closed
 
 
 def _stream(key: str, after: str, subscriber: _Subscriber, deadline: datetime) -> Iterator[str]:
     r = get_redis()
     try:
-        frames, last = _replay(r, key, after)
+        frames, last, closed = _replay(r, key, after)
     except Exception:  # noqa: BLE001 —— 追平失败不谎报「流已过期」，直接收流让前端重连
         return
     for sid, event in frames:
         yield _frame(sid, event)
         if _is_terminal(event):
             return
+
+    if closed:
+        return
 
     beat_at = time.monotonic()
     while True:

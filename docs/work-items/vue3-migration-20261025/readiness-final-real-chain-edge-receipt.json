@@ -1,0 +1,30 @@
+{
+  "checks": [
+    "caddy_http_and_trusted_local_ca_tls_deep_link_cache_api",
+    "actual_worker_sse_stream_through_tls_is_incremental_uncompressed",
+    "actual_tls_original_worker_done_then_summarize_replay_done_and_eof",
+    "actual_tls_acknowledged_done_replays_only_new_node_tail_and_eof"
+  ],
+  "count": 4,
+  "tls": "dedicated Caddy internal CA verified via its exported root, no system trust-store mutation",
+  "artifactDeltas": 39,
+  "firstDeltaToDoneSeconds": 1.5012964159832336,
+  "frameCount": 52,
+  "replayFrames": 27,
+  "postDoneNodes": [
+    "summarize"
+  ],
+  "taskId": "9c27a981-d8fc-469b-8b55-74602ef9017e",
+  "regressionTaskId": "41d8e6f7-dd07-484f-8c05-9ee4cb2a3c38",
+  "regressionOriginalFrames": 59,
+  "replayToEofSeconds": 0.02074029197683558,
+  "acknowledgedDoneTail": [
+    {
+      "id": "1792989434123-0",
+      "type": "node",
+      "node": "summarize",
+      "status": ""
+    }
+  ],
+  "tailToEofSeconds": 0.015500958019401878
+}

@@ -1,0 +1,30 @@
+
+> web@0.0.0 test
+> npm run test:shared && npm run test:vue
+
+
+> web@0.0.0 test:shared
+> vitest run --config vitest.shared.config.ts
+
+
+ RUN  v4.1.12 /Users/a1/.codex/worktrees/myink-vue3-migration/Myink/web
+
+
+ Test Files  34 passed (34)
+      Tests  205 passed (205)
+   Start at  15:46:17
+   Duration  3.99s (transform 457ms, setup 0ms, import 919ms, tests 479ms, environment 3.41s)
+
+
+> web@0.0.0 test:vue
+> vitest run --config vitest.vue.config.ts
+
+
+ RUN  v4.1.12 /Users/a1/.codex/worktrees/myink-vue3-migration/Myink/web
+
+
+ Test Files  78 passed (78)
+      Tests  576 passed (576)
+   Start at  15:46:22
+   Duration  38.43s (transform 5.00s, setup 0ms, import 20.44s, tests 27.11s, environment 19.99s)
+

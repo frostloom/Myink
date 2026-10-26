@@ -1,0 +1,219 @@
+{
+  "kind": "vue_synthetic_api_browser",
+  "browser": "chromium",
+  "platform": "darwin",
+  "contextMode": "temporary_persistent",
+  "checks": [
+    "fixture_rejects_unknown_api_before_auth",
+    "anonymous_sends_no_protected_requests",
+    "public_login_page",
+    "invalid_password_keeps_guest",
+    "password_login_uses_real_session_store",
+    "deep_link_loads_vue",
+    "server_verified_session",
+    "long_form_and_draft_links",
+    "short_form_navigation",
+    "short_deep_link_refresh",
+    "short_creation_and_refresh",
+    "theme_custom_preset_persists",
+    "indexeddb_wallpaper_survives_refresh",
+    "style_library_loads",
+    "account_edit_survives_same_owner_revalidation",
+    "environment_edit_survives_same_owner_revalidation",
+    "delete_cancel_has_no_request",
+    "delete_409_preserves_book",
+    "768px_navigation_and_no_horizontal_overflow",
+    "390px_no_horizontal_overflow",
+    "logout_clears_session",
+    "registration_validation_before_request",
+    "invitation_registration",
+    "mfa_challenge_is_not_a_session",
+    "mfa_error_stays_in_step",
+    "mfa_success_routes_verified_admin",
+    "credentials_and_challenge_not_persisted",
+    "authenticated_admin_refresh"
+  ],
+  "requests": [
+    {
+      "path": "/api/v1/auth/token",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/auth/token",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/projects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/auth/session",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/projects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/short/creation",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/style-library",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/projects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/auth/session",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/short/creation",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/style-library",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/projects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/auth/session",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/projects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/auth/session",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/projects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/auth/session",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/projects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/style-library",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/auth/session",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/projects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/auth/session",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/auth/session",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/environment",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/projects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/auth/session",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/auth/session",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/projects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/projects/long-ready",
+      "method": "DELETE"
+    },
+    {
+      "path": "/api/v1/auth/logout",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/auth/register",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/projects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/auth/logout",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/auth/token",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/auth/mfa/verify",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/auth/mfa/verify",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/admin/overview",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/admin/trends",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/auth/session",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/admin/overview",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/admin/trends",
+      "method": "GET"
+    }
+  ],
+  "pageErrors": [],
+  "unknownApi": [],
+  "limits": [
+    "Synthetic loopback API only",
+    "No real backend, queue, database or model calls",
+    "Only explicitly listed browser flows are covered; renewal timing tested separately with fake timers"
+  ],
+  "fixtureProbes": [
+    {
+      "path": "/api/v1/__unknown_fixture_probe",
+      "status": 500,
+      "rejected": true
+    }
+  ],
+  "browserVersion": "156.0.8078.4",
+  "indexSha256": "33de94525c413abf13da9a532d6e3b656e59e0b1069cee014bc21b8ef9cf7084",
+  "passed": true
+}

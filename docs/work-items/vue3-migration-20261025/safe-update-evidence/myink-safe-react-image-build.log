@@ -1,0 +1,111 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 3.22kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for public.ecr.aws/docker/library/caddy:2.11.4-alpine
+#2 DONE 0.0s
+
+#3 [internal] load metadata for public.ecr.aws/docker/library/node:24.22.1-bookworm-slim
+#3 DONE 0.5s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 532B done
+#4 DONE 0.0s
+
+#5 [web 1/8] FROM public.ecr.aws/docker/library/node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205
+#5 resolve public.ecr.aws/docker/library/node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 0.0s done
+#5 DONE 0.0s
+
+#6 [stage-1 1/7] FROM public.ecr.aws/docker/library/caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
+#6 resolve public.ecr.aws/docker/library/caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 25.41kB 0.0s done
+#7 DONE 0.0s
+
+#8 [web 4/8] RUN --mount=type=cache,target=/root/.npm npm ci --registry=https://registry.npmjs.org
+#8 CACHED
+
+#9 [web 2/8] WORKDIR /app/web
+#9 CACHED
+
+#10 [web 3/8] COPY web/package.json web/package-lock.json ./
+#10 CACHED
+
+#11 [web 5/8] COPY web/ ./
+#11 CACHED
+
+#12 [web 6/8] RUN case "react" in       react) npm run build:react && mkdir -p /app/frontend-dist && cp -a dist/. /app/frontend-dist/ ;;       vue) npm run build && mkdir -p /app/frontend-dist && cp -a dist-vue/. /app/frontend-dist/ ;;       *) echo "FRONTEND_VARIANT must be react or vue" >&2; exit 64 ;;     esac
+#12 0.542 
+#12 0.542 > web@0.0.0 build:react
+#12 0.542 > tsc -p tsconfig.app.json && tsc -p tsconfig.node.json && vite build --config vite.react.config.ts
+#12 0.542 
+#12 12.94 vite v8.2.4 building client environment for production...
+#12 12.96 [2Ktransforming...✓ 763 modules transformed.
+#12 14.31 rendering chunks...
+#12 14.57 computing gzip size...
+#12 14.61 dist/release.json                   0.14 kB │ gzip:   0.13 kB
+#12 14.61 dist/index.html                     1.90 kB │ gzip:   0.90 kB
+#12 14.61 dist/assets/index-CwmN0yUu.css    127.62 kB │ gzip:  22.76 kB
+#12 14.61 dist/assets/index-BcR2NWy9.js   1,890.38 kB │ gzip: 605.13 kB
+#12 14.61 
+#12 14.61 ✓ built in 1.66s
+#12 14.61 [plugin builtin:vite-reporter] 
+#12 14.61 (!) Some chunks are larger than 500 kB after minification. Consider:
+#12 14.61 - Using dynamic import() to code-split the application
+#12 14.61 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+#12 14.61 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+#12 14.68 npm notice
+#12 14.68 npm notice New major version of npm available! 11.19.1 -> 12.2.1
+#12 14.68 npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+#12 14.68 npm notice To update run: npm install -g npm@12.2.1
+#12 14.68 npm notice
+#12 DONE 14.7s
+
+#13 [web 7/8] COPY caddy/retained-assets/ /app/retained-assets/
+#13 DONE 0.0s
+
+#14 [web 8/8] RUN node scripts/merge-retained-assets.mjs /app/retained-assets /app/frontend-dist/assets
+#14 DONE 0.2s
+
+#15 [stage-1 3/7] COPY caddy/tls-auto.caddyfile /etc/caddy/tls-auto.caddyfile
+#15 CACHED
+
+#16 [stage-1 2/7] COPY caddy/Caddyfile /etc/caddy/Caddyfile
+#16 CACHED
+
+#17 [stage-1 4/7] COPY caddy/tls-public-ip.caddyfile /etc/caddy/tls-public-ip.caddyfile
+#17 CACHED
+
+#18 [stage-1 5/7] COPY --from=web /app/frontend-dist /srv/web/dist
+#18 DONE 0.0s
+
+#19 [stage-1 6/7] RUN caddy validate --config /etc/caddy/Caddyfile
+#19 0.144 {"level":"info","ts":1793000338.1192799,"msg":"using config from file","file":"/etc/caddy/Caddyfile"}
+#19 0.147 {"level":"info","ts":1793000338.1225307,"msg":"adapted config to JSON","adapter":"caddyfile"}
+#19 0.147 {"level":"warn","ts":1793000338.123099,"logger":"http.auto_https","msg":"server is listening only on the HTTP port, so no automatic HTTPS will be applied to this server","server_name":"srv0","http_port":80}
+#19 0.148 {"level":"info","ts":1793000338.123848,"logger":"tls.cache.maintenance","msg":"started background certificate maintenance","cache":"0x7e9d9801fe00"}
+#19 0.148 {"level":"info","ts":1793000338.1239789,"logger":"http","msg":"servers shutting down with eternal grace period"}
+#19 0.149 {"level":"info","ts":1793000338.1242094,"logger":"tls.cache.maintenance","msg":"stopped background certificate maintenance","cache":"0x7e9d9801fe00"}
+#19 0.149 Valid configuration
+#19 DONE 0.2s
+
+#20 [stage-1 7/7] RUN addgroup -S -g 10001 caddy && adduser -S -D -H -u 10001 -G caddy caddy     && chown -R caddy:caddy /data /config
+#20 DONE 0.1s
+
+#21 exporting to image
+#21 exporting layers
+#21 exporting layers 0.5s done
+#21 exporting manifest sha256:0b0466b241a2cb3ef71904d0916dc0cdbd5cac15377a4264a5e011c738315306 done
+#21 exporting config sha256:fb1716d3bb3e24ec4b783b5503764a48919809aaa98aced6194f334f7e5975b7 done
+#21 exporting attestation manifest sha256:ce480f5ae9fe416a7723174cda3cd2f00a4f9990f8d39500a438a7ef9244285d done
+#21 exporting manifest list sha256:1a0f2232cf1ac9ca1c1c6bcac006bed9b7280720bd20a842014b07ababf27fb4 done
+#21 naming to docker.io/library/myink-caddy:react-safe-update-20261026 done
+#21 unpacking to docker.io/library/myink-caddy:react-safe-update-20261026
+#21 unpacking to docker.io/library/myink-caddy:react-safe-update-20261026 0.2s done
+#21 DONE 0.7s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/l6e69krhlmavml45cb208x9nh

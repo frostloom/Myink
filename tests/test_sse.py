@@ -232,7 +232,7 @@ def test_events_forwards_frames_and_stops_at_terminal():
 def test_events_skips_historical_terminal_frame():
     """同一 task 跨 awaiting_review 续跑：历史终态必须跳过，否则前端在此提前关流。
 
-    只在「终态之后还有新事件」时跳过；终态是最后一帧时照发（前端靠它收尾）。
+    只在「终态之后有新状态」时跳过；observer 尾帧不代表续跑，当前终态照发。
     """
     uid, pid, headers = _account()
     task_id = str(uuid.uuid4())
@@ -397,3 +397,82 @@ def test_every_terminal_status_closes_the_stream(status):
     finally:
         _drain(key)
         _purge(uid)
+
+
+class _ReplayRedis:
+    """Exact stream rows with deterministic IDs; no DB, worker or live wait."""
+
+    def __init__(self, fields):
+        self.entries = [(f"{i + 1}-0", row) for i, row in enumerate(fields)]
+        self.read_live = False
+
+    def xrange(self, key, minimum, maximum):
+        after = int(minimum.removeprefix("(").split("-")[0])
+        return [(sid, row) for sid, row in self.entries if int(sid.split("-")[0]) > after]
+
+    def xrevrange(self, key, max="+", min="-"):
+        ceiling = float("inf") if max == "+" else int(max.split("-")[0])
+        return [(sid, row) for sid, row in reversed(self.entries) if int(sid.split("-")[0]) <= ceiling]
+
+    def xread(self, *args, **kwargs):
+        self.read_live = True
+        raise RuntimeError("No live Redis in replay regression")
+
+
+def _replayed(monkeypatch, fields, after="0-0"):
+    redis = _ReplayRedis(fields)
+    monkeypatch.setattr(routes_sse, "get_redis", lambda: redis)
+    now = datetime.now(timezone.utc)
+    subscriber = routes_sse._Subscriber(token="unused", user_id="unused", expires_at=now + timedelta(seconds=1))
+    frames = _frames("".join(routes_sse._stream("test", after, subscriber, subscriber.expires_at)))
+    return frames, redis
+
+
+@pytest.mark.parametrize("status", TERMINAL_STATUSES)
+@pytest.mark.parametrize("tail_node", ["metrics", "summarize"])
+def test_replay_delivers_terminal_before_late_observer_node(monkeypatch, status, tail_node):
+    frames, redis = _replayed(monkeypatch, [
+        {"event": "node", "node": "persist"},
+        {"event": "status", "status": status},
+        {"event": "node", "node": tail_node},
+    ], after="1-0")
+    assert [frame["data"]["status"] for frame in frames] == [status]
+    assert not redis.read_live
+
+
+@pytest.mark.parametrize("waiting", ["awaiting_plan", "awaiting_review"])
+@pytest.mark.parametrize("restart", ["queued", "running"])
+def test_replay_skips_waiting_terminal_only_when_status_resumes(monkeypatch, waiting, restart):
+    frames, redis = _replayed(monkeypatch, [
+        {"event": "status", "status": waiting},
+        {"event": "node", "node": "summarize"},
+        {"event": "status", "status": restart},
+        {"event": "artifact_delta", "content": "新一轮正文"},
+        {"event": "status", "status": "done"},
+        {"event": "node", "node": "metrics"},
+    ])
+    assert waiting not in [frame["data"]["status"] for frame in frames]
+    assert frames[-1]["data"]["status"] == "done"
+    assert "新一轮正文" in [frame["data"]["content"] for frame in frames]
+    assert not redis.read_live
+
+
+@pytest.mark.parametrize("after", ["2-0", "3-0"])
+def test_replay_cursor_after_terminal_does_not_wait_on_observer_tail(monkeypatch, after):
+    frames, redis = _replayed(monkeypatch, [
+        {"event": "status", "status": "running"},
+        {"event": "status", "status": "done"},
+        {"event": "node", "node": "metrics"},
+    ], after=after)
+    assert [frame["id"] for frame in frames] == (["3-0"] if after == "2-0" else [])
+    assert not redis.read_live, "acknowledged terminal must close without replaying its old ID"
+
+
+def test_replay_cursor_after_resume_does_not_treat_old_wait_as_current(monkeypatch):
+    frames, redis = _replayed(monkeypatch, [
+        {"event": "status", "status": "awaiting_review"},
+        {"event": "status", "status": "running"},
+        {"event": "node", "node": "metrics"},
+    ], after="2-0")
+    assert [frame["id"] for frame in frames] == ["3-0"]
+    assert redis.read_live, "resumed task must remain open for new frames"

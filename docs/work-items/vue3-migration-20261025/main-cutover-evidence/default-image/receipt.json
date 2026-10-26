@@ -1,0 +1,20 @@
+{
+  "kind": "isolated_frontend_image_smoke",
+  "image": "myink-caddy:vue-main-default-20261026",
+  "expected": "vue",
+  "checks": [
+    "selected_frontend_label",
+    "deep_link_html_no_store",
+    "hashed_asset_immutable",
+    "previous_asset_retained",
+    "unknown_api_never_spa",
+    "selected_native_runtime",
+    "login_deep_link_refresh"
+  ],
+  "pageErrors": [],
+  "passed": true,
+  "imageId": "sha256:e0f4ed1caeadad7b8ef130265924193360cfda7fd443b9432863268dd9a7bf67",
+  "revision": "uncommitted-vue-main-cutover-20261026",
+  "entry": "/assets/index-LHE4QUm9.js",
+  "cleanupErrors": []
+}

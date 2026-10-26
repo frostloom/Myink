@@ -1,0 +1,14 @@
+{
+  "kind": "real_isolated_caddy_http_cache_proxy",
+  "entry": "index-BWgRncmt.js",
+  "checks": [
+    "real_caddy_spa_deep_link_no_store",
+    "real_caddy_hashed_asset_immutable",
+    "real_caddy_to_isolated_api_health",
+    "real_caddy_unknown_api_no_spa_fallback",
+    "real_caddy_authenticated_api_proxy"
+  ],
+  "count": 5,
+  "tls_tested": false,
+  "config_changes": "Only upstream myink-api:8100 replaced with host.docker.internal:28100; static files are copied Vue build; original routing/cache/header config preserved"
+}

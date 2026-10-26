@@ -4,20 +4,23 @@ const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
 const assert = require('node:assert/strict');
-const { chromium } = require('playwright');
+const { createRequire } = require('node:module');
+const { browserName, launchBrowser } = createRequire(path.resolve(__dirname, '../web/package.json'))('./scripts/browser-options.mjs');
 
 async function main() {
   const arg = process.argv.indexOf('--output');
   if (arg < 0) throw new Error('--output <new-directory> required');
   const out = path.resolve(process.argv[arg + 1]);
   fs.mkdirSync(out, { recursive: false });
-  const dist = path.resolve('web/dist');
+  const distArg = process.argv.indexOf('--dist');
+  const dist = distArg < 0 ? path.resolve(__dirname, '../web/dist') : path.resolve(process.argv[distArg + 1]);
+  if (!fs.existsSync(path.join(dist, 'index.html'))) throw new Error('Build directory must contain index.html');
   const state = { phase: 'awaiting_plan', content: '已保存正文：林川扶着栏杆，许宁检查接线盒。', version: 1, rejected: false, saves: 0 };
   const auth = { token: 'synthetic-browser-token', user_id: 'user-p1', username: 'p1_tester', role: 'user', tier: 'pro', expires_in: 3600 };
   const project = { id: 'project-p1', title: 'P1 合成观测站', genre: '现实', current_chapter: 1, target_words: 800, creation_status: 'ready', form: 'long' };
   const plan = { project_id: project.id, chapter_seq: 1, goals: ['检查漏水接线盒'], scenes: [], characters: [], hooks_to_plant: [], hooks_to_resolve: [], expected_events: ['林川与许宁合作检修'], hard_constraints: ['现实题材无超能力'], transition: { mode: 'opening', anchor_quote: '', pending_action: '', opening_beat: '林川扶住栏杆，许宁检查接线盒。', bridge: '' } };
   const candidate = { candidate_id: 'candidate-p1', kind: 'fact', source_chapter: 1, payload: { content: '林川获得瞬间移动能力' }, confidence: 1, status: 'pending', created_at: null };
-  const streams = new Set(); const receipt = { kind: 'chromium_frontend_e2e_with_synthetic_api', checks: [], api_calls: [], unknown_routes: [], page_errors: [], limits: ['API/SSE controlled fixture, not deployed backend E2E', 'No real model or database calls'] };
+  const streams = new Set(); const receipt = { kind: 'frontend_e2e_with_synthetic_api', browser: browserName, platform: process.platform, contextMode: 'temporary_persistent', checks: [], api_calls: [], unknown_routes: [], page_errors: [], limits: ['API/SSE controlled fixture, not deployed backend E2E', 'No real model or database calls'] };
   let frameId = 0; const frames = [];
   function emit(payload) {
     const frame = `id: ${++frameId}-0\ndata: ${JSON.stringify({ task_id: 'task-p1', node: '', status: '', message: '', stage: '', chapter_seq: 1, attempt: 1, offset: 0, artifact_id: 'draft-p1', ...payload })}\n\n`;
@@ -29,6 +32,7 @@ async function main() {
     if (url.pathname === '/api/v1/tasks/task-p1/events') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
       res.write(': synthetic stream\n\n'); streams.add(res); res.on('close', () => streams.delete(res));
+      if(state.phase==='done' && !frames.some(saved=>saved.frame.includes('\"status\":\"done\"'))) emit({type:'status',status:'done'});
       const cursor = Number((url.searchParams.get('last_event_id') || '0').split('-')[0]);
       for (const saved of frames) if (saved.id > cursor) res.write(saved.frame);
       return;
@@ -43,9 +47,9 @@ async function main() {
   const origin = `http://127.0.0.1:${server.address().port}`;
   let browser; let page;
   try {
-    browser = await chromium.launch({ headless: true, ...(process.env.P1_CHROMIUM_EXECUTABLE ? { executablePath: process.env.P1_CHROMIUM_EXECUTABLE } : {}) });
+    browser = await launchBrowser(); receipt.browserVersion = browser.version();
     page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
-    page.on('pageerror', e => receipt.page_errors.push(e.message));
+    page.on('pageerror', e => {receipt.page_errors.push(e.message);(receipt.error_details??=[]).push({message:e.message,stack:e.stack,name:e.name,url:page.url()})});
     await page.route('**/*', async route => {
       const request = route.request(); const url = new URL(request.url());
       if (url.origin !== origin) return route.abort();
@@ -58,6 +62,8 @@ async function main() {
       const task = { task_id: 'task-p1', task_type: 'chapter_generate', status: state.phase, chapter_seq: 1, batch_size: null, batch_current: null, cost_total: 0, error: null, created_at: null };
       if (endpoint === '/auth/token' || endpoint === '/auth/session') data = auth;
       else if (endpoint === '/projects') data = [project];
+      else if (endpoint === '/projects/project-p1/writing-resources/updates' && method === 'GET') data = { items: [] };
+      else if (endpoint === '/projects/project-p1/writing-resources' && method === 'GET') data = { revision: 0, configured: false, selections: [] };
       else if (endpoint === '/projects/project-p1/chapters') data = [chapter];
       else if (endpoint === '/projects/project-p1/chapters/chapter-p1' && method === 'GET') data = chapter;
       else if (endpoint === '/projects/project-p1/tasks') data = [task];
@@ -65,7 +71,7 @@ async function main() {
       else if (endpoint === '/tasks/task-p1/plan/confirm') { assert.equal(request.postDataJSON().expected_attempt, 1); state.phase = 'running'; setTimeout(() => { emit({ type: 'status', status: 'running', node: 'write' }); emit({ type: 'artifact_reset', stage: 'write' }); emit({ type: 'artifact_delta', stage: 'write', content: '增量第一段：林川扶住栏杆。' }); }, 100); data = { task_id: 'task-p1', status: 'running' }; }
       else if (endpoint === '/projects/project-p1/candidates') data = state.phase === 'awaiting_review' ? [{ ...candidate, ...(state.rejected ? { status: 'rejected', review: { mode: 'revise', reason: '现实题材不允许瞬间移动', applied: false } } : {}) }] : [];
       else if (endpoint === '/projects/project-p1/candidates/candidate-p1/reject') { assert.equal(request.postDataJSON().mode, 'revise'); state.rejected = true; data = { candidate_id: candidate.candidate_id, status: 'rejected' }; }
-      else if (endpoint === '/batches/task-p1/resume') { state.phase = 'done'; data = { task_id: 'task-p1', status: 'done' }; }
+      else if (endpoint === '/batches/task-p1/resume') { state.phase = 'done'; setTimeout(()=>emit({type:'status',status:'done'}),100); data = { task_id: 'task-p1', status: 'done' }; }
       else if (endpoint === '/projects/project-p1/chapters/chapter-p1/content') { state.saves++; state.version++; state.content = '另一个页面的修改'; status = 409; data = { error: 'version_conflict' }; }
       else if (endpoint === '/projects/project-p1/graph') data = { nodes: [], edges: [] };
       else if (['/projects/project-p1/foreshadows','/projects/project-p1/lessons','/projects/project-p1/characters','/projects/project-p1/entities','/projects/project-p1/events','/projects/project-p1/global-audit'].includes(endpoint)) data = [];
@@ -94,14 +100,17 @@ async function main() {
     await page.waitForRequest(r => r.url().includes('/events?last_event_id='), { timeout: 15000 });
     receipt.checks.push('sse_reconnect_cursor');
     state.phase = 'awaiting_review';
+    emit({type:'status',status:'awaiting_review'});
     for (const res of streams) res.end();
+    await page.getByRole('dialog', { name: '设定确认' }).waitFor();
+    await page.waitForLoadState('networkidle');
     await page.reload();
     await page.getByRole('dialog', { name: '设定确认' }).waitFor();
     await page.getByPlaceholder('例如：人物仍然受伤，需要治疗过程').fill('现实题材不允许瞬间移动');
     await page.getByRole('button', { name: '不接受，自动修改', exact: true }).click();
     await page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
     assert.equal(state.rejected, true); receipt.checks.push('human_rejection_after_reload', 'resume_request');
-    state.phase = 'done'; await page.reload();
+    state.phase = 'done'; await page.waitForLoadState('networkidle'); await page.reload();
     await page.getByRole('button', { name: /第 1 章.*雨夜/ }).click();
     const editor = page.getByRole('textbox', { name: '章节正文' }); await editor.waitFor();
     assert.equal(await editor.inputValue(), state.content); receipt.checks.push('saved_body_after_refresh');

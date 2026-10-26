@@ -1,0 +1,73 @@
+
+ RUN  v4.1.12 /Users/a1/.codex/worktrees/myink-vue3-migration/Myink/web
+
+ ❯ src/lib/api.pendingWrites.test.ts (4 tests | 3 failed) 62ms
+   × protects an in-flight mutation until response parsing completes 57ms
+   × keeps concurrent write protection after one fails, then releases the last lock 3ms
+   × releases write protection after an aborted request 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/api.pendingWrites.test.ts > protects an in-flight mutation until response parsing completes
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/lib/api.pendingWrites.test.ts:17:32
+     15|   const protectedWhileSaving = protectedUnload()
+     16|   finish({ ok: true }); await writing
+     17|   expect(protectedWhileSaving).toBe(true)
+       |                                ^
+     18|   expect(protectedUnload()).toBe(false)
+     19| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/lib/api.pendingWrites.test.ts > keeps concurrent write protection after one fails, then releases the last lock
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/lib/api.pendingWrites.test.ts:31:22
+     29|   const duringSecond = protectedUnload()
+     30|   finish(new Response('{}')); await second
+     31|   expect(duringBoth).toBe(true); expect(duringSecond).toBe(true)
+       |                      ^
+     32|   expect(protectedUnload()).toBe(false)
+     33| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/lib/api.pendingWrites.test.ts > releases write protection after an aborted request
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/lib/api.pendingWrites.test.ts:50:19
+     48|   const blocked = protectedUnload()
+     49|   controller.abort(); await writing
+     50|   expect(blocked).toBe(true); expect(protectedUnload()).toBe(false)
+       |                   ^
+     51| })
+     52|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 1 passed (4)
+   Start at  15:16:10
+   Duration  534ms (transform 34ms, setup 0ms, import 43ms, tests 62ms, environment 318ms)
+

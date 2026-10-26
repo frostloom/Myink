@@ -33,3 +33,9 @@
 旧 SSE 与 provider worktree 保留目录、文件及原提交，转为 detached HEAD；后续开发使用上面的三条分支。Pi worktree 已快进到远程 `a0b8100`，管理员分支跟踪远程 `de9f241`。
 
 本次验证范围是分支引用、提交祖先关系、文件树一致性、变更白名单及远程归档完整性；没有修改业务代码，没有运行业务测试，也不将这次整理视为 Pi 或管理员功能验收。
+
+## Vue 3 迁移隔离例外（2026-10-25）
+
+用户明确要求创建独立worktree与`codex/vue3-migration`分支，暂不处理Pi。基于main已提交内容开始，原目录未提交修改不复制。React仍为默认生产入口，Vue候选逐阶段验收。此为本轮迁移例外，不自动合入、推送或发布；完成后的整合与归档另行确定。
+
+2026-10-26 用户进一步授权将Vue迁移成果提交并推送`codex/vue3-migration`，交由main工作区另行合并。本迁移分支现已默认Vue并保留显式React回退；上段默认React描述属于迁移初期。发布仍需独立授权，交接见`docs/work-items/vue3-migration-20261025/remote-merge-handoff.md`。

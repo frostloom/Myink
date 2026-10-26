@@ -43,3 +43,7 @@ inte*view.md
 
 # Pi 实验留在本机的状态和检查点，含凭证，不进版本库
 /myink-pi/
+
+# Captured public release assets are build inputs, not source files.
+caddy/retained-assets/*
+!caddy/retained-assets/.gitkeep

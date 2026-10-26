@@ -1,0 +1,9 @@
+test_cleanup_error_cannot_report_success (__main__.AssetCaptureCleanup.test_cleanup_error_cannot_report_success) ... ok
+test_failed_create_with_confirmed_absence_keeps_original_error (__main__.AssetCaptureCleanup.test_failed_create_with_confirmed_absence_keeps_original_error) ... ok
+test_partial_creation_failure_still_reclaims_container (__main__.AssetCaptureCleanup.test_partial_creation_failure_still_reclaims_container) ... ok
+test_success_copies_public_bytes_records_identity_and_cleans (__main__.AssetCaptureCleanup.test_success_copies_public_bytes_records_identity_and_cleans) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 2.813s
+
+OK

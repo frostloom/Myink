@@ -1,0 +1,738 @@
+import { h, ref, toValue } from 'vue'
+import { useRoute } from 'vue-router'
+// @vitest-environment jsdom
+import { act, cleanup, fireEvent, render, screen, waitFor } from '../workspaceTestUtils';
+import { createMemoryRouter, RouterProvider } from '../workspaceRouterTestUtils';
+import { afterEach, expect, it, vi } from 'vitest';
+import { api } from '../../../src/lib/api';
+import type { AgentRun, ChapterMeta, TaskStatus } from '../../../src/types';
+import WorkspacePage from './WorkspacePage.vue';
+const liveTask = vi.hoisted(() => ({
+    status: 'running' as TaskStatus,
+    refresh: vi.fn(),
+    retry: vi.fn(),
+    runs: [] as AgentRun[],
+    shortProgress: null as {
+        stage: string;
+        current: number;
+        total: number;
+    } | null,
+    artifacts: [] as Array<{
+        artifactId: string;
+        taskId: string;
+        stage: string;
+        chapterSeq: number;
+        attempt: number;
+        content: string;
+        complete: boolean;
+        failed: boolean;
+        artifact: unknown | null;
+        message: string | null;
+    }>,
+}));
+vi.mock('../../../src/lib/writingResources', async (original) => ({
+    ...await original<typeof import('../../../src/lib/writingResources')>(),
+    writingResources: {
+        updates: async () => ({ items: [] }),
+        snapshot: async () => ({ revision: 0, configured: false, selections: [] }),
+    },
+}));
+vi.mock('../authContext', () => ({
+    useAuth: () => ({ logout: vi.fn(), session: ref({ userId: 'test-user', username: 'alice' }) }),
+}));
+vi.mock('../composables/useTaskEvents', () => ({
+    useTaskEvents: (taskIdSource: import('vue').MaybeRefOrGetter<string | null>) => {
+        const route = useRoute();
+        const snapshot = () => {
+            void route.fullPath;
+            const taskId = toValue(taskIdSource);
+            return ({
+                phase: taskId ? (['done', 'failed', 'cancelled'].includes(liveTask.status) ? 'terminal' : 'running') : 'idle',
+                status: taskId ? liveTask.status : null,
+                nodes: [],
+                artifacts: taskId ? liveTask.artifacts : [],
+                runs: taskId ? liveTask.runs : [],
+                progress: null,
+                budget: { requests_used: 7 },
+                shortProgress: taskId ? liveTask.shortProgress : null,
+                error: null,
+                payload: {},
+                lastEventId: null,
+                stop: vi.fn(),
+                retry: liveTask.retry,
+                refresh: liveTask.refresh,
+            });
+        };
+        return new Proxy({} as ReturnType<typeof snapshot>, { get: (_target, key) => snapshot()[key as keyof ReturnType<typeof snapshot>] });
+    },
+}));
+vi.mock('../components/ProjectRail.vue', () => ({ default: () => h("div", {}, []) }));
+vi.mock('../components/LessonsPanel.vue', () => ({ default: () => h("div", {}, ["lessons-panel"]) }));
+vi.mock('../components/AuditPanel.vue', () => ({ default: () => h("div", {}, ["audit-panel"]) }));
+vi.mock('../components/CandidatePanel.vue', () => ({ default: () => h("div", {}, ["candidate-panel"]) }));
+vi.mock('../components/ChapterEditor.vue', () => ({ default: ({ chapter, allowMemoryCorrection }: {
+        chapter: ChapterMeta;
+        allowMemoryCorrection?: boolean;
+    }) => h("div", {}, [h("span", {}, ["editor-", chapter.chapter_seq]), h("span", {}, ["memory-correction-", String(allowMemoryCorrection)])]),
+}));
+vi.mock('../components/ChapterPlanPanel.vue', () => ({ default: ({ taskId, chapterSeq, onConfirmed }: {
+        taskId: string | null;
+        chapterSeq: number;
+        onConfirmed: (taskId: string, chapterSeq: number) => void;
+    }) => h("div", {}, [h("span", {}, ["plan-page-", chapterSeq]), h("button", { "type": "button", "onClick": () => taskId && onConfirmed(taskId, chapterSeq) }, ["confirm-plan"])]),
+}));
+vi.mock('../components/StreamingChapterView.vue', () => ({ default: ({ chapterSeq }: {
+        chapterSeq: number;
+    }) => (h("section", { "aria-label": `第 ${chapterSeq} 章生成正文` }, ["write-page-", chapterSeq])),
+}));
+vi.mock('../components/ChapterList.vue', () => ({ default: ({ chapters, onSelect }: {
+        chapters: ChapterMeta[];
+        onSelect: (id: string) => void;
+    }) => (h("div", {}, [chapters.map((chapter) => (h("button", { "key": chapter.id, "type": "button", "onClick": () => onSelect(chapter.id) }, ["chapter-", chapter.chapter_seq])))])),
+}));
+vi.mock('../components/GenerationPanel.vue', () => ({ default: ({ onTaskStart }: {
+        onTaskStart: (id: string, total?: number, seq?: number) => void;
+    }) => (h("div", {}, [h("span", {}, ["generation-panel"]), h("button", { "type": "button", "onClick": () => onTaskStart('task-13', undefined, 13) }, ["start-13"])])),
+}));
+vi.mock('../components/TaskTimeline.vue', () => ({ default: ({ taskId, chapterSeq, runs, liveNode, budget }: {
+        taskId: string | null;
+        chapterSeq: number | null;
+        runs: AgentRun[];
+        liveNode: string | null;
+        budget?: {
+            requests_used: number;
+        };
+    }) => (h("div", {}, [h("div", {}, ["timeline-", taskId ?? 'none', "-chapter-", chapterSeq ?? 'none']), h("span", {}, ["flow-runs-", runs.length]), h("span", {}, ["flow-budget-", budget?.requests_used ?? 'missing']), h("span", {}, ["flow-live-", liveNode ?? 'none'])])),
+}));
+vi.mock('../../../src/lib/api', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../../src/lib/api')>();
+    return {
+        ...actual,
+        api: {
+            ...actual.api,
+            listProjects: vi.fn(),
+            listChapters: vi.fn(),
+            listCandidates: vi.fn(),
+            listGraph: vi.fn(),
+            listForeshadows: vi.fn(),
+            listTasks: vi.fn(),
+            generateShort: vi.fn(),
+            resumeTask: vi.fn(),
+        },
+    };
+});
+const chapter12: ChapterMeta = {
+    id: 'chapter-12',
+    chapter_seq: 12,
+    title: null,
+    status: 'confirmed',
+    word_count: 3000,
+    summary: null,
+};
+afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+    liveTask.artifacts = [];
+    liveTask.runs = [];
+    liveTask.status = 'running';
+    liveTask.shortProgress = null;
+    sessionStorage.clear();
+    // 右栏展开偏好会跨用例残留，下一个用例就该从「默认收起」开始了。
+    localStorage.clear();
+});
+it('keeps auto Plan full-page until the first real Write artifact then flips once', async () => {
+    vi.mocked(api.listProjects).mockResolvedValue([]);
+    vi.mocked(api.listChapters)
+        .mockResolvedValueOnce([chapter12])
+        .mockImplementation(() => new Promise<ChapterMeta[]>(() => { }));
+    vi.mocked(api.listCandidates).mockResolvedValue([]);
+    vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] });
+    vi.mocked(api.listForeshadows).mockResolvedValue([]);
+    vi.mocked(api.listTasks).mockResolvedValue([]);
+    const router = createMemoryRouter([{ path: '/projects/:projectId', element: h(WorkspacePage, {}, []) }], { initialEntries: ['/projects/project-1'] });
+    render(h(RouterProvider, { "router": router }, []));
+    await fireEvent.click(await screen.findByRole('button', { name: 'chapter-12' }));
+    // 右栏默认收起（§3.7b），发起生成要先把它点开。
+    await fireEvent.click(screen.getByRole('button', { name: '生成与校验' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'start-13' }));
+    expect(await screen.findByText('plan-page-13')).toBeTruthy();
+    expect(screen.queryByText('write-page-13')).toBeNull();
+    liveTask.artifacts = [{
+            artifactId: 'plan-1', taskId: 'task-13', stage: 'plan', chapterSeq: 13,
+            attempt: 1, content: '{"goals":["推进"]}', complete: true,
+            failed: false, artifact: null, message: null,
+        }];
+    await act(async () => { await router.navigate('/projects/project-1?stream=plan'); });
+    expect(await screen.findByText('plan-page-13')).toBeTruthy();
+    liveTask.artifacts = [...liveTask.artifacts, {
+            artifactId: 'write-1', taskId: 'task-13', stage: 'write', chapterSeq: 13,
+            attempt: 1, content: '第一段', complete: false,
+            failed: false, artifact: null, message: null,
+        }];
+    await act(async () => { await router.navigate('/projects/project-1?stream=write'); });
+    expect(await screen.findByText('write-page-13')).toBeTruthy();
+    expect(screen.queryByText('plan-page-13')).toBeNull();
+    await fireEvent.click(screen.getByRole('button', { name: /Plan/ }));
+    expect(await screen.findByText('plan-page-13')).toBeTruthy();
+    liveTask.artifacts = liveTask.artifacts.map((item) => (item.stage === 'write' ? { ...item, content: '第一段和第二段' } : item));
+    await act(async () => { await router.navigate('/projects/project-1?stream=delta'); });
+    expect(screen.getByText('plan-page-13')).toBeTruthy();
+    expect(screen.queryByText('write-page-13')).toBeNull();
+});
+it('creates and selects chapter 13 before showing its task flow', async () => {
+    vi.mocked(api.listProjects).mockResolvedValue([]);
+    vi.mocked(api.listChapters)
+        .mockResolvedValueOnce([chapter12])
+        // 保持 worker 尚未返回真实章节的瞬间，验证前端先建立目标章页面。
+        .mockImplementation(() => new Promise<ChapterMeta[]>(() => { }));
+    vi.mocked(api.listCandidates).mockResolvedValue([]);
+    vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] });
+    vi.mocked(api.listForeshadows).mockResolvedValue([]);
+    vi.mocked(api.listTasks).mockResolvedValue([]);
+    const router = createMemoryRouter([{ path: '/projects/:projectId', element: h(WorkspacePage, {}, []) }], { initialEntries: ['/projects/project-1'] });
+    render(h(RouterProvider, { "router": router }, []));
+    await fireEvent.click(await screen.findByRole('button', { name: 'chapter-12' }));
+    await screen.findByText('editor-12');
+    await fireEvent.click(screen.getByRole('button', { name: '生成与校验' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'start-13' }));
+    expect(await screen.findByText('plan-page-13')).toBeTruthy();
+    expect(screen.queryByRole('region', { name: '第 13 章生成正文' })).toBeNull();
+    expect(screen.getByText('timeline-task-13-chapter-13')).toBeTruthy();
+    expect(screen.queryByText('timeline-task-13-chapter-12')).toBeNull();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'chapter-13' })).toBeTruthy());
+    await fireEvent.click(screen.getByRole('button', { name: 'confirm-plan' }));
+    expect(await screen.findByRole('region', { name: '第 13 章生成正文' })).toBeTruthy();
+    expect(screen.queryByText('plan-page-13')).toBeNull();
+    await fireEvent.click(screen.getByRole('button', { name: /Plan/ }));
+    expect(await screen.findByText('plan-page-13')).toBeTruthy();
+    expect(screen.queryByRole('region', { name: '第 13 章生成正文' })).toBeNull();
+    await fireEvent.click(screen.getByRole('button', { name: /正文/ }));
+    expect(await screen.findByText('write-page-13')).toBeTruthy();
+    expect(screen.queryByText('plan-page-13')).toBeNull();
+});
+// 右栏默认收起（§3.7b）：正文列要有 720px，工具面板不该常驻三成视口。
+// 判据是「可达」而不是「在不在 DOM 里」——内容仍挂在树上（面板里有输入到一半的草稿），
+// 但收起状态下按 role 查不到，才算真的收起来了。
+it('starts with the tool panel out of the way and opens it on demand', async () => {
+    vi.mocked(api.listProjects).mockResolvedValue([]);
+    vi.mocked(api.listChapters).mockResolvedValue([chapter12]);
+    vi.mocked(api.listCandidates).mockResolvedValue([]);
+    vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] });
+    vi.mocked(api.listForeshadows).mockResolvedValue([]);
+    vi.mocked(api.listTasks).mockResolvedValue([]);
+    const router = createMemoryRouter([{ path: '/projects/:projectId', element: h(WorkspacePage, {}, []) }], { initialEntries: ['/projects/project-1'] });
+    render(h(RouterProvider, { "router": router }, []));
+    await fireEvent.click(await screen.findByRole('button', { name: 'chapter-12' }));
+    expect(screen.queryByRole('button', { name: 'start-13' })).toBeNull();
+    await fireEvent.click(screen.getByRole('button', { name: '生成与校验' }));
+    expect(screen.getByRole('button', { name: 'start-13' })).toBeTruthy();
+    expect(localStorage.getItem('myink.sidePanel')).toBe('open');
+});
+it('ignores a late chapter list from the previous book after switching projects', async () => {
+    const bookAChapter: ChapterMeta = {
+        id: 'chapter-3',
+        chapter_seq: 3,
+        title: null,
+        status: 'planning',
+        word_count: 0,
+        summary: null,
+    };
+    let resolveA: (value: ChapterMeta[]) => void = () => { };
+    const bookAPending = new Promise<ChapterMeta[]>((resolve) => { resolveA = resolve; });
+    vi.mocked(api.listProjects).mockResolvedValue([]);
+    vi.mocked(api.listChapters).mockImplementation((pid: string) => (pid === 'project-a' ? bookAPending : Promise.resolve([])));
+    vi.mocked(api.listCandidates).mockResolvedValue([]);
+    vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] });
+    vi.mocked(api.listForeshadows).mockResolvedValue([]);
+    vi.mocked(api.listTasks).mockResolvedValue([]);
+    const router = createMemoryRouter([{ path: '/projects/:projectId', element: h(WorkspacePage, {}, []) }], { initialEntries: ['/projects/project-a'] });
+    render(h(RouterProvider, { "router": router }, []));
+    await act(async () => { await router.navigate('/projects/project-b'); });
+    await act(async () => { resolveA([bookAChapter]); });
+    expect(screen.queryByRole('button', { name: 'chapter-3' })).toBeNull();
+    expect(screen.getByText('还没有章节。在右侧发起首次生成。')).toBeTruthy();
+});
+it('reconnects from the remembered write when the worker has not persisted the task yet', async () => {
+    sessionStorage.setItem('myink.activeWrite.test-user.project-a', JSON.stringify({
+        taskId: 'task-2', chapterSeq: 2, batchTotal: null,
+    }));
+    vi.mocked(api.listProjects).mockResolvedValue([]);
+    vi.mocked(api.listChapters).mockResolvedValue([]);
+    vi.mocked(api.listCandidates).mockResolvedValue([]);
+    vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] });
+    vi.mocked(api.listForeshadows).mockResolvedValue([]);
+    vi.mocked(api.listTasks).mockResolvedValue([]);
+    const router = createMemoryRouter([{ path: '/projects/:projectId', element: h(WorkspacePage, {}, []) }], { initialEntries: ['/projects/project-b'] });
+    render(h(RouterProvider, { "router": router }, []));
+    await screen.findByText('还没有章节。在右侧发起首次生成。');
+    await act(async () => { await router.navigate('/projects/project-a'); });
+    expect(await screen.findByText('plan-page-2')).toBeTruthy();
+    expect(screen.getByText('timeline-task-2-chapter-2')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'chapter-2' })).toBeTruthy();
+});
+it('reconnects an in-flight writing task after switching back before the chapter row exists', async () => {
+    const running = {
+        task_id: 'task-3',
+        task_type: 'chapter_generate' as const,
+        status: 'running' as const,
+        chapter_seq: 3,
+        batch_size: null,
+        batch_current: null,
+        cost_total: 0,
+        error: null,
+        created_at: null,
+    };
+    vi.mocked(api.listProjects).mockResolvedValue([]);
+    vi.mocked(api.listChapters).mockResolvedValue([]);
+    vi.mocked(api.listCandidates).mockResolvedValue([]);
+    vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] });
+    vi.mocked(api.listForeshadows).mockResolvedValue([]);
+    vi.mocked(api.listTasks).mockImplementation((pid: string) => (pid === 'project-a' ? Promise.resolve([running]) : Promise.resolve([])));
+    const router = createMemoryRouter([{ path: '/projects/:projectId', element: h(WorkspacePage, {}, []) }], { initialEntries: ['/projects/project-b'] });
+    render(h(RouterProvider, { "router": router }, []));
+    await screen.findByText('还没有章节。在右侧发起首次生成。');
+    await act(async () => { await router.navigate('/projects/project-a'); });
+    expect(await screen.findByText('plan-page-3')).toBeTruthy();
+    expect(screen.getByText('timeline-task-3-chapter-3')).toBeTruthy();
+});
+const shortProject = {
+    id: 'project-1',
+    title: '渡口',
+    genre: '悬疑',
+    current_chapter: 5,
+    target_words: 2000,
+    form: 'short' as const,
+};
+const shortTask = {
+    task_id: 'task-short',
+    task_type: 'short_generate',
+    status: 'done' as const,
+    chapter_seq: null,
+    batch_size: null,
+    batch_current: null,
+    cost_total: 0.25,
+    error: null,
+    created_at: null,
+};
+const shortReviewRun: AgentRun = {
+    task_id: 'task-short',
+    node: 'short_review',
+    model_id: 'deepseek-chat',
+    input_tokens: 100,
+    output_tokens: 200,
+    cache_hit: false,
+    duration_ms: 1000,
+    cost_est: 0.1,
+    retry_count: 0,
+    degraded: false,
+    error: null,
+    detail: {
+        short_review: { verdict: 'pass', issues: [], suggestions: [], warning: null },
+        empty_chapters: [],
+        length_findings: [],
+        revised: false,
+    },
+};
+function shortBookChapters(): ChapterMeta[] {
+    return [1, 2, 3, 4, 5].map((seq) => ({
+        id: `chapter-${seq}`,
+        chapter_seq: seq,
+        title: null,
+        status: 'confirmed' as const,
+        word_count: 2000,
+        summary: null,
+    }));
+}
+function mockShortBook(taskList: unknown[], chapters: ChapterMeta[] = shortBookChapters()) {
+    vi.mocked(api.listProjects).mockResolvedValue([shortProject]);
+    vi.mocked(api.listChapters).mockResolvedValue(chapters);
+    vi.mocked(api.listCandidates).mockResolvedValue([]);
+    vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] });
+    vi.mocked(api.listForeshadows).mockResolvedValue([]);
+    vi.mocked(api.listTasks).mockResolvedValue(taskList as never);
+}
+function renderWorkspace(state?: Record<string, unknown>) {
+    const router = createMemoryRouter([{ path: '/projects/:projectId', element: h(WorkspacePage, {}, []) }], { initialEntries: [{ pathname: '/projects/project-1', state }] });
+    render(h(RouterProvider, { "router": router }, []));
+    return router;
+}
+it('gives a short book the flow rail and a status band, but not the long-form panels', async () => {
+    mockShortBook([]);
+    renderWorkspace();
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('还没开始写'));
+    expect(screen.getByRole('button', { name: '开始写' })).toBeTruthy();
+    // 短篇也要答「这一篇有没有经过审核、花了多少」——流转记录就是那个出口，所以右栏留着。
+    expect(screen.getByText(/^timeline-/)).toBeTruthy();
+    // 长篇那一套照样不给：短篇没有逐章生成，也没有审计/候选/经验。
+    expect(screen.queryByText('generation-panel')).toBeNull();
+    expect(screen.queryByText('audit-panel')).toBeNull();
+    expect(screen.queryByText('candidate-panel')).toBeNull();
+    expect(screen.queryByText('lessons-panel')).toBeNull();
+});
+it('shows the plan warning on the short status band', async () => {
+    mockShortBook([]);
+    renderWorkspace({ planWarning: '每章字数已按全篇上限归一' });
+    expect((await screen.findByRole('status')).textContent).toContain('每章字数已按全篇上限归一');
+});
+it('rings the writing progress while a short book still has no chapters', async () => {
+    // 成稿是一次几分钟的整篇调用，这期间中间栏除了这个环什么都不会变——它就是「没卡死」的证据。
+    mockShortBook([{ ...shortTask, status: 'running' }], []);
+    liveTask.shortProgress = { stage: 'short_write', current: 10000, total: 20000 };
+    renderWorkspace();
+    const ring = await screen.findByRole('progressbar', { name: '短篇写作进度' });
+    // 成稿只占整条进度的 0–70%：写完还有审稿和改稿，字数过半不等于整篇过半
+    expect(ring.getAttribute('aria-valuenow')).toBe('35');
+    expect(screen.getByText('成稿')).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toContain('正在成稿');
+});
+it('leaves the ring unnumbered while a step reports no char count', async () => {
+    mockShortBook([{ ...shortTask, status: 'running' }], []);
+    liveTask.shortProgress = { stage: 'short_review', current: 0, total: 0 };
+    renderWorkspace();
+    const ring = await screen.findByRole('progressbar', { name: '短篇写作进度' });
+    // 审稿没有字数可报：编一个百分比出来不如直说在审稿
+    expect(ring.getAttribute('aria-valuenow')).toBeNull();
+    expect(screen.getByText('审稿')).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toContain('正在审稿');
+});
+it('hands the in-flight short stage to the flow rail too, not only to the ring', async () => {
+    // 短篇整篇共用一次写库：agent_runs 到四步跑完才提交，右栏在这期间一条 node 事件都收不到，
+    // 于是忙的是环、右栏从头到尾停在「任务已创建，等待第一个步骤开始」。阶段名要同时喂给两边。
+    mockShortBook([{ ...shortTask, status: 'running' }], []);
+    liveTask.shortProgress = { stage: 'short_review', current: 0, total: 0 };
+    renderWorkspace();
+    expect(await screen.findByText('flow-live-short_review')).toBeTruthy();
+});
+it('auto-starts the short generation once on handover, then strips the intent', async () => {
+    vi.mocked(api.generateShort).mockResolvedValue({ task_id: 'task-1', trace_id: 'trace-1', status: 'queued' });
+    mockShortBook([]);
+    const router = renderWorkspace({ beginShortWriting: true });
+    // 建书页确认完跳进来那一次：本页负责入队（状态带上才有重试入口）。
+    await waitFor(() => expect(api.generateShort).toHaveBeenCalledWith('project-1'));
+    await waitFor(() => expect(api.generateShort).toHaveBeenCalledTimes(1));
+    // 意图被吃掉：history.state 上换成普通状态，硬刷新带不回来（带回来就是白花一次配额）。
+    await waitFor(() => expect(router.state.location.state?.beginShortWriting).toBeUndefined());
+    await act(async () => {
+        await router.navigate('/projects/project-1', { replace: true, state: { beginShortWriting: true } });
+    });
+    expect(api.generateShort).toHaveBeenCalledTimes(1);
+});
+it('tells the reader the start failed and offers the retry that re-enqueues', async () => {
+    vi.mocked(api.generateShort).mockRejectedValueOnce(new Error('gateway'));
+    mockShortBook([]);
+    renderWorkspace({ beginShortWriting: true });
+    // 入队是真失败了（回查确认没有任务）：状态带要说实话，并把重试摆在手边。
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('没能开始写'));
+    const retry = screen.getByRole('button', { name: '重试' });
+    vi.mocked(api.generateShort).mockResolvedValue({ task_id: 'task-1', trace_id: 'trace-1', status: 'queued' });
+    await act(async () => { retry.click(); });
+    await waitFor(() => expect(api.generateShort).toHaveBeenCalledTimes(2));
+    expect(api.generateShort).toHaveBeenLastCalledWith('project-1');
+});
+it('adopts a task that exists when the enqueue answer is lost, instead of claiming nothing started', async () => {
+    // 服务端收到了这次入队（所以之后回查能看到任务），但回包丢了。任务从「拒绝落地」那一刻
+    // 起才存在——挂载时那些回查（244、恢复）看得见的仍然是空书。
+    let enqueued = false;
+    vi.mocked(api.generateShort).mockImplementation(() => Promise.reject(new Error('timeout')).finally(() => { enqueued = true; }));
+    mockShortBook([]);
+    vi.mocked(api.listTasks).mockImplementation(() => Promise.resolve((enqueued ? [{ ...shortTask, task_id: 'task-lost', status: 'running' }] : []) as never));
+    renderWorkspace({ beginShortWriting: true });
+    // 整篇其实在写。说「没能开始写」是把用户往死重试上引（重试还会被并发闸 429 挡掉），
+    // 所以这里必须接上那条任务。
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('正在写整篇'));
+    expect(screen.getByRole('status').textContent).not.toContain('没能开始写');
+    expect(screen.queryByRole('button', { name: '重试' })).toBeNull();
+});
+it('does not auto-start when the handover did not ask for it', async () => {
+    vi.mocked(api.generateShort).mockResolvedValue({ task_id: 'task-1', trace_id: 'trace-1', status: 'queued' });
+    mockShortBook([]);
+    renderWorkspace({ planWarning: null });
+    expect(await screen.findByRole('status')).toBeTruthy();
+    await act(async () => { await Promise.resolve(); });
+    expect(api.generateShort).not.toHaveBeenCalled();
+});
+it('reads the whole-story review off the flow rail, not off a report under the body', async () => {
+    mockShortBook([shortTask]);
+    liveTask.runs = [shortReviewRun];
+    renderWorkspace();
+    // 审稿结论那块长文删了：有没有经过审核，从流转记录里的 short_review 那一步看。
+    await waitFor(() => expect(screen.getByText('flow-runs-1')).toBeTruthy());
+    expect(screen.queryByText('审稿结论')).toBeNull();
+    await fireEvent.click(screen.getByRole('button', { name: 'chapter-2' }));
+    await screen.findByText('write-page-2');
+    // 整篇任务不属于任何一章：按章切会把流转记录整块滤空，所以短篇这条喂的是整篇 runs。
+    expect(screen.getByText('flow-runs-1')).toBeTruthy();
+    expect(screen.getByText('timeline-task-short-chapter-none')).toBeTruthy();
+});
+it('shows missing chapters as an incomplete result even when the task is done', async () => {
+    mockShortBook([shortTask]);
+    liveTask.status = 'done';
+    liveTask.runs = [{ ...shortReviewRun, detail: { ...shortReviewRun.detail, empty_chapters: [2, 5] } }];
+    renderWorkspace();
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('部分正文未完成'));
+    expect(screen.queryByText('整篇写完了')).toBeNull();
+    expect(screen.getByRole('alert').textContent).toContain('第 2、5 章');
+    expect(screen.queryByRole('button', { name: '重试' })).toBeNull();
+    expect(api.generateShort).not.toHaveBeenCalled();
+});
+it('makes a degraded review visible without presenting it as a passed review', async () => {
+    mockShortBook([shortTask]);
+    liveTask.status = 'done';
+    liveTask.runs = [{ ...shortReviewRun, detail: {
+                ...shortReviewRun.detail,
+                short_review: { verdict: 'pass', issues: [], suggestions: [], warning: '审稿结果无法解析，这一篇按通过处理' },
+            } }];
+    renderWorkspace();
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('正文已生成，仍需检查'));
+    expect(screen.getByRole('alert').textContent).toContain('审稿结果无法解析');
+    expect(screen.queryByText('整篇写完了')).toBeNull();
+});
+it('uses the latest review and shows a compact revision summary', async () => {
+    mockShortBook([shortTask]);
+    liveTask.status = 'done';
+    liveTask.runs = [
+        { ...shortReviewRun, detail: { ...shortReviewRun.detail, empty_chapters: [5] } },
+        { ...shortReviewRun, detail: { ...shortReviewRun.detail, revised: true,
+                short_review: { verdict: 'revise', issues: ['结尾动机不清楚'], suggestions: ['补充人物的抉择'], warning: null },
+            } },
+    ];
+    renderWorkspace();
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('整篇写完了'));
+    expect(screen.getByText('已按审稿意见改稿')).toBeTruthy();
+    expect(screen.queryByText(/第 5 章仍缺正文/)).toBeNull();
+});
+it('resumes a failed short task through the server rather than only reconnecting its events', async () => {
+    mockShortBook([{ ...shortTask, status: 'failed' }]);
+    liveTask.status = 'failed';
+    vi.mocked(api.resumeTask).mockResolvedValue({ task_id: 'task-short', status: 'queued', message: '已投递续跑消息' });
+    renderWorkspace();
+    await fireEvent.click(await screen.findByRole('button', { name: '重试' }));
+    await waitFor(() => expect(api.resumeTask).toHaveBeenCalledWith('task-short'));
+    expect(api.generateShort).not.toHaveBeenCalled();
+});
+it('shows a resume failure and keeps the failed task retry available', async () => {
+    mockShortBook([{ ...shortTask, status: 'failed' }]);
+    liveTask.status = 'failed';
+    vi.mocked(api.resumeTask).mockRejectedValue(new Error('offline'));
+    renderWorkspace();
+    await fireEvent.click(await screen.findByRole('button', { name: '重试' }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    await waitFor(() => expect((screen.getByRole('button', { name: '重试' }) as HTMLButtonElement).disabled).toBe(false));
+    expect(api.generateShort).not.toHaveBeenCalled();
+});
+it('blocks a second enqueue while the first start request is pending', async () => {
+    mockShortBook([]);
+    vi.mocked(api.generateShort).mockReturnValue(new Promise(() => { }));
+    renderWorkspace();
+    const start = await screen.findByRole('button', { name: '开始写' });
+    await fireEvent.click(start);
+    await fireEvent.click(start);
+    await waitFor(() => expect(api.generateShort).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('status').textContent).toContain('正在提交写作任务');
+});
+it('shows chapter length evidence in the review details', async () => {
+    mockShortBook([shortTask]);
+    liveTask.status = 'done';
+    liveTask.runs = [{ ...shortReviewRun, detail: { ...shortReviewRun.detail, length_findings: [{
+                        conflict_key: 'short:length:2', conflict_type: 'short_length', severity: 'hint', scope: 'local', source: 'rule',
+                        evidence: [{ chapter: 2, quote: '正文仅 320 字，目标 2000 字' }], suggestion: '检查第 2 章是否截断',
+                    }] } }];
+    renderWorkspace();
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('仍需检查'));
+    await fireEvent.click(screen.getByText('查看检查意见'));
+    expect(screen.getByText(/正文仅 320 字/)).toBeTruthy();
+    expect(screen.getByText(/检查第 2 章是否截断/)).toBeTruthy();
+});
+it('reconnects task events when a resume was accepted but its response was lost', async () => {
+    mockShortBook([{ ...shortTask, status: 'failed' }]);
+    liveTask.status = 'failed';
+    vi.mocked(api.resumeTask).mockRejectedValue(new Error('response lost'));
+    renderWorkspace();
+    await fireEvent.click(await screen.findByRole('button', { name: '重试' }));
+    await waitFor(() => expect(liveTask.refresh).toHaveBeenCalled());
+    expect(liveTask.retry).toHaveBeenCalledTimes(1);
+    expect(api.generateShort).not.toHaveBeenCalled();
+});
+it('waits for history before offering generation or consuming an automatic start', async () => {
+    mockShortBook([]);
+    let finish!: (tasks: typeof shortTask[]) => void;
+    const pending = new Promise<typeof shortTask[]>((resolve) => { finish = resolve; });
+    vi.mocked(api.listTasks).mockReturnValue(pending);
+    liveTask.status = 'done';
+    renderWorkspace({ beginShortWriting: true });
+    await screen.findByRole('status');
+    expect(screen.queryByRole('button', { name: '开始写' })).toBeNull();
+    expect(api.generateShort).not.toHaveBeenCalled();
+    await act(async () => { finish([shortTask]); });
+    await waitFor(() => expect(screen.getByText('timeline-task-short-chapter-none')).toBeTruthy());
+    expect(api.generateShort).not.toHaveBeenCalled();
+});
+it('offers only a history reload after task recovery fails', async () => {
+    mockShortBook([]);
+    vi.mocked(api.listTasks).mockRejectedValue(new Error('offline'));
+    renderWorkspace();
+    const reload = await screen.findByRole('button', { name: '重新查询任务' });
+    expect(screen.queryByRole('button', { name: '开始写' })).toBeNull();
+    vi.mocked(api.listTasks).mockResolvedValue([shortTask]);
+    liveTask.status = 'done';
+    await fireEvent.click(reload);
+    await waitFor(() => expect(screen.getByText('timeline-task-short-chapter-none')).toBeTruthy());
+    expect(api.generateShort).not.toHaveBeenCalled();
+});
+it.each(['success', 'failure'] as const)('ignores a late generation %s after switching books', async (result) => {
+    mockShortBook([]);
+    vi.mocked(api.listProjects).mockResolvedValue([shortProject, { ...shortProject, id: 'project-2', title: '另一篇' }]);
+    let resolve!: (value: {
+        task_id: string;
+        trace_id: string;
+        status: 'queued';
+    }) => void;
+    let reject!: (reason: Error) => void;
+    vi.mocked(api.generateShort).mockImplementation(() => new Promise((res, rej) => { resolve = res; reject = rej; }));
+    const router = renderWorkspace();
+    await fireEvent.click(await screen.findByRole('button', { name: '开始写' }));
+    await act(async () => { await router.navigate('/projects/project-2'); });
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('还没开始写'));
+    const lookups = vi.mocked(api.listTasks).mock.calls.filter(([pid]) => pid === 'project-1').length;
+    await act(async () => {
+        if (result === 'success')
+            resolve({ task_id: 'task-old', trace_id: 'trace-old', status: 'queued' });
+        else
+            reject(new Error('late failure'));
+    });
+    expect(screen.getByRole('status').textContent).toContain('还没开始写');
+    expect(screen.queryByText('timeline-task-old-chapter-none')).toBeNull();
+    expect(vi.mocked(api.listTasks).mock.calls.filter(([pid]) => pid === 'project-1')).toHaveLength(lookups);
+});
+it('keeps the current book submitting when the previous book request finishes', async () => {
+    mockShortBook([]);
+    vi.mocked(api.listProjects).mockResolvedValue([shortProject, { ...shortProject, id: 'project-2', title: '另一篇' }]);
+    let finishA!: (value: {
+        task_id: string;
+        trace_id: string;
+        status: 'queued';
+    }) => void;
+    vi.mocked(api.generateShort).mockImplementation((pid) => pid === 'project-1'
+        ? new Promise((resolve) => { finishA = resolve; }) : new Promise(() => { }));
+    const router = renderWorkspace();
+    await fireEvent.click(await screen.findByRole('button', { name: '开始写' }));
+    await act(async () => { await router.navigate('/projects/project-2'); });
+    await fireEvent.click(await screen.findByRole('button', { name: '开始写' }));
+    await act(async () => { finishA({ task_id: 'old-task', trace_id: 'old', status: 'queued' }); });
+    expect(screen.getByRole('status').textContent).toContain('正在提交写作任务');
+    expect((screen.getByRole('button', { name: '开始写' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByText('timeline-old-task-chapter-none')).toBeNull();
+});
+it('ignores a late reconciliation response after switching books', async () => {
+    mockShortBook([]);
+    vi.mocked(api.listProjects).mockResolvedValue([shortProject, { ...shortProject, id: 'project-2', title: '另一篇' }]);
+    let enqueued = false;
+    let finish!: (tasks: typeof shortTask[]) => void;
+    const pendingLookup = new Promise<typeof shortTask[]>((resolve) => { finish = resolve; });
+    vi.mocked(api.listTasks).mockImplementation((pid) => pid === 'project-1' && enqueued ? pendingLookup : Promise.resolve([]));
+    vi.mocked(api.generateShort).mockImplementation(async () => { enqueued = true; throw new Error('timeout'); });
+    const router = renderWorkspace();
+    await fireEvent.click(await screen.findByRole('button', { name: '开始写' }));
+    await act(async () => { await Promise.resolve(); });
+    await act(async () => { await router.navigate('/projects/project-2'); });
+    await screen.findByRole('button', { name: '开始写' });
+    await act(async () => { finish([{ ...shortTask, task_id: 'late-recovered' }]); });
+    expect(screen.getByRole('status').textContent).toContain('还没开始写');
+    expect(screen.queryByText('timeline-late-recovered-chapter-none')).toBeNull();
+});
+it('still shows the long-form panels on a book without a form', async () => {
+    vi.mocked(api.listProjects).mockResolvedValue([{ ...shortProject, form: undefined }]);
+    vi.mocked(api.listChapters).mockResolvedValue([]);
+    vi.mocked(api.listCandidates).mockResolvedValue([]);
+    vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] });
+    vi.mocked(api.listForeshadows).mockResolvedValue([]);
+    vi.mocked(api.listTasks).mockResolvedValue([]);
+    renderWorkspace();
+    expect(await screen.findByText('generation-panel')).toBeTruthy();
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.getByText('audit-panel')).toBeTruthy();
+    expect(screen.getByText('candidate-panel')).toBeTruthy();
+    expect(screen.getByText('lessons-panel')).toBeTruthy();
+});
+it('never shows the plan stage for a short book', async () => {
+    vi.mocked(api.generateShort).mockResolvedValue({ task_id: 'task-1', trace_id: 'trace-1', status: 'queued' });
+    mockShortBook([]);
+    renderWorkspace();
+    await fireEvent.click(await screen.findByRole('button', { name: 'chapter-2' }));
+    await screen.findByText('editor-2');
+    // 起任务：只有任务在途时 nav 才会渲染，否则下面那条 null 断言是空的（P50）
+    await fireEvent.click(screen.getByRole('button', { name: '开始写' }));
+    // 正向对照：nav 确实渲染出来了（正文阶段还在），证明下面那条 null 不是「整块没渲染」
+    expect(await screen.findByRole('button', { name: /正文/ })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Plan/ })).toBeNull();
+});
+function mockLongBookWithForm(form: 'long' | undefined) {
+    vi.mocked(api.listProjects).mockResolvedValue([{ ...shortProject, form }]);
+    vi.mocked(api.listChapters).mockResolvedValue(shortBookChapters());
+    vi.mocked(api.listCandidates).mockResolvedValue([]);
+    vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] });
+    vi.mocked(api.listForeshadows).mockResolvedValue([]);
+    vi.mocked(api.listTasks).mockResolvedValue([]);
+}
+it('短篇成稿的编辑器不摆校正记忆，长篇照摆', async () => {
+    mockShortBook([]);
+    renderWorkspace();
+    await fireEvent.click(await screen.findByRole('button', { name: 'chapter-1' }));
+    expect(await screen.findByText('memory-correction-false')).toBeTruthy();
+});
+it('没有 form 的书按长篇走，校正记忆照旧在', async () => {
+    mockLongBookWithForm(undefined);
+    renderWorkspace();
+    await fireEvent.click(await screen.findByRole('button', { name: 'chapter-1' }));
+    expect(await screen.findByText('memory-correction-true')).toBeTruthy();
+});
+it('形态还没到手时先不摆校正记忆，免得先摆错再撤', async () => {
+    // 作品列表迟到（甚至一直不回）时，isShortBook 还是 false；此时不能顺手按长篇把按钮摆出来。
+    vi.mocked(api.listProjects).mockImplementation(() => new Promise(() => { }));
+    vi.mocked(api.listChapters).mockResolvedValue(shortBookChapters());
+    vi.mocked(api.listCandidates).mockResolvedValue([]);
+    vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] });
+    vi.mocked(api.listForeshadows).mockResolvedValue([]);
+    vi.mocked(api.listTasks).mockResolvedValue([]);
+    renderWorkspace();
+    await fireEvent.click(await screen.findByRole('button', { name: 'chapter-1' }));
+    expect(await screen.findByText('memory-correction-false')).toBeTruthy();
+});
+it('passes the authoritative budget to the short workspace flow', async () => {
+    mockShortBook([shortTask]);
+    renderWorkspace();
+    await screen.findByText('timeline-task-short-chapter-none');
+    expect(screen.getByText('flow-budget-7')).toBeTruthy();
+});
+it('offers writing resource choices in the short-book workspace where the settings navigation is hidden', async () => {
+    renderWorkspace();
+    const link = await screen.findByRole('link', { name: '选择写作资源' });
+    expect(link.getAttribute('href')).toContain('/settings#writing-resources');
+});
+it('keeps project B chapters when project A materialization polling finishes late', async () => {
+    let finish!: (chapters: ChapterMeta[]) => void;
+    let calls = 0;
+    const bChapter = { ...chapter12, id: 'b-8', chapter_seq: 8 };
+    vi.mocked(api.listProjects).mockResolvedValue([]);
+    vi.mocked(api.listCandidates).mockResolvedValue([]);
+    vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] });
+    vi.mocked(api.listForeshadows).mockResolvedValue([]);
+    vi.mocked(api.listTasks).mockResolvedValue([]);
+    vi.mocked(api.listChapters).mockImplementation(pid => {
+        if (pid === 'b')
+            return Promise.resolve([bChapter]);
+        calls += 1;
+        return calls === 1 ? Promise.resolve([]) : new Promise(resolve => { finish = resolve; });
+    });
+    const router = createMemoryRouter([{ path: '/projects/:projectId', element: h(WorkspacePage, {}, []) }], { initialEntries: ['/projects/a'] });
+    render(h(RouterProvider, { "router": router }, []));
+    await waitFor(() => expect(api.listChapters).toHaveBeenCalledWith('a'));
+    await fireEvent.click(screen.getByRole('button', { name: '生成与校验' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'start-13' }));
+    await waitFor(() => expect(calls).toBeGreaterThan(1));
+    await act(async () => { await router.navigate('/projects/b'); });
+    await screen.findByRole('button', { name: 'chapter-8' });
+    await act(async () => finish([{ ...chapter12, id: 'a-13', chapter_seq: 13 }]));
+    expect(screen.getByRole('button', { name: 'chapter-8' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'chapter-13' })).toBeNull();
+});

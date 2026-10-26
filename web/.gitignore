@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Vue migration candidate output
+dist-vue
+
+# TypeScript solution checks may create a local cache beside their config.
+*.tsbuildinfo

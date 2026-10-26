@@ -1,0 +1,21 @@
+{
+  "output": "/var/folders/sw/_x387kld25bgsp22s4n5rfjm0000gn/T/myink-image-smoke-95UmH6",
+  "kind": "isolated_frontend_image_smoke",
+  "image": "myink-caddy:vue-ready-final-20261026",
+  "expected": "vue",
+  "checks": [
+    "selected_frontend_label",
+    "deep_link_html_no_store",
+    "hashed_asset_immutable",
+    "previous_asset_retained",
+    "unknown_api_never_spa",
+    "selected_native_runtime",
+    "login_deep_link_refresh"
+  ],
+  "pageErrors": [],
+  "passed": true,
+  "imageId": "sha256:3eb69714f94c5065e26a16f95a4fba66ec7718ca2d73b5cd9c297c2f3d3ba674",
+  "revision": "uncommitted-readiness-final-20261026",
+  "entry": "/assets/index-LHE4QUm9.js",
+  "cleanupErrors": []
+}

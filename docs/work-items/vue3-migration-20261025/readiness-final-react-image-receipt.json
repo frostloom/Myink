@@ -1,0 +1,21 @@
+{
+  "output": "/var/folders/sw/_x387kld25bgsp22s4n5rfjm0000gn/T/myink-image-smoke-G3HyI7",
+  "kind": "isolated_frontend_image_smoke",
+  "image": "myink-caddy:react-ready-final-20261026",
+  "expected": "react",
+  "checks": [
+    "selected_frontend_label",
+    "deep_link_html_no_store",
+    "hashed_asset_immutable",
+    "previous_asset_retained",
+    "unknown_api_never_spa",
+    "selected_native_runtime",
+    "login_deep_link_refresh"
+  ],
+  "pageErrors": [],
+  "passed": true,
+  "imageId": "sha256:32513ef95870cb847d796c5bf4fe6d021194a4afc15b69007301633f5a6d7335",
+  "revision": "uncommitted-readiness-final-20261026",
+  "entry": "/assets/index-BDxdzfd9.js",
+  "cleanupErrors": []
+}

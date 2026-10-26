@@ -1,5 +1,5 @@
 // 中文标签与色调映射（状态/severity 一律文字+色+icon 三通道，DESIGN §Review）。
-import type { BadgeTone } from '../components/StatusBadge'
+import type { BadgeTone } from './badgeTone'
 import type { ChapterStatus, FindingSeverity, TaskStatus, Verdict } from '../types'
 
 export const NODE_LABELS: Record<string, string> = {

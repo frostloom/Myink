@@ -1,0 +1,17 @@
+import { afterEach,expect,it,vi } from 'vitest'
+import {cleanup,render,screen,fireEvent} from '@testing-library/vue'
+import {createRouter,createMemoryHistory} from 'vue-router'
+import {api} from '../../../src/lib/api'
+import ChapterEditor from './ChapterEditor.vue'
+import StreamingChapterView from './StreamingChapterView.vue'
+import VersionHistory from './VersionHistory.vue'
+import type {ArtifactState} from '../composables/useTaskEvents'
+import { liveDrafts } from '../../../src/lib/chapterDraft'
+vi.mock('../../../src/lib/api',async original=>({...await original<typeof import('../../../src/lib/api')>(),api:{getChapter:vi.fn(),updateContent:vi.fn(),listChapterVersions:vi.fn(),restoreChapterVersion:vi.fn(),correctMemory:vi.fn(),deleteChapter:vi.fn()}}))
+afterEach(()=>{cleanup();sessionStorage.clear();liveDrafts.clear();vi.restoreAllMocks();vi.clearAllMocks()})
+const chapter={id:'c',chapter_seq:1,title:'雨夜',summary:null,status:'confirmed' as const,word_count:6}
+async function editor(){vi.mocked(api.getChapter).mockResolvedValue({...chapter,summary:null,content:'server',version:1});const router=createRouter({history:createMemoryHistory(),routes:[{path:'/:p(.*)',component:{template:'<div />'}}]});await router.push('/projects/p');return render(ChapterEditor,{props:{projectId:'p',chapter},global:{plugins:[router]}})}
+it('edits and saves with the visible base version using Ctrl+S',async()=>{vi.mocked(api.updateContent).mockResolvedValue({chapter_id:'c',chapter_seq:1,status:'confirmed',version:2});await editor();const text=await screen.findByRole('textbox',{name:'章节正文'});await fireEvent.update(text,'mine');await fireEvent.keyDown(text,{key:'s',ctrlKey:true});await vi.waitFor(()=>expect(api.updateContent).toHaveBeenCalledWith('p','c','mine',1));expect((text as HTMLTextAreaElement).value).toBe('mine')})
+it('hides chapter memory correction for short stories',async()=>{const view=await editor();await view.rerender({allowMemoryCorrection:false});await screen.findByRole('textbox',{name:'章节正文'});expect(screen.queryByRole('button',{name:'校正记忆'})).toBeNull();expect(screen.getByRole('button',{name:'历史版本'})).toBeTruthy()})
+it('renders a real streaming body without protocol marker and counts Unicode points',()=>{const artifact:ArtifactState={artifactId:'a',taskId:'t',stage:'write',chapterSeq:1,attempt:1,content:'=== CONTENT ===\n甲😀',complete:false,failed:false,artifact:null,message:null};render(StreamingChapterView,{props:{chapterSeq:1,artifact}});expect(screen.getByText('甲😀')).toBeTruthy();expect(screen.getByText('2 字')).toBeTruthy();expect(screen.getByText('实时写作')).toBeTruthy()})
+it('loads historical versions and restores only after confirmation',async()=>{vi.mocked(api.listChapterVersions).mockResolvedValue({chapter_id:'c',chapter_seq:1,current_version:2,versions:[{version:1,title:'旧标题',summary:'旧摘要',content:'old body',reason:'manual',created_at:'2026-10-01'}]});vi.mocked(api.restoreChapterVersion).mockResolvedValue({chapter_id:'c',chapter_seq:1,status:'confirmed',version:3});vi.spyOn(window,'confirm').mockReturnValue(true);const restored=vi.fn();render(VersionHistory,{props:{projectId:'p',chapterId:'c',chapterSeq:1,onRestored:restored}});await screen.findByText('旧标题');expect(screen.getByText('旧摘要')).toBeTruthy();await fireEvent.click(await screen.findByRole('button',{name:'回退到此版本'}));await vi.waitFor(()=>expect(api.restoreChapterVersion).toHaveBeenCalledWith('p','c',1));expect(restored).toHaveBeenCalled()})
