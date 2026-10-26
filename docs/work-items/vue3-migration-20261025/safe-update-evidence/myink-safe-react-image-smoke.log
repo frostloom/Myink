@@ -1,0 +1,36 @@
+{
+  "output": "/var/folders/sw/_x387kld25bgsp22s4n5rfjm0000gn/T/myink-image-smoke-VGqpyS",
+  "kind": "isolated_frontend_image_smoke",
+  "image": "myink-caddy:react-safe-update-20261026",
+  "expected": "react",
+  "checks": [
+    "selected_frontend_label",
+    "deep_link_html_no_store",
+    "hashed_asset_immutable",
+    "previous_asset_retained",
+    "previous_asset_retained",
+    "previous_asset_retained",
+    "unknown_api_never_spa",
+    "release_manifest_html_binding_no_store",
+    "selected_native_runtime",
+    "login_deep_link_refresh"
+  ],
+  "pageErrors": [],
+  "passed": true,
+  "imageId": "sha256:1a0f2232cf1ac9ca1c1c6bcac006bed9b7280720bd20a842014b07ababf27fb4",
+  "revision": "uncommitted-safe-update-20261026",
+  "entry": "/assets/index-BcR2NWy9.js",
+  "entrySha256": "367fa00ffc632a82b810e02c93025b76a16dd1a72efee92829440239c41befb6",
+  "retainedAssets": {
+    "/assets/index-Cvlt329b.js": "882ba104fc4ee126cf6e1e80f729e7c4a792e346e1a209d2cd7a8656657696a8",
+    "/assets/index-LHE4QUm9.js": "8ace8616b0dc484c661be17834853f6a81fc1c95f4179f185173f46a2f12f51a",
+    "/assets/index-Bk-yDMAg.js": "c41dd3e9a0437f8de4c4bc9fdfd14a064cd69f1ba561970d67dad65ef203bfb7"
+  },
+  "release": {
+    "schema": 1,
+    "client": "react",
+    "id": "react-d22006ca4cb39f03420f9fb47f3e40b20035ac26e1d69cd0351c3b1a51153e3c",
+    "entry": "/assets/index-BcR2NWy9.js"
+  },
+  "cleanupErrors": []
+}

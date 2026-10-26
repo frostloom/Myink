@@ -1,0 +1,15 @@
+{
+  "checks": [
+    "actual_mfa_confirmation_revokes_prior_session",
+    "actual_mfa_challenge_wrong_code_and_valid_totp",
+    "actual_admin_report_role_and_nonadmin_denial",
+    "actual_admin_invitation_create_revoke",
+    "actual_admin_model_configuration_masks_credentials",
+    "actual_resource_selection_revision_conflict",
+    "actual_resource_publish_adopt_and_stale_conflict",
+    "actual_feedback_multipart_bytes_owner_admin_foreign_boundary",
+    "actual_admin_feedback_resolution",
+    "actual_password_mutation_revokes_old_token"
+  ],
+  "count": 10
+}

@@ -1,0 +1,13 @@
+✔ normal Vite build selects native Vue and its isolated output (229.662792ms)
+✔ explicit React rollback keeps its own HTML root and output (26.824625ms)
+✔ merges prior assets and preserves matching current bytes (47.959584ms)
+✔ rejects collision without replacing current code (48.501542ms)
+✔ rejects symlinks instead of following public assets outside the capture (45.571625ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 474.479042

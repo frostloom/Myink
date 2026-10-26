@@ -73,6 +73,8 @@ jobs:
       # Decimal 的 JSON Schema 一变，下面的契约 diff 闸就红，而镜像仍是旧版本。
       - name: 安装依赖（dev extras，不装 ml/torch；版本锁与镜像一致）
         run: pip install -e '.[dev]' -c docker/constraints.txt
+      - name: 公开旧资产提取失败路径回归（不启动Docker）
+        run: python scripts/test_prepare_frontend_assets.py -v
       - name: Python 语法检查
         run: python -m compileall -q src tests
       - name: 评测案例与覆盖清单校验（无模型调用）
@@ -107,17 +109,38 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24.22.1"
           cache: npm
           cache-dependency-path: web/package-lock.json
       - name: 安装依赖
         run: npm ci
+      - name: 前端旧资源安全合并门禁
+        run: node --test scripts/merge-retained-assets.test.mjs scripts/default-frontend.test.mjs
+      - name: 依赖安全检查
+        run: npm audit --audit-level=moderate
       - name: lint（oxlint）
         run: npm run lint
       - name: 单测（vitest）
         run: npm test
-      - name: 构建（tsc -b && vite build）
+      - name: 默认 Vue 构建（包含严格类型检查）
         run: npm run build
+      - name: React 回退 lint / 单测 / 构建
+        run: |
+          npm run lint:react
+          npm run test:react
+          npm run build:react
+      - name: 安装三个浏览器引擎（不调用模型）
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Vue Chromium / Firefox / WebKit 完整浏览器矩阵
+        run: npm run test:browser:matrix -- --output "$RUNNER_TEMP/myink-main-browser-matrix"
+      - name: 保存浏览器回执（失败也保存）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vue-browser-matrix
+          path: ${{ runner.temp }}/myink-main-browser-matrix
+      - name: React 工作台回退浏览器回归
+        run: node ../scripts/evaluate-browser.cjs --dist dist --output "$RUNNER_TEMP/myink-react-browser"
 
   # 镜像构建：GitHub runner 境外网络用官方源即可（pypi / npmjs / goproxy），
   # 不需 daocloud/aliyun 覆盖（那是本地 compose 的国内源参数）。
@@ -128,5 +151,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Python 镜像（api/worker 共用，核心依赖）
         run: docker build -f Dockerfile -t myink-api:ci .
-      - name: Caddy 镜像（node 构建 dist + Caddyfile，构建期 caddy validate 兜语法错）
+      - name: 默认 Vue Caddy 镜像（包含 caddy validate）
         run: docker build -f caddy/Dockerfile -t myink-caddy:ci .
+      - name: React 回退镜像（显式选择）
+        run: docker build -f caddy/Dockerfile --build-arg FRONTEND_VARIANT=react -t myink-caddy-react:ci .

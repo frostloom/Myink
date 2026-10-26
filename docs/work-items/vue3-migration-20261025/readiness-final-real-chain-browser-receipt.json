@@ -1,0 +1,722 @@
+{
+  "kind": "actual_tls_full_queue_worker_vue_browser",
+  "builds": {
+    "vue": {
+      "entry": "/assets/index-LHE4QUm9.js",
+      "sha256": "cf8afe03dd7800c22a54bf0b5337c6e0bf781a010b8cea97334c60cba13825b0"
+    },
+    "react": {
+      "entry": "/assets/index-BDxdzfd9.js",
+      "sha256": "fc8eff871b4366624c0b5b7507e68a63c8023a18a7dc3d015765b917c47964ae"
+    }
+  },
+  "checks": [
+    "vue_login_through_actual_local_ca_tls",
+    "vue_actual_queue_manual_plan",
+    "active_task_vue_to_react_same_origin_session_draft_theme",
+    "active_task_react_to_vue_recovery_without_duplicate_enqueue",
+    "vue_plan_edit_confirm_actual_worker_stream_to_done",
+    "vue_preserved_draft_saved_to_actual_database",
+    "vue_short_resources_first_requires_manual_start",
+    "vue_short_actual_worker_reload_recovery_no_duplicate_post",
+    "vue_real_feedback_multipart_authenticated_blob_attachment",
+    "vue_actual_admin_totp_login_and_three_live_trend_charts",
+    "vue_workspace_and_admin_rail_logout_single_actual_post"
+  ],
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/token"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/graph"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/foreshadows"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/lessons"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/5ee3d2c3-217e-45d5-bfac-fc0d94b7023c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/2375286b-e191-4340-815f-e2fe804a2130"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/2375286b-e191-4340-815f-e2fe804a2130/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/2375286b-e191-4340-815f-e2fe804a2130"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/5ee3d2c3-217e-45d5-bfac-fc0d94b7023c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/5ee3d2c3-217e-45d5-bfac-fc0d94b7023c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/5ee3d2c3-217e-45d5-bfac-fc0d94b7023c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/writing-resources"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/1847496d-4e6e-46b9-a32c-b81ef4f920fc/generate"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/lessons"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/graph"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/foreshadows"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/7724172a-b8f3-4bfb-8114-c42859de7de5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/graph"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/foreshadows"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/lessons"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/7724172a-b8f3-4bfb-8114-c42859de7de5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/7724172a-b8f3-4bfb-8114-c42859de7de5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7/plan/confirm"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/7724172a-b8f3-4bfb-8114-c42859de7de5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/7724172a-b8f3-4bfb-8114-c42859de7de5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/7724172a-b8f3-4bfb-8114-c42859de7de5"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/5ee3d2c3-217e-45d5-bfac-fc0d94b7023c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/2375286b-e191-4340-815f-e2fe804a2130"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/2375286b-e191-4340-815f-e2fe804a2130/events"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/5ee3d2c3-217e-45d5-bfac-fc0d94b7023c/content"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/2375286b-e191-4340-815f-e2fe804a2130"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/short/creation"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/style-library"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/short/creation/sessions"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/short/creation/sessions/669d9b6c-5efe-4ae0-ac98-f4fc8c9ed788/messages"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/short/creation/sessions/669d9b6c-5efe-4ae0-ac98-f4fc8c9ed788/commit"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/settings"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/my-writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/writing-resources"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/graph"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/foreshadows"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/lessons"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/writing-resources"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/short/generate"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/7581679d-8117-4394-a9fb-19cf13757991"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/7581679d-8117-4394-a9fb-19cf13757991/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/7581679d-8117-4394-a9fb-19cf13757991"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/graph"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/foreshadows"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/lessons"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/7581679d-8117-4394-a9fb-19cf13757991"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/7581679d-8117-4394-a9fb-19cf13757991/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/7581679d-8117-4394-a9fb-19cf13757991"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/7581679d-8117-4394-a9fb-19cf13757991"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/7581679d-8117-4394-a9fb-19cf13757991"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/7581679d-8117-4394-a9fb-19cf13757991"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/7581679d-8117-4394-a9fb-19cf13757991"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/7581679d-8117-4394-a9fb-19cf13757991"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/7581679d-8117-4394-a9fb-19cf13757991"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/4e90c0f0-aadb-479c-9bab-58eb61a67f42/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/feedback"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/feedback"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/feedback/3fb11fde-5bd1-4969-8626-46993af98255/attachments/0"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/graph"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/foreshadows"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/lessons"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/logout"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/token"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/mfa/verify"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/overview"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/trends"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/logout"
+    }
+  ],
+  "httpFailures": [
+    {
+      "path": "/api/v1/tasks/2375286b-e191-4340-815f-e2fe804a2130/events",
+      "status": 410
+    },
+    {
+      "path": "/api/v1/tasks/42803a5e-8378-4fe6-b6b8-5856f4d402e7",
+      "status": 404
+    },
+    {
+      "path": "/api/v1/tasks/2375286b-e191-4340-815f-e2fe804a2130/events",
+      "status": 410
+    }
+  ],
+  "pageErrors": [],
+  "passed": true,
+  "longTaskId": "42803a5e-8378-4fe6-b6b8-5856f4d402e7",
+  "shortProjectId": "4e90c0f0-aadb-479c-9bab-58eb61a67f42"
+}

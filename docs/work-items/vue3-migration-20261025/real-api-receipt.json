@@ -1,0 +1,26 @@
+{
+  "kind": "real_isolated_http_postgres_redis",
+  "checks": [
+    "real_invitation_registration_two_accounts",
+    "real_password_login",
+    "real_session_verification",
+    "anonymous_environment_denied",
+    "real_project_create_idempotency",
+    "real_project_account_list_isolation",
+    "real_foreign_project_owner_denied",
+    "real_environment_leaf_update",
+    "real_environment_account_isolation",
+    "real_environment_reset",
+    "real_personal_resource_account_isolation",
+    "real_resource_snapshot_selection",
+    "real_resource_revision_conflict",
+    "real_resource_update_endpoint",
+    "isolated_database_chapter_fixture_seeded_without_model",
+    "real_chapter_detail_read",
+    "real_chapter_optimistic_conflict",
+    "real_chapter_history_snapshot",
+    "real_logout_revokes_token"
+  ],
+  "count": 19,
+  "model_calls": 0
+}

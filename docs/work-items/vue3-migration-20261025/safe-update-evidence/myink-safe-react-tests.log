@@ -1,0 +1,13 @@
+
+> web@0.0.0 test:react
+> vitest run --config vite.react.config.ts
+
+
+ RUN  v4.1.12 /Users/a1/.codex/worktrees/myink-vue3-migration/Myink/web
+
+
+ Test Files  76 passed (76)
+      Tests  613 passed (613)
+   Start at  15:30:08
+   Duration  12.97s (transform 7.23s, setup 0ms, import 19.93s, tests 34.65s, environment 23.77s)
+

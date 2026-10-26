@@ -1,0 +1,8 @@
+{
+  "kind": "isolated_api_image_smoke",
+  "image": "sha256:10cb0ff0dcfff3d7e86f88e64cd4a45d9e8ffe5121430a4d7145acde374da0b1",
+  "imageId": "sha256:10cb0ff0dcfff3d7e86f88e64cd4a45d9e8ffe5121430a4d7145acde374da0b1",
+  "passed": false,
+  "stderr": "Traceback (most recent call last):\n  File \"<string>\", line 4, in <module>\nAssertionError: API image does not contain the tested SSE source\n",
+  "cleanupErrors": []
+}

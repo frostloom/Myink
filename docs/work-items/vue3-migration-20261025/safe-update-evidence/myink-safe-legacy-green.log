@@ -1,0 +1,9 @@
+
+ RUN  v4.1.12 /Users/a1/.codex/worktrees/myink-vue3-migration/Myink/web
+
+
+ Test Files  2 passed (2)
+      Tests  8 passed (8)
+   Start at  15:29:11
+   Duration  610ms (transform 50ms, setup 0ms, import 69ms, tests 225ms, environment 464ms)
+

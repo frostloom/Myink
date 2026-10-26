@@ -1,0 +1,28 @@
+
+> web@0.0.0 lint
+> npm run lint:shared && npm run lint:vue
+
+
+> web@0.0.0 lint:shared
+> oxlint src/lib src/types.ts
+
+
+> web@0.0.0 lint:vue
+> eslint --config eslint.vue.config.mjs vue/src && oxlint vue/src vite.config.ts vite.vue.config.ts vitest.vue.config.ts vitest.shared.config.ts
+
+
+/Users/a1/.codex/worktrees/myink-vue3-migration/Myink/web/vue/src/components/ChapterPlanPanel.vue
+   78:43  warning  There is more than one component in this file  vue/one-component-per-file
+  118:49  warning  There is more than one component in this file  vue/one-component-per-file
+
+/Users/a1/.codex/worktrees/myink-vue3-migration/Myink/web/vue/src/components/FormFields.test.ts
+  10:29  warning  There is more than one component in this file  vue/one-component-per-file
+  20:29  warning  There is more than one component in this file  vue/one-component-per-file
+  24:29  warning  There is more than one component in this file  vue/one-component-per-file
+
+/Users/a1/.codex/worktrees/myink-vue3-migration/Myink/web/vue/src/pages/AppearancePage.vue
+   97:42  warning  There is more than one component in this file  vue/one-component-per-file
+  134:47  warning  There is more than one component in this file  vue/one-component-per-file
+
+✖ 7 problems (0 errors, 7 warnings)
+

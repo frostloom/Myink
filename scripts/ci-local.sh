@@ -31,6 +31,7 @@ trap '"${compose_test[@]}" down --volumes >/dev/null 2>&1 || true' EXIT
 "${compose_test[@]}" up -d --wait
 
 echo "==> [1/3] Python：语法门禁 + 初始化 + 契约 diff 闸 + 全量回归"
+python scripts/test_prepare_frontend_assets.py -v
 python -m compileall -q src tests
 myink init --seed
 myink contract export
@@ -38,7 +39,7 @@ git diff --exit-code -- spec/api-openapi.json
 EMBED_ENABLED=0 python -m pytest tests/ -q
 
 echo "==> [2/3] 前端：lint + 单测 + 构建"
-(cd web && npm ci && npm run lint && npm test && npm run build)
+(cd web && npm ci && npm audit --audit-level=moderate && node --test scripts/merge-retained-assets.test.mjs scripts/default-frontend.test.mjs && npm run lint && npm test && npm run build && npm run lint:react && npm run test:react && npm run build:react)
 
 if [[ "${SKIP_IMAGES:-0}" != "1" ]]; then
   echo "==> [3/3] 镜像构建（Python + Caddy）"
@@ -50,4 +51,4 @@ else
   echo "==> [3/3] 镜像构建已跳过（SKIP_IMAGES=1）"
 fi
 
-echo "✔ CI 本地复现全部通过（与 .github/workflows/ci.yml 对齐）"
+echo "✔ 本地基础门禁通过；跨浏览器回归与React回退镜像另见CI及迁移验收入口"

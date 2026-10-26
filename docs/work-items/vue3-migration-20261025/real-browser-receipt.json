@@ -1,0 +1,480 @@
+{
+  "kind": "vue_real_isolated_api_browser",
+  "builds": {
+    "vue": {
+      "entry": "/assets/index-BWgRncmt.js",
+      "indexSha256": "c8de0ecfb6da106bd338b7447fd49a02a0a2c1eb0733eeaf4fdc29de51d6f63a"
+    },
+    "react": {
+      "entry": "/assets/index-BDxdzfd9.js",
+      "indexSha256": "fc8eff871b4366624c0b5b7507e68a63c8023a18a7dc3d015765b917c47964ae"
+    }
+  },
+  "checks": [
+    "vue_real_invitation_registration_empty_account",
+    "vue_real_logout",
+    "vue_real_login_and_account_switch_list",
+    "vue_real_workspace_deep_link_and_chapter",
+    "vue_real_editor_save_persists_after_reload",
+    "vue_real_version_history",
+    "vue_real_settings_resource_snapshot",
+    "vue_real_environment_contract",
+    "vue_real_style_library_contract",
+    "vue_real_ordinary_account_admin_denied",
+    "same_origin_vue_to_react_session_draft_theme_rollback",
+    "same_origin_react_to_vue_session_draft_theme_return"
+  ],
+  "api": [
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/register",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/logout",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/token",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/chapters",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/writing-resources/updates",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/candidates",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/foreshadows",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/graph",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/writing-resources",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/lessons",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/tasks",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/chapters/904d3d5c-5384-4da3-a9a3-4b1acc6a2c3e",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/tasks",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/chapters/904d3d5c-5384-4da3-a9a3-4b1acc6a2c3e/content",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/chapters",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/foreshadows",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/candidates",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/writing-resources/updates",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/chapters",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/graph",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/writing-resources",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/lessons",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/tasks",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/chapters/904d3d5c-5384-4da3-a9a3-4b1acc6a2c3e",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/tasks",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/chapters/904d3d5c-5384-4da3-a9a3-4b1acc6a2c3e/versions",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/my-writing-resources",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/settings",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/writing-resources",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/writing-resources",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/writing-resources/updates",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/writing-resources",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/writing-resources",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/writing-resources/updates",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/environment",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/style-library",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/candidates",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/foreshadows",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/chapters",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/writing-resources/updates",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/graph",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/writing-resources",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/lessons",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/tasks",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/chapters/904d3d5c-5384-4da3-a9a3-4b1acc6a2c3e",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/tasks",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/chapters",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/lessons",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/writing-resources/updates",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/candidates",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/writing-resources",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/foreshadows",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/graph",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/tasks",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/chapters/904d3d5c-5384-4da3-a9a3-4b1acc6a2c3e",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/tasks",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/foreshadows",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/writing-resources/updates",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/chapters",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/candidates",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/tasks",
+      "status": 429
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/graph",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/writing-resources",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/lessons",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/tasks",
+      "status": 429
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/chapters/904d3d5c-5384-4da3-a9a3-4b1acc6a2c3e",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/chapters/904d3d5c-5384-4da3-a9a3-4b1acc6a2c3e/content",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6812c756-a785-4927-84d8-af4024d01250/chapters",
+      "status": 429
+    }
+  ],
+  "pageErrors": [],
+  "limits": [
+    "Real API/PostgreSQL/Redis with isolated test fixtures",
+    "No model or production calls; generation worker/Caddy/TLS not exercised"
+  ],
+  "passed": true
+}

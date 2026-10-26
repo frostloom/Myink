@@ -1,0 +1,20 @@
+{
+  "kind": "isolated_frontend_image_smoke",
+  "image": "myink-caddy:react-main-rollback-20261026",
+  "expected": "react",
+  "checks": [
+    "selected_frontend_label",
+    "deep_link_html_no_store",
+    "hashed_asset_immutable",
+    "previous_asset_retained",
+    "unknown_api_never_spa",
+    "selected_native_runtime",
+    "login_deep_link_refresh"
+  ],
+  "pageErrors": [],
+  "passed": true,
+  "imageId": "sha256:7a5ced55e3f1195af23f7faa93c0c19cef891c9d04dc978560f196a9523532c6",
+  "revision": "uncommitted-vue-main-cutover-20261026",
+  "entry": "/assets/index-BDxdzfd9.js",
+  "cleanupErrors": []
+}

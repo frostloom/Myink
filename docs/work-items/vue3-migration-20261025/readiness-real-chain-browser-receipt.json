@@ -1,0 +1,717 @@
+{
+  "kind": "actual_tls_full_queue_worker_vue_browser",
+  "builds": {
+    "vue": {
+      "entry": "/assets/index-DdkQzNNW.js",
+      "sha256": "25251d2fac19dfe9f8162c39572d7fa7369f552ea275f12b8e1c5849033f6433"
+    },
+    "react": {
+      "entry": "/assets/index-BDxdzfd9.js",
+      "sha256": "fc8eff871b4366624c0b5b7507e68a63c8023a18a7dc3d015765b917c47964ae"
+    }
+  },
+  "checks": [
+    "vue_login_through_actual_local_ca_tls",
+    "vue_actual_queue_manual_plan",
+    "active_task_vue_to_react_same_origin_session_draft_theme",
+    "active_task_react_to_vue_recovery_without_duplicate_enqueue",
+    "vue_plan_edit_confirm_actual_worker_stream_to_done",
+    "vue_preserved_draft_saved_to_actual_database",
+    "vue_short_resources_first_requires_manual_start",
+    "vue_short_actual_worker_reload_recovery_no_duplicate_post",
+    "vue_real_feedback_multipart_authenticated_blob_attachment",
+    "vue_actual_admin_totp_login_and_three_live_trend_charts"
+  ],
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/token"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/graph"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/foreshadows"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/lessons"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/5ee3d2c3-217e-45d5-bfac-fc0d94b7023c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/2375286b-e191-4340-815f-e2fe804a2130"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/2375286b-e191-4340-815f-e2fe804a2130/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/2375286b-e191-4340-815f-e2fe804a2130"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/5ee3d2c3-217e-45d5-bfac-fc0d94b7023c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/5ee3d2c3-217e-45d5-bfac-fc0d94b7023c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/5ee3d2c3-217e-45d5-bfac-fc0d94b7023c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/writing-resources"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/5a3334ed-04e7-4a08-aafb-d69c93bfd9d3/generate"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/lessons"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/graph"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/foreshadows"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/graph"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/foreshadows"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/lessons"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/48f3a82b-3605-49e2-9e58-48f15855774c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/48f3a82b-3605-49e2-9e58-48f15855774c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e/plan/confirm"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/48f3a82b-3605-49e2-9e58-48f15855774c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/48f3a82b-3605-49e2-9e58-48f15855774c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/48f3a82b-3605-49e2-9e58-48f15855774c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/5ee3d2c3-217e-45d5-bfac-fc0d94b7023c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/tasks"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/5ee3d2c3-217e-45d5-bfac-fc0d94b7023c/content"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/2375286b-e191-4340-815f-e2fe804a2130"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/2375286b-e191-4340-815f-e2fe804a2130/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/2375286b-e191-4340-815f-e2fe804a2130"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/5ee3d2c3-217e-45d5-bfac-fc0d94b7023c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/a9f4519a-e003-4661-80d8-85b519424d1b/chapters/5ee3d2c3-217e-45d5-bfac-fc0d94b7023c"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/short/creation"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/style-library"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/short/creation/sessions"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/short/creation/sessions/bb2f6805-4142-41de-b00a-0a09f0e44864/messages"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/short/creation/sessions/bb2f6805-4142-41de-b00a-0a09f0e44864/commit"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/settings"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/my-writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/writing-resources"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/graph"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/foreshadows"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/lessons"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/writing-resources"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/short/generate"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/52cb7c13-83e4-4cea-a752-176f257417d6"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/52cb7c13-83e4-4cea-a752-176f257417d6/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/52cb7c13-83e4-4cea-a752-176f257417d6"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/candidates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/graph"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/foreshadows"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/writing-resources/updates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/writing-resources"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/lessons"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/tasks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/52cb7c13-83e4-4cea-a752-176f257417d6"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/52cb7c13-83e4-4cea-a752-176f257417d6/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/52cb7c13-83e4-4cea-a752-176f257417d6"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/52cb7c13-83e4-4cea-a752-176f257417d6"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/52cb7c13-83e4-4cea-a752-176f257417d6"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/52cb7c13-83e4-4cea-a752-176f257417d6"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/52cb7c13-83e4-4cea-a752-176f257417d6"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/52cb7c13-83e4-4cea-a752-176f257417d6"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tasks/52cb7c13-83e4-4cea-a752-176f257417d6"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects/6d5d4ed8-9431-437d-8fff-1a11c81742e9/chapters"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/feedback"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/feedback"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/feedback/f1232946-4a83-493f-96f2-8115d9f36f3f/attachments/0"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/projects"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/logout"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/token"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/mfa/verify"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/overview"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/trends"
+    }
+  ],
+  "httpFailures": [
+    {
+      "path": "/api/v1/tasks/2375286b-e191-4340-815f-e2fe804a2130/events",
+      "status": 410
+    },
+    {
+      "path": "/api/v1/tasks/42333d6a-75d5-460f-ae61-a9610bfe524e",
+      "status": 404
+    },
+    {
+      "path": "/api/v1/tasks/2375286b-e191-4340-815f-e2fe804a2130/events",
+      "status": 410
+    }
+  ],
+  "pageErrors": [],
+  "passed": true,
+  "longTaskId": "42333d6a-75d5-460f-ae61-a9610bfe524e",
+  "shortProjectId": "6d5d4ed8-9431-437d-8fff-1a11c81742e9"
+}

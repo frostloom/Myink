@@ -1,0 +1,102 @@
+{
+  "kind": "three_engine_frontend_acceptance",
+  "passed": true,
+  "results": [
+    {
+      "browser": "chromium",
+      "stage": "smoke",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 28,
+      "receipt": "/tmp/myink-safe-final-matrix/chromium/smoke/receipt.json"
+    },
+    {
+      "browser": "chromium",
+      "stage": "workspace",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 10,
+      "receipt": "/tmp/myink-safe-final-matrix/chromium/workspace/receipt.json"
+    },
+    {
+      "browser": "chromium",
+      "stage": "readiness",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 26,
+      "receipt": "/tmp/myink-safe-final-matrix/chromium/readiness/receipt.json"
+    },
+    {
+      "browser": "chromium",
+      "stage": "release",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 10,
+      "receipt": "/tmp/myink-safe-final-matrix/chromium/release/receipt.json"
+    },
+    {
+      "browser": "firefox",
+      "stage": "smoke",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 28,
+      "receipt": "/tmp/myink-safe-final-matrix/firefox/smoke/receipt.json"
+    },
+    {
+      "browser": "firefox",
+      "stage": "workspace",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 10,
+      "receipt": "/tmp/myink-safe-final-matrix/firefox/workspace/receipt.json"
+    },
+    {
+      "browser": "firefox",
+      "stage": "readiness",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 26,
+      "receipt": "/tmp/myink-safe-final-matrix/firefox/readiness/receipt.json"
+    },
+    {
+      "browser": "firefox",
+      "stage": "release",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 10,
+      "receipt": "/tmp/myink-safe-final-matrix/firefox/release/receipt.json"
+    },
+    {
+      "browser": "webkit",
+      "stage": "smoke",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 28,
+      "receipt": "/tmp/myink-safe-final-matrix/webkit/smoke/receipt.json"
+    },
+    {
+      "browser": "webkit",
+      "stage": "workspace",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 10,
+      "receipt": "/tmp/myink-safe-final-matrix/webkit/workspace/receipt.json"
+    },
+    {
+      "browser": "webkit",
+      "stage": "readiness",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 26,
+      "receipt": "/tmp/myink-safe-final-matrix/webkit/readiness/receipt.json"
+    },
+    {
+      "browser": "webkit",
+      "stage": "release",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 10,
+      "receipt": "/tmp/myink-safe-final-matrix/webkit/release/receipt.json"
+    }
+  ]
+}

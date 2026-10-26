@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "owned_resource_prefixes": [
+    "myink-image-smoke-",
+    "myink-retain-assets-"
+  ],
+  "remaining": []
+}

@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.node.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.vue.node.tsbuildinfo"
+  },
+  "include": [
+    "vite.vue.config.ts",
+    "vitest.vue.config.ts",
+    "vite.config.ts",
+    "vitest.shared.config.ts"
+  ]
+}

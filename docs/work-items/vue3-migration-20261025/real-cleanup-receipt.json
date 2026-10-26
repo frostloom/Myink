@@ -1,0 +1,23 @@
+{
+  "dedicated_project": "myink-vue-integration-2305",
+  "dedicated_containers_remaining": [],
+  "dedicated_networks_remaining": [],
+  "dedicated_ports_closed": [
+    25432,
+    26380,
+    25673,
+    28100,
+    28101
+  ],
+  "existing_expected_containers_still_running": [
+    "myink-admin-security-test-postgres-1",
+    "myink-admin-security-test-rabbitmq-1",
+    "myink-admin-security-test-redis-1",
+    "myink-api",
+    "myink-caddy",
+    "myink-myink-worker-1",
+    "myink-pg",
+    "myink-rabbitmq",
+    "myink-redis"
+  ]
+}

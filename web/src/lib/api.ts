@@ -1,3 +1,4 @@
+import { beginWrite } from './pendingWrites'
 import type { TaskBudgetLimits, ResumeBudgetBody } from '../types'
 // fetch 统一封装：Vite dev proxy 把 /api 转发到 Caddy（:80，见 vite.config.ts），生产同源。
 // 业务路由一律 Bearer（§14.1 ③）；非 2xx 统一抛 ApiError（code = {"error": code} 信封）。
@@ -119,6 +120,7 @@ async function request<T>(
     authenticatedRequests.set(token, pending)
   }
 
+  const finishWrite = method === 'GET' || method === 'HEAD' ? undefined : beginWrite()
   try {
     const res = await fetch(BASE + path, {
       method,
@@ -156,6 +158,7 @@ async function request<T>(
     if (controller.signal.aborted) throw new ApiError(0, 'request_aborted', null)
     throw new ApiError(0, 'network_error', null)
   } finally {
+    finishWrite?.()
     options?.signal?.removeEventListener('abort', abortFromCaller)
     if (token) {
       const pending = authenticatedRequests.get(token)

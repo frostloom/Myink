@@ -1,0 +1,7 @@
+{
+  "simulated_docker": true,
+  "actual_containers_created": false,
+  "exit_code": 1,
+  "resource_was_cleaned": false,
+  "stderr_tail": "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/a1/.local/share/uv/python/cpython-3.12.15-macos-aarch64-none/lib/python3.12/subprocess.py\", line 571, in run\n    raise CalledProcessError(retcode, process.args,\nsubprocess.CalledProcessError: Command '['/var/folders/sw/_x387kld25bgsp22s4n5rfjm0000gn/T/myink-main-review-retain-sl2tdsg5/docker', 'create', '--init', '--network', 'none', '--name', 'myink-retain-assets-9975306096d4', 'sha256:review-fixture']' returned non-zero exit status 70.\n"
+}
