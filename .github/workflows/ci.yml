@@ -124,13 +124,10 @@ jobs:
         run: npm test
       - name: 默认 Vue 构建（包含严格类型检查）
         run: npm run build
-      - name: React 回退 lint / 单测 / 构建
-        run: |
-          npm run lint:react
-          npm run test:react
-          npm run build:react
       - name: 安装三个浏览器引擎（不调用模型）
         run: npx playwright install --with-deps chromium firefox webkit
+      - name: 浏览器中断清理回归
+        run: node --test scripts/browser-cleanup.test.mjs
       - name: Vue Chromium / Firefox / WebKit 完整浏览器矩阵
         run: npm run test:browser:matrix -- --output "$RUNNER_TEMP/myink-main-browser-matrix"
       - name: 保存浏览器回执（失败也保存）
@@ -139,8 +136,7 @@ jobs:
         with:
           name: vue-browser-matrix
           path: ${{ runner.temp }}/myink-main-browser-matrix
-      - name: React 工作台回退浏览器回归
-        run: node ../scripts/evaluate-browser.cjs --dist dist --output "$RUNNER_TEMP/myink-react-browser"
+
 
   # 镜像构建：GitHub runner 境外网络用官方源即可（pypi / npmjs / goproxy），
   # 不需 daocloud/aliyun 覆盖（那是本地 compose 的国内源参数）。
@@ -153,5 +149,3 @@ jobs:
         run: docker build -f Dockerfile -t myink-api:ci .
       - name: 默认 Vue Caddy 镜像（包含 caddy validate）
         run: docker build -f caddy/Dockerfile -t myink-caddy:ci .
-      - name: React 回退镜像（显式选择）
-        run: docker build -f caddy/Dockerfile --build-arg FRONTEND_VARIANT=react -t myink-caddy-react:ci .

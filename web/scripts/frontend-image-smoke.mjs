@@ -8,7 +8,7 @@ import path from 'node:path'
 import { chromium } from 'playwright'
 const value = name => { const index = process.argv.indexOf(name); assert.ok(index >= 0, `${name} required`); return process.argv[index + 1] }
 const image = value('--image'), expected = value('--expected')
-assert.ok(['react', 'vue'].includes(expected))
+assert.equal(expected, 'vue', 'Only the native Vue frontend is supported')
 const docker = process.env.MYINK_DOCKER ?? 'docker'
 const run = args => execFileSync(docker, args, { encoding: 'utf8', timeout: 60000 }).trim()
 const output = fs.mkdtempSync(path.join(os.tmpdir(), 'myink-image-smoke-'))

@@ -8,7 +8,7 @@ const at = (path: string) => fileURLToPath(new URL(path, import.meta.url))
 export default defineConfig({
   root: at('./vue'),
   publicDir: at('./public'),
-  plugins: [vue(), releasePlugin('vue'), {
+  plugins: [vue(), releasePlugin(), {
     name: 'vue-production-boundary',
     generateBundle(_options, bundle) {
       for (const output of Object.values(bundle)) {
@@ -30,7 +30,7 @@ export default defineConfig({
     port: 5174,
     strictPort: true,
     fs: { allow: [at('.')] },
-    // 与React一致经Caddy访问API/SSE；端口隔离不代表后端数据隔离。
+    // 经Caddy访问API/SSE；端口隔离不代表后端数据隔离。
     proxy: { '/api': { target: 'http://localhost:80', changeOrigin: true } },
   },
 })

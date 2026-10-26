@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { PropType } from 'vue'
-import { defineComponent, h, ref, computed, watch } from 'vue'
+import { defineComponent, h, ref, computed, watch, onScopeDispose } from 'vue'
 
 import { api } from "../../../src/lib/api";
 import { formatApiError } from "../../../src/lib/apiError";
@@ -30,34 +30,43 @@ export const LessonsPanel = defineComponent({
         const lessons = ref<WritingLesson[]>([]), setLessons = (next: typeof lessons.value | ((current: typeof lessons.value) => typeof lessons.value)) => lessons.value = typeof next === "function" ? next(lessons.value) : next;
         const busy = ref<string | null>(null), setBusy = (next: typeof busy.value | ((current: typeof busy.value) => typeof busy.value)) => busy.value = typeof next === "function" ? next(busy.value) : next;
         const error = ref<string | null>(null), setError = (next: typeof error.value | ((current: typeof error.value) => typeof error.value)) => error.value = typeof next === "function" ? next(error.value) : next;
-        watch(() => [projectId.value], (_next, _prev, onCleanup) => {
+        let epoch = 0;
+        onScopeDispose(() => { epoch++; });
+        watch(projectId, (id, _prev, onCleanup) => {
+            epoch++;
+            setLessons([]);
+            setBusy(null);
+            setError(null);
             let alive = true;
-            api.listLessons(projectId.value)
+            api.listLessons(id)
                 .then((list) => { if (alive)
                 setLessons(list); })
                 .catch(() => { if (alive)
                 setLessons([]); });
             onCleanup(() => { alive = false; });
-        }, { immediate: true, flush: "post" });
+        }, { immediate: true, flush: "sync" });
         const pending = computed(() => lessons.value.filter((l) => l.status === 'proposed').length);
         async function act(action: 'confirm' | 'reject', lid: string) {
             if (busy.value)
                 return;
+            const version = epoch, id = projectId.value;
+            const current = () => version === epoch;
             setBusy(lid);
             setError(null);
             try {
                 if (action === 'confirm')
-                    await api.confirmLesson(projectId.value, lid);
+                    await api.confirmLesson(id, lid);
                 else
-                    await api.rejectLesson(projectId.value, lid);
-                const list = await api.listLessons(projectId.value).catch(() => []);
-                setLessons(list);
+                    await api.rejectLesson(id, lid);
+                if (!current()) return;
+                const list = await api.listLessons(id);
+                if (current()) setLessons(list);
             }
             catch (err) {
-                setError(formatApiError(err, '操作失败'));
+                if (current()) setError(formatApiError(err, '操作失败'));
             }
             finally {
-                setBusy(null);
+                if (current()) setBusy(null);
             }
         }
         return () => {

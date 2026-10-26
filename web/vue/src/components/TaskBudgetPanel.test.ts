@@ -1,4 +1,5 @@
 import { h } from 'vue'
+import { flushPromises } from '@vue/test-utils'
 
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '../workspaceTestUtils';
@@ -9,6 +10,20 @@ import { api } from '../../../src/lib/api';
 vi.mock('../../../src/lib/api', () => ({ api: { resumeTask: vi.fn() } }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 const budget = { limits: { max_requests: 1, max_cost_yuan: 5, max_runtime_seconds: 1800 }, requests_used: 1, cost_used_yuan: 0.1, cost_reserved_yuan: 0.2, runtime_used_seconds: 10, pause_reason: 'request_limit', stage: 'audit', version: 1, resume_publication: null };
+it('protects a failed budget submission but releases the form guard after a successful retry', async () => {
+    vi.mocked(api.resumeTask).mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ task_id: 't', status: 'queued' })
+    render(h(TaskBudgetPanel, { task: { task_id: 't', status: 'paused', budget }, onResumed: vi.fn() }))
+    for (const label of ['追加请求次数', '追加费用（元）', '追加运行时间（分钟）']) {
+        await fireEvent.input(screen.getByLabelText(label), { target: { value: '2' } })
+    }
+    await fireEvent.click(screen.getByRole('button', { name: '追加并继续' })); await flushPromises()
+    const failed = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(failed)
+    expect(failed.defaultPrevented).toBe(true)
+    expect((screen.getByLabelText('追加请求次数') as HTMLInputElement).value).toBe('2')
+    await fireEvent.click(screen.getByRole('button', { name: '重试本次恢复' })); await flushPromises()
+    const saved = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(saved)
+    expect(saved.defaultPrevented).toBe(false)
+})
 it('retains the operation id on retry and prevents duplicate clicks', async () => {
     vi.mocked(api.resumeTask).mockRejectedValueOnce(new Error('网络失败')).mockResolvedValueOnce({ task_id: 't', status: 'queued' });
     const resumed = vi.fn();

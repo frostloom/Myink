@@ -1,10 +1,9 @@
 import { expect, it } from 'vitest'
 import { buildRelease } from '../../scripts/releasePlugin'
-it('binds identity to all app bytes and client while ignoring object insertion order', () => {
+it('binds identity to all app bytes while ignoring object insertion order', () => {
   const assets = { 'assets/app.js': 'one', 'assets/app.css': 'css' }
-  expect(buildRelease('vue', assets, '/assets/app.js')).toEqual(buildRelease('vue', { 'assets/app.css': 'css', 'assets/app.js': 'one' }, '/assets/app.js'))
-  expect(buildRelease('vue', assets, '/assets/app.js').id).not.toBe(buildRelease('react', assets, '/assets/app.js').id)
-  expect(buildRelease('vue', assets, '/assets/app.js').id).not.toBe(buildRelease('vue', { ...assets, 'assets/app.css': 'changed' }, '/assets/app.js').id)
+  expect(buildRelease(assets, '/assets/app.js')).toEqual(buildRelease({ 'assets/app.css': 'css', 'assets/app.js': 'one' }, '/assets/app.js'))
+  expect(buildRelease(assets, '/assets/app.js').id).not.toBe(buildRelease({ ...assets, 'assets/app.css': 'changed' }, '/assets/app.js').id)
 })
 it('emits a matching manifest and HTML with deterministic identity through a real Vite build', async () => {
   const { mkdtemp, writeFile, rm } = await import('node:fs/promises')
@@ -16,8 +15,8 @@ it('emits a matching manifest and HTML with deterministic identity through a rea
   try {
     await writeFile(join(root, 'index.html'), '<html><head></head><body><script type="module" src="/main.js"></script></body></html>')
     await writeFile(join(root, 'main.js'), 'console.log("release fixture")')
-    const run = async (client: 'vue' | 'react') => {
-      const result = await build({ configFile: false, root, logLevel: 'silent', plugins: [releasePlugin(client)], build: { write: false } })
+    const run = async () => {
+      const result = await build({ configFile: false, root, logLevel: 'silent', plugins: [releasePlugin()], build: { write: false } })
       if (Array.isArray(result) || !('output' in result)) throw new Error('Expected output bundle')
       const assets = result.output.filter(output => output.type === 'asset')
       const html = String(assets.find(asset => asset.fileName === 'index.html')?.source)
@@ -27,11 +26,10 @@ it('emits a matching manifest and HTML with deterministic identity through a rea
       expect(result.output.some(output => `/${output.fileName}` === manifest.entry)).toBe(true)
       return manifest.id
     }
-    const first = await run('vue')
-    expect(await run('vue')).toBe(first)
-    expect(await run('react')).not.toBe(first)
+    const first = await run()
+    expect(await run()).toBe(first)
     await writeFile(join(root, 'main.js'), 'console.log("changed app")')
-    expect(await run('vue')).not.toBe(first)
+    expect(await run()).not.toBe(first)
   } finally { await rm(root, { recursive: true, force: true }) }
 })
 it('rejects an entry filename that cannot be recognized by still-active legacy clients', async () => {
@@ -44,6 +42,6 @@ it('rejects an entry filename that cannot be recognized by still-active legacy c
   try {
     await writeFile(join(root, 'index.html'), '<html><head></head><body><script type="module" src="/main.js"></script></body></html>')
     await writeFile(join(root, 'main.js'), 'console.log("legacy fixture")')
-    await expect(build({ configFile: false, root, logLevel: 'silent', plugins: [releasePlugin('vue')], build: { write: false, rolldownOptions: { output: { entryFileNames: 'assets/app-[hash].js' } } } })).rejects.toThrow(/legacy.*index-/i)
+    await expect(build({ configFile: false, root, logLevel: 'silent', plugins: [releasePlugin()], build: { write: false, rolldownOptions: { output: { entryFileNames: 'assets/app-[hash].js' } } } })).rejects.toThrow(/legacy.*index-/i)
   } finally { await rm(root, { recursive: true, force: true }) }
 })

@@ -1,6 +1,6 @@
 # Myink 边缘层镜像：前端静态产物 + Caddy 二进制。
 #
-# 静态产物（web/dist）与 Caddy 二进制同镜像：发前端的人就是 Caddy，多阶段构建到同层里。
+# 静态产物（web/dist-vue）与 Caddy 二进制同镜像：发前端的人就是 Caddy，多阶段构建到同层里。
 #
 # 基础镜像源可用 build arg 覆盖（国内 docker.io 直连可能超时；compose 当前环境传
 # NODE_IMAGE/CADDY_IMAGE=docker.m.daocloud.io/library/...，见 docker-compose.yml）。
@@ -8,7 +8,7 @@
 # 阶段 1：构建前端静态产物（vite build，base=/，产物含 index.html/assets/favicon）
 ARG NODE_IMAGE=node:24.22.1-alpine
 ARG CADDY_IMAGE=caddy:2.11.4-alpine
-# Vue is the normal product; React remains an explicit rollback build.
+# Vue is the only supported frontend; reject retired selector values.
 ARG FRONTEND_VARIANT=vue
 FROM ${NODE_IMAGE} AS web
 # npm 源可覆盖（国内 registry.npmjs.org 可能不通，compose 传 npmmirror）
@@ -18,11 +18,8 @@ COPY web/package.json web/package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --registry=${NPM_REGISTRY}
 COPY web/ ./
 ARG FRONTEND_VARIANT
-RUN case "$FRONTEND_VARIANT" in \
-      react) npm run build:react && mkdir -p /app/frontend-dist && cp -a dist/. /app/frontend-dist/ ;; \
-      vue) npm run build && mkdir -p /app/frontend-dist && cp -a dist-vue/. /app/frontend-dist/ ;; \
-      *) echo "FRONTEND_VARIANT must be react or vue" >&2; exit 64 ;; \
-    esac
+RUN test "$FRONTEND_VARIANT" = vue || { echo "Only FRONTEND_VARIANT=vue is supported" >&2; exit 64; }
+RUN npm run build && mkdir -p /app/frontend-dist && cp -a dist-vue/. /app/frontend-dist/
 
 COPY caddy/retained-assets/ /app/retained-assets/
 RUN node scripts/merge-retained-assets.mjs /app/retained-assets /app/frontend-dist/assets
@@ -30,7 +27,7 @@ RUN node scripts/merge-retained-assets.mjs /app/retained-assets /app/frontend-di
 # 阶段 2：Caddy 运行层（Caddyfile + dist）
 FROM ${CADDY_IMAGE}
 ARG FRONTEND_VARIANT
-LABEL io.myink.frontend=${FRONTEND_VARIANT}
+LABEL io.myink.frontend=vue
 COPY caddy/Caddyfile /etc/caddy/Caddyfile
 # 站点块用 import 按 CADDY_SITE_TLS 选这两个片段（默认 tls-auto.caddyfile 是空操作）。
 # 必须一起 COPY：import 的目标文件在运行时要真的存在，缺了会在启动时找不到文件。

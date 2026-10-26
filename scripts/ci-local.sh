@@ -39,7 +39,7 @@ git diff --exit-code -- spec/api-openapi.json
 EMBED_ENABLED=0 python -m pytest tests/ -q
 
 echo "==> [2/3] 前端：lint + 单测 + 构建"
-(cd web && npm ci && npm audit --audit-level=moderate && node --test scripts/merge-retained-assets.test.mjs scripts/default-frontend.test.mjs && npm run lint && npm test && npm run build && npm run lint:react && npm run test:react && npm run build:react)
+(cd web && npm ci && npm audit --audit-level=moderate && node --test scripts/merge-retained-assets.test.mjs scripts/default-frontend.test.mjs && npm run lint && npm test && npm run build)
 
 if [[ "${SKIP_IMAGES:-0}" != "1" ]]; then
   echo "==> [3/3] 镜像构建（Python + Caddy）"
@@ -51,4 +51,4 @@ else
   echo "==> [3/3] 镜像构建已跳过（SKIP_IMAGES=1）"
 fi
 
-echo "✔ 本地基础门禁通过；跨浏览器回归与React回退镜像另见CI及迁移验收入口"
+echo "✔ 本地基础门禁通过；跨浏览器回归与Vue镜像另见CI及迁移验收入口"

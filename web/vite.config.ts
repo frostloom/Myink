@@ -1,2 +1,2 @@
-// Main entry is native Vue; explicit React rollback uses vite.react.config.ts.
+// Native Vue is the only product entry.
 export { default } from './vite.vue.config.ts'

@@ -15,15 +15,13 @@ assert.ok(['127.0.0.1', 'localhost'].includes(upstream.hostname) && upstream.por
 const web = fileURLToPath(new URL('..', import.meta.url))
 const output = fs.mkdtempSync(path.join(os.tmpdir(), 'myink-vue-real-browser-'))
 const vueDist = path.join(output, 'dist-vue')
-const reactDist = path.join(output, 'dist-react')
 fs.cpSync(path.join(web, 'dist-vue'), vueDist, { recursive: true })
-fs.cpSync(path.join(web, 'dist'), reactDist, { recursive: true })
-let dist = vueDist
+const dist = vueDist
 const buildIdentity = root => {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8')
   return { entry: html.match(/src="([^"]*\/assets\/index-[^"]+\.js)"/)?.[1] ?? null, indexSha256: createHash('sha256').update(html).digest('hex') }
 }
-const receipt = { kind: 'vue_real_isolated_api_browser', builds: { vue: buildIdentity(vueDist), react: buildIdentity(reactDist) }, checks: [], api: [], pageErrors: [], limits: ['Real API/PostgreSQL/Redis with isolated test fixtures', 'No model or production calls; generation worker/Caddy/TLS not exercised'], passed: false }
+const receipt = { kind: 'vue_real_isolated_api_browser', builds: { vue: buildIdentity(vueDist) }, checks: [], api: [], pageErrors: [], limits: ['Real API/PostgreSQL/Redis with isolated test fixtures', 'No model or production calls; generation worker/Caddy/TLS not exercised'], passed: false }
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' }
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://127.0.0.1')
@@ -37,10 +35,7 @@ const server = http.createServer((req, res) => {
   }
   let file = path.resolve(dist, '.' + decodeURIComponent(url.pathname))
   if (!file.startsWith(dist + path.sep)) file = path.join(dist, 'index.html')
-  if (!fs.existsSync(file) && url.pathname.startsWith('/assets/')) {
-    const fallback = path.resolve(dist === vueDist ? reactDist : vueDist, '.' + url.pathname)
-    if (fs.existsSync(fallback)) file = fallback
-  }
+
   if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(dist, 'index.html')
   res.writeHead(200, { 'Content-Type': types[path.extname(file)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' })
   fs.createReadStream(file).pipe(res)
@@ -110,22 +105,20 @@ try {
   await page.getByRole('button', { name: '保存这套', exact: true }).click()
   await page.goto(origin + `/projects/${metadata.projectId}`)
   await page.getByRole('button', { name: /第 1 章.*隔离雨夜/ }).click()
-  await text.fill('Vue到React再到Vue的同源未提交草稿。')
-  dist = reactDist
+  await text.fill('Vue刷新后保留的同源未提交草稿。')
   page.once('dialog', dialog => dialog.accept())
   await page.reload()
   await page.getByRole('button', { name: /第 1 章.*隔离雨夜/ }).click()
-  assert.equal(await text.inputValue(), 'Vue到React再到Vue的同源未提交草稿。')
+  assert.equal(await text.inputValue(), 'Vue刷新后保留的同源未提交草稿。')
   assert.ok(await page.evaluate(() => JSON.stringify(localStorage).includes('真实往返配色')))
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('myink.session')).username), metadata.username)
-  receipt.checks.push('same_origin_vue_to_react_session_draft_theme_rollback')
-  dist = vueDist
+  receipt.checks.push('same_origin_vue_reload_preserves_session_draft_theme')
   page.once('dialog', dialog => dialog.accept())
   await page.reload()
   await page.getByRole('button', { name: /第 1 章.*隔离雨夜/ }).click()
-  assert.equal(await text.inputValue(), 'Vue到React再到Vue的同源未提交草稿。')
+  assert.equal(await text.inputValue(), 'Vue刷新后保留的同源未提交草稿。')
   assert.ok(await page.evaluate(() => JSON.stringify(localStorage).includes('真实往返配色')))
-  receipt.checks.push('same_origin_react_to_vue_session_draft_theme_return')
+  receipt.checks.push('same_origin_vue_repeated_reload_preserves_session_draft_theme')
   await page.getByRole('button', { name: '保存', exact: true }).click()
   await page.getByText('已保存', { exact: true }).waitFor()
 

@@ -247,7 +247,7 @@ services:
       args:
         # 国内网络：node/caddy 基础镜像走 daocloud；npm 包走 npmmirror
         NODE_IMAGE: docker.m.daocloud.io/library/node:24.22.1-alpine
-        # Main product is Vue; FRONTEND_VARIANT=react builds the rollback image.
+        # Vue only; retired selector values are rejected by the image build.
         FRONTEND_VARIANT: ${FRONTEND_VARIANT:-vue}
         CADDY_IMAGE: docker.m.daocloud.io/library/caddy:2.11.4-alpine
         NPM_REGISTRY: https://registry.npmmirror.com

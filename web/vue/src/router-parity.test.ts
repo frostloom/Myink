@@ -1,25 +1,20 @@
 // @vitest-environment jsdom
 import { expect, it } from 'vitest'
 import { createMemoryHistory } from 'vue-router'
-import type { RouteObject } from 'react-router-dom'
-
-// 测试期加载真实React路由，避免把React TSX拉入Vue模板的类型编译范围。
-const loaded = import.meta.glob('../../src/router.tsx', { eager: true })
-const { router: reactRouter } = loaded['../../src/router.tsx'] as { router: { routes: RouteObject[] } }
 import { createCandidateRouter } from './router'
 
-// 比较两套路由的实际注册，不解析源码。新增React路由而未在Vue登记会阻断CI。
-it('accounts for every existing React route in the Vue candidate', () => {
-  function paths(routes: typeof reactRouter.routes, parent = ''): string[] {
-    return routes.flatMap(route => {
-      const full = route.path?.startsWith('/') ? route.path : route.path ? `${parent}/${route.path}` : parent
-      return [...(route.path ? [full] : []), ...paths(route.children ?? [], full)]
-    })
-  }
-  const candidate = new Set(createCandidateRouter(createMemoryHistory()).getRoutes().map(route => route.path))
-  for (const path of paths(reactRouter.routes).filter(path => path !== '/*')) {
-    expect(candidate.has(path), `React route missing from Vue inventory: ${path}`).toBe(true)
-  }
+// Public URLs are a product contract independent of any retired implementation.
+it.each([
+  '/', '/login', '/projects', '/appearance', '/long', '/short', '/long/new',
+  '/short/new', '/projects/new', '/account', '/environment', '/theme', '/styles',
+  '/projects/:projectId', '/projects/:projectId/settings', '/projects/:projectId/audit',
+  '/projects/:projectId/lore', '/admin', '/admin/configuration', '/admin/models',
+  '/admin/model-routes', '/admin/defaults', '/admin/prompts', '/admin/genres',
+  '/admin/writing-resources', '/admin/projects/:projectId', '/admin/tasks/:taskId',
+  '/admin/runs/:runId', '/admin/users/:userId',
+])('keeps the public route %s registered', path => {
+  const routes = createCandidateRouter(createMemoryHistory()).getRoutes()
+  expect(routes.some(route => route.path === path)).toBe(true)
 })
 
 it.each([

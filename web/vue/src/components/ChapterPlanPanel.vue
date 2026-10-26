@@ -1,7 +1,7 @@
 <script lang="ts">
 import { useMemoryFormGuard } from "../composables/useMemoryFormGuard";
 import type { PropType } from 'vue'
-import { defineComponent, h, Fragment, ref, shallowRef, computed, onMounted, watch } from 'vue'
+import { defineComponent, h, Fragment, ref, shallowRef, computed, onMounted, watch, onScopeDispose } from 'vue'
 
 import type { ArtifactState } from "../composables/useTaskEvents";
 import { api, ApiError } from "../../../src/lib/api";
@@ -130,6 +130,13 @@ export const ChapterPlanPanel = defineComponent({
         const draft = ref<ChapterPlan | null>(null), setDraft = (next: typeof draft.value | ((current: typeof draft.value) => typeof draft.value)) => draft.value = typeof next === "function" ? next(draft.value) : next;
         const busy = ref(false), setBusy = (next: typeof busy.value | ((current: typeof busy.value) => typeof busy.value)) => busy.value = typeof next === "function" ? next(busy.value) : next;
         const error = ref<string | null>(null), setError = (next: typeof error.value | ((current: typeof error.value) => typeof error.value)) => error.value = typeof next === "function" ? next(error.value) : next;
+        let operationEpoch = 0;
+        onScopeDispose(() => { operationEpoch++; });
+        watch([taskId, chapterSeq], () => {
+            operationEpoch++;
+            setBusy(false);
+            setError(null);
+        }, { flush: 'sync' });
         const plans = computed(() => {
             const reviews = new Map<number, ChapterPlan>();
             for (const run of runs.value) {
@@ -153,7 +160,7 @@ export const ChapterPlanPanel = defineComponent({
         const preview = computed(() => streamPreview(artifact.value?.content ?? ''));
         const editable = computed(() => status.value === 'awaiting_plan' && current.value !== null);
         useMemoryFormGuard(() => editable.value && draft.value !== null && JSON.stringify(draft.value) !== JSON.stringify(current.value?.plan));
-        watch([() => current.value?.attempt, editable], (_next, _prev, _onCleanup) => {
+        watch([taskId, chapterSeq, () => current.value?.attempt, editable], (_next, _prev, _onCleanup) => {
             if (current.value && editable.value)
                 setDraft(clonePlan(current.value!.plan));
             else
@@ -181,11 +188,13 @@ export const ChapterPlanPanel = defineComponent({
             }
             setBusy(true);
             setError(null);
+            const version = operationEpoch, id = taskId.value, seq = chapterSeq.value;
             try {
-                await api.confirmTaskPlan(taskId.value, draft.value, current.value.attempt);
-                onConfirmed.value(taskId.value, chapterSeq.value);
+                await api.confirmTaskPlan(id, draft.value, current.value.attempt);
+                if (version === operationEpoch) onConfirmed.value(id, seq);
             }
             catch (err) {
+                if (version !== operationEpoch) return;
                 if (err instanceof ApiError && err.code === 'PLAN_VERSION_CONFLICT') {
                     setError('计划已在其他页面更新，请刷新后再编辑。');
                 }
@@ -197,7 +206,7 @@ export const ChapterPlanPanel = defineComponent({
                 }
             }
             finally {
-                setBusy(false);
+                if (version === operationEpoch) setBusy(false);
             }
         }
         async function cancel() {
@@ -205,15 +214,16 @@ export const ChapterPlanPanel = defineComponent({
                 return;
             setBusy(true);
             setError(null);
+            const version = operationEpoch, id = taskId.value, seq = chapterSeq.value;
             try {
-                await api.cancelTask(taskId.value);
-                onCancelled.value(taskId.value, chapterSeq.value);
+                await api.cancelTask(id);
+                if (version === operationEpoch) onCancelled.value(id, seq);
             }
             catch {
-                setError('取消失败，请重试。');
+                if (version === operationEpoch) setError('取消失败，请重试。');
             }
             finally {
-                setBusy(false);
+                if (version === operationEpoch) setBusy(false);
             }
         }
         return () => {

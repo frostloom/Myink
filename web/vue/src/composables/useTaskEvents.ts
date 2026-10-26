@@ -33,9 +33,11 @@ export function useTaskEvents(taskId: MaybeRefOrGetter<string | null>, opts?: { 
       state.runs=detail.runs;state.budget=detail.budget??null;state.payload=detail.payload;state.error=detail.error
       if(detail.progress)snapshotProgress=detail.progress
       effectiveProgress()
-      if(force||seq===statusSeq){state.status=detail.status;statusSeq++}
-      if(force&&terminal.has(detail.status)){abort?.abort();state.phase='terminal'}
-      return detail.status
+      if(seq===statusSeq){
+        state.status=detail.status;statusSeq++
+        if(force&&terminal.has(detail.status)){abort?.abort();state.phase='terminal'}
+      }
+      return state.status
     } catch {return null}
   }
   function schedule(tid:string,version:number) {
@@ -73,8 +75,8 @@ export function useTaskEvents(taskId: MaybeRefOrGetter<string | null>, opts?: { 
       if(['terminal','expired','eof','network'].includes(result.reason)){
         const actual=await snapshot(tid,false,version)
         if(!current())return
-        if(result.reason==='terminal'&&(!actual||terminal.has(actual))){state.phase='terminal';return}
-        if(result.reason==='expired'&&(!actual||terminal.has(actual))){state.phase='expired';return}
+        if(result.reason==='terminal'&&actual&&terminal.has(actual)){state.phase='terminal';return}
+        if(result.reason==='expired'&&actual&&terminal.has(actual)){state.phase='expired';return}
         if((result.reason==='eof'||result.reason==='network')&&actual&&terminal.has(actual)){state.phase='terminal';return}
         state.phase='reconnecting';attempt++
         await pause(result.reason==='terminal'?Math.min(4000,500*2**Math.min(attempt-1,3)):Math.min(8000,1000*2**Math.min(attempt-1,3)))

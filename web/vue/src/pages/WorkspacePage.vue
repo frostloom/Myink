@@ -457,7 +457,7 @@ export const WorkspacePage = defineComponent({
         };
         // 建书对话页确认完跳进来那一次：入队归本页（中间栏状态带上就是重试入口）。
         // 顺序是显式的——先入队，再抹掉 history.state 上的标记，硬刷新带不回来（带回来就是
-        // 白花一次整篇配额）。shortStarted 是 React 18 StrictMode 下的第二道闸；activeTaskId
+        // 白花一次整篇配额）。shortStarted 是 重复触发时的第二道闸；activeTaskId
         // 那一格挡住「重进页面时其实已经有任务了」的重复入队（自动恢复那条 effect 用
         // taskStartVersion 保证不会把我们刚接上的 taskId 又抹回 null）。
         watch(() => [isShortBook.value, shortHistoryStatus.value, handover.value.beginShortWriting, handover.value.planWarning, activeTaskId.value, location.value.pathname, navigate, startShortGeneration], (_next, _prev, _onCleanup) => {

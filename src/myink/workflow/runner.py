@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from threading import Lock
 
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
@@ -16,16 +17,20 @@ from myink.workflow.checkpointer import build_checkpointer
 
 _batch_graph: CompiledStateGraph | None = None
 _chapter_graph: CompiledStateGraph | None = None
+_graphs_lock = Lock()
 
 
 def get_graphs() -> tuple[CompiledStateGraph, CompiledStateGraph]:
     """惰性编译（checkpointer 只建一次）。返回 (chapter_graph, batch_graph)。"""
     global _batch_graph, _chapter_graph
-    if _chapter_graph is None:
-        cp = build_checkpointer()
-        _chapter_graph = build_chapter_graph(checkpointer=cp)
-        _batch_graph = build_batch_graph(_chapter_graph, checkpointer=cp)
-    return _chapter_graph, _batch_graph
+    with _graphs_lock:
+        if _chapter_graph is None or _batch_graph is None:
+            cp = build_checkpointer()
+            chapter = build_chapter_graph(checkpointer=cp)
+            batch = build_batch_graph(chapter, checkpointer=cp)
+            # Publish only a fully built pair; failures leave initialization retryable.
+            _chapter_graph, _batch_graph = chapter, batch
+        return _chapter_graph, _batch_graph
 
 
 @budget_execution

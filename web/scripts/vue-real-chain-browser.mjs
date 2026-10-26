@@ -11,22 +11,19 @@ const site = process.env.MYINK_CHAIN_SITE ?? '/tmp/myink-vue-chain-site-0025';
 assert.ok(site.startsWith('/tmp/') || site.startsWith('/private/tmp/'));
 const origin = 'https://localhost:28443';
 const runTag = Date.now().toString();
-const draftText = '实际队列活动任务期间，Vue与React往返保留的草稿。' + runTag;
+const draftText = '实际队列活动任务期间，Vue刷新保留的草稿。' + runTag;
 const themeName = '活动任务往返主题' + runTag;
 const goalText = '浏览器核对实际HTTP计划' + runTag;
 assert.ok(metadata.admin.username && /^[A-Z2-7]+$/.test(metadata.admin.mfaSecret));
 const web = fileURLToPath(new URL('..', import.meta.url));
 const output = fs.mkdtempSync(path.join(os.tmpdir(), 'myink-vue-chain-browser-'));
 const identity = root => { const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8'); return { entry: html.match(/src="([^\"]*\/assets\/index-[^\"]+\.js)"/)?.[1], sha256: createHash('sha256').update(html).digest('hex') }; };
-const vue = path.join(output, 'vue'), react = path.join(output, 'react');
+const vue = path.join(output, 'vue');
 fs.cpSync(path.join(web, 'dist-vue'), vue, { recursive: true });
-fs.cpSync(path.join(web, 'dist'), react, { recursive: true });
 fs.mkdirSync(site, { recursive: true });
-fs.cpSync(react, site, { recursive: true });
 fs.cpSync(vue, site, { recursive: true });
-const receipt = { kind: 'actual_tls_full_queue_worker_vue_browser', builds: { vue: identity(vue), react: identity(react) }, checks: [], requests: [], httpFailures: [], pageErrors: [], passed: false };
+const receipt = { kind: 'actual_tls_full_queue_worker_vue_browser', builds: { vue: identity(vue) }, checks: [], requests: [], httpFailures: [], pageErrors: [], passed: false };
 let browser, page;
-const setRoot = root => fs.copyFileSync(path.join(root, 'index.html'), path.join(site, 'index.html'));
 const check = name => { receipt.checks.push(name); console.log(name); };
 function totp(secret, now = Date.now()) { let bits = ''; const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'; for (const char of secret.replace(/=+$/, ''))
     bits += alphabet.indexOf(char).toString(2).padStart(5, '0'); const key = Buffer.from((bits.match(/.{8}/g) ?? []).map(b => parseInt(b, 2))); const counter = Buffer.alloc(8); counter.writeBigUInt64BE(BigInt(Math.floor(now / 30000))); const hmac = createHmac('sha1', key).update(counter).digest(); const offset = hmac.at(-1) & 15; return ((hmac.readUInt32BE(offset) & 0x7fffffff) % 1000000).toString().padStart(6, '0'); }
@@ -87,18 +84,16 @@ try {
     await page.getByRole('button', { name: '确认计划并开始写作', exact: true }).waitFor({ timeout: 90000 });
     check('vue_actual_queue_manual_plan');
     const generatedBefore = receipt.requests.filter(r => r.method === 'POST' && r.path.endsWith('/generate')).length;
-    setRoot(react);
     await reload();
     await page.getByRole('button', { name: '确认计划并开始写作', exact: true }).waitFor({ timeout: 90000 });
     assert.ok(await page.evaluate(expected => JSON.stringify(sessionStorage).includes(expected), draftText));
     assert.ok(await page.evaluate(expected => JSON.stringify(localStorage).includes(expected), themeName));
-    check('active_task_vue_to_react_same_origin_session_draft_theme');
-    setRoot(vue);
+    check('active_task_vue_reload_preserves_session_draft_theme');
     await reload();
     assert.ok(await page.evaluate(expected => JSON.stringify(sessionStorage).includes(expected), draftText));
     await page.getByRole('button', { name: '确认计划并开始写作', exact: true }).waitFor({ timeout: 90000 });
     assert.equal(receipt.requests.filter(r => r.method === 'POST' && r.path.endsWith('/generate')).length, generatedBefore);
-    check('active_task_react_to_vue_recovery_without_duplicate_enqueue');
+    check('active_task_vue_repeated_reload_without_duplicate_enqueue');
     await page.getByLabel(/本章目标/).fill(goalText);
     await page.getByRole('button', { name: '确认计划并开始写作', exact: true }).click();
     await page.getByText('实时写作', { exact: true }).first().waitFor({ timeout: 60000 });
@@ -193,7 +188,6 @@ catch (error) {
     throw error;
 }
 finally {
-    setRoot(vue);
     fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify(receipt, null, 2));
     await browser?.close();
 }

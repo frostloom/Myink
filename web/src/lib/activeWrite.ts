@@ -1,4 +1,4 @@
-// 切书只卸本页 React 状态，不卸 Redis 闸门里的进行中任务。
+// 切书只卸本页 组件状态，不卸 Redis 闸门里的进行中任务。
 // worker 接手前 PostgreSQL 还没有 Task/章节行，所以把本页发起的写作记在 sessionStorage，
 // 切回来才能继续接 SSE，而不是看起来像没在写。
 

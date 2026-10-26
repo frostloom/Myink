@@ -8,6 +8,13 @@ it('requires a production identity and matching actual entry', () => {
   expect(releaseFromHtml(html('vue-123'))?.id).toBe('vue-123')
   expect(releaseFromHtml(html('vue-123').replace('src="/assets/app.js"', 'src="/wrong.js"'))).toBeNull()
 })
+it('does not offer a retired client even when its manifest matches its HTML', async () => {
+  const retired = release('react-456', 'react')
+  const retiredHtml = `<meta name="myink-release" content='${JSON.stringify(retired)}'><script type="module" src="/assets/app.js"></script>`
+  expect(releaseFromHtml(retiredHtml)).toBeNull()
+  const fetcher = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(retired))).mockResolvedValueOnce(new Response(retiredHtml))
+  expect(await probeRelease(release('vue-123'), new AbortController().signal, fetcher)).toBeNull()
+})
 it('rejects mixed manifest and HTML and accepts matching content identity even with identical entry filename', async () => {
   const fetcher = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(release('vue-456')))).mockResolvedValueOnce(new Response(html('vue-789')))
   expect(await probeRelease(release('vue-123'), new AbortController().signal, fetcher)).toBeNull()

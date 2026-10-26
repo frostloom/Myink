@@ -4,17 +4,27 @@ import path from 'node:path'
 import http from 'node:http'
 import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
+import { build } from 'vite'
 import { browserName, launchBrowser } from './browser-options.mjs'
 const web = fileURLToPath(new URL('..', import.meta.url))
 const arg = process.argv.indexOf('--output')
 assert.ok(arg >= 0, '--output <new directory> required')
 const output = path.resolve(process.argv[arg + 1]); fs.mkdirSync(output, { recursive: false })
-const builds = Object.fromEntries(['vue', 'react'].map(client => {
-  const root = path.join(web, client === 'vue' ? 'dist-vue' : 'dist')
-  return [client, { root, html: fs.readFileSync(path.join(root, 'index.html'), 'utf8'), release: JSON.parse(fs.readFileSync(path.join(root, 'release.json'), 'utf8')) }]
-}))
-const receipt = { kind: 'production_release_safety', browser: browserName, passed: false, checks: [], pageErrors: [], releases: { vue: builds.vue.release, react: builds.react.release }, unexpected: [] }
-let served = builds.vue, manifest = served.release, pendingLogin, loginReceived
+// Build a second real Vue release with distinct HTML identity. The active source
+// and default dist remain untouched; version safety is no longer tied to frameworks.
+const nextRoot = path.join(output, 'next-vue')
+await build({
+  configFile: path.join(web, 'vite.config.ts'), logLevel: 'silent',
+  plugins: [{ name: 'test-release-identity', transformIndexHtml: html => html.replace('</head>', '<meta name="myink-test-release" content="next">\n</head>') }],
+  build: { outDir: nextRoot },
+})
+const builds = Object.fromEntries([['current', path.join(web, 'dist-vue')], ['next', nextRoot]].map(([version, root]) => [version, {
+  root, html: fs.readFileSync(path.join(root, 'index.html'), 'utf8'), release: JSON.parse(fs.readFileSync(path.join(root, 'release.json'), 'utf8')),
+}]))
+assert.notEqual(builds.current.release.id, builds.next.release.id)
+assert.equal(builds.current.release.client, 'vue'); assert.equal(builds.next.release.client, 'vue')
+const receipt = { kind: 'production_release_safety', browser: browserName, passed: false, checks: [], pageErrors: [], releases: { current: builds.current.release, next: builds.next.release }, unexpected: [] }
+let served = builds.current, manifest = served.release, pendingLogin, loginReceived
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost')
   if (url.pathname === '/api/v1/auth/token' && req.method === 'POST') {
@@ -40,8 +50,8 @@ try {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
   const origin = `http://127.0.0.1:${server.address().port}`
   browser = await launchBrowser(); receipt.browserVersion = browser.version()
-  for (const client of ['react', 'vue']) {
-    const next = client === 'vue' ? 'react' : 'vue'
+  for (const client of ['current', 'next']) {
+    const next = client === 'current' ? 'next' : 'current'
     served = builds[client]; manifest = served.release
     const page = await browser.newPage()
     await page.context().clearCookies()
@@ -51,7 +61,7 @@ try {
     page.on('pageerror', e => receipt.pageErrors.push(`${client}: ${e.message}`))
     const user = page.getByLabel('用户名', { exact: true }), password = page.getByLabel('密码', { exact: true })
     await user.fill('safe-release-user'); await password.fill('browser-password1')
-    assert.equal(await page.evaluate(() => Boolean(document.querySelector('#root')?.__vue_app__)), client === 'vue')
+    assert.equal(await page.evaluate(() => Boolean(document.querySelector('#root')?.__vue_app__)), true)
     const update = page.getByRole('button', { name: '刷新到新版本', exact: true })
     // A new manifest paired with old HTML is an interrupted deployment.
     manifest = builds[next].release
@@ -65,7 +75,7 @@ try {
     await update.waitFor()
     assert.equal(await user.inputValue(), 'safe-release-user')
     assert.equal(await password.inputValue(), 'browser-password1')
-    assert.equal(await page.evaluate(() => Boolean(document.querySelector('#root')?.__vue_app__)), client === 'vue')
+    assert.equal(await page.evaluate(() => Boolean(document.querySelector('#root')?.__vue_app__)), true)
     receipt.checks.push(`${client}: update_only_prompts_preserves_input`)
     let cancelMessage = ''
     page.once('dialog', async dialog => { assert.equal(dialog.type(), 'confirm'); cancelMessage = dialog.message(); await dialog.dismiss() })
@@ -88,11 +98,11 @@ try {
     await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle' }), update.click()])
     assert.ok(dialogs.includes('confirm'))
     // Firefox can finish an intermediate navigation before the new SPA has mounted.
-    await page.waitForFunction(({ client, id }) => {
+    await page.waitForFunction(({ id }) => {
       const meta = document.querySelector('meta[name="myink-release"]')?.getAttribute('content')
-      return meta && JSON.parse(meta).id === id && Boolean(document.querySelector('#root')?.__vue_app__) === (client === 'vue') && document.querySelector('input')
+      return meta && JSON.parse(meta).id === id && Boolean(document.querySelector('#root')?.__vue_app__) === true && document.querySelector('input')
     }, { client: next, id: builds[next].release.id })
-    assert.equal(await page.evaluate(() => Boolean(document.querySelector('#root')?.__vue_app__)), next === 'vue')
+    assert.equal(await page.evaluate(() => Boolean(document.querySelector('#root')?.__vue_app__)), true)
     const active = await page.locator('meta[name="myink-release"]').getAttribute('content')
     assert.deepEqual(JSON.parse(active), builds[next].release)
     await page.screenshot({ path: path.join(output, `${client}-to-${next}.png`), fullPage: true })

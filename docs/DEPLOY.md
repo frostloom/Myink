@@ -50,6 +50,14 @@ docker compose up -d --build
 
 `docker compose down -v` 会删除作品数据，不能用作日常重启。
 
+## 当前前端策略
+
+前端仅维护 Vue 3：`npm run dev`、`npm test`、`npm run lint`、`npm run build` 均以 Vue 和共享服务为目标，产物为 `web/dist-vue`。不再提供另一套前端入口、依赖或回退命令。镜像构建只接受 `FRONTEND_VARIANT=vue`；遗留环境变量的其他取值会明确报错。
+
+发布失败时回退到已验证的上一版 **Vue** 镜像，并保留与该版本兼容的后端。不要恢复旧数据库来回退静态页面。新镜像仍须携带此前实际服务过的 hashed assets，避免打开中的页面加载失败；这些旧文件不是可选择的产品入口。历史迁移报告仅记录当时的操作，不是当前发布指令。
+
+当前这台 Mac 的已有服务使用 `.local/vue-runtime-28ec51ba/compose.sh` 保存的环境及卷配置；源码更新不会自动替换运行容器。发布新镜像时沿用该配置核对数据卷，勿用历史预览命令重新挂载旧 worktree 源码。
+
 ## 本机开发
 
 ```bash
@@ -60,7 +68,7 @@ myink init --seed
 
 在不同终端运行 `myink-api`、`myink-worker`、`cd web && npm ci && npm run dev`。本机连接 Compose RabbitMQ 使用 `.env.example` 中的 `amqp://myink:myink@localhost:5672/`；容器内使用服务名 `myink-rabbitmq`。不要混用 guest 凭据。
 
-前端开发地址 http://localhost:5173 ，Vite dev proxy 把 `/api` 转发到 Caddy（`http://localhost:80`，见 `web/vite.config.ts`），因此本机开发要同时起 `docker compose up -d myink-caddy`。
+前端开发地址 http://localhost:5174 ，Vite dev proxy 把 `/api` 转发到 Caddy（`http://localhost:80`，见 `web/vite.config.ts`），因此本机开发要同时起 `docker compose up -d myink-caddy`。
 
 ## 自动化回归（独立测试数据）
 

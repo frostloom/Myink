@@ -13,10 +13,11 @@ test('normal Vite build selects native Vue and its isolated output', async () =>
   assert.ok(config.plugins.some(plugin => plugin.name === 'vue-production-boundary'))
 })
 
-test('explicit React rollback keeps its own HTML root and output', async () => {
-  const config = await resolveConfig({ root: web, configFile: resolve(web, 'vite.react.config.ts') }, 'build')
-  assert.equal(config.root, resolve(web))
-  assert.equal(resolve(config.root, config.build.outDir), resolve(web, 'dist'))
-  assert.ok(config.plugins.some(plugin => plugin.name.startsWith('vite:react')))
-  assert.equal(config.plugins.some(plugin => plugin.name === 'vue-production-boundary'), false)
+test('production boundary rejects an accidentally reintroduced alternate runtime', async () => {
+  const config = await resolveConfig({ configFile: resolve(web, 'vite.config.ts') }, 'build')
+  const boundary = config.plugins.find(plugin => plugin.name === 'vue-production-boundary')
+  const context = { error(message) { throw new Error(message) } }
+  assert.throws(() => boundary.generateBundle.call(context, {}, {
+    'bad.js': { type: 'chunk', modules: { '/node_modules/react/index.js': {} } },
+  }), /production bundle contains/)
 })

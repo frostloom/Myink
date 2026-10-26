@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { Plugin } from 'vite'
-export function buildRelease(client: 'vue' | 'react', assets: Record<string, string | Uint8Array>, entry: string) {
+export function buildRelease(assets: Record<string, string | Uint8Array>, entry: string) {
+  const client = 'vue'
   const hash = createHash('sha256').update(client).update('\0').update(entry)
   for (const name of Object.keys(assets).sort()) {
     const bytes = assets[name]!
@@ -8,7 +9,7 @@ export function buildRelease(client: 'vue' | 'react', assets: Record<string, str
   }
   return { schema: 1, client, id: `${client}-${hash.digest('hex')}`, entry }
 }
-export function releasePlugin(client: 'vue' | 'react'): Plugin {
+export function releasePlugin(): Plugin {
   return {
     name: 'myink-release-identity', apply: 'build', enforce: 'post',
     generateBundle: {
@@ -23,7 +24,7 @@ export function releasePlugin(client: 'vue' | 'react'): Plugin {
         for (const [name, output] of Object.entries(bundle)) if (name !== 'index.html' && name !== 'release.json') assets[name] = output.type === 'chunk' ? output.code : output.source
         // Bind HTML as well; the injected identity itself is deliberately excluded.
         assets['index.html'] = index.source
-        const release = buildRelease(client, assets, entry)
+        const release = buildRelease(assets, entry)
         index.source = index.source.replace('</head>', `<meta name="myink-release" content='${JSON.stringify(release)}'>\n</head>`)
         this.emitFile({ type: 'asset', fileName: 'release.json', source: JSON.stringify(release) })
       },

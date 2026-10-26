@@ -29,8 +29,39 @@ it('ignores old snapshots and events after a task switch',async()=>{
 it('keeps reconnecting after 410 when the task is still running',async()=>{
  vi.useFakeTimers();vi.mocked(api.getTask).mockResolvedValue(detail());vi.mocked(openSSE).mockResolvedValue({reason:'expired'});const {state}=start();await vi.advanceTimersByTimeAsync(0);expect(state.phase).toBe('reconnecting');await vi.advanceTimersByTimeAsync(1000);expect(openSSE).toHaveBeenCalledTimes(2);expect(state.phase).toBe('reconnecting')
 })
+it.each(['expired', 'terminal'] as const)('retries an unconfirmed %s stream ending when task snapshots are unavailable', async reason => {
+ vi.useFakeTimers()
+ vi.mocked(api.getTask).mockRejectedValueOnce(new Error('offline')).mockRejectedValueOnce(new Error('offline')).mockResolvedValue(detail())
+ vi.mocked(openSSE).mockImplementation(async (_url, onEvent) => {
+   if (reason === 'terminal') onEvent(event({ type: 'status', status: 'awaiting_review' }))
+   return { reason }
+ })
+ const { state } = start()
+ await vi.advanceTimersByTimeAsync(0)
+ expect(state.phase).toBe('reconnecting')
+ await vi.advanceTimersByTimeAsync(1000)
+ expect(state.status).toBe('running')
+ expect(state.phase).toBe('reconnecting')
+})
 it('accepts EOF only after snapshot confirms a terminal task',async()=>{
  vi.mocked(api.getTask).mockResolvedValue(detail('a','done'));vi.mocked(openSSE).mockResolvedValue({reason:'eof'});const{state}=start();await flushPromises();expect(state.phase).toBe('terminal')
+})
+it('does not let a delayed manual refresh terminate a newer SSE state', async () => {
+ let receive!: (value: SSEEvent) => void
+ let finish!: (value: TaskDetail) => void
+ let signal!: AbortSignal
+ vi.mocked(api.getTask).mockResolvedValueOnce(detail()).mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+ vi.mocked(openSSE).mockImplementation((_url, onEvent, options) => {
+   receive = onEvent; signal = options!.signal!
+   return new Promise(() => {})
+ })
+ const { state } = start(); await flushPromises()
+ state.refresh()
+ receive(event({ type: 'status', status: 'running' }))
+ finish(detail('a', 'awaiting_review')); await flushPromises()
+ expect(state.status).toBe('running')
+ expect(state.phase).toBe('live')
+ expect(signal.aborted).toBe(false)
 })
 it('stores short progress separately and resumes the same task when resumeKey changes',async()=>{
  vi.mocked(api.getTask).mockResolvedValue(detail());vi.mocked(openSSE).mockImplementation(async(_u,on)=>{on(event({type:'progress',stage:'short_write',done:4400,total:20000}));return new Promise(()=>{})});const{state,resumeKey}=start();await flushPromises();expect(state.shortProgress).toEqual({stage:'short_write',current:4400,total:20000});expect(state.progress).toBeNull();resumeKey.value++;await flushPromises();expect(openSSE).toHaveBeenCalledTimes(2)

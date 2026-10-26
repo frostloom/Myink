@@ -49,7 +49,7 @@ Agent 只输出候选，由编排层处理落库。低风险候选可自动确�
 | 推理编排 | Python 3.12 / FastAPI / LangGraph / SQLAlchemy |
 | 边缘层 | Caddy 2（TLS / 静态托管 / 按路径分流） |
 | 存储与队列 | PostgreSQL 16 + pgvector / Redis 7 / RabbitMQ 3.13 |
-| 前端 | React 19 / TypeScript / Vite / CSS Modules |
+| 前端 | Vue 3 / TypeScript / Vite / CSS Modules |
 | 部署 | Docker Compose 一键启动（单入口 80/443，Caddy） |
 
 ## 快速开始
@@ -76,7 +76,7 @@ docker compose up -d --build
 
 ```
 src/myink/        Python 推理层（workflow 编排 / api / models / providers）
-web/              React + TypeScript 前端
+web/              Vue 3 + TypeScript 前端
 caddy/            边缘层（TLS / 静态产物 / 按路径分流）
 tests/            Python 测试（含冲突样例评测集）
 spec/             API 契约（OpenAPI）与状态流设计

@@ -2,7 +2,7 @@
 
 真正起 2 个 worker 进程消费同一 RabbitMQ 主队列，验证多书并行核心语义：
 - 异书并行：两个不同 project 的任务同时投递 → 两个 worker 并发执行（overlap>0），都 done；
-- 同书串行：同一 project 的两个任务同时投递 → 书锁保证一个执行、另一个 defer 退避重投，
+- 同书串行：首章持锁时再投同一 project 的第二章 → 书锁保证另一个 defer 退避重投，
   永不并发（overlap==0），最终都 done。
 
 阶段 6 迁移 RabbitMQ 后：
@@ -229,7 +229,7 @@ def test_hetero_book_parallel(two_workers):
 
 
 def test_same_book_serial(two_workers):
-    """同书串行：同一本书两个任务同时投递 → 书锁保证 defer→接棒，永不并发，最终都 done。
+    """同书串行：首章持锁时投递第二章 → 书锁保证 defer→接棒，永不并发，最终都 done。
 
     defer 重投由 RabbitMQ TTL+DLX 自动弹回主队列（queue:delay 到期死信回 queue:tasks），
     无需模拟 dispatcher；书锁释放后重投消息接棒执行。
@@ -239,14 +239,23 @@ def test_same_book_serial(two_workers):
     demo_id = _demo_project_id()
     book = _make_test_project(demo_id, "S")
     t1 = _enqueue(book, 1, "s1")
-    t2 = _enqueue(book, 2, "s2")
+    task_ids = [t1]
     try:
+        # This test bypasses enqueue's inflight gate to exercise worker contention.
+        # The book lock guarantees exclusion, not FIFO acquisition by two workers:
+        # establish the first writer before injecting the next chapter.
+        deadline = time.monotonic() + 40
+        while not (r.exists(book_key(book)) and r.exists("mp:active")):
+            assert time.monotonic() < deadline, "first chapter never entered the locked writer"
+            time.sleep(0.05)
+        t2 = _enqueue(book, 2, "s2")
+        task_ids.append(t2)
         assert _wait_status(t1) == "done"
         assert _wait_status(t2) == "done"
         overlap = int(r.get("mp:overlap") or 0)
         assert overlap == 0, "同书任务应串行（书锁保证 defer→接棒），overlap 应 ==0"
     finally:
-        _cleanup([book], [t1, t2])
+        _cleanup([book], task_ids)
 
 
 def test_worker_kill_redelivers_checkpoint_without_duplicate_persist(two_workers):

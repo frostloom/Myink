@@ -2,7 +2,7 @@ export interface ReleaseIdentity { schema: number; client: string; id: string; e
 function identity(value: unknown): ReleaseIdentity | null {
   if (!value || typeof value !== 'object') return null
   const item = value as ReleaseIdentity
-  return item.schema === 1 && (item.client === 'vue' || item.client === 'react') &&
+  return item.schema === 1 && item.client === 'vue' &&
     typeof item.id === 'string' && new RegExp(`^${item.client}-[a-f0-9]+$`).test(item.id) &&
     typeof item.entry === 'string' && /^\/assets\/[\w./-]+\.js$/.test(item.entry) && !item.entry.includes('..') ? item : null
 }

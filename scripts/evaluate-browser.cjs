@@ -13,7 +13,7 @@ async function main() {
   const out = path.resolve(process.argv[arg + 1]);
   fs.mkdirSync(out, { recursive: false });
   const distArg = process.argv.indexOf('--dist');
-  const dist = distArg < 0 ? path.resolve(__dirname, '../web/dist') : path.resolve(process.argv[distArg + 1]);
+  const dist = distArg < 0 ? path.resolve(__dirname, '../web/dist-vue') : path.resolve(process.argv[distArg + 1]);
   if (!fs.existsSync(path.join(dist, 'index.html'))) throw new Error('Build directory must contain index.html');
   const state = { phase: 'awaiting_plan', content: '已保存正文：林川扶着栏杆，许宁检查接线盒。', version: 1, rejected: false, saves: 0 };
   const auth = { token: 'synthetic-browser-token', user_id: 'user-p1', username: 'p1_tester', role: 'user', tier: 'pro', expires_in: 3600 };

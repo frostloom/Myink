@@ -77,6 +77,9 @@ export const TaskBudgetPanel = defineComponent({
             try {
                 await api.resumeTask(task.value.task_id, pending.value);
                 pending.value = null;
+                setRequests(0);
+                setYuan(0);
+                setMinutes(0);
                 onResumed.value();
             }
             catch (e) {

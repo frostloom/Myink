@@ -1,11 +1,13 @@
 import { h } from 'vue'
+import { render as renderComponent } from '@testing-library/vue'
+import { flushPromises } from '@vue/test-utils'
 
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '../workspaceTestUtils';
 import { afterEach, expect, it, vi } from 'vitest';
 import type { ArtifactState } from '../composables/useTaskEvents';
 import { api } from '../../../src/lib/api';
-import type { AgentRun, ChapterPlan } from '../../../src/types';
+import type { AgentRun, ChapterPlan, TaskControlResponse } from '../../../src/types';
 import ChapterPlanPanel from './ChapterPlanPanel.vue';
 vi.mock('../../../src/lib/api', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../../../src/lib/api')>();
@@ -39,6 +41,31 @@ afterEach(() => {
     cleanup();
     vi.clearAllMocks();
 });
+it.each(['confirm', 'cancel'] as const)('ignores %s completion after its panel is unmounted', async action => {
+    let finish!: (value: TaskControlResponse) => void
+    const pending = new Promise<TaskControlResponse>(resolve => { finish = resolve })
+    vi.mocked(api.confirmTaskPlan).mockReturnValue(pending)
+    vi.mocked(api.cancelTask).mockReturnValue(pending)
+    const onConfirmed = vi.fn(), onCancelled = vi.fn()
+    const view = renderComponent(ChapterPlanPanel, { props: { taskId: 'task-17', chapterSeq: 17, status: 'awaiting_plan', runs: [run(1, plan('目标'))], artifact: null, onConfirmed, onCancelled } })
+    await fireEvent.click(screen.getByRole('button', { name: action === 'confirm' ? '确认计划并开始写作' : '取消本次写作' }))
+    view.unmount()
+    finish({ task_id: 'task-17', status: action === 'confirm' ? 'queued' : 'cancelled' }); await flushPromises()
+    expect(onConfirmed).not.toHaveBeenCalled()
+    expect(onCancelled).not.toHaveBeenCalled()
+})
+it('does not associate an old confirmation with a new task or keep its edited plan', async () => {
+    let finish!: (value: TaskControlResponse) => void
+    vi.mocked(api.confirmTaskPlan).mockReturnValue(new Promise(resolve => { finish = resolve }))
+    const onConfirmed = vi.fn()
+    const view = renderComponent(ChapterPlanPanel, { props: { taskId: 'task-17', chapterSeq: 17, status: 'awaiting_plan', runs: [run(1, plan('旧目标'))], artifact: null, onConfirmed, onCancelled: vi.fn() } })
+    await fireEvent.click(screen.getByRole('button', { name: '确认计划并开始写作' }))
+    await view.rerender({ taskId: 'task-18', chapterSeq: 18, runs: [run(1, { ...plan('新目标'), chapter_seq: 18 })] })
+    expect((screen.getByLabelText(/本章目标/) as HTMLTextAreaElement).value).toBe('新目标')
+    finish({ task_id: 'task-17', status: 'queued' }); await flushPromises()
+    expect(onConfirmed).not.toHaveBeenCalled()
+    expect((screen.getByRole('button', { name: '确认计划并开始写作' }) as HTMLButtonElement).disabled).toBe(false)
+})
 it('lets the user edit the current manual plan before write starts', async () => {
     vi.mocked(api.confirmTaskPlan).mockResolvedValue({ task_id: 'task-17', status: 'queued' });
     const onConfirmed = vi.fn();

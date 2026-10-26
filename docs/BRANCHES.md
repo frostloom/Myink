@@ -39,3 +39,5 @@
 用户明确要求创建独立worktree与`codex/vue3-migration`分支，暂不处理Pi。基于main已提交内容开始，原目录未提交修改不复制。React仍为默认生产入口，Vue候选逐阶段验收。此为本轮迁移例外，不自动合入、推送或发布；完成后的整合与归档另行确定。
 
 2026-10-26 用户进一步授权将Vue迁移成果提交并推送`codex/vue3-migration`，交由main工作区另行合并。本迁移分支现已默认Vue并保留显式React回退；上段默认React描述属于迁移初期。发布仍需独立授权，交接见`docs/work-items/vue3-migration-20261025/remote-merge-handoff.md`。
+
+2026-10-26 main 后续清理：用户授权审查修复后移除旧前端回退，main 仅维护 Vue；迁移分支上述回退说明是历史交接状态。当前开发/发布入口以 `web/README.md`、`docs/DEPLOY.md` 为准；不因此删除迁移分支或 worktree。
