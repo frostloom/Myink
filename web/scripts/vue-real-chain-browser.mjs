@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { finalizeBrowserReceipt } from './browser-receipt.mjs';
 const metadata = JSON.parse(fs.readFileSync(process.env.MYINK_CHAIN_METADATA ?? '/tmp/myink-vue-chain-metadata-0025.json', 'utf8'));
 const site = process.env.MYINK_CHAIN_SITE ?? '/tmp/myink-vue-chain-site-0025';
 assert.ok(site.startsWith('/tmp/') || site.startsWith('/private/tmp/'));
@@ -53,6 +54,7 @@ try {
         receipt.httpFailures.push({ path: url.pathname, status: response.status() }); });
     await page.route('**/*', route => { const url = route.request().url(); return url.startsWith(origin) || url.startsWith('blob:') ? route.continue() : route.abort(); });
     await page.goto(origin + '/login');
+    assert.deepEqual(await page.evaluate(() => JSON.parse(document.querySelector('meta[name=myink-release]').content)), JSON.parse(fs.readFileSync(path.join(vue, 'release.json'), 'utf8')));
     await page.getByLabel('用户名', { exact: true }).fill(metadata.user.username);
     await page.getByLabel('密码', { exact: true }).fill(metadata.password);
     await page.getByRole('button', { name: '登录', exact: true }).click();
@@ -105,6 +107,9 @@ try {
     assert.equal(await text.inputValue(), draftText);
     await page.getByRole('button', { name: '保存', exact: true }).click();
     await page.getByText('已保存', { exact: true }).waitFor();
+    const savedChapter = await api('GET', `/projects/${metadata.longProjectId}/chapters/${chapters.find(c => c.chapter_seq === 1).id}`);
+    assert.equal(savedChapter.status, 200);
+    assert.equal(savedChapter.body.content, draftText);
     check('vue_preserved_draft_saved_to_actual_database');
     // Create a short story through the actual chat/card API, choose resources first, then manual start.
     await page.goto(origin + '/short/new');
@@ -177,7 +182,6 @@ try {
     assert.deepEqual(receipt.pageErrors, []);
     assert.equal(receipt.httpFailures.filter(f => f.status >= 500).length, 0);
     receipt.passed = true;
-    console.log(JSON.stringify({ passed: true, checks: receipt.checks.length, output }, null, 2));
 }
 catch (error) {
     receipt.error = String(error);
@@ -188,6 +192,7 @@ catch (error) {
     throw error;
 }
 finally {
-    fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify(receipt, null, 2));
-    await browser?.close();
+    await finalizeBrowserReceipt(receipt, output, [() => browser?.close()]);
+    if (!receipt.passed) process.exitCode = 1;
+    console.log(JSON.stringify({ passed: receipt.passed, checks: receipt.checks.length, output }, null, 2));
 }

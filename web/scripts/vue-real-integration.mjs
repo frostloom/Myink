@@ -7,6 +7,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
+import { finalizeBrowserReceipt } from './browser-receipt.mjs'
 
 assert.ok(process.env.MYINK_REAL_METADATA, 'Set MYINK_REAL_METADATA to the isolated fixture metadata JSON')
 const metadata = JSON.parse(fs.readFileSync(process.env.MYINK_REAL_METADATA, 'utf8'))
@@ -125,14 +126,15 @@ try {
   assert.deepEqual(receipt.pageErrors, [])
   assert.equal(receipt.api.filter(item => item.status >= 500).length, 0)
   receipt.passed = true
-  console.log(JSON.stringify({ passed: true, checks: receipt.checks.length, output }, null, 2))
 } catch (error) {
   receipt.error = String(error)
   if (page) { await page.screenshot({ path: path.join(output, 'failure.png'), fullPage: true }).catch(() => {}); fs.writeFileSync(path.join(output, 'failure.txt'), await page.locator('body').innerText().catch(() => '')) }
   throw error
 } finally {
-  fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify(receipt, null, 2))
-  await browser?.close()
-  server.closeAllConnections()
-  await new Promise(resolve => server.close(resolve))
+  await finalizeBrowserReceipt(receipt, output, [
+    () => browser?.close(),
+    () => { server.closeAllConnections(); return new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve())) },
+  ])
+  if (!receipt.passed) process.exitCode = 1
+  console.log(JSON.stringify({ passed: receipt.passed, checks: receipt.checks.length, output }, null, 2))
 }

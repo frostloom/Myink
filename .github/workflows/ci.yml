@@ -127,7 +127,7 @@ jobs:
       - name: 安装三个浏览器引擎（不调用模型）
         run: npx playwright install --with-deps chromium firefox webkit
       - name: 浏览器中断清理回归
-        run: node --test scripts/browser-cleanup.test.mjs
+        run: node --test scripts/browser-cleanup.test.mjs scripts/browser-receipt.test.mjs
       - name: Vue Chromium / Firefox / WebKit 完整浏览器矩阵
         run: npm run test:browser:matrix -- --output "$RUNNER_TEMP/myink-main-browser-matrix"
       - name: 保存浏览器回执（失败也保存）
