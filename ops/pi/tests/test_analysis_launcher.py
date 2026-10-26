@@ -280,8 +280,10 @@ def test_relay_failure_records_bounded_reason_without_body_or_refund(setup, monk
         def __iter__(self):
             if kind == 'utf8': yield b'\xff'
             else:
-                # Many small valid SSE pings overflow the aggregate relay cap.
-                for _ in range(50000): yield b'data: {"type":"ping"}\n\n'
+                # Keep 50000 valid pings across chunks, without making tiny-yield
+                # scheduling exhaust the slot deadline before the aggregate cap.
+                for remaining in range(50000, 0, -64):
+                    yield b'data: {"type":"ping"}\n\n' * min(64, remaining)
     @contextmanager
     def provider(policy, credentials):
         def handler(req):

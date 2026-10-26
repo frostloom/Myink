@@ -1,0 +1,56 @@
+{
+  "independent_verified": true,
+  "posts": 5,
+  "known_cost_microyuan": 16326,
+  "new_unknown": 0,
+  "canonical_attempts": 259,
+  "canonical_known": 250,
+  "canonical_unknown": 9,
+  "known_charged_microyuan": 2139598,
+  "unknown_reserved_microyuan": 18115200,
+  "prior_rows_and_event_prefix_unchanged": true,
+  "prior_dirty_files_unchanged": true,
+  "policy_disabled": true,
+  "policy_schema": 3,
+  "budget_microyuan": null,
+  "tool_sequence": [
+    "read_source",
+    "candidate_status",
+    "apply_patch",
+    "run_check",
+    "candidate_status"
+  ],
+  "tool_ledger": "private tools.sqlite; model fees in original canonical ledger",
+  "containers_removed": 2,
+  "source_before_sha256": "12c9aaa15ee54c674d88e59edfaac704434cc8198281f4b2e1a3646ef0c8a61f",
+  "source_after_sha256": "8e82fbe262bdb448559327b5ee4d8b4038cdcd32f01e2e5efbfdf1174a44f757",
+  "session_sha256": "a7f3d5f5080743e1e48608f4224baccc7fc5b36f2d1125f2723cb10e4525ceae",
+  "transcript_sha256": "5971be18f9c00c7f24cc9a576b743579d507a6d5473bd133ae354315fc226dd0",
+  "date": "2026-10-24",
+  "branch": "codex/pi-autonomy-design",
+  "candidate_adopted": true,
+  "baseline": {
+    "failed": 3,
+    "passed": 7
+  },
+  "fixed_tests": {
+    "passed": 10,
+    "skipped": 0
+  },
+  "product_regression": {
+    "passed": 1632,
+    "skipped": 1,
+    "deselected": 159,
+    "xfailed": 5,
+    "warnings": 2,
+    "seconds": 270.55,
+    "returncode": 0,
+    "services_removed": true,
+    "scope": "CI Python: not pi_lab and not pi_live",
+    "focused_passed": 40,
+    "log_sha256": "cd95677222f0b64e09ccfb2b002be6f49c97b5c9dff42190c5a07df9a22fae1d"
+  },
+  "committed": false,
+  "pushed": false,
+  "deployed": false
+}

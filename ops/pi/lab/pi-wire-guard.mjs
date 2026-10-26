@@ -30,10 +30,13 @@ function sourceHistoryProjection(result) {
         if (paths.has(path) && paths.get(path)===null) continue;
         let receipt;
         try {
-          if (!Array.isArray(block.content) || block.content.length!==1 || block.content[0].type!=='text') throw new Error();
-          receipt=JSON.parse(block.content[0].text);
+          // Pinned SDK may flatten the extension's single text block to a string.
+          const raw=typeof block.content==='string' ? block.content
+            : Array.isArray(block.content) && block.content.length===1 && block.content[0].type==='text' ? block.content[0].text : null;
+          if (typeof raw!=='string') throw new Error();
+          receipt=JSON.parse(raw);
           // controlled-tools.ts emits exactly JSON.stringify(receipt); reject ambiguous JSON.
-          if (block.content[0].text!==JSON.stringify(receipt)) throw new Error();
+          if (raw!==JSON.stringify(receipt)) throw new Error();
         } catch { invalidate(path); continue; }
         const e=receipt?.evidence;
         const session=typeof receipt?.operation_id==='string' ? receipt.operation_id.match(/^tool:([A-Za-z0-9._-]{1,128}):([A-Za-z0-9_-]{1,128})$/) : null;
@@ -76,7 +79,8 @@ function sourceHistoryProjection(result) {
     for(const {block,receipt} of history.reads) {
       if (receipt.evidence.source_hash===history.versions.at(-1)) continue;
       receipt.evidence.text='[Superseded source text omitted from this request. Historical hash is not current patch authority; use the latest read_source receipt.]';
-      block.content[0].text=JSON.stringify(receipt);
+      if (typeof block.content==='string') block.content=JSON.stringify(receipt);
+      else block.content[0].text=JSON.stringify(receipt);
     }
   }
   return result;
@@ -114,9 +118,14 @@ export function normalize(payload, definitions = []) {
     payload.tools.forEach((tool,index)=> {
       const expected=definitions[index];
       const projection={type:'object',properties:expected.input_schema.properties,required:expected.input_schema.required};
+      // Fixed SDK-local patch routing shell only; strict model schema is restored below.
+      const shell={type:'object',properties:{},required:[],additionalProperties:true};
+      const shellProjection={type:'object',properties:{},required:[]};
+      const schemas=[stable(expected.input_schema),stable(projection)];
+      if (expected.name==='apply_patch') schemas.push(stable(shell),stable(shellProjection));
       if (!tool || Object.keys(tool).some(k=>!['name','description','input_schema','cache_control'].includes(k)) ||
           tool.name !== expected.name || tool.description !== expected.description ||
-          ![stable(expected.input_schema),stable(projection)].includes(stable(tool.input_schema))) throw new Error('untrusted tool schema');
+          !schemas.includes(stable(tool.input_schema))) throw new Error('untrusted tool schema');
     });
     result.tools=structuredClone(definitions);
   }

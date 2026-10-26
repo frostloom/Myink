@@ -1,0 +1,104 @@
+{
+  "schema": "pi-offline-quote-diagnostics-v1",
+  "at": "2026-10-23T09:46:28.442461+00:00",
+  "branch": "codex/pi-autonomy-design",
+  "cases": [
+    {
+      "slot_index": 0,
+      "slot_id": "r1:recall.events:baseline",
+      "arm": "baseline",
+      "domain": "recall.events",
+      "original_json_valid": true,
+      "original_contract_valid": false,
+      "original_validation_error": "quote outside one contiguous retained excerpt",
+      "reference_count": 11,
+      "reference_diagnostics": {
+        "exact_match_at_selected_position": 9,
+        "no_literal_match_in_retained_view": 2
+      }
+    },
+    {
+      "slot_index": 1,
+      "slot_id": "r1:recall.events:candidate",
+      "arm": "candidate",
+      "domain": "recall.events",
+      "original_json_valid": true,
+      "original_contract_valid": true,
+      "original_validation_error": null,
+      "reference_count": 3,
+      "reference_diagnostics": {
+        "exact_match_at_selected_position": 3
+      }
+    },
+    {
+      "slot_index": 2,
+      "slot_id": "r1:recall.plot:baseline",
+      "arm": "baseline",
+      "domain": "recall.plot",
+      "original_json_valid": true,
+      "original_contract_valid": false,
+      "original_validation_error": "quote outside one contiguous retained excerpt",
+      "reference_count": 6,
+      "reference_diagnostics": {
+        "exact_match_at_selected_position": 5,
+        "no_literal_match_in_retained_view": 1
+      }
+    },
+    {
+      "slot_index": 3,
+      "slot_id": "r1:recall.plot:candidate",
+      "arm": "candidate",
+      "domain": "recall.plot",
+      "original_json_valid": true,
+      "original_contract_valid": true,
+      "original_validation_error": null,
+      "reference_count": 4,
+      "reference_diagnostics": {
+        "exact_match_at_selected_position": 4
+      }
+    },
+    {
+      "slot_index": 4,
+      "slot_id": "r1:recall.characters:baseline",
+      "arm": "baseline",
+      "domain": "recall.characters",
+      "original_json_valid": true,
+      "original_contract_valid": false,
+      "original_validation_error": "quote outside one contiguous retained excerpt",
+      "reference_count": 6,
+      "reference_diagnostics": {
+        "exact_match_at_selected_position": 5,
+        "no_literal_match_in_retained_view": 1
+      }
+    },
+    {
+      "slot_index": 5,
+      "slot_id": "r1:recall.characters:candidate",
+      "arm": "candidate",
+      "domain": "recall.characters",
+      "original_json_valid": true,
+      "original_contract_valid": true,
+      "original_validation_error": null,
+      "reference_count": 2,
+      "reference_diagnostics": {
+        "exact_match_at_selected_position": 2
+      }
+    }
+  ],
+  "total_reference_diagnostics": {
+    "exact_match_at_selected_position": 28,
+    "no_literal_match_in_retained_view": 4
+  },
+  "unmatched_reference_context": {
+    "no_literal_in_frozen_report_or_any_view_excerpt": 4
+  },
+  "source_run_id": "pi-v2-real-prefix-20261023-001",
+  "existing_model_outputs": 6,
+  "new_model_calls": 0,
+  "original_inputs_and_receipts_unchanged": true,
+  "original_verdicts_unchanged": true,
+  "quotes_exported": false,
+  "quote_fingerprints_exported": false,
+  "results_are_schema_diagnostics_not_semantic_quality": true,
+  "release_allowed": false
+}

@@ -31,10 +31,12 @@ def test_v2_long_check_is_read_only_and_reports_lifecycle(setup, monkeypatch):
     assert before==ledger.path.read_bytes() and not Path(c['root']).exists()
 
 
-@pytest.mark.parametrize('change',[{'deadline':time.time()+3700},{'deadline':True},
+@pytest.mark.parametrize('change',[{'deadline':'too-long'},{'deadline':True},
     {'time_policy':'anything'},{'selected_slots':1}])
 def test_v2_rejects_invalid_timing_config(setup,change):
     c,*_=setup
+    if change.get('deadline') == 'too-long':
+        change = change | {'deadline':time.time()+3700}
     with pytest.raises(LedgerBlocked):pilot.api().launch(config_v2(c)|change)
 
 

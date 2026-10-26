@@ -179,7 +179,9 @@ class ProbeHost:
     def stop(self, cid):
         info = self.inspect(cid)
         if info['State']['Running']:
-            self._call('kill','--signal','KILL',cid)
+            # The container may finish after inspect and before kill. Authority is
+            # the subsequent owned inspect, not Docker's already-stopped error.
+            self._call('kill','--signal','KILL',cid,check=False)
         info = self.inspect(cid)
         if info['State']['Running'] or info['State']['Pid'] != 0:
             raise RuntimeError('owned PID namespace not stopped')

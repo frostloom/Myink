@@ -1,0 +1,74 @@
+{
+  "verified": "failure_accounting_and_cleanup_only",
+  "date": "2026-10-26",
+  "status": "real_trial_failed_no_adoption",
+  "source_sha256": "5fd93a1df04fb07e6ea1bee1211e43bfdf12c516ca9318d0160c2653274c4932",
+  "controller_code_sha256": "c77f1f8d16e1da378f466b0c9a5fd748922f160ce688024657644b81ca96f84e",
+  "new_attempts": 20,
+  "new_unknown": 0,
+  "known_cost_microyuan": 145112,
+  "ledger_sha256": "45729de425bcf30062cf36ff9f57b2568263141e64a0adc278a792a197f336ab",
+  "original_operations_events_prefix_unchanged": true,
+  "policy_closed_unchanged": true,
+  "credential_unchanged": true,
+  "product_source_unchanged": true,
+  "prior_dirty_files": 124,
+  "unrelated_dirty_unchanged": true,
+  "owned_containers_absent": 6,
+  "host_candidate_execution": false,
+  "full_product_regression_run": false,
+  "holdout_tests_run": false,
+  "new_mechanism_accepted": false,
+  "baseline": {
+    "fixed_tests": 226,
+    "expected_new_mechanism_failures": 13,
+    "errors": 0,
+    "skipped": 0,
+    "new_semantic_cases": 52,
+    "prior_cases": 174
+  },
+  "cycles": [
+    {
+      "identity": "actual",
+      "status": "blocked",
+      "analysis_attempts": 1,
+      "development_attempts": 5,
+      "known_cost_microyuan": 70619,
+      "new_unknown": 0,
+      "source_read_calls": 5,
+      "source_lines": 553,
+      "logical_tool_calls": 6,
+      "max_recorded_ascii_bytes": 67780,
+      "successful_patches": 0,
+      "fixed_checks_run": 0,
+      "adopted": false
+    },
+    {
+      "identity": "actual-v2",
+      "status": "blocked",
+      "analysis_attempts": 1,
+      "development_attempts": 13,
+      "known_cost_microyuan": 74493,
+      "new_unknown": 0,
+      "source_read_calls": 10,
+      "source_lines": 333,
+      "logical_tool_calls": 14,
+      "max_recorded_ascii_bytes": 60017,
+      "successful_patches": 2,
+      "fixed_checks_run": 0,
+      "adopted": false
+    }
+  ],
+  "next": "Enforce source read context budget and preserve tool/verification budget for fixed check plus final status before another paid implementation.",
+  "independent_terminal_report_review": {
+    "reviewer": "capability_trial_review",
+    "result": "passed",
+    "scope": "failure/accounting/cleanup/report only; no mechanism approval"
+  },
+  "totals": {
+    "attempts": 541,
+    "known": 532,
+    "historical_unknown": 9,
+    "known_cost_microyuan": 3633549
+  }
+}

@@ -239,3 +239,33 @@ def test_standard_tier_never_repairs_missing_or_invalid_billing_evidence(ledger,
     b''.join(response.body)
     assert ledger.get(response.attempt_id)['status'] == 'uncertain'
     assert totals(ledger, 'local-trial-1') == (1, 10000)
+
+
+@pytest.mark.parametrize('metadata',[
+    {'service_tier':'standard'},
+])
+def test_nonstream_normalizes_confirmed_metadata_before_settlement(ledger,policy,metadata):
+    # Public smoke response:16 input tokens +1 output,2/8 CNY per million =>40 microyuan.
+    usage=dict(input_tokens=16,output_tokens=1,cache_read_input_tokens=0,cache_creation_input_tokens=0)|metadata
+    response=forward_messages(request(),'local-trial-1',ledger=ledger,policy=policy,
+        transport=transport(lambda _:httpx.Response(200,json=dict(id='public-smoke-fixture',usage=usage))))
+    assert response.status_code==200
+    assert ledger.get(response.attempt_id)['status']=='done'
+    assert totals(ledger,'local-trial-1')==(1,40)
+
+
+@pytest.mark.parametrize('changes',[
+    {'service_tier':'priority'}, {'service_tier':True}, {'service_tier':None},
+    {'prompt_tokens_details':{'cached_tokens':1}},
+    {'prompt_tokens_details':{'cached_tokens':0}},
+    {'service_tier':'standard','prompt_tokens_details':{'cached_tokens':0}},
+    {'cache_read_input_tokens':None}, {'input_tokens':True},
+    {'unpriced_dimension':1},
+])
+def test_nonstream_untrusted_metadata_or_missing_counter_stays_unknown(ledger,policy,changes):
+    usage=dict(input_tokens=16,output_tokens=1,cache_read_input_tokens=0,cache_creation_input_tokens=0)|changes
+    response=forward_messages(request(),'local-trial-1',ledger=ledger,policy=policy,
+        transport=transport(lambda _:httpx.Response(200,json=dict(id='synthetic',usage=usage))))
+    assert response.status_code==200
+    assert ledger.get(response.attempt_id)['status']=='uncertain'
+    assert totals(ledger,'local-trial-1')==(1,10000)

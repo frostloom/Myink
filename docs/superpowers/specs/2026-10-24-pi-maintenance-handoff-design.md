@@ -1,0 +1,27 @@
+# 本机维护任务接力
+
+用户已要求继续减少Pi迭代中的人工调度，并已授权常规自主决策；本轮复用Pi分支及Python/SQLite，不新增产品功能、不启用服务器、Git、部署或新计费策略。既有脏文件按字节保护。该设计的技术取舍由主代理确定，不追认成用户逐项选择。
+
+## 交付范围
+
+现有iteration.run_iteration只有通用注入阶段，development_launcher则已有真实隔离开发与费用核验。新增本机有限协调入口run_local_development，把可信分析适配器、宿主任务冻结/独立审查适配器和现有development_launcher.execute接起来。协调器本身不创建模型预算、不运行候选代码、不生成独立审查批准，也不成为模型工具。第一次交付支持宿主冻结的已复现任务目录；不让模型任意新增任务或控制路径。
+
+宿主提供固定目录，各任务记录task_id、problem（有界说明）、source_sha256、evidence_sha256、固定test_sha256、完整test_cases、允许files和有实际失败库存的baseline（tests/cases/failures/errors/skipped/failed_cases/error_cases，至少一个失败、0error/skip、库存精确）。目录需由可信宿主根据隔离checker回执形成，模型不能自称已复现。这里不另建立语义金标。
+
+分析适配器接收有界、深拷贝的目录和阶段绑定（不含凭据/账本/运行时路径），通过既有Engine执行无工具分析并由宿主认证，返回Receipt：verified=true、mode、binding及proposal。proposal仅task_id/evidence_sha256/source_sha256/reason，允许task_id=null表示无可做任务（其余身份仍须合法空值，reason非空）。模型的reason是观察，永远不是权限。目录之外、来源不匹配或额外字段直接阻断。
+
+宿主prepare适配器在分析完成后创建全新开发配置、最新费用检查点及具体独立审查；返回其私有config_path及config_sha256。模型不能提供这个路径。协调器用现有development_inputs.prepare重新校验完整配置/原账本/关闭策略/运行时/独立审查，另外精确匹配选中目录项的source/test/cases/files及baseline.reproduction七字段失败库存，禁止选择A却执行B。每一步都重新校验当前source身份，失效停止。不要改变完整Plan schema或绕过既有独立审查；审查暂不可用时形成blocked结果，不能以模型批准替代。
+
+随后直接调用现有development_launcher.execute，并传入预检得到的expected_authorization_sha256；启动器在产生锁/付费前核对该可选摘要，避免交接后配置替换。该参数默认None以兼容旧入口，现有取锁后二次完整核验保留。实际结果必须verified=true、run_id/auth绑定相同配置、new_unknown=0、policy_restored=true、original_history_unchanged=true、cleanup非空且全部removed；候选有实际变化，固定最终检查和phase验证保留在既有输出根。协调器不采纳源码；独立最终代码审查和全产品验证仍在现有宿主流程，结果明确next_action=review_candidate，不宣称自动改进或发布。
+
+## 持久性与失败
+
+使用单独控制SQLite账本，不能等同或复用开发配置的计费账本。入口接收control_path与可信billing_ledger_path，构造Ledger及任何claim前排除链接、同路径及同inode；冻结配置后再次匹配实际计费账本。复用iteration._run_action原子阶段claim与immutable receipt。整个cycle也原子claim：相同cycle_id且相同冻结输入返回已有终态；pending返回uncertain，绝不重跑任何付费阶段；同id换目录/source/mode拒绝。相同目录证据换cycle_id不做隐式去重，本轮由显式调用方负责新运行授权；不能把新id当成故障重试接口。
+
+每个阶段绑定cycle_id/source/catalog_sha256/mode和此前回执摘要。异常、取消、deadline、来源漂移、坏结果均停止；付费执行未知保留uncertain。prepare失败不能调用execute。统一有限单调时钟deadline在调用前后检查并传给适配器，共享Event及Timer覆盖整个接力；同步宿主适配器必须协作响应，不能强杀任意Python回调，超期回执不得算成功；execute配置deadline_seconds必须小于等于剩余时间。各阶段业务验证必须在持久化done之前完成。default execute无自动重试。SIMULATED必须标记模拟，不能充当真实Pi验收。新增协调入口仅API，真实分析/冻结适配器由可信宿主注入，没有新增CLI暗中启用付费。
+
+## 验证及实际界限
+
+TDD覆盖正常接力、no_work、坏proposal/冒充任务/来源/库存、准备后配置身份漂移、独立审查拒绝、取消/期限、阶段异常、unknown/清理失败、重复与并发claim、账本分离及模式不可混用。使用真实现有development_inputs.prepare的集成边界测试及现有execute调用转发测试，所有注入fake结果明确为SIMULATED。完整Pi离线回归及Node既有边界检查，独立最终代码审查；本轮不声称新的真实分析到开发整链通过，也不把模拟当实际自治。真实现有开发入口已有独立付费证据，接力层真实适配器/线上调度仍待下一阶段验收。
+
+设计复核说明：expected_authorization_sha256不绑定review_path/review_sha256；冻结阶段另查config_sha256，既有launcher取锁前后完整digest校验保持。该参数只防授权身份被替换，不声称排除同一授权下合法独立审查文件变更。

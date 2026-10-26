@@ -19,11 +19,12 @@ def _scope_identity(db):
                        ('model-scope:local-trial-1',)).fetchone()
     original = _scope_payload(scope)  # A missing scope must never bootstrap a budget.
     if (original != dict(max_attempts=100, budget_microyuan=10000000)
-            or _effective_trial_limits(db, original) != dict(
-                max_attempts=None, budget_microyuan=20000000, phase_allocations=None)):
+            or _effective_trial_limits(db, original) not in (dict(
+                max_attempts=None, budget_microyuan=20000000, phase_allocations=None),
+                dict(max_attempts=None, budget_microyuan=None, phase_allocations=None))):
         raise BudgetDenied('analysis requires original approved fee-only scope')
     rows = db.execute("SELECT * FROM operations WHERE operation_id='model-scope:local-trial-1' "
-                      "OR kind IN ('model-budget-amendment','model-budget-amendment-v2') "
+                      "OR kind IN ('model-budget-amendment','model-budget-amendment-v2','model-budget-amendment-v3') "
                       'ORDER BY operation_id').fetchall()
     return _hash([dict(row) for row in rows])
 
@@ -40,17 +41,22 @@ def _binding(run, db):
 
 
 def bind_run_budget(run, policy, *, cap_microyuan, deadline):
-    if (type(cap_microyuan) is not int or not 0 < cap_microyuan <= 20000000
+    uncapped = policy.schema_version == 3 and policy.budget_microyuan is None
+    if ((not (uncapped and cap_microyuan is None)
+            and (type(cap_microyuan) is not int or not 0 < cap_microyuan <= 20000000))
             or type(deadline) not in (int, float) or not math.isfinite(deadline)):
-        raise BudgetDenied('explicit finite run cap and absolute deadline required')
-    if (policy.schema_version != 2 or policy.max_attempts is not None
-            or policy.budget_microyuan != 20000000 or policy.server_daily_enabled):
+        raise BudgetDenied('explicit run fee policy and absolute deadline required')
+    if (policy.max_attempts is not None or policy.server_daily_enabled
+            or not (uncapped or (policy.schema_version == 2 and policy.budget_microyuan == 20000000))):
         raise BudgetDenied('frozen fee-only policy required')
     payload = dict(identity=run._identity, cap_microyuan=cap_microyuan,
                    deadline=deadline, policy=asdict(policy))
     with run.ledger.transaction() as db:
         states = run._check(db)
         payload['scope_sha256'] = _scope_identity(db)
+        if uncapped and _effective_trial_limits(db, _scope_payload(db.execute(
+                'SELECT * FROM operations WHERE operation_id=?', ('model-scope:local-trial-1',)).fetchone()))['budget_microyuan'] is not None:
+            raise BudgetDenied('no-fee-cap run requires trusted scope approval')
         encoded = _json(payload)  # Snapshot mutable caller policy fields.
         existing = _binding(run, db)
         if existing is not None:
@@ -123,7 +129,7 @@ class AnalysisBudgetSlot:
             if row['status'] != 'done' or evidence.get('usage_known') is not True:
                 raise BudgetDenied('preceding analysis billing unresolved')
             used += evidence['charged_microyuan']
-        if used + amount > binding['cap_microyuan']:
+        if binding['cap_microyuan'] is not None and used + amount > binding['cap_microyuan']:
             raise BudgetDenied('analysis run budget exhausted')
         # Last check inside BEGIN IMMEDIATE, including time spent waiting for it.
         if time.time() >= binding['deadline']:

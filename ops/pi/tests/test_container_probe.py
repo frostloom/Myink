@@ -352,3 +352,28 @@ def test_top_uses_remaining_capture_deadline(host,monkeypatch):
     result=host[0].capture(cid,seconds=.15,output_limit=1024)
     assert result['reason']=='timeout' and result['elapsed']<.8
     assert host[1].objects[cid]['State']['Running'] is False
+
+
+def test_stop_accepts_exit_between_inspect_and_kill_only_after_reinspect(host,monkeypatch):
+    value,daemon,*_=host
+    cid=create(host)
+    original=daemon.run
+    def racing(args,**kwargs):
+        if args[3:4]==['kill']:
+            daemon.objects[cid]['State'].update(Running=False,Pid=0,ExitCode=0)
+            return subprocess.CompletedProcess(args,1,'','already stopped')
+        return original(args,**kwargs)
+    monkeypatch.setattr(module().subprocess,'run',racing)
+    assert value.cleanup(cid)['removed']
+    assert not daemon.objects
+
+
+def test_stop_still_rejects_failed_kill_with_running_namespace(host,monkeypatch):
+    value,daemon,*_=host
+    cid=create(host);original=daemon.run
+    def denied(args,**kwargs):
+        if args[3:4]==['kill']:return subprocess.CompletedProcess(args,1,'','denied')
+        return original(args,**kwargs)
+    monkeypatch.setattr(module().subprocess,'run',denied)
+    with pytest.raises(RuntimeError):value.stop(cid)
+    assert cid in value.owned

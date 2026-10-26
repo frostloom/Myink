@@ -59,9 +59,15 @@ class _CheckFailed(ValueError):
         self.evidence = evidence
 
 
-def _failed_check_feedback(result, snapshot):
+def _failed_check_feedback(result, snapshot, *, unit_test_sha256=None, unit_case_ids=None):
     """Project the authenticated fixed capture report; never forward case text."""
     denied = 'check receipt not verified for frozen candidate'
+    if isinstance(result.operation_id,str) and result.operation_id.startswith('development-check:'):
+        from .unit_feedback import project_feedback
+        try:
+            return project_feedback(result,snapshot,unit_test_sha256,unit_case_ids)
+        except (ValueError,TypeError,KeyError):
+            raise ToolDenied(denied) from None
     e = result.evidence
     if (not isinstance(e, dict) or result.status != 'blocked' or e.get('verified') is not True
             or e.get('mode') != 'ACTUAL' or e.get('result') != 'failed'
@@ -127,7 +133,7 @@ def _failed_check_feedback(result, snapshot):
 
 class ControlledTools:
     def __init__(self, ledger, policy, *, capability, scope_token, identity, baseline,
-                 metrics, checks=None, secret_values=()):
+                 metrics, checks=None, secret_values=(), source_read_limits=None, admit_tool=None):
         if (not isinstance(capability, ToolCapability) or capability.phase not in PHASE_TOOLS
                 or type(capability.generation) is not int or capability.generation < 1
                 or not all(isinstance(v, str) and re.fullmatch(r'[A-Za-z0-9._-]{1,128}', v)
@@ -142,6 +148,14 @@ class ControlledTools:
         self.capability, self.token, self.identity = capability, scope_token, identity
         self.baseline, self.metrics = deepcopy(baseline), deepcopy(metrics)
         self.checks, self.secret_values = dict(checks or {}), tuple(secret_values)
+        if (source_read_limits is not None and
+                (not isinstance(source_read_limits, tuple) or len(source_read_limits) != 2
+                 or any(type(v) is not int for v in source_read_limits)
+                 or not 0 < source_read_limits[0] <= source_read_limits[1] <= 16384)):
+            raise ValueError('bounded host source read limits required')
+        if admit_tool is not None and not callable(admit_tool):
+            raise ValueError('trusted tool admission callback required')
+        self.source_read_limits, self.admit_tool = source_read_limits, admit_tool
         if set(self.checks) - {'unit', 'lint', 'contract'}:
             raise ValueError('only fixed check ids permitted')
         self._lock = RLock()
@@ -289,6 +303,8 @@ class ControlledTools:
                 self.ledger.intent(operation, 'controlled_tool', payload)
                 try:
                     validate_schema(args,tool_definitions((name,))[0]['input_schema'])
+                    if self.admit_tool is not None:
+                        self.admit_tool(name, args)
                     evidence = self._execute(name, args)
                     receipt = Receipt(operation, 'done', dict(tool=name, input_hash=payload['input_hash'],
                         binding=self._binding, **evidence))
@@ -385,10 +401,28 @@ class ControlledTools:
             text = ''.join(lines[args['start_line'] - 1:end_line])
             if len(text.encode()) > 16384:
                 raise ToolDenied('source excerpt too large')
+            budget = {}
+            if self.source_read_limits is not None:
+                size = len(canonical(text).encode())
+                single, total = self.source_read_limits
+                if size > single:
+                    raise ToolDenied('source ASCII excerpt budget exceeded; request fewer lines')
+                # _exclusive spans the successful receipt as well as this read.
+                # Count actual returned text, including duplicates and old versions.
+                with self.ledger.transaction() as connection:
+                    rows = [self.ledger._record(r) for r in connection.execute(
+                        "SELECT * FROM operations WHERE kind='controlled_tool' AND status='done'")]
+                used = sum(len(canonical(r['evidence']['text']).encode()) for r in rows
+                    if r['payload'].get('binding') == self._binding
+                    and r['payload'].get('tool') == 'read_source')
+                if used + size > total:
+                    raise ToolDenied('source ASCII session budget exhausted; finish using prior reads')
+                budget = dict(source_ascii_bytes=size, source_ascii_used=used + size,
+                              source_ascii_remaining=total - used - size)
             return dict(path=args['path'], source_hash=sha256(raw).hexdigest(), text=text,
                         start_line=args['start_line'], end_line=end_line,
                         requested_end_line=args['end_line'], total_lines=len(lines),
-                        eof=end_line == len(lines), untrusted_source=True)
+                        eof=end_line == len(lines), untrusted_source=True, **budget)
         if name == 'propose_plan':
             self._fields(args, ('plan',))
             data = deepcopy(args['plan'])
@@ -422,7 +456,7 @@ class ControlledTools:
             if args['candidate_hash'] != self.candidate_hash() or not self._current(self.capability):
                 raise ToolDenied('candidate or authority changed during check')
             if isinstance(result, Receipt) and result.status == 'blocked':
-                raise _CheckFailed(_failed_check_feedback(result, snapshot))
+                raise _CheckFailed(_failed_check_feedback(result, snapshot, unit_test_sha256=self.baseline.get('config_hash'), unit_case_ids=self.baseline.get('unit_test_cases')))
             if (not isinstance(result, Receipt) or result.status != 'done'
                     or any(result.evidence.get(k) != v for k, v in snapshot.items())
                     or result.evidence.get('result') != 'passed'):

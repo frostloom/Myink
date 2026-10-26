@@ -1,0 +1,25 @@
+{
+  "independent_closeout": true,
+  "completed": false,
+  "candidate_adopted": false,
+  "stop_reason": "request_limit_before_final_candidate_status",
+  "posts": 12,
+  "known_cost_microyuan": 58654,
+  "new_unknown": 0,
+  "canonical_attempts": 271,
+  "canonical_known": 262,
+  "canonical_unknown": 9,
+  "policy_disabled": true,
+  "containers_removed": 2,
+  "fixed_candidate_tests_passed": 10,
+  "prior_dirty_files_unchanged": true,
+  "blocked_tool_reasons": [
+    "undeclared or duplicate file",
+    "undeclared or duplicate file",
+    "undeclared or duplicate file"
+  ],
+  "date": "2026-10-24",
+  "test_draft_location": ".local/pi-keyword-develop-20261024/test_recall_keyword_time_draft.py",
+  "product_regression_not_run": "candidate not adopted",
+  "next_step": "Enforce one-file-one-edit-per-call in model-facing instructions and reserve request allowance for unit/status closure in a fresh reviewed run; do not replay real-002"
+}

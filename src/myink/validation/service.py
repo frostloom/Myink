@@ -117,6 +117,13 @@ class ValidationService:
                                                 chapter_seq=chapter_seq, draft=draft)
         # 阵营敌对（§8.4 L1 第 1 类，样例 2/40）：draft 依赖，service 编排；硬约束 critical 不阻塞生成
         findings += self.l1.faction_check(session, project_id=project_id, chapter_seq=chapter_seq, draft=draft)
+        # 已毁物品重现：历史销毁与本意使用冲突，除非同一物品有已确认修复 Fact
+        findings += self.l1.item_rule_check(session, project_id=project_id,
+                                           chapter_seq=chapter_seq, draft=draft)
+        # 首次来访断言：与同人物同地点历史事件矛盾，major（失忆/重游说明豁免）
+        findings += self.l1.first_visit_check(session, project_id=project_id,
+                                              chapter_seq=chapter_seq, draft=draft)
+        findings += self.l1.capability_rule_check(session, project_id=project_id, chapter_seq=chapter_seq, draft=draft)
         findings += outline_deviation(session, project_id, chapter_seq, plan, candidates)
         findings += chapter_length_check(chapter_seq, draft, target_words)
 

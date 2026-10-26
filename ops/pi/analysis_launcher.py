@@ -95,7 +95,8 @@ def _prepare(config):
                 and config['failure_policy'] != 'continue_known_contract_failure')
             or (config['schema'] == 'pi-analysis-launch-v2' and (type(config['selected_slots']) is not int
                 or config['selected_slots'] not in (1, 2)))
-            or type(config['cap_microyuan']) is not int or not 0 < config['cap_microyuan'] <= 20000000
+            or not ((config['schema'] == 'pi-analysis-trial-v2' and config['cap_microyuan'] is None)
+                or (type(config['cap_microyuan']) is int and 0 < config['cap_microyuan'] <= 20000000))
             or type(config['deadline']) not in (int, float) or not math.isfinite(config['deadline'])
             or not 0 < config['deadline'] - time.time() <= (3600 if config['schema'] == 'pi-analysis-trial-v2' else 600)
             or not isinstance(config['run_id'], str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,96}', config['run_id'])):
@@ -133,8 +134,10 @@ def _prepare(config):
         credential_path=credential, expected_scope_sha256=config['expected_scope_sha256'],
         expected_policy_sha256=config['expected_policy_sha256'])
     reserve = diagnostic['policy']['max_request_reserved_microyuan']
-    if (reserve is None or config['cap_microyuan'] < reserve
-            or config['cap_microyuan'] > diagnostic['accounting']['conservative_remaining_microyuan']
+    cap = config['cap_microyuan']
+    remaining = diagnostic['accounting']['conservative_remaining_microyuan']
+    if (reserve is None or (cap is None and not (policy.schema_version == 3 and remaining is None))
+            or (cap is not None and (cap < reserve or (remaining is not None and cap > remaining)))
             or diagnostic['accounting']['pending_attempts']):
         raise ValueError(_ERROR)
     host = ProbeHost(docker=Path(config['docker']), endpoint=config['endpoint'],

@@ -1,0 +1,162 @@
+{
+  "date": "2026-10-27",
+  "started": "2026-10-26",
+  "verified": true,
+  "branch": "codex/pi-autonomy-design",
+  "new_tests": 44,
+  "targeted_passed": 192,
+  "full_pi_passed": 2618,
+  "pi_deselected": 19,
+  "node_scripts_passed": 4,
+  "instances": {
+    "verified": true,
+    "module_sha256": "c5c9d3f2caa472b8da93052000a1f7b3630da8e5f9448b439d681e6c1aaeff8b",
+    "cases": [
+      {
+        "case": "green250",
+        "verified": true,
+        "eligible": false,
+        "check_passed": true,
+        "failure_class": null,
+        "catalog_rejection": null,
+        "tests": 250,
+        "cleanup": [
+          {
+            "container_id": "34b8bef79f8fcc6d9ca1e193d8a819229e84033ae53a5ee98b180559cf61de5b",
+            "exit_code": 0,
+            "removed": true,
+            "stopped": true
+          }
+        ]
+      },
+      {
+        "case": "failure",
+        "verified": true,
+        "eligible": true,
+        "check_passed": false,
+        "failure_class": null,
+        "catalog_rejection": null,
+        "tests": 2,
+        "cleanup": [
+          {
+            "container_id": "a67caad8c4f64d08a57ea4712a02225ad4c17724c12726e8ad78a1ae8f263554",
+            "exit_code": 1,
+            "removed": true,
+            "stopped": true
+          }
+        ]
+      },
+      {
+        "case": "error",
+        "verified": false,
+        "eligible": false,
+        "check_passed": false,
+        "failure_class": null,
+        "catalog_rejection": null,
+        "tests": 2,
+        "cleanup": [
+          {
+            "container_id": "3a5a8b1decfe2b84edd28cb55fba8c757a57da00ed584d3fe51321b923730fa8",
+            "exit_code": 1,
+            "removed": true,
+            "stopped": true
+          }
+        ]
+      },
+      {
+        "case": "skip",
+        "verified": false,
+        "eligible": false,
+        "check_passed": false,
+        "failure_class": "ValueError",
+        "catalog_rejection": null,
+        "tests": null,
+        "cleanup": [
+          {
+            "container_id": "7b86fdd0fd284181664d4218854e5ab8375a1d27a6405908fc74c2d45abdf6d4",
+            "exit_code": 1,
+            "removed": true,
+            "stopped": true
+          }
+        ]
+      },
+      {
+        "case": "inherited",
+        "verified": false,
+        "eligible": false,
+        "check_passed": false,
+        "failure_class": "ValueError",
+        "catalog_rejection": null,
+        "tests": null,
+        "cleanup": [
+          {
+            "container_id": "cd5acf71fe76a1703ca9bdca1409eff50573fb186df2ee54b2e25c25c8187255",
+            "exit_code": 0,
+            "removed": true,
+            "stopped": true
+          }
+        ]
+      },
+      {
+        "case": "large900",
+        "verified": true,
+        "eligible": false,
+        "check_passed": false,
+        "failure_class": null,
+        "catalog_rejection": "task catalog too large",
+        "tests": 900,
+        "cleanup": [
+          {
+            "container_id": "ddc3413fa6344efa92998097c0e6d7d9cdf4985a9737562313f2e3cd0e19419a",
+            "exit_code": 1,
+            "removed": true,
+            "stopped": true
+          }
+        ]
+      }
+    ],
+    "original_ledger_unchanged": true,
+    "real_model_calls": 0,
+    "new_cost_microyuan": 0,
+    "scope": "real isolated checker; synthetic failure/error/skip/inheritance fixtures and reviewed green250 source; no Pi model execution"
+  },
+  "review": {
+    "initial_review_approved": false,
+    "review_sha256": "d864a0088716a3b02a19847016069ad5712d7f07aa4e34382be2541d9cd61987",
+    "finding_closed": "P2 catalog size rejection loses completed baseline outcome",
+    "method": "author RED→GREEN verification; original review unchanged",
+    "additional_guard": "output must not overlap Docker Unix endpoint or resolved aliases",
+    "red_tests": 5,
+    "targeted_passed": 192,
+    "full_pi_passed": 2618,
+    "real_large900_passed": true,
+    "remaining_blockers": 0
+  },
+  "uncompleted_parallel_instance": {
+    "preserved": true,
+    "exit_code": 137,
+    "cause": "unconfirmed: no complete report; not retroactively inferred",
+    "ineligible": true,
+    "owned_absent": true,
+    "followup": "fresh serial identities after full regression ended and direct resource reconciliation"
+  },
+  "owned_containers_absent": 12,
+  "owned_operations_empty": 12,
+  "real_model_calls": 0,
+  "new_real_cost_microyuan": 0,
+  "canonical_ledger_unchanged": true,
+  "canonical_ledger_sha256": "b320abc2cd51a5eb1f880e450a2cb6e7a545d85792db13ecf36998638509b8be",
+  "canonical_policy_closed_unchanged": true,
+  "canonical_credential_unchanged": true,
+  "product_source_unchanged": true,
+  "prior_dirty_files": 146,
+  "unrelated_dirty_preserved": true,
+  "git_actions_during_acceptance": [],
+  "stage_push_authorized": true,
+  "post_documentation_changed_existing_files": [
+    "docs/pi/development-readiness.md",
+    "docs/pi/local-development-launcher.md"
+  ],
+  "final_module_sha256": "c5c9d3f2caa472b8da93052000a1f7b3630da8e5f9448b439d681e6c1aaeff8b",
+  "final_tests_sha256": "6d9b7db391ee39bc9d4f8ca7597d9c6c3ca48f3421cdda876c25405398768366"
+}

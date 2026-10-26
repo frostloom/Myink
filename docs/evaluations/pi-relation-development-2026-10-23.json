@@ -1,0 +1,99 @@
+{
+  "independent_verified": true,
+  "posts": 6,
+  "known_cost_microyuan": 20034,
+  "new_unknown": 0,
+  "canonical_attempts": 254,
+  "canonical_known": 245,
+  "canonical_unknown": 9,
+  "known_charged_microyuan": 2123272,
+  "unknown_reserved_microyuan": 18115200,
+  "prior_rows_and_event_prefix_unchanged": true,
+  "prior_dirty_files_unchanged": true,
+  "policy_disabled": true,
+  "policy_schema": 3,
+  "budget_microyuan": null,
+  "tool_sequence": [
+    "read_source",
+    "candidate_status",
+    "read_source",
+    "apply_patch",
+    "run_check",
+    "candidate_status"
+  ],
+  "tool_ledger": "private tools.sqlite; model fees in original canonical ledger",
+  "containers_removed": 2,
+  "source_before_sha256": "567de9a461e582365f866a29a5b43ba783a575c8bfff2bbdf2c96b4b2a849880",
+  "source_after_sha256": "12c9aaa15ee54c674d88e59edfaac704434cc8198281f4b2e1a3646ef0c8a61f",
+  "session_sha256": "17bc08b5d660e9384c11ff4df08f2425d67234bef0e779cf42714b8cc8a47c5c",
+  "transcript_sha256": "a4a8a1b77f9b05a89c99e82c1f20ffb073a1bf344423c6a315959252395b537c",
+  "schema": "pi-relation-development-v1",
+  "date": "2026-10-23",
+  "branch": "codex/pi-autonomy-design",
+  "source_commit": "f553a3cf63eba8dc6541fc5e67f4a5076817fa20",
+  "candidate_adopted": true,
+  "production_files": [
+    "src/myink/memory/recall.py"
+  ],
+  "test_file": "tests/test_recall_relations_time.py",
+  "fixed_case_count": 10,
+  "baseline_failed": 4,
+  "baseline_passed": 6,
+  "isolated_candidate_passed": 10,
+  "focused_regression_passed": 30,
+  "full_python_regression": {
+    "status": "passed_with_recorded_skip_and_xfail",
+    "command": "python -m pytest tests/ -q -m 'not pi_lab and not pi_live' --tb=short",
+    "passed": 1622,
+    "skipped": 1,
+    "deselected": 159,
+    "xfailed": 5,
+    "warnings": 2,
+    "seconds": 232.87,
+    "log_sha256": "72cf32a6f23514e123dde015b4c75c61cd3540988a00f4749e3b320835e0e7fb",
+    "services_removed": true
+  },
+  "independent_review": "no blocking findings; exact candidate adopted",
+  "automatic_development": "one bounded host-supervised Pi patch/check/status cycle completed",
+  "server_autonomy_enabled": false,
+  "writing_semantic_quality_improvement": "not_measured",
+  "committed": false,
+  "pushed": false,
+  "merged": false,
+  "deployed": false,
+  "execution_limits": {
+    "max_requests": 12,
+    "seconds": 900,
+    "money_cap_microyuan": null
+  },
+  "private_evidence": ".local/pi-relation-develop-20261023/",
+  "rehearsal": {
+    "normal": "passed; 6 mock requests, fixed 10 cases, Pi and checker containers removed",
+    "sigterm": "passed; policy disabled, owned container removed, mock unknown reservation retained",
+    "deadline": "passed; 8s mock deadline, policy disabled, owned container removed, mock unknown reservation retained"
+  },
+  "initial_unfiltered_regression": {
+    "status": "failed_and_interrupted",
+    "command": "python -m pytest tests/ -q --tb=short",
+    "reason": "Included native pi_lab tests without guarded native lab; interrupted for diagnosis; teardown reported guarded native lab required",
+    "services_removed": true
+  },
+  "prior_tracked_dirty_paths": [
+    "ops/pi/analysis_budget.py",
+    "ops/pi/analysis_launcher.py",
+    "ops/pi/analysis_preflight.py",
+    "ops/pi/budget.py",
+    "ops/pi/model_gateway.py",
+    "ops/pi/policy.py",
+    "ops/pi/schedule.py",
+    "ops/pi/tests/test_analysis_trial_lifecycle.py",
+    "ops/pi/tests/test_usage_diagnostics.py"
+  ],
+  "not_run": [
+    "frontend checks",
+    "Go checks",
+    "image build",
+    "guarded native lab tests",
+    "additional paid tests"
+  ]
+}

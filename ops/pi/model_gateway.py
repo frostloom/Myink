@@ -21,7 +21,51 @@ class GatewayResponse:
     attempt_id: str
 
 
-def _validate(body, policy, tool_allowlist=()):
+_SCHEMA_REJECTIONS = frozenset((
+    'value outside fixed schema', 'tool argument type mismatch',
+    'unsupported or missing tool fields', 'tool array outside bound',
+    'duplicate tool array values', 'tool string outside bound', 'tool number outside bound',
+))
+
+
+def _verified_patch_rejection(call, block, lookup):
+    """Only an exact current host rejection can carry malformed patch history."""
+    def require(value):
+        if not value:
+            raise ValueError('unverified rejected patch history')
+    require(call['name']=='apply_patch' and isinstance(call['input'],dict)
+            and callable(lookup) and block['is_error'] is True)
+    parts=block['content']
+    if isinstance(parts,str):
+        text=parts  # The pinned SDK flattens one text block on the Anthropic wire.
+    else:
+        require(isinstance(parts,list) and len(parts)==1 and isinstance(parts[0],dict)
+                and set(parts[0])=={'type','text'} and parts[0]['type']=='text'
+                and isinstance(parts[0]['text'],str))
+        text=parts[0]['text']
+    def pairs(items):
+        result={}
+        for key,value in items:
+            require(key not in result);result[key]=value
+        return result
+    def invalid(_):
+        raise ValueError('nonfinite rejection receipt')
+    receipt=json.loads(text,object_pairs_hook=pairs,parse_constant=invalid)
+    require(isinstance(receipt,dict) and set(receipt)=={'operation_id','status','evidence','schema_version'}
+            and type(receipt['schema_version']) is int and receipt['schema_version']==1
+            and isinstance(receipt['operation_id'],str) and receipt['status']=='blocked')
+    evidence=receipt['evidence']
+    require(isinstance(evidence,dict) and set(evidence)=={'tool','input_hash','binding','reason'}
+            and all(isinstance(v,str) for v in evidence.values())
+            and evidence['tool']=='apply_patch' and evidence['reason'] in _SCHEMA_REJECTIONS)
+    try:
+        verified=lookup(call['id'],call['name'],call['input'],receipt)
+    except Exception:
+        verified=False
+    require(verified is True)
+
+
+def _validate(body, policy, tool_allowlist=(), *, blocked_tool_lookup=None):
     allowed = {'model', 'max_tokens', 'messages', 'system', 'stream', 'temperature', 'top_p', 'top_k', 'stop_sequences', 'thinking'}
     definitions = []
     if tool_allowlist:
@@ -49,7 +93,7 @@ def _validate(body, policy, tool_allowlist=()):
     if definitions and body.get('tools') != definitions:
         raise ValueError('untrusted tool declarations')
     by_name = {d['name']:d for d in definitions}
-    pending, completed = {}, set()
+    pending, completed, rejected = {}, set(), {}
     def content(value, role='system'):
         if isinstance(value, str):
             return
@@ -67,7 +111,12 @@ def _validate(body, policy, tool_allowlist=()):
                 if (not isinstance(call_id,str) or re.fullmatch(r'[A-Za-z0-9_-]{1,128}',call_id) is None
                         or not isinstance(name,str) or name not in by_name or call_id in pending or call_id in completed):
                     raise ValueError('untrusted tool use')
-                validate_schema(block['input'],by_name[name]['input_schema'])
+                try:
+                    validate_schema(block['input'],by_name[name]['input_schema'])
+                except ValueError:
+                    if name!='apply_patch' or not isinstance(block['input'],dict) or not callable(blocked_tool_lookup):
+                        raise
+                    rejected[call_id]=block
                 pending[call_id]=name
                 continue
             if definitions and role == 'user' and set(block) == {'type','tool_use_id','content','is_error'} and block['type'] == 'tool_result':
@@ -75,6 +124,8 @@ def _validate(body, policy, tool_allowlist=()):
                 if not isinstance(call_id,str) or call_id not in pending or type(block['is_error']) is not bool:
                     raise ValueError('unpaired tool result')
                 content(block['content'])
+                if call_id in rejected:
+                    _verified_patch_rejection(rejected.pop(call_id),block,blocked_tool_lookup)
                 del pending[call_id]; completed.add(call_id)
                 continue
             raise ValueError('unsupported content block')
@@ -428,7 +479,7 @@ def _error(code):
 
 
 def forward_messages(body: Record, scope_id: str, *, ledger: Ledger, policy: Policy, transport: Callable,
-                     usage_observer: Callable[[Record], None] | None = None, tool_allowlist=(), analysis_slot=None, cancel=None) -> GatewayResponse:
+                     usage_observer: Callable[[Record], None] | None = None, tool_allowlist=(), analysis_slot=None, cancel=None, blocked_tool_lookup=None) -> GatewayResponse:
     if cancel is not None and cancel.is_set():
         return _error(403)
     try:
@@ -436,7 +487,7 @@ def forward_messages(body: Record, scope_id: str, *, ledger: Ledger, policy: Pol
             # The metered body and the actual transport must see the same input.
             body = json.loads(_json(body))
             policy = Policy(**asdict(policy))
-        _validate(body, policy, tool_allowlist)
+        _validate(body, policy, tool_allowlist, blocked_tool_lookup=blocked_tool_lookup)
     except (ValueError, TypeError, OverflowError):
         return _error(400)
     if policy.live_enabled and (not policy.input_bound_calibrated or not policy.input_bound_source.strip() or not policy.price_source.strip() or any(v is None for v in policy.prices.values())):
@@ -536,6 +587,16 @@ def forward_messages(body: Record, scope_id: str, *, ledger: Ledger, policy: Pol
                             collector.raw_usage['response'] = _usage_snapshot(usage)
                         outcome = 'complete' if isinstance(usage, dict) else 'invalid_response_usage'
                         if isinstance(usage, dict):
+                            try:
+                                if 'service_tier' in usage and usage['service_tier'] != 'standard':
+                                    raise ValueError('unsupported nonstream service tier')
+                                if 'prompt_tokens_details' in usage:
+                                    raise ValueError('unsupported nonstream cache breakdown')
+                                usage = _usage_updates(usage, {}, _BILLING_DIMENSIONS)
+                            except (ValueError, TypeError):
+                                collector.valid = False
+                                outcome = 'invalid_response_usage'
+                                return
                             usage['provider_request_id'] = item.get('id', request_id)
                     except (ValueError, KeyError, TypeError):
                         collector.valid = False

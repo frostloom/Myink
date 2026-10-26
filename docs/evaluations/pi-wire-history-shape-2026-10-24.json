@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-24",
+  "scope": "Strict request-only source-history support for pinned SDK canonical strings",
+  "guard_sha256": "64f8b365e37b63e4e6fef1228d678b5973524d915d5b4c43e1f30fafe19e1a9f",
+  "runtime_code_sha256": "c25b1cf84bca54582c1b06f6941504ca89388b4d4fa8c0dde57ac2ce6141f479",
+  "tests": {
+    "red_failures": 3,
+    "node_history_passed": 21,
+    "focused_python_passed": 73,
+    "pi_passed": 2455,
+    "pi_deselected": 19,
+    "node_scripts_passed": 4
+  },
+  "replay": [
+    {
+      "round": "actual-002",
+      "before_ascii_bytes": 67814,
+      "after_ascii_bytes": 36520,
+      "original_unchanged": true
+    },
+    {
+      "round": "actual-003",
+      "before_ascii_bytes": 67662,
+      "after_ascii_bytes": 67662,
+      "original_unchanged": true
+    }
+  ],
+  "linux": {
+    "verified": true,
+    "mode": "SIMULATED",
+    "analysis_mock_requests": 1,
+    "development_mock_requests": 11,
+    "durable_session_original": true,
+    "latest_source_original": true,
+    "post_read_projection_requests": 3,
+    "request_ascii_bytes": [
+      29885,
+      31215,
+      33158
+    ],
+    "new_unknown": 0,
+    "policy_restored": true,
+    "owned_removed": true,
+    "product_adopted": false
+  },
+  "real_calls": 0,
+  "real_cost_microyuan": 0,
+  "canonical_ledger_unchanged": true,
+  "canonical_ledger_sha256": "45021ee6f26b9030a87cbdfaddfecf78b0ce023d1bccd57e9acc5f53abbec20b",
+  "real_policy_credential_unchanged": true,
+  "prior_dirty_files": 101,
+  "prior_dirty_intentionally_changed": [
+    "docs/pi/local-development-launcher.md",
+    "docs/pi/development-readiness.md",
+    "ops/pi/lab/pi-wire-guard.mjs",
+    "ops/pi/pi_config.py"
+  ],
+  "other_prior_dirty_preserved": true,
+  "reviewer": "wire_shape_review",
+  "git_commit": false,
+  "push": false,
+  "merge": false,
+  "deploy": false,
+  "product_changed": false
+}

@@ -1,0 +1,126 @@
+{
+  "schema": "pi-public-smoke-v1",
+  "at": "2026-10-23T09:03:15.822321+00:00",
+  "request": {
+    "model": "deepseek-flash",
+    "max_tokens": 32,
+    "thinking": {
+      "type": "disabled"
+    },
+    "stream": false,
+    "messages": [
+      {
+        "role": "user",
+        "content": "This is a public connectivity test. Reply with exactly OK."
+      }
+    ]
+  },
+  "model_posts": 1,
+  "http_status": 200,
+  "attempt_id": "48c74932-1977-4d76-8c71-da41d4d5de27",
+  "attempt_status": "uncertain",
+  "fee_evidence": {
+    "charged_microyuan": 2000256,
+    "provider_request_id": "e0149c8e-1506-469a-bbb0-a2f230b9d49a",
+    "usage_known": false
+  },
+  "reserved_microyuan": 2000256,
+  "before_accounting": {
+    "attempts": 217,
+    "known_attempts": 209,
+    "unknown_attempts": 8,
+    "pending_attempts": 0,
+    "known_charged_microyuan": 1884742,
+    "unknown_reserved_microyuan": 16114944,
+    "conservative_used_microyuan": 17999686,
+    "budget_microyuan": 20000000,
+    "conservative_remaining_microyuan": 2000314
+  },
+  "after_accounting": {
+    "attempts": 218,
+    "known_attempts": 209,
+    "unknown_attempts": 9,
+    "pending_attempts": 0,
+    "known_charged_microyuan": 1884742,
+    "unknown_reserved_microyuan": 18115200,
+    "conservative_used_microyuan": 19999942,
+    "budget_microyuan": 20000000,
+    "conservative_remaining_microyuan": 58
+  },
+  "policy_sha256": "c090c2f849813e68b234d9f272d45e65108467cfa6230754fa76ac11e4fcb799",
+  "scope_sha256": "2218dd4133ffb7709f5d2c3812620a2ee7686ea57837983cf0495f0cd1099746",
+  "policy_file_unchanged": true,
+  "global_live_enabled": false,
+  "budget_microyuan": 20000000,
+  "private_writing_read": false,
+  "private_writing_export": false,
+  "persistent_uncapped_approval": false,
+  "historical_rows_unchanged": true,
+  "retried": false,
+  "containers_created": 0,
+  "executor_sha256": "3aee25cc6a4b93789394bd764c2aa37379c189b29f3964a1a3f88222ff2025b5",
+  "state_sha256": "fec9ab9ac233c8cf31e868dd78c8abddffc25f9915ecffb3660aa6f56d36a5b7",
+  "billing_verified": false,
+  "production_ready": false,
+  "response_text": "OK",
+  "independent_closeout_verified": true,
+  "closed_out_at": "2026-10-23T09:19:58.451866+00:00",
+  "audit_script_sha256": "7a9b877097fdfcff0028768b82fdee2932fae943dddba1b1077b9c24a5623bf6",
+  "response_sha256": "809e9a3ef5c986cc60e9eb7f1e8746a0c3d8bb89a217fe5634c79e0f3e201557",
+  "observed_usage": {
+    "input_tokens": 16,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "output_tokens": 1,
+    "service_tier": "standard"
+  },
+  "observed_stop_reason": "end_turn",
+  "accounting_issue": "nonstream_standard_metadata_forwarded_unfiltered_to_strict_settlement",
+  "historical_rows_preserved": true,
+  "new_approval_records": 0,
+  "canonical_terminal_record_unchanged": true,
+  "private_input_files_opened": 0,
+  "preserved_unknown_reservation_microyuan": 2000256,
+  "offline_usage_based_estimate_microyuan": 40,
+  "offline_estimate_is_not_canonical_settlement": true,
+  "nonstream_fix": {
+    "status": "reviewed_final_full_offline_suite_passed",
+    "targeted_passed": 165,
+    "new_regressions": 10,
+    "source_files": {
+      "ops/pi/model_gateway.py": "477e0a0938b3c37e6e26bef0f5390643086490d4931511a10aaabcfa357623e1",
+      "ops/pi/tests/test_usage_diagnostics.py": "1e1a60950273dbf53554c4c650a6100cef0f052a5e03a02b1119d33ace4b6cf6"
+    },
+    "red_log_sha256": "49fee28142f873b8f52e990cc9447e19a7c664e6de90bb3d4b07426ac410cbd5",
+    "green_log_sha256": "6d3c2c600deae3cb3b9d96efe4c75c4d6d0ea1dfa2b0b2192df0ce3534888af7",
+    "targeted_duration_seconds": 2.16,
+    "initial_full_suite": {
+      "passed": 2225,
+      "failed": 1,
+      "cause": "nonstream_cache_breakdown_contract_widened_then_restored"
+    },
+    "targeted_final_log_sha256": "62bf1045f74b6d892a8a7fb6f37d340a3e3955112ba138bcbda3a0c9d2572bd5",
+    "deselected": 19,
+    "skipped": 0,
+    "previous_green_full_offline": {
+      "passed": 2226,
+      "deselected": 19,
+      "duration_seconds": 201.51
+    },
+    "review": {
+      "important_found": 1,
+      "important_fixed": 1,
+      "critical_remaining": 0,
+      "important_remaining": 0,
+      "minor_remaining": 0
+    },
+    "null_tier_red_log_sha256": "ca0aa10e3d61ea68cc89fa1df6b6fe8c650796c2a3618e844fe3caed4c2a84a9",
+    "full_offline_passed": 2227,
+    "duration_seconds": 177.89,
+    "full_offline_log_sha256": "c5499870c0d4075d1d5b4287ff8a95c0259a5e63c4a621ca5f17a33cf1c2f04b"
+  },
+  "committed": false,
+  "pushed": false,
+  "merged": false,
+  "deployed": false
+}

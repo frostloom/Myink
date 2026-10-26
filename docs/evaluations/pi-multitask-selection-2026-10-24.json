@@ -1,0 +1,109 @@
+{
+  "date": "2026-10-24",
+  "status": "verified-local-real-multitask-selection-and-adopted-fix",
+  "catalog_entries": 2,
+  "selected_task": "repeated-place",
+  "unselected_task": "explanation-name",
+  "unselected_executed": false,
+  "selection_reason": "Reproduced false-negative miss: repeated affirmative first-visit mention missed for place moods, with negation/plan/condition/recollection guards passing.",
+  "source_before": "fc6466fb185ee113ba8b8694dcd22b60b97554d1f5e2842484adecfb088de781",
+  "candidate_sha256": "f8201f8672b523dc828213c361bbb60430d629efee67a446ce894fc44b5e205c",
+  "adopted_file_sha256": "6717341db58d5a1419345c53c7351fc3015b5a4ab88620f5624d5aac65efa480",
+  "runtime_code_sha256": "c25b1cf84bca54582c1b06f6941504ca89388b4d4fa8c0dde57ac2ce6141f479",
+  "tests": {
+    "selected_baseline_tests": 91,
+    "selected_baseline_failures": 4,
+    "unselected_baseline_tests": 93,
+    "unselected_baseline_failures": 6,
+    "selected_final_tests": 91,
+    "selected_final_failures": 0,
+    "selected_fixed_errors": 0,
+    "selected_fixed_skipped": 0,
+    "product_passed": 1793,
+    "product_skipped": 1,
+    "product_xfailed": 3,
+    "product_deselected": 159,
+    "product_warnings": 2,
+    "targeted_passed": 256,
+    "targeted_xfailed": 3,
+    "skip_reason": "Explicitly approved localhost:15432 evaluation database identity required; dedicated regression uses55433",
+    "previous_control_evidence": "Unchanged controller/runtime source; last2455Pi/19deselected and4Node passed, not rerun this product-only task"
+  },
+  "fees": {
+    "new_attempts": 18,
+    "new_unknown": 0,
+    "known_cost_microyuan": 82931,
+    "total_attempts": 470,
+    "total_known": 461,
+    "historical_unknown": 9,
+    "total_known_cost_microyuan": 3199519,
+    "original_rows_events_unchanged": true,
+    "policy_closed": true,
+    "credential_unchanged": true,
+    "unselected_not_executed": true,
+    "owned_removed": true,
+    "analysis_attempts": 1,
+    "development_attempts": 17,
+    "selection_reason": "Reproduced false-negative miss: repeated affirmative first-visit mention missed for place moods, with negation/plan/condition/recollection guards passing.",
+    "ledger_sha256": "94781f0bf1f48d2ad85501063ca9dde8841e65feb66fdde635eea5db4ff636d8"
+  },
+  "tools": {
+    "tool_results": 19,
+    "failed_tool_results": 2,
+    "counts": [
+      {
+        "tool": "read_source",
+        "is_error": false,
+        "count": 12
+      },
+      {
+        "tool": "candidate_status",
+        "is_error": false,
+        "count": 2
+      },
+      {
+        "tool": "apply_patch",
+        "is_error": false,
+        "count": 2
+      },
+      {
+        "tool": "run_check",
+        "is_error": true,
+        "count": 1
+      },
+      {
+        "tool": "read_source",
+        "is_error": true,
+        "count": 1
+      },
+      {
+        "tool": "run_check",
+        "is_error": false,
+        "count": 1
+      }
+    ],
+    "max_ascii_request_bytes": 57900
+  },
+  "analysis_predicted_ascii_bytes": 32816,
+  "services_removed": true,
+  "prior_dirty_files": 105,
+  "prior_dirty_intentionally_changed": [
+    "docs/pi/development-readiness.md",
+    "src/myink/validation/l1.py"
+  ],
+  "other_prior_dirty_preserved": true,
+  "new_product_test": "tests/test_first_visit_repeated_place.py",
+  "git_commit": false,
+  "push": false,
+  "merge": false,
+  "deploy": false,
+  "server_autonomy": false,
+  "limitations": [
+    "Two host-frozen reproduced tasks, not open-ended discovery",
+    "Unselected task evidence belongs to old source; requires fresh reproduction and review",
+    "Only explicit looking-at-place-walls grammar added",
+    "Repeated source reads remain, no minimal-call claim",
+    "Usage at frozen rate, not independently reconciled provider invoice",
+    "Historical nine unknown fees remain reserved"
+  ]
+}

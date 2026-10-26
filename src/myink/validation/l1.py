@@ -27,10 +27,42 @@ from sqlalchemy.orm import Session
 from myink.memory import repository as repo
 from myink.memory.embedder import get_embedder
 from myink.memory.vector_store import PgvectorStore
-from myink.models import Event, Relation
+from myink.models import Character, CharacterState, Event, Fact, Relation
 from myink.schemas import Finding, MutationCandidate
 
 logger = logging.getLogger(__name__)
+
+_ITEM_RE = r"[\u4e00-\u9fffA-Za-z0-9]{2,24}"
+_DESTROY_RE = re.compile(
+    "(" + _ITEM_RE + r")被[\u4e00-\u9fffA-Za-z0-9]{0,16}?(?:劈碎|击碎|摧毁|毁掉)"
+)
+_DESTROY_ALT_RE = re.compile("(" + _ITEM_RE + r")已毁")
+_NEGATION_RE = re.compile(r"未|没|没有|若|如果|倘若|假如|差点|几乎")
+# 实际“使用/取出”动作：动作动词 + 可选“了” + 精确物品名，其后只能是子句结尾/标点
+# 或已许可的动作补语；不接受更长物品名的前缀命中，也不接受占有式前缀。
+_USE_VERB_ALT = "从怀中摸出|怀中摸出|取出|祭出|催动|使用|掏出|拿出|摸出"
+# 动作动词本身已足够区分；左侧不再要求非汉字边界（否则「林砚从怀中摸出定水珠」漏检），
+# 但仍靠精确物品名 + 右侧边界/许可补语拒绝更长物品名前缀命中。
+_USE_EXACT_RE_TPL = (
+    r"(?:{v})(?:了)?{item}"
+    r"(?=$|[，。；！？、,.!?;:\s])"
+)
+_REPAIR_RE = re.compile(
+    r"^" + _ITEM_RE + r"(?:以[^，。；！？]{1,20})?重铸(?:成功)?$"
+)
+# 同一物品修复动作：物品名必须直接绑定修复动词，且必须为已完成肯定语义。
+_REPAIR_VERB_ALT = (
+    r"(?:已经|已)?重铸(?:成功|完成|完毕|而成|归来)?|(?:已经|已)修复(?:成功|完成|完毕|如初|完好)?"
+    r"|修复(?:成功|完成|完毕|如初|完好)|重新(?:淬炼|祭炼)(?:完成|完毕|成功)"
+)
+_REPAIR_ITEM_RE_TPL = (
+    r"(?:^|(?<=[^\u4e00-\u9fffA-Za-z0-9])){item}"
+    r"(?:以[^，。；！？]{1,20})?(?:" + _REPAIR_VERB_ALT + r")"
+    r"(?=$|[，。；！？、,.!?;:\s])"
+)
+_REPAIR_PENDING_RE = re.compile(
+    r"打算|准备|想要|将要|即将|试图|计划|欲|将(?:被|要)|未|没|没有|未能|无法|失败|难以|若|如果|倘若|假如|差点|几乎"
+)
 
 # 样例 11 阈值：连续 3 章内每次 chapter 都升境界 → 无铺垫通胀强信号
 _INFLATION_WINDOW = 3
@@ -212,6 +244,332 @@ def _temp_alliance_covers(session: Session, project_id: uuid.UUID,
 
 
 class L1Validator:
+    @staticmethod
+    def _draft_reuses_item(draft: str, item: str) -> bool:
+        return bool(L1Validator._draft_use_quote(draft, item))
+
+    @staticmethod
+    def _draft_use_quote(draft: str, item: str, actors: object = None) -> str:
+        """返回实际使用该精确物品的子句；仅提及/意图/前缀命中不算使用。"""
+        if not item:
+            return ""
+        try:
+            use_re = re.compile(_USE_EXACT_RE_TPL.format(v=_USE_VERB_ALT, item=re.escape(item)))
+        except re.error:
+            return ""
+        actor_names: tuple[str, ...] = tuple(
+            sorted({str(n).strip() for n in (actors or ()) if str(n).strip()},
+                   key=len, reverse=True)
+        )
+        for clause in re.split(r"[，。；！？\n]", draft):
+            c = clause.strip()
+            if not c or item not in c:
+                continue
+            # 先在原文本 c 上定位真实精确使用匹配；命中后才允许把该匹配自身的物品名
+            # 词形（如「不灭珠」「不朽剑」「不败铃」内含「不」）从情绪/否定守卫中排除。
+            # 除该精确物品 token 外的全部文本（动词、施动者、其余字句）仍走原全部守卫。
+            m = use_re.search(c)
+            if m:
+                t0 = m.end() - len(item)
+                t1 = m.end()
+                if t0 < 0 or c[t0:t1] != item:
+                    continue
+                rest = c[:t0] + c[t1:]
+                # 仅在匹配前的整段文本恰好等于一个已注册的完整人名时，才把该
+                # 人名身份从否定/条件守卫中排除；未注册或仅部分命中的前缀保持原守卫。
+                pre = c[:m.start()].strip()
+                if pre and pre in actor_names:
+                    rest = c[t1:]
+            else:
+                rest = c
+            # 本子句局部否定/追忆守卫：不改变全局 _NEGATION_RE 语义，仅在本处额外拒绝
+            # 「不使用 / 不能取出 / 不再催动」与「曾经使用」。
+            if re.search(r"不|曾经", rest):
+                continue
+            if _NEGATION_RE.search(rest) or _REPAIR_PENDING_RE.search(rest):
+                continue
+            if item + "的碎片" in c or item + "的残片" in c:
+                continue
+            if "想起" in rest or "当年" in rest or "回忆" in rest or "想到" in rest:
+                continue
+            if m:
+                # 引文必须含真实使用匹配本身：以匹配位置为中心取窗口，不做前缀截断、不编造。
+                start = max(0, m.start() - 20)
+                end = min(len(c), m.end() + 20)
+                return c[start:end]
+        return ""
+
+    @staticmethod
+    def _draft_quote(draft: str, item: str) -> str:
+        return L1Validator._draft_use_quote(draft, item)
+
+    @staticmethod
+    def _item_repair_confirmed(session: Session, *, project_id: uuid.UUID,
+                               chapter_seq: int, item: str,
+                               destroyed_chapter: int) -> bool:
+        facts = session.execute(
+            select(Fact).where(and_(Fact.project_id == project_id,
+                                   Fact.confirm_status == "confirmed"))
+            .order_by(Fact.source_chapter)
+        ).scalars()
+        try:
+            repair_re = re.compile(_REPAIR_ITEM_RE_TPL.replace("{item}", re.escape(item)))
+        except re.error:
+            return False
+        for fact in facts:
+            if fact.source_chapter is None:
+                continue
+            if fact.source_chapter <= destroyed_chapter or fact.source_chapter > chapter_seq:
+                continue
+            if fact.valid_from is not None and fact.valid_from > chapter_seq:
+                continue
+            if fact.valid_to is not None and fact.valid_to < chapter_seq:
+                continue
+            content = getattr(fact, "content", None) or ""
+            for clause in re.split(r"[，。；！？\n]", content):
+                c = clause.strip()
+                if not c or _REPAIR_PENDING_RE.search(c):
+                    continue
+                if repair_re.search(c):
+                    return True
+        return False
+
+    @staticmethod
+    def _visit_explained(sentences: list[str], actor_name: str) -> bool:
+        """同一段内明确绑定同一人物的肯定失忆/重游说明才豁免。"""
+        for s in sentences:
+            if not s.startswith(actor_name):
+                continue
+            suffix = s[len(actor_name):]
+            if L1Validator._VISIT_AFFIRM_DENY_RE.search(suffix):
+                continue
+            if L1Validator._VISIT_AFFIRM_EXACT_RE.fullmatch(suffix.strip()):
+                return True
+        return False
+
+    @staticmethod
+    def _visit_stated(sent: str, actor_name: str, place: str, marker: str) -> bool:
+        """当前断言句必须人物句首且含精确地点与首次标记，且无否定/假设/回忆。"""
+        if not place or not marker:
+            return False
+        if len(sent) > 512:
+            return False
+        s = sent.strip()
+        form = (r"^" + re.escape(actor_name) + r"\u7b2c\u4e00\u6b21\u6765\u5230"
+                + re.escape(place) + r"$")
+        if re.fullmatch(form, s):
+            return True
+        form = (
+            r"^" + re.escape(actor_name)
+            + r"(?:\u62ac\u7738|\u671b\u7740|\u5fc3\u9053)(?P<prose>[\u4e00-\u9fff\uff0c\u3001\u3002\uff1a\uff1b]{0,120})"
+            + r"\u8fd9\u5c31\u662f" + re.escape(place) + r"\uff0c\u7b2c\u4e00\u6b21\u6765$")
+        m = re.fullmatch(form, s)
+        if not m:
+            return False
+        prose = m.group("prose")
+        lead = (r"^" + re.escape(place) + r"\u7684\u57ce\u5899")
+        verb = s[:m.start("prose")][-2:]
+        if verb == "\u671b\u7740" and re.match(lead, prose):
+            prose = prose[len(place) + 3:]
+        return not L1Validator._VISIT_SKIP_RE.search(prose)
+
+    @staticmethod
+    def _visit_place_candidates(actor_name: str, sentences: list[str]) -> list[str]:
+        """取当前章人物句首或「这就是X，第一次来」相邻的精确地点。"""
+        places: list[str] = []
+        for s in sentences:
+            if s.startswith(actor_name):
+                for m in L1Validator._VISIT_PLACE_RE.finditer(
+                    L1Validator._FIRST_VISIT_MARK_RE.sub("", s)
+                ):
+                    tail = s[m.end():m.end() + 1]
+                    head = s[:m.start()][-1:]
+                    if head and L1Validator._VISIT_PLACE_RE.match(head):
+                        continue
+                    if tail and L1Validator._VISIT_PLACE_RE.match(tail):
+                        continue
+                    places.append(m.group(0))
+        return places
+
+    def _visit_history(self, session: Session, *, project_id: uuid.UUID,
+                       chapter_seq: int, actor_id: uuid.UUID,
+                       place: str, actor_name: str) -> object:
+        rows = session.execute(
+            select(Event).where(and_(Event.project_id == project_id,
+                                    Event.source_chapter < chapter_seq))
+            .order_by(Event.source_chapter.desc(), Event.id.desc())
+        ).scalars()
+        pattern = re.compile(
+            r"^" + re.escape(actor_name) + r"\u5728" + re.escape(place)
+            + r"\u5b8c\u6210\u4ea4\u6613$"
+        )
+        for ev in rows:
+            participants = getattr(ev, "participants", None)
+            if participants and str(actor_id) not in participants:
+                continue
+            for sent in self._split_visit_sentences(ev.summary or ""):
+                s = sent.strip()
+                if not s:
+                    continue
+                clauses = re.split(r"[\uff0c\uff1b]", s)
+                matched = False
+                residue_parts = []
+                for clause in clauses:
+                    c = clause.strip()
+                    if c and pattern.fullmatch(c):
+                        matched = True
+                        residue_parts.append("\u4ea4\u6613\u5b8c\u6210")
+                    else:
+                        residue_parts.append(clause)
+                if not matched:
+                    continue
+                residue = "".join(residue_parts)
+                if _NEGATION_RE.search(residue) or "\u8ba1\u5212" in residue:
+                    continue
+                if self._VISIT_SKIP_RE.search(residue):
+                    continue
+                return ev
+        return None
+
+    def first_visit_check(self, session: Session, *, project_id: uuid.UUID,
+                          chapter_seq: int, draft: str | None = None) -> list[Finding]:
+        """明确首次来访与同一人物在该地点的历史事件矛盾时报 major（同人物肯定失忆/旧地重游豁免）。"""
+        if not draft:
+            return []
+        rows = session.execute(
+            select(Character).where(Character.project_id == project_id)
+            .order_by(Character.name)
+        ).scalars().all()
+        findings: list[Finding] = []
+        seen: set[tuple[str, str]] = set()
+        for actor in rows:
+            name = (getattr(actor, "name", None) or "").strip()
+            if not name:
+                continue
+            for para in (draft or "").split("\n"):
+                sentences = self._split_visit_sentences(para)
+                for sent in sentences:
+                    marker = self._FIRST_VISIT_MARK_RE.search(sent)
+                    if not marker or not sent.startswith(name):
+                        continue
+                    place = self._visit_place_of(sent, marker.group(0))
+                    if not place:
+                        continue
+                    if not self._visit_stated(sent, name, place, marker.group(0)):
+                        continue
+                    tail = sent[len(name):]
+                    if any(other.id != actor.id and (other.name or "").strip()
+                           and (other.name or "").strip() in tail for other in rows):
+                        continue
+                    if self._visit_explained(sentences, name):
+                        continue
+                    ev = self._visit_history(session, project_id=project_id,
+                                             chapter_seq=chapter_seq,
+                                             actor_id=actor.id, place=place,
+                                             actor_name=name)
+                    if ev is None:
+                        continue
+                    pair = (str(actor.id), place)
+                    if pair in seen:
+                        continue
+                    seen.add(pair)
+                    quote = sent if len(sent) <= 512 else sent[:512]
+                    findings.append(Finding(
+                        conflict_key=_key("character",
+                                          f"first_visit:{actor.id}:{place}",
+                                          chapter_seq),
+                        conflict_type="character", severity="major",
+                        scope="local", source="L1",
+                        evidence=[{"chapter": ev.source_chapter, "quote": ev.summary},
+                                  {"chapter": chapter_seq, "quote": quote}],
+                        suggestion=f"「{name}」在第{ev.source_chapter}章已于{place}有记录，"
+                                   "正文不应断言首次来访；如已失忆或旧地重游请在正文说明",
+                    ))
+        return findings
+
+    def item_rule_check(self, session: Session, *, project_id: uuid.UUID,
+                        chapter_seq: int, draft: str | None = None) -> list[Finding]:
+        """历史已毁物品在本章被再次使用时，除非同一物品有已确认修复 Fact，判 critical。"""
+        if not draft:
+            return []
+        destroyed: dict[str, object] = {}
+        rows = session.execute(
+            select(Event).where(and_(Event.project_id == project_id,
+                                    Event.source_chapter < chapter_seq))
+            .order_by(Event.source_chapter)
+        ).scalars()
+        for ev in rows:
+            text = ev.summary or ""
+            for clause in re.split(r"[，。；！？\n]", text):
+                if not clause.strip() or _NEGATION_RE.search(clause):
+                    continue
+                m = _DESTROY_RE.search(clause) or _DESTROY_ALT_RE.search(clause)
+                if m:
+                    item = m.group(1)
+                    destroyed[item] = ev
+        findings: list[Finding] = []
+        actor_names = tuple(
+            str(n) for n in session.execute(
+                select(Character.name).where(Character.project_id == project_id)
+            ).scalars() if n
+        )
+        for item, ev in destroyed.items():
+            actual = self._draft_use_quote(draft, item, actor_names)
+            if not actual:
+                continue
+            if self._item_repair_confirmed(session, project_id=project_id,
+                                           chapter_seq=chapter_seq, item=item,
+                                           destroyed_chapter=ev.source_chapter):
+                continue
+            findings.append(Finding(
+                conflict_key=_key("item_rule", item, chapter_seq),
+                conflict_type="item_rule", severity="critical", scope="local", source="L1",
+                evidence=[{"chapter": ev.source_chapter, "quote": ev.summary},
+                          {"chapter": chapter_seq, "quote": actual}],
+                suggestion=f"「{item}」已在第{ev.source_chapter}章销毁，正文不应再次使用；"
+                           "若已重铸须写入已确认 Fact",
+            ))
+        return findings
+
+    _FIRST_VISIT_MARK_RE = re.compile(
+        r"第\s*一\s*次\s*(?:来到过|来过|来到|来|到|踏上|抵达)"
+    )
+    _VISIT_SKIP_RE = re.compile(
+        r"不|未|没|回忆|想起|当年|曾经|打算|准备|计划|若|如果|假如"
+    )
+    _VISIT_PLACE_RE = re.compile("[\\u4e00-\\u9fffA-Za-z0-9]{2,24}")
+    _VISIT_SENT_SPLIT_RE = re.compile(r"[\u3002\uff01\uff1f!?]")
+    _VISIT_AFFIRM_RE = re.compile(r"(?:已经|先前|曾|此前)?(?:失忆|旧地重游)")
+    _VISIT_AFFIRM_DENY_RE = re.compile(r"并未|没有|没|未曾|不曾|也许|或许|假装|装作|打算|并")
+    _VISIT_AFFIRM_EXACT_RE = re.compile(
+        r"(?:已经|已)?(?:失忆|旧地重游|故地重游|记忆丧失)"
+    )
+
+    @staticmethod
+    def _split_visit_sentences(text: str) -> list[str]:
+        sentences: list[str] = []
+        for para in re.split(r"\n", text or ""):
+            for part in L1Validator._VISIT_SENT_SPLIT_RE.split(para):
+                s = part.strip()
+                if s:
+                    sentences.append(s)
+        return sentences
+
+    @staticmethod
+    def _visit_place_of(spoken: str, marker: str) -> str:
+        """从「……这就是X，第一次来」中取与「第一次」相邻的地点。"""
+        idx = spoken.find(marker)
+        if idx < 0:
+            return ""
+        prefix = spoken[:idx]
+        if "\u8fd9\u5c31\u662f" in prefix:
+            seg = prefix.rsplit("\u8fd9\u5c31\u662f", 1)[1].strip().strip("\uff0c,\u3002 \t")
+        else:
+            seg = spoken[idx + len(marker):].strip().strip("\uff0c,\u3002 \t")
+        if not seg or not L1Validator._VISIT_PLACE_RE.fullmatch(seg):
+            return ""
+        return seg
+
     def __init__(self, realm_order: list[str]):
         self.realm_order = realm_order
         self.realm_pos = {r: i for i, r in enumerate(realm_order)}
@@ -257,7 +615,205 @@ class L1Validator:
         findings.extend(self.relation_ledger_check(session, project_id, chapter_seq))
         return findings
 
-    # ---- 伏笔烂尾（样例 18/23，阴性 26 对照，§7.9）----
+    # ---- 能力规则（样例 8，§8.4 L1 第 1 类；draft 依赖，service 编排）----
+    def capability_rule_check(self, session: Session, project_id: uuid.UUID,
+                              chapter_seq: int, draft: str | None = None) -> list[Finding]:
+        findings: list[Finding] = []
+        if not draft:
+            return findings
+        sent_re = re.compile(r"[^\u3002\uff01\uff1f\n]*[\u3002\uff01\uff1f]|[^\u3002\uff01\uff1f\n]+$")
+        sent_spans: list[tuple[int, int]] = []
+        for m in sent_re.finditer(draft):
+            if m.group(0).strip():
+                sent_spans.append((m.start(), m.end()))
+        if not sent_spans:
+            return findings
+        from myink.models import CharacterState
+        acts = list(session.scalars(select(Character).where(Character.project_id == project_id)))
+        if not acts:
+            return findings
+        names_rev: dict[uuid.UUID, str] = {}
+        names: dict[str, uuid.UUID] = {}
+        for a in acts:
+            nm = getattr(a, "name", None)
+            if nm and str(nm) not in names:
+                names[str(nm)] = a.id
+                names_rev[a.id] = str(nm)
+        known_realms = [r for r in self.realm_pos if r]
+        facts = list(session.scalars(select(Fact).where(and_(
+            Fact.project_id == project_id,
+            Fact.category == "规则",
+            Fact.confirm_status == "confirmed",
+            Fact.source_chapter <= chapter_seq,
+            or_(Fact.valid_from.is_(None), Fact.valid_from <= chapter_seq),
+            or_(Fact.valid_to.is_(None), Fact.valid_to >= chapter_seq)))))
+        facts.sort(key=lambda f: (f.source_chapter or 0, str(f.id)))
+        rules: list[tuple[int, str, str, int, str]] = []
+        for f in facts:
+            content = str(getattr(f, "content", "") or "").strip()
+            if not content or len(content) > 120:
+                continue
+            head = "期才可动用"
+            idx = content.rfind(head)
+            if idx <= 0:
+                continue
+            req = content[:idx]
+            if req not in self.realm_pos:
+                continue
+            ability = ""
+            tail = content
+            marks = list(re.finditer(r"[\u201c\u201d\"\u300c\u300d']", content))
+            if len(marks) >= 2:
+                ability = content[marks[-2].end():marks[-1].start()].strip()
+            else:
+                m_ab = re.search(r"期才可动用(.+)$", content)
+                if not m_ab:
+                    continue
+                ability = m_ab.group(1).strip()
+                ability = re.sub(r"[。；，,！？\s]+$", "", ability)
+            if not ability or len(ability) > 24:
+                continue
+            rules.append((self.realm_pos[req], req, ability, int(f.source_chapter or 0), content))
+        names_count: dict[str, int] = {}
+        for a in acts:
+            nm = getattr(a, "name", None)
+            if nm:
+                names_count[str(nm)] = names_count.get(str(nm), 0) + 1
+        names = {k: v for k, v in names.items() if names_count.get(k) == 1}
+        if not rules:
+            return findings
+        use_re = re.compile(
+            r"(?P<actor>[\u4e00-\u9fff]{1,6}?)(?P<adv>不过|只有|仍是|仍为)"
+            r"(?P<realm>" + "|".join(re.escape(r) for r in known_realms) + r")期，"
+            r"(?:竟)?(?:施展出|施展)"
+            r"(?:(?P<req>" + "|".join(re.escape(r) for r in known_realms) + r")期才可动用的)?"
+            r"[\u201c\u300c\"]?(?P<ability>[^\u3002\uff01\uff1f\n\s\u201d\u300d\"，,]{2,24}?)[\u201d\u300d\"]?(?=[，,。！？；\s]|$)")
+        cost_re = re.compile(
+            r"(?P<actor>[\u4e00-\u9fff]{1,6}?)(?:以十年寿元为代价|遭到严重反噬)"
+            r"|(?P<pron>\u4ed6)(?:以十年寿元为代价|遭到严重反噬)")
+        neg_seg = re.compile(r"(没有|未|不曾|未曾|无需|不用|并非)(?:遭到|遭|付出|消耗)|若|如果|想起当年|当日")
+        cache: dict[uuid.UUID, tuple[str | None, int]] = {}
+        for ch_id in list(names.values()):
+            rows = list(session.scalars(select(CharacterState).where(and_(
+                CharacterState.project_id == project_id,
+                CharacterState.character_id == ch_id,
+                CharacterState.field == "realm",
+                CharacterState.chapter_seq <= chapter_seq,
+                CharacterState.source_chapter <= chapter_seq))))
+            best_seq = None
+            vals: set[str] = set()
+            srcs: set[int] = set()
+            for r in rows:
+                if r.chapter_seq is None or r.source_chapter is None:
+                    continue
+                vf = getattr(r, "valid_from", None)
+                vt = getattr(r, "valid_to", None)
+                if vf is not None and vf > chapter_seq:
+                    continue
+                if vt is not None and vt < chapter_seq:
+                    continue
+                if r.chapter_seq <= chapter_seq:
+                    if best_seq is None or r.chapter_seq > best_seq:
+                        best_seq = r.chapter_seq
+                        vals = set()
+                        srcs = set()
+                    if r.chapter_seq == best_seq:
+                        vals.add(str(getattr(r, "new_value", "") or ""))
+                        srcs.add(int(r.source_chapter))
+            if best_seq is None or len(vals) != 1:
+                continue
+            cur = next(iter(vals))
+            if cur not in self.realm_pos:
+                continue
+            # Multiple eligible rows sharing the same latest known realm value do
+            # not make the value ambiguous; pick a deterministic actual source.
+            best_src = max(srcs)
+            cache[ch_id] = (cur, best_src)
+        for (req_pos, req, ability, rule_ch, rule_content) in rules:
+            for i, (s_start, s_end) in enumerate(sent_spans):
+                sent = draft[s_start:s_end]
+                m_match = use_re.match(sent.lstrip())
+                if not m_match:
+                    continue
+                lead = len(sent) - len(sent.lstrip())
+                for m in (m_match,):
+                    actor_raw = m.group("actor") or ""
+                    act_id = None
+                    if actor_raw in names:
+                        act_id = names[actor_raw]
+                    elif actor_raw == "\u4ed6" and len(acts) == 1:
+                        act_id = acts[0].id
+                    else:
+                        continue
+                    if actor_raw not in names and not actor_raw.endswith("\u4ed6"):
+                        pass
+                    if m.group("ability") != ability:
+                        continue
+                    if m.group("req") and m.group("req") != req:
+                        continue
+                    cur = cache.get(act_id, (None, 0))[0]
+                    if cur is None or m.group("realm") != cur:
+                        continue
+                    cur_pos = self.realm_pos.get(cur)
+                    if cur_pos is None or cur_pos >= req_pos:
+                        continue
+                    exempt = False
+                    # Offset of the bound positive use (actor/realm/ability) inside
+                    # the original sentence; use_re matched sent.lstrip().
+                    use_end = lead + m.end()
+                    for cm in sent_re.finditer(sent):
+                        s2 = cm.group(0)
+                        if s2.find(m.group(0)) < 0:
+                            continue
+                        core = m.group(0)
+                        ability = m.group("ability") or ""
+                        ab_lo = use_end - len(ability) if ability else use_end
+                        for cost in cost_re.finditer(s2):
+                            if cost.start() < use_end:
+                                continue
+                            if ability and ab_lo <= cost.start() < use_end:
+                                continue
+                            tail = s2[use_end:cost.start()]
+                            if neg_seg.search(tail[-12:] or ""):
+                                continue
+                            who = cost.group("actor") or cost.group("pron") or ""
+                            if who == actor_raw:
+                                exempt = True
+                            elif who == "\u4ed6":
+                                # \u4ed6 is locally unambiguous unless this sentence
+                                # itself introduces a different named subject.
+                                bound = s2[:use_end]
+                                post = s2[use_end:cost.start()]
+                                competing = [
+                                    nm for nm, nid in names.items()
+                                    if nid != act_id and nm
+                                    and (nm in post or nm in s2[cost.start():])
+                                ]
+                                if not competing:
+                                    exempt = True
+                            elif cost.group("actor") and names.get(cost.group("actor")) == act_id:
+                                exempt = True
+                    if exempt:
+                        continue
+                    finding_key = _key("power", f"{act_id}:{ability}", chapter_seq)
+                    if any(
+                        f.conflict_key == finding_key
+                        for f in findings
+                        if getattr(f, "conflict_type", None) == "power"
+                    ):
+                        continue
+                    findings.append(Finding(
+                        conflict_key=_key("power", f"{act_id}:{ability}", chapter_seq),
+                        conflict_type="power", severity="critical", scope="local", source="L1",
+                        evidence=[
+                            {"chapter": chapter_seq, "quote": sent.strip()},
+                            {"chapter": rule_ch, "quote": rule_content},
+                            {"chapter": cache.get(act_id, (None, 0))[1] or 0, "quote": f"{names_rev.get(act_id, '')} 台账境界 {cur}"},
+                        ],
+                        suggestion=f"{ability} 需 {req}期方可动用，当前台账为 {cur}期；需补真实代价或改回合规境界",
+                    ))
+                    break
+        return findings
     def foreshadow_debt_check(self, session: Session, project_id: uuid.UUID,
                               chapter_seq: int) -> list[Finding]:
         findings: list[Finding] = []

@@ -121,9 +121,10 @@ def next_action(ledger: Ledger | None, now: datetime, observations: Record, poli
     if attempt_limit is None:
         limits = effective_trial_limits(ledger) if ledger is not None else dict(max_attempts=100, budget_microyuan=10000000)
         attempt_limit = limits['max_attempts']
-        money_limit = min(money_limit, limits['budget_microyuan'])
+        fee_bounds = [v for v in (money_limit, limits['budget_microyuan']) if v is not None]
+        money_limit = min(fee_bounds) if fee_bounds else None
     if (observations.get('budget_exhausted') is True
-            or (attempt_limit is not None and attempts >= attempt_limit) or spent >= money_limit):
+            or (attempt_limit is not None and attempts >= attempt_limit) or (money_limit is not None and spent >= money_limit)):
         return request('report')
     if observations.get('target_met') is False:
         return request('diagnose')

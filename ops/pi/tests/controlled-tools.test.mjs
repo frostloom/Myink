@@ -166,3 +166,36 @@ test('oversized and invalid successful receipts still fail closed',async()=>{
     await expectDiagnostic(()=>executeRead(),message);
   }} finally {globalThis.fetch=savedFetch;}
 });
+
+
+test('isolated unit gets a finite 90s RPC deadline while source reads keep 30s',async()=>{
+  const savedPhase=process.env.PI_TOOL_PHASE,savedFetch=globalThis.fetch,savedTimeout=AbortSignal.timeout;
+  const tools=new Map(),timeouts=[];
+  process.env.PI_TOOL_PHASE='develop';
+  extension({registerTool:tool=>tools.set(tool.name,tool),on:()=>{},setActiveTools:()=>{}});
+  AbortSignal.timeout=ms=>{timeouts.push(ms);return new AbortController().signal;};
+  globalThis.fetch=async()=>({status:200,text:async()=>JSON.stringify(receipt)});
+  try {
+    await tools.get('run_check').execute('unit-deadline',{check_id:'unit',candidate_hash:'hash',plan_hash:'plan'});
+    await tools.get('read_source').execute('read-deadline',{path:'src/demo.py',start_line:1,end_line:1});
+    await tools.get('run_check').execute('lint-deadline',{check_id:'lint',candidate_hash:'hash',plan_hash:'plan'});
+    await tools.get('read_source').execute('disguised-unit',{path:'src/demo.py',start_line:1,end_line:1,check_id:'unit'});
+    assert.deepEqual(timeouts,[90000,30000,30000,30000]);
+  } finally {process.env.PI_TOOL_PHASE=savedPhase;globalThis.fetch=savedFetch;AbortSignal.timeout=savedTimeout;}
+});
+
+for (const stage of ['fetch','body']) test(`unit caller abort during ${stage} remains immediate and redacted`,async()=>{
+  const savedPhase=process.env.PI_TOOL_PHASE,savedFetch=globalThis.fetch;
+  const tools=new Map(),controller=new AbortController();let calls=0;
+  process.env.PI_TOOL_PHASE='develop';
+  extension({registerTool:tool=>tools.set(tool.name,tool),on:()=>{},setActiveTools:()=>{}});
+  globalThis.fetch=async()=>{
+    calls++;
+    if(stage==='fetch'){controller.abort(new Error(canary));throw controller.signal.reason;}
+    return {status:200,text:async()=>{controller.abort(new Error(canary));throw controller.signal.reason;}};
+  };
+  try {
+    await expectDiagnostic(()=>tools.get('run_check').execute('unit-cancel',{check_id:'unit',candidate_hash:'hash',plan_hash:'plan'},controller.signal),'controlled broker aborted');
+    assert.equal(calls,1);
+  } finally {process.env.PI_TOOL_PHASE=savedPhase;globalThis.fetch=savedFetch;}
+});

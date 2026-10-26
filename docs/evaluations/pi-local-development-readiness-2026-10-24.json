@@ -1,0 +1,145 @@
+{
+  "date": "2026-10-24",
+  "readiness": "ready_for_host_supervised_local_real_development",
+  "server_daily_enabled": false,
+  "automatic_adoption": false,
+  "entry": "python -m ops.pi.development_launcher",
+  "default": "read-only preflight",
+  "real_run": {
+    "run_id": "hybrid-real-20261024-001",
+    "authorization_sha256": "ef7d8dfc550ee197859c7599aedb21c61c98594c5a4ebdd82768d1fa1c2d6f25",
+    "model_calls": 5,
+    "tool_calls": 5,
+    "known_cost_microyuan": 20630,
+    "new_unknown": 0,
+    "verified": true,
+    "candidate_adopted": true,
+    "source_before_sha256": "b91ca76680826767a30704fe5e8148117781540c5edba43f017ef7793921d619",
+    "source_after_sha256": "7b728ef32a19eec37691a3758c742b39198a8c69035ca677bda53b3d0f0af43a",
+    "candidate_tree_sha256": "9da2a998b0344e395ac7af269014bf99b4025a548e8ad3962440166386be54b0",
+    "session_sha256": "d582aa19da31a42c95aafed5a67a2987b1493324137742289f588ca58b0d1f2e",
+    "transcript_sha256": "453fc2e059dfdfe069907b67b8936861e1b425bc3f4f9fcfbc638ab4fb42cd8d",
+    "owned_containers_removed": 2
+  },
+  "accounting": {
+    "canonical_attempts": 286,
+    "known": 277,
+    "historical_unknown": 9,
+    "known_charged_microyuan": 2265769,
+    "unknown_reserved_microyuan": 18115200,
+    "original_rows_and_event_prefix_preserved": true,
+    "policy_original_bytes_restored": true
+  },
+  "verification": {
+    "focused_passed": 70,
+    "recall_unit_passed": 40,
+    "pi_offline_passed": 2256,
+    "pi_deselected": 19,
+    "pi_seconds": 121.47,
+    "ordinary_python_passed": 1652,
+    "ordinary_skipped": 1,
+    "ordinary_xfailed": 5,
+    "ordinary_deselected": 159,
+    "warnings": 2,
+    "ordinary_seconds": 203.91,
+    "ordinary_failures": 0,
+    "services_removed": true,
+    "ordinary_log_sha256": "419b48cbc7a23644b3fb88bccad9b2a07c1136afc1fb355edccc694b009ae615",
+    "pi_log_sha256": "d91e927e518ddb59c64d463c39e27a654bfd4731b4074fed9b2756e0d61fb6d9",
+    "skip_details": [
+      {
+        "case": "test_sample_05_first_visit_contradiction",
+        "type": "pytest.xfail",
+        "message": "首测记录（漏检）：样例 5 首次来访矛盾——L1 事件-经历比对机制未实现"
+      },
+      {
+        "case": "test_sample_06_destroyed_item_reappears",
+        "type": "pytest.xfail",
+        "message": "首测记录（漏检）：样例 6 已毁物品再现——L1 item_rule 机制未实现"
+      },
+      {
+        "case": "test_sample_07_promise_unfulfilled_claimed",
+        "type": "pytest.xfail",
+        "message": "首测记录（漏检）：样例 7 伏笔未兑现当已兑现——L1 foreshadow-兑现比对机制未实现"
+      },
+      {
+        "case": "test_sample_08_capability_rule_violation",
+        "type": "pytest.xfail",
+        "message": "首测记录（漏检）：样例 8 能力规则越级用秘法——L1 power-规则前置校验机制未实现"
+      },
+      {
+        "case": "test_sample_09_faction_allegiance",
+        "type": "pytest.xfail",
+        "message": "首测记录（漏检）：样例 9 势力归属——需 extract 补归属/faction 候选或 facts 归属类联动（数据模型边界：relations 端点仅 character id、无势力归属知识）"
+      },
+      {
+        "case": "test_direct_full_and_ablation_preserve_all_outputs_and_persisted_body",
+        "type": "pytest.skip",
+        "message": "requires explicitly approved localhost:15432 evaluation database identity"
+      }
+    ]
+  },
+  "docker_rehearsals": [
+    {
+      "case": "normal",
+      "expected_outcome_met": true,
+      "verified": true,
+      "synthetic_model_calls": 11,
+      "new_unknown": 0,
+      "owned_removed": 2
+    },
+    {
+      "case": "cancel",
+      "expected_outcome_met": true,
+      "verified": false,
+      "synthetic_model_calls": 1,
+      "new_unknown": 1,
+      "owned_removed": 1
+    },
+    {
+      "case": "timeout",
+      "expected_outcome_met": true,
+      "verified": false,
+      "synthetic_model_calls": 1,
+      "new_unknown": 1,
+      "owned_removed": 1
+    },
+    {
+      "case": "unknown",
+      "expected_outcome_met": true,
+      "verified": false,
+      "synthetic_model_calls": 1,
+      "new_unknown": 1,
+      "owned_removed": 1
+    },
+    {
+      "case": "limit",
+      "expected_outcome_met": true,
+      "verified": false,
+      "synthetic_model_calls": 1,
+      "new_unknown": 0,
+      "owned_removed": 1
+    }
+  ],
+  "independent_reviews": {
+    "entry_important_findings": 3,
+    "entry_important_fixed_with_red_green": true,
+    "candidate_exact_sha_approved": true
+  },
+  "persistent_permissions": {
+    "state_directory": "0700",
+    "canonical_ledger": "0600"
+  },
+  "deferred_minor": "fixed unit failure feedback remains generic; bounded detailed logs stay private",
+  "rulings": [
+    "Reject active WAL rather than ignoring uncheckpointed rows; may require waiting for another ledger user.",
+    "Fixed isolated unittest evidence plus independent diff review is ordinary engineering validation, not adversarial semantic-proof.",
+    "Usage accounting uses original frozen policy, not independently reconciled provider invoice."
+  ],
+  "historical_failed_attempts_retained": true,
+  "prior_unrelated_changes_preserved": true,
+  "committed": false,
+  "pushed": false,
+  "merged": false,
+  "deployed": false
+}

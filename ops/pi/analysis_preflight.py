@@ -40,7 +40,7 @@ def _money(value):
     return value
 
 
-def _accounting(db):
+def _accounting(db, budget_microyuan=20000000):
     known_count = unknown_count = pending_count = known_cost = unknown_reserve = 0
     for row in db.execute("SELECT * FROM operations WHERE kind='model-attempt'"):
         payload = Ledger._decode(row['payload'])
@@ -70,8 +70,8 @@ def _accounting(db):
     return dict(attempts=known_count + unknown_count, known_attempts=known_count,
                 unknown_attempts=unknown_count, pending_attempts=pending_count,
                 known_charged_microyuan=known_cost, unknown_reserved_microyuan=unknown_reserve,
-                conservative_used_microyuan=used, budget_microyuan=20000000,
-                conservative_remaining_microyuan=max(0, 20000000 - used))
+                conservative_used_microyuan=used, budget_microyuan=budget_microyuan,
+                conservative_remaining_microyuan=None if budget_microyuan is None else max(0, budget_microyuan - used))
 
 
 def audit(ledger_path, policy_path, *, expected_scope_sha256, expected_policy_sha256,
@@ -89,9 +89,10 @@ def audit(ledger_path, policy_path, *, expected_scope_sha256, expected_policy_sh
                 raise LedgerBlocked('invalid identity pin')
         policy = load_policy(Path(policy_path))
         policy_sha = _sha(asdict(policy))
-        if (policy_sha != expected_policy_sha256 or policy.schema_version != 2
-                or policy.max_attempts is not None or policy.budget_microyuan != 20000000
-                or policy.server_daily_enabled):
+        if (policy_sha != expected_policy_sha256 or policy.max_attempts is not None
+                or policy.server_daily_enabled or not (
+                    (policy.schema_version == 2 and policy.budget_microyuan == 20000000)
+                    or (policy.schema_version == 3 and policy.budget_microyuan is None))):
             raise LedgerBlocked('policy identity mismatch')
         if credential_path is not None:
             load_credentials(credential_path, policy)
@@ -104,7 +105,13 @@ def audit(ledger_path, policy_path, *, expected_scope_sha256, expected_policy_sh
         scope_sha = _scope_identity(db)
         if scope_sha != expected_scope_sha256:
             raise LedgerBlocked('scope identity mismatch')
-        accounting = _accounting(db)
+        from .budget import effective_limits_in_connection
+        limit = effective_limits_in_connection(db)['budget_microyuan']
+        if policy.schema_version == 3 and limit is not None:
+            raise LedgerBlocked('no-fee-cap policy requires explicit approval')
+        if policy.budget_microyuan is not None:
+            limit = policy.budget_microyuan if limit is None else min(limit, policy.budget_microyuan)
+        accounting = _accounting(db, limit)
         snapshot = dict(
             user_version=db.execute('PRAGMA user_version').fetchone()[0],
             schema=[list(row) for row in db.execute(

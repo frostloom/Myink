@@ -82,3 +82,36 @@ test('host-rejected invalid relative paths cannot license elision',()=>{
 test('valid Unicode paths use exact host ensure_ascii input hash',()=>{
  const p=payload([...read('a',hash('a'),'old\n',{path:'src/中文😀.py'}),...read('b',hash('b'),'new\n',{path:'src/中文😀.py'})]);const r=normalize(p,definitions);assert.notEqual(evidence(r,1).text,'old\n');assert.equal(evidence(r,3).text,'new\n');
 });
+
+function stringResults(messages) {
+ const copy=structuredClone(messages);
+ for(const m of copy) for(const b of m.content) if(b.type==='tool_result') b.content=b.content[0].text;
+ return copy;
+}
+const receiptText=b=>typeof b.content==='string'?b.content:b.content[0].text;
+const resultEvidence=(p,i)=>JSON.parse(receiptText(p.messages[i].content[0])).evidence;
+test('pinned SDK canonical string results compact stale source and preserve exact representation and original payload',()=>{
+ const p=payload(stringResults([...read('sdkOld',hash('a'),'old源码😀\n'),...read('sdkNew',hash('b'),'new源码😀\n')]));const before=structuredClone(p);
+ const r=normalize(p,definitions);
+ assert.equal(typeof r.messages[1].content[0].content,'string');assert.equal(typeof r.messages[3].content[0].content,'string');
+ assert.notEqual(resultEvidence(r,1).text,'old源码😀\n');assert.equal(resultEvidence(r,3).text,'new源码😀\n');assert.deepEqual(p,before);
+ const old=JSON.parse(p.messages[1].content[0].content);const projected=JSON.parse(r.messages[1].content[0].content);delete old.evidence.text;delete projected.evidence.text;assert.deepEqual(old,projected);
+});
+test('string and single-text-block results participate in the same strictly bound history',()=>{
+ for(const firstString of [true,false]) {
+  const m=[...(firstString?stringResults(read('a',hash('a'),'old\n')):read('a',hash('a'),'old\n')),...(firstString?read('b',hash('b'),'new\n'):stringResults(read('b',hash('b'),'new\n')))];
+  const p=payload(m);const r=normalize(p,definitions);assert.notEqual(resultEvidence(r,1).text,'old\n');assert.equal(resultEvidence(r,3).text,'new\n');assert.equal(typeof r.messages[1].content[0].content,typeof p.messages[1].content[0].content);
+ }
+});
+test('string receipt ambiguity or invalid host evidence still prevents stale text elision',()=>{
+ for(const mutate of [b=>b.content=' '+b.content,b=>b.content=b.content.replace('{','{"status":"blocked",'),b=>{const r=JSON.parse(b.content);r.evidence.binding=hash('e');b.content=JSON.stringify(r);},b=>b.is_error=true,b=>{const r=JSON.parse(b.content);r.evidence.text='too\nmany\n';b.content=JSON.stringify(r);},b=>{const r=JSON.parse(b.content);r.status='blocked';b.content=JSON.stringify(r);}]) {
+  const m=stringResults([...read('a',hash('a'),'old\n'),...read('b',hash('b'),'new\n')]);mutate(m[3].content[0]);unchanged(m);
+ }
+ const m=stringResults([...read('a',hash('a'),'old\n'),...read('b',hash('b'),'new\n')]);unchanged(m.slice(0,3));unchanged([...m,...stringResults(read('c',hash('a'),'old\n'))]);
+});
+test('SDK string results honor host ASCII wire size without truncating unknown oversized bodies',()=>{
+ const wire=p=>Buffer.byteLength(JSON.stringify(p).replace(/[\u007f-\uffff]/g,c=>'\\u'+c.charCodeAt(0).toString(16).padStart(4,'0')));
+ const p=payload(stringResults(['a','b','c','d'].flatMap((v,i)=>read('s'+i,hash(v),'中文'.repeat(2000)+'\n'))));
+ assert(wire(p)>65536);assert(wire(normalize(p,definitions))<65536);
+ const unknown=payload([{role:'user',content:'中文'.repeat(6000)}]);assert(wire(normalize(unknown,definitions))>65536);
+});

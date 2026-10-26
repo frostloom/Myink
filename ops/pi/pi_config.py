@@ -64,7 +64,7 @@ def make_pi_config(root: Path, gateway: Record, policy: Policy, *, controlled_to
         guard = Path(__file__).parent / 'lab/pi-wire-guard.mjs'
         if (not guard.is_absolute() or any(part.is_symlink() for part in (guard, *guard.parents))
                 or not guard.is_file() or hashlib.sha256(guard.read_bytes()).hexdigest() !=
-                '56b72a6963eecba3b5404c0cb1d25301ae193a0bb9407f0ab6ac77cba5661593'):
+                '64f8b365e37b63e4e6fef1228d678b5973524d915d5b4c43e1f30fafe19e1a9f'):
             raise ValueError('pinned pure text wire guard required')
         args += ['-e', str(guard)]
     return {'env': env, 'settings': settings, 'models': models, 'args': args}

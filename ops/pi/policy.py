@@ -15,7 +15,7 @@ class Policy:
     protocol: str
     base_url: str
     max_attempts: int | None
-    budget_microyuan: int
+    budget_microyuan: int | None
     timeout_seconds: int
     max_body_bytes: int
     input_token_bound: int
@@ -57,7 +57,7 @@ def load_policy(path):
     if not isinstance(data, dict) or set(data) != {f.name for f in fields(Policy)}:
         raise ValueError('unsupported policy schema')
     p = Policy(**data)
-    if type(p.schema_version) is not int or p.schema_version not in (1, 2):
+    if type(p.schema_version) is not int or p.schema_version not in (1, 2, 3):
         raise ValueError('unsupported policy version')
     for key in ('live_enabled', 'server_daily_enabled', 'input_bound_calibrated'):
         if type(getattr(p, key)) is not bool:
@@ -67,10 +67,14 @@ def load_policy(path):
                   hard_tracked_files=8, hard_production_lines=300, max_body_bytes=1048576, input_token_bound=1000000, max_tokens=1000000)
     if ((p.schema_version == 1 and (type(p.max_attempts) is not int or not 0 < p.max_attempts <= 100))
             or (p.schema_version == 2 and (p.max_attempts is not None
-                or p.budget_microyuan != 20000000 or p.server_daily_enabled))):
+                or p.budget_microyuan != 20000000 or p.server_daily_enabled))
+            or (p.schema_version == 3 and (p.max_attempts is not None
+                or p.budget_microyuan is not None or p.server_daily_enabled))):
         raise ValueError('invalid policy attempt limit')
     for key, maximum in limits.items():
         value = getattr(p, key)
+        if key == 'budget_microyuan' and p.schema_version == 3:
+            continue
         if type(value) is not int or not 0 < value <= maximum:
             raise ValueError('invalid policy limit')
     for key in ('model', 'input_bound_source', 'price_source'):

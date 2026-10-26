@@ -21,12 +21,13 @@ export default function (api) {
       return { block: true, reason: "ungranted or nested tool" };
   });
   for (const d of definitions) api.registerTool({
-    name: d.name, label: d.name, description: d.description, parameters: d.input_schema,
+    name: d.name, label: d.name, description: d.description, parameters: process.env.PI_TOOL_PHASE === "develop" && d.name === "apply_patch"
+      ? {type:"object",properties:{},required:[],additionalProperties:true} : d.input_schema,
     exposure: "model-only", defaultActive: false, executionMode: "sequential", constrainedSampling: false,
     async execute(callId, args, signal) {
       const body = JSON.stringify({tool:d.name,call_id:callId,arguments:args});
       if (!names.includes(d.name) || Buffer.byteLength(body) > 32768) throw new Error("ungranted or oversized tool");
-      const deadline = AbortSignal.timeout(30000);
+      const deadline = AbortSignal.timeout(d.name === "run_check" && args?.check_id === "unit" ? 90000 : 30000);
       const requestSignal = AbortSignal.any([...(signal ? [signal] : []), deadline]);
       const transportError = () => new Error(requestSignal.aborted
         ? (deadline.aborted && requestSignal.reason === deadline.reason

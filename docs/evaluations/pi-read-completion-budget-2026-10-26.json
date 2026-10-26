@@ -1,0 +1,111 @@
+{
+  "verified": true,
+  "branch": "codex/pi-autonomy-design",
+  "source_sha256": "5fd93a1df04fb07e6ea1bee1211e43bfdf12c516ca9318d0160c2653274c4932",
+  "canonical_ledger_sha256": "45729de425bcf30062cf36ff9f57b2568263141e64a0adc278a792a197f336ab",
+  "canonical_ledger_unchanged": true,
+  "canonical_policy_closed_unchanged": true,
+  "canonical_credential_unchanged": true,
+  "prior_dirty_files": 127,
+  "unrelated_dirty_preserved": true,
+  "product_source_unchanged": true,
+  "new_real_model_calls": 0,
+  "new_real_cost_microyuan": 0,
+  "new_unknown": 0,
+  "new_tests": 30,
+  "full_pi_passed": 2518,
+  "pi_deselected": 19,
+  "node_scripts_passed": 4,
+  "linux_mode": "SIMULATED",
+  "linux_fixed_tests": 10,
+  "owned_containers_absent": 3,
+  "runtime": {
+    "runtime_sha256": "52ae48ab2eaefbf881f4ca04ac2a5e7d597491c33d90c367778568dbde3a75a9",
+    "node_sha256": "719a43d185f3b6a59d8fcbba1ff06b93c75f76fb0bb9916f81d33921615d4cb5",
+    "lock_sha256": "fd0f5bd8aa13e01da8792b161d80502f32e1afd00103151fbcc21f4b3146785a",
+    "pi_cli_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+    "code_sha256": "1f3fee4366c88c54f6cb72791482842773f78b79eb401f36d7ec34e1efc1781c",
+    "controller_sha256": "3c2a6e7832444fe31f25d00604b8369cff5e0447885879eed87d14f9efac9946",
+    "worker_sha256": "80ca8e95b18d43c6f3f1eea0238967a9b93015c54ffbf3605df2645d818fcaff"
+  },
+  "date": "2026-10-26",
+  "scope": "Development-only durable source ASCII caps and completion RPC reserve",
+  "source_budget": {
+    "single_canonical_text_ascii_bytes": 4096,
+    "session_canonical_text_ascii_bytes": 12288,
+    "version_reset": false,
+    "exact_call_replay_recounts": false
+  },
+  "completion_budget": {
+    "shared_rpc_unchanged": true,
+    "reserve": 8,
+    "warning_at_remaining": 10,
+    "minimum_max_tools": 12,
+    "guarantees_success": false
+  },
+  "independent_review": {
+    "reviewer": "read_completion_budget_review",
+    "result": "no_blockers"
+  },
+  "read_replay": [
+    {
+      "original_identity": "actual",
+      "read_calls": 5,
+      "denied": 4,
+      "max_ascii_used": 3448,
+      "verified": true,
+      "model_calls": 0,
+      "source_only_replay": true
+    },
+    {
+      "original_identity": "actual-v2",
+      "read_calls": 10,
+      "denied": 3,
+      "max_ascii_used": 11663,
+      "verified": true,
+      "model_calls": 0,
+      "source_only_replay": true
+    }
+  ],
+  "first_full_run": {
+    "status": "interrupted_after_failures",
+    "passed": 1280,
+    "failed": 3,
+    "deselected": 19,
+    "seconds": 512.5
+  },
+  "analysis_fixture": {
+    "before_current_comparison": [
+      {
+        "version": "before",
+        "returncode": 1,
+        "seconds": 69.699
+      },
+      {
+        "version": "current",
+        "returncode": 0,
+        "seconds": 39.65
+      }
+    ],
+    "grouped_pings": 50000,
+    "per_chunk_pings": 64,
+    "last_chunk_pings": 16,
+    "bytes": 1150000,
+    "overflow_group_passed": 8,
+    "overflow_group_deselected": 64,
+    "production_limits_changed": false
+  },
+  "linux_mock": {
+    "analysis_requests": 1,
+    "development_requests": 13,
+    "unit_tests": 10,
+    "source_rejection_authenticated": true,
+    "completion_rejection_authenticated": true,
+    "candidate_adopted": false
+  },
+  "git_commit": false,
+  "push": false,
+  "merge": false,
+  "deploy": false,
+  "server_autonomy": false
+}
