@@ -6,7 +6,7 @@
 
 已完成：原 c1f7a84 后端升级为 28ec51ba7a322001d47629455997bd1d5ab3ba02；先发布安全 React 过渡并验证，再将生产入口切为 Vue。API、Caddy 和两名 worker 均为该提交，API/Caddy healthy，readyz 的 Redis / DB / worker 全部 ok。生产 React 入口已替换；React 源码、回退镜像和旧资产继续保留。
 
-本次未推送 GitHub main，未操作 Pi、其他开发分支或迁移 worktree；本机既有生产/开发服务未切换。本回执是部署记录，运行时代码身份仍为 28ec51ba。
+本次未推送 GitHub main，未操作 Pi、其他开发分支或迁移 worktree；用户随后明确授权本机 localhost 同步切换，完成情况见文末。本回执是部署记录，运行时代码身份仍为 28ec51ba。
 
 ## 版本与资源
 
@@ -52,3 +52,25 @@ sudo -n docker compose up -d --no-deps --no-build myink-caddy
 本次远程隔离候选容器、专用网络、API smoke临时容器、本地SSH隧道及独立浏览器会话已清理。生产Redis/PG/RabbitMQ及证书卷保留；两worker规模保留。原未跟踪 .DS_Store 和 brief.pre-merge-local.md 未纳入提交。
 
 本轮证据目录 `/tmp/myink-vue-release-28ec51ba/`。真实用户一周观察、硬件输入法及业务登录后实际写作验收仍需观察；旧离线标签页不会自动获得守卫，继续保留旧资源。合并报告中的既有同书调度竞态及两个P3未因上线被宣称已修复。
+
+
+## 本机 localhost 同步切换
+
+用户随后明确回答“也更新本机 localhost 为 Vue”。本机原由管理员 worktree Compose 与临时覆盖文件启动，API/worker 绑定旧管理员源码；本轮采用最小覆盖去掉 `/app/src` 绑定并清空 PYTHONPATH，实际运行 main 镜像。保留 `myink_pgdata_v2`、反馈/队列/证书卷、原环境配置及一个 worker。没有修改管理员 worktree 文件。
+
+已备份本地原配置、镜像ID及数据库并校验dump目录；备份和运维覆盖在 Git 忽略的 `.local/vue-runtime-28ec51ba/`，敏感解析配置/备份未提交。原配置副本持久保存，未来运维不再依赖 /tmp 覆盖文件；project-directory 仍使用原管理员 worktree 以保留其环境配置，不应删除该 worktree/env 后直接运行此入口。
+
+实际 ARM 发布镜像先通过隔离前端和无网络API检查，再安全React过渡、切Vue。localhost真实浏览器框架/版本、深链、缓存、10份旧新资产、API/资源404通过；API/Caddy healthy、单worker运行，readyz三项ok。前后仍为1账号、1作品、1章、done1/failed1任务。最终API/worker无旧源码挂载。
+
+| 本机镜像 | SHA256 |
+| --- | --- |
+| myink-api:local-28ec51ba | 4de2fae3b6594e5b6ce2ff6c3677a44ea52ff7d3de29f32dec0efc1ca2d5b10d |
+| myink-caddy:vue-local-28ec51ba | 3d8dedf1903e6bc593049d4a5dca2f9b49f97f438c99a3db7761acc075ec26bb |
+
+本机继续运维使用 `.local/vue-runtime-28ec51ba/compose.sh`，而非旧管理员预览命令。前端回退：
+
+```sh
+.local/vue-runtime-28ec51ba/compose.sh -f "$PWD/.local/vue-runtime-28ec51ba/react.override.yml" up -d --no-deps --no-build myink-caddy
+```
+
+移除上述 React override 并用 compose.sh 启动 myink-caddy 即恢复Vue。过渡过程中出现一次短暂连接重置，重试后版本/健康全部通过；Compose提示已有命名卷不是它创建，原卷已核对并复用，没有删除重建。候选容器及独立浏览器清理完成。Hindsight写入超时，部署事实以本报告为准。
