@@ -29,6 +29,7 @@ for (const browser of ['chromium', 'firefox', 'webkit']) {
     const passed = result.status === 0 && detail?.passed === true && detail.browser === browser
     receipt.results.push({ browser, stage, passed, exitCode: result.status, checks: detail?.checks?.length ?? 0, receipt: path.join(target, 'receipt.json') })
     console.log(`${browser}/${stage}: ${passed ? 'passed' : 'FAILED'}`)
+    if (!passed) console.error(detail?.error || result.stderr || result.error?.message || 'Stage failed without diagnostics')
   }
 }
 receipt.passed = receipt.results.every(result => result.passed)

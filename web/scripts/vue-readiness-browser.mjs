@@ -171,7 +171,11 @@ async function main() {
     const editor = page.getByRole('textbox', { name: '章节正文' }); await editor.waitFor();
     assert.equal(await editor.inputValue(), state.content); receipt.checks.push('saved_body_after_refresh');
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', {name:'导出 .md',exact:true}).click()]);
-    assert.equal(download.suggestedFilename(), project.title+'.md');
+    // Linux WebKit sanitizes spaces in the browser-suggested download name.
+    // Keep an exact filename assertion and still verify the downloaded UTF-8 body.
+    const downloadTitle = browserName === 'webkit' && process.platform === 'linux'
+      ? project.title.replaceAll(' ', '_') : project.title;
+    assert.equal(download.suggestedFilename(), downloadTitle+'.md');
     const markdown=fs.readFileSync(await download.path(),'utf8');
     assert.ok(markdown.includes('# '+project.title)&&markdown.includes('## 第 1 章 · 雨夜')&&markdown.includes(state.content));
     receipt.checks.push('actual_markdown_download_utf8_content');
@@ -200,8 +204,8 @@ async function main() {
     await page.reload();await page.getByRole('button',{name:'Browser image',exact:true}).waitFor();
     const stored=await page.evaluate(()=>new Promise((resolve,reject)=>{const req=indexedDB.open('myink-theme');req.onsuccess=()=>{const db=req.result;const get=db.transaction('files').objectStore('files').getAll();get.onsuccess=()=>{resolve(get.result.map(v=>({size:v.size,type:v.type})));db.close()};get.onerror=reject};req.onerror=reject}));
     assert.ok(stored.some(v=>v.size>0&&v.type==='image/png'));receipt.checks.push('actual_png_upload_indexeddb_reload');
-    // Create a real browser-encoded WebM without external media/network dependencies.
-    const video=await page.evaluate(async(types)=>{const mime=types.find(type=>MediaRecorder.isTypeSupported(type));if(!mime)throw new Error('No supported browser video encoder');const canvas=document.createElement('canvas');canvas.width=160;canvas.height=90;const ctx=canvas.getContext('2d');const stream=canvas.captureStream(12);const rec=new MediaRecorder(stream,{mimeType:mime});const chunks=[];rec.ondataavailable=e=>chunks.push(e.data);const done=new Promise(r=>rec.onstop=r);rec.start();for(let i=0;i<8;i++){ctx.fillStyle=i%2?'#aa3366':'#3388aa';ctx.fillRect(0,0,160,90);await new Promise(r=>setTimeout(r,60))}rec.stop();await done;stream.getTracks().forEach(t=>t.stop());return {mime:mime.split(';')[0],bytes:Array.from(new Uint8Array(await new Blob(chunks,{type:mime}).arrayBuffer()))}},browserName==='webkit'?['video/mp4','video/webm;codecs=vp8','video/webm']:['video/webm;codecs=vp8','video/webm','video/mp4']);
+    // A real VP8 clip keeps playback coverage independent of MediaRecorder support.
+    const video = { mime: 'video/webm', bytes: fs.readFileSync(path.join(__dirname, 'fixtures/readiness.webm')) };
     receipt.videoMime=video.mime;
     await page.getByRole('button',{name:'新建自定义',exact:true}).click();await page.getByLabel('名称',{exact:true}).fill('Browser video');
     await page.getByLabel('上传背景').setInputFiles({name:'readiness.'+(video.mime==='video/mp4'?'mp4':'webm'),mimeType:video.mime,buffer:Buffer.from(video.bytes)});
