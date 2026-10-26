@@ -80,3 +80,5 @@ Review and tests establish no remaining actionable findings in the reviewed scop
 ## Closeout
 
 Owned isolated Compose services/network were removed with `down --volumes`; no owned test containers or pytest/worker child processes remained. Pre-existing local files remain unchanged. Hindsight myink policy and completion documents were stored and read back. Changes remain uncommitted in local main; no push or deployment was performed.
+
+后续用户明确授权发布；提交、推送及远程/本机部署结果见 [Vue-only 发布回执](2026-10-26-vue-only-deploy.md)。上文“未提交/未部署”描述的是审核完成当时的边界。
