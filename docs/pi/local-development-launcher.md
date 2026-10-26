@@ -145,3 +145,13 @@ python -m ops.pi.package_baseline --request /absolute/private/baseline-request.j
 最后原子发布600 `outcome.json`，schema=`pi-package-baseline-outcome-v1`。`verified`表示精确库存、0错误/跳过且输入/副本/退出/清理均已核验的基线，**不表示所有断言通过**；`check_passed`单列。只有已复现断言失败、错误/跳过为零才`eligible_for_selection=true`，并经原`_catalog`校验后嵌入`catalog`。绿色基线可核验成功但目录为空。基线库存本身合法而目录因重复库存等超过原60,000字节限制时，仍保存已核验基线，`catalog=[]`、`eligible_for_selection=false`并记录`catalog_rejection`；不调高限制或丢失outcome。运行错误、跳过、库存漂移、取消超时或清理未知均不能进入目录。退出码0表示该模式核验成功，不等于测试全绿。
 
 结果不包含预算、Plan、运行时批准或独立审查；现有开发预检拒绝该schema。宿主可将合格catalog交给现有选题/开发流程，但仍须新的run/cycle身份、当前完整runtime和独立审查。不得把新root当未知资源的自动重试，先检查原所属资源记录并完成核对。原checker对恶意候选篡改Python测试运行器的语义限制不变，后续完整代码审查仍然必要。[基线接力验收](../evaluations/pi-package-baseline-2026-10-27.md)。
+
+### 完整本机接力命令
+
+`python -m ops.pi.local_cycle --request /绝对路径/cycle.json` 默认只读，先验证固定选题配置及全部开发模板，检查失败不接触 Docker 或模型；增加 `--execute` 才调用原本的有限 ACTUAL 协调器。配置 schema 为 `pi-local-cycle-v1`，字段为 `cycle_id`、新建私有 `root`、独立 `control_ledger_path`、`selection_config_path/selection_config_sha256`、`templates_path/templates_sha256`、`deadline_seconds`（1–3600）、`review_wait_seconds`（1–600）。全部路径仍须满足原私有输入规则。
+
+入口执行选题、刷新账本检查点、等待独立开发审查、开发并认证候选；控制账本和费用账本各自独立。`root/result.json` 保存原协调器 receipt；`observe` 表示无任务、`review_candidate` 表示候选待独立审查，`uncertain/reconcile` 必须核对费用与资源。已有输出根目录不再执行，不自动重试、不自动采纳候选。底层协调器既有终态重放 API 不变。
+
+可先用 `python -m ops.pi.cycle_bundle --request /绝对路径/bundle-request.json --freeze` 机械生成配置包。请求 schema 为 `pi-cycle-bundle-v1`，包含新建私有 `root`、`cycle_id`、`selection_run_id`、已固定 `template_path/template_sha256`、合格隔离基线 `outcome_path/outcome_sha256`、上述两个期限字段。默认不带 `--freeze` 只检查；只接受与模板源、测试、文件范围和复现结果完全一致的单任务目录。它复用宿主编写的 Plan 和开发模板，不把模型文本变成路径或权限。
+
+独立审查者读取生成的 `selection-review-request.json` 与实际输入，在指定 `selection-review.json` 写入绑定授权摘要的审查结果。再执行 `python -m ops.pi.cycle_bundle --request /绝对路径/bundle/bundle.json --seal`，重新验证原请求、模板、基线、目录及审查，通过完整入口只读检查后排他发布 `cycle.json`。原零审查草稿保留，实际入口引用单独的 reviewed 配置。之后才显式执行 `local_cycle --request .../cycle.json --execute`。开发审查在选题后按最新账本再次独立完成；配置生成工具不生成任何批准。

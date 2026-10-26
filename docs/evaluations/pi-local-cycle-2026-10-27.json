@@ -1,0 +1,16 @@
+{
+  "schema": "pi-local-cycle-evaluation-v1",
+  "host_entry_verified": true,
+  "targeted_tests": {"passed": 120},
+  "pi_tests": {"passed": 2662, "deselected": 19, "marker": "not pi_lab"},
+  "node_scripts": 4,
+  "independent_review": {"original_approved": false, "p2_findings": 4, "author_tdd_fixes": 4},
+  "fresh_baseline": {"tests": 258, "failures": 5, "errors": 0, "skipped": 0},
+  "real_cycle_status": "pending_independent_entry_review",
+  "model_attempts_at_start": 638,
+  "historical_unknown": 9,
+  "known_cost_microyuan_at_start": 4222149,
+  "automatic_candidate_adoption": false,
+  "merged_to_main": false,
+  "deployed": false
+}

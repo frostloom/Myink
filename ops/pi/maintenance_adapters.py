@@ -47,6 +47,36 @@ class FileReview:
         return read_json(path(target,private=True))
 
 
+def preflight_templates(templates,billing,reviewer,context):
+    """Check every catalog package before selection can contact a provider."""
+    try:
+        require(not context['cancel'].is_set() and time.monotonic()<context['deadline'],
+                'package check cancelled or expired')
+        require(context['mode'] in ('ACTUAL','SIMULATED') and
+                (context['mode']!='ACTUAL' or type(reviewer) is FileReview),
+                'actual development requires external file review')
+        checked={}
+        for task in context['tasks']:
+            require(not context['cancel'].is_set() and time.monotonic()<context['deadline'],
+                    'package check cancelled or expired')
+            template=templates[task['task_id']]
+            target=path(template['path'],private=True)
+            require(file_hash(target)==template['sha256'],'trusted template drift')
+            c,_,plan,baseline,*_=prepare_template(target)
+            require(c['source_sha256']==task['source_sha256'] and c['test_sha256']==task['test_sha256']
+                and c['test_cases']==task['test_cases'] and list(plan.files)==task['files']
+                and digest(baseline.get('reproduction'))==digest(task['baseline']), 'template task drift')
+            require(path(c['ledger_path'],private=True)==billing,'template billing identity drift')
+            require(file_hash(target)==template['sha256'],'template drift during package check')
+            checked[task['task_id']]=template['sha256']
+        require(not context['cancel'].is_set() and time.monotonic()<context['deadline'],
+                'package check cancelled or expired')
+        return Receipt(context['operation_id'],'done',dict(verified=True,mode=context['mode'],
+            binding=context['input_hash'],catalog_sha256=digest(context['tasks']),templates=checked))
+    except (ValueError,OSError,KeyError,TypeError) as error:
+        return Receipt(context['operation_id'],'blocked',dict(mode=context['mode'],
+            reason='task_package_rejected',error_class=type(error).__name__))
+
 class FrozenDevelopmentAdapter:
     def __init__(self,templates,root,billing_ledger_path,reviewer):
         self.templates=deepcopy(templates);self.root=path(root)
@@ -55,34 +85,7 @@ class FrozenDevelopmentAdapter:
                 'private prepared-config root and trusted review required')
 
     def preflight(self,context):
-        """Check every catalog package before selection can contact a provider."""
-        try:
-            require(not context['cancel'].is_set() and time.monotonic()<context['deadline'],
-                    'package check cancelled or expired')
-            require(context['mode'] in ('ACTUAL','SIMULATED') and
-                    (context['mode']!='ACTUAL' or type(self.reviewer) is FileReview),
-                    'actual development requires external file review')
-            checked={}
-            for task in context['tasks']:
-                require(not context['cancel'].is_set() and time.monotonic()<context['deadline'],
-                        'package check cancelled or expired')
-                template=self.templates[task['task_id']]
-                target=path(template['path'],private=True)
-                require(file_hash(target)==template['sha256'],'trusted template drift')
-                c,_,plan,baseline,*_=prepare_template(target)
-                require(c['source_sha256']==task['source_sha256'] and c['test_sha256']==task['test_sha256']
-                    and c['test_cases']==task['test_cases'] and list(plan.files)==task['files']
-                    and digest(baseline.get('reproduction'))==digest(task['baseline']), 'template task drift')
-                require(path(c['ledger_path'],private=True)==self.billing,'template billing identity drift')
-                require(file_hash(target)==template['sha256'],'template drift during package check')
-                checked[task['task_id']]=template['sha256']
-            require(not context['cancel'].is_set() and time.monotonic()<context['deadline'],
-                    'package check cancelled or expired')
-            return Receipt(context['operation_id'],'done',dict(verified=True,mode=context['mode'],
-                binding=context['input_hash'],catalog_sha256=digest(context['tasks']),templates=checked))
-        except (ValueError,OSError,KeyError,TypeError) as error:
-            return Receipt(context['operation_id'],'blocked',dict(mode=context['mode'],
-                reason='task_package_rejected',error_class=type(error).__name__))
+        return preflight_templates(self.templates,self.billing,self.reviewer,context)
 
     def __call__(self,context):
         try:return self._prepare(context)
