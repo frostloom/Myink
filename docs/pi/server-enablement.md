@@ -1,10 +1,12 @@
 # 服务器启用与维护交接
 
+最新部署前证据见[2026-10-27跨架构与服务器隔离验收](../evaluations/pi-runtime-platform-2026-10-27.md)：实际服务器为x86_64，已完成两平台共4次Node/Pi合成会话、错误native架构拒绝与资源清理，0真实模型调用；7生产容器及myink.cloud健康保持。仅完成运行时门槛的一部分，真实provider/常驻服务/状态迁移/恢复/容量和维护发布尚未验收。原10元/100次段落是首次试验历史；当前原账本累计50元上限、9未知预留保持，剩余27.287317元、policy关闭v4。
+
 `enabled=false`。本轮没有安装或启用生产 Pi，没有转移旧 cron，也没有生产发布。下表是后续启用输入；本机通过不能生成服务器验收回执。
 
 | 门槛 | 本机证据 | 服务器证据/后续动作 |
 | --- | --- | --- |
-| 固定运行时 | Pi 1.1.0 实际进程通过 `003` 协议验证；3次模型传输 SIMULATED | not_run：核对 Node/Pi/SDK/lock 的实际 hash，可信 bootstrap 与配置身份 |
+| 固定运行时 | Pi 1.1.0 实际进程通过 `003` 协议验证；3次模型传输 SIMULATED | partial actual：Node24.22.0/Pi1.1.0固定字节、x86_64 native宿主/回执绑定及2次隔离会话通过；正式常驻bootstrap与启用仍待验收 |
 | 独立权限与出站 | `003` checker/Pi containment 实际通过；AF_INET/AF_INET6 兼容通过，自有进程已清理 | not_run：跨 UID、秘密不可读、进程退出和出站拒绝；localhost 允许不等于内核单端口隔离 |
 | 完整业务服务与镜像 | blocked：B12 过期审批包被拒；未重试 | not_run：独立 PG/Redis/RabbitMQ、唯一资源、Python/Go/前端/契约和串行镜像验证 |
 | 容量与冷缓存 | cold RSS 未测量；资源限额不是使用量 | not_run：真实冷/热 CPU、内存、磁盘、队列及恢复时间；记录 OOM 计数增量和采样窗 |

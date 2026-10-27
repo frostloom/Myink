@@ -103,7 +103,7 @@ def config_file(tmp_path, monkeypatch):
     c['review_path']=write('review.json',review)
     c['review_sha256']=inputs.file_hash(c['review_path'])
     cp = Path(write('config.json',c))
-    monkeypatch.setattr(inputs,'verify_source',lambda *a: {})
+    monkeypatch.setattr(inputs,'verify_source',lambda *a: {'machine':'aarch64'})
     return cp, c
 
 

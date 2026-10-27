@@ -5,10 +5,11 @@ import re
 from .analysis_execution import _hash
 from .analysis_trial import score_contract_output
 from .container_runtime import strict_json
+from .runtime_platform import verify_runtime
 from .writing_analysis import parse_writing_analysis
 
 
-def verify_trial_result(frame, slot, view, report):
+def verify_trial_result(frame, slot, view, report, *, expected_machine='aarch64'):
     """Return a body-free verdict only after independent execution checks.
 
     Invalid output may be FAILED by the caller only after its separate known
@@ -16,12 +17,12 @@ def verify_trial_result(frame, slot, view, report):
     Worker flags never turn an unverifiable session into a known failure.
     """
     try:
-        return _verify(frame, slot, view)
+        return _verify(frame, slot, view, expected_machine)
     except (KeyError, TypeError, AttributeError, RecursionError) as exc:
         raise ValueError('invalid trial execution evidence') from exc
 
 
-def _verify(frame, slot, view):
+def _verify(frame, slot, view, expected_machine):
     result = frame['result']; evidence = result['evidence']
     if (result.get('engine_status') != 'done'
             or any(result.get(k) != slot[k] for k in (
@@ -66,9 +67,7 @@ def _verify(frame, slot, view):
     if not text.strip() or evidence.get('text') != text:
         raise ValueError('output/session mismatch')
     runtime = frame['runtime']
-    if (runtime.get('node') != 'v24.22.0' or runtime.get('pi') != '1.1.0' or runtime.get('uid') != 65534
-            or runtime.get('machine') != 'aarch64' or runtime.get('network_denied') is not True):
-        raise ValueError('runtime boundary mismatch')
+    verify_runtime(runtime, expected_machine)
     analysis = None
     failure = 'output_invalid'
     worker_failure = 'engine_or_output_invalid'

@@ -24,6 +24,7 @@ from .analysis_execution import MODEL, _hash, prepare_contract_slots
 from .analysis_run import AnalysisRun
 from .analysis_trial import GROUPS, score_contract_output
 from .container_probe import ProbeHost, _path, _write, verify_inspect
+from .runtime_platform import node_machine, verify_runtime
 from .ledger import Ledger
 
 FRAME_LIMIT = 196608
@@ -190,7 +191,7 @@ def mock_transport(calls):
     return send,client
 
 
-def verify_result(frame, slot, view, report):
+def verify_result(frame, slot, view, report, *, expected_machine='aarch64'):
     """Host validates private session bytes and analysis, not a worker passed flag."""
     r=frame.get('result',{});e=r.get('evidence',{})
     if (r.get('engine_status')!='done' or r.get('contract_valid') is not True
@@ -217,9 +218,7 @@ def verify_result(frame, slot, view, report):
     if len(assistants)!=1 or assistants[0].get('stopReason')!='stop' or strict_json(''.join(b['text'] for b in assistants[0]['content']))!=r['analysis']:
         raise ValueError('analysis/session mismatch')
     runtime=frame['runtime']
-    if (runtime.get('node')!='v24.22.0' or runtime.get('pi')!='1.1.0' or runtime.get('uid')!=65534
-            or runtime.get('machine')!='aarch64' or runtime.get('network_denied') is not True):
-        raise ValueError('runtime boundary mismatch')
+    verify_runtime(runtime, expected_machine)
     return dict(slot_id=slot['slot_id'],contract_valid=True,session_sha256=e['session_sha256'],
                 session_id=rows[0]['id'],process_exited=True,returncode=0,request_sha256=slot['request_sha256'],runtime=runtime)
 
@@ -268,12 +267,11 @@ def verify_source(source, expected):
     expected={'ops/pi/'+key:value for key,value in files(original).items()}
     if code_files!=expected: raise ValueError('controller source snapshot drift')
     node=(source/'node/bin/node').read_bytes()
-    if node[:4]!=b'\x7fELF' or int.from_bytes(node[18:20],'little')!=183:
-        raise ValueError('Linux ARM64 Node required')
+    machine=node_machine(source/'node/bin/node')
     package=source/'pi/node_modules/@earendil-works/pi-coding-agent'
     if json.loads((package/'package.json').read_text()).get('version')!='1.1.0':
         raise ValueError('fixed Pi version required')
-    return dict(runtime_sha256=actual,node_sha256=sha256(node).hexdigest(),
+    return dict(runtime_sha256=actual,machine=machine,node_sha256=sha256(node).hexdigest(),
         lock_sha256=sha256((source/'pi/package-lock.json').read_bytes()).hexdigest(),
         pi_cli_sha256=sha256((package/'dist/bundle/cli.js').read_bytes()).hexdigest(),
         code_sha256=_hash(code_files),controller_sha256=sha256(Path(__file__).read_bytes()).hexdigest(),
@@ -288,7 +286,7 @@ def run_probe(root, source, *, docker, endpoint, daemon_id, image_id, runtime_sh
     provenance=verify_source(source,runtime_sha256)
     root.mkdir(mode=0o700)
     run,p,slots,view,report,calls=synthetic_run(root/'synthetic-ledger')
-    host=ProbeHost(docker=docker,endpoint=endpoint,daemon_id=daemon_id,image_id=image_id,operation_id=str(uuid.uuid4()))
+    host=ProbeHost(docker=docker,endpoint=endpoint,daemon_id=daemon_id,image_id=image_id,operation_id=str(uuid.uuid4()),expected_machine=provenance['machine'])
     result=dict(status='blocked',operation_id=host.operation_id,daemon_id=daemon_id,image_id=image_id,
         paid_requests=0,production_ready=False,automatic_execution=False,pi_runtime_verified=False,
         canonical_ledger_modified=False,provenance=provenance,planned_slots=30,selected_probe_slots=2,cases=[],cleanup=[],failure_class=None)
@@ -322,7 +320,7 @@ def run_probe(root, source, *, docker, endpoint, daemon_id, image_id, runtime_sh
                         with (root/f'slot-{index}-attach-private.log').open('xb') as evidence:
                             frame=exchange(process,dict(slot_index=index,token=token),route,seconds=60,evidence=evidence)
                     _write(root/f'slot-{index}-private.json',frame)
-                    row.update(verify_result(frame,slot,view,report))
+                    row.update(verify_result(frame,slot,view,report,expected_machine=provenance['machine']))
                     if row['http_statuses']!=[403,403,200,403] or totals(run.ledger,'local-trial-1')[0]!=index+1:
                         raise ValueError('single metered request or rejection mismatch')
                     with run.ledger.transaction() as db:

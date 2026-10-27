@@ -16,6 +16,8 @@ import time
 from urllib.parse import urlsplit
 import uuid
 
+from .runtime_platform import canonical_machine, MACHINES
+
 
 KINDS = ('isolation', 'resources', 'timeout', 'overflow')
 LABEL = 'myink.pi.operation'
@@ -71,7 +73,7 @@ def verify_inspect(info):
 
 
 class ProbeHost:
-    def __init__(self, *, docker, endpoint, daemon_id, image_id, operation_id):
+    def __init__(self, *, docker, endpoint, daemon_id, image_id, operation_id, expected_machine=None):
         uri = urlsplit(endpoint)
         if (not Path(docker).is_absolute() or uri.scheme != 'unix' or uri.netloc
                 or not uri.path.startswith('/') or '..' in Path(uri.path).parts
@@ -80,6 +82,9 @@ class ProbeHost:
                 or not re.fullmatch(r'sha256:[0-9a-f]{64}', image_id)
                 or str(uuid.UUID(operation_id)) != operation_id):
             raise ValueError('explicit local daemon, immutable image and UUID required')
+        if expected_machine is not None and expected_machine not in MACHINES:
+            raise ValueError('canonical expected runtime machine required')
+        self.expected_machine = expected_machine
         self.command = [str(docker), '--host', endpoint]
         self.daemon_id, self.image_id, self.operation_id = daemon_id, image_id, operation_id
         self.owned = {}
@@ -95,6 +100,13 @@ class ProbeHost:
     def _daemon(self):
         if self._call('info','--format','{{.ID}}').stdout.strip() != self.daemon_id:
             raise RuntimeError('Docker daemon identity changed')
+        if self.expected_machine is not None:
+            try:
+                machine = canonical_machine(self._call('info','--format','{{.Architecture}}').stdout.strip())
+            except ValueError:
+                raise RuntimeError('Docker daemon architecture mismatch') from None
+            if machine != self.expected_machine:
+                raise RuntimeError('Docker daemon architecture mismatch')
 
     def _inspect(self, ref):
         data = json.loads(self._call('inspect',ref).stdout)

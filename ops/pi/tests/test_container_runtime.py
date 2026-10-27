@@ -201,7 +201,9 @@ def source_fixture(tmp_path,monkeypatch):
     (original/'lab/container_runtime_worker.py').write_text('trusted worker')
     monkeypatch.setattr(m,'__file__',str(original/'container_runtime.py'))
     source=tmp_path/'source';(source/'node/bin').mkdir(parents=True)
-    node=bytearray(20);node[:4]=b'\x7fELF';node[18:20]=(183).to_bytes(2,'little')
+    node=bytearray(64);node[:7]=b'\x7fELF\x02\x01\x01'
+    node[16:18]=(2).to_bytes(2,'little');node[18:20]=(183).to_bytes(2,'little')
+    node[20:24]=(1).to_bytes(4,'little');node[52:54]=(64).to_bytes(2,'little')
     (source/'node/bin/node').write_bytes(node)
     package=source/'pi/node_modules/@earendil-works/pi-coding-agent';(package/'dist/bundle').mkdir(parents=True)
     (package/'package.json').write_text('{"version":"1.1.0"}')

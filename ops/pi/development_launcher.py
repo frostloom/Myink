@@ -130,9 +130,9 @@ def worker_receipt(raw):
     return Receipt(raw['operation_id'],raw['status'],raw['evidence'])
 
 
-def _host(c,image):
+def _host(c,image,machine=None):
     return ProbeHost(docker=Path(c['docker']),endpoint=c['endpoint'],daemon_id=c['daemon_id'],
-                     image_id=c[image],operation_id=str(uuid.uuid4()))
+                     image_id=c[image],operation_id=str(uuid.uuid4()),expected_machine=machine)
 
 
 def _cleanup(host, *, on_removed=None):
@@ -360,7 +360,7 @@ def execute(config_path,*,transport=None,cancel=None,expected_authorization_sha2
         limits=Limits(c['max_requests'],c['max_tools'],c['deadline_seconds'],cancel,completion_reserve=8)
         timer=Timer(c['deadline_seconds'],cancel.set);timer.daemon=True;timer.start()
         owners=OwnedHosts(cancel,write)
-        host=owners.add(_host(c,'image_id'));cleanup=[];bridge=None;verified=None
+        host=owners.add(_host(c,'image_id',provenance['machine']));cleanup=[];bridge=None;verified=None
         result=dict(verified=False,run_id=c['run_id'],authorization_sha256=authorization_hash(c),
                     failure_class=None,cleanup=[],policy_restored=False,original_history_unchanged=False)
         original=Path(c['policy_path']).read_bytes()

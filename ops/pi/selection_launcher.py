@@ -241,7 +241,7 @@ def execute(config_path,context,*,transport=None,expected_config_sha256=None):
             atomic_write(p,json.dumps(value,ensure_ascii=True,indent=2,allow_nan=False).encode()+b'\n')
         cancel=PhaseCancel(context.get('cancel'));limits=Limits(1,0,seconds,cancel)
         timer=Timer(seconds,cancel.set);timer.daemon=True;timer.start();owners=OwnedHosts(cancel,write)
-        host=owners.add(_host(c,'image_id'));original=Path(c['policy_path']).read_bytes()
+        host=owners.add(_host(c,'image_id',provenance['machine']));original=Path(c['policy_path']).read_bytes()
         result=dict(verified=False,execution_verified=False,contract_valid=False,run_id=c['run_id'],
             authorization_sha256=authorization_hash(c),cleanup=[],policy_restored=False,original_history_unchanged=False)
         bridge=None

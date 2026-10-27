@@ -24,6 +24,7 @@ def module():
 class Daemon:
     def __init__(self):
         self.daemon_id = DAEMON
+        self.machine = 'aarch64'
         self.objects = {}
         self.commands = []
 
@@ -32,7 +33,7 @@ class Daemon:
         self.commands.append(command)
         output, code = '', 0
         if command[:1] == ['info']:
-            output = self.daemon_id
+            output = self.machine if command[-1] == '{{.Architecture}}' else self.daemon_id
         elif command[:2] == ['image','inspect']:
             output = IMAGE
         elif command[:1] == ['create']:

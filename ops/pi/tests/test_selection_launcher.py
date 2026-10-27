@@ -149,7 +149,7 @@ def selection_config(config_file,monkeypatch):
         candidate_id=c['run_id'],owner='local-development-controller',generation=1)
     p=Path(c['review_path']);p.write_text(json.dumps(review));p.chmod(0o600);c['review_sha256']=file_hash(p)
     cp=root/'selection-config.json';cp.write_text(json.dumps(c));cp.chmod(0o600)
-    monkeypatch.setattr(selection,'verify_source',lambda *a:{})
+    monkeypatch.setattr(selection,'verify_source',lambda *a:{'machine':'aarch64'})
     return cp,c,catalog
 
 

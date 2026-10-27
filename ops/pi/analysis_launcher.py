@@ -141,7 +141,7 @@ def _prepare(config):
             or diagnostic['accounting']['pending_attempts']):
         raise ValueError(_ERROR)
     host = ProbeHost(docker=Path(config['docker']), endpoint=config['endpoint'],
-        daemon_id=config['daemon_id'], image_id=config['image_id'], operation_id=str(uuid.uuid4()))
+        daemon_id=config['daemon_id'], image_id=config['image_id'], operation_id=str(uuid.uuid4()), expected_machine=provenance['machine'])
     return config, policy, credentials, inputs, slots, provenance, diagnostic, host
 
 
@@ -217,9 +217,9 @@ def _slot(run, policy, config, inputs, slot, index, host, transport, root, prove
             progress['stage'] = 'result_verify'
             if _is_trial(config):
                 from .analysis_trial_result import verify_trial_result
-                row.update(verify_trial_result(frame, slot, inputs['views'][slot['domain']], inputs['report']))
+                row.update(verify_trial_result(frame, slot, inputs['views'][slot['domain']], inputs['report'], expected_machine=provenance['machine']))
             else:
-                row.update(verify_result(frame, slot, inputs['views'][slot['domain']], inputs['report']))
+                row.update(verify_result(frame, slot, inputs['views'][slot['domain']], inputs['report'], expected_machine=provenance['machine']))
             progress['stage'] = 'http_sequence'
             if row['http_statuses'] != [403, 403, 200, 403] or remaining() <= 0:
                 raise ValueError(_ERROR)
