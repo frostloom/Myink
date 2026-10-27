@@ -29,6 +29,7 @@ def test_check_is_readonly_and_freeze_does_not_approve(bundle_request):
     result=bundle.freeze(p);root=Path(c['root'])
     assert result['requires']==['independent_selection_review','independent_development_review']
     selection=read_json(root/'selection-config.json')
+    assert selection['prompt_version']==2
     assert selection['review_sha256']=='0'*64 and not Path(selection['review_path']).exists()
     assert read_json(root/'catalog.json')==[task]
     assert not (root/'cycle.json').exists() and not (root/'control.sqlite').exists()

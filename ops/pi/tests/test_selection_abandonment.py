@@ -8,7 +8,7 @@ from ops.pi import selection_abandonment as recovery,manager
 from ops.pi.contracts import Receipt
 from ops.pi.development_inputs import digest,file_hash,ledger_snapshot,read_json,authorization_hash
 from ops.pi.ledger import Ledger
-from ops.pi.selection_launcher import FIELDS,SYSTEM,selection_prompt,wire_system
+from ops.pi.selection_launcher import FIELDS,SYSTEM,system_for,selection_prompt,wire_system
 from ops.pi.tests.test_maintenance_adapters import pack
 from ops.pi.tests.test_development_inputs import config_file
 
@@ -23,6 +23,8 @@ def stopped(pack,tmp_path,monkeypatch,request):
     task=dict(ctx['task']);task['evidence_sha256']=digest(task['baseline']);tasks=[task]
     catalog=write(tmp_path/'catalog.json',tasks);before=ledger_snapshot(c['ledger_path'])
     sc={k:c[k] for k in FIELDS if k in c};sc.update(docker=str(Path(sys.executable).resolve()),schema='pi-maintenance-selection-v1',run_id='selection-stop',root=str(tmp_path/'selection'),catalog_path=str(catalog),catalog_sha256=file_hash(catalog),deadline_seconds=120,review_path=str(tmp_path/'selection-review.json'),review_sha256='0'*64)
+    if getattr(request,'param',None)==2:sc['prompt_version']=2
+    system=system_for(sc)
     review=dict(source='independent_review',verified=True,result='approved',reviewer='entry-review',authorization_sha256=authorization_hash(sc),plan_hash=digest(tasks),base=c['source_sha256'],candidate_id=sc['run_id'],owner='local-development-controller',generation=1)
     write(sc['review_path'],review);sc['review_sha256']=file_hash(sc['review_path']);sp=write(tmp_path/'selection-config.json',sc)
     templates=write(tmp_path/'templates.json',adapter.templates)
@@ -38,8 +40,8 @@ def stopped(pack,tmp_path,monkeypatch,request):
     result=dict(verified=False,execution_verified=False,contract_valid=False,closed_verified=False,run_id=sc['run_id'],authorization_sha256=authorization_hash(sc),failure_class='ValueError',cleanup=[dict(container_id='a'*64,removed=True,stopped=True,exit_code=0)],policy_restored=True,credential_unchanged=True,original_history_unchanged=True,new_attempts=1,new_unknown=1 if unknown_fee else 0,known_cost_microyuan=0 if unknown_fee else 2,model_posts=[dict(status=200,attempt_id='attempt-one')])
     write(selection/'result.json',result);write(selection/'ledger-before-private.json',before);write(selection/'ledger-after-private.json',after);write(selection/'manifest-private.json',dict(config=sc,context_hash=stage['input_hash'],provenance={}))
     write(selection/'owned-host-0.json',dict(operation_id='00000000-0000-4000-8000-000000000001'))
-    prompt=selection_prompt(sc,tasks,stage['input_hash']);body=dict(model='synthetic',max_tokens=2048,messages=[dict(role='user',content=prompt)],system=wire_system(SYSTEM),stream=True);write(selection/'request-private.json',body)
-    messages=[dict(role='system',content='',sections=dict(preamble=SYSTEM,cwd='<cwd>\n/work/candidate\n</cwd>'),timestamp=1),
+    prompt=selection_prompt(sc,tasks,stage['input_hash']);body=dict(model='synthetic',max_tokens=2048,messages=[dict(role='user',content=prompt)],system=wire_system(system),stream=True);write(selection/'request-private.json',body)
+    messages=[dict(role='system',content='',sections=dict(preamble=system,cwd='<cwd>\n/work/candidate\n</cwd>'),timestamp=1),
         dict(role='user',content=[dict(type='text',text=prompt)],timestamp=1),
         dict(role='assistant',content=[dict(type='text',text='synthetic selection ignored')],stopReason='stop',timestamp=1)]
     session=json.dumps(dict(type='session',id='synthetic',cwd='/work/candidate'))+'\n'+''.join(json.dumps(dict(type='message',message=m))+'\n' for m in messages)

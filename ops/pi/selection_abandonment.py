@@ -16,7 +16,7 @@ from .development_launcher import atomic_write,require
 from .local_cycle import _disjoint,_ledger_roles,FIELDS as CYCLE_FIELDS
 from .maintenance_handoff import _catalog
 from .observations import _read,_name
-from .selection_launcher import FIELDS as SELECTION_FIELDS,SYSTEM,request_matches,selection_prompt,text
+from .selection_launcher import FIELDS as SELECTION_FIELDS,system_for,request_matches,selection_prompt,text
 from .tool_proof import strict_json
 
 FIELDS={'schema','state_path','billing_path','task_id','root'}
@@ -63,7 +63,7 @@ def facts(request_path):
     require(outcome['evidence'].get('mode')=='ACTUAL' and outcome['evidence'].get('released') is False
         and outcome['evidence'].get('next_action')=='reconcile','stopped cycle required')
     selection=read(cycle['selection_config_path'],cycle['selection_config_sha256'])
-    require(set(selection)==SELECTION_FIELDS and selection['schema']=='pi-maintenance-selection-v1'
+    require(set(selection) in (SELECTION_FIELDS,SELECTION_FIELDS|{'prompt_version'}) and selection['schema']=='pi-maintenance-selection-v1'
         and path(selection['ledger_path'])==billing,'original selection identity drift')
     templates=read(cycle['templates_path'],cycle['templates_sha256'])
     catalog=_catalog(read(selection['catalog_path'],selection['catalog_sha256']))
@@ -134,7 +134,7 @@ def facts(request_path):
         and we.get('verified_tool_calls')==we.get('pending_tool_calls')==[] and we.get('unexpected_tool') is False
         and we.get('length_continuations')==0 and all(we.get(k) is True for k in ('process_exited','clear_abort_acknowledged'))
         and type(we.get('returncode')) is int and we['returncode']==0,'owned stopped no-tool selection required')
-    request_matches(read(output/'request-private.json'),dict(system=SYSTEM,prompt=selection_prompt(selection,catalog,s['input_hash'])))
+    request_matches(read(output/'request-private.json'),dict(system=system_for(selection),prompt=selection_prompt(selection,catalog,s['input_hash'])))
     verify_stopped_artifacts(frame,selection,s['input_hash'])
     cleanup=r.get('cleanup');require(isinstance(cleanup,list) and len(cleanup)==1 and cleanup[0].get('removed') is True
         and type(cleanup[0].get('exit_code')) is int and cleanup[0]['exit_code']==0
@@ -181,7 +181,7 @@ def verify_stopped_artifacts(frame,selection,context_hash):
     require(len(messages)==3 and all(isinstance(m,dict) for m in messages)
         and set(messages[0])=={'role','content','sections','timestamp'} and messages[0]['role']=='system'
         and messages[0]['content']=='' and type(messages[0]['timestamp']) is int
-        and messages[0]['sections']==dict(preamble=SYSTEM,cwd='<cwd>\n/work/candidate\n</cwd>')
+        and messages[0]['sections']==dict(preamble=system_for(selection),cwd='<cwd>\n/work/candidate\n</cwd>')
         and messages[1].get('role')=='user' and text(messages[1].get('content'))==prompt
         and messages[2].get('role')=='assistant' and messages[2].get('stopReason')=='stop'
         and not messages[2].get('errorMessage') and text(messages[2].get('content'))==e.get('text'),

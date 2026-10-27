@@ -70,7 +70,7 @@ def freeze(request_path):
     root=Path(c['root']);root.mkdir(mode=0o700)
     _write(root/'catalog.json',tasks);_write(root/'templates.json',templates)
     selection={k:tc[k] for k in SELECTION_FIELDS if k in tc}
-    selection.update(schema='pi-maintenance-selection-v1',run_id=c['selection_run_id'],root=str(root/'selection-output'),
+    selection.update(schema='pi-maintenance-selection-v1',prompt_version=2,run_id=c['selection_run_id'],root=str(root/'selection-output'),
         catalog_path=str(root/'catalog.json'),catalog_sha256=file_hash(root/'catalog.json'),deadline_seconds=120,
         review_path=str(root/'selection-review.json'),review_sha256='0'*64)
     _write(root/'selection-config.json',selection)

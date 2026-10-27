@@ -28,6 +28,18 @@ SYSTEM=('You are the Myink maintenance administrator. Select only a reproduced e
         'No tools are allowed. Return one compact JSON object with exactly task_id,source_sha256,'
         'evidence_sha256,reason. Copy the selected identities exactly. Use null for task_id and both '
         'hashes if none is suitable. No markdown or self-approval. Keep reason brief.')
+CURRENT_SYSTEM=(SYSTEM+' Baseline assertion failures before repair are positive evidence of a reproduced '
+    'existing-behavior defect, not a reason to reject an otherwise suitable task. '
+    'Distinguish assertion failures from test errors, skipped tests, unsafe scope, or insufficient evidence. '
+    'Suitability still requires the frozen evidence and scope; abstention remains valid.')
+
+
+def system_for(config):
+    version=config.get('prompt_version',1)
+    require(type(version) is int and version in (1,2),'unsupported selection prompt version')
+    return SYSTEM if version==1 else CURRENT_SYSTEM
+
+
 FIELDS=set(('schema run_id root runtime_path runtime_sha256 ledger_path ledger_sha256 policy_path '
     'policy_sha256 credential_path credential_sha256 catalog_path catalog_sha256 source_path '
     'source_sha256 review_path review_sha256 docker endpoint daemon_id image_id deadline_seconds').split())
@@ -167,14 +179,15 @@ class NoToolBridge:
 
 
 def selection_prompt(config,tasks,context_hash):
-    return SYSTEM+'\nFROZEN_CATALOG\n'+json.dumps(dict(context_hash=context_hash,
+    return system_for(config)+'\nFROZEN_CATALOG\n'+json.dumps(dict(context_hash=context_hash,
         authorization_sha256=authorization_hash(config),tasks=tasks),ensure_ascii=True,separators=(',',':'))
 
 
 def prepare(config_path):
     c=read_json(path(config_path,private=True))
-    require(isinstance(c,dict) and set(c)==FIELDS and c['schema']=='pi-maintenance-selection-v1',
+    require(isinstance(c,dict) and set(c) in (FIELDS,FIELDS|{'prompt_version'}) and c['schema']=='pi-maintenance-selection-v1',
             'strict selection config required')
+    system=system_for(c)
     require(isinstance(c['run_id'],str) and re.fullmatch('[a-z0-9-]{1,80}',c['run_id'])
             and type(c['deadline_seconds']) is int and 0<c['deadline_seconds']<=120,'bounded selection identity required')
     root=path(c['root']);require(not root.exists() and root.parent.is_dir()
@@ -193,7 +206,7 @@ def prepare(config_path):
         and before['limits']['budget_microyuan']==policy.budget_microyuan,'closed approved selection scope required')
     load_credentials(c['credential_path'],policy)
     prompt=selection_prompt(c,catalog,'0'*64)
-    predicted=dict(model=policy.model,max_tokens=policy.max_tokens,system=[dict(type='text',text=wire_system(SYSTEM))],
+    predicted=dict(model=policy.model,max_tokens=policy.max_tokens,system=[dict(type='text',text=wire_system(system))],
                    messages=[dict(role='user',content=[dict(type='text',text=prompt)])],stream=True)
     require(len(json.dumps(predicted,ensure_ascii=True,separators=(',',':')).encode())<=policy.max_body_bytes,
             'selection prompt exceeds fixed wire bound')
@@ -235,7 +248,7 @@ def execute(config_path,context,*,transport=None,expected_config_sha256=None):
         try:
             limits.alive();write('manifest-private.json',dict(config=c,provenance=provenance,context_hash=context['input_hash']))
             write('ledger-before-private.json',before)
-            initial=dict(model_token=uuid.uuid4().hex,model=policy.model,max_tokens=policy.max_tokens,system=SYSTEM,
+            initial=dict(model_token=uuid.uuid4().hex,model=policy.model,max_tokens=policy.max_tokens,system=system_for(c),
                 prompt=selection_prompt(c,tasks,context['input_hash']),
                 context_hash=context['input_hash'],config_hash=digest(dict(authorization=authorization_hash(c),context=context['input_hash'])),
                 deadline=time.time()+max(0,limits.deadline-time.monotonic()))
