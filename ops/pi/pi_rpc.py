@@ -366,6 +366,7 @@ class PiAdapter:
             'budget_scope_id': context.budget_scope_id, 'config_hash': self.config_hash,
             'accepted': accepted, 'disposition': disposition, 'settled': self._settled,
             'aborted': self._aborted, 'errors': self._errors, 'protocol_failed': protocol_failed,
+            'reader_failed': self._reader_error, 'writer_failed': self._writer_error,
             'transcript_failed': self._transcript_error, 'session_valid': artifacts, 'unexpected_tool': self._unexpected_tool,
             'verified_tool_calls':sorted(self._verified_tools), 'pending_tool_calls':sorted(self._pending_tools),
             'length_continuations': self._length_continuations,
@@ -395,6 +396,12 @@ class PiAdapter:
                     self._writes.put_nowait(None)
                 except Full:
                     self._writer_error = True
+                # The peer may ACK an unbuffered write before our flush returns.
+                # Finish the owned writer before closing its pipe; never clear an error.
+                if len(self._threads) == 3:
+                    self._threads[2].join(timeout=0.2)
+                    if self._threads[2].is_alive():
+                        self._writer_error = True
                 try:
                     process.stdin.close()
                     process.wait(timeout=1)

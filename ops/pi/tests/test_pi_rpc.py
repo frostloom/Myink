@@ -443,3 +443,49 @@ def test_transient_header_identity_cannot_become_idle_state_authority(tmp_path,m
     assert receipt.evidence['verified_tool_calls']==['owned-read']
     assert sum(r['type']=='prompt' for r in commands(receipt))==1
     assert receipt.evidence['process_exited'] is True
+
+
+def test_shutdown_waits_for_acknowledged_writer_flush_before_closing_pipe(tmp_path,monkeypatch):
+    """A peer can ACK an unbuffered write before the sender finishes flush()."""
+    import time
+    from ops.pi import pi_rpc
+    original=pi_rpc.subprocess.Popen
+    class DelayedAbortFlush:
+        def __init__(self,pipe):self.pipe=pipe;self.abort=False
+        def write(self,value):
+            self.abort=json.loads(value)['type']=='abort'
+            return self.pipe.write(value)
+        def flush(self):
+            if self.abort:time.sleep(.1)
+            return self.pipe.flush()
+        def close(self):return self.pipe.close()
+    def spawn(*args,**kwargs):
+        process=original(*args,**kwargs);process.stdin=DelayedAbortFlush(process.stdin);return process
+    monkeypatch.setattr(pi_rpc.subprocess,'Popen',spawn)
+    engine,context,session=adapter(tmp_path,'ok');receipt=run(engine,context,session)
+    assert receipt.status=='done' and receipt.evidence['protocol_failed'] is False
+    assert engine._threads[2].is_alive() is False
+
+
+def test_shutdown_writer_timeout_stays_failed_even_with_peer_ack(tmp_path,monkeypatch):
+    import time
+    from ops.pi import pi_rpc
+    original=pi_rpc.subprocess.Popen
+    class StalledFlush:
+        def __init__(self,pipe):self.pipe=pipe;self.abort=False
+        def write(self,value):self.abort=json.loads(value)['type']=='abort';return self.pipe.write(value)
+        def flush(self):
+            if self.abort:time.sleep(.35)
+            return self.pipe.flush()
+        def close(self):return self.pipe.close()
+    def spawn(*args,**kwargs):
+        process=original(*args,**kwargs);process.stdin=StalledFlush(process.stdin);return process
+    monkeypatch.setattr(pi_rpc.subprocess,'Popen',spawn)
+    engine,context,session=adapter(tmp_path,'ok');receipt=run(engine,context,session)
+    assert receipt.status!='done' and receipt.evidence['writer_failed'] is True
+    assert receipt.evidence['protocol_failed'] is True and engine._process.poll() is not None
+
+
+def test_malformed_reader_diagnostic_remains_distinct(tmp_path):
+    engine,context,session=adapter(tmp_path,'malformeddrain');receipt=run(engine,context,session)
+    assert receipt.status!='done' and receipt.evidence['reader_failed'] is True

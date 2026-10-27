@@ -165,3 +165,24 @@ python -m ops.pi.package_baseline --request /absolute/private/baseline-request.j
 真实请求的检查点会被前轮费用更新，因此ACTUAL只保留一个封存就绪任务。后续任务由可信宿主在结算后按最新原账本重新审查/封存，再向独立700目录发布600的 `*.task.json`：`schema=pi-manager-admission-v1`、`task_id`、`request_path`、`request_sha256`、`priority`、`mode=ACTUAL`。在 `run` 加 `--inbox /私有目录/inbox --idle-seconds 600` 可在同一有界批次等待下一份已审查请求；不能靠改旧SHA、复用签名或复制费用账本绕过检查。
 
 管理器没有上游Pi核心修改、自动gold、自动采纳或部署权限。计数 `dispatch_claims` 是持久意图，不是HTTP调用或扣费；未采集值为null，不能写成0。完整的简历指标口径见[工程指标台账](engineering-metrics.md)。
+
+## 观察、提案与管理队列入口
+
+`python -m ops.pi.observations --request /私有/intake.json` 默认只读；`--freeze` 显式生成私有观察快照。清单 `pi-observation-intake-v1` 包含 `batch_id`、全新 `root` 和 1–20 项 `sources`。每项固定 `source_id`、`kind`（`junit`/`cycle`/`metrics`/`baseline`）、原始文件绝对 `path`、`sha256` 及对应 `source_sha256`；baseline 另固定原请求的 `request_path`/`request_sha256`。文件600、父目录700、普通单链接；不读取随意目录或环境日志。JUnit保留重复用例和跳过，诊断仅保存SHA；实体/DOCTYPE拒绝。未知执行需要对账；未知或混杂度量不能当零使用。
+
+`python -m ops.pi.proposals --request /私有/proposals.json` 默认只读；`--execute` 仅冻结宿主任务包并运行既有无网络固定checker，不调用模型。请求 `pi-proposal-batch-v1` 含 `batch_id`、`observation_path`/`observation_sha256`、全新 `root`、`baseline_environment`（docker/endpoint/daemon_id/checker_image_id/deadline_seconds）、`max_baselines`（1–20）、`deadline_seconds`（1–1800）和 `rules`（1–20）。规则固定 `rule_id`、`source_id`、`observation_id`、`package_request_path`/`package_request_sha256`、`priority`（0–9）和 `trigger`。`failure` 触发器只有 `kind`；`metric_threshold` 另含 `operator`（gt/lt）、`threshold` 和至少5的 `minimum_samples`。任务包、gold和任务范围由可信宿主提前准备；模型不生成gold或扩展权限。
+
+同 source/gold/files 的规则去重到一项候选并保留所有规则分母，最高优先级用于队列。只接受最新实际失败基线：绿色、错误、跳过、库存不一致、输入变化、超时或清理不完整均不合格。批次结束再检查早先候选；后来漂移会撤销资格。存在未知执行时整批不启动基线。观察数量、触发规则、去重项、基线调用和合格提案各有独立分母；“合格提案”只代表可进入原独立审查流程。
+
+`python -m ops.pi.proposal_admission --request /私有/admission.json` 默认只读；`--publish` 发布已完整独立封存的ACTUAL cycle到既有manager inbox，不启动管理器。请求 `pi-proposal-admission-v1` 只有 `proposal_path`/`proposal_sha256`、`proposal_id`、`cycle_path`/`cycle_sha256`、`task_id`、`inbox` 和 `schema`。发布重新检查原规则、源/gold、native基线和精确catalog，调用原cycle preflight核对独立审批、runtime与当前账本；没有自动签名或模型调用。所有角色隔离检查先于发布锁写入。先保存提案绑定，再原子发布普通单链接 `*.task.json`；消费者忽略 `*.proposal.json`。相同已发布清单只读幂等返回，`ready_rechecked=false` 不宣称消耗过的cycle仍可执行。管理器仍只允许一个当前就绪ACTUAL请求，后项须结算后重新独立封存。
+
+四种基线分支可用公开合成fixture复现，无模型请求：
+
+```sh
+.venv/bin/python -m ops.pi.tests.observation_evidence \
+  --output /绝对700父目录/全新证据目录 \
+  --docker /绝对路径/docker --endpoint unix:///绝对路径/docker.sock \
+  --daemon-id 实际daemonID --checker-image-id sha256:已固定checker镜像ID
+```
+
+种子JUnit是明确构造的合成观察，不能算生产发现；实际运行的checker分别验证失败、绿色和运行错误。再次真实付费接线仍须新身份、原账本新检查点和新独立审查，不能重放旧审批。
