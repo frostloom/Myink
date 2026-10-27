@@ -1,9 +1,30 @@
 {
   "schema": "pi-manager-acceptance-v1",
   "upstream_pi_core_modified": false,
+  "upstream_pi_version": "1.1.0",
+  "runtime_code_sha256": "2cdd59c9edcf20d4c913de95c5202afec0c6437373f6885b7f01d567ba0a55fc",
+  "manager_sha256": "629959d26495c60ee28c072568d4d72eb35e8626c94e1d4de966305a5830c101",
   "related_tests_passed": 54,
   "pi_tests_passed": 2716,
   "pi_tests_deselected": 19,
+  "node_scripts": [
+    {
+      "script": "controlled-tools.test.mjs",
+      "returncode": 0
+    },
+    {
+      "script": "pi-wire-guard.test.mjs",
+      "returncode": 0
+    },
+    {
+      "script": "pi-wire-history.test.mjs",
+      "returncode": 0
+    },
+    {
+      "script": "rejected-tool-feedback.test.mjs",
+      "returncode": 0
+    }
+  ],
   "independent_review": {
     "original_approved": false,
     "p1": 1,
@@ -11,15 +32,98 @@
     "author_tdd_fixes": 4
   },
   "simulation": {
+    "mode": "SIMULATED",
     "scenarios": 5,
     "independent_process_starts": 17,
     "restart_observations": 9,
     "extra_fixture_effects_on_restarts": 0,
-    "evidence_sha256": "2a270802687d29c69f114f61b45ee988d9a2e54d11674784c213c270366de976"
+    "evidence_sha256": "20bfb88ba63d799cf06a6a5d66c1954e11d21433943a9dd7ccfe5b666e78f584",
+    "collector_sha256": "0727db3252c5e19d29960c495efc15408831fca229ccd82c28fb337abfbf6da1"
   },
-  "real_execution_status": "in_progress",
+  "real": {
+    "mode": "ACTUAL",
+    "task_domain": "synthetic",
+    "tasks": [
+      {
+        "task_id": "benchmark-nfc",
+        "mode": "ACTUAL",
+        "task_domain": "synthetic",
+        "fixed_tests": 5,
+        "selection_attempts": 1,
+        "development_attempts": 5,
+        "known_cost_microyuan": 17833,
+        "candidate_sha256": "5cc9667f40399453da29e9e44cb90a978a36c32ef670cf6f3a133904871f774e",
+        "adopted": false
+      },
+      {
+        "task_id": "benchmark-casefold",
+        "mode": "ACTUAL",
+        "task_domain": "synthetic",
+        "fixed_tests": 5,
+        "selection_attempts": 1,
+        "development_attempts": 5,
+        "known_cost_microyuan": 18291,
+        "candidate_sha256": "7f81fde9f5d061f9d37930001845245e32c40a8679e04000199797951bd77c08",
+        "adopted": false
+      }
+    ],
+    "same_batch_tasks": 2,
+    "native_dispatch_claims": 2,
+    "independent_restart_processes": 5,
+    "extra_model_attempts_on_restarts": 0,
+    "extra_cost_on_restarts": 0,
+    "model_attempts": 12,
+    "known_cost_microyuan": 36124,
+    "new_unknown": 0,
+    "dispatch_timings": [
+      {
+        "task_id": "benchmark-casefold",
+        "status": "done",
+        "mode": "ACTUAL",
+        "elapsed_ms": 146165.62,
+        "measurement": "measured"
+      },
+      {
+        "task_id": "benchmark-nfc",
+        "status": "done",
+        "mode": "ACTUAL",
+        "elapsed_ms": 206535.098,
+        "measurement": "measured"
+      }
+    ],
+    "batch": {
+      "dispatched": 2,
+      "elapsed_ms": 688391.077,
+      "mode": "ACTUAL",
+      "reason": "batch_limit",
+      "status": "done",
+      "tasks": [
+        "benchmark-nfc",
+        "benchmark-casefold"
+      ]
+    }
+  },
+  "historical_unknown": 9,
+  "cumulative_model_records": 682,
+  "cumulative_known": 673,
+  "cumulative_known_microyuan": 4447054,
+  "original_history_unchanged": true,
+  "policy_closed_original": true,
+  "credential_unchanged": true,
+  "product_source_unchanged": true,
+  "owned_containers_absent": 8,
+  "owned_operations_absent": 8,
+  "benchmark_fixture_sha256": {
+    "ops/pi/tests/fixtures/manager_benchmarks/nfc/managed_names.py": "461ee13d024702e7bf85bef60fdea92a67c3a83a1f7d47b1e074674be732d568",
+    "ops/pi/tests/fixtures/manager_benchmarks/nfc/fixed.py": "7baebfb956f79564187c57c323ddc2c028276ad70b0630f4c4d93c5d0adc64a3",
+    "ops/pi/tests/fixtures/manager_benchmarks/casefold/managed_names.py": "392f6238dfbd41ec0f3221ca2e35dd22b8cbd11e8d5fde44f90cff1ca7dce75c",
+    "ops/pi/tests/fixtures/manager_benchmarks/casefold/fixed.py": "b23eeaff84ab1a382900fc6dbcd6163e1507fa68a06ce0243a898fe4a654162b"
+  },
   "paired_efficiency_improvement": null,
   "production_availability": null,
+  "production_long_run_verified": false,
+  "automatic_gold_generation": false,
+  "automatic_candidate_adoption": false,
   "merged_to_main": false,
   "deployed": false
 }
