@@ -223,7 +223,7 @@ def test_code_closure_rejects_unhashed_imports_and_bytecode(tmp_path,monkeypatch
 def test_entire_bind_source_rejects_extra_roots_and_host_sockets(tmp_path,monkeypatch,where):
     import socket
     import tempfile
-    with tempfile.TemporaryDirectory(prefix='pi-',dir='/private/tmp') as short:
+    with tempfile.TemporaryDirectory(prefix='pi-',dir=Path('/tmp').resolve()) as short:
         source,digest=source_fixture(Path(short),monkeypatch)
         assert api().verify_source(source,digest)['runtime_sha256']==digest
         if where=='root-file':

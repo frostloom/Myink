@@ -157,14 +157,14 @@ jobs:
           import xml.etree.ElementTree as ET
           report = Path(os.environ['PI_JUNIT_PATH'])
           def escaped(value):
-              return value.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A').replace(',', '%2C')
+              return value.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
           if report.is_file():
               for case in ET.parse(report).iter('testcase'):
                   for failure in case:
                       if failure.tag in ('failure', 'error'):
-                          title = case.get('classname', '') + '.' + case.get('name', '')
+                          title = escaped(case.get('classname', '') + '.' + case.get('name', '')).replace(',', '%2C')
                           detail = failure.text or failure.get('message', 'Unknown test failure')
-                          print(f'::error title={escaped(title)}::{escaped(detail)}')
+                          print(f'::error title={title}::{escaped(detail)}')
           else:
               print('::warning::Pi stopped before a JUnit report was created; inspect dependency or collection logs.')
           PYTHON

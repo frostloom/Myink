@@ -92,7 +92,7 @@ def config_file(tmp_path, monkeypatch):
              plan_path=write('plan.json',asdict(plan)),baseline_path=write('baseline.json',dict(
                  id='baseline',metric='coverage',config_hash='test',evidence_domain='synthetic',paired_groups=5)),
              test_path=write('test.py','synthetic'),test_cases=['fixed_development_tests.Case.test_one'],
-             docker='/bin/false',endpoint='unix:///tmp/docker.sock',daemon_id='synthetic',
+             docker=str(Path('/bin/false').resolve()),endpoint='unix:///tmp/docker.sock',daemon_id='synthetic',
              image_id='sha256:'+'0'*64,checker_image_id='sha256:'+'1'*64,
              max_requests=30,max_tools=64,deadline_seconds=900)
     for name in ('policy','credential','plan','baseline','test'):
