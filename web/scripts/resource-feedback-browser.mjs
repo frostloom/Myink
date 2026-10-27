@@ -57,6 +57,7 @@ const fixtures = new Map([
 for(const book of books){
  fixtures.set(`GET /api/v1/projects/${book.id}/settings`,()=>({style_profile:{},genre_pack:{},skill_pack:null,model_routes:{},model_connections:[],version:1}))
  fixtures.set(`GET /api/v1/projects/${book.id}/chapters`,()=>book.current_chapter?[{id:'ch',chapter_seq:1,title:'第一章',status:'confirmed',word_count:1000,summary:null}]:[])
+ fixtures.set(`GET /api/v1/projects/${book.id}/chapters/ch`,()=>({id:'ch',chapter_seq:1,title:'第一章',status:'confirmed',word_count:1000,summary:null,content:'任务完成后重新读取的正文。',version:1}))
  fixtures.set(`GET /api/v1/projects/${book.id}/tasks`,()=>book.id==='s'&&shortRunning?[{task_id:'short-task',task_type:'short_generate',status:'running',chapter_seq:null}]:book.current_chapter?[{task_id:'task',task_type:'chapter_generate',status:'done',chapter_seq:1}]:[])
  fixtures.set(`GET /api/v1/projects/${book.id}/writing-resources`,()=>snapshots.get(book.id)??(book.form==='long'?{...snapshot,selections:[...snapshot.selections,selectedResource(genreResource)]}:snapshot))
  fixtures.set(`PUT /api/v1/projects/${book.id}/writing-resources`,body=>{lastSelection=body.selections;const previous=snapshots.get(book.id)??snapshot;assert.equal(body.expected_revision,previous.revision);assert.ok(body.selections.every(item=>item.resource_id!=='genre'));const next={revision:previous.revision+1,configured:true,selections:body.selections.map(item=>({...snapshot.selections[0],...item}))};snapshots.set(book.id,next);return next})
@@ -79,6 +80,8 @@ const server = http.createServer(async (req,res)=>{
   if(url.pathname==='/api/v1/projects'&&projectDelay)await new Promise(resolve=>setTimeout(resolve,projectDelay))
   if(url.pathname.endsWith('/commit')||url.pathname.endsWith('/writing-resources/updates'))await new Promise(resolve=>setTimeout(resolve,600))
   if(url.pathname.endsWith('/messages')&&chatWait)await chatWait
+  // Keep the task read asynchronous so terminal UI must settle before navigation.
+  if(url.pathname==='/api/v1/tasks/short-task')await new Promise(resolve=>setTimeout(resolve,150))
   const status=url.pathname.endsWith('/dismiss')?dismissStatus:200
   res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(status===409?{detail:'version_conflict'}:fixture(body)));return
  }
@@ -167,6 +170,8 @@ try{
   assert.equal(await page.getByRole('link',{name:'写作资源',exact:true}).count(),0)
   assert.equal(await page.getByText('本书资源快照',{exact:true}).count(),0)
   shortRunning=false
+  await page.getByText('正文已生成，审稿记录待核实',{exact:true}).waitFor()
+  await page.waitForLoadState('networkidle')
   await page.goto(`${origin}/projects/l/settings`)
   await page.getByRole('region',{name:'本书题材',exact:true}).waitFor()
   assert.equal(await page.getByRole('button',{name:'查看资源更新',exact:true}).count(),0)
@@ -277,8 +282,10 @@ try{
   assert.equal(lastSelection.some(item=>item.resource_id==='writing'),false)
   assert.equal(lastSelection.some(item=>item.resource_id==='expression'),true)
   await generated
-  // Finish the admitted task's initial read before a full-document navigation.
+  // A network-idle window can precede task restoration after route mounting.
+  // Wait for the actual terminal UI before leaving this independent scenario;
   // WebKit reports pending fetches aborted by page.goto as access-control errors.
+  await page.getByText('正文已生成，审稿记录待核实',{exact:true}).waitFor()
   await page.waitForLoadState('networkidle')
   if(name==='mobile'){const rail=await page.getByRole('complementary').first().boundingBox();assert.ok(rail.height<85,'Mobile rail including resource action must remain a compact single row')}
   const shortRequests=receipt.requests.slice(shortStart)
