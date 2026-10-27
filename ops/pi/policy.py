@@ -57,7 +57,7 @@ def load_policy(path):
     if not isinstance(data, dict) or set(data) != {f.name for f in fields(Policy)}:
         raise ValueError('unsupported policy schema')
     p = Policy(**data)
-    if type(p.schema_version) is not int or p.schema_version not in (1, 2, 3):
+    if type(p.schema_version) is not int or p.schema_version not in (1, 2, 3, 4):
         raise ValueError('unsupported policy version')
     for key in ('live_enabled', 'server_daily_enabled', 'input_bound_calibrated'):
         if type(getattr(p, key)) is not bool:
@@ -69,11 +69,13 @@ def load_policy(path):
             or (p.schema_version == 2 and (p.max_attempts is not None
                 or p.budget_microyuan != 20000000 or p.server_daily_enabled))
             or (p.schema_version == 3 and (p.max_attempts is not None
-                or p.budget_microyuan is not None or p.server_daily_enabled))):
+                or p.budget_microyuan is not None or p.server_daily_enabled))
+            or (p.schema_version == 4 and (p.max_attempts is not None
+                or type(p.budget_microyuan) is not int or p.budget_microyuan != 50000000 or p.server_daily_enabled))):
         raise ValueError('invalid policy attempt limit')
     for key, maximum in limits.items():
         value = getattr(p, key)
-        if key == 'budget_microyuan' and p.schema_version == 3:
+        if key == 'budget_microyuan' and p.schema_version in (3,4):
             continue
         if type(value) is not int or not 0 < value <= maximum:
             raise ValueError('invalid policy limit')

@@ -23,3 +23,9 @@ candidate and is never model-editable. Only a fresh isolated checker may execute
 Pi candidates. These small fixtures do not represent production tasks, automatic
 adoption or upstream Pi core changes. Complete denominators and fees belong in
 the dated acceptance records, not inferred from fixture source alone.
+
+The finite50 acceptance revision also checks that order-sensitive inputs remain
+unchanged and that numeric outputs have exactly the built-in int type. Case
+identities remain five per task; historical gold bytes remain pinned to their
+original commits/private evidence. Isolated authored negative controls accepted
+by the old gold are rejected by these assertions before any new model call.

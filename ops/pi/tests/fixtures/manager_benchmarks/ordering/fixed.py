@@ -8,5 +8,11 @@ class OrderingTests(unittest.TestCase):
         values=['a','a']
         self.assertEqual(stable_unique(values), ['a'])
         self.assertEqual(values, ['a','a'])
-    def test_first_occurrence(self): self.assertEqual(stable_unique(['b','a','b']), ['b','a'])
-    def test_distinct_order(self): self.assertEqual(stable_unique(['z','x','y']), ['z','x','y'])
+    def test_first_occurrence(self):
+        values=['b','a','b']
+        self.assertEqual(stable_unique(values), ['b','a'])
+        self.assertEqual(values, ['b','a','b'])
+    def test_distinct_order(self):
+        values=['z','x','y']
+        self.assertEqual(stable_unique(values), ['z','x','y'])
+        self.assertEqual(values, ['z','x','y'])

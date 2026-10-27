@@ -21,10 +21,11 @@ def _scope_identity(db):
     if (original != dict(max_attempts=100, budget_microyuan=10000000)
             or _effective_trial_limits(db, original) not in (dict(
                 max_attempts=None, budget_microyuan=20000000, phase_allocations=None),
-                dict(max_attempts=None, budget_microyuan=None, phase_allocations=None))):
+                dict(max_attempts=None, budget_microyuan=None, phase_allocations=None),
+                dict(max_attempts=None, budget_microyuan=50000000, phase_allocations=None))):
         raise BudgetDenied('analysis requires original approved fee-only scope')
     rows = db.execute("SELECT * FROM operations WHERE operation_id='model-scope:local-trial-1' "
-                      "OR kind IN ('model-budget-amendment','model-budget-amendment-v2','model-budget-amendment-v3') "
+                      "OR kind IN ('model-budget-amendment','model-budget-amendment-v2','model-budget-amendment-v3','model-budget-amendment-v4') "
                       'ORDER BY operation_id').fetchall()
     return _hash([dict(row) for row in rows])
 
@@ -47,7 +48,8 @@ def bind_run_budget(run, policy, *, cap_microyuan, deadline):
             or type(deadline) not in (int, float) or not math.isfinite(deadline)):
         raise BudgetDenied('explicit run fee policy and absolute deadline required')
     if (policy.max_attempts is not None or policy.server_daily_enabled
-            or not (uncapped or (policy.schema_version == 2 and policy.budget_microyuan == 20000000))):
+            or not (uncapped or (policy.schema_version == 2 and policy.budget_microyuan == 20000000)
+                or (policy.schema_version == 4 and policy.budget_microyuan == 50000000))):
         raise BudgetDenied('frozen fee-only policy required')
     payload = dict(identity=run._identity, cap_microyuan=cap_microyuan,
                    deadline=deadline, policy=asdict(policy))

@@ -231,7 +231,7 @@ def _validate_amendment_v3(payload):
         raise BudgetDenied('invalid explicit no-fee-cap approval')
 
 
-def _effective_trial_limits(connection, original):
+def _uncapped_trial_limits(connection, original):
     limits = _fee_only_trial_limits(connection, original)
     rows = connection.execute("SELECT * FROM operations WHERE kind='model-budget-amendment-v3'").fetchall()
     if not rows:
@@ -297,6 +297,75 @@ def amend_local_trial_budget_v3(ledger: Ledger, scope_id: str, *, operation_id: 
         return Ledger._record(db.execute('SELECT * FROM operations WHERE operation_id=?',(operation_id,)).fetchone())
 
 
+def _validate_amendment_v4(payload):
+    expected = dict(amendment_version=4, scope_id='local-trial-1',
+        expected_effective_microyuan=None, budget_microyuan=50000000,
+        max_attempts=None, phase_allocations=None, approved=True)
+    if (set(payload) != set(expected) | {'authorization_reference'}
+            or any(type(payload.get(k)) is not type(v) or payload.get(k) != v for k,v in expected.items())
+            or not _trusted_reference(payload.get('authorization_reference'), 512)):
+        raise BudgetDenied('invalid explicit finite50 approval')
+
+
+def _effective_trial_limits(connection, original):
+    limits = _uncapped_trial_limits(connection, original)
+    rows = connection.execute("SELECT * FROM operations WHERE kind='model-budget-amendment-v4'").fetchall()
+    identities={row['operation_id'] for row in rows};actual=[]
+    for event in connection.execute("SELECT kind,payload FROM events WHERE kind IN ('intent','receipt') ORDER BY id"):
+        data=Ledger._decode(event['payload']);evidence=data.get('evidence')
+        declared=(event['kind']=='intent' and data.get('kind')=='model-budget-amendment-v4') or (
+            event['kind']=='receipt' and isinstance(evidence,dict) and evidence.get('amendment_version') in (4,'4'))
+        if declared or data.get('operation_id') in identities:actual.append((event['kind'],data))
+    if not rows:
+        if actual:raise BudgetDenied('orphan finite50 approval events')
+        return limits
+    if len(rows) != 1 or limits != dict(max_attempts=None, budget_microyuan=None, phase_allocations=None):
+        raise BudgetDenied('invalid finite50 approval history')
+    row = rows[0];payload = Ledger._decode(row['payload']);_validate_amendment_v4(payload)
+    evidence = _amendment_v2_evidence(payload)
+    if (not _trusted_reference(row['operation_id'],128) or row['schema_version'] != 1
+            or row['status'] != 'done' or row['evidence'] is None
+            or _json(Ledger._decode(row['evidence'])) != _json(evidence)):
+        raise BudgetDenied('finite50 approval receipt mismatch')
+    expected = [
+        ('intent',dict(operation_id=row['operation_id'],kind='model-budget-amendment-v4',payload=payload,schema_version=1)),
+        ('receipt',dict(operation_id=row['operation_id'],status='done',evidence=evidence,schema_version=1))]
+    if [(k,_json(v)) for k,v in actual] != [(k,_json(v)) for k,v in expected]:
+        raise BudgetDenied('finite50 approval audit mismatch')
+    return dict(max_attempts=None,budget_microyuan=50000000,phase_allocations=None)
+
+
+def amend_local_trial_budget_v4(ledger: Ledger, scope_id: str, *, operation_id: str,
+        authorization_reference: str, approved: bool) -> Record:
+    """Append explicit finite50 authority, preserving prior unlimited history and holds."""
+    payload=dict(amendment_version=4,scope_id=scope_id,expected_effective_microyuan=None,
+        budget_microyuan=50000000,max_attempts=None,phase_allocations=None,
+        authorization_reference=authorization_reference,approved=approved)
+    _validate_amendment_v4(payload)
+    if not _trusted_reference(operation_id,128):raise BudgetDenied('invalid finite50 approval identity')
+    encoded=_json(payload);evidence=_amendment_v2_evidence(payload)
+    with ledger.transaction() as db:
+        original=_scope_payload(db.execute('SELECT * FROM operations WHERE operation_id=?',('model-scope:'+scope_id,)).fetchone())
+        limits=_effective_trial_limits(db,original)
+        existing=db.execute('SELECT * FROM operations WHERE operation_id=?',(operation_id,)).fetchone()
+        if existing is not None:
+            if existing['kind']!='model-budget-amendment-v4' or existing['payload']!=encoded:
+                raise OperationConflict('finite50 approval identity conflict')
+            return Ledger._record(existing)
+        if limits['budget_microyuan']==50000000:raise OperationConflict('finite50 approval already recorded')
+        if limits!=dict(max_attempts=None,budget_microyuan=None,phase_allocations=None):
+            raise BudgetDenied('finite50 approval requires original uncapped authority')
+        if db.execute("SELECT 1 FROM operations WHERE status='pending' AND kind IN ('model-attempt','phase-admission')").fetchone():
+            raise BudgetDenied('settle active transports before finite50 approval')
+        if _totals(db,scope_id)[1]>50000000:raise BudgetDenied('existing usage exceeds finite50 ceiling')
+        db.execute("INSERT INTO operations VALUES (?,'model-budget-amendment-v4',?,'done',?,1)",(operation_id,encoded,_json(evidence)))
+        for kind,data in [
+            ('intent',dict(operation_id=operation_id,kind='model-budget-amendment-v4',payload=payload,schema_version=1)),
+            ('receipt',dict(operation_id=operation_id,status='done',evidence=evidence,schema_version=1))]:
+            db.execute('INSERT INTO events(kind,payload,schema_version) VALUES (?,?,1)',(kind,_json(data)))
+        return Ledger._record(db.execute('SELECT * FROM operations WHERE operation_id=?',(operation_id,)).fetchone())
+
+
 def effective_limits_in_connection(connection, scope_id='local-trial-1'):
     """SELECT-only limits for a host's existing snapshot transaction; no new scope."""
     if scope_id != 'local-trial-1':
@@ -304,7 +373,7 @@ def effective_limits_in_connection(connection, scope_id='local-trial-1'):
     row = connection.execute('SELECT * FROM operations WHERE operation_id=?',
                              ('model-scope:' + scope_id,)).fetchone()
     if row is None:
-        if connection.execute("SELECT 1 FROM operations WHERE kind IN ('model-budget-amendment','model-budget-amendment-v2','model-budget-amendment-v3')").fetchone():
+        if connection.execute("SELECT 1 FROM operations WHERE kind IN ('model-budget-amendment','model-budget-amendment-v2','model-budget-amendment-v3','model-budget-amendment-v4')").fetchone():
             raise BudgetDenied('amendment without original scope')
         return dict(max_attempts=100, budget_microyuan=10000000,
                     phase_allocations=dict(TRIAL_PHASE_ALLOCATIONS))
@@ -371,7 +440,9 @@ def _policy_attempt_limit(policy):
     if policy.max_attempts is None:
         if (policy.server_daily_enabled or not (
                 (policy.schema_version == 2 and policy.budget_microyuan == 20000000)
-                or (policy.schema_version == 3 and policy.budget_microyuan is None))):
+                or (policy.schema_version == 3 and policy.budget_microyuan is None)
+                or (type(policy.schema_version) is int and policy.schema_version == 4
+                    and type(policy.budget_microyuan) is int and policy.budget_microyuan == 50000000))):
             raise BudgetDenied('explicit local fee-only policy required')
         return None
     if type(policy.max_attempts) is not int or policy.max_attempts <= 0 or policy.schema_version != 1:
@@ -414,7 +485,7 @@ def reserve(ledger: Ledger, scope_id: str, request: Record, policy: Policy, *, a
         attempt_bounds = [v for v in (policy_attempts, limits['max_attempts']) if v is not None]
         count, used = _totals(connection, scope_id)
         fee_bounds = [v for v in (policy.budget_microyuan, limits['budget_microyuan']) if v is not None]
-        if policy.schema_version != 3:
+        if policy.schema_version not in (3,4):
             fee_bounds.append(20000000)
         if (attempt_bounds and count >= min(attempt_bounds)) or (fee_bounds and used + amount > min(fee_bounds)):
             raise BudgetDenied('trial budget exhausted')

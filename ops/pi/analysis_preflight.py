@@ -92,7 +92,8 @@ def audit(ledger_path, policy_path, *, expected_scope_sha256, expected_policy_sh
         if (policy_sha != expected_policy_sha256 or policy.max_attempts is not None
                 or policy.server_daily_enabled or not (
                     (policy.schema_version == 2 and policy.budget_microyuan == 20000000)
-                    or (policy.schema_version == 3 and policy.budget_microyuan is None))):
+                    or (policy.schema_version == 3 and policy.budget_microyuan is None)
+                    or (policy.schema_version == 4 and policy.budget_microyuan == 50000000))):
             raise LedgerBlocked('policy identity mismatch')
         if credential_path is not None:
             load_credentials(credential_path, policy)
