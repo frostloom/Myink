@@ -74,6 +74,8 @@ class Limits:
         require(type(completion_reserve) is int and completion_reserve >= 0
             and (not completion_reserve or completion_reserve >= 4 and tools >= completion_reserve + 4),
             'completion RPC reserve requires sufficient total budget')
+        require(not completion_reserve or type(requests) is int and requests >= 7,
+            'completion model budget requires at least7 requests')
         self.completion_reserve=completion_reserve
         self.completion_only=False
 
@@ -83,16 +85,19 @@ class Limits:
         if not self.completion_reserve:
             return
         remaining=self.maximum['tool']-self.count['tool']
-        entering=not self.completion_only and remaining <= self.completion_reserve + 2
+        model_remaining=self.maximum['model']-self.count['model']
+        entering=not self.completion_only and (
+            remaining <= self.completion_reserve + 2 or model_remaining <= 4)
         self.completion_only=self.completion_only or entering
         if not self.completion_only:
             return
         if name=='read_source':
-            require(entering and remaining >= self.completion_reserve + 2,
+            require(entering and remaining >= self.completion_reserve + 2 and model_remaining >= 4,
                     'completion budget reserved; further source reads stopped')
             return
         needed={'candidate_status':2,'apply_patch':6,'run_check':4}.get(name)
-        require(needed is not None and remaining >= needed
+        model_needed={'candidate_status':1,'apply_patch':3,'run_check':2}.get(name)
+        require(needed is not None and remaining >= needed and model_remaining >= model_needed
             and (name!='run_check' or isinstance(args,dict) and args.get('check_id')=='unit'),
             'completion budget insufficient for tool and required followups')
 
@@ -402,6 +407,8 @@ def execute(config_path,*,transport=None,cancel=None,expected_authorization_sha2
                     'Source text JSON is capped at 4096 ASCII bytes per read and 12288 cumulatively; request focused lines. '
                     'Tool and verification RPCs share the configured total. When exactly 10 RPCs remain, new source reads stop after one '
                     'authenticated warning, preserving 8 RPCs for status/patch/unit/final status; repeated reads terminate. '
+                    'When four model requests remain, the same source-read stop applies even with abundant RPCs. '
+                    'Finishing tools must also leave 3/2/1 future model requests after patch/unit/status respectively. '
                     'No shell or test edits. Limits: '+str(c['max_requests'])+' model requests, '
                     +str(c['max_tools'])+' shared tool/verification RPCs, '+str(c['deadline_seconds'])+' seconds.\n'
                     +json.dumps(dict(plan=asdict(plan),plan_hash=plan.plan_hash,base=cap.base,source_index=locations),ensure_ascii=True,separators=(',',':')))

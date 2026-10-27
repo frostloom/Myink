@@ -142,6 +142,8 @@ def _prepare(config_path, *, review_required):
             raise ValueError('bounded development limits required')
     if c['max_tools'] < 12:
         raise ValueError('development completion RPC budget requires at least12')
+    if c['max_requests'] < 7:
+        raise ValueError('development completion model budget requires at least7 requests')
     for key in ('image_id','checker_image_id'):
         if not isinstance(c[key],str) or not re.fullmatch(r'sha256:[0-9a-f]{64}',c[key]):
             raise ValueError('immutable image required')
