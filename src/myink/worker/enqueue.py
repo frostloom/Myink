@@ -69,6 +69,33 @@ class EnqueueUnavailable(Exception):
 def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
             quota_n: int, cost_est: float, priority: int,
             platform_chapter_max: int = 0) -> dict:
+    # Keep selection PUT and admission snapshot capture in a single order. The
+    # existing Redis inflight reservation covers the interval before worker Task
+    # materialization; definite publish failures retain existing compensation.
+    from myink.db import tenant_session
+    from myink.models import Project
+    from myink.task_budget import snapshot_budget
+    from myink.platform_readiness import require_operation_ready
+
+    # These helpers open their own sessions; finish them before acquiring the
+    # project lock so admission can operate even with a single pooled connection.
+    require_operation_ready(task_type, user_id)
+    try:
+        budget_snapshot = snapshot_budget(user_id)
+    except Exception as exc:
+        raise EnqueueUnavailable('task_budget_snapshot') from exc
+    with tenant_session(project_id) as db:
+        project = db.get(Project, uuid.UUID(project_id), with_for_update=True)
+        if project is None:
+            raise ValueError('Project does not exist')
+        return _enqueue(db=db, budget_snapshot=budget_snapshot, user_id=user_id, project_id=project_id, task_type=task_type,
+                        payload=payload, quota_n=quota_n, cost_est=cost_est,
+                        priority=priority, platform_chapter_max=platform_chapter_max)
+
+
+def _enqueue(*, db, budget_snapshot: dict, user_id: str, project_id: str, task_type: str, payload: dict,
+            quota_n: int, cost_est: float, priority: int,
+            platform_chapter_max: int = 0) -> dict:
     """闸门 + 入队。返回 `{"task_id", "trace_id", "status"}`（路由侧回 202）。
 
     顺序不可换：闸门 → 归属登记 → 发布 → SSE 种子帧。
@@ -82,25 +109,15 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
     `platform_chapter_max` 默认 0 = 不限，**其余入队点（短篇、批次外调用、续跑）逐字节不变**；
     只有长篇生成的两个入口会传真实值。
     """
-    from myink.task_budget import snapshot_budget
-    from myink.platform_readiness import require_operation_ready
-
-    require_operation_ready(task_type, user_id)
-    from myink.db import tenant_session
     from myink.writing_resources import capture_task_resources
     from myink.writing_resource_runtime import current_resources
     payload = dict(payload)
     if "writing_resources" not in payload:
         inherited = current_resources()
         if inherited is None:
-            with tenant_session(project_id) as db:
-                inherited = capture_task_resources(db, project_id)
+            inherited = capture_task_resources(db, project_id)
         payload["writing_resources"] = inherited
 
-    try:
-        budget_snapshot = snapshot_budget(user_id)
-    except Exception as exc:
-        raise EnqueueUnavailable('task_budget_snapshot') from exc
     today = date.today().isoformat()
     task_id = str(uuid.uuid4())
     keys = [

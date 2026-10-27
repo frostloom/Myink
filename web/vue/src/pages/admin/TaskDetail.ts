@@ -1,7 +1,7 @@
 /* eslint-disable vue/one-component-per-file -- Native Vue render helpers stay with their owning page. */
 import type { PropType } from 'vue';
 import { computed, defineComponent, Fragment, h as renderNode, shallowRef } from 'vue';
-import { useRoute } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 import { adminApi, type AdminRun, type AdminTaskDetail, type AdminPage as PageResult } from "../../../../src/lib/adminApi";
 import { nodeLabel, taskChapterLabel, taskStatusLabel, taskTypeLabel } from "../../../../src/lib/labels";
 import { asRecord } from "../../../../src/lib/snapshotView";
@@ -9,13 +9,14 @@ import layout from "../../../../src/pages/admin/ExecutionDetail.module.css";
 import styles from "../../../../src/pages/AdminPage.module.css";
 import { useAdminContext } from './context';
 import { Disclosure, ExecutionError } from "./ExecutionContent";
-import { RunDetailView } from "./RunDetail";
+import { RunDetailDialog } from "./RunDetail";
 import { CapturedView, DetailPage, formatCost, formatDate, formatDuration, LoadState, PAGE_SIZE, Pagination, RefreshButton, useResource } from "./shared";
 export const TaskDetailView = defineComponent((props: {
     token: string;
     taskId: string;
     onForbidden: () => void;
 }) => {
+    const route = useRoute();
     const offset = shallowRef(0);
     const setOffset = (next: typeof offset.value | ((old: typeof offset.value) => typeof offset.value)) => { offset.value = typeof next === "function" ? next(offset.value) : next; };
     const runId = shallowRef<number | null>(null);
@@ -58,6 +59,9 @@ export const TaskDetailView = defineComponent((props: {
                                         typeof payload.value?.chapter_count === "number" ? `${payload.value.chapter_count} 章` : taskChapterLabel(value.value), typeof payload.value?.chars_per_chapter === "number" ? ` · 每章 ${payload.value.chars_per_chapter} 字` : ""
                                     ])
                                 ])
+                            ]), renderNode("nav", { class: styles.relatedLinks, 'aria-label': '任务关联记录' }, [
+                                renderNode(RouterLink, { to: { path: `/admin/projects/${value.value.project_id}`, query: { returnTo: route.fullPath } }, class: 'btn btn-quiet' }, { default: () => '查看作品' }),
+                                renderNode(RouterLink, { to: { path: `/admin/users/${value.value.user_id}`, query: { returnTo: route.fullPath } }, class: 'btn btn-quiet' }, { default: () => '查看账号' }),
                             ]), renderNode("p", { "class": layout.muted }, [
                                 "创建于 ", formatDate(value.value.created_at), " · 更新于 ", formatDate(value.value.updated_at)
                             ]), Boolean(value.value.error.data) && renderNode(ExecutionError, { "value": value.value.error, "label": "任务错误" })
@@ -70,7 +74,7 @@ export const TaskDetailView = defineComponent((props: {
                                     "本页 ", items.length, " 次调用"
                                 ])
                             ]), renderNode("div", { "class": layout.calls }, [items.sort((a: AdminRun, b: AdminRun) => Date.parse(a.created_at) - Date.parse(b.created_at) || a.id - b.id).map((run: AdminRun) => renderNode("div", { "key": run.id }, [
-                                    renderNode("button", { "type": "button", "class": layout.call, "aria-label": `查看节点 ${run.node} #${run.id}`, "aria-expanded": runId.value === run.id, "onClick": () => setRunId(runId.value === run.id ? null : run.id) }, [
+                                    renderNode("button", { "type": "button", "class": layout.call, "aria-label": `查看节点 ${run.node} #${run.id}`, "aria-expanded": runId.value === run.id, "onClick": (event: MouseEvent) => { (event.currentTarget as HTMLButtonElement).focus({ preventScroll: true }); setRunId(runId.value === run.id ? null : run.id); } }, [
                                         renderNode("span", { "class": layout.callMain }, [
                                             renderNode("strong", {}, [run.model_id ?? "未记录模型"]), renderNode("span", { "class": layout.callMeta }, [
                                                 renderNode("span", {}, [
@@ -84,7 +88,7 @@ export const TaskDetailView = defineComponent((props: {
                                                 "预估 ", formatCost(run.cost_est)
                                             ]), renderNode("span", {}, [runId.value === run.id ? "收起" : "查看详情"])
                                         ])
-                                    ]), runId.value === run.id && renderNode(RunDetailView, { "token": props.token, "runId": run.id, "onForbidden": props.onForbidden })
+                                    ]), runId.value === run.id && renderNode(RunDetailDialog, { "token": props.token, "runId": run.id, "onForbidden": props.onForbidden, "onClose": () => setRunId(null) })
                                 ]))])
                         ])), runs.data && runs.data.total > PAGE_SIZE && renderNode(Pagination, { "total": runs.data.total, "offset": offset.value, "onChange": (next: number) => { setRunId(null); setOffset(next); } })] })
             ]), value.value && renderNode("section", { "class": `panel ${styles.detail}` }, [

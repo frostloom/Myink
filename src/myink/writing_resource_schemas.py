@@ -129,6 +129,17 @@ class UpdateResource(BoundedBody):
     body: dict
     status: Literal['draft', 'archived'] | None = None
 
+class CopyPlatform(BoundedBody):
+    source_resource_id: str = Field(min_length=1, max_length=160)
+    target_generation: int = Field(ge=1)
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    body: dict | None = None
+
+class SyncPersonal(Strict):
+    expected_generation: int = Field(ge=1)
+    target_generation: int = Field(ge=1)
+    acknowledge_overwrite: bool = Field(strict=True)
+
 class Publish(Strict):
     expected_generation: int = Field(ge=0)
     note: str = Field(default='', max_length=4000)
@@ -162,6 +173,8 @@ class AdoptBody(DismissBody):
     expected_revision: int = Field(ge=0)
 
 class ResourceOut(Strict):
+    source_resource_id: str | None = None
+    source_generation: int | None = None
     id: str
     name: str
     kind: Kind

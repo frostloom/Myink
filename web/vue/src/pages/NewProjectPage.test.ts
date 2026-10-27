@@ -1,16 +1,24 @@
+/* eslint-disable vue/one-component-per-file -- Router and resource-dialog test harnesses. */
 // @vitest-environment jsdom
 import {  cleanup, fireEvent, render, screen, waitFor } from '@testing-library/vue'
 import { createMemoryHistory, createRouter, RouterView, useRouter as currentRouter } from 'vue-router'
 import { defineComponent, h, ref } from 'vue'
 const act = async (fn: () => unknown) => { await fn(); await Promise.resolve() }
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import NewProjectPage from './NewProjectPage.vue'
 import { api } from '../../../src/lib/api'
+import { writingResources as writingResourcesApi } from '../../../src/lib/writingResources'
 import { emptyFields } from '../../../src/lib/genrePacks'
 import { styleLibraryApi } from '../../../src/lib/styleLibraryApi'
 import type { OutlineDraft, ProjectCreation } from '../../../src/types'
 
 const creationStatus = ref('authenticated')
+vi.mock('../../../src/lib/writingResources', () => ({ writingResources: { snapshot: vi.fn(), select: vi.fn() } }))
+vi.mock('../components/CreationResourcesDialog.vue', () => ({ default: defineComponent({ props: { busy: Boolean, error: {type: String, default: ''} }, emits: ['confirm', 'close'], setup(props, { emit }) { return () => h('div', { role: 'dialog', 'aria-label': '选择写作资源' }, [props.error && h('p', { role: 'alert' }, props.error), h('button', { disabled: props.busy, onClick: () => emit('confirm', [{ origin: 'platform', resource_id: 'style-1' }]) }, '确认资源并创建作品'), h('button', { disabled: props.busy, onClick: () => emit('close') }, '取消资源选择')]) } }) }))
+beforeEach(() => {
+  vi.mocked(writingResourcesApi.snapshot).mockResolvedValue({ revision: 4, configured: false, selections: [] })
+  vi.mocked(writingResourcesApi.select).mockResolvedValue({ revision: 5, configured: true, selections: [] })
+})
 vi.mock('../authContext', () => ({ useAuth: () => ({ session: ref(null), status: creationStatus, logout: vi.fn() }) }))
 vi.mock('../components/RankingsPanel.vue', () => ({ default: { render: () => null } }))
 vi.mock('../components/ProjectRail.vue', () => ({ default: { render: () => null } }))
@@ -39,6 +47,7 @@ async function renderPage(initialEntry = '/projects/new') {
     { path: '/projects/new', component: page },
     { path: '/long/new', component: NewProjectPage, props: { form: 'long' } },
     { path: '/short/new', component: NewProjectPage, props: { form: 'short' } },
+    { path: '/projects/:id/resources', component: { render: () => h('div', '资源页') } },
     { path: '/projects/:id', component: { render: () => h('div', '工作台') } },
     { path: '/long', component: { render: () => h('div', '长篇库') } },
   ] })
@@ -61,7 +70,7 @@ it('restores an unfinished book without creating a duplicate or exposing a skip 
   expect(await screen.findByDisplayValue('我的草稿')).toBeTruthy()
   expect(screen.getByDisplayValue('尚未写完的创作简报')).toBeTruthy()
   expect(screen.queryByRole('button', { name: /暂不规划/ })).toBeNull()
-  expect((screen.getByRole('button', { name: '作品草稿已保存' }) as HTMLButtonElement).disabled).toBe(true)
+  expect((screen.getByRole('button', { name: '作品草稿已保存', hidden: true }) as HTMLButtonElement).disabled).toBe(true)
   expect(api.createProject).not.toHaveBeenCalled()
 })
 
@@ -147,7 +156,7 @@ it('keeps creation locked until both proposals finish and never claims degraded 
   await fireEvent.click(screen.getByRole('button', { name: '创建作品' }))
   await waitFor(() => expect(api.outlineDraft).toHaveBeenCalledTimes(1))
   expect((screen.getByRole('button', { name: /作品草稿已保存/ }) as HTMLButtonElement).disabled).toBe(true)
-  expect((screen.getByRole('button', { name: /重新生成草稿/ }) as HTMLButtonElement).disabled).toBe(true)
+  expect((screen.getByRole('button', { name: /重新生成草稿/, hidden: true }) as HTMLButtonElement).disabled).toBe(true)
   finishOutline({ outline: { objective: '', volumes: [] }, error: '模型不可用' })
   expect(await screen.findByText(/草稿生成未全部完成/)).toBeTruthy()
   expect(screen.queryByText('作品已创建，设定与整书大纲草稿已生成，可编辑后确认')).toBeNull()
@@ -278,7 +287,8 @@ it('edits and confirms the short plan chapter by chapter', async () => {
   expect(screen.queryByText('+ 本卷加一段')).toBeNull()
 
   await fireEvent.input(screen.getByLabelText('第 2 章 · 本章目标'), { target: { value: '下船离开' } })
-  await fireEvent.click(screen.getByRole('button', { name: '仅确认大纲并进入' }))
+  await fireEvent.click(screen.getByRole('button', { name: '选择资源并完成建书' }))
+  await fireEvent.click(screen.getByRole('button', { name: '确认资源并创建作品' }))
 
   await waitFor(() => expect(api.confirmOutline).toHaveBeenCalledTimes(1))
   const body = vi.mocked(api.confirmOutline).mock.calls[0][1]
@@ -501,4 +511,74 @@ it('keeps a creation brief on cancelled navigation and native unload, including 
   await router.push('/long'); expect(router.currentRoute.value.path).toBe('/long/new')
   expect(confirm).toHaveBeenCalledTimes(2)
   confirm.mockReturnValue(true); await router.push('/long'); expect(router.currentRoute.value.path).toBe('/long')
+})
+
+const longDraft = () => ({project:{id:'long-id',title:'长篇',form:'long',genre:'悬疑',current_chapter:0,target_words:3000,creation_status:'setup_confirmed'},context:{premise:'寻找真相',setup_draft:{world_rules:{rule:'规则'}},outline_draft:{objective:'查清真相',volumes:[{volume_seq:1,title:'第一卷',theme:'追寻',goal:'找到线索',chapter_start:1,chapter_end:20,stages:[]}]}}} as ProjectCreation)
+it('requires the resources dialog and CAS selection before finishing a long book', async () => {
+ vi.mocked(api.getCreation).mockResolvedValue(longDraft())
+ vi.mocked(api.confirmSetup).mockResolvedValue({} as never)
+ vi.mocked(api.confirmOutline).mockResolvedValue({outline:null})
+ const {router}=await renderPage('/long/new?draft=long-id')
+ await fireEvent.click(await screen.findByRole('button',{name:'选择资源并完成建书'}))
+ expect(screen.getByRole('dialog', {name:'选择写作资源'})).toBeTruthy()
+ expect(api.confirmOutline).not.toHaveBeenCalled()
+ await fireEvent.click(screen.getByRole('button',{name:'确认资源并创建作品'}))
+ await waitFor(()=>expect(router.currentRoute.value.path).toBe('/projects/long-id'))
+ expect(writingResourcesApi.select).toHaveBeenCalledWith('long-id',4,[{origin:'platform',resource_id:'style-1'}])
+ expect(vi.mocked(writingResourcesApi.select).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(api.confirmOutline).mock.invocationCallOrder[0])
+ expect(router.options.history.state.beginShortWriting).toBeUndefined()
+})
+it('keeps the same draft and all content when resource selection fails or is cancelled', async () => {
+ vi.mocked(api.getCreation).mockResolvedValue(longDraft())
+ vi.mocked(writingResourcesApi.select).mockRejectedValueOnce(new Error('conflict'))
+ const {router}=await renderPage('/long/new?draft=long-id')
+ await fireEvent.click(await screen.findByRole('button',{name:'选择资源并完成建书'}))
+ await fireEvent.click(screen.getByRole('button',{name:'确认资源并创建作品'}))
+ expect(await screen.findByRole('alert')).toBeTruthy()
+ expect(api.confirmOutline).not.toHaveBeenCalled()
+ await fireEvent.click(screen.getByRole('button',{name:'取消资源选择'}))
+ expect(router.currentRoute.value.fullPath).toBe('/long/new?draft=long-id')
+ expect(screen.getByDisplayValue('查清真相')).toBeTruthy()
+ expect(api.createProject).not.toHaveBeenCalled()
+})
+it('shows one long-book step, preserves edited setup when returning, and scrolls each step to top', async () => {
+ vi.mocked(api.getCreation).mockResolvedValue({...longDraft(),project:{...longDraft().project,creation_status:'draft'}})
+ vi.mocked(api.confirmSetup).mockResolvedValue({} as never)
+ await renderPage('/long/new?draft=long-id')
+ expect(await screen.findByRole('heading',{name:'② 设定骨架草稿'})).toBeTruthy()
+ expect(screen.queryByRole('heading',{name:'① 作品信息'})).toBeNull()
+ expect(screen.queryByRole('heading',{name:'③ 整书大纲'})).toBeNull()
+ const field=screen.getByDisplayValue('rule：规则')
+ await fireEvent.input(field,{target:{value:'rule：保留修改'}})
+ const container=screen.getByRole('main').parentElement!
+ container.scrollTop=500
+ await fireEvent.click(screen.getByRole('button',{name:'确认设定，下一步'}))
+ expect(await screen.findByRole('heading',{name:'③ 整书大纲'})).toBeTruthy()
+ await waitFor(()=>expect(container.scrollTop).toBe(0))
+ await fireEvent.click(screen.getByRole('button',{name:'上一步'}))
+ expect(await screen.findByDisplayValue('rule：保留修改')).toBeTruthy()
+})
+it('keeps generation failures visible when reviewing another long-book step', async () => {
+ vi.mocked(api.getCreation).mockResolvedValue({...longDraft(),context:{...longDraft().context,setup_error:'设定模型故障'}})
+ await renderPage('/long/new?draft=long-id')
+ expect(await screen.findByRole('heading',{name:'③ 整书大纲'})).toBeTruthy()
+ expect(screen.getByRole('alert').textContent).toContain('设定模型故障')
+})
+
+it('keeps a visible wait while the created book is still generating its setup and outline', async () => {
+ let failSetup!: (reason: Error) => void
+ let failOutline!: (reason: Error) => void
+ vi.mocked(api.createProject).mockResolvedValue({id:'draft-wait',title:'未命名作品',genre:'',current_chapter:0,target_words:3000,creation_status:'draft'})
+ vi.mocked(api.setupDraft).mockReturnValue(new Promise((_resolve,reject)=>{failSetup=reject}))
+ vi.mocked(api.outlineDraft).mockReturnValue(new Promise((_resolve,reject)=>{failOutline=reject}))
+ await renderPage('/long/new')
+ await fillCreationBrief()
+ await fireEvent.click(screen.getByRole('button',{name:'创建作品'}))
+ await screen.findByRole('button',{name:'作品草稿已保存'})
+ expect(screen.getByRole('status').textContent).toContain('正在生成设定与整书大纲')
+ expect(screen.getByRole('progressbar').hasAttribute('value')).toBe(false)
+ expect((screen.getByLabelText('创作简报') as HTMLTextAreaElement).value).toBe('寻找真相')
+ await act(()=>{failSetup(new Error('offline'));failOutline(new Error('offline'))})
+ await waitFor(()=>expect(screen.queryByRole('progressbar')).toBeNull())
+ expect(await screen.findByText(/草稿生成未全部完成/)).toBeTruthy()
 })

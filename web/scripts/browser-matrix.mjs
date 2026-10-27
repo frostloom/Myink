@@ -18,6 +18,8 @@ for (const browser of ['chromium', 'firefox', 'webkit']) {
     ['workspace', '../scripts/evaluate-browser.cjs', ['--dist', 'dist-vue']],
     ['readiness', 'scripts/vue-readiness-browser.mjs', ['--dist', 'dist-vue']],
     ['release', 'scripts/release-safety-browser.mjs', []],
+    ['admin-feedback', 'scripts/admin-feedback-browser.mjs', []],
+    ['resource-feedback', 'scripts/resource-feedback-browser.mjs', []],
   ]) {
     const target = path.join(directory, stage)
     const result = spawnSync(process.execPath, [script, ...extra, '--output', target], {

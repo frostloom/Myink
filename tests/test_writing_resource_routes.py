@@ -13,6 +13,9 @@ from myink.models.writing_resource import WritingResource, WritingResourceRevisi
 @pytest.fixture
 def api(monkeypatch):
     engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    from myink.models import Project, ProjectSettings
+    Project.__table__.create(engine)
+    ProjectSettings.__table__.create(engine)
     for table in (WritingResource.__table__, WritingResourceRevision.__table__, PersonalWritingResource.__table__, ProjectWritingResources.__table__, WritingResourcePublication.__table__):
         table.create(engine)
 
@@ -28,6 +31,9 @@ def api(monkeypatch):
     monkeypatch.setattr(user, 'new_session', session)
     monkeypatch.setattr(user, 'tenant_session', tenant)
     monkeypatch.setattr(admin, '_audit_or_fail', lambda *args: None)
+    # This isolated SQLite fixture covers resource CRUD; real ownership/admission
+    # state and its selection lock are exercised in the PostgreSQL integration suite.
+    monkeypatch.setattr(user.svc, 'require_selection_editable', lambda *args: None)
     app = FastAPI()
     app.include_router(admin.router)
     app.include_router(user.router)
@@ -155,13 +161,19 @@ def test_all_real_seed_resources_create_update_override(api, monkeypatch):
             "origin": "platform", "resource_id": rid, "personal_override": True,
             "body": payload["body"],
         }]})
+        if resource["kind"] in ("genre", "genre_rule"):
+            assert overridden.status_code == 422, overridden.text
+            assert overridden.json()["detail"] == "GENRE_RESOURCE_IS_AUTOMATIC"
+            continue
         if resource["kind"] == "reference":
             assert overridden.status_code == 422, overridden.text
             assert overridden.json()["detail"] == "REFERENCE_IS_AUTOMATIC"
-            # Authors can still use and edit their private reference copy.
+            # Reference copies are automatically bound, never hand-selected.
             overridden = client.put(project, json={"expected_revision": revision, "selections": [{
                 "origin": "personal", "resource_id": private_id,
             }]})
+            assert overridden.status_code == 422, overridden.text
+            continue
         assert overridden.status_code == 200, (resource["id"], overridden.text)
         revision += 1
 
@@ -220,3 +232,49 @@ def test_archived_private_override_can_still_save_via_api(api):
     selected = saved.json()['selections'][0]
     assert selected['body']['profile']['voice'] == 'edited private'
     assert selected['name'] == 'style' and selected['version'] == 1
+
+
+def test_source_copy_and_sync_require_exact_generations_and_ack(api):
+    client, app = api
+    payload = dict(name='first',kind='style',source='platform',body={'profile':{'voice':'first'}})
+    row = client.post('/api/v1/admin/writing-resources',json=payload).json()
+    rid = row['id']
+    assert client.post('/api/v1/my-writing-resources/from-platform',json={'source_resource_id':rid,'target_generation':1}).status_code == 409
+    client.post(f'/api/v1/admin/writing-resources/{rid}/publish',json={'expected_generation':0})
+    private = client.post('/api/v1/my-writing-resources/from-platform',json={'source_resource_id':rid,'target_generation':1,'name':'mine','body':{'profile':{'voice':'mine'}}})
+    assert private.status_code == 200, private.text
+    data = private.json()
+    assert data['source_resource_id'] == rid and data['source_generation'] == 1
+    assert data['body']['profile']['voice'] == 'mine'
+    sync = f"/api/v1/my-writing-resources/{data['id']}/sync"
+    assert client.post(sync,json={'expected_generation':1,'target_generation':1}).status_code == 422
+    assert client.post(sync,json={'expected_generation':1,'target_generation':1,'acknowledge_overwrite':False}).status_code == 422
+    assert client.post(sync,json={'expected_generation':1,'target_generation':1,'acknowledge_overwrite':1}).status_code == 422
+    assert client.post(sync,json={'expected_generation':1,'target_generation':1,'acknowledge_overwrite':True}).json()['body']==payload['body']
+    app.dependency_overrides[require_user] = lambda: str(uuid.UUID(int=2))
+    assert client.post(sync,json={'expected_generation':2,'target_generation':1,'acknowledge_overwrite':True}).status_code == 404
+
+
+def test_get_snapshot_initializes_persistent_defaults_and_requires_returned_revision(api):
+    from myink.models import Project
+    client,_=api
+    pid=uuid.uuid4()
+    with admin.new_session() as db:
+        db.add(Project(id=pid,user_id=uuid.UUID(int=1),title='old book',genre='玄幻',form='long',creation_status='ready'))
+        db.commit()
+    payload=dict(name='default',kind='writing_rule',source='platform',body={'roles':{'writer':'DEFAULT'}})
+    row=client.post('/api/v1/admin/writing-resources',json=payload).json()
+    assert client.post(f"/api/v1/admin/writing-resources/{row['id']}/publish",json={'expected_generation':0}).status_code==200
+    route=f'/api/v1/projects/{pid}/writing-resources'
+    initial=client.get(route)
+    assert initial.status_code==200,initial.text
+    snapshot=initial.json()
+    assert any(item['resource_id']==row['id'] for item in snapshot['selections'])
+    assert client.get(route).json()==snapshot
+    with admin.new_session() as db:
+        assert db.get(ProjectWritingResources,pid).defaults_initialized is True
+    assert client.put(route,json={'expected_revision':0,'selections':[]}).status_code==409
+    saved=client.put(route,json={'expected_revision':snapshot['revision'],'selections':[]})
+    assert saved.status_code==200,saved.text
+    assert saved.json()['selections']==[item for item in snapshot['selections'] if item['kind'] not in ('writing_rule','expression_rule')]
+    assert client.get(route).json()==saved.json()

@@ -1,4 +1,5 @@
 <script lang="ts">
+import WaitingStatus from './WaitingStatus.vue';
 import { useMemoryFormGuard } from "../composables/useMemoryFormGuard";
 import type { PropType } from 'vue'
 import { defineComponent, h, ref, shallowRef, computed, watch } from 'vue'
@@ -18,7 +19,7 @@ interface Props {
     taskBusy?: boolean;
     beforeGenerate?: () => Promise<boolean>;
     /** 批次生成时带 batchTotal（时间线实时 i/N）；单章任务带 chapterSeq（右栏按章过滤） */
-    onTaskStart: (taskId: string, batchTotal?: number, chapterSeq?: number, mode?: WritingMode) => void;
+    onTaskStart: (taskId: string, batchTotal?: number, chapterSeq?: number, mode?: WritingMode, intent?: 'rewrite') => void;
 }
 export const GenerationPanel = defineComponent({
     name: "GenerationPanel",
@@ -34,7 +35,7 @@ export const GenerationPanel = defineComponent({
         const instruction = ref(''), setInstruction = (next: typeof instruction.value | ((current: typeof instruction.value) => typeof instruction.value)) => instruction.value = typeof next === "function" ? next(instruction.value) : next;
         const batchN = ref(3), setBatchN = (next: typeof batchN.value | ((current: typeof batchN.value) => typeof batchN.value)) => batchN.value = typeof next === "function" ? next(batchN.value) : next;
         const mode = ref<WritingMode>('auto'), setMode = (next: typeof mode.value | ((current: typeof mode.value) => typeof mode.value)) => mode.value = typeof next === "function" ? next(mode.value) : next;
-        const busy = ref<null | 'chapter' | 'batch'>(null), setBusy = (next: typeof busy.value | ((current: typeof busy.value) => typeof busy.value)) => busy.value = typeof next === "function" ? next(busy.value) : next;
+        const busy = ref<null | 'chapter' | 'batch' | 'rewrite' | 'replan'>(null), setBusy = (next: typeof busy.value | ((current: typeof busy.value) => typeof busy.value)) => busy.value = typeof next === "function" ? next(busy.value) : next;
         const banner = ref<string | null>(null), setBanner = (next: typeof banner.value | ((current: typeof banner.value) => typeof banner.value)) => banner.value = typeof next === "function" ? next(banner.value) : next;
         const notice = ref<string | null>(null), setNotice = (next: typeof notice.value | ((current: typeof notice.value) => typeof notice.value)) => notice.value = typeof next === "function" ? next(notice.value) : next;
         const requestVersion = shallowRef(0);
@@ -116,7 +117,7 @@ export const GenerationPanel = defineComponent({
         }
         // 重写本章（仅 confirmed 章；awaiting_review 走时间线 resume/reject 分流）：
         // worker _guard_write_order(rewrite=True) 放行已确认章，重写会失效重建该章相关记忆
-        async function rewriteChapter() {
+        async function rewriteChapter(replan = false) {
             if (!selectedChapter.value || selectedChapter.value.status !== 'confirmed' || busy.value)
                 return;
             const operation = {
@@ -131,9 +132,9 @@ export const GenerationPanel = defineComponent({
             };
             const version = requestVersion.value;
             const isCurrent = () => version === requestVersion.value && operation.projectId === projectId.value;
-            if (!window.confirm(`重写第 ${operation.seq} 章？将失效重建该章相关记忆，不可撤销。`) || !isCurrent())
+            if (!window.confirm(replan ? `重新规划第 ${operation.seq} 章？将重新生成计划和正文，并重建该章相关记忆。旧正文保留在历史版本中。` : `重写第 ${operation.seq} 章（保留章节计划）？将重新生成正文并重建该章相关记忆。旧正文保留在历史版本中。`) || !isCurrent())
                 return;
-            setBusy('chapter');
+            setBusy(replan ? 'replan' : 'rewrite');
             setBanner(null);
             setNotice(null);
             try {
@@ -144,13 +145,15 @@ export const GenerationPanel = defineComponent({
                 const resp = await api.generateChapter(operation.projectId, operation.chapterId, {
                     seq: operation.seq,
                     rewrite: true,
+                    ...(replan ? { replan: true } : {}),
                     mode: operation.mode,
                     ...(operation.instruction ? { user_instruction: operation.instruction } : {}),
                 });
                 if (!isCurrent())
                     return;
-                operation.onTaskStart(resp.task_id, undefined, operation.seq, operation.mode);
-                setNotice(`第 ${operation.seq} 章重写任务已创建，进度会显示在下方“章节流转”中。`);
+                if (replan) operation.onTaskStart(resp.task_id, undefined, operation.seq, operation.mode);
+                else operation.onTaskStart(resp.task_id, undefined, operation.seq, operation.mode, 'rewrite');
+                setNotice(`第 ${operation.seq} 章${replan ? '重规划' : '重写'}任务已创建，进度会显示在下方“章节流转”中。`);
             }
             catch (err) {
                 if (isCurrent())
@@ -207,9 +210,9 @@ export const GenerationPanel = defineComponent({
             return (h("section", { "class": `panel ${styles.panel}` }, [h("header", { "class": styles.head }, [h("button", { "type": "button", "class": styles.toggle, "onClick": () => setOpen((value) => !value), "aria-expanded": open.value }, [h("span", { "class": styles.heading }, ["生成与重写"]), h("span", { "class": styles.next }, [chapterIsRunning.value ? `当前生成：第 ${nextSeq.value} 章`
                                 : chapterIsPlanning.value ? `等待确认：第 ${nextSeq.value} 章`
                                     : tailIsEmptyPlaceholder.value ? `待继续：第 ${nextSeq.value} 章`
-                                        : `下一章：第 ${nextSeq.value} 章`]), h("span", { "class": styles.caret }, [open.value ? '▾' : '▸'])])]), open.value && h("div", { "class": styles.body }, [banner.value && h("div", { "class": "banner banner-error", "role": "alert" }, [banner.value]), notice.value && h("div", { "class": styles.notice, "role": "status" }, [notice.value]), h("form", { "class": styles.form, "onSubmit": (event) => { event.preventDefault(); void generateNextChapter(); } }, [h("label", { "class": styles.label, "for": "user-instruction" }, ["写作指令（可留空）"]), h("textarea", { "id": "user-instruction", "class": "textarea", "rows": 2, "value": instruction.value, "onInput": (e) => setInstruction((e.target as HTMLInputElement).value), "placeholder": "如：节奏放慢，重点刻画战斗场面" }, []), h("button", { "type": "button", "class": "btn btn-primary", "disabled": controlsBusy.value, "onClick": () => void generateNextChapter() }, [busy.value === 'chapter' ? '发起中…' : chapterActionLabel.value]), h("fieldset", { "class": styles.modeSwitch }, [h("legend", {}, ["写作模式"]), h("button", { "type": "button", "class": mode.value === 'auto' ? styles.modeActive : styles.modeButton, "aria-pressed": mode.value === 'auto', "disabled": controlsBusy.value, "onClick": () => setMode('auto') }, ["自动"]), h("button", { "type": "button", "class": mode.value === 'manual' ? styles.modeActive : styles.modeButton, "aria-pressed": mode.value === 'manual', "disabled": controlsBusy.value, "onClick": () => setMode('manual') }, ["手动确认 Plan"]), h("span", {}, [mode.value === 'manual' ? 'Plan 可编辑，确认后才开始写作' : '展示 Plan 后自动写作'])]), h("button", { "type": "button", "class": "btn btn-quiet", "disabled": !selectedChapter.value || selectedChapter.value.status !== 'confirmed' || controlsBusy.value, "onClick": rewriteChapter }, [selectedChapter.value && selectedChapter.value.status === 'confirmed'
+                                        : `下一章：第 ${nextSeq.value} 章`]), h("span", { "class": styles.caret }, [open.value ? '▾' : '▸'])])]), busy.value && h(WaitingStatus, { label: ({ chapter: '正在提交章节写作', batch: '正在提交批量写作', rewrite: '正在提交重写', replan: '正在提交重新规划' })[busy.value] }), open.value && h("div", { "class": styles.body }, [banner.value && h("div", { "class": "banner banner-error", "role": "alert" }, [banner.value]), notice.value && h("div", { "class": styles.notice, "role": "status" }, [notice.value]), h("form", { "class": styles.form, "onSubmit": (event) => { event.preventDefault(); void generateNextChapter(); } }, [h("label", { "class": styles.label, "for": "user-instruction" }, ["写作指令（可留空）"]), h("textarea", { "id": "user-instruction", "class": "textarea", "rows": 2, "value": instruction.value, "onInput": (e) => setInstruction((e.target as HTMLInputElement).value), "placeholder": "如：节奏放慢，重点刻画战斗场面" }, []), h("button", { "type": "button", "class": "btn btn-primary", "disabled": controlsBusy.value, "onClick": () => void generateNextChapter() }, [busy.value === 'chapter' ? '发起中…' : chapterActionLabel.value]), h("fieldset", { "class": styles.modeSwitch }, [h("legend", {}, ["写作模式"]), h("button", { "type": "button", "class": mode.value === 'auto' ? styles.modeActive : styles.modeButton, "aria-pressed": mode.value === 'auto', "disabled": controlsBusy.value, "onClick": () => setMode('auto') }, ["自动"]), h("button", { "type": "button", "class": mode.value === 'manual' ? styles.modeActive : styles.modeButton, "aria-pressed": mode.value === 'manual', "disabled": controlsBusy.value, "onClick": () => setMode('manual') }, ["手动确认 Plan"]), h("span", {}, [mode.value === 'manual' ? 'Plan 可编辑，确认后才开始写作' : '展示 Plan 后自动写作'])]), h("button", { "type": "button", "class": "btn btn-quiet", "disabled": !selectedChapter.value || selectedChapter.value.status !== 'confirmed' || controlsBusy.value, "onClick": () => void rewriteChapter() }, [selectedChapter.value && selectedChapter.value.status === 'confirmed'
                                 ? `重写第 ${selectedChapter.value.chapter_seq} 章`
-                                : '重写本章']), chapters.value.length === 0 && (h("p", { "class": styles.emptyHint }, ["新书可直接写第 1 章（上面的写作指令会生效）；要一次写多章再用下方「发起批次」。"]))]), h("form", { "class": styles.form, "onSubmit": (event) => { event.preventDefault(); void generateBatch(); } }, [h("label", { "class": styles.label, "for": "batch-n" }, ["批次生成"]), h("div", { "class": styles.batchRow }, [h("input", { "id": "batch-n", "type": "number", "min": 1, "max": BATCH_MAX, "value": batchN.value, "disabled": mode.value === 'manual', "onInput": (e) => setBatchN(Math.max(1, Math.min(BATCH_MAX, Number((e.target as HTMLInputElement).value)))) }, []), h("span", { "class": styles.batchHint }, ["从第", batchStart.value, "章起", h("span", { "class": styles.cost }, [" ≈ ¥", batchCost.value, "（估算）"])])]), h("button", { "type": "button", "class": "btn btn-secondary", "disabled": controlsBusy.value || mode.value === 'manual', "onClick": () => void generateBatch() }, [busy.value === 'batch' ? '发起中…' : '发起批次']), mode.value === 'manual' && h("p", { "class": styles.batchDisabled }, ["手动模式需要逐章确认计划，批量生成已禁用。"])])])]));
+                                : '重写本章']), h("button", { type: 'button', class: 'btn btn-quiet', disabled: !selectedChapter.value || selectedChapter.value.status !== 'confirmed' || controlsBusy.value, onClick: () => void rewriteChapter(true) }, selectedChapter.value ? `重新规划第 ${selectedChapter.value.chapter_seq} 章` : '重新规划本章'), chapters.value.length === 0 && (h("p", { "class": styles.emptyHint }, ["新书可直接写第 1 章（上面的写作指令会生效）；要一次写多章再用下方「发起批次」。"]))]), h("form", { "class": styles.form, "onSubmit": (event) => { event.preventDefault(); void generateBatch(); } }, [h("label", { "class": styles.label, "for": "batch-n" }, ["批次生成"]), h("div", { "class": styles.batchRow }, [h("input", { "id": "batch-n", "type": "number", "min": 1, "max": BATCH_MAX, "value": batchN.value, "disabled": mode.value === 'manual', "onInput": (e) => setBatchN(Math.max(1, Math.min(BATCH_MAX, Number((e.target as HTMLInputElement).value)))) }, []), h("span", { "class": styles.batchHint }, ["从第", batchStart.value, "章起", h("span", { "class": styles.cost }, [" ≈ ¥", batchCost.value, "（估算）"])])]), h("button", { "type": "button", "class": "btn btn-secondary", "disabled": controlsBusy.value || mode.value === 'manual', "onClick": () => void generateBatch() }, [busy.value === 'batch' ? '发起中…' : '发起批次']), mode.value === 'manual' && h("p", { "class": styles.batchDisabled }, ["手动模式需要逐章确认计划，批量生成已禁用。"])])])]));
         };
     }
 });

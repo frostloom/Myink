@@ -2,7 +2,7 @@
 # Myink 本地 CI 一键复现（与 .github/workflows/ci.yml 同一套门禁，未配 git remote 时本地验证用）。
 # 覆盖：Python 语法门禁 + 全量回归（独立临时 PG / Redis / RabbitMQ）
 #        → 前端 lint+test+build → 镜像构建。
-# 前置：Docker Desktop 运行中；根目录 .env 已配（无 key 也能跑，测试全 mock LLM）；Python venv 已激活。
+# 前置：Docker Desktop 运行中；Python venv 已激活；不读取开发环境 .env。
 # 用法：bash scripts/ci-local.sh          # 全部门禁
 #       SKIP_IMAGES=1 bash scripts/ci-local.sh   # 跳过镜像构建（本地日常快跑）
 set -euo pipefail
@@ -21,6 +21,8 @@ export REDIS_URL=redis://127.0.0.1:16380/0
 export REDIS_ADDR=127.0.0.1:16380
 export AMQP_URL=amqp://myink:myink@127.0.0.1:15673/
 export APP_ENV=test
+# 与 GitHub 的无 .env 环境一致，避免本机模型凭证、配额和服务配置污染测试。
+export PYTHON_DOTENV_DISABLED=1
 export EMBED_ENABLED=0
 export RANKINGS_ENABLED=0
 # 身份边界换血后 Python 自己验 JWT，密钥短于 32 字节 → require_auth_configuration 让业务路由全 503。

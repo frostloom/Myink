@@ -588,6 +588,13 @@ def test_commit_builds_a_ready_short_book_with_a_persisted_plan(temp_user, chain
     # 模型不给 chapter_count，落库前必须补上：`short_runner` 取整篇章数时先读这份方案，
     # 读不到才回退到 creation_context——让方案自己说清楚篇幅，别留这个隐式依赖。
     assert outline.outline["chapter_count"] == 3
+    from myink.models.writing_resource import ProjectWritingResources
+    with tenant_session(out["project_id"]) as tdb:
+        captured = tdb.get(ProjectWritingResources, uuid.UUID(out["project_id"]))
+        assert captured is not None and captured.automatic_initialized
+        assert captured.configured is False
+    with new_session() as db:
+        assert db.get(ProjectWritingResources, uuid.UUID(out["project_id"])) is None
 
 
 def test_commit_titles_the_conversation_after_the_card_the_user_edited(temp_user, chain_stub):

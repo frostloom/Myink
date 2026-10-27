@@ -13,3 +13,13 @@ it('shows empty reports then triggers and opens the newest report with chapter n
 it('expands and collapses report details and exposes failed reasons',async()=>{vi.spyOn(api,'listGlobalAudits').mockResolvedValue([{...report,status:'failed',error:'审计服务故障'}] as never);vi.spyOn(api,'getGlobalAudit').mockResolvedValue(detail as never);await page();const head=await screen.findByRole('button',{name:/第 1–30 章/});await fireEvent.click(head);expect(await screen.findByText('失败原因：审计服务故障')).toBeTruthy();await fireEvent.click(head);expect(screen.queryByText('失败原因：审计服务故障')).toBeNull()})
 it.each([400,502])('explains audit HTTP %s and refreshes failed reports',async status=>{const list=vi.spyOn(api,'listGlobalAudits').mockResolvedValue([]);vi.spyOn(api,'triggerGlobalAudit').mockRejectedValue(new ApiError(status,'failed','failed'));await page();await screen.findByText(/还没有审计报告/);await fireEvent.click(screen.getByRole('button',{name:'触发审计'}));expect(await screen.findByRole('alert')).toBeTruthy();expect(screen.getByRole('alert').textContent).toContain(status===400?'尚无已写章节':'已落 failed 报告');if(status===502)expect(list).toHaveBeenCalledTimes(2)})
 it('does not display old report details after switching project',async()=>{vi.spyOn(api,'listGlobalAudits').mockResolvedValue([report] as never);let finish!:(v:never)=>void;vi.spyOn(api,'getGlobalAudit').mockImplementation(()=>new Promise(resolve=>{finish=resolve}));const{router}=await page();await fireEvent.click(await screen.findByRole('button',{name:/第 1–30 章/}));await router.push('/projects/other/audit');finish(detail as never);await vi.waitFor(()=>expect(screen.queryByText('时间线矛盾')).toBeNull())})
+
+it('recovers a failed initial report load without triggering an audit', async () => {
+ const list=vi.spyOn(api,'listGlobalAudits').mockRejectedValueOnce(new Error('offline')).mockResolvedValue([])
+ const trigger=vi.spyOn(api,'triggerGlobalAudit')
+ await page(); await screen.findByRole('alert')
+ expect(screen.queryByText('加载中…')).toBeNull()
+ await fireEvent.click(screen.getByRole('button',{name:'重新加载报告'}))
+ expect(await screen.findByText(/还没有审计报告/)).toBeTruthy()
+ expect(list).toHaveBeenCalledTimes(2); expect(trigger).not.toHaveBeenCalled()
+})

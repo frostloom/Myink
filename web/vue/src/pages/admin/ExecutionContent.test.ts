@@ -67,3 +67,10 @@ it('does not invent an audit verdict from invalid structured output', () => {
     expect(screen.getByText('模型回复的格式无法识别，或留存内容不完整，当前无法可靠展示结果。可展开技术诊断核对原始回复。')).toBeTruthy();
 });
 function render(node: VNode) { return vueRender(defineComponent({ render: () => node })); }
+
+it('renders short scalar facts as compact labelled rows while keeping narrative sections', () => {
+    render(h(ReadableContent, { value: { chapter_count: 2, genre: '悬疑', goal: '线索'.repeat(150) } }));
+    expect(screen.getByText('计划章数').tagName).toBe('DT');
+    expect(screen.getByText('题材').nextElementSibling?.textContent).toBe('悬疑');
+    expect(screen.getByRole('heading', { name: '本章目标' })).toBeTruthy();
+});

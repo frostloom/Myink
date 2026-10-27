@@ -19,6 +19,12 @@ def catalog(response: Response):
     with new_session() as db:
         return {'items': svc.catalog(db)}
 
+@router.get('/writing-resources/catalog', response_model=ResourceList, dependencies=[Depends(require_user)])
+def full_catalog(response: Response):
+    response.headers['Cache-Control'] = 'no-store'
+    with new_session() as db:
+        return {'items': svc.catalog(db, include_automatic=True)}
+
 @router.get('/admin/writing-resources', response_model=ResourceList, dependencies=[Depends(admin_guard)])
 def list_resources():
     with new_session() as db:

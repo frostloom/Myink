@@ -33,7 +33,7 @@
 .summaryHead { display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; }
 .summaryHead>div { flex:1; min-width:min(220px,100%); }
 .summaryHead>button { align-self:flex-start; }
-.explanation { display:grid; gap:16px; min-width:0; }
+.explanation { display:grid; gap:10px; min-width:0; }
 .fact { min-width:0; border-left:2px solid var(--line); padding-left:14px; }
 .fact h5 { margin:0 0 7px; font-size:var(--text-small); color:var(--ink-subtle); font-weight:500; overflow-wrap:anywhere; }
 .items { margin:0; padding-left:22px; display:grid; gap:12px; }
@@ -41,3 +41,8 @@
 .read { display:block; min-width:0; }
 .readHead { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; }
 .read>.muted { margin:8px 0 0; }
+
+.scalar { display:grid; grid-template-columns:minmax(80px, 120px) minmax(0,1fr); align-items:baseline; gap:12px; margin:0; min-width:0; }
+.scalar dt { color:var(--ink-subtle); font-size:var(--text-small); overflow-wrap:anywhere; }
+.scalar dd { margin:0; min-width:0; }
+.scalar .text { line-height:1.5; }

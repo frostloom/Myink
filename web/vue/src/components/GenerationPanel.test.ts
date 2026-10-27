@@ -40,6 +40,7 @@ it('shows the writing controls by default and starts the next chapter from a dir
     await waitFor(() => expect(api.generateChapter).toHaveBeenCalledWith('project-1', 'chapter-16', { seq: 17, mode: 'auto' }));
     expect(onTaskStart).toHaveBeenCalledWith('task-17', undefined, 17, 'auto');
     expect((await screen.findByRole('status')).textContent).toContain('第 17 章写作任务已创建');
+    expect(screen.queryByRole('progressbar')).toBeNull();
 });
 it('passes the optional writing instruction and exposes a request error', async () => {
     vi.mocked(api.generateChapter).mockRejectedValue(new ApiError(429, 'CONCURRENCY_LIMIT', null));
@@ -89,6 +90,7 @@ it('clears the previous book notice when switching projects', async () => {
     const { rerender } = render(h(GenerationPanel, { "projectId": "project-a", "chapters": [chapter], "selectedChapter": chapter, "onTaskStart": () => { } }, []));
     await fireEvent.click(screen.getByRole('button', { name: '写下一章（第 17 章）' }));
     expect((await screen.findByRole('status')).textContent).toContain('第 17 章写作任务已创建');
+    expect(screen.queryByRole('progressbar')).toBeNull();
     await rerender(h(GenerationPanel, { "projectId": "project-b", "chapters": [], "selectedChapter": null, "onTaskStart": () => { } }, []));
     expect(screen.queryByRole('status')).toBeNull();
     expect(screen.getByText('下一章：第 1 章')).toBeTruthy();
@@ -144,3 +146,40 @@ it('does not clear the new project busy state when an old request fails', async 
     expect(screen.queryByRole('alert')).toBeNull();
     expect((screen.getByRole('button', { name: '发起中…' }) as HTMLButtonElement).disabled).toBe(true);
 });
+it('marks explicit rewrite as retaining the current plan',async()=>{
+ vi.spyOn(window,'confirm').mockReturnValue(true)
+ vi.mocked(api.generateChapter).mockResolvedValue({task_id:'rewrite-16',trace_id:'trace',status:'queued'})
+ const onTaskStart=vi.fn()
+ render(h(GenerationPanel,{projectId:'project-1',chapters:[chapter],selectedChapter:chapter,onTaskStart}))
+ await fireEvent.click(screen.getByRole('button',{name:'重写第 16 章'}))
+ await waitFor(()=>expect(onTaskStart).toHaveBeenCalledWith('rewrite-16',undefined,16,'auto','rewrite'))
+})
+it('offers explicit replan separately from plan-preserving rewrite',async()=>{
+ const confirm=vi.spyOn(window,'confirm').mockReturnValue(true)
+ vi.mocked(api.generateChapter).mockResolvedValue({task_id:'replan-16',trace_id:'trace',status:'queued'})
+ const onTaskStart=vi.fn()
+ render(h(GenerationPanel,{projectId:'project-1',chapters:[chapter],selectedChapter:chapter,onTaskStart}))
+ await fireEvent.click(screen.getByRole('button',{name:'重新规划第 16 章'}))
+ expect(confirm).toHaveBeenCalledWith(expect.stringContaining('重新生成计划和正文'))
+ await waitFor(()=>expect(api.generateChapter).toHaveBeenCalledWith('project-1','chapter-16',{seq:16,rewrite:true,replan:true,mode:'auto'}))
+ expect(onTaskStart).toHaveBeenCalledWith('replan-16',undefined,16,'auto')
+})
+
+it.each(['next', 'rewrite', 'replan', 'batch'] as const)('announces pending %s immediately and clears it on failure', async action => {
+ let reject!: (error: Error) => void
+ const pending = new Promise<Awaited<ReturnType<typeof api.generateChapter>>>((_resolve, fail) => { reject = fail })
+ vi.mocked(api.generateChapter).mockReturnValue(pending)
+ vi.mocked(api.generateBatch).mockReturnValue(pending)
+ vi.spyOn(window, 'confirm').mockReturnValue(true)
+ render(h(GenerationPanel, {projectId:'p', chapters:[chapter], selectedChapter:chapter, onTaskStart:()=>{}}))
+ const labels = {next:'写下一章（第 17 章）', rewrite:'重写第 16 章', replan:'重新规划第 16 章', batch:'发起批次'}
+ const expected = {next:'正在提交章节写作', rewrite:'正在提交重写', replan:'正在提交重新规划', batch:'正在提交批量写作'}
+ await fireEvent.click(screen.getByRole('button', {name:labels[action]}))
+ expect(screen.getByRole('status').textContent).toContain(expected[action])
+ expect(screen.getByRole('progressbar').hasAttribute('value')).toBe(false)
+ expect((screen.getByLabelText('写作指令（可留空）') as HTMLTextAreaElement).disabled).toBe(false)
+ await act(async () => reject(new Error('offline')))
+ expect(await screen.findByRole('alert')).toBeTruthy()
+ expect(screen.queryByRole('progressbar')).toBeNull()
+ expect((screen.getByRole('button', {name:labels[action]}) as HTMLButtonElement).disabled).toBe(false)
+})

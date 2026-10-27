@@ -617,7 +617,7 @@ def empty_fields() -> dict[str, Any]:
     }
 
 
-def resolve_pack_id(raw: str | None) -> str | None:
+def resolve_pack_id(raw: str | None, *, db=None) -> str | None:
     """目录 id、官方名或别名 → 目录 id。认不出则 None。"""
     if not raw:
         return None
@@ -632,7 +632,8 @@ def resolve_pack_id(raw: str | None) -> str | None:
     for pack_id, pack in PACKS.items():
         if pack["name"] == text:
             return pack_id
-    published = published_genre_roots(include_archived=True)
+    published = (published_genre_roots(include_archived=True, db=db) if db is not None
+                 else published_genre_roots(include_archived=True))
     if published is not None:
         for pid, root in published.items():
             if root["name"] == text:
@@ -640,13 +641,14 @@ def resolve_pack_id(raw: str | None) -> str | None:
     return None
 
 
-def published_genre_roots(*, include_archived: bool = False) -> dict[str, dict[str, Any]] | None:
+def published_genre_roots(*, include_archived: bool = False, db=None) -> dict[str, dict[str, Any]] | None:
     """发布内容为准；None 仅表示尚未安装资源。识别过期名称时可包含已下架项。"""
     from sqlalchemy import select
     from myink.db import new_session
     from myink.models.writing_resource import WritingResource
 
-    with new_session() as db:
+    from contextlib import nullcontext
+    with (nullcontext(db) if db is not None else new_session()) as db:
         rows = list(db.scalars(select(WritingResource).where(
             WritingResource.kind == "genre",
             WritingResource.id.in_(["genre:" + pid for pid in PACKS]),

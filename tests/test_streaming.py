@@ -146,3 +146,31 @@ def test_stream_strips_leading_think_and_never_emits_reasoning():
     assert "不该出现" not in "".join(deltas)
     assert response.content == "他推开门。"
     assert response.error is None
+
+
+def test_patch_emits_applied_body_not_internal_patch_instructions(monkeypatch):
+    from contextlib import nullcontext
+    from myink.workflow import nodes
+    from myink.providers.base import ModelResponse
+
+    original = "清晨他推开门。\n他握着旧剑。\n" + "山路仍旧安静。" * 20
+    patch = "=== PATCHES ===\n--- PATCH 1 ---\nTARGET_TEXT:\n他握着旧剑。\nREPLACEMENT_TEXT:\n他握着青剑。\n--- END PATCH ---"
+    events = []
+    monkeypatch.setattr(nodes, "tenant_session", lambda *_: nullcontext(None))
+    monkeypatch.setattr(nodes, "make_chain", lambda *a, **kw: None)
+    monkeypatch.setattr(nodes, "record_run_detail", lambda *a, **kw: None)
+    monkeypatch.setattr(nodes, "record_snapshot", lambda *a, **kw: None)
+
+    def generate(*args, **kwargs):
+        assert events and events[0]["event"] == "artifact_reset"
+        assert not any(e["event"] == "artifact_delta" for e in events)
+        return ModelResponse(content=patch, model_id="stub"), []
+
+    monkeypatch.setattr(nodes, "_llm", generate)
+    with bind_artifact_sink(events.append):
+        result = nodes.node_patch({"project_id": "p", "task_id": "t", "chapter_seq": 1, "draft": original})
+    expected = original.replace("他握着旧剑。", "他握着青剑。")
+    assert result["draft"] == expected
+    assert "".join(e["content"] for e in events if e["event"] == "artifact_delta") == expected
+    assert events[-1]["event"] == "artifact_complete"
+    assert all(e["stage"] == "write" and e["task_id"] == "t" and e["chapter_seq"] == "1" for e in events)

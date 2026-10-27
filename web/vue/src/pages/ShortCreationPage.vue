@@ -1,6 +1,6 @@
 <script lang="ts">
 import { useMemoryFormGuard } from "../composables/useMemoryFormGuard";
-import { defineComponent, ref, computed, watch, onBeforeUnmount, h, Fragment, Teleport } from 'vue';
+import { defineComponent, ref, computed, watch, onBeforeUnmount, onActivated, onDeactivated, h, Fragment, Teleport } from 'vue';
 import { RouterLink as Link, useRouter } from 'vue-router';
 /** 短篇建书：与助手聊清楚 → 方案卡弹出来随手改 → 「确认，开写」。
  *
@@ -10,6 +10,8 @@ import { RouterLink as Link, useRouter } from 'vue-router';
  * 版式：一列聊天，输入条钉在底部。方案卡是**悬浮模态**——它是「确认了就照这个写」的
  * 一次性决定，不是右栏那种随时能瞟一眼的常驻面板；同款弹窗见 components/GuestPromptDialog。
  */
+import CreationResourcesDialog from '../components/CreationResourcesDialog.vue';
+import { writingResources, type SelectionInput } from '../../../src/lib/writingResources';
 import ProjectRail from '../components/ProjectRail.vue';
 import { useAuth } from '../authContext';
 import { api } from '../../../src/lib/api';
@@ -92,6 +94,9 @@ export default defineComponent({
         const guest = computed(() => status.value === 'anonymous');
         const token = computed(() => session.value?.token ?? '');
         const router = useRouter();
+        const visible = ref(true);
+        onActivated(() => { visible.value = true; });
+        onDeactivated(() => { visible.value = false; });
         const navigate = (path: string, options?: {
             replace?: boolean;
             state?: Record<string, string | boolean | null>;
@@ -99,9 +104,10 @@ export default defineComponent({
             path: resolved.path, query: resolved.query, hash: resolved.hash, state: options?.state
         })); };
         let generation = 0;
+        let talkController: AbortController | null = null;
         let alive = true;
         const active = (attempt: number) => alive && generation === attempt;
-        onBeforeUnmount(() => { alive = false; generation++; });
+        onBeforeUnmount(() => { alive = false; generation++; talkController?.abort(); });
         const projects = ref<Project[]>([]);
         const data = ref<ShortCreationPayload | null>(null);
         const card = ref<Partial<ShortCreationCard>>({});
@@ -115,7 +121,12 @@ export default defineComponent({
         const operationRef = ref(false);
         const error = ref<string | null>(null);
         const cardOpen = ref(false);
-        const { permitNavigation } = useMemoryFormGuard(() => !guest.value && (Boolean(draft.value || pending.value) || (data.value !== null && (JSON.stringify(card.value) !== JSON.stringify(data.value.session.card ?? {}) || styleItemId.value !== (data.value.session.style_item_id ?? '')))), { recovering: () => guest.value });
+        const resourcesOpen = ref(false);
+        const committedBook = ref<Awaited<ReturnType<typeof shortCreationApi.commit>> | null>(null);
+        // App retains this page across ordinary routes. Login destroys that cache;
+        // protect an intentional visit and full unload, but allow expired-session recovery.
+        const hasUnsavedInput = () => status.value === 'authenticated' && (Boolean(draft.value || pending.value) || (data.value !== null && (JSON.stringify(card.value) !== JSON.stringify(data.value.session.card ?? {}) || styleItemId.value !== (data.value.session.style_item_id ?? ''))));
+        const { permitNavigation } = useMemoryFormGuard(to => to?.path === '/login' && hasUnsavedInput(), { unloadDirty: hasUnsavedInput, recovering: () => guest.value });
         // 会话列表退居「历史」：落点是自动的（重进页面必落在那条还没开写的上），列表只是翻旧账用。
         const historyOpen = ref(false);
         const stream = ref<HTMLDivElement | null>(null);
@@ -125,14 +136,18 @@ export default defineComponent({
         const dialogRef = ref<HTMLElement | null>(null);
         const openerRef = ref<HTMLButtonElement | null>(null);
         const apply = (next: ShortCreationPayload) => {
+            committedBook.value = null; resourcesOpen.value = false;
             data.value = next;
             card.value = next.session.card ?? {};
             styleItemId.value = next.session.style_item_id ?? '';
         };
+        const opening = ref(false);
         const reload = async () => {
             const attempt = generation;
-            if (guest.value)
+            if (guest.value || opening.value)
                 return;
+            opening.value = true;
+            error.value = null;
             try {
                 const next = await shortCreationApi.open(token.value);
                 if (active(attempt))
@@ -141,10 +156,14 @@ export default defineComponent({
             catch (reason) {
                 if (active(attempt))
                     error.value = formatApiError(reason, '打不开建书对话，请稍后重试');
-            }
+            } finally { if (active(attempt)) opening.value = false; }
         };
         watch([() => session.value?.userId, guest], () => {
             generation++;
+            opening.value = false;
+            resourcesOpen.value = false; committedBook.value = null;
+            talkController?.abort();
+            talkController = null;
             data.value = null;
             card.value = {};
             styleItemId.value = '';
@@ -191,7 +210,7 @@ export default defineComponent({
         // 卡里的字段同样随内容长高：整个弹窗只留 .dialogBody 那一条滚动条。
         // 字段框自己再滚，就成了「能滚的块里嵌一个能滚的框」。
         watch(() => [
-            cardOpen.value, card.value
+            visible.value, cardOpen.value, card.value
         ], () => {
             if (!cardBody.value)
                 return;
@@ -201,8 +220,8 @@ export default defineComponent({
             immediate: true, flush: "post"
         });
         // 焦点留在方案卡内，关闭后回到原入口，键盘用户可以接着聊。
-        watch(() => [cardOpen.value], (_next, _previous, onCleanup) => {
-            if (!cardOpen.value)
+        watch(() => [visible.value, cardOpen.value], (_next, _previous, onCleanup) => {
+            if (!visible.value || !cardOpen.value)
                 return;
             const opener = openerRef.value;
             closeRef.value?.focus();
@@ -272,8 +291,10 @@ export default defineComponent({
             // 原话的输入框，会以为回车没生效。失败时再把原话放回输入框。
             draft.value = '';
             pending.value = content;
+            const controller = new AbortController();
+            talkController = controller;
             void run('talk', async () => {
-                const next = await shortCreationApi.send(token.value, sessionId, content, card.value as Record<string, unknown>);
+                const next = await shortCreationApi.send(token.value, sessionId, content, card.value as Record<string, unknown>, controller.signal);
                 if (!active(attempt))
                     return;
                 apply(next);
@@ -282,6 +303,17 @@ export default defineComponent({
                 pending.value = null;
                 draft.value = ((current) => current || content)(draft.value);
             });
+        };
+        const cancelTalk = () => {
+            if (operation.value !== 'talk') return;
+            generation++;
+            resourcesOpen.value = false; committedBook.value = null;
+            talkController?.abort();
+            talkController = null;
+            draft.value = draft.value || pending.value || '';
+            pending.value = null;
+            operation.value = null;
+            operationRef.value = false;
         };
         const submit = (event: Event) => {
             event.preventDefault();
@@ -298,32 +330,28 @@ export default defineComponent({
         };
         // 已确认过的会话不再是可写的（类型里 status 只有 active / committed 两种）。
         const committed = computed(() => data.value !== null && data.value.session.status !== 'active');
-        const confirm = (chooseResourcesFirst = false) => {
-            // 已确认过的会话只会在后端 409；卡填满了也不给这个按钮真的发出去。
-            if (committed.value || !data.value?.ready || !isReady(card.value))
-                return;
+        const confirm = () => {
+            if (committed.value || !data.value?.ready || !isReady(card.value) || busy.value) return;
             if (draft.value && !window.confirm('还有未发送的对话输入，确认放弃这条输入并开始建书？')) return;
+            error.value = null;
+            cardOpen.value = false;
+            resourcesOpen.value = true;
+        };
+        const createWithResources = (selections: SelectionInput[]) => {
+            if (!data.value || busy.value) return;
             const sessionId = data.value.session.id;
             const attempt = generation;
             void run('plan', async () => {
-                const out = await shortCreationApi.commit(token.value, sessionId, card.value as Record<string, unknown>, styleItemId.value || null);
-                if (!active(attempt))
-                    return;
-                // commit 只落书，入队归工作台：那边有状态带，入队失败就地给重试入口。
-                if (chooseResourcesFirst) {
-                    navigate(`/projects/${out.project_id}/settings#writing-resources`, {
-                        state: {
-                            configureBeforeWriting: true, planWarning: out.plan_warning
-                        }
-                    });
-                }
-                else {
-                    navigate(`/projects/${out.project_id}`, {
-                        state: {
-                            beginShortWriting: true, planWarning: out.plan_warning
-                        }
-                    });
-                }
+                const out = committedBook.value ?? await shortCreationApi.commit(token.value, sessionId, card.value as Record<string, unknown>, styleItemId.value || null);
+                if (!active(attempt)) return;
+                // Resource-save retries reuse the created book and never start writing early.
+                committedBook.value = out;
+                const snapshot = await writingResources.snapshot(out.project_id);
+                if (!active(attempt)) return;
+                await writingResources.select(out.project_id, snapshot.revision, selections);
+                if (!active(attempt)) return;
+                if (!visible.value) return;
+                navigate(`/projects/${out.project_id}`, {state: {beginShortWriting: true, planWarning: out.plan_warning}});
             }, '确认失败，请重试');
         };
         /** 另起一条会话：旧的原样留着，列表里随时能翻回去看。 */
@@ -379,8 +407,8 @@ export default defineComponent({
                     }), h("div", {
                         "class": styles.thread
                     }, [h("div", {
-                            "class": "empty"
-                        }, [error.value ?? '正在打开建书对话…'])])
+                            "class": "empty", "role": error.value ? "alert" : "status"
+                        }, [error.value ?? '正在打开建书对话…', error.value && h("button", { type: "button", class: "btn btn-secondary", disabled: opening.value, onClick: () => void reload() }, "重新打开建书对话")])])
                 ]));
             }
             const cardReady = !committed.value && isReady(card.value);
@@ -394,7 +422,7 @@ export default defineComponent({
                 "class": styles.page
             }, [
                 h("div", {
-                    "class": styles.background, "inert": cardOpen.value
+                    "class": styles.background, "inert": cardOpen.value || resourcesOpen.value
                 }, [
                     h(ProjectRail, {
                         "projects": projects.value, "onLogout": logout
@@ -463,11 +491,17 @@ export default defineComponent({
                                         h("small", null, ["待确认方案"]), h("h2", null, [card.value.working_title || '你的短篇']), h("p", null, [
                                             card.value.genre || '题材待定', " · ", card.value.chapter_count ?? 5, " 章 · 每章约 ", lengths.chars, " 字"
                                         ])
-                                    ]), h("button", {
+                                    ]), h("dl", { "class": styles.proposalStakes }, [
+                                        ['主角压力', card.value.protagonist_pressure],
+                                        ['核心冲突', card.value.conflict_core],
+                                        ['情绪收束', card.value.emotional_payoff]
+                                    ].map(([label, value]) => h("div", null, [
+                                        h("dt", null, label), h("dd", null, value || '待补充')
+                                    ]))), h("button", {
                                         "ref": (element: unknown) => openerRef.value = element as never, "type": "button", "class": `btn btn-primary ${styles.option}`, "disabled": busy.value, "onClick": () => { error.value = null; cardOpen.value = true; }
                                     }, ["开始建书"])
                                 ]))
-                            ]), !cardOpen.value && errorBanner, committed.value && (h("div", {
+                            ]), !cardOpen.value && !resourcesOpen.value && errorBanner, committed.value && (h("div", {
                                 "class": "banner banner-warning", "role": "status"
                             }, [
                                 "已开写。想写新的，点「新建会话」；这段对话留着，随时能翻回来看。", data.value.session.book_id && (h(Fragment, null, [
@@ -475,19 +509,28 @@ export default defineComponent({
                                         "to": `/projects/${data.value.session.book_id}`
                                     }, () => ["这里"]), "。"
                                 ]))
-                            ])), h("form", {
+                            ])), operation.value === 'talk' && h("div", {
+                                "class": styles.thinking, "role": "status", "aria-live": "polite"
+                            }, [
+                                h("span", null, "正在努力构思中，请稍后"),
+                                h("button", { "type": "button", "class": "btn btn-quiet", "onClick": cancelTalk }, "取消等待")
+                            ]), h("form", {
                                 "class": styles.composer, "onSubmit": submit
                             }, [
                                 h("label", null, [h("textarea", {
-                                        "ref": (element: unknown) => composer.value = element as never, "rows": 3, "aria-label": "对助手说", "class": "input", "value": draft.value, "disabled": committed.value || (busy.value && operation.value !== 'talk'), "maxLength": 4000, "onInput": (event: Event) => draft.value = (event.target as HTMLInputElement).value, "onKeydown": onKeyDown, "placeholder": committed.value ? '本次建书对话已结束' : '说说你想写的故事…'
+                                        "ref": (element: unknown) => composer.value = element as never, "rows": 3, "aria-label": "对助手说", "class": "input", "value": draft.value, "disabled": committed.value || Boolean(committedBook.value) || (busy.value && operation.value !== 'talk'), "maxLength": 4000, "onInput": (event: Event) => draft.value = (event.target as HTMLInputElement).value, "onKeydown": onKeyDown, "placeholder": committed.value ? '本次建书对话已结束' : '说说你想写的故事…'
                                     }, [])]), h("div", {
                                     "class": styles.composerFoot
                                 }, [h("button", {
-                                        "type": "submit", "class": "btn btn-primary", "disabled": committed.value || busy.value || draft.value.trim() === ''
+                                        "type": "submit", "class": "btn btn-primary", "disabled": committed.value || Boolean(committedBook.value) || busy.value || draft.value.trim() === ''
                                     }, [committed.value ? '已开写' : operation.value === 'talk' ? '正在回复…' : '发送'])])
                             ])
                         ])])
-                ]), cardOpen.value && !committed.value && h(Teleport, {
+                ]), visible.value && resourcesOpen.value && h(CreationResourcesDialog, {
+                    busy: busy.value, error: error.value,
+                    onConfirm: createWithResources,
+                    onClose: () => { if (!busy.value) { resourcesOpen.value = false; cardOpen.value = true; } }
+                }), visible.value && cardOpen.value && !committed.value && h(Teleport, {
                     to: "body"
                 }, [h("div", {
                         "class": styles.backdrop, "onMousedown": (event: MouseEvent) => {
@@ -509,14 +552,14 @@ export default defineComponent({
                                 }, ["×"])
                             ]), h("div", {
                                 "class": styles.dialogBody, "ref": (element: unknown) => cardBody.value = element as never
-                            }, [
+                            }, [committedBook.value && h('p', {class: 'banner'}, '作品已创建，方案已保存。请继续确认写作资源；本次重试不会重复创建作品。'),
                                 FIELDS.map(([key, label]) => (h("label", {
-                                    "key": key
+                                    "key": key, "class": key === 'working_title' || key === 'genre' ? styles.identityField : styles.storyField
                                 }, [
                                     h("span", null, [
                                         label, REQUIRED_TEXT.includes(key) ? '（必填）' : ''
                                     ]), h("textarea", {
-                                        "class": "input", "rows": key === 'plot_sketch' ? 3 : 2, "disabled": busy.value, "aria-label": label, "value": String(card.value[key] ?? ''), "maxLength": 4000, "onInput": (event: Event) => card.value = {
+                                        "class": "input", "rows": key === 'plot_sketch' ? 3 : 1, "disabled": busy.value || Boolean(committedBook.value), "aria-label": label, "value": String(card.value[key] ?? ''), "maxLength": 4000, "onInput": (event: Event) => card.value = {
                                             ...card.value, [key]: (event.target as HTMLInputElement).value
                                         }
                                     }, [])
@@ -525,13 +568,13 @@ export default defineComponent({
                                 }, [
                                     h("label", null, [
                                         h("span", null, ["章数（1–10）"]), h("input", {
-                                            "class": "input", "type": "number", "min": 1, "max": 10, "aria-label": "章数", "disabled": busy.value, "value": card.value.chapter_count ?? 5, "onInput": (event: Event) => card.value = {
+                                            "class": "input", "type": "number", "min": 1, "max": 10, "aria-label": "章数", "disabled": busy.value || Boolean(committedBook.value), "value": card.value.chapter_count ?? 5, "onInput": (event: Event) => card.value = {
                                                 ...card.value, chapter_count: Number((event.target as HTMLInputElement).value)
                                             }
                                         }, [])
                                     ]), h("label", null, [
                                         h("span", null, ["每章字数（1000–8000）"]), h("input", {
-                                            "class": "input", "type": "number", "min": 1000, "max": 8000, "aria-label": "每章字数", "disabled": busy.value, "value": card.value.chars_per_chapter ?? 4000, "onInput": (event: Event) => card.value = {
+                                            "class": "input", "type": "number", "min": 1000, "max": 8000, "aria-label": "每章字数", "disabled": busy.value || Boolean(committedBook.value), "value": card.value.chars_per_chapter ?? 4000, "onInput": (event: Event) => card.value = {
                                                 ...card.value, chars_per_chapter: Number((event.target as HTMLInputElement).value)
                                             }
                                         }, [])
@@ -542,7 +585,7 @@ export default defineComponent({
                                     "每章字数已按全篇 ", SHORT_TOTAL_MAX, " 字上限归一为每章 ", lengths.chars, " 字，生成时按这个数走。"
                                 ])), h("label", null, [
                                     h("span", null, ["文风（开写后不可改）"]), h("select", {
-                                        "class": "input", "aria-label": "文风", "value": styleItemId.value, "disabled": busy.value, "onChange": (event: Event) => styleItemId.value = (event.target as HTMLInputElement).value
+                                        "class": "input", "aria-label": "文风", "value": styleItemId.value, "disabled": busy.value || Boolean(committedBook.value), "onChange": (event: Event) => styleItemId.value = (event.target as HTMLInputElement).value
                                     }, [
                                         h("option", {
                                             "value": ""
@@ -563,8 +606,6 @@ export default defineComponent({
                                 }, () => ["去文风库添加"]), h("button", {
                                     "type": "button", "class": "btn btn-quiet", "onClick": () => cardOpen.value = false
                                 }, ["再聊聊"]), h("button", {
-                                    "type": "button", "class": "btn btn-secondary", "disabled": !cardReady || busy.value, "onClick": () => confirm(true)
-                                }, ["确认方案，先选写作资源"]), h("button", {
                                     "type": "button", "class": "btn btn-primary", "disabled": !cardReady || busy.value, "onClick": () => confirm()
                                 }, [operation.value === 'plan' ? '正在规划…' : '确认，开写'])
                             ])

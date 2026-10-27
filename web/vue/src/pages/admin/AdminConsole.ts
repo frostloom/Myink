@@ -1,9 +1,10 @@
+import { useAdminListNavigation } from './navigation';
 import { useMemoryFormGuard } from '../../composables/useMemoryFormGuard';
 import { ApiError } from '../../../../src/lib/api';
 /* eslint-disable vue/one-component-per-file -- Native Vue render helpers stay with their owning page. */
 import type { PropType } from 'vue';
-import { computed, defineComponent, Fragment, h as renderNode, shallowRef } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { computed, defineComponent, Fragment, h as renderNode, shallowRef, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { adminApi, type AdminAccessLog, type AdminInvitation, type AdminInvitationCreated, type AdminOverview, type AdminProject, type AdminRun, type AdminTask, type AdminUser, type AdminPage as PageResult, } from "../../../../src/lib/adminApi";
 import { formatApiError } from "../../../../src/lib/apiError";
 import { creationStatusLabel, NODE_LABELS, taskChapterLabel, taskStatusLabel, taskTypeLabel, tierLabel, } from "../../../../src/lib/labels";
@@ -14,7 +15,7 @@ import { AccessLogContent } from "./AccessLogContent";
 import { AdminTrends } from "./AdminTrends";
 import { Analytics } from "./Analytics";
 import { useAdminContext } from './context';
-import { RunTable } from "./RunDetail";
+import { RunDetailDialog, RunTable } from "./RunDetail";
 import { formatCost, formatDate, LoadState, metricEntries, PAGE_SIZE, Pagination, RefreshButton, useResource } from "./shared";
 type Tab = 'overview' | 'analytics' | 'users' | 'projects' | 'tasks' | 'runs' | 'logs' | 'invites' | 'feedback';
 const TABS: Array<[
@@ -34,7 +35,7 @@ const OverviewView = defineComponent((props: {
     return () => {
         return (renderNode("section", { "class": styles.view, "aria-labelledby": "overview-heading" }, [
             renderNode("div", { "class": styles.viewHead }, [
-                renderNode("div", {}, [renderNode("h2", { "id": "overview-heading" }, ["全局概览"])]), renderNode(RefreshButton, { "onClick": resource.retry })
+                renderNode("div", {}, [renderNode("h1", { "id": "overview-heading" }, ["全局概览"])]), renderNode(RefreshButton, { "onClick": resource.retry })
             ]), renderNode(LoadState, { ...resource, "empty": !value.value, children: [value.value && (renderNode(Fragment, {}, [
                         renderNode("dl", { "class": styles.readout }, [
                             renderNode("div", { "class": styles.lead }, [
@@ -65,20 +66,19 @@ const UsersView = defineComponent((props: {
     token: string;
     onForbidden: () => void;
 }) => {
-    const draftQ = shallowRef("");
-    const setDraftQ = (next: typeof draftQ.value | ((old: typeof draftQ.value) => typeof draftQ.value)) => { draftQ.value = typeof next === "function" ? next(draftQ.value) : next; };
-    const q = shallowRef("");
-    const setQ = (next: typeof q.value | ((old: typeof q.value) => typeof q.value)) => { q.value = typeof next === "function" ? next(q.value) : next; };
-    const offset = shallowRef(0);
-    const setOffset = (next: typeof offset.value | ((old: typeof offset.value) => typeof offset.value)) => { offset.value = typeof next === "function" ? next(offset.value) : next; };
-    const navigate = useRouter().push;
+    const { filters, offset, setFilters, setOffset, openDetail: navigate } = useAdminListNavigation({ q: '' });
+    const q = computed(() => filters.value.q);
+    const draftQ = shallowRef(q.value);
+    watch(q, value => { draftQ.value = value; });
+    const setDraftQ = (value: string) => { draftQ.value = value; };
+    const setQ = (value: string) => setFilters({ q: value });
     const load = (signal: AbortSignal) => adminApi.listUsers(props.token, { q: q.value, limit: PAGE_SIZE, offset: offset.value }, signal);
     const resource = useResource<PageResult<AdminUser>>(load, props.onForbidden);
-    const submit = (event: SubmitEvent) => { event.preventDefault(); setOffset(0); setQ(draftQ.value.trim()); };
+    const submit = (event: SubmitEvent) => { event.preventDefault(); setQ(draftQ.value.trim()); };
     return () => {
         return (renderNode("section", { "class": styles.view, "aria-labelledby": "users-heading" }, [
             renderNode("div", { "class": styles.viewHead }, [
-                renderNode("div", {}, [renderNode("h2", { "id": "users-heading" }, ["用户"])]), renderNode(RefreshButton, { "onClick": resource.retry })
+                renderNode("div", {}, [renderNode("h1", { "id": "users-heading" }, ["用户"])]), renderNode(RefreshButton, { "onClick": resource.retry })
             ]), renderNode("form", { "class": styles.filters, "role": "search", "aria-label": "用户筛选", "onSubmit": submit }, [
                 renderNode("label", {}, [
                     renderNode("span", {}, ["用户名或 ID"]), renderNode("input", { "class": "input", "value": draftQ.value, "maxLength": 128, "onInput": (e: Event) => setDraftQ((e.target as HTMLInputElement & HTMLSelectElement & HTMLDetailsElement).value) }, [])
@@ -105,26 +105,30 @@ const ProjectsView = defineComponent((props: {
     token: string;
     onForbidden: () => void;
 }) => {
-    const draftQ = shallowRef("");
-    const setDraftQ = (next: typeof draftQ.value | ((old: typeof draftQ.value) => typeof draftQ.value)) => { draftQ.value = typeof next === "function" ? next(draftQ.value) : next; };
-    const draftUser = shallowRef("");
-    const setDraftUser = (next: typeof draftUser.value | ((old: typeof draftUser.value) => typeof draftUser.value)) => { draftUser.value = typeof next === "function" ? next(draftUser.value) : next; };
-    const filters = shallowRef({ q: "", userId: "" });
-    const setFilters = (next: typeof filters.value | ((old: typeof filters.value) => typeof filters.value)) => { filters.value = typeof next === "function" ? next(filters.value) : next; };
-    const offset = shallowRef(0);
-    const setOffset = (next: typeof offset.value | ((old: typeof offset.value) => typeof offset.value)) => { offset.value = typeof next === "function" ? next(offset.value) : next; };
-    const navigate = useRouter().push;
+    const { filters, offset, setFilters, setOffset, openDetail: navigate } = useAdminListNavigation({ q: '', userId: '' });
+    const draftQ = shallowRef(filters.value.q);
+    const draftUser = shallowRef(filters.value.userId);
+    watch(filters, value => { draftQ.value = value.q; draftUser.value = value.userId; });
+    const setDraftQ = (value: string) => { draftQ.value = value; };
+    const setDraftUser = (value: string) => { draftUser.value = value; };
     const load = (signal: AbortSignal) => adminApi.listProjects(props.token, { ...filters.value, limit: PAGE_SIZE, offset: offset.value }, signal);
     const resource = useResource<PageResult<AdminProject>>(load, props.onForbidden);
+    const groups = computed(() => {
+        const accounts = new Map<string, { username: string; projects: AdminProject[] }>();
+        for (const project of resource.data?.items ?? []) {
+            if (!accounts.has(project.user_id)) accounts.set(project.user_id, { username: project.username, projects: [] });
+            accounts.get(project.user_id)!.projects.push(project);
+        }
+        return [...accounts.entries()];
+    });
     const submit = (event: SubmitEvent) => {
         event.preventDefault();
-        setOffset(0);
         setFilters({ q: draftQ.value.trim(), userId: draftUser.value.trim() });
     };
     return () => {
         return (renderNode("section", { "class": styles.view, "aria-labelledby": "projects-heading" }, [
             renderNode("div", { "class": styles.viewHead }, [
-                renderNode("div", {}, [renderNode("h2", { "id": "projects-heading" }, ["作品"])]), renderNode(RefreshButton, { "onClick": resource.retry })
+                renderNode("div", {}, [renderNode("h1", { "id": "projects-heading" }, ["作品"])]), renderNode(RefreshButton, { "onClick": resource.retry })
             ]), renderNode("form", { "class": styles.filters, "role": "search", "aria-label": "作品筛选", "onSubmit": submit }, [
                 renderNode("label", {}, [
                     renderNode("span", {}, ["作品搜索"]), renderNode("input", { "class": "input", "value": draftQ.value, "maxLength": 128, "onInput": (event: Event) => setDraftQ((event.target as HTMLInputElement & HTMLSelectElement & HTMLDetailsElement).value) }, [])
@@ -132,13 +136,13 @@ const ProjectsView = defineComponent((props: {
                     renderNode("span", {}, ["用户 ID"]), renderNode("input", { "class": "input", "value": draftUser.value, "onInput": (event: Event) => setDraftUser((event.target as HTMLInputElement & HTMLSelectElement & HTMLDetailsElement).value) }, [])
                 ]), renderNode("button", { "class": "btn btn-primary", "type": "submit" }, ["筛选"])
             ]), renderNode(LoadState, { ...resource, "empty": resource.data?.items.length === 0, children: [resource.data && renderNode(Fragment, {}, [
-                        renderNode("div", { "class": styles.tableWrap }, [renderNode("table", {}, [
+                        groups.value.map(([userId, group]) => renderNode("section", { key: userId, class: styles.projectGroup }, [renderNode("h3", {}, [group.username]), renderNode("div", { "class": styles.tableWrap }, [renderNode("table", { "aria-label": `${group.username}的作品` }, [
                                 renderNode("thead", {}, [renderNode("tr", {}, [
                                         renderNode("th", {}, ["作品"]), renderNode("th", {}, ["作者"]), renderNode("th", {}, ["状态"]), renderNode("th", {}, ["章节"]), renderNode("th", {}, ["字数"]), renderNode("th", {}, ["任务"]), renderNode("th", {}, ["运行"]), renderNode("th", {}, ["预估成本"]), renderNode("th", {}, ["操作"])
-                                    ])]), renderNode("tbody", {}, [resource.data.items.map((project: AdminProject) => renderNode("tr", { "key": project.id }, [
+                                    ])]), renderNode("tbody", {}, [group.projects.map((project: AdminProject) => renderNode("tr", { "key": project.id }, [
                                         renderNode("td", {}, [renderNode("strong", {}, [project.title])]), renderNode("td", {}, [project.username]), renderNode("td", {}, [creationStatusLabel(project.creation_status)]), renderNode("td", {}, [project.chapter_count]), renderNode("td", {}, [project.word_count.toLocaleString()]), renderNode("td", {}, [project.task_count]), renderNode("td", {}, [project.metrics.run_count]), renderNode("td", {}, [formatCost(project.metrics.cost_est)]), renderNode("td", {}, [renderNode("button", { "type": "button", "class": "btn btn-quiet", "aria-label": `查看《${project.title}》`, "onClick": () => navigate(`/admin/projects/${project.id}`) }, ["查看"])])
                                     ]))])
-                            ])]), renderNode(Pagination, { "total": resource.data.total, "offset": offset.value, "onChange": setOffset })
+                            ])])])), renderNode(Pagination, { "total": resource.data.total, "offset": offset.value, "onChange": setOffset })
                     ])] })
         ]));
     };
@@ -153,18 +157,14 @@ const TasksView = defineComponent((props: {
     token: string;
     onForbidden: () => void;
 }) => {
-    const draft = shallowRef({ userId: "", projectId: "", status: "" });
-    const setDraft = (next: typeof draft.value | ((old: typeof draft.value) => typeof draft.value)) => { draft.value = typeof next === "function" ? next(draft.value) : next; };
-    const filters = shallowRef(draft.value);
-    const setFilters = (next: typeof filters.value | ((old: typeof filters.value) => typeof filters.value)) => { filters.value = typeof next === "function" ? next(filters.value) : next; };
-    const offset = shallowRef(0);
-    const setOffset = (next: typeof offset.value | ((old: typeof offset.value) => typeof offset.value)) => { offset.value = typeof next === "function" ? next(offset.value) : next; };
-    const navigate = useRouter().push;
+    const { filters, offset, setFilters, setOffset, openDetail: navigate } = useAdminListNavigation({ userId: '', projectId: '', status: '' });
+    const draft = shallowRef(filters.value);
+    watch(filters, value => { draft.value = value; });
+    const setDraft = (value: typeof draft.value) => { draft.value = value; };
     const load = (signal: AbortSignal) => adminApi.listTasks(props.token, { ...filters.value, limit: PAGE_SIZE, offset: offset.value }, signal);
     const resource = useResource<PageResult<AdminTask>>(load, props.onForbidden);
     const submit = (event: SubmitEvent) => {
         event.preventDefault();
-        setOffset(0);
         setFilters({
             userId: draft.value.userId.trim(),
             projectId: draft.value.projectId.trim(),
@@ -174,7 +174,7 @@ const TasksView = defineComponent((props: {
     return () => {
         return (renderNode("section", { "class": styles.view, "aria-labelledby": "tasks-heading" }, [
             renderNode("div", { "class": styles.viewHead }, [
-                renderNode("div", {}, [renderNode("h2", { "id": "tasks-heading" }, ["任务"])]), renderNode(RefreshButton, { "onClick": resource.retry })
+                renderNode("div", {}, [renderNode("h1", { "id": "tasks-heading" }, ["任务"])]), renderNode(RefreshButton, { "onClick": resource.retry })
             ]), renderNode("form", { "class": styles.filters, "aria-label": "任务筛选", "onSubmit": submit }, [
                 renderNode("label", {}, [
                     renderNode("span", {}, ["用户 ID"]), renderNode("input", { "class": "input", "value": draft.value.userId, "onInput": (event: Event) => setDraft({ ...draft.value, userId: (event.target as HTMLInputElement & HTMLSelectElement & HTMLDetailsElement).value }) }, [])
@@ -207,18 +207,15 @@ const RunsView = defineComponent((props: {
     token: string;
     onForbidden: () => void;
 }) => {
-    const draft = shallowRef({ userId: "", projectId: "", node: "" });
-    const setDraft = (next: typeof draft.value | ((old: typeof draft.value) => typeof draft.value)) => { draft.value = typeof next === "function" ? next(draft.value) : next; };
-    const filters = shallowRef(draft.value);
-    const setFilters = (next: typeof filters.value | ((old: typeof filters.value) => typeof filters.value)) => { filters.value = typeof next === "function" ? next(filters.value) : next; };
-    const offset = shallowRef(0);
-    const setOffset = (next: typeof offset.value | ((old: typeof offset.value) => typeof offset.value)) => { offset.value = typeof next === "function" ? next(offset.value) : next; };
-    const navigate = useRouter().push;
+    const { filters, offset, setFilters, setOffset } = useAdminListNavigation({ userId: '', projectId: '', node: '' });
+    const selectedRun = shallowRef<number | null>(null);
+    const draft = shallowRef(filters.value);
+    watch(filters, value => { draft.value = value; });
+    const setDraft = (value: typeof draft.value) => { draft.value = value; };
     const load = (signal: AbortSignal) => adminApi.listRuns(props.token, { ...filters.value, limit: PAGE_SIZE, offset: offset.value }, signal);
     const resource = useResource<PageResult<AdminRun>>(load, props.onForbidden);
     const submit = (event: SubmitEvent) => {
         event.preventDefault();
-        setOffset(0);
         setFilters({
             userId: draft.value.userId.trim(),
             projectId: draft.value.projectId.trim(),
@@ -227,8 +224,8 @@ const RunsView = defineComponent((props: {
     };
     return () => {
         return (renderNode("section", { "class": styles.view, "aria-labelledby": "runs-heading" }, [
-            renderNode("div", { "class": styles.viewHead }, [
-                renderNode("div", {}, [renderNode("h2", { "id": "runs-heading" }, ["全部运行"])]), renderNode(RefreshButton, { "onClick": resource.retry })
+            selectedRun.value !== null && renderNode(RunDetailDialog, { token: props.token, runId: selectedRun.value, onForbidden: props.onForbidden, onClose: () => { selectedRun.value = null; } }), renderNode("div", { "class": styles.viewHead }, [
+                renderNode("div", {}, [renderNode("h1", { "id": "runs-heading" }, ["全部运行"])]), renderNode(RefreshButton, { "onClick": resource.retry })
             ]), renderNode("form", { "class": styles.filters, "aria-label": "运行筛选", "onSubmit": submit }, [
                 renderNode("label", {}, [
                     renderNode("span", {}, ["用户 ID"]), renderNode("input", { "class": "input", "value": draft.value.userId, "onInput": (event: Event) => setDraft({ ...draft.value, userId: (event.target as HTMLInputElement & HTMLSelectElement & HTMLDetailsElement).value }) }, [])
@@ -240,7 +237,7 @@ const RunsView = defineComponent((props: {
                     ])
                 ]), renderNode("button", { "class": "btn btn-primary", "type": "submit" }, ["筛选"])
             ]), renderNode(LoadState, { ...resource, "empty": resource.data?.items.length === 0, children: [resource.data && renderNode(Fragment, {}, [
-                        renderNode(RunTable, { "runs": resource.data.items, "onSelect": (run: AdminRun) => navigate(`/admin/runs/${run.id}`) }), renderNode(Pagination, { "total": resource.data.total, "offset": offset.value, "onChange": setOffset })
+                        renderNode(RunTable, { "runs": resource.data.items, "onSelect": (run: AdminRun) => (selectedRun.value = run.id) }), renderNode(Pagination, { "total": resource.data.total, "offset": offset.value, "onChange": setOffset })
                     ])] })
         ]));
     };
@@ -255,14 +252,13 @@ const LogsView = defineComponent((props: {
     token: string;
     onForbidden: () => void;
 }) => {
-    const offset = shallowRef(0);
-    const setOffset = (next: typeof offset.value | ((old: typeof offset.value) => typeof offset.value)) => { offset.value = typeof next === "function" ? next(offset.value) : next; };
+    const { offset, setOffset } = useAdminListNavigation({});
     const load = (signal: AbortSignal) => adminApi.listAccessLogs(props.token, { limit: PAGE_SIZE, offset: offset.value }, signal);
     const resource = useResource<PageResult<AdminAccessLog>>(load, props.onForbidden);
     return () => {
         return (renderNode("section", { "class": styles.view, "aria-labelledby": "logs-heading" }, [
             renderNode("div", { "class": styles.viewHead }, [
-                renderNode("div", {}, [renderNode("h2", { "id": "logs-heading" }, ["访问日志"])]), renderNode(RefreshButton, { "onClick": resource.retry })
+                renderNode("div", {}, [renderNode("h1", { "id": "logs-heading" }, ["访问日志"])]), renderNode(RefreshButton, { "onClick": resource.retry })
             ]), renderNode(LoadState, { ...resource, "empty": resource.data?.items.length === 0, children: [resource.data && renderNode(Fragment, {}, [
                         renderNode("div", { "class": styles.tableWrap }, [renderNode("table", {}, [
                                 renderNode("thead", {}, [renderNode("tr", {}, [
@@ -361,7 +357,7 @@ const InvitesView = defineComponent((props: {
     return () => {
         return (renderNode("section", { "class": styles.view, "aria-labelledby": "invites-heading" }, [
             renderNode("div", { "class": styles.viewHead }, [
-                renderNode("div", {}, [renderNode("h2", { "id": "invites-heading" }, ["邀请码"])]), renderNode(RefreshButton, { "onClick": resource.retry })
+                renderNode("div", {}, [renderNode("h1", { "id": "invites-heading" }, ["邀请码"])]), renderNode(RefreshButton, { "onClick": resource.retry })
             ]), renderNode("form", { "class": styles.filters, "aria-label": "生成邀请码", "onSubmit": submit }, [
                 renderNode("label", {}, [
                     renderNode("span", {}, ["有效天数"]), renderNode("input", { "class": "input", "type": "number", "min": 1, "max": 365, "required": true, "value": expiresDays.value, "onInput": (event: Event) => setExpiresDays((event.target as HTMLInputElement & HTMLSelectElement & HTMLDetailsElement).value) }, [])
@@ -431,7 +427,7 @@ const FeedbackView = defineComponent((props: {
     return () => {
         return (renderNode("section", { "class": styles.view, "aria-labelledby": "feedback-heading" }, [
             renderNode("div", { "class": styles.viewHead }, [
-                renderNode("div", {}, [renderNode("h2", { "id": "feedback-heading" }, ["问题反馈"])]), renderNode(RefreshButton, { "onClick": resource.retry })
+                renderNode("div", {}, [renderNode("h1", { "id": "feedback-heading" }, ["问题反馈"])]), renderNode(RefreshButton, { "onClick": resource.retry })
             ]), renderNode("form", { "class": styles.filters, "aria-label": "反馈筛选", "onSubmit": submit }, [
                 renderNode("label", {}, [
                     renderNode("span", {}, ["状态"]), renderNode("select", { "class": "input", "value": draftStatus.value, "onChange": (event: Event) => setDraftStatus((event.target as HTMLInputElement & HTMLSelectElement & HTMLDetailsElement).value) }, [
@@ -470,7 +466,7 @@ export const AdminConsole = defineComponent((_props: Record<string, never>) => {
     const tab = computed(() => (TABS.some(([id]) => id === requested.value) ? requested.value as Tab : "overview"));
     return () => {
         return (renderNode(Fragment, {}, [
-            renderNode("header", { "class": styles.header }, [renderNode("div", {}, [renderNode("h1", {}, [TABS.find(([id]) => id === tab.value)?.[1] ?? "运营概览"])])]), tab.value === "overview" && renderNode(OverviewView, { "token": adminContext.token, "onForbidden": onForbidden }), tab.value === "analytics" && renderNode(Analytics, { "token": adminContext.token, "onForbidden": onForbidden }), tab.value === "users" && renderNode(UsersView, { "token": adminContext.token, "onForbidden": onForbidden }), tab.value === "projects" && renderNode(ProjectsView, { "token": adminContext.token, "onForbidden": onForbidden }), tab.value === "tasks" && renderNode(TasksView, { "token": adminContext.token, "onForbidden": onForbidden }), tab.value === "runs" && renderNode(RunsView, { "token": adminContext.token, "onForbidden": onForbidden }), tab.value === "logs" && renderNode(LogsView, { "token": adminContext.token, "onForbidden": onForbidden }), tab.value === "invites" && renderNode(InvitesView, { "token": adminContext.token, "onForbidden": onForbidden }), tab.value === "feedback" && renderNode(FeedbackView, { "token": adminContext.token, "onForbidden": onForbidden })
+            tab.value === "overview" && renderNode(OverviewView, { "token": adminContext.token, "onForbidden": onForbidden }), tab.value === "analytics" && renderNode(Analytics, { "token": adminContext.token, "onForbidden": onForbidden }), tab.value === "users" && renderNode(UsersView, { "token": adminContext.token, "onForbidden": onForbidden }), tab.value === "projects" && renderNode(ProjectsView, { "token": adminContext.token, "onForbidden": onForbidden }), tab.value === "tasks" && renderNode(TasksView, { "token": adminContext.token, "onForbidden": onForbidden }), tab.value === "runs" && renderNode(RunsView, { "token": adminContext.token, "onForbidden": onForbidden }), tab.value === "logs" && renderNode(LogsView, { "token": adminContext.token, "onForbidden": onForbidden }), tab.value === "invites" && renderNode(InvitesView, { "token": adminContext.token, "onForbidden": onForbidden }), tab.value === "feedback" && renderNode(FeedbackView, { "token": adminContext.token, "onForbidden": onForbidden })
         ]));
     };
 }, {

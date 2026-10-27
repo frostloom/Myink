@@ -2532,6 +2532,11 @@
             "title": "Mode",
             "type": "string"
           },
+          "replan": {
+            "default": false,
+            "title": "Replan",
+            "type": "boolean"
+          },
           "rewrite": {
             "default": false,
             "title": "Rewrite",
@@ -3099,6 +3104,53 @@
           "version"
         ],
         "title": "ContentUpdateOut",
+        "type": "object"
+      },
+      "CopyPlatform": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "source_resource_id": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Source Resource Id",
+            "type": "string"
+          },
+          "target_generation": {
+            "minimum": 1.0,
+            "title": "Target Generation",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "source_resource_id",
+          "target_generation"
+        ],
+        "title": "CopyPlatform",
         "type": "object"
       },
       "CorrectMemoryOut": {
@@ -5662,6 +5714,28 @@
             "title": "Source",
             "type": "string"
           },
+          "source_generation": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Generation"
+          },
+          "source_resource_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Resource Id"
+          },
           "status": {
             "enum": [
               "draft",
@@ -6623,6 +6697,32 @@
           }
         },
         "title": "StyleSampleBody",
+        "type": "object"
+      },
+      "SyncPersonal": {
+        "additionalProperties": false,
+        "properties": {
+          "acknowledge_overwrite": {
+            "title": "Acknowledge Overwrite",
+            "type": "boolean"
+          },
+          "expected_generation": {
+            "minimum": 1.0,
+            "title": "Expected Generation",
+            "type": "integer"
+          },
+          "target_generation": {
+            "minimum": 1.0,
+            "title": "Target Generation",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_generation",
+          "target_generation",
+          "acknowledge_overwrite"
+        ],
+        "title": "SyncPersonal",
         "type": "object"
       },
       "TaskBudgetLimits-Input": {
@@ -10436,6 +10536,52 @@
         ]
       }
     },
+    "/api/v1/my-writing-resources/from-platform": {
+      "post": {
+        "operationId": "copy_platform_api_v1_my_writing_resources_from_platform_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopyPlatform"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Copy Platform",
+        "tags": [
+          "writing-resources"
+        ]
+      }
+    },
     "/api/v1/my-writing-resources/{rid}": {
       "put": {
         "operationId": "edit_api_v1_my_writing_resources__rid__put",
@@ -10488,6 +10634,63 @@
           }
         ],
         "summary": "Edit",
+        "tags": [
+          "writing-resources"
+        ]
+      }
+    },
+    "/api/v1/my-writing-resources/{rid}/sync": {
+      "post": {
+        "operationId": "sync_personal_api_v1_my_writing_resources__rid__sync_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rid",
+            "required": true,
+            "schema": {
+              "title": "Rid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncPersonal"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sync Personal",
         "tags": [
           "writing-resources"
         ]
@@ -14153,6 +14356,32 @@
           }
         ],
         "summary": "Catalog",
+        "tags": [
+          "writing-resources"
+        ]
+      }
+    },
+    "/api/v1/writing-resources/catalog": {
+      "get": {
+        "operationId": "full_catalog_api_v1_writing_resources_catalog_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Full Catalog",
         "tags": [
           "writing-resources"
         ]

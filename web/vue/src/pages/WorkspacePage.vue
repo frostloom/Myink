@@ -1,6 +1,6 @@
 <script lang="ts">
 import { defineComponent, h, Fragment, ref, shallowRef, computed, watch, onScopeDispose } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import ResourceUpdates from "../components/ResourceUpdates.vue";
 import type { ResourceUpdateGate } from "../components/ResourceUpdates.vue";
 import AuditPanel from "../components/AuditPanel.vue";
@@ -16,13 +16,14 @@ import RingProgress from "../components/RingProgress.vue";
 import TaskTimeline from "../components/TaskTimeline.vue";
 import StreamingChapterView from "../components/StreamingChapterView.vue";
 import { useAuth } from "../authContext";
+import type { ArtifactState } from "../composables/useTaskEvents";
 import { useTaskEvents } from "../composables/useTaskEvents";
 import { api, ApiError } from "../../../src/lib/api";
 import { formatApiError } from "../../../src/lib/apiError";
 import { nodeLabel } from "../../../src/lib/labels";
 import { isProjectDraft, projectHref } from "../../../src/lib/projectCreation";
 import { readSidePanelOpen, writeSidePanelOpen } from "../../../src/lib/sidePanel";
-import { clearActiveWrite, readActiveWrite, writeActiveWrite } from "../../../src/lib/activeWrite";
+import { clearActiveWrite, readActiveWrite, writeActiveWrite, clearActiveShortWrite, readActiveShortWrite, writeActiveShortWrite } from "../../../src/lib/activeWrite";
 import { liveStageNode, shortStageProgress } from "../../../src/lib/taskFlow";
 import { chapterToOpenForPendingTask, latestActiveGenerationTask, latestChapterAwaitingReview, latestGenerationTask, nodesForChapter, runsForChapter } from "../../../src/lib/taskChapter";
 import type { ChapterMeta, MemoryCandidate, Project, WritingMode } from "../../../src/types";
@@ -83,6 +84,7 @@ export const WorkspacePage = defineComponent({
         const activeTaskIdRef = shallowRef<(string | null) | null>(null);
         const selectedCidRef = shallowRef<(string | null) | null>(null);
         const selectedChapterSeqRef = shallowRef<(number | null) | null>(null);
+        const retainedRewritePlan = shallowRef<ArtifactState | null>(null);
         const latestPlanArtifactRef = shallowRef<(string | null) | null>(null);
         const latestWriteArtifactRef = shallowRef<(string | null) | null>(null);
         watch(projectId, value => { projectIdRef.value = value }, { immediate: true, flush: 'sync' });
@@ -195,6 +197,7 @@ export const WorkspacePage = defineComponent({
         watch(() => [accountId.value, loadProjects, loadChapters, loadCandidates, loadCandidateReferences, projectId.value], (_next, _prev, onCleanup) => {
             // projectId 变化 = 切书：立刻丢掉上一本的章节/任务，避免迟到响应把 A 书画到 B 书上。
             setSelectedCid(null);
+            retainedRewritePlan.value = null;
             setChapters([]);
             setCandidates([]);
             setCandidateReferenceNames({});
@@ -340,16 +343,23 @@ export const WorkspacePage = defineComponent({
                 setSearchParams({}, { replace: true });
             }
         }, { immediate: true, flush: "post" });
-        const handleTaskStart = (taskId: string, total?: number, chapterSeq?: number, _mode: WritingMode = 'auto') => {
+        const handleTaskStart = (taskId: string, total?: number, chapterSeq?: number, _mode: WritingMode = 'auto', intent?: 'rewrite') => {
+            const savedPlan = planArtifact.value?.complete ? planArtifact.value.artifact
+                : [...visibleTaskRuns.value].reverse().map((run) => run.detail?.approved_plan ?? run.detail?.plan).find(Boolean);
+            retainedRewritePlan.value = intent === 'rewrite' && savedPlan && chapterSeq === selectedSeq.value
+                ? { artifactId: `retained:${taskId}`, taskId, chapterSeq, stage: 'plan', attempt: 1,
+                    content: '', complete: true, failed: false, artifact: savedPlan, message: null } : null;
             taskStartVersion.value += 1;
             setBatchTotal(total ?? null);
             setActiveTaskId(taskId);
             // 短篇没有 Plan 产物，翻到 Plan 页只会停在「等待计划」上。
             if (!isShortBook.value)
-                setCenterView('plan');
-            latestPlanArtifactRef.value = null;
+                setCenterView(intent === 'rewrite' ? 'write' : 'plan');
+            latestPlanArtifactRef.value = retainedRewritePlan.value?.artifactId ?? null;
             latestWriteArtifactRef.value = null;
             pendingAutoOpen.value = { taskId, chapterSeq: chapterSeq ?? null };
+            if (isShortBook.value)
+                writeActiveShortWrite(accountId.value, projectId.value, taskId);
             if (chapterSeq !== undefined) {
                 writeActiveWrite(accountId.value, projectId.value, { taskId, chapterSeq, batchTotal: total ?? null });
             }
@@ -410,17 +420,18 @@ export const WorkspacePage = defineComponent({
             if (shortSubmitRef.value)
                 return;
             const pid = projectId.value;
+            const uid = accountId.value;
             const version = ++shortRequestVersion.value;
-            const isCurrent = () => projectIdRef.value === pid && shortRequestVersion.value === version;
+            const isCurrent = () => !disposed && accountId.value === uid && projectIdRef.value === pid && shortRequestVersion.value === version;
             shortSubmitRef.value = true;
             setShortSubmitting(true);
             try {
-                if (resourceGate.value && !(await resourceGate.value.beforeGenerate()))
-                    return;
                 if (!isCurrent())
                     return;
                 try {
                     const response = await api.generateShort(pid);
+                    // 切路由不会取消已被服务端接受的生成；保留原书的任务供返回时重连。
+                    if (accountId.value === uid) writeActiveShortWrite(uid, pid, response.task_id);
                     if (!isCurrent())
                         return;
                     handleTaskStart(response.task_id);
@@ -475,14 +486,19 @@ export const WorkspacePage = defineComponent({
         }, { immediate: true, flush: "post" });
         // 放行本章：resume 同一 task_id 续跑（§6.11 确认流收尾）。taskId 不变但 SSE 已关流，
         // 用 releaseResumeKey 强制重连；终态 → 既有 effect 刷章节/候选，正文出现、按钮消失。
-        const handleRelease = (taskId: string, chapterSeq: number, batchSize?: number) => {
+        const handleRelease = (taskId: string, chapterSeq: number, batchSize?: number, action?: 'revise') => {
+            if (action === 'revise') {
+                task.beginReplacement(chapterSeq);
+                setCenterView('write');
+                latestWriteArtifactRef.value = null;
+            }
             taskStartVersion.value += 1;
             setBatchTotal(batchSize ?? null);
             setActiveChapterSeq(chapterSeq);
             setActiveTaskId(taskId);
             pendingAutoOpen.value = { taskId, chapterSeq };
             setReleaseTarget(null);
-            setReleaseResumeKey(Date.now());
+            setReleaseResumeKey((key) => (key ?? 0) + 1);
         };
         const handlePlanConfirmed = (taskId: string, chapterSeq: number) => {
             taskStartVersion.value += 1;
@@ -492,12 +508,12 @@ export const WorkspacePage = defineComponent({
             setCenterView('write');
             pendingAutoOpen.value = { taskId, chapterSeq };
             setChapters((current) => current.map((chapter) => (chapter.chapter_seq === chapterSeq ? { ...chapter, status: 'writing' } : chapter)));
-            setReleaseResumeKey(Date.now());
+            setReleaseResumeKey((key) => (key ?? 0) + 1);
         };
         const handlePlanCancelled = (_taskId: string, chapterSeq: number) => {
             pendingAutoOpen.value = null;
             setChapters((current) => current.map((chapter) => (chapter.chapter_seq === chapterSeq ? { ...chapter, status: 'cancelled' } : chapter)));
-            setReleaseResumeKey(Date.now());
+            setReleaseResumeKey((key) => (key ?? 0) + 1);
             setCenterView('write');
             void loadChapters();
         };
@@ -515,7 +531,9 @@ export const WorkspacePage = defineComponent({
                     setReleaseTarget({ taskId: activeTaskId.value, chapterSeq: activeChapterSeq.value, batchSize: batchTotal.value ?? undefined });
                 }
                 else if (task.status === 'done' || task.status === 'failed' || task.status === 'cancelled') {
+                    setCenterView('write');
                     clearActiveWrite(accountId.value, projectId.value);
+                    if (isShortBook.value) clearActiveShortWrite(accountId.value, projectId.value);
                     setReleaseTarget(null);
                 }
             }
@@ -565,7 +583,7 @@ export const WorkspacePage = defineComponent({
         const selectedSeq = computed(() => selectedChapter.value?.chapter_seq ?? null);
         // 短篇：整篇任务不属于任何一章，按章取任务一条都取不到，只能整表取最新那条
         // short_generate（重进页面后审稿报告要能自己回来）。
-        watch(() => [projectId.value, isShortBook.value, shortHistoryReload.value], (_next, _prev, onCleanup) => {
+        watch(() => [accountId.value, projectId.value, isShortBook.value, shortHistoryReload.value], (_next, _prev, onCleanup) => {
             if (!isShortBook.value)
                 return;
             let cancelled = false;
@@ -575,9 +593,15 @@ export const WorkspacePage = defineComponent({
                 .then((tasks) => {
                 if (cancelled || requestVersion !== taskStartVersion.value)
                     return;
-                const latest = tasks.find((task) => task.task_type === 'short_generate') ?? null;
-                activeTaskIdRef.value = latest?.task_id ?? null;
-                setActiveTaskId(latest?.task_id ?? null);
+                const shortTasks = tasks.filter((task) => task.task_type === 'short_generate');
+                const active = shortTasks.find((task) => ['queued', 'running', 'paused'].includes(task.status));
+                const remembered = readActiveShortWrite(accountId.value, projectId.value);
+                const taskId = active?.task_id ?? remembered ?? shortTasks[0]?.task_id ?? null;
+                activeTaskIdRef.value = taskId;
+                setActiveTaskId(taskId);
+                if (taskId && (active || remembered)) {
+                    pendingAutoOpen.value = { taskId, chapterSeq: null };
+                }
                 setBatchTotal(null);
                 setActiveChapterSeq(null);
                 setReleaseTarget(null);
@@ -672,9 +696,11 @@ export const WorkspacePage = defineComponent({
         }));
         const visibleTaskRuns = computed(() => isShortBook.value ? task.runs : taskRuns.value);
         const visibleTaskNodes = computed(() => isShortBook.value ? task.nodes : taskNodes.value);
-        const planArtifact = computed(() => task.artifacts.find((item) => item.chapterSeq === selectedSeq.value && item.stage === 'plan') ?? null);
+        const planArtifact = computed(() => task.artifacts.find((item) => item.chapterSeq === selectedSeq.value && item.stage === 'plan')
+            ?? (retainedRewritePlan.value?.taskId === activeTaskId.value && retainedRewritePlan.value?.chapterSeq === selectedSeq.value ? retainedRewritePlan.value : null));
         const writeArtifact = computed(() => task.artifacts.find((item) => item.chapterSeq === selectedSeq.value && item.stage === 'write') ?? null);
-        const taskIsCreating = computed(() => task.status === 'queued' || task.status === 'running' || task.status === 'awaiting_plan');
+        const taskIsCreating = computed(() => task.status === 'queued' || task.status === 'running' || task.status === 'awaiting_plan'
+            || (task.status === null && ['connecting', 'live', 'reconnecting'].includes(task.phase)));
         const taskInFlight = computed(() => Boolean(activeTaskId.value) && (taskIsCreating.value || task.status === 'awaiting_review'
             || taskPhase.value === 'connecting'
             || taskPhase.value === 'live'
@@ -715,8 +741,9 @@ export const WorkspacePage = defineComponent({
                 return;
             }
             const pid = projectId.value;
+            const uid = accountId.value;
             const version = ++shortRequestVersion.value;
-            const isCurrent = () => projectIdRef.value === pid && shortRequestVersion.value === version;
+            const isCurrent = () => !disposed && accountId.value === uid && projectIdRef.value === pid && shortRequestVersion.value === version;
             shortSubmitRef.value = true;
             setShortSubmitting(true);
             setError(null);
@@ -724,7 +751,7 @@ export const WorkspacePage = defineComponent({
                 await api.resumeTask(activeTaskId.value);
                 if (!isCurrent())
                     return;
-                setReleaseResumeKey(Date.now());
+                setReleaseResumeKey((key) => (key ?? 0) + 1);
                 task.refresh();
             }
             catch (reason) {
@@ -747,7 +774,7 @@ export const WorkspacePage = defineComponent({
             : null);
         const showCreationWorkspace = computed(() => Boolean(selectedChapter.value && (hasPlan.value || taskIsCreating.value || isPendingChapter.value)));
         const canOpenWrite = computed(() => Boolean(selectedChapter.value && (writeArtifact.value !== null
-            || selectedChapter.value.status === 'writing'
+            || (selectedChapter.value.status === 'writing' && planArtifact.value === null)
             || (!taskIsCreating.value && !isPendingChapter.value))));
         // 新的 Plan（包括审核后的 replan）先占满中栏；Writer 真正开始输出后再自动翻到正文。
         // artifact_id 作为一次产物的稳定边界，避免后续每个 delta 都抢走用户手动切换的页面。
@@ -836,7 +863,7 @@ export const WorkspacePage = defineComponent({
             writeSidePanelOpen(next);
         };
         return () => {
-            return (h("div", { "class": styles.wrap, "data-form": isShortBook.value ? 'short' : 'long' }, [h(ProjectRail, { "projects": projects.value, "onLogout": logout }, () => []), h("aside", { "class": styles.chapters, "aria-label": "章节列表" }, [h("div", { "class": styles.sideHead }, [h("h3", { "class": styles.sideTitle }, ["章节"]), h("button", { "type": "button", "class": "btn btn-quiet", "disabled": exporting.value || chapters.value.length === 0, "onClick": () => void handleExportMarkdown() }, [exporting.value ? '导出中…' : '导出 .md']), h("button", { "type": "button", "class": "btn btn-quiet", "disabled": deleting.value, "onClick": handleDeleteBook }, [deleting.value ? '删除中…' : '删除本书'])]), h(ChapterList, { "chapters": chapters.value, "selectedCid": selectedCid.value, "onSelect": setSelectedCid, "pendingByChapter": pendingByChapter.value }, () => [])]), h("main", { "class": styles.main }, [h("div", { "class": styles.resourceEntry }, [h(RouterLink, { "class": "btn btn-secondary", "to": `/projects/${projectId.value}/settings#writing-resources` }, () => ["选择写作资源"]), h("span", {}, ["题材包、题材规则、文风、创作与表达规则"])]), h(ResourceUpdates, { "key": projectId.value, "projectId": projectId.value, "ref": resourceGate }, () => []), error.value && h("div", { "class": "banner banner-error", "role": "alert" }, [error.value]), isShortBook.value && (h("div", { "class": styles.band, "role": "status" }, [h("span", {}, [shortStatus.value]), handover.value.planWarning && h("span", { "class": styles.bandWarn }, [handover.value.planWarning]), shortHistoryStatus.value === 'failed' && (h("button", { "type": "button", "class": "btn btn-quiet", "onClick": () => {
+            return (h("div", { "class": styles.wrap, "data-form": isShortBook.value ? 'short' : 'long' }, [h(ProjectRail, { "projects": projects.value, "onLogout": logout }, { "resource-actions": () => project.value && !isShortBook.value ? h(ResourceUpdates, { "key": projectId.value, "projectId": projectId.value, "ref": resourceGate }) : null }), h("aside", { "class": styles.chapters, "aria-label": "章节列表" }, [h("div", { "class": styles.sideHead }, [h("h3", { "class": styles.sideTitle }, ["章节"]), h("button", { "type": "button", "class": "btn btn-quiet", "disabled": exporting.value || chapters.value.length === 0, "onClick": () => void handleExportMarkdown() }, [exporting.value ? '导出中…' : '导出 .md']), h("button", { "type": "button", "class": "btn btn-quiet", "disabled": deleting.value, "onClick": handleDeleteBook }, [deleting.value ? '删除中…' : '删除本书'])]), h(ChapterList, { "chapters": chapters.value, "selectedCid": selectedCid.value, "onSelect": setSelectedCid, "pendingByChapter": pendingByChapter.value }, () => [])]), h("main", { "class": styles.main }, [error.value && h("div", { "class": "banner banner-error", "role": "alert" }, [error.value]), isShortBook.value && (h("div", { "class": styles.band, "role": "status" }, [h("span", {}, [shortStatus.value]), handover.value.planWarning && h("span", { "class": styles.bandWarn }, [handover.value.planWarning]), shortHistoryStatus.value === 'failed' && (h("button", { "type": "button", "class": "btn btn-quiet", "onClick": () => {
                                 setShortHistory({ projectId: projectId.value, status: 'loading' });
                                 setShortHistoryReload((tick) => tick + 1);
                             } }, ["重新查询任务"])), canStartShort.value && (h("button", { "type": "button", "class": "btn btn-quiet", "disabled": shortSubmitting.value, "onClick": () => void startShort() }, [shortStartFailed.value || shortFailed.value ? '重试' : '开始写']))])), isShortBook.value && task.status === 'done' && shortReview.value && (h("section", { "class": styles.shortResult, "aria-label": "整篇检查摘要" }, [(shortEmptyChapters.value.length > 0 || shortNeedsCheck.value) && (h("div", { "class": styles.resultWarning, "role": "alert" }, [shortEmptyChapters.value.length > 0 && h("p", {}, ["第 ", shortEmptyChapters.value.join('、'), " 章仍缺正文，请在章节列表中查看并补齐。"]), shortReview.value.warning && h("p", {}, [shortReview.value.warning]), !shortReview.value.warning && (shortReviewRun.value?.degraded || shortReviewRun.value?.error) && h("p", {}, ["本次审稿未正常完成，请检查正文。"]), shortLengthFindings.value.length > 0 && h("p", {}, [shortLengthFindings.value.length, " 项篇幅偏差，请检查对应章节。"]), shortReview.value.verdict === 'revise' && !shortReviewRun.value?.detail?.revised && h("p", {}, ["审稿建议修改，本次未完成改稿。"])])), !shortReview.value.warning && !shortReviewRun.value?.degraded && !shortReviewRun.value?.error && (h("span", { "class": styles.reviewSummary }, [shortReviewRun.value?.detail?.revised ? '已按审稿意见改稿' : shortReview.value.verdict === 'pass' ? '整篇审稿通过' : '有待修改意见'])), (shortReview.value.issues.length > 0 || shortReview.value.suggestions.length > 0 || shortLengthFindings.value.length > 0) && (h("details", { "class": styles.reviewDetails }, [h("summary", {}, ["查看检查意见"]), h("ul", {}, [[...shortReview.value.issues, ...shortReview.value.suggestions].map((item, index) => h("li", { "key": index }, [item])), shortLengthFindings.value.map((finding, index) => (h("li", { "key": `length-${index}` }, [finding.evidence.map((item) => `第 ${item.chapter} 章：${item.quote}`).join('；'), finding.suggestion && h("span", {}, [" · ", finding.suggestion])])))])]))])), selectedChapter.value ? (showCreationWorkspace.value ? h("div", { "class": styles.creationWorkspace }, [h("nav", { "class": styles.stageTabs, "aria-label": `第 ${selectedChapter.value!.chapter_seq} 章创作视图` }, [!isShortBook.value && (h("button", { "type": "button", "class": centerView.value === 'plan' ? styles.stageTabActive : styles.stageTab, "disabled": !hasPlan.value && !taskIsCreating.value && !isPendingChapter.value, "aria-current": centerView.value === 'plan' ? 'page' : undefined, "onClick": () => setCenterView('plan') }, [h("span", {}, ["Plan"]), h("small", {}, [task.status === 'awaiting_plan' ? '等待确认' : '章节计划'])])), h("button", { "type": "button", "class": centerView.value === 'write' ? styles.stageTabActive : styles.stageTab, "disabled": !canOpenWrite.value, "aria-current": centerView.value === 'write' ? 'page' : undefined, "onClick": () => setCenterView('write') }, [h("span", {}, ["正文"]), h("small", {}, [writeArtifact.value?.complete ? '生成完成' : writeArtifact.value ? '实时写作' : 'Write'])])]), h("div", { "class": styles.creationPage }, [showPlanView.value ? (h(ChapterPlanPanel, { "key": `plan-${projectId.value}-${selectedChapter.value!.chapter_seq}`, "taskId": activeTaskId.value, "chapterSeq": selectedChapter.value!.chapter_seq, "status": task.status, "runs": visibleTaskRuns.value, "artifact": planArtifact.value, "onConfirmed": handlePlanConfirmed, "onCancelled": handlePlanCancelled }, () => [])) : taskIsCreating.value ? (h(StreamingChapterView, { "key": `write-${projectId.value}-${selectedChapter.value!.chapter_seq}`, "chapterSeq": selectedChapter.value!.chapter_seq, "artifact": writeArtifact.value, "summary": selectedChapter.value.summary }, () => [])) : isPendingChapter.value ? (h("div", { "class": styles.generatingChapter, "role": "status" }, [h("span", { "class": styles.generatingBadge }, ["准备中"]), h("h2", {}, ["第 ", selectedChapter.value!.chapter_seq, " 章"]), h("p", {}, ["章节页面已经建立，正在连接生成任务。"])])) : (h(ChapterEditor, { "projectId": projectId.value, "chapter": selectedChapter.value, "onNotFound": handleNotFound, "onSaved": handleSaved, "onMemoryChanged": loadCandidates, "refreshTick": refreshTick.value, "allowMemoryCorrection": allowMemoryCorrection.value }, () => []))])]) : (h(ChapterEditor, { "projectId": projectId.value, "chapter": selectedChapter.value, "onNotFound": handleNotFound, "onSaved": handleSaved, "onMemoryChanged": loadCandidates, "refreshTick": refreshTick.value, "allowMemoryCorrection": allowMemoryCorrection.value }, () => []))) : (h("div", { "class": "empty" }, [chapters.value.length === 0
@@ -845,7 +872,7 @@ export const WorkspacePage = defineComponent({
                                 // 「还在写」和「卡住了」才分得开。
                                 ? h(RingProgress, { "value": shortStage.value?.value ?? 0, "label": shortStage.value ? nodeLabel(shortStage.value.stage) : '成稿', "indeterminate": shortStage.value?.indeterminate ?? true, "ariaLabel": "短篇写作进度" }, () => []) : '成稿还没出来。')
                                 : '还没有章节。在右侧发起首次生成。')
-                            : '选择左侧章节开始编辑。']))]), h("aside", { "class": sidePanelOpen.value ? styles.right : styles.rightDock, "aria-label": "生成与校验" }, [h("button", { "type": "button", "class": `btn btn-quiet ${styles.dockToggle}`, "aria-expanded": sidePanelOpen.value, "aria-controls": "workspace-side-body", "onClick": toggleSidePanel }, [sidePanelOpen.value ? '收起面板' : '生成与校验']), h("div", { "class": styles.rightBody, "id": "workspace-side-body", "hidden": !sidePanelOpen.value }, [isShortBook.value ? (h(TaskTimeline, { "key": `flow-${projectId.value}-short`, "taskId": activeTaskId.value, "phase": task.phase, "status": task.status, "budget": task.budget, "nodes": visibleTaskNodes.value, "runs": visibleTaskRuns.value, "liveNode": liveNode.value, "progress": task.progress, "chapterSeq": null, "error": task.error, "onRetry": task.retry, "canControl": batchTotal.value !== null, "refresh": task.refresh }, () => [])) : (h(Fragment, null, [h(GenerationPanel, { "key": `${accountId.value}:${projectId.value}`, "projectId": projectId.value, "chapters": chapters.value, "selectedChapter": selectedChapter.value, "taskBusy": taskInFlight.value, "beforeGenerate": () => resourceGate.value?.beforeGenerate() ?? Promise.resolve(true), "onTaskStart": handleTaskStart }, () => []), h(TaskTimeline, { "key": `flow-${projectId.value}-${selectedSeq.value ?? 'none'}`, "taskId": activeTaskId.value, "phase": task.phase, "status": task.status, "budget": task.budget, "nodes": visibleTaskNodes.value, "runs": visibleTaskRuns.value, "liveNode": liveNode.value, "progress": task.progress, "chapterSeq": selectedSeq.value, "error": task.error, "onRetry": task.retry, "canControl": batchTotal.value !== null, "refresh": task.refresh }, () => []), h(AuditPanel, { "key": `audit-${projectId.value}-${selectedSeq.value ?? 'none'}`, "runs": visibleTaskRuns.value, "onNavigateChapter": handleNavigateChapter }, () => []), h(CandidatePanel, { "key": `${projectId.value}:${selectedSeq.value ?? 'none'}`, "projectId": projectId.value, "chapterSeq": selectedSeq.value, "chapterStatus": selectedChapter.value?.status, "candidates": candidates.value, "onChanged": loadCandidates, "releaseTarget": releaseTarget.value, "onReleased": handleRelease, "referenceNames": candidateReferenceNames.value }, () => []), h(LessonsPanel, { "projectId": projectId.value }, () => [])]))])])]));
+                            : '选择左侧章节开始编辑。']))]), h("aside", { "class": sidePanelOpen.value ? styles.right : styles.rightDock, "aria-label": "生成与校验" }, [h("button", { "type": "button", "class": `btn btn-quiet ${styles.dockToggle}`, "aria-expanded": sidePanelOpen.value, "aria-controls": "workspace-side-body", "onClick": toggleSidePanel }, [sidePanelOpen.value ? '收起面板' : '生成与校验']), h("div", { "class": styles.rightBody, "id": "workspace-side-body", "hidden": !sidePanelOpen.value }, [isShortBook.value ? (h(TaskTimeline, { "key": `flow-${projectId.value}-short`, "taskId": activeTaskId.value, "phase": task.phase, "status": task.status, "budget": task.budget, "nodes": visibleTaskNodes.value, "runs": visibleTaskRuns.value, "liveNode": liveNode.value, "progress": task.progress, "chapterSeq": null, "error": task.error, "onRetry": task.retry, "canControl": batchTotal.value !== null, "refresh": task.refresh }, () => [])) : (h(Fragment, null, [h(GenerationPanel, { "key": `${accountId.value}:${projectId.value}`, "projectId": projectId.value, "chapters": chapters.value, "selectedChapter": selectedChapter.value, "taskBusy": taskInFlight.value, "beforeGenerate": () => resourceGate.value?.beforeGenerate() ?? Promise.resolve(true), "onTaskStart": handleTaskStart }, () => []), h(TaskTimeline, { "key": `flow-${projectId.value}-${selectedSeq.value ?? 'none'}`, "taskId": activeTaskId.value, "phase": task.phase, "status": task.status, "budget": task.budget, "nodes": visibleTaskNodes.value, "runs": visibleTaskRuns.value, "liveNode": liveNode.value, "progress": task.progress, "chapterSeq": selectedSeq.value, "error": task.error, "onRetry": task.retry, "canControl": batchTotal.value !== null, "refresh": task.refresh }, () => []), h(AuditPanel, { "concise": true, "key": `audit-${projectId.value}-${selectedSeq.value ?? 'none'}`, "runs": visibleTaskRuns.value, "onNavigateChapter": handleNavigateChapter }, () => []), h(CandidatePanel, { "key": `${projectId.value}:${selectedSeq.value ?? 'none'}`, "projectId": projectId.value, "chapterSeq": selectedSeq.value, "chapterStatus": selectedChapter.value?.status, "candidates": candidates.value, "onChanged": loadCandidates, "releaseTarget": releaseTarget.value, "onReleased": handleRelease, "referenceNames": candidateReferenceNames.value }, () => []), h(LessonsPanel, { "projectId": projectId.value }, () => [])]))])])]));
         };
     }
 });

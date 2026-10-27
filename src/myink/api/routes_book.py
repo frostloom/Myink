@@ -32,6 +32,7 @@ from sqlalchemy import delete as sa_delete, func, select, text
 
 from myink.api.auth import current_user, require_owner
 from myink.api.routes_style import resolve_style_selection
+from myink.api.routes_genre import ensure_genre_editable
 from myink.api.schemas import (BookOutlineOut, CharacterCardOut, CharacterStateChangeOut,
                                DeleteProjectOut, EntityCardOut, ForeshadowOut, OutlineDraftOut,
                                ProjectOut, ProjectCreationOut, SetupConfirmOut, SetupDraftOut, StoryEventOut,
@@ -370,17 +371,18 @@ def update_project(project_id: str, body: ProjectUpdateBody) -> dict:
     target_words 显式传 null 才置空（清空回落生成侧默认 3000）。归属断言 fail closed。"""
     pid = _pid(project_id)
     with new_session() as db:
-        project = db.get(Project, pid)
+        project = db.get(Project, pid, with_for_update=True)
         if project is None:
             raise HTTPException(status_code=404, detail="作品不存在")
-        if body.title is not None and body.title.strip():
-            project.title = body.title.strip()
-        if body.genre is not None and body.genre.strip():
+        if body.genre is not None and body.genre.strip() and body.genre.strip() != project.genre:
+            ensure_genre_editable(project)
             with tenant_session(project_id) as tdb:
                 st = get_settings(tdb, pid)
                 if st is not None and is_managed_pack(st.genre_pack):
                     raise HTTPException(status_code=400, detail="本书题材名已锁定为所选题材包")
             project.genre = body.genre.strip()
+        if body.title is not None and body.title.strip():
+            project.title = body.title.strip()
         if body.target_words is not None:
             project.target_words = _check_target_words(body.target_words, field="每章目标字数")
         elif "target_words" in body.model_fields_set and body.target_words is None:
@@ -508,15 +510,12 @@ def setup_draft(project_id: str, body: SetupDraftBody) -> dict:
     with tenant_session(project_id) as tdb:
         st = get_settings(tdb, _pid(project_id))
         genre_pack = (st.genre_pack if st else {}) or {}
-    db = new_session()
-    try:
+    with tenant_session(project_id) as db:
         project = db.get(Project, _pid(project_id))
         genre = project.genre if project is not None else ""
         draft, error = generate_book_setup(
             genre, premise, genre_pack=genre_pack, project_id=project_id, db=db)
         db.commit()
-    finally:
-        db.close()
     save_proposal(project_id, {"premise": premise, "setup_draft": draft, "setup_error": error})
     return {"draft": draft, "error": error}
 
@@ -639,8 +638,7 @@ def outline_draft(project_id: str, body: OutlineDraftBody) -> dict:
     with tenant_session(project_id) as tdb:
         st = get_settings(tdb, _pid(project_id))
         genre_pack = (st.genre_pack if st else {}) or {}
-    db = new_session()
-    try:
+    with tenant_session(project_id) as db:
         project = db.get(Project, _pid(project_id))
         genre = project.genre if project is not None else ""
         form = project.form if project is not None else "long"
@@ -656,8 +654,6 @@ def outline_draft(project_id: str, body: OutlineDraftBody) -> dict:
                      "storyline": body.storyline, "outline_draft": outline,
                      "outline_error": error}
             result = {"outline": outline, "error": error}
-    finally:
-        db.close()
     save_proposal(project_id, patch)
     return result
 

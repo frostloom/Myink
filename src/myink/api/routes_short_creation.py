@@ -341,15 +341,12 @@ def commit(body: ShortCreationCommitBody, session_id: uuid.UUID,
         genre_pack = (settings_row.genre_pack if settings_row else {}) or {}
 
     # 2) 出方案 + 审纲（复用旧向导的短篇分支，含「被打回就重出一次」）
-    db2 = new_session()
-    try:
+    with tenant_session(str(pid)) as db2:
         patch, _ = _book._short_outline_draft(
             str(pid),
             _book.OutlineDraftBody(premise=premise, chapter_count=chapters,
                                    chars_per_chapter=chars, storyline=""),
             card["genre"], genre_pack, chapters, db2)
-    finally:
-        db2.close()
     outline = patch.get("outline_draft") or {}
     if (patch.get("outline_error") or not outline.get("volumes")
             or not str(outline.get("objective") or "").strip()):

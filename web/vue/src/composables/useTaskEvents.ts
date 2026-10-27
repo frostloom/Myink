@@ -5,20 +5,25 @@ import type { AgentRun, TaskBudgetView, TaskStatus } from '../../../src/types'
 export type TaskPhase = 'idle' | 'connecting' | 'live' | 'reconnecting' | 'terminal' | 'expired' | 'error'
 export interface NodeEvent { taskId: string; node: string; seenAt: number }
 export interface ArtifactState { artifactId: string; taskId: string; stage: string; chapterSeq: number; attempt: number; content: string; complete: boolean; failed: boolean; artifact: unknown | null; message: string | null }
-export interface TaskEventState { budget: TaskBudgetView | null; phase: TaskPhase; status: TaskStatus | null; nodes: NodeEvent[]; artifacts: ArtifactState[]; runs: AgentRun[]; progress: {current:number;total:number}|null; shortProgress:{stage:string;current:number;total:number}|null;error:string|null;payload:Record<string,unknown>;lastEventId:string|null;stop:()=>void;retry:()=>void;refresh:()=>void }
+export interface TaskEventState { budget: TaskBudgetView | null; phase: TaskPhase; status: TaskStatus | null; nodes: NodeEvent[]; artifacts: ArtifactState[]; runs: AgentRun[]; progress: {current:number;total:number}|null; shortProgress:{stage:string;current:number;total:number}|null;error:string|null;payload:Record<string,unknown>;lastEventId:string|null;stop:()=>void;retry:()=>void;refresh:()=>void;beginReplacement:(chapterSeq:number)=>void }
 const terminal = new Set<TaskStatus>(['done','failed','cancelled','awaiting_plan','awaiting_review'])
 export function useTaskEvents(taskId: MaybeRefOrGetter<string | null>, opts?: { batchTotal?: MaybeRefOrGetter<number | undefined>; resumeKey?: MaybeRefOrGetter<number | null> }):TaskEventState {
-  const state = reactive<TaskEventState>({budget:null,phase:'idle',status:null,nodes:[],artifacts:[],runs:[],progress:null,shortProgress:null,error:null,payload:{},lastEventId:null,stop,retry,refresh})
-  let epoch=0, statusSeq=0, connected:string|null=null, disposed=false
+  const state = reactive<TaskEventState>({budget:null,phase:'idle',status:null,nodes:[],artifacts:[],runs:[],progress:null,shortProgress:null,error:null,payload:{},lastEventId:null,stop,retry,refresh,beginReplacement})
+  let epoch=0, statusSeq=0, connected:string|null=null, disposed=false, awaitingReplacement=false
   let abort:AbortController|null=null
   let snapTimer:ReturnType<typeof setTimeout>|null=null
   let delayTimer:ReturnType<typeof setTimeout>|null=null
   let wake: (()=>void)|null=null
   let snapshotProgress:{current:number;total:number}|null=null
   const artifacts=new Map<string,ArtifactState>()
+  const retiredArtifacts=new Set<string>()
+  function removeArtifact(key:string) { const previous=artifacts.get(key);if(previous)retiredArtifacts.add(previous.artifactId);artifacts.delete(key) }
+  function beginReplacement(chapterSeq:number) {
+    awaitingReplacement=true;removeArtifact(`write:${chapterSeq}`);state.artifacts=Array.from(artifacts.values());state.status='queued';statusSeq++
+  }
   function clearConnection() { abort?.abort(); if(snapTimer!==null)clearTimeout(snapTimer);snapTimer=null;if(delayTimer!==null)clearTimeout(delayTimer);delayTimer=null;wake?.();wake=null }
   function stop() {
-    epoch++;clearConnection();connected=null;statusSeq=0;artifacts.clear();snapshotProgress=null
+    epoch++;clearConnection();awaitingReplacement=false;connected=null;statusSeq=0;artifacts.clear();retiredArtifacts.clear();snapshotProgress=null
     Object.assign(state,{budget:null,phase:'idle',status:null,nodes:[],artifacts:[],runs:[],progress:null,shortProgress:null,error:null,payload:{},lastEventId:null})
   }
   function effectiveProgress() {
@@ -30,6 +35,8 @@ export function useTaskEvents(taskId: MaybeRefOrGetter<string | null>, opts?: { 
     try {
       const detail=await api.getTask(tid)
       if(disposed||version!==epoch||connected!==tid)return null
+      if(awaitingReplacement && detail.status==='awaiting_review')return state.status
+      awaitingReplacement=false
       state.runs=detail.runs;state.budget=detail.budget??null;state.payload=detail.payload;state.error=detail.error
       if(detail.progress)snapshotProgress=detail.progress
       effectiveProgress()
@@ -52,13 +59,17 @@ export function useTaskEvents(taskId: MaybeRefOrGetter<string | null>, opts?: { 
     // Capture this epoch after opening so late snapshots from a previous retry are invalid.
     void snapshot(tid,false,version)
     const receive=(ev:SSEEvent)=>{
-      if(!current())return
+      if(!current() || (ev.task_id!==tid && !ev.task_id.startsWith(`${tid}:ch`)))return
+      if(ev.type.startsWith('artifact_') && (ev.task_id!==tid && ev.task_id!==`${tid}:ch${ev.chapter_seq}` || retiredArtifacts.has(ev.artifact_id)))return
       state.phase='live'
-      if(ev.status){statusSeq++;state.status=ev.status as TaskStatus}
+      if(ev.status){awaitingReplacement=false;statusSeq++;state.status=ev.status as TaskStatus}
       if(ev.node){state.nodes.push({taskId:ev.task_id,node:ev.node,seenAt:Date.now()});effectiveProgress();schedule(tid,version)}
       if(ev.type==='progress'&&ev.stage)state.shortProgress={stage:ev.stage,current:ev.done,total:ev.total}
       if(ev.type.startsWith('artifact_')&&ev.stage&&ev.chapter_seq){
+        if(awaitingReplacement && ev.stage==='write'){awaitingReplacement=false;state.status='running';statusSeq++}
         const key=`${ev.stage}:${ev.chapter_seq}`, previous=artifacts.get(key)
+        if(previous && previous.artifactId!==ev.artifact_id)retiredArtifacts.add(previous.artifactId)
+        if(ev.type==='artifact_reset' && ev.stage==='plan')removeArtifact(`write:${ev.chapter_seq}`)
         const fresh:ArtifactState={artifactId:ev.artifact_id,taskId:ev.task_id,stage:ev.stage,chapterSeq:ev.chapter_seq,attempt:ev.attempt,content:'',complete:false,failed:false,artifact:null,message:null}
         const entry=ev.type==='artifact_reset'||previous?.artifactId!==ev.artifact_id?fresh:{...previous}
         if(ev.type==='artifact_delta'){const points=Array.from(entry.content);entry.content=ev.offset<points.length?points.slice(0,ev.offset).join('')+ev.content:entry.content+ev.content}

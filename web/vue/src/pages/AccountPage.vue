@@ -22,6 +22,7 @@ const guest = computed(() => status.value !== 'authenticated');
 const mfaEnabled = ref<boolean | null>(null), enrolling = ref(false), mfaSecret = ref(''), mfaUri = ref(''), mfaPassword = ref(''), mfaCode = ref(''), mfaError = ref<string | null>(null), mfaBusy = ref(false);
 let generation = 0;
 useMemoryFormGuard(() => !guest.value && Boolean(currentPassword.value || newPassword.value || confirmPassword.value || mfaPassword.value || mfaCode.value || enrolling.value), { recovering: () => guest.value });
+const mfaStatusError = ref<string | null>(null), mfaStatusLoading = ref(false);
 let mfaStatusVersion = 0;
 function clearSecrets() { currentPassword.value = ''; newPassword.value = ''; confirmPassword.value = ''; mfaSecret.value = ''; mfaUri.value = ''; mfaPassword.value = ''; mfaCode.value = ''; enrolling.value = false; }
 // Clear sensitive state only when ownership or verified access changes.
@@ -29,6 +30,7 @@ watch([() => session.value?.userId, isAdmin, status], async () => {
     const id = ++generation;
     clearSecrets();
     mfaEnabled.value = null;
+    mfaStatusError.value = null;
     mfaError.value = null;
     error.value = null;
     busy.value = false;
@@ -44,18 +46,27 @@ watch([() => session.value?.userId, isAdmin, status], async () => {
     }
 }, { immediate: true, flush: 'sync' });
 // Token renewal refreshes server status without discarding an enrollment or form.
-watch([() => session.value?.token, isAdmin], async () => {
+async function loadMfaStatus() {
     const request = ++mfaStatusVersion;
     const ownerGeneration = generation;
+    mfaStatusError.value = null;
+    mfaStatusLoading.value = false;
     if (!isAdmin.value || !session.value)
         return;
+    mfaStatusLoading.value = true;
     try {
         const result = await api.mfaStatus(session.value.token);
         if (request === mfaStatusVersion && ownerGeneration === generation && !enrolling.value)
             mfaEnabled.value = result.enabled;
     }
-    catch { /* Keep the existing enrollment and unknown status closed. */ }
-}, { immediate: true });
+    catch (err) {
+        if (request === mfaStatusVersion && ownerGeneration === generation && !enrolling.value)
+            mfaStatusError.value = formatApiError(err, '两步验证状态加载失败');
+    } finally {
+        if (request === mfaStatusVersion && ownerGeneration === generation) mfaStatusLoading.value = false;
+    }
+}
+watch([() => session.value?.token, isAdmin], () => { void loadMfaStatus(); }, { immediate: true });
 onScopeDispose(() => { generation++; mfaStatusVersion++; clearSecrets(); });
 async function submit() {
     if (busy.value)
@@ -172,6 +183,8 @@ async function mfaAction(action: 'enroll' | 'confirm' | 'disable') {
   <section v-if="isAdmin" :class="['panel',styles.card,styles.wide]" aria-labelledby="admin-console"><h2 id="admin-console">管理后台</h2><p :class="shell.hint">查看全部作品的运行记录、成本与配额，管理账号与邀请码。</p><div><RouterLink class="btn btn-secondary" to="/admin">打开管理后台</RouterLink></div></section>
   <section v-if="isAdmin" :class="['panel',styles.card,styles.wide]" aria-labelledby="mfa">
 <h2 id="mfa">两步验证</h2>
+   <p v-if="mfaStatusLoading" role="status">正在加载两步验证状态…</p>
+   <div v-if="mfaStatusError" class="banner banner-error" role="alert">{{ mfaStatusError }} <button type="button" class="btn btn-secondary" @click="loadMfaStatus">重试两步验证状态</button></div>
    <form v-if="enrolling || mfaEnabled !== null" :class="styles.form" @submit.prevent="mfaAction(enrolling?'confirm':mfaEnabled?'disable':'enroll')">
     <template v-if="enrolling"><div :class="styles.field"><span>密钥</span><code :class="styles.secret">{{ mfaSecret }}</code></div><div :class="styles.field"><span>otpauth 链接</span><code :class="styles.secret">{{ mfaUri }}</code></div></template>
     <div v-if="mfaEnabled" class="badge badge-success">已开启</div>

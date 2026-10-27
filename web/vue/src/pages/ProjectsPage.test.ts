@@ -94,4 +94,6 @@ it('shows the guest list without requesting protected project data', async () =>
   await flushPromises()
   expect(fetcher).not.toHaveBeenCalled()
   expect(screen.getByText(/还没有长篇作品/)).toBeTruthy()
+  expect(screen.queryByRole('button', { name: '登出' })).toBeNull()
+  expect(screen.getByRole('link', { name: '登录' })).toBeTruthy()
 })

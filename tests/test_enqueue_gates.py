@@ -456,8 +456,11 @@ def _assert_automatic_role_snapshot(snapshot):
         "validator_l2": {"system_ledger_l2"},
     }
     assert snapshot["configured"] is False
-    assert snapshot["revision"] == 0
-    assert snapshot["selections"] == []
+    assert snapshot["revision"] == 1
+    assert snapshot["selections"]
+    kinds = {item["kind"] for item in snapshot["selections"]}
+    assert kinds <= {"genre", "genre_rule", "role_prompt", "reference", "writing_rule", "expression_rule"}
+    assert {"writing_rule", "expression_rule"} <= kinds
     assert set(snapshot["role_prompts"]) == set(phases)
     with new_session() as db:
         for role, expected_phases in phases.items():

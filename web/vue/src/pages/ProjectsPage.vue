@@ -75,10 +75,11 @@ onScopeDispose(() => { alive = false; loadId++ })
         <RouterLink to="/environment" :class="rail.item">高级设置</RouterLink>
         <RouterLink to="/theme" :class="rail.item">主题</RouterLink>
         <RouterLink to="/styles" :class="rail.item">文风库</RouterLink>
+        <RouterLink to="/writing-resources" :class="rail.item">写作资源</RouterLink>
       </nav>
       <div :class="rail.foot">
         <RouterLink to="/account" :class="rail.item">账号</RouterLink>
-        <div :class="rail.userRow"><span :class="rail.user">{{ username }}</span><button type="button" class="btn btn-quiet" @click="$emit('logout')">登出</button></div>
+        <div :class="rail.userRow"><span :class="rail.user">{{ username }}</span><RouterLink v-if="guest" to="/login" class="btn btn-quiet">登录</RouterLink><button v-else type="button" class="btn btn-quiet" @click="$emit('logout')">登出</button></div>
       </div>
     </aside>
     <main :class="styles.main">

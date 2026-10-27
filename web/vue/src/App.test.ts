@@ -115,3 +115,201 @@ it('allows local logout when cached session verification and remote logout are o
   expect(localStorage.getItem('myink.session')).toBeNull()
   expect(screen.getByText(/本地|服务器/)).toBeTruthy()
 })
+
+it('keeps the same navigation and scroll while the next page waits for its book list', async () => {
+  login()
+  let delayed = false
+  let finish!: (r: Response) => void
+  const books = [{ id: 'book', title: '持续显示的作品', form: 'long', genre: '现实', current_chapter: 1, target_words: 800, creation_status: 'ready' }]
+  vi.stubGlobal('fetch', vi.fn(async (path: string) => {
+    if (path.endsWith('/auth/session')) return new Response(JSON.stringify(auth))
+    if (path.endsWith('/projects')) return delayed ? new Promise<Response>(resolve => { finish = resolve }) : new Response(JSON.stringify(books))
+    return new Response(JSON.stringify({}))
+  }))
+  const router = await app()
+  const navigation = await screen.findByRole('navigation', { name: '作品列表' })
+  await within(navigation).findByText('持续显示的作品')
+  const rail = navigation.closest('aside')!
+  rail.scrollTop = 180
+  delayed = true
+  await router.push('/projects/book/settings')
+  await vi.waitFor(() => expect(finish).toBeTypeOf('function'))
+  expect(screen.getByRole('navigation', { name: '作品列表' })).toBe(navigation)
+  expect(within(navigation).getByText('持续显示的作品')).toBeTruthy()
+  expect(rail.scrollTop).toBe(180)
+  finish(new Response(JSON.stringify(books)))
+  await flushPromises()
+  expect(screen.getByRole('navigation', { name: '作品列表' })).toBe(navigation)
+})
+
+it('clears a loaded navigation list immediately at the account boundary', async () => {
+  login()
+  let finishB!: (response: Response) => void
+  vi.stubGlobal('fetch', vi.fn(async (path: string, init: RequestInit) => {
+    const second = (init.headers as Record<string, string>).Authorization === 'Bearer token-b'
+    if (path.endsWith('/auth/session')) return new Response(JSON.stringify(second ? { ...auth, user_id: 'b', username: 'second-user' } : auth))
+    if (second) return new Promise<Response>(resolve => { finishB = resolve })
+    return new Response(JSON.stringify([{ id: 'a', title: '上一账号的书', creation_status: 'ready' }]))
+  }))
+  await app()
+  await within(await screen.findByRole('navigation', { name: '作品列表' })).findByText('上一账号的书')
+  setSession({ token: 'token-b', userId: 'b', username: 'b', tier: 'pro', role: 'user', roleVerified: false, expiresAt: Date.now() + 3600000 })
+  window.dispatchEvent(new StorageEvent('storage', { key: 'myink.session' }))
+  await vi.waitFor(() => expect(finishB).toBeTypeOf('function'))
+  expect(screen.queryByText('上一账号的书')).toBeNull()
+  finishB(new Response(JSON.stringify([])))
+  await flushPromises()
+  expect(within(screen.getByRole('navigation', { name: '作品列表' })).queryAllByRole('link')).toHaveLength(0)
+})
+
+it('removes the last deleted book from the persistent navigation', async () => {
+  login()
+  let deleted = false
+  vi.spyOn(window, 'confirm').mockReturnValue(true)
+  vi.stubGlobal('fetch', vi.fn(async (path: string, init: RequestInit) => {
+    if (path.endsWith('/auth/session')) return new Response(JSON.stringify(auth))
+    if (init.method === 'DELETE') { deleted = true; return new Response(JSON.stringify({ ok: true })) }
+    return new Response(JSON.stringify(deleted ? [] : [{ id: 'book', title: '最后一本', genre: '现实', current_chapter: 0, target_words: 800, creation_status: 'ready' }]))
+  }))
+  await app()
+  const navigation = await screen.findByRole('navigation', { name: '作品列表' })
+  await within(navigation).findByText('最后一本')
+  await fireEvent.click(screen.getByRole('button', { name: /删除/ }))
+  await vi.waitFor(() => expect(within(navigation).queryByText('最后一本')).toBeNull())
+  expect(screen.getByRole('navigation', { name: '作品列表' })).toBe(navigation)
+  vi.mocked(window.confirm).mockRestore()
+})
+
+it('retains the user navigation instance when visiting and leaving the admin area', async () => {
+  login()
+  vi.stubGlobal('fetch', vi.fn(async (path: string) => new Response(JSON.stringify(path.endsWith('/auth/session') ? auth : []))))
+  const router = await app()
+  const navigation = await screen.findByRole('navigation', { name: '作品列表' })
+  const rail = navigation.closest('aside')!
+  rail.scrollTop = 90
+  await router.push('/admin')
+  await flushPromises()
+  expect(screen.queryByRole('navigation', { name: '作品列表' })).toBeNull()
+  await router.push('/long')
+  await flushPromises()
+  expect(screen.getByRole('navigation', { name: '作品列表' })).toBe(navigation)
+  expect(rail.scrollTop).toBe(90)
+})
+
+it('shows only one persistent admin rail across account and admin routes', async () => {
+  login()
+  vi.stubGlobal('fetch', vi.fn(async (path: string) => new Response(JSON.stringify(path.endsWith('/auth/session') ? { ...auth, role: 'admin' } : []))))
+  const router = await app('/account')
+  const navigation = await screen.findByRole('navigation', { name: '平台管理导航' })
+  const projectAside = screen.getByRole('navigation', { name: '作品列表', hidden: true }).closest('aside')!
+  expect(getComputedStyle(projectAside).display).toBe('none')
+  expect([...document.querySelectorAll('aside')].filter(aside => getComputedStyle(aside).display !== 'none')).toHaveLength(1)
+  expect(screen.queryByRole('navigation', { name: '作品列表' })).toBeNull()
+  const rail = navigation.closest('aside')!
+  rail.scrollTop = 140
+  await router.push('/admin')
+  await flushPromises()
+  expect(screen.getByRole('navigation', { name: '平台管理导航' })).toBe(navigation)
+  expect(rail.scrollTop).toBe(140)
+  expect(getComputedStyle(projectAside).display).toBe('none')
+  expect([...document.querySelectorAll('aside')].filter(aside => getComputedStyle(aside).display !== 'none')).toHaveLength(1)
+  await router.push('/account')
+  await flushPromises()
+  expect(screen.getByRole('navigation', { name: '平台管理导航' })).toBe(navigation)
+  expect(screen.queryByRole('navigation', { name: '作品列表' })).toBeNull()
+})
+
+it('keeps a short conversation and its next draft while navigating during a real pending request', async () => {
+  login()
+  let finish!: (response: Response) => void
+  let requestSignal!: AbortSignal
+  const conversation = { session: { id: 's1', status: 'active', card: {}, style_item_id: null, book_id: null }, messages: [], sessions: [], ready: false }
+  vi.stubGlobal('fetch', vi.fn(async (path: string, init: RequestInit) => {
+    if (path.endsWith('/auth/session')) return new Response(JSON.stringify(auth))
+    if (path.endsWith('/messages')) { requestSignal = init.signal!; return new Promise<Response>(resolve => { finish = resolve }) }
+    if (path.endsWith('/short/creation')) return new Response(JSON.stringify(conversation))
+    if (path.includes('style')) return new Response(JSON.stringify({ items: [] }))
+    return new Response(JSON.stringify([]))
+  }))
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  const router = await app('/short/new')
+  await fireEvent.update(await screen.findByLabelText('对助手说'), '第一条消息')
+  await fireEvent.click(screen.getByRole('button', { name: '发送' }))
+  await vi.waitFor(() => expect(finish).toBeTypeOf('function'))
+  await fireEvent.update(screen.getByLabelText('对助手说'), '下一条草稿')
+  await router.push('/long')
+  expect(router.currentRoute.value.path).toBe('/long')
+  expect(requestSignal.aborted).toBe(false)
+  await router.push('/short/new')
+  expect(await screen.findByText('正在努力构思中，请稍后')).toBeTruthy()
+  expect((screen.getByLabelText('对助手说') as HTMLTextAreaElement).value).toBe('下一条草稿')
+  await router.push('/long')
+  finish(new Response(JSON.stringify({ ...conversation, messages: [{ id: 1, role: 'assistant', content: '后台回复完成' }] })))
+  await flushPromises()
+  expect(router.currentRoute.value.path).toBe('/long')
+  await router.push('/short/new')
+  expect(await screen.findByText('后台回复完成')).toBeTruthy()
+  expect((screen.getByLabelText('对助手说') as HTMLTextAreaElement).value).toBe('下一条草稿')
+  expect(confirm).not.toHaveBeenCalled()
+  confirm.mockRestore()
+})
+
+it.each(['account', 'role', 'logout'])('discards the cached short conversation and aborts its request at the %s boundary', async boundary => {
+  login()
+  let finish!: (response: Response) => void
+  let requestSignal!: AbortSignal
+  let changed = false
+  const conversation = { session: { id: 's1', status: 'active', card: {} }, messages: [], sessions: [], ready: false }
+  vi.stubGlobal('fetch', vi.fn(async (path: string, init: RequestInit) => {
+    if (path.endsWith('/auth/session')) return new Response(JSON.stringify(changed ? { ...auth, user_id: boundary === 'account' ? 'b' : 'test', role: boundary === 'role' ? 'admin' : 'user' } : auth))
+    if (path.endsWith('/messages')) { requestSignal = init.signal!; return new Promise<Response>(resolve => { finish = resolve }) }
+    if (path.endsWith('/short/creation')) return new Response(JSON.stringify(conversation))
+    if (path.includes('style')) return new Response(JSON.stringify({ items: [] }))
+    return new Response(JSON.stringify([]))
+  }))
+  const router = await app('/short/new')
+  await fireEvent.update(await screen.findByLabelText('对助手说'), '旧身份消息')
+  await fireEvent.click(screen.getByRole('button', { name: '发送' }))
+  await vi.waitFor(() => expect(finish).toBeTypeOf('function'))
+  await fireEvent.update(screen.getByLabelText('对助手说'), '旧身份草稿')
+  await router.push('/long')
+  changed = true
+  if (boundary === 'logout') localStorage.removeItem('myink.session')
+  else setSession({ token: 'token-b', userId: boundary === 'account' ? 'b' : 'test', username: 'new', tier: 'pro', role: 'user', roleVerified: false, expiresAt: Date.now() + 3600000 })
+  window.dispatchEvent(new StorageEvent('storage', { key: 'myink.session' }))
+  await vi.waitFor(() => expect(requestSignal.aborted).toBe(true))
+  finish(new Response(JSON.stringify({ ...conversation, messages: [{ id: 1, role: 'assistant', content: '旧身份迟到消息' }] })))
+  await flushPromises()
+  await router.push('/short/new')
+  if (boundary !== 'logout') expect((await screen.findByLabelText('对助手说') as HTMLTextAreaElement).value).toBe('')
+  expect(screen.queryByText('旧身份迟到消息')).toBeNull()
+})
+
+it.each(['confirm', 'expiry'])('protects a retained short draft when manually opening login would destroy its cache, then allows %s', async resolution => {
+  login()
+  vi.stubGlobal('fetch', vi.fn(async (path: string) => {
+    if (path.endsWith('/auth/session')) return new Response(JSON.stringify(auth))
+    if (path.endsWith('/short/creation')) return new Response(JSON.stringify({ session: { id: 's1', status: 'active', card: {} }, messages: [], sessions: [], ready: false }))
+    if (path.includes('style')) return new Response(JSON.stringify({ items: [] }))
+    return new Response(JSON.stringify([]))
+  }))
+  const router = await app('/short/new')
+  await fireEvent.update(await screen.findByLabelText('对助手说'), '不能丢失的短篇草稿')
+  await router.push('/long')
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  await router.push('/login')
+  expect(router.currentRoute.value.path).toBe('/long')
+  expect(confirm).toHaveBeenCalledTimes(1)
+  await router.push('/short/new')
+  expect((await screen.findByLabelText('对助手说') as HTMLTextAreaElement).value).toBe('不能丢失的短篇草稿')
+  confirm.mockClear()
+  if (resolution === 'expiry') {
+    localStorage.removeItem('myink.session')
+    window.dispatchEvent(new StorageEvent('storage', { key: 'myink.session' }))
+    await flushPromises()
+  } else confirm.mockReturnValue(true)
+  await router.push('/login')
+  expect(router.currentRoute.value.path).toBe('/login')
+  expect(confirm).toHaveBeenCalledTimes(resolution === 'expiry' ? 0 : 1)
+  confirm.mockRestore()
+})

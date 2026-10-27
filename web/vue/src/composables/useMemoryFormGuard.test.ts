@@ -4,7 +4,7 @@ import { defineComponent, h, ref } from 'vue'
 import { cleanup, render } from '@testing-library/vue'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import { useMemoryFormGuard } from './useMemoryFormGuard'
-vi.mock('../../../src/lib/pendingWrites', () => ({ hasPendingWrites: () => pending }))
+vi.mock('../../../src/lib/pendingWrites', () => ({ hasPendingWrites: () => pending, hasNavigationBlockingWrites: () => pending }))
 let pending = false
 afterEach(() => { cleanup(); pending = false; vi.restoreAllMocks() })
 async function start() {

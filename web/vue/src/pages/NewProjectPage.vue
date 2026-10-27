@@ -1,6 +1,7 @@
 <script lang="ts">
+import WaitingStatus from '../components/WaitingStatus.vue';
 import { useMemoryFormGuard } from "../composables/useMemoryFormGuard";
-import { defineComponent, ref, computed, watch, onBeforeUnmount, h, Fragment } from 'vue';
+import { defineComponent, ref, computed, watch, nextTick, onBeforeUnmount, h, Fragment } from 'vue';
 import type { PropType } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 // 建书向导（§7.11）：书名/题材 + 一句话梗概 → 创建作品 → Planner 生成设定骨架草稿 →
@@ -8,6 +9,8 @@ import { useRouter, useRoute } from 'vue-router';
 // 布局复用 SettingsPage 的 wrap→rail→main→inner；分区编辑控件对齐 KeyField 风格。
 import StructuredTextField from '../components/StructuredTextField.vue';
 import ProjectRail from '../components/ProjectRail.vue';
+import CreationResourcesDialog from '../components/CreationResourcesDialog.vue';
+import { writingResources, type SelectionInput } from '../../../src/lib/writingResources';
 import RankingsPanel from '../components/RankingsPanel.vue';
 import { useAuth } from '../authContext';
 import { api } from '../../../src/lib/api';
@@ -102,6 +105,17 @@ export default defineComponent({
             query
         }));
         const currentPid = ref<string | null>(null);
+        const scrollContainer = ref<HTMLElement | null>(null);
+        const step = ref(0);
+        const resourceOpen = ref(false);
+        const resourceError = ref<string | null>(null);
+        watch(step, async () => {
+            await nextTick();
+            if (!scrollContainer.value) return;
+            scrollContainer.value.scrollTop = 0;
+            const heading = scrollContainer.value.querySelector<HTMLElement>('section:not([hidden]) h2');
+            heading?.focus({ preventScroll: true });
+        });
         const title = ref('');
         // 已落库的书名（AI 起名/用户填写后确认）；书名留空时由 Planner 在设定草稿带 title 建议
         const savedTitle = ref('');
@@ -167,6 +181,9 @@ export default defineComponent({
             generation++;
             let disposed = false;
             currentPid.value = null;
+            step.value = 0;
+            resourceOpen.value = false;
+            resourceError.value = null;
             pid.value = null;
             title.value = '';
             savedTitle.value = '';
@@ -218,6 +235,7 @@ export default defineComponent({
                 outlineStoryline.value = context.storyline ?? '';
                 section.value = splitDraft(context.setup_draft ?? {});
                 setupConfirmed.value = project.creation_status === 'setup_confirmed';
+                step.value = setupConfirmed.value ? 2 : 1;
                 draftError.value = context.setup_error ?? null;
                 outlineError.value = context.outline_error ?? null;
                 compressedChars.value = context.lengths_compressed ? context.chars_per_chapter ?? null : null;
@@ -352,6 +370,7 @@ export default defineComponent({
                 ]);
                 if (!active(attempt))
                     return;
+                step.value = 1;
                 ok.value = results.every(Boolean)
                     ? '作品草稿已保存，设定与整书大纲提案已生成，请编辑并确认。'
                     : '作品草稿已保存；草稿生成未全部完成，请检查提示后重试或手动填写。';
@@ -431,7 +450,8 @@ export default defineComponent({
                 if (!active(attempt))
                     return;
                 setupConfirmed.value = true;
-                ok.value = '设定已确认落库，可继续检查整书大纲（第 ③ 步）';
+                ok.value = '设定已确认，可继续检查整书大纲。';
+                step.value = 2;
             }
             catch (err) {
                 if (!active(attempt))
@@ -559,45 +579,25 @@ export default defineComponent({
             if (!active(attempt))
                 return;
         }
-        async function confirmOutline() {
-            const attempt = generation;
-            if (busy.value || !pid.value || !outline.value || !setupConfirmed.value)
-                return;
-            busy.value = 'outline-confirm';
-            banner.value = null;
-            ok.value = null;
-            try {
-                await persistOutline();
-                if (!active(attempt))
-                    return;
-                ok.value = '整书大纲已落库，进入工作台';
-                navigate(`/projects/${pid.value}`);
-            }
-            catch (err) {
-                if (!active(attempt))
-                    return;
-                banner.value = ApiMessage(err, '确认大纲失败，请重试');
-            }
-            finally {
-                if (active(attempt)) {
-                    busy.value = null;
-                }
-            }
-        }
         /** 确认全部并进入工作台（一次落地）：设定未确认先落，再落大纲，再进入 */
-        async function confirmAll() {
+        async function confirmAll(selections: SelectionInput[]) {
             const attempt = generation;
             if (busy.value)
                 return;
-            if (!pid.value || !outline.value || !section.value || isSectionEmpty(section.value)) {
+            if (!pid.value || !outline.value || !section.value || (!setupConfirmed.value && isSectionEmpty(section.value))) {
                 banner.value = '请先填写有效的设定与整书大纲';
                 return;
             }
             busy.value = 'confirm-all';
+            resourceError.value = null;
             banner.value = null;
             ok.value = null;
             try {
-                if (section.value) {
+                const snapshot = await writingResources.snapshot(pid.value);
+                if (!active(attempt)) return;
+                await writingResources.select(pid.value, snapshot.revision, selections);
+                if (!active(attempt)) return;
+                if (section.value && !isSectionEmpty(section.value)) {
                     await api.confirmSetup(pid.value, sectionToBody(section.value));
                     if (!active(attempt))
                         return;
@@ -609,13 +609,14 @@ export default defineComponent({
                 await syncTitle();
                 if (!active(attempt))
                     return;
-                ok.value = '设定与整书大纲已落库，进入工作台';
+                ok.value = '设定与整书大纲已落库';
+                resourceOpen.value = false;
                 navigate(`/projects/${pid.value}`);
             }
             catch (err) {
                 if (!active(attempt))
                     return;
-                banner.value = ApiMessage(err, '确认失败，请重试');
+                resourceError.value = ApiMessage(err, '资源保存或建书确认失败，请重试；草稿已保留。');
             }
             finally {
                 if (active(attempt)) {
@@ -713,8 +714,9 @@ export default defineComponent({
         const powerScaling = computed(() => primary.value?.setup_caps?.power_scaling);
         const showRealmOrder = computed(() => powerScaling.value !== false || sec.value.realm_order.length > 0);
         return () => (h("div", {
-            "class": styles.wrap
+            "class": styles.wrap, ref: scrollContainer
         }, [
+            resourceOpen.value && h(CreationResourcesDialog, { busy: busy.value !== null, error: resourceError.value, onConfirm: confirmAll, onClose: () => { if (!busy.value) resourceOpen.value = false; } }),
             h(ProjectRail, {
                 "projects": projects.value, "onLogout": logout
             }), h("main", {
@@ -729,14 +731,18 @@ export default defineComponent({
                                 "class": styles.crumb
                             }, ["创作简报启动，AI 生成设定骨架与整书大纲，你确认后落库。"])
                         ])]), banner.value && h("div", {
-                        "class": "banner banner-error"
+                        "class": "banner banner-error", role: "alert"
                     }, [banner.value]), ok.value && h("div", {
                         "class": "banner banner-warning"
-                    }, [ok.value]), h(RankingsPanel, null), h("section", {
-                        "class": `panel ${styles.section}`
+                    }, [ok.value]),
+                    busy.value && !resourceOpen.value && h(WaitingStatus, { label: busy.value === 'create' ? (pid.value ? '正在生成设定与整书大纲' : '正在创建作品') : ({ restore: '正在恢复作品草稿', draft: '正在生成设定草稿', confirm: '正在确认设定', 'outline-draft': '正在生成整书大纲', 'confirm-all': '正在保存作品' } as Record<string, string>)[busy.value] ?? '正在保存作品' }),
+                    !isShort.value && h("nav", { class: styles.steps, 'aria-label': '建书步骤' }, ['作品信息', '设定', '大纲'].map((label, index) => h('button', { type: 'button', disabled: busy.value !== null || (index > 0 && !pid.value) || (index === 2 && !setupConfirmed.value), 'aria-current': step.value === index ? 'step' : undefined, onClick: () => { step.value = index; } }, label))),
+                    !isShort.value && (draftError.value || outlineError.value) && h('div', { class: 'banner banner-warning', role: 'alert' }, [draftError.value && `设定生成失败：${draftError.value}。`, outlineError.value && `大纲生成失败：${outlineError.value}。`, '可返回对应步骤重试或手动填写。']),
+                    (isShort.value || step.value === 0) && h(RankingsPanel, null), h("section", {
+                        "class": `panel ${styles.section}`, hidden: !isShort.value && step.value !== 0
                     }, [
                         h("h2", {
-                            "class": styles.sectionTitle
+                            "class": styles.sectionTitle, tabindex: -1
                         }, ["① 作品信息"]), h("label", {
                             "class": styles.field
                         }, [
@@ -841,19 +847,19 @@ export default defineComponent({
                             "class": styles.saveRow
                         }, [h("button", {
                                 "type": "button", "class": "btn btn-primary", "disabled": busy.value !== null || pid.value !== null || resumeId.value !== null, "onClick": createAndDraft
-                            }, [pid.value ? '作品草稿已保存' : busy.value === 'create' ? '创建中…' : '创建作品'])])
+                            }, [pid.value ? '作品草稿已保存' : busy.value === 'create' ? '创建中…' : '创建作品']), !isShort.value && pid.value && h('button', { type: 'button', class: 'btn btn-primary', disabled: busy.value !== null, onClick: () => { step.value = 1; } }, '下一步')])
                     ]), pid.value && (h("section", {
-                        "class": `panel ${styles.section}`
+                        "class": `panel ${styles.section}`, hidden: !isShort.value && step.value !== 1
                     }, [
                         h("div", {
                             "class": styles.draftHead
                         }, [
                             h("h2", {
-                                "class": styles.sectionTitle
+                                "class": styles.sectionTitle, tabindex: -1
                             }, ["② 设定骨架草稿"]), h("button", {
                                 "type": "button", "class": "btn btn-quiet", "disabled": busy.value !== null || setupConfirmed.value, "onClick": () => regenerate(pid.value!)
                             }, [busy.value === 'draft' ? '重新生成中…' : '重新生成草稿'])
-                        ]), draftError.value && (h("div", {
+                        ]), isShort.value && draftError.value && (h("div", {
                             "class": "banner banner-warning"
                         }, [
                             "LLM 生成降级：", draftError.value, "（可手填后确认）"
@@ -999,22 +1005,22 @@ export default defineComponent({
                                 }, ["+ 添加地点"])
                             ]), h("div", {
                                 "class": styles.saveRow
-                            }, [h("button", {
-                                    "type": "button", "class": "btn btn-primary", "disabled": busy.value !== null, "onClick": confirm
-                                }, [busy.value === 'confirm' ? '确认中…' : '确认落库'])])
+                            }, [!isShort.value && h('button', { type: 'button', class: 'btn btn-quiet', disabled: busy.value !== null, onClick: () => { step.value = 0; } }, '上一步'), h("button", {
+                                    "type": "button", "class": "btn btn-primary", "disabled": busy.value !== null || emptyDraft.value, "onClick": confirm
+                                }, [busy.value === 'confirm' ? '确认中…' : isShort.value ? '确认落库' : '确认设定，下一步'])])
                         ]))
                     ])), pid.value && (h("section", {
-                        "class": `panel ${styles.section}`
+                        "class": `panel ${styles.section}`, hidden: !isShort.value && step.value !== 2
                     }, [
                         h("div", {
                             "class": styles.draftHead
                         }, [
                             h("h2", {
-                                "class": styles.sectionTitle
+                                "class": styles.sectionTitle, tabindex: -1
                             }, ["③ 整书大纲"]), h("button", {
                                 "type": "button", "class": "btn btn-quiet", "disabled": busy.value !== null, "onClick": () => pid.value && generateOutline(pid.value)
                             }, [busy.value === 'outline-draft' ? '生成中…' : outline.value ? '重新生成大纲' : '生成大纲'])
-                        ]), outlineError.value && (h("div", {
+                        ]), isShort.value && outlineError.value && (h("div", {
                             "class": "banner banner-warning"
                         }, [
                             "LLM 生成降级：", outlineError.value, "（可手填后确认）"
@@ -1367,11 +1373,9 @@ export default defineComponent({
                             }, [
                                 !isShort.value && (h("button", {
                                     "type": "button", "class": "btn btn-quiet", "disabled": busy.value !== null, "onClick": addVolume
-                                }, ["+ 新增一卷"])), h("button", {
-                                    "type": "button", "class": "btn btn-quiet", "disabled": busy.value !== null || !setupConfirmed.value || !outline.value.objective.trim() || outline.value.volumes.length === 0, "onClick": confirmOutline
-                                }, [busy.value === 'outline-confirm' ? '确认中…' : '仅确认大纲并进入']), h("button", {
-                                    "type": "button", "class": "btn btn-primary", "disabled": busy.value !== null || !outline.value.objective.trim() || outline.value.volumes.length === 0 || emptyDraft.value, "onClick": confirmAll
-                                }, [busy.value === 'confirm-all' ? '确认中…' : '确认设定与大纲并进入工作台']), h("button", {
+                                }, ["+ 新增一卷"])), !isShort.value && h('button', { type: 'button', class: 'btn btn-quiet', disabled: busy.value !== null, onClick: () => { step.value = 1; } }, '上一步'), h("button", {
+                                    "type": "button", "class": "btn btn-primary", "disabled": busy.value !== null || !outline.value.objective.trim() || outline.value.volumes.length === 0 || (!setupConfirmed.value && emptyDraft.value), "onClick": () => { resourceError.value = null; resourceOpen.value = true; }
+                                }, ['选择资源并完成建书']), h("button", {
                                     "type": "button", "class": "btn btn-quiet", "disabled": busy.value !== null, "onClick": leaveDraft
                                 }, ["保留草稿，返回作品库"])
                             ])

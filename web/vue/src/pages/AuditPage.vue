@@ -10,8 +10,9 @@ import type { GlobalAuditReportDetail, GlobalAuditReportSummary, Project } from 
 import styles from '../../../src/pages/AuditPage.module.css';
 const route = useRoute(), router = useRouter(), projectId = computed(() => String(route.params.projectId ?? ''));
 const projects = ref<Project[]>([]), reports = ref<GlobalAuditReportSummary[] | null>(null), detail = ref<GlobalAuditReportDetail | null>(null), openId = ref<string | null>(null), busy = ref(false), banner = ref<string | null>(null), ok = ref<string | null>(null);
+const loading = ref(true), listFailed = ref(false);
 let generation = 0, detailVersion = 0;
-async function load(id = generation): Promise<GlobalAuditReportSummary[] | null> { banner.value = null; try {
+async function load(id = generation): Promise<GlobalAuditReportSummary[] | null> { banner.value = null; loading.value = true; listFailed.value = false; try {
     const [list, proj] = await Promise.all([api.listGlobalAudits(projectId.value), api.listProjects()]);
     if (id !== generation)
         return null;
@@ -20,10 +21,12 @@ async function load(id = generation): Promise<GlobalAuditReportSummary[] | null>
     return list;
 }
 catch (err) {
-    if (id === generation)
+    if (id === generation) {
         banner.value = formatApiError(err, '报告加载失败');
+        listFailed.value = true;
+    }
     return null;
-} }
+} finally { if (id === generation) loading.value = false; } }
 watch(projectId, () => { const id = ++generation; detailVersion++; reports.value = null; detail.value = null; openId.value = null; busy.value = false; banner.value = null; ok.value = null; void load(id); }, { immediate: true });
 onScopeDispose(() => { generation++; detailVersion++; });
 async function openReport(reportId: string, id = generation) { const request = ++detailVersion; banner.value = null; try {
@@ -84,9 +87,9 @@ function navigateChapter(seq: number) { void router.push(`/projects/${projectId.
  <div :class="styles.wrap">
 <ProjectRail :projects="projects" /><main :class="styles.main">
 <div :class="styles.inner">
-<header :class="styles.header"><div><h1>全局审计</h1><div :class="styles.crumb"><RouterLink :to="`/projects/${projectId}`">返回工作台</RouterLink><span>每约 30 章对照卷规划，看推进有没有偏离、怎么拉回来</span></div></div><button type="button" class="btn btn-primary" :disabled="busy" @click="trigger">{{ busy?'审计中…':'触发审计' }}</button></header>
- <div v-if="banner" class="banner banner-error" role="alert">{{ banner }}</div><div v-if="ok" class="banner banner-warning" role="status">{{ ok }}</div>
- <div v-if="reports===null" class="empty">加载中…</div><div v-else-if="!reports.length" class="empty">还没有审计报告。写过章节并有整书大纲后，点「触发审计」对照卷规划。</div><ul v-else :class="styles.list"><li v-for="r in reports" :key="r.report_id" :class="['panel',styles.report]"><button type="button" :class="styles.reportHead" @click="toggle(r.report_id)"><StatusBadge :tone="r.status==='completed'?'success':'error'">{{ r.status==='completed'?'完成':'失败' }}</StatusBadge><span :class="styles.window">第 {{ r.window_start }}–{{ r.window_end }} 章</span><span :class="styles.meta">{{ r.chapters }} 章 · 对照 {{ r.sampled }} 个阶段 · {{ r.findings }} 发现{{ r.trigger==='manual'?' · 手动':'' }}</span><span :class="styles.date">{{ r.created_at?.slice(0,16)??'' }}</span></button><div v-if="openId===r.report_id" :class="styles.detail"><div v-if="r.error" class="banner banner-error">失败原因：{{ r.error }}</div><div :class="styles.stats"><span v-for="[label,value] in [['窗口',`${r.window_start}–${r.window_end} 章`],['对照阶段',r.sampled],['findings',r.findings]]" :key="label" :class="styles.stat"><span :class="styles.statLabel">{{ label }}</span><span :class="styles.statValue">{{ value }}</span></span><span v-if="r.volume" :class="styles.dims"><span class="badge badge-accent">{{ r.volume.volumes }} 卷 / {{ r.volume.stages }} 段</span></span></div><FindingsList v-if="detail && detail.report_id===r.report_id" :findings="detail.findings" :on-navigate-chapter="navigateChapter" /></div></li></ul>
+<header :class="styles.header"><div><h1>全局审计</h1><div :class="styles.crumb"><RouterLink :to="`/projects/${projectId}`">返回工作台</RouterLink><span>每约 30 章对照卷规划，看推进有没有偏离、怎么拉回来</span></div></div><button type="button" class="btn btn-primary" :disabled="busy || loading" @click="trigger">{{ busy?'审计中…':'触发审计' }}</button></header>
+ <div v-if="banner" class="banner banner-error" role="alert">{{ banner }} <button v-if="listFailed" type="button" class="btn btn-secondary" @click="load()">重新加载报告</button></div><div v-if="ok" class="banner banner-warning" role="status">{{ ok }}</div>
+ <div v-if="loading" class="empty" role="status">加载中…</div><template v-else-if="reports !== null"><div v-if="!reports.length" class="empty">还没有审计报告。写过章节并有整书大纲后，点「触发审计」对照卷规划。</div><ul v-else :class="styles.list"><li v-for="r in reports" :key="r.report_id" :class="['panel',styles.report]"><button type="button" :class="styles.reportHead" @click="toggle(r.report_id)"><StatusBadge :tone="r.status==='completed'?'success':'error'">{{ r.status==='completed'?'完成':'失败' }}</StatusBadge><span :class="styles.window">第 {{ r.window_start }}–{{ r.window_end }} 章</span><span :class="styles.meta">{{ r.chapters }} 章 · 对照 {{ r.sampled }} 个阶段 · {{ r.findings }} 发现{{ r.trigger==='manual'?' · 手动':'' }}</span><span :class="styles.date">{{ r.created_at?.slice(0,16)??'' }}</span></button><div v-if="openId===r.report_id" :class="styles.detail"><div v-if="r.error" class="banner banner-error">失败原因：{{ r.error }}</div><div :class="styles.stats"><span v-for="[label,value] in [['窗口',`${r.window_start}–${r.window_end} 章`],['对照阶段',r.sampled],['findings',r.findings]]" :key="label" :class="styles.stat"><span :class="styles.statLabel">{{ label }}</span><span :class="styles.statValue">{{ value }}</span></span><span v-if="r.volume" :class="styles.dims"><span class="badge badge-accent">{{ r.volume.volumes }} 卷 / {{ r.volume.stages }} 段</span></span></div><FindingsList v-if="detail && detail.report_id===r.report_id" :findings="detail.findings" :on-navigate-chapter="navigateChapter" /></div></li></ul></template>
  </div>
 </main>
 </div>

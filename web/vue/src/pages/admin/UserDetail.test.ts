@@ -35,6 +35,10 @@ it('loads one account from the single-user endpoint, not from a search query', a
     renderDetail();
     expect(await screen.findByRole('heading', { name: /alice/ })).toBeTruthy();
     expect(adminApi.getUser).toHaveBeenCalledWith('token-admin', 'user-1', expect.any(AbortSignal));
+    expect(adminApi.listRuns).not.toHaveBeenCalled();
+    expect(screen.queryByRole('heading', { name: '调用明细' })).toBeNull();
+    expect(screen.queryByRole('link', { name: '查看作品' })).toBeNull();
+    expect(screen.queryByRole('navigation', { name: '账号关联记录' })).toBeNull();
 });
 it('tells the reader a missing user does not exist instead of echoing the 404 code', async () => {
     vi.mocked(adminApi.getUser).mockRejectedValue(new ApiError(404, 'NOT_FOUND', {}));

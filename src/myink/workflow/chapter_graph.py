@@ -1,6 +1,7 @@
 """单章子图（spec/state-flow.md §1 内层循环）。
 
 load_state → recall → plan_cast → plan_chapter → write → extract → validate → audit
+显式重写已有章且未请求 replan 时：load_state 恢复保存计划，recall 直接进入 write。
   → route_after_audit（混合路由，§6.11 已确认：规则层优先，LLM 兜语义）：
      ① L1 critical / L2 major（规则层）→ rev < 预算 revise / 预算用尽 persist(needs_review)
      ② 预算用尽 → persist(needs_review)
@@ -75,7 +76,7 @@ def route_after_audit(state: ChapterState) -> str:
             return "needs_review" if state.get("patch_count", 0) >= settings.max_patches else "patch"
         return "needs_review" if revision_exhausted else "revise"
     if verdict == "replan":
-        if replan_exhausted:
+        if (state.get("rewrite") and not state.get("replan_requested")) or replan_exhausted:
             return "needs_review"
         return "replan_chapter" if ((state.get("audit_verdict") or {}).get("replan_target") == "chapter" or ":ch" not in (state.get("task_id") or "")) \
             else "replan_batch"
@@ -119,8 +120,10 @@ def build_chapter_graph(checkpointer=None, *, entry: str = "load_state"):
     g.add_node("route", budget_node(node_route, "route"))
 
     g.add_edge(START, entry)
-    g.add_edge("load_state", "recall")
-    g.add_edge("recall", "plan_cast")
+    g.add_conditional_edges("load_state", lambda state: "fail" if state.get("error") else "recall",
+                            {"fail": END, "recall": "recall"})
+    g.add_conditional_edges("recall", lambda state: "write" if state.get("rewrite") and not state.get("replan_requested") else "plan_cast",
+                            {"write": "write", "plan_cast": "plan_cast"})
     g.add_edge("plan_cast", "plan_chapter")
     g.add_edge("plan_chapter", "plan_gate")
     g.add_edge("plan_gate", "write")

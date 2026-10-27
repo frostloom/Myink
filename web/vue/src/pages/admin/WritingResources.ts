@@ -395,7 +395,7 @@ const WritingResources = defineComponent((props: {
                             selected.value!.kind !== "role_prompt" && renderNode("label", {}, [
                                 "资源名称", renderNode("input", { "class": "input", "value": ["role_prompt", "reference"].includes(selected.value!.kind) ? resourceTitle({ name: name.value, kind: selected.value!.kind }) : name.value, "onInput": (e: Event) => setName((e.target as HTMLInputElement & HTMLSelectElement & HTMLDetailsElement).value) }, [])
                             ]), !selected.value!.id && (renderNode("label", {}, [
-                                "资源类型", renderNode("select", { "value": kind.value, "onChange": (e: Event) => {
+                                "资源类型", renderNode("select", { "class": "input", "value": kind.value, "onChange": (e: Event) => {
                                         const next = (e.target as HTMLInputElement & HTMLSelectElement & HTMLDetailsElement).value as ResourceKind;
                                         setKind(next);
                                         setBody(JSON.stringify(next === "reference" ? { files: [] } : next === "style" ? { profile: emptyResourceStyleProfile() } : next === "genre" ? { catalog_id: crypto.randomUUID(), fields: emptyFields() } : next === "genre_rule" ? {

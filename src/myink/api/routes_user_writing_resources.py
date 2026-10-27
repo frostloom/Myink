@@ -6,7 +6,7 @@ from myink.api.auth import require_user, require_owner
 from myink.db import new_session, tenant_session
 from myink.models.writing_resource import PersonalWritingResource
 from myink import writing_resources as svc
-from myink.writing_resource_schemas import CreateResource, UpdateResource, SelectionBody, DismissBody, AdoptBody, ResourceOut, ResourceList, SnapshotOut, UpdateList, OkOut, validate_resource_body
+from myink.writing_resource_schemas import CopyPlatform, SyncPersonal, CreateResource, UpdateResource, SelectionBody, DismissBody, AdoptBody, ResourceOut, ResourceList, SnapshotOut, UpdateList, OkOut, validate_resource_body
 router = APIRouter(prefix='/api/v1', tags=['writing-resources'])
 
 def no_store(response: Response):
@@ -22,6 +22,22 @@ def mine(uid: str=Depends(require_user)):
 def create(body: CreateResource, uid: str=Depends(require_user)):
     with new_session() as db:
         row = svc.create_resource(db, body.model_dump(), user_id=uid)
+        result = svc.out(row)
+        db.commit()
+        return result
+
+@router.post('/my-writing-resources/from-platform', response_model=ResourceOut)
+def copy_platform(body: CopyPlatform, uid: str=Depends(require_user)):
+    with new_session() as db:
+        row = svc.copy_platform(db, body.source_resource_id, uid, body.target_generation, body.name, body.body)
+        result = svc.out(row)
+        db.commit()
+        return result
+
+@router.post('/my-writing-resources/{rid}/sync', response_model=ResourceOut)
+def sync_personal(rid: str, body: SyncPersonal, uid: str=Depends(require_user)):
+    with new_session() as db:
+        row = svc.sync_personal(db, rid, uid, body.expected_generation, body.target_generation, body.acknowledge_overwrite)
         result = svc.out(row)
         db.commit()
         return result
@@ -42,11 +58,12 @@ def edit(rid: str, body: UpdateResource, uid: str=Depends(require_user)):
 @router.get('/projects/{project_id}/writing-resources', response_model=SnapshotOut, dependencies=[Depends(require_owner)])
 def snapshot(project_id: str, uid: str=Depends(require_user)):
     with tenant_session(project_id) as db:
-        return svc.project_snapshot(db, project_id)
+        return svc.ensure_project_resources(db, project_id, uid)
 
 @router.put('/projects/{project_id}/writing-resources', response_model=SnapshotOut, dependencies=[Depends(require_owner)])
 def select_resources(project_id: str, body: SelectionBody, uid: str=Depends(require_user)):
     with tenant_session(project_id) as db:
+        svc.require_selection_editable(db, project_id, uid)
         previous = {(s['origin'], s['resource_id']): s
                     for s in svc.project_snapshot(db, project_id)['selections']}
         for item in body.selections:

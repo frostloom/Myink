@@ -108,3 +108,21 @@ it('keeps outline folds, chapter memory, entity groups, foreshadows and world ru
  vi.mocked(api.listChapters).mockResolvedValue([{id:'ch',chapter_seq:1,status:'completed',word_count:3000,summary:'章节摘要'}] as never)
  await renderPage();expect(await screen.findByText('终局目标')).toBeTruthy();expect(screen.getByText('起航',{exact:false})).toBeTruthy();expect(screen.getByText('章节摘要')).toBeTruthy();expect(screen.getByText('灵剑')).toBeTruthy();expect(screen.getByText('剑的来历')).toBeTruthy();expect(screen.getByText('规则内容')).toBeTruthy();expect(screen.getByText('不能复活')).toBeTruthy();expect(screen.getByText('青云宗')).toBeTruthy()
 })
+
+it('does not show empty lore while pending or failed and offers reload',async()=>{
+ seedPage();let reject!:(reason:Error)=>void
+ vi.mocked(api.getWorld).mockImplementationOnce(()=>new Promise((_resolve,fail)=>{reject=fail}))
+ await renderPage()
+ expect(screen.queryByText(/暂无大纲/)).toBeNull()
+ reject(new Error('offline'));await screen.findByRole('alert')
+ expect(screen.queryByText(/暂无大纲/)).toBeNull()
+ await fireEvent.click(screen.getByRole('button',{name:'重新加载设定'}))
+ expect(await screen.findByText(/暂无大纲/)).toBeTruthy()
+})
+it('retries a failed character history without leaving the page',async()=>{
+ seedPage();vi.mocked(api.getCharacterStateHistory).mockRejectedValueOnce(new Error('offline')).mockResolvedValue(HISTORY)
+ await renderPage();await fireEvent.click(await screen.findByRole('button',{name:/顾长歌/}))
+ await fireEvent.click(await screen.findByRole('button',{name:'重试状态变化'}))
+ expect(await screen.findByText('练气九层 → 筑基一层')).toBeTruthy()
+ expect(api.getCharacterStateHistory).toHaveBeenCalledTimes(2)
+})

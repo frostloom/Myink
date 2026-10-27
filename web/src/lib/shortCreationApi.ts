@@ -79,10 +79,11 @@ export const shortCreationApi = {
   openSession: (token: string, sessionId: string, signal?: AbortSignal): Promise<ShortCreationPayload> =>
     authenticatedGet(`/short/creation/sessions/${sessionId}`, token, signal),
 
+  // The short conversation stays mounted across routes; only full unload risks losing it.
   send: (token: string, sessionId: string, content: string, card: Record<string, unknown>,
          signal?: AbortSignal): Promise<ShortCreationPayload> =>
     authenticatedSend('POST', `/short/creation/sessions/${sessionId}/messages`, token,
-                      { content, card }, signal),
+                      { content, card }, signal, true),
 
   commit: (token: string, sessionId: string, card: Record<string, unknown>,
            styleItemId: string | null, signal?: AbortSignal): Promise<ShortCreationCommit> =>

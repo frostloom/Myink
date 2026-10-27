@@ -1,4 +1,5 @@
 .wrap {
+  composes: content from '../components/RailLayout.module.css';
   height: 100%;
   overflow-y: auto;
   display: flex;
@@ -10,7 +11,7 @@
   flex: 1;
   min-width: 0;
   overflow: visible;
-  padding: var(--space-6);
+  padding: var(--space-4);
 }
 
 .header,
@@ -72,7 +73,7 @@
 
 .panel,
 .detail {
-  padding: var(--space-5);
+  padding: var(--space-4);
 }
 
 .panel h3,
@@ -346,7 +347,7 @@
   display: grid;
   place-content: center;
   text-align: center;
-  padding: var(--space-6);
+  padding: var(--space-4);
 }
 
 /* 读数带的列数（§3.5 阶梯）。1200 以下九列必然挤，改成三列三行；
@@ -366,7 +367,7 @@
 
 @media (max-width: 640px) {
   .wrap { display: block; height: 100%; min-height: 0; }
-  .wrap > aside { width: 100%; height: auto; min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); }
+  .wrap > aside { min-height: 0; }
   .main { overflow: visible; padding: var(--space-3); }
   .header, .viewHead, .detailHead { flex-direction: column; }
   .readout,
@@ -396,3 +397,10 @@
 }
 
 .detailPageHead { flex-direction:row; align-items:center; }
+
+/* Reading flows stay in one column, so short chapter lists do not leave a void. */
+.projectSections { display: grid; gap: var(--space-5, 20px); min-width: 0; }
+.relatedLinks { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 12px; }
+
+.projectGroup { min-width:0; }
+.projectGroup h3 { margin:0 0 8px; font-size:var(--text-body); }

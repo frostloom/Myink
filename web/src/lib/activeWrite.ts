@@ -37,3 +37,18 @@ export function clearActiveWrite(userId: string, projectId: string): void {
   if (!userId || !projectId) return
   sessionStorage.removeItem(keyFor(userId, projectId))
 }
+
+// 短篇任务覆盖整本书，没有 chapterSeq；仍按账号和书隔离，避免和长篇互相覆盖。
+const shortKeyFor = (userId: string, projectId: string) => `myink.activeShortWrite.${userId}.${projectId}`
+export function readActiveShortWrite(userId: string, projectId: string): string | null {
+  if (!userId || !projectId) return null
+  try { return sessionStorage.getItem(shortKeyFor(userId, projectId)) || null } catch { return null }
+}
+export function writeActiveShortWrite(userId: string, projectId: string, taskId: string): void {
+  if (!userId || !projectId) return
+  try { sessionStorage.setItem(shortKeyFor(userId, projectId), taskId) } catch { /* 存储不可用时仍由服务端历史恢复。 */ }
+}
+export function clearActiveShortWrite(userId: string, projectId: string): void {
+  if (!userId || !projectId) return
+  try { sessionStorage.removeItem(shortKeyFor(userId, projectId)) } catch { /* 存储不可用。 */ }
+}

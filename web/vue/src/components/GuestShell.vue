@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onMounted, onScopeDispose, ref } from 'vue'
+import NativeDialog from './NativeDialog.vue'
 import { useRouter } from 'vue-router'
 import styles from '../../../src/components/GuestPromptDialog.module.css'
 const router = useRouter()
@@ -26,10 +27,10 @@ onScopeDispose(() => { document.removeEventListener('click', block, true); docum
   <slot />
   <Teleport to="body">
     <div v-if="open" :class="styles.backdrop" data-guest-exempt @mousedown.self="close">
-      <section :class="styles.dialog" role="dialog" aria-modal="true" aria-labelledby="guest-prompt-title">
+      <NativeDialog :class="styles.dialog" :on-close="close" aria-labelledby="guest-prompt-title">
         <header :class="styles.head"><h2 id="guest-prompt-title">当前是未登录的浏览模式</h2><button ref="closeButton" type="button" :class="styles.close" aria-label="关闭" @click="close">×</button></header>
         <div :class="styles.body"><p>这里只能查看。注册或登录后，作品、环境配置与主题都可以修改。</p><div :class="styles.actions"><button type="button" class="btn btn-primary" @click="go('/login?mode=register')">注册</button><button type="button" class="btn btn-secondary" @click="go('/login')">登录</button></div></div>
-      </section>
+      </NativeDialog>
     </div>
   </Teleport>
 </template>

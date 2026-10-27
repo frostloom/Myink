@@ -11,7 +11,9 @@ def current_resources():
     return deepcopy(_resources.get())
 
 def configured():
-    return bool((_resources.get() or {}).get("configured"))
+    snapshot = _resources.get() or {}
+    return bool(snapshot.get("configured") or any(
+        item["kind"] in {"writing_rule", "expression_rule"} for item in snapshot.get("selections", [])))
 
 @contextmanager
 def bind_resources(snapshot):
@@ -41,8 +43,8 @@ def validation_flag(name):
 def reference_read(path, section=None, db=None):
     from myink.reference_corpus import MAX_READ_CHARS, markdown_sections, slice_section
     from myink.writing_resources import is_writing_reference
-    files = {f["path"]: f["content"] for s in selected("reference")
-             for f in s["body"].get("files", [])}
+    files = {f["path"]: f["content"] for s in sorted(selected("reference"), key=lambda item: item.get("origin") == "personal")
+             for f in s["body"].get("files", []) if "content" in f}
     pointers = {}
     for entry in (_resources.get() or {}).get("reference_library", []):
         for f in entry.get("files", []):
@@ -63,6 +65,8 @@ def reference_read(path, section=None, db=None):
     if path.startswith('/') or "\\" in path or any(p in ('', '.', '..') for p in path.split('/')):
         return {"error": "Invalid reference path"}
     text = files.get(path)
+    if text is None and path in pointers:
+        text = next((f.get('content') for f in pointers[path].get('files', []) if f['path'] == path), None)
     if text is None and path in pointers:
         if db is None:
             from myink.db import new_session
@@ -122,7 +126,7 @@ def resource_messages(builder, role):
         import inspect
         bound = inspect.signature(builder).bind(*args, **kwargs)
         bound.apply_defaults()
-        if configured():
+        if selected("genre"):
             if "genre_pack" in bound.arguments:
                 bound.arguments["genre_pack"] = selected_genre()
             if "genre" in bound.arguments:
@@ -137,26 +141,14 @@ def resource_messages(builder, role):
             messages = builder(*args, **kwargs)
         from myink.prompt_catalog import apply_role_prompts
         messages = apply_role_prompts(messages, role, current_resources())
-        if not configured():
-            # Automatic role publications also consume the final request budget.
-            # Rebuild from each trimmed context so optional recall can make room;
-            # role instructions, fixed schemas and required input are never cut.
-            from myink.context_budget import fit_prompt
-            from myink.workflow.prompts import _tool_prompt_budget
-            def render_automatic(context):
-                if "context" in bound.arguments:
-                    bound.arguments["context"] = context
-                from myink.workflow.prose_rules import with_legacy_prose
-                rendered = apply_role_prompts(builder(*bound.args, **bound.kwargs), role, current_resources())
-                return with_reference_library(with_legacy_prose(rendered, builder.__name__), role)
-            return fit_prompt(bound.arguments.get("context") or {}, render_automatic, _tool_prompt_budget())
         from myink.writing_resource_seed import optional_fragments
         messages = deepcopy(messages)
-        for message in messages:
-            if message.get("role") != "system":
-                continue
-            for fragment in optional_fragments():
-                message["content"] = message.get("content", "").replace(fragment, "")
+        if configured():
+            for message in messages:
+                if message.get("role") != "system":
+                    continue
+                for fragment in optional_fragments():
+                    message["content"] = message.get("content", "").replace(fragment, "")
         parts = []
         genres = selected("genre")
         primary_id = genres[0]["body"].get("catalog_id") if genres else None
@@ -165,6 +157,8 @@ def resource_messages(builder, role):
                          "主线、节奏、禁忌和世界观遵循主题材；辅题材只提供钩子、规则和爽点，"
                          "辅题材不得覆盖主题材硬约束，不改主题材主线。")
         for s in (_resources.get() or {}).get("selections", []):
+            if not configured() and s["kind"] not in {"genre", "genre_rule"}:
+                continue
             body = s["body"]
             # Non-creative roles accept only rules explicitly scoped to their role.
             if role not in {"writer", "planner", "audit"} and s["kind"] in {"genre", "style", "reference", "genre_rule"}:
@@ -191,6 +185,19 @@ def resource_messages(builder, role):
                             text = "辅题材精调（合计三成，服从主题材）：" + text
                     parts.append(text)
         addition = [{"role": "system", "content": "【作品选定写作资源】\n作品私有文风档案、作者样本和人物口吻优先于以下通用建议。\n" + "\n".join(parts)}] if parts else []
+        if not configured():
+            # Automatic role publications also consume the final request budget.
+            # Rebuild from each trimmed context so optional recall can make room;
+            # role instructions, fixed schemas and required input are never cut.
+            from myink.context_budget import fit_prompt
+            from myink.workflow.prompts import _tool_prompt_budget
+            def render_automatic(context):
+                if "context" in bound.arguments:
+                    bound.arguments["context"] = context
+                from myink.workflow.prose_rules import with_legacy_prose
+                rendered = apply_role_prompts(builder(*bound.args, **bound.kwargs), role, current_resources())
+                return with_reference_library(with_legacy_prose(rendered, builder.__name__) + addition, role)
+            return fit_prompt(bound.arguments.get("context") or {}, render_automatic, _tool_prompt_budget())
         from myink.context_budget import fit_prompt
         from myink.workflow.prompts import _tool_prompt_budget
         if "context" in bound.arguments:
@@ -219,12 +226,12 @@ def project_resources(function):
             return function(*args, **kwargs)
         from myink.writing_resources import capture_task_resources
         if db is not None:
-            snapshot = capture_task_resources(db, project_id)
+            snapshot = capture_task_resources(db, project_id, user_id=params.get("user_id"))
         else:
             from myink.db import tenant_session
             from myink.db import new_session
             with (tenant_session(str(project_id)) if project_id else new_session()) as session:
-                snapshot = capture_task_resources(session, project_id)
+                snapshot = capture_task_resources(session, project_id, user_id=params.get("user_id"))
         with bind_resources(snapshot):
             return function(*args, **kwargs)
     return wrapped

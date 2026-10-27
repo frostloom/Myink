@@ -75,6 +75,10 @@ export function ReadableContent({ value, field }: {
         return renderNode("div", { "class": styles.explanation }, [
             entries.map(([key, item]) => {
                 const label = labels[key] ?? resourceFieldLabels[key] ?? fieldLabel(key);
+                const heading = label === key && /^[a-z][a-z0-9_]*$/i.test(key) ? "补充内容" : label;
+                if (typeof item === 'number' || typeof item === 'boolean' || (typeof item === 'string' && item.length <= 120 && !/[\n{[]/.test(item))) {
+                    return renderNode("dl", { class: styles.scalar, key }, [renderNode("dt", {}, [heading]), renderNode("dd", {}, [renderNode(ReadableContent, { value: item, field: key })])]);
+                }
                 return renderNode("section", { "class": styles.fact, "key": key }, [
                     renderNode("h5", {}, [label === key && /^[a-z][a-z0-9_]*$/i.test(key) ? "补充内容" : label]), renderNode(ReadableContent, { "value": item, "field": key })
                 ]);

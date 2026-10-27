@@ -249,7 +249,7 @@ export const Analytics = defineComponent((props: {
     return () => {
         return (renderNode("section", { "class": styles.view, "aria-labelledby": "analytics-heading" }, [
             renderNode("div", { "class": styles.viewHead }, [
-                renderNode("div", {}, [renderNode("h2", { "id": "analytics-heading" }, ["分析"])]), renderNode(RefreshButton, { "onClick": resource.retry })
+                renderNode("div", {}, [renderNode("h1", { "id": "analytics-heading" }, ["数据分析"])]), renderNode(RefreshButton, { "onClick": resource.retry })
             ]), renderNode(AdminTrends, { "token": props.token, "onForbidden": props.onForbidden }), renderNode("h3", {}, ["用户与作品明细"]), renderNode("form", { "class": styles.filters, "role": "search", "aria-label": "用户筛选", "onSubmit": submit }, [
                 renderNode("label", {}, [
                     renderNode("span", {}, ["搜索用户"]), renderNode("input", { "class": "input", "maxLength": 128, "value": draft.value, "onInput": (event: Event) => setDraft((event.target as HTMLInputElement & HTMLSelectElement & HTMLDetailsElement).value) }, [])

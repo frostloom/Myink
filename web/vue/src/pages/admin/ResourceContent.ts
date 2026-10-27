@@ -9,8 +9,15 @@ function ContentValue({ value }: {
 }) {
     if (value === null || value === undefined || value === '')
         return null;
-    if (Array.isArray(value))
-        return value.length ? (renderNode("ul", {}, [value.map((v, i: number) => (renderNode("li", { "key": i }, [renderNode(ContentValue, { "value": v })])))])) : null;
+    if (Array.isArray(value)) {
+        if (value.length && value.every(item => item && typeof item === 'object' && typeof item.name === 'string' && typeof item.hook === 'string')) {
+            return renderNode('ul', { class: styles.namedEntries }, value.map((item, index) => renderNode('li', { key: index }, [
+                renderNode('strong', {}, item.name), renderNode('span', {}, item.hook),
+                renderNode(ContentValue, { value: Object.fromEntries(Object.entries(item).filter(([key]) => key !== 'name' && key !== 'hook')) }),
+            ])));
+        }
+        return value.length ? renderNode('ul', {}, value.map((item, index) => renderNode('li', { key: index }, [renderNode(ContentValue, { value: item })]))) : null;
+    }
     if (typeof value === 'object')
         return (renderNode("dl", {}, [Object.entries(value).filter(([key, v]) => !internalResourceFields.has(key) && v !== "" && v !== null && (!Array.isArray(v) || v.length)).map(([k, v]) => (renderNode("div", { "key": k }, [
                 renderNode("dt", {}, [resourceFieldLabels[k] ?? (/[a-z_]/i.test(k) ? "创作内容" : k)]), renderNode("dd", {}, [renderNode(ContentValue, { "value": v })])
@@ -40,10 +47,27 @@ function ReferenceEntries({ entries }: {
             ]);
         })]);
 }
+function GenreContent({ body }: { body: Extract<ResourceBody, {catalog_id: string}> }) {
+    const fields = body.fields;
+    const label = (key: string) => resourceFieldLabels[key] ?? key;
+    return renderNode('div', { class: styles.genreContent }, [
+        fields.selling_point && renderNode('p', {class: styles.genreLead}, String(fields.selling_point)),
+        renderNode('div', {class: styles.genreSections}, Object.entries(fields)
+            .filter(([key,value]) => key !== 'selling_point' && !internalResourceFields.has(key) && value != null && value !== '' && (!Array.isArray(value) || value.length))
+            .map(([key,value]) => renderNode('section', {key,'aria-label':label(key)}, [
+                renderNode('h4', {}, label(key)), renderNode(ContentValue, {value}),
+            ]))),
+        body.setup_caps && renderNode('details', {class: styles.genreCapabilities}, [
+            renderNode('summary', {}, '开书准备'), renderNode(ContentValue, {value:body.setup_caps}),
+        ]),
+    ]);
+}
+GenreContent.props = ['body'];
+GenreContent.inheritAttrs = false;
 export function ResourceContent({ body }: {
     body: ResourceBody;
 }) {
-    return (renderNode("div", { "class": styles.readableContent }, ["files" in body ? (body.files.map((file: {
+    return (renderNode("div", { "class": styles.readableContent }, ["catalog_id" in body && "fields" in body ? renderNode(GenreContent, {body}) : "files" in body ? (body.files.map((file: {
             path: string;
             content: string;
         }, index: number) => (renderNode("section", { "key": index }, [

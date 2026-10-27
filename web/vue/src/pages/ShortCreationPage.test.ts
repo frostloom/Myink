@@ -1,13 +1,15 @@
 // @vitest-environment jsdom
 import { cleanup, createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/vue'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
-import { h, ref } from 'vue'
+import { h, ref, KeepAlive } from 'vue'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { shortCreationApi, type ShortCreationPayload } from '../../../src/lib/shortCreationApi'
 import { styleLibraryApi } from '../../../src/lib/styleLibraryApi'
 import { useAuth } from '../authContext'
+import { writingResources } from '../../../src/lib/writingResources'
 import ShortCreationPage from './ShortCreationPage.vue'
 
+vi.mock('../../../src/lib/writingResources', async original => ({...await original<object>(), writingResources: {catalogAll: vi.fn(), personal: vi.fn(), snapshot: vi.fn(), select: vi.fn()}}))
 vi.mock('../authContext', () => ({ useAuth: vi.fn() }))
 vi.mock('../../../src/lib/shortCreationApi', () => ({
   shortCreationApi: { open: vi.fn(), create: vi.fn(), openSession: vi.fn(), send: vi.fn(),
@@ -56,15 +58,16 @@ const FULL_CARD = {
   chapter_count: 5, chars_per_chapter: 4000,
 }
 
-async function renderPage() {
+async function renderPage(retain = false) {
   const router = createRouter({ history: createMemoryHistory(), routes: [
     { path: '/short/new', component: ShortCreationPage },
     { path: '/projects/:projectId', component: { render: () => h('div', '工作台') } },
-    { path: '/projects/:projectId/settings', component: { render: () => h('div', '写作资源选择') } },
+    { path: '/projects/:projectId/resources', component: { render: () => h('div', '写作资源选择') } },
     { path: '/:pathMatch(.*)*', component: { render: () => h('div') } },
   ] })
   await router.push('/short/new'); await router.isReady()
-  return { ...render(RouterView, { global: { plugins: [router] } }), router }
+  const root = retain ? { render: () => h(RouterView, null, { default: ({ Component }: { Component: object }) => h(KeepAlive, { include: "ShortCreationPage", max: 1 }, () => h(Component)) }) } : RouterView
+  return { ...render(root, { global: { plugins: [router] } }), router }
 }
 
 /** 第一段 → 第二段：服务端说齐备之后，点开「开始建书」，等方案卡出现。 */
@@ -82,6 +85,10 @@ async function openHistory(count = 1) {
 }
 
 beforeEach(() => {
+  vi.mocked(writingResources.catalogAll).mockResolvedValue({items:[]})
+  vi.mocked(writingResources.personal).mockResolvedValue({items:[]})
+  vi.mocked(writingResources.snapshot).mockResolvedValue({revision:2,configured:false,selections:[]})
+  vi.mocked(writingResources.select).mockResolvedValue({revision:3,configured:true,selections:[]})
   vi.mocked(useAuth).mockReturnValue({
     session: ref({ token: 't', userId: 'u1', username: 'alice', tier: 'normal', role: 'user', roleVerified: true, expiresAt: Date.now() + 60000 }),
     status: ref('authenticated'), revalidate: vi.fn(), logout: vi.fn(),
@@ -116,6 +123,7 @@ it('shows the start option once ready, then the card, then commits and hands off
 
   // 第三段：确认 → 落书 → 进工作台，入队归那边（状态带上才有重试入口）。
   await fireEvent.click(screen.getByRole('button', { name: '确认，开写' }))
+  await fireEvent.click(await screen.findByRole('button', {name:'确认资源并创建作品'}))
   await waitFor(() => expect(shortCreationApi.commit).toHaveBeenCalled())
   await waitFor(() => expect(router.currentRoute.value.path).toBe('/projects/p1'))
   expect(router.options.history.state).toMatchObject({ beginShortWriting: true, planWarning: null })
@@ -167,7 +175,7 @@ it('sends on Enter and leaves Shift+Enter to insert a newline', async () => {
   const box = await screen.findByLabelText('对助手说')
   await fireEvent.input(box, { target: { value: '一个渡口的故事' } })
   await fireEvent.keyDown(box, { key: 'Enter', shiftKey: false })
-  await waitFor(() => expect(shortCreationApi.send).toHaveBeenCalledWith('t', 's1', '一个渡口的故事', {}))
+  await waitFor(() => expect(shortCreationApi.send).toHaveBeenCalledWith('t', 's1', '一个渡口的故事', {}, expect.any(AbortSignal)))
   await fireEvent.input(box, { target: { value: '第二句' } })
   await fireEvent.keyDown(box, { key: 'Enter', shiftKey: true })
   expect(shortCreationApi.send).toHaveBeenCalledTimes(1)
@@ -344,11 +352,12 @@ it('labels a pending commit as planning and locks the card against further chang
   await renderPage()
   await openCard()
   await fireEvent.click(screen.getByRole('button', { name: '确认，开写' }))
-  expect(screen.getByRole('button', { name: '正在规划…' })).toBeTruthy()
-  expect((screen.getByLabelText('暂定名') as HTMLTextAreaElement).disabled).toBe(true)
-  expect(screen.queryByRole('button', { name: '正在回复…' })).toBeNull()
-  await fireEvent.click(screen.getByRole('button', { name: '关闭方案卡' }))
-  expect(screen.getByText('正在规划章节…')).toBeTruthy()
+  await fireEvent.click(await screen.findByRole('button', {name:'确认资源并创建作品'}))
+  expect((screen.getByRole('button', {name:'正在创建…'}) as HTMLButtonElement).disabled).toBe(true)
+  expect(screen.getByRole('status', {name:'正在创建作品并保存写作资源'}).textContent).toContain('正在创建作品并保存写作资源')
+  expect(screen.getByRole('progressbar').hasAttribute('value')).toBe(false)
+  expect(screen.queryByLabelText('暂定名')).toBeNull()
+  expect(screen.queryByRole('button', {name:'正在回复…'})).toBeNull()
 })
 
 it('labels opening a new conversation separately from waiting for an assistant reply', async () => {
@@ -501,16 +510,19 @@ it('keeps the box editable and says it is replying while a turn is in flight', a
   release(payload({ messages: [], ready: false }))
   await waitFor(() => expect(screen.getByRole('button', { name: '发送' })).toBeTruthy())
 })
-it('lets the author configure writing resources before the first short-story generation', async () => {
+it('selects resources in a creation dialog before committing or starting writing', async () => {
  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({messages:[],ready:true,session:{card:FULL_CARD}}))
  vi.mocked(shortCreationApi.commit).mockResolvedValue({project_id:'p1',lengths_compressed:false,plan_warning:null,style_name:null})
  const {router}=await renderPage()
  await openCard()
- await fireEvent.click(screen.getByRole('button',{name:'确认方案，先选写作资源'}))
- await waitFor(()=>expect(router.currentRoute.value.path).toBe('/projects/p1/settings'))
- expect(router.currentRoute.value.hash).toBe('#writing-resources')
- expect(router.options.history.state).not.toHaveProperty('beginShortWriting',true)
+ await fireEvent.click(screen.getByRole('button',{name:'确认，开写'}))
+ expect(shortCreationApi.commit).not.toHaveBeenCalled()
+ await fireEvent.click(await screen.findByRole('button',{name:'确认资源并创建作品'}))
+ await waitFor(()=>expect(writingResources.select).toHaveBeenCalledWith('p1',2,[]))
+ await waitFor(()=>expect(router.currentRoute.value.path).toBe('/projects/p1'))
+ expect(router.options.history.state.beginShortWriting).toBe(true)
 })
+
 
 
 it('keeps the edited card available when commit fails and only commits once per pending operation', async () => {
@@ -520,10 +532,13 @@ it('keeps the edited card available when commit fails and only commits once per 
   await renderPage(); await openCard()
   await fireEvent.input(screen.getByLabelText('暂定名'), { target: { value: '保留编辑' } })
   const button = screen.getByRole('button', { name: '确认，开写' })
-  await fireEvent.click(button); await fireEvent.click(button)
+  await fireEvent.click(button)
+  const create = await screen.findByRole('button', {name:'确认资源并创建作品'})
+  await fireEvent.click(create); await fireEvent.click(create)
   expect(shortCreationApi.commit).toHaveBeenCalledTimes(1)
   reject(new Error('offline'))
   await screen.findByRole('alert')
+  await fireEvent.click(screen.getByRole('button', {name:'返回方案'}))
   expect((screen.getByLabelText('暂定名') as HTMLTextAreaElement).value).toBe('保留编辑')
 })
 
@@ -533,6 +548,7 @@ it('does not navigate after a pending commit resolves on an unmounted page', asy
   vi.mocked(shortCreationApi.commit).mockReturnValue(new Promise(resolve => { finish = resolve }))
   const view = await renderPage(); await openCard()
   await fireEvent.click(screen.getByRole('button', { name: '确认，开写' }))
+  await fireEvent.click(await screen.findByRole('button', {name:'确认资源并创建作品'}))
   const navigate = vi.spyOn(view.router, 'push')
   view.unmount()
   finish({ project_id: 'late', lengths_compressed: false, plan_warning: null, style_name: null })
@@ -585,4 +601,133 @@ it('keeps an unsent conversation draft when cancelling a commit that would leave
   expect(router.currentRoute.value.path).toBe('/short/new')
   expect(confirm).toHaveBeenCalledTimes(1)
   confirm.mockRestore()
+})
+
+it.each(['success', 'failure'] as const)('shows thinking above the composer until reply %s', async outcome => {
+  let resolve!: (value: ShortCreationPayload) => void
+  let reject!: (reason: Error) => void
+  vi.mocked(shortCreationApi.send).mockReturnValue(new Promise((ok, fail) => { resolve = ok; reject = fail }))
+  await renderPage()
+  const input = await screen.findByLabelText('对助手说')
+  await fireEvent.update(input, '渡口的新故事')
+  await fireEvent.keyDown(input, { key: 'Enter' })
+  const thinking = screen.getByRole('status')
+  expect(thinking.textContent).toContain('正在努力构思中，请稍后')
+  expect(thinking.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(thinking.contains(input)).toBe(false)
+  if (outcome === 'success') resolve(payload())
+  else reject(new Error('offline'))
+  await waitFor(() => expect(screen.queryByText('正在努力构思中，请稍后')).toBeNull())
+  expect((input as HTMLTextAreaElement).value).toBe(outcome === 'failure' ? '渡口的新故事' : '')
+})
+
+it('cancels waiting, preserves the draft and ignores a late reply after switching sessions', async () => {
+  let resolve!: (value: ShortCreationPayload) => void
+  vi.mocked(shortCreationApi.send).mockReturnValue(new Promise(ok => { resolve = ok }))
+  vi.mocked(shortCreationApi.create).mockResolvedValue(payload({ session: { id: 's2' }, messages: [] }))
+  await renderPage()
+  const input = await screen.findByLabelText('对助手说')
+  await fireEvent.update(input, '渡口的新故事')
+  await fireEvent.keyDown(input, { key: 'Enter' })
+  await fireEvent.update(input, '下一句草稿')
+  await fireEvent.click(screen.getByRole('button', { name: '取消等待' }))
+  expect(screen.queryByText('正在努力构思中，请稍后')).toBeNull()
+  expect((input as HTMLTextAreaElement).value).toBe('下一句草稿')
+  await fireEvent.click(screen.getByRole('button', { name: '新建会话' }))
+  await waitFor(() => expect((input as HTMLTextAreaElement).value).toBe(''))
+  resolve(payload({ messages: [{ ...payload().messages[0], content: '过时的回答' }] }))
+  await new Promise(ok => setTimeout(ok, 0))
+  expect(screen.queryByText('过时的回答')).toBeNull()
+})
+
+it('shows the story stakes and resolution in the compact proposal before opening it', async () => {
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({ ready: true, session: { card: {
+    ...FULL_CARD, protagonist_pressure: '必须赶上末班船', conflict_core: '船夫拒绝渡河', emotional_payoff: '终于学会告别',
+  } } }))
+  await renderPage()
+  const proposal = await screen.findByRole('region', { name: '待确认方案' })
+  expect(proposal.textContent).toContain('必须赶上末班船')
+  expect(proposal.textContent).toContain('船夫拒绝渡河')
+  expect(proposal.textContent).toContain('终于学会告别')
+})
+
+it('removes thinking on account change and never displays the previous account reply', async () => {
+  const account = ref({ token: 't', userId: 'u1', username: 'alice', tier: 'normal', role: 'user', roleVerified: true, expiresAt: Date.now() + 60000 })
+  vi.mocked(useAuth).mockReturnValue({ session: account, status: ref('authenticated'), logout: vi.fn() } as unknown as ReturnType<typeof useAuth>)
+  let finish!: (value: ShortCreationPayload) => void
+  vi.mocked(shortCreationApi.send).mockReturnValue(new Promise(resolve => { finish = resolve }))
+  await renderPage()
+  const input = await screen.findByLabelText('对助手说')
+  await fireEvent.update(input, '旧账号构思')
+  await fireEvent.keyDown(input, { key: 'Enter' })
+  expect(screen.getByText('正在努力构思中，请稍后')).toBeTruthy()
+  account.value = { ...account.value, userId: 'u2', token: 'new-token' }
+  await waitFor(() => expect(screen.queryByText('正在努力构思中，请稍后')).toBeNull())
+  finish(payload({ messages: [{ ...payload().messages[0], content: '旧账号回复' }] }))
+  await new Promise(resolve => setTimeout(resolve, 0))
+  expect(screen.queryByText('旧账号回复')).toBeNull()
+})
+
+it('retries resource persistence on the same book without starting writing prematurely',async()=>{
+ vi.mocked(shortCreationApi.open).mockResolvedValue(payload({ready:true,session:{card:FULL_CARD}}))
+ vi.mocked(shortCreationApi.commit).mockResolvedValue({project_id:'p1',lengths_compressed:false,plan_warning:null,style_name:null})
+ vi.mocked(writingResources.select).mockRejectedValueOnce(new Error('快照冲突'))
+ const {router}=await renderPage();await openCard()
+ await fireEvent.click(screen.getByRole('button',{name:'确认，开写'}))
+ await fireEvent.click(await screen.findByRole('button',{name:'确认资源并创建作品'}))
+ expect(await screen.findByRole('alert')).toBeTruthy();expect(router.currentRoute.value.path).toBe('/short/new')
+ await fireEvent.click(screen.getByRole('button',{name:'确认资源并创建作品'}))
+ await waitFor(()=>expect(router.currentRoute.value.path).toBe('/projects/p1'))
+ expect(shortCreationApi.commit).toHaveBeenCalledTimes(1)
+})
+it('does not pretend that editing an already created card changes the book on resource-save retry',async()=>{
+ vi.mocked(shortCreationApi.open).mockResolvedValue(payload({ready:true,session:{card:FULL_CARD}}))
+ vi.mocked(shortCreationApi.commit).mockResolvedValue({project_id:'p1',lengths_compressed:false,plan_warning:null,style_name:null})
+ vi.mocked(writingResources.select).mockRejectedValueOnce(new Error('保存失败'))
+ await renderPage();await openCard()
+ await fireEvent.click(screen.getByRole('button',{name:'确认，开写'}))
+ await fireEvent.click(await screen.findByRole('button',{name:'确认资源并创建作品'}))
+ await screen.findByRole('alert')
+ await fireEvent.click(screen.getByRole('button',{name:'返回方案'}))
+ expect((screen.getByLabelText('暂定名') as HTMLTextAreaElement).disabled).toBe(true)
+ expect(screen.getByText(/作品已创建，方案已保存/)).toBeTruthy()
+})
+
+it('retries opening a short creation after an initial transport failure',async()=>{
+ vi.mocked(shortCreationApi.open).mockRejectedValueOnce(new Error('offline'))
+ await renderPage();expect(await screen.findByRole('alert')).toBeTruthy()
+ await fireEvent.click(screen.getByRole('button',{name:'重新打开建书对话'}))
+ expect(await screen.findByText('想写个什么样的短篇？')).toBeTruthy()
+ expect(shortCreationApi.open).toHaveBeenCalledTimes(2)
+})
+
+
+it('hides a retained plan dialog outside the short route and restores its edited fields on return', async () => {
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({ ready: true, session: { card: FULL_CARD } }))
+  const { router } = await renderPage(true)
+  await openCard()
+  await fireEvent.update(screen.getByLabelText('暂定名'), '保留方案编辑')
+  await router.push('/long')
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  await router.push('/short/new')
+  expect((await screen.findByLabelText('暂定名') as HTMLTextAreaElement).value).toBe('保留方案编辑')
+})
+
+it('keeps a background commit result without taking over the current route', async () => {
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({ ready: true, session: { card: FULL_CARD } }))
+  let finish!: (value: Awaited<ReturnType<typeof shortCreationApi.commit>>) => void
+  vi.mocked(shortCreationApi.commit).mockReturnValue(new Promise(resolve => { finish = resolve }))
+  const { router } = await renderPage(true)
+  await openCard()
+  await fireEvent.click(screen.getByRole('button', { name: '确认，开写' }))
+  await fireEvent.click(await screen.findByRole('button', {name:'确认资源并创建作品'}))
+  await router.push('/long')
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  finish({ project_id: 'late', lengths_compressed: false, plan_warning: null, style_name: null })
+  await waitFor(() => expect(writingResources.select).toHaveBeenCalled())
+  expect(router.currentRoute.value.path).toBe('/long')
+  await router.push('/short/new')
+  await fireEvent.click(await screen.findByRole('button', {name:'确认资源并创建作品'}))
+  await waitFor(() => expect(router.currentRoute.value.path).toBe('/projects/late'))
+  expect(shortCreationApi.commit).toHaveBeenCalledTimes(1)
 })

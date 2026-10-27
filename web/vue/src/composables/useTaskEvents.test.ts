@@ -66,3 +66,50 @@ it('does not let a delayed manual refresh terminate a newer SSE state', async ()
 it('stores short progress separately and resumes the same task when resumeKey changes',async()=>{
  vi.mocked(api.getTask).mockResolvedValue(detail());vi.mocked(openSSE).mockImplementation(async(_u,on)=>{on(event({type:'progress',stage:'short_write',done:4400,total:20000}));return new Promise(()=>{})});const{state,resumeKey}=start();await flushPromises();expect(state.shortProgress).toEqual({stage:'short_write',current:4400,total:20000});expect(state.progress).toBeNull();resumeKey.value++;await flushPromises();expect(openSSE).toHaveBeenCalledTimes(2)
 })
+it('clears the old body on replan and rejects delayed artifacts from the replaced attempt',async()=>{
+ vi.mocked(api.getTask).mockResolvedValue(detail());let receive!:(e:SSEEvent)=>void
+ vi.mocked(openSSE).mockImplementation((_u,on)=>{receive=on;return new Promise(()=>{})})
+ const {state}=start();await flushPromises()
+ receive(event({type:'artifact_delta',stage:'write',chapter_seq:1,artifact_id:'old-write',content:'旧正文'}))
+ receive(event({type:'artifact_reset',stage:'plan',chapter_seq:1,artifact_id:'plan-2',attempt:2}))
+ expect(state.artifacts.find(a=>a.stage==='write')).toBeUndefined()
+ receive(event({type:'artifact_delta',stage:'write',chapter_seq:1,artifact_id:'old-write',content:'迟到旧正文'}))
+ expect(state.artifacts.find(a=>a.stage==='write')).toBeUndefined()
+ receive(event({type:'artifact_delta',stage:'write',chapter_seq:1,artifact_id:'new-write',content:'新正文'}))
+ expect(state.artifacts.find(a=>a.stage==='write')?.content).toBe('新正文')
+})
+it('does not accept artifacts from unrelated task or mismatched batch chapter',async()=>{
+ vi.mocked(api.getTask).mockResolvedValue(detail());let receive!:(e:SSEEvent)=>void
+ vi.mocked(openSSE).mockImplementation((_u,on)=>{receive=on;return new Promise(()=>{})})
+ const {state}=start();await flushPromises()
+ for(const task_id of ['other','a:ch2']) receive(event({type:'artifact_delta',task_id,stage:'write',chapter_seq:1,artifact_id:task_id,content:'错误正文'}))
+ expect(state.artifacts).toEqual([])
+ receive(event({type:'artifact_delta',task_id:'a:ch1',stage:'write',chapter_seq:1,artifact_id:'valid',content:'本章正文'}))
+ expect(state.artifacts[0]?.content).toBe('本章正文')
+})
+it('starts a revision immediately without losing its plan or accepting old replay',async()=>{
+ vi.mocked(api.getTask).mockResolvedValue(detail());let receive!:(e:SSEEvent)=>void
+ vi.mocked(openSSE).mockImplementation((_u,on)=>{receive=on;return new Promise(()=>{})})
+ const {state}=start();await flushPromises()
+ receive(event({type:'artifact_delta',stage:'plan',chapter_seq:1,artifact_id:'plan',content:'保留计划'}))
+ receive(event({type:'artifact_delta',stage:'write',chapter_seq:1,artifact_id:'write',content:'旧正文'}))
+ state.beginReplacement(1)
+ expect(state.status).toBe('queued')
+ expect(state.artifacts.map(a=>a.content)).toEqual(['保留计划'])
+ receive(event({type:'artifact_delta',stage:'write',chapter_seq:1,artifact_id:'write',content:'旧正文'}))
+ expect(state.artifacts.map(a=>a.content)).toEqual(['保留计划'])
+})
+it('allows a resumed task to fail before the first replacement artifact',async()=>{
+ vi.mocked(api.getTask).mockResolvedValue(detail());let receive!:(e:SSEEvent)=>void
+ vi.mocked(openSSE).mockImplementation((_u,on)=>{receive=on;return new Promise(()=>{})})
+ const {state}=start();await flushPromises();state.beginReplacement(1)
+ receive(event({type:'status',status:'failed'}))
+ expect(state.status).toBe('failed')
+})
+it.each([['failed','network'],['cancelled','network'],['failed','expired'],['cancelled','expired']] as const)('converges resumed task to HTTP %s when SSE is %s',async (status,reason)=>{
+ vi.mocked(api.getTask).mockResolvedValue(detail());vi.mocked(openSSE).mockImplementation(()=>new Promise(()=>{}))
+ const {state}=start();await flushPromises();state.beginReplacement(1)
+ vi.mocked(api.getTask).mockResolvedValue(detail('a',status));vi.mocked(openSSE).mockResolvedValue({reason})
+ state.retry();await flushPromises()
+ expect(state.status).toBe(status);expect(state.phase).toBe(reason==='expired'?'expired':'terminal')
+})

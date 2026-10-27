@@ -97,7 +97,7 @@ def test_children_capture_parent_snapshot_without_reading_platform(monkeypatch):
     from myink.workflow.runner import new_task
     stored=[]
     class DB:
-        def get(self, model, key): return SimpleNamespace(user_id=uuid.uuid4())
+        def get(self, model, key, **kwargs): return SimpleNamespace(user_id=uuid.uuid4())
         def add(self, row): stored.append(row)
         def flush(self): pass
     @contextmanager
@@ -130,7 +130,7 @@ def test_selection_budget_fails_before_provider(monkeypatch):
 def test_synchronous_project_planner_binds_snapshot(monkeypatch):
     from myink.writing_resource_runtime import project_resources
     snap=snapshot()
-    monkeypatch.setattr("myink.writing_resources.capture_task_resources",lambda db,pid:snap)
+    monkeypatch.setattr("myink.writing_resources.capture_task_resources",lambda db,pid,**kwargs:snap)
     @project_resources
     def call(*,project_id,db):
         snap["revision"]=42
@@ -314,3 +314,12 @@ def test_legacy_task_does_not_implicitly_use_automatic_library(monkeypatch):
         assert json.loads(execute_tool(None,None,'read_genre_reference',{'path':'x.md'}))['content']=='LEGACY'
     with bind_resources({'configured':True,'selections':[]}):
         assert 'error' in json.loads(execute_tool(None,None,'read_genre_reference',{'path':'x.md'}))
+
+
+def test_rules_only_selection_keeps_existing_book_genre_and_style():
+    with bind_resources({'configured':True,'selections':[
+        {'kind':'writing_rule','name':'rule','body':{'roles':{'writer':'custom'}}}
+    ]}):
+        text = json.dumps(prompts.short_write_messages({'genre':'自定义题材','genre_pack':{},'chapter_count':1,'chars_per_chapter':100,'style_profile':{'sentence_style':'EXISTING_BOOK_STYLE'}}),ensure_ascii=False)
+    assert '自定义题材' in text
+    assert 'EXISTING_BOOK_STYLE' in text

@@ -593,3 +593,14 @@ def ensure_character_provenance() -> None:
     """Preserve legacy/author characters; only new generated cards have provenance."""
     with get_admin_engine().begin() as conn:
         conn.execute(text("ALTER TABLE characters ADD COLUMN IF NOT EXISTS source_chapter INTEGER"))
+
+
+def ensure_personal_resource_sources() -> None:
+    """Old personal resources remain independent; new copies have unique owner lineage."""
+    with get_admin_engine().begin() as conn:
+        conn.execute(text("ALTER TABLE personal_writing_resources ADD COLUMN IF NOT EXISTS source_resource_id VARCHAR(160)"))
+        conn.execute(text("ALTER TABLE personal_writing_resources ADD COLUMN IF NOT EXISTS source_generation INTEGER"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_personal_resource_source ON personal_writing_resources (user_id, source_resource_id)"))
+        conn.execute(text("ALTER TABLE project_writing_resources ADD COLUMN IF NOT EXISTS configured BOOLEAN NOT NULL DEFAULT TRUE"))
+        conn.execute(text("ALTER TABLE project_writing_resources ADD COLUMN IF NOT EXISTS automatic_initialized BOOLEAN NOT NULL DEFAULT FALSE"))
+        conn.execute(text("ALTER TABLE project_writing_resources ADD COLUMN IF NOT EXISTS defaults_initialized BOOLEAN NOT NULL DEFAULT FALSE"))

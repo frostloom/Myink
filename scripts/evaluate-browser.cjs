@@ -71,7 +71,7 @@ async function main() {
       else if (endpoint === '/tasks/task-p1/plan/confirm') { assert.equal(request.postDataJSON().expected_attempt, 1); state.phase = 'running'; setTimeout(() => { emit({ type: 'status', status: 'running', node: 'write' }); emit({ type: 'artifact_reset', stage: 'write' }); emit({ type: 'artifact_delta', stage: 'write', content: '增量第一段：林川扶住栏杆。' }); }, 100); data = { task_id: 'task-p1', status: 'running' }; }
       else if (endpoint === '/projects/project-p1/candidates') data = state.phase === 'awaiting_review' ? [{ ...candidate, ...(state.rejected ? { status: 'rejected', review: { mode: 'revise', reason: '现实题材不允许瞬间移动', applied: false } } : {}) }] : [];
       else if (endpoint === '/projects/project-p1/candidates/candidate-p1/reject') { assert.equal(request.postDataJSON().mode, 'revise'); state.rejected = true; data = { candidate_id: candidate.candidate_id, status: 'rejected' }; }
-      else if (endpoint === '/batches/task-p1/resume') { state.phase = 'done'; setTimeout(()=>emit({type:'status',status:'done'}),100); data = { task_id: 'task-p1', status: 'done' }; }
+      else if (endpoint === '/tasks/task-p1/resume') { state.phase = 'done'; setTimeout(()=>emit({type:'status',status:'done'}),100); data = { task_id: 'task-p1', status: 'done' }; }
       else if (endpoint === '/projects/project-p1/chapters/chapter-p1/content') { state.saves++; state.version++; state.content = '另一个页面的修改'; status = 409; data = { error: 'version_conflict' }; }
       else if (endpoint === '/projects/project-p1/graph') data = { nodes: [], edges: [] };
       else if (['/projects/project-p1/foreshadows','/projects/project-p1/lessons','/projects/project-p1/characters','/projects/project-p1/entities','/projects/project-p1/events','/projects/project-p1/global-audit'].includes(endpoint)) data = [];
@@ -108,9 +108,13 @@ async function main() {
     await page.getByRole('dialog', { name: '设定确认' }).waitFor();
     await page.getByPlaceholder('例如：人物仍然受伤，需要治疗过程').fill('现实题材不允许瞬间移动');
     await page.getByRole('button', { name: '不接受，自动修改', exact: true }).click();
-    await page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
+    await page.getByRole('dialog', {name: '设定确认', exact: true}).waitFor({state: 'hidden'});
     assert.equal(state.rejected, true); receipt.checks.push('human_rejection_after_reload', 'resume_request');
-    state.phase = 'done'; await page.waitForLoadState('networkidle'); await page.reload();
+    state.phase = 'done';
+    emit({type:'status',status:'done'});
+    for (const res of streams) res.end();
+    await page.getByRole('textbox', { name: '章节正文' }).waitFor();
+    await page.reload();
     await page.getByRole('button', { name: /第 1 章.*雨夜/ }).click();
     const editor = page.getByRole('textbox', { name: '章节正文' }); await editor.waitFor();
     assert.equal(await editor.inputValue(), state.content); receipt.checks.push('saved_body_after_refresh');

@@ -1,12 +1,14 @@
 <script lang="ts">
+import WaitingStatus from './WaitingStatus.vue';
 import { useMemoryFormGuard } from "../composables/useMemoryFormGuard";
 import type { PropType } from 'vue'
-import { defineComponent, h, Fragment, Teleport, onMounted, ref, shallowRef, computed, watch } from 'vue'
+import { defineComponent, h, Fragment, Teleport, ref, shallowRef, computed, watch } from 'vue'
 
 import { candidateFields, candidateLabel, candidateTone } from "../../../src/lib/candidates";
 import { api } from "../../../src/lib/api";
 import type { ChapterStatus, MemoryCandidate } from "../../../src/types";
 import StatusBadge from "./StatusBadge.vue";
+import NativeDialog from "./NativeDialog.vue";
 import styles from "../../../src/components/CandidatePanel.module.css";
 /** 放行目标：单章 awaiting_review 任务确认完候选后，从这里 resume 完成记忆与章节状态 */
 export interface ReleaseTarget {
@@ -23,7 +25,7 @@ interface Props {
     onChanged: () => void;
     /** 当前章 await review 确认收尾后可放行 → 空态渲染主按钮 */
     releaseTarget?: ReleaseTarget | null;
-    onReleased?: (taskId: string, chapterSeq: number, batchSize?: number) => void;
+    onReleased?: (taskId: string, chapterSeq: number, batchSize?: number, action?: 'revise') => void;
     /** 将人物、实体和伏笔 UUID 转成人可读名称。 */
     referenceNames?: Readonly<Record<string, string>>;
 }
@@ -48,6 +50,7 @@ export const CandidatePanel = defineComponent({
         const candidates = computed(() => allCandidates.value.filter((c) => c.status === 'pending' && !submittedIds.value.includes(c.candidate_id)));
         const history = computed(() => allCandidates.value.filter((c) => c.status !== 'pending').slice(-20).reverse());
         const open = ref(candidates.value.length > 0), setOpen = (next: typeof open.value | ((current: typeof open.value) => typeof open.value)) => open.value = typeof next === "function" ? next(open.value) : next;
+        const pendingLabel = ref('正在提交设定确认');
         const busy = ref<Cid | null>(null), setBusy = (next: typeof busy.value | ((current: typeof busy.value) => typeof busy.value)) => busy.value = typeof next === "function" ? next(busy.value) : next;
         const reason = ref(''), setReason = (next: typeof reason.value | ((current: typeof reason.value) => typeof reason.value)) => reason.value = typeof next === "function" ? next(reason.value) : next;
         useMemoryFormGuard(() => Boolean(reason.value));
@@ -66,7 +69,6 @@ export const CandidatePanel = defineComponent({
         const actionKey = computed(() => actionable.value ? `${chapterSeq.value ?? 'all'}:${candidates.value.map((candidate) => candidate.candidate_id).join(',')}:${retryChapters.value.join(',')}:${currentReleaseTarget.value?.taskId ?? ''}`
             : '');
         const previousActionKey = shallowRef(actionKey.value);
-        const closeButtonRef = shallowRef<HTMLButtonElement | null>(null);
         const reviewOpen = ref(actionable.value), setReviewOpen = (next: typeof reviewOpen.value | ((current: typeof reviewOpen.value) => typeof reviewOpen.value)) => reviewOpen.value = typeof next === "function" ? next(reviewOpen.value) : next;
         // 首次异步加载到待确认项时自动展开；用户之后主动折叠时不再抢回展开状态。
         watch(() => [count.value], (_next, _prev, _onCleanup) => {
@@ -108,19 +110,20 @@ export const CandidatePanel = defineComponent({
             return { taskId: latest.task_id, chapterSeq, batchSize: latest.batch_size ?? undefined };
         }
         async function startRevision(target: ReleaseTarget) {
-            await api.resumeBatch(target.taskId);
+            await api.resumeTask(target.taskId);
             setSubmittedIds((ids) => [...ids, ...allCandidates.value.filter((c) => c.source_chapter === target.chapterSeq).map((c) => c.candidate_id)]);
             setRetryChapter(null);
             setReason('');
             setNotice(`第 ${target.chapterSeq} 章已提交自动修改，系统会检查修改后的内容，进度见任务区。`);
             setReviewOpen(false);
-            onReleased.value?.(target.taskId, target.chapterSeq, target.batchSize);
+            onReleased.value?.(target.taskId, target.chapterSeq, target.batchSize, 'revise');
             onChanged.value();
         }
         async function act(action: 'confirm' | 'reject', candidate: MemoryCandidate) {
             if (busy.value)
                 return;
             const cid = candidate.candidate_id;
+            pendingLabel.value = action === 'confirm' ? '正在提交设定确认' : '正在提交修改意见并启动修订';
             setBusy(cid);
             setError(null);
             setNotice('');
@@ -132,7 +135,7 @@ export const CandidatePanel = defineComponent({
                     const isLastPending = candidates.value.every((item) => item.candidate_id === cid);
                     if (isLastPending && currentReleaseTarget.value) {
                         try {
-                            await api.resumeBatch(currentReleaseTarget.value.taskId);
+                            await api.resumeTask(currentReleaseTarget.value.taskId);
                             setNotice(`第 ${currentReleaseTarget.value.chapterSeq} 章设定已确认，任务正在继续。`);
                             setReviewOpen(false);
                             onReleased.value?.(currentReleaseTarget.value.taskId, currentReleaseTarget.value.chapterSeq, currentReleaseTarget.value.batchSize);
@@ -168,6 +171,7 @@ export const CandidatePanel = defineComponent({
         async function retryRevision(chapterSeq: number) {
             if (busy.value)
                 return;
+            pendingLabel.value = '正在启动修订';
             setBusy('__release__');
             setError(null);
             try {
@@ -184,10 +188,11 @@ export const CandidatePanel = defineComponent({
         async function release() {
             if (!currentReleaseTarget.value || busy.value)
                 return;
+            pendingLabel.value = '正在完成设定确认';
             setBusy('__release__');
             setError(null);
             try {
-                await api.resumeBatch(currentReleaseTarget.value.taskId);
+                await api.resumeTask(currentReleaseTarget.value.taskId);
                 setNotice(`第 ${currentReleaseTarget.value.chapterSeq} 章设定已确认，任务正在继续。`);
                 setReviewOpen(false);
                 onReleased.value?.(currentReleaseTarget.value.taskId, currentReleaseTarget.value.chapterSeq, currentReleaseTarget.value.batchSize);
@@ -200,33 +205,17 @@ export const CandidatePanel = defineComponent({
                 setBusy(null);
             }
         }
-        watch(() => [reviewOpen.value, busy.value], (_next, _prev, onCleanup) => {
-            if (!reviewOpen.value)
-                return;
+        watch(reviewOpen, (isOpen, _previous, onCleanup) => {
+            if (!isOpen) return;
             const previousOverflow = document.body.style.overflow;
-            const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
             document.body.style.overflow = 'hidden';
-            closeButtonRef.value?.focus();
-            function onKeyDown(event: KeyboardEvent) {
-                if (event.key === 'Escape' && busy.value === null)
-                    setReviewOpen(false);
-            }
-            document.addEventListener('keydown', onKeyDown);
-            onCleanup(() => {
-                document.body.style.overflow = previousOverflow;
-                document.removeEventListener('keydown', onKeyDown);
-                previousFocus?.focus();
-            });
+            onCleanup(() => { document.body.style.overflow = previousOverflow; });
         }, { immediate: true, flush: "post" });
-        onMounted(() => { if (reviewOpen.value) closeButtonRef.value?.focus() });
         return () => {
-            return (h(Fragment, null, [h("section", { "class": `panel ${styles.panel}`, "aria-label": "设定评审侧栏" }, [h("header", { "class": styles.head }, [h("button", { "type": "button", "class": styles.toggle, "onClick": () => setOpen((o) => !o), "aria-expanded": open.value }, [h("span", { "class": styles.headingGroup }, [h("span", { "class": styles.title }, [actionable.value ? '设定确认' : '设定记录']), chapterSeq.value != null && h("span", { "class": styles.chapter }, ["第 ", chapterSeq.value, " 章"])]), h("span", { "class": styles.headerMeta }, [count.value > 0 && h("span", { "class": "badge badge-warning" }, [count.value, " 项"]), count.value === 0 && (currentReleaseTarget.value || retryChapters.value.length > 0) && h("span", { "class": "badge badge-warning" }, ["待处理"]), !actionable.value && hasHistory.value && h("span", { "class": "badge badge-success" }, ["已完成"]), h("span", { "class": styles.caret }, [open.value ? '▾' : '▸'])])])]), open.value && notice.value && h("p", { "role": "status", "class": styles.notice }, [notice.value]), open.value && history.value.length > 0 && h("details", { "class": styles.history }, [h("summary", {}, ["最近评审记录（", history.value.length, "）"]), history.value.map((c) => h("p", { "key": c.candidate_id }, ["第 ", c.source_chapter, " 章 · ", candidateLabel(c.kind), " · ", c.status === 'confirmed' ? '已确认' : c.review?.superseded ? '旧稿候选已作废' : c.review?.mode === 'revise' ? (c.review.applied ? '已按意见修订并复审' : '等待按意见修订') : '仅拒绝记忆入库', c.review?.reason && `：${c.review.reason}`]))]), open.value && !reviewOpen.value && error.value && h("div", { "class": "banner banner-error" }, [error.value]), open.value && (h("div", { "class": styles.release }, [h("p", { "class": "empty" }, [actionable.value ? '本章有设定需要处理，操作会在页面中央的确认窗口中完成。' : '本章没有待确认的设定。']), actionable.value && (h("button", { "type": "button", "class": "btn btn-primary", "onClick": () => setReviewOpen(true) }, [count.value > 0 ? `处理 ${count.value} 项设定` : '继续处理']))]))]), reviewOpen.value && actionable.value && h(Teleport, { to: document.body }, [h("div", { "class": styles.modalBackdrop, "onMouseDown": (event: MouseEvent) => {
-                            if (event.target === event.currentTarget && busy.value === null)
-                                setReviewOpen(false);
-                        } }, [h("section", { "class": styles.modal, "role": "dialog", "aria-modal": "true", "aria-labelledby": "candidate-review-title" }, [h("header", { "class": styles.modalHead }, [h("div", {}, [h("h2", { "id": "candidate-review-title" }, ["设定确认"]), h("p", {}, [chapterSeq.value != null ? `第 ${chapterSeq.value} 章` : '当前章节', " · ", count.value > 0 ? `${count.value} 项待处理` : '继续未完成操作'])]), h("button", { "ref": closeButtonRef, "type": "button", "class": styles.modalClose, "aria-label": "暂后处理", "disabled": busy.value !== null, "onClick": () => setReviewOpen(false) }, ["×"])]), h("div", { "class": styles.modalBody }, [h("p", { "class": styles.modalHint }, [count.value > 0
+            return (h(Fragment, null, [h("section", { "class": `panel ${styles.panel}`, "aria-label": "设定评审侧栏" }, [h("header", { "class": styles.head }, [h("button", { "type": "button", "class": styles.toggle, "onClick": () => setOpen((o) => !o), "aria-expanded": open.value }, [h("span", { "class": styles.headingGroup }, [h("span", { "class": styles.title }, [actionable.value ? '设定确认' : '设定记录']), chapterSeq.value != null && h("span", { "class": styles.chapter }, ["第 ", chapterSeq.value, " 章"])]), h("span", { "class": styles.headerMeta }, [count.value > 0 && h("span", { "class": "badge badge-warning" }, [count.value, " 项"]), count.value === 0 && (currentReleaseTarget.value || retryChapters.value.length > 0) && h("span", { "class": "badge badge-warning" }, ["待处理"]), !actionable.value && hasHistory.value && h("span", { "class": "badge badge-success" }, ["已完成"]), h("span", { "class": styles.caret }, [open.value ? '▾' : '▸'])])])]), open.value && notice.value && h("p", { "role": "status", "class": styles.notice }, [notice.value]), open.value && history.value.length > 0 && h("details", { "class": styles.history }, [h("summary", {}, ["最近评审记录（", history.value.length, "）"]), history.value.map((c) => h("p", { "key": c.candidate_id }, ["第 ", c.source_chapter, " 章 · ", candidateLabel(c.kind), " · ", c.status === 'confirmed' ? '已确认' : c.review?.superseded ? '旧稿候选已作废' : c.review?.mode === 'revise' ? (c.review.applied ? '已按意见修订并复审' : '等待按意见修订') : '仅拒绝记忆入库', c.review?.reason && `：${c.review.reason}`]))]), open.value && !reviewOpen.value && error.value && h("div", { "class": "banner banner-error" }, [error.value]), open.value && (h("div", { "class": styles.release }, [h("p", { "class": "empty" }, [actionable.value ? '本章有设定需要处理，操作会在页面中央的确认窗口中完成。' : '本章没有待确认的设定。']), actionable.value && (h("button", { "type": "button", "class": "btn btn-primary", "onClick": () => setReviewOpen(true) }, [count.value > 0 ? `处理 ${count.value} 项设定` : '继续处理']))]))]), reviewOpen.value && actionable.value && h(Teleport, { to: document.body }, [h(NativeDialog, { "class": styles.modal, "aria-labelledby": "candidate-review-title", "onClose": () => { if (busy.value === null) setReviewOpen(false); } }, () => [h("header", { "class": styles.modalHead }, [h("div", {}, [h("h2", { "id": "candidate-review-title" }, ["设定确认"]), h("p", {}, [chapterSeq.value != null ? `第 ${chapterSeq.value} 章` : '当前章节', " · ", count.value > 0 ? `${count.value} 项待处理` : '继续未完成操作'])]), h("button", { "autofocus": true, "type": "button", "class": styles.modalClose, "aria-label": "暂后处理", "disabled": busy.value !== null, "onClick": () => setReviewOpen(false) }, ["×"])]), h("div", { "class": styles.modalBody }, [busy.value && h(WaitingStatus, { label: pendingLabel.value }), h("p", { "class": styles.modalHint }, [count.value > 0
                                         ? '接受会保存设定；不接受会按你的意见自动修改本章，然后重新检查。'
                                         : '上一次结果已经保存，可以继续未完成的后续步骤。']), error.value && h("div", { "class": "banner banner-error" }, [error.value]), retryChapters.value.map((seq) => (h("button", { "key": seq, "type": "button", "class": "btn btn-primary", "disabled": busy.value !== null, "onClick": () => void retryRevision(seq) }, [busy.value === '__release__' ? '处理中…' : `重试修改第 ${seq} 章`]))), currentReleaseTarget.value && !retryChapters.value.includes(currentReleaseTarget.value.chapterSeq)
-                                    && count.value === 0 && (h("button", { "type": "button", "class": "btn btn-primary", "disabled": busy.value !== null, "onClick": () => void release() }, [busy.value === '__release__' ? '处理中…' : '重试完成确认'])), count.value > 0 && (h("label", { "class": styles.reasonField }, [h("span", {}, ["修改意见（可选）"]), h("input", { "class": "input", "value": reason.value, "disabled": busy.value !== null, "maxLength": 2000, "onInput": (e) => setReason((e.target as HTMLInputElement).value), "placeholder": "例如：人物仍然受伤，需要治疗过程" }, [])])), count.value > 0 && (h("ul", { "class": styles.list }, [candidates.value.map((c) => (h("li", { "key": c.candidate_id, "class": styles.item }, [h("div", { "class": styles.meta }, [h(StatusBadge, { "tone": candidateTone(c.kind) }, () => [candidateLabel(c.kind)]), h("span", { "class": styles.chapter }, ["第 ", c.source_chapter, " 章"]), c.confidence < 1 && h("span", { "class": styles.conf }, ["置信 ", Math.round(c.confidence * 100), "%"])]), h("dl", { "class": styles.fields }, [candidateFields(c.kind, c.payload, referenceNames.value).map(([label, value]) => (h("div", { "key": label, "class": styles.row }, [h("dt", {}, [label]), h("dd", {}, [value])])))]), c.kind === 'character_card' && (h("p", { "class": styles.danger }, ["确认将在设定页新建人物卡片（身份 / 角色 / 性格），正文后续抽取会持续更新其状态。"])), c.kind === 'memory_removal' && (h("p", { "class": styles.danger }, ["确认将按类型失效被删记忆（events 硬删 / facts 关窗），不可撤销。"])), h("div", { "class": styles.actions }, [h("button", { "type": "button", "class": "btn btn-primary", "disabled": busy.value !== null || retryChapters.value.includes(c.source_chapter), "onClick": () => void act('confirm', c) }, [busy.value === c.candidate_id ? '处理中…' : '接受']), h("button", { "type": "button", "class": "btn btn-quiet", "disabled": busy.value !== null || retryChapters.value.includes(c.source_chapter), "onClick": () => void act('reject', c) }, ["不接受，自动修改"])])])))]))])])])])]));
+                                    && count.value === 0 && (h("button", { "type": "button", "class": "btn btn-primary", "disabled": busy.value !== null, "onClick": () => void release() }, [busy.value === '__release__' ? '处理中…' : '重试完成确认'])), count.value > 0 && (h("label", { "class": styles.reasonField }, [h("span", {}, ["修改意见（可选）"]), h("input", { "class": "input", "value": reason.value, "disabled": busy.value !== null, "maxLength": 2000, "onInput": (e) => setReason((e.target as HTMLInputElement).value), "placeholder": "例如：人物仍然受伤，需要治疗过程" }, [])])), count.value > 0 && (h("ul", { "class": styles.list }, [candidates.value.map((c) => (h("li", { "key": c.candidate_id, "class": styles.item }, [h("div", { "class": styles.meta }, [h(StatusBadge, { "tone": candidateTone(c.kind) }, () => [candidateLabel(c.kind)]), h("span", { "class": styles.chapter }, ["第 ", c.source_chapter, " 章"]), c.confidence < 1 && h("span", { "class": styles.conf }, ["置信 ", Math.round(c.confidence * 100), "%"])]), h("dl", { "class": styles.fields }, [candidateFields(c.kind, c.payload, referenceNames.value).map(([label, value]) => (h("div", { "key": label, "class": styles.row }, [h("dt", {}, [label]), h("dd", {}, [value])])))]), c.kind === 'character_card' && (h("p", { "class": styles.danger }, ["确认将在设定页新建人物卡片（身份 / 角色 / 性格），正文后续抽取会持续更新其状态。"])), c.kind === 'memory_removal' && (h("p", { "class": styles.danger }, ["确认将按类型失效被删记忆（events 硬删 / facts 关窗），不可撤销。"])), h("div", { "class": styles.actions }, [h("button", { "type": "button", "class": "btn btn-primary", "disabled": busy.value !== null || retryChapters.value.includes(c.source_chapter), "onClick": () => void act('confirm', c) }, [busy.value === c.candidate_id ? '处理中…' : '接受']), h("button", { "type": "button", "class": "btn btn-quiet", "disabled": busy.value !== null || retryChapters.value.includes(c.source_chapter), "onClick": () => void act('reject', c) }, ["不接受，自动修改"])])])))]))])])])]));
         };
     }
 });

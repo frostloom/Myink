@@ -1,4 +1,5 @@
 import { beginWrite } from './pendingWrites'
+import { publishProjectList } from './projectListUpdates'
 import type { TaskBudgetLimits, ResumeBudgetBody } from '../types'
 // fetch 统一封装：Vite dev proxy 把 /api 转发到 Caddy（:80，见 vite.config.ts），生产同源。
 // 业务路由一律 Bearer（§14.1 ③）；非 2xx 统一抛 ApiError（code = {"error": code} 信封）。
@@ -82,6 +83,7 @@ export { GATE_CODES, formatApiError, formatErrorText } from './apiError'
 interface RequestOptions {
   token?: string | null
   signal?: AbortSignal
+  background?: boolean
   dispatchAuthFailure?: boolean
 }
 
@@ -120,7 +122,7 @@ async function request<T>(
     authenticatedRequests.set(token, pending)
   }
 
-  const finishWrite = method === 'GET' || method === 'HEAD' ? undefined : beginWrite()
+  const finishWrite = method === 'GET' || method === 'HEAD' ? undefined : beginWrite(options?.background)
   try {
     const res = await fetch(BASE + path, {
       method,
@@ -179,8 +181,9 @@ export function authenticatedSend<T>(
   token: string,
   body?: unknown,
   signal?: AbortSignal,
+  background = false,
 ): Promise<T> {
-  return request<T>(method, path, body, { token, signal })
+  return request<T>(method, path, body, { token, signal, background })
 }
 
 export const api = {
@@ -228,7 +231,7 @@ export const api = {
   logout: (token?: string, signal?: AbortSignal) =>
     request<OkResponse>('POST', '/auth/logout', undefined, { token, signal }),
 
-  listProjects: () => request<Project[]>('GET', '/projects'),
+  listProjects: () => publishProjectList(request<Project[]>('GET', '/projects')),
 
   listChapters: (pid: string) =>
     request<ChapterMeta[]>('GET', `/projects/${pid}/chapters`),
@@ -273,7 +276,7 @@ export const api = {
   generateChapter: (
     pid: string,
     cid: string,
-    body: { seq: number; user_instruction?: string; rewrite?: boolean; mode?: WritingMode },
+    body: { seq: number; user_instruction?: string; rewrite?: boolean; replan?: boolean; mode?: WritingMode },
   ) => request<GenerateResponse>('POST', `/projects/${pid}/chapters/${cid}/generate`, body),
 
   generateBatch: (pid: string, body: { size: number; start: number }) =>
@@ -305,14 +308,14 @@ export const api = {
       `/projects/${pid}/tasks${chapterSeq ? `?chapter_seq=${chapterSeq}` : ''}`,
     ),
 
-  // 批次控制（pause|resume|cancel）：网关转发 Python 任务控制端点；外部控制不发
+  // 批次控制保留旧调用名，统一走 Python 任务控制端点；外部控制不发
   // SSE 事件，成功后调用方需主动 GET 快照刷新（useTaskEvents.refresh）。
   pauseBatch: (batchId: string) =>
-    request<TaskControlResponse>('POST', `/batches/${batchId}/pause`),
+    request<TaskControlResponse>('POST', `/tasks/${batchId}/pause`),
   resumeBatch: (batchId: string) =>
-    request<TaskControlResponse>('POST', `/batches/${batchId}/resume`),
+    request<TaskControlResponse>('POST', `/tasks/${batchId}/resume`),
   cancelBatch: (batchId: string) =>
-    request<TaskControlResponse>('POST', `/batches/${batchId}/cancel`),
+    request<TaskControlResponse>('POST', `/tasks/${batchId}/cancel`),
 
   // 待确认候选池（§6.11 确认分流）：GET 列表 + 人工 confirm/reject（编排层写库入口）。
   listCandidates: (pid: string, status = 'pending') =>

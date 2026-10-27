@@ -68,7 +68,7 @@ async function main() {
       receipt.api_calls.push({ endpoint, method });
       if (endpoint === '/tasks/task-p1/events' && method === 'GET') return route.continue();
       let data; let status = 200;
-      const mutationMethods={'/auth/token':'POST','/tasks/task-p1/plan/confirm':'POST','/projects/project-p1/candidates/candidate-p1/reject':'POST','/batches/task-p1/resume':'POST','/projects/project-p1/chapters/chapter-p1/content':'PUT'};
+      const mutationMethods={'/auth/token':'POST','/tasks/task-p1/plan/confirm':'POST','/projects/project-p1/candidates/candidate-p1/reject':'POST','/tasks/task-p1/resume':'POST','/projects/project-p1/chapters/chapter-p1/content':'PUT'};
       if(method!==(mutationMethods[endpoint]??'GET')){receipt.unknown_routes.push({endpoint,method});return route.fulfill({status:500,json:{error:'unhandled_fixture_method'}});}
       const chapter = { id: 'chapter-p1', chapter_seq: 1, title: '雨夜', status: state.phase === 'awaiting_plan' ? 'planning' : state.phase === 'running' ? 'writing' : 'confirmed', word_count: state.content.length, summary: '两人检修', content: state.content, version: state.version };
       const task = { task_id: 'task-p1', task_type: 'chapter_generate', status: state.phase, chapter_seq: 1, batch_size: null, batch_current: null, cost_total: 0, error: null, created_at: null };
@@ -83,7 +83,7 @@ async function main() {
       else if (endpoint === '/tasks/task-p1/plan/confirm') { assert.equal(request.postDataJSON().expected_attempt, 1); state.phase = 'running'; setTimeout(() => { emit({ type: 'status', status: 'running', node: 'write' }); emit({ type: 'artifact_reset', stage: 'write' }); emit({ type: 'artifact_delta', stage: 'write', content: '增量第一段：林川扶住栏杆。' }); }, 100); data = { task_id: 'task-p1', status: 'running' }; }
       else if (endpoint === '/projects/project-p1/candidates') data = state.phase === 'awaiting_review' ? [{ ...candidate, ...(state.rejected ? { status: 'rejected', review: { mode: 'revise', reason: '现实题材不允许瞬间移动', applied: false } } : {}) }] : [];
       else if (endpoint === '/projects/project-p1/candidates/candidate-p1/reject') { assert.equal(request.postDataJSON().mode, 'revise'); state.rejected = true; data = { candidate_id: candidate.candidate_id, status: 'rejected' }; }
-      else if (endpoint === '/batches/task-p1/resume') { state.phase = 'done'; setTimeout(()=>emit({type:'status',status:'done'}),100); data = { task_id: 'task-p1', status: 'done' }; }
+      else if (endpoint === '/tasks/task-p1/resume') { state.phase = 'done'; setTimeout(()=>emit({type:'status',status:'done'}),100); data = { task_id: 'task-p1', status: 'done' }; }
       else if (endpoint === '/projects/project-p1/chapters/chapter-p1/content') { state.saves++; state.version++; if(state.saveMode==='success'){state.content=request.postDataJSON().content;data={version:state.version};}else{state.content = '另一个页面的修改'; status = 409; data = { error: 'version_conflict' };} }
       else if (endpoint === '/projects/project-p1/graph') data = { nodes: [], edges: [] };
       else if (['/projects/project-p1/foreshadows','/projects/project-p1/lessons','/projects/project-p1/characters','/projects/project-p1/entities','/projects/project-p1/events','/projects/project-p1/global-audit'].includes(endpoint)) data = [];
@@ -155,16 +155,47 @@ async function main() {
     receipt.checks.push('sse_reconnect_cursor');
     await page.waitForFunction(()=>document.querySelector('[aria-label="正文实时预览"]')?.textContent.includes('断线期间补帧😀𠮷'));
     assert.equal(await preview.locator('pre').innerText(),streamText);receipt.checks.push('replay_does_not_duplicate_body');
+    // A fresh plan retires the old body immediately, before any new prose arrives.
+    emit({type:'artifact_reset',stage:'plan',artifact_id:'plan-r2',attempt:2});
+    await page.getByText('AI 正在规划',{exact:true}).waitFor();
+    assert.equal(await preview.count(),0);
+    assert.equal(await page.getByRole('button',{name:/正文 Write/}).isDisabled(),true);
+    emit({type:'artifact_delta',stage:'plan',artifact_id:'plan-r2',attempt:2,content:'{"goals":["新的检修计划"]}'});
+    await page.getByText(/新的检修计划/).first().waitFor();
+    emit({type:'artifact_complete',stage:'plan',artifact_id:'plan-r2',attempt:2,artifact:JSON.stringify({...plan,goals:['新的检修计划']})});
+    emit({type:'artifact_reset',stage:'write',artifact_id:'body-r2'});
+    await preview.waitFor();
+    assert.equal(await preview.locator('pre').count(),0);
+    emit({type:'artifact_delta',stage:'write',artifact_id:'body-r2',content:'新版第一段。'});
+    await page.getByText('新版第一段。',{exact:true}).waitFor();
+    emit({type:'artifact_delta',stage:'write',artifact_id:'body-r2',offset:6,content:'新版第二段。'});
+    await page.getByText('新版第一段。新版第二段。',{exact:true}).waitFor();
+    emit({type:'artifact_delta',stage:'write',artifact_id:'draft-p1',content:'迟到旧正文不得复活'});
+    emit({type:'artifact_reset',stage:'write',artifact_id:'body-r3'});
+    await page.waitForFunction(()=>!document.querySelector('[aria-label="正文实时预览"] pre'));
+    await page.getByRole('button',{name:/Plan 章节计划/}).click();
+    await page.getByText('新的检修计划',{exact:true}).waitFor();
+    await page.getByRole('button',{name:/正文 实时写作/}).click();
+    emit({type:'artifact_delta',stage:'write',artifact_id:'body-r3',content:'重写替换正文。'});
+    await page.getByText('重写替换正文。',{exact:true}).waitFor();
+    assert.equal(await preview.locator('pre').innerText(),'重写替换正文。');
+    emit({type:'artifact_complete',stage:'write',artifact_id:'body-r3'});
+    state.content='重写替换正文。';state.version++;
+    receipt.checks.push('replan_clears_old_body_before_new_chunks','replan_and_rewrite_replace_live_chunks','rewrite_retains_current_plan','retired_artifact_cannot_restore_old_body');
+    await page.screenshot({path:path.join(out,'02b-replacement-stream.png'),fullPage:true});
     state.phase = 'awaiting_review';
     emit({type:'status',status:'awaiting_review'});
     for (const res of streams) res.end();
     await page.getByRole('dialog', { name: '设定确认' }).waitFor();
+    const replacementEditor=page.getByRole('textbox',{name:'章节正文'});
+    assert.equal(await replacementEditor.inputValue(),'重写替换正文。');
+    receipt.checks.push('replacement_saved_body_auto_loaded_without_reload');
     await page.waitForLoadState('networkidle');
     await page.reload();
     await page.getByRole('dialog', { name: '设定确认' }).waitFor();
     await page.getByPlaceholder('例如：人物仍然受伤，需要治疗过程').fill('现实题材不允许瞬间移动');
     await page.getByRole('button', { name: '不接受，自动修改', exact: true }).click();
-    await page.waitForFunction(() => !document.querySelector('[role="dialog"]'));
+    await page.getByRole('dialog', {name: '设定确认', exact: true}).waitFor({state: 'hidden'});
     assert.equal(state.rejected, true); receipt.checks.push('human_rejection_after_reload', 'resume_request');
     state.phase = 'done'; await page.waitForLoadState('networkidle'); await page.reload();
     await page.getByRole('button', { name: /第 1 章.*雨夜/ }).click();

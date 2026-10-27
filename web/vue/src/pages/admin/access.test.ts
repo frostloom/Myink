@@ -22,6 +22,41 @@ async function setup(verified = true, path = '/admin') {
   return { wrapper, session, revalidate, router, forbid: () => forbidden?.() }
 }
 describe('administrator gate', () => {
+  it('opens detail at the top and restores the original list scroll position on return', async () => {
+    const { wrapper, router } = await setup(true, '/admin?tab=users&q=alice&offset=25')
+    const scrollContainer = wrapper.findComponent(AdminPage).element as HTMLElement
+    scrollContainer.scrollTop = 720
+    await router.push('/admin/users/first')
+    await flushPromises()
+    expect(scrollContainer.scrollTop).toBe(0)
+    scrollContainer.scrollTop = 140
+    router.back()
+    await flushPromises()
+    expect(router.currentRoute.value.query.offset).toBe('25')
+    expect(scrollContainer.scrollTop).toBe(720)
+  })
+  it('opens the same detail from the list at the top on every deliberate visit', async () => {
+    const { wrapper, router } = await setup(true, '/admin?tab=users')
+    const container = wrapper.findComponent(AdminPage).element as HTMLElement
+    await router.push('/admin/users/first')
+    await flushPromises()
+    container.scrollTop = 900
+    router.back()
+    await flushPromises()
+    await router.push('/admin/users/first')
+    await flushPromises()
+    expect(container.scrollTop).toBe(0)
+  })
+  it('restores context when the explicit return link requests it', async () => {
+    const { wrapper, router } = await setup(true, '/admin?tab=users')
+    const container = wrapper.findComponent(AdminPage).element as HTMLElement
+    container.scrollTop = 500
+    await router.push('/admin/users/first')
+    await flushPromises()
+    await router.push({ path: '/admin', query: { tab: 'users' }, state: { adminRestoreScroll: true } })
+    await flushPromises()
+    expect(container.scrollTop).toBe(500)
+  })
   it('retains the subtree on renewal and replaces it on account change',async()=>{const {wrapper,session}=await setup();const before=wrapper.find('p').element;session.value={...session.value!,token:'renewed'};await flushPromises();expect(wrapper.find('p').element).toBe(before);session.value={...session.value!,userId:'other'};await flushPromises();expect(wrapper.find('p').element).not.toBe(before)})
   it('does not clear a forbidden decision merely because the token renews',async()=>{const {wrapper,session,forbid}=await setup();forbid();await flushPromises();session.value={...session.value!,token:'renewed'};await flushPromises();expect(wrapper.text()).toContain('管理员权限已变化');expect(wrapper.text()).not.toContain('机密用户列表')})
   it('clears the protected subtree when the verified role is revoked',async()=>{const {wrapper,session}=await setup();session.value={...session.value!,role:'user'};await flushPromises();expect(wrapper.text()).not.toContain('机密用户列表');expect(wrapper.text()).toContain('只有管理员可以打开控制台')})

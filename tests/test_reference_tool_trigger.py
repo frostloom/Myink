@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 
 from myink import writing_resources as svc
 from myink.models.platform import PlatformConfiguration
-from myink.models.writing_resource import WritingResource, WritingResourceRevision, WritingResourcePublication, ProjectWritingResources
+from myink.models import Project, ProjectSettings
+from myink.models.writing_resource import WritingResource, WritingResourceRevision, WritingResourcePublication, ProjectWritingResources, PersonalWritingResource
 from myink.providers.base import ModelResponse
 from myink.workflow import nodes
 from myink.writing_resource_runtime import bind_resources
@@ -42,7 +43,7 @@ class ReadingChain:
 @pytest.fixture
 def library():
     engine = create_engine('sqlite://')
-    for model in (PlatformConfiguration, WritingResource, WritingResourceRevision, WritingResourcePublication, ProjectWritingResources):
+    for model in (Project, ProjectSettings, PersonalWritingResource, PlatformConfiguration, WritingResource, WritingResourceRevision, WritingResourcePublication, ProjectWritingResources):
         model.__table__.create(engine)
     with Session(engine) as db:
         row = svc.create_resource(db, {'name':'人物设计写法', 'kind':'reference', 'source':'test',
@@ -216,10 +217,15 @@ def test_manual_audit_captures_published_library_before_building_prompts(library
     monkeypatch.setattr(global_audit,'_run_kind_llm',lambda *args,**kwargs:([],None))
     monkeypatch.setattr(global_audit,'normalize_and_verify_findings',lambda *args:[])
     monkeypatch.setattr(global_audit,'record_report',lambda *args,**kwargs:{'status':'completed'})
+    project_id = uuid.uuid4()
+    library.add(Project(id=project_id,user_id=uuid.uuid4(),title='audit book',genre='现实',form='long'))
+    library.flush()
     with bind_resources(None):
-        assert global_audit.run_global_audit(library,str(uuid.uuid4()),(1,2))['status']=='completed'
+        assert global_audit.run_global_audit(library,str(project_id),(1,2))['status']=='completed'
         assert current_resources() is None
-    assert seen==[2]  # New manual admission captures the latest published version.
+    assert seen==[2]  # First manual admission freezes the latest published version.
+    saved = library.get(ProjectWritingResources, project_id)
+    assert saved is not None and saved.automatic_initialized
 
 
 def test_optional_database_argument_still_reads_frozen_platform_version(library,monkeypatch):

@@ -559,8 +559,8 @@ def _profile_list(profile: dict, key: str) -> list[str]:
 
 def _genre_section(genre_pack: dict | None) -> str:
     """本书题材包注入段：节奏/爽点/禁忌/机制；与文风档案分开。"""
-    from myink.writing_resource_runtime import configured
-    if configured():
+    from myink.writing_resource_runtime import configured, selected
+    if configured() or selected("genre"):
         return ""
     from myink.genre_catalog import format_prompt
     return format_prompt(genre_pack)

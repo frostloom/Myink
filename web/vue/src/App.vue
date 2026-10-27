@@ -1,6 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, onScopeDispose, provide, watch } from 'vue'
+import { computed, onMounted, onScopeDispose, provide, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
+import ProjectRail from './components/ProjectRail.vue'
+import AdminRail from './components/AdminRail.vue'
+import { persistentRailKey } from './navigationContext'
+import { subscribeProjectLists } from '../../src/lib/projectListUpdates'
+import type { Project } from '../../src/types'
 import { authKey } from './authContext'
 import { createSessionScope } from './session'
 import GuestShell from './components/GuestShell.vue'
@@ -18,6 +23,14 @@ provide(authKey, auth)
 const route = useRoute()
 const router = useRouter()
 const { session, status, error, notice } = auth
+provide(persistentRailKey, true)
+const navigationProjects = ref<Project[]>([])
+watch(() => status.value === 'authenticated' ? session.value?.userId : null, (identity, _, onCleanup) => {
+  navigationProjects.value = []
+  if (identity) onCleanup(subscribeProjectLists(projects => { navigationProjects.value = projects }))
+}, { immediate: true, flush: 'sync' })
+const showAdminRail = computed(() => route.path.startsWith('/admin') || (route.path === '/account' && session.value?.role === 'admin' && session.value.roleVerified))
+const showProjectRail = computed(() => route.path !== '/login' && !showAdminRail.value)
 watch([() => route.path, status, session], () => {
   if (route.path === '/' && (status.value === 'anonymous' || (status.value === 'authenticated' && session.value?.roleVerified))) {
     void router.replace(session.value?.role === 'admin' ? '/admin' : '/long')
@@ -33,6 +46,8 @@ onScopeDispose(auth.dispose)
   <div class="candidate-app">
     <CanvasMedia v-if="video" v-bind="video" />
     <AppVersionGuard />
+    <ProjectRail v-if="status === 'authenticated' || status === 'anonymous'" :key="session?.userId ?? 'guest'" :visible="showProjectRail" :projects="navigationProjects" persistent />
+    <AdminRail v-if="status === 'authenticated' || status === 'anonymous'" :key="session?.userId ?? 'guest'" :visible="showAdminRail" persistent />
     <RouteBoundary v-if="route.path === '/login'"><RouterView /></RouteBoundary>
     <div v-else-if="status === 'checking'" class="empty">正在验证登录状态…</div>
     <div v-else-if="status === 'unavailable'" class="empty" role="alert">
@@ -49,7 +64,9 @@ onScopeDispose(auth.dispose)
       <div v-if="error" role="alert" class="banner banner-error">{{ error }}</div>
       <RouteBoundary>
 <RouterView v-slot="{ Component }">
-        <component :is="Component" :key="session.userId" :username="session.username" @logout="auth.logout" />
+        <KeepAlive :key="`${session.userId}:${session.role}`" include="ShortCreationPage" :max="1">
+          <component :is="Component" :key="session.userId" :username="session.username" @logout="auth.logout" />
+        </KeepAlive>
       </RouterView>
 </RouteBoundary>
     </template>

@@ -40,3 +40,14 @@ it('explains the English taxonomy columns using genre names and meanings', () =>
     expect(screen.queryByText('都市异能.md')).toBeNull();
 });
 function render(node: VNode) { return vueRender(defineComponent({ render: () => node })); }
+it('renders full genre fields densely without repeating name and hook labels', () => {
+    const body = {catalog_id:'xiuxian',fields:{selling_point:'与天争命，资源稀缺。',subgenres:[{name:'凡人流',hook:'算计谨慎、积少成多'},{name:'无敌流',hook:'开局强势、专治不服'}],taboos:['不凭空升级'],pacing:'松紧相间',satisfaction:['逆境破局'],mechanics:['修炼代价'],world_hints:['宗门秩序']},setup_caps:{power_scaling:true}};
+    render(h(ResourceContent, {body}));
+    expect(screen.queryByText('题材内容')).toBeNull();
+    expect(screen.queryByText('名称')).toBeNull();
+    expect(screen.queryByText('故事钩子')).toBeNull();
+    const first=screen.getByText('凡人流').closest('li');
+    expect(first?.textContent).toContain('算计谨慎、积少成多');
+    for(const value of ['不凭空升级','松紧相间','逆境破局','修炼代价','宗门秩序'])expect(screen.getByText(value)).toBeTruthy();
+    expect(screen.getByRole('region',{name:'细分题材'})).toBeTruthy();
+});

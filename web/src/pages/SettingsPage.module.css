@@ -1,4 +1,6 @@
 .wrap {
+  composes: content from '../components/RailLayout.module.css';
+  overflow-y: auto;
   height: 100%;
   display: flex;
   min-width: 900px;
@@ -6,8 +8,9 @@
 
 .main {
   flex: 1;
+  align-self: flex-start;
   min-width: 0;
-  overflow-y: auto;
+  overflow: visible;
   background: transparent;
 }
 
@@ -342,7 +345,8 @@
 
 .themeDialog {
   display: flex;
-  width: min(1240px, 100%);
+  width: min(1240px, calc(100vw - 48px));
+  color: var(--ink);
   max-height: calc(100vh - 48px);
   flex-direction: column;
   gap: 14px;
@@ -868,8 +872,8 @@
    这一处同样管着 import 了本文件的外观 / 环境 / 账号三页。 */
 @media (max-width: 640px) {
   .wrap {
-    height: auto;
-    min-height: 100%;
+    height: 100%;
+    min-height: 0;
     flex-direction: column;
   }
   .themeSwatchRow input[type='range'],
@@ -895,4 +899,8 @@
   gap: var(--space-2);
   color: var(--ink-muted);
   font-size: var(--text-small);
+}
+
+@media (max-width: 640px) {
+  .main { flex:0 0 auto; width:100%; }
 }

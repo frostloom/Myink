@@ -1,4 +1,5 @@
 <script lang="ts">
+import WaitingStatus from './WaitingStatus.vue';
 import { useMemoryFormGuard } from "../composables/useMemoryFormGuard";
 import type { PropType } from 'vue'
 import { defineComponent, h, Fragment, ref, shallowRef, computed, onMounted, watch, onScopeDispose } from 'vue'
@@ -128,6 +129,7 @@ export const ChapterPlanPanel = defineComponent({
         const onConfirmed = computed(() => props.onConfirmed);
         const onCancelled = computed(() => props.onCancelled);
         const draft = ref<ChapterPlan | null>(null), setDraft = (next: typeof draft.value | ((current: typeof draft.value) => typeof draft.value)) => draft.value = typeof next === "function" ? next(draft.value) : next;
+        const pendingAction = ref<'confirm' | 'cancel'>('confirm');
         const busy = ref(false), setBusy = (next: typeof busy.value | ((current: typeof busy.value) => typeof busy.value)) => busy.value = typeof next === "function" ? next(busy.value) : next;
         const error = ref<string | null>(null), setError = (next: typeof error.value | ((current: typeof error.value) => typeof error.value)) => error.value = typeof next === "function" ? next(error.value) : next;
         let operationEpoch = 0;
@@ -151,13 +153,14 @@ export const ChapterPlanPanel = defineComponent({
         });
         const streamedPlan = computed(() => isPlan(artifact.value?.artifact) ? artifact.value.artifact : null);
         const latestPersistedAttempt = computed(() => plans.value.at(-1)?.attempt ?? 0);
-        const streamingNewPlan = computed(() => Boolean(artifact.value && !artifact.value.complete && artifact.value.attempt > latestPersistedAttempt.value));
+        const streamingNewPlan = computed(() => Boolean(artifact.value && !artifact.value.complete));
         const current = computed(() => streamingNewPlan.value ? null
             : streamedPlan.value ? { attempt: artifact.value?.attempt || latestPersistedAttempt.value || 1, plan: streamedPlan.value }
                 : plans.value.at(-1) ?? null);
         const previous = computed(() => current.value ? plans.value.filter((item) => item.attempt < current.value!.attempt)
             : plans.value);
         const preview = computed(() => streamPreview(artifact.value?.content ?? ''));
+        const planningStopped = computed(() => status.value === 'failed' ? '规划未能完成，请重试' : status.value === 'cancelled' ? '本次规划已取消' : status.value === 'paused' ? '规划已暂停' : status.value === 'done' ? '本次任务已结束，未收到章节计划' : null);
         const editable = computed(() => status.value === 'awaiting_plan' && current.value !== null);
         useMemoryFormGuard(() => editable.value && draft.value !== null && JSON.stringify(draft.value) !== JSON.stringify(current.value?.plan));
         watch([taskId, chapterSeq, () => current.value?.attempt, editable], (_next, _prev, _onCleanup) => {
@@ -186,6 +189,7 @@ export const ChapterPlanPanel = defineComponent({
                 setError('时间跳转或场景切换需要填写“过渡桥”。');
                 return;
             }
+            pendingAction.value = 'confirm';
             setBusy(true);
             setError(null);
             const version = operationEpoch, id = taskId.value, seq = chapterSeq.value;
@@ -212,6 +216,7 @@ export const ChapterPlanPanel = defineComponent({
         async function cancel() {
             if (!taskId.value || busy.value)
                 return;
+            pendingAction.value = 'cancel';
             setBusy(true);
             setError(null);
             const version = operationEpoch, id = taskId.value, seq = chapterSeq.value;
@@ -227,7 +232,7 @@ export const ChapterPlanPanel = defineComponent({
             }
         }
         return () => {
-            return h("section", { "class": styles.panel }, [h("header", { "class": styles.head }, [h("span", {}, [h("b", {}, ["第 ", chapterSeq.value, " 章 Plan"]), h("small", {}, [!current.value ? '生成中' : editable.value ? '等待确认' : '已生成'])]), h("span", {}, ["独立 Plan 页面"])]), h("div", { "class": styles.body }, [!current.value ? h(Fragment, null, [h("div", { "class": styles.streaming }, [h("span", {}, ["AI 正在规划"]), h("p", {}, [preview.value || '正在读取前情、伏笔和人物状态…', h("i", {}, [])])]), previous.value.length > 0 && h("details", { "class": styles.history }, [h("summary", {}, ["历史计划（", previous.value.length, "）"]), previous.value.map((item) => h("details", { "key": item.attempt }, [h("summary", {}, ["第 ", item.attempt, " 版计划"]), h(PlanReadOnly, { "plan": item.plan }, () => [])]))])]) : h(Fragment, null, [editable.value && draft.value ? h(PlanEditor, { "plan": draft.value, "onChange": setDraft }, () => []) : h(PlanReadOnly, { "plan": current.value.plan }, () => []), previous.value.length > 0 && h("details", { "class": styles.history }, [h("summary", {}, ["历史计划（", previous.value.length, "）"]), previous.value.map((item) => h("details", { "key": item.attempt }, [h("summary", {}, ["第 ", item.attempt, " 版计划"]), h(PlanReadOnly, { "plan": item.plan }, () => [])]))]), error.value && h("div", { "class": "banner banner-error", "role": "alert" }, [error.value]), editable.value && h("div", { "class": styles.confirmBar }, [h("span", {}, ["确认后才会产生正文写作费用并进入 Write。"]), h("div", { "class": styles.confirmActions }, [h("button", { "type": "button", "class": "btn btn-quiet", "disabled": busy.value, "onClick": () => void cancel() }, ["取消本次写作"]), h("button", { "type": "button", "class": "btn btn-primary", "disabled": busy.value, "onClick": () => void confirm() }, [busy.value ? '提交中…' : '确认计划并开始写作'])])])])])]);
+            return h("section", { "class": styles.panel }, [h("header", { "class": styles.head }, [h("span", {}, [h("b", {}, ["第 ", chapterSeq.value, " 章 Plan"]), h("small", {}, [!current.value ? (planningStopped.value ? '未生成' : '生成中') : editable.value ? '等待确认' : '已生成'])]), h("span", {}, ["独立 Plan 页面"])]), h("div", { "class": styles.body }, [!current.value ? h(Fragment, null, [h("div", { "class": styles.streaming, "role": "status" }, planningStopped.value ? [h("p", {}, [planningStopped.value])] : [h("span", {}, ["AI 正在规划"]), h("p", {}, [preview.value || '正在读取前情、伏笔和人物状态…', h("i", {}, [])])]), previous.value.length > 0 && h("details", { "class": styles.history }, [h("summary", {}, ["历史计划（", previous.value.length, "）"]), previous.value.map((item) => h("details", { "key": item.attempt }, [h("summary", {}, ["第 ", item.attempt, " 版计划"]), h(PlanReadOnly, { "plan": item.plan }, () => [])]))])]) : h(Fragment, null, [editable.value && draft.value ? h(PlanEditor, { "plan": draft.value, "onChange": setDraft }, () => []) : h(PlanReadOnly, { "plan": current.value.plan }, () => []), previous.value.length > 0 && h("details", { "class": styles.history }, [h("summary", {}, ["历史计划（", previous.value.length, "）"]), previous.value.map((item) => h("details", { "key": item.attempt }, [h("summary", {}, ["第 ", item.attempt, " 版计划"]), h(PlanReadOnly, { "plan": item.plan }, () => [])]))]), busy.value && h(WaitingStatus, { label: pendingAction.value === 'confirm' ? '正在确认章节计划' : '正在取消本次写作' }), error.value && h("div", { "class": "banner banner-error", "role": "alert" }, [error.value]), editable.value && h("div", { "class": styles.confirmBar }, [h("span", {}, ["确认后才会产生正文写作费用并进入 Write。"]), h("div", { "class": styles.confirmActions }, [h("button", { "type": "button", "class": "btn btn-quiet", "disabled": busy.value, "onClick": () => void cancel() }, ["取消本次写作"]), h("button", { "type": "button", "class": "btn btn-primary", "disabled": busy.value, "onClick": () => void confirm() }, [busy.value ? '提交中…' : '确认计划并开始写作'])])])])])]);
         };
     }
 });

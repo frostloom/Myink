@@ -1,4 +1,6 @@
 .wrap {
+  composes: content from '../components/RailLayout.module.css';
+  overflow-y: auto;
   height: 100%;
   display: flex;
 }
@@ -262,22 +264,14 @@
   color: var(--ink-muted);
 }
 
-/* 1200 档：桌面多栏收窄——四栏挤成三列 grid（rail 与章节各占一条窄列），右栏落到第二行。
-   竖排 rail 就住在 140px 那条列里（`.wrap > aside:first-child` 的 width:auto 权重压过
-   `.rail` 自己的 --rail-width）。基准的 min-width: 1100px 已在第一批删掉，所以这里不再补
-   min-width: 0——那是条空写。 */
+/* 1200 档：导航固定在视口外侧，内容区保留章节列和编辑器内部滚动。 */
 @media (max-width: 1200px) {
   .wrap {
-    height: auto;
-    min-height: 100%;
+    height: 100%;
+    min-height: 0;
     display: grid;
-    grid-template-columns: 140px 170px minmax(280px, 1fr);
+    grid-template-columns: 170px minmax(0, 1fr);
     grid-template-rows: minmax(440px, 75vh) auto;
-  }
-  .wrap > aside:first-child {
-    grid-row: 1 / -1;
-    width: auto;
-    height: auto;
   }
   .chapters {
     width: auto;
@@ -287,7 +281,7 @@
     margin: 12px;
   }
   .right {
-    grid-column: 2 / -1;
+    grid-column: 1 / -1;
     width: auto;
     margin: 0 12px 12px 8px;
     overflow-y: visible;
@@ -296,28 +290,23 @@
     /* 展开时占满这一行，收起时只剩一条标签——不 justify-self 的话它会停在行首
        （章节列表正下方），读起来像从列表上掉下来的碎片。展开态的「收起面板」在
        行尾，收起态也该在行尾，两者才是同一个开关。 */
-    grid-column: 2 / -1;
+    grid-column: 1 / -1;
     justify-self: end;
     margin: 0 12px 12px 8px;
   }
 }
 
-/* 900 档：三列 grid 在 768 宽上只给正文留下 432px（实测每行 22.1 个汉字），两条侧栏
-   （rail 140 + 章节 170）加起来比正文还宽。章节列表在这里从网格里摘出来，横过来放到
-   正文下面（折条规则在 ChapterList.module.css 的 900 档），rail 保持竖排——手机上它已经
-   折成顶部横条（≤640），平板上 140px 还容得下条目文字。
-   .main 必须显式写 grid-column/grid-row：章节离开第一行后，自动放置会把它推到新行去。
-   .right / .rightDock 的 grid-column: 2 / -1 在两列网格下就等于第 2 列，只需换行。 */
+/* 平板将章节与辅助面板放到编辑器下方，导航占位由共享布局提供。 */
 @media (max-width: 900px) {
   .wrap {
-    grid-template-columns: 140px minmax(280px, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
   .main {
-    grid-column: 2;
+    grid-column: 1;
     grid-row: 1;
   }
   .chapters {
-    grid-column: 2;
+    grid-column: 1;
     grid-row: 2;
     width: auto;
     max-height: none;
@@ -330,24 +319,13 @@
   }
 }
 
-/* ≤640：rail 折成顶部横条（规则在 ProjectRail.module.css），页面根从 ≤1200 的三列 grid 换回竖排
-   flex，横条落到顶部。原来这是两块（≤650 把 grid 压成一列、≤760 再换成 flex 竖排），归到同一档
-   之后合成一块——两块的 media 条件既然相同，留着就是「看着像两个断点、其实是一个」。
-   只保留竖排下还生效的声明：grid-template-*、grid-column、grid-row 在 flex 下是空写；
-   .main 的 480px 高度被 72dvh 盖掉，也一并去掉。必须写在文件最后：与别的 media 块同权重时靠源序取胜。 */
+/* 移动端正文位于固定顶部导航下，编辑器保留独立高度。 */
 @media (max-width: 640px) {
   .wrap {
-    height: auto;
-    min-height: 100%;
+    height: 100%;
+    min-height: 0;
     display: flex;
     flex-direction: column;
-  }
-  /* ≤1200 给过 width:auto + grid-row:1/-1，比 .rail 自己的宽度规则权重高，在竖排 flex 下
-     要重新说清：撑满、不截高。 */
-  .wrap > aside:first-child {
-    width: 100%;
-    height: auto;
-    max-height: none;
   }
   /* 不截高、不收缩：章节列表本身已改成横向滚动条（ChapterList.module.css）。 */
   .chapters {
@@ -360,6 +338,7 @@
   .main {
     margin: 12px;
     min-height: 72dvh;
+    flex: 0 0 auto;
   }
   .right {
     margin: 0 12px 12px;

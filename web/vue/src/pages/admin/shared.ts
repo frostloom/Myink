@@ -1,5 +1,6 @@
+import { adminReturnTo } from './navigation';
 import { Fragment, h, reactive, shallowRef, watchEffect, type VNodeChild } from 'vue';
-import { RouterLink as Link } from 'vue-router';
+import { RouterLink as Link, useRoute, useRouter } from 'vue-router';
 import type { AdminMetrics, CapturedData } from "../../../../src/lib/adminApi";
 import { ApiError } from "../../../../src/lib/api";
 import { formatApiError } from "../../../../src/lib/apiError";
@@ -76,12 +77,14 @@ export function RefreshButton({ onClick }: {
     return h("button", { "type": "button", "class": "btn btn-secondary", "onClick": onClick }, ["刷新当前视图"]);
 }
 /** 详情页外壳：标题 + 返回原标签页的链接。返回必须带回 tab，否则回退永远落在概览。 */
-export function DetailPage({ heading, backTab, children }: {
+export function DetailPage({ heading, backTab, backTo, children }: {
     heading: string;
     backTab: string;
+    backTo?: string;
     children: VNodeChild;
 }) {
-    return (h("section", { "class": styles.view }, [h("div", { "class": `${styles.viewHead} ${styles.detailPageHead}` }, [h("div", {}, [h("h1", {}, [heading])]), h(Link, { "to": `/admin?tab=${backTab}`, "class": "btn btn-secondary" }, { default: () => ["返回"] })]), children]));
+    const back = useRouter().resolve(adminReturnTo(useRoute().query.returnTo ?? backTo, backTab));
+    return (h("section", { "class": styles.view }, [h("div", { "class": `${styles.viewHead} ${styles.detailPageHead}` }, [h("div", {}, [h("h1", {}, [heading])]), h(Link, { "to": { path: back.path, query: back.query, hash: back.hash, state: { adminRestoreScroll: true } }, "class": "btn btn-secondary" }, { default: () => ["返回"] })]), children]));
 }
 /** 值 → 可读文本：标量直出，布尔转「是/否」，对象与对象数组降一级展开。 */
 export function ValueText({ value }: {
@@ -172,7 +175,7 @@ Pagination.props = ["total", "offset", "onChange"];
 Pagination.inheritAttrs = false;
 RefreshButton.props = ["onClick"];
 RefreshButton.inheritAttrs = false;
-DetailPage.props = ["heading", "backTab", "children"];
+DetailPage.props = ["heading", "backTab", "backTo", "children"];
 DetailPage.inheritAttrs = false;
 ValueText.props = ["value"];
 ValueText.inheritAttrs = false;

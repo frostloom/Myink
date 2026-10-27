@@ -212,6 +212,13 @@ def test_setup_draft_returns_draft_not_persisted(temp_project, book_stub):
         assert db.query(Character).filter(
             Character.project_id == uuid.UUID(temp_project)).count() == 0, "草稿不应建角色"
     assert _book_setup_run_count(temp_project) == before + 1, "本次草稿应新增一行 agent_runs"
+    from myink.models.writing_resource import ProjectWritingResources
+    with tenant_session(temp_project) as db:
+        captured = db.get(ProjectWritingResources, uuid.UUID(temp_project))
+        assert captured is not None and captured.automatic_initialized
+        assert captured.configured is False
+    with new_session() as db:
+        assert db.get(ProjectWritingResources, uuid.UUID(temp_project)) is None, "普通事务不能越过资源快照RLS"
 
 
 def test_setup_draft_degraded_on_provider_error(temp_project, book_stub):

@@ -1,7 +1,8 @@
+import { useAdminListNavigation } from './navigation';
 /* eslint-disable vue/one-component-per-file -- Native Vue render helpers stay with their owning page. */
 import type { PropType } from 'vue';
-import { computed, defineComponent, Fragment, h as renderNode, shallowRef } from 'vue';
-import { useRoute } from 'vue-router';
+import { computed, defineComponent, Fragment, h as renderNode } from 'vue';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { adminApi, type AdminChapterDetail, type AdminContext, type AdminContextCollection, type AdminProject } from "../../../../src/lib/adminApi";
 import { chapterStatusLabel, creationStatusLabel } from "../../../../src/lib/labels";
 import { asRecord } from "../../../../src/lib/snapshotView";
@@ -96,10 +97,9 @@ export const ProjectDetailView = defineComponent((props: {
     project: AdminProject;
     onForbidden: () => void;
 }) => {
-    const offset = shallowRef(0);
-    const setOffset = (next: typeof offset.value | ((old: typeof offset.value) => typeof offset.value)) => { offset.value = typeof next === "function" ? next(offset.value) : next; };
-    const chapterId = shallowRef<string | null>(null);
-    const setChapterId = (next: typeof chapterId.value | ((old: typeof chapterId.value) => typeof chapterId.value)) => { chapterId.value = typeof next === "function" ? next(chapterId.value) : next; };
+    const { offset, setOffset } = useAdminListNavigation({});
+    const route = useRoute();
+    const router = useRouter();
     const loadChapters = (signal: AbortSignal) => adminApi.listChapters(props.token, props.project.id, { limit: PAGE_SIZE, offset: offset.value }, signal);
     const loadContext = (signal: AbortSignal) => adminApi.getProjectContext(props.token, props.project.id, PAGE_SIZE, signal);
     const chapters = useResource(loadChapters, props.onForbidden);
@@ -116,7 +116,11 @@ export const ProjectDetailView = defineComponent((props: {
                 ]), renderNode("div", {}, [
                     renderNode(RefreshButton, { "onClick": chapters.retry }), renderNode("button", { "type": "button", "class": "btn btn-secondary", "onClick": context.retry }, ["刷新设定"])
                 ])
-            ]), renderNode("div", { "class": styles.split }, [
+            ]), renderNode("nav", { class: styles.relatedLinks, 'aria-label': '作品关联记录' }, [
+                renderNode(RouterLink, { to: { path: `/admin/users/${props.project.user_id}`, query: { returnTo: route.fullPath } }, class: 'btn btn-secondary' }, { default: () => '查看账号' }),
+                renderNode(RouterLink, { to: { path: '/admin', query: { tab: 'tasks', projectId: props.project.id } }, class: 'btn btn-secondary' }, { default: () => '查看任务' }),
+                renderNode(RouterLink, { to: { path: '/admin', query: { tab: 'runs', projectId: props.project.id } }, class: 'btn btn-secondary' }, { default: () => '查看运行' }),
+            ]), renderNode("div", { "class": styles.projectSections }, [
                 renderNode("section", { "class": `panel ${styles.detail}` }, [
                     renderNode("h3", {}, ["章节元数据"]), renderNode(LoadState, { ...chapters, "empty": chapters.data?.items.length === 0, children: [chapters.data && renderNode(Fragment, {}, [
                                 renderNode("ul", { "class": styles.list }, [chapters.data.items.map((chapter: import("../../../../src/lib/adminApi").AdminChapter) => renderNode("li", { "key": chapter.id }, [
@@ -124,13 +128,13 @@ export const ProjectDetailView = defineComponent((props: {
                                             renderNode("strong", {}, [chapter.title ?? `第 ${chapter.chapter_seq} 章`]), renderNode("small", {}, [
                                                 chapterStatusLabel(chapter.status), " · ", chapter.word_count.toLocaleString(), " 字 · ", formatDate(chapter.updated_at)
                                             ])
-                                        ]), renderNode("button", { "type": "button", "class": "btn btn-quiet", "aria-label": `查看${chapter.title ?? `第 ${chapter.chapter_seq} 章`}全文`, "onClick": () => setChapterId(chapter.id) }, ["全文"])
-                                    ]))]), renderNode(Pagination, { "total": chapters.data.total, "offset": offset.value, "onChange": (next: number) => { setChapterId(null); setOffset(next); } })
+                                        ]), renderNode("button", { "type": "button", "class": "btn btn-quiet", "aria-label": `查看${chapter.title ?? `第 ${chapter.chapter_seq} 章`}全文`, "onClick": () => router.push({ path: `/admin/projects/${props.project.id}/chapters/${chapter.id}`, query: { returnTo: route.fullPath } }) }, ["全文"])
+                                    ]))]), renderNode(Pagination, { "total": chapters.data.total, "offset": offset.value, "onChange": (next: number) => { setOffset(next); } })
                             ])] })
                 ]), renderNode("section", { "class": `panel ${styles.detail}` }, [
                     renderNode("h3", {}, ["受限上下文快照"]), renderNode(LoadState, { ...context, "empty": !context.data, children: [context.data && renderNode(ContextView, { "value": context.data })] })
                 ])
-            ]), chapterId.value && renderNode(ChapterDetailView, { "key": chapterId.value, "token": props.token, "projectId": props.project.id, "chapterId": chapterId.value, "onForbidden": props.onForbidden })
+            ])
         ]));
     };
 }, {
@@ -147,3 +151,11 @@ export const ProjectDetailPage = defineComponent((_props: Record<string, never>)
 });
 ContextEntries.props = ["collection", "nameOf"];
 ContextEntries.inheritAttrs = false;
+
+export const ChapterDetailPage = defineComponent(() => {
+        const context = useAdminContext();
+        const route = useRoute();
+        return () => renderNode(DetailPage, { heading: '章节全文', backTab: 'projects', backTo: `/admin/projects/${String(route.params.projectId)}`, children: [
+            renderNode(ChapterDetailView, { token: context.token, projectId: String(route.params.projectId), chapterId: String(route.params.chapterId), onForbidden: context.onForbidden }),
+        ] });
+}, { inheritAttrs: false, props: {} });

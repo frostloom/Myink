@@ -235,11 +235,11 @@ try {
   await page.getByLabel('验证码', { exact: true }).fill('123456')
   await page.getByRole('button', { name: '验证', exact: true }).click()
   await page.waitForURL('**/admin')
-  await page.getByRole('heading', { name: '概览', exact: true }).waitFor()
+  await page.getByRole('heading', { name: '全局概览', exact: true, level: 1 }).waitFor()
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('myink.session')).role), 'admin')
   const storage = await page.evaluate(() => JSON.stringify(localStorage))
   assert.ok(!storage.includes('browser-password1') && !storage.includes('invite-browser') && !storage.includes('synthetic-mfa-challenge'))
-  await page.reload(); await page.getByRole('heading', { name: '概览', exact: true }).waitFor()
+  await page.reload(); await page.getByRole('heading', { name: '全局概览', exact: true, level: 1 }).waitFor()
   receipt.checks.push('mfa_challenge_is_not_a_session', 'mfa_error_stays_in_step', 'mfa_success_routes_verified_admin', 'credentials_and_challenge_not_persisted', 'authenticated_admin_refresh')
   assert.deepEqual(receipt.pageErrors, []); assert.deepEqual(receipt.unknownApi, [])
   receipt.passed = true

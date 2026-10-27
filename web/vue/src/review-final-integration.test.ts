@@ -47,7 +47,7 @@ it('reports the submitted rewrite chapter when selection changes before the resp
   expect(api.generateChapter).toHaveBeenCalledWith('book', 'first', { seq: 1, rewrite: true, mode: 'auto' })
   await view.rerender({ selectedChapter: second })
   finish(queued); await flushPromises()
-  expect(onTaskStart).toHaveBeenCalledWith('rewrite-first', undefined, 1, 'auto')
+  expect(onTaskStart).toHaveBeenCalledWith('rewrite-first', undefined, 1, 'auto', 'rewrite')
 })
 it('preserves an administrator model draft across same-account token renewal', async () => {
   vi.mocked(platformApi.getConfiguration).mockResolvedValue({ version: 4, model_connections: [{ id: 'one', name: '我的模型', protocol: 'openai', base_url: 'https://example.com/v1', model: 'writer-pro', has_api_key: true, enabled: true, user_visible: true }], model_routes: { writer: 'custom:one' }, prompts: {}, genre_packs: {} })

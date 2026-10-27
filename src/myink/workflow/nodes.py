@@ -743,9 +743,39 @@ def _resolve_character_id(db: Session, project_id: str, name: str) -> uuid.UUID 
 
 # ---- 确定性节点 ----
 
+def _saved_chapter_plan(db: Session, project_id: str, chapter_seq: int) -> dict | None:
+    """Recover only plans tied to a saved body, not a later failed planning attempt."""
+    persisted_tasks: set[str] = set()
+    rows = db.scalars(select(AgentRun).where(
+        AgentRun.project_id == uuid.UUID(project_id),
+        AgentRun.node.in_(("persist", "plan_chapter", "plan_review")),
+    ).order_by(AgentRun.id.desc()))
+    for row in rows:
+        detail = row.detail or {}
+        if row.node == "persist" and row.task_id:
+            persisted_tasks.add(row.task_id)
+        if row.task_id not in persisted_tasks:
+            continue
+        plan = detail.get("approved_plan") or detail.get("plan")
+        if not isinstance(plan, dict) or str(plan.get("project_id")) != project_id or plan.get("chapter_seq") != chapter_seq:
+            continue
+        try:
+            ChapterPlan.model_validate(plan)
+        except (ValidationError, TypeError, ValueError):
+            return None
+        return plan
+    return None
+
+
 def node_load_state(state: ChapterState) -> ChapterState:
     pid = state["project_id"]
     with tenant_session(pid) as db:
+        saved_plan = _saved_chapter_plan(db, pid, state["chapter_seq"]) if state.get("rewrite") and not state.get("replan_requested") else None
+        if state.get("rewrite") and not state.get("replan_requested") and not saved_plan:
+            return {"error": "缺少已保存的章节计划，无法保留计划重写；请先重新规划本章。", "plan": {}}
+        if saved_plan:
+            record_plain(db, project_id=pid, task_id=state.get("task_id"), node="plan_chapter",
+                         detail={"plan": saved_plan, "plan_attempt": 1, "reused": True})
         characters = [
             {"id": str(c.id), "name": c.name, "realm_cap": c.realm_cap, "personality": c.personality}
             for c in repo.get_all_characters(db, uuid.UUID(pid))
@@ -759,7 +789,7 @@ def node_load_state(state: ChapterState) -> ChapterState:
         plan_input = {"characters": characters, "world_rules": world_rules}
         record_plain(db, project_id=pid, task_id=state.get("task_id"), node="load_state",
                      detail={"characters": len(characters)})
-        return {"characters": characters, "chapter_plan_input": plan_input, "settings": world_rules,
+        return {**({"plan": saved_plan} if saved_plan else {}), "characters": characters, "chapter_plan_input": plan_input, "settings": world_rules,
                 "style_profile": style_profile, "genre_pack": genre_pack, "target_words": target_words,
                 # 重置上次尝试的瞬态失败标记（§6.12 续跑）：同 thread 再 invoke 时
                 # LangGraph 合并 checkpoint 状态，残留 error 会让 write/extract 短路重蹈失败 → 这里清零
@@ -797,6 +827,11 @@ def node_recall(state: ChapterState) -> ChapterState:
         ctx = build_context(
             db, project_id=uuid.UUID(pid), chapter_seq=state["chapter_seq"],
             user_instruction=state.get("user_instruction"),
+            participants=[str(c["character_id"]) for c in (state.get("plan") or {}).get("characters", [])]
+                + [str(p) for scene in (state.get("plan") or {}).get("scenes", []) for p in scene.get("participants", [])]
+                if state.get("rewrite") and not state.get("replan_requested") else None,
+            scene_names=[str(scene["location_id"]) for scene in (state.get("plan") or {}).get("scenes", [])]
+                if state.get("rewrite") and not state.get("replan_requested") else None,
             shared_context=shared,
         )
         out = {"context": ctx.model_dump(mode="json")}
@@ -1207,12 +1242,20 @@ def node_patch(state: ChapterState) -> ChapterState:
     if not state.get("draft"):
         return {"error": "局部修订缺少原稿"}
     pid = state["project_id"]
+    streamer = ArtifactEmitter(
+        task_id=state.get("task_id") or "", chapter_seq=state["chapter_seq"],
+        stage="write", attempt=state.get("patch_count", 0) + 1,
+    )
+    # Patch instructions are not prose. Clear the preview now, then send only
+    # the validated, applied body once the bounded edits have been resolved.
+    streamer.start()
     with tenant_session(pid) as db:
         resp, _ = _llm(
             db, state, "patch", "Writer", make_chain("writer", db=db, project_id=pid),
             prompts.patch_messages(state), json_mode=False, disable_thinking=True,
         )
         if resp.error:
+            streamer.failed(resp.error)
             return {"error": resp.error}
         result = apply_patches(state["draft"], parse_patches(resp.content))
         detail = {"revise_mode": "patch", "patch_count": state.get("patch_count", 0) + 1,
@@ -1222,6 +1265,8 @@ def node_patch(state: ChapterState) -> ChapterState:
         # 应用成功的片段补进同一条快照（提示词那半已由 _llm 落好）——只记个数事后查不出改了什么
         record_snapshot(db, state=state, stage="patch", payload={"applied_spans": [
             {"target": span.target, "replacement": span.replacement} for span in result.applied_spans]})
+    streamer.feed(result.content)
+    streamer.complete()
     # Responses are advisory; only the new extract/validate/audit establishes resolution.
     responses = []
     if result.applied and not result.skipped_count:
@@ -1344,7 +1389,7 @@ def node_persist(state: ChapterState) -> ChapterState:
                                    status="awaiting_review"))
             # 运行记录写进同一事务（在会话内，否则会话关闭后 add 静默丢失，审计 Low-5）
             record_plain(db, project_id=pid, task_id=state.get("task_id"), node="persist",
-                         detail={"candidates": len(candidates),
+                         detail={"candidates": len(candidates), "plan": state.get("plan"), "chapter_seq": chapter_seq,
                                  "status": "awaiting_review",
                                  "reason": "critical" if critical else
                                            "l2_major" if l2_major else
@@ -1406,6 +1451,7 @@ def node_persist(state: ChapterState) -> ChapterState:
         _advance_current_chapter(db, pid, chapter_seq)
         record_plain(db, project_id=pid, task_id=state.get("task_id"), node="persist",
                      detail={"candidates": len(candidates), "status": "auto_confirm",
+                             "plan": state.get("plan"), "chapter_seq": chapter_seq,
                              "rewrite": bool(state.get("rewrite")), "invalidation": invalidation})
         save_effect(db, receipt, {"persisted": True, "needs_review": False})
     return {"persisted": True, "needs_review": False}

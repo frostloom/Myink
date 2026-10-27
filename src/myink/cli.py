@@ -55,6 +55,8 @@ def init(
     console.print("[bold]1/3[/] 建表（PostgreSQL + pgvector）...")
     Base.metadata.create_all(get_admin_engine())
     from myink.db import ensure_character_provenance, ensure_writing_resource_snapshot_fk
+    from myink.db import ensure_personal_resource_sources
+    ensure_personal_resource_sources()
     ensure_writing_resource_snapshot_fk()
     ensure_character_provenance()
     from sqlalchemy.orm import Session

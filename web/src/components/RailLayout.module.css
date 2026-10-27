@@ -1,0 +1,12 @@
+/* Reserve the same viewport-anchored navigation space on every page. */
+.content {
+  padding-left: calc(var(--rail-width) + 12px);
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .content {
+    padding-left: 0;
+    padding-top: 76px;
+  }
+}

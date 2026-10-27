@@ -2,8 +2,8 @@
 import { useMemoryFormGuard } from "../composables/useMemoryFormGuard";
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
+import ProjectWritingSettings from '../components/ProjectWritingSettings.vue';
 import ProjectRail from '../components/ProjectRail.vue';
-import WritingResourcePicker from '../components/WritingResourcePicker.vue';
 import { api } from '../../../src/lib/api';
 import { formatApiError } from '../../../src/lib/apiError';
 import { isManagedPack, type BookGenrePack } from '../../../src/lib/genrePacks';
@@ -16,10 +16,11 @@ watch(() => route.fullPath, () => { navigationState.value = router.options.histo
 const beforeWriting = computed(() => navigationState.value?.configureBeforeWriting === true);
 const planWarning = computed(() => navigationState.value?.planWarning);
 const projects = ref<Project[]>([]), settings = ref<ProjectSettings | null>(null), genrePack = ref<BookGenrePack | null>(null), targetWords = ref('3000'), busy = ref<string | null>(null), banner = ref<string | null>(null), ok = ref<string | null>(null);
+const loading = ref(true);
 let version = 0;
 useMemoryFormGuard(() => settings.value !== null && targetWords.value !== String(projects.value.find(project => project.id === projectId.value)?.target_words ?? 3000));
 async function load(id: number) { if (id !== version)
-    return; banner.value = null; const pid = projectId.value; try {
+    return; banner.value = null; loading.value = true; const pid = projectId.value; try {
     const [s, proj] = await Promise.all([api.getSettings(pid), api.listProjects()]);
     if (id !== version)
         return;
@@ -32,7 +33,7 @@ async function load(id: number) { if (id !== version)
 catch (err) {
     if (id === version)
         banner.value = formatApiError(err, '设置加载失败');
-} }
+} finally { if (id === version) loading.value = false; } }
 watch(projectId, () => { const id = ++version; settings.value = null; genrePack.value = null; targetWords.value = '3000'; busy.value = null; banner.value = null; ok.value = null; void load(id); }, { immediate: true });
 onScopeDispose(() => { version++; });
 async function saveTargetWords() { if (!settings.value || busy.value)
@@ -62,10 +63,11 @@ finally {
  <div :class="styles.wrap">
 <ProjectRail :projects="projects" /><main :class="styles.main">
 <div :class="styles.inner">
-<header :class="styles.header"><div><h1>创作设置</h1><div :class="styles.crumb"><RouterLink :to="{path: `/projects/${projectId}`, state: {planWarning}}">{{ beforeWriting?'选好后返回工作台开写':'返回工作台' }}</RouterLink><span v-if="settings" class="badge">v{{ settings.version }}</span></div></div><span v-if="genrePack" class="badge badge-accent">{{ genrePack.secondary_name?`${genrePack.source_name}+${genrePack.secondary_name}`:genrePack.source_name }}</span></header>
- <div v-if="banner" class="banner banner-error" role="alert">{{ banner }}</div><div v-if="ok" class="banner banner-warning" role="status">{{ ok }}</div><p v-if="beforeWriting" class="banner">方案已确认，正文尚未开始生成。请勾选需要的资源并保存，再返回工作台点击“开始写”。<span v-if="planWarning">{{ planWarning }}</span></p><WritingResourcePicker :key="projectId" :project-id="projectId" />
- <section :class="['panel',styles.section]"><h2 :class="styles.sectionTitle">本书题材</h2><p :class="styles.hint">以下为建书历史题材；启用写作资源后，当前题材与主辅顺序以「本书写作资源」中已保存的快照为准。</p><template v-if="genrePack"><p :class="styles.hint">根题材：{{ genrePack.source_name }}{{ genrePack.secondary_name?` · 辅题材：${genrePack.secondary_name}`:'' }}</p><p>{{ genrePack.selling_point }}</p><p :class="styles.hint">此处保留建书时的历史快照，不随资源选择更新。</p></template><p v-else :class="styles.hint">本书创建时未选题材包，不回填。新书请在建书页选择。</p></section>
- <section :class="['panel',styles.section]"><h2 :class="styles.sectionTitle">生成设置</h2><label :class="styles.field"><span :class="styles.fieldLabel">每章目标字数（500–20000）</span><input v-model="targetWords" class="input" type="number" min="500" max="20000" step="100" /></label><div :class="styles.saveRow"><button type="button" class="btn btn-primary" :disabled="busy!==null || !settings" @click="saveTargetWords">{{ busy==='words'?'保存中…':'保存目标字数' }}</button><RouterLink class="btn btn-quiet" to="/environment">高级设置</RouterLink></div></section>
+<header :class="styles.header"><div><h1>创作设置</h1><div :class="styles.crumb"><RouterLink :to="{path: `/projects/${projectId}`, state: {planWarning}}">{{ beforeWriting?'选好后返回工作台开写':'返回工作台' }}</RouterLink><span v-if="settings" class="badge">v{{ settings.version }}</span></div></div></header>
+ <div v-if="banner" class="banner banner-error" role="alert">{{ banner }} <button v-if="!settings" type="button" class="btn btn-secondary" @click="load(version)">重新加载设置</button></div><div v-if="ok" class="banner banner-warning" role="status">{{ ok }}</div><p v-if="beforeWriting" class="banner">方案已确认，正文尚未开始生成。请在下方选择需要的写作资源并保存，再返回工作台点击“开始写”。<span v-if="planWarning">{{ planWarning }}</span></p>
+ <p v-if="loading" role="status">正在加载创作设置…</p>
+ <ProjectWritingSettings v-if="settings" :key="projectId" :project-id="projectId" :genre-pack="genrePack" />
+ <section :class="['panel',styles.section]"><h2 :class="styles.sectionTitle">生成设置</h2><label :class="styles.field"><span :class="styles.fieldLabel">每章目标字数（500–20000）</span><input v-model="targetWords" :disabled="loading || !settings || busy !== null" class="input" type="number" min="500" max="20000" step="100" /></label><div :class="styles.saveRow"><button type="button" class="btn btn-primary" :disabled="busy!==null || !settings" @click="saveTargetWords">{{ busy==='words'?'保存中…':'保存目标字数' }}</button><RouterLink class="btn btn-quiet" to="/environment">高级设置</RouterLink></div></section>
  </div>
 </main>
 </div>

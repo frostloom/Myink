@@ -25,6 +25,8 @@ export type ResourceBody =
     }
   | { files: Array<{ path: string; content: string }> }
 export interface WritingResource {
+  source_resource_id?: string | null
+  source_generation?: number | null
   id: string
   name: string
   kind: ResourceKind
@@ -123,6 +125,11 @@ export const writingResources = {
       { expected_generation, version, note },
     ),
   catalog: () => get<{ items: WritingResource[] }>('/writing-resources'),
+  catalogAll: () => get<{ items: WritingResource[] }>('/writing-resources/catalog'),
+  forkPersonal: (source_resource_id: string, input: { target_generation: number; name?: string; body?: ResourceBody }) =>
+    send<WritingResource>('POST', '/my-writing-resources/from-platform', { source_resource_id, ...input }),
+  syncPersonal: (id: string, expected_generation: number, target_generation: number) =>
+    send<WritingResource>('POST', `/my-writing-resources/${encodeURIComponent(id)}/sync`, { expected_generation, target_generation, acknowledge_overwrite: true }),
   personal: () => get<{ items: WritingResource[] }>('/my-writing-resources'),
   createPersonal: (input: ResourceInput) =>
     send<WritingResource>('POST', '/my-writing-resources', input),

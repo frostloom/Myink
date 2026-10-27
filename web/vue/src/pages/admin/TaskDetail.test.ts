@@ -1,5 +1,5 @@
 /* eslint-disable vue/one-component-per-file -- Tests mount local router harness components. */
-import { defineComponent,h,type VNode } from 'vue';
+import { defineComponent,h,ref,type VNode } from 'vue';
 import { createMemoryHistory,createRouter,RouterView } from 'vue-router';
 import { authKey } from '../../authContext';
 import { adminContextKey } from './context';
@@ -35,9 +35,24 @@ it('puts task outcome and grouped calls before opt-in technical snapshots', asyn
 it('shows actual library reads with Chinese purposes after selecting a call', async () => {
     setup();
     await fireEvent.click(await screen.findByRole('button', { name: '查看节点 short_write #19' }));
+    expect(await screen.findByRole('dialog', { name: '运行详情 #19' })).toBeTruthy();
     expect(await screen.findByText('故事创作的基本约束')).toBeTruthy();
     expect(screen.getByText('已读取正文')).toBeTruthy();
     expect(screen.queryByText('调试详情')).toBeNull();
+    await fireEvent.click(screen.getByRole('button', { name: '关闭' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('heading', { name: '执行记录' })).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '查看节点 short_write #19' }));
+});
+it('closes an errored run dialog with Escape and leaves task context intact', async () => {
+    setup();
+    vi.mocked(adminApi.getRun).mockRejectedValueOnce(new Error('offline'));
+    await fireEvent.click(await screen.findByRole('button', { name: '查看节点 short_write #19' }));
+    const dialog = await screen.findByRole('dialog', { name: '运行详情 #19' });
+    await screen.findByRole('alert');
+    await fireEvent(dialog, new Event('cancel', { cancelable: true }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('button', { name: '查看节点 short_write #19' })).toBeTruthy();
 });
 it('does not mark missing or failed reference results as successful reads', async () => {
     const { ExecutionContent } = await import('./ExecutionContent');
@@ -47,15 +62,11 @@ it('does not mark missing or failed reference results as successful reads', asyn
     expect(screen.getByText('结果未留存')).toBeTruthy();
     expect(screen.queryByText('已读取正文')).toBeNull();
 });
-it('keeps task navigation active in detail routes and closes the compact menu on selection', async () => {
+it('keeps task navigation directly available and active in detail routes', async () => {
     const { default: AdminRail } = await import('../../components/AdminRail.vue');
     render(h(AdminRail, { "onLogout": vi.fn() }));
-    const menu = await screen.findByText('管理导航'); // CSS hides this control at the test runner's desktop width.
-    await fireEvent.click(menu);
-    expect(menu.getAttribute('aria-expanded')).toBe('true');
-    const link = screen.getByRole('link', { name: '任务' });
+    const link = await screen.findByRole('link', { name: '任务' });
+    expect(screen.queryByText('管理导航')).toBeNull();
     expect(link.getAttribute('aria-current')).toBe('page');
-    await fireEvent.click(link);
-    expect(menu.getAttribute('aria-expanded')).toBe('false');
 });
-function render(node: VNode) { const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/admin/users/:userId", component: defineComponent({ render: () => node }) }, { path: "/admin/tasks/:taskId", component: defineComponent({ render: () => node }) }, { path: "/admin", component: { render: () => null } }] }); const destination='/admin/tasks/t';const result=vueRender(defineComponent({ render: () => h(RouterView) }), { global: { plugins: [router], provide: { [authKey as symbol]: {logout:vi.fn()}, [adminContextKey as symbol]: { token: 'token-admin', onForbidden: vi.fn() } } } });void router.push(destination);return result; }
+function render(node: VNode) { const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/admin/users/:userId", component: defineComponent({ render: () => node }) }, { path: "/admin/tasks/:taskId", component: defineComponent({ render: () => node }) }, { path: "/admin", component: { render: () => null } }] }); const destination='/admin/tasks/t';const result=vueRender(defineComponent({ render: () => h(RouterView) }), { global: { plugins: [router], provide: { [authKey as symbol]: {logout:vi.fn(), status:ref('authenticated'), session:ref({role:'admin',roleVerified:true})}, [adminContextKey as symbol]: { token: 'token-admin', onForbidden: vi.fn() } } } });void router.push(destination);return result; }

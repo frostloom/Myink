@@ -35,12 +35,13 @@ def get_graphs() -> tuple[CompiledStateGraph, CompiledStateGraph]:
 
 @budget_execution
 def generate_chapter(*, project_id: str, chapter_seq: int, task_id: str | None = None,
-                     user_instruction: str | None = None, rewrite: bool = False,
+                     user_instruction: str | None = None, rewrite: bool = False, replan: bool = False,
                      writing_mode: str = "auto") -> dict:
     """生成单章（阶段 1 同步版；阶段 2 由 worker 消费 Redis 队列调用）。
 
     task_id 作 thread_id：中断/恢复/重试续跑同一条执行链（§6.7）。
-    rewrite：显式重写已确认章（§7.3 失效重建）——persist 先失效该章旧记忆再写新。
+    rewrite：保留已保存计划重写已确认章；persist 先失效该章旧记忆再写新。
+    replan：显式重新规划本章；由 API 与 rewrite 一同传入，允许重新调用 Planner。
     """
     chapter_graph, _ = get_graphs()
     thread_id = task_id or str(uuid.uuid4())
@@ -56,6 +57,7 @@ def generate_chapter(*, project_id: str, chapter_seq: int, task_id: str | None =
             "task_id": thread_id,
             "user_instruction": user_instruction,
             "rewrite": rewrite,
+            "replan_requested": replan,
             "writing_mode": writing_mode,
         },
         config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64},
@@ -202,10 +204,20 @@ def new_task(*, project_id: str, task_type: str, payload: dict, chapter_seq: int
 
     use_owner_defaults = task_id is None and budget_snapshot is None
     stored_payload = dict(payload)
+    budget_owner = None
+    if use_owner_defaults:
+        # Budget configuration opens its own sessions. Release this short owner
+        # read before taking the project lock used by resource selection.
+        with tenant_session(project_id) as db:
+            project = db.get(Project, uuid.UUID(project_id))
+            if project is None:
+                raise ValueError("Project does not exist")
+            budget_owner = str(project.user_id)
+        budget_snapshot = snapshot_budget(budget_owner)
     if budget_snapshot is not None:
         stored_payload["_task_budget"] = budget_snapshot
     with tenant_session(project_id) as db:
-        project = db.get(Project, uuid.UUID(project_id))
+        project = db.get(Project, uuid.UUID(project_id), with_for_update=True)
         if project is None:
             raise ValueError("Project does not exist")
         from myink.writing_resources import capture_task_resources
@@ -215,9 +227,8 @@ def new_task(*, project_id: str, task_type: str, payload: dict, chapter_seq: int
             stored_payload["writing_resources"] = (inherited if inherited is not None
                                                     else capture_task_resources(db, project_id))
         owner_id = str(project.user_id)
-        if use_owner_defaults:
-            budget_snapshot = snapshot_budget(owner_id)
-            stored_payload["_task_budget"] = budget_snapshot
+        if budget_owner is not None and budget_owner != owner_id:
+            raise ValueError("Project owner changed during task admission")
         task = Task(id=uuid.UUID(task_id) if task_id else uuid.uuid4(),
                     project_id=uuid.UUID(project_id), task_type=task_type,
                     payload=stored_payload, status=status, chapter_seq=chapter_seq,

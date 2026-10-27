@@ -6,4 +6,4 @@ let lastEmitted=toRaw(props.value)
 watch(()=>[props.value,props.format(props.value)] as const,([value,formatted])=>{if(toRaw(value)!==lastEmitted){lastEmitted=toRaw(value);text.value=formatted}})
 function edit(event:Event){const nextText=(event.target as HTMLInputElement).value;const next=props.parse(nextText);lastEmitted=toRaw(next);text.value=nextText;props.onChange?.(next)}
 </script>
-<template><input v-if="singleLine" :value="text" :class="className" @input="edit" /><textarea v-else :value="text" :class="className" :rows="rows" @input="edit" /></template>
+<template><input v-if="singleLine" :value="text" :class="['input',className]" @input="edit" /><textarea v-else :value="text" :class="['textarea',className]" :rows="rows" @input="edit" /></template>

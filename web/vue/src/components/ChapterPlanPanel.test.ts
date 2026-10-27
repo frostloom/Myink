@@ -163,3 +163,29 @@ it('keeps edited list values when native change bubbles on blur before confirmat
     expect(vi.mocked(api.confirmTaskPlan).mock.calls[0][1].goals).toEqual(['第一目标', '第二目标']);
     expect(onConfirmed).toHaveBeenCalledWith('task-17', 17);
 });
+it('shows replacement plan streaming even when parsing retry uses the same plan attempt',()=>{
+ const artifact:ArtifactState={artifactId:'retry',taskId:'task-17',stage:'plan',chapterSeq:17,attempt:1,content:'{"goals":["新的计划"]}',complete:false,failed:false,artifact:null,message:null}
+ render(h(ChapterPlanPanel,{taskId:'task-17',chapterSeq:17,status:'running',runs:[run(1,plan('旧版目标'))],artifact,onConfirmed:()=>{},onCancelled:()=>{}}))
+ expect(screen.getByText('AI 正在规划')).toBeTruthy()
+})
+
+it.each(['confirm','cancel'] as const)('announces pending plan %s and clears the indicator on failure', async action => {
+ let fail!: (error: Error) => void
+ const pending = new Promise<TaskControlResponse>((_resolve, reject) => {fail=reject})
+ vi.mocked(api.confirmTaskPlan).mockReturnValue(pending)
+ vi.mocked(api.cancelTask).mockReturnValue(pending)
+ render(h(ChapterPlanPanel,{taskId:'task-17', chapterSeq:17, status:'awaiting_plan', runs:[run(1,plan('目标'))], artifact:null, onConfirmed:()=>{}, onCancelled:()=>{}}))
+ await fireEvent.click(screen.getByRole('button',{name:action==='confirm'?'确认计划并开始写作':'取消本次写作'}))
+ expect(screen.getByRole('status').textContent).toContain(action==='confirm'?'正在确认章节计划':'正在取消本次写作')
+ expect(screen.getByRole('progressbar').hasAttribute('value')).toBe(false)
+ expect((screen.getByLabelText(/本章目标/) as HTMLTextAreaElement).value).toBe('目标')
+ fail(new Error('offline')); await flushPromises()
+ expect(screen.queryByRole('progressbar')).toBeNull()
+ expect(screen.getByRole('alert')).toBeTruthy()
+})
+
+it.each(['failed', 'cancelled'] as const)('does not claim AI is still planning after task %s', async status => {
+ render(h(ChapterPlanPanel,{taskId:'task-17',chapterSeq:17,status,runs:[],artifact:null,onConfirmed:()=>{},onCancelled:()=>{}}))
+ expect(screen.queryByText('AI 正在规划')).toBeNull()
+ expect(screen.getByRole('status').textContent).toContain(status==='failed'?'规划未能完成':'本次规划已取消')
+})

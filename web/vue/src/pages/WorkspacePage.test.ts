@@ -704,10 +704,10 @@ it('passes the authoritative budget to the short workspace flow', async () => {
     await screen.findByText('timeline-task-short-chapter-none');
     expect(screen.getByText('flow-budget-7')).toBeTruthy();
 });
-it('offers writing resource choices in the short-book workspace where the settings navigation is hidden', async () => {
+it('keeps resource selection out of the writing surface', async () => {
     renderWorkspace();
-    const link = await screen.findByRole('link', { name: '选择写作资源' });
-    expect(link.getAttribute('href')).toContain('/settings#writing-resources');
+    await waitFor(() => expect(api.listChapters).toHaveBeenCalled());
+    expect(screen.queryByRole('link', { name: '选择写作资源' })).toBeNull();
 });
 it('keeps project B chapters when project A materialization polling finishes late', async () => {
     let finish!: (chapters: ChapterMeta[]) => void;

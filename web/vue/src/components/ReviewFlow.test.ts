@@ -9,7 +9,7 @@ import RunNodeCard from './RunNodeCard.vue';
 import TaskTimeline from './TaskTimeline.vue';
 import { api } from '../../../src/lib/api';
 import type { AgentRun, MemoryCandidate, TaskSummary } from '../../../src/types';
-vi.mock('../../../src/lib/api', () => ({ api: { rejectCandidate: vi.fn().mockResolvedValue({}), confirmCandidate: vi.fn().mockResolvedValue({}), resumeBatch: vi.fn().mockResolvedValue({}), listTasks: vi.fn(), getTask: vi.fn() } }));
+vi.mock('../../../src/lib/api', () => ({ api: { rejectCandidate: vi.fn().mockResolvedValue({}), confirmCandidate: vi.fn().mockResolvedValue({}), resumeTask: vi.fn().mockResolvedValue({}), listTasks: vi.fn(), getTask: vi.fn() } }));
 const candidate: MemoryCandidate = { candidate_id: 'c', kind: 'fact', source_chapter: 1, payload: { content: '伤势痊愈' }, confidence: 1, status: 'pending', created_at: null };
 const task: TaskSummary = { task_id: 't', task_type: 'chapter_generate', status: 'awaiting_review', chapter_seq: 1, batch_size: null, batch_current: null, cost_total: 0, error: null, created_at: null };
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
@@ -29,22 +29,22 @@ it('one rejection saves the reason and starts revision without another click', a
     await fireEvent.input(screen.getByLabelText('修改意见（可选）'), { target: { value: '需要治疗' } });
     await fireEvent.click(screen.getByRole('button', { name: '不接受，自动修改' }));
     await waitFor(() => expect(api.rejectCandidate).toHaveBeenCalledWith('p', 'c', '需要治疗', 'revise'));
-    await waitFor(() => expect(released).toHaveBeenCalledWith('t', 1, undefined));
+    await waitFor(() => expect(released).toHaveBeenCalledWith('t', 1, undefined, 'revise'));
     expect(api.listTasks).toHaveBeenCalledWith('p', 1);
-    expect(api.resumeBatch).toHaveBeenCalledWith('t');
+    expect(api.resumeTask).toHaveBeenCalledWith('t');
     expect(screen.getByRole('status').textContent).toContain('已提交自动修改');
     expect(screen.queryByRole('button', { name: '不接受，自动修改' })).toBeNull();
 });
 it('keeps saved rejection retryable when resume fails without rejecting twice', async () => {
     vi.mocked(api.listTasks).mockResolvedValue([task]);
-    vi.mocked(api.resumeBatch).mockRejectedValueOnce(new Error('network'));
+    vi.mocked(api.resumeTask).mockRejectedValueOnce(new Error('network'));
     render(h(CandidatePanel, { "projectId": "p", "candidates": [candidate], "onChanged": () => { } }, []));
     await fireEvent.click(screen.getByRole('button', { name: '不接受，自动修改' }));
     await screen.findByText(/意见已保存，但自动修改未能启动/);
     await fireEvent.click(screen.getByRole('button', { name: '重试修改第 1 章' }));
     await screen.findByText(/已提交自动修改/);
     expect(api.rejectCandidate).toHaveBeenCalledTimes(1);
-    expect(api.resumeBatch).toHaveBeenCalledTimes(2);
+    expect(api.resumeTask).toHaveBeenCalledTimes(2);
 });
 it('recovers an unapplied rejection after reloading the page', async () => {
     vi.mocked(api.listTasks).mockResolvedValue([task]);
@@ -53,7 +53,7 @@ it('recovers an unapplied rejection after reloading the page', async () => {
     await fireEvent.click(screen.getByRole('button', { name: '重试修改第 1 章' }));
     await screen.findByText(/已提交自动修改/);
     expect(api.rejectCandidate).not.toHaveBeenCalled();
-    expect(api.resumeBatch).toHaveBeenCalledWith('t');
+    expect(api.resumeTask).toHaveBeenCalledWith('t');
 });
 it('does not reject or restart an older task when the latest chapter task is running', async () => {
     vi.mocked(api.listTasks).mockResolvedValue([{ ...task, task_id: 'new', status: 'running' }, task]);
@@ -61,7 +61,7 @@ it('does not reject or restart an older task when the latest chapter task is run
     await fireEvent.click(screen.getByRole('button', { name: '不接受，自动修改' }));
     await screen.findByText(/当前没有可修改的待评审任务/);
     expect(api.rejectCandidate).not.toHaveBeenCalled();
-    expect(api.resumeBatch).not.toHaveBeenCalled();
+    expect(api.resumeTask).not.toHaveBeenCalled();
 });
 it('leaves the candidate pending when saving the rejection fails', async () => {
     vi.mocked(api.listTasks).mockResolvedValue([task]);
@@ -69,7 +69,7 @@ it('leaves the candidate pending when saving the rejection fails', async () => {
     render(h(CandidatePanel, { "projectId": "p", "candidates": [candidate], "onChanged": () => { } }, []));
     await fireEvent.click(screen.getByRole('button', { name: '不接受，自动修改' }));
     await screen.findByText('保存失败');
-    expect(api.resumeBatch).not.toHaveBeenCalled();
+    expect(api.resumeTask).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: '重试修改第 1 章' })).toBeNull();
 });
 it('checks the actual paused chapter before resuming a batch', async () => {
@@ -79,7 +79,7 @@ it('checks the actual paused chapter before resuming a batch', async () => {
     await fireEvent.click(screen.getByRole('button', { name: '不接受，自动修改' }));
     await screen.findByText(/不属于批次当前待处理章节/);
     expect(api.rejectCandidate).not.toHaveBeenCalled();
-    expect(api.resumeBatch).not.toHaveBeenCalled();
+    expect(api.resumeTask).not.toHaveBeenCalled();
 });
 it('resumes the matching batch and preserves its progress display', async () => {
     vi.mocked(api.listTasks).mockResolvedValue([{ ...task, task_type: 'batch_generate', batch_size: 3 }]);
@@ -87,7 +87,7 @@ it('resumes the matching batch and preserves its progress display', async () => 
     const released = vi.fn();
     render(h(CandidatePanel, { "projectId": "p", "candidates": [candidate], "onChanged": () => { }, "onReleased": released }, []));
     await fireEvent.click(screen.getByRole('button', { name: '不接受，自动修改' }));
-    await waitFor(() => expect(released).toHaveBeenCalledWith('t', 1, 3));
+    await waitFor(() => expect(released).toHaveBeenCalledWith('t', 1, 3, 'revise'));
     expect(api.rejectCandidate).toHaveBeenCalledWith('p', 'c', '', 'revise');
 });
 it('accepts the last setting and continues the chapter without another confirmation click', async () => {
@@ -96,7 +96,7 @@ it('accepts the last setting and continues the chapter without another confirmat
     await fireEvent.click(screen.getByRole('button', { name: '接受' }));
     await waitFor(() => expect(api.confirmCandidate).toHaveBeenCalledWith('p', 'c'));
     expect(api.rejectCandidate).not.toHaveBeenCalled();
-    await waitFor(() => expect(api.resumeBatch).toHaveBeenCalledWith('t'));
+    await waitFor(() => expect(api.resumeTask).toHaveBeenCalledWith('t'));
     expect((await screen.findByRole('status')).textContent).toContain('设定已确认，任务正在继续');
     expect(screen.queryByRole('button', { name: '接受' })).toBeNull();
 });
@@ -109,13 +109,13 @@ it('clears the continuing notice and collapses into completed history after the 
     expect(screen.getByRole('button', { name: /设定记录 第 1 章 已完成/ }).getAttribute('aria-expanded')).toBe('false');
 });
 it('keeps the accepted result and offers one retry when automatic continuation fails', async () => {
-    vi.mocked(api.resumeBatch).mockRejectedValueOnce(new Error('network'));
+    vi.mocked(api.resumeTask).mockRejectedValueOnce(new Error('network'));
     render(h(CandidatePanel, { "projectId": "p", "candidates": [candidate], "onChanged": () => { }, "releaseTarget": { taskId: 't', chapterSeq: 1 } }, []));
     await fireEvent.click(screen.getByRole('button', { name: '接受' }));
     await screen.findByText(/设定已接受，但任务未能继续/);
     expect(api.confirmCandidate).toHaveBeenCalledTimes(1);
     await fireEvent.click(screen.getByRole('button', { name: '重试完成确认' }));
-    await waitFor(() => expect(api.resumeBatch).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(api.resumeTask).toHaveBeenCalledTimes(2));
     expect(api.confirmCandidate).toHaveBeenCalledTimes(1);
 });
 it('shows one chapter flow with cost and route but keeps audit reasons out', async () => {

@@ -96,6 +96,7 @@ class ChapterGenerateBody(BaseModel):
     seq: int | None = None
     user_instruction: str | None = None
     rewrite: bool = False
+    replan: bool = False
     mode: str = "auto"
 
 
@@ -129,6 +130,8 @@ def generate_chapter(project_id: str, chapter_id: str, body: ChapterGenerateBody
     边缘换 Caddy 之后由本文件接管。闸门拒绝 → 429 `{"error": CODE}`（全局处理器），
     前端 GATE_CODES 认这个信封。
     """
+    if body.replan and not body.rewrite:
+        raise HTTPException(status_code=400, detail="replan_requires_rewrite")
     if body.mode not in {"auto", "manual"}:
         raise HTTPException(status_code=400, detail="invalid_writing_mode")
     _assert_writable(project_id, form="long")
@@ -141,6 +144,8 @@ def generate_chapter(project_id: str, chapter_id: str, body: ChapterGenerateBody
     # 与 Go 同形：rewrite 只在 true 时进 payload（worker 侧是 bool(payload.get("rewrite"))）
     if body.rewrite:
         payload["rewrite"] = True
+    if body.replan:
+        payload["replan"] = True
     return enqueue(user_id=str(identity.id), project_id=project_id, task_type="chapter_generate",
                    payload=payload, quota_n=1, cost_est=settings.cost_per_chapter,
                    priority=_priority(identity.tier),

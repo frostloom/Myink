@@ -213,6 +213,7 @@ def _dispatch(body: dict) -> dict:
             task_id=task_id,
             user_instruction=payload.get("user_instruction"),
             rewrite=rewrite,
+            replan=bool(payload.get("replan")),
             writing_mode="manual" if payload.get("mode") == "manual" else "auto",
         )
     if task_type == "chapter_plan_resume":
@@ -280,6 +281,7 @@ def _dispatch(body: dict) -> dict:
                 "chapter_seq": seq,
                 "user_instruction": payload.get("user_instruction"),
                 "rewrite": bool(payload.get("rewrite")),
+                "replan_requested": bool(payload.get("replan")),
             },
         )
     if task_type in ("short_generate", "short_resume"):

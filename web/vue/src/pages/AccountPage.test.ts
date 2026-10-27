@@ -6,9 +6,10 @@ import { api } from '../../../src/lib/api'
 import AccountPage from './AccountPage.vue'
 const auth = vi.hoisted(() => ({value:{} as Record<string,unknown>}))
 vi.mock('../authContext',()=>({useAuth:()=>auth.value}))
-async function page(role='admin',verified=true) {
+async function page(role='admin',verified=true,statusFailure=false) {
  auth.value={session:ref({token:'old',userId:'a',username:'alice',tier:'normal',role,roleVerified:verified}),status:ref('authenticated'),logout:vi.fn(),changePassword:vi.fn().mockResolvedValue(undefined),endSession:vi.fn()}
- vi.spyOn(api,'listProjects').mockResolvedValue([]); vi.spyOn(api,'mfaStatus').mockResolvedValue({enabled:false})
+ vi.spyOn(api,'listProjects').mockResolvedValue([]); const status=vi.spyOn(api,'mfaStatus').mockResolvedValue({enabled:false})
+ if(statusFailure) status.mockRejectedValueOnce(new Error('offline'))
  const router=createRouter({history:createMemoryHistory(),routes:[{path:'/:pathMatch(.*)*',component:{template:'<div/>'}}]}); await router.push('/account')
  const view=render(AccountPage,{global:{plugins:[router]}}); return {...view,router}
 }
@@ -39,4 +40,25 @@ it('keeps sessions on rejected confirmation codes and permits retry',async()=>{
 it('disables an enabled second factor and re-enters login',async()=>{
  const{router}=await page();vi.mocked(api.mfaStatus).mockResolvedValue({enabled:true});(auth.value.session as ReturnType<typeof ref>).value={token:'admin-new',userId:'a',username:'alice',tier:'normal',role:'admin',roleVerified:true};vi.spyOn(api,'mfaDisable').mockResolvedValue({ok:true})
  await fireEvent.update(await screen.findByLabelText('验证码'),'123456');await fireEvent.submit(screen.getByLabelText('验证码').closest('form')!);await vi.waitFor(()=>expect(router.currentRoute.value.path).toBe('/login'));expect(auth.value.endSession).toHaveBeenCalledWith('两步验证已关闭，本次登录已失效，请重新登录。')
+})
+
+it('shows an MFA status failure and retries without clearing password drafts',async()=>{
+ await page();await screen.findByLabelText('账号密码')
+ await fireEvent.update(screen.getByLabelText('新密码'),'my-password-draft')
+ vi.mocked(api.mfaStatus).mockRejectedValueOnce(new Error('offline')).mockResolvedValue({enabled:false})
+ ;(auth.value.session as ReturnType<typeof ref>).value={token:'renewed',userId:'a',username:'alice',tier:'normal',role:'admin',roleVerified:true}
+ await fireEvent.click(await screen.findByRole('button',{name:'重试两步验证状态'}))
+ expect(await screen.findByLabelText('账号密码')).toBeTruthy()
+ expect((screen.getByLabelText('新密码') as HTMLInputElement).value).toBe('my-password-draft')
+ await vi.waitFor(()=>expect(screen.queryByRole('button',{name:'重试两步验证状态'})).toBeNull())
+ expect(api.mfaStatus).toHaveBeenCalledTimes(3)
+})
+
+it('recovers an initially unknown MFA status before exposing enrollment',async()=>{
+ await page('admin',true,true)
+ await screen.findByRole('button',{name:'重试两步验证状态'})
+ expect(screen.queryByLabelText('账号密码')).toBeNull()
+ await fireEvent.click(screen.getByRole('button',{name:'重试两步验证状态'}))
+ expect(await screen.findByLabelText('账号密码')).toBeTruthy()
+ expect(api.mfaStatus).toHaveBeenCalledTimes(2)
 })

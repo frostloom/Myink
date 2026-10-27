@@ -8,13 +8,15 @@ import StyleLibraryPage from './pages/StyleLibraryPage.vue'
 import NewProjectPage from './pages/NewProjectPage.vue'
 import ShortCreationPage from './pages/ShortCreationPage.vue'
 import SettingsPage from './pages/SettingsPage.vue'
+import ResourcesPage from './pages/ResourcesPage.vue'
+import WritingResourceLibraryPage from './pages/WritingResourceLibraryPage.vue'
 import LorePage from './pages/LorePage.vue'
 import AuditPage from './pages/AuditPage.vue'
 import AdminPage from './pages/AdminPage.vue'
 import { AdminConsole } from './pages/admin/AdminConsole'
 import PlatformConfiguration from './pages/admin/PlatformConfiguration'
 import WritingResources from './pages/admin/WritingResources'
-import { ProjectDetailPage } from './pages/admin/ProjectDetail'
+import { ChapterDetailPage, ProjectDetailPage } from './pages/admin/ProjectDetail'
 import { TaskDetailPage } from './pages/admin/TaskDetail'
 import { RunDetailPage } from './pages/admin/RunDetail'
 import { UserDetailPage } from './pages/admin/UserDetail'
@@ -36,8 +38,10 @@ export function createCandidateRouter(history: RouterHistory = createWebHistory(
     { path: '/environment', component: EnvironmentPage },
     { path: '/theme', component: AppearancePage },
     { path: '/styles', component: StyleLibraryPage },
+    { path: '/writing-resources', component: WritingResourceLibraryPage },
     { path: '/projects/:projectId', component: WorkspacePage },
     { path: '/projects/:projectId/settings', component: SettingsPage },
+    { path: '/projects/:projectId/resources', component: ResourcesPage },
     { path: '/projects/:projectId/audit', component: AuditPage },
     { path: '/projects/:projectId/lore', component: LorePage },
     { path: '/admin', component: AdminPage, children: [
@@ -50,6 +54,7 @@ export function createCandidateRouter(history: RouterHistory = createWebHistory(
       { path: 'genres', component: WritingResources, props: { scope: 'genres' } },
       { path: 'writing-resources', component: WritingResources },
       { path: 'projects/:projectId', component: ProjectDetailPage },
+      { path: 'projects/:projectId/chapters/:chapterId', component: ChapterDetailPage },
       { path: 'tasks/:taskId', component: TaskDetailPage },
       { path: 'runs/:runId', component: RunDetailPage },
       { path: 'users/:userId', component: UserDetailPage },
