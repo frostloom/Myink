@@ -97,7 +97,7 @@ def _snapshot(state,billing,mode):
         if task['status']=='done':require(task['evidence']==dict(verified=True,binding=digest(payload)),'invalid task registration receipt')
         require(task['operation_id']=='manager:task:'+payload['task_id'] and payload['mode']==mode
             and payload['billing_path']==str(billing),'foreign manager registration')
-        for suffix,kind in ((':dispatch','iteration_stage'),(':cancel','manager_cancel')):
+        for suffix,kind in ((':dispatch','iteration_stage'),(':cancel','manager_cancel'),(':reconciliation','manager_reconciliation')):
             key=task['operation_id']+suffix
             if key not in rows:continue
             row=rows[key];known.add(key)
@@ -113,9 +113,13 @@ def _snapshot(state,billing,mode):
                     require(type(e.get('elapsed_ms')) in (int,float) and math.isfinite(e['elapsed_ms']) and e['elapsed_ms']>=0,
                         'invalid dispatch timing')
                     if row['status']=='done':require(e.get('next_action') in ('observe','review_candidate'),'invalid completed dispatch action')
-            else:
+            elif suffix==':cancel':
                 require(row['payload'].get('task_binding')==digest(payload) and row['payload'].get('mode')==mode,'cancellation identity drift')
                 if row['status']=='done':require(row['evidence']==dict(verified=True,binding=digest(row['payload'])),'invalid cancellation receipt')
+            else:
+                from .selection_abandonment import validate_resolution
+                require(task['operation_id']+':dispatch' in rows,'reconciliation requires a dispatch')
+                validate_resolution(task,rows[task['operation_id']+':dispatch'],row,state,billing)
     require(set(rows)==known,'foreign operations in manager state')
     return state,billing,rows,tasks,snap
 
@@ -159,6 +163,7 @@ def _enqueue(state,billing,task_id,request,sha256,*,priority=0,mode='ACTUAL'):
         if old['status']=='done':return dict(registered=True,task_id=task_id,replayed=True)
         require(old['status']=='pending','invalid task registration')
     else:
+        require(not _unresolved(rows),'unresolved dispatch requires reconciliation before new registration')
         if mode=='ACTUAL':
             require(not any(_dispatch_id(t) not in rows and t['operation_id']+':cancel' not in rows for t in tasks),
                 'only one ready ACTUAL request; publish next after fresh independent checkpoint review')
@@ -170,6 +175,11 @@ def _enqueue(state,billing,task_id,request,sha256,*,priority=0,mode='ACTUAL'):
                 for value in prior['inputs']+prior['outputs']:_disjoint(Path(output),Path(value))
             for output in prior['outputs']:
                 for value in resources['inputs']:_disjoint(Path(output),Path(value))
+        for prior in rows.values():
+            if prior['kind']=='manager_reconciliation':
+                for output in resources['outputs']:
+                    for protected in (path(prior['payload']['audit_path']).parent,path(prior['payload']['review_path'])):
+                        _disjoint(Path(output),protected)
     ledger=Ledger(state,existing=True);ledger.intent(op,'manager_task',payload)
     # Registration has no external side effect. A pending registration can be
     # completed only by explicit enqueue after the same full input preflight.
@@ -200,6 +210,15 @@ def enqueue(state,billing,task_id,request,sha256,*,priority=0,mode='ACTUAL'):
 
 
 def _dispatch_id(task):return task['operation_id']+':dispatch'
+
+
+def _resolved(rows,dispatch_id):
+    return rows.get(dispatch_id.removesuffix(':dispatch')+':reconciliation',{}).get('status')=='done'
+
+
+def _unresolved(rows):
+    return [r for r in rows.values() if r['kind']=='iteration_stage' and r['status'] in ('pending','uncertain')
+        and not _resolved(rows,r['operation_id'])]
 
 
 def _context(task):
@@ -235,12 +254,13 @@ def status(state,billing,*,mode='ACTUAL'):
     runs=[Ledger._decode(e['payload']) for e in snap['events'] if e['kind']=='manager_run']
     return dict(schema='pi-manager-status-v1',mode=mode,state_sha256=snap['sha256'],tasks=[dict(
         task_id=t['payload']['task_id'],priority=t['payload']['priority'],request_sha256=t['payload']['request_sha256'],
+        resolution='abandoned' if _resolved(rows,_dispatch_id(t)) else None,
         state='cancelled' if rows.get(t['operation_id']+':cancel',{}).get('status')=='done' else 'registration_pending' if t['status']!='done' else rows.get(_dispatch_id(t),{}).get('status','queued')) for t in tasks],
         dispatches=[dict(task_id=r['payload']['task_id'],status=r['status'],mode=mode,
             elapsed_ms=(r.get('evidence') or {}).get('elapsed_ms'),
             measurement='measured' if (r.get('evidence') or {}).get('elapsed_ms') is not None else 'unknown') for r in dispatches],
         runs=runs,metrics=dict(cancelled_tasks=sum(r['kind']=='manager_cancel' and r['status']=='done' for r in rows.values()),registered_tasks=sum(t['status']=='done' for t in tasks),dispatch_claims=len(dispatches),
-            outcomes=counts,recorded_runs=len(runs),reconciliation_stops=sum(r['reason']=='reconciliation_required' for r in runs),
+            outcomes=counts,abandoned_tasks=sum(_resolved(rows,_dispatch_id(t)) for t in tasks),unresolved_dispatches=len(_unresolved(rows)),recorded_runs=len(runs),reconciliation_stops=sum(r['reason']=='reconciliation_required' for r in runs),
             model_attempts=None,known_cost_microyuan=None,model_measurement='not_collected_by_queue'))
 
 
@@ -304,7 +324,9 @@ def run(state,billing,*,max_tasks=20,seconds=3600,cancel=None,mode='ACTUAL',exec
                 reason=stop()
                 if reason:final='blocked';break
                 _,_,rows,tasks,_=_snapshot(state,billing,mode)
-                pending=[r for r in rows.values() if r['kind']=='iteration_stage' and r['status'] in ('pending','uncertain')]
+                if any(r['kind']=='manager_reconciliation' and r['status']=='pending' for r in rows.values()):
+                    final='uncertain';reason='reconciliation_incomplete';break
+                pending=_unresolved(rows)
                 if pending:final='uncertain';reason='reconciliation_required';break
                 if any(r['kind']=='manager_cancel' and r['status']=='pending' for r in rows.values()):
                     final='blocked';reason='cancellation_incomplete';break

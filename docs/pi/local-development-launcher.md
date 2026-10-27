@@ -186,3 +186,17 @@ python -m ops.pi.package_baseline --request /absolute/private/baseline-request.j
 ```
 
 种子JUnit是明确构造的合成观察，不能算生产发现；实际运行的checker分别验证失败、绿色和运行错误。再次真实付费接线仍须新身份、原账本新检查点和新独立审查，不能重放旧审批。
+
+## 选择阶段已停止任务的核对与放弃
+
+`python -m ops.pi.selection_abandonment --request /私有/abandonment.json` 默认只读，不连接Docker或修改状态。请求严格为 `schema: pi-selection-abandonment-v1`、`state_path`、`billing_path`、`task_id`、全新 `root`；使用原manager与原费用账本，文件600、父目录700、普通单链接。它检查原登记请求、selection/catalog/模板/独立入口审查、native invocation/result、仅有cycle和analysis的control图、原会话与RPC、前后结算快照及开发目录。
+
+本入口只覆盖已停止、协议未验证、没有工具或开发执行的ACTUAL选择阶段。会话必须是原system/user/assistant三条纯文本消息，RPC的原消息、settled和清队列/abort确认严格一致；流式事件或metadata中的工具节点也拒绝。当前原费用账本必须等于原结算后快照，唯一新model-attempt已done/usage_known，历史operations/events前缀和旧unknown完整保留。policy/credential为原SHA且调用关闭，所有开发输出不存在、prepared为空。缺证据、其他阶段、未知费用、额外尝试、输出变化或未完成清理均不能放弃。
+
+`--audit` 显式只读连接固定本地Docker daemon，确认精确所属container ID不存在、operation标签无剩余，再生成私有 `audit.json` 与 `review-request.json`；不创建/停止/删除容器，不调用模型。审计目录在写入前与全部原输入/输出、账本和锁进行角色隔离。报告只存指纹、身份、计数及核对事实，原模型文本和凭据正文不复制。
+
+独立审查者核对后在另一个600文件写 `pi-selection-abandonment-review-v1`：固定 `source: independent_review`、`verified: true`、`result: approved`、独立 `reviewer`、审计的 `audit_sha256`、`task_binding`、`dispatch_sha256`、`billing_sha256` 和 `outcome: abandoned`。入口不会生成审批。调用 `--apply --review /私有/独立审查.json` 时重新核对全部原事实和当前资源，在原manager锁内追加一条reconciliation intent/receipt；原dispatch、费用及control记录不变，旧模型输出不采纳。
+
+新核对意图只能在审计生成后600秒内开始。持久授权已写入而完成回执中断的pending，只能用相同报告/审查和重新确认的全部事实完成原写回；不会延长模型许可或重跑旧任务。pending继续冻结队列。已完成申请只读幂等返回；报告/审查丢失、替换、链接或其他未知dispatch仍会阻止恢复。run/apply共用原manager锁。
+
+`manager status` 保留旧任务 `state: uncertain`、原 `outcomes.uncertain`，另标 `resolution: abandoned`，并单列 `abandoned_tasks` 与 `unresolved_dispatches`。放弃不能算成功。下一项仍须全新cycle/run身份、当前runtime和原费用检查点、原选择/开发两阶段独立审批，并在同一原manager接续；不能删旧任务、换队列或复用旧批准。

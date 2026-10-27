@@ -1,0 +1,13 @@
+# Pi 选择阶段冻结任务的追加式核对与放弃
+
+本轮仅处理ACTUAL任务在选择阶段返回uncertain、尚未进入开发的已停止执行。用户已授权连续开发、现有凭据外发、真实有限运行、阶段提交与推送；仍不合main、部署或自动采纳。旧receipt、原费用账本和原控制账本都不修改。放弃不等于成功，也不认可旧模型输出。
+
+宿主从manager登记的原请求派生全部路径，重新检查请求SHA、selection/templates/review/catalog与native invocation、cycle结果和两条control intent的完整关系；control只允许cycle与analysis两条记录，prepared必须空且所有开发输出均不存在。读取原selection产物、前后费用快照、model_posts、cleanup及所属operation，确认唯一新尝试已done/usage_known，原operations及events前缀完整、历史unknown未释放，当前原费用账本必须等于结算后快照。policy/credential必须匹配原SHA且调用关闭。旧protocol_failed不清除，不将旧输出升级为合格。
+
+audit默认前检查只读，不连接Docker；显式生成审计时核对固定本地daemon身份、精确container ID不存在及operation标签无剩余。最多一个selection容器，Docker单次超时15秒；不启动/停止/删除容器，不调用模型。证据报告只含身份、SHA、计数和核对事实，原始frame/prompt/凭据不复制到报告。新私有目录与所有原输入/输出、账本及锁相互隔离，写入前完成角色检查。报告600、目录700、单链接。
+
+独立外部审查绑定审计SHA、原任务/dispatch和当前账本指纹；新核对意图须在10分钟内开始；已持久保存有效授权而写回中断的pending，可在重新核对同一原始证据和当前资源后完成原写回，不能借此重新执行模型或更换审查。apply持有manager原运行锁，复验全部事实与Docker、费用检查点，再追加一条manager reconciliation intent/receipt。原dispatch仍uncertain；新resolution为abandoned，只表示旧任务不可再执行、已核对可进入下一项。中途崩溃留下pending resolution时仍冻结，重入必须重新验证同一证据；已完成请求只读幂等返回。并发run/apply互斥；不提供修改旧状态或新的队列绕过入口。
+
+manager恢复时验证resolution证据与审查的固定文件、原任务/dispatch绑定；损坏、丢失、模式不符或伪造证据停止。status分开报告raw outcome、abandoned与unresolved；raw uncertain分母保留。只有已核对的目标dispatch从阻塞集合排除，其他未知仍冻结；新任务仍需新身份、runtime、账本检查点和原两阶段审批。新登记不接受尚未核对的旧dispatch。
+
+验证：TDD覆盖费用未知/历史漂移、缺开发未开始证明、容器仍存活、daemon错、路径/硬链接、审查失效/账本变化、写回崩溃与恢复、原record不变、模式与并发互斥。一次独立最终代码审查、作者针对性红绿修复、全Pi/Node及远程四项门禁；在原真实冻结队列核对放弃并多进程确认零重放，再用全新身份和独立审批验证真实合成任务。失败全部保留，费用/样本各自分母，不报未测效率百分比。
