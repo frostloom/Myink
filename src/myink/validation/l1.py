@@ -682,14 +682,20 @@ class L1Validator:
         names = {k: v for k, v in names.items() if names_count.get(k) == 1}
         if not rules:
             return findings
+        # Registered Character.name values are the only valid actor identities;
+        # build literal, longest-first alternatives so longer, Latin or
+        # punctuation-bearing names are matched exactly instead of guessed.
+        actor_alts = "|".join(
+            re.escape(nm) for nm in sorted(names, key=lambda s: (-len(s), s)) if nm)
+        actor_pat = ("(?:" + actor_alts + ")") if actor_alts else None
         use_re = re.compile(
-            r"(?P<actor>[\u4e00-\u9fff]{1,6}?)(?P<adv>不过|只有|仍是|仍为)"
+            r"(?P<actor>" + (r"(?:\u4ed6|" + actor_alts + r")" if actor_alts else r"\u4ed6") + r")(?P<adv>不过|只有|仍是|仍为)"
             r"(?P<realm>" + "|".join(re.escape(r) for r in known_realms) + r")期，"
             r"(?:竟)?(?:施展出|施展)"
             r"(?:(?P<req>" + "|".join(re.escape(r) for r in known_realms) + r")期才可动用的)?"
             r"[\u201c\u300c\"]?(?P<ability>[^\u3002\uff01\uff1f\n\s\u201d\u300d\"，,]{2,24}?)[\u201d\u300d\"]?(?=[，,。！？；\s]|$)")
         cost_re = re.compile(
-            r"(?P<actor>[\u4e00-\u9fff]{1,6}?)(?:以十年寿元为代价|遭到严重反噬)"
+            r"(?P<actor>" + (actor_pat or r"(?!)") + r")(?:以十年寿元为代价|遭到严重反噬)"
             r"|(?P<pron>\u4ed6)(?:以十年寿元为代价|遭到严重反噬)")
         neg_seg = re.compile(r"(没有|未|不曾|未曾|无需|不用|并非)(?:遭到|遭|付出|消耗)|若|如果|想起当年|当日")
         cache: dict[uuid.UUID, tuple[str | None, int]] = {}
@@ -773,6 +779,18 @@ class L1Validator:
                                 continue
                             if ability and ab_lo <= cost.start() < use_end:
                                 continue
+                            # The cost subject must start a clause: at position 0
+                            # or after whitespace or an explicit clause
+                            # delimiter. Otherwise the match is an unanchored
+                            # suffix of an unknown longer actor (\u8001\u6797\u781a,
+                            # XLinYan, \u5176\u4ed6) and cannot attribute cost.
+                            if cost.start() > 0:
+                                prev_ch = s2[cost.start() - 1]
+                                if not (
+                                    prev_ch.isspace()
+                                    or prev_ch in "\uff0c,\uff1b;\u3002\uff01\uff1f!?\uff1a:\u3001"
+                                ):
+                                    continue
                             tail = s2[use_end:cost.start()]
                             if neg_seg.search(tail[-12:] or ""):
                                 continue
