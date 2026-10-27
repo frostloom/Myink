@@ -140,8 +140,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # Offline tests import Myink feedback, models and provenance helpers.
+      # Install the same locked package as the Python job; no services or paid calls.
       - name: Install offline test dependencies
-        run: pip install pytest httpx
+        run: pip install -e '.[dev]' -c docker/constraints.txt
       - name: Offline control tests (no business services or model calls)
         run: python -m pytest ops/pi/tests/ -q -m 'not pi_lab and not pi_live'
       - name: Pi syntax check
