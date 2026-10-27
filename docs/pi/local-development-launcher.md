@@ -155,3 +155,13 @@ python -m ops.pi.package_baseline --request /absolute/private/baseline-request.j
 可先用 `python -m ops.pi.cycle_bundle --request /绝对路径/bundle-request.json --freeze` 机械生成配置包。请求 schema 为 `pi-cycle-bundle-v1`，包含新建私有 `root`、`cycle_id`、`selection_run_id`、已固定 `template_path/template_sha256`、合格隔离基线 `outcome_path/outcome_sha256`、上述两个期限字段。默认不带 `--freeze` 只检查；只接受与模板源、测试、文件范围和复现结果完全一致的单任务目录。它复用宿主编写的 Plan 和开发模板，不把模型文本变成路径或权限。
 
 独立审查者读取生成的 `selection-review-request.json` 与实际输入，在指定 `selection-review.json` 写入绑定授权摘要的审查结果。再执行 `python -m ops.pi.cycle_bundle --request /绝对路径/bundle/bundle.json --seal`，重新验证原请求、模板、基线、目录及审查，通过完整入口只读检查后排他发布 `cycle.json`。原零审查草稿保留，实际入口引用单独的 reviewed 配置。之后才显式执行 `local_cycle --request .../cycle.json --execute`。开发审查在选题后按最新账本再次独立完成；配置生成工具不生成任何批准。
+
+### 持久管理器与最新账本收件箱
+
+`python -m ops.pi.manager --state /私有目录/manager.sqlite --billing /原费用账本/ledger.sqlite init` 显式初始化独立600状态文件；父目录须700。`status` 默认只读，不创建文件/锁/WAL，展示任务、逐任务计时（崩溃为unknown）、批次记录及明确模式。原费用策略、审批与账本不由管理器修改。
+
+`enqueue --task-id ID --request /已独立封存/cycle.json --sha256 SHA --priority 0` 只登记固定请求；同身份重复登记不重新执行，换内容/优先级拒绝。`run --max-tasks 20 --seconds 3600` 串行有限分派；`cancel --task-id ID --reason 原因` 仅能撤销从未开始的任务，不能用来解除未知执行。pending/uncertain必须先对账，重启不猜成功。
+
+真实请求的检查点会被前轮费用更新，因此ACTUAL只保留一个封存就绪任务。后续任务由可信宿主在结算后按最新原账本重新审查/封存，再向独立700目录发布600的 `*.task.json`：`schema=pi-manager-admission-v1`、`task_id`、`request_path`、`request_sha256`、`priority`、`mode=ACTUAL`。在 `run` 加 `--inbox /私有目录/inbox --idle-seconds 600` 可在同一有界批次等待下一份已审查请求；不能靠改旧SHA、复用签名或复制费用账本绕过检查。
+
+管理器没有上游Pi核心修改、自动gold、自动采纳或部署权限。计数 `dispatch_claims` 是持久意图，不是HTTP调用或扣费；未采集值为null，不能写成0。完整的简历指标口径见[工程指标台账](engineering-metrics.md)。

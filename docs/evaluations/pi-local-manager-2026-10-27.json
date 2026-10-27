@@ -1,0 +1,25 @@
+{
+  "schema": "pi-manager-acceptance-v1",
+  "upstream_pi_core_modified": false,
+  "related_tests_passed": 54,
+  "pi_tests_passed": 2716,
+  "pi_tests_deselected": 19,
+  "independent_review": {
+    "original_approved": false,
+    "p1": 1,
+    "p2": 3,
+    "author_tdd_fixes": 4
+  },
+  "simulation": {
+    "scenarios": 5,
+    "independent_process_starts": 17,
+    "restart_observations": 9,
+    "extra_fixture_effects_on_restarts": 0,
+    "evidence_sha256": "2a270802687d29c69f114f61b45ee988d9a2e54d11674784c213c270366de976"
+  },
+  "real_execution_status": "in_progress",
+  "paired_efficiency_improvement": null,
+  "production_availability": null,
+  "merged_to_main": false,
+  "deployed": false
+}
