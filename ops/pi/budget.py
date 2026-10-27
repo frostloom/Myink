@@ -468,6 +468,11 @@ def reserve(ledger: Ledger, scope_id: str, request: Record, policy: Policy, *, a
     payload = dict(scope_id=scope_id, reserved_microyuan=amount, deadline=permit.deadline,
                    prices=dict(policy.prices), input_token_bound=policy.input_token_bound, max_tokens=tokens)
     with ledger.transaction() as connection:
+        from .state_custody import guard, CustodyDenied
+        try:
+            guard(connection,ledger.path)
+        except CustodyDenied as exc:
+            raise BudgetDenied(str(exc)) from exc
         if analysis_slot is not None:
             metadata, run_deadline = analysis_slot.authorize(connection, ledger, request, policy, amount)
             if run_deadline is not None:
