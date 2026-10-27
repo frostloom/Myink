@@ -130,9 +130,13 @@ def _host(c,image):
                      image_id=c[image],operation_id=str(uuid.uuid4()))
 
 
-def _cleanup(host):
+def _cleanup(host, *, on_removed=None):
     host.reconcile()
-    result=[host.cleanup(cid) for cid in list(host.owned)]
+    result=[]
+    for cid in list(host.owned):
+        receipt=host.cleanup(cid)
+        result.append(receipt)
+        if on_removed is not None:on_removed(receipt)
     require(not host.pending and all(v['removed'] for v in result),'owned cleanup incomplete')
     host.reconcile()
     require(not host.pending and not host.owned,'owned containers remain')
@@ -156,9 +160,7 @@ class OwnedHosts:
 
     def cleanup(self,host):
         try:
-            result=_cleanup(host)
-            self.history.extend(result)
-            return result
+            return _cleanup(host,on_removed=self.history.append)
         except BaseException:
             self.failed=True;self.cancel.set()
             raise
@@ -431,6 +433,7 @@ def execute(config_path,*,transport=None,cancel=None,expected_authorization_sha2
             timer.cancel()
             try: cleanup=owners.finish()
             except Exception as exc:
+                cleanup=list(owners.history)
                 result['cleanup_failure_class']=type(exc).__name__
                 import traceback
                 write('cleanup-failure-private.json',dict(operation_id=host.operation_id,traceback=traceback.format_exc()))

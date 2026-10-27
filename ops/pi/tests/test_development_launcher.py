@@ -110,11 +110,15 @@ def test_checker_cleanup_failure_remains_fatal_after_later_cleanup(monkeypatch):
     owners=launcher.OwnedHosts(cancel,lambda *a:None)
     host=type('Host',(),{'operation_id':'checker'})()
     owners.add(host)
-    def fail(_):raise RuntimeError('cleanup failed')
+    def fail(_,**kwargs):raise RuntimeError('cleanup failed')
     monkeypatch.setattr(launcher,'_cleanup',fail)
     with pytest.raises(RuntimeError): owners.cleanup(host)
     assert cancel.is_set() and owners.failed
-    monkeypatch.setattr(launcher,'_cleanup',lambda _: [dict(removed=True)])
+    def removed(_,*,on_removed=None):
+        receipt=dict(removed=True)
+        if on_removed is not None:on_removed(receipt)
+        return [receipt]
+    monkeypatch.setattr(launcher,'_cleanup',removed)
     assert owners.finish()==[dict(removed=True)]
     assert owners.failed
 

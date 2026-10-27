@@ -84,6 +84,7 @@ class ProbeHost:
         self.daemon_id, self.image_id, self.operation_id = daemon_id, image_id, operation_id
         self.owned = {}
         self.pending = {}
+        self.removals = {}
 
     def _call(self, *args, check=True, timeout=15):
         result = subprocess.run(self.command + list(args), capture_output=True, text=True, timeout=timeout)
@@ -187,18 +188,57 @@ class ProbeHost:
             raise RuntimeError('owned PID namespace not stopped')
         return info
 
+    def _removed_after_attempt(self, cid):
+        if cid not in self.removals:
+            raise RuntimeError('owned removal intent required')
+        self._daemon()
+        found = self._call('inspect',cid,check=False)
+        if found.returncode == 0:
+            return False
+        missing = (found.returncode == 1 and found.stdout.strip() in ('','[]')
+            and re.fullmatch(r'(?:error(?: response from daemon)?:\s*)?no such (?:object|container):\s*'
+                + re.escape(cid),found.stderr.strip(),re.IGNORECASE))
+        if not missing:
+            raise RuntimeError('container absence unconfirmed')
+        self._daemon()
+        remaining = self._call('ps','-a','--no-trunc','--filter','label='+LABEL+'='+self.operation_id,
+                               '--format','{{.ID}}').stdout.split()
+        if cid in remaining or any(ref not in self.owned for ref in remaining):
+            raise RuntimeError('owned removal contradicted by labels')
+        self._daemon()
+        return True
+
+    def _forget_removal(self, cid, *, reconciled=False):
+        result = self.removals.pop(cid)
+        result['removed'] = True
+        del self.owned[cid]
+        if reconciled:
+            result['removal_reconciled'] = True
+        return result
+
     def cleanup(self, cid):
+        if cid not in self.owned:
+            raise ValueError('unowned container reference')
+        if cid in self.removals and self._removed_after_attempt(cid):
+            return self._forget_removal(cid,reconciled=True)
         info = self.stop(cid)
-        # Recheck ownership immediately before removal, never rm --force.
+        # Preserve authenticated stopped state before an rm client can time out.
         self.inspect(cid)
-        self._call('rm',cid)
+        if type(info['State']['ExitCode']) is not int:
+            raise RuntimeError('stopped exit code required')
+        self.removals[cid] = dict(container_id=cid,stopped=True,exit_code=info['State']['ExitCode'])
+        try:
+            self._call('rm',cid)
+        except subprocess.TimeoutExpired:
+            if self._removed_after_attempt(cid):
+                return self._forget_removal(cid,reconciled=True)
+            raise
         self._daemon()
         remaining = self._call('ps','-a','--no-trunc','--filter','label='+LABEL+'='+self.operation_id,
                                '--format','{{.ID}}').stdout.split()
         if cid in remaining:
             raise RuntimeError('owned container removal unconfirmed')
-        del self.owned[cid]
-        return dict(container_id=cid,stopped=True,removed=True,exit_code=info['State']['ExitCode'])
+        return self._forget_removal(cid)
 
     def capture(self, cid, *, seconds, output_limit):
         if (type(seconds) not in (int,float) or not math.isfinite(seconds) or not 0<seconds<=30

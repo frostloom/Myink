@@ -28,7 +28,7 @@ Files: create ordering, numeric, parsing fixture directories, each managed_names
 
 ### Task2: real manager closed loops
 
-- [ ] Preregister three tasks and bounds; serially freeze bundles from current checkpoint, obtain independent selection review, seal and publish to original manager inbox.
+- [x] Preregister three tasks and bounds; serially freeze bundles from current checkpoint, obtain independent selection review, seal and publish to original manager inbox.
 - [ ] For each selected task obtain fresh prepared-development review; let Pi repair and authenticate real fixed checker plus session/RPC. Retain null/failed/incomplete tasks, stop uncertain; no replay.
 - [ ] Audit canonical fees/prefixes, old manager records, source/gold, original closed policy and all resources. Three cold CLI recoveries must produce zero new dispatch/calls/fees.
 
@@ -43,3 +43,5 @@ Final: minor (deferred): ordering input preservation coverage is narrow on order
 Final: minor (deferred): numeric equality cases do not explicitly assert integer return type; record this finite-check limitation, do not claim exhaustive numeric contract validation.
 
 Implementation verification complete before actual entry reviews: three Docker baselines each5cases/2assertion failures/0errors/skips; actual model calls remain governed by fresh independent FileReviews.
+
+Actual batch stopped after ordering dispatch, no authenticated development successes; numeric/parsing unstarted. Four known calls11601microyuan,0newunknown, two entry reviews; raw5/5 checker output not accepted as phase success. Failure fallback retained all three rows; post-stop6operationlabels/5knownCIDs absent, no cold recovery or paid retry. Original Task2 full-success and cold-recovery steps remain unchecked, not relabelled complete. Newly observed cleanup bug addressed in separate late-removal plan, offline only.
