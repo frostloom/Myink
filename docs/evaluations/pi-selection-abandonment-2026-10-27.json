@@ -72,7 +72,13 @@
     "node_tests_passed": 54,
     "related_tests_passed": 86,
     "product_suite_run_locally": false,
-    "core_ci": "pending"
+    "core_ci": {
+      "run_id": 40461045745,
+      "url": "https://github.com/frostloom/Myink/actions/runs/40461045745",
+      "head_sha": "dbb6fcbcc165343d17294e185d77621adb44c528",
+      "jobs_passed": 4
+    },
+    "product_suite_remote_passed": true
   },
   "efficiency_improvement_percent": null,
   "production_reliability": null,

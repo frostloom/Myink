@@ -29,5 +29,11 @@
 
 - [x] 1. `ops/pi/selection_abandonment.py`证据检查、审计/独立审查请求；`ops/pi/tests/test_selection_abandonment.py`先RED后GREEN，包含真实图的合成fixture及拒绝分支。
 - [x] 2. manager追加resolution、幂等/锁/恢复/status与新登记门禁；同测试加pending崩溃/篡改/队列恢复，RED→GREEN。
-- [ ] 3. 独立最终审查、针对性修复；核对原真实冻结任务、追加放弃、独立进程恢复；新runtime/新身份/原账本新审查后执行一次合成闭环，记录所有失败及费用。
-- [ ] 4. 全Pi/Node、指标与边界文档、阶段提交推送并等待远程4门禁，完整交付与续接记录。
+- [x] 3. 独立最终审查、针对性修复；核对原真实冻结任务、追加放弃、独立进程恢复；新runtime/新身份/原账本新审查后执行一次合成闭环，记录所有失败及费用。
+- [x] 4. 全Pi/Node、指标与边界文档、阶段提交推送并等待远程4门禁，完整交付与续接记录。
+
+## Verified outcome
+
+One independent P1 finding was reproduced with six RED rejection cases and fixed by the author. Final verification: 86 related, 2812 Pi passed / 19 experimental deselected, 54 Node passed. Original task was independently reviewed and abandoned append-only; original manager rows/events prefix, original control and billing remained unchanged. Three fresh processes resumed without replay. NFC selected null/observe and is retained; a different casefold task with new identity/checkpoint/reviews completed development and five fixed checks. Total: seven real requests, 19973 microyuan known estimated cost, zero new unknown. Another three process restarts made no requests. Seven containers/operations were directly absent. No candidate adoption, main merge or deployment.
+
+Core dbb6fcbc passed all four remote gates in run40461045745. Frozen source closure7b85d979 matches the code. Public evidence is in docs/evaluations/pi-selection-abandonment-2026-10-27.{md,json}; final evidence push CI is verified separately.

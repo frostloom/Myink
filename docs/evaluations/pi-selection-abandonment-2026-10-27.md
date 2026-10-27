@@ -30,3 +30,5 @@ NFC协议已验证，但模型把失败基线误读为无可选任务，原样�
 公开源码中的合成fixture和测试可复现核对/中断/恢复边界；CLI见[本机开发入口](../pi/local-development-launcher.md#选择阶段已停止任务的核对与放弃)。私有证据在`.local/pi-selection-abandonment-20261027`，其原manager仍在上一阶段目录。未本机重跑产品服务全套；远程门禁结果在JSON与GitHub运行中记录。未合main、部署、启用服务器自治或修改上游Pi核心。未测配对效率改善和生产可靠性。
 
 后续应加强选择阶段对失败基线的语义理解，并对其他中断阶段设计分别限定的核对证据；未知费用和已进入开发的异常仍停下，不套用本profile。
+
+Core verification: [all four remote gates passed](https://github.com/frostloom/Myink/actions/runs/40461045745) for `dbb6fcbc`, including the fresh PostgreSQL suite, frontend, image builds and Pi offline/Node checks. The final evidence commit is checked separately.
