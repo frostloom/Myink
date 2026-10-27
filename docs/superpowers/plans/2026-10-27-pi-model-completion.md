@@ -31,3 +31,5 @@
 - [x] Verify canonical ledger/closed policy/product state unchanged, publish offline-only result, commit/push samePi branch and exactHEAD4CI. No real retry.
 
 Actual:25newcases23RED/2existingcontrols,84focusedGREEN,2906full/19deselected,Node54.0realmodels; original ledger/policy/manager/product unchanged and failedpilot retained. Independentreview record private; exact finalHEAD4CI checked afterpush.
+
+Ruling: final6e202159CI Pi/image/backend passed but frontend failed atFeedbackWidget.test.tsx96. One author-only post-review CI fix: deterministic pending-submit diagnostic proves global text query matchesTEXTAREA; replace with awaited historylist+within. Original8 and full457tests/lint/build passed, diagnostic removed; no product/dependency/timeout/skip change, no secondreview or modelcall. Preserve failedCI, check successor exactHEAD4gates.

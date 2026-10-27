@@ -69,5 +69,25 @@
     "Does not repair or approve the rejected Unicode candidate.",
     "Conservative per-tool followup reservation may reject batches needing fewer model calls.",
     "No production success-rate, general performance or financial-reliability claim."
-  ]
+  ],
+  "frontend_ci_author_fix": {
+    "original_head": "6e202159cd1632e8d52750b34f44ffd49219cabe",
+    "original_ci_run": 40491726745,
+    "original_ci": "failure in frontend; Pi/image/backend success",
+    "file": "web/src/components/FeedbackWidget.test.tsx",
+    "line_before_fix": 96,
+    "root_cause": "Global findByText matched the pending description TEXTAREA before history loading completed, so the test checked listFeedback too early.",
+    "deterministic_red": "Hold mocked submit promise unresolved: old history selector returns TEXTAREA rather than card paragraph.",
+    "fix": "Wait for history role=list and scope text lookup inside it with within; no product, timeout, skip or dependency-lock change.",
+    "targeted_tests_passed": 8,
+    "full_frontend_files_passed": 58,
+    "full_frontend_tests_passed": 457,
+    "lint_exit_code": 0,
+    "build_exit_code": 0,
+    "existing_warnings_retained": true,
+    "temporary_diagnostic_removed": true,
+    "author_ci_fix_after_independent_review": true,
+    "second_code_review": false,
+    "new_model_calls": 0
+  }
 }
