@@ -199,8 +199,11 @@ def test_explicit_empty_tools_disables_further_provider_tool_use():
     from myink.providers.anthropic import AnthropicProvider
     args=dict(model_id='test',max_tokens=100,temperature=None,json_mode=True,tools=[])
     assert DeepSeekProvider._request_kwargs([],disable_thinking=True,**args)['tool_choice']=='none'
-    anthropic=object.__new__(AnthropicProvider)
-    assert anthropic._payload([],stream=False,**args)['tool_choice']=={'type':'none'}
+    anthropic=AnthropicProvider(api_key="test-key", base_url="https://models.example.com/anthropic")
+    try:
+        assert anthropic._payload([],stream=False,**args)['tool_choice']=={'type':'none'}
+    finally:
+        anthropic._client.close()
 
 
 def test_manual_audit_captures_published_library_before_building_prompts(library,monkeypatch):

@@ -44,12 +44,26 @@ def test_planner_uses_platform_writer_default_not_user_writer(central_policy):
     assert make_user_chain('planner', uuid.uuid4()).chain == ['platform-pro']
 
 
-def test_backend_extract_ignores_user_planner_and_writer(central_policy):
+@pytest.mark.parametrize('role', ['writer', 'planner', 'extract', 'validator_l2', 'audit', 'summarize'])
+def test_each_role_honors_own_selection_and_platform_fallback(central_policy, role):
     config, selections = central_policy
-    selections.update(planner='custom:published', writer='custom:published', extract='custom:published')
-    assert make_user_chain('extract', uuid.uuid4()).chain == ['platform-pro']
-    config['model_routes']['extract'] = 'custom:published'
-    assert make_user_chain('extract', uuid.uuid4()).chain == ['user-selected']
+    selections.update({key: 'custom:published' for key in
+        ('writer', 'planner', 'extract', 'validator_l2', 'audit', 'summarize') if key != role})
+    assert make_user_chain(role, uuid.uuid4()).chain == ['platform-pro']
+    selections[role] = 'custom:published'
+    assert make_user_chain(role, uuid.uuid4()).chain == ['user-selected']
+    config['connections']['role-default'] = {
+        **config['connections']['default'], 'model': 'role-default'}
+    config['model_routes'][role] = 'custom:role-default'
+    assert make_user_chain(role, uuid.uuid4()).chain == ['user-selected']
+    selections.pop(role)
+    assert make_user_chain(role, uuid.uuid4()).chain == ['role-default']
+    for unavailable in ('custom:missing', 'custom:default'):
+        selections[role] = unavailable
+        assert make_user_chain(role, uuid.uuid4()).chain == ['role-default']
+    selections[role] = 'custom:published'
+    config['connections']['published']['enabled'] = False
+    assert make_user_chain(role, uuid.uuid4()).chain == ['role-default']
 
 
 def test_user_chain_without_any_platform_route_is_unconfigured(central_policy):

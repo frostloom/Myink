@@ -25,12 +25,14 @@ def test_environment_rejects_all_connection_writes(temp_user, items):
     assert exc.value.status_code == 403
 
 
-def test_environment_published_selection_and_legacy_redaction(temp_user, monkeypatch):
+@pytest.mark.parametrize('role', ['writer', 'planner', 'extract', 'validator_l2', 'audit', 'summarize'])
+def test_environment_published_selection_and_legacy_redaction(temp_user, monkeypatch, role):
     from myink import platform_configuration as pc
     from myink.providers.connections import pack_model_settings
     config = pc.empty_configuration()
     config['connections'] = {'published': {'name': 'Published', 'enabled': True, 'user_visible': True},
-                             'internal': {'name': 'Internal', 'enabled': True, 'user_visible': False}}
+                             'internal': {'name': 'Internal', 'enabled': True, 'user_visible': False},
+                             'disabled': {'name': 'Disabled', 'enabled': False, 'user_visible': True}}
     monkeypatch.setattr(pc, 'load_configuration', lambda: config)
     save_raw(temp_user, {'models': pack_model_settings({'writer': 'custom:legacy'}, {
         'legacy': {'name': 'Old', 'base_url': 'https://private', 'api_key_encrypted': 'cipher'}})})
@@ -39,11 +41,13 @@ def test_environment_published_selection_and_legacy_redaction(temp_user, monkeyp
     assert out['model_connections'] == []
     assert out['available_models'] == [{'id': 'custom:published', 'name': 'Published'}]
     assert 'private' not in repr(out)
-    out = put_environment(EnvironmentBody(model_routes={'writer': 'custom:published'}), user_id=temp_user)
-    assert out['model_routes'] == {'writer': 'custom:published'}
+    out = put_environment(EnvironmentBody(model_routes={role: 'custom:published'}), user_id=temp_user)
+    assert out['model_routes'] == {role: 'custom:published'}
+    assert get_environment(user_id=temp_user)['model_routes'] == {role: 'custom:published'}
     out = put_environment(EnvironmentBody(model_routes={}), user_id=temp_user)
     assert out['model_routes'] == {}
-    for routes in ({'writer': 'custom:internal'}, {'writer': 'custom:missing'}, {'extract': 'custom:published'}):
+    for routes in ({role: 'custom:internal'}, {role: 'custom:missing'},
+                   {role: 'custom:disabled'}, {'unsupported': 'custom:published'}):
         with pytest.raises(HTTPException) as exc:
             put_environment(EnvironmentBody(model_routes=routes), user_id=temp_user)
         assert exc.value.status_code == 400

@@ -31,15 +31,20 @@ def test_saved_empty_and_invalid_credentials_fail_closed(policy):
     assert {c['reason'] for c in readiness()['checks']} == {'model_unconfigured'}
 
 
-def test_effective_selection_and_internal_role_fallback(policy):
+@pytest.mark.parametrize('role', ['writer', 'planner', 'extract', 'validator_l2', 'audit', 'summarize'])
+def test_effective_role_selection_and_unpublished_fallback(policy, role):
     from myink.platform_readiness import readiness
     policy['connections']['bad'] = {**policy['connections']['good'], 'model': ''}
-    result = readiness(selections={'writer': 'custom:bad', 'extract': 'custom:bad'})
+    result = readiness(selections={role: 'custom:bad'})
     checks = {c['role']: c for c in result['checks']}
-    assert not checks['writer']['ready']
-    assert checks['extract']['ready']  # Internal roles never use user writer selection.
+    assert checks[role] == {'role': role, 'ready': False, 'reason': 'model_invalid'}
+    assert all(check['ready'] for key, check in checks.items() if key != role)
+    # An unavailable personal choice falls back to platform routes, never siblings.
     policy['connections']['bad']['user_visible'] = False
-    assert readiness(selections={'writer': 'custom:bad'})['ready']
+    assert readiness(selections={role: 'custom:bad'})['ready']
+    policy['connections']['bad'].update(user_visible=True, enabled=False)
+    assert readiness(selections={role: 'custom:bad'})['ready']
+    assert readiness(selections={role: 'custom:missing'})['ready']
     policy['connections']['good']['enabled'] = False
     assert not readiness()['ready']
 

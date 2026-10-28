@@ -70,8 +70,11 @@ def test_every_phase_replacement_preserves_its_fixed_contract():
 
 
 def test_provider_receives_edited_messages():
-    from myink.providers.base import FallbackChain, ModelResponse
-    class RecordingProvider:
+    from myink.providers.base import FallbackChain, ModelProvider, ModelResponse
+    class RecordingProvider(ModelProvider):
+        def name(self):
+            return "recording"
+
         def generate(self, messages, **kwargs):
             self.messages = messages
             return ModelResponse(content='正文', model_id='stub')
@@ -96,9 +99,12 @@ def test_composed_revision_replaces_both_phases():
 
 def test_batch_planner_provider_uses_published_business_and_fixed_json():
     from myink.workflow.batch_graph import _batch_plan_messages, _BATCH_PLAN_PROMPT
-    from myink.providers.base import FallbackChain, ModelResponse
+    from myink.providers.base import FallbackChain, ModelProvider, ModelResponse
     assert _BATCH_PLAN_PROMPT == prompts.SYSTEM_BATCH_PLAN
-    class RecordingProvider:
+    class RecordingProvider(ModelProvider):
+        def name(self):
+            return "recording"
+
         def generate(self, messages, **kwargs):
             self.messages = messages
             return ModelResponse(content='{"chapters":[]}', model_id='stub')
@@ -180,12 +186,15 @@ def test_role_supplement_publication_lifecycle_reaches_provider(monkeypatch):
     from sqlalchemy.orm import Session
     from myink.models.writing_resource import WritingResource, WritingResourceRevision, WritingResourcePublication
     from myink import providers, writing_resources as svc
-    from myink.providers.base import FallbackChain, ModelResponse
+    from myink.providers.base import FallbackChain, ModelProvider, ModelResponse
     from myink.writing_resource_schemas import validate_resource_body
     config = {'version':0, 'connections':{}, 'model_routes':{}, 'prompts':{'writer':'当前全局值不应污染冻结调用'}}
     monkeypatch.setattr('myink.platform_configuration.load_configuration', lambda:config)
     monkeypatch.setattr('myink.platform_readiness.require_ready', lambda *a, **k:None)
-    class RecordingProvider:
+    class RecordingProvider(ModelProvider):
+        def name(self):
+            return "recording"
+
         def generate(self, messages, **kwargs):
             self.messages = messages
             return ModelResponse(content='正文', model_id='stub')

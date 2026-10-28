@@ -40,3 +40,7 @@
 浏览器证据：`/tmp/myink-release-final-matrix`、`/tmp/myink-smoke-role-locator-fixed`、`/tmp/myink-release-firefox-smoke`、`/tmp/myink-release-webkit-smoke`、`/tmp/myink-release-webkit-workspace-retry`。最终独立复审无剩余可操作发现。
 
 提交范围明确排除原有未跟踪 `.DS_Store` 与 `docs/work-items/vue3-migration-20261025/brief.pre-merge-local.md`。本地通过针对性后端与完整前端；远程全量CI仍须在推送后确认，线上发布不得提前。
+
+## 远程 CI 首轮修正
+
+提交 d23fbef2 的 CI 40653470284：前端完整门禁（含三引擎矩阵）与镜像构建通过；Python 2124通过、7失败、1跳过、5预期失败。7项均已本地复现：3项仍断言旧的两角色用户权限，4项模型替身未实现既有Provider接口或绕过初始化。修正测试契约，不改产品代码；六角色参数化补齐隐藏/禁用/不存在模型拒绝与独立回退。相关52项、Provider/提示词44项通过，独立复审无发现。必须待新提交全量CI通过再部署。
