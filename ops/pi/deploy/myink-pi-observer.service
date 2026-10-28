@@ -3,7 +3,7 @@ Description=Myink Pi fixed read-only metadata observer
 After=docker.service
 Requisite=docker.service
 ConditionPathExists=/home/ubuntu/myink-pi-managed/config/observer.env
-ConditionPathExists=/home/ubuntu/myink-pi-managed/config/observer.json
+ConditionPathExists=/home/ubuntu/myink-pi-managed/config/observer/observer.json
 
 [Service]
 Type=oneshot
@@ -13,7 +13,7 @@ SupplementaryGroups=docker
 WorkingDirectory=/home/ubuntu/myink-pi-managed
 Environment=PYTHONDONTWRITEBYTECODE=1
 EnvironmentFile=/home/ubuntu/myink-pi-managed/config/observer.env
-ExecStart=/usr/bin/flock --nonblock --no-fork /home/ubuntu/myink-pi-managed/control/observer.lock /usr/bin/python3 -I -S -B ${PI_OBSERVER_ENTRYPOINT} --config /home/ubuntu/myink-pi-managed/config/observer.json --config-sha256 ${PI_OBSERVER_CONFIG_SHA256}
+ExecStart=/usr/bin/flock --nonblock --no-fork /home/ubuntu/myink-pi-managed/control/observer.lock /usr/bin/python3 -I -S -B ${PI_OBSERVER_ENTRYPOINT} --config /home/ubuntu/myink-pi-managed/config/observer/observer.json --config-sha256 ${PI_OBSERVER_CONFIG_SHA256}
 Restart=no
 TimeoutStartSec=120
 TimeoutStopSec=10

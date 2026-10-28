@@ -72,3 +72,10 @@ def test_timer_is_bounded_and_separate_from_paid_manager():
     timer=unit('myink-pi-observer.timer')['Timer']
     assert timer['OnBootSec']=='120' and timer['OnUnitInactiveSec']=='15min'
     assert timer['Unit']=='myink-pi-observer.service'
+
+
+def test_unit_uses_a_private_config_child_not_the_shared_root_owned_directory():
+    source=unit('myink-pi-observer.service')
+    path=ROOT+'/config/observer/observer.json'
+    assert source['Unit']['ConditionPathExists']==path
+    assert '--config '+path+' ' in source['Service']['ExecStart']

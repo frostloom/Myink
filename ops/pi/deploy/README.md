@@ -100,7 +100,9 @@ inaccessible. The trusted host's Docker group is root-equivalent authority; the
 model has no Docker or SQL capability. The host transport only executes its fixed
 PostgreSQL metadata query protocol under the dedicated NOLOGIN role.
 
-The service-readable JSON config is private0600, pinned by the exact SHA256 in a
+The service-readable JSON config is `config/observer/observer.json`, inside its
+own0700 Ubuntu-owned child directory of the root-owned shared config directory.
+The file is private0600, pinned by the exact SHA256 in a
 root-owned `config/observer.env` (`PI_OBSERVER_CONFIG_SHA256`). That environment
 also pins the root-owned entry point and `PI_OBSERVER_RUNTIME_SHA256`. Do not put
 keys, passwords, billing configuration or arbitrary commands in this config.
