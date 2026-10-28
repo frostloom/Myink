@@ -185,7 +185,7 @@ try {
     await select.selectOption('custom:published')
     assert.equal(await select.inputValue(), 'custom:published')
   }
-  for (const width of [1440, 390]) {
+  for (const width of [1440, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 960 })
     const bounds = await page.locator('body').evaluate(el => ({ scroll: el.scrollWidth, viewport: window.innerWidth }))
     assert.ok(bounds.scroll <= bounds.viewport + 1, JSON.stringify(bounds))

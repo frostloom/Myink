@@ -113,7 +113,7 @@ export const ProjectDetailView = defineComponent((props: {
                     ]), renderNode("p", {}, [
                         props.project.username, " · ", props.project.genre, " · ", creationStatusLabel(props.project.creation_status)
                     ])
-                ]), renderNode("div", {}, [
+                ]), renderNode("div", { class: styles.actionGroup }, [
                     renderNode(RefreshButton, { "onClick": chapters.retry }), renderNode("button", { "type": "button", "class": "btn btn-secondary", "onClick": context.retry }, ["刷新设定"])
                 ])
             ]), renderNode("nav", { class: styles.relatedLinks, 'aria-label': '作品关联记录' }, [

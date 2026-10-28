@@ -278,3 +278,7 @@ button.item {
     background: var(--rail-item-hover);
   }
 }
+
+.userRow { gap: var(--space-2); min-width: 0; }
+.user { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.userRow > :global(.btn) { flex: 0 0 auto; white-space: nowrap; }

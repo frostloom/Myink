@@ -71,7 +71,7 @@ try {
   browser = await launchBrowser()
   receipt.browserVersion = browser.version()
   receipt.indexSha256 = createHash('sha256').update(fs.readFileSync(path.join(dist, 'index.html'))).digest('hex')
-  for (const [name, viewport] of [['desktop', { width: 1440, height: 960 }], ['mobile', { width: 390, height: 844 }]]) {
+  for (const [name, viewport] of [['desktop', { width: 1440, height: 960 }], ['tablet', { width: 768, height: 960 }], ['mobile', { width: 390, height: 844 }], ['narrow', { width: 320, height: 740 }]]) {
     const page = await browser.newPage({ viewport })
     page.setDefaultTimeout(10000)
     page.on('pageerror', error => receipt.pageErrors.push(error.message))
@@ -110,6 +110,18 @@ try {
     await sections.nth(1).getByText('大纲 20', { exact: true }).waitFor()
     const first = await sections.nth(0).boundingBox(), second = await sections.nth(1).boundingBox()
     assert.ok(second.y >= first.y + first.height, 'Project context must follow the chapter list vertically')
+    const refresh = await page.getByRole('button', { name: '刷新当前视图', exact: true }).boundingBox()
+    const settings = await page.getByRole('button', { name: '刷新设定', exact: true }).boundingBox()
+    assert.ok(settings.x >= refresh.x + refresh.width + 7 || settings.y >= refresh.y + refresh.height + 7, 'Related actions need a visible gap even when wrapping')
+    assert.ok(settings.x + settings.width <= viewport.width, 'Refresh controls must stay inside the viewport')
+    receipt.checks.push(`${name}:project_actions_spaced_and_contained`)
+    for (const label of ['上一页', '下一页', '查看第一章全文']) {
+      const button = page.getByRole('button', { name: label, exact: true })
+      assert.equal(await button.evaluate(el => getComputedStyle(el).whiteSpace), 'nowrap', 'Compact action labels must stay horizontal')
+      const box = await button.boundingBox()
+      assert.ok(box.x >= 0 && box.x + box.width <= viewport.width)
+    }
+
     await page.screenshot({ path: path.join(output, `${name}-project.png`) })
     receipt.screenshots.push(`${name}-project.png`)
     await page.getByRole('button', { name: '查看第一章全文' }).click()

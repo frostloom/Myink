@@ -10,7 +10,7 @@
   flex: 1;
   min-width: 0;
   overflow: visible;
-  padding: var(--space-6) var(--space-6);
+  padding: var(--page-top) var(--page-gutter);
   max-width: var(--content-max);
 }
 
@@ -19,6 +19,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+  flex-wrap: wrap;
   margin-bottom: var(--space-5);
 }
 

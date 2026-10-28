@@ -1,7 +1,7 @@
 .page {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 40px 32px;
+  padding: var(--page-top) var(--page-gutter);
   color: var(--ink);
 }
 .pageHead,
@@ -13,6 +13,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  flex-wrap: wrap;
 }
 .pageHead h1 {
   margin: 0;
@@ -22,13 +23,13 @@
   color: var(--ink-muted);
 }
 .toolbar {
-  margin: 28px 0;
+  margin: 24px 0;
   flex-wrap: wrap;
 }
 .toolbar input:not([type="checkbox"]) {
   flex: 1;
   min-width: 200px;
-  max-width: 420px;
+  max-width: 540px;
 }
 .toolbar span {
   margin-right: auto;
@@ -84,7 +85,9 @@
 }
 .card footer {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid var(--line);
@@ -487,3 +490,13 @@
 
 .containedDialog { display:flex; flex-direction:column; overflow:hidden; box-sizing:border-box; }
 .containedDialog .dialogHead { position:static; flex-shrink:0; margin-bottom:16px; padding-top:0; }
+
+.toolbar { justify-content: flex-start; }
+.toolbar > button:last-child { margin-left: auto; }
+.cardHead, .resourceBadges, .resourceMeta { flex-wrap: wrap; }
+.card .actions { margin-top: auto; }
+@media (max-width: 640px) {
+  .toolbar input:not([type="checkbox"]) { flex-basis: 100%; max-width: none; min-width: 0; }
+  .pageHead > button { flex-shrink: 0; }
+  .actions > button { max-width: 100%; white-space: normal; }
+}
