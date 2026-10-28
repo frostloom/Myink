@@ -106,6 +106,6 @@ def publish_audit(c,material,result,at):
     audit=AuditStore(c['audit_path']);audit.append(c['run_id']+':review',record);audit.export(c['export_root'])
 
 
-def execute(config_path,*,transport=None,clock=None,expected_config_sha256=None):
+def execute(config_path,*,transport=None,clock=None,expected_config_sha256=None,cancel=None):
     from .no_tool_host import execute as run
-    return run(config_path,transport=transport,clock=clock,expected_config_sha256=expected_config_sha256)
+    return run(config_path,transport=transport,clock=clock,expected_config_sha256=expected_config_sha256,cancel=cancel)

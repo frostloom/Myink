@@ -23,7 +23,8 @@ def _contract(role):
     return sdk_review_launcher
 
 
-def execute(config_path,*,transport=None,clock=None,expected_config_sha256=None):
+def execute(config_path,*,transport=None,clock=None,expected_config_sha256=None,cancel=None):
+    require(cancel is None or not cancel.is_set(),'no-tool parent cancelled before claim')
     raw=path(config_path,private=True).read_bytes();c=strict_json(raw)
     require(c.get('mode') in ('ACTUAL','SIMULATED'),'explicit no-tool mode required')
     require(c['mode']!='ACTUAL' or transport is None and clock is None and expected_config_sha256 is not None,'ACTUAL forbids injected transport/clock and requires config pin')
@@ -35,6 +36,7 @@ def execute(config_path,*,transport=None,clock=None,expected_config_sha256=None)
         os.chmod(lock_path,0o600);fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         c,policy,material,permit,before,provenance=contract.prepare(config_path,clock=clock)
         require(digest(c)==frozen and file_hash(config_path)==config_sha,'no-tool config changed while locking')
+        require(cancel is None or not cancel.is_set(),'no-tool parent cancelled before claim')
         root=Path(c['root']);root.mkdir(mode=0o700);fd=os.open(root.parent,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
         try:os.fsync(fd)
         finally:os.close(fd)
@@ -44,11 +46,11 @@ def execute(config_path,*,transport=None,clock=None,expected_config_sha256=None)
             try:os.fsync(directory)
             finally:os.close(directory)
         write('intent.json',dict(role=c['role'],config_sha256=config_sha,input_sha256=contract.input_hash(c,material)))
-        cancel=PhaseCancel();limits=Limits(1,0,c['deadline_seconds'],cancel);owners=OwnedHosts(cancel,write);timer=Timer(c['deadline_seconds'],cancel.set);timer.daemon=True;timer.start()
+        cancel=PhaseCancel(cancel);limits=Limits(1,0,c['deadline_seconds'],cancel);owners=OwnedHosts(cancel,write);timer=Timer(c['deadline_seconds'],cancel.set);timer.daemon=True;timer.start()
         original=Path(c['policy_path']).read_bytes();bridge=None;after=None
         result=dict(schema='pi-no-tool-result-v1',role=c['role'],mode=c['mode'],run_id=c['run_id'],input_sha256=contract.input_hash(c,material),executable_approval=False,verified=False,execution_verified=False,contract_valid=False,closed_verified=False,cleanup=[],policy_restored=False,credential_unchanged=False,original_history_unchanged=False,new_attempts=0,new_unknown=0,known_cost_microyuan=0)
         try:
-            host=owners.add(_host(c,'image_id',provenance['machine']));write('manifest-private.json',dict(config=c,permit=permit,provenance=provenance));write('ledger-before-private.json',before)
+            limits.alive();host=owners.add(_host(c,'image_id',provenance['machine']));write('manifest-private.json',dict(config=c,permit=permit,provenance=provenance));write('ledger-before-private.json',before)
             initial=dict(model_token=uuid.uuid4().hex,model=policy.model,max_tokens=policy.max_tokens,system=contract.SYSTEM,prompt=contract.prompt(c,material),context_hash=contract.input_hash(c,material),config_hash=frozen,deadline=time.time()+max(0,limits.deadline-time.monotonic()))
             write('initial-private.json',initial)
             ledger=Ledger(Path(c['ledger_path']),existing=True);live=replace(policy,live_enabled=True);enabled=json.dumps(asdict(live),indent=2).encode()+b'\n'

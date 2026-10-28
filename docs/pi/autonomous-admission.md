@@ -265,3 +265,28 @@ Problem hypotheses are bounded untrusted audit text; test source, full commentar
 and sessions remain private. All acceptance in this section is SIMULATED/source
 acceptance. Original manager coordination, native checker/SDK acceptance, one
 whole-plan independent review and actual new-task handoff remain pending.
+
+## Reviewed handoff to original manager (source only)
+
+`manager_handoff.publish` requires a completed reproduction receipt whose exact
+paths match the independently reviewed template/dossier/baseline, and rechecks the
+closed independent SDK result and host issuer policy. It creates the unbound
+review lease, copies the template with only its current original fee checkpoint
+refreshed, then uses the existing cycle_bundle freeze/seal and automatic host
+selection-review issuer. No per-task approval JSON is written manually.
+
+Before an exclusive atomic inbox publication it validates the sealed cycle with
+the original manager package checker, separates inbox/manager/billing/frozen
+resources, and binds the request, manifest and cycle hashes in its completion
+receipt. ACTUAL uses the original state and inbox. Partial publication retains
+intent and cannot be repeated; inbox visibility alone is not a completion receipt.
+The original manager's ingest path has verified one registration and no second
+registration on reentry, using explicit SIMULATED fixtures and no provider call.
+
+Shared no-tool SDK roles now accept the coordinator's cancellation event through
+PhaseCancel. A cancelled start creates no claim; cancellation immediately before
+forwarding prevents fee reservation. It does not permit ACTUAL injected clocks
+or transports. The external selection-binding/review worker and full coordinator
+service still need implementation and native/actual acceptance before activation.
+
+Handoff outputs and inbox also exclude the audit database parent, export root and SQLite sidecars; a matching future prepared path cannot authorize writing into the audit projection.

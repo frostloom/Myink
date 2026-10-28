@@ -57,7 +57,7 @@ def test_invalid_research_authority_stops_before_sdk_and_fees(research_config,mo
     assert ledger_snapshot(c['ledger_path'])==before and not Path(c['root']).exists()
 
 
-def run_research(research_config,proof,monkeypatch,scenario='task'):
+def run_research(research_config,proof,monkeypatch,scenario='task',cancel=None):
     cp,c,context,p=research_config;module=api();host=importlib.import_module('ops.pi.no_tool_host');monkeypatch.setattr(module,'verify_source',lambda *args:dict(machine='aarch64'))
     class H:operation_id='research-owned';owned={};pending={}
     class Owners:
@@ -71,6 +71,7 @@ def run_research(research_config,proof,monkeypatch,scenario='task'):
     value=proposal(context,**(dict(decision='no_task',problem=None,files=[],test_source=None) if scenario=='no_task' else dict(approved=True) if scenario=='bad_output' else {}));text=json.dumps(value)
     def exchange(h,config,initial,bridge,transport,limits,save,**kwargs):
         assert initial['system']==module.SYSTEM and str(cp.parent) not in initial['prompt'] and kwargs['worker']=='selection.py'
+        if scenario=='parent_before_forward':cancel.set()
         if scenario=='before_revoke':write(Path(c['permit_path']),{})
         body=dict(model=initial['model'],max_tokens=initial['max_tokens'],system=[dict(type='text',text=module.wire_system(initial['system']))],messages=[dict(role='user',content=[dict(type='text',text=initial['prompt'])])],stream=True)
         bridge.route(dict(type='request',path='/v1/messages',headers=[['x-api-key',initial['model_token']],['x-pi-scope','local-trial-1']],body=json.dumps(body)),transport)
@@ -83,7 +84,7 @@ def run_research(research_config,proof,monkeypatch,scenario='task'):
         usage={} if scenario=='unknown_usage' else dict(input_tokens=1,output_tokens=1,cache_read_input_tokens=0,cache_creation_input_tokens=0)
         events=[dict(type='message_start',message=dict(usage=usage)),dict(type='content_block_delta',index=0,delta=dict(type='text_delta',text=text)),dict(type='message_delta',usage=dict(output_tokens=1) if usage else {}),dict(type='message_stop')]
         return httpx.Response(200,headers={'content-type':'text/event-stream'},stream=httpx.ByteStream(''.join('data: '+json.dumps(v)+'\n\n' for v in events).encode()))
-    result=module.execute(cp,transport=send,clock=lambda:NOW,expected_config_sha256=file_hash(cp))
+    result=module.execute(cp,transport=send,clock=lambda:NOW,expected_config_sha256=file_hash(cp),cancel=cancel)
     return result,text,send
 
 
@@ -136,3 +137,17 @@ def test_admin_audit_keeps_bounded_proposed_problem_as_untrusted_hypothesis(rese
     cp,c,context,p=research_config;event=AuditStore(c['audit_path']).events(run_id=c['run_id'])[-1]
     assert event['details']['hypothesis']==result['report']['problem']
     assert event['details']['next_action']=='isolated_baseline_required' and 'test_source' not in event['details']
+
+
+def test_parent_cancel_before_start_never_claims_or_spends(research_config):
+    from threading import Event
+    cp,c,context,p=research_config;cancel=Event();cancel.set();before=ledger_snapshot(c['ledger_path'])
+    with pytest.raises(ValueError):api().execute(cp,transport=lambda *args:None,clock=lambda:NOW,expected_config_sha256=file_hash(cp),cancel=cancel)
+    assert not Path(c['root']).exists() and ledger_snapshot(c['ledger_path'])==before
+
+
+def test_parent_cancel_before_forward_stops_fee_reservation(research_config,proof,monkeypatch):
+    from threading import Event
+    cancel=Event();cp,c,context,p=research_config;before=ledger_snapshot(c['ledger_path'])
+    result,_,_=run_research(research_config,proof,monkeypatch,'parent_before_forward',cancel=cancel)
+    assert result['new_attempts']==0 and not result['verified'] and ledger_snapshot(c['ledger_path'])==before
