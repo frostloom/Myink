@@ -7,6 +7,7 @@ import math
 import os
 from pathlib import Path
 import re
+import signal
 import stat
 from threading import Event,Timer
 import time
@@ -424,15 +425,22 @@ def main():
     r=sub.add_parser('run');r.add_argument('--max-tasks',type=int,default=20);r.add_argument('--seconds',type=int,default=3600)
     r.add_argument('--inbox');r.add_argument('--idle-seconds',type=int,default=0)
     a=p.parse_args()
+    cancel=Event();previous={}
+    def stop(*_):cancel.set()
     try:
-        if a.action=='init':value=init(a.state,a.billing)
-        elif a.action=='status':value=status(a.state,a.billing)
-        elif a.action=='cancel':value=cancel_task(a.state,a.billing,a.task_id,a.reason)
-        elif a.action=='enqueue':value=enqueue(a.state,a.billing,a.task_id,a.request,a.sha256,priority=a.priority)
-        else:value=run(a.state,a.billing,max_tasks=a.max_tasks,seconds=a.seconds,inbox=a.inbox,idle_seconds=a.idle_seconds)
-    except (ValueError,OSError,KeyError,TypeError) as error:
-        print(json.dumps(dict(status='blocked',error_class=type(error).__name__)));return 1
-    print(json.dumps(value,sort_keys=True));return 0 if value.get('status','done')=='done' else 1
+        if a.action=='run':
+            for signum in (signal.SIGINT,signal.SIGTERM):previous[signum]=signal.signal(signum,stop)
+        try:
+            if a.action=='init':value=init(a.state,a.billing)
+            elif a.action=='status':value=status(a.state,a.billing)
+            elif a.action=='cancel':value=cancel_task(a.state,a.billing,a.task_id,a.reason)
+            elif a.action=='enqueue':value=enqueue(a.state,a.billing,a.task_id,a.request,a.sha256,priority=a.priority)
+            else:value=run(a.state,a.billing,max_tasks=a.max_tasks,seconds=a.seconds,inbox=a.inbox,idle_seconds=a.idle_seconds,cancel=cancel)
+        except (ValueError,OSError,KeyError,TypeError) as error:
+            print(json.dumps(dict(status='blocked',error_class=type(error).__name__)));return 1
+        print(json.dumps(value,sort_keys=True));return 0 if value.get('status','done')=='done' else 1
+    finally:
+        for signum,handler in previous.items():signal.signal(signum,handler)
 
 
 if __name__=='__main__':raise SystemExit(main())

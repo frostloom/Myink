@@ -1,0 +1,71 @@
+{
+  "schema": "pi-formal-rollout-preparation-v1",
+  "date": "2026-10-28",
+  "status": "not-launched",
+  "python_tests_passed": 3056,
+  "private_lab_tests_deselected": 19,
+  "node_tests_passed": 54,
+  "targeted_tests_passed": 88,
+  "new_regression_tests": 6,
+  "review": {
+    "fresh_reviewers": 1,
+    "actionable_findings": 0,
+    "scope": "CLI signals, snapshot lifecycle and finite service templates; actual cutover not validated"
+  },
+  "local_readonly_restore": {
+    "passed": true,
+    "manager_tasks": 9,
+    "model_attempts": 748,
+    "historical_unknown": 9,
+    "historical_held_microyuan": 18115200,
+    "conservative_used_microyuan": 22759695,
+    "budget_microyuan": 50000000,
+    "credentials_included": false
+  },
+  "code_sha256": "e57595019cd3e7f63049772b76affbfb98adf2b75b710f14916e3a75f4827a6e",
+  "production_state": {
+    "canonical_source_frozen": false,
+    "canonical_state_uploaded": false,
+    "credentials_uploaded": false,
+    "formal_service_enabled": false,
+    "real_model_calls_this_stage": 0
+  },
+  "deferred_gates": [
+    "explicit destination authorization for sensitive state and credentials",
+    "server readonly restore of original state",
+    "canonical custody transfer and manager apply",
+    "bounded actual provider owner job",
+    "post-launch stop/restart and latest-checkpoint recovery"
+  ],
+  "latest_code_server_readiness": {
+    "unit": "myink-pi-readiness-20261028-004.service",
+    "state": {
+      "MainPID": "0",
+      "Result": "success",
+      "NRestarts": "0",
+      "ExecMainStatus": "0",
+      "User": "ubuntu",
+      "SupplementaryGroups": "docker",
+      "PrivateTmp": "yes",
+      "ProtectHome": "read-only",
+      "ProtectSystem": "strict",
+      "NoNewPrivileges": "yes",
+      "KillMode": "mixed",
+      "ActiveState": "inactive",
+      "SubState": "dead"
+    },
+    "canonical_state_uploaded": false,
+    "actual_node_pi_sessions": 2,
+    "mock_model_requests": 2,
+    "real_model_requests": 0,
+    "operation_labels_absent": true,
+    "canonical_ledger_modified": false,
+    "production_before_after_equal": true,
+    "code_sha256": "e57595019cd3e7f63049772b76affbfb98adf2b75b710f14916e3a75f4827a6e",
+    "host_usage": {
+      "self_peak_rss_kib": 193776,
+      "maximum_child_peak_rss_kib": 193776,
+      "scope": "host process peaks, not simultaneous total or global cold-cache capacity"
+    }
+  }
+}

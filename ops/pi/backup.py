@@ -1,5 +1,5 @@
 """Trusted paired collections. Candidate/model code never owns this interface."""
-from contextlib import contextmanager
+from contextlib import contextmanager, closing
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 import gzip
@@ -267,7 +267,7 @@ def collection_lock(root):
 
 
 def snapshot_ledger(ledger,path):
-    with sqlite3.connect(ledger.path) as source,sqlite3.connect(path) as target:
+    with closing(sqlite3.connect(ledger.path.absolute().as_uri()+'?mode=ro',uri=True)) as source,closing(sqlite3.connect(path)) as target:
         source.backup(target)
         if target.execute('PRAGMA integrity_check').fetchone()[0]!='ok':raise ValueError('bad ledger snapshot')
         result={'event_hwm':target.execute('SELECT coalesce(max(id),0) FROM events').fetchone()[0],
