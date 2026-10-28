@@ -52,13 +52,18 @@ def verify_release(root,expected,*,expected_owner=0):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--config',required=True);parser.add_argument('--config-sha256',required=True)
-    parser.add_argument('--component',choices=('observer','followup'),default='observer')
+    parser.add_argument('--component',choices=('observer','followup','diagnosis'),default='observer')
     args=parser.parse_args()
     try:
         root=Path(__file__).resolve().parent
         code=verify_release(root,os.environ.get('PI_OBSERVER_RUNTIME_SHA256'))
         sys.path.insert(0,str(code));sys.dont_write_bytecode=True
-        if args.component=='followup':
+        if args.component=='diagnosis':
+            vendor=code.parent/'vendor';require(vendor.is_dir())
+            sys.path.insert(1,str(vendor))
+            from ops.pi.diagnosis_supervisor import run
+            result=run(args.config,args.config_sha256)
+        elif args.component=='followup':
             from ops.pi.followup import run_due
             result=run_due(args.config,args.config_sha256)
         else:

@@ -96,7 +96,7 @@ def _prepare(config_path,clock=None,*,fresh=True,checkpoint=True):
     predicted=dict(model=policy.model,max_tokens=policy.max_tokens,system=[dict(type='text',text=wire_system(SYSTEM))],messages=[dict(role='user',content=[dict(type='text',text=prompt(c,e,m))])],stream=True)
     require(len(encoded(predicted))<=min(65536,policy.max_body_bytes),'diagnostic prompt exceeds wire bound')
     protected=[config,*[_path(c[k]) for k in ('runtime_path','ledger_path','policy_path','credential_path','observer_config_path','observation_receipt_path','evidence_path','memory_path','permit_path')],_path(c['ledger_path']).parent]
-    for output in (root,_path(c['audit_path']),_path(c['export_root'])):
+    for output in (root,_path(c['audit_path']),_path(c['export_root']),*[_path(c['audit_path']+suffix) for suffix in ('-journal','-wal','-shm')]):
         for item in protected:_disjoint(output,item)
     _disjoint(root,c['audit_path']);_disjoint(root,c['export_root']);_disjoint(c['audit_path'],c['export_root'])
     _disjoint(root,c['memory_export_root'])

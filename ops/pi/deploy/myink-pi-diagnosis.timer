@@ -1,0 +1,11 @@
+[Unit]
+Description=Myink Pi finite approved diagnostic queue
+
+[Timer]
+OnBootSec=5min
+OnUnitInactiveSec=15min
+AccuracySec=30s
+Unit=myink-pi-diagnosis.service
+
+[Install]
+WantedBy=timers.target

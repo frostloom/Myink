@@ -161,3 +161,12 @@ def test_simulated_full_flow_preserves_fee_history_and_closes_policy(diagnosis_c
 def test_actual_diagnosis_rejects_injected_transport_without_spending(diagnosis_config):
     cp,c,*_=diagnosis_config;c['mode']='ACTUAL';write(cp,c)
     with pytest.raises(ValueError,match='ACTUAL'):api().execute(cp,transport=lambda *a:pytest.fail('sent'),expected_config_sha256=file_hash(cp))
+
+
+@pytest.mark.parametrize('sidecar',['-journal','-wal','-shm'])
+def test_audit_sidecar_cannot_alias_frozen_memory(diagnosis_config,monkeypatch,sidecar):
+    cp,c,*_=diagnosis_config;module=api();monkeypatch.setattr(module,'verify_source',lambda *a:dict(machine='aarch64'))
+    alias=Path(c['audit_path']+sidecar);original=Path(c['memory_path']).read_bytes();alias.write_bytes(original);alias.chmod(0o600)
+    c['memory_path']=str(alias);write(cp,c)
+    with pytest.raises(ValueError,match='overlap'):module.prepare(cp,clock=lambda:NOW)
+    assert alias.read_bytes()==original

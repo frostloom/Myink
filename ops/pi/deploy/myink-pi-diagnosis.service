@@ -1,0 +1,42 @@
+[Unit]
+Description=Myink Pi host-approved observation-only diagnosis
+After=docker.service
+Requisite=docker.service
+ConditionPathExists=/home/ubuntu/myink-pi-managed/config/diagnosis.env
+ConditionPathExists=/home/ubuntu/myink-pi-managed/config/diagnosis-registry.json
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+SupplementaryGroups=docker
+WorkingDirectory=/home/ubuntu/myink-pi-managed
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=DOCKER_CONFIG=/nonexistent
+EnvironmentFile=/home/ubuntu/myink-pi-managed/config/diagnosis.env
+ExecStart=/usr/bin/python3 -I -S -B ${PI_DIAGNOSIS_ENTRYPOINT} --component diagnosis --config /home/ubuntu/myink-pi-managed/config/diagnosis-registry.json --config-sha256 ${PI_DIAGNOSIS_REGISTRY_SHA256}
+Restart=no
+TimeoutStartSec=180
+TimeoutStopSec=30
+KillMode=control-group
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadOnlyPaths=/home/ubuntu/myink-pi-managed/jobs /home/ubuntu/myink-pi-managed/config /home/ubuntu/myink-pi-managed/releases /home/ubuntu/myink-pi-managed/state/credentials /home/ubuntu/myink-pi-managed/state/actual-manager.sqlite /home/ubuntu/myink-pi-managed/control/maintenance.lock
+ReadWritePaths=/home/ubuntu/myink-pi-managed/diagnoses /home/ubuntu/myink-pi-managed/state /home/ubuntu/myink-pi-managed/audit/state /home/ubuntu/myink-pi-managed/audit/export
+MemoryMax=384M
+TasksMax=64
+CPUQuota=50%
+StandardOutput=journal
+StandardError=journal
