@@ -68,3 +68,33 @@ handoff still need implementation/acceptance. Candidate acceptance uses a separa
 candidate/diff-bound review; a pre-development recommendation cannot approve a
 finished candidate. Product adoption/release and ownership-safe recovery retain
 their explicit authorization and actual-validation requirements.
+
+## Exact authorization core (publisher still pending)
+
+`review_issuer.development_review(lease, config, request, current_fee, now=...)`
+validates data already authenticated by a trusted host. It does not authenticate
+an arbitrary lease, construct one from model output, read/write permission files,
+contact a provider or start development. No entry point currently activates it.
+
+The closed lease binds reviewed semantic scope and a deadline ceiling, independent
+review identity, expiry, host prepared-config parent and original fee snapshot.
+The exact request must match config/plan/base/run/task and the host-owned
+`prepared/<task>/config.json` / `review.json` location. All semantic changes reject;
+only the latest fee checkpoint, lowered remaining deadline and controlled review
+publication location may differ. Existing FileReview validation accepts the
+returned exact review structure, after the future publisher authenticates it.
+
+Fee refresh preserves every original operation, event prefix and effective
+limits. At most one explicitly identified selection model operation may be
+appended, and it must have known usage, a completed settlement and nonnegative
+known charge. A different operation, modified history, new unknown or a changed
+prepared checkpoint rejects. ACTUAL retains the canonical original50CNY ledger
+and nine historical holds. Hashes detect inconsistent data; they do not prove
+that an untrusted producer is honest.
+
+The remaining publisher must authenticate root policy and actual independent SDK
+receipts, revalidate frozen inputs, hold its own publication and original tools
+locks, fsync an exclusive intent and retain uncertain partial publication without
+replay. It must not wait for the maintenance lock while the manager waits for
+FileReview. SDK recommendation-only permits cannot substitute for host execution
+policy, and this pre-development lease cannot approve the finished candidate.
