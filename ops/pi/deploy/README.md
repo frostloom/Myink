@@ -31,4 +31,56 @@ References: [execution sandbox](https://www.freedesktop.org/software/systemd/man
 [service lifecycle](https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html),
 [timer lifecycle](https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html).
 
-The manager has2100seconds for an admitted cycle capped at1800seconds; startup, registration and graceful unwinding consume the difference. RuntimeMaxSec2400 is an outer stop fuse. Equal manager/cycle1800 bounds are unusable because preflight compares against remaining time after startup. A queued task with no dispatch may proceed after the host margin is corrected; never replay an existing dispatched intent.
+The manager has 2100 seconds for an admitted cycle capped at 1800 seconds; startup, registration and graceful unwinding consume the difference. RuntimeMaxSec=2400 is an outer stop fuse. Equal manager/cycle=1800 bounds are unusable because preflight compares against remaining time after startup. A queued task with no dispatch may proceed after the host margin is corrected; never replay an existing dispatched intent.
+
+
+## Current owner and operations
+
+The original local ledger is frozen archival state. The active original ledger and
+manager are under /home/ubuntu/myink-pi-managed/state on the configured SSH host
+alias myink. Do not initialize another manager or reactivate a local copy. The
+selected runtime is releases/rollout-20261028-005; systemd loads its nonsecret
+PYTHONPATH from the root-owned config/service.env.
+
+Inspect the finite service/timer and its logs:
+
+~~~sh
+ssh myink 'systemctl status myink-pi-manager.service myink-pi-manager.timer --no-pager'
+ssh myink 'sudo -n journalctl -u myink-pi-manager.service -n 50 --no-pager'
+~~~
+
+Stop the timer before the service for maintenance; take control/maintenance.lock
+before changing state. Successful idle runs may leave the service inactive until
+the timer fires. An operator stop records cancellation and may show exit1; this
+does not authorize a model retry.
+
+~~~sh
+ssh myink 'sudo -n systemctl stop myink-pi-manager.timer'
+ssh myink 'sudo -n systemctl stop myink-pi-manager.service'
+~~~
+
+Resume the existing owner:
+
+~~~sh
+ssh myink 'sudo -n systemctl start myink-pi-manager.timer'
+ssh myink 'sudo -n systemctl start myink-pi-manager.service'
+~~~
+
+Global policy remains closed. A fresh, bounded task requires frozen source/tests,
+a fresh isolated baseline, separately bound independent selection/development
+reviews and an exclusive inbox admission. Approved execution opens only its
+in-memory phase gate. Unknown billing, protocol or cleanup uncertainty stops work;
+do not edit terminal records, release historical holds or replay a failed intent.
+
+Launch evidence lives in control/postlaunch-health-receipt.json,
+control/latest-restore-drill-receipt.json, control/cold-restart-receipt.json and the
+private job directory. Per-task session/tool/checker evidence, append-only fee
+history and manager run events remain the detailed record. The archived launch
+receipt is a checkpoint, not a replacement for querying current status/ledger.
+
+For restore, stop both units and take the external lock. Use SQLite checkpoint
+completion, not manual WAL deletion; require that both canonical logical
+snapshots still equal the latest captured checkpoint before replacement, and
+verify owner, history, unknown holds, budget, policy and credential hashes after.
+Never restore a stale financial snapshot over later writes.
+See [SQLite checkpoint semantics](https://www.sqlite.org/pragma.html#pragma_wal_checkpoint).

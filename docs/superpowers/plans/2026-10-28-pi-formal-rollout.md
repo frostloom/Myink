@@ -20,10 +20,12 @@ Signal cancellation/cleanup and handler lifecycle; NoNewPrivileges/Docker/TMPDIR
 - [x] RED realSIGINT/SIGTERM empty-queue subprocess cancellation; minimal CLI handler GREEN plus manager compatibility.
 - [x] Concrete hardened .service/.timer, systemd-analyze validation; newfullruntime fixedbytes/native/2SDKmock+cleanup/productionunchanged.
 ### Task 2: Backup/restore and canonical cutover
-- [ ] Consistent originalstate readonlybackups+requiredraw audit/review/policy, serverreadonlyrestore/schema/tuples/holds; no credentials or paid authority.
-- [ ] Finalfreshreview of concretecutover/service; oneauthorRED/GREENfixpass, appropriatefullchecks.
-- [ ] Originalsourcefreeze/export,targetactivate/apply/privatecredential, serviceenable; preserveallhistory andfailedstates.
+- [x] Consistent originalstate readonlybackups+requiredraw audit/review/policy, serverreadonlyrestore/schema/tuples/holds; no credentials or paid authority.
+- [x] Finalfreshreview of concretecutover/service; oneauthorRED/GREENfixpass, appropriatefullchecks.
+- [x] Originalsourcefreeze/export,targetactivate/apply/privatecredential, serviceenable; preserveallhistory andfailedstates.
 ### Task 3: Actual provider and post-launch proof
-- [ ] Fresh bounded independentlyadmitted realtask, finalcheck/status/session/protocol/cleanup/policyclose+50budget.
+- [x] Fresh bounded independentlyadmitted realtask, finalcheck/status/session/protocol/cleanup/policyclose+50budget.
 - [ ] Idle service stop/restart0repeat, exactlatestrestore rehearsal, logs/health/ownresources/produnchanged; publishmetrics/push/exact4CI.
 - [ ] Requirement-by-requirement goalaudit. No synthetic/narrower completion claim.
+
+Operational Task3 recovery/cold-restart/production-health proofs passed; final record-only delivery commit CI and requirement-by-requirement completion audit are recorded after push in private go-live-acceptance-current.json. Earlier failed runs and all original records remain retained.

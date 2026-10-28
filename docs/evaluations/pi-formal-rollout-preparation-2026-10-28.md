@@ -1,6 +1,6 @@
 # Pi formal rollout preparation — 2026-10-28
 
-Pi is **not launched**. This stage prepares a standalone finite service; it does not deploy the old product checkout or merge Pi into main.
+This is the earlier pre-launch stage record. Current server acceptance is documented in [Pi server launch](pi-server-launch-2026-10-28.md). At this stage Pi was **not launched**. This stage prepares a standalone finite service; it does not deploy the old product checkout or merge Pi into main.
 
 ## Verified changes
 

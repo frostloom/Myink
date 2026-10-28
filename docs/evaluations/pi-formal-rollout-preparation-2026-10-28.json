@@ -67,5 +67,7 @@
       "maximum_child_peak_rss_kib": 193776,
       "scope": "host process peaks, not simultaneous total or global cold-cache capacity"
     }
-  }
+  },
+  "historical_stage_record": true,
+  "current_successor": "pi-server-launch-2026-10-28.json"
 }
