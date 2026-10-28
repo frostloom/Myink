@@ -119,3 +119,23 @@ def test_failures_are_retained_and_never_replayed_as_pass(configured,failure):
     result=run(configured,backend)
     assert result['results'][0]['status']==('failed' if failure=='assertion' else 'blocked')
     assert run(configured,lambda *a:pytest.fail('failed replay'))['results']==result['results']
+
+
+def test_registry_revocation_during_check_cannot_certify_success(configured):
+    def backend(*args):
+        p,c=configured;c['entries'][0]['review_sha256']='0'*64;p.write_text(json.dumps(c));return report()
+    result=run(configured,backend)
+    assert result['results'][0]['status']=='blocked'
+
+
+def test_completion_crossing_maintenance_end_is_not_a_pass(configured):
+    p,c=configured;current=[NOW]
+    def backend(*args):current[0]=NOW+timedelta(hours=4);return report()
+    result=api().run_due(p,sha256(p.read_bytes()).hexdigest(),clock=lambda:current[0],runner=backend)
+    assert result['results'][0]['status']=='blocked'
+
+
+def test_time_is_rechecked_after_validation_before_claim(configured):
+    p,c=configured;moments=iter((NOW,NOW+timedelta(hours=4)))
+    result=api().run_due(p,sha256(p.read_bytes()).hexdigest(),clock=lambda:next(moments),runner=lambda *a:pytest.fail('late claim'))
+    assert result['status']=='outside_window' and list(Path(c['root']).iterdir())==[]

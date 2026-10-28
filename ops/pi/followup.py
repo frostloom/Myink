@@ -8,6 +8,7 @@ import os
 import re
 import sqlite3
 import stat
+import time as elapsed
 from zoneinfo import ZoneInfo
 from .audit import AuditStore,DB_VERSION,_path,_plain,digest,encoded,hash_value,name,require,strict_json,utc
 from .audit_export import _publish
@@ -108,7 +109,8 @@ def _isolated_check(e,root,write):
     return result
 
 
-def _execute(c,e,root,registry_sha,now,runner,audit):
+def _execute(c,e,root,registry_sha,now,runner,audit,registry_path,now_fn):
+    started=elapsed.monotonic();occurred=now
     entry_sha=digest(e);root.mkdir(mode=0o700)
     _publish(root/'intent.json',encoded(dict(schema='pi-followup-intent-v1',entry_sha256=entry_sha,registry_sha256=registry_sha,occurred_at=now.isoformat())),immutable=True)
     def write(filename,value):_publish(root/filename,encoded(value),immutable=True)
@@ -116,7 +118,7 @@ def _execute(c,e,root,registry_sha,now,runner,audit):
     version=dict(candidate_sha256=e['candidate_sha256'],policy_sha256=registry_sha)
     domain='offline' if c['mode']=='ACTUAL' else 'synthetic'
     def event(kind,status,details,proof=None):
-        return dict(kind=kind,status=status,run_id=e['run_id'],occurred_at=now.isoformat(),summary='Host-approved fixed regression; no model or product release.',details=details,version=version,changes=[],evidence=proof or [],followups=[],mode=c['mode'],evidence_domain=domain)
+        return dict(kind=kind,status=status,run_id=e['run_id'],occurred_at=occurred.isoformat(),summary='Host-approved fixed regression; no model or product release.',details=details,version=version,changes=[],evidence=proof or [],followups=[],mode=c['mode'],evidence_domain=domain)
     key='followup-'+digest(dict(run_id=e['run_id'],test_id=e['test_id'],candidate=e['candidate_sha256']))
     audit.append(key+':start',event('tool','running',dict(test_id=e['test_id'],tool_name='fixed_checker',model_requests=0)))
     status='blocked';report=None;failure=None;verified=False
@@ -129,23 +131,28 @@ def _execute(c,e,root,registry_sha,now,runner,audit):
             and any(x.get('container_id')==report['container_id'] for x in cleanup),'checker cleanup unverified')
         _pins(e)
         require(all(ledger_snapshot(c[k])==v for k,v in before.items()),'original state changed during fixed test')
+        require(sha256(_read(registry_path)).hexdigest()==registry_sha,'registry changed during fixed test')
+        finished=utc(now_fn());end=finished.astimezone(SHANGHAI)
+        require(finished>=now and end.date()==now.astimezone(SHANGHAI).date() and end.time().replace(tzinfo=None)<time(6)
+            and elapsed.monotonic()-started<300,'fixed test crossed deadline/maintenance end')
         verified=True;status='passed' if report['passed'] else 'failed'
     except Exception as error:failure=type(error).__name__
+    occurred=utc(now_fn())
     outcome=dict(status=status,verified=verified,failure_class=failure,report=report,model_requests=0)
     write('outcome.json',outcome);outcome_sha=sha256((root/'outcome.json').read_bytes()).hexdigest()
     proof=[dict(kind='fixed_followup_outcome',sha256=outcome_sha,verified=verified,evidence_domain=domain)]
-    details=dict(test_id=e['test_id'],tool_name='fixed_checker',model_requests=0,known_cost_microyuan=0,result_summary=failure or status)
+    details=dict(test_id=e['test_id'],tool_name='fixed_checker',model_requests=0,known_cost_microyuan=0,duration_ms=(elapsed.monotonic()-started)*1000,result_summary=failure or status)
     if verified:details.update(test_total=report['tests'],test_failures=report['failures'],test_errors=report['errors'],test_skipped=report['skipped'])
     audit.append(key+':tool',event('tool',status,details,proof));audit.append(key+':test',event('test',status,details,proof))
     audit.append(key+':version',event('version','no_change',dict(reference='fixed_followup_registry',test_id=e['test_id']),proof))
     audit.export(c['export_root'])
-    result=dict(schema='pi-followup-result-v1',entry_sha256=entry_sha,test_id=e['test_id'],run_id=e['run_id'],candidate_sha256=e['candidate_sha256'],status=status,verified=verified,mode=c['mode'],outcome_sha256=outcome_sha,occurred_at=now.isoformat(),model_requests=0)
+    result=dict(schema='pi-followup-result-v1',entry_sha256=entry_sha,test_id=e['test_id'],run_id=e['run_id'],candidate_sha256=e['candidate_sha256'],status=status,verified=verified,mode=c['mode'],outcome_sha256=outcome_sha,occurred_at=occurred.isoformat(),model_requests=0)
     result['receipt_sha256']=digest(result);write('receipt.json',result);return result
 
 
 def run_due(registry_path,expected_registry_sha256,*,clock=None,runner=None):
     c=_load(registry_path,expected_registry_sha256,runner,clock)
-    now=utc((clock or (lambda:datetime.now(timezone.utc)))());local=now.astimezone(SHANGHAI)
+    now_fn=clock or (lambda:datetime.now(timezone.utc));now=utc(now_fn());local=now.astimezone(SHANGHAI)
     result=dict(schema='pi-followup-tick-v1',mode=c['mode'],status='planned',results=[],model_requests=0)
     due=[e for e in c['entries'] if utc(datetime.fromisoformat(e['scheduled_for']))<=now]
     if not due:return result
@@ -161,7 +168,11 @@ def run_due(registry_path,expected_registry_sha256,*,clock=None,runner=None):
             require(_planned(audit,e),'matching reserved audit plan required')
             _pins(e)
             for key in ('billing_path','manager_path'):ledger_snapshot(c[key])
-            result['results'].append(_execute(c,e,root,expected_registry_sha256,now,runner,audit))
+            require(sha256(_read(registry_path)).hexdigest()==expected_registry_sha256,'registry changed before claim')
+            admitted=utc(now_fn());admit_local=admitted.astimezone(SHANGHAI)
+            if not time(2)<=admit_local.time().replace(tzinfo=None)<time(5,30):result['status']='outside_window';return result
+            require(admitted>=utc(datetime.fromisoformat(e['scheduled_for'])),'followup no longer due')
+            result['results'].append(_execute(c,e,root,expected_registry_sha256,admitted,runner,audit,registry_path,now_fn))
             break  # One new bounded check per tick; cached facts never start Docker.
     result['status']='uncertain' if any(x['status']=='uncertain' for x in result['results']) else 'completed'
     return result

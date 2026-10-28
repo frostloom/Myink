@@ -52,16 +52,21 @@ def verify_release(root,expected,*,expected_owner=0):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--config',required=True);parser.add_argument('--config-sha256',required=True)
+    parser.add_argument('--component',choices=('observer','followup'),default='observer')
     args=parser.parse_args()
     try:
         root=Path(__file__).resolve().parent
         code=verify_release(root,os.environ.get('PI_OBSERVER_RUNTIME_SHA256'))
         sys.path.insert(0,str(code));sys.dont_write_bytecode=True
-        from ops.pi.live_observer import observe
-        result=observe(Path(args.config),expected_config_sha256=args.config_sha256)
+        if args.component=='followup':
+            from ops.pi.followup import run_due
+            result=run_due(args.config,args.config_sha256)
+        else:
+            from ops.pi.live_observer import observe
+            result=observe(Path(args.config),expected_config_sha256=args.config_sha256)
     except Exception as error:
         print(json.dumps(dict(status='blocked',failure_class=type(error).__name__,automatic_execution=False)));return 1
-    print(json.dumps(result));return 1 if result['status']=='blocked' else 0
+    print(json.dumps(result));return 1 if result['status'] in ('blocked','uncertain') else 0
 
 
 if __name__=='__main__':raise SystemExit(main())

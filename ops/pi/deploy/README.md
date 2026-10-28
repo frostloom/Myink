@@ -150,3 +150,49 @@ service/timer. Drop its two views/schema/role only after matching those receipts
 in a transaction without CASCADE; any extra dependencies or drift must abort the
 whole cleanup. Never restore an older fee/manager ledger or change product rows.
 The original manager and all uncertain reservations remain authoritative.
+
+## Approved nextday fixed regressions
+
+`myink-pi-followup.service` is separate from both observer and paid manager. The
+same closed-tree verifier selects only the explicit `followup` component after
+verification; the default observer component remains unchanged. A root-owned
+`config/followup.env` pins `PI_OBSERVER_RUNTIME_SHA256` (the shared verifier),
+`PI_FOLLOWUP_ENTRYPOINT`, and `PI_FOLLOWUP_REGISTRY_SHA256`.
+
+The execution authority is a root-owned0640/root:ubuntu registry in the existing
+root-owned0750 config directory, not the audit followup record. Registry entries
+pin the original source, candidate, fixed gold/case list, independent acceptance
+review, Docker daemon and immutable checker image. No arbitrary command or model
+request is supported. Audit plans must match test/run/version/due time but cannot
+supply execution authority. The registry is rechecked before claiming and after
+checking. ACTUAL disallows injected clock/runner; SIMULATED callbacks remain
+synthetic and cannot certify a real nextday result.
+
+The5minute timer only wakes the worker. Actual admission requires genuine due
+UTC time and02:00–05:30 Shanghai; completion must be before06:00 on that maintenance
+date, within300seconds total. The checker itself has90seconds and capture<=30.
+At most one new check starts per tick. The worker internally takes the existing
+`control/maintenance.lock`, so do not add an outer flock on the same file. Busy
+locks and early/outside-window wakes create no execution claim.
+
+Only followups and audit state/export are writable; original state/jobs/config/
+releases and the shared lock are read-only, provider credentials inaccessible,
+network Unix-only. The candidate and gold run only in the fixed UID65534/network
+none checker. It persists ownership before Docker creation and sweeps only owned
+containers. Runtime/service/Docker host are trusted; the model receives none of
+this authority.
+
+The durable intent identity binds test/run/candidate and exact entry digest. A
+pending intent without final receipt is uncertain and never automatically
+replayed. Preserve its staged checker, output, ownership and cleanup receipts;
+reconcile only the recorded operation labels/daemon/image, then arrange a newly
+reviewed test identity if a rerun is necessary. Never delete intent or rewind
+fees/manager state to retry. A completed receipt verifies its own digest and
+private outcome; re-reading it returns old facts without invoking Docker.
+
+Append separate tool/test/version audit events and correlate true ACTUAL results
+by test_id/candidate/due time. The original followup plan remains planned with a
+separate result. A successful regression is neither a product release nor online
+metric improvement. Pre-due deployment only proves scheduling; mark result null
+until the actual due run. Disable only this timer/service to withdraw scheduling,
+preserve all registry/claims/results, and never restore old canonical ledgers.
