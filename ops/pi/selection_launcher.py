@@ -149,10 +149,10 @@ class PhaseCancel:
 
 
 class NoToolBridge:
-    def __init__(self,policy,ledger,limits,token,initial,write):
+    def __init__(self,policy,ledger,limits,token,initial,write,*,before_forward=None):
         self.policy,self.ledger,self.limits=policy,ledger,limits
         self.token,self.initial,self.write=token,initial,write
-        self.posts=[];self.request=None
+        self.posts=[];self.request=None;self.before_forward=before_forward
 
     def route(self,frame,transport):
         require(isinstance(frame,dict) and set(frame)=={'type','path','headers','body'}
@@ -164,6 +164,7 @@ class NoToolBridge:
         require(len(headers)==len(pairs) and headers.get('x-api-key')==self.token
                 and headers.get('x-pi-scope')=='local-trial-1','selection authentication failed')
         body=strict_json(frame['body']);request_matches(body,self.initial)
+        if self.before_forward is not None:self.before_forward()
         self.limits.claim('model');self.request=deepcopy(body);self.write('request-private.json',body)
         policy=replace(self.policy,timeout_seconds=min(self.policy.timeout_seconds,
                        max(1,int(self.limits.deadline-time.monotonic()))))
