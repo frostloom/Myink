@@ -174,3 +174,30 @@ new investigation/proposal/reproducer, automatic refreshed bundle/coordinator,
 candidate-bound independent acceptance, closed deployment and actual end-to-end
 acceptance. Product adoption and ownership-safe business recovery remain later
 authorized gates.
+
+## Investigation inputs and proposal contract (Task4 in progress)
+
+`investigation_inputs.compile_context` is a readonly compiler; its caller must
+first authenticate observation receipts and root source policy. It keeps actual
+host failure counts/metric facts, gaps and observed deployment identity separate
+from an explicitly labeled reference Git snapshot. ACTUAL research cannot omit
+metric facts. Complete selected source is bounded at24000ASCII bytes, without
+truncation; credential-shaped material is rejected. This is proposal-only context,
+not independent evidence of online improvement or permission to repair.
+
+Research novelty binds the host evidence/cohort and relevant file hashes. An
+unrelated reference commit or a change to an unselected file cannot create a new
+research fingerprint. Pending candidate files and unchanged pending symbols
+(AST identity excluding line positions) are excluded before a paid request,
+including when another symbol in that file changes. Source drift rejects the
+compiled input.
+
+The strict `pi-test-proposal-v1` report copies the frozen input identity and may
+return task or no_task. A task contains only a bounded existing-behavior problem,
+selected relative files, bounded parseable fixed unittest inventory and private
+summary; it cannot choose host paths, write approval fields or grant execution.
+A no_task result has no test payload. Proposed tests remain untrusted and must
+later run only through task_package/package_baseline's fixed isolated checker,
+then pass independent review. The dedicated paid investigation role and that
+automatic freeze/reproducer coordinator are still pending; this compiler does
+not call a model or execute/import proposed tests.
