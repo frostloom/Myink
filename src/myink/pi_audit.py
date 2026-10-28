@@ -268,3 +268,55 @@ class AuditReader:
         if run is None:raise LookupError('unknown audit run')
         items=[e for key in run['pages'] for e in self._page(key) if e['run_id']==run_id and (kind is None or e['kind']==kind)]
         return self._slice(items,limit,offset)
+
+    def _events(self,keys=None):
+        for page in self.manifest['pages']:
+            if keys is None or page['sha256'] in keys:
+                yield from self._page(page['sha256'])
+
+    def enhancements(self,limit=25,offset=0):
+        latest={}
+        for event in self._events():
+            if event['kind']=='enhancement':
+                reference=event['details'].get('reference')
+                if reference is not None:latest[reference]=event
+        return self._slice([latest[key] for key in sorted(latest)],limit,offset)
+
+    def daily(self,day):
+        from datetime import date
+        _require(isinstance(day,str) and date.fromisoformat(day).isoformat()==day,'invalid audit day')
+        index=next((x for x in self.manifest['days'] if x['day']==day),None)
+        events=[] if index is None else [e for e in self._events(set(index['pages'])) if e['day']==day]
+        versions={};changes={};counters={};plans={};release='unknown'
+        for event in events:
+            version=event['version'];versions[_digest(version)]=version
+            candidate=version['candidate_sha256']
+            for change in event['changes']:
+                # Each change is a cumulative diff against the frozen base.
+                key=(candidate or event['event_sha256'],change['path'])
+                changes[key]=dict(change,candidate_sha256=candidate,source_commit=version['source_commit'])
+            for key in ('known_cost_microyuan','observed_samples'):
+                if key in event['details']:counters[(event['run_id'],key)]=event['details'][key]
+            if event['kind'] in ('deployment','rollback') and event['mode']=='ACTUAL':
+                if event['status']=='no_release':release='no_release'
+                elif event['evidence_domain']=='online_business':
+                    if event['kind']=='deployment' and event['status']=='passed':release='deployed'
+                    elif event['kind']=='rollback' and event['status']=='rolled_back':release='rolled_back'
+                    elif event['status'] in ('uncertain','blocked','failed'):release='unknown'
+            for plan in event['followups']:
+                key=(plan['target_run_id'],plan['test_id'],plan['target_version_sha256'])
+                plans[key]=dict(plan,plan_event_sha256=event['event_sha256'],result=None)
+        if plans:
+            for event in self._events():
+                if event['kind']!='test' or event['mode']!='ACTUAL' or event['occurred_at'] is None:continue
+                key=(event['run_id'],event['details'].get('test_id'),event['version']['candidate_sha256'])
+                plan=plans.get(key)
+                if plan is not None and event['sequence']>next(e['sequence'] for e in events if e['event_sha256']==plan['plan_event_sha256']) and datetime.fromisoformat(event['occurred_at'])>=datetime.fromisoformat(plan['scheduled_for']):
+                    plan['result']=dict(status=event['status'],event_sha256=event['event_sha256'],occurred_at=event['occurred_at'],evidence_domain=event['evidence_domain'])
+        result=dict(schema_version=1,authority='audit_only',day=day,timezone='Asia/Shanghai',event_count=len(events),
+            unknown_occurrence_count=sum(e['occurred_at'] is None for e in events),release_state=release,
+            runs=[] if index is None else index['runs'],versions=list(versions.values()),change_scope=list(changes.values()),next_tests=list(plans.values()))
+        for key in ('known_cost_microyuan','observed_samples'):
+            values=[v for (_,field),v in counters.items() if field==key]
+            result[key]=sum(values) if values and all(v is not None for v in values) else None
+        return result
