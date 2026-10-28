@@ -3,6 +3,7 @@ from dataclasses import asdict, dataclass
 from hashlib import sha256
 import json
 import math
+import re
 from pathlib import PurePosixPath
 
 from .contracts import Receipt, Record
@@ -58,6 +59,30 @@ def _receipt(plan, reason=None):
                         reason=reason, independent_review_required=True))
 
 
+def _code_baseline(plan, baseline):
+    expected={'id','metric','config_hash','evidence_domain','source_sha256','test_sha256','reproduction_sha256','reproduction'}
+    if (set(baseline)!=expected or plan.scope!='stability' or plan.metric!='fixed_test_failures'
+            or plan.sample_floor!=1 or type(plan.sample_floor) is not int or plan.minimum_improvement!=1
+            or set(plan.guard_metrics)!={'fixed_test_errors','fixed_test_skips'}):
+        return False
+    for key in ('source_sha256','test_sha256','reproduction_sha256'):
+        if not isinstance(baseline[key],str) or re.fullmatch('[0-9a-f]{64}',baseline[key]) is None:return False
+    report=baseline['reproduction']
+    if not isinstance(report,dict) or set(report)!={'tests','cases','failures','errors','skipped','failed_cases','error_cases'}:return False
+    if any(type(report[k]) is not int for k in ('tests','failures','errors','skipped')):return False
+    cases=report['cases'];failed=report['failed_cases']
+    if (not isinstance(cases,list) or not 1<=len(cases)<=200
+            or not all(isinstance(c,str) and re.fullmatch(r'fixed_development_tests\.[A-Za-z0-9_.]{1,180}',c) for c in cases)
+            or len(cases)!=len(set(cases)) or report['tests']!=len(cases)
+            or not 1<=report['failures']<=report['tests'] or report['errors']!=0 or report['skipped']!=0
+            or report['error_cases']!=[] or not isinstance(failed,list) or not all(isinstance(c,str) for c in failed)
+            or len(failed)!=len(set(failed)) or len(failed)!=report['failures'] or not set(failed)<=set(cases)):
+        return False
+    def digest(value):return sha256(json.dumps(value,sort_keys=True,separators=(',',':'),allow_nan=False).encode()).hexdigest()
+    return (digest(report)==baseline['reproduction_sha256']
+            and digest({k:baseline[k] for k in ('source_sha256','test_sha256','reproduction_sha256')})==baseline['config_hash'])
+
+
 def validate_plan(plan: Plan, baseline: Record, policy: Policy) -> Receipt:
     if not isinstance(plan, Plan) or not isinstance(baseline, dict):
         raise ValueError('plan and baseline required')
@@ -79,9 +104,14 @@ def validate_plan(plan: Plan, baseline: Record, policy: Policy) -> Receipt:
     if any(type(v) not in (int, float) or not math.isfinite(v) or not 0 < v <= 1
            for v in (plan.minimum_improvement, plan.severe_regression)):
         return _receipt(plan, 'invalid_threshold')
-    if plan.evidence_domain not in ('synthetic', 'online'):
+    if plan.evidence_domain not in ('synthetic', 'online', 'code_regression'):
         return _receipt(plan, 'invalid_evidence_domain')
-    floor = 5 if plan.evidence_domain == 'synthetic' else 20
+    if plan.evidence_domain=='code_regression':
+        if not _code_baseline(plan,baseline):return _receipt(plan,'invalid_code_baseline')
+        if (baseline['evidence_domain']!=plan.evidence_domain or baseline['id']!=plan.baseline
+                or baseline['metric']!=plan.metric or baseline['config_hash']!=plan.baseline_config_hash):
+            return _receipt(plan,'insufficient_baseline')
+    floor = 1 if plan.evidence_domain=='code_regression' else 5 if plan.evidence_domain == 'synthetic' else 20
     if (type(plan.sample_floor) is not int or plan.sample_floor < floor
             or type(plan.call_estimate) is not int or plan.call_estimate < 0
             or (policy.max_attempts is not None and plan.call_estimate > policy.max_attempts)
@@ -93,6 +123,7 @@ def validate_plan(plan: Plan, baseline: Record, policy: Policy) -> Receipt:
         return _receipt(plan, 'hard_scope_limit')
     if len(plan.files) > policy.soft_production_files and not plan.reason:
         return _receipt(plan, 'smaller_slice_or_reason')
+    if plan.evidence_domain=='code_regression':return _receipt(plan)
     # Missing domain is legacy online data until the A4 evidence producer is integrated.
     domain = baseline.get('evidence_domain', 'online')
     count = baseline.get('paired_groups' if plan.evidence_domain == 'synthetic' else 'complete_tasks')

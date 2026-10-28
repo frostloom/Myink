@@ -124,12 +124,12 @@ def prepare(config_path):
     return _prepare(config_path, review_required=True)
 
 
-def prepare_template(config_path):
-    """Read-only package check; no independent review or execution approval."""
-    return _prepare(config_path, review_required=False)
+def prepare_template(config_path, *, expected_current_fee_sha256=None):
+    """Read-only package check; an explicit current fee pin grants no approval."""
+    return _prepare(config_path, review_required=False, expected_current_fee_sha256=expected_current_fee_sha256)
 
 
-def _prepare(config_path, *, review_required):
+def _prepare(config_path, *, review_required, expected_current_fee_sha256=None):
     """Validate without constructing Ledger, touching Docker or output root."""
     config_path = path(config_path, private=True)
     c = read_json(config_path)
@@ -171,7 +171,13 @@ def _prepare(config_path, *, review_required):
         raise ValueError('source snapshot drift')
     provenance = verify_source(Path(c['runtime_path']), c['runtime_sha256'])
     ledger = ledger_snapshot(c['ledger_path'])
-    if ledger['sha256'] != c['ledger_sha256']:
+    if not isinstance(c['ledger_sha256'],str) or re.fullmatch('[0-9a-f]{64}',c['ledger_sha256']) is None:
+        raise ValueError('frozen ledger checkpoint required')
+    if expected_current_fee_sha256 is not None:
+        if review_required or not isinstance(expected_current_fee_sha256,str) or re.fullmatch('[0-9a-f]{64}',expected_current_fee_sha256) is None:
+            raise ValueError('explicit read-only current fee checkpoint required')
+    expected_fee=c['ledger_sha256'] if expected_current_fee_sha256 is None else expected_current_fee_sha256
+    if ledger['sha256'] != expected_fee:
         raise ValueError('ledger checkpoint drift')
     policy = load_policy(Path(c['policy_path']))
     if policy.live_enabled or policy.server_daily_enabled or not policy.input_bound_calibrated:
@@ -193,6 +199,8 @@ def _prepare(config_path, *, review_required):
     if (validate_plan(plan,baseline,policy).status != 'done' or plan.call_estimate > c['max_requests']
             or plan.time_estimate > c['deadline_seconds']):
         raise ValueError('approved Plan limits invalid')
+    if plan.evidence_domain=='code_regression' and (baseline['source_sha256']!=c['source_sha256'] or baseline['test_sha256']!=c['test_sha256']):
+        raise ValueError('functional baseline source/test identity drift')
     if any(not (source/f).is_file() for f in plan.files):
         raise ValueError('declared source missing')
     cases = c['test_cases']

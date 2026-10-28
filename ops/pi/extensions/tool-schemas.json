@@ -171,7 +171,8 @@
               "type": "string",
               "enum": [
                 "online",
-                "synthetic"
+                "synthetic",
+                "code_regression"
               ]
             }
           },
