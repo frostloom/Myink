@@ -47,6 +47,7 @@ def execute(config_path,*,transport=None,clock=None,expected_config_sha256=None)
         try:
             host=owners.add(_host(c,'image_id',provenance['machine']));write('manifest-private.json',dict(config=c,permit=permit,provenance=provenance));write('ledger-before-private.json',before)
             initial=dict(model_token=uuid.uuid4().hex,model=policy.model,max_tokens=policy.max_tokens,system=contract.SYSTEM,prompt=contract.prompt(c,material),context_hash=contract.input_hash(c,material),config_hash=frozen,deadline=time.time()+max(0,limits.deadline-time.monotonic()))
+            write('initial-private.json',initial)
             ledger=Ledger(Path(c['ledger_path']),existing=True);live=replace(policy,live_enabled=True);enabled=json.dumps(asdict(live),indent=2).encode()+b'\n'
             def guard():
                 require(file_hash(config_path)==config_sha,'no-tool config revoked')

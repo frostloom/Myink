@@ -98,3 +98,42 @@ locks, fsync an exclusive intent and retain uncertain partial publication withou
 replay. It must not wait for the maintenance lock while the manager waits for
 FileReview. SDK recommendation-only permits cannot substitute for host execution
 policy, and this pre-development lease cannot approve the finished candidate.
+
+## Host lease and external FileReview prototype (not activated)
+
+`review_lease.create` authenticates an independent review against a separate host
+execution policy. ACTUAL policy is root-owned0640 in a root-owned0750 parent,
+binds a finite reference-source hash/file scope, original runtime/policy/credential
+and canonical50CNY ledger/nineholds, private host roots, phase limits and expiry.
+A recommendation-only SDK permit does not replace this execution policy.
+
+The host replays verification of the stopped SDK session/RPC against its frozen
+initial input and relayed request, checks the strict approve report and private
+manifest, then matches the one known paid request to before/after original fee
+snapshots and cleanup. A fsynced exclusive claim precedes its immutable private
+lease. Neither construction nor publication pays for another model request.
+Complete reports and fee snapshots remain private; they are not admin exports.
+
+`review_publisher.publish` rechecks this provenance, frozen prepared config and
+request, current policy/fees, and the semantic scope. It uses a separate
+publication lock and the original tools lock, never maintenance.lock. Final
+FileReview appears atomically and exclusively after fee-lock release, allowing
+the original development adapter to acquire its own fee lock. Development still
+checks the exact fee pin, so concurrent changes reject execution. Partial claims,
+conflicts and uncertain publication are retained without overwrite/replay.
+
+A distinct host review event records actual issuance with dossier/lease/exact
+review evidence. It does not overwrite the independent SDK request/cost counters.
+The original FileReview and FrozenDevelopmentAdapter thread-wait path has been
+verified in SIMULATED tests, without new provider requests or a started candidate.
+This is not server activation or actual autonomous handoff acceptance.
+
+Still required before ACTUAL activation: bind the gateway-generated selection
+attempt ID from a verified completed selection receipt (it is a UUID allocated
+at reservation and cannot be guessed before selection), issue the separately
+bound selection-config review, connect refreshed templates and the coordinator,
+and verify new-task/candidate acceptance. The current prototype's explicit
+selection_operation_id is a host-provided synthetic test identity, not evidence
+that this pending actual binding is complete. Do not admit paid work using a
+placeholder ID. Whole-plan final independent review and actual closed-runtime
+acceptance remain pending.
