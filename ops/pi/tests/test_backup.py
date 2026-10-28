@@ -6,6 +6,7 @@ import importlib.util
 import json
 from pathlib import Path
 import threading
+from unittest.mock import patch
 import pytest
 from ops.pi.contracts import Identity, Receipt
 CONTEXT={'schema_context':'schema-v1','tool_context':'tools-v1'}
@@ -309,7 +310,14 @@ def historical_pairs(case):
         pre=Identity('pre-'+str(n),n*2+1,'trusted',{'worker':'sha256:pre-'+str(n)})
         pair={'release_pair_id':'history-'+str(n),'pre_identity':asdict(pre),'post_identity':asdict(Identity('post-'+str(n),n*2+2,'trusted',{'worker':'sha256:post-'+str(n)})),'plan_hash':'c'*64}
         current=(ledger,pre,pair,root);cases.append(current)
-        qualified_restore(current);api().mark_released(ledger,pair['release_pair_id'],pair['post_identity'],context=CONTEXT,now=NOW);qualified_restore(current,'POST')
+        # Creation and retention clocks share one fixed epoch; retain pair ordering.
+        class HistoricalClock(datetime):
+            @classmethod
+            def now(cls,tz=None):
+                value=NOW+timedelta(seconds=n)
+                return value.astimezone(tz) if tz is not None else value.replace(tzinfo=None)
+        with patch.object(api(),'datetime',HistoricalClock):
+            qualified_restore(current);api().mark_released(ledger,pair['release_pair_id'],pair['post_identity'],context=CONTEXT,now=NOW);qualified_restore(current,'POST')
     # Current candidate is fresh; historical POST proofs stay unchanged.
     receipt=backup(cases[-1]);api().record_restore(ledger,receipt,Receipt('restore:'+receipt.evidence['backup_id']+':fresh-current','done',{'verified':True}),context=CONTEXT,now=NOW+timedelta(days=30))
     return cases

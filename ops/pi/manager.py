@@ -75,10 +75,17 @@ def init(state,billing,*,mode='ACTUAL'):
 
 
 def _snapshot(state,billing,mode):
-    state,billing=_paths(state,billing);expected=_identity(billing,mode)
-    snap=ledger_snapshot(state)
+    state,billing=_paths(state,billing)
+    return _validate_snapshot(state,billing,mode,ledger_snapshot(state))
+
+
+def _validate_snapshot(state,billing,mode,snap):
+    expected=_identity(billing,mode)
     rows={r['operation_id']:dict(r,payload=Ledger._decode(r['payload']),
         evidence=Ledger._decode(r['evidence']) if r['evidence'] is not None else None) for r in snap['operations']}
+    from .manager_relocation import context
+    relocation=context(state,billing,mode,snap,rows)
+    if relocation:expected=_identity(Path(relocation['value']['source_billing']),mode)
     header=rows.get('manager:identity')
     require(header and header['kind']=='manager_identity' and header['status']=='done'
         and header['payload']==expected and header['evidence']==dict(verified=True,binding=digest(expected)),
@@ -90,13 +97,13 @@ def _snapshot(state,billing,mode):
     tasks=[r for r in rows.values() if r['kind']=='manager_task']
     require(len(tasks)<=MAX_TASKS,'manager history limit')
     tasks.sort(key=lambda r:(-r['payload']['priority'],sequence[r['operation_id']]))
-    known={'manager:identity'}
+    known={'manager:identity'} | (relocation['known'] if relocation else set())
     for task in tasks:
         require(task['status'] in ('pending','done'),'invalid registration state')
         payload=task['payload'];known.add(task['operation_id'])
         if task['status']=='done':require(task['evidence']==dict(verified=True,binding=digest(payload)),'invalid task registration receipt')
         require(task['operation_id']=='manager:task:'+payload['task_id'] and payload['mode']==mode
-            and payload['billing_path']==str(billing),'foreign manager registration')
+            and payload['billing_path']==(relocation['value']['source_billing'] if relocation and task['operation_id'] in relocation['ids'] else str(billing)),'foreign manager registration')
         for suffix,kind in ((':dispatch','iteration_stage'),(':cancel','manager_cancel'),(':reconciliation','manager_reconciliation')):
             key=task['operation_id']+suffix
             if key not in rows:continue
@@ -119,7 +126,10 @@ def _snapshot(state,billing,mode):
             else:
                 from .selection_abandonment import validate_resolution
                 require(task['operation_id']+':dispatch' in rows,'reconciliation requires a dispatch')
-                validate_resolution(task,rows[task['operation_id']+':dispatch'],row,state,billing)
+                if relocation and task['operation_id'] in relocation['ids']:
+                    validate_resolution(task,rows[task['operation_id']+':dispatch'],row,
+                        Path(relocation['value']['source_state']),Path(relocation['value']['source_billing']),artifact_paths=relocation['artifacts'])
+                else:validate_resolution(task,rows[task['operation_id']+':dispatch'],row,state,billing)
     require(set(rows)==known,'foreign operations in manager state')
     return state,billing,rows,tasks,snap
 
@@ -154,6 +164,8 @@ def _enqueue(state,billing,task_id,request,sha256,*,priority=0,mode='ACTUAL'):
     require(type(priority) is int and 0<=priority<=9,'bounded priority required')
     require(isinstance(sha256,str) and re.fullmatch('[a-f0-9]{64}',sha256),'frozen request digest required')
     state,billing,rows,tasks,_=_snapshot(state,billing,mode)
+    from .manager_relocation import active
+    active(billing)
     c,resources=_package(state,billing,request,sha256)
     payload=dict(task_id=task_id,request_path=str(request),request_sha256=sha256,priority=priority,
         cycle_id=c['cycle_id'],mode=mode,billing_path=str(billing),resources=resources)
@@ -176,6 +188,8 @@ def _enqueue(state,billing,task_id,request,sha256,*,priority=0,mode='ACTUAL'):
             for output in prior['outputs']:
                 for value in resources['inputs']:_disjoint(Path(output),Path(value))
         for prior in rows.values():
+            if prior['kind']=='manager_relocation':
+                for value in resources['inputs']+resources['outputs']:_disjoint(Path(value),Path(prior['payload']['archive_root']))
             if prior['kind']=='manager_reconciliation':
                 for output in resources['outputs']:
                     for protected in (path(prior['payload']['audit_path']).parent,path(prior['payload']['review_path'])):
@@ -191,6 +205,8 @@ def enqueue(state,billing,task_id,request,sha256,*,priority=0,mode='ACTUAL'):
     require(isinstance(task_id,str) and re.fullmatch('[A-Za-z0-9_-]{1,64}',task_id),'bounded task id required')
     require(type(priority) is int and 0<=priority<=9,'bounded priority required')
     state,billing,rows,_,_=_snapshot(state,billing,mode)
+    from .manager_relocation import active
+    active(billing)
     old=rows.get('manager:task:'+task_id)
     if old and old['status']=='done':
         payload=old['payload']
@@ -312,6 +328,8 @@ def run(state,billing,*,max_tasks=20,seconds=3600,cancel=None,mode='ACTUAL',exec
         _plain(path(lock_path,private=True))
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:return dict(status='blocked',reason='manager_busy',dispatched=0,tasks=[],mode=mode)
+        from .manager_relocation import active
+        active(billing)
         started=time.monotonic();until=started+seconds;cancel=cancel if cancel is not None else Event()
         timer=Timer(seconds,cancel.set);timer.daemon=True;timer.start();used=[];final='done';reason='idle'
         ledger=Ledger(state,existing=True)

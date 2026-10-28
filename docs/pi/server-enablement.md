@@ -28,3 +28,5 @@
 真实源码开发前置验收更新：[Unicode18](../evaluations/pi-unicode18-2026-10-27.md)已完成1项认证闭环，13请求/¥0.047012、18检查全通过、3冷恢复零重复；没有产品采纳或生产部署。原账本累计748请求、9未知保持，保守占用¥22.759695，剩余¥27.240305/累计¥50。服务器正式状态移交/备份恢复/权限、服务启用与上线后验收继续推进；enabled仍为false。
 
 状态交接前置能力更新：[跨主机custody合成验收](../evaluations/pi-state-custody-2026-10-27.md)完成Mac→Linux原式50元/9未知预留的冻结、目标激活、错误位置副本拒绝；原真实账本及manager不变，0模型调用，7生产容器/readyz不变。47新回归、3015全Pi通过/19未选，独立2P2作者一次修复后通过；没有真实状态/凭据迁移或常驻服务启用，enabled仍为false。此机制不防同host/path整库回滚/克隆machine-id/恶意root，操作员须封存旧入口。
+
+原manager迁移前置更新：[2026-10-28跨主机恢复](../evaluations/pi-manager-relocation-2026-10-28.md)已完成35新回归/完整3050通过19未选/Node54；实际服务器合成3任务保留原uncertain-abandoned/blocked/cancelled，3CLI冷恢复0分派/真实调用，原计费/审计前缀保持、7生产容器/readyz不变。真实canonical账本/manager/凭据未移交、服务未启用；enabled仍为false。首版仅1次manager迁移，第二次明确拒绝；非通用外部防回滚/异机灾备。下一步固定完整新runtime并完成正式状态备份/恢复、单一移交和服务/provider上线验收。

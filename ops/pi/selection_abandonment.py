@@ -269,18 +269,23 @@ def _review(target,sha,report,audit_sha):
     return r
 
 
-def validate_resolution(task,dispatch,row,state,billing):
+def validate_resolution(task,dispatch,row,state,billing,*,artifact_paths=None):
     """Immutable admission evidence stays required on every manager recovery."""
     p=row['payload'];require(row['kind']=='manager_reconciliation' and row['operation_id']==task['operation_id']+':reconciliation'
         and row['status'] in ('pending','done') and set(p)==PAYLOAD_FIELDS and p['schema']=='pi-selection-abandonment-record-v1'
         and p['mode']==task['payload']['mode']=='ACTUAL' and p['outcome']==OUTCOME
         and dispatch['status']=='uncertain' and p['task_binding']==digest(task['payload'])
         and p['dispatch_sha256']==digest(dispatch),'reconciliation record binding drift')
-    report=_load_report(p['audit_path'],p['audit_sha256']);f=report['facts']
+    if artifact_paths is not None:
+        require(isinstance(artifact_paths,dict) and all(key in artifact_paths for key in (p['audit_path'],p['review_path'])),
+            'complete archived resolution paths required')
+    audit_target=p['audit_path'] if artifact_paths is None else artifact_paths[p['audit_path']]
+    review_target=p['review_path'] if artifact_paths is None else artifact_paths[p['review_path']]
+    report=_load_report(audit_target,p['audit_sha256']);f=report['facts']
     require(f['state_path']==str(state) and f['billing_path']==str(billing)
         and f['task_id']==task['payload']['task_id'] and f['task_binding']==p['task_binding']
         and f['dispatch_sha256']==p['dispatch_sha256'],'reconciliation audit identity drift')
-    _review(p['review_path'],p['review_sha256'],report,p['audit_sha256'])
+    _review(review_target,p['review_sha256'],report,p['audit_sha256'])
     if row['status']=='done':require(row['evidence']==dict(verified=True,binding=digest(p),outcome=OUTCOME,mode='ACTUAL'),
         'reconciliation receipt drift')
     return report
