@@ -64,19 +64,24 @@ def _convert_tools(tools: list[dict] | None) -> list[dict] | None:
 def _convert_messages(messages: list[dict], json_mode: bool, *, origin: dict | None = None) -> tuple[str, list[dict]]:
     system_parts: list[str] = []
     converted: list[dict] = []
+    tool_results: list[dict] | None = None
     for message in messages:
         role = message.get("role", "user")
+        if role != "tool":
+            tool_results = None
         if role == "system":
             system_parts.append(str(message.get("content", "")))
             continue
         if role == "tool":
-            converted.append({
-                "role": "user",
-                "content": [{
-                    "type": "tool_result",
-                    "tool_use_id": message.get("tool_call_id", ""),
-                    "content": str(message.get("content", "")),
-                }],
+            # Anthropic requires every result from a parallel tool-use turn in
+            # the single user message immediately following that assistant.
+            if tool_results is None:
+                tool_results = []
+                converted.append({"role": "user", "content": tool_results})
+            tool_results.append({
+                "type": "tool_result",
+                "tool_use_id": message.get("tool_call_id", ""),
+                "content": str(message.get("content", "")),
             })
             continue
         content: str | list[dict] = str(message.get("content", ""))

@@ -47,16 +47,23 @@ def provider_with(handler, url='https://example.test/anthropic'):
 
 
 @pytest.mark.parametrize('stream', [False, True])
-def test_tool_loop_replays_all_blocks_without_exposing_thinking(monkeypatch, stream):
+@pytest.mark.parametrize('tool_count', [1, 2])
+def test_tool_loop_replays_all_blocks_without_exposing_thinking(monkeypatch, stream, tool_count):
     requests = []
+    round_blocks = BLOCKS + ([{'type': 'tool_use', 'id': 'lookup-2', 'name': 'lookup', 'input': {'q': 'more'}}] if tool_count == 2 else [])
     def handle(request):
         payload = json.loads(request.content)
         requests.append(payload)
         if len(requests) > 1:
             assistant = next(m for m in payload['messages'] if m['role'] == 'assistant')
-            if assistant['content'] != BLOCKS:
+            if assistant['content'] != round_blocks:
                 return httpx.Response(400, json={'error': {'message': 'content[].thinking must be passed back'}})
-        blocks = BLOCKS if len(requests) == 1 else [{'type': 'text', 'text': 'Final.'}]
+            following = payload['messages'][payload['messages'].index(assistant) + 1]
+            result_ids = [b.get('tool_use_id') for b in following['content'] if b['type'] == 'tool_result']
+            expected_ids = [b['id'] for b in round_blocks if b['type'] == 'tool_use']
+            if following['role'] != 'user' or result_ids != expected_ids:
+                return httpx.Response(400, json={'error': {'message': 'tool_use ids without tool_result blocks immediately after'}})
+        blocks = round_blocks if len(requests) == 1 else [{'type': 'text', 'text': 'Final.'}]
         reason = 'tool_use' if len(requests) == 1 else 'end_turn'
         if stream:
             return httpx.Response(200, text=streamed(blocks, reason))
@@ -69,12 +76,12 @@ def test_tool_loop_replays_all_blocks_without_exposing_thinking(monkeypatch, str
     try:
         response, trace = nodes._run_tool_loop(None, {}, 'plan', 'planner', chain,
             [{'role': 'user', 'content': 'Plan'}], max_tokens=100, tools=TOOLS,
-            max_tool_calls=2, record_final=False, streamer=emitter)
+            max_tool_calls=3, record_final=False, streamer=emitter)
         assert response.error is None
         assert response.content == 'Final.'
         assert len(requests) == 2
         assert 'thinking' not in requests[0]
-        assert len(trace) == 1
+        assert len(trace) == tool_count
         assert 'private analysis' not in ''.join(output)
     finally:
         provider._client.close()
@@ -208,3 +215,30 @@ def test_error_body_read_preserves_budget_pause_and_closes(monkeypatch):
         assert body.closed
     finally:
         provider._client.close()
+
+
+def test_parallel_results_preserve_turn_boundaries_and_failed_tool_results():
+    from copy import deepcopy
+    from myink.providers.anthropic import _convert_messages
+    def call(cid):
+        return {'id': cid, 'function': {'name': 'lookup', 'arguments': '{}'}}
+    messages = [
+        {'role': 'user', 'content': 'Plan'},
+        {'role': 'assistant', 'tool_calls': [call('a'), call('b')]},
+        {'role': 'tool', 'tool_call_id': 'a', 'content': 'facts'},
+        {'role': 'tool', 'tool_call_id': 'b', 'content': '{"error":"lookup failed"}'},
+        {'role': 'assistant', 'tool_calls': [call('c'), call('d')]},
+        {'role': 'tool', 'tool_call_id': 'c', 'content': 'more facts'},
+        {'role': 'tool', 'tool_call_id': 'd', 'content': '{"error":"TOOL_BUDGET_EXCEEDED"}'},
+        {'role': 'user', 'content': 'Continue'},
+    ]
+    original = deepcopy(messages)
+    _, converted = _convert_messages(messages, False)
+    assert [m['role'] for m in converted] == ['user', 'assistant', 'user', 'assistant', 'user', 'user']
+    for index, ids in [(2, ['a', 'b']), (4, ['c', 'd'])]:
+        assert [block['tool_use_id'] for block in converted[index]['content']] == ids
+        assert all(block['type'] == 'tool_result' for block in converted[index]['content'])
+    assert converted[2]['content'][1]['content'] == '{"error":"lookup failed"}'
+    assert converted[4]['content'][1]['content'] == '{"error":"TOOL_BUDGET_EXCEEDED"}'
+    assert converted[-1] == {'role': 'user', 'content': 'Continue'}
+    assert messages == original
