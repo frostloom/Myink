@@ -14,9 +14,8 @@ from ops.pi.tests.test_diagnosis_launcher import fake_frame
 def write(p,v):p.write_bytes(encoded(v));p.chmod(0o600)
 
 
-@pytest.fixture
-def completed(review_config,proof,monkeypatch):
-    cp,c,d,permit,tc=review_config;module=importlib.import_module('ops.pi.sdk_review_launcher');host=importlib.import_module('ops.pi.no_tool_host')
+def run_review(cp,c,d,proof,monkeypatch,*,now=NOW):
+    module=importlib.import_module('ops.pi.sdk_review_launcher');host=importlib.import_module('ops.pi.no_tool_host')
     monkeypatch.setattr(module,'verify_source',lambda *args:dict(machine='aarch64'))
     class H:operation_id='owned-review';owned={};pending={}
     class Owners:
@@ -35,7 +34,13 @@ def completed(review_config,proof,monkeypatch):
         usage=dict(input_tokens=1,output_tokens=1,cache_read_input_tokens=0,cache_creation_input_tokens=0)
         events=[dict(type='message_start',message=dict(usage=usage)),dict(type='content_block_delta',index=0,delta=dict(type='text_delta',text=text)),dict(type='message_delta',usage=dict(output_tokens=1)),dict(type='message_stop')]
         return httpx.Response(200,headers={'content-type':'text/event-stream'},stream=httpx.ByteStream(''.join('data: '+json.dumps(v)+'\n\n' for v in events).encode()))
-    result=module.execute(cp,transport=send,clock=lambda:NOW,expected_config_sha256=file_hash(cp));assert result['verified'] is True
+    result=module.execute(cp,transport=send,clock=lambda:now,expected_config_sha256=file_hash(cp));assert result['verified'] is True
+    return result
+
+
+@pytest.fixture
+def completed(review_config,proof,monkeypatch):
+    cp,c,d,permit,tc=review_config;run_review(cp,c,d,proof,monkeypatch)
     root=cp.parent/'leases';root.mkdir(mode=0o700);prepared=cp.parent/'prepared';prepared.mkdir(mode=0o700)
     policy=dict(schema='pi-review-issuer-policy-v1',authority='host_reviewed_development',mode='SIMULATED',root=str(root),prepared_parent=str(prepared),review_config_parent=str(cp.parent),source_sha256=tc['source_sha256'],allowed_files=['src/a.py'],runtime_sha256=c['runtime_sha256'],policy_sha256=c['policy_sha256'],credential_sha256=c['credential_sha256'],ledger_path=c['ledger_path'],budget_microyuan=10000000,legacy_unknown_ids=[],max_requests=tc['max_requests'],max_tools=tc['max_tools'],deadline_seconds=tc['deadline_seconds'],issued_at=(NOW-timedelta(minutes=1)).isoformat(),expires_at=(NOW+timedelta(hours=1)).isoformat())
     pp=cp.parent/'issuer-policy.json';write(pp,policy);return pp,policy,cp,c,tc

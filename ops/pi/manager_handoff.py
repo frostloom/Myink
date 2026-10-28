@@ -1,6 +1,7 @@
 """Reviewed reproduction to original finite manager inbox; no paid calls here."""
 from pathlib import Path
 import re
+from threading import Event
 from .audit import AuditStore,_path,_plain,digest,require
 from .development_inputs import file_hash,ledger_snapshot,read_json,prepare_template
 from .review_lease import _read,_directory,_new,_sync,load_policy,inspect_review,create as create_lease
@@ -17,7 +18,8 @@ RECEIPT=set('schema status eligible_for_review model_requests template_path doss
 BASE=Path('/home/ubuntu/myink-pi-managed')
 
 
-def publish(request_path,request_sha256,*,clock=None):
+def publish(request_path,request_sha256,*,clock=None,cancel=None):
+    cancel=cancel if cancel is not None else Event();require(not cancel.is_set(),'handoff cancelled before claim')
     request,pin=_read(request_path,65536);require(pin==request_sha256 and isinstance(request,dict) and set(request)==FIELDS and request['schema']=='pi-reviewed-manager-handoff-v1','strict reviewed handoff request required');q=request
     require(q['mode'] in ('ACTUAL','SIMULATED'))
     if q['mode']=='ACTUAL':require(clock is None and _path(q['manager_state'])==BASE/'state/actual-manager.sqlite' and _path(q['inbox'])==BASE/'inbox','original actual manager and inbox required')
@@ -35,7 +37,7 @@ def publish(request_path,request_sha256,*,clock=None):
     _disjoint(root,inbox)
     for out in (root,inbox):
         for item in protected:_disjoint(out,item)
-    require(file_hash(request_path)==request_sha256,'handoff request revoked')
+    require(not cancel.is_set() and file_hash(request_path)==request_sha256,'handoff request revoked or cancelled')
     root.mkdir(mode=0o700);_sync(root.parent);_new(root/'intent.json',dict(schema='pi-manager-handoff-intent-v1',request_sha256=request_sha256,reproduction_receipt_sha256=rpin,review_config_sha256=q['review_config_sha256']))
     lease=create_lease(q['issuer_policy_path'],q['issuer_policy_sha256'],q['review_config_path'],q['review_config_sha256'],clock=clock)
     refreshed=dict(tc,ledger_sha256=fee['sha256']);require(semantic_hash(refreshed)==material['dossier']['semantic_sha256'],'fee-only template refresh changed semantics')
@@ -46,8 +48,9 @@ def publish(request_path,request_sha256,*,clock=None):
     sealed=seal_bundle(bundle);require(sealed['ready'] is True and not sealed['staging_retained'],'cycle publication uncertain');cycle=Path(sealed['cycle_path']);cycle_sha=file_hash(cycle)
     _,resources=_package(state,_path(c['ledger_path']),cycle,cycle_sha)
     for item in resources['inputs']+resources['outputs']:_disjoint(inbox,Path(item))
-    require(file_hash(request_path)==request_sha256 and file_hash(q['reproduction_receipt_path'])==rpin and ledger_snapshot(c['ledger_path'])==fee,'handoff changed before admission')
+    require(not cancel.is_set() and file_hash(request_path)==request_sha256 and file_hash(q['reproduction_receipt_path'])==rpin and ledger_snapshot(c['ledger_path'])==fee,'handoff changed before admission')
     load_policy(q['issuer_policy_path'],q['issuer_policy_sha256'],clock)
+    require(not cancel.is_set(),'handoff cancelled before admission')
     manifest=dict(schema='pi-manager-admission-v1',task_id=q['task_id'],request_path=str(cycle),request_sha256=cycle_sha,priority=q['priority'],mode=q['mode']);destination=inbox/(q['task_id']+'.task.json')
     retained=_publish_new(destination,encoded(manifest)+b'\n');_sync(inbox);require(not retained,'manager admission staging uncertain')
     result=dict(schema='pi-reviewed-manager-handoff-result-v1',status='published',model_requests=0,request_sha256=request_sha256,manifest_sha256=file_hash(destination),manifest_path=str(destination),cycle_sha256=cycle_sha,cycle_path=str(cycle),bundle_path=str(bundle),template_path=str(target),lease_path=lease['lease_path'],lease_sha256=lease['lease_sha256'])

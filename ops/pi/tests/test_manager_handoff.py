@@ -62,3 +62,18 @@ def test_partial_handoff_keeps_claim_and_never_retries_publication(handoff,monke
     assert (Path(c['inbox'])/(c['task_id']+'.task.json')).exists()
     with pytest.raises(ValueError):module.publish(request,file_hash(request),clock=lambda:NOW)
     assert ledger_snapshot(tc['ledger_path'])==before
+
+
+@pytest.mark.parametrize('when',['before_claim','before_admission'])
+def test_parent_cancel_never_admits_a_task(handoff,monkeypatch,when):
+    from threading import Event
+    request,c,review,tc=handoff;module=api();cancel=Event();before=ledger_snapshot(tc['ledger_path'])
+    if when=='before_claim':cancel.set()
+    else:
+        original=module._package
+        def checked(*args,**kwargs):
+            result=original(*args,**kwargs);cancel.set();return result
+        monkeypatch.setattr(module,'_package',checked)
+    with pytest.raises(ValueError):module.publish(request,file_hash(request),clock=lambda:NOW,cancel=cancel)
+    assert not list(Path(c['inbox']).glob('*.task.json')) and ledger_snapshot(tc['ledger_path'])==before
+    assert Path(c['root']).exists()==(when=='before_admission')

@@ -318,3 +318,35 @@ source and releases are read-only. The Docker group remains a trusted-host
 boundary. These source units have not been installed or activated on the server.
 The finite coordinator, matching closed manager/SDK release, native acceptance,
 whole-plan independent review and actual new-task development remain pending.
+
+## Fixed source profile and generated phase permissions (source only)
+
+`autonomy_profile` constructs investigation, isolated-reproducer, independent-SDK
+review and reviewed-manager handoff inputs mechanically. ACTUAL construction
+requires a pinned root-owned0640 profile in a root-owned0750 directory and root
+coordinator identity. The profile fixes source/files/pending-candidate hashes,
+observer/controller, host runtime/policy/credential, immutable checker, original
+50CNY/nineholds, canonical roots and finite phase limits. Credential data stays
+host-side. An ordinary model worker cannot mint these root permissions.
+
+Each builder reloads the profile/current closed financial state and verifies its
+predecessor: full authenticated proposal before reproducer authority, completed
+reproduction/checked baseline/dossier before review inputs, and full closed
+independent approve recommendation before a handoff request. A model report does
+not choose paths or limits. Reproduction outputs must independently stay within
+the root profile, even when their own dossier hashes have been recomputed. Root
+permit files stay root-owned0640; ordinary worker inputs/claims are private and
+belong to ubuntu. Exclusive durable claims and generated stage pointers survive
+failure without overwrite. Construction itself makes no model request and does
+not run tests, publish FileReview or dispatch a candidate.
+
+`autonomy_worker` exposes only four fixed ACTUAL phase kernels through the closed
+entry: investigation, reproducer, sdk_review and manager_handoff. It requires the
+ordinary ubuntu identity, copied config hash and matching fixed schema; no
+arbitrary module/command/transport/clock is accepted. SIGINT/SIGTERM set the shared
+cancel event and restore prior handlers on exit. SDK/checker cancellation uses
+the existing cleanup lifecycle. Handoff rechecks cancellation before claiming and
+before inbox admission, preserving partial private output without publishing a
+new task after cancellation. Raw worker outcomes remain private, not admin UI
+payloads. The privileged finite parent dispatcher/coordinator, service scheduling,
+matching closed manager/SDK release and native/actual acceptance are still pending.
