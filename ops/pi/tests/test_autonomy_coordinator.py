@@ -101,3 +101,20 @@ def test_main_reader_can_link_full_flow_without_double_counting_model_cost(profi
     assert event['details']['operation_id']==context['research_fingerprint'] and 'model_requests' not in event['details'] and 'known_cost_microyuan' not in event['details']
     assert {e['kind'] for e in event['evidence']}=={'root_source_profile','phase_investigation','phase_reproducer','phase_sdk_review','phase_manager_handoff'}
     assert any(e['kind']=='version' and e['version']['controller_sha256']==p['controller_sha256'] for e in events)
+
+
+def test_unresolved_original_manager_dispatch_freezes_new_pipeline(profile,proof,monkeypatch):
+    from ops.pi import manager
+    pp,p,c,context=profile;runner,calls=kernels(profile,proof,monkeypatch);assert api().run(pp,file_hash(pp),runner=runner,clock=lambda:NOW)['status']=='admitted'
+    report=manager.run(p['manager_state'],p['host']['ledger_path'],max_tasks=1,seconds=2100,idle_seconds=0,inbox=p['inbox'],mode='SIMULATED',executor=lambda *a,**kw:{})
+    assert report['status']=='uncertain' and manager.status(p['manager_state'],p['host']['ledger_path'],mode='SIMULATED')['metrics']['unresolved_dispatches']==1
+    result=api().run(pp,file_hash(pp),runner=runner,clock=lambda:NOW)
+    assert result['status']=='uncertain' and result['model_requests']==0 and len(calls)==5
+
+
+def test_pending_selection_checkpoint_is_not_invalidated_by_a_new_source_investigation(profile,proof,monkeypatch):
+    from ops.pi.development_inputs import tree_hash
+    pp,p,c,context=profile;runner,calls=kernels(profile,proof,monkeypatch);assert api().run(pp,file_hash(pp),runner=runner,clock=lambda:NOW)['status']=='admitted'
+    source=Path(p['source']['source_path']);(source/'src/a.py').write_text('value=3\n');p['source']['source_sha256']=tree_hash(source);write(pp,p);before=ledger_snapshot(c['ledger_path'])
+    result=api().run(pp,file_hash(pp),runner=runner,clock=lambda:NOW)
+    assert result['status']=='awaiting_manager_cycle' and result['model_requests']==0 and len(calls)==5 and ledger_snapshot(c['ledger_path'])==before

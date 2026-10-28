@@ -159,6 +159,10 @@ def handoff(profile_path,pin,claim_path,*,clock=None):
     from .review_lease import inspect_review
     inspect_review(stage['issuer_policy_path'],stage['issuer_policy_sha256'],stage['config_path'],stage['config_sha256'],clock=clock)
     limits=p['limits'];root=_path(p['handoff_root'])/('handoff-'+fp);config=_path(p['handoff_root'])/('request-'+fp+'.json')
-    value=dict(schema='pi-reviewed-manager-handoff-v1',mode=p['mode'],root=str(root),issuer_policy_path=stage['issuer_policy_path'],issuer_policy_sha256=stage['issuer_policy_sha256'],review_config_path=stage['config_path'],review_config_sha256=stage['config_sha256'],reproduction_receipt_path=stage['reproduction_receipt_path'],reproduction_receipt_sha256=stage['reproduction_receipt_sha256'],cycle_id='auto-'+fp[:32],selection_run_id='select-'+fp[:32],task_id='auto-'+fp[:32],manager_state=p['manager_state'],inbox=p['inbox'],deadline_seconds=limits['cycle_seconds'],review_wait_seconds=limits['review_wait_seconds'],priority=limits['priority'])
+    cycle_seconds=min(limits['cycle_seconds'],2090)
+    if p['mode']=='ACTUAL':
+        from .maintenance_window import cycle_deadline
+        cycle_seconds=cycle_deadline(now,cycle_seconds)
+    value=dict(schema='pi-reviewed-manager-handoff-v1',mode=p['mode'],root=str(root),issuer_policy_path=stage['issuer_policy_path'],issuer_policy_sha256=stage['issuer_policy_sha256'],review_config_path=stage['config_path'],review_config_sha256=stage['config_sha256'],reproduction_receipt_path=stage['reproduction_receipt_path'],reproduction_receipt_sha256=stage['reproduction_receipt_sha256'],cycle_id='auto-'+fp[:32],selection_run_id='select-'+fp[:32],task_id='auto-'+fp[:32],manager_state=p['manager_state'],inbox=p['inbox'],deadline_seconds=cycle_seconds,review_wait_seconds=limits['review_wait_seconds'],priority=limits['priority'])
     require(file_hash(profile_path)==pin and ledger_snapshot(p['host']['ledger_path'])==fee,'handoff authority revoked');write(p,config,value)
     result=dict(config_path=str(config),config_sha256=file_hash(config));write(p,claim/'handoff-stage.json',result);return result

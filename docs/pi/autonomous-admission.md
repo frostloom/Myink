@@ -397,3 +397,32 @@ whole-plan independent review; preserve the actual005 runtime, original ledgers,
 50CNY/nineholds and latest checkpoint. Finished-candidate independent review,
 main/product adoption, owned business rollback and true24–48hour verification
 remain separate unfinished requirements.
+
+## Cross-day terminal lifecycle and night finish bounds
+
+`policy_record` authenticates historical root policy bytes/scope; it grants no
+current authority. `load_policy` adds the mandatory live validity check. The
+external worker may read a fully pinned terminal publication/abstention after
+expiry, but cannot bind/publish any new permission using that expired policy.
+`inspect_terminal` never advances pending work. New registration retires only
+such authenticated terminal entries from the active16-entry queue, preserving
+original registries and all receipts; pending/uncertain/expired incomplete work
+is retained and blocks. Before any new paid phase, the coordinator also checks
+original-manager unresolved dispatches and the existing active queue. It waits
+for a pending original cycle rather than changing its exact fee checkpoint with
+an unrelated research call.
+
+Final ACTUAL handoff rechecks02:00–05:30 Shanghai admission, caps the cycle below
+the original2100second outer manager budget, and reserves180seconds for handoff,
+audit and timer wakeup before06:00. The closed manager independently rechecks new
+auto-task admission and remaining finish budget. Finished/cancelled history and
+legacy manually approved queue semantics remain unchanged. These are additional
+source tests, not a real cross-day deployment claim.
+
+A root source profile remains explicitly finite, at most24hours. Expiry does not
+renew permissions, reset50CNY, release unknown holds or clear research claims.
+Source/profile renewal is an operator authorization boundary; this first finite
+pilot must not be described as indefinitely renewed autonomous management.
+Observer scheduling and separately approved fixed followups have their own
+contracts. Longer operation still needs explicit finite source/profile renewal
+and actual24–48hour validation under the unchanged cumulative financial scope.

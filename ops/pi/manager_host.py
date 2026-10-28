@@ -1,5 +1,6 @@
 """Closed ordinary-user manager entry; complete autonomous receipts precede payment."""
 from pathlib import Path
+from datetime import datetime,timezone
 from threading import Event
 import os,re,signal
 from .audit import _path,_plain,hash_value,require,digest
@@ -30,6 +31,9 @@ def _ready(c,task_id,request_path,request_pin,manifest_pin,clock):
     handoff=_read(cycle.parent.parent/'receipt.json')[0]
     require(digest(handoff)==digest(results['manager_handoff']['outcome']) and handoff['manifest_sha256']==r['manifest_sha256'] and handoff['cycle_sha256']==request_pin,'completed handoff receipt drift')
     p,_=load_policy(q['issuer_policy_path'],q['issuer_policy_sha256'],clock);require(p['mode']==c['mode'],'issuer mode drift')
+    if c['mode']=='ACTUAL':
+        from .maintenance_window import budget
+        require(read_json(cycle)['deadline_seconds']+10<=budget(datetime.now(timezone.utc),2100),'automatic cycle cannot finish within maintenance window')
 
 
 def run(config_path,pin,*,cancel=None,executor=None,clock=None):
@@ -47,14 +51,17 @@ def run(config_path,pin,*,cancel=None,executor=None,clock=None):
         require(not cancel.is_set(),'manager cancelled before admission')
         _,_,rows,tasks,_=manager._snapshot(Path(c['state_path']),Path(c['billing_path']),c['mode'])
         manifests=sorted(_path(c['inbox']).glob('*.task.json'));require(len(manifests)<=manager.MAX_TASKS,'bounded manager inbox required')
+        automatic=False
         for manifest in manifests:
             m=_read(manifest,1048576)[0];key='manager:task:'+m['task_id']
             if key+':dispatch' in rows or key+':cancel' in rows:continue
-            _ready(c,m['task_id'],m['request_path'],m['request_sha256'],file_hash(manifest),clock)
+            _ready(c,m['task_id'],m['request_path'],m['request_sha256'],file_hash(manifest),clock);automatic|=m['task_id'].startswith('auto-')
         for task in tasks:
             if task['operation_id']+':dispatch' in rows or task['operation_id']+':cancel' in rows:continue
-            q=task['payload'];_ready(c,q['task_id'],q['request_path'],q['request_sha256'],None,clock)
+            q=task['payload'];_ready(c,q['task_id'],q['request_path'],q['request_sha256'],None,clock);automatic|=q['task_id'].startswith('auto-')
         require(not cancel.is_set() and file_hash(cp)==pin,'manager config revoked before dispatch')
-        return manager.run(c['state_path'],c['billing_path'],max_tasks=1,seconds=2100,idle_seconds=0,inbox=c['inbox'],mode=c['mode'],executor=executor,cancel=cancel)
+        from .maintenance_window import manager_budget
+        seconds=manager_budget(c['mode'],automatic,datetime.now(timezone.utc))
+        return manager.run(c['state_path'],c['billing_path'],max_tasks=1,seconds=seconds,idle_seconds=0,inbox=c['inbox'],mode=c['mode'],executor=executor,cancel=cancel)
     finally:
         for signum,handler in previous.items():signal.signal(signum,handler)

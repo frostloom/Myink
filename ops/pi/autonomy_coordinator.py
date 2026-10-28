@@ -31,13 +31,28 @@ def _atomic(p,path,raw):
         if os.path.exists(name):os.unlink(name)
 
 
-def _register(p,claim,stage):
+def _active_entries(p,entries,clock=None):
+    from .manager_review_worker import inspect_terminal,_completed
+    require(isinstance(entries,list) and len(entries)<=16,'finite worker queue required');active=[];retired=[];seen=set()
+    for entry in entries:
+        require(isinstance(entry,dict) and set(entry)=={'request_path','request_sha256'} and hash_value(entry['request_sha256']) and entry['request_path'] not in seen,'closed unique worker entry required');seen.add(entry['request_path'])
+        require(read_json(entry['request_path'])['mode']==p['mode'],'mixed worker queue modes forbidden')
+        result=inspect_terminal(entry['request_path'],entry['request_sha256'],clock=clock)
+        if result is not None:
+            require(result['status'] in ('published','no_action') and result.get('cached') is True,'uncertain worker queue freezes admission');retired.append(dict(entry,status=result['status']))
+        else:
+            _completed(entry['request_path'],entry['request_sha256'],clock);active.append(entry)
+    return active,retired
+
+
+def _register(p,claim,stage,*,clock=None):
     directory=_path(p['permit_root']).parent;registry=directory/'review-worker-registry.json';envpath=directory/'review-worker.env'
     old=dict(schema='pi-review-worker-registry-v1',mode=p['mode'],entries=[])
     if registry.exists():
         _plain(registry);require(registry.stat().st_size<=65536);old=read_json(registry)
         if p['mode']=='ACTUAL':require(registry.stat().st_uid==0 and registry.stat().st_mode&0o777==0o640,'root worker registry required')
-    require(isinstance(old,dict) and set(old)=={'schema','mode','entries'} and old['schema']=='pi-review-worker-registry-v1' and old['mode']==p['mode'] and isinstance(old['entries'],list) and len(old['entries'])<16,'finite original worker registry required')
+    require(isinstance(old,dict) and set(old)=={'schema','mode','entries'} and old['schema']=='pi-review-worker-registry-v1' and old['mode']==p['mode'] and isinstance(old['entries'],list) and len(old['entries'])<=16,'finite original worker registry required')
+    active,retired=_active_entries(p,old['entries'],clock);require(len(active)<16,'active worker queue full')
     entry=dict(request_path=stage['config_path'],request_sha256=stage['config_sha256']);require(all(e.get('request_path')!=entry['request_path'] for e in old['entries']),'worker admission already registered; no replay')
     profile.write(p,claim/'registry-before-private.json',old)
     if envpath.exists():
@@ -45,7 +60,8 @@ def _register(p,claim,stage):
         if p['mode']=='ACTUAL':require(envpath.stat().st_uid==0 and envpath.stat().st_mode&0o777==0o640,'root worker environment required')
         text=envpath.read_text();allowed={'PI_OBSERVER_RUNTIME_SHA256','PI_REVIEW_WORKER_ENTRYPOINT','PI_REVIEW_WORKER_REGISTRY_SHA256'}
         require(all('=' in row and row.split('=',1)[0] in allowed for row in text.splitlines() if row),'fixed worker environment required');profile.write(p,claim/'environment-before-private.json',dict(text=text))
-    new=dict(old,entries=old['entries']+[entry]);_atomic(p,registry,encoded(new)+b'\n');pin=file_hash(registry)
+    profile.write(p,claim/'retired-worker-entries.json',retired)
+    new=dict(old,entries=active+[entry]);_atomic(p,registry,encoded(new)+b'\n');pin=file_hash(registry)
     require(re.fullmatch('/[A-Za-z0-9_./-]+',p['worker_entry_path']) is not None,'fixed environment entry path required')
     env=('PI_OBSERVER_RUNTIME_SHA256='+p['controller_sha256']+'\nPI_REVIEW_WORKER_ENTRYPOINT='+p['worker_entry_path']+'\nPI_REVIEW_WORKER_REGISTRY_SHA256='+pin+'\n').encode();_atomic(p,envpath,env)
     require(file_hash(registry)==pin and envpath.read_bytes()==env,'worker registration uncertain')
@@ -93,6 +109,14 @@ def run(profile_path,pin,*,runner=None,clock=None,cancel=None):
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:return dict(out,status='lock_busy')
         p,now,before=profile.load(pp,pin,clock=clock)
+        from .manager import status as manager_status
+        if manager_status(p['manager_state'],p['host']['ledger_path'],mode=mode)['metrics']['unresolved_dispatches']:return dict(out,status='uncertain')
+        active_entries=[];registry=_path(p['permit_root']).parent/'review-worker-registry.json'
+        if registry.exists():
+            _plain(registry);require(registry.stat().st_size<=65536,'bounded existing review queue required');queue=read_json(registry)
+            require(set(queue)=={'schema','mode','entries'} and queue['schema']=='pi-review-worker-registry-v1' and queue['mode']==mode,'existing review queue drift')
+            if mode=='ACTUAL':require(registry.stat().st_uid==0 and registry.stat().st_mode&0o777==0o640,'root existing review queue required')
+            active_entries,_=_active_entries(p,queue['entries'],clock)
         if mode=='ACTUAL' and not _window(p,now):return dict(out,status='outside_window')
         records,closed=_history(_directory(p['root']))
         if not closed:return dict(out,status='uncertain')
@@ -103,6 +127,7 @@ def run(profile_path,pin,*,runner=None,clock=None,cancel=None):
         evidence=inspect_observation(o['observer_config_path'],o['observer_config_sha256'],receipt,expected_controller_sha256=o['observer_controller_sha256'],clock=clock)
         credentials=load_credentials(h['credential_path'],load_policy(_path(h['policy_path'])));context=compile_context(s['source_path'],s['source_sha256'],s['files'],evidence,reference_commit=s['reference_commit'],pending=read_json(s['pending_path']),credential_literal=credentials['PLATFORM_MODEL_API_KEY']);fp=context['research_fingerprint']
         if fp in records:return dict(out,status='cached',previous_status=records[fp]['status'])
+        if active_entries:return dict(out,status='awaiting_manager_cycle')
         current_files={v['path']:v['sha256'] for v in context['files']}
         if any(value['status']=='admitted' and any(current_files.get(path)==sha for path,sha in value['pending_file_hashes'].items()) for value in records.values()):return dict(out,status='awaiting_candidate_adoption')
         require(not cancel.is_set(),'coordinator cancelled before claim');research=profile.research(pp,pin,receipt,clock=clock);claim=Path(research['claim_path']);profile.write(p,claim/'ledger-before-private.json',before)
@@ -127,7 +152,7 @@ def run(profile_path,pin,*,runner=None,clock=None,cancel=None):
                         from .manager_review_worker import _completed
                         _,admission,*_=_completed(handoff['config_path'],handoff['config_sha256'],clock)
                         tc=read_json(admission['template_path']);plan=read_json(tc['plan_path']);pending={path:file_hash(Path(s['source_path'])/path) for path in plan['files']}
-                        require(not cancel.is_set() and file_hash(pp)==pin,'admission cancelled/revoked');_register(p,claim,handoff);state='admitted'
+                        require(not cancel.is_set() and file_hash(pp)==pin,'admission cancelled/revoked');_register(p,claim,handoff,clock=clock);state='admitted'
         except Exception as error:
             failure=type(error).__name__;state='uncertain'
             if phases:

@@ -3,13 +3,13 @@ from pathlib import Path
 from .audit import _path,require,digest
 from .development_inputs import file_hash,read_json
 from .manager_handoff import FIELDS
-from .review_lease import _read,_directory,load_policy
+from .review_lease import _read,_directory,load_policy,policy_record
 from . import selection_binding,review_publisher
 
 RECEIPT=set('schema status model_requests request_sha256 manifest_sha256 manifest_path cycle_sha256 cycle_path bundle_path template_path lease_path lease_sha256'.split())
 
 
-def _completed(request_path,pin,clock):
+def _completed(request_path,pin,clock,*,historical=False):
     q,h=_read(request_path,65536)
     require(h==pin and isinstance(q,dict) and set(q)==FIELDS and q['schema']=='pi-reviewed-manager-handoff-v1','pinned original handoff request required')
     root=_directory(q['root']);r,_=_read(root/'receipt.json',65536)
@@ -23,7 +23,7 @@ def _completed(request_path,pin,clock):
     require(sh==cycle['selection_config_sha256'] and sc['run_id']==q['selection_run_id'] and _path(sc['root'])==root/'bundle/selection-output','sealed selection drift')
     require(file_hash(sc['catalog_path'])==sc['catalog_sha256'],'sealed catalog drift')
     parent,lh=_read(r['lease_path']);require(lh==r['lease_sha256'] and parent['schema']=='pi-review-lease-record-v1' and parent['policy_path']==q['issuer_policy_path'] and parent['policy_sha256']==q['issuer_policy_sha256'] and parent['review_config_path']==q['review_config_path'] and parent['review_config_sha256']==q['review_config_sha256'],'original handoff lease drift')
-    p,_=load_policy(q['issuer_policy_path'],q['issuer_policy_sha256'],clock)
+    p=policy_record(q['issuer_policy_path'],q['issuer_policy_sha256']) if historical else load_policy(q['issuer_policy_path'],q['issuer_policy_sha256'],clock)[0]
     require(p['mode']==q['mode'] and _path(p['prepared_parent'])==root/'bundle/cycle-output/prepared','handoff policy/mode drift')
     if q['mode']=='ACTUAL':
         from .manager_handoff import BASE
@@ -31,8 +31,7 @@ def _completed(request_path,pin,clock):
     return q,r,p,sp,sh,sc
 
 
-def tick(request_path,request_sha256,*,clock=None):
-    q,r,p,sp,sh,sc=_completed(request_path,request_sha256,clock)
+def _terminal(q,r,p,sp,sh,sc):
     base=_path(r['lease_path']).parent;binding=base/'binding';abstention=base/'abstention'
     def status(value,**extra):return dict(status=value,model_requests=0,**extra)
     # Completed host receipts are immutable observations, not authority to rerun a
@@ -53,6 +52,21 @@ def tick(request_path,request_sha256,*,clock=None):
         for name,pin in receipt['artifact_pins'].items():require(file_hash(Path(sc['root'])/name)==pin,'abstention artifacts drift')
         return status('no_action',cached=True)
     if binding.exists() and not (binding/'receipt.json').exists():return status('uncertain',phase='binding')
+    return None
+
+
+def inspect_terminal(request_path,request_sha256,*,clock=None):
+    """Authenticate immutable terminal facts only; never bind or publish permission."""
+    return _terminal(*_completed(request_path,request_sha256,clock,historical=True))
+
+
+def tick(request_path,request_sha256,*,clock=None):
+    q,r,p,sp,sh,sc=_completed(request_path,request_sha256,clock,historical=True)
+    terminal=_terminal(q,r,p,sp,sh,sc)
+    if terminal is not None:return terminal
+    load_policy(q['issuer_policy_path'],q['issuer_policy_sha256'],clock)
+    base=_path(r['lease_path']).parent;binding=base/'binding'
+    def status(value,**extra):return dict(status=value,model_requests=0,**extra)
     if not (Path(sc['root'])/'result.json').exists():return status('waiting_selection')
     try:
         if not binding.exists():

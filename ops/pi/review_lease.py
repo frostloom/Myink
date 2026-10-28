@@ -36,16 +36,17 @@ def _new(p,value):
     _sync(p.parent)
 
 
-def load_policy(policy_path,expected,clock=None):
+def policy_record(policy_path,expected):
+    """Authenticate historical scope only; this does not grant current execution."""
     pp=path(policy_path);_plain(pp);raw=pp.read_bytes();require(len(raw)<=65536 and hash_value(expected) and sha256(raw).hexdigest()==expected,'issuer policy pin drift');p=strict_json(raw)
     require(isinstance(p,dict) and set(p)==POLICY and p['schema']=='pi-review-issuer-policy-v1' and p['authority']=='host_reviewed_development','host execution policy required')
     require(p['mode'] in ('ACTUAL','SIMULATED'))
     if p['mode']=='ACTUAL':
-        require(clock is None and pp.stat().st_uid==0 and pp.stat().st_mode&0o777==0o640 and pp.parent.stat().st_uid==0 and pp.parent.stat().st_mode&0o777==0o750,'root issuer policy and real clock required')
+        require(pp.stat().st_uid==0 and pp.stat().st_mode&0o777==0o640 and pp.parent.stat().st_uid==0 and pp.parent.stat().st_mode&0o777==0o750,'root issuer policy and real clock required')
         require(p['ledger_path']==str(sdk.CANONICAL) and p['budget_microyuan']==50000000 and len(p['legacy_unknown_ids'])==9,'original50CNY/nineholds required')
     else:require(pp.stat().st_mode&0o777==0o600,'private simulated policy required')
-    now=utc((clock or (lambda:datetime.now(timezone.utc)))());issued=utc(datetime.fromisoformat(p['issued_at']));expires=utc(datetime.fromisoformat(p['expires_at']))
-    require(issued<=now<expires and expires-issued<=timedelta(hours=24),'issuer policy expired or future')
+    issued=utc(p['issued_at']);expires=utc(p['expires_at'])
+    require(timedelta(0)<expires-issued<=timedelta(hours=24),'bounded issuer validity required')
     for key in ('source_sha256','runtime_sha256','policy_sha256','credential_sha256'):require(hash_value(p[key]))
     for key,maximum in (('max_requests',100),('max_tools',256),('deadline_seconds',1800)):require(type(p[key]) is int and 1<=p[key]<=maximum,'issuer phase limit invalid')
     require(type(p['budget_microyuan']) is int and p['budget_microyuan']>0)
@@ -58,6 +59,14 @@ def load_policy(policy_path,expected,clock=None):
     while not ancestor.exists():ancestor=ancestor.parent
     _directory(ancestor)
     _disjoint(p['root'],p['prepared_parent']);_disjoint(p['root'],pp);_disjoint(p['root'],_path(p['ledger_path']).parent)
+    return p
+
+
+def load_policy(policy_path,expected,clock=None):
+    p=policy_record(policy_path,expected)
+    require(p['mode']!='ACTUAL' or clock is None,'ACTUAL issuer requires real clock')
+    now=utc((clock or (lambda:datetime.now(timezone.utc)))())
+    require(utc(p['issued_at'])<=now<utc(p['expires_at']),'issuer policy expired or future')
     return p,now
 
 
