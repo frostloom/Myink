@@ -182,12 +182,19 @@ none checker. It persists ownership before Docker creation and sweeps only owned
 containers. Runtime/service/Docker host are trusted; the model receives none of
 this authority.
 
-The durable intent identity binds test/run/candidate and exact entry digest. A
+The durable intent identity binds test/run/candidate and exact entry digest.
+Fsync the claim parent after mkdir, then publish/fsync intent and its directory
+before checking. A failed sync blocks execution; an incomplete directory is
+retained as uncertain rather than reused. All writable destinations (claims,
+audit database and export) must be disjoint from frozen inputs and canonical
+state, including ancestor/descendant aliases. A
 pending intent without final receipt is uncertain and never automatically
 replayed. Preserve its staged checker, output, ownership and cleanup receipts;
 reconcile only the recorded operation labels/daemon/image, then arrange a newly
 reviewed test identity if a rerun is necessary. Never delete intent or rewind
-fees/manager state to retry. A completed receipt verifies its own digest and
+fees/manager state to retry. Blocked/uncertain outcomes propagate to nonzero service exit and stop new work;
+assertion failures are explicitly failed and also exit nonzero. Cached failures
+retain those states without retry. A completed receipt verifies its own digest and
 private outcome; re-reading it returns old facts without invoking Docker.
 
 Append separate tool/test/version audit events and correlate true ACTUAL results

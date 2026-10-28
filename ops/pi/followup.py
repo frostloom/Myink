@@ -63,6 +63,13 @@ def _load(registry_path,expected,runner,clock):
         require(isinstance(checker['daemon_id'],str) and re.fullmatch('[A-Za-z0-9:_-]{1,128}',checker['daemon_id']))
         require(isinstance(checker['checker_image_id'],str) and re.fullmatch('sha256:[0-9a-f]{64}',checker['checker_image_id']))
     for item in inputs:require(not root.is_relative_to(item) and not item.is_relative_to(root),'followup outputs and inputs overlap')
+    protected=[p,*[_path(c[k]) for k in ('lock_path','billing_path','manager_path')]]
+    protected.extend(_path(c[k]).parent for k in ('billing_path','manager_path'))
+    protected.extend(_path(e[k]) for e in c['entries'] for k in ('candidate_path','source_path','test_path','review_path'))
+    for destination in (root,export,audit):
+        for item in protected:
+            require(not destination.is_relative_to(item) and not item.is_relative_to(destination),'writable destination overlaps protected input/state')
+    require(not export.is_relative_to(audit) and not audit.is_relative_to(export),'audit database and export overlap')
     require(len({c[k] for k in ('audit_path','billing_path','manager_path','lock_path')})==4,'separate states required')
     return c
 
@@ -81,6 +88,7 @@ def _planned(audit,e):
 
 
 def _cached(root,e,entry_sha):
+    if not (root/'intent.json').exists():return dict(test_id=e['test_id'],run_id=e['run_id'],status='uncertain',reason='incomplete_directory_claim_no_replay')
     intent=strict_json(_read(root/'intent.json'));require(intent['entry_sha256']==entry_sha,'followup claim conflict')
     if not (root/'receipt.json').exists():return dict(test_id=e['test_id'],run_id=e['run_id'],status='uncertain',reason='unfinished_claim_no_replay')
     result=strict_json(_read(root/'receipt.json'));proof=result.pop('receipt_sha256',None)
@@ -112,6 +120,9 @@ def _isolated_check(e,root,write):
 def _execute(c,e,root,registry_sha,now,runner,audit,registry_path,now_fn):
     started=elapsed.monotonic();occurred=now
     entry_sha=digest(e);root.mkdir(mode=0o700)
+    fd=os.open(root.parent,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+    try:os.fsync(fd)
+    finally:os.close(fd)
     _publish(root/'intent.json',encoded(dict(schema='pi-followup-intent-v1',entry_sha256=entry_sha,registry_sha256=registry_sha,occurred_at=now.isoformat())),immutable=True)
     def write(filename,value):_publish(root/filename,encoded(value),immutable=True)
     before={key:ledger_snapshot(c[key]) for key in ('billing_path','manager_path')}
@@ -163,7 +174,9 @@ def run_due(registry_path,expected_registry_sha256,*,clock=None,runner=None):
         for e in due:
             root=Path(c['root'])/('test-'+digest(dict(run=e['run_id'],test=e['test_id'],candidate=e['candidate_sha256'])))
             if root.exists():
-                _directory(root);result['results'].append(_cached(root,e,digest(e)));continue
+                _directory(root);cached=_cached(root,e,digest(e));result['results'].append(cached)
+                if cached['status'] in ('blocked','uncertain'):break
+                continue
             if not time(2)<=local.time().replace(tzinfo=None)<time(5,30):result['status']='outside_window';return result
             require(_planned(audit,e),'matching reserved audit plan required')
             _pins(e)
@@ -174,5 +187,6 @@ def run_due(registry_path,expected_registry_sha256,*,clock=None,runner=None):
             require(admitted>=utc(datetime.fromisoformat(e['scheduled_for'])),'followup no longer due')
             result['results'].append(_execute(c,e,root,expected_registry_sha256,admitted,runner,audit,registry_path,now_fn))
             break  # One new bounded check per tick; cached facts never start Docker.
-    result['status']='uncertain' if any(x['status']=='uncertain' for x in result['results']) else 'completed'
+    statuses={x['status'] for x in result['results']}
+    result['status']=next((status for status in ('uncertain','blocked','failed') if status in statuses),'completed')
     return result

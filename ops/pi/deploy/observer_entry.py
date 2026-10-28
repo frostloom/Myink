@@ -66,7 +66,7 @@ def main():
             result=observe(Path(args.config),expected_config_sha256=args.config_sha256)
     except Exception as error:
         print(json.dumps(dict(status='blocked',failure_class=type(error).__name__,automatic_execution=False)));return 1
-    print(json.dumps(result));return 1 if result['status'] in ('blocked','uncertain') else 0
+    print(json.dumps(result));return 1 if result['status'] in ('blocked','uncertain','failed') else 0
 
 
 if __name__=='__main__':raise SystemExit(main())
