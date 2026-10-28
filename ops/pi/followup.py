@@ -99,13 +99,13 @@ def _cached(root,e,entry_sha):
 
 def _isolated_check(e,root,write):
     from threading import Event,Timer
-    from .development_launcher import _fixed_check,Limits,OwnedHosts
-    cancel=Event();limits=Limits(1,1,90,cancel);owners=OwnedHosts(cancel,write)
+    from .fixed_checker import run_fixed_check,CheckDeadline,OwnedHosts
+    cancel=Event();limits=CheckDeadline(90,cancel);owners=OwnedHosts(cancel,write)
     timer=Timer(90,cancel.set);timer.daemon=True;timer.start()
     result=None
     try:
         checker=dict(e['checker'],test_path=e['test_path'],test_sha256=e['test_sha256'],test_cases=e['test_cases'])
-        result=_fixed_check(checker,Path(e['candidate_path']),root/'check',limits,write,owners)
+        result=run_fixed_check(checker,Path(e['candidate_path']),root/'check',limits,write,owners)
     finally:
         try:
             cleanup=owners.finish();write('final-sweep-cleanup.json',cleanup)

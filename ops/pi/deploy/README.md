@@ -203,3 +203,11 @@ separate result. A successful regression is neither a product release nor online
 metric improvement. Pre-due deployment only proves scheduling; mark result null
 until the actual due run. Disable only this timer/service to withdraw scheduling,
 preserve all registry/claims/results, and never restore old canonical ledgers.
+
+The fixed checker core is `ops/pi/fixed_checker.py`, using the standard library
+and existing container/feedback primitives. Followup never imports the paid
+development/analysis launchers or HTTP client. The SDK development launcher
+retains its public `_fixed_check`/OwnedHosts wrappers, delegating the same core
+with its existing host factory/cleanup hooks. Verify both dependency loading and
+the three real Docker scenarios under `python -I -S -B`; a pre-due scheduling
+check alone does not exercise the default checker imports.

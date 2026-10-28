@@ -1,6 +1,6 @@
 """Explicit independent local Docker acceptance; no DB, provider or shared ports."""
 from pathlib import Path
-import json,os,shutil,subprocess,uuid
+import json,os,shutil,subprocess,uuid,sys
 import pytest
 from ops.pi.followup import _isolated_check
 from ops.pi.development_inputs import tree_hash,file_hash
@@ -41,10 +41,19 @@ class Check(unittest.TestCase):
         p.chmod(0o600)
     result=None;remaining=[];cleanup=[]
     try:
-        if scenario=='case_mismatch':
-            with pytest.raises(ValueError):_isolated_check(e,root,write)
+        project=Path(__file__).resolve().parents[4]
+        child="import sys;sys.path.insert(0,"+repr(str(project))+");import json;from pathlib import Path;from ops.pi.followup import _isolated_check\n"
+        child+="e=json.loads("+repr(json.dumps(e))+");root=Path("+repr(str(root))+")\n"
+        child+="def write(name,value):\n p=root/name\n with p.open('x') as out:json.dump(value,out)\n p.chmod(0o600)\n"
+        child+="try:result=dict(status='returned',report=_isolated_check(e,root,write))\nexcept ValueError:result=dict(status='rejected',report=None)\n"
+        child+="assert not any(n in sys.modules for n in ('httpx','ops.pi.development_launcher','ops.pi.analysis_launcher','ops.pi.control'))\nwrite('isolated-child-result.json',result)\n"
+        process=subprocess.run([sys.executable,'-I','-S','-B','-c',child],capture_output=True,text=True,timeout=120)
+        write('isolated-child-process.json',dict(returncode=process.returncode,stderr=process.stderr[:2000]))
+        assert process.returncode==0,process.stderr
+        isolated=json.loads((root/'isolated-child-result.json').read_bytes())
+        if scenario=='case_mismatch':assert isolated['status']=='rejected'
         else:
-            result=_isolated_check(e,root,write)
+            assert isolated['status']=='returned';result=isolated['report']
             assert result['tests']==3 and result['cases']==cases and result['passed']==(scenario=='pass')
             assert result['errors']==result['skipped']==0 and all(r['removed'] for r in result['cleanup'])
         assert tree_hash(candidate)==e['candidate_sha256'] and file_hash(gold)==e['test_sha256']

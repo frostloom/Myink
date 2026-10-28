@@ -17,6 +17,7 @@ from threading import Event, Timer
 import time
 import uuid
 
+from .fixed_checker import OwnedHosts as _FixedOwnedHosts,cleanup_hosts as _cleanup,parse_check_output,run_fixed_check
 from .analysis_launcher import _provider
 from .container_probe import ProbeHost, verify_inspect
 from .contracts import Receipt
@@ -135,95 +136,17 @@ def _host(c,image,machine=None):
                      image_id=c[image],operation_id=str(uuid.uuid4()),expected_machine=machine)
 
 
-def _cleanup(host, *, on_removed=None):
-    host.reconcile()
-    result=[]
-    for cid in list(host.owned):
-        receipt=host.cleanup(cid)
-        result.append(receipt)
-        if on_removed is not None:on_removed(receipt)
-    require(not host.pending and all(v['removed'] for v in result),'owned cleanup incomplete')
-    host.reconcile()
-    require(not host.pending and not host.owned,'owned containers remain')
-    host._daemon()
-    remaining=host._call('ps','-a','--no-trunc','--filter',
-        'label=myink.pi.operation='+host.operation_id,'--format','{{.ID}}').stdout.split()
-    require(not remaining,'operation label still owns containers')
-    return result
-
-
-class OwnedHosts:
-    """Keep every checker ownership alive through the execution-level final sweep."""
-    def __init__(self,cancel,write):
-        self.cancel,self.write=cancel,write
-        self.hosts=[];self.history=[];self.failed=False
-
-    def add(self,host):
-        self.write('owned-host-'+str(len(self.hosts))+'.json',dict(operation_id=host.operation_id))
-        self.hosts.append(host)
-        return host
-
+class OwnedHosts(_FixedOwnedHosts):
+    """Retain SDK cleanup injection while sharing the fixed core lifecycle."""
     def cleanup(self,host):
-        try:
-            return _cleanup(host,on_removed=self.history.append)
+        try:return _cleanup(host,on_removed=self.history.append)
         except BaseException:
-            self.failed=True;self.cancel.set()
-            raise
-
-    def finish(self):
-        errors=[]
-        for host in self.hosts:
-            try:self.cleanup(host)
-            except Exception as exc:errors.append(type(exc).__name__)
-        if errors:raise RuntimeError('owned cleanup incomplete')
-        return self.history
-
-
-def parse_check_output(output):
-    # Docker demultiplexes stdout/stderr without preserving cross-stream order.
-    # Require one complete fixed report; ambiguous/missing reports fail closed.
-    reports=[]
-    for line in output.splitlines():
-        try:
-            value=strict_json(line)
-        except (ValueError,TypeError):
-            continue
-        if isinstance(value,dict) and set(value)==REPORT_FIELDS:
-            reports.append(value)
-    require(len(reports)==1,'missing or ambiguous fixed checker report')
-    return reports[0]
+            self.failed=True;self.cancel.set();raise
 
 
 def _fixed_check(c,candidate,destination,limits,write,owners):
-    limits.alive()
-    destination.mkdir(mode=0o755)
-    shutil.copytree(candidate/'src',destination/'src')
-    shutil.copyfile(c['test_path'],destination/'test.py')
-    shutil.copyfile(Path(__file__).parent/'unit_feedback.py',destination/'feedback.py')
-    require(file_hash(destination/'test.py')==c['test_sha256'],'fixed test drift')
-    for p in [destination,*destination.rglob('*')]:
-        p.chmod(0o755 if p.is_dir() else 0o644)
-    host=owners.add(_host(c,'checker_image_id'))
-    result=None; cleanup=[]
-    try:
-        cid=host.create('isolation',worker=WORKERS/'development_check.py',source=destination,
-                        foreign=destination/'not-mounted')
-        require(verify_inspect(host.inspect(cid)),'checker isolation mismatch')
-        captured=host.capture(cid,seconds=max(.1,min(30,limits.deadline-time.monotonic())),output_limit=65536)
-        atomic_write(destination/'output.log',captured['output'])
-        require(captured['reason'] in ('completed','process_failed'),'checker execution incomplete')
-        result=parse_check_output(captured['output'].decode())
-        info=host.inspect(cid)
-        require(not info['State']['Running'] and info['State']['Pid']==0,'checker still running')
-        validate_report(result,info['State']['ExitCode'],c['test_cases'])
-        require((captured['reason']=='completed') is result['passed'],'checker attach/exit mismatch')
-        result.update(attach_returncode=info['State']['ExitCode'],container_id=cid)
-    finally:
-        cleanup=owners.cleanup(host)
-        write(destination.name+'-cleanup.json',cleanup)
-    require(cleanup and cleanup[0]['exit_code']==result['attach_returncode'],'checker exit not authenticated')
-    result['cleanup']=cleanup
-    return result
+    return run_fixed_check(c,candidate,destination,limits,write,owners,
+        host_factory=lambda:_host(c,'checker_image_id'),write_bytes=atomic_write)
 
 
 class Bridge:
