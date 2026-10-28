@@ -26,24 +26,26 @@
 ### Task 1: Reviewed registry, due admission and once-only claims
 **Files:** ops/pi/followup.py; ops/pi/tests/test_followup.py.
 **Interfaces:** run_due(registry_path,expected_registry_sha256,*,clock=None,runner=None)->bounded summary. Registry exact fields schema/mode/root/audit_path/export_root/lock_path/billing_path/manager_path/entries. Each entry binds test_id/run_id/scheduled_for/candidate_path/candidate_sha256/source_path/source_sha256/test_path/test_sha256/test_cases/review_path/review_sha256/checker. checker exact docker/endpoint/daemon_id/checker_image_id. Max32entries/1MiB registry, each<=200fixedcases. ACTUAL rootowner,0640file/root-owned0750parent; synthetic private0600/0700 and callback only. Root and every input are canonical, nonaliasing, bounded; read-only audit user_version1001 check precedes AuditStore. Claim identity is digest(entry), durable intent includes registry and inputs; an existing intent without finalreceipt returns uncertain and never calls runner. Finalreceipt selfhash and artifact hashes are validated.
-- [ ] RED missing module; wrong mode/pin/schema/owner/permissions/unknown fields/paths; premature/outsidewindow/cutoff; plan mismatch; concurrent lock; completed and pending reentry.
-- [ ] Implement strict admission and private once-only claim under sharedlock, using existing audit record schema. Audit plans remain unchanged.
-- [ ] GREEN targeted tests; commit. Expect no production connection/model execution yet.
+- [x] RED missing module; wrong mode/pin/schema/owner/permissions/unknown fields/paths; premature/outsidewindow/cutoff; plan mismatch; concurrent lock; completed and pending reentry.
+- [x] Implement strict admission and private once-only claim under sharedlock, using existing audit record schema. Audit plans remain unchanged.
+- [x] GREEN targeted tests; commit. Expect no production connection/model execution yet.
 
 ### Task 2: Reuse isolated checker and authenticated audit results
 **Files:** ops/pi/followup.py; ops/pi/tests/test_followup.py; ops/pi/tests/test_followup_checker.py.
 **Interfaces:** default ACTUAL checker calls existing _fixed_check with frozen candidate and registry checker/gold/cases, Limits/OwnedHosts, timer/cancel and persistent perhost ownership receipts. Full source/candidate/gold/review hashes checked before/after; full fee snapshot and manager snapshot preserved under shared lock. Result appends tool/test/version with details.test_id, candidate version, actual occurred_at, mode/domain and report/case/cleanup evidence hashes. main daily links only genuine due matching results. Failure/audit publication failure retains claim/outcome and stops replay.
-- [ ] RED checker pass/failure/missingcase/cleanup/inputdrift/deadline/fee or manager mutation, no host candidate import, synthetic cannot certify actual followup.
-- [ ] Implement bounded default runner and audit event/export, raw failure details remain private, public error summary class only. Test authority doesn't imply product adoption or metric improvement.
-- [ ] GREEN existing audit/development checker controls; independently owned real local Docker fixed-check acceptance with unique receipt/cleanup (original19pi_lab gate unchanged). Commit.
+- [x] RED checker pass/failure/missingcase/cleanup/inputdrift/deadline/fee or manager mutation, no host candidate import, synthetic cannot certify actual followup.
+- [x] Implement bounded default runner and audit event/export, raw failure details remain private, public error summary class only. Test authority doesn't imply product adoption or metric improvement.
+- [x] GREEN existing audit/development checker controls; independently owned real local Docker fixed-check acceptance with unique receipt/cleanup (original19pi_lab gate unchanged). Commit.
 
 ### Task 3: Closed startup, timer and actual scheduled handoff
 **Files:** ops/pi/deploy/observer_entry.py (optional fixed followup component flag, defaultobserver unchanged); ops/pi/deploy/myink-pi-followup.service/.timer; ops/pi/tests/test_followup_deploy.py; deploy README, enhancement inventory and docs/evaluations/pi-followup-2026-10-28.{md,json}.
 **Interfaces:** same closedtree verifier before importing executor; root env pins runtime+registry. ServiceUbuntu/serviceonlydockergroup, read-only originalstate/jobs/config/releases; credentials inaccessible; writable followup root/audit/maintenance.lock only; private Unixnetwork, timeout<=330seconds/noRestart. Timer every5min; worker enforces true due/maintenance/cutoff. Root-owned approved registry includes actual original18cases/gold/source/candidate/review/source daemon/image, and cannot be populated from arbitrary audit/model text.
-- [ ] RED root source/config pin/component/unit scopes/time/lock. Implement fixed entry/unit with no paid/provider imports executed. Full offline and targeted checker tests.
-- [ ] One fresh final reviewer before activation; one authorTDD Important/Critical fixpass, record minors, no rereview. Preserve rollout/failure evidence.
-- [ ] Deploy new frozen runtime/registry/service/timer, verify true production candidate+gold+review pins and audit plan; a pre-due tick must report planned/no execution. Original history/fee/health unchanged. Nextday remainsplanned until actualOct29 due run; rootgoal staysactive during ongoing loop work.
-- [ ] ExactHEAD fourCI and push. When due, consume actual receipt through main reader; independently verify real checker cleanup/casecount/fee invariance. Archive only this plan workspace after actual acceptance, continue rootgoal.
+- [x] RED root source/config pin/component/unit scopes/time/lock. Implement fixed entry/unit with no paid/provider imports executed. Full offline and targeted checker tests.
+- [x] One fresh final reviewer before activation; one authorTDD Important/Critical fixpass, record minors, no rereview. Preserve rollout/failure evidence.
+- [x] Deploy new frozen runtime/registry/service/timer, verify true production candidate+gold+review pins and audit plan; a pre-due tick must report planned/no execution. Original history/fee/health unchanged. Nextday remainsplanned until actualOct29 due run; rootgoal staysactive during ongoing loop work.
+- [x] ExactHEAD fourCI and push. When due, consume actual receipt through main reader; independently verify real checker cleanup/casecount/fee invariance. Archive only this plan workspace after actual acceptance, continue rootgoal.
 
 ## Pre-flight interface check
 Task1 audit correlation consumes existing followup exactkeys and user_version1001; Task2 checker accepts source/src + fixed gold/case list and produces REPORT_FIELDS, OwnedHosts owns all containers; Task3 startup verifier uses existing root closedtree and adds only an explicit fixed component choice. Observer and paid manager remain separate; both paid manager/followup share existing maintenance.lock. No schema/fee/main deployment authority added.
+
+Actual due acceptance: Oct29 03:02:39+08, original18/18pass, no newmodels/fees, cleanup independently verified, originalclaim retained; standalone main reader links prior-day plan to actual result. See docs/evaluations/pi-followup-2026-10-28.{md,json}. Full root goal remains active.
