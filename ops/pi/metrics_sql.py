@@ -2,9 +2,14 @@
 ROLE='myink_pi_metrics'
 
 
+def _label(value):
+    return f"({value} ~ '^[A-Za-z0-9][A-Za-z0-9_./:-]{{0,127}}$' AND {value} !~* '(^|[/_.:-])sk[-_][A-Za-z0-9_-]{{8,}}' AND {value} !~* '(^|[/_.:-])(api[_-]?key|token|secret|password|passwd)[:=]')"
+
+
 def _scalar(group,key,kind='string',maximum=128):
     value=f"p.{group}->'{key}'"
-    return f"CASE WHEN jsonb_typeof({value})='{kind}' AND octet_length(({value})::text)<={maximum} THEN {value} ELSE NULL END"
+    label=" AND "+_label(f"({value})#>>'{{}}'") if kind=='string' else ''
+    return f"CASE WHEN jsonb_typeof({value})='{kind}' AND octet_length(({value})::text)<={maximum}{label} THEN {value} ELSE NULL END"
 
 
 def _images():
@@ -47,13 +52,13 @@ CREATE ROLE {ROLE} NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOB
 CREATE SCHEMA pi_metrics;
 REVOKE ALL ON SCHEMA pi_metrics FROM PUBLIC;
 CREATE VIEW pi_metrics.tasks WITH (security_barrier=true) AS SELECT id,
-CASE WHEN octet_length(status)<=128 THEN status ELSE NULL END AS status,
-CASE WHEN octet_length(task_type)<=128 THEN task_type ELSE NULL END AS task_type,
+CASE WHEN octet_length(status)<=128 AND {_label("status")} THEN status ELSE NULL END AS status,
+CASE WHEN octet_length(task_type)<=128 AND {_label("task_type")} THEN task_type ELSE NULL END AS task_type,
 batch_task_id,chapter_seq,created_at,updated_at FROM public.tasks;
 CREATE VIEW pi_metrics.agent_runs WITH (security_barrier=true) AS SELECT a.id,
 CASE WHEN octet_length(a.task_id)<=256 THEN a.task_id ELSE NULL END AS task_id,
-CASE WHEN octet_length(a.node)<=128 THEN a.node ELSE NULL END AS node,
-CASE WHEN octet_length(a.model_id)<=128 THEN a.model_id ELSE NULL END AS model_id,
+CASE WHEN octet_length(a.node)<=128 AND {_label("a.node")} THEN a.node ELSE NULL END AS node,
+CASE WHEN octet_length(a.model_id)<=128 AND {_label("a.model_id")} THEN a.model_id ELSE NULL END AS model_id,
 a.input_tokens,a.output_tokens,a.cost_est,a.duration_ms,a.created_at,
 json_build_object('run_provenance',json_build_object({','.join(provenance)}),
 'measurement',json_build_object({','.join(measurement)}),

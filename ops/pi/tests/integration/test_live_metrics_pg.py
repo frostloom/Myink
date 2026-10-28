@@ -149,3 +149,14 @@ def test_actual_psql_parameter_quoting_cannot_inject_sql(database):
     value="x'); DELETE FROM public.users; --"
     assert PsqlMetricsReader(config)(query('agent_runs',now-timedelta(hours=1),now+timedelta(hours=1),thread_0=value))==[]
     assert sql('SELECT count(*) FROM public.users;').stdout.strip()=='1'
+
+
+def test_credential_like_metadata_and_encoded_body_are_not_projected(database):
+    config,sql=database;task=str(uuid.uuid4());now=datetime.now(timezone.utc)
+    credential='sk-synthetic-secret-value-123456'
+    detail=json.dumps(dict(run_provenance=dict(deployment_id=credential,schema_id=json.dumps(dict(password=dict(value='encoded-private-body')))),measurement=dict(kind='model',cost=True,latency=True))).replace("'","''")
+    sql(f"INSERT INTO public.agent_runs VALUES(91,'{task}','write','{credential}',1,1,1,5,now()-interval '1 minute','{detail}'::json);")
+    rows=PsqlMetricsReader(config)(query('agent_runs',now-timedelta(hours=1),now+timedelta(hours=1),thread_0=task))
+    assert len(rows)==1
+    assert credential not in json.dumps(rows,default=str) and 'encoded-private-body' not in json.dumps(rows,default=str)
+    assert rows[0]['model_id'] is None and rows[0]['provenance']['deployment_id'] is None
