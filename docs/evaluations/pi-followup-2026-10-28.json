@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "authority": "audit_only",
+  "scope": "approved_followup_scheduling",
+  "deployment_passed": true,
+  "actual_nextday_test_complete": false,
+  "source_commit": "25fb6b068ebb4eacabbbac8b3f5c2578ea2b18c9",
+  "runtime_sha256": "ed94027f44dfa4dd16b568794444ec5ca56fb269b9c81d40340ffcde3250b549",
+  "registry_sha256": "7d06dcea226bf291c4638b17c87027d92a7f0b1c1910d42350499d84cd7e0077",
+  "unit_sha256": {
+    "myink-pi-followup.service": "d72e05b48800fa914088151f19778c3f9e2746c86f706d0966814c38cbc0e1e7",
+    "myink-pi-followup.timer": "7596977a5687bb3d3275e13af695a592945323074fa1fbc34580928e85098531"
+  },
+  "time_utc": "2026-10-28T14:28:45.012534+00:00",
+  "pre_due_result": {
+    "schema": "pi-followup-tick-v1",
+    "mode": "ACTUAL",
+    "status": "planned",
+    "results": [],
+    "model_requests": 0
+  },
+  "timer_enabled": "enabled",
+  "test_id": "owner002-nextday-regression",
+  "candidate_sha256": "e60cb0f664606240acbe48c40f65347956ce81c48595fa2edc0c10ea338ab4d1",
+  "scheduled_for": "2026-10-29T03:00:00+08:00",
+  "fixed_cases": 18,
+  "test_result": null,
+  "canonical_fee_unchanged": true,
+  "manager_prefix_preserved": true,
+  "new_model_requests": 0,
+  "production_readyz": {
+    "status": "ok",
+    "checks": {
+      "redis": "ok",
+      "db": "ok",
+      "worker": "ok"
+    }
+  },
+  "main_standalone_reader_verified": true,
+  "scheduled_audit_events": 50,
+  "scheduled_audit_runs": 8,
+  "controller_change_scope": {
+    "files": 14,
+    "added": 752,
+    "deleted": 7
+  },
+  "offline_tests": {
+    "passed": 3247,
+    "deselected": 36,
+    "seconds": 152.85
+  },
+  "native_fixed_docker_tests": {
+    "scenarios": 3,
+    "cases_per_scenario": 3,
+    "all_owned_operations": 9,
+    "all_removed": true
+  },
+  "original_private_lab_tests_executed": false,
+  "review": {
+    "important_found": 3,
+    "important_fixed": 3,
+    "critical": 0,
+    "minor": 0,
+    "author_fixpass": 1,
+    "rereview": false,
+    "postreview_actual_interface_fix": "scheduler_run_followup_target_correlation"
+  },
+  "ci": {
+    "head": "25fb6b068ebb4eacabbbac8b3f5c2578ea2b18c9",
+    "jobs_passed": 4,
+    "url": "https://github.com/frostloom/Myink/actions/runs/40706077105"
+  },
+  "failed_install002_preserved": true,
+  "product_release_performed": false,
+  "main_merged": false,
+  "admin_page_integrated": false,
+  "original_online_closed_loop_complete": false
+}
