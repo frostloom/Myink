@@ -372,3 +372,18 @@ def test_foreign_destination_is_logical_not_this_hosts_symlink_namespace(api,ret
     # Actual host operations still reject local symlink paths.
     with pytest.raises((ValueError,OSError)):
         manager.status(destination_state,destination_billing,mode='SIMULATED')
+
+
+def test_custody_inspection_uses_only_immutable_read_connections(api,retired,tmp_path,monkeypatch):
+    target,manifest=prepared(api,retired,tmp_path)
+    billing=target/'billing.sqlite';before=ledger_snapshot(billing)
+    original=sqlite3.connect
+    connections=[]
+    def readonly(database,*args,**kwargs):
+        assert isinstance(database,str) and 'mode=ro' in database and 'immutable=1' in database,'custody inspection must not open writable SQLite'
+        connections.append(database)
+        return original(database,*args,**kwargs)
+    monkeypatch.setattr(sqlite3,'connect',readonly)
+    latest,activation=api._custody(billing,transfer_id='manager-transfer-target')
+    assert latest==activation and latest['phase']=='active'
+    assert connections and ledger_snapshot(billing)==before

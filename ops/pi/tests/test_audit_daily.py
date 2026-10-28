@@ -68,3 +68,11 @@ def test_enhancement_inventory_preserves_availability_and_provenance(tmp_path,re
     items=exported(s,tmp_path).enhancements()['items']
     assert [x['details']['reference'] for x in items]==['memory.hindsight','tool.fixed_allowlist']
     assert items[0]['details']['availability']=='not_connected'
+
+
+def test_followup_with_unknown_target_version_cannot_certify_regression(tmp_path,record):
+    s=store(tmp_path)
+    p=dict(test_id='unknown-version',scheduled_for='2026-10-29T18:00:00+00:00',target_run_id='run-1',target_version_sha256=None,criterion='Need a frozen version first',kind='regression',status='blocked')
+    s.append('plan',dict(record,followups=[p]))
+    s.append('unbound-test',dict(record,kind='test',status='passed',occurred_at='2026-10-29T19:00:00+00:00',details=dict(test_id='unknown-version')))
+    assert exported(s,tmp_path).daily('2026-10-29')['next_tests'][0]['result'] is None

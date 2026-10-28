@@ -311,7 +311,7 @@ class AuditReader:
                 if event['kind']!='test' or event['mode']!='ACTUAL' or event['occurred_at'] is None:continue
                 key=(event['run_id'],event['details'].get('test_id'),event['version']['candidate_sha256'])
                 plan=plans.get(key)
-                if plan is not None and event['sequence']>next(e['sequence'] for e in events if e['event_sha256']==plan['plan_event_sha256']) and datetime.fromisoformat(event['occurred_at'])>=datetime.fromisoformat(plan['scheduled_for']):
+                if plan is not None and plan['target_version_sha256'] is not None and event['sequence']>next(e['sequence'] for e in events if e['event_sha256']==plan['plan_event_sha256']) and datetime.fromisoformat(event['occurred_at'])>=datetime.fromisoformat(plan['scheduled_for']):
                     plan['result']=dict(status=event['status'],event_sha256=event['event_sha256'],occurred_at=event['occurred_at'],evidence_domain=event['evidence_domain'])
         result=dict(schema_version=1,authority='audit_only',day=day,timezone='Asia/Shanghai',event_count=len(events),
             unknown_occurrence_count=sum(e['occurred_at'] is None for e in events),release_state=release,

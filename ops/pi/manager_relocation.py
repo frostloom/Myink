@@ -1,10 +1,11 @@
 """Trusted single-hop manager relocation; original rows and evidence stay immutable."""
-from contextlib import contextmanager
+from contextlib import contextmanager,closing
 import fcntl
 import json
 import os
 from pathlib import Path
 import stat
+import sqlite3
 
 from .development_inputs import digest,file_hash,ledger_snapshot,path,read_json
 from .ledger import Ledger,_json
@@ -25,14 +26,21 @@ def active(billing):
 
 
 def _custody(billing,*,transfer_id=None):
-    with Ledger(billing,existing=True).transaction() as db:
+    # Inspection must work with the original ledger mounted read-only. Require
+    # a checkpointed snapshot before immutable mode, never ignore live WAL.
+    before=ledger_snapshot(billing)
+    with closing(sqlite3.connect(Path(billing).as_uri()+'?mode=ro&immutable=1',uri=True,timeout=5)) as db:
+        db.row_factory=sqlite3.Row;db.execute('PRAGMA query_only=ON');db.execute('BEGIN')
         latest,_=custody._chain(db)
+        activation=None
         if transfer_id is not None:
             from .tool_proof import strict_json
             values=[strict_json(r['payload']) for r in db.execute("SELECT payload FROM events WHERE kind='state-custody' ORDER BY id")]
             matches=[v for v in values if v['phase']=='active' and v['transfer_id']==transfer_id]
             require(len(matches)==1,'original billing activation proof required')
-            return latest,matches[0]
+            activation=matches[0]
+    require(ledger_snapshot(billing)==before,'billing changed during custody inspection')
+    if transfer_id is not None:return latest,activation
     require(latest is not None,'manager relocation requires billing custody')
     return latest
 
