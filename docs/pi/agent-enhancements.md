@@ -61,8 +61,12 @@ followup004和5分钟定时器已部署，真实预到期结果ACTUAL/planned/�
 
 次日检查已更新到followup004（008de641），使用纯标准库fixed_checker.py；SDK开发器以兼容包装复用。3种真实Docker场景在-I-S子进程通过，服务器也验证无模型启动器依赖；004已恢复定时器，003暂停/恢复审计保留。完整离线3248通过，控制器累计16文件+914/-91单独存为版本事件。真正Oct29 03:00仍待实际验收，不提前报成功。
 
-## Live diagnosis and bounded memory (implementation under acceptance)
+## Live diagnosis and bounded memory (actual acceptance completed2026-10-29)
 
 The new no-tool diagnosis uses verified observation receipts and cohort-bound, expiring audit memory (at most8 facts/8192bytes). Model hypotheses do not become permission or independent samples. A finite root-approved host queue admits one original-ledger model request per evidence fingerprint; refreshed windows/audit/memory cannot create a second charge. New evidence without a fixed permit creates investigation only. Pending claims, new unknown fees or unverified cleanup freeze further paid diagnosis. The paid-host runtime explicitly freezes HTTP dependencies, versions and licenses; pure supervisor imports remain standard-library-only.
 
-This phase is undergoing final independent review and real pilot acceptance; it is not yet activated or a complete automatic development manager. Hindsight is still not a server adapter. Admin view/flow/cost/version/change-scope expectations are documented in docs/pi/administrator-audit-handoff.md, using the existing audit-only reader and no new admin authority.
+This phase completed one actual no-tool diagnosis with one source-bound memoryfact (4952microyuan), two zero-charge actualhost reentries, closedpolicy/credential/history/cleanup checks and an exact latestfee checkpoint. The finite root-approved15minute queue is active; new unapproved evidence remains investigation-only. It is not a complete automatic development manager. Actual report: docs/evaluations/pi-live-diagnosis-2026-10-29.md. Hindsight is still not a server adapter. Admin view/flow/cost/version/change-scope expectations are documented in docs/pi/administrator-audit-handoff.md, using the existing audit-only reader and no new admin authority.
+
+## Shared maintenance lock scheduling (actual2026-10-29)
+
+The original manager service now uses its existing idle0 single-scan mode with the60second timer. Two real automatic empty ticks measured485.888ms and502.689ms; externalmaintenance.lock was obtainable twice, with0modelrequests/fees and original005code/env/history preserved. Existing600second process completednaturally. This improves idle scheduling availability; contention and genuineexecution can still delay admission. Configrevision7970f31a, liveunit45ed3ba9...,1file+1/-1, zero productchanges. Evidence: docs/evaluations/pi-manager-scheduling-2026-10-29.md.

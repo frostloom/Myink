@@ -1,0 +1,64 @@
+{
+  "schema": "pi-manager-scheduling-evaluation-v1",
+  "date": "2026-10-29",
+  "source_commit": "7970f31ae621fa887a1137d0f8ee37355669cc4b",
+  "unit_sha256": "45ed3ba914dc343042e56db258eb255f05e843072603f22f72c035a38f7caf28",
+  "original_manager_code_sha256": "c09773cc257696b18b55a40b00961704caa93be6c61a9a7bfdd1ed2497720b54",
+  "original_runtime_unchanged": true,
+  "previous_idle_wait_seconds": 600,
+  "new_idle_wait_seconds": 0,
+  "timer_interval_seconds": 60,
+  "timer_accuracy_seconds": 5,
+  "actual_auto_idle_ticks": [
+    {
+      "event_id": 154,
+      "elapsed_ms": 485.888,
+      "observed_at": "2026-10-28T17:28:03.069220+00:00"
+    },
+    {
+      "event_id": 155,
+      "elapsed_ms": 502.689,
+      "observed_at": "2026-10-28T17:29:08.130295+00:00"
+    }
+  ],
+  "external_lock_obtainable": 2,
+  "no_manual_service_start_in_acceptance": true,
+  "model_requests": 0,
+  "new_cost_microyuan": 0,
+  "canonical_fee_sha256": "fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb",
+  "manager_operations_unchanged": true,
+  "manager_event_prefix_preserved": true,
+  "service_env_unchanged": true,
+  "other_registries_unchanged": true,
+  "source_changed_files": 4,
+  "source_added": 88,
+  "source_deleted": 1,
+  "live_config_changed_files": 1,
+  "live_config_added": 1,
+  "live_config_deleted": 1,
+  "product_changed_files": 0,
+  "review": {
+    "critical": 0,
+    "important": 0,
+    "minor": 2,
+    "accepted_minor": 2,
+    "rereview": false
+  },
+  "validation": {
+    "related_passed": 112,
+    "final_scheduling_tests_passed": 3,
+    "ci_all_four_passed": true,
+    "ci_url": "https://github.com/frostloom/Myink/actions/runs/40733978564"
+  },
+  "constraints": {
+    "max_tasks": 1,
+    "host_deadline_seconds": 2100,
+    "runtime_max_seconds": 2400,
+    "original_execution_lock_retained": true,
+    "restart": "no",
+    "budget_microyuan": 50000000,
+    "legacy_unknown_count": 9
+  },
+  "full_management_loop_complete": false,
+  "as_of_utc": "2026-10-28T17:29:08.792236+00:00"
+}

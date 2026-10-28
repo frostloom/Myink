@@ -1,0 +1,130 @@
+{
+  "schema": "pi-live-diagnosis-evaluation-v1",
+  "date": "2026-10-29",
+  "stage": "deployed_verified_observation_only_diagnosis",
+  "full_management_loop_complete": false,
+  "source_commit": "be4a922fc3a5ddd21efa4f4b6c7fc63a9edde893",
+  "controller_sha256": "79a888364ad477ca973961a78d2a8a6eae97144c913df3e2715ce2c646de32c2",
+  "sdk_code_sha256": "8cfd109b34c6fc71c2e0232c72ffa6558977b6f9bebe56ef2cc125ee998b84d5",
+  "sdk_runtime_sha256": "9b6d4479661dfea5cba51e5dcaa8b77e30e911fbf3432c28fd522ee7a59ce0af",
+  "node_version": "24.22.0",
+  "pi_version": "1.1.0",
+  "frozen_host_dependencies": {
+    "httpx": "0.28.1",
+    "httpcore": "1.0.9",
+    "h11": "0.16.0",
+    "anyio": "4.15.1",
+    "idna": "3.20",
+    "certifi": "2026.7.22",
+    "sniffio": "1.3.1",
+    "typing_extensions": "4.16.0"
+  },
+  "validation": {
+    "offline_passed": 3343,
+    "excluded": 36,
+    "excluded_original_lab": 19,
+    "excluded_native_postgresql": 14,
+    "excluded_native_docker": 3,
+    "related_after_review_passed": 163,
+    "real_sdk_mock_sessions": 2,
+    "mock_provider_calls": 2,
+    "actual_provider_calls": 1,
+    "owned_mock_containers_absent": 2,
+    "owned_actual_container_absent": true,
+    "ci_url": "https://github.com/frostloom/Myink/actions/runs/40728817436",
+    "ci_source_commit": "be4a922fc3a5ddd21efa4f4b6c7fc63a9edde893",
+    "ci_all_four_passed": true
+  },
+  "review": {
+    "critical": 0,
+    "important": 2,
+    "minor": 0,
+    "accepted_important": 2,
+    "regressions_red_to_green": 7,
+    "one_author_fixpass": true,
+    "rereview": false
+  },
+  "diagnosis": {
+    "mode": "ACTUAL",
+    "evidence_domain": "online_business",
+    "decision": "investigate",
+    "reason_code": "insufficient_samples",
+    "observed_samples": 1,
+    "minimum_samples": 20,
+    "repair_eligible": false,
+    "model_requests": 1,
+    "model_tools": 0,
+    "known_cost_microyuan": 4952,
+    "new_unknown": 0,
+    "memory_facts": 1,
+    "memory_sha256": "d7cd4e07f192f600703cce28c3f00ac665e75b26a3bd252a9faca390198c8706",
+    "memory_verified_in_authenticated_request": true,
+    "memory_authority": "context_only",
+    "hindsight_server_adapter": false,
+    "policy_restored": true,
+    "credential_unchanged": true,
+    "development_dispatches": 0
+  },
+  "dedup": {
+    "actual_host_api_reentries": 2,
+    "new_model_requests": 0,
+    "new_cost_microyuan": 0,
+    "stable_evidence_fingerprint": "8320133840bc324a4a028905168664fe7a54ad9169fb5377fabad4d353bafa4b",
+    "supervisor_timer_active": true,
+    "finite_root_approved_queue_only": true,
+    "unapproved_new_evidence": "investigation_only",
+    "automatic_permit_minting": false
+  },
+  "accounting": {
+    "canonical_attempts": 762,
+    "known_attempts": 753,
+    "legacy_unknown_holds": 9,
+    "known_cost_microyuan": 4706205,
+    "held_microyuan": 18115200,
+    "conservative_used_microyuan": 22821405,
+    "remaining_microyuan": 27178595,
+    "budget_microyuan": 50000000,
+    "fee_snapshot_sha256": "fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb",
+    "new_latest_checkpoint": true,
+    "checkpoint_manifest_sha256": "2e32d994b8f4cbf02bf9e0412d76513aba4000f76ee2afb521d0240816f33f67",
+    "old_snapshot_restored": false
+  },
+  "handoff": {
+    "main_reader_verified": true,
+    "authority": "audit_only",
+    "kinds": [
+      "analysis",
+      "memory",
+      "version"
+    ],
+    "controller_source_changed_files": 19,
+    "controller_added": 1200,
+    "controller_deleted": 6,
+    "product_changed_files": 0,
+    "product_release_state": "unknown",
+    "main_merged": false,
+    "product_adopted": false,
+    "daily_distinct_samples": null,
+    "controller_metadata_corrections": 2
+  },
+  "nextday": {
+    "test_id": "owner002-nextday-regression",
+    "scheduled_for": "2026-10-28T19:00:00+00:00",
+    "fixed_cases": 18,
+    "status": "planned",
+    "result": null,
+    "registry_unchanged": true
+  },
+  "operational_failures_retained": [
+    "native SSH lacked Docker group before any container/model dispatch; transient owned service used existing supplementary group",
+    "postpilot transient NoNewPrivileges worker rejected sudo after checkpoint; verification/configuration roles split",
+    "postpilot host-helper backup hash shadowed controller metadata; original records retained and explicit corrections appended"
+  ],
+  "remaining": [
+    "automatic source-bound investigation/reproducer to independent task review",
+    "new task development/failure adjustment wiring beyond existing reviewed queue",
+    "explicitly authorized main adoption/product release observation and ownership-safe business rollback",
+    "actual due nextday regression and sustained24-48hour validation"
+  ],
+  "as_of_utc": "2026-10-28T17:29:08.792236+00:00"
+}

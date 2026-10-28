@@ -62,3 +62,7 @@ Current deployment evidence and limitations live in `docs/evaluations/` and
 `docs/pi/agent-enhancements.md`. The overall management loop remains incomplete
 until new-task review, repair, authorized product observation/recovery and real
 cross-day validation all have their own evidence.
+
+## Historical plans and corrected metadata
+
+A due-today view must include earlier plans whose scheduled_for falls today; daily.next_tests contains plans recorded on that report day, so reading only today misses a previous-night forecast. Preserve its separate actual result. Daily.versions is a history of event contexts, including failed or subsequently corrected metadata; it is not a single current deployment. Show host review/correction events and their corrects_controller_pin_record evidence links. Use the appropriate component version event for the current controller/config view, while retaining original records.

@@ -23,15 +23,17 @@
 
 ### Task 1: Existing single-scan manager semantics and service contract
 **Files:** ops/pi/deploy/myink-pi-manager.service, ops/pi/tests/test_manager_scheduling.py, docs/pi deployment notes.
-- [ ] RED service contract requires idle_seconds0 while all existing bounds/paths remain.
-- [ ] Verify existing CLI0 makes exactly one empty/ready inbox poll and promptly releases its manager lock without fees (synthetic fixtures only).
-- [ ] Change only service idle argument600->0, document normally-next-tick admission when idle/uncontended, plus accuracy/scheduling and contention delay and quiet idle behavior. Target manager/signal/diagnosis/followup tests.
-- [ ] One fresh final review, one author fixpass, preserve all findings/minors/declines. Commit/push with exact CI.
+- [x] RED service contract requires idle_seconds0 while all existing bounds/paths remain.
+- [x] Verify existing CLI0 makes exactly one empty/ready inbox poll and promptly releases its manager lock without fees (synthetic fixtures only).
+- [x] Change only service idle argument600->0, document normally-next-tick admission when idle/uncontended, plus accuracy/scheduling and contention delay and quiet idle behavior. Target manager/signal/diagnosis/followup tests.
+- [x] One fresh final review, one author fixpass, preserve all findings/minors/declines. Commit/push with exact CI.
 
 ### Task 2: Actual owned host scheduling acceptance
 **Inputs:** exact root-owned current service digestb02efe12567776c854f3a6fce98452a194e91052ced78aa9ee4622ec32035da1, canonical ledger/current manager snapshots, closedpolicy, original service.env; verified new service artifact.
 **Outputs:** private intent/old service/actual timing receipt, readonly audit version+test events, public dated evaluation.
-- [ ] Check queued/inflight status and preserve old root unit. Install reviewed service, systemd verify/reload; keep current actual work protected. Prefer natural idle completion; do not restart a dispatch.
-- [ ] Observe at least2new idle ticks (one actualtimer-generated), each0dispatch/0fee/unchanged original tasks, prompt exit and shared lock obtainable. Record actual durations and exact unit digest.
-- [ ] Verify observer/diagnosis/followup timers and registry pins unchanged, readyz normal, original fee and manager prefixes intact; append config version/change scope and actual acceptance audit.
-- [ ] Publish evaluation/exact HEAD4CI, preserve failed attempts, archive only this completed plan workspace after verifiedcopy. Rootgoal staysactive for automatic source-bound task/review/dev/release/recovery and cross-day acceptance.
+- [x] Check queued/inflight status and preserve old root unit. Install reviewed service, systemd verify/reload; keep current actual work protected. Prefer natural idle completion; do not restart a dispatch.
+- [x] Observe at least2new idle ticks (one actualtimer-generated), each0dispatch/0fee/unchanged original tasks, prompt exit and shared lock obtainable. Record actual durations and exact unit digest.
+- [x] Verify observer/diagnosis/followup timers and registry pins unchanged, readyz normal, original fee and manager prefixes intact; append config version/change scope and actual acceptance audit.
+- [x] Publish evaluation/exact HEAD4CI, preserve failed attempts, archive only this completed plan workspace after verifiedcopy. Rootgoal staysactive for automatic source-bound task/review/dev/release/recovery and cross-day acceptance.
+
+Completion: source7970f31a/4CI40733978564;112related+3finaltests passed;freshreview0C/0I/2M accepted once/no rereview. Actual2automaticidle ticks485.888/502.689ms with2external-lock acquisitions,0model/fees, exactoriginalruntimec097 preserved. Configunit45ed3ba9...only1livefile+1/-1. Fullrootgoalactive;due03followupunchanged.
