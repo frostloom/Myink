@@ -44,9 +44,25 @@ that execution path is prohibited. The host issuer will publish a new exact
 FileReview only after verified review and current-state checks. Model JSON is
 never copied directly into an approval file.
 
+## Implemented independent SDK recommendation (not activated)
+
+`sdk_review_launcher.execute` uses a fresh fixed no-tool session and the original
+model gateway/ledger. Strict role, root ACTUAL permit, original50CNY/nineholds,
+frozen dossier/source/runtime/policy/credential and an at-most120second/one-call
+limit are checked before forwarding. It validates authenticated SDK/RPC output,
+strict copied identities, cleanup and preserved financial history, then restores
+the exact owned policy. An existing output claim prevents replay, even after
+partial execution. Intent files and directory entries are synced before payment.
+
+The strict report is a recommendation only: approve/reject/needs_evidence.
+No FileReview or development config is written. Host audit retains a bounded
+decision/reason, original known charge, model count and dossier hash; private
+model commentary is not exported. Invalid output, missing usage, cleanup or
+revocation remains failed/blocked without permission or automatic retries.
+
 ## Remaining wiring
 
-The independent no-tool SDK executor, semantic lease/publisher, new test proposal
+The semantic lease/publisher, new test proposal
 and real baseline coordinator, original manager admission and actual autonomous
 handoff still need implementation/acceptance. Candidate acceptance uses a separate
 candidate/diff-bound review; a pre-development recommendation cannot approve a

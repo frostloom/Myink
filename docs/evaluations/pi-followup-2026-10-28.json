@@ -144,5 +144,40 @@
     },
     "daily_release_state": "unknown"
   },
-  "readonly_verifier_note": "Initial absent-container assertion used case-sensitive Docker wording; corrected to lowercase no such object. Existing scheduled test was not rerun."
+  "readonly_verifier_note": "Initial absent-container assertion used case-sensitive Docker wording; corrected to lowercase no such object. Existing scheduled test was not rerun.",
+  "actual_acceptance_ci": {
+    "head": "a6a59f5f1f4fb9077c70f3d081b8e0207cc26aea",
+    "run": {
+      "id": 40751492905,
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/frostloom/Myink/actions/runs/40751492905"
+    },
+    "jobs": [
+      {
+        "name": "前端（lint + 单测 + 构建）",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/frostloom/Myink/actions/runs/40751492905/job/123039073461"
+      },
+      {
+        "name": "Python 全量回归（全新 PG）",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/frostloom/Myink/actions/runs/40751492905/job/123039073840"
+      },
+      {
+        "name": "镜像构建（Python + Caddy）",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/frostloom/Myink/actions/runs/40751492905/job/123039074005"
+      },
+      {
+        "name": "Pi offline control gates",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/frostloom/Myink/actions/runs/40751492905/job/123039074128"
+      }
+    ]
+  }
 }

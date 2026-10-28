@@ -36,9 +36,9 @@
 
 ### Task 2: Independent no-tool SDK review with original fees
 **Files:** ops/pi/sdk_review_launcher.py and narrowly shared one-shot host wire/lifecycle helpers if required; test_sdk_review_launcher.py.
-- [ ] RED role/permit/input/policy/fee pins, strict copied identities/approval recommendation, fresh independent SDK/RPC proof, output rejection/unknown usage/cleanup/pre-forward revocation/no replay.
-- [ ] One fixed no-tool reviewer reads dossier; host validates report. Reuse original NoToolBridge/worker/verify_selection/PolicyLease/OwnedHosts and original fee gateway, not another billing database. Keep existing diagnosis behavior verified.
-- [ ] Persist review recommendation/known charge/cleanup independently of authorization. Invalid/rejected/uncertain recommendation issues no permission. Audit review/version/tool-free lifecycle.
+- [x] RED role/permit/input/policy/fee pins, strict copied identities/approval recommendation, fresh independent SDK/RPC proof, output rejection/unknown usage/cleanup/pre-forward revocation/no replay.
+- [x] One fixed no-tool reviewer reads dossier; host validates report. Reuse original NoToolBridge/worker/verify_selection/PolicyLease/OwnedHosts and original fee gateway, not another billing database. Keep existing diagnosis behavior verified.
+- [x] Persist review recommendation/known charge/cleanup independently of authorization. Invalid/rejected/uncertain recommendation issues no permission. Audit review/version/tool-free lifecycle.
 
 ### Task 3: Host semantic lease and exact FileReview issuer
 **Files:** ops/pi/review_issuer.py, host policy/config/deploy tests.
@@ -59,7 +59,7 @@
 - [ ] Full offline/meaningful native tests and one fresh final review before actualactivation; one author fixpass/no rereview. Exact source CI and audit export compatibility.
 
 ### Task 6: Actual autonomous handoff acceptance and next work
-- [ ] First verify actual03followup when due; never reset a claim or rerun uncertainty.
+- [x] Actual03followup verified at03:02:39+08:18/18pass,0model/fee,ownedcontainerabsent; mainreader links prior-dayplan.result; originalclaim retained.
 - [ ] Use a genuinely new bounded finding/reference-source task or report no_task; do not pay again for completed owner002. Prove proposal/baseline/reviewer/issuer/selection/dev/failed-check adjustment and candidate review artifacts flow without manually writing per-task review JSON.
 - [ ] Verify original fee/legacy holds/history/policy/cleanup, fresh latestcanonical checkpoint after fees, duplicate wakeup0newmodels, mainreader full audit/version/change scope/nextday plan.
 - [ ] Publish facts and remaining main/product release/ownership-safe recovery/24-48hour validation gates. Complete this plan only when its requested actual handoff is proven; keep fullrootgoalactive until every original requirement is met.

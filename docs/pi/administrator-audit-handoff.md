@@ -66,3 +66,19 @@ cross-day validation all have their own evidence.
 ## Historical plans and corrected metadata
 
 A due-today view must include earlier plans whose scheduled_for falls today; daily.next_tests contains plans recorded on that report day, so reading only today misses a previous-night forecast. Preserve its separate actual result. Daily.versions is a history of event contexts, including failed or subsequently corrected metadata; it is not a single current deployment. Show host review/correction events and their corrects_controller_pin_record evidence links. Use the appropriate component version event for the current controller/config view, while retaining original records.
+
+
+## Independent SDK review and actual cross-day example
+
+New pre-development SDK review events expose only host-projected recommendation,
+reason, request count, known charge and dossier evidence. `passed` means a
+verified approve recommendation; it does not grant execution or candidate/product
+acceptance. `reject`/`needs_evidence` and invalid output remain non-authorizing.
+Complete untrusted commentary stays private. This code path is not yet deployed;
+its future issuer must publish exact FileReview independently.
+
+The original Oct28 owner002 plan now has a real Oct29 03:02+08 passed offline
+result,18/18cases and0modelrequests. Read the Oct28 report's matching next_tests
+entry to display its separate result, including actual time and event evidence.
+Keep unknown product release identity unchanged; this fixed candidate regression
+is not a production deployment or a24–48hour online validation.

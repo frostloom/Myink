@@ -1,6 +1,6 @@
 # 从裸 Pi 到 Myink 受控维护执行器
 
-更新：2026-10-28。此清单区分代码能力、服务器已部署能力和仍待接通的线上闭环，不把执行器在线称为管理者完成。
+更新：2026-10-29。此清单区分代码能力、服务器已部署能力和仍待接通的线上闭环，不把执行器在线称为管理者完成。
 
 ## 模型与主机的职责
 
@@ -43,7 +43,7 @@ analysis/diagnose仅开放observe_metrics、read_source、candidate_status；pla
 
 产品发布/回退设计要求共享发布锁、main/镜像/deployment_id/generation/owner/维护epoch核对、人工发布优先、PRE/POST备份与真实恢复验证，只回退仍由自身持有的候选。旧Pi基线不能覆盖后来的人工版本。02:00–06:00上海维护窗口、05:30停止新候选，缺授权/归属/暂停/备份条件就阻断。
 
-尚待接通并实际验证：线上异常与可重现证据→新任务独立审核→真实模型修复→授权产品发布观察/归属安全回退→次日测试实际执行。当前已上线的是受审核队列执行器。main合并和产品发布仍遵守用户明确授权边界。
+尚待接通并实际验证：线上异常与可重现证据→新任务独立审核→真实模型修复→授权产品发布观察/归属安全回退。独立次日固定回归已实际执行，见下文；它不替代产品发布后的验证。当前已上线的是受审核队列执行器。main合并和产品发布仍遵守用户明确授权边界。
 
 审计合同见docs/contracts/pi-audit-v1.md：分析与检查结果、工具流转、开发/测试/失败、回退、每日源码/控制器/SDK/模型/策略/候选/部署版本、变更范围及次日测试均保留结构化输出；缺证据显示unknown，未执行显示planned。管理员面板后续只读消费，不获得执行器权限。
 
@@ -55,7 +55,7 @@ analysis/diagnose仅开放observe_metrics、read_source、candidate_status；pla
 
 独立PostgreSQL权限/超时/注入/冲突回滚14项测试通过，另有3199项离线回归；它不替代原19项私有实验室验收。服务器已完成两个不同真实窗口，第二次由15分钟定时器自动运行；各1个样本均标证据不足，新增模型请求0，原费用/manager历史保全。实际证据见docs/evaluations/pi-live-observer-2026-10-28.md。次日执行仍须另附真正到期后的收据，不能把采集上线写成完整管理者闭环。
 
-## 已排程的独立次日回归（尚未到期执行）
+## 独立次日回归（03:02实际通过，以下保留预到期部署过程）
 
 followup004和5分钟定时器已部署，真实预到期结果ACTUAL/planned/零请求/无认领；Oct29 03:00原候选18案例仍result=null。root固定登记是执行权，审计计划仅用于按target_run/test/candidate/due关联；调度运行可预留其他目标运行的任务。共享maintenance.lock与原manager串行，02:00–05:30准入、06:00前结束；固定Docker检查与清理、原账本保全及追加式结果不授予发布能力。父目录和意图先持久同步，不确定/失败不重放，写目标与冻结输入和原状态隔离。代码25fb6b06的14文件+752/-7另存控制器版本事件，原产品候选不变。验证见docs/evaluations/pi-followup-2026-10-28.md；真正次日验收仍待实际到期收据。
 
@@ -70,3 +70,14 @@ This phase completed one actual no-tool diagnosis with one source-bound memoryfa
 ## Shared maintenance lock scheduling (actual2026-10-29)
 
 The original manager service now uses its existing idle0 single-scan mode with the60second timer. Two real automatic empty ticks measured485.888ms and502.689ms; externalmaintenance.lock was obtainable twice, with0modelrequests/fees and original005code/env/history preserved. Existing600second process completednaturally. This improves idle scheduling availability; contention and genuineexecution can still delay admission. Configrevision7970f31a, liveunit45ed3ba9...,1file+1/-1, zero productchanges. Evidence: docs/evaluations/pi-manager-scheduling-2026-10-29.md.
+
+
+2026-10-29 03:02:39+08原定时器实际运行了owner002次日回归，原18案例全部通过、0错误/跳过、新增模型请求0；拥有的容器独立查询确认已清理，原费用fe7c37ea…与策略未变。main独立读取器已将昨天计划关联到今天实际passed事件，保留原计划状态和独立结果。此项已完成，不代表完整自主管理或产品发布已完成。
+
+## 独立审查准入（代码实现中，尚未部署）
+
+新增code_regression证据域要求实际固定案例断言失败、0错误/跳过、完整案例清单及source/gold/report绑定；不能从单测案例制造线上样本。review_dossier编译完整允许源码和测试供审查，受24000ASCII字节上限、密钥形态及来源检查约束。
+
+sdk_review_launcher通过全新无工具SDK会话给出approve/reject/needs_evidence建议，沿用原费用代理、单请求/120秒限制、固定运行时及独立root许可。它不写FileReview，不启动开发；批准建议也不构成执行许可。宿主核验SDK/RPC、用量、费用前缀、清理、策略恢复、凭据和输入不变后，才记录可信状态；完整模型评语留私有区，管理员导出只保留白名单决定/原因、次数、费用与证据摘要。已计费但评语不合格仍留失败，不重放。
+
+后续宿主准入器还需把已审查语义、当前原账本检查点和只减不增的剩余时限绑定到精确FileReview，再接原管理器。该接线、真实新任务验收、产品观察与归属安全回退尚未完成。实现与验证状态见autonomous-admission.md，避免将未部署代码写成服务器能力。
