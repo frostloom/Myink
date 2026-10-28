@@ -84,7 +84,7 @@ def _pins(e):
 def _planned(audit,e):
     return any(plan['test_id']==e['test_id'] and plan['target_run_id']==e['run_id'] and plan['target_version_sha256']==e['candidate_sha256']
         and utc(datetime.fromisoformat(plan['scheduled_for']))==utc(datetime.fromisoformat(e['scheduled_for'])) and plan['status']=='planned'
-        for event in audit.events(run_id=e['run_id']) for plan in event['followups'])
+        for event in audit.events() for plan in event['followups'])
 
 
 def _cached(root,e,entry_sha):

@@ -139,3 +139,14 @@ def test_time_is_rechecked_after_validation_before_claim(configured):
     p,c=configured;moments=iter((NOW,NOW+timedelta(hours=4)))
     result=api().run_due(p,sha256(p.read_bytes()).hexdigest(),clock=lambda:next(moments),runner=lambda *a:pytest.fail('late claim'))
     assert result['status']=='outside_window' and list(Path(c['root']).iterdir())==[]
+
+
+def test_scheduler_run_can_reserve_a_followup_for_the_original_target(configured):
+    from ops.pi.audit import AuditStore
+    p,c=configured;original=AuditStore(c['audit_path']).events()[0]
+    other=Path(c['audit_path']).parent/'scheduler.sqlite'
+    record={k:original[k] for k in ('kind','status','run_id','occurred_at','summary','details','version','changes','evidence','followups','mode','evidence_domain')}
+    record['run_id']='scheduler';AuditStore(other).append('scheduler-plan',record)
+    c['audit_path']=str(other);p.write_text(json.dumps(c))
+    result=run(configured)
+    assert result['results'][0]['status']=='passed'
