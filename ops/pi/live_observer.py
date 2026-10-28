@@ -127,12 +127,15 @@ def observe(config_path,*,clock=None,reader=None,expected_config_sha256=None):
     result=dict(schema='pi-live-observer-result-v1',run_id=run_id,mode=c['mode'],config_sha256=config_sha,controller_sha256=controller,
         status='blocked',evidence_domain='unknown',observed_samples=None,minimum_samples=c['minimum_samples'],availability='unknown',
         confounders=[],snapshot_sha256=None,window=dict(start=start.isoformat(),end=end.isoformat()),automatic_execution=False,export_published=False)
-    types=set();missing_type=False;missing_status=False;missing_model=False
+    types=set();cohort=set();missing_type=False;missing_status=False;missing_model=False
     def collect(request):
         nonlocal missing_type,missing_status,missing_model
         rows=list(source(request))
         if request['source']=='tasks':
             for row in rows:
+                task=row.get('id');parent=row.get('batch_task_id')
+                require(isinstance(task,str) and 0<len(task)<=256 and (parent is None or isinstance(parent,str) and 0<len(parent)<=256),'bounded task cohort identifiers required')
+                cohort.add((task,parent));require(len(cohort)<=1000,'bounded cohort required')
                 if row.get('status') not in ('done','failed','cancelled','paused','queued','awaiting_plan','awaiting_review','running'):missing_status=True
                 if row.get('batch_task_id') is not None:continue
                 value=row.get('task_type')
@@ -153,12 +156,13 @@ def observe(config_path,*,clock=None,reader=None,expected_config_sha256=None):
         snapshot['confounders']=sorted(set(snapshot['confounders']))
         if snapshot['confounders']:snapshot['availability']='unknown'
         snapshot['task_type_range']=sorted(types)
+        snapshot['cohort_sha256']=digest(sorted(cohort,key=lambda pair:(pair[0],pair[1] or '')))
         raw=encoded(snapshot);require(len(raw)<=MAX_SNAPSHOT,'metric snapshot exceeds byte bound')
         require(sha256(_read(path,65536)).hexdigest()==raw_sha,'observer config changed during collection')
         _publish(root/'metrics.json',raw,immutable=True)
         domain='online_business' if c['mode']=='ACTUAL' else 'synthetic'
         status='passed' if snapshot['availability']=='measured' and not snapshot['confounders'] and snapshot['complete_tasks']>=c['minimum_samples'] and len(types)==1 else 'insufficient_evidence'
-        proof=[dict(kind='fixed_metric_snapshot',sha256=sha256(raw).hexdigest(),verified=True,evidence_domain=domain)]
+        proof=[dict(kind='fixed_metric_snapshot',sha256=sha256(raw).hexdigest(),verified=True,evidence_domain=domain),dict(kind='observation_cohort',sha256=snapshot['cohort_sha256'],verified=True,evidence_domain=domain)]
         details=dict(reference='metrics.rolling_window.v1',request_summary=start.isoformat()+' / '+end.isoformat(),observed_samples=snapshot['complete_tasks'],minimum_samples=c['minimum_samples'],availability=snapshot['availability'],model_requests=0,known_cost_microyuan=0,
             decision='observed' if status=='passed' else 'needs_evidence',next_action='observe',reason=','.join(snapshot['confounders']) or 'cohort_sample_threshold')
         audit.append(run_id+':observation',event('observation',status,'Completed read-only metric collection; individual availability remains explicit.',details,proof,domain))

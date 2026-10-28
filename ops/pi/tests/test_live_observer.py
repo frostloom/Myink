@@ -188,3 +188,23 @@ def test_unrecognized_or_unfinished_tasks_do_not_certify_complete_window(configu
     result=run(configured,unknown)
     assert result['status']=='insufficient_evidence'
     assert 'unknown_task_status' in result['confounders']
+
+
+def test_real_cohort_fingerprint_is_stable_across_windows_and_changes_with_task_ids(configured):
+    from ops.pi.audit import AuditStore
+    from hashlib import sha256
+    first=run(configured,Rows(2));second=run(configured,Rows(2),lambda:NOW+timedelta(minutes=15))
+    def read(result):return json.loads((Path(configured[1]['root'])/result['run_id']/'metrics.json').read_bytes())
+    a,b=read(first),read(second)
+    assert len(a['cohort_sha256'])==64 and a['cohort_sha256']==b['cohort_sha256']
+    original=Rows(2)
+    def changed(request):
+        rows=original(request)
+        for row in rows:
+            if request['source']=='tasks':row['id']='changed-'+row['id']
+            else:row['task_id']='changed-'+row['task_id']
+        return rows
+    third=run(configured,changed,lambda:NOW+timedelta(minutes=30));assert read(third)['cohort_sha256']!=a['cohort_sha256']
+    events=AuditStore(configured[1]['audit_path']).events(run_id=first['run_id'])
+    terminal=next(e for e in events if e['kind']=='observation' and e['status']!='running')
+    assert any(p['kind']=='observation_cohort' and p['sha256']==a['cohort_sha256'] and p['verified'] for p in terminal['evidence'])
