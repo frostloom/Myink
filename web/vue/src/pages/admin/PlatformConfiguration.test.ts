@@ -17,6 +17,37 @@ vi.mock('../../../../src/lib/api', () => ({
 vi.mock('../../../../src/lib/platformApi', () => ({ platformApi: { getReadiness: vi.fn(), getConfiguration: vi.fn(), updateConfiguration: vi.fn(), listModels: vi.fn(), testConnection: vi.fn() } }));
 const emptyEnv = { version: 1, model_routes: {}, model_connections: [], prompts: {}, genre_packs: {} };
 const onForbidden = vi.fn();
+it('keeps invalid queue weights local instead of sending an unusable policy', async () => {
+    vi.mocked(platformApi.getConfiguration).mockResolvedValue(emptyEnv);
+    vi.mocked(platformApi.updateConfiguration).mockResolvedValue(emptyEnv);
+    renderPage();
+    await flushPromises();
+    await fireEvent.update(await screen.findByLabelText('VIP 调度权重'), '0');
+    await fireEvent.click(screen.getByRole('button', { name: '保存平台配置' }));
+    expect(platformApi.updateConfiguration).not.toHaveBeenCalled();
+    expect((await screen.findByRole('alert')).textContent).toContain('1–10');
+});
+it('saves VIP defaults and fair queue weights alongside existing policy', async () => {
+    vi.mocked(platformApi.getConfiguration).mockResolvedValue({ ...emptyEnv,
+        model_connections: [{ id: 'basic', name: '普通模型', protocol: 'openai', base_url: 'https://example.test/v1',
+            model: 'basic', has_api_key: true, enabled: true, user_visible: true },
+        { id: 'premium', name: '高级模型', protocol: 'openai', base_url: 'https://example.test/v1',
+            model: 'premium', has_api_key: true, enabled: true, user_visible: true, minimum_tier: 'vip' }],
+        model_routes: { writer: 'custom:basic' }, vip_model_routes: { writer: 'custom:premium' },
+        queue_weights: { vip: 3, normal: 1 },
+    });
+    vi.mocked(platformApi.updateConfiguration).mockImplementation(async body => ({ ...body, version: 2,
+        model_connections: body.model_connections.map(c => ({ ...c, has_api_key: true })) }));
+    renderPage();
+    await fireEvent.update(await screen.findByLabelText('VIP 写作默认模型'), 'custom:premium');
+    await fireEvent.update(screen.getByLabelText('VIP 调度权重'), '4');
+    await fireEvent.click(screen.getByRole('button', { name: '保存平台配置' }));
+    await waitFor(() => expect(platformApi.updateConfiguration).toHaveBeenCalled());
+    const body = vi.mocked(platformApi.updateConfiguration).mock.calls[0][0];
+    expect(body.vip_model_routes).toEqual({ writer: 'custom:premium' });
+    expect(body.queue_weights).toEqual({ vip: 4, normal: 1 });
+    expect(body.model_connections.find(c => c.id === 'premium')?.minimum_tier).toBe('vip');
+});
 beforeEach(() => {
     vi.mocked(platformApi.getReadiness).mockResolvedValue({ ready: true, checks: [] });
     onForbidden.mockReset();
@@ -81,10 +112,11 @@ it('adds a network model and routes Writer through it without exposing saved key
     await fireEvent.update(screen.getByLabelText('写作'), 'custom:11111111-1111-4111-8111-111111111111');
     await fireEvent.click(screen.getByRole('button', { name: '保存平台配置' }));
     await waitFor(() => expect(platformApi.updateConfiguration).toHaveBeenCalledWith({
+        vip_model_routes: {}, queue_weights: { vip: 3, normal: 1 },
         model_routes: { writer: 'custom:11111111-1111-4111-8111-111111111111' },
         model_connections: [{
                 id: '11111111-1111-4111-8111-111111111111', name: '我的 GPT', protocol: 'openai',
-                base_url: 'https://models.example.com/v1', model: 'novel-pro', api_key: 'secret-key', enabled: true, user_visible: true,
+                base_url: 'https://models.example.com/v1', model: 'novel-pro', api_key: 'secret-key', enabled: true, user_visible: true, minimum_tier: 'normal',
             }],
         version: 1, prompts: {}, genre_packs: {}, user_defaults: { thinking_enabled: false, task_budget: { max_requests: 100, max_cost_yuan: 5, max_runtime_seconds: 1800 }, rankings: { enabled: true, timeout: 10, limit: 10 } },
     }));

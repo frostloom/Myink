@@ -60,7 +60,7 @@ def _connection_reason(record, *, deployment=False):
     return None
 
 
-def readiness(*, roles=None, selections=None, config=None):
+def readiness(*, roles=None, selections=None, config=None, tier='normal'):
     """Diagnostics contain fixed reasons only, never URLs, credentials or errors."""
     from myink.config import settings
     from myink.platform_configuration import load_configuration
@@ -73,7 +73,7 @@ def readiness(*, roles=None, selections=None, config=None):
         defaults_reason = 'defaults_invalid'
     checks = []
     for role in sorted(PLATFORM_ROLES if roles is None else roles):
-        record = resolve_connection(role, selections, config)
+        record = resolve_connection(role, selections, config, tier=tier)
         deployment = record is None and config['version'] == 0
         if deployment:
             record = {'protocol': settings.platform_model_protocol,
@@ -84,12 +84,12 @@ def readiness(*, roles=None, selections=None, config=None):
     return {'ready': all(check['ready'] for check in checks), 'checks': checks}
 
 
-def require_ready(roles, *, selections=None, config=None):
+def require_ready(roles, *, selections=None, config=None, tier='normal'):
     # Preserve the existing concrete dependency-injection seam for test providers.
     from myink import providers
     if providers.default_provider is not providers._BUILTIN_PROVIDER:
         return
-    if not readiness(roles=roles, selections=selections, config=config)['ready']:
+    if not readiness(roles=roles, selections=selections, config=config, tier=tier)['ready']:
         raise PlatformNotReady()
 
 
@@ -101,4 +101,5 @@ def require_operation_ready(operation, user_id):
     from myink.providers.connections import unpack_model_settings
     roles = {'short_generate': ('writer', 'audit'), 'short_commit': ('planner',)}.get(operation, PLATFORM_ROLES)
     selections, _ = unpack_model_settings(packed_models(user_id))
-    require_ready(roles, selections=selections)
+    from myink.platform_configuration import tier_for_user
+    require_ready(roles, selections=selections, tier=tier_for_user(user_id))

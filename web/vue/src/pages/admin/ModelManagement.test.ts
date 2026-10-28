@@ -99,6 +99,34 @@ it('keeps the editor draft on a version conflict', async () => {
     await screen.findByRole('alert');
     expect((screen.getByLabelText('显示名称') as HTMLInputElement).value).toBe('草稿名称');
 });
+it('saves a model membership restriction without losing VIP defaults or weights', async () => {
+    vi.mocked(platformApi.getConfiguration).mockResolvedValue({ ...saved,
+        model_connections: [...saved.model_connections, { ...saved.model_connections[0], id: 'two', name: '高级模型' }],
+        vip_model_routes: { writer: 'custom:two' }, queue_weights: { vip: 5, normal: 2 },
+    });
+    page();
+    await fireEvent.click(await screen.findByRole('button', { name: '编辑 高级模型' }));
+    await fireEvent.update(screen.getByLabelText('最低会员等级'), 'vip');
+    await fireEvent.click(screen.getByRole('button', { name: '保存模型' }));
+    await waitFor(() => expect(platformApi.updateConfiguration).toHaveBeenCalled());
+    const body = vi.mocked(platformApi.updateConfiguration).mock.calls[0][0];
+    expect(body.model_connections.find(c => c.id === 'two')?.minimum_tier).toBe('vip');
+    expect(body.vip_model_routes).toEqual({ writer: 'custom:two' });
+    expect(body.queue_weights).toEqual({ vip: 5, normal: 2 });
+});
+it('removes VIP references when deleting a premium default and retains the normal default', async () => {
+    vi.mocked(platformApi.getConfiguration).mockResolvedValue({ ...saved,
+        model_connections: [...saved.model_connections, { ...saved.model_connections[0], id: 'two', name: '高级模型', minimum_tier: 'vip' }],
+        vip_model_routes: { writer: 'custom:two', audit: 'custom:one' }, queue_weights: { vip: 3, normal: 1 },
+    });
+    page();
+    await fireEvent.click(await screen.findByRole('button', { name: '删除 高级模型' }));
+    await fireEvent.click(screen.getByRole('button', { name: '确认删除' }));
+    await waitFor(() => expect(platformApi.updateConfiguration).toHaveBeenCalled());
+    const body = vi.mocked(platformApi.updateConfiguration).mock.calls[0][0];
+    expect(body.vip_model_routes).toEqual({ audit: 'custom:one' });
+    expect(body.model_routes).toEqual(saved.model_routes);
+});
 it('requires confirmation before deleting a model and clears its role references', async () => {
     page();
     await flushPromises();

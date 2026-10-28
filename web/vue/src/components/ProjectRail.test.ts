@@ -44,7 +44,7 @@ it('admin navigation is directly available and marks detail owners', async () =>
   await rail('/admin/tasks/task-1', true)
   expect(screen.getByRole('link', { name: '任务' }).getAttribute('aria-current')).toBe('page')
   expect(screen.queryByText('管理导航')).toBeNull()
-  expect(screen.getByRole('link', { name: '用户' })).toBeTruthy()
+  expect(screen.getByRole('link', { name: '用户与会员' })).toBeTruthy()
   await fireEvent.click(screen.getByRole('button', { name: '退出登录' })); expect(auth.value.logout).toHaveBeenCalledOnce()
 })
 

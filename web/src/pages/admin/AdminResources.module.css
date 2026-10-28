@@ -68,9 +68,12 @@
   color: var(--ink-muted);
 }
 .provider {
-  color: var(--accent);
+  color: var(--accent-ink);
   font-weight: 600;
 }
+.audience { display: flex; align-items: center; gap: 8px; }
+.audienceBadge { display: inline-flex; align-items: center; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); padding: 3px 8px; color: var(--ink-muted); background: var(--surface-2); font-size: var(--text-micro); font-weight: 600; white-space: nowrap; }
+.premiumBadge { color: var(--surface-1); background: var(--ink); border-color: var(--ink); }
 .tags {
   display: flex;
   flex-wrap: wrap;

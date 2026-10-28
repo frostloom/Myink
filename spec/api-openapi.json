@@ -2903,6 +2903,16 @@
             "title": "Prompts",
             "type": "object"
           },
+          "queue_weights": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QueueWeights"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "user_defaults": {
             "$ref": "#/components/schemas/UserDefaults-Input"
           },
@@ -2910,6 +2920,20 @@
             "minimum": 0.0,
             "title": "Version",
             "type": "integer"
+          },
+          "vip_model_routes": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vip Model Routes"
           }
         },
         "required": [
@@ -2952,12 +2976,22 @@
             "title": "Prompts",
             "type": "object"
           },
+          "queue_weights": {
+            "$ref": "#/components/schemas/QueueWeights"
+          },
           "user_defaults": {
             "$ref": "#/components/schemas/UserDefaults-Output"
           },
           "version": {
             "title": "Version",
             "type": "integer"
+          },
+          "vip_model_routes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Vip Model Routes",
+            "type": "object"
           }
         },
         "required": [
@@ -4642,6 +4676,47 @@
         "title": "LessonActionOut",
         "type": "object"
       },
+      "MembershipBody": {
+        "additionalProperties": false,
+        "properties": {
+          "tier": {
+            "enum": [
+              "normal",
+              "vip"
+            ],
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tier"
+        ],
+        "title": "MembershipBody",
+        "type": "object"
+      },
+      "MembershipOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "tier": {
+            "enum": [
+              "normal",
+              "vip"
+            ],
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tier"
+        ],
+        "title": "MembershipOut",
+        "type": "object"
+      },
       "MemoryCandidateOut": {
         "properties": {
           "candidate_id": {
@@ -5062,6 +5137,15 @@
             ],
             "title": "Input Price"
           },
+          "minimum_tier": {
+            "default": "normal",
+            "enum": [
+              "normal",
+              "vip"
+            ],
+            "title": "Minimum Tier",
+            "type": "string"
+          },
           "model": {
             "title": "Model",
             "type": "string"
@@ -5133,6 +5217,15 @@
               }
             ],
             "title": "Input Price"
+          },
+          "minimum_tier": {
+            "default": "normal",
+            "enum": [
+              "normal",
+              "vip"
+            ],
+            "title": "Minimum Tier",
+            "type": "string"
           },
           "model": {
             "title": "Model",
@@ -5443,6 +5536,27 @@
           "name"
         ],
         "title": "PublishedModel",
+        "type": "object"
+      },
+      "QueueWeights": {
+        "additionalProperties": false,
+        "properties": {
+          "normal": {
+            "default": 1,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Normal",
+            "type": "integer"
+          },
+          "vip": {
+            "default": 3,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Vip",
+            "type": "integer"
+          }
+        },
+        "title": "QueueWeights",
         "type": "object"
       },
       "RankingItemOut": {
@@ -9491,6 +9605,63 @@
         "summary": "Admin.User",
         "tags": [
           "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/users/{user_id}/membership": {
+      "put": {
+        "operationId": "update_membership_api_v1_admin_users__user_id__membership_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MembershipBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MembershipOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Membership",
+        "tags": [
+          "platform"
         ]
       }
     },

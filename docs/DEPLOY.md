@@ -56,7 +56,7 @@ docker compose up -d --build
 
 发布失败时回退到已验证的上一版 **Vue** 镜像，并保留与该版本兼容的后端。不要恢复旧数据库来回退静态页面。新镜像仍须携带此前实际服务过的 hashed assets，避免打开中的页面加载失败；这些旧文件不是可选择的产品入口。历史迁移报告仅记录当时的操作，不是当前发布指令。
 
-当前这台 Mac 的已有服务使用 `.local/vue-only-34b472cb/compose.sh` 保存的环境及卷配置；源码更新不会自动替换运行容器。发布新镜像时沿用该配置核对数据卷，勿用历史预览命令重新挂载旧 worktree 源码。
+2026-10-28 用户授权的本机 VIP 预览、后台及账号页改版使用 `/Users/a1/.codex/worktrees/vip-service/Myink/.local/account-membership-20261028/compose.sh`，叠加上一版 UI 与原 VIP 运行配置。原环境、数据卷和数据库备份保存在同工作区的 `.local/vip-service-20261028/`。源码更新不会自动替换运行容器。本机部署详情见 `docs/work-items/vip-service-20261028/README.md`、`ui-refinement.md` 与 `docs/superpowers/plans/2026-10-28-account-membership-ui.md`。
 
 ## 本机开发
 

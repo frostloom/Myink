@@ -20,6 +20,7 @@ USER_ROLES = PLATFORM_ROLES
 class PlatformConnectionBody(ModelConnectionBody):
     enabled: bool = True
     user_visible: bool = True
+    minimum_tier: Literal['normal', 'vip'] = 'normal'
 
 
 class GenreFields(BaseModel):
@@ -33,9 +34,17 @@ class GenreFields(BaseModel):
     world_hints: list[str] | None = None
 
 
+class QueueWeights(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    vip: int = Field(default=3, ge=1, le=10)
+    normal: int = Field(default=1, ge=1, le=10)
+
+
 class ConfigurationBody(BaseModel):
     model_config = ConfigDict(extra='forbid')
     user_defaults: UserDefaults = Field(default_factory=UserDefaults)
+    vip_model_routes: dict[str, str] | None = None
+    queue_weights: QueueWeights | None = None
     version: int = Field(ge=0)
     model_connections: list[PlatformConnectionBody]
     model_routes: dict[str, str]
@@ -65,9 +74,12 @@ class PlatformConnectionOut(BaseModel):
     has_api_key: bool
     enabled: bool
     user_visible: bool
+    minimum_tier: Literal['normal', 'vip'] = 'normal'
 
 
 class ConfigurationOut(BaseModel):
+    vip_model_routes: dict[str, str] = Field(default_factory=dict)
+    queue_weights: QueueWeights = Field(default_factory=QueueWeights)
     user_defaults: UserDefaults = Field(default_factory=UserDefaults)
     version: int
     model_connections: list[PlatformConnectionOut]
@@ -135,8 +147,10 @@ def public_configuration(config=None) -> dict:
     for item in items:
         record = config['connections'][item['id']]
         item.update(enabled=record.get('enabled', True), user_visible=record.get('user_visible', True),
-                    origin=record.get('origin', 'custom'))
+                    origin=record.get('origin', 'custom'), minimum_tier=record.get('minimum_tier', 'normal'))
     return {'version': config['version'], 'model_connections': items,
+            'vip_model_routes': deepcopy(config.get('vip_model_routes', {})),
+            'queue_weights': config.get('queue_weights', QueueWeights().model_dump()),
             'user_defaults': platform_defaults(config),
             **{k: deepcopy(config[k]) for k in ('model_routes', 'prompts', 'genre_packs')}}
 
@@ -153,10 +167,16 @@ def save_configuration(body: ConfigurationBody) -> dict:
         if cid in connections:
             raise HTTPException(400, 'Duplicate connection id')
         connections[cid] = {**record, 'enabled': item.enabled, 'user_visible': item.user_visible,
-                            'origin': old['connections'].get(cid, {}).get('origin', 'custom')}
-    for role, ref in body.model_routes.items():
+                            'origin': old['connections'].get(cid, {}).get('origin', 'custom'),
+                            'minimum_tier': (item.minimum_tier if 'minimum_tier' in item.model_fields_set
+                                else old['connections'].get(cid, {}).get('minimum_tier', 'normal'))}
+    vip_routes = body.vip_model_routes if body.vip_model_routes is not None else old.get('vip_model_routes', {})
+    for role, ref in [*body.model_routes.items(), *vip_routes.items()]:
         if role not in PLATFORM_ROLES or not ref.startswith('custom:') or not connections.get(ref[7:], {}).get('enabled'):
             raise HTTPException(400, 'Routes must reference enabled platform models')
+    for ref in body.model_routes.values():
+        if connections[ref[7:]].get('minimum_tier', 'normal') != 'normal':
+            raise HTTPException(400, 'Normal defaults cannot reference VIP models')
     if connections and 'writer' not in body.model_routes:
         raise HTTPException(400, 'A platform writer default is required when models are configured')
     for role, prompt in body.prompts.items():
@@ -173,7 +193,10 @@ def save_configuration(body: ConfigurationBody) -> dict:
     if 'user_defaults' in body.model_fields_set:
         defaults = merge_defaults(body.user_defaults.model_dump(mode='json', exclude_unset=True),
                                   platform_defaults(old))
-    document = {'user_defaults': defaults, 'connections': connections, 'model_routes': body.model_routes,
+    document = {'vip_model_routes': vip_routes,
+                'queue_weights': (body.queue_weights.model_dump() if body.queue_weights is not None
+                                  else old.get('queue_weights', QueueWeights().model_dump())),
+                'user_defaults': defaults, 'connections': connections, 'model_routes': body.model_routes,
                 'prompts': body.prompts, 'genre_packs': genres}
     if old.get('builtin_model_imported'):
         document['builtin_model_imported'] = True
@@ -195,35 +218,63 @@ def save_configuration(body: ConfigurationBody) -> dict:
     return public_configuration({'version': body.version + 1, **document})
 
 
-def published_connections(config):
+def tier_for_user(user_id, config=None):
+    """Read current membership, including for workers holding old selections.
+
+    Legacy configurations have no membership restrictions and need no extra query.
+    """
+    config = load_configuration() if config is None else config
+    if not config.get('vip_model_routes') and not any(
+            rec.get('minimum_tier', 'normal') != 'normal' for rec in config['connections'].values()):
+        return 'normal'
+    if user_id is None:
+        return 'normal'
+    import uuid
+    from myink.models import User
+    with new_session() as db:
+        user = db.get(User, uuid.UUID(str(user_id)))
+        return 'vip' if user is not None and user.tier == 'vip' else 'normal'
+
+
+def allowed_connection(record, tier='normal'):
+    minimum = record.get('minimum_tier', 'normal')
+    return record.get('enabled', True) and (minimum == 'normal' or (minimum == 'vip' and tier == 'vip'))
+
+
+def effective_routes(config, tier='normal'):
+    return {**config['model_routes'], **(config.get('vip_model_routes', {}) if tier == 'vip' else {})}
+
+
+def published_connections(config, tier='normal'):
     return {cid: rec for cid, rec in config['connections'].items()
-            if rec.get('enabled', True) and rec.get('user_visible', True)}
+            if allowed_connection(rec, tier) and rec.get('user_visible', True)}
 
 
-def catalog() -> dict:
+def catalog(tier='normal') -> dict:
     config = load_configuration()
-    published = published_connections(config)
+    published = published_connections(config, tier)
     return {'models': [{'id': f'custom:{cid}', 'name': rec['name']} for cid, rec in published.items()],
-            'model_routes': {role: ref for role, ref in config['model_routes'].items()
+            'model_routes': {role: ref for role, ref in effective_routes(config, tier).items()
                              if ref.startswith('custom:') and ref[7:] in published}}
 
 
-def clean_user_routes(routes, config=None):
-    published = published_connections(load_configuration() if config is None else config)
+def clean_user_routes(routes, config=None, tier='normal'):
+    published = published_connections(load_configuration() if config is None else config, tier)
     return {role: ref for role, ref in routes.items() if role in USER_ROLES
             and isinstance(ref, str) and ref.startswith('custom:') and ref[7:] in published}
 
 
-def validate_user_routes(routes):
-    if clean_user_routes(routes) != routes:
-        raise HTTPException(400, 'Select a published model for a supported workflow role')
+def validate_user_routes(routes, config=None, tier='normal'):
+    if clean_user_routes(routes, config, tier) != routes:
+        raise HTTPException(400, 'Select a published model allowed for your membership')
 
 
-def resolve_connection(role, selections=None, config=None):
+def resolve_connection(role, selections=None, config=None, tier='normal'):
     config = load_configuration() if config is None else config
-    routes = clean_user_routes(selections or {}, config)
+    routes = clean_user_routes(selections or {}, config, tier)
     if role not in PLATFORM_ROLES:
         return None
-    ref = routes.get(role) or config['model_routes'].get(role) or config['model_routes'].get('writer', '')
+    defaults = effective_routes(config, tier)
+    ref = routes.get(role) or defaults.get(role) or defaults.get('writer', '')
     rec = config['connections'].get(ref[7:]) if ref.startswith('custom:') else None
-    return rec if rec and rec.get('enabled', True) else None
+    return rec if rec and allowed_connection(rec, tier) else None

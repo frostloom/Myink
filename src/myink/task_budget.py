@@ -808,7 +808,8 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody, *, client
                             "guest_charge":guest_charge,"previous_status":previous_status}
 
     try:
-        amqp.publish_once(json.dumps(message, ensure_ascii=False), amqp.KEY_TASKS)
+        amqp.publish_once(json.dumps(message, ensure_ascii=False), amqp.KEY_TASKS,
+                          priority=amqp.priority_for_user(message['user_id']))
     except Exception as exc:
         definite = isinstance(exc, (amqp.PublishNotSent, pika.exceptions.NackError,
                                     pika.exceptions.UnroutableError))

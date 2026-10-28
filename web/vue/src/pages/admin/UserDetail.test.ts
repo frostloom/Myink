@@ -3,7 +3,7 @@ import { defineComponent,h,type VNode } from 'vue';
 import { createMemoryHistory,createRouter,RouterView } from 'vue-router';
 import { adminContextKey } from './context';
 // @vitest-environment jsdom
-import { cleanup,screen,render as vueRender } from '@testing-library/vue';
+import { cleanup,fireEvent,screen,render as vueRender } from '@testing-library/vue';
 import { afterEach,expect,it,vi } from 'vitest';
 import { adminApi,type AdminUser } from '../../../../src/lib/adminApi';
 import { ApiError } from '../../../../src/lib/api';
@@ -12,7 +12,7 @@ vi.mock('../../../../src/lib/adminApi', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../../../../src/lib/adminApi')>();
     return {
         ...actual,
-        adminApi: { ...actual.adminApi, getUser: vi.fn(), listRuns: vi.fn() },
+        adminApi: { ...actual.adminApi, getUser: vi.fn(), listRuns: vi.fn(), updateMembership: vi.fn() },
     };
 });
 const alice: AdminUser = {
@@ -45,5 +45,16 @@ it('tells the reader a missing user does not exist instead of echoing the 404 co
     vi.mocked(adminApi.listRuns).mockResolvedValue({ items: [], total: 0, limit: 25, offset: 0 });
     renderDetail();
     expect(await screen.findByText('用户不存在')).toBeTruthy();
+});
+it('opens and cancels VIP and keeps the displayed tier when saving fails', async () => {
+    vi.mocked(adminApi.getUser).mockResolvedValue(alice);
+    vi.mocked(adminApi.updateMembership).mockResolvedValue({ id: alice.id, tier: 'vip' });
+    renderDetail();
+    await fireEvent.click(await screen.findByRole('button', { name: '开通 VIP' }));
+    const cancel = await screen.findByRole('button', { name: '取消 VIP' });
+    vi.mocked(adminApi.updateMembership).mockRejectedValue(new Error('network'));
+    await fireEvent.click(cancel);
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '取消 VIP' })).toBeTruthy();
 });
 function render(node: VNode) { const router = createRouter({ history: createMemoryHistory(), routes: [{ path: "/admin/users/:userId", component: defineComponent({ render: () => node }) }, { path: "/admin/tasks/:taskId", component: defineComponent({ render: () => node }) }, { path: "/admin", component: { render: () => null } }] }); const destination='/admin/users/user-1';const result=vueRender(defineComponent({ render: () => h(RouterView) }), { global: { plugins: [router], provide: { [adminContextKey as symbol]: { token: 'token-admin', onForbidden: vi.fn() } } } });void router.push(destination);return result; }

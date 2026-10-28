@@ -6,6 +6,8 @@
     myink.tasks (direct)
       ├─ key "tasks" → queue:tasks  (x-max-priority=10, DLX→myink.dlx/dlq)
       └─ key "delay" → queue:delay  (DLX→myink.tasks/tasks；无固定 TTL，逐条 expiration 退避)
+      ├─ key "tasks.vip" → queue:tasks:vip  (FIFO, DLX→myink.dlx/dlq)
+      └─ key "delay.vip" → queue:delay:vip  (DLX→myink.tasks/tasks.vip)
     myink.dlx (direct) → key "dlq" → queue:dlq
 
 协议不变量（最高风险）：消息体 = 任务 JSON 本身（发出去就是任务字典，worker 单次
@@ -45,6 +47,31 @@ def main_queue() -> str:
     return "queue:tasks" + _px()
 
 
+def vip_queue() -> str:
+    return 'queue:tasks:vip' + _px()
+
+
+def vip_delay_queue() -> str:
+    return 'queue:delay:vip' + _px()
+
+
+def tier_routing_key(routing_key: str, priority: int) -> str:
+    if (priority == settings.priority_vip and priority != settings.priority_normal
+            and routing_key in {KEY_TASKS, KEY_DELAY}):
+        return routing_key + '.vip'
+    return routing_key
+
+
+def priority_for_user(user_id) -> int:
+    """Resume messages use current membership, rather than an old token."""
+    import uuid
+    from myink.db import new_session
+    from myink.models import User
+    with new_session() as db:
+        user = db.get(User, uuid.UUID(str(user_id)))
+        return settings.priority_vip if user is not None and user.tier == 'vip' else settings.priority_normal
+
+
 def delay_queue() -> str:
     return "queue:delay" + _px()
 
@@ -66,7 +93,7 @@ def connect() -> pika.BlockingConnection:
 
 
 def declare_topology(ch: pika.channel.Channel) -> None:
-    """幂等声明 5 项拓扑（重复声明安全；参数变更需清 RabbitMQ 数据卷）。"""
+    """幂等声明拓扑；保留普通队列原参数，新增 VIP 队列无需清理已有消息。"""
     ch.exchange_declare(exchange(), exchange_type="direct", durable=True)
     # 主队列：优先级 + 死信 → myink.dlx/dlq
     ch.queue_declare(
@@ -93,6 +120,14 @@ def declare_topology(ch: pika.channel.Channel) -> None:
     ch.exchange_declare(dlx_exchange(), exchange_type="direct", durable=True)
     ch.queue_declare(dlq_queue(), durable=True)
     ch.queue_bind(dlq_queue(), dlx_exchange(), KEY_DLQ)
+    # Keep the existing normal queue and drain pre-upgrade deliveries.
+    # New VIP deliveries use a FIFO queue with their own delay return route.
+    ch.queue_declare(vip_queue(), durable=True, arguments={
+        'x-dead-letter-exchange': dlx_exchange(), 'x-dead-letter-routing-key': KEY_DLQ})
+    ch.queue_bind(vip_queue(), exchange(), KEY_TASKS + '.vip')
+    ch.queue_declare(vip_delay_queue(), durable=True, arguments={
+        'x-dead-letter-exchange': exchange(), 'x-dead-letter-routing-key': KEY_TASKS + '.vip'})
+    ch.queue_bind(vip_delay_queue(), exchange(), KEY_DELAY + '.vip')
 
 
 # 模块级发布连接（publisher confirm）：API 路由线程池 / worker 重投共用，锁串行。
@@ -107,17 +142,19 @@ def publish(body: str, routing_key: str, priority: int = 0, expiration_ms: int |
     逐条 TTL（毫秒）——延迟队列 DLX 回主队列实现退避。
     阻塞式 confirm：broker nack / 连接断开抛 pika 异常；连接失效自动重建。
     """
+    routing_key = tier_routing_key(routing_key, priority)
     global _publish_conn
     with _publish_lock:
         try:
             if _publish_conn is None or _publish_conn.is_closed:
                 _publish_conn = connect()
             ch = _publish_conn.channel()
+            declare_topology(ch)
             ch.confirm_delivery()  # 阻塞式 publisher confirm
             properties = pika.BasicProperties(delivery_mode=2, priority=priority)
             if expiration_ms is not None:
                 properties.expiration = str(int(expiration_ms))
-            ch.basic_publish(exchange=exchange(), routing_key=routing_key, body=body, properties=properties)
+            ch.basic_publish(exchange=exchange(), routing_key=routing_key, body=body, properties=properties, mandatory=True)
         except pika.exceptions.AMQPError:
             # 连接/通道失效：重建连接重试一次；仍失败抛给调用方（API 侧 503）
             try:
@@ -127,11 +164,12 @@ def publish(body: str, routing_key: str, priority: int = 0, expiration_ms: int |
                 pass
             _publish_conn = connect()
             ch = _publish_conn.channel()
+            declare_topology(ch)
             ch.confirm_delivery()
             properties = pika.BasicProperties(delivery_mode=2, priority=priority)
             if expiration_ms is not None:
                 properties.expiration = str(int(expiration_ms))
-            ch.basic_publish(exchange=exchange(), routing_key=routing_key, body=body, properties=properties)
+            ch.basic_publish(exchange=exchange(), routing_key=routing_key, body=body, properties=properties, mandatory=True)
 
 
 class PublishNotSent(Exception):
@@ -140,6 +178,7 @@ class PublishNotSent(Exception):
 
 def publish_once(body: str, routing_key: str, priority: int = 0) -> None:
     """No implicit retry after a lost confirm; bounded and mandatory delivery."""
+    routing_key = tier_routing_key(routing_key, priority)
     connection = None
     try:
         params = pika.URLParameters(settings.amqp_url)

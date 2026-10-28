@@ -76,6 +76,8 @@
 .detail {
   padding: var(--space-4);
 }
+.tierBadge { display: inline-flex; align-items: center; padding: 3px 9px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink-muted); background: var(--surface-2); font-size: var(--text-small); font-weight: 600; white-space: nowrap; }
+.vipTierBadge { color: var(--surface-1); background: var(--ink); border-color: var(--ink); }
 
 .panel h3,
 .detail h3,

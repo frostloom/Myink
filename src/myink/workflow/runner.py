@@ -111,9 +111,12 @@ def generate_batch(*, project_id: str, size: int, start_chapter: int,
         "position": 0,
         "start_chapter": start_chapter,
     }
+    from myink.worker.scheduling import batch_slicing, invoke_batch_slice
     try:
-        if budget_managed() and batch_graph.get_state({"configurable": {"thread_id": thread_id}}).values:
+        if (budget_managed() or batch_slicing()) and batch_graph.get_state({"configurable": {"thread_id": thread_id}}).values:
             return resume_thread(batch_graph, thread_id, state)
+        if batch_slicing():
+            return invoke_batch_slice(batch_graph, state, {"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
         return batch_graph.invoke(state, config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
     except TaskBudgetPaused as exc:
         if exc.reason in {"manual_pause", "cancelled"}:
@@ -147,6 +150,10 @@ def resume_thread(graph: CompiledStateGraph, thread_id: str, state: dict) -> dic
     否则会冲回 0 重跑已完成章。外部 state 只补缺口（首次无 checkpoint 时兜底）。
     """
     snap = graph.get_state({"configurable": {"thread_id": thread_id}})
+    from myink.worker.scheduling import batch_slicing, invoke_batch_slice
+    if batch_slicing() and 'batch_task_id' in {**state, **(snap.values or {})}:
+        config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 64}
+        return invoke_batch_slice(graph, None if snap.values else state, config)
     if budget_managed() and snap.values and (snap.next or not snap.values.get("error")):
         return graph.invoke(None, config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
     resume_state = {**state, **(snap.values or {})}  # checkpoint 优先

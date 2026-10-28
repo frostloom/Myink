@@ -62,6 +62,7 @@ function input(connection: PlatformConnection): PlatformConnectionInput {
         model: connection.model,
         enabled: connection.enabled,
         user_visible: connection.user_visible,
+        minimum_tier: connection.minimum_tier ?? 'normal',
         input_price: connection.input_price,
         output_price: connection.output_price,
     };
@@ -152,7 +153,8 @@ const ModelManagement = defineComponent((_props: Record<string, never>) => {
         setProbeError("");
         setModels([]);
     }
-    async function persist(connections: PlatformConnectionInput[], routes: Record<string, string>) {
+    async function persist(connections: PlatformConnectionInput[], routes: Record<string, string>,
+        vipRoutes = configuration.value?.vip_model_routes ?? {}) {
         if (!configuration.value)
             return false;
         setBusy(true);
@@ -163,6 +165,7 @@ const ModelManagement = defineComponent((_props: Record<string, never>) => {
                 ...configuration.value,
                 model_connections: connections,
                 model_routes: routes,
+                vip_model_routes: vipRoutes,
                 genre_packs: configuration.value.genre_packs as PlatformConfigurationInput["genre_packs"],
             });
             setConfiguration(saved);
@@ -205,13 +208,19 @@ const ModelManagement = defineComponent((_props: Record<string, never>) => {
             setError("请输入有效的 http/https 请求地址");
             return;
         }
-        if (!changed.enabled && Object.values(configuration.value.model_routes).includes(`custom:${draft.value!.id}`)) {
+        const normalReference = Object.values(configuration.value.model_routes).includes(`custom:${draft.value!.id}`);
+        const vipReference = Object.values(configuration.value.vip_model_routes ?? {}).includes(`custom:${draft.value!.id}`);
+        if (!changed.enabled && (normalReference || vipReference)) {
             setError("此模型仍用于平台任务，请先在“模型分配”中更换模型，再停用。");
+            return;
+        }
+        if (changed.minimum_tier === 'vip' && normalReference) {
+            setError('此模型仍分配给普通用户，请先更换普通用户的模型分配，再设为 VIP 专用。');
             return;
         }
         const routes = { ...configuration.value.model_routes };
         if (!routes.writer) {
-            if (!changed.enabled) {
+            if (!changed.enabled || changed.minimum_tier === 'vip') {
                 setError("请先启用第一个模型，作为平台的默认写作模型。");
                 return;
             }
@@ -230,13 +239,15 @@ const ModelManagement = defineComponent((_props: Record<string, never>) => {
         const connections = configuration.value.model_connections.filter((c: PlatformConnection) => c.id !== deleting.value!.id).map(input);
         const routes = Object.fromEntries(Object.entries(configuration.value.model_routes).filter(([, value]) => value !== `custom:${deleting.value!.id}`));
         if (connections.length && configuration.value.model_routes.writer === `custom:${deleting.value!.id}`) {
-            if (!connections.some((c: PlatformConnectionInput) => c.enabled && `custom:${c.id}` === replacement.value)) {
+            if (!connections.some((c: PlatformConnectionInput) => c.enabled && c.minimum_tier !== 'vip' && `custom:${c.id}` === replacement.value)) {
                 setError("请选择一个已启用的替代写作模型，再确认删除。");
                 return;
             }
             routes.writer = replacement.value;
         }
-        if (await persist(connections, routes))
+        const vipRoutes = Object.fromEntries(Object.entries(configuration.value.vip_model_routes ?? {})
+            .filter(([, value]) => value !== `custom:${deleting.value!.id}`));
+        if (await persist(connections, routes, vipRoutes))
             setDeleting(null);
     }
     async function probe(operation: "models" | "test") {
@@ -301,9 +312,9 @@ const ModelManagement = defineComponent((_props: Record<string, never>) => {
                 renderNode("h2", {}, [search.value ? "没有匹配的模型" : "还没有添加模型"]), renderNode("p", {}, [search.value ? "试试其他名称或模型 ID。" : "点击“新增模型”，填写你自己的模型服务地址和密钥。"])
             ])) : (renderNode("div", { "class": styles.grid }, [filtered.value.map((connection: PlatformConnection) => (renderNode("article", { "key": connection.id, "class": styles.card }, [
                     renderNode("div", { "class": styles.cardHead }, [
-                        renderNode("span", { "class": styles.provider }, [providerFor(connection).name]), renderNode("span", {}, [connection.enabled ? "已启用" : "已停用"])
+                        renderNode("span", { "class": styles.provider }, [providerFor(connection).name]), renderNode('div', { class: styles.audience }, [renderNode('span', { class: `${styles.audienceBadge} ${connection.minimum_tier === 'vip' ? styles.premiumBadge : ''}` }, connection.minimum_tier === 'vip' ? '仅 VIP' : '普通 + VIP'), renderNode("span", {}, [connection.enabled ? "已启用" : "已停用"])])
                     ]), renderNode("h2", {}, [connection.name]), connection.model !== connection.name && renderNode("code", {}, [connection.model]), renderNode("p", { "class": styles.address }, [connection.base_url]), renderNode("div", { "class": styles.tags }, [
-                        connection.origin === "builtin" && renderNode("span", {}, ["平台内置"]), renderNode("span", {}, [connection.protocol === "anthropic" ? "Anthropic 原生" : "OpenAI 兼容"]), renderNode("span", {}, [connection.user_visible ? "用户可选" : "仅后台使用"]), renderNode("span", {}, [connection.has_api_key ? "密钥已保存" : "待配置密钥"])
+                        connection.origin === "builtin" && renderNode("span", {}, ["平台内置"]), renderNode("span", {}, [connection.protocol === "anthropic" ? "Anthropic 原生" : "OpenAI 兼容"]), renderNode("span", {}, [connection.user_visible ? "用户可选" : "仅后台使用"]), renderNode("span", {}, [connection.minimum_tier === 'vip' ? 'VIP 专用' : '所有会员可用']), renderNode("span", {}, [connection.has_api_key ? "密钥已保存" : "待配置密钥"])
                     ]), renderNode("footer", {}, [
                         renderNode("button", { "type": "button", "class": "btn btn-secondary", "aria-label": `编辑 ${connection.name}`, "onClick": () => edit(connection) }, ["编辑"]), renderNode("button", { "type": "button", "class": "btn btn-quiet", "aria-label": `删除 ${connection.name}`, "onClick": () => {
                                 setError("");
@@ -429,6 +440,12 @@ const ModelManagement = defineComponent((_props: Record<string, never>) => {
                                 ])
                             ]), renderNode("label", {}, [
                                 "模型 ID", renderNode("input", { "class": "input", "required": true, "value": draft.value!.model, "onInput": (e: Event) => patch({ model: (e.target as HTMLInputElement & HTMLSelectElement & HTMLDetailsElement).value }), "placeholder": "填写服务商提供的模型 ID" }, [])
+                            ]), renderNode('label', {}, [
+                                '最低会员等级', renderNode('select', { class: 'input', value: draft.value!.minimum_tier ?? 'normal',
+                                    onChange: (e: Event) => patch({ minimum_tier: (e.target as HTMLSelectElement).value as 'normal' | 'vip' }) }, [
+                                    renderNode('option', { value: 'normal' }, '普通用户及 VIP'),
+                                    renderNode('option', { value: 'vip' }, '仅 VIP'),
+                                ])
                             ]), renderNode("label", {}, [
                                 "API Key", renderNode("input", { "class": "input", "type": showKey.value ? "text" : "password", "autoComplete": "new-password", "required": !draft.value!.has_api_key, "value": draft.value!.api_key, "onInput": (e: Event) => patch({ api_key: (e.target as HTMLInputElement & HTMLSelectElement & HTMLDetailsElement).value }), "placeholder": draft.value!.has_api_key ? "已保存，留空保留原密钥" : "填写 API Key" }, [])
                             ]), renderNode("button", { "type": "button", "class": "btn btn-quiet", "onClick": () => setShowKey(!showKey.value) }, [showKey.value ? "隐藏输入的密钥" : "显示输入的密钥"]), renderNode("div", { "class": styles.options }, [

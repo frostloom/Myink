@@ -9,17 +9,20 @@ import { useAuth } from '../authContext';
 import { api } from '../../../src/lib/api';
 import { getSession } from '../../../src/lib/token';
 import { formatApiError } from '../../../src/lib/apiError';
-import { roleLabel, tierLabel } from '../../../src/lib/labels';
+import { roleLabel } from '../../../src/lib/labels';
 import { isValidNewPassword, NEW_PASSWORD_VALIDATION_MESSAGE } from '../../../src/lib/passwordPolicy';
 import type { Project } from '../../../src/types';
 import shell from '../../../src/pages/SettingsPage.module.css';
 import styles from '../../../src/pages/AccountPage.module.css';
+import AccountIcon from '../components/AdminNavIcon.vue';
 const { session, status, changePassword, endSession } = useAuth();
 const router = useRouter();
 const projects = ref<Project[]>([]);
 const currentPassword = ref(''), newPassword = ref(''), confirmPassword = ref(''), error = ref<string | null>(null), busy = ref(false);
 const isAdmin = computed(() => status.value === 'authenticated' && session.value?.role === 'admin' && session.value.roleVerified === true);
 const guest = computed(() => status.value !== 'authenticated' || session.value?.isGuest === true);
+const vip = computed(() => session.value?.tier === 'vip');
+const initial = computed(() => Array.from(session.value?.username ?? '')[0]?.toLocaleUpperCase() ?? '?');
 const mfaEnabled = ref<boolean | null>(null), enrolling = ref(false), mfaSecret = ref(''), mfaUri = ref(''), mfaPassword = ref(''), mfaCode = ref(''), mfaError = ref<string | null>(null), mfaBusy = ref(false);
 let generation = 0;
 useMemoryFormGuard(() => !guest.value && Boolean(currentPassword.value || newPassword.value || confirmPassword.value || mfaPassword.value || mfaCode.value || enrolling.value), { recovering: () => guest.value });
@@ -166,10 +169,10 @@ async function mfaAction(action: 'enroll' | 'confirm' | 'disable') {
 }
 </script>
 <template>
- <div :class="[shell.wrap, guest && 'guest-account']">
+ <div :class="[guest ? shell.wrap : styles.wrap, guest && 'guest-account']">
 <AdminRail v-if="isAdmin" /><ProjectRail v-else :projects="projects" />
- <main :class="shell.main">
-<div :class="[shell.inner, guest && 'guest-account-inner']">
+ <main :class="guest ? shell.main : styles.main">
+<div :class="guest ? [shell.inner, 'guest-account-inner'] : styles.page">
 <section v-if="guest" class="panel guest-registration" data-guest-exempt aria-labelledby="guest-register-title">
 <h1 id="guest-register-title">注册账号</h1>
 <p :class="shell.hint">{{ session?.isGuest ? '设置登录信息，保留当前作品、对话与设置。' : '创建账号，开始写作并保存作品。' }}</p>
@@ -178,17 +181,37 @@ async function mfaAction(action: 'enroll' | 'confirm' | 'disable') {
 <div class="guest-login"><RouterLink to="/login">登录已有账号</RouterLink><p v-if="session?.isGuest" :class="shell.hint">游客作品不会合并到已有账号。</p></div>
 </section>
 <template v-else>
-<header :class="shell.header"><div><h1>账号</h1><p :class="shell.hint">查看当前账号并更新登录密码。</p></div></header>
+<header :class="styles.header"><h1>账号与会员</h1><p>查看会员权益，管理登录安全。</p></header>
  <div :class="styles.grid">
-  <section :class="['panel',styles.card]" aria-labelledby="current-account"><h2 id="current-account">当前账号</h2><dl :class="styles.account"><div><dt>用户名</dt><dd>{{ guest?'未登录':session?.isGuest?'游客体验':session?.username }}</dd></div><div><dt>账号级别</dt><dd>{{ guest?'—':tierLabel(session?.tier??'normal') }}</dd></div><div><dt>账号角色</dt><dd>{{ guest?'—':roleLabel(session?.role??'user') }}</dd></div></dl></section>
-  <section :class="['panel',styles.card]" aria-labelledby="change-password">
-<h2 id="change-password">修改密码</h2><p :class="shell.hint">修改成功后，该账号在所有浏览器中的登录都会失效，需要重新登录。</p><form :class="styles.form" @submit.prevent="submit">
-   <label :class="styles.field"><span>当前密码</span><input v-model="currentPassword" class="input" type="password" autocomplete="current-password" /></label>
-   <label :class="styles.field"><span>新密码</span><input v-model="newPassword" class="input" type="password" autocomplete="new-password" /></label>
-   <label :class="styles.field"><span>确认新密码</span><input v-model="confirmPassword" class="input" type="password" autocomplete="new-password" /></label>
-   <div v-if="error" class="banner banner-error" role="alert">{{ error }}</div><button type="submit" class="btn btn-primary" :disabled="busy">{{ busy?'修改中…':'修改密码' }}</button>
-  </form>
-</section>
+  <div :class="styles.overview">
+    <section :class="styles.identity" aria-labelledby="current-account">
+      <h2 id="current-account">当前账号</h2>
+      <div :class="styles.identityHead"><span :class="styles.avatar" aria-hidden="true">{{ initial }}</span><div><p :class="styles.username">{{ session?.username }}</p><span :class="[styles.memberBadge, vip && styles.vipBadge]">{{ vip ? 'VIP 会员' : '普通账号' }}</span></div></div>
+      <dl :class="styles.account"><div><dt>会员等级</dt><dd>{{ vip ? 'VIP' : '普通' }}</dd></div><div><dt>账号角色</dt><dd>{{ roleLabel(session?.role ?? 'user') }}</dd></div></dl>
+    </section>
+    <section :class="styles.membership" aria-labelledby="membership-title">
+      <div :class="styles.membershipHead"><h2 id="membership-title"><AccountIcon name="crown" :size="21" />VIP 写作权益</h2><span :class="vip ? styles.activeStatus : styles.managedStatus">{{ vip ? '已开通' : '由管理员开通' }}</span></div>
+      <p v-if="!vip" :class="styles.upgradeCopy">如果需要更快的写作速度、更高的写作质量，请联系管理员进行 VIP 升级。</p>
+      <p v-else :class="styles.upgradeCopy">你已开通 VIP，可享优先调度，并使用管理员开放的进阶模型。</p>
+      <ul :class="styles.benefits"><li><span :class="styles.benefitIcon"><AccountIcon name="runs" /></span><div><strong>优先调度</strong><p>写作任务享有更高的调度权重</p></div></li><li><span :class="styles.benefitIcon"><AccountIcon name="models" /></span><div><strong>进阶模型</strong><p>可使用管理员开放的 VIP 专用模型</p></div></li></ul>
+      <p :class="styles.membershipNote">具体模型与调度策略由管理员统一配置。</p>
+    </section>
+  </div>
+  <section :class="styles.security" aria-labelledby="login-security">
+    <header :class="styles.sectionHead"><AccountIcon name="account" :size="21" /><h2 id="login-security">登录安全</h2></header>
+    <div :class="styles.passwordArea">
+<div :class="styles.passwordIntro"><h3 id="change-password">修改密码</h3><p>修改成功后，该账号在所有浏览器中的登录都会失效，需要重新登录。</p></div>
+      <form :class="[styles.form, styles.passwordForm]" aria-labelledby="change-password" @submit.prevent="submit">
+        <label :class="[styles.field, styles.fullField]"><span>当前密码</span><input v-model="currentPassword" class="input" type="password" autocomplete="current-password" /></label>
+        <label :class="styles.field"><span>新密码</span><input v-model="newPassword" class="input" type="password" autocomplete="new-password" aria-describedby="password-requirements" /></label>
+        <label :class="styles.field"><span>确认新密码</span><input v-model="confirmPassword" class="input" type="password" autocomplete="new-password" /></label>
+        <p id="password-requirements" :class="[styles.formHint, styles.fullField]">{{ NEW_PASSWORD_VALIDATION_MESSAGE }}</p>
+        <div v-if="error" :class="['banner', 'banner-error', styles.fullField]" role="alert">{{ error }}</div>
+        <div :class="styles.fullField"><button type="submit" class="btn btn-primary" :disabled="busy">{{ busy?'修改中…':'修改密码' }}</button></div>
+      </form>
+    </div>
+    <div :class="styles.passwordHelp" aria-labelledby="password-help"><AccountIcon name="feedback" :size="18" /><div><h3 id="password-help">忘记密码</h3><p>请联系管理员为账号重设密码。</p></div></div>
+  </section>
   <section v-if="isAdmin" :class="['panel',styles.card,styles.wide]" aria-labelledby="admin-console"><h2 id="admin-console">管理后台</h2><p :class="shell.hint">查看全部作品的运行记录、成本与配额，管理账号与邀请码。</p><div><RouterLink class="btn btn-secondary" to="/admin">打开管理后台</RouterLink></div></section>
   <section v-if="isAdmin" :class="['panel',styles.card,styles.wide]" aria-labelledby="mfa">
 <h2 id="mfa">两步验证</h2>
@@ -202,7 +225,6 @@ async function mfaAction(action: 'enroll' | 'confirm' | 'disable') {
     <div v-if="mfaError" class="banner banner-error" role="alert">{{ mfaError }}</div><button class="btn btn-primary" type="submit" :disabled="mfaBusy">{{ enrolling?(mfaBusy?'确认中…':'确认开启'):mfaEnabled?(mfaBusy?'关闭中…':'关闭两步验证'):(mfaBusy?'生成中…':'开启两步验证') }}</button>
    </form>
   </section>
-  <section :class="['panel',styles.card,styles.wide]" aria-labelledby="password-help"><h2 id="password-help">忘记密码</h2><p :class="shell.hint">本地部署不提供邮件找回。请联系本机管理员，通过 Myink 管理命令为账号重设密码。</p></section>
  </div>
 </template>
 </div>
