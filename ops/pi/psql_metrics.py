@@ -78,5 +78,11 @@ class PsqlMetricsReader:
                 require(value.tzinfo is not None and value.utcoffset() is not None,'aware source time required');row[key]=value
             for key in ('input_tokens','output_tokens','duration_ms','chapter_seq'):
                 if key in row:require(row[key] is None or type(row[key]) is int and row[key]>=0,'invalid metric count')
+            if 'provenance' in row:
+                require(isinstance(row['provenance'],dict),'invalid source provenance')
+                images=row['provenance'].get('image_ids')
+                require(images is None or isinstance(images,dict) and len(images)<=8 and all(
+                    isinstance(k,str) and re.fullmatch('[A-Za-z0-9_.-]{1,80}',k) and isinstance(v,str)
+                    and re.fullmatch('sha256:[0-9a-f]{64}',v) for k,v in images.items()),'invalid source image provenance')
             if 'cost_est' in row:require(row['cost_est'] is None or type(row['cost_est']) in (int,float) and math.isfinite(row['cost_est']) and row['cost_est']>=0,'invalid source cost')
         return rows

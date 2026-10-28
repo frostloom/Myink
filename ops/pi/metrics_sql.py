@@ -15,8 +15,8 @@ def _scalar(group,key,kind='string',maximum=128):
 def _images():
     value="p.run_provenance->'image_ids'"
     return f"""CASE WHEN jsonb_typeof({value})='object' AND octet_length(({value})::text)<=2048
-    THEN CASE WHEN (SELECT count(*) FROM jsonb_each_text({value}))<=8 AND NOT EXISTS
-    (SELECT 1 FROM jsonb_each_text({value}) AS e WHERE e.key !~ '^[A-Za-z0-9_.-]{{1,80}}$' OR e.value !~ '^sha256:[0-9a-f]{{64}}$')
+    THEN CASE WHEN (SELECT count(*) FROM jsonb_each({value}))<=8 AND NOT EXISTS
+    (SELECT 1 FROM jsonb_each({value}) AS e WHERE e.key !~ '^[A-Za-z0-9_.-]{{1,80}}$' OR jsonb_typeof(e.value) IS DISTINCT FROM 'string' OR (e.value#>>'{{}}') !~ '^sha256:[0-9a-f]{{64}}$')
     THEN {value} ELSE NULL END ELSE NULL END"""
 
 
@@ -29,13 +29,28 @@ def metadata_probe_sql():
 SELECT json_build_object('role',current_user,'superuser',r.rolsuper,'create_db',r.rolcreatedb,
     'create_role',r.rolcreaterole,'replication',r.rolreplication,'bypass_rls',r.rolbypassrls,'inherit',r.rolinherit,'login',r.rolcanlogin,
     'readonly',current_setting('transaction_read_only'),'memberships',(SELECT count(*) FROM pg_auth_members WHERE member=r.oid),
-    'raw_privileges',EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public'
-    AND c.relkind IN ('r','v','p','m') AND has_table_privilege(current_user,c.oid,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'))
-    OR EXISTS(SELECT 1 FROM information_schema.role_table_grants WHERE grantee=current_user AND table_schema NOT IN ('pg_catalog','information_schema')
-    AND NOT (table_schema='pi_metrics' AND table_name IN ('tasks','agent_runs') AND privilege_type='SELECT')),
+    'raw_privileges',EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname NOT IN ('pg_catalog','information_schema') AND n.nspname !~ '^pg_'
+    AND c.relkind IN ('r','v','p','m','f') AND
+    CASE WHEN n.nspname='pi_metrics' AND c.relname IN ('tasks','agent_runs') THEN
+        has_table_privilege(current_user,c.oid,'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+        OR has_any_column_privilege(current_user,c.oid,'INSERT,UPDATE,REFERENCES')
+    ELSE has_table_privilege(current_user,c.oid,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+        OR has_any_column_privilege(current_user,c.oid,'SELECT,INSERT,UPDATE,REFERENCES') END),
     'view_count',(SELECT count(*) FROM ({views}) v),
     'view_sha256',(SELECT encode(sha256(convert_to(string_agg(v.relname||E'\\n'||pg_get_viewdef(v.oid,true)||E'\\n'||coalesce(array_to_string(v.reloptions,','),'')||E'\\n'||(SELECT string_agg(a.attname||':'||format_type(a.atttypid,a.atttypmod),',' ORDER BY a.attnum) FROM pg_attribute a WHERE a.attrelid=v.oid AND a.attnum>0 AND NOT a.attisdropped),E'\\n' ORDER BY v.relname),'UTF8')),'hex') FROM ({views}) v))
     FROM pg_roles r WHERE r.rolname=current_user;"""
+
+
+def _installation_assertion_sql():
+    query=metadata_probe_sql().split('\n',1)[1].rstrip().rstrip(';')
+    # The assertion is in the same transaction as CREATE ROLE/SCHEMA. An unsafe
+    # inherited PUBLIC or column grant must roll back installation, not just fail
+    # the Python caller after COMMIT.
+    query=query.replace('    FROM pg_roles r WHERE r.rolname=current_user', '    INTO proof FROM pg_roles r WHERE r.rolname=current_user')
+    return "DO $assert$ DECLARE proof json; BEGIN " + query + "; IF proof IS NULL OR " + " OR ".join(
+        "(proof->>'"+key+"')::boolean IS DISTINCT FROM false" for key in
+        ('superuser','create_db','create_role','replication','bypass_rls','inherit','login','raw_privileges')) +         " OR (proof->>'memberships')::int IS DISTINCT FROM 0 OR (proof->>'view_count')::int IS DISTINCT FROM 2 THEN RAISE EXCEPTION 'unsafe metric source role/view'; END IF; END $assert$;"
 
 
 def metadata_bootstrap_sql():
@@ -71,6 +86,7 @@ ALTER ROLE {ROLE} SET default_transaction_read_only=on;
 ALTER ROLE {ROLE} SET statement_timeout='5s';
 ALTER ROLE {ROLE} SET search_path=pi_metrics,pg_catalog;
 SET LOCAL ROLE {ROLE};
+{_installation_assertion_sql()}
 {metadata_probe_sql()}
 COMMIT;
 """

@@ -332,7 +332,7 @@ class AuditReader:
                 body_bytes+=len(_encoded(event))
                 _require(body_bytes<=8388608,'daily audit exceeds body bound; use run/event pagination')
                 events.append(event)
-        versions={};changes={};counters={};plans={};release='unknown'
+        versions={};changes={};counters={};plans={};sample_windows={};release='unknown'
         for event in events:
             version=event['version'];versions[_digest(version)]=version
             candidate=version['candidate_sha256']
@@ -340,6 +340,8 @@ class AuditReader:
                 # Each change is a cumulative diff against the frozen base.
                 key=(candidate or event['event_sha256'],change['path'])
                 changes[key]=dict(change,candidate_sha256=candidate,source_commit=version['source_commit'])
+            if event['kind']=='observation' and event['details'].get('reference')=='metrics.rolling_window.v1':
+                sample_windows[event['run_id']]=dict(run_id=event['run_id'],observed_samples=event['details'].get('observed_samples'),window=event['details'].get('request_summary'),event_sha256=event['event_sha256'])
             for key in ('known_cost_microyuan','observed_samples'):
                 if key in event['details']:counters[(event['run_id'],key)]=event['details'][key]
             for plan in event['followups']:
@@ -355,10 +357,11 @@ class AuditReader:
         release,release_runs=_release_summary(events)
         result=dict(schema_version=1,authority='audit_only',day=day,timezone='Asia/Shanghai',event_count=len(events),
             unknown_occurrence_count=sum(e['occurred_at'] is None for e in events),release_state=release,release_runs=release_runs,
-            runs=[] if index is None else index['runs'],versions=list(versions.values()),change_scope=list(changes.values()),next_tests=list(plans.values()))
+            runs=[] if index is None else index['runs'],versions=list(versions.values()),change_scope=list(changes.values()),next_tests=list(plans.values()),sample_windows=list(sample_windows.values()))
         for key in ('known_cost_microyuan','observed_samples'):
             values=[v for (_,field),v in counters.items() if field==key]
             result[key]=sum(values) if values and all(v is not None for v in values) else None
+        if sample_windows:result['observed_samples']=None  # Rolling cohorts are not distinct daily samples.
         return result
 
 

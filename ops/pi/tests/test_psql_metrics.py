@@ -116,3 +116,9 @@ def test_timeout_and_oversized_output_are_rejected(config,metric_request):
 def test_malformed_role_metadata_is_rejected(config,metric_request,field,value):
     meta=metadata(config);meta[field]=value
     with pytest.raises(ValueError):api().PsqlMetricsReader(config,run=Runner(config,meta=meta))(metric_request)
+
+
+def test_reader_boundary_rejects_forged_null_image_provenance(config,metric_request):
+    metric_request['source']='agent_runs';metric_request['sql']=f"SELECT {_PROJECTIONS['agent_runs']} FROM agent_runs WHERE FALSE ORDER BY created_at, id LIMIT :limit OFFSET :offset"
+    row=dict(id=1,task_id='t',node='persist',model_id=None,input_tokens=0,output_tokens=0,cost_est=0,duration_ms=1,created_at='2026-10-28T00:01:00+00:00',observation_collision=None,provenance=dict(image_ids=dict(web=None)),measurement={})
+    with pytest.raises(ValueError):api().PsqlMetricsReader(config,run=Runner(config,[row]))(metric_request)

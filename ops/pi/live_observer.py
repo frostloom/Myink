@@ -159,12 +159,11 @@ def observe(config_path,*,clock=None,reader=None,expected_config_sha256=None):
         domain='online_business' if c['mode']=='ACTUAL' else 'synthetic'
         status='passed' if snapshot['availability']=='measured' and not snapshot['confounders'] and snapshot['complete_tasks']>=c['minimum_samples'] and len(types)==1 else 'insufficient_evidence'
         proof=[dict(kind='fixed_metric_snapshot',sha256=sha256(raw).hexdigest(),verified=True,evidence_domain=domain)]
-        details=dict(observed_samples=snapshot['complete_tasks'],minimum_samples=c['minimum_samples'],availability=snapshot['availability'],model_requests=0,known_cost_microyuan=0,
+        details=dict(reference='metrics.rolling_window.v1',request_summary=start.isoformat()+' / '+end.isoformat(),observed_samples=snapshot['complete_tasks'],minimum_samples=c['minimum_samples'],availability=snapshot['availability'],model_requests=0,known_cost_microyuan=0,
             decision='observed' if status=='passed' else 'needs_evidence',next_action='observe',reason=','.join(snapshot['confounders']) or 'cohort_sample_threshold')
         audit.append(run_id+':observation',event('observation',status,'Completed read-only metric collection; individual availability remains explicit.',details,proof,domain))
         audit.append(run_id+':version',event('version','no_change','Recorded observer/controller and available deployment identity.',dict(reference='observer_config'),proof,domain))
         audit.append(run_id+':capability',event('enhancement','passed' if c['mode']=='ACTUAL' else 'no_change','Fixed PostgreSQL metadata collection; no model or release capability.',dict(reference='collector.postgresql.fixed_views',availability='active' if c['mode']=='ACTUAL' else 'implemented'),proof,domain))
-        audit.append(run_id+':no-release',event('deployment','no_release','This read-only tick did not initiate a product release.',dict(decision='no_release'),domain=domain))
         result.update(status=status,evidence_domain=domain,observed_samples=snapshot['complete_tasks'],availability=snapshot['availability'],confounders=snapshot['confounders'],snapshot_sha256=proof[0]['sha256'])
         audit.export(export);result['export_published']=True
     except Exception as error:

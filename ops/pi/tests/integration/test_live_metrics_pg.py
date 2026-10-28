@@ -160,3 +160,40 @@ def test_credential_like_metadata_and_encoded_body_are_not_projected(database):
     assert len(rows)==1
     assert credential not in json.dumps(rows,default=str) and 'encoded-private-body' not in json.dumps(rows,default=str)
     assert rows[0]['model_id'] is None and rows[0]['provenance']['deployment_id'] is None
+
+
+def test_column_privileges_and_public_other_schema_privileges_are_detected(database):
+    config,sql=database;now=datetime.now(timezone.utc)
+    sql('GRANT SELECT(detail) ON public.agent_runs TO myink_pi_metrics;')
+    try:
+        with pytest.raises(ValueError,match='role/view'):PsqlMetricsReader(config)(query('tasks',now-timedelta(hours=1),now+timedelta(hours=1)))
+    finally:sql('REVOKE SELECT(detail) ON public.agent_runs FROM myink_pi_metrics;')
+    sql('CREATE SCHEMA other_app; CREATE TABLE other_app.private_data(body text); GRANT USAGE ON SCHEMA other_app TO PUBLIC; GRANT SELECT ON other_app.private_data TO PUBLIC;')
+    try:
+        with pytest.raises(ValueError,match='role/view'):PsqlMetricsReader(config)(query('tasks',now-timedelta(hours=1),now+timedelta(hours=1)))
+    finally:sql('DROP TABLE other_app.private_data; DROP SCHEMA other_app;')
+
+
+def test_unsafe_public_grants_abort_before_installation_commit(database):
+    config,sql=database
+    sql('DROP VIEW pi_metrics.tasks; DROP VIEW pi_metrics.agent_runs; DROP SCHEMA pi_metrics; DROP ROLE myink_pi_metrics; GRANT SELECT ON public.users TO PUBLIC;')
+    try:
+        result=sql(metadata_bootstrap_sql(),check=False)
+        assert result.returncode!=0
+        assert sql("SELECT count(*) FROM pg_roles WHERE rolname='myink_pi_metrics';").stdout.strip()=='0'
+        assert sql("SELECT count(*) FROM pg_namespace WHERE nspname='pi_metrics';").stdout.strip()=='0'
+        assert sql("SELECT EXISTS(SELECT 1 FROM pg_class c CROSS JOIN LATERAL aclexplode(c.relacl) a WHERE c.oid='public.users'::regclass AND a.grantee=0 AND a.privilege_type='SELECT');").stdout.strip()=='t'
+    finally:
+        sql('REVOKE SELECT ON public.users FROM PUBLIC;')
+        if sql("SELECT count(*) FROM pg_namespace WHERE nspname='pi_metrics';").stdout.strip()=='1':
+            sql('DROP VIEW pi_metrics.tasks; DROP VIEW pi_metrics.agent_runs; DROP SCHEMA pi_metrics; DROP ROLE myink_pi_metrics;')
+        restored=json.loads(sql(metadata_bootstrap_sql()).stdout)
+        assert restored['view_sha256']==config['view_sha256']
+
+
+def test_null_image_provenance_is_unknown_not_an_approved_image(database):
+    config,sql=database;task=str(uuid.uuid4());now=datetime.now(timezone.utc)
+    detail=json.dumps(dict(run_provenance=dict(image_ids=dict(web=None)),measurement=dict(kind='deterministic',zero_cost=True,cost=True,latency=True)))
+    sql(f"INSERT INTO public.agent_runs VALUES(92,'{task}','persist',NULL,0,0,0,5,now()-interval '1 minute','{detail}'::json);")
+    rows=PsqlMetricsReader(config)(query('agent_runs',now-timedelta(hours=1),now+timedelta(hours=1),thread_0=task))
+    assert rows[0]['provenance']['image_ids'] is None

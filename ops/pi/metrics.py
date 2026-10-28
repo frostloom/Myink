@@ -166,8 +166,8 @@ def collect_snapshot(reader: Callable, window: Record, identity: Identity) -> Re
             value = provenance.get(key)
             if key == 'commit_sha' and value is None and identity.commit_sha is None:
                 continue
-            if key == 'image_ids' and isinstance(value, dict) and value:
-                value = json.dumps(value, sort_keys=True, separators=(',', ':'))
+            if key == 'image_ids':
+                value = json.dumps(value, sort_keys=True, separators=(',', ':')) if isinstance(value, dict) and value and all(isinstance(k,str) and k and isinstance(v,str) and v for k,v in value.items()) else None
             if value is None or value == '' or type(value) not in (str, int):
                 unknown = True
             else:
