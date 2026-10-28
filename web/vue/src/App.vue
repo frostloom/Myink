@@ -32,10 +32,10 @@ watch(() => status.value === 'authenticated' ? session.value?.userId : null, (id
   if (identity) onCleanup(subscribeProjectLists(projects => { navigationProjects.value = projects }))
 }, { immediate: true, flush: 'sync' })
 const showAdminRail = computed(() => route.path.startsWith('/admin') || (route.path === '/account' && session.value?.role === 'admin' && session.value.roleVerified))
-const showProjectRail = computed(() => route.path !== '/login' && !showAdminRail.value)
+const showProjectRail = computed(() => route.path !== '/' && route.path !== '/login' && !showAdminRail.value)
 watch([() => route.path, status, session], () => {
   if (route.path === '/' && (status.value === 'anonymous' || (status.value === 'authenticated' && session.value?.roleVerified))) {
-    void router.replace(session.value?.role === 'admin' ? '/admin' : '/long')
+    void router.replace(status.value === 'anonymous' ? '/login' : session.value?.role === 'admin' ? '/admin' : '/long')
   }
 }, { immediate: true })
 const projectRoute = computed(() => /^\/projects\/[^/]+/.test(route.path) && route.path !== '/projects/new')

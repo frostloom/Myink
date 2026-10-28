@@ -13,6 +13,15 @@ async function app(path = '/long') {
   render(App, { global: { plugins: [router] } }); return router
 }
 afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals() })
+it.each(['/', '/unknown-page'])('opens the login entry for an anonymous visit to %s', async path => {
+  const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher)
+  const router = await app(path)
+  expect(await screen.findByLabelText('用户名')).toBeTruthy()
+  expect(router.currentRoute.value.path).toBe('/login')
+  expect(screen.getByRole('button', { name: '游客体验' })).toBeTruthy()
+  expect(screen.queryByRole('heading', { name: '长篇' })).toBeNull()
+  expect(fetcher).not.toHaveBeenCalled()
+})
 it('does not request project data for an anonymous visitor', async () => {
   const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher); await app()
   expect(await screen.findByRole('heading', { name: '长篇' })).toBeTruthy(); expect(fetcher.mock.calls.filter(([url]) => String(url).startsWith('/api/'))).toHaveLength(0)
