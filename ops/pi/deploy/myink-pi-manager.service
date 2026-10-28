@@ -16,12 +16,12 @@ Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=TMPDIR=/home/ubuntu/myink-pi-managed/tmp
 Environment=DOCKER_CONFIG=/home/ubuntu/myink-pi-managed/state/docker
 EnvironmentFile=/home/ubuntu/myink-pi-managed/config/service.env
-ExecStart=/usr/bin/flock --nonblock --no-fork /home/ubuntu/myink-pi-managed/control/maintenance.lock /usr/bin/python3 -m ops.pi.manager --state /home/ubuntu/myink-pi-managed/state/actual-manager.sqlite --billing /home/ubuntu/myink-pi-managed/state/ledger.sqlite run --max-tasks 1 --seconds 1800 --inbox /home/ubuntu/myink-pi-managed/inbox --idle-seconds 600
+ExecStart=/usr/bin/flock --nonblock --no-fork /home/ubuntu/myink-pi-managed/control/maintenance.lock /usr/bin/python3 -m ops.pi.manager --state /home/ubuntu/myink-pi-managed/state/actual-manager.sqlite --billing /home/ubuntu/myink-pi-managed/state/ledger.sqlite run --max-tasks 1 --seconds 2100 --inbox /home/ubuntu/myink-pi-managed/inbox --idle-seconds 600
 Restart=no
 KillSignal=SIGTERM
 KillMode=mixed
 TimeoutStopSec=300
-RuntimeMaxSec=2100
+RuntimeMaxSec=2400
 UMask=0077
 NoNewPrivileges=yes
 CapabilityBoundingSet=

@@ -30,3 +30,5 @@ Validate with systemd-analyze verify on the actual host before installation.
 References: [execution sandbox](https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html),
 [service lifecycle](https://www.freedesktop.org/software/systemd/man/latest/systemd.service.html),
 [timer lifecycle](https://www.freedesktop.org/software/systemd/man/latest/systemd.timer.html).
+
+The manager has2100seconds for an admitted cycle capped at1800seconds; startup, registration and graceful unwinding consume the difference. RuntimeMaxSec2400 is an outer stop fuse. Equal manager/cycle1800 bounds are unusable because preflight compares against remaining time after startup. A queued task with no dispatch may proceed after the host margin is corrected; never replay an existing dispatched intent.
