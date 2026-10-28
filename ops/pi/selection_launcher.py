@@ -185,15 +185,29 @@ def selection_prompt(config,tasks,context_hash):
 
 
 def prepare(config_path):
+    return _prepare(config_path)
+
+
+def prepare_template(config_path):
+    return _prepare(config_path,review_required=False)
+
+
+def inspect_completed(config_path,*,expected_current_fee_sha256):
+    """Readonly revalidation; execute never uses a completed/root or fee override."""
+    return _prepare(config_path,completed=True,expected_current_fee_sha256=expected_current_fee_sha256)
+
+
+def _prepare(config_path,*,completed=False,expected_current_fee_sha256=None,review_required=True):
     c=read_json(path(config_path,private=True))
     require(isinstance(c,dict) and set(c) in (FIELDS,FIELDS|{'prompt_version'}) and c['schema']=='pi-maintenance-selection-v1',
             'strict selection config required')
     system=system_for(c)
     require(isinstance(c['run_id'],str) and re.fullmatch('[a-z0-9-]{1,80}',c['run_id'])
             and type(c['deadline_seconds']) is int and 0<c['deadline_seconds']<=120,'bounded selection identity required')
-    root=path(c['root']);require(not root.exists() and root.parent.is_dir()
+    root=path(c['root']);require((root.is_dir() and root.stat().st_mode&0o777==0o700 if completed else not root.exists()) and root.parent.is_dir()
         and root.parent.stat().st_mode&0o777==0o700,'fresh private selection root required')
     for key in ('catalog','policy','credential','review'):
+        if key=='review' and not review_required:continue
         require(file_hash(path(c[key+'_path'],private=True))==c[key+'_sha256'],key+' drift')
     source=path(c['source_path']);require({v.name for v in source.iterdir()}=={'src'}
         and tree_hash(source)==c['source_sha256'],'selection source drift')
@@ -201,7 +215,8 @@ def prepare(config_path):
     require(all(t['source_sha256']==c['source_sha256'] for t in catalog),'catalog source mismatch')
     provenance=verify_source(path(c['runtime_path']),c['runtime_sha256'])
     before=ledger_snapshot(path(c['ledger_path'],private=True));policy=load_policy(path(c['policy_path'],private=True))
-    require(before['sha256']==c['ledger_sha256'] and not policy.live_enabled and not policy.server_daily_enabled
+    require((expected_current_fee_sha256 is None or completed and isinstance(expected_current_fee_sha256,str) and re.fullmatch('[a-f0-9]{64}',expected_current_fee_sha256)),'readonly completed selection fee override required')
+    require(before['sha256']==(c['ledger_sha256'] if expected_current_fee_sha256 is None else expected_current_fee_sha256) and not policy.live_enabled and not policy.server_daily_enabled
         and policy.input_bound_calibrated and before['limits'] is not None
         and before['limits']['max_attempts']==policy.max_attempts
         and before['limits']['budget_microyuan']==policy.budget_microyuan,'closed approved selection scope required')
@@ -211,7 +226,8 @@ def prepare(config_path):
                    messages=[dict(role='user',content=[dict(type='text',text=prompt)])],stream=True)
     require(len(json.dumps(predicted,ensure_ascii=True,separators=(',',':')).encode())<=policy.max_body_bytes,
             'selection prompt exceeds fixed wire bound')
-    review=read_json(c['review_path']);validate_review(review,c,digest(catalog),c['source_sha256'])
+    if review_required:
+        review=read_json(c['review_path']);validate_review(review,c,digest(catalog),c['source_sha256'])
     _host(c,'image_id')  # Validates endpoint, daemon and immutable image without Docker I/O.
     for key in ('runtime_path','source_path','ledger_path','policy_path','credential_path','catalog_path','review_path'):
         p=path(c[key]);require(root!=p and root not in p.parents and p not in root.parents,'selection input/output overlap')
@@ -224,6 +240,10 @@ def check(config_path):
 
 
 def execute(config_path,context,*,transport=None,expected_config_sha256=None):
+    config_pin=file_hash(config_path)
+    require(context.get('mode') in ('ACTUAL','SIMULATED'),'explicit selection mode required')
+    require(context['mode']!='ACTUAL' or transport is None and expected_config_sha256 is not None,'ACTUAL selection forbids simulated transport and requires config pin')
+    require(context['mode']!='SIMULATED' or callable(transport),'SIMULATED selection requires explicit transport')
     require(expected_config_sha256 is None or file_hash(config_path)==expected_config_sha256,
             'selection file identity drift')
     c,_,tasks,*_=prepare(config_path);frozen=digest(c)
@@ -247,16 +267,26 @@ def execute(config_path,context,*,transport=None,expected_config_sha256=None):
             authorization_sha256=authorization_hash(c),cleanup=[],policy_restored=False,original_history_unchanged=False)
         bridge=None
         try:
-            limits.alive();write('manifest-private.json',dict(config=c,provenance=provenance,context_hash=context['input_hash']))
+            limits.alive();write('manifest-private.json',dict(config=c,provenance=provenance,context_hash=context['input_hash'],mode=context['mode']))
             write('ledger-before-private.json',before)
             initial=dict(model_token=uuid.uuid4().hex,model=policy.model,max_tokens=policy.max_tokens,system=system_for(c),
                 prompt=selection_prompt(c,tasks,context['input_hash']),
                 context_hash=context['input_hash'],config_hash=digest(dict(authorization=authorization_hash(c),context=context['input_hash'])),
                 deadline=time.time()+max(0,limits.deadline-time.monotonic()))
+            write('initial-private.json',initial)
             ledger=Ledger(Path(c['ledger_path']),existing=True);live=replace(policy,live_enabled=True)
-            bridge=NoToolBridge(live,ledger,limits,initial['model_token'],initial,write)
+            enabled=json.dumps(asdict(live),indent=2).encode()+b'\n'
+            def guard():
+                require(file_hash(config_path)==config_pin,'selection config revoked before request')
+                require(Path(c['policy_path']).read_bytes()==enabled,'owned selection policy revoked')
+                require(ledger_snapshot(c['ledger_path'])['sha256']==before['sha256'],'selection fee checkpoint changed before request')
+                for key in ('credential','catalog','review'):
+                    require(file_hash(path(c[key+'_path'],private=True))==c[key+'_sha256'],'selection '+key+' revoked')
+                require(tree_hash(path(c['source_path']))==c['source_sha256'],'selection source revoked')
+                verify_source(path(c['runtime_path']),c['runtime_sha256'])
+            bridge=NoToolBridge(live,ledger,limits,initial['model_token'],initial,write,before_forward=guard)
             credentials=load_credentials(c['credential_path'],policy)
-            with PolicyLease(Path(c['policy_path']),original,json.dumps(asdict(live),indent=2).encode()+b'\n'):
+            with PolicyLease(Path(c['policy_path']),original,enabled):
                 if transport is None:
                     with _provider(live,credentials) as send:frame=_exchange(host,c,initial,bridge,send,limits,write,worker='selection.py')
                 else:frame=_exchange(host,c,initial,bridge,transport,limits,write,worker='selection.py')

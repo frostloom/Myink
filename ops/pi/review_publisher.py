@@ -12,10 +12,14 @@ RECORD=set('schema policy_path policy_sha256 review_config_path review_config_sh
 
 
 def publish(lease_path,lease_sha256,config_path,*,clock=None):
-    record,pin=_read(lease_path);require(pin==lease_sha256 and isinstance(record,dict) and set(record)==RECORD and record['schema']=='pi-review-lease-record-v1','authenticated lease record required')
+    record,pin=_read(lease_path);require(pin==lease_sha256 and isinstance(record,dict),'authenticated lease record required')
+    bound=record.get('schema')=='pi-review-lease-record-v2'
+    require(set(record)==(RECORD|{'binding'} if bound else RECORD) and record['schema'] in ('pi-review-lease-record-v1','pi-review-lease-record-v2'),'closed lease schema required')
     p,now=load_policy(record['policy_path'],record['policy_sha256'],clock);lease=record['scope'];root=_directory(_path(lease_path).parent)
     expected='lease-'+digest(dict(review_config_sha256=record['review_config_sha256'],semantic_sha256=lease['semantic_sha256']))
-    require(root.parent==_path(p['root']) and root.name==expected and _path(lease_path)==root/'lease.json','host lease custody drift')
+    base=root.parent if bound else root
+    require(base.parent==_path(p['root']) and base.name==expected and (not bound or root.name=='binding') and _path(lease_path)==root/'lease.json','host lease custody drift')
+    require(p['mode']!='ACTUAL' or bound,'ACTUAL publication requires authenticated selection binding')
     publication_lock=_path(p['root'])/'.publication.lock'
     if not publication_lock.exists():
         try:_new(publication_lock,dict(schema='pi-review-publication-lock-v1'))
@@ -25,6 +29,13 @@ def publish(lease_path,lease_sha256,config_path,*,clock=None):
     with publication_lock.open('rb') as own_lock,tools.open('rb') as fee_lock:
         fcntl.flock(own_lock,fcntl.LOCK_EX|fcntl.LOCK_NB);fcntl.flock(fee_lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         require(file_hash(lease_path)==lease_sha256,'lease revoked')
+        if bound:
+            from .selection_binding import inspect as inspect_selection
+            binding=record['binding'];require(isinstance(binding,dict) and set(binding)=={'parent_path','parent_sha256','selection_config_path','selection_config_sha256','artifact_pins'} and _path(binding['parent_path'])==base/'lease.json','selection binding custody drift')
+            parent,_,_,operation,selection_pins=inspect_selection(binding['parent_path'],binding['parent_sha256'],binding['selection_config_path'],binding['selection_config_sha256'],clock=clock)
+            receipt=_read(root/'receipt.json')[0]
+            require(receipt.get('schema')=='pi-selection-binding-result-v1' and receipt.get('status')=='bound' and receipt.get('lease_sha256')==lease_sha256 and receipt.get('selection_config_sha256')==binding['selection_config_sha256'] and receipt.get('selection_attempt_id')==operation,'selection binding is incomplete')
+            require(binding['artifact_pins']==selection_pins and record['scope']==dict(parent['scope'],allowed_fee_operation_ids=[operation]) and all(record[k]==parent[k] for k in RECORD-{'schema','scope'}),'derived lease scope drift')
         p,now,c,tc,material,fee,pins=inspect_review(record['policy_path'],record['policy_sha256'],record['review_config_path'],record['review_config_sha256'],clock=clock,allow_fee_append=True)
         require(pins==record['artifact_pins'] and lease['semantic_sha256']==semantic_hash(tc) and lease['plan_hash']==material['dossier']['model_view']['plan_hash'] and lease['deadline_ceiling']==tc['deadline_seconds'] and lease['prepared_parent']==p['prepared_parent'] and lease['mode']==p['mode'] and lease['legacy_unknown_ids']==p['legacy_unknown_ids'],'lease reviewed scope drift')
         require(lease['fee_checkpoint']==_read(Path(c['root'])/'ledger-after-private.json')[0],'lease paid checkpoint drift')

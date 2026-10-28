@@ -180,7 +180,7 @@ def test_selection_failed_exchange_audits_without_spending(selection_config,monk
     monkeypatch.setattr(selection,'_host',lambda *a:Host())
     def fail(*args,**kwargs):raise RuntimeError('synthetic exit')
     monkeypatch.setattr(selection,'_exchange',fail)
-    ctx=dict(source_sha256=c['source_sha256'],tasks=catalog,input_hash='c'*64,deadline=time.monotonic()+90,cancel=cancel)
+    ctx=dict(mode='SIMULATED',source_sha256=c['source_sha256'],tasks=catalog,input_hash='c'*64,deadline=time.monotonic()+90,cancel=cancel)
     r=selection.execute(cp,ctx,transport=lambda *a:None)
     assert not r['verified'] and not r['execution_verified'] and r['new_attempts']==r['new_unknown']==0
     assert r['policy_restored'] and r['original_history_unchanged'] and not cancel.is_set()
@@ -229,3 +229,38 @@ def test_fixed_system_session_and_all_rpc_messages_are_bound(proof,kind):
     if kind=='missing_user_end':rpc=[r for r in rpc if not (r['record'].get('type')=='message_end' and r['record']['message']['role']=='user')]
     f['session']=''.join(json.dumps(r)+'\n' for r in rows);f['receipt']['evidence']['session_sha256']=sha256(f['session'].encode()).hexdigest();f['transcript']=''.join(json.dumps(r)+'\n' for r in rpc)
     with pytest.raises(ValueError):selection.verify_selection(f,i,q)
+
+
+@pytest.mark.parametrize('fault',['actual_transport','actual_unpinned','missing_mode'])
+def test_selection_actual_mode_cannot_accept_simulated_transport(selection_config,fault):
+    cp,c,catalog=selection_config
+    ctx=dict(mode='ACTUAL',source_sha256=c['source_sha256'],tasks=catalog,input_hash='c'*64,deadline=time.monotonic()+90,cancel=Event())
+    if fault=='missing_mode':ctx.pop('mode')
+    kwargs=dict(transport=lambda *args:None)
+    if fault=='actual_unpinned':kwargs={}
+    with pytest.raises(ValueError):selection.execute(cp,ctx,**kwargs)
+    assert not Path(c['root']).exists()
+
+
+@pytest.mark.parametrize('revocation',['config','source','credential','policy','review'])
+def test_selection_revalidates_operator_revocation_before_paid_reservation(selection_config,monkeypatch,revocation):
+    from ops.pi.development_inputs import file_hash,ledger_snapshot
+    cp,c,catalog=selection_config;before=ledger_snapshot(c['ledger_path']);calls=[]
+    class Host:operation_id='revoked-selection';owned={};pending={}
+    class Owners:
+        failed=False
+        def __init__(self,*args):pass
+        def add(self,h):return h
+        def finish(self):return [dict(container_id='b'*64,removed=True)]
+    monkeypatch.setattr(selection,'_host',lambda *args:Host());monkeypatch.setattr(selection,'OwnedHosts',Owners)
+    def exchange(host,config,initial,bridge,transport,limits,write,**kwargs):
+        target=cp if revocation=='config' else Path(c['source_path'])/'src/a.py' if revocation=='source' else Path(c[revocation+'_path'])
+        target.write_bytes(b'operator-revoked')
+        body=dict(model=initial['model'],max_tokens=initial['max_tokens'],system=[dict(type='text',text=selection.wire_system(initial['system']))],messages=[dict(role='user',content=[dict(type='text',text=initial['prompt'])])],stream=True)
+        return bridge.route(dict(type='request',path='/v1/messages',headers=[['x-api-key',initial['model_token']],['x-pi-scope','local-trial-1']],body=json.dumps(body)),transport)
+    monkeypatch.setattr(selection,'_exchange',exchange)
+    def send(*args):calls.append(True);raise RuntimeError('transport must not be reached')
+    context=dict(mode='SIMULATED',source_sha256=c['source_sha256'],tasks=catalog,input_hash='c'*64,deadline=time.monotonic()+90)
+    result=selection.execute(cp,context,transport=send,expected_config_sha256=file_hash(cp))
+    assert not calls and result['new_attempts']==0 and ledger_snapshot(c['ledger_path'])==before
+    if revocation=='policy':assert Path(c['policy_path']).read_bytes()==b'operator-revoked'

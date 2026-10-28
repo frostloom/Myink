@@ -82,3 +82,18 @@ result,18/18cases and0modelrequests. Read the Oct28 report's matching next_tests
 entry to display its separate result, including actual time and event evidence.
 Keep unknown product release identity unchanged; this fixed candidate regression
 is not a production deployment or a24–48hour online validation.
+
+
+## Host authorization and selected-request linkage (source only)
+
+`host.selection_review.v1` is an exact host permission to run one frozen-catalog
+selection. `host.selection_binding.v1` is a verified selection analysis with one
+original-ledger request and its known charge; `host.file_review.v1` is distinct
+host issuance of exact development FileReview. Evidence links keep the original
+independent dossier, unbound and derived leases, selection verification and exact
+approval separate. Secondary host-review events omit model/cost counters. None
+is a product adoption or release event; code remains pending server activation.
+
+Show abstention, partial binding and unavailable completion distinctly. An
+original paid result can remain valid while no development permission exists.
+Do not infer an authorization from a model's approve text or from an audit event.

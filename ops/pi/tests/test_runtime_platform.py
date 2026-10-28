@@ -138,7 +138,7 @@ def test_selection_model_host_receives_source_machine(selection_config,monkeypat
     monkeypatch.setattr(selection,'_host',host)
     def stop(*a,**k):raise RuntimeError('synthetic before provider')
     monkeypatch.setattr(selection,'_exchange',stop)
-    context=dict(source_sha256=c['source_sha256'],tasks=catalog,input_hash='c'*64,deadline=time.monotonic()+90)
+    context=dict(mode='SIMULATED',source_sha256=c['source_sha256'],tasks=catalog,input_hash='c'*64,deadline=time.monotonic()+90)
     result=selection.execute(cp,context,transport=lambda *a:None)
     assert seen==[('image_id','x86_64')] and result['new_attempts']==0 and result['policy_restored']
 

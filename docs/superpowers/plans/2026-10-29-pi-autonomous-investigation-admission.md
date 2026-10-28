@@ -42,9 +42,9 @@
 
 ### Task 3: Host semantic lease and exact FileReview issuer
 **Files:** ops/pi/review_issuer.py, host policy/config/deploy tests.
-- [ ] RED paid-checkpoint change allowed only after known verified independent review; increased limits/source/gold/plan/runtime/policy/root changes/new unknowns/expired lease/partial claim reject.
-- [ ] Root-approved policy permits only exact reviewed semantic scope; issuer waits for existing review-request, validates prepared config and current fee state then publishes compatible independent_review JSON. Keep FileReview external, model has no approval route.
-- [ ] Verify FrozenDevelopmentAdapter refreshes after selection without paid reviewer changing its in-flight ledger checkpoint; denial/failure/duplicate/partial-publication cases retained, no automatic replay.
+- [x] RED paid-checkpoint change allowed only after known verified independent review; increased limits/source/gold/plan/runtime/policy/root changes/new unknowns/expired lease/partial claim reject.
+- [x] Root-approved policy permits only exact reviewed semantic scope; issuer waits for existing review-request, validates prepared config and current fee state then publishes compatible independent_review JSON. Keep FileReview external, model has no approval route.
+- [x] Verify FrozenDevelopmentAdapter refreshes after selection without paid reviewer changing its in-flight ledger checkpoint; denial/failure/duplicate/partial-publication cases retained, no automatic replay.
 
 ### Task 4: New investigation to proposed tests and isolated reproduction
 **Files:** bounded source/proposal host adapter, strict proposal contract, coordinator using task_package/package_baseline.
@@ -63,3 +63,5 @@
 - [ ] Use a genuinely new bounded finding/reference-source task or report no_task; do not pay again for completed owner002. Prove proposal/baseline/reviewer/issuer/selection/dev/failed-check adjustment and candidate review artifacts flow without manually writing per-task review JSON.
 - [ ] Verify original fee/legacy holds/history/policy/cleanup, fresh latestcanonical checkpoint after fees, duplicate wakeup0newmodels, mainreader full audit/version/change scope/nextday plan.
 - [ ] Publish facts and remaining main/product release/ownership-safe recovery/24-48hour validation gates. Complete this plan only when its requested actual handoff is proven; keep fullrootgoalactive until every original requirement is met.
+
+Task3 source acceptance now includes unbound lease -> exact host selection review -> actual gateway UUID from authenticated stopped selection -> immutable derived lease -> completed receipt -> original FileReview/adapter. ACTUAL transport/config/revocation guards added; no new actual server activation. Task4 new investigation and Task5 coordinator/native/whole-plan final review remain pending.

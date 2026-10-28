@@ -74,3 +74,10 @@ def test_unverified_sdk_or_host_scope_never_creates_lease(completed,fault):
     write(pp,p);before=ledger_snapshot(c['ledger_path'])
     with pytest.raises((ValueError,OSError,KeyError,TypeError)):api().create(pp,file_hash(pp),cp,file_hash(cp),selection_operation_id='fixed-selection',clock=lambda:NOW)
     assert not list(Path(p['root']).glob('lease-*')) and ledger_snapshot(c['ledger_path'])==before
+
+
+def test_unbound_lease_can_reserve_future_original_cycle_prepared_directory(completed):
+    pp,p,cp,c,tc=completed;p['prepared_parent']=str(cp.parent/'planned-cycle/cycle-output/prepared');write(pp,p)
+    value=api().create(pp,file_hash(pp),cp,file_hash(cp),clock=lambda:NOW)
+    assert read_json(value['lease_path'])['scope']['allowed_fee_operation_ids']==[]
+    assert not Path(p['prepared_parent']).exists()

@@ -51,7 +51,12 @@ def load_policy(policy_path,expected,clock=None):
     require(type(p['budget_microyuan']) is int and p['budget_microyuan']>0)
     files=p['allowed_files'];require(isinstance(files,list) and 0<len(files)<=8 and len(set(files))==len(files) and all(isinstance(f,str) and re.fullmatch(r'src/[A-Za-z0-9_./-]+\.py',f) and '..' not in Path(f).parts for f in files),'bounded host source scope required')
     ids=p['legacy_unknown_ids'];require(isinstance(ids,list) and all(isinstance(i,str) for i in ids) and len(ids)==len(set(ids)))
-    for key in ('root','prepared_parent','review_config_parent'):_directory(p[key])
+    for key in ('root','review_config_parent'):_directory(p[key])
+    prepared=_path(p['prepared_parent']);inputs=_path(p['review_config_parent'])
+    require(prepared!=inputs and prepared.is_relative_to(inputs) and len(prepared.relative_to(inputs).parts)<=8,'future prepared root outside private host task')
+    ancestor=prepared
+    while not ancestor.exists():ancestor=ancestor.parent
+    _directory(ancestor)
     _disjoint(p['root'],p['prepared_parent']);_disjoint(p['root'],pp);_disjoint(p['root'],_path(p['ledger_path']).parent)
     return p,now
 
@@ -86,15 +91,15 @@ def inspect_review(policy_path,policy_sha256,review_config_path,review_config_sh
     return p,now,c,tc,material,fee,pins
 
 
-def create(policy_path,policy_sha256,review_config_path,review_config_sha256,*,selection_operation_id,clock=None):
+def create(policy_path,policy_sha256,review_config_path,review_config_sha256,*,selection_operation_id=None,clock=None):
     p,_=load_policy(policy_path,policy_sha256,clock)
-    require(isinstance(selection_operation_id,str) and re.fullmatch('[A-Za-z0-9:_-]{1,160}',selection_operation_id),'fixed host selection identity required')
+    require(selection_operation_id is None or p['mode']=='SIMULATED' and isinstance(selection_operation_id,str) and re.fullmatch('[A-Za-z0-9:_-]{1,160}',selection_operation_id),'ACTUAL lease starts without an invented selection identity')
     lockpath=_path(p['ledger_path']).with_suffix('.tools.lock');_plain(lockpath)
     with lockpath.open('rb') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         p,now,c,tc,material,fee,pins=inspect_review(policy_path,policy_sha256,review_config_path,review_config_sha256,clock=clock)
         require(selection_operation_id not in {r['operation_id'] for r in fee['operations']},'fresh selection fee identity required')
-        scope=dict(schema='pi-reviewed-development-scope-v1',authority='host_exact_file_review',mode=p['mode'],semantic_sha256=semantic_hash(tc),deadline_ceiling=tc['deadline_seconds'],plan_hash=material['dossier']['model_view']['plan_hash'],prepared_parent=p['prepared_parent'],reviewer='independent-sdk-host-policy',issued_at=now.isoformat(),expires_at=p['expires_at'],fee_checkpoint=fee,legacy_unknown_ids=p['legacy_unknown_ids'],allowed_fee_operation_ids=[selection_operation_id])
+        scope=dict(schema='pi-reviewed-development-scope-v1',authority='host_exact_file_review',mode=p['mode'],semantic_sha256=semantic_hash(tc),deadline_ceiling=tc['deadline_seconds'],plan_hash=material['dossier']['model_view']['plan_hash'],prepared_parent=p['prepared_parent'],reviewer='independent-sdk-host-policy',issued_at=now.isoformat(),expires_at=p['expires_at'],fee_checkpoint=fee,legacy_unknown_ids=p['legacy_unknown_ids'],allowed_fee_operation_ids=[] if selection_operation_id is None else [selection_operation_id])
         root=_path(p['root'])/('lease-'+digest(dict(review_config_sha256=review_config_sha256,semantic_sha256=scope['semantic_sha256'])))
         require(not root.exists(),'review lease claim exists; no replay');root.mkdir(mode=0o700);_sync(root.parent)
         _new(root/'intent.json',dict(schema='pi-review-lease-intent-v1',policy_sha256=policy_sha256,review_config_sha256=review_config_sha256,semantic_sha256=scope['semantic_sha256']))

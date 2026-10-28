@@ -113,3 +113,10 @@ def test_host_permission_has_distinct_admin_audit_without_overwriting_sdk_cost(p
     assert {p['kind'] for p in approval['evidence']}=={'independent_review_dossier','host_review_lease','exact_file_review'}
     assert 'known_cost_microyuan' not in approval['details'] and 'model_requests' not in approval['details']
     assert AuditStore(c['audit_path']).events(run_id=c['run_id'])==before
+
+
+def test_actual_publication_requires_selection_binding_before_any_mutation(publication,monkeypatch):
+    pp,p,cp,c,lease,config,current=publication;module=api();monkeypatch.setattr(module,'load_policy',lambda *args:(dict(p,mode='ACTUAL'),NOW))
+    before=ledger_snapshot(c['ledger_path'])
+    with pytest.raises(ValueError,match='requires authenticated selection binding'):module.publish(lease['lease_path'],lease['lease_sha256'],config)
+    assert ledger_snapshot(c['ledger_path'])==before and not Path(current['review_path']).exists()

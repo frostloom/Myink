@@ -128,12 +128,49 @@ The original FileReview and FrozenDevelopmentAdapter thread-wait path has been
 verified in SIMULATED tests, without new provider requests or a started candidate.
 This is not server activation or actual autonomous handoff acceptance.
 
-Still required before ACTUAL activation: bind the gateway-generated selection
-attempt ID from a verified completed selection receipt (it is a UUID allocated
-at reservation and cannot be guessed before selection), issue the separately
-bound selection-config review, connect refreshed templates and the coordinator,
-and verify new-task/candidate acceptance. The current prototype's explicit
-selection_operation_id is a host-provided synthetic test identity, not evidence
-that this pending actual binding is complete. Do not admit paid work using a
-placeholder ID. Whole-plan final independent review and actual closed-runtime
-acceptance remain pending.
+The gateway-UUID binding and exact selection-review issuer are now implemented
+in source and verified with explicit SIMULATED transport. Server activation,
+new-task proposal/coordinator wiring, whole-plan independent review and native
+actual acceptance remain pending. Placeholder IDs are forbidden for ACTUAL.
+
+## Closed selection-to-development authorization (source acceptance)
+
+ACTUAL review leases begin with no allowed post-review fee ID. A trusted host
+calls `selection_review_issuer.issue` to authorize only the exact reviewed source,
+catalog, runtime, closed policy/credential and current original fee checkpoint.
+It exclusively publishes the selection FileReview and separate audit event,
+without another model call or a handwritten per-task approval.
+
+The original selection launcher now requires an explicit mode. ACTUAL forbids an
+injected transport and requires a config pin; SIMULATED requires a transport.
+It stores the host mode and exact initial input, stopped session/RPC and relayed
+request. Immediately before fee reservation it rechecks the config, owned live
+policy bytes, original fee checkpoint, credential/catalog/review, source and
+runtime. Operator revocation stops forwarding; a human policy edit is preserved.
+The completed-inspection and template APIs are readonly. `execute` retains its
+fresh-root, exact-fee and independently reviewed prepare path.
+
+`selection_binding.bind` verifies those artifacts, the exact reviewed catalog and
+selected task, one known settled request and the actual gateway-generated UUID.
+It writes a derived immutable v2 lease under the original lease's binding claim;
+the original remains unchanged. ACTUAL development publication requires this
+binding, including its completed receipt and revalidated artifacts. Missing or
+partial receipts reject publication and are not replayed. A verified abstention
+retains its original paid result and issues no development lease.
+
+The binding emits the verified selection request count/known charge as a primary
+analysis event; selection/development host-approval events omit those counters.
+The main pure reader verifies this chain and exposes stage/dossier/lease/exact
+review evidence without private source, sessions or fee snapshots. These facts
+are source/SIMULATED acceptance, not a new actual server model call.
+
+A prepared directory may be reserved before LocalCycle creates it, only under the
+approved private host task root with a bounded canonical path. Existing ancestors
+must remain private; actual publication requires the created private directory.
+Tests now drive the original FrozenDevelopmentAdapter and FileReview using the
+derived real-gateway UUID in a concurrent thread, without manually writing
+selection or development approval JSON or starting a candidate. Remaining work:
+new investigation/proposal/reproducer, automatic refreshed bundle/coordinator,
+candidate-bound independent acceptance, closed deployment and actual end-to-end
+acceptance. Product adoption and ownership-safe business recovery remain later
+authorized gates.
