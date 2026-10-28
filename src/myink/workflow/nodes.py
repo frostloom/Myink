@@ -39,6 +39,7 @@ from myink.models import (AgentRun, Alias, Chapter, Character, CharacterState, E
                           Relation, SNAPSHOT_STAGES, WritingLesson)
 from myink.models.memory import CHARACTER_STATE_FIELDS, RELATION_TYPES
 from myink.providers import FallbackChain, ModelResponse, make_chain
+from myink.providers.base import public_messages
 from myink.providers.deepseek import strip_thinking_text
 from myink.schemas import (AuditVerdict, ChapterCast, ChapterPlan, Finding,
                            MutationCandidate, ValidationReport)
@@ -97,7 +98,7 @@ def record_run(db: Session, *, project_id: str | None = None, user_id=None,
     pid, uid = _owner_ids(project_id=project_id, user_id=user_id)
     observed = {"response": {"content": resp.content, "tool_calls": resp.tool_calls}, **(detail or {})}
     if messages is not None:
-        observed = {"messages": messages, **observed}
+        observed = {"messages": public_messages(messages), **observed}
     db.add(AgentRun(
         project_id=pid,
         user_id=uid,
@@ -206,13 +207,8 @@ _MAX_TOKENS = {
 
 
 def _assistant_tool_calls_message(resp: ModelResponse) -> dict:
-    """重建 assistant tool_calls 消息（§10 工具循环回传格式）。
-
-    DeepSeek/OpenAI 要求下轮请求原样回传 assistant 的 tool_calls：arguments 须为
-    JSON 字符串（Provider 已解析成 dict，这里重新 dumps）；thinking 已在 Provider
-    关掉，无 reasoning_content 需回传（§19.3）。
-    """
-    return {
+    """Keep generic tool calls plus private, origin-bound provider continuation state."""
+    message = {
         "role": "assistant",
         "content": resp.content or "",
         "tool_calls": [
@@ -222,6 +218,9 @@ def _assistant_tool_calls_message(resp: ModelResponse) -> dict:
             for tc in (resp.tool_calls or [])
         ],
     }
+    if resp.provider_context is not None:
+        message["_provider_context"] = resp.provider_context
+    return message
 
 
 def _bounded_generate(chain: FallbackChain, messages: list[dict], *,

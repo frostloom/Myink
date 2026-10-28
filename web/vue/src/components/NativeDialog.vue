@@ -22,6 +22,9 @@ function keyboard(event: KeyboardEvent) {
   : (current + (event.shiftKey ? -1 : 1) + controls.length) % controls.length
  event.preventDefault()
  controls[next]?.focus()
+ // Firefox may leave a partially visible control clipped after programmatic
+ // focus. Tab navigation must reveal the whole control in its scroll container.
+ controls[next]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'instant' })
 }
 function backdrop(event: MouseEvent) {
  if (beganOutside && outside(event)) props.onClose()

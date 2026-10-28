@@ -904,3 +904,22 @@
 @media (max-width: 640px) {
   .main { flex:0 0 auto; width:100%; }
 }
+
+/* Workflow preferences share the settings palette, with compact role groups. */
+.roleGroups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.roleGroup {
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+.roleGroup h3 { margin: 0 0 var(--space-3); font-size: var(--text-body); }
+.rolePreference + .rolePreference { margin-top: var(--space-4); }
+.rolePreference .routeRow { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-2); }
+.rolePreference select { width: 100%; min-width: 0; }
+.rolePreference .preferenceStatus { margin-top: var(--space-1); }

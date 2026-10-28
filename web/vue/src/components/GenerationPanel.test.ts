@@ -183,3 +183,16 @@ it.each(['next', 'rewrite', 'replan', 'batch'] as const)('announces pending %s i
  expect(screen.queryByRole('progressbar')).toBeNull()
  expect((screen.getByRole('button', {name:labels[action]}) as HTMLButtonElement).disabled).toBe(false)
 })
+it('keeps batch input and instruction after guest quota refusal and explains reducing the batch or registering', async () => {
+    vi.mocked(api.generateBatch).mockRejectedValue(new ApiError(429, 'GUEST_QUOTA_EXHAUSTED', null));
+    render(h(GenerationPanel, { projectId: 'project-1', chapters: [chapter], selectedChapter: chapter, onTaskStart: () => {} }));
+    await fireEvent.input(screen.getByLabelText('批次生成'), { target: { value: '5' } });
+    await fireEvent.input(screen.getByLabelText('写作指令（可留空）'), { target: { value: '保留人物伏笔' } });
+    await fireEvent.click(screen.getByRole('button', { name: '发起批次' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('减少章数');
+    expect(alert.textContent).toContain('注册');
+    expect((screen.getByLabelText('批次生成') as HTMLInputElement).value).toBe('5');
+    expect((screen.getByLabelText('写作指令（可留空）') as HTMLTextAreaElement).value).toBe('保留人物伏笔');
+    expect((screen.getByRole('button', { name: '发起批次' }) as HTMLButtonElement).disabled).toBe(false);
+});

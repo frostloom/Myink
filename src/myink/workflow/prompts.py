@@ -1088,16 +1088,34 @@ SYSTEM_SHORT_CREATION = """你在和作者一起把一篇短篇聊成形。你�
 card 里你**没有把握的字段留空**：留空表示「这轮没有新信息」，系统会保留作者已经写好的值；填了就会覆盖掉它。"""
 
 
+# Kept only to recognize the deterministic opening in older persisted sessions.
+_LEGACY_SHORT_OPENING = (
+    "想写个什么样的短篇？先说一句大方向就行——比如「一个渡口老人等最后一班船」，"
+    "我来陪你把它聊成能开写的方案。"
+)
+_SHORT_CREATION_ATTRIBUTION = """【创意来源与作者授权】
+助手建议不等于用户设定：历史中的助手示例、提问和提案只能视为助手提出的内容，
+不得声称是作者提供、要求或确认的；只有用户明确表达或认可的内容才可这样归因。
+当前方案卡可能由用户编辑，保留其中已有内容；不要用开场示例替换它。
+作者说「随便写」「你决定」或类似授权时，主动创作一个具体的新方案卡并填满各项，
+明确说「我来拟一个方案」或「这是我的提议」，不要继续索要方向，也不要假称作者提出了该创意。
+已有明确设定和当前卡优先，新的创意须与它们兼容。"""
+
+
 def short_creation_messages(history: list[dict], card: dict) -> list[dict]:
     """建书对话输入：完整历史 + 当前卡。
 
     卡必须每轮都带上——用户可能刚在右栏改过，模型看不见就会以为自己上一轮说的还算数。
     """
     conversation = [{"role": m["role"], "content": m["content"]}
-                    for m in history if (m.get("content") or "").strip()]
+                    for i, m in enumerate(history) if (m.get("content") or "").strip()
+                    and not (i == 0 and m.get("role") == "assistant"
+                             and m["content"] == _LEGACY_SHORT_OPENING)]
     return [
         {"role": "system", "content": SYSTEM_SHORT_CREATION},
         *conversation,
+        # Independent of editable published stage instructions.
+        {"role": "system", "content": _SHORT_CREATION_ATTRIBUTION},
         {"role": "user", "content":
             "【当前方案卡（用户可能已编辑过）】\n"
             + json.dumps(card, ensure_ascii=False, indent=2)

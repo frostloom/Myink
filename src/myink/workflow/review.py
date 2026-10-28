@@ -27,6 +27,8 @@ def resolve_review(graph, values: dict, *, task_id: str) -> dict:
                 return {**values, "needs_review": True, "error": None}
             result = nodes.finalize_awaiting_review(values, task_id=task_id)
             return {**values, **result, "task_id": task_id}
+        from myink.guest_quota import require_review_admission
+        require_review_admission(db, task_id, [row.id for row in rejected])
         instruction = rejection_text(rejected)
         ids = [r.id for r in rejected]
         # 旧稿尚未处理的候选失去依据；保留历史，不让用户逐条拒绝过期条目。

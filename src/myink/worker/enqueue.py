@@ -68,7 +68,7 @@ class EnqueueUnavailable(Exception):
 
 def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
             quota_n: int, cost_est: float, priority: int,
-            platform_chapter_max: int = 0) -> dict:
+            platform_chapter_max: int = 0, client_ip: str | None = None) -> dict:
     # Keep selection PUT and admission snapshot capture in a single order. The
     # existing Redis inflight reservation covers the interval before worker Task
     # materialization; definite publish failures retain existing compensation.
@@ -90,12 +90,12 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
             raise ValueError('Project does not exist')
         return _enqueue(db=db, budget_snapshot=budget_snapshot, user_id=user_id, project_id=project_id, task_type=task_type,
                         payload=payload, quota_n=quota_n, cost_est=cost_est,
-                        priority=priority, platform_chapter_max=platform_chapter_max)
+                        priority=priority, platform_chapter_max=platform_chapter_max, client_ip=client_ip)
 
 
 def _enqueue(*, db, budget_snapshot: dict, user_id: str, project_id: str, task_type: str, payload: dict,
             quota_n: int, cost_est: float, priority: int,
-            platform_chapter_max: int = 0) -> dict:
+            platform_chapter_max: int = 0, client_ip: str | None = None) -> dict:
     """闸门 + 入队。返回 `{"task_id", "trace_id", "status"}`（路由侧回 202）。
 
     顺序不可换：闸门 → 归属登记 → 发布 → SSE 种子帧。
@@ -120,6 +120,21 @@ def _enqueue(*, db, budget_snapshot: dict, user_id: str, project_id: str, task_t
 
     today = date.today().isoformat()
     task_id = str(uuid.uuid4())
+    from myink.guest_quota import reserve_in_session, release, GuestQuotaError
+    from sqlalchemy.exc import SQLAlchemyError
+    try:
+        guest_operation = reserve_in_session(
+            db, user_id=user_id, client_ip=client_ip,
+            dimension="short" if task_type == "short_generate" else "long",
+            amount=1 if task_type == "short_generate" else quota_n,
+            operation_id=task_id, task_id=task_id)
+        if guest_operation:
+            # Resource snapshot is complete. Commit the receipt before any broker
+            # can observe this task; it must survive worker-before-materialization.
+            db.commit()
+            payload["_guest_operation"] = guest_operation
+    except SQLAlchemyError as exc:
+        raise GuestQuotaError("GUEST_QUOTA_UNAVAILABLE", 503) from exc
     keys = [
         quota_key(user_id, today),
         inflight_key(user_id, project_id),
@@ -141,14 +156,16 @@ def _enqueue(*, db, budget_snapshot: dict, user_id: str, project_id: str, task_t
         "created_at": int(time.time() * 1000),
     }
 
-    r = get_redis()
     try:
+        r = get_redis()
         code, reason = _run_gates(r, keys, task_id=task_id, quota_n=quota_n,
                                   cost_est=cost_est, project_id=project_id,
                                   platform_chapter_max=platform_chapter_max)
     except Exception as exc:
+        release(guest_operation)
         raise EnqueueUnavailable("gates") from exc
     if code != 1:
+        release(guest_operation)
         raise GateError(reason)
 
     owner = json.dumps({"user_id": user_id, "project_id": project_id})
@@ -157,14 +174,17 @@ def _enqueue(*, db, budget_snapshot: dict, user_id: str, project_id: str, task_t
     except Exception as exc:
         _compensate(r, keys, task_id=task_id, quota_n=quota_n,
                     platform_chapter_max=platform_chapter_max)
+        release(guest_operation)
         raise EnqueueUnavailable("owner") from exc
 
     try:
-        amqp.publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS, priority=priority)
-    except (pika.exceptions.NackError, pika.exceptions.UnroutableError) as exc:
+        publish = amqp.publish_once if guest_operation else amqp.publish
+        publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS, priority=priority)
+    except (amqp.PublishNotSent, pika.exceptions.NackError, pika.exceptions.UnroutableError) as exc:
         # 确定失败：broker 明确拒收，消息一定不在队列里 → 回滚闸门
         _compensate(r, keys, task_id=task_id, quota_n=quota_n,
                     platform_chapter_max=platform_chapter_max)
+        release(guest_operation)
         raise EnqueueUnavailable("publish_rejected") from exc
     except Exception as exc:
         # 结果不明（confirm 超时/连接中断）：消息可能已入队。补偿会造成

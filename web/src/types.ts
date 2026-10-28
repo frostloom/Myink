@@ -1,11 +1,17 @@
 // API 类型（字段对齐 Python 侧已核实响应形状，见 plan.md 阶段 4 首切计划 §7）
 
+export interface GuestQuota {
+  short: { limit: number; used: number; remaining: number }
+  long: { limit: number; used: number; remaining: number }
+}
+
 export interface AuthResponse {
   token: string
   user_id: string
   username: string
   tier: string
   role: 'user' | 'admin'
+  is_guest?: boolean
   expires_in: number
 }
 
@@ -14,6 +20,7 @@ export interface AuthSessionResponse {
   username: string
   tier: string
   role: 'user' | 'admin'
+  is_guest?: boolean
   /** 自检顺手续期：服务端新签的令牌与它的有效期（秒） */
   token: string
   expires_in: number

@@ -6,6 +6,7 @@ import type { TaskBudgetLimits, ResumeBudgetBody } from '../types'
 
 import type {
   AuthResponse,
+  GuestQuota,
   AuthSessionResponse,
   CandidateActionResponse,
   CharacterCard,
@@ -60,7 +61,7 @@ import type {
   WritingLesson,
   WritingMode,
 } from '../types'
-import { dispatchUnauthorized, getSessionUserId, getToken } from './token'
+import { dispatchUnauthorized, getSession, getSessionUserId, getToken } from './token'
 
 const BASE = '/api/v1'
 
@@ -85,6 +86,8 @@ interface RequestOptions {
   signal?: AbortSignal
   background?: boolean
   dispatchAuthFailure?: boolean
+  credentials?: RequestCredentials
+  allowExpiredGuest?: boolean
 }
 
 const authenticatedRequests = new Map<string, Set<AbortController>>()
@@ -106,7 +109,8 @@ async function request<T>(
   const token = options?.token === undefined ? getToken() : options.token
   // 按账号（userId）而不是令牌字符串判定响应是否已作废：滑动续期会换令牌但不换账号，
   // 拿令牌比会把续期当换账号，把正在跑的请求判成 aborted。
-  const identityAtStart = getSessionUserId()
+  const currentIdentity = () => options?.allowExpiredGuest ? getSession(true)?.userId ?? null : getSessionUserId()
+  const identityAtStart = currentIdentity()
   if (token) headers.Authorization = `Bearer ${token}`
   // FormData 的 Content-Type 得留给浏览器写，它要自己拼 multipart 边界
   const isForm = typeof FormData !== 'undefined' && body instanceof FormData
@@ -126,6 +130,7 @@ async function request<T>(
   try {
     const res = await fetch(BASE + path, {
       method,
+      credentials: options?.credentials,
       headers,
       body: isForm ? (body as FormData) : body !== undefined ? JSON.stringify(body) : undefined,
       signal: controller.signal,
@@ -138,7 +143,7 @@ async function request<T>(
       } catch {
         /* 非 JSON 响应：保留原始状态 */
       }
-      if (controller.signal.aborted || (token && getSessionUserId() !== identityAtStart)) {
+      if (controller.signal.aborted || (token && currentIdentity() !== identityAtStart)) {
         throw new ApiError(0, 'request_aborted', null)
       }
       const errorBody = parsed as { error?: string; detail?: unknown } | null
@@ -147,13 +152,22 @@ async function request<T>(
       if (res.status === 401 && token && options?.dispatchAuthFailure !== false) {
         dispatchUnauthorized(token)
       }
+      if (code === 'GUEST_QUOTA_EXHAUSTED' && token && identityAtStart) {
+        // Generic task resumes do not identify which quota ledger was charged.
+        const category = path.includes('/short/') ? 'short'
+          : /\/(?:chapters\/[^/]+|batches)\/generate$/.test(path) ? 'long' : undefined
+        window.dispatchEvent(new CustomEvent('myink:guest-quota', {
+          detail: { userId: identityAtStart, exhausted: true, category, batch: path.endsWith('/batches/generate') },
+        }))
+      }
       throw new ApiError(res.status, code, parsed)
     }
 
     const parsed = (await res.json()) as T
-    if (controller.signal.aborted || (token && getSessionUserId() !== identityAtStart)) {
+    if (controller.signal.aborted || (token && currentIdentity() !== identityAtStart)) {
       throw new ApiError(0, 'request_aborted', null)
     }
+    if (method !== 'GET' && getSession()?.isGuest) window.dispatchEvent(new CustomEvent('myink:guest-quota', { detail: { token } }))
     return parsed
   } catch (err) {
     if (err instanceof ApiError) throw err
@@ -193,15 +207,21 @@ export const api = {
       'POST', '/auth/token', { username, password }, { token: null },
     ),
 
-  register: (username: string, password: string, invitationCode: string) =>
+  startGuest: (restoreOnly = false, signal?: AbortSignal) =>
+    request<AuthResponse>('POST', '/auth/guest', { restore_only: restoreOnly }, { token: null, credentials: 'same-origin', signal }),
+
+  guestQuota: (token: string, signal?: AbortSignal) =>
+    request<GuestQuota>('GET', '/auth/guest/quota', undefined, { token, signal }),
+
+  register: (username: string, password: string, invitationCode: string, token: string | null = null) =>
     request<AuthResponse>('POST', '/auth/register', {
       username,
       password,
       invitation_code: invitationCode,
-    }, { token: null }),
+    }, { token, dispatchAuthFailure: false, allowExpiredGuest: token !== null }),
 
-  getSession: (token: string, signal?: AbortSignal) =>
-    request<AuthSessionResponse>('GET', '/auth/session', undefined, { token, signal }),
+  getSession: (token: string, signal?: AbortSignal, dispatchAuthFailure = true) =>
+    request<AuthSessionResponse>('GET', '/auth/session', undefined, { token, signal, dispatchAuthFailure }),
 
   // 第二因子（§2.8，仅管理员；机制见 docs/AUTH.md）。verify 免身份——凭证是挑战票。
   verifyMfa: (mfaToken: string, code: string) =>

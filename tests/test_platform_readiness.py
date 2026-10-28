@@ -170,6 +170,7 @@ def test_short_commit_unready_keeps_book_and_quota_unchanged(temp_user, policy):
 
 
 def test_unready_legacy_resume_does_not_change_state_or_publish(policy, temp_project, monkeypatch):
+    from fastapi import Request
     from myink.api.routes_tasks import resume_task
     from myink.db import tenant_session
     from myink.models import Task, Project
@@ -182,7 +183,7 @@ def test_unready_legacy_resume_does_not_change_state_or_publish(policy, temp_pro
     published = []
     monkeypatch.setattr('myink.worker.amqp.publish', lambda *a,**kw: published.append(a))
     with pytest.raises(PlatformNotReady):
-        resume_task(str(tid), user_id=uid)
+        resume_task(str(tid), Request({'type': 'http', 'headers': []}), user_id=uid)
     assert published == []
     with tenant_session(temp_project) as db:
         assert db.get(Task,tid).status == 'paused'

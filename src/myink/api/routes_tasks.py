@@ -17,12 +17,13 @@ from __future__ import annotations
 import json
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ValidationError
 
 from myink.api.auth import _AuthenticatedUser, current_identity, require_owner, require_user
 from myink.api.schemas import OkOut, TaskControlOut, TaskDetailOut, TaskEnqueuedOut, TaskSummaryOut
 from myink.config import settings
+from myink.guest_quota import request_ip
 from myink.task_budget import (ResumeBudgetBody, budget_view, extend_and_resume_budget, BudgetResumeError)
 from myink.context_budget import estimate_tokens
 from myink.db import new_session
@@ -115,14 +116,14 @@ def _platform_chapter_max(identity: _AuthenticatedUser) -> int:
 
     只喂给长篇的两个入队口（单章 / 批次）。短篇与续跑不传，逐字节不变。
     """
-    if not platform_key_active(identity.id, identity.role):
+    if identity.is_guest or not platform_key_active(identity.id, identity.role):
         return 0
     return settings.platform_chapters_per_book
 
 
 @router.post("/projects/{project_id}/chapters/{chapter_id}/generate",
              dependencies=[Depends(require_owner)], response_model=TaskEnqueuedOut, status_code=202)
-def generate_chapter(project_id: str, chapter_id: str, body: ChapterGenerateBody,
+def generate_chapter(project_id: str, chapter_id: str, body: ChapterGenerateBody, request: Request,
                      identity: _AuthenticatedUser = Depends(current_identity)) -> dict:
     """单章生成入队（§13 三层闸门扣 1）。
 
@@ -148,13 +149,13 @@ def generate_chapter(project_id: str, chapter_id: str, body: ChapterGenerateBody
         payload["replan"] = True
     return enqueue(user_id=str(identity.id), project_id=project_id, task_type="chapter_generate",
                    payload=payload, quota_n=1, cost_est=settings.cost_per_chapter,
-                   priority=_priority(identity.tier),
+                   client_ip=request_ip(request), priority=_priority(identity.tier),
                    platform_chapter_max=_platform_chapter_max(identity))
 
 
 @router.post("/projects/{project_id}/batches/generate",
              dependencies=[Depends(require_owner)], response_model=TaskEnqueuedOut, status_code=202)
-def generate_batch(project_id: str, body: BatchGenerateBody,
+def generate_batch(project_id: str, body: BatchGenerateBody, request: Request,
                    identity: _AuthenticatedUser = Depends(current_identity)) -> dict:
     """批次生成入队（§13 三层闸门扣 size）。
 
@@ -167,13 +168,13 @@ def generate_batch(project_id: str, body: BatchGenerateBody,
     return enqueue(user_id=str(identity.id), project_id=project_id, task_type="batch_generate",
                    payload={"size": size, "start": start}, quota_n=size,
                    cost_est=settings.cost_per_chapter * size,
-                   priority=_priority(identity.tier),
+                   client_ip=request_ip(request), priority=_priority(identity.tier),
                    platform_chapter_max=_platform_chapter_max(identity))
 
 
 @router.post("/projects/{project_id}/short/generate",
              dependencies=[Depends(require_owner)], response_model=TaskEnqueuedOut, status_code=202)
-def generate_short(project_id: str,
+def generate_short(project_id: str, request: Request,
                    identity: _AuthenticatedUser = Depends(current_identity)) -> dict:
     """短篇全篇生成入队（§13 三层闸门扣「章数」，与批次 size=N 同口径）。
 
@@ -195,7 +196,7 @@ def generate_short(project_id: str,
                             "chars_per_chapter": form.chars_per_chapter},
                    quota_n=form.chapter_count,
                    cost_est=settings.cost_per_chapter * form.chapter_count,
-                   priority=_priority(identity.tier))
+                   client_ip=request_ip(request), priority=_priority(identity.tier))
 
 
 @router.get("/tasks/{task_id}/access", response_model=OkOut)
@@ -435,15 +436,21 @@ def pause_task(task_id: str) -> dict:
 
 
 @router.post("/tasks/{task_id}/resume", dependencies=[Depends(require_task_owner)], response_model=TaskControlOut)
-def resume_task(task_id: str, body: ResumeBudgetBody | None = None,
+def resume_task(task_id: str, request: Request, body: ResumeBudgetBody | None = None,
                 user_id: str = Depends(require_user)) -> dict:
     if budget_view(task_id) is not None:
         try:
-            return extend_and_resume_budget(task_id, user_id, body or ResumeBudgetBody())
+            return extend_and_resume_budget(task_id, user_id, body or ResumeBudgetBody(), client_ip=request_ip(request))
         except BudgetResumeError as exc:
             raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     if body and (body.add_requests or body.add_cost_yuan or body.add_runtime_seconds):
         raise HTTPException(status_code=409, detail="旧任务未启用预算，不能追加")
+    from myink.models import User
+    from myink.guest_quota import resume_legacy
+    with new_session() as identity_db:
+        guest = identity_db.get(User, uuid.UUID(user_id)).is_guest
+    if guest:
+        return resume_legacy(task_id, user_id, request_ip(request))
     with new_session() as db:
         task = db.get(Task, _task_uuid(task_id))
         if task is None:

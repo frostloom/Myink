@@ -87,7 +87,11 @@ it('clears secrets on logout and on a different owner while rejecting the previo
  await fireEvent.update(screen.getByLabelText('当前密码'),'private');await fireEvent.update(screen.getByLabelText('账号密码'),'password');await fireEvent.submit(screen.getByLabelText('账号密码').closest('form')!)
  session.value={...session.value!,userId:'b',token:'other'};await flushPromises();finish({secret:'OTHER-OWNER',otpauth_uri:'otpauth://old'});await flushPromises()
  expect(screen.queryByText('OTHER-OWNER')).toBeNull();expect((screen.getByLabelText('当前密码') as HTMLInputElement).value).toBe('')
+ const owner = session.value
  await fireEvent.update(screen.getByLabelText('当前密码'),'new-private');session.value=null;status.value='anonymous';await flushPromises()
+ expect(screen.queryByLabelText('当前密码')).toBeNull()
+ expect(screen.getByRole('link',{name:'注册账号'})).toBeTruthy()
+ session.value=owner;status.value='authenticated';await flushPromises()
  expect((screen.getByLabelText('当前密码') as HTMLInputElement).value).toBe('')
 })
 it('keeps environment save busy through renewal and applies its successful response',async()=>{

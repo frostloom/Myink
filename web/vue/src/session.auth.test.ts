@@ -137,3 +137,15 @@ it('preserves a newly stored account when an older validation returns unauthoriz
   const removal = vi.spyOn(Storage.prototype, 'removeItem'); finish(new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 })); await pending
   expect(s.session.value?.userId).toBe('b'); expect(getSession()?.userId).toBe('b'); expect(removal).not.toHaveBeenCalledWith(SESSION_STORAGE_KEY)
 })
+it('ends an ordinary account when renewal is rejected without falling back to guest recovery', async () => {
+  setSession(stored('a', 'token-a', Date.now() + 60000))
+  const paths: string[] = []
+  vi.stubGlobal('fetch', async (path: string) => {
+    paths.push(path)
+    return paths.length === 1 ? response(auth()) : new Response(JSON.stringify({error:'INVALID_CREDENTIALS'}), {status:401})
+  })
+  const s = await scope()
+  document.dispatchEvent(new Event('visibilitychange'))
+  await vi.waitFor(() => expect(s.status.value).toBe('anonymous'))
+  expect(paths).toEqual(['/api/v1/auth/session','/api/v1/auth/session'])
+})

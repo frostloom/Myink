@@ -2,6 +2,7 @@
 import { useMemoryFormGuard } from "../composables/useMemoryFormGuard";
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
+import LoginPage from './LoginPage.vue';
 import AdminRail from '../components/AdminRail.vue';
 import ProjectRail from '../components/ProjectRail.vue';
 import { useAuth } from '../authContext';
@@ -18,7 +19,7 @@ const router = useRouter();
 const projects = ref<Project[]>([]);
 const currentPassword = ref(''), newPassword = ref(''), confirmPassword = ref(''), error = ref<string | null>(null), busy = ref(false);
 const isAdmin = computed(() => status.value === 'authenticated' && session.value?.role === 'admin' && session.value.roleVerified === true);
-const guest = computed(() => status.value !== 'authenticated');
+const guest = computed(() => status.value !== 'authenticated' || session.value?.isGuest === true);
 const mfaEnabled = ref<boolean | null>(null), enrolling = ref(false), mfaSecret = ref(''), mfaUri = ref(''), mfaPassword = ref(''), mfaCode = ref(''), mfaError = ref<string | null>(null), mfaBusy = ref(false);
 let generation = 0;
 useMemoryFormGuard(() => !guest.value && Boolean(currentPassword.value || newPassword.value || confirmPassword.value || mfaPassword.value || mfaCode.value || enrolling.value), { recovering: () => guest.value });
@@ -165,13 +166,21 @@ async function mfaAction(action: 'enroll' | 'confirm' | 'disable') {
 }
 </script>
 <template>
- <div :class="shell.wrap">
+ <div :class="[shell.wrap, guest && 'guest-account']">
 <AdminRail v-if="isAdmin" /><ProjectRail v-else :projects="projects" />
  <main :class="shell.main">
-<div :class="shell.inner">
+<div :class="[shell.inner, guest && 'guest-account-inner']">
+<section v-if="guest" class="panel guest-registration" data-guest-exempt aria-labelledby="guest-register-title">
+<h1 id="guest-register-title">注册账号</h1>
+<p :class="shell.hint">{{ session?.isGuest ? '设置登录信息，保留当前作品、对话与设置。' : '创建账号，开始写作并保存作品。' }}</p>
+<LoginPage v-if="session?.isGuest" upgrade />
+<RouterLink v-else to="/login?mode=register" class="btn btn-primary">注册账号</RouterLink>
+<div class="guest-login"><RouterLink to="/login">登录已有账号</RouterLink><p v-if="session?.isGuest" :class="shell.hint">游客作品不会合并到已有账号。</p></div>
+</section>
+<template v-else>
 <header :class="shell.header"><div><h1>账号</h1><p :class="shell.hint">查看当前账号并更新登录密码。</p></div></header>
  <div :class="styles.grid">
-  <section :class="['panel',styles.card]" aria-labelledby="current-account"><h2 id="current-account">当前账号</h2><dl :class="styles.account"><div><dt>用户名</dt><dd>{{ guest?'未登录':session?.username }}</dd></div><div><dt>账号级别</dt><dd>{{ guest?'—':tierLabel(session?.tier??'normal') }}</dd></div><div><dt>账号角色</dt><dd>{{ guest?'—':roleLabel(session?.role??'user') }}</dd></div></dl></section>
+  <section :class="['panel',styles.card]" aria-labelledby="current-account"><h2 id="current-account">当前账号</h2><dl :class="styles.account"><div><dt>用户名</dt><dd>{{ guest?'未登录':session?.isGuest?'游客体验':session?.username }}</dd></div><div><dt>账号级别</dt><dd>{{ guest?'—':tierLabel(session?.tier??'normal') }}</dd></div><div><dt>账号角色</dt><dd>{{ guest?'—':roleLabel(session?.role??'user') }}</dd></div></dl></section>
   <section :class="['panel',styles.card]" aria-labelledby="change-password">
 <h2 id="change-password">修改密码</h2><p :class="shell.hint">修改成功后，该账号在所有浏览器中的登录都会失效，需要重新登录。</p><form :class="styles.form" @submit.prevent="submit">
    <label :class="styles.field"><span>当前密码</span><input v-model="currentPassword" class="input" type="password" autocomplete="current-password" /></label>
@@ -195,7 +204,20 @@ async function mfaAction(action: 'enroll' | 'confirm' | 'disable') {
   </section>
   <section :class="['panel',styles.card,styles.wide]" aria-labelledby="password-help"><h2 id="password-help">忘记密码</h2><p :class="shell.hint">本地部署不提供邮件找回。请联系本机管理员，通过 Myink 管理命令为账号重设密码。</p></section>
  </div>
+</template>
 </div>
 </main>
 </div>
 </template>
+
+<style scoped>
+.guest-account { min-width: 0; }
+.guest-account-inner { max-width: 560px; margin: 0 auto; padding: 46px 24px; }
+.guest-registration { display: flex; flex-direction: column; gap: var(--space-4); padding: 28px; }
+.guest-registration h1 { margin: 0; font-size: var(--text-title); }
+.guest-login { display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--text-small); }
+@media (max-width: 640px) {
+  .guest-account-inner { padding: 24px 16px; }
+  .guest-registration { padding: 20px; }
+}
+</style>

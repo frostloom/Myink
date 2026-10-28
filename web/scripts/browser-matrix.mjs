@@ -20,6 +20,7 @@ for (const browser of ['chromium', 'firefox', 'webkit']) {
     ['release', 'scripts/release-safety-browser.mjs', []],
     ['admin-feedback', 'scripts/admin-feedback-browser.mjs', []],
     ['resource-feedback', 'scripts/resource-feedback-browser.mjs', []],
+    ['guest', 'scripts/guest-browser.mjs', []],
   ]) {
     const target = path.join(directory, stage)
     const result = spawnSync(process.execPath, [script, ...extra, '--output', target], {

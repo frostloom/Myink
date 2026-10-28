@@ -13,8 +13,8 @@ from myink.models.platform import PlatformConfiguration
 from myink.api.routes_settings import ModelConnectionBody
 from myink.user_defaults import UserDefaults, merge_defaults, platform_defaults
 
-USER_ROLES = frozenset({'writer', 'planner'})
 PLATFORM_ROLES = frozenset({'writer', 'planner', 'extract', 'validator_l2', 'audit', 'summarize'})
+USER_ROLES = PLATFORM_ROLES
 
 
 class PlatformConnectionBody(ModelConnectionBody):
@@ -216,7 +216,7 @@ def clean_user_routes(routes, config=None):
 
 def validate_user_routes(routes):
     if clean_user_routes(routes) != routes:
-        raise HTTPException(400, 'Select a published model for writer or planner')
+        raise HTTPException(400, 'Select a published model for a supported workflow role')
 
 
 def resolve_connection(role, selections=None, config=None):

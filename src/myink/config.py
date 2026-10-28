@@ -26,6 +26,8 @@ _DEV_JWT_SECRET = "dev-jwt-secret-change-me"
 @dataclass(frozen=True)
 class Settings:
     app_env: str = field(default_factory=lambda: _env("APP_ENV", "dev") or "dev")
+    # 与 Caddy 共用；只有明确的 loopback HTTP 站点允许非 Secure 游客 cookie。
+    site_address: str = field(default_factory=lambda: _env("SITE_ADDRESS", "http://localhost") or "")
     # 应用连接角色：非超级、NOBYPASSRLS（§14.1 坑：超级用户永远绕过 RLS）
     database_url: str = field(
         default_factory=lambda: _env(

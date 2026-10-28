@@ -15,6 +15,11 @@ export const GATE_CODES: Record<string, string> = {
 
 const ERROR_CODES: Record<string, string> = {
   ...GATE_CODES,
+  GUEST_QUOTA_EXHAUSTED: '游客体验额度已用完，注册账号获取更多写作额度',
+  GUEST_IP_UNAVAILABLE: '暂时无法确认体验网络，请稍后重试',
+  GUEST_QUOTA_UNAVAILABLE: '体验额度暂时无法读取，请稍后重试',
+  GUEST_RECOVERY_INVALID: '游客身份无法恢复，请重新选择游客体验',
+  GUEST_REQUIRED: '当前账号无需游客体验额度',
   PLATFORM_NOT_READY: '平台创作服务暂不可用，请稍后重试或联系管理员',
   enqueue_failed: '写作任务没能进入队列，请稍后重试',
   network_error: '网络连接失败，请检查网络后重试',
@@ -81,6 +86,7 @@ export function formatErrorText(
   fallback = '请求失败，请重试',
 ): string {
   const raw = (code ?? '').trim()
+  if (raw.includes('GUEST_QUOTA_EXHAUSTED')) return ERROR_CODES.GUEST_QUOTA_EXHAUSTED!
   if (/authentication fails|authentication_error|api[ _-]?key|模型密钥|模型连接配置无效|未能连接模型服务|invalid_request_error|error code:\s*40[123]|模型服务返回 HTTP 40[123]/i.test(raw)) {
     return '平台创作服务暂不可用，请稍后重试或联系管理员'
   }

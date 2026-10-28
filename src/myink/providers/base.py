@@ -85,6 +85,8 @@ class ModelResponse:
     prices: dict[str, float] | None = None
     budget_replayed: bool = False
     usage_complete: bool = True
+    # Private continuation state, retained for budget replay, never public prose.
+    provider_context: dict | None = field(default=None, repr=False)
 
     @property
     def cost_est(self) -> float:
@@ -93,6 +95,12 @@ class ModelResponse:
             self.model_id, self.input_tokens, self.output_tokens, self.cache_hit,
             prices=self.prices,
         )
+
+
+def public_messages(messages: list[dict]) -> list[dict]:
+    """Remove private protocol state before diagnostics or another provider."""
+    return [{key: value for key, value in message.items() if key != "_provider_context"}
+            for message in messages]
 
 
 class ModelProvider(ABC):
@@ -163,7 +171,8 @@ class FallbackChain:
         for i, (provider, model_id) in enumerate(zip(self.providers, self.chain, strict=True)):
             try:
                 resp = provider.generate(
-                    messages, model_id=model_id, max_tokens=max_tokens,
+                    messages if provider.name() == "anthropic" else public_messages(messages),
+                    model_id=model_id, max_tokens=max_tokens,
                     temperature=temperature, json_mode=json_mode, tools=tools,
                     disable_thinking=disable_thinking,
                 )
@@ -190,7 +199,8 @@ class FallbackChain:
                 on_reset()
             try:
                 resp = provider.generate_stream(
-                    messages, model_id=model_id, on_delta=on_delta, on_reset=on_reset,
+                    messages if provider.name() == "anthropic" else public_messages(messages),
+                    model_id=model_id, on_delta=on_delta, on_reset=on_reset,
                     max_tokens=max_tokens, temperature=temperature,
                     json_mode=json_mode, tools=tools, disable_thinking=disable_thinking,
                 )

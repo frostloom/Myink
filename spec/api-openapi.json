@@ -2235,6 +2235,11 @@
             "title": "Expires In",
             "type": "integer"
           },
+          "is_guest": {
+            "default": false,
+            "title": "Is Guest",
+            "type": "boolean"
+          },
           "role": {
             "title": "Role",
             "type": "string"
@@ -2272,6 +2277,11 @@
           "expires_in": {
             "title": "Expires In",
             "type": "integer"
+          },
+          "is_guest": {
+            "default": false,
+            "title": "Is Guest",
+            "type": "boolean"
           },
           "role": {
             "title": "Role",
@@ -4513,6 +4523,45 @@
           "type"
         ],
         "title": "GraphNodeOut",
+        "type": "object"
+      },
+      "GuestQuotaDimensionOut": {
+        "properties": {
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "remaining": {
+            "title": "Remaining",
+            "type": "integer"
+          },
+          "used": {
+            "title": "Used",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit",
+          "used",
+          "remaining"
+        ],
+        "title": "GuestQuotaDimensionOut",
+        "type": "object"
+      },
+      "GuestQuotaOut": {
+        "properties": {
+          "long": {
+            "$ref": "#/components/schemas/GuestQuotaDimensionOut"
+          },
+          "short": {
+            "$ref": "#/components/schemas/GuestQuotaDimensionOut"
+          }
+        },
+        "required": [
+          "short",
+          "long"
+        ],
+        "title": "GuestQuotaOut",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -7500,6 +7549,17 @@
         "title": "WritingLessonOut",
         "type": "object"
       },
+      "_GuestRequest": {
+        "properties": {
+          "restore_only": {
+            "default": false,
+            "title": "Restore Only",
+            "type": "boolean"
+          }
+        },
+        "title": "_GuestRequest",
+        "type": "object"
+      },
       "_MfaEnrollRequest": {
         "properties": {
           "password": {
@@ -9722,6 +9782,73 @@
         ]
       }
     },
+    "/api/v1/auth/guest": {
+      "post": {
+        "operationId": "guest_session_api_v1_auth_guest_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/_GuestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Guest Session",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/guest/quota": {
+      "get": {
+        "operationId": "guest_quota_api_v1_auth_guest_quota_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuestQuotaOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Guest Quota",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/logout": {
       "post": {
         "operationId": "logout_api_v1_auth_logout_post",
@@ -10039,6 +10166,12 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {}
+        ],
         "summary": "Register",
         "tags": [
           "auth"

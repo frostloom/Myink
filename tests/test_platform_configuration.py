@@ -35,7 +35,8 @@ def test_platform_configuration_encrypts_preserves_and_conflicts(monkeypatch):
     assert exc.value.status_code == 409
 
 
-def test_platform_hidden_and_disabled_selection_policy(monkeypatch):
+@pytest.mark.parametrize('role', ['writer', 'planner', 'extract', 'validator_l2', 'audit', 'summarize'])
+def test_platform_hidden_and_disabled_selection_policy(monkeypatch, role):
     from myink import platform_configuration as pc
     config = {'version': 1, 'connections': {
         'published': {'name': 'Public', 'enabled': True, 'user_visible': True},
@@ -45,12 +46,12 @@ def test_platform_hidden_and_disabled_selection_policy(monkeypatch):
     monkeypatch.setattr(pc, 'load_configuration', lambda: config)
     assert pc.catalog() == {'models': [{'id': 'custom:published', 'name': 'Public'}], 'model_routes': {}}
     for selected in ('custom:internal', 'custom:disabled', 'custom:deleted'):
-        assert pc.resolve_connection('writer', {'writer': selected}) == config['connections']['internal']
+        assert pc.resolve_connection(role, {role: selected}) == config['connections']['internal']
         with pytest.raises(HTTPException):
-            pc.validate_user_routes({'writer': selected})
-    assert pc.resolve_connection('writer', {'writer': 'custom:published'}) == config['connections']['published']
+            pc.validate_user_routes({role: selected})
+    assert pc.resolve_connection(role, {role: 'custom:published'}) == config['connections']['published']
     with pytest.raises(HTTPException):
-        pc.validate_user_routes({'extract': 'custom:published'})
+        pc.validate_user_routes({'unsupported': 'custom:published'})
 
 
 def test_writer_cannot_write_connections_even_empty(monkeypatch):
@@ -269,7 +270,7 @@ def test_short_commit_uses_published_snapshot_on_creation_and_retry(monkeypatch,
     card.update(genre=genre, working_title='Short book', chapter_count=3, chars_per_chapter=1000)
     session = SimpleNamespace(status='active', card=card, book_id=None)
     project = SimpleNamespace(id=pid)
-    user = SimpleNamespace(role='user', platform_short_used=0)
+    user = SimpleNamespace(role='user', is_guest=False, platform_short_used=0)
     config = pc.empty_configuration()
     config['genre_packs'] = {'xiuxian': {'pacing': 'Published pacing'}}
     monkeypatch.setattr(pc, 'load_configuration', lambda: config)

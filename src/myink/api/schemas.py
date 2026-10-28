@@ -20,6 +20,7 @@ from myink.task_budget import TaskBudgetLimits
 
 
 class AuthResponse(BaseModel):
+    is_guest: bool = False
     token: str
     user_id: str
     username: str
@@ -28,7 +29,19 @@ class AuthResponse(BaseModel):
     expires_in: int
 
 
+class GuestQuotaDimensionOut(BaseModel):
+    limit: int
+    used: int
+    remaining: int
+
+
+class GuestQuotaOut(BaseModel):
+    short: GuestQuotaDimensionOut
+    long: GuestQuotaDimensionOut
+
+
 class AuthSessionOut(BaseModel):
+    is_guest: bool = False
     user_id: str
     username: str
     tier: str

@@ -604,3 +604,21 @@ def ensure_personal_resource_sources() -> None:
         conn.execute(text("ALTER TABLE project_writing_resources ADD COLUMN IF NOT EXISTS configured BOOLEAN NOT NULL DEFAULT TRUE"))
         conn.execute(text("ALTER TABLE project_writing_resources ADD COLUMN IF NOT EXISTS automatic_initialized BOOLEAN NOT NULL DEFAULT FALSE"))
         conn.execute(text("ALTER TABLE project_writing_resources ADD COLUMN IF NOT EXISTS defaults_initialized BOOLEAN NOT NULL DEFAULT FALSE"))
+
+
+def ensure_guest_identity() -> None:
+    """Add guest classification safely: every existing account remains permanent."""
+    from myink.models.guest import GuestIdentity
+
+    with get_admin_engine().begin() as conn:
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_guest "
+                          "BOOLEAN NOT NULL DEFAULT false"))
+        GuestIdentity.__table__.create(conn, checkfirst=True)
+
+
+def ensure_guest_quota() -> None:
+    """Add lifetime counters/receipts without resetting any pre-existing use."""
+    from myink.models.guest import GuestQuotaBucket, GuestQuotaOperation, GuestBodyAttempt
+    with get_admin_engine().begin() as conn:
+        for model in (GuestQuotaBucket, GuestQuotaOperation, GuestBodyAttempt):
+            model.__table__.create(conn, checkfirst=True)

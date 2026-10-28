@@ -124,3 +124,24 @@ def format_provider_error(exc: Exception, *, api_key: str, self_host_url: str = 
     if api_key:
         text = text.replace(api_key, "***")
     return text[:300]
+
+
+def raise_for_status_with_detail(response: httpx.Response, *, iter_chunks) -> None:
+    """Read at most 8 KiB of an HTTP error while still inside the stream context.
+
+    The caller supplies budget-aware iteration. Budget interruptions propagate;
+    transport errors while reading diagnostics must not replace the HTTP status.
+    """
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        body = bytearray()
+        try:
+            for chunk in iter_chunks():
+                body.extend(chunk[:8192 - len(body)])
+                if len(body) >= 8192:
+                    break
+        except httpx.RequestError:
+            pass
+        exc.response = httpx.Response(response.status_code, content=bytes(body), request=response.request)
+        raise

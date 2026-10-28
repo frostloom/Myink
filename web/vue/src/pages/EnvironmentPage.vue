@@ -12,6 +12,15 @@ import styles from '../../../src/pages/SettingsPage.module.css';
 const MODEL_ROLES = [
     { key: 'planner', label: '规划（planner）' },
     { key: 'writer', label: '写作（writer）' },
+    { key: 'extract', label: '抽取（extract）' },
+    { key: 'validator_l2', label: '语义校验（validator_l2）' },
+    { key: 'audit', label: '审核（audit）' },
+    { key: 'summarize', label: '摘要（summarize）' },
+];
+const ROLE_GROUPS = [
+    { title: '构思与写作', roles: MODEL_ROLES.slice(0, 2) },
+    { title: '检查与审核', roles: MODEL_ROLES.slice(3, 5) },
+    { title: '故事记忆', roles: [MODEL_ROLES[2], MODEL_ROLES[5]] },
 ];
 const EMPTY_ROUTE = { value: '', label: '跟随平台默认' };
 const DEFAULT_BUDGET: TaskBudgetLimits = { max_requests: 100, max_cost_yuan: 5, max_runtime_seconds: 1800 };
@@ -168,7 +177,7 @@ function overrideText(path: string) { return overriddenFields.value === undefine
  <section :class="['panel',styles.section]">
 <h2 :class="styles.sectionTitle">模型偏好</h2><p :class="styles.hint">选择管理员发布的模型；未指定时使用平台默认配置。保存仅更新已修改的字段。</p><p v-if="!loading && !availableModels.length" class="empty">暂无已发布模型，将使用平台默认配置。</p>
  <div><label :class="styles.routeRow"><span :class="styles.routeLabel">思考模式</span><select class="input" :disabled="disabled" :value="thinkingEnabled?'1':'0'" @change="thinkingEnabled=($event.target as HTMLSelectElement).value==='1'"><option value="0">关闭</option><option value="1">开启</option></select></label><div :class="styles.preferenceStatus"><span>{{ overrideText('thinking_enabled') }}</span><button type="button" class="btn btn-quiet" :disabled="disabled || overriddenFields?.includes('thinking_enabled')===false" @click="resetPreference('thinking_enabled')">恢复思考模式默认值</button></div></div>
- <div :class="styles.routeList"><div v-for="role in MODEL_ROLES" :key="role.key"><label :class="styles.routeRow"><span :class="styles.routeLabel">{{ role.label }}</span><select v-model="routeSel[role.key]" class="input" :disabled="disabled"><option value="">{{ EMPTY_ROUTE.label }}</option><option v-for="model in availableModels" :key="model.id" :value="model.id">{{ model.name }}</option></select></label><div :class="styles.preferenceStatus"><span>{{ overrideText(`model_routes.${role.key}`) }}</span><button type="button" class="btn btn-quiet" :disabled="disabled || overriddenFields?.includes(`model_routes.${role.key}`)===false" @click="resetPreference(`model_routes.${role.key}`)">恢复{{ role.label }}默认值</button></div></div></div>
+ <div :class="styles.roleGroups"><section v-for="group in ROLE_GROUPS" :key="group.title" :class="styles.roleGroup"><h3>{{ group.title }}</h3><div v-for="role in group.roles" :key="role.key" :class="styles.rolePreference"><label :class="styles.routeRow"><span :class="styles.routeLabel">{{ role.label }}</span><select v-model="routeSel[role.key]" class="input" :disabled="disabled"><option value="">{{ EMPTY_ROUTE.label }}</option><option v-for="model in availableModels" :key="model.id" :value="model.id">{{ model.name }}</option></select></label><div :class="styles.preferenceStatus"><span>{{ overrideText(`model_routes.${role.key}`) }}</span><button type="button" class="btn btn-quiet" :disabled="disabled || overriddenFields?.includes(`model_routes.${role.key}`)===false" @click="resetPreference(`model_routes.${role.key}`)">恢复{{ role.label }}默认值</button></div></div></section></div>
  <div :class="styles.saveRow"><button type="button" class="btn btn-primary" :disabled="disabled" @click="saveRoutes">{{ busy==='routes'?'保存中…':'保存模型偏好' }}</button></div>
 </section>
  <section :class="['panel',styles.section]"><h2 :class="styles.sectionTitle">任务总预算</h2><p :class="styles.hint">每次 Agent 任务共用预算，批次的所有章节累计计算。0 表示不限；修改只影响新任务，仍受平台配额和权限限制。</p><div v-for="[key,label] in BUDGET_FIELDS" :key="key"><label :class="styles.field"><span>{{ label }}</span><input v-model.number="taskBudget[key]" class="input" type="number" min="0" :step="key==='max_cost_yuan'?'0.000001':'1'" :disabled="disabled" /></label><div :class="styles.preferenceStatus"><span>{{ overrideText(`task_budget.${key}`) }}</span><button type="button" class="btn btn-quiet" :disabled="disabled || overriddenFields?.includes(`task_budget.${key}`)===false" @click="resetPreference(`task_budget.${key}`)">恢复{{ label }}默认值</button></div></div><button type="button" class="btn" :disabled="disabled" @click="saveBudget">保存任务预算</button><p v-if="budgetMessage" :role="budgetMessage.tone==='error'?'alert':'status'">{{ budgetMessage.text }}</p></section>

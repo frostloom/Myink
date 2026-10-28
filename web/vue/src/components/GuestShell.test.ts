@@ -1,13 +1,15 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import { authKey } from '../authContext'
+import { createSessionScope } from '../session'
 import GuestShell from './GuestShell.vue'
 afterEach(cleanup)
 it('blocks actions and submits, allows rail navigation and registration', async () => {
   const action = vi.fn()
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:pathMatch(.*)*', component: { template: '<div />' } }] })
   await router.push('/long')
-  render(GuestShell, { slots: { default: { template: '<form @submit.prevent="action"><button @click="action">生成</button><input aria-label="内容" /><a data-guest-exempt href="#nav">导航</a></form>', setup: () => ({ action }) } }, global: { plugins: [router] } })
+  render(GuestShell, { slots: { default: { template: '<form @submit.prevent="action"><button @click="action">生成</button><input aria-label="内容" /><a data-guest-exempt href="#nav">导航</a></form>', setup: () => ({ action }) } }, global: { plugins: [router], provide: { [authKey as symbol]: createSessionScope() } } })
   await fireEvent.click(screen.getByRole('button', { name: '生成' }))
   expect(action).not.toHaveBeenCalled()
   expect(screen.getByRole('dialog')).toBeTruthy()

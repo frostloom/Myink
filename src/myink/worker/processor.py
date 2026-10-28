@@ -556,6 +556,10 @@ def process(body: dict, worker_id: str | None = None) -> str:
     if not valid_task_owner(body):
         logger.warning("拒绝任务归属不匹配的消息: %s", body.get("task_id"))
         return "skip"
+    from myink.guest_quota import valid_message
+    if not valid_message(body):
+        logger.warning("拒绝缺少有效游客占额的消息: %s", body.get("task_id"))
+        return "skip"
     r = get_redis()
     task_id = body["task_id"]
     task_type = body["task_type"]
@@ -590,7 +594,10 @@ def process(body: dict, worker_id: str | None = None) -> str:
         with new_session() as db:
             row = db.get(Task, uuid.UUID(task_id))
             operation = (row.payload or {}).get("_budget_resume_operation") if row else None
-            if (operation and body.get("budget_operation_id") != operation
+            guest_operation = (row.payload or {}).get("_guest_resume_operation") if row else None
+            if (guest_operation and (body.get("payload") or {}).get("_guest_resume_operation") != guest_operation):
+                decision = "waiting" if row.status in {"queued", "running"} else "skip"
+            elif (operation and body.get("budget_operation_id") != operation
                     and task_type != "chapter_plan_resume"):
                 decision = "waiting" if row.status in {"queued", "running"} else "skip"
                 logger.info("跳过旧预算续跑消息: %s", task_id)

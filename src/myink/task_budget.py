@@ -412,6 +412,11 @@ def budgeted_call(function):
             raise TaskBudgetUnavailable("saved result storage unavailable") from exc
         if cached is not None:
             return cached
+        from myink.guest_quota import record_body_attempt
+        try:
+            record_body_attempt(scope.task_id, operation)
+        except Exception as exc:
+            raise TaskBudgetUnavailable(f"guest body accounting unavailable: {exc}") from exc
         token = _PRICES.set(chain.prices)
         try:
             response = function(chain, messages, **kwargs)
@@ -723,7 +728,7 @@ def _require_resume_room(row, limits, body):
         raise BudgetResumeError("TASK_BUDGET_EXHAUSTED: 剩余费用不足，请追加费用后继续")
 
 
-def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
+def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody, *, client_ip=None) -> dict:
     """Append limits once, then publish once; unknown delivery never refunds limits."""
     from myink.worker import amqp
     import pika
@@ -752,6 +757,12 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
             require_operation_ready(task.task_type, user_id)
         else:
             adding = bool(body.add_requests or body.add_cost_yuan or body.add_runtime_seconds)
+            queued_operation = (task.payload or {}).get("_budget_resume_operation")
+            if task.status == "queued" and not adding and queued_operation:
+                queued_receipt = _extension(db, task_id, "extension:" + queued_operation)
+                if queued_receipt and queued_receipt.response.get("publication") in {"sending", "published", "uncertain"}:
+                    return {"task_id":str(task_id), "status":"queued",
+                            "message":"续跑已受理；未重复追加或发布"}
             if task.status not in {"paused", "failed", "awaiting_review"} and not (
                 task.status == "queued" and not adding):
                 raise BudgetResumeError(f"当前状态不可追加或续跑: {task.status}")
@@ -776,6 +787,13 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
             db.add(receipt)
         if row.owner_token and (row.lease_until or 0) > time.time():
             raise BudgetResumeError("TASK_STILL_RUNNING: 正在保存进度，请稍后继续")
+        from myink.guest_quota import reserve_resume
+        previous = receipt.response or {}
+        guest_receipt, guest_charge = reserve_resume(db, task, user_id, client_ip, operation_id,
+                                                      retry_charge=previous.get("guest_charge"))
+        previous_status = previous.get("previous_status", task.status)
+        if guest_receipt:
+            task.payload = {**(task.payload or {}), "_guest_operation": guest_receipt}
         row.pause_reason = None
         task.status = "queued"
         task.error = None
@@ -786,7 +804,8 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
                    "user_id":str(row.user_id), "payload":dict(task.payload),
                    "trace_id":task.trace_id or str(task_id), "request_id":operation_id,
                    "budget_operation_id":operation_id, "retry_count":0, "created_at":""}
-        receipt.response = {"params":params, "publication":"sending", "message":message}
+        receipt.response = {"params":params, "publication":"sending", "message":message,
+                            "guest_charge":guest_charge,"previous_status":previous_status}
 
     try:
         amqp.publish_once(json.dumps(message, ensure_ascii=False), amqp.KEY_TASKS)
@@ -798,9 +817,12 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
             _locked(db, task_id)
             receipt = _extension(db, task_id, key)
             receipt.response = {**receipt.response, "publication":"nack" if definite else "uncertain"}
+            if definite and guest_receipt:
+                from myink.guest_quota import release_in_session
+                release_in_session(db, guest_receipt)
             if definite and task.status == "queued" and (task.payload or {}).get("_budget_resume_operation") == operation_id:
-                task.status = "paused"
-                task.error = "续跑投递被明确拒绝；额度已保留，可使用同一操作重试"
+                task.status = previous_status if guest_receipt else "paused"
+                task.error = "续跑投递被明确拒绝；预算已保留，可使用同一操作重试"
         raise BudgetResumeError("BUDGET_PUBLISH_REJECTED: 使用同一操作重试" if definite else
                                "BUDGET_PUBLISH_UNCERTAIN: 预算已保留，请刷新任务状态", 503) from exc
     with _ledger(task_id) as db:

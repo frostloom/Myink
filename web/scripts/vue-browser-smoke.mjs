@@ -60,7 +60,7 @@ const server = http.createServer(async (req, res) => {
     } else if (req.headers.authorization !== `Bearer ${token}`) { status = 401; body = { error: 'unauthorized' } }
     else if (url.pathname === '/api/v1/auth/session' && req.method === 'GET') body = identity
     else if (url.pathname === '/api/v1/projects' && req.method === 'GET') body = books
-    else if (url.pathname === '/api/v1/environment') body = { model_routes: {}, model_connections: [], thinking_enabled: false, rankings: { enabled: true, timeout: 10, limit: 10 } }
+    else if (url.pathname === '/api/v1/environment') body = { model_routes: {}, model_connections: [], available_models: [{ id: 'custom:published', name: '已发布模型' }], overridden_fields: [], thinking_enabled: false, rankings: { enabled: true, timeout: 10, limit: 10 } }
     else if (url.pathname === '/api/v1/style-library') body = { items: [] }
     else if (url.pathname === '/api/v1/short/creation') body = { session: { id: 's1', status: 'active', card: {}, style_item_id: null, style_name: null, book_id: null }, messages: [{ id: 1, role: 'assistant', content: '想写个什么样的短篇？', card: null, model_id: null, cost_est: 0, error: null, created_at: '2026-01-01T00:00:00Z' }], sessions: [], ready: false }
     else if (url.pathname === '/api/v1/admin/overview') body = { user_count: 1, project_count: 4, chapter_count: 3, task_count: 0, metrics: { run_count: 0, input_tokens: 0, output_tokens: 0, cost_est: 0, duration_ms: 0 }, task_status_counts: {} }
@@ -171,6 +171,28 @@ try {
   }
   await discardEdits(() => page.goto(origin + '/environment'))
   await page.getByRole('button', { name: '展开高级设置', exact: true }).click()
+  for (const label of ['规划（planner）', '写作（writer）', '抽取（extract）', '语义校验（validator_l2）', '审核（audit）', '摘要（summarize）']) {
+    // Wrapped label text also includes its option text in Playwright getByLabel.
+    // Match the exact visible role caption, then its associated nested select.
+    const select = page.locator('#advanced-preferences label').filter({ has: page.getByText(label, { exact: true }) }).locator('select')
+    // Wait for Vue's expanded panel and async published model load.
+    await select.waitFor({ state: 'visible' })
+    await select.locator('option[value="custom:published"]').waitFor({ state: 'attached' })
+    assert.deepEqual(await select.locator('option').evaluateAll(options => options.map(option => ({ value: option.value, label: option.textContent }))), [
+      { value: '', label: '跟随平台默认' },
+      { value: 'custom:published', label: '已发布模型' },
+    ])
+    await select.selectOption('custom:published')
+    assert.equal(await select.inputValue(), 'custom:published')
+  }
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 960 })
+    const bounds = await page.locator('body').evaluate(el => ({ scroll: el.scrollWidth, viewport: window.innerWidth }))
+    assert.ok(bounds.scroll <= bounds.viewport + 1, JSON.stringify(bounds))
+    await page.screenshot({ path: path.join(out, `vue-environment-${width}.png`), fullPage: true })
+  }
+  await page.setViewportSize({ width: 1440, height: 960 })
+  receipt.checks.push('environment_six_published_roles_desktop_mobile')
   await page.getByLabel('扫榜超时', { exact: true }).fill('8')
   validation = page.waitForResponse(response => response.url().endsWith('/api/v1/auth/session'))
   await page.evaluate(() => window.dispatchEvent(new StorageEvent('storage', { key: 'myink.session' })))

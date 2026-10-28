@@ -138,7 +138,7 @@ class PublishNotSent(Exception):
     """The resume message definitely did not reach the queue."""
 
 
-def publish_once(body: str, routing_key: str) -> None:
+def publish_once(body: str, routing_key: str, priority: int = 0) -> None:
     """No implicit retry after a lost confirm; bounded and mandatory delivery."""
     connection = None
     try:
@@ -157,7 +157,7 @@ def publish_once(body: str, routing_key: str) -> None:
             raise PublishNotSent("续跑队列连接未建立") from exc
         try:
             channel.basic_publish(exchange=exchange(), routing_key=routing_key, body=body,
-                                  properties=pika.BasicProperties(delivery_mode=2), mandatory=True)
+                                  properties=pika.BasicProperties(delivery_mode=2, priority=priority), mandatory=True)
         except (pika.exceptions.NackError, pika.exceptions.UnroutableError) as exc:
             raise PublishNotSent("续跑投递被拒绝") from exc
     finally:

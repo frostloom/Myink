@@ -290,3 +290,29 @@ it('retains a failed environment save and blocks route updates and unload until 
   confirm.mockReturnValue(true); await router.push('/other'); expect(router.currentRoute.value.path).toBe('/other')
   confirm.mockRestore()
 })
+
+it('offers all published workflow roles and preserves dirty role siblings through reset', async () => {
+  const available_models = [{ id: 'custom:published', name: '已发布模型' }]
+  vi.mocked(api.getEnvironment).mockResolvedValue({ ...emptyEnv, available_models,
+    model_routes: { extract: 'custom:published' }, overridden_fields: ['model_routes.extract'] })
+  vi.mocked(api.listProjects).mockResolvedValue([])
+  vi.mocked(api.updateEnvironment)
+    .mockResolvedValueOnce({ ...emptyEnv, available_models, overridden_fields: [] })
+    .mockResolvedValueOnce({ ...emptyEnv, available_models, model_routes: { audit: 'custom:published', summarize: 'custom:published' }, overridden_fields: ['model_routes.audit', 'model_routes.summarize'] })
+  await renderPage(); await expandAdvanced()
+  for (const label of ['规划（planner）', '写作（writer）', '抽取（extract）', '语义校验（validator_l2）', '审核（audit）', '摘要（summarize）']) {
+    expect(screen.getByLabelText(label).querySelectorAll('option')).toHaveLength(2)
+  }
+  expect((screen.getByLabelText('抽取（extract）') as HTMLSelectElement).value).toBe('custom:published')
+  await fireEvent.change(screen.getByLabelText('审核（audit）'), { target: { value: 'custom:published' } })
+  await fireEvent.change(screen.getByLabelText('摘要（summarize）'), { target: { value: 'custom:published' } })
+  await fireEvent.click(screen.getByRole('button', { name: '恢复抽取（extract）默认值' }))
+  await screen.findByText('已恢复平台默认')
+  expect((screen.getByLabelText('抽取（extract）') as HTMLSelectElement).value).toBe('')
+  expect((screen.getByLabelText('审核（audit）') as HTMLSelectElement).value).toBe('custom:published')
+  await fireEvent.click(screen.getByRole('button', { name: '保存模型偏好' }))
+  await screen.findByText('模型偏好已保存')
+  expect(vi.mocked(api.updateEnvironment).mock.calls.map(([body]) => body)).toEqual([
+    { reset_preferences: ['model_routes.extract'] }, { model_routes: { audit: 'custom:published', summarize: 'custom:published' } },
+  ])
+})

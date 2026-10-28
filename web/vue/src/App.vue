@@ -8,6 +8,8 @@ import { subscribeProjectLists } from '../../src/lib/projectListUpdates'
 import type { Project } from '../../src/types'
 import { authKey } from './authContext'
 import { createSessionScope } from './session'
+import GuestEntry from './components/GuestEntry.vue'
+import GuestQuota from './components/GuestQuota.vue'
 import GuestShell from './components/GuestShell.vue'
 import CanvasMedia from './components/CanvasMedia.vue'
 import FeedbackWidget from './components/FeedbackWidget.vue'
@@ -46,6 +48,7 @@ onScopeDispose(auth.dispose)
   <div class="candidate-app">
     <CanvasMedia v-if="video" v-bind="video" />
     <AppVersionGuard />
+    <GuestQuota />
     <ProjectRail v-if="status === 'authenticated' || status === 'anonymous'" :key="session?.userId ?? 'guest'" :visible="showProjectRail" :projects="navigationProjects" persistent />
     <AdminRail v-if="status === 'authenticated' || status === 'anonymous'" :key="session?.userId ?? 'guest'" :visible="showAdminRail" persistent />
     <RouteBoundary v-if="route.path === '/login'"><RouterView /></RouteBoundary>
@@ -55,7 +58,7 @@ onScopeDispose(auth.dispose)
       <button type="button" class="btn btn-secondary" @click="auth.logout">退出登录</button>
     </div>
     <GuestShell v-else-if="status === 'anonymous'">
-      <div v-if="projectRoute" class="empty" data-guest-exempt><p>未登录，无法打开作品。</p><RouterLink to="/login" class="btn btn-primary">登录</RouterLink></div>
+      <div v-if="projectRoute" class="empty" data-guest-exempt><p>未登录，无法打开作品。</p><RouterLink to="/login" class="btn btn-primary">登录</RouterLink><GuestEntry /></div>
       <RouteBoundary v-else><RouterView v-slot="{ Component }"><component :is="Component" username="未登录" :guest="true" /></RouterView></RouteBoundary>
       <p v-if="notice" role="status">{{ notice }}</p>
     </GuestShell>

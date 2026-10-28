@@ -51,7 +51,7 @@ it('preserves a valid same-owner credential from another tab after password succ
  const pending=scope.changePassword('old-password','new-password1')
  setSession({...stored,token:'valid-new'});await scope.revalidate();verify.mockClear()
  finish();await pending
- expect(verify).toHaveBeenCalledWith('valid-new',expect.any(AbortSignal))
+ expect(verify).toHaveBeenCalledWith('valid-new',expect.any(AbortSignal),false)
  expect(scope.session.value?.token).toBe('valid-new');expect(scope.status.value).toBe('authenticated')
 })
 

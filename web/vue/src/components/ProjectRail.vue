@@ -54,7 +54,7 @@ async function leave() { await (props.onLogout ? props.onLogout() : logout()); }
     <div :class="styles.foot">
       <RouterLink v-if="authenticated && session?.role === 'admin' && session.roleVerified === true" to="/admin" :class="styles.item" :active-class="styles.active"><span :class="styles.title">管理后台</span></RouterLink>
       <RouterLink to="/account" :class="styles.item" :active-class="styles.active"><span :class="styles.title">账号</span></RouterLink>
-      <div :class="styles.userRow"><span :class="styles.user">{{ authenticated ? session?.username : '未登录' }}</span><RouterLink v-if="!authenticated" to="/login" class="btn btn-quiet">登录</RouterLink><button v-else type="button" class="btn btn-quiet" @click="leave">登出</button></div>
+      <div :class="styles.userRow"><span :class="styles.user">{{ authenticated ? (session?.isGuest ? '游客' : session?.username) : '未登录' }}</span><RouterLink v-if="!authenticated" to="/login" class="btn btn-quiet">登录</RouterLink><button v-else type="button" class="btn btn-quiet" @click="leave">登出</button></div>
     </div>
   </aside>
   <Teleport v-else-if="projectId && $slots['resource-actions']" to="#project-rail-resource-actions"><slot name="resource-actions" /></Teleport>

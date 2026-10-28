@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import GuestEntry from '../components/GuestEntry.vue'
 import { useMemoryFormGuard } from "../composables/useMemoryFormGuard";
 import { onScopeDispose, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -8,11 +9,13 @@ import { formatApiError } from '../../../src/lib/apiError'
 import { isValidNewPassword, NEW_PASSWORD_VALIDATION_MESSAGE } from '../../../src/lib/passwordPolicy'
 import styles from '../../../src/pages/LoginPage.module.css'
 
+const props = defineProps<{ upgrade?: boolean }>()
+const emit = defineEmits<{ upgraded: [] }>()
 const auth = useAuth()
 const { notice } = auth
 const router = useRouter()
 const route = useRoute()
-const mode = ref<'login' | 'register'>(route.query.mode === 'register' ? 'register' : 'login')
+const mode = ref<'login' | 'register'>(props.upgrade || route.query.mode === 'register' ? 'register' : 'login')
 const username = ref('')
 const password = ref('')
 const confirmPassword = ref('')
@@ -48,6 +51,7 @@ function failure(err: unknown, fallback: string) {
     ? '无法连接服务，请检查网络后重试' : formatApiError(err, fallback)
 }
 function goHome() {
+  if (props.upgrade) { emit('upgraded'); return }
   const current = auth.session.value
   if (alive && auth.status.value === 'authenticated' && current?.roleVerified) {
     void permitNavigation(() => router.replace(current.role === 'admin' ? '/admin' : '/long'))
@@ -89,7 +93,7 @@ async function submitCode() {
 </script>
 
 <template>
-  <div :class="styles.wrap">
+  <div :class="upgrade ? 'guest-upgrade-form' : styles.wrap">
     <form v-if="mfaToken" :class="['panel', styles.card]" @submit.prevent="submitCode">
       <h1>输入验证码</h1>
       <label :class="styles.field"><span>验证码</span><input v-model="code" class="input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" :spellcheck="false" autofocus /></label>
@@ -98,8 +102,8 @@ async function submitCode() {
       <button class="btn btn-secondary" type="button" :disabled="busy" @click="back">返回</button>
     </form>
     <form v-else :class="['panel', styles.card]" @submit.prevent="submit">
-      <div><h1>Myink 作品工作台</h1><p :class="styles.sub">长篇网文多 Agent 创作助手</p></div>
-      <div :class="styles.tabs" role="tablist" aria-label="账号入口">
+      <div v-if="!upgrade"><h1>Myink 作品工作台</h1><p :class="styles.sub">长篇网文多 Agent 创作助手</p></div>
+      <div v-if="!upgrade" :class="styles.tabs" role="tablist" aria-label="账号入口">
         <button v-for="tab in (['login', 'register'] as const)" :key="tab" type="button" role="tab" :aria-selected="mode === tab" :class="mode === tab ? styles.tabActive : styles.tab" :disabled="busy" @click="switchMode(tab)">{{ tab === 'login' ? '登录' : '注册账号' }}</button>
       </div>
       <label :class="styles.field"><span>用户名</span><input v-model="username" class="input" autocomplete="username" autocapitalize="none" :spellcheck="false" autofocus /></label>
@@ -111,6 +115,11 @@ async function submitCode() {
       <div v-if="error" class="banner banner-error" role="alert">{{ error }}</div>
       <div v-else-if="notice" class="banner banner-warning" role="status">{{ notice }}</div>
       <button class="btn btn-primary" type="submit" :disabled="busy">{{ busy ? (mode === 'login' ? '登录中…' : '注册中…') : (mode === 'login' ? '登录' : '创建账号') }}</button>
+      <GuestEntry v-if="!upgrade" v-show="auth.status.value !== 'authenticated'" @entered="goHome" />
     </form>
   </div>
 </template>
+
+<style scoped>
+.guest-upgrade-form > form { width: 100%; max-width: none; border: 0; padding: 0; box-shadow: none; background: transparent; }
+</style>

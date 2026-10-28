@@ -16,6 +16,7 @@ from myink.api.routes_settings import (
 from myink.api.schemas import ConnectionTestOut, EnvironmentOut, ModelListOut
 from myink.environment import load_environment, load_raw, save_raw
 from myink.task_budget import TaskBudgetLimits
+from myink.platform_configuration import USER_ROLES
 from myink.providers import probe
 from myink.providers.connections import (
     pack_model_settings,
@@ -44,7 +45,7 @@ class EnvironmentBody(BaseModel):
     @field_validator('reset_preferences')
     @classmethod
     def validate_reset_paths(cls, paths):
-        supported = {'thinking_enabled', 'model_routes.writer', 'model_routes.planner'}
+        supported = {'thinking_enabled', *(f'model_routes.{role}' for role in USER_ROLES)}
         supported.update(f'task_budget.{key}' for key in TaskBudgetLimits.model_fields)
         supported.update(f'rankings.{key}' for key in RankingsBody.model_fields)
         if any(path not in supported for path in paths):
@@ -91,7 +92,7 @@ def put_environment(body: EnvironmentBody, user_id: str = Depends(require_user))
         if not body.model_routes:
             routes = {}
         for role, ref in body.model_routes.items():
-            if not ref and role in ('writer', 'planner'):
+            if not ref and role in USER_ROLES:
                 routes.pop(role, None)
             else:
                 routes[role] = ref

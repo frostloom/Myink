@@ -1,7 +1,7 @@
 """Explicit replan intent must survive API admission and worker dispatch."""
 from types import SimpleNamespace
 import pytest
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from myink.api import routes_tasks
 from myink.worker import processor
 
@@ -12,7 +12,8 @@ def test_api_enqueues_explicit_replan_without_changing_rewrite_admission(monkeyp
     monkeypatch.setattr(routes_tasks, "_platform_chapter_max", lambda *_: 0)
     monkeypatch.setattr(routes_tasks, "enqueue", lambda **kw: captured.update(kw) or {"task_id": "t"})
     routes_tasks.generate_chapter("p", "c", routes_tasks.ChapterGenerateBody(seq=1, rewrite=True, replan=True),
-                                 SimpleNamespace(id="u", tier="pro"))
+                                 Request({'type': 'http', 'headers': []}),
+                                 identity=SimpleNamespace(id="u", tier="pro"))
     assert captured["payload"]["rewrite"] is True
     assert captured["payload"]["replan"] is True
 
@@ -23,7 +24,8 @@ def test_api_rejects_replan_without_existing_chapter_rewrite(monkeypatch):
     monkeypatch.setattr(routes_tasks, "enqueue", lambda **kw: pytest.fail("invalid replan reached admission"))
     with pytest.raises(HTTPException) as exc:
         routes_tasks.generate_chapter("p", "c", routes_tasks.ChapterGenerateBody(seq=1, replan=True),
-                                     SimpleNamespace(id="u", tier="pro"))
+                                     Request({'type': 'http', 'headers': []}),
+                                     identity=SimpleNamespace(id="u", tier="pro"))
     assert exc.value.status_code == 400
 
 

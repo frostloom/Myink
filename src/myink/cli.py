@@ -88,6 +88,9 @@ def init(
     ensure_user_auth_schema()
     console.print("[bold]1.566/3[/] 补齐第二因子字段（users.totp_secret / totp_confirmed_at，幂等）...")
     ensure_user_mfa_schema()
+    from myink.db import ensure_guest_identity, ensure_guest_quota
+    ensure_guest_identity()
+    ensure_guest_quota()
     console.print("[bold]1.567/3[/] 补齐内置密钥终身额度计数（users.platform_short_used / platform_long_used，幂等）...")
     ensure_platform_quota()
     ensure_invitation_schema()
@@ -142,6 +145,9 @@ def auth_upgrade() -> None:
 
     ensure_user_auth_schema()
     ensure_user_mfa_schema()
+    from myink.db import ensure_guest_identity, ensure_guest_quota
+    ensure_guest_identity()
+    ensure_guest_quota()
     ensure_platform_quota()
     ensure_user_role()
     ensure_invitation_schema()

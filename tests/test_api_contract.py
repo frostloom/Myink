@@ -179,3 +179,9 @@ def test_openapi_matches_committed_spec() -> None:
         "spec/api-openapi.json 与当前 app.openapi() 不一致——改了响应契约后需重新 "
         "`myink contract export` 并提交"
     )
+
+
+def test_registration_contract_allows_anonymous_or_bearer() -> None:
+    assert _spec()["paths"]["/api/v1/auth/register"]["post"]["security"] == [
+        {"HTTPBearer": []}, {},
+    ]

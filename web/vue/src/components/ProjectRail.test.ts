@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/vue
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { ref, type Ref } from 'vue'
 import type { Project } from '../../../src/types'
+import { api } from '../../../src/lib/api'
 import ProjectRail from './ProjectRail.vue'
 import AdminRail from './AdminRail.vue'
 const auth = vi.hoisted(() => ({ value: {} as Record<string, unknown> }))
@@ -148,4 +149,21 @@ it('updates the remembered section when a delayed book list identifies a short w
   await view.router.push('/theme')
   expect(screen.getByRole('link', { name: '短篇' }).getAttribute('aria-current')).toBe('true')
   expect(screen.queryByText('长书')).toBeNull()
+})
+
+
+it.each([
+  { isGuest: true, username: 'guest-20c3a959b4914b958f058f5001d8488a', label: '游客' },
+  { isGuest: false, username: 'alice', label: 'alice' },
+])('shows the appropriate account label for isGuest=$isGuest', async ({ isGuest, username, label }) => {
+  vi.spyOn(api, 'guestQuota').mockResolvedValue({
+    short: { limit: 2, used: 1, remaining: 1 }, long: { limit: 10, used: 3, remaining: 7 },
+  })
+  await rail('/long')
+  ;(auth.value.session as Ref).value = { userId: 'g', username, isGuest, role: 'user', roleVerified: true }
+  const logout = screen.getByRole('button', { name: '登出' })
+  await vi.waitFor(() => expect(within(logout.parentElement!).getByText(label, { exact: true })).toBeTruthy())
+  if (isGuest) expect(screen.queryByText(username, { exact: true })).toBeNull()
+  await fireEvent.click(logout)
+  expect(auth.value.logout).toHaveBeenCalledOnce()
 })

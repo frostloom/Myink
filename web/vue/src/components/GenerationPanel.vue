@@ -197,8 +197,11 @@ export const GenerationPanel = defineComponent({
                 setNotice(`批次任务已创建，将从第 ${operation.seq} 章开始写作。`);
             }
             catch (err) {
-                if (isCurrent())
+                if (isCurrent()) {
                     showError(err);
+                    if (err instanceof ApiError && err.code === 'GUEST_QUOTA_EXHAUSTED')
+                        setBanner('本批次超过游客剩余额度，请减少章数至剩余额度内，或注册账号获取更多写作额度。');
+                }
             }
             finally {
                 if (isCurrent())

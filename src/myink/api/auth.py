@@ -9,6 +9,7 @@ process "is this session still valid?" on every request was a redundant network 
 from __future__ import annotations
 
 import re
+import secrets
 import threading
 import uuid
 from contextlib import contextmanager
@@ -17,15 +18,15 @@ from datetime import datetime, timedelta, timezone
 
 import jwt
 import pyotp
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, field_validator
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from myink.api.ratelimit import (account_auth_cleared, account_auth_failed, account_auth_guard,
                                  auth_rate_limit, mfa_cleared, mfa_failed, mfa_guard)
-from myink.api.schemas import (AuthResponse, AuthSessionOut, MfaChallengeOut, MfaCodeRequest,
+from myink.api.schemas import (AuthResponse, AuthSessionOut, GuestQuotaOut, MfaChallengeOut, MfaCodeRequest,
                                MfaEnrollOut, MfaStatusOut, MfaVerifyRequest, OkOut)
 from myink.config import settings
 from myink.db import new_session
@@ -34,7 +35,8 @@ from myink.invitations import (
     consume_invitation,
     validate_invitation,
 )
-from myink.models import Project, User
+from myink.models import GuestIdentity, Project, User
+from myink.guests import ip_key, recovery_digest
 from myink.passwords import hash_password, validate_password, verify_password
 from myink.providers.credentials import decrypt_totp_secret, encrypt_totp_secret
 
@@ -247,6 +249,7 @@ class _AuthenticatedUser:
     # 带的是**密文**，明文只在 `_verify_code` 前一步解开。
     totp_secret: str | None
     totp_confirmed_at: datetime | None
+    is_guest: bool = False
 
 
 def _decode_token(token: str) -> _TokenClaims:
@@ -282,6 +285,7 @@ def _load_identity(claims: _TokenClaims) -> _AuthenticatedUser | None:
         if user is None or user.auth_version != claims.auth_version:
             return None
         return _AuthenticatedUser(
+            is_guest=user.is_guest,
             id=user.id,
             username=user.username,
             tier=user.tier,
@@ -394,6 +398,7 @@ def _no_store(response: Response) -> None:
 def _auth_response(user: User) -> dict:
     return {
         "token": create_access_token(user.id, user.tier, user.auth_version),
+        "is_guest": user.is_guest,
         "user_id": str(user.id),
         "username": user.username,
         "tier": user.tier,
@@ -403,9 +408,14 @@ def _auth_response(user: User) -> dict:
 
 
 @router.post("/auth/register", status_code=status.HTTP_201_CREATED, response_model=AuthResponse,
-             dependencies=[Depends(auth_rate_limit)])
-def register(body: _RegisterRequest, response: Response) -> dict:
+             dependencies=[Depends(auth_rate_limit)], openapi_extra={"security": [{}]})
+def register(
+    body: _RegisterRequest, response: Response,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+) -> dict:
     require_auth_configuration()
+    identity = current_identity(credentials) if credentials is not None else None
+    upgrading = identity if identity is not None and identity.is_guest else None
     try:
         with new_session() as db:
             validate_invitation(db, body.invitation_code)
@@ -414,16 +424,21 @@ def register(body: _RegisterRequest, response: Response) -> dict:
     with _password_capacity():
         password_hash = hash_password(body.password)
     with new_session() as db:
-        user = User(
-            username=body.username,
-            password_hash=password_hash,
-            auth_version=1,
-            tier="normal",
-            role="user",
-            environment={},
-        )
+        if upgrading is None:
+            user = User(username=body.username, password_hash=password_hash,
+                        auth_version=1, tier="normal", role="user", environment={})
+        else:
+            user = db.scalar(select(User).where(User.id == upgrading.id).with_for_update())
+            if user is None or not user.is_guest or user.auth_version != upgrading.auth_version:
+                raise _invalid_credentials()
+            user.username = body.username
+            user.password_hash = password_hash
+            user.is_guest = False
+            user.auth_version += 1
         try:
             consume_invitation(db, body.invitation_code)
+            if upgrading is not None:
+                db.execute(delete(GuestIdentity).where(GuestIdentity.user_id == user.id))
             db.add(user)
             db.flush()
             payload = _auth_response(user)
@@ -437,6 +452,8 @@ def register(body: _RegisterRequest, response: Response) -> dict:
         except Exception:
             db.rollback()
             raise
+    if upgrading is not None:
+        response.delete_cookie("myink_guest", path="/api/v1/auth/guest")
     _no_store(response)
     return payload
 
@@ -460,7 +477,7 @@ def issue_token(body: _TokenRequest, response: Response) -> dict:
         stored_hash = user.password_hash if user is not None else _DUMMY_PASSWORD_HASH
         with _password_capacity():
             password_matches = verify_password(body.password, stored_hash)
-        if user is None or not password_matches:
+        if user is None or user.is_guest or not password_matches:
             account_auth_failed(username)
             raise _invalid_credentials()
         # 密码对了但开了第二因子：不发 token，改发一张挑战票。200 而不是 401——密码没错，
@@ -479,6 +496,7 @@ def auth_session(response: Response, user: _AuthenticatedUser = Depends(_authent
     # 真要即时踢人走 /auth/logout（自增 auth_version，所有设备立刻失效）。
     _no_store(response)
     return {
+        "is_guest": user.is_guest,
         "user_id": str(user.id),
         "username": user.username,
         "tier": user.tier,
@@ -494,6 +512,8 @@ def change_password(
     response: Response,
     user: _AuthenticatedUser = Depends(_authenticated_user),
 ) -> dict:
+    if user.is_guest:
+        raise HTTPException(status_code=403, detail="GUEST_REGISTRATION_REQUIRED")
     with _password_capacity():
         if not verify_password(body.current_password, user.password_hash):
             raise _invalid_credentials()
@@ -676,3 +696,57 @@ def verify_mfa(body: MfaVerifyRequest, response: Response) -> dict:
     mfa_cleared(account)
     _no_store(response)
     return payload
+
+
+class _GuestRequest(BaseModel):
+    restore_only: bool = False
+
+
+@router.post("/auth/guest", response_model=AuthResponse,
+             dependencies=[Depends(auth_rate_limit)])
+def guest_session(body: _GuestRequest, request: Request, response: Response) -> dict:
+    require_auth_configuration()
+    # The edge overwrites this header; malformed edge input must never fall back
+    # to a shared proxy/unknown bucket. Direct trusted connections use their peer.
+    raw_ip = request.headers.get("x-myink-client-ip")
+    if raw_ip is None:
+        raw_ip = request.client.host if request.client else "unknown"
+    try:
+        original_ip = ip_key(raw_ip)
+    except ValueError:
+        raise HTTPException(status_code=503, detail="GUEST_IP_UNAVAILABLE")
+    secret = request.cookies.get("myink_guest", "")
+    with new_session() as db:
+        identity = None
+        if secret and len(secret) <= 128:
+            identity = db.scalar(select(GuestIdentity).where(
+                GuestIdentity.recovery_digest == recovery_digest(secret)))
+        user = db.get(User, identity.user_id) if identity else None
+        if user is None or not user.is_guest:
+            if body.restore_only:
+                raise _invalid_credentials()
+            secret = secrets.token_urlsafe(32)
+            user = User(username="guest-" + uuid.uuid4().hex, is_guest=True,
+                        tier="normal", role="user", environment={})
+            db.add(user)
+            db.flush()
+            db.add(GuestIdentity(user_id=user.id, original_ip_key=original_ip,
+                                 recovery_digest=recovery_digest(secret)))
+        payload = _auth_response(user)
+        db.commit()
+    # A persistent 1-year browser credential; expiry loses recovery, never data.
+    # SITE_ADDRESS is deployment configuration shared with Caddy, not a request
+    # header: public HTTPS remains Secure across the HTTP proxy hop.
+    response.set_cookie("myink_guest", secret, max_age=365 * 86400,
+                        httponly=True, secure=(request.url.scheme == "https" or settings.is_prod()
+                            or re.fullmatch(r"http://(?:localhost|127\.0\.0\.1|\[::1\])(?::[0-9]+)?/?",
+                                            settings.site_address.strip().lower()) is None),
+                        samesite="strict", path="/api/v1/auth/guest")
+    _no_store(response)
+    return payload
+
+
+@router.get("/auth/guest/quota", response_model=GuestQuotaOut)
+def guest_quota(request: Request, identity: _AuthenticatedUser = Depends(current_identity)) -> dict:
+    from myink.guest_quota import quota_view, request_ip
+    return quota_view(str(identity.id), request_ip(request))

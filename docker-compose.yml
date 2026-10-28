@@ -143,6 +143,8 @@ services:
       # 正式部署在 .env 里写 APP_ENV=prod：config.py 的守卫会拒绝 dev 默认 JWT 密钥、
       # 收紧校验。这里必须能从外部注入，否则 prod 守卫永远不生效。
       APP_ENV: ${APP_ENV:-dev}
+      # 与 Caddy 保持一致；公网站点即使 HTTP 回源也签发 Secure 游客 cookie。
+      SITE_ADDRESS: ${SITE_ADDRESS:-http://localhost}
       DATABASE_URL: postgresql+psycopg://myink_app:${MYINK_APP_PASSWORD:-myink}@myink-pg:5432/myink
       # 名字仍叫 ADMIN_DATABASE_URL（db.py/cli.py 那条迁移路径共用这一个变量），但**在 api
       # 容器里它指向只读报表角色**：api 只拿它跑 /admin 的跨租户统计（admin_read_session），

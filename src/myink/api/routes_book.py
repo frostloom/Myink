@@ -312,7 +312,7 @@ def create_project(body: CreateProjectBody,
         replay = _find_by_request_id(db, uid, body.request_id)
         if replay is not None:
             return project_payload(replay)
-        uses_platform = platform_key_active(uid, user.role)
+        uses_platform = not user.is_guest and platform_key_active(uid, user.role)
         if uses_platform and _platform_quota_used_up(user.platform_long_used,
                                                     settings.platform_long_quota):
             return _platform_quota_response()
