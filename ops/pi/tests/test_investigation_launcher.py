@@ -1,7 +1,7 @@
 """Dedicated proposal-only SDK role over authenticated observation and original fees."""
 from pathlib import Path
 from datetime import timedelta
-import importlib,json
+import importlib,json,sys
 import httpx,pytest
 from ops.pi.audit import encoded,AuditStore
 from ops.pi.development_inputs import file_hash,ledger_snapshot,tree_hash,read_json
@@ -20,7 +20,7 @@ def research_config(diagnosis_config):
     context=compile_context(source,tree_hash(source),['src/a.py'],e,credential_literal=credentials['PLATFORM_MODEL_API_KEY']);input_path=parent/'research-input.json';write(input_path,context)
     claims=parent/'investigations';claims.mkdir(mode=0o700)
     c={k:old[k] for k in ('mode','runtime_path','runtime_sha256','ledger_path','ledger_sha256','policy_path','policy_sha256','credential_path','docker','endpoint','daemon_id','image_id','observer_config_path','observer_config_sha256','observer_controller_sha256','observation_receipt_path','evidence_path','evidence_sha256','audit_path','export_root')}
-    c.update(schema='pi-investigation-v1',role='investigation',run_id='investigation-one',root=str(claims/('research-'+context['research_fingerprint'])),credential_sha256=file_hash(old['credential_path']),deadline_seconds=60,source_path=str(source),source_sha256=tree_hash(source),files=['src/a.py'],reference_commit=None,pending_path=str(pending),pending_sha256=file_hash(pending),input_path=str(input_path),input_sha256=file_hash(input_path),permit_path=str(parent/'research-permit.json'),permit_sha256='0'*64)
+    c.update(docker=str(Path(sys.executable).resolve()),schema='pi-investigation-v1',role='investigation',run_id='investigation-one',root=str(claims/('research-'+context['research_fingerprint'])),credential_sha256=file_hash(old['credential_path']),deadline_seconds=60,source_path=str(source),source_sha256=tree_hash(source),files=['src/a.py'],reference_commit=None,pending_path=str(pending),pending_sha256=file_hash(pending),input_path=str(input_path),input_sha256=file_hash(input_path),permit_path=str(parent/'research-permit.json'),permit_sha256='0'*64)
     p=dict(schema='pi-investigation-permit-v1',authority='test_proposal_only',mode=c['mode'],role=c['role'],run_id=c['run_id'],research_fingerprint=context['research_fingerprint'],evidence_fingerprint=e['evidence_fingerprint'],input_sha256=c['input_sha256'],evidence_sha256=c['evidence_sha256'],source_sha256=c['source_sha256'],pending_sha256=c['pending_sha256'],runtime_sha256=c['runtime_sha256'],policy_sha256=c['policy_sha256'],credential_sha256=c['credential_sha256'],ledger_path=c['ledger_path'],claim_root=str(claims),budget_scope='local-trial-1',budget_microyuan=10000000,max_model_requests=1,deadline_seconds=60,legacy_unknown_ids=[],issued_at=(NOW-timedelta(minutes=1)).isoformat(),expires_at=(NOW+timedelta(minutes=10)).isoformat())
     write(Path(c['permit_path']),p);c['permit_sha256']=file_hash(c['permit_path']);cp=parent/'investigation-config.json';write(cp,c);return cp,c,context,p
 
@@ -57,8 +57,7 @@ def test_invalid_research_authority_stops_before_sdk_and_fees(research_config,mo
     assert ledger_snapshot(c['ledger_path'])==before and not Path(c['root']).exists()
 
 
-@pytest.mark.parametrize('scenario',['task','no_task','bad_output','bad_receipt','unknown_usage','cleanup','before_revoke','policy_revoke','renamed_reentry'])
-def test_one_proposal_session_preserves_original_fees_and_never_approves_development(research_config,proof,monkeypatch,scenario):
+def run_research(research_config,proof,monkeypatch,scenario='task'):
     cp,c,context,p=research_config;module=api();host=importlib.import_module('ops.pi.no_tool_host');monkeypatch.setattr(module,'verify_source',lambda *args:dict(machine='aarch64'))
     class H:operation_id='research-owned';owned={};pending={}
     class Owners:
@@ -85,6 +84,12 @@ def test_one_proposal_session_preserves_original_fees_and_never_approves_develop
         events=[dict(type='message_start',message=dict(usage=usage)),dict(type='content_block_delta',index=0,delta=dict(type='text_delta',text=text)),dict(type='message_delta',usage=dict(output_tokens=1) if usage else {}),dict(type='message_stop')]
         return httpx.Response(200,headers={'content-type':'text/event-stream'},stream=httpx.ByteStream(''.join('data: '+json.dumps(v)+'\n\n' for v in events).encode()))
     result=module.execute(cp,transport=send,clock=lambda:NOW,expected_config_sha256=file_hash(cp))
+    return result,text,send
+
+
+@pytest.mark.parametrize('scenario',['task','no_task','bad_output','bad_receipt','unknown_usage','cleanup','before_revoke','policy_revoke','renamed_reentry'])
+def test_one_proposal_session_preserves_original_fees_and_never_approves_development(research_config,proof,monkeypatch,scenario):
+    cp,c,context,p=research_config;module=api();result,text,send=run_research(research_config,proof,monkeypatch,scenario)
     assert result['verified']==(scenario in ('task','no_task','renamed_reentry')) and result['executable_approval'] is False
     assert result['new_attempts']==(0 if scenario=='before_revoke' else 1) and result['new_unknown']==(1 if scenario=='unknown_usage' else 0)
     assert result['original_history_unchanged'] and not list(cp.parent.glob('**/task-draft.json'))
@@ -124,3 +129,10 @@ def test_input_binding_rejects_bool_that_compares_equal_to_host_count(research_c
     before=ledger_snapshot(c['ledger_path'])
     with pytest.raises(ValueError,match='input drift'):module.prepare(cp,clock=lambda:NOW)
     assert ledger_snapshot(c['ledger_path'])==before
+
+
+def test_admin_audit_keeps_bounded_proposed_problem_as_untrusted_hypothesis(research_config,proof,monkeypatch):
+    result,_,_=run_research(research_config,proof,monkeypatch)
+    cp,c,context,p=research_config;event=AuditStore(c['audit_path']).events(run_id=c['run_id'])[-1]
+    assert event['details']['hypothesis']==result['report']['problem']
+    assert event['details']['next_action']=='isolated_baseline_required' and 'test_source' not in event['details']

@@ -97,3 +97,14 @@ is a product adoption or release event; code remains pending server activation.
 Show abstention, partial binding and unavailable completion distinctly. An
 original paid result can remain valid while no development permission exists.
 Do not infer an authorization from a model's approve text or from an audit event.
+
+
+## Reproduction and proposed-problem display (source only)
+
+A verified investigation may expose a bounded `details.hypothesis`; label it as an
+untrusted proposed problem, never permission. `investigation.reproduction.v1`
+test events expose fixed baseline totals/failures/errors/skips and the separate
+next action. A failed baseline may be successfully reproduced and eligible for
+independent review; it is not a passed candidate or a deployment. Green/error/
+no_task/cancelled/host-failed outcomes remain distinct. Frozen tests and full
+sessions stay private; execution/adoption authority never comes from audit text.

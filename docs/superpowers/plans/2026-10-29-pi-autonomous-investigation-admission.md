@@ -48,9 +48,9 @@
 
 ### Task 4: New investigation to proposed tests and isolated reproduction
 **Files:** bounded source/proposal host adapter, strict proposal contract, coordinator using task_package/package_baseline.
-- [ ] RED unknown/reference identity distinctions, source/file cap, hostile proposed tests, same-evidence/known-pending-candidate dedup, nonreproducing baselines and changed test/source.
-- [ ] Fixed root policy selects research source/files; SDK proposal is untrusted code/data only. Freeze it, run existing isolated checker, qualify actual assertion failures then build code_regression template/dossier. Root bounds unchanged; no online improvement/adoption claim.
-- [ ] Discovery outcomes/no_task/error/test/ownership and next steps enter structured audit. No manufactured task or paid rediscovery of owner002.
+- [x] RED unknown/reference identity distinctions, source/file cap, hostile proposed tests, same-evidence/known-pending-candidate dedup, nonreproducing baselines and changed test/source.
+- [x] Fixed root policy selects research source/files; SDK proposal is untrusted code/data only. Freeze it, run existing isolated checker, qualify actual assertion failures then build code_regression template/dossier. Root bounds unchanged; no online improvement/adoption claim.
+- [x] Discovery outcomes/no_task/error/test/ownership and next steps enter structured audit. No manufactured task or paid rediscovery of owner002.
 
 ### Task 5: Original manager admission and closed runtime/service integration
 **Files:** trusted finite coordinator/service/closed runtime entry and tests, existing manager adapters only where necessary.
@@ -65,3 +65,5 @@
 - [ ] Publish facts and remaining main/product release/ownership-safe recovery/24-48hour validation gates. Complete this plan only when its requested actual handoff is proven; keep fullrootgoalactive until every original requirement is met.
 
 Task3 source acceptance now includes unbound lease -> exact host selection review -> actual gateway UUID from authenticated stopped selection -> immutable derived lease -> completed receipt -> original FileReview/adapter. ACTUAL transport/config/revocation guards added; no new actual server activation. Task4 new investigation and Task5 coordinator/native/whole-plan final review remain pending.
+
+Task4 source acceptance completed: authenticated proposal -> separate reproducer policy -> exclusive claim -> task_package -> fixed isolated baseline -> unapproved code_regression template/dossier. Actual coordinated/native acceptance remains underTask5–6; do not claim a new server task or provider call from SIMULATED tests.

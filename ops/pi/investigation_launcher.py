@@ -89,6 +89,7 @@ def publish_audit(c,material,result,at):
     report=result.get('report',{});decision=report.get('decision','none') if result['verified'] else 'none';domain='real_provider_fixed_input' if c['mode']=='ACTUAL' else 'synthetic'
     status=('passed' if decision=='task' else 'no_change') if result['verified'] else 'failed' if result['closed_verified'] else 'blocked'
     event=dict(kind='analysis',status=status,run_id=c['run_id'],occurred_at=at.isoformat(),summary='Untrusted test proposal only; isolated reproduction and independent review remain required.',details=dict(reference='investigation.test_proposal.v1',decision=decision,model_requests=result['new_attempts'],known_cost_microyuan=result['known_cost_microyuan'],next_action='isolated_baseline_required' if decision=='task' else 'no_development_authority'),version=dict(policy_sha256=c['policy_sha256'],sdk_version='1.1.0'),changes=[],evidence=[dict(kind=kind,sha256=pin,verified=result['closed_verified'],evidence_domain=domain) for kind,pin in (('research_input',c['input_sha256']),('observation_snapshot',material['evidence']['snapshot_sha256']))],followups=[],mode=c['mode'],evidence_domain=domain)
+    if decision=='task':event['details']['hypothesis']=report['problem']
     audit=AuditStore(c['audit_path']);audit.append(c['run_id']+':investigation',event);audit.export(c['export_root'])
 
 

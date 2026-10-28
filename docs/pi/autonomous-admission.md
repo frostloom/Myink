@@ -198,9 +198,9 @@ selected relative files, bounded parseable fixed unittest inventory and private
 summary; it cannot choose host paths, write approval fields or grant execution.
 A no_task result has no test payload. Proposed tests remain untrusted and must
 later run only through task_package/package_baseline's fixed isolated checker,
-then pass independent review. The dedicated paid investigation role and that
-automatic freeze/reproducer coordinator are still pending; this compiler does
-not call a model or execute/import proposed tests.
+then pass independent review. The dedicated investigation role and host freezer/reproducer now exist in source;
+external manager coordination and real activation remain pending. This compiler
+itself does not call a model or execute/import proposed tests.
 
 ## Dedicated investigation SDK role (source only)
 
@@ -232,3 +232,36 @@ newline cannot turn a valid proposal into a false mismatch. Context binding also
 preserves JSON types; true does not stand for the measured count1. The next
 required step is an authenticated host freezer and fixed isolated reproducer;
 new server activation/native/actual acceptance and whole-plan review are pending.
+
+
+## Authenticated freeze and isolated reproduction (source acceptance)
+
+`investigation_evidence.inspect` revalidates the completed proposal's exact
+config/permit/runtime, stopped session/RPC, initial input, relayed request,
+verification, strict report, owned cleanup and one known original-ledger charge.
+A result boolean alone is insufficient. Its output is explicitly an untrusted
+proposal; it does not grant code execution or approval.
+
+`investigation_reproducer.execute` additionally requires a separate root-owned
+isolated-reproducer policy in ACTUAL. It forbids injected runner/clock, binds a
+fixed checker image and capped execution/development-input limits, and uses the
+permanent `reproductions/repro-<research_fingerprint>` claim. Inputs, state and
+SQLite sidecars cannot overlap outputs. Intent and parent entries are synced
+before any test; failed partial claims remain unavailable for automatic replay.
+
+Validated task source freezes through the existing task_package kernel, then
+runs only in package_baseline's fixed isolated checker. The host never imports or
+executes proposed Python. A verified assertion failure with zero errors/skips and
+exact checked source/gold/cleanup may produce a code_regression baseline, bounded
+Plan, unapproved template and recommendation-only review dossier. No FileReview,
+candidate adoption or online improvement is created here. Green/error baselines
+and valid no_task output generate no eligible development input.
+
+Cancellation propagates to the checker; pre-cancelled work neither claims nor
+executes tests. Host/checker exceptions retain intent, append blocked audit and
+issue no completion receipt. Main's pure reader shows baseline failure counts,
+errors/skips and independent_review_required separately from release state.
+Problem hypotheses are bounded untrusted audit text; test source, full commentary
+and sessions remain private. All acceptance in this section is SIMULATED/source
+acceptance. Original manager coordination, native checker/SDK acceptance, one
+whole-plan independent review and actual new-task handoff remain pending.
