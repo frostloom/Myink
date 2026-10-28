@@ -215,3 +215,21 @@ check alone does not exercise the default checker imports.
 ## Shared-lock idle scheduling
 
 The service uses the existing manager idle_seconds=0 mode and60second timer. An idle tick scans the inbox once and exits, leaving maintenance.lock available for diagnostics and due fixed regressions. When idle and uncontended, approved work is normally admitted on the next timer tick, roughly60seconds after the previous service completes (plus timer accuracy/scheduling delay). Lock contention or genuine execution can delay admission further. Genuine execution keeps the same exclusive lock, max_tasks1 and2100second host deadline. An old process started with idle600 retains that value until it exits; a unit-file reload alone does not prove the new scheduling is active. Verify actual new idle ticks, zero dispatch/fees and obtainable shared lock, and keep the old root-owned unit and events. This is controller scheduling, not a product release.
+
+## External exact review worker (source only, not installed)
+
+`myink-pi-review-worker.service` uses the same closed-tree verifier with explicit
+`review_worker`, its own root-owned0640 registry in root-owned0750 config, and a
+5second timer. `review-worker.env` must pin PI_OBSERVER_RUNTIME_SHA256,
+PI_REVIEW_WORKER_ENTRYPOINT and PI_REVIEW_WORKER_REGISTRY_SHA256. At most16 pinned
+requests under canonical `handoffs` are admitted, only after completed handoff
+receipts. It does not acquire maintenance.lock; the original manager holds that
+lock while waiting for FileReview. An outer flock would deadlock this design.
+
+Keep state/credentials/reproductions/config/releases read-only. Only reviews,
+handoffs and audit state/export are writable. This worker never calls a model,
+starts a candidate, changes fees or authorizes main/product release. Partial
+claims remain uncertain; withdrawing a registry entry stops future publication
+but does not undo an already issued review or replay any phase. Install only with
+matching verified host/SDK code after whole-plan review and native acceptance;
+the old runtime005 cannot stand in for the new host closure.

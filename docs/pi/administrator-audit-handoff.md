@@ -108,3 +108,15 @@ next action. A failed baseline may be successfully reproduced and eligible for
 independent review; it is not a passed candidate or a deployment. Green/error/
 no_task/cancelled/host-failed outcomes remain distinct. Frozen tests and full
 sessions stay private; execution/adoption authority never comes from audit text.
+
+## Automatic handoff and abstention projection (source only)
+
+A planned `manager.reviewed_handoff.v1` event links the completed isolated
+reproduction, independent SDK review config and sealed original-manager cycle.
+It announces admission, not successful development. Waiting for selection or
+prepared files does not synthesize a successful tool/test/development event.
+`host.selection_abstention.v1` is terminal no_change with one verified original
+model request and known charge, plus selection-verification/original-lease
+hashes. No development permission follows. Re-reading the same receipt does not
+append a duplicate charge/event. Partial binding/publication remains uncertain;
+never infer completion solely from an inbox or approval file's presence.

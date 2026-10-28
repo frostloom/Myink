@@ -54,7 +54,7 @@
 
 ### Task 5: Original manager admission and closed runtime/service integration
 **Files:** trusted finite coordinator/service/closed runtime entry and tests, existing manager adapters only where necessary.
-- [ ] Review lease -> fixed selection review/bundle -> existing FileReview publisher -> canonicalmanager inbox, with one fresh task per verified new evidence and retained intents. No model self-approval/candidate promotion.
+- [x] Source implementation: review lease -> fixed selection review/bundle -> existing FileReview publisher -> original manager inbox, with retained intents. External worker/finite registry/closed entry and service units exist; server activation and actual acceptance remain pending. No model self-approval/candidate promotion.
 - [ ] Upgrade to separately verified closed-I-S host and matching SDK code with unchanged Node/Pi dependencies; preserve original state/custody/budget, signal cleanup, idle0 and all other worker registries. Do not change original03followup.
 - [ ] Full offline/meaningful native tests and one fresh final review before actualactivation; one author fixpass/no rereview. Exact source CI and audit export compatibility.
 

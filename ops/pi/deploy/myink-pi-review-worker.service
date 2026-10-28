@@ -1,0 +1,42 @@
+[Unit]
+Description=Myink Pi external exact review publication worker
+After=docker.service
+Requisite=docker.service
+ConditionPathExists=/home/ubuntu/myink-pi-managed/config/review-worker.env
+ConditionPathExists=/home/ubuntu/myink-pi-managed/config/review-worker-registry.json
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+SupplementaryGroups=docker
+WorkingDirectory=/home/ubuntu/myink-pi-managed
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=DOCKER_CONFIG=/nonexistent
+EnvironmentFile=/home/ubuntu/myink-pi-managed/config/review-worker.env
+ExecStart=/usr/bin/python3 -I -S -B ${PI_REVIEW_WORKER_ENTRYPOINT} --component review_worker --config /home/ubuntu/myink-pi-managed/config/review-worker-registry.json --config-sha256 ${PI_REVIEW_WORKER_REGISTRY_SHA256}
+Restart=no
+TimeoutStartSec=30
+TimeoutStopSec=15
+KillMode=control-group
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadOnlyPaths=/home/ubuntu/myink-pi-managed/config /home/ubuntu/myink-pi-managed/releases /home/ubuntu/myink-pi-managed/state /home/ubuntu/myink-pi-managed/reproductions
+ReadWritePaths=/home/ubuntu/myink-pi-managed/reviews /home/ubuntu/myink-pi-managed/handoffs /home/ubuntu/myink-pi-managed/audit/state /home/ubuntu/myink-pi-managed/audit/export
+MemoryMax=384M
+TasksMax=64
+CPUQuota=50%
+StandardOutput=journal
+StandardError=journal

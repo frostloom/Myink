@@ -290,3 +290,31 @@ or transports. The external selection-binding/review worker and full coordinator
 service still need implementation and native/actual acceptance before activation.
 
 Handoff outputs and inbox also exclude the audit database parent, export root and SQLite sidecars; a matching future prepared path cannot authorize writing into the audit projection.
+
+## External review queue and reentry (source only)
+
+`manager_review_worker.tick` consumes only a completed handoff receipt and checks
+its original request, inbox manifest, cycle, reviewed selection config and catalog
+hashes. It waits without replaying selection, authenticates the stopped selection
+and actual gateway UUID, then binds the development lease and waits for the
+original adapter's prepared config/review request. The existing exact publisher
+performs its own full authority checks. No maintenance.lock is acquired here;
+that lock belongs to the running manager during FileReview waits.
+
+A verified no-task selection gets a terminal abstention receipt and one primary
+analysis event with its original known charge. It never gets a development lease.
+An incomplete binding/publication/abstention claim stays uncertain. Lock
+contention before a claim is waiting, not a reason to clear state. Repeated ticks
+never repeat a paid call or overwrite a permission. Completed publication can be
+read after candidate startup without fresh-prepare or another publication; a
+private frozen config snapshot permits only the original adapter's review hash
+writeback and rejects other scope changes.
+
+`review_worker_supervisor` accepts at most16 pinned handoffs under a fixed
+root-owned ACTUAL registry; modes cannot mix. Its separate5second timer and
+-I-S-B verified entry do not acquire the manager's maintenance lock. The service
+may write only review/handoff and audit outputs; canonical state, credentials,
+source and releases are read-only. The Docker group remains a trusted-host
+boundary. These source units have not been installed or activated on the server.
+The finite coordinator, matching closed manager/SDK release, native acceptance,
+whole-plan independent review and actual new-task development remain pending.

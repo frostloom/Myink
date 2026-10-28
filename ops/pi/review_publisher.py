@@ -45,7 +45,8 @@ def publish(lease_path,lease_sha256,config_path,*,clock=None):
         approval=development_review(lease,config,request,fee,now=now);target=_path(config['review_path'])
         require(not target.exists() and not target.is_symlink(),'FileReview already exists; never overwrite')
         claim=root/'publication';require(not claim.exists(),'publication claim exists; no replay');claim.mkdir(mode=0o700);_sync(root)
-        _new(claim/'intent.json',dict(schema='pi-review-publication-intent-v1',lease_sha256=lease_sha256,config_sha256=config_pin,request_sha256=request_pin,approval_sha256=digest(approval)))
+        _new(claim/'intent.json',dict(schema='pi-review-publication-intent-v1',lease_sha256=lease_sha256,config_sha256=config_pin,request_sha256=request_pin,config_data_sha256=digest(config),approval_sha256=digest(approval)))
+        _new(claim/'config-private.json',config)
         # Last authority transition: all private inputs stay exact, no paid call here.
         require(file_hash(lease_path)==lease_sha256 and file_hash(cp)==config_pin and file_hash(cp.parent/'review-request.json')==request_pin and file_hash(record['policy_path'])==record['policy_sha256'] and ledger_snapshot(p['ledger_path'])==fee,'publication revoked before approval')
         prepare_template(cp);load_policy(record['policy_path'],record['policy_sha256'],clock)
