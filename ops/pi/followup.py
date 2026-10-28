@@ -89,7 +89,23 @@ def _cached(root,e,entry_sha):
 
 
 def _isolated_check(e,root,write):
-    raise ValueError('fixed checker adapter not enabled')
+    from threading import Event,Timer
+    from .development_launcher import _fixed_check,Limits,OwnedHosts
+    cancel=Event();limits=Limits(1,1,90,cancel);owners=OwnedHosts(cancel,write)
+    timer=Timer(90,cancel.set);timer.daemon=True;timer.start()
+    result=None
+    try:
+        checker=dict(e['checker'],test_path=e['test_path'],test_sha256=e['test_sha256'],test_cases=e['test_cases'])
+        result=_fixed_check(checker,Path(e['candidate_path']),root/'check',limits,write,owners)
+    finally:
+        try:
+            cleanup=owners.finish();write('final-sweep-cleanup.json',cleanup)
+        finally:timer.cancel()
+    limits.alive();require(not owners.failed,'owned checker cleanup failed')
+    require(tree_hash(root/'check/src')==tree_hash(Path(e['candidate_path'])/'src')
+        and file_hash(root/'check/test.py')==e['test_sha256'],'actual checker input copy drift')
+    result['cleanup']=cleanup
+    return result
 
 
 def _execute(c,e,root,registry_sha,now,runner,audit):
@@ -146,5 +162,6 @@ def run_due(registry_path,expected_registry_sha256,*,clock=None,runner=None):
             _pins(e)
             for key in ('billing_path','manager_path'):ledger_snapshot(c[key])
             result['results'].append(_execute(c,e,root,expected_registry_sha256,now,runner,audit))
+            break  # One new bounded check per tick; cached facts never start Docker.
     result['status']='uncertain' if any(x['status']=='uncertain' for x in result['results']) else 'completed'
     return result

@@ -132,10 +132,11 @@ def test_owned_fixture_still_rejects_cached_business_settings_drift(monkeypatch,
         verify.verify_test_environment()
 
 
-def test_owned_pg_tests_are_deselected_without_native_optin():
+@pytest.mark.parametrize('marker',['pi_observer_pg','pi_followup_docker'])
+def test_owned_pg_tests_are_deselected_without_native_optin(marker):
     from types import SimpleNamespace
     from ops.pi.tests import conftest
-    native=SimpleNamespace(get_closest_marker=lambda name:name=='pi_observer_pg')
+    native=SimpleNamespace(get_closest_marker=lambda name:name==marker)
     plain=SimpleNamespace(get_closest_marker=lambda name:False)
     removed=[]
     config=SimpleNamespace(getoption=lambda name:False,hook=SimpleNamespace(pytest_deselected=lambda items:removed.extend(items)))

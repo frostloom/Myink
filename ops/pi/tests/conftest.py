@@ -5,6 +5,7 @@ import pytest
 
 
 def pytest_addoption(parser):
+    parser.addoption('--pi-followup-docker', action='store_true', help='Run owned standalone fixed-regression Docker tests')
     parser.addoption('--pi-observer-pg', action='store_true', help='Run owned standalone metadata-only PostgreSQL tests')
     parser.addoption('--pi-lab', action='store_true', help='Run verified private lab tests')
     parser.addoption('--pi-live', action='store_true', help='Request paid tests; all B/price/scope gates still required')
@@ -12,8 +13,9 @@ def pytest_addoption(parser):
 
 @pytest.hookimpl(trylast=True)
 def pytest_collection_modifyitems(config, items):
-    native=[item for item in items if item.get_closest_marker('pi_observer_pg')]
-    if native and not config.getoption('--pi-observer-pg'):
+    native=[item for item in items if any(item.get_closest_marker(marker) and not config.getoption(flag) for marker,flag in
+        (('pi_observer_pg','--pi-observer-pg'),('pi_followup_docker','--pi-followup-docker')))]
+    if native:
         items[:]=[item for item in items if item not in native]
         config.hook.pytest_deselected(items=native)
     lab = [item for item in items if item.get_closest_marker('pi_lab')]
