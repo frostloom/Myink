@@ -211,3 +211,7 @@ retains its public `_fixed_check`/OwnedHosts wrappers, delegating the same core
 with its existing host factory/cleanup hooks. Verify both dependency loading and
 the three real Docker scenarios under `python -I -S -B`; a pre-due scheduling
 check alone does not exercise the default checker imports.
+
+## Shared-lock idle scheduling
+
+The service uses the existing manager idle_seconds=0 mode and60second timer. An idle tick scans the inbox once and exits, leaving maintenance.lock available for diagnostics and due fixed regressions. When idle and uncontended, approved work is normally admitted on the next timer tick, roughly60seconds after the previous service completes (plus timer accuracy/scheduling delay). Lock contention or genuine execution can delay admission further. Genuine execution keeps the same exclusive lock, max_tasks1 and2100second host deadline. An old process started with idle600 retains that value until it exits; a unit-file reload alone does not prove the new scheduling is active. Verify actual new idle ticks, zero dispatch/fees and obtainable shared lock, and keep the old root-owned unit and events. This is controller scheduling, not a product release.
