@@ -15,6 +15,8 @@ main 使用 src/myink/pi_audit.py 中的 AuditReader(root)，仅依赖标准库�
 - enhancements(limit=25,offset=0)：按 details.reference 返回最新增强条目。
 - daily(day)：上海日期的版本、变更、发布状态、计数和次日测试关联。
 
+events流式扫描，只保留请求窗口；无kind过滤时使用已验证索引总数并在取得窗口后停止。daily聚合正文上限8MiB，超出显式报错并要求按run/events分页读取，不截成虚假的完整日报。
+
 分页结果为 items,total,limit,offset；limit为1至100的整数，offset为非负整数，bool拒绝。未知运行抛 LookupError，非法/未知schema/重复JSON键/哈希错误/缺页/链接文件抛 ValueError 或 OSError。page路径仅由校验后的摘要派生。文件路径和源码路径不是读取主机文件的授权。
 
 ## 事件与证据
@@ -35,7 +37,7 @@ evidence每项仅kind、sha256、verified、evidence_domain；不导出宿主路
 
 ## 每日与次日输出
 
-daily包含day/timezone、event_count、unknown_occurrence_count、runs、versions、change_scope、next_tests、release_state、known_cost_microyuan、observed_samples。一天无记录返回event_count=0、release_state=unknown；不虚构版本或成功发布。开发通过不等于发布。真实明确no_release才显示no_release；只有ACTUAL线上发布passed/回退rolled_back事件改变为deployed/rolled_back。模拟发布不改变真实发布状态。
+daily包含day/timezone、event_count、unknown_occurrence_count、runs、versions、change_scope、next_tests、release_state、release_runs、known_cost_microyuan、observed_samples。release_runs保留各run的发布状态、事件摘要、发生时间依据和部署身份；其他run的no_release不能抹掉真实发布/回退。真实操作优先于未发布结论，已知occurred_at按发生时间排序，迟到导入不覆盖更新事实；仅当无已知发生时间时才以追加顺序展示记录状态，仍标记其time_basis，不能视为真实部署时间证明。一天无记录返回event_count=0、release_state=unknown；不虚构版本或成功发布。开发通过不等于发布。真实明确no_release才显示no_release；只有ACTUAL线上发布passed/回退rolled_back事件改变为deployed/rolled_back。模拟发布不改变真实发布状态。
 
 followups每项固定test_id、scheduled_for(UTC)、target_run_id、target_version_sha256、criterion、kind(regression/metrics/quality/restore)、status(planned/blocked/insufficient_evidence)。计划永远保留原状态；执行结果另存test事件，在details.test_id关联。daily只关联计划之后追加、ACTUAL、运行与候选摘要匹配且已知occurred_at不早于到期时间的结果。晚到、跨日结果可以显示；缺时间/错版本/模拟不冒充次日测试。result为空就是尚无合格执行证据，非通过。
 

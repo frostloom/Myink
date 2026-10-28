@@ -40,16 +40,34 @@ def _json(raw):
     except (RecursionError,UnicodeError) as error:raise ValueError('invalid audit JSON') from error
 
 
-def _read(path,bound):
-    info=path.lstat()
-    _require(stat.S_ISREG(info.st_mode) and info.st_nlink==1 and info.st_size<=bound,'invalid audit file')
-    fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW)
+def _read(path,bound,directories=None):
+    # Open every ancestor relative to an owned descriptor. O_NOFOLLOW on the
+    # final file alone does not protect against replacing its parent directory.
+    _require(path.is_absolute() and '..' not in path.parts)
+    parent=os.open('/',os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+    current=Path('/')
     try:
-        opened=os.fstat(fd)
-        _require((opened.st_dev,opened.st_ino)==(info.st_dev,info.st_ino) and opened.st_nlink==1,'audit file changed')
-        with os.fdopen(fd,'rb',closefd=False) as stream:raw=stream.read(bound+1)
-        _require(len(raw)<=bound,'audit file exceeds bound');return raw
-    finally:os.close(fd)
+        for part in path.parts[1:-1]:
+            info=os.stat(part,dir_fd=parent,follow_symlinks=False)
+            _require(stat.S_ISDIR(info.st_mode),'non-link audit directory required')
+            child=os.open(part,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=parent)
+            try:
+                opened=os.fstat(child);current=current/part
+                identity=(opened.st_dev,opened.st_ino)
+                _require(identity==(info.st_dev,info.st_ino),'audit directory changed')
+                if directories and current in directories:_require(identity==directories[current],'audit directory replaced')
+            except BaseException:os.close(child);raise
+            os.close(parent);parent=child
+        info=os.stat(path.name,dir_fd=parent,follow_symlinks=False)
+        _require(stat.S_ISREG(info.st_mode) and info.st_nlink==1 and info.st_size<=bound,'invalid audit file')
+        fd=os.open(path.name,os.O_RDONLY|os.O_NOFOLLOW,dir_fd=parent)
+        try:
+            opened=os.fstat(fd)
+            _require((opened.st_dev,opened.st_ino)==(info.st_dev,info.st_ino) and opened.st_nlink==1,'audit file changed')
+            with os.fdopen(fd,'rb',closefd=False) as stream:raw=stream.read(bound+1)
+            _require(len(raw)<=bound,'audit file exceeds bound');return raw
+        finally:os.close(fd)
+    finally:os.close(parent)
 
 
 SCHEMA_VERSION=1
@@ -65,7 +83,7 @@ TEXT_FIELDS=frozenset('decision next_action reason hypothesis tool_name operatio
 SHANGHAI=timezone(timedelta(hours=8),'Asia/Shanghai')
 _NAME=re.compile(r'[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}')
 _HEX=re.compile(r'[0-9a-f]{64}')
-_SECRET=re.compile(r"""(?ix)(\b[\w-]*(?:api[_-]?key|token|secret|password|passwd|密码|密钥|口令)[\w-]*["']?\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,;]+)""")
+_SECRET=re.compile(r"""(?ix)(\b[\w-]*(?:api[_-]?key|token|secret|password|passwd|密码|密钥|口令)[\w-]*["']?\s*[:=]\s*)(?:\[REDACTED\]|\{[\s\S]*|\[[\s\S]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s,;]+)""")
 _BEARER=re.compile(r'(?i)\bBearer\s+[^\s,;]+')
 _KEY=re.compile(r'\bsk[-_][A-Za-z0-9_-]{8,}\b')
 _URL=re.compile(r'(?i)((?:https?|postgres(?:ql)?(?:\+psycopg)?)://)[^/\s@]+:[^/\s@]+@')
@@ -134,7 +152,7 @@ def validate_record(record):
         clean=''.join(c if ord(c)>=32 or c in '\n\t' else '\ufffd' for c in value)
         clean=_URL.sub(r'\1[REDACTED]@',clean)
         clean=_BEARER.sub('Bearer [REDACTED]',clean)
-        clean=_SECRET.sub(r'\1[REDACTED]',clean)
+        clean=_SECRET.sub(lambda m:m.group(0) if m.group(0)[len(m.group(1)):] in ('[REDACTED]','"[REDACTED]"',"'[REDACTED]'") else m.group(1)+'[REDACTED]',clean)
         clean=_KEY.sub('[REDACTED]',clean)
         flags['redacted']|=clean!=value
         flags['truncated']|=len(clean)>maximum
@@ -225,16 +243,29 @@ class AuditReader:
     def __init__(self,root):
         self.root=Path(root)
         _require(self.root.is_absolute() and self.root.resolve()==self.root and (self.root/'pages').resolve()==self.root/'pages','non-link snapshot root required')
-        manifest=_json(_read(self.root/'manifest.json',8388608))
+        self._directories={}
+        for directory in (self.root,self.root/'pages'):
+            info=directory.lstat();_require(stat.S_ISDIR(info.st_mode),'audit directory required')
+            self._directories[directory]=(info.st_dev,info.st_ino)
+        manifest=_json(_read(self.root/'manifest.json',8388608,self._directories))
         _require(isinstance(manifest,dict) and set(manifest)==set('schema_version authority generated_at watermark pages runs days snapshot_sha256'.split()))
         _require(type(manifest['schema_version']) is int and manifest['schema_version']==1 and manifest['authority']=='audit_only','unsupported audit schema')
         _require(_hash(manifest['snapshot_sha256']) and _digest({k:v for k,v in manifest.items() if k!='snapshot_sha256'})==manifest['snapshot_sha256'],'audit manifest hash mismatch')
         _require(isinstance(manifest['pages'],list) and len(manifest['pages'])<=10000)
+        watermark=manifest['watermark']
+        _require(isinstance(watermark,dict) and set(watermark)=={'sequence','event_sha256'} and type(watermark['sequence']) is int and watermark['sequence']>=0)
+        _require(watermark['event_sha256'] is None or _hash(watermark['event_sha256']))
+        for field,identity in (('runs','run_id'),('days','day')):
+            _require(isinstance(manifest[field],list))
+            for index in manifest[field]:
+                _require(isinstance(index,dict) and type(index.get('event_count')) is int and index['event_count']>0)
+                _require(isinstance(index.get(identity),str))
         self.manifest=manifest;sequence=0;previous=None
         def groups():
             nonlocal sequence,previous
             for page in manifest['pages']:
                 _require(isinstance(page,dict) and set(page)==set('sha256 event_count first_sequence last_sequence previous_sha256 last_sha256'.split()) and _hash(page['sha256']))
+                _require(all(type(page[key]) is int and page[key]>0 for key in ('event_count','first_sequence','last_sequence')))
                 items=self._page(page['sha256'])
                 _require(type(page['event_count']) is int and 0<page['event_count']<=100 and len(items)==page['event_count'])
                 for event in items:
@@ -248,7 +279,7 @@ class AuditReader:
 
     def _page(self,key):
         _require(_hash(key))
-        raw=_read(self.root/'pages'/(key+'.json'),1048576)
+        raw=_read(self.root/'pages'/(key+'.json'),1048576,self._directories)
         _require(sha256(raw).hexdigest()==key,'audit page hash mismatch')
         page=_json(raw)
         _require(isinstance(page,dict) and set(page)=={'schema_version','authority','events'} and type(page['schema_version']) is int and page['schema_version']==1 and page['authority']=='audit_only' and isinstance(page['events'],list))
@@ -266,8 +297,16 @@ class AuditReader:
         _require(_name(run_id) and (kind is None or isinstance(kind,str) and kind in _KINDS))
         run=next((x for x in self.manifest['runs'] if x['run_id']==run_id),None)
         if run is None:raise LookupError('unknown audit run')
-        items=[e for key in run['pages'] for e in self._page(key) if e['run_id']==run_id and (kind is None or e['kind']==kind)]
-        return self._slice(items,limit,offset)
+        self._slice([],limit,offset)
+        items=[];total=0
+        for key in run['pages']:
+            for event in self._page(key):
+                if event['run_id']!=run_id or kind is not None and event['kind']!=kind:continue
+                if offset<=total<offset+limit:items.append(event)
+                total+=1
+                if kind is None and len(items)==limit:
+                    return dict(items=items,total=run['event_count'],limit=limit,offset=offset)
+        return dict(items=items,total=total,limit=limit,offset=offset)
 
     def _events(self,keys=None):
         for page in self.manifest['pages']:
@@ -286,7 +325,13 @@ class AuditReader:
         from datetime import date
         _require(isinstance(day,str) and date.fromisoformat(day).isoformat()==day,'invalid audit day')
         index=next((x for x in self.manifest['days'] if x['day']==day),None)
-        events=[] if index is None else [e for e in self._events(set(index['pages'])) if e['day']==day]
+        events=[];body_bytes=0
+        if index is not None:
+            for event in self._events(set(index['pages'])):
+                if event['day']!=day:continue
+                body_bytes+=len(_encoded(event))
+                _require(body_bytes<=8388608,'daily audit exceeds body bound; use run/event pagination')
+                events.append(event)
         versions={};changes={};counters={};plans={};release='unknown'
         for event in events:
             version=event['version'];versions[_digest(version)]=version
@@ -297,12 +342,6 @@ class AuditReader:
                 changes[key]=dict(change,candidate_sha256=candidate,source_commit=version['source_commit'])
             for key in ('known_cost_microyuan','observed_samples'):
                 if key in event['details']:counters[(event['run_id'],key)]=event['details'][key]
-            if event['kind'] in ('deployment','rollback') and event['mode']=='ACTUAL':
-                if event['status']=='no_release':release='no_release'
-                elif event['evidence_domain']=='online_business':
-                    if event['kind']=='deployment' and event['status']=='passed':release='deployed'
-                    elif event['kind']=='rollback' and event['status']=='rolled_back':release='rolled_back'
-                    elif event['status'] in ('uncertain','blocked','failed'):release='unknown'
             for plan in event['followups']:
                 key=(plan['target_run_id'],plan['test_id'],plan['target_version_sha256'])
                 plans[key]=dict(plan,plan_event_sha256=event['event_sha256'],result=None)
@@ -313,10 +352,41 @@ class AuditReader:
                 plan=plans.get(key)
                 if plan is not None and plan['target_version_sha256'] is not None and event['sequence']>next(e['sequence'] for e in events if e['event_sha256']==plan['plan_event_sha256']) and datetime.fromisoformat(event['occurred_at'])>=datetime.fromisoformat(plan['scheduled_for']):
                     plan['result']=dict(status=event['status'],event_sha256=event['event_sha256'],occurred_at=event['occurred_at'],evidence_domain=event['evidence_domain'])
+        release,release_runs=_release_summary(events)
         result=dict(schema_version=1,authority='audit_only',day=day,timezone='Asia/Shanghai',event_count=len(events),
-            unknown_occurrence_count=sum(e['occurred_at'] is None for e in events),release_state=release,
+            unknown_occurrence_count=sum(e['occurred_at'] is None for e in events),release_state=release,release_runs=release_runs,
             runs=[] if index is None else index['runs'],versions=list(versions.values()),change_scope=list(changes.values()),next_tests=list(plans.values()))
         for key in ('known_cost_microyuan','observed_samples'):
             values=[v for (_,field),v in counters.items() if field==key]
             result[key]=sum(values) if values and all(v is not None for v in values) else None
         return result
+
+
+def _release_summary(events):
+    def actions(rows):
+        return [e for e in rows if e['mode']=='ACTUAL' and e['evidence_domain']=='online_business'
+                and (e['kind']=='deployment' and e['status'] in ('passed','uncertain','failed','blocked')
+                     or e['kind']=='rollback' and e['status'] in ('rolled_back','uncertain','failed','blocked'))]
+    def latest(rows):
+        known=[e for e in rows if e['occurred_at'] is not None]
+        return max(known,key=lambda e:(datetime.fromisoformat(e['occurred_at']),e['sequence'])) if known else max(rows,key=lambda e:e['sequence'])
+    def state(event):
+        if event['kind']=='deployment' and event['status']=='passed':return 'deployed'
+        if event['kind']=='rollback' and event['status']=='rolled_back':return 'rolled_back'
+        if event['status']=='no_release':return 'no_release'
+        return 'unknown'
+    results=[]
+    for run in sorted({e['run_id'] for e in events}):
+        rows=[e for e in events if e['run_id']==run]
+        choices=actions(rows) or [e for e in rows if e['mode']=='ACTUAL' and e['kind']=='deployment' and e['status']=='no_release']
+        chosen=latest(choices) if choices else None
+        results.append(dict(run_id=run,state='unknown' if chosen is None else state(chosen),
+            event_sha256=None if chosen is None else chosen['event_sha256'],
+            occurred_at=None if chosen is None else chosen['occurred_at'],
+            time_basis=None if chosen is None else chosen['time_basis'],
+            deployment_id=None if chosen is None else chosen['version']['deployment_id'],
+            generation=None if chosen is None else chosen['version']['generation'],
+            owner=None if chosen is None else chosen['version']['owner']))
+    choices=actions(events)
+    overall=state(latest(choices)) if choices else 'no_release' if any(r['state']=='no_release' for r in results) else 'unknown'
+    return overall,results

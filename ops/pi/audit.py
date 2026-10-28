@@ -23,7 +23,7 @@ TEXT_FIELDS=frozenset('decision next_action reason hypothesis tool_name operatio
 SHANGHAI=timezone(timedelta(hours=8),'Asia/Shanghai')
 _NAME=re.compile(r'[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}')
 _HEX=re.compile(r'[0-9a-f]{64}')
-_SECRET=re.compile(r"""(?ix)(\b[\w-]*(?:api[_-]?key|token|secret|password|passwd|密码|密钥|口令)[\w-]*["']?\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,;]+)""")
+_SECRET=re.compile(r"""(?ix)(\b[\w-]*(?:api[_-]?key|token|secret|password|passwd|密码|密钥|口令)[\w-]*["']?\s*[:=]\s*)(?:\[REDACTED\]|\{[\s\S]*|\[[\s\S]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s,;]+)""")
 _BEARER=re.compile(r'(?i)\bBearer\s+[^\s,;]+')
 _KEY=re.compile(r'\bsk[-_][A-Za-z0-9_-]{8,}\b')
 _URL=re.compile(r'(?i)((?:https?|postgres(?:ql)?(?:\+psycopg)?)://)[^/\s@]+:[^/\s@]+@')
@@ -110,7 +110,7 @@ def validate_record(record):
         clean=''.join(c if ord(c)>=32 or c in '\n\t' else '\ufffd' for c in value)
         clean=_URL.sub(r'\1[REDACTED]@',clean)
         clean=_BEARER.sub('Bearer [REDACTED]',clean)
-        clean=_SECRET.sub(r'\1[REDACTED]',clean)
+        clean=_SECRET.sub(lambda m:m.group(0) if m.group(0)[len(m.group(1)):] in ('[REDACTED]','"[REDACTED]"',"'[REDACTED]'") else m.group(1)+'[REDACTED]',clean)
         clean=_KEY.sub('[REDACTED]',clean)
         flags['redacted']|=clean!=value
         flags['truncated']|=len(clean)>maximum
