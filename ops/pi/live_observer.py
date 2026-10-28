@@ -100,10 +100,12 @@ def _cached(root,run_id,config_sha,controller):
     return receipt
 
 
-def observe(config_path,*,clock=None,reader=None):
+def observe(config_path,*,clock=None,reader=None,expected_config_sha256=None):
     path,c,raw_sha,base,audit_path,export=_load(config_path)
     require(c['mode']!='ACTUAL' or reader is None,'ACTUAL observer cannot inject its source')
     require(c['mode']!='SIMULATED' or callable(reader),'SIMULATED observer requires an explicit test source')
+    require(c['mode']!='ACTUAL' or expected_config_sha256 is not None,'ACTUAL observer requires a pinned config digest')
+    if expected_config_sha256 is not None:require(hash_value(expected_config_sha256) and raw_sha==expected_config_sha256,'observer config digest mismatch')
     source=PsqlMetricsReader(c['source']) if c['mode']=='ACTUAL' else reader
     now=utc((clock or (lambda:datetime.now(timezone.utc)))())
     end=datetime.fromtimestamp(int(now.timestamp())//900*900,tz=timezone.utc)-timedelta(minutes=1)
@@ -176,8 +178,8 @@ def observe(config_path,*,clock=None,reader=None):
 
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--config',required=True);args=parser.parse_args()
-    try:result=observe(Path(args.config))
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--config',required=True);parser.add_argument('--config-sha256');args=parser.parse_args()
+    try:result=observe(Path(args.config),expected_config_sha256=args.config_sha256)
     except (ValueError,OSError,sqlite3.DatabaseError) as error:
         print(json.dumps(dict(status='blocked',failure_class=type(error).__name__,automatic_execution=False)));return 1
     print(json.dumps(result));return 1 if result['status']=='blocked' else 0

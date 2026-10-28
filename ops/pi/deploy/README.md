@@ -84,3 +84,67 @@ snapshots still equal the latest captured checkpoint before replacement, and
 verify owner, history, unknown holds, budget, policy and credential hashes after.
 Never restore a stale financial snapshot over later writes.
 See [SQLite checkpoint semantics](https://www.sqlite.org/pragma.html#pragma_wal_checkpoint).
+
+## Fixed metadata observer
+
+The observer is a separate, read-only sidecar, not the paid manager. Its code is
+implemented and locally verified; production activation must have its own dated
+receipt. Do not infer live activation from this template or from a green test.
+
+`myink-pi-observer.service` runs one tick (120 seconds maximum) every 15 minutes.
+It uses a root-owned closed Python runtime, `-I -S -B`, no provider credentials,
+private networking restricted to Unix sockets, and a dedicated nonblocking lock.
+Only observations, audit state/export and that lock are writable. Original fee,
+manager, jobs, config and releases remain read-only; provider credentials are
+inaccessible. The trusted host's Docker group is root-equivalent authority; the
+model has no Docker or SQL capability. The host transport only executes its fixed
+PostgreSQL metadata query protocol under the dedicated NOLOGIN role.
+
+The service-readable JSON config is private0600, pinned by the exact SHA256 in a
+root-owned `config/observer.env` (`PI_OBSERVER_CONFIG_SHA256`). That environment
+also pins the root-owned entry point and `PI_OBSERVER_RUNTIME_SHA256`. Do not put
+keys, passwords, billing configuration or arbitrary commands in this config.
+ACTUAL calls require the expected config digest and reject an injected source;
+SIMULATED calls require a test callback. The latter are not cloud evidence.
+
+Before provisioning, verify the exact Docker daemon, PostgreSQL container/image,
+PostgreSQL16, product health and absence of conflicting role/schema. Run the owned
+standalone PG tests explicitly with `--pi-observer-pg`; the original guarded
+`pi_lab`/paid gates remain unchanged. That test creates no host ports, records its
+ownership before Docker creation, keeps failure logs and removes only its own
+operation-label containers. Its synthetic environment is not production.
+
+Provision only `myink_pi_metrics` (NOLOGIN/NOSUPERUSER/NOCREATEDB/NOCREATEROLE/
+NOREPLICATION/NOBYPASSRLS/NOINHERIT) and the two `pi_metrics` security-barrier views
+from `ops/pi/metrics_sql.py`. The transaction refuses unknown existing objects;
+never use CREATE OR REPLACE, CASCADE, or broad product GRANT/REVOKE to get past a
+conflict. Freeze the approved canonical view definitions, security options and
+ordered column types into the config's `view_sha256`. Probe fingerprinting pins
+its search_path. The transport checks the role flags/membership, effective raw
+privileges, definition digest, read-only transaction and source identity on every
+query, with a server statement timeout<=5seconds. It sets its own session bounds;
+SET ROLE alone does not apply role configuration defaults.
+
+Views exclude raw detail/body/credentials and project bounded, typed metadata
+leaves. Credential-like and encoded-body identifiers become null, not copied
+text. The reader sends parameters as quoted psql variables, not SQL. Host calls
+have a10second deadline and a4MiB output bound; default snapshots use2pages of500
+rows, preserve truncation/confounders and cap the private aggregate at1MiB.
+Unknown historical deployment information stays null. Mixed/incomplete cohorts,
+missing provenance and fewer than20same-type complete samples are insufficient;
+p95 is unavailable below100 samples. No observation admits or approves a repair.
+
+Each tick freezes one completed time window; identical replay uses the prior
+receipt and source digest without querying again. Incomplete windows remain
+pending rather than being silently overwritten. Publication failures preserve the
+last good audit manifest and original artifacts. Set `export_root` explicitly to
+the existing private audit export, separate from the writable audit database.
+Main consumes auditv1 only, using its standalone reader and authenticated admin
+routing; no static directory publication or execution capability is provided.
+
+Rollback preparation: preserve installation receipts, exact DDL, view digest,
+role flags, service/unit hashes and audit outputs. Disable only the observer
+service/timer. Drop its two views/schema/role only after matching those receipts,
+in a transaction without CASCADE; any extra dependencies or drift must abort the
+whole cleanup. Never restore an older fee/manager ledger or change product rows.
+The original manager and all uncertain reservations remain authoritative.

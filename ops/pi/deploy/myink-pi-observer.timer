@@ -1,0 +1,11 @@
+[Unit]
+Description=Collect fixed Myink Pi metadata every 15 minutes
+
+[Timer]
+OnBootSec=120
+OnUnitInactiveSec=15min
+AccuracySec=1s
+Unit=myink-pi-observer.service
+
+[Install]
+WantedBy=timers.target
