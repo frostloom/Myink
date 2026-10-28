@@ -201,3 +201,34 @@ later run only through task_package/package_baseline's fixed isolated checker,
 then pass independent review. The dedicated paid investigation role and that
 automatic freeze/reproducer coordinator are still pending; this compiler does
 not call a model or execute/import proposed tests.
+
+## Dedicated investigation SDK role (source only)
+
+`investigation_launcher` is a separate fixed proposal-only role using the shared
+one-request host lifecycle, original gateway/ledger, selection.py no-tool worker
+and authenticated stopped-session/RPC verification. It rebuilds the frozen context
+from verified observer config/controller/receipt, source, pending findings and
+credential checks; it cannot use an independent-review label to bypass that role.
+
+ACTUAL requires a root proposal-only permit, canonical original50CNY ledger/nine
+legacy holds, real clock, one request and at most120seconds. Its permanent claim
+is `/home/ubuntu/myink-pi-managed/investigations/research-<research_fingerprint>`.
+A new run name, permit file, current fee checkpoint, unrelated Git commit or
+refreshed window cannot reuse that research claim. SIMULATED requires injected
+transport and an isolated ledger, preventing test settlements in the canonical
+fee database. All input/output and SQLite sidecar aliases are rejected.
+
+Before forwarding, the host rechecks material pins, whole source, runtime,
+observation freshness, owned policy and original fee state. Valid task/no_task,
+invalid output, unknown usage, protocol failure, cleanup uncertainty and operator
+revocation retain separate result facts. Closed known invalid output remains
+charged; it is not replayed. Complete test source/summary stays private; the
+primary analysis export contains only decision, known charge/count, input and
+observation evidence. No test package, candidate or FileReview is created here.
+
+Raw file hashes authorize exact private bytes, including whitespace. The model
+copies the canonical context-data hash instead, so indented JSON or a final
+newline cannot turn a valid proposal into a false mismatch. Context binding also
+preserves JSON types; true does not stand for the measured count1. The next
+required step is an authenticated host freezer and fixed isolated reproducer;
+new server activation/native/actual acceptance and whole-plan review are pending.
