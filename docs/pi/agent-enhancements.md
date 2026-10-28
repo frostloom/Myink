@@ -57,4 +57,6 @@ analysis/diagnose仅开放observe_metrics、read_source、candidate_status；pla
 
 ## 已排程的独立次日回归（尚未到期执行）
 
-followup003和5分钟定时器已部署，真实预到期结果ACTUAL/planned/零请求/无认领；Oct29 03:00原候选18案例仍result=null。root固定登记是执行权，审计计划仅用于按target_run/test/candidate/due关联；调度运行可预留其他目标运行的任务。共享maintenance.lock与原manager串行，02:00–05:30准入、06:00前结束；固定Docker检查与清理、原账本保全及追加式结果不授予发布能力。父目录和意图先持久同步，不确定/失败不重放，写目标与冻结输入和原状态隔离。代码25fb6b06的14文件+752/-7另存控制器版本事件，原产品候选不变。验证见docs/evaluations/pi-followup-2026-10-28.md；真正次日验收仍待实际到期收据。
+followup004和5分钟定时器已部署，真实预到期结果ACTUAL/planned/零请求/无认领；Oct29 03:00原候选18案例仍result=null。root固定登记是执行权，审计计划仅用于按target_run/test/candidate/due关联；调度运行可预留其他目标运行的任务。共享maintenance.lock与原manager串行，02:00–05:30准入、06:00前结束；固定Docker检查与清理、原账本保全及追加式结果不授予发布能力。父目录和意图先持久同步，不确定/失败不重放，写目标与冻结输入和原状态隔离。代码25fb6b06的14文件+752/-7另存控制器版本事件，原产品候选不变。验证见docs/evaluations/pi-followup-2026-10-28.md；真正次日验收仍待实际到期收据。
+
+次日检查已更新到followup004（008de641），使用纯标准库fixed_checker.py；SDK开发器以兼容包装复用。3种真实Docker场景在-I-S子进程通过，服务器也验证无模型启动器依赖；004已恢复定时器，003暂停/恢复审计保留。完整离线3248通过，控制器累计16文件+914/-91单独存为版本事件。真正Oct29 03:00仍待实际验收，不提前报成功。
