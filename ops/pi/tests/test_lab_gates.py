@@ -130,3 +130,25 @@ def test_owned_fixture_still_rejects_cached_business_settings_drift(monkeypatch,
         database_url='postgresql+psycopg://offline:offline@192.0.2.4:1/foreign'))
     with pytest.raises(ValueError,match='frozen business fixture settings drift'):
         verify.verify_test_environment()
+
+
+def test_owned_pg_tests_are_deselected_without_native_optin():
+    from types import SimpleNamespace
+    from ops.pi.tests import conftest
+    native=SimpleNamespace(get_closest_marker=lambda name:name=='pi_observer_pg')
+    plain=SimpleNamespace(get_closest_marker=lambda name:False)
+    removed=[]
+    config=SimpleNamespace(getoption=lambda name:False,hook=SimpleNamespace(pytest_deselected=lambda items:removed.extend(items)))
+    selected=[native,plain]
+    conftest.pytest_collection_modifyitems(config,selected)
+    assert selected==[plain] and removed==[native]
+
+
+def test_native_optin_does_not_enable_original_guarded_lab():
+    from types import SimpleNamespace
+    from ops.pi.tests import conftest
+    native=SimpleNamespace(get_closest_marker=lambda name:name=='pi_observer_pg')
+    original=SimpleNamespace(get_closest_marker=lambda name:name=='pi_lab')
+    config=SimpleNamespace(getoption=lambda name:name=='--pi-observer-pg')
+    with pytest.raises(pytest.UsageError,match='require --pi-lab'):
+        conftest.pytest_collection_modifyitems(config,[native,original])

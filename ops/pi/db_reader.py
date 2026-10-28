@@ -1,8 +1,7 @@
 """Trusted collector: fixed projections, strict SELECT role, server-side deadlines."""
-import re
 from datetime import datetime
 from sqlalchemy import text
-from .metrics import _PROJECTIONS, collect_snapshot
+from .metrics import collect_snapshot
 from .feedback import make_feedback_snapshot, normalize_window, validate_cursor
 
 _FEEDBACK_SQL = ("SELECT id, category, LEFT(description, 2001) AS description, status, created_at, updated_at "
@@ -19,23 +18,8 @@ class SnapshotCollector:
         if source == 'feedback':
             self._validate_feedback_request(request)
             return
-        prefix = 'SELECT ' + _PROJECTIONS.get(source, '') + f' FROM {source} WHERE '
-        sql = request.get('sql', '')
-        tail = 'ORDER BY created_at, id LIMIT :limit OFFSET :offset'
-        if (source not in _PROJECTIONS or request.get('read_only') is not True
-                or type(request.get('timeout_ms')) is not int or not 1 <= request['timeout_ms'] <= 5000
-                or not sql.startswith(prefix) or not sql.endswith(tail) or ';' in sql or '--' in sql):
-            raise ValueError('unapproved metric query')
-        where = sql[len(prefix):-len(tail)].strip()
-        cohort = ('SELECT COALESCE(batch_task_id, id) FROM tasks '
-                  'WHERE created_at >= :start AND created_at < :end')
-        if source == 'tasks':
-            valid = where == f'id IN ({cohort}) OR batch_task_id IN ({cohort})'
-        else:
-            valid = where == 'FALSE' or bool(re.fullmatch(
-                r'created_at < :end AND task_id IN \(:thread_\d+(?:, :thread_\d+)*\)', where))
-        if not valid:
-            raise ValueError('unapproved metric predicate')
+        from .metrics_query import validate_metric_request
+        validate_metric_request(request)
 
     def _read(self, request):
         self._validate_request(request)

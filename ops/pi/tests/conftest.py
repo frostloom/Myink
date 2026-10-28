@@ -5,12 +5,17 @@ import pytest
 
 
 def pytest_addoption(parser):
+    parser.addoption('--pi-observer-pg', action='store_true', help='Run owned standalone metadata-only PostgreSQL tests')
     parser.addoption('--pi-lab', action='store_true', help='Run verified private lab tests')
     parser.addoption('--pi-live', action='store_true', help='Request paid tests; all B/price/scope gates still required')
 
 
 @pytest.hookimpl(trylast=True)
 def pytest_collection_modifyitems(config, items):
+    native=[item for item in items if item.get_closest_marker('pi_observer_pg')]
+    if native and not config.getoption('--pi-observer-pg'):
+        items[:]=[item for item in items if item not in native]
+        config.hook.pytest_deselected(items=native)
     lab = [item for item in items if item.get_closest_marker('pi_lab')]
     live = [item for item in items if item.get_closest_marker('pi_live')]
     if lab and not config.getoption('--pi-lab'):
