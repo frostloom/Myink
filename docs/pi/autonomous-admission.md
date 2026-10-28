@@ -350,3 +350,50 @@ before inbox admission, preserving partial private output without publishing a
 new task after cancellation. Raw worker outcomes remain private, not admin UI
 payloads. The privileged finite parent dispatcher/coordinator, service scheduling,
 matching closed manager/SDK release and native/actual acceptance are still pending.
+
+## Finite coordinator and closed manager guard (source wiring complete)
+
+`autonomy_coordinator` holds the original maintenance lock while creating fixed
+phase inputs, dispatching investigation/reproducer/independent review, admitting
+the exact handoff and registering its external review queue. A fresh source
+fingerprint is a permanent claim. Completed reentry makes no model request;
+unfinished/blocked history freezes new work, and an unchanged pending-adoption
+file prevents another paid investigation merely because observation facts change.
+ACTUAL admission also reserves time for all finite preparation before the night
+cutoff. No-task, green baseline, reject and failed/uncertain phases remain distinct.
+
+`autonomy_dispatch` executes only fixed phase schemas through `/usr/bin/setpriv`
+and the verified `-I -S -B` entry. It clears the inherited environment, fixes
+ubuntu/Docker groups, drops all capability sets and prohibits privilege gain.
+The directly executed worker retains the Popen PID/process group; no intermediate
+wrapper shortens cooperative cleanup. Before launch it syncs a once-only phase
+intent. Private bounded stdout/stderr, process identity, result and completion
+receipts survive failure. Cancellation/deadline/capture overflow signals only the
+owned live group, gives cleanup time and records uncertainty without replay.
+
+Only an exact, still-unregistered own manifest may be withdrawn under the same
+maintenance lock. Recovery first preserves its original bytes and durable intent,
+checks the original manager registration and inode/hash, then removes it from the
+inbox. Already registered, changed or foreign data is never withdrawn. Missing
+recovery completion is uncertain. The new `manager_host` independently requires
+all five completed phase receipts, private result hashes, exact coordinator and
+handoff/cycle/manifest bindings and fresh issuer policy before an automatic task
+can reach the original manager. Thus a partial publish cannot start selection
+merely because an inbox file exists. Finished/cancelled historical tasks retain
+the original manager's history semantics and need no fresh live permission.
+
+The root parent writes only scoped host permissions/configuration; every paid,
+checker and audit phase runs as ubuntu. `coordinator_audit` uses the existing
+append-only store and exports as that ordinary user. Parent plan/controller events
+link the full fingerprint and phase-receipt hashes, omit secondary model/cost
+counters, and never assert candidate/product acceptance. Raw worker output stays
+private. The independent reader has verified these flow/version links.
+
+Source service units now connect the root parent, external review worker and
+closed ordinary manager. The manager keeps max_tasks1/2100seconds/idle0 and its
+original60second timer/maintenance lock. They are not installed on the server.
+Before activation, finish native closure/SDK and service acceptance and the one
+whole-plan independent review; preserve the actual005 runtime, original ledgers,
+50CNY/nineholds and latest checkpoint. Finished-candidate independent review,
+main/product adoption, owned business rollback and true24–48hour verification
+remain separate unfinished requirements.

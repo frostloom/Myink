@@ -1,0 +1,11 @@
+[Unit]
+Description=Myink Pi bounded autonomous source investigation
+
+[Timer]
+OnBootSec=5min
+OnUnitInactiveSec=15min
+AccuracySec=30s
+Unit=myink-pi-autonomy.service
+
+[Install]
+WantedBy=timers.target

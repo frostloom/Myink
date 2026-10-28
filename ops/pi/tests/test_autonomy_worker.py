@@ -54,3 +54,10 @@ def test_verified_entry_only_routes_fixed_phase_components(tmp_path,monkeypatch,
     try:assert entry.main()==0
     finally:sys.path[:]=old
     assert seen==[(component,'/fixed/phase.json','a'*64)] and 'done' in capsys.readouterr().out
+
+
+def test_fixed_audit_phase_never_uses_a_model_kernel(tmp_path,monkeypatch):
+    cp=tmp_path/'audit.json';cp.write_bytes(encoded(dict(schema='pi-autonomy-audit-v1',mode='ACTUAL')));cp.chmod(0o600);module=api();monkeypatch.setattr(module,'_identity',lambda:None);calls=[]
+    monkeypatch.setattr('ops.pi.autonomy_audit.emit',lambda path,pin:calls.append((path,pin)) or dict(model_requests=0,records=1))
+    result=module.run('coordinator_audit',cp,file_hash(cp))
+    assert result['model_requests']==0 and result['status']=='done' and calls==[(cp,file_hash(cp))]

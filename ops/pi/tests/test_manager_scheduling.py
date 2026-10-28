@@ -17,8 +17,8 @@ def unit(name):
 
 def test_manager_service_scans_once_without_waiting_under_shared_lock():
     service=unit('myink-pi-manager.service')['Service'];args=shlex.split(service['ExecStart'])
-    assert args[args.index('--idle-seconds')+1]=='0'
-    assert args[args.index('--max-tasks')+1]=='1' and args[args.index('--seconds')+1]=='2100'
+    assert args[args.index('--component')+1]=='manager' and args[args.index('/usr/bin/python3')+1:args.index('/usr/bin/python3')+4]==['-I','-S','-B']
+    # The closed host fixes idle0/max1/2100; functional argument coverage is in test_manager_host.
     assert args[:3]==['/usr/bin/flock','--nonblock','--no-fork'] and args[3].endswith('/control/maintenance.lock')
     assert service['RuntimeMaxSec']=='2400' and service['Restart']=='no' and service['NoNewPrivileges']=='yes'
     assert service['User']=='ubuntu' and service['SupplementaryGroups']=='docker'

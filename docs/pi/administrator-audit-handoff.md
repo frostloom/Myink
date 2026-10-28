@@ -120,3 +120,19 @@ model request and known charge, plus selection-verification/original-lease
 hashes. No development permission follows. Re-reading the same receipt does not
 append a duplicate charge/event. Partial binding/publication remains uncertain;
 never infer completion solely from an inbox or approval file's presence.
+
+## Coordinator grouping and controller history (source only)
+
+`autonomy.coordinator.v1` uses `details.operation_id` for the full research
+fingerprint and links `phase_investigation`, `phase_reproducer`,
+`phase_sdk_review` and `phase_manager_handoff` receipt hashes when those stages
+exist. Its status distinguishes admission, no_task, not_reproduced,
+review_rejected, failure and uncertainty. Group `auto-`, `research-`, `repair-`,
+`review-` and `select-` run identities by their common first32fingerprint characters;
+keep the full operation/evidence hash as the authoritative correlation.
+
+The parent summary omits model/count fields: add only each authenticated primary
+SDK analysis/review charge once. `autonomy.controller.v1` is a separate version
+context with controller/source-profile policy/SDK identity, never a product release.
+Withdrawal retains the exact original manifest privately; unavailable/partial
+coordinator evidence cannot be presented as executable or successfully developed.

@@ -233,3 +233,40 @@ claims remain uncertain; withdrawing a registry entry stops future publication
 but does not undo an already issued review or replay any phase. Install only with
 matching verified host/SDK code after whole-plan review and native acceptance;
 the old runtime005 cannot stand in for the new host closure.
+
+## Finite source coordinator and closed manager (not activated)
+
+The source `myink-pi-manager.service` now uses the closed verified entry with
+`--component manager`; max_tasks1/2100seconds/idle0 are fixed in manager_host.
+The existing live005 service is unchanged until an explicit verified rollout.
+New root-owned0640 config files in root-owned0750 config are:
+`autonomy-profile.json`, `autonomy.env`, `manager-host.json`, `closed-manager.env`,
+`review-worker-registry.json` and `review-worker.env`. Preserve old service.env,
+unit files, config, runtimes and canonical fee/manager histories.
+
+The parent environment pins PI_OBSERVER_RUNTIME_SHA256, PI_AUTONOMY_ENTRYPOINT
+and PI_AUTONOMY_PROFILE_SHA256. The manager environment pins the same closure,
+PI_MANAGER_ENTRYPOINT and PI_MANAGER_CONFIG_SHA256. Worker registration updates
+only the finite review registry and its fixed three-field environment, retaining
+private previous versions. A partial pair can block a wakeup; it cannot approve
+an unverified phase. Do not install these units against an old host closure or
+new guest code without the matching verified SDK snapshot.
+
+Create canonical autonomy/investigations/reproductions/handoffs/reviews private
+roots for ubuntu; config/autonomy-permits is root:ubuntu0750. Root-generated
+permits stay root:ubuntu0640, ordinary inputs/claims ubuntu0600/0700. The parent
+needs only its declared privilege-drop/chown/read/kill capabilities. It holds the
+existing maintenance lock internally; do not add an outer flock. It dispatches
+fixed setpriv/zero-capability/no-new-privileges ubuntu workers with a minimal
+environment and private bounded output. Docker-group host code remains trusted.
+
+The ordinary manager still takes the outer maintenance lock and has the original
+60second timer. Before original-manager execution, automatic admissions require
+completed coordinator and all five phase/result/hash links. Missing/uncertain
+metadata cannot start selection. Withdrawal only preserves/moves an exact own
+manifest before manager registration; registered/foreign data is never removed.
+The external review service never takes maintenance.lock, so it can answer the
+original manager while FileReview waits. Signal cancellation, original finance,
+owned cleanup, cold reentry and main audit reading need native acceptance before
+activation. Whole-plan independent review is still required. Main/product release
+is a different authorization boundary.
