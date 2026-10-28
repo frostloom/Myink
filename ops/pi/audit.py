@@ -245,3 +245,7 @@ class AuditStore:
         with closing(sqlite3.connect(self.path.as_uri()+'?mode=ro',uri=True,timeout=5)) as c:
             c.row_factory=sqlite3.Row;c.execute('PRAGMA query_only=ON');c.execute('BEGIN');_schema(c)
             return [event for event in _iter(c) if (run_id is None or event['run_id']==run_id) and (day is None or event['day']==day)]
+
+    def export(self,root):
+        from ops.pi.audit_export import export_snapshot
+        return export_snapshot(self,root)
