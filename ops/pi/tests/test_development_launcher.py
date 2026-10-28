@@ -155,3 +155,34 @@ def test_missing_sensitive_file_still_writes_failure_receipt(config_file,monkeyp
     assert result[missing+'_audit_failure_class']=='FileNotFoundError'
     assert result['original_history_unchanged']
     assert json.loads((Path(c['root'])/'result.json').read_text())==result
+
+
+@pytest.mark.parametrize('private_umask',[0o077,0o027])
+def test_fixed_checker_bind_root_is_readable_by_unprivileged_worker(tmp_path,monkeypatch,private_umask):
+    import os
+    from ops.pi import development_launcher as launcher
+    from ops.pi.development_inputs import file_hash
+    tmp_path.chmod(0o700);candidate=tmp_path/'candidate'
+    (candidate/'src').mkdir(parents=True);(candidate/'src/a.py').write_text('value=1\n')
+    gold=tmp_path/'gold.py';gold.write_text('fixed input\n');gold.chmod(0o600)
+    destination=tmp_path/'check'
+    class BoundaryReached(RuntimeError):pass
+    class Host:
+        def create(self,mode,*,source,**kwargs):
+            # The bind exposes this root directly to UID65534, regardless of its private host ancestor.
+            if source.stat().st_mode&0o005!=0o005:
+                raise PermissionError('worker cannot traverse bind root')
+            for p in source.rglob('*'):
+                assert p.stat().st_mode&(0o005 if p.is_dir() else 0o004)==(0o005 if p.is_dir() else 0o004)
+            assert tmp_path.stat().st_mode&0o777==0o700
+            raise BoundaryReached('fixed container boundary reached')
+    host=Host();monkeypatch.setattr(launcher,'_host',lambda *a:host)
+    class Owners:
+        def add(self,value):return value
+        def cleanup(self,value):return []
+    c=dict(test_path=str(gold),test_sha256=file_hash(gold))
+    previous=os.umask(private_umask)
+    try:
+        with pytest.raises(BoundaryReached,match='fixed container boundary'):
+            launcher._fixed_check(c,candidate,destination,Limits(1,1,60,Event()),lambda *a:None,Owners())
+    finally:os.umask(previous)

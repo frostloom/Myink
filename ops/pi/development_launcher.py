@@ -201,7 +201,7 @@ def _fixed_check(c,candidate,destination,limits,write,owners):
     shutil.copyfile(c['test_path'],destination/'test.py')
     shutil.copyfile(Path(__file__).parent/'unit_feedback.py',destination/'feedback.py')
     require(file_hash(destination/'test.py')==c['test_sha256'],'fixed test drift')
-    for p in destination.rglob('*'):
+    for p in [destination,*destination.rglob('*')]:
         p.chmod(0o755 if p.is_dir() else 0o644)
     host=owners.add(_host(c,'checker_image_id'))
     result=None; cleanup=[]
