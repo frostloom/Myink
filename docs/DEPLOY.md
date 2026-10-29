@@ -58,6 +58,8 @@ docker compose up -d --build
 
 2026-10-28 用户授权的本机 VIP 预览、后台及账号页改版使用 `/Users/a1/.codex/worktrees/vip-service/Myink/.local/account-membership-20261028/compose.sh`，叠加上一版 UI 与原 VIP 运行配置。原环境、数据卷和数据库备份保存在同工作区的 `.local/vip-service-20261028/`。源码更新不会自动替换运行容器。本机部署详情见 `docs/work-items/vip-service-20261028/README.md`、`ui-refinement.md` 与 `docs/superpowers/plans/2026-10-28-account-membership-ui.md`。
 
+2026-10-29 高级设置、注册/登录及文风库视觉改版的当前本机入口为 `.local/personal-pages-20261029/compose.sh`，继续叠加上述配置，仅更新 Caddy 前端，后端及数据保持原状。验证记录见 `docs/superpowers/plans/2026-10-29-personal-pages-ui.md`；该轮界面改版仅部署 localhost。
+
 ## 本机开发
 
 ```bash

@@ -20,7 +20,7 @@
 .inner {
   flex: 1;
   width: 100%;
-  max-width: 1280px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: var(--page-top) var(--page-gutter) var(--space-7);
 }
@@ -30,14 +30,14 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 24px;
-  margin-bottom: 32px;
+  margin-bottom: 26px;
 }
 
 .header h1 {
-  margin: 6px 0 8px;
-  font-size: var(--text-display);
+  margin: 0 0 10px;
+  font-size: calc(var(--text-body) * 2.15);
   line-height: 1.25;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.02em;
   color: var(--heading);
 }
 
@@ -50,7 +50,7 @@
 
 .back {
   flex-shrink: 0;
-  margin-top: 8px;
+  margin-top: 0;
   /* 与 SettingsPage 的面包屑同理：12px 行内链接的盒子实测 18px 高，够不着 40 判据。
      .header 是 flex，.back 是被块化的 item，所以 min-height 生效。 */
   display: flex;
@@ -70,17 +70,26 @@
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
-  gap: 36px;
-  align-items: start;
+  grid-template-columns: minmax(210px, 250px) minmax(0, 1fr);
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
 }
 
-.catalog { min-width: 0; }
+.catalog { min-width: 0; padding: 22px 18px; border-right: 1px solid var(--line); background: var(--surface-2); }
+.headerActions { display: flex; align-items: center; gap: 20px; flex-shrink: 0; }
+.headerActions > button { display: inline-flex; gap: 8px; align-items: center; }
+.catalogHint { margin: 0; color: var(--ink-subtle); font-size: var(--text-micro); line-height: 1.8; }
+.catalogEmpty { display: flex; flex-direction: column; align-items: flex-start; gap: 9px; margin-top: 16px; color: var(--ink-subtle); }
+.catalogEmpty p { margin: 0; font-size: var(--text-small); color: var(--ink-muted); }
+.catalogEmpty span { font-size: var(--text-micro); line-height: 1.8; max-width: 24em; }
 
 .catalogHead {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
   padding-bottom: 20px;
   border-bottom: 1px solid var(--line);
 }
@@ -164,8 +173,7 @@
   gap: 22px;
   min-width: 0;
   padding: 28px 30px 32px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
+  border: 0;
   background: var(--surface-1);
 }
 
@@ -330,11 +338,17 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 18px;
-  min-height: 340px;
-  padding: 40px;
-  border-block: 1px solid var(--line);
+  align-items: center;
+  text-align: center;
+  gap: 17px;
+  min-height: 450px;
+  padding: 42px 36px;
 }
+.emptyIcon { display: grid; place-items: center; width: 68px; height: 68px; margin-bottom: 2px; border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-2); color: var(--accent-ink); }
+.empty h2 { font-size: 23px; max-width: 22em; margin: 0; }
+.empty .hint { max-width: 34em; line-height: 1.9; }
+.emptyTraits { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 0 0 7px; }
+.emptyTraits span { padding: 5px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--ink-subtle); font-size: var(--text-micro); }
 
 .actionBar {
   position: sticky;
@@ -345,8 +359,12 @@
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  padding: 16px 40px;
-  border-top: 1px solid var(--line);
+  width: calc(100% - 2 * var(--page-gutter));
+  max-width: calc(1100px - 2 * var(--page-gutter));
+  margin: 0 auto 24px;
+  padding: 16px 22px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
   background: var(--surface-1);
 }
 .feedback { min-width: 0; }
@@ -364,11 +382,21 @@
 /* 1200 档：桌面多栏收窄——目录列给窄一点，元数据与字段压成单列。 */
 @media (max-width: 1200px) {
   .inner { padding: var(--page-top) var(--page-gutter) 36px; }
-  .layout { grid-template-columns: minmax(175px, 220px) minmax(0, 1fr); gap: 24px; }
+  .layout { grid-template-columns: minmax(180px, 220px) minmax(0, 1fr); }
   .detail, .newBox { padding: 24px; }
   .metadata { grid-template-columns: minmax(0, 1fr); }
   .field { grid-template-columns: minmax(0, 1fr); gap: 5px; }
   .actionBar { padding-inline: 24px; }
+}
+
+@media (max-width: 900px) {
+  .inner { padding-inline: 24px; }
+  .header { flex-wrap: wrap; gap: 16px; }
+  .headerActions { gap: 16px; }
+  .layout { grid-template-columns: minmax(160px, 200px) minmax(0, 1fr); }
+  .catalog { padding: 20px 14px; }
+  .empty { padding-inline: 24px; }
+  .actionBar { width: calc(100% - 48px); max-width: none; }
 }
 
 /* ≤640：rail 折成顶部横条（规则在 ProjectRail.module.css），页面根转竖排让横条落到顶部。
@@ -381,18 +409,25 @@
     min-height: 0;
     flex-direction: column;
   }
-  .inner { padding: var(--space-4) var(--page-gutter) var(--space-6); }
-  .header { margin-bottom: 24px; }
+  .inner { padding: 18px 12px 24px; }
+  .header { margin-bottom: 20px; }
   /* 上面的 `.header h1` 把 --text-display 写死在模块里，特异性盖过 global.css 的窄屏降档，
      实测 390 上全站只有这一页的页级标题还是 34.16px。 */
-  .header h1 { font-size: var(--text-title); }
+  .header h1 { font-size: calc(var(--text-body) * 1.9); }
+  .headerActions { width: 100%; justify-content: space-between; }
   .back { min-height: 44px; }
-  .layout { grid-template-columns: minmax(0, 1fr); gap: 28px; }
-  .catalogHead { flex-direction: row; align-items: center; }
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .catalog { border-right: 0; border-bottom: 1px solid var(--line); padding: 18px 20px; }
+  .catalogHead { padding-bottom: 12px; }
   .catalogHead h2 { gap: 12px; }
+  .catalogEmpty { margin-top: 14px; }
+  .catalogEmpty > svg, .catalogEmpty > span { display: none; }
+  .list { max-height: 260px; overflow-y: auto; margin-bottom: 0; }
+  .groupTitle { margin-top: 16px; }
   .detail, .newBox { padding: 22px 20px; }
-  .empty { min-height: 220px; padding: 24px 4px; }
-  .actionBar { flex-wrap: wrap; padding: 12px 20px max(12px, env(safe-area-inset-bottom)); }
+  .empty { min-height: 330px; padding: 30px 22px; }
+  .empty h2 { font-size: 21px; }
+  .actionBar { width: calc(100% - 24px); flex-wrap: wrap; padding: 16px 20px max(16px, env(safe-area-inset-bottom)); }
   .actionBar .actions { margin-left: auto; }
 }
 

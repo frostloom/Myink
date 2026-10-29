@@ -173,12 +173,14 @@ async function mfaAction(action: 'enroll' | 'confirm' | 'disable') {
 <AdminRail v-if="isAdmin" /><ProjectRail v-else :projects="projects" />
  <main :class="guest ? shell.main : styles.main">
 <div :class="guest ? [shell.inner, 'guest-account-inner'] : styles.page">
-<section v-if="guest" class="panel guest-registration" data-guest-exempt aria-labelledby="guest-register-title">
-<h1 id="guest-register-title">注册账号</h1>
-<p :class="shell.hint">{{ session?.isGuest ? '设置登录信息，保留当前作品、对话与设置。' : '创建账号，开始写作并保存作品。' }}</p>
+<section v-if="guest" class="guest-registration" data-guest-exempt aria-labelledby="guest-register-title">
+<header class="guest-registration-head"><span class="guest-registration-icon"><AccountIcon name="projects" :size="28" /></span><h1 id="guest-register-title">{{ session?.isGuest ? '让作品有自己的归处' : '开始你的写作' }}</h1><p>{{ session?.isGuest ? '创建账号，保留体验中的作品、对话与设置。' : '注册账号保存作品，已有账号可直接登录继续创作。' }}</p></header>
+<div class="guest-registration-body">
 <LoginPage v-if="session?.isGuest" upgrade />
-<RouterLink v-else to="/login?mode=register" class="btn btn-primary">注册账号</RouterLink>
-<div class="guest-login"><RouterLink to="/login">登录已有账号</RouterLink><p v-if="session?.isGuest" :class="shell.hint">游客作品不会合并到已有账号。</p></div>
+<div v-else class="guest-registration-actions"><RouterLink to="/login?mode=register" class="btn btn-primary">注册账号</RouterLink><RouterLink to="/login" class="btn btn-secondary">登录已有账号</RouterLink></div>
+<div v-if="session?.isGuest" class="guest-login"><span>已经有账号？</span><RouterLink to="/login">登录已有账号</RouterLink><p>游客作品不会合并到已有账号。</p></div>
+</div>
+<footer class="guest-registration-foot"><AccountIcon name="account" :size="16" /><span>{{ session?.isGuest ? '注册后，继续使用当前作品与创作设置。' : '用自己的账号管理作品、文风与写作偏好。' }}</span></footer>
 </section>
 <template v-else>
 <header :class="styles.header"><h1>账号与会员</h1><p>查看会员权益，管理登录安全。</p></header>
@@ -234,12 +236,27 @@ async function mfaAction(action: 'enroll' | 'confirm' | 'disable') {
 
 <style scoped>
 .guest-account { min-width: 0; }
-.guest-account-inner { max-width: 560px; margin: 0 auto; padding: 46px 24px; }
-.guest-registration { display: flex; flex-direction: column; gap: var(--space-4); padding: 28px; }
-.guest-registration h1 { margin: 0; font-size: var(--text-title); }
-.guest-login { display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--text-small); }
+.guest-account-inner { width: 100%; max-width: 660px; margin: 0 auto; padding: 64px 24px 40px; }
+.guest-registration { overflow: hidden; border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-1); }
+.guest-registration-head { padding: 32px 36px 0; }
+.guest-registration-icon { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 22px; border: 1px solid var(--line); border-radius: var(--radius-md); color: var(--accent-ink); background: var(--surface-2); }
+.guest-registration h1 { margin: 0; font-size: 27px; line-height: 1.4; }
+.guest-registration-head p { margin: 12px 0 0; font-size: var(--text-body); color: var(--ink-muted); line-height: 1.8; max-width: 32em; }
+.guest-registration-body { padding: 28px 36px 32px; }
+.guest-registration-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.guest-registration-actions a { min-height: 46px; }
+.guest-registration-foot { display: flex; align-items: center; gap: 9px; padding: 18px 36px; border-top: 1px solid var(--line); background: var(--surface-2); color: var(--ink-subtle); font-size: var(--text-small); line-height: 1.7; }
+.guest-registration-foot svg { flex: 0 0 auto; }
+.guest-login { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 10px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--ink-muted); font-size: var(--text-small); }
+.guest-login a { display: inline-flex; align-items: center; min-height: 40px; }
+.guest-login p { flex-basis: 100%; margin: 0; color: var(--ink-subtle); line-height: 1.7; }
 @media (max-width: 640px) {
   .guest-account-inner { padding: 24px 16px; }
-  .guest-registration { padding: 20px; }
+  .guest-registration-head { padding: 26px 24px 0; }
+  .guest-registration-body { padding: 24px; }
+  .guest-registration-foot { padding: 16px 24px; }
+  .guest-registration h1 { font-size: 25px; }
+  .guest-registration-actions { grid-template-columns: 1fr; }
+  .guest-login a { min-height: 44px; }
 }
 </style>

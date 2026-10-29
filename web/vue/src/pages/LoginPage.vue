@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import GuestEntry from '../components/GuestEntry.vue'
 import { useMemoryFormGuard } from "../composables/useMemoryFormGuard";
-import { onScopeDispose, ref, watch } from 'vue'
+import { onScopeDispose, ref, useId, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../authContext'
 import { ApiError } from '../../../src/lib/api'
@@ -10,6 +10,7 @@ import { isValidNewPassword, NEW_PASSWORD_VALIDATION_MESSAGE } from '../../../sr
 import styles from '../../../src/pages/LoginPage.module.css'
 
 const props = defineProps<{ upgrade?: boolean }>()
+const passwordHintId = useId()
 const emit = defineEmits<{ upgraded: [] }>()
 const auth = useAuth()
 const { notice } = auth
@@ -102,15 +103,17 @@ async function submitCode() {
       <button class="btn btn-secondary" type="button" :disabled="busy" @click="back">返回</button>
     </form>
     <form v-else :class="['panel', styles.card]" @submit.prevent="submit">
-      <div v-if="!upgrade"><h1>Myink 作品工作台</h1><p :class="styles.sub">长篇网文多 Agent 创作助手</p></div>
+      <header v-if="!upgrade" :class="styles.heading"><span :class="styles.brand">Myink</span><h1>{{ mode === 'login' ? '登录你的账号' : '创建你的账号' }}</h1><p :class="styles.sub">{{ mode === 'login' ? '继续你的故事，接着上一次的灵感。' : '保存作品与写作偏好，开始自己的创作。' }}</p></header>
       <div v-if="!upgrade" :class="styles.tabs" role="tablist" aria-label="账号入口">
         <button v-for="tab in (['login', 'register'] as const)" :key="tab" type="button" role="tab" :aria-selected="mode === tab" :class="mode === tab ? styles.tabActive : styles.tab" :disabled="busy" @click="switchMode(tab)">{{ tab === 'login' ? '登录' : '注册账号' }}</button>
       </div>
       <label :class="styles.field"><span>用户名</span><input v-model="username" class="input" autocomplete="username" autocapitalize="none" :spellcheck="false" autofocus /></label>
-      <label :class="styles.field"><span>密码</span><input v-model="password" class="input" type="password" :autocomplete="mode === 'login' ? 'current-password' : 'new-password'" /></label>
+      <label :class="styles.field"><span>密码</span><input v-model="password" class="input" type="password" :autocomplete="mode === 'login' ? 'current-password' : 'new-password'" :aria-describedby="mode === 'register' ? passwordHintId : undefined" /></label>
       <template v-if="mode === 'register'">
+        <p :id="passwordHintId" :class="styles.fieldHint">{{ NEW_PASSWORD_VALIDATION_MESSAGE }}</p>
         <label :class="styles.field"><span>确认密码</span><input v-model="confirmPassword" class="input" type="password" autocomplete="new-password" /></label>
         <label :class="styles.field"><span>邀请码</span><input v-model="invitationCode" class="input" autocomplete="off" autocapitalize="none" :spellcheck="false" /></label>
+        <p :class="styles.fieldHint">邀请码由管理员提供。</p>
       </template>
       <div v-if="error" class="banner banner-error" role="alert">{{ error }}</div>
       <div v-else-if="notice" class="banner banner-warning" role="status">{{ notice }}</div>

@@ -33,6 +33,16 @@ async function renderPage() {
  return render({template:'<router-view />'},{global:{plugins:[router]}})
 }
 
+it('opens the sample editor directly from an empty library without extracting until requested', async () => {
+  vi.mocked(styleLibraryApi.list).mockResolvedValue({ items: [] })
+  await renderPage()
+  const action = await screen.findByRole('button', { name: '从文章中提取' })
+  expect(screen.queryByText('选择文风，或从文章中提取。')).toBeNull()
+  await fireEvent.click(action)
+  expect(await screen.findByRole('textbox', { name: '粘贴文章' })).toBeTruthy()
+  expect(styleLibraryApi.extract).not.toHaveBeenCalled()
+})
+
 it('lists the builtins first and reads their profile back as prose', async () => {
   vi.mocked(styleLibraryApi.list).mockResolvedValue({ items: [BUILTIN] })
   await renderPage()
