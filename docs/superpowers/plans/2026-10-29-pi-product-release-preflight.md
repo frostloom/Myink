@@ -74,3 +74,5 @@ profile17becf3b, preserving original issued/expiresOct30 11:27+08,scope/limits/
 50CNY/nineholds/fee history and product container IDs. This is reference_only,
 not main/product adoption or deployment ownership. Current new observer source
 still requires exact implementationCI/native qualification before activation.
+
+Native qualification retained a blocked pre-activation observation: strict Docker Go templates reject absent Health/Labels keys. Safe index-based access now has two real Docker CLI regressions against a private Unix fake Engine. Current targeted51passed; full3938passed/36deselected307.70s. No new reviewer or production feature; actual qualification must be retried with a new immutable packet, retaining failed001.

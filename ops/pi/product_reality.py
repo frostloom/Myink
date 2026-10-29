@@ -39,8 +39,8 @@ SELECT json_build_object(
  'task_provenance',EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tasks' AND column_name='run_provenance'),
  'agent_run_provenance',EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='agent_runs' AND column_name='run_provenance'));
 ROLLBACK;"""
-CONTAINER_FORMAT='{"id":{{json .Id}},"image_id":{{json .Image}},"running":{{json .State.Running}},"status":{{json .State.Status}},"healthy":{{if .State.Health}}{{json .State.Health.Status}}{{else}}null{{end}},"project":{{json (index .Config.Labels "com.docker.compose.project")}},"service":{{json (index .Config.Labels "com.docker.compose.service")}}}'
-IMAGE_FORMAT='{"id":{{json .Id}},"revision":{{json (index .Config.Labels "org.opencontainers.image.revision")}}}'
+CONTAINER_FORMAT='{"id":{{json .Id}},"image_id":{{json .Image}},"running":{{json .State.Running}},"status":{{json .State.Status}},"healthy":{{if (index .State "Health")}}{{json (index (index .State "Health") "Status")}}{{else}}null{{end}},"project":{{json (index .Config.Labels "com.docker.compose.project")}},"service":{{json (index .Config.Labels "com.docker.compose.service")}}}'
+IMAGE_FORMAT='{"id":{{json .Id}},"revision":{{if (index .Config "Labels")}}{{json (index (index .Config "Labels") "org.opencontainers.image.revision")}}{{else}}null{{end}}}'
 
 
 def _hex(value):return isinstance(value,str) and re.fullmatch('[0-9a-f]{64}',value) is not None
