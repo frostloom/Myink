@@ -132,3 +132,18 @@ def test_metadata_error_cannot_mask_revocation_before_the_next_census(product):
         if argv[3]=='exec':write(cp,dict(c,worker_replicas=1))
         return value
     r=observe(product,revoke);assert r['status']=='blocked' and [a[0] for a in calls]==['info','ps','inspect','image','exec']
+
+
+def test_product_observer_imports_with_stdlib_only_without_paid_or_application_modules():
+    import subprocess,sys
+    project=Path(__file__).resolve().parents[3]
+    code="import sys;sys.path.insert(0,sys.argv[1]);import ops.pi.product_reality;assert not any(k in sys.modules for k in ('httpx','sqlalchemy','ops.pi.selection_launcher','ops.pi.model_gateway','ops.pi.no_tool_host','myink.db'))"
+    result=subprocess.run([sys.executable,'-I','-S','-B','-c',code,str(project)],capture_output=True,text=True,timeout=10)
+    assert result.returncode==0,result.stderr
+
+
+def test_simulation_cannot_target_original_audit_state(product,tmp_path,monkeypatch):
+    cp,c,*_=product;canonical=tmp_path/'original';(canonical/'audit/state').mkdir(mode=0o700,parents=True);original=canonical/'audit/state/events.sqlite';original.write_text('original-private-state');original.chmod(0o600)
+    monkeypatch.setattr(api(),'BASE',canonical);c['audit_path']=str(original);write(cp,c);execute,calls=runner(product)
+    with pytest.raises(ValueError):observe(product,execute)
+    assert calls==[] and original.read_text()=='original-private-state'

@@ -277,3 +277,20 @@ native SDK mock/idle/window guards and actual audit-reading evidence; genuine
 new paid night-task and private-lab/full24–48hour qualification remain separate.
 Newer candidate post-review/completion source is not in that live closure.
 Main/product release is a different authorization boundary.
+
+## Product identity/preflight observer (not active merely from this template)
+
+`myink-pi-product-observer.service` is a separate ordinary-user, AF_UNIX-only,
+private-network oneshot. A root-owned640 config at config/product-observer.json
+pins the original Docker daemon, exact fixed project/services/replica count and
+canonical private outputs; root-owned product-observer.env pins closed entry and
+config digest. Create product-observations and product-observer.lock as ubuntu
+0700/0600 only during separately verified activation. Do not replace existing
+Pi units or relax any paid/runtime permission. Source imports are stdlib-only;
+no credential files, fee/manager DB, arbitrary SQL, image switches or app schema
+changes are involved. Docker-group access remains trusted/root-equivalent.
+
+The 15minute timer records component image observations and explicit release
+blockers. Stable inventory/table presence is never source/ownership/pause/backup
+or product release authority. Exact actual main/product adoption, functional
+maintenance and owned image rollback remain later explicit execution gates.

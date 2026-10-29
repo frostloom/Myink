@@ -41,9 +41,9 @@ Interfaces: observe(config_path,config_sha256,*,runner=None,clock=None) -> priva
 
 Files: create ops/pi/product_preflight.py; tests ops/pi/tests/test_product_preflight.py; extend admin handoff and enhancement inventory.
 Interfaces: inspect_reality(observation) -> authority='none', release_allowed=False, blockers with explicit evidence classes; project to bounded component version and blocked release audit through the existing ordinary audit mechanism.
-- [ ] RED missing maintenance/provenance, unknown ownership/generation/source attestation, stale/confounded observations and caller-supplied approved flags never allow release. Do not equate table presence with functional pause/backup/restore or merged/tested product code.
-- [ ] Produce exact release prerequisites and next actions for concrete later approval; preserve original fees, failed/unknown observation and component identity separately.
-- [ ] Standalone -I-S-B main reader verifies new records; no product deployment/rollback success inferred. Commit.
+- [x] RED missing maintenance/provenance, unknown ownership/generation/source attestation, stale/confounded observations and caller-supplied approved flags never allow release. Do not equate table presence with functional pause/backup/restore or merged/tested product code.
+- [x] Produce exact release prerequisites and next actions for concrete later approval; preserve original fees, failed/unknown observation and component identity separately.
+- [x] Standalone -I-S-B main reader verified3synthetic records,2component versions and blocked plan; no product release/old provenance rewrite. Commit checkpoint.
 
 ### Task 3: Source review and actual read-only qualification
 

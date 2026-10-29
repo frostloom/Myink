@@ -1,0 +1,44 @@
+[Unit]
+Description=Myink Pi fixed read-only product identity and release preflight
+After=docker.service
+Requisite=docker.service
+ConditionPathExists=/home/ubuntu/myink-pi-managed/config/product-observer.env
+ConditionPathExists=/home/ubuntu/myink-pi-managed/config/product-observer.json
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+SupplementaryGroups=docker
+WorkingDirectory=/home/ubuntu/myink-pi-managed
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=DOCKER_CONFIG=/nonexistent
+EnvironmentFile=/home/ubuntu/myink-pi-managed/config/product-observer.env
+ExecStart=/usr/bin/flock --nonblock --no-fork /home/ubuntu/myink-pi-managed/control/product-observer.lock /usr/bin/python3 -I -S -B ${PI_PRODUCT_OBSERVER_ENTRYPOINT} --component product_observer --config /home/ubuntu/myink-pi-managed/config/product-observer.json --config-sha256 ${PI_PRODUCT_OBSERVER_CONFIG_SHA256}
+Restart=no
+TimeoutStartSec=90
+TimeoutStopSec=10
+KillMode=control-group
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=yes
+PrivateNetwork=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictAddressFamilies=AF_UNIX
+ReadOnlyPaths=/home/ubuntu/myink-pi-managed/state /home/ubuntu/myink-pi-managed/jobs /home/ubuntu/myink-pi-managed/config /home/ubuntu/myink-pi-managed/releases
+InaccessiblePaths=/home/ubuntu/myink-pi-managed/state/credentials
+ReadWritePaths=/home/ubuntu/myink-pi-managed/product-observations /home/ubuntu/myink-pi-managed/audit/state /home/ubuntu/myink-pi-managed/audit/export /home/ubuntu/myink-pi-managed/control/product-observer.lock
+MemoryMax=256M
+TasksMax=64
+CPUQuota=25%
+StandardOutput=journal
+StandardError=journal

@@ -52,7 +52,7 @@ def verify_release(root,expected,*,expected_owner=0):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--config',required=True);parser.add_argument('--config-sha256',required=True)
-    parser.add_argument('--component',choices=('observer','followup','diagnosis','review_worker','investigation','reproducer','sdk_review','candidate_review','candidate_audit','development_audit','manager_audit','manager_handoff','coordinator_audit','coordinator_withdrawal','autonomy','manager'),default='observer')
+    parser.add_argument('--component',choices=('observer','product_observer','followup','diagnosis','review_worker','investigation','reproducer','sdk_review','candidate_review','candidate_audit','development_audit','manager_audit','manager_handoff','coordinator_audit','coordinator_withdrawal','autonomy','manager'),default='observer')
     args=parser.parse_args()
     try:
         root=Path(__file__).resolve().parent
@@ -76,6 +76,9 @@ def main():
                 else:
                     from ops.pi.diagnosis_supervisor import run
                 result=run(args.config,args.config_sha256)
+        elif args.component=='product_observer':
+            from ops.pi.product_preflight import observe_and_publish
+            result=observe_and_publish(args.config,args.config_sha256)
         elif args.component=='followup':
             from ops.pi.followup import run_due
             result=run_due(args.config,args.config_sha256)

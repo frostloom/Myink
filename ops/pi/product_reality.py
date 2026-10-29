@@ -1,12 +1,31 @@
 """Fixed read-only product inventory. Observations confer no release authority."""
 from datetime import datetime,timezone
 from pathlib import Path
-import json,os,pwd,re,stat,subprocess,time,uuid
+import os,pwd,re,stat,subprocess,time,uuid
+from hashlib import sha256
 from .audit import _path,_plain,require,digest,encoded,strict_json,utc
-from .development_inputs import file_hash
-from .review_lease import _directory,_new,_sync
-from .local_cycle import _disjoint
-from .manager_handoff import BASE
+from .audit_export import _publish
+
+BASE=Path('/home/ubuntu/myink-pi-managed')
+
+
+def file_hash(path):return sha256(Path(path).read_bytes()).hexdigest()
+
+
+def _directory(value):
+    path=_path(value);require(path.is_dir() and stat.S_IMODE(path.stat().st_mode)==0o700,'private observer directory required');return path
+
+
+def _new(path,value):_publish(path,encoded(value),immutable=True)
+
+
+def _sync(path):
+    fd=os.open(path,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+    try:os.fsync(fd)
+    finally:os.close(fd)
+
+
+def _disjoint(a,b):require(not a.is_relative_to(b) and not b.is_relative_to(a),'observer resources overlap')
 
 FIELDS=set('schema mode docker endpoint daemon_id root audit_path export_root worker_replicas'.split())
 ROW=set('id image_id running status healthy project service'.split())
@@ -38,13 +57,19 @@ def _load(cp,pin,runner,clock):
         require(os.geteuid()==pwd.getpwnam('ubuntu').pw_uid and os.geteuid()!=0,'ordinary product observer identity required')
         require(c['docker']=='/usr/bin/docker' and c['endpoint']=='unix:///var/run/docker.sock' and c['root']==str(BASE/'product-observations') and c['audit_path']==str(BASE/'audit/state/events.sqlite') and c['export_root']==str(BASE/'audit/export'),'original product resources required')
         _plain(Path(c['docker']));require(Path(c['docker']).stat().st_uid==0 and not Path(c['docker']).stat().st_mode&0o022,'trusted fixed Docker required')
-    else:require(callable(runner) and stat.S_IMODE(cp.stat().st_mode)==0o600 and stat.S_IMODE(cp.parent.stat().st_mode)==0o700 and _path(c['root'])!=BASE/'product-observations','isolated private product simulation required')
+    else:require(callable(runner) and stat.S_IMODE(cp.stat().st_mode)==0o600 and stat.S_IMODE(cp.parent.stat().st_mode)==0o700 and all(not _path(value).is_relative_to(BASE) for value in (cp,c['root'],c['audit_path'],c['export_root'])),'isolated private product simulation required')
     require(type(c['worker_replicas']) is int and 1<=c['worker_replicas']<=8 and isinstance(c['daemon_id'],str) and re.fullmatch('[A-Za-z0-9:_-]{1,128}',c['daemon_id']),'bounded product topology required')
     require(_path(c['docker']).is_absolute() and isinstance(c['endpoint'],str) and re.fullmatch(r'unix:///[^\s?,#\x00]+',c['endpoint']),'fixed local Docker socket required')
     root=_directory(c['root']);audit=_path(c['audit_path']);export=_path(c['export_root'])
     for item in (cp,audit,export):_disjoint(root,item)
     _disjoint(audit,export);require(stat.S_IMODE(audit.parent.stat().st_mode)==0o700,'private existing audit parent required')
-    if c['mode']=='ACTUAL':require(root.stat().st_uid==os.geteuid(),'ordinary observer must own outputs')
+    if c['mode']=='ACTUAL':
+        require(root.stat().st_uid==os.geteuid(),'ordinary observer must own outputs');_plain(audit)
+        require(audit.stat().st_uid==os.geteuid() and stat.S_IMODE(audit.stat().st_mode)==0o600,'existing ordinary private audit required')
+        import sqlite3
+        from contextlib import closing
+        from .audit import _schema
+        with closing(sqlite3.connect(audit.as_uri()+'?mode=ro',uri=True)) as db:_schema(db)
     return c
 
 
@@ -74,7 +99,7 @@ def observe(config_path,config_sha256,*,runner=None,clock=None):
     def command(args):
         remaining=deadline-time.monotonic();require(remaining>0 and file_hash(config_path)==config_sha256,'product observation deadline or config revoked');value=(runner or _native)([c['docker'],'--host',c['endpoint'],*args],remaining)
         require(isinstance(value,dict) and set(value)=={'returncode','stdout','stderr'} and type(value['returncode']) is int and isinstance(value['stdout'],str) and isinstance(value['stderr'],str) and len(value['stdout'].encode())<=1048576 and len(value['stderr'].encode())<=65536,'bounded product command receipt required')
-        result['command_proofs'].append(dict(stage=stage,returncode=value['returncode'],stdout_sha256=__import__('hashlib').sha256(value['stdout'].encode()).hexdigest(),stderr_sha256=__import__('hashlib').sha256(value['stderr'].encode()).hexdigest()))
+        result['command_proofs'].append(dict(stage=stage,returncode=value['returncode'],stdout_sha256=sha256(value['stdout'].encode()).hexdigest(),stderr_sha256=sha256(value['stderr'].encode()).hexdigest()))
         require(time.monotonic()<deadline and file_hash(config_path)==config_sha256 and value['returncode']==0,'product command/config unconfirmed');return value['stdout']
     def census():
         values=command(['ps','--all','--no-trunc','--filter','label=com.docker.compose.project=myink','--format','{{.ID}}']).splitlines();require(0<len(values)<=128 and len(set(values))==len(values) and all(_hex(v) for v in values),'bounded unique product IDs required');return values

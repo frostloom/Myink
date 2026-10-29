@@ -244,3 +244,28 @@ Standalone main reader verified these events and old actual18/18due linkage.
 No new paid pipeline or new candidate due result has happened yet. Earlier
 source-only statements above are historical progress and are superseded only
 for deployment availability, not for the still-unfulfilled actual pipeline gate.
+
+## Product reality and release preflight (new source, not activated yet)
+
+`product.observed.python.v1` and `product.observed.frontend.v1` describe current
+running component image IDs and their observation time. Revision labels remain
+unattested claims in bounded text; source_commit/deployment_id/generation/owner
+stay null. Independent frontend/backend revisions are legitimate. These version
+events do not overwrite historical run provenance and do not prove a Pi release.
+A confounded before/after census cannot be used as a coherent release base.
+
+`product.release_preflight.v1` is a blocked plan listing missing evidence classes:
+actual maintenance/provenance availability, functional pause/checkpoint/resume,
+current source/ownership/epoch, compatible backup/restore, exact main adoption/CI,
+explicit product release authorization and real business/owned rollback probes.
+A table's presence is not a runtime acceptance receipt. Read/catalog failures
+mean unknown, not absence. The observation/preflight data have no authority and
+cannot be converted to approval by inserting approved/owner/attested fields.
+The main reader still needs only auditv1; no new administrator auth or executor
+capability is introduced.
+
+The fixed observer has no provider route, opens no fee or manager ledger, imports
+only stdlib/audit code, and has no Docker create/build/update or SQL write action.
+It is a host capability with root-equivalent Docker-group trust; the six model
+tools do not change. Separate source plan and qualification gate:
+[product release preflight](../superpowers/plans/2026-10-29-pi-product-release-preflight.md).
