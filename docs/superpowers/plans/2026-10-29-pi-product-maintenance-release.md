@@ -1,5 +1,15 @@
 # Pi 产品维护与发布接线计划
 
+> **For agentic workers:** REQUIRED SUB-SKILL: executing-plans inline and test-driven-development. Existing Pi worktree, no implementer agents. One fresh final reviewer at Task3, one author fixpass, no rereview.
+
+**Goal:** 当前产品从无维护协议的旧版本安全引导到经过明确授权的新版本，完成匹配的恢复、观察与归属安全回退。
+
+**Architecture:** 可信主机持有共享锁、固定操作包和独立批准文件；持久控制记录在执行副作用前落盘，旧任务必须自然排空。模型不接触执行器，主机产生脱敏审计；源码准备、隔离演练与生产授权分别验收。
+
+**Tech Stack:** Python3.12、现有SQLite Ledger、Linux固定Docker命令、PostgreSQL16/Redis/RabbitMQ、现有追加审计与stdlib reader。
+
+**Spec:** docs/superpowers/specs/2026-10-28-pi-online-closed-loop-design.md。
+
 关联规格：docs/superpowers/specs/2026-10-28-pi-online-closed-loop-design.md。
 前置：2026-10-29-pi-product-source-integration 的单次源码审查、作者修复、全量回归和精确提交 CI。此文为后续执行计划，所有未勾选项均未验收。
 
@@ -13,13 +23,26 @@
 
 ### Task 1: 冻结实际产品及首次引导兼容协议
 
-- [ ] 重新读取实际 Python/前端/数据库/Redis/Rabbit 镜像与物理源码清单；记录 source commit 与组件身份，不用镜像标签代替内容校验。检测人工部署漂移则使旧操作包失效。
-- [ ] 读清 src/myink/db.py、maintenance.py、maintenance_pause.py、ops/pi/maintenance.py、contracts.py 及共享发布锁实现，明确 application protocol 与 host canonical identity 的对应。
-- [ ] 对当前无 maintenance/provenance 的旧部署设计首次引导：人工发布锁优先；先用固定边界停止新入口并确认旧 worker 排空，再进行经批准的兼容性 schema 安装。旧 worker 没有协议时不能伪造 pause/checkpoint；无法排空则阻断。
-- [ ] 固定 deployment_id/generation/owner/epoch/各组件 image ID、旧新源码与兼容版本；历史 task/run 缺 provenance 仍保留 null，不能回填当前身份。主机固定命令无任意 shell/模型参数。所有人工发布入口也必须参与同一发布锁与递增身份协议；不能仅凭 Pi 自己持锁便断言人工发布已被隔离。
-- [ ] RED 覆盖身份漂移、缺旧协议、活跃旧任务、未确认暂停、锁抢占、重复执行、版本不兼容、迁移失败和部分写入；逐项修复后针对性回归。
+**Files:** Create `ops/pi/product_bootstrap.py`; Test `ops/pi/tests/test_product_bootstrap.py`. Read `ops/pi/maintenance.py`, `ops/pi/backup.py`, `src/myink/db.py`, `src/myink/maintenance_pause.py`. No production schema execution in this task.
+
+**Interface:** `prepare_bootstrap(ledger, plan, host, *, now=None)` receives a trusted host boundary (never model/HTTP input). Closed plan fields: schema, mode, operation_id, legacy, candidate, expires_at. Legacy freezes source commit/hash and complete container/image identity; candidate uses contracts.Identity fields. Host must acquire shared release lock and revalidate external authorization/current identity before each fixed action. Action order: close_ingress -> drain_legacy -> backup_pre -> install_schema -> bind_identity. A prepared receipt is admission-closed, workers-stopped, release_allowed=false; no activation or public reopen is included. ACTUAL will require the exact Linux adapter introduced in Task2; injected clocks/adapters cannot impersonate it.
+
+**Failure semantics:** Persist parent and per-step intents before effect; a pre-existing unfinished intent is uncertain and cannot dispatch again. Definite blocked work remains blocked; exceptions/partial results become uncertain. Never open ingress as generic finally cleanup. Drain requires two normal worker exits and zero active tasks, ready/unacked messages, consumers, task/book locks and unknowns under the same ingress fence. PRE proof must match original release pair and actual restore. Historical provenance remains unchanged.
+
+- [x] Write isolated SQLite/shared-lock regression tests for action ordering, active/unknown drain, before/after identity drift, expired/denied authority, crash-after-intent, duplicate/changed plans, schema uncertainty and no reopen/activation.
+  Expected: missing protocol fails; after implementation the same tests pass without production services/provider calls.
+
+- [x] 重新读取实际 Python/前端/数据库/Redis/Rabbit 镜像与物理源码清单；记录 source commit 与组件身份，不用镜像标签代替内容校验。检测人工部署漂移则使旧操作包失效。
+- [x] 读清 src/myink/db.py、maintenance.py、maintenance_pause.py、ops/pi/maintenance.py、contracts.py 及共享发布锁实现，明确 application protocol 与 host canonical identity 的对应。
+- [x] 对当前无 maintenance/provenance 的旧部署设计首次引导：人工发布锁优先；先用固定边界停止新入口并确认旧 worker 排空，再进行经批准的兼容性 schema 安装。旧 worker 没有协议时不能伪造 pause/checkpoint；无法排空则阻断。
+- [x] 固定 deployment_id/generation/owner/epoch/各组件 image ID、旧新源码与兼容版本；历史 task/run 缺 provenance 仍保留 null，不能回填当前身份。主机固定命令无任意 shell/模型参数。所有人工发布入口也必须参与同一发布锁与递增身份协议；不能仅凭 Pi 自己持锁便断言人工发布已被隔离。
+- [x] RED 覆盖身份漂移、缺旧协议、活跃旧任务、未确认暂停、锁抢占、重复执行、版本不兼容、迁移失败和部分写入；逐项修复后针对性回归。
 
 ### Task 2: 实际服务隔离演练与备份恢复
+
+**Files:** Create `ops/pi/product_runtime.py` for canonical Linux adapter, `ops/pi/product_backup.py` for existing paired-backup bridge; Test `ops/pi/tests/test_product_runtime.py`, `ops/pi/tests/test_product_backup.py`, plus owned real-service integration fixtures. Product activation/rollback is added here, not exposed as a model tool.
+
+**Interface:** `LinuxProductHost` implements Task1 shared lock, independently issued exact authorization, fixed identity observation and fixed actions; ACTUAL forbids injected transport/time. Separate production/rehearsal roots and physically owned labels/IDs prevent rehearsal from targeting myink resources. Existing backup protocol supplies manifest/restore proof; control ledger must be disjoint from canonical billing/manager state. `activate` requires prepared receipt plus current PRE/restore, then fixed image switch, business probes, POST/restore and explicit reopen. `rollback` requires current exact candidate ownership and compatible verified recovery; no fee/manager rewind. No generic command/SQL/path argument comes from a model.
 
 - [ ] 复用 ops/pi/backup.py 的 release pair、可信清单和 restore attestation；数据库/角色/加密材料/附件/配置/证书/原账本快照需成套。备份必须私有且可恢复；不把旧测试套件通过当作当前产品恢复证明。原费用/manager 快照只用于保全与核对，业务回退不能恢复旧费用账本、释放未知预留或重置已执行意图；维护控制 ledger 与原计费 ledger 类型必须分开。
 - [ ] 为当前 Linux Docker 环境提供固定 executor；复用可信资源绑定，不把 WSL lab 的 /mnt/e 或固定容器名直接搬到生产。演练使用明确拥有的独立网络、卷、端口，生产 socket 由可信主机持有。
