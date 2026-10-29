@@ -43,7 +43,7 @@ def test_frozen_images_read_restored_business_data_without_models(product_backup
         credentials.settings=replace(original,model_credential_key=key)
         encrypted=credentials.encrypt_api_key('synthetic-model-credential');mfa=credentials.encrypt_totp_secret('JBSWY3DPEHPK3PXP')
     finally:credentials.settings=original
-    ids=[str(uuid.uuid4()) for _ in range(6)];pa,pb,ua,ub,task,feedback=ids
+    ids=[str(uuid.uuid4()) for _ in range(6)];pa,pb,ua,ub,task,feedback=ids;pc=str(uuid.uuid4())
     attachment=b'\x89PNG\r\n\x1a\n'+b'synthetic-attachment'
     tlskey=rsa.generate_private_key(public_exponent=65537,key_size=2048)
     cert=x509.CertificateBuilder().subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME,'synthetic.invalid')])).issuer_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME,'synthetic.invalid')])).public_key(tlskey.public_key()).serial_number(x509.random_serial_number()).not_valid_before(datetime.now(timezone.utc)-timedelta(minutes=1)).not_valid_after(datetime.now(timezone.utc)+timedelta(days=7)).sign(tlskey,hashes.SHA256())
@@ -58,9 +58,9 @@ def test_frozen_images_read_restored_business_data_without_models(product_backup
             except subprocess.CalledProcessError:assert time.monotonic()<until;time.sleep(.2)
         environment=json.dumps({'model_connections':[{'api_key_encrypted':encrypted}]})
         metadata=json.dumps([dict(stored='synthetic.png',bytes=len(attachment),mime='image/png')])
-        sql(f"CREATE ROLE myink_app LOGIN NOSUPERUSER NOBYPASSRLS;CREATE ROLE myink_report LOGIN;CREATE TABLE users(id uuid,environment json,totp_secret text);CREATE TABLE projects(id uuid PRIMARY KEY,user_id uuid);CREATE TABLE tasks(id uuid PRIMARY KEY,project_id uuid,payload json,status text);CREATE TABLE agent_runs(id integer,detail json);CREATE TABLE chapters(id integer,project_id uuid,content text);CREATE TABLE feedback(id uuid,attachments json);INSERT INTO users VALUES('{ua}','{environment}','{mfa}');INSERT INTO projects VALUES('{pa}','{ua}'),('{pb}','{ub}');INSERT INTO tasks VALUES('{task}','{pa}','{{}}','done');INSERT INTO agent_runs VALUES(1,'{{}}');INSERT INTO chapters VALUES(1,'{pa}','first tenant'),(2,'{pb}','second tenant');INSERT INTO feedback VALUES('{feedback}','{metadata}');GRANT SELECT ON ALL TABLES IN SCHEMA public TO myink_app;ALTER TABLE chapters ENABLE ROW LEVEL SECURITY;ALTER TABLE chapters FORCE ROW LEVEL SECURITY;CREATE POLICY tenant_isolation ON chapters USING(project_id=NULLIF(current_setting('app.tenant_id',true),'')::uuid);ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;ALTER TABLE tasks FORCE ROW LEVEL SECURITY;CREATE POLICY tenant_isolation ON tasks USING(project_id=NULLIF(current_setting('app.tenant_id',true),'')::uuid);")
+        sql(f"CREATE ROLE myink_app LOGIN NOSUPERUSER NOBYPASSRLS;CREATE ROLE myink_report LOGIN;CREATE TABLE users(id uuid,environment json,totp_secret text);CREATE TABLE projects(id uuid PRIMARY KEY,user_id uuid);CREATE TABLE tasks(id uuid PRIMARY KEY,project_id uuid,payload json,status text);CREATE TABLE agent_runs(id integer,detail json);CREATE TABLE chapters(id integer,project_id uuid,content text);CREATE TABLE feedback(id uuid,attachments json);INSERT INTO users VALUES('{ua}','{environment}','{mfa}');INSERT INTO projects VALUES('{pa}','{ua}'),('{pb}','{ub}'),('{pc}','{ub}');INSERT INTO tasks VALUES('{task}','{pa}','{{}}','done');INSERT INTO agent_runs VALUES(1,'{{}}');INSERT INTO chapters VALUES(1,'{pa}','first tenant'),(2,'{pb}','second tenant');INSERT INTO feedback VALUES('{feedback}','{metadata}');GRANT SELECT ON ALL TABLES IN SCHEMA public TO myink_app;ALTER TABLE chapters ENABLE ROW LEVEL SECURITY;ALTER TABLE chapters FORCE ROW LEVEL SECURITY;CREATE POLICY tenant_isolation ON chapters USING(project_id=NULLIF(current_setting('app.tenant_id',true),'')::uuid);")
         if fault=='disabled-rls':sql('ALTER TABLE chapters DISABLE ROW LEVEL SECURITY')
-        if fault=='cross-tenant-policy':sql('ALTER POLICY tenant_isolation ON tasks USING(true)')
+        if fault=='cross-tenant-policy':sql(f"ALTER POLICY tenant_isolation ON chapters USING(project_id=NULLIF(current_setting('app.tenant_id',true),'')::uuid OR NULLIF(current_setting('app.tenant_id',true),'')::uuid='{pc}'::uuid)")
         # Real LangGraph checkpoint and pending writes, created inside the owned
         # PG network namespace. No host port, provider or original state.
         seedscript="""import psycopg
@@ -111,7 +111,7 @@ with psycopg.connect('postgresql://myink@127.0.0.1/myink',autocommit=True,row_fa
             for value in result.evidence['application_probes'].values():
                 assert value['api_health'] is True and value['credentials']==1 and value['mfa_secrets']==1
                 assert value['attachments']==1 and value['tls_certificates']==1 and value['checkpoints']==1 and value['pending_writes']==1
-                assert value['tenant_tables']>=2 and value['tenant_cases']==4 and value['model_requests']==0
+                assert value['tenant_tables']==1 and value['tenant_cases']==3 and value['model_requests']==0
             assert result.evidence['business_probe']=='restored_read_paths_verified'
         assert sql('SELECT count(*) FROM chapters')=='2'
         assert all(fee.get('unknown-'+str(n))['status']=='pending' for n in range(9))

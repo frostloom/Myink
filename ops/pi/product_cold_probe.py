@@ -95,7 +95,8 @@ with psycopg.connect('postgresql://'+packet['admin']+'@127.0.0.1:5432/myink',row
     check(p.is_file() and p.stat().st_size==size,'referenced attachment missing or truncated');counts['attachments']+=1
  project_ids={r['id'] for r in db.execute('SELECT id::text id FROM projects LIMIT 1001')}
  check(len(project_ids)<=1000,'project bound')
- tables=db.execute("SELECT c.relname,c.relrowsecurity,c.relforcerowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND EXISTS(SELECT 1 FROM pg_attribute a WHERE a.attrelid=c.oid AND a.attname='project_id' AND NOT a.attisdropped) AND has_table_privilege('myink_app',c.oid,'SELECT') ORDER BY c.relname").fetchall()
+ # Match db.enable_row_level_security: tasks/agent_runs are global operational tables.
+ tables=db.execute("SELECT c.relname,c.relrowsecurity,c.relforcerowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r' AND c.relname NOT IN ('tasks','agent_runs') AND EXISTS(SELECT 1 FROM pg_attribute a WHERE a.attrelid=c.oid AND a.attname='project_id' AND NOT a.attisdropped) AND has_table_privilege('myink_app',c.oid,'SELECT') ORDER BY c.relname").fetchall()
  for table in tables:
   check(table['relrowsecurity'] and table['relforcerowsecurity'],'tenant table not forced RLS');name=table['relname'];quoted='"'+name.replace('"','""')+'"'
   expected=db.execute(sql.SQL('SELECT project_id::text id,count(*) n FROM public.{} WHERE project_id IS NOT NULL GROUP BY project_id').format(sql.Identifier(name))).fetchall()

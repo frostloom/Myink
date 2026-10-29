@@ -44,3 +44,21 @@ def test_unsafe_or_oversize_restore_archive_is_rejected(tmp_path,entries):
     with pytest.raises((ValueError,FileExistsError)):
         restore_api()(source,tmp_path/'restored',maximum_bytes=100)
     assert not (tmp_path.parent/'escape').exists()
+
+
+def test_readonly_recovery_allows_bounded_physical_growth():
+    from ops.pi.product_restore import _assert_read_only
+    before=dict(system_identifier='owned',database='myink',tables={'chapters':2},content={'chapters':'hash'},roles={'myink_app':{'superuser':False}},size_bytes=13827095)
+    after=dict(before,size_bytes=13900823)
+    _assert_read_only(before,after)
+
+
+@pytest.mark.parametrize('field,value',[
+    ('system_identifier','foreign'),('database','other'),('tables',{'chapters':3}),
+    ('content',{'chapters':'changed'}),('roles',{'myink_app':{'superuser':True}}),
+    ('size_bytes',268435456),('size_bytes',True),('size_bytes',-1)])
+def test_readonly_recovery_rejects_logical_drift_or_unbounded_size(field,value):
+    from ops.pi.product_restore import _assert_read_only
+    before=dict(system_identifier='owned',database='myink',tables={'chapters':2},content={'chapters':'hash'},roles={'myink_app':{'superuser':False}},size_bytes=13827095)
+    after=dict(before);after[field]=value
+    with pytest.raises(ValueError):_assert_read_only(before,after)

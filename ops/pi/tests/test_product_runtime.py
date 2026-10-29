@@ -65,6 +65,8 @@ elif a[0]=='stop':
  if s.get('keep_running')!=cid:s['containers'][cid].update(running=False,exit_code=s.get('bad_exit',0))
  save();print(cid)
 elif a[0]=='exec':
+ if a[1:3]==['--user','0']:
+  assert a[4:6]==['chown','10001:10001'];assert a[6].startswith('/tmp/myink-pi-maintenance-');sys.exit(0)
  cid=a[1];cmd=a[2:]
  if cmd[0].endswith('curl'):print(json.dumps(s['config']))
  elif cmd[:2]==['caddy','validate']:pass
@@ -78,7 +80,14 @@ elif a[0]=='exec':
  elif cmd[0]=='/bin/sh':
   assert len(cmd)==5 and cmd[1]=='-c' and cmd[3]=='--'
   print(json.dumps(s['redis']))
- elif cmd[0]=='rabbitmqctl':print(json.dumps(s['queues']))
+ elif cmd[0]=='rabbitmqctl':
+  if s.get('drain_after_polls'):
+   s['queue_polls']=s.get('queue_polls',0)+1;s['effects'].append(['queue_poll',s['queue_polls']])
+   workers=[v for v in s['containers'].values() if v['service']=='myink-worker']
+   if all(v['running'] for v in workers) and s['queue_polls']>=s['drain_after_polls']:
+    s['queues'][0]['messages_ready']=0;s['counts']['active_tasks']=0;s['redis'].update(task_locks=0,book_locks=0)
+   save()
+  print(json.dumps(s['queues']))
  else:raise RuntimeError('unreviewed fake exec '+str(cmd))
 else:raise RuntimeError('unreviewed fake Docker action '+str(a))
 """
@@ -265,3 +274,28 @@ def test_post_quiet_refuses_running_candidate_api(runtime_case):
     runtime_case[-1].write_text(json.dumps(state))
     with h.lock(h.plan):
         with pytest.raises(ValueError):h.measure_candidate_quiet(h.plan,proofs)
+
+
+def test_legacy_ready_backlog_drains_before_worker_sigterm(runtime_case):
+    h=host(runtime_case);plan=h.plan
+    with h.lock(plan):
+        claim(h,plan,'close_ingress');fence=h.perform('close_ingress',plan,{})
+        state=json.loads(runtime_case[-1].read_bytes());state['queues'][0]['messages_ready']=1;state['counts']['active_tasks']=1;state['drain_after_polls']=2
+        runtime_case[-1].write_text(json.dumps(state));claim(h,plan,'drain_legacy')
+        facts=h.perform('drain_legacy',plan,{'close_ingress':fence})
+    assert facts['ready_messages']==facts['active_tasks']==0
+    effects=json.loads(runtime_case[-1].read_bytes())['effects']
+    first_worker_stop=next(i for i,v in enumerate(effects) if v[0]=='stop' and v[1]!=h._cid('api'))
+    assert sum(v[0]=='queue_poll' for v in effects[:first_worker_stop])>=2
+
+
+def test_unsettled_legacy_backlog_times_out_without_stopping_workers(runtime_case):
+    h=host(runtime_case);plan=h.plan
+    with h.lock(plan):
+        claim(h,plan,'close_ingress');fence=h.perform('close_ingress',plan,{})
+        state=json.loads(runtime_case[-1].read_bytes());state['queues'][0]['messages_ready']=1;state['drain_after_polls']=1000000
+        runtime_case[-1].write_text(json.dumps(state));h.config['drain_seconds']=.2;claim(h,plan,'drain_legacy')
+        with pytest.raises(ValueError):h.perform('drain_legacy',plan,{'close_ingress':fence})
+    state=json.loads(runtime_case[-1].read_bytes())
+    assert all(v['running'] for v in state['containers'].values() if v['service']=='myink-worker')
+    assert state['queues'][0]['messages_ready']==1

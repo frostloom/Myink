@@ -48,6 +48,15 @@ def materialize_archive(source,target,*,maximum_bytes):
     return dict(files=len(hashes),bytes=total,content_sha256=digest(hashes))
 
 
+def _assert_read_only(before,after):
+    fields={'system_identifier','database','tables','content','roles','size_bytes'}
+    require(isinstance(before,dict) and isinstance(after,dict) and set(before)==set(after)==fields,'complete restored data census required')
+    # PostgreSQL can allocate catalog/visibility pages during read-only probes.
+    # Physical size is a capacity guard; logical contents and identity are exact.
+    require(all(type(v['size_bytes']) is int and 0<v['size_bytes']<268435456 for v in (before,after)),'restored database exceeds owned capacity')
+    require(all(after[k]==before[k] for k in fields-{'size_bytes'}),'application probe changed restored data')
+
+
 class OwnedPostgresRestore:
     def __init__(self,backend):
         self.backend=backend;self.host=backend.host;self.plan=backend.plan;self.ledger=self.host.ledger
@@ -149,7 +158,7 @@ class OwnedPostgresRestore:
             if qualification=='application':
                 from .product_cold_probe import OwnedApplicationProbe
                 for role in ('legacy','candidate'):probes[role]=OwnedApplicationProbe(self).check(role,target)
-                require(strict_json(self.host._bytes(self._sql(META_SQL)))==observed,'application probe changed restored data')
+                _assert_read_only(observed,strict_json(self.host._bytes(self._sql(META_SQL))))
             backup.verify_artifacts(manifest,directory)
             result=Receipt('restore:'+manifest['backup_id']+':'+target['system_identifier'],'done',dict(verified=True,target_system_identifier=target['system_identifier'],source_system_identifier=source['system_identifier'],table_count=len(source['tables']),materials=materials,original_control_state_restored=False,business_probe='restored_read_paths_verified' if probes else 'pending_separate_qualification',application_probes=probes))
         except Exception as error:

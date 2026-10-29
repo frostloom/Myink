@@ -246,6 +246,7 @@ class LinuxProductHost:
         _save(self.root/'ingress-before.json',baseline);_save(self.root/'ingress-closed.json',closed)
         target='/tmp/myink-pi-maintenance-'+plan['operation_id']+'.json'
         self._run(['cp',str(self.root/'ingress-closed.json'),self._cid('frontend')+':'+target])
+        self._run(['exec','--user','0',self._cid('frontend'),'chown','10001:10001',target])
         self._run(['exec',self._cid('frontend'),'caddy','validate','--config',target])
         self._run(['exec',self._cid('frontend'),'caddy','reload','--config',target])
         observed=self._caddy();require(digest(observed)==digest(closed),'ingress reload unconfirmed')
@@ -253,12 +254,25 @@ class LinuxProductHost:
 
     def _drain_legacy(self,plan,proofs):
         fence=strict_json((self.root/'ingress-fence.json').read_bytes());require(proofs.get('close_ingress')==fence and digest(self._caddy())==fence['fence_sha256'],'current ingress fence required')
-        api=self._cid('api');workers=[r['id'] for r in plan['legacy']['containers'] if r['service']=='worker'];exits=[]
-        # Docker --timeout -1 never escalates to SIGKILL. The CLI still has its
-        # own bounded deadline; cancellation retains an uncertain operation.
-        for cid in [api,*workers]:
+        api=self._cid('api');workers=[r['id'] for r in plan['legacy']['containers'] if r['service']=='worker']
+        # Stop admission first, retaining consumers until existing work settles.
+        # Docker --timeout -1 never escalates to SIGKILL; a CLI timeout is uncertain.
+        def stop(cid):
             self._run(['stop','--signal','SIGTERM','--timeout','-1',cid],seconds=self.config['drain_seconds'])
-            row=next(r for r in self._rows() if r['id']==cid);require(not row['running'] and row['exit_code']==0 and not row['oom'],'legacy process did not exit naturally');exits.append(row['exit_code'])
+            row=next(r for r in self._rows() if r['id']==cid)
+            require(not row['running'] and row['exit_code']==0 and not row['oom'],'legacy process did not exit naturally')
+        stop(api)
+        deadline=time.monotonic()+self.config['drain_seconds']
+        while True:
+            self.authorize(plan);rows={r['id']:r for r in self._rows()}
+            require(all(rows[cid]['running'] and not rows[cid]['oom'] for cid in workers),'legacy consumers stopped before drain')
+            require(digest(self._caddy())==fence['fence_sha256'],'ingress fence changed during drain')
+            counts=self._drain_counts()
+            require(digest(self._caddy())==fence['fence_sha256'],'ingress fence changed during drain')
+            if not any(counts[k] for k in ('active_tasks','ready_messages','unacked_messages','unknown','task_locks','book_locks')):break
+            require(time.monotonic()<deadline,'legacy backlog did not settle; consumers retained')
+            time.sleep(min(.25,max(0,deadline-time.monotonic())))
+        for cid in workers:stop(cid)
         return self.measure_quiet(plan,proofs)
 
     def read_redis_locks(self):
@@ -279,6 +293,12 @@ class LinuxProductHost:
         if candidate:self._candidate_state()
         require(all(not rows[cid]['running'] and rows[cid]['exit_code']==0 and not rows[cid]['oom'] for cid in ids),'legacy processes not quiet')
         exits=[rows[cid]['exit_code'] for cid in ids]
+        counts=self._drain_counts()
+        require(digest(self._caddy())==fence['fence_sha256'],'ingress fence changed during drain')
+        if candidate:self._candidate_rows();self._candidate_state()
+        return dict(verified=True,plan_sha256=digest(plan),fence_sha256=fence['fence_sha256'],api_exit_code=exits[0],worker_exit_codes=exits[1:],**counts)
+
+    def _drain_counts(self):
         pg=self._json(['exec',self._cid('postgres'),'psql','-X','-q','-A','-t','-w','-U','myink','-d','myink','-v','ON_ERROR_STOP=1','-c',DRAIN_SQL])
         require(isinstance(pg,dict) and set(pg)=={'active_tasks','unknown'} and all(type(v) is int and v>=0 for v in pg.values()),'complete legacy database census required')
         redis=self.read_redis_locks()
@@ -291,9 +311,7 @@ class LinuxProductHost:
             if row['name'] in expected:ready+=row['messages_ready'];unacked+=row['messages_unacknowledged'];consumers+=row['consumers']
             elif any(row[k] for k in ('messages_ready','messages_unacknowledged','consumers')):unknown+=1
         require(expected<=names,'original broker queue missing')
-        require(digest(self._caddy())==fence['fence_sha256'],'ingress fence changed during drain')
-        if candidate:self._candidate_rows();self._candidate_state()
-        return dict(verified=True,plan_sha256=digest(plan),fence_sha256=fence['fence_sha256'],api_exit_code=exits[0],worker_exit_codes=exits[1:],active_tasks=pg['active_tasks'],ready_messages=ready,unacked_messages=unacked,consumers=consumers,unknown=pg['unknown']+unknown,**redis)
+        return dict(active_tasks=pg['active_tasks'],ready_messages=ready,unacked_messages=unacked,consumers=consumers,unknown=pg['unknown']+unknown,**redis)
 
     def perform(self,action,plan,proofs):
         require(action in STEPS,'unknown product action');self.authorize(plan)
