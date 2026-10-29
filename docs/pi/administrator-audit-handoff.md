@@ -304,3 +304,7 @@ main只读接口无需新增执行权限即可读取本阶段9条投影、10路�
 ## 原生控制交付（2026-10-30）
 
 本地只读导出累计36事件，其中[原生控制9事件](../evaluations/pi-native-control-2026-10-30.json)与8路径已由独立标准库reader验证。版本no_release，四阶段次日均blocked且result=null；仍未上服务器。native_candidate_open/native_legacy_return只对应合成服务接线，不能展示成线上业务部署/回退完成；当前生产ACTUAL能力门禁保留，最终业务/权限/长期观察须独立证据。
+
+## 运行配置认证交付（2026-10-30）
+
+本地只读导出新增[运行认证8事件](../evaluations/pi-runtime-auth-2026-10-30.json)，累计44事件、当前10路径，独立标准库reader已验证；五项阶段次日均blocked/result=null。尚未写服务器，管理员UI和权限未改。认证恢复成功只对应私有材料与读取路径，不能显示为完整业务部署/回退或真实次日通过。
