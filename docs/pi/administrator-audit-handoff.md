@@ -296,3 +296,7 @@ tools do not change. Separate source plan and qualification gate:
 ## 应用恢复与POST阶段（2026-10-30）
 
 源码efd26876：4048项离线通过；显式真实服务验证为应用6项、PG/迁移6项、配对应用1项。冻结新旧镜像实际读取恢复数据，检查源码、HTTP启动、密钥/MFA、附件/TLS、所有租户（含空数据）、checkpoint/pending writes；POST绑定当前候选及持久身份，保留PRE之后新增数据。属于人工主机边界增强，不扩大Pi SDK六工具，不计为Pi自主开发绩效。新增9条本地审计，独立标准库reader验证本轮11路径与前轮9事件保留；未写服务器，次日blocked且无结果。生产activate/rollback仍未齐备，不称上线或业务回退。详见docs/evaluations/pi-application-recovery-2026-10-30.md/.json，仍按原累计50元及9笔未知预留边界推进。
+
+## 原生容器生命周期交付（2026-10-30）
+
+main只读接口无需新增执行权限即可读取本阶段9条投影、10路径范围和blocked次日计划；本地累计27事件，独立标准库reader已验。见[阶段JSON](../evaluations/pi-native-cohort-2026-10-30.json)。导出尚未追加服务器；三个阶段的次日计划均未注册、结果null。回退容器演练的PG归属切换使用测试固定SQL，不能展示成线上业务回退；完整产品发布、观察及回退仍需独立收据。
