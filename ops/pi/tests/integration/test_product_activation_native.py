@@ -178,6 +178,10 @@ with Session(get_admin_engine()) as db:
                         for role in ('legacy','candidate'):
                             proof=json.loads((folder/('application-'+role)/'receipt.json').read_bytes());assert proof['authenticated_roles']==proof['wrong_passwords_rejected']==2;proof_rows.append(proof)
                     assert len(proof_rows)==4
+                    for proof in proof_rows:
+                        main=proof['main_api'];assert main['main_process'] is True and main['api_health'] is True and main['natural_exit_code']==0 and main['anonymous_rejections']==1 and main['attachment_files']==1 and main['model_requests']==0
+                        if flow=='runtime-business':assert main['owner_cases']==1
+                    assert not d('ps','-aq','--filter','label=myink.pi.restored-api.operation='+op)
                     runtime_material=json.loads((postdir/'effective-runtime.json').read_bytes())
                     assert runtime_material['phase']=='POST' and all('DEPLOYMENT_GENERATION=1' in v['config']['Env'] for v in runtime_material['containers'])
                 assert d('exec',pg,'psql','-X','-q','-A','-t','-U','myink','-d','myink','-c','SELECT count(*) FROM pi_native_release_marker')=='2'

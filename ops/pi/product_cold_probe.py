@@ -230,6 +230,9 @@ class OwnedApplicationProbe:
             counts={'authenticated_roles','wrong_passwords_rejected','credentials','mfa_secrets','attachments','tls_certificates','tenant_tables','tenant_cases','checkpoints','pending_writes','task_checkpoint_links','model_requests'}
             require(isinstance(observed,dict) and set(observed)==counts|{'verified','api_health','runtime_sha256','target_system_identifier'} and observed['verified'] is True and observed['api_health'] is True and observed['runtime_sha256']==runtime_pin and observed['target_system_identifier']==target['system_identifier'] and all(type(observed[k]) is int and observed[k]>=0 for k in counts) and observed['model_requests']==0,'application assertions unconfirmed')
             if self.restore.authentication is not None:require(observed['authenticated_roles']==observed['wrong_passwords_rejected']==2,'real restored role authentication unconfirmed')
+            if self.restore.authentication is not None:
+                from .product_restored_api import OwnedRestoredAPI
+                observed=dict(observed,main_api=OwnedRestoredAPI(self).check(runtime_pin))
             durable_file(folder/'receipt.json',encoded(observed));return observed
         finally:
             if self.cid is not None:
