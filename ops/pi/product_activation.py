@@ -13,7 +13,8 @@ from .contracts import Identity,Receipt
 from .product_bootstrap import _plan
 from .product_runtime import _pinned,_save,SERVICES
 
-ACTIONS=('create_candidate','start_candidate','stop_candidate','create_rollback','start_rollback','stop_rollback')
+LEGACY_ACTIONS=('create_candidate','start_candidate','stop_candidate','create_rollback','start_rollback','stop_rollback')
+ACTIONS=LEGACY_ACTIONS+('start_candidate_admission','stop_candidate_admission')
 LABEL='myink.pi.release.operation'
 
 
@@ -120,8 +121,10 @@ class NativeActivation:
         h=self.host;h.authorize(self.plan);actual=h.config['mode']=='ACTUAL'
         require(_pinned(self.context_path,self.context_pin,actual)==self.context,'activation context drift')
         value=_pinned(self.approval_path,self.approval_pin,actual)
-        require(isinstance(value,dict) and set(value)=={'schema','mode','target','plan_sha256','context_sha256','approved_actions','expires_at'} and value['schema']=='pi-product-activation-approval-v1' and value['mode']==h.config['mode'] and value['target']==h.config['target'] and value['plan_sha256']==digest(self.plan) and value['context_sha256']==self.context_pin,'independent exact activation approval required')
-        require(isinstance(value['approved_actions'],list) and len(value['approved_actions'])==len(ACTIONS) and set(value['approved_actions'])==set(ACTIONS) and utc(h.clock())<min(utc(value['expires_at']),utc(self.plan['expires_at'])),'activation actions or expiry mismatch')
+        require(isinstance(value,dict) and set(value)=={'schema','mode','target','plan_sha256','context_sha256','approved_actions','expires_at'} and value['schema'] in ('pi-product-activation-approval-v1','pi-product-activation-approval-v2') and value['mode']==h.config['mode'] and value['target']==h.config['target'] and value['plan_sha256']==digest(self.plan) and value['context_sha256']==self.context_pin,'independent exact activation approval required')
+        actions=ACTIONS if value['schema']=='pi-product-activation-approval-v2' else LEGACY_ACTIONS
+        require(isinstance(value['approved_actions'],list) and len(value['approved_actions'])==len(actions) and set(value['approved_actions'])==set(actions) and utc(h.clock())<min(utc(value['expires_at']),utc(self.plan['expires_at'])),'activation actions or expiry mismatch')
+        self.protocol_version=2 if actions==ACTIONS else 1;self.approved_actions=frozenset(actions)
 
     def _run(self,args,**kwargs):
         self._authority();return self.host._run(args,**kwargs)
@@ -196,7 +199,7 @@ class NativeActivation:
         return by_id
 
     def _claim(self,action):
-        require(action in ACTIONS,'fixed action required');self._authority();h=self.host
+        require(action in ACTIONS,'fixed action required');self._authority();require(action in self.approved_actions,'action not independently approved');h=self.host
         root=h.root/'native-actions';root.mkdir(mode=0o700,exist_ok=True);folder=root/action
         try:folder.mkdir(mode=0o700)
         except FileExistsError:raise ValueError('native action already claimed; no redispatch') from None
@@ -283,8 +286,10 @@ print(json.dumps(dict(runtime_sha256=pin,provenance=provenance,heartbeat=bool(he
                 require(time.monotonic()<until,'native readiness deadline');time.sleep(.5)
         self._control(role);self._scope();return dict(verified=True,role=role,backends=results,api_ready=True,scope='isolated_closed_cohort_only')
 
-    def start(self,role):
-        operation,folder=self._claim('start_'+role);h=self.host
+    def start(self,role):return self._start(role,'start_'+role)
+
+    def _start(self,role,action):
+        operation,folder=self._claim(action);h=self.host
         try:
             self._control(role);self._scope();cohort=self._cohort(role)
             for v in cohort:
@@ -293,8 +298,10 @@ print(json.dumps(dict(runtime_sha256=pin,provenance=provenance,heartbeat=bool(he
             result=self._ready(role);_save(folder/'receipt.json',result);h.ledger.finish(Receipt(operation,'done',result));return result
         except Exception as error:h.ledger.finish(Receipt(operation,'uncertain',dict(reason='cohort_start_unconfirmed',error_class=type(error).__name__)));raise
 
-    def stop(self,role):
-        operation,folder=self._claim('stop_'+role);h=self.host
+    def stop(self,role):return self._stop(role,'stop_'+role)
+
+    def _stop(self,role,action):
+        operation,folder=self._claim(action);h=self.host
         try:
             self._control(role);rows=self._scope();cohort=self._cohort(role)
             for v in sorted(cohort,key=lambda v:v['service']!='api'):
@@ -302,3 +309,30 @@ print(json.dumps(dict(runtime_sha256=pin,provenance=provenance,heartbeat=bool(he
                 actual=self._scope()[v['id']];require(not actual['State']['Running'] and actual['State']['ExitCode']==0 and actual['State']['OOMKilled'] is False,'cohort process did not exit naturally')
             result=dict(verified=True,role=role,identity=self.identity(role),natural_exits=[0,0,0],scope='stopped_processes_only');_save(folder/'receipt.json',result);h.ledger.finish(Receipt(operation,'done',result));return result
         except Exception as error:h.ledger.finish(Receipt(operation,'uncertain',dict(reason='cohort_stop_unconfirmed',error_class=type(error).__name__)));raise
+
+    def _completed_action(self,action):
+        row=self.host.ledger.get('native:'+self.plan['operation_id']+':'+action)
+        require(row and row['kind']=='product_native_action' and row['status']=='done' and row['payload']==dict(plan_sha256=digest(self.plan),context_sha256=self.context_pin,action=action) and row['evidence'].get('verified') is True,'original completed native phase required')
+
+    def _admission_ready(self):
+        self._authority();require(self.protocol_version==2,'separate admission approval required')
+        self._completed_action('start_candidate');self._completed_action('stop_candidate')
+        root='product-control:'+self.plan['operation_id']+':activate';parent=self.host.ledger.get(root)
+        require(parent and parent['kind']=='product_control' and parent['status']=='pending' and parent['payload'].get('plan_sha256')==digest(self.plan),'original active product control required')
+        stage=self.host.ledger.get(root+':start-admission');require(stage and stage['kind']=='product_control_step' and stage['status']=='pending' and stage['payload']==dict(plan_sha256=digest(self.plan),config_sha256=parent['payload']['config_sha256'],step='start-admission'),'original active admission step required')
+        for name in ('business','stop-validation','post'):
+            row=self.host.ledger.get(root+':'+name)
+            require(row and row['kind']=='product_control_step' and row['status']=='done' and row['payload']==dict(plan_sha256=digest(self.plan),config_sha256=parent['payload']['config_sha256'],step=name) and row['evidence'].get('verified') is True,'qualified business and POST phases required')
+        from .product_backup import LinuxProductBackup
+        from .backup import release_allowed
+        prepared=self.host.ledger.get(self.plan['operation_id']);require(prepared and prepared['status']=='done','original preparation required')
+        backend=LinuxProductBackup(self.host,prepared['evidence']['proofs'])
+        require(release_allowed(self.host.ledger,self.plan['operation_id'],context=backend.context,now=self.host.clock()),'current paired recovery qualification required')
+
+    def start_admission(self):
+        self._admission_ready();return self._start('candidate','start_candidate_admission')
+
+    def stop_admission(self):
+        self._authority();require(self.protocol_version==2,'separate admission stop approval required')
+        self._completed_action('start_candidate_admission')
+        return self._stop('candidate','stop_candidate_admission')

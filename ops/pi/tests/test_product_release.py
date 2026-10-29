@@ -7,6 +7,7 @@ import pytest
 from ops.pi.audit import digest
 from test_product_activation import activation_inputs,bootstrap_case,context,NOW
 from test_product_backup import write
+from test_product_business_probe import packet as business_packet
 
 
 def api():
@@ -21,7 +22,7 @@ def release_case(activation_inputs,tmp_path):
     plan['candidate']['config_hash']=ctx['configuration_sha256'];ctx['plan_sha256']=digest(plan)
     cp=tmp_path/'context.json';cpin=write(cp,ctx);ap=tmp_path/'activation.json'
     from ops.pi.product_activation import ACTIONS
-    apin=write(ap,dict(schema='pi-product-activation-approval-v1',mode='SIMULATED',target='rehearsal',plan_sha256=digest(plan),context_sha256=cpin,approved_actions=list(ACTIONS),expires_at=plan['expires_at']))
+    apin=write(ap,dict(schema='pi-product-activation-approval-v2',mode='SIMULATED',target='rehearsal',plan_sha256=digest(plan),context_sha256=cpin,approved_actions=list(ACTIONS),expires_at=plan['expires_at']))
     root=tmp_path/'operation';root.mkdir(mode=0o700)
     write(root/'maintenance-start.json',dict(plan_sha256=digest(plan),started_at=(NOW-timedelta(seconds=1)).isoformat()))
     h=SimpleNamespace(plan=plan,config=c,root=root,ledger=ledger,clock=lambda:NOW,authorize=lambda p:None)
@@ -134,3 +135,67 @@ def test_historical_unqualified_recovery_blocks_before_ingress(release_case,kind
     h=release_case[0];h.ledger.intent('old-release',kind,{'release_pair_id':'old','phase':'POST','backup_id':'legacy'})
     with pytest.raises(ValueError,match='recovery'):
         api()._preflight_recovery(h.ledger,h.plan['operation_id'],{'schema_context':'a'*64,'tool_context':'b'*64},h.clock())
+
+
+@pytest.mark.parametrize('failure',[None,'business','post'])
+def test_v2_business_then_post_then_distinct_admission_start(release_case,tmp_path,failure):
+    h,path,pin,approval,ap,config,permit=release_case
+    pp=tmp_path/'business.json';ppin=write(pp,business_packet(h.plan,config['context_sha256']))
+    config.update(schema='pi-product-control-v2',business_probe_path=str(pp),business_probe_sha256=ppin)
+    pin=write(path,config);permit['config_sha256']=pin;ap=write(approval,permit)
+    r=api().NativeProductRelease(h,path,pin,approval,ap);calls=[]
+    r._prepared=lambda:None;r._scope=lambda:{};r._ingress=lambda closed:{};r._state=lambda role,barriers:{}
+    r._inventory=lambda phase:(calls.append('references-'+phase) or {'verified':True})
+    r.actor.create=lambda role:(calls.append('create') or [])
+    r.actor.start=lambda role:(calls.append('validation-start') or {'verified':True})
+    r.actor.stop=lambda role:(calls.append('validation-stop') or {'verified':True})
+    def business():
+        calls.append('business')
+        if failure=='business':raise ValueError('data differs')
+        return {'verified':True}
+    def post():
+        calls.append('post')
+        if failure=='post':raise TimeoutError
+        return {'verified':True}
+    r._business=business;r._post=post;r._installed=lambda:(calls.append('installed') or {'verified':True})
+    r.actor.start_admission=lambda:(calls.append('admission-start') or {'verified':True})
+    r._open=lambda role:(calls.append('open') or {'verified':True})
+    if failure:
+        with pytest.raises((ValueError,TimeoutError)):r.activate()
+        assert 'admission-start' not in calls and 'open' not in calls
+        if failure=='business':assert 'post' not in calls
+    else:
+        assert r.activate().status=='done'
+        assert calls==['references-PRE','create','validation-start','business','validation-stop','installed','post','references-POST','admission-start','open']
+
+
+def test_admission_start_cannot_create_intent_without_qualified_original_phases(release_case):
+    r=controller(release_case)
+    with pytest.raises(ValueError):r.actor.start_admission()
+    assert not (r.host.root/'native-actions').exists()
+
+
+def test_legacy_six_action_approval_cannot_authorize_admission_phase(release_case):
+    from ops.pi.product_activation import NativeActivation,LEGACY_ACTIONS
+    h,path,pin,permit,permit_pin,cfg,_=release_case
+    p=__import__('pathlib').Path(cfg['activation_approval_path']);value=json.loads(p.read_bytes())
+    value.update(schema='pi-product-activation-approval-v1',approved_actions=list(LEGACY_ACTIONS));ap=write(p,value)
+    actor=NativeActivation(h,cfg['context_path'],cfg['context_sha256'],p,ap)
+    assert actor.protocol_version==1
+    with pytest.raises(ValueError,match='separate admission'):actor.start_admission()
+    assert not (h.root/'native-actions').exists()
+
+
+@pytest.mark.parametrize('status',[None,'uncertain','wrong-config'])
+def test_admission_start_requires_exact_completed_post(release_case,status):
+    from ops.pi.contracts import Receipt
+    r=controller(release_case);h=r.host;op=h.plan['operation_id'];root='product-control:'+op+':activate'
+    for action in ('start_candidate','stop_candidate'):
+        name='native:'+op+':'+action;h.ledger.intent(name,'product_native_action',dict(plan_sha256=digest(h.plan),context_sha256=r.actor.context_pin,action=action));h.ledger.finish(Receipt(name,'done',dict(verified=True)))
+    h.ledger.intent(root,'product_control',dict(plan_sha256=digest(h.plan),config_sha256=r.pin,action='activate'))
+    for step in ('business','stop-validation','post','start-admission'):
+        if step=='post' and status is None:continue
+        name=root+':'+step;h.ledger.intent(name,'product_control_step',dict(plan_sha256=digest(h.plan),config_sha256='0'*64 if step=='post' and status=='wrong-config' else r.pin,step=step))
+        if step!='start-admission':h.ledger.finish(Receipt(name,'uncertain' if step=='post' and status=='uncertain' else 'done',dict(verified=True)))
+    with pytest.raises(ValueError):r.actor.start_admission()
+    assert not (h.root/'native-actions').exists()

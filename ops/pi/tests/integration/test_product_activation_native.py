@@ -12,7 +12,7 @@ from test_product_backup import write
 pytestmark=pytest.mark.pi_followup_docker
 
 
-@pytest.mark.parametrize('flow',['lifecycle','release','runtime','runtime-bad-report','runtime-writable-report'])
+@pytest.mark.parametrize('flow',['lifecycle','release','runtime','runtime-bad-report','runtime-writable-report','runtime-business','runtime-business-bad'])
 def test_owned_full_stack_candidate_and_fresh_rollback_cohorts(tmp_path,flow):
     assert importlib.util.find_spec('ops.pi.product_activation'),'missing native cohort factory'
     from ops.pi.product_activation import NativeActivation,context_from_inspects,ACTIONS
@@ -72,6 +72,20 @@ def test_owned_full_stack_candidate_and_fresh_rollback_cohorts(tmp_path,flow):
         d('start','--attach',init,seconds=180);assert inspect(init)['State']['ExitCode']==0
         d('rm',init);resources.remove((init,images['python']))
         d('exec',pg,'psql','-X','-q','-U','myink','-d','myink','-v','ON_ERROR_STOP=1','-c',"CREATE TABLE pi_native_release_marker(id integer PRIMARY KEY,value text);INSERT INTO pi_native_release_marker VALUES(1,'before-release')")
+        business_ids=[str(uuid.uuid4()) for _ in range(4)]
+        if flow in ('runtime-business','runtime-business-bad'):
+            seed_program="""import uuid
+from sqlalchemy.orm import Session
+from myink.db import get_admin_engine
+from myink.models import User,Project,Chapter
+ids=IDS
+with Session(get_admin_engine()) as db:
+ db.add_all([User(id=uuid.UUID(ids[0]),username='probe_owner',daily_quota=2,concurrent_limit=1),User(id=uuid.UUID(ids[1]),username='probe_foreign',daily_quota=2,concurrent_limit=1)]);db.flush()
+ db.add(Project(id=uuid.UUID(ids[2]),user_id=uuid.UUID(ids[0]),title='隔离探针项目'));db.flush()
+ db.add(Chapter(id=uuid.UUID(ids[3]),project_id=uuid.UUID(ids[2]),chapter_seq=1,title='探针章节',content='本人可读的固定内容',summary=None,status='confirmed',version=1));db.commit()
+""".replace('IDS',repr(business_ids))
+            seed=d('create','--label',label,'--network',network,'--memory','512m','--pids-limit','128',*[v for env in common for v in ('--env',env)],'--env','ADMIN_DATABASE_URL=postgresql+psycopg://myink:synthetic-pg@myink-pg:5432/myink',images['python'],'python','-B','-c',seed_program);resources.append((seed,images['python']))
+            d('start','--attach',seed);assert inspect(seed)['State']['ExitCode']==0;d('rm',seed);resources.remove((seed,images['python']))
         api=create('api','myink-api',images['python'],args=['--memory','512m','--memory-swap','512m','--cpus','1','--pids-limit','128'],env=common+['ADMIN_DATABASE_URL=postgresql+psycopg://myink_report:synthetic-report@myink-pg:5432/myink'],mounts=['--mount','type=volume,source='+volume+',target=/data/feedback'],command=['myink-api']);application.append(api)
         for n in range(2):application.append(create('worker','myink-worker',images['python'],args=['--memory','512m','--memory-swap','512m','--cpus','1','--pids-limit','128'],env=common,command=['myink-worker']))
         caddy_config=dict(admin={'listen':'localhost:2019'},apps={'http':{'servers':{'srv0':{'listen':[':80'],'routes':[{'handle':[{'handler':'reverse_proxy','upstreams':[{'dial':'myink-api:8100'}]}]}]}}}})
@@ -96,7 +110,7 @@ def test_owned_full_stack_candidate_and_fresh_rollback_cohorts(tmp_path,flow):
         ctx=context_from_inspects(plan,settings,[inspect(cid) for cid in application],json.loads(d('network','inspect',network))[0],json.loads(d('volume','inspect',volume)))
         plan['candidate']['config_hash']=ctx['configuration_sha256'];ctx['plan_sha256']=digest(plan)
         context_path=root/'activation-context.json';context_pin=write(context_path,ctx)
-        a_path=root/'activation-approval.json';a_pin=write(a_path,dict(schema='pi-product-activation-approval-v1',mode='SIMULATED',target='rehearsal',plan_sha256=digest(plan),context_sha256=context_pin,approved_actions=list(ACTIONS),expires_at=plan['expires_at']))
+        a_path=root/'activation-approval.json';a_pin=write(a_path,dict(schema='pi-product-activation-approval-v2',mode='SIMULATED',target='rehearsal',plan_sha256=digest(plan),context_sha256=context_pin,approved_actions=list(ACTIONS),expires_at=plan['expires_at']))
         pp=root/'plan.json';ppin=write(pp,plan);approval=root/'bootstrap-approval.json';apin=write(approval,dict(schema='pi-product-release-approval-v1',mode='SIMULATED',target='rehearsal',authority='owned_rehearsal',plan_sha256=digest(plan),approved_actions=list(STEPS),expires_at=plan['expires_at']))
         compose=root/'compose';compose.mkdir(mode=0o700);env=compose/'.env';envpin=write(env,('MODEL_CREDENTIAL_KEY=synthetic-private-key\nJWT_SECRET=synthetic-jwt-at-least-thirty-two-bytes\nSITE_ADDRESS=http://fixture.invalid\n').encode());yaml=compose/'docker-compose.yml';ypin=write(yaml,b'services: {}\n')
         fee=Ledger(root/'original-fee.sqlite');manager=Ledger(root/'original-manager.sqlite');fee.path.chmod(0o600);manager.path.chmod(0o600)
@@ -119,10 +133,15 @@ def test_owned_full_stack_candidate_and_fresh_rollback_cohorts(tmp_path,flow):
             return
         assert prepared.status=='done',prepared
         with h.lock(plan):
-            if flow in ('release','runtime'):
+            if flow in ('release','runtime','runtime-business','runtime-business-bad'):
                 from ops.pi.product_release import NativeProductRelease
                 before=digest(json.loads((root/'ingress-before.json').read_bytes()))
                 release_settings=dict(schema='pi-product-control-v1',mode='SIMULATED',target='rehearsal',plan_sha256=digest(plan),context_path=str(context_path),context_sha256=context_pin,activation_approval_path=str(a_path),activation_approval_sha256=a_pin,ingress_before_sha256=before,maximum_stopped_seconds=1800,expires_at=plan['expires_at'])
+                if flow in ('runtime-business','runtime-business-bad'):
+                    expected=dict(id=business_ids[3],chapter_seq=1,title='探针章节',status='confirmed',content='本人可读的固定内容',version=1,summary=None)
+                    cases=dict(schema='pi-business-read-probe-v1',mode='SIMULATED',plan_sha256=digest(plan),context_sha256=context_pin,expires_at=plan['expires_at'],cases=[dict(user_id=business_ids[0],auth_version=1,foreign_user_id=business_ids[1],foreign_auth_version=1,project_id=business_ids[2],chapter_id=business_ids[3],expected_sha256='0'*64 if flow=='runtime-business-bad' else digest(expected))])
+                    probe_path=root/'business-cases.json';probe_pin=write(probe_path,cases)
+                    release_settings.update(schema='pi-product-control-v2',business_probe_path=str(probe_path),business_probe_sha256=probe_pin)
                 settings_path=root/'control.json';settings_pin=write(settings_path,release_settings)
                 permit=root/'control-approval.json';permit_pin=write(permit,dict(schema='pi-product-control-approval-v1',mode='SIMULATED',target='rehearsal',plan_sha256=digest(plan),config_sha256=settings_pin,approved_actions=['activate','rollback'],expires_at=plan['expires_at']))
                 release=NativeProductRelease(h,settings_path,settings_pin,permit,permit_pin)
@@ -131,6 +150,13 @@ def test_owned_full_stack_candidate_and_fresh_rollback_cohorts(tmp_path,flow):
                 with pytest.raises(ValueError,match='foreign network'):release._scope()
                 alien_info=inspect(alien);assert alien_info['Config']['Labels'].get('myink.pi.rehearsal')==op and alien_info['Image']==images['python']
                 d('rm','--force',alien);resources.remove((alien,images['python']))
+                if flow=='runtime-business-bad':
+                    with pytest.raises(Exception):release.activate()
+                    assert any('business content differs' in p.read_text(errors='replace') for p in (root/'commands').glob('*/stderr.bin'))
+                    assert h.ledger.get('backup:'+op+':POST') is None
+                    assert h.ledger.get('native:'+op+':start_candidate_admission') is None
+                    assert d('exec',front,'/usr/bin/curl','-sS','-o','/dev/null','-w','%{http_code}','http://127.0.0.1/api/v1/projects')=='503'
+                    assert all(fee.get('unknown-'+str(n))['status']=='pending' for n in range(9));return
                 opened=release.activate();assert opened.status=='done' and opened.evidence['phase']=='native_candidate_open'
                 assert opened.evidence['business_probe']=='pending_separate_qualification'
                 postdir=root/'collections'/sha256(('backup:'+op+':POST').encode()).hexdigest()
@@ -145,7 +171,7 @@ def test_owned_full_stack_candidate_and_fresh_rollback_cohorts(tmp_path,flow):
                 d('exec',pg,'psql','-X','-q','-U','myink','-d','myink','-v','ON_ERROR_STOP=1','-c',"INSERT INTO pi_native_release_marker VALUES(2,'after-open')")
                 returned=release.rollback();assert returned.status=='done' and returned.evidence['phase']=='native_legacy_return'
                 assert returned.evidence['identity']['generation']==2 and returned.evidence['original_control_state_restored'] is False
-                if flow=='runtime':
+                if flow in ('runtime','runtime-business'):
                     pre=next(root.glob('restore-*/application-legacy/receipt.json'))
                     proof_rows=[]
                     for folder in root.glob('restore-*'):
@@ -157,6 +183,11 @@ def test_owned_full_stack_candidate_and_fresh_rollback_cohorts(tmp_path,flow):
                 assert d('exec',pg,'psql','-X','-q','-A','-t','-U','myink','-d','myink','-c','SELECT count(*) FROM pi_native_release_marker')=='2'
                 assert all(fee.get('unknown-'+str(n))['status']=='pending' for n in range(9))
                 assert json.loads(d('exec',front,'/usr/bin/curl','-fsS','http://127.0.0.1/api/v1/projects'))==[]
+                if flow=='runtime-business':
+                    parent='product-control:'+op+':activate'
+                    proof=h.ledger.get(parent+':business');assert proof['status']=='done' and proof['evidence']['cases']==1 and proof['evidence']['tenant_rejections']==2
+                    assert all(h.ledger.get('native:'+op+':'+action)['status']=='done' for action in ('start_candidate','stop_candidate','start_candidate_admission','stop_candidate_admission'))
+                    assert h.ledger.get(parent+':stop-validation')['status']=='done'
                 with pytest.raises(ValueError):release.activate()
                 return
             actor=NativeActivation(h,context_path,context_pin,a_path,a_pin)

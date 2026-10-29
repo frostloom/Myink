@@ -69,7 +69,7 @@ def test_config_and_independent_approval_are_both_required_before_commands(activ
     ledger,plan,c,*_=activation_inputs;value=context(activation_inputs)
     plan['candidate']['config_hash']=value['configuration_sha256'];value['plan_sha256']=digest(plan)
     cp=tmp_path/'activation.json';pin=write(cp,value)
-    ap=tmp_path/'activation-approval.json';approval=dict(schema='pi-product-activation-approval-v1',mode='SIMULATED',target='rehearsal',plan_sha256=digest(plan),context_sha256=pin,approved_actions=list(api().ACTIONS),expires_at=plan['expires_at']);ap_pin=write(ap,approval)
+    ap=tmp_path/'activation-approval.json';approval=dict(schema='pi-product-activation-approval-v2',mode='SIMULATED',target='rehearsal',plan_sha256=digest(plan),context_sha256=pin,approved_actions=list(api().ACTIONS),expires_at=plan['expires_at']);ap_pin=write(ap,approval)
     root=tmp_path/'operation';root.mkdir(mode=0o700)
     host=SimpleNamespace(plan=plan,config=c,root=root,ledger=ledger,clock=lambda:NOW,authorize=lambda p:None)
     actor=api().NativeActivation(host,cp,pin,ap,ap_pin)
@@ -83,7 +83,7 @@ def test_native_action_timeout_intent_is_never_redispatched(activation_inputs,tm
     import sys
     ledger,plan,c,*_=activation_inputs;value=context(activation_inputs)
     plan['candidate']['config_hash']=value['configuration_sha256'];value['plan_sha256']=digest(plan)
-    cp=tmp_path/'context.json';pin=write(cp,value);ap=tmp_path/'approval.json';ap_pin=write(ap,dict(schema='pi-product-activation-approval-v1',mode='SIMULATED',target='rehearsal',plan_sha256=digest(plan),context_sha256=pin,approved_actions=list(api().ACTIONS),expires_at=plan['expires_at']))
+    cp=tmp_path/'context.json';pin=write(cp,value);ap=tmp_path/'approval.json';ap_pin=write(ap,dict(schema='pi-product-activation-approval-v2',mode='SIMULATED',target='rehearsal',plan_sha256=digest(plan),context_sha256=pin,approved_actions=list(api().ACTIONS),expires_at=plan['expires_at']))
     root=tmp_path/'native';root.mkdir(mode=0o700);commands=root/'commands';commands.mkdir(mode=0o700);marker=tmp_path/'dispatches'
     executable=tmp_path/'docker';executable.write_text('#!'+sys.executable+'\nfrom pathlib import Path\nimport time\np=Path('+repr(str(marker))+')\np.write_text(p.read_text()+"x" if p.exists() else "x")\ntime.sleep(10)\n');executable.chmod(0o700)
     transport=DockerCommands(executable,'unix:///tmp/owned-test.sock',commands)

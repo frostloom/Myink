@@ -20,7 +20,7 @@ from .product_runtime import _pinned,_save
 
 ACTIONS=('activate','rollback')
 FIELDS=set('schema mode target plan_sha256 context_path context_sha256 activation_approval_path activation_approval_sha256 ingress_before_sha256 maximum_stopped_seconds expires_at'.split())
-STEPS={'candidate','references-pre','installed','post','references-post','start','open','close','drain','stop','return','start-return','open-return'}
+STEPS={'candidate','references-pre','installed','post','references-post','start','business','stop-validation','start-admission','open','close','drain','stop','return','start-return','open-return'}
 
 
 def _literal(value):return "'"+str(value).replace("'","''")+"'"
@@ -44,9 +44,16 @@ class NativeProductRelease:
             require(type(host) is LinuxProductHost,'canonical release host required')
         else:require(host.config['target']=='rehearsal','simulation cannot release production')
         c=_pinned(config_path,config_sha256,actual);self.config=c
-        require(isinstance(c,dict) and set(c)==FIELDS and c['schema']=='pi-product-control-v1' and c['mode']==host.config['mode'] and c['target']==host.config['target'] and c['plan_sha256']==digest(self.plan),'closed exact native release settings required')
+        business=isinstance(c,dict) and c.get('schema')=='pi-product-control-v2'
+        require(isinstance(c,dict) and set(c)==(FIELDS|{'business_probe_path','business_probe_sha256'} if business else FIELDS) and c['schema'] in ('pi-product-control-v1','pi-product-control-v2') and c['mode']==host.config['mode'] and c['target']==host.config['target'] and c['plan_sha256']==digest(self.plan) and (not actual or business),'closed qualified native release settings required')
+        self.business_mode=business
         require(type(c['maximum_stopped_seconds']) is int and 0<c['maximum_stopped_seconds']<=1800 and hash_value(c['ingress_before_sha256']),'bounded approved maintenance required')
         self.actor=NativeActivation(host,c['context_path'],c['context_sha256'],c['activation_approval_path'],c['activation_approval_sha256'])
+        self.business_probe=None
+        if business:
+            from .product_business_probe import BusinessReadProbe
+            require(self.actor.protocol_version==2,'separate phase authority required')
+            self.business_probe=BusinessReadProbe(host,self.actor,c['business_probe_path'],c['business_probe_sha256'])
         self._authority()
 
     def _authority(self):
@@ -55,6 +62,9 @@ class NativeProductRelease:
         a=_pinned(self.approval_path,self.approval_pin,actual)
         require(isinstance(a,dict) and set(a)=={'schema','mode','target','plan_sha256','config_sha256','approved_actions','expires_at'} and a['schema']=='pi-product-control-approval-v1' and a['mode']==h.config['mode'] and a['target']==h.config['target'] and a['plan_sha256']==digest(self.plan) and a['config_sha256']==self.pin,'independent native release approval required')
         require(isinstance(a['approved_actions'],list) and len(a['approved_actions'])==2 and set(a['approved_actions'])==set(ACTIONS),'exact release/return actions required')
+        if self.business_mode:
+            from .product_business_probe import validate
+            require(validate(_pinned(self.config['business_probe_path'],self.config['business_probe_sha256'],actual),self.plan,self.actor.context_pin)==self.business_probe.packet,'business case approval drift')
         self.actor._authority();now=utc(h.clock())
         require(now<min(utc(a['expires_at']),utc(self.config['expires_at']),utc(self.plan['expires_at'])),'native release authority expired')
         start=h.root/'maintenance-start.json';_plain(start);require(start.stat().st_size<=1024,'bounded maintenance start required');v=strict_json(start.read_bytes())
@@ -161,14 +171,21 @@ class NativeProductRelease:
         result=self._transition(role,(True,True),(False,False));self._reload(False);self._state(role,(False,False));self._scope()
         return dict(result,scope='native_admission_only',business_probe='pending_separate_qualification')
 
+    def _business(self):return self.business_probe.check(self.backend)
+
     def activate(self):return self._operation('activate',self._activate)
 
     def _activate(self):
         self._prepared();self._scope();self._ingress(True);self._state('candidate',(True,True))
         self._effect('references-pre',lambda:self._inventory('PRE'))
         self._effect('candidate',lambda:dict(verified=True,containers=self.actor.create('candidate')))
+        if self.business_mode:
+            self._effect('start',lambda:self.actor.start('candidate'));self._effect('business',self._business)
+            self._effect('stop-validation',lambda:self.actor.stop('candidate'))
         self._effect('installed',self._installed);self._effect('post',self._post)
-        self._effect('references-post',lambda:self._inventory('POST'));self._effect('start',lambda:self.actor.start('candidate'))
+        self._effect('references-post',lambda:self._inventory('POST'))
+        if self.business_mode:self._effect('start-admission',self.actor.start_admission)
+        else:self._effect('start',lambda:self.actor.start('candidate'))
         result=self._effect('open',lambda:self._open('candidate'))
         return dict(result,phase='native_candidate_open',identity=self.actor.identity('candidate'),business_probe='pending_separate_qualification')
 
@@ -197,7 +214,7 @@ class NativeProductRelease:
     def _rollback(self):
         self._prepared();self._scope()
         require(backup.release_allowed(self.host.ledger,self.plan['operation_id'],context=self.backend.context,now=self.host.clock()),'unresolved recovery debt blocks native return')
-        self._effect('close',self._close);self._effect('drain',self._drain);self._effect('stop',lambda:self.actor.stop('candidate'))
+        self._effect('close',self._close);self._effect('drain',self._drain);self._effect('stop',self.actor.stop_admission if self.business_mode else lambda:self.actor.stop('candidate'))
         self._effect('return',lambda:dict(verified=True,containers=self.actor.create('rollback'),transition=self._transition('candidate',(True,True),(True,True),next_role='rollback')))
         self._effect('start-return',lambda:self.actor.start('rollback'));result=self._effect('open-return',lambda:self._open('rollback'))
         return dict(result,phase='native_legacy_return',identity=self.actor.identity('rollback'),original_control_state_restored=False,business_probe='pending_separate_qualification')
