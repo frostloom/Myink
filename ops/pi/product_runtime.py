@@ -119,7 +119,9 @@ class LinuxProductHost:
         self.authorize(self.plan)
         require(callable(getattr(self,'apply_schema',None)) and callable(getattr(self,'bind_identity',None)),'complete migration capabilities required before ingress effects')
         from .product_backup import LinuxProductBackup
-        LinuxProductBackup(self).preflight()
+        recovery=LinuxProductBackup(self);recovery.preflight()
+        from .product_release import _preflight_recovery
+        _preflight_recovery(self.ledger,self.plan['operation_id'],recovery.context,self.clock())
 
     def _run(self,args,*,limit=1048576,seconds=30,stdin_path=None):
         self.authorize(self.plan)
@@ -243,6 +245,7 @@ class LinuxProductHost:
         for server in servers.values():
             require(isinstance(server,dict) and isinstance(server.get('routes'),list),'unreviewed HTTP route structure')
             server['routes'].insert(0,dict(match=[dict(path=['/api','/api/*'])],handle=[dict(handler='static_response',status_code=503,headers={'Retry-After':['60']},body='Maintenance in progress')],terminal=True))
+        _save(self.root/'maintenance-start.json',dict(plan_sha256=digest(plan),started_at=self.clock().isoformat()))
         _save(self.root/'ingress-before.json',baseline);_save(self.root/'ingress-closed.json',closed)
         target='/tmp/myink-pi-maintenance-'+plan['operation_id']+'.json'
         self._run(['cp',str(self.root/'ingress-closed.json'),self._cid('frontend')+':'+target])

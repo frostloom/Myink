@@ -12,7 +12,8 @@ from test_product_backup import write
 pytestmark=pytest.mark.pi_followup_docker
 
 
-def test_owned_full_stack_candidate_and_fresh_rollback_cohorts(tmp_path):
+@pytest.mark.parametrize('flow',['lifecycle','release'])
+def test_owned_full_stack_candidate_and_fresh_rollback_cohorts(tmp_path,flow):
     assert importlib.util.find_spec('ops.pi.product_activation'),'missing native cohort factory'
     from ops.pi.product_activation import NativeActivation,context_from_inspects,ACTIONS
     assert callable(getattr(NativeActivation,'create',None)), 'missing real cohort creation'
@@ -70,6 +71,7 @@ def test_owned_full_stack_candidate_and_fresh_rollback_cohorts(tmp_path):
         init=d('create','--label',label,'--network',network,'--memory','768m','--pids-limit','128',*[v for env in common for v in ('--env',env)],'--env','ADMIN_DATABASE_URL=postgresql+psycopg://myink:synthetic-pg@myink-pg:5432/myink',images['python'],'myink','init');resources.append((init,images['python']))
         d('start','--attach',init,seconds=180);assert inspect(init)['State']['ExitCode']==0
         d('rm',init);resources.remove((init,images['python']))
+        d('exec',pg,'psql','-X','-q','-U','myink','-d','myink','-v','ON_ERROR_STOP=1','-c',"CREATE TABLE pi_native_release_marker(id integer PRIMARY KEY,value text);INSERT INTO pi_native_release_marker VALUES(1,'before-release')")
         api=create('api','myink-api',images['python'],args=['--memory','512m','--memory-swap','512m','--cpus','1','--pids-limit','128'],env=common+['ADMIN_DATABASE_URL=postgresql+psycopg://myink_report:synthetic-report@myink-pg:5432/myink'],mounts=['--mount','type=volume,source='+volume+',target=/data/feedback'],command=['myink-api']);application.append(api)
         for n in range(2):application.append(create('worker','myink-worker',images['python'],args=['--memory','512m','--memory-swap','512m','--cpus','1','--pids-limit','128'],env=common,command=['myink-worker']))
         caddy_config=dict(admin={'listen':'localhost:2019'},apps={'http':{'servers':{'srv0':{'listen':[':80'],'routes':[{'handle':[{'handler':'reverse_proxy','upstreams':[{'dial':'myink-api:8100'}]}]}]}}}})
@@ -78,6 +80,7 @@ def test_owned_full_stack_candidate_and_fresh_rollback_cohorts(tmp_path):
         d('cp',str(configfile),front+':/tmp/fixture.json')
         for cid in [*application,front]:d('start',cid)
         wait_ready(front,['/usr/bin/curl','-fsS','http://myink-api:8100/readyz'],seconds=120)
+        d('exec',api,'python','-B','-c',"from pathlib import Path;Path('/data/feedback/owned-fixture.txt').write_bytes(b'owned material survives release')")
         # Warm source worker topology: five exact queues must exist before drain.
         until=time.monotonic()+60
         while True:
@@ -104,6 +107,37 @@ def test_owned_full_stack_candidate_and_fresh_rollback_cohorts(tmp_path):
         h=LinuxProductHost(hp,hpin)
         prepared=prepare_bootstrap(h.ledger,plan,h);assert prepared.status=='done',prepared
         with h.lock(plan):
+            if flow=='release':
+                from ops.pi.product_release import NativeProductRelease
+                before=digest(json.loads((root/'ingress-before.json').read_bytes()))
+                release_settings=dict(schema='pi-product-control-v1',mode='SIMULATED',target='rehearsal',plan_sha256=digest(plan),context_path=str(context_path),context_sha256=context_pin,activation_approval_path=str(a_path),activation_approval_sha256=a_pin,ingress_before_sha256=before,maximum_stopped_seconds=1800,expires_at=plan['expires_at'])
+                settings_path=root/'control.json';settings_pin=write(settings_path,release_settings)
+                permit=root/'control-approval.json';permit_pin=write(permit,dict(schema='pi-product-control-approval-v1',mode='SIMULATED',target='rehearsal',plan_sha256=digest(plan),config_sha256=settings_pin,approved_actions=['activate','rollback'],expires_at=plan['expires_at']))
+                release=NativeProductRelease(h,settings_path,settings_pin,permit,permit_pin)
+                alien=d('create','--label',label,'--network',network,'--network-alias','myink-api','--memory','64m','--pids-limit','32',images['python'],'python','-B','-c','import time;time.sleep(60)');resources.append((alien,images['python']))
+                d('start',alien)
+                with pytest.raises(ValueError,match='foreign network'):release._scope()
+                alien_info=inspect(alien);assert alien_info['Config']['Labels'].get('myink.pi.rehearsal')==op and alien_info['Image']==images['python']
+                d('rm','--force',alien);resources.remove((alien,images['python']))
+                opened=release.activate();assert opened.status=='done' and opened.evidence['phase']=='native_candidate_open'
+                assert opened.evidence['business_probe']=='pending_separate_qualification'
+                postdir=root/'collections'/sha256(('backup:'+op+':POST').encode()).hexdigest()
+                with tarfile.open(postdir/'attachments.tar') as materials:assert materials.extractfile('feedback/owned-fixture.txt').read()==b'owned material survives release'
+                assert json.loads(d('exec',front,'/usr/bin/curl','-fsS','http://127.0.0.1/api/v1/projects'))==[]
+                ingress_pin=digest(h._caddy())
+                d('exec',pg,'psql','-X','-q','-U','myink','-d','myink','-v','ON_ERROR_STOP=1','-c',"UPDATE maintenance_control SET owner='manual-owner' WHERE id=1")
+                with pytest.raises(ValueError,match='superseded'):release._close()
+                assert digest(h._caddy())==ingress_pin
+                # Test-only owner restoration; production never rewinds manual ownership.
+                d('exec',pg,'psql','-X','-q','-U','myink','-d','myink','-v','ON_ERROR_STOP=1','-c',"UPDATE maintenance_control SET owner='"+plan['candidate']['owner']+"' WHERE id=1")
+                d('exec',pg,'psql','-X','-q','-U','myink','-d','myink','-v','ON_ERROR_STOP=1','-c',"INSERT INTO pi_native_release_marker VALUES(2,'after-open')")
+                returned=release.rollback();assert returned.status=='done' and returned.evidence['phase']=='native_legacy_return'
+                assert returned.evidence['identity']['generation']==2 and returned.evidence['original_control_state_restored'] is False
+                assert d('exec',pg,'psql','-X','-q','-A','-t','-U','myink','-d','myink','-c','SELECT count(*) FROM pi_native_release_marker')=='2'
+                assert all(fee.get('unknown-'+str(n))['status']=='pending' for n in range(9))
+                assert json.loads(d('exec',front,'/usr/bin/curl','-fsS','http://127.0.0.1/api/v1/projects'))==[]
+                with pytest.raises(ValueError):release.activate()
+                return
             actor=NativeActivation(h,context_path,context_pin,a_path,a_pin)
             created=actor.create('candidate');assert len(created)==3
             for row in created:resources.append((row['id'],cimages['python']))

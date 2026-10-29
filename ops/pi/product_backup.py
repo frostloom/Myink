@@ -16,7 +16,7 @@ from .contracts import Identity
 from .product_bootstrap import _facts, COUNTS
 from .product_runtime import BASE, _pinned
 
-RECOVERY_COMPONENTS=('product_backup.py','product_restore.py','product_cold_probe.py','product_runtime.py','product_commands.py','product_migration.py','product_bootstrap.py','backup.py','ledger.py','audit.py')
+RECOVERY_COMPONENTS=('product_activation.py','product_release.py','product_backup.py','product_restore.py','product_cold_probe.py','product_runtime.py','product_commands.py','product_migration.py','product_bootstrap.py','backup.py','ledger.py','audit.py')
 FIELDS=set('schema release_pair_id environment_path environment_sha256 compose_path compose_sha256 billing_ledger_path manager_state_path maximum_artifact_bytes'.split())
 META_SQL="""BEGIN READ ONLY;SET LOCAL statement_timeout='10s';
 SELECT json_build_object('system_identifier',(SELECT system_identifier::text FROM pg_control_system()),'database',current_database(),'size_bytes',pg_database_size(current_database()),

@@ -139,6 +139,8 @@ try:
  while not server.started:
   check(thread.is_alive() and time.monotonic()<until,'API did not cold start');time.sleep(.1)
  with urllib.request.urlopen('http://127.0.0.1:'+str(port)+'/healthz',timeout=5) as reply:check(reply.status==200 and json.load(reply)=={'status':'ok'},'API health differs')
+except BaseException:
+ import faulthandler;faulthandler.dump_traceback(all_threads=True);raise
 finally:
  server.should_exit=True;thread.join(5);listener.close()
 check(not thread.is_alive(),'API did not stop')
