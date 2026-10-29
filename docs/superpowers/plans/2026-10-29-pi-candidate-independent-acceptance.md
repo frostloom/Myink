@@ -68,3 +68,36 @@ binding and automatic completion/nextday registration remain unfinished.
 Separate already-reviewed8d1802af admission runtime has now been activated with
 zero-call real outside-window/idle/cold-reentry acceptance; this newer candidate
 completion plan's source is not deployed or claimed complete.
+
+
+Task3 source progress aftere8daa02c: original manager/dispatch/frozen-template
+binding now drives automatic finite candidate request preparation and fixed
+review_once dispatch. Parent profile pin/expiry is part of the candidate permit
+and live-forward guard; valid historical admission never grants current authority.
+Repeated review wakeups return immutable outcomes with0new calls. New stage and
+coordinator hook are source-only pending this plan's final review/native rollout.
+Full tool-flow projection and actual fixed-nextday registry publication remain
+unfinished; no followup_registered or main/product completion is inferred.
+
+
+Task3 current source checkpoint: original manager binding and automatic fixed
+candidate review are connected; parent root profile revocation/expiry is live.
+No-model development audit reauthenticates before the reviewer, exporting every
+terminal controlled tool in order, bounded failure feedback, original development
+counts/cost only, exact diff/final test/no-release. Separate original selection
+binding and SDK-review primary charges are not copied into parent events.
+Root appends an approved exact candidate to the original followup registry/env
+pair with private preimages and intent; partial updates remain unverified/no
+replay. Nonapproved candidates reserve only blocked plans. Simulated next-day
+checks demonstrate due-time/no replay/state invariance but cannot certify ACTUAL.
+Stopped/uncertain/cancelled/abstaining original manager tasks get truthful null
+counters/range_complete=false observations; unreconciled partial SDK/tool data
+remain private. One final fresh review and actual matched rollout remain pending.
+
+
+One final source review completed:0Critical1Important0Minor. Post-paid host
+reinspection exceptions were independently reproduced; author fixpass preserves
+uncertain host audit/outcome and blocked followup without paying again. Baseline
+nested reproduction failure mapping also reproduced/fixed.72focused post-fix
+and3887full offline passed,36deselected,264.42seconds. Exact HEADCI and native /
+actual new complete pipeline remain pending. Task3/root goal remain in progress.

@@ -16,12 +16,12 @@ def api():return importlib.import_module('ops.pi.candidate_review_launcher')
 
 @pytest.fixture
 def candidate_review(completed):
-    qp,q,dc,r,check=completed;parent=qp.parent;dp=parent/'candidate-dossier.json';d=compile_dossier(qp,file_hash(qp));write(dp,d)
+    qp,q,dc,r,check=completed;parent=qp.parent;write(parent/'candidate-parent-profile.json',dict(mode='SIMULATED',expires_at=(NOW+timedelta(hours=1)).isoformat()));dp=parent/'candidate-dossier.json';d=compile_dossier(qp,file_hash(qp));write(dp,d)
     claims=parent/'candidate-reviews';claims.mkdir(mode=0o700)
     audit=parent/'audit';audit.mkdir(mode=0o700);AuditStore(audit/'events.sqlite')
     c={k:dc[k] for k in ('runtime_path','runtime_sha256','ledger_path','policy_path','policy_sha256','credential_path','credential_sha256','docker','endpoint','daemon_id','image_id')}
     c.update(schema='pi-candidate-review-v1',role='candidate_review',mode='SIMULATED',run_id='candidate-review-one',root=str(claims/('candidate-'+r['candidate_sha256'])),ledger_sha256=ledger_snapshot(dc['ledger_path'])['sha256'],deadline_seconds=60,request_path=str(qp),request_sha256=file_hash(qp),dossier_path=str(dp),dossier_sha256=file_hash(dp),permit_path=str(parent/'candidate-permit.json'),permit_sha256='0'*64,audit_path=str(audit/'events.sqlite'),export_root=str(parent/'export'))
-    p={k:c[k] for k in ('mode','role','run_id','request_sha256','dossier_sha256','runtime_sha256','policy_sha256','credential_sha256','ledger_path','deadline_seconds')};p.update(schema='pi-candidate-review-permit-v1',authority='independent_candidate_recommendation_only',claim_root=str(claims),candidate_sha256=r['candidate_sha256'],budget_scope='local-trial-1',budget_microyuan=10000000,max_model_requests=1,legacy_unknown_ids=[],issued_at=(NOW-timedelta(minutes=1)).isoformat(),expires_at=(NOW+timedelta(minutes=10)).isoformat())
+    p={k:c[k] for k in ('mode','role','run_id','request_sha256','dossier_sha256','runtime_sha256','policy_sha256','credential_sha256','ledger_path','deadline_seconds')};p.update(schema='pi-candidate-review-permit-v1',authority='independent_candidate_recommendation_only',profile_path=str(parent/'candidate-parent-profile.json'),profile_sha256=file_hash(parent/'candidate-parent-profile.json'),claim_root=str(claims),candidate_sha256=r['candidate_sha256'],budget_scope='local-trial-1',budget_microyuan=10000000,max_model_requests=1,legacy_unknown_ids=[],issued_at=(NOW-timedelta(minutes=1)).isoformat(),expires_at=(NOW+timedelta(minutes=10)).isoformat())
     write(Path(c['permit_path']),p);c['permit_sha256']=file_hash(c['permit_path']);cp=parent/'candidate-review-config.json';write(cp,c);return cp,c,d,p,dc
 
 
@@ -68,6 +68,7 @@ def run_review(case,proof,monkeypatch,scenario='approve'):
     def exchange(h,config,initial,bridge,transport,limits,save,**kwargs):
         assert kwargs['worker']=='selection.py' and initial['system']==module.SYSTEM and str(cp.parent) not in initial['prompt']
         if scenario=='revoke':write(Path(c['permit_path']),{})
+        if scenario=='parent_revoke':write(cp.parent/'candidate-parent-profile.json',{})
         if scenario=='candidate_drift':(Path(dc['root'])/'candidate/src/a.py').write_text('changed')
         if scenario=='expiry':monkeypatch.setattr(module,'_time',lambda *a:(_ for _ in ()).throw(ValueError('expired')))
         body=dict(model=initial['model'],max_tokens=initial['max_tokens'],system=[dict(type='text',text=module.wire_system(initial['system']))],messages=[dict(role='user',content=[dict(type='text',text=initial['prompt'])])],stream=True)
@@ -101,3 +102,16 @@ def test_candidate_claim_cannot_be_renamed_to_repay_same_review(candidate_review
     cp,c,d,p,dc=candidate_review;module=api();monkeypatch.setattr(module,'verify_source',lambda *a:dict(machine='aarch64'));c['root']=str(Path(c['root']).parent/'renamed');write(cp,c);before=ledger_snapshot(c['ledger_path'])
     with pytest.raises(ValueError,match='candidate claim'):module.prepare(cp,clock=lambda:NOW)
     assert ledger_snapshot(c['ledger_path'])==before
+
+
+def test_independent_review_runtime_can_advance_without_rewriting_finished_development(candidate_review,monkeypatch):
+    cp,c,d,p,dc=candidate_review;original=Path(dc['runtime_path']);current=cp.parent/'matching-review-runtime';current.mkdir();c['runtime_path']=str(current);write(cp,c);seen=[]
+    monkeypatch.setattr(api(),'verify_source',lambda path,pin:seen.append((path,pin)) or dict(machine='aarch64'))
+    before={p:p.read_bytes() for p in cp.parent.rglob('*') if p.is_file()};prepared=api().prepare(cp,clock=lambda:NOW)
+    assert seen==[(current,dc['runtime_sha256'])] and prepared[0]['runtime_path']==str(current) and Path(dc['runtime_path'])==original
+    assert before=={p:p.read_bytes() for p in cp.parent.rglob('*') if p.is_file()}
+
+
+def test_parent_profile_revocation_during_sdk_startup_prevents_reservation(candidate_review,proof,monkeypatch):
+    cp,c,*_=candidate_review;before=ledger_snapshot(c['ledger_path']);result=run_review(candidate_review,proof,monkeypatch,'parent_revoke')
+    assert result['new_attempts']==0 and not result['verified'] and ledger_snapshot(c['ledger_path'])==before

@@ -454,3 +454,58 @@ injected clock, transport or authorization callback. Explicit SIMULATED clock
 support is test-only. Already-issued development/candidate/product authority is
 not inferred from these checks. Actual activation/native SDK acceptance and the
 later candidate/product/24–48hour gates remain pending.
+
+## Finished-manager candidate review (new source, not in server8d1802af)
+
+`manager_completion.request/inspect` bind the original immutable task/dispatch,
+sealed cycle result, exact prepared config and independently frozen template.
+They authenticate the stopped SDK/tool/fee proof through development_evidence;
+a declaredverified flag alone cannot request a paid review. Pending/stopped/
+abstaining/uncertain cycles remain non-authorizing. Outputs are readonly evidence.
+
+`candidate_review_stage.create` authenticates the original five-stage admission
+and historical root issuer facts, then applies the **current live** root source,
+file, host, limits,50CNY/nineholds and parent-profile scope. The original manager
+must have completed that exact cycle. It mechanically creates a private dossier,
+request, immutable parent-profile snapshot, root finite recommendation permit and
+fixed candidate-review config. No manual per-task review JSON or model request
+is needed. Partial preparation remains claimed and uncertain, never overwritten.
+
+The permit now pins its parent profile file and cannot outlive that profile.
+Root ownership/custody and the pin are rechecked before forwarding, including
+revocation while the SDK starts. A fresh review runtime may use a different path
+with the same pinned Node/Pi dependencies and verified matching current host/code;
+the finished development config remains immutable. This does not replay or
+re-authorize development under another runtime.
+
+`review_once` uses only the fixedcandidate_review phase and ordinary-user SDK
+kernel. It reauthenticates a completed approve/reject/needs_evidence result,
+retains known invalid-output/uncertain/cleanup outcomes and never pays again for
+the same candidate. Original admission history remains unchanged. A separate
+candidate-review-outcome record is an observation, with executable_approval=False.
+The coordinator reaches this hook before returning an old research-cache hit.
+An existing candidate can be reviewed after05:30 only if its full review budget
+plus180seconds stop/cleanup/audit reserve fits before06:00. New research/candidate
+admission still stops05:30. ACTUAL accepts no injected runner or clock.
+
+The source completion pipeline now runs a fixed no-model development projection
+before paying the fresh reviewer. It reauthenticates the original manager and
+stopped development proof, exports terminal controlled tools in durable order,
+bounded failed-case feedback, exact changes, development-only fees, final checks
+and no_release. Original selection binding/abstention and SDK review primary fees
+remain separate; parent events do not duplicate them.
+
+After authenticated approval only, root may append the exact fixed candidate to
+the existing followup-registry.json and followup.env. Both private config
+preimages and intent precede atomic single-file replacements under the canonical
+maintenance lock. Existing entries/claims remain unchanged; full capacity,
+registry/env drift or partial replacement is blocked/unverified with no paid
+replay. The ordinary followup kernel remains sole due-time execution authority.
+Nonapproval or unavailable registration yields an explicitly blocked audit plan.
+A future plan never certifies a test result, and synthetic due callbacks cannot
+certify ACTUAL execution. Stopped/abstaining/uncertain manager observations have
+null unverified counters and range_complete=false, never fake completed SDK work.
+
+This source is not server activation, actual new-candidate acceptance or
+main/product adoption. Those, the one fresh review/author fixpass and matched
+native rollout remain gates for the independent completion plan.

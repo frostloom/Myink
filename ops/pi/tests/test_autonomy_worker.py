@@ -42,7 +42,7 @@ def test_kernel_exception_restores_original_signal_handler(tmp_path,monkeypatch)
     assert signal.getsignal(signal.SIGTERM)==before
 
 
-@pytest.mark.parametrize('component',['investigation','reproducer','sdk_review','manager_handoff'])
+@pytest.mark.parametrize('component',['investigation','reproducer','sdk_review','candidate_review','candidate_audit','development_audit','manager_audit','manager_handoff'])
 def test_verified_entry_only_routes_fixed_phase_components(tmp_path,monkeypatch,capsys,component):
     from ops.pi.tests.test_observer_entry import module
     import sys
@@ -56,8 +56,18 @@ def test_verified_entry_only_routes_fixed_phase_components(tmp_path,monkeypatch,
     assert seen==[(component,'/fixed/phase.json','a'*64)] and 'done' in capsys.readouterr().out
 
 
-def test_fixed_audit_phase_never_uses_a_model_kernel(tmp_path,monkeypatch):
+@pytest.mark.parametrize('component',['coordinator_audit','candidate_audit','manager_audit'])
+def test_fixed_audit_phase_never_uses_a_model_kernel(tmp_path,monkeypatch,component):
     cp=tmp_path/'audit.json';cp.write_bytes(encoded(dict(schema='pi-autonomy-audit-v1',mode='ACTUAL')));cp.chmod(0o600);module=api();monkeypatch.setattr(module,'_identity',lambda:None);calls=[]
     monkeypatch.setattr('ops.pi.autonomy_audit.emit',lambda path,pin:calls.append((path,pin)) or dict(model_requests=0,records=1))
-    result=module.run('coordinator_audit',cp,file_hash(cp))
+    result=module.run(component,cp,file_hash(cp))
     assert result['model_requests']==0 and result['status']=='done' and calls==[(cp,file_hash(cp))]
+
+
+def test_fixed_candidate_kernel_propagates_parent_cancel_and_uses_one_request_contract(tmp_path,monkeypatch):
+    cp=tmp_path/'candidate.json';cp.write_bytes(encoded(dict(schema='pi-candidate-review-v1',mode='ACTUAL')));cp.chmod(0o600);module=api();monkeypatch.setattr(module,'_identity',lambda:None);seen=[]
+    def execute(path,**kwargs):
+        seen.append(kwargs);os.kill(os.getpid(),signal.SIGTERM);assert kwargs['cancel'].is_set()
+        return dict(verified=False,closed_verified=True,new_attempts=0)
+    monkeypatch.setattr('ops.pi.candidate_review_launcher.execute',execute);result=module.run('candidate_review',cp,file_hash(cp))
+    assert result['status']=='failed' and result['model_requests']==0 and seen[0]['expected_config_sha256']==file_hash(cp)

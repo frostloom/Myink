@@ -178,3 +178,54 @@ recorded_at, not the prior retrospective emission time as an exact failure time.
 Keep both records. No configuration changed or model request occurred in that
 initial locked-out attempt. Actual source coordinator ticks can separately report
 lock_busy or outside_window without being failed product deployments.
+
+## Candidate completion observation and remaining schedule boundary
+
+New source reaches a fresh fixed candidate review from an actual completed
+manager cycle before a cached research fingerprint can end a wakeup. Root
+permission is generated from original manager/SDK/tool/fee proof and current
+source policy; modelapprove text is not permission. Candidate review outcomes
+are retained separately from original admission, including rejected/invalid/
+uncertain results and parent-profile revocation. No replay changes the source
+claim, original fee history or legacy holds. Completed development config and
+old runtime identity are not rewritten for a separately verified current review
+runtime. Live parent-profile pin/expiry still gate the new request.
+
+The new source fixed `development_audit` kernel reauthenticates the original
+manager/development proof before projecting each controlled tool in durable order,
+bounded failed-case feedback, exact candidate diff, final tests and no_release.
+Development counters cover development only. Selection binding/abstention and
+fresh SDK review keep their own primary charges; parent completion/followup
+records omit those counters. Raw arguments, patch, source, gold and model prose
+remain private. This preserves failed tool attempts within a reconciled phase.
+
+`candidate.host_completion.v1` links the original manager task to the fresh
+candidate recommendation. `candidate.nextday_reservation.v1` is planned only
+when root has appended the exact candidate/source/gold/cases/review entry to the
+original fixed followup registry and verified its matching env digest. Both old
+config preimages and a durable registration intent precede replacement. Partial
+pair publication is unverified, never silently repaired or paid again. Original
+registry entries and old executed claims are preserved. Existing followup remains
+the sole due-time execution authority; it does not adopt product code.
+`followup_registered=False` means blocked, not scheduled. A planned record has
+no result until an independently linked ACTUAL due-time test exists. Synthetic
+cross-day callbacks cannot satisfy that linkage.
+
+`manager.completion_observation.v1` records original stopped, uncertain,
+cancelled or abstaining tasks without certifying partial SDK/tool/fee receipts.
+Its model/cost fields are null and range_complete is false; its companion is
+no_release. Exact partial private receipts remain retained for reconciliation.
+This is an observation, not permission to clear unknown fees or replay a task.
+Server8d1802af does not include these new completion hooks yet; its finite
+rollout record remains authoritative. New source still requires independent
+review, matching deployment and actual pipeline acceptance.
+
+
+Host post-paid reinspection failures have their own durable uncertain completion
+and blocked nextday plan even when the earlier SDK recommendation was passed.
+Show both stages; the SDK result is not the final host decision. Unknown baseline
+counts stay null; code_regression baseline failures use the authenticated nested
+reproduction report, not a missing top-level field.
+
+Current source acceptance record:
+[2026-10-29 completion](../evaluations/pi-candidate-completion-source-2026-10-29.md).

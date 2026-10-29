@@ -126,16 +126,34 @@ def run(profile_path,pin,*,runner=None,clock=None,cancel=None):
         except BlockingIOError:return dict(out,status='lock_busy')
         p,now,before=profile.load(pp,pin,clock=clock)
         from .manager import status as manager_status
-        if manager_status(p['manager_state'],p['host']['ledger_path'],mode=mode)['metrics']['unresolved_dispatches']:return dict(out,status='uncertain')
+        unresolved=manager_status(p['manager_state'],p['host']['ledger_path'],mode=mode)['metrics']['unresolved_dispatches']
         active_entries=[];registry=_path(p['permit_root']).parent/'review-worker-registry.json'
         if registry.exists():
             _plain(registry);require(registry.stat().st_size<=65536,'bounded existing review queue required');queue=read_json(registry)
             require(set(queue)=={'schema','mode','entries'} and queue['schema']=='pi-review-worker-registry-v1' and queue['mode']==mode,'existing review queue drift')
             if mode=='ACTUAL':require(registry.stat().st_uid==0 and registry.stat().st_mode&0o777==0o640,'root existing review queue required')
             active_entries,_=_active_entries(p,queue['entries'],clock)
-        if mode=='ACTUAL' and not _window(p,now):return dict(out,status='outside_window')
         records,closed=_history(_directory(p['root']))
         if not closed:return dict(out,status='uncertain')
+        # Finished admissions need their fresh candidate review before a cached
+        # research fingerprint or pending-adoption guard can end this wakeup.
+        for previous_fp,previous in records.items():
+            if previous['status']!='admitted':continue
+            claim=Path(p['root'])/previous_fp
+            if read_json(claim/'intent.json')['source_sha256']!=p['source']['source_sha256']:continue
+            from .manager_completion import request as completion_request
+            ready=completion_request(p['manager_state'],p['host']['ledger_path'],'auto-'+previous_fp[:32],mode=mode)
+            if ready['status'] in ('execution_stopped','uncertain','no_action','cancelled'):
+                from .candidate_review_stage import observe_manager
+                observed=observe_manager(pp,pin,claim,lock,runner=runner,clock=clock,cancel=cancel)
+                return dict(out,status='uncertain' if unresolved else 'manager_observed',manager_observation=observed)
+            if ready['status']!='candidate_ready' or unresolved:continue
+            from .candidate_review_stage import review_once
+            reviewed=review_once(pp,pin,claim,lock,runner=runner,clock=clock,cancel=cancel)
+            state=reviewed['status'];status='candidate_reviewed' if state in ('review_approved','review_rejected','needs_evidence') else 'failed' if state=='review_failed' else state
+            return dict(out,status=status,model_requests=reviewed.get('model_requests'),candidate_review=reviewed)
+        if unresolved:return dict(out,status='uncertain')
+        if mode=='ACTUAL' and not _window(p,now):return dict(out,status='outside_window')
         from .live_observer import _load
         _,_,_,base,*_=_load(p['observer']['observer_config_path']);candidates=[d/'receipt.json' for d in base.iterdir() if d.is_dir() and (d/'receipt.json').exists()];require(len(candidates)<=4096,'bounded observations required')
         if not candidates:return dict(out,status='no_evidence')

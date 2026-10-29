@@ -31,3 +31,14 @@ def test_old_or_cancelled_auto_history_does_not_window_gate_manual_queue():
     assert api().manager_budget('ACTUAL',False,at(12))==2100
     assert api().manager_budget('SIMULATED',True,at(12))==2100
     with pytest.raises(ValueError):api().manager_budget('ACTUAL',True,at(12))
+
+
+@pytest.mark.parametrize('now',[at(2),at(5,30),at(5,54,58)])
+def test_existing_candidate_review_can_finish_with_cleanup_and_audit_reserve(now):
+    seconds=api().completion_budget(now,120)
+    assert seconds==120 and now+timedelta(seconds=seconds+180)<at(6)
+
+
+@pytest.mark.parametrize('now',[at(1,59),at(5,55),at(6),at(12)])
+def test_existing_candidate_review_cannot_cross_six_or_start_in_daytime(now):
+    with pytest.raises(ValueError):api().completion_budget(now,120)

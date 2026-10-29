@@ -31,7 +31,7 @@ def kernels(profile,proof,monkeypatch,scenario='task'):
             for module in ('ops.pi.maintenance_adapters','ops.pi.selection_launcher'):monkeypatch.setattr(module+'.verify_source',lambda *args:dict(machine='aarch64'))
             outcome=importlib.import_module('ops.pi.manager_handoff').publish(cp,pin,clock=lambda:NOW,cancel=cancel)
             if scenario=='lost_handoff':raise RuntimeError('synthetic parent lost handoff result')
-        elif component in ('coordinator_audit','coordinator_withdrawal'):outcome=importlib.import_module('ops.pi.autonomy_audit').emit(cp,pin)
+        elif component in ('manager_audit','coordinator_audit','coordinator_withdrawal'):outcome=importlib.import_module('ops.pi.autonomy_audit').emit(cp,pin)
         else:raise AssertionError('arbitrary phase forbidden')
         count=outcome['new_attempts'] if component in ('investigation','sdk_review') else outcome['model_requests'];state='done'
         if component in ('investigation','sdk_review') and not outcome['verified']:state='failed' if outcome['closed_verified'] else 'blocked'
@@ -109,7 +109,7 @@ def test_unresolved_original_manager_dispatch_freezes_new_pipeline(profile,proof
     report=manager.run(p['manager_state'],p['host']['ledger_path'],max_tasks=1,seconds=2100,idle_seconds=0,inbox=p['inbox'],mode='SIMULATED',executor=lambda *a,**kw:{})
     assert report['status']=='uncertain' and manager.status(p['manager_state'],p['host']['ledger_path'],mode='SIMULATED')['metrics']['unresolved_dispatches']==1
     result=api().run(pp,file_hash(pp),runner=runner,clock=lambda:NOW)
-    assert result['status']=='uncertain' and result['model_requests']==0 and len(calls)==5
+    assert result['status']=='uncertain' and result['model_requests']==0 and len(calls)==6 and calls[-1]=='manager_audit'
 
 
 def test_pending_selection_checkpoint_is_not_invalidated_by_a_new_source_investigation(profile,proof,monkeypatch):
@@ -149,3 +149,17 @@ def test_cancel_during_final_receipt_write_keeps_withdrawal_as_authoritative_sto
     assert result['status']=='uncertain' and not list(Path(p['inbox']).glob('*.task.json'))
     claim=Path(p['root'])/context['research_fingerprint'];assert (claim/'withdrawal/receipt.json').exists() and read_json(Path(p['permit_root']).parent/'review-worker-registry.json')['entries']==[]
     assert api().run(pp,file_hash(pp),runner=runner,clock=lambda:NOW)['status']=='uncertain'
+
+
+def test_finished_admission_reaches_fixed_review_hook_before_cached_research_return(profile,proof,monkeypatch):
+    pp,p,c,context=profile;runner,calls=kernels(profile,proof,monkeypatch);first=api().run(pp,file_hash(pp),runner=runner,clock=lambda:NOW);assert first['status']=='admitted';before=ledger_snapshot(c['ledger_path']);seen=[]
+    def ready(state,billing,task,**kwargs):
+        assert str(state)==p['manager_state'] and str(billing)==p['host']['ledger_path'] and task=='auto-'+first['research_fingerprint'][:32];return dict(status='candidate_ready')
+    def review(path,pin,claim,lock,**kwargs):
+        assert Path(path)==pp and pin==file_hash(pp) and claim.name==first['research_fingerprint']
+        with Path(p['lock_path']).open('rb') as other:
+            with pytest.raises(BlockingIOError):fcntl.flock(other,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        seen.append(claim);return dict(status='review_approved',model_requests=0,executable_approval=False,cached=True)
+    monkeypatch.setattr('ops.pi.manager_completion.request',ready);monkeypatch.setattr('ops.pi.candidate_review_stage.review_once',review)
+    result=api().run(pp,file_hash(pp),runner=runner,clock=lambda:NOW)
+    assert result['status']=='candidate_reviewed' and result['model_requests']==0 and len(seen)==1 and result['candidate_review']['executable_approval'] is False and ledger_snapshot(c['ledger_path'])==before
