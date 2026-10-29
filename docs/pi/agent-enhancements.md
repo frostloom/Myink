@@ -153,3 +153,7 @@ sdk_review_launcher通过全新无工具SDK会话给出approve/reject/needs_evid
 ## 业务读取与阶段隔离（2026-10-30）
 
 固定loopback业务读取、临时身份和跨租户拒绝；验证/正式启动动作独立，POST与原收据缺失不可正式启动。14组件资格，模型工具/预算未扩大。 证据见[阶段记录](../evaluations/pi-business-phase-2026-10-30.md)。
+
+## 恢复主API进程（2026-10-30）
+
+真实myink-api PID1、封存有效环境、实际附件/用户读取和自然退出；15组件/合同3，模型工具和费用边界不变。 证据见[阶段记录](../evaluations/pi-restored-api-2026-10-30.md)。
