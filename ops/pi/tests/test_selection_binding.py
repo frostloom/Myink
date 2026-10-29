@@ -41,7 +41,7 @@ def selected(completed,proof,monkeypatch,request):
         events=[dict(type='message_start',message=dict(usage=usage)),dict(type='content_block_delta',index=0,delta=dict(type='text_delta',text=text)),dict(type='message_delta',usage=dict(output_tokens=1)),dict(type='message_stop')]
         return httpx.Response(200,headers={'content-type':'text/event-stream'},stream=httpx.ByteStream(''.join('data: '+json.dumps(v)+'\n\n' for v in events).encode()))
     context=dict(mode='SIMULATED',source_sha256=sc['source_sha256'],tasks=catalog,input_hash='c'*64,deadline=time.monotonic()+90,cancel=Event())
-    result=selection.execute(sp,context,transport=send,expected_config_sha256=file_hash(sp));assert result['verified'] is True
+    result=selection.execute(sp,context,transport=send,expected_config_sha256=file_hash(sp),clock=lambda:NOW);assert result['verified'] is True
     return pp,p,cp,c,tc,lease,sp,sc,result
 
 

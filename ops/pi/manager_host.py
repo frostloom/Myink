@@ -19,7 +19,7 @@ def _ready(c,task_id,request_path,request_pin,manifest_pin,clock):
     require(re.fullmatch('auto-[0-9a-f]{32}',task_id),'reserved autonomous task identity invalid');cycle=_path(request_path)
     require(cycle.name=='cycle.json' and cycle.parent.name=='bundle' and cycle.parent.parent.parent==_path(c['handoff_root']),'autonomous cycle custody drift')
     fp=cycle.parent.parent.name.removeprefix('handoff-');require(hash_value(fp) and cycle.parent.parent.name=='handoff-'+fp and task_id=='auto-'+fp[:32],'autonomous fingerprint drift')
-    claim=_path(c['autonomy_root'])/fp;r=_read(claim/'receipt.json')[0];intent=_read(claim/'intent.json')[0]
+    claim=_path(c['autonomy_root'])/fp;require(not (claim/'withdrawal').exists(),'autonomous admission was withdrawn');r=_read(claim/'receipt.json')[0];intent=_read(claim/'intent.json')[0]
     require(isinstance(r,dict) and set(r)==RESULT and r['schema']=='pi-autonomy-coordinator-result-v1' and r['mode']==c['mode'] and r['status']=='admitted' and r['research_fingerprint']==fp and r['profile_sha256']==intent['profile_sha256'] and r['cycle_sha256']==request_pin==file_hash(cycle),'complete autonomous coordinator required')
     require(manifest_pin is None or r['manifest_sha256']==manifest_pin,'autonomous admission manifest drift')
     require(set(r['phases'])==PHASES,'complete phase chain required');results={}

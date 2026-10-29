@@ -31,7 +31,7 @@ def kernels(profile,proof,monkeypatch,scenario='task'):
             for module in ('ops.pi.maintenance_adapters','ops.pi.selection_launcher'):monkeypatch.setattr(module+'.verify_source',lambda *args:dict(machine='aarch64'))
             outcome=importlib.import_module('ops.pi.manager_handoff').publish(cp,pin,clock=lambda:NOW,cancel=cancel)
             if scenario=='lost_handoff':raise RuntimeError('synthetic parent lost handoff result')
-        elif component=='coordinator_audit':outcome=importlib.import_module('ops.pi.autonomy_audit').emit(cp,pin)
+        elif component in ('coordinator_audit','coordinator_withdrawal'):outcome=importlib.import_module('ops.pi.autonomy_audit').emit(cp,pin)
         else:raise AssertionError('arbitrary phase forbidden')
         count=outcome['new_attempts'] if component in ('investigation','sdk_review') else outcome['model_requests'];state='done'
         if component in ('investigation','sdk_review') and not outcome['verified']:state='failed' if outcome['closed_verified'] else 'blocked'
@@ -118,3 +118,34 @@ def test_pending_selection_checkpoint_is_not_invalidated_by_a_new_source_investi
     source=Path(p['source']['source_path']);(source/'src/a.py').write_text('value=3\n');p['source']['source_sha256']=tree_hash(source);write(pp,p);before=ledger_snapshot(c['ledger_path'])
     result=api().run(pp,file_hash(pp),runner=runner,clock=lambda:NOW)
     assert result['status']=='awaiting_manager_cycle' and result['model_requests']==0 and len(calls)==5 and ledger_snapshot(c['ledger_path'])==before
+
+
+@pytest.mark.parametrize('phase',['registration','audit'])
+@pytest.mark.parametrize('change',['cancel','revoke'])
+def test_late_cancellation_or_profile_revocation_never_finishes_executable_admission(profile,proof,monkeypatch,phase,change):
+    pp,p,c,context=profile;runner,calls=kernels(profile,proof,monkeypatch);event=Event();module=api();original=getattr(module,'_register' if phase=='registration' else '_audit')
+    def delayed(*args,**kwargs):
+        value=original(*args,**kwargs)
+        if change=='cancel':event.set()
+        else:pp.write_bytes(pp.read_bytes()+b'\n')
+        return value
+    monkeypatch.setattr(module,'_register' if phase=='registration' else '_audit',delayed)
+    result=module.run(pp,file_hash(pp),runner=runner,clock=lambda:NOW,cancel=event)
+    assert result['status']!='admitted' and not list(Path(p['inbox']).glob('*.task.json')) and result['model_requests']==2
+    claim=Path(p['root'])/context['research_fingerprint'];assert read_json(claim/'withdrawal/receipt.json')['status']=='withdrawn'
+    registry=Path(p['permit_root']).parent/'review-worker-registry.json';assert read_json(registry)['entries']==[]
+    if phase=='audit':
+        from ops.pi.audit import AuditStore
+        assert any(e['details'].get('reference')=='autonomy.admission_withdrawal.v1' for e in AuditStore(p['audit_path']).events())
+
+
+def test_cancel_during_final_receipt_write_keeps_withdrawal_as_authoritative_stop(profile,proof,monkeypatch):
+    pp,p,c,context=profile;runner,calls=kernels(profile,proof,monkeypatch);event=Event();builder=importlib.import_module('ops.pi.autonomy_profile');original=builder.write
+    def delayed(p,path,value,**kwargs):
+        result=original(p,path,value,**kwargs)
+        if path.name=='receipt.json' and path.parent==Path(p['root'])/context['research_fingerprint']:event.set()
+        return result
+    monkeypatch.setattr(builder,'write',delayed);result=api().run(pp,file_hash(pp),runner=runner,clock=lambda:NOW,cancel=event)
+    assert result['status']=='uncertain' and not list(Path(p['inbox']).glob('*.task.json'))
+    claim=Path(p['root'])/context['research_fingerprint'];assert (claim/'withdrawal/receipt.json').exists() and read_json(Path(p['permit_root']).parent/'review-worker-registry.json')['entries']==[]
+    assert api().run(pp,file_hash(pp),runner=runner,clock=lambda:NOW)['status']=='uncertain'

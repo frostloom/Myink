@@ -239,10 +239,10 @@ def check(config_path):
     return dict(ready=True,mode='read-only',authorization_sha256=authorization_hash(c))
 
 
-def execute(config_path,context,*,transport=None,expected_config_sha256=None):
+def execute(config_path,context,*,transport=None,expected_config_sha256=None,clock=None):
     config_pin=file_hash(config_path)
     require(context.get('mode') in ('ACTUAL','SIMULATED'),'explicit selection mode required')
-    require(context['mode']!='ACTUAL' or transport is None and expected_config_sha256 is not None,'ACTUAL selection forbids simulated transport and requires config pin')
+    require(context['mode']!='ACTUAL' or transport is None and clock is None and expected_config_sha256 is not None,'ACTUAL selection forbids simulated transport and requires config pin')
     require(context['mode']!='SIMULATED' or callable(transport),'SIMULATED selection requires explicit transport')
     require(expected_config_sha256 is None or file_hash(config_path)==expected_config_sha256,
             'selection file identity drift')
@@ -255,6 +255,8 @@ def execute(config_path,context,*,transport=None,expected_config_sha256=None):
         c,policy,tasks,before,provenance=prepare(config_path);require(digest(c)==frozen,'selection config changed while locking')
         require(expected_config_sha256 is None or file_hash(config_path)==expected_config_sha256,
                 'selection config file changed while locking')
+        from .selection_review_issuer import check_live_issuer
+        check_live_issuer(c,tasks,context['mode'],clock=clock)
         seconds=min(c['deadline_seconds'],context['deadline']-time.monotonic());require(seconds>0,'selection deadline expired')
         root=Path(c['root']);root.mkdir(mode=0o700)
         def write(name,value):
@@ -284,6 +286,7 @@ def execute(config_path,context,*,transport=None,expected_config_sha256=None):
                     require(file_hash(path(c[key+'_path'],private=True))==c[key+'_sha256'],'selection '+key+' revoked')
                 require(tree_hash(path(c['source_path']))==c['source_sha256'],'selection source revoked')
                 verify_source(path(c['runtime_path']),c['runtime_sha256'])
+                check_live_issuer(c,tasks,context['mode'],clock=clock)
             bridge=NoToolBridge(live,ledger,limits,initial['model_token'],initial,write,before_forward=guard)
             credentials=load_credentials(c['credential_path'],policy)
             with PolicyLease(Path(c['policy_path']),original,enabled):

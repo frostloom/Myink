@@ -68,6 +68,19 @@ def _register(p,claim,stage,*,clock=None):
     profile.write(p,claim/'worker-registration.json',dict(registry_sha256=pin,environment_sha256=file_hash(envpath),handoff_request_sha256=stage['config_sha256']))
 
 
+def _withdraw_admission(p,claim,stage,lock):
+    value=withdraw(p,claim,stage,lock)
+    registration=claim/'worker-registration.json'
+    if registration.exists():
+        own=_read(registration)[0];directory=_path(p['permit_root']).parent;registry=directory/'review-worker-registry.json';env=directory/'review-worker.env'
+        require(file_hash(registry)==own['registry_sha256'] and file_hash(env)==own['environment_sha256'],'worker registration changed; never overwrite operator data')
+        queue=read_json(registry);entry=dict(request_path=stage['config_path'],request_sha256=stage['config_sha256']);require(queue['entries'].count(entry)==1,'owned queue entry drift')
+        profile.write(p,claim/'registry-withdrawal-before-private.json',queue);queue=dict(queue,entries=[item for item in queue['entries'] if item!=entry]);_atomic(p,registry,encoded(queue)+b'\n')
+        data=('PI_OBSERVER_RUNTIME_SHA256='+p['controller_sha256']+'\nPI_REVIEW_WORKER_ENTRYPOINT='+p['worker_entry_path']+'\nPI_REVIEW_WORKER_REGISTRY_SHA256='+file_hash(registry)+'\n').encode();_atomic(p,env,data)
+        profile.write(p,claim/'worker-registration-withdrawal.json',dict(status='withdrawn',registry_sha256=file_hash(registry),environment_sha256=file_hash(env)))
+    return value
+
+
 def _window(p,now):
     local=now.astimezone(timezone(timedelta(hours=8)));start=local.replace(hour=2,minute=0,second=0,microsecond=0);cutoff=local.replace(hour=5,minute=30,second=0,microsecond=0)
     prep=p['limits']['investigation_seconds']+p['limits']['review_seconds']+p['limits']['checker_seconds']+270
@@ -78,7 +91,7 @@ def _history(root):
     children=list(root.iterdir());require(len(children)<=4096,'bounded coordinator history required');records={}
     for child in children:
         require(hash_value(child.name),'unexpected coordinator state');_directory(child)
-        if not (child/'receipt.json').exists():return records,False
+        if not (child/'receipt.json').exists() or (child/'withdrawal').exists():return records,False
         value=_read(child/'receipt.json')[0];intent=_read(child/'intent.json')[0]
         require(isinstance(value,dict) and set(value)==RESULT and value['schema']=='pi-autonomy-coordinator-result-v1' and value['research_fingerprint']==child.name and value['profile_sha256']==intent['profile_sha256'],'coordinator history drift')
         for component,pin in value['phases'].items():require(file_hash(child/('phase-'+component)/'receipt.json')==pin,'phase history drift')
@@ -87,14 +100,17 @@ def _history(root):
     return records,True
 
 
-def _audit(p,pin,claim,state,phases,runner,cancel,now):
+def _audit(p,pin,claim,state,phases,runner,cancel,now,*,component='coordinator_audit'):
     event_state='planned' if state=='admitted' else 'no_change' if state in ('no_task','not_reproduced') else 'blocked' if state in ('review_rejected','blocked') else 'uncertain' if state=='uncertain' else 'failed'
     run='auto-'+claim.name[:32];domain='real_provider_fixed_input' if p['mode']=='ACTUAL' else 'synthetic'
     event=dict(kind='plan',status=event_state,run_id=run,occurred_at=now.isoformat(),summary='Finite source investigation and independent review; candidate/product acceptance remains separate.',details=dict(reference='autonomy.coordinator.v1',decision=state,operation_id=claim.name,next_action='original_manager_selection' if state=='admitted' else 'no_development_authority',result_summary='Stages: '+','.join(phases)),version=dict(controller_sha256=p['controller_sha256'],policy_sha256=pin,sdk_version='1.1.0'),changes=[],evidence=[dict(kind=kind,sha256=sha,verified=True,evidence_domain=domain) for kind,sha in [('root_source_profile',pin)]+[('phase_'+name,sha) for name,sha in phases.items()]],followups=[],mode=p['mode'],evidence_domain=domain)
     version=dict(event,kind='version',status='no_change',summary='Controller/source-profile context; no product release.',details=dict(reference='autonomy.controller.v1',decision='recorded',next_action='none'))
-    cp=claim/'coordinator-audit.json';profile.write(p,cp,dict(schema='pi-autonomy-audit-v1',mode=p['mode'],audit_path=p['audit_path'],export_root=p['export_root'],events=[dict(record_key=run+':coordinator',event=event),dict(record_key=run+':controller-context',event=version)]))
-    value=dispatch(p,'coordinator_audit',dict(config_path=str(cp),config_sha256=file_hash(cp)),claim,runner=runner,cancel=Event())
-    phases['coordinator_audit']=value['receipt_sha256'];require(value['status']=='done','coordinator audit unavailable')
+    suffix='coordinator' if component=='coordinator_audit' else 'withdrawal';event['details']['reference']='autonomy.coordinator.v1' if component=='coordinator_audit' else 'autonomy.admission_withdrawal.v1'
+    withdrawal=claim/'withdrawal/receipt.json'
+    if withdrawal.exists():event['evidence'].append(dict(kind='admission_withdrawal',sha256=file_hash(withdrawal),verified=True,evidence_domain=domain))
+    cp=claim/('coordinator-audit.json' if component=='coordinator_audit' else 'coordinator-withdrawal-audit.json');profile.write(p,cp,dict(schema='pi-autonomy-audit-v1',mode=p['mode'],audit_path=p['audit_path'],export_root=p['export_root'],events=[dict(record_key=run+':'+suffix,event=event),dict(record_key=run+':'+suffix+'-context',event=version)]))
+    value=dispatch(p,component,dict(config_path=str(cp),config_sha256=file_hash(cp)),claim,runner=runner,cancel=Event())
+    phases[component]=value['receipt_sha256'];require(value['status']=='done','coordinator audit unavailable')
 
 
 def run(profile_path,pin,*,runner=None,clock=None,cancel=None):
@@ -152,26 +168,41 @@ def run(profile_path,pin,*,runner=None,clock=None,cancel=None):
                         from .manager_review_worker import _completed
                         _,admission,*_=_completed(handoff['config_path'],handoff['config_sha256'],clock)
                         tc=read_json(admission['template_path']);plan=read_json(tc['plan_path']);pending={path:file_hash(Path(s['source_path'])/path) for path in plan['files']}
-                        require(not cancel.is_set() and file_hash(pp)==pin,'admission cancelled/revoked');_register(p,claim,handoff,clock=clock);state='admitted'
+                        require(not cancel.is_set() and file_hash(pp)==pin,'admission cancelled/revoked');_register(p,claim,handoff,clock=clock);require(not cancel.is_set() and file_hash(pp)==pin,'admission revoked during registration');state='admitted'
         except Exception as error:
             failure=type(error).__name__;state='uncertain'
             if phases:
                 last=_read(claim/('phase-'+next(reversed(phases)))/'receipt.json')[0]
                 if last['status'] in ('failed','blocked'):state=last['status']
             if handoff is not None:
-                try:withdraw(p,claim,handoff,lock)
+                try:_withdraw_admission(p,claim,handoff,lock)
                 except Exception as recovery_error:profile.write(p,claim/'withdrawal-failure.json',dict(failure_class=type(recovery_error).__name__))
             profile.write(p,claim/'failure.json',dict(failure_class=failure))
         try:_audit(p,pin,claim,state,phases,runner,cancel,now)
         except Exception as error:
             state='uncertain';profile.write(p,claim/'audit-failure.json',dict(failure_class=type(error).__name__))
             if handoff is not None:
-                try:withdraw(p,claim,handoff,lock)
+                try:_withdraw_admission(p,claim,handoff,lock)
                 except Exception:pass
         after=ledger_snapshot(h['ledger_path']);old={r['operation_id'] for r in before['operations']};count=sum(r['kind']=='model-attempt' and r['operation_id'] not in old for r in after['operations'])
         if _unknown(after)!=set(p['legacy_unknown_ids']):state='blocked'
+        if state=='admitted' and (cancel.is_set() or file_hash(pp)!=pin):
+            state='uncertain';profile.write(p,claim/'late-revocation.json',dict(reason='cancelled_or_profile_revoked'))
+            try:_withdraw_admission(p,claim,handoff,lock)
+            except Exception as error:profile.write(p,claim/'late-withdrawal-failure.json',dict(failure_class=type(error).__name__))
+            try:_audit(p,pin,claim,state,phases,runner,cancel,now,component='coordinator_withdrawal')
+            except Exception as error:profile.write(p,claim/'withdrawal-audit-failure.json',dict(failure_class=type(error).__name__))
         result=dict(schema='pi-autonomy-coordinator-result-v1',mode=mode,status=state,profile_sha256=pin,research_fingerprint=fp,model_requests=count,before_fee_sha256=before['sha256'],after_fee_sha256=after['sha256'],phases=phases,pending_file_hashes=pending if state=='admitted' else {},manifest_sha256=admission['manifest_sha256'] if state=='admitted' else None,handoff_request_sha256=handoff['config_sha256'] if state=='admitted' else None,cycle_sha256=admission['cycle_sha256'] if state=='admitted' else None)
-        profile.write(p,claim/'receipt.json',result);return result
+        profile.write(p,claim/'receipt.json',result)
+        # The maintenance lock still excludes manager ingestion if cancellation
+        # arrives during the final durable write. Keep that receipt as history,
+        # but make the own admission and queue explicitly non-executable.
+        if state=='admitted' and (cancel.is_set() or file_hash(pp)!=pin):
+            _withdraw_admission(p,claim,handoff,lock)
+            try:_audit(p,pin,claim,'uncertain',phases,runner,cancel,now,component='coordinator_withdrawal')
+            except Exception:pass
+            return dict(result,status='uncertain')
+        return result
 
 
 def serve(profile_path,pin):

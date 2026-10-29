@@ -52,13 +52,13 @@ def verify_release(root,expected,*,expected_owner=0):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--config',required=True);parser.add_argument('--config-sha256',required=True)
-    parser.add_argument('--component',choices=('observer','followup','diagnosis','review_worker','investigation','reproducer','sdk_review','manager_handoff','coordinator_audit','autonomy','manager'),default='observer')
+    parser.add_argument('--component',choices=('observer','followup','diagnosis','review_worker','investigation','reproducer','sdk_review','manager_handoff','coordinator_audit','coordinator_withdrawal','autonomy','manager'),default='observer')
     args=parser.parse_args()
     try:
         root=Path(__file__).resolve().parent
         code=verify_release(root,os.environ.get('PI_OBSERVER_RUNTIME_SHA256'))
         sys.path.insert(0,str(code));sys.dont_write_bytecode=True
-        if args.component in ('diagnosis','review_worker','investigation','reproducer','sdk_review','manager_handoff','coordinator_audit','autonomy','manager'):
+        if args.component in ('diagnosis','review_worker','investigation','reproducer','sdk_review','manager_handoff','coordinator_audit','coordinator_withdrawal','autonomy','manager'):
             vendor=code.parent/'vendor';require(vendor.is_dir())
             sys.path.insert(1,str(vendor))
             if args.component=='autonomy':
@@ -67,7 +67,7 @@ def main():
             elif args.component=='manager':
                 from ops.pi.manager_host import run
                 result=run(args.config,args.config_sha256)
-            elif args.component in ('investigation','reproducer','sdk_review','manager_handoff','coordinator_audit'):
+            elif args.component in ('investigation','reproducer','sdk_review','manager_handoff','coordinator_audit','coordinator_withdrawal'):
                 from ops.pi.autonomy_worker import run
                 result=run(args.component,args.config,args.config_sha256)
             else:

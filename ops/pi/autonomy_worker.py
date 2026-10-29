@@ -5,7 +5,7 @@ import os,pwd,signal
 from .audit import _path,_plain,require
 from .development_inputs import file_hash,read_json
 
-SCHEMAS=dict(investigation='pi-investigation-v1',reproducer='pi-investigation-reproducer-v1',sdk_review='pi-sdk-review-v1',manager_handoff='pi-reviewed-manager-handoff-v1',coordinator_audit='pi-autonomy-audit-v1')
+SCHEMAS=dict(investigation='pi-investigation-v1',reproducer='pi-investigation-reproducer-v1',sdk_review='pi-sdk-review-v1',manager_handoff='pi-reviewed-manager-handoff-v1',coordinator_audit='pi-autonomy-audit-v1',coordinator_withdrawal='pi-autonomy-audit-v1')
 
 
 def _identity():
@@ -31,7 +31,7 @@ def run(component,config_path,config_sha256,*,cancel=None):
         elif component=='reproducer':
             from .investigation_reproducer import execute
             outcome=execute(cp,config_sha256,cancel=cancel)
-        elif component=='coordinator_audit':
+        elif component in ('coordinator_audit','coordinator_withdrawal'):
             from .autonomy_audit import emit
             outcome=emit(cp,config_sha256)
         else:

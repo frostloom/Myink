@@ -19,7 +19,7 @@ def published(handoff):
     return request,q,c,tc,receipt
 
 
-def select(published,proof,monkeypatch,*,abstain=False):
+def select(published,proof,monkeypatch,*,abstain=False,before_forward=None,clock=None):
     request,q,c,tc,receipt=published;cycle=read_json(receipt['cycle_path']);sp=Path(cycle['selection_config_path']);sc=read_json(sp);selection=importlib.import_module('ops.pi.selection_launcher')
     class H:operation_id='selection-owned';owned={};pending={}
     class Owners:
@@ -33,6 +33,7 @@ def select(published,proof,monkeypatch,*,abstain=False):
     if abstain:proposal.update(task_id=None,source_sha256=None,evidence_sha256=None,reason='Insufficient behavior evidence; no task.')
     text=json.dumps(proposal)
     def exchange(h,config,initial,bridge,transport,limits,save,**kwargs):
+        if before_forward is not None:before_forward()
         wire=dict(model=initial['model'],max_tokens=initial['max_tokens'],system=[dict(type='text',text=selection.wire_system(initial['system']))],messages=[dict(role='user',content=[dict(type='text',text=initial['prompt'])])],stream=True)
         bridge.route(dict(type='request',path='/v1/messages',headers=[['x-api-key',initial['model_token']],['x-pi-scope','local-trial-1']],body=json.dumps(wire)),transport)
         frame=fake_frame(proof[0],initial,text);save('worker-frame-private.json',frame);return frame
@@ -41,7 +42,7 @@ def select(published,proof,monkeypatch,*,abstain=False):
         usage=dict(input_tokens=1,output_tokens=1,cache_read_input_tokens=0,cache_creation_input_tokens=0)
         events=[dict(type='message_start',message=dict(usage=usage)),dict(type='content_block_delta',index=0,delta=dict(type='text_delta',text=text)),dict(type='message_delta',usage=dict(output_tokens=1)),dict(type='message_stop')]
         return httpx.Response(200,headers={'content-type':'text/event-stream'},stream=httpx.ByteStream(''.join('data: '+json.dumps(v)+'\n\n' for v in events).encode()))
-    selection.execute(sp,dict(mode='SIMULATED',source_sha256=sc['source_sha256'],tasks=catalog,input_hash='c'*64,deadline=time.monotonic()+90,cancel=Event()),transport=send,expected_config_sha256=file_hash(sp))
+    selection.execute(sp,dict(mode='SIMULATED',source_sha256=sc['source_sha256'],tasks=catalog,input_hash='c'*64,deadline=time.monotonic()+90,cancel=Event()),transport=send,expected_config_sha256=file_hash(sp),clock=clock or (lambda:NOW))
     return sp,sc,task
 
 

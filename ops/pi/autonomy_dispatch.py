@@ -67,7 +67,7 @@ def run(p,component,stage,claim_path,*,cancel=None,runner=None):
         launcher=_path('/usr/bin/setpriv');_plain(launcher);require(launcher.stat().st_uid==0 and not launcher.stat().st_mode&0o022,'trusted fixed privilege dropper required')
     else:require(callable(runner) and _path(p['host']['ledger_path'])!=BASE/'state/ledger.sqlite','isolated explicit simulation required')
     claim=_directory(claim_path);require(claim.parent==_path(p['root']),'original phase claim required');fp=claim.name
-    paths=dict(investigation=claim/'research-config.json',reproducer=_path(p['permit_root'])/('reproducer-'+fp+'.json'),sdk_review=_path(p['handoff_root'])/('review-config-'+fp+'.json'),manager_handoff=_path(p['handoff_root'])/('request-'+fp+'.json'),coordinator_audit=claim/'coordinator-audit.json')
+    paths=dict(investigation=claim/'research-config.json',reproducer=_path(p['permit_root'])/('reproducer-'+fp+'.json'),sdk_review=_path(p['handoff_root'])/('review-config-'+fp+'.json'),manager_handoff=_path(p['handoff_root'])/('request-'+fp+'.json'),coordinator_audit=claim/'coordinator-audit.json',coordinator_withdrawal=claim/'coordinator-withdrawal-audit.json')
     cp=_path(stage['config_path']);require(cp==paths[component] and file_hash(cp)==stage['config_sha256'],'generated phase input pin required');c=read_json(cp)
     require(c['schema']==SCHEMAS[component] and c['mode']==p['mode'],'phase schema/mode drift')
     root=claim/('phase-'+component);require(not root.exists(),'phase intent exists; no replay');root.mkdir(mode=0o700)
@@ -78,7 +78,7 @@ def run(p,component,stage,claim_path,*,cancel=None,runner=None):
         require(not cancel.is_set() and file_hash(cp)==stage['config_sha256'],'phase revoked before dispatch')
         if runner is not None:result=runner(component,cp,stage['config_sha256'],cancel)
         else:
-            seconds=dict(investigation=p['limits']['investigation_seconds']+60,reproducer=p['limits']['checker_seconds']+60,sdk_review=p['limits']['review_seconds']+60,manager_handoff=60,coordinator_audit=30)[component]
+            seconds=dict(investigation=p['limits']['investigation_seconds']+60,reproducer=p['limits']['checker_seconds']+60,sdk_review=p['limits']['review_seconds']+60,manager_handoff=60,coordinator_audit=30,coordinator_withdrawal=30)[component]
             argv,env=command(p,component,stage);capture=_capture(argv,env,root,seconds,cancel,_owner(p));write(p,root/'capture.json',capture)
             out=root/'stdout-private.log';require(out.stat().st_size<=1048576,'bounded worker envelope required');result=strict_json(out.read_bytes())
         require(isinstance(result,dict) and set(result)==ENVELOPE and result['schema']=='pi-autonomy-worker-result-v1' and result['component']==component and result['mode']==p['mode'] and result['status'] in ('done','failed','blocked') and type(result['model_requests']) is int and 0<=result['model_requests']<=1 and isinstance(result['outcome'],dict),'verified fixed phase envelope required')

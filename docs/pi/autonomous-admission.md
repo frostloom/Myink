@@ -426,3 +426,22 @@ pilot must not be described as indefinitely renewed autonomous management.
 Observer scheduling and separately approved fixed followups have their own
 contracts. Longer operation still needs explicit finite source/profile renewal
 and actual24–48hour validation under the unchanged cumulative financial scope.
+
+## Whole-plan independent review and author fixpass
+
+One fresh read-only whole-plan review found two Important issues and no Critical
+issue. The author reproduced and fixed both without a second review loop.
+Cancellation or profile revocation after registration/audit now withdraws the own
+unregistered manifest and exact active registry entry, emits separate no-model
+withdrawal audit, and makes withdrawal intent authoritative to the manager even
+if cancellation arrives during final receipt persistence. Existing history is
+retained; it is not a rollback of fees or an already-started job.
+
+Automatic selection FileReview now includes the authenticated finite issuer and
+unbound-lease binding. Fixed host code rechecks root ownership/custody, policy
+pin/current expiry, lease/scope/catalog/checkpoint and completed host issuance
+before claiming and immediately before provider forwarding. ACTUAL accepts no
+injected clock, transport or authorization callback. Explicit SIMULATED clock
+support is test-only. Already-issued development/candidate/product authority is
+not inferred from these checks. Actual activation/native SDK acceptance and the
+later candidate/product/24–48hour gates remain pending.
