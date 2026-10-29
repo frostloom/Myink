@@ -269,3 +269,12 @@ only stdlib/audit code, and has no Docker create/build/update or SQL write actio
 It is a host capability with root-equivalent Docker-group trust; the six model
 tools do not change. Separate source plan and qualification gate:
 [product release preflight](../superpowers/plans/2026-10-29-pi-product-release-preflight.md).
+
+
+## 产品只读探针实际启用更新（2026-10-29）
+
+上述“新源码尚未启用”段落现由此事实更新：72ae3911/c4dfb595只读产品探针已通过两次普通隔离入口和两次systemd执行，15分钟定时器实际触发；原六角色均活动。main独立-I-S-B reader已验证实际组件版本、blocked发布前置计划、初次原生失败及导出批次阻断，原次日18/18关联仍保留。阶段源码13文件+738/-1属控制面，产品未发布。
+
+有限付费控制器仍1ea1d514，当前参考profile17becf3b对齐实际222tracked后端文件d25d8275，context_budget字节不变；原Oct30 11:27+08到期和预算/预留不变。历史63383ce9是当时上下文，不应覆盖旧审计。新组件观测不升级为历史run源码身份、部署owner或发布审批。
+
+证据与未完成门槛见[实际验收](../evaluations/pi-product-preflight-2026-10-29.md)及JSON。真实新候选、main/产品采用、业务版本回退与24–48h仍未验收；只读能力不得展示为完整自治管理者已上线。

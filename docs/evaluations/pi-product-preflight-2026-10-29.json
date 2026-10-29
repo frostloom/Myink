@@ -1,0 +1,150 @@
+{
+  "schema": "pi-product-preflight-actual-qualification-v1",
+  "recorded_at": "2026-10-29T05:53:57.976214+00:00",
+  "status": "readonly_observer_qualified",
+  "source_commit": "72ae3911571c04d45f7d44e8c59d7664b46d08a0",
+  "controller_sha256": "c4dfb5955518b7805d8f78d5a39312322f7f022e9b4d421c38d8b213e3d857a8",
+  "config_sha256": "caca346235d0cccfaae7c28c454d6f10c0c414e4aa7f008ff20390720d956cdc",
+  "ci": {
+    "run_id": 40824316561,
+    "url": "https://github.com/frostloom/Myink/actions/runs/40824316561",
+    "jobs": 4,
+    "conclusion": "success"
+  },
+  "offline_tests": {
+    "passed": 3938,
+    "deselected": 36,
+    "seconds": 307.7,
+    "command": ".venv/bin/python -m pytest ops/pi/tests -q -m 'not pi_lab and not pi_live'"
+  },
+  "targeted_tests": {
+    "passed": 51
+  },
+  "review": {
+    "critical": 0,
+    "important": 2,
+    "minor": 0,
+    "author_fixpass": true,
+    "rereview": false
+  },
+  "native": {
+    "ordinary_runs": 2,
+    "systemd_runs": 2,
+    "running_containers": 7,
+    "excluded_exited_migration": 1,
+    "catalog": {
+      "agent_run_provenance": false,
+      "maintenance_control": false,
+      "maintenance_executions": false,
+      "maintenance_lock_function": false,
+      "task_provenance": false
+    },
+    "blockers": [
+      {
+        "code": "maintenance_protocol_absent",
+        "evidence_class": "catalog_availability",
+        "next_action": "prepare_reviewed_main_maintenance_bootstrap"
+      },
+      {
+        "code": "run_provenance_absent",
+        "evidence_class": "catalog_availability",
+        "next_action": "prepare_reviewed_product_provenance_integration"
+      },
+      {
+        "code": "deployment_ownership_unknown",
+        "evidence_class": "host_deployment_identity",
+        "next_action": "establish_approved_owner_generation_epoch_and_image_binding"
+      },
+      {
+        "code": "source_attestation_missing",
+        "evidence_class": "source_artifact_identity",
+        "next_action": "attest_actual_product_source_and_preserve_component_history"
+      },
+      {
+        "code": "functional_pause_resume_unverified",
+        "evidence_class": "maintenance_runtime",
+        "next_action": "verify_real_admission_pause_checkpoint_and_queue_resume"
+      },
+      {
+        "code": "compatible_backup_restore_unverified",
+        "evidence_class": "backup_recovery",
+        "next_action": "verify_current_PRE_POST_and_restore_context"
+      },
+      {
+        "code": "main_adoption_and_ci_unverified",
+        "evidence_class": "main_integration",
+        "next_action": "prepare_exact_main_adoption_without_reverting_product_fixes"
+      },
+      {
+        "code": "explicit_product_release_authorization_required",
+        "evidence_class": "human_release_authority",
+        "next_action": "present_concrete_reviewed_product_release_for_approval"
+      },
+      {
+        "code": "business_validation_unverified",
+        "evidence_class": "online_business",
+        "next_action": "prepare_fixed_health_business_and_owned_rollback_probes"
+      }
+    ]
+  },
+  "timer": {
+    "active": true,
+    "interval_minutes": 15,
+    "actual_first_trigger": "2026-10-29T13:43:58+08:00",
+    "all_seven_timers_active": true
+  },
+  "reader": {
+    "schema": "pi-product-preflight-main-reader-proof-v1",
+    "status": "passed",
+    "mode": "ACTUAL",
+    "standalone_I_S": true,
+    "native_observation_events": 6,
+    "component_versions": 4,
+    "rollout_events": 2,
+    "retained_guard_events": 2,
+    "changed_files": 13,
+    "added": 738,
+    "deleted": 1,
+    "original_nextday_actual_result_linked": true,
+    "product_release_certified": false,
+    "snapshot_sha256": "b286491b167ebd89999c1a91ba7024cf4963ac1db7c57ce5dccf105a3056f9e0"
+  },
+  "changes": {
+    "base": "a336e5c85bf9aef52cd198d54a3cbbff6ce4b3b4",
+    "head": "72ae3911571c04d45f7d44e8c59d7664b46d08a0",
+    "files": 13,
+    "added": 738,
+    "deleted": 1,
+    "scope": "Pi controller/docs/tests; not business adoption"
+  },
+  "source_reference": {
+    "profile_sha256": "17becf3baf6ac10d2377f5b1c3c563dd9d1dc92be0cc6d26e8b0d3b0d6334a40",
+    "reference_commit": "d25d82752d4821ae701f3ed7ebbffea01b4b63f7",
+    "tracked_files": 222,
+    "selected_source_unchanged": true,
+    "expires_at": "2026-10-30T03:27:42.120293+00:00",
+    "reference_only": true
+  },
+  "preservation": {
+    "original_fee_sha256": "fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb",
+    "cumulative_budget_microyuan": 50000000,
+    "legacy_unknown_holds": 9,
+    "new_model_requests": 0,
+    "paid_configs_unchanged": true,
+    "product_changed": false,
+    "main_changed": false
+  },
+  "retained_failures": [
+    "initial native strict-template optional Health/Labels failure; no activation",
+    "initial three-event audit batch rejected before append; original config retained",
+    "one earlier full run cancelled after target fixture mismatch; not passing",
+    "local reader harness relative-path rejection and incorrect manual addition count; source export unchanged"
+  ],
+  "not_certified": [
+    "new genuine paid autonomous candidate pipeline",
+    "main adoption",
+    "business release or rollback",
+    "new product nextday result",
+    "24–48h online improvement"
+  ]
+}

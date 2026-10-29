@@ -48,10 +48,10 @@ Interfaces: inspect_reality(observation) -> authority='none', release_allowed=Fa
 ### Task 3: Source review and actual read-only qualification
 
 Files: fixed ordinary product-observation entry/config if needed; deployment documentation and dated MD/JSON evidence.
-- [ ] One fresh final review and one author fixpass. Full offline regression and exact implementation CI.
-- [ ] Match closed runtime and capture actual seven running product containers, separate exited migration record and actual catalog absence/presence without changing production.
-- [ ] Export actual readiness blockers and component versions; standalone main reader verifies. New actual deployment identity still does not retroactively label old metric cohorts.
-- [ ] Record concrete next required integration: main maintenance/provenance bootstrap, approved PRE/POST/restore evidence, fixed owned application image switch and rollback, genuine paid pipeline and24–48h. No goal completion from this preflight.
+- [x] One fresh final review and one author fixpass. Full offline regression and exact implementation CI.
+- [x] Match closed runtime and capture actual seven running product containers, separate exited migration record and actual catalog absence/presence without changing production.
+- [x] Export actual readiness blockers and component versions; standalone main reader verifies. New actual deployment identity still does not retroactively label old metric cohorts.
+- [x] Record concrete next required integration: main maintenance/provenance bootstrap, approved PRE/POST/restore evidence, fixed owned application image switch and rollback, genuine paid pipeline and24–48h. No goal completion from this preflight.
 
 ## Authoritative reconnaissance (2026-10-29)
 
@@ -76,3 +76,5 @@ not main/product adoption or deployment ownership. Current new observer source
 still requires exact implementationCI/native qualification before activation.
 
 Native qualification retained a blocked pre-activation observation: strict Docker Go templates reject absent Health/Labels keys. Safe index-based access now has two real Docker CLI regressions against a private Unix fake Engine. Current targeted51passed; full3938passed/36deselected307.70s. No new reviewer or production feature; actual qualification must be retried with a new immutable packet, retaining failed001.
+
+Actual qualification and source plan complete only within this readonly preflight scope. Two ordinary native +two systemd executions, actual15minute timer, seven roles active, exactCI4green, mainstandalone reader passed.13sourcefiles+738/-1. No rootgoal completion. Dated evidence docs/evaluations/pi-product-preflight-2026-10-29.md/.json. Originalaudit3event guard beforeappend retained; corrected2eventbatches, no bound relax. Localreader harness path/count mistakes corrected against unchanged snapshot.
