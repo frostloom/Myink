@@ -147,3 +147,14 @@ def test_simulation_cannot_target_original_audit_state(product,tmp_path,monkeypa
     monkeypatch.setattr(api(),'BASE',canonical);c['audit_path']=str(original);write(cp,c);execute,calls=runner(product)
     with pytest.raises(ValueError):observe(product,execute)
     assert calls==[] and original.read_text()=='original-private-state'
+
+
+@pytest.mark.parametrize('stream,limit',[(1,1048576),(2,65536)])
+def test_native_command_output_is_bounded_while_reading_and_child_is_reaped(tmp_path,stream,limit):
+    import subprocess,sys,os
+    pidfile=tmp_path/'child.pid';complete=tmp_path/'producer-completed'
+    script="import os,sys;from pathlib import Path;Path(sys.argv[1]).write_text(str(os.getpid()));[(os.write(int(sys.argv[3]),b'x'*4096)) for _ in range(int(sys.argv[4])//4096)];Path(sys.argv[2]).write_text('must-not-complete')"
+    with pytest.raises(ValueError,match='output'):
+        api()._native([sys.executable,'-I','-S','-B','-c',script,str(pidfile),str(complete),str(stream),str(64*1024*1024)],3)
+    assert not complete.exists()
+    with pytest.raises(ProcessLookupError):os.kill(int(pidfile.read_text()),0)

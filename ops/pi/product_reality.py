@@ -1,7 +1,7 @@
 """Fixed read-only product inventory. Observations confer no release authority."""
 from datetime import datetime,timezone
 from pathlib import Path
-import os,pwd,re,stat,subprocess,time,uuid
+import os,pwd,re,selectors,stat,subprocess,time,uuid
 from hashlib import sha256
 from .audit import _path,_plain,require,digest,encoded,strict_json,utc
 from .audit_export import _publish
@@ -74,8 +74,29 @@ def _load(cp,pin,runner,clock):
 
 
 def _native(argv,seconds):
-    p=subprocess.run(argv,stdin=subprocess.DEVNULL,capture_output=True,timeout=seconds,env=dict(PATH='/usr/bin:/bin',HOME='/nonexistent',DOCKER_CONFIG='/nonexistent',LANG='C.UTF-8'))
-    return dict(returncode=p.returncode,stdout=p.stdout.decode('utf-8'),stderr=p.stderr.decode('utf-8',errors='replace'))
+    require(type(seconds) in (int,float) and 0<seconds<=45,'bounded product command timeout')
+    p=subprocess.Popen(argv,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,env=dict(PATH='/usr/bin:/bin',HOME='/nonexistent',DOCKER_CONFIG='/nonexistent',LANG='C.UTF-8'))
+    streams=selectors.DefaultSelector();buffers={'stdout':bytearray(),'stderr':bytearray()};limits={'stdout':1048576,'stderr':65536};end=time.monotonic()+seconds
+    try:
+        for key,pipe in (('stdout',p.stdout),('stderr',p.stderr)):
+            os.set_blocking(pipe.fileno(),False);streams.register(pipe,selectors.EVENT_READ,key)
+        while streams.get_map():
+            remaining=end-time.monotonic()
+            if remaining<=0:raise subprocess.TimeoutExpired(argv,seconds)
+            for item,_ in streams.select(min(remaining,.1)):
+                key=item.data;data=os.read(item.fileobj.fileno(),min(65536,limits[key]-len(buffers[key])+1))
+                if not data:streams.unregister(item.fileobj);continue
+                buffers[key].extend(data);require(len(buffers[key])<=limits[key],'product command output limit')
+        remaining=end-time.monotonic()
+        if remaining<=0:raise subprocess.TimeoutExpired(argv,seconds)
+        code=p.wait(timeout=remaining)
+        return dict(returncode=code,stdout=buffers['stdout'].decode('utf-8'),stderr=buffers['stderr'].decode('utf-8',errors='replace'))
+    finally:
+        try:
+            if p.returncode is None:p.kill()
+            p.wait(timeout=5)
+        finally:
+            streams.close();p.stdout.close();p.stderr.close()
 
 
 def _inventory(rows,ids,replicas):

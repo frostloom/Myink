@@ -1,7 +1,7 @@
 """Product observation/preflight projection, never an executable release permit."""
 from datetime import datetime,timedelta,timezone
 from pathlib import Path
-import os
+import os,sqlite3
 from .audit import AuditStore,digest,encoded,hash_value,name,require,utc
 from . import product_reality as reality
 
@@ -75,7 +75,7 @@ def observe_and_publish(config_path,config_sha256,*,runner=None,clock=None):
         require(reality.file_hash(config_path)==config_sha256,'product config revoked before audit');store=AuditStore(c['audit_path'])
         for item in events:store.append(item['record_key'],item['event'])
         store.export(c['export_root']);exported=True
-    except (ValueError,OSError) as error:
+    except (ValueError,OSError,sqlite3.Error) as error:
         failure=type(error).__name__;reality._new(root/'audit-failure.json',dict(failure_class=failure))
     result=dict(schema='pi-product-check-v1',mode=observation['mode'],status='recorded' if exported and observation['status']=='observed' else observation['status'] if exported else 'uncertain',run_id=observation['run_id'],release_allowed=False,model_requests=0,observation_status=observation['status'],observation_path=str(root),observation_sha256=observation['observation_sha256'],preflight_sha256=digest(preflight),audit_exported=exported,audit_failure_class=failure,record_count=len(events))
     reality._new(root/'audit-outcome.json',result);return result

@@ -77,3 +77,15 @@ def test_product_preflight_is_stdlib_only():
     import subprocess,sys
     project=Path(__file__).resolve().parents[3];code="import sys;sys.path.insert(0,sys.argv[1]);import ops.pi.product_preflight;assert 'httpx' not in sys.modules and 'sqlalchemy' not in sys.modules and 'myink.db' not in sys.modules"
     p=subprocess.run([sys.executable,'-I','-S','-B','-c',code,str(project)],capture_output=True,text=True,timeout=10);assert p.returncode==0,p.stderr
+
+
+def test_real_sqlite_lock_is_retained_as_uncertain_audit_outcome(product,monkeypatch):
+    import sqlite3
+    cp,c,*_=product;AuditStore(c['audit_path']);connect=sqlite3.connect;blocker=connect(c['audit_path']);blocker.execute('BEGIN IMMEDIATE')
+    def fast(*a,**kw):kw['timeout']=0.02;return connect(*a,**kw)
+    monkeypatch.setattr(sqlite3,'connect',fast)
+    try:r=api().observe_and_publish(cp,file_hash(cp),runner=runner(product)[0],clock=lambda:NOW)
+    finally:blocker.rollback();blocker.close()
+    assert r['status']=='uncertain' and r['audit_exported'] is False and r['audit_failure_class']=='OperationalError'
+    root=Path(r['observation_path']);assert read_json(root/'audit-failure.json')['failure_class']=='OperationalError' and read_json(root/'audit-outcome.json')['status']=='uncertain'
+    assert AuditStore(c['audit_path']).events(run_id=r['run_id'])==[]

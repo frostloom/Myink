@@ -57,3 +57,20 @@ Files: fixed ordinary product-observation entry/config if needed; deployment doc
 
 Read-only Docker:7running product containers; API and2workers image6906d533 with revision labeld25d8275, Caddy72c96066 with labela8a4361e, PGccc6e83d/Redis858f009f/Rabbite582c0bc. Exited migrate uses another older image and is retained separately. Product directory has no Git metadata; Git fetch failed twice (HTTP2/HTTP1 transport), but GitHub API independently confirmed currentmain remainsb6f38a88. Local objects exist for both image revision labels; neither label commit is a main ancestor. The labeled backend-to-main Python diff spans18files(+68/-395). Label claims still require independent source attestation; do not deploy a whole old-main tree over product fixes.
 Read-only PG catalog: maintenance_control=false, maintenance_executions=false, maintenance lock function=false, no run_provenance column tables. No schema or product changes, no model requests. Current finite Pi1ea1d514 remains active under profile63383ce9 untilOct30 11:27+08.
+
+
+Source final review:0Critical2Important0Minor. RealSQLite BEGINIMMEDIATE lock
+and native oversized stdout/stderr reproduced both gaps. One author fixpass now
+captures sqlite3.Error into durable uncertain outcomes and streams capped pipes
+before allocation, terminating/reaping the child. Initial stderr producer fit
+Mac pipe buffering;64MiB stimulus removes that test race.49focused green; final
+full3936passed/36deselected262.87s. No rereview.
+
+Actual source reference preparation advanced: all222tracked files in API and
+2workers matchd25, plus6separate distribution metadata files; main differs in
+16tracked files and lacks2. Original fixed context_budget bytes unchanged.
+Finite Pi reference is now aligned to this222file tracked snapshot33116b8d,
+profile17becf3b, preserving original issued/expiresOct30 11:27+08,scope/limits/
+50CNY/nineholds/fee history and product container IDs. This is reference_only,
+not main/product adoption or deployment ownership. Current new observer source
+still requires exact implementationCI/native qualification before activation.
