@@ -1,5 +1,11 @@
 # Autonomous investigation and independent review admission
 
+Current deployment checkpoint2026-10-29: finite1ea1d514/host38d193bc/SDK620afd95
+is active throughOct30 11:27+08, preserving original50CNY/nineholds. New genuine
+paid candidate and actual due-test gates remain pending. Earlier phase notes
+below retain their historical evidence; see the dated completion acceptance
+record for current source/native/finite activation status.
+
 Implementation plan: `docs/superpowers/plans/2026-10-29-pi-autonomous-investigation-admission.md`.
 Finite source coordination is active on the server as of2026-10-29 08:47+08,
 using independently reviewed8d1802af, closed controllera66c01a5 and matching SDK
@@ -509,3 +515,14 @@ null unverified counters and range_complete=false, never fake completed SDK work
 This source is not server activation, actual new-candidate acceptance or
 main/product adoption. Those, the one fresh review/author fixpass and matched
 native rollout remain gates for the independent completion plan.
+
+
+Actual finite completion activation:1ea1d514/host38d193bc/guest620afd95,
+unchanged9b6d4479dependencies; profile63383ce9 valid untilOct30 11:27+08.
+All4CI jobs,3887offline/36deselected, LinuxSDKmock2/no-paid and actual idle
+manager cold2 passed. All6timers active and originalfe7fee/50CNY/nineholds,
+manager prefix and original followup registry preserved. Two preconfiguration
+service-state guards and the eventual activation are retained in audit.
+Actual genuine new paid candidate and its due test remain pending; this does
+not complete the root product/rollback/24–48h goal. Dated evidence is in
+../evaluations/pi-candidate-completion-source-2026-10-29.md and itsJSON.

@@ -216,9 +216,9 @@ cancelled or abstaining tasks without certifying partial SDK/tool/fee receipts.
 Its model/cost fields are null and range_complete is false; its companion is
 no_release. Exact partial private receipts remain retained for reconciliation.
 This is an observation, not permission to clear unknown fees or replay a task.
-Server8d1802af does not include these new completion hooks yet; its finite
-rollout record remains authoritative. New source still requires independent
-review, matching deployment and actual pipeline acceptance.
+The prior8d1802af release excludes these completion hooks. Current finite
+1ea1d514 activation is documented below; new actual pipeline acceptance still
+remains separate from source/native/deployment acceptance.
 
 
 Host post-paid reinspection failures have their own durable uncertain completion
@@ -229,3 +229,18 @@ reproduction report, not a missing top-level field.
 
 Current source acceptance record:
 [2026-10-29 completion](../evaluations/pi-candidate-completion-source-2026-10-29.md).
+
+
+## Completion controller actual finite activation — 2026-10-29
+
+`autonomy.completion.rollout.v1` and `pi.candidate_completion.host.v1` now mark
+finite1ea1d514 host38d193bc/guest620afd95 active, retaining original9b6d4479
+Node/Pi dependencies and50CNY/nineholds. Profile63383ce9 expiresOct30 11:27+08.
+19source/config changes+765/-26 are control-plane scope, not product adoption.
+`autonomy.completion.upgrade_guard.v1` retains two preconfiguration failures;
+those records do not mean an applied product version was rolled back. All four
+retrospective records explicitly use recorded_at, not guessed occurrence times.
+Standalone main reader verified these events and old actual18/18due linkage.
+No new paid pipeline or new candidate due result has happened yet. Earlier
+source-only statements above are historical progress and are superseded only
+for deployment availability, not for the still-unfulfilled actual pipeline gate.

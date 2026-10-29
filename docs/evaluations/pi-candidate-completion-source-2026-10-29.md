@@ -1,7 +1,6 @@
 # Candidate completion: source acceptance record — 2026-10-29
 
-This record covers Pi source changes on `codex/pi-autonomy-design`. The server
-still runs finite admission commit8d1802af; this is **not** a new paid candidate,
+This record covers Pi source changes on `codex/pi-autonomy-design`. The finite server controller now runs matching commit1ea1d514. This is **not** a new paid candidate,
 product release, business rollback or24–48hour acceptance record.
 
 ## Added host stages
@@ -44,7 +43,7 @@ raises. Two RED regressions reproduced validation/filesystem failures; the autho
 fixpass now persists uncertain outcomes, a blocked plan and zero-call reentry.
 A separately reproduced baseline projection bug used the correct nested
 code_regression reproduction failure count.72focused post-fix tests passed.
-Final full regression:3887passed,36deselected,264.42seconds. Exact committed-HEAD CI remains pending until push.
+Final full regression:3887passed,36deselected,264.42seconds. Implementation commit1ea1d514 passed all4CI jobs (run40809850010).
 No second review is represented.
 
 A standalone `-I -S -B` standard-library main reader verified13synthetic events,
@@ -54,21 +53,44 @@ gold, patch, credentials or private model prose was exported.
 
 ## Actual state and remaining gates
 
-Read-only server verification confirmed all six timers active, unchanged
-canonical fee digestfe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb,
-closed policy205c9650ffa0d511691d3ff832bac88a9464b6dfc9050434dc2c1c2d264e0fbb,
-original50CNY/nineunknownholds, zero unresolved manager dispatches and unchanged
-single-entry followup registry7d06dcea226bf291c4638b17c87027d92a7f0b1c1910d42350499d84cd7e0077.
-Finite profiledb678d1b expires2026-10-30T00:47:44.911473+00:00.
+Matching host38d193bc and SDK source620afd95 were installed as the new finite
+controller, with unchanged Node/Pi dependencies9b6d4479. Actual startup of
+manager/review-worker/coordinator succeeded; all six timers are active. Model
+requests and fees added:0. Canonical fe7fee history, closed205cpolicy, original
+50CNY/nineholds, original manager history prefix and7d06single-entry followup
+registry remain unchanged. Original owner00218/18due result still links through
+the standalone main reader.
 
-Still required: final source verification/CI, matching closed host+SDK native
-qualification and controlled rollout, a genuine newly admitted complete paid
-candidate pipeline, independent actual next-day evidence, explicitly authorized
-main/product adoption, observed product behavior and ownership-safe business
-rollback, actual24–48hour validation. The original owner002 acceptance and
-actual18/18followup remain retained; they are not repaid or relabeled as this
-new pipeline.
+Profile63383ce9 is valid2026-10-29T03:27:42.120293+00:00 through
+2026-10-30T03:27:42.120293+00:00 (Oct30 11:27+08). It is one finite operator
+upgrade, not an unlimited renewal or a new financial scope. Reference source and
+file scope remain unchanged. The old8dcontroller/source and every prior receipt
+are preserved.
 
+Two upgrade attempts stopped before any configuration replacement. The first
+used an overly strict inactive-only guard during a short-lived timer/service
+race; the second still treated a stopped service's failed state as active.
+An immediate quiescence probe preserved old configuration. The successful
+attempt recorded MainPID=ControlPID=0 for all three services, including a stopped
+review-worker with failed/Result=signal. Empty queues, canonical lock and original
+terminal manager tasks also remained required. No fee/history database was
+restored. All three attempts and the eventual success are retained.
+
+The ordinary fixed audit kernel exported2activation/enhancement events and
+2guarded-failure events. Exact activation/failure occurrence times were not
+separately recorded; occurred_at=null uses recorded_at transparently. The main
+reader independently verified all4events,19changed controller/config files
+(+765/-26), and the original actual nextday result. Source inventory includes
+14code files,1controller documentation file and4host configurations; duplicated
+host/guest copies are not counted as product source changes.
+
+Still required: a genuine newly admitted complete paid candidate pipeline,
+independent actual next-day evidence for that new candidate, explicitly
+authorized main/product adoption, observed product behavior and ownership-safe
+business rollback, actual24–48hour validation. Historical owner002 acceptance
+and18/18followup are not repaid or relabeled as this new pipeline.
+
+Machine-readable evidence: [acceptance JSON](pi-candidate-completion-source-2026-10-29.json).
 Admin handoff: [audit handoff](../pi/administrator-audit-handoff.md),
 [bare-Pi enhancements](../pi/agent-enhancements.md),
 [audit contract](../contracts/pi-audit-v1.md).
