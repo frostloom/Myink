@@ -52,6 +52,8 @@ docker compose up -d --build
 
 ## 当前前端策略
 
+2026-10-29 生产当前为 Vue/Caddy `a8a4361e`，API 与两份 Worker `d25d8275`；仍使用服务器 `/home/ubuntu/myink/docker-compose.yml` 和对应 `:local` 镜像标签。个人页面及写作资源发布、保护与回退记录见 [发布回执](evaluations/2026-10-29-writing-quality-release.md)。本机预览版本与生产独立，下方 `.local/` 控制脚本只用于 localhost。
+
 前端仅维护 Vue 3：`npm run dev`、`npm test`、`npm run lint`、`npm run build` 均以 Vue 和共享服务为目标，产物为 `web/dist-vue`。不再提供另一套前端入口、依赖或回退命令。镜像构建只接受 `FRONTEND_VARIANT=vue`；遗留环境变量的其他取值会明确报错。
 
 发布失败时回退到已验证的上一版 **Vue** 镜像，并保留与该版本兼容的后端。不要恢复旧数据库来回退静态页面。新镜像仍须携带此前实际服务过的 hashed assets，避免打开中的页面加载失败；这些旧文件不是可选择的产品入口。历史迁移报告仅记录当时的操作，不是当前发布指令。
