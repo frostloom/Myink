@@ -921,7 +921,8 @@ def node_audit(state: ChapterState) -> ChapterState:
             db, state, "audit", "Audit", make_chain("audit", db=db, project_id=pid),
             prompts.audit_messages(draft, state.get("plan") or {},
                                    {**(state.get("context") or {}), "validation_report": state.get("report")},
-                                   state["chapter_seq"], genre_pack=state.get("genre_pack")),
+                                   state["chapter_seq"], genre_pack=state.get("genre_pack"),
+                                   style_profile=state.get("style_profile")),
             check=_check_audit, tools=READ_TOOLS)
         if err:
             return {"error": err}

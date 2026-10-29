@@ -34,6 +34,8 @@ def builtin_resources():
     items += [entry("writing-rule:continuity", "章节衔接与收尾", "writing_rule", "workflow/prompts.py:SYSTEM_WRITE", {"roles":dict.fromkeys(("writer","planner","audit"), creation)}),
               entry("expression-rule:bans", "句式偏好", "expression_rule", "workflow/prompts.py:SYSTEM_WRITE", {"roles":dict.fromkeys(("writer","audit"), ban), "validation":{"not_is":True,"parallel":True}}),
               entry("expression-rule:prose", "中文小说表达", "expression_rule", "workflow/prose_rules.py; docs/PROSE-RULES.md", {"roles":{"writer":PROSE_RULES,"audit":PROSE_REVIEW_RULES}})]
+    from myink.writing_quality_resources import quality_resources
+    items += quality_resources()
     for role, text in config.get("prompts", {}).items():
         if text.strip():
             items.append(entry("writing-rule:platform:"+role, "平台创作补充（"+role+"）", "writing_rule",

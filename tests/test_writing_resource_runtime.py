@@ -81,7 +81,7 @@ def test_builtins_are_real_and_no_output_protocol(monkeypatch):
     items=seed.builtin_resources()
     assert sum(x["kind"]=="genre" for x in items)==37
     assert sum(x["kind"]=="genre_rule" for x in items)==6
-    assert sum(x["kind"]=="style" for x in items)==4
+    assert sum(x["kind"]=="style" for x in items)==7
     assert any(x["kind"]=="reference" for x in items)
     for item in items:
         if item["kind"] in {"writing_rule","expression_rule"}:

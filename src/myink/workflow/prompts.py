@@ -648,6 +648,15 @@ def _rhythm_reference(sp: dict) -> str:
     return line
 
 
+def _private_style_section(style_profile: dict | None) -> str:
+    style = _style_section(style_profile, None)
+    if not style:
+        return ""
+    return ("\n\n【本书私有文风档案】\n"
+            "本书私有文风优先于通用文风和表达建议；保留作者声音，不按通用偏好改写。\n"
+            + style)
+
+
 def _write_messages(context: dict, plan: dict, *, style_profile: dict | None = None,
                    target_words: int | None = None, outline: dict | None = None,
                    genre_pack: dict | None = None) -> list[dict]:
@@ -744,7 +753,8 @@ def patch_messages(state: dict) -> list[dict]:
                 *(state.get("unresolved") or []),
                 *((state.get("audit_verdict") or {}).get("findings") or [])]
     return [
-        {"role": "system", "content": SYSTEM_REVISE_PATCH},
+        {"role": "system", "content": SYSTEM_REVISE_PATCH
+         + _private_style_section(state.get("style_profile"))},
         {"role": "user", "content": (
             f"【第 {state['chapter_seq']} 章原稿】\n{state['draft']}\n\n"
             + "【校验与审核发现】\n" + json.dumps(findings, ensure_ascii=False)
@@ -772,7 +782,8 @@ def _revise_messages(draft, findings, chapter_seq, context, plan, style_profile,
 
 
 def _audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int,
-                    genre_pack: dict | None = None) -> list[dict]:
+                    genre_pack: dict | None = None,
+                    style_profile: dict | None = None) -> list[dict]:
     """audit 输入：正文 + 章节计划 + 召回上下文（审核中枢做语义审核 + 路由决策）。"""
     plan_str = json.dumps(plan, ensure_ascii=False, indent=1) if plan else "（无章节计划）"
     events = _join(context.get("mid_term_events", []), _render_event)
@@ -793,7 +804,12 @@ def _audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int,
         + _taboo_hint(genre_pack)
         + "\n\n请审核本章并输出路由决策（严格 JSON）。"
     )
-    return [{"role": "system", "content": SYSTEM_AUDIT}, {"role": "user", "content": user}]
+    private_style = _private_style_section(style_profile)
+    if private_style:
+        private_style += ("\n文风对照以此档案为准；不要仅因风格差异或个人审美偏好要求改稿。"
+                          "仍按既有内容质量与严重度规则判定，发现问题须引用正文证据。")
+    return [{"role": "system", "content": SYSTEM_AUDIT + private_style},
+            {"role": "user", "content": user}]
 
 
 def _taboo_hint(genre_pack: dict | None) -> str:
@@ -1292,9 +1308,10 @@ def extract_messages(draft: str, chapter_seq: int, context: dict | None = None) 
 
 
 def audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int,
-                   genre_pack: dict | None = None) -> list[dict]:
+                   genre_pack: dict | None = None,
+                   style_profile: dict | None = None) -> list[dict]:
     return fit_prompt(context, lambda c: _audit_messages(
-        draft, plan, c, chapter_seq, genre_pack), _tool_prompt_budget())
+        draft, plan, c, chapter_seq, genre_pack, style_profile), _tool_prompt_budget())
 
 
 # Match the provider role at the actual call sites; review stages can use planners.

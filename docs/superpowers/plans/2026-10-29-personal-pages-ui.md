@@ -16,3 +16,7 @@ Use the established paper, night and contrast tokens and system UI typography. T
 - Real browser checked desktop and 390px mobile settings, login/register, anonymous account entry, guest upgrade, and empty/new/populated style-library states with local synthetic APIs. Night-theme settings and style detail inspected. No horizontal overflow in mobile checks; no real account, provider or saved model preference modified.
 - Local frontend image: `myink-caddy:personal-ui-ff96adc7-dirty-c495f6dcd7e5`. Receipts and screenshots: `.local/personal-pages-20261029/`.
 - Local deployment passed release and readiness checks, preserved both prior entry assets byte for byte and kept API/Worker container IDs unchanged. Runtime controller: `.local/personal-pages-20261029/compose.sh`. No commit, push or production deployment for this refinement.
+
+## Subsequent approved production publication
+
+User later explicitly authorized commit/push/server deployment. Frontend source a8a4361ec1a9d3b5b8aa82ffa081f006d542ed82 pushed to codex/vip-service and deployed https://myink.cloud. Final release verification, retained two old assets and health checks passed; API and both Worker container IDs unchanged at d7ce4be9. Independent public browser confirmed the new login heading and mounted Vue app. Private receipt and compatible frontend rollback at `/home/ubuntu/myink/releases/personal-ui-a8a4361e/`.
