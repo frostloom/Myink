@@ -66,19 +66,29 @@ class NativeProductRelease:
             from .product_business_probe import validate
             require(validate(_pinned(self.config['business_probe_path'],self.config['business_probe_sha256'],actual),self.plan,self.actor.context_pin)==self.business_probe.packet,'business case approval drift')
         self.actor._authority();now=utc(h.clock())
+        lease=getattr(h,'rollback_lease',None)
+        if lease is not None:
+            require(self.business_mode and self.actor.protocol_version==2,'qualified v2 rollback control required')
+            from .product_rollback_lease import adopted,deadline
+            require(lease['control_sha256']==self.pin and lease['maximum_stopped_seconds']<=self.config['maximum_stopped_seconds'],'independent rollback control binding required');adopted(h)
+            if self._active is not None:deadline(h)
+            return
         require(now<min(utc(a['expires_at']),utc(self.config['expires_at']),utc(self.plan['expires_at'])),'native release authority expired')
         start=h.root/'maintenance-start.json';_plain(start);require(start.stat().st_size<=1024,'bounded maintenance start required');v=strict_json(start.read_bytes())
         require(set(v)=={'plan_sha256','started_at'} and v['plan_sha256']==digest(self.plan),'original maintenance start required')
         began=utc(v['started_at']);require(began<=now<began+timedelta(seconds=self.config['maximum_stopped_seconds']),'approved maintenance duration exceeded')
 
     def _operation(self,action,body):
-        require(action in ACTIONS and self._active is None,'fixed nonnested product operation required');self._authority();h=self.host
+        require(action in ACTIONS and self._active is None,'fixed nonnested product operation required');require(getattr(self.host,'rollback_lease',None) is None or action=='rollback','rollback-only operation required');self._authority();h=self.host
         root=h.root/'native-control';root.mkdir(mode=0o700,exist_ok=True);require(root.is_dir() and not root.is_symlink() and stat.S_IMODE(root.stat().st_mode)==0o700 and root.stat().st_uid==os.geteuid(),'private native control root required');folder=root/action
         try:folder.mkdir(mode=0o700)
         except FileExistsError:raise ValueError('native control already claimed; no redispatch') from None
         op='product-control:'+self.plan['operation_id']+':'+action;payload=dict(plan_sha256=digest(self.plan),config_sha256=self.pin,action=action)
         require(h.ledger.get(op) is None,'original native control intent exists');h.ledger.intent(op,'product_control',payload);_save(folder/'intent.json',payload);self._active=(op,folder)
         try:
+            if getattr(h,'rollback_lease',None) is not None:
+                from .product_rollback_lease import start_packet
+                _save(folder/'start.json',start_packet(h))
             result=body();require(isinstance(result,dict) and result.get('verified') is True,'native result unconfirmed');self._authority()
             _save(folder/'receipt.json',result);h.ledger.finish(Receipt(op,'done',result));return Receipt(op,'done',result)
         except Exception as error:

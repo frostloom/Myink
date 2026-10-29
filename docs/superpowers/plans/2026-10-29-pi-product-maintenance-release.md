@@ -60,6 +60,10 @@ Task2 恢复主API进程：runtime资格额外在恢复PG的无网络命名空�
 
 Task2 完整服务恢复接线：备份runtime资格同时封存原Redis/Rabbit/Caddy有效配置和原入口JSON，Redis以原值/绝对到期快照保存配额状态，前后只容许自然过期；旧心跳不冒充恢复worker。所属独占内部恢复网络内重建认证Redis/Rabbit、两真实worker和Caddy，验证错误口令拒绝、空队列、专属心跳、每个真实worker的应用只读DB/错误口令拒绝及Redis/Rabbit连接、API/经Caddy就绪、封存TLS证书指纹及worker自然退出；恢复合同4/17组件阻止弱资格复用。worker保留独立PID/hostname，目标PG只对本次私有网段开放原应用/报表SCRAM，逐次拒绝外来网络成员；不共享宿主PID。Caddy冻结二进制复制到本次私有执行tmpfs并逐字节cmp，保持cap-drop ALL/no-new-privileges和其余tmpfs noexec，不修改镜像。Redis与Caddy配置及证书只经私有材料写入本次tmpfs，不恢复原费用/manager，不成为模型工具。
 
+Task2 维护窗口后回退许可：新增独立root封存的rollback-only有限许可，绑定原plan、控制配置、已完成采用身份及最多72小时；不续期旧激活/费用许可。Host构造/锁/命令、工厂动作和发布控制逐次核对，过期窗口仅允许已完成采用后的固定回退，当前PG owner/generation/epoch/images及成套恢复资格仍检查。回退单独持久开始时间和最多1800秒停机，未知意图不重放，人工抢占在入口写入前拒绝。先做许可/拒绝RED，再用真实隔离服务验证跨原窗口的版本返回；SIMULATED时间推进不能当实际24–48小时观察。
+
+Task2 统一人工/控制器入口：`product_entrypoint.py` 仅提供prepare/activate/rollback固定动作，准备沿协议内部锁，激活/回退持有原maintenance.lock后构造控制器；外部root批准和所有原主机能力门禁保留。真实flock竞争测试验证持锁及异常释放，不调用compose兜底。更新DEPLOY区分未接管初始化与受管产品执行；常规升级和ACTUAL最终放行仍在本Task2完成后验收。
+
 ### Task 3: 固定操作包与一次独立审查
 
 - [ ] 冻结候选源码、CI、镜像、PRE/恢复证明、迁移计划、操作顺序、维护窗口、最大停机时间、观察阈值、回退触发和权限。全量范围区分历史导入、主机操作与 Pi 模型候选。

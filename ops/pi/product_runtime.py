@@ -44,7 +44,9 @@ def _pinned(path,pin,actual=False):
 
 
 class LinuxProductHost:
-    def __init__(self, config_path, config_sha256, *, clock=None):
+    def __init__(self, config_path, config_sha256, *, clock=None, rollback_lease_path=None, rollback_lease_sha256=None):
+        self.rollback_lease=None;self.rollback_lease_path=None;self.rollback_lease_pin=None
+        require((rollback_lease_path is None)==(rollback_lease_sha256 is None),'paired rollback lease input required')
         self.config_path=_path(config_path);self.pin=config_sha256
         _plain(self.config_path);require(self.config_path.stat().st_size<=65536 and sha256(self.config_path.read_bytes()).hexdigest()==self.pin,'product host config drift')
         self.config=strict_json(self.config_path.read_bytes());c=self.config
@@ -79,6 +81,10 @@ class LinuxProductHost:
         require(c['target']!='production' or c['queue_prefix']=='','original product queue namespace required')
         require(_path(c['compose_dir']).is_dir() and (not actual or c['target']!='production' or c['compose_dir']=='/home/ubuntu/myink'),'fixed compose directory required')
         for key in ('legacy_manifest','candidate_manifest','backup'):_pinned(c[key+'_path'],c[key+'_sha256'],actual)
+        if rollback_lease_path is not None:
+            from .product_rollback_lease import validate
+            self.rollback_lease_path=_path(rollback_lease_path);self.rollback_lease_pin=rollback_lease_sha256
+            self.rollback_lease=validate(_pinned(rollback_lease_path,rollback_lease_sha256,actual),self.plan,c['target'],self.clock())
         self._authority(self.plan)
         commands=self.root/'commands';commands.mkdir(mode=0o700,exist_ok=True);self.commands=DockerCommands(c['docker'],c['endpoint'],commands)
         actions=self.root/'actions';actions.mkdir(mode=0o700,exist_ok=True)
@@ -87,6 +93,7 @@ class LinuxProductHost:
             fd=os.open(control,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600);os.close(fd)
         _plain(control);require(stat.S_IMODE(control.stat().st_mode)==0o600,'private product control ledger required')
         self.ledger=Ledger(control);self._held=ContextVar('product-lock-'+self.plan['operation_id'],default=None)
+        self._authority(self.plan)
 
     def _authority(self, plan):
         c=self.config;actual=c['mode']=='ACTUAL'
@@ -97,8 +104,13 @@ class LinuxProductHost:
         authority='human_product_release' if c['target']=='production' else 'owned_rehearsal'
         require(approval['mode']==c['mode'] and approval['target']==c['target'] and approval['authority']==authority and approval['plan_sha256']==digest(plan),'exact external product approval required')
         require(isinstance(approval['approved_actions'],list) and set(approval['approved_actions'])==set(STEPS) and len(approval['approved_actions'])==len(STEPS),'fixed approved bootstrap actions required')
-        now=utc(self.clock());require(now<min(utc(plan['expires_at']),utc(approval['expires_at'])),'product approval expired')
-        if actual and c['target']=='production':
+        now=utc(self.clock())
+        if self.rollback_lease is not None:
+            from .product_rollback_lease import validate,adopted
+            require(validate(_pinned(self.rollback_lease_path,self.rollback_lease_pin,actual),plan,c['target'],now)==self.rollback_lease,'rollback lease drift')
+            if hasattr(self,'ledger'):adopted(self)
+        else:require(now<min(utc(plan['expires_at']),utc(approval['expires_at'])),'product approval expired')
+        if self.rollback_lease is None and actual and c['target']=='production':
             local=now.astimezone(SHANGHAI);require(2<=local.hour<6 and utc(plan['expires_at'])<=local.replace(hour=6,minute=0,second=0,microsecond=0),'outside approved maintenance window')
         for key in ('legacy_manifest','candidate_manifest','backup'):_pinned(c[key+'_path'],c[key+'_sha256'],actual)
 
@@ -115,7 +127,17 @@ class LinuxProductHost:
         self._authority(plan);locked=self._held.get();require(locked is not None,'shared product lock required')
         require(_path(self.lock_path)==self.lock_path and (os.fstat(locked.fileno()).st_dev,os.fstat(locked.fileno()).st_ino)==(self.lock_path.stat().st_dev,self.lock_path.stat().st_ino),'canonical shared lock drift')
 
+    def use_rollback_lease(self,path,pin):
+        self.authorize(self.plan);require(self.rollback_lease is None,'rollback lease cannot be renewed')
+        from .product_rollback_lease import validate
+        value=validate(_pinned(path,pin,self.config['mode']=='ACTUAL'),self.plan,self.config['target'],self.clock())
+        self.rollback_lease=value;self.rollback_lease_path=_path(path);self.rollback_lease_pin=pin
+        try:self._authority(self.plan)
+        except Exception:
+            self.rollback_lease=None;self.rollback_lease_path=None;self.rollback_lease_pin=None;raise
+
     def preflight(self):
+        require(self.rollback_lease is None,'rollback lease cannot bootstrap a product')
         self.authorize(self.plan)
         require(callable(getattr(self,'apply_schema',None)) and callable(getattr(self,'bind_identity',None)),'complete migration capabilities required before ingress effects')
         from .product_backup import LinuxProductBackup
@@ -125,7 +147,11 @@ class LinuxProductHost:
 
     def _run(self,args,*,limit=1048576,seconds=30,stdin_path=None):
         self.authorize(self.plan)
-        remaining=(utc(self.plan['expires_at'])-utc(self.clock())).total_seconds();require(remaining>0,'product command deadline expired')
+        if self.rollback_lease is not None:
+            from .product_rollback_lease import deadline
+            end=deadline(self)
+        else:end=utc(self.plan['expires_at'])
+        remaining=(end-utc(self.clock())).total_seconds();require(remaining>0,'product command deadline expired')
         return self.commands.run(args,timeout=min(seconds,remaining),output_limit=limit,stdin_path=stdin_path)
 
     def _bytes(self,result):
@@ -317,6 +343,7 @@ class LinuxProductHost:
         return dict(active_tasks=pg['active_tasks'],ready_messages=ready,unacked_messages=unacked,consumers=consumers,unknown=pg['unknown']+unknown,**redis)
 
     def perform(self,action,plan,proofs):
+        require(self.rollback_lease is None,'rollback lease cannot bootstrap a product')
         require(action in STEPS,'unknown product action');self.authorize(plan)
         parent=self.ledger.get(plan['operation_id']);step=self.ledger.get(plan['operation_id']+':'+action)
         require(parent and parent['kind']=='product_bootstrap' and parent['status']=='pending' and parent['payload']==dict(plan_sha256=digest(plan)) and step and step['kind']=='product_bootstrap_step' and step['status']=='pending' and step['payload']==dict(plan_sha256=digest(plan),action=action),'original durable bootstrap step required')

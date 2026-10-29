@@ -193,7 +193,19 @@ with Session(get_admin_engine()) as db:
                 # Test-only owner restoration; production never rewinds manual ownership.
                 d('exec',pg,'psql','-X','-q','-U','myink','-d','myink','-v','ON_ERROR_STOP=1','-c',"UPDATE maintenance_control SET owner='"+plan['candidate']['owner']+"' WHERE id=1")
                 d('exec',pg,'psql','-X','-q','-U','myink','-d','myink','-v','ON_ERROR_STOP=1','-c',"INSERT INTO pi_native_release_marker VALUES(2,'after-open')")
+                if flow=='runtime-business':
+                    # Physical native return with a SIMULATED +8h authority
+                    # clock, not actual elapsed observation or a production clock.
+                    issued=datetime.now(timezone.utc)
+                    lease=dict(schema='pi-product-rollback-lease-v1',mode='SIMULATED',target='rehearsal',authority='owned_rehearsal',plan_sha256=digest(plan),control_sha256=settings_pin,candidate=plan['candidate'],approved_action='rollback',issued_at=issued.isoformat(),expires_at=(issued+timedelta(hours=48)).isoformat(),maximum_stopped_seconds=release_settings['maximum_stopped_seconds'])
+                    lease_path=root/'rollback-lease.json';lease_pin=write(lease_path,lease);h.use_rollback_lease(lease_path,lease_pin)
+                    h.clock=lambda:datetime.now(timezone.utc)+timedelta(hours=8)
+                    assert datetime.fromisoformat(plan['expires_at'])<h.clock()
+                    with pytest.raises(ValueError,match='rollback-only'):release.activate()
                 returned=release.rollback();assert returned.status=='done' and returned.evidence['phase']=='native_legacy_return'
+                if flow=='runtime-business':
+                    timer=json.loads((root/'native-control/rollback/start.json').read_bytes());assert timer['lease_sha256']==lease_pin and datetime.fromisoformat(timer['started_at'])>datetime.fromisoformat(plan['expires_at'])
+                    assert h.ledger.get('product-control:'+op+':rollback')['status']=='done'
                 assert returned.evidence['identity']['generation']==2 and returned.evidence['original_control_state_restored'] is False
                 if flow in ('runtime','runtime-business'):
                     pre=next(root.glob('restore-*/application-legacy/receipt.json'))

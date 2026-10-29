@@ -123,7 +123,7 @@ class NativeActivation:
         value=_pinned(self.approval_path,self.approval_pin,actual)
         require(isinstance(value,dict) and set(value)=={'schema','mode','target','plan_sha256','context_sha256','approved_actions','expires_at'} and value['schema'] in ('pi-product-activation-approval-v1','pi-product-activation-approval-v2') and value['mode']==h.config['mode'] and value['target']==h.config['target'] and value['plan_sha256']==digest(self.plan) and value['context_sha256']==self.context_pin,'independent exact activation approval required')
         actions=ACTIONS if value['schema']=='pi-product-activation-approval-v2' else LEGACY_ACTIONS
-        require(isinstance(value['approved_actions'],list) and len(value['approved_actions'])==len(actions) and set(value['approved_actions'])==set(actions) and utc(h.clock())<min(utc(value['expires_at']),utc(self.plan['expires_at'])),'activation actions or expiry mismatch')
+        require(isinstance(value['approved_actions'],list) and len(value['approved_actions'])==len(actions) and set(value['approved_actions'])==set(actions) and (getattr(h,'rollback_lease',None) is not None or utc(h.clock())<min(utc(value['expires_at']),utc(self.plan['expires_at']))),'activation actions or expiry mismatch')
         self.protocol_version=2 if actions==ACTIONS else 1;self.approved_actions=frozenset(actions)
 
     def _run(self,args,**kwargs):
@@ -199,7 +199,9 @@ class NativeActivation:
         return by_id
 
     def _claim(self,action):
-        require(action in ACTIONS,'fixed action required');self._authority();require(action in self.approved_actions,'action not independently approved');h=self.host
+        require(action in ACTIONS,'fixed action required');self._authority();
+        from .product_rollback_lease import native_action
+        native_action(self.host,action);require(action in self.approved_actions,'action not independently approved');h=self.host
         root=h.root/'native-actions';root.mkdir(mode=0o700,exist_ok=True);folder=root/action
         try:folder.mkdir(mode=0o700)
         except FileExistsError:raise ValueError('native action already claimed; no redispatch') from None
