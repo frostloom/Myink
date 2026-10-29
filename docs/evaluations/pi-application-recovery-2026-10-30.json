@@ -1,0 +1,210 @@
+{
+  "schema": "pi-application-recovery-v1",
+  "date": "2026-10-30",
+  "source_commit": "efd26876dee6aa6ae8c5b8de94e4519a452ab5be",
+  "base_commit": "7b2d9611a42218f839bdeda061137f57dbc89052",
+  "run_id": "pi-application-recovery-20261030",
+  "version_sha256": "194a757720401c7cc8910aaeaaf6a8214b2e92422a3b07956194b564928bab5d",
+  "status": "offline_and_isolated_application_recovery_verified",
+  "release_allowed": false,
+  "production_changed": false,
+  "main_merged": false,
+  "server_audit_published": false,
+  "provider_calls": 0,
+  "pi_autonomous_improvement_claim": false,
+  "changes": [
+    {
+      "path": "docs/superpowers/plans/2026-10-29-pi-product-maintenance-release.md",
+      "category": "docs",
+      "added": 1,
+      "deleted": 1
+    },
+    {
+      "path": "ops/pi/product_backup.py",
+      "category": "production",
+      "added": 20,
+      "deleted": 13
+    },
+    {
+      "path": "ops/pi/product_cold_probe.py",
+      "category": "production",
+      "added": 212,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/product_restore.py",
+      "category": "production",
+      "added": 13,
+      "deleted": 4
+    },
+    {
+      "path": "ops/pi/product_runtime.py",
+      "category": "production",
+      "added": 76,
+      "deleted": 12
+    },
+    {
+      "path": "ops/pi/tests/integration/test_product_application_restore.py",
+      "category": "test",
+      "added": 125,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/integration/test_product_migration_native.py",
+      "category": "test",
+      "added": 3,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/integration/test_product_post_application.py",
+      "category": "test",
+      "added": 37,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/integration/test_product_restore_native.py",
+      "category": "test",
+      "added": 19,
+      "deleted": 3
+    },
+    {
+      "path": "ops/pi/tests/test_product_backup.py",
+      "category": "test",
+      "added": 64,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/test_product_runtime.py",
+      "category": "test",
+      "added": 63,
+      "deleted": 2
+    }
+  ],
+  "tests": {
+    "offline_passed": 4048,
+    "offline_deselected_at_frozen_collection": 50,
+    "offline_seconds": 254.65,
+    "additional_opt_in_afterwards": 1,
+    "expected_current_opt_in_deselected": 51,
+    "application_cases": 6,
+    "paired_pg_migration_cases": 6,
+    "pre_post_application_cases": 1,
+    "native_scope": "real owned PG and frozen application images, synthetic data, SIMULATED host plans; not canonical ACTUAL deployment"
+  },
+  "base_exact_ci": {
+    "head": "7b2d9611a42218f839bdeda061137f57dbc89052",
+    "run_id": 40911651737,
+    "result": "4/4 success",
+    "url": "https://github.com/frostloom/Myink/actions/runs/40911651737"
+  },
+  "source_exact_ci": "pending push",
+  "native_assertions": [
+    "imported Python source equals frozen manifests",
+    "API HTTP cold start in both images",
+    "credential and MFA decrypt",
+    "feedback attachment reference and size",
+    "active TLS certificate/private-key match and expiry",
+    "forced RLS, all known tenants including empty table reads",
+    "LangGraph checkpoint and pending write decode",
+    "PRE and POST restored into distinct owned PG identities",
+    "new data after PRE remains present in POST and original source",
+    "candidate source/cohort and PG owner/generation/epoch checked before POST",
+    "original billing/manager snapshots never restored",
+    "all owned fixture processes and containers removed"
+  ],
+  "pending": [
+    "native create/start/switch of product API and workers",
+    "owned rehearsal network/volume boundary and full services chain",
+    "POST deployment runtime/configuration proof as part of frozen release package",
+    "runtime pause/resume and actual ownership-safe business rollback",
+    "manual deployment entries using same maintenance lock",
+    "single final review and author fixpass",
+    "explicit main/product release approval",
+    "fresh paid Pi candidate adoption and real nextday/24-48h observation"
+  ],
+  "nextday": {
+    "plan": {
+      "test_id": "application-recovery-nextday-20261031",
+      "scheduled_for": "2026-10-31T03:00:00+00:00",
+      "target_run_id": "pi-application-recovery-20261030",
+      "target_version_sha256": "194a757720401c7cc8910aaeaaf6a8214b2e92422a3b07956194b564928bab5d",
+      "criterion": "在固定来源上复跑配对恢复；生产采用后的24-48h另登记实际观测。",
+      "kind": "restore",
+      "status": "blocked"
+    },
+    "registered": false,
+    "result": null
+  },
+  "audit": {
+    "local_events": 9,
+    "scope_count": 11,
+    "reader_verified": true,
+    "published": "local private export only",
+    "reader_proof_sha256": "66b3e70e712a2ee94a5b213255502ef79f021936f396d9799beb99823dccd026",
+    "prior_events_preserved": 9,
+    "daily_events": 18,
+    "standalone_stdlib_only": true
+  },
+  "evidence": {
+    "app-qualified-red.log": {
+      "sha256": "3213f8551de536ca5d4568cc05414db756fe935a77ac76b759b17ed40a976a6c",
+      "bytes": 5233
+    },
+    "app-readonly-copy-failure.log": {
+      "sha256": "227a0947d1b5303d0d0d1b8de37be41f31fa2f27559cfc1d0a31c2e3cbbdc5ba",
+      "bytes": 19555
+    },
+    "app-tenant-coverage-failure.log": {
+      "sha256": "c790df969dce56d3a56999762e8f0f801d472af430663e5ace442b5bb7d38351",
+      "bytes": 11830
+    },
+    "app-missing-key-red.log": {
+      "sha256": "bf8a90da4b345e80c6418646e2a78de2feef9356f8e82a192ff960eeb24a3256",
+      "bytes": 11550
+    },
+    "app-six-first-green.log": {
+      "sha256": "b88db4591082bc8c1a2c1beb7b6d0f802cf2bb815981a93a3d1b84bb7830f8cf",
+      "bytes": 110
+    },
+    "post-collection-red.log": {
+      "sha256": "8edce32a8986bfeac1dd59f9ff402bb2461d4c80af5b32aca9ba36caa4adf582",
+      "bytes": 1608
+    },
+    "candidate-host-red.log": {
+      "sha256": "4399270fa6dbcab7ea592c3a2a6b869d1f62fef461494114dce16c604a9ac63d",
+      "bytes": 21643
+    },
+    "post-source-refactor-error.log": {
+      "sha256": "9b80deda4e4d131536d49d9b26b8104c481d52f9de8a3400c8a915db67ac8b2b",
+      "bytes": 89744
+    },
+    "post-host-49-green.log": {
+      "sha256": "eaad667e7a3fd26cbd3b9ff995aae8d744ae4aa3e2eaa8b9eda60e74ef150de3",
+      "bytes": 100
+    },
+    "recovery-context-red.log": {
+      "sha256": "e671f98cbb411085237e23b210fd1166b3bed792ec120521b85180b601bb08a6",
+      "bytes": 3301
+    },
+    "post-related-242-green.log": {
+      "sha256": "70dc2942981446fefed5153712ec24397b57e9d5f98a581e5324f1a3fb72be3e",
+      "bytes": 341
+    },
+    "post-native-six-green.log": {
+      "sha256": "e9b75b252f14148df9a04c013b7e7226c65970b5696228b4ecab42e505b644a8",
+      "bytes": 109
+    },
+    "app-post-full-offline-green.log": {
+      "sha256": "edc96f4a33814eb5cd29b44bdfda1015b7d6ab0a2cfb823c3d99d8ed063cdcdd",
+      "bytes": 4608
+    },
+    "app-post-six-final-green.log": {
+      "sha256": "554d4eba63a801fd2ca97e99d4d345c02c95527ed3b0a213f974acdbe87199ca",
+      "bytes": 110
+    },
+    "app-post-pair-final-green.log": {
+      "sha256": "eecbe764add6169ed158f17c949f49dbe4b8c392f68aca519955c8cc5ef73608",
+      "bytes": 110
+    }
+  }
+}

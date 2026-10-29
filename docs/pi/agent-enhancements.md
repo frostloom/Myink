@@ -133,3 +133,7 @@ sdk_review_launcher通过全新无工具SDK会话给出approve/reject/needs_evid
 ## 产品源码集成更新（2026-10-29）
 
 固定实现8179de5a及精确4项CI已通过；单次审查六项Important完成一次作者修复。后端2578/Pi离线3938/针对性119通过，未选入与既有预期失败单列。继承的产品功能保留，main/产品未采用；没有新增模型请求。完整范围与失败保留见docs/evaluations/pi-product-source-integration-2026-10-29.md及同名JSON/范围JSON。工具、记忆、设置、边界、回退审计及检查—开发—工具—次日—每日输出统一对照见docs/pi/management-audit-output-map.md。下一阶段是固定生产维护/兼容备份恢复操作包和隔离演练，不能以本次源码通过宣称线上管理者已完成。
+
+## 应用恢复与POST阶段（2026-10-30）
+
+源码efd26876：4048项离线通过；显式真实服务验证为应用6项、PG/迁移6项、配对应用1项。冻结新旧镜像实际读取恢复数据，检查源码、HTTP启动、密钥/MFA、附件/TLS、所有租户（含空数据）、checkpoint/pending writes；POST绑定当前候选及持久身份，保留PRE之后新增数据。属于人工主机边界增强，不扩大Pi SDK六工具，不计为Pi自主开发绩效。新增9条本地审计，独立标准库reader验证本轮11路径与前轮9事件保留；未写服务器，次日blocked且无结果。生产activate/rollback仍未齐备，不称上线或业务回退。详见docs/evaluations/pi-application-recovery-2026-10-30.md/.json，仍按原累计50元及9笔未知预留边界推进。

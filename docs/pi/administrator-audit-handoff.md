@@ -292,3 +292,7 @@ tools do not change. Separate source plan and qualification gate:
 ## Linux 引导与恢复阶段输出（2026-10-30）
 
 源码b38d8a80的阶段输出见docs/evaluations/pi-native-bootstrap-checkpoint-2026-10-30.md/.json。独立标准库reader验证本地9事件、完整18路径、no_release以及blocked次日无结果；源实现、实际隔离服务、模型自主成果和生产采用分开统计。该导出未写服务器，当前管理员页面/权限也未变。本轮真实模型请求0；生产适配器在完整activate/rollback缺失时仍阻断，不能把局部恢复证明作为上线许可。
+
+## 应用恢复与POST阶段（2026-10-30）
+
+源码efd26876：4048项离线通过；显式真实服务验证为应用6项、PG/迁移6项、配对应用1项。冻结新旧镜像实际读取恢复数据，检查源码、HTTP启动、密钥/MFA、附件/TLS、所有租户（含空数据）、checkpoint/pending writes；POST绑定当前候选及持久身份，保留PRE之后新增数据。属于人工主机边界增强，不扩大Pi SDK六工具，不计为Pi自主开发绩效。新增9条本地审计，独立标准库reader验证本轮11路径与前轮9事件保留；未写服务器，次日blocked且无结果。生产activate/rollback仍未齐备，不称上线或业务回退。详见docs/evaluations/pi-application-recovery-2026-10-30.md/.json，仍按原累计50元及9笔未知预留边界推进。
