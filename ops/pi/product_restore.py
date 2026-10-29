@@ -110,15 +110,19 @@ class OwnedPostgresRestore:
         backup.bind_rehearsal_target(self.ledger,self.attempt,target)
         return target
 
-    def restore(self,receipt):
+    def restore(self,receipt,*,qualification="materials"):
+        require(qualification in ("materials","application") and (self.host.config["mode"]!="ACTUAL" or qualification=="application"),"ACTUAL requires application recovery qualification")
         self.host.authorize(self.plan)
-        require(receipt.status=='done' and receipt.operation_id=='backup:'+self.plan['operation_id']+':PRE','exact completed PRE required')
+        phase=receipt.evidence.get('phase');require(phase in ('PRE','POST') and receipt.status=='done' and receipt.operation_id=='backup:'+self.plan['operation_id']+':'+phase,'exact completed paired backup required')
+        if phase=='POST':
+            release=self.ledger.get('release:'+self.plan['operation_id'])
+            require(release and release['kind']=='release' and release['status']=='done' and release['payload']==dict(release_pair_id=self.plan['operation_id'],candidate=self.backend.pair['post_identity']),'original published candidate release required')
         captured=self.ledger.get(receipt.operation_id);require(captured and captured['status']=='done' and captured['evidence']==receipt.evidence,'original backup publication required')
         directory=_path(receipt.evidence['manifest_path']).parent
         require(directory.parent==self.backend.collections and directory.name==receipt.evidence['backup_id'],'original scoped recovery directory required')
         require(backup.digest(directory/'manifest.json')==receipt.evidence['manifest_sha256'],'recovery manifest drift')
         manifest=strict_json((directory/'manifest.json').read_bytes());backup.verify_artifacts(manifest,directory)
-        require(manifest['release_pair_id']==self.plan['operation_id'] and manifest['identity']==self.backend.pair['pre_identity'] and manifest['plan_hash']==digest(self.plan),'recovery identity drift')
+        require(manifest['release_pair_id']==self.plan['operation_id'] and manifest['phase']==phase and manifest['identity']==self.backend.pair[phase.lower()+'_identity'] and manifest['plan_hash']==digest(self.plan),'recovery identity drift')
         source=strict_json((directory/manifest['artifacts']['source_metadata']['path']).read_bytes())
         require(source['system_identifier']==manifest['source_id'] and source['size_bytes']<268435456,'recovery database exceeds owned capacity')
         target=None;result=None
@@ -141,8 +145,13 @@ class OwnedPostgresRestore:
             observed=strict_json(self.host._bytes(self._sql(META_SQL)))
             restored_roles={k:v for k,v in observed['roles'].items() if k!=self.admin}
             require(observed['system_identifier']==target['system_identifier'] and observed['tables']==source['tables'] and observed['content']==source['content'] and restored_roles==source['roles'],'restored relation or role census differs')
+            probes={}
+            if qualification=='application':
+                from .product_cold_probe import OwnedApplicationProbe
+                for role in ('legacy','candidate'):probes[role]=OwnedApplicationProbe(self).check(role,target)
+                require(strict_json(self.host._bytes(self._sql(META_SQL)))==observed,'application probe changed restored data')
             backup.verify_artifacts(manifest,directory)
-            result=Receipt('restore:'+manifest['backup_id']+':'+target['system_identifier'],'done',dict(verified=True,target_system_identifier=target['system_identifier'],source_system_identifier=source['system_identifier'],table_count=len(source['tables']),materials=materials,original_control_state_restored=False,business_probe='pending_separate_qualification'))
+            result=Receipt('restore:'+manifest['backup_id']+':'+target['system_identifier'],'done',dict(verified=True,target_system_identifier=target['system_identifier'],source_system_identifier=source['system_identifier'],table_count=len(source['tables']),materials=materials,original_control_state_restored=False,business_probe='restored_read_paths_verified' if probes else 'pending_separate_qualification',application_probes=probes))
         except Exception as error:
             if self.attempt and self.ledger.get(self.attempt):
                 self.ledger.finish(Receipt(self.attempt,'uncertain',dict(reason='native_recovery_unconfirmed',error_class=type(error).__name__)))

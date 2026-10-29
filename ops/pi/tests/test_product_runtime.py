@@ -46,7 +46,11 @@ if a[0]=='info':print(json.dumps({'ID':'product-native-test'}))
 elif a[0]=='ps':print('\n'.join(s['containers']))
 elif a[0]=='inspect':
  for cid in a:
-  if cid in s['containers']:print(json.dumps(s['containers'][cid]))
+  if cid in s['containers']:
+   row=dict(s['containers'][cid]);fmt=a[a.index('--format')+1] if '--format' in a else ''
+   if 'release_operation' in fmt:row['release_operation']=row.get('release_operation')
+   else:row.pop('release_operation',None)
+   print(json.dumps(row))
 elif a[0]=='cp':
  if a[1].endswith(':/app/src') and a[2]=='-':
   archive=io.BytesIO()
@@ -69,7 +73,7 @@ elif a[0]=='exec':
   s['config']=s['copied'][cmd[-1]];s['effects'].append(['reload',cid]);save()
  elif cmd[0]=='psql':
   if '-q' not in cmd:print('BEGIN');print('SET')
-  print(json.dumps(s['counts']))
+  print(json.dumps(s['control'] if 'row_to_json(m)' in cmd[-1] else s['counts']))
   if '-q' not in cmd:print('ROLLBACK')
  elif cmd[0]=='/bin/sh':
   assert len(cmd)==5 and cmd[1]=='-c' and cmd[3]=='--'
@@ -204,3 +208,60 @@ def test_missing_migration_capability_blocks_preflight_before_product_effect(run
     with h.lock(h.plan):
         with pytest.raises(ValueError):h.preflight()
     assert json.loads(runtime_case[-1].read_bytes())['effects']==[]
+
+
+def candidate_host(runtime_case):
+    from ops.pi.contracts import Receipt
+    h=host(runtime_case);plan=h.plan;state=json.loads(runtime_case[-1].read_bytes())
+    for row in state['containers'].values():
+        if row['service'] in ('myink-api','myink-worker'):row['running']=False
+    cohort=[]
+    for cid,service in [('a'*64,'api'),('b'*64,'worker'),('c'*64,'worker')]:
+        old=next(v for v in state['containers'].values() if v['service']==('myink-api' if service=='api' else 'myink-worker'))
+        new=dict(old,id=cid,image_id=plan['candidate']['image_ids']['python'],release_operation=plan['operation_id'])
+        state['containers'][cid]=new;cohort.append(dict(id=cid,service=service,image_id=new['image_id']))
+    state['control']=dict(id=1,epoch=plan['operation_id'],deployment_id=plan['candidate']['deployment_id'],generation=plan['candidate']['generation'],owner=plan['candidate']['owner'],image_ids=plan['candidate']['image_ids'],deadline=plan['expires_at'],admission_closed=True,consumer_blocked=True)
+    runtime_case[-1].write_text(json.dumps(state))
+    value=dict(schema='pi-product-candidate-cohort-v1',plan_sha256=digest(plan),containers=cohort)
+    write(h.root/'candidate-cohort.json',value)
+    h.ledger.intent(plan['operation_id'],'product_bootstrap',dict(plan_sha256=digest(plan)))
+    h.ledger.finish(Receipt(plan['operation_id'],'done',dict(phase='protocol_prepared',release_allowed=False)))
+    h.ledger.intent('candidate:'+plan['operation_id'],'product_candidate',dict(plan_sha256=digest(plan)))
+    h.ledger.finish(Receipt('candidate:'+plan['operation_id'],'done',dict(cohort_sha256=digest(value))))
+    fence=dict(verified=True,plan_sha256=digest(plan),fence_sha256=digest(state['config']))
+    write(h.root/'ingress-fence.json',fence)
+    return h,{'close_ingress':fence},state
+
+
+def test_new_cohort_source_and_quiet_bind_to_pg_owner_and_durable_registry(runtime_case):
+    h,proofs,state=candidate_host(runtime_case)
+    with h.lock(h.plan):
+        assert h.inspect_candidate(h.plan)==h.plan['candidate']
+        quiet=h.measure_candidate_quiet(h.plan,proofs)
+    assert all(quiet[key]==0 for key in ('active_tasks','ready_messages','unacked_messages','consumers','task_locks','book_locks','unknown'))
+    assert quiet['api_exit_code']==0 and quiet['worker_exit_codes']==[0,0]
+    assert json.loads(runtime_case[-1].read_bytes())['effects']==[]
+
+
+@pytest.mark.parametrize('fault',['owner','generation','epoch','image_ids','cohort-file','source','label','extra-container','public-api','legacy-restarted'])
+def test_new_cohort_drift_never_yields_post_identity(runtime_case,fault):
+    h,_,state=candidate_host(runtime_case)
+    if fault in ('owner','generation','epoch','image_ids'):state['control'][fault]=9001 if fault=='generation' else {} if fault=='image_ids' else 'manual-release'
+    elif fault=='cohort-file':write(h.root/'candidate-cohort.json',{})
+    elif fault=='source':state['source']['src/myink/__init__.py']='manual source'
+    elif fault=='label':state['containers']['a'*64]['release_operation']='manual-release'
+    elif fault=='extra-container':state['containers']['d'*64]=dict(state['containers']['a'*64],id='d'*64)
+    elif fault=='public-api':state['containers']['a'*64]['ports']={'8100/tcp':[dict(HostIp='0.0.0.0',HostPort='18100')]}
+    elif fault=='legacy-restarted':
+        cid=next(r['id'] for r in h.plan['legacy']['containers'] if r['service']=='api');state['containers'][cid]['running']=True
+    runtime_case[-1].write_text(json.dumps(state))
+    with h.lock(h.plan):
+        with pytest.raises(ValueError):h.inspect_candidate(h.plan)
+    assert json.loads(runtime_case[-1].read_bytes())['effects']==[]
+
+
+def test_post_quiet_refuses_running_candidate_api(runtime_case):
+    h,proofs,state=candidate_host(runtime_case);state['containers']['a'*64]['running']=True
+    runtime_case[-1].write_text(json.dumps(state))
+    with h.lock(h.plan):
+        with pytest.raises(ValueError):h.measure_candidate_quiet(h.plan,proofs)

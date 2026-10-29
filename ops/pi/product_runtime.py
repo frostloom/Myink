@@ -155,22 +155,82 @@ class LinuxProductHost:
         require(actual==sorted(self.plan['legacy']['containers'],key=lambda r:r['id']),'product cohort drift')
         return selected
 
+    def _source_files(self,cid):
+        result=self._run(['cp',cid+':/app/src','-'],limit=67108864)
+        archive=self.commands.root/result['command_id']/'stdout.bin';files={};total=0
+        with tarfile.open(archive,mode='r:') as stream:
+            for member in stream:
+                path=PurePosixPath(member.name);require(not path.is_absolute() and '..' not in path.parts and path.parts[0]=='src' and (member.isdir() or member.isfile()),'unsafe product source archive')
+                if member.isdir() or '__pycache__' in path.parts or path.suffix in ('.pyc','.pyo'):continue
+                require(len(files)<10000 and member.size<=4194304 and str(path) not in files,'bounded source archive required');total+=member.size;require(total<=67108864)
+                raw=stream.extractfile(member).read();require(len(raw)==member.size);files[str(path)]=sha256(raw).hexdigest()
+        return files
+
     def inspect(self,plan):
         self.authorize(plan);rows=self._rows();manifest=_pinned(self.config['legacy_manifest_path'],self.config['legacy_manifest_sha256'],self.config['mode']=='ACTUAL')
         require(isinstance(manifest,dict) and set(manifest)=={'source_commit','files'} and manifest['source_commit']==plan['legacy']['source_commit'] and digest(manifest['files'])==plan['legacy']['source_sha256'],'frozen legacy source manifest required')
         for row in rows:
-            if row['service'] not in ('myink-api','myink-worker'):continue
-            result=self._run(['cp',row['id']+':/app/src','-'],limit=67108864)
-            archive=self.commands.root/result['command_id']/'stdout.bin';files={};total=0
-            with tarfile.open(archive,mode='r:') as stream:
-                for member in stream:
-                    path=PurePosixPath(member.name);require(not path.is_absolute() and '..' not in path.parts and path.parts[0]=='src' and (member.isdir() or member.isfile()),'unsafe product source archive')
-                    if member.isdir() or '__pycache__' in path.parts or path.suffix in ('.pyc','.pyo'):continue
-                    require(len(files)<10000 and member.size<=4194304 and str(path) not in files,'bounded source archive required');total+=member.size;require(total<=67108864)
-                    raw=stream.extractfile(member).read();require(len(raw)==member.size);files[str(path)]=sha256(raw).hexdigest()
-            require(files==manifest['files'],'physical product source drift')
+            if row['service'] in ('myink-api','myink-worker'):require(self._source_files(row['id'])==manifest['files'],'physical product source drift')
         require(sorted([dict(id=r['id'],service=SERVICES[r['service']],image_id=r['image_id']) for r in self._rows()],key=lambda r:r['id'])==sorted(plan['legacy']['containers'],key=lambda r:r['id']),'product changed during source inspection')
         return deepcopy(plan['legacy'])
+
+    def _candidate_cohort(self):
+        self.authorize(self.plan);op=self.plan['operation_id'];pin=digest(self.plan)
+        parent=self.ledger.get(op);row=self.ledger.get('candidate:'+op)
+        require(parent and parent['kind']=='product_bootstrap' and parent['status']=='done' and parent['payload']==dict(plan_sha256=pin),'original prepared bootstrap required')
+        require(row and row['kind']=='product_candidate' and row['status']=='done' and row['payload']==dict(plan_sha256=pin),'durable adopted cohort required')
+        path=self.root/'candidate-cohort.json';_plain(path);require(path.stat().st_size<=65536,'bounded adopted cohort required');cohort=strict_json(path.read_bytes())
+        require(row['evidence'].get('cohort_sha256')==digest(cohort) and set(cohort)=={'schema','plan_sha256','containers'} and cohort['schema']=='pi-product-candidate-cohort-v1' and cohort['plan_sha256']==pin,'adopted cohort registry drift')
+        rows=cohort['containers'];require(isinstance(rows,list) and len(rows)==3,'complete adopted application cohort required');seen=set();roles=[]
+        for r in rows:
+            require(isinstance(r,dict) and set(r)=={'id','service','image_id'} and hash_value(r['id']) and r['id'] not in seen and r['id'] not in {v['id'] for v in self.plan['legacy']['containers']} and r['image_id']==self.plan['candidate']['image_ids']['python'],'foreign adopted cohort')
+            seen.add(r['id']);roles.append(r['service'])
+        require(sorted(roles)==['api','worker','worker'],'fixed adopted roles required');return rows
+
+    def _candidate_state(self):
+        value=self._json(['exec',self._cid('postgres'),'psql','-X','-q','-A','-t','-w','-U','myink','-d','myink','-v','ON_ERROR_STOP=1','-c','BEGIN READ ONLY;SET LOCAL statement_timeout=3000;SELECT row_to_json(m) FROM public.maintenance_control m WHERE id=1;ROLLBACK;'])
+        c=self.plan['candidate']
+        require(isinstance(value,dict) and set(value)=={'id','epoch','deployment_id','generation','owner','image_ids','deadline','admission_closed','consumer_blocked'} and type(value['id']) is int and value['id']==1 and type(value['generation']) is int,'complete current ownership required')
+        require(value['epoch']==self.plan['operation_id'] and value['deployment_id']==c['deployment_id'] and value['generation']==c['generation'] and value['owner']==c['owner'] and value['image_ids']==c['image_ids'] and value['admission_closed'] is True and value['consumer_blocked'] is True and utc(value['deadline'])==utc(self.plan['expires_at']) and utc(self.clock())<utc(value['deadline']),'current deployment no longer held behind original barrier')
+        return value
+
+    def _candidate_rows(self):
+        cohort=self._candidate_cohort();info=self._json(['info','--format','{{json .}}']);require(isinstance(info,dict) and info.get('ID')==self.config['daemon_id'],'Docker daemon drift')
+        raw=self._bytes(self._run(['ps','--all','--no-trunc','--filter','label=com.docker.compose.project='+self.config['project'],'--format','{{.ID}}']));ids=raw.decode().splitlines()
+        require(len(ids)<=16 and len(ids)==len(set(ids)) and all(hash_value(v) for v in ids),'bounded complete release census required')
+        fmt=INSPECT_FORMAT[:-1]+',"release_operation":{{json (index .Config.Labels "myink.pi.release.operation")}}}'
+        raw=self._bytes(self._run(['inspect','--format',fmt,*ids]));rows=[strict_json(v) for v in raw.splitlines() if v]
+        require(len(rows)==len(ids) and {r.get('id') for r in rows}==set(ids),'incomplete adopted Docker inspect')
+        expected={r['id']:r for r in [*self.plan['legacy']['containers'],*cohort]};result=[];new={r['id'] for r in cohort}
+        for r in rows:
+            require(set(r)=={'id','image_id','project','service','running','exit_code','oom','ports','release_operation'} and r['project']==self.config['project'] and type(r['running']) is bool and type(r['exit_code']) is int and r['oom'] is False,'typed complete adopted container required')
+            if r['service']=='myink-migrate' and not r['running'] and r['exit_code']==0:continue
+            require(r['id'] in expected and r['service'] in SERVICES and SERVICES[r['service']]==expected[r['id']]['service'] and r['image_id']==expected[r['id']]['image_id'],'adopted cohort superseded')
+            if r['id'] in new:require(r['release_operation']==self.plan['operation_id'],'adopted container owner drift')
+            elif SERVICES[r['service']] in ('api','worker'):require(not r['running'] and r['exit_code']==0,'retained legacy process restarted')
+            else:require(r['running'],'product infrastructure stopped')
+            if r['service']=='myink-api':
+                require(isinstance(r['ports'],(dict,type(None))),'typed API ports required')
+                for bindings in (r['ports'] or {}).values():
+                    require(bindings is None or isinstance(bindings,list),'typed API bindings required')
+                    for b in bindings or []:require(b.get('HostIp') in ('127.0.0.1','::1'),'public API bypasses fence')
+            result.append(r)
+        require({r['id'] for r in result}==set(expected),'adopted cohort incomplete');return result
+
+    def inspect_candidate(self,plan):
+        self.authorize(plan);require(plan==self.plan,'candidate plan drift');rows=self._candidate_rows();self._candidate_state()
+        manifest=_pinned(self.config['candidate_manifest_path'],self.config['candidate_manifest_sha256'],self.config['mode']=='ACTUAL')
+        require(isinstance(manifest,dict) and set(manifest)=={'source_commit','files'} and manifest['source_commit']==plan['candidate']['commit_sha'],'frozen adopted source required');new={r['id'] for r in self._candidate_cohort()}
+        for row in rows:
+            if row['id'] in new:require(self._source_files(row['id'])==manifest['files'],'adopted physical source drift')
+        self._candidate_rows();self._candidate_state();return deepcopy(plan['candidate'])
+
+    def backup_container_id(self,phase,role):
+        require(phase in ('PRE','POST') and role in ('api','postgres','frontend'),'fixed recovery role required')
+        if phase=='POST' and role=='api':return next(r['id'] for r in self._candidate_cohort() if r['service']=='api')
+        return self._cid(role)
+
+    def measure_candidate_quiet(self,plan,proofs):return self.measure_quiet(plan,proofs,candidate=True)
 
     def _cid(self,role):return next(r['id'] for r in self.plan['legacy']['containers'] if r['service']==role)
 
@@ -209,11 +269,14 @@ class LinuxProductHost:
         require(isinstance(value,dict) and set(value)=={'task_locks','book_locks'} and all(type(v) is int and v>=0 for v in value.values()),'complete authenticated lock census required')
         return value
 
-    def measure_quiet(self,plan,proofs):
+    def measure_quiet(self,plan,proofs,*,candidate=False):
         self.authorize(plan)
         fence=strict_json((self.root/'ingress-fence.json').read_bytes())
         require(proofs.get('close_ingress')==fence and digest(self._caddy())==fence['fence_sha256'],'current ingress fence required')
-        rows={r['id']:r for r in self._rows()};ids=[self._cid('api'),*[r['id'] for r in plan['legacy']['containers'] if r['service']=='worker']]
+        rows={r['id']:r for r in (self._candidate_rows() if candidate else self._rows())}
+        cohort=self._candidate_cohort() if candidate else plan['legacy']['containers']
+        ids=[next(r['id'] for r in cohort if r['service']=='api'),*[r['id'] for r in cohort if r['service']=='worker']]
+        if candidate:self._candidate_state()
         require(all(not rows[cid]['running'] and rows[cid]['exit_code']==0 and not rows[cid]['oom'] for cid in ids),'legacy processes not quiet')
         exits=[rows[cid]['exit_code'] for cid in ids]
         pg=self._json(['exec',self._cid('postgres'),'psql','-X','-q','-A','-t','-w','-U','myink','-d','myink','-v','ON_ERROR_STOP=1','-c',DRAIN_SQL])
@@ -229,6 +292,7 @@ class LinuxProductHost:
             elif any(row[k] for k in ('messages_ready','messages_unacknowledged','consumers')):unknown+=1
         require(expected<=names,'original broker queue missing')
         require(digest(self._caddy())==fence['fence_sha256'],'ingress fence changed during drain')
+        if candidate:self._candidate_rows();self._candidate_state()
         return dict(verified=True,plan_sha256=digest(plan),fence_sha256=fence['fence_sha256'],api_exit_code=exits[0],worker_exit_codes=exits[1:],active_tasks=pg['active_tasks'],ready_messages=ready,unacked_messages=unacked,consumers=consumers,unknown=pg['unknown']+unknown,**redis)
 
     def perform(self,action,plan,proofs):

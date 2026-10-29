@@ -114,3 +114,67 @@ def test_environment_changed_after_backend_construction_blocks_collection(produc
     Path(c['environment_path']).write_text('changed-after-sealing')
     result=create_backup(host.ledger,'PRE',bridge.legacy,bridge,bridge.collections,pair=bridge.pair)
     assert result.status=='failed' and effects==[]
+
+
+def _post_host(host,bridge,proofs,quiet):
+    from dataclasses import asdict
+    from ops.pi.contracts import Receipt
+    host.inspect_candidate=lambda plan:deepcopy(plan['candidate'])
+    host.measure_candidate_quiet=lambda plan,p:deepcopy(quiet)
+    host.backup_container_id=lambda phase,role:('a'*64 if phase=='POST' and role=='api' else host._cid(role))
+    host.ledger.intent('release:'+host.plan['operation_id'],'release',dict(release_pair_id=host.plan['operation_id'],candidate=asdict(bridge.candidate)))
+    host.ledger.finish(Receipt('release:'+host.plan['operation_id'],'done',dict(post_pending=True)))
+
+
+def test_post_collection_binds_candidate_and_uses_new_api_materials(product_backup):
+    from dataclasses import asdict
+    host,c,proofs,fee,_,quiet,effects=product_backup
+    bridge=api()(host,proofs);_post_host(host,bridge,proofs,quiet)
+    before=[fee.get('unknown-'+str(n)) for n in range(9)]
+    result=create_backup(host.ledger,'POST',bridge.candidate,bridge,bridge.collections,pair=bridge.pair)
+    assert result.status=='done',result
+    manifest=json.loads(Path(result.evidence['manifest_path']).read_bytes())
+    assert manifest['identity']==asdict(bridge.candidate) and manifest['phase']=='POST'
+    assert any(args[:2]==['cp','a'*64+':/data/feedback'] for args in effects)
+    assert [fee.get('unknown-'+str(n)) for n in range(9)]==before
+
+
+@pytest.mark.parametrize('drift',['owner','generation','deployment_id','image_ids'])
+def test_post_collection_refuses_current_candidate_identity_drift(product_backup,drift):
+    host,_,proofs,_,_,quiet,effects=product_backup
+    bridge=api()(host,proofs);_post_host(host,bridge,proofs,quiet)
+    changed=deepcopy(host.plan['candidate'])
+    changed[drift]=9001 if drift=='generation' else {} if drift=='image_ids' else 'manual-release'
+    host.inspect_candidate=lambda plan:changed
+    result=create_backup(host.ledger,'POST',bridge.candidate,bridge,bridge.collections,pair=bridge.pair)
+    assert result.status=='failed' and effects==[]
+
+
+def test_post_collection_rechecks_quiet_and_never_releases_unknown_fees(product_backup):
+    host,_,proofs,fee,_,quiet,effects=product_backup
+    bridge=api()(host,proofs);_post_host(host,bridge,proofs,quiet);quiet['unknown']=1
+    result=create_backup(host.ledger,'POST',bridge.candidate,bridge,bridge.collections,pair=bridge.pair)
+    assert result.status=='failed' and effects==[]
+    assert all(fee.get('unknown-'+str(n))['status']=='pending' for n in range(9))
+
+
+def test_recovery_schema_context_is_not_reset_by_new_owner_or_generation(product_backup):
+    host,_,proofs,_,_,_,_=product_backup
+    first=api()(host,proofs).context
+    host.plan['candidate']['owner']='next-pi-owner';host.plan['candidate']['generation']+=1
+    second=api()(host,proofs).context
+    assert first==second
+
+
+def test_recovery_tool_context_includes_application_and_restore_guards(product_backup,tmp_path,monkeypatch):
+    import ops.pi.product_backup as module
+    controller=tmp_path/'controller';controller.mkdir()
+    source=Path(module.__file__).parent
+    for name in ('product_backup.py','product_restore.py','product_cold_probe.py','product_runtime.py','product_commands.py','product_migration.py','product_bootstrap.py','backup.py','ledger.py','audit.py'):
+        (controller/name).write_bytes((source/name).read_bytes())
+    monkeypatch.setattr(module,'__file__',str(controller/'product_backup.py'))
+    host,_,proofs,_,_,_,_=product_backup
+    first=api()(host,proofs).context
+    (controller/'product_cold_probe.py').write_text('changed application verification')
+    second=api()(host,proofs).context
+    assert first['tool_context']!=second['tool_context']

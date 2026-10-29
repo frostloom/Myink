@@ -81,6 +81,9 @@ def test_native_schema_and_identity_keep_historical_rows_and_closed_admission(pr
             return
         identity=migration.bind(host.plan,proofs)
         assert identity['identity']==host.plan['candidate']
+        from ops.pi.product_runtime import LinuxProductHost
+        actual=LinuxProductHost._candidate_state(host)
+        assert actual['epoch']==host.plan['operation_id'] and actual['owner']==host.plan['candidate']['owner']
         assert before==sql("SELECT json_build_object('task',(SELECT payload FROM tasks LIMIT 1),'run',(SELECT detail FROM agent_runs LIMIT 1))")
         state=json.loads(sql('SELECT row_to_json(m) FROM maintenance_control m'))
         assert state['admission_closed'] is True and state['consumer_blocked'] is True

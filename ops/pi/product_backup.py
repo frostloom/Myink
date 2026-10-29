@@ -16,6 +16,7 @@ from .contracts import Identity
 from .product_bootstrap import _facts, COUNTS
 from .product_runtime import BASE, _pinned
 
+RECOVERY_COMPONENTS=('product_backup.py','product_restore.py','product_cold_probe.py','product_runtime.py','product_commands.py','product_migration.py','product_bootstrap.py','backup.py','ledger.py','audit.py')
 FIELDS=set('schema release_pair_id environment_path environment_sha256 compose_path compose_sha256 billing_ledger_path manager_state_path maximum_artifact_bytes'.split())
 META_SQL="""BEGIN READ ONLY;SET LOCAL statement_timeout='10s';
 SELECT json_build_object('system_identifier',(SELECT system_identifier::text FROM pg_control_system()),'database',current_database(),'size_bytes',pg_database_size(current_database()),
@@ -77,7 +78,7 @@ class LinuxProductBackup:
         candidate={k:v for k,v in self.plan['candidate'].items() if k!='schema_version'}
         self.candidate=Identity(**candidate)
         self.pair=dict(release_pair_id=self.plan['operation_id'],pre_identity=asdict(self.legacy),post_identity=asdict(self.candidate),plan_hash=digest(self.plan))
-        self.context=dict(schema_context=digest(dict(source=self.plan['legacy'],candidate=self.plan['candidate'])),tool_context=sha256(Path(__file__).read_bytes()).hexdigest())
+        self.context=dict(schema_context=digest(dict(protocol=1,schema=1,state=1,effect_keys=1,serialization='jsonplus',product_schema_id=self.plan['candidate']['schema_id'],postgres_image=roles['postgres'])),tool_context=digest({name:sha256(Path(__file__).with_name(name).read_bytes()).hexdigest() for name in RECOVERY_COMPONENTS}))
 
     def preflight(self):
         self.host.authorize(self.plan)
@@ -100,18 +101,23 @@ class LinuxProductBackup:
             path=_path(self.config[key+'_path']);_plain(path)
             require(path.stat().st_size<=1048576 and sha256(path.read_bytes()).hexdigest()==self.config[key+'_sha256'],'sealed configuration changed during collection')
 
-    def _quiet(self):
+    def _quiet(self,phase="PRE"):
         self._sealed_configuration()
-        self.host.authorize(self.plan);require(self.host.inspect(self.plan)==self.plan['legacy'],'legacy source drift')
-        facts=self.host.measure_quiet(self.plan,self.proofs);_facts('drain_legacy',facts,self.plan,self.proofs)
+        self.host.authorize(self.plan)
+        observed=self.host.inspect(self.plan) if phase=='PRE' else self.host.inspect_candidate(self.plan)
+        require(observed==(self.plan['legacy'] if phase=='PRE' else self.plan['candidate']),'recovery source identity drift')
+        facts=(self.host.measure_quiet if phase=='PRE' else self.host.measure_candidate_quiet)(self.plan,self.proofs);_facts('drain_legacy',facts,self.plan,self.proofs)
         meta=self._metadata()
-        basis=dict(source=self.plan['legacy'],fence=facts['fence_sha256'],database=meta['system_identifier'],tables=meta['tables'],content=meta['content'],roles=meta['roles'],configuration={k:self.config[k] for k in ('environment_sha256','compose_sha256')})
+        basis=dict(source=observed,phase=phase,fence=facts['fence_sha256'],database=meta['system_identifier'],tables=meta['tables'],content=meta['content'],roles=meta['roles'],configuration={k:self.config[k] for k in ('environment_sha256','compose_sha256')})
         return dict(verified=True,consistency_id=digest(basis)),meta
 
     def __call__(self,action,context):
         self.preflight()
-        require(context.get('phase')=='PRE' and context.get('identity')==asdict(self.legacy) and context.get('pair')==self.pair,'fixed PRE context required')
-        if action=='verify_identity':return self._quiet()[0]
+        phase=context.get('phase');require(phase in ('PRE','POST') and context.get('identity')==asdict(self.legacy if phase=='PRE' else self.candidate) and context.get('pair')==self.pair,'fixed paired recovery context required')
+        if phase=='POST':
+            release=self.host.ledger.get('release:'+self.plan['operation_id'])
+            require(release and release['kind']=='release' and release['status']=='done' and release['payload']==dict(release_pair_id=self.plan['operation_id'],candidate=asdict(self.candidate)),'original published candidate release required')
+        if action=='verify_identity':return self._quiet(phase)[0]
         if action=='collect':return self._collect(context)
         raise ValueError('unsupported collection operation')
 
@@ -123,23 +129,24 @@ class LinuxProductBackup:
         _copy(source,target);return result
 
     def _collect(self,context):
-        quiet,meta=self._quiet();directory=_path(context['directory'])
+        phase=context['phase'];quiet,meta=self._quiet(phase);directory=_path(context['directory'])
         require(directory.parent==self.collections and directory.name==sha256(context['operation_id'].encode()).hexdigest(),'fixed private collection directory required')
-        pg=self.host._cid('postgres')
+        def cid(role):return self.host.backup_container_id(phase,role) if hasattr(self.host,'backup_container_id') else self.host._cid(role)
+        pg=cid('postgres')
         raw=directory/'database.sql';self._artifact(['exec',pg,'pg_dump','-U','myink','-d','myink','--clean','--if-exists'],raw)
         fd=os.open(directory/'database.sql.gz',os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
         with os.fdopen(fd,'wb') as outgoing:
             with raw.open('rb') as incoming,gzip.GzipFile(fileobj=outgoing,mode='wb',mtime=0) as compressed:shutil.copyfileobj(incoming,compressed,65536)
             outgoing.flush();os.fsync(outgoing.fileno())
         self._artifact(['exec',pg,'pg_dumpall','-U','myink','--globals-only'],directory/'roles.sql')
-        self._artifact(['cp',self.host._cid('api')+':/data/feedback','-'],directory/'attachments.tar')
-        self._artifact(['cp',self.host._cid('frontend')+':/data','-'],directory/'certificate.tar')
+        self._artifact(['cp',cid('api')+':/data/feedback','-'],directory/'attachments.tar')
+        self._artifact(['cp',cid('frontend')+':/data','-'],directory/'certificate.tar')
         _copy(Path(self.config['environment_path']),directory/'crypto.env')
         _tar_files(directory/'configuration.tar',{'docker-compose.yml':Path(self.config['compose_path']),'.env':Path(self.config['environment_path'])})
         _snapshot(Path(self.config['billing_ledger_path']),directory/'billing.sqlite')
         _snapshot(Path(self.config['manager_state_path']),directory/'manager.sqlite')
         backup.durable_file(directory/'source-metadata.json',encoded(meta))
-        require(self._quiet()[0]==quiet,'source changed during material collection')
+        require(self._quiet(phase)[0]==quiet,'source changed during material collection')
         return dict(verified=True,consistency_id=quiet['consistency_id'],dump_exit=0,dump_stderr_bytes=0,roles=sorted(meta['roles']),source_id=meta['system_identifier'],artifacts=dict(database='database.sql.gz',roles='roles.sql',crypto='crypto.env',attachments='attachments.tar',config='configuration.tar',certificate='certificate.tar',billing_snapshot='billing.sqlite',manager_snapshot='manager.sqlite',source_metadata='source-metadata.json'))
 
     def perform(self,action,plan,proofs):
@@ -148,7 +155,7 @@ class LinuxProductBackup:
             receipt=backup.create_backup(self.host.ledger,'PRE',self.legacy,self,self.collections,pair=self.pair)
             require(receipt.status=='done','PRE collection incomplete')
             from .product_restore import OwnedPostgresRestore
-            result=OwnedPostgresRestore(self).restore(receipt)
+            result=OwnedPostgresRestore(self).restore(receipt,qualification='application')
             require(result.status=='done','current restore qualification incomplete')
             return dict(verified=True,plan_sha256=digest(plan),release_pair_id=plan['operation_id'],manifest_sha256=receipt.evidence['manifest_sha256'],restore_operation_id=result.operation_id,source_sha256=plan['legacy']['source_sha256'])
         if action=='install_schema':return self.host.apply_schema(plan,proofs)

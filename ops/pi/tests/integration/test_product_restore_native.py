@@ -11,8 +11,8 @@ from test_product_backup import product_backup, bootstrap_case
 pytestmark=pytest.mark.pi_followup_docker
 
 
-@pytest.mark.parametrize('fault',[None,'changed-row'])
-def test_owned_native_collection_restore_preserves_source_and_removes_target(product_backup,fault,monkeypatch):
+@pytest.mark.parametrize('phase,fault',[('PRE',None),('PRE','changed-row'),('POST',None)])
+def test_owned_native_collection_restore_preserves_source_and_removes_target(product_backup,phase,fault,monkeypatch):
     assert importlib.util.find_spec('ops.pi.product_restore'), 'missing native PostgreSQL restore'
     from ops.pi.product_restore import OwnedPostgresRestore
     from ops.pi.product_commands import DockerCommands
@@ -53,6 +53,22 @@ def test_owned_native_collection_restore_preserves_source_and_removes_target(pro
         bridge=LinuxProductBackup(host,proofs)
         receipt=create_backup(host.ledger,'PRE',bridge.legacy,bridge,bridge.collections,pair=bridge.pair)
         assert receipt.status=='done',receipt
+        if phase=='POST':
+            from dataclasses import asdict
+            from ops.pi.backup import record_recovery_references,mark_released
+            pre_result=OwnedPostgresRestore(bridge).restore(receipt)
+            assert pre_result.status=='done'
+            refs=record_recovery_references(host.ledger,'native-source-references',version=1,context=bridge.context,complete=True,stable_ids=[receipt.evidence['backup_id']],referenced_ids=[])
+            assert refs.status=='done'
+            mark_released(host.ledger,bridge.pair['release_pair_id'],asdict(bridge.candidate),context=bridge.context,now=host.clock())
+            sql("INSERT INTO tasks VALUES(2,'{\"after_release\":true}')")
+            host.inspect_candidate=lambda plan:dict(plan['candidate'])
+            host.measure_candidate_quiet=host.measure_quiet
+            host.backup_container_id=lambda phase,role:('a'*64 if phase=='POST' and role=='api' else host._cid(role))
+            receipt=create_backup(host.ledger,'POST',bridge.candidate,bridge,bridge.collections,pair=bridge.pair)
+            assert receipt.status=='done',receipt
+            manifest=json.loads(Path(receipt.evidence['manifest_path']).read_bytes())
+            assert manifest['phase']=='POST' and manifest['identity']==asdict(bridge.candidate)
         if fault=='changed-row':
             original=OwnedPostgresRestore._sql
             def corrupt_after_import(self,query=None,stdin_path=None):
@@ -71,7 +87,7 @@ def test_owned_native_collection_restore_preserves_source_and_removes_target(pro
         assert result.evidence['table_count']==2
         assert result.evidence['cleanup_confirmed'] is True
         assert result.evidence['business_probe']=='pending_separate_qualification'
-        assert sql('SELECT count(*) FROM tasks')=='1'
+        assert sql('SELECT count(*) FROM tasks')==('2' if phase=='POST' else '1')
         assert all(fee.get('unknown-'+str(n))['status']=='pending' for n in range(9))
         assert not run('--host',endpoint,'ps','-aq','--filter','label=myink.pi.restore.operation='+host.plan['operation_id'])
         with pytest.raises(ValueError):OwnedPostgresRestore(bridge).restore(receipt)
