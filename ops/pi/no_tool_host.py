@@ -15,7 +15,10 @@ from .diagnosis_launcher import _unknown
 
 
 def _contract(role):
-    require(role in ('independent_review','investigation'),'fixed no-tool role required')
+    require(role in ('independent_review','investigation','candidate_review'),'fixed no-tool role required')
+    if role=='candidate_review':
+        from . import candidate_review_launcher
+        return candidate_review_launcher
     if role=='investigation':
         from . import investigation_launcher
         return investigation_launcher

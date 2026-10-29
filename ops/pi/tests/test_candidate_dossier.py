@@ -14,6 +14,7 @@ def api():return importlib.import_module('ops.pi.candidate_dossier')
 @pytest.fixture
 def completed(config_file):
     cp,c=config_file
+    state=cp.parent/'state';state.mkdir(mode=0o700);ledger=state/'ledger.sqlite';Path(c['ledger_path']).rename(ledger);c['ledger_path']=str(ledger)
     Path(c['test_path']).write_text('import unittest\nfrom a import value\nclass Case(unittest.TestCase):\n def test_one(self): self.assertEqual(value,2)\n');c['test_sha256']=file_hash(c['test_path'])
     review=read_json(c['review_path']);review['authorization_sha256']=authorization_hash(c);write(Path(c['review_path']),review);c['review_sha256']=file_hash(c['review_path']);write(cp,c)
     root=Path(c['root']);root.mkdir(mode=0o700);candidate=root/'candidate';shutil.copytree(c['source_path'],candidate);(candidate/'src/a.py').write_text('value = 2\n')

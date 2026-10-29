@@ -136,3 +136,26 @@ SDK analysis/review charge once. `autonomy.controller.v1` is a separate version
 context with controller/source-profile policy/SDK identity, never a product release.
 Withdrawal retains the exact original manifest privately; unavailable/partial
 coordinator evidence cannot be presented as executable or successfully developed.
+
+## Finished-candidate recommendation (source only)
+
+`candidate.sdk_review.v1` is a fresh no-tool post-development recommendation. It
+binds the complete final candidate, original source, actual diff, frozen gold,
+Plan and matching passed fixed-check copy. Display candidate/policy/SDK identity,
+allowlisted approve/reject/needs_evidence and reason, one original-ledger model
+charge and complete change scope. Full commentary/source/gold/diff and SDK/RPC
+sessions stay private. `passed` means an authenticated approve recommendation;
+it does not mean main adoption, product release or verified online improvement.
+
+The host separately reauthenticates stopped session/RPC, exact initial inputs,
+original fee history/known settlement and cleanup. A candidate hash selects one
+permanent claim under a finite root-approved private parent. Renaming a run or
+output cannot replay the same candidate. Expiry/revocation/candidate changes
+before forwarding prevent reservation. Missing/invalid/uncertain results retain
+their claim and original fee, with no automatic retry. Secondary completion,
+version and next-day-plan events must omit the primary review's cost counters.
+
+This role is implemented and offline-tested but has not been activated on the
+server. Automatic post-manager scheduling, independent development-provenance
+validation and fixed next-day registration still need their own integration.
+No release/deployment/rollback success may be inferred from this source contract.

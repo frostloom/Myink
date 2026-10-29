@@ -38,9 +38,9 @@ Interface: compile_dossier(request_path,request_sha256) -> dict(authority='none'
 
 Files: create ops/pi/candidate_review_launcher.py and candidate_review_evidence.py; modify no_tool_host.py fixed role map; tests test_candidate_review_launcher.py.
 Interface: prepare/prompt/input_hash/validate_output/check_live/publish_audit as existing no-tool contract; inspect(config,pin) authenticates immutable stopped/known-settlement proof.
-- [ ] RED role/finite-root-permit/identity/budget pins, preforward expiry/revocation/candidate races, approve/reject/needs_evidence/invalid output, uncertain usage/cleanup, no replay and audit cost once.
-- [ ] Reuse existing host lifecycle, independent no-tool session and original canonical ledger; bind candidate/dossier/report; keep executable_approval=False.
-- [ ] Run related no-tool lifecycle suites and full offline tests; commit.
+- [x] RED role/finite-root-permit/identity/budget pins, preforward expiry/revocation/candidate races, approve/reject/needs_evidence/invalid output, uncertain usage/cleanup, no replay and audit cost once.
+- [x] Reuse existing host lifecycle, independent no-tool session and original canonical ledger; bind candidate/dossier/report; keep executable_approval=False.
+- [x] Run related no-tool lifecycle suites and full offline tests; commit.
 
 ### Task 3: Host completion audit and native integration
 
@@ -50,3 +50,11 @@ Files: fixed post-manager completion adapter/service connection, docs/pi/agent-e
 - [ ] One independent final review/authorfix; full tests, exact HEAD CI, matched closed host/guest native proof and controlled real candidate review only for genuinely completed eligible candidate. Preserve existing owner002 acceptance/history without charging to rediscover it.
 
 This plan does not complete the root goal. Genuine automatic new-task admission, authorized product adoption/observation/ownership-safe rollback and real24–48hour validation remain required.
+
+Task2 targeted status:112related tests passed, including fixed candidate claim/no renamed replay and independent stopped-session/fee authentication. Full offline regression:3793passed,36deselected,234.97seconds; no actual role activation/model call or completion integration yet.
+
+Task3 concrete integration decisions (author choices):
+- `development_evidence.inspect` must reauthenticate original completed manager dispatch/cycle, prepared config/FileReview, stopped development SDK frame against readonly controlled-tool rows, final check after last patch/current candidate_status and the original known-settlement fee prefix. A compiler's pinned `verified:true` fields alone cannot authorize the paid reviewer.
+- The root coordinator should examine prior admitted claims under the existing maintenance lock before attempting a new investigation. After completion proof, it creates one finite root recommendation permit and fixed candidate-review config; a separate completion receipt preserves the immutable original admitted receipt. No manager-held-lock review-worker wait or arbitrary process entry.
+- Fixed `candidate_review` phase dispatch reuses ordinary-ubuntu cancellation and original shared financial scope. A permanent candidate claim makes duplicate wakeups0models, including failures. Declared missing/rejected evidence remains non-adoptable and does not authorize self-expanding fixes.
+- An ordinary no-model completion exporter projects exact tool order/failure feedback, baseline/final checks, separate candidate recommendation, component version/change scope and no_release. Primary SDK role costs appear once. The root publisher alone appends a bounded next-day fixed-test registry entry and its matching audit plan, preserving the original owner002 entry/claim and registry/env history. Plans are not results.
