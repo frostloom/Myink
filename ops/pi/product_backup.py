@@ -16,7 +16,7 @@ from .contracts import Identity
 from .product_bootstrap import _facts, COUNTS
 from .product_runtime import BASE, _pinned
 
-RECOVERY_COMPONENTS=('product_restored_api.py','product_business_probe.py','product_runtime_snapshot.py','product_activation.py','product_release.py','product_backup.py','product_restore.py','product_cold_probe.py','product_runtime.py','product_commands.py','product_migration.py','product_bootstrap.py','backup.py','ledger.py','audit.py')
+RECOVERY_COMPONENTS=('product_service_snapshot.py','product_restored_services.py','product_restored_api.py','product_business_probe.py','product_runtime_snapshot.py','product_activation.py','product_release.py','product_backup.py','product_restore.py','product_cold_probe.py','product_runtime.py','product_commands.py','product_migration.py','product_bootstrap.py','backup.py','ledger.py','audit.py')
 FIELDS=set('schema release_pair_id environment_path environment_sha256 compose_path compose_sha256 billing_ledger_path manager_state_path maximum_artifact_bytes'.split())
 META_SQL="""BEGIN READ ONLY;SET LOCAL statement_timeout='10s';
 SELECT json_build_object('system_identifier',(SELECT system_identifier::text FROM pg_control_system()),'database',current_database(),'size_bytes',pg_database_size(current_database()),
@@ -82,7 +82,7 @@ class LinuxProductBackup:
         candidate={k:v for k,v in self.plan['candidate'].items() if k!='schema_version'}
         self.candidate=Identity(**candidate)
         self.pair=dict(release_pair_id=self.plan['operation_id'],pre_identity=asdict(self.legacy),post_identity=asdict(self.candidate),plan_hash=digest(self.plan))
-        self.context=dict(schema_context=digest(dict(protocol=1,schema=1,state=1,effect_keys=1,serialization='jsonplus',recovery_contract=3 if runtime else 1,product_schema_id=self.plan['candidate']['schema_id'],postgres_image=roles['postgres'])),tool_context=digest({name:sha256(Path(__file__).with_name(name).read_bytes()).hexdigest() for name in RECOVERY_COMPONENTS}))
+        self.context=dict(schema_context=digest(dict(protocol=1,schema=1,state=1,effect_keys=1,serialization='jsonplus',recovery_contract=4 if runtime else 1,product_schema_id=self.plan['candidate']['schema_id'],postgres_image=roles['postgres'])),tool_context=digest({name:sha256(Path(__file__).with_name(name).read_bytes()).hexdigest() for name in RECOVERY_COMPONENTS}))
 
     def preflight(self):
         self.host.authorize(self.plan)
@@ -124,6 +124,17 @@ class LinuxProductBackup:
         volumes=self.host._json(['volume','inspect',*[v['name'] for v in context['volumes']]]) if context['volumes'] else []
         return capture(self.plan,self.host.config,context,phase,rows,network[0],volumes,bindings=bindings)
 
+    def _service_material(self,runtime):
+        from .product_service_snapshot import capture
+        ids=[v['id'] for v in self.plan['legacy']['containers'] if v['service'] in ('redis','rabbitmq','frontend')]
+        path=self.host.root/'ingress-before.json';_plain(path);require(path.stat().st_size<=1048576,'bounded original ingress material required')
+        return capture(self.plan,runtime,self.host._json(['inspect',*ids]),strict_json(path.read_bytes()))
+
+    def _redis_material(self):
+        from .product_service_snapshot import REDIS_LUA,_redis
+        result=self.host._run(['exec',self.host._cid('redis'),'sh','-c','exec redis-cli --no-auth-warning -a "$REDIS_PASSWORD" --raw EVAL "$1" 0','redis-material',REDIS_LUA],limit=33554432,seconds=30)
+        value=strict_json(self.host._bytes(result));_redis(value);return value
+
     def _quiet(self,phase="PRE"):
         self._sealed_configuration()
         self.host.authorize(self.plan)
@@ -133,7 +144,7 @@ class LinuxProductBackup:
         meta=self._metadata()
         configuration={k:self.config[k] for k in ('environment_sha256','compose_sha256')}
         runtime=self._runtime_material(phase)
-        if runtime is not None:configuration['effective_runtime_sha256']=digest(runtime)
+        if runtime is not None:configuration.update(effective_runtime_sha256=digest(runtime),effective_services_sha256=digest(self._service_material(runtime)))
         basis=dict(source=observed,phase=phase,fence=facts['fence_sha256'],database=meta['system_identifier'],tables=meta['tables'],content=meta['content'],roles=meta['roles'],configuration=configuration)
         return dict(verified=True,consistency_id=digest(basis)),meta
 
@@ -172,11 +183,17 @@ class LinuxProductBackup:
         runtime=self._runtime_material(phase)
         if runtime is not None:
             backup.durable_file(directory/'effective-runtime.json',encoded(runtime));configuration['effective-runtime.json']=directory/'effective-runtime.json'
+            services=self._service_material(runtime);redis=self._redis_material()
+            backup.durable_file(directory/'effective-services.json',encoded(services));configuration['effective-services.json']=directory/'effective-services.json'
+            backup.durable_file(directory/'redis-state.json',encoded(redis));configuration['redis-state.json']=directory/'redis-state.json'
         _tar_files(directory/'configuration.tar',configuration)
         _snapshot(Path(self.config['billing_ledger_path']),directory/'billing.sqlite')
         _snapshot(Path(self.config['manager_state_path']),directory/'manager.sqlite')
         backup.durable_file(directory/'source-metadata.json',encoded(meta))
         require(self._quiet(phase)[0]==quiet,'source changed during material collection')
+        if runtime is not None:
+            from .product_service_snapshot import same_redis
+            same_redis(redis,self._redis_material())
         return dict(verified=True,consistency_id=quiet['consistency_id'],dump_exit=0,dump_stderr_bytes=0,roles=sorted(meta['roles']),source_id=meta['system_identifier'],artifacts=dict(database='database.sql.gz',roles='roles.sql',crypto='crypto.env',attachments='attachments.tar',config='configuration.tar',certificate='certificate.tar',billing_snapshot='billing.sqlite',manager_snapshot='manager.sqlite',source_metadata='source-metadata.json'))
 
     def perform(self,action,plan,proofs):

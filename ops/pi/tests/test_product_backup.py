@@ -170,7 +170,7 @@ def test_recovery_tool_context_includes_application_and_restore_guards(product_b
     import ops.pi.product_backup as module
     controller=tmp_path/'controller';controller.mkdir()
     source=Path(module.__file__).parent
-    for name in ('product_restored_api.py','product_business_probe.py','product_runtime_snapshot.py','product_activation.py','product_release.py','product_backup.py','product_restore.py','product_cold_probe.py','product_runtime.py','product_commands.py','product_migration.py','product_bootstrap.py','backup.py','ledger.py','audit.py'):
+    for name in ('product_service_snapshot.py','product_restored_services.py','product_restored_api.py','product_business_probe.py','product_runtime_snapshot.py','product_activation.py','product_release.py','product_backup.py','product_restore.py','product_cold_probe.py','product_runtime.py','product_commands.py','product_migration.py','product_bootstrap.py','backup.py','ledger.py','audit.py'):
         (controller/name).write_bytes((source/name).read_bytes())
     monkeypatch.setattr(module,'__file__',str(controller/'product_backup.py'))
     host,_,proofs,_,_,_,_=product_backup

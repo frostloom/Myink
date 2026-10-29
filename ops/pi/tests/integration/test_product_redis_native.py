@@ -28,6 +28,17 @@ def test_authenticated_redis_lock_census_uses_container_secret_not_host_argv(tmp
                 if redis('ping')=='PONG':break
             except subprocess.CalledProcessError:pass
             assert time.monotonic()<until;time.sleep(.2)
+        from ops.pi.product_service_snapshot import REDIS_LUA,same_redis
+        empty=json.loads(redis('--raw','EVAL',REDIS_LUA,'0'));assert empty['keys']==[]
+        redis('SET','quota:retained','original','PX','60000')
+        redis('SET','quota:permanent','unchanged')
+        redis('SET','queue:heartbeat:old-1','1')
+        snapshot=json.loads(redis('--raw','EVAL',REDIS_LUA,'0'));assert len(snapshot['keys'])==2
+        assert all(v['key_hex']!=b'queue:heartbeat:old-1'.hex() for v in snapshot['keys'])
+        assert next(v['expires_at_ms'] for v in snapshot['keys'] if v['key_hex']==b'quota:retained'.hex())==int(redis('PEXPIRETIME','quota:retained'))
+        same_redis(snapshot,json.loads(redis('--raw','EVAL',REDIS_LUA,'0')))
+        redis('SET','quota:permanent','changed')
+        with pytest.raises(ValueError):same_redis(snapshot,json.loads(redis('--raw','EVAL',REDIS_LUA,'0')))
         redis('MSET','lock:task:a','1','lock:task:b','1','lock:book:a','1','unrelated','1')
         root=(tmp_path/'operation').resolve();root.mkdir(mode=0o700);commands=root/'commands';commands.mkdir(mode=0o700)
         host=SimpleNamespace(commands=DockerCommands(docker,endpoint,commands),_cid=lambda role:cid)

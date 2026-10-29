@@ -120,8 +120,8 @@ class OwnedRestoredAPI:
         path=self.restore.folder/'config/effective-runtime.json';snapshot=strict_json(path.read_bytes());require(snapshot['plan_sha256']==digest(self.plan),'main API runtime plan differs')
         self.values=api_environment(snapshot,self.restore.authentication);row=next(v for v in snapshot['containers'] if v['service']=='api');self.resources=row['host_config'];require(type(self.resources['Memory']) is int and 0<self.resources['Memory']<=1073741824 and type(self.resources['NanoCpus']) is int and 0<self.resources['NanoCpus']<=2000000000,'bounded recovered API resources required')
         folder=self.restore.folder/('main-api-'+self.probe.role);folder.mkdir(mode=0o700)
-        durable_file(folder/'intent.json',encoded(dict(plan_sha256=digest(self.plan),image_id=self.probe.image,target_container_id=self.restore.cid,runtime_sha256=runtime_pin,environment_sha256=digest(self.values))))
-        env=folder/'runtime.env';durable_file(env,(''.join(k+'='+v+'\n' for k,v in sorted(self.values.items()))).encode())
+        durable_file(folder/'intent.json',encoded(dict(plan_sha256=digest(self.plan),image_id=self.probe.image,target_container_id=self.restore.cid,runtime_sha256=runtime_pin,isolation_basis_sha256=digest(self.values))))
+        env=folder/'runtime.env'
         attachments={};source=self.restore.folder/'attachments';archive=folder/'attachments.tar'
         fd=os.open(archive,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
         with os.fdopen(fd,'wb') as output,tarfile.open(fileobj=output,mode='w') as stream:
@@ -133,17 +133,24 @@ class OwnedRestoredAPI:
                 require(total<=536870912 and len(attachments)<20000,'bounded main API attachments required');attachments[name]=sha256(file.read_bytes()).hexdigest()
                 info=tarfile.TarInfo(name);info.size=file.stat().st_size;info.mode=0o600
                 with file.open('rb') as incoming:stream.addfile(info,incoming)
-        packet=folder/'check.json';durable_file(packet,encoded(dict(environment=self.values,runtime_sha256=runtime_pin,attachments=attachments)))
+        packet=folder/'check.json'
+        cohort=None
         try:
+            from .product_restored_services import OwnedServiceCohort
+            cohort=OwnedServiceCohort(self,snapshot);cohort.prepare()
+            durable_file(env,(''.join(k+'='+v+'\n' for k,v in sorted(self.values.items()))).encode())
+            durable_file(packet,encoded(dict(environment=self.values,runtime_sha256=runtime_pin,attachments=attachments)))
             args=['create','--name','myink-pi-restored-api-'+self.restore.registry['attempt_uuid']+'-'+self.probe.role,'--label',LABEL+'='+self.plan['operation_id'],'--label','myink.pi.restored-api.role='+self.probe.role,'--network','container:'+self.restore.cid,'--read-only','--tmpfs','/tmp:rw,size=67108864','--tmpfs','/data/feedback:rw,size=536870912,uid=10001,gid=10001','--memory',str(self.resources['Memory']),'--memory-swap',str(self.resources['Memory']),'--cpus',str(self.resources['NanoCpus']/1000000000),'--pids-limit','128','--cap-drop','ALL','--security-opt','no-new-privileges','--user','10001','--workdir','/app','--env-file',str(env),self.probe.image,'myink-api']
             result=h._run(args);self.cid=h._bytes(result).decode().strip();require(hash_value(self.cid),'actual main API ID required');durable_file(folder/'registry.json',encoded(dict(container_id=self.cid,image_id=self.probe.image,target_container_id=self.restore.cid)));self._owned()
             h._run(['start',self.cid]);require(self._owned()['State']['Running'],'restored main API exited')
-            h._run(['exec','-i',self.cid,'python','-B','-c',UNPACK],stdin_path=archive,seconds=90);self._owned()
+            h._run(['exec','-i',self.cid,'python','-B','-c',UNPACK],stdin_path=archive,seconds=90);self._owned();cohort.start_frontend()
             result=h._run(['exec','-i',self.cid,'python','-B','-c',CHECK],stdin_path=packet,seconds=150);observed=strict_json(h._bytes(result))
             require(isinstance(observed,dict) and set(observed)=={'verified','api_health','main_process','effective_environment_sha256','runtime_sha256','owner_cases','anonymous_rejections','attachment_files','model_requests'} and observed['verified'] is True and observed['api_health'] is True and observed['main_process'] is True and observed['effective_environment_sha256']==digest(self.values) and observed['runtime_sha256']==runtime_pin and type(observed['owner_cases']) is int and 0<=observed['owner_cases']<=16 and observed['anonymous_rejections']==1 and observed['attachment_files']==len(attachments) and observed['model_requests']==0,'restored main API assertions unconfirmed')
+            service_proof=cohort.verify()
             h._run(['stop','--signal','SIGTERM','--timeout','-1',self.cid],seconds=30);state=self._owned()['State'];require(not state['Running'] and state['ExitCode']==0,'restored main API did not exit naturally')
-            result=dict(observed,natural_exit_code=0,scope='restored_main_api_reads_only');durable_file(folder/'receipt.json',encoded(result));return result
+            result=dict(observed,natural_exit_code=0,scope='restored_main_api_reads_only',services=service_proof);durable_file(folder/'receipt.json',encoded(result));return result
         finally:
+            if cohort is not None:cohort.cleanup()
             if self.cid is not None:
                 self._owned()
                 try:

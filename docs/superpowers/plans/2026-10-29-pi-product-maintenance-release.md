@@ -58,6 +58,8 @@ Task2 业务读取与POST顺序：新增固定 `product_business_probe.py`，独
 
 Task2 恢复主API进程：runtime资格额外在恢复PG的无网络命名空间启动真实`myink-api` PID1，使用封存实际API环境、原应用/报表凭据和资源，仅覆盖隔离端点/只读/反馈恢复位置并关闭外部模型及遥测。核对PID1环境、导入源码、附件内容、匿名空列表、已知用户作品读取及自然退出；恢复资格合同升为3，绑定15组件，旧认证读取收据不能复用。该层不伪称Redis/Rabbit/worker/Caddy已重建，完整服务及写作任务仍继续验收。
 
+Task2 完整服务恢复接线：备份runtime资格同时封存原Redis/Rabbit/Caddy有效配置和原入口JSON，Redis以原值/绝对到期快照保存配额状态，前后只容许自然过期；旧心跳不冒充恢复worker。所属独占内部恢复网络内重建认证Redis/Rabbit、两真实worker和Caddy，验证错误口令拒绝、空队列、专属心跳、每个真实worker的应用只读DB/错误口令拒绝及Redis/Rabbit连接、API/经Caddy就绪、封存TLS证书指纹及worker自然退出；恢复合同4/17组件阻止弱资格复用。worker保留独立PID/hostname，目标PG只对本次私有网段开放原应用/报表SCRAM，逐次拒绝外来网络成员；不共享宿主PID。Caddy冻结二进制复制到本次私有执行tmpfs并逐字节cmp，保持cap-drop ALL/no-new-privileges和其余tmpfs noexec，不修改镜像。Redis与Caddy配置及证书只经私有材料写入本次tmpfs，不恢复原费用/manager，不成为模型工具。
+
 ### Task 3: 固定操作包与一次独立审查
 
 - [ ] 冻结候选源码、CI、镜像、PRE/恢复证明、迁移计划、操作顺序、维护窗口、最大停机时间、观察阈值、回退触发和权限。全量范围区分历史导入、主机操作与 Pi 模型候选。

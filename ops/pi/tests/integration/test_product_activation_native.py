@@ -89,12 +89,36 @@ with Session(get_admin_engine()) as db:
         api=create('api','myink-api',images['python'],args=['--memory','512m','--memory-swap','512m','--cpus','1','--pids-limit','128'],env=common+['ADMIN_DATABASE_URL=postgresql+psycopg://myink_report:synthetic-report@myink-pg:5432/myink'],mounts=['--mount','type=volume,source='+volume+',target=/data/feedback'],command=['myink-api']);application.append(api)
         for n in range(2):application.append(create('worker','myink-worker',images['python'],args=['--memory','512m','--memory-swap','512m','--cpus','1','--pids-limit','128'],env=common,command=['myink-worker']))
         caddy_config=dict(admin={'listen':'localhost:2019'},apps={'http':{'servers':{'srv0':{'listen':[':80'],'routes':[{'handle':[{'handler':'reverse_proxy','upstreams':[{'dial':'myink-api:8100'}]}]}]}}}})
+        tls_files=[]
+        if flow in ('runtime-business','runtime-business-bad'):
+            from cryptography import x509
+            from cryptography.hazmat.primitives import hashes,serialization
+            from cryptography.hazmat.primitives.asymmetric import rsa
+            from cryptography.x509.oid import NameOID
+            key=rsa.generate_private_key(public_exponent=65537,key_size=2048)
+            name=x509.Name([x509.NameAttribute(NameOID.COMMON_NAME,'fixture.invalid')])
+            certificate=x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key()).serial_number(x509.random_serial_number()).not_valid_before(datetime.now(timezone.utc)-timedelta(minutes=1)).not_valid_after(datetime.now(timezone.utc)+timedelta(days=7)).add_extension(x509.SubjectAlternativeName([x509.DNSName('fixture.invalid')]),critical=False).sign(key,hashes.SHA256())
+            for filename,body in [('site.crt',certificate.public_bytes(serialization.Encoding.PEM)),('site.key',key.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.PKCS8,serialization.NoEncryption()))]:
+                file=root/filename;file.write_bytes(body);file.chmod(0o600);tls_files.append(file)
+            caddy_config['apps']['tls']={'certificates':{'load_files':[{'certificate':'/data/caddy/certificates/fixture.invalid/site.crt','key':'/data/caddy/certificates/fixture.invalid/site.key'}]}}
+            caddy_config['apps']['http']['servers']['tls']=dict(listen=[':443'],routes=caddy_config['apps']['http']['servers']['srv0']['routes'],tls_connection_policies=[{}],automatic_https={'disable':True})
         configfile=root/'caddy.json';configfile.write_text(json.dumps(caddy_config))
         front=create('frontend','myink-caddy',images['frontend'],args=['--memory','192m','--memory-swap','192m','--pids-limit','64'],command=['caddy','run','--config','/tmp/fixture.json'])
         d('cp',str(configfile),front+':/tmp/fixture.json')
+        if tls_files:
+            # Docker cp can populate the image-owned /data before startup.
+            # Temporary command override is not used; copy a prepared owned tar
+            # into /data so its final startup still uses the approved Caddy cmd.
+            import io
+            incoming=io.BytesIO()
+            with tarfile.open(fileobj=incoming,mode='w') as archive:
+                for file in tls_files:
+                    entry=tarfile.TarInfo('caddy/certificates/fixture.invalid/'+file.name);entry.size=file.stat().st_size;entry.uid=entry.gid=10001;entry.mode=0o600;archive.addfile(entry,io.BytesIO(file.read_bytes()))
+            d('cp','-',front+':/data',body=incoming.getvalue())
         for cid in [*application,front]:d('start',cid)
         wait_ready(front,['/usr/bin/curl','-fsS','http://myink-api:8100/readyz'],seconds=120)
         d('exec',api,'python','-B','-c',"from pathlib import Path;Path('/data/feedback/owned-fixture.txt').write_bytes(b'owned material survives release')")
+        d('exec',redis,'redis-cli','--no-auth-warning','-a','synthetic-redis','SET','pi:restore:quota-sentinel','retained')
         # Warm source worker topology: five exact queues must exist before drain.
         until=time.monotonic()+60
         while True:
@@ -181,7 +205,12 @@ with Session(get_admin_engine()) as db:
                     for proof in proof_rows:
                         main=proof['main_api'];assert main['main_process'] is True and main['api_health'] is True and main['natural_exit_code']==0 and main['anonymous_rejections']==1 and main['attachment_files']==1 and main['model_requests']==0
                         if flow=='runtime-business':assert main['owner_cases']==1
+                        service=main['services'];assert service['ready'] is True and service['caddy_ready'] is True and service['worker_heartbeats']==2 and service['retained_redis_keys']==1 and service['tls_pinned'] is True
+                        assert service['authentication']['wrong_passwords_rejected']==2 and service['authentication']['empty_queues']==5 and service['worker_exit_codes']==[0,0] and len(service['worker_connections'])==2
+                        assert all(v['wrong_database_password_rejected'] is True and v['application_role']=='myink_app' and v['read_only'] is True for v in service['worker_connections'])
                     assert not d('ps','-aq','--filter','label=myink.pi.restored-api.operation='+op)
+                    assert not d('ps','-aq','--filter','label=myink.pi.restored-service.operation='+op)
+                    assert not d('network','ls','--quiet','--filter','label=myink.pi.restore.operation='+op)
                     runtime_material=json.loads((postdir/'effective-runtime.json').read_bytes())
                     assert runtime_material['phase']=='POST' and all('DEPLOYMENT_GENERATION=1' in v['config']['Env'] for v in runtime_material['containers'])
                 assert d('exec',pg,'psql','-X','-q','-A','-t','-U','myink','-d','myink','-c','SELECT count(*) FROM pi_native_release_marker')=='2'
