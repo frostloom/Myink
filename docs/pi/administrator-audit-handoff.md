@@ -283,3 +283,8 @@ tools do not change. Separate source plan and qualification gate:
 ## 源码集成审计交接更新（2026-10-29）
 
 固定实现8179de5a及精确4项CI已通过；单次审查六项Important完成一次作者修复。后端2578/Pi离线3938/针对性119通过，未选入与既有预期失败单列。继承的产品功能保留，main/产品未采用；没有新增模型请求。完整范围与失败保留见docs/evaluations/pi-product-source-integration-2026-10-29.md及同名JSON/范围JSON。工具、记忆、设置、边界、回退审计及检查—开发—工具—次日—每日输出统一对照见docs/pi/management-audit-output-map.md。下一阶段是固定生产维护/兼容备份恢复操作包和隔离演练，不能以本次源码通过宣称线上管理者已完成。
+
+
+## 产品来源存储探针更正（开发中）
+
+实际来源由workflow记录在agent_runs.detail.run_provenance；任务元数据保存在tasks，payload为JSON。catalog v1的task_provenance/agent_run_provenance布尔名保留兼容，但新版实现仅表示tasks.payload/agent_runs.detail为JSON或JSONB存储，不能证明已有内容、完整来源或部署归属。旧实现查找不存在的独立run_provenance列，历史false观测与原收据保留。原始源码/配置身份、实际新运行来源与main采用仍需独立证据；探针不回填历史行，也不放行产品发布。修复已用独立真实PostgreSQL复现；源码尚待本维护计划最终审查与实际探针更新，不表示现有服务器探针已切换。

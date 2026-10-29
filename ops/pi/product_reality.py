@@ -31,13 +31,15 @@ FIELDS=set('schema mode docker endpoint daemon_id root audit_path export_root wo
 ROW=set('id image_id running status healthy project service'.split())
 META=set('maintenance_control maintenance_executions maintenance_lock_function task_provenance agent_run_provenance'.split())
 SERVICES={'myink-api':1,'myink-worker':None,'myink-caddy':1,'myink-pg':1,'myink-redis':1,'myink-rabbitmq':1}
+# Legacy v1 names below mean JSON storage availability, not populated or
+# authenticated provenance. Actual run identity is projected from agent_runs.detail.
 METADATA_SQL="""BEGIN READ ONLY;SET LOCAL statement_timeout='3s';
 SELECT json_build_object(
 'maintenance_control',to_regclass('public.maintenance_control') IS NOT NULL,
 'maintenance_executions',to_regclass('public.maintenance_executions') IS NOT NULL,
 'maintenance_lock_function',to_regprocedure('public.myink_lock_maintenance()') IS NOT NULL,
- 'task_provenance',EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tasks' AND column_name='run_provenance'),
- 'agent_run_provenance',EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='agent_runs' AND column_name='run_provenance'));
+ 'task_provenance',EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tasks' AND column_name='payload' AND data_type IN ('json','jsonb')),
+ 'agent_run_provenance',EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='agent_runs' AND column_name='detail' AND data_type IN ('json','jsonb')));
 ROLLBACK;"""
 CONTAINER_FORMAT='{"id":{{json .Id}},"image_id":{{json .Image}},"running":{{json .State.Running}},"status":{{json .State.Status}},"healthy":{{if (index .State "Health")}}{{json (index (index .State "Health") "Status")}}{{else}}null{{end}},"project":{{json (index .Config.Labels "com.docker.compose.project")}},"service":{{json (index .Config.Labels "com.docker.compose.service")}}}'
 IMAGE_FORMAT='{"id":{{json .Id}},"revision":{{if (index .Config "Labels")}}{{json (index (index .Config "Labels") "org.opencontainers.image.revision")}}{{else}}null{{end}}}'

@@ -58,8 +58,9 @@ def _facts(action, facts, plan, proofs):
     if action=='close_ingress':
         require(set(facts)==common|{'fence_sha256'} and hash_value(facts['fence_sha256']),'confirmed ingress fence required')
     elif action=='drain_legacy':
-        _guard(set(facts)==common|{'fence_sha256','worker_exit_codes',*COUNTS},'incomplete_drain')
+        _guard(set(facts)==common|{'fence_sha256','api_exit_code','worker_exit_codes',*COUNTS},'incomplete_drain')
         _guard(facts['fence_sha256']==proofs['close_ingress']['fence_sha256'],'ingress_fence_drift')
+        _guard(type(facts['api_exit_code']) is int and facts['api_exit_code']==0,'api_exit_unconfirmed')
         codes=facts['worker_exit_codes']
         _guard(isinstance(codes,list) and len(codes)==2 and all(type(v) is int and v==0 for v in codes),'worker_exit_unconfirmed')
         _guard(all(type(facts[key]) is int and facts[key]==0 for key in COUNTS),'legacy_drain_unsettled')

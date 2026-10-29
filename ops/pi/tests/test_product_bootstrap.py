@@ -53,7 +53,7 @@ def case(tmp_path):
             if self.fail==action:raise ConnectionError('effect outcome lost')
             facts=dict(verified=True,plan_sha256=digest(value))
             if action=='close_ingress':facts['fence_sha256']='f'*64
-            elif action=='drain_legacy':facts.update(fence_sha256='f'*64,worker_exit_codes=[0,0],**dict.fromkeys(COUNTS,0))
+            elif action=='drain_legacy':facts.update(fence_sha256='f'*64,api_exit_code=0,worker_exit_codes=[0,0],**dict.fromkeys(COUNTS,0))
             elif action=='backup_pre':facts.update(release_pair_id=value['operation_id'],manifest_sha256='e'*64,restore_operation_id='restore:'+value['operation_id'],source_sha256=value['legacy']['source_sha256'])
             elif action=='install_schema':facts.update(source_commit=value['candidate']['commit_sha'],historical_provenance_updated=False,protocol=dict(protocol=1,schema=1,state=1,effect_keys=1,serialization='jsonplus'))
             elif action=='bind_identity':facts['identity']=deepcopy(value['candidate'])
@@ -243,3 +243,15 @@ def test_incompatible_migrated_protocol_never_binds_identity(case,field,value):
     host.tamper=change
     assert api()(ledger,plan,host,now=lambda:NOW).status=='uncertain'
     assert 'bind_identity' not in host.calls
+
+
+@pytest.mark.parametrize('exit_code',[None,137,True,False])
+def test_api_must_exit_naturally_before_legacy_drain_is_accepted(case,exit_code):
+    ledger,plan,host=case
+    def change(action,facts):
+        if action=='drain_legacy':
+            if exit_code is None:facts.pop('api_exit_code',None)
+            else:facts['api_exit_code']=exit_code
+    host.tamper=change
+    assert api()(ledger,plan,host,now=lambda:NOW).status=='blocked'
+    assert 'install_schema' not in host.calls
