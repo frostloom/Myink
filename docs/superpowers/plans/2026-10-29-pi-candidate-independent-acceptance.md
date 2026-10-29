@@ -58,3 +58,13 @@ Task3 concrete integration decisions (author choices):
 - The root coordinator should examine prior admitted claims under the existing maintenance lock before attempting a new investigation. After completion proof, it creates one finite root recommendation permit and fixed candidate-review config; a separate completion receipt preserves the immutable original admitted receipt. No manager-held-lock review-worker wait or arbitrary process entry.
 - Fixed `candidate_review` phase dispatch reuses ordinary-ubuntu cancellation and original shared financial scope. A permanent candidate claim makes duplicate wakeups0models, including failures. Declared missing/rejected evidence remains non-adoptable and does not authorize self-expanding fixes.
 - An ordinary no-model completion exporter projects exact tool order/failure feedback, baseline/final checks, separate candidate recommendation, component version/change scope and no_release. Primary SDK role costs appear once. The root publisher alone appends a bounded next-day fixed-test registry entry and its matching audit plan, preserving the original owner002 entry/claim and registry/env history. Plans are not results.
+
+
+Task3 progress: development_evidence.inspect now reauthenticates stopped SDK
+against readonly original controlled-tool source/review/approval/receipt rows,
+final patch/check/status order, source/candidate and original known fee prefix.
+14targeted/87related/3807full offline tests passed,36deselected. Original manager
+binding and automatic completion/nextday registration remain unfinished.
+Separate already-reviewed8d1802af admission runtime has now been activated with
+zero-call real outside-window/idle/cold-reentry acceptance; this newer candidate
+completion plan's source is not deployed or claimed complete.

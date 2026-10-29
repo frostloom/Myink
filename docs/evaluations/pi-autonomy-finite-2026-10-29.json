@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "authority": "audit_only",
+  "mode": "ACTUAL",
+  "evidence_domain": "offline",
+  "status": "finite_controller_active_night_acceptance_pending",
+  "code_commit": "8d1802af4072d2d6537b16fcff4bfb5e2959e42c",
+  "controller_sha256": "a66c01a50638bbe94ed5c9b3818db08b15fadbf9fccd59e45bee8d517bde617f",
+  "sdk_code_sha256": "3cff5eb6a2c10c94c71524239211c84db34d34f1ae1cefca3f4b999106816db9",
+  "profile_sha256": "db678d1b323d4cdc768db709a542ee2d9a4e7b515991e2ef21f189c8f4f1150d",
+  "issued_at": "2026-10-29T00:47:44.911473+00:00",
+  "expires_at": "2026-10-30T00:47:44.911473+00:00",
+  "source_reference": {
+    "reference_commit": "b6f38a886efd653c529455ca098c0a583f8116ee",
+    "source_sha256": "0f13a4ad3dfc192d096de359d4c1d62f05b1bde1a9027d001ce44513b636206e",
+    "archive_sha256": "86731346ea98d47a5ca4568b68dbc65234e1eb2c2fbb402d0b27b7c978f7e52c",
+    "files": 220,
+    "selected_files": [
+      "src/myink/context_budget.py"
+    ],
+    "selected_file_sha256": "c5f0211f6ff8e580346608d9e233071031441d6db1637816b2e9fd04eeedfee8",
+    "reference_is_deployment_identity": false
+  },
+  "context_bytes": 10837,
+  "observer_controller_sha256": "b35636d4cd658eab836825b9616bddccbcd21e888a56aa537fd2ed7942d4ea60",
+  "observer_config_sha256": "37c2ba3f02834a95faa3994fe44fb5adc8a607be3a0db58c4f56a8fb1b4ff0ba",
+  "fee_sha256": "fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb",
+  "new_model_requests": 0,
+  "budget_microyuan": 50000000,
+  "legacy_unknown_holds": 9,
+  "known_cost_microyuan": 4706205,
+  "held_microyuan": 18115200,
+  "conservative_used_microyuan": 22821405,
+  "remaining_microyuan": 27178595,
+  "changes": {
+    "files": 67,
+    "added": 4659,
+    "deleted": 129
+  },
+  "event_hashes": {
+    "pi-autonomy-rollout-001:version": "54e587e097236d93d6986eff4875e29cc8a21d4c1c263e7a56c7a72985c5616d",
+    "pi-autonomy-rollout-001:enhancement": "084373d2638bca7ac1016db34c92671e626c925011138dedd01159116eabe250",
+    "pi-autonomy-rollout-001:initial-lock-busy": "188e9dc890a30773808e7c37dd61869e7bec45e9afc675b90afe4302eccc229c"
+  },
+  "main_reader_verified": true,
+  "original_nextday_test_result": "18/18 passed,0modelrequests",
+  "product_release": false,
+  "limits": {
+    "max_model_requests_per_development": 30,
+    "max_tool_rpcs": 96,
+    "development_seconds": 1800,
+    "cycle_seconds": 2090,
+    "investigation_requests": 1,
+    "investigation_seconds": 120,
+    "review_requests": 1,
+    "review_seconds": 120
+  },
+  "night_window": "Asia/Shanghai02:00-05:30 admission,finish before06:00",
+  "actual_new_research": false,
+  "actual_new_candidate": false,
+  "full_management_loop_complete": false,
+  "timestamp_correction_event_sha256": "5caa803dfddd9ccf6266680c8ceadd96041c1ef777849ff245def73471dcb432"
+}

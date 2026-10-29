@@ -1,9 +1,18 @@
 # Autonomous investigation and independent review admission
 
 Implementation plan: `docs/superpowers/plans/2026-10-29-pi-autonomous-investigation-admission.md`.
-The full pipeline is in development; the server still uses its previously
-verified finite approved queue. This document does not announce autonomous task
-admission as active.
+Finite source coordination is active on the server as of2026-10-29 08:47+08,
+using independently reviewed8d1802af, closed controllera66c01a5 and matching SDK
+code3cff5eb6. Original50CNY/9holds and all original histories remain unchanged.
+Two real configured ticks rejected admission outside the maintenance window,
+new manager/review-worker idle ticks passed and0new model requests occurred.
+The root source profile expires2026-10-30 08:47:44+08. It admits only the frozen
+context_budget reference source during02:00–05:30 Shanghai, finishing before06:00.
+Actual new investigation/reproduction/development remains pending the real night
+window; final candidate review/completion scheduling is a newer source-only path.
+This is not main adoption/product release or complete autonomous management.
+See docs/evaluations/pi-autonomy-finite-2026-10-29.md for exact actual/source gates.
+The sections below retain staged implementation history.
 
 ## Implemented input contract
 

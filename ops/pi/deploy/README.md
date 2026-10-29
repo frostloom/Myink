@@ -216,7 +216,7 @@ check alone does not exercise the default checker imports.
 
 The service uses the existing manager idle_seconds=0 mode and60second timer. An idle tick scans the inbox once and exits, leaving maintenance.lock available for diagnostics and due fixed regressions. When idle and uncontended, approved work is normally admitted on the next timer tick, roughly60seconds after the previous service completes (plus timer accuracy/scheduling delay). Lock contention or genuine execution can delay admission further. Genuine execution keeps the same exclusive lock, max_tasks1 and2100second host deadline. An old process started with idle600 retains that value until it exits; a unit-file reload alone does not prove the new scheduling is active. Verify actual new idle ticks, zero dispatch/fees and obtainable shared lock, and keep the old root-owned unit and events. This is controller scheduling, not a product release.
 
-## External exact review worker (source only, not installed)
+## External exact review worker (finite activation2026-10-29)
 
 `myink-pi-review-worker.service` uses the same closed-tree verifier with explicit
 `review_worker`, its own root-owned0640 registry in root-owned0750 config, and a
@@ -234,11 +234,15 @@ but does not undo an already issued review or replay any phase. Install only wit
 matching verified host/SDK code after whole-plan review and native acceptance;
 the old runtime005 cannot stand in for the new host closure.
 
-## Finite source coordinator and closed manager (not activated)
+## Finite source coordinator and closed manager (active8d1802af)
 
 The source `myink-pi-manager.service` now uses the closed verified entry with
 `--component manager`; max_tasks1/2100seconds/idle0 are fixed in manager_host.
-The existing live005 service is unchanged until an explicit verified rollout.
+The old005 service/unit/runtime is retained in the rollout backup; the live
+manager now uses the independently reviewed8d1802af closed host. Its actual
+outside-window/idle/cold-reentry and main-reader evidence is documented in
+`docs/evaluations/pi-autonomy-finite-2026-10-29.md`. Source profile expires
+Oct30 08:47+08; no perpetual renewal or actual new night-task success is implied.
 New root-owned0640 config files in root-owned0750 config are:
 `autonomy-profile.json`, `autonomy.env`, `manager-host.json`, `closed-manager.env`,
 `review-worker-registry.json` and `review-worker.env`. Preserve old service.env,
@@ -267,6 +271,9 @@ metadata cannot start selection. Withdrawal only preserves/moves an exact own
 manifest before manager registration; registered/foreign data is never removed.
 The external review service never takes maintenance.lock, so it can answer the
 original manager while FileReview waits. Signal cancellation, original finance,
-owned cleanup, cold reentry and main audit reading need native acceptance before
-activation. Whole-plan independent review is still required. Main/product release
-is a different authorization boundary.
+owned cleanup, cold reentry and main audit reading remain required before any
+new rollout. The deployed8d1802af has its one whole-plan review/author fixpass,
+native SDK mock/idle/window guards and actual audit-reading evidence; genuine
+new paid night-task and private-lab/full24–48hour qualification remain separate.
+Newer candidate post-review/completion source is not in that live closure.
+Main/product release is a different authorization boundary.

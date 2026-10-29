@@ -159,3 +159,22 @@ This role is implemented and offline-tested but has not been activated on the
 server. Automatic post-manager scheduling, independent development-provenance
 validation and fixed next-day registration still need their own integration.
 No release/deployment/rollback success may be inferred from this source contract.
+
+
+## Actual finite controller activation — 2026-10-29
+
+`autonomy.controller.rollout.v1` version and
+`pi.autonomy.finite_deployment.v1` enhancement events now describe the actual
+finite8d1802af controller, its source-profile expiry and67controller/config files
+(+4659/-129). A standalone main reader has read these exported facts along with
+the original actual18/18next-day result. No product release, new paid research or
+new candidate is claimed. Newer post-development SDK role/completion code is
+source-only until separately verified deployment. The old runtimes, original
+fee/manager history and all six timer roles remain separate identities.
+
+`autonomy.rollout.prelock.corrected.v1` links the retained initial lock-busy event;
+its exact initial occurrence time was not recorded. Use the correction's
+recorded_at, not the prior retrospective emission time as an exact failure time.
+Keep both records. No configuration changed or model request occurred in that
+initial locked-out attempt. Actual source coordinator ticks can separately report
+lock_busy or outside_window without being failed product deployments.
