@@ -128,3 +128,8 @@ sdk_review_launcher通过全新无工具SDK会话给出approve/reject/needs_evid
 有限付费控制器仍1ea1d514，当前参考profile17becf3b对齐实际222tracked后端文件d25d8275，context_budget字节不变；原Oct30 11:27+08到期和预算/预留不变。历史63383ce9是当时上下文，不应覆盖旧审计。新组件观测不升级为历史run源码身份、部署owner或发布审批。
 
 证据与未完成门槛见[实际验收](../evaluations/pi-product-preflight-2026-10-29.md)及JSON。真实新候选、main/产品采用、业务版本回退与24–48h仍未验收；只读能力不得展示为完整自治管理者已上线。
+
+
+## 产品源码集成更新（2026-10-29）
+
+固定实现8179de5a及精确4项CI已通过；单次审查六项Important完成一次作者修复。后端2578/Pi离线3938/针对性119通过，未选入与既有预期失败单列。继承的产品功能保留，main/产品未采用；没有新增模型请求。完整范围与失败保留见docs/evaluations/pi-product-source-integration-2026-10-29.md及同名JSON/范围JSON。工具、记忆、设置、边界、回退审计及检查—开发—工具—次日—每日输出统一对照见docs/pi/management-audit-output-map.md。下一阶段是固定生产维护/兼容备份恢复操作包和隔离演练，不能以本次源码通过宣称线上管理者已完成。

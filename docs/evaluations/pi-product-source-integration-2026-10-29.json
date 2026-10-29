@@ -1,0 +1,167 @@
+{
+  "schema": "pi-product-source-integration-qualification-v1",
+  "recorded_at": "2026-10-29T12:27:30.276706+00:00",
+  "status": "source_verified_pushed_ci_passed_product_not_released",
+  "source_commit": "8179de5a97f6d9555f633adf9bdb59a427f13791",
+  "source_tree": "dd2fef955b386906802e614caead36cb6fa304b2",
+  "parents": [
+    "34730c3ffad7e52d4baa8e8e090f0aeaed6e02d1",
+    "d25d82752d4821ae701f3ed7ebbffea01b4b63f7"
+  ],
+  "main_reference": "b6f38a886efd653c529455ca098c0a583f8116ee",
+  "review_status": "one_final_review_six_important_fixed_one_author_fixpass_no_rereview",
+  "implementation_ci": {
+    "head": "8179de5a97f6d9555f633adf9bdb59a427f13791",
+    "run": {
+      "id": 40872206218,
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/frostloom/Myink/actions/runs/40872206218"
+    },
+    "jobs": [
+      {
+        "name": "Python 全量回归（全新 PG）",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/frostloom/Myink/actions/runs/40872206218/job/123442214139"
+      },
+      {
+        "name": "Pi offline control gates",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/frostloom/Myink/actions/runs/40872206218/job/123442214453"
+      },
+      {
+        "name": "前端（lint + 单测 + 构建）",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/frostloom/Myink/actions/runs/40872206218/job/123442214462"
+      },
+      {
+        "name": "镜像构建（Python + Caddy）",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/frostloom/Myink/actions/runs/40872206218/job/123442214532"
+      }
+    ]
+  },
+  "operator_integration": true,
+  "pi_model_authored": false,
+  "scope": {
+    "git_logical_changes": "887 files changed, 72800 insertions(+), 21480 deletions(-)",
+    "explicit_path_changes": 896,
+    "scope_file": "pi-product-source-integration-scope-2026-10-29.json",
+    "deployed_backend_product_scope": "31 files changed, 2970 insertions(+), 271 deletions(-)",
+    "scope_sha256": "4b850546bd2cf39bad02f81c97e80d790823d0372b0f4fc9f57f28cbe630bbeb"
+  },
+  "verification": {
+    "python_passed": 2578,
+    "python_private_deselected": 159,
+    "python_known_xfails": 2,
+    "python_warnings": 2,
+    "pi_offline_passed": 3938,
+    "pi_private_deselected": 36,
+    "frontend_shared": 207,
+    "frontend_vue": 809,
+    "frontend_lint_errors": 0,
+    "frontend_lint_warnings": 9,
+    "browser_engines": [
+      "chromium",
+      "firefox",
+      "webkit"
+    ],
+    "browser_stages": 21,
+    "browser_checks": 417,
+    "asset_cleanup_tests": 10,
+    "strict_typecheck_and_build": true,
+    "api_contract_paths": 119,
+    "standalone_actual_audit_reader": true,
+    "original_actual_nextday_18_linked": true,
+    "go_changes": false,
+    "post_review_targeted_passed": 119,
+    "backend_seconds": 371.16,
+    "pi_offline_seconds": 347.73,
+    "frontend_reused_reason": "No frontend implementation changed after verified merge tree; same asset/browser artifacts retained."
+  },
+  "integration_corrections": [
+    {
+      "behavior": "guest maintenance refusal quota",
+      "test_before": 1,
+      "test_after": 0,
+      "evidence": "isolated PostgreSQL+Redis"
+    },
+    {
+      "behavior": "batch pause graph identity retained",
+      "test_before": 0,
+      "test_after": 1,
+      "evidence": "actual in-memory graph exception identity only; not business restore acceptance"
+    },
+    {
+      "behavior": "durable VIP resume priority matches broker",
+      "test_before": 0,
+      "test_after": 9,
+      "broker_priority": 9,
+      "evidence": "isolated PostgreSQL+RabbitMQ"
+    }
+  ],
+  "compatibility_decisions": [
+    "Guest quota plus immutable intake commit inside shared maintenance fence; unknown publication retains charge.",
+    "Committed retry/defer outbox precedes ACK; uncertainty remains durable, no paid-intent replay permission.",
+    "Default resource initialization persists with intake despite definite broker refusal; edits use current revision and stale edits remain409.",
+    "Tampered message rejected; exact frozen original still consumes pinned source resources.",
+    "Actual deployed styled UI retained; only old browser test navigation/ARIA/layout expectations adapted."
+  ],
+  "preservation": {
+    "original_fee_sha256": "fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb",
+    "profile_sha256": "17becf3baf6ac10d2377f5b1c3c563dd9d1dc92be0cc6d26e8b0d3b0d6334a40",
+    "seven_timers_active": true,
+    "new_model_requests": 0,
+    "product_changed_by_this_work": false,
+    "main_changed_by_this_work": false,
+    "original_cumulative_budget_microyuan": 50000000,
+    "legacy_unknown_holds": 9,
+    "readback_evidence_sha256": "903575ea40c1ca7322e05fc7c0e88ab667839f37789c907c892ca7294cbe836a"
+  },
+  "not_certified": [
+    "new genuine paid autonomous candidate pipeline",
+    "main adoption",
+    "product release or owned business rollback",
+    "new candidate nextday result",
+    "24–48h online validation"
+  ],
+  "source_artifact_sha256": "5d2ad44523ec12cb2e791b4570adcc2479d1aa18733502d36767603ad8241a3e",
+  "merge_commit": "348699f32680d2203af2ce5e17926e6877ad47ae",
+  "ci_environment_fix": {
+    "source_fix_commit": "9f0144d0987f014997cbdc74ce744ff81ce76ad0",
+    "failed_ci_run": 40871161714,
+    "reason": "fake CI override test omitted node and accidentally invoked actual runner frontend tests",
+    "deterministic_red_exit": 86,
+    "targeted_green": 67,
+    "changed_production_files": 0
+  },
+  "review": {
+    "critical": 0,
+    "important": 6,
+    "minor": 0,
+    "author_fixpass": true,
+    "rereview": false,
+    "fixes": [
+      "VIP TTL lineage uses immutable original tier",
+      "defer-yield-defer preserves persistent predecessor chain",
+      "guest legacy resume checks maintenance and registers intake in same mutation transaction",
+      "known gate rejection and guest refund settle atomically/idempotently; unknown/outbox remains held",
+      "all five broker queues and exact tier properties in maintenance census",
+      "manual-plan confirmation stores and publishes one priority snapshot"
+    ]
+  },
+  "retained_failed_attempts": [
+    "baseline VIP yield regression",
+    "full-python-001:15failed",
+    "full-python-002:1failed reused fixture identity",
+    "full-python-003:2failed temporary launcher sys.path",
+    "browser-matrix-001:9failed old UI test assumptions",
+    "review-author-red:7failed",
+    "exact-9f0144d0-CI:fake runner node escaped; deterministic local exit86; fixed test isolation",
+    "fixpass-all-targeted-001:3failed retained-global-census and fair-cursor test isolation"
+  ]
+}

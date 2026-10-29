@@ -1,0 +1,39 @@
+{
+  "schema": "pi-product-source-integration-audit-qualification-v1",
+  "source_commit": "8179de5a97f6d9555f633adf9bdb59a427f13791",
+  "mode": "ACTUAL",
+  "evidence_domain": "offline",
+  "server": {
+    "schema": "pi-source-integration-server-audit-proof-v1",
+    "status": "passed",
+    "source_commit": "8179de5a97f6d9555f633adf9bdb59a427f13791",
+    "events": 11,
+    "scope_paths": 896,
+    "batches": 6,
+    "original_fee_sha256": "fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb",
+    "profile_sha256": "17becf3baf6ac10d2377f5b1c3c563dd9d1dc92be0cc6d26e8b0d3b0d6334a40",
+    "model_requests": 0,
+    "product_release": false,
+    "main_changed": false,
+    "nextday_result": null
+  },
+  "standalone_main_reader": {
+    "schema": "pi-source-integration-main-reader-proof-v1",
+    "status": "passed",
+    "standalone_I_S_B": true,
+    "event_count": 11,
+    "scope_path_count": 896,
+    "nextday_result": null,
+    "prior_nextday_result_preserved": true,
+    "product_release_certified": false,
+    "snapshot_sha256": "03ad118b6b67d83377d963b096c5a79afdfcda1a2600eabd6800fcdb81c1673b"
+  },
+  "projection_sha256": "de18668f3a4ca3a0278956b117b619824662f8e4b95802e1467333fcdd3ae76d",
+  "scope_json_sha256": "4b850546bd2cf39bad02f81c97e80d790823d0372b0f4fc9f57f28cbe630bbeb",
+  "product_release_certified": false,
+  "main_changed": false,
+  "nextday_plan_status": "blocked",
+  "nextday_registered_executable": false,
+  "nextday_result": null,
+  "original_nextday_actual_result_preserved": true
+}
