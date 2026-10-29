@@ -9,40 +9,33 @@
 confirm 时按类型复用失效语义（facts/states/relations 时间窗关闭、fact 同时 expired、
 events/foreshadows 硬删 + 关联向量删除，与 invalidate_chapter_memory 同口径，§7.3）。
 
-匹配口径：结构化记忆（character_state / relation）按稳定键精确匹配；自由文本
-（event 摘要 / fact 内容 / foreshadow 描述）归一化后宽松匹配（子串或字符级相似度
-≥ 阈值）——容忍 LLM 对同义句的措辞抖动，纯风格编辑不触发误删误增。
+匹配口径：结构化记忆按稳定键精确匹配；自由文本仅忽略空白和句末标点，
+不以子串或字符相似度推断语义一致。措辞变化可能增加待审项，避免吞掉数值、否定
+或主体变化；增删仍需人工确认后才改变长期记忆。
 """
 
 from __future__ import annotations
 
-import difflib
 import re
 import uuid
 
 from sqlalchemy import delete as sa_delete, select
 from sqlalchemy.orm import Session
 
-from myink.models import CharacterState, EmbeddingRow, Event, Fact, Foreshadow, MemoryCandidate, Relation
+from myink.memory.candidate_identity import same_correction_proposal
+from myink.models import CharacterState, EmbeddingRow, Event, Fact, Foreshadow, MemoryCandidate, Project, Relation
 
-# 自由文本宽松匹配阈值（字符级 SequenceMatcher 比率，0.85 容忍措辞抖动）
-_FUZZY_THRESHOLD = 0.85
-
-_PUNCT = re.compile(r"[]\s，。！？、；：""''（）《》【】…—～·~,.;:!?()[-]+")
+_WHITESPACE = re.compile(r"\s+")
 
 
 def _sig(text: str) -> str:
-    """归一化签名：去空白与标点，供自由文本宽松比较。"""
-    return _PUNCT.sub("", text or "")
+    """Only discard formatting and sentence endings; preserve internal semantics."""
+    return _WHITESPACE.sub("", text or "").rstrip("。！？.!?；;")
 
 
 def _close(a: str, b: str) -> bool:
-    """宽松相等：归一化后全等 / 子串 / 字符级相似度 ≥ 阈值。"""
-    if not a or not b:
-        return False
-    if a == b or a in b or b in a:
-        return True
-    return difflib.SequenceMatcher(None, a, b).ratio() >= _FUZZY_THRESHOLD
+    """Text similarity is not semantic equivalence; uncertain changes need review."""
+    return bool(a and b and a == b)
 
 
 # ---- 已落库记忆装载（可比对结构）----
@@ -107,7 +100,7 @@ def load_persisted_memories(db: Session, *, project_id: uuid.UUID,
 
 
 def _matches(cand_kind: str, payload: dict, mem: dict) -> bool:
-    """新候选是否命中某条已落库记忆（结构化精确 / 自由文本宽松）。"""
+    """新候选是否命中已落库记忆（结构化稳定键 / 保守文本等价）。"""
     p = payload or {}
     if mem["kind"] == "character_state":
         return cand_kind == "character_state" and mem["key"] == (
@@ -135,8 +128,15 @@ def diff_changeset(persisted: list[dict], new_candidates: list[dict]) -> dict:
     unmatched = list(persisted)
     added: list[dict] = []
     keep = 0
+    seen: list[dict] = []
     for cand in new_candidates:
         payload = cand.get("payload") or {}
+        # One extraction can repeat a proposal with different confidence or
+        # evidence metadata. Do not consume its live match then add it again.
+        if any(previous["kind"] == cand["kind"] and same_correction_proposal(
+                cand["kind"], previous.get("payload") or {}, payload) for previous in seen):
+            continue
+        seen.append(cand)
         hit = next((m for m in unmatched if _matches(cand["kind"], payload, m)), None)
         if hit is not None:
             unmatched.remove(hit)
@@ -151,15 +151,21 @@ def diff_changeset(persisted: list[dict], new_candidates: list[dict]) -> dict:
 
 def _pool_has_duplicate(db: Session, project_id: uuid.UUID, chapter_seq: int,
                         cand: dict) -> bool:
-    """池内去重：同 kind+payload+章 的候选已存在（任意状态）则跳过（口径同 nodes）。"""
+    """Deduplicate unresolved/rejected proposals, not historical confirmations.
+
+    The changeset already excludes live memories. A confirmed proposal reaching
+    this boundary therefore describes removed/expired memory that may be restored.
+    """
     rows = db.execute(
         select(MemoryCandidate).where(
             MemoryCandidate.project_id == project_id,
             MemoryCandidate.kind == cand["kind"],
             MemoryCandidate.source_chapter == chapter_seq,
+            MemoryCandidate.status.in_(["pending", "rejected"]),
         )
     ).scalars().all()
-    return any(r.payload == cand["payload"] for r in rows)
+    return any(same_correction_proposal(cand["kind"], r.payload, cand["payload"])
+               and not (r.review or {}).get("superseded") for r in rows)
 
 
 def apply_changeset_to_pool(db: Session, *, project_id: uuid.UUID, chapter_seq: int,
@@ -239,6 +245,7 @@ def apply_memory_removal(db: Session, *, project_id: uuid.UUID, payload: dict,
         if r is None:
             return True
         r.valid_to = chapter_seq
+        r.properties = {**(r.properties or {}), "_memory_removed": True}
         return True
     if mtype == "foreshadow":
         fo = db.get(Foreshadow, mid)
@@ -259,6 +266,11 @@ def correct_chapter_memory(db: Session, *, project_id: uuid.UUID, chapter_seq: i
     纯风格编辑（改语言/标点/句长）时新候选与已落库记忆逐条命中 → keep 全量、池零新增，
     no_op=True 实现「轻编辑默认零动作」；删改剧情内容时才产出 add/remove 候选待人工确认。
     """
+    # Extraction is already complete; hold this lock only for deterministic
+    # diff/pool work so overlapping corrections cannot both observe an empty pool.
+    # PostgreSQL NO KEY UPDATE keeps ordinary FK-backed writes compatible.
+    db.flush()
+    db.execute(select(Project.id).where(Project.id == project_id).with_for_update(key_share=True)).scalar_one_or_none()
     persisted = load_persisted_memories(db, project_id=project_id, chapter_seq=chapter_seq)
     changeset = diff_changeset(persisted, new_candidates)
     pool_stats = apply_changeset_to_pool(db, project_id=project_id,

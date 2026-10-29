@@ -1,0 +1,989 @@
+{
+  "name": "Myink · 长篇创作流水线",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "11111111-1111-4111-8111-111111111111",
+      "name": "手动触发",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "22222222-2222-4222-8222-222222222201",
+              "name": "baseUrl",
+              "value": "https://myink.cloud",
+              "type": "string"
+            },
+            {
+              "id": "22222222-2222-4222-8222-222222222202",
+              "name": "username",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "22222222-2222-4222-8222-222222222203",
+              "name": "password",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "22222222-2222-4222-8222-222222222204",
+              "name": "title",
+              "value": "n8n 自动创作示例",
+              "type": "string"
+            },
+            {
+              "id": "22222222-2222-4222-8222-222222222205",
+              "name": "genre",
+              "value": "仙侠玄幻",
+              "type": "string"
+            },
+            {
+              "id": "22222222-2222-4222-8222-222222222206",
+              "name": "premise",
+              "value": "少年在废土中发现一座会呼吸的古老城市，必须在城灵苏醒前找到自己的身世。",
+              "type": "string"
+            },
+            {
+              "id": "22222222-2222-4222-8222-222222222207",
+              "name": "storyline",
+              "value": "从被放逐到重返故乡，逐步揭开城市与主角血脉的联系。",
+              "type": "string"
+            },
+            {
+              "id": "22222222-2222-4222-8222-222222222208",
+              "name": "chapterCount",
+              "value": 50,
+              "type": "number"
+            },
+            {
+              "id": "22222222-2222-4222-8222-222222222209",
+              "name": "batchSize",
+              "value": 2,
+              "type": "number"
+            },
+            {
+              "id": "22222222-2222-4222-8222-222222222210",
+              "name": "waitSeconds",
+              "value": 30,
+              "type": "number"
+            },
+            {
+              "id": "22222222-2222-4222-8222-222222222211",
+              "name": "outputDir",
+              "value": "/Users/a1/.n8n-files",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "22222222-2222-4222-8222-222222222222",
+      "name": "配置",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        0
+      ],
+      "notes": "首次运行前填写 Myink 账号；账号不要启用 MFA。chapterCount 至少 50。"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('配置').first().json.baseUrl + '/api/v1/auth/token' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": []
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ username: $('配置').first().json.username, password: $('配置').first().json.password }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "33333333-3333-4333-8333-333333333333",
+      "name": "登录 Myink",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "44444444-4444-4444-8444-444444444401",
+              "leftValue": "={{ $json.token }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "44444444-4444-4444-8444-444444444444",
+      "name": "登录检查",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "errorMessage": "Myink 登录未返回 token。请确认账号密码正确，并关闭该账号的 MFA；本工作流暂不支持交互式二次验证。"
+      },
+      "id": "55555555-5555-4555-8555-555555555501",
+      "name": "登录失败",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        600,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('配置').first().json.baseUrl + '/api/v1/projects' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('登录 Myink').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: $('配置').first().json.title, genre: $('配置').first().json.genre, premise: $('配置').first().json.premise, storyline: $('配置').first().json.storyline, chapter_count: $('配置').first().json.chapterCount, chars_per_chapter: 3000, target_words: 3000, form: 'long' }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "66666666-6666-4666-8666-666666666666",
+      "name": "创建作品",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('配置').first().json.baseUrl + '/api/v1/projects/' + $('创建作品').first().json.id + '/setup-draft' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('登录 Myink').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ premise: $('配置').first().json.premise }) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "77777777-7777-4777-8777-777777777701",
+      "name": "生成设定草稿",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const draft = $('生成设定草稿').first().json.draft || {};\nconst premise = $('配置').first().json.premise;\nconst arr = (v) => Array.isArray(v) ? v : [];\nconst constraints = arr(draft.hard_constraints).filter(Boolean);\nreturn [{ json: { world_rules: (draft.world_rules && typeof draft.world_rules === 'object') ? draft.world_rules : {}, hard_constraints: constraints.length ? constraints : [premise], characters: arr(draft.characters), forces: arr(draft.forces), locations: arr(draft.locations) } }];"
+      },
+      "id": "88888888-8888-4888-8888-888888888801",
+      "name": "整理设定",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('配置').first().json.baseUrl + '/api/v1/projects/' + $('创建作品').first().json.id + '/setup' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('登录 Myink').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "99999999-9999-4999-8999-999999999901",
+      "name": "确认设定",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('配置').first().json.baseUrl + '/api/v1/projects/' + $('创建作品').first().json.id + '/outline-draft' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('登录 Myink').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ premise: $('配置').first().json.premise, chapter_count: $('配置').first().json.chapterCount, storyline: $('配置').first().json.storyline }) }}",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa01",
+      "name": "生成大纲草稿",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('配置').first().json;\nconst count = Math.min(1000, Math.max(50, Number(cfg.chapterCount) || 50));\nconst raw = $('生成大纲草稿').first().json.outline || {};\nconst valid = (o) => {\n  if (!o || typeof o !== 'object') return false;\n  const n = Number(o.chapter_count);\n  const vs = o.volumes;\n  if (!String(o.objective || '').trim() || !Array.isArray(vs) || !vs.length || !(n >= 50 && n <= 1000)) return false;\n  let next = 1;\n  for (const v of vs) {\n    const s = Number(v.chapter_start), e = Number(v.chapter_end);\n    if (!String(v.goal || '').trim() || s !== next || e < s || e > n) return false;\n    next = e + 1;\n  }\n  return next === n + 1;\n};\nif (valid(raw)) return [{ json: raw }];\nreturn [{ json: { objective: cfg.premise, premise: cfg.premise, chapter_count: count, storyline: cfg.storyline, volumes: [{ volume_seq: 1, title: '第一卷', goal: cfg.premise, chapter_start: 1, chapter_end: count }] } }];"
+      },
+      "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb01",
+      "name": "整理大纲",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $('配置').first().json.baseUrl + '/api/v1/projects/' + $('创建作品').first().json.id + '/outline' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('登录 Myink').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "cccccccc-cccc-4ccc-8ccc-cccccccccc01",
+      "name": "确认大纲",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2000,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('配置').first().json.baseUrl + '/api/v1/projects/' + $('创建作品').first().json.id + '/batches/generate' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('登录 Myink').first().json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ size: $('配置').first().json.batchSize, start: 1 }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "dddddddd-dddd-4ddd-8ddd-dddddddddd01",
+      "name": "启动批次",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "amount": "={{ Math.max(10, Number($('配置').first().json.waitSeconds) || 30) }}",
+        "unit": "seconds"
+      },
+      "id": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee01",
+      "name": "等待生成",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('配置').first().json.baseUrl + '/api/v1/tasks/' + $('启动批次').first().json.task_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('登录 Myink').first().json.token }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "ffffffff-ffff-4fff-8fff-ffffffffff01",
+      "name": "查询任务",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const status = String($json.status || '');\nconst terminal = ['done', 'failed', 'cancelled', 'awaiting_review', 'awaiting_plan', 'paused'].includes(status);\nreturn [{ json: { ...$json, status, terminal, success: status === 'done' } }];"
+      },
+      "id": "abababab-abab-4bab-8bab-ababababab01",
+      "name": "判定状态",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "acacacac-acac-4cac-8cac-acacacacac01",
+              "leftValue": "={{ $json.terminal }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "acacacac-acac-4cac-8cac-acacacacacac",
+      "name": "是否结束",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3000,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "adadadad-adad-4dad-8dad-adadadadad01",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "adadadad-adad-4dad-8dad-adadadadadad",
+      "name": "是否成功",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3200,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "errorMessage": "={{ 'Myink 任务未成功完成，状态：' + $json.status + ($json.error ? ('；错误：' + $json.error) : '') }}"
+      },
+      "id": "aeaeaeae-aeae-4eae-8eae-aeaeaeaeae01",
+      "name": "失败终止",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        3400,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('配置').first().json.baseUrl + '/api/v1/projects/' + $('创建作品').first().json.id + '/chapters' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('登录 Myink').first().json.token }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "afafafaf-afaf-4faf-8faf-afafafafaf01",
+      "name": "获取章节列表",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3400,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map((i) => i.json).filter((c) => c && c.status === 'done').sort((a, b) => a.chapter_seq - b.chapter_seq);\nreturn rows.map((c) => ({ json: c }));"
+      },
+      "id": "agagagag-agag-4gag-8gag-agagagagag01",
+      "name": "筛选已写章节",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "ahahahah-ahah-4hah-8hah-ahahahahah01",
+      "name": "逐章读取",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        3800,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('配置').first().json.baseUrl + '/api/v1/projects/' + $('创建作品').first().json.id + '/chapters/' + $json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('登录 Myink').first().json.token }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "aiaiaiai-aiai-4iai-8iai-aiaiaiaiai01",
+      "name": "获取章节正文",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4000,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map((i) => i.json).sort((a, b) => a.chapter_seq - b.chapter_seq);\nconst title = $('配置').first().json.title;\nconst body = rows.map((c) => '## 第' + c.chapter_seq + '章 ' + (c.title || '') + '\\n\\n' + (c.content || '')).join('\\n\\n');\nconst words = rows.reduce((n, c) => n + (Number(c.word_count) || 0), 0);\nreturn [{ json: { title, manuscript: '# ' + title + '\\n\\n' + body, chapters: rows.length, words } }];"
+      },
+      "id": "ajajajaj-ajaj-4jaj-8jaj-ajajajajaj01",
+      "name": "汇总成稿",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4000,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "manuscript",
+        "binaryPropertyName": "data",
+        "options": {
+          "fileName": "={{ 'myink-' + $('创建作品').first().json.id + '.md' }}",
+          "encoding": "utf8"
+        }
+      },
+      "id": "akakakak-akak-4kak-8kak-akakakakak01",
+      "name": "转为文本文件",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        4200,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('配置').first().json.outputDir + '/myink-' + $('创建作品').first().json.id + '.md' }}",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "alalalal-alal-4lal-8lal-alalalalal01",
+      "name": "写入磁盘",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        4400,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "amamamam-amam-4mam-8mam-amamamamam01",
+              "name": "projectId",
+              "value": "={{ $('创建作品').first().json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "amamamam-amam-4mam-8mam-amamamamam02",
+              "name": "projectTitle",
+              "value": "={{ $('汇总成稿').first().json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "amamamam-amam-4mam-8mam-amamamamam03",
+              "name": "chapters",
+              "value": "={{ $('汇总成稿').first().json.chapters }}",
+              "type": "number"
+            },
+            {
+              "id": "amamamam-amam-4mam-8mam-amamamamam04",
+              "name": "words",
+              "value": "={{ $('汇总成稿').first().json.words }}",
+              "type": "number"
+            },
+            {
+              "id": "amamamam-amam-4mam-8mam-amamamamam05",
+              "name": "file",
+              "value": "={{ $('写入磁盘').first().json.fileName }}",
+              "type": "string"
+            },
+            {
+              "id": "amamamam-amam-4mam-8mam-amamamamam06",
+              "name": "status",
+              "value": "={{ $('判定状态').first().json.status }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "amamamam-amam-4mam-8mam-amamamamamam",
+      "name": "完成",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4600,
+        -100
+      ]
+    }
+  ],
+  "connections": {
+    "手动触发": {
+      "main": [
+        [
+          {
+            "node": "配置",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "配置": {
+      "main": [
+        [
+          {
+            "node": "登录 Myink",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "登录 Myink": {
+      "main": [
+        [
+          {
+            "node": "登录检查",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "登录检查": {
+      "main": [
+        [
+          {
+            "node": "创建作品",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "登录失败",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "创建作品": {
+      "main": [
+        [
+          {
+            "node": "生成设定草稿",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "生成设定草稿": {
+      "main": [
+        [
+          {
+            "node": "整理设定",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "整理设定": {
+      "main": [
+        [
+          {
+            "node": "确认设定",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "确认设定": {
+      "main": [
+        [
+          {
+            "node": "生成大纲草稿",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "生成大纲草稿": {
+      "main": [
+        [
+          {
+            "node": "整理大纲",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "整理大纲": {
+      "main": [
+        [
+          {
+            "node": "确认大纲",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "确认大纲": {
+      "main": [
+        [
+          {
+            "node": "启动批次",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "启动批次": {
+      "main": [
+        [
+          {
+            "node": "等待生成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "等待生成": {
+      "main": [
+        [
+          {
+            "node": "查询任务",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "查询任务": {
+      "main": [
+        [
+          {
+            "node": "判定状态",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "判定状态": {
+      "main": [
+        [
+          {
+            "node": "是否结束",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "是否结束": {
+      "main": [
+        [
+          {
+            "node": "是否成功",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "等待生成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "是否成功": {
+      "main": [
+        [
+          {
+            "node": "获取章节列表",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "失败终止",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "获取章节列表": {
+      "main": [
+        [
+          {
+            "node": "筛选已写章节",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "筛选已写章节": {
+      "main": [
+        [
+          {
+            "node": "逐章读取",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "逐章读取": {
+      "main": [
+        [
+          {
+            "node": "汇总成稿",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "获取章节正文",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "获取章节正文": {
+      "main": [
+        [
+          {
+            "node": "逐章读取",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "汇总成稿": {
+      "main": [
+        [
+          {
+            "node": "转为文本文件",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "转为文本文件": {
+      "main": [
+        [
+          {
+            "node": "写入磁盘",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "写入磁盘": {
+      "main": [
+        [
+          {
+            "node": "完成",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

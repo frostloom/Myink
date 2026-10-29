@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it } from 'vitest'
-import { clearActiveWrite, readActiveWrite, writeActiveWrite } from './activeWrite'
+import { clearActiveWrite, readActiveWrite, writeActiveWrite, clearActiveShortWrite, readActiveShortWrite, writeActiveShortWrite } from './activeWrite'
 
 afterEach(() => {
   sessionStorage.clear()
@@ -26,4 +26,16 @@ it('does not expose an in-flight write to another account with the same project 
 it('ignores a broken payload instead of throwing', () => {
   sessionStorage.setItem('myink.activeWrite.user-a.book-a', '{')
   expect(readActiveWrite('user-a', 'book-a')).toBeNull()
+})
+
+it('isolates accepted short tasks from other accounts, books and long-form writes', () => {
+  writeActiveShortWrite('user-a', 'short-a', 'short-task')
+  writeActiveShortWrite('user-a', 'short-b', 'other-short-task')
+  writeActiveWrite('user-a', 'long-a', { taskId: 'long-task', chapterSeq: 1, batchTotal: null })
+  expect(readActiveShortWrite('user-a', 'short-a')).toBe('short-task')
+  expect(readActiveShortWrite('user-b', 'short-a')).toBeNull()
+  clearActiveShortWrite('user-a', 'short-a')
+  expect(readActiveShortWrite('user-a', 'short-a')).toBeNull()
+  expect(readActiveShortWrite('user-a', 'short-b')).toBe('other-short-task')
+  expect(readActiveWrite('user-a', 'long-a')?.taskId).toBe('long-task')
 })

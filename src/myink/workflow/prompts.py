@@ -13,6 +13,11 @@ from myink.context_budget import estimate_tokens, fit_prompt
 from myink.workflow.short_parse import CHAPTER_HEADING
 from myink.workflow.tools import READ_TOOLS
 
+SYSTEM_BATCH_PLAN = """你是长篇网文创作系统的【批次规划 Agent】。为接下来 N 章做整体推进蓝图（N 是规划单元，不是重复次数——N 章要系统性推进主线/支线/伏笔/大纲，不能各自为政）。
+若给定了【整书大纲】，每章 goal 必须沿所属卷目标/阶段目标推进，且不重复已写章节的开场/桥段；大纲与已写正文冲突时以已写正文为准。
+输出严格 JSON：
+{"chapters": [{"goal": "本章推进目标（哪条线/收哪些伏笔/新种钩子）", "outline_advance": "大纲推进段"}, ...]}  共 N 项"""
+
 SYSTEM_PLAN = """你是长篇网文创作系统的【规划 Agent】。职责：为某一章产出结构化章节计划。
 输出严格 JSON 对象（schema 见下），字段不许缺：
 {
@@ -554,6 +559,9 @@ def _profile_list(profile: dict, key: str) -> list[str]:
 
 def _genre_section(genre_pack: dict | None) -> str:
     """本书题材包注入段：节奏/爽点/禁忌/机制；与文风档案分开。"""
+    from myink.writing_resource_runtime import configured, selected
+    if configured() or selected("genre"):
+        return ""
     from myink.genre_catalog import format_prompt
     return format_prompt(genre_pack)
 
@@ -563,6 +571,9 @@ def _reference_section(genre_pack: dict | None) -> str:
 
     只挂在 write 提示词上——setup/outline 两处不挂工具，给了路径也读不到。
     """
+    from myink.writing_resource_runtime import configured
+    if configured():
+        return ""
     from myink.genre_catalog import reference_hint
     return reference_hint(genre_pack)
 
@@ -635,6 +646,15 @@ def _rhythm_reference(sp: dict) -> str:
         line += (f" 对话占比约 {ratio * 100:.0f}%，对话偏{'多' if ratio >= 0.4 else '少'}"
                  f"，写章对话密度请贴近样本。")
     return line
+
+
+def _private_style_section(style_profile: dict | None) -> str:
+    style = _style_section(style_profile, None)
+    if not style:
+        return ""
+    return ("\n\n【本书私有文风档案】\n"
+            "本书私有文风优先于通用文风和表达建议；保留作者声音，不按通用偏好改写。\n"
+            + style)
 
 
 def _write_messages(context: dict, plan: dict, *, style_profile: dict | None = None,
@@ -733,7 +753,8 @@ def patch_messages(state: dict) -> list[dict]:
                 *(state.get("unresolved") or []),
                 *((state.get("audit_verdict") or {}).get("findings") or [])]
     return [
-        {"role": "system", "content": SYSTEM_REVISE_PATCH},
+        {"role": "system", "content": SYSTEM_REVISE_PATCH
+         + _private_style_section(state.get("style_profile"))},
         {"role": "user", "content": (
             f"【第 {state['chapter_seq']} 章原稿】\n{state['draft']}\n\n"
             + "【校验与审核发现】\n" + json.dumps(findings, ensure_ascii=False)
@@ -761,7 +782,8 @@ def _revise_messages(draft, findings, chapter_seq, context, plan, style_profile,
 
 
 def _audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int,
-                    genre_pack: dict | None = None) -> list[dict]:
+                    genre_pack: dict | None = None,
+                    style_profile: dict | None = None) -> list[dict]:
     """audit 输入：正文 + 章节计划 + 召回上下文（审核中枢做语义审核 + 路由决策）。"""
     plan_str = json.dumps(plan, ensure_ascii=False, indent=1) if plan else "（无章节计划）"
     events = _join(context.get("mid_term_events", []), _render_event)
@@ -782,7 +804,12 @@ def _audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int,
         + _taboo_hint(genre_pack)
         + "\n\n请审核本章并输出路由决策（严格 JSON）。"
     )
-    return [{"role": "system", "content": SYSTEM_AUDIT}, {"role": "user", "content": user}]
+    private_style = _private_style_section(style_profile)
+    if private_style:
+        private_style += ("\n文风对照以此档案为准；不要仅因风格差异或个人审美偏好要求改稿。"
+                          "仍按既有内容质量与严重度规则判定，发现问题须引用正文证据。")
+    return [{"role": "system", "content": SYSTEM_AUDIT + private_style},
+            {"role": "user", "content": user}]
 
 
 def _taboo_hint(genre_pack: dict | None) -> str:
@@ -1077,16 +1104,34 @@ SYSTEM_SHORT_CREATION = """你在和作者一起把一篇短篇聊成形。你�
 card 里你**没有把握的字段留空**：留空表示「这轮没有新信息」，系统会保留作者已经写好的值；填了就会覆盖掉它。"""
 
 
+# Kept only to recognize the deterministic opening in older persisted sessions.
+_LEGACY_SHORT_OPENING = (
+    "想写个什么样的短篇？先说一句大方向就行——比如「一个渡口老人等最后一班船」，"
+    "我来陪你把它聊成能开写的方案。"
+)
+_SHORT_CREATION_ATTRIBUTION = """【创意来源与作者授权】
+助手建议不等于用户设定：历史中的助手示例、提问和提案只能视为助手提出的内容，
+不得声称是作者提供、要求或确认的；只有用户明确表达或认可的内容才可这样归因。
+当前方案卡可能由用户编辑，保留其中已有内容；不要用开场示例替换它。
+作者说「随便写」「你决定」或类似授权时，主动创作一个具体的新方案卡并填满各项，
+明确说「我来拟一个方案」或「这是我的提议」，不要继续索要方向，也不要假称作者提出了该创意。
+已有明确设定和当前卡优先，新的创意须与它们兼容。"""
+
+
 def short_creation_messages(history: list[dict], card: dict) -> list[dict]:
     """建书对话输入：完整历史 + 当前卡。
 
     卡必须每轮都带上——用户可能刚在右栏改过，模型看不见就会以为自己上一轮说的还算数。
     """
     conversation = [{"role": m["role"], "content": m["content"]}
-                    for m in history if (m.get("content") or "").strip()]
+                    for i, m in enumerate(history) if (m.get("content") or "").strip()
+                    and not (i == 0 and m.get("role") == "assistant"
+                             and m["content"] == _LEGACY_SHORT_OPENING)]
     return [
         {"role": "system", "content": SYSTEM_SHORT_CREATION},
         *conversation,
+        # Independent of editable published stage instructions.
+        {"role": "system", "content": _SHORT_CREATION_ATTRIBUTION},
         {"role": "user", "content":
             "【当前方案卡（用户可能已编辑过）】\n"
             + json.dumps(card, ensure_ascii=False, indent=2)
@@ -1263,6 +1308,36 @@ def extract_messages(draft: str, chapter_seq: int, context: dict | None = None) 
 
 
 def audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int,
-                   genre_pack: dict | None = None) -> list[dict]:
+                   genre_pack: dict | None = None,
+                   style_profile: dict | None = None) -> list[dict]:
     return fit_prompt(context, lambda c: _audit_messages(
-        draft, plan, c, chapter_seq, genre_pack), _tool_prompt_budget())
+        draft, plan, c, chapter_seq, genre_pack, style_profile), _tool_prompt_budget())
+
+
+# Match the provider role at the actual call sites; review stages can use planners.
+from myink.writing_resource_runtime import resource_messages as _resource_messages
+_RESOURCE_MESSAGE_ROLES = {
+    "cast_messages": "planner",
+    "plan_messages": "planner",
+    "book_setup_messages": "planner",
+    "book_outline_messages": "planner",
+    "short_plan_messages": "planner",
+    "short_plan_review_messages": "planner",
+    "short_creation_messages": "planner",
+    "write_messages": "writer",
+    "revise_messages": "writer",
+    "patch_messages": "writer",
+    "short_write_messages": "writer",
+    "short_continue_messages": "writer",
+    "short_revise_messages": "writer",
+    "audit_messages": "audit",
+    "short_review_messages": "audit",
+    "reflexion_messages": "audit",
+    "global_audit_messages": "audit",
+    "extract_messages": "extract",
+    "style_extract_messages": "extract",
+    "summary_messages": "summarize",
+    "ledger_l2_messages": "validator_l2",
+}
+for _name, _role in _RESOURCE_MESSAGE_ROLES.items():
+    globals()[_name] = _resource_messages(globals()[_name], _role)

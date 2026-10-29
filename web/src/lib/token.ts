@@ -16,6 +16,7 @@ export interface StoredSession {
   tier: string
   role: 'user' | 'admin'
   roleVerified: boolean
+  isGuest?: boolean
   expiresAt: number | null
 }
 
@@ -33,7 +34,7 @@ export function getSessionUserId(): string | null {
   return getSession()?.userId ?? null
 }
 
-export function getSession(): StoredSession | null {
+export function getSession(includeExpiredGuest = false): StoredSession | null {
   const raw = localStorage.getItem(SESSION_STORAGE_KEY)
   if (raw) {
     try {
@@ -41,8 +42,10 @@ export function getSession(): StoredSession | null {
       if (!value.token || !value.userId || !value.username || !value.tier) return null
       const expiresAt = typeof value.expiresAt === 'number' ? value.expiresAt : null
       if (expiresAt !== null && expiresAt <= Date.now()) {
-        clearSession()
-        return null
+        // Retain only the expired guest marker for cookie-based restore. Callers
+        // still receive no usable token unless session recovery requests it.
+        if (value.isGuest !== true) clearSession()
+        if (value.isGuest !== true || !includeExpiredGuest) return null
       }
       return {
         token: value.token,
@@ -51,6 +54,7 @@ export function getSession(): StoredSession | null {
         tier: value.tier,
         role: value.role === 'admin' ? 'admin' : 'user',
         roleVerified: false,
+        isGuest: value.isGuest === true,
         expiresAt,
       }
     } catch {

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from copy import deepcopy
 from typing import Callable
 from urllib.parse import urlsplit, urlunsplit
 
@@ -12,7 +13,7 @@ import httpx
 
 from myink.config import settings
 from myink.providers.base import ModelProvider, ModelResponse
-from myink.providers.errors import format_provider_error
+from myink.providers.errors import format_provider_error, retryable_provider_error, raise_for_status_with_detail
 from myink.providers.think_tag_stripper import (
     LeadingThinkTagStripper,
     isolate_response_body,
@@ -60,25 +61,34 @@ def _convert_tools(tools: list[dict] | None) -> list[dict] | None:
     return converted
 
 
-def _convert_messages(messages: list[dict], json_mode: bool) -> tuple[str, list[dict]]:
+def _convert_messages(messages: list[dict], json_mode: bool, *, origin: dict | None = None) -> tuple[str, list[dict]]:
     system_parts: list[str] = []
     converted: list[dict] = []
+    tool_results: list[dict] | None = None
     for message in messages:
         role = message.get("role", "user")
+        if role != "tool":
+            tool_results = None
         if role == "system":
             system_parts.append(str(message.get("content", "")))
             continue
         if role == "tool":
-            converted.append({
-                "role": "user",
-                "content": [{
-                    "type": "tool_result",
-                    "tool_use_id": message.get("tool_call_id", ""),
-                    "content": str(message.get("content", "")),
-                }],
+            # Anthropic requires every result from a parallel tool-use turn in
+            # the single user message immediately following that assistant.
+            if tool_results is None:
+                tool_results = []
+                converted.append({"role": "user", "content": tool_results})
+            tool_results.append({
+                "type": "tool_result",
+                "tool_use_id": message.get("tool_call_id", ""),
+                "content": str(message.get("content", "")),
             })
             continue
         content: str | list[dict] = str(message.get("content", ""))
+        context = message.get("_provider_context") or {}
+        if role == "assistant" and origin and context.get("origin") == origin:
+            converted.append({"role": "assistant", "content": deepcopy(context["content"])})
+            continue
         tool_calls = message.get("tool_calls") or []
         if role == "assistant" and tool_calls:
             blocks: list[dict] = []
@@ -103,6 +113,11 @@ def _convert_messages(messages: list[dict], json_mode: bool) -> tuple[str, list[
     return "\n\n".join(part for part in system_parts if part), converted
 
 
+def _finish_reason(reason: str | None) -> str | None:
+    return {"max_tokens": "length", "end_turn": "stop", "stop_sequence": "stop",
+            "tool_use": "tool_calls"}.get(reason, reason)
+
+
 class AnthropicProvider(ModelProvider):
     def __init__(self, *, api_key: str, base_url: str):
         self._api_key = api_key
@@ -115,7 +130,7 @@ class AnthropicProvider(ModelProvider):
     def _payload(self, messages: list[dict], *, model_id: str, max_tokens: int | None,
                  temperature: float | None, json_mode: bool,
                  tools: list[dict] | None, stream: bool) -> dict:
-        system, converted = _convert_messages(messages, json_mode)
+        system, converted = _convert_messages(messages, json_mode, origin=self._origin(model_id))
         payload: dict = {
             "model": model_id,
             "messages": converted,
@@ -129,7 +144,15 @@ class AnthropicProvider(ModelProvider):
         converted_tools = _convert_tools(tools)
         if converted_tools:
             payload["tools"] = converted_tools
+        elif tools == []:
+            payload["tool_choice"] = {"type": "none"}
         return payload
+
+    def _origin(self, model_id: str) -> dict:
+        return {"protocol": "anthropic", "url": self._url, "model_id": model_id}
+
+    def _context(self, model_id: str, blocks: list[dict]) -> dict:
+        return {"origin": self._origin(model_id), "content": deepcopy(blocks)}
 
     def _headers(self) -> dict[str, str]:
         return {
@@ -182,6 +205,8 @@ class AnthropicProvider(ModelProvider):
                     output_tokens=int(usage.get("output_tokens", 0) or 0),
                     duration_ms=int((time.monotonic() - t0) * 1000),
                     retry_count=attempt, tool_calls=calls,
+                    provider_context=self._context(model_id, data.get("content", [])) if calls else None,
+                    finish_reason=_finish_reason(data.get("stop_reason")),
                 )
             except (TaskBudgetPaused, TaskBudgetUnavailable):
                 raise
@@ -191,6 +216,8 @@ class AnthropicProvider(ModelProvider):
                     exc, api_key=self._api_key, self_host_url=settings.self_host_url,
                 )
                 logger.warning("Anthropic 调用失败(attempt=%d): %s", attempt, last_error)
+                if not retryable_provider_error(exc):
+                    break
                 if attempt < MAX_RETRIES:
                     budget_sleep(permit, BACKOFF_BASE[min(attempt, len(BACKOFF_BASE) - 1)])
         return ModelResponse(content="", model_id=model_id, error=last_error,
@@ -215,10 +242,12 @@ class AnthropicProvider(ModelProvider):
         for attempt in range(MAX_RETRIES + 1):
             parts: list[str] = []
             tool_parts: dict[int, dict] = {}
+            blocks: dict[int, dict] = {}
             input_tokens = 0
             output_tokens = 0
             usage_complete = False
             stream_complete = False
+            finish_reason = None
             cached_usage = False
             emitted = False
             stripper = LeadingThinkTagStripper()
@@ -226,13 +255,15 @@ class AnthropicProvider(ModelProvider):
             try:
                 timeout = {"timeout": min(120.0, permit.remaining_seconds())} if permit else {}
                 with budget_stream(permit, self._client.stream("POST", self._url, headers=self._headers(), json=payload, **timeout)) as response:
-                    response.raise_for_status()
+                    raise_for_status_with_detail(
+                        response, iter_chunks=lambda: budget_iter(permit, response.iter_bytes()),
+                    )
                     for line in budget_iter(permit, response.iter_lines()):
                         if permit:
                             permit.remaining_seconds()
-                        if not line.startswith("data: "):
+                        if not line.startswith("data:"):
                             continue
-                        raw = line[6:]
+                        raw = line[5:].removeprefix(" ")
                         if raw == "[DONE]":
                             continue
                         event = json.loads(raw)
@@ -248,14 +279,20 @@ class AnthropicProvider(ModelProvider):
                             input_tokens = int(event.get("message", {}).get("usage", {}).get("input_tokens", 0) or 0)
                         elif kind == "content_block_start":
                             block = event.get("content_block", {})
+                            blocks[int(event.get("index", 0))] = deepcopy(block)
                             if block.get("type") == "tool_use":
                                 tool_parts[int(event.get("index", 0))] = {
                                     "id": block.get("id", ""), "name": block.get("name", ""),
-                                    "arguments": "",
+                                    "arguments": "", "input": block.get("input", {}),
                                 }
                         elif kind == "content_block_delta":
                             index = int(event.get("index", 0))
                             delta = event.get("delta", {})
+                            block = blocks.get(index)
+                            field_name = {"text_delta": "text", "thinking_delta": "thinking",
+                                          "signature_delta": "signature"}.get(delta.get("type"))
+                            if block is not None and field_name:
+                                block[field_name] = block.get(field_name, "") + delta.get(field_name, "")
                             if delta.get("type") == "text_delta":
                                 text = delta.get("text", "")
                                 if text:
@@ -267,6 +304,7 @@ class AnthropicProvider(ModelProvider):
                             elif delta.get("type") == "input_json_delta" and index in tool_parts:
                                 tool_parts[index]["arguments"] += delta.get("partial_json", "")
                         elif kind == "message_delta":
+                            finish_reason = _finish_reason((event.get("delta") or {}).get("stop_reason")) or finish_reason
                             usage_complete = "output_tokens" in event.get("usage", {})
                             output_tokens = int(event.get("usage", {}).get("output_tokens", output_tokens) or 0)
                 if permit and not stream_complete:
@@ -282,9 +320,10 @@ class AnthropicProvider(ModelProvider):
                 for index in sorted(tool_parts):
                     row = tool_parts[index]
                     try:
-                        arguments = json.loads(row["arguments"] or "{}")
+                        arguments = json.loads(row["arguments"]) if row["arguments"] else row["input"]
                     except json.JSONDecodeError:
                         arguments = {}
+                    blocks[index]["input"] = arguments
                     calls.append({"id": row["id"], "name": row["name"], "arguments": arguments})
                 if not content.strip() and not calls:
                     return ModelResponse(
@@ -296,6 +335,8 @@ class AnthropicProvider(ModelProvider):
                     input_tokens=input_tokens, output_tokens=output_tokens,
                     duration_ms=int((time.monotonic() - t0) * 1000), retry_count=attempt,
                     tool_calls=calls or None,
+                    provider_context=self._context(model_id, [blocks[i] for i in sorted(blocks)]) if calls else None,
+                    finish_reason=finish_reason,
                 )
             except (TaskBudgetPaused, TaskBudgetUnavailable):
                 raise
@@ -307,6 +348,8 @@ class AnthropicProvider(ModelProvider):
                 logger.warning("Anthropic 流式调用失败(attempt=%d): %s", attempt, last_error)
                 if emitted and on_reset:
                     on_reset()
+                if not retryable_provider_error(exc):
+                    break
                 if attempt < MAX_RETRIES:
                     budget_sleep(permit, BACKOFF_BASE[min(attempt, len(BACKOFF_BASE) - 1)])
         return ModelResponse(content="", model_id=model_id, error=last_error,

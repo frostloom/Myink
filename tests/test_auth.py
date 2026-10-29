@@ -99,8 +99,9 @@ def test_register_canonicalizes_username_hashes_password_and_returns_exact_shape
     assert response.status_code == 201, response.text
     data = response.json()
     try:
-        assert set(data) == {"token", "user_id", "username", "tier", "role", "expires_in"}
+        assert set(data) == {"token", "user_id", "username", "tier", "role", "expires_in", "is_guest"}
         assert data["username"] == canonical
+        assert data["is_guest"] is False
         assert data["tier"] == "normal"
         assert data["role"] == "user"
         assert response.headers["cache-control"] == "no-store"
@@ -264,7 +265,7 @@ def test_login_and_session_have_exact_shapes_and_session_ignores_trusted_identit
             json={"username": account["username"].upper(), "password": account["password"]},
         )
         assert login.status_code == 200, login.text
-        assert set(login.json()) == {"token", "user_id", "username", "tier", "role", "expires_in"}
+        assert set(login.json()) == {"token", "user_id", "username", "tier", "role", "expires_in", "is_guest"}
         assert login.headers["cache-control"] == "no-store"
 
         without_bearer = client.get(

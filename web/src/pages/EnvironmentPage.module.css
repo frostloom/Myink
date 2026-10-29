@@ -1,0 +1,77 @@
+.wrap { min-width: 0; }
+.main { align-self: stretch; }
+.page { max-width: 1100px; margin: 0 auto; padding: var(--page-top) var(--page-gutter) 48px; display: flex; flex-direction: column; gap: 24px; }
+.pageHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.pageHead h1 { margin: 0; font-size: calc(var(--text-body) * 2.15); line-height: 1.3; }
+.pageHead p { margin: 10px 0 0; color: var(--ink-muted); line-height: 1.7; }
+.pageHead > a { flex-shrink: 0; }
+.intro { display: flex; align-items: center; gap: 16px; padding: 22px 24px; border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-1); }
+.introIcon { display: grid; place-items: center; flex: 0 0 auto; width: 42px; height: 42px; color: var(--accent-ink); border-radius: var(--radius-sm); background: var(--surface-2); border: 1px solid var(--line); }
+.intro > div { flex: 1; }
+.intro h2 { margin: 0; font-size: var(--text-body); font-weight: 650; }
+.intro p { margin: 6px 0 0; font-size: var(--text-small); color: var(--ink-subtle); line-height: 1.7; }
+.intro > button { flex-shrink: 0; }
+.sections { display: flex; flex-direction: column; gap: 24px; }
+.section { min-width: 0; overflow: hidden; border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-1); }
+.sectionHead { display: flex; align-items: flex-start; gap: 12px; padding: 24px 28px; border-bottom: 1px solid var(--line); }
+.sectionHead > svg { flex-shrink: 0; margin-top: 3px; }
+.sectionHead h2 { margin: 0; font-size: 19px; font-weight: 650; }
+.sectionHead p { margin: 8px 0 0; color: var(--ink-subtle); font-size: var(--text-small); line-height: 1.75; max-width: 64ch; }
+.notice { margin: 20px 28px 0; color: var(--ink-muted); font-size: var(--text-small); }
+.preferenceRow, .columnHead { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(180px, 1.25fr) 140px; align-items: center; gap: 24px; }
+.preferenceRow { padding: 18px 28px; }
+.preferenceRow > select { width: 100%; min-width: 0; min-height: 42px; }
+.thinkingRow { margin-block: 6px; }
+.label { display: flex; flex-direction: column; min-width: 0; gap: 5px; }
+.label strong { font-size: var(--text-body); font-weight: 600; }
+.label > span { color: var(--ink-subtle); font-size: var(--text-small); line-height: 1.6; }
+.source { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.source > span, .fieldSource > span { color: var(--ink-subtle); font-size: var(--text-micro); line-height: 1.6; }
+.source > button, .fieldSource > button { padding: 3px 0; min-height: 40px; font-size: var(--text-small); }
+.columnHead { padding: 12px 28px; background: var(--surface-2); color: var(--ink-subtle); font-size: var(--text-micro); border-block: 1px solid var(--line); }
+.roleGroup h3 { margin: 0; padding: 18px 28px 0; color: var(--ink-muted); font-size: var(--text-small); font-weight: 650; }
+.roleGroup + .roleGroup { border-top: 1px solid var(--line); }
+.roleGroup .preferenceRow + .preferenceRow { padding-top: 6px; }
+.fieldGrid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 24px; padding: 24px 28px; }
+.fieldBlock { min-width: 0; }
+.field { display: flex; flex-direction: column; gap: 10px; color: var(--ink-muted); font-size: var(--text-small); }
+.field input, .field select { width: 100%; min-width: 0; min-height: 42px; }
+.fieldSource { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; margin-top: 8px; }
+.saveRow { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 28px; border-top: 1px solid var(--line); background: var(--surface-2); }
+.saveRow > span { font-size: var(--text-small); color: var(--ink-subtle); line-height: 1.6; }
+.saveRow > button { flex-shrink: 0; }
+.saveRow > .error { color: var(--error); }
+.saveRow > .success { color: var(--success); }
+.hint { color: var(--ink-muted); margin: 0; }
+@media (max-width: 1100px) {
+  .page { padding-inline: 24px; }
+  .preferenceRow, .columnHead { grid-template-columns: minmax(150px,1fr) minmax(160px,1fr) 122px; gap: 16px; }
+  .fieldGrid { gap: 18px; }
+}
+@media (max-width: 850px) {
+  .preferenceRow { grid-template-columns: minmax(130px,1fr) minmax(140px,1.1fr); gap: 12px 20px; }
+  .source { grid-column: 2; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+  .columnHead { display: none; }
+  .roleGroup:first-of-type { border-top: 1px solid var(--line); }
+  .fieldGrid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .page { padding: 18px 12px 32px; gap: 20px; }
+  .pageHead { gap: 8px; }
+  .pageHead h1 { font-size: calc(var(--text-body) * 1.9); }
+  .pageHead p { font-size: var(--text-small); }
+  .pageHead > a { padding-inline: 6px; }
+  .intro { flex-wrap: wrap; padding: 20px; gap: 12px; }
+  .intro > div { flex-basis: calc(100% - 60px); }
+  .intro > button { width: 100%; }
+  .sectionHead, .fieldGrid, .saveRow { padding: 20px; }
+  .notice { margin-inline: 20px; }
+  .preferenceRow { padding: 18px 20px; grid-template-columns: minmax(0,1fr); gap: 12px; }
+  .source { grid-column: auto; justify-content: space-between; }
+  .source > button, .fieldSource > button { min-height: 44px; }
+  .roleGroup h3 { padding-inline: 20px; }
+  .roleGroup .preferenceRow + .preferenceRow { padding-top: 12px; }
+  .saveRow { flex-wrap: wrap; }
+  .saveRow > button { margin-left: auto; }
+  .fieldGrid { gap: 20px; }
+}

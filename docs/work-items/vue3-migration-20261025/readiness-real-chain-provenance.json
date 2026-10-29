@@ -1,0 +1,38 @@
+{
+  "agentRunRows": 182,
+  "modelGroups": [
+    {
+      "model": "<internal>",
+      "rows": 79,
+      "inputTokens": 0,
+      "outputTokens": 0
+    },
+    {
+      "model": "fixture-local",
+      "rows": 103,
+      "inputTokens": 10200,
+      "outputTokens": 20400
+    }
+  ],
+  "fixtureHttpRequestCount": 102,
+  "fixtureModels": [
+    "fixture-local"
+  ],
+  "fixtureKinds": [
+    "audit",
+    "cast",
+    "extract",
+    "outline",
+    "plan",
+    "revise",
+    "setup",
+    "short_creation",
+    "short_plan",
+    "short_plan_review",
+    "short_review",
+    "short_revise",
+    "short_write",
+    "summarize",
+    "write"
+  ]
+}

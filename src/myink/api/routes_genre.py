@@ -7,9 +7,11 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from myink.api.auth import require_owner, require_user
+from myink.api.auth import require_owner, require_user, require_admin
 from myink.api.schemas import GenreCatalogItemOut, GenrePackOut
 from myink.db import tenant_session
+from myink.creation import DRAFT_STATES
+from myink.models import Project
 from myink.genre_catalog import (
     apply_field_edits,
     catalog_entries,
@@ -24,6 +26,12 @@ router = APIRouter(prefix="/api/v1", tags=["genre"])
 
 def _pid(project_id: str) -> uuid.UUID:
     return uuid.UUID(project_id)
+
+
+def ensure_genre_editable(project: Project) -> None:
+    """已建长篇的题材属于冻结设定；草稿与短篇保留原编辑行为。"""
+    if (project.form or "long") == "long" and project.creation_status not in DRAFT_STATES:
+        raise HTTPException(status_code=409, detail="长篇建书完成后不可更改题材")
 
 
 class GenrePackFieldsBody(BaseModel):
@@ -53,11 +61,15 @@ def list_genre_packs() -> list[dict]:
 
 
 @router.put("/projects/{project_id}/genre-pack",
-            dependencies=[Depends(require_owner)], response_model=GenrePackOut)
+            dependencies=[Depends(require_owner), Depends(require_admin)], response_model=GenrePackOut)
 def put_genre_pack(project_id: str, body: GenrePackFieldsBody) -> dict:
     """只改本书字段，不能换根/辅题材。"""
     pid = _pid(project_id)
     with tenant_session(project_id) as db:
+        project = db.get(Project, pid, with_for_update=True)
+        if project is None:
+            raise HTTPException(status_code=404, detail="作品不存在")
+        ensure_genre_editable(project)
         st = get_settings(db, pid)
         if st is None or not is_managed_pack(st.genre_pack):
             raise HTTPException(status_code=400, detail="本书创建时未选题材包")
@@ -71,11 +83,15 @@ def put_genre_pack(project_id: str, body: GenrePackFieldsBody) -> dict:
 
 
 @router.post("/projects/{project_id}/genre-pack/restore",
-             dependencies=[Depends(require_owner)], response_model=GenrePackOut)
+             dependencies=[Depends(require_owner), Depends(require_admin)], response_model=GenrePackOut)
 def restore_genre_pack(project_id: str) -> dict:
     """恢复建书时那份字段（同一本书的 baseline）。"""
     pid = _pid(project_id)
     with tenant_session(project_id) as db:
+        project = db.get(Project, pid, with_for_update=True)
+        if project is None:
+            raise HTTPException(status_code=404, detail="作品不存在")
+        ensure_genre_editable(project)
         st = get_settings(db, pid)
         if st is None or not is_managed_pack(st.genre_pack):
             raise HTTPException(status_code=400, detail="本书创建时未选题材包")

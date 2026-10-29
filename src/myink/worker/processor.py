@@ -34,6 +34,7 @@ from myink.task_budget import (bind_task_budget, budget_managed, budget_view,
 from myink.maintenance_pause import MaintenancePaused, confirm_exception
 from myink.db import new_session, tenant_session
 from myink.models import Project, Task
+from myink.platform_readiness import PlatformNotReady
 from myink.workflow.runner import (
     finalize_chapter_review,
     generate_batch,
@@ -214,6 +215,7 @@ def _dispatch(body: dict) -> dict:
             task_id=task_id,
             user_instruction=payload.get("user_instruction"),
             rewrite=rewrite,
+            replan=bool(payload.get("replan")),
             writing_mode="manual" if payload.get("mode") == "manual" else "auto",
         )
     if task_type == "chapter_plan_resume":
@@ -265,8 +267,11 @@ def _dispatch(body: dict) -> dict:
         # 整图从 START 重跑，确定性输入会再命中确认分流 → 永久 awaiting_review、正文
         # 永不落库（2026-08-17 用户实测：确认后点续跑变成重新生成）。
         chapter_graph, _ = get_graphs()
-        pending = budget_managed() and bool(chapter_graph.get_state({"configurable": {"thread_id": task_id}}).next)
-        if _chapter_awaiting_review(project_id, seq) and not pending:
+        snap = chapter_graph.get_state({"configurable": {"thread_id": task_id}}) if budget_managed() else None
+        pending = bool(snap and snap.next)
+        review_unfinished = bool(snap and not snap.next and (
+            snap.values.get("review_finalization_pending") or snap.values.get("needs_review")))
+        if not pending and (_chapter_awaiting_review(project_id, seq) or review_unfinished):
             return finalize_chapter_review(project_id=project_id, task_id=task_id, chapter_seq=seq)
         chapter_graph, _ = get_graphs()
         return resume_thread(
@@ -278,6 +283,7 @@ def _dispatch(body: dict) -> dict:
                 "chapter_seq": seq,
                 "user_instruction": payload.get("user_instruction"),
                 "rewrite": bool(payload.get("rewrite")),
+                "replan_requested": bool(payload.get("replan")),
             },
         )
     if task_type in ("short_generate", "short_resume"):
@@ -406,7 +412,7 @@ def _finish(body: dict, decision: str) -> None:
     - 成本累计：只在终态或最后一次重试求和一次，避免 retry 重复计入。
     """
     final_attempt = int(body.get("retry_count") or 0) >= settings.worker_max_retries - 1
-    if decision != "waiting" and (decision != "retry" or final_attempt):
+    if decision not in {"waiting", "yield"} and (decision != "retry" or final_attempt):
         _release_inflight(body)
     if decision == "terminal" or (decision == "retry" and final_attempt):
         _accumulate_cost(body)
@@ -434,7 +440,8 @@ def _maybe_reflexion(project_id: str, chapter_seq: int, task_id: str) -> None:
 def _run(body: dict, task_id: str, task_type: str, project_id: str) -> str:
     owner = uuid.uuid4().hex
     try:
-        with bind_task_budget(task_id, owner):
+        from myink.writing_resource_runtime import bind_resources
+        with bind_task_budget(task_id, owner), bind_resources((body.get("payload") or {}).get("writing_resources") or {}):
             return _run_bound(body, task_id, task_type, project_id)
     except MaintenancePaused as exc:
         try:
@@ -459,7 +466,8 @@ def _run_bound(body: dict, task_id: str, task_type: str, project_id: str) -> str
     """派发并分类终态（decision = terminal / waiting / retry，SSE 在此写）。"""
     _pub_status(task_id, "running")
     try:
-        with bind_artifact_sink(lambda event: _pub_artifact(task_id, event)):
+        from myink.worker.scheduling import slice_batches
+        with slice_batches(), bind_artifact_sink(lambda event: _pub_artifact(task_id, event)):
             result = _dispatch(body)
             if (task_type in ("chapter_generate", "chapter_plan_resume", "chapter_resume")
                 and not any(result.get(key) for key in ("error", "manual_halt", "awaiting_plan", "needs_review"))):
@@ -468,6 +476,13 @@ def _run_bound(body: dict, task_id: str, task_type: str, project_id: str) -> str
                     _maybe_reflexion(project_id, seq, task_id)
     except (MaintenancePaused, TaskBudgetPaused, TaskBudgetUnavailable):
         raise
+    except PlatformNotReady as exc:
+        from myink.workflow.runner import _set_task_status
+
+        _mark_empty_writing_chapters(body, "failed")
+        _set_task_status(project_id, task_id, "failed", str(exc))
+        _pub_status(task_id, "failed", {"error": str(exc)})
+        return "terminal"
     except Exception as exc:
         # 批次 critical 冲突：resume 续跑时由图内节点抛出（首次运行在 runner
         # generate_batch 内 catch 置 awaiting_review）。置 awaiting_review 等人工
@@ -511,6 +526,19 @@ def _run_bound(body: dict, task_id: str, task_type: str, project_id: str) -> str
     # （critical 冲突同时带 error 说明）再判失败，保证 SSE 状态正确。
     from myink.workflow.runner import _set_task_status
 
+    if result.get('scheduler_yield'):
+        # A pause/cancel may have arrived after bridge's last budget check.
+        # Serialize with that update before deciding to publish continuation.
+        with new_session() as db:
+            task = db.get(Task, uuid.UUID(task_id), with_for_update=True)
+            if task is None:
+                return 'skip'
+            if task.status == 'running':
+                task.status = 'queued'
+                db.commit()
+            status = task.status
+        _pub_status(task_id, status)
+        return 'yield' if status == 'queued' else 'terminal'
     if result.get("manual_halt"):
         if result["manual_halt"] == "cancelled":
             _mark_empty_writing_chapters(body, "cancelled")
@@ -571,6 +599,10 @@ def process(body: dict, worker_id: str | None = None) -> str:
     if not valid_task_owner(body):
         logger.warning("拒绝任务归属不匹配的消息: %s", body.get("task_id"))
         return "skip"
+    from myink.guest_quota import valid_message
+    if not valid_message(body):
+        logger.warning("拒绝缺少有效游客占额的消息: %s", body.get("task_id"))
+        return "skip"
     r = get_redis()
     task_id = body["task_id"]
     task_type = body["task_type"]
@@ -610,7 +642,10 @@ def process(body: dict, worker_id: str | None = None) -> str:
                 raise
             row = db.get(Task, uuid.UUID(task_id), with_for_update=True)
             operation = (row.payload or {}).get("_budget_resume_operation") if row else None
-            if (operation and body.get("budget_operation_id") != operation
+            guest_operation = (row.payload or {}).get("_guest_resume_operation") if row else None
+            if (guest_operation and (body.get("payload") or {}).get("_guest_resume_operation") != guest_operation):
+                decision = "waiting" if row.status in {"queued", "running"} else "skip"
+            elif (operation and body.get("budget_operation_id") != operation
                     and task_type != "chapter_plan_resume"):
                 decision = "waiting" if row.status in {"queued", "running"} else "skip"
                 logger.info("跳过旧预算续跑消息: %s", task_id)
@@ -627,6 +662,8 @@ def process(body: dict, worker_id: str | None = None) -> str:
                     and not (row.status == "awaiting_plan" and task_type == "chapter_plan_resume"):
                 logger.info("跳过（已终态，去重）: %s status=%s", task_id, row.status)
             elif row and row.status == "paused":
+                # Explicit resume endpoints first set queued. A delayed or
+                # automatic batch_resume must not override a newer pause.
                 logger.info("跳过（已暂停，等 resume）: %s", task_id)
             elif row is None:
                 # 物化：DB 为最终权威（§5.3），幂等键 task_id 作 PK
@@ -651,6 +688,8 @@ def process(body: dict, worker_id: str | None = None) -> str:
             with new_session() as db:
                 task = db.get(Task, uuid.UUID(task_id))
                 persisted_snapshot = (task.payload or {}).get("_task_budget")
+                body = {**body, "payload": {**(body.get("payload") or {}),
+                         "writing_resources": (task.payload or {}).get("writing_resources")}}
             ensure_task_budget(task_id, project_id, body["user_id"], persisted_snapshot)
             decision = _run(body, task_id, task_type, project_id)
 

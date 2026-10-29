@@ -1,0 +1,171 @@
+// @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/vue'
+import { createRouter, createMemoryHistory } from 'vue-router'
+import { ref } from 'vue'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { createThemeScope, themeKey } from '../themeContext'
+import { authKey } from '../authContext'
+import { api, ApiError } from '../../../src/lib/api'
+import type { Feedback } from '../../../src/types'
+import FeedbackWidget from './FeedbackWidget.vue'
+const FEEDBACK_OPEN_EVENT='myink:feedback'
+vi.mock('../../../src/lib/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/lib/api')>()
+  return {
+    ...actual,
+    api: { ...actual.api, submitFeedback: vi.fn(), listFeedback: vi.fn() },
+    fetchFeedbackAttachment: vi.fn(),
+  }
+})
+
+const submitted: Feedback = {
+  id: 'fb-1',
+  username: '',
+  category: 'bug',
+  description: '生成时第 3 章卡住了',
+  contact: '',
+  page_url: '/long',
+  status: 'open',
+  attachments: [],
+  created_at: '2026-09-27T10:00:00Z',
+}
+
+beforeEach(() => {
+  // jsdom 不实现 object URL；上传预览会用到它
+  URL.createObjectURL = vi.fn(() => 'blob:mock')
+  URL.revokeObjectURL = vi.fn()
+})
+
+afterEach(() => {
+  cleanup()
+  vi.clearAllMocks()
+})
+
+async function renderWidget() {
+ const scope=createThemeScope();const router=createRouter({history:createMemoryHistory(),routes:[{path:'/long',component:{template:'<p />'}}]});await router.push('/long');await router.isReady()
+ render(FeedbackWidget,{global:{plugins:[router],provide:{[themeKey as symbol]:scope,[authKey as symbol]:{session:ref({userId:'a',roleVerified:true}),status:ref('authenticated')}}}})
+}
+async function openPanel() { await renderWidget();await fireEvent.click(screen.getByRole('button',{name:'问题反馈'})) }
+
+it('hangs the default cube lamp with the light on', async () => {
+  await renderWidget()
+  const lamp = screen.getByRole('button', { name: '问题反馈' })
+  expect(lamp.getAttribute('data-lamp')).toBe('cube')
+  expect(lamp.getAttribute('data-light')).toBe('on')
+})
+
+// 桌面上反馈的入口就是这只灯（导航里那一行只在窄屏回来）。显不显示是 CSS 的事（jsdom 看不见
+// media query 与 :hover），这里能断言的是硬的那半：牌在 DOM 里、点它开面板、且它不跟灯抢名字。
+it('hangs a clickable 反馈 tag under the lamp', async () => {
+  await renderWidget()
+  const tag = screen.getByRole('button', { name: '反馈' })
+  expect(tag.textContent).toBe('反馈')
+  await fireEvent.click(tag)
+  expect(screen.getByRole('dialog')).toBeTruthy()
+  // 灯罩自己被点时那一下可能要让给底下的控件（lampRival），小牌不让：它是灯罩底下的实心控件。
+  expect(screen.getByRole('button', { name: '问题反馈' })).toBeTruthy()
+})
+
+it('必填校验拦住空描述，填好后带页面路径提交并在「我的反馈」里看到', async () => {
+  vi.mocked(api.submitFeedback).mockResolvedValue(submitted)
+  vi.mocked(api.listFeedback).mockResolvedValue({ items: [submitted] })
+  await openPanel()
+
+  // 全是空白：textarea 的 required 拦不住（值非空），靠我们自己的 trim 校验
+  await fireEvent.input(screen.getByLabelText('问题描述'), { target: { value: '   ' } })
+  await fireEvent.click(screen.getByRole('button', { name: '提交' }))
+  expect((await screen.findByRole('alert')).textContent).toContain('请先写下问题描述')
+  expect(api.submitFeedback).not.toHaveBeenCalled()
+
+  await fireEvent.input(screen.getByLabelText('问题描述'), { target: { value: '生成时第 3 章卡住了' } })
+  await fireEvent.click(screen.getByRole('button', { name: '提交' }))
+
+  await waitFor(() => expect(api.submitFeedback).toHaveBeenCalledTimes(1))
+  const form = vi.mocked(api.submitFeedback).mock.calls[0][0] as FormData
+  expect(form.get('description')).toBe('生成时第 3 章卡住了')
+  expect(form.get('category')).toBe('bug')
+  expect(form.get('page_url')).toBe('/long')
+
+  // 提交成功后自动切到「我的反馈」并把这条拉回来
+  const history = await screen.findByRole('list')
+  expect(within(history).getByText('生成时第 3 章卡住了')).toBeTruthy()
+  expect(api.listFeedback).toHaveBeenCalled()
+})
+
+it('提交失败时保留已填内容并给出提示', async () => {
+  vi.mocked(api.submitFeedback).mockRejectedValue(new ApiError(400, 'TOO_MANY_FILES: 最多 4 个附件', null))
+  await openPanel()
+
+  await fireEvent.input(screen.getByLabelText('问题描述'), { target: { value: '传了太多附件' } })
+  await fireEvent.click(screen.getByRole('button', { name: '提交' }))
+
+  expect((await screen.findByRole('alert')).textContent).toContain('最多 4 个附件')
+  expect((screen.getByLabelText('问题描述') as HTMLTextAreaElement).value).toBe('传了太多附件')
+})
+
+it('按 mime 与体积在客户端先拦一道', async () => {
+  await openPanel()
+  const input = screen.getByLabelText('上传图片或视频')
+
+  await fireEvent.change(input, {
+    target: { files: [new File([new Uint8Array(4)], 'x.exe', { type: 'application/x-msdownload' })] },
+  })
+  expect((await screen.findByRole('alert')).textContent).toContain('只支持 jpg / png / webp / gif')
+
+  await fireEvent.change(input, {
+    target: {
+      files: [new File([new Uint8Array(11 * 1024 * 1024)], 'big.png', { type: 'image/png' })],
+    },
+  })
+  expect((await screen.findByRole('alert')).textContent).toContain('单张图片不要超过 10 MB')
+})
+
+it('「我的反馈」列出本人历史并显示附件取件入口', async () => {
+  vi.mocked(api.listFeedback).mockResolvedValue({
+    items: [{ ...submitted, status: 'resolved', attachments: [
+      { index: 0, name: '现场截图.png', mime: 'image/png', bytes: 2048 },
+    ] }],
+  })
+  await openPanel()
+
+  await fireEvent.click(screen.getByRole('button', { name: '我的反馈' }))
+
+  expect(await screen.findByText('生成时第 3 章卡住了')).toBeTruthy()
+  expect(screen.getByText('已解决')).toBeTruthy()
+  expect(screen.getByRole('button', { name: /现场截图\.png/ })).toBeTruthy()
+})
+
+it('opens the panel from the rail’s labelled entry', async () => {
+  // 手机端没有灯泡、桌面上灯的点击区又常让位：左栏那颗「反馈」只派发事件，挂件是全站唯一实例，这里是唯一接点。
+  await renderWidget()
+  expect(screen.queryByLabelText('问题描述')).toBeNull()
+  await fireEvent(window, new Event(FEEDBACK_OPEN_EVENT))
+  expect(screen.getByLabelText('问题描述')).toBeTruthy()
+})
+
+it('灯压住控件时把这一点击让给那个控件，没压住才自己开面板', async () => {
+  await renderWidget()
+  const lampButton = screen.getByRole('button', { name: '问题反馈' })
+  const rival = document.createElement('button')
+  rival.textContent = '刷新当前视图'
+  const seen = vi.fn()
+  rival.addEventListener('click', seen)
+  document.body.appendChild(rival)
+  const original = document.elementsFromPoint
+
+  // jsdom 不实现 elementsFromPoint（也没有排版），所以直接伪造命中栈。
+  document.elementsFromPoint = vi.fn(() => [rival])
+  await fireEvent.click(lampButton)
+  const openedWhileBlocked = screen.queryByLabelText('问题描述') !== null
+
+  document.elementsFromPoint = vi.fn(() => [lampButton])
+  await fireEvent.click(lampButton)
+  const openedWhileFree = screen.queryByLabelText('问题描述') !== null
+
+  document.elementsFromPoint = original
+  rival.remove()
+
+  expect(seen).toHaveBeenCalledTimes(1)
+  expect(openedWhileBlocked).toBe(false)
+  expect(openedWhileFree).toBe(true)
+})

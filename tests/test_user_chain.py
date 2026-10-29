@@ -1,51 +1,75 @@
-"""账号级模型链：建书对话与文风提取走这条（此刻还没有书，拿不到 project_settings）。
-
-不装 chain_stub —— make_chain/make_user_chain 在 default_provider 是测试桩时会短路，
-那样就绕过了这里要验的路由逻辑。
-"""
-
-from __future__ import annotations
-
+"""Account model calls resolve centralized resources and published user selections."""
 import uuid
 
-from myink.api.routes_environment import EnvironmentBody, ModelConnectionBody, put_environment
-from myink.db import ensure_user_environment
+import pytest
+
+from myink import platform_configuration as pc
 from myink.providers import make_user_chain
+from myink.providers.credentials import encrypt_api_key
 
 
-ensure_user_environment()
+@pytest.fixture
+def central_policy(monkeypatch):
+    config = pc.empty_configuration()
+    config['version'] = 1
+    config['connections'] = {
+        'default': {'name': 'Platform default', 'protocol': 'openai',
+                    'base_url': 'https://models.example.com/v1', 'model': 'platform-pro',
+                    'api_key_encrypted': encrypt_api_key('k'), 'enabled': True, 'user_visible': False,
+                    'input_price': 3.5, 'output_price': 8},
+        'published': {'name': 'Published', 'protocol': 'openai',
+                      'base_url': 'https://models.example.com/v1', 'model': 'user-selected',
+                      'api_key_encrypted': encrypt_api_key('k'), 'enabled': True, 'user_visible': True},
+    }
+    config['model_routes'] = {'writer': 'custom:default'}
+    selections = {}
+    monkeypatch.setattr(pc, 'load_configuration', lambda: config)
+    monkeypatch.setattr('myink.environment.packed_models', lambda uid: selections)
+    monkeypatch.setattr('myink.environment.thinking_enabled_for_user', lambda uid: False)
+    return config, selections
 
 
-def _install(temp_user, routes: dict) -> str:
-    cid = str(uuid.uuid4())
-    put_environment(EnvironmentBody(
-        model_connections=[ModelConnectionBody(
-            id=cid, name="私有", protocol="openai",
-            base_url="https://models.example.com/v1", model="novel-pro",
-            api_key="k", input_price=3.5, output_price=8,
-        )],
-        model_routes={role: f"custom:{cid}" for role in routes},
-    ), user_id=temp_user)
-    return cid
+def test_user_chain_uses_published_account_route_and_platform_prices(central_policy):
+    config, selections = central_policy
+    selections['planner'] = 'custom:published'
+    assert make_user_chain('planner', uuid.uuid4()).chain == ['user-selected']
+    chain = make_user_chain('writer', uuid.uuid4())
+    assert chain.chain == ['platform-pro']
+    assert chain.prices == {'input': 3.5, 'input_cache_hit': 3.5, 'output': 8.0}
 
 
-def test_user_chain_uses_the_account_route_and_its_prices(temp_user):
-    _install(temp_user, {"planner": None})
-    chain = make_user_chain("planner", temp_user)
-    assert chain.chain == ["novel-pro"]
-    assert chain.prices == {"input": 3.5, "input_cache_hit": 3.5, "output": 8.0}
+def test_planner_uses_platform_writer_default_not_user_writer(central_policy):
+    config, selections = central_policy
+    selections['writer'] = 'custom:published'
+    assert make_user_chain('planner', uuid.uuid4()).chain == ['platform-pro']
 
 
-def test_user_chain_falls_back_from_planner_to_writer(temp_user):
-    """用户只配了 writer：建书对话不该因为没配 planner 就变哑巴。"""
-    _install(temp_user, {"writer": None})
-    assert make_user_chain("planner", temp_user).chain == ["novel-pro"]
+@pytest.mark.parametrize('role', ['writer', 'planner', 'extract', 'validator_l2', 'audit', 'summarize'])
+def test_each_role_honors_own_selection_and_platform_fallback(central_policy, role):
+    config, selections = central_policy
+    selections.update({key: 'custom:published' for key in
+        ('writer', 'planner', 'extract', 'validator_l2', 'audit', 'summarize') if key != role})
+    assert make_user_chain(role, uuid.uuid4()).chain == ['platform-pro']
+    selections[role] = 'custom:published'
+    assert make_user_chain(role, uuid.uuid4()).chain == ['user-selected']
+    config['connections']['role-default'] = {
+        **config['connections']['default'], 'model': 'role-default'}
+    config['model_routes'][role] = 'custom:role-default'
+    assert make_user_chain(role, uuid.uuid4()).chain == ['user-selected']
+    selections.pop(role)
+    assert make_user_chain(role, uuid.uuid4()).chain == ['role-default']
+    for unavailable in ('custom:missing', 'custom:default'):
+        selections[role] = unavailable
+        assert make_user_chain(role, uuid.uuid4()).chain == ['role-default']
+    selections[role] = 'custom:published'
+    config['connections']['published']['enabled'] = False
+    assert make_user_chain(role, uuid.uuid4()).chain == ['role-default']
 
 
-def test_user_chain_falls_back_from_extract_to_planner_then_writer(temp_user):
-    _install(temp_user, {"writer": None})
-    assert make_user_chain("extract", temp_user).chain == ["novel-pro"]
-
-
-def test_user_chain_without_any_route_is_unconfigured(temp_user):
-    assert make_user_chain("planner", temp_user).chain == ["unconfigured"]
+def test_user_chain_without_any_platform_route_is_unconfigured(central_policy):
+    config, selections = central_policy
+    config['connections'] = {}
+    config['model_routes'] = {}
+    from myink.platform_readiness import PlatformNotReady
+    with pytest.raises(PlatformNotReady):
+        make_user_chain('planner', uuid.uuid4())

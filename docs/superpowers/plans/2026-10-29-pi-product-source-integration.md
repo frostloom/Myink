@@ -26,18 +26,18 @@ Auto-merged product files (api/main.py,cli.py,validation/l1.py,batch_graph.py,sh
 
 ### Task 1: Freeze and integrate both source histories
 
-- [ ] Check clean pushed Pi worktree descended from source baseline3b6eebd2 (later documentation-only commits allowed); inspect deeper instructions. Fresh-read remote main/deployed commit references; stop source integration if the actual target changed and update plan first. Do not fetch/reset another checkout.
-- [ ] Inventory both sides' tests and intended behaviors at the fixed14conflicts. Run relevant existing main/VIP tests on oldPi to establish missing-feature failures where practical; preserve outputs. Do not invent tests that merely mirror the merge.
-- [ ] Merge exactd25 into codex/pi-autonomy-design using --no-commit --no-ff. Preserve MERGE_HEAD until successful verification/commit; no blanket ours/theirs resolution, force reset or whole-tree replacement.
-- [ ] Resolve schema/admission/queue/workflow conflicts in dependency order above. Read both versions around each overlap; preserve guest/model/resource/VIP behavior, Pi ownership/maintenance semantics and existing tests. Capture any deliberate behavioral choice and why.
-- [ ] Run focused schema, quotas/routes, membership scheduling, queue recovery, workflow and maintenance tests; add a narrow cross-feature regression only where existing tests cannot prove interaction. Tests first for any new behavior. No paid requests or live SQL.
+- [x] Check clean pushed Pi worktree descended from source baseline3b6eebd2 (later documentation-only commits allowed); inspect deeper instructions. Fresh-read remote main/deployed commit references; stop source integration if the actual target changed and update plan first. Do not fetch/reset another checkout.
+- [x] Inventory both sides' tests and intended behaviors at the fixed14conflicts. Run relevant existing main/VIP tests on oldPi to establish missing-feature failures where practical; preserve outputs. Do not invent tests that merely mirror the merge.
+- [x] Merge exactd25 into codex/pi-autonomy-design using --no-commit --no-ff. Preserve MERGE_HEAD until successful verification/commit; no blanket ours/theirs resolution, force reset or whole-tree replacement.
+- [x] Resolve schema/admission/queue/workflow conflicts in dependency order above. Read both versions around each overlap; preserve guest/model/resource/VIP behavior, Pi ownership/maintenance semantics and existing tests. Capture any deliberate behavioral choice and why.
+- [x] Run focused schema, quotas/routes, membership scheduling, queue recovery, workflow and maintenance tests; add a narrow cross-feature regression only where existing tests cannot prove interaction. Tests first for any new behavior. No paid requests or live SQL.
 
 ### Task 2: Whole-source and integration verification
 
-- [ ] Verify no unresolved/conflict markers, no dropped source/features, manifest/profile remain unchanged, model tools remain six with existing phase permissions. Compare merge against both parents; complete changed-path/line inventory.
-- [ ] Run relevant Python tests then full python -m pytest tests/ -q and complete Pi offline gates; keep lab/live skips separate. Use the current venv and all required isolated services.
-- [ ] Frontend lint/test/build and Go vet/test as affected by imported history. Inspect fixed myink-test service occupancy before scripts/ci-local.sh; never run it concurrently across worktrees. If an actual environment block exists, retain it and use exact remoteCI rather than pretending a skip is acceptance.
-- [ ] Verify standalone -I-S-B audit reader imports no Pi/app/provider code; existing actual export and prior nextday linkage still validate without writing the server.
+- [x] Verify no unresolved/conflict markers, no dropped source/features, manifest/profile remain unchanged, model tools remain six with existing phase permissions. Compare merge against both parents; complete changed-path/line inventory.
+- [x] Run relevant Python tests then full python -m pytest tests/ -q and complete Pi offline gates; keep lab/live skips separate. Use the current venv and all required isolated services.
+- [x] Frontend lint/test/build and Go vet/test as affected by imported history. Inspect fixed myink-test service occupancy before scripts/ci-local.sh; never run it concurrently across worktrees. If an actual environment block exists, retain it and use exact remoteCI rather than pretending a skip is acceptance.
+- [x] Verify standalone -I-S-B audit reader imports no Pi/app/provider code; existing actual export and prior nextday linkage still validate without writing the server.
 
 ### Task 3: Reviewable source candidate and next release gate
 

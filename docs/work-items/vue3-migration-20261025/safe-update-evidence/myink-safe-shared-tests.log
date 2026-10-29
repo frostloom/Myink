@@ -1,0 +1,13 @@
+
+> web@0.0.0 test:shared
+> vitest run --config vitest.shared.config.ts
+
+
+ RUN  v4.1.12 /Users/a1/.codex/worktrees/myink-vue3-migration/Myink/web
+
+
+ Test Files  33 passed (33)
+      Tests  199 passed (199)
+   Start at  15:18:25
+   Duration  4.00s (transform 536ms, setup 0ms, import 869ms, tests 275ms, environment 3.27s)
+

@@ -157,7 +157,8 @@ def _parallel_quotes(text: str) -> list[str]:
 
 def _prose_ban_quotes(text: str) -> list[str]:
     quotes: list[str] = []
-    for match in _NOT_IS.finditer(text):
+    from myink.writing_resource_runtime import validation_flag
+    for match in (_NOT_IS.finditer(text) if validation_flag("not_is") else []):
         # 匹配式只负责判定；证据还需包含「是」之后的内容，供审核/修订定位。
         # 保留原文切片，遇句末或换行停止，避免把后续正文整段带入报告。
         # 句末标点落在匹配内部（「不是…。是…」）时不算收束，越过它把改口那半一并带出；
@@ -172,7 +173,8 @@ def _prose_ban_quotes(text: str) -> list[str]:
                 break
             end += 1
         quotes.append(text[match.start():end])
-    quotes.extend(_parallel_quotes(text))
+    if validation_flag("parallel"):
+        quotes.extend(_parallel_quotes(text))
     seen: set[str] = set()
     ordered: list[str] = []
     for quote in quotes:

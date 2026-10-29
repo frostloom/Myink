@@ -85,6 +85,8 @@ class ModelResponse:
     prices: dict[str, float] | None = None
     budget_replayed: bool = False
     usage_complete: bool = True
+    # Private continuation state, retained for budget replay, never public prose.
+    provider_context: dict | None = field(default=None, repr=False)
 
     @property
     def cost_est(self) -> float:
@@ -93,6 +95,12 @@ class ModelResponse:
             self.model_id, self.input_tokens, self.output_tokens, self.cache_hit,
             prices=self.prices,
         )
+
+
+def public_messages(messages: list[dict]) -> list[dict]:
+    """Remove private protocol state before diagnostics or another provider."""
+    return [{key: value for key, value in message.items() if key != "_provider_context"}
+            for message in messages]
 
 
 class ModelProvider(ABC):
@@ -163,7 +171,8 @@ class FallbackChain:
         for i, (provider, model_id) in enumerate(zip(self.providers, self.chain, strict=True)):
             try:
                 resp = provider.generate(
-                    messages, model_id=model_id, max_tokens=max_tokens,
+                    messages if provider.name() == "anthropic" else public_messages(messages),
+                    model_id=model_id, max_tokens=max_tokens,
                     temperature=temperature, json_mode=json_mode, tools=tools,
                     disable_thinking=disable_thinking,
                 )
@@ -190,7 +199,8 @@ class FallbackChain:
                 on_reset()
             try:
                 resp = provider.generate_stream(
-                    messages, model_id=model_id, on_delta=on_delta, on_reset=on_reset,
+                    messages if provider.name() == "anthropic" else public_messages(messages),
+                    model_id=model_id, on_delta=on_delta, on_reset=on_reset,
                     max_tokens=max_tokens, temperature=temperature,
                     json_mode=json_mode, tools=tools, disable_thinking=disable_thinking,
                 )
@@ -215,7 +225,7 @@ DEFAULT_ROUTES: dict[str, list[str]] = {}
 
 
 class MissingModelProvider(ModelProvider):
-    """用户未配置连接时的显式失败，避免悄悄打 .env 里的内置 Key。"""
+    """Explicit failure when platform policy has no usable model for this role."""
 
     def generate(self, messages: list[dict], *, model_id: str, max_tokens: int | None = None,
                  temperature: float | None = None, json_mode: bool = False,
@@ -223,7 +233,7 @@ class MissingModelProvider(ModelProvider):
                  disable_thinking: bool = False) -> ModelResponse:
         return ModelResponse(
             content="", model_id=model_id,
-            error="请先在环境配置里添加模型连接，并为该角色指定模型",
+            error="请联系管理员配置并启用平台模型，再选择已发布模型",
         )
 
     def name(self) -> str:

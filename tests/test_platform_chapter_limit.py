@@ -39,8 +39,9 @@ def quiet_publish(monkeypatch):
 
 
 @pytest.fixture
-def book(temp_project):
+def book(temp_project, stub_provider):
     """temp_project 那本书 + 车主；用完把本用例碰过的 Redis 键清干净。"""
+    stub_provider("金丹", "金丹")
     pid = temp_project
     with new_session() as db:
         uid = str(db.scalar(select(Project.user_id).where(Project.id == uuid.UUID(pid))))
@@ -105,8 +106,8 @@ def test_the_chapter_that_would_exceed_the_limit_is_refused(book, quiet_publish)
     assert book.r.get(book.key) == "2"
 
 
-def test_the_refusal_is_a_read_not_a_write(book, quiet_publish):
-    """拒绝那次在 Redis 里什么都没留下——直接调闸门，才拿得到用来断言的 task_id。
+def test_refusal_does_not_change_quota_or_inflight(book, quiet_publish):
+    """拒绝不改变业务配额或并发；原意图结果收据仍持久保留。
 
     `enqueue()` 拒了就抛，task_id 出不来；只有把闸门单独跑一次才能证明「集合里没有它」。
     顺带独立钉住 KEYS 布局（这里的键是照着 `enqueue()` 重建的，顺序错就红）。
@@ -114,14 +115,15 @@ def test_the_refusal_is_a_read_not_a_write(book, quiet_publish):
     _enqueue(book, max_chapters=2)
     _enqueue(book, max_chapters=2)
     today = date.today().isoformat()
+    probe_id = "refused-probe-" + uuid.uuid4().hex
 
-    code, reason = enq._run_gates(book.r, _gate_keys(book), task_id="refused-probe",
+    code, reason = enq._run_gates(book.r, _gate_keys(book), task_id=probe_id,
                                   quota_n=1, cost_est=0.0, project_id=book.pid,
                                   platform_chapter_max=2)
 
     assert (code, reason) == (-5, "PLATFORM_CHAPTER_EXCEEDED")
     assert book.r.get(book.key) == "2"
-    assert book.r.sismember(inflight_key(book.uid, book.pid), "refused-probe") == 0
+    assert book.r.sismember(inflight_key(book.uid, book.pid), probe_id) == 0
     assert book.r.get(quota_key(book.uid, today)) == "2"
     assert book.r.get(book_quota_key(book.uid, book.pid, today)) == "2"
 

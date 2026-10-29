@@ -109,3 +109,51 @@ def test_review_pool_does_not_count_as_completed_chapter(temp_project):
         nodes.record_plain(db,project_id=temp_project,task_id=tid+':ch2',node='persist',detail={'status':'awaiting_review'})
         db.flush()
         assert _batch_done_chapters(db,tid)==1
+
+
+@pytest.mark.parametrize("history_copies", [1, 2])
+def test_finalizing_review_revision_preserves_newly_approved_memory(temp_project, fake_embedder, history_copies):
+    from myink.models import Fact, Event
+    accepted = {"kind": "fact", "payload": {"content": "修订后批准的事实"}, "confidence": .9}
+    event = {"kind": "event", "payload": {"summary": "修订后批准的事件"}, "confidence": .9}
+    with tenant_session(temp_project) as db:
+        for candidate in [accepted, event]:
+            row = MemoryCandidate(project_id=temp_project, source_chapter=1, **candidate)
+            db.add(row)
+            db.flush()
+            assert nodes.confirm_candidate(db, temp_project, row.id) is not None
+        if history_copies == 2:
+            for candidate in [accepted, event]:
+                db.add(MemoryCandidate(project_id=temp_project, source_chapter=1,
+                                       status="confirmed", **candidate))
+        db.add(MemoryCandidate(project_id=temp_project, source_chapter=1, kind="fact",
+                               payload={"content": "旧稿已批准但新稿删除"}, status="confirmed"))
+        db.add(Fact(project_id=temp_project, source_chapter=1,
+                    content="旧稿已批准但新稿删除", confirm_status="confirmed"))
+        db.add(MemoryCandidate(project_id=temp_project, source_chapter=1, kind="fact",
+                               payload={"content": "已拒绝"}, status="rejected"))
+    state = {"project_id": temp_project, "chapter_seq": 1, "draft": "修订正文",
+             "rewrite": True, "review_revision": True, "needs_review": True,
+             "candidates": [accepted, event, {"kind": "fact", "payload": {"content": "已拒绝"}}]}
+    for _ in range(2):
+        result = nodes.finalize_awaiting_review(state, task_id=str(uuid.uuid4()))
+        assert not result["needs_review"]
+        with tenant_session(temp_project) as db:
+            assert [f.content for f in db.query(Fact).filter_by(valid_to=None)] == ["修订后批准的事实"]
+            assert [e.summary for e in db.query(Event)] == ["修订后批准的事件"]
+
+
+def test_finalizing_revision_does_not_revive_rejected_restoration(temp_project, fake_embedder):
+    from myink.models import Fact
+    candidate = {"kind": "fact", "payload": {"content": "已删除且拒绝恢复"}, "confidence": .9}
+    with tenant_session(temp_project) as db:
+        db.add(MemoryCandidate(project_id=temp_project, source_chapter=1, status="confirmed", **candidate))
+        db.add(MemoryCandidate(project_id=temp_project, source_chapter=1, status="rejected",
+                               review={"mode": "revise", "applied": True}, **candidate))
+        db.add(Fact(project_id=temp_project, source_chapter=1, content="已删除且拒绝恢复",
+                    confirm_status="expired", valid_to=1))
+    state = {"project_id": temp_project, "chapter_seq": 1, "draft": "修订仍错误提取旧事实",
+             "rewrite": True, "review_revision": True, "needs_review": True, "candidates": [candidate]}
+    nodes.finalize_awaiting_review(state, task_id=str(uuid.uuid4()))
+    with tenant_session(temp_project) as db:
+        assert db.query(Fact).filter_by(valid_to=None).count() == 0

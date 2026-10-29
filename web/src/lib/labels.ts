@@ -1,8 +1,9 @@
 // 中文标签与色调映射（状态/severity 一律文字+色+icon 三通道，DESIGN §Review）。
-import type { BadgeTone } from '../components/StatusBadge'
+import type { BadgeTone } from './badgeTone'
 import type { ChapterStatus, FindingSeverity, TaskStatus, Verdict } from '../types'
 
 export const NODE_LABELS: Record<string, string> = {
+  book_setup: '建书设定',
   load_state: '加载状态',
   recall: '回忆召回',
   plan_cast: '出场人物',

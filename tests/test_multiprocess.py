@@ -2,7 +2,7 @@
 
 真正起 2 个 worker 进程消费同一 RabbitMQ 主队列，验证多书并行核心语义：
 - 异书并行：两个不同 project 的任务同时投递 → 两个 worker 并发执行（overlap>0），都 done；
-- 同书串行：同一 project 的两个任务同时投递 → 书锁保证一个执行、另一个 defer 退避重投，
+- 同书串行：首章持锁时再投同一 project 的第二章 → 书锁保证另一个 defer 退避重投，
   永不并发（overlap==0），最终都 done。
 
 阶段 6 迁移 RabbitMQ 后：
@@ -60,7 +60,7 @@ def _purge_test_queues() -> None:
     with amqp.connect() as conn:
         ch = conn.channel()
         amqp.declare_topology(ch)
-        for queue in (amqp.main_queue(), amqp.delay_queue(), amqp.dlq_queue()):
+        for queue in (amqp.main_queue(), amqp.delay_queue(), amqp.vip_queue(), amqp.vip_delay_queue(), amqp.dlq_queue()):
             ch.queue_purge(queue)
 
 
@@ -203,7 +203,7 @@ def _make_test_project(demo_id: str, tag: str) -> str:
         return str(b.id)
 
 
-def _enqueue(project_id: str, seq: int, tag: str) -> str:
+def _enqueue(project_id: str, seq: int, tag: str, priority: int = 0) -> str:
     """publish 到 RabbitMQ 主队列（queue:tasks-mp-；网关未起，模拟入队结果），返回 task_id。"""
     task_id = str(uuid.uuid4())
     with new_session() as db:
@@ -216,9 +216,9 @@ def _enqueue(project_id: str, seq: int, tag: str) -> str:
     }
     from myink.db import tenant_session
     from myink.maintenance import register_admission
-    with tenant_session(project_id) as db:register_admission(db,body,priority=0)
+    with tenant_session(project_id) as db:register_admission(db,body,priority=priority)
     if os.environ.get("PI_LAB_ENV"):_MP_ORIGINALS[task_id]=dict(body)
-    amqp.publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS)
+    amqp.publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS, priority=priority)
     return task_id
 
 
@@ -259,7 +259,7 @@ def _cleanup(project_ids: list[str], task_ids: list[str]) -> None:
     # 无 Redis ZSET/Stream 残留；清队列保证多次运行互不污染（在途已交付消息不受 purge 影响）。
     with amqp.connect() as conn:
         ch = conn.channel()
-        for q in (amqp.main_queue(), amqp.delay_queue(), amqp.dlq_queue()):
+        for q in (amqp.main_queue(), amqp.delay_queue(), amqp.vip_queue(), amqp.vip_delay_queue(), amqp.dlq_queue()):
             try:
                 ch.queue_purge(q)
             except Exception:
@@ -287,8 +287,22 @@ def test_hetero_book_parallel(two_workers):
         _cleanup([book_a, book_b], [ta, tb])
 
 
+def test_vip_and_normal_queues_run_full_chapter_pipeline(two_workers):
+    demo = _demo_project_id()
+    books = [_make_test_project(demo, 'vip'), _make_test_project(demo, 'normal')]
+    tasks = [_enqueue(books[0], 1, 'vip', priority=9), _enqueue(books[1], 1, 'normal')]
+    try:
+        for tid in tasks:
+            assert _wait_status(tid) == 'done'
+        with new_session() as db:
+            for tid in tasks:
+                assert db.query(AgentRun).filter_by(task_id=tid, node='persist').count() == 1
+    finally:
+        _cleanup(books, tasks)
+
+
 def test_same_book_serial(two_workers):
-    """同书串行：同一本书两个任务同时投递 → 书锁保证 defer→接棒，永不并发，最终都 done。
+    """同书串行：首章持锁时投递第二章 → 书锁保证 defer→接棒，永不并发，最终都 done。
 
     defer 重投由 RabbitMQ TTL+DLX 自动弹回主队列（queue:delay 到期死信回 queue:tasks），
     无需模拟 dispatcher；书锁释放后重投消息接棒执行。
@@ -298,14 +312,23 @@ def test_same_book_serial(two_workers):
     demo_id = _demo_project_id()
     book = _make_test_project(demo_id, "S")
     t1 = _enqueue(book, 1, "s1")
-    t2 = _enqueue(book, 2, "s2")
+    task_ids = [t1]
     try:
+        # This test bypasses enqueue's inflight gate to exercise worker contention.
+        # The book lock guarantees exclusion, not FIFO acquisition by two workers:
+        # establish the first writer before injecting the next chapter.
+        deadline = time.monotonic() + 40
+        while not (r.exists(book_key(book)) and r.exists("mp:active")):
+            assert time.monotonic() < deadline, "first chapter never entered the locked writer"
+            time.sleep(0.05)
+        t2 = _enqueue(book, 2, "s2")
+        task_ids.append(t2)
         assert _wait_status(t1) == "done"
         assert _wait_status(t2) == "done"
         overlap = int(r.get("mp:overlap") or 0)
         assert overlap == 0, "同书任务应串行（书锁保证 defer→接棒），overlap 应 ==0"
     finally:
-        _cleanup([book], [t1, t2])
+        _cleanup([book], task_ids)
 
 
 def test_worker_kill_retains_unconfirmed_checkpoint_without_duplicate_effects(two_workers):

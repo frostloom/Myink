@@ -174,10 +174,10 @@ def authorized_node(stage):
                     row.completed_nodes = [*row.completed_nodes[-63:],stage]
 
 
-def invoke_graph(graph, value, config):
+def invoke_graph(graph, value, config, **invoke_options):
     from myink.task_budget import TaskBudgetPaused
     try:
-        result=graph.invoke(value, config=config)
+        result=graph.invoke(value, config=config, **invoke_options)
         guard_maintenance("graph:end")
         return result
     except (MaintenancePaused, TaskBudgetPaused) as exc:

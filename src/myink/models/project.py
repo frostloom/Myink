@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, JSON, DateTime, ForeignKey, Index, Integer, String, Text, Uuid, func, text
+from sqlalchemy import Boolean, CheckConstraint, JSON, DateTime, ForeignKey, Index, Integer, String, Text, Uuid, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from myink.models.base import Base, TenantMixin, TimestampMixin, UUIDPkMixin
@@ -15,6 +15,8 @@ class User(Base, UUIDPkMixin, TimestampMixin):
     """用户与配额（§13 三层闸门之一：每用户每日配额）。"""
 
     __tablename__ = "users"
+
+    is_guest: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
 
     email: Mapped[str | None] = mapped_column(String(255), unique=True)
     username: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -119,6 +121,7 @@ class Character(Base, UUIDPkMixin, TimestampMixin):
     project_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    source_chapter: Mapped[int | None] = mapped_column(Integer, comment="自动建档来源章；作者/历史基底为 NULL")
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     race: Mapped[str | None] = mapped_column(String(64))
     origin: Mapped[str | None] = mapped_column(String(255), comment="出身")

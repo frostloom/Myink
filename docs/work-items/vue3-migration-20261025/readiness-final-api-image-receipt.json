@@ -1,0 +1,40 @@
+{
+  "kind": "isolated_api_image_smoke",
+  "image": "myink-api:vue-sse-ready-final-20261026",
+  "passed": true,
+  "cleanupErrors": [],
+  "imageId": "sha256:9b5fb658fd5b6c5fb4c36e7ed74e207bcd6d48364c29a23be1bfbc863cd32b9b",
+  "revision": "uncommitted-readiness-final-20261026",
+  "runtime": {
+    "sourceSha256": "39587e77c3cb7334519f1e0957c2ba3d680e93f3336164ea62167a3afccb1454",
+    "coreVersions": {
+      "alembic": "1.20.0",
+      "cryptography": "50.0.1",
+      "fastapi": "0.141.1",
+      "httpx": "0.28.1",
+      "langchain-core": "1.6.5",
+      "langgraph": "1.2.12",
+      "langgraph-checkpoint-postgres": "3.1.2",
+      "mcp": "1.30.0",
+      "openai": "3.22.0",
+      "pgvector": "0.5.0",
+      "pika": "1.4.4",
+      "psycopg": "3.3.6",
+      "psycopg-binary": "3.3.6",
+      "pydantic": "2.13.5",
+      "pydantic-core": "2.46.5",
+      "pyjwt": "2.15.0",
+      "pyotp": "2.10.0",
+      "python-dotenv": "1.2.3",
+      "redis": "8.1.0",
+      "rich": "15.0.0",
+      "sqlalchemy": "2.1.1",
+      "sse-starlette": "3.4.11",
+      "starlette": "1.6.0",
+      "typer": "0.27.2",
+      "uvicorn": "0.53.0"
+    },
+    "paths": 113,
+    "healthz": 200
+  }
+}

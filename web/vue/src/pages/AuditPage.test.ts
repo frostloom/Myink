@@ -1,0 +1,25 @@
+import { afterEach, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
+import { ref } from 'vue'
+import { createMemoryHistory, createRouter } from 'vue-router'
+import { api, ApiError } from '../../../src/lib/api'
+import AuditPage from './AuditPage.vue'
+vi.mock('../authContext',()=>({useAuth:()=>({session:ref(null),status:ref('anonymous'),logout:vi.fn()})}))
+const report={report_id:'r',status:'completed',window_start:1,window_end:30,chapters:30,sampled:3,findings:1,trigger:'manual',created_at:'2026-10-25T12:00',volume:{volumes:1,stages:3}}
+const detail={...report,findings:[{conflict_key:'c',severity:'critical',conflict_type:'timeline',scope:'structural',source:'validator',evidence:[{chapter:3,quote:'时间线矛盾'}],suggestion:'修复'}]}
+async function page(){vi.spyOn(api,'listProjects').mockResolvedValue([]);const router=createRouter({history:createMemoryHistory(),routes:[{path:'/projects/:projectId/audit',component:{template:'<div/>'}},{path:'/projects/:projectId',component:{template:'<div/>'}}]});await router.push('/projects/p/audit');return{...render(AuditPage,{global:{plugins:[router]}}),router}}
+afterEach(()=>{cleanup();vi.restoreAllMocks()})
+it('shows empty reports then triggers and opens the newest report with chapter navigation',async()=>{vi.spyOn(api,'listGlobalAudits').mockResolvedValueOnce([]).mockResolvedValue([report] as never);vi.spyOn(api,'triggerGlobalAudit').mockResolvedValue({} as never);vi.spyOn(api,'getGlobalAudit').mockResolvedValue(detail as never);const{router}=await page();expect(await screen.findByText(/还没有审计报告/)).toBeTruthy();await fireEvent.click(screen.getByRole('button',{name:'触发审计'}));expect(await screen.findByText('时间线矛盾')).toBeTruthy();expect(screen.getByText('审计已完成')).toBeTruthy();await fireEvent.click(screen.getByRole('button',{name:'第 3 章 →'}));await vi.waitFor(()=>expect(router.currentRoute.value.fullPath).toBe('/projects/p?chapter=3'))})
+it('expands and collapses report details and exposes failed reasons',async()=>{vi.spyOn(api,'listGlobalAudits').mockResolvedValue([{...report,status:'failed',error:'审计服务故障'}] as never);vi.spyOn(api,'getGlobalAudit').mockResolvedValue(detail as never);await page();const head=await screen.findByRole('button',{name:/第 1–30 章/});await fireEvent.click(head);expect(await screen.findByText('失败原因：审计服务故障')).toBeTruthy();await fireEvent.click(head);expect(screen.queryByText('失败原因：审计服务故障')).toBeNull()})
+it.each([400,502])('explains audit HTTP %s and refreshes failed reports',async status=>{const list=vi.spyOn(api,'listGlobalAudits').mockResolvedValue([]);vi.spyOn(api,'triggerGlobalAudit').mockRejectedValue(new ApiError(status,'failed','failed'));await page();await screen.findByText(/还没有审计报告/);await fireEvent.click(screen.getByRole('button',{name:'触发审计'}));expect(await screen.findByRole('alert')).toBeTruthy();expect(screen.getByRole('alert').textContent).toContain(status===400?'尚无已写章节':'已落 failed 报告');if(status===502)expect(list).toHaveBeenCalledTimes(2)})
+it('does not display old report details after switching project',async()=>{vi.spyOn(api,'listGlobalAudits').mockResolvedValue([report] as never);let finish!:(v:never)=>void;vi.spyOn(api,'getGlobalAudit').mockImplementation(()=>new Promise(resolve=>{finish=resolve}));const{router}=await page();await fireEvent.click(await screen.findByRole('button',{name:/第 1–30 章/}));await router.push('/projects/other/audit');finish(detail as never);await vi.waitFor(()=>expect(screen.queryByText('时间线矛盾')).toBeNull())})
+
+it('recovers a failed initial report load without triggering an audit', async () => {
+ const list=vi.spyOn(api,'listGlobalAudits').mockRejectedValueOnce(new Error('offline')).mockResolvedValue([])
+ const trigger=vi.spyOn(api,'triggerGlobalAudit')
+ await page(); await screen.findByRole('alert')
+ expect(screen.queryByText('加载中…')).toBeNull()
+ await fireEvent.click(screen.getByRole('button',{name:'重新加载报告'}))
+ expect(await screen.findByText(/还没有审计报告/)).toBeTruthy()
+ expect(list).toHaveBeenCalledTimes(2); expect(trigger).not.toHaveBeenCalled()
+})

@@ -1,0 +1,34 @@
+{
+  "taskId": "41d8e6f7-dd07-484f-8c05-9ee4cb2a3c38",
+  "frames": 59,
+  "lastFrames": [
+    {
+      "id": "1792989433062-0",
+      "event": "node",
+      "status": null
+    },
+    {
+      "id": "1792989433076-0",
+      "event": "node",
+      "status": null
+    },
+    {
+      "id": "1792989433079-0",
+      "event": "node",
+      "status": null
+    },
+    {
+      "id": "1792989433763-0",
+      "event": "status",
+      "status": "done"
+    },
+    {
+      "id": "1792989434123-0",
+      "event": "node",
+      "status": null
+    }
+  ],
+  "firstStream": "incremental and done received",
+  "replay": "did not receive done; ended by harness SIGTERM after diagnosis",
+  "productCause": "_replay skips terminal status if any later metrics row exists"
+}

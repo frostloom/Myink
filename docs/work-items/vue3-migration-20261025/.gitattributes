@@ -1,0 +1,2 @@
+# Captured command output is retained byte-for-byte as acceptance evidence.
+*.log -whitespace

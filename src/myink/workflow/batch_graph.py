@@ -79,10 +79,7 @@ class BatchHaltError(Exception):
         self.status = status
 
 
-_BATCH_PLAN_PROMPT = """你是长篇网文创作系统的【批次规划 Agent】。为接下来 N 章做整体推进蓝图（N 是规划单元，不是重复次数——N 章要系统性推进主线/支线/伏笔/大纲，不能各自为政）。
-若给定了【整书大纲】，每章 goal 必须沿所属卷目标/阶段目标推进，且不重复已写章节的开场/桥段；大纲与已写正文冲突时以已写正文为准。
-输出严格 JSON：
-{"chapters": [{"goal": "本章推进目标（哪条线/收哪些伏笔/新种钩子）", "outline_advance": "大纲推进段"}, ...]}  共 N 项"""
+_BATCH_PLAN_PROMPT = prompts.SYSTEM_BATCH_PLAN
 
 
 def _overlaps(item: dict, start: int, end: int) -> bool:
@@ -137,6 +134,9 @@ def _batch_plan_messages(batch: dict, outline: dict | None = None) -> list[dict]
     ]
 
 
+from myink.writing_resource_runtime import resource_messages as _resource_messages
+_batch_plan_messages = _resource_messages(_batch_plan_messages, "planner")
+
 def node_batch_plan(state: BatchState) -> BatchState:
     pid = state["project_id"]
     with tenant_session(pid) as db:
@@ -146,9 +146,12 @@ def node_batch_plan(state: BatchState) -> BatchState:
         if row and isinstance(row.outline, dict):
             outline = normalize_outline(row.outline)
         messages = _batch_plan_messages(state, outline=outline)
-        resp = make_chain("planner", db=db, project_id=pid).generate(messages, json_mode=True)
+        from myink.workflow.reference_access import generate_with_references
+        resp, tool_trace = generate_with_references(db, pid, "batch_plan", "Planner",
+            make_chain("planner", db=db, project_id=pid), messages,
+            task_id=state.get("batch_task_id"), json_mode=True)
         nodes.record_run(db, project_id=pid, task_id=state.get("batch_task_id"),
-                         node="batch_plan", role="Planner", resp=resp, error=resp.error, messages=messages)
+                         node="batch_plan", role="Planner", resp=resp, error=resp.error, messages=messages, detail={"tool_trace": tool_trace})
         if resp.error:
             return {"batch_failed": True, "error": resp.error}
     try:
@@ -322,11 +325,13 @@ def node_reflexion(state: BatchState) -> BatchState:
                 {"category": l.category, "content": l.content, "recurrence_count": l.recurrence_count}
                 for l in existing
             ], start, state["size"])
-            resp = make_chain("audit", db=db, project_id=pid).generate(messages, json_mode=True,
-                                                max_tokens=nodes._MAX_TOKENS["reflexion"])
+            from myink.workflow.reference_access import generate_with_references
+            resp, tool_trace = generate_with_references(db, pid, "reflexion", "Reflexion",
+                make_chain("audit", db=db, project_id=pid), messages,
+                task_id=batch_task_id, json_mode=True, max_tokens=nodes._MAX_TOKENS["reflexion"])
             nodes.record_run(db, project_id=pid, task_id=batch_task_id, node="reflexion",
                              role="Reflexion", resp=resp, error=resp.error, messages=messages,
-                             detail={"findings": len(findings), "recurrences": recurrences})
+                             detail={"findings": len(findings), "recurrences": recurrences, "tool_trace": tool_trace})
             if resp.error:
                 return {"reflexion": {"error": resp.error}}
             data = nodes._parse_json(resp.content)

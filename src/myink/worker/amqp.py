@@ -6,6 +6,8 @@
     myink.tasks (direct)
       ├─ key "tasks" → queue:tasks  (x-max-priority=10, DLX→myink.dlx/dlq)
       └─ key "delay" → queue:delay  (DLX→myink.tasks/tasks；无固定 TTL，逐条 expiration 退避)
+      ├─ key "tasks.vip" → queue:tasks:vip  (FIFO, DLX→myink.dlx/dlq)
+      └─ key "delay.vip" → queue:delay:vip  (DLX→myink.tasks/tasks.vip)
     myink.dlx (direct) → key "dlq" → queue:dlq
 
 协议不变量（最高风险）：消息体 = 任务 JSON 本身（发出去就是任务字典，worker 单次
@@ -45,6 +47,31 @@ def main_queue() -> str:
     return "queue:tasks" + _px()
 
 
+def vip_queue() -> str:
+    return 'queue:tasks:vip' + _px()
+
+
+def vip_delay_queue() -> str:
+    return 'queue:delay:vip' + _px()
+
+
+def tier_routing_key(routing_key: str, priority: int) -> str:
+    if (priority == settings.priority_vip and priority != settings.priority_normal
+            and routing_key in {KEY_TASKS, KEY_DELAY}):
+        return routing_key + '.vip'
+    return routing_key
+
+
+def priority_for_user(user_id) -> int:
+    """Resume messages use current membership, rather than an old token."""
+    import uuid
+    from myink.db import new_session
+    from myink.models import User
+    with new_session() as db:
+        user = db.get(User, uuid.UUID(str(user_id)))
+        return settings.priority_vip if user is not None and user.tier == 'vip' else settings.priority_normal
+
+
 def delay_queue() -> str:
     return "queue:delay" + _px()
 
@@ -77,7 +104,7 @@ def _publisher_connection():
 
 
 def declare_topology(ch: pika.channel.Channel) -> None:
-    """幂等声明 5 项拓扑（重复声明安全；参数变更需清 RabbitMQ 数据卷）。"""
+    """幂等声明拓扑；保留普通队列原参数，新增 VIP 队列无需清理已有消息。"""
     ch.exchange_declare(exchange(), exchange_type="direct", durable=True)
     # 主队列：优先级 + 死信 → myink.dlx/dlq
     ch.queue_declare(
@@ -104,6 +131,14 @@ def declare_topology(ch: pika.channel.Channel) -> None:
     ch.exchange_declare(dlx_exchange(), exchange_type="direct", durable=True)
     ch.queue_declare(dlq_queue(), durable=True)
     ch.queue_bind(dlq_queue(), dlx_exchange(), KEY_DLQ)
+    # Keep the existing normal queue and drain pre-upgrade deliveries.
+    # New VIP deliveries use a FIFO queue with their own delay return route.
+    ch.queue_declare(vip_queue(), durable=True, arguments={
+        'x-dead-letter-exchange': dlx_exchange(), 'x-dead-letter-routing-key': KEY_DLQ})
+    ch.queue_bind(vip_queue(), exchange(), KEY_TASKS + '.vip')
+    ch.queue_declare(vip_delay_queue(), durable=True, arguments={
+        'x-dead-letter-exchange': exchange(), 'x-dead-letter-routing-key': KEY_TASKS + '.vip'})
+    ch.queue_bind(vip_delay_queue(), exchange(), KEY_DELAY + '.vip')
 
 
 def publish(body: str, routing_key: str, priority: int = 0, expiration_ms: int | None = None) -> None:
@@ -113,6 +148,7 @@ def publish(body: str, routing_key: str, priority: int = 0, expiration_ms: int |
     already be delivered: propagate it without any hidden publication retry.
     Keep definitive broker Nack/Unroutable exceptions for original compensation.
     """
+    routing_key = tier_routing_key(routing_key, priority)
     connection = None
     try:
         connection = _publisher_connection()
@@ -140,6 +176,7 @@ class PublishNotSent(Exception):
 
 def publish_once(body: str, routing_key: str, *, priority: int = 0, expiration_ms: int | None = None, operation_id: str | None = None) -> None:
     """No implicit retry after a lost confirm; bounded and mandatory delivery."""
+    routing_key = tier_routing_key(routing_key, priority)
     connection = None
     try:
         try:

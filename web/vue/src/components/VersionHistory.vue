@@ -1,0 +1,18 @@
+<script setup lang="ts">
+import {ref,watch,onScopeDispose} from 'vue'
+import NativeDialog from './NativeDialog.vue'
+import {api} from '../../../src/lib/api'
+import {formatApiError} from '../../../src/lib/apiError'
+import type {ChapterVersion,ContentUpdateResponse} from '../../../src/types'
+import styles from '../../../src/components/VersionHistory.module.css'
+const props=defineProps<{projectId:string;chapterId:string;chapterSeq:number}>()
+const emit=defineEmits<{close:[];restored:[ChapterVersion,ContentUpdateResponse]}>()
+const versions=ref<ChapterVersion[]>([]),currentVersion=ref<number|null>(null),loading=ref(true),error=ref<string|null>(null),restoring=ref<number|null>(null)
+const labels:Record<string,string>={manual:'手动保存',batch:'批次生成',revise:'修订',revert:'回退',edit:'编辑'}
+let alive=true,epoch=0
+async function load(){const version=++epoch;loading.value=true;error.value=null;try{const result=await api.listChapterVersions(props.projectId,props.chapterId);if(alive&&version===epoch){versions.value=result.versions;currentVersion.value=result.current_version}}catch(err){if(alive&&version===epoch)error.value=formatApiError(err,'加载失败')}finally{if(alive&&version===epoch)loading.value=false}}
+watch(()=>[props.projectId,props.chapterId],load,{immediate:true})
+async function restore(target:ChapterVersion){if(restoring.value!==null||!window.confirm(`确认回退到 v${target.version}？当前正文将覆盖为历史内容（回退本身也会留痕）。`))return;const version=epoch;restoring.value=target.version;error.value=null;try{const response=await api.restoreChapterVersion(props.projectId,props.chapterId,target.version);if(alive&&version===epoch)emit('restored',target,response)}catch(err){if(alive&&version===epoch)error.value=formatApiError(err,'回退失败')}finally{if(alive&&version===epoch)restoring.value=null}}
+onScopeDispose(()=>{alive=false;epoch++})
+</script>
+<template><div :class="styles.backdrop" @mousedown.self="emit('close')"><NativeDialog :class="styles.card" aria-label="版本历史" :on-close="()=>emit('close')"><header :class="styles.head"><h3 :class="styles.title">版本历史 · 第 {{ chapterSeq }} 章</h3><button type="button" class="btn btn-quiet" aria-label="关闭" @click="emit('close')">✕</button></header><div v-if="error" role="alert" class="banner banner-error">{{ error }} <button class="btn btn-secondary" :disabled="loading" @click="load">重试</button></div><div v-if="loading" class="empty">加载中…</div><template v-else-if="!error"><p>当前版本：v{{ currentVersion }}</p><div v-if="!versions.length" class="empty">暂无历史版本</div><ul v-else :class="styles.list"><li v-for="version in versions" :key="version.version" :class="styles.row"><div :class="styles.rowTop"><span :class="styles.badge">v{{ version.version }}</span><span :class="styles.reason">{{ labels[version.reason]??version.reason }}</span><span :class="styles.date">{{ version.created_at?new Date(version.created_at).toLocaleString('zh-CN'):'' }}</span></div><div v-if="version.title||version.summary" :class="styles.meta"><span v-if="version.title" :class="styles.titleLine">{{ version.title }}</span><span v-if="version.summary" :class="styles.summary">{{ version.summary }}</span></div><div :class="styles.excerpt">{{ version.content?.slice(0,120)??'（空）' }}</div><details :class="styles.detail"><summary>预览全文</summary><pre :class="styles.full">{{ version.content??'' }}</pre></details><div :class="styles.rowFoot"><button type="button" class="btn btn-quiet" :disabled="restoring!==null" @click="restore(version)">{{ restoring===version.version?'回退中…':'回退到此版本' }}</button></div></li></ul></template></NativeDialog></div></template>

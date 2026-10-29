@@ -68,10 +68,11 @@ def _seed_entity(pid: str, name: str, first_seen: int, etype: str = "item") -> s
         return str(ent.id)
 
 
-def _seed_character(pid: str, name: str) -> str:
+def _seed_character(pid: str, name: str, source_chapter: int | None = None) -> str:
     """自动建档人物卡 + 别名（对齐 nodes.py:935-941 persist 口径）。"""
     with tenant_session(pid) as db:
-        ch = Character(project_id=uuid.UUID(pid), name=name, realm_cap="无")
+        ch = Character(project_id=uuid.UUID(pid), name=name, realm_cap="无",
+                       source_chapter=source_chapter)
         db.add(ch)
         db.flush()
         db.add(Alias(project_id=uuid.UUID(pid), alias=name, entity_id=ch.id))
@@ -191,13 +192,13 @@ def test_delete_purges_characters_only_in_deleted_tail(temp_project):
     _seed_chapter(temp_project, 3)
     id4 = _seed_chapter(temp_project, 4)
     _seed_chapter(temp_project, 5)
-    a = _seed_character(temp_project, "秦无霜")
+    a = _seed_character(temp_project, "秦无霜", 5)
     _seed_character_state(temp_project, a, 5)  # 只在被删章（state）→ 删
     b = _seed_character(temp_project, "林尘")
     _seed_character_state(temp_project, b, 2)  # 保留章 + 被删章都出现 → 留
     _seed_character_state(temp_project, b, 5)
     _seed_character(temp_project, "掌门")  # 纯设定、无任何章引用 → 留
-    d = _seed_character(temp_project, "赵铁柱")
+    d = _seed_character(temp_project, "赵铁柱", 5)
     _seed_event_participant(temp_project, d, 5)  # 只以事件参与者出现在被删章 → 删
 
     delete_chapter(temp_project, id4)
@@ -214,7 +215,7 @@ def test_delete_purge_cleans_dangling_relation_and_keeps_earlier_registry(temp_p
     _seed_entity(temp_project, "玄铁剑", 2)
     c = _seed_character(temp_project, "林尘")
     _seed_character_state(temp_project, c, 2)
-    c2 = _seed_character(temp_project, "秦无霜")
+    c2 = _seed_character(temp_project, "秦无霜", 3)
     _seed_character_state(temp_project, c2, 3)
     _seed_relation(temp_project, c, c2, 3)
 
@@ -225,3 +226,31 @@ def test_delete_purge_cleans_dangling_relation_and_keeps_earlier_registry(temp_p
         assert db.query(Relation).count() == 0, "指向已删人物的关系应删除，不留悬空边"
         assert db.query(Entity).filter(Entity.canonical_name == "玄铁剑").count() == 1
         assert db.query(CharacterState).filter(CharacterState.character_id == uuid.UUID(c)).count() == 1
+
+
+def test_delete_preserves_author_character_after_first_appearance(temp_project):
+    """Chapter references alone do not establish that a character was generated."""
+    chapter_id = _seed_chapter(temp_project, 1)
+    with tenant_session(temp_project) as db:
+        character = Character(project_id=uuid.UUID(temp_project), name="作者主角",
+                              race="人族", realm_cap="金丹", personality="勇敢",
+                              base_attrs={"identity": "王子"})
+        db.add(character)
+        db.flush()
+        cid = str(character.id)
+    _seed_event_participant(temp_project, cid, 1)
+    delete_chapter(temp_project, chapter_id)
+    with tenant_session(temp_project) as db:
+        character = db.get(Character, uuid.UUID(cid))
+        assert character is not None
+        assert character.base_attrs == {"identity": "王子"}
+        assert character.race == "人族" and character.personality == "勇敢"
+
+
+def test_generated_character_records_chapter_provenance(temp_project, fake_embedder):
+    from myink.workflow import nodes
+    with tenant_session(temp_project) as db:
+        nodes._persist_candidates(db, temp_project, 3, [
+            {"kind": "character_card", "payload": {"name": "新角色"}}])
+    with tenant_session(temp_project) as db:
+        assert db.query(Character).filter_by(name="新角色").one().source_chapter == 3

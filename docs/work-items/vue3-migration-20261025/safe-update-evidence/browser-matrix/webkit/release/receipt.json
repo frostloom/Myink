@@ -1,0 +1,34 @@
+{
+  "kind": "production_release_safety",
+  "browser": "webkit",
+  "passed": true,
+  "checks": [
+    "react: mixed_manifest_html_does_not_offer_update",
+    "react: update_only_prompts_preserves_input",
+    "react: cancelled_update_retains_form",
+    "react: write_blocks_update_and_unload_then_unlocks",
+    "react: confirmed_update_loads_paired_next_runtime",
+    "vue: mixed_manifest_html_does_not_offer_update",
+    "vue: update_only_prompts_preserves_input",
+    "vue: cancelled_update_retains_form",
+    "vue: write_blocks_update_and_unload_then_unlocks",
+    "vue: confirmed_update_loads_paired_next_runtime"
+  ],
+  "pageErrors": [],
+  "releases": {
+    "vue": {
+      "schema": 1,
+      "client": "vue",
+      "id": "vue-4f4b435d784b5a93b0cd69adb685740b635f0c9716d2fd362ab393425b7be1d2",
+      "entry": "/assets/index-Bk-yDMAg.js"
+    },
+    "react": {
+      "schema": 1,
+      "client": "react",
+      "id": "react-d22006ca4cb39f03420f9fb47f3e40b20035ac26e1d69cd0351c3b1a51153e3c",
+      "entry": "/assets/index-BcR2NWy9.js"
+    }
+  },
+  "unexpected": [],
+  "browserVersion": "27.2"
+}

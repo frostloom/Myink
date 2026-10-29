@@ -1,30 +1,39 @@
 # Myink 边缘层镜像：前端静态产物 + Caddy 二进制。
 #
-# 静态产物（web/dist）与 Caddy 二进制同镜像：发前端的人就是 Caddy，多阶段构建到同层里。
+# 静态产物（web/dist-vue）与 Caddy 二进制同镜像：发前端的人就是 Caddy，多阶段构建到同层里。
 #
 # 基础镜像源可用 build arg 覆盖（国内 docker.io 直连可能超时；compose 当前环境传
 # NODE_IMAGE/CADDY_IMAGE=docker.m.daocloud.io/library/...，见 docker-compose.yml）。
 #
 # 阶段 1：构建前端静态产物（vite build，base=/，产物含 index.html/assets/favicon）
-ARG NODE_IMAGE=node:20-alpine
+ARG NODE_IMAGE=node:24.22.1-alpine
 ARG CADDY_IMAGE=caddy:2.11.4-alpine
+# Vue is the only supported frontend; reject retired selector values.
+ARG FRONTEND_VARIANT=vue
 FROM ${NODE_IMAGE} AS web
 # npm 源可覆盖（国内 registry.npmjs.org 可能不通，compose 传 npmmirror）
 ARG NPM_REGISTRY=https://registry.npmjs.org
 WORKDIR /app/web
 COPY web/package.json web/package-lock.json ./
-RUN npm ci --registry=${NPM_REGISTRY}
+RUN --mount=type=cache,target=/root/.npm npm ci --registry=${NPM_REGISTRY}
 COPY web/ ./
-RUN npm run build
+ARG FRONTEND_VARIANT
+RUN test "$FRONTEND_VARIANT" = vue || { echo "Only FRONTEND_VARIANT=vue is supported" >&2; exit 64; }
+RUN npm run build && mkdir -p /app/frontend-dist && cp -a dist-vue/. /app/frontend-dist/
+
+COPY caddy/retained-assets/ /app/retained-assets/
+RUN node scripts/merge-retained-assets.mjs /app/retained-assets /app/frontend-dist/assets
 
 # 阶段 2：Caddy 运行层（Caddyfile + dist）
 FROM ${CADDY_IMAGE}
+ARG FRONTEND_VARIANT
+LABEL io.myink.frontend=vue
 COPY caddy/Caddyfile /etc/caddy/Caddyfile
 # 站点块用 import 按 CADDY_SITE_TLS 选这两个片段（默认 tls-auto.caddyfile 是空操作）。
 # 必须一起 COPY：import 的目标文件在运行时要真的存在，缺了会在启动时找不到文件。
 COPY caddy/tls-auto.caddyfile /etc/caddy/tls-auto.caddyfile
 COPY caddy/tls-public-ip.caddyfile /etc/caddy/tls-public-ip.caddyfile
-COPY --from=web /app/web/dist /srv/web/dist
+COPY --from=web /app/frontend-dist /srv/web/dist
 # 构建期校验配置语法：Caddyfile 写错要在 build 就红，而不是留到部署时容器起不来。
 # 用默认 SITE_ADDRESS（http://localhost）校验 —— 语法不随取值变化，只有协议/证书那段不同。
 RUN caddy validate --config /etc/caddy/Caddyfile

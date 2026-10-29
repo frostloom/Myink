@@ -212,18 +212,15 @@
   line-height: 1.35;
 }
 
-.modalBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: grid;
-  place-items: center;
-  padding: 24px;
+.modal::backdrop {
   background: rgba(48, 42, 38, 0.34);
   backdrop-filter: blur(2px);
 }
 
 .modal {
+  margin: auto;
+  padding: 0;
+  color: var(--ink);
   display: flex;
   width: min(620px, calc(100vw - 32px));
   max-height: min(76dvh, 720px);
@@ -313,9 +310,6 @@
     max-height: calc(100dvh - 24px);
   }
 
-  .modalBackdrop {
-    padding: 12px;
-  }
 }
 
 /* 版式不分 420 / 900 / 1200 三档：面板与弹层都是 min-width: 0 的流式盒，

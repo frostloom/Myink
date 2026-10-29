@@ -9,31 +9,20 @@ from typing import Any
 from myink.config import settings
 from myink.db import new_session
 from myink.models import User
-from myink.providers.connections import keep_custom_routes, unpack_model_settings
+from myink.providers.connections import unpack_model_settings
+from myink.user_defaults import effective_preferences, overridden_fields, platform_defaults
 
 
 def default_rankings() -> dict[str, Any]:
-    return {
-        "enabled": bool(settings.rankings_enabled),
-        "timeout": int(settings.rankings_timeout),
-        "limit": int(settings.rankings_limit),
-    }
+    return platform_defaults()["rankings"]
 
 
 def merge_rankings(raw: Any) -> dict[str, Any]:
-    """用户覆盖与进程默认合并；缺字段回落 .env / 内置默认（仅作表单初值）。"""
-    base = default_rankings()
-    if not isinstance(raw, dict):
-        return base
-    if "enabled" in raw:
-        base["enabled"] = bool(raw["enabled"])
-    timeout = raw.get("timeout")
-    if isinstance(timeout, int) and 1 <= timeout <= 60:
-        base["timeout"] = timeout
-    limit = raw.get("limit")
-    if isinstance(limit, int) and 1 <= limit <= 50:
-        base["limit"] = limit
-    return base
+    return effective_preferences({"rankings": raw})["rankings"]
+
+
+def preferences_for_user(user_id=None) -> dict[str, Any]:
+    return effective_preferences(load_raw(user_id) if user_id is not None else {})
 
 
 def load_raw(user_id: str | uuid.UUID) -> dict[str, Any]:
@@ -43,30 +32,32 @@ def load_raw(user_id: str | uuid.UUID) -> dict[str, Any]:
         return dict(raw) if isinstance(raw, dict) else {}
 
 
-def packed_models(user_id: str | uuid.UUID) -> dict[str, Any] | None:
+def packed_models(user_id: str | uuid.UUID | None) -> dict[str, Any] | None:
+    if user_id is None:
+        return None
     raw = load_raw(user_id)
     models = raw.get("models")
     return models if isinstance(models, dict) else None
 
 
 def load_environment(user_id: str | uuid.UUID) -> dict[str, Any]:
-    from myink.providers.connections import public_connections
-    from myink.task_budget import TaskBudgetLimits, public_limits
-
     raw = load_raw(user_id)
-    routes, connections = unpack_model_settings(raw.get("models") if isinstance(raw.get("models"), dict) else {})
-    routes = keep_custom_routes(routes, connections)
+    routes, _ = unpack_model_settings(raw.get("models") if isinstance(raw.get("models"), dict) else {})
+    from myink.platform_configuration import catalog, clean_user_routes, tier_for_user
+    tier = tier_for_user(user_id)
+    routes = clean_user_routes(routes, tier=tier)
+    preferences = effective_preferences(raw)
     return {
         "model_routes": routes,
-        "model_connections": public_connections(connections),
-        "rankings": merge_rankings(raw.get("rankings")),
-        "thinking_enabled": bool(raw.get("thinking_enabled")),
-        "task_budget": public_limits(TaskBudgetLimits.model_validate(raw.get("task_budget") or {})),
+        "model_connections": [],
+        "available_models": catalog(tier=tier)["models"],
+        **preferences,
+        "overridden_fields": sorted(overridden_fields(raw) + [f"model_routes.{role}" for role in routes]),
     }
 
 
-def thinking_enabled_for_user(user_id: str | uuid.UUID) -> bool:
-    return bool(load_raw(user_id).get("thinking_enabled"))
+def thinking_enabled_for_user(user_id: str | uuid.UUID | None) -> bool:
+    return preferences_for_user(user_id)["thinking_enabled"]
 
 
 def save_raw(user_id: str | uuid.UUID, env: dict[str, Any]) -> dict[str, Any]:
@@ -90,12 +81,9 @@ class RankingsSettingsView:
     rankings_cache_ttl: int
 
 
-def rankings_view_for_user(user_id: str | uuid.UUID) -> RankingsSettingsView | None:
-    """用户已保存扫榜覆盖 → 视图；从未保存 → None（调用方走进程默认）。"""
-    raw = load_raw(user_id)
-    if "rankings" not in raw:
-        return None
-    merged = merge_rankings(raw.get("rankings"))
+def rankings_view_for_user(user_id: str | uuid.UUID | None) -> RankingsSettingsView:
+    """Runtime resolves current platform defaults and account overrides."""
+    merged = preferences_for_user(user_id)["rankings"]
     return RankingsSettingsView(
         rankings_enabled=merged["enabled"],
         rankings_timeout=merged["timeout"],

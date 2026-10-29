@@ -1,7 +1,7 @@
 // 扫榜源的纯展示映射（source → 中文标签 / 徽标色调 + 榜单字段格式化）。
 // 抽成纯函数便于单测；字段键对齐 Python RankingsOut（rank/title/author/tags/hot）。
 // source=remote（实时榜单）/ sample（降级样例：网络不可达 / RANKINGS_ENABLED=0）。
-import type { BadgeTone } from '../components/StatusBadge'
+import type { BadgeTone } from './badgeTone'
 
 export const SOURCE_LABELS: Record<string, string> = {
   remote: '实时榜单',

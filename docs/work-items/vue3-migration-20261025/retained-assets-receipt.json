@@ -1,0 +1,46 @@
+{
+  "kind": "retained_public_frontend_assets",
+  "images": [
+    {
+      "image": "sha256:f6c9b188f110ad20c01653be302565ad512c558d9b64db6c9ec8868aeff9a0a5",
+      "id": "sha256:f6c9b188f110ad20c01653be302565ad512c558d9b64db6c9ec8868aeff9a0a5"
+    },
+    {
+      "image": "myink-caddy:react-readiness-20261026",
+      "id": "sha256:b896837f036039500104c5de19c709abacaa28cae78c4849304526a042a9cb57"
+    },
+    {
+      "image": "myink-caddy:vue-readiness-20261026",
+      "id": "sha256:6a97b0dabeae068ced54309e0a06ace95d80bc87e05d3516970782a2113b20ea"
+    },
+    {
+      "image": "myink-caddy:vue-ready-final-20261026",
+      "id": "sha256:3eb69714f94c5065e26a16f95a4fba66ec7718ca2d73b5cd9c297c2f3d3ba674"
+    },
+    {
+      "image": "myink-caddy:react-ready-final-20261026",
+      "id": "sha256:32513ef95870cb847d796c5bf4fe6d021194a4afc15b69007301633f5a6d7335"
+    }
+  ],
+  "files": {
+    "index-DRu_dlGP.css": "bb600259130415f1bfdc34bd12d42f0a8ff98026667368159a0bd55945ed9ff8",
+    "index-Cvlt329b.js": "882ba104fc4ee126cf6e1e80f729e7c4a792e346e1a209d2cd7a8656657696a8",
+    "index-CwmN0yUu.css": "1448673c36f56ec9d8f81f75e616da7f0dab7a0efbc60baa1b06aaedc0647b70",
+    "index-BDxdzfd9.js": "957a9753c89e8df23790c702aeae91a023eeb0ac2505eb3f1448440ee99190c7",
+    "index-D7a1ECCn.css": "cac8cd86c1db1e65ee32b621a58b478e6a364b5039b5a29a6248acf91d981a47",
+    "index-CyxwGv2c.js": "9dcb68bd386d5110eae6b9574d9f1e19560230f8f21bd1bbd71397135e18ec7c",
+    "index-DdkQzNNW.js": "37ac6fae4d19ab3facfa80e7488a07ee706d0dde89e39eefc3fbfadc45d33e48",
+    "index-LHE4QUm9.js": "8ace8616b0dc484c661be17834853f6a81fc1c95f4179f185173f46a2f12f51a"
+  },
+  "additional_host_builds": [
+    {
+      "kind": "frozen tested Ddk candidate; no completed image existed",
+      "source_provenance": "build-provenance-ddk.json",
+      "files": {
+        "index-D7a1ECCn.css": "cac8cd86c1db1e65ee32b621a58b478e6a364b5039b5a29a6248acf91d981a47",
+        "index-DdkQzNNW.js": "37ac6fae4d19ab3facfa80e7488a07ee706d0dde89e39eefc3fbfadc45d33e48"
+      }
+    }
+  ],
+  "final_vue_react_assets_equal": true
+}

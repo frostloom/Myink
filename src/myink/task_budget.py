@@ -65,11 +65,8 @@ def public_limits(limits: TaskBudgetLimits) -> dict:
 
 
 def budget_defaults(user_id=None) -> TaskBudgetLimits:
-    if user_id is None:
-        return TaskBudgetLimits()
-    from myink.environment import load_raw
-    raw = load_raw(user_id).get("task_budget")
-    return TaskBudgetLimits.model_validate(raw if isinstance(raw, dict) else {})
+    from myink.environment import preferences_for_user
+    return TaskBudgetLimits.model_validate(preferences_for_user(user_id)["task_budget"])
 
 
 def snapshot_budget(user_id=None) -> dict:
@@ -407,6 +404,14 @@ def budgeted_call(function):
     """Wrap a logical fallback-chain call; providers meter each HTTP attempt."""
     @wraps(function)
     def wrapped(chain, messages, **kwargs):
+        addition = getattr(chain, 'system_addition', '')
+        if addition:
+            messages = [*messages, {'role': 'system', 'content': addition}]
+            from myink.config import settings
+            from myink.context_budget import ContextBudgetExceeded, estimate_tokens
+            request = {'messages': messages, 'tools': kwargs.get('tools') or []}
+            if estimate_tokens(request) > settings.request_token_budget:
+                raise ContextBudgetExceeded('CONTEXT_BUDGET_EXCEEDED: platform instructions exceed request budget')
         scope = _SCOPE.get()
         if scope is None:
             return function(chain, messages, **kwargs)
@@ -428,6 +433,11 @@ def budgeted_call(function):
             raise TaskBudgetUnavailable("saved result storage unavailable") from exc
         if cached is not None:
             return cached
+        from myink.guest_quota import record_body_attempt
+        try:
+            record_body_attempt(scope.task_id, operation)
+        except Exception as exc:
+            raise TaskBudgetUnavailable(f"guest body accounting unavailable: {exc}") from exc
         token = _PRICES.set(chain.prices)
         try:
             response = function(chain, messages, **kwargs)
@@ -664,11 +674,14 @@ def budget_execution(function):
         except ValueError:
             return function(*args, **kwargs)  # legacy CLI/test labels have no task ledger
         with new_session() as db:
-            if db.get(Task, tid) is None:
+            task = db.get(Task, tid)
+            if task is None:
                 return function(*args, **kwargs)
+            resource_snapshot = (task.payload or {}).get("writing_resources")
         owner = uuid.uuid4().hex
         try:
-            with bind_task_budget(task_id, owner):
+            from myink.writing_resource_runtime import bind_resources
+            with bind_task_budget(task_id, owner), bind_resources(resource_snapshot):
                 return function(*args, **kwargs)
         except MaintenancePaused:
             raise
@@ -759,7 +772,7 @@ def _require_resume_room(row, limits, body):
         raise BudgetResumeError("TASK_BUDGET_EXHAUSTED: 剩余费用不足，请追加费用后继续")
 
 
-def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
+def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody, *, client_ip=None) -> dict:
     """Append limits once, then publish once; unknown delivery never refunds limits."""
     from myink.worker import amqp
     import pika
@@ -767,6 +780,7 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
     operation_id = str(body.operation_id or uuid.uuid4())
     key = "extension:" + operation_id
     params = body.model_dump(mode="json", exclude={"operation_id"})
+    priority = amqp.priority_for_user(user_id)
     with _ledger(task_id) as db:
         require_admission_open(db)
         task = db.scalar(select(Task).where(Task.id == uuid.UUID(str(task_id))).with_for_update())
@@ -785,13 +799,23 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
                         "message": "预算操作已受理；请刷新任务状态，未重复追加或发布"}
             if task.status not in {"paused", "failed", "awaiting_review"}:
                 raise BudgetResumeError("当前任务状态不可重新投递")
+            from myink.platform_readiness import require_operation_ready
+            require_operation_ready(task.task_type, user_id)
         else:
             adding = bool(body.add_requests or body.add_cost_yuan or body.add_runtime_seconds)
+            queued_operation = (task.payload or {}).get("_budget_resume_operation")
+            if task.status == "queued" and not adding and queued_operation:
+                queued_receipt = _extension(db, task_id, "extension:" + queued_operation)
+                if queued_receipt and queued_receipt.response.get("publication") in {"sending", "published", "uncertain"}:
+                    return {"task_id":str(task_id), "status":"queued",
+                            "message":"续跑已受理；未重复追加或发布"}
             if task.status not in {"paused", "failed", "awaiting_review"} and not (
                 task.status == "queued" and not adding):
                 raise BudgetResumeError(f"当前状态不可追加或续跑: {task.status}")
             if row.owner_token and (row.lease_until or 0) > time.time():
                 raise BudgetResumeError("TASK_STILL_RUNNING: 正在保存进度，请稍后继续")
+            from myink.platform_readiness import require_operation_ready
+            require_operation_ready(task.task_type, user_id)
             old = TaskBudgetLimits.model_validate(row.limits)
             try:
                 limits = TaskBudgetLimits(
@@ -809,6 +833,13 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
             db.add(receipt)
         if row.owner_token and (row.lease_until or 0) > time.time():
             raise BudgetResumeError("TASK_STILL_RUNNING: 正在保存进度，请稍后继续")
+        from myink.guest_quota import reserve_resume
+        previous = receipt.response or {}
+        guest_receipt, guest_charge = reserve_resume(db, task, user_id, client_ip, operation_id,
+                                                      retry_charge=previous.get("guest_charge"))
+        previous_status = previous.get("previous_status", task.status)
+        if guest_receipt:
+            task.payload = {**(task.payload or {}), "_guest_operation": guest_receipt}
         row.pause_reason = None
         task.status = "queued"
         task.error = None
@@ -819,12 +850,14 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
                    "user_id":str(row.user_id), "payload":dict(task.payload),
                    "trace_id":task.trace_id or str(task_id), "request_id":operation_id,
                    "budget_operation_id":operation_id, "retry_count":0, "created_at":""}
-        intent_id = register_admission(db, message, priority=0)
-        receipt.response = {"params":params, "publication":"sending", "message":message}
+        intent_id = register_admission(db, message, priority=priority)
+        receipt.response = {"params":params, "publication":"sending", "message":message,
+                            "guest_charge":guest_charge,"previous_status":previous_status}
 
     intent_outcome(intent_id, message["project_id"], publication_state="unknown")
     try:
-        amqp.publish_once(json.dumps(message, ensure_ascii=False), amqp.KEY_TASKS)
+        amqp.publish_once(json.dumps(message, ensure_ascii=False), amqp.KEY_TASKS,
+                          priority=priority)
     except Exception as exc:
         definite = isinstance(exc, (amqp.PublishNotSent, pika.exceptions.NackError,
                                     pika.exceptions.UnroutableError))
@@ -834,9 +867,12 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody) -> dict:
             _locked(db, task_id)
             receipt = _extension(db, task_id, key)
             receipt.response = {**receipt.response, "publication":"nack" if definite else "uncertain"}
+            if definite and guest_receipt:
+                from myink.guest_quota import release_in_session
+                release_in_session(db, guest_receipt)
             if definite and task.status == "queued" and (task.payload or {}).get("_budget_resume_operation") == operation_id:
-                task.status = "paused"
-                task.error = "续跑投递被明确拒绝；额度已保留，可使用同一操作重试"
+                task.status = previous_status if guest_receipt else "paused"
+                task.error = "续跑投递被明确拒绝；预算已保留，可使用同一操作重试"
         raise BudgetResumeError("BUDGET_PUBLISH_REJECTED: 使用同一操作重试" if definite else
                                "BUDGET_PUBLISH_UNCERTAIN: 预算已保留，请刷新任务状态", 503) from exc
     intent_outcome(intent_id, message["project_id"], publication_state="published")

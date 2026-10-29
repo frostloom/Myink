@@ -1,0 +1,14 @@
+{
+  "checks": [
+    "caddy_http_and_trusted_local_ca_tls_deep_link_cache_api",
+    "actual_worker_sse_stream_through_tls_is_incremental_uncompressed",
+    "actual_tls_sse_last_event_id_replays_after_cursor"
+  ],
+  "count": 3,
+  "tls": "dedicated Caddy internal CA verified via its exported root, no system trust-store mutation",
+  "artifactDeltas": 39,
+  "firstDeltaToDoneSeconds": 17.922307584027294,
+  "frameCount": 59,
+  "replayFrames": 28,
+  "taskId": "fe6eddc8-814c-4889-acf7-0811d50aff37"
+}

@@ -1,0 +1,28 @@
+.catalog { min-width: 0; }
+.note { margin: .4rem 0 .8rem; color: var(--ink-muted); font-size: .88rem; line-height: 1.55; }
+.toolbar { display: flex; gap: .6rem; margin: .8rem 0; }
+.toolbar input { flex: 1; min-width: 0; }
+.categories button { min-height: 44px; }
+.catalog .grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+  grid-auto-rows: 1fr;
+  align-items: stretch;
+  gap: .8rem;
+
+}
+.catalog .grid .card { min-height: 0; padding: 16px; gap: 10px; cursor: default; }
+.card h3 { margin: 0; }
+.selected { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.catalog .actions { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem; margin-top: auto; }
+.choose { display: flex; align-items: center; gap: .3rem; margin-right: auto; }
+.editor { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.editor > .editorBody { display: flex; flex-direction: column; gap: 12px; border: 0; padding: 0; min-width: 0; }
+@media (max-width: 600px) {
+  .catalog .grid { grid-template-columns: 1fr; }
+  .toolbar { flex-wrap: wrap; }
+}
+
+.listScroll { max-height:60vh; overflow-y:auto; overscroll-behavior:contain; }
+
+.unboundedScroll { max-height:none; overflow:visible; }

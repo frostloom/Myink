@@ -641,3 +641,58 @@ def ensure_maintenance_schema() -> None:
         conn.execute(text("ALTER TABLE public.admission_intents FORCE ROW LEVEL SECURITY"))
         conn.execute(text("DROP POLICY IF EXISTS tenant_isolation ON public.admission_intents"))
         conn.execute(text("CREATE POLICY tenant_isolation ON public.admission_intents USING(project_id = NULLIF(current_setting('app.tenant_id',true),'')::uuid)"))
+
+
+def ensure_writing_resource_snapshot_fk() -> None:
+    """Upgrade pre-FK resource snapshots; only remove rows whose book was deleted."""
+    from sqlalchemy import inspect
+
+    with get_admin_engine().begin() as conn:
+        # Serialize upgrades and project deletion while repairing legacy orphan rows.
+        conn.execute(text("LOCK TABLE projects, project_writing_resources IN SHARE ROW EXCLUSIVE MODE"))
+        foreign_keys = inspect(conn).get_foreign_keys("project_writing_resources")
+        if any(fk['referred_table'] == 'projects'
+               and fk['constrained_columns'] == ['project_id']
+               and fk.get('options', {}).get('ondelete') == 'CASCADE'
+               for fk in foreign_keys):
+            return
+        conn.execute(text("DELETE FROM project_writing_resources r WHERE NOT EXISTS "
+                          "(SELECT 1 FROM projects p WHERE p.id = r.project_id)"))
+        conn.execute(text("ALTER TABLE project_writing_resources ADD CONSTRAINT "
+                          "fk_project_writing_resources_project FOREIGN KEY (project_id) "
+                          "REFERENCES projects(id) ON DELETE CASCADE"))
+
+
+def ensure_character_provenance() -> None:
+    """Preserve legacy/author characters; only new generated cards have provenance."""
+    with get_admin_engine().begin() as conn:
+        conn.execute(text("ALTER TABLE characters ADD COLUMN IF NOT EXISTS source_chapter INTEGER"))
+
+
+def ensure_personal_resource_sources() -> None:
+    """Old personal resources remain independent; new copies have unique owner lineage."""
+    with get_admin_engine().begin() as conn:
+        conn.execute(text("ALTER TABLE personal_writing_resources ADD COLUMN IF NOT EXISTS source_resource_id VARCHAR(160)"))
+        conn.execute(text("ALTER TABLE personal_writing_resources ADD COLUMN IF NOT EXISTS source_generation INTEGER"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_personal_resource_source ON personal_writing_resources (user_id, source_resource_id)"))
+        conn.execute(text("ALTER TABLE project_writing_resources ADD COLUMN IF NOT EXISTS configured BOOLEAN NOT NULL DEFAULT TRUE"))
+        conn.execute(text("ALTER TABLE project_writing_resources ADD COLUMN IF NOT EXISTS automatic_initialized BOOLEAN NOT NULL DEFAULT FALSE"))
+        conn.execute(text("ALTER TABLE project_writing_resources ADD COLUMN IF NOT EXISTS defaults_initialized BOOLEAN NOT NULL DEFAULT FALSE"))
+
+
+def ensure_guest_identity() -> None:
+    """Add guest classification safely: every existing account remains permanent."""
+    from myink.models.guest import GuestIdentity
+
+    with get_admin_engine().begin() as conn:
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_guest "
+                          "BOOLEAN NOT NULL DEFAULT false"))
+        GuestIdentity.__table__.create(conn, checkfirst=True)
+
+
+def ensure_guest_quota() -> None:
+    """Add lifetime counters/receipts without resetting any pre-existing use."""
+    from myink.models.guest import GuestQuotaBucket, GuestQuotaOperation, GuestBodyAttempt
+    with get_admin_engine().begin() as conn:
+        for model in (GuestQuotaBucket, GuestQuotaOperation, GuestBodyAttempt):
+            model.__table__.create(conn, checkfirst=True)

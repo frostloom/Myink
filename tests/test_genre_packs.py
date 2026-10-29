@@ -156,8 +156,8 @@ def test_create_with_pack_locks_name_and_stores_snapshot():
             assert is_managed_pack(st.genre_pack)
             assert st.genre_pack["source_id"] == "xiuxian"
             assert st.genre_pack["secondary_id"] == "xitong"
-            assert st.genre_pack["pacing"] == "用户自己的节奏"
-            assert st.genre_pack["baseline"]["pacing"] == "用户自己的节奏"
+            assert st.genre_pack["pacing"] == PACKS["xiuxian"]["pacing"]
+            assert st.genre_pack["baseline"]["pacing"] == PACKS["xiuxian"]["pacing"]
         listed = client.get("/api/v1/genre-packs", headers=_h(uid))
         assert listed.status_code == 200
         assert len(listed.json()) == 37
@@ -171,14 +171,9 @@ def test_create_with_pack_locks_name_and_stores_snapshot():
         assert locked.status_code == 400
         saved = client.put(f"/api/v1/projects/{pid}/genre-pack", headers=_h(uid),
                            json={"taboos": ["本书自己的禁忌"]})
-        assert saved.status_code == 200
-        assert saved.json()["taboos"] == ["本书自己的禁忌"]
-        assert saved.json()["pacing"] == "用户自己的节奏"
-        restored = client.post(f"/api/v1/projects/{pid}/genre-pack/restore",
-                               headers=_h(uid))
-        assert restored.status_code == 200
-        assert restored.json()["pacing"] == "用户自己的节奏"
-        assert "本书自己的禁忌" not in restored.json()["taboos"]
+        assert saved.status_code == 403
+        restored = client.post(f"/api/v1/projects/{pid}/genre-pack/restore", headers=_h(uid))
+        assert restored.status_code == 403
     finally:
         _delete_user(uid)
 
@@ -204,6 +199,6 @@ def test_old_book_cannot_put_genre_pack():
         pid = resp.json()["id"]
         put = client.put(f"/api/v1/projects/{pid}/genre-pack", headers=_h(uid),
                          json={"pacing": "想补"})
-        assert put.status_code == 400
+        assert put.status_code == 403
     finally:
         _delete_user(uid)

@@ -1,7 +1,7 @@
 // 待确认候选的纯展示映射（kind → 中文标签 / 徽标色调 / payload 字段渲染）。
 // 抽成纯函数便于单测；字段键对齐 Python persist 落库路径（nodes.py _persist_candidates）
 // 实际读取的 payload 键，未知键回退「原键名 + 格式化值」，键漂移不崩。
-import type { BadgeTone } from '../components/StatusBadge'
+import type { BadgeTone } from './badgeTone'
 import type { CandidateKind } from '../types'
 
 export const CANDIDATE_LABELS: Record<string, string> = {

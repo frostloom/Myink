@@ -52,12 +52,7 @@ def invalidate_chapter_memory(db: Session, *, project_id: uuid.UUID, chapter_seq
     ).rowcount or 0
 
     # 3. 实体关系：时间窗关闭（§7.8 当前关系 = 最新一条 valid_to IS NULL）
-    relations_closed = db.execute(
-        sa_update(Relation)
-        .where(Relation.project_id == project_id, Relation.source_chapter == chapter_seq,
-               Relation.valid_to.is_(None))
-        .values(valid_to=chapter_seq)
-    ).rowcount or 0
+    relations_closed = _invalidate_relations(db, project_id, chapter_seq)
 
     # 4. 一次性事件：硬删（重写后旧事件 = 从未发生）
     events_deleted = db.execute(
@@ -93,6 +88,51 @@ def invalidate_chapter_memory(db: Session, *, project_id: uuid.UUID, chapter_seq
     }
 
 
+def _invalidate_relations(db: Session, project_id: uuid.UUID, chapter_seq: int) -> int:
+    """Undo recorded supersession, preserving natural expiry and explicit removals.
+
+    Closure provenance lives in relation properties. Unknown historical closures
+    remain closed; a matching date alone cannot prove why a relation expired.
+    """
+    db.flush()
+    rows = db.execute(select(Relation).where(Relation.project_id == project_id)).scalars().all()
+    affected = set()
+    closed = 0
+    for row in rows:
+        if row.source_chapter != chapter_seq:
+            continue
+        affected.add((row.source_id, row.target_id))
+        if row.valid_to is None:
+            row.valid_to = chapter_seq
+            closed += 1
+        row.properties = {**(row.properties or {}), "_chapter_invalidated": True}
+    for pair in affected:
+        history = [r for r in rows if (r.source_id, r.target_id) == pair]
+        if any(r.valid_to is None for r in history):
+            continue
+        # A rewrite can leave both invalidated old rows and retained new rows
+        # from the same chapter. Only a fully undone source removes its closure.
+        retained_sources = {r.source_chapter for r in history
+                            if not (r.properties or {}).get("_chapter_invalidated")}
+        invalidated = {r.source_chapter for r in history} - retained_sources
+        # A later retained finite/removal decision is still a timeline barrier,
+        # even though it is not returned by the active-relation query.
+        latest_source = max(retained_sources, default=None)
+        retained = [r for r in history
+                    if not (r.properties or {}).get("_chapter_invalidated")
+                    and r.source_chapter == latest_source
+                    and not (r.properties or {}).get("_memory_removed")
+                    and (r.properties or {}).get("_superseded_by_chapter") in invalidated
+                    and r.valid_to == (r.properties or {}).get("_superseded_by_chapter")]
+        if retained:
+            previous = max(retained, key=lambda r: (r.source_chapter, r.created_at))
+            previous.valid_to = None
+            previous.properties = {k: v for k, v in (previous.properties or {}).items()
+                                   if k != "_superseded_by_chapter"}
+    db.flush()
+    return closed
+
+
 def purge_deleted_chapter_registry(db: Session, *, project_id: uuid.UUID, from_seq: int) -> dict:
     """清掉被删章节产出的登记表行（章节级联删除专用；重写/编辑不调用，不误伤用户基底）。
 
@@ -104,8 +144,8 @@ def purge_deleted_chapter_registry(db: Session, *, project_id: uuid.UUID, from_s
       → 硬删 + 相关 aliases；
     - characters：只出现在被删章节的人物（状态台账/关系/事件参与者三路引用合并，
       **最早出现章** >= from_seq）→ 硬删 + 相关 aliases + 其残留 state/relation 一并删，
-      防图谱出现指向不存在节点的悬空边；建书确认但未在任何章出现的人物无引用 → 保留
-      （无法判定为章节产物）；
+      防图谱出现指向不存在节点的悬空边；仅清理有 source_chapter 来源标记的人物，
+      作者设定与来源不明的历史人物始终保留；
     - 建书确认的势力/地点/世界观规则是用户基底，不在此清（用户拍板）。
 
     须在失效（invalidate_chapter_memory）之前调用——失效会硬删被删范围事件，而人物引用
@@ -187,4 +227,5 @@ def _characters_only_in_deleted_range(db: Session, project_id: uuid.UUID,
             except (ValueError, TypeError):
                 continue
     return [c.id for c in db.execute(select(Character).where(Character.project_id == project_id))
-            .scalars() if c.id in min_seen and min_seen[c.id] >= from_seq]
+            .scalars() if c.source_chapter is not None and c.source_chapter >= from_seq
+            and min_seen.get(c.id, c.source_chapter) >= from_seq]

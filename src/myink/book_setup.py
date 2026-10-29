@@ -9,6 +9,8 @@ agent 只提案、确认 = 编排层写库入口）。草稿可再生（前端�
 
 from __future__ import annotations
 
+from myink.workflow.reference_access import generate_with_references
+
 
 def generate_book_setup(genre: str, premise: str, *,
                         genre_pack: dict | None = None,
@@ -25,13 +27,14 @@ def generate_book_setup(genre: str, premise: str, *,
     from myink.workflow import nodes, prompts
 
     messages = prompts.book_setup_messages(genre, premise, genre_pack=genre_pack)
-    resp = make_chain("planner", db=db, project_id=project_id).generate(
-        messages, json_mode=True, max_tokens=nodes._MAX_TOKENS["book_setup"])
+    resp, tool_trace = generate_with_references(db, project_id, "book_setup", "Planner",
+        make_chain("planner", db=db, project_id=project_id), messages,
+        json_mode=True, max_tokens=nodes._MAX_TOKENS["book_setup"])
     if db is not None:
         if project_id is None:
             raise ValueError("db 非 None 时必须提供 project_id（agent_runs 归属）")
         nodes.record_run(db, project_id=project_id, task_id=None, node="book_setup",
-                         role="Planner", resp=resp, error=resp.error, messages=messages, detail={"genre": genre})
+                         role="Planner", resp=resp, error=resp.error, messages=messages, detail={**({'tool_trace': tool_trace} if tool_trace else {}), "genre": genre})
     if resp.error:
         return {}, resp.error
     try:
@@ -54,14 +57,15 @@ def generate_book_outline(genre: str, premise: str, *, chapter_count: int = 200,
 
     messages = prompts.book_outline_messages(
         genre, premise, chapter_count, storyline, genre_pack=genre_pack)
-    resp = make_chain("planner", db=db, project_id=project_id).generate(
-        messages, json_mode=True, max_tokens=nodes._MAX_TOKENS["book_outline"])
+    resp, tool_trace = generate_with_references(db, project_id, "book_outline", "Planner",
+        make_chain("planner", db=db, project_id=project_id), messages,
+        json_mode=True, max_tokens=nodes._MAX_TOKENS["book_outline"])
     if db is not None:
         if project_id is None:
             raise ValueError("db 非 None 时必须提供 project_id（agent_runs 归属）")
         nodes.record_run(db, project_id=project_id, task_id=None, node="book_outline",
                          role="Planner", resp=resp, error=resp.error, messages=messages,
-                         detail={"genre": genre, "chapter_count": chapter_count})
+                         detail={**({'tool_trace': tool_trace} if tool_trace else {}), "genre": genre, "chapter_count": chapter_count})
     if resp.error:
         return {}, resp.error
     try:
@@ -93,14 +97,15 @@ def generate_short_plan(genre: str, premise: str, *, chapter_count: int,
     messages = prompts.short_plan_messages(
         genre, premise, chapter_count, chars_per_chapter, genre_pack=genre_pack,
         storyline=storyline, revision_reason=revision_reason)
-    resp = make_chain("planner", db=db, project_id=project_id).generate(
-        messages, json_mode=True, max_tokens=nodes._MAX_TOKENS["short_plan"])
+    resp, tool_trace = generate_with_references(db, project_id, "short_plan", "Planner",
+        make_chain("planner", db=db, project_id=project_id), messages,
+        json_mode=True, max_tokens=nodes._MAX_TOKENS["short_plan"])
     if db is not None:
         if project_id is None:
             raise ValueError("db 非 None 时必须提供 project_id（agent_runs 归属）")
         nodes.record_run(db, project_id=project_id, task_id=None, node="short_plan",
                          role="Planner", resp=resp, error=resp.error, messages=messages,
-                         detail={"genre": genre, "chapter_count": chapter_count,
+                         detail={**({'tool_trace': tool_trace} if tool_trace else {}), "genre": genre, "chapter_count": chapter_count,
                                  "chars_per_chapter": chars_per_chapter,
                                  "revision_reason": revision_reason})
     if resp.error:
@@ -133,14 +138,15 @@ def review_short_plan(plan: dict, *, chapter_count: int, project_id: str | None 
     from myink.workflow import nodes, prompts
 
     messages = prompts.short_plan_review_messages(plan, chapter_count)
-    resp = make_chain("planner", db=db, project_id=project_id).generate(
-        messages, json_mode=True, max_tokens=nodes._MAX_TOKENS["short_plan_review"])
+    resp, tool_trace = generate_with_references(db, project_id, "short_plan_review", "Planner",
+        make_chain("planner", db=db, project_id=project_id), messages,
+        json_mode=True, max_tokens=nodes._MAX_TOKENS["short_plan_review"])
     if db is not None:
         if project_id is None:
             raise ValueError("db 非 None 时必须提供 project_id（agent_runs 归属）")
         nodes.record_run(db, project_id=project_id, task_id=None, node="short_plan_review",
                          role="Planner", resp=resp, error=resp.error, messages=messages,
-                         detail={"chapter_count": chapter_count})
+                         detail={**({'tool_trace': tool_trace} if tool_trace else {}), "chapter_count": chapter_count})
     if resp.error:
         return "pass", ""
     try:
@@ -169,13 +175,15 @@ def generate_short_creation_turn(history: list[dict], card: dict, *,
     from myink.workflow import nodes, prompts
 
     messages = prompts.short_creation_messages(history, card)
-    resp = generate_account_model(
-        make_user_chain("planner", user_id), user_id=user_id, messages=messages,
+    chain = make_user_chain("planner", user_id)
+    resp, tool_trace = generate_with_references(db, None, "short_creation", "Planner", chain, messages,
+        user_id=user_id, generate=lambda messages, **options: generate_account_model(
+            chain, user_id=user_id, messages=messages, **options),
         json_mode=True, max_tokens=nodes._MAX_TOKENS["short_creation"])
     if db is not None:
         nodes.record_run(db, user_id=user_id, task_id=None, node="short_creation",
                          role="Planner", resp=resp, error=resp.error, messages=messages,
-                         detail={"turn": len(history)})
+                         detail={"turn": len(history), **({'tool_trace': tool_trace} if tool_trace else {})})
     if resp.error:
         return "（这一轮没连上模型，请再说一次）", {}, resp.error, resp
     try:
@@ -186,3 +194,8 @@ def generate_short_creation_turn(history: list[dict], card: dict, *,
         return resp.content.strip(), {}, "unexpected_json", resp
     reply = str(data.get("reply") or "").strip() or "（模型这轮没有回复内容）"
     return reply, creation.card_patch(data.get("card")), None, resp
+
+
+from myink.writing_resource_runtime import project_resources as _project_resources
+for _name in ("generate_book_setup", "generate_book_outline", "generate_short_plan", "review_short_plan", "generate_short_creation_turn"):
+    globals()[_name] = _project_resources(globals()[_name])

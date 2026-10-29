@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from threading import Lock
 
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
@@ -17,26 +18,31 @@ from myink.workflow.checkpointer import build_checkpointer
 
 _batch_graph: CompiledStateGraph | None = None
 _chapter_graph: CompiledStateGraph | None = None
+_graphs_lock = Lock()
 
 
 def get_graphs() -> tuple[CompiledStateGraph, CompiledStateGraph]:
     """惰性编译（checkpointer 只建一次）。返回 (chapter_graph, batch_graph)。"""
     global _batch_graph, _chapter_graph
-    if _chapter_graph is None:
-        cp = build_checkpointer()
-        _chapter_graph = build_chapter_graph(checkpointer=cp)
-        _batch_graph = build_batch_graph(_chapter_graph, checkpointer=cp)
-    return _chapter_graph, _batch_graph
+    with _graphs_lock:
+        if _chapter_graph is None or _batch_graph is None:
+            cp = build_checkpointer()
+            chapter = build_chapter_graph(checkpointer=cp)
+            batch = build_batch_graph(chapter, checkpointer=cp)
+            # Publish only a fully built pair; failures leave initialization retryable.
+            _chapter_graph, _batch_graph = chapter, batch
+        return _chapter_graph, _batch_graph
 
 
 @budget_execution
 def generate_chapter(*, project_id: str, chapter_seq: int, task_id: str | None = None,
-                     user_instruction: str | None = None, rewrite: bool = False,
+                     user_instruction: str | None = None, rewrite: bool = False, replan: bool = False,
                      writing_mode: str = "auto") -> dict:
     """生成单章（阶段 1 同步版；阶段 2 由 worker 消费 Redis 队列调用）。
 
     task_id 作 thread_id：中断/恢复/重试续跑同一条执行链（§6.7）。
-    rewrite：显式重写已确认章（§7.3 失效重建）——persist 先失效该章旧记忆再写新。
+    rewrite：保留已保存计划重写已确认章；persist 先失效该章旧记忆再写新。
+    replan：显式重新规划本章；由 API 与 rewrite 一同传入，允许重新调用 Planner。
     """
     chapter_graph, _ = get_graphs()
     thread_id = task_id or str(uuid.uuid4())
@@ -52,6 +58,7 @@ def generate_chapter(*, project_id: str, chapter_seq: int, task_id: str | None =
             "task_id": thread_id,
             "user_instruction": user_instruction,
             "rewrite": rewrite,
+            "replan_requested": replan,
             "writing_mode": writing_mode,
         },
         {"configurable": {"thread_id": thread_id}, "recursion_limit": 64},
@@ -168,9 +175,12 @@ def generate_batch(*, project_id: str, size: int, start_chapter: int,
         "position": 0,
         "start_chapter": start_chapter,
     }
+    from myink.worker.scheduling import batch_slicing, invoke_batch_slice
     try:
-        if budget_managed() and batch_graph.get_state({"configurable": {"thread_id": thread_id}}).values:
+        if (budget_managed() or batch_slicing()) and batch_graph.get_state({"configurable": {"thread_id": thread_id}}).values:
             return resume_thread(batch_graph, thread_id, state)
+        if batch_slicing():
+            return invoke_batch_slice(batch_graph, state, {"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
         return invoke_graph(batch_graph, state, {"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
     except TaskBudgetPaused as exc:
         if exc.reason in {"manual_pause", "cancelled"}:
@@ -204,6 +214,10 @@ def resume_thread(graph: CompiledStateGraph, thread_id: str, state: dict) -> dic
     否则会冲回 0 重跑已完成章。外部 state 只补缺口（首次无 checkpoint 时兜底）。
     """
     snap = graph.get_state({"configurable": {"thread_id": thread_id}})
+    from myink.worker.scheduling import batch_slicing, invoke_batch_slice
+    if batch_slicing() and 'batch_task_id' in {**state, **(snap.values or {})}:
+        config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 64}
+        return invoke_batch_slice(graph, None if snap.values else state, config)
     if budget_managed() and snap.values and (snap.next or not snap.values.get("error")):
         return invoke_graph(graph, None, {"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
     resume_state = {**state, **(snap.values or {})}  # checkpoint 优先
@@ -225,10 +239,26 @@ def finalize_chapter_review(*, project_id: str, task_id: str, chapter_seq: int) 
     if not snap.values or not snap.values.get("draft"):
         raise ValueError(f"任务 {task_id} 无草稿 checkpoint，无法确认流收尾")
     from myink.workflow.review import resolve_review
-    result = resolve_review(chapter_graph, snap.values, task_id=task_id)
-    # 落库后追加 LLM 真摘要（§7 短期记忆）：finalize 路径不走图，这里单独补一次。
-    # node_summarize 自吞异常（失败保留启发式摘要），不阻塞确认流收尾。
+    config = {"configurable": {"thread_id": task_id}}
+    if snap.values.get("review_finalization_pending"):
+        result = dict(snap.values)
+    else:
+        result = resolve_review(chapter_graph, snap.values, task_id=task_id)
+        if result.get("needs_review"):
+            return result
+        # Persist the remaining phase before calling a budgeted provider. The
+        # chapter can already be confirmed when this call pauses or the worker dies.
+        with tenant_session(project_id) as db:
+            chapter = nodes.repo.get_chapter(db, uuid.UUID(project_id), chapter_seq)
+            summary_version = (chapter.version if chapter is not None
+                               and chapter.status == "confirmed" and chapter.content == result.get("draft")
+                               else None)
+        result = {**result, "review_finalization_pending": True,
+                  "summary_chapter_version": summary_version}
+        chapter_graph.update_state(config, result, as_node="summarize")
     nodes.node_summarize(result)
+    result = {**result, "needs_review": False, "review_finalization_pending": False}
+    chapter_graph.update_state(config, result, as_node="summarize")
     return result
 
 
@@ -245,16 +275,31 @@ def new_task(*, project_id: str, task_type: str, payload: dict, chapter_seq: int
 
     use_owner_defaults = task_id is None and budget_snapshot is None
     stored_payload = dict(payload)
+    budget_owner = None
+    if use_owner_defaults:
+        # Budget configuration opens its own sessions. Release this short owner
+        # read before taking the project lock used by resource selection.
+        with tenant_session(project_id) as db:
+            project = db.get(Project, uuid.UUID(project_id))
+            if project is None:
+                raise ValueError("Project does not exist")
+            budget_owner = str(project.user_id)
+        budget_snapshot = snapshot_budget(budget_owner)
     if budget_snapshot is not None:
         stored_payload["_task_budget"] = budget_snapshot
     with tenant_session(project_id) as db:
-        project = db.get(Project, uuid.UUID(project_id))
+        project = db.get(Project, uuid.UUID(project_id), with_for_update=True)
         if project is None:
             raise ValueError("Project does not exist")
+        from myink.writing_resources import capture_task_resources
+        from myink.writing_resource_runtime import current_resources
+        if "writing_resources" not in stored_payload:
+            inherited = current_resources()
+            stored_payload["writing_resources"] = (inherited if inherited is not None
+                                                    else capture_task_resources(db, project_id))
         owner_id = str(project.user_id)
-        if use_owner_defaults:
-            budget_snapshot = snapshot_budget(owner_id)
-            stored_payload["_task_budget"] = budget_snapshot
+        if budget_owner is not None and budget_owner != owner_id:
+            raise ValueError("Project owner changed during task admission")
         task = Task(id=uuid.UUID(task_id) if task_id else uuid.uuid4(),
                     project_id=uuid.UUID(project_id), task_type=task_type,
                     payload=stored_payload, status=status, chapter_seq=chapter_seq,

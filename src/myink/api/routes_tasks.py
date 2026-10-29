@@ -18,12 +18,13 @@ import json
 import uuid
 from sqlalchemy import text
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ValidationError
 
 from myink.api.auth import _AuthenticatedUser, current_identity, require_owner, require_user
 from myink.api.schemas import OkOut, TaskControlOut, TaskDetailOut, TaskEnqueuedOut, TaskSummaryOut
 from myink.config import settings
+from myink.guest_quota import request_ip
 from myink.task_budget import (ResumeBudgetBody, budget_view, extend_and_resume_budget, BudgetResumeError)
 from myink.context_budget import estimate_tokens
 from myink.db import new_session
@@ -98,6 +99,7 @@ class ChapterGenerateBody(BaseModel):
     seq: int | None = None
     user_instruction: str | None = None
     rewrite: bool = False
+    replan: bool = False
     mode: str = "auto"
 
 
@@ -107,7 +109,7 @@ class BatchGenerateBody(BaseModel):
 
 
 def _priority(tier: str) -> int:
-    """VIP 插队：JWT tier → RabbitMQ 消息优先级（主队列 x-max-priority=10）。"""
+    """经数据库核验的会员等级 → 消息优先级，发布时据此路由到对应队列。"""
     return settings.priority_vip if tier == "vip" else settings.priority_normal
 
 
@@ -116,14 +118,14 @@ def _platform_chapter_max(identity: _AuthenticatedUser) -> int:
 
     只喂给长篇的两个入队口（单章 / 批次）。短篇与续跑不传，逐字节不变。
     """
-    if not platform_key_active(identity.id, identity.role):
+    if identity.is_guest or not platform_key_active(identity.id, identity.role):
         return 0
     return settings.platform_chapters_per_book
 
 
 @router.post("/projects/{project_id}/chapters/{chapter_id}/generate",
              dependencies=[Depends(require_owner)], response_model=TaskEnqueuedOut, status_code=202)
-def generate_chapter(project_id: str, chapter_id: str, body: ChapterGenerateBody,
+def generate_chapter(project_id: str, chapter_id: str, body: ChapterGenerateBody, request: Request,
                      identity: _AuthenticatedUser = Depends(current_identity)) -> dict:
     """单章生成入队（§13 三层闸门扣 1）。
 
@@ -131,6 +133,8 @@ def generate_chapter(project_id: str, chapter_id: str, body: ChapterGenerateBody
     边缘换 Caddy 之后由本文件接管。闸门拒绝 → 429 `{"error": CODE}`（全局处理器），
     前端 GATE_CODES 认这个信封。
     """
+    if body.replan and not body.rewrite:
+        raise HTTPException(status_code=400, detail="replan_requires_rewrite")
     if body.mode not in {"auto", "manual"}:
         raise HTTPException(status_code=400, detail="invalid_writing_mode")
     _assert_writable(project_id, form="long")
@@ -143,15 +147,17 @@ def generate_chapter(project_id: str, chapter_id: str, body: ChapterGenerateBody
     # 与 Go 同形：rewrite 只在 true 时进 payload（worker 侧是 bool(payload.get("rewrite"))）
     if body.rewrite:
         payload["rewrite"] = True
+    if body.replan:
+        payload["replan"] = True
     return enqueue(user_id=str(identity.id), project_id=project_id, task_type="chapter_generate",
                    payload=payload, quota_n=1, cost_est=settings.cost_per_chapter,
-                   priority=_priority(identity.tier),
+                   client_ip=request_ip(request), priority=_priority(identity.tier),
                    platform_chapter_max=_platform_chapter_max(identity))
 
 
 @router.post("/projects/{project_id}/batches/generate",
              dependencies=[Depends(require_owner)], response_model=TaskEnqueuedOut, status_code=202)
-def generate_batch(project_id: str, body: BatchGenerateBody,
+def generate_batch(project_id: str, body: BatchGenerateBody, request: Request,
                    identity: _AuthenticatedUser = Depends(current_identity)) -> dict:
     """批次生成入队（§13 三层闸门扣 size）。
 
@@ -164,13 +170,13 @@ def generate_batch(project_id: str, body: BatchGenerateBody,
     return enqueue(user_id=str(identity.id), project_id=project_id, task_type="batch_generate",
                    payload={"size": size, "start": start}, quota_n=size,
                    cost_est=settings.cost_per_chapter * size,
-                   priority=_priority(identity.tier),
+                   client_ip=request_ip(request), priority=_priority(identity.tier),
                    platform_chapter_max=_platform_chapter_max(identity))
 
 
 @router.post("/projects/{project_id}/short/generate",
              dependencies=[Depends(require_owner)], response_model=TaskEnqueuedOut, status_code=202)
-def generate_short(project_id: str,
+def generate_short(project_id: str, request: Request,
                    identity: _AuthenticatedUser = Depends(current_identity)) -> dict:
     """短篇全篇生成入队（§13 三层闸门扣「章数」，与批次 size=N 同口径）。
 
@@ -192,7 +198,7 @@ def generate_short(project_id: str,
                             "chars_per_chapter": form.chars_per_chapter},
                    quota_n=form.chapter_count,
                    cost_est=settings.cost_per_chapter * form.chapter_count,
-                   priority=_priority(identity.tier))
+                   client_ip=request_ip(request), priority=_priority(identity.tier))
 
 
 @router.get("/tasks/{task_id}/access", response_model=OkOut)
@@ -432,17 +438,23 @@ def pause_task(task_id: str) -> dict:
 
 
 @router.post("/tasks/{task_id}/resume", dependencies=[Depends(require_task_owner)], response_model=TaskControlOut)
-def resume_task(task_id: str, body: ResumeBudgetBody | None = None,
+def resume_task(task_id: str, request: Request, body: ResumeBudgetBody | None = None,
                 user_id: str = Depends(require_user)) -> dict:
     with new_session() as db:
         require_admission_open(db)
     if budget_view(task_id) is not None:
         try:
-            return extend_and_resume_budget(task_id, user_id, body or ResumeBudgetBody())
+            return extend_and_resume_budget(task_id, user_id, body or ResumeBudgetBody(), client_ip=request_ip(request))
         except BudgetResumeError as exc:
             raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     if body and (body.add_requests or body.add_cost_yuan or body.add_runtime_seconds):
         raise HTTPException(status_code=409, detail="旧任务未启用预算，不能追加")
+    from myink.models import User
+    from myink.guest_quota import resume_legacy
+    with new_session() as identity_db:
+        guest = identity_db.get(User, uuid.UUID(user_id)).is_guest
+    if guest:
+        return resume_legacy(task_id, user_id, request_ip(request))
     with new_session() as db:
         require_admission_open(db)
         task = db.get(Task, _task_uuid(task_id), with_for_update=True)
@@ -450,7 +462,10 @@ def resume_task(task_id: str, body: ResumeBudgetBody | None = None,
             raise HTTPException(status_code=404, detail="任务不存在")
         if task.status not in _RESUMABLE:
             raise HTTPException(status_code=409, detail=f"当前状态不可续跑: {task.status}")
+        from myink.platform_readiness import require_operation_ready
         owner_id = str(db.get(Project, task.project_id).user_id)
+        require_operation_ready(task.task_type, owner_id)
+        priority = amqp.priority_for_user(owner_id)
         project_id = str(task.project_id)
         payload = dict(task.payload)
         resume_type = {"batch_generate": "batch_resume", "short_generate": "short_resume"}.get(task.task_type, "chapter_resume")
@@ -459,12 +474,12 @@ def resume_task(task_id: str, body: ResumeBudgetBody | None = None,
                    "trace_id": task.trace_id or task_id, "request_id": task_id,
                    "retry_count": 0, "created_at": ""}
         db.execute(text("SELECT set_config('app.tenant_id', :pid, true)"), {"pid": project_id})
-        intent_id = register_admission(db, message, priority=0)
+        intent_id = register_admission(db, message, priority=priority)
         task.status = "queued"
         task.error = None
         db.commit()
     intent_outcome(intent_id, project_id, publication_state="unknown")
-    amqp.publish(json.dumps(message, ensure_ascii=False), amqp.KEY_TASKS)
+    amqp.publish(json.dumps(message, ensure_ascii=False), amqp.KEY_TASKS, priority=priority)
     intent_outcome(intent_id, project_id, publication_state="published")
     return {"task_id": task_id, "status": "queued", "message": "已投递续跑消息"}
 
@@ -484,6 +499,8 @@ def confirm_task_plan(task_id: str, body: PlanConfirmBody) -> dict:
         payload = dict(task.payload or {})
         if task.task_type != "chapter_generate" or payload.get("mode") != "manual":
             raise HTTPException(status_code=409, detail="该任务不是手动单章写作")
+        from myink.platform_readiness import require_operation_ready
+        require_operation_ready(task.task_type, str(db.get(Project, task.project_id).user_id))
         runs = (db.query(AgentRun)
                 .filter(AgentRun.task_id == task_id, AgentRun.node == "plan_chapter")
                 .order_by(AgentRun.id.desc()).all())
@@ -531,7 +548,7 @@ def confirm_task_plan(task_id: str, body: PlanConfirmBody) -> dict:
         db.commit()
     intent_outcome(intent_id, project_id, publication_state="unknown")
     try:
-        amqp.publish(json.dumps(message, ensure_ascii=False), amqp.KEY_TASKS)
+        amqp.publish(json.dumps(message, ensure_ascii=False), amqp.KEY_TASKS, priority=amqp.priority_for_user(owner_id))
     except Exception as exc:
         raise HTTPException(status_code=503, detail="计划确认投递结果未确认，请刷新任务状态") from exc
     intent_outcome(intent_id, project_id, publication_state="published")

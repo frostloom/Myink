@@ -1,0 +1,78 @@
+{
+  "kind": "three_engine_vue_acceptance",
+  "passed": true,
+  "results": [
+    {
+      "browser": "chromium",
+      "stage": "smoke",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 28,
+      "receipt": "/tmp/myink-main-cutover-matrix-final/chromium/smoke/receipt.json"
+    },
+    {
+      "browser": "chromium",
+      "stage": "workspace",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 10,
+      "receipt": "/tmp/myink-main-cutover-matrix-final/chromium/workspace/receipt.json"
+    },
+    {
+      "browser": "chromium",
+      "stage": "readiness",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 26,
+      "receipt": "/tmp/myink-main-cutover-matrix-final/chromium/readiness/receipt.json"
+    },
+    {
+      "browser": "firefox",
+      "stage": "smoke",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 28,
+      "receipt": "/tmp/myink-main-cutover-matrix-final/firefox/smoke/receipt.json"
+    },
+    {
+      "browser": "firefox",
+      "stage": "workspace",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 10,
+      "receipt": "/tmp/myink-main-cutover-matrix-final/firefox/workspace/receipt.json"
+    },
+    {
+      "browser": "firefox",
+      "stage": "readiness",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 26,
+      "receipt": "/tmp/myink-main-cutover-matrix-final/firefox/readiness/receipt.json"
+    },
+    {
+      "browser": "webkit",
+      "stage": "smoke",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 28,
+      "receipt": "/tmp/myink-main-cutover-matrix-final/webkit/smoke/receipt.json"
+    },
+    {
+      "browser": "webkit",
+      "stage": "workspace",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 10,
+      "receipt": "/tmp/myink-main-cutover-matrix-final/webkit/workspace/receipt.json"
+    },
+    {
+      "browser": "webkit",
+      "stage": "readiness",
+      "passed": true,
+      "exitCode": 0,
+      "checks": 26,
+      "receipt": "/tmp/myink-main-cutover-matrix-final/webkit/readiness/receipt.json"
+    }
+  ]
+}

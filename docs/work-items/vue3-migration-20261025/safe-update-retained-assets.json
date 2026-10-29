@@ -1,0 +1,18 @@
+{
+  "kind": "safe_update_public_assets_window",
+  "files": {
+    "index-BcR2NWy9.js": "367fa00ffc632a82b810e02c93025b76a16dd1a72efee92829440239c41befb6",
+    "index-LHE4QUm9.js": "8ace8616b0dc484c661be17834853f6a81fc1c95f4179f185173f46a2f12f51a",
+    "index-CwmN0yUu.css": "1448673c36f56ec9d8f81f75e616da7f0dab7a0efbc60baa1b06aaedc0647b70",
+    "index-DRu_dlGP.css": "bb600259130415f1bfdc34bd12d42f0a8ff98026667368159a0bd55945ed9ff8",
+    "index-BDxdzfd9.js": "957a9753c89e8df23790c702aeae91a023eeb0ac2505eb3f1448440ee99190c7",
+    "index-D7a1ECCn.css": "cac8cd86c1db1e65ee32b621a58b478e6a364b5039b5a29a6248acf91d981a47",
+    "index-CyxwGv2c.js": "9dcb68bd386d5110eae6b9574d9f1e19560230f8f21bd1bbd71397135e18ec7c",
+    "index-Cvlt329b.js": "882ba104fc4ee126cf6e1e80f729e7c4a792e346e1a209d2cd7a8656657696a8",
+    "index-Bk-yDMAg.js": "c41dd3e9a0437f8de4c4bc9fdfd14a064cd69f1ba561970d67dad65ef203bfb7",
+    "index-DdkQzNNW.js": "37ac6fae4d19ab3facfa80e7488a07ee706d0dde89e39eefc3fbfadc45d33e48"
+  },
+  "previous_window": "retained-assets-receipt.json",
+  "new_files_source": "Locally fully tested dist-vue/assets and dist/assets merged collision-safe before image builds. Image receipts verify cross-client hashes and original live Cvlt/LHE.",
+  "git_ignored": true
+}

@@ -54,6 +54,18 @@ def init(
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
     console.print("[bold]1/3[/] 建表（PostgreSQL + pgvector）...")
     Base.metadata.create_all(get_admin_engine())
+    from myink.db import ensure_character_provenance, ensure_writing_resource_snapshot_fk
+    from myink.db import ensure_personal_resource_sources
+    ensure_personal_resource_sources()
+    ensure_writing_resource_snapshot_fk()
+    ensure_character_provenance()
+    from sqlalchemy.orm import Session
+    from myink.writing_resources import initialize_builtin_resources
+    from myink.platform_configuration import initialize_builtin_model
+    with Session(get_admin_engine()) as resource_db:
+        initialize_builtin_resources(resource_db)
+        initialize_builtin_model(resource_db)
+        resource_db.commit()
     ensure_project_creation()
     console.print("[bold]1.5/3[/] 补齐唯一约束 + 组合索引/HNSW（幂等，评审 A6/存储建议）...")
     ensure_unique_constraints()
@@ -76,6 +88,9 @@ def init(
     ensure_user_auth_schema()
     console.print("[bold]1.566/3[/] 补齐第二因子字段（users.totp_secret / totp_confirmed_at，幂等）...")
     ensure_user_mfa_schema()
+    from myink.db import ensure_guest_identity, ensure_guest_quota
+    ensure_guest_identity()
+    ensure_guest_quota()
     console.print("[bold]1.567/3[/] 补齐内置密钥终身额度计数（users.platform_short_used / platform_long_used，幂等）...")
     ensure_platform_quota()
     ensure_invitation_schema()
@@ -132,6 +147,9 @@ def auth_upgrade() -> None:
 
     ensure_user_auth_schema()
     ensure_user_mfa_schema()
+    from myink.db import ensure_guest_identity, ensure_guest_quota
+    ensure_guest_identity()
+    ensure_guest_quota()
     ensure_platform_quota()
     ensure_user_role()
     ensure_invitation_schema()

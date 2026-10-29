@@ -33,7 +33,7 @@ client = TestClient(app)
 runner = CliRunner()
 
 PASSWORD = "correct horse battery 1"
-AUTH_SHAPE = {"token", "user_id", "username", "tier", "role", "expires_in"}
+AUTH_SHAPE = {"token", "user_id", "username", "tier", "role", "expires_in", "is_guest"}
 
 
 def _bearer(token: str) -> dict[str, str]:

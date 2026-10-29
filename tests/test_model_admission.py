@@ -79,13 +79,13 @@ def test_unconfigured_model_never_consumes_shared_budget(admission, monkeypatch)
     chain = FallbackChain(MissingModelProvider(), ["unconfigured"])
     for _ in range(3):
         result = module.generate_account_model(chain, user_id="no-model", messages=[], max_tokens=10)
-        assert "环境配置" in result.error
+        assert "管理员" in result.error
     assert list(r.scan_iter(prefix + "*")) == []
     def unavailable():
         raise RuntimeError("offline")
     monkeypatch.setattr(module, "get_redis", unavailable)
     result = module.generate_account_model(chain, user_id="no-model", messages=[], max_tokens=10)
-    assert "环境配置" in result.error
+    assert "管理员" in result.error
 
 
 def test_concurrent_calls_for_same_account_never_reach_provider(admission):
@@ -244,3 +244,13 @@ def test_heartbeat_does_not_renew_a_replacement_owner(admission, monkeypatch):
     call(module, Provider(callback=replacement_owner))
     assert r.get(key) == "new-owner"
     assert 3000 < r.pttl(key) < 4500
+
+
+def test_account_reservation_includes_advertised_tool_schema():
+    from myink.model_admission import _reservation
+    chain=FallbackChain(Provider(), ['deepseek-v4-flash'])
+    messages=[{'role':'user','content':'查阅写作资料'}]
+    without,_=_reservation(chain,messages,1000)
+    with_tools,_=_reservation(chain,messages,1000,tools=[{'type':'function','function':{
+        'name':'read_genre_reference','description':'public methods '*1000}}])
+    assert with_tools>without

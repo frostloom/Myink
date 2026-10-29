@@ -61,6 +61,7 @@
 ```
 
 - 只存**不易变**信息；易变状态一律进 `character_states`（plan.md §7.7）。
+- 数据库内部 `source_chapter` 记录自动人物卡的来源章；作者设定和来源不明的历史数据为 NULL。删除章节只清理来源在删除范围内且未被保留章引用的自动卡，不能按首次出场推断作者基底。已有数据库通过 `myink init` 幂等补列，不回填猜测来源。
 - 别名不在本表：`aliases` 表（`alias` → `entity_id`）是唯一的归一化来源（plan.md §7.5）。
 
 ## 3. ChapterPlan — 章节计划（规划 agent 输出）
@@ -440,3 +441,10 @@
 ### 候选评审元数据（2026-09-08）
 
 `memory_candidates.review` 为可空 JSON：`mode=revise|memory_only`、`reason`、`applied`；旧稿候选作废记录 `superseded=true`。旧记录 NULL 保持原有仅拒绝记忆语义。拒绝默认 revise，恢复评审时修订正文并重新抽取、校验和审核。
+
+### 关系变更撤销来源
+
+关系的内部 `properties._superseded_by_chapter` 标识由哪章替代而关闭，
+`_chapter_invalidated` 标识来源章已失效，`_memory_removed` 保留作者明确删除决定。
+章节失效仅撤销有证据的替代关闭；支持多章按顺序失效后恢复最近保留关系。
+自然到期、明确删除和缺少关闭来源的旧数据不会自动重开。

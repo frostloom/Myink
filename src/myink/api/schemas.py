@@ -20,6 +20,7 @@ from myink.task_budget import TaskBudgetLimits
 
 
 class AuthResponse(BaseModel):
+    is_guest: bool = False
     token: str
     user_id: str
     username: str
@@ -28,7 +29,19 @@ class AuthResponse(BaseModel):
     expires_in: int
 
 
+class GuestQuotaDimensionOut(BaseModel):
+    limit: int
+    used: int
+    remaining: int
+
+
+class GuestQuotaOut(BaseModel):
+    short: GuestQuotaDimensionOut
+    long: GuestQuotaDimensionOut
+
+
 class AuthSessionOut(BaseModel):
+    is_guest: bool = False
     user_id: str
     username: str
     tier: str
@@ -321,6 +334,8 @@ class RankingsConfigOut(BaseModel):
 class EnvironmentOut(BaseModel):
     """账号级环境配置（模型连接/路由 + 思考模式 + 扫榜）。"""
 
+    overridden_fields: list[str] = Field(default_factory=list)
+    available_models: list[dict[str, str]] = Field(default_factory=list)
     model_routes: dict = Field(default_factory=dict)
     model_connections: list[dict] = Field(default_factory=list)
     rankings: RankingsConfigOut

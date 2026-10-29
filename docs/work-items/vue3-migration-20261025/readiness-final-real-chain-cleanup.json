@@ -1,0 +1,65 @@
+{
+  "containersRemoval": {
+    "exitCode": 0,
+    "stdout": "myink-vue-chain-0025-caddy-browser\nmyink-vue-chain-0025-rabbitmq-recovery\nmyink-vue-chain-0025-postgres-1\nmyink-vue-chain-0025-redis-1\n",
+    "stderr": ""
+  },
+  "originalZombieRemoval": {
+    "exitCode": 0,
+    "stdout": "myink-vue-chain-0025-rabbitmq-1\n",
+    "stderr": ""
+  },
+  "dedicatedNetworkRemoval": {
+    "exitCode": 0,
+    "stdout": "myink-vue-chain-0025_default\n",
+    "stderr": ""
+  },
+  "ports": {
+    "28110": {
+      "listenerRemains": false
+    },
+    "28120": {
+      "listenerRemains": false
+    },
+    "28080": {
+      "listenerRemains": false
+    },
+    "28443": {
+      "listenerRemains": false
+    },
+    "28432": {
+      "listenerRemains": false
+    },
+    "28380": {
+      "listenerRemains": false
+    },
+    "28673": {
+      "listenerRemains": false
+    },
+    "29673": {
+      "listenerRemains": false
+    }
+  },
+  "preExistingStacks": [
+    "myink-myink-worker-1|Up 38 hours",
+    "myink-admin-security-test-redis-1|Up 42 hours (healthy)",
+    "myink-admin-security-test-rabbitmq-1|Up 42 hours (healthy)",
+    "myink-admin-security-test-postgres-1|Up 42 hours (healthy)",
+    "codebot-local-ingress-1|Up 2 days (healthy)",
+    "codebot-local-user-model-resources-service-1|Up 27 minutes (healthy)",
+    "codebot-local-mysql-1|Up 3 days (healthy)",
+    "codebot-local-gateway-1|Up 31 minutes (healthy)",
+    "codebot-local-user-service-1|Up 25 minutes (healthy)",
+    "codebot-local-auth-service-1|Up 25 minutes (healthy)",
+    "codebot-local-frontend-1|Up 3 days (healthy)",
+    "codebot-local-minio-1|Up 3 days (healthy)",
+    "codebot-local-nacos-1|Up About an hour (healthy)",
+    "myink-caddy|Up 3 days (healthy)",
+    "myink-api|Up 38 hours (healthy)",
+    "myink-rabbitmq|Up 3 days (healthy)",
+    "myink-pg|Up 3 days (healthy)",
+    "hindsight|Up 38 minutes",
+    "myink-redis|Up 3 days (healthy)"
+  ],
+  "remainingDedicatedContainers": []
+}

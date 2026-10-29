@@ -60,6 +60,16 @@ def _category(exc: Exception) -> str | None:
     return "timeout" if isinstance(exc, APITimeoutError) else "connection"
 
 
+def retryable_provider_error(exc: Exception) -> bool:
+    """Only transient HTTP statuses and transport failures merit another attempt."""
+    status = getattr(exc, 'status_code', None)
+    if status is None and isinstance(exc, _STATUS_TYPES):
+        status = exc.response.status_code
+    if isinstance(status, int):
+        return status in {408, 429} or 500 <= status <= 599
+    return _category(exc) in {'connection', 'timeout', 'pool', 'interrupted'}
+
+
 def _guidance_url(raw: str) -> str:
     if any(ord(char) < 33 for char in raw):
         return ""
@@ -114,3 +124,24 @@ def format_provider_error(exc: Exception, *, api_key: str, self_host_url: str = 
     if api_key:
         text = text.replace(api_key, "***")
     return text[:300]
+
+
+def raise_for_status_with_detail(response: httpx.Response, *, iter_chunks) -> None:
+    """Read at most 8 KiB of an HTTP error while still inside the stream context.
+
+    The caller supplies budget-aware iteration. Budget interruptions propagate;
+    transport errors while reading diagnostics must not replace the HTTP status.
+    """
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        body = bytearray()
+        try:
+            for chunk in iter_chunks():
+                body.extend(chunk[:8192 - len(body)])
+                if len(body) >= 8192:
+                    break
+        except httpx.RequestError:
+            pass
+        exc.response = httpx.Response(response.status_code, content=bytes(body), request=response.request)
+        raise

@@ -1,14 +1,17 @@
 .wrap {
+  composes: content from '../components/RailLayout.module.css';
   height: 100%;
+  overflow-y: auto;
   display: flex;
+  align-items: flex-start;
   min-width: 0;
 }
 
 .main {
   flex: 1;
   min-width: 0;
-  overflow-y: auto;
-  padding: var(--space-6);
+  overflow: visible;
+  padding: var(--space-4);
 }
 
 .header,
@@ -18,6 +21,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
+  flex-wrap: wrap;
 }
 
 .header {
@@ -70,8 +74,10 @@
 
 .panel,
 .detail {
-  padding: var(--space-5);
+  padding: var(--space-4);
 }
+.tierBadge { display: inline-flex; align-items: center; padding: 3px 9px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); color: var(--ink-muted); background: var(--surface-2); font-size: var(--text-small); font-weight: 600; white-space: nowrap; }
+.vipTierBadge { color: var(--surface-1); background: var(--ink); border-color: var(--ink); }
 
 .panel h3,
 .detail h3,
@@ -197,6 +203,16 @@
 .actions {
   white-space: nowrap;
 }
+
+/* Keep table cells in table layout; only standalone groups become flex rows. */
+.actionGroup,
+.actions:not(td) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.actionGroup > :global(.btn) { flex-shrink: 0; }
 
 .pagination {
   display: flex;
@@ -344,7 +360,7 @@
   display: grid;
   place-content: center;
   text-align: center;
-  padding: var(--space-6);
+  padding: var(--space-4);
 }
 
 /* 读数带的列数（§3.5 阶梯）。1200 以下九列必然挤，改成三列三行；
@@ -363,8 +379,8 @@
 }
 
 @media (max-width: 640px) {
-  .wrap { display: block; height: auto; min-height: 100%; }
-  .wrap > aside { width: 100%; height: auto; min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); }
+  .wrap { display: block; height: 100%; min-height: 0; }
+  .wrap > aside { min-height: 0; }
   .main { overflow: visible; padding: var(--space-3); }
   .header, .viewHead, .detailHead { flex-direction: column; }
   .readout,
@@ -386,4 +402,28 @@
   .metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+@media (max-width: 640px) {
+  .wrap { flex-direction: column; }
+  .main { padding: var(--space-3); }
+}
+
+.detailPageHead { flex-direction:row; align-items:center; }
+
+/* Reading flows stay in one column, so short chapter lists do not leave a void. */
+.projectSections { display: grid; gap: var(--space-5, 20px); min-width: 0; }
+.relatedLinks { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 12px; }
+
+.projectGroup { min-width:0; }
+.projectGroup h3 { margin:0 0 8px; font-size:var(--text-body); }
+
+/* Compact controls keep whole labels; metadata takes the remaining width. */
+.pagination { flex-wrap: wrap; }
+.pagination > button,
+.list li > button { flex: 0 0 auto; white-space: nowrap; }
+.pagination > span { text-align: center; }
+.list li > div { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 420px) {
+  .pagination > span { flex: 1 0 100%; order: -1; }
 }

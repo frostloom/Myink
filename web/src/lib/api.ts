@@ -1,9 +1,12 @@
+import { beginWrite } from './pendingWrites'
+import { publishProjectList } from './projectListUpdates'
 import type { TaskBudgetLimits, ResumeBudgetBody } from '../types'
 // fetch 统一封装：Vite dev proxy 把 /api 转发到 Caddy（:80，见 vite.config.ts），生产同源。
 // 业务路由一律 Bearer（§14.1 ③）；非 2xx 统一抛 ApiError（code = {"error": code} 信封）。
 
 import type {
   AuthResponse,
+  GuestQuota,
   AuthSessionResponse,
   CandidateActionResponse,
   CharacterCard,
@@ -58,7 +61,7 @@ import type {
   WritingLesson,
   WritingMode,
 } from '../types'
-import { dispatchUnauthorized, getSessionUserId, getToken } from './token'
+import { dispatchUnauthorized, getSession, getSessionUserId, getToken } from './token'
 
 const BASE = '/api/v1'
 
@@ -81,7 +84,10 @@ export { GATE_CODES, formatApiError, formatErrorText } from './apiError'
 interface RequestOptions {
   token?: string | null
   signal?: AbortSignal
+  background?: boolean
   dispatchAuthFailure?: boolean
+  credentials?: RequestCredentials
+  allowExpiredGuest?: boolean
 }
 
 const authenticatedRequests = new Map<string, Set<AbortController>>()
@@ -103,7 +109,8 @@ async function request<T>(
   const token = options?.token === undefined ? getToken() : options.token
   // 按账号（userId）而不是令牌字符串判定响应是否已作废：滑动续期会换令牌但不换账号，
   // 拿令牌比会把续期当换账号，把正在跑的请求判成 aborted。
-  const identityAtStart = getSessionUserId()
+  const currentIdentity = () => options?.allowExpiredGuest ? getSession(true)?.userId ?? null : getSessionUserId()
+  const identityAtStart = currentIdentity()
   if (token) headers.Authorization = `Bearer ${token}`
   // FormData 的 Content-Type 得留给浏览器写，它要自己拼 multipart 边界
   const isForm = typeof FormData !== 'undefined' && body instanceof FormData
@@ -119,9 +126,11 @@ async function request<T>(
     authenticatedRequests.set(token, pending)
   }
 
+  const finishWrite = method === 'GET' || method === 'HEAD' ? undefined : beginWrite(options?.background)
   try {
     const res = await fetch(BASE + path, {
       method,
+      credentials: options?.credentials,
       headers,
       body: isForm ? (body as FormData) : body !== undefined ? JSON.stringify(body) : undefined,
       signal: controller.signal,
@@ -134,7 +143,7 @@ async function request<T>(
       } catch {
         /* 非 JSON 响应：保留原始状态 */
       }
-      if (controller.signal.aborted || (token && getSessionUserId() !== identityAtStart)) {
+      if (controller.signal.aborted || (token && currentIdentity() !== identityAtStart)) {
         throw new ApiError(0, 'request_aborted', null)
       }
       const errorBody = parsed as { error?: string; detail?: unknown } | null
@@ -143,19 +152,29 @@ async function request<T>(
       if (res.status === 401 && token && options?.dispatchAuthFailure !== false) {
         dispatchUnauthorized(token)
       }
+      if (code === 'GUEST_QUOTA_EXHAUSTED' && token && identityAtStart) {
+        // Generic task resumes do not identify which quota ledger was charged.
+        const category = path.includes('/short/') ? 'short'
+          : /\/(?:chapters\/[^/]+|batches)\/generate$/.test(path) ? 'long' : undefined
+        window.dispatchEvent(new CustomEvent('myink:guest-quota', {
+          detail: { userId: identityAtStart, exhausted: true, category, batch: path.endsWith('/batches/generate') },
+        }))
+      }
       throw new ApiError(res.status, code, parsed)
     }
 
     const parsed = (await res.json()) as T
-    if (controller.signal.aborted || (token && getSessionUserId() !== identityAtStart)) {
+    if (controller.signal.aborted || (token && currentIdentity() !== identityAtStart)) {
       throw new ApiError(0, 'request_aborted', null)
     }
+    if (method !== 'GET' && getSession()?.isGuest) window.dispatchEvent(new CustomEvent('myink:guest-quota', { detail: { token } }))
     return parsed
   } catch (err) {
     if (err instanceof ApiError) throw err
     if (controller.signal.aborted) throw new ApiError(0, 'request_aborted', null)
     throw new ApiError(0, 'network_error', null)
   } finally {
+    finishWrite?.()
     options?.signal?.removeEventListener('abort', abortFromCaller)
     if (token) {
       const pending = authenticatedRequests.get(token)
@@ -176,8 +195,9 @@ export function authenticatedSend<T>(
   token: string,
   body?: unknown,
   signal?: AbortSignal,
+  background = false,
 ): Promise<T> {
-  return request<T>(method, path, body, { token, signal })
+  return request<T>(method, path, body, { token, signal, background })
 }
 
 export const api = {
@@ -187,15 +207,21 @@ export const api = {
       'POST', '/auth/token', { username, password }, { token: null },
     ),
 
-  register: (username: string, password: string, invitationCode: string) =>
+  startGuest: (restoreOnly = false, signal?: AbortSignal) =>
+    request<AuthResponse>('POST', '/auth/guest', { restore_only: restoreOnly }, { token: null, credentials: 'same-origin', signal }),
+
+  guestQuota: (token: string, signal?: AbortSignal) =>
+    request<GuestQuota>('GET', '/auth/guest/quota', undefined, { token, signal }),
+
+  register: (username: string, password: string, invitationCode: string, token: string | null = null) =>
     request<AuthResponse>('POST', '/auth/register', {
       username,
       password,
       invitation_code: invitationCode,
-    }, { token: null }),
+    }, { token, dispatchAuthFailure: false, allowExpiredGuest: token !== null }),
 
-  getSession: (token: string, signal?: AbortSignal) =>
-    request<AuthSessionResponse>('GET', '/auth/session', undefined, { token, signal }),
+  getSession: (token: string, signal?: AbortSignal, dispatchAuthFailure = true) =>
+    request<AuthSessionResponse>('GET', '/auth/session', undefined, { token, signal, dispatchAuthFailure }),
 
   // 第二因子（§2.8，仅管理员；机制见 docs/AUTH.md）。verify 免身份——凭证是挑战票。
   verifyMfa: (mfaToken: string, code: string) =>
@@ -225,7 +251,7 @@ export const api = {
   logout: (token?: string, signal?: AbortSignal) =>
     request<OkResponse>('POST', '/auth/logout', undefined, { token, signal }),
 
-  listProjects: () => request<Project[]>('GET', '/projects'),
+  listProjects: () => publishProjectList(request<Project[]>('GET', '/projects')),
 
   listChapters: (pid: string) =>
     request<ChapterMeta[]>('GET', `/projects/${pid}/chapters`),
@@ -270,7 +296,7 @@ export const api = {
   generateChapter: (
     pid: string,
     cid: string,
-    body: { seq: number; user_instruction?: string; rewrite?: boolean; mode?: WritingMode },
+    body: { seq: number; user_instruction?: string; rewrite?: boolean; replan?: boolean; mode?: WritingMode },
   ) => request<GenerateResponse>('POST', `/projects/${pid}/chapters/${cid}/generate`, body),
 
   generateBatch: (pid: string, body: { size: number; start: number }) =>
@@ -302,14 +328,14 @@ export const api = {
       `/projects/${pid}/tasks${chapterSeq ? `?chapter_seq=${chapterSeq}` : ''}`,
     ),
 
-  // 批次控制（pause|resume|cancel）：网关转发 Python 任务控制端点；外部控制不发
+  // 批次控制保留旧调用名，统一走 Python 任务控制端点；外部控制不发
   // SSE 事件，成功后调用方需主动 GET 快照刷新（useTaskEvents.refresh）。
   pauseBatch: (batchId: string) =>
-    request<TaskControlResponse>('POST', `/batches/${batchId}/pause`),
+    request<TaskControlResponse>('POST', `/tasks/${batchId}/pause`),
   resumeBatch: (batchId: string) =>
-    request<TaskControlResponse>('POST', `/batches/${batchId}/resume`),
+    request<TaskControlResponse>('POST', `/tasks/${batchId}/resume`),
   cancelBatch: (batchId: string) =>
-    request<TaskControlResponse>('POST', `/batches/${batchId}/cancel`),
+    request<TaskControlResponse>('POST', `/tasks/${batchId}/cancel`),
 
   // 待确认候选池（§6.11 确认分流）：GET 列表 + 人工 confirm/reject（编排层写库入口）。
   listCandidates: (pid: string, status = 'pending') =>
@@ -339,7 +365,8 @@ export const api = {
     model_connections?: ModelConnectionInput[]
     rankings?: RankingsConfigInput
     thinking_enabled?: boolean
-    task_budget?: TaskBudgetLimits
+    task_budget?: Partial<TaskBudgetLimits>
+    reset_preferences?: string[]
   }) => request<EnvironmentSettings>('PUT', '/environment', body),
 
   // 模型连接探针（环境配置页）：拉取可用模型列表 / 联通测试。

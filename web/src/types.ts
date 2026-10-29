@@ -1,11 +1,17 @@
 // API 类型（字段对齐 Python 侧已核实响应形状，见 plan.md 阶段 4 首切计划 §7）
 
+export interface GuestQuota {
+  short: { limit: number; used: number; remaining: number }
+  long: { limit: number; used: number; remaining: number }
+}
+
 export interface AuthResponse {
   token: string
   user_id: string
   username: string
   tier: string
   role: 'user' | 'admin'
+  is_guest?: boolean
   expires_in: number
 }
 
@@ -14,6 +20,7 @@ export interface AuthSessionResponse {
   username: string
   tier: string
   role: 'user' | 'admin'
+  is_guest?: boolean
   /** 自检顺手续期：服务端新签的令牌与它的有效期（秒） */
   token: string
   expires_in: number
@@ -461,8 +468,17 @@ export interface RankingsConfigInput {
   limit?: number
 }
 
+/** 管理员提供的默认偏好；用户覆盖按字段生效。 */
+export interface UserDefaults {
+  thinking_enabled: boolean
+  task_budget: TaskBudgetLimits
+  rankings: RankingsConfig
+}
+
 /** 账号级环境配置（GET/PUT /environment） */
 export interface EnvironmentSettings {
+  overridden_fields?: string[]
+  available_models?: Array<{ id: string; name: string }>
   task_budget?: TaskBudgetLimits
   model_routes: Record<string, string>
   model_connections: ModelConnection[]

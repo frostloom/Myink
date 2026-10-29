@@ -127,16 +127,16 @@ def test_tool_round_and_final_record_exact_inputs_and_outputs(monkeypatch):
         def generate(self, messages, **kwargs):
             if len(messages) == 1:
                 return ModelResponse(content="checking", model_id="fake", tool_calls=[{"id":"c1", "name":"lookup", "arguments":{"token":"TOOL-SECRET"}}])
-            assert messages[2]["content"] == "recalled Bearer TOOL-RESULT-SECRET"
+            assert "recalled Bearer TOOL-RESULT-SECRET" in messages[1]["content"]
             return ModelResponse(content="final story", model_id="fake")
     monkeypatch.setattr(nodes, "execute_tool", lambda *args: "recalled Bearer TOOL-RESULT-SECRET")
     db = Collector()
     response, trace = nodes._run_tool_loop(db, {"project_id":str(uuid.uuid4()), "task_id":str(uuid.uuid4())},
                       "write", "Writer", Chain(), [{"role":"user", "content":"write it"}],
-                      max_tokens=100, tools=[{"type":"function"}], max_tool_calls=1, final_json=False)
+                      max_tokens=100, tools=[{"type":"function", "function":{"name":"lookup"}}], max_tool_calls=1, final_json=False)
     assert response.content == "final story" and len(db.rows) == 2
     assert trace[0]["result"] == "recalled Bearer TOOL-RESULT-SECRET"
-    assert len(db.rows[0].detail["messages"]) == 1 and len(db.rows[1].detail["messages"]) == 4
+    assert len(db.rows[0].detail["messages"]) == 1 and len(db.rows[1].detail["messages"]) == 3
     assert db.rows[0].detail["response"]["tool_calls"][0]["name"] == "lookup"
     assert db.rows[1].detail["response"]["content"] == "final story"
     assert "TOOL-SECRET" not in json.dumps([r.detail for r in db.rows])

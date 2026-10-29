@@ -1,0 +1,13 @@
+.trends { display: grid; gap: 16px; min-width: 0; }
+.trends h2, .trends h3, .trends p { margin: 0; }
+.trends p { color: var(--ink-subtle); font-size: 13px; }
+.filters { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+.filters label { display: grid; gap: 5px; font-size: 13px; }
+.filters input { max-width: 100%; padding: 7px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; }
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 0; }
+.summary > div, .chartCard { border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.summary dt { font-size: 12px; color: var(--ink-subtle); }
+.summary dd { margin: 8px 0 0; font-size: 23px; font-variant-numeric: tabular-nums; }
+.chartCard h3 { font-size: 15px; font-weight: 500; }
+.chart { width: 100%; height: 300px; min-width: 0; }
+@media (max-width: 600px) { .chartCard { padding: 10px; } .chart { height: 260px; } }

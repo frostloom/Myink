@@ -1,67 +1,23 @@
-.wrap {
-  height: 100%;
-  display: grid;
-  place-items: center;
-  padding: var(--space-4);
-}
-
-.card {
-  /* 版式不分档：卡片是 width:100% + max-width:360px，实测 1440→320 一路自适应，
-     页面级横向溢出 0，卡片顶部也从没被居中裁掉（最短的 320x700 下 y=154）。
-     这一页唯一的分档是文件末尾的触控地板。 */
-  width: 100%;
-  max-width: 360px;
-  padding: var(--space-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.sub {
-  margin: var(--space-2) 0 0;
-  color: var(--ink-subtle);
-}
-
-.tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  padding: 3px;
-  border: 1px solid var(--line);
-  /* 外框 12、内页 8：3px 的 padding 正好让内外圆角同心。
-     原来这里是 calc(--radius-sm - 2px)，算出来第 13 种半径；把它搬回阶梯上。 */
-  border-radius: var(--radius-md);
-  background: var(--input-bg);
-}
-
-.tab,
-.tabActive {
-  /* 38 是这一页唯一的定高控件，两档判据（桌面 40 / 手机 44）都不够——它又是「登录 / 注册」
-     这种一改就切换身份的开关，按偏了代价最高。 */
-  min-height: 40px;
-  border: 0;
-  border-radius: var(--radius-sm);
-  color: var(--ink-muted);
-  background: transparent;
-  cursor: pointer;
-}
-
-.tabActive {
-  color: var(--ink);
-  background: var(--surface-1);
-  box-shadow: var(--shadow-soft);
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  color: var(--ink-muted);
-  font-size: var(--text-small);
-}
-
+.wrap { min-height: 100%; display: grid; place-items: center; padding: 32px 20px; overflow-y: auto; }
+.card { width: 100%; max-width: 430px; margin: auto; padding: 32px; display: flex; flex-direction: column; gap: 20px; border-color: var(--line-strong); box-shadow: var(--shadow-soft); }
+.heading { padding-bottom: 4px; }
+.brand { display: inline-block; margin-bottom: 22px; color: var(--accent-ink); font-size: 20px; line-height: 1.2; font-weight: 700; letter-spacing: -.03em; }
+.heading h1 { margin: 0; font-size: 28px; line-height: 1.4; }
+.sub { margin: 10px 0 0; color: var(--ink-subtle); font-size: var(--text-small); line-height: 1.75; }
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-2); }
+.tab, .tabActive { min-height: 42px; padding: 8px 12px; border: 1px solid transparent; border-radius: var(--radius-sm); color: var(--ink-subtle); background: transparent; font: inherit; font-size: var(--text-small); cursor: pointer; }
+.tabActive { border-color: var(--line-strong); color: var(--ink); background: var(--surface-1); font-weight: 600; }
+.tab:focus-visible, .tabActive:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tab:disabled, .tabActive:disabled { cursor: wait; }
+.field { display: flex; flex-direction: column; gap: 9px; color: var(--ink-muted); font-size: var(--text-small); }
+.field input { width: 100%; min-height: 44px; }
+.fieldHint { margin: -10px 0 0; color: var(--ink-subtle); font-size: var(--text-micro); line-height: 1.7; }
+.card > button[type='submit'] { min-height: 46px; margin-top: 4px; }
+.card > :global(.guest-entry) { padding-top: 20px; border-top: 1px solid var(--line); }
 @media (max-width: 640px) {
-  .tab,
-  .tabActive {
-    min-height: 44px;
-  }
+  .wrap { padding: 24px 16px; }
+  .card { padding: 28px 24px; gap: 18px; }
+  .heading h1 { font-size: 26px; }
+  .brand { margin-bottom: 20px; }
+  .tab, .tabActive { min-height: 44px; }
 }

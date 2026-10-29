@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import uuid
 
+import pytest
+
 from myink.db import tenant_session
 from myink.memory import repository as repo
 from myink.memory.invalidation import invalidate_chapter_memory
@@ -316,3 +318,107 @@ def test_vector_store_delete_by_chapter(temp_project):
         remaining = db.query(EmbeddingRow).filter(EmbeddingRow.project_id == uuid.UUID(temp_project)).count()
     assert n == 1
     assert remaining == 1
+
+
+def _relation_change(db, pid, seq, relation_type):
+    nodes._persist_candidates(db, pid, seq, [{"kind": "relation_change", "payload": {
+        "source_id": str(CID), "target_id": str(CID2), "relation_type": relation_type,
+        "valid_from": seq}}])
+    db.flush()
+
+
+def test_invalidating_relation_changes_restores_latest_retained_history(temp_project):
+    with tenant_session(temp_project) as db:
+        _relation_change(db, temp_project, 1, "ally")
+        _relation_change(db, temp_project, 2, "hostile")
+        _relation_change(db, temp_project, 3, "master_student")
+    with tenant_session(temp_project) as db:
+        # Ascending cascade is the real chapter deletion order.
+        invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=2)
+        assert [r.relation_type for r in repo.get_relations(db, uuid.UUID(temp_project))] == ["master_student"]
+        invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=3)
+        assert [r.relation_type for r in repo.get_relations(db, uuid.UUID(temp_project))] == ["ally"]
+        invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=3)
+        assert [r.relation_type for r in repo.get_relations(db, uuid.UUID(temp_project))] == ["ally"]
+
+
+def test_invalidating_relation_does_not_reopen_naturally_expired_history(temp_project):
+    with tenant_session(temp_project) as db:
+        db.add(Relation(project_id=temp_project, source_id=CID, target_id=CID2,
+                        relation_type="ally", source_chapter=1, valid_from=1, valid_to=2))
+        db.flush()
+        _relation_change(db, temp_project, 2, "hostile")
+        invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=2)
+        assert repo.get_relations(db, uuid.UUID(temp_project)) == []
+
+
+def test_invalidating_relation_does_not_restore_explicitly_removed_history(temp_project):
+    from myink.memory.correction import apply_memory_removal
+    with tenant_session(temp_project) as db:
+        _relation_change(db, temp_project, 1, "ally")
+        old = db.query(Relation).filter_by(source_chapter=1).one()
+        _relation_change(db, temp_project, 2, "hostile")
+        assert apply_memory_removal(db, project_id=uuid.UUID(temp_project), chapter_seq=2,
+                                    payload={"memory_type": "relation", "memory_id": str(old.id)})
+        db.flush()
+        invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=2)
+        assert repo.get_relations(db, uuid.UUID(temp_project)) == []
+
+
+def test_rewrite_replay_respects_rejected_restoration(temp_project):
+    from myink.models import MemoryCandidate
+    proposal = {"kind": "fact", "payload": {"content": "不能恢复的旧事实"}}
+    with tenant_session(temp_project) as db:
+        db.add(MemoryCandidate(project_id=temp_project, source_chapter=1, status="confirmed", **proposal))
+        db.add(MemoryCandidate(project_id=temp_project, source_chapter=1, status="rejected",
+                               review={"mode": "revise", "applied": True}, **proposal))
+        db.flush()
+        assert nodes._reapply_pool_for_rewrite(db, temp_project, 1, [proposal]) == []
+
+
+def test_invalidating_later_relation_keeps_retained_same_chapter_rewrite(temp_project):
+    with tenant_session(temp_project) as db:
+        _relation_change(db, temp_project, 1, "ally")
+        _relation_change(db, temp_project, 2, "hostile")
+        invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=2)
+        for seq, relation_type in [(2, "hostile"), (3, "knows")]:
+            nodes._persist_candidates(db, temp_project, seq, [{"kind": "relation_change", "payload": {
+                "source_id": str(CID), "target_id": str(CID2), "relation_type": relation_type,
+                "valid_from": seq, "valid_to": 4}}])
+            db.flush()
+        invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=3)
+        assert repo.get_relations(db, uuid.UUID(temp_project)) == []
+        retained = db.query(Relation).filter_by(source_chapter=2).all()
+        assert len([r for r in retained if not r.properties.get("_chapter_invalidated")]) == 1
+        assert all(r.valid_to == 4 for r in retained if not r.properties.get("_chapter_invalidated"))
+
+
+@pytest.mark.parametrize("later_decision", ["finite", "removed"])
+def test_middle_chapter_rewrite_respects_later_retained_relation(temp_project, later_decision):
+    from myink.memory.correction import apply_memory_removal
+    with tenant_session(temp_project) as db:
+        _relation_change(db, temp_project, 1, "ally")
+        _relation_change(db, temp_project, 2, "hostile")
+        nodes._persist_candidates(db, temp_project, 3, [{"kind": "relation_change", "payload": {
+            "source_id": str(CID), "target_id": str(CID2), "relation_type": "knows",
+            "valid_from": 3, "valid_to": 4 if later_decision == "finite" else None}}])
+        db.flush()
+        later = db.query(Relation).filter_by(source_chapter=3).one()
+        if later_decision == "removed":
+            assert apply_memory_removal(db, project_id=uuid.UUID(temp_project), chapter_seq=3,
+                payload={"memory_type": "relation", "memory_id": str(later.id)})
+            db.flush()
+        invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=2)
+        assert repo.get_relations(db, uuid.UUID(temp_project)) == []
+        assert not later.properties.get("_chapter_invalidated")
+        assert later.valid_to == (4 if later_decision == "finite" else 3)
+
+
+def test_relation_restore_uses_final_supersession_within_retained_chapter(temp_project):
+    with tenant_session(temp_project) as db:
+        _relation_change(db, temp_project, 1, "ally")
+        _relation_change(db, temp_project, 2, "hostile")
+        _relation_change(db, temp_project, 2, "knows")
+        _relation_change(db, temp_project, 3, "owns")
+        invalidate_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=3)
+        assert [r.relation_type for r in repo.get_relations(db, uuid.UUID(temp_project))] == ["knows"]

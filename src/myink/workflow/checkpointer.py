@@ -9,6 +9,8 @@
 from __future__ import annotations
 
 import logging
+from threading import Lock
+from time import sleep
 from typing import Iterable
 
 from langgraph.checkpoint.postgres import PostgresSaver
@@ -22,6 +24,7 @@ from myink.db_url import normalize_localhost_database_url
 logger = logging.getLogger(__name__)
 
 _build: dict[str, PostgresSaver] = {}
+_build_lock = Lock()
 
 def _psycopg_conn_str(database_url: str) -> str:
     """Convert SQLAlchemy URL and avoid threaded ``localhost`` DNS stalls on Windows."""
@@ -41,25 +44,44 @@ def build_checkpointer() -> PostgresSaver:
     worker 自身重启，后续每个任务都会立即失败。
     checkpointer 连接是 psycopg 直连，与 SQLAlchemy 双引擎完全分离（§6.7）。
     """
-    if "saver" in _build:
-        return _build["saver"]
-    pool = ConnectionPool(
-        conninfo=_CONN_STR,
-        min_size=1,
-        max_size=2,
-        open=True,
-        kwargs={
-            "autocommit": True,
-            "prepare_threshold": 0,
-            "row_factory": dict_row,
-        },
-        check=ConnectionPool.check_connection,
-    )
-    pool.wait()
-    saver = PostgresSaver(pool)
-    saver.setup()  # 建 checkpoints / checkpoint_blobs / checkpoint_writes
-    _build["saver"] = saver
-    return saver
+    with _build_lock:
+        if "saver" in _build:
+            return _build["saver"]
+        pool = ConnectionPool(
+            conninfo=_CONN_STR,
+            min_size=1,
+            max_size=2,
+            open=True,
+            kwargs={
+                "autocommit": True,
+                "prepare_threshold": 0,
+                "row_factory": dict_row,
+            },
+            check=ConnectionPool.check_connection,
+        )
+        try:
+            pool.wait()
+            # CREATE TABLE IF NOT EXISTS is not race-free across fresh workers.
+            # Keep setup on the same session as the database-wide schema lease;
+            # autocommit is required by the saver's concurrent index migrations.
+            with pool.connection() as conn:
+                # A blocking lock SELECT holds a snapshot while waiting, which
+                # can deadlock with the owner's CREATE INDEX CONCURRENTLY.
+                # Finish each unsuccessful statement before sleeping in Python.
+                while not conn.execute(
+                    "SELECT pg_try_advisory_lock(728165, 1) AS acquired"
+                ).fetchone()["acquired"]:
+                    sleep(0.05)
+                try:
+                    PostgresSaver(conn).setup()
+                finally:
+                    conn.execute("SELECT pg_advisory_unlock(728165, 1)")
+            saver = PostgresSaver(pool)
+        except BaseException:
+            pool.close()
+            raise
+        _build["saver"] = saver
+        return saver
 
 
 def delete_threads(thread_ids: Iterable[str]) -> None:

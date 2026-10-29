@@ -49,7 +49,7 @@ Agent 只输出候选，由编排层处理落库。低风险候选可自动确�
 | 推理编排 | Python 3.12 / FastAPI / LangGraph / SQLAlchemy |
 | 边缘层 | Caddy 2（TLS / 静态托管 / 按路径分流） |
 | 存储与队列 | PostgreSQL 16 + pgvector / Redis 7 / RabbitMQ 3.13 |
-| 前端 | React 19 / TypeScript / Vite / CSS Modules |
+| 前端 | Vue 3 / TypeScript / Vite / CSS Modules |
 | 部署 | Docker Compose 一键启动（单入口 80/443，Caddy） |
 
 ## 快速开始
@@ -67,7 +67,7 @@ docker compose up -d --build
 
 - 冷启动只有空库：用 `myink create-invite` 发一个默认 7 天有效的一次性邀请码，在登录页注册即得首个账号；要进管理面板再跑 `myink set-role <用户名> admin`
 - 之后发码不必回命令行：管理员在 `/admin` 的「邀请码」页签即可建码、设有效期/次数/备注/自定义码面并撤销
-- 管理员可通过 `/admin` 只读查看全站作品、任务与节点指标；权限授予、观测边界和部署要求见 [管理面板说明](docs/ADMIN.md)。
+- 管理员登录后进入独立 `/admin` 控制台，查看全站用户、作品、任务与写作指标，并统一配置模型连接、用户可选模型、提示词和题材包。用户只选择已发布资源；权限、升级方式和观测边界见 [管理面板说明](docs/ADMIN.md)。
 - 支持 OpenAI 兼容或 Anthropic 原生接口；未配置连接时不会回落内置模型
 - 向量召回默认关闭（`EMBED_ENABLED=0`），开启与模型下载见 [docs/DEPLOY.md](docs/DEPLOY.md)
 - 首次启动自动建表 + RLS（不建账号、不建示例数据），幂等可重复执行；要示例账号与示例书用 `myink init --seed`，示例账号没有默认密码，需 `myink reset-password` 激活
@@ -76,7 +76,7 @@ docker compose up -d --build
 
 ```
 src/myink/        Python 推理层（workflow 编排 / api / models / providers）
-web/              React + TypeScript 前端
+web/              Vue 3 + TypeScript 前端
 caddy/            边缘层（TLS / 静态产物 / 按路径分流）
 tests/            Python 测试（含冲突样例评测集）
 spec/             API 契约（OpenAPI）与状态流设计

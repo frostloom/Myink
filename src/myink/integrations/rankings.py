@@ -205,17 +205,18 @@ class RankingsService:
 
 
 _service = RankingsService()
+_BUILTIN_SERVICE = _service
 _user_services: dict[str, RankingsService] = {}
 
 
-def _service_for_user(user_id: str) -> RankingsService:
+def _service_for_user(user_id: str | None) -> RankingsService:
     from myink.environment import rankings_view_for_user
 
     view = rankings_view_for_user(user_id)
     if view is None:
         return _service
     key = "|".join((
-        user_id, str(view.rankings_enabled), str(view.rankings_timeout), str(view.rankings_limit),
+        str(user_id), str(view.rankings_enabled), str(view.rankings_timeout), str(view.rankings_limit),
     ))
     cached = _user_services.get(key)
     if cached is not None:
@@ -228,9 +229,9 @@ def _service_for_user(user_id: str) -> RankingsService:
 async def fetch_rankings(refresh: bool = False, user_id: str | None = None) -> dict[str, Any]:
     """async 入口（FastAPI 全局端点，建书前灵感工具；无项目归属，身份由路由断言）。
 
-    已登录且账号环境配置里保存过扫榜项 → 用用户覆盖；否则走进程 .env 默认。
+    每个字段使用账号覆盖或平台默认；无账号时只使用平台默认。
     """
-    svc = _service_for_user(user_id) if user_id else _service
+    svc = _service if _service is not _BUILTIN_SERVICE else _service_for_user(user_id)
     result = await svc.fetch(refresh=refresh)
     return {
         "source": result.source,

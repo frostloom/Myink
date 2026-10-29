@@ -37,6 +37,9 @@ class Settings:
     observation_prompt_id: str = field(default_factory=lambda: _env("OBSERVATION_PROMPT_ID", "") or "")
     observation_rubric_id: str = field(default_factory=lambda: _env("OBSERVATION_RUBRIC_ID", "") or "")
     observation_data_id: str = field(default_factory=lambda: _env("OBSERVATION_DATA_ID", "") or "")
+
+    # 与 Caddy 共用；只有明确的 loopback HTTP 站点允许非 Secure 游客 cookie。
+    site_address: str = field(default_factory=lambda: _env("SITE_ADDRESS", "http://localhost") or "")
     # 应用连接角色：非超级、NOBYPASSRLS（§14.1 坑：超级用户永远绕过 RLS）
     database_url: str = field(
         default_factory=lambda: _env(

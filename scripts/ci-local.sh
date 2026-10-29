@@ -2,7 +2,7 @@
 # Myink 本地 CI 一键复现（与 .github/workflows/ci.yml 同一套门禁，未配 git remote 时本地验证用）。
 # 覆盖：Python 语法门禁 + 全量回归（独立临时 PG / Redis / RabbitMQ）
 #        → 前端 lint+test+build → 镜像构建。
-# 前置：Docker Desktop 运行中；根目录 .env 已配（无 key 也能跑，测试全 mock LLM）；Python venv 已激活。
+# 前置：Docker Desktop 运行中；Python venv 已激活；不读取开发环境 .env。
 # 用法：bash scripts/ci-local.sh          # 全部门禁
 #       SKIP_IMAGES=1 bash scripts/ci-local.sh   # 跳过镜像构建（本地日常快跑）
 set -euo pipefail
@@ -21,6 +21,8 @@ export REDIS_URL="${MYINK_TEST_REDIS_URL:-redis://127.0.0.1:${MYINK_TEST_REDIS_P
 export REDIS_ADDR="${MYINK_TEST_REDIS_ADDR:-127.0.0.1:${MYINK_TEST_REDIS_PORT:-16380}}"
 export AMQP_URL="${MYINK_TEST_AMQP_URL:-amqp://myink:myink@127.0.0.1:${MYINK_TEST_RABBIT_PORT:-15673}/}"
 export APP_ENV=test
+# 与 GitHub 的无 .env 环境一致，避免本机模型凭证、配额和服务配置污染测试。
+export PYTHON_DOTENV_DISABLED=1
 export EMBED_ENABLED=0
 export RANKINGS_ENABLED=0
 # 身份边界换血后 Python 自己验 JWT，密钥短于 32 字节 → require_auth_configuration 让业务路由全 503。
@@ -31,6 +33,7 @@ trap '"${compose_test[@]}" down --volumes >/dev/null 2>&1 || true' EXIT
 "${compose_test[@]}" up -d --wait
 
 echo "==> [1/3] Python：语法门禁 + 初始化 + 契约 diff 闸 + 全量回归"
+python scripts/test_prepare_frontend_assets.py -v
 python -m compileall -q src tests
 myink init --seed
 myink contract export
@@ -38,7 +41,7 @@ git diff --exit-code -- spec/api-openapi.json
 EMBED_ENABLED=0 python -m pytest tests/ -q
 
 echo "==> [2/3] 前端：lint + 单测 + 构建"
-(cd web && npm ci && npm run lint && npm test -- --maxWorkers=1 --no-file-parallelism && npm run build)
+(cd web && npm ci && npm audit --audit-level=moderate && node --test scripts/merge-retained-assets.test.mjs scripts/default-frontend.test.mjs && npm run lint && npm run test:shared -- --maxWorkers=1 --no-file-parallelism && npm run test:vue -- --maxWorkers=1 --no-file-parallelism && npm run build)
 
 if [[ "${SKIP_IMAGES:-0}" != "1" ]]; then
   echo "==> [3/3] 镜像构建（Python + Caddy）"
@@ -53,5 +56,5 @@ fi
 if [[ "${SKIP_IMAGES:-0}" == "1" ]]; then
   echo "✔ 已执行检查通过；镜像构建 SKIP，完整 CI 未验收"
 else
-  echo "✔ CI 本地复现全部通过（与 .github/workflows/ci.yml 对齐）"
+  echo "✔ 本地基础门禁通过；跨浏览器回归另见CI及迁移验收入口"
 fi

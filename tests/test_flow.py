@@ -181,6 +181,13 @@ def test_rewrite_flow_invalidates_then_persists(project_id, stub_provider):
     _reset_runs(project_id)
 
     graph = build_chapter_graph()
+    # A rewrite now preserves the plan of an actually saved chapter.
+    original_thread = str(uuid.uuid4())
+    original = graph.invoke(
+        {"project_id": project_id, "chapter_seq": 1, "task_id": original_thread},
+        config={"configurable": {"thread_id": original_thread}},
+    )
+    assert original.get("persisted") is True
     thread = str(uuid.uuid4())
     result = graph.invoke(
         {"project_id": project_id, "chapter_seq": 1, "task_id": thread, "rewrite": True},

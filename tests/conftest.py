@@ -78,7 +78,9 @@ def _strong_auth_secret(monkeypatch):
     """
     import myink.api.auth as auth
 
-    monkeypatch.setattr(auth, "settings", replace(settings, jwt_secret=TEST_JWT_SECRET))
+    # TestClient uses deliberate local HTTP even when the developer .env names a public site.
+    monkeypatch.setattr(auth, "settings", replace(
+        settings, jwt_secret=TEST_JWT_SECRET, site_address="http://localhost"))
 
 
 def identity_headers(

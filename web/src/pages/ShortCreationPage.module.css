@@ -1,5 +1,6 @@
 /* 左 rail + 一列聊天。方案卡是悬浮模态，不占版式（弹窗样式在文件末尾）。 */
 .page {
+  composes: content from '../components/RailLayout.module.css';
   height: 100%;
   min-height: 0;
   display: flex;
@@ -382,9 +383,6 @@
 
 /* 900 档：内容列被挤窄——rail 收窄、聊天列去掉大 padding、方案卡与字段对折成一列。 */
 @media (max-width: 900px) {
-  .background {
-    --rail-width: 128px;
-  }
   .thread {
     padding: 0 16px;
   }
@@ -405,15 +403,6 @@
   .page {
     height: auto;
     min-height: 100%;
-  }
-  .background > aside {
-    width: 100%;
-    height: auto;
-    padding: 14px;
-  }
-  .background > aside nav {
-    flex-direction: row;
-    flex-wrap: wrap;
   }
   .main {
     flex: none;
@@ -449,4 +438,73 @@
   .dialogBody {
     padding: 0 16px 16px;
   }
+}
+
+/* 等待提示单独占据布局行，输入区始终可见且可继续起草。 */
+.thinking {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 6px 2px;
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+}
+
+.composer { flex-shrink: 0; }
+
+.proposal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px 20px;
+  padding: 16px 18px;
+}
+
+.proposal > .option {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+}
+
+.proposalStakes {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.proposalStakes dt {
+  margin-bottom: 4px;
+  color: var(--ink-subtle);
+  font-size: var(--text-micro);
+}
+
+.proposalStakes dd {
+  margin: 0;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  font-size: var(--text-small);
+}
+
+.dialogBody {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.dialogBody > * { grid-column: 1 / -1; min-width: 0; }
+.dialogBody > .identityField { grid-column: auto; }
+.dialogBody > .storyField { padding-top: 2px; }
+
+@media (max-width: 640px) {
+  .proposal { grid-template-columns: minmax(0, 1fr); }
+  .proposal > .option { grid-column: 1; grid-row: auto; justify-self: start; }
+  .proposalStakes { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .proposalStakes > div { display: grid; grid-template-columns: 5em minmax(0, 1fr); gap: 8px; }
+  .dialogBody { grid-template-columns: minmax(0, 1fr); }
 }

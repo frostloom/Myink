@@ -204,3 +204,10 @@ def test_find_empty_chapters_treats_whitespace_as_empty():
 
 def test_find_empty_chapters_is_empty_when_every_chapter_has_a_body():
     assert find_empty_chapters(["a", "b"]) == []
+
+@pytest.mark.parametrize('chapter_count',[1,2])
+def test_extra_model_chapter_markers_do_not_crash_or_lose_text(chapter_count):
+    chapters=parse_short_draft(_tagged(5),chapter_count)
+    assert len(chapters)==chapter_count
+    for scene in SCENES:
+        assert scene in '\n\n'.join(chapters)

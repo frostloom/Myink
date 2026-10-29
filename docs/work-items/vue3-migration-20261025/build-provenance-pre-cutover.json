@@ -1,0 +1,37 @@
+{
+  "baseline_commit": "a96066c43b41e535da4b73e260a998ba9350c415",
+  "branch": "codex/vue3-migration",
+  "uncommitted": true,
+  "source_scope": "Sorted non-test web/vue, src/lib, src/styles, plus explicit_source_files; names and bytes separated by NUL",
+  "explicit_source_files": [
+    "web/src/types.ts",
+    "web/vite.vue.config.ts",
+    "web/vitest.vue.config.ts",
+    "web/package-lock.json",
+    "caddy/Dockerfile",
+    "docker-compose.yml",
+    ".github/workflows/ci.yml",
+    "scripts/prepare-frontend-assets.py",
+    "web/scripts/merge-retained-assets.mjs",
+    "src/myink/api/routes_sse.py",
+    "pyproject.toml",
+    "docker/constraints.txt"
+  ],
+  "source_sha256": "dd4f82e486759945b3b4deb30811c22e71bf451bbd3b730737ed2cb7cfec03e7",
+  "backend_sse_sha256": "39587e77c3cb7334519f1e0957c2ba3d680e93f3336164ea62167a3afccb1454",
+  "assets_sha256": {
+    "web/dist-vue/assets/index-D7a1ECCn.css": "cac8cd86c1db1e65ee32b621a58b478e6a364b5039b5a29a6248acf91d981a47",
+    "web/dist-vue/assets/index-LHE4QUm9.js": "8ace8616b0dc484c661be17834853f6a81fc1c95f4179f185173f46a2f12f51a",
+    "web/dist-vue/favicon.svg": "b04809d5028fa0acc584dd2580243a4478ae363a78466afa75b63650c4894c9b",
+    "web/dist-vue/index.html": "cf8afe03dd7800c22a54bf0b5337c6e0bf781a010b8cea97334c60cba13825b0"
+  },
+  "verified_on": "2026-10-26",
+  "verification_status": "Executed candidate tests/images remain valid; subsequent main-integration review found 2 P2 followups and default entry cutover remains incomplete. See main-integration-review.md",
+  "images": {
+    "vue": "sha256:3eb69714f94c5065e26a16f95a4fba66ec7718ca2d73b5cd9c297c2f3d3ba674",
+    "react": "sha256:32513ef95870cb847d796c5bf4fe6d021194a4afc15b69007301633f5a6d7335",
+    "api": "sha256:9b5fb658fd5b6c5fb4c36e7ed74e207bcd6d48364c29a23be1bfbc863cd32b9b"
+  },
+  "final_review": "readiness-final-review.md",
+  "main_integration_review": "main-integration-review.md"
+}

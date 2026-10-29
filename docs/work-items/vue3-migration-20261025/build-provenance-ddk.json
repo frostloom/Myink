@@ -1,0 +1,15 @@
+{
+  "baseline_commit": "a96066c43b41e535da4b73e260a998ba9350c415",
+  "branch": "codex/vue3-migration",
+  "uncommitted": true,
+  "source_scope": "Sorted non-test web/vue, src/lib, src/styles, shared types, Vue config, lockfile and explicit packaging helpers; names and bytes separated by NUL",
+  "source_sha256": "f82e859a011dc4d3977a7f22f034aa873a8e7d6debab5d1c979b3c4b5c7a55b8",
+  "assets_sha256": {
+    "web/dist-vue/assets/index-D7a1ECCn.css": "cac8cd86c1db1e65ee32b621a58b478e6a364b5039b5a29a6248acf91d981a47",
+    "web/dist-vue/assets/index-DdkQzNNW.js": "37ac6fae4d19ab3facfa80e7488a07ee706d0dde89e39eefc3fbfadc45d33e48",
+    "web/dist-vue/favicon.svg": "b04809d5028fa0acc584dd2580243a4478ae363a78466afa75b63650c4894c9b",
+    "web/dist-vue/index.html": "25251d2fac19dfe9f8162c39572d7fa7369f552ea275f12b8e1c5849033f6433"
+  },
+  "verified_on": "2026-10-26",
+  "verification_status": "Full Vue561/type/build/lint passed; real TLS browser and final retained image gates pending"
+}

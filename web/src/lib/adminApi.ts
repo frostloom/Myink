@@ -37,6 +37,24 @@ export interface CapturedData {
   limits: CaptureLimits
 }
 
+export interface AdminTrendPoint {
+  day: string
+  user_count: number
+  project_count: number
+  chapter_count: number
+  task_count: number
+  run_count: number
+  input_tokens: number
+  output_tokens: number
+  cost_est: number
+}
+export interface AdminTrends {
+  start_date: string
+  end_date: string
+  timezone: 'UTC'
+  items: AdminTrendPoint[]
+}
+
 export interface AdminOverview {
   user_count: number
   project_count: number
@@ -366,6 +384,8 @@ const paging = (filters: PageFilters): Array<[string, string | number | undefine
 ]
 
 export const adminApi = {
+  getTrends: (token: string, startDate: string, endDate: string, signal?: AbortSignal) =>
+    authenticatedGet<AdminTrends>(`/admin/trends${query([['start_date', startDate], ['end_date', endDate]])}`, token, signal),
   getOverview: (token: string, signal?: AbortSignal) =>
     authenticatedGet<AdminOverview>('/admin/overview', token, signal),
 
@@ -376,6 +396,10 @@ export const adminApi = {
 
   getUser: (token: string, userId: string, signal?: AbortSignal) =>
     authenticatedGet<AdminUser>(`/admin/users/${encodeURIComponent(userId)}`, token, signal),
+
+  updateMembership: (token: string, userId: string, tier: 'normal' | 'vip') =>
+    authenticatedSend<{ id: string; tier: 'normal' | 'vip' }>('PUT',
+      `/admin/users/${encodeURIComponent(userId)}/membership`, token, { tier }),
 
   listProjects: (token: string, filters: ProjectFilters, signal?: AbortSignal) =>
     authenticatedGet<AdminPage<AdminProject>>(`/admin/projects${query([

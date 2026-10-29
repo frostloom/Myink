@@ -15,7 +15,7 @@ from fastapi import HTTPException
 
 from myink.book_setup import generate_short_plan, review_short_plan
 from myink.creation import validate_short_outline
-from myink.db import new_session
+from myink.db import new_session, tenant_session
 from myink.models import AgentRun
 from myink.providers.base import ModelProvider, ModelResponse
 from myink.workflow import nodes, prompts
@@ -188,7 +188,7 @@ def _plan_run_rows(pid: str, node: str) -> list[AgentRun]:
 
 
 def _generate(pid: str, **kwargs) -> tuple[dict, str | None]:
-    with new_session() as db:
+    with tenant_session(pid) as db:
         result = generate_short_plan("仙侠玄幻", "渡口老人与最后一班船",
                                      project_id=pid, db=db, **kwargs)
         db.commit()
@@ -198,7 +198,9 @@ def _generate(pid: str, **kwargs) -> tuple[dict, str | None]:
 def test_generate_short_plan_records_one_planner_run(temp_project, chain_stub):
     """§6.8 成本透明：出方案走 planner 角色、记一条 agent_runs（节点名 short_plan）。"""
     stub = chain_stub([json.dumps(_short_outline(10), ensure_ascii=False)])
-    plan, error = _generate(temp_project, chapter_count=10, chars_per_chapter=2000)
+    from myink.writing_resource_runtime import bind_resources
+    with bind_resources({}):  # The no-library path still uses one strict JSON call.
+        plan, error = _generate(temp_project, chapter_count=10, chars_per_chapter=2000)
 
     assert error is None and plan["chapter_count"] == 10
     assert stub.calls[0]["json_mode"] is True
@@ -211,7 +213,8 @@ def test_review_short_plan_records_a_planner_run(temp_project, chain_stub):
     """审纲也是 planner 档的独立一次调用——两次调用各记一条，成本才看得清。"""
     stub = chain_stub([json.dumps({"verdict": "revise", "reason": "第三章没有章尾钩子"},
                                   ensure_ascii=False)])
-    with new_session() as db:
+    from myink.writing_resource_runtime import bind_resources
+    with tenant_session(temp_project) as db, bind_resources({}):
         verdict, reason = review_short_plan(_short_outline(5), chapter_count=5,
                                             project_id=temp_project, db=db)
         db.commit()
@@ -228,7 +231,8 @@ def test_generate_short_plan_passes_the_revision_reason_into_the_prompt(temp_pro
     _generate(temp_project, chapter_count=5, chars_per_chapter=4000,
               revision_reason="第三章没有章尾钩子")
 
-    assert "第三章没有章尾钩子" in stub.calls[0]["messages"][-1]["content"]
+    assert any(message["role"] == "user" and "第三章没有章尾钩子" in message["content"]
+               for message in stub.calls[0]["messages"])
 
 
 def test_review_short_plan_degrades_to_pass_without_raising(temp_project, chain_stub):
@@ -238,7 +242,8 @@ def test_review_short_plan_degrades_to_pass_without_raising(temp_project, chain_
     上，比放过一份平庸方案糟糕得多。
     """
     chain_stub(["{not-json"])
-    with new_session() as db:
+    from myink.writing_resource_runtime import bind_resources
+    with tenant_session(temp_project) as db, bind_resources({}):
         verdict, reason = review_short_plan(_short_outline(5), chapter_count=5,
                                             project_id=temp_project, db=db)
     assert verdict == "pass" and reason == ""

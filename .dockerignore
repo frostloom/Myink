@@ -12,6 +12,8 @@ inkos/
 # 前端缓存与产物（容器内 npm ci + vite build 重新生成）
 web/node_modules
 web/dist
+web/dist-vue
+web/*.tsbuildinfo
 
 # Python 缓存/虚拟环境
 __pycache__/

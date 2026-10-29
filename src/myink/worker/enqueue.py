@@ -29,7 +29,7 @@ import pika
 
 from myink.config import settings
 from myink.db import tenant_session
-from myink.maintenance import register_admission, intent_outcome
+from myink.maintenance import register_admission, intent_outcome, require_admission_open
 from myink.worker import amqp
 from myink.worker.handoff import admission_lane
 from myink.worker.redis_client import (
@@ -72,7 +72,34 @@ class EnqueueUnavailable(Exception):
 
 def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
             quota_n: int, cost_est: float, priority: int,
-            platform_chapter_max: int = 0) -> dict:
+            platform_chapter_max: int = 0, client_ip: str | None = None) -> dict:
+    # Keep selection PUT and admission snapshot capture in a single order. The
+    # existing Redis inflight reservation covers the interval before worker Task
+    # materialization; definite publish failures retain existing compensation.
+    from myink.db import tenant_session
+    from myink.models import Project
+    from myink.task_budget import snapshot_budget
+    from myink.platform_readiness import require_operation_ready
+
+    # These helpers open their own sessions; finish them before acquiring the
+    # project lock so admission can operate even with a single pooled connection.
+    require_operation_ready(task_type, user_id)
+    try:
+        budget_snapshot = snapshot_budget(user_id)
+    except Exception as exc:
+        raise EnqueueUnavailable('task_budget_snapshot') from exc
+    with tenant_session(project_id) as db:
+        project = db.get(Project, uuid.UUID(project_id), with_for_update=True)
+        if project is None:
+            raise ValueError('Project does not exist')
+        return _enqueue(db=db, budget_snapshot=budget_snapshot, user_id=user_id, project_id=project_id, task_type=task_type,
+                        payload=payload, quota_n=quota_n, cost_est=cost_est,
+                        priority=priority, platform_chapter_max=platform_chapter_max, client_ip=client_ip)
+
+
+def _enqueue(*, db, budget_snapshot: dict, user_id: str, project_id: str, task_type: str, payload: dict,
+            quota_n: int, cost_est: float, priority: int,
+            platform_chapter_max: int = 0, client_ip: str | None = None) -> dict:
     """闸门 + 入队。返回 `{"task_id", "trace_id", "status"}`（路由侧回 202）。
 
     顺序不可换：持久登记 → 闸门 → 归属登记 → 发布 → SSE 种子帧。
@@ -86,14 +113,31 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
     `platform_chapter_max` 默认 0 = 不限，**其余入队点（短篇、批次外调用、续跑）逐字节不变**；
     只有长篇生成的两个入口会传真实值。
     """
-    from myink.task_budget import snapshot_budget
+    require_admission_open(db)
+    from myink.writing_resources import capture_task_resources
+    from myink.writing_resource_runtime import current_resources
+    payload = dict(payload)
+    if "writing_resources" not in payload:
+        inherited = current_resources()
+        if inherited is None:
+            inherited = capture_task_resources(db, project_id)
+        payload["writing_resources"] = inherited
 
-    try:
-        budget_snapshot = snapshot_budget(user_id)
-    except Exception as exc:
-        raise EnqueueUnavailable('task_budget_snapshot') from exc
     today = date.today().isoformat()
     task_id = str(uuid.uuid4())
+    from myink.guest_quota import reserve_in_session, release, GuestQuotaError
+    from sqlalchemy.exc import SQLAlchemyError
+    try:
+        guest_operation = reserve_in_session(
+            db, user_id=user_id, client_ip=client_ip,
+            dimension="short" if task_type == "short_generate" else "long",
+            amount=1 if task_type == "short_generate" else quota_n,
+            operation_id=task_id, task_id=task_id)
+        if guest_operation:
+            # Commit this receipt together with its fenced admission below.
+            payload["_guest_operation"] = guest_operation
+    except SQLAlchemyError as exc:
+        raise GuestQuotaError("GUEST_QUOTA_UNAVAILABLE", 503) from exc
     keys = [
         quota_key(user_id, today),
         inflight_key(user_id, project_id),
@@ -117,11 +161,11 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
 
     # Commit identity before ANY Redis gate/ownership or AMQP operation. This
     # registration serializes with maintenance closure; it is not a PG/Redis tx.
-    with tenant_session(project_id) as db:
-        intent_id = register_admission(db, body, priority=priority, gates=True, quota_inputs={
-            "keys":keys,"date":today,"task_id":task_id,"user_id":user_id,"project_id":project_id,
-            "quota_n":quota_n,"cost_est":cost_est,"platform_chapter_max":platform_chapter_max,
-            "limits":[settings.quota_daily,settings.daily_budget,settings.book_quota_daily,settings.books_per_day_max]})
+    intent_id = register_admission(db, body, priority=priority, gates=True, quota_inputs={
+        "keys":keys,"date":today,"task_id":task_id,"user_id":user_id,"project_id":project_id,
+        "quota_n":quota_n,"cost_est":cost_est,"platform_chapter_max":platform_chapter_max,
+        "limits":[settings.quota_daily,settings.daily_budget,settings.book_quota_daily,settings.books_per_day_max]})
+    db.commit()
     def outcome(**states):
         try:
             intent_outcome(intent_id, project_id, **states)
@@ -150,6 +194,7 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
             compensated=_compensate(r,keys,task_id=task_id,quota_n=quota_n,
                 platform_chapter_max=platform_chapter_max,intent_id=str(intent_id))
             outcome(gate_state="compensated" if compensated else "unknown")
+            release(guest_operation)
 
         outcome(gate_state="unknown")
         try:
@@ -161,6 +206,7 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
             raise EnqueueUnavailable("gates") from exc
         if code != 1:
             outcome(gate_state="rejected", publication_state="not_attempted")
+            release(guest_operation)
             raise GateError(reason)
         outcome(gate_state="accepted")
 
@@ -173,8 +219,9 @@ def enqueue(*, user_id: str, project_id: str, task_type: str, payload: dict,
 
         outcome(publication_state="unknown")
         try:
-            amqp.publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS, priority=priority)
-        except (pika.exceptions.NackError, pika.exceptions.UnroutableError) as exc:
+            publish = amqp.publish_once if guest_operation else amqp.publish
+            publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS, priority=priority)
+        except (amqp.PublishNotSent, pika.exceptions.NackError, pika.exceptions.UnroutableError) as exc:
             # 确定失败：broker 明确拒收，消息一定不在队列里 → 回滚闸门
             refund_if_definite("rejected")
             raise EnqueueUnavailable("publish_rejected") from exc

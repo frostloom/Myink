@@ -617,7 +617,7 @@ def empty_fields() -> dict[str, Any]:
     }
 
 
-def resolve_pack_id(raw: str | None) -> str | None:
+def resolve_pack_id(raw: str | None, *, db=None) -> str | None:
     """目录 id、官方名或别名 → 目录 id。认不出则 None。"""
     if not raw:
         return None
@@ -632,24 +632,75 @@ def resolve_pack_id(raw: str | None) -> str | None:
     for pack_id, pack in PACKS.items():
         if pack["name"] == text:
             return pack_id
+    published = (published_genre_roots(include_archived=True, db=db) if db is not None
+                 else published_genre_roots(include_archived=True))
+    if published is not None:
+        for pid, root in published.items():
+            if root["name"] == text:
+                return pid
     return None
+
+
+def published_genre_roots(*, include_archived: bool = False, db=None) -> dict[str, dict[str, Any]] | None:
+    """发布内容为准；None 仅表示尚未安装资源。识别过期名称时可包含已下架项。"""
+    from sqlalchemy import select
+    from myink.db import new_session
+    from myink.models.writing_resource import WritingResource
+
+    from contextlib import nullcontext
+    with (nullcontext(db) if db is not None else new_session()) as db:
+        rows = list(db.scalars(select(WritingResource).where(
+            WritingResource.kind == "genre",
+            WritingResource.id.in_(["genre:" + pid for pid in PACKS]),
+        )))
+        if not rows:
+            return None
+        roots = {}
+        for row in rows:
+            # 编辑草稿不会撤销既有发布；下架则不能再用于新建书。
+            if row.current_version is None or (row.status == "archived" and not include_archived):
+                continue
+            publication = row.publication
+            body = publication["body"]
+            pid = row.id.removeprefix("genre:")
+            roots[pid] = {
+                **empty_fields(), **deepcopy(body["fields"]),
+                "name": publication["name"], "group": PACKS[pid]["group"],
+                "_resource_caps": deepcopy(body.get("setup_caps", _legacy_setup_capabilities({"source_id": pid}))),
+                "_resource_publication": {"resource_id": row.id,
+                    "version": publication["version"], "generation": publication["generation"]},
+            }
+        return roots
+
+
+def _creation_roots() -> dict[str, dict[str, Any]]:
+    published = published_genre_roots()
+    if published is not None:
+        return published
+    from myink.platform_configuration import load_configuration
+    config = load_configuration()
+    roots = deepcopy(PACKS)
+    for pid, root in roots.items():
+        root.update(config['genre_packs'].get(pid, {}))
+    return roots
 
 
 def get_root(pack_id: str | None) -> dict[str, Any] | None:
     resolved = resolve_pack_id(pack_id)
-    if resolved is None:
-        return None
-    return deepcopy(PACKS[resolved])
+    return _creation_roots().get(resolved) if resolved else None
 
 
 def catalog_entries() -> list[dict[str, Any]]:
+    roots = _creation_roots()
     out: list[dict[str, Any]] = []
     for _group, ids in GROUPS:
         for pid in ids:
-            root = PACKS[pid]
+            root = roots.get(pid)
+            if root is None:
+                continue
             item = {"id": pid, "name": root["name"], "group": root["group"]}
             item.update(deepcopy({k: root[k] for k in FIELD_KEYS}))
-            item["setup_caps"] = setup_capabilities({"source_id": pid})
+            item["setup_caps"] = setup_capabilities(root if "_resource_caps" in root else {"id": pid})
             out.append(item)
     return out
 
@@ -671,11 +722,14 @@ def _copy_fields(root: dict[str, Any]) -> dict[str, Any]:
 
 def compose_fields(primary_id: str | None, secondary_id: str | None) -> dict[str, Any]:
     """主题材整份。辅题材不并进禁忌和机制，写章时按 7:3 另附。"""
-    primary = get_root(primary_id)
+    roots = _creation_roots()
+    return _compose_root_fields(roots.get(resolve_pack_id(primary_id)), roots.get(resolve_pack_id(secondary_id)))
+
+
+def _compose_root_fields(primary, secondary) -> dict[str, Any]:
     if primary is None:
         return empty_fields()
     fields = _copy_fields(primary)
-    secondary = get_root(secondary_id)
     if secondary is None:
         return fields
     extra_sell = str(secondary.get("selling_point") or "").strip()
@@ -737,14 +791,17 @@ def build_book_pack(primary_id: str | None, secondary_id: str | None,
             raise ValueError(f"未知辅题材：{secondary_id}")
         secondary_id = resolved
     validate_selection(primary_id, secondary_id)
-    fields = compose_fields(primary_id, secondary_id)
+    roots = _creation_roots()
+    primary = roots.get(primary_id)
+    secondary = roots.get(secondary_id)
+    if (primary_id and primary is None) or (secondary_id and secondary is None):
+        raise ValueError("所选题材已下架或尚未发布，请重新选择")
+    fields = _compose_root_fields(primary, secondary)
     if overrides:
         cleaned = _clean_fields(overrides)
         for key in FIELD_KEYS:
             if key in overrides:
                 fields[key] = cleaned[key]
-    primary = get_root(primary_id)
-    secondary = get_root(secondary_id)
     pack = {
         "source_id": primary_id,
         "source_name": primary["name"] if primary else UNSELECTED_NAME,
@@ -752,6 +809,13 @@ def build_book_pack(primary_id: str | None, secondary_id: str | None,
         "secondary_name": secondary["name"] if secondary else None,
         **fields,
     }
+    pack["_secondary_snapshot"] = deepcopy(secondary)
+    if primary and "_resource_caps" in primary:
+        pack["_resource_caps"] = deepcopy(primary["_resource_caps"])
+    publications = [deepcopy(root["_resource_publication"]) for root in (primary, secondary)
+                    if root and "_resource_publication" in root]
+    if publications:
+        pack["_resource_publications"] = publications
     pack["baseline"] = deepcopy({k: pack[k] for k in (*FIELD_KEYS,)})
     return pack
 
@@ -827,7 +891,11 @@ def format_prompt(pack: Any) -> str:
         items = [str(x).strip() for x in (data.get(key) or []) if str(x).strip()]
         if items:
             parts.append(f"{label_cn}：" + "；".join(items))
-    secondary = get_root(data.get("secondary_id")) if data.get("secondary_id") else None
+    secondary_id = data.get('secondary_id')
+    # Existing snapshots never consume newly published global overrides.
+    # Legacy snapshots predate this marker and retain the bundled secondary rules.
+    secondary = (deepcopy(data['_secondary_snapshot']) if '_secondary_snapshot' in data
+                 else deepcopy(PACKS.get(secondary_id))) if secondary_id else None
     if secondary is not None:
         parts.append(
             "主辅比例：7:3。主线、节奏、禁忌和世界观遵循主题材。"
@@ -907,3 +975,10 @@ def setup_capabilities(pack: Any) -> dict[str, bool]:
         "numerical_system": sid in NUMERICAL_PACKS,
         "era_research": sid in ERA_RESEARCH_PACKS,
     }
+
+
+_legacy_setup_capabilities = setup_capabilities
+def setup_capabilities(pack):
+    if isinstance(pack, dict) and "_resource_caps" in pack:
+        return dict(pack["_resource_caps"])
+    return _legacy_setup_capabilities(pack)

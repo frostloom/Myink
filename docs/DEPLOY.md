@@ -50,6 +50,16 @@ docker compose up -d --build
 
 `docker compose down -v` 会删除作品数据，不能用作日常重启。
 
+## 当前前端策略
+
+前端仅维护 Vue 3：`npm run dev`、`npm test`、`npm run lint`、`npm run build` 均以 Vue 和共享服务为目标，产物为 `web/dist-vue`。不再提供另一套前端入口、依赖或回退命令。镜像构建只接受 `FRONTEND_VARIANT=vue`；遗留环境变量的其他取值会明确报错。
+
+发布失败时回退到已验证的上一版 **Vue** 镜像，并保留与该版本兼容的后端。不要恢复旧数据库来回退静态页面。新镜像仍须携带此前实际服务过的 hashed assets，避免打开中的页面加载失败；这些旧文件不是可选择的产品入口。历史迁移报告仅记录当时的操作，不是当前发布指令。
+
+2026-10-28 用户授权的本机 VIP 预览、后台及账号页改版使用 `/Users/a1/.codex/worktrees/vip-service/Myink/.local/account-membership-20261028/compose.sh`，叠加上一版 UI 与原 VIP 运行配置。原环境、数据卷和数据库备份保存在同工作区的 `.local/vip-service-20261028/`。源码更新不会自动替换运行容器。本机部署详情见 `docs/work-items/vip-service-20261028/README.md`、`ui-refinement.md` 与 `docs/superpowers/plans/2026-10-28-account-membership-ui.md`。
+
+2026-10-29 高级设置、注册/登录及文风库视觉改版的当前本机入口为 `.local/personal-pages-20261029/compose.sh`，继续叠加上述配置，仅更新 Caddy 前端，后端及数据保持原状。验证记录见 `docs/superpowers/plans/2026-10-29-personal-pages-ui.md`；该轮界面改版仅部署 localhost。
+
 ## 本机开发
 
 ```bash
@@ -60,7 +70,7 @@ myink init --seed
 
 在不同终端运行 `myink-api`、`myink-worker`、`cd web && npm ci && npm run dev`。本机连接 Compose RabbitMQ 使用 `.env.example` 中的 `amqp://myink:myink@localhost:5672/`；容器内使用服务名 `myink-rabbitmq`。不要混用 guest 凭据。
 
-前端开发地址 http://localhost:5173 ，Vite dev proxy 把 `/api` 转发到 Caddy（`http://localhost:80`，见 `web/vite.config.ts`），因此本机开发要同时起 `docker compose up -d myink-caddy`。
+前端开发地址 http://localhost:5174 ，Vite dev proxy 把 `/api` 转发到 Caddy（`http://localhost:80`，见 `web/vite.config.ts`），因此本机开发要同时起 `docker compose up -d myink-caddy`。
 
 ## 自动化回归（独立测试数据）
 

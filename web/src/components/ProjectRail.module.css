@@ -1,22 +1,27 @@
 .rail {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 20;
+  align-self: flex-start;
   width: var(--rail-width);
   flex-shrink: 0;
-  height: 100%;
+  height: calc(100dvh - 24px);
+  max-height: calc(100dvh - 24px);
+  margin: 0;
+  padding: 16px 8px 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
   background: var(--rail-bg);
-  border-right: 1px solid var(--line);
+  box-shadow: var(--shadow-soft);
   display: flex;
   flex-direction: column;
-  /* 下内边距挪到 .foot 自己身上：页脚要钉在底边（sticky），钉的位置是滚动容器的内边距边，
-     留在这里会在页脚底下露出一条 14px 的缝，滚过去的书名就从那条缝里透出来。 */
-  padding: 24px 8px 0;
-  box-shadow: 4px 0 20px rgba(95, 77, 58, 0.05);
-  /* 唯一的滚动面。窗口很矮或书很多时，超出的部分由这里滚，不在书单里再套一层小滚动窗。 */
   overflow-y: auto;
 }
 
 .brand {
   display: block;
-  padding: 0 var(--space-2) 22px;
+  padding: 0 var(--space-2) 12px;
   font-size: var(--text-title);
   font-weight: 600;
   color: var(--ink);
@@ -179,8 +184,13 @@ button.item {
    必须逐类点名：只按标签选择器写会漏掉后两类（ShortCreationPage 那处就是这么漏的，别照抄）。 */
 @media (max-width: 640px) {
   .rail {
-    width: 100%;
-    height: auto;
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    width: calc(100% - 16px);
+    margin: 0;
+    max-height: none;
+    height: 60px;
     align-self: stretch;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -192,6 +202,7 @@ button.item {
     border-bottom: 1px solid var(--line);
     box-shadow: none;
   }
+  .rail > button { flex: 0 0 auto; white-space: nowrap; min-height: 44px; }
   .brand,
   .sections,
   .nav,
@@ -267,3 +278,7 @@ button.item {
     background: var(--rail-item-hover);
   }
 }
+
+.userRow { gap: var(--space-2); min-width: 0; }
+.user { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.userRow > :global(.btn) { flex: 0 0 auto; white-space: nowrap; }

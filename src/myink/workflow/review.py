@@ -4,6 +4,7 @@ import json
 import uuid
 from myink.db import tenant_session
 from myink.models import MemoryCandidate
+from myink.memory.candidate_identity import same_proposal
 
 
 def rejection_text(rows) -> str:
@@ -26,6 +27,8 @@ def resolve_review(graph, values: dict, *, task_id: str) -> dict:
                 return {**values, "needs_review": True, "error": None}
             result = nodes.finalize_awaiting_review(values, task_id=task_id)
             return {**values, **result, "task_id": task_id}
+        from myink.guest_quota import require_review_admission
+        require_review_admission(db, task_id, [row.id for row in rejected])
         instruction = rejection_text(rejected)
         ids = [r.id for r in rejected]
         # 旧稿尚未处理的候选失去依据；保留历史，不让用户逐条拒绝过期条目。
@@ -52,19 +55,6 @@ def resolve_review(graph, values: dict, *, task_id: str) -> dict:
                 if row:
                     row.review = {**(row.review or {}), "applied": True}
     return result
-
-
-def same_proposal(kind: str, left: dict, right: dict) -> bool:
-    """只按明确语义字段去重，不用相似度把未来的合法变化误封。"""
-    import re
-    fields = {"character_card": ("name",), "character_state": ("character_id", "field", "new_value"),
-              "relation_change": ("source_id", "target_id", "relation_type"),
-              "fact": ("content",), "event": ("summary",)}.get(kind)
-    def normalize(value):
-        return re.sub(r"[\s，。！？、；：,.!?;:]", "", str(value or "")).casefold()
-    if fields:
-        return all(normalize(left.get(k)) == normalize(right.get(k)) for k in fields)
-    return left == right
 
 
 def rejected_proposal(db, pid: str, seq: int, cand: dict):

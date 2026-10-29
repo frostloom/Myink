@@ -31,6 +31,7 @@ from myink.config import settings
 from myink.creation import validate_short_outline
 from myink.db import new_creation_lock_session, new_session, tenant_session
 from myink.memory.repository import get_settings
+from myink.genre_catalog import build_book_pack, resolve_pack_id
 from myink.models import (AgentRun, Chapter, Project, ProjectSettings, ShortCreationMessage,
                           ShortCreationSession, Task, User)
 from myink.providers import platform_key_active
@@ -41,8 +42,7 @@ from myink.workflow.outline import build_persisted_short_outline
 router = APIRouter(prefix="/api/v1/short/creation", tags=["short-creation"])
 
 # 首次进页面不调模型：既慢，又可能因为还没配连接而直接失败。开场白是确定的。
-OPENING = ("想写个什么样的短篇？先说一句大方向就行——比如「一个渡口老人等最后一班船」，"
-           "我来陪你把它聊成能开写的方案。")
+OPENING = "想写个什么样的短篇？说一句大方向就行；还没想好，也可以让我来拟一个方案。"
 
 _HISTORY_LIMIT = 20
 # 会话列表的上限：它只是给人翻的，翻不到更早的也不影响任何东西。
@@ -294,6 +294,8 @@ def commit(body: ShortCreationCommitBody, session_id: uuid.UUID,
         card = creation.merge_user_card(session.card or {}, body.card or {})
         if not creation.card_ready(card):
             raise HTTPException(status_code=400, detail="CARD_INCOMPLETE")
+        from myink.platform_readiness import require_operation_ready
+        require_operation_ready('short_commit', uid)
         session.card = card
         # 卡上最后改的名字可能从没发过言（就是在方案卡里改的），标题以卡为准。
         _retitle(db, session)
@@ -307,15 +309,20 @@ def commit(body: ShortCreationCommitBody, session_id: uuid.UUID,
             raise HTTPException(status_code=403, detail="身份非法")
         project = db.get(Project, session.book_id) if session.book_id else None
         if project is None:
-            uses_platform = platform_key_active(uid, user.role)
+            uses_platform = not user.is_guest and platform_key_active(uid, user.role)
             if uses_platform and _book._platform_quota_used_up(user.platform_short_used,
                                                               settings.platform_short_quota):
                 return _book._platform_quota_response()
+            primary_id = resolve_pack_id(card["genre"])
+            try:
+                genre_pack = build_book_pack(primary_id, None) if primary_id else {}
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
             try:
                 project, inserted = _book._create_project_row(
                     db, uid, title=card["working_title"], genre=card["genre"],
                     premise=premise, chapter_count=chapters, chars_per_chapter=chars,
-                    form="short")
+                    form="short", genre_pack=genre_pack)
             except _book.BookCountExceeded:
                 return _book._book_cnt_response()
             session.book_id = project.id          # 先记下：后面任一步失败，重试复用它
@@ -327,16 +334,18 @@ def commit(body: ShortCreationCommitBody, session_id: uuid.UUID,
         pid = project.id
         db.commit()
 
+    # Reuse the persisted snapshot on retries even if global packs changed meanwhile.
+    with tenant_session(str(pid)) as tdb:
+        settings_row = get_settings(tdb, pid)
+        genre_pack = (settings_row.genre_pack if settings_row else {}) or {}
+
     # 2) 出方案 + 审纲（复用旧向导的短篇分支，含「被打回就重出一次」）
-    db2 = new_session()
-    try:
+    with tenant_session(str(pid)) as db2:
         patch, _ = _book._short_outline_draft(
             str(pid),
             _book.OutlineDraftBody(premise=premise, chapter_count=chapters,
                                    chars_per_chapter=chars, storyline=""),
-            card["genre"], {}, chapters, db2)
-    finally:
-        db2.close()
+            card["genre"], genre_pack, chapters, db2)
     outline = patch.get("outline_draft") or {}
     if (patch.get("outline_error") or not outline.get("volumes")
             or not str(outline.get("objective") or "").strip()):

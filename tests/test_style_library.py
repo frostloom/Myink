@@ -21,7 +21,8 @@ ensure_user_environment()
 client = TestClient(app)
 
 _BUILTIN_IDS = {"builtin:xianxia-jiuzhou", "builtin:changan-yexing",
-                "builtin:xingjian-yuanzheng", "builtin:dushi-yiguan"}
+                "builtin:xingjian-yuanzheng", "builtin:dushi-yiguan",
+                "builtin:natural-narration", "builtin:brisk-narration", "builtin:character-narration"}
 
 
 def test_style_library_item_roundtrip():
@@ -144,13 +145,13 @@ def style_stub(monkeypatch):
     return _install
 
 
-def test_get_returns_the_four_builtins_first(temp_user):
+def test_get_returns_registered_builtins_before_private_items(temp_user):
     with new_session() as db:
         db.add(StyleLibraryItem(user_id=uuid.UUID(temp_user), name="渡口冷白描",
                                 profile={"pov": "限知"}, sample_chars=1200))
         db.commit()
     items = client.get("/api/v1/style-library", headers=identity_headers(temp_user)).json()["items"]
-    builtins, mine = items[:4], items[4:]
+    builtins, mine = items[:len(_BUILTIN_IDS)], items[len(_BUILTIN_IDS):]
     assert {item["id"] for item in builtins} == _BUILTIN_IDS
     assert all(item["builtin"] and not item["removable"] and item["created_at"] is None
                for item in builtins)

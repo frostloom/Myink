@@ -152,9 +152,11 @@ _SAMPLE_BOOKS = [
 ]
 
 
-# 题材 Skill 预设注册表（§7.12 预设包）：4 本种子书 = 4 个预设（含《九州问天》）。
+# 文风预设：四本示例书档案，加三种不绑定作者和视角的通用文风。
 # 引用各 book 的 style_profile（DRY，改书档案即改预设）；设置页「预设导入」据此渲染 +
 # 原子写 project_settings.style_profile + skill_pack（marker）。
+from myink.writing_quality_resources import GENERAL_STYLE_PRESETS
+
 STYLE_PRESETS = [
     {
         "id": "xianxia-jiuzhou",
@@ -180,7 +182,7 @@ STYLE_PRESETS = [
         "genre": "都市",
         "style_profile": _SAMPLE_BOOKS[2]["style_profile"],
     },
-]
+] + GENERAL_STYLE_PRESETS
 
 
 def _ensure_sample_book(user_id: uuid.UUID, spec: dict) -> str | None:

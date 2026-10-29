@@ -16,7 +16,8 @@ client = TestClient(app)
 
 
 @pytest.fixture
-def paused_budget(budget_task):
+def paused_budget(budget_task, stub_provider):
+    stub_provider("金丹", "金丹")
     tid, pid, uid = budget_task
     ensure_task_budget(tid, pid, uid, {"max_requests":1})
     with tenant_session(pid) as db:
@@ -30,6 +31,41 @@ def paused_budget(budget_task):
 
 def _body(op=None, **kwargs):
     return {"operation_id":op or str(uuid.uuid4()), "add_requests":2, **kwargs}
+
+
+def test_vip_budget_extension_retains_queue_tier(paused_budget, request):
+    from sqlalchemy import select
+    from myink.models.maintenance import AdmissionIntent
+    from myink.db import new_session
+    from myink.models import User
+    from myink.worker import amqp
+    tid, pid, uid = paused_budget
+    with new_session() as db:
+        previous = db.get(User, uuid.UUID(uid)).tier
+        db.get(User, uuid.UUID(uid)).tier = 'vip'
+        db.commit()
+    def restore_membership():
+        with new_session() as db:
+            db.get(User, uuid.UUID(uid)).tier = previous
+            db.commit()
+    request.addfinalizer(restore_membership)
+    with amqp.connect() as conn:
+        channel = conn.channel()
+        amqp.declare_topology(channel)
+        channel.queue_purge(amqp.vip_queue())
+        response = client.post(f'/api/v1/tasks/{tid}/resume', headers=identity_headers(uid), json=_body())
+        assert response.status_code == 200, response.text
+        _, properties, raw = channel.basic_get(amqp.vip_queue(), auto_ack=True)
+        assert raw is not None
+        assert json.loads(raw)['task_id'] == tid
+
+        message = json.loads(raw)
+        assert properties.priority == 9
+        with tenant_session(pid) as db:
+            intent = db.scalar(select(AdmissionIntent).where(
+                AdmissionIntent.task_id == uuid.UUID(tid),
+                AdmissionIntent.message_id == message['request_id']))
+            assert intent.priority == 9
 
 
 def test_budget_is_visible_and_empty_resume_rejects_exhaustion(paused_budget, monkeypatch):

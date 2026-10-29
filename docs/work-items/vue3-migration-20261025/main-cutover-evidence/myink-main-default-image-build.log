@@ -1,0 +1,122 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 3.22kB 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for public.ecr.aws/docker/library/caddy:2.11.4-alpine
+#2 DONE 0.1s
+
+#3 [internal] load metadata for public.ecr.aws/docker/library/node:24.22.1-bookworm-slim
+#3 DONE 3.2s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 514B done
+#4 DONE 0.0s
+
+#5 [web 1/8] FROM public.ecr.aws/docker/library/node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205
+#5 resolve public.ecr.aws/docker/library/node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 0.0s done
+#5 DONE 0.0s
+
+#6 [stage-1 1/7] FROM public.ecr.aws/docker/library/caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
+#6 resolve public.ecr.aws/docker/library/caddy:2.11.4-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 90.60kB 0.0s done
+#7 DONE 0.0s
+
+#8 [web 2/8] WORKDIR /app/web
+#8 CACHED
+
+#9 [web 3/8] COPY web/package.json web/package-lock.json ./
+#9 DONE 0.1s
+
+#10 [web 4/8] RUN --mount=type=cache,target=/root/.npm npm ci --registry=https://registry.npmjs.org
+#10 8.334 npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+#10 11.62 
+#10 11.62 added 325 packages, and audited 326 packages in 10s
+#10 11.62 
+#10 11.62 106 packages are looking for funding
+#10 11.62   run `npm fund` for details
+#10 11.62 
+#10 11.62 found 0 vulnerabilities
+#10 DONE 12.4s
+
+#11 [web 5/8] COPY web/ ./
+#11 DONE 0.3s
+
+#12 [web 6/8] RUN case "vue" in       react) npm run build:react && mkdir -p /app/frontend-dist && cp -a dist/. /app/frontend-dist/ ;;       vue) npm run build && mkdir -p /app/frontend-dist && cp -a dist-vue/. /app/frontend-dist/ ;;       *) echo "FRONTEND_VARIANT must be react or vue" >&2; exit 64 ;;     esac
+#12 0.435 
+#12 0.435 > web@0.0.0 build
+#12 0.435 > npm run typecheck:vue && vite build
+#12 0.435 
+#12 0.528 
+#12 0.528 > web@0.0.0 typecheck:vue
+#12 0.528 > vue-tsc --noEmit -p tsconfig.vue.json && tsc --noEmit -p tsconfig.vue.node.json
+#12 0.528 
+#12 19.76 vite v8.2.4 building client environment for production...
+#12 19.78 [2Ktransforming...✓ 818 modules transformed.
+#12 23.66 rendering chunks...
+#12 24.54 computing gzip size...
+#12 24.56 dist-vue/index.html                     1.72 kB │ gzip:   0.79 kB
+#12 24.56 dist-vue/assets/index-D7a1ECCn.css    127.93 kB │ gzip:  22.98 kB
+#12 24.56 dist-vue/assets/index-LHE4QUm9.js   1,704.87 kB │ gzip: 563.17 kB
+#12 24.56 
+#12 24.56 ✓ built in 4.80s
+#12 24.57 [plugin builtin:vite-reporter] 
+#12 24.57 (!) Some chunks are larger than 500 kB after minification. Consider:
+#12 24.57 - Using dynamic import() to code-split the application
+#12 24.57 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+#12 24.57 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+#12 24.57 [33m[PLUGIN_TIMINGS] [0mYour build spent 70% of 4.8s inside plugin hooks (3.3s).
+#12 24.57 Measured inside the callback, so queue time is excluded and time the callback itself awaited is not:
+#12 24.57   - vite:vue transform (57%, 2.7s, 92 calls)
+#12 24.57   - vite:build-html transform (57%, 2.7s, 1 call)
+#12 24.57 Those rows are 100% of the build; the rest of the 70% is below.
+#12 24.57 Not measurable — 1 hook whose calls overlap, so elapsed time covers work other calls were doing. Profile with `node --cpu-prof`:
+#12 24.57   - vite:css transform (40 calls)
+#12 24.57 See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+#12 24.57 
+#12 24.73 npm notice
+#12 24.73 npm notice New major version of npm available! 11.19.1 -> 12.2.1
+#12 24.73 npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+#12 24.73 npm notice To update run: npm install -g npm@12.2.1
+#12 24.73 npm notice
+#12 DONE 24.9s
+
+#13 [web 7/8] COPY caddy/retained-assets/ /app/retained-assets/
+#13 DONE 0.2s
+
+#14 [web 8/8] RUN node scripts/merge-retained-assets.mjs /app/retained-assets /app/frontend-dist/assets
+#14 DONE 0.8s
+
+#15 [stage-1 3/7] COPY caddy/tls-auto.caddyfile /etc/caddy/tls-auto.caddyfile
+#15 CACHED
+
+#16 [stage-1 4/7] COPY caddy/tls-public-ip.caddyfile /etc/caddy/tls-public-ip.caddyfile
+#16 CACHED
+
+#17 [stage-1 5/7] COPY --from=web /app/frontend-dist /srv/web/dist
+#17 CACHED
+
+#18 [stage-1 6/7] RUN caddy validate --config /etc/caddy/Caddyfile
+#18 CACHED
+
+#19 [stage-1 2/7] COPY caddy/Caddyfile /etc/caddy/Caddyfile
+#19 CACHED
+
+#20 [stage-1 7/7] RUN addgroup -S -g 10001 caddy && adduser -S -D -H -u 10001 -G caddy caddy     && chown -R caddy:caddy /data /config
+#20 CACHED
+
+#21 exporting to image
+#21 exporting layers done
+#21 exporting manifest sha256:353e6f8d4836ca079e231801d7a84b9e3e542d18232449e4c15a3e273ec0955f 0.0s done
+#21 exporting config sha256:e00f5fa2c0741ac99983191ec07e429c0e81b74726aed3e20b5caccb76063a24 done
+#21 exporting attestation manifest sha256:7594e73003b5f0f4ef62f7bb4076d9169526858f4d54aee94250dda5e558eb6b done
+#21 exporting manifest list sha256:e0f4ed1caeadad7b8ef130265924193360cfda7fd443b9432863268dd9a7bf67 done
+#21 naming to docker.io/library/myink-caddy:vue-main-default-20261026 done
+#21 unpacking to docker.io/library/myink-caddy:vue-main-default-20261026 0.0s done
+#21 DONE 0.1s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/w1m8hipqves8dur4hl3anf6ul

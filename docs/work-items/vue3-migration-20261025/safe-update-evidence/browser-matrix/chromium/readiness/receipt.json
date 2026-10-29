@@ -1,0 +1,636 @@
+{
+  "kind": "frontend_e2e_with_synthetic_api",
+  "browser": "chromium",
+  "platform": "darwin",
+  "contextMode": "temporary_persistent",
+  "checks": [
+    "fixture_unknown_endpoint_and_method_fail_closed",
+    "login",
+    "20k_50k_unicode_400_chapters_input_and_save",
+    "plan_confirmation",
+    "partial_body_before_stream_completion",
+    "second_body_chunk",
+    "dense_250_unicode_deltas",
+    "pause_follow_and_return",
+    "sse_reconnect_cursor",
+    "replay_does_not_duplicate_body",
+    "human_rejection_after_reload",
+    "resume_request",
+    "saved_body_after_refresh",
+    "actual_markdown_download_utf8_content",
+    "768px_editor_focus_and_no_overflow",
+    "409_preserves_draft_and_blocks_overwrite",
+    "390px_no_body_horizontal_overflow",
+    "actual_png_upload_indexeddb_reload",
+    "actual_encoded_video_upload_decode_indexeddb_reload_play",
+    "reduced_motion_stops_video_resume_plays",
+    "switch_image_removes_video_revokes_url",
+    "keyboard_tab_trap_escape",
+    "390px_short_viewport_focused_description_visible",
+    "chapter_composition_enter_no_save",
+    "feedback_text_file_close_reopen_route_retention",
+    "synthetic_composition_enter_does_not_submit"
+  ],
+  "api_calls": [
+    {
+      "endpoint": "/__readiness_unknown",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects",
+      "method": "POST"
+    },
+    {
+      "endpoint": "/auth/token",
+      "method": "POST"
+    },
+    {
+      "endpoint": "/projects",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/auth/session",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/graph",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/foreshadows",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/writing-resources/updates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/writing-resources",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/lessons",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/tasks",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/tasks",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1/events",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1/content",
+      "method": "PUT"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/auth/session",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/graph",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/foreshadows",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/writing-resources/updates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/writing-resources",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/lessons",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/tasks",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/tasks",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1/events",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1/content",
+      "method": "PUT"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/auth/session",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/graph",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/foreshadows",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/writing-resources/updates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/writing-resources",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/lessons",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/tasks",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1/events",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1/plan/confirm",
+      "method": "POST"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1/events",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1/events",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/auth/session",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/graph",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/foreshadows",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/writing-resources/updates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/writing-resources",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/lessons",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/tasks",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/tasks",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1/events",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/tasks",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates/candidate-p1/reject",
+      "method": "POST"
+    },
+    {
+      "endpoint": "/batches/task-p1/resume",
+      "method": "POST"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1/events",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/auth/session",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/graph",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/foreshadows",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/writing-resources/updates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/writing-resources",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/lessons",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/tasks",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/tasks",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1/events",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/candidates",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1/content",
+      "method": "PUT"
+    },
+    {
+      "endpoint": "/projects/project-p1/chapters/chapter-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/tasks/task-p1",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/auth/session",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/auth/session",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/auth/session",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects",
+      "method": "GET"
+    },
+    {
+      "endpoint": "/projects",
+      "method": "GET"
+    }
+  ],
+  "unknown_routes": [],
+  "page_errors": [],
+  "limits": [
+    "API/SSE controlled fixture, not deployed backend E2E",
+    "No real model or database calls"
+  ],
+  "buildIndex": "<!doctype html>\n<html lang=\"zh-CN\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/svg+xml\" href=\"/favicon.svg\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>Myink 作品工作台</title>\n    <script>\n      (function () {\n        try {\n          var root = document.documentElement\n          var theme = localStorage.getItem('myink.theme')\n          if (theme === 'night' || theme === 'contrast') {\n            root.setAttribute('data-theme', theme)\n            root.style.colorScheme = theme === 'night' ? 'dark' : 'light'\n            return\n          }\n          if (theme !== 'custom') return\n          root.setAttribute('data-theme', 'custom')\n          var tokens = {}\n          var store = JSON.parse(localStorage.getItem('myink.theme.presets') || 'null')\n          if (store && Array.isArray(store.items)) {\n            var item = store.items.find(function (preset) { return preset.id === store.activeId }) || store.items[0]\n            if (item && item.tokens) tokens = item.tokens\n          } else {\n            tokens = JSON.parse(localStorage.getItem('myink.theme.custom') || '{}')\n          }\n          var map = { canvas: '--canvas', ink: '--ink', editor: '--editor', editorInk: '--editor-ink', accent: '--accent' }\n          Object.keys(map).forEach(function (key) {\n            if (typeof tokens[key] === 'string') root.style.setProperty(map[key], tokens[key])\n          })\n        } catch (e) {}\n      })()\n    </script>\n    <script type=\"module\" crossorigin src=\"/assets/index-Bk-yDMAg.js\"></script>\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-D7a1ECCn.css\">\n  <meta name=\"myink-release\" content='{\"schema\":1,\"client\":\"vue\",\"id\":\"vue-4f4b435d784b5a93b0cd69adb685740b635f0c9716d2fd362ab393425b7be1d2\",\"entry\":\"/assets/index-Bk-yDMAg.js\"}'>\n</head>\n  <body>\n    <div id=\"root\"></div>\n  </body>\n</html>\n",
+  "harnessSha256": "24dc0a1671b5cbc2eaaf408d887b214b16cb039c0d64360d19421de342aff6ab",
+  "buildHashes": {
+    "index.html": "33de94525c413abf13da9a532d6e3b656e59e0b1069cee014bc21b8ef9cf7084",
+    "assets/index-Bk-yDMAg.js": "c41dd3e9a0437f8de4c4bc9fdfd14a064cd69f1ba561970d67dad65ef203bfb7",
+    "assets/index-D7a1ECCn.css": "cac8cd86c1db1e65ee32b621a58b478e6a364b5039b5a29a6248acf91d981a47"
+  },
+  "browserVersion": "156.0.8078.4",
+  "fixtureProbes": {
+    "unknownEndpoint": 500,
+    "wrongMethod": 500
+  },
+  "metrics": [
+    {
+      "unicodePoints": 20000,
+      "chapters": 400,
+      "loadAndInteractionsMs": 1088.12475,
+      "inputP50Ms": 33.2517499999999,
+      "inputP95Ms": 34.26700000000005,
+      "heapUsedBytes": 8975528
+    },
+    {
+      "unicodePoints": 50000,
+      "chapters": 400,
+      "loadAndInteractionsMs": 1481.81875,
+      "inputP50Ms": 49.91604200000029,
+      "inputP95Ms": 51.166499999999814,
+      "heapUsedBytes": 9108980
+    }
+  ],
+  "denseBurstRenderMs": 142.37695799999983,
+  "streamUnicodePoints": 51672,
+  "videoMime": "video/webm",
+  "passed": true
+}

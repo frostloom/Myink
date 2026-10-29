@@ -91,7 +91,9 @@ a:hover {
   min-height: 40px;
   padding: 0 var(--space-4);
   border-radius: var(--radius-sm);
-  border: 1px solid transparent;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  color: var(--ink);
   cursor: pointer;
   font-weight: 500;
   transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
@@ -125,6 +127,7 @@ a:hover {
   border-color: var(--ink-subtle);
 }
 .btn-quiet {
+  border-color: transparent;
   background: transparent;
   color: var(--ink-muted);
 }

@@ -348,6 +348,8 @@ def test_process_batch_pause_publishes_paused(temp_project, monkeypatch):
     body = _body(tid, temp_project, task_type="batch_generate", payload={"start": 1, "size": 3})
     r = get_redis()
     try:
+        # Chapter one yields; chapter two then observes the user's pause.
+        assert process(body) == 'yield'
         assert process(body) == "terminal"
         with new_session() as db:
             assert db.get(Task, uuid.UUID(tid)).status == "paused", "暂停后任务应保持 paused"
