@@ -151,7 +151,7 @@ class NativeProductRelease:
 
     def _post(self):
         self._scope();receipt=backup.create_backup(self.host.ledger,'POST',self.backend.candidate,self.backend,self.backend.collections,pair=self.backend.pair)
-        require(receipt.status=='done','POST collection unconfirmed');result=OwnedPostgresRestore(self.backend).restore(receipt,qualification='application')
+        require(receipt.status=='done','POST collection unconfirmed');result=OwnedPostgresRestore(self.backend).restore(receipt,qualification=self.backend.qualification)
         require(result.status=='done','POST application recovery unconfirmed')
         return dict(verified=True,manifest_sha256=receipt.evidence['manifest_sha256'],restore_operation_id=result.operation_id)
 

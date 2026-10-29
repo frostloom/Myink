@@ -6,6 +6,7 @@ business probes remain independent release requirements, recorded explicitly.
 from hashlib import sha256
 import gzip
 import os
+import secrets
 from pathlib import Path, PurePosixPath
 import tarfile
 import time
@@ -63,7 +64,7 @@ class OwnedPostgresRestore:
         if self.host.config['mode']=='ACTUAL':
             from .product_runtime import LinuxProductHost
             require(type(self.host) is LinuxProductHost,'canonical native recovery host required')
-        self.cid=None;self.registry=None;self.attempt=None
+        self.cid=None;self.registry=None;self.attempt=None;self.authentication=None
 
     def _run(self,args,**kwargs):return self.host._run(args,**kwargs)
     def _json(self,args):return strict_json(self.host._bytes(self._run(args)))
@@ -119,8 +120,30 @@ class OwnedPostgresRestore:
         backup.bind_rehearsal_target(self.ledger,self.attempt,target)
         return target
 
+    def _authenticate_runtime(self,phase):
+        from .product_runtime_snapshot import authentication
+        path=self.folder/'config/effective-runtime.json';_plain(path)
+        require(path.stat().st_size<=1048576,'bounded effective runtime material required')
+        settings=authentication(strict_json(path.read_bytes()),digest(self.plan),phase,self.admin,secrets.token_urlsafe(32))
+        password=settings['admin_url'].split(':',2)[2].split('@',1)[0]
+        # Only the freshly created target role changes. Original application,
+        # report and financial credentials remain the imported source values.
+        sql=self.folder/'target-auth.sql'
+        backup.durable_file(sql,('ALTER ROLE '+self.admin+" PASSWORD '"+password+"';\n").encode())
+        self._sql(stdin_path=sql)
+        hba=self.folder/'target-pg_hba.conf';backup.durable_file(hba,settings.pop('hba').encode())
+        before=strict_json(self.host._bytes(self._sql("SELECT json_build_object('loaded',pg_conf_load_time()::text)")))['loaded']
+        self._owned();self._run(['exec','-i',self.cid,'/bin/sh','-c','cat > "$PGDATA/pg_hba.conf"'],stdin_path=hba)
+        self._sql('SELECT pg_reload_conf()');until=time.monotonic()+5
+        while True:
+            value=strict_json(self.host._bytes(self._sql("SELECT json_build_object('loaded',pg_conf_load_time()::text,'errors',(SELECT count(*) FROM pg_hba_file_rules WHERE error IS NOT NULL))")))
+            require(value['errors']==0,'restored authentication rules invalid')
+            if value['loaded']!=before:break
+            require(time.monotonic()<until,'authentication reload not confirmed');time.sleep(.1)
+        self.authentication=dict(settings,hba_sha256=backup.digest(hba))
+
     def restore(self,receipt,*,qualification="materials"):
-        require(qualification in ("materials","application") and (self.host.config["mode"]!="ACTUAL" or qualification=="application"),"ACTUAL requires application recovery qualification")
+        require(qualification in ("materials","application","runtime") and (self.host.config["mode"]!="ACTUAL" or qualification=="runtime"),"ACTUAL requires authenticated runtime recovery qualification")
         self.host.authorize(self.plan)
         phase=receipt.evidence.get('phase');require(phase in ('PRE','POST') and receipt.status=='done' and receipt.operation_id=='backup:'+self.plan['operation_id']+':'+phase,'exact completed paired backup required')
         if phase=='POST':
@@ -155,12 +178,13 @@ class OwnedPostgresRestore:
             restored_roles={k:v for k,v in observed['roles'].items() if k!=self.admin}
             require(observed['system_identifier']==target['system_identifier'] and observed['tables']==source['tables'] and observed['content']==source['content'] and restored_roles==source['roles'],'restored relation or role census differs')
             probes={}
-            if qualification=='application':
+            if qualification in ('application','runtime'):
+                if qualification=='runtime':self._authenticate_runtime(phase)
                 from .product_cold_probe import OwnedApplicationProbe
                 for role in ('legacy','candidate'):probes[role]=OwnedApplicationProbe(self).check(role,target)
                 _assert_read_only(observed,strict_json(self.host._bytes(self._sql(META_SQL))))
             backup.verify_artifacts(manifest,directory)
-            result=Receipt('restore:'+manifest['backup_id']+':'+target['system_identifier'],'done',dict(verified=True,target_system_identifier=target['system_identifier'],source_system_identifier=source['system_identifier'],table_count=len(source['tables']),materials=materials,original_control_state_restored=False,business_probe='restored_read_paths_verified' if probes else 'pending_separate_qualification',application_probes=probes))
+            result=Receipt('restore:'+manifest['backup_id']+':'+target['system_identifier'],'done',dict(verified=True,target_system_identifier=target['system_identifier'],source_system_identifier=source['system_identifier'],table_count=len(source['tables']),materials=materials,original_control_state_restored=False,business_probe=('restored_authenticated_read_paths_verified' if qualification=='runtime' else 'restored_read_paths_verified') if probes else 'pending_separate_qualification',application_probes=probes))
         except Exception as error:
             if self.attempt and self.ledger.get(self.attempt):
                 self.ledger.finish(Receipt(self.attempt,'uncertain',dict(reason='native_recovery_unconfirmed',error_class=type(error).__name__)))

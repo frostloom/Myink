@@ -82,6 +82,26 @@ def context_from_inspects(plan,config,rows,network,volumes):
     return dict(schema='pi-product-activation-context-v1',mode=mode,target=target,project=project,plan_sha256=digest(plan),configuration_sha256=configuration,network=net,volumes=owned,templates=templates,rollback_identity=rollback)
 
 
+def cohort_environment(template,identity):
+    values=environment(template['Config']['Env'])
+    values.update(DEPLOYMENT_ID=identity['deployment_id'],DEPLOYMENT_GENERATION=str(identity['generation']),DEPLOYMENT_OWNER=identity['owner'],DEPLOYMENT_IMAGE_IDS=encoded(identity['image_ids']).decode(),DEPLOYMENT_COMMIT_SHA=identity['commit_sha'],OBSERVATION_CONFIG_ID=identity['config_hash'],OBSERVATION_SCHEMA_ID=identity['schema_id'],PYTHONDONTWRITEBYTECODE='1',HOME='/tmp')
+    return values
+
+
+def verify_cohort_container(value,plan,config,context,template,identity,role):
+    c=value['Config'];h=value['HostConfig'];n=context['network'];labels=c['Labels'];expected_role=SERVICES[template['Config']['Labels']['com.docker.compose.service']]
+    require(value['Image']==identity['image_ids']['python'] and value['Id'] not in {r['id'] for r in plan['legacy']['containers']},'foreign cohort image or ID')
+    require(labels.get(LABEL)==plan['operation_id'] and labels.get('myink.pi.release.role')==role and labels.get('com.docker.compose.project')==config['project'] and labels.get('com.docker.compose.service')==('myink-api' if expected_role=='api' else 'myink-worker'),'cohort labels superseded')
+    require(c['User']=='10001' and c['WorkingDir']=='/app' and c['Cmd']==template['Config']['Cmd'] and c.get('Entrypoint') in (None,[]) and environment(c['Env'])==cohort_environment(template,identity),'cohort command or effective configuration changed')
+    require(h['ReadonlyRootfs'] is True and not h['Privileged'] and h.get('PidMode','')=='' and h.get('IpcMode','private')=='private' and not any(h.get(k) for k in ('CapAdd','Devices','ExtraHosts','Links','VolumesFrom')) and h['CapDrop']==['ALL'] and 'no-new-privileges' in h['SecurityOpt'],'cohort privilege boundary changed')
+    require(h['Memory']==template['HostConfig']['Memory'] and h['MemorySwap']==h['Memory'] and h['NanoCpus']==template['HostConfig']['NanoCpus'] and h['PidsLimit']==128 and set(h.get('Tmpfs') or {})=={'/tmp'} and (h.get('PortBindings') or {})==template['HostConfig']['PortBindings'],'cohort resource boundary changed')
+    require(h['RestartPolicy']['Name']==template['HostConfig']['RestartPolicy']['Name'],'restart policy changed')
+    _network_bound(value,n,'myink-api' if expected_role=='api' else 'myink-worker')
+    mounts=[dict(Type=m['Type'],Name=m.get('Name'),Destination=m['Destination'],RW=m['RW']) for m in value['Mounts'] if m['Type']!='tmpfs']
+    require(mounts==template['Mounts'] and value['State']['OOMKilled'] is False,'cohort mounts or OOM failure')
+    return value
+
+
 class NativeActivation:
     def __init__(self,host,context_path,context_sha256,approval_path,approval_sha256):
         self.host=host;self.plan=_plan(host.plan);self.context_path=Path(context_path);self.context_pin=context_sha256;self.approval_path=Path(approval_path);self.approval_pin=approval_sha256
@@ -138,10 +158,7 @@ class NativeActivation:
             require(len(matches)==1 and matches[0]['payload']==dict(plan_sha256=digest(self.plan),context_sha256=self.context_pin,role=role,source_id=matches[0]['payload']['source_id']) and matches[0]['payload']['source_id'] in templates,'original template binding missing')
         return v['containers']
 
-    def _environment(self,template,role):
-        values=environment(template['Config']['Env']);identity=self.identity(role)
-        values.update(DEPLOYMENT_ID=identity['deployment_id'],DEPLOYMENT_GENERATION=str(identity['generation']),DEPLOYMENT_OWNER=identity['owner'],DEPLOYMENT_IMAGE_IDS=encoded(identity['image_ids']).decode(),DEPLOYMENT_COMMIT_SHA=identity['commit_sha'],OBSERVATION_CONFIG_ID=identity['config_hash'],OBSERVATION_SCHEMA_ID=identity['schema_id'],PYTHONDONTWRITEBYTECODE='1',HOME='/tmp')
-        return values
+    def _environment(self,template,role):return cohort_environment(template,self.identity(role))
 
     def _template(self,role,cid):
         for template in self.context['templates']:
@@ -150,17 +167,7 @@ class NativeActivation:
         raise ValueError('container has no original template binding')
 
     def _new(self,value,role,template):
-        c=value['Config'];h=value['HostConfig'];n=self.context['network'];labels=c['Labels'];expected_role=SERVICES[template['Config']['Labels']['com.docker.compose.service']]
-        require(value['Image']==self.identity(role)['image_ids']['python'] and value['Id'] not in {r['id'] for r in self.plan['legacy']['containers']},'foreign cohort image or ID')
-        require(labels.get(LABEL)==self.plan['operation_id'] and labels.get('myink.pi.release.role')==role and labels.get('com.docker.compose.project')==self.host.config['project'] and labels.get('com.docker.compose.service')==('myink-api' if expected_role=='api' else 'myink-worker'),'cohort labels superseded')
-        require(c['User']=='10001' and c['WorkingDir']=='/app' and c['Cmd']==template['Config']['Cmd'] and c.get('Entrypoint') in (None,[]) and environment(c['Env'])==self._environment(template,role),'cohort command or effective configuration changed')
-        require(h['ReadonlyRootfs'] is True and not h['Privileged'] and h.get('PidMode','')=='' and h.get('IpcMode','private')=='private' and not any(h.get(k) for k in ('CapAdd','Devices','ExtraHosts','Links','VolumesFrom')) and h['CapDrop']==['ALL'] and 'no-new-privileges' in h['SecurityOpt'],'cohort privilege boundary changed')
-        require(h['Memory']==template['HostConfig']['Memory'] and h['MemorySwap']==h['Memory'] and h['NanoCpus']==template['HostConfig']['NanoCpus'] and h['PidsLimit']==128 and set(h.get('Tmpfs') or {})=={'/tmp'} and (h.get('PortBindings') or {})==template['HostConfig']['PortBindings'],'cohort resource boundary changed')
-        require(h['RestartPolicy']['Name']==template['HostConfig']['RestartPolicy']['Name'],'restart policy changed')
-        _network_bound(value,n,'myink-api' if expected_role=='api' else 'myink-worker')
-        mounts=[dict(Type=m['Type'],Name=m.get('Name'),Destination=m['Destination'],RW=m['RW']) for m in value['Mounts'] if m['Type']!='tmpfs']
-        require(mounts==template['Mounts'] and value['State']['OOMKilled'] is False,'cohort mounts or OOM failure')
-        return value
+        return verify_cohort_container(value,self.plan,self.host.config,self.context,template,self.identity(role),role)
 
     def _scope(self,creating=None):
         self._authority();h=self.host;n=self.context['network']

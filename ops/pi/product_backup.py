@@ -16,7 +16,7 @@ from .contracts import Identity
 from .product_bootstrap import _facts, COUNTS
 from .product_runtime import BASE, _pinned
 
-RECOVERY_COMPONENTS=('product_activation.py','product_release.py','product_backup.py','product_restore.py','product_cold_probe.py','product_runtime.py','product_commands.py','product_migration.py','product_bootstrap.py','backup.py','ledger.py','audit.py')
+RECOVERY_COMPONENTS=('product_runtime_snapshot.py','product_activation.py','product_release.py','product_backup.py','product_restore.py','product_cold_probe.py','product_runtime.py','product_commands.py','product_migration.py','product_bootstrap.py','backup.py','ledger.py','audit.py')
 FIELDS=set('schema release_pair_id environment_path environment_sha256 compose_path compose_sha256 billing_ledger_path manager_state_path maximum_artifact_bytes'.split())
 META_SQL="""BEGIN READ ONLY;SET LOCAL statement_timeout='10s';
 SELECT json_build_object('system_identifier',(SELECT system_identifier::text FROM pg_control_system()),'database',current_database(),'size_bytes',pg_database_size(current_database()),
@@ -59,7 +59,11 @@ class LinuxProductBackup:
             from .product_runtime import LinuxProductHost
             require(type(host) is LinuxProductHost,'canonical native backup host required')
         self.config=_pinned(host.config['backup_path'],host.config['backup_sha256'],actual);c=self.config
-        require(isinstance(c,dict) and set(c)==FIELDS and c['schema']=='pi-product-backup-v1' and c['release_pair_id']==self.plan['operation_id'],'closed exact backup settings required')
+        runtime=isinstance(c,dict) and c.get('schema')=='pi-product-backup-v2'
+        require(isinstance(c,dict) and set(c)==(FIELDS|{'runtime_context_path','runtime_context_sha256'} if runtime else FIELDS) and c['schema'] in ('pi-product-backup-v1','pi-product-backup-v2') and c['release_pair_id']==self.plan['operation_id'] and (not actual or runtime),'closed qualified backup settings required')
+        self.qualification='runtime' if runtime else 'application'
+        self.runtime_context=_pinned(c['runtime_context_path'],c['runtime_context_sha256'],actual) if runtime else None
+        if runtime:require(self.runtime_context.get('plan_sha256')==digest(self.plan),'runtime context plan differs')
         require(type(c['maximum_artifact_bytes']) is int and 0<c['maximum_artifact_bytes']<=536870912,'bounded recovery artifacts required')
         for key in ('environment','compose'):
             path=_path(c[key+'_path']);_plain(path);require(path.parent==_path(host.config['compose_dir']) and path.stat().st_size<=1048576 and sha256(path.read_bytes()).hexdigest()==c[key+'_sha256'],'sealed product configuration drift')
@@ -78,7 +82,7 @@ class LinuxProductBackup:
         candidate={k:v for k,v in self.plan['candidate'].items() if k!='schema_version'}
         self.candidate=Identity(**candidate)
         self.pair=dict(release_pair_id=self.plan['operation_id'],pre_identity=asdict(self.legacy),post_identity=asdict(self.candidate),plan_hash=digest(self.plan))
-        self.context=dict(schema_context=digest(dict(protocol=1,schema=1,state=1,effect_keys=1,serialization='jsonplus',product_schema_id=self.plan['candidate']['schema_id'],postgres_image=roles['postgres'])),tool_context=digest({name:sha256(Path(__file__).with_name(name).read_bytes()).hexdigest() for name in RECOVERY_COMPONENTS}))
+        self.context=dict(schema_context=digest(dict(protocol=1,schema=1,state=1,effect_keys=1,serialization='jsonplus',recovery_contract=2 if runtime else 1,product_schema_id=self.plan['candidate']['schema_id'],postgres_image=roles['postgres'])),tool_context=digest({name:sha256(Path(__file__).with_name(name).read_bytes()).hexdigest() for name in RECOVERY_COMPONENTS}))
 
     def preflight(self):
         self.host.authorize(self.plan)
@@ -101,6 +105,25 @@ class LinuxProductBackup:
             path=_path(self.config[key+'_path']);_plain(path)
             require(path.stat().st_size<=1048576 and sha256(path.read_bytes()).hexdigest()==self.config[key+'_sha256'],'sealed configuration changed during collection')
 
+    def _runtime_material(self,phase):
+        if self.runtime_context is None:return None
+        from .product_runtime_snapshot import capture
+        context=_pinned(self.config['runtime_context_path'],self.config['runtime_context_sha256'],self.host.config['mode']=='ACTUAL')
+        require(context==self.runtime_context,'private runtime context drift')
+        if phase=='PRE':ids=[v['Id'] for v in context['templates']];bindings=None
+        else:
+            bindings={}
+            for t in context['templates']:
+                row=self.host.ledger.get('candidate:'+self.plan['operation_id']+':'+t['Id'])
+                require(row and row['kind']=='product_cohort_container' and row['status']=='done' and row['payload']==dict(plan_sha256=digest(self.plan),context_sha256=self.config['runtime_context_sha256'],role='candidate',source_id=t['Id']),'original post template intent required')
+                bindings[t['Id']]=row['evidence']['id']
+            ids=list(bindings.values())
+            require(set(ids)=={v['id'] for v in self.host._candidate_cohort()},'post runtime registry differs')
+        rows=self.host._json(['inspect',*ids]);network=self.host._json(['network','inspect',context['network']['id']])
+        require(isinstance(network,list) and len(network)==1,'single runtime network required')
+        volumes=self.host._json(['volume','inspect',*[v['name'] for v in context['volumes']]]) if context['volumes'] else []
+        return capture(self.plan,self.host.config,context,phase,rows,network[0],volumes,bindings=bindings)
+
     def _quiet(self,phase="PRE"):
         self._sealed_configuration()
         self.host.authorize(self.plan)
@@ -108,7 +131,10 @@ class LinuxProductBackup:
         require(observed==(self.plan['legacy'] if phase=='PRE' else self.plan['candidate']),'recovery source identity drift')
         facts=(self.host.measure_quiet if phase=='PRE' else self.host.measure_candidate_quiet)(self.plan,self.proofs);_facts('drain_legacy',facts,self.plan,self.proofs)
         meta=self._metadata()
-        basis=dict(source=observed,phase=phase,fence=facts['fence_sha256'],database=meta['system_identifier'],tables=meta['tables'],content=meta['content'],roles=meta['roles'],configuration={k:self.config[k] for k in ('environment_sha256','compose_sha256')})
+        configuration={k:self.config[k] for k in ('environment_sha256','compose_sha256')}
+        runtime=self._runtime_material(phase)
+        if runtime is not None:configuration['effective_runtime_sha256']=digest(runtime)
+        basis=dict(source=observed,phase=phase,fence=facts['fence_sha256'],database=meta['system_identifier'],tables=meta['tables'],content=meta['content'],roles=meta['roles'],configuration=configuration)
         return dict(verified=True,consistency_id=digest(basis)),meta
 
     def __call__(self,action,context):
@@ -142,7 +168,11 @@ class LinuxProductBackup:
         self._artifact(['cp',cid('api')+':/data/feedback','-'],directory/'attachments.tar')
         self._artifact(['cp',cid('frontend')+':/data','-'],directory/'certificate.tar')
         _copy(Path(self.config['environment_path']),directory/'crypto.env')
-        _tar_files(directory/'configuration.tar',{'docker-compose.yml':Path(self.config['compose_path']),'.env':Path(self.config['environment_path'])})
+        configuration={'docker-compose.yml':Path(self.config['compose_path']),'.env':Path(self.config['environment_path'])}
+        runtime=self._runtime_material(phase)
+        if runtime is not None:
+            backup.durable_file(directory/'effective-runtime.json',encoded(runtime));configuration['effective-runtime.json']=directory/'effective-runtime.json'
+        _tar_files(directory/'configuration.tar',configuration)
         _snapshot(Path(self.config['billing_ledger_path']),directory/'billing.sqlite')
         _snapshot(Path(self.config['manager_state_path']),directory/'manager.sqlite')
         backup.durable_file(directory/'source-metadata.json',encoded(meta))
@@ -155,7 +185,7 @@ class LinuxProductBackup:
             receipt=backup.create_backup(self.host.ledger,'PRE',self.legacy,self,self.collections,pair=self.pair)
             require(receipt.status=='done','PRE collection incomplete')
             from .product_restore import OwnedPostgresRestore
-            result=OwnedPostgresRestore(self).restore(receipt,qualification='application')
+            result=OwnedPostgresRestore(self).restore(receipt,qualification=self.qualification)
             require(result.status=='done','current restore qualification incomplete')
             return dict(verified=True,plan_sha256=digest(plan),release_pair_id=plan['operation_id'],manifest_sha256=receipt.evidence['manifest_sha256'],restore_operation_id=result.operation_id,source_sha256=plan['legacy']['source_sha256'])
         if action=='install_schema':return self.host.apply_schema(plan,proofs)

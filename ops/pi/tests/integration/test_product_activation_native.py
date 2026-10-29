@@ -12,7 +12,7 @@ from test_product_backup import write
 pytestmark=pytest.mark.pi_followup_docker
 
 
-@pytest.mark.parametrize('flow',['lifecycle','release'])
+@pytest.mark.parametrize('flow',['lifecycle','release','runtime','runtime-bad-report','runtime-writable-report'])
 def test_owned_full_stack_candidate_and_fresh_rollback_cohorts(tmp_path,flow):
     assert importlib.util.find_spec('ops.pi.product_activation'),'missing native cohort factory'
     from ops.pi.product_activation import NativeActivation,context_from_inspects,ACTIONS
@@ -101,13 +101,25 @@ def test_owned_full_stack_candidate_and_fresh_rollback_cohorts(tmp_path,flow):
         compose=root/'compose';compose.mkdir(mode=0o700);env=compose/'.env';envpin=write(env,('MODEL_CREDENTIAL_KEY=synthetic-private-key\nJWT_SECRET=synthetic-jwt-at-least-thirty-two-bytes\nSITE_ADDRESS=http://fixture.invalid\n').encode());yaml=compose/'docker-compose.yml';ypin=write(yaml,b'services: {}\n')
         fee=Ledger(root/'original-fee.sqlite');manager=Ledger(root/'original-manager.sqlite');fee.path.chmod(0o600);manager.path.chmod(0o600)
         for n in range(9):fee.intent('unknown-'+str(n),'billing',dict(held_microyuan=2000000))
-        bp=root/'backup.json';bpin=write(bp,dict(schema='pi-product-backup-v1',release_pair_id=op,environment_path=str(env),environment_sha256=envpin,compose_path=str(yaml),compose_sha256=ypin,billing_ledger_path=str(fee.path),manager_state_path=str(manager.path),maximum_artifact_bytes=16777216))
+        backup_settings=dict(schema='pi-product-backup-v1',release_pair_id=op,environment_path=str(env),environment_sha256=envpin,compose_path=str(yaml),compose_sha256=ypin,billing_ledger_path=str(fee.path),manager_state_path=str(manager.path),maximum_artifact_bytes=16777216)
+        if flow.startswith('runtime'):backup_settings.update(schema='pi-product-backup-v2',runtime_context_path=str(context_path),runtime_context_sha256=context_pin)
+        bp=root/'backup.json';bpin=write(bp,backup_settings)
         lock=root/'maintenance.lock';lock.write_bytes(b'');lock.chmod(0o600)
         hp=root/'host.json';hpin=write(hp,dict(schema='pi-linux-product-host-v1',mode='SIMULATED',target='rehearsal',docker=str(docker),endpoint=endpoint,daemon_id=daemon,root=str(root),lock_path=str(lock),project=project,plan_path=str(pp),plan_sha256=ppin,approval_path=str(approval),approval_sha256=apin,legacy_manifest_path=str(lp),legacy_manifest_sha256=lpin,candidate_manifest_path=str(cp),candidate_manifest_sha256=cpin,backup_path=str(bp),backup_sha256=bpin,compose_dir=str(compose),drain_seconds=120,queue_prefix=''))
         h=LinuxProductHost(hp,hpin)
-        prepared=prepare_bootstrap(h.ledger,plan,h);assert prepared.status=='done',prepared
+        if flow=='runtime-bad-report':d('exec',pg,'psql','-X','-q','-U','myink','-d','myink','-c',"ALTER ROLE myink_report PASSWORD 'different-source-report-password'")
+        if flow=='runtime-writable-report':d('exec',pg,'psql','-X','-q','-U','myink','-d','myink','-c','ALTER ROLE myink_report SET default_transaction_read_only=off')
+        prepared=prepare_bootstrap(h.ledger,plan,h)
+        if flow in ('runtime-bad-report','runtime-writable-report'):
+            assert prepared.status=='uncertain' and prepared.evidence['stopped_at']=='backup_pre',prepared
+            expected='password authentication failed' if flow=='runtime-bad-report' else 'report role is not default read only'
+            assert any(expected in p.read_text(errors='replace') for p in (root/'commands').glob('*/stderr.bin'))
+            assert all(fee.get('unknown-'+str(n))['status']=='pending' for n in range(9))
+            assert d('exec',front,'/usr/bin/curl','-sS','-o','/dev/null','-w','%{http_code}','http://127.0.0.1/api/v1/projects')=='503'
+            return
+        assert prepared.status=='done',prepared
         with h.lock(plan):
-            if flow=='release':
+            if flow in ('release','runtime'):
                 from ops.pi.product_release import NativeProductRelease
                 before=digest(json.loads((root/'ingress-before.json').read_bytes()))
                 release_settings=dict(schema='pi-product-control-v1',mode='SIMULATED',target='rehearsal',plan_sha256=digest(plan),context_path=str(context_path),context_sha256=context_pin,activation_approval_path=str(a_path),activation_approval_sha256=a_pin,ingress_before_sha256=before,maximum_stopped_seconds=1800,expires_at=plan['expires_at'])
@@ -133,6 +145,15 @@ def test_owned_full_stack_candidate_and_fresh_rollback_cohorts(tmp_path,flow):
                 d('exec',pg,'psql','-X','-q','-U','myink','-d','myink','-v','ON_ERROR_STOP=1','-c',"INSERT INTO pi_native_release_marker VALUES(2,'after-open')")
                 returned=release.rollback();assert returned.status=='done' and returned.evidence['phase']=='native_legacy_return'
                 assert returned.evidence['identity']['generation']==2 and returned.evidence['original_control_state_restored'] is False
+                if flow=='runtime':
+                    pre=next(root.glob('restore-*/application-legacy/receipt.json'))
+                    proof_rows=[]
+                    for folder in root.glob('restore-*'):
+                        for role in ('legacy','candidate'):
+                            proof=json.loads((folder/('application-'+role)/'receipt.json').read_bytes());assert proof['authenticated_roles']==proof['wrong_passwords_rejected']==2;proof_rows.append(proof)
+                    assert len(proof_rows)==4
+                    runtime_material=json.loads((postdir/'effective-runtime.json').read_bytes())
+                    assert runtime_material['phase']=='POST' and all('DEPLOYMENT_GENERATION=1' in v['config']['Env'] for v in runtime_material['containers'])
                 assert d('exec',pg,'psql','-X','-q','-A','-t','-U','myink','-d','myink','-c','SELECT count(*) FROM pi_native_release_marker')=='2'
                 assert all(fee.get('unknown-'+str(n))['status']=='pending' for n in range(9))
                 assert json.loads(d('exec',front,'/usr/bin/curl','-fsS','http://127.0.0.1/api/v1/projects'))==[]

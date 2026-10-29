@@ -53,7 +53,17 @@ if not (values.get('MODEL_CREDENTIAL_KEY') or values.get('JWT_SECRET')):raise Ru
 if (root/'config/.env').read_bytes()!=(root/'crypto').read_bytes() or not (root/'config/docker-compose.yml').read_bytes():raise RuntimeError('restored configuration differs')
 for k,v in values.items():
  if isinstance(v,str):os.environ[k]=v
-os.environ.update(DATABASE_URL='postgresql+psycopg://myink_app@127.0.0.1:5432/myink',ADMIN_DATABASE_URL='postgresql+psycopg://'+packet['admin']+'@127.0.0.1:5432/myink',EMBED_ENABLED='0',PGOPTIONS='-c default_transaction_read_only=on -c statement_timeout=10000',OTEL_SDK_DISABLED='true',PYTHONDONTWRITEBYTECODE='1')
+authentication=packet.get('authentication')
+app_url=authentication['app_url'] if authentication else 'postgresql+psycopg://myink_app@127.0.0.1:5432/myink'
+report_url=authentication['report_url'] if authentication else 'postgresql+psycopg://'+packet['admin']+'@127.0.0.1:5432/myink'
+admin_url=authentication['admin_url'] if authentication else 'postgresql://'+packet['admin']+'@127.0.0.1:5432/myink'
+if authentication:
+ runtime=json.loads((root/'config/effective-runtime.json').read_bytes())
+ for container in runtime['containers']:
+  actual=dict(entry.split('=',1) for entry in container['config']['Env'])
+  for key in ('MODEL_CREDENTIAL_KEY','JWT_SECRET'):
+   if values.get(key) and actual.get(key)!=values[key]:raise RuntimeError('effective runtime recovery key differs')
+os.environ.update(DATABASE_URL=app_url,ADMIN_DATABASE_URL=report_url,EMBED_ENABLED='0',PGOPTIONS='-c default_transaction_read_only=on -c statement_timeout=10000',OTEL_SDK_DISABLED='true',PYTHONDONTWRITEBYTECODE='1')
 for k in ('PLATFORM_MODEL_API_KEY','PLATFORM_MODEL_BASE_URL','LANGFUSE_PUBLIC_KEY','LANGFUSE_SECRET_KEY'):os.environ.pop(k,None)
 from myink.providers.credentials import decrypt_api_key,decrypt_totp_secret
 from myink.db import tenant_session
@@ -61,7 +71,7 @@ from sqlalchemy import text
 import psycopg
 from psycopg import sql
 from psycopg.rows import dict_row
-counts=dict(credentials=0,mfa_secrets=0,attachments=0,tls_certificates=0,tenant_tables=0,tenant_cases=0,checkpoints=0,pending_writes=0,task_checkpoint_links=0)
+counts=dict(authenticated_roles=0,wrong_passwords_rejected=0,credentials=0,mfa_secrets=0,attachments=0,tls_certificates=0,tenant_tables=0,tenant_cases=0,checkpoints=0,pending_writes=0,task_checkpoint_links=0)
 def check(value,message):
  if not value:raise RuntimeError(message)
 def walk(value,depth=0):
@@ -73,7 +83,19 @@ def walk(value,depth=0):
    else:walk(v,depth+1)
  elif isinstance(value,list):
   for v in value:walk(v,depth+1)
-with psycopg.connect('postgresql://'+packet['admin']+'@127.0.0.1:5432/myink',row_factory=dict_row,options='-c default_transaction_read_only=on -c statement_timeout=10000') as db:
+if authentication:
+ for role,url in (('myink_app',app_url),('myink_report',report_url)):
+  with psycopg.connect(url.replace('postgresql+psycopg://','postgresql://',1),connect_timeout=3,options='-c statement_timeout=10000') as connection:
+   check(connection.execute('SELECT current_user').fetchone()[0]==role,'restored authenticated role differs')
+   if role=='myink_report':check(connection.execute('SHOW transaction_read_only').fetchone()[0]=='on','report role is not default read only')
+  counts['authenticated_roles']+=1
+  try:
+   wrong=psycopg.connect(host='127.0.0.1',port=5432,dbname='myink',user=role,password='intentionally_invalid_recovery_password',connect_timeout=3)
+  except psycopg.OperationalError as error:
+   check('password authentication failed' in str(error),'wrong credential did not fail authentication');counts['wrong_passwords_rejected']+=1
+  else:
+   wrong.close();raise RuntimeError('restored role still permits unauthenticated access')
+with psycopg.connect(admin_url,row_factory=dict_row,options='-c default_transaction_read_only=on -c statement_timeout=10000') as db:
  check(db.execute('SELECT system_identifier::text id FROM pg_control_system()').fetchone()['id']==packet['system_identifier'],'foreign restored database')
  role=db.execute("SELECT rolsuper,rolbypassrls FROM pg_roles WHERE rolname='myink_app'").fetchone()
  check(role==dict(rolsuper=False,rolbypassrls=False),'application bypasses RLS')
@@ -171,7 +193,7 @@ class OwnedApplicationProbe:
             if p.is_dir():continue
             _plain(p);total+=p.stat().st_size;require(len(files)<20000 and total<=self.restore.backend.config['maximum_artifact_bytes'],'bounded application material pack required')
             files[p.relative_to(source).as_posix()]=sha256(p.read_bytes()).hexdigest()
-        packet=dict(files=files,admin=self.restore.admin,system_identifier=target['system_identifier'],runtime_sha256=runtime_pin)
+        packet=dict(files=files,admin=self.restore.admin,system_identifier=target['system_identifier'],runtime_sha256=runtime_pin,authentication=self.restore.authentication)
         durable_file(folder/'input.json',encoded(packet));durable_file(folder/'probe.py',PROBE.encode());archive=folder/'materials.tar'
         fd=os.open(archive,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
         with os.fdopen(fd,'wb') as outgoing:
@@ -205,8 +227,9 @@ class OwnedApplicationProbe:
             h._run(['exec','-i',self.cid,'python','-B','-c',UNPACK],stdin_path=archive,seconds=90);self._owned()
             bootstrap="import hashlib,sys;from pathlib import Path;p=Path('/tmp/pi-cold/probe.py');raw=p.read_bytes();assert hashlib.sha256(raw).hexdigest()==sys.argv[1];exec(compile(raw,str(p),'exec'),{'__name__':'__main__'})"
             result=h._run(['exec',self.cid,'python','-B','-c',bootstrap,sha256(PROBE.encode()).hexdigest()],seconds=180);observed=strict_json(h._bytes(result))
-            counts={'credentials','mfa_secrets','attachments','tls_certificates','tenant_tables','tenant_cases','checkpoints','pending_writes','task_checkpoint_links','model_requests'}
+            counts={'authenticated_roles','wrong_passwords_rejected','credentials','mfa_secrets','attachments','tls_certificates','tenant_tables','tenant_cases','checkpoints','pending_writes','task_checkpoint_links','model_requests'}
             require(isinstance(observed,dict) and set(observed)==counts|{'verified','api_health','runtime_sha256','target_system_identifier'} and observed['verified'] is True and observed['api_health'] is True and observed['runtime_sha256']==runtime_pin and observed['target_system_identifier']==target['system_identifier'] and all(type(observed[k]) is int and observed[k]>=0 for k in counts) and observed['model_requests']==0,'application assertions unconfirmed')
+            if self.restore.authentication is not None:require(observed['authenticated_roles']==observed['wrong_passwords_rejected']==2,'real restored role authentication unconfirmed')
             durable_file(folder/'receipt.json',encoded(observed));return observed
         finally:
             if self.cid is not None:
