@@ -544,11 +544,12 @@ def confirm_task_plan(task_id: str, body: PlanConfirmBody) -> dict:
                    "user_id": owner_id, "payload": {**payload, "approved_plan": approved},
                    "trace_id": trace_id, "request_id": task_id, "retry_count": 0, "created_at": ""}
         db.execute(text("SELECT set_config('app.tenant_id', :pid, true)"), {"pid": project_id})
-        intent_id = register_admission(db, message, priority=0)
+        priority = amqp.priority_for_user(owner_id)
+        intent_id = register_admission(db, message, priority=priority)
         db.commit()
     intent_outcome(intent_id, project_id, publication_state="unknown")
     try:
-        amqp.publish(json.dumps(message, ensure_ascii=False), amqp.KEY_TASKS, priority=amqp.priority_for_user(owner_id))
+        amqp.publish(json.dumps(message, ensure_ascii=False), amqp.KEY_TASKS, priority=priority)
     except Exception as exc:
         raise HTTPException(status_code=503, detail="计划确认投递结果未确认，请刷新任务状态") from exc
     intent_outcome(intent_id, project_id, publication_state="published")

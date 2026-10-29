@@ -138,27 +138,20 @@ def _on_message(ch, method, properties, body_raw, r, worker_id: str, *, connecti
         logger.warning("重试超限进 DLQ: task=%s retry=%s", task_id, body.get("retry_count"))
         return
 
-    if decision == 'yield':
-        try:
-            amqp.publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS, priority=priority)
-        except Exception:
-            logger.warning('批次续跑未确认，保留原消息: task=%s', task_id, exc_info=True)
-            ch.basic_nack(method.delivery_tag, requeue=True)
-            return
-        ch.basic_ack(method.delivery_tag)
-        return
-
-    if decision in ("retry", "defer"):
+    if decision in ("retry", "defer", "yield"):
         retry_count = int(body.get("retry_count", 0))
         outgoing = dict(body)
         if decision == "retry":
             outgoing["retry_count"] = retry_count + 1
             expiration = settings.worker_backoff_base * (2 ** retry_count) * 1000
-        else:
+        elif decision == "defer":
             expiration = settings.worker_defer_backoff_s * 1000
+        else:
+            expiration = None
+        destination = "tasks" if decision == "yield" else "delay"
         operation = "handoff:" + body["project_id"] + ":" + decision + ":" + body_hash({"body":outgoing,"predecessor":predecessor})
         with tenant_session(body["project_id"]) as db:
-            record_handoff(db,outgoing,"delay",operation,priority=priority,expiration_ms=expiration,predecessor_id=predecessor)
+            record_handoff(db,outgoing,destination,operation,priority=priority,expiration_ms=expiration,predecessor_id=predecessor)
         # The transaction context above has committed BEFORE acknowledging.
         ch.basic_ack(method.delivery_tag)
         publish_handoff(operation)

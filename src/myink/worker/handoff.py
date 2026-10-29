@@ -60,6 +60,13 @@ def admission_lane(intent_id,project_id,*,reentrant=False):
             finally:engine.dispose()
 
 
+def _tier_queue(destination, priority):
+    routed = amqp.tier_routing_key(destination, priority)
+    return {amqp.KEY_TASKS: amqp.main_queue, amqp.KEY_TASKS + '.vip': amqp.vip_queue,
+            amqp.KEY_DELAY: amqp.delay_queue, amqp.KEY_DELAY + '.vip': amqp.vip_delay_queue,
+            amqp.KEY_DLQ: amqp.dlq_queue}[routed]()
+
+
 def body_hash(body):
     return hashlib.sha256(json.dumps(body,sort_keys=True,ensure_ascii=False,separators=(",",":"),allow_nan=False).encode()).hexdigest()
 
@@ -153,9 +160,9 @@ def delivery_predecessor(db,body,properties):
             raise QueueAuthorityUnknown('delivery predecessor properties conflict')
     elif row.destination=='delay':
         if (not _delay_valid(body,row.expiration_ms) or expiration is not None
-                or not any(isinstance(death,dict) and death.get('queue')==amqp.delay_queue()
+                or not any(isinstance(death,dict) and death.get('queue')==_tier_queue(amqp.KEY_DELAY,row.priority)
                     and death.get('reason')=='expired' and death.get('original-expiration')==str(row.expiration_ms)
-                    and death.get('exchange')==amqp.exchange() and death.get('routing-keys')==[amqp.KEY_DELAY]
+                    and death.get('exchange')==amqp.exchange() and death.get('routing-keys')==[amqp.tier_routing_key(amqp.KEY_DELAY,row.priority)]
                     for death in headers.get('x-death',[]))):
             raise QueueAuthorityUnknown('delivery predecessor delay proof conflict')
     else:raise QueueAuthorityUnknown('delivery predecessor destination conflict')
@@ -229,12 +236,33 @@ def reconcile_admission_gate(intent_id,project_id):
     return state
 
 
+def settle_rejected_guest(intent_id, project_id):
+    """Atomically refund only a proved negative intake with no possible outbox."""
+    from myink.guest_quota import release_in_session
+    from myink.models.guest import GuestQuotaOperation
+    with tenant_session(project_id) as db:
+        intent=db.get(AdmissionIntent,uuid.UUID(str(intent_id)),with_for_update=True)
+        if intent is None:raise QueueAuthorityUnknown("unknown rejected intake")
+        if intent.gate_state not in ("rejected","compensated") or intent.publication_state not in ("pending","rejected"):
+            return False
+        if db.scalar(select(QueueHandoff.operation_id).where(QueueHandoff.admission_id==intent.id)) is not None:
+            return False
+        receipt=(intent.rebuild_payload.get("payload") or {}).get("_guest_operation")
+        if receipt:
+            charge=db.get(GuestQuotaOperation,uuid.UUID(str(receipt)),with_for_update=True)
+            if charge is None or charge.user_id!=intent.user_id or charge.task_id!=intent.task_id:
+                raise QueueAuthorityUnknown("guest compensation identity mismatch")
+            release_in_session(db,receipt)
+        intent.publication_state="not_attempted"
+    return True
+
+
 def replay_admissions(project_id,*,intent_ids=None):
     from myink.maintenance import intent_outcome
     from myink.worker.redis_client import get_redis
     with tenant_session(project_id) as db:
         query=select(AdmissionIntent.id).where(AdmissionIntent.project_id==uuid.UUID(str(project_id)),
-            AdmissionIntent.publication_state.in_(("pending","unknown")))
+            AdmissionIntent.publication_state.in_(("pending","unknown","rejected")))
         if intent_ids is not None:query=query.where(AdmissionIntent.id.in_(intent_ids))
         ids=list(db.scalars(query))
     for intent_id in ids:
@@ -242,10 +270,20 @@ def replay_admissions(project_id,*,intent_ids=None):
             if lane is None:continue
             with tenant_session(project_id) as db:
                 intent=db.get(AdmissionIntent,intent_id)
-                if intent.publication_state not in ("pending","unknown"):continue
+                if intent.publication_state not in ("pending","unknown","rejected"):continue
                 gate=intent.gate_state;body=dict(intent.rebuild_payload);priority=intent.priority
+                publication=intent.publication_state;inputs=dict(intent.quota_inputs)
+                possible=db.scalar(select(QueueHandoff.operation_id).where(QueueHandoff.admission_id==intent.id)) is not None
             if gate in ("pending","unknown"):gate=reconcile_admission_gate(intent_id,project_id)
-            if gate not in ("accepted","not_required"):continue
+            if publication=="rejected" and gate=="accepted" and inputs and not possible:
+                from myink.worker.enqueue import _compensate
+                if _compensate(get_redis(),inputs["keys"],task_id=inputs["task_id"],quota_n=inputs["quota_n"],
+                        platform_chapter_max=inputs["platform_chapter_max"],intent_id=str(intent_id)):
+                    intent_outcome(intent_id,project_id,gate_state="compensated");gate="compensated"
+            if gate in ("rejected","compensated"):
+                settle_rejected_guest(intent_id,project_id)
+                continue
+            if publication=="rejected" or gate not in ("accepted","not_required"):continue
             with tenant_session(project_id) as db:
                 task=db.get(Task,uuid.UUID(body["task_id"]))
                 if task and task.status not in ("queued","running"):continue
@@ -276,7 +314,7 @@ def replay_handoffs(max_operations=20):
         for kind,model,column in (("admission",AdmissionIntent,AdmissionIntent.id),("handoff",QueueHandoff,QueueHandoff.operation_id)):
             if position and str(pid)==position[0] and kind<position[1]:continue
             with tenant_session(pid) as db:
-                states=AdmissionIntent.publication_state.in_(("pending","unknown")) if kind=="admission" else QueueHandoff.state.in_(("pending","unknown"))
+                states=AdmissionIntent.publication_state.in_(("pending","unknown","rejected")) if kind=="admission" else QueueHandoff.state.in_(("pending","unknown"))
                 query=select(column).where(model.project_id==pid,states)
                 if position and str(pid)==position[0] and kind==position[1]:
                     query=query.where(column>(uuid.UUID(position[2]) if kind=="admission" else position[2]))
@@ -293,7 +331,7 @@ def _queue_census():
     deliveries=[];unknown=0
     with amqp.connect() as connection:
         channel=connection.channel();amqp.declare_topology(channel)
-        for queue in (amqp.main_queue(),amqp.delay_queue(),amqp.dlq_queue()):
+        for queue in (amqp.main_queue(),amqp.vip_queue(),amqp.delay_queue(),amqp.vip_delay_queue(),amqp.dlq_queue()):
             snapshot=channel.queue_declare(queue,passive=True).method
             if snapshot.consumer_count or snapshot.message_count>1000:unknown+=1;continue
             tags=[]
@@ -361,10 +399,12 @@ def reconcile_queue(db,epoch:str):
                 from types import SimpleNamespace
                 if queue==amqp.dlq_queue() or intent is None:
                     raise QueueAuthorityUnknown("quarantined or unproven delivery")
-                if (metadata.get("delivery_mode")!=2 or metadata.get("exchange")!=amqp.exchange()
-                        or metadata.get("routing_key")!=("delay" if queue==amqp.delay_queue() else "tasks")):
+                destination=amqp.KEY_DELAY if queue in (amqp.delay_queue(),amqp.vip_delay_queue()) else amqp.KEY_TASKS
+                if (queue!=_tier_queue(destination,metadata.get("priority"))
+                        or metadata.get("delivery_mode")!=2 or metadata.get("exchange")!=amqp.exchange()
+                        or metadata.get("routing_key")!=amqp.tier_routing_key(destination,metadata.get("priority"))):
                     raise QueueAuthorityUnknown("delivery topology properties conflict")
-                if queue==amqp.delay_queue():
+                if destination==amqp.KEY_DELAY:
                     operation=(metadata.get("headers") or {}).get("operation_id")
                     previous=db.get(QueueHandoff,operation) if isinstance(operation,str) else None
                     if (previous is None or previous.state not in ("unknown","published") or previous.destination!="delay"
@@ -376,7 +416,7 @@ def reconcile_queue(db,epoch:str):
                     predecessor=operation
                 else:predecessor=delivery_predecessor(db,body,SimpleNamespace(**metadata))
                 if predecessor is None:
-                    if (queue!=amqp.main_queue() or metadata.get("priority")!=intent.priority
+                    if (queue!=_tier_queue(amqp.KEY_TASKS,intent.priority) or metadata.get("priority")!=intent.priority
                             or metadata.get("message_id")!=intent.message_id
                             or metadata.get("correlation_id")!=str(intent.task_id)
                             or metadata.get("expiration") is not None):

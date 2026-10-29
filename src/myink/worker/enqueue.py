@@ -31,7 +31,7 @@ from myink.config import settings
 from myink.db import tenant_session
 from myink.maintenance import register_admission, intent_outcome, require_admission_open
 from myink.worker import amqp
-from myink.worker.handoff import admission_lane
+from myink.worker.handoff import admission_lane, settle_rejected_guest
 from myink.worker.redis_client import (
     book_cnt_key,
     book_quota_key,
@@ -182,7 +182,7 @@ def _enqueue(*, db, budget_snapshot: dict, user_id: str, project_id: str, task_t
         if state[1]=="unknown" or state[0] in ("rejected","compensated"):
             raise EnqueueUnavailable("publication_already_uncertain")
 
-        def refund_if_definite(publication_state):
+        def refund_if_definite():
             # Same lane, locked durable recheck: a nested/already-started replay
             # leaves an original-linked outbox even when its confirm is unknown.
             with tenant_session(project_id) as db:
@@ -190,11 +190,11 @@ def _enqueue(*, db, budget_snapshot: dict, user_id: str, project_id: str, task_t
                 previous=db.get(QueueHandoff,"admission:"+str(intent_id))
                 possible=current.publication_state=="published" or previous is not None
             if possible:return
-            outcome(gate_state="unknown",publication_state=publication_state)
+            outcome(gate_state="unknown",publication_state="rejected")
             compensated=_compensate(r,keys,task_id=task_id,quota_n=quota_n,
                 platform_chapter_max=platform_chapter_max,intent_id=str(intent_id))
             outcome(gate_state="compensated" if compensated else "unknown")
-            release(guest_operation)
+            settle_rejected_guest(intent_id,project_id)
 
         outcome(gate_state="unknown")
         try:
@@ -205,8 +205,8 @@ def _enqueue(*, db, budget_snapshot: dict, user_id: str, project_id: str, task_t
         except Exception as exc:
             raise EnqueueUnavailable("gates") from exc
         if code != 1:
-            outcome(gate_state="rejected", publication_state="not_attempted")
-            release(guest_operation)
+            outcome(gate_state="rejected")
+            settle_rejected_guest(intent_id,project_id)
             raise GateError(reason)
         outcome(gate_state="accepted")
 
@@ -214,7 +214,7 @@ def _enqueue(*, db, budget_snapshot: dict, user_id: str, project_id: str, task_t
         try:
             r.set(f"queue:task-owner:{task_id}", owner, ex=_OWNER_TTL_S)
         except Exception as exc:
-            refund_if_definite("not_attempted")
+            refund_if_definite()
             raise EnqueueUnavailable("owner") from exc
 
         outcome(publication_state="unknown")
@@ -223,7 +223,7 @@ def _enqueue(*, db, budget_snapshot: dict, user_id: str, project_id: str, task_t
             publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS, priority=priority)
         except (amqp.PublishNotSent, pika.exceptions.NackError, pika.exceptions.UnroutableError) as exc:
             # 确定失败：broker 明确拒收，消息一定不在队列里 → 回滚闸门
-            refund_if_definite("rejected")
+            refund_if_definite()
             raise EnqueueUnavailable("publish_rejected") from exc
         except Exception as exc:
             # 结果不明（confirm 超时/连接中断）：消息可能已入队。补偿会造成

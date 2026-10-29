@@ -56,27 +56,47 @@ def test_real_broker_keeps_retry_in_original_tier():
 
 
 @pytest.mark.parametrize('fails', [False, True])
-def test_batch_yield_confirm_precedes_ack_without_retry_charge(temp_project, monkeypatch, fails):
-    from myink.workflow.runner import new_task
-    from test_worker import _body
+def test_batch_yield_durable_handoff_precedes_ack_without_retry_charge(temp_project, monkeypatch, fails):
+    import uuid
+    from sqlalchemy import select
+    from myink.db import new_session, tenant_session
+    from myink.models import Project
+    from myink.models.maintenance import QueueHandoff
+    from myink.maintenance import register_admission
 
-    tid = new_task(project_id=temp_project, task_type='batch_generate', payload={'start': 1, 'size': 2})
-    body = _body(tid, temp_project, task_type='batch_generate', payload={'start': 1, 'size': 2})
+    tid = str(uuid.uuid4())
+    with new_session() as db:
+        owner = str(db.get(Project, uuid.UUID(temp_project)).user_id)
+    body = dict(task_id=tid, request_id=tid, project_id=temp_project, user_id=owner,
+                task_type='batch_generate', payload={'start': 1, 'size': 2}, retry_count=0)
+    with tenant_session(temp_project) as db:
+        register_admission(db, body, priority=9)
     events = []
     monkeypatch.setattr(consumer, 'process', lambda *a, **k: 'yield')
     monkeypatch.setattr(consumer, 'observe', lambda *a: None)
     ch = Mock()
-    ch.basic_ack.side_effect = lambda *a: events.append('ack')
+    def acknowledge(*args):
+        with tenant_session(temp_project) as db:
+            row = db.scalar(select(QueueHandoff).where(QueueHandoff.task_id == uuid.UUID(tid)))
+            assert row.state == 'pending' and row.destination == 'tasks'
+        events.append('ack')
+    ch.basic_ack.side_effect = acknowledge
     ch.basic_nack.side_effect = lambda *a, **k: events.append('nack')
-    def publish(body, key, **kwargs):
+    def publish(raw, key, **kwargs):
+        payload = json.loads(raw)
+        assert payload['retry_count'] == 0
+        assert key == amqp.KEY_TASKS and kwargs['priority'] == 9 and kwargs['expiration_ms'] is None
+        with tenant_session(temp_project) as db:
+            assert db.get(QueueHandoff, kwargs['operation_id']).state == 'unknown'
         events.append('publish')
-        assert json.loads(body)['retry_count'] == 0
-        assert key == amqp.KEY_TASKS and kwargs['priority'] == 9
         if fails: raise ConnectionError('confirm lost')
-    monkeypatch.setattr(amqp, 'publish', publish)
+    monkeypatch.setattr(amqp, 'publish_once', publish)
     consumer._on_message(ch, SimpleNamespace(delivery_tag=1), SimpleNamespace(priority=9),
                          json.dumps(body), Mock(), 'worker')
-    assert events == ['publish', 'nack' if fails else 'ack']
+    assert events == ['ack', 'publish']
+    with tenant_session(temp_project) as db:
+        row = db.scalar(select(QueueHandoff).where(QueueHandoff.task_id == uuid.UUID(tid)))
+        assert row.state == ('unknown' if fails else 'published')
 
 
 def test_yield_retains_inflight_and_does_not_accumulate_cost(monkeypatch):
