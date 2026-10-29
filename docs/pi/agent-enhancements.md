@@ -157,3 +157,7 @@ sdk_review_launcher通过全新无工具SDK会话给出approve/reject/needs_evid
 ## 恢复主API进程（2026-10-30）
 
 真实myink-api PID1、封存有效环境、实际附件/用户读取和自然退出；15组件/合同3，模型工具和费用边界不变。 证据见[阶段记录](../evaluations/pi-restored-api-2026-10-30.md)。
+
+## 整组服务恢复（2026-10-30）
+
+原基础服务配置、Redis原值/绝对TTL、实际worker受限连接及正常退出、封存TLS；17组件/合同4，所属内部网络与低权限Caddy私有执行副本。 证据见[阶段记录](../evaluations/pi-restored-services-2026-10-30.md)。
