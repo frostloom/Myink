@@ -288,3 +288,7 @@ tools do not change. Separate source plan and qualification gate:
 ## 产品来源存储探针更正（开发中）
 
 实际来源由workflow记录在agent_runs.detail.run_provenance；任务元数据保存在tasks，payload为JSON。catalog v1的task_provenance/agent_run_provenance布尔名保留兼容，但新版实现仅表示tasks.payload/agent_runs.detail为JSON或JSONB存储，不能证明已有内容、完整来源或部署归属。旧实现查找不存在的独立run_provenance列，历史false观测与原收据保留。原始源码/配置身份、实际新运行来源与main采用仍需独立证据；探针不回填历史行，也不放行产品发布。修复已用独立真实PostgreSQL复现；源码尚待本维护计划最终审查与实际探针更新，不表示现有服务器探针已切换。
+
+## Linux 引导与恢复阶段输出（2026-10-30）
+
+源码b38d8a80的阶段输出见docs/evaluations/pi-native-bootstrap-checkpoint-2026-10-30.md/.json。独立标准库reader验证本地9事件、完整18路径、no_release以及blocked次日无结果；源实现、实际隔离服务、模型自主成果和生产采用分开统计。该导出未写服务器，当前管理员页面/权限也未变。本轮真实模型请求0；生产适配器在完整activate/rollback缺失时仍阻断，不能把局部恢复证明作为上线许可。

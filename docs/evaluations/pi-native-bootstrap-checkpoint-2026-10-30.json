@@ -1,0 +1,257 @@
+{
+  "schema": "pi-native-bootstrap-checkpoint-v1",
+  "date": "2026-10-30",
+  "run_id": "pi-native-bootstrap-20261030",
+  "source_commit": "b38d8a806f16b0c8f0a9e4d80f93e0fca4b99f12",
+  "base_commit": "adc1a48aa0c40cf59ab39e2b5f6efcc9ed0df447",
+  "source_scope_sha256": "9832704d5a8d42817b7093e0ecad5d24b674d00d55a8645869b3c9d20e3c7bcf",
+  "candidate_sha256": "04a38aa6bc64537c2456e7fb7e9fb75a368a54fe1ccf4c86a873cca3c6702393",
+  "status": "offline_and_partial_native_verified",
+  "release_allowed": false,
+  "production_changed": false,
+  "server_audit_published": false,
+  "main_merged": false,
+  "provider_calls": 0,
+  "pi_autonomous_improvement_claim": false,
+  "tests": {
+    "offline_passed": 4028,
+    "offline_deselected": 43,
+    "offline_seconds": 271.83,
+    "native_unique_cases_passed": 7,
+    "native_scope": "synthetic data on real owned PG and Redis; no canonical ACTUAL host activation",
+    "failed_runs_retained": true
+  },
+  "changes": [
+    {
+      "path": "docs/pi/administrator-audit-handoff.md",
+      "category": "docs",
+      "added": 5,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-29-pi-product-maintenance-release.md",
+      "category": "docs",
+      "added": 1,
+      "deleted": 1
+    },
+    {
+      "path": "ops/pi/product_backup.py",
+      "category": "production",
+      "added": 156,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/product_bootstrap.py",
+      "category": "production",
+      "added": 2,
+      "deleted": 1
+    },
+    {
+      "path": "ops/pi/product_commands.py",
+      "category": "production",
+      "added": 138,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/product_migration.py",
+      "category": "production",
+      "added": 140,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/product_reality.py",
+      "category": "production",
+      "added": 4,
+      "deleted": 2
+    },
+    {
+      "path": "ops/pi/product_restore.py",
+      "category": "production",
+      "added": 160,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/product_runtime.py",
+      "category": "production",
+      "added": 255,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/integration/test_product_catalog.py",
+      "category": "test",
+      "added": 46,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/integration/test_product_migration_native.py",
+      "category": "test",
+      "added": 94,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/integration/test_product_redis_native.py",
+      "category": "test",
+      "added": 44,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/integration/test_product_restore_native.py",
+      "category": "test",
+      "added": 82,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/test_product_backup.py",
+      "category": "test",
+      "added": 116,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/test_product_bootstrap.py",
+      "category": "test",
+      "added": 13,
+      "deleted": 1
+    },
+    {
+      "path": "ops/pi/tests/test_product_commands.py",
+      "category": "test",
+      "added": 172,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/test_product_restore.py",
+      "category": "test",
+      "added": 46,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/test_product_runtime.py",
+      "category": "test",
+      "added": 206,
+      "deleted": 0
+    }
+  ],
+  "implemented": [
+    "bounded private Docker command intents and output",
+    "natural API and worker drain; authenticated lock census",
+    "paired PRE collection with separate read-only billing and manager snapshots",
+    "owned distinct-system PostgreSQL restore and content comparison",
+    "private bounded material restoration and owned cleanup",
+    "candidate raw and imported runtime source verification before schema writes",
+    "additive maintenance schema; historical rows unchanged",
+    "transactional first owner-generation-epoch binding under closed admission",
+    "global production control ledger retaining unresolved POST debt"
+  ],
+  "pending": [
+    "full rehearsal network/volume/port boundary qualification",
+    "native activation and fresh POST collection/restore",
+    "application cold-start and actual business probes",
+    "ownership-safe business version rollback preserving later user writes",
+    "fixed release operation package and one final independent review",
+    "explicit main/product release approval and deployment",
+    "fresh real Pi candidate adoption and actual 24-48h observation"
+  ],
+  "nextday": {
+    "plan": {
+      "test_id": "native-bootstrap-nextday-20261031",
+      "scheduled_for": "2026-10-31T03:00:00+00:00",
+      "target_run_id": "pi-native-bootstrap-20261030",
+      "target_version_sha256": "04a38aa6bc64537c2456e7fb7e9fb75a368a54fe1ccf4c86a873cca3c6702393",
+      "criterion": "冻结来源后复跑可信主机回归与隔离恢复；实际产品观察待发布后另登记。",
+      "kind": "regression",
+      "status": "blocked"
+    },
+    "registered": false,
+    "result": null
+  },
+  "audit": {
+    "event_count": 9,
+    "source_scope_count": 18,
+    "published": "local private export only",
+    "reader_verified": true,
+    "reader_proof_sha256": "6dd124746fd7808c449079b8e8d623494b9d7843129e1980c7f0f9e680e79060",
+    "standalone_stdlib_only": true
+  },
+  "evidence": {
+    "recovery-materials-red.log": {
+      "sha256": "e9f052cbcb5556c6505c2f2708fef3c35707863c9543b4711804713ddaad61e7",
+      "bytes": 12203
+    },
+    "recovery-materials-green.log": {
+      "sha256": "dda573ec46d2d61d847997f3762482e0bb9a232c80d926d72d24270185b97ea3",
+      "bytes": 99
+    },
+    "native-recovery-fixture-failure.log": {
+      "sha256": "fff16bad42bbe88e4512eb45d318c10b3f3c38fcc29b7b973c8934e8373a99e7",
+      "bytes": 4920
+    },
+    "native-recovery-readiness-failure.log": {
+      "sha256": "9a5b580cd28f6c0761975f0c470778e211d4930650105786e747433c5dc05bb1",
+      "bytes": 5601
+    },
+    "native-recovery-positive-first.log": {
+      "sha256": "85bcaece0f979aeda16bf175f33d832f02a38972a303b85bb947cf8f9d7c0ebc",
+      "bytes": 98
+    },
+    "native-recovery-content-red.log": {
+      "sha256": "2e7b4bf2411559ddf232c89acf931a552d7a6f81bfd984218b2762e9d6f509a6",
+      "bytes": 5615
+    },
+    "native-recovery-content-green.log": {
+      "sha256": "a2c34f9e365e512ce252906a7c878131bb5c92cf389bd0e6c7e4509c5084fe3b",
+      "bytes": 99
+    },
+    "runtime-hardening-red.log": {
+      "sha256": "553d255ceec86f3490c776d412d4d94d8efa0fd9fca142a65872eaba303a43d2",
+      "bytes": 3798
+    },
+    "native-related-222-green.log": {
+      "sha256": "10c1089c4ee464d43a6782f248624727f259d2697416008d98ba41874d54c687",
+      "bytes": 341
+    },
+    "native-migration-red.log": {
+      "sha256": "f3654ccc4a0956bb2a44ba383070fd87b8d7cc51483fc4a90adda4fd472e1f85",
+      "bytes": 1377
+    },
+    "native-migration-duplicate-result-failure.log": {
+      "sha256": "2373ad3603c95a3844c4186c88394c21afec249f4a871b318d3967257f3b56aa",
+      "bytes": 7394
+    },
+    "native-migration-positive-first.log": {
+      "sha256": "46f07e0918f81faf472c986518c1658ad986997c0cdfadcc78e31fef4d687762",
+      "bytes": 99
+    },
+    "native-migration-three-cases-green.log": {
+      "sha256": "b1868fea2cb26f2f9a7c505e942b1acc893fa3dc4eb83266d23455188b6ab3a0",
+      "bytes": 109
+    },
+    "native-redis-red.log": {
+      "sha256": "f5debfb13e4959222f4959ed97763396b7c3a0e67d6a62b110b429de0d25d9ba",
+      "bytes": 1146
+    },
+    "native-redis-green.log": {
+      "sha256": "c9a4802b1e58c1e28ee37828e22ea5a5bce4aadd9dff73452d51ac965fd37f94",
+      "bytes": 98
+    },
+    "runtime-final-31-green.log": {
+      "sha256": "2090b69d0b03da9b426dc7f3700b7d88ffc3917ccf8958850bd6faf36eae2ec6",
+      "bytes": 99
+    },
+    "full-offline-sandbox-interrupted.log": {
+      "sha256": "704c2c92033952cc82e0eb42405700bb498a843a7f2b42cc995726704a4390e1",
+      "bytes": 170916
+    },
+    "full-offline-sandbox-reproduction.log": {
+      "sha256": "0df987e9c576cb574840f5fd9b7c56f162dcdd9a49e44ddc7c97a94b51faea84",
+      "bytes": 2892
+    },
+    "full-offline-mixed-fixture-failure.log": {
+      "sha256": "5785503dfcb702631ae788c0b60ae205e24ef362e7c31522f7c839eadb4bcef1",
+      "bytes": 23282
+    },
+    "full-offline-permitted.log": {
+      "sha256": "13a8ed287ed22af9cb13d554a2eda483652c8549f2870ceeaa935a1e22418d64",
+      "bytes": 4528
+    }
+  }
+}
