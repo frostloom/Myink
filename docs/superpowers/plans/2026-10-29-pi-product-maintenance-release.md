@@ -23,7 +23,7 @@
 
 ### Task 1: 冻结实际产品及首次引导兼容协议
 
-**Files:** Create `ops/pi/product_bootstrap.py`; Test `ops/pi/tests/test_product_bootstrap.py`. Read `ops/pi/maintenance.py`, `ops/pi/backup.py`, `src/myink/db.py`, `src/myink/maintenance_pause.py`. No production schema execution in this task.
+**Files:** Create `ops/pi/product_bootstrap.py`; Test `ops/pi/tests/test_product_bootstrap.py`. Read `ops/pi/maintenance.py`, `ops/pi/backup.py`, `src/myink/db.py`, `src/myink/maintenance_pause.py`. No production schema execution in this task. 用户已授权中途推送；可推送标明WIP的阶段检查点，最终独立审查仍在Task3，不以检查点CI代替完整验收。
 
 **Interface:** `prepare_bootstrap(ledger, plan, host, *, now=None)` receives a trusted host boundary (never model/HTTP input). Closed plan fields: schema, mode, operation_id, legacy, candidate, expires_at. Legacy freezes source commit/hash and complete container/image identity; candidate uses contracts.Identity fields. Host must acquire shared release lock and revalidate external authorization/current identity before each fixed action. Action order: close_ingress -> drain_legacy -> backup_pre -> install_schema -> bind_identity. A prepared receipt is admission-closed, workers-stopped, release_allowed=false; no activation or public reopen is included. ACTUAL will require the exact Linux adapter introduced in Task2; injected clocks/adapters cannot impersonate it.
 
