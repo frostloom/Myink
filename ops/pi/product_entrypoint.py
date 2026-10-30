@@ -8,24 +8,26 @@ from .audit import require,hash_value
 from .product_runtime import LinuxProductHost
 from .product_bootstrap import prepare_bootstrap
 from .product_release import NativeProductRelease
+from .product_lineage import retire as retire_previous
 
 
 def execute(action,*,host_path,host_sha256,control_path=None,control_sha256=None,control_approval_path=None,control_approval_sha256=None,rollback_lease_path=None,rollback_lease_sha256=None):
-    require(action in ('prepare','activate','rollback') and host_path is not None and hash_value(host_sha256),'fixed product operator action required')
+    require(action in ('prepare','activate','rollback','retire') and host_path is not None and hash_value(host_sha256),'fixed product operator action required')
     require((rollback_lease_path is None)==(rollback_lease_sha256 is None) and (rollback_lease_path is None or action=='rollback' and hash_value(rollback_lease_sha256)),'rollback-only operator lease required')
     control=(control_path,control_sha256,control_approval_path,control_approval_sha256)
-    if action=='prepare':require(all(v is None for v in control),'prepare cannot receive release controls')
+    if action in ('prepare','retire'):require(all(v is None for v in control),'preparation or retirement cannot receive release controls')
     else:require(all(v is not None for v in control) and hash_value(control_sha256) and hash_value(control_approval_sha256),'complete sealed product controls required')
     host=LinuxProductHost(host_path,host_sha256,rollback_lease_path=rollback_lease_path,rollback_lease_sha256=rollback_lease_sha256)
     if action=='prepare':return prepare_bootstrap(host.ledger,host.plan,host)
     with host.lock(host.plan):
+        if action=='retire':return retire_previous(host)
         controller=NativeProductRelease(host,control_path,control_sha256,control_approval_path,control_approval_sha256)
         return controller.activate() if action=='activate' else controller.rollback()
 
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description='Fixed root-approved Myink product protocol entry')
-    parser.add_argument('action',choices=('prepare','activate','rollback'))
+    parser.add_argument('action',choices=('prepare','activate','rollback','retire'))
     for flag in ('host-config','host-sha256','control-config','control-sha256','control-approval','control-approval-sha256','rollback-lease','rollback-lease-sha256'):
         parser.add_argument('--'+flag,required=flag.startswith('host-'))
     args=parser.parse_args(argv)

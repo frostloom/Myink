@@ -12,7 +12,7 @@ from test_product_backup import write
 pytestmark=pytest.mark.pi_followup_docker
 
 
-@pytest.mark.parametrize('flow',['lifecycle','release','runtime','runtime-bad-report','runtime-writable-report','runtime-business','runtime-business-bad'])
+@pytest.mark.parametrize('flow',['lifecycle','release','runtime','runtime-bad-report','runtime-writable-report','runtime-business','runtime-business-bad','runtime-lineage'])
 def test_owned_full_stack_candidate_and_fresh_rollback_cohorts(tmp_path,flow):
     assert importlib.util.find_spec('ops.pi.product_activation'),'missing native cohort factory'
     from ops.pi.product_activation import NativeActivation,context_from_inspects,ACTIONS
@@ -22,7 +22,7 @@ def test_owned_full_stack_candidate_and_fresh_rollback_cohorts(tmp_path,flow):
     docker=Path('/Users/a1/开发工具/bin/docker')
     if not docker.exists():docker=Path('/usr/bin/docker')
     docker=docker.resolve();op=str(uuid.uuid4());project='myink-pi-rehearsal-'+op;label='myink.pi.rehearsal='+op
-    resources=[];network=None;volume=None;root=(tmp_path/'operation').resolve();root.mkdir(mode=0o700)
+    resources=[];network=None;volume=None;lineage_inputs=None;root=(tmp_path/'operation').resolve();root.mkdir(mode=0o700)
     def run(*args,body=None,seconds=120):
         p=subprocess.run([str(docker),*args],input=body,capture_output=True,timeout=seconds,check=True)
         assert len(p.stdout)<=67108864
@@ -143,7 +143,9 @@ with Session(get_admin_engine()) as db:
         if flow.startswith('runtime'):backup_settings.update(schema='pi-product-backup-v2',runtime_context_path=str(context_path),runtime_context_sha256=context_pin)
         bp=root/'backup.json';bpin=write(bp,backup_settings)
         lock=root/'maintenance.lock';lock.write_bytes(b'');lock.chmod(0o600)
-        hp=root/'host.json';hpin=write(hp,dict(schema='pi-linux-product-host-v1',mode='SIMULATED',target='rehearsal',docker=str(docker),endpoint=endpoint,daemon_id=daemon,root=str(root),lock_path=str(lock),project=project,plan_path=str(pp),plan_sha256=ppin,approval_path=str(approval),approval_sha256=apin,legacy_manifest_path=str(lp),legacy_manifest_sha256=lpin,candidate_manifest_path=str(cp),candidate_manifest_sha256=cpin,backup_path=str(bp),backup_sha256=bpin,compose_dir=str(compose),drain_seconds=120,queue_prefix=''))
+        hp=root/'host.json';host_settings=dict(schema='pi-linux-product-host-v1',mode='SIMULATED',target='rehearsal',docker=str(docker),endpoint=endpoint,daemon_id=daemon,root=str(root),lock_path=str(lock),project=project,plan_path=str(pp),plan_sha256=ppin,approval_path=str(approval),approval_sha256=apin,legacy_manifest_path=str(lp),legacy_manifest_sha256=lpin,candidate_manifest_path=str(cp),candidate_manifest_sha256=cpin,backup_path=str(bp),backup_sha256=bpin,compose_dir=str(compose),drain_seconds=120,queue_prefix='')
+        if flow=='runtime-lineage':host_settings.update(schema='pi-linux-product-host-v2',project_operation_id=op,lineage_path=None,lineage_sha256=None)
+        hpin=write(hp,host_settings)
         h=LinuxProductHost(hp,hpin)
         if flow=='runtime-bad-report':d('exec',pg,'psql','-X','-q','-U','myink','-d','myink','-c',"ALTER ROLE myink_report PASSWORD 'different-source-report-password'")
         if flow=='runtime-writable-report':d('exec',pg,'psql','-X','-q','-U','myink','-d','myink','-c','ALTER ROLE myink_report SET default_transaction_read_only=off')
@@ -157,7 +159,7 @@ with Session(get_admin_engine()) as db:
             return
         assert prepared.status=='done',prepared
         with h.lock(plan):
-            if flow in ('release','runtime','runtime-business','runtime-business-bad'):
+            if flow in ('release','runtime','runtime-business','runtime-business-bad','runtime-lineage'):
                 from ops.pi.product_release import NativeProductRelease
                 before=digest(json.loads((root/'ingress-before.json').read_bytes()))
                 release_settings=dict(schema='pi-product-control-v1',mode='SIMULATED',target='rehearsal',plan_sha256=digest(plan),context_path=str(context_path),context_sha256=context_pin,activation_approval_path=str(a_path),activation_approval_sha256=a_pin,ingress_before_sha256=before,maximum_stopped_seconds=1800,expires_at=plan['expires_at'])
@@ -207,7 +209,7 @@ with Session(get_admin_engine()) as db:
                     timer=json.loads((root/'native-control/rollback/start.json').read_bytes());assert timer['lease_sha256']==lease_pin and datetime.fromisoformat(timer['started_at'])>datetime.fromisoformat(plan['expires_at'])
                     assert h.ledger.get('product-control:'+op+':rollback')['status']=='done'
                 assert returned.evidence['identity']['generation']==2 and returned.evidence['original_control_state_restored'] is False
-                if flow in ('runtime','runtime-business'):
+                if flow in ('runtime','runtime-business','runtime-lineage'):
                     pre=next(root.glob('restore-*/application-legacy/receipt.json'))
                     proof_rows=[]
                     for folder in root.glob('restore-*'):
@@ -234,6 +236,8 @@ with Session(get_admin_engine()) as db:
                     assert all(h.ledger.get('native:'+op+':'+action)['status']=='done' for action in ('start_candidate','stop_candidate','start_candidate_admission','stop_candidate_admission'))
                     assert h.ledger.get(parent+':stop-validation')['status']=='done'
                 with pytest.raises(ValueError):release.activate()
+                if flow=='runtime-lineage':
+                    lineage_inputs=(release.actor._cohort('rollback'),release.actor._cohort('candidate'),settings_pin,context_pin)
                 return
             actor=NativeActivation(h,context_path,context_pin,a_path,a_pin)
             created=actor.create('candidate');assert len(created)==3
@@ -258,20 +262,53 @@ with Session(get_admin_engine()) as db:
             assert all(b'synthetic-private-key' not in p.read_bytes() for p in intents)
         assert d('exec',front,'/usr/bin/curl','-sS','-o','/dev/null','-w','%{http_code}','http://127.0.0.1/api/v1/projects')=='503'
     finally:
-        # Include registered partial cohorts after assertion failures, by exact
-        # operation label plus pinned image before removal; never product names.
-        own=d('ps','-aq','--no-trunc','--filter','label='+label).splitlines()
-        factory=d('ps','-aq','--no-trunc','--filter','label=myink.pi.release.operation='+op).splitlines()
-        known=dict(resources)
-        for cid in dict.fromkeys([*factory,*own]):
-            v=inspect(cid);assert v['Config']['Labels'].get('myink.pi.rehearsal')==op or v['Config']['Labels'].get('myink.pi.release.operation')==op
-            assert v['Image'] in set(images.values())|{candidate}
-            if cid in known:assert v['Image']==known[cid]
-            log=subprocess.run([str(docker),'--host',endpoint,'logs',cid],capture_output=True,timeout=20)
-            target=root/(cid[:12]+'.log');target.write_bytes(log.stdout+log.stderr);target.chmod(0o600)
-            statefile=root/(cid[:12]+'-state.json');statefile.write_text(json.dumps(v['State']));statefile.chmod(0o600)
-            d('rm','--force',cid)
-        if volume:
-            v=json.loads(d('volume','inspect',volume))[0];assert v['Labels'].get('myink.pi.rehearsal')==op;d('volume','rm',volume)
-        if network:
-            n=json.loads(d('network','inspect',network))[0];assert n['Labels'].get('myink.pi.rehearsal')==op and not n['Containers'];d('network','rm',network)
+        try:
+            if lineage_inputs is not None:
+                from copy import deepcopy
+                from ops.pi.product_lineage import retire
+                current,previous_candidate,previous_control,previous_context=lineage_inputs
+                previous=json.loads(d('exec',pg,'psql','-X','-q','-A','-t','-U','myink','-d','myink','-c','SELECT row_to_json(m) FROM maintenance_control m WHERE id=1'))
+                following=deepcopy(plan);following.update(schema='pi-product-upgrade-v2',operation_id=str(uuid.uuid4()),previous=previous,expires_at=(datetime.now(timezone.utc)+timedelta(minutes=10)).isoformat())
+                following['candidate'].update(generation=3,deployment_id='third-'+following['operation_id'])
+                following['legacy']['containers']=[v for v in plan['legacy']['containers'] if v['service'] not in ('api','worker')]+current
+                retired=sorted([v for v in plan['legacy']['containers'] if v['service'] in ('api','worker')]+previous_candidate,key=lambda v:v['id'])
+                packet=dict(schema='pi-product-lineage-v1',mode='SIMULATED',target='rehearsal',authority='owned_rehearsal',approved_action='retire_previous',next_plan_sha256=digest(following),project_operation_id=op,previous_plan=plan,previous_action='rollback',previous_context_sha256=previous_context,previous_control_sha256=previous_control,current_cohort=current,retired=retired,expires_at=following['expires_at'])
+                next_root=root/'next-operation';next_root.mkdir(mode=0o700)
+                next_config=deepcopy(h.config);next_config['root']=str(next_root)
+                for field,value in (('plan',following),('lineage',packet),('approval',dict(schema='pi-product-release-approval-v1',mode='SIMULATED',target='rehearsal',authority='owned_rehearsal',plan_sha256=digest(following),approved_actions=list(STEPS),expires_at=following['expires_at']))):
+                    path=next_root/(field+'.json');next_config[field+'_path']=str(path);next_config[field+'_sha256']=write(path,value)
+                path=next_root/'host.json';second=LinuxProductHost(path,write(path,next_config))
+                assert second.ledger.path==h.ledger.path and second.config['project']==h.config['project']
+                ingress_before=digest(json.loads(d('exec',front,'/usr/bin/curl','-fsS','http://127.0.0.1:2019/config/')))
+                with second.lock(following):
+                    d('exec',pg,'psql','-X','-q','-U','myink','-d','myink','-c',"UPDATE maintenance_control SET owner='manual-release' WHERE id=1")
+                    with pytest.raises(ValueError,match='PostgreSQL owner'):retire(second)
+                    assert second.ledger.get('retire-previous:'+following['operation_id']) is None
+                    d('exec',pg,'psql','-X','-q','-U','myink','-d','myink','-c',"UPDATE maintenance_control SET owner='"+previous['owner']+"' WHERE id=1")
+                    assert all(inspect(v['id'])['State']['Running'] is False for v in retired)
+                    result=retire(second);assert result.status=='done' and len(result.evidence['removed_ids'])==6
+                    assert retire(second)==result
+                    assert second.inspect(following)==following['legacy']
+                    with pytest.raises(ValueError,match='continuous upgrade intake qualification pending'):second.preflight()
+                    assert second.ledger.get(following['operation_id']) is None
+                assert ingress_before==digest(json.loads(d('exec',front,'/usr/bin/curl','-fsS','http://127.0.0.1:2019/config/')))
+                assert all(fee.get('unknown-'+str(n))['status']=='pending' for n in range(9))
+                assert d('exec',pg,'psql','-X','-q','-A','-t','-U','myink','-d','myink','-c','SELECT count(*) FROM pi_native_release_marker')=='2'
+        finally:
+            # Include registered partial cohorts after assertion failures, by exact
+            # operation label plus pinned image before removal; never product names.
+            own=d('ps','-aq','--no-trunc','--filter','label='+label).splitlines()
+            factory=d('ps','-aq','--no-trunc','--filter','label=myink.pi.release.operation='+op).splitlines()
+            known=dict(resources)
+            for cid in dict.fromkeys([*factory,*own]):
+                v=inspect(cid);assert v['Config']['Labels'].get('myink.pi.rehearsal')==op or v['Config']['Labels'].get('myink.pi.release.operation')==op
+                assert v['Image'] in set(images.values())|{candidate}
+                if cid in known:assert v['Image']==known[cid]
+                log=subprocess.run([str(docker),'--host',endpoint,'logs',cid],capture_output=True,timeout=20)
+                target=root/(cid[:12]+'.log');target.write_bytes(log.stdout+log.stderr);target.chmod(0o600)
+                statefile=root/(cid[:12]+'-state.json');statefile.write_text(json.dumps(v['State']));statefile.chmod(0o600)
+                d('rm','--force',cid)
+            if volume:
+                v=json.loads(d('volume','inspect',volume))[0];assert v['Labels'].get('myink.pi.rehearsal')==op;d('volume','rm',volume)
+            if network:
+                n=json.loads(d('network','inspect',network))[0];assert n['Labels'].get('myink.pi.rehearsal')==op and not n['Containers'];d('network','rm',network)

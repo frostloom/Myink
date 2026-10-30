@@ -13,11 +13,12 @@ import stat
 import sys
 import tarfile
 import time
+import uuid
 
 from .audit import _path, _plain, digest, encoded, hash_value, require, strict_json, utc, SHANGHAI
 from .audit_export import _publish
 from .ledger import Ledger
-from .product_bootstrap import _plan, STEPS
+from .product_bootstrap import _plan, STEPS, BootstrapBlocked
 from .product_commands import DockerCommands
 
 BASE=Path('/home/ubuntu/myink-pi-managed')
@@ -45,12 +46,14 @@ def _pinned(path,pin,actual=False):
 
 class LinuxProductHost:
     def __init__(self, config_path, config_sha256, *, clock=None, rollback_lease_path=None, rollback_lease_sha256=None):
+        self.lineage=None;self.lineage_pin=None
         self.rollback_lease=None;self.rollback_lease_path=None;self.rollback_lease_pin=None
         require((rollback_lease_path is None)==(rollback_lease_sha256 is None),'paired rollback lease input required')
         self.config_path=_path(config_path);self.pin=config_sha256
         _plain(self.config_path);require(self.config_path.stat().st_size<=65536 and sha256(self.config_path.read_bytes()).hexdigest()==self.pin,'product host config drift')
         self.config=strict_json(self.config_path.read_bytes());c=self.config
-        require(isinstance(c,dict) and set(c)==FIELDS and c['schema']=='pi-linux-product-host-v1' and c['mode'] in ('ACTUAL','SIMULATED') and c['target'] in ('production','rehearsal'),'closed Linux host config required')
+        stable=isinstance(c,dict) and c.get('schema')=='pi-linux-product-host-v2'
+        require(isinstance(c,dict) and set(c)==FIELDS|({'project_operation_id','lineage_path','lineage_sha256'} if stable else set()) and c['schema'] in ('pi-linux-product-host-v1','pi-linux-product-host-v2') and c['mode'] in ('ACTUAL','SIMULATED') and c['target'] in ('production','rehearsal'),'closed Linux host config required')
         actual=c['mode']=='ACTUAL'
         require(not actual or clock is None,'ACTUAL forbids an injected clock');self.clock=clock or (lambda:datetime.now(timezone.utc))
         if actual:
@@ -71,11 +74,19 @@ class LinuxProductHost:
         self.root=_path(c['root']);require(self.root.is_dir() and stat.S_IMODE(self.root.stat().st_mode)==0o700 and self.root.stat().st_uid==os.geteuid(),'owned private product output required')
         self.lock_path=_path(c['lock_path']);_plain(self.lock_path);require(stat.S_IMODE(self.lock_path.stat().st_mode)==0o600 and self.lock_path.stat().st_uid==os.geteuid(),'existing owned shared lock required')
         self.plan=_plan(_pinned(c['plan_path'],c['plan_sha256'],actual));require(self.plan['mode']==c['mode'],'product mode drift')
-        require(self.plan['schema']=='pi-product-bootstrap-v1','continuous native cohort admission pending')
+        require(self.plan['schema']=='pi-product-bootstrap-v1' or stable,'continuous native cohort admission pending')
+        project_op=c['project_operation_id'] if stable else self.plan['operation_id']
+        require(str(uuid.UUID(project_op))==project_op and (self.plan['schema']!='pi-product-bootstrap-v1' or project_op==self.plan['operation_id']),'initial stable project identity required')
+        if stable:
+            if self.plan['schema']=='pi-product-bootstrap-v1':require(c['lineage_path'] is None and c['lineage_sha256'] is None,'bootstrap cannot import release lineage')
+            else:
+                from .product_lineage import validate
+                self.lineage=validate(_pinned(c['lineage_path'],c['lineage_sha256'],actual),self.plan,c['target'],self.clock());self.lineage_pin=c['lineage_sha256']
+                require(self.lineage['project_operation_id']==project_op,'stable lineage namespace mismatch')
         if actual:
             required_root=BASE/('product-release-runs' if c['target']=='production' else 'product-rehearsals')/self.plan['operation_id']
             require(self.root==required_root,'canonical operation output root required')
-        expected_project='myink' if c['target']=='production' else 'myink-pi-rehearsal-'+self.plan['operation_id']
+        expected_project='myink' if c['target']=='production' else 'myink-pi-rehearsal-'+project_op
         require(c['project']==expected_project,'fixed product/rehearsal project required')
         require(type(c['drain_seconds']) in (int,float) and 0<c['drain_seconds']<=600 and (not actual or c['drain_seconds']>=30),'bounded natural drain required')
         require(isinstance(c['queue_prefix'],str) and len(c['queue_prefix'])<=80 and all(ch.isalnum() or ch in '-_' for ch in c['queue_prefix']),'fixed queue namespace required')
@@ -90,6 +101,7 @@ class LinuxProductHost:
         commands=self.root/'commands';commands.mkdir(mode=0o700,exist_ok=True);self.commands=DockerCommands(c['docker'],c['endpoint'],commands)
         actions=self.root/'actions';actions.mkdir(mode=0o700,exist_ok=True)
         control=(BASE/'control/product-release.sqlite' if actual else self.lock_path.parent/'product-release.sqlite') if c['target']=='production' else self.root/'control.sqlite'
+        if stable and c['target']=='rehearsal':control=(BASE/'control' if actual else self.lock_path.parent)/('product-rehearsal-'+project_op+'.sqlite')
         if not control.exists():
             fd=os.open(control,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600);os.close(fd)
         _plain(control);require(stat.S_IMODE(control.stat().st_mode)==0o600,'private product control ledger required')
@@ -105,6 +117,10 @@ class LinuxProductHost:
         authority='human_product_release' if c['target']=='production' else 'owned_rehearsal'
         require(approval['mode']==c['mode'] and approval['target']==c['target'] and approval['authority']==authority and approval['plan_sha256']==digest(plan),'exact external product approval required')
         require(isinstance(approval['approved_actions'],list) and set(approval['approved_actions'])==set(STEPS) and len(approval['approved_actions'])==len(STEPS),'fixed approved bootstrap actions required')
+        if self.lineage is not None:
+            from .product_lineage import validate,history
+            require(validate(_pinned(c['lineage_path'],c['lineage_sha256'],actual),plan,c['target'],self.clock())==self.lineage,'sealed lineage drift')
+            if hasattr(self,'ledger'):history(self)
         now=utc(self.clock())
         if self.rollback_lease is not None:
             from .product_rollback_lease import validate,adopted
@@ -140,6 +156,7 @@ class LinuxProductHost:
     def preflight(self):
         require(self.rollback_lease is None,'rollback lease cannot bootstrap a product')
         self.authorize(self.plan)
+        if self.plan['schema']=='pi-product-upgrade-v2':raise BootstrapBlocked('continuous upgrade intake qualification pending')
         require(callable(getattr(self,'apply_schema',None)) and callable(getattr(self,'bind_identity',None)),'complete migration capabilities required before ingress effects')
         from .product_backup import LinuxProductBackup
         recovery=LinuxProductBackup(self);recovery.preflight()
@@ -348,7 +365,7 @@ class LinuxProductHost:
         require(action in STEPS,'unknown product action');self.authorize(plan)
         parent=self.ledger.get(plan['operation_id']);step=self.ledger.get(plan['operation_id']+':'+action)
         require(parent and parent['kind']=='product_bootstrap' and parent['status']=='pending' and parent['payload']==dict(plan_sha256=digest(plan)) and step and step['kind']=='product_bootstrap_step' and step['status']=='pending' and step['payload']==dict(plan_sha256=digest(plan),action=action),'original durable bootstrap step required')
-        if action=='close_ingress' and self.config['mode']=='ACTUAL':self.preflight()
+        if action=='close_ingress' and (self.config['mode']=='ACTUAL' or self.plan['schema']=='pi-product-upgrade-v2'):self.preflight()
         self.inspect(plan)
         claim=self.root/'actions'/action;claim.mkdir(mode=0o700);_save(claim/'intent.json',dict(action=action,plan_sha256=digest(plan)))
         if action=='close_ingress':result=self._close_ingress(plan)

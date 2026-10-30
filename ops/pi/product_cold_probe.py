@@ -152,21 +152,35 @@ for p in (root/'certificate').rglob('*.crt'):
  if active:active_certificates+=1
 site=str(values.get('SITE_ADDRESS') or '').strip()
 check(not site or site.startswith('http://') or active_certificates>0,'configured TLS certificate absent')
-import socket,threading,urllib.request,uvicorn
+async def verify_asgi_health(application):
+ import asyncio,httpx
+ async def verify():
+  async with application.router.lifespan_context(application):
+   async with httpx.AsyncClient(transport=httpx.ASGITransport(app=application),base_url='http://owned.invalid',timeout=5) as client:
+    response=await client.get('/healthz');check(response.status_code==200 and response.json()=={'status':'ok'},'API health differs')
+ await asyncio.wait_for(verify(),timeout=20)
 from myink.api.main import app
-listener=socket.socket();listener.bind(('127.0.0.1',0));listener.listen(16)
-port=listener.getsockname()[1];server=uvicorn.Server(uvicorn.Config(app,log_config=None,log_level='critical',access_log=False,lifespan='on'))
-thread=threading.Thread(target=lambda:server.run(sockets=[listener]),daemon=True);thread.start();until=time.monotonic()+20
-try:
- while not server.started:
-  check(thread.is_alive() and time.monotonic()<until,'API did not cold start');time.sleep(.1)
- with urllib.request.urlopen('http://127.0.0.1:'+str(port)+'/healthz',timeout=5) as reply:check(reply.status==200 and json.load(reply)=={'status':'ok'},'API health differs')
-except BaseException:
- import faulthandler;faulthandler.dump_traceback(all_threads=True);raise
-finally:
- server.should_exit=True;thread.join(5);listener.close()
-check(not thread.is_alive(),'API did not stop')
-print(json.dumps(dict(verified=True,api_health=True,runtime_sha256=packet['runtime_sha256'],target_system_identifier=packet['system_identifier'],model_requests=0,**counts)))
+if packet['authentication'] is not None:
+ # Runtime qualification MUST subsequently verify the real separate PID1 API.
+ # This earlier data probe only needs app/lifespan logic, not a second TCP server.
+ import asyncio
+ asyncio.run(verify_asgi_health(app));api_transport='asgi'
+else:
+ import socket,threading,urllib.request,uvicorn
+ listener=socket.socket();listener.bind(('127.0.0.1',0));listener.listen(16)
+ port=listener.getsockname()[1];server=uvicorn.Server(uvicorn.Config(app,log_config=None,log_level='critical',access_log=False,lifespan='on'))
+ thread=threading.Thread(target=lambda:server.run(sockets=[listener]),daemon=True);thread.start();until=time.monotonic()+20
+ try:
+  while not server.started:
+   check(thread.is_alive() and time.monotonic()<until,'API did not cold start');time.sleep(.1)
+  with urllib.request.urlopen('http://127.0.0.1:'+str(port)+'/healthz',timeout=5) as reply:check(reply.status==200 and json.load(reply)=={'status':'ok'},'API health differs')
+ except BaseException:
+  import faulthandler;faulthandler.dump_traceback(all_threads=True);raise
+ finally:
+  server.should_exit=True;thread.join(5);listener.close()
+ check(not thread.is_alive(),'API did not stop')
+ api_transport='tcp-thread'
+print(json.dumps(dict(verified=True,api_health=True,api_transport=api_transport,runtime_sha256=packet['runtime_sha256'],target_system_identifier=packet['system_identifier'],model_requests=0,**counts)))
 """
 
 
@@ -228,7 +242,8 @@ class OwnedApplicationProbe:
             bootstrap="import hashlib,sys;from pathlib import Path;p=Path('/tmp/pi-cold/probe.py');raw=p.read_bytes();assert hashlib.sha256(raw).hexdigest()==sys.argv[1];exec(compile(raw,str(p),'exec'),{'__name__':'__main__'})"
             result=h._run(['exec',self.cid,'python','-B','-c',bootstrap,sha256(PROBE.encode()).hexdigest()],seconds=180);observed=strict_json(h._bytes(result))
             counts={'authenticated_roles','wrong_passwords_rejected','credentials','mfa_secrets','attachments','tls_certificates','tenant_tables','tenant_cases','checkpoints','pending_writes','task_checkpoint_links','model_requests'}
-            require(isinstance(observed,dict) and set(observed)==counts|{'verified','api_health','runtime_sha256','target_system_identifier'} and observed['verified'] is True and observed['api_health'] is True and observed['runtime_sha256']==runtime_pin and observed['target_system_identifier']==target['system_identifier'] and all(type(observed[k]) is int and observed[k]>=0 for k in counts) and observed['model_requests']==0,'application assertions unconfirmed')
+            require(isinstance(observed,dict) and set(observed)==counts|{'verified','api_health','api_transport','runtime_sha256','target_system_identifier'} and observed['verified'] is True and observed['api_health'] is True and observed['runtime_sha256']==runtime_pin and observed['target_system_identifier']==target['system_identifier'] and all(type(observed[k]) is int and observed[k]>=0 for k in counts) and observed['model_requests']==0,'application assertions unconfirmed')
+            require(observed['api_transport']==('asgi' if self.restore.authentication is not None else 'tcp-thread'),'cold API transport differs from qualification')
             if self.restore.authentication is not None:require(observed['authenticated_roles']==observed['wrong_passwords_rejected']==2,'real restored role authentication unconfirmed')
             if self.restore.authentication is not None:
                 from .product_restored_api import OwnedRestoredAPI

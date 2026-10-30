@@ -6,6 +6,7 @@ from hashlib import sha256
 import os
 from pathlib import Path
 import time
+import uuid
 from urllib.parse import urlsplit
 
 from .audit import digest,encoded,hash_value,name,require,strict_json,utc,_plain
@@ -39,17 +40,19 @@ def _network_bound(value,network,alias):
 
 def context_from_inspects(plan,config,rows,network,volumes):
     plan=_plan(plan);project=config['project'];target=config['target'];mode=config['mode'];op=plan['operation_id']
-    require(mode==plan['mode'] and target in ('rehearsal','production') and project==('myink' if target=='production' else 'myink-pi-rehearsal-'+op),'fixed target namespace required')
+    project_op=config.get('project_operation_id',op)
+    require(str(uuid.UUID(project_op))==project_op and (plan['schema']!='pi-product-bootstrap-v1' or project_op==op),'original project identity required')
+    require(mode==plan['mode'] and target in ('rehearsal','production') and project==('myink' if target=='production' else 'myink-pi-rehearsal-'+project_op),'fixed target namespace required')
     require(isinstance(network,dict) and hash_value(network.get('Id')) and network.get('Driver')=='bridge' and isinstance(network.get('Name'),str) and type(network.get('Internal')) is bool and isinstance(network.get('Labels'),(dict,type(None))),'fixed bridge identity required')
     labels=network.get('Labels') or {}
-    if target=='rehearsal':require(network['Internal'] is True and labels.get('myink.pi.rehearsal')==op,'owned internal rehearsal network required')
+    if target=='rehearsal':require(network['Internal'] is True and labels.get('myink.pi.rehearsal')==project_op,'owned internal rehearsal network required')
     else:require(labels.get('com.docker.compose.project')==project,'original product network required')
     net=dict(id=network['Id'],name=network['Name'],driver='bridge',internal=network['Internal'],labels=labels)
     require(isinstance(volumes,list) and len(volumes)<=1,'single feedback volume required');owned={}
     for volume in volumes:
         require(isinstance(volume,dict) and volume.get('Driver')=='local' and name(volume.get('Name')) and isinstance(volume.get('Labels'),(dict,type(None))),'fixed named local volume required')
         labels=volume.get('Labels') or {}
-        require(labels.get('myink.pi.rehearsal')==op if target=='rehearsal' else labels.get('com.docker.compose.project')==project,'feedback volume ownership mismatch')
+        require(labels.get('myink.pi.rehearsal')==project_op if target=='rehearsal' else labels.get('com.docker.compose.project')==project,'feedback volume ownership mismatch')
         owned[volume['Name']]=dict(name=volume['Name'],driver='local',labels=labels)
     expected={r['id']:r for r in plan['legacy']['containers'] if r['service'] in ('api','worker')};templates=[];seen=set()
     require(isinstance(rows,list) and len(rows)==3,'complete original backend templates required')

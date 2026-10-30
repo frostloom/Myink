@@ -16,7 +16,7 @@ from .contracts import Identity
 from .product_bootstrap import _facts, COUNTS
 from .product_runtime import BASE, _pinned
 
-RECOVERY_COMPONENTS=('product_rollback_lease.py','product_service_snapshot.py','product_restored_services.py','product_restored_api.py','product_business_probe.py','product_runtime_snapshot.py','product_activation.py','product_release.py','product_backup.py','product_restore.py','product_cold_probe.py','product_runtime.py','product_commands.py','product_migration.py','product_bootstrap.py','backup.py','ledger.py','audit.py')
+RECOVERY_COMPONENTS=('product_lineage.py','product_rollback_lease.py','product_service_snapshot.py','product_restored_services.py','product_restored_api.py','product_business_probe.py','product_runtime_snapshot.py','product_activation.py','product_release.py','product_backup.py','product_restore.py','product_cold_probe.py','product_runtime.py','product_commands.py','product_migration.py','product_bootstrap.py','backup.py','ledger.py','audit.py')
 FIELDS=set('schema release_pair_id environment_path environment_sha256 compose_path compose_sha256 billing_ledger_path manager_state_path maximum_artifact_bytes'.split())
 META_SQL="""BEGIN READ ONLY;SET LOCAL statement_timeout='10s';
 SELECT json_build_object('system_identifier',(SELECT system_identifier::text FROM pg_control_system()),'database',current_database(),'size_bytes',pg_database_size(current_database()),
@@ -82,7 +82,7 @@ class LinuxProductBackup:
         candidate={k:v for k,v in self.plan['candidate'].items() if k!='schema_version'}
         self.candidate=Identity(**candidate)
         self.pair=dict(release_pair_id=self.plan['operation_id'],pre_identity=asdict(self.legacy),post_identity=asdict(self.candidate),plan_hash=digest(self.plan))
-        self.context=dict(schema_context=digest(dict(protocol=1,schema=1,state=1,effect_keys=1,serialization='jsonplus',recovery_contract=4 if runtime else 1,product_schema_id=self.plan['candidate']['schema_id'],postgres_image=roles['postgres'])),tool_context=digest({name:sha256(Path(__file__).with_name(name).read_bytes()).hexdigest() for name in RECOVERY_COMPONENTS}))
+        self.context=dict(schema_context=digest(dict(protocol=1,schema=1,state=1,effect_keys=1,serialization='jsonplus',recovery_contract=5 if runtime else 1,product_schema_id=self.plan['candidate']['schema_id'],postgres_image=roles['postgres'])),tool_context=digest({name:sha256(Path(__file__).with_name(name).read_bytes()).hexdigest() for name in RECOVERY_COMPONENTS}))
 
     def preflight(self):
         self.host.authorize(self.plan)
