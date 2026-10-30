@@ -14,7 +14,7 @@ WorkingDirectory=/home/ubuntu/myink-pi-managed
 Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=DOCKER_CONFIG=/nonexistent
 EnvironmentFile=/home/ubuntu/myink-pi-managed/config/product-observer.env
-ExecStart=/usr/bin/flock --nonblock --no-fork /home/ubuntu/myink-pi-managed/control/product-observer.lock /usr/bin/python3 -I -S -B ${PI_PRODUCT_OBSERVER_ENTRYPOINT} --component product_observer --config /home/ubuntu/myink-pi-managed/config/product-observer.json --config-sha256 ${PI_PRODUCT_OBSERVER_CONFIG_SHA256}
+ExecStart=/usr/bin/flock --nonblock --no-fork /home/ubuntu/myink-pi-managed/control/product-observer.lock /usr/bin/python3 -I -S -B ${PI_PRODUCT_OBSERVER_ENTRYPOINT} --human-gated --component product_observer --config /home/ubuntu/myink-pi-managed/config/product-observer.json --config-sha256 ${PI_PRODUCT_OBSERVER_CONFIG_SHA256}
 Restart=no
 TimeoutStartSec=90
 TimeoutStopSec=10

@@ -18,7 +18,7 @@ Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=TMPDIR=/home/ubuntu/myink-pi-managed/tmp
 Environment=DOCKER_CONFIG=/home/ubuntu/myink-pi-managed/state/docker
 EnvironmentFile=/home/ubuntu/myink-pi-managed/config/closed-manager.env
-ExecStart=/usr/bin/flock --nonblock --no-fork /home/ubuntu/myink-pi-managed/control/maintenance.lock /usr/bin/python3 -I -S -B ${PI_MANAGER_ENTRYPOINT} --component manager --config /home/ubuntu/myink-pi-managed/config/manager-host.json --config-sha256 ${PI_MANAGER_CONFIG_SHA256}
+ExecStart=/usr/bin/flock --nonblock --no-fork /home/ubuntu/myink-pi-managed/control/maintenance.lock /usr/bin/python3 -I -S -B ${PI_MANAGER_ENTRYPOINT} --human-gated --component manager --config /home/ubuntu/myink-pi-managed/config/manager-host.json --config-sha256 ${PI_MANAGER_CONFIG_SHA256}
 Restart=no
 KillSignal=SIGTERM
 KillMode=mixed

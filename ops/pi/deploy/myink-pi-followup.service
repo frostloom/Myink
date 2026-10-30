@@ -14,7 +14,7 @@ WorkingDirectory=/home/ubuntu/myink-pi-managed
 Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=DOCKER_CONFIG=/nonexistent
 EnvironmentFile=/home/ubuntu/myink-pi-managed/config/followup.env
-ExecStart=/usr/bin/python3 -I -S -B ${PI_FOLLOWUP_ENTRYPOINT} --component followup --config /home/ubuntu/myink-pi-managed/config/followup-registry.json --config-sha256 ${PI_FOLLOWUP_REGISTRY_SHA256}
+ExecStart=/usr/bin/python3 -I -S -B ${PI_FOLLOWUP_ENTRYPOINT} --human-gated --component followup --config /home/ubuntu/myink-pi-managed/config/followup-registry.json --config-sha256 ${PI_FOLLOWUP_REGISTRY_SHA256}
 Restart=no
 TimeoutStartSec=330
 TimeoutStopSec=30

@@ -14,7 +14,7 @@ WorkingDirectory=/home/ubuntu/myink-pi-managed
 Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=DOCKER_CONFIG=/nonexistent
 EnvironmentFile=/home/ubuntu/myink-pi-managed/config/review-worker.env
-ExecStart=/usr/bin/python3 -I -S -B ${PI_REVIEW_WORKER_ENTRYPOINT} --component review_worker --config /home/ubuntu/myink-pi-managed/config/review-worker-registry.json --config-sha256 ${PI_REVIEW_WORKER_REGISTRY_SHA256}
+ExecStart=/usr/bin/python3 -I -S -B ${PI_REVIEW_WORKER_ENTRYPOINT} --human-gated --component review_worker --config /home/ubuntu/myink-pi-managed/config/review-worker-registry.json --config-sha256 ${PI_REVIEW_WORKER_REGISTRY_SHA256}
 Restart=no
 TimeoutStartSec=30
 TimeoutStopSec=15

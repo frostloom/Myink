@@ -1,3 +1,30 @@
+# Current human approval hold — 2026-10-30
+
+The operator changed the delivery boundary: prepare one evaluated candidate,
+local image and next-day comparison parameters, then wait indefinitely for human
+confirmation. GitHub/registry pushes and product deployment require approval of
+that exact package. Approval alone does not start observations: actual deployment
+must be verified first. No new nightly round while confirmation/deployment or the
+current comparison is pending. See
+[the current specification](../../../docs/superpowers/specs/2026-10-30-pi-human-gated-nightly-design.md).
+
+All seven installed Pi timers were disabled and their services stopped; a fresh
+2026-10-30 read confirmed seven `disabled` results and no active Pi services.
+Product services were left running. **Do not use the historical resume commands
+below to restart the old pipeline.** They describe the earlier operating contract.
+
+The new unit templates use `--human-gated`. After runtime source verification the
+entry checks `nightly-approval.sqlite` against the original manager/fee identity
+before importing the requested host. Missing/invalid metadata fails closed;
+waiting, idle and blocked cycles do no scheduled work. Only a claimed preparation
+admits the existing preparation pipeline. Only a verified deployment admits
+observers and fixed follow-up checks; it does not admit a new development round.
+
+These templates and the gate have not yet been installed/activated on the host.
+The single-cycle driver, verified local package and operator installation handoff
+remain required before enabling the new workflow. Keep the existing timers off.
+Do not initialize another manager, billing ledger, budget or historical intent.
+
 # Server unit contract
 
 These units target the verified Ubuntu/systemd255 host. They are installed only after

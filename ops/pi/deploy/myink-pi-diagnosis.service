@@ -14,7 +14,7 @@ WorkingDirectory=/home/ubuntu/myink-pi-managed
 Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=DOCKER_CONFIG=/nonexistent
 EnvironmentFile=/home/ubuntu/myink-pi-managed/config/diagnosis.env
-ExecStart=/usr/bin/python3 -I -S -B ${PI_DIAGNOSIS_ENTRYPOINT} --component diagnosis --config /home/ubuntu/myink-pi-managed/config/diagnosis-registry.json --config-sha256 ${PI_DIAGNOSIS_REGISTRY_SHA256}
+ExecStart=/usr/bin/python3 -I -S -B ${PI_DIAGNOSIS_ENTRYPOINT} --human-gated --component diagnosis --config /home/ubuntu/myink-pi-managed/config/diagnosis-registry.json --config-sha256 ${PI_DIAGNOSIS_REGISTRY_SHA256}
 Restart=no
 TimeoutStartSec=180
 TimeoutStopSec=30
