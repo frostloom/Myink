@@ -80,3 +80,9 @@ def test_link_or_extra_private_file_never_enters_context(case):
     g,image,engine,source,candidate=setup(case);(candidate/'private.key').write_text('private')
     with pytest.raises(ValueError):image.build(source,candidate,BASE_IMAGE)
     assert not any(a[0]=='build' for a in engine.calls)
+
+
+def test_simulated_image_preparation_cannot_target_original_production_daemon(case):
+    from ops.pi.nightly_image import LocalImage
+    g=case[0](True)
+    with pytest.raises(ValueError):LocalImage(g,str(uuid.uuid4()),case[-1].parent/'image',Path('/bin/echo'),'unix:///test.sock','0f90c176-9c45-4708-8103-37b5ff2464f1',transport=object())

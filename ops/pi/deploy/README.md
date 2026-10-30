@@ -21,9 +21,15 @@ admits the existing preparation pipeline. Only a verified deployment admits
 observers and fixed follow-up checks; it does not admit a new development round.
 
 These templates and the gate have not yet been installed/activated on the host.
-The single-cycle driver, verified local package and operator installation handoff
-remain required before enabling the new workflow. Keep the existing timers off.
+The single-cycle driver and private package sealing are implemented locally,
+with original-manager proof, a single immutable task binding and relative
+next-day parameters. A real server package, deployment observation integration
+and operator installation handoff remain required before enabling this workflow. Keep the existing timers off.
 Do not initialize another manager, billing ledger, budget or historical intent.
+The new `myink-pi-nightly.timer` template has calendar-only night checks and no
+boot catchup. Approval metadata format7402 must be initialized as the original
+Ubuntu state owner during the verified handoff; never reinterpret an older file
+or either original financial/task ledger as approval metadata.
 
 # Server unit contract
 

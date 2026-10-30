@@ -19,3 +19,16 @@ Spec: ../specs/2026-10-30-pi-human-gated-nightly-design.md
 ## Task 4 — 验收与交付
 
 相关单测、跨日重启/并发与原账本隔离、一次完整有界隔离工作流、实际产物检查；一次新上下文最终审查和一次作者修复。交付可审查操作包和明确未发布状态，最后一次人工批准再执行获批推送/安装/发布。实际新版本观察只在用户发布后开始，不把计划当结果。
+
+## 当前实施状态（2026-10-30）
+
+- Task 1：本地完成。审批元数据格式7402新增不可变原manager任务绑定；不迁移、不重置原费用或manager账本。服务器未初始化新门禁库。
+- Task 2：本地已接入闭合nightly入口与单一定时器模板。完成候选优先于新任务；真实执行仍只调用原source coordinator和原manager；manager只可执行本轮绑定任务。旧7个定时器保持停用，新模板未安装。部署后的观察/对比收尾接线仍待完成。
+- Task 3：本地完成源码/原SDK证据核验、快照、镜像适配、补丁、评测、工具流、审计和相对次日计划的封存。真实Docker镜像构建/归档适配器已通过独立隔离验证；整包驱动已通过原manager真实格式的隔离测试，尚未对服务器已有候选执行实际整包准备。
+- Task 4：进行中。尚未完成真实整包、部署后观察接线、按确认版本准备下轮有限source输入、最终独立审查和安装交付；不把本地测试当作完整上线。
+
+准备私有包时，沿用原开发前FileReview与独立冻结checker，完成完整原manager/SDK/工具/费用核验；不为准备文件额外增加一次付费模型复审。最终产物仍必须由人批准后才可推送或部署。
+
+`bundle/`预留输出：`manifest.json`、`baseline/`、`candidate/`、`regression.py`、`patch.diff`、`evaluation.json`、`changes.json`、`comparison.json`、`tool-flow.json`、`audit.json`和私有`original-proof.json`。相邻`image/`保留镜像归档、摘要、命令意图和收据。原始私有包不直接作为公开审计或GitHub上传内容。
+
+`audit.json`提供现有AuditStore可导入的标准记录；导出后现有AuditReader可读取。记录本次准备为no_release，次日测试为等待真实部署的blocked，不制造执行日期或上线效果。原SDK费用与请求数保留在评测引用中，新准备事件不重复计费。工具流只投影类型、顺序、状态与原收据摘要，不复制私有参数或响应。

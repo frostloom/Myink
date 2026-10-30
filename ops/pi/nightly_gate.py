@@ -12,14 +12,14 @@ from pathlib import Path
 from .audit import _path,_plain,digest,encoded,hash_value,require,strict_json,utc
 
 BASE=Path('/home/ubuntu/myink-pi-managed')
-DB_VERSION=7401
+DB_VERSION=7402
 ACTIONS=frozenset(('github_push','registry_push','deploy'))
 PACKAGE_FIELDS=set('schema baseline_sha256 source_sha256 patch_sha256 evaluation_sha256 image_id image_artifact_sha256 comparison_sha256 changes_sha256'.split())
 APPROVAL_FIELDS=set('schema mode issuer cycle_id package_sha256 approved_actions issued_at expires_at'.split())
 DEPLOYMENT_FIELDS=set('schema mode issuer cycle_id package_sha256 approval_sha256 image_id source_sha256 comparison_sha256 deployment_id deployed_at'.split())
 SCHEMA="""
 CREATE TABLE approval_identity(id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL);
-CREATE TABLE approval_cycles(cycle_id TEXT PRIMARY KEY,night TEXT NOT NULL UNIQUE,phase TEXT NOT NULL CHECK(phase IN ('preparing','awaiting_approval','awaiting_deployment','observing','completed','blocked')),created_at TEXT NOT NULL,package TEXT,approval TEXT,deployment TEXT,result_sha256 TEXT);
+CREATE TABLE approval_cycles(cycle_id TEXT PRIMARY KEY,night TEXT NOT NULL UNIQUE,phase TEXT NOT NULL CHECK(phase IN ('preparing','awaiting_approval','awaiting_deployment','observing','completed','blocked')),created_at TEXT NOT NULL,task_id TEXT,package TEXT,approval TEXT,deployment TEXT,result_sha256 TEXT);
 CREATE TABLE approval_events(sequence INTEGER PRIMARY KEY AUTOINCREMENT,cycle_id TEXT,kind TEXT NOT NULL,payload TEXT NOT NULL);
 CREATE TRIGGER approval_identity_no_update BEFORE UPDATE ON approval_identity BEGIN SELECT RAISE(ABORT,'immutable identity');END;
 CREATE TRIGGER approval_identity_no_delete BEFORE DELETE ON approval_identity BEGIN SELECT RAISE(ABORT,'immutable identity');END;
@@ -27,6 +27,7 @@ CREATE TRIGGER approval_events_no_update BEFORE UPDATE ON approval_events BEGIN 
 CREATE TRIGGER approval_events_no_delete BEFORE DELETE ON approval_events BEGIN SELECT RAISE(ABORT,'append only');END;
 CREATE TRIGGER approval_cycles_no_delete BEFORE DELETE ON approval_cycles BEGIN SELECT RAISE(ABORT,'cycles cannot disappear');END;
 CREATE TRIGGER approval_cycles_identity BEFORE UPDATE ON approval_cycles WHEN NEW.cycle_id!=OLD.cycle_id OR NEW.night!=OLD.night OR NEW.created_at!=OLD.created_at BEGIN SELECT RAISE(ABORT,'immutable cycle');END;
+CREATE TRIGGER approval_cycles_task BEFORE UPDATE ON approval_cycles WHEN OLD.task_id IS NOT NULL AND NEW.task_id IS NOT OLD.task_id BEGIN SELECT RAISE(ABORT,'immutable original task');END;
 CREATE TRIGGER approval_cycles_package BEFORE UPDATE ON approval_cycles WHEN OLD.package IS NOT NULL AND NEW.package IS NOT OLD.package BEGIN SELECT RAISE(ABORT,'immutable package');END;
 CREATE TRIGGER approval_cycles_terminal BEFORE UPDATE ON approval_cycles WHEN OLD.phase='completed' BEGIN SELECT RAISE(ABORT,'immutable completed cycle');END;
 """
@@ -114,7 +115,7 @@ class ApprovalGate:
         return saved
 
     def _description(self,row):
-        if row is None or row['phase']=='completed':return dict(phase='idle',cycle_id=None,package_sha256=None)
+        if row is None or row['phase']=='completed':return dict(phase='idle',cycle_id=None,package_sha256=None,task_id=None)
         phase=row['phase'];package=strict_json(row['package']) if row['package'] else None
         if phase=='awaiting_deployment':
             try:self._approval(row)
@@ -123,7 +124,7 @@ class ApprovalGate:
             try:
                 d=strict_json(row['deployment']);require(self._trusted(d['path'],d['sha256'],'deployment')==d['packet'],'deployment receipt drift')
             except (ValueError,OSError,TypeError,KeyError):phase='blocked'
-        return dict(phase=phase,cycle_id=row['cycle_id'],package_sha256=digest(package) if package else None)
+        return dict(phase=phase,cycle_id=row['cycle_id'],package_sha256=digest(package) if package else None,task_id=row['task_id'])
 
     def status(self):
         with self._connection() as c:return self._description(self._current(c))
@@ -137,6 +138,16 @@ class ApprovalGate:
             require(_binding(self.state,self.billing,self.mode)==self.identity,'manager binding revoked')
             c.execute("INSERT INTO approval_cycles(cycle_id,night,phase,created_at) VALUES(?,?,'preparing',?)",(cycle,night,utc(self.clock()).isoformat()));self._record(c,cycle,'claimed',dict(night=night))
         return dict(self.status(),claimed=True)
+
+    def bind_task(self,cycle,task_id):
+        import re
+        require(isinstance(task_id,str) and re.fullmatch('[A-Za-z0-9_-]{1,64}',task_id),'fixed original manager task identity required')
+        with self._connection(True) as c:
+            row=self._row(c,cycle);require(row['phase']=='preparing','task binding requires preparation')
+            if row['task_id'] is not None:require(row['task_id']==task_id,'original task cannot change within a round')
+            else:
+                c.execute('UPDATE approval_cycles SET task_id=? WHERE cycle_id=?',(task_id,cycle));self._record(c,cycle,'original_task_bound',dict(task_id=task_id))
+        return self.status()
 
     def ready(self,cycle,package):
         _package(package);raw=encoded(package).decode()

@@ -51,14 +51,19 @@ def run(config_path,pin,*,cancel=None,executor=None,clock=None):
         require(not cancel.is_set(),'manager cancelled before admission')
         _,_,rows,tasks,_=manager._snapshot(Path(c['state_path']),Path(c['billing_path']),c['mode'])
         manifests=sorted(_path(c['inbox']).glob('*.task.json'));require(len(manifests)<=manager.MAX_TASKS,'bounded manager inbox required')
+        selected=None
+        if c['mode']=='ACTUAL':
+            from .nightly_host import runtime_manager_task
+            selected=runtime_manager_task()
         automatic=False
         for manifest in manifests:
             m=_read(manifest,1048576)[0];key='manager:task:'+m['task_id']
             if key+':dispatch' in rows or key+':cancel' in rows:continue
+            require(selected is None or m['task_id']==selected,'another task cannot enter this nightly round')
             _ready(c,m['task_id'],m['request_path'],m['request_sha256'],file_hash(manifest),clock);automatic|=m['task_id'].startswith('auto-')
         for task in tasks:
             if task['operation_id']+':dispatch' in rows or task['operation_id']+':cancel' in rows:continue
-            q=task['payload'];_ready(c,q['task_id'],q['request_path'],q['request_sha256'],None,clock);automatic|=q['task_id'].startswith('auto-')
+            q=task['payload'];require(selected is None or q['task_id']==selected,'another queued task cannot enter this nightly round');_ready(c,q['task_id'],q['request_path'],q['request_sha256'],None,clock);automatic|=q['task_id'].startswith('auto-')
         require(not cancel.is_set() and file_hash(cp)==pin,'manager config revoked before dispatch')
         from .maintenance_window import manager_budget
         seconds=manager_budget(c['mode'],automatic,datetime.now(timezone.utc))

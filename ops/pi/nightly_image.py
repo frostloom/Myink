@@ -54,7 +54,7 @@ class LocalImage:
         require(isinstance(daemon_id,str) and 0<len(daemon_id)<=128,'fixed daemon identity required');self.daemon=daemon_id
         if gate.mode=='ACTUAL':
             require(sys.platform=='linux' and transport is None and self.root==BASE/'nightly'/cycle/'image' and _path(docker)==Path('/usr/bin/docker') and endpoint=='unix:///var/run/docker.sock','fixed ACTUAL local image host required')
-        else:require(not self.root.is_relative_to(BASE),'isolated simulation required')
+        else:require(not self.root.is_relative_to(BASE) and daemon_id!='0f90c176-9c45-4708-8103-37b5ff2464f1','isolated simulation and nonproduction daemon required')
         self.docker=docker;self.endpoint=endpoint;self.transport=transport
 
     def _active(self):

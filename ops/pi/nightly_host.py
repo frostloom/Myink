@@ -27,3 +27,12 @@ def runtime_admission(component):
     gate=ApprovalGate(BASE/'state/nightly-approval.sqlite',
                       BASE/'state/actual-manager.sqlite',BASE/'state/ledger.sqlite',mode='ACTUAL')
     return admission(gate,component)
+
+
+def manager_task(gate):
+    state=gate.status();require(state['phase']=='preparing' and state['task_id'] is not None,'one original task must be bound before manager dispatch');return state['task_id']
+
+
+def runtime_manager_task():
+    gate=ApprovalGate(BASE/'state/nightly-approval.sqlite',BASE/'state/actual-manager.sqlite',BASE/'state/ledger.sqlite',mode='ACTUAL')
+    return manager_task(gate)
