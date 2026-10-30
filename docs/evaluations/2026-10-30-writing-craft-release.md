@@ -31,4 +31,15 @@ Caddy沿用当前已上线的前端，14种文风由动态接口返回。发布�
 - 跳过项为未指定隔离评测数据库身份的评测集成测试；5项为既有预期失败。两条warning为Starlette弃用和HS512测试密钥长度提示，均未算作通过。
 - 生产候选镜像只读预检通过：12项新增、3项升级、4项当前目录退役；尚未写入生产。
 
-生产部署回执在执行后补充。
+## 生产结果
+
+- 已提交并推送 `3405ff9944e597c69ce8fafbafcf87b117ad8319` 到 `origin/codex/vip-service`。
+- API与两个Worker均运行该完整revision的amd64镜像；公开 https://myink.cloud/readyz 返回ok（DB、Redis、Worker均ok），两个Worker心跳通过。
+- 14种可选文风及对应只读选择器在运行中容器逐项校验通过。新增12项、升级3项、旧四个当前目录项退役均已原子执行。
+- 所有旧资源修订/发布历史未变，133项无关当前资源未变；迁移期间所有非目录表的行数与内容哈希未变，包括个人资源、冻结选择、账号、作品、章节和配置。
+- 上线后数据库仍为9个账号、20本作品、60个章节。Caddy容器未重建，前端仍为已上线的a8a4361e；文风由动态接口提供。
+- 数据库备份已用pg_restore --list核验，并取回本地私有临时目录；与服务器SHA256一致。备份和环境副本未纳入Git。
+- 生产发布目录：`/home/ubuntu/myink/releases/writing-craft-3405ff99/`。旧镜像保留为`myink-api:before-craft-3405ff99`；本次无需回滚。
+- 原始安全回执：[writing-craft-20261030-production.json](writing-craft-20261030-production.json)。临时myink-test容器、网络和卷均已清理。
+
+原工作区未发布的实验模块、测试及方案文件仍保留在本地，没有覆盖或删除。
