@@ -47,7 +47,7 @@ def run(gate,old_cycle,permission_path,permission_pin,compatibility_path,lock_pa
     with lock_path.open('rb') as lock:
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:return dict(status='lock_busy',model_requests=0)
-        permission=gate._trusted(permission_path,permission_pin,'rebuild');new=permission['new_cycle_id']
+        bootstrap=_json(permission_path).get('schema')=='pi-nightly-operator-bootstrap-v1';permission=gate._trusted(permission_path,permission_pin,'bootstrap' if bootstrap else 'rebuild');new=permission['new_cycle_id']
         old_root=BASE/'nightly'/old_cycle if gate.mode=='ACTUAL' else lock_path.parent/old_cycle
         packet=verify(gate,old_root/'bundle');compatibility_path=_path(compatibility_path);report=_json(compatibility_path)
         require(file_hash(compatibility_path)==permission['compatibility_sha256'] and set(report)==FIELDS and report['schema']=='pi-nightly-compatible-base-v1' and report['mode']==gate.mode and report['issuer']=='trusted_compatibility_builder' and report['cycle_id']==old_cycle and report['package_sha256']==digest(packet['manifest']) and report['image_id']==permission['base_image_id'],'human-bound compatible base report required')
@@ -57,7 +57,7 @@ def run(gate,old_cycle,permission_path,permission_pin,compatibility_path,lock_pa
         with gate._connection() as c:task=gate._row(c,old_cycle)['task_id']
         before=ledger_snapshot(gate.state),ledger_snapshot(gate.billing)
         manager_completion.inspect(gate.state,gate.billing,task,old_root/'bundle/request.json',file_hash(old_root/'bundle/request.json'),mode=gate.mode)
-        gate.begin_rebuild(old_cycle,permission_path,permission_pin);root=old_root.parent/new
+        gate.begin_bootstrap(old_cycle,permission_path,permission_pin,compatibility_path) if bootstrap else gate.begin_rebuild(old_cycle,permission_path,permission_pin);root=old_root.parent/new
         try:
             if (root/'rebuild-receipt.json').exists():
                 result=_json(root/'rebuild-receipt.json');current=verify(gate,root/'bundle')
@@ -79,7 +79,7 @@ def run(gate,old_cycle,permission_path,permission_pin,compatibility_path,lock_pa
                 temporary=root/'bundle'/('final-'+name);_write(temporary,value);os.replace(temporary,root/'bundle'/name)
             _sync(root/'bundle');fresh=verify(gate,root/'bundle',staged=True);gate.ready(new,fresh['manifest'])
             result=dict(schema='pi-nightly-operator-rebuild-result-v1',status='awaiting_approval',cycle_id=new,previous_cycle_id=old_cycle,permission_sha256=permission_pin,compatibility_sha256=file_hash(compatibility_path),package_sha256=digest(fresh['manifest']),test_result_sha256=digest(tested),model_requests=0,known_cost_microyuan=0,pushed=False,deployed=False)
-            event=dict(kind='version',status='no_release',run_id=task,occurred_at=gate.clock().isoformat(),summary='Same original candidate rebuilt on the human-approved compatibility base; no publication.',details=dict(reference='nightly.operator_rebuild.v1',operation_id=new,model_requests=0,known_cost_microyuan=0,next_action='review_exact_package'),version=dict(candidate_sha256=fresh['manifest']['source_sha256'],image_ids=dict(python=fresh['manifest']['image_id'])),changes=fresh['changes'],evidence=[dict(kind='human_rebuild_permission',sha256=permission_pin,verified=True,evidence_domain='offline' if gate.mode=='ACTUAL' else 'synthetic')],followups=[],mode=gate.mode,evidence_domain='offline' if gate.mode=='ACTUAL' else 'synthetic');validate_record(event)
+            event=dict(kind='version',status='no_release',run_id=task,occurred_at=gate.clock().isoformat(),summary='Same original candidate rebuilt on a verified compatibility base; no publication.',details=dict(reference='nightly.operator_rebuild.v1',operation_id=new,model_requests=0,known_cost_microyuan=0,next_action='review_exact_package'),version=dict(candidate_sha256=fresh['manifest']['source_sha256'],image_ids=dict(python=fresh['manifest']['image_id'])),changes=fresh['changes'],evidence=[dict(kind='operator_bootstrap_instruction' if bootstrap else 'human_rebuild_permission',sha256=permission_pin,verified=True,evidence_domain='offline' if gate.mode=='ACTUAL' else 'synthetic')],followups=[],mode=gate.mode,evidence_domain='offline' if gate.mode=='ACTUAL' else 'synthetic');validate_record(event)
             _write(root/'rebuild-audit.json',dict(schema='pi-nightly-rebuild-audit-v1',records=[dict(record_key=task+':rebuild:'+new,event=event)]));_write(root/'rebuild-receipt.json',result);return result
         except Exception:
             gate.block(new,'operator_rebuild_stopped');raise

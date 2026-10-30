@@ -105,7 +105,7 @@ class ApprovalGate:
 
     def _trusted(self,path,pin,kind):
         path=_path(path);_plain(path);s=path.stat();require(s.st_size<=65536 and hash_value(pin) and sha256(path.read_bytes()).hexdigest()==pin,'operator receipt drift')
-        folders=dict(approval='human-approvals',deployment='deployment-receipts',rebuild='rebuild-approvals');require(kind in folders,'known operator receipt role required')
+        folders=dict(approval='human-approvals',deployment='deployment-receipts',rebuild='rebuild-approvals',bootstrap='bootstrap-instructions',compatibility='compatible-bases');require(kind in folders,'known operator receipt role required')
         if self.mode=='ACTUAL':require(path.parent==BASE/'config'/folders[kind] and s.st_uid==0 and stat.S_IMODE(s.st_mode)==0o640 and path.parent.stat().st_uid==0 and stat.S_IMODE(path.parent.stat().st_mode)==0o750,'root-issued operator receipt required')
         else:require(stat.S_IMODE(s.st_mode)==0o600 and stat.S_IMODE(path.parent.stat().st_mode)==0o700 and s.st_uid==os.geteuid(),'private simulated operator receipt required')
         return strict_json(path.read_bytes())
@@ -118,14 +118,29 @@ class ApprovalGate:
             if c.execute('PRAGMA user_version').fetchone()[0]!=7403:return None
             row=c.execute('SELECT payload FROM approval_rebuilds WHERE new_cycle_id=?',(cycle,)).fetchone()
             if row is None:return None
-            saved=strict_json(row[0]);require(self._trusted(saved['path'],saved['sha256'],'rebuild')==saved['packet'],'human rebuild permission changed');return saved
+            saved=strict_json(row[0]);kind='bootstrap' if saved['packet']['schema']=='pi-nightly-operator-bootstrap-v1' else 'rebuild';require(self._trusted(saved['path'],saved['sha256'],kind)==saved['packet'],'rebuild instruction changed');return saved
 
     def begin_rebuild(self,cycle,path,pin):
         require(self.mode!='ACTUAL' or os.geteuid()==0,'root operator must claim approved rebuild')
         a=self._trusted(path,pin,'rebuild');require(isinstance(a,dict) and set(a)==REBUILD_FIELDS and a['schema']=='pi-nightly-human-rebuild-v1' and a['mode']==self.mode and a['issuer']=='human_operator' and a['action']=='prepare_same_candidate' and a['cycle_id']==cycle,'closed human rebuild permission required')
+        return self._claim_rebuild(cycle,path,pin,a)
+
+    def begin_bootstrap(self,cycle,path,pin,report_path):
+        """One fixed local telemetry bootstrap under standing preparation authority."""
+        require(self.mode!='ACTUAL' or os.geteuid()==0,'root operator must claim bootstrap preparation')
+        a=self._trusted(path,pin,'bootstrap');require(isinstance(a,dict) and set(a)==REBUILD_FIELDS and a['schema']=='pi-nightly-operator-bootstrap-v1' and a['mode']==self.mode and a['issuer']=='trusted_compatibility_builder' and a['action']=='prepare_same_candidate' and a['cycle_id']==cycle,'closed operator bootstrap instruction required')
+        from .nightly_compatibility import PREIMAGES,CANDIDATES,PATCH
+        from .nightly_rebuild import FIELDS
+        report=self._trusted(report_path,a['compatibility_sha256'],'compatibility')
+        require(isinstance(report,dict) and set(report)==FIELDS and report['schema']=='pi-nightly-compatible-base-v1' and report['mode']==self.mode and report['issuer']=='trusted_compatibility_builder' and report['cycle_id']==cycle and report['package_sha256']==a['package_sha256'] and report['image_id']==a['base_image_id'] and report['patch_sha256']==PATCH and report['changes']=={p:dict(before=PREIMAGES[p],after=CANDIDATES[p]) for p in CANDIDATES},'fixed companion bootstrap report required')
+        if self.mode=='ACTUAL':require(_path(report_path).name==a['base_image_id'].removeprefix('sha256:')+'.json','fixed bootstrap report filename required')
+        return self._claim_rebuild(cycle,path,pin,a,bootstrap=True)
+
+    def _claim_rebuild(self,cycle,path,pin,a,*,bootstrap=False):
         new=_uuid(a['new_cycle_id']);require(new!=cycle and date.fromisoformat(a['night']).isoformat()==a['night'] and isinstance(a['base_image_id'],str) and a['base_image_id'].startswith('sha256:') and hash_value(a['base_image_id'][7:]) and hash_value(a['compatibility_sha256']),'bounded replacement identity required')
         saved=dict(path=str(_path(path)),sha256=pin,packet=a)
         with self._connection(True) as c:
+            if bootstrap and c.execute('PRAGMA user_version').fetchone()[0]==7403:require(c.execute('SELECT 1 FROM approval_rebuilds WHERE new_cycle_id=?',(cycle,)).fetchone() is None,'bootstrap cannot iterate a replacement cycle')
             old=self._row(c,cycle);require(old['package'] is not None and digest(strict_json(old['package']))==a['package_sha256'],'rebuild does not bind old package')
             if c.execute('PRAGMA user_version').fetchone()[0]==7403:
                 existing=c.execute('SELECT new_cycle_id,payload FROM approval_rebuilds WHERE old_cycle_id=?',(cycle,)).fetchone()
@@ -143,8 +158,8 @@ class ApprovalGate:
                 c.execute('PRAGMA user_version=7403')
             c.execute("INSERT INTO approval_cycles(cycle_id,night,phase,created_at,task_id) VALUES(?,?,'preparing',?,?)",(new,a['night'],now.isoformat(),old['task_id']))
             c.execute('INSERT INTO approval_rebuilds VALUES(?,?,?)',(cycle,new,encoded(saved).decode()))
-            self._record(c,cycle,'human_archived_for_rebuild',dict(new_cycle_id=new,permission_sha256=pin,old_package_sha256=a['package_sha256']))
-            self._record(c,new,'human_rebuild_claimed',dict(old_cycle_id=cycle,permission_sha256=pin,base_image_id=a['base_image_id'],compatibility_sha256=a['compatibility_sha256'],task_id=old['task_id']))
+            self._record(c,cycle,'operator_bootstrap_archived' if bootstrap else 'human_archived_for_rebuild',dict(new_cycle_id=new,permission_sha256=pin,old_package_sha256=a['package_sha256']))
+            self._record(c,new,'operator_bootstrap_claimed' if bootstrap else 'human_rebuild_claimed',dict(old_cycle_id=cycle,permission_sha256=pin,base_image_id=a['base_image_id'],compatibility_sha256=a['compatibility_sha256'],task_id=old['task_id']))
         return self.status()
 
     def require_preparation(self,cycle,task,base):

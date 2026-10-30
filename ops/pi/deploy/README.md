@@ -440,3 +440,17 @@ report at `config/compatible-bases/<image-hex>.json` as root0640 under root0750.
 This report is evidence and cannot authorize a rebuild. A separate human receipt
 binds its raw SHA256 and exact base image, as described above. Interrupted asset
 preparation is retained and never silently replayed.
+
+For the user's standing instruction to complete the initial local package before
+publication confirmation, `nightly_rebuild.run` also accepts the separate
+`pi-nightly-operator-bootstrap-v1` schema with issuer
+`trusted_compatibility_builder`. Its closed fields equal the rebuild instruction
+fields, but ACTUAL reads it only from root0640
+`config/bootstrap-instructions/` under root0750. `ApprovalGate.begin_bootstrap`
+requires the exact fixed companion/report file hashes, the same original task
+and package, and refuses bootstrap from an already replaced cycle. Root-only
+execution uses the existing nightly lock and image verification/Gold pipeline.
+It records `operator_bootstrap_*` events, never `human_approved`; publication
+still needs the final package's human approval. Existing explicit human-rebuild
+instructions remain separate. A replacement date is a distinct metadata slot;
+this does not schedule another paid nightly iteration.
