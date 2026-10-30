@@ -87,3 +87,21 @@ def test_completed_evidence_is_not_limited_by_optional_model_reviewer_context(st
     evidence=api().inspect(qp,file_hash(qp))
     assert evidence['authority']=='completed_development_only' and evidence['candidate_sha256']==r['candidate_sha256']
     assert ledger_snapshot(c['ledger_path'])==before
+
+
+@pytest.mark.parametrize('fault',[None,'role','plan','scope','experiment','accepted','process','phase'])
+def test_real_pi_adapter_identity_does_not_require_a_nonexistent_phase_field(stopped,fault):
+    qp,q,c,r,frame=stopped;plan=Plan(**{k:tuple(v) if isinstance(v,list) else v for k,v in read_json(c['plan_path']).items()})
+    e=frame['receipt']['evidence'];e.pop('phase');e.update(administrator_role='myink-administrator',experiment_id='local-trial-1',budget_scope_id='local-trial-1',plan_id=plan.plan_hash,accepted=True,disposition='started',settled=True,aborted=False,process_exited=True)
+    if fault=='role':e['administrator_role']='model'
+    elif fault=='plan':e['plan_id']='f'*64
+    elif fault=='scope':e['budget_scope_id']='foreign'
+    elif fault=='experiment':e['experiment_id']='foreign'
+    elif fault=='accepted':e['accepted']=False
+    elif fault=='process':e['process_exited']=False
+    elif fault=='phase':e['phase']='analysis'
+    write(Path(c['root'])/'worker-frame-private.json',frame);before=ledger_snapshot(c['ledger_path'])
+    if fault is None:assert api().inspect(qp,file_hash(qp))['authority']=='completed_development_only'
+    else:
+        with pytest.raises(ValueError):api().inspect(qp,file_hash(qp))
+    assert ledger_snapshot(c['ledger_path'])==before

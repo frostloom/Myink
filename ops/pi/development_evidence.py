@@ -51,8 +51,13 @@ def inspect(request_path,request_sha256):
     result=read('result.json');saved=read('phase-verification.json');frame=read('worker-frame-private.json')
     require(frame.get('type')=='result' and frame.get('network_denied') is True,'stopped network-denied SDK frame required')
     receipt=worker_receipt(frame['receipt']);e=receipt.evidence
-    require(e.get('engine')=='pi' and e.get('phase')=='develop' and not e.get('protocol_failed') and not e.get('errors')
+    require(e.get('engine')=='pi' and e.get('phase','develop')=='develop' and not e.get('protocol_failed') and not e.get('errors')
         and type(e.get('owned_pid')) is int and e['owned_pid']>0 and type(e.get('returncode')) is int and e['returncode']==0,'SDK failed or still running')
+    # PiAdapter receipts bind the administrator context, not a phase field.
+    # The phase is independently bound by the original Plan/tool ledger and
+    # stopped-session reconciliation below. Reject contradictory context.
+    if q['mode']=='ACTUAL' or 'phase' not in e or 'administrator_role' in e:
+        require(e.get('administrator_role')=='myink-administrator' and e.get('experiment_id')=='local-trial-1' and e.get('budget_scope_id')=='local-trial-1' and e.get('plan_id')==dossier['model_view']['plan_hash'] and e.get('accepted') is True and e.get('disposition')=='started' and e.get('settled') is True and e.get('aborted') is False and e.get('process_exited') is True,'original Pi administrator/plan/session identity required')
     tools_path=root/'tools.sqlite';tools=ledger_snapshot(tools_path)
     raw_plan=dossier['model_view']['plan'];plan=Plan(**{k:tuple(v) if isinstance(v,list) else v for k,v in raw_plan.items()});broker=_StoppedTools(c,plan,tools)
     require(isinstance(frame['session'],str) and isinstance(frame['transcript'],str),'bounded stopped SDK artifacts required')
