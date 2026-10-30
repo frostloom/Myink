@@ -31,7 +31,11 @@ def source_case(binding_case):
 def issue(case,**kwargs):
     from ops.pi.nightly_source import prepare
     prior,cycle,out,template,observer,read,context=case;g=prior[0]
-    return prepare(g,cycle,out,template,file_hash(template),collect=kwargs.get('collect',read),inspect_cohort=kwargs.get('inspect_cohort',lambda *a:context))
+    def source(packet,rows,files,path):
+        available={'src/a.py':(prior[2]/'bundle/candidate/src/a.py').read_text(),'src/other.py':'value = 3\n'}
+        if not set(files)<=set(available):raise ValueError('file not in installed package')
+        return {f:available[f] for f in files}
+    return prepare(g,cycle,out,template,file_hash(template),collect=kwargs.get('collect',read),inspect_cohort=kwargs.get('inspect_cohort',lambda *a:context),read_source=kwargs.get('read_source',source))
 
 
 def test_next_lease_is_fresh_source_bound_and_does_not_reset_original_ledgers(source_case):
@@ -65,3 +69,25 @@ def test_unverified_context_cannot_issue_next_source_lease(source_case,fault):
 def test_incomplete_source_intent_is_not_replayed(source_case):
     out=source_case[2];p=out/'source-intent.json';p.write_text('{}');p.chmod(0o600)
     with pytest.raises(ValueError):issue(source_case,collect=lambda *a:pytest.fail('interrupted intent must not recollect'))
+
+
+def test_operator_scope_can_select_a_deployed_file_outside_previous_candidate(source_case):
+    prior,cycle,out,template,*_=source_case;value=json.loads(template.read_bytes());value['source_scope']['files']=['src/other.py'];template.write_text(json.dumps(value))
+    result=issue(source_case);p=json.loads(Path(result['profile']['path']).read_bytes());source=Path(p['source']['source_path'])
+    assert (source/'src/other.py').read_text()=='value = 3\n' and not (source/'src/a.py').exists()
+    assert p['source']['source_sha256']!=tree_hash(prior[2]/'bundle/candidate')
+
+
+@pytest.mark.parametrize('files',[['../escape.py'],['src/a.py']*2,['src/a.py','src/b.py','src/c.py','src/d.py']])
+def test_invalid_operator_scope_is_rejected_before_metrics_or_source_read(source_case,files):
+    value=json.loads(source_case[3].read_bytes());value['source_scope']['files']=files;source_case[3].write_text(json.dumps(value))
+    with pytest.raises(ValueError):issue(source_case,collect=lambda *a:pytest.fail('invalid scope queried metrics'),read_source=lambda *a:pytest.fail('invalid scope read source'))
+
+
+def test_copy_changed_during_ownership_handoff_cannot_be_signed_as_deployed_source(source_case,monkeypatch):
+    from ops.pi import nightly_source
+    def corrupt(path,mode):
+        if path.name=='a.py':path.write_text('unapproved = True\n')
+    monkeypatch.setattr(nightly_source,'_ordinary',corrupt)
+    with pytest.raises(ValueError):issue(source_case)
+    assert not (source_case[2]/'source-stage.json').exists()

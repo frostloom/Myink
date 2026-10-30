@@ -366,12 +366,20 @@ policy, fixed SDK host image/entry and bounded phase limits. Prefer7200seconds
 for an individual source profile. Do not copy dates from an old finite profile.
 
 A new unadmitted nightly round derives a source profile only from the last
-completed human-deployed comparison, the exact copied deployed source, and a
+completed human-deployed comparison, operator-selected installed Python files, and a
 fresh read-only window whose running cohort is unchanged before/after collection.
 It retains the fixed SDK host image while updating the business checker/base
 image to that confirmed version. Missing evidence, changed identity, altered
 fees or partial intents stop issuance; they do not renew permits or replay model
 calls. The original coordinator/manager remain the only paid execution path.
+Selected files need not have been modified by the previous candidate. The fixed
+reader checks the complete installed Python package against the approved package
+digest, then verifies each selected body against that package's file digest.
+It reads at most3 canonical Python paths, at most24000bytes each, as uid10001
+using only the standard library under `-I -S -B`; it does not import application
+code. The live cohort is checked again after both metric and source reads.
+Keep the operator's existing file scope; do not narrow it to the previous patch
+just to make a source snapshot fit. Any copied-byte drift stops profile issuance.
 Per-cycle source inputs/profiles and their receipts are retained. No configuration
 here permits GitHub/registry pushes or product deployment without the separate
 exact-artifact human approval.

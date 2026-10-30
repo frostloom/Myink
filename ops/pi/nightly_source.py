@@ -6,7 +6,8 @@ The original manager, closed model policy, ledger and unknown holds remain fixed
 """
 from pathlib import Path
 from datetime import datetime,timedelta,timezone
-import os,stat,shutil
+import os,stat
+from hashlib import sha256
 from .audit import _path,_plain,require,strict_json,digest,utc
 from .development_inputs import file_hash,tree_hash,ledger_snapshot
 from .nightly_gate import BASE
@@ -35,16 +36,18 @@ def _inspect(packet,root):
     require(rows is not None,'confirmed product cohort no longer running');return rows
 
 
-def prepare(gate,cycle,root,template_path,template_pin,*,collect=None,inspect_cohort=None):
+def prepare(gate,cycle,root,template_path,template_pin,*,collect=None,inspect_cohort=None,read_source=None):
     state=gate.status();require(state['phase']=='preparing' and state['cycle_id']==cycle and state['task_id'] is None,'one new unadmitted round required')
     root=_path(root);require(root.is_dir() and stat.S_IMODE(root.stat().st_mode)==0o700,'existing private new round required')
     template_path=_path(template_path);_plain(template_path)
-    if gate.mode=='ACTUAL':require(os.geteuid()==0 and collect is None and inspect_cohort is None and root==BASE/'nightly'/cycle and template_path==BASE/'config/nightly-source-template.json' and template_path.stat().st_uid==0 and stat.S_IMODE(template_path.stat().st_mode)==0o640 and template_path.parent.stat().st_uid==0 and stat.S_IMODE(template_path.parent.stat().st_mode)==0o750,'root fixed fresh source issuer required')
-    else:require(callable(collect) and callable(inspect_cohort) and stat.S_IMODE(template_path.stat().st_mode)==0o600,'explicit isolated source evidence required')
+    if gate.mode=='ACTUAL':require(os.geteuid()==0 and collect is None and inspect_cohort is None and read_source is None and root==BASE/'nightly'/cycle and template_path==BASE/'config/nightly-source-template.json' and template_path.stat().st_uid==0 and stat.S_IMODE(template_path.stat().st_mode)==0o640 and template_path.parent.stat().st_uid==0 and stat.S_IMODE(template_path.parent.stat().st_mode)==0o750,'root fixed fresh source issuer required')
+    else:require(callable(collect) and callable(inspect_cohort) and callable(read_source) and stat.S_IMODE(template_path.stat().st_mode)==0o600,'explicit isolated source evidence required')
     require(template_path.stat().st_size<=65536 and file_hash(template_path)==template_pin,'source template drift');template=strict_json(template_path.read_bytes())
     from . import autonomy_profile
     require(set(template)=={'schema','mode','profile','source_scope','validity_seconds'} and template['schema']=='pi-nightly-source-template-v1' and template['mode']==gate.mode and isinstance(template['profile'],dict) and set(template['profile'])==autonomy_profile.FIELDS-OMITTED,'source-free standing template required')
     require(type(template['validity_seconds']) is int and 1<=template['validity_seconds']<=86400 and set(template['source_scope'])=={'files','behavior'},'bounded new source lease required')
+    from .nightly_source_read import scope,read as read_installed
+    files=scope(template['source_scope']['files'],gate.mode)
     with gate._connection() as c:
         row=c.execute("SELECT cycle_id,result_sha256 FROM approval_cycles WHERE phase='completed' AND package IS NOT NULL AND deployment IS NOT NULL ORDER BY rowid DESC LIMIT 1").fetchone()
         require(row is not None,'completed human-deployed predecessor required');previous=row['cycle_id'];result_pin=row['result_sha256']
@@ -76,17 +79,20 @@ def prepare(gate,cycle,root,template_path,template_pin,*,collect=None,inspect_co
     require(metrics['schema']=='pi-live-observer-result-v1' and metrics['mode']==gate.mode and metrics['config_sha256']==digest(oc) and metrics['status'] in ('passed','insufficient_evidence'),'completed fresh observation required')
     start,end=utc(metrics['window']['start']),utc(metrics['window']['end']);now=utc(gate.clock())
     require(max(utc(r['started_at']) for r in actual)<=start<end<=now and now-end<=timedelta(minutes=45) and utc(deployment['packet']['deployed_at'])<=start,'fresh deployed source observation required')
+    values=read_source(packet,actual,files,root/'source-read') if read_source is not None else read_installed(gate.mode,packet,actual,files,root/'source-read')
+    require(isinstance(values,dict) and set(values)==set(files) and all(isinstance(v,str) and len(v.encode())<=24000 for v in values.values()),'bounded selected source text required')
+    source_pin=digest({name:sha256(text.encode()).hexdigest() for name,text in values.items()})
     require(inspect_cohort(packet,root/'source-cohort-after')==actual,'source runtime changed during collection')
-    source=bundle/'candidate';scope=template['source_scope'];files=scope['files']
-    require(isinstance(files,list) and 0<len(files)<=3 and len(files)==len(set(files)) and all(isinstance(f,str) and f in {p.relative_to(source).as_posix() for p in source.rglob('*.py')} for f in files),'source files must remain within deployed candidate scope')
     parent=BASE/'nightly-source-inputs' if gate.mode=='ACTUAL' else root/'source-inputs';_folder(parent,gate.mode,shared=gate.mode=='ACTUAL')
     inputs=parent/cycle;require(not inputs.exists(),'existing source snapshot retained');_folder(inputs,gate.mode)
-    copied=inputs/'source';shutil.copytree(source,copied)
+    copied=inputs/'source';copied.mkdir(mode=0o700)
+    for name,text in values.items():
+        path=copied/name;path.parent.mkdir(parents=True,exist_ok=True,mode=0o700);path.write_bytes(text.encode());path.chmod(0o600)
     for path in [copied,*copied.rglob('*')]:path.chmod(0o700 if path.is_dir() else 0o600);_ordinary(path,gate.mode)
-    require(tree_hash(copied)==packet['manifest']['source_sha256'],'deployed source snapshot drift')
+    require(tree_hash(copied)==source_pin,'selected deployed source changed during copy')
     pending=inputs/'pending.json';_write(pending,[]);_ordinary(pending,gate.mode)
     from .live_observer import _controller
-    profile.update(source=dict(source_path=str(copied),source_sha256=tree_hash(copied),files=files,reference_commit=oc['identity']['commit_sha'],pending_path=str(pending),pending_sha256=file_hash(pending),behavior=scope['behavior']),observer=dict(observer_config_path=str(observer),observer_config_sha256=binding['sha256'],observer_controller_sha256=_controller()),checker_image_id=packet['manifest']['image_id'],issued_at=now.isoformat(),expires_at=(now+timedelta(seconds=template['validity_seconds'])).isoformat())
+    profile.update(source=dict(source_path=str(copied),source_sha256=source_pin,files=files,reference_commit=oc['identity']['commit_sha'],pending_path=str(pending),pending_sha256=file_hash(pending),behavior=template['source_scope']['behavior']),observer=dict(observer_config_path=str(observer),observer_config_sha256=binding['sha256'],observer_controller_sha256=_controller()),checker_image_id=packet['manifest']['image_id'],issued_at=now.isoformat(),expires_at=(now+timedelta(seconds=template['validity_seconds'])).isoformat())
     folder=BASE/'config/nightly-source-profiles' if gate.mode=='ACTUAL' else root;_folder(folder,gate.mode,shared=gate.mode=='ACTUAL')
     path=folder/(cycle+'.json');_write(path,profile)
     if gate.mode=='ACTUAL':
