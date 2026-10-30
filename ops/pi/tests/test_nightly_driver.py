@@ -90,3 +90,25 @@ def test_prepared_source_does_not_start_manager_outside_admission_window(driver_
     def forbidden(*a):pytest.fail('outside-window manager notification')
     r=tick(driver_case,manager_trigger=forbidden)
     assert r['status']=='waiting_next_window' and gate().status()['phase']=='preparing' and not (root/'manager-intent.json').exists()
+
+
+def _human_deploy_permission(case):
+    tick(case);cp,cfg,finished,now,gate=case;g=gate();s=g.status();root=Path(cfg['root'])/s['cycle_id'];manifest=json.loads((root/'bundle/manifest.json').read_bytes())
+    from ops.pi.audit import digest
+    p=root/'operator.json';p.write_text(json.dumps(dict(schema='pi-nightly-human-approval-v1',mode='SIMULATED',issuer='human_operator',cycle_id=s['cycle_id'],package_sha256=digest(manifest),approved_actions=['deploy'],issued_at=now[0].isoformat(),expires_at=(now[0]+timedelta(hours=1)).isoformat())));p.chmod(0o600);pin=file_hash(p);g.approve(s['cycle_id'],p,pin)
+    return g,s['cycle_id'],root,manifest,pin
+
+
+def test_approved_driver_only_verifies_deployment_without_new_intake(driver_case):
+    g,cycle,root,manifest,pin=_human_deploy_permission(driver_case);calls=[]
+    result=tick(driver_case,deployment_confirm=lambda *a:calls.append('verify') or dict(status='awaiting_deployment'))
+    assert result['phase']=='awaiting_deployment' and calls==['verify'] and len(Image.calls)==1
+
+
+def test_observing_driver_routes_only_confirmed_version_assessment(driver_case):
+    from ops.pi.audit import digest
+    g,cycle,root,m,approval_pin=_human_deploy_permission(driver_case);cp,cfg,finished,now,gate=driver_case
+    p=root/'deployment.json';p.write_text(json.dumps(dict(schema='pi-nightly-deployment-receipt-v1',mode='SIMULATED',issuer='trusted_deployment_verifier',cycle_id=cycle,package_sha256=digest(m),approval_sha256=approval_pin,image_id=m['image_id'],source_sha256=m['source_sha256'],comparison_sha256=m['comparison_sha256'],deployment_id='verified-one',deployed_at=now[0].isoformat())));p.chmod(0o600);g.deployed(cycle,p,file_hash(p))
+    observer=root/'observer.json';observer.write_text('{}');observer.chmod(0o600);cfg['observation_config']=dict(path=str(observer),sha256=file_hash(observer));cp.write_text(json.dumps(cfg));calls=[]
+    result=tick(driver_case,assessor=lambda *a:calls.append('assessment') or dict(status='insufficient_evidence'))
+    assert result['phase']=='observing' and calls==['assessment'] and len(Image.calls)==1

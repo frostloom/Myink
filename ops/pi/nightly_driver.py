@@ -19,7 +19,7 @@ FIELDS=set('schema mode state_path billing_path gate_path root lock_path inherit
 
 def _load(path,pin,callbacks,clock):
     path=_path(path);_plain(path);require(path.stat().st_size<=65536 and file_hash(path)==pin,'nightly driver config drift');c=strict_json(path.read_bytes())
-    require(isinstance(c,dict) and set(c)==FIELDS and c['schema']=='pi-nightly-driver-v1' and c['mode'] in ('ACTUAL','SIMULATED'),'closed nightly driver config required')
+    require(isinstance(c,dict) and FIELDS<=set(c)<=FIELDS|{'observation_config'} and c['schema']=='pi-nightly-driver-v1' and c['mode'] in ('ACTUAL','SIMULATED'),'closed nightly driver config required')
     for key in ('root','lock_path','state_path','billing_path','gate_path'):_path(c[key])
     require(Path(c['root']).is_dir() and stat.S_IMODE(Path(c['root']).stat().st_mode)==0o700,'private nightly root required');_plain(Path(c['lock_path']))
     if c['mode']=='ACTUAL':
@@ -61,14 +61,29 @@ def _used(gate,pending):
         return any(strict_json(r[0])['source_sha256']==pin for r in c.execute("SELECT package FROM approval_cycles WHERE phase='completed' AND package IS NOT NULL"))
 
 
-def run(config_path,pin,*,clock=None,admit=None,manager_trigger=None,image_factory=None):
-    c=_load(config_path,pin,(admit,manager_trigger,image_factory),clock);clock=clock or (lambda:datetime.now(timezone.utc))
+def run(config_path,pin,*,clock=None,admit=None,manager_trigger=None,image_factory=None,deployment_confirm=None,assessor=None):
+    c=_load(config_path,pin,(admit,manager_trigger,image_factory,deployment_confirm,assessor),clock);clock=clock or (lambda:datetime.now(timezone.utc))
     gate=ApprovalGate(c['gate_path'],c['state_path'],c['billing_path'],mode=c['mode'],clock=clock if c['mode']=='SIMULATED' else None)
     with Path(c['lock_path']).open('rb') as lock:
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:return _response(gate,'lock_busy')
         state=gate.status()
-        if state['phase'] not in ('idle','preparing'):return _response(gate,'waiting_comparison' if state['phase']=='observing' else 'waiting_human')
+        if state['phase']=='awaiting_deployment':
+            require(c['mode']=='ACTUAL' or callable(deployment_confirm),'explicit simulated deployment verifier required')
+            if deployment_confirm is None:
+                from .nightly_deployment import confirm as deployment_confirm
+            result=deployment_confirm(gate,state['cycle_id'],Path(c['root'])/state['cycle_id']/'bundle',Path(c['docker']),c['endpoint'],c['daemon_id'])
+            return _response(gate,'observing' if result['status']=='observing' else 'waiting_human',confirmation_status=result['status'])
+        if state['phase']=='observing':
+            observer=c.get('observation_config')
+            if observer is None:return _response(gate,'observation_not_configured')
+            require(isinstance(observer,dict) and set(observer)=={'path','sha256'},'one pinned observation config required')
+            require(c['mode']=='ACTUAL' or callable(assessor),'explicit simulated assessment required')
+            if assessor is None:
+                from .nightly_observation import assess as assessor
+            result=assessor(gate,state['cycle_id'],Path(c['root'])/state['cycle_id']/'bundle',observer['path'],observer['sha256'])
+            return _response(gate,result['status'],assessed_cycle_id=state['cycle_id'])
+        if state['phase'] not in ('idle','preparing'):return _response(gate,'waiting_human')
         cycle=state['cycle_id'];root=None
         try:
             if state['phase']=='idle':
