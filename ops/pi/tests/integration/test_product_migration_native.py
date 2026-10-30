@@ -12,7 +12,7 @@ from test_product_backup import product_backup, bootstrap_case
 pytestmark=pytest.mark.pi_followup_docker
 
 
-@pytest.mark.parametrize('fault',[None,'runtime-mismatch','foreign-owner'])
+@pytest.mark.parametrize('fault',[None,'runtime-mismatch','foreign-owner','upgrade','upgrade-owner','upgrade-schema'])
 def test_native_schema_and_identity_keep_historical_rows_and_closed_admission(product_backup,fault):
     assert importlib.util.find_spec('ops.pi.product_migration'), 'missing fixed native migration adapter'
     from ops.pi.product_migration import NativeProductMigration
@@ -32,9 +32,12 @@ def test_native_schema_and_identity_keep_historical_rows_and_closed_admission(pr
     def sql(query):return run('--host',endpoint,'exec',cid,'psql','-X','-q','-A','-t','-U','myink','-d','myink','-v','ON_ERROR_STOP=1','-c',query)
     try:
         cid=run('--host',endpoint,'create','--name','myink-pi-migrate-source-'+owner[:12],'--label','myink.pi.migration-source='+owner,'--network','none','--read-only','--tmpfs','/var/lib/postgresql/data:rw,size=268435456','--tmpfs','/var/run/postgresql:rw,size=16777216','--tmpfs','/tmp:rw,size=16777216','--memory','384m','--memory-swap','384m','--cpus','0.5','--pids-limit','96','--env','POSTGRES_USER=myink','--env','POSTGRES_DB=myink','--env','POSTGRES_HOST_AUTH_METHOD=trust',pgimage)
-        run('--host',endpoint,'start',cid);until=time.monotonic()+25
+        run('--host',endpoint,'start',cid);until=time.monotonic()+60
         while True:
-            result=subprocess.run([str(docker),'--host',endpoint,'exec',cid,'pg_isready','-h','127.0.0.1','-U','myink','-d','myink'],capture_output=True,timeout=3)
+            try:result=subprocess.run([str(docker),'--host',endpoint,'exec',cid,'pg_isready','-h','127.0.0.1','-U','myink','-d','myink'],capture_output=True,timeout=3)
+            except subprocess.TimeoutExpired:
+                assert time.monotonic()<until
+                continue
             if result.returncode==0:break
             assert time.monotonic()<until;time.sleep(.2)
         sql("CREATE ROLE myink_app LOGIN;CREATE ROLE myink_report LOGIN;CREATE TABLE projects(id uuid PRIMARY KEY);CREATE TABLE tasks(id uuid PRIMARY KEY,project_id uuid,payload json,status text);CREATE TABLE agent_runs(id integer,detail json);INSERT INTO tasks VALUES('11111111-1111-4111-8111-111111111111',NULL,'{\"legacy\":true}','done');INSERT INTO agent_runs VALUES(1,'{\"old\":true}');")
@@ -48,7 +51,9 @@ def test_native_schema_and_identity_keep_historical_rows_and_closed_admission(pr
                 manifest['files']['src/myink/'+f.relative_to(source).as_posix()]=sha256(f.read_bytes()).hexdigest()
         mp=host.root/'candidate.json';mp.write_text(json.dumps(manifest));mp.chmod(0o600)
         host.config.update(candidate_manifest_path=str(mp),candidate_manifest_sha256=sha256(mp.read_bytes()).hexdigest())
+        from ops.pi.product_runtime import LinuxProductHost
         host.commands=DockerCommands(docker,endpoint,host.root/'commands')
+        host._bytes=lambda result:LinuxProductHost._bytes(host,result)
         def native(args,**kw):
             args=list(args)
             if fault=='runtime-mismatch' and args[0]=='create':
@@ -88,6 +93,47 @@ def test_native_schema_and_identity_keep_historical_rows_and_closed_admission(pr
         state=json.loads(sql('SELECT row_to_json(m) FROM maintenance_control m'))
         assert state['admission_closed'] is True and state['consumer_blocked'] is True
         assert state['deployment_id']==host.plan['candidate']['deployment_id'] and state['generation']==host.plan['candidate']['generation']
+        if isinstance(fault,str) and fault.startswith('upgrade'):
+            from copy import deepcopy
+            previous=deepcopy(state);previous['admission_closed']=False;previous['consumer_blocked']=False
+            sql("UPDATE maintenance_control SET admission_closed=false,consumer_blocked=false")
+            host.plan.update(schema='pi-product-upgrade-v2',previous=previous,operation_id=str(uuid.uuid4()))
+            host.plan['candidate']['generation']+=1;host.plan['candidate']['deployment_id']='second-deployment'
+            backup_path=Path(host.config['backup_path']);backup=json.loads(backup_path.read_bytes());backup['release_pair_id']=host.plan['operation_id']
+            backup_path.write_text(json.dumps(backup));host.config['backup_sha256']=sha256(backup_path.read_bytes()).hexdigest()
+            host.root=host.root/'next-operation';host.root.mkdir(mode=0o700);(host.root/'commands').mkdir(mode=0o700)
+            host.commands=DockerCommands(docker,endpoint,host.root/'commands')
+            proofpin=digest(host.plan)
+            host.ledger.intent(host.plan['operation_id'],'product_bootstrap',dict(plan_sha256=proofpin))
+            for action in ('install_schema','bind_identity'):
+                host.ledger.intent(host.plan['operation_id']+':'+action,'product_bootstrap_step',dict(plan_sha256=proofpin,action=action))
+            migration=NativeProductMigration(host)
+            if fault=='upgrade-schema':
+                sql("ALTER TABLE admission_intents ADD COLUMN unapproved text")
+                from ops.pi.product_commands import DockerCommandError
+                with pytest.raises(DockerCommandError) as denied:migration.install(host.plan,proofs)
+                assert b'incompatible existing maintenance columns' in (host.commands.root/denied.value.receipt['command_id']/'stderr.bin').read_bytes()
+                assert json.loads(sql('SELECT row_to_json(m) FROM maintenance_control m'))==previous
+                return
+            schema_before=sql("SELECT md5(string_agg(column_name||data_type||is_nullable,',' ORDER BY table_name,ordinal_position)) FROM information_schema.columns WHERE table_schema='public'")
+            result=migration.install(host.plan,proofs)
+            assert result['historical_provenance_updated'] is False
+            if fault=='upgrade-owner':
+                sql("UPDATE maintenance_control SET owner='manual-release',generation=9001")
+                from ops.pi.product_commands import DockerCommandError
+                with pytest.raises(DockerCommandError) as denied:migration.bind(host.plan,proofs)
+                assert b'previous deployment ownership changed' in (host.commands.root/denied.value.receipt['command_id']/'stderr.bin').read_bytes()
+                state=json.loads(sql('SELECT row_to_json(m) FROM maintenance_control m'))
+                assert state['owner']=='manual-release' and state['generation']==9001
+            else:
+                migration.bind(host.plan,proofs)
+                state=json.loads(sql('SELECT row_to_json(m) FROM maintenance_control m'))
+                assert state['generation']==2 and state['owner']==previous['owner'] and state['epoch']==host.plan['operation_id']
+                assert state['admission_closed'] is True and state['consumer_blocked'] is True
+            assert before==sql("SELECT json_build_object('task',(SELECT payload FROM tasks LIMIT 1),'run',(SELECT detail FROM agent_runs LIMIT 1))")
+            assert schema_before==sql("SELECT md5(string_agg(column_name||data_type||is_nullable,',' ORDER BY table_name,ordinal_position)) FROM information_schema.columns WHERE table_schema='public'")
+            assert not run('--host',endpoint,'ps','-aq','--filter','label=myink.pi.migration.operation='+host.plan['operation_id'])
+            return
         with pytest.raises(ValueError):migration.bind(host.plan,proofs)
         assert not run('--host',endpoint,'ps','-aq','--filter','label=myink.pi.migration.operation='+host.plan['operation_id'])
     finally:

@@ -28,8 +28,10 @@ def _guard(condition, reason):
 
 
 def _plan(value):
-    require(isinstance(value,dict) and set(value)=={'schema','mode','operation_id','legacy','candidate','expires_at'}, 'closed bootstrap plan required')
-    require(len(encoded(value))<=65536 and value['schema']=='pi-product-bootstrap-v1' and value['mode'] in ('ACTUAL','SIMULATED'))
+    require(isinstance(value,dict),'closed product plan required')
+    upgrade=value.get('schema')=='pi-product-upgrade-v2'
+    require(set(value)=={'schema','mode','operation_id','legacy','candidate','expires_at'}|({'previous'} if upgrade else set()),'closed product plan required')
+    require(len(encoded(value))<=65536 and value['schema'] in ('pi-product-bootstrap-v1','pi-product-upgrade-v2') and value['mode'] in ('ACTUAL','SIMULATED'))
     require(str(uuid.UUID(value['operation_id']))==value['operation_id'],'canonical operation identity required')
     utc(value['expires_at'])
     legacy=value['legacy'];candidate=value['candidate']
@@ -49,6 +51,15 @@ def _plan(value):
     for role,image in candidate['image_ids'].items():
         require(isinstance(image,str) and image.startswith('sha256:') and hash_value(image[7:]))
         require(role=='python' or image==images[role],'bootstrap cannot upgrade unrelated infrastructure')
+    if upgrade:
+        previous=value['previous']
+        require(isinstance(previous,dict) and set(previous)=={'id','epoch','deployment_id','generation','owner','image_ids','deadline','admission_closed','consumer_blocked'},'complete frozen previous ownership required')
+        require(type(previous['id']) is int and previous['id']==1 and type(previous['generation']) is int and previous['generation']>0,'previous generation required')
+        require(str(uuid.UUID(previous['epoch']))==previous['epoch'] and previous['epoch']!=value['operation_id'],'distinct previous epoch required')
+        require(name(previous['deployment_id']) and name(previous['owner']) and previous['deployment_id']!=candidate['deployment_id'],'distinct deployment required')
+        require(previous['image_ids']==images and candidate['generation']==previous['generation']+1,'exact legacy images and next generation required')
+        utc(previous['deadline'])
+        require(previous['admission_closed'] is False and previous['consumer_blocked'] is False,'previous deployment must be fully open')
     return deepcopy(value)
 
 

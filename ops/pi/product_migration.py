@@ -24,15 +24,34 @@ for path in package.rglob('*.py'):
   files['src/myink/'+path.relative_to(package).as_posix()]=hashlib.sha256(path.read_bytes()).hexdigest()
 actual=hashlib.sha256(json.dumps(files,sort_keys=True,separators=(',',':'),allow_nan=False).encode()).hexdigest()
 if actual!=sys.argv[1]:raise RuntimeError('installed runtime source differs from candidate')
-from sqlalchemy import text
+from sqlalchemy import text,inspect
+from datetime import datetime
 from myink.db import ensure_maintenance_schema,get_admin_engine
 from myink.maintenance_pause import PROTOCOL
 if PROTOCOL!={'protocol':1,'schema':1,'state':1,'effect_keys':1}:raise RuntimeError('incompatible native protocol')
+def column_type(type_,dialect):
+ value=type_.compile(dialect=dialect)
+ return 'DOUBLE PRECISION' if value=='FLOAT' else value
 mode=sys.argv[2];plan=json.loads(sys.argv[3])
-if mode=='install':ensure_maintenance_schema()
+upgrade=plan['schema']=='pi-product-upgrade-v2'
+if mode=='install' and not upgrade:ensure_maintenance_schema()
 with get_admin_engine().begin() as db:
  row=db.execute(text('SELECT * FROM public.maintenance_control WHERE id=1 FOR UPDATE')).mappings().one()
- if not (row['generation']==0 and row['owner']=='bootstrap' and row['deployment_id']=='initial' and row['epoch']==''):
+ if upgrade:
+  from myink.models.maintenance import MaintenanceControl,AdmissionIntent,MaintenanceExecution,QueueHandoff
+  inspector=inspect(db)
+  for model in (MaintenanceControl,AdmissionIntent,MaintenanceExecution,QueueHandoff):
+   expected={c.name:(column_type(c.type,db.dialect),c.nullable) for c in model.__table__.columns}
+   actual_columns={c['name']:(column_type(c['type'],db.dialect),c['nullable']) for c in inspector.get_columns(model.__tablename__,schema='public')}
+   if actual_columns!=expected:raise RuntimeError('incompatible existing maintenance columns: '+model.__tablename__)
+   if set(inspector.get_pk_constraint(model.__tablename__,schema='public')['constrained_columns'])!={c.name for c in model.__table__.primary_key.columns}:raise RuntimeError('incompatible existing maintenance primary key')
+  previous=plan['previous']
+  for key in ('id','epoch','deployment_id','generation','owner','image_ids'):
+   if type(row[key]) is not type(previous[key]) or row[key]!=previous[key]:raise RuntimeError('previous deployment ownership changed')
+  if row['deadline']!=datetime.fromisoformat(previous['deadline'].replace('Z','+00:00')):raise RuntimeError('previous deadline changed')
+  closed=mode=='bind'
+  if row['admission_closed'] is not closed or row['consumer_blocked'] is not closed:raise RuntimeError('previous barrier changed')
+ elif not (row['generation']==0 and row['owner']=='bootstrap' and row['deployment_id']=='initial' and row['epoch']==''):
   raise RuntimeError('first bootstrap ownership already changed')
  if mode=='install':
   db.execute(text('UPDATE public.maintenance_control SET admission_closed=true,consumer_blocked=true WHERE id=1'))
@@ -128,10 +147,18 @@ class NativeProductMigration:
 
     def install(self,plan,proofs):
         backend=LinuxProductBackup(self.host,proofs);backend._sealed_configuration()
-        before=backend._metadata();require(not set(before['tables'])&TABLES,'first bootstrap schema already exists')
+        before=backend._metadata();upgrade=plan['schema']=='pi-product-upgrade-v2'
+        require(TABLES<=set(before['tables']) if upgrade else not set(before['tables'])&TABLES,'existing maintenance schema mismatch')
         result=self._job('install',plan);after=backend._metadata()
-        require(set(after['tables'])==set(before['tables'])|TABLES and all(after['tables'][k]==v and after['content'][k]==before['content'][k] for k,v in before['tables'].items()),'historical business content changed during schema installation')
-        state=self._state();require(state['epoch']=='' and state['generation']==0 and state['owner']=='bootstrap' and state['deployment_id']=='initial' and state['admission_closed'] is True and state['consumer_blocked'] is True,'schema barrier not confirmed')
+        preserved=set(before['tables'])-({'maintenance_control'} if upgrade else set())
+        require(set(after['tables'])==set(before['tables'])|TABLES and all(after['tables'][k]==before['tables'][k] and after['content'][k]==before['content'][k] for k in preserved),'historical business content changed during schema preparation')
+        state=self._state()
+        if upgrade:
+            from .audit import utc
+            previous=plan['previous']
+            require(all(state[k]==previous[k] for k in ('id','epoch','deployment_id','generation','owner','image_ids')) and utc(state['deadline'])==utc(previous['deadline']),'previous ownership changed during schema preparation')
+        else:require(state['epoch']=='' and state['generation']==0 and state['owner']=='bootstrap' and state['deployment_id']=='initial','bootstrap ownership not confirmed')
+        require(state['admission_closed'] is True and state['consumer_blocked'] is True,'schema barrier not confirmed')
         return dict(verified=True,plan_sha256=digest(plan),source_commit=plan['candidate']['commit_sha'],historical_provenance_updated=False,protocol=result['protocol'])
 
     def bind(self,plan,proofs):

@@ -71,6 +71,7 @@ class LinuxProductHost:
         self.root=_path(c['root']);require(self.root.is_dir() and stat.S_IMODE(self.root.stat().st_mode)==0o700 and self.root.stat().st_uid==os.geteuid(),'owned private product output required')
         self.lock_path=_path(c['lock_path']);_plain(self.lock_path);require(stat.S_IMODE(self.lock_path.stat().st_mode)==0o600 and self.lock_path.stat().st_uid==os.geteuid(),'existing owned shared lock required')
         self.plan=_plan(_pinned(c['plan_path'],c['plan_sha256'],actual));require(self.plan['mode']==c['mode'],'product mode drift')
+        require(self.plan['schema']=='pi-product-bootstrap-v1','continuous native cohort admission pending')
         if actual:
             required_root=BASE/('product-release-runs' if c['target']=='production' else 'product-rehearsals')/self.plan['operation_id']
             require(self.root==required_root,'canonical operation output root required')
