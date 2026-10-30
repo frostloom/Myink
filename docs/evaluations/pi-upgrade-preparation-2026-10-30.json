@@ -1,0 +1,154 @@
+{
+  "schema": "pi-upgrade-preparation-checkpoint-v1",
+  "date": "2026-10-30",
+  "source_commit": "015fa790f41b29a1c7c5c68922f058a5419cb91d",
+  "base_commit": "d3b8e72a67f55eab8ccb1f3c6931b725c0e4efb0",
+  "run_id": "pi-upgrade-preparation-20261030",
+  "status": "frozen_previous_identity_and_native_database_preparation_verified",
+  "release_allowed": false,
+  "native_continuous_upgrade_enabled": false,
+  "main_merged": false,
+  "production_changed": false,
+  "provider_calls": 0,
+  "pi_autonomous_improvement_claim": false,
+  "actual_online_observation_hours": 0,
+  "changes": [
+    {
+      "path": "docs/superpowers/plans/2026-10-29-pi-product-maintenance-release.md",
+      "category": "docs",
+      "added": 2,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/product_bootstrap.py",
+      "category": "production",
+      "added": 13,
+      "deleted": 2
+    },
+    {
+      "path": "ops/pi/product_migration.py",
+      "category": "production",
+      "added": 33,
+      "deleted": 6
+    },
+    {
+      "path": "ops/pi/product_runtime.py",
+      "category": "production",
+      "added": 1,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/integration/test_product_migration_native.py",
+      "category": "test",
+      "added": 49,
+      "deleted": 3
+    },
+    {
+      "path": "ops/pi/tests/test_product_upgrade.py",
+      "category": "test",
+      "added": 71,
+      "deleted": 0
+    }
+  ],
+  "tests": {
+    "full": {
+      "passed": 4229,
+      "deselected": 61,
+      "seconds": 387.05
+    },
+    "related": {
+      "passed": 93,
+      "deselected": 0,
+      "seconds": 28.76
+    },
+    "native": {
+      "passed": 3,
+      "deselected": 3,
+      "seconds": 254.21
+    }
+  },
+  "suites_overlap": true,
+  "evidence": {
+    "full": {
+      "sha256": "7e8c70b8885a8dc5e9ed9e0a498f73dbe5b8e6ddd83f922fe0375791e789858d",
+      "bytes": 4768
+    },
+    "related": {
+      "sha256": "d4509545f791236d4afb6c448147ce7e96d4872600dda3344a211ffe8a89c651",
+      "bytes": 180
+    },
+    "native": {
+      "sha256": "18f09e08064ff454b185081bd583635f9bf95c0fc9617b7de6bf4b8f5377f8d0",
+      "bytes": 124
+    },
+    "unit_red": {
+      "sha256": "3bed068bb299cbb504219e0c7c283b728b1c2a0089eaa509654ba05a158ae681",
+      "bytes": 2777
+    },
+    "native_red": {
+      "sha256": "593d972187b4727ba24268cd640dfb52389eea2ea6d6b3f9c4aa8307c2786cc3",
+      "bytes": 10729
+    },
+    "harness_failure": {
+      "sha256": "0da8748fed1bcee8a5528881c67e9ce96810fb573013260a7d4f5ec03271c739",
+      "bytes": 28177
+    },
+    "harness_failure2": {
+      "sha256": "137caeb03d6e9e91594450b9d04b7a5e5271b7df3b0ab9ece50e42d4cccf6b1b",
+      "bytes": 37382
+    },
+    "harness_failure3": {
+      "sha256": "4d16d71986e67c0ceb65e06f0adbd6530e5c4185949f1a69f2d6329132b7f52c",
+      "bytes": 2374
+    },
+    "type_red": {
+      "sha256": "8ba795e7d35e01a4a2a9ad4420d670f5cf2028e55df4b8a22cddabd4848dc362",
+      "bytes": 8335
+    },
+    "type_native_red": {
+      "sha256": "2921c57b1a9126df0122270961d572953c01ccca7365ba6855d0824671d059d6",
+      "bytes": 1698
+    },
+    "residual": {
+      "sha256": "39ceb193c7d9cfcfa6e38d8847bfe1ad55289fccd1418b021d50ff49503fdc52",
+      "bytes": 82
+    }
+  },
+  "audit": {
+    "current_events": 8,
+    "prior_events_preserved": 76,
+    "daily_events": 84,
+    "scope_paths": 6,
+    "nextday_plans": 10,
+    "nextday_results": 0,
+    "reader_verified": true,
+    "server_published": false
+  },
+  "nextday": {
+    "plan": {
+      "test_id": "upgrade-preparation-nextday-20261031",
+      "scheduled_for": "2026-10-31T03:00:00+00:00",
+      "target_run_id": "pi-upgrade-preparation-20261030",
+      "target_version_sha256": "fce07ddf52eee3d17bf97a034cb3fa6dbf684776f219e96df65aae289a0a32f9",
+      "criterion": "可信历史清单与跨代接线后复核连续两次升级和人工接管；实际产品采用后另行登记真实次日观察。",
+      "kind": "regression",
+      "status": "blocked"
+    },
+    "registered": false,
+    "result": null
+  },
+  "base_exact_ci": {
+    "run_id": 40977112147,
+    "result": "4/4 success"
+  },
+  "checkpoint_ci": "pending push",
+  "audit_builder_recovery": "followup input schema rejected before export after7 durable events; reuse original timestamp/identical input hashes, append only missing valid eighth event; no history rewrite",
+  "pending": [
+    "trusted retained cohorts and stable project/control ledger",
+    "old-generation pre-fence ownership/environment and quiet outbox admission",
+    "long/short/batch/VIP/normal/delay generation and cross-generation continuation",
+    "canonical ACTUAL wrappers/frozen final operation package",
+    "one final review/fixpass and explicit main/product approval",
+    "new paid Pi adoption and actual nextday/24-48h"
+  ]
+}

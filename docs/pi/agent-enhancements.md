@@ -165,3 +165,7 @@ sdk_review_launcher通过全新无工具SDK会话给出approve/reject/needs_evid
 ## 有限回退许可与统一入口（2026-10-30）
 
 独立rollback-only root许可、新停机计时及固定同锁入口，18组件；不续期激活/费用，不给模型新工具，ACTUAL完整门禁保留。 证据见[阶段记录](../evaluations/pi-rollback-authority-2026-10-30.md)。
+
+## 连续升级身份准备（2026-10-30）
+
+冻结前代九字段、严格下一代、事务身份切换及兼容结构校验；不重跑DDL。完整接线前canonical Host拒绝v2。 证据见[阶段记录](../evaluations/pi-upgrade-preparation-2026-10-30.md)。
