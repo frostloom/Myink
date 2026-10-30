@@ -14,7 +14,7 @@ from pathlib import Path
 import re
 import stat
 import subprocess
-from threading import Thread
+from threading import Event, Thread
 import time
 import uuid
 
@@ -165,6 +165,25 @@ def _known_attempt(run, index):
             raise LedgerBlocked(_ERROR)
 
 
+class _SlotServer(ThreadingHTTPServer):
+    """Track accepted handlers before spawning; daemon shutdown alone skips them."""
+    def __init__(self,*args,**kwargs):
+        self._finished=[];self._active={}
+        super().__init__(*args,**kwargs)
+
+    def process_request(self,request,address):
+        done=Event();self._finished.append(done);self._active[request]=done
+        return super().process_request(request,address)
+
+    def process_request_thread(self,request,address):
+        try:return super().process_request_thread(request,address)
+        finally:self._active.pop(request).set()
+
+    def wait_handlers(self,seconds):
+        deadline=time.monotonic()+seconds
+        return all(done.wait(max(0,deadline-time.monotonic())) for done in self._finished)
+
+
 def _slot(run, policy, config, inputs, slot, index, host, transport, root, provenance, progress, lifecycle=None):
     token = uuid.uuid4().hex + uuid.uuid4().hex
     remaining = lifecycle.check if lifecycle is not None else lambda: config['deadline'] - time.time()
@@ -174,7 +193,7 @@ def _slot(run, policy, config, inputs, slot, index, host, transport, root, prove
     observer = make_usage_observer(root/f'slot-{index}-usage-private.jsonl', slot_index=index)
     handler = run.gateway_handler(index, policy, transport, scope_token=token, usage_observer=observer,
         **({'cancel': lifecycle.cancel} if lifecycle is not None else {}))
-    with ThreadingHTTPServer(('127.0.0.1', 0), handler) as server:
+    with _SlotServer(('127.0.0.1', 0), handler) as server:
         server.daemon_threads = True
         thread = Thread(target=server.serve_forever, kwargs={'poll_interval': .01}, daemon=True); thread.start()
         process = None
@@ -247,6 +266,8 @@ def _slot(run, policy, config, inputs, slot, index, host, transport, root, prove
                         server.shutdown(); thread.join(2)
                     else:
                         lifecycle.shutdown_server(server, thread)
+                    seconds=5 if lifecycle is None else min(5,max(0,lifecycle.cleanup_remaining() if lifecycle._cleanup_end is not None else lifecycle.remaining()))
+                    if not server.wait_handlers(seconds):raise TimeoutError('gateway settlement still pending after bounded cleanup')
             except Exception:
                 if not slot_failed:
                     progress.update(stage='slot_cleanup', reason='stage_failed')

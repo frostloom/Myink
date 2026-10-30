@@ -446,3 +446,20 @@ def test_v2_disabled_single_slot_cannot_execute(setup):
     assert api().launch(c)['launch_ready'] is False
     with pytest.raises(LedgerBlocked):api().launch(c,execute=True)
     assert ledger.path.read_bytes()==before and not Path(c['root']).exists()
+
+
+def test_relay_cleanup_waits_for_delayed_unknown_fee_settlement(setup,monkeypatch):
+    from threading import Event,Timer
+    from ops.pi import model_gateway
+    release=Event();timers=[];original=model_gateway.settle
+    def delayed(*args,**kwargs):
+        if not timers:
+            timer=Timer(.3,release.set);timer.start();timers.append(timer)
+        release.wait(2)
+        return original(*args,**kwargs)
+    monkeypatch.setattr(model_gateway,'settle',delayed)
+    try:
+        test_relay_failure_records_bounded_reason_without_body_or_refund(setup,monkeypatch,'overflow','response_size_limit',1048577,'reconcile')
+    finally:
+        release.set()
+        for timer in timers:timer.join(1)
