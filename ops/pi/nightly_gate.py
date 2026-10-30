@@ -17,6 +17,7 @@ ACTIONS=frozenset(('github_push','registry_push','deploy'))
 PACKAGE_FIELDS=set('schema baseline_sha256 source_sha256 patch_sha256 evaluation_sha256 image_id image_artifact_sha256 comparison_sha256 changes_sha256'.split())
 APPROVAL_FIELDS=set('schema mode issuer cycle_id package_sha256 approved_actions issued_at expires_at'.split())
 DEPLOYMENT_FIELDS=set('schema mode issuer cycle_id package_sha256 approval_sha256 image_id source_sha256 comparison_sha256 deployment_id deployed_at'.split())
+REBUILD_FIELDS=set('schema mode issuer action cycle_id package_sha256 new_cycle_id night base_image_id compatibility_sha256 issued_at expires_at'.split())
 SCHEMA="""
 CREATE TABLE approval_identity(id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL);
 CREATE TABLE approval_cycles(cycle_id TEXT PRIMARY KEY,night TEXT NOT NULL UNIQUE,phase TEXT NOT NULL CHECK(phase IN ('preparing','awaiting_approval','awaiting_deployment','observing','completed','blocked')),created_at TEXT NOT NULL,task_id TEXT,package TEXT,approval TEXT,deployment TEXT,result_sha256 TEXT);
@@ -83,7 +84,8 @@ class ApprovalGate:
         _plain(self.path);require(stat.S_IMODE(self.path.stat().st_mode)==0o600 and self.path.stat().st_size<=64*1024**2,'bounded private approval metadata required')
         c=sqlite3.connect(self.path.as_uri()+('?mode=rw' if write else '?mode=ro'),uri=True,timeout=5,isolation_level=None);c.row_factory=sqlite3.Row
         try:
-            require(c.execute('PRAGMA user_version').fetchone()[0]==DB_VERSION and {v[0] for v in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}=={'approval_identity','approval_cycles','approval_events','sqlite_sequence'},'approval metadata format required')
+            version=c.execute('PRAGMA user_version').fetchone()[0]
+            require(version in (DB_VERSION,7403) and {v[0] for v in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}=={'approval_identity','approval_cycles','approval_events','sqlite_sequence'}|({'approval_rebuilds'} if version==7403 else set()),'approval metadata format required')
             if write:c.execute('PRAGMA synchronous=FULL');c.execute('BEGIN IMMEDIATE')
             yield c
             if write:c.commit()
@@ -95,16 +97,60 @@ class ApprovalGate:
     def _record(self,c,cycle,kind,value):c.execute('INSERT INTO approval_events(cycle_id,kind,payload) VALUES(?,?,?)',(cycle,kind,encoded(value).decode()))
 
     def _current(self,c):
-        rows=c.execute("SELECT * FROM approval_cycles WHERE phase!='completed' ORDER BY rowid LIMIT 2").fetchall();require(len(rows)<=1,'multiple active approval cycles');return rows[0] if rows else None
+        extra=" AND NOT EXISTS(SELECT 1 FROM approval_rebuilds r WHERE r.old_cycle_id=approval_cycles.cycle_id)" if c.execute('PRAGMA user_version').fetchone()[0]==7403 else ''
+        rows=c.execute("SELECT * FROM approval_cycles WHERE phase!='completed'"+extra+" ORDER BY rowid LIMIT 2").fetchall();require(len(rows)<=1,'multiple active approval cycles');return rows[0] if rows else None
 
     def _row(self,c,cycle):
         _uuid(cycle);row=c.execute('SELECT * FROM approval_cycles WHERE cycle_id=?',(cycle,)).fetchone();require(row is not None,'unknown cycle');return row
 
     def _trusted(self,path,pin,kind):
         path=_path(path);_plain(path);s=path.stat();require(s.st_size<=65536 and hash_value(pin) and sha256(path.read_bytes()).hexdigest()==pin,'operator receipt drift')
-        if self.mode=='ACTUAL':require(path.parent==BASE/'config'/('human-approvals' if kind=='approval' else 'deployment-receipts') and s.st_uid==0 and stat.S_IMODE(s.st_mode)==0o640 and path.parent.stat().st_uid==0 and stat.S_IMODE(path.parent.stat().st_mode)==0o750,'root-issued operator receipt required')
+        folders=dict(approval='human-approvals',deployment='deployment-receipts',rebuild='rebuild-approvals');require(kind in folders,'known operator receipt role required')
+        if self.mode=='ACTUAL':require(path.parent==BASE/'config'/folders[kind] and s.st_uid==0 and stat.S_IMODE(s.st_mode)==0o640 and path.parent.stat().st_uid==0 and stat.S_IMODE(path.parent.stat().st_mode)==0o750,'root-issued operator receipt required')
         else:require(stat.S_IMODE(s.st_mode)==0o600 and stat.S_IMODE(path.parent.stat().st_mode)==0o700 and s.st_uid==os.geteuid(),'private simulated operator receipt required')
         return strict_json(path.read_bytes())
+
+    def _not_archived(self,c,cycle):
+        if c.execute('PRAGMA user_version').fetchone()[0]==7403:require(c.execute('SELECT 1 FROM approval_rebuilds WHERE old_cycle_id=?',(cycle,)).fetchone() is None,'historical candidate archived by human; no action authority')
+
+    def rebuild_info(self,cycle):
+        with self._connection() as c:
+            if c.execute('PRAGMA user_version').fetchone()[0]!=7403:return None
+            row=c.execute('SELECT payload FROM approval_rebuilds WHERE new_cycle_id=?',(cycle,)).fetchone()
+            if row is None:return None
+            saved=strict_json(row[0]);require(self._trusted(saved['path'],saved['sha256'],'rebuild')==saved['packet'],'human rebuild permission changed');return saved
+
+    def begin_rebuild(self,cycle,path,pin):
+        require(self.mode!='ACTUAL' or os.geteuid()==0,'root operator must claim approved rebuild')
+        a=self._trusted(path,pin,'rebuild');require(isinstance(a,dict) and set(a)==REBUILD_FIELDS and a['schema']=='pi-nightly-human-rebuild-v1' and a['mode']==self.mode and a['issuer']=='human_operator' and a['action']=='prepare_same_candidate' and a['cycle_id']==cycle,'closed human rebuild permission required')
+        new=_uuid(a['new_cycle_id']);require(new!=cycle and date.fromisoformat(a['night']).isoformat()==a['night'] and isinstance(a['base_image_id'],str) and a['base_image_id'].startswith('sha256:') and hash_value(a['base_image_id'][7:]) and hash_value(a['compatibility_sha256']),'bounded replacement identity required')
+        saved=dict(path=str(_path(path)),sha256=pin,packet=a)
+        with self._connection(True) as c:
+            old=self._row(c,cycle);require(old['package'] is not None and digest(strict_json(old['package']))==a['package_sha256'],'rebuild does not bind old package')
+            if c.execute('PRAGMA user_version').fetchone()[0]==7403:
+                existing=c.execute('SELECT new_cycle_id,payload FROM approval_rebuilds WHERE old_cycle_id=?',(cycle,)).fetchone()
+                if existing is not None:
+                    require(existing['new_cycle_id']==new and strict_json(existing['payload'])==saved,'existing rebuild cannot change');return self._description(self._row(c,new))
+            issued,expires=utc(a['issued_at']),utc(a['expires_at']);now=utc(self.clock())
+            require(issued<=now<expires and expires-issued<=timedelta(hours=24),'fresh finite human rebuild permission required')
+            require(old['phase']=='awaiting_approval' and old['approval'] is None and old['deployment'] is None and old['task_id'] is not None and self._current(c)['cycle_id']==cycle,'only original unapproved pending candidate can be rebuilt')
+            require(not c.execute('SELECT 1 FROM approval_cycles WHERE cycle_id=? OR night=?',(new,a['night'])).fetchone(),'replacement cycle/night already exists')
+            require(_binding(self.state,self.billing,self.mode)==self.identity,'original manager binding changed')
+            if c.execute('PRAGMA user_version').fetchone()[0]==7402:
+                c.execute('CREATE TABLE approval_rebuilds(old_cycle_id TEXT PRIMARY KEY REFERENCES approval_cycles(cycle_id),new_cycle_id TEXT NOT NULL UNIQUE REFERENCES approval_cycles(cycle_id),payload TEXT NOT NULL)')
+                for name,operation,message in (('no_update','UPDATE','immutable rebuild'),('no_delete','DELETE','rebuild history retained')):c.execute("CREATE TRIGGER approval_rebuilds_"+name+" BEFORE "+operation+" ON approval_rebuilds BEGIN SELECT RAISE(ABORT,'"+message+"');END")
+                c.execute("CREATE TRIGGER approval_archived_no_update BEFORE UPDATE ON approval_cycles WHEN EXISTS(SELECT 1 FROM approval_rebuilds WHERE old_cycle_id=OLD.cycle_id) BEGIN SELECT RAISE(ABORT,'archived cycle retained');END")
+                c.execute('PRAGMA user_version=7403')
+            c.execute("INSERT INTO approval_cycles(cycle_id,night,phase,created_at,task_id) VALUES(?,?,'preparing',?,?)",(new,a['night'],now.isoformat(),old['task_id']))
+            c.execute('INSERT INTO approval_rebuilds VALUES(?,?,?)',(cycle,new,encoded(saved).decode()))
+            self._record(c,cycle,'human_archived_for_rebuild',dict(new_cycle_id=new,permission_sha256=pin,old_package_sha256=a['package_sha256']))
+            self._record(c,new,'human_rebuild_claimed',dict(old_cycle_id=cycle,permission_sha256=pin,base_image_id=a['base_image_id'],compatibility_sha256=a['compatibility_sha256'],task_id=old['task_id']))
+        return self.status()
+
+    def require_preparation(self,cycle,task,base):
+        state=self.status();require(state['phase']=='preparing' and state['cycle_id']==cycle and state['task_id'] in (None,task),'one bound task preparation required')
+        saved=self.rebuild_info(cycle)
+        if saved is not None:require(saved['packet']['base_image_id']==base and utc(self.clock())<utc(saved['packet']['expires_at']),'approved rebuild base or validity changed')
 
     def _approval(self,row,*,current=True):
         require(row['approval'] is not None,'human approval required');saved=strict_json(row['approval']);a=self._trusted(saved['path'],saved['sha256'],'approval')
@@ -152,7 +198,11 @@ class ApprovalGate:
     def ready(self,cycle,package):
         _package(package);raw=encoded(package).decode()
         with self._connection(True) as c:
-            row=self._row(c,cycle)
+            self._not_archived(c,cycle);row=self._row(c,cycle)
+            if c.execute('PRAGMA user_version').fetchone()[0]==7403:
+                rebuild=c.execute('SELECT old_cycle_id FROM approval_rebuilds WHERE new_cycle_id=?',(cycle,)).fetchone()
+                if rebuild is not None:
+                    old=strict_json(self._row(c,rebuild[0])['package']);require(all(package[k]==old[k] for k in ('baseline_sha256','source_sha256','patch_sha256','changes_sha256')),'rebuild must retain original candidate fix')
             if row['package'] is not None:require(row['package']==raw,'sealed artifact cannot change')
             else:
                 require(row['phase']=='preparing','preparation is no longer active');c.execute("UPDATE approval_cycles SET phase='awaiting_approval',package=? WHERE cycle_id=?",(raw,cycle));self._record(c,cycle,'artifact_ready',dict(package_sha256=digest(package)))
@@ -161,7 +211,7 @@ class ApprovalGate:
     def approve(self,cycle,path,pin):
         a=self._trusted(path,pin,'approval');saved=dict(path=str(_path(path)),sha256=pin,packet=a)
         with self._connection(True) as c:
-            row=self._row(c,cycle);require(row['phase'] in ('awaiting_approval','awaiting_deployment'),'artifact is not waiting for approval')
+            self._not_archived(c,cycle);row=self._row(c,cycle);require(row['phase'] in ('awaiting_approval','awaiting_deployment'),'artifact is not waiting for approval')
             proposed=dict(row);proposed['approval']=encoded(saved).decode();self._approval(proposed)
             if row['approval']!=proposed['approval']:
                 c.execute("UPDATE approval_cycles SET phase='awaiting_deployment',approval=? WHERE cycle_id=?",(proposed['approval'],cycle));self._record(c,cycle,'human_approved',dict(approval_sha256=pin,package_sha256=a['package_sha256'],actions=a['approved_actions']))
@@ -170,7 +220,7 @@ class ApprovalGate:
     def require_action(self,cycle,action):
         require(action in ACTIONS|{'observe_metrics'},'unknown gated action')
         with self._connection() as c:
-            row=self._row(c,cycle);phase=self._description(row)['phase']
+            self._not_archived(c,cycle);row=self._row(c,cycle);phase=self._description(row)['phase']
             if action=='observe_metrics':require(phase=='observing','verified actual deployment required before observing')
             else:require(phase=='awaiting_deployment' and action in self._approval(row)['packet']['approved_actions'],'this action lacks current human approval')
         return dict(allowed=True,cycle_id=cycle,action=action)

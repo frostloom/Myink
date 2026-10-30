@@ -334,6 +334,22 @@ or product release authority. Exact actual main/product adoption, functional
 maintenance and owned image rollback remain later explicit execution gates.
 # Postdeployment nightly configuration (human-confirmed rollout only)
 
+An initial compatibility rebuild is a separate explicit operator action. The
+`pi-nightly-human-rebuild-v1` receipt must be root:ubuntu0640 in root:ubuntu0750
+`config/rebuild-approvals`, bind the old cycle/package, new cycle/night, exact base
+image, compatibility report digest and a validity of at most24hours, with issuer
+`human_operator` and action `prepare_same_candidate`. Never generate it before
+direct human authorization. `ApprovalGate.begin_rebuild` transactionally adds the
+immutable forward link and new same-task preparation; only then does approval
+metadata become7403. Existing7402 metadata stays unchanged on ordinary startup.
+Do not initialize/reset either format or edit the original pending row. The old
+artifact is retained without a fake completed comparison and loses action
+authority. This permission grants no push/deploy/metric authority; the new sealed
+package waits for a new publication approval. Scheduler and generic host entry
+refuse operator rebuild work. The trusted build wrapper and actual compatible
+base report/image verification remain separate implementation/qualification
+steps; this metadata API alone is not an executable product rollout.
+
 The 2026-10-30 human hold still takes precedence over historical activation
 instructions below. The new controller and timer are not activated by building
 their archive. Before an explicitly approved installation starts the nightly

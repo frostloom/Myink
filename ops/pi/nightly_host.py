@@ -16,6 +16,7 @@ def admission(gate,component):
     require(component in PREPARATION|OBSERVATION,'unknown fixed nightly component')
     state=gate.status();phase=state['phase']
     allowed=phase=='preparing' and component in PREPARATION
+    if allowed and gate.rebuild_info(state['cycle_id']) is not None:allowed=False
     if phase=='observing' and component in OBSERVATION:
         gate.require_action(state['cycle_id'],'observe_metrics');allowed=True
     return dict(status='admitted' if allowed else 'waiting_human',allowed=allowed,

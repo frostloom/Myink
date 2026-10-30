@@ -173,3 +173,13 @@ def test_source_template_waits_for_completed_confirmed_version_then_issues_once(
     def admit(c):calls.append('admit');assert c['autonomy_profile']['sha256']=='b'*64;return dict(status='no_task',model_requests=0)
     assert tick(driver_case,source_prepare=source,admit=admit)['status']=='no_release'
     assert tick(driver_case,source_prepare=source,admit=admit)['status']=='already_claimed' and calls==['source','admit']
+
+
+def test_human_operator_rebuild_never_runs_automatic_intake_or_build(driver_case):
+    from ops.pi.audit import digest
+    tick(driver_case);cp,cfg,finished,now,gate=driver_case;g=gate();old=g.status()['cycle_id'];manifest=json.loads((Path(cfg['root'])/old/'bundle/manifest.json').read_bytes());new=str(uuid.uuid4())
+    value=dict(schema='pi-nightly-human-rebuild-v1',mode='SIMULATED',issuer='human_operator',action='prepare_same_candidate',cycle_id=old,package_sha256=digest(manifest),new_cycle_id=new,night='2026-11-01',base_image_id='sha256:'+'9'*64,compatibility_sha256='8'*64,issued_at=now[0].isoformat(),expires_at=(now[0]+timedelta(hours=1)).isoformat())
+    p=cp.parent/'rebuild.json';p.write_text(json.dumps(value));p.chmod(0o600);g.begin_rebuild(old,p,file_hash(p))
+    def forbidden(*a):pytest.fail('operator rebuild must not run automatic work')
+    assert tick(driver_case,admit=forbidden,manager_trigger=forbidden)['status']=='waiting_operator_rebuild'
+    assert len(Image.calls)==1 and g.status()['cycle_id']==new

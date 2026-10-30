@@ -90,6 +90,7 @@ def run(config_path,pin,*,clock=None,admit=None,manager_trigger=None,image_facto
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:return _response(gate,'lock_busy')
         state=gate.status()
+        if state['phase']=='preparing' and gate.rebuild_info(state['cycle_id']) is not None:return _response(gate,'waiting_operator_rebuild')
         if state['phase']=='awaiting_deployment':
             require(c['mode']=='ACTUAL' or callable(deployment_confirm),'explicit simulated deployment verifier required')
             if deployment_confirm is None:

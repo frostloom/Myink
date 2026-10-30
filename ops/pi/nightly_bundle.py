@@ -49,6 +49,7 @@ def _audit(gate,cycle,task,view,image,original,comparison):
 
 def prepare(gate,cycle,root,task_id,base_image,docker,endpoint,daemon_id,*,image_factory=None):
     state=gate.status();require(state['phase']=='preparing' and state['cycle_id']==cycle,'active single preparation required');root=_path(root);image_id(base_image)
+    gate.require_preparation(cycle,task_id,base_image)
     require(not root.exists() and root.parent.is_dir(),'exclusive bundle preparation root required')
     if gate.mode=='ACTUAL':require(image_factory is None and root==BASE/'nightly'/cycle/'bundle','fixed ACTUAL bundle root required')
     else:require(not root.is_relative_to(BASE),'isolated bundle root required')
