@@ -1,0 +1,27 @@
+{
+  "runs": [
+    {
+      "file": "results.jsonl",
+      "http_attempts": 12,
+      "samples": 12,
+      "reported_input_tokens": 14348,
+      "reported_output_tokens": 8746
+    },
+    {
+      "file": "exemplar-results.jsonl",
+      "http_attempts": 6,
+      "samples": 6,
+      "reported_input_tokens": 7868,
+      "reported_output_tokens": 4051
+    },
+    {
+      "file": "holdout-results.jsonl",
+      "http_attempts": 4,
+      "samples": 4,
+      "reported_input_tokens": 9854,
+      "reported_output_tokens": 2655
+    }
+  ],
+  "total_http_attempts": 22,
+  "limitations": "Reported token fields omit some cache data; not a complete bill. Reused baseline outputs are not counted twice. No scoring-model calls."
+}

@@ -1,0 +1,93 @@
+[
+  {
+    "file": "audit-focused.jsonl",
+    "attempts": 4,
+    "reported_input_tokens": 4636,
+    "reported_output_tokens": 2501,
+    "generations": 0
+  },
+  {
+    "file": "audit-method-2.jsonl",
+    "attempts": 6,
+    "reported_input_tokens": 16725,
+    "reported_output_tokens": 3520,
+    "generations": 0
+  },
+  {
+    "file": "audit-obligations.jsonl",
+    "attempts": 12,
+    "reported_input_tokens": 6826,
+    "reported_output_tokens": 7381,
+    "generations": 0
+  },
+  {
+    "file": "audit-pipeline.jsonl",
+    "attempts": 6,
+    "reported_input_tokens": 20441,
+    "reported_output_tokens": 3816,
+    "generations": 0
+  },
+  {
+    "file": "audit-temporal.jsonl",
+    "attempts": 4,
+    "reported_input_tokens": 4656,
+    "reported_output_tokens": 2551,
+    "generations": 0
+  },
+  {
+    "file": "candidate-native.jsonl",
+    "attempts": 6,
+    "reported_input_tokens": 6742,
+    "reported_output_tokens": 4812,
+    "generations": 6
+  },
+  {
+    "file": "completion-layout.jsonl",
+    "attempts": 15,
+    "reported_input_tokens": 9010,
+    "reported_output_tokens": 11319,
+    "generations": 15
+  },
+  {
+    "file": "frame-experiment.jsonl",
+    "attempts": 12,
+    "reported_input_tokens": 4198,
+    "reported_output_tokens": 6143,
+    "generations": 6
+  },
+  {
+    "file": "holdout-complete-input.jsonl",
+    "attempts": 15,
+    "reported_input_tokens": 13416,
+    "reported_output_tokens": 10969,
+    "generations": 12
+  },
+  {
+    "file": "holdout-incomplete-input-invalid.jsonl",
+    "attempts": 15,
+    "reported_input_tokens": 31503,
+    "reported_output_tokens": 11130,
+    "generations": 12
+  },
+  {
+    "file": "round-1.jsonl",
+    "attempts": 15,
+    "reported_input_tokens": 29474,
+    "reported_output_tokens": 12410,
+    "generations": 12
+  },
+  {
+    "file": "round-2.jsonl",
+    "attempts": 15,
+    "reported_input_tokens": 13325,
+    "reported_output_tokens": 11982,
+    "generations": 12
+  },
+  {
+    "file": "round-3.jsonl",
+    "attempts": 15,
+    "reported_input_tokens": 13903,
+    "reported_output_tokens": 12125,
+    "generations": 12
+  }
+]

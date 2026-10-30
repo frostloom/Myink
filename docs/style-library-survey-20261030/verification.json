@@ -1,0 +1,10 @@
+{
+  "candidate_profiles": 10,
+  "unique_noncolliding_ids": true,
+  "schema_valid": true,
+  "long_short_message_checks": 20,
+  "sample_rendered_once_per_request": true,
+  "runtime_presets_unchanged": true,
+  "new_generation_requests": 0,
+  "scope": "data/schema/message verification only; no prose-effect or publication claim"
+}

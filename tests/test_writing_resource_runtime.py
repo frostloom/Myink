@@ -80,8 +80,21 @@ def test_builtins_are_real_and_no_output_protocol(monkeypatch):
     monkeypatch.setattr("myink.platform_configuration.load_configuration",lambda:{"genre_packs":{},"prompts":{}})
     items=seed.builtin_resources()
     assert sum(x["kind"]=="genre" for x in items)==37
-    assert sum(x["kind"]=="genre_rule" for x in items)==6
-    assert sum(x["kind"]=="style" for x in items)==7
+    assert sum(x["kind"]=="genre_rule" for x in items)==7
+    assert {x["id"] for x in items if x["kind"]=="style"} == {
+        "style:natural-narration", "style:brisk-narration", "style:character-narration",
+        "style:life-narration",
+        'style:light-humor',
+        'style:warm-fresh',
+        'style:romantic-tension',
+        'style:restrained-suspense',
+        'style:uncanny-gloom',
+        'style:classical-elegance',
+        'style:heroic-action',
+        'style:rational-realist',
+        'style:epic-scope',
+        'style:poetic-imagery',
+    }
     assert any(x["kind"]=="reference" for x in items)
     for item in items:
         if item["kind"] in {"writing_rule","expression_rule"}:

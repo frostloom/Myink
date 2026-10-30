@@ -162,14 +162,15 @@ def test_parallel_and_late_proposals_preserve_confirmed_state(draft_book):
 
 def test_create_project_writes_the_chosen_builtin_style(temp_user):
     resp = client.post("/api/v1/projects",
-                       json={"title": "带文风的书", "style_item_id": "builtin:xianxia-jiuzhou"},
+                       json={"title": "带文风的书", "style_item_id": "builtin:natural-narration"},
                        headers=identity_headers(temp_user))
     assert resp.status_code == 200, resp.text
     pid = resp.json()["id"]
     with tenant_session(pid) as db:
         st = get_settings(db, uuid.UUID(pid))
-    assert st.skill_pack == "xianxia-jiuzhou"
-    assert st.style_profile, "内置预设的档案要真写进去"
+    assert st.skill_pack == "natural-narration"
+    assert st.style_profile["sentence_style"] == (
+        "句子长短跟随信息与情绪；重点说清，必要处留白，不机械拆成短句。")
 
 
 def test_create_project_without_style_item_id_keeps_settings_empty(temp_user):

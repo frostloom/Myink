@@ -1,0 +1,9 @@
+{"event": "attempt", "attempt": 1}
+{"event": "result", "id": "unspecified-one", "correct": true, "expected": ["one_of", "one_of"], "actual": ["one_of", "one_of"], "response": {"tables": [{"table_id": 0, "cells": [{"actor_id": 0, "action_id": 0, "status": "one_of", "evidence_ids": [0], "reason": "原文只要求记录金额，未指定必须由甲独立完成。"}, {"actor_id": 1, "action_id": 0, "status": "one_of", "evidence_ids": [0], "reason": "原文只要求记录金额，未指定必须由乙独立完成。"}]}]}, "input_tokens": 390, "output_tokens": 90}
+{"event": "attempt", "attempt": 2}
+{"event": "result", "id": "named-one", "correct": false, "expected": ["required", "not_required"], "actual": ["required", "forbidden"], "response": {"tables": [{"table_id": 0, "cells": [{"actor_id": 0, "action_id": 0, "status": "required", "evidence_ids": [0], "reason": "原文明确甲记录两张收据的金额。"}, {"actor_id": 1, "action_id": 0, "status": "forbidden", "evidence_ids": [0], "reason": "原文只让乙负责照明，未要求乙记录金额。"}]}]}, "input_tokens": 138, "output_tokens": 84}
+{"event": "attempt", "attempt": 3}
+{"event": "result", "id": "each-person", "correct": true, "expected": ["required", "required"], "actual": ["required", "required"], "response": {"tables": [{"table_id": 0, "cells": [{"actor_id": 0, "action_id": 0, "status": "required", "evidence_ids": [0], "reason": "原文明确要求甲与乙各自记录一遍。"}, {"actor_id": 1, "action_id": 0, "status": "required", "evidence_ids": [0], "reason": "原文明确要求甲与乙各自记录一遍。"}]}]}, "input_tokens": 138, "output_tokens": 80}
+{"event": "attempt", "attempt": 4}
+{"event": "result", "id": "forbidden-both", "correct": true, "expected": ["forbidden", "forbidden"], "actual": ["forbidden", "forbidden"], "response": {"tables": [{"table_id": 0, "cells": [{"actor_id": 0, "action_id": 0, "status": "forbidden", "evidence_ids": [0], "reason": "原文明确禁止甲改动日志。"}, {"actor_id": 1, "action_id": 0, "status": "forbidden", "evidence_ids": [0], "reason": "原文明确禁止乙改动日志。"}]}]}, "input_tokens": 130, "output_tokens": 76}
+{"event": "complete", "attempts": 4}

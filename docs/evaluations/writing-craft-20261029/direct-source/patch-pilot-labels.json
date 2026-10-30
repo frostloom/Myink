@@ -1,0 +1,51 @@
+{
+  "T01": {
+    "case": "P05",
+    "thinking": true,
+    "repeat": 0,
+    "applied": true,
+    "reason": null
+  },
+  "T02": {
+    "case": "P05",
+    "thinking": false,
+    "repeat": 0,
+    "applied": true,
+    "reason": null
+  },
+  "T03": {
+    "case": "P05",
+    "thinking": true,
+    "repeat": 1,
+    "applied": false,
+    "reason": "补丁为空、未命中或应用率不足 50%"
+  },
+  "T04": {
+    "case": "P07",
+    "thinking": false,
+    "repeat": 1,
+    "applied": false,
+    "reason": "补丁超出局部修改范围"
+  },
+  "T05": {
+    "case": "P05",
+    "thinking": false,
+    "repeat": 1,
+    "applied": true,
+    "reason": null
+  },
+  "T06": {
+    "case": "P07",
+    "thinking": false,
+    "repeat": 0,
+    "applied": false,
+    "reason": "补丁超出局部修改范围"
+  },
+  "T07": {
+    "case": "P07",
+    "thinking": true,
+    "repeat": 0,
+    "applied": true,
+    "reason": null
+  }
+}

@@ -39,7 +39,7 @@ def _item_out(item: StyleLibraryItem) -> dict:
 
 @router.get("", response_model=StyleLibraryOut)
 def list_items(user_id: str = Depends(require_user)) -> dict:
-    """内置 4 个在前、用户项在后：一次请求喂满选择器，前端不再自备一份内置清单。"""
+    """内置通用文风在前、用户项在后：一次请求喂满选择器，前端不再自备一份内置清单。"""
     with new_session() as db:
         mine = db.scalars(select(StyleLibraryItem)
                           .where(StyleLibraryItem.user_id == uuid.UUID(user_id))

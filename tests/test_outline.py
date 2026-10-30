@@ -355,15 +355,16 @@ def test_outline_prompt_contract():
 
 def test_write_prompt_opening_contract():
     sys_write = prompts.SYSTEM_WRITE
-    assert "上一章结尾片段" in sys_write
-    assert "作万能开场" in sys_write
-    assert "不得与其他章共用开场景" in sys_write
-    assert "唤醒" in sys_write
-    assert "静止收束" in sys_write
+    assert "上章结尾当成已经发生的现场" in sys_write
+    assert "已完成的进门、交付、发现不能再做一次" in sys_write
+    assert "跳时、切景或换视角都可以" in sys_write
+    assert "睡眠、等待、天气不是一律禁用" in sys_write
+    assert "完整短篇仍须兑现本篇承诺" in sys_write
 
 
 def test_plan_prompt_repetition_contract():
     sys_plan = prompts.SYSTEM_PLAN
     assert "开场节拍不得与上一章开场动作重复" in sys_plan
-    assert "静止收束" in sys_plan
+    assert "允许有变化的安静落定" in sys_plan
+    assert "兑现本章预期事件" in sys_plan
     assert "照搬" in sys_plan

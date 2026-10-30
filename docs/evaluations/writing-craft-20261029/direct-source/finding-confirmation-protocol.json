@@ -1,0 +1,6 @@
+{
+  "hypothesis": "Review findings can add obligations or misread source scope; independently confirm before a writer edit, but a rejected finding alone cannot satisfy positive obligations.",
+  "calibration": "10 balanced controls; labels and gold notes excluded from model payload. Includes one disputed original binding-scope control, separately report it.",
+  "pipeline_rule": "Only independently confirmed errors may become repair instructions. Uncertain source/requirement remains held. Full original-source and typed-frame checks after edits remain required.",
+  "bounds": "Existing Flash audit; 10 actual HTTP attempts, no retries. No runtime integration, catalog publication or deployment."
+}

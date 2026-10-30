@@ -14043,7 +14043,7 @@
     },
     "/api/v1/style-library": {
       "get": {
-        "description": "内置 4 个在前、用户项在后：一次请求喂满选择器，前端不再自备一份内置清单。",
+        "description": "内置通用文风在前、用户项在后：一次请求喂满选择器，前端不再自备一份内置清单。",
         "operationId": "list_items_api_v1_style_library_get",
         "responses": {
           "200": {

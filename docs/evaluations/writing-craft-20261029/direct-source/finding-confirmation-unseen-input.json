@@ -1,0 +1,125 @@
+{
+  "prompt": "你独立复核一条审稿意见是否成立，不默认原审稿正确。对照未经改写的requirement、模式、reference_context和完整draft_segments核对。不得为否定审稿而制造例外，也不得把原句强化成额外要求。\n先分清源句的主体、动作对象/作用对象、初始状态与后续状态、持续限制、历史事实、已完成动作和本章结果。一次准备已完成，不等于所有同词动作永远禁止；同一物件后续对不同对象/目的的动作，不能仅因动词类似就当作重演。群体关系不能改成每个人同时占据所有位置；叙述先后不必然证明过程互不重叠。未指明左右的动作不能擅自指定为受伤侧，疼痛不等于所有动作均不可能。角色台词可能回避/撒谎，不自动变成作者世界事实，尤其有充分潜台词时。\nobligation模式的积极结果必须真正兑现，不能以可能发生/可以脑补为支持；明确的间接姿态、自然指代可算，不要求抄验收原词。路线有出口不等于本人来时路线。consistency模式只在源句实际含义下有明确相反事实才判不支持；不要求复述全部背景，正常推进允许。不要因没有明确表示拒绝某行为就说违反禁止。\n若审稿意见确实成立decision=confirmed；意见添加原句没有的要求、误解证据或忽略明确隐含表达时rejected；无法判断uncertain。同时独立给出本条原要求整体的requirement_status=supported|not_supported|uncertain；不能因为驳回一条意见就自动认为全部条件兑现。对积极结果只有完整支持才能supported，缺失/不确定不能强通过。\n只返回严格JSON:{\"decision\":\"confirmed|rejected|uncertain\",\"requirement_status\":\"supported|not_supported|uncertain\",\"source_quote\":\"requirement中真正相关的逐字片段，没有则空\",\"evidence_ids\":[0],\"reason\":\"说明意见与原句真正含义、正文证据的关系，不泛泛说合理\"}。confirmed必须引用源句和实际正文依据；evidence_ids最多8个有效整数。obligation的supported必须有正文证据。不要写引用正文文字，用编号。",
+  "cases": [
+    {
+      "id": "U01",
+      "mode": "obligation",
+      "requirement": "林岚与陈实本章当场坐在桌边核对纸质账本，账本不离开档案室。",
+      "text": "林岚拉过椅子落座，陈实始终站在她身后。她逐行读出账目，他俯身指着纸页纠正了两处。核完后，账本锁回档案室的柜子。",
+      "reference_context": {},
+      "candidate_problem": "没出现“共同核对”四个字，故没有任何核账行为。",
+      "expected_confirmed": false,
+      "expected_requirement_status": "not_supported"
+    },
+    {
+      "id": "U02",
+      "mode": "obligation",
+      "requirement": "林岚与陈实本章当场坐在桌边核对纸质账本，账本不离开档案室。",
+      "text": "林岚和陈实各坐在桌子一边。她念日期，他照着纸质账本逐项找票据，两人勾掉最后一笔。陈实把账本装进包，带出了档案室。",
+      "reference_context": {},
+      "candidate_problem": "二人虽然落座核账，账本最后被陈实带出档案室，违反留在室内的约束。",
+      "expected_confirmed": true,
+      "expected_requirement_status": "not_supported"
+    },
+    {
+      "id": "U03",
+      "mode": "obligation",
+      "requirement": "林岚与陈实本章当场坐在桌边核对纸质账本，账本不离开档案室。",
+      "text": "林岚和陈实各自拉开一把椅子，在桌边落座。林岚念日期，陈实照着纸质账本逐项查票据，两人核完最后一笔，把账本锁回档案室的柜子。",
+      "reference_context": {},
+      "candidate_problem": "没有使用“核对”这个词，所以不能算当场核账。",
+      "expected_confirmed": false,
+      "expected_requirement_status": "supported"
+    },
+    {
+      "id": "U04",
+      "mode": "consistency",
+      "requirement": "许尧左腿骨折，本章不能恢复正常；他只有一枚启动片，使用后即报废，不得重复启动。",
+      "text": "许尧拄拐挪到门边，断腿始终不敢落地。他压入唯一的启动片。门开时片子烧成了灰，他把灰倒进盒里，靠拐杖离开。",
+      "reference_context": {},
+      "candidate_problem": "没写明确拒绝第二次启动，所以违反不得重复启动。",
+      "expected_confirmed": false,
+      "expected_requirement_status": "supported"
+    },
+    {
+      "id": "U05",
+      "mode": "consistency",
+      "requirement": "许尧左腿骨折，本章不能恢复正常；他只有一枚启动片，使用后即报废，不得重复启动。",
+      "text": "许尧把启动片压入锁孔。门开后片子烧成灰。他摸摸左腿，骨头忽然愈合，扔了拐杖一路跑出去。",
+      "reference_context": {},
+      "candidate_problem": "正文直接写断腿愈合并奔跑，推翻本章不能恢复的设定。",
+      "expected_confirmed": true,
+      "expected_requirement_status": "not_supported"
+    },
+    {
+      "id": "U06",
+      "mode": "consistency",
+      "requirement": "许尧左腿骨折，本章不能恢复正常；他只有一枚启动片，使用后即报废，不得重复启动。",
+      "text": "许尧断腿没有恢复，仍用拐杖。他用唯一的启动片开门，片子随后报废。到下一道门，他把报废片重新插入，门又被成功启动。",
+      "reference_context": {},
+      "candidate_problem": "虽然没有新增启动片，但已报废片再次成功启动，仍违反不得重复启动。",
+      "expected_confirmed": true,
+      "expected_requirement_status": "not_supported"
+    },
+    {
+      "id": "U07",
+      "mode": "obligation",
+      "requirement": "顾桥与严舟在同一时刻记下三只钟：标准钟12:00:00，实验钟11:59:20，走廊钟12:00:30。只推断当前偏差，不推断昨天。",
+      "text": "顾桥对着标准钟喊“现在”，严舟同时拍下另两只钟。照片上是12:00:00、11:59:20、12:00:30。他们写下实验钟慢四十秒、走廊钟快三十秒，昨天是否一样还需查证。",
+      "reference_context": {},
+      "candidate_problem": "实验钟和走廊钟只差十秒，正文记下的两项偏差不成立。",
+      "expected_confirmed": false,
+      "expected_requirement_status": "supported"
+    },
+    {
+      "id": "U08",
+      "mode": "obligation",
+      "requirement": "顾桥与严舟在同一时刻记下三只钟：标准钟12:00:00，实验钟11:59:20，走廊钟12:00:30。只推断当前偏差，不推断昨天。",
+      "text": "标准钟12:00:00时，另两只钟的同刻照片显示11:59:20和12:00:30。他们只记录当前偏差，没有推算昨天。",
+      "reference_context": {},
+      "candidate_problem": "正文没写两人的名字，所以同刻数值肯定错误；实际应是实验钟11:59:50。",
+      "expected_confirmed": false,
+      "expected_requirement_status": "supported"
+    },
+    {
+      "id": "U09",
+      "mode": "obligation",
+      "requirement": "顾桥与严舟在同一时刻记下三只钟：标准钟12:00:00，实验钟11:59:20，走廊钟12:00:30。只推断当前偏差，不推断昨天。",
+      "text": "顾桥喊“现在”，严舟同时拍下三钟：12:00:00、11:59:20、12:00:30。顾桥据此宣布，昨天事故也必定是实验钟慢四十秒造成，已经无须调查。",
+      "reference_context": {},
+      "candidate_problem": "把当前对时结果直接当作昨天的确定偏差，违反不推断昨天。",
+      "expected_confirmed": true,
+      "expected_requirement_status": "not_supported"
+    },
+    {
+      "id": "U10",
+      "mode": "obligation",
+      "requirement": "苏禾与孟清在散会前都签署纸质交接单，原件留在办公室，不能只约定以后签。",
+      "text": "苏禾签好纸质交接单，把笔递给孟清。孟清说“明早补签”，空着签名栏离开。苏禾将原件锁进办公室抽屉。",
+      "reference_context": {},
+      "candidate_problem": "正文没有写二人同时签字，因此未兑现“都签署”。",
+      "expected_confirmed": false,
+      "expected_requirement_status": "not_supported"
+    },
+    {
+      "id": "U11",
+      "mode": "obligation",
+      "requirement": "苏禾与孟清在散会前都签署纸质交接单，原件留在办公室，不能只约定以后签。",
+      "text": "苏禾签好纸质交接单，把笔递给孟清。孟清没有签，约定明早补上就离开了。原件留在办公室。",
+      "reference_context": {},
+      "candidate_problem": "孟清只承诺明早签，散会前仍未签署，集体签署的条件缺了一人。",
+      "expected_confirmed": true,
+      "expected_requirement_status": "not_supported"
+    },
+    {
+      "id": "U12",
+      "mode": "consistency",
+      "requirement": "作者设定：应急记录器全章不接市电，唯一电池耗尽后不得继续运行；没有备用电源。",
+      "text": "记录器的唯一电池耗尽，屏幕熄灭。姚川没接任何电源，只拍了拍壳子，记录器立即恢复录音直到天亮。",
+      "reference_context": {},
+      "candidate_problem": "电池耗尽且没有其他电源，记录器却继续录音，违反持续运行限制。",
+      "expected_confirmed": true,
+      "expected_requirement_status": "not_supported"
+    }
+  ]
+}

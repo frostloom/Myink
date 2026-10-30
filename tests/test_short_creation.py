@@ -842,10 +842,12 @@ def test_commit_applies_a_library_style_and_rejects_someone_elses(temp_user, cha
 def test_commit_accepts_a_builtin_preset_by_key(temp_user, chain_stub):
     chain_stub([_PLAN_JSON])
     sid = _seed_session(temp_user)
-    out = _commit(temp_user, sid, {"style_item_id": "builtin:xianxia-jiuzhou"}).json()
+    out = _commit(temp_user, sid, {"style_item_id": "builtin:natural-narration"}).json()
     with tenant_session(out["project_id"]) as db:
         settings_row = get_settings(db, uuid.UUID(out["project_id"]))
-        assert settings_row is not None and settings_row.skill_pack == "xianxia-jiuzhou"
+        assert settings_row is not None and settings_row.skill_pack == "natural-narration"
+        assert settings_row.style_profile["sentence_style"] == (
+            "句子长短跟随信息与情绪；重点说清，必要处留白，不机械拆成短句。")
 
 
 def _malformed_short_outline() -> dict:

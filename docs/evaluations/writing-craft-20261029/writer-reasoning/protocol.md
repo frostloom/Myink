@@ -1,0 +1,7 @@
+# Writer reasoning pilot, 2026-10-30
+
+Existing normal-tier writer connection only, same candidate-bound resources and original natural narration profile, actual prompts.write_messages, fixed source plans. P02family/P05wind-route/P06clock/P07authoritative-password. Same full model prompts within eachcase; recordhash/resources. Four ordinary generations, four explicitlow generations, then four low repeats:12HTTP total with no retry. Rotate first pair order acrosscases. Max8192output, target650Chinesechars; ordinarytemperature.7, lowomits temperature per thinkingAPI contract (combined mode comparison, not perfect isolated causal estimate).
+
+All outputs retained, max_tokens/errors counted failures, no cherry-picking. Log finaltext and usage only, never thinking or private connection details. No projects/tasks/AgentRuns or queue consumption. No new model/config change. This is writer-stage pilot, not full runtime endtoend or guaranteed literature quality. Candidate incorporates continuity teaching, currentgenre/refinement/expressionrules and selectedrealism/suspensecraftlesson; no toolreference reading is claimed.
+
+Blind reviewers receive only source and randomized anonymous texts, no mode/repeat labels. Evaluate hard facts/continuity/endresults separately from naturalness/voice/rhythm. Do not require direct statements where implication suffices, each shared participant to physically click, or repeated terminal actions at the final sentence. Treat characters' claims by source authority. Singlecase wins or passing schemas cannot establish stability.

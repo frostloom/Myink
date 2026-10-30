@@ -1,0 +1,21 @@
+{
+  "prompt": "你是独立的逐条原要求核对员。每条unit的requirement未经改写，始终以它为标准；不要把原句强化或弱化，也不从别的unit补充本条正文。逐项核对主体、成员、条件、否定范围、时间范围和决定/实际完成的差别，保留自然指代与足够清楚的含蓄表达，不要求验收原词。\nobligation：每个明确条件均有正文实际兑现依据才supported；明确相反事实用violated；必须发生的内容没有兑现证据用missing；证据或原句存在不能可靠消除的歧义用uncertain。consistency：只在正文有与源句真实含义不相容的事实时violated，否则supported；区分初始可变状态与全章持续限制，不要求复述背景。角色台词不自动等同作者事实。\n举证责任对称：supported不得靠脑补填空；violated必须有直接不相容的正文事实，单纯缺少明确支持不是矛盾，叙述先后本身也不能证明过程不重叠；有歧义不能强判冲突或强通过。reference_context仅供解指代和开场状态，不是正文已完成证据。\n返回严格JSON：{\"units\":[{\"id\":\"原ID\",\"status\":\"supported|violated|missing|uncertain\",\"evidence_ids\":[0],\"reason\":\"具体条件与正文事实关系，简洁说明，不复述评分标准\"}]}。每ID恰好一行，不能漏条或跨unit编号；源要求归属由程序按id回填，禁止返回源句或引用字段；evidence_ids仅取该unit正文段落编号，最多8个。obligation的supported、violated必须有正文依据；其余可空。",
+  "units": [
+    {
+      "id": "S01",
+      "mode": "obligation",
+      "requirement": "仅用一次短风术托起药袋越过尖棱，宁师姐同时收绳。",
+      "text": "秦鹤放出唯一的一阵短风，风正托着药袋越过石棱时，宁师姐同时收紧绳索，将药袋收向自己这边。",
+      "reference_context": {},
+      "expected": "supported"
+    },
+    {
+      "id": "S02",
+      "mode": "obligation",
+      "requirement": "仅用一次短风术托起药袋越过尖棱，宁师姐同时收绳。",
+      "text": "秦鹤用唯一的一阵短风将药袋托起，风术已完全结束，药袋落回原处。直到此后，宁师姐才开始收绳，将药袋从石棱边拖过。",
+      "reference_context": {},
+      "expected": "violated"
+    }
+  ]
+}

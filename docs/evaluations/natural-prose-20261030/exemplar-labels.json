@@ -1,0 +1,26 @@
+{
+  "E01": {
+    "A": "published",
+    "B": "exemplar"
+  },
+  "E02": {
+    "A": "published",
+    "B": "exemplar"
+  },
+  "E03": {
+    "A": "exemplar",
+    "B": "published"
+  },
+  "E04": {
+    "A": "exemplar",
+    "B": "published"
+  },
+  "E05": {
+    "A": "exemplar",
+    "B": "published"
+  },
+  "E06": {
+    "A": "published",
+    "B": "exemplar"
+  }
+}

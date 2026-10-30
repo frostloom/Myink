@@ -1,0 +1,3 @@
+{"event": "start", "request_cap": 12, "models": {"audit": "deepseek-v4.1-flash", "writer": "deepseek-v4.1-flash"}}
+{"event": "attempt", "attempt": 1}
+{"event": "usage", "stage": "inventory", "input_tokens": 0, "output_tokens": 0, "truncated": false, "provider_failed": true}

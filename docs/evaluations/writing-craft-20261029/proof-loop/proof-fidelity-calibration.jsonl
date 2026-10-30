@@ -1,0 +1,13 @@
+{"event": "attempt", "attempt": 1}
+{"event": "result", "id": "joint-good", "expected": true, "actual": true, "correct": true, "review": {"checks": [{"event_index": 0, "status": "faithful", "source_quotes": ["甲与乙在门边坐下核对两张收据。"], "reason": "原事件主体甲、乙均保留；动作“在门边坐下”与“核对两张收据”均保留；数量“两张收据”保留；联合过程被拆为甲、乙各自坐下并参与核对，但未误拆为每人独立核对两张收据，也未新增先后、因果或持续到结尾的义务；否定范围无变化。"}]}, "input_tokens": 330, "output_tokens": 114}
+{"event": "attempt", "attempt": 2}
+{"event": "result", "id": "joint-missing-person", "expected": false, "actual": true, "correct": false, "review": {"checks": [{"event_index": 0, "status": "faithful", "source_quotes": ["甲与乙在门边坐下核对两张收据。"], "reason": "原事件主体甲、乙均保留；动作“在门边坐下”与“核对两张收据”均保留；数量“两张收据”保留；地点“门边”保留；联合坐下与共同核对未被拆成独立操作，三条claim合取等价于原事件。"}]}, "input_tokens": 262, "output_tokens": 99}
+{"event": "attempt", "attempt": 3}
+{"event": "result", "id": "end-good", "expected": true, "actual": true, "correct": true, "review": {"checks": [{"event_index": 0, "status": "faithful", "source_quotes": ["到结尾火堆仍在燃烧。"], "reason": "唯一命题保留主体“火堆”、状态“仍在燃烧”、时间限定“到结尾”及肯定极性（expected=present）；未新增义务、未拆分主体或动作，语义与原事件等价。"}]}, "input_tokens": 111, "output_tokens": 75}
+{"event": "attempt", "attempt": 4}
+{"event": "result", "id": "end-weakened", "expected": false, "actual": false, "correct": true, "review": {"checks": [{"event_index": 0, "status": "unfaithful", "source_quotes": ["到结尾火堆仍在燃烧。"], "reason": "原事件要求火堆持续燃烧到结尾（结尾仍成立）；拆分命题仅称火堆曾经燃烧，temporal_scope为occurrence，未保留“到结尾仍在燃烧”的持续到结尾限定，弱化了原意。"}]}, "input_tokens": 111, "output_tokens": 84}
+{"event": "attempt", "attempt": 5}
+{"event": "result", "id": "order-good", "expected": true, "actual": true, "correct": true, "review": {"checks": [{"event_index": 0, "status": "faithful", "source_quotes": ["甲拿到许可证之后才启动机器。"], "reason": "唯一命题保留原事件全部要素：主体甲、动作拿到许可证后启动机器、先后限定“之后才”明确保留，未新增义务或拆分独立操作，语义等价。"}]}, "input_tokens": 115, "output_tokens": 72}
+{"event": "attempt", "attempt": 6}
+{"event": "result", "id": "order-omitted", "expected": false, "actual": false, "correct": true, "review": {"checks": [{"event_index": 0, "status": "unfaithful", "source_quotes": ["甲拿到许可证之后才启动机器。"], "reason": "原事件包含两个主体动作（甲拿到许可证、甲启动机器）及先后限定“拿到许可证之后才”，并含“才”所表达的启动以拿到许可证为必要前提。拆分命题仅保留“甲启动机器”，完全缺失“拿到许可证”这一前置动作和先后/必要条件限定，语义不完整，故不忠实。"}]}, "input_tokens": 112, "output_tokens": 106}
+{"event": "complete", "attempts": 6}

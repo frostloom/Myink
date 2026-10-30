@@ -60,7 +60,7 @@ def test_llm_checked_retries_parse_failure_then_succeeds(monkeypatch):
         [{"role": "user", "content": "u"}], check=_check)
     assert err is None and result == _PLAN["goals"]
     assert calls["n"] == 2
-    assert calls["messages"][1][-1]["role"] == "system"
+    assert calls["messages"][1][-1]["role"] == "user"
     assert "未通过 JSON" in calls["messages"][1][-1]["content"], "重试应追加 JSON 修正指令"
     assert calls["messages"][1][-2] == {"role": "assistant", "content": "not json{{"}, \
         "JSON 重试必须带回上一版错误输出，才能定点修复而不是从头重复规划"
@@ -168,3 +168,147 @@ def test_node_plan_chapter_repairs_inexact_anchor_without_model_retry(temp_proje
     assert out["plan"]["transition"]["anchor_quote"] == tail.splitlines()[-1]
     assert out["plan"]["scenes"] == _PLAN["scenes"]
     assert calls["n"] == 1, "可从章尾确定性纠正的引文不应重跑 Planner"
+
+
+def test_truncated_valid_audit_json_cannot_be_accepted_as_final_verdict(monkeypatch):
+    """A syntactically valid prefix is still incomplete when the provider says length."""
+    from myink.providers.base import ModelResponse
+    replies = iter([
+        ModelResponse(content='{"verdict":"pass"}', model_id='stub', finish_reason='length'),
+        ModelResponse(content='{"verdict":"rewrite"}', model_id='stub', finish_reason='stop'),
+    ])
+    checked = []
+    monkeypatch.setattr(nodes, '_llm', lambda *a, **kw: (next(replies), []))
+
+    def validate(content):
+        checked.append(content)
+        return json.loads(content)['verdict']
+
+    _, _, verdict, error = nodes._llm_checked(
+        None, {'project_id': 'test'}, 'audit', 'Audit', None,
+        [{'role': 'user', 'content': '待审稿'}], check=validate)
+    assert error is None
+    assert verdict == 'rewrite'
+    assert checked == ['{"verdict":"rewrite"}']
+
+
+def test_truncated_prose_exhaustion_keeps_incomplete_text_out_of_result(monkeypatch):
+    from myink.providers.base import ModelResponse
+    monkeypatch.setattr(nodes, '_llm', lambda *a, **kw: (
+        ModelResponse(content='=== CONTENT ===\n他伸手推开门，', model_id='stub', finish_reason='length'), []))
+    _, _, result, error = nodes._llm_checked(
+        None, {'project_id': 'test'}, 'write', 'Writer', None,
+        [{'role': 'user', 'content': '写作'}], check=nodes._check_draft,
+        json_mode=False, max_attempts=0)
+    assert result is None
+    assert error is not None
+
+
+def test_truncated_prose_recovers_with_failed_then_complete_artifacts(monkeypatch):
+    from myink.providers.base import ModelResponse
+    from myink.workflow.streaming import bind_artifact_sink
+    replies = iter([
+        ModelResponse(content="他推开门，", model_id="stub", finish_reason="length"),
+        ModelResponse(content="=== CONTENT ===\n他推开门，走进院子。", model_id="stub", finish_reason="stop"),
+    ])
+    messages_seen = []
+    def respond(db, state, node, role, chain, messages, **kwargs):
+        messages_seen.append(messages)
+        response = next(replies)
+        kwargs["streamer"].feed(response.content)
+        return response, []
+    monkeypatch.setattr(nodes, "_llm", respond)
+    events = []
+    with bind_artifact_sink(events.append):
+        _, _, draft, error = nodes._llm_checked(
+            None, {"project_id": "test", "chapter_seq": 1}, "write", "Writer", None,
+            [{"role": "user", "content": "写作"}], check=nodes._check_draft, json_mode=False)
+    assert error is None
+    assert draft == "他推开门，走进院子。"
+    assert "长度上限" in messages_seen[1][-1]["content"]
+    assert [e["event"] for e in events] == [
+        "artifact_reset", "artifact_delta", "artifact_failed",
+        "artifact_reset", "artifact_delta", "artifact_complete",
+    ]
+    assert events[2]["artifact_id"] != events[-1]["artifact_id"]
+
+
+def test_continuous_truncation_exhausts_default_three_attempts(monkeypatch):
+    from myink.providers.base import ModelResponse
+    attempts = []
+    def respond(db, state, node, role, chain, messages, **kwargs):
+        attempts.append(messages)
+        return ModelResponse(content="未完，", model_id="stub", finish_reason="length"), []
+    monkeypatch.setattr(nodes, "_llm", respond)
+    _, _, draft, error = nodes._llm_checked(
+        None, {"project_id": "test"}, "write", "Writer", None,
+        [{"role": "user", "content": "写作"}], check=nodes._check_draft, json_mode=False)
+    assert draft is None
+    assert error is not None and "长度上限" in error
+    assert len(attempts) == 3
+
+
+def test_json_retry_starts_new_anthropic_user_turn_instead_of_assistant_prefill(monkeypatch):
+    from myink.providers.anthropic import _convert_messages
+    calls = _queued_llm(monkeypatch, ['{"wrong": true}', '{"ok": true}'])
+    def validate(content):
+        return json.loads(content)['ok']
+    _, _, result, error = nodes._llm_checked(
+        None, {'project_id': 'test'}, 'audit', 'Audit', None,
+        [{'role': 'system', 'content': '返回严格JSON'}, {'role': 'user', 'content': '核对正文'}],
+        check=validate)
+    assert result is True and error is None
+    _, wire = _convert_messages(calls['messages'][1], json_mode=True)
+    assert wire[-1]['role'] == 'user'
+    assert '具体校验错误' in wire[-1]['content']
+    assert wire[-2] == {'role': 'assistant', 'content': '{"wrong": true}'}
+
+
+def _patch_response(monkeypatch, finish_reason, *, error=None):
+    from contextlib import nullcontext
+    from myink.providers.base import ModelResponse
+    from myink.workflow.streaming import bind_artifact_sink
+
+    original = "前文不动。" * 30 + "他握着旧剑。" + "后文不动。" * 30
+    response = ModelResponse(content=(
+        "=== PATCHES ===\n--- PATCH 1 ---\nTARGET_TEXT:\n他握着旧剑。\n"
+        "REPLACEMENT_TEXT:\n他握着青剑。\n--- END PATCH ---\n"
+        "=== RESPONSES ===\n["
+    ), model_id="stub", finish_reason=finish_reason, error=error)
+    monkeypatch.setattr(nodes, "tenant_session", lambda _: nullcontext(None))
+    monkeypatch.setattr(nodes, "make_chain", lambda *a, **kw: None)
+    monkeypatch.setattr(nodes, "_llm", lambda *a, **kw: (response, []))
+    monkeypatch.setattr(nodes.prompts, "patch_messages", lambda _: [
+        {"role": "user", "content": "修正剑名"}])
+    recorded = []
+    monkeypatch.setattr(nodes, "record_run_detail", lambda *a, **kw: recorded.append(kw))
+    monkeypatch.setattr(nodes, "record_snapshot", lambda *a, **kw: recorded.append(kw))
+    events = []
+    with bind_artifact_sink(events.append):
+        result = nodes.node_patch({"project_id": "test", "chapter_seq": 1, "draft": original})
+    return original, result, events, recorded
+
+
+def test_truncated_patch_prefix_cannot_be_applied_or_completed(monkeypatch):
+    original, result, events, recorded = _patch_response(monkeypatch, "length")
+    assert "error" in result and "长度上限" in result["error"]
+    assert "draft" not in result
+    assert recorded == []
+    assert [event["event"] for event in events] == ["artifact_reset", "artifact_failed"]
+
+
+def test_complete_patch_still_applies_without_advisory_responses(monkeypatch):
+    original, result, events, recorded = _patch_response(monkeypatch, "stop")
+    assert result["draft"] == original.replace("他握着旧剑。", "他握着青剑。")
+    assert result["patch_applied"] == 1
+    assert result["revise_responses"] == []
+    assert events[-1]["event"] == "artifact_complete"
+    assert recorded
+
+
+def test_patch_provider_error_takes_priority_over_truncation(monkeypatch):
+    _, result, events, recorded = _patch_response(
+        monkeypatch, "length", error="provider unavailable")
+    assert result == {"error": "provider unavailable"}
+    assert recorded == []
+    assert [event["event"] for event in events] == ["artifact_reset", "artifact_failed"]

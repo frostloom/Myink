@@ -1,0 +1,67 @@
+{
+  "results.jsonl": {
+    "attempts": 12,
+    "input_tokens": 8634,
+    "output_tokens": 998
+  },
+  "generic-results.jsonl": {
+    "attempts": 8,
+    "input_tokens": 6757,
+    "output_tokens": 1509
+  },
+  "typed-results.jsonl": {
+    "attempts": 24,
+    "input_tokens": 21589,
+    "output_tokens": 2716
+  },
+  "proof-pipeline-batch.jsonl": {
+    "attempts": 3,
+    "input_tokens": 2875,
+    "output_tokens": 1979
+  },
+  "proof-pipeline-batch-fallback.jsonl": {
+    "attempts": 5,
+    "input_tokens": 4496,
+    "output_tokens": 3396
+  },
+  "proof-pipeline-existing-alternate.jsonl": {
+    "attempts": 5,
+    "input_tokens": 6761,
+    "output_tokens": 3412
+  },
+  "proof-pipeline-example.jsonl": {
+    "attempts": 4,
+    "input_tokens": 3650,
+    "output_tokens": 2536
+  },
+  "proof-suite-P01.jsonl": {
+    "attempts": 1,
+    "input_tokens": 396,
+    "output_tokens": 790
+  },
+  "proof-suite-P02.jsonl": {
+    "attempts": 6,
+    "input_tokens": 3458,
+    "output_tokens": 2170
+  },
+  "proof-suite-P03.jsonl": {
+    "attempts": 6,
+    "input_tokens": 4534,
+    "output_tokens": 2397
+  },
+  "proof-suite-P04.jsonl": {
+    "attempts": 1,
+    "input_tokens": 397,
+    "output_tokens": 752
+  },
+  "proof-suite-P05.jsonl": {
+    "attempts": 1,
+    "input_tokens": 141,
+    "output_tokens": 766
+  },
+  "proof-suite-P06.jsonl": {
+    "attempts": 1,
+    "input_tokens": 140,
+    "output_tokens": 804
+  }
+}

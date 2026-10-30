@@ -1,0 +1,25 @@
+{"event": "start", "id": "D01", "model": "deepseek-v4.1-flash"}
+{"event": "attempt", "attempt": 1}
+{"event": "result", "id": "D01", "valid": true, "expected_supported": false, "actual_supported": true, "correct": false, "result": {"status": "supported", "evidence_ids": [1, 13, 16, 22], "reason": "周梅在灶边亲手拧小燃气火并处理牛奶；休学申请始终放在小桌上，结尾签字栏仍空着，未签字；周梅在小桌对面坐下，随后母女头挨头共同查看手机上的电子课表并讨论缺勤标记，属于已实际核对，而非约定以后再看。原句各明确子要求均已在正文兑现。"}, "http_status": 200, "stop_reason": "end_turn", "block_types": ["thinking", "text"], "usage": {"input_tokens": 1491, "output_tokens": 533, "cache_read_input_tokens": 0}, "duration_ms": 4081}
+{"event": "start", "id": "D02", "model": "deepseek-v4.1-flash"}
+{"event": "attempt", "attempt": 2}
+{"event": "result", "id": "D02", "valid": true, "expected_supported": true, "actual_supported": true, "correct": true, "result": {"status": "supported", "evidence_ids": [1, 13, 16, 22], "reason": "周梅在灶边亲手把燃气火拧小，符合亲手关小的要求；休学申请仍在灶边小桌上且签字栏空着，说明仍未签字；周梅与沈宁已先后坐到小桌旁，并当场打开手机课表共同查看、讨论缺勤课程，属于实际核对而非约定以后再看。三个子要求均兑现。"}, "http_status": 200, "stop_reason": "end_turn", "block_types": ["thinking", "text"], "usage": {"input_tokens": 481, "output_tokens": 342, "cache_read_input_tokens": 1024}, "duration_ms": 2848}
+{"event": "start", "id": "D03", "model": "deepseek-v4.1-flash"}
+{"event": "attempt", "attempt": 3}
+{"event": "result", "id": "D03", "valid": true, "expected_supported": false, "actual_supported": true, "correct": false, "result": {"status": "supported", "evidence_ids": [14, 15, 16, 17], "reason": "宁师姐说明按原路从窄缝退出并约定松树底下见，秦鹤说明自己沿干沟往东绕到洞口外歪脖子松底下，双方明确了各自来路返回与洞外汇合；紧接着二人仍在裂缝两侧分别后撤、起身离开，正文没有发生无过程会合。"}, "http_status": 200, "stop_reason": "end_turn", "block_types": ["thinking", "text"], "usage": {"input_tokens": 1503, "output_tokens": 381, "cache_read_input_tokens": 256}, "duration_ms": 3160}
+{"event": "start", "id": "D04", "model": "deepseek-v4.1-flash"}
+{"event": "attempt", "attempt": 4}
+{"event": "result", "id": "D04", "valid": true, "expected_supported": true, "actual_supported": true, "correct": true, "result": {"status": "supported", "evidence_ids": [14, 15, 16, 17], "reason": "宁师姐在第14段明确说出自己沿原路返回的路线，秦鹤在第15段明确说自己“也走原路”并说明退到洞口外歪脖子松底下；第16段宁师姐说“那就松树底下见”，双方明确在洞外汇合。第17段显示两人仍分别在裂缝两侧，之后各自按路线移动，没有出现无过程会合。"}, "http_status": 200, "stop_reason": "end_turn", "block_types": ["thinking", "text"], "usage": {"input_tokens": 486, "output_tokens": 564, "cache_read_input_tokens": 1280}, "duration_ms": 4049}
+{"event": "start", "id": "D05", "model": "deepseek-v4.1-flash"}
+{"event": "attempt", "attempt": 5}
+{"event": "result", "id": "D05", "valid": true, "expected_supported": true, "actual_supported": true, "correct": true, "result": {"status": "supported", "evidence_ids": [2, 9, 17, 22], "reason": "第2段明确两人影子投在各自那侧石壁、中间隔黑缝；第9段宁师姐只是在裂缝对岸收绳接住药袋，未跨过裂缝；第17段仍明确一人在裂缝这边、一人在那边，且对岸脚步声后退；第22段秦鹤仍在本侧干沟边行动。全段没有跨裂缝或瞬移的描写。"}, "http_status": 200, "stop_reason": "end_turn", "block_types": ["thinking", "text"], "usage": {"input_tokens": 1492, "output_tokens": 478, "cache_read_input_tokens": 256}, "duration_ms": 4065}
+{"event": "start", "id": "D06", "model": "deepseek-v4.1-flash"}
+{"event": "attempt", "attempt": 6}
+{"event": "result", "id": "D06", "valid": true, "expected_supported": false, "actual_supported": false, "correct": true, "result": {"status": "violated", "evidence_ids": [10, 12, 14, 18], "reason": "设定要求值班员从未获知管理员口令、本章也未获得口令或新的导出权限。段10值班员明确说导日志要管理员口令且自己没有；但段12他仍在口令输入框前敲键并导出日志，段14照做导出压缩包，段18确认导出日志及录像，实际补写了他获得口令/导出权限并完成导出，与权威设定冲突。"}, "http_status": 200, "stop_reason": "end_turn", "block_types": ["thinking", "text"], "usage": {"input_tokens": 1760, "output_tokens": 505, "cache_read_input_tokens": 256}, "duration_ms": 3758}
+{"event": "start", "id": "D07", "model": "deepseek-v4.1-flash"}
+{"event": "attempt", "attempt": 7}
+{"event": "result", "id": "D07", "valid": true, "expected_supported": false, "actual_supported": false, "correct": true, "result": {"status": "violated", "evidence_ids": [3, 8, 11, 24], "reason": "门禁09:58在段3读取，摄像10:01在段8读取，但段8显示摄像为10:01:00时手机已是10:00:47、随后10:00:59，并非同时看到手机10:00与摄像10:01；段11只是事后并排记录10:00:00、09:58:00、10:01:00。段24明确画面时间在系统里、外壳上没有，满足不能从外壳看到画面时间；但‘同时看见并记录三个读数’未兑现且有冲突。"}, "http_status": 200, "stop_reason": "end_turn", "block_types": ["thinking", "text"], "usage": {"input_tokens": 1625, "output_tokens": 4777, "cache_read_input_tokens": 256}, "duration_ms": 32557}
+{"event": "start", "id": "D08", "model": "deepseek-v4.1-flash"}
+{"event": "attempt", "attempt": 8}
+{"event": "result", "id": "D08", "valid": true, "expected_supported": true, "actual_supported": true, "correct": true, "result": {"status": "supported", "evidence_ids": [1, 3, 12, 22], "reason": "休学申请在灶边小桌上且签字栏空着，未见签字；书包拉链未拉开，未被打开；牛奶先在燃气灶上加热，随后被周梅端下并关火，有人处理，未出现无人处理而消失的冲突。"}, "http_status": 200, "stop_reason": "end_turn", "block_types": ["thinking", "text"], "usage": {"input_tokens": 1246, "output_tokens": 336, "cache_read_input_tokens": 256}, "duration_ms": 2692}
+{"event": "complete", "attempts": 8}

@@ -52,3 +52,35 @@
 固定题材、模型、温度、计划和上下文，比较原稿与启用推荐资源后的稿件。至少覆盖强情节、悬疑和人物/现实三类，盲评人物声音、因果/连续性、阅读节奏与表达自然度；同时记录成本、长度、修订次数。未实际执行付费模型对照前，不宣称文学质量、AI 检测概率或商业指标有所提升。
 
 本轮验证：最终 Python 全量 2212 passed、1 skipped、5 既有 xfailed；资源集成相关 167 项通过，独立审查 38 项纯测试通过。覆盖提示词到 provider、角色模板替换后的私人档案、选择/取消选择、旧版本冻结、7 个内置文风的账号目录及上下文超限明确失败。
+
+## 深入调研与实测（2026-10-29，未发布候选）
+
+上一轮只概括通用建议，缺少具体写法教学。本轮深入读取：
+
+- [jwynia：场景衔接](https://github.com/jwynia/agent-skills/blob/e02ec7e226a6e4f8419fd3b88a1d8e472d421b32/skills/creative/fiction/structure/scene-sequencing/SKILL.md)与[prose-style](https://github.com/jwynia/agent-skills/blob/e02ec7e226a6e4f8419fd3b88a1d8e472d421b32/skills/creative/fiction/craft/prose-style/SKILL.md)：采用“结果—反应/权衡—下一选择”的方法，不要求逐场套固定结构。文件 frontmatter 声明 MIT，未发现独立仓库 LICENSE；只借鉴概念，中文为原创，不复制引用名家段落。
+- [Chinese Novel Writing Skills：正文详细指南](https://github.com/aa15107688191-collab/chinese-novel-writing-skills/blob/fc8be3aaf022f123ee190acd51b7fe4642b06d15/skills/fanqie-webnovel-prose/references/prose-guide.md)与[声音/潜台词](https://github.com/aa15107688191-collab/chinese-novel-writing-skills/blob/fc8be3aaf022f123ee190acd51b7fe4642b06d15/skills/dialogue/references/voice-and-subtext.md)：空间与动作后果、人物证据偏好、压力下的回应、称呼变化与共同知识。保留已核验 MIT 署名；不采用固定对白比例/段落句数。
+- [xin-yi33：文笔教学](https://github.com/xin-yi33/-novel-writer-skill/blob/d01ba0d157740de1557dbbb084877cc0ab7f3341/novel-writer/references/flows/writing-quality-guide.md)：参考正反例教学组织方式，使用 Myink 原创小例，不采用固定动作句长、每章波次数或全面禁“仿佛”等做法。MIT，Copyright 2026 xin-yi33。
+
+新候选位于 `chapter_craft.py`，包括具体接缝教学、原创表达示例。三种更详细的文风只进入实验输入，因未胜出而没有保留为最终目录定义；最终候选保留原有三种通用档案，把教学只按现实/悬疑叠加。没有安装或执行上游技能。新增资料不因“新”就自动优于旧资料，也未把模型自己的评分当效果证明。
+
+**状态：没有发布。** 140次有界真实请求涵盖多轮对照、复测与审核测试，仍未证明稳定达到验收标准；旧四文风的目录移除与资源定向升级也尚未在生产执行。完整样本、失败记录、独立盲审与决定见 [本轮评估报告](evaluations/writing-craft-20261029/README.md)。上文上一轮验证数字仅属于上一轮已发布版本，不能作为本轮完成依据。
+
+## 2026-10-30 用户澄清后的目标
+
+用户明确：本轮“提升写作质量”主要指少模板腔、解释腔和机械节奏，读起来更自然。
+之前逐项证明坐姿、路线、动作时序的研究不再作为本轮表达优化的主线或发布门槛。
+保留基本故事事实与作者私人文风，按实际阅读效果盲评；不采用AI检测分或新增作者逐章确认。
+本轮独立记录在 `docs/evaluations/natural-prose-20261030/`。首个新表达指导仅2/6更受偏好，已拒绝采用；继续测试原创风格样段，不追加运行时核对流程。
+
+## 2026-10-30：常见文风覆盖调研
+
+用户保留前一步状态，要求继续寻找覆盖常见写作需求的文风。整理结果见
+[十四种方向候选目录](style-library-survey-20261030/README.md)：当前本地四种方向之外，新增十份研究候选，含适用类型、六维表达档案、常见过度表达风险及原创短样段。
+
+行业覆盖参考2026年发布的2025中国网络文学蓝皮书与社科院发展研究报告；方法资料核对了wordflowlab、D780和tianshiemo7三个MIT仓库的固定提交。只参考风格分组与表达维度，未导入作者复刻预设、上游小说示例、固定句长/对白配额或工作流。完整URL、许可与文件哈希见目录内sources.json。
+
+十份档案已通过既有profile字段验证、二十次长短篇消息构建检查，ID未与当前本地文风冲突。这仅验证可适配性，不代表生成效果通过。本轮无新增模型生成请求，未注册到运行时、未替换默认或私人文风、未发布部署。
+
+## 随后发布决定（2026-10-30）
+
+用户明确授权提交、推送和上线前述改动。十四种方向已注册为可选文风，默认保留自然叙事；资源定向升级与旧四个当前目录项退役进入发布流程，既有私人和冻结设置保留。上文“未发布/未注册”描述各轮调研当时状态。实际工程验证及部署结果见[本轮发布记录](evaluations/2026-10-30-writing-craft-release.md)，不以发布决定改写此前混合的文学效果结果。

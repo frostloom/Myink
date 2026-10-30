@@ -1,0 +1,4 @@
+{"event": "attempt", "effort": "high", "max_tokens": 10000}
+{"event": "result", "effort": "high", "max_tokens": 10000, "http_status": 200, "error_type": null, "stop_reason": "max_tokens", "block_types": ["thinking", "text"], "usage": {"input_tokens": 127, "output_tokens": 10000, "cache_read_input_tokens": 768}, "final_data": null, "duration_ms": 65543}
+{"event": "attempt", "effort": "medium", "max_tokens": 8192}
+{"event": "result", "effort": "medium", "max_tokens": 8192, "http_status": 200, "error_type": null, "stop_reason": "max_tokens", "block_types": ["thinking"], "usage": {"input_tokens": 127, "output_tokens": 8192, "cache_read_input_tokens": 768}, "final_data": null, "duration_ms": 53632}

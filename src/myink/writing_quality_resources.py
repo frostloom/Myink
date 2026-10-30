@@ -1,5 +1,8 @@
 """Original, versioned quality resources; researched sources: docs/WRITING-QUALITY-SOURCES.md."""
 
+from myink.chapter_craft import CRAFT_LESSON
+from myink.additional_style_presets import ADDITIONAL_STYLE_PRESETS
+
 SCENE_RULES = """【场景因果与有效推进】
 先遵守作品设定、章节计划、题材承诺、作者文风和人物当前所知；以下是创作建议，不是额外情节或硬性指标。
 规划或落笔前，明确人物眼前想办成什么、遇到怎样的阻力、能作哪些选择，以及选择会改变什么。把重要结果接回已经建立的行动、信息或规则，不把事件简单按先后排列。
@@ -28,6 +31,9 @@ REVIEW_POLICY = """
 def quality_resources():
     source = 'writing_quality_resources.py; docs/WRITING-QUALITY-SOURCES.md (MIT reference concepts; original adaptation)'
     return [
+        dict(id='genre-rule:craft-realism-suspense', name='现实与悬疑·表达落笔方法', kind='genre_rule', source=source,
+             body={'genre_ids': ['xianshi', 'xuanyi-naodong'],
+                   'roles': {'writer': CRAFT_LESSON, 'audit': CRAFT_LESSON + REVIEW_POLICY}}),
         dict(id='writing-rule:scene-causality', name='场景因果与有效推进', kind='writing_rule', source=source,
              body={'roles': {'planner': SCENE_RULES, 'writer': SCENE_RULES, 'audit': SCENE_RULES + REVIEW_POLICY}}),
         dict(id='expression-rule:dialogue', name='人物对白与潜台词', kind='expression_rule', source=source,
@@ -37,7 +43,7 @@ def quality_resources():
     ]
 
 
-# Profiles deliberately omit POV, world facts and excerpt passages. They are choices,
+# Profiles do not fix a book POV or world facts. These are selectable choices,
 # not replacements for a project's existing private profile or selected genre.
 GENERAL_STYLE_PRESETS = [
     dict(id='natural-narration', name='自然叙事（通用）', genre='通用', style_profile={
@@ -65,3 +71,27 @@ GENERAL_STYLE_PRESETS = [
         'lexicon_tendency': '措辞准确，修辞服务人物经验与当前场景；不规定抒情密度或强迫华丽表达。',
     }),
 ]
+
+
+# Original examples for an optional life-oriented voice, not a global replacement.
+_LIFE_NARRATION_EXCERPTS = [
+    """“你把收条给我。”
+老何翻了翻上衣口袋，又去摸裤兜。阿棠没催，把门边那只椅子拖过来坐着。门外的三轮车已经发动了，突突响。
+“明天拿给你行不行？”
+“你上回也是这么说的。”
+老何往外看了一眼，把手从口袋里抽出来：“那你跟我走一趟。”""",
+    """我到的时候，门口只剩一把锁。邻居说人刚走，我说我知道，抬手又敲了两下。她抱着菜篮子没回屋，站在台阶下面看我。我把揣了一路的信塞回去，问她去镇上的末班车还有没有。
+“得跑。”
+我下了两级台阶，想起什么，又折回来：“她没说什么时候回来？”""",
+]
+
+GENERAL_STYLE_PRESETS.append(dict(
+    id='life-narration', name='生活叙事（自然对白）', genre='现实与日常',
+    style_profile={
+        **GENERAL_STYLE_PRESETS[0]['style_profile'],
+        'reference_excerpts': list(_LIFE_NARRATION_EXCERPTS),
+    },
+))
+
+
+GENERAL_STYLE_PRESETS.extend(ADDITIONAL_STYLE_PRESETS)

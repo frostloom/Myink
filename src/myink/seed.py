@@ -152,37 +152,10 @@ _SAMPLE_BOOKS = [
 ]
 
 
-# 文风预设：四本示例书档案，加三种不绑定作者和视角的通用文风。
-# 引用各 book 的 style_profile（DRY，改书档案即改预设）；设置页「预设导入」据此渲染 +
-# 原子写 project_settings.style_profile + skill_pack（marker）。
+# 可选内置文风仅提供通用档案；示例书及其已有档案仍保留在上方种子中。
 from myink.writing_quality_resources import GENERAL_STYLE_PRESETS
 
-STYLE_PRESETS = [
-    {
-        "id": "xianxia-jiuzhou",
-        "name": "九州问天",
-        "genre": "仙侠玄幻",
-        "style_profile": DEMO_STYLE_PROFILE,
-    },
-    {
-        "id": "changan-yexing",
-        "name": "长安夜行",
-        "genre": "历史悬疑",
-        "style_profile": _SAMPLE_BOOKS[0]["style_profile"],
-    },
-    {
-        "id": "xingjian-yuanzheng",
-        "name": "星舰远征",
-        "genre": "科幻",
-        "style_profile": _SAMPLE_BOOKS[1]["style_profile"],
-    },
-    {
-        "id": "dushi-yiguan",
-        "name": "都市医馆",
-        "genre": "都市",
-        "style_profile": _SAMPLE_BOOKS[2]["style_profile"],
-    },
-] + GENERAL_STYLE_PRESETS
+STYLE_PRESETS = GENERAL_STYLE_PRESETS
 
 
 def _ensure_sample_book(user_id: uuid.UUID, spec: dict) -> str | None:

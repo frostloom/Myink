@@ -1,0 +1,10 @@
+{
+  "V1": {
+    "A": "exemplar",
+    "B": "published"
+  },
+  "V2": {
+    "A": "published",
+    "B": "exemplar"
+  }
+}

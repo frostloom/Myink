@@ -428,7 +428,9 @@ def _llm_checked(db: Session, state: ChapterState, node: str, role: str, chain: 
             # 从头重写整份 Plan，容易连续生成同一种漏逗号错误，也让前端看起来反复规划。
             if json_mode and last_content:
                 msgs.append({"role": "assistant", "content": last_content})
-            msgs.append({"role": "system",
+            # Anthropic 提取 system 后，必须仍以 user 回合结尾；否则上一版 assistant
+            # 会成为预填内容，模型可能续写错误 JSON，或在思考模式下拒绝该请求。
+            msgs.append({"role": "user" if json_mode else "system",
                          "content": (corrective or (_RETRY_CORRECTIVE_JSON if json_mode
                                                     else _RETRY_CORRECTIVE_TEXT)) + f"\n具体校验错误：{last_exc}"})
         streamer = None
@@ -453,6 +455,8 @@ def _llm_checked(db: Session, state: ChapterState, node: str, role: str, chain: 
             return resp, tool_trace, None, resp.error
         last_content = resp.content
         try:
+            if getattr(resp, "finish_reason", None) == "length":
+                raise ValueError("模型输出达到长度上限，内容尚未完整，请完整重新输出")
             value = check(resp.content)
             if streamer is not None:
                 streamer.complete(value if node == "plan_chapter" else None)
@@ -1254,9 +1258,12 @@ def node_patch(state: ChapterState) -> ChapterState:
             db, state, "patch", "Writer", make_chain("writer", db=db, project_id=pid),
             prompts.patch_messages(state), json_mode=False, disable_thinking=True,
         )
-        if resp.error:
-            streamer.failed(resp.error)
-            return {"error": resp.error}
+        error = resp.error
+        if not error and getattr(resp, "finish_reason", None) == "length":
+            error = "模型输出达到长度上限，局部补丁尚未完整，未应用修改"
+        if error:
+            streamer.failed(error)
+            return {"error": error}
         result = apply_patches(state["draft"], parse_patches(resp.content))
         detail = {"revise_mode": "patch", "patch_count": state.get("patch_count", 0) + 1,
                   "patch_applied": result.applied_count, "patch_skipped": result.skipped_count,
