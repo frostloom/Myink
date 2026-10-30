@@ -89,6 +89,9 @@ def copy_image_assets(image, destination):
         attempted = True
         run(docker + ['create', '--network', 'none', '--name', name, image], stdout=subprocess.DEVNULL)
         run(docker + ['cp', name + ':/srv/web/dist/assets/.', str(destination)])
+        # Docker runs as root and may copy owner-only assets as root-owned files.
+        # The release directory is private; let the deploy user verify its copy.
+        run(['sudo', '-n', 'chown', '-R', f'{os.getuid()}:{os.getgid()}', str(destination)])
     finally:
         if attempted:
             removed = subprocess.run(docker + ['rm', '-f', '-v', name], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
