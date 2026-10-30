@@ -5,6 +5,15 @@ It does not enable the admin UI, change authentication or grant execution rights
 Use `src/myink/pi_audit.py` and `docs/contracts/pi-audit-v1.md`; never query the
 billing/manager SQLite databases from the browser or copy their private payloads.
 
+Current qualification (2026-10-31): the original server store contains1006 events
+after five new preparation records, with all1001 prior events preserved. The Pi
+branch reader validates the complete snapshot,256 runs,29 events for the original
+task, and the full four-file product scope. Main f450c0dc does not yet contain
+this reader; this is a handoff artifact, not a deployed administrator feature.
+The candidate remains awaiting human publication approval. See the
+[publication review](../evaluations/pi-publication-review-2026-10-31.md) for exact
+image/package hashes, pending deployment and relative next-day tasks.
+
 ## Required admin views
 
 | View | Reader input | Required interpretation |

@@ -2,6 +2,8 @@
 
 本对照是 main 后续接入的交付索引，不是管理员页面已上线的证明。读入口：`src/myink/pi_audit.py`；字段、分页、完整性与次日关联规则：`docs/contracts/pi-audit-v1.md`；接入边界：`docs/pi/administrator-audit-handoff.md`。
 
+2026-10-31 当前人工门禁已覆盖旧自动发布方案：真实最终镜像已备好，但未推送部署，未部署就不读新指标或迭代。原审计新增5条后共1006条，完整保留1001条历史。发布范围事件列出全部4个产品文件（原Pi修复及3个遥测文件）；次日任务仍相对真实部署登记为blocked，不伪造运行日期或结果。供main接入的reader已读通这份快照；当前main尚无该reader，管理员页面尚未接入。具体摘要和证据见[最终审阅包](../evaluations/pi-publication-review-2026-10-31.md)。
+
 ## 原始 Pi 的增强
 
 | 层 | Myink 增强 | 证据与边界 |
