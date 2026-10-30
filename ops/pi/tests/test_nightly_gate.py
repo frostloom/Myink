@@ -74,6 +74,12 @@ def test_approval_is_not_deployment_and_expiry_does_not_start_new_cycle(case):
     assert g.status()['phase']=='awaiting_approval'
 
 
+def test_no_release_cannot_discard_an_unconfirmed_artifact(case):
+    g,cycle=ready(case)
+    with pytest.raises(ValueError):g.no_release(cycle,'no_task','a'*64)
+    assert g.status()['phase']=='awaiting_approval'
+
+
 def test_verified_deployment_unlocks_observation_and_only_completion_allows_next_night(case):
     g,cycle=ready(case);pkg=case[2];(p,pin),_=permit(case,cycle,pkg);g.approve(cycle,p,pin)
     d,dpin=deployment(case,cycle,pkg,pin);assert g.deployed(cycle,d,dpin)['phase']=='observing'

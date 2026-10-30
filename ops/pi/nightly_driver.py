@@ -6,7 +6,7 @@ metrics or build work. Unfinished external intents block instead of replaying.
 """
 from datetime import datetime,timezone
 from pathlib import Path
-import fcntl,os,stat,subprocess,uuid
+import fcntl,os,stat,subprocess,uuid,time
 from .audit import _path,_plain,require,strict_json,digest,utc,SHANGHAI
 from .development_inputs import file_hash
 from .nightly_gate import ApprovalGate,BASE
@@ -44,9 +44,31 @@ def _admit(c):
     p=c['autonomy_profile'];require(file_hash(p['path'])==p['sha256'],'original source profile drift');return serve(p['path'],p['sha256'])
 
 
+def _review_scope(task):
+    path=BASE/'config/review-worker-registry.json';_plain(path);require(path.stat().st_size<=65536 and path.stat().st_uid==0 and stat.S_IMODE(path.stat().st_mode)==0o640,'root original worker registry required')
+    entries=strict_json(path.read_bytes())['entries'];require(isinstance(entries,list) and 0<len(entries)<=16,'one finite worker scope required')
+    for e in entries:
+        request=_path(e['request_path']);require(request.is_relative_to(BASE/'handoffs') and file_hash(request)==e['request_sha256'] and strict_json(request.read_bytes())['task_id']==task,'review worker must serve only this bound task')
+
+
+def _manager_state():
+    r=subprocess.run(['/usr/bin/systemctl','show','myink-pi-manager.service','--property=ActiveState','--property=Result'],check=True,capture_output=True,timeout=30)
+    values=dict(line.split('=',1) for line in r.stdout.decode().splitlines() if '=' in line)
+    require(values.get('ActiveState') in ('activating','active','reloading','deactivating','inactive','failed') and 'Result' in values,'known original manager unit state required')
+    return dict(active=values['ActiveState'] not in ('inactive','failed'),unit_result=values['Result'])
+
+
 def _manager_start(task):
-    subprocess.run(['/usr/bin/systemctl','start','--no-block','myink-pi-manager.service'],check=True,capture_output=True,timeout=30)
-    return dict(status='started',task_id=task)
+    _review_scope(task)
+    subprocess.run(['/usr/bin/systemctl','start','myink-pi-manager.service'],check=True,capture_output=True,timeout=30)
+    deadline=time.monotonic()+2400
+    while True:
+        state=_manager_state()
+        if not state['active']:return dict(status='started',task_id=task,**state)
+        require(time.monotonic()<deadline,'original manager completion unconfirmed; no replay')
+        _review_scope(task)
+        subprocess.run(['/usr/bin/systemctl','start','myink-pi-review-worker.service'],check=True,capture_output=True,timeout=35)
+        time.sleep(5)
 
 
 def _window(clock):
@@ -114,7 +136,13 @@ def run(config_path,pin,*,clock=None,admit=None,manager_trigger=None,image_facto
                     require(c['autonomy_profile'] is not None,'original source profile required');_write(intent,dict(config_sha256=pin,profile=c['autonomy_profile']))
                     require(c['mode']=='ACTUAL' or callable(admit),'SIMULATED source requires an explicit callback')
                     admitted=(admit or _admit)(c);_write(receipt,admitted)
-                result=_read(receipt);require(result['status']=='admitted','original source did not admit a task')
+                result=_read(receipt)
+                disposition=result['status']
+                if disposition=='cached':require(result.get('previous_status') in ('no_task','not_reproduced'),'cached prior admission or failure needs reconciliation')
+                if disposition in ('no_task','not_reproduced','no_evidence','outside_window','lock_busy','cached'):
+                    record=dict(schema='pi-nightly-no-release-v1',cycle_id=cycle,status='no_release',reason=disposition,admission_receipt_sha256=file_hash(receipt),model_requests=result.get('model_requests',0),deployed=False)
+                    _write(root/'no-release.json',record);gate.no_release(cycle,disposition,digest(record));return _response(gate,'no_release',reason=disposition)
+                require(disposition=='admitted','original source did not admit a task')
                 fp=result['research_fingerprint'];require(isinstance(fp,str) and len(fp)==64 and all(ch in '0123456789abcdef' for ch in fp),'original source fingerprint required')
                 task='auto-'+fp[:32];gate.bind_task(cycle,task);_write(selected,dict(task_id=task,origin='original_source_coordinator'))
             choice=_read(selected);task=choice['task_id'];require(gate.status()['task_id']==task,'original task binding drift')
@@ -126,7 +154,12 @@ def run(config_path,pin,*,clock=None,admit=None,manager_trigger=None,image_facto
                     require(c['mode']=='ACTUAL' or callable(manager_trigger),'SIMULATED manager requires an explicit callback')
                     _write(intent,dict(task_id=task));started=(manager_trigger or _manager_start)(task);require(started['status']=='started','original manager not notified');_write(receipt,started)
             pending=manager_completion.request(gate.state,gate.billing,task,mode=gate.mode)
-            if pending['status'] in ('not_registered','waiting_manager'):return _response(gate,'waiting_original_manager')
+            if pending['status'] in ('not_registered','waiting_manager'):
+                if choice['origin']=='original_source_coordinator':
+                    started=_read(root/'manager-start.json')
+                    if c['mode']=='ACTUAL':require(_manager_state()['active'],'original manager exited without completion; no restart')
+                    elif 'active' in started:require(started['active'],'original manager exited without completion; no restart')
+                return _response(gate,'waiting_original_manager')
             require(pending['status']=='candidate_ready','original manager stopped without a completed candidate')
             if not _window(clock):return _response(gate,'waiting_next_window')
             require(not (root/'bundle').exists(),'interrupted package preparation; no rebuild or reseal')

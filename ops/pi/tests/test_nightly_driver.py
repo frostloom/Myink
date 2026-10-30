@@ -112,3 +112,37 @@ def test_observing_driver_routes_only_confirmed_version_assessment(driver_case):
     observer=root/'observer.json';observer.write_text('{}');observer.chmod(0o600);cfg['observation_config']=dict(path=str(observer),sha256=file_hash(observer));cp.write_text(json.dumps(cfg));calls=[]
     result=tick(driver_case,assessor=lambda *a:calls.append('assessment') or dict(status='insufficient_evidence'))
     assert result['phase']=='observing' and calls==['assessment'] and len(Image.calls)==1
+
+
+@pytest.mark.parametrize('status',['no_task','not_reproduced','no_evidence','outside_window','lock_busy'])
+def test_normal_no_release_result_closes_once_without_permanent_block_or_same_night_replay(driver_case,status):
+    cp,cfg,finished,now,gate=driver_case;cfg['inherit_task_id']=None;cfg['autonomy_profile']=dict(path=str(cp.parent/'profile.json'),sha256='a'*64);cp.write_text(json.dumps(cfg));calls=[]
+    def admit(*a):calls.append(status);return dict(status=status,model_requests=1 if status=='no_task' else 0)
+    result=tick(driver_case,admit=admit)
+    assert result['status']=='no_release' and gate().status()['phase']=='idle'
+    assert tick(driver_case,admit=admit)['status']=='already_claimed' and calls==[status]
+    assert not Image.calls
+
+
+def test_manager_exit_without_registration_is_explicitly_stopped(driver_case,monkeypatch):
+    from ops.pi import nightly_driver as driver
+    cp,cfg,finished,now,gate=driver_case;cfg['inherit_task_id']=None;cfg['autonomy_profile']=dict(path=str(cp.parent/'profile.json'),sha256='a'*64);cp.write_text(json.dumps(cfg))
+    monkeypatch.setattr(driver.manager_completion,'request',lambda *a,**k:dict(status='not_registered'))
+    r=tick(driver_case,admit=lambda *a:dict(status='admitted',research_fingerprint='a'*64),manager_trigger=lambda *a:dict(status='started',active=False,unit_result='success'))
+    assert r['status']=='blocked' and gate().status()['phase']=='blocked'
+
+
+def test_fixed_manager_driver_pumps_review_worker_only_while_original_unit_is_live(monkeypatch):
+    from types import SimpleNamespace
+    from ops.pi import nightly_driver as driver
+    calls=[];states=iter(['active','active','inactive'])
+    def command(argv,**kwargs):
+        calls.append(argv)
+        if argv[1]=='show':return SimpleNamespace(stdout=('ActiveState='+next(states)+'\nResult=success\n').encode(),returncode=0)
+        return SimpleNamespace(stdout=b'',returncode=0)
+    monkeypatch.setattr(driver.subprocess,'run',command);monkeypatch.setattr(driver,'_review_scope',lambda task:calls.append(('scope',task)),raising=False)
+    monkeypatch.setattr('time.sleep',lambda _:None)
+    result=driver._manager_start('auto-'+'a'*32)
+    assert result['active'] is False and result['unit_result']=='success'
+    reviews=[a for a in calls if isinstance(a,list) and 'myink-pi-review-worker.service' in a]
+    assert len(reviews)==2 and not any('enable' in a for a in calls)

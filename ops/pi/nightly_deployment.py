@@ -6,7 +6,7 @@ root-issued deployment receipt. Docker command material remains private.
 """
 from pathlib import Path
 import os,pwd,stat,uuid
-from .audit import _path,require,strict_json,digest,utc
+from .audit import _path,require,strict_json,digest,utc,hash_value
 from .nightly_gate import BASE
 from .nightly_bundle import verify
 from .nightly_image import PROBE
@@ -18,6 +18,18 @@ PRODUCTION='0f90c176-9c45-4708-8103-37b5ff2464f1'
 def _run(commands,args,*,timeout=30):
     r=commands.run(args,timeout=timeout,output_limit=4194304);require(r['status']=='done' and r['returncode']==0,'deployment identity read unconfirmed')
     return (commands.root/r['command_id']/'stdout.bin').read_bytes()
+
+
+def _identity(env,image):
+    values={}
+    for item in env:
+        key,sep,value=item.partition('=');require(sep and key not in values,'unique runtime environment required');values[key]=value
+    generation=values.get('DEPLOYMENT_GENERATION','');require(generation.isdecimal() and len(generation)<=10,'known product generation required')
+    identity=dict(deployment_id=values.get('DEPLOYMENT_ID'),generation=int(generation),owner=values.get('DEPLOYMENT_OWNER'),image_ids=strict_json(values.get('DEPLOYMENT_IMAGE_IDS','null')),commit_sha=values.get('DEPLOYMENT_COMMIT_SHA'),schema_id=values.get('OBSERVATION_SCHEMA_ID'),config_hash=values.get('OBSERVATION_CONFIG_ID'))
+    from .live_observer import _identity as validate
+    validate(identity)
+    require(all(v is not None for v in identity.values()) and hash_value(identity['commit_sha'],40) and hash_value(identity['config_hash']) and identity['image_ids'].get('python')==image,'complete deployed product provenance required')
+    return identity
 
 
 def _cohort(commands,image,package_sha256,now):
@@ -34,10 +46,12 @@ def _cohort(commands,image,package_sha256,now):
         keys={v.partition('=')[0] for v in c.get('Env',[])}
         require(not keys&{'PYTHONPATH','PYTHONHOME','LD_PRELOAD'} and not row.get('HostConfig',{}).get('Privileged'),'runtime interpreter override rejected')
         require(all(not m['Destination'].startswith(('/usr/local','/app/src')) for m in row.get('Mounts',[])),'installed package mount override rejected')
+        identity=_identity(c.get('Env',[]),image)
         started=utc(state['StartedAt']);require(started<=now,'runtime start is in the future')
         probe=strict_json(_run(commands,['exec','--user','10001:10001',row['Id'],'python','-I','-S','-B','-c',PROBE]))
         require(set(probe)=={'package','files'} and digest(probe['files'])==package_sha256,'running installed package differs from frozen image')
-        snapshots.append(dict(container_id=row['Id'],image_id=row['Image'],role=role,started_at=started.isoformat(),config_sha256=digest(dict(config=c,host=row.get('HostConfig',{}),mounts=row.get('Mounts',[])))))
+        snapshots.append(dict(container_id=row['Id'],image_id=row['Image'],role=role,started_at=started.isoformat(),identity=identity,config_sha256=digest(dict(config=c,host=row.get('HostConfig',{}),mounts=row.get('Mounts',[])))))
+    require(all(r['identity']==snapshots[0]['identity'] for r in snapshots),'mixed deployed product provenance')
     return snapshots,None
 
 
@@ -57,8 +71,8 @@ def confirm(gate,cycle,bundle,docker,endpoint,daemon_id,*,transport_factory=None
     if context is None:return dict(status='awaiting_deployment',verified=False,reason=reason,model_requests=0)
     issued=utc(approval['packet']['issued_at']);require(all(utc(r['started_at'])>=issued for r in context),'running cohort predates human approval')
     deployed=max(utc(r['started_at']) for r in context)
-    deployment_id='nightly-'+digest([{k:v for k,v in r.items() if k!='started_at'} for r in context])[:40]
-    _write(attempt/'context.json',dict(schema='pi-nightly-deployed-cohort-v1',cycle_id=cycle,deployment_id=deployment_id,containers=context))
+    deployment_id=context[0]['identity']['deployment_id']
+    _write(attempt/'context.json',dict(schema='pi-nightly-deployed-cohort-v1',cycle_id=cycle,deployment_id=deployment_id,cohort_sha256=digest(context),containers=context))
     receipt=dict(schema='pi-nightly-deployment-receipt-v1',mode=gate.mode,issuer='trusted_deployment_verifier',cycle_id=cycle,package_sha256=digest(packet['manifest']),approval_sha256=approval['sha256'],image_id=packet['manifest']['image_id'],source_sha256=packet['manifest']['source_sha256'],comparison_sha256=packet['manifest']['comparison_sha256'],deployment_id=deployment_id,deployed_at=deployed.isoformat())
     folder=BASE/'config/deployment-receipts' if gate.mode=='ACTUAL' else bundle.parent/'deployment-receipts'
     if not folder.exists():

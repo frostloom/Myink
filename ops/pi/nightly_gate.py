@@ -193,6 +193,13 @@ class ApprovalGate:
             row=self._row(c,cycle);require(row['phase']=='observing','observation not active');c.execute("UPDATE approval_cycles SET phase='completed',result_sha256=? WHERE cycle_id=?",(result_sha256,cycle));self._record(c,cycle,'comparison_complete',dict(result_sha256=result_sha256))
         return self.status()
 
+    def no_release(self,cycle,reason,result_sha256):
+        require(hash_value(result_sha256) and reason in ('no_task','not_reproduced','no_evidence','outside_window','lock_busy','cached'),'known no-release receipt required')
+        with self._connection(True) as c:
+            row=self._row(c,cycle);require(row['phase']=='preparing' and row['task_id'] is None and row['package'] is None,'only unadmitted preparation can close without publication')
+            c.execute("UPDATE approval_cycles SET phase='completed',result_sha256=? WHERE cycle_id=?",(result_sha256,cycle));self._record(c,cycle,'no_release',dict(reason=reason,result_sha256=result_sha256))
+        return self.status()
+
     def block(self,cycle,reason):
         require(isinstance(reason,str) and 0<len(reason)<=200,'bounded failure reason required')
         with self._connection(True) as c:

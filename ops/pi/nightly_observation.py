@@ -23,7 +23,7 @@ def assess(gate,cycle,bundle,observer_config,config_pin,*,clock=None,observe=Non
     if now<due:return dict(status='waiting_due',scheduled_for=due.isoformat(),model_requests=0)
     bundle=_path(bundle);packet=verify(gate,bundle);path=_path(observer_config);_plain(path);require(path.stat().st_size<=65536 and file_hash(path)==config_pin and stat.S_IMODE(path.stat().st_mode)==0o600,'pinned private next-day observer required');config=_json(path)
     require(config['schema']=='pi-live-observer-v1' and config['mode']==gate.mode and config['lookback_hours']==1 and config['minimum_samples']>=20,'bounded postdeployment observer policy required')
-    require(config['identity']['deployment_id']==deployment['deployment_id'] and config['identity']['image_ids'].get('api')==packet['manifest']['image_id'],'observer identity does not match verified deployment')
+    require(config['identity']['deployment_id']==deployment['deployment_id'] and config['identity']['image_ids'].get('python')==packet['manifest']['image_id'],'observer identity does not match verified deployment')
     if gate.mode=='ACTUAL':require(bundle==BASE/'nightly'/cycle/'bundle' and path==BASE/'config/observer/nightly-observer.json','fixed ACTUAL observation inputs required')
     root=bundle.parent/'observation'
     if not root.exists():root.mkdir(mode=0o700)
@@ -37,8 +37,7 @@ def assess(gate,cycle,bundle,observer_config,config_pin,*,clock=None,observe=Non
         require(_run(commands,['info','--format','{{.ID}}']).decode().strip()==PRODUCTION,'original observer daemon drift')
         context,reason=_cohort(commands,packet['manifest']['image_id'],packet['image']['package_sha256'],now)
         require(context is not None,'confirmed deployment is no longer the healthy running cohort')
-        actual='nightly-'+digest([{k:v for k,v in r.items() if k!='started_at'} for r in context])[:40]
-        require(actual==deployment['deployment_id'],'deployed runtime/config identity changed')
+        require(context[0]['identity']==config['identity'] and context[0]['identity']['deployment_id']==deployment['deployment_id'],'deployed runtime/config identity changed')
     regression=root/'regression'
     if regression.exists():require((regression/'result.json').exists(),'unfinished fixed checker claim must not repeat');tested=_json(regression/'result.json')
     else:

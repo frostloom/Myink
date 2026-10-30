@@ -12,7 +12,7 @@ from ops.pi.audit import digest
 def observation_case(deployed_case):
     confirm(deployed_case);case,calls=deployed_case;g,cycle,root,task,finished,now=case
     with g._connection() as c:packet=json.loads(g._row(c,cycle)['deployment'])['packet']
-    cp=root/'observer.json';value=dict(schema='pi-live-observer-v1',mode='SIMULATED',lookback_hours=1,identity=dict(deployment_id=packet['deployment_id'],image_ids=dict(api='sha256:'+'7'*64)),minimum_samples=20)
+    cp=root/'observer.json';value=dict(schema='pi-live-observer-v1',mode='SIMULATED',lookback_hours=1,identity=dict(deployment_id=packet['deployment_id'],image_ids=dict(python='sha256:'+'7'*64)),minimum_samples=20)
     cp.write_text(json.dumps(value));cp.chmod(0o600);callbacks=[]
     def observe(path,pin):
         callbacks.append('metrics');return dict(schema='pi-live-observer-result-v1',mode='SIMULATED',status='passed',config_sha256=digest(json.loads(Path(path).read_bytes())),observed_samples=20,minimum_samples=20,confounders=[],window=dict(start=(now[0]-timedelta(hours=1)).isoformat(),end=now[0].isoformat()),snapshot_sha256='4'*64)
@@ -59,7 +59,7 @@ def test_failed_regression_reserves_manual_rollback_review_without_deploy(observ
 def test_wrong_version_or_old_window_cannot_close_comparison(observation_case,fault):
     data,cp,calls,observe,check=observation_case;data[5][0]+=timedelta(hours=26)
     if fault=='identity':
-        c=json.loads(cp.read_bytes());c['identity']['image_ids']['api']='sha256:'+'5'*64;cp.write_text(json.dumps(c))
+        c=json.loads(cp.read_bytes());c['identity']['image_ids']['python']='sha256:'+'5'*64;cp.write_text(json.dumps(c))
     def old(path,pin):r=observe(path,pin);r['window']['start']=(data[5][0]-timedelta(hours=30)).isoformat();return r
     with pytest.raises(ValueError):assess(observation_case,observe=old if fault=='predeployment_window' else observe)
     assert data[0].status()['phase']=='observing'
