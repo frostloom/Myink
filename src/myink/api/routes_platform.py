@@ -1,5 +1,9 @@
 """Administrator resource management, separate from read-only reporting sessions."""
+from typing import Literal
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from pydantic import BaseModel, ConfigDict
 from myink.api.auth import require_admin, require_user, _AuthenticatedUser
 from myink.api.routes_admin import _audit_or_fail
 from myink.api.routes_settings import ConnectionProbeBody, _clean_base_url, _assert_host_allowed
@@ -8,6 +12,8 @@ from myink.platform_configuration import ConfigurationBody, ConfigurationOut, Mo
 from myink.prompt_catalog import PromptRoleTemplatesOut, prompt_catalog
 from myink.providers import probe
 from myink.providers.credentials import decrypt_api_key
+from myink.db import new_session
+from myink.models import User
 
 from myink.platform_readiness import ReadinessOut, readiness
 
@@ -25,9 +31,10 @@ def probe_key(body):
 
 
 @router.get('/model-catalog', dependencies=[Depends(require_user)], response_model=ModelCatalogOut)
-def get_model_catalog(response: Response) -> dict:
+def get_model_catalog(response: Response, user_id: str = Depends(require_user)) -> dict:
     response.headers['Cache-Control'] = 'no-store'
-    return catalog()
+    from myink.platform_configuration import tier_for_user
+    return catalog(tier_for_user(user_id))
 
 
 @router.get('/admin/configuration', response_model=ConfigurationOut, response_model_exclude_none=True)
@@ -84,3 +91,31 @@ def test_connection(body: ConnectionProbeBody, request: Request, response: Respo
     _assert_host_allowed(url)
     ok, latency, reply, error = probe.test_connection(body.protocol, url, probe_key(body), model)
     return {'ok': ok, 'latency_ms': latency, 'reply': reply, 'error': error}
+
+
+class MembershipBody(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    tier: Literal['normal', 'vip']
+
+
+class MembershipOut(BaseModel):
+    id: uuid.UUID
+    tier: Literal['normal', 'vip']
+
+
+@router.put('/admin/users/{user_id}/membership', response_model=MembershipOut)
+def update_membership(user_id: str, body: MembershipBody, request: Request, response: Response,
+                      actor: _AuthenticatedUser = Depends(require_admin)) -> dict:
+    response.headers['Cache-Control'] = 'no-store'
+    try:
+        uid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(404, 'NOT_FOUND') from None
+    _audit_or_fail(actor, request, 'admin.membership.update')
+    with new_session() as db:
+        user = db.get(User, uid)
+        if user is None:
+            raise HTTPException(404, 'NOT_FOUND')
+        user.tier = body.tier
+        db.commit()
+    return {'id': uid, 'tier': body.tier}

@@ -9,10 +9,11 @@ import {useMemoryFormGuard} from '../composables/useMemoryFormGuard'
 import styles from '../../../src/pages/admin/AdminResources.module.css'
 import local from './UserResourceCatalog.module.css'
 type CatalogResource = WritingResource & {bookOrigin?:'platform'|'personal';bookCurrent?:boolean}
-const props=withDefaults(defineProps<{mode?:'library'|'choose';contained?:boolean;initialSelection?:SelectionInput[];currentResources?:ResourceSelection[]}>(),{mode:'library',contained:false,initialSelection:undefined,currentResources:undefined})
+const props=withDefaults(defineProps<{mode?:'library'|'choose';contained?:boolean;initialSelection?:SelectionInput[];currentResources?:ResourceSelection[];preselectedStyle?:SelectionInput}>(),{mode:'library',contained:false,initialSelection:undefined,currentResources:undefined,preselectedStyle:undefined})
 const emit=defineEmits<{'update:selection':[SelectionInput[]];ready:[boolean]}>()
 const platform=ref<WritingResource[]>([]),personal=ref<WritingResource[]>([]),loading=ref(true),error=ref(''),busy=ref(false),query=ref(''),filter=ref('all')
 const choices=ref<SelectionInput[]>([])
+const preferredMissing=ref(false)
 const editedChoices=ref<Record<string,SelectionInput>>({})
 const editing=ref<WritingResource|null>(null),preview=ref<WritingResource|null>(null),syncing=ref<WritingResource|null>(null)
 const draftName=ref(''),draftBody=ref<ResourceBody>({roles:{}}),draftError=ref(''),conflict=ref(false),reloadConfirm=ref(false)
@@ -28,8 +29,8 @@ const selectable=(item:WritingResource)=>!automatic(item.kind)
 const resources=computed<CatalogResource[]>(()=>{
  const explicit=props.initialSelection!==undefined
  const items:CatalogResource[]=explicit?[...platform.value,...personal.value]:[
-  ...platform.value.map(item=>personal.value.find(own=>own.source_resource_id===item.id)??item),
-  ...personal.value.filter(item=>!item.source_resource_id||!platform.value.some(p=>p.id===item.source_resource_id)),
+  ...platform.value.map(item=>props.preselectedStyle?.origin==='platform'&&props.preselectedStyle.resource_id===item.id ? item : personal.value.find(own=>own.source_resource_id===item.id)??item),
+  ...personal.value.filter(item=>!item.source_resource_id||!platform.value.some(p=>p.id===item.source_resource_id)||(props.preselectedStyle?.origin==='platform'&&props.preselectedStyle.resource_id===item.source_resource_id)),
  ]
  for(const saved of props.currentResources??[]){
   const index=items.findIndex(item=>item.id===saved.resource_id&&origin(item)===saved.origin)
@@ -56,6 +57,10 @@ async function load(){
   platform.value=catalog.items;personal.value=mine.items
   const initial=props.initialSelection
   choices.value=initial===undefined?resources.value.filter(item=>['writing_rule','expression_rule'].includes(item.kind)).map(item=>({origin:origin(item),resource_id:item.id})):JSON.parse(JSON.stringify(initial))
+  const preferred=props.preselectedStyle
+  const found=preferred&&resources.value.some(item=>item.kind==='style'&&item.id===preferred.resource_id&&origin(item)===preferred.origin)
+  preferredMissing.value=initial===undefined&&!!preferred&&!found
+  if(initial===undefined&&preferred&&found) choices.value.push({...preferred})
   emitChoices();emit('ready',true)
  }catch(cause){if(request===version)error.value=resourceError(cause)}finally{if(request===version)loading.value=false}
 }
@@ -63,9 +68,10 @@ watch(()=>props.mode,()=>void load(),{immediate:true})
 onScopeDispose(()=>{version++})
 useMemoryFormGuard(()=>editing.value!==null)
 function toggle(item:WritingResource){
+ if(item.kind==='style') preferredMissing.value=false
  const original=editedChoices.value[`${origin(item)}:${item.id}`]??props.initialSelection?.find(c=>c.resource_id===item.id&&c.origin===origin(item))
  const choice=original?JSON.parse(JSON.stringify(original)):{origin:origin(item),resource_id:item.id}
- const remaining=automaticRule(item.kind)?choices.value.filter(c=>choiceRoot(c)!==rootId(item)):choices.value
+ const remaining=item.kind==='style'?choices.value.filter(c=>!resources.value.some(row=>row.kind==='style'&&row.id===c.resource_id&&origin(row)===c.origin)):automaticRule(item.kind)?choices.value.filter(c=>choiceRoot(c)!==rootId(item)):choices.value
  choices.value=selected(item)?choices.value.filter(c=>c.resource_id!==item.id||c.origin!==origin(item)):[...remaining,choice];emitChoices()
 }
 function edit(item:WritingResource){draftName.value=item.name;draftBody.value=JSON.parse(JSON.stringify(item.body));draftError.value='';conflict.value=false;editing.value=item}
@@ -114,8 +120,9 @@ const roleBody=computed(()=> 'role' in draftBody.value?draftBody.value:null)
 </script>
 <template>
  <section :class="local.catalog" :aria-label="mode==='choose'?'建书写作资源':'个人写作资源库'">
-  <p v-if="mode==='choose'" :class="local.note">创作规则和表达规则默认勾选，可取消或编辑后保存为你的版本；文风可自由选择。题材相关资源按本书题材自动匹配。</p>
+  <p v-if="mode==='choose'" :class="local.note">创作规则和表达规则默认勾选，可取消或编辑后保存为你的版本；文风一次选择一种。题材相关资源按本书题材自动匹配。</p>
   <p v-else :class="local.note">编辑后保存为你的版本，之后建书和自动资源会优先选用。已建立的作品继续保留原快照。</p>
+  <p v-if="preferredMissing" role="alert">先前所选文风已不可用，当前未选用，可选择其他文风。</p>
   <p v-if="loading" role="status">正在加载写作资源…</p>
   <p v-if="error" role="alert">{{ error }} <button class="btn" @click="load">重试</button></p>
   <template v-if="!loading&&!error">

@@ -2,6 +2,9 @@
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from myink.models import StyleLibraryItem
+from myink.style_extract import validate_profile
 from myink.api.auth import require_user, require_owner
 from myink.db import new_session, tenant_session
 from myink.models.writing_resource import PersonalWritingResource
@@ -25,6 +28,45 @@ def create(body: CreateResource, uid: str=Depends(require_user)):
         result = svc.out(row)
         db.commit()
         return result
+
+@router.post('/my-writing-resources/import-legacy/{item_id}', response_model=ResourceOut)
+def import_legacy_style(item_id: str, uid: str = Depends(require_user)):
+    try:
+        old_id = uuid.UUID(item_id)
+    except (ValueError, TypeError):
+        raise HTTPException(404, 'RESOURCE_NOT_FOUND') from None
+    owner = uuid.UUID(uid)
+    source_id = 'legacy-style:' + str(old_id)
+    with new_session() as db:
+        old = db.scalar(select(StyleLibraryItem).where(StyleLibraryItem.id == old_id, StyleLibraryItem.user_id == owner))
+        if old is None:
+            raise HTTPException(404, 'RESOURCE_NOT_FOUND')
+        def existing():
+            return db.scalar(select(PersonalWritingResource).where(
+                PersonalWritingResource.user_id == owner, PersonalWritingResource.source_resource_id == source_id))
+        row = existing()
+        if row is None:
+            try:
+                profile = validate_profile(old.profile)
+                body = {'profile': profile}
+                validate_resource_body('style', body)
+            except ValueError as exc:
+                raise HTTPException(422, str(exc)) from exc
+            data = dict(name=old.name, kind='style', source='旧版个人文风导入' + ('：' + old.note if old.note else ''), body=body)
+            try:
+                # The existing per-owner source uniqueness constraint makes retries
+                # and simultaneous tabs converge on one private copy.
+                with db.begin_nested():
+                    row = svc.create_resource(db, data, user_id=uid)
+                    row.source_resource_id = source_id
+                    db.flush()
+            except IntegrityError:
+                row = existing()
+                if row is None:
+                    raise
+            db.commit()
+        return svc.out(row)
+
 
 @router.post('/my-writing-resources/from-platform', response_model=ResourceOut)
 def copy_platform(body: CopyPlatform, uid: str=Depends(require_user)):

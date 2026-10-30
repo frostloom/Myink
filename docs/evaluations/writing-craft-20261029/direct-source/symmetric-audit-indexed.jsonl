@@ -1,0 +1,4 @@
+{"event": "start", "audit": 1, "offset": 0, "ids": ["S02", "S01"]}
+{"event": "attempt", "attempt": 1}
+{"event": "result", "audit": 1, "offset": 0, "valid": true, "result": {"units": [{"id": "S02", "status": "violated", "evidence_ids": [0], "reason": "正文明确短风术已完全结束后宁师姐才开始收绳，与“同时收绳”直接相反；且未体现风术托药袋越过尖棱。", "source_requirement": "仅用一次短风术托起药袋越过尖棱，宁师姐同时收绳。"}, {"id": "S01", "status": "supported", "evidence_ids": [0], "reason": "正文有唯一一阵短风托药袋越过石棱时宁师姐同时收紧绳索，三个条件均兑现。", "source_requirement": "仅用一次短风术托起药袋越过尖棱，宁师姐同时收绳。"}]}, "expected": {"S02": "violated", "S01": "supported"}, "http_status": 200, "stop_reason": "end_turn", "usage": {"input_tokens": 344, "output_tokens": 632, "cache_read_input_tokens": 256}, "duration_ms": 3933}
+{"event": "complete", "attempts": 1}

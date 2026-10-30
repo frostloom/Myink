@@ -1,0 +1,84 @@
+{
+  "experiments": [
+    {
+      "file": "finding-confirmation-calibration.jsonl",
+      "attempts": 10,
+      "reported_input_tokens": 15935,
+      "reported_output_tokens": 10716,
+      "reported_cache_read_input_tokens": 3072
+    },
+    {
+      "file": "finding-confirmation-unseen.jsonl",
+      "attempts": 12,
+      "reported_input_tokens": 2674,
+      "reported_output_tokens": 9969,
+      "reported_cache_read_input_tokens": 4864
+    },
+    {
+      "file": "discovery-replay.jsonl",
+      "attempts": 6,
+      "reported_input_tokens": 3023,
+      "reported_output_tokens": 2331,
+      "reported_cache_read_input_tokens": 2816
+    },
+    {
+      "file": "direct-source-confirmed-pipeline-P05.jsonl",
+      "attempts": 32,
+      "reported_input_tokens": 21917,
+      "reported_output_tokens": 33659,
+      "reported_cache_read_input_tokens": 41728
+    },
+    {
+      "file": "patch-thinking-pilot-P05.jsonl",
+      "attempts": 4,
+      "reported_input_tokens": 5046,
+      "reported_output_tokens": 1839,
+      "reported_cache_read_input_tokens": 10240
+    },
+    {
+      "file": "patch-thinking-pilot-P07.jsonl",
+      "attempts": 4,
+      "reported_input_tokens": 7542,
+      "reported_output_tokens": 13021,
+      "reported_cache_read_input_tokens": 10240
+    },
+    {
+      "file": "repair-target-controls.jsonl",
+      "attempts": 6,
+      "reported_input_tokens": 3803,
+      "reported_output_tokens": 9557,
+      "reported_cache_read_input_tokens": 6400
+    },
+    {
+      "file": "direct-source-transaction-pipeline-P05.jsonl",
+      "attempts": 32,
+      "reported_input_tokens": 18483,
+      "reported_output_tokens": 36104,
+      "reported_cache_read_input_tokens": 40704
+    },
+    {
+      "file": "symmetric-audit.jsonl",
+      "attempts": 6,
+      "reported_input_tokens": 16300,
+      "reported_output_tokens": 14500,
+      "reported_cache_read_input_tokens": 1280
+    },
+    {
+      "file": "symmetric-audit-indexed.jsonl",
+      "attempts": 1,
+      "reported_input_tokens": 344,
+      "reported_output_tokens": 632,
+      "reported_cache_read_input_tokens": 256
+    },
+    {
+      "file": "direct-source-symmetric-pipeline-P05.jsonl",
+      "attempts": 23,
+      "reported_input_tokens": 51390,
+      "reported_output_tokens": 43489,
+      "reported_cache_read_input_tokens": 26368
+    }
+  ],
+  "attempts": 136,
+  "cumulative_through_completed_runs": 767,
+  "limitations": "Response-reported usage, not complete supplier billing; missing/cache-creation fields not inferred. Zero-request preflight failure excluded. Prepared P06/P07 controls not run. All listed evaluation runners finished."
+}

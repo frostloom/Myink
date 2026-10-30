@@ -201,6 +201,7 @@ class RevisionList(Strict):
     items: list[RevisionOut]
 
 class SelectionOut(Strict):
+    authoritative_style: bool = False
     resource_id: str
     origin: Literal['platform', 'personal']
     name: str
@@ -211,6 +212,7 @@ class SelectionOut(Strict):
     personal_override: bool
 
 class SnapshotOut(Strict):
+    style_managed: bool = False
     revision: int
     configured: bool
     selections: list[SelectionOut]

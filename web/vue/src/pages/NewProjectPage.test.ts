@@ -23,7 +23,7 @@ vi.mock('../authContext', () => ({ useAuth: () => ({ session: ref(null), status:
 vi.mock('../components/RankingsPanel.vue', () => ({ default: { render: () => null } }))
 vi.mock('../components/ProjectRail.vue', () => ({ default: { render: () => null } }))
 vi.mock('../../../src/lib/styleLibraryApi', () => ({
-  styleLibraryApi: { list: vi.fn().mockResolvedValue({ items: [] }) },
+  styleLibraryApi: { resources: vi.fn().mockResolvedValue({ items: [] }) },
 }))
 vi.mock('../../../src/lib/api', async (original) => ({
   ...await original<typeof import('../../../src/lib/api')>(),
@@ -338,9 +338,9 @@ it('keeps the long-form chapter range and declares the long form explicitly', as
 
 
 const STYLE_ITEMS = [
-  { id: 'builtin:xianxia-jiuzhou', name: '九州问天', builtin: true, removable: false,
+  { id: 'wr:platform', origin: 'platform' as const, resource_id: 'platform-id', name: '九州问天', builtin: true, removable: false,
     profile: {}, note: '', sample_chars: 0, created_at: null },
-  { id: 'mine-1', name: '渡口白描', builtin: false, removable: true,
+  { id: 'wr:personal', origin: 'personal' as const, resource_id: 'personal-id', name: '渡口白描', builtin: false, removable: true,
     profile: {}, note: '', sample_chars: 10, created_at: '2026-09-24' },
 ]
 
@@ -354,20 +354,20 @@ function stubLongCreation() {
 }
 
 it('lists the builtin style before mine, each marked with where it comes from', async () => {
-  vi.mocked(styleLibraryApi.list).mockResolvedValue({ items: STYLE_ITEMS })
+  vi.mocked(styleLibraryApi.resources).mockResolvedValue({ items: STYLE_ITEMS })
   await renderPage('/long/new')
 
   const select = await screen.findByLabelText('文风')
   // 选项由 useEffect 里的异步 list() 填，而 select 首帧就在，所以这里必须重试断言。
   await waitFor(() =>
     expect(Array.from(select.querySelectorAll('option')).map((o) => o.textContent)).toEqual([
-      '不指定', '九州问天（内置）', '渡口白描（我的）',
+      '不指定', '九州问天（平台）', '渡口白描（我的）',
     ]),
   )
 })
 
 it('defaults to no style and sends null', async () => {
-  vi.mocked(styleLibraryApi.list).mockResolvedValue({ items: STYLE_ITEMS })
+  vi.mocked(styleLibraryApi.resources).mockResolvedValue({ items: STYLE_ITEMS })
   stubLongCreation()
   await renderPage('/long/new')
   await screen.findByLabelText('文风')
@@ -380,16 +380,16 @@ it('defaults to no style and sends null', async () => {
 })
 
 it('submits the selected style item id with the project', async () => {
-  vi.mocked(styleLibraryApi.list).mockResolvedValue({ items: STYLE_ITEMS })
+  vi.mocked(styleLibraryApi.resources).mockResolvedValue({ items: STYLE_ITEMS })
   stubLongCreation()
   await renderPage('/long/new')
 
-  await fireEvent.change(await screen.findByLabelText('文风'), { target: { value: 'mine-1' } })
+  await fireEvent.change(await screen.findByLabelText('文风'), { target: { value: 'wr:personal' } })
   await fillCreationBrief()
   await fireEvent.click(screen.getByRole('button', { name: '创建作品' }))
 
   await waitFor(() => expect(api.createProject).toHaveBeenCalledTimes(1))
-  expect(vi.mocked(api.createProject).mock.calls[0][0].style_item_id).toBe('mine-1')
+  expect(vi.mocked(api.createProject).mock.calls[0][0].style_item_id).toBe('wr:personal')
 })
 
 // ---- 建书第②步：设定骨架因题材而异（§7.11，等级阶梯不是通用维度）----

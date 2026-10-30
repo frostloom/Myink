@@ -53,7 +53,7 @@ def _purge_test_queues() -> None:
     with amqp.connect() as conn:
         ch = conn.channel()
         amqp.declare_topology(ch)
-        for queue in (amqp.main_queue(), amqp.delay_queue(), amqp.dlq_queue()):
+        for queue in (amqp.main_queue(), amqp.delay_queue(), amqp.vip_queue(), amqp.vip_delay_queue(), amqp.dlq_queue()):
             ch.queue_purge(queue)
 
 
@@ -153,7 +153,7 @@ def _make_test_project(demo_id: str, tag: str) -> str:
         return str(b.id)
 
 
-def _enqueue(project_id: str, seq: int, tag: str) -> str:
+def _enqueue(project_id: str, seq: int, tag: str, priority: int = 0) -> str:
     """publish 到 RabbitMQ 主队列（queue:tasks-mp-；网关未起，模拟入队结果），返回 task_id。"""
     task_id = str(uuid.uuid4())
     with new_session() as db:
@@ -164,7 +164,7 @@ def _enqueue(project_id: str, seq: int, tag: str) -> str:
         "payload": {"seq": seq}, "trace_id": task_id, "request_id": task_id,
         "retry_count": 0,
     }
-    amqp.publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS)
+    amqp.publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS, priority=priority)
     return task_id
 
 
@@ -200,7 +200,7 @@ def _cleanup(project_ids: list[str], task_ids: list[str]) -> None:
     # 无 Redis ZSET/Stream 残留；清队列保证多次运行互不污染（在途已交付消息不受 purge 影响）。
     with amqp.connect() as conn:
         ch = conn.channel()
-        for q in (amqp.main_queue(), amqp.delay_queue(), amqp.dlq_queue()):
+        for q in (amqp.main_queue(), amqp.delay_queue(), amqp.vip_queue(), amqp.vip_delay_queue(), amqp.dlq_queue()):
             try:
                 ch.queue_purge(q)
             except Exception:
@@ -226,6 +226,20 @@ def test_hetero_book_parallel(two_workers):
         assert overlap > 0, "异书任务应由两个 worker 并发执行（书锁互不阻塞），overlap 应 >0"
     finally:
         _cleanup([book_a, book_b], [ta, tb])
+
+
+def test_vip_and_normal_queues_run_full_chapter_pipeline(two_workers):
+    demo = _demo_project_id()
+    books = [_make_test_project(demo, 'vip'), _make_test_project(demo, 'normal')]
+    tasks = [_enqueue(books[0], 1, 'vip', priority=9), _enqueue(books[1], 1, 'normal')]
+    try:
+        for tid in tasks:
+            assert _wait_status(tid) == 'done'
+        with new_session() as db:
+            for tid in tasks:
+                assert db.query(AgentRun).filter_by(task_id=tid, node='persist').count() == 1
+    finally:
+        _cleanup(books, tasks)
 
 
 def test_same_book_serial(two_workers):

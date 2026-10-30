@@ -107,7 +107,7 @@ class BatchGenerateBody(BaseModel):
 
 
 def _priority(tier: str) -> int:
-    """VIP 插队：JWT tier → RabbitMQ 消息优先级（主队列 x-max-priority=10）。"""
+    """经数据库核验的会员等级 → 消息优先级，发布时据此路由到对应队列。"""
     return settings.priority_vip if tier == "vip" else settings.priority_normal
 
 
@@ -481,7 +481,7 @@ def resume_task(task_id: str, request: Request, body: ResumeBudgetBody | None = 
         "retry_count": 0,
         "created_at": "",
     }
-    amqp.publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS)
+    amqp.publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS, priority=amqp.priority_for_user(owner_id))
     return {"task_id": task_id, "status": "queued", "message": "已投递续跑消息"}
 
 
@@ -554,7 +554,7 @@ def confirm_task_plan(task_id: str, body: PlanConfirmBody) -> dict:
         "created_at": "",
     }
     try:
-        amqp.publish(json.dumps(message, ensure_ascii=False), amqp.KEY_TASKS)
+        amqp.publish(json.dumps(message, ensure_ascii=False), amqp.KEY_TASKS, priority=amqp.priority_for_user(owner_id))
     except Exception as exc:
         with new_session() as db:
             current = db.get(Task, tid)

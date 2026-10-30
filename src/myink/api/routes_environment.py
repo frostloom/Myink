@@ -75,7 +75,7 @@ def get_environment(user_id: str = Depends(require_user)) -> dict:
 
 @router.put("/environment", response_model=EnvironmentOut)
 def put_environment(body: EnvironmentBody, user_id: str = Depends(require_user)) -> dict:
-    from myink.platform_configuration import clean_user_routes, validate_user_routes
+    from myink.platform_configuration import clean_user_routes, validate_user_routes, tier_for_user
     if 'model_connections' in body.model_fields_set:
         raise HTTPException(403, 'Platform connections are managed by administrators')
     supplied = {'thinking_enabled'} if 'thinking_enabled' in body.model_fields_set else set()
@@ -87,7 +87,8 @@ def put_environment(body: EnvironmentBody, user_id: str = Depends(require_user))
         raise HTTPException(400, 'Cannot reset and set the same preference')
     raw = load_raw(user_id)
     existing_routes, _ = unpack_model_settings(raw.get('models') or {})
-    routes = clean_user_routes(existing_routes)
+    tier = tier_for_user(user_id)
+    routes = clean_user_routes(existing_routes, tier=tier)
     if body.model_routes is not None:
         if not body.model_routes:
             routes = {}
@@ -96,7 +97,7 @@ def put_environment(body: EnvironmentBody, user_id: str = Depends(require_user))
                 routes.pop(role, None)
             else:
                 routes[role] = ref
-    validate_user_routes(routes)
+    validate_user_routes(routes, tier=tier)
     stored = dict(raw)
     for path in body.reset_preferences:
         group, _, key = path.partition('.')

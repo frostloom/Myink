@@ -152,11 +152,18 @@ def test_manual_replan_pauses_again_and_keeps_both_plan_versions(
         assert [row.detail["plan_attempt"] for row in reviews] == [1, 2]
 
 
+@pytest.mark.parametrize('tier,priority', [('normal', 0), ('vip', 9)])
 def test_plan_confirm_api_validates_checkpoint_and_queues_exact_edited_version(
-    temp_project, monkeypatch,
+    temp_project, temp_user, monkeypatch, tier, priority,
 ):
     import myink.providers as providers_mod
     from myink.worker import amqp
+    from myink.models import Project, User
+    with new_session() as db:
+        owner = uuid.UUID(temp_user)
+        db.get(Project, uuid.UUID(temp_project)).user_id = owner
+        db.get(User, owner).tier = tier
+        db.commit()
 
     provider = ManualPlanProvider()
     monkeypatch.setattr(providers_mod, "default_provider", provider)
@@ -174,13 +181,18 @@ def test_plan_confirm_api_validates_checkpoint_and_queues_exact_edited_version(
         assert db.get(Task, uuid.UUID(task_id)).status == "awaiting_plan"
 
     published: list[tuple[str, str]] = []
-    monkeypatch.setattr(amqp, "publish", lambda message, key: published.append((message, key)))
+    priorities = []
+    def publish(message, key, priority=0):
+        published.append((message, key))
+        priorities.append(priority)
+    monkeypatch.setattr(amqp, "publish", publish)
     edited = dict(waiting["plan"])
     edited["goals"] = ["API 提交的用户版本"]
     result = confirm_task_plan(task_id, PlanConfirmBody(plan=edited, expected_attempt=1))
 
     assert result["status"] == "queued"
     assert len(published) == 1
+    assert priorities == [priority]
     message = json.loads(published[0][0])
     assert message["task_type"] == "chapter_plan_resume"
     assert message["task_id"] == task_id

@@ -89,6 +89,8 @@ try {
     assert.equal(await page.getByRole('table').count(), 0)
     assert.equal(await page.getByRole('navigation', { name: '账号关联记录' }).count(), 0)
     assert.equal(await page.getByText('管理导航', { exact: true }).count(), 0)
+    const menu = page.getByRole('button', { name: '切换后台导航', exact: true })
+    if (await menu.isVisible()) await menu.click()
     await page.getByRole('link', { name: '作品', exact: true }).click()
     await page.getByRole('textbox', { name: '用户 ID', exact: true }).fill('u')
     await page.getByRole('button', { name: '筛选', exact: true }).click()

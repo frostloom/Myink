@@ -31,7 +31,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete as sa_delete, func, select, text
 
 from myink.api.auth import current_user, require_owner
-from myink.api.routes_style import resolve_style_selection
+from myink.api.routes_style import attach_resource_style, resolve_style_selection
 from myink.api.routes_genre import ensure_genre_editable
 from myink.api.schemas import (BookOutlineOut, CharacterCardOut, CharacterStateChangeOut,
                                DeleteProjectOut, EntityCardOut, ForeshadowOut, OutlineDraftOut,
@@ -348,8 +348,11 @@ def create_project(body: CreateProjectBody,
             db.flush()                       # 上面那行只是把空 settings 挂进 session（autoflush=False）
             settings_row = db.scalar(select(ProjectSettings).where(
                 ProjectSettings.project_id == project.id))
-            settings_row.style_profile = profile
-            settings_row.skill_pack = skill_pack
+            if style_item_id.startswith("wr:"):
+                attach_resource_style(db, project.id, uid, style_item_id)
+            else:
+                settings_row.style_profile = profile
+                settings_row.skill_pack = skill_pack
         db.commit()
     return project_payload(project)
 

@@ -14,6 +14,23 @@ async function page(role='admin',verified=true,statusFailure=false) {
  const view=render(AccountPage,{global:{plugins:[router]}}); return {...view,router}
 }
 afterEach(()=>{cleanup();vi.restoreAllMocks()})
+it('shows ordinary members an administrator-led VIP upgrade with the requested benefits',async()=>{
+ await page('user')
+ const membership=screen.getByRole('region',{name:'VIP 写作权益'})
+ expect(membership.textContent).toContain('如果需要更快的写作速度、更高的写作质量，请联系管理员进行 VIP 升级。')
+ expect(within(membership).getByText('优先调度')).toBeTruthy()
+ expect(within(membership).getByText('进阶模型')).toBeTruthy()
+ expect(within(membership).queryByRole('button')).toBeNull()
+ expect(screen.getByRole('region',{name:'登录安全'})).toBeTruthy()
+})
+it('shows activated VIP membership instead of asking an existing member to upgrade',async()=>{
+ await page('user')
+ ;(auth.value.session as ReturnType<typeof ref>).value={token:'vip',userId:'a',username:'alice',tier:'vip',role:'user',roleVerified:true}
+ const membership=await screen.findByRole('region',{name:'VIP 写作权益'})
+ expect(within(membership).getByText('已开通')).toBeTruthy()
+ expect(membership.textContent).not.toContain('请联系管理员进行 VIP 升级')
+ expect(screen.queryByText('打开管理后台')).toBeNull()
+})
 it('validates passwords and changes them without persisting sensitive fields',async()=>{
  await page('user'); await fireEvent.update(screen.getByLabelText('当前密码'),'old'); await fireEvent.update(screen.getByLabelText('新密码'),'abcdefgh'); await fireEvent.update(screen.getByLabelText('确认新密码'),'abcdefgh')
  await fireEvent.submit(screen.getByLabelText('新密码').closest('form')!); expect(screen.getByRole('alert')).toBeTruthy(); expect(auth.value.changePassword).not.toHaveBeenCalled()

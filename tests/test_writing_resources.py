@@ -555,3 +555,20 @@ def test_explicit_empty_initial_selection_does_not_restore_defaults(db, form):
     assert not any(item['kind'] in ('writing_rule','expression_rule') for item in saved['selections'])
     assert service.ensure_project_resources(db,pid,uid)==saved
     assert service.capture_task_resources(db,pid)['selections']==saved['selections']
+
+
+def test_clearing_an_explicit_style_keeps_style_control_without_reviving_legacy(db):
+    r = resource(db)
+    service.publish(db, r.id, 0, '')
+    pid, uid = uuid.uuid4(), uuid.uuid4()
+    chosen = service.set_selection(db, pid, uid, 0, [{'origin': 'platform', 'resource_id': r.id}])
+    assert chosen['style_managed'] is True
+    assert chosen['selections'][0]['authoritative_style'] is True
+    cleared = service.set_selection(db, pid, uid, chosen['revision'], [])
+    assert cleared['style_managed'] is True and cleared['selections'] == []
+    assert service.project_snapshot(db, pid)['style_managed'] is True
+    from myink.workflow import prompts
+    from myink.writing_resource_runtime import bind_resources
+    with bind_resources(cleared):
+        assert '旧风格不应重现' not in str(prompts.write_messages({}, {}, style_profile={'narrative_voice': '旧风格不应重现'}))
+        assert '旧风格不应重现' not in str(prompts.short_write_messages({'chapter_count': 1, 'style_profile': {'narrative_voice': '旧风格不应重现'}}))

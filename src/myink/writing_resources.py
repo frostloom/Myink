@@ -97,9 +97,13 @@ def catalog(db, include_automatic=False):
 def state(db, pid):
     return db.get(ProjectWritingResources, uuid.UUID(str(pid)))
 
+_STYLE_MANAGED_KEY = '__myink_style_managed_v1'
+
+
 def project_snapshot(db, project_id):
     row = state(db, project_id)
-    return deepcopy(dict(revision=row.revision, configured=row.configured, selections=row.selections)) if row else dict(revision=0, configured=False, selections=[])
+    return deepcopy(dict(revision=row.revision, configured=row.configured, selections=row.selections,
+                         style_managed=bool((row.dismissed or {}).get(_STYLE_MANAGED_KEY)))) if row else dict(revision=0, configured=False, selections=[], style_managed=False)
 
 def ensure_project_resources(db, project_id, user_id=None):
     """Initialize frozen defaults once under the same project lock as task admission."""
@@ -348,6 +352,8 @@ def set_selection(db, pid, uid, expected, selections):
                     fail(422, str(exc))
                 saved['body'] = deepcopy(item['body'])
                 saved['personal_override'] = True
+                if saved['kind'] == 'style':
+                    saved['authoritative_style'] = True
             result.append(saved)
             continue
         # New selections take the current library version. Existing selections
@@ -363,7 +369,7 @@ def set_selection(db, pid, uid, expected, selections):
             fail(409, 'RESOURCE_NOT_PUBLISHED')
         canonical = out(row, item['origin'] == 'platform')
         override = item.get('personal_override', False)
-        result.append(dict(resource_id=row.id, origin=item['origin'], name=canonical['name'], kind=row.kind, version=row.current_version, generation=canonical['generation'], body=deepcopy(item['body'] if override and item.get('body') is not None else canonical['body']), personal_override=override))
+        result.append(dict(resource_id=row.id, origin=item['origin'], name=canonical['name'], kind=row.kind, version=row.current_version, generation=canonical['generation'], body=deepcopy(item['body'] if override and item.get('body') is not None else canonical['body']), personal_override=override, **({'authoritative_style': True} if row.kind == 'style' else {})))
     # This endpoint receives an explicit selection, including an intentional [].
     # Only genre/context resources are automatic; omitted rules must stay omitted.
     automatic = [deepcopy(item) for item in existing.values() if item['kind'] in ('genre', 'genre_rule', 'role_prompt', 'reference')]
@@ -384,7 +390,12 @@ def set_selection(db, pid, uid, expected, selections):
         if (item['origin'], item['resource_id']) in keys:
             continue
         result.append(item)
-    return save_snapshot(db, pid, expected, result, configured=True, automatic_initialized=True, defaults_initialized=True)
+    was_managed = bool(stored and (stored.dismissed or {}).get(_STYLE_MANAGED_KEY))
+    has_managed_style = any(item['kind'] == 'style' and item.get('authoritative_style') for item in list(existing.values()) + result)
+    dismissed = dict(stored.dismissed or {}) if stored else {}
+    if was_managed or has_managed_style:
+        dismissed[_STYLE_MANAGED_KEY] = True
+    return save_snapshot(db, pid, expected, result, dismissed=dismissed, configured=True, automatic_initialized=True, defaults_initialized=True)
 
 def snapshot_source(db, pid, item, lock=False):
     if item['origin'] == 'platform':
@@ -467,6 +478,8 @@ def adopt(db, pid, expected, requested):
         if item['kind'] == 'reference' and item['origin'] == 'platform':
             body = {'files': [{'path': f['path']} for f in body.get('files', []) if is_writing_reference(f['path'])], 'published_reference': True}
         item.update(name=canonical['name'], body=body, version=source.current_version, generation=canonical['generation'], personal_override=False)
+        if item['kind'] == 'style':
+            item['authoritative_style'] = True
     return save_snapshot(db, pid, expected, selected)
 
 def initialize_builtin_resources(db):

@@ -36,7 +36,8 @@ COPY caddy/tls-public-ip.caddyfile /etc/caddy/tls-public-ip.caddyfile
 COPY --from=web /app/frontend-dist /srv/web/dist
 # 构建期校验配置语法：Caddyfile 写错要在 build 就红，而不是留到部署时容器起不来。
 # 用默认 SITE_ADDRESS（http://localhost）校验 —— 语法不随取值变化，只有协议/证书那段不同。
-RUN caddy validate --config /etc/caddy/Caddyfile
+RUN chmod -R a+rX /etc/caddy /srv/web/dist \
+    && caddy validate --config /etc/caddy/Caddyfile
 
 # 非 root 运行（alpine 的 busybox adduser）。容器内非 root 也能绑 80/443：Docker 默认
 # 能力集里就有 NET_BIND_SERVICE。Caddy 要写的是 /data（证书 + ACME 账户）与 /config

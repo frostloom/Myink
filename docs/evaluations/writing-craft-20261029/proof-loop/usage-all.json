@@ -1,0 +1,229 @@
+{
+  "requests_after_original_140": 177,
+  "cumulative_http_attempts": 317,
+  "limitations": "Counts include attempted HTTP calls and retries. Failed/truncated responses can lack usage; cache accounting is incomplete. These are not billing totals.",
+  "files": {
+    "results.jsonl": {
+      "http_attempts": 12,
+      "input_tokens_reported": 8634,
+      "output_tokens_reported": 998,
+      "sha256": "62221f8a862f71eedf7456ac11aaa7d4d91e918914a99436a5bef9422599042b"
+    },
+    "generic-results.jsonl": {
+      "http_attempts": 8,
+      "input_tokens_reported": 6757,
+      "output_tokens_reported": 1509,
+      "sha256": "589556d26ded01d6dcf39ead745617a92fb1b33911a2a5b169bc7cd2cbe6dbe5"
+    },
+    "typed-results.jsonl": {
+      "http_attempts": 24,
+      "input_tokens_reported": 21589,
+      "output_tokens_reported": 2716,
+      "sha256": "b9890201c70dfe743ecf55370b8932ae3c8d54c046b5c2a36b58c97250ec7fa5"
+    },
+    "proof-pipeline.jsonl": {
+      "http_attempts": 1,
+      "input_tokens_reported": 519,
+      "output_tokens_reported": 326,
+      "sha256": "7c57f6607b22ff02a2f3e404426d95ecdef3a75e7c90f6fa14b3a03c45d21cb0"
+    },
+    "proof-pipeline-diagnostic.jsonl": {
+      "http_attempts": 1,
+      "input_tokens_reported": 7,
+      "output_tokens_reported": 326,
+      "sha256": "cdcad2fac791eff7c74d85ac8a5787505962a1753d887e48da1cc620202b431b"
+    },
+    "proof-pipeline-batch.jsonl": {
+      "http_attempts": 3,
+      "input_tokens_reported": 2875,
+      "output_tokens_reported": 1979,
+      "sha256": "1fceb6193121bdd457ae7ed767fa16d0cd2829accc632e047f1efd1bebc829e0"
+    },
+    "proof-pipeline-batch-fallback.jsonl": {
+      "http_attempts": 5,
+      "input_tokens_reported": 4496,
+      "output_tokens_reported": 3396,
+      "sha256": "cafaa8c734a499e05a81a6f66b7176e2260bc9aa6ca84bbea7a5b80394c004ce"
+    },
+    "proof-pipeline-existing-alternate.jsonl": {
+      "http_attempts": 5,
+      "input_tokens_reported": 6761,
+      "output_tokens_reported": 3412,
+      "sha256": "68e2f51225572e3a7d38c93c73d295a309333e8a70c2d059db2e74a79d61c5cf"
+    },
+    "proof-pipeline-example.jsonl": {
+      "http_attempts": 4,
+      "input_tokens_reported": 3650,
+      "output_tokens_reported": 2536,
+      "sha256": "9935019c60277f925e11442aafe1ba4938e47331f0cee6101a37101ae63c543d"
+    },
+    "proof-suite-P01.jsonl": {
+      "http_attempts": 1,
+      "input_tokens_reported": 396,
+      "output_tokens_reported": 790,
+      "sha256": "a57977bfaddd9730025ef550f45235aa769db217719075f80ead5fb2ec60f229"
+    },
+    "proof-suite-P02.jsonl": {
+      "http_attempts": 6,
+      "input_tokens_reported": 3458,
+      "output_tokens_reported": 2170,
+      "sha256": "ba7b8fa821246cad31a516c6fb09c56394a4ceaadef55cf5e9edcb1f4e83949d"
+    },
+    "proof-suite-P03.jsonl": {
+      "http_attempts": 6,
+      "input_tokens_reported": 4534,
+      "output_tokens_reported": 2397,
+      "sha256": "a89be2a8b1b2825d0f58cbdad7448b45a45e9b854b8e495d49ef972a2a99d243"
+    },
+    "proof-suite-P04.jsonl": {
+      "http_attempts": 1,
+      "input_tokens_reported": 397,
+      "output_tokens_reported": 752,
+      "sha256": "e292a9f52c8aa5056274ce9052fc1cb7b199091992754b64a2c84605497de125"
+    },
+    "proof-suite-P05.jsonl": {
+      "http_attempts": 1,
+      "input_tokens_reported": 141,
+      "output_tokens_reported": 766,
+      "sha256": "dc70e160d84c13e4f6e2de439444f288ba82a3265ec8a2ab31d6209929f17baf"
+    },
+    "proof-suite-P06.jsonl": {
+      "http_attempts": 1,
+      "input_tokens_reported": 140,
+      "output_tokens_reported": 804,
+      "sha256": "d9894b620cd12c47169ef05402b9ef054b52f263a3c544e023d09ceb651f19b1"
+    },
+    "proof-suite-corrective-P01.jsonl": {
+      "http_attempts": 2,
+      "input_tokens_reported": 2747,
+      "output_tokens_reported": 1575,
+      "sha256": "e035a97167b133fd39fb2f287c3bf35d7c9579acbb63f6e2009ce1ef879711da"
+    },
+    "proof-suite-corrective-P02.jsonl": {
+      "http_attempts": 2,
+      "input_tokens_reported": 1958,
+      "output_tokens_reported": 1317,
+      "sha256": "f9059ce659790346f0e0af6a6e7ba0fed8921a5b87cc5c4fd2b86eab29d847da"
+    },
+    "proof-suite-corrective-P03.jsonl": {
+      "http_attempts": 6,
+      "input_tokens_reported": 5312,
+      "output_tokens_reported": 2155,
+      "sha256": "659ac67e4369e9589da44503c39484814f267256b1c52a3f704f8fe6db640a25"
+    },
+    "proof-suite-corrective-P04.jsonl": {
+      "http_attempts": 2,
+      "input_tokens_reported": 1955,
+      "output_tokens_reported": 1490,
+      "sha256": "ec59f38581f3edf90c781c5d24b0283f68e2c2c6b99fd2530d820a7a106a444b"
+    },
+    "proof-suite-corrective-P05.jsonl": {
+      "http_attempts": 2,
+      "input_tokens_reported": 934,
+      "output_tokens_reported": 1490,
+      "sha256": "15db4b8323eb43f94aea48513c66f10d5d2e3ba7eb4628edf366064377cdcc93"
+    },
+    "proof-suite-corrective-P06.jsonl": {
+      "http_attempts": 2,
+      "input_tokens_reported": 1237,
+      "output_tokens_reported": 1661,
+      "sha256": "995eb884848802654c6487c3cd62a8553196563e63c4d10995448135d30858dc"
+    },
+    "proof-suite-v1-P01.jsonl": {
+      "http_attempts": 2,
+      "input_tokens_reported": 3073,
+      "output_tokens_reported": 1576,
+      "sha256": "25272b3cba2d694682dff34437047dd0b8cf6d02269d1bf1e987809edc94ab50"
+    },
+    "proof-suite-v1-P02.jsonl": {
+      "http_attempts": 7,
+      "input_tokens_reported": 7558,
+      "output_tokens_reported": 3016,
+      "sha256": "a37f3b54a6c9655fa78b2c73ab4a2ed0e1bd97efb2619a037520e92069497a04"
+    },
+    "proof-suite-v1-P03.jsonl": {
+      "http_attempts": 2,
+      "input_tokens_reported": 873,
+      "output_tokens_reported": 1141,
+      "sha256": "5419a41a310658a2b69a280f82a69649268b4f61538f37486e59affbf3cffe48"
+    },
+    "proof-suite-v1-P04.jsonl": {
+      "http_attempts": 3,
+      "input_tokens_reported": 4136,
+      "output_tokens_reported": 2485,
+      "sha256": "76031641b678b3fcf60548034ebbf567faedd4871b4984c39ee9fface65bbc75"
+    },
+    "proof-suite-v1-P05.jsonl": {
+      "http_attempts": 3,
+      "input_tokens_reported": 3650,
+      "output_tokens_reported": 2632,
+      "sha256": "517e631f75e3017a8f8db538c8d43aa9c476481e87f5e747e8f58547d9bf051c"
+    },
+    "proof-suite-v1-P06.jsonl": {
+      "http_attempts": 2,
+      "input_tokens_reported": 772,
+      "output_tokens_reported": 1744,
+      "sha256": "96b72e813efe2e820854bc5d7d630a0a920ed342239d03ee1a2799b0a3821345"
+    },
+    "proof-suite-v2-P01.jsonl": {
+      "http_attempts": 4,
+      "input_tokens_reported": 8211,
+      "output_tokens_reported": 2967,
+      "sha256": "7fa339aee3837c83e74551d20475775a252f5a3692b33dde70da5c207bef0936"
+    },
+    "proof-suite-v2-P02.jsonl": {
+      "http_attempts": 8,
+      "input_tokens_reported": 6247,
+      "output_tokens_reported": 3715,
+      "sha256": "e84382cc59e3c60daec75f567606fb11e97aef761a77279522d99a0238a9bdfd"
+    },
+    "proof-suite-v2-P03.jsonl": {
+      "http_attempts": 8,
+      "input_tokens_reported": 5829,
+      "output_tokens_reported": 3889,
+      "sha256": "52476bebe78e27d11b86edf876820b4a6ab6b4529448720ad0d84e3d60477750"
+    },
+    "proof-suite-v2-P04.jsonl": {
+      "http_attempts": 7,
+      "input_tokens_reported": 13570,
+      "output_tokens_reported": 5134,
+      "sha256": "19fa38967ce33fd5d8b9dc7cbd6900838d8df76f26910c3fe2224d908f295efe"
+    },
+    "proof-suite-v2-P05.jsonl": {
+      "http_attempts": 4,
+      "input_tokens_reported": 5954,
+      "output_tokens_reported": 2775,
+      "sha256": "41e5db466ba96f25792fdfa6473f2f256131a20ff4c37259f0e3cc05ea8c804a"
+    },
+    "proof-suite-v2-P06.jsonl": {
+      "http_attempts": 4,
+      "input_tokens_reported": 5292,
+      "output_tokens_reported": 3006,
+      "sha256": "713b9ebd2143d3ff06892152aa32ad7740b4245f8d760b46bff30cc67889b100"
+    },
+    "proof-suite-v3-P01.jsonl": {
+      "http_attempts": 5,
+      "input_tokens_reported": 10654,
+      "output_tokens_reported": 3457,
+      "sha256": "230fbadef15290732a44271bda9da9753fef65df7eced54cee43d550fd5b943e"
+    },
+    "proof-suite-v3-P05.jsonl": {
+      "http_attempts": 9,
+      "input_tokens_reported": 13079,
+      "output_tokens_reported": 4918,
+      "sha256": "3f8e10358bdb9571d0f03f8ba7b761a35a0c16c438cc4ce099d335b6c65cfa02"
+    },
+    "proof-suite-v3-P06.jsonl": {
+      "http_attempts": 8,
+      "input_tokens_reported": 9551,
+      "output_tokens_reported": 4615,
+      "sha256": "1a4cb838775de24a00a1f5011a79ae4a2f5abf8c68662692c2e80f2e51c3bed0"
+    },
+    "proof-fidelity-calibration.jsonl": {
+      "http_attempts": 6,
+      "input_tokens_reported": 1041,
+      "output_tokens_reported": 550,
+      "sha256": "97a562062dfb46907ff04fc0f232ded1692377d9b810dc83b2806510e5c1c767"
+    }
+  }
+}

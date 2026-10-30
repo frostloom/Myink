@@ -410,7 +410,7 @@ def _finish(body: dict, decision: str) -> None:
     - 成本累计：只在终态或最后一次重试求和一次，避免 retry 重复计入。
     """
     final_attempt = int(body.get("retry_count") or 0) >= settings.worker_max_retries - 1
-    if decision != "waiting" and (decision != "retry" or final_attempt):
+    if decision not in {"waiting", "yield"} and (decision != "retry" or final_attempt):
         _release_inflight(body)
     if decision == "terminal" or (decision == "retry" and final_attempt):
         _accumulate_cost(body)
@@ -453,7 +453,8 @@ def _run_bound(body: dict, task_id: str, task_type: str, project_id: str) -> str
     """派发并分类终态（decision = terminal / waiting / retry，SSE 在此写）。"""
     _pub_status(task_id, "running")
     try:
-        with bind_artifact_sink(lambda event: _pub_artifact(task_id, event)):
+        from myink.worker.scheduling import slice_batches
+        with slice_batches(), bind_artifact_sink(lambda event: _pub_artifact(task_id, event)):
             result = _dispatch(body)
             if (task_type in ("chapter_generate", "chapter_plan_resume", "chapter_resume")
                 and not any(result.get(key) for key in ("error", "manual_halt", "awaiting_plan", "needs_review"))):
@@ -512,6 +513,19 @@ def _run_bound(body: dict, task_id: str, task_type: str, project_id: str) -> str
     # （critical 冲突同时带 error 说明）再判失败，保证 SSE 状态正确。
     from myink.workflow.runner import _set_task_status
 
+    if result.get('scheduler_yield'):
+        # A pause/cancel may have arrived after bridge's last budget check.
+        # Serialize with that update before deciding to publish continuation.
+        with new_session() as db:
+            task = db.get(Task, uuid.UUID(task_id), with_for_update=True)
+            if task is None:
+                return 'skip'
+            if task.status == 'running':
+                task.status = 'queued'
+                db.commit()
+            status = task.status
+        _pub_status(task_id, status)
+        return 'yield' if status == 'queued' else 'terminal'
     if result.get("manual_halt"):
         if result["manual_halt"] == "cancelled":
             _mark_empty_writing_chapters(body, "cancelled")
@@ -613,7 +627,9 @@ def process(body: dict, worker_id: str | None = None) -> str:
             elif row and row.status in ("done", "failed", "cancelled", "awaiting_review", "awaiting_plan") \
                     and not (row.status == "awaiting_plan" and task_type == "chapter_plan_resume"):
                 logger.info("跳过（已终态，去重）: %s status=%s", task_id, row.status)
-            elif row and row.status == "paused" and task_type != "batch_resume":
+            elif row and row.status == "paused":
+                # Explicit resume endpoints first set queued. A delayed or
+                # automatic batch_resume must not override a newer pause.
                 logger.info("跳过（已暂停，等 resume）: %s", task_id)
             elif row is None:
                 # 物化：DB 为最终权威（§5.3），幂等键 task_id 作 PK

@@ -24,7 +24,7 @@ watch(() => route.path.startsWith('/short') ? 'short' : route.path.startsWith('/
 const books = computed(() => props.projects.filter(p => !isProjectDraft(p) && (p.form ?? 'long') === section.value));
 const authenticated = computed(() => status.value === 'authenticated');
 const bookLinks = computed(() => inBook.value?.form === 'short' ? [] : [['lore', '设定'], ['settings', '创作设置'], ['audit', '全局审计']]);
-const globalLinks = [['environment', '高级设置'], ['theme', '主题'], ['styles', '文风库'], ['writing-resources', '写作资源']];
+const globalLinks = [['environment', '高级设置'], ['theme', '主题'], ['writing-resources', '写作资源']];
 function feedback() { window.dispatchEvent(new Event('myink:feedback')); }
 async function leave() { await (props.onLogout ? props.onLogout() : logout()); }
 </script>

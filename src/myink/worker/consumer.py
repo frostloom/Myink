@@ -1,4 +1,4 @@
-"""消费循环：RabbitMQ 主队列 → process → 确认重投后 ack → 可重试失败进延迟队列（TTL+DLX）。
+"""消费循环：普通/VIP 队列加权拉取 → process → 确认重投后 ack → TTL+DLX 延迟重试。
 
 优雅停机（§17.2）：收 SIGTERM → 置 shutdown flag → 跑完当前任务（含 checkpoint）再退出；
 未 ack 消息在连接断开时自动 requeue，重启后重新消费（RabbitMQ 崩溃认领，替换网关 dispatcher）。
@@ -16,7 +16,8 @@ import os
 import signal
 import socket
 import threading
-from functools import partial
+from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
 
 import pika
 
@@ -46,8 +47,24 @@ def _heartbeat(r, worker_id: str) -> None:
         _shutdown.wait(settings.worker_heartbeat_interval)
 
 
-def _on_message(ch, method, properties, body_raw, r, worker_id: str) -> None:
-    """单条任务：SSE 首事件 + observer 线程 + process + 决策（retry/defer/terminal/skip）。"""
+def _process_with_events(body, worker_id, connection=None):
+    """Keep Pika I/O and acknowledgements on the connection's own thread.
+
+    Shutdown waits for this single task, including its checkpoint. A lost
+    connection also waits for processing to finish before reconnecting: it
+    must not start another task while the old thread still holds its locks.
+    """
+    if connection is None:
+        return process(body, worker_id=worker_id)
+    with ThreadPoolExecutor(max_workers=1, thread_name_prefix='myink-task') as executor:
+        future = executor.submit(copy_context().run, process, body, worker_id=worker_id)
+        while not future.done():
+            connection.process_data_events(time_limit=0.25)
+        return future.result()
+
+
+def _on_message(ch, method, properties, body_raw, r, worker_id: str, *, connection=None) -> None:
+    """单条任务：SSE + observer + process + retry/defer/yield/terminal/skip 决策。"""
     try:
         body = json.loads(body_raw)
     except json.JSONDecodeError:
@@ -76,7 +93,11 @@ def _on_message(ch, method, properties, body_raw, r, worker_id: str) -> None:
     obs_thread = threading.Thread(target=observe, args=(task_id, obs_stop), daemon=True)
     obs_thread.start()
     try:
-        decision = process(body, worker_id=worker_id)
+        decision = _process_with_events(body, worker_id, connection)
+    except pika.exceptions.AMQPError:
+        # Transport loss is not a bad task: closing the connection requeues
+        # the unacked delivery. Never ACK it through the business-error branch.
+        raise
     except Exception as exc:
         if _is_retryable(exc):
             logger.warning("任务前置检查暂时失败，保留消息: task=%s", task_id)
@@ -98,6 +119,16 @@ def _on_message(ch, method, properties, body_raw, r, worker_id: str) -> None:
         # 重试超限 → 不 requeue → 主队列 DLX → queue:dlq（死信由 RabbitMQ 侧完成）
         ch.basic_nack(method.delivery_tag, requeue=False)
         logger.warning("重试超限进 DLQ: task=%s retry=%s", task_id, body.get("retry_count"))
+        return
+
+    if decision == 'yield':
+        try:
+            amqp.publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS, priority=priority)
+        except Exception:
+            logger.warning('批次续跑未确认，保留原消息: task=%s', task_id, exc_info=True)
+            ch.basic_nack(method.delivery_tag, requeue=True)
+            return
+        ch.basic_ack(method.delivery_tag)
         return
 
     if decision in {"retry", "defer"}:
@@ -147,14 +178,20 @@ def run() -> None:
             conn = amqp.connect()
             ch = conn.channel()
             amqp.declare_topology(ch)
-            # 同书串行、异书并行（§13）：单 worker 一次拉 1 条；多 worker 进程各自消费
-            ch.basic_qos(prefetch_count=1)
-            ch.basic_consume(amqp.main_queue(), partial(_on_message, r=r, worker_id=worker_id))
-            logger.info("开始消费 %s", amqp.main_queue())
+            from myink.worker.scheduling import FairScheduler
+            from myink.platform_configuration import load_configuration, QueueWeights
+            scheduler = FairScheduler()
+            logger.info('开始公平调度 %s / %s', amqp.vip_queue(), amqp.main_queue())
             while not _shutdown.is_set():
-                # 阻塞处理事件（无事件时最多挂起 1s）；_on_message 内 process 长任务期间
-                # 天然阻塞——prefetch=1 不拉新消息，跑完当前任务才响应停机
-                conn.process_data_events(time_limit=1.0)
+                conn.process_data_events(time_limit=0)
+                weights = load_configuration().get('queue_weights', QueueWeights().model_dump())
+                if _shutdown.is_set():
+                    break
+                delivery = scheduler.take(ch, weights)
+                if delivery is None:
+                    conn.sleep(0.5)
+                else:
+                    _on_message(ch, *delivery, r=r, worker_id=worker_id, connection=conn)
         except (pika.exceptions.AMQPConnectionError, pika.exceptions.ChannelWrongStateError) as exc:
             logger.warning("RabbitMQ 连接/通道异常，5s 后重连: %s", exc)
         except Exception as exc:

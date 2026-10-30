@@ -1,80 +1,61 @@
-/* 账号页自己的版式。外壳（wrap/main/inner/header/hint）复用
-   SettingsPage.module.css —— 与主题、环境配置、文风库同款。
-   两块主体并排铺满内容区：以前这里是 max-width:760px 且不居中，宽屏右半边整块空着。 */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-  gap: var(--space-4);
-  align-items: start;
-}
-
-.card {
-  padding: var(--space-5);
-}
-
-.wide {
-  grid-column: 1 / -1;
-}
-
-.card h2 {
-  margin-bottom: var(--space-3);
-}
-
-.account {
-  margin: 0;
-  display: grid;
-  gap: var(--space-3);
-}
-
-.account div {
-  display: grid;
-  grid-template-columns: 110px minmax(0, 1fr);
-  gap: var(--space-3);
-}
-
-.account dt {
-  color: var(--ink-subtle);
-}
-
-.account dd {
-  margin: 0;
-  color: var(--ink);
-  overflow-wrap: anywhere;
-}
-
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  max-width: 420px;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  color: var(--ink-muted);
-  font-size: var(--text-small);
-}
-
-.form button {
-  align-self: flex-start;
-}
-
-/* 第二因子的密钥 / otpauth 链接：要能一眼看出是「照抄的字符串」而不是句子，且可整段选中。 */
-.secret {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: var(--text-small);
-  color: var(--ink);
-  overflow-wrap: anywhere;
-  user-select: all;
-}
-
-/* 420 档：auto-fit 的 340px 地板在更窄的设备上比内容区还宽，实测 320 宽时把 <main> 撑出
-   一条 32px 的横向滚动（360 起就没有，所以是这一档的事）。本页只有两块卡片，
-   小屏上摞着读更顺，不必为「并排」保住那个地板。 */
-@media (max-width: 420px) {
-  .grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
+/* Account identity, membership and login security share one reading column. */
+.wrap { composes: content from '../components/RailLayout.module.css'; height: 100%; overflow-y: auto; display: flex; min-width: 0; }
+.main { flex: 1; min-width: 0; }
+.page { max-width: 1100px; margin: 0 auto; padding: var(--page-top) var(--page-gutter) 48px; color: var(--ink); }
+.header { margin-bottom: 26px; }
+.header h1 { margin: 0; font-size: calc(var(--text-body) * 2.15); line-height: 1.3; }
+.header p { margin: 10px 0 0; color: var(--ink-muted); line-height: 1.6; }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+.overview { display: grid; grid-template-columns: minmax(240px, .8fr) minmax(0, 1.5fr); overflow: hidden; border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-1); }
+.identity { padding: 28px; background: var(--surface-2); }
+.identity h2 { margin: 0 0 22px; font-size: var(--text-small); font-weight: 600; color: var(--ink-subtle); }
+.identityHead { display: flex; align-items: center; gap: 16px; }
+.identityHead > div { min-width: 0; }
+.avatar { display: grid; flex: 0 0 auto; place-items: center; width: 54px; height: 54px; border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-1); color: var(--ink); font-size: 24px; font-weight: 600; }
+.username { margin: 0 0 8px; font-size: calc(var(--text-body) * 1.6); line-height: 1.4; font-weight: 650; overflow-wrap: anywhere; }
+.memberBadge { display: inline-flex; padding: 2px 8px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); font-size: var(--text-micro); color: var(--ink-muted); background: var(--surface-1); }
+.vipBadge { background: var(--ink); border-color: var(--ink); color: var(--surface-1); }
+.account { display: grid; gap: 12px; margin: 25px 0 0; font-size: var(--text-small); }
+.account div { display: grid; grid-template-columns: 84px minmax(0,1fr); gap: 12px; }
+.account dt { color: var(--ink-subtle); }
+.account dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+.membership { padding: 28px 32px; border-left: 1px solid var(--line-strong); }
+.membershipHead { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.membershipHead h2 { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 19px; font-weight: 650; }
+.activeStatus, .managedStatus { font-size: var(--text-micro); white-space: nowrap; }
+.activeStatus { color: var(--accent-ink); background: var(--accent-soft); padding: 4px 8px; border-radius: var(--radius-sm); font-weight: 600; }
+.managedStatus { color: var(--ink-subtle); }
+.upgradeCopy { margin: 17px 0 24px; max-width: 40em; line-height: 1.85; color: var(--ink-muted); }
+.benefits { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; list-style: none; margin: 0; padding: 0; }
+.benefits li { display: flex; align-items: flex-start; gap: 11px; min-width: 0; }
+.benefitIcon { width: 34px; height: 34px; flex: 0 0 auto; display: grid; place-items: center; color: var(--accent-ink); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-2); }
+.benefits strong { display: block; font-size: var(--text-body); font-weight: 600; }
+.benefits p { margin: 6px 0 0; color: var(--ink-subtle); font-size: var(--text-small); line-height: 1.65; }
+.membershipNote { margin: 23px 0 0; color: var(--ink-subtle); font-size: var(--text-micro); }
+.security { overflow: hidden; border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-1); }
+.sectionHead { display: flex; align-items: center; gap: 10px; padding: 22px 28px; border-bottom: 1px solid var(--line); }
+.sectionHead h2 { margin: 0; font-size: 19px; font-weight: 650; }
+.passwordArea { display: grid; grid-template-columns: minmax(190px,.8fr) minmax(0,1.5fr); gap: 32px; padding: 26px 28px 28px; }
+.passwordIntro h3 { margin: 0 0 11px; font-size: var(--text-body); font-weight: 650; }
+.passwordIntro p { margin: 0; max-width: 23em; color: var(--ink-subtle); font-size: var(--text-small); line-height: 1.8; }
+.form { display: flex; flex-direction: column; gap: 16px; max-width: 580px; }
+.passwordForm { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 17px 16px; max-width: none; }
+.fullField { grid-column: 1 / -1; }
+.field { display: flex; flex-direction: column; gap: 9px; min-width: 0; color: var(--ink-muted); font-size: var(--text-small); }
+.field input { width: 100%; min-height: 42px; }
+.formHint { margin: -2px 0 0; font-size: var(--text-micro); line-height: 1.65; color: var(--ink-subtle); }
+.form button { align-self: flex-start; }
+.passwordHelp { display: flex; align-items: center; gap: 11px; padding: 17px 28px; border-top: 1px solid var(--line); background: var(--surface-2); color: var(--ink-subtle); }
+.passwordHelp > svg { flex: 0 0 auto; }
+.passwordHelp > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 16px; }
+.passwordHelp h3 { margin: 0; font-size: var(--text-small); font-weight: 600; color: var(--ink-muted); }
+.passwordHelp p { margin: 0; font-size: var(--text-small); line-height: 1.7; }
+.card { padding: 24px 28px; box-shadow: none; border-color: var(--line-strong); }
+.wide { grid-column: 1 / -1; }
+.card h2 { margin: 0 0 12px; font-size: 19px; }
+.card > .form { margin-top: 18px; }
+.secret { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--text-small); color: var(--ink); overflow-wrap: anywhere; user-select: all; }
+@media (max-width: 1200px) { .page { padding-inline: 24px; } .membership { padding-inline: 26px; } .benefits { gap: 16px; } }
+@media (max-width: 900px) { .overview { grid-template-columns: minmax(210px,.8fr) minmax(0,1.4fr); } .identity { padding: 24px; } .membership { padding: 24px; } .benefits { grid-template-columns: 1fr; gap: 16px; } .passwordArea { grid-template-columns: minmax(160px,.7fr) minmax(0,1.4fr); gap: 24px; padding-inline: 24px; } .sectionHead, .passwordHelp { padding-inline: 24px; } }
+@media (max-width: 640px) { .page { padding: 18px 12px 32px; } .header { margin-bottom: 20px; } .header h1 { font-size: calc(var(--text-body) * 1.9); } .grid { gap: 18px; } .overview { grid-template-columns: minmax(0,1fr); } .identity { padding: 20px; } .identity h2 { margin-bottom: 16px; } .account { margin-top: 20px; } .membership { border-left: 0; border-top: 1px solid var(--line-strong); padding: 22px 20px; } .upgradeCopy { margin-block: 14px 22px; } .membershipHead h2 { font-size: 18px; } .benefits { grid-template-columns: 1fr 1fr; gap: 14px; } .benefits li { flex-direction: column; gap: 10px; } .sectionHead { padding: 19px 20px; } .passwordArea { grid-template-columns: minmax(0,1fr); padding: 20px; gap: 20px; } .passwordIntro p { max-width: none; } .passwordHelp { padding: 16px 20px; align-items: flex-start; } .card { padding: 20px; } }
+@media (max-width: 420px) { .passwordForm { grid-template-columns: minmax(0,1fr); } .passwordForm button { width: 100%; } .membershipHead { align-items: flex-start; } .account div { grid-template-columns: 80px minmax(0,1fr); } }

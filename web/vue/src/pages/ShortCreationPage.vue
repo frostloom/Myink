@@ -18,7 +18,7 @@ import { api } from '../../../src/lib/api';
 import { autoGrow } from '../../../src/lib/autoGrow';
 import { formatApiError } from '../../../src/lib/apiError';
 import { shortCreationApi, type ShortCreationCard, type ShortCreationPayload } from '../../../src/lib/shortCreationApi';
-import { styleLibraryApi, type StyleLibraryItem } from '../../../src/lib/styleLibraryApi';
+import { styleLibraryApi, type ResourceStyleItem } from '../../../src/lib/styleLibraryApi';
 import type { Project } from '../../../src/types';
 import styles from '../../../src/pages/ShortCreationPage.module.css';
 const FIELDS: Array<[
@@ -95,7 +95,7 @@ export default defineComponent({
         const token = computed(() => session.value?.token ?? '');
         const router = useRouter();
         const visible = ref(true);
-        onActivated(() => { visible.value = true; });
+        onActivated(() => { visible.value = true; refreshStyleOptions(); });
         onDeactivated(() => { visible.value = false; });
         const navigate = (path: string, options?: {
             replace?: boolean;
@@ -112,7 +112,15 @@ export default defineComponent({
         const data = ref<ShortCreationPayload | null>(null);
         const card = ref<Partial<ShortCreationCard>>({});
         const styleItemId = ref('');
-        const styleItems = ref<StyleLibraryItem[]>([]);
+        const styleItems = ref<ResourceStyleItem[]>([]);
+        let styleRequest = 0;
+        function refreshStyleOptions() {
+            if (guest.value || !token.value) return;
+            const attempt = generation, request = ++styleRequest;
+            void styleLibraryApi.resources(token.value).then(out => {
+                if (active(attempt) && request === styleRequest) styleItems.value = out.items;
+            }).catch(() => {});
+        }
         const draft = ref('');
         // 已发出、还没等到服务端回话的那一句：先挂在对话流里，用户才看得见自己发过什么。
         const pending = ref<string | null>(null);
@@ -180,8 +188,7 @@ export default defineComponent({
                 return;
             const attempt = generation;
             void reload();
-            void styleLibraryApi.list(token.value).then(out => { if (active(attempt))
-                styleItems.value = out.items; }).catch(() => { });
+            refreshStyleOptions();
             void api.listProjects().then(next => { if (active(attempt))
                 projects.value = next; }).catch(() => { });
         }, {
@@ -342,7 +349,10 @@ export default defineComponent({
             const sessionId = data.value.session.id;
             const attempt = generation;
             void run('plan', async () => {
-                const out = committedBook.value ?? await shortCreationApi.commit(token.value, sessionId, card.value as Record<string, unknown>, styleItemId.value || null);
+                const initialStyle = styleItems.value.find(item => item.id === styleItemId.value);
+                const retained = initialStyle && selections.some(item => item.origin === initialStyle.origin && item.resource_id === initialStyle.resource_id);
+                const styleForCommit = initialStyle ? (retained ? initialStyle.id : null) : (styleItemId.value.startsWith('wr:') ? null : styleItemId.value || null);
+                const out = committedBook.value ?? await shortCreationApi.commit(token.value, sessionId, card.value as Record<string, unknown>, styleForCommit);
                 if (!active(attempt)) return;
                 // Resource-save retries reuse the created book and never start writing early.
                 committedBook.value = out;
@@ -528,6 +538,7 @@ export default defineComponent({
                         ])])
                 ]), visible.value && resourcesOpen.value && h(CreationResourcesDialog, {
                     busy: busy.value, error: error.value,
+                    preselectedStyle: (() => { const item = styleItems.value.find(style => style.id === styleItemId.value); return item ? { origin: item.origin, resource_id: item.resource_id } : undefined })(),
                     onConfirm: createWithResources,
                     onClose: () => { if (!busy.value) { resourcesOpen.value = false; cardOpen.value = true; } }
                 }), visible.value && cardOpen.value && !committed.value && h(Teleport, {
@@ -589,10 +600,10 @@ export default defineComponent({
                                     }, [
                                         h("option", {
                                             "value": ""
-                                        }, ["不指定"]), styleItems.value.map((item) => (h("option", {
+                                        }, ["不指定"]), styleItemId.value && !styleItems.value.some(item => item.id === styleItemId.value) && h("option", { value: styleItemId.value }, [data.value?.session.style_name || '已保存的旧版文风']), styleItems.value.map((item) => (h("option", {
                                             "key": item.id, "value": item.id
                                         }, [
-                                            item.name, item.builtin ? '（内置）' : '（我的）'
+                                            item.name, item.builtin ? '（平台）' : '（我的）'
                                         ])))
                                     ])
                                 ]), errorBanner, !cardReady && h("small", {
@@ -602,8 +613,8 @@ export default defineComponent({
                                 "class": styles.dialogFoot
                             }, [
                                 h(Link, {
-                                    "to": "/styles"
-                                }, () => ["去文风库添加"]), h("button", {
+                                    "to": "/writing-resources"
+                                }, () => ["去写作资源添加文风"]), h("button", {
                                     "type": "button", "class": "btn btn-quiet", "onClick": () => cardOpen.value = false
                                 }, ["再聊聊"]), h("button", {
                                     "type": "button", "class": "btn btn-primary", "disabled": !cardReady || busy.value, "onClick": () => confirm()

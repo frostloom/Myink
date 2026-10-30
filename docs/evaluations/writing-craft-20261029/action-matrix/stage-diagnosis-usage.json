@@ -1,0 +1,114 @@
+{
+  "completed_attempts": 56,
+  "records": [
+    {
+      "file": "anthropic-channel-probe.jsonl",
+      "attempts": 4,
+      "responses_with_usage": 4,
+      "input_tokens_reported": 2122,
+      "output_tokens_reported": 1444,
+      "cache_read_input_tokens_reported": 0,
+      "missing_usage": false
+    },
+    {
+      "file": "thinking-calibration.jsonl",
+      "attempts": 24,
+      "responses_with_usage": 24,
+      "input_tokens_reported": 4720,
+      "output_tokens_reported": 15689,
+      "cache_read_input_tokens_reported": 5888,
+      "missing_usage": false
+    },
+    {
+      "file": "matrix-thinking-v3-P02.jsonl",
+      "attempts": 1,
+      "responses_with_usage": 0,
+      "input_tokens_reported": 0,
+      "output_tokens_reported": 0,
+      "cache_read_input_tokens_reported": 0,
+      "missing_usage": true
+    },
+    {
+      "file": "matrix-thinking-v3-P05.jsonl",
+      "attempts": 1,
+      "responses_with_usage": 0,
+      "input_tokens_reported": 0,
+      "output_tokens_reported": 0,
+      "cache_read_input_tokens_reported": 0,
+      "missing_usage": true
+    },
+    {
+      "file": "matrix-thinking-v3-P06.jsonl",
+      "attempts": 1,
+      "responses_with_usage": 0,
+      "input_tokens_reported": 0,
+      "output_tokens_reported": 0,
+      "cache_read_input_tokens_reported": 0,
+      "missing_usage": true
+    },
+    {
+      "file": "matrix-thinking-v3-P07.jsonl",
+      "attempts": 1,
+      "responses_with_usage": 0,
+      "input_tokens_reported": 0,
+      "output_tokens_reported": 0,
+      "cache_read_input_tokens_reported": 0,
+      "missing_usage": true
+    },
+    {
+      "file": "inventory-channel-probe.jsonl",
+      "attempts": 2,
+      "responses_with_usage": 2,
+      "input_tokens_reported": 254,
+      "output_tokens_reported": 18192,
+      "cache_read_input_tokens_reported": 1536,
+      "missing_usage": false
+    },
+    {
+      "file": "matrix-hybrid-v3-P02.jsonl",
+      "attempts": 2,
+      "responses_with_usage": 0,
+      "input_tokens_reported": 0,
+      "output_tokens_reported": 0,
+      "cache_read_input_tokens_reported": 0,
+      "missing_usage": true
+    },
+    {
+      "file": "audit-thinking-probe.jsonl",
+      "attempts": 8,
+      "responses_with_usage": 8,
+      "input_tokens_reported": 14032,
+      "output_tokens_reported": 16401,
+      "cache_read_input_tokens_reported": 4608,
+      "missing_usage": false
+    },
+    {
+      "file": "thinking-low-calibration.jsonl",
+      "attempts": 6,
+      "responses_with_usage": 6,
+      "input_tokens_reported": 1447,
+      "output_tokens_reported": 4255,
+      "cache_read_input_tokens_reported": 1280,
+      "missing_usage": false
+    },
+    {
+      "file": "matrix-low-v4-P02.jsonl",
+      "attempts": 2,
+      "responses_with_usage": 2,
+      "input_tokens_reported": 2042,
+      "output_tokens_reported": 15847,
+      "cache_read_input_tokens_reported": 512,
+      "missing_usage": false
+    },
+    {
+      "file": "matrix-sharded-v5-P02.jsonl",
+      "attempts": 4,
+      "responses_with_usage": 4,
+      "input_tokens_reported": 1416,
+      "output_tokens_reported": 9892,
+      "cache_read_input_tokens_reported": 2048,
+      "missing_usage": false
+    }
+  ],
+  "limitations": "These are response fields, not a complete billing estimate. Legacy provider empty-content errors dropped usage. Cache field semantics depend on the gateway. Do not count absent fields as zero billed use or add cached input to total without provider definition."
+}

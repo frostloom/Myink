@@ -11,12 +11,14 @@ import type {
 import type { GenreFields } from './genrePacks'
 
 export interface PlatformConnection extends ModelConnection {
+  minimum_tier?: 'normal' | 'vip'
   origin?: 'builtin' | 'custom'
   enabled: boolean
   user_visible: boolean
 }
 
 export interface PlatformConnectionInput extends ModelConnectionInput {
+  minimum_tier?: 'normal' | 'vip'
   enabled: boolean
   user_visible: boolean
 }
@@ -24,6 +26,8 @@ export interface PlatformConnectionInput extends ModelConnectionInput {
 type GenreFieldsResponse = { [Key in keyof GenreFields]?: GenreFields[Key] | null }
 
 export interface PlatformConfigurationData {
+  vip_model_routes?: Record<string, string>
+  queue_weights?: { vip: number; normal: number }
   version: number
   user_defaults?: UserDefaults
   model_connections: PlatformConnection[]

@@ -20,8 +20,7 @@ from myink.providers.base import ModelProvider, ModelResponse
 ensure_user_environment()
 client = TestClient(app)
 
-_BUILTIN_IDS = {"builtin:xianxia-jiuzhou", "builtin:changan-yexing",
-                "builtin:xingjian-yuanzheng", "builtin:dushi-yiguan"}
+_BUILTIN_IDS = {"builtin:natural-narration", "builtin:brisk-narration", "builtin:character-narration", "builtin:life-narration", 'builtin:light-humor', 'builtin:warm-fresh', 'builtin:romantic-tension', 'builtin:restrained-suspense', 'builtin:uncanny-gloom', 'builtin:classical-elegance', 'builtin:heroic-action', 'builtin:rational-realist', 'builtin:epic-scope', 'builtin:poetic-imagery'}
 
 
 def test_style_library_item_roundtrip():
@@ -144,13 +143,13 @@ def style_stub(monkeypatch):
     return _install
 
 
-def test_get_returns_the_four_builtins_first(temp_user):
+def test_get_returns_registered_builtins_before_private_items(temp_user):
     with new_session() as db:
         db.add(StyleLibraryItem(user_id=uuid.UUID(temp_user), name="渡口冷白描",
                                 profile={"pov": "限知"}, sample_chars=1200))
         db.commit()
     items = client.get("/api/v1/style-library", headers=identity_headers(temp_user)).json()["items"]
-    builtins, mine = items[:4], items[4:]
+    builtins, mine = items[:len(_BUILTIN_IDS)], items[len(_BUILTIN_IDS):]
     assert {item["id"] for item in builtins} == _BUILTIN_IDS
     assert all(item["builtin"] and not item["removable"] and item["created_at"] is None
                for item in builtins)
@@ -210,7 +209,7 @@ def test_rejects_a_duplicate_name(temp_user):
 
 
 def test_delete_of_a_builtin_or_a_stranger_is_404(temp_user):
-    assert client.delete("/api/v1/style-library/builtin:xianxia-jiuzhou",
+    assert client.delete("/api/v1/style-library/builtin:natural-narration",
                          headers=identity_headers(temp_user)).status_code == 404
     assert client.delete(f"/api/v1/style-library/{uuid.uuid4()}",
                          headers=identity_headers(temp_user)).status_code == 404
@@ -346,7 +345,7 @@ def test_patch_of_a_builtin_or_a_stranger_is_404(temp_user):
                           headers=identity_headers(temp_user))
     item_id = created.json()["id"]
 
-    assert client.patch("/api/v1/style-library/builtin:xianxia-jiuzhou",
+    assert client.patch("/api/v1/style-library/builtin:natural-narration",
                         json={"name": "改内置"},
                         headers=identity_headers(temp_user)).status_code == 404
     assert client.patch(f"/api/v1/style-library/{uuid.uuid4()}", json={"name": "不存在的"},
@@ -367,3 +366,14 @@ def test_patch_of_a_builtin_or_a_stranger_is_404(temp_user):
             db.execute(sa_delete(StyleLibraryItem).where(StyleLibraryItem.user_id == other_id))
             db.execute(sa_delete(User).where(User.id == other_id))
             db.commit()
+
+
+@pytest.mark.parametrize("item_id", [
+    "builtin:xianxia-jiuzhou", "builtin:changan-yexing",
+    "builtin:xingjian-yuanzheng", "builtin:dushi-yiguan",
+])
+def test_create_book_rejects_retired_builtin_styles(temp_user, item_id):
+    response = client.post("/api/v1/projects",
+                           json={"title": "不应建成", "style_item_id": item_id},
+                           headers=identity_headers(temp_user))
+    assert response.status_code == 404, response.text

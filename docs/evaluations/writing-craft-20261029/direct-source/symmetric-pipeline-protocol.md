@@ -1,0 +1,9 @@
+# Batched symmetric stage prototype
+
+Single synthetic P05, same existing audit/writer model settings, original case/genre/resource snapshot/private style and predecessor. No production integration or catalog mutation. Request cap32, one patch, original30% patch bound, no full rewrite fallback.
+
+Every unchanged original requirement is read by two audits independently, with reversed order; three units per request and complete ID coverage. Server binds source text to trusted unit IDs; the model cannot supply source text. Two supported readings are required for direct pass. Mixed/uncertain statuses hold. Two non-supported obligation readings request only a source-bound correction/clarification; consistency requires both violated. This does not prove both found the same semantic defect: writer receives the full original unit and both reasons, target and final checks remain mandatory. Typed posture/route observations remain independent supplemental requirements, not source paraphrases. Missing typed body evidence can request clarification of its original requirement; source discovery still model-derived and may omit/misassign frames, a known limitation.
+
+A candidate first passes symmetric target and relevant typed checks. It is then freshly inspected against all original units, both audits, all frames. The final working draft changes only after complete finalpass; uncertainty, provider failure or cap exhaustion leaves original draft in the final/failure record. Proposed candidate remains in an explicitly staged log for investigation. No database author draft is modified by this script.
+
+Local5 merge tests observed RED→GREEN; prior6 source-ID protocol tests and5 staged patch tests cover their own helpers. These are software guard tests, not semantic truth/prose quality or runtime integration tests. No claim of independent model errors: same Flash may agree wrongly.

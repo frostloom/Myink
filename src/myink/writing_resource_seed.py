@@ -3,8 +3,10 @@ from copy import deepcopy
 
 def optional_fragments():
     from myink.workflow import prompts as p
+    from myink.legacy_writing_fragments import LEGACY_LONG_OPTIONAL_FRAGMENT, LEGACY_PLANNER_END_RULE
     return [p.SYSTEM_WRITE[p.SYSTEM_WRITE.index("句式禁令"):p.SYSTEM_WRITE.index("如需核实")],
-            p.SYSTEM_SHORT_WRITER[p.SYSTEM_SHORT_WRITER.index("句式禁令"):p.SYSTEM_SHORT_WRITER.index("落笔依据")]]
+            p.SYSTEM_SHORT_WRITER[p.SYSTEM_SHORT_WRITER.index("句式禁令"):p.SYSTEM_SHORT_WRITER.index("落笔依据")],
+            LEGACY_LONG_OPTIONAL_FRAGMENT, LEGACY_PLANNER_END_RULE]
 
 def builtin_resources():
     from myink.genre_catalog import PACKS, FIELD_KEYS, _REFINE, setup_capabilities
@@ -28,12 +30,16 @@ def builtin_resources():
     items += [entry("style:"+p["id"], p["name"], "style", "seed.py:STYLE_PRESETS", {"profile":deepcopy(p["style_profile"])}) for p in STYLE_PRESETS]
     items += [entry("reference:"+path, path, "reference", "third_party/webnovel-writer (GPL-3; NOTICE.md)",
                     {"files":[{"path":path,"content":(CORPUS_ROOT/path).read_text(encoding="utf-8",errors="replace")}]}) for path,_ in corpus_files()]
-    long, short = optional_fragments()
+    long, short = optional_fragments()[:2]
     ban = long[:long.index("开篇规则")]
-    creation = long[long.index("开篇规则"):]
-    items += [entry("writing-rule:continuity", "章节衔接与收尾", "writing_rule", "workflow/prompts.py:SYSTEM_WRITE", {"roles":dict.fromkeys(("writer","planner","audit"), creation)}),
+    from myink.chapter_craft import CHAPTER_CONTINUITY_RULES
+    from myink.writing_quality_resources import REVIEW_POLICY
+    creation = CHAPTER_CONTINUITY_RULES
+    items += [entry("writing-rule:continuity", "章节衔接与收尾", "writing_rule", "chapter_craft.py; docs/WRITING-QUALITY-SOURCES.md", {"roles":{"writer":creation, "planner":creation, "audit":creation + REVIEW_POLICY}}),
               entry("expression-rule:bans", "句式偏好", "expression_rule", "workflow/prompts.py:SYSTEM_WRITE", {"roles":dict.fromkeys(("writer","audit"), ban), "validation":{"not_is":True,"parallel":True}}),
               entry("expression-rule:prose", "中文小说表达", "expression_rule", "workflow/prose_rules.py; docs/PROSE-RULES.md", {"roles":{"writer":PROSE_RULES,"audit":PROSE_REVIEW_RULES}})]
+    from myink.writing_quality_resources import quality_resources
+    items += quality_resources()
     for role, text in config.get("prompts", {}).items():
         if text.strip():
             items.append(entry("writing-rule:platform:"+role, "平台创作补充（"+role+"）", "writing_rule",

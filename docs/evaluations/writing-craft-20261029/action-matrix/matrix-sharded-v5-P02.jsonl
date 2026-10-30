@@ -1,0 +1,16 @@
+{"event": "start", "thinking_effort": "low", "request_cap": 12, "models": {"audit": "deepseek-v4.1-flash", "writer": "deepseek-v4.1-flash"}}
+{"event": "attempt", "attempt": 1}
+{"event": "raw_metadata", "http_status": 200, "stop_reason": "end_turn", "block_types": ["thinking", "text"], "usage": {"input_tokens": 346, "output_tokens": 1264, "cache_read_input_tokens": 512}}
+{"event": "usage", "stage": "inventory_0", "input_tokens": 346, "output_tokens": 1264, "truncated": false, "provider_failed": false}
+{"event": "candidate", "stage": "inventory_0", "data": {"tables": [{"event_index": 0, "kind": "person", "subject": "沈宁", "members": ["沈宁"], "source_quote": "沈宁亲口说出夜间打工是想减轻母亲负担。", "actions": [{"text": "亲口说出夜间打工", "temporal_scope": "occurrence"}, {"text": "亲口说出夜间打工是想减轻母亲负担", "temporal_scope": "occurrence"}]}]}}
+{"event": "attempt", "attempt": 2}
+{"event": "raw_metadata", "http_status": 200, "stop_reason": "end_turn", "block_types": ["thinking", "text"], "usage": {"input_tokens": 349, "output_tokens": 2711, "cache_read_input_tokens": 512}}
+{"event": "usage", "stage": "inventory_1", "input_tokens": 349, "output_tokens": 2711, "truncated": false, "provider_failed": false}
+{"event": "candidate", "stage": "inventory_1", "data": {"tables": [{"event_index": 1, "kind": "person", "subject": "周梅", "members": ["周梅"], "source_quote": "周梅亲手把燃气火关小", "actions": [{"text": "亲手把燃气火关小", "temporal_scope": "occurrence"}]}, {"event_index": 1, "kind": "person", "subject": "女儿", "members": ["沈宁"], "source_quote": "不能由女儿替做", "actions": [{"text": "替周梅把燃气火关小", "temporal_scope": "occurrence"}]}]}}
+{"event": "attempt", "attempt": 3}
+{"event": "raw_metadata", "http_status": 200, "stop_reason": "end_turn", "block_types": ["thinking", "text"], "usage": {"input_tokens": 355, "output_tokens": 1821, "cache_read_input_tokens": 512}}
+{"event": "usage", "stage": "inventory_2", "input_tokens": 355, "output_tokens": 1821, "truncated": false, "provider_failed": false}
+{"event": "candidate", "stage": "inventory_2", "data": {"tables": [{"event_index": 2, "kind": "person", "subject": "母女", "members": ["周梅", "沈宁"], "source_quote": "母女在本段已经共同打开电子课表，核对三次缺课", "actions": [{"text": "共同打开电子课表", "temporal_scope": "occurrence"}, {"text": "核对三次缺课", "temporal_scope": "occurrence"}]}, {"event_index": 2, "kind": "object", "subject": "休学申请", "members": [], "source_quote": "休学申请未签字", "actions": [{"text": "签字", "temporal_scope": "occurrence"}]}]}}
+{"event": "attempt", "attempt": 4}
+{"event": "raw_metadata", "http_status": 200, "stop_reason": "max_tokens", "block_types": ["thinking"], "usage": {"input_tokens": 366, "output_tokens": 4096, "cache_read_input_tokens": 512}}
+{"event": "usage", "stage": "inventory_3", "input_tokens": 0, "output_tokens": 0, "truncated": false, "provider_failed": true}

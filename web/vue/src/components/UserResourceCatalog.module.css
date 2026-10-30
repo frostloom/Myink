@@ -26,3 +26,11 @@
 .listScroll { max-height:60vh; overflow-y:auto; overscroll-behavior:contain; }
 
 .unboundedScroll { max-height:none; overflow:visible; }
+
+.extract { margin: 0 0 1.2rem; padding: 1rem; border: 1px solid var(--border); border-radius: 12px; }
+.extractActions { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; }
+.extractForm { display: grid; gap: .8rem; margin-top: 1rem; }
+.extractForm > label { display: grid; gap: .4rem; }
+.extractFields { min-width: 0; border: 0; padding: 0; }
+.extractForm .publishChoice { display: flex; align-items: center; gap: .5rem; }
+.legacy { margin-top: .8rem; }

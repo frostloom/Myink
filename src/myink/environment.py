@@ -43,13 +43,14 @@ def packed_models(user_id: str | uuid.UUID | None) -> dict[str, Any] | None:
 def load_environment(user_id: str | uuid.UUID) -> dict[str, Any]:
     raw = load_raw(user_id)
     routes, _ = unpack_model_settings(raw.get("models") if isinstance(raw.get("models"), dict) else {})
-    from myink.platform_configuration import catalog, clean_user_routes
-    routes = clean_user_routes(routes)
+    from myink.platform_configuration import catalog, clean_user_routes, tier_for_user
+    tier = tier_for_user(user_id)
+    routes = clean_user_routes(routes, tier=tier)
     preferences = effective_preferences(raw)
     return {
         "model_routes": routes,
         "model_connections": [],
-        "available_models": catalog()["models"],
+        "available_models": catalog(tier=tier)["models"],
         **preferences,
         "overridden_fields": sorted(overridden_fields(raw) + [f"model_routes.{role}" for role in routes]),
     }

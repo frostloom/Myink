@@ -842,10 +842,12 @@ def test_commit_applies_a_library_style_and_rejects_someone_elses(temp_user, cha
 def test_commit_accepts_a_builtin_preset_by_key(temp_user, chain_stub):
     chain_stub([_PLAN_JSON])
     sid = _seed_session(temp_user)
-    out = _commit(temp_user, sid, {"style_item_id": "builtin:xianxia-jiuzhou"}).json()
+    out = _commit(temp_user, sid, {"style_item_id": "builtin:natural-narration"}).json()
     with tenant_session(out["project_id"]) as db:
         settings_row = get_settings(db, uuid.UUID(out["project_id"]))
-        assert settings_row is not None and settings_row.skill_pack == "xianxia-jiuzhou"
+        assert settings_row is not None and settings_row.skill_pack == "natural-narration"
+        assert settings_row.style_profile["sentence_style"] == (
+            "句子长短跟随信息与情绪；重点说清，必要处留白，不机械拆成短句。")
 
 
 def _malformed_short_outline() -> dict:
@@ -877,3 +879,31 @@ def test_commit_turns_a_malformed_plan_into_a_retryable_502(temp_user, chain_stu
         row = db.get(ShortCreationSession, uuid.UUID(sid))
         assert row is not None and row.status == "active" and row.book_id is not None
         assert db.get(Project, row.book_id).creation_status != "ready"
+
+
+def test_commit_short_book_from_private_writing_resource(temp_user, chain_stub):
+    from myink.models.writing_resource import PersonalWritingResource
+    headers = identity_headers(temp_user)
+    data = {'name': '资源短篇文风', 'kind': 'style', 'source': 'test', 'body': {'profile': {'narrative_voice': '短篇资源语气'}}}
+    created = client.post('/api/v1/my-writing-resources', headers=headers, json=data)
+    assert created.status_code == 200, created.text
+    rid = created.json()['id']
+    try:
+        options = client.get('/api/v1/writing-resources/styles', headers=headers).json()['items']
+        choice = next(item for item in options if item['name'] == data['name'])
+        chain_stub([_PLAN_JSON]); sid = _seed_session(temp_user)
+        response = _commit(temp_user, sid, {'style_item_id': choice['id']})
+        assert response.status_code == 200, response.text
+        from myink import writing_resources as svc
+        from myink.writing_resource_runtime import bind_resources
+        with tenant_session(response.json()['project_id']) as db:
+            snapshot = svc.project_snapshot(db, response.json()['project_id'])
+            assert not get_settings(db, uuid.UUID(response.json()['project_id'])).style_profile
+            assert db.get(ShortCreationSession, uuid.UUID(sid)).style_item_id == choice['id']
+        style = next(item for item in snapshot['selections'] if item['kind'] == 'style')
+        assert style['resource_id'] == rid and style['authoritative_style']
+        with bind_resources(snapshot):
+            assert '短篇资源语气' in str(prompts.short_write_messages({'chapter_count': 1}))
+    finally:
+        with new_session() as db:
+            db.execute(sa_delete(PersonalWritingResource).where(PersonalWritingResource.id == rid)); db.commit()

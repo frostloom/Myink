@@ -41,7 +41,7 @@ const server = http.createServer(async (req, res) => {
   else if(key==='GET /api/v1/projects') result=[book]
   else if(key==='GET /api/v1/short/creation') result={session:{id:'session',status:'active',card:{}},messages:[],sessions:[],ready:false}
   else if(key==='POST /api/v1/projects/s/short/generate'){shortRemaining=0;status=429;result={error:'GUEST_QUOTA_EXHAUSTED'}}
-  else if(key==='GET /api/v1/style-library') result={items:[]}
+  else if(['GET /api/v1/style-library','GET /api/v1/writing-resources/styles'].includes(key)) result={items:[]}
   else if(key==='GET /api/v1/projects/s/settings') result={style_profile:{},genre_pack:{},skill_pack:null,model_routes:{},model_connections:[],version:1}
   else if(key==='GET /api/v1/projects/s/writing-resources') result={revision:1,configured:true,selections:[]}
   else if(key==='GET /api/v1/projects/s/writing-resources/updates') result={items:[]}
@@ -138,7 +138,7 @@ try {
   await page.getByLabel('确认密码',{exact:true}).waitFor()
   assert.equal(await page.getByLabel('当前密码',{exact:true}).count(),0)
   assert.equal(await page.getByText('忘记密码',{exact:true}).count(),0)
-  assert.ok((await page.getByRole('region',{name:'注册账号',exact:true}).boundingBox()).width<=512)
+  assert.ok((await page.getByRole('region',{name:'让作品有自己的归处',exact:true}).boundingBox()).width<=612)
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1))
   await page.screenshot({path:path.join(output,`${name}-account-registration.png`)})
   await page.getByRole('button',{name:'登出',exact:true}).click()

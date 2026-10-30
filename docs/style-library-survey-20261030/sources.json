@@ -1,0 +1,99 @@
+{
+  "accessed": "2026-10-30",
+  "sources": [
+    {
+      "id": "cwa-2025",
+      "title": "2025中国网络文学蓝皮书",
+      "publisher": "中国作家协会网络文学中心／文艺报",
+      "published": "2026-08-10",
+      "url": "https://www.chinawriter.com.cn/n1/2026/0810/c404023-40776811.html",
+      "usage": "核对现实、历史、科幻、幻想及轻喜表达等创作方向的覆盖；不据此给候选风格做销量排名。"
+    },
+    {
+      "id": "cass-2025",
+      "title": "2025中国网络文学发展研究报告",
+      "publisher": "中国社会科学院文学研究所课题组",
+      "published": "2026-04-20",
+      "url": "https://cssn.cn/skgz/bwyc/202604/t20260420_5981165.shtml",
+      "usage": "核对都市、言情、历史幻想、悬疑、治愈与民俗志怪等类型需求；不视作官方文风分类。"
+    },
+    {
+      "id": "wordflow-natural",
+      "title": "wordflowlab/novel-writer-skills · templates/knowledge-base/styles/natural-voice.md",
+      "url": "https://github.com/wordflowlab/novel-writer-skills/blob/5bc9b373ff609e8910e0e8d179e4a697bf2b1268/templates/knowledge-base/styles/natural-voice.md",
+      "sha": "5bc9b373ff609e8910e0e8d179e4a697bf2b1268",
+      "commit_date": "2025-10-20T13:04:09Z",
+      "license": "MIT",
+      "sha256": "ed481400ee37e39bfc62be66b2f242d23ece5146c4b0c1da979de1d5b08fba05",
+      "usage": "参考类型区分和表达关注点；不导入原示例、禁词表、固定句长、对白比例或爽点配额。"
+    },
+    {
+      "id": "wordflow-ancient",
+      "title": "wordflowlab/novel-writer-skills · templates/knowledge-base/styles/ancient-style.md",
+      "url": "https://github.com/wordflowlab/novel-writer-skills/blob/5bc9b373ff609e8910e0e8d179e4a697bf2b1268/templates/knowledge-base/styles/ancient-style.md",
+      "sha": "5bc9b373ff609e8910e0e8d179e4a697bf2b1268",
+      "commit_date": "2025-10-20T13:04:09Z",
+      "license": "MIT",
+      "sha256": "2cf44886ac3a67adc0067c5ddace07ec93ed0afb00d45346c1244cc93fa0cb63",
+      "usage": "参考类型区分和表达关注点；不导入原示例、禁词表、固定句长、对白比例或爽点配额。"
+    },
+    {
+      "id": "wordflow-literary",
+      "title": "wordflowlab/novel-writer-skills · templates/knowledge-base/styles/literary.md",
+      "url": "https://github.com/wordflowlab/novel-writer-skills/blob/5bc9b373ff609e8910e0e8d179e4a697bf2b1268/templates/knowledge-base/styles/literary.md",
+      "sha": "5bc9b373ff609e8910e0e8d179e4a697bf2b1268",
+      "commit_date": "2025-10-20T13:04:09Z",
+      "license": "MIT",
+      "sha256": "1319c795063d511e37383651addba3293a3feaf94a3d8be9115ca2e01bc1b93e",
+      "usage": "参考类型区分和表达关注点；不导入原示例、禁词表、固定句长、对白比例或爽点配额。"
+    },
+    {
+      "id": "wordflow-minimal",
+      "title": "wordflowlab/novel-writer-skills · templates/knowledge-base/styles/minimal.md",
+      "url": "https://github.com/wordflowlab/novel-writer-skills/blob/5bc9b373ff609e8910e0e8d179e4a697bf2b1268/templates/knowledge-base/styles/minimal.md",
+      "sha": "5bc9b373ff609e8910e0e8d179e4a697bf2b1268",
+      "commit_date": "2025-10-20T13:04:09Z",
+      "license": "MIT",
+      "sha256": "a9a4524659a06e30d71878f18cf81fb53da3577d767d83663995b68c5ae48115",
+      "usage": "参考类型区分和表达关注点；不导入原示例、禁词表、固定句长、对白比例或爽点配额。"
+    },
+    {
+      "id": "wordflow-web",
+      "title": "wordflowlab/novel-writer-skills · templates/knowledge-base/styles/web-novel.md",
+      "url": "https://github.com/wordflowlab/novel-writer-skills/blob/5bc9b373ff609e8910e0e8d179e4a697bf2b1268/templates/knowledge-base/styles/web-novel.md",
+      "sha": "5bc9b373ff609e8910e0e8d179e4a697bf2b1268",
+      "commit_date": "2025-10-20T13:04:09Z",
+      "license": "MIT",
+      "sha256": "41dbb0c71a6a450b030a4d193e36e801414e536c14e310f521785b9d4e0aef03",
+      "usage": "参考类型区分和表达关注点；不导入原示例、禁词表、固定句长、对白比例或爽点配额。"
+    },
+    {
+      "id": "d780-map",
+      "title": "D780/novel-maker · skill/styles/author-styles.md",
+      "url": "https://github.com/D780/novel-maker/blob/8b254719dffdcf72dd1d87b1736634f49d79b48d/skill/styles/author-styles.md",
+      "sha": "8b254719dffdcf72dd1d87b1736634f49d79b48d",
+      "commit_date": "2026-07-04T07:49:39Z",
+      "license": "MIT",
+      "sha256": "fe9faa3a429d47980048a1442376d7da4ad8bfac06bce19d34805baa189e63b9",
+      "usage": "仅参考幽默、热血、细腻、严谨与悬疑等分组覆盖，不导入逐作者复刻指令或名家片段。"
+    },
+    {
+      "id": "tianshi-dimensions",
+      "title": "tianshiemo7/long-novelist-skill · references/guides/style-imitation.md",
+      "url": "https://github.com/tianshiemo7/long-novelist-skill/blob/f3a6bdad6d3a6a52d9e432208aada450f5384402/references/guides/style-imitation.md",
+      "sha": "f3a6bdad6d3a6a52d9e432208aada450f5384402",
+      "commit_date": "2026-06-01T10:14:07Z",
+      "license": "MIT",
+      "sha256": "57418716d56e6ed13c9d5595a11349ca826867789e644705787424bdd35e196e",
+      "usage": "仅参考句式、描写、对话、叙事与情感的档案维度，不执行模仿流程或导入他人原文。"
+    }
+  ],
+  "attribution": "候选定义和全部小说样段为本轮原创；来源用于题材覆盖或方法维度参考，非整套提示词移植。未安装或执行上游Skills/脚本。",
+  "excluded": [
+    {
+      "repo": "lornshrimp/Lorn.NovelWriteSkills",
+      "sha": "f36540bee7525409b52d003c5cf32060b848c6e8",
+      "reason": "未找到整个仓库的顶层许可；子目录许可不作为整库许可，仅作发现线索，没有复制其素材。"
+    }
+  ]
+}

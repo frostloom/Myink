@@ -1,0 +1,62 @@
+{
+  "W01": {
+    "id": "P02",
+    "mode": "thinking_low",
+    "repeat": 2
+  },
+  "W02": {
+    "id": "P06",
+    "mode": "thinking_low",
+    "repeat": 1
+  },
+  "W03": {
+    "id": "P02",
+    "mode": "thinking_low",
+    "repeat": 1
+  },
+  "W04": {
+    "id": "P07",
+    "mode": "thinking_low",
+    "repeat": 2
+  },
+  "W05": {
+    "id": "P06",
+    "mode": "thinking_low",
+    "repeat": 2
+  },
+  "W06": {
+    "id": "P06",
+    "mode": "current",
+    "repeat": 1
+  },
+  "W07": {
+    "id": "P07",
+    "mode": "current",
+    "repeat": 1
+  },
+  "W08": {
+    "id": "P05",
+    "mode": "current",
+    "repeat": 1
+  },
+  "W09": {
+    "id": "P05",
+    "mode": "thinking_low",
+    "repeat": 1
+  },
+  "W10": {
+    "id": "P05",
+    "mode": "thinking_low",
+    "repeat": 2
+  },
+  "W11": {
+    "id": "P07",
+    "mode": "thinking_low",
+    "repeat": 1
+  },
+  "W12": {
+    "id": "P02",
+    "mode": "current",
+    "repeat": 1
+  }
+}

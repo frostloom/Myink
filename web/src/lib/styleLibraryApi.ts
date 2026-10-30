@@ -16,6 +16,11 @@ export interface StyleLibraryItem {
   removable: boolean
 }
 
+export interface ResourceStyleItem extends StyleLibraryItem {
+  origin: 'platform' | 'personal'
+  resource_id: string
+}
+
 export interface StyleDraft {
   draft: Record<string, unknown>
 }
@@ -33,6 +38,9 @@ export interface StyleLibraryPatchBody {
 }
 
 export const styleLibraryApi = {
+  resources: (token: string, signal?: AbortSignal): Promise<{ items: ResourceStyleItem[] }> =>
+    authenticatedGet('/writing-resources/styles', token, signal),
+
   list: (token: string, signal?: AbortSignal): Promise<{ items: StyleLibraryItem[] }> =>
     authenticatedGet('/style-library', token, signal),
 

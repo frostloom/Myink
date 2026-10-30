@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 from myink.config import settings
+from myink.chapter_craft import CHAPTER_CONTINUITY_RULES
 from myink.context_budget import estimate_tokens, fit_prompt
 from myink.workflow.short_parse import CHAPTER_HEADING
 from myink.workflow.tools import READ_TOOLS
@@ -35,7 +36,7 @@ SYSTEM_PLAN = """你是长篇网文创作系统的【规划 Agent】。职责：
 - 先读上一章结尾原文，再填 transition。已完成的进门/交接/抵达不能重演；未完成的请求/危险要回应或交代其延迟原因。大纲冲突时以前章正文为准，调整本章第一拍。
 - 合理跳时、切景、换视角可以使用，但须安排读者能理解的桥接线索，不能靠突兀的时间标签抹掉上一章危机。首章用 opening；缺少前章原文时不得编造 anchor_quote。
 - 【近期章节开头】只用于识别重复的句式、意象和开场套路，不是接续位置；持续同一场景和有意义的呼应允许，不为多样性强行换场。
-- 章末钩子必须是剧情推进或悬念事件，不得是「入睡/休息/原地等待」这类静止收束；
+- 章末应兑现本章预期事件，以决定、后果、关系或认知变化收束；按题材安排下一步牵引，允许有变化的安静落定，不强制每章反转或突发危险；
 - 【前情事件】中的历史相似事件仅供呼应/差异化参照，不得照搬其桥段结构；
 - JSON 数组项、对象字段之间必须使用英文逗号，字符串内部的双引号必须转义。"""
 
@@ -57,15 +58,7 @@ SYSTEM_WRITE = """你是长篇网文创作系统的【写作 Agent】。依据�
 - 不要写「不是……是……」：先否定再改口的对举一律不用，含「不是……而是……」与「不是……，是……」，拆成两句的「不是……。是……」也一样。
 - 不要写连续排比：同一句或相邻几句里，连续三个以上结构相同的分句。
 开篇规则：
-- 本章从【近期上下文】中上一章结尾片段的具体情境接续展开，不重新铺陈场景、不从头交代前情；
-- 避免以天色/时辰/天气作万能开场（如「清晨」「晨光」「夜色」）——除非该天色/天气与本章节拍直接相关（如「破晓时闭关突破」），否则直接用事件/动作/对话切入；
-- 各章开头不得与其他章共用开场景/意象/句式；
-- 上述规则禁止机械套用开场模板；同一场景的自然延续、有新意义的呼应允许。不要为了差异化强行换地点或视角。
-- 不得把「醒来/被叫醒/睁眼/天亮」等被动唤醒作万能开场动作；前章确已昏迷/入睡且恢复与剧情有关时允许醒来，但应迅速进入本章事件。
-- 执行章节计划 transition：上一章已完成的动作不得重做；悬而未决的请求、问话、威胁须得到反应。衔接应写动作的后果、人物的回答和下一步选择，避免复述章尾或用「上回说到」概述前情。
-- 时间、地点或视角有变化时，在开头自然给出桥接线索并处理原悬念，不能用一段天气/伤痛/环境描写把紧迫事件重置。
-收尾规则：
-- 章末不得以「入睡/合眼/闭眼/原地等待/天色将暗」这类静止收束作结尾——结尾必须落在剧情推进或悬念上（未完成的动作/关键对话/悬念画面/危险逼近）；禁止连续两章以同一类收尾动作作结（如两章都以主角入睡收尾）。
+""" + CHAPTER_CONTINUITY_RULES + """
 如需核实人物状态/世界观事实/伏笔/剧情线，可调用只读查证工具，核实后仍直接输出正文。
 输出格式：先输出独立一行 === CONTENT ===，从下一行开始输出本章正文。
 正文为纯文本散文（含自然换行），禁止输出 JSON、禁止 markdown 代码块围栏。"""
@@ -648,6 +641,28 @@ def _rhythm_reference(sp: dict) -> str:
     return line
 
 
+def _private_style_section(style_profile: dict | None) -> str:
+    style = _style_section(style_profile, None)
+    if not style:
+        return ""
+    return ("\n\n【本书私有文风档案】\n"
+            "本书私有文风优先于通用文风和表达建议；保留作者声音，不按通用偏好改写。\n"
+            + style)
+
+
+def _completion_section(plan: dict) -> str:
+    events = plan.get("expected_events") or []
+    if not isinstance(events, list):
+        return ""
+    events = [event for event in events if isinstance(event, str) and event.strip()]
+    if not events:
+        return ""
+    return ("\n\n【本章收笔前应实际兑现】\n"
+            + "\n".join("- " + event for event in events)
+            + "\n对照正文检查实际发生的主体、动作和结果，不能把本章要完成的事改成约好以后做，"
+              "也不要让另一人无故替做。设定与作者本次明确指令优先；不输出核对清单。")
+
+
 def _write_messages(context: dict, plan: dict, *, style_profile: dict | None = None,
                    target_words: int | None = None, outline: dict | None = None,
                    genre_pack: dict | None = None) -> list[dict]:
@@ -680,6 +695,7 @@ def _write_messages(context: dict, plan: dict, *, style_profile: dict | None = N
         "【章节计划】\n" + json.dumps(plan, ensure_ascii=False, indent=1)
         + "\n\n【近期上下文】\n" + (short or "（无）")
         + "\n\n" + _opening_section(context)
+        + _completion_section(plan)
         + "\n请输出本章正文。"
     )
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
@@ -744,7 +760,8 @@ def patch_messages(state: dict) -> list[dict]:
                 *(state.get("unresolved") or []),
                 *((state.get("audit_verdict") or {}).get("findings") or [])]
     return [
-        {"role": "system", "content": SYSTEM_REVISE_PATCH},
+        {"role": "system", "content": SYSTEM_REVISE_PATCH
+         + _private_style_section(state.get("style_profile"))},
         {"role": "user", "content": (
             f"【第 {state['chapter_seq']} 章原稿】\n{state['draft']}\n\n"
             + "【校验与审核发现】\n" + json.dumps(findings, ensure_ascii=False)
@@ -765,14 +782,16 @@ def _revise_messages(draft, findings, chapter_seq, context, plan, style_profile,
                               genre_pack=genre_pack)
     return [
         {"role": "system", "content": writing[0]["content"] + "\n\n" + SYSTEM_REVISE},
-        {"role": "user", "content": writing[1]["content"].removesuffix("\n请输出本章正文。")
+        {"role": "user", "content": writing[1]["content"].removesuffix("\n请输出本章正文。").removesuffix(_completion_section(plan))
          + f"\n\n【第 {chapter_seq} 章待修正文】\n{draft}\n\n【校验发现】\n{finding_lines}"
+         + _completion_section(plan)
          + "\n\n修复问题并保持全章因果、人物状态和篇幅；保留无须修改的有效情节。输出修订后全文与 RESPONSES。"},
     ]
 
 
 def _audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int,
-                    genre_pack: dict | None = None) -> list[dict]:
+                    genre_pack: dict | None = None,
+                    style_profile: dict | None = None) -> list[dict]:
     """audit 输入：正文 + 章节计划 + 召回上下文（审核中枢做语义审核 + 路由决策）。"""
     plan_str = json.dumps(plan, ensure_ascii=False, indent=1) if plan else "（无章节计划）"
     events = _join(context.get("mid_term_events", []), _render_event)
@@ -793,7 +812,12 @@ def _audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int,
         + _taboo_hint(genre_pack)
         + "\n\n请审核本章并输出路由决策（严格 JSON）。"
     )
-    return [{"role": "system", "content": SYSTEM_AUDIT}, {"role": "user", "content": user}]
+    private_style = _private_style_section(style_profile)
+    if private_style:
+        private_style += ("\n文风对照以此档案为准；不要仅因风格差异或个人审美偏好要求改稿。"
+                          "仍按既有内容质量与严重度规则判定，发现问题须引用正文证据。")
+    return [{"role": "system", "content": SYSTEM_AUDIT + private_style},
+            {"role": "user", "content": user}]
 
 
 def _taboo_hint(genre_pack: dict | None) -> str:
@@ -1292,9 +1316,10 @@ def extract_messages(draft: str, chapter_seq: int, context: dict | None = None) 
 
 
 def audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int,
-                   genre_pack: dict | None = None) -> list[dict]:
+                   genre_pack: dict | None = None,
+                   style_profile: dict | None = None) -> list[dict]:
     return fit_prompt(context, lambda c: _audit_messages(
-        draft, plan, c, chapter_seq, genre_pack), _tool_prompt_budget())
+        draft, plan, c, chapter_seq, genre_pack, style_profile), _tool_prompt_budget())
 
 
 # Match the provider role at the actual call sites; review stages can use planners.

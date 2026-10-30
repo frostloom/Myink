@@ -74,7 +74,6 @@ onScopeDispose(() => { alive = false; loadId++ })
       <nav :class="rail.pageLinks" aria-label="全局页面">
         <RouterLink to="/environment" :class="rail.item">高级设置</RouterLink>
         <RouterLink to="/theme" :class="rail.item">主题</RouterLink>
-        <RouterLink to="/styles" :class="rail.item">文风库</RouterLink>
         <RouterLink to="/writing-resources" :class="rail.item">写作资源</RouterLink>
       </nav>
       <div :class="rail.foot">

@@ -2903,6 +2903,16 @@
             "title": "Prompts",
             "type": "object"
           },
+          "queue_weights": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QueueWeights"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "user_defaults": {
             "$ref": "#/components/schemas/UserDefaults-Input"
           },
@@ -2910,6 +2920,20 @@
             "minimum": 0.0,
             "title": "Version",
             "type": "integer"
+          },
+          "vip_model_routes": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vip Model Routes"
           }
         },
         "required": [
@@ -2952,12 +2976,22 @@
             "title": "Prompts",
             "type": "object"
           },
+          "queue_weights": {
+            "$ref": "#/components/schemas/QueueWeights"
+          },
           "user_defaults": {
             "$ref": "#/components/schemas/UserDefaults-Output"
           },
           "version": {
             "title": "Version",
             "type": "integer"
+          },
+          "vip_model_routes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Vip Model Routes",
+            "type": "object"
           }
         },
         "required": [
@@ -4642,6 +4676,47 @@
         "title": "LessonActionOut",
         "type": "object"
       },
+      "MembershipBody": {
+        "additionalProperties": false,
+        "properties": {
+          "tier": {
+            "enum": [
+              "normal",
+              "vip"
+            ],
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tier"
+        ],
+        "title": "MembershipBody",
+        "type": "object"
+      },
+      "MembershipOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "tier": {
+            "enum": [
+              "normal",
+              "vip"
+            ],
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tier"
+        ],
+        "title": "MembershipOut",
+        "type": "object"
+      },
       "MemoryCandidateOut": {
         "properties": {
           "candidate_id": {
@@ -5062,6 +5137,15 @@
             ],
             "title": "Input Price"
           },
+          "minimum_tier": {
+            "default": "normal",
+            "enum": [
+              "normal",
+              "vip"
+            ],
+            "title": "Minimum Tier",
+            "type": "string"
+          },
           "model": {
             "title": "Model",
             "type": "string"
@@ -5133,6 +5217,15 @@
               }
             ],
             "title": "Input Price"
+          },
+          "minimum_tier": {
+            "default": "normal",
+            "enum": [
+              "normal",
+              "vip"
+            ],
+            "title": "Minimum Tier",
+            "type": "string"
           },
           "model": {
             "title": "Model",
@@ -5443,6 +5536,27 @@
           "name"
         ],
         "title": "PublishedModel",
+        "type": "object"
+      },
+      "QueueWeights": {
+        "additionalProperties": false,
+        "properties": {
+          "normal": {
+            "default": 1,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Normal",
+            "type": "integer"
+          },
+          "vip": {
+            "default": 3,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Vip",
+            "type": "integer"
+          }
+        },
+        "title": "QueueWeights",
         "type": "object"
       },
       "RankingItemOut": {
@@ -5808,6 +5922,92 @@
         "title": "ResourceOut",
         "type": "object"
       },
+      "ResourceStyleItemOut": {
+        "properties": {
+          "builtin": {
+            "default": false,
+            "title": "Builtin",
+            "type": "boolean"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "default": "",
+            "title": "Note",
+            "type": "string"
+          },
+          "origin": {
+            "enum": [
+              "platform",
+              "personal"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "profile": {
+            "additionalProperties": true,
+            "title": "Profile",
+            "type": "object"
+          },
+          "removable": {
+            "default": false,
+            "title": "Removable",
+            "type": "boolean"
+          },
+          "resource_id": {
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "sample_chars": {
+            "default": 0,
+            "title": "Sample Chars",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "profile",
+          "origin",
+          "resource_id"
+        ],
+        "title": "ResourceStyleItemOut",
+        "type": "object"
+      },
+      "ResourceStyleListOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ResourceStyleItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ResourceStyleListOut",
+        "type": "object"
+      },
       "ResumeBudgetBody": {
         "additionalProperties": false,
         "properties": {
@@ -6033,6 +6233,11 @@
       "SelectionOut": {
         "additionalProperties": false,
         "properties": {
+          "authoritative_style": {
+            "default": false,
+            "title": "Authoritative Style",
+            "type": "boolean"
+          },
           "body": {
             "additionalProperties": true,
             "title": "Body",
@@ -6545,6 +6750,11 @@
             },
             "title": "Selections",
             "type": "array"
+          },
+          "style_managed": {
+            "default": false,
+            "title": "Style Managed",
+            "type": "boolean"
           }
         },
         "required": [
@@ -9494,6 +9704,63 @@
         ]
       }
     },
+    "/api/v1/admin/users/{user_id}/membership": {
+      "put": {
+        "operationId": "update_membership_api_v1_admin_users__user_id__membership_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MembershipBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MembershipOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Membership",
+        "tags": [
+          "platform"
+        ]
+      }
+    },
     "/api/v1/admin/writing-resources": {
       "get": {
         "operationId": "list_resources_api_v1_admin_writing_resources_get",
@@ -10710,6 +10977,53 @@
           }
         ],
         "summary": "Copy Platform",
+        "tags": [
+          "writing-resources"
+        ]
+      }
+    },
+    "/api/v1/my-writing-resources/import-legacy/{item_id}": {
+      "post": {
+        "operationId": "import_legacy_style_api_v1_my_writing_resources_import_legacy__item_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Import Legacy Style",
         "tags": [
           "writing-resources"
         ]
@@ -13872,7 +14186,7 @@
     },
     "/api/v1/style-library": {
       "get": {
-        "description": "内置 4 个在前、用户项在后：一次请求喂满选择器，前端不再自备一份内置清单。",
+        "description": "内置通用文风在前、用户项在后：一次请求喂满选择器，前端不再自备一份内置清单。",
         "operationId": "list_items_api_v1_style_library_get",
         "responses": {
           "200": {
@@ -14515,6 +14829,32 @@
           }
         ],
         "summary": "Full Catalog",
+        "tags": [
+          "writing-resources"
+        ]
+      }
+    },
+    "/api/v1/writing-resources/styles": {
+      "get": {
+        "operationId": "style_choices_api_v1_writing_resources_styles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceStyleListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Style Choices",
         "tags": [
           "writing-resources"
         ]

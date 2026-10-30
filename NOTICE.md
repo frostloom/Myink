@@ -1,5 +1,14 @@
 # 第三方来源与许可声明
 
+## 2026-10-29 写作规则调研适配
+
+`src/myink/writing_quality_resources.py` 的对白、场景和题材节奏建议参考了 MIT 项目
+[Chinese Novel Writing Skills](https://github.com/aa15107688191-collab/chinese-novel-writing-skills/tree/fc8be3aaf022f123ee190acd51b7fe4642b06d15)
+（Chinese Novel Writing Skills contributors）与
+[chinese-webnovel-skills](https://github.com/tance-mang/chinese-webnovel-skills/tree/ecf552f6930e769d8bbf17818ad3d5a864a7a70b)
+（tance-mang）的创作方法。本轮内容为 Myink 重新撰写，没有收录上游代码、技能文件或示例正文；
+三种通用文风为原创档案。具体来源、许可链接、采用范围和排除项见 [写作质量来源](docs/WRITING-QUALITY-SOURCES.md)。
+
 Myink 整体以 **AGPL-3.0** 发布，许可全文见 [LICENSE](LICENSE)。
 
 本文列出本仓库中来自其它开源项目的部分、上游版本与许可。上游提交号是撰写本文件时的版本。

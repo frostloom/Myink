@@ -39,6 +39,7 @@ const fixtures = new Map([
  ['GET /api/v1/genre-packs',()=>[]],
  ['GET /api/v1/rankings',()=>({items:[],source:'disabled',fetched_at:null,error:null})],
  ['GET /api/v1/style-library',()=>({items:[]})],
+ ['GET /api/v1/writing-resources/styles',()=>({items:[]})],
  ['GET /api/v1/writing-resources',()=>({items:[]})],
  ['GET /api/v1/writing-resources/catalog',()=>({items:[{...platformStyle,generation:platformGeneration,current_version:platformGeneration},genreResource,...defaultRules]})],
  ['GET /api/v1/my-writing-resources',()=>({items:personal})],
@@ -256,7 +257,7 @@ try{
   await page.getByRole('button',{name:'开始建书',exact:true}).click()
   await page.getByRole('button',{name:'确认，开写',exact:true}).click()
   const chooser=page.getByRole('dialog',{name:'选择本书写作资源'})
-  await chooser.getByRole('checkbox',{name:'选用 已选文风'}).waitFor()
+  await chooser.getByRole('article').filter({hasText:'我的版本'}).getByRole('checkbox',{name:'选用 已选文风',exact:true}).waitFor()
   const scrollRegions=await chooser.evaluate(dialog=>[dialog,...dialog.querySelectorAll('*')].filter(el=>/auto|scroll/.test(getComputedStyle(el).overflowY)&&el.scrollHeight>el.clientHeight+2).length)
   assert.ok(scrollRegions<=1,`Resource chooser must have one content scroll region, found ${scrollRegions}`)
   const chooserBody=await chooser.locator('.creation-resource-body').boundingBox()
@@ -269,7 +270,7 @@ try{
   await page.evaluate(()=>document.documentElement.style.setProperty('--surface-1','#18252b'))
   assert.equal(await chooser.locator('footer.creation-resource-actions').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(24, 37, 43)')
   await page.evaluate(()=>document.documentElement.style.removeProperty('--surface-1'))
-  await chooser.getByRole('checkbox',{name:'选用 已选文风'}).check()
+  await chooser.getByRole('article').filter({hasText:'我的版本'}).getByRole('checkbox',{name:'选用 已选文风',exact:true}).check()
   const ruleChoice=chooser.getByRole('checkbox',{name:'选用 创作规则',exact:true})
   assert.ok(await ruleChoice.isChecked());assert.ok(await ruleChoice.isEnabled())
   await ruleChoice.uncheck()
@@ -310,7 +311,7 @@ try{
   await page.evaluate(()=>document.documentElement.style.setProperty('--surface-1','#18252b'))
   assert.equal(await chooser.locator('footer.creation-resource-actions').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(24, 37, 43)')
   await page.evaluate(()=>document.documentElement.style.removeProperty('--surface-1'))
-  await chooser.getByRole('checkbox',{name:'选用 已选文风'}).check()
+  await chooser.getByRole('article').filter({hasText:'本书现用版本'}).getByRole('checkbox',{name:'选用 已选文风',exact:true}).check()
   const longRuleChoice=chooser.getByRole('checkbox',{name:'选用 创作规则',exact:true})
   assert.ok(await longRuleChoice.isChecked());assert.ok(await longRuleChoice.isEnabled())
   await longRuleChoice.uncheck()

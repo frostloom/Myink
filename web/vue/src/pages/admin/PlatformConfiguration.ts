@@ -13,6 +13,8 @@ import GenrePackFields from "../../components/GenrePackFields.vue";
 import { useAdminContext } from './context';
 import ModelManagement from "./ModelManagement";
 import PlatformResources from "./PlatformResources";
+import ModelRoutingBoard from './ModelRoutingBoard.vue';
+import routingStyles from '../../../../src/pages/admin/ModelRouting.module.css';
 const MODEL_ROLES = [
     { key: 'planner', label: '规划' },
     { key: 'writer', label: '写作' },
@@ -40,6 +42,7 @@ type FieldProblem = {
     text: string;
 } | null;
 type ModelConnectionDraft = ModelConnection & {
+    minimum_tier?: 'normal' | 'vip';
     origin?: 'builtin' | 'custom';
     enabled: boolean;
     user_visible: boolean;
@@ -80,6 +83,8 @@ const ConfigurationSettings = defineComponent((props: {
     const readinessUnavailable = shallowRef(false);
     const setReadinessUnavailable = (next: typeof readinessUnavailable.value | ((old: typeof readinessUnavailable.value) => typeof readinessUnavailable.value)) => { readinessUnavailable.value = typeof next === "function" ? next(readinessUnavailable.value) : next; };
     const version = shallowRef(0);
+    const vipRoutes = shallowRef<Record<string, string>>({});
+    const queueWeights = shallowRef({ vip: 3, normal: 1 });
     const setVersion = (next: typeof version.value | ((old: typeof version.value) => typeof version.value)) => { version.value = typeof next === "function" ? next(version.value) : next; };
     const userDefaults = shallowRef<UserDefaults>(DEFAULT_USER_PREFERENCES);
     const setUserDefaults = (next: typeof userDefaults.value | ((old: typeof userDefaults.value) => typeof userDefaults.value)) => { userDefaults.value = typeof next === "function" ? next(userDefaults.value) : next; };
@@ -110,7 +115,7 @@ const ConfigurationSettings = defineComponent((props: {
     const setBusy = (next: typeof busy.value | ((old: typeof busy.value) => typeof busy.value)) => { busy.value = typeof next === "function" ? next(busy.value) : next; };
     const banner = shallowRef<string | null>(null);
     let savedForm = '';
-    const formSnapshot = () => JSON.stringify([userDefaults.value, prompts.value, genrePacks.value, routeSel.value, connectionDrafts.value]);
+    const formSnapshot = () => JSON.stringify([userDefaults.value, prompts.value, genrePacks.value, routeSel.value, connectionDrafts.value, vipRoutes.value, queueWeights.value]);
     useMemoryFormGuard(() => loaded.value && formSnapshot() !== savedForm);
     const setBanner = (next: typeof banner.value | ((old: typeof banner.value) => typeof banner.value)) => { banner.value = typeof next === "function" ? next(banner.value) : next; };
     function notify(id: string, tone: "error" | "ok", text: string, returnFocus: HTMLElement | null) {
@@ -170,6 +175,8 @@ const ConfigurationSettings = defineComponent((props: {
         try {
             const [env, items] = await Promise.all([platformApi.getConfiguration(), api.listGenrePacks()]);
             setVersion(env.version);
+            vipRoutes.value = env.vip_model_routes ?? {};
+            queueWeights.value = env.queue_weights ?? { vip: 3, normal: 1 };
             setUserDefaults(env.user_defaults ?? DEFAULT_USER_PREFERENCES);
             setPrompts(env.prompts);
             setGenrePacks(normalizeGenreOverrides(env.genre_packs, items));
@@ -209,6 +216,10 @@ const ConfigurationSettings = defineComponent((props: {
     }, { immediate: true, flush: "post" });
     async function saveRoutes() {
         const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        if (!Object.values(queueWeights.value).every(value => Number.isInteger(value) && value >= 1 && value <= 10)) {
+            notify('save', 'error', '调度权重须为 1–10 的整数，普通用户份额不能为零。', returnFocus);
+            return;
+        }
         const routes = Object.fromEntries(MODEL_ROLES.map((r: {
             key: string;
             label: string;
@@ -244,6 +255,7 @@ const ConfigurationSettings = defineComponent((props: {
                 protocol: draft.protocol,
                 enabled: draft.enabled,
                 user_visible: draft.user_visible,
+                minimum_tier: draft.minimum_tier ?? 'normal',
                 input_price: draft.input_price,
                 output_price: draft.output_price,
                 base_url: baseUrl,
@@ -254,6 +266,8 @@ const ConfigurationSettings = defineComponent((props: {
         try {
             const saved = await platformApi.updateConfiguration({
                 version: version.value,
+                vip_model_routes: vipRoutes.value,
+                queue_weights: queueWeights.value,
                 model_routes: routes,
                 model_connections: connections,
                 prompts: prompts.value,
@@ -261,6 +275,8 @@ const ConfigurationSettings = defineComponent((props: {
                 user_defaults: userDefaults.value,
             });
             setVersion(saved.version);
+            vipRoutes.value = saved.vip_model_routes ?? vipRoutes.value;
+            queueWeights.value = saved.queue_weights ?? queueWeights.value;
             setUserDefaults(saved.user_defaults ?? userDefaults.value);
             setConnectionDrafts(saved.model_connections.map((connection: import("../../../../src/lib/platformApi").PlatformConnection) => ({ ...connection, api_key: "" })));
             setPrompts(saved.prompts);
@@ -391,14 +407,15 @@ const ConfigurationSettings = defineComponent((props: {
     }
     return () => {
         return (renderNode("div", {}, [
-            renderNode(ConnectionNotices, { "items": notices.value, "onDismiss": (id: string) => setNotices((items: ConnectionNotice[]) => items.filter((item: ConnectionNotice) => item.id !== id)) }), renderNode("div", {}, [renderNode("div", { "class": styles.inner }, [
+            renderNode(ConnectionNotices, { "items": notices.value, "onDismiss": (id: string) => setNotices((items: ConnectionNotice[]) => items.filter((item: ConnectionNotice) => item.id !== id)) }), renderNode("div", {}, [renderNode("div", { "class": props.section === 'routes' ? routingStyles.page : styles.inner }, [
                     renderNode("header", { "class": styles.header }, [renderNode("div", {}, [
-                            renderNode("h1", {}, [{ all: "模型与平台配置", models: "AI 模型", routes: "模型分配", defaults: "用户默认设置", prompts: "提示词", genres: "题材包" }[props.section]]), renderNode("div", { "class": styles.crumb }, [renderNode(Link, { "to": "/admin" }, { default: () => ["返回管理概览"] })])
-                        ])]), banner.value && renderNode("div", { "class": "banner banner-error", "role": "alert" }, [banner.value]), renderNode("div", { "class": styles.saveRow }, [
-                        renderNode("button", { "class": "btn btn-secondary", "disabled": loading.value || busy.value !== null, "onClick": () => void load() }, ["重新加载配置"]), renderNode("span", {}, [
-                            "版本 ", version.value
+                            renderNode("h1", {}, [{ all: "模型与平台配置", models: "AI 模型", routes: "模型分配", defaults: "用户默认设置", prompts: "提示词", genres: "题材包" }[props.section]]), props.section === 'routes' ? renderNode('p', { class: routingStyles.lead }, '分别管理普通用户与 VIP 的模型权益，让每个创作环节各就其位。') : renderNode("div", { "class": styles.crumb }, [renderNode(Link, { "to": "/admin" }, { default: () => ["返回管理概览"] })])
+                        ])]), banner.value && renderNode("div", { "class": "banner banner-error", "role": "alert" }, [banner.value]), renderNode("div", { "class": props.section === 'routes' ? routingStyles.toolbar : styles.saveRow }, [
+                        renderNode("button", { "class": "btn btn-secondary", "disabled": loading.value || busy.value !== null, "onClick": () => void load() }, ["重新加载配置"]), renderNode("span", { class: routingStyles.saveState }, [
+                            loaded.value && formSnapshot() !== savedForm ? '有未保存更改' : `版本 ${version.value}`
                         ]), renderNode("button", { "class": "btn btn-primary", "disabled": loading.value || !loaded.value || busy.value !== null, "onClick": () => void saveRoutes() }, [busy.value === "routes" ? "保存中…" : "保存平台配置"])
-                    ]), loading.value && renderNode("p", { "role": "status" }, ["正在加载平台配置…"]), (props.section === "all" || props.section === "routes") && renderNode("section", { "class": `panel ${styles.section}`, "aria-label": "平台就绪状态" }, [
+                    ]), loading.value && renderNode("p", { "role": "status" }, ["正在加载平台配置…"]), (props.section === "all" || props.section === "routes") && renderNode(props.section === 'routes' ? 'details' : 'section', { "class": props.section === 'routes' ? routingStyles.readiness : `panel ${styles.section}`, "aria-label": "平台就绪状态" }, [
+                        props.section === 'routes' && renderNode('summary', {}, [renderNode('strong', {}, readinessLoading.value ? '正在检查服务状态' : readinessUnavailable.value ? '服务状态暂不可用' : readiness.value?.ready ? '基础模型配置已就绪' : '基础模型配置尚未就绪'), '查看配置检查']),
                         renderNode("h2", { "class": styles.sectionTitle }, ["平台就绪状态"]), renderNode("p", { "class": styles.hint }, ["检查已保存配置，不调用模型服务。此状态不包含未保存的草稿，也不代表网络或凭据已通过服务商验证。"]), renderNode("button", { "type": "button", "class": "btn btn-secondary", "disabled": readinessLoading.value, "onClick": () => void refreshReadiness() }, ["刷新就绪状态"]), readinessLoading.value && renderNode("p", { "role": "status" }, ["正在检查就绪状态…"]), readinessUnavailable.value && renderNode("p", {}, ["暂时无法读取就绪状态"]), readiness.value && renderNode(Fragment, {}, [
                             renderNode("p", {}, [readiness.value.ready ? "平台创作服务已就绪" : "平台创作服务尚未就绪"]), renderNode("ul", {}, [readiness.value.checks.map((check: {
                                     role: string;
@@ -412,7 +429,14 @@ const ConfigurationSettings = defineComponent((props: {
                                 ]))])
                         ])
                     ]), renderNode("fieldset", { "disabled": loading.value || !loaded.value || busy.value !== null, "style": { border: 0, padding: 0, margin: 0, minWidth: 0 } }, [
-                        (props.section === "all" || props.section === "routes") && renderNode("section", { "class": `panel ${styles.section}` }, [
+                        (props.section === "all" || props.section === "routes") && renderNode("section", { "class": props.section === "routes" ? routingStyles.routeHost : `panel ${styles.section}` }, [
+                            renderNode(ModelRoutingBoard, {
+                                roles: MODEL_ROLES, connections: connectionDrafts.value,
+                                normalRoutes: routeSel.value, vipRoutes: vipRoutes.value, weights: queueWeights.value,
+                                'onUpdate:normalRoutes': setRouteSel,
+                                'onUpdate:vipRoutes': (routes: Record<string, string>) => { vipRoutes.value = routes; },
+                                'onUpdate:weights': (weights: { vip: number; normal: number }) => { queueWeights.value = weights; },
+                            }),
                             props.section === "all" && renderNode(Fragment, {}, [
                                 renderNode("div", { "class": styles.connectionTitleRow }, [
                                     renderNode("div", {}, [renderNode("h2", { "class": styles.sectionTitle }, ["模型连接与路由"])]), renderNode("button", { "type": "button", "class": "btn btn-secondary", "disabled": busy.value !== null, "onClick": addConnection }, ["添加网络模型"])
@@ -445,23 +469,7 @@ const ConfigurationSettings = defineComponent((props: {
                                             ])
                                         ])
                                     ])))]))
-                            ]), renderNode("div", { "class": styles.routeDivider }, [
-                                renderNode("h3", {}, ["任务模型分配"]), renderNode("p", { "class": styles.hint }, ["为每个创作环节选择模型；未单独设置的环节跟随默认写作模型。内置模型与自建模型均可分配。"])
-                            ]), renderNode("div", { "class": styles.routeList }, [MODEL_ROLES.map((r: {
-                                    key: string;
-                                    label: string;
-                                }) => (renderNode("label", { "key": r.key, "class": styles.routeRow }, [
-                                    renderNode("span", { "class": styles.routeLabel }, [r.label]), renderNode("select", { "class": "input", "aria-label": r.label, "value": routeSel.value[r.key] ?? "", "onChange": (e: Event) => setRouteSel((s: Record<string, string>) => ({ ...s, [r.key]: (e.target as HTMLInputElement & HTMLSelectElement & HTMLDetailsElement).value })) }, [[
-                                            { value: "", label: r.key === "writer" ? "请选择默认写作模型" : "跟随默认写作模型" },
-                                            ...connectionDrafts.value.filter((connection: ModelConnectionDraft) => connection.enabled).map((connection: ModelConnectionDraft) => ({
-                                                value: `custom:${connection.id}`,
-                                                label: `${connection.origin === "builtin" ? "内置 · " : ""}${connection.name.trim() || "未命名连接"}${connection.name.trim() === connection.model.trim() ? "" : ` · ${connection.model.trim() || "未填写模型"}`}`,
-                                            })),
-                                        ].map((option: {
-                                            value: string;
-                                            label: string;
-                                        }) => (renderNode("option", { "key": option.value, "value": option.value }, [option.label])))])
-                                ])))])
+                            ])
                         ]), (props.section === "all" || props.section === "defaults") && renderNode("section", { "class": `panel ${styles.section}` }, [
                             renderNode("h2", { "class": styles.sectionTitle }, ["用户默认设置"]), renderNode("p", { "class": styles.hint }, ["未设置个人偏好的用户将使用这些默认值；已有个人设置继续生效。预算修改仅影响新任务，已有任务保留原预算快照。"]), renderNode("label", { "class": styles.field }, [
                                 renderNode("span", {}, ["默认思考模式"]), renderNode("select", { "class": "input", "value": userDefaults.value.thinking_enabled ? "1" : "0", "onChange": (e: Event) => setUserDefaults((value: UserDefaults) => ({ ...value, thinking_enabled: (e.target as HTMLInputElement & HTMLSelectElement & HTMLDetailsElement).value === "1" })) }, [

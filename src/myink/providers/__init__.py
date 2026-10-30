@@ -104,14 +104,15 @@ def _chain_from_override(override: dict, thinking: bool) -> FallbackChain:
     )
 
 
-def _central_chain(role, selections, thinking):
-    from myink.platform_configuration import load_configuration, resolve_connection
+def _central_chain(role, selections, thinking, user_id=None):
+    from myink.platform_configuration import load_configuration, resolve_connection, tier_for_user
     config = load_configuration()
+    tier = tier_for_user(user_id, config)
     if role not in CONFIGURABLE_ROLES:
         return _no_model_chain(thinking)
     from myink.platform_readiness import require_ready
-    require_ready((role,), selections=selections, config=config)
-    override = resolve_connection(role, selections, config)
+    require_ready((role,), selections=selections, config=config, tier=tier)
+    override = resolve_connection(role, selections, config, tier=tier)
     if override is not None:
         chain = _chain_from_override(override, thinking)
     elif config['version'] == 0:
@@ -152,7 +153,7 @@ def make_chain(role: str, project_id=None, db=None) -> FallbackChain:
             project = db.get(Project, uuid.UUID(str(project_id)))
             owner = project.user_id if project else None
     routes, _ = unpack_model_settings(packed_models(owner)) if owner else ({}, {})
-    return _central_chain(role, routes, thinking)
+    return _central_chain(role, routes, thinking, owner)
 
 
 def make_user_chain(role: str, user_id: str | uuid.UUID) -> FallbackChain:
@@ -161,7 +162,7 @@ def make_user_chain(role: str, user_id: str | uuid.UUID) -> FallbackChain:
     if default_provider is not _BUILTIN_PROVIDER:
         return FallbackChain(default_provider, ['stub'], thinking_enabled=thinking)
     routes, _ = unpack_model_settings(packed_models(user_id))
-    return _central_chain(role, routes, thinking)
+    return _central_chain(role, routes, thinking, user_id)
 
 
 def _thinking_enabled(project_id, db) -> bool:

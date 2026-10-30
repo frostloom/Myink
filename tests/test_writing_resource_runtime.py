@@ -80,8 +80,21 @@ def test_builtins_are_real_and_no_output_protocol(monkeypatch):
     monkeypatch.setattr("myink.platform_configuration.load_configuration",lambda:{"genre_packs":{},"prompts":{}})
     items=seed.builtin_resources()
     assert sum(x["kind"]=="genre" for x in items)==37
-    assert sum(x["kind"]=="genre_rule" for x in items)==6
-    assert sum(x["kind"]=="style" for x in items)==4
+    assert sum(x["kind"]=="genre_rule" for x in items)==7
+    assert {x["id"] for x in items if x["kind"]=="style"} == {
+        "style:natural-narration", "style:brisk-narration", "style:character-narration",
+        "style:life-narration",
+        'style:light-humor',
+        'style:warm-fresh',
+        'style:romantic-tension',
+        'style:restrained-suspense',
+        'style:uncanny-gloom',
+        'style:classical-elegance',
+        'style:heroic-action',
+        'style:rational-realist',
+        'style:epic-scope',
+        'style:poetic-imagery',
+    }
     assert any(x["kind"]=="reference" for x in items)
     for item in items:
         if item["kind"] in {"writing_rule","expression_rule"}:
@@ -323,3 +336,20 @@ def test_rules_only_selection_keeps_existing_book_genre_and_style():
         text = json.dumps(prompts.short_write_messages({'genre':'自定义题材','genre_pack':{},'chapter_count':1,'chars_per_chapter':100,'style_profile':{'sentence_style':'EXISTING_BOOK_STYLE'}}),ensure_ascii=False)
     assert '自定义题材' in text
     assert 'EXISTING_BOOK_STYLE' in text
+
+
+def test_explicit_resource_style_supersedes_old_book_style_without_mutating_it():
+    from copy import deepcopy
+    from myink.workflow import prompts
+    from myink.writing_resource_runtime import bind_resources
+    legacy = {'narrative_voice': '旧书私人语气'}
+    brief = {'style_profile': deepcopy(legacy), 'chapter_count': 1}
+    selected = {'kind': 'style', 'name': '新资源', 'body': {'profile': {'narrative_voice': '资源新语气'}}, 'authoritative_style': True}
+    with bind_resources({'configured': True, 'selections': [selected]}):
+        long_text = str(prompts.write_messages({}, {}, style_profile=legacy))
+        short_text = str(prompts.short_write_messages(brief))
+    assert '资源新语气' in long_text and '旧书私人语气' not in long_text
+    assert '资源新语气' in short_text and '旧书私人语气' not in short_text
+    assert brief['style_profile'] == legacy
+    with bind_resources({'configured': True, 'selections': [{k: v for k, v in selected.items() if k != 'authoritative_style'}]}):
+        assert '旧书私人语气' in str(prompts.write_messages({}, {}, style_profile=legacy))

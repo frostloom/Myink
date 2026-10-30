@@ -1,0 +1,26 @@
+{
+  "Q01": {
+    "A": "natural",
+    "B": "published"
+  },
+  "Q02": {
+    "A": "natural",
+    "B": "published"
+  },
+  "Q03": {
+    "A": "published",
+    "B": "natural"
+  },
+  "Q04": {
+    "A": "published",
+    "B": "natural"
+  },
+  "Q05": {
+    "A": "natural",
+    "B": "published"
+  },
+  "Q06": {
+    "A": "published",
+    "B": "natural"
+  }
+}

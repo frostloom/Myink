@@ -397,6 +397,10 @@ export const adminApi = {
   getUser: (token: string, userId: string, signal?: AbortSignal) =>
     authenticatedGet<AdminUser>(`/admin/users/${encodeURIComponent(userId)}`, token, signal),
 
+  updateMembership: (token: string, userId: string, tier: 'normal' | 'vip') =>
+    authenticatedSend<{ id: string; tier: 'normal' | 'vip' }>('PUT',
+      `/admin/users/${encodeURIComponent(userId)}/membership`, token, { tier }),
+
   listProjects: (token: string, filters: ProjectFilters, signal?: AbortSignal) =>
     authenticatedGet<AdminPage<AdminProject>>(`/admin/projects${query([
       ['user_id', filters.userId], ['q', filters.q], ...paging(filters),

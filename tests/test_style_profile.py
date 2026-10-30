@@ -323,9 +323,9 @@ def test_resolve_style_selection_prefers_builtin_then_library(temp_user):
 
     with new_session() as db:
         uid = uuid.UUID(temp_user)
-        profile, skill_pack, name = resolve_style_selection(db, uid, "builtin:xianxia-jiuzhou")
-        assert skill_pack == "xianxia-jiuzhou", "内置项 id 同时当 skill_pack 标记"
-        assert name == "九州问天"
+        profile, skill_pack, name = resolve_style_selection(db, uid, "builtin:natural-narration")
+        assert skill_pack == "natural-narration", "内置项 id 同时当 skill_pack 标记"
+        assert name == "自然叙事（通用）"
         assert profile, "内置预设也要把档案带出来"
 
         item = StyleLibraryItem(user_id=uid, name="渡口白描",
@@ -372,3 +372,55 @@ def test_resolve_style_selection_will_not_read_a_stranger_item(temp_user):
             db.execute(sa_delete(StyleLibraryItem).where(StyleLibraryItem.user_id == other_id))
             db.execute(sa_delete(User).where(User.id == other_id))
             db.commit()
+
+
+@pytest.mark.parametrize("item_id", [
+    "builtin:xianxia-jiuzhou", "builtin:changan-yexing",
+    "builtin:xingjian-yuanzheng", "builtin:dushi-yiguan",
+])
+def test_retired_sample_styles_cannot_be_selected_for_new_books(item_id):
+    from myink.api.routes_style import resolve_style_selection
+
+    with pytest.raises(HTTPException) as exc:
+        resolve_style_selection(None, uuid.uuid4(), item_id)
+    assert exc.value.status_code == 404
+
+
+@pytest.mark.parametrize("item_id,name", [
+    ("natural-narration", "自然叙事（通用）"),
+    ("brisk-narration", "明快叙事（情节向）"),
+    ("character-narration", "细腻叙事（人物向）"),
+    ("life-narration", "生活叙事（自然对白）"),
+    ('light-humor', '轻松诙谐'),
+    ('warm-fresh', '温暖清新'),
+    ('romantic-tension', '细腻言情'),
+    ('restrained-suspense', '冷静悬疑'),
+    ('uncanny-gloom', '阴冷诡谲'),
+    ('classical-elegance', '古风雅叙'),
+    ('heroic-action', '热血硬朗'),
+    ('rational-realist', '理性写实'),
+    ('epic-scope', '宏阔史诗'),
+    ('poetic-imagery', '诗性写意'),
+])
+def test_general_builtin_styles_remain_selectable_and_readonly(item_id, name):
+    from myink.api.routes_style import resolve_style_selection
+    from myink.api.routes_style_library import _builtin_out, delete_item, patch_item
+    from myink.api.schemas import StyleLibraryPatchBody
+    from myink.seed import STYLE_PRESETS
+
+    uid = uuid.uuid4()
+    selected_id = "builtin:" + item_id
+    profile, marker, display_name = resolve_style_selection(None, uid, selected_id)
+    assert profile
+    assert marker == item_id
+    assert display_name == name
+    row = _builtin_out(next(p for p in STYLE_PRESETS if p["id"] == item_id))
+    assert row["id"] == selected_id
+    assert row["builtin"] is True
+    assert row["removable"] is False
+    with pytest.raises(HTTPException) as exc:
+        patch_item(selected_id, StyleLibraryPatchBody(name="改名"), str(uid))
+    assert exc.value.status_code == 404
+    with pytest.raises(HTTPException) as exc:
+        delete_item(selected_id, str(uid))
+    assert exc.value.status_code == 404
