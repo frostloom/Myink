@@ -23,13 +23,18 @@ observers and fixed follow-up checks; it does not admit a new development round.
 These templates and the gate have not yet been installed/activated on the host.
 The single-cycle driver and private package sealing are implemented locally,
 with original-manager proof, a single immutable task binding and relative
-next-day parameters. A real server package, deployment observation integration
-and operator installation handoff remain required before enabling this workflow. Keep the existing timers off.
+next-day parameters. The real server package is sealed in awaiting_approval;
+postdeployment binding and finite source issuance are locally implemented.
+Operator-pinned templates, approved installation and actual postdeployment
+qualification remain required before enabling this workflow. Keep the existing
+timers off.
 Do not initialize another manager, billing ledger, budget or historical intent.
 The new `myink-pi-nightly.timer` template has calendar-only night checks and no
-boot catchup. Approval metadata format7402 must be initialized as the original
-Ubuntu state owner during the verified handoff; never reinterpret an older file
-or either original financial/task ledger as approval metadata.
+boot catchup. Actual approval metadata format7402 already exists and contains
+the pending candidate: never reinitialize it. Only a genuinely new, absent
+metadata file may be initialized as the original Ubuntu state owner during a
+verified handoff; never reinterpret an older file or either original
+financial/task ledger as approval metadata.
 
 # Server unit contract
 
@@ -327,3 +332,52 @@ The 15minute timer records component image observations and explicit release
 blockers. Stable inventory/table presence is never source/ownership/pause/backup
 or product release authority. Exact actual main/product adoption, functional
 maintenance and owned image rollback remain later explicit execution gates.
+# Postdeployment nightly configuration (human-confirmed rollout only)
+
+The 2026-10-30 human hold still takes precedence over historical activation
+instructions below. The new controller and timer are not activated by building
+their archive. Before an explicitly approved installation starts the nightly
+unit, install/apply `myink-pi-nightly-tmpfiles.conf` with systemd-tmpfiles and
+verify `nightly-source-inputs` is a real root:ubuntu directory with mode0750.
+The mandatory `ReadWritePaths` mount is established before Python runs; its
+directory cannot be created for the first time inside that service.
+
+Pin an operator-issued private observer template at
+`config/observer/nightly-template.json` (root0600 in root0700). It contains the
+existing fixed PostgreSQL reader, audit destinations,15minute interval,1hour
+lookback and minimum20samples. The driver `observation_template` holds its path
+and raw file SHA256. After human approval **and** physical deployment attestation,
+the controller derives the actual process identity and writes a separate
+`config/nightly-observers/<cycle>/observer.json`. Completed config/receipt history
+is never replaced. Ordinary worker inputs and metrics receipts remain private
+but readable by ubuntu; the database source and sample rules do not expand.
+
+The driver may also pin `source_template` at
+`config/nightly-source-template.json` (root:ubuntu0640 in root:ubuntu0750).
+Its closed schema is `pi-nightly-source-template-v1`, with `mode`, `profile`,
+`source_scope` (`files` and `behavior`) and `validity_seconds` (at most86400).
+`profile` contains the existing autonomy-profile fields **except** `source`,
+`observer`, `checker_image_id`, `issued_at` and `expires_at`. It is an explicitly
+configured standing construction policy, not a renamed expired finite permit.
+Keep the original manager/fee paths,50CNY/nine unknown holds, calibrated closed
+policy, fixed SDK host image/entry and bounded phase limits. Prefer7200seconds
+for an individual source profile. Do not copy dates from an old finite profile.
+
+A new unadmitted nightly round derives a source profile only from the last
+completed human-deployed comparison, the exact copied deployed source, and a
+fresh read-only window whose running cohort is unchanged before/after collection.
+It retains the fixed SDK host image while updating the business checker/base
+image to that confirmed version. Missing evidence, changed identity, altered
+fees or partial intents stop issuance; they do not renew permits or replay model
+calls. The original coordinator/manager remain the only paid execution path.
+Per-cycle source inputs/profiles and their receipts are retained. No configuration
+here permits GitHub/registry pushes or product deployment without the separate
+exact-artifact human approval.
+
+Next-day `observation/assessment-*/audit.json` reserves standard AuditStore
+records for fixed tests, version-bound observations, unchanged version/scope and
+manual rollback advice. Import/export uses the existing audit contract and
+main's read-only AuditReader; raw private config, inputs and Docker logs are not
+part of those records. A blocked rollback record is advice, never a claim that
+an application rollback occurred. Actual installation and postdeployment online
+qualification remain separate from local test results.

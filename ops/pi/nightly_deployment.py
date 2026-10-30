@@ -80,4 +80,5 @@ def confirm(gate,cycle,bundle,docker,endpoint,daemon_id,*,transport_factory=None
         if gate.mode=='ACTUAL':os.chmod(folder,0o750);os.chown(folder,0,pwd.getpwnam('ubuntu').pw_gid)
     path=folder/(cycle+'.json');require(not path.exists(),'existing deployment receipt cannot be replaced');_write(path,receipt)
     if gate.mode=='ACTUAL':os.chmod(path,0o640);os.chown(path,0,pwd.getpwnam('ubuntu').pw_gid)
+    _write(bundle.parent/'deployment-context.json',dict(schema='pi-nightly-deployed-context-v1',cycle_id=cycle,deployment_receipt_sha256=digest(receipt),cohort_sha256=digest(context),containers=context))
     result=gate.deployed(cycle,path,digest(receipt));return dict(status=result['phase'],verified=True,deployment_receipt_path=str(path),model_requests=0)

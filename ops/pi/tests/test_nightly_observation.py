@@ -63,3 +63,27 @@ def test_wrong_version_or_old_window_cannot_close_comparison(observation_case,fa
     def old(path,pin):r=observe(path,pin);r['window']['start']=(data[5][0]-timedelta(hours=30)).isoformat();return r
     with pytest.raises(ValueError):assess(observation_case,observe=old if fault=='predeployment_window' else observe)
     assert data[0].status()['phase']=='observing'
+
+
+@pytest.mark.parametrize('outcome',['completed','insufficient_evidence','regression_failed'])
+def test_nextday_results_and_rollback_advice_reserve_standard_admin_audit(observation_case,outcome):
+    from ops.pi.audit import AuditStore
+    from myink.pi_audit import AuditReader
+    data,cp,calls,observe,check=observation_case;data[5][0]+=timedelta(hours=26)
+    def metrics(*args):
+        r=observe(*args)
+        if outcome=='insufficient_evidence':r.update(status='insufficient_evidence',observed_samples=2)
+        return r
+    def fixed(*args):
+        r=check(*args)
+        if outcome=='regression_failed':r.update(passed=False,failures=1)
+        return r
+    assess(observation_case,observe=metrics,check=fixed);root=data[2]
+    reserved=list((root/'observation').glob('assessment-*/audit.json'));assert len(reserved)==1
+    packet=json.loads(reserved[0].read_bytes());parent=root/'audit-state';parent.mkdir(mode=0o700);store=AuditStore(parent/'audit.sqlite')
+    for item in packet['records']:store.append(item['record_key'],item['event'])
+    export=root/'audit-export';store.export(export);reader=AuditReader(export);assert reader.events(data[3])['total']==len(packet['records'])
+    events=[r['event'] for r in packet['records']];assert any(r['kind']=='test' for r in events)
+    assert all(r['details']['model_requests']==0 and r['details']['known_cost_microyuan']==0 for r in events)
+    assert not any(r['kind']=='deployment' for r in events) and str(root) not in json.dumps(packet)
+    if outcome=='regression_failed':assert any(r['kind']=='rollback' and r['status']=='blocked' and r['details']['next_action']=='manual_rollback_review' for r in events)

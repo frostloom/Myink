@@ -27,6 +27,12 @@ Spec: ../specs/2026-10-30-pi-human-gated-nightly-design.md
 - Task 3：本地完成源码/原SDK证据核验、快照、镜像适配、补丁、评测、工具流、审计和相对次日计划的封存。真实Docker镜像构建/归档适配器已通过独立隔离验证；整包驱动已通过原manager真实格式的隔离测试，已在服务器对既有server-owner-002完成实际整包准备并进入awaiting_approval；原业务容器、manager和费用账本均未变化，未推送或部署。
 - Task 4：真实首包验收及一次独立终审、作者修复已完成。打包镜像中的18项冻结回归通过，修复后完整Pi离线回归4353通过、63项未选入。发布交付仍须绑定实际部署后的观察配置及下一轮有限source输入，安装切换须遵守人工确认；没有把未安装的新调度器或本地测试称为完整上线。完整首包、终审修复和验证见`docs/evaluations/pi-human-gated-nightly-2026-10-30.md`。
 
+### 2026-10-31 续接
+
+观察配置动态绑定、已部署源码复制及新轮有限profile签发已在本地接通；原manager/费用范围不变。新增次日标准审计输出，经现有main reader导入验证。一次独立终审无剩余P0/P1/P2；修复后完整Pi回归4372通过、63项未选入。新tmpfiles规则明确安装前预置namespace所需目录。
+
+实际部署前静态核对发现当前产品镜像缺少应用版本遥测；因此完整闭环不能直接部署现有只含short_parse修复的镜像来验收。已整理基于固定main f450c0dc的4文件最小遥测接入补丁，独占本地PG/Redis验证13通过、1项未选入，清理已核验；不需要新增任务版本列，不加入旧自动发布/PG接管路线。接入main、兼容镜像重打和最后产品部署仍待明确授权；原冻结包和等待状态未改。详情见`docs/evaluations/pi-postdeployment-binding-2026-10-31.md`。目标仍未完成，不以本地测试替代实际发布后观察。
+
 准备私有包时，沿用原开发前FileReview与独立冻结checker，完成完整原manager/SDK/工具/费用核验；不为准备文件额外增加一次付费模型复审。最终产物仍必须由人批准后才可推送或部署。
 
 `bundle/`预留输出：`manifest.json`、`baseline/`、`candidate/`、`regression.py`、`patch.diff`、`evaluation.json`、`changes.json`、`comparison.json`、`tool-flow.json`、`audit.json`和私有`original-proof.json`。相邻`image/`保留镜像归档、摘要、命令意图和收据。原始私有包不直接作为公开审计或GitHub上传内容。

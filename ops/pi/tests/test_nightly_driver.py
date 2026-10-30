@@ -146,3 +146,30 @@ def test_fixed_manager_driver_pumps_review_worker_only_while_original_unit_is_li
     assert result['active'] is False and result['unit_result']=='success'
     reviews=[a for a in calls if isinstance(a,list) and 'myink-pi-review-worker.service' in a]
     assert len(reviews)==2 and not any('enable' in a for a in calls)
+
+
+def test_observer_template_is_bound_only_in_verified_observing_phase(driver_case,monkeypatch):
+    from ops.pi import nightly_binding
+    g,cycle,root,m,approval_pin=_human_deploy_permission(driver_case);cp,cfg,finished,now,gate=driver_case
+    cfg['observation_template']=dict(path=str(root/'template.json'),sha256='a'*64);cp.write_text(json.dumps(cfg));calls=[]
+    def bind(gate,identity,bundle,path,pin):calls.append(('bind',identity,str(bundle),path,pin));return dict(path=str(root/'bound.json'),sha256='b'*64)
+    monkeypatch.setattr(nightly_binding,'bind',bind)
+    assert tick(driver_case,deployment_confirm=lambda *a:dict(status='awaiting_deployment'))['phase']=='awaiting_deployment' and calls==[]
+    from ops.pi.audit import digest
+    p=root/'deployment.json';p.write_text(json.dumps(dict(schema='pi-nightly-deployment-receipt-v1',mode='SIMULATED',issuer='trusted_deployment_verifier',cycle_id=cycle,package_sha256=digest(m),approval_sha256=approval_pin,image_id=m['image_id'],source_sha256=m['source_sha256'],comparison_sha256=m['comparison_sha256'],deployment_id='verified-one',deployed_at=now[0].isoformat())));p.chmod(0o600);g.deployed(cycle,p,file_hash(p))
+    def assess(*args):calls.append(('assess',args[-2],args[-1]));return dict(status='insufficient_evidence')
+    assert tick(driver_case,assessor=assess)['phase']=='observing'
+    assert calls==[('bind',cycle,str(root/'bundle'),str(root/'template.json'),'a'*64),('assess',str(root/'bound.json'),'b'*64)]
+
+
+def test_source_template_waits_for_completed_confirmed_version_then_issues_once(driver_case):
+    from ops.pi.audit import digest
+    g,cycle,root,m,approval_pin=_human_deploy_permission(driver_case);cp,cfg,finished,now,gate=driver_case
+    cfg['source_template']=dict(path=str(root/'standing-source.json'),sha256='a'*64);cp.write_text(json.dumps(cfg));calls=[]
+    def source(g,new_cycle,out,path,pin):calls.append('source');return dict(cycle_id=new_cycle,profile=dict(path=str(out/'finite.json'),sha256='b'*64),base_image_id='sha256:'+'7'*64)
+    assert tick(driver_case,source_prepare=source,deployment_confirm=lambda *a:dict(status='awaiting_deployment'))['phase']=='awaiting_deployment' and calls==[]
+    p=root/'deployment.json';p.write_text(json.dumps(dict(schema='pi-nightly-deployment-receipt-v1',mode='SIMULATED',issuer='trusted_deployment_verifier',cycle_id=cycle,package_sha256=digest(m),approval_sha256=approval_pin,image_id=m['image_id'],source_sha256=m['source_sha256'],comparison_sha256=m['comparison_sha256'],deployment_id='verified-one',deployed_at=now[0].isoformat())));p.chmod(0o600);g.deployed(cycle,p,file_hash(p));g.complete(cycle,'c'*64)
+    now[0]+=timedelta(days=2)
+    def admit(c):calls.append('admit');assert c['autonomy_profile']['sha256']=='b'*64;return dict(status='no_task',model_requests=0)
+    assert tick(driver_case,source_prepare=source,admit=admit)['status']=='no_release'
+    assert tick(driver_case,source_prepare=source,admit=admit)['status']=='already_claimed' and calls==['source','admit']

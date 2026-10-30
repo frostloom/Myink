@@ -19,7 +19,7 @@ FIELDS=set('schema mode state_path billing_path gate_path root lock_path inherit
 
 def _load(path,pin,callbacks,clock):
     path=_path(path);_plain(path);require(path.stat().st_size<=65536 and file_hash(path)==pin,'nightly driver config drift');c=strict_json(path.read_bytes())
-    require(isinstance(c,dict) and FIELDS<=set(c)<=FIELDS|{'observation_config'} and c['schema']=='pi-nightly-driver-v1' and c['mode'] in ('ACTUAL','SIMULATED'),'closed nightly driver config required')
+    require(isinstance(c,dict) and FIELDS<=set(c)<=FIELDS|{'observation_config','observation_template','source_template'} and not ('observation_config' in c and 'observation_template' in c) and c['schema']=='pi-nightly-driver-v1' and c['mode'] in ('ACTUAL','SIMULATED'),'closed nightly driver config required')
     for key in ('root','lock_path','state_path','billing_path','gate_path'):_path(c[key])
     require(Path(c['root']).is_dir() and stat.S_IMODE(Path(c['root']).stat().st_mode)==0o700,'private nightly root required');_plain(Path(c['lock_path']))
     if c['mode']=='ACTUAL':
@@ -83,8 +83,8 @@ def _used(gate,pending):
         return any(strict_json(r[0])['source_sha256']==pin for r in c.execute("SELECT package FROM approval_cycles WHERE phase='completed' AND package IS NOT NULL"))
 
 
-def run(config_path,pin,*,clock=None,admit=None,manager_trigger=None,image_factory=None,deployment_confirm=None,assessor=None):
-    c=_load(config_path,pin,(admit,manager_trigger,image_factory,deployment_confirm,assessor),clock);clock=clock or (lambda:datetime.now(timezone.utc))
+def run(config_path,pin,*,clock=None,admit=None,manager_trigger=None,image_factory=None,deployment_confirm=None,assessor=None,source_prepare=None):
+    c=_load(config_path,pin,(admit,manager_trigger,image_factory,deployment_confirm,assessor,source_prepare),clock);clock=clock or (lambda:datetime.now(timezone.utc))
     gate=ApprovalGate(c['gate_path'],c['state_path'],c['billing_path'],mode=c['mode'],clock=clock if c['mode']=='SIMULATED' else None)
     with Path(c['lock_path']).open('rb') as lock:
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -98,6 +98,10 @@ def run(config_path,pin,*,clock=None,admit=None,manager_trigger=None,image_facto
             return _response(gate,'observing' if result['status']=='observing' else 'waiting_human',confirmation_status=result['status'])
         if state['phase']=='observing':
             observer=c.get('observation_config')
+            if c.get('observation_template') is not None:
+                from .nightly_binding import bind
+                template=c['observation_template'];require(isinstance(template,dict) and set(template)=={'path','sha256'},'one pinned observer template required')
+                observer=bind(gate,state['cycle_id'],Path(c['root'])/state['cycle_id']/'bundle',template['path'],template['sha256'])
             if observer is None:return _response(gate,'observation_not_configured')
             require(isinstance(observer,dict) and set(observer)=={'path','sha256'},'one pinned observation config required')
             require(c['mode']=='ACTUAL' or callable(assessor),'explicit simulated assessment required')
@@ -114,7 +118,10 @@ def run(config_path,pin,*,clock=None,admit=None,manager_trigger=None,image_facto
                     inherited=manager_completion.request(gate.state,gate.billing,c['inherit_task_id'],mode=gate.mode)
                     require(inherited['status']=='candidate_ready','configured inherited candidate is not complete')
                     if _used(gate,inherited):inherited=None
-                if inherited is None and c['autonomy_profile'] is None:return _response(gate,'source_not_configured')
+                if inherited is None and c['autonomy_profile'] is None:
+                    if c.get('source_template') is None:return _response(gate,'source_not_configured')
+                    with gate._connection() as db:confirmed=db.execute("SELECT 1 FROM approval_cycles WHERE phase='completed' AND package IS NOT NULL AND deployment IS NOT NULL LIMIT 1").fetchone()
+                    if confirmed is None:return _response(gate,'source_requires_confirmed_deployment')
                 from .maintenance_window import budget
                 try:budget(utc(clock()),2100)
                 except ValueError:return _response(gate,'outside_window')
@@ -133,9 +140,17 @@ def run(config_path,pin,*,clock=None,admit=None,manager_trigger=None,image_facto
                 if intent.exists() and not receipt.exists():raise ValueError('interrupted original source admission; no model replay')
                 if not receipt.exists():
                     if not _window(clock):return _response(gate,'waiting_next_window')
-                    require(c['autonomy_profile'] is not None,'original source profile required');_write(intent,dict(config_sha256=pin,profile=c['autonomy_profile']))
+                    require(c['autonomy_profile'] is not None or c.get('source_template') is not None,'original source profile or confirmed source template required');_write(intent,dict(config_sha256=pin,profile=c['autonomy_profile'],source_template=c.get('source_template')))
+                    effective=c
+                    if c.get('source_template') is not None:
+                        from .nightly_source import prepare as prepare_source
+                        template=c['source_template'];require(isinstance(template,dict) and set(template)=={'path','sha256'},'one pinned source template required')
+                        require(c['mode']=='ACTUAL' or callable(source_prepare),'explicit simulated source preparation required')
+                        stage=(source_prepare or prepare_source)(gate,cycle,root,template['path'],template['sha256']);require(stage['cycle_id']==cycle,'source stage belongs to another round')
+                        if not (root/'source-stage.json').exists():_write(root/'source-stage.json',stage)
+                        require(_read(root/'source-stage.json')==stage,'source stage receipt drift');effective=dict(c,autonomy_profile=stage['profile'])
                     require(c['mode']=='ACTUAL' or callable(admit),'SIMULATED source requires an explicit callback')
-                    admitted=(admit or _admit)(c);_write(receipt,admitted)
+                    admitted=(admit or _admit)(effective);_write(receipt,admitted)
                 result=_read(receipt)
                 disposition=result['status']
                 if disposition=='cached':require(result.get('previous_status') in ('no_task','not_reproduced'),'cached prior admission or failure needs reconciliation')
@@ -164,7 +179,8 @@ def run(config_path,pin,*,clock=None,admit=None,manager_trigger=None,image_facto
             if not _window(clock):return _response(gate,'waiting_next_window')
             require(not (root/'bundle').exists(),'interrupted package preparation; no rebuild or reseal')
             require(file_hash(config_path)==pin,'nightly config revoked before preparation')
-            prepare(gate,cycle,root/'bundle',task,c['base_image_id'],Path(c['docker']),c['endpoint'],c['daemon_id'],image_factory=image_factory)
+            base=_read(root/'source-stage.json')['base_image_id'] if (root/'source-stage.json').exists() else c['base_image_id']
+            prepare(gate,cycle,root/'bundle',task,base,Path(c['docker']),c['endpoint'],c['daemon_id'],image_factory=image_factory)
             return _response(gate,'waiting_human')
         except Exception as error:
             if cycle is not None:

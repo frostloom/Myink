@@ -1,0 +1,37 @@
+# Pi 部署后绑定与有限续跑验收（2026-10-31）
+
+沿用[人工确认边界](../superpowers/specs/2026-10-30-pi-human-gated-nightly-design.md)：一轮改进后等待人工确认，未确认或未实际部署时不继续迭代、调用模型或读取新版本指标。本文不是产品上线证明。
+
+## 本轮完成
+
+- 物理部署核验后，保留独立的`deployment-context.json`，绑定真实进程身份、代码/镜像及配置指纹。按根用户签发的模板生成每轮独立观察配置，保留原数据库读取范围、样本门槛和审计位置；已完成配置不覆盖。指标收据可供后续普通分析工作进程核验。
+- 新轮次只在上一轮已由人部署、次日比较完成后生成有限source输入。先核对当前实际进程/完整包摘要，收集新窗口并再次核对进程，再复制已部署源码、签发有限profile。新模板不含旧source、observer、checker或有效期，避免把旧许可直接续期。
+- source profile仍通过原`autonomy_profile.load`核验，沿用原manager、账本、累计50元和9笔历史未知预留；SDK工作镜像保持不变，业务checker/基础镜像更新为已确认版本。不重复未完成意图，不新建付费账本，不释放历史未知预留。
+- 次日测试、指标窗口、版本/变更范围和人工回退建议预留为标准`audit.json`。现有AuditStore导出和main AuditReader已通过成功、样本不足、回归失败三类导入验证。回退建议明确为blocked/advice_only，不声称执行了回退或新发布。
+- 增加安装前tmpfiles规则。`nightly-source-inputs`须在systemd建立只读沙箱前预置为root:ubuntu0750；不能指望服务内首次mkdir。详见[安装说明](../../ops/pi/deploy/README.md)。
+
+独立终审最终无剩余P0/P1/P2；审查者独立运行33项绑定/source/driver和9项观察/审计测试。实际Ubuntu服务启动、线上业务指标和产品发布效果没有被该审查判为通过。
+
+## 验证口径
+
+完整Pi离线回归：**4372通过，63项按标记未选入，349.44秒，退出码0**。命令为`python -m pytest ops/pi/tests/ -q -m 'not pi_lab and not pi_live' -p no:cacheprovider`。未选入检查没有计为通过。
+
+新增绑定/source/调度与原autonomy profile相关75项通过。新增审计相关42项通过。测试先复现缺失接口、跨进程读取权限、配置漂移、缺少标准审计等失败，再验证修复；不以静态文件存在代替行为检查。
+
+## 实际服务器状态与产品前置缺口
+
+只读复核仍为同一个`6325274e-bd96-4d1a-b71f-ff2b81b0d260`/`server-owner-002`等待审批，旧7个Pi定时器均disabled。API和两份worker仍运行原基础镜像`sha256:f25aab8343f69895ff7522da0363563705d693f76c11d6a6acefd235d8b8050e`。原manager和费用账本的逻辑摘要分别仍为`a588accf16ed7e7b1d3fc5e04709e000924010c6f840586ffbc2d2599ebf1eff`和`fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb`。没有新增真实模型请求、推送、服务切换或产品部署。
+
+部署前静态检查确认：该基础镜像没有`myink.observability`和部署标识Settings字段，因此现有只修改short_parse的待确认镜像也尚不能提供版本绑定指标。仅部署它不能验收完整闭环。
+
+版本信息使用现有`agent_runs.detail` JSON，不需要新增所谓任务版本列。初次人工排查曾查询不存在且协议不使用的`tasks.run_provenance`，该结果不用于迁移结论；后续按实际记录/投影代码更正。实际只读目录检查确认`agent_runs.detail`已存在，没有读取新业务指标或写表。
+
+## 可审查的最小产品遥测补丁
+
+基于固定main提交`f450c0dcddf999a09d320f51fb58458c94789ca7`整理[4文件接入补丁](../pi/main-telemetry-companion-2026-10-31.patch)，SHA256：`4cc8a8c376f3da586efade6942f4a4b032f0c975f0be6e4edb2034b31645c112`。范围为Settings标识、`observability.py`、三个运行记录函数及一份数据库测试，不包含维护接管、自动生产切换、自动回退或表结构迁移。
+
+补丁已对干净基线应用并逐文件核对；除三个记录函数外，nodes的其他函数与main逐一保持相同，保留main已有JSON重试和长度处理修复。它是人工集成准备，不计为Pi模型自主改进。
+
+在精确main快照中，以独占Docker网络、PostgreSQL/Redis容器和随机loopback端口运行相关检查：**13通过、1项未选入，0.55秒**。其中数据库测试实际验证版本追加、原计费字段保持和后续detail不能改写版本事实；数据库初始化及自有容器/网络清理均已核验。未选入的是另需业务fixture的recall用例，不声称通过；没有使用生产库或固定myink-test资源。首次测试设施未取得端口映射，尚未运行测试即停止并核验清理；失败收据保留。
+
+补丁未应用到main，未推送，也未部署。原待确认包仍原样保留，不能把它的次日比较标成完成来腾空门禁。上线交付还须在明确授权下接入遥测基础、保留原收据并受控重打同一候选的兼容镜像，再对最终精确产物进行发布确认和实际线上观察。部署环境还须提供真实的版本/config/prompt/rubric/data标识；缺失、混用或样本不足均保留为证据不足，不填造改善。
