@@ -85,10 +85,15 @@ class LocalImage:
     def _probe(self,image):
         return probe_image(self.commands,image,self.cycle,active=self._active)
 
+    def _alias(self):return 'myink-pi-nightly-base:'+self.cycle
+
+    def _scope(self,old,new):
+        require(set(old)==set(new) and old!=new,'existing-file candidate changes required')
+
     def build(self,source,candidate,base_image):
         self._active();image_id(base_image);require(not self.root.exists(),'existing image intent cannot replay')
         source,source_pin,old=source_files(source);candidate,candidate_pin,new=source_files(candidate)
-        require(set(old)==set(new) and old!=new,'existing-file candidate changes required')
+        self._scope(old,new)
         self.root.mkdir(mode=0o700);(self.root/'commands').mkdir(mode=0o700)
         self.commands=self.transport or DockerCommands(self.docker,self.endpoint,self.root/'commands')
         _write(self.root/'intent.json',dict(schema='pi-nightly-image-intent-v1',cycle_id=self.cycle,base_image_id=base_image,source_sha256=source_pin,candidate_sha256=candidate_pin,daemon_id=self.daemon))
@@ -98,7 +103,7 @@ class LocalImage:
         require(base['Config'].get('OnBuild') in (None,[]) and base['Config']['User']=='10001' and base['Config']['WorkingDir']=='/app','fixed nonroot application base required')
         require(type(base['Size']) is int and 0<base['Size']<=8*1024**3 and shutil.disk_usage(self.root).free>=base['Size']*2+1024**3,'bounded local image capacity required')
         before=self._probe(base_image);require(all(before['files'].get(p)==h for p,h in old.items()),'candidate baseline differs from installed image')
-        alias='myink-pi-nightly-base:'+self.cycle
+        alias=self._alias()
         require(not self._run(['image','ls','--quiet','--filter','reference='+alias]).strip(),'local base alias already exists')
         self._run(['image','tag',base_image,alias])
         alias_rows=strict_json(self._run(['image','inspect',alias]));require(len(alias_rows)==1 and alias_rows[0]['Id']==base_image,'local build base alias drift')

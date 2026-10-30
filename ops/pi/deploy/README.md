@@ -421,3 +421,22 @@ main's read-only AuditReader; raw private config, inputs and Docker logs are not
 part of those records. A blocked rollback record is advice, never a claim that
 an application rollback occurred. Actual installation and postdeployment online
 qualification remain separate from local test results.
+
+
+The operator-only `nightly_compatibility.prepare` prepares the initial telemetry
+base without advancing the waiting cycle. It accepts only the fixed three
+product-file preimages and candidate hashes from the main companion patch
+`4cc8a8c376f3da586efade6942f4a4b032f0c975f0be6e4edb2034b31645c112`.
+ACTUAL uses the existing nightly lock and original daemon, checks the current
+healthy API/worker cohort before and after, and retains an exclusive intent at
+`staging/compatible-<old-cycle>/`. Builds reuse the COPY-only, network-none,
+no-pull image adapter and verify the complete installed Python package.
+`compatibility.json` binds the old sealed package, parent/result image IDs,
+whole-package digests and exact three changes; `image/receipt.json` binds the
+private archive. It creates no approval, task, model call or publication.
+
+Before explicit human rebuild, an operator must install the exact reviewed
+report at `config/compatible-bases/<image-hex>.json` as root0640 under root0750.
+This report is evidence and cannot authorize a rebuild. A separate human receipt
+binds its raw SHA256 and exact base image, as described above. Interrupted asset
+preparation is retained and never silently replayed.

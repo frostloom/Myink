@@ -19,7 +19,7 @@ class Engine:
         self.calls.append(args);value=b''
         if args==['info','--format','{{.ID}}']:value=DAEMON.encode()
         elif args[:2]==['image','inspect']:
-            image=BASE_IMAGE if args[2].startswith('myink-pi-nightly-base:') else args[2];value=json.dumps([dict(Id=image,Size=10000,Os='linux',Architecture='amd64',Config=dict(User='10001',WorkingDir='/app',OnBuild=['RUN surprise'] if self.fault=='onbuild' else None,Labels={}))]).encode()
+            image=BASE_IMAGE if args[2].startswith(('myink-pi-nightly-base:','myink-pi-compatible-base:')) else args[2];value=json.dumps([dict(Id=image,Size=10000,Os='linux',Architecture='amd64',Config=dict(User='10001',WorkingDir='/app',OnBuild=['RUN surprise'] if self.fault=='onbuild' else None,Labels={}))]).encode()
         elif args[:2] in (['image','ls'],['image','tag']):pass
         elif args[0]=='create':
             image=args[args.index('--entrypoint')+2];cid=uuid.uuid4().hex*2;self.probes[cid]=image;value=cid.encode()
