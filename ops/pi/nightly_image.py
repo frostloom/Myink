@@ -46,6 +46,23 @@ def source_files(root):
     require(0<len(files)<=3,'bounded Python scope required');return root,pin,files
 
 
+def probe_image(commands,image,cycle,*,active=None):
+    """Owned stopped stdlib probe, shared by preparation and base attestation."""
+    image_id(image);require(str(uuid.UUID(cycle))==cycle,'canonical probe identity required')
+    def run(args):
+        if active is not None:active()
+        r=commands.run(args,timeout=120,output_limit=4194304);require(r['status']=='done' and r['returncode']==0,'package probe unconfirmed')
+        return (commands.root/r['command_id']/'stdout.bin').read_bytes()
+    raw=run(['create','--name','myink-pi-image-'+uuid.uuid4().hex,'--label',LABEL+'='+cycle,'--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--memory','256m','--cpus','1','--pids-limit','64','--user','10001:10001','--entrypoint','python',image,'-I','-S','-B','-c',PROBE])
+    cid=raw.decode().strip();require(hash_value(cid),'owned probe container ID required')
+    try:
+        result=strict_json(run(['start','--attach',cid]))
+        require(isinstance(result,dict) and set(result)=={'package','files'} and re.fullmatch(r'/usr/local/lib/python3\.[0-9]+/site-packages/myink',result['package']) and isinstance(result['files'],dict) and 0<len(result['files'])<=10000,'installed Python package proof required')
+        require(all(re.fullmatch(r'src/myink/[A-Za-z0-9_./-]+\.py',p) and '..' not in Path(p).parts and hash_value(h) for p,h in result['files'].items()),'closed package hashes required');return result
+    finally:
+        rows=strict_json(run(['container','inspect',cid]));require(isinstance(rows,list) and len(rows)==1 and rows[0]['Id']==cid and rows[0]['Config']['Labels'].get(LABEL)==cycle and rows[0]['State']['Running'] is False,'owned stopped probe cleanup required');run(['container','rm',cid])
+
+
 class LocalImage:
     def __init__(self,gate,cycle,root,docker,endpoint,daemon_id,*,transport=None):
         require(str(uuid.UUID(cycle))==cycle,'canonical cycle identity required')
@@ -66,17 +83,7 @@ class LocalImage:
         return (self.root/'commands'/r['command_id']/'stdout.bin').read_bytes()
 
     def _probe(self,image):
-        name='myink-pi-image-'+uuid.uuid4().hex
-        raw=self._run(['create','--name',name,'--label',LABEL+'='+self.cycle,'--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--memory','256m','--cpus','1','--pids-limit','64','--user','10001:10001','--entrypoint','python',image,'-I','-S','-B','-c',PROBE])
-        cid=raw.decode().strip();require(hash_value(cid),'owned probe container ID required')
-        try:
-            result=strict_json(self._run(['start','--attach',cid]))
-            require(isinstance(result,dict) and set(result)=={'package','files'} and re.fullmatch(r'/usr/local/lib/python3\.[0-9]+/site-packages/myink',result['package']) and isinstance(result['files'],dict) and 0<len(result['files'])<=10000,'installed Python package proof required')
-            require(all(re.fullmatch(r'src/myink/[A-Za-z0-9_./-]+\.py',p) and '..' not in Path(p).parts and hash_value(h) for p,h in result['files'].items()),'closed package hashes required')
-            return result
-        finally:
-            rows=strict_json(self._run(['container','inspect',cid]));require(isinstance(rows,list) and len(rows)==1 and rows[0]['Id']==cid and rows[0]['Config']['Labels'].get(LABEL)==self.cycle and rows[0]['State']['Running'] is False,'owned stopped probe cleanup required')
-            self._run(['container','rm',cid])
+        return probe_image(self.commands,image,self.cycle,active=self._active)
 
     def build(self,source,candidate,base_image):
         self._active();image_id(base_image);require(not self.root.exists(),'existing image intent cannot replay')

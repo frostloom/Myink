@@ -346,9 +346,23 @@ Do not initialize/reset either format or edit the original pending row. The old
 artifact is retained without a fake completed comparison and loses action
 authority. This permission grants no push/deploy/metric authority; the new sealed
 package waits for a new publication approval. Scheduler and generic host entry
-refuse operator rebuild work. The trusted build wrapper and actual compatible
-base report/image verification remain separate implementation/qualification
-steps; this metadata API alone is not an executable product rollout.
+refuse operator rebuild work. The explicit `nightly_rebuild.run` wrapper holds
+the same nightly lock, verifies the old package/original completed SDK evidence,
+and checks the root-protected compatible-base report against the human receipt.
+ACTUAL has no injected verifier/image/checker: its fixed Docker verifier checks
+the current healthy API/worker parent, nonroot images, whole installed Python
+package hashes, exact telemetry-file changes and owned stopped-probe cleanup.
+No application code is imported by those probes.
+
+Rebuild preparation stays unsealed until the new image passes the original
+frozen regression with verified cleanup and unchanged original accounting.
+Only then are rebuilt-image check/compatibility hashes bound into the evaluation
+and final manifest before the publication gate becomes awaiting_approval.
+Interruption before that transition leaves no approvable new package; partial
+intents are retained without automatic replay. Standard rebuild audit records
+and immutable receipts preserve the old/new link without claiming a release.
+Compatible-base report/image production and actual native qualification remain
+separate steps; local wrapper tests are not a product rollout.
 
 The 2026-10-30 human hold still takes precedence over historical activation
 instructions below. The new controller and timer are not activated by building

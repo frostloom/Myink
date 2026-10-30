@@ -47,9 +47,10 @@ def _audit(gate,cycle,task,view,image,original,comparison):
     return dict(schema='pi-nightly-audit-reservation-v1',cycle_id=cycle,records=records)
 
 
-def prepare(gate,cycle,root,task_id,base_image,docker,endpoint,daemon_id,*,image_factory=None):
+def prepare(gate,cycle,root,task_id,base_image,docker,endpoint,daemon_id,*,image_factory=None,seal=True):
     state=gate.status();require(state['phase']=='preparing' and state['cycle_id']==cycle,'active single preparation required');root=_path(root);image_id(base_image)
     gate.require_preparation(cycle,task_id,base_image)
+    require(type(seal) is bool and (seal or gate.rebuild_info(cycle) is not None),'only an authorized rebuild may defer sealing')
     require(not root.exists() and root.parent.is_dir(),'exclusive bundle preparation root required')
     if gate.mode=='ACTUAL':require(image_factory is None and root==BASE/'nightly'/cycle/'bundle','fixed ACTUAL bundle root required')
     else:require(not root.is_relative_to(BASE),'isolated bundle root required')
@@ -79,20 +80,27 @@ def prepare(gate,cycle,root,task_id,base_image,docker,endpoint,daemon_id,*,image
     manifest=dict(schema='pi-nightly-artifact-v1',baseline_sha256=config['source_sha256'],source_sha256=candidate_pin,patch_sha256=file_hash(root/'patch.diff'),evaluation_sha256=file_hash(root/'evaluation.json'),image_id=image['image_id'],image_artifact_sha256=image['archive_sha256'],comparison_sha256=file_hash(root/'comparison.json'),changes_sha256=file_hash(root/'changes.json'))
     _package(manifest);_write(root/'manifest.json',manifest)
     require(tree_hash(root/'candidate')==candidate_pin and tree_hash(root/'baseline')==config['source_sha256'],'prepared source changed before seal')
-    return gate.ready(cycle,manifest)
+    return gate.ready(cycle,manifest) if seal else dict(gate.status(),status='unsealed_rebuild',package_sha256=digest(manifest))
 
 
-def verify(gate,root):
+def verify(gate,root,*,staged=False):
     """Read-only artifact check, never action permission; call require_action too."""
     root=_path(root);manifest=_package(_json(root/'manifest.json'));comparison=_json(root/'comparison.json');evaluation=_json(root/'evaluation.json');image=_json(root/'image.json');changes=_json(root/'changes.json')
     cycle=root.parent.name
     with gate._connection() as connection:
-        row=gate._row(connection,cycle);require(row['package'] is not None and strict_json(row['package'])==manifest,'bundle differs from original sealed approval package')
+        row=gate._row(connection,cycle)
+        if staged:
+            saved=gate.rebuild_info(cycle);require(saved is not None and row['phase']=='preparing' and row['package'] is None,'only an unsealed authorized rebuild can be inspected')
+            old=strict_json(gate._row(connection,saved['packet']['cycle_id'])['package']);require(all(manifest[k]==old[k] for k in ('baseline_sha256','source_sha256','patch_sha256','changes_sha256')),'staged rebuild changes original fix')
+        else:require(row['package'] is not None and strict_json(row['package'])==manifest,'bundle differs from original sealed approval package')
     require(tree_hash(root/'baseline')==manifest['baseline_sha256'] and tree_hash(root/'candidate')==manifest['source_sha256'],'sealed source drift')
     for name,key in (('patch.diff','patch_sha256'),('evaluation.json','evaluation_sha256'),('comparison.json','comparison_sha256'),('changes.json','changes_sha256')):
         _plain(root/name);require(file_hash(root/name)==manifest[key],'sealed bundle file drift')
     require(digest(_json(root/'original-proof.json'))==evaluation['original_proof_sha256'],'original completion proof drift')
     require(digest(image)==evaluation['image_receipt_sha256'] and image['base_image_id']==evaluation['base_image_id'],'sealed image metadata drift')
+    if 'rebuild_check_sha256' in evaluation:
+        require(digest(_json(root.parent/'rebuild-check/result.json'))==evaluation['rebuild_check_sha256'],'rebuilt-image checker proof drift')
+        saved=gate.rebuild_info(cycle);require(saved is not None and evaluation['rebuild_compatibility_sha256']==saved['packet']['compatibility_sha256'],'rebuilt compatibility permission drift')
     _plain(root/'regression.py');require(file_hash(root/'regression.py')==comparison['test_sha256'] and comparison['test_artifact']=='regression.py','sealed regression source drift')
     require(image==_json(root.parent/'image/receipt.json') and image['cycle_id']==cycle and image['image_id']==manifest['image_id'] and image['candidate_sha256']==manifest['source_sha256'] and image['source_sha256']==manifest['baseline_sha256'] and image['archive_sha256']==manifest['image_artifact_sha256'] and image['published'] is image['deployed'] is False,'sealed local image identity drift')
     require(_path(image['archive_path'])==root.parent/'image/image.tar' and _archive(image['archive_path'])==manifest['image_artifact_sha256'],'sealed image archive drift')
