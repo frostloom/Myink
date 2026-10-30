@@ -339,6 +339,8 @@ instructions below. The new controller and timer are not activated by building
 their archive. Before an explicitly approved installation starts the nightly
 unit, install/apply `myink-pi-nightly-tmpfiles.conf` with systemd-tmpfiles and
 verify `nightly-source-inputs` is a real root:ubuntu directory with mode0750.
+The same rule creates the new private root:ubuntu0600 `control/nightly.lock`;
+verify it is a plain file, and preserve the original maintenance lock.
 The mandatory `ReadWritePaths` mount is established before Python runs; its
 directory cannot be created for the first time inside that service.
 
