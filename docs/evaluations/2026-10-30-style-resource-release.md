@@ -8,4 +8,6 @@
 
 发布时从线上当前 Caddy 镜像保留已有公开哈希静态资源；新旧入口可共享这些资源。API 和两个 Worker 协调切换，校验四条队列和无活跃任务、停止服务后完整备份并核对数据库，随后部署对应 revision 的 API 与 Caddy 镜像，验证健康、双心跳、资源选择器和公网静态文件。若新版页面可能已被打开，不将后端自动降级到缺少新接口的版本；如需恢复旧前端入口，保留新后端及新旧静态资源。
 
-最终部署回执待执行后补充。
+实际部署：功能镜像 revision 为 `4f2e1940e012f15581ddaf3963261d18ba15e5a6`。切换后前端因构建上下文文件权限过严无法启动；自动恢复旧入口时保留资源也遇到相同权限问题。已基于候选前端镜像修正公开配置和静态资源的读取权限，重新启动前端；API、两个 Worker 和前端均运行该 revision。公网 readiness 和匿名登录页面验证通过。部署脚本在前端校验阶段退出，未产生成功回执；前端恢复后另行执行公开资源校验。
+
+停机期间数据库表哈希未变，备份经过 pg_restore 清单检查；服务器备份和本地 `/private/tmp/myink-style-resources-4f2e1940-database-before.dump` 的 SHA-256 均为 `474261365dec7c0cdabd8c3507ae60468f10c6a48bebee8660dce7222bc1ae53`。旧镜像保留为 `myink-api:before-style-resources-4f2e1940`、`myink-caddy:before-style-resources-4f2e1940`；线上修正后的前端镜像为 `myink-caddy:4f2e1940-readable`。后续构建及回退脚本已加入权限修正。

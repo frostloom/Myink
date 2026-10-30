@@ -187,7 +187,7 @@ retained = json.loads((state / 'retained-assets.json').read_text())['files']
 for name, expected in retained.items():
     path = assets / name
     assert path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest() == expected, 'Prior frontend asset missing or changed'
-(rollback_dir / 'Dockerfile').write_text('FROM ' + old_web_tag + '\nCOPY assets/ /srv/web/dist/assets/\n')
+(rollback_dir / 'Dockerfile').write_text('FROM ' + old_web_tag + '\nUSER root\nCOPY assets/ /srv/web/dist/assets/\nRUN chmod -R a+rX /srv/web/dist/assets\nUSER 10001\n')
 run(docker + ['build', '--platform', 'linux/amd64', '-t', fallback_web, str(rollback_dir)], stdout=subprocess.DEVNULL)
 assert inspect_image(fallback_web)['Config']['Labels']['org.opencontainers.image.revision'] == 'a8a4361ec1a9d3b5b8aa82ffa081f006d542ed82'
 with (state / 'attempt-started.json').open('x') as file:
