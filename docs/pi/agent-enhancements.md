@@ -161,3 +161,7 @@ sdk_review_launcher通过全新无工具SDK会话给出approve/reject/needs_evid
 ## 整组服务恢复（2026-10-30）
 
 原基础服务配置、Redis原值/绝对TTL、实际worker受限连接及正常退出、封存TLS；17组件/合同4，所属内部网络与低权限Caddy私有执行副本。 证据见[阶段记录](../evaluations/pi-restored-services-2026-10-30.md)。
+
+## 有限回退许可与统一入口（2026-10-30）
+
+独立rollback-only root许可、新停机计时及固定同锁入口，18组件；不续期激活/费用，不给模型新工具，ACTUAL完整门禁保留。 证据见[阶段记录](../evaluations/pi-rollback-authority-2026-10-30.md)。
