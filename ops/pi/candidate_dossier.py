@@ -2,7 +2,8 @@
 
 The caller must separately authenticate the completed SDK/manager/fee provenance.
 This compiler never imports candidate code or promotes a declared result to an
-independent acceptance. Its output is input to a fresh recommendation-only role.
+independent acceptance. Model-facing output is input to a fresh recommendation-only role; local
+evidence compilation has a separate bounded capacity and grants no model access.
 """
 from dataclasses import fields,asdict
 from difflib import SequenceMatcher,unified_diff
@@ -18,9 +19,20 @@ from .provider_config import load_credentials
 from .unit_feedback import REPORT_FIELDS,validate_report
 
 FIELDS=set('schema mode config_path config_sha256 result_sha256 phase_sha256 check_id check_sha256'.split())
+MAX_EVIDENCE_BYTES=4*1024**2
 
 
 def compile_dossier(request_path,request_sha256):
+    """Model-facing context keeps the original calibrated admission cap."""
+    return _compile(request_path,request_sha256,MAX_MODEL_BYTES)
+
+
+def compile_evidence(request_path,request_sha256):
+    """Read-only local proof capacity; this does not admit a model request."""
+    return _compile(request_path,request_sha256,MAX_EVIDENCE_BYTES)
+
+
+def _compile(request_path,request_sha256,context_limit):
     q=_pin(request_path,request_sha256)
     require(isinstance(q,dict) and set(q)==FIELDS and q['schema']=='pi-candidate-review-request-v1' and q['mode'] in ('ACTUAL','SIMULATED'),'fixed candidate review request required')
     require(isinstance(q['check_id'],str) and re.fullmatch(r'check-[1-9][0-9]{0,2}',q['check_id']),'fixed completed checker identity required')
@@ -75,6 +87,6 @@ def compile_dossier(request_path,request_sha256):
             originals.append(dict(path=relative,sha256=file_hash(left),text=a));finals.append(dict(path=relative,sha256=file_hash(right),text=b))
     require(changes and check_diff(plan,dict(plan_hash=plan.plan_hash,files=[x['path'] for x in changes],production_added=sum(x['added'] for x in changes),production_deleted=sum(x['deleted'] for x in changes),tracked_files=len(changes)),policy).status=='done','candidate diff violates frozen scope')
     view=dict(schema='pi-candidate-review-input-v1',authority='recommendation_only',review_kind='post_development',untrusted_material=True,online_improvement_proven=False,evidence_domain=plan.evidence_domain,source_sha256=c['source_sha256'],candidate_sha256=result['candidate_sha256'],test_sha256=c['test_sha256'],plan_hash=plan.plan_hash,plan=asdict(plan),baseline=baseline,source_files=originals,candidate_files=finals,gold_source=gold_text,diff='\n'.join(diff),changes=changes,final_check={k:check[k] for k in REPORT_FIELDS},development_result_sha256=q['result_sha256'])
-    require(len(encoded(view))<=MAX_MODEL_BYTES,'complete final review context exceeds bound')
+    require(len(encoded(view))<=context_limit,'complete final review context exceeds bound' if context_limit==MAX_MODEL_BYTES else 'complete local evidence context exceeds bound')
     require(all(file_hash(p)==pin for p,pin in pins.items()) and tree_hash(source)==c['source_sha256'] and tree_hash(candidate)==result['candidate_sha256'] and tree_hash(checked/'src')==tree_hash(candidate/'src') and file_hash(checked/'test.py')==c['test_sha256'],'candidate review inputs changed while reading')
     return dict(schema='pi-candidate-dossier-v1',authority='none',candidate_sha256=result['candidate_sha256'],model_view=view,model_view_sha256=digest(view),artifact_pins=pins)

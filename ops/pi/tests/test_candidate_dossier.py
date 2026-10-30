@@ -70,3 +70,14 @@ def test_changed_or_ineligible_completed_candidate_rejected(completed,fault):
     write(root/'result.json',r);q['result_sha256']=file_hash(root/'result.json');write(root/'check-1-receipt.json',report);q['check_sha256']=file_hash(root/'check-1-receipt.json');q['phase_sha256']=file_hash(root/'phase-verification.json');write(qp,q)
     with pytest.raises((ValueError,OSError)):
         api().compile_dossier(qp,'f'*64 if fault=='pin' else file_hash(qp))
+
+
+def test_readonly_evidence_has_separate_bounded_capacity_without_relaxing_model_review(completed,monkeypatch):
+    qp,q,c,r,report=completed;module=api();original=module.compile_dossier(qp,file_hash(qp));size=len(encoded(original['model_view']))
+    before={p:p.read_bytes() for p in qp.parent.rglob('*') if p.is_file()}
+    monkeypatch.setattr(module,'MAX_MODEL_BYTES',size-1)
+    with pytest.raises(ValueError,match='complete final review context'):module.compile_dossier(qp,file_hash(qp))
+    evidence=module.compile_evidence(qp,file_hash(qp));assert evidence==original and evidence['authority']=='none'
+    monkeypatch.setattr(module,'MAX_EVIDENCE_BYTES',size-1)
+    with pytest.raises(ValueError):module.compile_evidence(qp,file_hash(qp))
+    assert before=={p:p.read_bytes() for p in qp.parent.rglob('*') if p.is_file()}

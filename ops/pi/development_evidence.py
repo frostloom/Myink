@@ -6,7 +6,7 @@ manager dispatch/cycle before it can issue a finite candidate-review permit.
 from dataclasses import asdict
 from pathlib import Path
 from .audit import digest,require,strict_json
-from .candidate_dossier import compile_dossier
+from .candidate_dossier import compile_evidence
 from .development_inputs import file_hash,ledger_snapshot,OWNER
 from .review_lease import _read
 from .review_issuer import _snapshot
@@ -45,7 +45,7 @@ class _StoppedTools:
 
 
 def inspect(request_path,request_sha256):
-    dossier=compile_dossier(request_path,request_sha256);q=_read(request_path)[0];c=_read(q['config_path'])[0];root=Path(c['root']);pins=dict(dossier['artifact_pins'])
+    dossier=compile_evidence(request_path,request_sha256);q=_read(request_path)[0];c=_read(q['config_path'])[0];root=Path(c['root']);pins=dict(dossier['artifact_pins'])
     def read(name):
         value,pin=_read(root/name);pins[str(root/name)]=pin;return value
     result=read('result.json');saved=read('phase-verification.json');frame=read('worker-frame-private.json')

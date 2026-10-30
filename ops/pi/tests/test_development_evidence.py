@@ -77,3 +77,13 @@ def test_declared_success_without_authenticated_development_never_authorizes_rev
     else:(root/'candidate/src/a.py').write_text('value = 999\n')
     write(root/'worker-frame-private.json',frame);write(root/'result.json',r);q['result_sha256']=file_hash(root/'result.json');write(qp,q)
     with pytest.raises((ValueError,OSError)):api().inspect(qp,file_hash(qp))
+
+
+def test_completed_evidence_is_not_limited_by_optional_model_reviewer_context(stopped,monkeypatch):
+    from ops.pi import candidate_dossier
+    qp,q,c,r,frame=stopped;before=ledger_snapshot(c['ledger_path']);view=candidate_dossier.compile_dossier(qp,file_hash(qp))['model_view']
+    monkeypatch.setattr(candidate_dossier,'MAX_MODEL_BYTES',len(encoded(view))-1)
+    with pytest.raises(ValueError):candidate_dossier.compile_dossier(qp,file_hash(qp))
+    evidence=api().inspect(qp,file_hash(qp))
+    assert evidence['authority']=='completed_development_only' and evidence['candidate_sha256']==r['candidate_sha256']
+    assert ledger_snapshot(c['ledger_path'])==before

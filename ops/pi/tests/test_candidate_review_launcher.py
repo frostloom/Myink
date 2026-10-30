@@ -115,3 +115,12 @@ def test_independent_review_runtime_can_advance_without_rewriting_finished_devel
 def test_parent_profile_revocation_during_sdk_startup_prevents_reservation(candidate_review,proof,monkeypatch):
     cp,c,*_=candidate_review;before=ledger_snapshot(c['ledger_path']);result=run_review(candidate_review,proof,monkeypatch,'parent_revoke')
     assert result['new_attempts']==0 and not result['verified'] and ledger_snapshot(c['ledger_path'])==before
+
+
+def test_larger_readonly_evidence_never_bypasses_model_review_admission(candidate_review,monkeypatch):
+    from ops.pi import candidate_dossier
+    cp,c,d,p,dc=candidate_review;before=ledger_snapshot(c['ledger_path'])
+    monkeypatch.setattr(candidate_dossier,'MAX_MODEL_BYTES',len(encoded(d['model_view']))-1)
+    assert candidate_dossier.compile_evidence(c['request_path'],c['request_sha256'])==d
+    with pytest.raises(ValueError,match='complete final review context'):api().prepare(cp,clock=lambda:NOW)
+    assert ledger_snapshot(c['ledger_path'])==before and not Path(c['root']).exists()
