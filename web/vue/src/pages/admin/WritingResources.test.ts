@@ -40,6 +40,7 @@ beforeEach(() => {
 });
 it('cancelled edits do not save; conflict preserves draft', async () => {
     await render(h(WritingResources, {}));
+    expect(screen.getByRole('link', { name: '提取文章文风' }).getAttribute('href')).toBe('/writing-resources');
     await fireEvent.click(await screen.findByRole('button', { name: '编辑 写作' }));
     await fireEvent.update(screen.getByLabelText('资源名称'), '我的草稿');
     await fireEvent.click(screen.getByRole('button', { name: '取消' }));

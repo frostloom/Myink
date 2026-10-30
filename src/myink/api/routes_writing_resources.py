@@ -2,6 +2,9 @@
 from fastapi import APIRouter, Depends, Request, Response, HTTPException
 from sqlalchemy import select
 from myink.api.auth import require_admin, require_user, _AuthenticatedUser
+from myink.api.schemas import ResourceStyleListOut
+from myink.api.routes_style import resource_style_choices
+import uuid
 from myink.api.routes_admin import _audit_or_fail
 from myink.db import new_session
 from myink.models.writing_resource import WritingResource
@@ -24,6 +27,12 @@ def full_catalog(response: Response):
     response.headers['Cache-Control'] = 'no-store'
     with new_session() as db:
         return {'items': svc.catalog(db, include_automatic=True)}
+
+@router.get('/writing-resources/styles', response_model=ResourceStyleListOut)
+def style_choices(response: Response, uid: str = Depends(require_user)):
+    response.headers['Cache-Control'] = 'no-store'
+    with new_session() as db:
+        return {'items': resource_style_choices(db, uuid.UUID(uid))}
 
 @router.get('/admin/writing-resources', response_model=ResourceList, dependencies=[Depends(admin_guard)])
 def list_resources():

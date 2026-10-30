@@ -465,3 +465,132 @@ def test_concurrent_snapshot_get_initializes_defaults_once_without_mutating_admi
             db.execute(delete(WritingResourceRevision).where(WritingResourceRevision.resource_id==rid))
             db.execute(delete(WritingResource).where(WritingResource.id==rid))
             db.commit()
+
+
+def test_style_selection_visibility_with_real_authenticated_users(temp_project, temp_user):
+    from myink.api.routes_style import resolve_style_selection
+    from myink.models.writing_resource import PersonalWritingResource
+    client = TestClient(app)
+    with new_session() as db:
+        owner = db.get(Project, uuid.UUID(temp_project)).user_id
+        db.get(User, uuid.UUID(temp_user)).role = 'admin'
+        db.commit()
+    owner_headers, admin_headers = identity_headers(owner), identity_headers(temp_user)
+    suffix = uuid.uuid4().hex[:8]
+    personal_name, public_name = '个人文风' + suffix, '平台文风' + suffix
+    payload = {'name': personal_name, 'kind': 'style', 'source': 'test', 'body': {'profile': {'narrative_voice': '个人语气'}}}
+    private_id = public_id = None
+    try:
+        assert client.post('/api/v1/admin/writing-resources', headers=owner_headers, json=payload).status_code == 403
+        private = client.post('/api/v1/my-writing-resources', headers=owner_headers, json=payload)
+        assert private.status_code == 200, private.text
+        private_id = private.json()['id']
+        draft = client.post('/api/v1/admin/writing-resources', headers=admin_headers, json={**payload, 'name': public_name})
+        assert draft.status_code == 200, draft.text
+        public_id = draft.json()['id']
+        choices = client.get('/api/v1/writing-resources/styles', headers=owner_headers).json()['items']
+        personal_choice = next(item for item in choices if item['name'] == personal_name)
+        assert not any(item['name'] == public_name for item in choices)
+        admin_choices = client.get('/api/v1/writing-resources/styles', headers=admin_headers).json()['items']
+        assert not any(item['name'] in (personal_name, public_name) for item in admin_choices)
+        assert client.post(f'/api/v1/admin/writing-resources/{public_id}/publish', headers=owner_headers, json={'expected_generation': 0}).status_code == 403
+        assert client.post(f'/api/v1/admin/writing-resources/{public_id}/publish', headers=admin_headers, json={'expected_generation': 0}).status_code == 200
+        assert any(item['name'] == public_name for item in client.get('/api/v1/writing-resources/styles', headers=owner_headers).json()['items'])
+        assert any(item['name'] == public_name for item in client.get('/api/v1/writing-resources/styles', headers=admin_headers).json()['items'])
+        with tenant_session(temp_project) as db:
+            assert resolve_style_selection(db, owner, personal_choice['id'])[0]['narrative_voice'] == '个人语气'
+            try:
+                resolve_style_selection(db, uuid.UUID(temp_user), personal_choice['id'])
+                raise AssertionError('another account could select the private style')
+            except HTTPException as exc:
+                assert exc.status_code == 404
+    finally:
+        with new_session() as db:
+            if private_id:
+                db.execute(delete(PersonalWritingResource).where(PersonalWritingResource.id == private_id))
+            if public_id:
+                for model in (WritingResourcePublication, WritingResourceRevision):
+                    db.execute(delete(model).where(model.resource_id == public_id))
+                db.execute(delete(WritingResource).where(WritingResource.id == public_id))
+            db.commit()
+
+
+def test_explicit_style_switch_and_clear_preserve_legacy_data_and_frozen_task(temp_project, temp_user):
+    from copy import deepcopy
+    from myink.memory.repository import get_settings
+    from myink.workflow import prompts
+    from myink.writing_resource_runtime import bind_resources
+    client = TestClient(app)
+    with new_session() as db:
+        owner = db.get(Project, uuid.UUID(temp_project)).user_id
+        db.get(User, uuid.UUID(temp_user)).role = 'admin'
+        db.commit()
+    headers, admin_headers = identity_headers(owner), identity_headers(temp_user)
+    with tenant_session(temp_project) as db:
+        from myink.models import ProjectSettings
+        settings = get_settings(db, uuid.UUID(temp_project))
+        if settings is None:
+            settings = ProjectSettings(project_id=uuid.UUID(temp_project))
+            db.add(settings)
+        settings.style_profile = {'narrative_voice': '旧书专属声音'}
+    rid = None
+    try:
+        payload = {'name': '切换用文风', 'kind': 'style', 'source': 'test', 'body': {'profile': {'narrative_voice': '明确选择的新声音'}}}
+        created = client.post('/api/v1/admin/writing-resources', json=payload, headers=admin_headers)
+        assert created.status_code == 200, created.text
+        rid = created.json()['id']
+        assert client.post(f'/api/v1/admin/writing-resources/{rid}/publish', json={'expected_generation': 0}, headers=admin_headers).status_code == 200
+        path = f'/api/v1/projects/{temp_project}/writing-resources'
+        before = client.get(path, headers=headers).json()
+        frozen = deepcopy(before)
+        changed = client.put(path, headers=headers, json={'expected_revision': before['revision'], 'selections': [{'origin': 'platform', 'resource_id': rid}]})
+        assert changed.status_code == 200, changed.text
+        with bind_resources(changed.json()):
+            text = str(prompts.write_messages({}, {}, style_profile={'narrative_voice': '旧书专属声音'}))
+            assert '明确选择的新声音' in text and '旧书专属声音' not in text
+        cleared = client.put(path, headers=headers, json={'expected_revision': changed.json()['revision'], 'selections': []})
+        assert cleared.status_code == 200, cleared.text
+        assert cleared.json()['style_managed'] is True
+        with bind_resources(cleared.json()):
+            assert '旧书专属声音' not in str(prompts.write_messages({}, {}, style_profile={'narrative_voice': '旧书专属声音'}))
+        with bind_resources(frozen):
+            assert '旧书专属声音' in str(prompts.write_messages({}, {}, style_profile={'narrative_voice': '旧书专属声音'}))
+        with tenant_session(temp_project) as db:
+            assert get_settings(db, uuid.UUID(temp_project)).style_profile == {'narrative_voice': '旧书专属声音'}
+    finally:
+        with tenant_session(temp_project) as db:
+            db.execute(delete(ProjectWritingResources).where(ProjectWritingResources.project_id == uuid.UUID(temp_project)))
+        if rid:
+            with new_session() as db:
+                for model in (WritingResourcePublication, WritingResourceRevision):
+                    db.execute(delete(model).where(model.resource_id == rid))
+                db.execute(delete(WritingResource).where(WritingResource.id == rid))
+                db.commit()
+
+
+def test_concurrent_legacy_import_creates_only_one_private_copy(temp_user):
+    from myink.models import StyleLibraryItem
+    from myink.models.writing_resource import PersonalWritingResource
+    with new_session() as db:
+        old = StyleLibraryItem(user_id=uuid.UUID(temp_user), name='旧版并发文风', profile={'narrative_voice': '自然'}, sample_chars=20)
+        db.add(old); db.commit(); old_id = str(old.id)
+    barrier = Barrier(2)
+    def invoke():
+        barrier.wait(timeout=10)
+        return TestClient(app).post('/api/v1/my-writing-resources/import-legacy/' + old_id, headers=identity_headers(temp_user))
+    try:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            responses = list(pool.map(lambda _: invoke(), range(2)))
+        assert [item.status_code for item in responses] == [200, 200], [item.text for item in responses]
+        assert responses[0].json()['id'] == responses[1].json()['id']
+        with new_session() as db:
+            rows = list(db.scalars(select(PersonalWritingResource).where(
+                PersonalWritingResource.user_id == uuid.UUID(temp_user),
+                PersonalWritingResource.source_resource_id == 'legacy-style:' + old_id)))
+            assert len(rows) == 1
+    finally:
+        with new_session() as db:
+            db.execute(delete(PersonalWritingResource).where(
+                PersonalWritingResource.user_id == uuid.UUID(temp_user),
+                PersonalWritingResource.source_resource_id == 'legacy-style:' + old_id))
+            db.commit()

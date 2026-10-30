@@ -190,3 +190,30 @@ def test_create_project_rejects_a_stranger_style_item_id(temp_user):
                        headers=identity_headers(temp_user))
     assert resp.status_code == 404
     assert resp.json()["detail"] == "NOT_FOUND"
+
+
+def test_create_long_book_from_private_writing_resource(temp_user):
+    from myink.models.writing_resource import PersonalWritingResource
+    headers = identity_headers(temp_user)
+    data = {'name': '资源长篇文风', 'kind': 'style', 'source': 'test', 'body': {'profile': {'narrative_voice': '长篇资源语气'}}}
+    created = client.post('/api/v1/my-writing-resources', headers=headers, json=data)
+    assert created.status_code == 200, created.text
+    rid = created.json()['id']
+    try:
+        options = client.get('/api/v1/writing-resources/styles', headers=headers).json()['items']
+        choice = next(item for item in options if item['name'] == data['name'])
+        resp = client.post('/api/v1/projects', headers=headers, json={'title': '资源文风长篇', 'style_item_id': choice['id']})
+        assert resp.status_code == 200, resp.text
+        from myink import writing_resources as svc
+        from myink.workflow import prompts
+        from myink.writing_resource_runtime import bind_resources
+        with tenant_session(resp.json()['id']) as db:
+            snapshot = svc.project_snapshot(db, resp.json()['id'])
+            assert not get_settings(db, uuid.UUID(resp.json()['id'])).style_profile
+        style = next(item for item in snapshot['selections'] if item['kind'] == 'style')
+        assert style['resource_id'] == rid and style['authoritative_style']
+        with bind_resources(snapshot):
+            assert '长篇资源语气' in str(prompts.write_messages({}, {}))
+    finally:
+        with new_session() as db:
+            db.execute(delete(PersonalWritingResource).where(PersonalWritingResource.id == rid)); db.commit()

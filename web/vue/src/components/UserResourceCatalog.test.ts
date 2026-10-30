@@ -197,3 +197,20 @@ it('applies only the edited personal rule body when the book may already hold it
  await fireEvent.click(screen.getByRole('checkbox',{name:'选用 我的衔接'}))
  expect(selected).toHaveBeenLastCalledWith(expect.arrayContaining([{origin:'personal',resource_id:'mine',personal_override:true,body:{roles:{writer:'建书时新修改'}}}]))
 })
+it('preselects the requested resource style along with the default rules',async()=>{
+ const style={...rule,id:'my-style',name:'所选文风',kind:'style',body:{profile:{narrative_voice:'自然'}}}
+ api.personal.mockResolvedValue({items:[style]})
+ const selected=vi.fn();render(h(UserResourceCatalog,{mode:'choose',preselectedStyle:{origin:'personal',resource_id:'my-style'},'onUpdate:selection':selected}))
+ expect((await screen.findByRole('checkbox',{name:'选用 所选文风'}) as HTMLInputElement).checked).toBe(true)
+ expect(selected).toHaveBeenLastCalledWith(expect.arrayContaining([{origin:'platform',resource_id:'rule'},{origin:'personal',resource_id:'my-style'}]))
+})
+it('switches from one preselected style to another instead of combining them',async()=>{
+ const first={...rule,id:'first-style',name:'第一文风',kind:'style',body:{profile:{narrative_voice:'甲'}}}
+ const second={...rule,id:'second-style',name:'第二文风',kind:'style',body:{profile:{narrative_voice:'乙'}}}
+ api.catalogAll.mockResolvedValue({items:[rule,first,second]})
+ const selected=vi.fn();render(h(UserResourceCatalog,{mode:'choose',preselectedStyle:{origin:'platform',resource_id:'first-style'},'onUpdate:selection':selected}))
+ expect((await screen.findByRole('checkbox',{name:'选用 第一文风'}) as HTMLInputElement).checked).toBe(true)
+ await fireEvent.click(screen.getByRole('checkbox',{name:'选用 第二文风'}))
+ expect((screen.getByRole('checkbox',{name:'选用 第一文风'}) as HTMLInputElement).checked).toBe(false)
+ expect(selected).toHaveBeenLastCalledWith([{origin:'platform',resource_id:'rule'},{origin:'platform',resource_id:'second-style'}])
+})

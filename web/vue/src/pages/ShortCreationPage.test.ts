@@ -16,7 +16,7 @@ vi.mock('../../../src/lib/shortCreationApi', () => ({
                       commit: vi.fn(), remove: vi.fn() },
 }))
 vi.mock('../../../src/lib/styleLibraryApi', () => ({
-  styleLibraryApi: { list: vi.fn() },
+  styleLibraryApi: { resources: vi.fn() },
 }))
 // rail 要项目列表；这里只关心「rail 在不在」，让它拿到空列表即可。
 vi.mock('../../../src/lib/api', async (importOriginal) => {
@@ -94,7 +94,7 @@ beforeEach(() => {
     status: ref('authenticated'), revalidate: vi.fn(), logout: vi.fn(),
   } as unknown as ReturnType<typeof useAuth>)
   vi.mocked(shortCreationApi.open).mockResolvedValue(payload())
-  vi.mocked(styleLibraryApi.list).mockResolvedValue({ items: [] })
+  vi.mocked(styleLibraryApi.resources).mockResolvedValue({ items: [] })
 })
 
 afterEach(() => { cleanup(); vi.clearAllMocks() })
@@ -450,7 +450,7 @@ it('offers the style selector and a link to the library, with no inline import',
   await renderPage()
   await openCard()
   expect(screen.getByLabelText('文风')).toBeTruthy()
-  expect(screen.getByRole('link', { name: '去文风库添加' }).getAttribute('href')).toBe('/styles')
+  expect(screen.getByRole('link', { name: '去写作资源添加文风' }).getAttribute('href')).toBe('/writing-resources')
   // 导入文章那条动线整体搬去文风库页面了，这一页只留一个指路的链接。
   expect(screen.queryByRole('button', { name: '导入文章存成我的文风' })).toBeNull()
   expect(screen.queryByLabelText('粘贴文章')).toBeNull()
@@ -730,4 +730,29 @@ it('keeps a background commit result without taking over the current route', asy
   await fireEvent.click(await screen.findByRole('button', {name:'确认资源并创建作品'}))
   await waitFor(() => expect(router.currentRoute.value.path).toBe('/projects/late'))
   expect(shortCreationApi.commit).toHaveBeenCalledTimes(1)
+})
+
+it('uses a writing-resource style when committing a short story', async () => {
+  vi.mocked(styleLibraryApi.resources).mockResolvedValue({ items: [{ id: 'wr:mine', origin: 'personal' as const, resource_id: 'mine-id', name: '我的文风', builtin: false, removable: false, profile: {}, note: '', sample_chars: 0, created_at: null }] })
+  vi.mocked(writingResources.personal).mockResolvedValue({ items: [{ id: 'mine-id', name: '我的文风', kind: 'style', source: 'test', status: 'published', generation: 1, current_version: 1, body: { profile: {} } }] })
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({ ready: true, session: { card: FULL_CARD } }))
+  vi.mocked(shortCreationApi.commit).mockResolvedValue({ project_id: 'p1', lengths_compressed: false, plan_warning: null, style_name: '我的文风' })
+  await renderPage(); await openCard()
+  await screen.findByRole('option', { name: '我的文风（我的）' })
+  await fireEvent.change(screen.getByLabelText('文风'), { target: { value: 'wr:mine' } })
+  await fireEvent.click(screen.getByRole('button', { name: '确认，开写' }))
+  await fireEvent.click(await screen.findByRole('button', { name: '确认资源并创建作品' }))
+  await waitFor(() => expect(shortCreationApi.commit).toHaveBeenCalledWith('t', 's1', expect.anything(), 'wr:mine'))
+  await waitFor(() => expect(writingResources.select).toHaveBeenCalledWith('p1', 2, [{origin:'personal',resource_id:'mine-id'}]))
+})
+
+it('refreshes the resource style list when returning from writing resources', async () => {
+  vi.mocked(shortCreationApi.open).mockResolvedValue(payload({ ready: true, session: { card: FULL_CARD } }))
+  const { router } = await renderPage(true)
+  await screen.findByRole('button', { name: '开始建书' })
+  await router.push('/writing-resources')
+  vi.mocked(styleLibraryApi.resources).mockResolvedValue({ items: [{ id: 'wr:new', origin: 'personal', resource_id: 'new-style', name: '刚提取的文风', builtin: false, removable: false, profile: {}, note: '', sample_chars: 0, created_at: null }] })
+  await router.push('/short/new')
+  await openCard()
+  expect(await screen.findByRole('option', { name: '刚提取的文风（我的）' })).toBeTruthy()
 })

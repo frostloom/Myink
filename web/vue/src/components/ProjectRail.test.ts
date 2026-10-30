@@ -28,7 +28,7 @@ it('hides long book pages in short works and defaults a new global navigation to
   const view = await rail('/projects/s'); expect(screen.queryByRole('link', { name: '设定' })).toBeNull(); view.unmount()
   await rail('/theme'); expect(screen.getByText('长书')).toBeTruthy(); expect(screen.queryByText('短书')).toBeNull()
   expect(screen.getByRole('link', { name: '短篇' }).hasAttribute('aria-current')).toBe(false)
-  expect(screen.getByRole('link', { name: '文风库' })).toBeTruthy()
+  expect(screen.queryByRole('link', { name: '文风库' })).toBeNull()
 })
 it('gates admin and feedback on verified authentication and dispatches mobile feedback', async () => {
   await rail('/long'); const seen = vi.fn(); window.addEventListener('myink:feedback', seen)
@@ -71,7 +71,7 @@ it('does not expose book resource pages for short stories',async()=>{
  expect(screen.queryByRole('link',{name:'写作资源'})).toBeNull()
  expect(screen.queryByRole('navigation',{name:'本书页面'})).toBeNull()
 })
-it('places the personal resource library after the style library',async()=>{
+it('exposes writing resources without a duplicate style-library link',async()=>{
  await rail('/long')
  expect(screen.getByRole('link',{name:'写作资源'}).getAttribute('href')).toBe('/writing-resources')
 })

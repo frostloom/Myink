@@ -16,7 +16,7 @@ import { useAuth } from '../authContext';
 import { api } from '../../../src/lib/api';
 import { formatApiError } from '../../../src/lib/apiError';
 import { isProjectDraft } from '../../../src/lib/projectCreation';
-import { styleLibraryApi, type StyleLibraryItem } from '../../../src/lib/styleLibraryApi';
+import { styleLibraryApi, type ResourceStyleItem } from '../../../src/lib/styleLibraryApi';
 import { displayGenre, groupCatalog, type GenreCatalogItem, } from '../../../src/lib/genrePacks';
 import { emptySection, isSectionEmpty, sectionToBody, splitDraft, type SetupSection, } from '../../../src/lib/bookDraft';
 import type { BookOutline, OutlineChapter, OutlineStage, OutlineVolume, Project } from '../../../src/types';
@@ -145,8 +145,8 @@ export default defineComponent({
         const busy = ref<string | null>(resumeId.value ? 'restore' : null);
         const banner = ref<string | null>(null);
         const ok = ref<string | null>(null);
-        // 建书时选文风（可选）：列表来自账号文风库，值原样交给后端解析（内置预设是 "builtin:<id>"）
-        const styleItems = ref<StyleLibraryItem[]>([]);
+        // 建书时选文风（可选）：列表来自写作资源，值原样交给后端解析
+        const styleItems = ref<ResourceStyleItem[]>([]);
         const styleItemId = ref('');
         const initialForm = JSON.stringify(['', null, null, '', '3000', '2000', '200', '', '']);
         const { permitNavigation } = useMemoryFormGuard(() => !guest.value && (
@@ -169,7 +169,7 @@ export default defineComponent({
                 if (!cancelled)
                     banner.value = '题材目录加载失败，可先不选题材创建';
             });
-            void styleLibraryApi.list(token.value).then(out => { if (!cancelled)
+            void styleLibraryApi.resources(token.value).then(out => { if (!cancelled)
                 styleItems.value = out.items; }).catch(() => { });
         }, {
             immediate: true
@@ -716,7 +716,7 @@ export default defineComponent({
         return () => (h("div", {
             "class": styles.wrap, ref: scrollContainer
         }, [
-            resourceOpen.value && h(CreationResourcesDialog, { busy: busy.value !== null, error: resourceError.value, onConfirm: confirmAll, onClose: () => { if (!busy.value) resourceOpen.value = false; } }),
+            resourceOpen.value && h(CreationResourcesDialog, { projectId: pid.value ?? undefined, busy: busy.value !== null, error: resourceError.value, onConfirm: confirmAll, onClose: () => { if (!busy.value) resourceOpen.value = false; } }),
             h(ProjectRail, {
                 "projects": projects.value, "onLogout": logout
             }), h("main", {
@@ -802,7 +802,7 @@ export default defineComponent({
                                 }, ["不指定"]), styleItems.value.map((item) => (h("option", {
                                     "key": item.id, "value": item.id
                                 }, [
-                                    item.name, item.builtin ? '（内置）' : '（我的）'
+                                    item.name, item.builtin ? '（平台）' : '（我的）'
                                 ])))
                             ])
                         ]), isShort.value ? (h(Fragment, null, [

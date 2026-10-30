@@ -1,5 +1,6 @@
 import { useMemoryFormGuard } from '../../composables/useMemoryFormGuard';
 import type { PropType } from 'vue';
+import { RouterLink } from 'vue-router';
 import { Fragment, computed, defineComponent, onMounted, onUnmounted, h as renderNode, shallowRef, watch } from 'vue';
 import { emptyFields } from "../../../../src/lib/genrePacks";
 import { platformApi, type PromptRoleTemplates } from "../../../../src/lib/platformApi";
@@ -315,7 +316,7 @@ const WritingResources = defineComponent((props: {
             renderNode("header", { "class": styles.pageHead }, [
                 renderNode("div", {}, [
                     renderNode("h1", {}, [title.value]), renderNode("p", {}, ["管理自动生效的角色提示词、AI按需查阅的写作知识库，以及作者可选用的题材与文风。"])
-                ]), renderNode("button", { "class": "btn btn-primary", "onClick": () => {
+                ]), (props.scope ?? "all") === "all" && renderNode(RouterLink, { "to": "/writing-resources", "class": "btn btn-secondary" }, () => "提取文章文风"), renderNode("button", { "class": "btn btn-primary", "onClick": () => {
                         historyRequest.value += 1;
                         setSelectedPromptId(null);
                         setSelected({

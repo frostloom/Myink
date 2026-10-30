@@ -46,6 +46,7 @@ export interface ResourceRevision {
   note: string
 }
 export interface ResourceSelection {
+  authoritative_style?: boolean
   resource_id: string
   origin: 'platform' | 'personal'
   name: string
@@ -56,6 +57,7 @@ export interface ResourceSelection {
   personal_override: boolean
 }
 export interface ResourceSnapshot {
+  style_managed?: boolean
   revision: number
   configured: boolean
   selections: ResourceSelection[]
@@ -131,6 +133,7 @@ export const writingResources = {
   syncPersonal: (id: string, expected_generation: number, target_generation: number) =>
     send<WritingResource>('POST', `/my-writing-resources/${encodeURIComponent(id)}/sync`, { expected_generation, target_generation, acknowledge_overwrite: true }),
   personal: () => get<{ items: WritingResource[] }>('/my-writing-resources'),
+  importLegacy: (id: string) => send<WritingResource>('POST', `/my-writing-resources/import-legacy/${encodeURIComponent(id)}`, {}),
   createPersonal: (input: ResourceInput) =>
     send<WritingResource>('POST', '/my-writing-resources', input),
   savePersonal: (

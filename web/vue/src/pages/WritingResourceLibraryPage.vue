@@ -2,12 +2,14 @@
 import { ref, watch, onScopeDispose } from 'vue'
 import ProjectRail from '../components/ProjectRail.vue'
 import UserResourceCatalog from '../components/UserResourceCatalog.vue'
+import StyleResourceExtraction from '../components/StyleResourceExtraction.vue'
 import { api } from '../../../src/lib/api'
 import { useAuth } from '../authContext'
 import type { Project } from '../../../src/types'
 import styles from '../../../src/pages/SettingsPage.module.css'
 const {session,status}=useAuth()
 const projects=ref<Project[]>([])
+const resourceRevision=ref(0)
 let serial=0
 watch(()=>session.value?.userId,async()=>{
  const request=++serial;projects.value=[]
@@ -21,7 +23,10 @@ onScopeDispose(()=>{serial++})
 <ProjectRail :projects="projects" /><main :class="styles.main">
 <div :class="styles.inner">
   <header :class="styles.header"><h1>写作资源</h1></header>
-  <UserResourceCatalog v-if="status==='authenticated'" :key="session?.userId" mode="library" />
+  <template v-if="status==='authenticated'">
+    <StyleResourceExtraction :key="session?.userId" @saved="resourceRevision++" />
+    <UserResourceCatalog :key="`${session?.userId}:${resourceRevision}`" mode="library" />
+  </template>
   <p v-else>登录后查看和编辑你的写作资源。</p>
  </div>
 </main>

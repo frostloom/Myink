@@ -126,6 +126,15 @@ def resource_messages(builder, role):
         import inspect
         bound = inspect.signature(builder).bind(*args, **kwargs)
         bound.apply_defaults()
+        authoritative = [item for item in selected("style") if item.get("authoritative_style")]
+        if configured() and (authoritative or (_resources.get() or {}).get("style_managed")):
+            if "style_profile" in bound.arguments:
+                bound.arguments["style_profile"] = None
+            for key in ("brief", "state"):
+                if isinstance(bound.arguments.get(key), dict):
+                    data = deepcopy(bound.arguments[key])
+                    data["style_profile"] = {}
+                    bound.arguments[key] = data
         if selected("genre"):
             if "genre_pack" in bound.arguments:
                 bound.arguments["genre_pack"] = selected_genre()
@@ -138,7 +147,7 @@ def resource_messages(builder, role):
                 bound.arguments["brief"] = brief
             messages = builder(*bound.args, **bound.kwargs)
         else:
-            messages = builder(*args, **kwargs)
+            messages = builder(*bound.args, **bound.kwargs)
         from myink.prompt_catalog import apply_role_prompts
         messages = apply_role_prompts(messages, role, current_resources())
         from myink.writing_resource_seed import optional_fragments
@@ -167,6 +176,8 @@ def resource_messages(builder, role):
                 label = "主题材" if s is genres[0] else "辅题材"
                 parts.append(label + "：" + s["name"] + "\n" + json.dumps(body.get("fields", {}), ensure_ascii=False))
             elif s["kind"] == "style":
+                if authoritative and not s.get("authoritative_style"):
+                    continue
                 from myink.workflow.prompts import _style_section
                 parts.append(_style_section(body.get("profile", {}), None))
             elif s["kind"] == "reference":

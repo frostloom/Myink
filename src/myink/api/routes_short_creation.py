@@ -23,7 +23,7 @@ from sqlalchemy.exc import TimeoutError as PoolTimeout
 
 from myink.api import routes_book as _book
 from myink.api.auth import require_user
-from myink.api.routes_style import resolve_style_selection
+from myink.api.routes_style import attach_resource_style, resolve_style_selection
 from myink.api.schemas import (OkOut, ShortCreationCommitBody, ShortCreationCommitOut,
                                ShortCreationMessageBody, ShortCreationOut)
 from myink.book_setup import generate_short_creation_turn
@@ -385,9 +385,13 @@ def commit(body: ShortCreationCommitBody, session_id: uuid.UUID,
             if settings_row is None:
                 settings_row = ProjectSettings(project_id=pid, version=1)
                 tdb.add(settings_row)
-            settings_row.style_profile = profile
-            settings_row.skill_pack = skill_pack
-            settings_row.version = (settings_row.version or 1) + 1
+            if style_item_id.startswith("wr:"):
+                tdb.flush()
+                attach_resource_style(tdb, pid, uid, style_item_id)
+            else:
+                settings_row.style_profile = profile
+                settings_row.skill_pack = skill_pack
+                settings_row.version = (settings_row.version or 1) + 1
         tdb.commit()
 
     # 4) 只收尾发起的那条会话；期间用户在别的会话里做的事、乃至把这条删了，都不影响这次建书。

@@ -13,7 +13,8 @@ from myink.models.writing_resource import WritingResource, WritingResourceRevisi
 @pytest.fixture
 def api(monkeypatch):
     engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
-    from myink.models import Project, ProjectSettings
+    from myink.models import Project, ProjectSettings, StyleLibraryItem
+    StyleLibraryItem.__table__.create(engine)
     Project.__table__.create(engine)
     ProjectSettings.__table__.create(engine)
     for table in (WritingResource.__table__, WritingResourceRevision.__table__, PersonalWritingResource.__table__, ProjectWritingResources.__table__, WritingResourcePublication.__table__):
@@ -278,3 +279,47 @@ def test_get_snapshot_initializes_persistent_defaults_and_requires_returned_revi
     assert saved.status_code==200,saved.text
     assert saved.json()['selections']==[item for item in snapshot['selections'] if item['kind'] not in ('writing_rule','expression_rule')]
     assert client.get(route).json()==saved.json()
+
+
+def test_style_selector_uses_only_published_and_owned_resources(api):
+    from myink.api.routes_style import resolve_style_selection
+    client, app = api
+    base = '/api/v1'
+    payload = dict(name='公共文风', kind='style', source='测试', body={'profile': {'narrative_voice': '公开版本'}})
+    public = client.post(base + '/admin/writing-resources', json=payload).json()
+    private = client.post(base + '/my-writing-resources', json={**payload, 'name': '我的文风', 'body': {'profile': {'narrative_voice': '只属于我'}}}).json()
+    before = client.get(base + '/writing-resources/styles').json()['items']
+    assert [x['name'] for x in before] == ['我的文风']
+    own_id = before[0]['id']
+    assert len(own_id) <= 48
+    assert client.post(base + f"/admin/writing-resources/{public['id']}/publish", json={'expected_generation': 0}).status_code == 200
+    assert client.put(base + f"/admin/writing-resources/{public['id']}", json={'expected_generation': 1, 'name': '未发布修改', 'source': '测试', 'body': {'profile': {'narrative_voice': '私有草稿'}}}).status_code == 200
+    choices = client.get(base + '/writing-resources/styles').json()['items']
+    assert {x['name'] for x in choices} == {'公共文风', '我的文风'}
+    pub_id = next(x['id'] for x in choices if x['name'] == '公共文风')
+    with admin.new_session() as db:
+        assert resolve_style_selection(db, uuid.UUID(int=1), pub_id)[0]['narrative_voice'] == '公开版本'
+        assert resolve_style_selection(db, uuid.UUID(int=1), own_id)[0]['narrative_voice'] == '只属于我'
+        with pytest.raises(HTTPException) as exc:
+            resolve_style_selection(db, uuid.UUID(int=2), own_id)
+        assert exc.value.status_code == 404
+    app.dependency_overrides[require_user] = lambda: str(uuid.UUID(int=2))
+    assert [x['name'] for x in client.get(base + '/writing-resources/styles').json()['items']] == ['公共文风']
+
+
+def test_legacy_style_import_is_idempotent_and_owner_scoped(api):
+    from myink.models import StyleLibraryItem
+    client, app = api
+    with user.new_session() as db:
+        old = StyleLibraryItem(user_id=uuid.UUID(int=1), name='旧文风', profile={'pacing': '缓慢'}, note='旧备注', sample_chars=5)
+        db.add(old); db.commit(); old_id = str(old.id)
+    path = '/api/v1/my-writing-resources/import-legacy/' + old_id
+    first = client.post(path)
+    assert first.status_code == 200, first.text
+    repeat = client.post(path)
+    assert repeat.status_code == 200 and repeat.json()['id'] == first.json()['id']
+    assert first.json()['body'] == {'profile': {'pacing': '缓慢'}}
+    assert first.json()['source_resource_id'] == 'legacy-style:' + old_id
+    app.dependency_overrides[require_user] = lambda: str(uuid.UUID(int=2))
+    assert client.post(path).status_code == 404
+    assert client.get('/api/v1/my-writing-resources').json() == {'items': []}

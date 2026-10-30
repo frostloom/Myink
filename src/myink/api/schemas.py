@@ -12,6 +12,7 @@ invalidation）用 `dict` / `list[dict]` 松类型——契约价值在字段名
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -543,6 +544,15 @@ class StyleLibraryItemOut(BaseModel):
 
 class StyleLibraryOut(BaseModel):
     items: list[StyleLibraryItemOut]
+
+
+class ResourceStyleItemOut(StyleLibraryItemOut):
+    origin: Literal['platform', 'personal']
+    resource_id: str
+
+
+class ResourceStyleListOut(BaseModel):
+    items: list[ResourceStyleItemOut]
 
 
 class StyleLibrarySaveBody(BaseModel):
