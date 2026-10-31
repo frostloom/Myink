@@ -1,0 +1,89 @@
+{
+  "schema": "pi-main-amd64-preparation-v1",
+  "prepared_at": "2026-10-31T06:29:53.232333+00:00",
+  "source_commit": "7e99f45f6b70ee9713058f73b247552b4520c6b4",
+  "source_ci": "https://github.com/frostloom/Myink/actions/runs/41174361943",
+  "api": {
+    "source_commit": "7e99f45f6b70ee9713058f73b247552b4520c6b4",
+    "tag": "myink-api:pi-admin-amd64-7e99f45f",
+    "image_id": "sha256:ec7591fb2d166822dd679f575bd9c9a8d9ba9ed2830ca1b0e3aa93d6a7d99e82",
+    "architecture": "amd64",
+    "os": "linux",
+    "uid": 10001,
+    "execution": "local Docker Desktop amd64 emulation",
+    "package_sha256": "72c97066e7dbf72b5745fddae46489e9ae62908023b786a5e83b125a4be8fe25",
+    "python_files": 155,
+    "openapi_paths": 128,
+    "unauthenticated_status": 401,
+    "production_deployed": false
+  },
+  "caddy": {
+    "source_commit": "7e99f45f6b70ee9713058f73b247552b4520c6b4",
+    "tag": "myink-caddy:pi-admin-amd64-7e99f45f",
+    "image_id": "sha256:3eaf7540672f08cce105fa8a52156bf64c81138fda3b52891255e02b5a3b6dbc",
+    "architecture": "amd64",
+    "os": "linux",
+    "uid": 10001,
+    "static_files": 5,
+    "static_files_sha256": "dd53871e2e223ef6bd9b1193f5769e611fa5693ac90a63bdfcb55c4ae9889e76",
+    "index_sha256": "3fcdda72ae5455deb2ac0defc0de4a759e8e47774f3ced9592c009b9b9d85629",
+    "matches_three_engine_verified_build": true,
+    "production_deployed": false
+  },
+  "archive": {
+    "path": "/private/tmp/myink-pi-admin-amd64-7e99f45f.tar",
+    "bytes": 127964160,
+    "sha256": "9bb13ed90f4ddb9bfdcea29029a825c53d4a1b5960e42f88a756531b616102de",
+    "images": [
+      {
+        "tag": "myink-api:pi-admin-amd64-7e99f45f",
+        "architecture": "amd64",
+        "config_sha256": "sha256:c95261f0a3e9d4bc077619e80d4c99b00194e1a8174c1762216cfdc40dc4dab7",
+        "layers": 10
+      },
+      {
+        "tag": "myink-caddy:pi-admin-amd64-7e99f45f",
+        "architecture": "amd64",
+        "config_sha256": "sha256:ea3c94f49ed6b229d75182800766dc0672d2c4c845675776261266e759bf15ac",
+        "layers": 11
+      }
+    ],
+    "production_loaded": false,
+    "production_deployed": false
+  },
+  "original_ledgers_read_only": {
+    "actual-manager.sqlite": {
+      "events": 2017,
+      "operations": 23,
+      "sha256": "a588accf16ed7e7b1d3fc5e04709e000924010c6f840586ffbc2d2599ebf1eff"
+    },
+    "ledger.sqlite": {
+      "events": 2559,
+      "limits": {
+        "budget_microyuan": 50000000,
+        "max_attempts": null,
+        "phase_allocations": null
+      },
+      "operations": 1478,
+      "sha256": "fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb",
+      "unknown_attempts": 9
+    }
+  },
+  "original_observation_read_only": {
+    "cycle_id": "0ad352dc-888b-4a75-97d4-39296f327c6b",
+    "phase": "observing",
+    "assessment_slots": [],
+    "deployed_at": "2026-10-31T00:27:33.997950+00:00",
+    "image_id": "sha256:18b53e0a10bd5245740c701c23ed7620d653e60d06b357b36cd941db140b2c0c"
+  },
+  "next_assessment_at": "2026-11-01T03:00:00+08:00",
+  "production_loaded": false,
+  "production_deployed": false,
+  "native_host_qualification": "not_performed",
+  "limitations": [
+    "Local amd64 emulation verifies architecture and artifacts, not production systemd or Unix peer authorization.",
+    "Runtime bridge installation and product publication still require explicit human authorization.",
+    "The original observing cycle is not rebound to the new main image and no assessment is executed early.",
+    "After loading, inspect the target daemon image IDs and verify archived config digests and complete source/asset identity before sealing approval."
+  ]
+}

@@ -1,5 +1,16 @@
 # Pi administrator audit handoff
 
+Source integration update (2026-10-31): Pi and the administrator console are now
+merged into main `7e99f45f6b70ee9713058f73b247552b4520c6b4`; all four jobs in
+[the exact main CI run](https://github.com/frostloom/Myink/actions/runs/41174361943)
+passed. `/admin/pi` consumes the original audit export through an authenticated
+local socket and supports explicit exact-candidate publication/defer. See
+[the integration acceptance record](../evaluations/pi-admin-integration-2026-10-31.md)
+and [the deployment runbook](admin-console.md). The production bridge and new
+product release remain uninstalled/unpublished pending explicit deployment
+authorization. The following production f230/18b identity is still current;
+statements about a future source integration describe the earlier checkpoint.
+
 Latest verified state (2026-10-31): approved product image18b/mainf230 and
 controller aae66f9fa66ad96627ae6690b3b8724bf427e349 are deployed. The closed
 controller pin is25d5be6aa5c88956d2bf0f87caf673a47dda0852ccd535c922f4789796001a80.
@@ -9,11 +20,13 @@ The ordinary audit owner read all1034 events/260 runs, snapshot
 Native next-day publishing and stable test_id linkage are implemented and
 covered by offline consumer tests; actual Nov1 03:00 Asia/Shanghai results
 remain null. The first fully postdeployment hour had0/20 eligible samples.
-Main's administrator UI/reader integration remains a future integration task.
+Main's administrator UI/reader source integration is complete at7e99f45f;
+production bridge installation and activation remain pending.
 See the [acceptance audit](../evaluations/pi-goal-acceptance-2026-10-31.md)
 and [publication record](../evaluations/pi-approved-publication-2026-10-31.md).
 
-This is a read-only integration contract for the future main/admin implementation.
+This remains the read-only audit projection contract; explicit human publication
+is defined separately in the administrator console runbook.
 It does not enable the admin UI, change authentication or grant execution rights.
 Use `src/myink/pi_audit.py` and `docs/contracts/pi-audit-v1.md`; never query the
 billing/manager SQLite databases from the browser or copy their private payloads.
