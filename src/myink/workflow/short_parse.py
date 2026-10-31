@@ -77,15 +77,52 @@ def render_short_draft(chapters: list[str]) -> str:
         for i, body in enumerate(chapters) if (body or "").strip())
 
 
+def _chapter_seq(raw: str | None) -> int | None:
+    """把标记里的章号数字串换成 int，**绝不抛异常**。
+
+    两层宽容，都不改全局整数限制（`sys.set_int_max_str_digits` 一律不碰）：
+
+    1. 任意 Unicode 十进制数字（Nd，含非 ASCII 的 `０１`、`١٢`、`𝟘𝟙`）先按数值换成 ASCII 数字。
+       `int()` 本身只认 Unicode 数字，但正则里的 `\d` 只切 ASCII，所以统一在这里归一。
+    2. 有效数字（去掉所有前导零之后）过长就判为不可信 → `None`，绝不构造超长 int；
+       这也顺手挡住 `int()` 的 4300 位拦截异常。
+
+    只有全零或空串才落到 0；普通非零数字一个字符都不会被剥掉。
+    """
+    digits = []
+    for ch in (raw or ""):
+        if not ch.isdecimal():
+            return None
+        digits.append(ch)
+    ascii_digits = []
+    for ch in digits:
+        if ch.isascii():
+            ascii_digits.append(ch)
+            continue
+        base = ord(ch) - int(ch)
+        ascii_digits.append(chr(ord("0") + (ord(ch) - base)))
+    normalized = "".join(ascii_digits)
+    significant = normalized.lstrip("0")
+    if not significant:
+        return 0
+    if len(significant) > 18 or not significant.isdigit() or not significant.isascii():
+        return None
+    return int(significant)
+
+
 def _split(text: str, pattern: re.Pattern) -> list[tuple[int, str]]:
-    """按标记切块 → `[(章号, 正文)]`，正文不含标记行本身；标记之前的前言（整篇标题等）丢弃。"""
+    """按标记切块 → `[(章号, 正文)]`，正文不含标记行本身；标记之前的前言（整篇标题等）丢弃。
+
+    超长 / 不可解析的章号给 `None`：`_assemble` 据此退回按出现顺序，正文一条不丢。
+    """
     matches = list(pattern.finditer(text))
     if not matches:
         return []
     blocks = []
     for i, match in enumerate(matches):
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-        blocks.append((int(match.group(1) or match.group(2) or 0), text[match.end():end].strip()))
+        seq = _chapter_seq(match.group(1) or match.group(2))
+        blocks.append((0 if seq is None else seq, text[match.end():end].strip()))
     return blocks
 
 
