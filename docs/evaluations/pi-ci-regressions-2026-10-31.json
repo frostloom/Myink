@@ -1,0 +1,80 @@
+{
+  "schema": "pi-ci-regression-receipt-v1",
+  "production_changed": false,
+  "historical_runs": {
+    "browser_failure": 41176921031,
+    "python_failure": 41179523238
+  },
+  "maintenance": {
+    "root_cause": "PostgreSQL row_to_json trims fractional timestamp trailing zeroes; full-row string confirmation rejected an otherwise successful close",
+    "red": {
+      "failed_microseconds": [
+        100000,
+        123450
+      ],
+      "failed": 2,
+      "passed": 3
+    },
+    "green": {
+      "passed": 23,
+      "suite": [
+        "tests/test_pi_publication_maintenance.py",
+        "ops/pi/tests/test_admin_publication.py"
+      ]
+    },
+    "cas_relaxed": false
+  },
+  "readiness": {
+    "historical_failure": "WebKit reports a chapter read access-control page error during a hard-navigation scenario",
+    "change": "Settle finite fixture API response bodies before hard navigations; exclude persistent SSE and preserve all zero-error assertions",
+    "browser_results": {
+      "chromium": {
+        "passed": true,
+        "checks": 31,
+        "navigation_read_barriers": 9,
+        "page_errors": [],
+        "unknown_routes": []
+      },
+      "firefox": {
+        "passed": true,
+        "checks": 31,
+        "navigation_read_barriers": 9,
+        "page_errors": [],
+        "unknown_routes": []
+      },
+      "webkit": {
+        "passed": true,
+        "checks": 31,
+        "navigation_read_barriers": 9,
+        "page_errors": [],
+        "unknown_routes": []
+      }
+    }
+  },
+  "pi_console": {
+    "chromium": {
+      "passed": true,
+      "checks": 12,
+      "index_sha256": "3fcdda72ae5455deb2ac0defc0de4a759e8e47774f3ced9592c009b9b9d85629",
+      "page_errors": [],
+      "unknown_api": []
+    },
+    "firefox": {
+      "passed": true,
+      "checks": 12,
+      "index_sha256": "3fcdda72ae5455deb2ac0defc0de4a759e8e47774f3ced9592c009b9b9d85629",
+      "page_errors": [],
+      "unknown_api": []
+    },
+    "webkit": {
+      "passed": true,
+      "checks": 12,
+      "index_sha256": "3fcdda72ae5455deb2ac0defc0de4a759e8e47774f3ced9592c009b9b9d85629",
+      "page_errors": [],
+      "unknown_api": []
+    }
+  },
+  "helper_tests_passed": 8,
+  "temporary_actions_read_removed": true,
+  "remote_final_status": "pending"
+}

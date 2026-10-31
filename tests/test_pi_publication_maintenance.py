@@ -57,10 +57,11 @@ def pg_publication(tmp_path):
         with psycopg.connect(admin_url,autocommit=True) as admin:admin.execute(sql.SQL('DROP DATABASE {} WITH (FORCE)').format(sql.Identifier(name)))
 
 
-def test_original_pg_cas_closes_adopts_and_reopens_exact_identity(pg_publication):
+@pytest.mark.parametrize("microsecond", [0, 100000, 123450, 123456])
+def test_original_pg_cas_closes_adopts_and_reopens_exact_identity(pg_publication, microsecond):
     maintenance,commands,identity,before,root,dsn=pg_publication
     assert maintenance.opened(identity)==before
-    closed=maintenance.close(before,str(uuid.uuid4()),datetime.now(timezone.utc),root)
+    closed=maintenance.close(before,str(uuid.uuid4()),datetime(2026,10,31,7,0,tzinfo=timezone.utc).replace(microsecond=microsecond),root)
     assert maintenance.read()==closed and closed['admission_closed'] and closed['consumer_blocked']
     candidate=dict(identity,deployment_id='fixture-candidate',generation=2,image_ids={'python':'sha256:'+'b'*64})
     closed=maintenance.adopt(closed,candidate,root)

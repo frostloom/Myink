@@ -49,7 +49,12 @@ class Maintenance:
     def close(self, before, cycle, now, root):
         require(self.read()==before,'maintenance owner changed before closure')
         self.quiet()
-        closed=dict(before,epoch='pi-console-'+cycle,deadline=(utc(now)+timedelta(minutes=10)).isoformat(),admission_closed=True,consumer_blocked=True)
+        deadline=utc(now)+timedelta(minutes=10)
+        # PostgreSQL row_to_json trims fractional trailing zeroes. Keep the
+        # intended value in that exact form so full-row confirmation is stable.
+        fraction=f'.{deadline.microsecond:06d}'.rstrip('0') if deadline.microsecond else ''
+        deadline=deadline.strftime('%Y-%m-%dT%H:%M:%S')+fraction+'+00:00'
+        closed=dict(before,epoch='pi-console-'+cycle,deadline=deadline,admission_closed=True,consumer_blocked=True)
         _write(root/'maintenance-intent.json',dict(previous=before,closed=closed))
         self.change(before,closed);_write(root/'maintenance-closed.json',closed)
         # New snapshot after the committed closure sees admissions which held a

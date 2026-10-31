@@ -58,6 +58,34 @@ async function main() {
   try {
     browser = await launchBrowser(); receipt.browserVersion = browser.version();
     page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
+    // Hard navigation can cancel an intercepted chapter read in WebKit and
+    // surface its access-control diagnostic even when the application catches it.
+    // Wait for finite fixture API bodies; SSE remains deliberately persistent.
+    const pendingApi = new Set();
+    const finiteApi = request => new URL(request.url()).pathname.startsWith('/api/') && !new URL(request.url()).pathname.endsWith('/events');
+    page.on('request', request => { if (finiteApi(request)) pendingApi.add(request); });
+    page.on('requestfinished', request => pendingApi.delete(request));
+    page.on('requestfailed', request => pendingApi.delete(request));
+    async function settleFixtureApi() {
+      let timer;
+      try {
+        await Promise.race([
+          (async () => {
+            for (;;) {
+              await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+              if (!pendingApi.size) break;
+              await Promise.all([...pendingApi].map(async request => {
+                const response = await request.response();
+                assert.ok(response, `Fixture request failed before navigation: ${request.url()}`);
+                assert.equal(await response.finished(), null);
+              }));
+            }
+          })(),
+          new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Finite fixture API did not settle before navigation')), 10000); }),
+        ]);
+        receipt.navigationReadBarriers = (receipt.navigationReadBarriers ?? 0) + 1;
+      } finally { clearTimeout(timer); }
+    }
     await page.addInitScript(()=>{window.__mediaUrls={created:[],revoked:[]};const create=URL.createObjectURL.bind(URL),revoke=URL.revokeObjectURL.bind(URL);URL.createObjectURL=b=>{const u=create(b);window.__mediaUrls.created.push(u);return u};URL.revokeObjectURL=u=>{window.__mediaUrls.revoked.push(u);revoke(u)}});
     page.on('pageerror', e => {receipt.page_errors.push(e.message);(receipt.error_details??=[]).push({message:e.message,stack:e.stack,name:e.name,url:page.url()})});
     await page.route('**/*', async route => {
@@ -92,7 +120,7 @@ async function main() {
       else { receipt.unknown_routes.push({ endpoint, method }); status = 500; data = { error: 'unhandled_fixture_endpoint' }; }
       await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
     });
-    await page.goto(origin + '/login');
+    await settleFixtureApi(); await page.goto(origin + '/login');
     const probeStart=receipt.unknown_routes.length;
     const probes=await page.evaluate(async()=>[await fetch('/api/v1/__readiness_unknown').then(r=>r.status),await fetch('/api/v1/projects',{method:'POST'}).then(r=>r.status)]);
     assert.deepEqual(probes,[500,500]);assert.equal(receipt.unknown_routes.length,probeStart+2);receipt.fixtureProbes={unknownEndpoint:probes[0],wrongMethod:probes[1]};receipt.unknown_routes.splice(probeStart,2);receipt.checks.push('fixture_unknown_endpoint_and_method_fail_closed');
@@ -107,7 +135,7 @@ async function main() {
       await page.evaluate(()=>sessionStorage.clear());
       state.content = Array.from(unit.repeat(Math.ceil(size/Array.from(unit).length))).slice(0,size).join('');
       const start = performance.now();
-      await page.goto(origin + '/projects/project-p1');
+      await settleFixtureApi(); await page.goto(origin + '/projects/project-p1');
       await page.getByRole('button', {name:/第 1 章.*雨夜/}).click();
       const ed = page.getByRole('textbox',{name:'章节正文'});
       await ed.waitFor(); assert.equal(await ed.inputValue(),state.content);
@@ -124,7 +152,7 @@ async function main() {
     receipt.metrics=metrics;
     await page.evaluate(()=>sessionStorage.clear());frames.length=0;frameId=0;
     receipt.checks.push('20k_50k_unicode_400_chapters_input_and_save');state.saves=0;state.saveMode='conflict';state.chapterCount=1;state.phase='awaiting_plan';state.content='已保存正文：林川扶着栏杆，许宁检查接线盒。';
-    await page.goto(origin + '/projects/project-p1');
+    await settleFixtureApi(); await page.goto(origin + '/projects/project-p1');
     await page.getByRole('button', { name: '确认计划并开始写作', exact: true }).waitFor();
     await page.screenshot({ path: path.join(out, '01-plan.png'), fullPage: true });
     await page.getByRole('button', { name: '确认计划并开始写作', exact: true }).click();
@@ -190,15 +218,15 @@ async function main() {
     const replacementEditor=page.getByRole('textbox',{name:'章节正文'});
     assert.equal(await replacementEditor.inputValue(),'重写替换正文。');
     receipt.checks.push('replacement_saved_body_auto_loaded_without_reload');
-    // SSE is intentionally persistent; the editor assertion above is the readiness signal.
-    await page.reload();
+    // Preserve the editor assertion and finish finite reads before hard reload.
+    await settleFixtureApi(); await page.reload();
     await page.getByRole('dialog', { name: '设定确认' }).waitFor();
     await page.getByPlaceholder('例如：人物仍然受伤，需要治疗过程').fill('现实题材不允许瞬间移动');
     await page.getByRole('button', { name: '不接受，自动修改', exact: true }).click();
     await page.getByRole('dialog', {name: '设定确认', exact: true}).waitFor({state: 'hidden'});
     assert.equal(state.rejected, true); receipt.checks.push('human_rejection_after_reload', 'resume_request');
     state.phase = 'done'; emit({type:'status',status:'done'}); for (const res of streams) res.end();
-    await page.getByRole('button', { name: /第 1 章.*雨夜/ }).waitFor(); await page.reload();
+    await page.getByRole('button', { name: /第 1 章.*雨夜/ }).waitFor(); await settleFixtureApi(); await page.reload();
     await page.getByRole('button', { name: /第 1 章.*雨夜/ }).click();
     const editor = page.getByRole('textbox', { name: '章节正文' }); await editor.waitFor();
     assert.equal(await editor.inputValue(), state.content); receipt.checks.push('saved_body_after_refresh');
@@ -227,13 +255,13 @@ async function main() {
     await page.screenshot({ path: path.join(out, '04-mobile.png'), fullPage: true });
     const width = await page.locator('body').evaluate(el => ({ scroll: el.scrollWidth, viewport: window.innerWidth }));
     assert.ok(width.scroll <= width.viewport + 1, JSON.stringify(width)); receipt.checks.push('390px_no_body_horizontal_overflow');
-    await page.goto(origin+'/theme');
+    await settleFixtureApi(); await page.goto(origin+'/theme');
     await page.getByRole('button',{name:'新建自定义',exact:true}).click();
     await page.getByLabel('名称',{exact:true}).fill('Browser image');
     await page.getByLabel('上传背景').setInputFiles({name:'readiness.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=','base64')});
     await page.getByRole('button',{name:'保存这套',exact:true}).click();
     await page.getByRole('button',{name:'Browser image',exact:true}).waitFor();
-    await page.reload();await page.getByRole('button',{name:'Browser image',exact:true}).waitFor();
+    await settleFixtureApi(); await page.reload();await page.getByRole('button',{name:'Browser image',exact:true}).waitFor();
     const stored=await page.evaluate(()=>new Promise((resolve,reject)=>{const req=indexedDB.open('myink-theme');req.onsuccess=()=>{const db=req.result;const get=db.transaction('files').objectStore('files').getAll();get.onsuccess=()=>{resolve(get.result.map(v=>({size:v.size,type:v.type})));db.close()};get.onerror=reject};req.onerror=reject}));
     assert.ok(stored.some(v=>v.size>0&&v.type==='image/png'));receipt.checks.push('actual_png_upload_indexeddb_reload');
     // A real VP8 clip keeps playback coverage independent of MediaRecorder support.
@@ -241,7 +269,7 @@ async function main() {
     receipt.videoMime=video.mime;
     await page.getByRole('button',{name:'新建自定义',exact:true}).click();await page.getByLabel('名称',{exact:true}).fill('Browser video');
     await page.getByLabel('上传背景').setInputFiles({name:'readiness.'+(video.mime==='video/mp4'?'mp4':'webm'),mimeType:video.mime,buffer:Buffer.from(video.bytes)});
-    await page.getByRole('button',{name:'保存这套',exact:true}).click();await page.getByRole('button',{name:'Browser video',exact:true}).waitFor();await page.reload();
+    await page.getByRole('button',{name:'保存这套',exact:true}).click();await page.getByRole('button',{name:'Browser video',exact:true}).waitFor();await settleFixtureApi(); await page.reload();
     const canvasVideo=page.locator('video').first();await canvasVideo.waitFor();
     await page.waitForFunction(()=>Array.from(document.querySelectorAll('video')).some(v=>v.readyState>=2&&!v.paused));
     await page.emulateMedia({reducedMotion:'reduce'});
