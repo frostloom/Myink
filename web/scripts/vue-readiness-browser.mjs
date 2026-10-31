@@ -190,14 +190,15 @@ async function main() {
     const replacementEditor=page.getByRole('textbox',{name:'章节正文'});
     assert.equal(await replacementEditor.inputValue(),'重写替换正文。');
     receipt.checks.push('replacement_saved_body_auto_loaded_without_reload');
-    await page.waitForLoadState('networkidle');
+    // SSE is intentionally persistent; the editor assertion above is the readiness signal.
     await page.reload();
     await page.getByRole('dialog', { name: '设定确认' }).waitFor();
     await page.getByPlaceholder('例如：人物仍然受伤，需要治疗过程').fill('现实题材不允许瞬间移动');
     await page.getByRole('button', { name: '不接受，自动修改', exact: true }).click();
     await page.getByRole('dialog', {name: '设定确认', exact: true}).waitFor({state: 'hidden'});
     assert.equal(state.rejected, true); receipt.checks.push('human_rejection_after_reload', 'resume_request');
-    state.phase = 'done'; await page.waitForLoadState('networkidle'); await page.reload();
+    state.phase = 'done'; emit({type:'status',status:'done'}); for (const res of streams) res.end();
+    await page.getByRole('button', { name: /第 1 章.*雨夜/ }).waitFor(); await page.reload();
     await page.getByRole('button', { name: /第 1 章.*雨夜/ }).click();
     const editor = page.getByRole('textbox', { name: '章节正文' }); await editor.waitFor();
     assert.equal(await editor.inputValue(), state.content); receipt.checks.push('saved_body_after_refresh');

@@ -123,6 +123,7 @@ try {
   assert.equal((await balance.json()).short.remaining,0)
   await page.screenshot({path:path.join(output,`${name}-exhausted-upgrade.png`)})
   await dialog.getByRole('button',{name:'关闭注册',exact:true}).click()
+  await dialog.waitFor({state:'detached'})
   quotaUnavailable=true
   await page.evaluate(()=>{window.dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'))})
   assert.equal(await dialog.count(),0)
@@ -151,7 +152,7 @@ try {
  }
  assert.deepEqual(receipt.unknownApi,[]);assert.deepEqual(receipt.pageErrors,[])
  receipt.passed=true
-} catch(error) {receipt.error=String(error);receipt.pageText=await activePage?.locator('body').innerText().catch(()=>null);await activePage?.screenshot({path:path.join(output,'failure.png')}).catch(()=>{});process.exitCode=1}
+} catch(error) {receipt.error=error instanceof Error ? error.stack??error.message : String(error);receipt.pageText=await activePage?.locator('body').innerText().catch(()=>null);await activePage?.screenshot({path:path.join(output,'failure.png')}).catch(()=>{});process.exitCode=1}
 finally {
  await finalizeBrowserReceipt(receipt,output,[()=>browser?.close(),()=>new Promise((resolve,reject)=>server.close(error=>error?reject(error):resolve()))])
  if(!receipt.passed)process.exitCode=1
