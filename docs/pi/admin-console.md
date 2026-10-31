@@ -8,12 +8,13 @@
 
 ## 上线前准备
 
-本文件是待执行的部署清单；合入 main 不会自动更新服务器镜像、安装服务或开放发布。先完成 main CI 并确认产品部署。以下操作只由有宿主权限的运维执行，浏览器不能提供这些路径或配置。
+2026-10-31 首次服务器发布与真实观察交接已按明确批准完成，见[实际回执](../evaluations/pi-main-actual-release-2026-10-31.md)。以下保留可复核的运行手册；合入 main 本身不会执行这些宿主操作，浏览器不能提供路径或配置。
 
 - 既有根目录固定为 `/home/ubuntu/myink-pi-managed`，产品 Compose 在 `/home/ubuntu/myink`。复用原 `state/nightly-approval.sqlite`、`state/actual-manager.sqlite`、`state/ledger.sqlite` 与 `audit/state/events.sqlite`；不初始化新任务/费用账本，不覆盖已有审批。
 - 将本提交的 `docker-compose.pi-console.yml` 放到产品目录，与原 Compose 一起运行。只有 API 挂载 `/run/myink-pi-console`，只读，容器 UID/GID 为现有 10001。worker 不挂载，产品容器不持有 Docker socket、模型凭据或原 Pi 账本。该目录由 systemd 生成，不能让 Compose 自动创建。
 - 使用 `ops/pi/deploy/build_runtime.py:build()` 构建独立闭合 runtime，参数为全长已审查提交 SHA，发布到新的 `releases/admin-console-<commit>/runtime`。构建环境使用已锁定依赖；记录输出 `runtime_sha256`，清单逐文件验证，整棵目录 root 拥有且禁止组/其他写入。不要替换正在使用的 nightly runtime。
 - 从本地可信 Git checkout 生成包含生产基线与已合入提交的 bundle（`git bundle create <private-output> main`），核对 bundle SHA 后传入宿主。以 root 将它 clone 为 `/home/ubuntu/myink-pi-managed/control/source.git`（bare，0700）；已存在时先核对对象再 fetch，禁止重新初始化/覆盖。宿主产品目录没有 `.git`，不能从镜像标签猜源码。必须用 `git cat-file -e <实际部署基线提交>^{commit}` 验证对象确实存在。仓库不配置 GitHub 写入凭据。
+- 安装前用 `getent group 10001` 核对宿主组；首次主机缺少该组时创建固定 GID10001 的专用组，不授予登录或Docker权限。若该GID已被无关用途占用，先核对用途，不覆盖。systemd的数值Group也要求宿主可解析该组，否则会216/GROUP退出。
 - 根目录已有 `control/nightly.lock`，新增唯一 console lifetime lock 由 tmpfiles 管理。安装 `ops/pi/deploy/myink-pi-admin-console-tmpfiles.conf`，执行 `systemd-tmpfiles --create`；它不更改原账本所有权。
 
 根拥有、0640 的固定 `config/admin-console.json`：
@@ -70,7 +71,7 @@ PI_CONSOLE_CONFIG_SHA256=<admin-console.json 原始字节的 sha256>
 
 后续现有 source issuer 以独立 `pi-human-main-baseline-v1` 解释核验过的人工基线，重新采集新版本窗口、真实物理源码并签发有限输入；source-stage的 `comparison_sha256:null`，另存 `baseline_receipt_sha256` 与 `predecessor_kind:manual_main_release`。固定模板不会续用过期研究输入，因此首次profile过期不会永久卡住；无足够新证据仍不能伪造任务或通过比较。后续Pi候选仍须管理员确认发布，真正比较完成后回到原有比较来源路径。
 
-若intent存在但没有与最终Gate事件匹配的verified回执，入口拒绝重放，保留现场供人工核对。交接未完，旧Gate继续阻止新任务；不能靠删除目录、改UUID、直接改SQLite或降低20样本要求恢复。当前此路径仅完成模拟/离线验证，生产交接及root部署仍未执行。
+若intent存在但没有与最终Gate事件匹配的verified回执，入口拒绝重放，保留现场供人工核对。交接未完，旧Gate继续阻止新任务；不能靠删除目录、改UUID、直接改SQLite或降低20样本要求恢复。2026-10-31已完成真实root部署、指标源只读核验及正式交接，详见[实际回执](../evaluations/pi-main-actual-release-2026-10-31.md)；仍未证明线上质量改善。
 
 ## 开放候选发布
 
@@ -88,6 +89,6 @@ PI_CONSOLE_CONFIG_SHA256=<admin-console.json 原始字节的 sha256>
 
 ## 验证与限制
 
-`tests/test_admin_pi_integration.py` 使用真实 JWT/隔离 PG 与真实本地 Unix socket，宿主发布效果为 SIMULATED；`ops/pi/tests/test_admin_publication.py` 的 Docker effects 也是模拟。浏览器 fixture 明确标记模拟，不是真实线上发布验收。真正的 ACTUAL Linux peer 身份、systemd 沙箱和 Docker 物理替换，须按本清单在已批准部署时验证并单独记录。
+`tests/test_admin_pi_integration.py` 使用真实 JWT/隔离 PG 与真实本地 Unix socket，宿主发布效果为 SIMULATED；`ops/pi/tests/test_admin_publication.py` 的 Docker effects 也是模拟。浏览器 fixture 明确标记模拟，不是真实线上发布验收。2026-10-31已按批准范围单独验证ACTUAL Linux peer、systemd沙箱、首次物理替换及新版本指标读取，见实际回执；未来候选发布的完整业务效果仍需真实逐轮验收。
 
 审查后的发布顺序：准备及执行前还比较实际容器的 Compose config-hash、完整环境、命令和挂载，拒绝提前发生的磁盘配置漂移。真正替换前，对原 PostgreSQL `maintenance_control` 的完整旧行做 CAS，关闭 admission/consumer；提交关闭后重新检查在途任务、执行者、未落定 intake/outbox 和 AMQP。只有完整物理镜像核验完成，才在仍关闭的原行切换部署身份，原 Gate 确认后重新开放。任何关闭后的未知失败都保留关闭状态和 `maintenance-*.json` 回执，需人工核对；不能用删回执或回滚费用库恢复。

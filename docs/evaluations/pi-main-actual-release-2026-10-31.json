@@ -1,0 +1,295 @@
+{
+  "backups": {
+    "database.dump": {
+      "bytes": 6746775,
+      "private_mode": "0o600",
+      "sha256": "9da490f00ecbc0e8c5ed9228cab7ef1e531c4b786ec31b85c0c480b1bb24d9d7"
+    },
+    "feedback.tar": {
+      "bytes": 10240,
+      "private_mode": "0o600",
+      "sha256": "e748ae30a71a4bb7caed4d85ce4283f37dd731eef0a52192b2c7f35f95a38d3e"
+    },
+    "roles.sql": {
+      "bytes": 1707,
+      "private_mode": "0o600",
+      "sha256": "5d90b34b732d6063c04baca6d756b99d0fd702a897c65e6a4d123fb41e6b1580"
+    }
+  },
+  "controller_fix": {
+    "archive_sha256": "ba19d7def2556f491e6c2fb1f90fbaf018fe30240eb9ec2f222c29f57c089027",
+    "driver_sha256": "4d5ab5c73b3332f667384fb00551262af458e0b943d17ff9b97d0abb334f397a",
+    "profile_sha256": "c1b3b14971ed822f83fd1e8ceac2b256f21713454c352a18537c9386eeae9621",
+    "runtime_sha256": "993ccbdd1c48b3fed0de46bbcb826f9b844b38b4a05638c4ead26a92eb2c001c",
+    "source_commit": "b5ce48c2b78a750621221eb41c7b714918139396",
+    "template_sha256": "5f26798c0d46651e440e81c2d89704489e15387aaa45f8f4d4a5404a23fbd50c"
+  },
+  "database_backup_validation": "pg_restore --list succeeded; not an actual restore",
+  "handoff": {
+    "comparison_status": "interrupted",
+    "cycle_id": "0ad352dc-888b-4a75-97d4-39296f327c6b",
+    "known_cost_microyuan": 0,
+    "model_requests": 0,
+    "online_improvement_proven": false,
+    "operation_id": "c27dc259-6ac1-4254-9c32-f5f38649d229",
+    "result_sha256": "3773a130f3ea0a6e172689bae012c1a0bf3d56494ce684ab5346ee4988587406",
+    "status": "handed_off"
+  },
+  "host_console_group_gid": 10001,
+  "manual_baseline": {
+    "baseline_schema": "pi-human-main-baseline-v1",
+    "identity": {
+      "commit_sha": "be306a459447a148f5393391c7fb15a9d4f4aef9",
+      "config_hash": "475e73a27154accd6f72a0baa6dd4fa6d42737ff057984303d03db29b2189a01",
+      "deployment_id": "pi-main-d81f4036-d727-4e7a-89ad-896defe62be3",
+      "generation": 2,
+      "image_ids": {
+        "python": "sha256:f67d1144d0dca4ab345d1d6a99070ae8489cb4aeec2ba973dee518b23107cb97"
+      },
+      "owner": "human-main",
+      "schema_id": "myink-run-provenance-v1"
+    },
+    "verified": true
+  },
+  "migration": {
+    "all_fingerprints_unchanged": true,
+    "new_tables": [
+      "admin_access_logs",
+      "admission_intents",
+      "agent_runs",
+      "aliases",
+      "chapter_versions",
+      "chapters",
+      "character_states",
+      "characters",
+      "checkpoint_blobs",
+      "checkpoint_migrations",
+      "checkpoint_writes",
+      "checkpoints",
+      "conversations",
+      "embeddings",
+      "entities",
+      "events",
+      "factions",
+      "facts",
+      "feedback",
+      "findings",
+      "foreshadows",
+      "generation_snapshots",
+      "global_audit_reports",
+      "guest_body_attempts",
+      "guest_identities",
+      "guest_quota_buckets",
+      "guest_quota_operations",
+      "invitations",
+      "locations",
+      "maintenance_control",
+      "maintenance_executions",
+      "memory_candidates",
+      "messages",
+      "personal_writing_resources",
+      "platform_configuration",
+      "plot_threads",
+      "project_settings",
+      "project_writing_resources",
+      "projects",
+      "queue_handoffs",
+      "relations",
+      "short_creation_messages",
+      "short_creation_sessions",
+      "style_library_items",
+      "task_budget_attempts",
+      "task_budget_calls",
+      "task_budgets",
+      "tasks",
+      "users",
+      "validation_reports",
+      "volume_outlines",
+      "writing_lessons",
+      "writing_resource_publications",
+      "writing_resource_revisions",
+      "writing_resources"
+    ],
+    "tables": 51
+  },
+  "observation": {
+    "automatic_execution": false,
+    "availability": "unknown",
+    "config_sha256": "7171e19adf6cfc043e769b951d93a2ffce0b7bbadb7074bb42894bd0c965513f",
+    "confounders": [],
+    "controller_sha256": "b35636d4cd658eab836825b9616bddccbcd21e888a56aa537fd2ed7942d4ea60",
+    "evidence_domain": "online_business",
+    "export_published": true,
+    "minimum_samples": 20,
+    "mode": "ACTUAL",
+    "observed_samples": 0,
+    "receipt_sha256": "5f4de24a9da8d4b00801ffe803af0155d16a89a2ec2f2ddefa6e48e72fadfa2e",
+    "run_id": "observer-20261031T101400Z-57c76a91084c",
+    "schema": "pi-live-observer-result-v1",
+    "snapshot_sha256": "e93f75e93d458d158ee7334cb2e8608205872cd46c6ca6486bbae42a4e0d01e8",
+    "status": "insufficient_evidence",
+    "window": {
+      "end": "2026-10-31T10:14:00+00:00",
+      "start": "2026-10-31T09:14:00+00:00"
+    }
+  },
+  "post_release": {
+    "accounting": {
+      "budget_microyuan": 50000000,
+      "fee_events": 2559,
+      "fee_operations": 1478,
+      "fee_sha256": "fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb",
+      "manager_events": 2017,
+      "manager_operations": 23,
+      "manager_sha256": "a588accf16ed7e7b1d3fc5e04709e000924010c6f840586ffbc2d2599ebf1eff",
+      "unknown_holds": 9
+    },
+    "admin": {
+      "anonymous": {
+        "no_store": true,
+        "status": 401
+      },
+      "daily_event_count": 42,
+      "endpoints": {
+        "daily": 200,
+        "enhancements": 200,
+        "events": 200,
+        "runs": 200,
+        "status": 200
+      },
+      "executor": {
+        "last_result": "success",
+        "next_check": "Sun 2026-11-01 02:00:00 CST",
+        "service_state": "inactive/dead",
+        "timer_state": "active/waiting"
+      },
+      "new_metric_window_visible": true,
+      "new_run_id": "observer-20261031T101400Z-57c76a91084c",
+      "normal_user": {
+        "no_store": true,
+        "status": 403
+      },
+      "phase": "idle",
+      "sample_windows": 5
+    },
+    "services": [
+      {
+        "health": "healthy",
+        "id": "fde92181d386cb9fc766e5eb69793de50ea3254df635fb31a806d01ff91c8edb",
+        "image": "sha256:3e4ff5c4de6a64dbb5a5a1a259960eff0b530efd92ff6bf912a39ebf20fc2c14",
+        "role": "myink-caddy",
+        "running": true
+      },
+      {
+        "health": null,
+        "id": "e4b6164cdc45b63449826bb48915252dad51307fb3e85364b07d570b787326df",
+        "image": "sha256:f67d1144d0dca4ab345d1d6a99070ae8489cb4aeec2ba973dee518b23107cb97",
+        "role": "myink-worker",
+        "running": true
+      },
+      {
+        "health": null,
+        "id": "e34d9b5fd21706668536ae28d364df438ba9a5875f170c4e608cdd04c3b160c7",
+        "image": "sha256:f67d1144d0dca4ab345d1d6a99070ae8489cb4aeec2ba973dee518b23107cb97",
+        "role": "myink-worker",
+        "running": true
+      },
+      {
+        "health": "healthy",
+        "id": "c3f965dda50e4e2b04db3a0de44525ebeb96907ef07a98fbd1289a8bf8b4fd0d",
+        "image": "sha256:f67d1144d0dca4ab345d1d6a99070ae8489cb4aeec2ba973dee518b23107cb97",
+        "role": "myink-api",
+        "running": true
+      },
+      {
+        "health": "healthy",
+        "id": "0c11835cb14914d3658ac567acb7cf910a57f605b800021bc17deb5a893d9900",
+        "image": "sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b",
+        "role": "myink-pg",
+        "running": true
+      },
+      {
+        "health": "healthy",
+        "id": "467df21676eff176faaa5f76425da6c10762cbfd87725bd6fceba3c620bf0514",
+        "image": "sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499",
+        "role": "myink-redis",
+        "running": true
+      },
+      {
+        "health": "healthy",
+        "id": "78e3c8494e740782345a7c47a9be52b7d9f0691f36cda2f7a1c2840671ea31d5",
+        "image": "sha256:e582c0bc7766f3342496d8485efb5a1df782b5ce3886ad017e2eaae442311f69",
+        "role": "myink-rabbitmq",
+        "running": true
+      }
+    ],
+    "units": {
+      "myink-pi-admin-console.service": "Result=success\nActiveState=active\nSubState=running",
+      "myink-pi-nightly.service": "Result=success\nActiveState=inactive\nSubState=dead",
+      "myink-pi-nightly.timer": "NextElapseUSecRealtime=Sun 2026-11-01 02:00:00 CST\nResult=success\nActiveState=active\nSubState=waiting"
+    }
+  },
+  "publisher": {
+    "compose_matches_physical": true,
+    "verified": true
+  },
+  "release": {
+    "accounting": {
+      "actual-manager.sqlite": "a588accf16ed7e7b1d3fc5e04709e000924010c6f840586ffbc2d2599ebf1eff",
+      "ledger.sqlite": "fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb"
+    },
+    "controller_commit": "b5ce48c2b78a750621221eb41c7b714918139396",
+    "controller_runtime_sha256": "993ccbdd1c48b3fed0de46bbcb826f9b844b38b4a05638c4ead26a92eb2c001c",
+    "handoff_operation_id": "c27dc259-6ac1-4254-9c32-f5f38649d229",
+    "identity": {
+      "commit_sha": "be306a459447a148f5393391c7fb15a9d4f4aef9",
+      "config_hash": "475e73a27154accd6f72a0baa6dd4fa6d42737ff057984303d03db29b2189a01",
+      "deployment_id": "pi-main-d81f4036-d727-4e7a-89ad-896defe62be3",
+      "generation": 2,
+      "image_ids": {
+        "python": "sha256:f67d1144d0dca4ab345d1d6a99070ae8489cb4aeec2ba973dee518b23107cb97"
+      },
+      "owner": "human-main",
+      "schema_id": "myink-run-provenance-v1"
+    },
+    "known_cost_microyuan": 0,
+    "maintenance_seconds": 407,
+    "model_requests": 0,
+    "public_tls_checks": {
+      "/admin/pi": 200,
+      "/api/v1/admin/pi/status": 401,
+      "/healthz": 200,
+      "/readyz": 200
+    },
+    "publication_available": true,
+    "released_at": "2026-10-31T10:14:14.723329+00:00",
+    "status": "released"
+  },
+  "static": {
+    "all_hashes_verified": true,
+    "files": 44,
+    "old_assets_retained": 39,
+    "tls_verified": true
+  },
+  "schema": "pi-main-actual-release-v1",
+  "qualification": "ACTUAL",
+  "online_improvement_proven": false,
+  "related_tests": {
+    "passed": 89,
+    "seconds": 30.0
+  },
+  "full_regression": {
+    "status": "passed",
+    "passed": 4532,
+    "deselected": 63,
+    "warnings": 1,
+    "seconds": 354.09,
+    "command": ".venv/bin/python -m pytest ops/pi/tests -q -m 'not pi_lab and not pi_live and not pi_followup_docker and not pi_observer_pg'",
+    "xml_sha256": "76b9c3648f4b25c6d4819b256584bed7d033bb5b0209a8b5c375468feaf0365f"
+  },
+  "deployed_code_ci": {
+    "commit": "b5ce48c2b78a750621221eb41c7b714918139396",
+    "run_id": 41191811874,
+    "jobs_passed": 4
+  }
+}
