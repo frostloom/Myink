@@ -1,0 +1,138 @@
+{
+  "schema": "pi-response-encoding-v1",
+  "date": "2026-10-22",
+  "base_commit": "2c4e821a54ead0dd79f3a25b327f8fc9e9d2345f",
+  "behavior": {
+    "request_accept_encoding": "identity",
+    "accepted_response_encodings": [
+      "absent",
+      "identity"
+    ],
+    "other_encodings_rejected_before_read": true,
+    "rejection_http_status": 502,
+    "retries": 0,
+    "unknown_reservation_retained": true,
+    "bounded_encoding_categories_only": true
+  },
+  "actual_previous_cause_proven": false,
+  "offline_tests": {
+    "passed": 2042,
+    "skipped": 0,
+    "deselected": 19
+  },
+  "targeted_tests_passed": 149,
+  "red": {
+    "failed": 16,
+    "passed": 3
+  },
+  "independent_review": {
+    "critical": 0,
+    "important": 0,
+    "minor": 0,
+    "tests_passed": 79
+  },
+  "source_provenance": {
+    "runtime_sha256": "6e169d5462405f59c070365267eec24fddc005a3c141819ba7a1f548a592c528",
+    "node_sha256": "719a43d185f3b6a59d8fcbba1ff06b93c75f76fb0bb9916f81d33921615d4cb5",
+    "lock_sha256": "fd0f5bd8aa13e01da8792b161d80502f32e1afd00103151fbcc21f4b3146785a",
+    "pi_cli_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+    "code_sha256": "43d335ebba048e96eda05eee5e8efa845f504345b8ade5dd3811183841071110",
+    "controller_sha256": "de76af7fc6a0f0946f19000b6fb1cc4c6bac1dbb9951bdb2fe0c00b67ac55ead",
+    "worker_sha256": "752b21c9dd5f73e4b0fe78b3789ccf60afac7860aac1d759cc37d078f3aaae38"
+  },
+  "linux_identity": {
+    "status": "completed",
+    "operation_id": "055c5fef-a554-4152-bbe2-6590f4c3956c",
+    "done": 2,
+    "not_run": 28,
+    "synthetic_requests": 2,
+    "production_provider_function": true,
+    "known_synthetic_total_microyuan": 1668,
+    "distinct_sessions": true,
+    "cleanup": [
+      {
+        "container_id": "5dff2ba45433ef7b07ea479be1838060c8019af6f08458820e6cf21a59a99f60",
+        "stopped": true,
+        "removed": true,
+        "exit_code": 0
+      },
+      {
+        "container_id": "37f9d64ef98599c1ba67bad156a6aaa966ccb978eff8c73e1843398c4b7ac655",
+        "stopped": true,
+        "removed": true,
+        "exit_code": 0
+      }
+    ],
+    "exact_label_empty": true
+  },
+  "linux_compressed": {
+    "status": "blocked",
+    "failure_class": "ValueError",
+    "operation_id": "dd7f234f-a1c8-4b34-96f3-2663520e047b",
+    "uncertain": 1,
+    "not_run": 29,
+    "synthetic_requests": 1,
+    "production_provider_function": true,
+    "content_encoding": "gzip",
+    "parser_reason": "unsupported_content_encoding",
+    "unknown_reserved_microyuan": 19384,
+    "cleanup": [
+      {
+        "container_id": "ae7583e97da0748cd82dcc11017eaa0075893fb6cb815acd95d75d8fe55302b1",
+        "stopped": true,
+        "removed": true,
+        "exit_code": 0
+      }
+    ],
+    "exact_label_empty": true
+  },
+  "paid_requests": 0,
+  "canonical_ledger_modified": false,
+  "global_live_enabled": false,
+  "billing_verified": false,
+  "production_ready": false,
+  "automatic_execution": false,
+  "private_evidence_sha256": {
+    "synthetic-identity.log": "7b212672472493f7f438a7e3ca0e0047a08d0174c7b14d638482388c62bb15a8",
+    "synthetic-identity-002.log": "48a4a573e9bf9adfdccf48da94f7defb318aad88e48e32420ca5d036aba663a3",
+    "synthetic-compressed.log": "7c0dc9b54488ecc1d1e8bc896a082f9752a18c4ba638d1c0a32c64954d41e26a",
+    "verify-compressed-first.log": "6840dd87107dfc9d75b5bcab3f3bea1201a923797bdbff0d3a3bc63540a5e308",
+    "verify-compressed.log": "c68e174d3391f1583aec961566cb5cb862775e5e154fc8e9af4ca56623aa2f68",
+    "synthetic-002/synthetic-acceptance.json": "4e278f3ca6a0c7c79632afd9f5fce99ae4026074c1bc51234472861b18628e65",
+    "synthetic-002/provenance-after.json": "86ec99156214a5c4d2494ce8812185ff8fc7689a4f6d3303d2644f248eb459a3",
+    "synthetic-compressed-001/synthetic-acceptance.json": "e572aba52f661385e7c5fd8dc5492b1a4bcebd852fb8f29329d64385dd3e4e11"
+  },
+  "post_fix_real_diagnostic": {
+    "status": "executed_after_explicit_disclosure_approval",
+    "prior_automatic_approval_rejected": true,
+    "explicit_disclosure_permission_granted": true,
+    "prior_rejection_reason": "explicit_private_payload_disclosure_permission_required",
+    "prior_read_only_check": {
+      "local_check_status": "checked",
+      "local_check_launch_ready": false,
+      "canonical_ledger_unchanged": true,
+      "accounting_unchanged": {
+        "attempts": 209,
+        "known_attempts": 202,
+        "unknown_attempts": 7,
+        "pending_attempts": 0,
+        "known_charged_microyuan": 1791431,
+        "unknown_reserved_microyuan": 14098560,
+        "conservative_used_microyuan": 15889991,
+        "budget_microyuan": 20000000,
+        "conservative_remaining_microyuan": 4110009
+      },
+      "check_receipt_sha256": "9df79e7bb812b8bd4600ab511a62299162f908741feb6e1cc1867acb1b832c9a"
+    },
+    "destination": "DeepSeek",
+    "payload_categories": [
+      "private writing inputs",
+      "writing report"
+    ],
+    "new_real_requests": 1,
+    "planned_max_requests": 2,
+    "planned_cap_microyuan": 4032768,
+    "planned_deadline_seconds": 240,
+    "latest_result_reference": "pi-live-encoding-2026-10-22.json"
+  }
+}

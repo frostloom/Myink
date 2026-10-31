@@ -1,4 +1,5 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/vue'
+// @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/vue'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import { ref } from 'vue'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -86,7 +87,8 @@ it('必填校验拦住空描述，填好后带页面路径提交并在「我的�
   expect(form.get('page_url')).toBe('/long')
 
   // 提交成功后自动切到「我的反馈」并把这条拉回来
-  expect(await screen.findByText('生成时第 3 章卡住了')).toBeTruthy()
+  const history = await screen.findByRole('list')
+  expect(within(history).getByText('生成时第 3 章卡住了')).toBeTruthy()
   expect(api.listFeedback).toHaveBeenCalled()
 })
 

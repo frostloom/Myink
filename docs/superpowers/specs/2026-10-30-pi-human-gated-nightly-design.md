@@ -1,0 +1,45 @@
+# Pi 单轮夜间改进与人工发布边界
+
+2026-10-30 用户明确修订目标。本设计优先于旧方案对无人发布、跨代自动接管及自动业务回退的交付前置要求。不是修改费用边界，也不把未发生的发布/观察称为完成。
+
+## 已确认流程
+
+1. 空闲且没有未确认候选时，夜间基于已部署版本的可验证指标/评测输入完成一轮分析、隔离开发、独立检查、本地镜像构建和次日对比参数准备。单轮内可按原有有界策略修正失败，不绕过原预算、未知费用和清理异常停止规则。
+2. 冻结产物包：基线身份、候选源码/补丁摘要、评测/修复/工具记录、不可变镜像ID及本地归档摘要、次日对比参数、完整变更范围。进入持久 `awaiting_approval`。
+3. 等待期间不执行新夜间任务，不分析新指标、不调用模型、不创建新工作区、不重复构建、不自动推送GitHub/镜像仓库或部署。跨天、重启、定时器重复触发、并发触发都不能越过等待状态；不能每日重置或自动丢弃旧候选。
+4. 用户批准必须绑定这一份精确产物及允许动作。只有获批后才可按批准范围推送或部署。代码检查通过、模型建议、布尔观察值、定时器和文件名均不成为人工批准。
+5. `approved` 不等于 `deployed`。批准后若未实际部署，保持 `awaiting_deployment`，不开始新轮或新版本指标分析。部署失败/未知则停止并留下收据，等待人工处理。
+6. 只有可信部署收据与实际版本/镜像/参数匹配后才进入 `observing`，读取新部署指标并做次日对比。样本不足明确报告，不伪造改善。完成本轮比较后，才允许后续夜间轮次。
+
+## 沿用边界和输出
+
+沿用服务器原 manager/费用账本、累计50元与9笔历史未知预留；不创建第二个费用scope、不跨日重置、不释放未知预留、不静默续期旧有限模型许可。原裸Pi增强清单、权限/记忆边界、脱敏管理员审计、版本和变更范围、失败/工具流转及次日计划/独立结果仍交付。未发布日显示同一候选待确认/no_release，不制造新版本或已执行次日结果。
+
+现阶段不再以完善自动生产切换、旧容器自动退役、全自动跨代任务迁移/业务回退为前置。保留已有隔离实现及失败记录，ACTUAL门禁不开放。人工发布继续走明确批准的现有发布流程；未来若要扩大Pi产品权限，另行设计和授权。
+
+## 验收重点
+
+- 在原 manager 状态上持久关联单轮，任何等待候选均先于指标/模型/构建/队列接纳检查。
+- 连续跨天/重启/并发触发仍只有一个候选，所有受限副作用为0。
+- 批准摘要不匹配、非人工来源、部署收据不匹配、批准但未部署时均不放行。
+- 真正部署并核验后才读取指标；保留原费用和历史不确定意图。
+- 用既有开发/评测产物完成真实本地构建与待确认包；不重放已经执行的模型意图。
+
+## 首次兼容重打的人工边界
+
+若首次产品接入需要遥测基础，旧冻结候选不能被自动丢弃、改写或记为“比较完成”。通用兼容重打使用精确绑定旧产物的人工许可；用户要求先完成本地镜像再确认发布的首轮固定遥测准备，采用下面独立的operator入口。许可只允许`prepare_same_candidate`，同时绑定新周期、基础镜像、兼容说明摘要及至多24小时的有效期；不是发布批准。
+
+审批元数据在这一次获批操作的事务内从7402升级到7403，增加不可变的历史转接关系。旧行的状态、任务、冻结清单、部署字段和结果字段保持原样；旧包保留并撤销动作权限，新准备仍绑定同一原manager任务。没有改动原manager或费用账本，不伪造部署、比较结果或新的模型执行。事务失败必须完整回滚，不在启动或状态读取时自动升级。
+
+此准备由可信operator显式执行；定时driver和通用host入口拒绝在重打周期启动工作。封存的新包必须保持原基线、候选、补丁和变更范围摘要，之后重新等待针对新产物的推送/部署批准。实际服务器尚未执行该升级或签发重打许可。
+- 本轮Codex继续本地开发、验证和整理操作包；新推送/发布先等待明确确认，之前已授权推送的WIP不追溯撤销。
+
+### 用户最新边界：首轮本地准备不增加一次人工批准
+
+首轮固定遥测接入使用独立的`pi-nightly-operator-bootstrap-v1`指令、`trusted_compatibility_builder`发行者及固定root目录`config/bootstrap-instructions`。这不表示human_operator批准，不可用于推送部署。指令绑定同一已完成原任务、旧包、固定3文件companion摘要、精确兼容报告和镜像ID，以及24小时以内有效期。报告须root封存且文件前后摘要完全匹配固定补丁。
+
+沿用事务迁移和不可变历史转接，旧原包原样保留；只为同一修复准备兼容镜像，新增SDK请求为0。不允许对已重打周期再次bootstrap，定时器和通用host不能进入此准备流程。固定Gold、清理及账本检查结束前不能封存。新包停在awaiting_approval，最终包的人工批准才允许指定发布动作；实际部署核验前不读取新业务指标或启动新轮。既有精确人工重打API保留，这个窄入口不自动批准任意重打或新开发。
+
+### Native next-day audit publication
+
+After real due-time checks and comparison, retain the immutable per-slot audit packet and publish its records to the original audit store/export before sealing the assessment or changing gate state. Regression uses test_id nightly-regression-<cycle>; metrics keeps its observation event and adds a test projection with test_id nightly-metrics-<cycle>. This allows the read-only contract to associate the already reserved plans with actual results. Failed regression leaves the unexecuted metrics plan pending. Publication is idempotent by the existing record key/input digest, audit-only recovery does not repeat metrics/checkers/models, and a failed publication cannot complete or block the comparison as if the export succeeded. Any unfinished earlier assessment also prevents a later time slot from collecting again; audit-only recovery still requires inspection before assessment acknowledgement. ACTUAL paths remain the fixed original audit roots and regain the ordinary audit owner through the existing bounded handoff. No new task, fee scope, model call, product image or early next-day execution is authorized by this projection.

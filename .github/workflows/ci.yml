@@ -7,7 +7,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, codex/pi-autonomy-design]
   pull_request:
 
 concurrency:
@@ -96,7 +96,7 @@ jobs:
           myink contract export
           git diff --exit-code -- spec/api-openapi.json
       - name: 全量回归（LLM/embedding 使用替身）
-        run: python -m pytest tests/ -q
+        run: python -m pytest tests/ -q -m 'not pi_lab and not pi_live'
 
   # 前端：oxlint + vitest + tsc/vite build（工具函数单测 + jsdom 编辑器交互回归）。
   frontend:
@@ -149,3 +149,55 @@ jobs:
         run: docker build -f Dockerfile -t myink-api:ci .
       - name: 默认 Vue Caddy 镜像（包含 caddy validate）
         run: docker build -f caddy/Dockerfile -t myink-caddy:ci .
+
+  offline-ops:
+    name: Pi offline control gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Offline tests import Myink feedback, models and provenance helpers.
+      # Install the same locked package as the Python job; no services or paid calls.
+      - name: Install offline test dependencies
+        run: pip install -e '.[dev]' -c docker/constraints.txt
+      - name: Offline control tests (no business services or model calls)
+        run: python -m pytest ops/pi/tests/ -q -m 'not pi_lab and not pi_live' --junitxml="$RUNNER_TEMP/pi-offline.xml"
+      - name: Annotate failed Pi cases
+        if: failure()
+        env:
+          PI_JUNIT_PATH: ${{ runner.temp }}/pi-offline.xml
+        run: |
+          python - <<'PYTHON'
+          import os
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          report = Path(os.environ['PI_JUNIT_PATH'])
+          def escaped(value):
+              return value.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          if report.is_file():
+              for case in ET.parse(report).iter('testcase'):
+                  for failure in case:
+                      if failure.tag in ('failure', 'error'):
+                          title = escaped(case.get('classname', '') + '.' + case.get('name', '')).replace(',', '%2C')
+                          detail = failure.text or failure.get('message', 'Unknown test failure')
+                          print(f'::error title={title}::{escaped(detail)}')
+          else:
+              print('::warning::Pi stopped before a JUnit report was created; inspect dependency or collection logs.')
+          PYTHON
+      - name: Save Pi test receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pi-offline-tests
+          path: ${{ runner.temp }}/pi-offline.xml
+          if-no-files-found: warn
+      - name: Pi syntax check
+        run: python -m compileall -q ops/pi
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Pi controlled tool and wire protocol regressions
+        run: node --test ops/pi/tests/controlled-tools.test.mjs ops/pi/tests/pi-wire-history.test.mjs ops/pi/tests/pi-wire-guard.test.mjs ops/pi/tests/rejected-tool-feedback.test.mjs

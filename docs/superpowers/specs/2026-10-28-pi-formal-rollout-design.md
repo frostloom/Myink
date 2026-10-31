@@ -1,0 +1,15 @@
+# Pi formal server rollout
+
+Complete actual Pi service deployment and post-launch verification under the user's standing go-live authorization. Preserve original manager, original cumulative50CNY scope and9unknown holds; no main merge or whole old product checkout deployment. Current 8fe34617 has3050Pi/19excluded/54Node and actual synthetic manager relocation; this is not live.
+
+Prepare current full controller with existing official fixed Node24.22.0/Pi1.1 x86 dependency bytes in a NEW runtime, never modify old runtime. Verify complete code/dependency/native fingerprints, actual SDK mock sessions, own-container cleanup and unchanged7production identities/readyz. Use standalone /home/ubuntu/myink-pi-managed only after exclusive-path checks.
+
+Manager CLI must convert SIGINT/SIGTERM into existing cancel Event passed to run and restore handlers on return; no new retry or budget authority. Real signal tests use empty synthetic ACTUAL queue,0model/container calls, structured cancelled terminal event and unchanged fee ledger. Existing API and non-run CLI remain compatible.
+
+Finite systemd service uses trusted host ubuntu with SupplementaryGroups=docker, not persistent user-group changes; actual model worker remains UID65534/networknone under existing sandbox. NoNewPrivileges, empty capabilities, read-only runtime/config/history, private state/jobs/inbox/tmp/control, explicit TMPDIR for Docker bind visibility. External maintenance lock must live outside movable state. No service enabled before owner/data readiness. Unit validation and actual hardened synthetic smoke precede paid admission.
+
+Before canonical freeze, create consistent original manager/billing snapshots plus required original audit/review/policy, no credential contents. Hold original manager/tools locks, requireclosedpolicy/modelpending0/unresolved0/allretired. Verify readonly restore on server without paid authority:0400files, no credentials, SQLite integrity/schema/full tuples, originalbillinglimits/unknownholds and originalaudit bytes/logical identities. Preserve source and failed artifacts.
+
+Only after target runtime/unit/backup-restore are concrete: freeze originalbilling to exact permanent target, export sameoriginalmanager+evidence, transfer privatecredential600/parent700 withoutprinting, activate originalcustody/applyrelocation once. Never createfreshmanager or releaseunknowns. Actual source is then archival; do not reactivate an older scope. Rollback stops service and retains authoritative ledger; no stale financial snapshot restoration.
+
+Enable owned finite service/timer, admit fresh independently reviewed bounded real DeepSeek task with sameglobal50cap. Verify final protocol/check/status/cleanup/policyclose, own-resource absence, budget/history, logs/health, idle stop/restart no repeats. A restore drill after activation may replace only the exact latest unchanged checkpoint under stopped service/timer + external maintenance lock; no newwrites/counterrollback. Pi deployment does not authorize unrelated notifications or productmain publication. Do not mark goal complete from synthetic/emptyservice alone.

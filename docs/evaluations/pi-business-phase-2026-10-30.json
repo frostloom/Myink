@@ -1,0 +1,157 @@
+{
+  "schema": "pi-business-phase-checkpoint-v1",
+  "date": "2026-10-30",
+  "source_commit": "d5ded30b0ef9501811723dc18be89fd43b893f00",
+  "base_commit": "ee0afe5916c1809b67243c8ecde8e29de9484f67",
+  "run_id": "pi-business-phase-20261030",
+  "status": "authenticated_business_reads_and_distinct_admission_verified",
+  "release_allowed": false,
+  "main_merged": false,
+  "production_changed": false,
+  "provider_calls": 0,
+  "pi_autonomous_improvement_claim": false,
+  "changes": [
+    {
+      "path": "docs/superpowers/plans/2026-10-29-pi-product-maintenance-release.md",
+      "category": "docs",
+      "added": 2,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/product_activation.py",
+      "category": "production",
+      "added": 42,
+      "deleted": 8
+    },
+    {
+      "path": "ops/pi/product_backup.py",
+      "category": "production",
+      "added": 1,
+      "deleted": 1
+    },
+    {
+      "path": "ops/pi/product_business_probe.py",
+      "category": "production",
+      "added": 80,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/product_release.py",
+      "category": "production",
+      "added": 21,
+      "deleted": 4
+    },
+    {
+      "path": "ops/pi/tests/integration/test_product_activation_native.py",
+      "category": "test",
+      "added": 35,
+      "deleted": 4
+    },
+    {
+      "path": "ops/pi/tests/test_product_activation.py",
+      "category": "test",
+      "added": 2,
+      "deleted": 2
+    },
+    {
+      "path": "ops/pi/tests/test_product_backup.py",
+      "category": "test",
+      "added": 1,
+      "deleted": 1
+    },
+    {
+      "path": "ops/pi/tests/test_product_business_probe.py",
+      "category": "test",
+      "added": 37,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/test_product_release.py",
+      "category": "test",
+      "added": 66,
+      "deleted": 1
+    }
+  ],
+  "tests": {
+    "full": {
+      "passed": 4144,
+      "deselected": 58,
+      "seconds": 279.6
+    },
+    "related": {
+      "passed": 104,
+      "deselected": 0,
+      "seconds": 3.5
+    },
+    "positive": {
+      "passed": 1,
+      "deselected": 6,
+      "seconds": 439.78
+    },
+    "negative": {
+      "passed": 1,
+      "deselected": 6,
+      "seconds": 266.28
+    }
+  },
+  "suites_overlap": true,
+  "evidence": {
+    "full": {
+      "sha256": "7d5e8f6982ebf60e519a7698370ff1a404e0fe41b9abb827605649ca3a85d775",
+      "bytes": 4688
+    },
+    "related": {
+      "sha256": "51a51537a300019cf399648c9f435d190ce40327799b3e4cd42648101a1b7bf0",
+      "bytes": 180
+    },
+    "positive": {
+      "sha256": "5c4eec0d1143a34d0615af354c433d00da6fe4fc6599e3c865f360668cdcd1e4",
+      "bytes": 124
+    },
+    "negative": {
+      "sha256": "8e601b188573fc096663d9d828bc3f897f3e872a81fbfbc6c7c48e6e5c966c00",
+      "bytes": 124
+    },
+    "red": {
+      "sha256": "dc8ec273b5b296403a8365e798f754f227f865a4ba18e39697bfd0686b9965d8",
+      "bytes": 31467
+    }
+  },
+  "audit": {
+    "current_events": 8,
+    "prior_events_preserved": 44,
+    "daily_events": 52,
+    "scope_paths": 10,
+    "nextday_plans": 6,
+    "nextday_results": 0,
+    "reader_verified": true,
+    "server_published": false
+  },
+  "nextday": {
+    "plan": {
+      "test_id": "business-phase-nextday-20261031",
+      "scheduled_for": "2026-10-31T03:00:00+00:00",
+      "target_run_id": "pi-business-phase-20261030",
+      "target_version_sha256": "cc62ca8091629f8c458dbc23b6f37477d2f4e09fa3eacdb7fcb9969a2a7c830f",
+      "criterion": "新独立操作验证业务访问边界及POST前后阶段；产品采用后另登记真实次日及24-48h。",
+      "kind": "restore",
+      "status": "blocked"
+    },
+    "registered": false,
+    "result": null
+  },
+  "base_exact_ci": {
+    "run_id": 40954326637,
+    "result": "4/4 success"
+  },
+  "checkpoint_ci": "pending push",
+  "pending": [
+    "actual restored main API/full service configuration",
+    "long/short/batch/VIP generation and pause/checkpoint/cross-generation adoption",
+    "regular upgrades and retained cohorts",
+    "manual deployment same lock and generation",
+    "post-window observation/owned rollback authority",
+    "single final review/fix pass and explicit main/product approval",
+    "new paid Pi candidate adoption and actual nextday/24-48h"
+  ]
+}

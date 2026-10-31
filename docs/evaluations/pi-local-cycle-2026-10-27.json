@@ -1,0 +1,101 @@
+{
+  "schema": "pi-local-cycle-evaluation-v1",
+  "host_entry_verified": true,
+  "real_cycle_verified": true,
+  "targeted_host_tests": {
+    "passed": 120
+  },
+  "pi_tests": {
+    "passed": 2662,
+    "deselected": 19
+  },
+  "node_scripts": [
+    {
+      "script": "controlled-tools.test.mjs",
+      "returncode": 0
+    },
+    {
+      "script": "pi-wire-guard.test.mjs",
+      "returncode": 0
+    },
+    {
+      "script": "pi-wire-history.test.mjs",
+      "returncode": 0
+    },
+    {
+      "script": "rejected-tool-feedback.test.mjs",
+      "returncode": 0
+    }
+  ],
+  "product_targeted": {
+    "passed": 388,
+    "xfailed": 2
+  },
+  "product_full": {
+    "passed": 1935,
+    "skipped": 1,
+    "xfailed": 2,
+    "deselected": 159,
+    "skip_nodes": [
+      "tests.test_evaluation_comparison_integration::test_direct_full_and_ablation_preserve_all_outputs_and_persisted_body"
+    ]
+  },
+  "independent_host_review": {
+    "original_approved": false,
+    "p2_findings": 4,
+    "author_tdd_fixes": 4
+  },
+  "actual_iterations": [
+    {
+      "id": "001",
+      "status": "blocked",
+      "fixed_tests": 258,
+      "fixed_failures": 4,
+      "reason": "model_limit_after_dropped_pronoun",
+      "adopted": false
+    },
+    {
+      "id": "002",
+      "status": "protocol_verified_review_rejected",
+      "fixed_tests": 258,
+      "holdout": 8,
+      "reason": "cost_subject_suffix",
+      "adopted": false
+    },
+    {
+      "id": "003",
+      "status": "protocol_verified_review_rejected",
+      "fixed_tests": 264,
+      "holdout": 12,
+      "reason": "ASCII_comma_and_Unicode_whitespace",
+      "adopted": false
+    },
+    {
+      "id": "004",
+      "status": "accepted",
+      "fixed_tests": 266,
+      "holdout": 14,
+      "adopted": true
+    }
+  ],
+  "candidate_sha256": "afb06688c6bc8146bfd894ae55074c323937d3174aeec97d881b137fd62e1eb0",
+  "product_l1_sha256": "1c4daff67b607c14eef9f66bf25f6fe7904be1c01ec6e10d447616e4f1ea04e0",
+  "public_test_sha256": "a3240157ef0056c7c02c13e0f040f890b13e92e0b71339f8faae6a28594b9389",
+  "new_public_tests": 30,
+  "model_attempts": 32,
+  "known_cost_microyuan": 188781,
+  "new_unknown": 0,
+  "cumulative_attempts": 670,
+  "cumulative_known": 661,
+  "historical_unknown": 9,
+  "cumulative_known_microyuan": 4410930,
+  "original_history_unchanged": true,
+  "policy_closed_original": true,
+  "credential_unchanged": true,
+  "owned_containers_absent": 21,
+  "owned_operations_absent": 21,
+  "product_services_removed": true,
+  "automatic_candidate_adoption": false,
+  "merged_to_main": false,
+  "deployed": false
+}

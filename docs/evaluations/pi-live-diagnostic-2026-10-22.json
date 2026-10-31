@@ -1,0 +1,188 @@
+{
+  "schema": "pi-live-diagnostic-v1",
+  "date": "2026-10-22",
+  "source_commit": "23012faf84d90bb611ce3c7531d66c61f442bdd2",
+  "status": "blocked",
+  "failure_class": "UnicodeDecodeError",
+  "operation_id": "d4b6bb1f-4977-477f-994b-a98dacddde61",
+  "run_id": "deepseek-bounded-diagnostic-20261022-001",
+  "canonical_ledger_used": true,
+  "run_policy_live_enabled": true,
+  "global_policy_live_enabled": false,
+  "global_policy_credential_inputs_bytes_unchanged": true,
+  "cap_microyuan": 4100000,
+  "deadline_seconds": 240,
+  "config_sha256": "140ef2a479a6210149c99dd0a09bc5ce2c7bbec1ec500a824367267f376cbd27",
+  "run_policy_sha256": "e1755b42a61a71923d7c51ba0a3bec9223739e3f27a26e0d41f41d2aa814b240",
+  "inputs_sha256": "72c13d1a4c7d50dde071072406f8d4b901e1722771c85421c3b6a3ef358fd7a3",
+  "evidence_sha256": "067294c160d443f289590ceb33f727137b81bdb372aa179941eb4980b677c903",
+  "source_provenance": {
+    "runtime_sha256": "6e169d5462405f59c070365267eec24fddc005a3c141819ba7a1f548a592c528",
+    "node_sha256": "719a43d185f3b6a59d8fcbba1ff06b93c75f76fb0bb9916f81d33921615d4cb5",
+    "lock_sha256": "fd0f5bd8aa13e01da8792b161d80502f32e1afd00103151fbcc21f4b3146785a",
+    "pi_cli_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+    "code_sha256": "56bfa68b06aba613b7066d830cdbc1a415448a84762244f6eb9fa81cda239fc4",
+    "controller_sha256": "de76af7fc6a0f0946f19000b6fb1cc4c6bac1dbb9951bdb2fe0c00b67ac55ead",
+    "worker_sha256": "752b21c9dd5f73e4b0fe78b3789ccf60afac7860aac1d759cc37d078f3aaae38"
+  },
+  "sources": [
+    {
+      "name": "pricing",
+      "url": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/",
+      "sha256": "556097caba8adfeeed6455714bffd731c7f60db520fcee06a922eba5840663a3",
+      "bytes": 26182
+    },
+    {
+      "name": "anthropic",
+      "url": "https://api-docs.deepseek.com/guides/anthropic_api",
+      "sha256": "19b5e723f1c65f609c010999cdf3cc1929327c4369c54b0151e8ea82dc3dd033",
+      "bytes": 33800
+    },
+    {
+      "name": "cache",
+      "url": "https://api-docs.deepseek.com/zh-cn/guides/kv_cache",
+      "sha256": "4c300649c617f75d8c4c2c23e88c9f0e310912c999da6671464622a609a328c0",
+      "bytes": 33246
+    }
+  ],
+  "planned_slots": 30,
+  "selected_slots": 2,
+  "real_model_http_initiations": 1,
+  "upstream_http_statuses": [
+    200
+  ],
+  "upstream_content_type": "text/event-stream; charset=utf-8",
+  "provider_request_id_retained_privately": false,
+  "second_slot_started": false,
+  "done_slots": 0,
+  "uncertain_slots": 1,
+  "not_run_slots": 29,
+  "actual_spent_microyuan": null,
+  "accounting_before": {
+    "attempts": 208,
+    "known_attempts": 202,
+    "unknown_attempts": 6,
+    "pending_attempts": 0,
+    "known_charged_microyuan": 1791431,
+    "unknown_reserved_microyuan": 12082176,
+    "conservative_used_microyuan": 13873607,
+    "budget_microyuan": 20000000,
+    "conservative_remaining_microyuan": 6126393
+  },
+  "accounting_after": {
+    "attempts": 209,
+    "known_attempts": 202,
+    "unknown_attempts": 7,
+    "pending_attempts": 0,
+    "known_charged_microyuan": 1791431,
+    "unknown_reserved_microyuan": 14098560,
+    "conservative_used_microyuan": 15889991,
+    "budget_microyuan": 20000000,
+    "conservative_remaining_microyuan": 4110009
+  },
+  "new_attempts": [
+    {
+      "status": "uncertain",
+      "reserved_microyuan": 2016384,
+      "usage_known": false,
+      "conservative_charge_microyuan": 2016384
+    }
+  ],
+  "diagnostic": {
+    "slot_index": 0,
+    "bytes": 270,
+    "file_sha256": "d1f33dc90ee1b2ad2daa0ce3111ec45e899a1970d397b909f4d1bd1b36dc4f1a",
+    "file_mode": "0600",
+    "parent_mode": "0700",
+    "complete_json": true,
+    "stream_started": false,
+    "stream_stopped": false,
+    "final_output_usage": false,
+    "parser_valid_without_events": true,
+    "parser_reason": "missing_start",
+    "usage_dimensions_observed": false,
+    "second_file_created": false
+  },
+  "cleanup": [
+    {
+      "container_id": "a80c40add29a3ec69f227b67c366cb516b0c6cf87862b63542761de526e152e5",
+      "stopped": true,
+      "removed": true,
+      "exit_code": 137
+    }
+  ],
+  "cleanup_empty": true,
+  "legacy_preservation": {
+    "original_operations": 642,
+    "new_operations": 36,
+    "old_events": 1085,
+    "new_events": 39,
+    "original_operations_unchanged": true,
+    "original_event_prefix_unchanged": true,
+    "exact_operation_cleanup_empty": true
+  },
+  "balance_observation": {
+    "before_status": "observed",
+    "after_status": "observed",
+    "changes": [
+      {
+        "currency": "CNY",
+        "observed_decrease": "0.00"
+      }
+    ],
+    "per_request_billing_verified": false,
+    "concurrent_account_activity_excluded": false,
+    "zero_change_proves_free": false
+  },
+  "encoding_investigation": {
+    "actual_content_encoding_retained": false,
+    "actual_compression_cause_proven": false,
+    "synthetic_gzip_reproduces_same_error": true,
+    "additional_real_requests": 0
+  },
+  "retry": false,
+  "unknown_reservation_released": false,
+  "provider_usage_semantics_verified": false,
+  "billing_verified": false,
+  "contract_verified": false,
+  "production_ready": false,
+  "automatic_execution": false,
+  "checks": {
+    "production_code_changed": false,
+    "full_suite_rerun": false,
+    "prior_offline_passed": 2024,
+    "prior_skipped": 0,
+    "prior_deselected": 19,
+    "synthetic_encoding_reproduction": true,
+    "legacy_preservation": true,
+    "exact_label_cleanup": true
+  },
+  "private_evidence_sha256": {
+    "run-once.py": "761e632d3bf3f27e04db83c870e9352e8f9521302ab6234ef9036c8905cbb7df",
+    "run-once.log": "5cd25284a3a34df497a9138872f64cc238791fcdb5a8a4d5498e4a9ade510f34",
+    "sources.json": "080643a1864723bc675f024f1e4f831633be0050564c9cf3845af61416aa1bf3",
+    "run-policy-private.json": "b8e2bf762855ada4ba416e6ab107c89bc7950823ab200f254b2553fe2844eb92",
+    "provider-evidence-private.json": "6f7aad5ea27f52f314e57512c9c4923b5b726aee3bd565f0b14a2981af29f508",
+    "manifest-private.json": "e19d2fb31ed20ac9018d373e34e3f511ee5373c9e929ce3730a7ac6acd9a136f",
+    "check-receipt-private.json": "beb4e507ceef08444011b7e0a885c24d1e12a84ffd28dae0b2b211e8e32b7af1",
+    "before-audit-private.json": "9b2ddb0721274fbe01508c5ccecbd43657ac6339ed0a1de607576453c7fd4e98",
+    "after-audit-private.json": "97622dd2528a6f68778ccb8b06a1b157f6aca9eac2cdc2806488d9bcc70c13a1",
+    "transport-private.json": "f2495f1e9584324774d4edf83a814571e7740cef5636a9f05e4324c0e2fe13d3",
+    "new-attempts-private.json": "6b0ec02f8e3d8a6aa419a2b78e12aa98cb6924cd547ca5e6d84d368aa1f683c5",
+    "receipt-private.json": "a7eeba258afb9584ec736ef40eaebf30d544fe8f6c02d0fe01f972ccc1c99555",
+    "ledger-preservation-private.json": "d19ec0c1069b8c0b665df51a4e3da4cb430179ac86ba9a2a130437be89daf11d",
+    "balance-before-private.json": "6571495e10efff13f7883842561fc80e9dd9badee4a878ffa5c0f1694ab9a7af",
+    "balance-after-private.json": "5ef01a1b5a8fff96f97ca42c2465f613047bfcbd62f795317e4e5b4c8c838a27",
+    "encoding-reproduction.log": "c99d9823c9c60d7ca1e0bcf95206374190379293d80acbb64c7e3c2a120808bb"
+  },
+  "review": {
+    "critical": 0,
+    "important": 0,
+    "minor": 1,
+    "minor_wording_corrected": true,
+    "evidence_hashes_matched": 16,
+    "new_provider_calls": false,
+    "new_docker_calls": false,
+    "actual_encoding_root_cause_proven": false
+  }
+}

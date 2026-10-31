@@ -1,0 +1,221 @@
+{
+  "schema": "pi-selection-semantics-evaluation-v1",
+  "mode": "ACTUAL",
+  "date": "2026-10-27",
+  "base_commit": "e55512977932e36d64bcf791c79a5c27ab65e6b6",
+  "task_domain": "five repeated pairs of one frozen synthetic NFC task",
+  "preregistration_sha256": "e8b239aa0cb9fcd8e83d453bbb0489b939dc4c5c5d581310749cd0dd91002ecd",
+  "source_closure": "965b0c15fabbc0523994cc965ae7f0ca3ace0668677b9bb39ee45713a16f2c0c",
+  "distinct_tasks": 1,
+  "scheduled_trials": 10,
+  "completed_trials": 10,
+  "matched_pairs": 5,
+  "paired_outcomes": [
+    {
+      "pair": 1,
+      "v1_selected": false,
+      "v2_selected": true
+    },
+    {
+      "pair": 2,
+      "v1_selected": true,
+      "v2_selected": true
+    },
+    {
+      "pair": 3,
+      "v1_selected": false,
+      "v2_selected": true
+    },
+    {
+      "pair": 4,
+      "v1_selected": true,
+      "v2_selected": true
+    },
+    {
+      "pair": 5,
+      "v1_selected": false,
+      "v2_selected": true
+    }
+  ],
+  "trials": [
+    {
+      "pair": 1,
+      "slot": 1,
+      "prompt_version": 1,
+      "verified": true,
+      "selected": false,
+      "reason": "Only catalog task is an independent synthetic acceptance with failing baseline; not a reproduced existing-behavior task.",
+      "model_attempts": 1,
+      "known_cost_microyuan": 1648,
+      "wire_bytes": 2511,
+      "elapsed_seconds": 19.065
+    },
+    {
+      "pair": 1,
+      "slot": 2,
+      "prompt_version": 2,
+      "verified": true,
+      "selected": true,
+      "reason": "Frozen task shows 2 baseline assertion failures (no errors/skips) in fixed Unicode tests, reproduced existing-behavior defect within scope.",
+      "model_attempts": 1,
+      "known_cost_microyuan": 2614,
+      "wire_bytes": 3201,
+      "elapsed_seconds": 18.033
+    },
+    {
+      "pair": 2,
+      "slot": 1,
+      "prompt_version": 2,
+      "verified": true,
+      "selected": true,
+      "reason": "Frozen task with 2 baseline assertion failures, no errors or skips, confined to src/managed_names.py.",
+      "model_attempts": 1,
+      "known_cost_microyuan": 2326,
+      "wire_bytes": 3201,
+      "elapsed_seconds": 25.472
+    },
+    {
+      "pair": 2,
+      "slot": 2,
+      "prompt_version": 1,
+      "verified": true,
+      "selected": true,
+      "reason": "Synthetic NFC checks reproduce existing name behavior with recorded evidence and known baseline failures.",
+      "model_attempts": 1,
+      "known_cost_microyuan": 2262,
+      "wire_bytes": 2511,
+      "elapsed_seconds": 22.059
+    },
+    {
+      "pair": 3,
+      "slot": 1,
+      "prompt_version": 1,
+      "verified": true,
+      "selected": false,
+      "reason": "Only catalog task has 2 baseline failures and is not reproduced existing behavior.",
+      "model_attempts": 1,
+      "known_cost_microyuan": 1602,
+      "wire_bytes": 2511,
+      "elapsed_seconds": 17.438
+    },
+    {
+      "pair": 3,
+      "slot": 2,
+      "prompt_version": 2,
+      "verified": true,
+      "selected": true,
+      "reason": "Frozen catalog has one scoped task with two baseline assertion failures in fixed Unicode tests; no errors or skips.",
+      "model_attempts": 1,
+      "known_cost_microyuan": 2316,
+      "wire_bytes": 3201,
+      "elapsed_seconds": 28.423
+    },
+    {
+      "pair": 4,
+      "slot": 1,
+      "prompt_version": 2,
+      "verified": true,
+      "selected": true,
+      "reason": "Frozen task has 2 baseline assertion failures with no errors or skips, reproducing existing NFC behavior in scoped file.",
+      "model_attempts": 1,
+      "known_cost_microyuan": 2320,
+      "wire_bytes": 3201,
+      "elapsed_seconds": 22.01
+    },
+    {
+      "pair": 4,
+      "slot": 2,
+      "prompt_version": 1,
+      "verified": true,
+      "selected": true,
+      "reason": "Reproduced existing-behavior task with matching source and evidence hashes.",
+      "model_attempts": 1,
+      "known_cost_microyuan": 2262,
+      "wire_bytes": 2511,
+      "elapsed_seconds": 41.464
+    },
+    {
+      "pair": 5,
+      "slot": 1,
+      "prompt_version": 1,
+      "verified": true,
+      "selected": false,
+      "reason": "Only catalog task is an independent synthetic acceptance with no product adoption, not reproduced existing behavior.",
+      "model_attempts": 1,
+      "known_cost_microyuan": 1640,
+      "wire_bytes": 2511,
+      "elapsed_seconds": 22.651
+    },
+    {
+      "pair": 5,
+      "slot": 2,
+      "prompt_version": 2,
+      "verified": true,
+      "selected": true,
+      "reason": "Baseline shows two assertion failures (decomposed, hangul) with zero errors or skips in a bounded single-file synthetic test, evidencing a reproduced existing-behavior defect.",
+      "model_attempts": 1,
+      "known_cost_microyuan": 2434,
+      "wire_bytes": 3201,
+      "elapsed_seconds": 77.826
+    }
+  ],
+  "selected_by_version": {
+    "1": 2,
+    "2": 5
+  },
+  "null_by_version": {
+    "1": 3,
+    "2": 0
+  },
+  "new_model_attempts": 10,
+  "known_cost_microyuan": 21424,
+  "new_unknown": 0,
+  "cumulative_attempts": 700,
+  "cumulative_known": 691,
+  "historical_unknown": 9,
+  "cumulative_known_microyuan": 4490679,
+  "independent_selection_reviews": 10,
+  "original_billing_rows_and_events_prefix_unchanged": true,
+  "manager_unchanged": true,
+  "old_runtime_preserved": true,
+  "policy_closed_original": true,
+  "credential_unchanged": true,
+  "source_and_gold_unchanged": true,
+  "product_source_unchanged": true,
+  "owned_containers_absent": 10,
+  "owned_operations_absent": 10,
+  "elapsed_seconds": 907.33,
+  "development_calls": 0,
+  "candidate_adopted": false,
+  "main_merged": false,
+  "deployed": false,
+  "upstream_pi_version": "1.1.0",
+  "upstream_pi_core_modified": false,
+  "production_efficiency_improvement_percent": null,
+  "production_reliability": null,
+  "limitations": [
+    "One task repeated five times per version; not five independent tasks or production success rate.",
+    "Balanced order and frozen inputs do not eliminate sampling variance, provider nondeterminism or temporal effects.",
+    "This measures selection only, not repair correctness, token savings, production readiness or long-term autonomy.",
+    "Null remains legal and every scheduled result is retained; historical nine unknown fees remain reserved."
+  ],
+  "core_commit": "03df3ac8c5ba6549d67bda6ab24eaa5f3fc1983e",
+  "review": {
+    "independent_code_review_findings": 0,
+    "independent_reviewer_focused_tests": 175,
+    "independent_selection_reviews": 10
+  },
+  "verification": {
+    "pi_tests_passed": 2825,
+    "opt_in_tests_deselected": 19,
+    "node_tests_passed": 54,
+    "syntax_check_passed": true,
+    "product_suite_run_locally": false,
+    "core_ci": {
+      "run_id": 40466065103,
+      "url": "https://github.com/frostloom/Myink/actions/runs/40466065103",
+      "head_sha": "03df3ac8c5ba6549d67bda6ab24eaa5f3fc1983e",
+      "jobs_passed": 4
+    }
+  }
+}

@@ -1,0 +1,136 @@
+{
+  "schema": "pi-server-launch-v1",
+  "date": "2026-10-28",
+  "operational_acceptance": "passed",
+  "controller_code_commit": "6f1c2c163a1043ee20e59ad1ff9b6330c01040ba",
+  "service_config_commit": "aab4c76799ee7ef86976982aabab5fa4b81ffd7a",
+  "source_commit": "58c3f291b68e519a26e7bda3e8884bf533b12b69",
+  "source_sha256": "2f7e9b22d8b4725762f177f2a5517633ffc6f7449333647c140b907c48984700",
+  "gold_sha256": "8b3f3670cf47ad853cb88e178820ca047a47f1335178d2caecf679d7dba8562d",
+  "candidate_sha256": "e60cb0f664606240acbe48c40f65347956ce81c48595fa2edc0c10ea338ab4d1",
+  "runtime_code_sha256": "c09773cc257696b18b55a40b00961704caa93be6c61a9a7bfdd1ed2497720b54",
+  "installed_unit_sha256": "b02efe12567776c854f3a6fce98452a194e91052ced78aa9ee4622ec32035da1",
+  "baseline": {
+    "tests": 18,
+    "failures": 7,
+    "errors": 0,
+    "skipped": 0
+  },
+  "final_check": {
+    "tests": 18,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "independently_verified": true
+  },
+  "execution": {
+    "manager_dispatches": 1,
+    "selection_model_requests": 1,
+    "development_model_requests": 12,
+    "total_model_requests": 13,
+    "authenticated_tool_calls": 14,
+    "dispatch_elapsed_ms": 147273.872,
+    "manager_batch_elapsed_ms": 154129.836,
+    "new_known_cost_microyuan": 56758,
+    "new_unknown": 0,
+    "transport_retries": 0,
+    "product_adoption": false
+  },
+  "budget": {
+    "cumulative_cap_microyuan": 50000000,
+    "conservative_used_microyuan": 22816453,
+    "remaining_microyuan": 27183547,
+    "known_microyuan": 4701253,
+    "historical_unknown": 9,
+    "historical_held_microyuan": 18115200,
+    "total_attempts": 761,
+    "known_attempts": 752
+  },
+  "control": {
+    "original_tasks_retained": 9,
+    "current_tasks": 10,
+    "unresolved_dispatches": 0,
+    "original_local_source_frozen": true,
+    "original_local_source_reservations_denied": true,
+    "server_original_owner_active": true,
+    "global_policy_closed": true,
+    "credential_bytes_unchanged": true,
+    "selected_runtime_root_owned": true,
+    "service_root_owned": true
+  },
+  "recovery": {
+    "server_original_state_readonly_restore": true,
+    "latest_unchanged_checkpoint_restore": true,
+    "older_checkpoint_used": false,
+    "backup_wrong_path_authority_denied": true,
+    "actual_canonical_cold_restarts": 2,
+    "cold_restart_new_dispatches": 0,
+    "cold_restart_new_model_calls": 0,
+    "external_maintenance_lock_exclusion": true,
+    "stop_seconds": [
+      0.264,
+      0.264
+    ]
+  },
+  "cleanup": {
+    "owned_operation_labels_absent": 6,
+    "exact_container_ids_absent": 6,
+    "includes_failed_baseline": true,
+    "production_images_and_container_ids_unchanged": true,
+    "production_readyz_passed": true
+  },
+  "regression": {
+    "python_passed": 3058,
+    "private_lab_deselected": 19,
+    "node_passed": 54,
+    "new_regression_cases_including_parameterization": 8,
+    "checker_related_passed": 73,
+    "fresh_code_review_actionable_findings": 0,
+    "separate_independent_entry_and_final_acceptance": true
+  },
+  "limits": {
+    "per_cycle_model_requests": 17,
+    "development_model_requests": 16,
+    "development_shared_rpc": 40,
+    "development_seconds": 900,
+    "cycle_seconds": 1800,
+    "manager_seconds": 2100,
+    "outer_service_seconds": 2400,
+    "container_uid": 65534,
+    "container_network": "none"
+  },
+  "preserved_failures": [
+    "initial production baseline mismatch before SDK probe",
+    "runtime bind-root permissions blocked SDK before request",
+    "bytecode pollution rejected runtime closure before source freeze",
+    "owner001 checker PermissionError before gold inventory, zero requests",
+    "owner002 insufficient parent deadline preflight, zero dispatch and requests",
+    "restore001 stopped before replacement on empty WAL/SHM presence"
+  ],
+  "rulings": [
+    {
+      "decision": "Include fixed checker bind root in existing0755/0644 normalization, keep private host ancestor0700",
+      "reason": "Private umask made only the bind root inaccessible to UID65534",
+      "cost_if_wrong": "Fixed checks fail closed; private ancestor and frozen input boundaries must remain intact"
+    },
+    {
+      "decision": "Reserve parent2100seconds around cycle1800, outer fuse2400",
+      "reason": "Equal parent and cycle bounds fail after startup overhead",
+      "cost_if_wrong": "Configuration drift can reject or prematurely stop work; actual installed-unit hash is recorded"
+    }
+  ],
+  "deferred_minors": [
+    "Non-blocking for bounded acceptance: new helper docstring contains an invalid \\d escape SyntaxWarning and incorrectly states Python regex \\d is ASCII-only. Candidate has not been approved for product adoption."
+  ],
+  "caveats": [
+    "One preregistered current-main fixed-input acceptance task, not a population success-rate or speedup study",
+    "Known costs are conservative policy-rate token accounting, not an independently reconciled provider invoice",
+    "Candidate remains private and is not approved for product adoption or main merge",
+    "No claim of malicious-root or same-path whole-database rollback resistance; restore only exact latest unchanged state"
+  ],
+  "delivery_ci_requirement": {
+    "required_jobs": 4,
+    "exact_head": true,
+    "evidence": "GitHub Actions run verified after delivery documentation push; retained in private go-live acceptance audit"
+  }
+}

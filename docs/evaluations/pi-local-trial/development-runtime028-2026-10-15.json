@@ -1,0 +1,243 @@
+{
+  "schema": "pi-development-runtime028-summary-v1",
+  "date": "2026-10-15",
+  "status": "FAILED_OR_INCOMPLETE",
+  "execution": {
+    "pi_paid_development": "ACTUAL",
+    "actual_requests": 13,
+    "http_200_responses": 13,
+    "usage_records": 13,
+    "usage_records_valid": 13,
+    "returncode": 1,
+    "accepted_phase": false,
+    "candidate_adopted": false,
+    "release_approved": false,
+    "autonomous_development_iteration_completed": false
+  },
+  "intermediate_checks": {
+    "comparison_pairs": [
+      "pair-1"
+    ],
+    "mechanism_status": "not_improved",
+    "objective_passed": false,
+    "severe_guard_veto": true,
+    "release_allowed": false,
+    "scope": "真实配对检查；最终源的结果单独列于 final_candidate"
+  },
+  "final_candidate": {
+    "artifact": "admin_observability.py",
+    "sha256": "462dc0dfe33846f249dc0ea330670532e762154386278445ba4a6608f1863751",
+    "bytes": 7975,
+    "same_hash_55_checks_passed": false,
+    "same_hash_55_check_status": "FAILED",
+    "primary_cases": 52,
+    "redaction_passed": 52,
+    "encoded_caps_passed": 52,
+    "input_immutability_passed": 52,
+    "trace_fidelity_passed": 10,
+    "trace_fidelity_failed": 42,
+    "legacy_security_cases": 3,
+    "legacy_security_failures": 3,
+    "severe_guard_veto": true,
+    "static_import_safety": "safe for direct isolated import with trusted stdlib and disabled surrounding fixtures",
+    "functional_approval": false,
+    "findings": [
+      "字节预算修复仍未实现",
+      "保留Bearer标签与既有保真契约冲突"
+    ]
+  },
+  "product_regression": {
+    "status": "NOT_RUN",
+    "candidate_sha256": "462dc0dfe33846f249dc0ea330670532e762154386278445ba4a6608f1863751",
+    "executed": 0,
+    "passed": null,
+    "failed": null,
+    "deselected": null,
+    "returncode": null,
+    "reason": "真实最终检查已失败，本轮未再执行17项selected产品回归",
+    "prior_round_results_inherited": false
+  },
+  "failure": {
+    "retained_errors": [
+      {
+        "error_type": "ValueError",
+        "status": "blocked",
+        "retained": true,
+        "retry": false
+      }
+    ],
+    "accepted_phase": false,
+    "session_valid": false,
+    "pending_tool_calls": 2,
+    "unexpected_tool": true,
+    "broker_diagnosis": {
+      "failed_patch_calls": 2,
+      "edits_each": 2,
+      "trusted_guard_edits_allowed": 1,
+      "declared_schema_max_edits": 8,
+      "extension_error": "controlled broker unavailable",
+      "offline_reproduction_http_status": 400,
+      "actual_tool_http_status": "UNKNOWN",
+      "causal_path": "high-confidence reproducible inference; actual tool HTTP status not separately retained",
+      "runtime_fix_completed": false
+    }
+  },
+  "supervision": {
+    "returncode": 1,
+    "verified": false
+  },
+  "cumulative": {
+    "accounted_requests": 151,
+    "operations": 484,
+    "events": 816,
+    "conservative_microyuan": 13298181,
+    "known_estimate_microyuan": 1216005,
+    "historical_unknown_microyuan": 12082176,
+    "budget_microyuan": 20000000,
+    "remaining_microyuan": 6701819,
+    "invoice_known": false,
+    "effective_max_attempts": null,
+    "effective_phase_allocations": null,
+    "pending_model_attempts": 0,
+    "pending_phase_admissions": 0,
+    "after027_operations_unchanged": 443,
+    "after027_events_exact_ordered_prefix": 747,
+    "basis": "独立失败终态留存审查；本摘要编写未重新读取native或canonical账本"
+  },
+  "this_round": {
+    "actual_requests": 13,
+    "known_estimate_microyuan": 95611,
+    "new_unknown_microyuan": 0,
+    "new_operations": 41,
+    "new_events": 69
+  },
+  "cleanup": {
+    "owned_trees": 3,
+    "owned_trees_empty": true,
+    "captured_before_STOP": true,
+    "closed_backup_retained": true,
+    "keeper_stopped": true,
+    "no_fixed_uid_processes": true,
+    "old_pid_signalled": false,
+    "E_mirror_is_privacy_proof": false,
+    "canonical_mode_is_privacy_proof": false,
+    "basis": "已核对的独立终态审查及停止凭据；不代表开发通过或镜像隐私证明"
+  },
+  "accounting_retention": {
+    "settled": true,
+    "candidate_acceptance": false,
+    "release_approved": false,
+    "historical_unknown_reset": false,
+    "historical_unknown_refunded": false,
+    "historical_unknown_reclassified": false,
+    "approval_scope": "exact FAILED terminal facts retention only"
+  },
+  "source_verification": {
+    "reported_by": "ROOT",
+    "terminal_source_focused_tests_passed": 19,
+    "terminal_source_focused_tests_skipped": 0,
+    "rerun_for_this_summary": false,
+    "actual_linux_permission_tests": false
+  },
+  "remaining_validation": {
+    "real_product_quality_comparison": "NOT_COMPLETED",
+    "build": "NOT_COMPLETED",
+    "release": "NOT_COMPLETED",
+    "day_2": "NOT_COMPLETED",
+    "full_CI": "NOT_RUN",
+    "Go": "NOT_RUN",
+    "frontend": "NOT_RUN",
+    "PostgreSQL_integration": "NOT_RUN",
+    "W18": "PRESERVED",
+    "RED": "PRESERVED",
+    "server_daily_enabled": false
+  },
+  "mainline_changed": false,
+  "online_system_changed": false,
+  "next_round": {
+    "round": "029",
+    "stage": "PREPARATION_NOT_COMPLETED",
+    "actions": [
+      "改进无正文工具诊断",
+      "对齐当前scope的单edit工具schema",
+      "新的有限Pi自主修复"
+    ],
+    "execution_success_claim": false
+  },
+  "publication": {
+    "body_free": true,
+    "private_absolute_paths_included": false,
+    "raw_case_bodies_included": false,
+    "credentials_included": false,
+    "hidden_gold_included": false,
+    "PII_included": false,
+    "committed": false,
+    "pushed": false,
+    "pushed_to_github": false,
+    "released": false,
+    "basis": "记录生成时状态"
+  },
+  "evidence": {
+    "terminal_facts_review": {
+      "artifact": "c31-after028-terminal-facts-review.md",
+      "sha256": "e99606e2c8e193ca6b5634dd257898d23988438e648e6f4449d2a134d9fff7ea",
+      "scope": "exact FAILED terminal facts retention only"
+    },
+    "candidate_static_review": {
+      "artifact": "c31-candidate028-static-review.md",
+      "sha256": "55220332c7c38f0bcf4b6eb591169f51766c3412708c46c32fff0b0c935ae1c5",
+      "scope": "static isolated import safety, not functional approval"
+    },
+    "broker_diagnosis": {
+      "artifact": "c31-broker028-diagnosis.md",
+      "sha256": "c8aafd2db0457d6dbdb31cc48f406175777d4d5b375305cd6358c844deb0429f",
+      "scope": "offline reproducible inference; actual tool HTTP status unknown"
+    },
+    "paid_export_manifest": {
+      "artifact": "manifest.json",
+      "sha256": "596f8f4c6d05b89ea82d889b79fef5165cd7f541fee8d3a1064880268c8355de",
+      "files": 27,
+      "private_authority": false
+    },
+    "ledger_snapshot": {
+      "artifact": "ledger-after028.json",
+      "sha256": "7fa4c5e9294f947ff17447443a2de7b79f0baba3ccbe7841c7cd9e87a389b6fa"
+    },
+    "ledger_backup": {
+      "artifact": "ledger-after028.sqlite",
+      "sha256": "d28064b17390a8328a12fe8fc9ba4e683ceeded323cc6fe2abeb45dd5629955b"
+    },
+    "terminal_checkpoint": {
+      "artifact": "terminal-checkpoint.json",
+      "sha256": "71eaadbb7696d1644c81f3ca364083e9d81e6bfef33639fcfe55d2b6e7b6cb21"
+    },
+    "keeper_stop": {
+      "artifact": "keeper-stopped.json",
+      "sha256": "058525eaa6b19f5f80f47fd36e5a34c5139bb90defd6d5c375bb8e068f468518"
+    },
+    "final_candidate_check": {
+      "artifact": "develop-02-candidate/check.json",
+      "sha256": "b21b17e116ba9d6d2f44e0156484809e5762b595eb573a76322eb084b68fd6da"
+    },
+    "paired_comparison": {
+      "artifact": "pair-1/comparison.json",
+      "sha256": "bde771bfb300a2b2b7b2c2ee921531c34d600d9de858ea162595d011e63de8a1"
+    },
+    "adapter_receipt": {
+      "artifact": "adapter-receipt.json",
+      "sha256": "3c755345cb01611de3fd06940d6915863c0327233f237507cec3c27177ff174f"
+    },
+    "paid_outcome": {
+      "artifact": "outcome.json",
+      "sha256": "74ea8507e081d36ea7c99d66778abd05e13211b592991508ae340d3638aafa84"
+    },
+    "usage": {
+      "artifact": "usage.jsonl",
+      "sha256": "ae8c43ad195e760c0570a35c60f6c5791d405c1b18cc34a60eab0a1ce770703f"
+    },
+    "supervision_outcome": {
+      "artifact": "supervision-outcome.json",
+      "sha256": "bec7ccca681c3877b5d0f7c904b3ca9c9df7533ae0681f9d502ab83cbca73163"
+    }
+  }
+}

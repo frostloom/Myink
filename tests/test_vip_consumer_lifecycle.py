@@ -122,7 +122,12 @@ def test_processor_error_propagates_after_io_pump(monkeypatch):
         consumer._process_with_events({}, 'worker', Mock())
 
 
-def test_connection_loss_during_processing_leaves_delivery_unacked(monkeypatch):
+def test_connection_loss_during_processing_leaves_delivery_unacked(temp_project, monkeypatch):
+    import json
+    from myink.workflow.runner import new_task
+    from test_worker import _body
+    tid = new_task(project_id=temp_project, task_type="chapter_generate", payload={"seq": 1})
+    body = _body(tid, temp_project, payload={"seq": 1})
     release = threading.Event()
     finished = threading.Event()
     def process(*args, **kwargs):
@@ -138,11 +143,10 @@ def test_connection_loss_during_processing_leaves_delivery_unacked(monkeypatch):
     ch.basic_ack.side_effect = lambda *a: acknowledgements.append('ack')
     ch.basic_nack.side_effect = lambda *a, **k: acknowledgements.append('nack')
     monkeypatch.setattr(consumer, 'process', process)
-    monkeypatch.setattr(consumer, 'valid_task_owner', lambda body: True)
     monkeypatch.setattr(consumer, 'observe', lambda *a: None)
     with pytest.raises(pika.exceptions.AMQPConnectionError):
         consumer._on_message(ch, SimpleNamespace(delivery_tag=1), None,
-            '{"task_id":"probe"}', Mock(), 'worker', connection=Connection())
+            json.dumps(body), Mock(), 'worker', connection=Connection())
     assert finished.is_set()
     assert acknowledgements == []
 

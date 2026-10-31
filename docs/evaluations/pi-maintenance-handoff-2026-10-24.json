@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-24",
+  "branch": "codex/pi-autonomy-design",
+  "status": "finite_local_handoff_api_verified_offline",
+  "new_tests": 65,
+  "focused": {
+    "passed": 113,
+    "seconds": 6.55
+  },
+  "pi_offline": {
+    "passed": 2402,
+    "deselected": 19,
+    "seconds": 224.93
+  },
+  "node_scripts_passed": 4,
+  "real_calls": 0,
+  "new_cost_microyuan": 0,
+  "real_analysis_to_development_chain_verified": false,
+  "actual_analysis_and_freeze_adapters_configured": false,
+  "automatic_source_adoption": false,
+  "server_enabled": false,
+  "canonical_ledger_unchanged": true,
+  "policy_closed_unchanged": true,
+  "credential_digest_unchanged": true,
+  "source_hashes": {
+    "ops/pi/maintenance_handoff.py": "1daa79a8d030b8a5f19a99c09995f3d6c73b6a6124dd376b5dc3ffa177f206eb",
+    "ops/pi/development_launcher.py": "f265d9d673260c76debe42eb6f5324215b229c3f199839bafaa9c902e4abf030",
+    "ops/pi/tests/test_maintenance_handoff.py": "8a4eb10949b9cb173ee00c3aab798509d1d10537cd98fd58f5efad65bfc60f5e"
+  },
+  "independent_review": "both Important fixed and statically re-reviewed; no new Important",
+  "committed": false,
+  "pushed": false,
+  "merged": false,
+  "deployed": false,
+  "protected_prior_files_unchanged": 82,
+  "intentionally_updated_prior_files": [
+    "docs/pi/development-readiness.md",
+    "docs/pi/local-development-launcher.md",
+    "ops/pi/development_launcher.py"
+  ]
+}

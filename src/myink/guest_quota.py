@@ -300,15 +300,27 @@ def reserve_resume(db, task, user_id, client_ip, operation_id, retry_charge=None
 
 
 def resume_legacy(task_id, user_id, client_ip):
-    """Guest legacy tasks use a serialized, committed resume admission too."""
+    """Commit the guest receipt and immutable intake under one maintenance fence."""
     import json
     import pika
-    from myink.models import Task
+    from sqlalchemy import text
+    from myink.db import tenant_session
+    from myink.models import Task, Project
+    from myink.models.maintenance import AdmissionIntent, QueueHandoff
+    from myink.maintenance import require_admission_open, register_admission, intent_outcome
     from myink.worker import amqp
+    from myink.worker.handoff import admission_lane
     from myink.platform_readiness import require_operation_ready
     operation_id = str(uuid.uuid4())
+    priority = amqp.priority_for_user(user_id)
     with new_session() as db:
+        require_admission_open(db)
         task = db.get(Task, uuid.UUID(task_id), with_for_update=True)
+        if task is None:
+            raise GuestQuotaError('TASK_NOT_FOUND', 404)
+        project = db.get(Project, task.project_id)
+        if project is None or str(project.user_id) != str(user_id):
+            raise GuestQuotaError('TASK_NOT_OWNED', 403)
         if task.status == 'queued':
             return {'task_id': task_id, 'status': 'queued', 'message': '续跑已受理'}
         if task.status not in {'failed','paused','awaiting_review'}:
@@ -320,23 +332,42 @@ def resume_legacy(task_id, user_id, client_ip):
         if receipt:
             payload['_guest_operation'] = receipt
         task.payload, task.status, task.error = payload, 'queued', None
+        project_id = str(task.project_id)
         resume_type = {'batch_generate':'batch_resume','short_generate':'short_resume'}.get(task.task_type,'chapter_resume')
-        message = {'task_id':task_id,'project_id':str(task.project_id),'user_id':str(user_id),
+        message = {'task_id':task_id,'project_id':project_id,'user_id':str(user_id),
                    'task_type':resume_type,'payload':payload,'trace_id':task.trace_id or task_id,
                    'request_id':operation_id,'retry_count':0,'created_at':''}
+        db.execute(text("SELECT set_config('app.tenant_id', :pid, true)"), {'pid':project_id})
+        intent_id = register_admission(db, message, priority=priority)
         db.commit()
-    try:
-        amqp.publish_once(json.dumps(message,ensure_ascii=False),amqp.KEY_TASKS)
-    except Exception as exc:
-        definite = isinstance(exc,(amqp.PublishNotSent,pika.exceptions.NackError,pika.exceptions.UnroutableError))
-        if definite:
-            with new_session() as db:
-                task = db.get(Task,uuid.UUID(task_id),with_for_update=True)
-                release_in_session(db,receipt)
-                if task.status == 'queued' and (task.payload or {}).get('_guest_resume_operation') == operation_id:
-                    task.status = before
-                db.commit()
-        raise GuestQuotaError('GUEST_PUBLISH_REJECTED' if definite else 'GUEST_PUBLISH_UNCERTAIN',503) from exc
+    with admission_lane(intent_id, project_id) as lane:
+        if lane is None:
+            raise GuestQuotaError('GUEST_PUBLISH_UNCERTAIN', 503)
+        with tenant_session(project_id) as db:
+            intent = db.get(AdmissionIntent, intent_id)
+            state = intent.publication_state
+            outbox = db.scalar(select(QueueHandoff.operation_id).where(QueueHandoff.admission_id == intent_id))
+        if state == 'published':
+            return {'task_id':task_id,'status':'queued','message':'已投递续跑消息'}
+        if state != 'pending' or outbox is not None:
+            raise GuestQuotaError('GUEST_PUBLISH_UNCERTAIN', 503)
+        intent_outcome(intent_id, project_id, publication_state='unknown')
+        try:
+            amqp.publish_once(json.dumps(message,ensure_ascii=False),amqp.KEY_TASKS,priority=priority)
+        except Exception as exc:
+            definite = isinstance(exc,(amqp.PublishNotSent,pika.exceptions.NackError,pika.exceptions.UnroutableError))
+            if definite:
+                with tenant_session(project_id) as db:
+                    intent = db.get(AdmissionIntent, intent_id, with_for_update=True)
+                    possible = intent.publication_state == 'published' or db.scalar(select(QueueHandoff.operation_id).where(QueueHandoff.admission_id == intent_id)) is not None
+                    if not possible:
+                        task = db.get(Task,uuid.UUID(task_id),with_for_update=True)
+                        release_in_session(db,receipt)
+                        intent.publication_state = 'not_attempted'
+                        if task is not None and task.status == 'queued' and (task.payload or {}).get('_guest_resume_operation') == operation_id:
+                            task.status = before
+            raise GuestQuotaError('GUEST_PUBLISH_REJECTED' if definite else 'GUEST_PUBLISH_UNCERTAIN',503) from exc
+        intent_outcome(intent_id, project_id, publication_state='published')
     return {'task_id':task_id,'status':'queued','message':'已投递续跑消息'}
 
 

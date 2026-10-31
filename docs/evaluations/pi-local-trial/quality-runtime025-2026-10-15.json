@@ -1,0 +1,308 @@
+{
+  "schema": "myink-pi-quality-runtime025-public-v1",
+  "date": "2026-10-15",
+  "report_status": "EXPERIMENT_RECORDED_NOT_ACCEPTED",
+  "experiment": {
+    "frozen_data": true,
+    "groups": 5,
+    "arms": [
+      "baseline",
+      "candidate"
+    ],
+    "scheduled_requests": 10,
+    "observed_requests": 10,
+    "changed_factor": "prefix_only",
+    "model": "deepseek-v4.1-flash",
+    "experiment_sha256": "646270e7ea7b58d76950050934f78afe5f4ee0a7fb87e322298e63b04bc5beb7",
+    "bundle_sha256": "0f0184fc728d615718f03e2da433fa881b6b20f389a2b7091ed044aed9ded79a",
+    "report_sha256": "0a58a5e69680379c93edfeec6bfe4bd629db32724811648efc67debf91ed65f6"
+  },
+  "results": {
+    "http_200": 10,
+    "execution_verified": 10,
+    "cleanup_verified": 10,
+    "valid": 1,
+    "schema_failed": 9,
+    "valid_rate": 0.1,
+    "baseline_valid": 0,
+    "baseline_total": 5,
+    "candidate_valid": 1,
+    "candidate_total": 5,
+    "error_counts": {
+      "non_target_contract": 3,
+      "reference_contract": 5,
+      "schema_contract": 1
+    },
+    "quality_improvement_proven": false,
+    "semantic_claims": "limited_independent_review_completed",
+    "semantic_quality": "unknown",
+    "semantic_metrics_unknown": 45,
+    "independent_semantic_review": "COMPLETED_LIMITED",
+    "automatic_execution": false,
+    "candidate_allowed": false,
+    "independent_assessment": {
+      "assessed_claims": 1,
+      "not_assessed_claims": 31,
+      "pairs": [],
+      "categories_are_accuracy": false,
+      "quality_improvement_proven": false,
+      "limitation": "Only one contract-valid output; imprecise characterization of cost-sample coverage; no matched same-claim pair supports an arm comparison"
+    }
+  },
+  "requests": [
+    {
+      "index": 1,
+      "group": "recall.events",
+      "arm": "baseline",
+      "status": "schema_failed",
+      "error_code": "non_target_contract",
+      "raw_sha256": "fa0c0ae1ca7b923027dfaf4f8125aee25c8e2953dc856f51c4f3ab1eec34aa27",
+      "http_requests": 1,
+      "http_status": 200,
+      "execution_verified": true,
+      "cleanup_verified": true,
+      "latency_ms": 11880.223,
+      "estimated_cost_microyuan": 19790,
+      "accepted_references": 0
+    },
+    {
+      "index": 2,
+      "group": "recall.events",
+      "arm": "candidate",
+      "status": "schema_failed",
+      "error_code": "reference_contract",
+      "raw_sha256": "fb3cedf5493c84b5dcef8768ad293fcdca0464814f9d452fa15d81af7c02983a",
+      "http_requests": 1,
+      "http_status": 200,
+      "execution_verified": true,
+      "cleanup_verified": true,
+      "latency_ms": 11046.792,
+      "estimated_cost_microyuan": 18936,
+      "accepted_references": 0
+    },
+    {
+      "index": 3,
+      "group": "recall.plot",
+      "arm": "baseline",
+      "status": "schema_failed",
+      "error_code": "non_target_contract",
+      "raw_sha256": "f51fbe4e803a678a23afe8f0f948edc8b034b1e9e7e3bf688380164ab175f157",
+      "http_requests": 1,
+      "http_status": 200,
+      "execution_verified": true,
+      "cleanup_verified": true,
+      "latency_ms": 8883.158,
+      "estimated_cost_microyuan": 18444,
+      "accepted_references": 0
+    },
+    {
+      "index": 4,
+      "group": "recall.plot",
+      "arm": "candidate",
+      "status": "schema_failed",
+      "error_code": "schema_contract",
+      "raw_sha256": "6410361e1a7c9942cf1b7972ff8915114aaa16cbc90e4485db8b77aeddbe0418",
+      "http_requests": 1,
+      "http_status": 200,
+      "execution_verified": true,
+      "cleanup_verified": true,
+      "latency_ms": 10850.301,
+      "estimated_cost_microyuan": 20030,
+      "accepted_references": 0
+    },
+    {
+      "index": 5,
+      "group": "recall.characters",
+      "arm": "baseline",
+      "status": "schema_failed",
+      "error_code": "reference_contract",
+      "raw_sha256": "e3bccc9cb173ebe2770603eb5f10020434f88b02514155af7942574a175d516c",
+      "http_requests": 1,
+      "http_status": 200,
+      "execution_verified": true,
+      "cleanup_verified": true,
+      "latency_ms": 11476.847,
+      "estimated_cost_microyuan": 20036,
+      "accepted_references": 0
+    },
+    {
+      "index": 6,
+      "group": "recall.characters",
+      "arm": "candidate",
+      "status": "schema_failed",
+      "error_code": "non_target_contract",
+      "raw_sha256": "a36a60d1eacdfb79570d7354c55f2413346ead2d92059bc967e650fd39610d00",
+      "http_requests": 1,
+      "http_status": 200,
+      "execution_verified": true,
+      "cleanup_verified": true,
+      "latency_ms": 9632.97,
+      "estimated_cost_microyuan": 19334,
+      "accepted_references": 0
+    },
+    {
+      "index": 7,
+      "group": "extract",
+      "arm": "baseline",
+      "status": "schema_failed",
+      "error_code": "reference_contract",
+      "raw_sha256": "5ade27b672ad08d8238b566b6d88d2bf9ab37aff8f8204c293ca7447ec78a6a5",
+      "http_requests": 1,
+      "http_status": 200,
+      "execution_verified": true,
+      "cleanup_verified": true,
+      "latency_ms": 9517.083,
+      "estimated_cost_microyuan": 23332,
+      "accepted_references": 0
+    },
+    {
+      "index": 8,
+      "group": "extract",
+      "arm": "candidate",
+      "status": "schema_failed",
+      "error_code": "reference_contract",
+      "raw_sha256": "ab96a475c3c7dddfde12d13698d18c3d263a99938f6e8680bb529bb349e04959",
+      "http_requests": 1,
+      "http_status": 200,
+      "execution_verified": true,
+      "cleanup_verified": true,
+      "latency_ms": 7262.708,
+      "estimated_cost_microyuan": 22590,
+      "accepted_references": 0
+    },
+    {
+      "index": 9,
+      "group": "operations",
+      "arm": "baseline",
+      "status": "schema_failed",
+      "error_code": "reference_contract",
+      "raw_sha256": "0115ba7e4f574a6c8f5c6bc4555282cc366aa7355461fdb49ac2e5dc09540a57",
+      "http_requests": 1,
+      "http_status": 200,
+      "execution_verified": true,
+      "cleanup_verified": true,
+      "latency_ms": 8495.215,
+      "estimated_cost_microyuan": 11726,
+      "accepted_references": 0
+    },
+    {
+      "index": 10,
+      "group": "operations",
+      "arm": "candidate",
+      "status": "valid",
+      "error_code": null,
+      "raw_sha256": "f91e9a5bb41b244f59978d26cbd0255cbadc9a274d51c878b5fc608a34b178ca",
+      "http_requests": 1,
+      "http_status": 200,
+      "execution_verified": true,
+      "cleanup_verified": true,
+      "latency_ms": 8590.718,
+      "estimated_cost_microyuan": 12664,
+      "accepted_references": 2
+    }
+  ],
+  "budget": {
+    "unit": "microyuan",
+    "before": [
+      188,
+      13603463
+    ],
+    "after": [
+      198,
+      13790345
+    ],
+    "round_known_estimate": 186882,
+    "round_estimated_yuan": 0.186882,
+    "cumulative_known_estimate": 1708169,
+    "historical_uncertain_reservation": 12082176,
+    "cumulative_conservative": 13790345,
+    "cap": 20000000,
+    "remaining_headroom": 6209655,
+    "invoice": false,
+    "operations": 632,
+    "events": 1065
+  },
+  "prior_development": {
+    "phase032": "FAILED_OR_INCOMPLETE",
+    "full_functional_ci": "FAILED",
+    "adoption_commit": "48967cc9d2c5643c6e90ff40e1989e586552327c",
+    "documentation_commit": "850ff4b",
+    "limited_ab": {
+      "selected_per_arm": 33,
+      "baseline_passed": 16,
+      "baseline_failed": 17,
+      "candidate_passed": 23,
+      "candidate_failed": 10,
+      "capture_failed_to_passed": 7,
+      "passed_to_failed": 0,
+      "same_ten_failures": true,
+      "full_suite_waived": false
+    }
+  },
+  "next_step": "Separately freeze one authoritative shared prompt contract; preserve validators and failed outputs; current limited independent review completed with no quality-improvement claim; any further fair experiment requires fresh preregistration and independent review",
+  "release": {
+    "server_daily": false,
+    "production_updated": false,
+    "day2_comparison": "NOT_DONE"
+  },
+  "evidence_note": "Logical private evidence: root-quality025-observation-NN-001/raw/proof/paid-quality-NN; bodies and private source paths omitted",
+  "date_note": "Started 2026-10-15; concluded 2026-10-16 Asia/Shanghai",
+  "latency_basis": "Original ROOT monotonic client-send to owned Pi stop, including protocol shutdown; not product p95 or evidence of speedup",
+  "closure": {
+    "finalize": {
+      "actual": true,
+      "returncode": 0,
+      "seconds": 13.469
+    },
+    "terminal": {
+      "actual": true,
+      "returncode": 0,
+      "seconds": 2.625,
+      "operations": 632,
+      "events": 1065,
+      "checkpoint": [
+        198,
+        13790345
+      ]
+    },
+    "backup": {
+      "actual": true,
+      "immutable_content_matches_canonical": true
+    },
+    "keeper_stop": {
+      "actual": true,
+      "returncode": 0,
+      "seconds": 0.453
+    },
+    "closed_audit": {
+      "actual": true,
+      "verified": true,
+      "returncode": 0,
+      "seconds": 7.718,
+      "db_wal_shm_fingerprints_unchanged": true,
+      "owned_cgroups_absent": 17,
+      "fixed_uid_processes": 0,
+      "original_keeper_running": false,
+      "cross_epoch_after_stop": true,
+      "boot_mount_identity_unchanged": true,
+      "init_starttime_changed": true,
+      "cause_of_init_change": "not_inferred",
+      "provider_calls": 0,
+      "sql_writes": 0,
+      "native_writes": 0
+    },
+    "retained_failures": [
+      "First gate2 rejected ROOT-published review filename before containment; exact failed evidence archived, review published under original expected name, fresh explicit gate2 subsequently verified",
+      "First closed audit rejected changed PID1 starttime before SQL; retained; separately reviewed observer records historical STOP separately from current cross-epoch observation"
+    ]
+  },
+  "evidence_sha256": {
+    "ledger-after-quality025.sqlite": "81b15e05f602501889a360d8cadd35054d55b35d238c981cfb57e1c65c9e3c8a",
+    "ledger-after-quality025.json": "bba9b7839dc4ec7d438b3cfe9d08564a4fab1923b10e07db8b3478e0982abae6",
+    "quality025-terminal-checkpoint.json": "6cc242ed9a33d72e49b3beda87233d5123866509aa67aa76c45a911c2927b5a0",
+    "keeper-stopped.json": "76331314dd2a791c75fb08270689a456e12ac84b029455571d499b79c30df943",
+    "quality-final-report.json": "c7cba5eb3d096a825077b1a3b16a6eecb01a395702fce04e9e46b4af4af7012c",
+    "closed_audit_stdout": "e1f5f4593e20cc7f872a305eb349904907846fa4c0ef1f5df10d2550987de478",
+    "independent_support_summary": "36092b7aaec742e01b30798d652f528204814b9d914b51eb63dbcd21e7be2115"
+  }
+}

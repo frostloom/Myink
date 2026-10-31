@@ -27,7 +27,12 @@ def eventually(predicate, timeout=20):
 
 
 @pytest.fixture
-def probe(monkeypatch, tmp_path):
+def probe(temp_project, monkeypatch, tmp_path):
+    from myink.db import new_session, tenant_session
+    from myink.models import Project
+    from myink.maintenance import register_admission, intent_outcome
+    with new_session() as db:
+        owner = str(db.get(Project, uuid.UUID(temp_project)).user_id)
     probe_id = uuid.uuid4().hex
     queue_prefix = '-vip-' + probe_id
     monkeypatch.setattr(amqp, 'settings', replace(settings, queue_prefix=queue_prefix))
@@ -53,10 +58,16 @@ def probe(monkeypatch, tmp_path):
         tid = str(uuid.uuid4())
         tids.append(tid)
         priority = 9 if tier == 'vip' else 0
-        body = {'task_id': tid, 'probe': probe_id, 'tier': tier, 'retry_count': 0, **values}
+        body = {'task_id': tid, 'request_id': tid, 'project_id': temp_project,
+                'user_id': owner, 'task_type': 'chapter_generate', 'payload': {},
+                'probe': probe_id, 'tier': tier, 'retry_count': 0, **values}
+        with tenant_session(temp_project) as db:
+            intent_id = register_admission(db, body, priority=priority)
+        intent_outcome(intent_id, temp_project, publication_state="unknown")
         channel.basic_publish(exchange=amqp.exchange(),
             routing_key=amqp.tier_routing_key(amqp.KEY_TASKS, priority), body=json.dumps(body),
             properties=pika.BasicProperties(delivery_mode=2, priority=priority), mandatory=True)
+        intent_outcome(intent_id, temp_project, publication_state="published")
         return tid
 
     class Probe:
@@ -65,6 +76,7 @@ def probe(monkeypatch, tmp_path):
         def done(self):
             return r.lrange(key + ':done', 0, -1)
     result = Probe()
+    result.project_id = temp_project
     result.start, result.publish, result.r, result.key, result.channel = start, publish, r, key, channel
     try:
         yield result
@@ -148,7 +160,20 @@ def test_killed_worker_redelivers_unacked_vip_to_replacement(probe):
 def test_lost_yield_confirmation_does_not_lose_task_or_repeat_terminal_receipt(probe):
     tid = probe.publish('vip', yield_once=True)
     probe.start(lose_confirm=True)
-    eventually(lambda: probe.r.exists(probe.key + ':confirm_lost') and len(probe.starts()) >= 3)
+    eventually(lambda: probe.r.exists(probe.key + ':confirm_lost') and len(probe.starts()) >= 2)
+    # Recover this exact persisted successor without waiting behind unrelated
+    # retained unknowns in the global fair-replay cursor.
+    from sqlalchemy import select
+    from myink.db import tenant_session
+    from myink.models.maintenance import QueueHandoff
+    from myink.worker.handoff import publish_handoff
+    # The fixture owns the project, not a fabricated replay identity.
+    with tenant_session(probe.project_id) as db:
+        row=db.scalar(select(QueueHandoff).where(QueueHandoff.task_id==uuid.UUID(tid)))
+        assert row is not None and row.state in ('unknown','published')
+        operation=row.operation_id
+    assert publish_handoff(operation)['state']=='published'
+    eventually(lambda: len(probe.starts()) >= 3)
     eventually(lambda: probe.done() == [tid])
     assert {item['id'] for item in probe.starts()} == {tid}
     assert Counter(probe.done()) == {tid: 1}

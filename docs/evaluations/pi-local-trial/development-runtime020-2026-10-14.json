@@ -1,0 +1,111 @@
+{
+  "accounting": {
+    "allocations": {
+      "analysis": 15,
+      "develop": 45,
+      "experiment": 30,
+      "reserve": 10
+    },
+    "budget_microyuan": 20000000,
+    "conservative_total_microyuan": 12780468,
+    "cumulative_attempts": 87,
+    "invoice_known": false,
+    "known_estimate_microyuan": 698292,
+    "max_attempts": 100,
+    "new020_attempts": 4,
+    "new020_known_estimate_microyuan": 18392,
+    "new020_unknown_reservation_microyuan": 2016384,
+    "pending_model_attempts": 0,
+    "pending_phase_admissions": 0,
+    "phase_admission_counts": {
+      "analysis": 16,
+      "develop": 34,
+      "experiment": 29,
+      "reserve": 8
+    },
+    "phase_counts_semantics": "analysis16 aggregate includes inherited4 and raw12 including blocked1; effective transport15",
+    "unknown_reservation_microyuan": 12082176
+  },
+  "actual_http_requests": 4,
+  "adapter_deadline_aborted": true,
+  "adapter_process_stopped": true,
+  "adapter_session_valid": false,
+  "candidate_adopted": false,
+  "candidate_created": true,
+  "case_id": "development-runtime020",
+  "checks": {
+    "final_candidate_status": "NOT_RUN",
+    "full_services": "NOT_RUN",
+    "paired_checker": "NOT_RUN",
+    "product_regression_on_candidate": "NOT_RUN",
+    "run_check": "NOT_RUN"
+  },
+  "cleanup": {
+    "keeper_stopped": true,
+    "no_fixed_uid_processes": true,
+    "owned_trees": 1,
+    "owned_trees_empty": true
+  },
+  "complete_usage_records": 3,
+  "controller_returncode": 1,
+  "hashes": {
+    "candidate": "65c685b63f10376220b97988957d7ffb49df9114ef81fdeaa9b2370021358590",
+    "closed_backup": "9d1cbe8df35fa64eba1c9d83fea0041539ff480127d910f91a0fd065710a1ef1",
+    "facts_review": "87d720ddafa3ba6a924c046683e871849401c84541427783e0c8189d3c7317ea",
+    "failure_diagnosis": "d36ff4725cbab9ba52d71cb3ef3197e13f7ba33f6f9d6a7cbbbcce73cb3546f3",
+    "keeper_stop": "9a6e6c15929ef11ed7f68d62ba24faaece8c824fb48a31b345494fa4b57dfb73",
+    "original_pending_backup": "98f7e68afb9027ee8cac4237c033d726d245b7193068806a98e02c76c60f2116",
+    "original_pending_snapshot": "a81419339db462b98788021d8c64ab07ed1d34b49f026b968962f89bf475410d",
+    "original_pending_terminal": "4cb09b9df35df268bfb9f9a1621ba68e23af87521ebe7a9687fcf27f1f27ae76",
+    "paid_export": "768ff08d35172c448f359aeeab601ecf96cc15d1e90ffe2b3452739820d0da82",
+    "reconciliation": "16decab5b7d8f08f3421e0a317e191f7a99c675846e35ec035354d8dca3203ba",
+    "settlement_review": "69b2a080f7f981d787515c891a13e1fece0e61b86aef56e9a5859a1b867db238",
+    "snapshot": "f5f2f1b47be0af25eed1d0a46f9378c683d9648fb5414de6101303c17e5d0743",
+    "source_baseline": "dc6022b85b2556736ac3ac9d21e952105195025657a72d5f871405aca04dc597",
+    "source_closure": "e906fa6b61de6e3f532ee5c6a4af0435b91b7928e865a7c2f9534c8a434ba526"
+  },
+  "mechanical_pairing_status": "NOT_RUN",
+  "model_execution": "ACTUAL",
+  "patch_summary": "Only the Bearer regex assignment changed; capture byte accounting unchanged. Static delimiter lookahead risk unverified by execution.",
+  "production_status": "NOT_RUN",
+  "publication_review_status": "FACTS_ONLY_NOT_CANDIDATE_OR_FUTURE_RUNTIME_AUTHORITY",
+  "recovery": {
+    "budget_refunded": false,
+    "current_terminal_status": "FAILED_OR_INCOMPLETE",
+    "events": 436,
+    "existing_settle_none_used": true,
+    "first_readonly_extra_epoch_equality_check_failed_before_mutation": true,
+    "full_reserved_charge_microyuan": 2016384,
+    "new_events": 1,
+    "new_status": "uncertain",
+    "old_operations_unchanged_except_exact_pending_target": true,
+    "operations": 262,
+    "original435_events_unchanged": true,
+    "original_terminal_status": "PENDING_RECONCILIATION",
+    "stopped_epoch_reused_for_paid_authority": false,
+    "usage_known": false
+  },
+  "release_approved": false,
+  "response_status_counts": {
+    "200": 4
+  },
+  "schema": "development020-public-aggregate-v1",
+  "scope": "Local isolated aggregate only; no raw user/model body, full ledger, credentials or UUID",
+  "semantic_quality": "unknown",
+  "status": "failed",
+  "supervision_verified": false,
+  "validation_scope": {
+    "counts_not_additive": true,
+    "existing_settle_temp_sqlite_deselected_not_run": 23,
+    "existing_settle_temp_sqlite_passed": 3,
+    "gate1_actual_accepted": true,
+    "gate2_canonical_calls": 0,
+    "gate2_model_calls": 3,
+    "gate2_model_execution": "SIMULATED",
+    "gate2_protocol_execution": "ACTUAL",
+    "helpers_source_offline_passed": 68,
+    "offline_does_not_establish_production": true,
+    "runtime_source_offline_passed": 57,
+    "terminal_source_offline_passed": 11
+  }
+}

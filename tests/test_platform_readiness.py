@@ -282,7 +282,11 @@ def test_worker_role_disabled_after_admission_fails_privately_with_terminal_even
     policy['connections']['planner']['enabled'] = False
     monkeypatch.setattr(providers, '_chain_from_override', lambda *a, **kw: pytest.fail('must not construct/call provider'))
     body = dict(task_id=tid, project_id=temp_project, user_id=uid, task_type='chapter_generate',
-                payload={'seq': 1}, retry_count=0)
+                payload={'seq': 1}, retry_count=0, request_id=tid)
+    from myink.db import tenant_session
+    from myink.maintenance import register_admission
+    with tenant_session(temp_project) as db:
+        register_admission(db, body, priority=0)
     r = get_redis()
     try:
         assert process(body) == 'terminal'  # No retry/second paid attempt.

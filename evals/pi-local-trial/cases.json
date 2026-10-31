@@ -1,0 +1,518 @@
+{
+  "schema_version": 1,
+  "source_kind": "synthetic",
+  "dataset_sha256": "c0fde3f2f82f94949d0ff5ce94e485565837a00a9548bf0f78571f622e008f60",
+  "limitations": [
+    "five development source families plus disclosed existing local_public_holdout",
+    "holdout is exposed repository material, not external/unseen validation",
+    "whole derived families remain together; tuning holdout requires reclassification/replacement",
+    "actual private discovery cohort is not a semantic gold corpus"
+  ],
+  "cases": [
+    {
+      "id": "pi-meter",
+      "group_id": "pi-meter",
+      "source_family": "hard.alias",
+      "account_group": "repository-synthetic",
+      "project_id": "synthetic-meter",
+      "split": "development",
+      "holdout_disclosure": null,
+      "source_kind": "synthetic",
+      "human_provenance": "unknown",
+      "label_status": "proposed",
+      "task_type": "long_write",
+      "as_of_chapter": 3,
+      "input": {
+        "context": {
+          "short_context": [
+            {
+              "kind": "prev_chapter_tail",
+              "chapter": 1,
+              "tail": "林川唯一的旧万用表已经烧毁，尚未取得任何替代品。"
+            }
+          ],
+          "long_term_facts": [
+            {
+              "content": "老林是林川的别名。故事为现实题材。",
+              "is_hard": true
+            }
+          ]
+        },
+        "plan": {},
+        "instruction": "检查供电，交代合法取得的新表来源。",
+        "chapter_seq": 3
+      },
+      "input_sha256": "bc50e87f35518c90e98beb8f631a02bbfdbbad1802d83a58c7c4eebbb2ed03c3",
+      "messages": [
+        {
+          "role": "user",
+          "content": "{\"chapter_seq\": 3, \"context\": {\"long_term_facts\": [{\"content\": \"老林是林川的别名。故事为现实题材。\", \"is_hard\": true}], \"short_context\": [{\"chapter\": 1, \"kind\": \"prev_chapter_tail\", \"tail\": \"林川唯一的旧万用表已经烧毁，尚未取得任何替代品。\"}]}, \"instruction\": \"检查供电，交代合法取得的新表来源。\", \"plan\": {}}"
+        }
+      ],
+      "documents": [
+        {
+          "id": "meter-history-0",
+          "path": "/input/context/short_context/0/tail",
+          "project_id": "synthetic-meter",
+          "chapter": 1,
+          "as_of_chapter": 3,
+          "text": "林川唯一的旧万用表已经烧毁，尚未取得任何替代品。",
+          "fingerprint": "6e97bfa1144451a4698e24bea0edfd50590c8beb518fa46a4562b1c4c8942a97",
+          "complete": true,
+          "representation": "original_utf8",
+          "role": "source",
+          "source_path": "evals/cases/audit/hard.alias_destroyed.json",
+          "source_sha256": "e3a7ec32957ad134c3772ff93db90b1df399d7ed6a1f4bcef14d616d185bd7c2"
+        },
+        {
+          "id": "meter-fact-0",
+          "path": "/input/context/long_term_facts/0/content",
+          "project_id": "synthetic-meter",
+          "chapter": 1,
+          "as_of_chapter": 3,
+          "text": "老林是林川的别名。故事为现实题材。",
+          "fingerprint": "00514fdc7d1df03f7ef070159a66074bb215d64958007be3bb07e3842c8ee2b8",
+          "complete": true,
+          "representation": "original_utf8",
+          "role": "source",
+          "source_path": "evals/cases/audit/hard.alias_destroyed.json",
+          "source_sha256": "e3a7ec32957ad134c3772ff93db90b1df399d7ed6a1f4bcef14d616d185bd7c2"
+        }
+      ],
+      "required_ids": [
+        "meter-history-0"
+      ],
+      "relevant_ids": [
+        "meter-history-0",
+        "meter-fact-0"
+      ],
+      "expected_mutations": [],
+      "label_gaps": [
+        "historical extraction mutations and semantic matches require independent evidence"
+      ],
+      "severe_rule_ids": [
+        "destroyed_old_meter"
+      ],
+      "provenance": {
+        "source_path": "evals/cases/audit/hard.alias_destroyed.json",
+        "source_sha256": "e3a7ec32957ad134c3772ff93db90b1df399d7ed6a1f4bcef14d616d185bd7c2",
+        "source_group": "hard.alias",
+        "source_label_status": "proposed",
+        "author_provenance": "unknown",
+        "adaptation": "proposed frozen continuation request, not independent human gold"
+      }
+    },
+    {
+      "id": "pi-injury",
+      "group_id": "pi-injury",
+      "source_family": "hard.injury",
+      "account_group": "repository-synthetic",
+      "project_id": "synthetic-injury",
+      "split": "development",
+      "holdout_disclosure": null,
+      "source_kind": "synthetic",
+      "human_provenance": "unknown",
+      "label_status": "proposed",
+      "task_type": "long_write",
+      "as_of_chapter": 3,
+      "input": {
+        "context": {
+          "short_context": [
+            {
+              "kind": "prev_chapter_tail",
+              "chapter": 1,
+              "tail": "林川左膝扭伤，医生要求八周内避免负重。"
+            }
+          ],
+          "long_term_facts": [
+            {
+              "content": "老林是林川的别名。故事为现实题材。",
+              "is_hard": true
+            }
+          ]
+        },
+        "plan": {},
+        "instruction": "交代康复或协作后完成符合伤势的动作。",
+        "chapter_seq": 3
+      },
+      "input_sha256": "6613311d6fa8c4d0dd634771d055d4a86aa0f5ef3fc6949e74fd597660a4e068",
+      "messages": [
+        {
+          "role": "user",
+          "content": "{\"chapter_seq\": 3, \"context\": {\"long_term_facts\": [{\"content\": \"老林是林川的别名。故事为现实题材。\", \"is_hard\": true}], \"short_context\": [{\"chapter\": 1, \"kind\": \"prev_chapter_tail\", \"tail\": \"林川左膝扭伤，医生要求八周内避免负重。\"}]}, \"instruction\": \"交代康复或协作后完成符合伤势的动作。\", \"plan\": {}}"
+        }
+      ],
+      "documents": [
+        {
+          "id": "injury-history-0",
+          "path": "/input/context/short_context/0/tail",
+          "project_id": "synthetic-injury",
+          "chapter": 1,
+          "as_of_chapter": 3,
+          "text": "林川左膝扭伤，医生要求八周内避免负重。",
+          "fingerprint": "4aa2f3157b134e9f76be1a4329fe712034af0f855ea9613aec4ab96d260e7a32",
+          "complete": true,
+          "representation": "original_utf8",
+          "role": "source",
+          "source_path": "evals/cases/audit/hard.injury_treatment.json",
+          "source_sha256": "ae5bf15f41930870e73ef08a7c3f66dff4a24fce78309b9255365f8a2b20ecf5"
+        },
+        {
+          "id": "injury-fact-0",
+          "path": "/input/context/long_term_facts/0/content",
+          "project_id": "synthetic-injury",
+          "chapter": 1,
+          "as_of_chapter": 3,
+          "text": "老林是林川的别名。故事为现实题材。",
+          "fingerprint": "00514fdc7d1df03f7ef070159a66074bb215d64958007be3bb07e3842c8ee2b8",
+          "complete": true,
+          "representation": "original_utf8",
+          "role": "source",
+          "source_path": "evals/cases/audit/hard.injury_treatment.json",
+          "source_sha256": "ae5bf15f41930870e73ef08a7c3f66dff4a24fce78309b9255365f8a2b20ecf5"
+        }
+      ],
+      "required_ids": [
+        "injury-history-0"
+      ],
+      "relevant_ids": [
+        "injury-history-0",
+        "injury-fact-0"
+      ],
+      "expected_mutations": [],
+      "label_gaps": [
+        "historical extraction mutations and semantic matches require independent evidence"
+      ],
+      "severe_rule_ids": [
+        "unsupported_injury_action"
+      ],
+      "provenance": {
+        "source_path": "evals/cases/audit/hard.injury_treatment.json",
+        "source_sha256": "ae5bf15f41930870e73ef08a7c3f66dff4a24fce78309b9255365f8a2b20ecf5",
+        "source_group": "hard.injury",
+        "source_label_status": "proposed",
+        "author_provenance": "unknown",
+        "adaptation": "proposed frozen continuation request, not independent human gold"
+      }
+    },
+    {
+      "id": "pi-promise",
+      "group_id": "pi-promise",
+      "source_family": "logic.promise",
+      "account_group": "repository-synthetic",
+      "project_id": "synthetic-promise",
+      "split": "development",
+      "holdout_disclosure": null,
+      "source_kind": "synthetic",
+      "human_provenance": "unknown",
+      "label_status": "proposed",
+      "task_type": "long_write",
+      "as_of_chapter": 2,
+      "input": {
+        "context": {
+          "short_context": [
+            {
+              "kind": "prev_chapter_tail",
+              "chapter": 1,
+              "tail": "林川承诺修好水泵，但检修尚未开始，水泵仍完全损坏。"
+            }
+          ],
+          "long_term_facts": []
+        },
+        "plan": {},
+        "instruction": "实际完成检修后再兑现水泵承诺。",
+        "chapter_seq": 2
+      },
+      "input_sha256": "a4b9c1a5ea04b21583f6ace0dd991313e66613ef06da4d6ad6d8cbe370a8fc82",
+      "messages": [
+        {
+          "role": "user",
+          "content": "{\"chapter_seq\": 2, \"context\": {\"long_term_facts\": [], \"short_context\": [{\"chapter\": 1, \"kind\": \"prev_chapter_tail\", \"tail\": \"林川承诺修好水泵，但检修尚未开始，水泵仍完全损坏。\"}]}, \"instruction\": \"实际完成检修后再兑现水泵承诺。\", \"plan\": {}}"
+        }
+      ],
+      "documents": [
+        {
+          "id": "promise-history-0",
+          "path": "/input/context/short_context/0/tail",
+          "project_id": "synthetic-promise",
+          "chapter": 1,
+          "as_of_chapter": 2,
+          "text": "林川承诺修好水泵，但检修尚未开始，水泵仍完全损坏。",
+          "fingerprint": "84494aeb8d16c475b2e0f33d362819d985c198680e3b4bfb495b29878154b642",
+          "complete": true,
+          "representation": "original_utf8",
+          "role": "source",
+          "source_path": "evals/cases/audit/logic.unfulfilled_promise.json",
+          "source_sha256": "2d1238beb546ae38a36ec2f4d3ad3f2466642ed3b3a7fc854b4c874b50815e40"
+        }
+      ],
+      "required_ids": [
+        "promise-history-0"
+      ],
+      "relevant_ids": [
+        "promise-history-0"
+      ],
+      "expected_mutations": [],
+      "label_gaps": [
+        "historical extraction mutations and semantic matches require independent evidence"
+      ],
+      "severe_rule_ids": [
+        "unfulfilled_promise"
+      ],
+      "provenance": {
+        "source_path": "evals/cases/audit/logic.unfulfilled_promise.json",
+        "source_sha256": "2d1238beb546ae38a36ec2f4d3ad3f2466642ed3b3a7fc854b4c874b50815e40",
+        "source_group": "logic.promise",
+        "source_label_status": "proposed",
+        "author_provenance": "unknown",
+        "adaptation": "proposed frozen continuation request, not independent human gold"
+      }
+    },
+    {
+      "id": "pi-visit",
+      "group_id": "pi-visit",
+      "source_family": "logic.visit",
+      "account_group": "repository-synthetic",
+      "project_id": "synthetic-visit",
+      "split": "development",
+      "holdout_disclosure": null,
+      "source_kind": "synthetic",
+      "human_provenance": "unknown",
+      "label_status": "proposed",
+      "task_type": "long_write",
+      "as_of_chapter": 2,
+      "input": {
+        "context": {
+          "short_context": [
+            {
+              "kind": "prev_chapter_tail",
+              "chapter": 1,
+              "tail": "昨晚林川已在北桥站办理登记，今天再次来到原站房。"
+            }
+          ],
+          "long_term_facts": []
+        },
+        "plan": {},
+        "instruction": "继续重访站房，保留昨天登记的经历。",
+        "chapter_seq": 2
+      },
+      "input_sha256": "5561439cdd28e53aa445dae6fd7d08d6ac288bdf881285becc2ab0e66368b572",
+      "messages": [
+        {
+          "role": "user",
+          "content": "{\"chapter_seq\": 2, \"context\": {\"long_term_facts\": [], \"short_context\": [{\"chapter\": 1, \"kind\": \"prev_chapter_tail\", \"tail\": \"昨晚林川已在北桥站办理登记，今天再次来到原站房。\"}]}, \"instruction\": \"继续重访站房，保留昨天登记的经历。\", \"plan\": {}}"
+        }
+      ],
+      "documents": [
+        {
+          "id": "visit-history-0",
+          "path": "/input/context/short_context/0/tail",
+          "project_id": "synthetic-visit",
+          "chapter": 1,
+          "as_of_chapter": 2,
+          "text": "昨晚林川已在北桥站办理登记，今天再次来到原站房。",
+          "fingerprint": "2ec41ae4cff6ff5855729602bf2ad56fa14e504c7a5f064c6b14afd16db66220",
+          "complete": true,
+          "representation": "original_utf8",
+          "role": "source",
+          "source_path": "evals/cases/audit/logic.first_visit.json",
+          "source_sha256": "6f3022fb4a83973661cc7ffb7d43df5de6ec6257bab23959b461b2f9b39f071f"
+        }
+      ],
+      "required_ids": [
+        "visit-history-0"
+      ],
+      "relevant_ids": [
+        "visit-history-0"
+      ],
+      "expected_mutations": [],
+      "label_gaps": [
+        "historical extraction mutations and semantic matches require independent evidence"
+      ],
+      "severe_rule_ids": [
+        "first_visit"
+      ],
+      "provenance": {
+        "source_path": "evals/cases/audit/logic.first_visit.json",
+        "source_sha256": "6f3022fb4a83973661cc7ffb7d43df5de6ec6257bab23959b461b2f9b39f071f",
+        "source_group": "logic.visit",
+        "source_label_status": "proposed",
+        "author_provenance": "unknown",
+        "adaptation": "proposed frozen continuation request, not independent human gold"
+      }
+    },
+    {
+      "id": "pi-threat",
+      "group_id": "pi-threat",
+      "source_family": "continuity.threat",
+      "account_group": "repository-synthetic",
+      "project_id": "synthetic-threat",
+      "split": "development",
+      "holdout_disclosure": null,
+      "source_kind": "synthetic",
+      "human_provenance": "unknown",
+      "label_status": "proposed",
+      "task_type": "long_write",
+      "as_of_chapter": 6,
+      "input": {
+        "context": {
+          "short_context": [
+            {
+              "kind": "prev_chapter_tail",
+              "chapter": 5,
+              "tail": "兽爪从门缝探了进来，门闩正一点点弯折。沈砚抵住铁门，朝妹妹伸手：“把那把螺丝刀给我，快！”妹妹抓起工具。"
+            }
+          ],
+          "recent_openings": []
+        },
+        "plan": {
+          "goals": [
+            "兄妹守住体育馆后门"
+          ],
+          "expected_events": [
+            "兄妹守住体育馆后门"
+          ]
+        },
+        "instruction": "先解决后门威胁，再进入自然的休息场景。",
+        "chapter_seq": 6
+      },
+      "input_sha256": "23cd6598328a72e877197a9c54064f0cbdeddf7908d6eb4da5e31f1fd3e0361e",
+      "messages": [
+        {
+          "role": "user",
+          "content": "{\"chapter_seq\": 6, \"context\": {\"recent_openings\": [], \"short_context\": [{\"chapter\": 5, \"kind\": \"prev_chapter_tail\", \"tail\": \"兽爪从门缝探了进来，门闩正一点点弯折。沈砚抵住铁门，朝妹妹伸手：“把那把螺丝刀给我，快！”妹妹抓起工具。\"}]}, \"instruction\": \"先解决后门威胁，再进入自然的休息场景。\", \"plan\": {\"expected_events\": [\"兄妹守住体育馆后门\"], \"goals\": [\"兄妹守住体育馆后门\"]}}"
+        }
+      ],
+      "documents": [
+        {
+          "id": "threat-history-0",
+          "path": "/input/context/short_context/0/tail",
+          "project_id": "synthetic-threat",
+          "chapter": 5,
+          "as_of_chapter": 6,
+          "text": "兽爪从门缝探了进来，门闩正一点点弯折。沈砚抵住铁门，朝妹妹伸手：“把那把螺丝刀给我，快！”妹妹抓起工具。",
+          "fingerprint": "bef52fad7b7d6d615e8f2ae398bd76d54f29685eb8f2d82cc9953348ef87dd25",
+          "complete": true,
+          "representation": "original_utf8",
+          "role": "source",
+          "source_path": "evals/cases/audit/continuity.pending_threat_dropped.json",
+          "source_sha256": "6287061242d25e364493a691cdb06cf167eaa93f5cdbf53d7fbfe318abfa58f2"
+        }
+      ],
+      "required_ids": [
+        "threat-history-0"
+      ],
+      "relevant_ids": [
+        "threat-history-0"
+      ],
+      "expected_mutations": [],
+      "label_gaps": [
+        "historical extraction mutations and semantic matches require independent evidence"
+      ],
+      "severe_rule_ids": [
+        "pending_threat_dropped"
+      ],
+      "provenance": {
+        "source_path": "evals/cases/audit/continuity.pending_threat_dropped.json",
+        "source_sha256": "6287061242d25e364493a691cdb06cf167eaa93f5cdbf53d7fbfe318abfa58f2",
+        "source_group": "continuity.threat",
+        "source_label_status": "proposed",
+        "author_provenance": "unknown",
+        "adaptation": "proposed frozen continuation request, not independent human gold"
+      }
+    },
+    {
+      "id": "pi-power",
+      "group_id": "pi-power",
+      "source_family": "logic.capability",
+      "account_group": "repository-synthetic",
+      "project_id": "synthetic-power",
+      "split": "holdout",
+      "holdout_disclosure": "local_public_holdout",
+      "source_kind": "synthetic",
+      "human_provenance": "unknown",
+      "label_status": "proposed",
+      "task_type": "long_write",
+      "as_of_chapter": 2,
+      "input": {
+        "context": {
+          "short_context": [
+            {
+              "kind": "prev_chapter_tail",
+              "chapter": 1,
+              "tail": "林川检查了仪器：外接电源已断开，电池也已取出。"
+            }
+          ],
+          "long_term_facts": [
+            {
+              "content": "该仪器必须外接电源或装入电池才能测量，没有其他供能方式。",
+              "is_hard": true
+            }
+          ]
+        },
+        "plan": {},
+        "instruction": "交代接入电源后进行仪器测量。",
+        "chapter_seq": 2
+      },
+      "input_sha256": "aa6fac54ee04038052f2cf382d20687ec64a5ae307060530209ff2bc56f439d3",
+      "messages": [
+        {
+          "role": "user",
+          "content": "{\"chapter_seq\": 2, \"context\": {\"long_term_facts\": [{\"content\": \"该仪器必须外接电源或装入电池才能测量，没有其他供能方式。\", \"is_hard\": true}], \"short_context\": [{\"chapter\": 1, \"kind\": \"prev_chapter_tail\", \"tail\": \"林川检查了仪器：外接电源已断开，电池也已取出。\"}]}, \"instruction\": \"交代接入电源后进行仪器测量。\", \"plan\": {}}"
+        }
+      ],
+      "documents": [
+        {
+          "id": "power-history-0",
+          "path": "/input/context/short_context/0/tail",
+          "project_id": "synthetic-power",
+          "chapter": 1,
+          "as_of_chapter": 2,
+          "text": "林川检查了仪器：外接电源已断开，电池也已取出。",
+          "fingerprint": "561bb64a9f66d7ff82e5cabc50843f4c9def473dc9e365b95b5a22ecaa047444",
+          "complete": true,
+          "representation": "original_utf8",
+          "role": "source",
+          "source_path": "evals/cases/audit/logic.capability_rule.json",
+          "source_sha256": "4ef500c7c852b54657a7ad9a8069f5d5cbbff9a1cf6a6e0b5d6f6da7e44975f7"
+        },
+        {
+          "id": "power-fact-0",
+          "path": "/input/context/long_term_facts/0/content",
+          "project_id": "synthetic-power",
+          "chapter": 1,
+          "as_of_chapter": 2,
+          "text": "该仪器必须外接电源或装入电池才能测量，没有其他供能方式。",
+          "fingerprint": "803c7d0fdc83bb4dffce988f599ce710f014729aba53a4ce7e115dad30254c87",
+          "complete": true,
+          "representation": "original_utf8",
+          "role": "source",
+          "source_path": "evals/cases/audit/logic.capability_rule.json",
+          "source_sha256": "4ef500c7c852b54657a7ad9a8069f5d5cbbff9a1cf6a6e0b5d6f6da7e44975f7"
+        }
+      ],
+      "required_ids": [
+        "power-history-0"
+      ],
+      "relevant_ids": [
+        "power-history-0",
+        "power-fact-0"
+      ],
+      "expected_mutations": [],
+      "label_gaps": [
+        "historical extraction mutations and semantic matches require independent evidence"
+      ],
+      "severe_rule_ids": [
+        "capability_rule"
+      ],
+      "provenance": {
+        "source_path": "evals/cases/audit/logic.capability_rule.json",
+        "source_sha256": "4ef500c7c852b54657a7ad9a8069f5d5cbbff9a1cf6a6e0b5d6f6da7e44975f7",
+        "source_group": "logic.capability",
+        "source_label_status": "proposed",
+        "author_provenance": "unknown",
+        "adaptation": "proposed frozen continuation request, not independent human gold"
+      }
+    }
+  ]
+}

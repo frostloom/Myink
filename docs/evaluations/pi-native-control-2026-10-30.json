@@ -1,0 +1,169 @@
+{
+  "schema": "pi-native-control-checkpoint-v1",
+  "date": "2026-10-30",
+  "source_commit": "53704f6cd86c5143599e7b74caa7a2426b9f049e",
+  "base_commit": "3aebba2619363394041b2fea46ad79ce5e69ac5a",
+  "run_id": "pi-native-control-20261030",
+  "version_sha256": "be40538609e374286f99b7e85c26dc92d326d678efd781b57f1cb902cf284d41",
+  "status": "native_admission_verified_business_pending",
+  "release_allowed": false,
+  "main_merged": false,
+  "production_changed": false,
+  "provider_calls": 0,
+  "server_audit_published": false,
+  "pi_autonomous_improvement_claim": false,
+  "changes": [
+    {
+      "path": "docs/superpowers/plans/2026-10-29-pi-product-maintenance-release.md",
+      "category": "docs",
+      "added": 2,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/product_backup.py",
+      "category": "production",
+      "added": 1,
+      "deleted": 1
+    },
+    {
+      "path": "ops/pi/product_cold_probe.py",
+      "category": "production",
+      "added": 2,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/product_release.py",
+      "category": "production",
+      "added": 203,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/product_runtime.py",
+      "category": "production",
+      "added": 4,
+      "deleted": 1
+    },
+    {
+      "path": "ops/pi/tests/integration/test_product_activation_native.py",
+      "category": "test",
+      "added": 35,
+      "deleted": 1
+    },
+    {
+      "path": "ops/pi/tests/test_product_backup.py",
+      "category": "test",
+      "added": 1,
+      "deleted": 1
+    },
+    {
+      "path": "ops/pi/tests/test_product_release.py",
+      "category": "test",
+      "added": 136,
+      "deleted": 0
+    }
+  ],
+  "tests": {
+    "offline_passed": 4101,
+    "offline_deselected": 53,
+    "offline_seconds": 249.87,
+    "related_passed": 104,
+    "related_seconds": 26.65,
+    "suites_overlap": true,
+    "native_passed": 1,
+    "native_deselected": 1,
+    "native_seconds": 373.48
+  },
+  "diagnostics": {
+    "bare_http_passes": 30,
+    "full_direct_passes": 24,
+    "hash_bootstrap_passes": 8,
+    "extra_exec137_counted": false,
+    "intermittent_root_cause_resolved": false,
+    "online_independent_samples": 0
+  },
+  "base_exact_ci": {
+    "head": "3aebba2619363394041b2fea46ad79ce5e69ac5a",
+    "run_id": 40935954006,
+    "result": "4/4 success"
+  },
+  "checkpoint_ci": "pending push",
+  "native_scope": "synthetic seven services; SIMULATED host; admission only; generic post-open DB marker preserved; no authenticated generation/checkpoint/business rollback qualification",
+  "pending": [
+    "actual effective runtime/config private snapshot and SCRAM recovery authentication",
+    "business probe -> POST -> explicitly approved distinct admission start phase; current stopped-cohort POST is native scope only",
+    "long/short/batch/VIP pause and cross-generation task adoption",
+    "normal upgrade and retained historical cohort handling",
+    "manual release entries under same lock and generation protocol",
+    "separate observation/rollback authority after bootstrap expiry",
+    "single final review and author fixpass",
+    "explicit main/product approval and fresh paid candidate adoption",
+    "actual nextday/24-48h observation"
+  ],
+  "audit": {
+    "local_events": 9,
+    "prior_events_preserved": 27,
+    "expected_daily_events": 36,
+    "scope_paths": 8,
+    "reader_verified": true,
+    "server_published": false
+  },
+  "nextday": {
+    "plan": {
+      "test_id": "native-control-nextday-20261031",
+      "scheduled_for": "2026-10-31T03:00:00+00:00",
+      "target_run_id": "pi-native-control-20261030",
+      "target_version_sha256": "be40538609e374286f99b7e85c26dc92d326d678efd781b57f1cb902cf284d41",
+      "criterion": "新独立合成操作复核原生控制及写入保全；产品采用后另登记真实次日和24-48h结果。",
+      "kind": "restore",
+      "status": "blocked"
+    },
+    "registered": false,
+    "result": null
+  },
+  "evidence": {
+    "full": {
+      "sha256": "674430a52997fad2e000c2bb894f255b6b4ed4776ed16f32d3aff399b2d6afec",
+      "bytes": 4608
+    },
+    "related": {
+      "sha256": "5ccabb1c9beec0a19ee99d73c7c9dac531886c4bb1c37e954f99af418b644421",
+      "bytes": 181
+    },
+    "native": {
+      "sha256": "d54381a9d376d72cb911f8608e2481ca35e53924bc821c95ac81bbb4d75b6b02",
+      "bytes": 124
+    },
+    "first-failure": {
+      "sha256": "56ff0a3c1284bf1a514e2a8868395df4bd3b373996732c54a98ba4af435c7da8",
+      "bytes": 13975
+    },
+    "cold-failure": {
+      "sha256": "8e9674f55591b132d565317b024a862ef27546d1112a23b5f955b5752758a697",
+      "bytes": 13003
+    },
+    "start-uncertain": {
+      "sha256": "ee8354c992a4c10295a68ca6320c629762602b85975592fadae9f0cb15323b2a",
+      "bytes": 24684
+    },
+    "approval-red": {
+      "sha256": "e9c3475d81f7b022b4659f952c1ac6299c087e8539ffee6d1668b66cff355a7f",
+      "bytes": 31276
+    },
+    "debt-red": {
+      "sha256": "b7ab65830f32ad819de1ea5f2c9f219755af5e7cd0a4d5db2c16336682070b01",
+      "bytes": 3378
+    },
+    "bare-http": {
+      "sha256": "530c99228e9d234dbf940644fb85a57f6b083d7da185adc5771b6b6df9e6d954",
+      "bytes": 347
+    },
+    "full-http": {
+      "sha256": "26d27d910adaf38ae34ee69fde18b70fd87411c58e3bf1ab9fc850043a2467e2",
+      "bytes": 118
+    },
+    "bootstrap-http": {
+      "sha256": "0a6de13c947b7a4619a0d68c9a6e00b5f5e8b23cb4b9069e238c3a54296f4887",
+      "bytes": 32
+    }
+  }
+}

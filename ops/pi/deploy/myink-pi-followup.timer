@@ -1,0 +1,11 @@
+[Unit]
+Description=Check approved Pi followups when truly due
+
+[Timer]
+OnBootSec=180
+OnUnitInactiveSec=5min
+AccuracySec=1s
+Unit=myink-pi-followup.service
+
+[Install]
+WantedBy=timers.target

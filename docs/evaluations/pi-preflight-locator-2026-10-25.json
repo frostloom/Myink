@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-25",
+  "scope": "Task package preflight and initial static source navigation",
+  "tests": {
+    "new": 33,
+    "focused_passed": 136,
+    "pi_passed": 2488,
+    "pi_deselected": 19,
+    "node_scripts_passed": 4,
+    "linux_fixed_passed": 10
+  },
+  "linux": {
+    "mode": "SIMULATED",
+    "real_linux_pi_sdk": true,
+    "mock_analysis_requests": 1,
+    "mock_development_requests": 11,
+    "package_preflight_bound": true,
+    "initial_source_index_ascii_bytes": 909,
+    "unit_and_final_status_authenticated": true,
+    "owned_containers_absent": 3,
+    "product_adopted": false
+  },
+  "real_added_cost_microyuan": 0,
+  "canonical_ledger_sha256": "b8e960f22c639b469a9590a7400b5ac0a00b4f049a963fdf6c38a051423a9da3",
+  "canonical_ledger_unchanged": true,
+  "canonical_policy_closed_unchanged": true,
+  "canonical_credential_unchanged": true,
+  "product_source_unchanged": true,
+  "runtime": {
+    "runtime_sha256": "52ae48ab2eaefbf881f4ca04ac2a5e7d597491c33d90c367778568dbde3a75a9",
+    "node_sha256": "719a43d185f3b6a59d8fcbba1ff06b93c75f76fb0bb9916f81d33921615d4cb5",
+    "lock_sha256": "fd0f5bd8aa13e01da8792b161d80502f32e1afd00103151fbcc21f4b3146785a",
+    "pi_cli_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+    "code_sha256": "c77f1f8d16e1da378f466b0c9a5fd748922f160ce688024657644b81ca96f84e",
+    "controller_sha256": "3c2a6e7832444fe31f25d00604b8369cff5e0447885879eed87d14f9efac9946",
+    "worker_sha256": "80ca8e95b18d43c6f3f1eea0238967a9b93015c54ffbf3605df2645d818fcaff"
+  },
+  "review": {
+    "independent": true,
+    "blocking_remaining": 0,
+    "prompt_index_encoding_fixed": true
+  },
+  "limits": [
+    "Index is initial-snapshot advisory metadata; omitted/unparseable symbols are explicit.",
+    "8192 ASCII bytes bounds the actual prompt index fragment; existing outer SDK 64KiB guard remains.",
+    "MOCK integration does not establish paid-provider effectiveness or unattended autonomy.",
+    "Next paid run requires a fresh current runtime, checkpoint and exact review."
+  ],
+  "submitted": false
+}

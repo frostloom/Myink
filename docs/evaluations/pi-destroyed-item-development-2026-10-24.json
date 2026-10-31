@@ -1,0 +1,72 @@
+{
+  "date": "2026-10-24",
+  "branch": "codex/pi-autonomy-design",
+  "status": "adopted_after_real_pi_authentication_and_exact_sha_review",
+  "run": "destroyed-item-real-20261024-008",
+  "source_hashes": {
+    "src/myink/validation/l1.py": "b80f276962422abcb48155a2500320780021753bbf263d6b522bc49090747321",
+    "src/myink/validation/service.py": "b413deda00bd3f09d93c76f82b05ebc62f275dff2d735f34fae7774f47d23ced"
+  },
+  "fixed_tests": {
+    "passed": 48,
+    "skipped": 0
+  },
+  "targeted": {
+    "passed": 164,
+    "xfail": 4
+  },
+  "ordinary_python": {
+    "passed": 1701,
+    "skipped": 1,
+    "xfail": 4,
+    "deselected": 159,
+    "warnings": 2,
+    "seconds": 616.847,
+    "skip_cases": [
+      "test_direct_full_and_ablation_preserve_all_outputs_and_persisted_body"
+    ],
+    "xfail_cases": [
+      "test_sample_05_first_visit_contradiction",
+      "test_sample_07_promise_unfulfilled_claimed",
+      "test_sample_08_capability_rule_violation",
+      "test_sample_09_faction_allegiance"
+    ]
+  },
+  "pi_offline": {
+    "passed": 2274,
+    "deselected": 19,
+    "seconds": 171.08
+  },
+  "catalog": {
+    "detected": 22,
+    "positive": 26,
+    "false_positive": 0,
+    "negative": 14,
+    "remaining_xfail": [
+      5,
+      7,
+      8,
+      9
+    ],
+    "vacuous_negative": [
+      28,
+      29
+    ]
+  },
+  "real_calls": 55,
+  "known_cost_microyuan": 274698,
+  "new_unknown": 0,
+  "cumulative_attempts": 341,
+  "cumulative_known": 332,
+  "historical_unknown": 9,
+  "cumulative_known_microyuan": 2540467,
+  "historical_unknown_reserved_microyuan": 18115200,
+  "old_history_preserved": true,
+  "policy_disabled": true,
+  "owned_pi_containers_absent": true,
+  "product_test_containers_removed": true,
+  "committed": false,
+  "pushed": false,
+  "merged": false,
+  "deployed": false
+}

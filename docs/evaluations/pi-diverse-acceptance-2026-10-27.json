@@ -1,0 +1,166 @@
+{
+  "schema": "pi-diverse-acceptance-evaluation-v1",
+  "date": "2026-10-27",
+  "mode": "ACTUAL",
+  "status": "stopped",
+  "task_domain": "three distinct small synthetic pure-function contracts",
+  "base_commit": "3e4fd48eda4062a589a0d0c7c1b8fe4da810e755",
+  "fixture_commit": "01ffe1238b16cc851fa8ce18384ee76c4a588315",
+  "scheduled_tasks": 3,
+  "dispatched_tasks": 1,
+  "verified_development_tasks": 0,
+  "unstarted_tasks": 2,
+  "tasks": [
+    {
+      "task": "ordering",
+      "state": "development_failed_or_unknown"
+    },
+    {
+      "task": "numeric",
+      "state": "unstarted"
+    },
+    {
+      "task": "parsing",
+      "state": "unstarted"
+    }
+  ],
+  "baseline_tests": 15,
+  "baseline_assertion_failures": 6,
+  "raw_ordering_check_tests": 5,
+  "raw_ordering_check_failures": 0,
+  "raw_ordering_output_is_authenticated_phase_success": false,
+  "selection_verified": true,
+  "selection_calls": 1,
+  "selection_known_microyuan": 2392,
+  "development_calls": 3,
+  "development_known_microyuan": 9209,
+  "new_model_attempts": 4,
+  "known_cost_microyuan": 11601,
+  "new_unknown": 0,
+  "new_unresolved_reserved_microyuan": 0,
+  "cumulative_attempts": 704,
+  "cumulative_known": 695,
+  "historical_unknown": 9,
+  "cumulative_known_microyuan": 4502280,
+  "selection_reviews": 1,
+  "development_reviews": 1,
+  "observed_failure_class": "TimeoutExpired",
+  "observed_docker_command": "rm",
+  "docker_command_seconds": 15,
+  "cleanup_failure_class": "RuntimeError",
+  "original_cleanup_receipt_complete": false,
+  "original_failed_receipts_preserved": true,
+  "post_stop_operation_labels_absent": 6,
+  "post_stop_known_container_ids_absent": 5,
+  "post_stop_current_owned_resources_absent": true,
+  "post_stop_audit_time": "2026-10-27T08:23:30.930021+00:00",
+  "underlying_docker_timing_cause_known": false,
+  "original_billing_prefix_unchanged": true,
+  "original_manager_prefix_unchanged": true,
+  "policy_closed_original": true,
+  "credential_unchanged": true,
+  "source_gold_and_old_runtime_unchanged": true,
+  "source_closure_used_in_actual": "965b0c15fabbc0523994cc965ae7f0ca3ace0668677b9bb39ee45713a16f2c0c",
+  "cold_recovery_attempted": false,
+  "restart_dispatches": null,
+  "restart_model_calls": null,
+  "paid_retries": 0,
+  "elapsed_seconds": 753.378,
+  "upstream_pi_version": "1.1.0",
+  "upstream_pi_core_modified": false,
+  "candidate_adopted": false,
+  "main_merged": false,
+  "deployed": false,
+  "review": {
+    "reviewer": "diverse_acceptance_final_review",
+    "important_findings": 1,
+    "minor_findings": 2,
+    "important_fix": "stopped_summary retains all scheduled rows, separates known charges from new unknown reservations, records unavailable checkpoints and available cleanup without retry/recovery claims",
+    "author_red_green_cases": 6,
+    "synthetic_fallback_wiring_passed": true,
+    "second_independent_code_review": false,
+    "deferred_minors": [
+      "ordering input mutation not checked on order-sensitive examples",
+      "numeric integer return type not explicitly asserted"
+    ]
+  },
+  "late_removal_fix": {
+    "validation": "offline_and_real_Docker_ack_loss_injection",
+    "in_process_removal_intent_only": true,
+    "changes": [
+      "retain authenticated stopped exit state before owned rm",
+      "accept exact known CID not-found only after prior removal intent with daemon/operation-label confirmation",
+      "do not issue a second rm for reconciled absence",
+      "retain sticky failure and partial successful cleanup history"
+    ],
+    "initial_red_failures": 4,
+    "pending_intent_red_assertion": true,
+    "review_fix_red_green_cases": 2,
+    "targeted_cases": 73,
+    "independent_review": {
+      "reviewer": "late_removal_final_review",
+      "scope": "new actual-observed cleanup bugfix only",
+      "important_findings": 1,
+      "minor_findings": 0,
+      "finding": "Per-CID successful cleanup receipts lost before later CID/final-label checks fail",
+      "author_review_fix_red_green_cases": 2,
+      "author_targeted_passed": 73,
+      "reviewer_targeted_passed_before_fix": 71,
+      "second_independent_code_review": false,
+      "no_operational_approval_or_actual_retest": true
+    },
+    "actual_retest": false,
+    "docker_mock": {
+      "schema": "pi-late-removal-docker-mock-v1",
+      "mode": "MOCK_cleanup_ack_loss",
+      "verified": true,
+      "observed_at": "2026-10-27T08:35:13.649122+00:00",
+      "daemon_id": "6a464461-31f4-4b73-bb3d-0f5e94024a27",
+      "image_id": "sha256:10cb0ff0dcfff3d7e86f88e64cd4a45d9e8ffe5121430a4d7145acde374da0b1",
+      "operation_id": "56aa086c-4535-4a0b-9c56-0fe72e82ce1f",
+      "container_id": "22173cf6669a15c69dba1c0dae97050214ca1bf6e876a0774c37d8204a73d4ba",
+      "rm_calls": 1,
+      "injection": "raise client TimeoutExpired only after actual owned Docker rm returns",
+      "cleanup": [
+        {
+          "container_id": "22173cf6669a15c69dba1c0dae97050214ca1bf6e876a0774c37d8204a73d4ba",
+          "stopped": true,
+          "exit_code": 0,
+          "removed": true,
+          "removal_reconciled": true
+        }
+      ],
+      "current_operation_label_absent": true,
+      "model_calls": 0,
+      "candidate_executed": false,
+      "original_billing_unchanged": true,
+      "policy_unchanged_closed": true,
+      "actual_original_timeout_timing_reproduced": false
+    }
+  },
+  "verification": {
+    "pi_offline_passed": 2846,
+    "opt_in_deselected": 19,
+    "node_passed": 54,
+    "stopped_report_red_green": 6,
+    "synthetic_stopped_collector_wiring_passed": true,
+    "product_suite_run_locally": false,
+    "fixture_ci": {
+      "run_id": 40470563813,
+      "url": "https://github.com/frostloom/Myink/actions/runs/40470563813",
+      "jobs_passed": 4
+    },
+    "final_commit_ci_recorded_separately": true
+  },
+  "general_efficiency_improvement_percent": null,
+  "production_reliability": null,
+  "limitations": [
+    "One attempted task stopped; numeric and parsing unstarted; no completed authenticated development in this batch.",
+    "Raw checker stdout5/5 is not a completed authenticated phase or accepted repair.",
+    "The late-removal code fix is offline verified only; actual Docker timing cause remains undetermined.",
+    "Post-stop resource absence does not change or upgrade original failed receipts.",
+    "Ordering input mutation coverage is narrow; numeric equality does not assert int return type.",
+    "Removal reconciliation is in-process and requires a prior authenticated owned rm intent; not cross-process development recovery.",
+    "No paid retry, cold recovery dispatch, candidate adoption, main merge or deployment."
+  ]
+}

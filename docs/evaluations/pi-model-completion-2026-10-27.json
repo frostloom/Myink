@@ -1,0 +1,93 @@
+{
+  "schema": "pi-model-completion-offline-v1",
+  "date": "2026-10-27",
+  "base_commit": "61faee3aa9afff18910cc7dde5c689b6eeb0c5ea",
+  "mode": "offline-only",
+  "model_reserve_future_requests": 4,
+  "minimum_development_model_requests": 7,
+  "rpc_completion_reserve": 8,
+  "tool_followups": {
+    "apply_patch": {
+      "model": 3,
+      "rpc": 6
+    },
+    "run_check_unit": {
+      "model": 2,
+      "rpc": 4
+    },
+    "candidate_status": {
+      "model": 1,
+      "rpc": 2
+    }
+  },
+  "trigger": "model remaining<=4 OR RPC remaining<=10; completion-only mode sticky",
+  "warning": "one authenticated blocked read only at sufficient model/RPC warning margins; cached receipts retain original bytes",
+  "repeated_read": "stop before additional RPC use",
+  "legacy_noncompletion_limits_unchanged": true,
+  "hard_maxima_unchanged": true,
+  "source_caps_ascii_bytes": {
+    "per_read": 4096,
+    "total": 12288
+  },
+  "tests": {
+    "new_cases": 25,
+    "red_failed": 23,
+    "red_passed": 2,
+    "focused_passed": 84,
+    "pi_offline_passed": 2906,
+    "pi_offline_deselected": 19,
+    "node_passed": 54
+  },
+  "new_model_calls": 0,
+  "new_known_cost_microyuan": 0,
+  "new_unknown": 0,
+  "canonical_ledger_unchanged": true,
+  "original_manager_unchanged": true,
+  "policy_closed_original": true,
+  "credential_unchanged": true,
+  "product_parser_unchanged": true,
+  "failed_real_pilot_retained": true,
+  "failed_pilot_candidate_repaired": false,
+  "paid_retry": false,
+  "cold_dispatch": false,
+  "candidate_adopted": false,
+  "main_merged": false,
+  "deployed": false,
+  "budget_microyuan": 50000000,
+  "conservative_used_microyuan": 22712683,
+  "conservative_remaining_microyuan": 27287317,
+  "cumulative_attempts": 735,
+  "historical_unknown": 9,
+  "original_runtime_archive_sha256": "8676c6a59e43b325c4dbc8e5b640e5f98df2808e74cd22023697511990b5a65d",
+  "current_source_closure": "e0873fa642873ad88895cffa3b033c643c0a1e8e47f701608389203a09c3c5d0",
+  "new_real_runtime_frozen": false,
+  "future_real_entry_requires_new_runtime_and_independent_reviews": true,
+  "review_report_sha256": "b89c5fa71c0a0b22c72b158bf4488cbe9c2863ee3fb265137f0f78fc1bb7b81b",
+  "remote_ci": "Verify exact pushed final HEAD four original gates; no pending run marked passed.",
+  "limitations": [
+    "Deterministic offline request-admission checks, not another real completed development session.",
+    "Does not repair or approve the rejected Unicode candidate.",
+    "Conservative per-tool followup reservation may reject batches needing fewer model calls.",
+    "No production success-rate, general performance or financial-reliability claim."
+  ],
+  "frontend_ci_author_fix": {
+    "original_head": "6e202159cd1632e8d52750b34f44ffd49219cabe",
+    "original_ci_run": 40491726745,
+    "original_ci": "failure in frontend; Pi/image/backend success",
+    "file": "web/src/components/FeedbackWidget.test.tsx",
+    "line_before_fix": 96,
+    "root_cause": "Global findByText matched the pending description TEXTAREA before history loading completed, so the test checked listFeedback too early.",
+    "deterministic_red": "Hold mocked submit promise unresolved: old history selector returns TEXTAREA rather than card paragraph.",
+    "fix": "Wait for history role=list and scope text lookup inside it with within; no product, timeout, skip or dependency-lock change.",
+    "targeted_tests_passed": 8,
+    "full_frontend_files_passed": 58,
+    "full_frontend_tests_passed": 457,
+    "lint_exit_code": 0,
+    "build_exit_code": 0,
+    "existing_warnings_retained": true,
+    "temporary_diagnostic_removed": true,
+    "author_ci_fix_after_independent_review": true,
+    "second_code_review": false,
+    "new_model_calls": 0
+  }
+}

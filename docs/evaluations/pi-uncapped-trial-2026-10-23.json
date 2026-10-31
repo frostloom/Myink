@@ -1,0 +1,61 @@
+{
+  "schema": "pi-uncapped-implementation-verification-v1",
+  "base_commit": "f553a3cf63eba8dc6541fc5e67f4a5076817fa20",
+  "branch": "codex/pi-autonomy-design",
+  "production_files": {
+    "ops/pi/policy.py": "228bb660d56d260892527fc9b488159261a6b9a72e0ae22ee9502d69f1826f88",
+    "ops/pi/budget.py": "4a0b6fd3ff063ada9458c6023a4e687decd7e86b7b5dd4dd5c0b1c90822dab87",
+    "ops/pi/analysis_budget.py": "7061738fd45cf574f90447785f9207054a7d1ca532023c176a76c3d1ccf3332a",
+    "ops/pi/analysis_preflight.py": "dc870b7ca331f6f7c237966dc153ec2020e7e919a2bcd5929c0ff9c837acff97",
+    "ops/pi/analysis_launcher.py": "7692d80bc80bc255de154e08b714d21d60148e4716041240bd8de648d8f73259",
+    "ops/pi/schedule.py": "9421affa3781c21a0e7ff47223d2b9c766b9616c21532800cc3bbc3ff349effe"
+  },
+  "test_files": {
+    "ops/pi/tests/test_uncapped_trial_budget.py": "9789b8ce2574f419208496ebd853fcd241a357f8bb447a00136a9e8b020f7890",
+    "ops/pi/tests/test_analysis_trial_lifecycle.py": "482d84887d832e5a723d7e0e226e4c6cff6aaacb687e01642abe2abc66a51407"
+  },
+  "offline_tests": {
+    "passed": 2217,
+    "deselected": 19,
+    "skipped": 0,
+    "duration_seconds": 184.76,
+    "new_tests": 27,
+    "targeted_passed": 49
+  },
+  "initial_full_run": {
+    "passed": 2214,
+    "failed": 1,
+    "cause": "collection_time_absolute_deadline_became_valid_during_long_suite"
+  },
+  "review": {
+    "important_found": 1,
+    "important_fixed": 1,
+    "critical_remaining": 0,
+    "important_remaining": 0,
+    "minor_remaining": 0
+  },
+  "evidence_log_sha256": {
+    "red.log": "fd5b5060ed1472b94f6f72f6c0d6588159fe33313298e9b644c44b4a4dc252cd",
+    "green.log": "8005a9c86edcbb86535a25e8b37ed7ad31a7bd1ca86e312f56e275267f8b7f17",
+    "schedule-red.log": "785ddb8f04a02e669ac430df5292d520c8d97509cf1d4f3484364cd00863de49",
+    "schedule-green.log": "624111fdf819d724d56760c7b7bc9d0998159bc72186dfdc522cc5a0dad851aa",
+    "fix-tests.log": "bb588957218457ac9cd5b99cf0761e7167b4d09096fcce42c894c5c4392601fd",
+    "full-tests.log": "02ee920dcb2e2305f69b22148e656faf21ad073d4c6b52efb14149198ae45f43",
+    "full-tests-final.log": "79114f709ebf7b4986b75e1ddc42d032e73d183ff158a53d928b2d1f9e8dd1fe"
+  },
+  "committed": false,
+  "pushed": false,
+  "merged": false,
+  "deployed": false,
+  "linux_acceptance_verified": true,
+  "linux_acceptance_sha256": "98daf59678067cd2a5b995e756dc9812092c09fd9d9d13074c8d541c10c2f86d",
+  "real_execution_started": false,
+  "new_real_model_posts": 0,
+  "canonical_approval_appended": false,
+  "canonical_policy_changed": false,
+  "real_execution_blocked_by": "automatic_approval_review_private_export_and_persistent_billing_authorization",
+  "prepared_private_executor_sha256": "6deb977e8e2fd7f6c728d32894f2cdce6a8a291aa7fda25c1ecec57891b72735",
+  "prepared_private_audit_sha256": "3d3927b0cd68ac6df0b34011c3a6e6d3505550713b349eb6bf9d60b4a07b5662",
+  "explicit_user_private_export_approval_received": true,
+  "automatic_review_rejections": 2
+}

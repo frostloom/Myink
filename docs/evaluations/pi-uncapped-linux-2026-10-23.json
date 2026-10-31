@@ -1,0 +1,139 @@
+{
+  "runtime_observed": {
+    "node": "v24.22.0",
+    "pi": "1.1.0",
+    "uid": 65534,
+    "machine": "aarch64",
+    "network_denied": true
+  },
+  "image_id": "sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1",
+  "daemon_id": "6a464461-31f4-4b73-bb3d-0f5e94024a27",
+  "audit_script_sha256": "b52dd75af119adfc5e57d881cbfc9c4ffdb58ebab80e271edce85928e74f8826",
+  "schema": "pi-uncapped-linux-acceptance-v1",
+  "at": "2026-10-23T07:26:32.791691+00:00",
+  "base_commit": "f553a3cf63eba8dc6541fc5e67f4a5076817fa20",
+  "branch": "codex/pi-autonomy-design",
+  "source_provenance": {
+    "runtime_sha256": "6e169d5462405f59c070365267eec24fddc005a3c141819ba7a1f548a592c528",
+    "node_sha256": "719a43d185f3b6a59d8fcbba1ff06b93c75f76fb0bb9916f81d33921615d4cb5",
+    "lock_sha256": "fd0f5bd8aa13e01da8792b161d80502f32e1afd00103151fbcc21f4b3146785a",
+    "pi_cli_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+    "code_sha256": "adda30bb9bb7c478268ccb4ddd4cca90ebad4a01ac133ec68bf88a68777f4c21",
+    "controller_sha256": "3c2a6e7832444fe31f25d00604b8369cff5e0447885879eed87d14f9efac9946",
+    "worker_sha256": "80ca8e95b18d43c6f3f1eea0238967a9b93015c54ffbf3605df2645d818fcaff"
+  },
+  "source_unchanged": true,
+  "all_exact_containers_removed": true,
+  "actual_created_containers": 33,
+  "actual_attach_logs": 33,
+  "synthetic_transport_calls": 33,
+  "synthetic_known_attempts": 31,
+  "synthetic_unknown_attempts": 2,
+  "actual_os_signal_cases": 1,
+  "monotonic_fault_injection_cases": 0,
+  "full_thirty_elapsed_over_600_tested": false,
+  "paid_requests": 0,
+  "external_model_posts": 0,
+  "real_credentials_read": false,
+  "canonical_ledger_read": false,
+  "canonical_policy_changed": false,
+  "cases": {
+    "mixed-thirty": {
+      "status": "completed",
+      "stop_reason": null,
+      "cleanup_complete": true,
+      "slot_states": {
+        "FAILED": 3,
+        "DONE": 27
+      },
+      "synthetic_transport_calls": 30,
+      "created_containers": 30,
+      "attach_logs": 30,
+      "canonical_attempt_states": {
+        "done": 30
+      },
+      "synthetic_charged_microyuan": 25020,
+      "operation_id": "beff0320-e0a7-48ac-9737-6fe9ca57360b",
+      "fresh_label_scan_empty": true,
+      "duration_seconds": 456.45664637497975,
+      "fault_kind": null,
+      "fault_to_return_seconds": null,
+      "receipt_sha256": "fa38ddf325bb9cbb1be1b856ba3997cfa27a5a02973bbb69f1dee5f3b7f343f9"
+    },
+    "sigterm-stream": {
+      "status": "blocked",
+      "stop_reason": "interrupted",
+      "cleanup_complete": true,
+      "slot_states": {
+        "UNCERTAIN": 1,
+        "NOT_RUN": 29
+      },
+      "synthetic_transport_calls": 1,
+      "created_containers": 1,
+      "attach_logs": 1,
+      "canonical_attempt_states": {
+        "uncertain": 1
+      },
+      "synthetic_charged_microyuan": 19384,
+      "operation_id": "4139e7f1-6a35-4f5c-9997-5f0afdacaec8",
+      "fresh_label_scan_empty": true,
+      "duration_seconds": 16.50276970898267,
+      "fault_kind": "SIGTERM",
+      "fault_to_return_seconds": 1.7680530840007123,
+      "receipt_sha256": "5cf492945d8a0354464c6fc4d650c3f9afc98a2aa9e36af295367847a43cf648"
+    },
+    "short-window": {
+      "status": "blocked",
+      "stop_reason": "insufficient_slot_window",
+      "cleanup_complete": true,
+      "slot_states": {
+        "NOT_RUN": 30
+      },
+      "synthetic_transport_calls": 0,
+      "created_containers": 0,
+      "attach_logs": 0,
+      "canonical_attempt_states": {},
+      "synthetic_charged_microyuan": 0,
+      "operation_id": "ef04446f-f60d-4a7f-bcb7-7e14890ca7ac",
+      "fresh_label_scan_empty": true,
+      "duration_seconds": 7.259023874998093,
+      "fault_kind": null,
+      "fault_to_return_seconds": null,
+      "receipt_sha256": "e618253331f6c6848f92cdafa36e947fed2f143c94593e7614ecbb37ff971a37"
+    },
+    "unknown-after-failure": {
+      "status": "blocked",
+      "stop_reason": "execution_failed",
+      "cleanup_complete": true,
+      "slot_states": {
+        "FAILED": 1,
+        "UNCERTAIN": 1,
+        "NOT_RUN": 28
+      },
+      "synthetic_transport_calls": 2,
+      "created_containers": 2,
+      "attach_logs": 2,
+      "canonical_attempt_states": {
+        "done": 1,
+        "uncertain": 1
+      },
+      "synthetic_charged_microyuan": 20218,
+      "operation_id": "6c060bf2-2ebd-4081-a2d0-2117b62ae17f",
+      "fresh_label_scan_empty": true,
+      "duration_seconds": 27.57807670798502,
+      "fault_kind": null,
+      "fault_to_return_seconds": null,
+      "receipt_sha256": "ba0ffd2e72eb9fbc60845a3a804127f158bcc36a84a8a71a0c2c53291826bbc9"
+    }
+  },
+  "script_sha256": "746eec10322fdf6666433f01a704bb7f167cbb7e92e79cbecd7968b77df0fa19",
+  "private_summary_sha256": "5a425a82efdd283e8c83eb97a301f2013b8d3e424fce8e6951f2b333a9e7360c",
+  "production_ready": false,
+  "billing_verified": false,
+  "full_paid_trial_ready": false,
+  "paid_execution_authorized": false,
+  "committed": false,
+  "pushed": false,
+  "merged": false,
+  "deployed": false
+}

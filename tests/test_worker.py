@@ -31,7 +31,7 @@ def _owner(project_id):
 
 
 def _body(task_id, project_id, task_type="chapter_generate", payload=None, user_id=None):
-    return {
+    body = {
         "task_id": task_id,
         "task_type": task_type,
         "project_id": project_id,
@@ -41,6 +41,10 @@ def _body(task_id, project_id, task_type="chapter_generate", payload=None, user_
         "request_id": f"req-{uuid.uuid4().hex[:8]}",
         "retry_count": 0,
     }
+    from myink.maintenance import register_admission
+    with tenant_session(project_id) as db:
+        register_admission(db,body,priority=0)
+    return body
 
 
 def test_database_disconnects_are_retryable():

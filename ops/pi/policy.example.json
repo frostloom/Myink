@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "live_enabled": false,
+  "server_daily_enabled": false,
+  "model": "deepseek-flash",
+  "protocol": "anthropic",
+  "base_url": "https://api.deepseek.com/anthropic",
+  "max_attempts": 100,
+  "budget_microyuan": 10000000,
+  "timeout_seconds": 120,
+  "max_body_bytes": 65536,
+  "input_token_bound": 1000000,
+  "input_bound_source": "UNCONFIRMED: validate provider full context capacity and body constraints before enabling",
+  "input_bound_calibrated": false,
+  "max_tokens": 8192,
+  "price_source": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/ (2026-10-22 peak CNY rates; cache_write uses full-input upper bound)",
+  "prices": {
+    "input": "2",
+    "output": "8",
+    "cache_read": "0.04",
+    "cache_write": "2"
+  },
+  "grace_seconds": 900,
+  "soft_production_files": 3,
+  "soft_production_lines": 150,
+  "hard_tracked_files": 8,
+  "hard_production_lines": 300,
+  "protected_paths": [
+    "ops/pi",
+    ".github",
+    "AGENTS.md",
+    ".agents",
+    ".codex",
+    "docs/team-workflow.md"
+  ],
+  "high_risk_types": [
+    "schema",
+    "authentication",
+    "billing",
+    "external_api",
+    "infrastructure",
+    "deployment",
+    "policy"
+  ]
+}

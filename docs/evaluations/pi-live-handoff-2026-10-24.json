@@ -1,0 +1,142 @@
+{
+  "date": "2026-10-24",
+  "status": "verified-local-handoff-and-adopted-product-fix",
+  "branch": "codex/pi-autonomy-design",
+  "automatic_git": false,
+  "server_autonomy": false,
+  "scope": "One reproduced task in a host frozen catalog; no open-ended issue discovery",
+  "code": {
+    "selection": "ops/pi/selection_launcher.py",
+    "worker": "ops/pi/workers/selection.py",
+    "adapters": "ops/pi/maintenance_adapters.py",
+    "runtime_code_sha256": "a181b801fe6eec4ee71b2e2f502bab6d7b544ab59c6fe4a507ba147e1d36c4fe"
+  },
+  "tests": {
+    "focused": 133,
+    "pi_passed": 2455,
+    "pi_deselected": 19,
+    "node_scripts_passed": 4,
+    "product_passed": 1785,
+    "product_skipped": 1,
+    "product_skip_reason": "test_direct_full_and_ablation_preserve_all_outputs_and_persisted_body requires explicitly approved localhost:15432 evaluation database identity; dedicated local regression uses55432",
+    "product_xfailed": 3,
+    "product_deselected": 159,
+    "product_warnings": 2,
+    "targeted_passed": 248,
+    "targeted_xfailed": 3,
+    "fixed_before": {
+      "tests": 131,
+      "failures": 15,
+      "errors": 0,
+      "skipped": 0
+    },
+    "fixed_after": {
+      "tests": 131,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "sample_matrix": {
+      "passed": 23,
+      "total": 26,
+      "unresolved": [
+        7,
+        8,
+        9
+      ]
+    }
+  },
+  "actual": {
+    "new_attempts": 46,
+    "new_unknown": 0,
+    "known_cost_microyuan": 242382,
+    "total_attempts": 452,
+    "total_known": 443,
+    "historical_unknown": 9,
+    "total_known_cost_microyuan": 3116588,
+    "original_rows_events_unchanged": true,
+    "ledger_sha256": "45021ee6f26b9030a87cbdfaddfecf78b0ce023d1bccd57e9acc5f53abbec20b",
+    "rounds": [
+      {
+        "round": "actual",
+        "analysis_attempts": 1,
+        "development_attempts": 11,
+        "known_cost_microyuan": 64238,
+        "development_verified": true,
+        "new_unknown": 0,
+        "policy_restored": true,
+        "original_history_unchanged": true,
+        "owned_removed": true,
+        "adopted": false,
+        "failure_class": null
+      },
+      {
+        "round": "actual-002",
+        "analysis_attempts": 1,
+        "development_attempts": 12,
+        "known_cost_microyuan": 62086,
+        "development_verified": false,
+        "new_unknown": 0,
+        "policy_restored": true,
+        "original_history_unchanged": true,
+        "owned_removed": true,
+        "adopted": false,
+        "failure_class": "ValueError"
+      },
+      {
+        "round": "actual-003",
+        "analysis_attempts": 1,
+        "development_attempts": 12,
+        "known_cost_microyuan": 70976,
+        "development_verified": false,
+        "new_unknown": 0,
+        "policy_restored": true,
+        "original_history_unchanged": true,
+        "owned_removed": true,
+        "adopted": false,
+        "failure_class": "ValueError"
+      },
+      {
+        "round": "actual-004",
+        "analysis_attempts": 1,
+        "development_attempts": 7,
+        "known_cost_microyuan": 45082,
+        "development_verified": true,
+        "new_unknown": 0,
+        "policy_restored": true,
+        "original_history_unchanged": true,
+        "owned_removed": true,
+        "adopted": true,
+        "failure_class": null
+      }
+    ],
+    "policy_closed": true,
+    "credential_unchanged": true
+  },
+  "adoption": {
+    "reviewer": "entity_names_final_review",
+    "source": "independent_static_review",
+    "result": "approved",
+    "file": "src/myink/validation/l1.py",
+    "sha256": "c808ae7279582a8635b97fdfa5d418004c1c132dc988ae3b59037822e04116fc",
+    "candidate_sha256": "fc6466fb185ee113ba8b8694dcd22b60b97554d1f5e2842484adecfb088de781",
+    "adopted": true
+  },
+  "prior_dirty_files": 91,
+  "prior_dirty_intentionally_changed": [
+    "docs/pi/development-readiness.md",
+    "src/myink/validation/l1.py",
+    "docs/pi/local-development-launcher.md",
+    "ops/pi/development_launcher.py"
+  ],
+  "other_prior_dirty_preserved": true,
+  "product_services_removed": true,
+  "limitations": [
+    "Only finite local host-supervised handoff",
+    "Catalog has exactly one qualified task",
+    "Independent external review and host adoption required",
+    "No automatic Git/main merge/deploy/server enable",
+    "Frozen-rate usage estimate is not provider invoice",
+    "Historical 9 unknown fees remain reserved"
+  ]
+}

@@ -1,0 +1,44 @@
+[Unit]
+Description=Myink Pi approved fixed followup regression
+After=docker.service
+Requisite=docker.service
+ConditionPathExists=/home/ubuntu/myink-pi-managed/config/followup.env
+ConditionPathExists=/home/ubuntu/myink-pi-managed/config/followup-registry.json
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+SupplementaryGroups=docker
+WorkingDirectory=/home/ubuntu/myink-pi-managed
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=DOCKER_CONFIG=/nonexistent
+EnvironmentFile=/home/ubuntu/myink-pi-managed/config/followup.env
+ExecStart=/usr/bin/python3 -I -S -B ${PI_FOLLOWUP_ENTRYPOINT} --human-gated --component followup --config /home/ubuntu/myink-pi-managed/config/followup-registry.json --config-sha256 ${PI_FOLLOWUP_REGISTRY_SHA256}
+Restart=no
+TimeoutStartSec=330
+TimeoutStopSec=30
+KillMode=control-group
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=yes
+PrivateNetwork=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictAddressFamilies=AF_UNIX
+ReadOnlyPaths=/home/ubuntu/myink-pi-managed/state /home/ubuntu/myink-pi-managed/jobs /home/ubuntu/myink-pi-managed/config /home/ubuntu/myink-pi-managed/releases /home/ubuntu/myink-pi-managed/control/maintenance.lock
+InaccessiblePaths=/home/ubuntu/myink-pi-managed/state/credentials
+ReadWritePaths=/home/ubuntu/myink-pi-managed/followups /home/ubuntu/myink-pi-managed/audit/state /home/ubuntu/myink-pi-managed/audit/export
+MemoryMax=256M
+TasksMax=64
+CPUQuota=25%
+StandardOutput=journal
+StandardError=journal

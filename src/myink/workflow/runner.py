@@ -8,6 +8,7 @@ from threading import Lock
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
 
+from myink.maintenance_pause import invoke_graph, MaintenancePaused
 from myink.db import tenant_session
 from myink.task_budget import budget_managed, budget_execution, TaskBudgetPaused
 from myink.workflow import nodes
@@ -47,10 +48,10 @@ def generate_chapter(*, project_id: str, chapter_seq: int, task_id: str | None =
     thread_id = task_id or str(uuid.uuid4())
     config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 64}
     if budget_managed() and chapter_graph.get_state(config).values:
-        result = chapter_graph.invoke(None, config=config)
+        result = invoke_graph(chapter_graph, None, config)
         _finish_chapter_result(project_id, thread_id, result)
         return result
-    result = chapter_graph.invoke(
+    result = invoke_graph(chapter_graph,
         {
             "project_id": project_id,
             "chapter_seq": chapter_seq,
@@ -60,19 +61,82 @@ def generate_chapter(*, project_id: str, chapter_seq: int, task_id: str | None =
             "replan_requested": replan,
             "writing_mode": writing_mode,
         },
-        config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64},
+        {"configurable": {"thread_id": thread_id}, "recursion_limit": 64},
     )
     _finish_chapter_result(project_id, thread_id, result)
     return result
 
 
-@budget_execution
 def resume_chapter_plan(*, project_id: str, task_id: str, approved_plan: dict) -> dict:
+    """Validate explicit approval before claiming an awaiting-plan execution."""
+    from sqlalchemy import select
+    from langgraph.checkpoint.postgres import PostgresSaver
+    from myink.maintenance import require_admission_open
+    from myink.maintenance_pause import _SCOPE, _locked, fence_effect
+    from myink.models.task_budget import TaskBudget
+    from myink.schemas import ChapterPlan
+    from myink.task_budget import TaskBudgetUnavailable
+    from myink.validation.continuity import check_transition_anchor
+
+    graph, _ = get_graphs()
+    config = {"configurable": {"thread_id": task_id}}
+    scope = _SCOPE.get()
+    if scope is not None and (scope.task_id != task_id or scope.project_id != project_id):
+        raise TaskBudgetUnavailable("plan execution identity mismatch")
+    with tenant_session(project_id) as db:
+        require_admission_open(db)
+        control, task, execution = _locked(db, task_id)
+        if str(task.project_id) != project_id or task.status != ("running" if scope else "awaiting_plan"):
+            raise ValueError("task is not awaiting explicit plan approval")
+        if execution is None or execution.state not in {"running", "waiting"}:
+            raise TaskBudgetUnavailable("plan execution is not resumable")
+        if (execution.deployment_generation != control["generation"]
+                or execution.receipt.get("deployment_id") != control["deployment_id"]
+                or execution.receipt.get("image_ids") != control["image_ids"]):
+            raise TaskBudgetUnavailable("plan deployment identity changed")
+        if scope is not None:
+            fence_effect(db)
+        elif execution.owner_token or execution.active_nodes:
+            raise TaskBudgetUnavailable("plan execution still owned")
+        budget = db.scalar(select(TaskBudget).where(TaskBudget.task_id == task.id).with_for_update())
+        if budget is not None and (budget.pause_reason or budget.cost_reserved_micros
+                or (scope is None and budget.lease_until is not None)):
+            raise TaskBudgetUnavailable("plan budget is not resumable")
+        if not isinstance(graph.checkpointer, PostgresSaver):
+            raise ValueError("plan approval requires a durable checkpoint")
+        snapshot = graph.get_state(config)
+        saved = graph.checkpointer.get_tuple(config)
+        values = snapshot.values
+        if (saved is None or saved.config["configurable"].get("checkpoint_id")
+                != snapshot.config["configurable"].get("checkpoint_id")
+                or values.get("task_id") != task_id or values.get("project_id") != project_id
+                or values.get("writing_mode") != "manual" or snapshot.next != ("plan_gate",)):
+            raise ValueError("stale plan checkpoint identity")
+        interrupts = [item.value for node in snapshot.tasks if node.name == "plan_gate"
+                      for item in node.interrupts]
+        if len(interrupts) != 1 or interrupts[0] != {
+                "kind": "chapter_plan_review", "chapter_seq": values["chapter_seq"],
+                "attempt": values.get("replan_count", 0) + 1, "plan": values.get("plan") or {}}:
+            raise ValueError("no current plan approval interrupt")
+        plan = ChapterPlan.model_validate(approved_plan)
+        plan.project_id = uuid.UUID(project_id)
+        plan.chapter_seq = values["chapter_seq"]
+        normalized = plan.model_dump(mode="json")
+        check_transition_anchor(normalized, values.get("context") or {})
+        if scope is None:
+            # Maintenance -> task -> budget locks protect this explicit CAS.
+            task.status = "running"
+            task.error = None
+    return _resume_chapter_plan(project_id=project_id, task_id=task_id, approved_plan=normalized)
+
+
+@budget_execution
+def _resume_chapter_plan(*, project_id: str, task_id: str, approved_plan: dict) -> dict:
     """从 plan_gate 的动态 interrupt 恢复；不重新调用 Planner。"""
     chapter_graph, _ = get_graphs()
-    result = chapter_graph.invoke(
+    result = invoke_graph(chapter_graph,
         Command(resume=approved_plan),
-        config={"configurable": {"thread_id": task_id}, "recursion_limit": 64},
+        {"configurable": {"thread_id": task_id}, "recursion_limit": 64},
     )
     _finish_chapter_result(project_id, task_id, result)
     return result
@@ -117,7 +181,7 @@ def generate_batch(*, project_id: str, size: int, start_chapter: int,
             return resume_thread(batch_graph, thread_id, state)
         if batch_slicing():
             return invoke_batch_slice(batch_graph, state, {"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
-        return batch_graph.invoke(state, config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
+        return invoke_graph(batch_graph, state, {"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
     except TaskBudgetPaused as exc:
         if exc.reason in {"manual_pause", "cancelled"}:
             status = "cancelled" if exc.reason == "cancelled" else "paused"
@@ -162,9 +226,9 @@ def resume_thread(graph: CompiledStateGraph, thread_id: str, state: dict) -> dic
             resume_state.update(batch_failed=False, error=None)
         return invoke_batch_slice(graph, resume_state, config)
     if budget_managed() and snap.values and (snap.next or not snap.values.get("error")):
-        return graph.invoke(None, config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
+        return invoke_graph(graph, None, {"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
     resume_state = {**state, **(snap.values or {})}  # checkpoint 优先
-    return graph.invoke(resume_state, config={"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
+    return invoke_graph(graph, resume_state, {"configurable": {"thread_id": thread_id}, "recursion_limit": 64})
 
 
 def finalize_chapter_review(*, project_id: str, task_id: str, chapter_seq: int) -> dict:

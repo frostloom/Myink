@@ -1,0 +1,126 @@
+{
+  "actual_http_requests": 6,
+  "adapter_returncode": 0,
+  "adapter_settled": true,
+  "budget": {
+    "allocations": {
+      "analysis": 15,
+      "develop": 45,
+      "experiment": 30,
+      "reserve": 10
+    },
+    "analysis_effective_transport": 15,
+    "analysis_inherited_blocked": 1,
+    "checkpoint": [
+      77,
+      10715825
+    ],
+    "cumulative_microyuan_cap": 20000000,
+    "cumulative_request_cap": 100,
+    "daily_reset": false,
+    "invoice_known": false,
+    "known_estimate_microyuan": 650033,
+    "new017_known_estimate_microyuan": 38958,
+    "new017_unknown_reservation_microyuan": 0,
+    "pending_model_attempts": 0,
+    "pending_phase_admissions": 0,
+    "phase_admission_counts": {
+      "analysis": 16,
+      "develop": 24,
+      "experiment": 29,
+      "reserve": 8
+    },
+    "unknown_reservation_microyuan": 10065792
+  },
+  "candidate_adopted": false,
+  "case_id": "development-runtime017",
+  "failure_cause": {
+    "earliest_rejection": "private one-edit constraint before ControlledTools intent/receipt",
+    "latent_not_reached": [
+      "base used per-file SHA instead of fixed baseline identifier",
+      "candidate_hash used per-file SHA instead of tracked-tree aggregate digest"
+    ]
+  },
+  "independent_private_review_hashes": {
+    "paid_failure": "a4e1bf4254ca0417afb36d1222075926100ee9dd7fcb857518f3ceca933dbae8",
+    "terminal_facts": "cc9610f41a7aa39f863dc835093bb928c726c92027659981660411e738f39c5c"
+  },
+  "keeper_stop_sha256": "f6ed9b327d6b51205ff054728b0826843d1a56016970d981648c5cd6352c760c",
+  "kernel_cleanup": {
+    "actual": true,
+    "keeper_stopped": true,
+    "no_fixed_uid_processes": true,
+    "oom_kill": 0,
+    "overflow": false,
+    "owned_unit_cleanup_verified": true,
+    "supervision_verified": false,
+    "task_returncode": 1,
+    "timed_out": false,
+    "tree_empty": true
+  },
+  "last_model_stop_reason": "stop",
+  "paid_export_manifest_sha256": "0af7cca8a4e78dfe10e8e24b85f8b63939cc6a560430c166fa62225bc37e5f74",
+  "production_status": "NOT_RUN",
+  "release_approved": false,
+  "response_status_counts": {
+    "200": 6
+  },
+  "schema_version": 1,
+  "scope": "local isolated trial; aggregate-only public artifact; no raw transcript/user text/credentials/full ledger; no production acceptance",
+  "semantic_quality": "unknown",
+  "session_unreceipted_tool_calls": 2,
+  "session_valid": false,
+  "source_after_sha256": "dc6022b85b2556736ac3ac9d21e952105195025657a72d5f871405aca04dc597",
+  "source_before_sha256": "dc6022b85b2556736ac3ac9d21e952105195025657a72d5f871405aca04dc597",
+  "source_closure_sha256": "05376a382334c5749018e86ed3ad88d72034a0cdbaf32afded3b6373b32d2e52",
+  "status": "failed",
+  "terminal_checkpoint_sha256": "3230474a9a6df0b441268bcdaef31e520af192c4cdd5f0e017c57a9013f7b1e3",
+  "terminal_status": "FAILED_OR_INCOMPLETE",
+  "tool_aggregates": [
+    {
+      "tool": "read_source",
+      "verified_receipts": 3
+    },
+    {
+      "tool": "candidate_status",
+      "verified_receipts": 1
+    },
+    {
+      "accepted_patches": 0,
+      "attempts": 2,
+      "controlled_receipts": 0,
+      "supplied_edits_per_attempt": 2,
+      "tool": "apply_patch"
+    },
+    {
+      "calls": 0,
+      "tool": "run_check"
+    }
+  ],
+  "usage_records": 6,
+  "validation_scope": {
+    "candidate_checker": "NOT_RUN",
+    "gate1_actual": true,
+    "gate2_canonical_ledger_used": false,
+    "gate2_installed_protocol_actual": true,
+    "gate2_model_execution": "SIMULATED",
+    "gate2_simulated_model_calls": 3,
+    "helper_source_passed": 32,
+    "helper_source_skipped": 0,
+    "prospective018_actual_result": "NOT_CLAIMED",
+    "prospective018_source_passed": 41,
+    "prospective018_source_skipped": 0,
+    "quality_comparison": "NOT_RUN"
+  },
+  "verified_tool_receipts": 4,
+  "whole_history": {
+    "backup_sha256": "74b1e5f62d8804a1f22b4ecd83731a0014b25f303e9170eed5f332d622a82b41",
+    "events": 370,
+    "new_events": 34,
+    "new_operations": 20,
+    "old_events_unchanged": true,
+    "old_operations_unchanged": true,
+    "operations": 224,
+    "snapshot_sha256": "e004330ec31337354edbf8934f294a53c5fe11e002cb9e57487079c18c34ea65"
+  }
+}

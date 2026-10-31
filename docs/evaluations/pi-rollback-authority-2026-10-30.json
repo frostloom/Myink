@@ -1,0 +1,181 @@
+{
+  "schema": "pi-rollback-authority-checkpoint-v1",
+  "date": "2026-10-30",
+  "source_commit": "8c0aa42381108d339e7338ba4749cadb2fd05df6",
+  "base_commit": "987edcaa2f38c26c30e3f5b574f637b358c1083f",
+  "run_id": "pi-rollback-authority-20261030",
+  "status": "post_window_return_authority_and_same_lock_operator_entry_verified",
+  "release_allowed": false,
+  "main_merged": false,
+  "production_changed": false,
+  "production_lease_active": false,
+  "provider_calls": 0,
+  "pi_autonomous_improvement_claim": false,
+  "authority_clock_simulated_hours": 8,
+  "actual_online_observation_hours": 0,
+  "rollback_lease_max_hours_after_plan_expiry": 72,
+  "rollback_max_stopped_seconds": 1800,
+  "changes": [
+    {
+      "path": "docs/DEPLOY.md",
+      "category": "docs",
+      "added": 23,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-29-pi-product-maintenance-release.md",
+      "category": "docs",
+      "added": 4,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/product_activation.py",
+      "category": "production",
+      "added": 4,
+      "deleted": 2
+    },
+    {
+      "path": "ops/pi/product_backup.py",
+      "category": "production",
+      "added": 1,
+      "deleted": 1
+    },
+    {
+      "path": "ops/pi/product_entrypoint.py",
+      "category": "production",
+      "added": 42,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/product_release.py",
+      "category": "production",
+      "added": 11,
+      "deleted": 1
+    },
+    {
+      "path": "ops/pi/product_rollback_lease.py",
+      "category": "production",
+      "added": 42,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/product_runtime.py",
+      "category": "production",
+      "added": 31,
+      "deleted": 4
+    },
+    {
+      "path": "ops/pi/tests/integration/test_product_activation_native.py",
+      "category": "test",
+      "added": 12,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/test_product_backup.py",
+      "category": "test",
+      "added": 1,
+      "deleted": 1
+    },
+    {
+      "path": "ops/pi/tests/test_product_entrypoint.py",
+      "category": "test",
+      "added": 73,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/test_product_rollback_lease.py",
+      "category": "test",
+      "added": 108,
+      "deleted": 0
+    }
+  ],
+  "tests": {
+    "full": {
+      "passed": 4206,
+      "deselected": 58,
+      "seconds": 295.76
+    },
+    "related": {
+      "passed": 121,
+      "deselected": 0,
+      "seconds": 24.8
+    },
+    "entry": {
+      "passed": 9,
+      "deselected": 0,
+      "seconds": 0.18
+    },
+    "native": {
+      "passed": 1,
+      "deselected": 6,
+      "seconds": 739.99
+    }
+  },
+  "suites_overlap": true,
+  "evidence": {
+    "full": {
+      "sha256": "35fdf49f940bfd80dd319bb4f50f29fe2546d283899a4ffa80d583756699cb1a",
+      "bytes": 4768
+    },
+    "related": {
+      "sha256": "d39ccf4c1cb2ff22a4831fa09cbaaa0dd88352af553f75c29760b3dac96bb1b8",
+      "bytes": 181
+    },
+    "entry": {
+      "sha256": "ed12499504fb433a657b31ced875e7369343bf9696d2544d97d223e4f49c7d34",
+      "bytes": 98
+    },
+    "native": {
+      "sha256": "10ba0721ab096c39385260ec64891796592a23b5de9a3c4313baacd572b5c595",
+      "bytes": 124
+    },
+    "lease_red": {
+      "sha256": "53645d7d490da6bf0ef9c049402586ee6903ee84f16c34e99069903cbe7de90b",
+      "bytes": 38250
+    },
+    "legacy_red": {
+      "sha256": "a784ba5d2a0565a8ac86a404170ed8a11e2e786c2c63a883a8bb8c899b446df9",
+      "bytes": 1356
+    },
+    "entry_red": {
+      "sha256": "3f33132a7b82ae4301fe3328e7af124230d296f68d9d14129c1213e6b445de7f",
+      "bytes": 10017
+    }
+  },
+  "audit": {
+    "current_events": 8,
+    "prior_events_preserved": 68,
+    "daily_events": 76,
+    "scope_paths": 12,
+    "nextday_plans": 9,
+    "nextday_results": 0,
+    "reader_verified": true,
+    "server_published": false
+  },
+  "nextday": {
+    "plan": {
+      "test_id": "rollback-authority-nextday-20261031",
+      "scheduled_for": "2026-10-31T03:00:00+00:00",
+      "target_run_id": "pi-rollback-authority-20261030",
+      "target_version_sha256": "f099970508b6e163de3a5082756178e6b1ca9ab7451ff4e461ef0a0621d2123f",
+      "criterion": "新独立操作复核回退权限/同锁和人工抢占；产品采用后登记真实次日及24-48h，禁止用模拟时间代替。",
+      "kind": "regression",
+      "status": "blocked"
+    },
+    "registered": false,
+    "result": null
+  },
+  "base_exact_ci": {
+    "run_id": 40971381445,
+    "result": "4/4 success"
+  },
+  "checkpoint_ci": "pending push",
+  "pending": [
+    "regular upgrade previous-state protocol and trusted retired cohorts",
+    "complete manual generation/ownership upgrade entry",
+    "long/short/batch/VIP/normal/delay generation and cross-generation pause/checkpoint adoption",
+    "canonical ACTUAL release wrapper/complete final operation package",
+    "single final review/fixpass and explicit main/product approval",
+    "new paid Pi candidate adoption and actual nextday/24-48h"
+  ]
+}

@@ -1,0 +1,153 @@
+{
+  "schema": "pi-restored-api-checkpoint-v1",
+  "date": "2026-10-30",
+  "source_commit": "346076390bf70d6cc4f7cf35bcae3c50e1957394",
+  "base_commit": "398bf3ade58c5f3ab45d7b1a700f9dd049ff8e57",
+  "run_id": "pi-restored-api-20261030",
+  "status": "restored_main_api_environment_and_reads_verified",
+  "release_allowed": false,
+  "main_merged": false,
+  "production_changed": false,
+  "provider_calls": 0,
+  "pi_autonomous_improvement_claim": false,
+  "changes": [
+    {
+      "path": "docs/superpowers/plans/2026-10-29-pi-product-maintenance-release.md",
+      "category": "docs",
+      "added": 2,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/product_backup.py",
+      "category": "production",
+      "added": 2,
+      "deleted": 2
+    },
+    {
+      "path": "ops/pi/product_cold_probe.py",
+      "category": "production",
+      "added": 3,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/product_restored_api.py",
+      "category": "production",
+      "added": 154,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/integration/test_product_activation_native.py",
+      "category": "test",
+      "added": 4,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/test_product_backup.py",
+      "category": "test",
+      "added": 1,
+      "deleted": 1
+    },
+    {
+      "path": "ops/pi/tests/test_product_restored_api.py",
+      "category": "test",
+      "added": 53,
+      "deleted": 0
+    }
+  ],
+  "tests": {
+    "full": {
+      "passed": 4155,
+      "deselected": 58,
+      "seconds": 262.06
+    },
+    "related": {
+      "passed": 69,
+      "deselected": 0,
+      "seconds": 0.75
+    },
+    "positive": {
+      "passed": 1,
+      "deselected": 6,
+      "seconds": 551.58
+    },
+    "timeout_reproduction": {
+      "passed": 1,
+      "deselected": 0,
+      "seconds": 2.08
+    }
+  },
+  "suites_overlap": true,
+  "main_process_proofs": 4,
+  "owner_read_proofs": 4,
+  "attachment_proofs": 4,
+  "evidence": {
+    "full": {
+      "sha256": "68eb2055aa53a01e2b6a2b5a333ac2bd51f4eb0f473754313a4b4c1ae73b63af",
+      "bytes": 4688
+    },
+    "related": {
+      "sha256": "f47e06d3202c0c2d32f48b2625a3bafeeffbd4bf4a2d5e5b4a7f6f59fa9ab610",
+      "bytes": 99
+    },
+    "positive": {
+      "sha256": "9e82a04b12795d699f5e0f13028cb96e8167f8ba1e76204c5a6b822073fab74e",
+      "bytes": 124
+    },
+    "red": {
+      "sha256": "22b033e301a8ffd0aebd49fe3b2b9f0f32df93b0d567c4045ffbdd8f0084f1b3",
+      "bytes": 27584
+    },
+    "native_first": {
+      "sha256": "253eea9c717c6acaa3d5d289f11f9938bcb0c18baeef937344be41242b68dddd",
+      "bytes": 15675
+    },
+    "full_first": {
+      "sha256": "62824bbd54edcf0ccfc094c40bbaceabf4d1767b902ffb2085ac08a78785db96",
+      "bytes": 8568
+    },
+    "timeout_reproduction": {
+      "sha256": "bdc4a033a16622e249556c78c42b2f18fdbdb2bfa4c14d4977c44133effefef7",
+      "bytes": 98
+    },
+    "startup_diagnostic": {
+      "sha256": "8ced3aac3a2ca6092a979f723b91d9767647e74667a1c1705b0dcbb834348609",
+      "bytes": 194752
+    }
+  },
+  "audit": {
+    "current_events": 8,
+    "prior_events_preserved": 52,
+    "daily_events": 60,
+    "scope_paths": 7,
+    "nextday_plans": 7,
+    "nextday_results": 0,
+    "reader_verified": true,
+    "server_published": false
+  },
+  "nextday": {
+    "plan": {
+      "test_id": "restored-api-nextday-20261031",
+      "scheduled_for": "2026-10-31T03:00:00+00:00",
+      "target_run_id": "pi-restored-api-20261030",
+      "target_version_sha256": "0a363026f2da042e01190f33fde68e0e5191373a8eed4e7a9d5b96dd12aac268",
+      "criterion": "新独立恢复操作核对PID1/有效环境/附件和用户读取；产品采用后另登记真实业务次日与24-48h。",
+      "kind": "restore",
+      "status": "blocked"
+    },
+    "registered": false,
+    "result": null
+  },
+  "base_exact_ci": {
+    "run_id": 40958616876,
+    "result": "4/4 success"
+  },
+  "checkpoint_ci": "pending push",
+  "pending": [
+    "restored Redis/Rabbit/worker/Caddy authentication and configuration",
+    "long/short/batch/VIP generation and cross-generation pause/checkpoint adoption",
+    "regular upgrade/retained cohorts/manual shared-lock deployment",
+    "separate post-window observation/owned rollback authority",
+    "single final review/fixpass and explicit main/product approval",
+    "new paid candidate adoption and actual nextday/24-48h"
+  ]
+}

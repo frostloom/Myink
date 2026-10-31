@@ -34,6 +34,8 @@ def _body(op=None, **kwargs):
 
 
 def test_vip_budget_extension_retains_queue_tier(paused_budget, request):
+    from sqlalchemy import select
+    from myink.models.maintenance import AdmissionIntent
     from myink.db import new_session
     from myink.models import User
     from myink.worker import amqp
@@ -53,9 +55,17 @@ def test_vip_budget_extension_retains_queue_tier(paused_budget, request):
         channel.queue_purge(amqp.vip_queue())
         response = client.post(f'/api/v1/tasks/{tid}/resume', headers=identity_headers(uid), json=_body())
         assert response.status_code == 200, response.text
-        _, _, raw = channel.basic_get(amqp.vip_queue(), auto_ack=True)
+        _, properties, raw = channel.basic_get(amqp.vip_queue(), auto_ack=True)
         assert raw is not None
         assert json.loads(raw)['task_id'] == tid
+
+        message = json.loads(raw)
+        assert properties.priority == 9
+        with tenant_session(pid) as db:
+            intent = db.scalar(select(AdmissionIntent).where(
+                AdmissionIntent.task_id == uuid.UUID(tid),
+                AdmissionIntent.message_id == message['request_id']))
+            assert intent.priority == 9
 
 
 def test_budget_is_visible_and_empty_resume_rejects_exhaustion(paused_budget, monkeypatch):
@@ -145,6 +155,24 @@ def test_nack_retry_does_not_append_twice(paused_budget,monkeypatch):
     assert retry.status_code == 200,retry.text
     assert len(calls) == 2
     assert budget_view(tid)["limits"]["max_requests"] == 3
+    assert budget_view(tid)["requests_used"] == 1
+    message = json.loads(calls[1][0])
+    assert json.loads(calls[0][0]) == message
+    from sqlalchemy import select
+    from myink.models.maintenance import AdmissionIntent
+    from myink.worker.handoff import admission_for
+    from myink.worker.processor import valid_task_owner
+    with tenant_session(pid) as db:
+        attempts = list(db.scalars(select(AdmissionIntent).where(
+            AdmissionIntent.task_id == uuid.UUID(tid))))
+        assert len(attempts) == 2
+        assert {attempt.publication_state for attempt in attempts} == {"rejected", "published"}
+        published = next(attempt for attempt in attempts if attempt.publication_state == "published")
+        assert admission_for(db, message).id == published.id
+        assert db.get(Task, uuid.UUID(tid)).status == "queued"
+    # The consumer's ownership gate must accept the published retry rather than
+    # raise QueueAuthorityUnknown and choose its dead-letter branch.
+    assert valid_task_owner(message) is True
 
 
 def test_uncertain_confirm_never_refunds_or_republishes_same_operation(paused_budget,monkeypatch):
@@ -218,9 +246,23 @@ def test_old_delivery_cannot_advance_a_new_resume(paused_budget,monkeypatch):
     advanced = []
     monkeypatch.setattr(processor,"_dispatch",lambda body:advanced.append(body) or {})
     old = {"task_id":tid,"project_id":pid,"user_id":uid,"task_type":"chapter_generate","payload":{"seq":1},"task_budget":{"max_requests":999}}
-    assert processor.process(old) == "waiting"
+    from myink.worker import consumer
+    from myink.worker.handoff import QueueAuthorityUnknown
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    with pytest.raises(QueueAuthorityUnknown, match="intake identity"):
+        processor.process(old)
+    channel, redis = Mock(), Mock()
+    consumer._on_message(channel, SimpleNamespace(delivery_tag=7), None,
+                         json.dumps(old).encode(), redis, "stale-resume")
+    channel.basic_ack.assert_not_called()
+    channel.basic_nack.assert_called_once_with(7, requeue=False)
+    redis.xadd.assert_not_called()
     assert not advanced
     assert budget_view(tid)["limits"]["max_requests"] == 3
+    with tenant_session(pid) as db:
+        assert db.get(Task, uuid.UUID(tid)).status == "queued"
 
 
 def test_resume_publish_lost_confirm_does_not_retry(monkeypatch):

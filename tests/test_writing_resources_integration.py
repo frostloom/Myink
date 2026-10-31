@@ -107,6 +107,9 @@ def test_concurrent_publication_has_one_winner():
 
 def test_persisted_task_uses_admission_snapshot_after_project_changes(temp_project, stub_provider, monkeypatch):
     from copy import deepcopy
+    import pytest
+    from myink.maintenance import register_admission
+    from myink.worker.handoff import QueueAuthorityUnknown
     from myink.models import Task
     from myink.worker.processor import process
     from myink.workflow.runner import new_task
@@ -135,7 +138,15 @@ def test_persisted_task_uses_admission_snapshot_after_project_changes(temp_proje
         body = {"task_id": task_id, "task_type": "chapter_generate", "project_id": temp_project,
                 "user_id": owner, "payload": {"seq": 1, "writing_resources": {"configured": True, "selections": []}},
                 "retry_count": 1, "trace_id": "resource-freeze-test", "request_id": "resource-freeze-test"}
-        assert process(body) == "terminal"
+        with tenant_session(temp_project) as db:
+            frozen = db.get(Task, uuid.UUID(task_id)).payload["writing_resources"]
+            original = {**body, "retry_count": 0,
+                        "payload": {"seq": 1, "writing_resources": frozen}}
+            register_admission(db, original, priority=0)
+        with pytest.raises(QueueAuthorityUnknown):
+            process(body)
+        assert captured == []
+        assert process(original) == "terminal"
         writer_messages = [m for m in captured if "写作 Agent" in m[0]["content"]]
         assert writer_messages, "full graph must reach the writer provider"
         assert any("ADMISSION_PINNED_RULE" in str(messages) for messages in writer_messages)
@@ -303,7 +314,11 @@ def test_definite_publish_failure_leaves_resource_selection_editable(temp_projec
     monkeypatch.setattr(queue.amqp, 'publish', reject)
     with pytest.raises(queue.EnqueueUnavailable):
         queue.enqueue(user_id=owner, project_id=temp_project, task_type='chapter_generate', payload={'seq':1}, quota_n=1, cost_est=0, priority=0)
-    response = TestClient(app).put(f'/api/v1/projects/{temp_project}/writing-resources', headers=identity_headers(owner), json={'expected_revision':0,'selections':[]})
+    client = TestClient(app)
+    path = f'/api/v1/projects/{temp_project}/writing-resources'
+    current = client.get(path, headers=identity_headers(owner))
+    assert current.status_code == 200
+    response = client.put(path, headers=identity_headers(owner), json={'expected_revision':current.json()['revision'],'selections':[]})
     assert response.status_code == 200, response.text
 
 

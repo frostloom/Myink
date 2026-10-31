@@ -120,7 +120,15 @@ def test_explicit_replan_recovers_legacy_chapter_and_keeps_intent_on_resume(temp
     monkeypatch.setattr(nodes, "make_chain", lambda *a, **kw: FallbackChain(provider, ["rewrite-plan-test"]))
     with tenant_session(temp_project) as db:
         db.add(Chapter(project_id=uuid.UUID(temp_project), chapter_seq=1, content="没有历史计划的正文", status="confirmed"))
-    tid = str(uuid.uuid4())
+    if mode == "manual":
+        from myink.workflow.checkpointer import build_checkpointer
+        graph = build_chapter_graph(checkpointer=build_checkpointer())
+        monkeypatch.setattr(runner, "get_graphs", lambda: (graph, None))
+        tid = runner.new_task(project_id=temp_project, task_type="chapter_generate",
+                              payload={"seq": 1, "mode": "manual", "rewrite": True, "replan": True},
+                              chapter_seq=1, status="running")
+    else:
+        tid = str(uuid.uuid4())
     result = runner.generate_chapter(project_id=temp_project, chapter_seq=1, task_id=tid, rewrite=True, replan=True, writing_mode=mode)
     assert provider.calls.count("planner") == 2
     if mode == "manual":

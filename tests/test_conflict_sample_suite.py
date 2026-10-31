@@ -4,15 +4,15 @@
 （不 mock 机制，仅 mock LLM 判定），作为首测的可运行计量仪器：
 
 - **阳性 26 例**（样例 1-23、33/34、38）：断言对应机制产出目标类型 finding；
-  其中 5 例（样例 5/6/7/8/9，timeline/item_rule/foreshadow-兑现/power-规则/faction归属）
+  其中 2 例（样例 7/9，foreshadow-兑现/faction归属）
   **检测机制未实现** → 标 `xfail(strict=False)` 记漏检（实现后 XPASS → 取消标记即可）；
   样例 4 检出但 finding 类别/严重度与 spec 不符（见注），另计。
-- **阴性 14 例**（样例 24-32、35、36、37、39、40）：断言 0 误报；样例 28/29/30 对应机制未落地
-  → 真空通过（其余 11 例有真实机制证明，含 2026-08-13 新增样例 40 阵营临时联手守卫）。
+- **阴性 14 例**（样例 24-32、35、36、37、39、40）：断言 0 误报；样例 28 对应机制未落地
+  → 真空通过（其余 13 例有真实机制证明，含 2026-08-13 新增样例 40 阵营临时联手守卫）。
 
 度量口径（conflict-samples.md「使用方式」）：检出率 = 检出阳性/阳性总数；误报率 = 误报阴性/阴性总数。
-本套件绿跑产出：阳性 21/26 可检出（含样例 4 类别偏差检出、样例 2 补漏 faction）、5 漏检、阴性 0 误报——
-即 **检出率 80.8%（21/26）、误报率 0%（0/14）**，指标基线见下方常量（防文档与代码漂移）。
+本套件绿跑产出：阳性 24/26 可检出（含样例4类别偏差及样例2/5/6/8补漏）、2 漏检、阴性 0 误报——
+即 **检出率 92.3%（24/26）、误报率 0%（0/14）**，指标基线见下方常量（防文档与代码漂移）。
 
 桩设计（复用既有测试模板）：LLM 单点注入 = monkeypatch `global_audit.make_chain`（样例 12/36/37/38/39）
 / `ledger_l2.make_chain`（样例 16/17/20/21/22/24/25/4）；embedder 用 DeterministicFakeEmbedder
@@ -32,7 +32,7 @@ from sqlalchemy import select
 from myink.db import tenant_session
 from myink.memory.vector_store import PgvectorStore
 from myink.models import (
-    Chapter, Character, CharacterState, Event, Foreshadow, GlobalAuditReport,
+    Chapter, Character, CharacterState, Event, Fact, Foreshadow, GlobalAuditReport,
     PlotThread, ProjectSettings, Relation, VolumeOutline,
 )
 from myink.providers.base import ModelResponse
@@ -40,7 +40,7 @@ from myink.schemas import ChapterPlan, MutationCandidate
 from myink.validation import global_audit as ga
 from myink.validation import ledger_l2 as l2
 from myink.validation.l1 import L1Validator, _key
-from myink.validation.service import outline_deviation
+from myink.validation.service import ValidationService, outline_deviation
 
 REALM_ORDER = ["炼气", "筑基", "金丹", "元婴", "化神", "大乘", "渡劫"]
 A, B = uuid.uuid4(), uuid.uuid4()
@@ -49,8 +49,8 @@ A, B = uuid.uuid4(), uuid.uuid4()
 
 POSITIVE_COUNT = 26          # 阳性：1-23、33/34、38
 NEGATIVE_COUNT = 14          # 阴性：24-32、35、36、37、39、40
-DETECTED_COUNT = 21          # 检出：20 全机制（含样例 2 补漏 faction）+ 样例 4（类别偏差检出）
-XFAIL_SAMPLES = {5, 6, 7, 8, 9}   # 漏检（机制未实现）
+DETECTED_COUNT = 24          # 检出：23全机制（含样例2/5/6/8补漏）+ 样例4类别偏差
+XFAIL_SAMPLES = {7, 9}   # 漏检（剩余机制未实现）
 
 
 # ---- 样例数据（镜像各专属测试文件，conflict-samples.md 原文语义）----
@@ -292,6 +292,20 @@ def _validate(pid: str, seq: int, candidates: list[MutationCandidate] | None = N
         return [f.model_dump(mode="json") for f in fs]
 
 
+def _item_check(pid: str, seq: int, draft: str) -> list[dict]:
+    with tenant_session(pid) as db:
+        report = ValidationService(REALM_ORDER).validate(
+            db, project_id=uuid.UUID(pid), chapter_seq=seq, candidates=[], draft=draft)
+        return [f.model_dump(mode="json") for f in report.findings]
+
+
+def _visit_check(pid: str, seq: int, draft: str) -> list[dict]:
+    with tenant_session(pid) as db:
+        report = ValidationService(REALM_ORDER).validate(
+            db, project_id=uuid.UUID(pid), chapter_seq=seq, candidates=[], draft=draft)
+        return [f.model_dump(mode="json") for f in report.findings]
+
+
 def _power_check(pid: str, seq: int) -> list[dict]:
     with tenant_session(pid) as db:
         fs = L1Validator(REALM_ORDER).power_inflation_check(db, project_id=uuid.UUID(pid), chapter_seq=seq)
@@ -406,22 +420,29 @@ def test_sample_04_location_without_transport(temp_project, monkeypatch):
     assert got[0]["conflict_type"] == "character_state" and got[0]["severity"] == "minor"  # 类别偏差注记
 
 
-@pytest.mark.xfail(reason="首测记录（漏检）：样例 5 首次来访矛盾——L1 事件-经历比对机制未实现", strict=False)
 def test_sample_05_first_visit_contradiction(temp_project):
-    """样例 5 首次来访：事件表已有「北境城完成交易」，正文却称第一次来 → 应出 character/major（机制未实现）。"""
+    """样例 5 首次来访：事件表已有「北境城完成交易」，正文却称第一次来 → character/major/local，经真实service验证。"""
     _seed_character(temp_project, "林砚")
     _seed_event(temp_project, "林砚在北境城完成交易", 8)
-    fs = _validate(temp_project, 12)
-    assert any(f["conflict_type"] == "character" for f in fs), fs
+    draft = "林砚抬眸，望着眼前高耸的城墙，心道：这就是北境城，第一次来。"
+    fs = _visit_check(temp_project, 12, draft)
+    items = [f for f in fs if f["conflict_type"] == "character"]
+    assert len(items) == 1, fs
+    assert (items[0]["severity"], items[0]["scope"], items[0]["source"]) == ("major", "local", "L1")
+    assert any(e["chapter"] == 8 and e["quote"] == "林砚在北境城完成交易" for e in items[0]["evidence"])
+    assert any(e["chapter"] == 12 and "第一次来" in e["quote"] and e["quote"] in draft for e in items[0]["evidence"])
 
 
-@pytest.mark.xfail(reason="首测记录（漏检）：样例 6 已毁物品再现——L1 item_rule 机制未实现", strict=False)
 def test_sample_06_destroyed_item_reappears(temp_project):
-    """样例 6 已毁物品再现：事件表「定水珠被天劫劈碎」，正文再现无修复 → 应出 item_rule/critical（机制未实现）。"""
+    """样例 6 已毁物品再现：事件表「定水珠被天劫劈碎」，正文再现无修复 → item_rule/critical/local，实际service接线。"""
     _seed_character(temp_project, "林砚")
     _seed_event(temp_project, "定水珠被天劫劈碎", 10)
-    fs = _validate(temp_project, 11)
-    assert any(f["conflict_type"] == "item_rule" for f in fs), fs
+    draft = "林砚从怀中摸出定水珠，幽蓝光晕流转，映得满室皆蓝。"
+    fs = _item_check(temp_project, 11, draft)
+    items = [f for f in fs if f["conflict_type"] == "item_rule"]
+    assert len(items) == 1, fs
+    assert (items[0]["severity"], items[0]["scope"], items[0]["source"]) == ("critical", "local", "L1")
+    assert any(e["chapter"] == 11 and e["quote"] in draft for e in items[0]["evidence"])
 
 
 @pytest.mark.xfail(reason="首测记录（漏检）：样例 7 伏笔未兑现当已兑现——L1 foreshadow-兑现比对机制未实现", strict=False)
@@ -432,12 +453,22 @@ def test_sample_07_promise_unfulfilled_claimed(temp_project):
     assert any(f["conflict_type"] == "foreshadow" for f in fs), fs
 
 
-@pytest.mark.xfail(reason="首测记录（漏检）：样例 8 能力规则越级用秘法——L1 power-规则前置校验机制未实现", strict=False)
 def test_sample_08_capability_rule_violation(temp_project):
-    """样例 8 能力规则越级：金丹期施展化神期碎星诀无代价 → 应出 power/critical（机制未实现）。"""
-    _seed_character(temp_project, "林砚", realm_cap="金丹")
-    fs = _validate(temp_project, 8)
-    assert any(f["conflict_type"] == "power" for f in fs), fs
+    """样例8：真实规则、当前境界和正文经service产生power/critical/local。"""
+    actor = _seed_character(temp_project, "林砚", realm_cap="渡劫")
+    _seed_state(temp_project, character_id=actor, field="realm", new_value="金丹",
+                chapter_seq=5, source_chapter=5)
+    draft = '他不过金丹期，竟施展出化神期才可动用的"碎星诀"，满天星辉坠落，而他却毫发无伤，无半分反噬。'
+    with tenant_session(temp_project) as db:
+        db.add(Fact(project_id=uuid.UUID(temp_project), content="化神期才可动用碎星诀",
+                    category="规则", source_chapter=2, confirm_status="confirmed"))
+        db.flush()
+        report = ValidationService(REALM_ORDER).validate(
+            db, project_id=uuid.UUID(temp_project), chapter_seq=8, candidates=[], draft=draft)
+        fs = [f for f in report.findings if f.conflict_type == "power"]
+        assert len(fs) == 1
+        assert (fs[0].severity, fs[0].scope, fs[0].source) == ("critical", "local", "L1")
+        assert any(e.chapter == 8 and e.quote in draft for e in fs[0].evidence)
 
 
 @pytest.mark.xfail(reason="首测记录（漏检）：样例 9 势力归属——需 extract 补归属/faction 候选或 facts 归属类联动（数据模型边界：relations 端点仅 character id、无势力归属知识）", strict=False)
@@ -694,16 +725,23 @@ def test_sample_28_location_transport_legal(temp_project):
 
 
 def test_sample_29_revisit_legal(temp_project):
-    """样例 29 阴性（真空）：旧地重游有交代 → 无 character 检出（首次来访机制未落地）。"""
+    """样例29：真实已到访历史与旧地重游正文，经service验证不误报。"""
+    _seed_character(temp_project, "林砚")
     _seed_event(temp_project, "林砚在北境城完成交易", 8)
-    fs = _validate(temp_project, 12)
+    draft = "林砚望着北境城城墙，心道：故地重游，上一次来还是三年前。"
+    fs = _visit_check(temp_project, 12, draft)
     assert not any(f["conflict_type"] == "character" for f in fs), fs
 
 
 def test_sample_30_reforged_item_legal(temp_project):
-    """样例 30 阴性（真空）：以千年寒铁重铸 → 无 item_rule 检出（物品机制未落地）。"""
+    """样例30：实际确认重铸fact + 合法正文，经service证明无item_rule误报。"""
     _seed_event(temp_project, "定水珠被天劫劈碎", 10)
-    fs = _validate(temp_project, 11)
+    with tenant_session(temp_project) as db:
+        db.add(Fact(project_id=uuid.UUID(temp_project), content="定水珠以千年寒铁重铸",
+                    source_chapter=11, confirm_status="confirmed", valid_from=11))
+        db.flush()
+    draft = "林砚从怀中摸出定水珠，幽蓝光晕流转——那是他以千年寒铁重新淬炼之物。"
+    fs = _item_check(temp_project, 11, draft)
     assert not any(f["conflict_type"] == "item_rule" for f in fs), fs
 
 
@@ -813,5 +851,5 @@ def test_metric_baseline_constants():
     新增/取消 xfail 标记须同步更新 XFAIL_SAMPLES 与文档。
     """
     assert POSITIVE_COUNT == 26 and NEGATIVE_COUNT == 14, "样例总数须为 40"
-    assert DETECTED_COUNT == 21, "检出 21 = 20 全机制（含样例 2 补漏 faction）+ 样例 4（类别偏差检出）"
-    assert XFAIL_SAMPLES == {5, 6, 7, 8, 9}, "漏检 5 例固定"
+    assert DETECTED_COUNT == 24, "检出24 = 23全机制（含样例2/5/6/8补漏）+ 样例4类别偏差"
+    assert XFAIL_SAMPLES == {7, 9}, "剩余漏检2例"

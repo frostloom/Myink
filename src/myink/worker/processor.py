@@ -23,13 +23,16 @@ from datetime import date
 
 from psycopg import InterfaceError as PsycopgInterfaceError
 from psycopg import OperationalError as PsycopgOperationalError
+from sqlalchemy import select
 from sqlalchemy.exc import OperationalError as SQLAlchemyOperationalError
 
 from myink.config import settings
+from myink.maintenance import require_consumption_open, MaintenanceUnavailable
 from myink.task_budget import (bind_task_budget, budget_managed, budget_view,
                                ensure_task_budget, record_budget_pause, bind_budget_operation,
                                TaskBudgetPaused, TaskBudgetUnavailable)
-from myink.db import new_session
+from myink.maintenance_pause import MaintenancePaused, confirm_exception
+from myink.db import new_session, tenant_session
 from myink.models import Project, Task
 from myink.platform_readiness import PlatformNotReady
 from myink.workflow.runner import (
@@ -37,7 +40,6 @@ from myink.workflow.runner import (
     generate_batch,
     generate_chapter,
     get_graphs,
-    new_task,
     resume_chapter_plan,
     resume_thread,
 )
@@ -429,7 +431,7 @@ def _maybe_reflexion(project_id: str, chapter_seq: int, task_id: str) -> None:
     try:
         nodes.reflexion_for_chapter_window(project_id=project_id, end_chapter=chapter_seq,
                                            task_id=task_id)
-    except (TaskBudgetPaused, TaskBudgetUnavailable):
+    except (MaintenancePaused, TaskBudgetPaused, TaskBudgetUnavailable):
         raise
     except Exception as exc:
         logger.warning("章节窗口复盘失败（不阻塞任务）: %s", exc)
@@ -441,10 +443,21 @@ def _run(body: dict, task_id: str, task_type: str, project_id: str) -> str:
         from myink.writing_resource_runtime import bind_resources
         with bind_task_budget(task_id, owner), bind_resources((body.get("payload") or {}).get("writing_resources") or {}):
             return _run_bound(body, task_id, task_type, project_id)
+    except MaintenancePaused as exc:
+        try:
+            receipt=confirm_exception(exc)
+        except ValueError:
+            # A stronger wait or absent durable proof is not a safe certificate.
+            return "waiting"
+        _pub_status(task_id, receipt["status"], {"maintenance":json.dumps(receipt,ensure_ascii=False)})
+        return "waiting"
     except (TaskBudgetPaused, TaskBudgetUnavailable) as exc:
         status = record_budget_pause(task_id, exc, expected_owner=owner)
         if status == "superseded":
             return "waiting"
+        if getattr(exc,"checkpoints",None):
+            try: confirm_exception(exc)
+            except ValueError: pass
         _pub_status(task_id, status, {"budget": json.dumps(budget_view(task_id), ensure_ascii=False), "error": str(exc)})
         return "terminal"
 
@@ -461,7 +474,7 @@ def _run_bound(body: dict, task_id: str, task_type: str, project_id: str) -> str
                 seq = int((body.get("payload") or {}).get("seq") or result.get("chapter_seq") or 0)
                 with bind_budget_operation(f"{task_id}:chapter_reflexion:{seq}"):
                     _maybe_reflexion(project_id, seq, task_id)
-    except (TaskBudgetPaused, TaskBudgetUnavailable):
+    except (MaintenancePaused, TaskBudgetPaused, TaskBudgetUnavailable):
         raise
     except PlatformNotReady as exc:
         from myink.workflow.runner import _set_task_status
@@ -561,8 +574,24 @@ def valid_task_owner(body: dict) -> bool:
         project = db.get(Project, project_id)
         if project is None or project.user_id != user_id:
             return False
+    from myink.worker.handoff import admission_for, QueueAuthorityUnknown
+    from myink.models.maintenance import AdmissionIntent
+    with tenant_session(project_id) as db:
         task = db.get(Task, task_id)
-        return task is None or task.project_id == project_id
+        if task is not None and task.project_id != project_id:
+            return False
+        if admission_for(db, body) is not None:
+            return True
+        if db.scalar(select(AdmissionIntent.id).where(AdmissionIntent.task_id == task_id)) is not None:
+            raise QueueAuthorityUnknown("intake identity or gate outcome unconfirmed")
+        if task is None:
+            raise QueueAuthorityUnknown("unmaterialized message has no durable intake")
+        stored = {key:value for key,value in (task.payload or {}).items()
+                  if key not in {"_gate_user_id","_task_budget","_budget_resume_operation"}}
+        if (task.task_type != body.get("task_type") or stored != (body.get("payload") or {})
+                or task.status not in {"queued","running"}):
+            raise QueueAuthorityUnknown("legacy message lacks matching runnable stored identity")
+        return True
 
 
 def process(body: dict, worker_id: str | None = None) -> str:
@@ -606,7 +635,12 @@ def process(body: dict, worker_id: str | None = None) -> str:
     try:
         # 幂等 ②：查 DB 现状（tasks 无 RLS，普通连接可查）
         with new_session() as db:
-            row = db.get(Task, uuid.UUID(task_id))
+            try:
+                require_consumption_open(db)
+            except MaintenanceUnavailable:
+                decision = "waiting"  # preserve accepted identity and quota while connection returns it
+                raise
+            row = db.get(Task, uuid.UUID(task_id), with_for_update=True)
             operation = (row.payload or {}).get("_budget_resume_operation") if row else None
             guest_operation = (row.payload or {}).get("_guest_resume_operation") if row else None
             if (guest_operation and (body.get("payload") or {}).get("_guest_resume_operation") != guest_operation):
@@ -633,17 +667,15 @@ def process(body: dict, worker_id: str | None = None) -> str:
                 logger.info("跳过（已暂停，等 resume）: %s", task_id)
             elif row is None:
                 # 物化：DB 为最终权威（§5.3），幂等键 task_id 作 PK
-                new_task(
-                    project_id=project_id,
-                    task_type=task_type,
-                    payload={**(body.get("payload") or {}),
-                             "_gate_user_id": body.get("user_id") or ""},
-                    chapter_seq=(body.get("payload") or {}).get("seq"),
-                    task_id=task_id,
-                    trace_id=body.get("trace_id"),
-                    status="running",
-                    budget_snapshot=body.get("task_budget"),
-                )
+                stored_payload = {**(body.get("payload") or {}), "_gate_user_id": body.get("user_id") or ""}
+                if body.get("task_budget") is not None:
+                    stored_payload["_task_budget"] = body["task_budget"]
+                db.add(Task(id=uuid.UUID(task_id), project_id=uuid.UUID(project_id),
+                            task_type=task_type, payload=stored_payload,
+                            chapter_seq=(body.get("payload") or {}).get("seq"),
+                            trace_id=body.get("trace_id"), status="running"))
+                db.flush()
+                db.commit()
                 logger.info("物化新任务: %s (%s)", task_id, task_type)
                 run_it = True
             else:

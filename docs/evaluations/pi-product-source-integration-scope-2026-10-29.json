@@ -1,0 +1,5389 @@
+{
+  "schema": "pi-source-scope-v1",
+  "source_commit": "8179de5a97f6d9555f633adf9bdb59a427f13791",
+  "base_commit": "34730c3ffad7e52d4baa8e8e090f0aeaed6e02d1",
+  "source_artifact_sha256": "5d2ad44523ec12cb2e791b4570adcc2479d1aa18733502d36767603ad8241a3e",
+  "scope_complete": true,
+  "path_count": 896,
+  "rename_representation": "explicit_add_delete_no_renames",
+  "operator_integration": true,
+  "pi_model_authored": false,
+  "changes": [
+    {
+      "path": ".dockerignore",
+      "category": "production",
+      "added": 2,
+      "deleted": 0
+    },
+    {
+      "path": ".env.example",
+      "category": "production",
+      "added": 3,
+      "deleted": 0
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "category": "config",
+      "added": 22,
+      "deleted": 3
+    },
+    {
+      "path": ".gitignore",
+      "category": "production",
+      "added": 11,
+      "deleted": 0
+    },
+    {
+      "path": "AGENTS.md",
+      "category": "docs",
+      "added": 49,
+      "deleted": 0
+    },
+    {
+      "path": "NOTICE.md",
+      "category": "docs",
+      "added": 9,
+      "deleted": 0
+    },
+    {
+      "path": "README.md",
+      "category": "docs",
+      "added": 3,
+      "deleted": 3
+    },
+    {
+      "path": "caddy/Dockerfile",
+      "category": "production",
+      "added": 14,
+      "deleted": 5
+    },
+    {
+      "path": "caddy/retained-assets/.gitkeep",
+      "category": "production",
+      "added": 0,
+      "deleted": 0
+    },
+    {
+      "path": "docker-compose.admin-test.yml",
+      "category": "config",
+      "added": 45,
+      "deleted": 0
+    },
+    {
+      "path": "docker-compose.yml",
+      "category": "config",
+      "added": 5,
+      "deleted": 1
+    },
+    {
+      "path": "docs/ADMIN.md",
+      "category": "docs",
+      "added": 72,
+      "deleted": 3
+    },
+    {
+      "path": "docs/BRANCHES.md",
+      "category": "docs",
+      "added": 49,
+      "deleted": 0
+    },
+    {
+      "path": "docs/DEPLOY.md",
+      "category": "docs",
+      "added": 11,
+      "deleted": 1
+    },
+    {
+      "path": "docs/PROSE-RULES.md",
+      "category": "docs",
+      "added": 59,
+      "deleted": 0
+    },
+    {
+      "path": "docs/WRITING-QUALITY-SOURCES.md",
+      "category": "docs",
+      "added": 54,
+      "deleted": 0
+    },
+    {
+      "path": "docs/WRITING-RESOURCES.md",
+      "category": "docs",
+      "added": 80,
+      "deleted": 0
+    },
+    {
+      "path": "docs/evaluations/2026-10-25-admin-main-merge.md",
+      "category": "docs",
+      "added": 50,
+      "deleted": 0
+    },
+    {
+      "path": "docs/evaluations/2026-10-25-main-audit-fixes.md",
+      "category": "docs",
+      "added": 54,
+      "deleted": 0
+    },
+    {
+      "path": "docs/evaluations/2026-10-25-memory-boundaries.md",
+      "category": "docs",
+      "added": 32,
+      "deleted": 0
+    },
+    {
+      "path": "docs/evaluations/2026-10-26-postdeploy-e2e.md",
+      "category": "docs",
+      "added": 39,
+      "deleted": 0
+    },
+    {
+      "path": "docs/evaluations/2026-10-26-vue-main-merge.md",
+      "category": "docs",
+      "added": 69,
+      "deleted": 0
+    },
+    {
+      "path": "docs/evaluations/2026-10-26-vue-only-deploy.md",
+      "category": "docs",
+      "added": 32,
+      "deleted": 0
+    },
+    {
+      "path": "docs/evaluations/2026-10-26-vue-only-review.md",
+      "category": "docs",
+      "added": 84,
+      "deleted": 0
+    },
+    {
+      "path": "docs/evaluations/2026-10-26-vue-production-deploy.md",
+      "category": "docs",
+      "added": 76,
+      "deleted": 0
+    },
+    {
+      "path": "docs/evaluations/inkos-reference-shortform-style.md",
+      "category": "docs",
+      "added": 310,
+      "deleted": 0
+    },
+    {
+      "path": "docs/evaluations/short-output-probe.json",
+      "category": "docs",
+      "added": 20,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-09-24-short-creation-assistant.md",
+      "category": "docs",
+      "added": 3407,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-20-admin-control-plane-progress.md",
+      "category": "docs",
+      "added": 22,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-20-admin-control-plane.md",
+      "category": "docs",
+      "added": 44,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-20-admin-managed-defaults.md",
+      "category": "docs",
+      "added": 54,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-21-admin-managed-defaults-verification.md",
+      "category": "docs",
+      "added": 62,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-23-admin-model-management.md",
+      "category": "docs",
+      "added": 34,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-24-admin-presentation-model-fix.md",
+      "category": "docs",
+      "added": 20,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-24-admin-usability-prompts.md",
+      "category": "docs",
+      "added": 48,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-24-writing-resources-ledger.md",
+      "category": "docs",
+      "added": 28,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-24-writing-resources.md",
+      "category": "docs",
+      "added": 63,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-25-main-audit-fixes.md",
+      "category": "docs",
+      "added": 201,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-25-memory-boundaries.md",
+      "category": "docs",
+      "added": 76,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-25-vue3-auth.md",
+      "category": "docs",
+      "added": 55,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-25-vue3-complete.md",
+      "category": "docs",
+      "added": 52,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-25-vue3-foundation.md",
+      "category": "docs",
+      "added": 61,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-26-main-cutover-fixes.md",
+      "category": "docs",
+      "added": 50,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-26-safe-frontend-update.md",
+      "category": "docs",
+      "added": 39,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-26-vue-only.md",
+      "category": "docs",
+      "added": 75,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-26-vue3-replacement-readiness.md",
+      "category": "docs",
+      "added": 67,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-27-creation-resource-ux-results.md",
+      "category": "docs",
+      "added": 44,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-27-creation-resource-ux.md",
+      "category": "docs",
+      "added": 22,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-27-fixed-navigation-default-rules-results.md",
+      "category": "docs",
+      "added": 29,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-27-fixed-navigation-default-rules.md",
+      "category": "docs",
+      "added": 14,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-27-production-feedback-results.md",
+      "category": "docs",
+      "added": 49,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-27-production-feedback.md",
+      "category": "docs",
+      "added": 62,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-27-resource-interaction-round5-results.md",
+      "category": "docs",
+      "added": 24,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-27-resource-interaction-round5.md",
+      "category": "docs",
+      "added": 14,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-27-short-navigation-round6-results.md",
+      "category": "docs",
+      "added": 15,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-27-short-navigation-round6.md",
+      "category": "docs",
+      "added": 7,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-27-ui-consistency-audit.md",
+      "category": "docs",
+      "added": 66,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-27-ui-consistency-results.md",
+      "category": "docs",
+      "added": 24,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-27-ui-consistency.md",
+      "category": "docs",
+      "added": 44,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-28-account-membership-ui.md",
+      "category": "docs",
+      "added": 14,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-28-admin-vip-ui.md",
+      "category": "docs",
+      "added": 12,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-28-guest-mode.md",
+      "category": "docs",
+      "added": 69,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-28-release-feedback.md",
+      "category": "docs",
+      "added": 12,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-28-vip-service.md",
+      "category": "docs",
+      "added": 41,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-29-personal-pages-ui.md",
+      "category": "docs",
+      "added": 22,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-29-pi-product-source-integration.md",
+      "category": "docs",
+      "added": 9,
+      "deleted": 9
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-29-writing-quality.md",
+      "category": "docs",
+      "added": 23,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-20-admin-control-plane-design.md",
+      "category": "docs",
+      "added": 24,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-20-admin-managed-defaults-design.md",
+      "category": "docs",
+      "added": 70,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-24-admin-usability-prompts-design.md",
+      "category": "docs",
+      "added": 11,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-24-writing-resources-design.md",
+      "category": "docs",
+      "added": 66,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-25-main-audit.md",
+      "category": "docs",
+      "added": 116,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-25-memory-boundaries.md",
+      "category": "docs",
+      "added": 12,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-27-creation-resource-ux-design.md",
+      "category": "docs",
+      "added": 21,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-27-guest-mode-design.md",
+      "category": "docs",
+      "added": 63,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-27-ui-consistency-design.md",
+      "category": "docs",
+      "added": 23,
+      "deleted": 0
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-28-vip-service-design.md",
+      "category": "docs",
+      "added": 14,
+      "deleted": 0
+    },
+    {
+      "path": "docs/team-workflow.md",
+      "category": "docs",
+      "added": 63,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/guest-mode-20261028/results.md",
+      "category": "docs",
+      "added": 127,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/layout-polish-20261028/results.md",
+      "category": "docs",
+      "added": 23,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/release-feedback-20261028/results.md",
+      "category": "docs",
+      "added": 50,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vip-service-20261028/README.md",
+      "category": "docs",
+      "added": 54,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vip-service-20261028/production-release.md",
+      "category": "docs",
+      "added": 34,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vip-service-20261028/progress.md",
+      "category": "docs",
+      "added": 31,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vip-service-20261028/ui-refinement.md",
+      "category": "docs",
+      "added": 28,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/.gitattributes",
+      "category": "docs",
+      "added": 2,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/admin-creation-review.md",
+      "category": "docs",
+      "added": 34,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/admin-report.md",
+      "category": "docs",
+      "added": 64,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/auth-service-report.md",
+      "category": "docs",
+      "added": 42,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/auth-ui-report.md",
+      "category": "docs",
+      "added": 40,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/auth-verification.md",
+      "category": "docs",
+      "added": 40,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/brief.md",
+      "category": "docs",
+      "added": 250,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/build-provenance-ddk.json",
+      "category": "docs",
+      "added": 15,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/build-provenance-pre-cutover.json",
+      "category": "docs",
+      "added": 37,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/build-provenance-pre-safe-update.json",
+      "category": "docs",
+      "added": 217,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/build-provenance.json",
+      "category": "docs",
+      "added": 358,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/coverage.md",
+      "category": "docs",
+      "added": 129,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/creation-report.md",
+      "category": "docs",
+      "added": 127,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/final-fix-report.md",
+      "category": "docs",
+      "added": 52,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/final-review.md",
+      "category": "docs",
+      "added": 61,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/final-verification.md",
+      "category": "docs",
+      "added": 65,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/general-pages-report.md",
+      "category": "docs",
+      "added": 51,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/learning-guide.md",
+      "category": "docs",
+      "added": 19,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/chromium/readiness.log",
+      "category": "docs",
+      "added": 0,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/chromium/readiness/01-plan.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/chromium/readiness/02-stream.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/chromium/readiness/03-conflict.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/chromium/readiness/04-mobile.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/chromium/readiness/05-mobile-feedback-closed.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/chromium/readiness/05-mobile-feedback-focused.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/chromium/readiness/receipt.json",
+      "category": "docs",
+      "added": 636,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/chromium/smoke.log",
+      "category": "docs",
+      "added": 34,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/chromium/smoke/receipt.json",
+      "category": "docs",
+      "added": 219,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/chromium/smoke/vue-list-390.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/chromium/smoke/vue-list-768.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/chromium/smoke/vue-theme.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/chromium/workspace.log",
+      "category": "docs",
+      "added": 0,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/chromium/workspace/01-plan.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/chromium/workspace/02-stream.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/chromium/workspace/03-conflict.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/chromium/workspace/04-mobile.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/chromium/workspace/receipt.json",
+      "category": "docs",
+      "added": 356,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/firefox/readiness.log",
+      "category": "docs",
+      "added": 0,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/firefox/readiness/01-plan.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/firefox/readiness/02-stream.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/firefox/readiness/03-conflict.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/firefox/readiness/04-mobile.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/firefox/readiness/05-mobile-feedback-closed.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/firefox/readiness/05-mobile-feedback-focused.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/firefox/readiness/receipt.json",
+      "category": "docs",
+      "added": 628,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/firefox/smoke.log",
+      "category": "docs",
+      "added": 34,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/firefox/smoke/receipt.json",
+      "category": "docs",
+      "added": 219,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/firefox/smoke/vue-list-390.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/firefox/smoke/vue-list-768.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/firefox/smoke/vue-theme.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/firefox/workspace.log",
+      "category": "docs",
+      "added": 0,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/firefox/workspace/01-plan.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/firefox/workspace/02-stream.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/firefox/workspace/03-conflict.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/firefox/workspace/04-mobile.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/firefox/workspace/receipt.json",
+      "category": "docs",
+      "added": 356,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/receipt.json",
+      "category": "docs",
+      "added": 78,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/webkit/readiness.log",
+      "category": "docs",
+      "added": 0,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/webkit/readiness/01-plan.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/webkit/readiness/02-stream.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/webkit/readiness/03-conflict.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/webkit/readiness/04-mobile.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/webkit/readiness/05-mobile-feedback-closed.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/webkit/readiness/05-mobile-feedback-focused.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/webkit/readiness/receipt.json",
+      "category": "docs",
+      "added": 632,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/webkit/smoke.log",
+      "category": "docs",
+      "added": 34,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/webkit/smoke/receipt.json",
+      "category": "docs",
+      "added": 219,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/webkit/smoke/vue-list-390.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/webkit/smoke/vue-list-768.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/webkit/smoke/vue-theme.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/webkit/workspace.log",
+      "category": "docs",
+      "added": 0,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/webkit/workspace/01-plan.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/webkit/workspace/02-stream.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/webkit/workspace/03-conflict.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/webkit/workspace/04-mobile.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/browser-matrix/webkit/workspace/receipt.json",
+      "category": "docs",
+      "added": 352,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/cleanup.json",
+      "category": "docs",
+      "added": 5,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/default-image/login.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/default-image/receipt.json",
+      "category": "docs",
+      "added": 20,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/main-helper-final.log",
+      "category": "docs",
+      "added": 5,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/main-node-final.log",
+      "category": "docs",
+      "added": 13,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/myink-main-default-build.log",
+      "category": "docs",
+      "added": 22,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/myink-main-default-image-build.log",
+      "category": "docs",
+      "added": 122,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/myink-main-default-image-smoke.log",
+      "category": "docs",
+      "added": 21,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/myink-main-default-lint.log",
+      "category": "docs",
+      "added": 28,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/myink-main-default-tests.log",
+      "category": "docs",
+      "added": 30,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/myink-main-explicit-react-build.log",
+      "category": "docs",
+      "added": 18,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/myink-main-react-build.log",
+      "category": "docs",
+      "added": 18,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/myink-main-react-lint.log",
+      "category": "docs",
+      "added": 16,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/myink-main-react-tests.log",
+      "category": "docs",
+      "added": 13,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/myink-main-rollback-image-build.log",
+      "category": "docs",
+      "added": 101,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/myink-main-rollback-image-smoke.log",
+      "category": "docs",
+      "added": 21,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/myink-main-root-solution-typecheck.log",
+      "category": "docs",
+      "added": 0,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/myink-main-solution-typecheck.log",
+      "category": "docs",
+      "added": 4,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/rollback-image/login.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-evidence/rollback-image/receipt.json",
+      "category": "docs",
+      "added": 20,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-cutover-fixes.md",
+      "category": "docs",
+      "added": 37,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-integration-review.md",
+      "category": "docs",
+      "added": 34,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/main-review-partial-create-receipt.json",
+      "category": "docs",
+      "added": 7,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/preview-and-rollback.md",
+      "category": "docs",
+      "added": 68,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/progress.md",
+      "category": "docs",
+      "added": 77,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/push-verification/build.log",
+      "category": "docs",
+      "added": 23,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/push-verification/config.log",
+      "category": "docs",
+      "added": 13,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/push-verification/helper.log",
+      "category": "docs",
+      "added": 9,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/push-verification/lint.log",
+      "category": "docs",
+      "added": 32,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/push-verification/react-build.log",
+      "category": "docs",
+      "added": 19,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/push-verification/react-lint.log",
+      "category": "docs",
+      "added": 16,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/push-verification/react-tests.log",
+      "category": "docs",
+      "added": 13,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/push-verification/tests.log",
+      "category": "docs",
+      "added": 30,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-browser-load.md",
+      "category": "docs",
+      "added": 72,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-defect-fix.md",
+      "category": "docs",
+      "added": 63,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-defect-review.md",
+      "category": "docs",
+      "added": 49,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-api-image-build.log",
+      "category": "docs",
+      "added": 305,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-api-image-receipt.json",
+      "category": "docs",
+      "added": 40,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-api-old-image-rejected.json",
+      "category": "docs",
+      "added": 8,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-invalid-selector-build.log",
+      "category": "docs",
+      "added": 60,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-packaging-cleanup.json",
+      "category": "docs",
+      "added": 6,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-python-environment-failed.log",
+      "category": "docs",
+      "added": 745,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-python-environment-targeted.log",
+      "category": "docs",
+      "added": 9,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-python-tests.log",
+      "category": "docs",
+      "added": 38,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-react-image-build.log",
+      "category": "docs",
+      "added": 109,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-react-image-receipt.json",
+      "category": "docs",
+      "added": 21,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-real-chain-admin-tls.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-real-chain-browser-receipt.json",
+      "category": "docs",
+      "added": 722,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-real-chain-browser.log",
+      "category": "docs",
+      "added": 16,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-real-chain-cleanup.json",
+      "category": "docs",
+      "added": 65,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-real-chain-edge-receipt.json",
+      "category": "docs",
+      "added": 30,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-real-chain-edge.log",
+      "category": "docs",
+      "added": 4,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-real-chain-provenance.json",
+      "category": "docs",
+      "added": 40,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-review.md",
+      "category": "docs",
+      "added": 87,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-vue-image-build.log",
+      "category": "docs",
+      "added": 113,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-final-vue-image-receipt.json",
+      "category": "docs",
+      "added": 21,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-packaging-review.md",
+      "category": "docs",
+      "added": 48,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-packaging.md",
+      "category": "docs",
+      "added": 46,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-python-tests.log",
+      "category": "docs",
+      "added": 38,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-real-chain-admin-tls.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-real-chain-api-receipt.json",
+      "category": "docs",
+      "added": 44,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-real-chain-browser-receipt.json",
+      "category": "docs",
+      "added": 717,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-real-chain-browser.log",
+      "category": "docs",
+      "added": 15,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-real-chain-edge-receipt.json",
+      "category": "docs",
+      "added": 14,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-real-chain-edge-replay-blocker.json",
+      "category": "docs",
+      "added": 34,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-real-chain-provenance.json",
+      "category": "docs",
+      "added": 38,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-real-chain-security-receipt.json",
+      "category": "docs",
+      "added": 15,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/readiness-real-chain.md",
+      "category": "docs",
+      "added": 77,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/real-api-receipt.json",
+      "category": "docs",
+      "added": 26,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/real-browser-receipt.json",
+      "category": "docs",
+      "added": 480,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/real-caddy-receipt.json",
+      "category": "docs",
+      "added": 14,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/real-cleanup-receipt.json",
+      "category": "docs",
+      "added": 23,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/real-integration-report.md",
+      "category": "docs",
+      "added": 70,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/recheck-release-safety.md",
+      "category": "docs",
+      "added": 20,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/remote-merge-handoff.md",
+      "category": "docs",
+      "added": 22,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/renewal-fix-review.md",
+      "category": "docs",
+      "added": 27,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/renewal-fix-verification.md",
+      "category": "docs",
+      "added": 30,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/replacement-readiness.md",
+      "category": "docs",
+      "added": 66,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/retained-assets-receipt.json",
+      "category": "docs",
+      "added": 46,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/review-second-spec-20261026.md",
+      "category": "docs",
+      "added": 19,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/review-second-standards-20261026.md",
+      "category": "docs",
+      "added": 30,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/review-second-summary-20261026.md",
+      "category": "docs",
+      "added": 21,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/review-spec-20261025.md",
+      "category": "docs",
+      "added": 38,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/review-standards-20261025.md",
+      "category": "docs",
+      "added": 41,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/readiness.log",
+      "category": "docs",
+      "added": 0,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/readiness/01-plan.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/readiness/02-stream.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/readiness/03-conflict.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/readiness/04-mobile.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/readiness/05-mobile-feedback-closed.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/readiness/05-mobile-feedback-focused.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/readiness/receipt.json",
+      "category": "docs",
+      "added": 636,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/release.log",
+      "category": "docs",
+      "added": 35,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/release/react-to-vue.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/release/receipt.json",
+      "category": "docs",
+      "added": 34,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/release/vue-to-react.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/smoke.log",
+      "category": "docs",
+      "added": 34,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/smoke/receipt.json",
+      "category": "docs",
+      "added": 219,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/smoke/vue-list-390.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/smoke/vue-list-768.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/smoke/vue-theme.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/workspace.log",
+      "category": "docs",
+      "added": 0,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/workspace/01-plan.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/workspace/02-stream.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/workspace/03-conflict.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/workspace/04-mobile.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/chromium/workspace/receipt.json",
+      "category": "docs",
+      "added": 356,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/readiness.log",
+      "category": "docs",
+      "added": 0,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/readiness/01-plan.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/readiness/02-stream.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/readiness/03-conflict.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/readiness/04-mobile.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/readiness/05-mobile-feedback-closed.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/readiness/05-mobile-feedback-focused.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/readiness/receipt.json",
+      "category": "docs",
+      "added": 632,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/release.log",
+      "category": "docs",
+      "added": 35,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/release/react-to-vue.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/release/receipt.json",
+      "category": "docs",
+      "added": 34,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/release/vue-to-react.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/smoke.log",
+      "category": "docs",
+      "added": 34,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/smoke/receipt.json",
+      "category": "docs",
+      "added": 219,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/smoke/vue-list-390.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/smoke/vue-list-768.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/smoke/vue-theme.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/workspace.log",
+      "category": "docs",
+      "added": 0,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/workspace/01-plan.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/workspace/02-stream.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/workspace/03-conflict.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/workspace/04-mobile.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/firefox/workspace/receipt.json",
+      "category": "docs",
+      "added": 356,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/receipt.json",
+      "category": "docs",
+      "added": 102,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/readiness.log",
+      "category": "docs",
+      "added": 0,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/readiness/01-plan.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/readiness/02-stream.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/readiness/03-conflict.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/readiness/04-mobile.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/readiness/05-mobile-feedback-closed.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/readiness/05-mobile-feedback-focused.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/readiness/receipt.json",
+      "category": "docs",
+      "added": 632,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/release.log",
+      "category": "docs",
+      "added": 35,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/release/react-to-vue.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/release/receipt.json",
+      "category": "docs",
+      "added": 34,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/release/vue-to-react.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/smoke.log",
+      "category": "docs",
+      "added": 34,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/smoke/receipt.json",
+      "category": "docs",
+      "added": 219,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/smoke/vue-list-390.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/smoke/vue-list-768.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/smoke/vue-theme.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/workspace.log",
+      "category": "docs",
+      "added": 0,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/workspace/01-plan.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/workspace/02-stream.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/workspace/03-conflict.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/workspace/04-mobile.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/browser-matrix/webkit/workspace/receipt.json",
+      "category": "docs",
+      "added": 352,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/cleanup.json",
+      "category": "docs",
+      "added": 8,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/form-files-sha256.txt",
+      "category": "docs",
+      "added": 26,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/myink-safe-config-final.log",
+      "category": "docs",
+      "added": 13,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/myink-safe-final-build.log",
+      "category": "docs",
+      "added": 23,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/myink-safe-final-lint.log",
+      "category": "docs",
+      "added": 32,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/myink-safe-final-matrix.log",
+      "category": "docs",
+      "added": 119,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/myink-safe-final-tests.log",
+      "category": "docs",
+      "added": 30,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/myink-safe-helper-final.log",
+      "category": "docs",
+      "added": 9,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/myink-safe-legacy-green.log",
+      "category": "docs",
+      "added": 9,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/myink-safe-legacy-red.log",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/myink-safe-react-build.log",
+      "category": "docs",
+      "added": 19,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/myink-safe-react-image-build.log",
+      "category": "docs",
+      "added": 111,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/myink-safe-react-image-smoke.log",
+      "category": "docs",
+      "added": 36,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/myink-safe-react-lint.log",
+      "category": "docs",
+      "added": 16,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/myink-safe-react-tests.log",
+      "category": "docs",
+      "added": 13,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/myink-safe-shared-tests.log",
+      "category": "docs",
+      "added": 13,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/myink-safe-vue-image-build.log",
+      "category": "docs",
+      "added": 114,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/myink-safe-vue-image-smoke.log",
+      "category": "docs",
+      "added": 36,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/myink-safe-write-green.log",
+      "category": "docs",
+      "added": 9,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/myink-safe-write-red.log",
+      "category": "docs",
+      "added": 73,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/react-image/login.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/react-image/receipt.json",
+      "category": "docs",
+      "added": 35,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/vue-image/login.png",
+      "category": "docs",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-evidence/vue-image/receipt.json",
+      "category": "docs",
+      "added": 35,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-fixes.md",
+      "category": "docs",
+      "added": 49,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/safe-update-retained-assets.json",
+      "category": "docs",
+      "added": 18,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/theme-feedback-report.md",
+      "category": "docs",
+      "added": 66,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/theme-general-core-review.md",
+      "category": "docs",
+      "added": 39,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/verification.md",
+      "category": "docs",
+      "added": 47,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/workspace-integration-review.md",
+      "category": "docs",
+      "added": 49,
+      "deleted": 0
+    },
+    {
+      "path": "docs/work-items/vue3-migration-20261025/workspace-report.md",
+      "category": "docs",
+      "added": 54,
+      "deleted": 0
+    },
+    {
+      "path": "integrations/n8n/README.md",
+      "category": "docs",
+      "added": 38,
+      "deleted": 0
+    },
+    {
+      "path": "integrations/n8n/myink-pipeline.json",
+      "category": "config",
+      "added": 989,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/test_ci_overrides.py",
+      "category": "test",
+      "added": 10,
+      "deleted": 4
+    },
+    {
+      "path": "scripts/api-image-smoke.py",
+      "category": "production",
+      "added": 75,
+      "deleted": 0
+    },
+    {
+      "path": "scripts/ci-local.sh",
+      "category": "production",
+      "added": 6,
+      "deleted": 3
+    },
+    {
+      "path": "scripts/evaluate-browser.cjs",
+      "category": "production",
+      "added": 21,
+      "deleted": 8
+    },
+    {
+      "path": "scripts/prepare-frontend-assets.py",
+      "category": "production",
+      "added": 68,
+      "deleted": 0
+    },
+    {
+      "path": "scripts/probe-short-output.py",
+      "category": "production",
+      "added": 192,
+      "deleted": 0
+    },
+    {
+      "path": "scripts/test_prepare_frontend_assets.py",
+      "category": "production",
+      "added": 85,
+      "deleted": 0
+    },
+    {
+      "path": "scripts/test_verify_guest_browser.py",
+      "category": "production",
+      "added": 54,
+      "deleted": 0
+    },
+    {
+      "path": "scripts/verify_guest_browser.py",
+      "category": "production",
+      "added": 154,
+      "deleted": 0
+    },
+    {
+      "path": "scripts/vue-real-chain-api.py",
+      "category": "production",
+      "added": 87,
+      "deleted": 0
+    },
+    {
+      "path": "scripts/vue-real-chain-edge.py",
+      "category": "production",
+      "added": 83,
+      "deleted": 0
+    },
+    {
+      "path": "scripts/vue-real-chain-security.py",
+      "category": "production",
+      "added": 42,
+      "deleted": 0
+    },
+    {
+      "path": "scripts/vue-real-integration-api.py",
+      "category": "production",
+      "added": 70,
+      "deleted": 0
+    },
+    {
+      "path": "scripts/vue-real-model-fixture.py",
+      "category": "production",
+      "added": 121,
+      "deleted": 0
+    },
+    {
+      "path": "spec/api-openapi.json",
+      "category": "config",
+      "added": 3999,
+      "deleted": 1125
+    },
+    {
+      "path": "spec/schema.md",
+      "category": "docs",
+      "added": 8,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/api/admin_schemas.py",
+      "category": "production",
+      "added": 20,
+      "deleted": 1
+    },
+    {
+      "path": "src/myink/api/auth.py",
+      "category": "production",
+      "added": 89,
+      "deleted": 15
+    },
+    {
+      "path": "src/myink/api/main.py",
+      "category": "production",
+      "added": 14,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/api/resource_limits.py",
+      "category": "production",
+      "added": 56,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/api/routes_admin.py",
+      "category": "production",
+      "added": 37,
+      "deleted": 2
+    },
+    {
+      "path": "src/myink/api/routes_book.py",
+      "category": "production",
+      "added": 18,
+      "deleted": 22
+    },
+    {
+      "path": "src/myink/api/routes_candidates.py",
+      "category": "production",
+      "added": 6,
+      "deleted": 2
+    },
+    {
+      "path": "src/myink/api/routes_environment.py",
+      "category": "production",
+      "added": 64,
+      "deleted": 66
+    },
+    {
+      "path": "src/myink/api/routes_genre.py",
+      "category": "production",
+      "added": 19,
+      "deleted": 3
+    },
+    {
+      "path": "src/myink/api/routes_platform.py",
+      "category": "production",
+      "added": 121,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/api/routes_settings.py",
+      "category": "production",
+      "added": 22,
+      "deleted": 67
+    },
+    {
+      "path": "src/myink/api/routes_short_creation.py",
+      "category": "production",
+      "added": 18,
+      "deleted": 9
+    },
+    {
+      "path": "src/myink/api/routes_sse.py",
+      "category": "production",
+      "added": 23,
+      "deleted": 7
+    },
+    {
+      "path": "src/myink/api/routes_tasks.py",
+      "category": "production",
+      "added": 33,
+      "deleted": 15
+    },
+    {
+      "path": "src/myink/api/routes_user_writing_resources.py",
+      "category": "production",
+      "added": 94,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/api/routes_writing_resources.py",
+      "category": "production",
+      "added": 73,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/api/schemas.py",
+      "category": "production",
+      "added": 15,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/book_setup.py",
+      "category": "production",
+      "added": 28,
+      "deleted": 15
+    },
+    {
+      "path": "src/myink/cli.py",
+      "category": "production",
+      "added": 18,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/config.py",
+      "category": "production",
+      "added": 3,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/db.py",
+      "category": "production",
+      "added": 55,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/environment.py",
+      "category": "production",
+      "added": 25,
+      "deleted": 37
+    },
+    {
+      "path": "src/myink/genre_catalog.py",
+      "category": "production",
+      "added": 87,
+      "deleted": 12
+    },
+    {
+      "path": "src/myink/guest_quota.py",
+      "category": "production",
+      "added": 385,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/guests.py",
+      "category": "production",
+      "added": 26,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/integrations/rankings.py",
+      "category": "production",
+      "added": 5,
+      "deleted": 4
+    },
+    {
+      "path": "src/myink/maintenance_pause.py",
+      "category": "production",
+      "added": 2,
+      "deleted": 2
+    },
+    {
+      "path": "src/myink/memory/candidate_identity.py",
+      "category": "production",
+      "added": 44,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/memory/correction.py",
+      "category": "production",
+      "added": 32,
+      "deleted": 20
+    },
+    {
+      "path": "src/myink/memory/invalidation.py",
+      "category": "production",
+      "added": 50,
+      "deleted": 9
+    },
+    {
+      "path": "src/myink/model_admission.py",
+      "category": "production",
+      "added": 6,
+      "deleted": 3
+    },
+    {
+      "path": "src/myink/models/__init__.py",
+      "category": "production",
+      "added": 13,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/models/guest.py",
+      "category": "production",
+      "added": 44,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/models/platform.py",
+      "category": "production",
+      "added": 12,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/models/project.py",
+      "category": "production",
+      "added": 4,
+      "deleted": 1
+    },
+    {
+      "path": "src/myink/models/writing_resource.py",
+      "category": "production",
+      "added": 51,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/platform_configuration.py",
+      "category": "production",
+      "added": 280,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/platform_readiness.py",
+      "category": "production",
+      "added": 105,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/prompt_catalog.py",
+      "category": "production",
+      "added": 176,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/providers/__init__.py",
+      "category": "production",
+      "added": 65,
+      "deleted": 152
+    },
+    {
+      "path": "src/myink/providers/anthropic.py",
+      "category": "production",
+      "added": 58,
+      "deleted": 15
+    },
+    {
+      "path": "src/myink/providers/base.py",
+      "category": "production",
+      "added": 14,
+      "deleted": 4
+    },
+    {
+      "path": "src/myink/providers/deepseek.py",
+      "category": "production",
+      "added": 10,
+      "deleted": 1
+    },
+    {
+      "path": "src/myink/providers/errors.py",
+      "category": "production",
+      "added": 31,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/seed.py",
+      "category": "production",
+      "added": 4,
+      "deleted": 2
+    },
+    {
+      "path": "src/myink/style_extract.py",
+      "category": "production",
+      "added": 4,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/task_budget.py",
+      "category": "production",
+      "added": 49,
+      "deleted": 13
+    },
+    {
+      "path": "src/myink/user_defaults.py",
+      "category": "production",
+      "added": 70,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/validation/global_audit.py",
+      "category": "production",
+      "added": 7,
+      "deleted": 3
+    },
+    {
+      "path": "src/myink/validation/l1.py",
+      "category": "production",
+      "added": 4,
+      "deleted": 2
+    },
+    {
+      "path": "src/myink/worker/amqp.py",
+      "category": "production",
+      "added": 38,
+      "deleted": 1
+    },
+    {
+      "path": "src/myink/worker/consumer.py",
+      "category": "production",
+      "added": 45,
+      "deleted": 17
+    },
+    {
+      "path": "src/myink/worker/enqueue.py",
+      "category": "production",
+      "added": 67,
+      "deleted": 20
+    },
+    {
+      "path": "src/myink/worker/handoff.py",
+      "category": "production",
+      "added": 51,
+      "deleted": 11
+    },
+    {
+      "path": "src/myink/worker/processor.py",
+      "category": "production",
+      "added": 45,
+      "deleted": 6
+    },
+    {
+      "path": "src/myink/worker/scheduling.py",
+      "category": "production",
+      "added": 49,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/workflow/batch_graph.py",
+      "category": "production",
+      "added": 14,
+      "deleted": 9
+    },
+    {
+      "path": "src/myink/workflow/chapter_graph.py",
+      "category": "production",
+      "added": 6,
+      "deleted": 3
+    },
+    {
+      "path": "src/myink/workflow/checkpointer.py",
+      "category": "production",
+      "added": 41,
+      "deleted": 19
+    },
+    {
+      "path": "src/myink/workflow/nodes.py",
+      "category": "production",
+      "added": 175,
+      "deleted": 35
+    },
+    {
+      "path": "src/myink/workflow/prompts.py",
+      "category": "production",
+      "added": 81,
+      "deleted": 6
+    },
+    {
+      "path": "src/myink/workflow/prose_rules.py",
+      "category": "production",
+      "added": 40,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/workflow/reference_access.py",
+      "category": "production",
+      "added": 34,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/workflow/review.py",
+      "category": "production",
+      "added": 3,
+      "deleted": 13
+    },
+    {
+      "path": "src/myink/workflow/runner.py",
+      "category": "production",
+      "added": 60,
+      "deleted": 15
+    },
+    {
+      "path": "src/myink/workflow/short_parse.py",
+      "category": "production",
+      "added": 3,
+      "deleted": 1
+    },
+    {
+      "path": "src/myink/workflow/short_runner.py",
+      "category": "production",
+      "added": 5,
+      "deleted": 4
+    },
+    {
+      "path": "src/myink/workflow/state.py",
+      "category": "production",
+      "added": 3,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/workflow/tools.py",
+      "category": "production",
+      "added": 4,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/writing_quality_resources.py",
+      "category": "production",
+      "added": 67,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/writing_resource_runtime.py",
+      "category": "production",
+      "added": 237,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/writing_resource_schemas.py",
+      "category": "production",
+      "added": 233,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/writing_resource_seed.py",
+      "category": "production",
+      "added": 50,
+      "deleted": 0
+    },
+    {
+      "path": "src/myink/writing_resources.py",
+      "category": "production",
+      "added": 533,
+      "deleted": 0
+    },
+    {
+      "path": "tests/_vip_queue_worker.py",
+      "category": "test",
+      "added": 63,
+      "deleted": 0
+    },
+    {
+      "path": "tests/conftest.py",
+      "category": "test",
+      "added": 3,
+      "deleted": 1
+    },
+    {
+      "path": "tests/test_admin.py",
+      "category": "test",
+      "added": 41,
+      "deleted": 2
+    },
+    {
+      "path": "tests/test_admin_observability.py",
+      "category": "test",
+      "added": 3,
+      "deleted": 3
+    },
+    {
+      "path": "tests/test_admin_trends_unit.py",
+      "category": "test",
+      "added": 33,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_anthropic_sse_spacing.py",
+      "category": "test",
+      "added": 99,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_anthropic_tool_continuation.py",
+      "category": "test",
+      "added": 244,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_api_contract.py",
+      "category": "test",
+      "added": 6,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_auth.py",
+      "category": "test",
+      "added": 3,
+      "deleted": 2
+    },
+    {
+      "path": "tests/test_autocard.py",
+      "category": "test",
+      "added": 4,
+      "deleted": 2
+    },
+    {
+      "path": "tests/test_book_setup.py",
+      "category": "test",
+      "added": 7,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_builtin_platform_model.py",
+      "category": "test",
+      "added": 116,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_candidate_concurrency.py",
+      "category": "test",
+      "added": 140,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_candidate_identity.py",
+      "category": "test",
+      "added": 43,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_chapter_delete.py",
+      "category": "test",
+      "added": 34,
+      "deleted": 5
+    },
+    {
+      "path": "tests/test_chapter_summary.py",
+      "category": "test",
+      "added": 30,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_checkpointer_reconnect.py",
+      "category": "test",
+      "added": 98,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_completed_long_genre_lock.py",
+      "category": "test",
+      "added": 75,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_completed_long_genre_lock_integration.py",
+      "category": "test",
+      "added": 46,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_consumer_redelivery.py",
+      "category": "test",
+      "added": 58,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_correction.py",
+      "category": "test",
+      "added": 118,
+      "deleted": 4
+    },
+    {
+      "path": "tests/test_correction_proposal_identity.py",
+      "category": "test",
+      "added": 52,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_creation_genre_publications.py",
+      "category": "test",
+      "added": 126,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_creation_genre_routes.py",
+      "category": "test",
+      "added": 121,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_creation_rule_selection.py",
+      "category": "test",
+      "added": 29,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_enqueue_connection_lifetime.py",
+      "category": "test",
+      "added": 62,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_enqueue_gates.py",
+      "category": "test",
+      "added": 54,
+      "deleted": 3
+    },
+    {
+      "path": "tests/test_environment_routes.py",
+      "category": "test",
+      "added": 61,
+      "deleted": 219
+    },
+    {
+      "path": "tests/test_flow.py",
+      "category": "test",
+      "added": 7,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_genre_packs.py",
+      "category": "test",
+      "added": 6,
+      "deleted": 11
+    },
+    {
+      "path": "tests/test_guest_admission.py",
+      "category": "test",
+      "added": 767,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_guest_auth.py",
+      "category": "test",
+      "added": 130,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_guest_cookie_policy.py",
+      "category": "test",
+      "added": 65,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_guest_migration.py",
+      "category": "test",
+      "added": 42,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_guest_quota.py",
+      "category": "test",
+      "added": 133,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_identity_boundary.py",
+      "category": "test",
+      "added": 2,
+      "deleted": 1
+    },
+    {
+      "path": "tests/test_invalidation.py",
+      "category": "test",
+      "added": 106,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_manual_plan.py",
+      "category": "test",
+      "added": 14,
+      "deleted": 2
+    },
+    {
+      "path": "tests/test_mfa.py",
+      "category": "test",
+      "added": 1,
+      "deleted": 1
+    },
+    {
+      "path": "tests/test_model_admission.py",
+      "category": "test",
+      "added": 12,
+      "deleted": 2
+    },
+    {
+      "path": "tests/test_multiprocess.py",
+      "category": "test",
+      "added": 32,
+      "deleted": 9
+    },
+    {
+      "path": "tests/test_node_retry.py",
+      "category": "test",
+      "added": 6,
+      "deleted": 3
+    },
+    {
+      "path": "tests/test_pi_merge_recovery.py",
+      "category": "test",
+      "added": 248,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_platform_chapter_limit.py",
+      "category": "test",
+      "added": 7,
+      "deleted": 5
+    },
+    {
+      "path": "tests/test_platform_configuration.py",
+      "category": "test",
+      "added": 312,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_platform_key_quota.py",
+      "category": "test",
+      "added": 29,
+      "deleted": 53
+    },
+    {
+      "path": "tests/test_platform_readiness.py",
+      "category": "test",
+      "added": 304,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_private_style_loop.py",
+      "category": "test",
+      "added": 92,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_prompt_catalog.py",
+      "category": "test",
+      "added": 81,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_prose_rules.py",
+      "category": "test",
+      "added": 64,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_provider_error_integration.py",
+      "category": "test",
+      "added": 53,
+      "deleted": 3
+    },
+    {
+      "path": "tests/test_provider_finish_reasons.py",
+      "category": "test",
+      "added": 56,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_quality_resource_bundle.py",
+      "category": "test",
+      "added": 100,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_reference_tool_trigger.py",
+      "category": "test",
+      "added": 252,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_release_prompt_roles.py",
+      "category": "test",
+      "added": 70,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_replan_request_contract.py",
+      "category": "test",
+      "added": 59,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_review_finalization_resume.py",
+      "category": "test",
+      "added": 123,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_review_http_resume.py",
+      "category": "test",
+      "added": 86,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_review_routing.py",
+      "category": "test",
+      "added": 48,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_rewrite_saved_plan.py",
+      "category": "test",
+      "added": 141,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_role_prompts.py",
+      "category": "test",
+      "added": 247,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_settings_routes.py",
+      "category": "test",
+      "added": 63,
+      "deleted": 169
+    },
+    {
+      "path": "tests/test_short_creation.py",
+      "category": "test",
+      "added": 20,
+      "deleted": 7
+    },
+    {
+      "path": "tests/test_short_parse.py",
+      "category": "test",
+      "added": 8,
+      "deleted": 1
+    },
+    {
+      "path": "tests/test_short_plan.py",
+      "category": "test",
+      "added": 11,
+      "deleted": 6
+    },
+    {
+      "path": "tests/test_sse.py",
+      "category": "test",
+      "added": 80,
+      "deleted": 1
+    },
+    {
+      "path": "tests/test_streaming.py",
+      "category": "test",
+      "added": 28,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_style_library.py",
+      "category": "test",
+      "added": 4,
+      "deleted": 3
+    },
+    {
+      "path": "tests/test_style_profile.py",
+      "category": "test",
+      "added": 8,
+      "deleted": 4
+    },
+    {
+      "path": "tests/test_task_budget_recovery.py",
+      "category": "test",
+      "added": 1,
+      "deleted": 1
+    },
+    {
+      "path": "tests/test_task_budget_routes.py",
+      "category": "test",
+      "added": 37,
+      "deleted": 1
+    },
+    {
+      "path": "tests/test_tool_boundaries.py",
+      "category": "test",
+      "added": 5,
+      "deleted": 3
+    },
+    {
+      "path": "tests/test_user_chain.py",
+      "category": "test",
+      "added": 72,
+      "deleted": 48
+    },
+    {
+      "path": "tests/test_user_defaults.py",
+      "category": "test",
+      "added": 181,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_vip_consumer_lifecycle.py",
+      "category": "test",
+      "added": 171,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_vip_maintenance.py",
+      "category": "test",
+      "added": 27,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_vip_policy.py",
+      "category": "test",
+      "added": 161,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_vip_scheduler.py",
+      "category": "test",
+      "added": 166,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_vip_worker_integration.py",
+      "category": "test",
+      "added": 179,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_worker.py",
+      "category": "test",
+      "added": 2,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_workflow_initialization.py",
+      "category": "test",
+      "added": 111,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_writing_resource_routes.py",
+      "category": "test",
+      "added": 280,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_writing_resource_runtime.py",
+      "category": "test",
+      "added": 325,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_writing_resources.py",
+      "category": "test",
+      "added": 557,
+      "deleted": 0
+    },
+    {
+      "path": "tests/test_writing_resources_integration.py",
+      "category": "test",
+      "added": 482,
+      "deleted": 0
+    },
+    {
+      "path": "web/.gitignore",
+      "category": "production",
+      "added": 6,
+      "deleted": 0
+    },
+    {
+      "path": "web/README.md",
+      "category": "docs",
+      "added": 38,
+      "deleted": 22
+    },
+    {
+      "path": "web/eslint.vue.config.mjs",
+      "category": "production",
+      "added": 17,
+      "deleted": 0
+    },
+    {
+      "path": "web/index.html",
+      "category": "production",
+      "added": 0,
+      "deleted": 40
+    },
+    {
+      "path": "web/package-lock.json",
+      "category": "config",
+      "added": 3152,
+      "deleted": 449
+    },
+    {
+      "path": "web/package.json",
+      "category": "config",
+      "added": 29,
+      "deleted": 13
+    },
+    {
+      "path": "web/scripts/admin-feedback-browser.mjs",
+      "category": "production",
+      "added": 194,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/browser-cleanup.test.mjs",
+      "category": "test",
+      "added": 61,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/browser-matrix.mjs",
+      "category": "production",
+      "added": 41,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/browser-options.mjs",
+      "category": "production",
+      "added": 56,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/browser-receipt.mjs",
+      "category": "production",
+      "added": 12,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/browser-receipt.test.mjs",
+      "category": "test",
+      "added": 32,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/default-frontend.test.mjs",
+      "category": "test",
+      "added": 23,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/fixtures/README.md",
+      "category": "docs",
+      "added": 10,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/fixtures/readiness.webm",
+      "category": "production",
+      "added": null,
+      "deleted": null
+    },
+    {
+      "path": "web/scripts/fixtures/xiuxian-resource.json",
+      "category": "config",
+      "added": 55,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/frontend-image-smoke.mjs",
+      "category": "production",
+      "added": 88,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/guest-browser.mjs",
+      "category": "production",
+      "added": 159,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/guest-real-browser.mjs",
+      "category": "production",
+      "added": 159,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/guest-real-browser.test.mjs",
+      "category": "test",
+      "added": 37,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/merge-retained-assets.mjs",
+      "category": "production",
+      "added": 28,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/merge-retained-assets.test.mjs",
+      "category": "test",
+      "added": 36,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/rail-layout-assertions.mjs",
+      "category": "production",
+      "added": 25,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/release-safety-browser.mjs",
+      "category": "production",
+      "added": 120,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/releasePlugin.ts",
+      "category": "production",
+      "added": 33,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/resource-feedback-browser.mjs",
+      "category": "production",
+      "added": 332,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/vue-browser-smoke.mjs",
+      "category": "production",
+      "added": 281,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/vue-readiness-browser.mjs",
+      "category": "production",
+      "added": 279,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/vue-real-chain-browser.mjs",
+      "category": "production",
+      "added": 198,
+      "deleted": 0
+    },
+    {
+      "path": "web/scripts/vue-real-integration.mjs",
+      "category": "production",
+      "added": 140,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/components/AdminRail.module.css",
+      "category": "production",
+      "added": 30,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/components/AppVersionGuard.test.ts",
+      "category": "test",
+      "added": 0,
+      "deleted": 22
+    },
+    {
+      "path": "web/src/components/AppVersionGuard.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 68
+    },
+    {
+      "path": "web/src/components/AppVersionGuard.utils.ts",
+      "category": "production",
+      "added": 0,
+      "deleted": 9
+    },
+    {
+      "path": "web/src/components/AuditPanel.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 103
+    },
+    {
+      "path": "web/src/components/CandidatePanel.module.css",
+      "category": "production",
+      "added": 4,
+      "deleted": 10
+    },
+    {
+      "path": "web/src/components/CandidatePanel.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 347
+    },
+    {
+      "path": "web/src/components/CanvasMedia.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 35
+    },
+    {
+      "path": "web/src/components/CanvasMedia.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 60
+    },
+    {
+      "path": "web/src/components/ChapterEditor.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 176
+    },
+    {
+      "path": "web/src/components/ChapterEditor.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 219
+    },
+    {
+      "path": "web/src/components/ChapterList.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 52
+    },
+    {
+      "path": "web/src/components/ChapterPlanPanel.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 112
+    },
+    {
+      "path": "web/src/components/ChapterPlanPanel.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 269
+    },
+    {
+      "path": "web/src/components/ConnectionNotices.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 39
+    },
+    {
+      "path": "web/src/components/ConnectionNotices.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 43
+    },
+    {
+      "path": "web/src/components/FeedbackWidget.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 176
+    },
+    {
+      "path": "web/src/components/FeedbackWidget.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 697
+    },
+    {
+      "path": "web/src/components/FindingsList.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 55
+    },
+    {
+      "path": "web/src/components/GenerationPanel.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 205
+    },
+    {
+      "path": "web/src/components/GenerationPanel.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 261
+    },
+    {
+      "path": "web/src/components/GenrePackFields.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 85
+    },
+    {
+      "path": "web/src/components/GuestPromptDialog.module.css",
+      "category": "production",
+      "added": 1,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/components/GuestPromptDialog.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 52
+    },
+    {
+      "path": "web/src/components/GuestShell.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 51
+    },
+    {
+      "path": "web/src/components/LessonsPanel.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 117
+    },
+    {
+      "path": "web/src/components/PendantLamp.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 200
+    },
+    {
+      "path": "web/src/components/ProjectRail.module.css",
+      "category": "production",
+      "added": 25,
+      "deleted": 10
+    },
+    {
+      "path": "web/src/components/ProjectRail.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 188
+    },
+    {
+      "path": "web/src/components/ProjectRail.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 163
+    },
+    {
+      "path": "web/src/components/RailLayout.module.css",
+      "category": "production",
+      "added": 12,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/components/RankingsPanel.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 108
+    },
+    {
+      "path": "web/src/components/ReviewFlow.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 207
+    },
+    {
+      "path": "web/src/components/RevisionScope.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 26
+    },
+    {
+      "path": "web/src/components/RingProgress.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 51
+    },
+    {
+      "path": "web/src/components/RunNodeCard.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 49
+    },
+    {
+      "path": "web/src/components/StatusBadge.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 16
+    },
+    {
+      "path": "web/src/components/StreamingChapterView.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 73
+    },
+    {
+      "path": "web/src/components/StreamingChapterView.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 82
+    },
+    {
+      "path": "web/src/components/TaskBudgetPanel.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 26
+    },
+    {
+      "path": "web/src/components/TaskBudgetPanel.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 59
+    },
+    {
+      "path": "web/src/components/TaskHistory.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 240
+    },
+    {
+      "path": "web/src/components/TaskTimeline.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 274
+    },
+    {
+      "path": "web/src/components/VersionHistory.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 141
+    },
+    {
+      "path": "web/src/components/WorldGraph.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 73
+    },
+    {
+      "path": "web/src/context/AuthContext.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 279
+    },
+    {
+      "path": "web/src/context/AuthContext.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 426
+    },
+    {
+      "path": "web/src/context/ThemeContext.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 241
+    },
+    {
+      "path": "web/src/hooks/useChapterDraft.ts",
+      "category": "production",
+      "added": 0,
+      "deleted": 131
+    },
+    {
+      "path": "web/src/hooks/useGuest.ts",
+      "category": "production",
+      "added": 0,
+      "deleted": 6
+    },
+    {
+      "path": "web/src/hooks/usePrefersReducedMotion.ts",
+      "category": "production",
+      "added": 0,
+      "deleted": 21
+    },
+    {
+      "path": "web/src/hooks/useTaskEvents.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 322
+    },
+    {
+      "path": "web/src/hooks/useTaskEvents.ts",
+      "category": "production",
+      "added": 0,
+      "deleted": 394
+    },
+    {
+      "path": "web/src/lib/activeWrite.test.ts",
+      "category": "test",
+      "added": 13,
+      "deleted": 1
+    },
+    {
+      "path": "web/src/lib/activeWrite.ts",
+      "category": "production",
+      "added": 16,
+      "deleted": 1
+    },
+    {
+      "path": "web/src/lib/adminApi.ts",
+      "category": "production",
+      "added": 24,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/lib/api.pendingWrites.test.ts",
+      "category": "test",
+      "added": 51,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/lib/api.taskControls.test.ts",
+      "category": "test",
+      "added": 11,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/lib/api.ts",
+      "category": "production",
+      "added": 43,
+      "deleted": 16
+    },
+    {
+      "path": "web/src/lib/apiError.test.ts",
+      "category": "test",
+      "added": 12,
+      "deleted": 1
+    },
+    {
+      "path": "web/src/lib/apiError.ts",
+      "category": "production",
+      "added": 13,
+      "deleted": 6
+    },
+    {
+      "path": "web/src/lib/badgeTone.ts",
+      "category": "production",
+      "added": 2,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/lib/candidates.ts",
+      "category": "production",
+      "added": 1,
+      "deleted": 1
+    },
+    {
+      "path": "web/src/lib/labels.ts",
+      "category": "production",
+      "added": 2,
+      "deleted": 1
+    },
+    {
+      "path": "web/src/lib/pendingWrites.test.ts",
+      "category": "test",
+      "added": 19,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/lib/pendingWrites.ts",
+      "category": "production",
+      "added": 31,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/lib/platformApi.ts",
+      "category": "production",
+      "added": 69,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/lib/projectListUpdates.test.ts",
+      "category": "test",
+      "added": 52,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/lib/projectListUpdates.ts",
+      "category": "production",
+      "added": 24,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/lib/rankings.ts",
+      "category": "production",
+      "added": 1,
+      "deleted": 1
+    },
+    {
+      "path": "web/src/lib/readableContent.ts",
+      "category": "production",
+      "added": 6,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/lib/referenceCsv.ts",
+      "category": "production",
+      "added": 29,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/lib/release.test.ts",
+      "category": "test",
+      "added": 53,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/lib/release.ts",
+      "category": "production",
+      "added": 50,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/lib/releasePlugin.test.ts",
+      "category": "test",
+      "added": 47,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/lib/resizeTextarea.ts",
+      "category": "production",
+      "added": 6,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/lib/resourceDisplay.test.ts",
+      "category": "test",
+      "added": 9,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/lib/resourceDisplay.ts",
+      "category": "production",
+      "added": 152,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/lib/resourceFieldLabels.ts",
+      "category": "production",
+      "added": 69,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/lib/shortCreationApi.ts",
+      "category": "production",
+      "added": 2,
+      "deleted": 1
+    },
+    {
+      "path": "web/src/lib/snapshotView.ts",
+      "category": "production",
+      "added": 5,
+      "deleted": 5
+    },
+    {
+      "path": "web/src/lib/token.ts",
+      "category": "production",
+      "added": 7,
+      "deleted": 3
+    },
+    {
+      "path": "web/src/lib/writingResources.ts",
+      "category": "production",
+      "added": 197,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/main.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 19
+    },
+    {
+      "path": "web/src/pages/AccountPage.module.css",
+      "category": "production",
+      "added": 61,
+      "deleted": 80
+    },
+    {
+      "path": "web/src/pages/AccountPage.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 184
+    },
+    {
+      "path": "web/src/pages/AccountPage.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 319
+    },
+    {
+      "path": "web/src/pages/AdminPage.module.css",
+      "category": "production",
+      "added": 46,
+      "deleted": 6
+    },
+    {
+      "path": "web/src/pages/AdminPage.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 426
+    },
+    {
+      "path": "web/src/pages/AdminPage.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 567
+    },
+    {
+      "path": "web/src/pages/AppearancePage.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 313
+    },
+    {
+      "path": "web/src/pages/AppearancePage.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 1105
+    },
+    {
+      "path": "web/src/pages/AuditPage.module.css",
+      "category": "production",
+      "added": 10,
+      "deleted": 3
+    },
+    {
+      "path": "web/src/pages/AuditPage.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 169
+    },
+    {
+      "path": "web/src/pages/EnvironmentPage.module.css",
+      "category": "production",
+      "added": 77,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/pages/EnvironmentPage.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 210
+    },
+    {
+      "path": "web/src/pages/EnvironmentPage.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 539
+    },
+    {
+      "path": "web/src/pages/LoginPage.module.css",
+      "category": "production",
+      "added": 21,
+      "deleted": 65
+    },
+    {
+      "path": "web/src/pages/LoginPage.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 177
+    },
+    {
+      "path": "web/src/pages/LoginPage.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 235
+    },
+    {
+      "path": "web/src/pages/LorePage.module.css",
+      "category": "production",
+      "added": 10,
+      "deleted": 3
+    },
+    {
+      "path": "web/src/pages/LorePage.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 107
+    },
+    {
+      "path": "web/src/pages/LorePage.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 554
+    },
+    {
+      "path": "web/src/pages/NewProjectPage.module.css",
+      "category": "production",
+      "added": 16,
+      "deleted": 3
+    },
+    {
+      "path": "web/src/pages/NewProjectPage.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 417
+    },
+    {
+      "path": "web/src/pages/NewProjectPage.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 1408
+    },
+    {
+      "path": "web/src/pages/ProjectsPage.module.css",
+      "category": "production",
+      "added": 9,
+      "deleted": 4
+    },
+    {
+      "path": "web/src/pages/ProjectsPage.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 64
+    },
+    {
+      "path": "web/src/pages/ProjectsPage.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 134
+    },
+    {
+      "path": "web/src/pages/SettingsPage.module.css",
+      "category": "production",
+      "added": 50,
+      "deleted": 7
+    },
+    {
+      "path": "web/src/pages/SettingsPage.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 44
+    },
+    {
+      "path": "web/src/pages/SettingsPage.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 212
+    },
+    {
+      "path": "web/src/pages/ShortCreationPage.module.css",
+      "category": "production",
+      "added": 70,
+      "deleted": 12
+    },
+    {
+      "path": "web/src/pages/ShortCreationPage.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 501
+    },
+    {
+      "path": "web/src/pages/ShortCreationPage.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 474
+    },
+    {
+      "path": "web/src/pages/StyleLibraryPage.module.css",
+      "category": "production",
+      "added": 74,
+      "deleted": 32
+    },
+    {
+      "path": "web/src/pages/StyleLibraryPage.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 280
+    },
+    {
+      "path": "web/src/pages/StyleLibraryPage.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 431
+    },
+    {
+      "path": "web/src/pages/WorkspacePage.live.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 121
+    },
+    {
+      "path": "web/src/pages/WorkspacePage.module.css",
+      "category": "production",
+      "added": 19,
+      "deleted": 37
+    },
+    {
+      "path": "web/src/pages/WorkspacePage.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 823
+    },
+    {
+      "path": "web/src/pages/WorkspacePage.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 1080
+    },
+    {
+      "path": "web/src/pages/admin/AdminResources.module.css",
+      "category": "production",
+      "added": 505,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/pages/admin/AdminTrends.module.css",
+      "category": "production",
+      "added": 13,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/pages/admin/Analytics.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 196
+    },
+    {
+      "path": "web/src/pages/admin/Analytics.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 365
+    },
+    {
+      "path": "web/src/pages/admin/ExecutionDetail.module.css",
+      "category": "production",
+      "added": 48,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/pages/admin/ModelRouting.module.css",
+      "category": "production",
+      "added": 67,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/pages/admin/ProjectDetail.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 166
+    },
+    {
+      "path": "web/src/pages/admin/RunDetail.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 77
+    },
+    {
+      "path": "web/src/pages/admin/SnapshotView.module.css",
+      "category": "production",
+      "added": 6,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/pages/admin/SnapshotView.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 110
+    },
+    {
+      "path": "web/src/pages/admin/SnapshotView.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 261
+    },
+    {
+      "path": "web/src/pages/admin/TaskDetail.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 84
+    },
+    {
+      "path": "web/src/pages/admin/UserDetail.test.tsx",
+      "category": "test",
+      "added": 0,
+      "deleted": 59
+    },
+    {
+      "path": "web/src/pages/admin/UserDetail.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 59
+    },
+    {
+      "path": "web/src/pages/admin/__fixtures__/author_error_catalog.json",
+      "category": "config",
+      "added": 53,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/pages/admin/shared.test.ts",
+      "category": "test",
+      "added": 0,
+      "deleted": 25
+    },
+    {
+      "path": "web/src/pages/admin/shared.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 227
+    },
+    {
+      "path": "web/src/router.tsx",
+      "category": "production",
+      "added": 0,
+      "deleted": 123
+    },
+    {
+      "path": "web/src/styles/global.css",
+      "category": "production",
+      "added": 4,
+      "deleted": 1
+    },
+    {
+      "path": "web/src/styles/tokens.css",
+      "category": "production",
+      "added": 4,
+      "deleted": 0
+    },
+    {
+      "path": "web/src/types.ts",
+      "category": "production",
+      "added": 16,
+      "deleted": 0
+    },
+    {
+      "path": "web/tsconfig.app.json",
+      "category": "config",
+      "added": 0,
+      "deleted": 26
+    },
+    {
+      "path": "web/tsconfig.json",
+      "category": "config",
+      "added": 6,
+      "deleted": 2
+    },
+    {
+      "path": "web/tsconfig.node.json",
+      "category": "config",
+      "added": 1,
+      "deleted": 1
+    },
+    {
+      "path": "web/tsconfig.vue.json",
+      "category": "config",
+      "added": 27,
+      "deleted": 0
+    },
+    {
+      "path": "web/tsconfig.vue.node.json",
+      "category": "config",
+      "added": 12,
+      "deleted": 0
+    },
+    {
+      "path": "web/vite.config.ts",
+      "category": "production",
+      "added": 2,
+      "deleted": 24
+    },
+    {
+      "path": "web/vite.vue.config.ts",
+      "category": "production",
+      "added": 36,
+      "deleted": 0
+    },
+    {
+      "path": "web/vitest.shared.config.ts",
+      "category": "production",
+      "added": 5,
+      "deleted": 0
+    },
+    {
+      "path": "web/vitest.vue.config.ts",
+      "category": "production",
+      "added": 14,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/index.html",
+      "category": "production",
+      "added": 40,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/App.test.ts",
+      "category": "test",
+      "added": 324,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/App.vue",
+      "category": "production",
+      "added": 83,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/authContext.ts",
+      "category": "production",
+      "added": 9,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/AdminNavIcon.vue",
+      "category": "production",
+      "added": 28,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/AdminRail.test.ts",
+      "category": "test",
+      "added": 47,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/AdminRail.vue",
+      "category": "production",
+      "added": 48,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/AppVersionGuard.behavior.test.ts",
+      "category": "test",
+      "added": 37,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/AppVersionGuard.test.ts",
+      "category": "test",
+      "added": 18,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/AppVersionGuard.vue",
+      "category": "production",
+      "added": 13,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/AttachmentChip.test.ts",
+      "category": "test",
+      "added": 7,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/AttachmentChip.vue",
+      "category": "production",
+      "added": 50,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/AuditPanel.summary.test.ts",
+      "category": "test",
+      "added": 16,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/AuditPanel.vue",
+      "category": "production",
+      "added": 78,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/AutoTextarea.vue",
+      "category": "production",
+      "added": 13,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/CandidatePanel.transport.test.ts",
+      "category": "test",
+      "added": 110,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/CandidatePanel.vue",
+      "category": "production",
+      "added": 225,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/CanvasMedia.test.ts",
+      "category": "test",
+      "added": 16,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/CanvasMedia.vue",
+      "category": "production",
+      "added": 16,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/ChapterEditor.parity.test.ts",
+      "category": "test",
+      "added": 179,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/ChapterEditor.vue",
+      "category": "production",
+      "added": 34,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/ChapterList.vue",
+      "category": "production",
+      "added": 39,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/ChapterPlanPanel.test.ts",
+      "category": "test",
+      "added": 191,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/ChapterPlanPanel.vue",
+      "category": "production",
+      "added": 242,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/ChapterViews.test.ts",
+      "category": "test",
+      "added": 17,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/ConnectionNotices.test.ts",
+      "category": "test",
+      "added": 12,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/ConnectionNotices.vue",
+      "category": "production",
+      "added": 26,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/CreationResourcesDialog.vue",
+      "category": "production",
+      "added": 28,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/FeedbackWidget.regression.test.ts",
+      "category": "test",
+      "added": 171,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/FeedbackWidget.test.ts",
+      "category": "test",
+      "added": 31,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/FeedbackWidget.vue",
+      "category": "production",
+      "added": 457,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/FindingsList.test.ts",
+      "category": "test",
+      "added": 6,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/FindingsList.vue",
+      "category": "production",
+      "added": 14,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/FormFields.test.ts",
+      "category": "test",
+      "added": 26,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/GenerationPanel.test.ts",
+      "category": "test",
+      "added": 198,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/GenerationPanel.vue",
+      "category": "production",
+      "added": 225,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/GenrePackFields.vue",
+      "category": "production",
+      "added": 24,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/GuestEntry.vue",
+      "category": "production",
+      "added": 27,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/GuestQuota.vue",
+      "category": "production",
+      "added": 67,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/GuestShell.test.ts",
+      "category": "test",
+      "added": 24,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/GuestShell.vue",
+      "category": "production",
+      "added": 37,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/LessonsPanel.regression.test.ts",
+      "category": "test",
+      "added": 59,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/LessonsPanel.vue",
+      "category": "production",
+      "added": 80,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/NativeDialog.test.ts",
+      "category": "test",
+      "added": 32,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/NativeDialog.vue",
+      "category": "production",
+      "added": 47,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/PendantLamp.test.ts",
+      "category": "test",
+      "added": 16,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/PendantLamp.vue",
+      "category": "production",
+      "added": 69,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/ProjectRail.test.ts",
+      "category": "test",
+      "added": 169,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/ProjectRail.vue",
+      "category": "production",
+      "added": 61,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/ProjectWritingSettings.module.css",
+      "category": "production",
+      "added": 9,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/ProjectWritingSettings.vue",
+      "category": "production",
+      "added": 134,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/RankingsPanel.test.ts",
+      "category": "test",
+      "added": 60,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/RankingsPanel.vue",
+      "category": "production",
+      "added": 121,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/ResourceBodyFields.vue",
+      "category": "production",
+      "added": 4,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/ResourceUpdates.vue",
+      "category": "production",
+      "added": 5,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/ReviewFlow.test.ts",
+      "category": "test",
+      "added": 192,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/RevisionScope.test.ts",
+      "category": "test",
+      "added": 23,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/RingProgress.vue",
+      "category": "production",
+      "added": 46,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/RouteBoundary.test.ts",
+      "category": "test",
+      "added": 17,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/RouteBoundary.vue",
+      "category": "production",
+      "added": 13,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/RunNodeCard.vue",
+      "category": "production",
+      "added": 26,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/StatusBadge.vue",
+      "category": "production",
+      "added": 7,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/StreamingChapterView.parity.test.ts",
+      "category": "test",
+      "added": 13,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/StreamingChapterView.vue",
+      "category": "production",
+      "added": 15,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/StructuredTextField.theme.test.ts",
+      "category": "test",
+      "added": 19,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/StructuredTextField.vue",
+      "category": "production",
+      "added": 9,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/TaskBudgetPanel.test.ts",
+      "category": "test",
+      "added": 79,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/TaskBudgetPanel.vue",
+      "category": "production",
+      "added": 104,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/TaskHistory.vue",
+      "category": "production",
+      "added": 146,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/TaskTimeline.vue",
+      "category": "production",
+      "added": 167,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/UserResourceCatalog.module.css",
+      "category": "production",
+      "added": 28,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/UserResourceCatalog.test.ts",
+      "category": "test",
+      "added": 199,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/UserResourceCatalog.vue",
+      "category": "production",
+      "added": 176,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/VersionHistory.vue",
+      "category": "production",
+      "added": 18,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/WaitingStatus.vue",
+      "category": "production",
+      "added": 13,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/WorkspaceExportLifecycle.test.ts",
+      "category": "test",
+      "added": 40,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/WorkspaceLifecycle.test.ts",
+      "category": "test",
+      "added": 16,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/WorldGraph.test.ts",
+      "category": "test",
+      "added": 9,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/WorldGraph.vue",
+      "category": "production",
+      "added": 50,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/components/WritingResourcePicker.vue",
+      "category": "production",
+      "added": 4,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/composables/MEMORY_FORMS.md",
+      "category": "docs",
+      "added": 31,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/composables/useChapterDraft.test.ts",
+      "category": "test",
+      "added": 21,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/composables/useChapterDraft.ts",
+      "category": "production",
+      "added": 64,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/composables/useMemoryFormGuard.test.ts",
+      "category": "test",
+      "added": 58,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/composables/useMemoryFormGuard.ts",
+      "category": "production",
+      "added": 40,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/composables/usePrefersReducedMotion.ts",
+      "category": "production",
+      "added": 9,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/composables/useTaskEvents.parity.test.ts",
+      "category": "test",
+      "added": 328,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/composables/useTaskEvents.test.ts",
+      "category": "test",
+      "added": 115,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/composables/useTaskEvents.ts",
+      "category": "production",
+      "added": 107,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/guest.test.ts",
+      "category": "test",
+      "added": 329,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/main.ts",
+      "category": "production",
+      "added": 9,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/navigationContext.ts",
+      "category": "production",
+      "added": 4,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/AccountPage.test.ts",
+      "category": "test",
+      "added": 81,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/AccountPage.vue",
+      "category": "production",
+      "added": 262,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/AdminPage.vue",
+      "category": "production",
+      "added": 55,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/AppearancePage.regression.test.ts",
+      "category": "test",
+      "added": 304,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/AppearancePage.test.ts",
+      "category": "test",
+      "added": 39,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/AppearancePage.vue",
+      "category": "production",
+      "added": 596,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/AuditPage.test.ts",
+      "category": "test",
+      "added": 25,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/AuditPage.vue",
+      "category": "production",
+      "added": 96,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/EnvironmentPage.test.ts",
+      "category": "test",
+      "added": 318,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/EnvironmentPage.vue",
+      "category": "production",
+      "added": 230,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/LoginPage.test.ts",
+      "category": "test",
+      "added": 145,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/LoginPage.vue",
+      "category": "production",
+      "added": 128,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/LorePage.test.ts",
+      "category": "test",
+      "added": 128,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/LorePage.vue",
+      "category": "production",
+      "added": 130,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/NewProjectPage.test.ts",
+      "category": "test",
+      "added": 584,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/NewProjectPage.vue",
+      "category": "production",
+      "added": 1393,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/ProjectsPage.test.ts",
+      "category": "test",
+      "added": 99,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/ProjectsPage.vue",
+      "category": "production",
+      "added": 118,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/ResourcesPage.test.ts",
+      "category": "test",
+      "added": 27,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/ResourcesPage.vue",
+      "category": "production",
+      "added": 22,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/SettingsPage.test.ts",
+      "category": "test",
+      "added": 229,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/SettingsPage.vue",
+      "category": "production",
+      "added": 74,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/ShortCreationPage.test.ts",
+      "category": "test",
+      "added": 733,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/ShortCreationPage.vue",
+      "category": "production",
+      "added": 618,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/StyleLibraryPage.regression.test.ts",
+      "category": "test",
+      "added": 286,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/StyleLibraryPage.test.ts",
+      "category": "test",
+      "added": 37,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/StyleLibraryPage.vue",
+      "category": "production",
+      "added": 299,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/WorkspacePage.live.test.ts",
+      "category": "test",
+      "added": 117,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/WorkspacePage.replacement.test.ts",
+      "category": "test",
+      "added": 112,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/WorkspacePage.shortRestore.test.ts",
+      "category": "test",
+      "added": 75,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/WorkspacePage.test.ts",
+      "category": "test",
+      "added": 738,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/WorkspacePage.vue",
+      "category": "production",
+      "added": 882,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/WritingResourceLibraryPage.vue",
+      "category": "production",
+      "added": 29,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/AccessLogContent.ts",
+      "category": "production",
+      "added": 36,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/AdminConsole.ts",
+      "category": "production",
+      "added": 477,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/AdminDialog.ts",
+      "category": "production",
+      "added": 74,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/AdminTrends.test.ts",
+      "category": "test",
+      "added": 40,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/AdminTrends.ts",
+      "category": "production",
+      "added": 112,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/Analytics.test.ts",
+      "category": "test",
+      "added": 165,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/Analytics.ts",
+      "category": "production",
+      "added": 278,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/Disclosure.ts",
+      "category": "production",
+      "added": 23,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/ExecutionContent.test.ts",
+      "category": "test",
+      "added": 76,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/ExecutionContent.ts",
+      "category": "production",
+      "added": 98,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/ModelManagement.test.ts",
+      "category": "test",
+      "added": 286,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/ModelManagement.ts",
+      "category": "production",
+      "added": 491,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/ModelRoutingBoard.test.ts",
+      "category": "test",
+      "added": 50,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/ModelRoutingBoard.vue",
+      "category": "production",
+      "added": 113,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/PlatformConfiguration.test.ts",
+      "category": "test",
+      "added": 310,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/PlatformConfiguration.ts",
+      "category": "production",
+      "added": 520,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/PlatformResources.test.ts",
+      "category": "test",
+      "added": 142,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/PlatformResources.ts",
+      "category": "production",
+      "added": 274,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/ProjectDetail.ts",
+      "category": "production",
+      "added": 161,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/ReadableContent.ts",
+      "category": "production",
+      "added": 130,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/ResourceBodyFields.ts",
+      "category": "production",
+      "added": 74,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/ResourceContent.test.ts",
+      "category": "test",
+      "added": 53,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/ResourceContent.ts",
+      "category": "production",
+      "added": 84,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/ResourceUpdates.ts",
+      "category": "production",
+      "added": 129,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/RolePromptFields.test.ts",
+      "category": "test",
+      "added": 31,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/RolePromptFields.ts",
+      "category": "production",
+      "added": 114,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/RunDetail.ts",
+      "category": "production",
+      "added": 93,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/SnapshotView.test.ts",
+      "category": "test",
+      "added": 118,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/SnapshotView.ts",
+      "category": "production",
+      "added": 187,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/TaskDetail.test.ts",
+      "category": "test",
+      "added": 72,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/TaskDetail.ts",
+      "category": "production",
+      "added": 120,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/UserDetail.test.ts",
+      "category": "test",
+      "added": 60,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/UserDetail.ts",
+      "category": "production",
+      "added": 60,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/WritingResourcePicker.ts",
+      "category": "production",
+      "added": 246,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/WritingResources.test.ts",
+      "category": "test",
+      "added": 433,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/WritingResources.ts",
+      "category": "production",
+      "added": 451,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/access.test.ts",
+      "category": "test",
+      "added": 77,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/actions.test.ts",
+      "category": "test",
+      "added": 23,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/context.ts",
+      "category": "production",
+      "added": 9,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/migration.test.ts",
+      "category": "test",
+      "added": 20,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/navigation.test.ts",
+      "category": "test",
+      "added": 108,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/navigation.ts",
+      "category": "production",
+      "added": 23,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/picker.test.ts",
+      "category": "test",
+      "added": 41,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/renewed-token.test.ts",
+      "category": "test",
+      "added": 32,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/shared.ts",
+      "category": "production",
+      "added": 189,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/admin/updates.test.ts",
+      "category": "test",
+      "added": 120,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/pages/review-second-spec-history.test.ts",
+      "category": "test",
+      "added": 219,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/readiness-fix-review-session.test.ts",
+      "category": "test",
+      "added": 51,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/review-admin-creation-regressions.test.ts",
+      "category": "test",
+      "added": 40,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/review-audit-standards-account.test.ts",
+      "category": "test",
+      "added": 117,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/review-final-integration.test.ts",
+      "category": "test",
+      "added": 113,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/review-second-session.test.ts",
+      "category": "test",
+      "added": 72,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/review-theme-regressions.test.ts",
+      "category": "test",
+      "added": 90,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/review-workspace-export.test.ts",
+      "category": "test",
+      "added": 33,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/review-workspace-regressions.test.ts",
+      "category": "test",
+      "added": 24,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/router-parity.test.ts",
+      "category": "test",
+      "added": 36,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/router.ts",
+      "category": "production",
+      "added": 64,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/session.account.test.ts",
+      "category": "test",
+      "added": 18,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/session.auth.test.ts",
+      "category": "test",
+      "added": 151,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/session.test.ts",
+      "category": "test",
+      "added": 76,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/session.ts",
+      "category": "production",
+      "added": 319,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/themeContext.race.test.ts",
+      "category": "test",
+      "added": 8,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/themeContext.test.ts",
+      "category": "test",
+      "added": 21,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/themeContext.ts",
+      "category": "production",
+      "added": 197,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/workspaceRouterTestUtils.ts",
+      "category": "production",
+      "added": 14,
+      "deleted": 0
+    },
+    {
+      "path": "web/vue/src/workspaceTestUtils.ts",
+      "category": "production",
+      "added": 10,
+      "deleted": 0
+    }
+  ]
+}

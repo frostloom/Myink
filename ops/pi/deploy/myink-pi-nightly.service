@@ -1,0 +1,44 @@
+[Unit]
+Description=Myink Pi one nightly round with human publication hold
+After=docker.service
+Requisite=docker.service
+ConditionPathExists=/home/ubuntu/myink-pi-managed/config/nightly.env
+ConditionPathExists=/home/ubuntu/myink-pi-managed/config/nightly-driver.json
+ConditionPathExists=/home/ubuntu/myink-pi-managed/state/nightly-approval.sqlite
+
+[Service]
+Type=exec
+User=root
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/myink-pi-managed
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=DOCKER_CONFIG=/nonexistent
+EnvironmentFile=/home/ubuntu/myink-pi-managed/config/nightly.env
+ExecStart=/usr/bin/python3 -I -S -B ${PI_NIGHTLY_ENTRYPOINT} --human-gated --component nightly --config /home/ubuntu/myink-pi-managed/config/nightly-driver.json --config-sha256 ${PI_NIGHTLY_CONFIG_SHA256}
+Restart=no
+KillSignal=SIGTERM
+KillMode=mixed
+TimeoutStopSec=300
+RuntimeMaxSec=3600
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_SETUID CAP_SETGID CAP_SETPCAP CAP_KILL
+AmbientCapabilities=
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadOnlyPaths=/home/ubuntu/myink-pi-managed/releases /home/ubuntu/myink-pi-managed/history /home/ubuntu/myink-pi-managed/state/credentials
+ReadWritePaths=/home/ubuntu/myink-pi-managed/config /home/ubuntu/myink-pi-managed/state /home/ubuntu/myink-pi-managed/nightly /home/ubuntu/myink-pi-managed/nightly-source-inputs /home/ubuntu/myink-pi-managed/observations /home/ubuntu/myink-pi-managed/autonomy /home/ubuntu/myink-pi-managed/investigations /home/ubuntu/myink-pi-managed/reproductions /home/ubuntu/myink-pi-managed/handoffs /home/ubuntu/myink-pi-managed/reviews /home/ubuntu/myink-pi-managed/inbox /home/ubuntu/myink-pi-managed/control /home/ubuntu/myink-pi-managed/audit/state /home/ubuntu/myink-pi-managed/audit/export
+MemoryMax=512M
+TasksMax=96
+CPUQuota=100%
+LimitNOFILE=512
+StandardOutput=journal
+StandardError=journal

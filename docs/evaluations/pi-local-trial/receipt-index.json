@@ -1,0 +1,743 @@
+{
+  "schema_id": "pi-local-trial-receipt-index-v1",
+  "revision": "final-host003",
+  "delivery_status": "partial",
+  "server_enabled": false,
+  "source_head": "f4d905d311ba08eddcc4dc6e200f30816b74f1fc",
+  "feature_branch": "codex/pi-autonomy-design",
+  "verified_remote_ref": "f4d905d311ba08eddcc4dc6e200f30816b74f1fc",
+  "primary_head": "299672ca9b36e3cbc27bca5ae0aad0c640d2fcbf",
+  "primary_existing_dirty_preserved": true,
+  "root_facts_sha256": "f9400c381fa1f70e98168b001c750f9e4c87c86ab46828c386950012d9cb989e",
+  "model_attempts": 6,
+  "budget": {
+    "scope": "local-trial-1",
+    "max_requests": 100,
+    "max_microyuan": 10000000,
+    "counted_requests": 6,
+    "charged_or_reserved_microyuan": 8095752,
+    "immutable_unknown_microyuan": 8049408,
+    "known_estimated_microyuan": 46344,
+    "actual_invoiced_spend": "unknown",
+    "new_host_phase_requests": 2,
+    "remaining_microyuan": 1904248,
+    "next_worst_reservation_microyuan": 2016384,
+    "next_request_allowed": false
+  },
+  "data": {
+    "sha256": "0f0184fc728d615718f03e2da433fa881b6b20f389a2b7091ed044aed9ded79a",
+    "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/writing-data-2026-10-12/trace-bundle-001.json",
+    "tasks": 27,
+    "agent_runs": 298,
+    "long_tasks": 19,
+    "long_task_runs": 252,
+    "semantic_metric_ids": 45,
+    "domains": 11,
+    "semantic_quality": "unknown",
+    "independent_historical_gold": "unavailable",
+    "human_vs_fixture": "unknown",
+    "row_caps": "possibly_truncated"
+  },
+  "github": {
+    "status": "simulated",
+    "pi_autonomous_flow": "SIMULATED",
+    "root_feature_push": {
+      "status": "passed",
+      "mode": "ACTUAL",
+      "verified_ref": "f4d905d311ba08eddcc4dc6e200f30816b74f1fc"
+    },
+    "main_merge": false
+  },
+  "notifications": {
+    "status": "simulated",
+    "daily_report": "not_sent",
+    "fault_alert": "not_sent",
+    "email": "not_configured",
+    "sms": "not_configured"
+  },
+  "resources": {
+    "pi_memory_mib": 384,
+    "checker_memory_mib": 128,
+    "cpu_percent": 50,
+    "swap_bytes": 0,
+    "cold_rss": "not_measured",
+    "prior_shared_cgroup_peak_is_not_cold_rss": true
+  },
+  "network_limitation": "AF_INET/AF_INET6-only actual Pi protocol and paid read-only calls passed; Pi kernel localhost allowance still exceeds one gateway port. No per-port kernel isolation claim.",
+  "checks": [
+    {
+      "id": "c16_source_review",
+      "status": "passed",
+      "scope": "source",
+      "detail": "7c21bb060f7eebb64dfc5f1a31569a6e1f296a0d"
+    },
+    {
+      "id": "c17_source_review",
+      "status": "passed",
+      "scope": "source",
+      "detail": "f2516c4d8ecd63a1faaa5919e10c1c4a2a0c4a1f"
+    },
+    {
+      "id": "c15_real_pi_protocol",
+      "status": "simulated",
+      "scope": "protocol_mock",
+      "detail": "real Pi process, scripted transport, same UID authority"
+    },
+    {
+      "id": "c15_real_analysis",
+      "status": "blocked",
+      "scope": "model_discovery",
+      "detail": "hypothesis.rollback list instead of required scalar"
+    },
+    {
+      "id": "c17_host_checker",
+      "status": "passed",
+      "scope": "fresh_kernel_checker",
+      "detail": "ACTUAL003 checker containment passed; root gate1 approved; no business service acceptance",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-acceptance.json",
+      "sha256": "ee6ebb8f863fe4977c1f2385c0f1840202554a8bb6a5aff4d448833dda3b3221",
+      "execution_evidence_id": "c17_003_checker_acceptance"
+    },
+    {
+      "id": "c17_cross_uid_mock",
+      "status": "passed",
+      "scope": "actual_pi_protocol_model_simulated",
+      "detail": "ACTUAL003 installed cross-UID Pi protocol passed; 3 model transports SIMULATED; root gate2 approved",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/gate2-protocol.json",
+      "sha256": "21965c2256ab7904e21c1b34a9d95562a3307e8d1c5b4aa369c2495f35b50c72",
+      "execution_evidence_id": "c17_003_protocol"
+    },
+    {
+      "id": "c17_paid_plan",
+      "status": "failed",
+      "scope": "paid_model",
+      "detail": "ACTUAL_FAILED: 2 HTTP + 4 read-only tools; cache-input usage transition rejected by current strict parser, then insufficient next reservation; no approved plan",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/outcome.json",
+      "sha256": "5f8d94cd232a02312c1a3a7a7f0fcec03acc501aed88804f2a8ffd54b43aed0f",
+      "execution_evidence_id": "c17_003_paid_outcome"
+    },
+    {
+      "id": "c17_paid_develop",
+      "status": "not_run",
+      "scope": "paid_model",
+      "detail": "NOT_RUN: paid plan failed; no approved plan, apply_patch, candidate change, judge or release"
+    },
+    {
+      "id": "c16_real_pairing_judge",
+      "status": "not_run",
+      "scope": "quality",
+      "detail": "independent labels and runtime prerequisites incomplete"
+    },
+    {
+      "id": "c18_offline_matrix",
+      "status": "passed",
+      "scope": "source_control_offline",
+      "detail": "13 passed in 4.03s; adapters SIMULATED; no real network",
+      "source_path": "ops/pi/tests/integration/test_fault_matrix.py",
+      "source_sha256": "a9667344d7ad8c369512e9687548c62021c3f1668d0be87b4121aac73c0ec833",
+      "execution_evidence_id": "c18_green_execution_fixround1_001",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-delivery-fixround1-001/green.execution.json",
+      "sha256": "8d72de52ccb61af0488b2dcd562d591b63b846d63c6628ac3733bc5007404481",
+      "returncode": 0
+    },
+    {
+      "id": "c18_mutation_sensitivity",
+      "status": "passed",
+      "scope": "source_control_offline",
+      "detail": "3 failed, 10 deselected in 2.00s; expected RED for in-memory owner/pending mutations; source unchanged",
+      "source_path": "ops/pi/tests/integration/test_fault_matrix.py",
+      "source_sha256": "a9667344d7ad8c369512e9687548c62021c3f1668d0be87b4121aac73c0ec833",
+      "execution_evidence_id": "c18_red_execution_fixround1_001",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-delivery-fixround1-001/red.execution.json",
+      "sha256": "653b9f795df28f312d1e79156d6192118ece2ebe50a273845d6e72d8f0aa43ca",
+      "returncode": 1
+    },
+    {
+      "id": "c18_full_ops",
+      "status": "passed",
+      "scope": "source_control_offline",
+      "detail": "825 passed, 2 Windows symlink SKIP, 19 pi_lab deselected in 255.71s; before admission fix; frozen f2516c4d8ecd63a1faaa5919e10c1c4a2a0c4a1f plus 9 pre-host C18 files; dirty B12 excluded; first timeout180 retained",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-accepted-suite-002/execution.json",
+      "sha256": "0f4392aca4e49985159540f96ff10fef710227f998a6bacafc513375b1c69a14",
+      "execution_evidence_id": "c18_full_ops_execution_002",
+      "returncode": 0
+    },
+    {
+      "id": "actual_service_fault_matrix",
+      "status": "not_run",
+      "scope": "service_build",
+      "detail": "fresh accepted service gate required"
+    },
+    {
+      "id": "old_watchdog",
+      "status": "blocked",
+      "scope": "service_build",
+      "detail": "depends on dirty B12 verification; no substitute watchdog"
+    },
+    {
+      "id": "queue_barrier_checkpoint",
+      "status": "not_run",
+      "scope": "service_build",
+      "detail": "real PG/Redis/RabbitMQ workers required"
+    },
+    {
+      "id": "low_memory_owned_cleanup",
+      "status": "not_run",
+      "scope": "service_build",
+      "detail": "NOT_RUN: host/guest low-memory service fault matrix; ACTUAL003 owned-process cleanup indexed separately"
+    },
+    {
+      "id": "full_business_python",
+      "status": "not_run",
+      "scope": "business_ci",
+      "detail": "no business patch adopted in this C18 delivery"
+    },
+    {
+      "id": "frontend_lint_test_build",
+      "status": "not_run",
+      "scope": "business_ci",
+      "detail": "no frontend changes in this C18 delivery"
+    },
+    {
+      "id": "go_vet_test",
+      "status": "not_run",
+      "scope": "business_ci",
+      "detail": "no gateway changes in this C18 delivery"
+    },
+    {
+      "id": "contract_diff",
+      "status": "not_run",
+      "scope": "business_ci",
+      "detail": "no business API changes in this C18 delivery"
+    },
+    {
+      "id": "two_images_build_release",
+      "status": "blocked",
+      "scope": "service_build",
+      "detail": "Automatic approval review rejected expired root/systemd/usernamespace/full-build packet03 for insufficient specific authorization; no retry/repackage"
+    },
+    {
+      "id": "production_enablement",
+      "status": "not_run",
+      "scope": "production",
+      "detail": "server_enabled=false"
+    },
+    {
+      "id": "final_independent_review",
+      "status": "passed",
+      "scope": "source_review",
+      "detail": "One broad source/architecture review found one Important admission retry regression; finite Approved re-review closed it at source level; final factual docs review remains separate",
+      "private_path": "C:/Users/14341/.codex/worktrees/pi-autonomy-design/Myink/.superpowers/sdd/2026-10-11-pi-local-trial/final-admission-fix-review.md",
+      "sha256": "69fc3a0c0e82b4ac6bef960bbf1bcc1b5bfca0fb8e8057c1a81d64029b20d97d"
+    },
+    {
+      "id": "alternative_engine_substitution",
+      "status": "not_run",
+      "scope": "engine_contract",
+      "detail": "Replaceable administrator Engine interface implemented; Pi session guards exist; no second-engine runtime swap or two-fake-engine contract tests"
+    },
+    {
+      "id": "c17_pi_containment",
+      "status": "passed",
+      "scope": "fresh_kernel_checker",
+      "detail": "ACTUAL003 Pi containment passed; no per-port kernel isolation claim",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-acceptance.json",
+      "sha256": "f53d0ebfbc2d4cd147f51e561057136a2614b2608a43fbf4d2d9fe47a52a1edf",
+      "execution_evidence_id": "c17_003_pi_acceptance"
+    },
+    {
+      "id": "c17_synthetic_baseline",
+      "status": "failed",
+      "scope": "mechanical_only",
+      "detail": "ACTUAL_FAILED_VERIFIED synthetic baseline capture; no semantic improvement proven",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-checks-plan/plan-01-baseline/check.json",
+      "sha256": "9cacb81b0f57b7071df65bb35ce08dec36f0456f0f149808c0a29efd805c6cd4",
+      "execution_evidence_id": "c17_003_baseline_check"
+    },
+    {
+      "id": "c17_owned_runtime_cleanup",
+      "status": "passed",
+      "scope": "runtime_cleanup",
+      "detail": "Root verified all owned cgroups empty, fixed-UID processes absent, exact-identity root keeper stopped; no active model or gateway"
+    },
+    {
+      "id": "admission_retry_sqlite",
+      "status": "passed",
+      "scope": "focused_source_regression",
+      "detail": "17 passed in 1.76s; real mapped SQLite tables and SQLAlchemy admission query; fix f4d905d311ba08eddcc4dc6e200f30816b74f1fc",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/tmp/final-admission-fix-green-002/execution.json",
+      "sha256": "54071c592968fc31f0110855643e94f262256a6b3efaf0337e4cca646f6d7387",
+      "execution_evidence_id": "admission_retry_green_002",
+      "returncode": 0
+    },
+    {
+      "id": "admission_retry_postgresql",
+      "status": "not_run",
+      "scope": "business_ci",
+      "detail": "PostgreSQL route/owner regression and real broker consumer behavior NOT_RUN; SQLite source approval does not certify services"
+    },
+    {
+      "id": "c18_final_facts_review",
+      "status": "not_run",
+      "scope": "factual_documentation_review",
+      "detail": "Final-host003 documentation freeze awaits root independent scoped factual review"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "writing_bundle",
+      "status": "passed",
+      "scope": "observation_only",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/writing-data-2026-10-12/trace-bundle-001.json",
+      "sha256": "0f0184fc728d615718f03e2da433fa881b6b20f389a2b7091ed044aed9ded79a"
+    },
+    {
+      "id": "c15_protocol_004",
+      "status": "simulated",
+      "scope": "protocol_mock",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c15/controlled-tools-mock-004",
+      "sha256": "5f7f8af91efc9436bfb498301f187b320d88ec2ea04cef33fef25249076c6432"
+    },
+    {
+      "id": "native_binding",
+      "status": "passed",
+      "scope": "observation_only",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/native-runtime-binding-001.json",
+      "sha256": "006d43a4295de69131db510a8ef6c854d446c8ad2f2cae97050330898c9301d9"
+    },
+    {
+      "id": "discovery_context",
+      "status": "passed",
+      "scope": "observation_only",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/root-selected-discovery-001.json",
+      "sha256": "8346ae1dcd09c1849da6be86fb728da1defa2b8cee8235d5f6574f536d074cb0"
+    },
+    {
+      "id": "c18_green_execution_fixround1_001",
+      "status": "passed",
+      "scope": "source_control_offline",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-delivery-fixround1-001/green.execution.json",
+      "sha256": "8d72de52ccb61af0488b2dcd562d591b63b846d63c6628ac3733bc5007404481",
+      "returncode": 0,
+      "expected_returncode": 0,
+      "pytest_summary": "13 passed in 4.03s",
+      "artifacts": [
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-delivery-fixround1-001/green.stdout.log",
+          "sha256": "a8fb35ca520b184b78c1034c7c5b30b033fbffbdbcb81f410243afd1454a8345"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-delivery-fixround1-001/green.stderr.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "id": "c18_red_execution_fixround1_001",
+      "status": "passed",
+      "scope": "source_control_offline",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-delivery-fixround1-001/red.execution.json",
+      "sha256": "653b9f795df28f312d1e79156d6192118ece2ebe50a273845d6e72d8f0aa43ca",
+      "returncode": 1,
+      "expected_returncode": 1,
+      "pytest_summary": "3 failed, 10 deselected in 2.00s",
+      "artifacts": [
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-delivery-fixround1-001/red.stdout.log",
+          "sha256": "90790c27f6465f3d68a3dca0e1dda6ac3987f9993e99ce4b3a55dd78e8b3a94d"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-delivery-fixround1-001/red.stderr.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-delivery-fixround1-001/mutation.py",
+          "sha256": "72e85aba21acc8c6083572857785aaaa04b0b6f0fffe08bc30a42778e303852c"
+        }
+      ]
+    },
+    {
+      "id": "c17_003_native_export",
+      "status": "passed",
+      "scope": "native_capture",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/export-manifest.json",
+      "sha256": "441f645e04e67d5ce97365096929f34fe9f3585275a71df633ad6704ac0bd306",
+      "file_count": 45,
+      "source_manifest_sha256": "3a50daca02334383f9094cb86eb2fd16e3b5f71603560eb0da7898c5c3e47bc6",
+      "artifacts": [
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-acceptance.json",
+          "sha256": "ee6ebb8f863fe4977c1f2385c0f1840202554a8bb6a5aff4d448833dda3b3221"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/effective-envelope.json",
+          "sha256": "24f4794324291241deff857edc38ef1e947368969c47826d8087cb3ec1945b59"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/measured-proof.json",
+          "sha256": "65dfdcfd763777bbca128d5c865c928135edc4a2f05b8e7b691e184ebcf64694"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/overflow-runtime.json",
+          "sha256": "121dac5523a97e085dbce9ae5994a00e7f3fdeca5c5fbb239552306412a50e03"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/probe-runtime.json",
+          "sha256": "bcf26f1f40cc046e1a1fbc4102faa467baaa1926643364957bb959cb7f15eef8"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/probe-stdout.bin",
+          "sha256": "0467f60e41bfea70bca057077168e380a2bc2bae3a2d556420b0db347fc1ec13"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/timeout-runtime.json",
+          "sha256": "8e67fc65cfe35071b43b0eeded456e2c7ddce501e2e3dda6f8b0ebcf6f4f8d93"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-gate/timeout-stdout.bin",
+          "sha256": "5937a7dcf7dd4da8a93f6216e1d2a15e4ee1248fc6de09745da11468371d82e0"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/gate1-review.json",
+          "sha256": "6874f59b4e65a04bc3067b1eaa028977750a700d5368e1f83d19fbe1876ea73a"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/gate2-protocol.json",
+          "sha256": "21965c2256ab7904e21c1b34a9d95562a3307e8d1c5b4aa369c2495f35b50c72"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/gate2-review.json",
+          "sha256": "2410731b5fa5b0ed2a6492e89721d2b3b1d7b3ee70534c10e78ae023c42fb44c"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/adapter-receipt.json",
+          "sha256": "e6923a462bd24fa50955b0a92ae1d60a12b98e6f895dc51498d9da300814fdad"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/outcome.json",
+          "sha256": "f6cf1c9b0700b3dcc87b1ba07781b7078a9b50aeb409a98f94978c1684bbef6c"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/reconciliation.json",
+          "sha256": "3d71b29c1e6a10046df0e041ff01735e02d3a10f772fe7f6e67b037062730cfc"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/rpc.jsonl",
+          "sha256": "12be364e45bfad430b2ddb4141ff3afc61111ecc3167549cd56cc0e19f7af712"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/session.jsonl",
+          "sha256": "2b0e8996847c5f11a8aa366f05eb818cea9d6c332fb8d3da02d06bc74975f5da"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/success.json",
+          "sha256": "21965c2256ab7904e21c1b34a9d95562a3307e8d1c5b4aa369c2495f35b50c72"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/unit.json",
+          "sha256": "62a8c20bbf37dc5e743c77ad16e7727f23c200b6e9b50c63206c2c89b3e175e0"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/mock-plan/usage.jsonl",
+          "sha256": "84696cac84c42cb2841f333edf8c08b80219b787d83c870c00cf2758d75ea4b2"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-checks-plan/plan-01-baseline/bound-acceptance.json",
+          "sha256": "df2e844a756eaeb8e2ce8c2a7183416b5af79836958eaf29bc599b89f67f286c"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-checks-plan/plan-01-baseline/check.json",
+          "sha256": "9cacb81b0f57b7071df65bb35ce08dec36f0456f0f149808c0a29efd805c6cd4"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-checks-plan/plan-01-baseline/runtime.json",
+          "sha256": "5f015ae89f25bef1ae68f254bd838ffa3674065d0289416081b10acbb1a7064c"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan-review.json",
+          "sha256": "b7de0b9604540b866b1a8a632545e0665b90bde941e37fa8c7a4644180ec9969"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/adapter-receipt.json",
+          "sha256": "72d728db580976f5f0dda175a84ed510090e720aa4e56480102cdd0a105487b3"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/failure.json",
+          "sha256": "77e7dc4f5aa9bc13ec142c0aeeaba1ce0afa4253ffdd78b4dc77625e00febe60"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/outcome.json",
+          "sha256": "5f8d94cd232a02312c1a3a7a7f0fcec03acc501aed88804f2a8ffd54b43aed0f"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/reconciliation.json",
+          "sha256": "2194c83eb99b0c6e43e1bd6f20eb102ff773b1af23c08a1b244f82bbd285197a"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/rpc.jsonl",
+          "sha256": "76ae4c93eeb362c01349c0f52fc21da2c2858052b609e4434cedde2d159eec3d"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/session.jsonl",
+          "sha256": "724d0926b89bf1cabb8952bce58e58edfd641881eed14445b545c4ca3531a6a9"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/unit.json",
+          "sha256": "e0c19e100ec06b4b39f2243df8008bb6df15598057261e87ea032f3ea962ea73"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/usage.jsonl",
+          "sha256": "e0aa162512b9f363ad2476aa2d0da0fa44576387605f133ca4afbd9275837dc6"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-acceptance.json",
+          "sha256": "f53d0ebfbc2d4cd147f51e561057136a2614b2608a43fbf4d2d9fe47a52a1edf"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/effective-envelope.json",
+          "sha256": "0d60d9ff016b57752cb4a00ce54a862b54a69730d1ad5b461770eb6a4a152789"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/measured-proof.json",
+          "sha256": "123a438f9c4d36f47c9cec947f55d2a6595a64e4af091cce573b164a70ac8329"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/overflow-runtime.json",
+          "sha256": "3cd8e6076252fbeead8318c3e29df196474ce1f6c98ab7cc72bed597e462d128"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/probe-runtime.json",
+          "sha256": "10d98304d0798577775e9b08b4bca73812806b982cef3100a7ecad1eb19db118"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/probe-stdout.bin",
+          "sha256": "0467f60e41bfea70bca057077168e380a2bc2bae3a2d556420b0db347fc1ec13"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/timeout-runtime.json",
+          "sha256": "de19d43f35b0703bd4573d96cbf2ea18dba2393c486e035e8c39b02e7ae8c6dc"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-gate/timeout-stdout.bin",
+          "sha256": "6e86170de2576d5c33aef2d66f9e36a67a0aa1c9545a9300d921b707c3142b1d"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/supervision-gate1/controller-output.bin",
+          "sha256": "3ed9788a3ec78d513c9cbcc69780106946c75533bc630c948235d4616c176512"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/supervision-gate1/outcome.json",
+          "sha256": "12376aea140af6cb5fbc431a7d3ad8f860a7e0582aeb2047faae261aa4f1dfea"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/supervision-gate2/controller-output.bin",
+          "sha256": "0b898a9d65ae0e116695700230a16c803b0cd609db48e624a9c8d955fb010422"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/supervision-gate2/outcome.json",
+          "sha256": "f90081088660f669b909bb3d1f9c7a905af57723f75a2f528e6c6174c2eb242a"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/supervision-paid-plan/controller-output.bin",
+          "sha256": "2c1499082497758101e41a245d6f1ea3bdd543d0d585e1108e8f150539fc297d"
+        },
+        {
+          "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/supervision-paid-plan/outcome.json",
+          "sha256": "cbc7df8843c89f0f20a93f888519a7a253203d8f7b3b615739283984acec2e5b"
+        }
+      ]
+    },
+    {
+      "id": "c17_003_checker_acceptance",
+      "status": "passed",
+      "scope": "fresh_kernel_checker",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/checker-acceptance.json",
+      "sha256": "ee6ebb8f863fe4977c1f2385c0f1840202554a8bb6a5aff4d448833dda3b3221"
+    },
+    {
+      "id": "c17_003_root_gate1",
+      "status": "passed",
+      "scope": "root_runtime_review",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/gate1-review.json",
+      "sha256": "6874f59b4e65a04bc3067b1eaa028977750a700d5368e1f83d19fbe1876ea73a"
+    },
+    {
+      "id": "c17_003_pi_acceptance",
+      "status": "passed",
+      "scope": "fresh_kernel_checker",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/pi-acceptance.json",
+      "sha256": "f53d0ebfbc2d4cd147f51e561057136a2614b2608a43fbf4d2d9fe47a52a1edf"
+    },
+    {
+      "id": "c17_003_protocol",
+      "status": "passed",
+      "scope": "actual_pi_protocol_model_simulated",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/gate2-protocol.json",
+      "sha256": "21965c2256ab7904e21c1b34a9d95562a3307e8d1c5b4aa369c2495f35b50c72"
+    },
+    {
+      "id": "c17_003_root_gate2",
+      "status": "passed",
+      "scope": "root_runtime_review",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/gate2-review.json",
+      "sha256": "2410731b5fa5b0ed2a6492e89721d2b3b1d7b3ee70534c10e78ae023c42fb44c"
+    },
+    {
+      "id": "c17_003_paid_outcome",
+      "status": "failed",
+      "scope": "paid_model",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/outcome.json",
+      "sha256": "5f8d94cd232a02312c1a3a7a7f0fcec03acc501aed88804f2a8ffd54b43aed0f"
+    },
+    {
+      "id": "c17_003_paid_reconciliation",
+      "status": "failed",
+      "scope": "paid_model",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan/reconciliation.json",
+      "sha256": "2194c83eb99b0c6e43e1bd6f20eb102ff773b1af23c08a1b244f82bbd285197a"
+    },
+    {
+      "id": "c17_003_paid_root_review",
+      "status": "passed",
+      "scope": "root_paid_phase_admission",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-plan-review.json",
+      "sha256": "b7de0b9604540b866b1a8a632545e0665b90bde941e37fa8c7a4644180ec9969",
+      "detail": "Pre-execution permission for one paid plan attempt only; no approved generated plan or release. Subsequent paid outcome, reconciliation and supervision failed."
+    },
+    {
+      "id": "c17_003_baseline_check",
+      "status": "failed",
+      "scope": "mechanical_only",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-checks-plan/plan-01-baseline/check.json",
+      "sha256": "9cacb81b0f57b7071df65bb35ce08dec36f0456f0f149808c0a29efd805c6cd4"
+    },
+    {
+      "id": "c17_003_baseline_binding",
+      "status": "passed",
+      "scope": "capture_binding_only",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/proof/paid-checks-plan/plan-01-baseline/bound-acceptance.json",
+      "sha256": "df2e844a756eaeb8e2ce8c2a7183416b5af79836958eaf29bc599b89f67f286c"
+    },
+    {
+      "id": "c17_003_supervision_gate1",
+      "status": "passed",
+      "scope": "runtime_supervision",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/supervision-gate1/outcome.json",
+      "sha256": "12376aea140af6cb5fbc431a7d3ad8f860a7e0582aeb2047faae261aa4f1dfea"
+    },
+    {
+      "id": "c17_003_supervision_gate2",
+      "status": "passed",
+      "scope": "runtime_supervision",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/supervision-gate2/outcome.json",
+      "sha256": "f90081088660f669b909bb3d1f9c7a905af57723f75a2f528e6c6174c2eb242a"
+    },
+    {
+      "id": "c17_003_supervision_paid",
+      "status": "failed",
+      "scope": "runtime_supervision",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c17/host-runtime-003/supervision-paid-plan/outcome.json",
+      "sha256": "cbc7df8843c89f0f20a93f888519a7a253203d8f7b3b615739283984acec2e5b"
+    },
+    {
+      "id": "c18_full_ops_execution_002",
+      "status": "passed",
+      "scope": "source_control_offline",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/evidence/c18-accepted-suite-002/execution.json",
+      "sha256": "0f4392aca4e49985159540f96ff10fef710227f998a6bacafc513375b1c69a14",
+      "returncode": 0,
+      "source_head": "f2516c4d8ecd63a1faaa5919e10c1c4a2a0c4a1f"
+    },
+    {
+      "id": "admission_retry_green_002",
+      "status": "passed",
+      "scope": "focused_source_regression",
+      "private_path": "/Users/a1/项目/Myink/myink-pi/tmp/final-admission-fix-green-002/execution.json",
+      "sha256": "54071c592968fc31f0110855643e94f262256a6b3efaf0337e4cca646f6d7387",
+      "returncode": 0,
+      "source_head": "f4d905d311ba08eddcc4dc6e200f30816b74f1fc"
+    },
+    {
+      "id": "final_admission_scoped_review",
+      "status": "passed",
+      "scope": "source_review",
+      "private_path": "C:/Users/14341/.codex/worktrees/pi-autonomy-design/Myink/.superpowers/sdd/2026-10-11-pi-local-trial/final-admission-fix-review.md",
+      "sha256": "69fc3a0c0e82b4ac6bef960bbf1bcc1b5bfca0fb8e8057c1a81d64029b20d97d"
+    },
+    {
+      "id": "final_whole_branch_source_review",
+      "status": "passed",
+      "scope": "review_capture_only",
+      "private_path": "C:/Users/14341/.codex/worktrees/pi-autonomy-design/Myink/.superpowers/sdd/2026-10-11-pi-local-trial/final-whole-branch-review.md",
+      "sha256": "f83b8f1776e9f1f95e96d15c58c562ab4833acacf6790defc47432c2484cfc05",
+      "detail": "Historical broad review: one Important; subsequently closed by separately indexed finite Approved re-review"
+    },
+    {
+      "id": "root_final_ledger_verification",
+      "status": "passed",
+      "scope": "budget_reconciliation",
+      "private_path": "C:/Users/14341/.codex/worktrees/pi-autonomy-design/Myink/.superpowers/sdd/2026-10-11-pi-local-trial/c18-root-final-ledger-verification.json",
+      "sha256": "5cba01bd36e9dd097fdf8e31800002e693962276e324e46c9d65d94fe11f6b43"
+    }
+  ],
+  "semantic_metrics": {
+    "count": 45,
+    "domains": 11,
+    "value": null,
+    "availability": "unknown",
+    "independent_labels": "unavailable",
+    "automatic_judge": "not_run"
+  },
+  "history": {
+    "c15_mock_001_003": "failed; retained in private history",
+    "sdkshape002": "actual zero-fetch controlled-header proof only",
+    "c15_real_analysis": {
+      "literal_refs": 12,
+      "domains": 11,
+      "discovery_only": true,
+      "full_receipt_status": "pending_schema",
+      "reason": "hypothesis.rollback list instead of required scalar",
+      "receipt_sha256": "81fd66c4028020f618574a87291a5694e5933b21c48fb428182bd323e2c08fb7"
+    },
+    "focused_initial_sandbox": "11 setup errors; E-drive permission failure; not behavioral RED",
+    "focused_initial_fixture": "2 failed,9 passed; fixture assumptions corrected; not production defect",
+    "mutation_red": "3 expected failures,10 deselected; pending replay created/repeated candidate, old owner wrote recovery file",
+    "focused_green": "13 passed in 4.62s",
+    "fixround1_execution_recapture": "Historical stdout was not physically retained; one replacement GREEN and one existing mutation RED recaptured, not reconstructed. Exact private receipts/logs/recipe linked in evidence.",
+    "c17_actual001_002": "Prior failed attempts retained; later ACTUAL003 does not rewrite earlier constructor/gate failures",
+    "c17_actual003_paid_plan": "ACTUAL_FAILED: cache-input usage transition rejected by current strict parser; next request locally blocked by reservation cap; no approved plan",
+    "c18_full_ops_first_attempt": "failed_timeout180; predecessor receipt retained; later offline pass does not delete timeout",
+    "admission_fix_red": "2 failed, 15 passed in 2.51s on old handoff",
+    "admission_fix_green001": "2 failed, 15 passed in 2.31s; label green001 did not denote pass; edit guard had left old handoff unchanged",
+    "admission_fix_green002": "17 passed in 1.76s; corrected handoff; PostgreSQL route regression NOT_RUN"
+  },
+  "forbidden_source_edits": false,
+  "production_release": false,
+  "runtime_cleanup": {
+    "all_owned_cgroups_empty": true,
+    "fixed_uid_processes_absent": true,
+    "root_keeper_exact_identity_stopped": true,
+    "no_active_model_or_gateway": true,
+    "production_unchanged": true
+  },
+  "host_trial": {
+    "attempt": "003",
+    "authority": "native_original_only",
+    "approved_plan": false,
+    "candidate_changed": false,
+    "baseline_mechanical_check": "ACTUAL_FAILED_VERIFIED",
+    "checker_gate": "ACTUAL_PASS",
+    "pi_containment": "ACTUAL_PASS",
+    "installed_pi_mock_protocol": "ACTUAL_PASS_MODEL_SIMULATED",
+    "new_paid_http": 2,
+    "paid_plan": "ACTUAL_FAILED",
+    "paid_develop": "NOT_RUN",
+    "release_allowed": false,
+    "semantic_quality": "unknown",
+    "stop_reason": "provider_usage_invalid_cache_input_transition_then_insufficient_reservation",
+    "all_owned_trees_empty": true,
+    "simulated_model_transports": 3,
+    "readonly_tool_calls": 4
+  },
+  "source_identity_note": "source_head and verified_remote_ref bind the root-verified source-fix commit before final documentation staging; the later docs commit is recorded separately by root"
+}

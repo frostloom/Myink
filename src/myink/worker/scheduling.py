@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 
 from myink.worker import amqp
+from myink.maintenance_pause import invoke_graph
 
 _batch_slicing = ContextVar('batch_slicing', default=False)
 
@@ -22,7 +23,7 @@ def batch_slicing():
 
 def invoke_batch_slice(graph, state, config):
     # The advanced position is durable before the delivery is handed back.
-    result = graph.invoke(state, config=config, interrupt_after=['bridge'], durability='sync')
+    result = invoke_graph(graph, state, config, interrupt_after=['bridge'], durability='sync')
     snap = graph.get_state(config)
     if snap.next == ('chapter',) and not any(task.interrupts for task in snap.tasks):
         return {**result, 'scheduler_yield': True}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the finite Myink Pi manager
+
+[Timer]
+OnBootSec=120
+OnUnitInactiveSec=60
+AccuracySec=5
+Unit=myink-pi-manager.service
+
+[Install]
+WantedBy=timers.target

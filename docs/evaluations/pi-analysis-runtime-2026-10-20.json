@@ -1,0 +1,106 @@
+{
+  "schema": "pi-analysis-runtime-local-mock-v1",
+  "date": "2026-10-20",
+  "source_base_commit": "d4de8a5c7867268f1f2c766fe4c2881f335f9aaf",
+  "source_overlay_sha256": {
+    "ops/pi/lab/pi-analysis-contract-probe.py": "cd486ae5f509ed61c9619152bb7ab8f7ce90a8e5f7d1c6a7f8ab28e864aaecb5",
+    "ops/pi/tests/test_analysis_contract_probe.py": "8b51c085ec7c901ab2fb12cb38a7d3e92543a580a52b85cef864abcb393432ab",
+    "ops/pi/analysis_execution.py": "6907a29d5dffce698d36753c02290f8f415919fe800531b9b8327600f47410c4",
+    "ops/pi/tests/test_analysis_execution.py": "ba49c6804b527ce39b3291af9c5682f814b30dfdda5476e27ce75918340fb816"
+  },
+  "source_manifest_raw_sha256": "c33222597fdd4d659cf155660da19a76d49caeaf7b3adb17712987276d320546",
+  "runtime": {
+    "node_version": "v24.16.0",
+    "pi_version": "1.1.0",
+    "storage": "MyinkPiLab WSL BasePath E:/tools/myink-pi/runtime/wsl"
+  },
+  "probe": {
+    "mode": "ACTUAL_PI_LOCAL_MOCK",
+    "planned_slots": 30,
+    "selected_probe_slots": 2,
+    "paid_http_requests": 0,
+    "canonical_ledger_modified": false,
+    "semantic_metrics": "unknown",
+    "automatic_execution": false,
+    "release_allowed": false,
+    "production_containment_verified": false,
+    "uid": 65534,
+    "gid": 65534,
+    "node_sha256": "b2959781cc5a74c357ffa02367efa8a0330cbb1c9cb347732fdfaaaca381cbcd",
+    "cli_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+    "results": [
+      {
+        "slot_id": "r1:recall.events:baseline",
+        "execution_state": "returned",
+        "engine_status": "done",
+        "contract_valid": true,
+        "failure_class": null,
+        "mock_attempts": 1,
+        "mock_accepted": 1,
+        "request_sha256": "e60f8fe78b40e29fa927884beb3ea7cb6db3fb9936444d720090beceb58280aa",
+        "system_sha256": "c6028612dc5ac439e8ea5703456a66a4aaf3668b5b56c3658f59707ca6636f49",
+        "session_sha256": "fbecabb13c9045b310ce7a3fdfbb6c2b94760f024929f06cfc425952a317ec6f",
+        "process_exited": true,
+        "returncode": 0,
+        "clear_abort_acknowledged": true,
+        "owned_pid": 815,
+        "receipt_sha256": "c322a0dfb5e2deeb58d3cbc0ebeaee6295c94a2fc3a46c6ab5765a04a476dd7b"
+      },
+      {
+        "slot_id": "r1:recall.events:candidate",
+        "execution_state": "returned",
+        "engine_status": "done",
+        "contract_valid": true,
+        "failure_class": null,
+        "mock_attempts": 1,
+        "mock_accepted": 1,
+        "request_sha256": "93998691737fd26387466df00355c2a1a85036d7f31fe3df2b8992343a512ae0",
+        "system_sha256": "c6028612dc5ac439e8ea5703456a66a4aaf3668b5b56c3658f59707ca6636f49",
+        "session_sha256": "10e577d4089cb283273a48584f48ceca4b6e56e489e4b556805542e581ee9980",
+        "process_exited": true,
+        "returncode": 0,
+        "clear_abort_acknowledged": true,
+        "owned_pid": 830,
+        "receipt_sha256": "6a6bc1c3a6856d07f352a1e4ee2eb546b977aeb5f2d17fa370b5d06b448f7e29"
+      }
+    ],
+    "rejected_mock_requests": 0,
+    "not_run_slots": 28,
+    "started_probe_slots": 2,
+    "completed_probe_slots": 2,
+    "actual_mock_http_requests": 2,
+    "passed": true,
+    "stop_reason": null
+  },
+  "private_summary_raw_sha256": "32717ff886533a0a6e8241030c364869eea04f5f77327ae6c37b85d607d0ce5d",
+  "verification": {
+    "passed": 402,
+    "skipped": 1,
+    "failures": 0,
+    "errors": 0,
+    "elapsed_seconds": 24.25,
+    "junit_raw_sha256": "6b9005ed8c5c186868a324db85e8be4f35ca91c63c0b4863f1915ca260658a18"
+  },
+  "accounting": {
+    "canonical_attempts_after": 204,
+    "conservative_occupancy_microyuan": 13834690,
+    "new_paid_attempts": 0,
+    "unknown_reservations_released": false
+  },
+  "previous_failures": [
+    {
+      "stage": "nobody-login-shell",
+      "reason": "nologin; no probe launched"
+    },
+    {
+      "stage": "initial-import",
+      "reason": "pytest unavailable; no Pi request"
+    },
+    {
+      "stage": "drvfs-run-001",
+      "reason": "Pi auth lock utime EPERM",
+      "actual_mock_requests": 0,
+      "retained_summary_raw_sha256": "791560d1dafb608d88263f0c244c79241a90cad611a4593d525507bef011f525"
+    }
+  ]
+}

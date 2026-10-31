@@ -1,0 +1,160 @@
+{
+  "schema": "pi-runtime-auth-checkpoint-v1",
+  "date": "2026-10-30",
+  "source_commit": "6a2ac79f97f2d420050ee8d1181dfad3b41512ca",
+  "base_commit": "afc2d1e6f6efca7b2e1f586f785caa8f03e79863",
+  "run_id": "pi-runtime-auth-20261030",
+  "version_sha256": "bc02987d17797a7f50603816159b666c7780333ccbac2386ac92f76501a1b00f",
+  "status": "effective_material_and_authenticated_read_paths_verified",
+  "release_allowed": false,
+  "main_merged": false,
+  "production_changed": false,
+  "provider_calls": 0,
+  "server_audit_published": false,
+  "pi_autonomous_improvement_claim": false,
+  "changes": [
+    {
+      "path": "docs/superpowers/plans/2026-10-29-pi-product-maintenance-release.md",
+      "category": "docs",
+      "added": 2,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/product_activation.py",
+      "category": "production",
+      "added": 22,
+      "deleted": 15
+    },
+    {
+      "path": "ops/pi/product_backup.py",
+      "category": "production",
+      "added": 36,
+      "deleted": 6
+    },
+    {
+      "path": "ops/pi/product_cold_probe.py",
+      "category": "production",
+      "added": 28,
+      "deleted": 5
+    },
+    {
+      "path": "ops/pi/product_release.py",
+      "category": "production",
+      "added": 1,
+      "deleted": 1
+    },
+    {
+      "path": "ops/pi/product_restore.py",
+      "category": "production",
+      "added": 28,
+      "deleted": 4
+    },
+    {
+      "path": "ops/pi/product_runtime_snapshot.py",
+      "category": "production",
+      "added": 49,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/integration/test_product_activation_native.py",
+      "category": "test",
+      "added": 25,
+      "deleted": 4
+    },
+    {
+      "path": "ops/pi/tests/test_product_backup.py",
+      "category": "test",
+      "added": 1,
+      "deleted": 1
+    },
+    {
+      "path": "ops/pi/tests/test_product_runtime_snapshot.py",
+      "category": "test",
+      "added": 125,
+      "deleted": 0
+    }
+  ],
+  "tests": {
+    "offline_passed": 4124,
+    "offline_deselected": 56,
+    "offline_seconds": 267.71,
+    "related_passed": 100,
+    "related_seconds": 3.02,
+    "suites_overlap": true,
+    "native_positive": 1,
+    "native_positive_deselected": 4,
+    "native_positive_seconds": 348.63,
+    "native_negative": 2,
+    "native_negative_deselected": 3,
+    "native_negative_seconds": 223.25,
+    "authenticated_roles": 8,
+    "wrong_passwords_rejected": 8
+  },
+  "base_exact_ci": {
+    "head": "afc2d1e6f6efca7b2e1f586f785caa8f03e79863",
+    "run_id": 40947088373,
+    "result": "4/4 success"
+  },
+  "checkpoint_ci": "pending push",
+  "scope": "private effective backend Config.Env/command/resources/network/volume captured and restored; exact source app/report credentials work against SCRAM owned target; forced RLS/data/crypto/checkpoint read paths and cold health; not complete restored services/main-PID runtime or business generation",
+  "pending": [
+    "business probes -> POST -> separately approved admission start",
+    "actual runtime/service reconstruction including main API process and external service authentication",
+    "regular upgrade and cross-generation task adoption",
+    "retained cohort and manual same-lock/generation entry",
+    "separate observation/rollback authority after bootstrap expiry",
+    "single final review/fixpass and explicit main/product approval",
+    "fresh paid Pi adoption and actual nextday/24-48h observation"
+  ],
+  "audit": {
+    "current_events": 8,
+    "prior_events_preserved": 36,
+    "expected_daily_events": 44,
+    "scope_paths": 10,
+    "reader_verified": true,
+    "server_published": false
+  },
+  "nextday": {
+    "plan": {
+      "test_id": "runtime-auth-nextday-20261031",
+      "scheduled_for": "2026-10-31T03:00:00+00:00",
+      "target_run_id": "pi-runtime-auth-20261030",
+      "target_version_sha256": "bc02987d17797a7f50603816159b666c7780333ccbac2386ac92f76501a1b00f",
+      "criterion": "新独立合成操作复核运行配置/口令及只读边界；产品采用后另登记真实业务次日与24-48h。",
+      "kind": "restore",
+      "status": "blocked"
+    },
+    "registered": false,
+    "result": null
+  },
+  "evidence": {
+    "full": {
+      "sha256": "aaf783dbe5f4c8171e6fd6beb1d50c710bfbc7b0067ebea990d3ad23a76de984",
+      "bytes": 4688
+    },
+    "related": {
+      "sha256": "378b3829b09d0d28312de8614c714d878567ac80905e76137be081eee6151686",
+      "bytes": 180
+    },
+    "positive": {
+      "sha256": "8ba531ea1f8e9184a56f043824e7b5a746f8d4381d91a5899b1f96c754854f96",
+      "bytes": 124
+    },
+    "negative": {
+      "sha256": "df8c354715af84b079c75c43b26c5a27357057e54f534722a163ef9cb0c00c8a",
+      "bytes": 124
+    },
+    "first-failure": {
+      "sha256": "0a297d21e4b1ae40bddb7109bde7867b8117ff406b2f5c18d60610407ebdb781",
+      "bytes": 19752
+    },
+    "snapshot-red": {
+      "sha256": "db24c4645a159a6a9b43b6bd6d89940fbce438a4df7de6f7e970d1e7b3018ddd",
+      "bytes": 22155
+    },
+    "post-red": {
+      "sha256": "9dfde0d65f9408476a5278f8b40500764659661bfb4aef737877cc938ff8d4f0",
+      "bytes": 22734
+    }
+  }
+}

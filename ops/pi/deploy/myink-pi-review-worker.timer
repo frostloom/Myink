@@ -1,0 +1,11 @@
+[Unit]
+Description=Myink Pi finite external review queue
+
+[Timer]
+OnBootSec=1min
+OnUnitInactiveSec=5s
+AccuracySec=1s
+Unit=myink-pi-review-worker.service
+
+[Install]
+WantedBy=timers.target

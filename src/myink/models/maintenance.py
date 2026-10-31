@@ -1,0 +1,76 @@
+"""Durable maintenance authority and private, unmaterialized intake identities."""
+from __future__ import annotations
+import uuid
+from datetime import datetime
+from sqlalchemy import BigInteger, Boolean, Float, ForeignKey, CheckConstraint, DateTime, Integer, JSON, String, Uuid, func
+from sqlalchemy.orm import Mapped, mapped_column
+from myink.models.base import Base
+
+
+class MaintenanceControl(Base):
+    __tablename__ = "maintenance_control"
+    __table_args__ = (CheckConstraint("id = 1", name="ck_maintenance_singleton"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    epoch: Mapped[str] = mapped_column(String(64), nullable=False)
+    deployment_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    generation: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    owner: Mapped[str] = mapped_column(String(128), nullable=False)
+    image_ids: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    admission_closed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    consumer_blocked: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+
+class AdmissionIntent(Base):
+    __tablename__ = "admission_intents"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    task_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    message_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    epoch: Mapped[str] = mapped_column(String(64), nullable=False)
+    deployment_generation: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    deployment_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    owner: Mapped[str] = mapped_column(String(128), nullable=False)
+    payload_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    rebuild_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False)
+    gate_state: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    publication_state: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    quota_inputs: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class MaintenanceExecution(Base):
+    """Private per-task execution fence; deployment identity is independent."""
+    __tablename__ = "maintenance_executions"
+    task_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("tasks.id", ondelete="CASCADE"), primary_key=True)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    execution_generation: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    owner_token: Mapped[str | None] = mapped_column(String(64))
+    epoch: Mapped[str | None] = mapped_column(String(64))
+    deployment_generation: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    state: Mapped[str] = mapped_column(String(32), nullable=False, default="running")
+    requested_at: Mapped[float | None] = mapped_column(Float)
+    active_nodes: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    completed_nodes: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    receipt: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+
+
+class QueueHandoff(Base):
+    """Private immutable identity/payload plus mutable publication receipt."""
+    __tablename__ = "queue_handoffs"
+    operation_id: Mapped[str] = mapped_column(String(256), primary_key=True)
+    message_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    task_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    project_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, index=True)
+    admission_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    body_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    destination: Mapped[str] = mapped_column(String(16), nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    rebuild_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    expiration_ms: Mapped[int | None] = mapped_column(BigInteger)
+    authority: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    predecessor_id: Mapped[str | None] = mapped_column(String(256))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

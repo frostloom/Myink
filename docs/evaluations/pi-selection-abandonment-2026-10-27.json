@@ -1,0 +1,93 @@
+{
+  "mode": "ACTUAL",
+  "task_domain": "synthetic",
+  "abandoned_tasks": 1,
+  "raw_uncertain_preserved": 1,
+  "old_manager_rows_and_events_prefix_unchanged": true,
+  "old_control_unchanged": true,
+  "new_cycles": [
+    {
+      "task": "new-nfc",
+      "selection_calls": 1,
+      "selection_cost_microyuan": 1638,
+      "selected": false,
+      "next_action": "observe"
+    },
+    {
+      "task": "new-casefold",
+      "selection_calls": 1,
+      "selection_cost_microyuan": 2300,
+      "selected": true,
+      "next_action": "review_candidate"
+    }
+  ],
+  "no_selection_cycles": 1,
+  "development_cycles": 1,
+  "new_model_attempts": 7,
+  "known_cost_microyuan": 19973,
+  "new_unknown": 0,
+  "cumulative_attempts": 690,
+  "cumulative_known": 681,
+  "historical_unknown": 9,
+  "cumulative_known_microyuan": 4469255,
+  "original_billing_rows_and_events_prefix_unchanged": true,
+  "policy_closed_original": true,
+  "credential_unchanged": true,
+  "product_source_unchanged": true,
+  "source_closure": "7b85d979658188b5eff039039b4def26d7e2b0bff3a184643822aa05e262333a",
+  "owned_containers_absent": 7,
+  "owned_operations_absent": 7,
+  "restarts_after_abandonment": 3,
+  "restarts_after_new_tasks": 3,
+  "restart_dispatches": 0,
+  "restart_model_calls": 0,
+  "development": {
+    "calls": 5,
+    "cost_microyuan": 16035,
+    "fixed_tests": 5,
+    "candidate_sha256": "7f81fde9f5d061f9d37930001845245e32c40a8679e04000199797951bd77c08",
+    "adopted": false
+  },
+  "schema": "pi-selection-abandonment-evaluation-v1",
+  "date": "2026-10-27",
+  "base_commit": "8cbed21fc03f823be4d9ce4e8d823f81f0543736",
+  "core_commit": "dbb6fcbcc165343d17294e185d77621adb44c528",
+  "upstream_pi_version": "1.1.0",
+  "upstream_pi_core_modified": false,
+  "old_execution_relabelled_as_success": false,
+  "canonical_billing_copied_or_reset": false,
+  "actual_manager_reused": true,
+  "review": {
+    "independent_code_findings_p1": 1,
+    "author_red_green_rejection_cases": 6,
+    "self_consistent_unknown_fee_rejection": true,
+    "second_independent_code_approval": false,
+    "independent_abandonment_review": true,
+    "fresh_selection_reviews": 2,
+    "development_reviews": 1
+  },
+  "verification": {
+    "pi_tests_passed": 2812,
+    "experimental_tests_deselected": 19,
+    "node_tests_passed": 54,
+    "related_tests_passed": 86,
+    "product_suite_run_locally": false,
+    "core_ci": {
+      "run_id": 40461045745,
+      "url": "https://github.com/frostloom/Myink/actions/runs/40461045745",
+      "head_sha": "dbb6fcbcc165343d17294e185d77621adb44c528",
+      "jobs_passed": 4
+    },
+    "product_suite_remote_passed": true
+  },
+  "efficiency_improvement_percent": null,
+  "production_reliability": null,
+  "main_merged": false,
+  "deployed": false,
+  "limitations": [
+    "Only stopped no-tool/no-development ACTUAL selection with one settled model attempt can be abandoned.",
+    "Unknown cost, extra execution or other development failures stay frozen.",
+    "Both fresh tasks are synthetic acceptance fixtures; candidate remains private, not product adoption.",
+    "No matched before/after efficiency study; counts are coverage and observed finite acceptance only."
+  ]
+}

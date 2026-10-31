@@ -1,0 +1,9 @@
+{
+  "success": {"comparison": "improved"},
+  "not-improved": {"comparison": "not_improved"},
+  "regressed": {"comparison": "regressed"},
+  "sample-short": {"comparison": "insufficient_evidence"},
+  "manual-main": {"comparison": "confounded", "confounder": "human_main_changed"},
+  "config-change": {"comparison": "confounded", "confounder": "configuration_changed"},
+  "budget-stop": {"comparison": "insufficient_evidence", "fail_stage": "develop"}
+}

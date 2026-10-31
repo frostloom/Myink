@@ -1,0 +1,31 @@
+{
+  "verified": true,
+  "at": "2026-10-23T10:07:54.799742+00:00",
+  "paid_requests": 0,
+  "pilot_calls": 2,
+  "containers_removed": 2,
+  "source_provenance": {
+    "runtime_sha256": "6e169d5462405f59c070365267eec24fddc005a3c141819ba7a1f548a592c528",
+    "node_sha256": "719a43d185f3b6a59d8fcbba1ff06b93c75f76fb0bb9916f81d33921615d4cb5",
+    "lock_sha256": "fd0f5bd8aa13e01da8792b161d80502f32e1afd00103151fbcc21f4b3146785a",
+    "pi_cli_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+    "code_sha256": "883ffc1afe4d164810d18379a846d3f22f29fc38218de10056dd84567d2efb69",
+    "controller_sha256": "3c2a6e7832444fe31f25d00604b8369cff5e0447885879eed87d14f9efac9946",
+    "worker_sha256": "80ca8e95b18d43c6f3f1eea0238967a9b93015c54ffbf3605df2645d818fcaff"
+  },
+  "current_ledger_sha256": "348a4033e60d8a3e0629f5326ba029431a0ea0712adc8ad1c39fd704fc0d3bf4",
+  "current_attempts": 218,
+  "current_unknown": 9,
+  "original_approved_command_stale": true,
+  "original_approved_script_unchanged": true,
+  "new_executor_requires_separate_tool_review": true,
+  "new_executor_sha256": "92badd248f07f1aecf192bb760a55a22e871bf33a11b4ee30051c7eb290ad4b0",
+  "old_exact_action_manual_approval_received": true,
+  "new_exact_action_status": "rejected_awaiting_explicit_tool_override",
+  "new_command": "PYTHONPATH=. .venv/bin/python .local/pi-uncapped-refresh-20261023/execute-refreshed.py > .local/pi-uncapped-refresh-20261023/execute-refreshed.log 2>&1",
+  "real_execution_started": false,
+  "new_real_posts": 0,
+  "canonical_ledger_or_policy_changed": false,
+  "committed": false,
+  "pushed": false
+}

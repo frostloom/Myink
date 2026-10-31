@@ -1,0 +1,235 @@
+{
+  "date": "2026-10-26",
+  "branch": "codex/pi-autonomy-design",
+  "verified": true,
+  "product_adopted": true,
+  "source_before": "5fd93a1df04fb07e6ea1bee1211e43bfdf12c516ca9318d0160c2653274c4932",
+  "source_after": "5ab3a79a042e8e333376a00fcfe8e8abf1c88d590636dae364a1befdfda86060",
+  "candidate_files": {
+    "src/myink/validation/l1.py": "43bbd64cd8be2db194d3b285b99fb01e1e75e027d67b551915c0f04089afd1ee",
+    "src/myink/validation/service.py": "564838e9f0fff0b22addd3270d1fddb39fe6d212b6296baecfae4c371ac8f176"
+  },
+  "frozen_fixed_tests": 250,
+  "public_capability_tests": 76,
+  "blind_holdout_claim": false,
+  "analysis_null007_preserved": true,
+  "controller_full_python": {
+    "passed": 2524,
+    "deselected": 19
+  },
+  "node_controlled_tools_passed": 31,
+  "node_scripts_passed": 4,
+  "linux_sdk_fixture": {
+    "mode": "SIMULATED",
+    "model_responses": 7,
+    "first_errors": 10,
+    "later_passed": 10,
+    "authenticated": true,
+    "real_calls": 0
+  },
+  "actual_completion": {
+    "run_id": "capability-budget-dev-20261026-010",
+    "model_requests": 6,
+    "known_cost_microyuan": 22412,
+    "unit_passed": 250,
+    "final_status_authenticated": true
+  },
+  "product_targeted": {
+    "passed": 358,
+    "xfailed": 2
+  },
+  "product_full": {
+    "passed": 1905,
+    "skipped": 1,
+    "xfailed": 2,
+    "deselected": 159
+  },
+  "matrix": {
+    "detected": 24,
+    "positive": 26,
+    "fixture_false_positive": 0,
+    "negative": 14,
+    "remaining_xfail": [
+      7,
+      9
+    ],
+    "negative28_vacuous": true,
+    "sample4_category_deviation_retained": true
+  },
+  "product_skips": [
+    {
+      "test": "tests/test_evaluation_comparison_integration.py::test_direct_full_and_ablation_preserve_all_outputs_and_persisted_body",
+      "reason": "requires explicitly approved localhost:15432 evaluation database identity; MYINK_EVALUATION_SYSTEM_ID absent, not executed"
+    }
+  ],
+  "regression_services_removed": true,
+  "audit": {
+    "verified": true,
+    "date": "2026-10-26",
+    "ledger_sha256": "b320abc2cd51a5eb1f880e450a2cb6e7a545d85792db13ecf36998638509b8be",
+    "historical_rows_unchanged": true,
+    "new_attempts": 97,
+    "new_cost_microyuan": 588600,
+    "new_unknown": 0,
+    "total_attempts": 638,
+    "status_counts": {
+      "done": 629,
+      "uncertain": 9
+    },
+    "total_known_cost_microyuan": 4222149,
+    "canonical_policy_credential_unchanged": true,
+    "owned_containers_absent": 41,
+    "prior_dirty_files": 133,
+    "prior_dirty_changed": [
+      "ops/pi/extensions/controlled-tools.ts",
+      "ops/pi/unit_feedback.py",
+      "ops/pi/workers/development_check.py"
+    ],
+    "unrelated_dirty_preserved": true,
+    "trials": [
+      {
+        "path": "actual",
+        "analysis-output": {
+          "verified": true,
+          "new_attempts": 1,
+          "new_unknown": 0,
+          "known_cost_microyuan": 20060
+        },
+        "output": {
+          "verified": false,
+          "new_attempts": 11,
+          "new_unknown": 0,
+          "known_cost_microyuan": 78319
+        }
+      },
+      {
+        "path": "recovery-004/actual",
+        "analysis-output": {
+          "verified": true,
+          "new_attempts": 1,
+          "new_unknown": 0,
+          "known_cost_microyuan": 20060
+        },
+        "output": {
+          "verified": false,
+          "new_attempts": 17,
+          "new_unknown": 0,
+          "known_cost_microyuan": 85371
+        }
+      },
+      {
+        "path": "continuation-005/actual",
+        "analysis-output": {
+          "verified": true,
+          "new_attempts": 1,
+          "new_unknown": 0,
+          "known_cost_microyuan": 21386
+        },
+        "output": {
+          "verified": false,
+          "new_attempts": 19,
+          "new_unknown": 0,
+          "known_cost_microyuan": 84995
+        }
+      },
+      {
+        "path": "continuation-006/actual",
+        "analysis-output": {
+          "verified": true,
+          "new_attempts": 1,
+          "new_unknown": 0,
+          "known_cost_microyuan": 21456
+        },
+        "output": {
+          "verified": false,
+          "new_attempts": 16,
+          "new_unknown": 0,
+          "known_cost_microyuan": 68336
+        }
+      },
+      {
+        "path": "continuation-007/actual",
+        "analysis-output": {
+          "verified": true,
+          "new_attempts": 1,
+          "new_unknown": 0,
+          "known_cost_microyuan": 20034
+        },
+        "output": {
+          "not_run": true
+        }
+      },
+      {
+        "path": "continuation-008/actual",
+        "analysis-output": {
+          "verified": true,
+          "new_attempts": 1,
+          "new_unknown": 0,
+          "known_cost_microyuan": 20786
+        },
+        "output": {
+          "verified": true,
+          "new_attempts": 8,
+          "new_unknown": 0,
+          "known_cost_microyuan": 29529
+        }
+      },
+      {
+        "path": "continuation-009/actual",
+        "analysis-output": {
+          "verified": true,
+          "new_attempts": 1,
+          "new_unknown": 0,
+          "known_cost_microyuan": 22116
+        },
+        "output": {
+          "verified": false,
+          "new_attempts": 12,
+          "new_unknown": 0,
+          "known_cost_microyuan": 51518
+        }
+      },
+      {
+        "path": "continuation-010/actual",
+        "analysis-output": {
+          "verified": true,
+          "new_attempts": 1,
+          "new_unknown": 0,
+          "known_cost_microyuan": 22222
+        },
+        "output": {
+          "verified": true,
+          "new_attempts": 6,
+          "new_unknown": 0,
+          "known_cost_microyuan": 22412
+        }
+      }
+    ]
+  },
+  "scope": "Exact active literal capability rules and affirmative current-use patterns only; no universal NLP or server autonomy",
+  "committed": false,
+  "pushed": false,
+  "merged": false,
+  "deployed": false,
+  "post_acceptance_protection": {
+    "verified": true,
+    "prior_files": 133,
+    "changed_within_scope": [
+      "docs/pi/development-readiness.md",
+      "ops/pi/extensions/controlled-tools.ts",
+      "ops/pi/unit_feedback.py",
+      "ops/pi/workers/development_check.py",
+      "spec/conflict-samples.md",
+      "src/myink/validation/l1.py",
+      "src/myink/validation/service.py",
+      "tests/test_conflict_sample_suite.py"
+    ],
+    "source_hashes_unchanged_after_tests": true,
+    "canonical_ledger_policy_credential_unchanged_after_tests": true
+  },
+  "product_warning_count": 2,
+  "product_warnings": [
+    "Starlette anyio BlockingPortal alias deprecation",
+    "HS512 test HMAC key length warning"
+  ]
+}

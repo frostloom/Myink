@@ -18,6 +18,7 @@ gates.lua 里那句硬编码的 `if inflight > 0`——`CONCURRENCY_LIMIT` 从�
 from __future__ import annotations
 
 import json
+import hashlib
 import logging
 import time
 import uuid
@@ -27,7 +28,10 @@ from pathlib import Path
 import pika
 
 from myink.config import settings
+from myink.db import tenant_session
+from myink.maintenance import register_admission, intent_outcome, require_admission_open
 from myink.worker import amqp
+from myink.worker.handoff import admission_lane, settle_rejected_guest
 from myink.worker.redis_client import (
     book_cnt_key,
     book_quota_key,
@@ -98,7 +102,7 @@ def _enqueue(*, db, budget_snapshot: dict, user_id: str, project_id: str, task_t
             platform_chapter_max: int = 0, client_ip: str | None = None) -> dict:
     """闸门 + 入队。返回 `{"task_id", "trace_id", "status"}`（路由侧回 202）。
 
-    顺序不可换：闸门 → 归属登记 → 发布 → SSE 种子帧。
+    顺序不可换：持久登记 → 闸门 → 归属登记 → 发布 → SSE 种子帧。
 
     归属登记必须先于发布：SSE 可能在 worker 物化 Task 行之前就连上来，
     那时 `GET /tasks/{id}/access` 只能靠 `queue:task-owner:{id}` 判归属。
@@ -109,6 +113,7 @@ def _enqueue(*, db, budget_snapshot: dict, user_id: str, project_id: str, task_t
     `platform_chapter_max` 默认 0 = 不限，**其余入队点（短篇、批次外调用、续跑）逐字节不变**；
     只有长篇生成的两个入口会传真实值。
     """
+    require_admission_open(db)
     from myink.writing_resources import capture_task_resources
     from myink.writing_resource_runtime import current_resources
     payload = dict(payload)
@@ -129,9 +134,7 @@ def _enqueue(*, db, budget_snapshot: dict, user_id: str, project_id: str, task_t
             amount=1 if task_type == "short_generate" else quota_n,
             operation_id=task_id, task_id=task_id)
         if guest_operation:
-            # Resource snapshot is complete. Commit the receipt before any broker
-            # can observe this task; it must survive worker-before-materialization.
-            db.commit()
+            # Commit this receipt together with its fenced admission below.
             payload["_guest_operation"] = guest_operation
     except SQLAlchemyError as exc:
         raise GuestQuotaError("GUEST_QUOTA_UNAVAILABLE", 503) from exc
@@ -156,72 +159,107 @@ def _enqueue(*, db, budget_snapshot: dict, user_id: str, project_id: str, task_t
         "created_at": int(time.time() * 1000),
     }
 
-    try:
-        r = get_redis()
-        code, reason = _run_gates(r, keys, task_id=task_id, quota_n=quota_n,
-                                  cost_est=cost_est, project_id=project_id,
-                                  platform_chapter_max=platform_chapter_max)
-    except Exception as exc:
-        release(guest_operation)
-        raise EnqueueUnavailable("gates") from exc
-    if code != 1:
-        release(guest_operation)
-        raise GateError(reason)
+    # Commit identity before ANY Redis gate/ownership or AMQP operation. This
+    # registration serializes with maintenance closure; it is not a PG/Redis tx.
+    intent_id = register_admission(db, body, priority=priority, gates=True, quota_inputs={
+        "keys":keys,"date":today,"task_id":task_id,"user_id":user_id,"project_id":project_id,
+        "quota_n":quota_n,"cost_est":cost_est,"platform_chapter_max":platform_chapter_max,
+        "limits":[settings.quota_daily,settings.daily_budget,settings.book_quota_daily,settings.books_per_day_max]})
+    db.commit()
+    def outcome(**states):
+        try:
+            intent_outcome(intent_id, project_id, **states)
+        except Exception as exc:
+            raise EnqueueUnavailable("intent_outcome_unknown") from exc
+    from myink.models.maintenance import AdmissionIntent,QueueHandoff
+    with admission_lane(intent_id,project_id) as lane:
+        if lane is None:raise EnqueueUnavailable("publication_lane_busy")
+        with tenant_session(project_id) as db:
+            current=db.get(AdmissionIntent,intent_id)
+            state=(current.gate_state,current.publication_state)
+        if state[1]=="published" and state[0] in ("accepted","not_required"):
+            return {"task_id":task_id,"trace_id":task_id,"status":"queued"}
+        if state[1]=="unknown" or state[0] in ("rejected","compensated"):
+            raise EnqueueUnavailable("publication_already_uncertain")
 
-    owner = json.dumps({"user_id": user_id, "project_id": project_id})
-    try:
-        r.set(f"queue:task-owner:{task_id}", owner, ex=_OWNER_TTL_S)
-    except Exception as exc:
-        _compensate(r, keys, task_id=task_id, quota_n=quota_n,
-                    platform_chapter_max=platform_chapter_max)
-        release(guest_operation)
-        raise EnqueueUnavailable("owner") from exc
+        def refund_if_definite():
+            # Same lane, locked durable recheck: a nested/already-started replay
+            # leaves an original-linked outbox even when its confirm is unknown.
+            with tenant_session(project_id) as db:
+                current=db.get(AdmissionIntent,intent_id)
+                previous=db.get(QueueHandoff,"admission:"+str(intent_id))
+                possible=current.publication_state=="published" or previous is not None
+            if possible:return
+            outcome(gate_state="unknown",publication_state="rejected")
+            compensated=_compensate(r,keys,task_id=task_id,quota_n=quota_n,
+                platform_chapter_max=platform_chapter_max,intent_id=str(intent_id))
+            outcome(gate_state="compensated" if compensated else "unknown")
+            settle_rejected_guest(intent_id,project_id)
 
-    try:
-        publish = amqp.publish_once if guest_operation else amqp.publish
-        publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS, priority=priority)
-    except (amqp.PublishNotSent, pika.exceptions.NackError, pika.exceptions.UnroutableError) as exc:
-        # 确定失败：broker 明确拒收，消息一定不在队列里 → 回滚闸门
-        _compensate(r, keys, task_id=task_id, quota_n=quota_n,
-                    platform_chapter_max=platform_chapter_max)
-        release(guest_operation)
-        raise EnqueueUnavailable("publish_rejected") from exc
-    except Exception as exc:
-        # 结果不明（confirm 超时/连接中断）：消息可能已入队。补偿会造成
-        # "闸门已退而任务照跑"的重复扣费，所以这里刻意什么都不做。
-        raise EnqueueUnavailable("publish_ambiguous") from exc
+        outcome(gate_state="unknown")
+        try:
+            r = get_redis()
+            code, reason = _run_gates(r, keys, task_id=task_id, quota_n=quota_n,
+                                      cost_est=cost_est, project_id=project_id,
+                                      platform_chapter_max=platform_chapter_max, intent_id=str(intent_id))
+        except Exception as exc:
+            raise EnqueueUnavailable("gates") from exc
+        if code != 1:
+            outcome(gate_state="rejected")
+            settle_rejected_guest(intent_id,project_id)
+            raise GateError(reason)
+        outcome(gate_state="accepted")
 
-    _seed_sse(r, task_id)
-    return {"task_id": task_id, "trace_id": task_id, "status": "queued"}
+        owner = json.dumps({"user_id": user_id, "project_id": project_id})
+        try:
+            r.set(f"queue:task-owner:{task_id}", owner, ex=_OWNER_TTL_S)
+        except Exception as exc:
+            refund_if_definite()
+            raise EnqueueUnavailable("owner") from exc
+
+        outcome(publication_state="unknown")
+        try:
+            publish = amqp.publish_once if guest_operation else amqp.publish
+            publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS, priority=priority)
+        except (amqp.PublishNotSent, pika.exceptions.NackError, pika.exceptions.UnroutableError) as exc:
+            # 确定失败：broker 明确拒收，消息一定不在队列里 → 回滚闸门
+            refund_if_definite()
+            raise EnqueueUnavailable("publish_rejected") from exc
+        except Exception as exc:
+            # 结果不明（confirm 超时/连接中断）：消息可能已入队。补偿会造成
+            # "闸门已退而任务照跑"的重复扣费，所以这里刻意什么都不做。
+            raise EnqueueUnavailable("publish_ambiguous") from exc
+
+        outcome(publication_state="published")
+        _seed_sse(r, task_id)
+        return {"task_id": task_id, "trace_id": task_id, "status": "queued"}
 
 
 def _run_gates(r, keys: list[str], *, task_id: str, quota_n: int, cost_est: float,
-               project_id: str, platform_chapter_max: int = 0) -> tuple[int, str]:
+               project_id: str, platform_chapter_max: int = 0, intent_id: str | None = None, fresh=True) -> tuple[int, str]:
     """原子跑 gates.lua。通过 → (1, task_id)；拒绝 → (-N, 原因码)。"""
-    res = r.eval(
-        _GATES_LUA, len(keys), *keys,
-        task_id, str(quota_n), str(cost_est),
-        str(settings.quota_daily), str(settings.daily_budget),
-        str(settings.book_quota_daily), str(settings.books_per_day_max),
-        project_id, str(platform_chapter_max),
-    )
+    args=[task_id,str(quota_n),str(cost_est),str(settings.quota_daily),str(settings.daily_budget),
+          str(settings.book_quota_daily),str(settings.books_per_day_max),project_id,str(platform_chapter_max)]
+    fingerprint=hashlib.sha256(json.dumps([keys,args],separators=(",",":"),allow_nan=False).encode()).hexdigest()
+    res = r.eval(_GATES_LUA,7,*keys,"rate:intent:"+(intent_id or task_id),*args,fingerprint,"fresh" if fresh else "recover")
     if not isinstance(res, (list, tuple)) or not res:
         raise RuntimeError(f"gates.lua 异常返回: {res!r}")
     return int(res[0]), (str(res[1]) if len(res) > 1 else "")
 
 
 def _compensate(r, keys: list[str], *, task_id: str, quota_n: int,
-                platform_chapter_max: int = 0) -> None:
+                platform_chapter_max: int = 0, intent_id: str | None = None) -> bool:
     """回滚闸门副作用（用户配额 KEYS[1] + 每书配额 KEYS[4] + 并发占位 KEYS[2] + 平台章数 KEYS[6]）。
 
     最佳努力：补偿失败只记日志，不掩盖原始错误。`compensate.lua` 故意不回滚
     `bookcnt`——撤销配额与并发即够，罕见多计一天书数次日自然清零（安全方向）。
     """
     try:
-        r.eval(_COMPENSATE_LUA, 4, keys[0], keys[3], keys[1], keys[5],
-               str(quota_n), task_id, str(platform_chapter_max))
+        return r.eval(_COMPENSATE_LUA, 5, keys[0], keys[3], keys[1], keys[5], "rate:intent:"+(intent_id or task_id),
+               str(quota_n), task_id, str(platform_chapter_max)) == 1
     except Exception as exc:  # noqa: BLE001 —— 补偿是尽力而为，主错误更重要
         logger.warning("闸门补偿失败 task=%s: %s", task_id, exc)
+        return False
 
 
 def _seed_sse(r, task_id: str) -> None:

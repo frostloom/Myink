@@ -1,0 +1,167 @@
+{
+  "date": "2026-10-24",
+  "branch": "codex/pi-autonomy-design",
+  "status": "adopted_after_real_pi_authentication_and_exact_sha_review",
+  "run": "first-visit-real-20261024-007",
+  "source_hashes": {
+    "src/myink/validation/l1.py": "fe393f7834976bb6cb9e022e2ce25208fa7c04cc523903b0c2a00a6c3d846a83",
+    "src/myink/validation/service.py": "8075c7119f303dca2c92247e8c555f4d22b7256f76f1c45eca4ab74638760c9b"
+  },
+  "fixed_tests": {
+    "passed": 106,
+    "first_visit": 58,
+    "previous_item": 48,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "targeted": {
+    "passed": 223,
+    "xfail": 3
+  },
+  "ordinary_python": {
+    "passed": 1760,
+    "skipped": 1,
+    "xfail": 3,
+    "deselected": 159,
+    "warnings": 2,
+    "seconds": 199.43,
+    "skip_cases": [
+      {
+        "case": "test_direct_full_and_ablation_preserve_all_outputs_and_persisted_body",
+        "reason": "requires explicitly approved localhost:15432 evaluation database identity"
+      }
+    ],
+    "xfail_cases": [
+      "test_sample_07_promise_unfulfilled_claimed",
+      "test_sample_08_capability_rule_violation",
+      "test_sample_09_faction_allegiance"
+    ]
+  },
+  "pi_offline": {
+    "passed": 2337,
+    "deselected": 19,
+    "seconds": 101.74
+  },
+  "node_boundary_scripts": 4,
+  "feedback_synthetic": {
+    "real_provider_calls": 0,
+    "mock_calls": 13,
+    "invalid_raw_args_host_blocked": 3,
+    "real_patches": 5,
+    "fixed_passed": 10,
+    "owned_containers_removed": 2,
+    "canonical_cost_microyuan": 0
+  },
+  "catalog": {
+    "detected": 23,
+    "positive": 26,
+    "false_positive": 0,
+    "negative": 14,
+    "remaining_xfail": [
+      7,
+      8,
+      9
+    ],
+    "vacuous_negative": [
+      28
+    ]
+  },
+  "runs": [
+    {
+      "run": "001",
+      "protocol_verified": false,
+      "adopted": false,
+      "real_calls": 2,
+      "known_cost_microyuan": 16006,
+      "new_unknown": 0,
+      "policy_restored": true,
+      "owned_containers_removed": true
+    },
+    {
+      "run": "002",
+      "protocol_verified": false,
+      "adopted": false,
+      "real_calls": 13,
+      "known_cost_microyuan": 43401,
+      "new_unknown": 0,
+      "policy_restored": true,
+      "owned_containers_removed": true
+    },
+    {
+      "run": "003",
+      "protocol_verified": false,
+      "adopted": false,
+      "real_calls": 6,
+      "known_cost_microyuan": 48945,
+      "new_unknown": 0,
+      "policy_restored": true,
+      "owned_containers_removed": true
+    },
+    {
+      "run": "004",
+      "protocol_verified": false,
+      "adopted": false,
+      "real_calls": 11,
+      "known_cost_microyuan": 84978,
+      "new_unknown": 0,
+      "policy_restored": true,
+      "owned_containers_removed": true
+    },
+    {
+      "run": "005",
+      "protocol_verified": false,
+      "adopted": false,
+      "real_calls": 20,
+      "known_cost_microyuan": 88933,
+      "new_unknown": 0,
+      "policy_restored": true,
+      "owned_containers_removed": true
+    },
+    {
+      "run": "006",
+      "protocol_verified": true,
+      "adopted": false,
+      "real_calls": 6,
+      "known_cost_microyuan": 21683,
+      "new_unknown": 0,
+      "policy_restored": true,
+      "owned_containers_removed": true
+    },
+    {
+      "run": "007",
+      "protocol_verified": true,
+      "adopted": true,
+      "real_calls": 7,
+      "known_cost_microyuan": 29793,
+      "new_unknown": 0,
+      "policy_restored": true,
+      "owned_containers_removed": true
+    }
+  ],
+  "real_calls": 65,
+  "known_cost_microyuan": 333739,
+  "new_unknown": 0,
+  "cumulative_attempts": 406,
+  "cumulative_known": 397,
+  "historical_unknown": 9,
+  "cumulative_known_microyuan": 2874206,
+  "historical_unknown_reserved_microyuan": 18115200,
+  "old_history_preserved": true,
+  "policy_disabled": true,
+  "owned_pi_containers_absent": true,
+  "product_test_containers_removed": true,
+  "committed": false,
+  "pushed": false,
+  "merged": false,
+  "deployed": false,
+  "review_process_deviation": {
+    "kind": "host_imported_candidate_for_auxiliary_diagnostics",
+    "owner": "primary_agent_authorized_incorrectly",
+    "formal_checker_evidence_unaffected": true,
+    "candidate_hash_unchanged": true,
+    "diagnostic_not_accepted_as_isolation_evidence": true,
+    "implicit_import_side_effects_not_fully_audited": true,
+    "corrective_rule": "static review or isolated checker only"
+  }
+}

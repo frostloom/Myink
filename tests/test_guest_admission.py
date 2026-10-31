@@ -232,13 +232,21 @@ def test_batch_failed_resume_charges_current_chapter_only(guest_book,monkeypatch
 
 def test_worker_rejects_missing_and_released_guest_receipt(guest_book,monkeypatch):
     from myink.worker import processor
+    from myink.maintenance import register_admission
     b=guest_book
     body={'task_id':str(uuid.uuid4()),'task_type':'chapter_generate','project_id':b.pid,
-          'user_id':b.uid,'payload':{}}
+          'user_id':b.uid,'payload':{},'request_id':str(uuid.uuid4())}
+    with tenant_session(b.pid) as db:
+        register_admission(db, body, priority=0)
     assert processor.process(body)=='skip'
+    # A different frozen message tests a released receipt; changing a known
+    # original intake's payload would correctly fail the earlier authority gate.
+    body={**body,'task_id':str(uuid.uuid4()),'request_id':str(uuid.uuid4()),'payload':{}}
     receipt=q.reserve(user_id=b.uid,client_ip=b.ip,dimension='long',amount=1,
                       operation_id=str(uuid.uuid4()),task_id=body['task_id'])
     body['payload']['_guest_operation']=receipt
+    with tenant_session(b.pid) as db:
+        register_admission(db, body, priority=0)
     assert q.valid_message(body)
     q.release(receipt)
     assert processor.process(body)=='skip'
@@ -704,3 +712,56 @@ def test_same_review_revision_cached_response_recovers_free_at_zero_quota(guest_
     assert q.quota_view(b.uid,b.ip)['long']['used']==10
     with new_session() as db:
         assert db.get(Task,uuid.UUID(tid)).status=='done'
+
+
+def test_maintenance_refusal_does_not_charge_guest(guest_book):
+    from sqlalchemy import text
+    from myink.db import get_admin_engine
+
+    book = guest_book
+    before = q.quota_view(book.uid, book.ip)['long']['used']
+    with get_admin_engine().begin() as db:
+        db.execute(text('UPDATE public.maintenance_control SET admission_closed=true WHERE id=1'))
+    try:
+        response = generate(book)
+        assert response.status_code == 503
+        assert response.json()['code'] == 'maintenance'
+        assert q.quota_view(book.uid, book.ip)['long']['used'] == before
+    finally:
+        with get_admin_engine().begin() as db:
+            db.execute(text('UPDATE public.maintenance_control SET admission_closed=false WHERE id=1'))
+
+
+def test_admission_fence_spans_guest_charge_commit(guest_book, monkeypatch):
+    from sqlalchemy import text
+    from sqlalchemy.exc import OperationalError
+    from myink.db import get_admin_engine
+
+    book = guest_book
+    register = queue.register_admission
+    closed_during_reservation = []
+
+    def competing_close(*args, **kwargs):
+        # A separate real PG connection tries to close maintenance after quota
+        # reservation. The intake transaction must still own its shared fence.
+        try:
+            with get_admin_engine().begin() as db:
+                db.execute(text("SET LOCAL lock_timeout='100ms'"))
+                db.execute(text('UPDATE public.maintenance_control SET admission_closed=true WHERE id=1'))
+            closed_during_reservation.append(True)
+        except OperationalError as error:
+            if getattr(error.orig, 'sqlstate', None) != '55P03':
+                raise
+            closed_during_reservation.append(False)
+        return register(*args, **kwargs)
+
+    monkeypatch.setattr(queue, 'register_admission', competing_close)
+    monkeypatch.setattr(queue.amqp, 'publish_once', lambda *a, **kw: None)
+    try:
+        response = generate(book)
+        assert response.status_code == 202, response.text
+        assert closed_during_reservation == [False]
+        assert q.quota_view(book.uid, book.ip)['long']['used'] == 1
+    finally:
+        with get_admin_engine().begin() as db:
+            db.execute(text('UPDATE public.maintenance_control SET admission_closed=false WHERE id=1'))

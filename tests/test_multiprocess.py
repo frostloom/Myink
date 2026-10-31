@@ -25,8 +25,10 @@ import os
 
 # QUEUE_PREFIX 隔离点在 conftest.py（在 myink.config 冻结前设 -mp-）；此处重设仅作
 # 防御性兜底（本模块被 pytest 加载时 settings 通常已被 conftest 初始化，实际不生效）。
-os.environ["QUEUE_PREFIX"] = "-mp-"
+if not os.environ.get("PI_LAB_ENV"):
+    os.environ["QUEUE_PREFIX"] = "-mp-"
 
+import signal  # noqa: E402
 import subprocess  # noqa: E402
 import sys  # noqa: E402
 import tempfile  # noqa: E402
@@ -43,6 +45,7 @@ from myink.worker.redis_client import book_key, get_redis, lock_key, sse_key  # 
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _MP_WORKER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_mp_worker.py")
+_MP_ORIGINALS = {}
 
 
 # ── worker 子进程管理 ─────────────────────────────────────────────────────────
@@ -50,6 +53,10 @@ _MP_WORKER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_mp_worke
 
 def _purge_test_queues() -> None:
     """仅清理 -mp- 隔离队列；必须在 worker 启动前或完全停止后执行。"""
+    if os.environ.get("PI_LAB_ENV"):
+        from ops.pi.lab.verify import verify_test_environment
+        verify_test_environment()
+        return  # Retain other cases' original unknown deliveries in the sealed namespace.
     with amqp.connect() as conn:
         ch = conn.channel()
         amqp.declare_topology(ch)
@@ -65,15 +72,28 @@ def two_workers():
     # 已删除临时项目的旧消息；只操作 QUEUE_PREFIX=-mp- 的测试队列。
     _purge_test_queues()
     procs, logs = [], []
+    executable = sys.executable
+    worker_env = {**os.environ, "PYTHONPATH": ROOT}
+    if os.name == "nt" and sys.prefix != sys.base_prefix:
+        # The Windows venv executable is a redirector: killing its PID can leave
+        # the actual worker alive. Run the interpreter directly but retain the
+        # venv configuration, so Popen.pid is the heartbeat/lock owner PID.
+        executable = sys._base_executable
+        worker_env["__PYVENV_LAUNCHER__"] = sys.executable
+    launch = str(uuid.uuid4())
+    if os.environ.get("PI_LAB_ENV"):
+        from pathlib import Path
+        operation=json.loads(Path(os.environ['B10_CENSUS_DESCRIPTOR']).read_text())['operation_id']
     for i in range(2):
-        log_path = os.path.join(tempfile.gettempdir(), f"mp_worker_{i}.log")
+        name=f"mp_worker_{operation}_{launch}_{i}.log" if os.environ.get("PI_LAB_ENV") else f"mp_worker_{i}.log"
+        log_path = os.path.join(tempfile.gettempdir(), name)
         logf = open(log_path, "w", encoding="utf-8")
         p = subprocess.Popen(
-            [sys.executable, _MP_WORKER],
+            [executable, _MP_WORKER],
             cwd=ROOT,
             stdout=subprocess.DEVNULL,
             stderr=logf,
-            env={**os.environ, "PYTHONPATH": ROOT},
+            env=worker_env,
         )
         procs.append(p)
         logs.append(logf)
@@ -117,8 +137,38 @@ def two_workers():
     }
     if own_heartbeats:
         r.delete(*own_heartbeats)
-    for k in set(r.keys("queue:sse:*")) - sse_before:
-        r.delete(k)
+    if os.environ.get("PI_LAB_ENV"):
+        from pathlib import Path
+        import hashlib
+        from myink.db import tenant_session
+        from myink.models.maintenance import AdmissionIntent
+        from myink.worker.handoff import body_hash
+        from ops.pi.lab.verify import verify_test_environment
+        verify_test_environment()
+        assert all(process.poll() is not None for process in procs)
+        with amqp.connect() as connection:
+            channel=connection.channel()
+            assert all(channel.queue_declare(queue,passive=True).method.consumer_count==0 for queue in (amqp.main_queue(),amqp.delay_queue(),amqp.dlq_queue())),"consumer remains; SSE retained"
+        raw_client=__import__('redis').Redis.from_url(__import__('myink.config',fromlist=['settings']).settings.redis_url)
+        for tid,body in _MP_ORIGINALS.items():
+            with tenant_session(body['project_id']) as db:
+                intent=db.scalar(sa_select(AdmissionIntent).where(AdmissionIntent.task_id==uuid.UUID(tid)))
+                assert intent and intent.payload_hash==body_hash(body)
+            key=sse_key(tid)
+            if not raw_client.exists(key):continue
+            rows=raw_client.xrange(key)
+            raw=json.dumps({'operation_id':operation,'launch_id':launch,'task_id':tid,'prefix':amqp.main_queue(),
+                'body_hash':body_hash(body),'rows':[(ident.hex(),{k.hex():v.hex() for k,v in values.items()}) for ident,values in rows]},sort_keys=True).encode()
+            target=Path('/Users/a1/项目/Myink/myink-pi/evidence')/('b10-mp-sse-'+operation+'-'+launch+'-'+tid+'.json')
+            target.write_bytes(raw);target.with_suffix('.sha256').write_text(hashlib.sha256(raw).hexdigest())
+            raw_client.delete(key)
+        for i in range(2):
+            name=f"mp_worker_{operation}_{launch}_{i}.log"
+            raw=Path(tempfile.gettempdir(),name).read_bytes()
+            target=Path('/Users/a1/项目/Myink/myink-pi/evidence')/name
+            target.write_bytes(raw);target.with_suffix('.sha256').write_text(hashlib.sha256(raw).hexdigest())
+    else:
+        for k in set(r.keys("queue:sse:*")) - sse_before:r.delete(k)
 
 
 # ── 数据 helper ───────────────────────────────────────────────────────────────
@@ -162,8 +212,12 @@ def _enqueue(project_id: str, seq: int, tag: str, priority: int = 0) -> str:
         "task_id": task_id, "task_type": "chapter_generate",
         "project_id": project_id, "user_id": owner_id,
         "payload": {"seq": seq}, "trace_id": task_id, "request_id": task_id,
-        "retry_count": 0,
+        "retry_count": 0, "test_probe": task_id,
     }
+    from myink.db import tenant_session
+    from myink.maintenance import register_admission
+    with tenant_session(project_id) as db:register_admission(db,body,priority=priority)
+    if os.environ.get("PI_LAB_ENV"):_MP_ORIGINALS[task_id]=dict(body)
     amqp.publish(json.dumps(body, ensure_ascii=False), amqp.KEY_TASKS, priority=priority)
     return task_id
 
@@ -193,9 +247,14 @@ def _cleanup(project_ids: list[str], task_ids: list[str]) -> None:
         db.commit()
     r = get_redis()
     for tid in task_ids:
-        r.delete(sse_key(tid), lock_key(tid))
+        if not os.environ.get("PI_LAB_ENV"):r.delete(sse_key(tid))
+        r.delete(lock_key(tid))
     for pid in project_ids:
         r.delete(book_key(pid))
+    if os.environ.get("PI_LAB_ENV"):
+        from ops.pi.lab.verify import verify_test_environment
+        verify_test_environment()
+        return
     # RabbitMQ 残留：清 -mp- 前缀持久队列（主/延迟/死信）。TTL 退避消息由 DLX 自动回弹，
     # 无 Redis ZSET/Stream 残留；清队列保证多次运行互不污染（在途已交付消息不受 purge 影响）。
     with amqp.connect() as conn:
@@ -272,46 +331,87 @@ def test_same_book_serial(two_workers):
         _cleanup([book], task_ids)
 
 
-def test_worker_kill_redelivers_checkpoint_without_duplicate_persist(two_workers):
-    """Kill after write, let RabbitMQ redeliver and lease expire, then duplicate the same message."""
+def test_worker_kill_retains_unconfirmed_checkpoint_without_duplicate_effects(two_workers):
+    """A dead mid-node owner needs trusted reconciliation; Redis expiry never certifies it."""
+    from sqlalchemy import text
     from myink.db import tenant_session
-    from myink.models import Chapter
+    from myink.models import Chapter,Event
+    from myink.models.maintenance import MaintenanceExecution,AdmissionIntent
+    from myink.models.task_budget import TaskBudget,TaskBudgetCall,TaskBudgetAttempt
+    from myink.worker.handoff import body_hash
+    from myink.maintenance import maintenance_view
+    from myink.maintenance_pause import request_pause,expire_unconfirmed,candidate_allowed
     r=get_redis();book=_make_test_project(_demo_project_id(),'CRASH')
     tid=_enqueue(book,1,'crash');killed=None
-    try:
-        deadline=time.time()+40
-        while time.time()<deadline:
-            with new_session() as db:
-                ready=db.query(AgentRun).filter_by(task_id=tid,node='write').count()>0
-            value=r.get(lock_key(tid))
-            if ready and value:
-                owner=json.loads(value)['worker_id']
-                killed=next(p for p in two_workers if owner.endswith('-'+str(p.pid)))
-                killed.kill();killed.wait(timeout=10);break
-            time.sleep(.1)
-        assert killed is not None,'worker did not reach write checkpoint before crash'
-        assert _wait_status(tid,timeout=120)=='done'
-        with tenant_session(book) as db:
-            chapter=db.query(Chapter).filter_by(chapter_seq=1).one()
-            assert chapter.content and chapter.status=='confirmed'
-        with new_session() as db:
-            persists=db.query(AgentRun).filter_by(task_id=tid,node='persist').count()
-            assert persists==1
-            owner_id=str(db.get(Project,uuid.UUID(book)).user_id)
-        body={'task_id':tid,'task_type':'chapter_generate','project_id':book,'user_id':owner_id,
-              'payload':{'seq':1},'trace_id':tid,'request_id':tid,'retry_count':0,'test_probe':tid}
-        amqp.publish(json.dumps(body),amqp.KEY_TASKS)
-        deadline=time.time()+15
-        while time.time()<deadline:
-            with amqp.connect() as conn:
-                pending=conn.channel().queue_declare(amqp.main_queue(),passive=True).method.message_count
-            if pending==0 and r.get("mp:probe:"+tid)=="skip" and not r.exists(lock_key(tid)) and not r.exists(book_key(book)):break
-            time.sleep(.2)
-        with new_session() as db:
-            assert db.query(AgentRun).filter_by(task_id=tid,node='persist').count()==1
-            assert db.get(Task,uuid.UUID(tid)).status=='done'
-        assert r.get("mp:probe:"+tid)=="skip"
-        assert not r.exists(lock_key(tid)) and not r.exists(book_key(book))
-        r.delete("mp:probe:"+tid)
-    finally:
-        _cleanup([book],[tid])
+    deadline=time.time()+40
+    while time.time()<deadline:
+        with new_session() as db:ready=db.query(AgentRun).filter_by(task_id=tid,node='write').count()>0
+        value=r.get(lock_key(tid))
+        if ready and value:
+            worker=json.loads(value)['worker_id']
+            killed=next(process for process in two_workers if worker.endswith('-'+str(process.pid)))
+            with tenant_session(book) as db:
+                execution=db.get(MaintenanceExecution,uuid.UUID(tid))
+                original_owner=execution.owner_token;original_generation=execution.execution_generation
+                assert original_owner and execution.state=='running'
+                intent=db.scalar(sa_select(AdmissionIntent).where(AdmissionIntent.task_id==uuid.UUID(tid)))
+                original_body=dict(intent.rebuild_payload);original_hash=intent.payload_hash
+                assert original_body['task_id']==tid and original_body['request_id']==tid and body_hash(original_body)==original_hash
+            killed.kill()
+            killed.wait(timeout=10)
+            assert killed.returncode == (1 if os.name == "nt" else -signal.SIGKILL)
+            break
+        time.sleep(.1)
+    assert killed is not None,'worker did not reach real write before crash'
+    # The live replacement retries genuine TTL deliveries until the original Redis lock expires.
+    deadline=time.time()+120
+    while time.time()<deadline:
+        with new_session() as db:task=db.get(Task,uuid.UUID(tid))
+        if task.status=='paused':break
+        time.sleep(.2)
+    assert task.status=='paused' and task.error=='maintenance execution still owned'
+    with tenant_session(book) as db:
+        control=maintenance_view(db)
+        execution=db.get(MaintenanceExecution,uuid.UUID(tid))
+        assert execution.owner_token==original_owner and execution.execution_generation==original_generation
+        assert execution.receipt['deployment_id']==control['deployment_id'] and execution.receipt['image_ids']==control['image_ids']
+        intent=db.scalar(sa_select(AdmissionIntent).where(AdmissionIntent.task_id==uuid.UUID(tid)))
+        assert intent.payload_hash==original_hash and intent.rebuild_payload==original_body
+        checkpoints=db.execute(text('SELECT checkpoint_id,checkpoint::text FROM checkpoints WHERE thread_id=:tid'),{'tid':tid}).all()
+        assert checkpoints,'actual persisted checkpoint was lost'
+        pending=db.execute(text('SELECT * FROM checkpoint_writes WHERE thread_id=:tid'),{'tid':tid}).all()
+        effects=list(db.scalars(sa_select(TaskBudgetCall).where(TaskBudgetCall.task_id==uuid.UUID(tid))))
+        reservations=list(db.scalars(sa_select(TaskBudgetAttempt).where(TaskBudgetAttempt.task_id==uuid.UUID(tid))))
+        budget=db.get(TaskBudget,uuid.UUID(tid))
+        budget_state=None if budget is None else (dict(budget.limits),budget.pause_reason,budget.requests_used,budget.cost_used_micros,budget.cost_reserved_micros)
+        chapters=db.query(Chapter).filter_by(project_id=uuid.UUID(book)).count()
+        memory=db.query(Event).filter_by(project_id=uuid.UUID(book)).count()
+        effect_ids=[str(effect.id) for effect in effects]
+        reservation_states=[(str(attempt.id),attempt.status) for attempt in reservations]
+        request_pause(db,control['epoch'],tid,original_generation)
+        requested=db.get(MaintenanceExecution,uuid.UUID(tid)).requested_at
+        result=expire_unconfirmed(db,tid,now=requested+900)
+        assert result['state']=='interruption_unconfirmed' and result['candidate_allowed'] is False
+    with tenant_session(book) as db:
+        execution=db.get(MaintenanceExecution,uuid.UUID(tid));task=db.get(Task,uuid.UUID(tid))
+        assert execution.state=='interruption_unconfirmed' and execution.execution_generation==original_generation+1
+        assert task.status=='paused' and task.error=='maintenance execution still owned'
+        assert not candidate_allowed(db,control['epoch'])
+        assert db.query(Chapter).filter_by(project_id=uuid.UUID(book)).count()==chapters
+        assert db.query(Event).filter_by(project_id=uuid.UUID(book)).count()==memory
+        assert [str(effect.id) for effect in db.scalars(sa_select(TaskBudgetCall).where(TaskBudgetCall.task_id==uuid.UUID(tid)))]==effect_ids
+        assert [(str(attempt.id),attempt.status) for attempt in db.scalars(sa_select(TaskBudgetAttempt).where(TaskBudgetAttempt.task_id==uuid.UUID(tid)))]==reservation_states
+        current=db.get(TaskBudget,uuid.UUID(tid))
+        assert (None if current is None else (dict(current.limits),current.pause_reason,current.requests_used,current.cost_used_micros,current.cost_reserved_micros))==budget_state
+    if os.environ.get('PI_LAB_ENV'):
+        from pathlib import Path
+        import hashlib
+        operation=json.loads(Path(os.environ['B10_CENSUS_DESCRIPTOR']).read_text())['operation_id']
+        proof={'operation_id':operation,'task_id':tid,'original_owner':original_owner,'original_generation':original_generation,
+            'child_pid':killed.pid,'body_hash':original_hash,'request_id':tid,'checkpoint_ids':[row[0] for row in checkpoints],
+            'checkpoint_sha256':[hashlib.sha256(row[1].encode("utf-8")).hexdigest() for row in checkpoints],
+            'pending_write_rows':len(pending),'budget_state':budget_state,'effects':effect_ids,'reservations':reservation_states,
+            'chapters':chapters,'memory':memory,'state':'interruption_unconfirmed','candidate_allowed':False,'control':control}
+        target=Path('/Users/a1/项目/Myink/myink-pi/evidence')/('b10-mp-unconfirmed-'+operation+'-'+tid+'.json')
+        target.write_text(json.dumps(proof,default=str,indent=2))
+    # Preserve this original unresolved project/task/checkpoint/intake, including ordinary test mode.

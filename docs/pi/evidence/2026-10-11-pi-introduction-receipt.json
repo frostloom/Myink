@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "milestone": "pinned_pi_readonly_introduction",
+  "engine": "pi",
+  "administrator_role": "myink-administrator",
+  "pin": {
+    "package": "@earendil-works/pi-coding-agent",
+    "version": "1.1.0",
+    "node_version": "24.16.0",
+    "lock_sha256": "fd0f5bd8aa13e01da8792b161d80502f32e1afd00103151fbcc21f4b3146785a"
+  },
+  "live_preview": {
+    "analysis_status": "done",
+    "source_commit": "8de9664561c66e7f30169b5dfa0da6bbdf97b274",
+    "input_sha256": "2058319471666b4b3afcf474e03685c4526cdb619c7311d35fe5293449cba5b1",
+    "session_sha256": "3185f69b9e225421df171df322d70dc647e5bfa6702458913975e0207f6a4878",
+    "process_exited": true,
+    "returncode": 0,
+    "unit_elapsed_seconds": 12.426,
+    "upstream_requests": 1,
+    "billing_status": "uncertain",
+    "usage_known": false,
+    "actual_cost_yuan": null,
+    "conservative_reserved_microyuan": 2016384,
+    "scope_id": "local-trial-1",
+    "max_attempts": 100,
+    "budget_microyuan": 10000000
+  },
+  "observed_pi_envelope": {
+    "uid": 65534,
+    "gid": 65534,
+    "cgroup": "0::/system.slice/myinkpi-c14-preview-001.service",
+    "limits": {
+      "memory.max": "402653184",
+      "memory.swap.max": "0",
+      "cpu.max": "50000 100000"
+    }
+  },
+  "validation": {
+    "introduction_focused_python_tests": 19,
+    "wire_guard_assertions": 6,
+    "previous_gateway_focused_tests": 96,
+    "full_project_tests": "not_run"
+  },
+  "remaining": [
+    "complete trusted raw usage settlement evidence",
+    "controlled development tools and stage norms",
+    "fair paired evaluation",
+    "local development/release/next-day attribution rehearsal"
+  ],
+  "production_pi_enabled": false
+}

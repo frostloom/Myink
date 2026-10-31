@@ -1,0 +1,183 @@
+{
+  "schema_version": 1,
+  "authority": "audit_only",
+  "scope": "approved_followup_scheduling",
+  "deployment_passed": true,
+  "actual_nextday_test_complete": true,
+  "source_commit": "008de641ef31d74cc6e7e879009fc9ee9db44a20",
+  "runtime_sha256": "0fea389ade50c518da5dc1a6950cde2e9f1b560ebec277e62ba8fa549921246b",
+  "registry_sha256": "7d06dcea226bf291c4638b17c87027d92a7f0b1c1910d42350499d84cd7e0077",
+  "unit_sha256": {
+    "myink-pi-followup.service": "d72e05b48800fa914088151f19778c3f9e2746c86f706d0966814c38cbc0e1e7",
+    "myink-pi-followup.timer": "7596977a5687bb3d3275e13af695a592945323074fa1fbc34580928e85098531"
+  },
+  "time_utc": "2026-10-28T15:01:44.882266+00:00",
+  "pre_due_result": {
+    "schema": "pi-followup-tick-v1",
+    "mode": "ACTUAL",
+    "status": "planned",
+    "results": [],
+    "model_requests": 0
+  },
+  "timer_enabled": "enabled",
+  "test_id": "owner002-nextday-regression",
+  "candidate_sha256": "e60cb0f664606240acbe48c40f65347956ce81c48595fa2edc0c10ea338ab4d1",
+  "scheduled_for": "2026-10-29T03:00:00+08:00",
+  "fixed_cases": 18,
+  "test_result": {
+    "candidate_sha256": "e60cb0f664606240acbe48c40f65347956ce81c48595fa2edc0c10ea338ab4d1",
+    "entry_sha256": "961e2f58a0876189f4d1650480064f7dcb9d8812d170dca2df772c301b1b436d",
+    "mode": "ACTUAL",
+    "model_requests": 0,
+    "occurred_at": "2026-10-28T19:02:39.929319+00:00",
+    "outcome_sha256": "95da336a858ee05e4e18cb4889caf2bd086703197479b3892ac21fefb3beb6e5",
+    "run_id": "server-owner-002",
+    "schema": "pi-followup-result-v1",
+    "status": "passed",
+    "test_id": "owner002-nextday-regression",
+    "verified": true,
+    "receipt_sha256": "134e1b9aa9592a85b690ac37c9b40ed47d7342df67ae1ec9927bcf2af0c23254"
+  },
+  "canonical_fee_unchanged": true,
+  "manager_prefix_preserved": true,
+  "new_model_requests": 0,
+  "production_readyz": {
+    "status": "ok",
+    "checks": {
+      "redis": "ok",
+      "db": "ok",
+      "worker": "ok"
+    }
+  },
+  "main_standalone_reader_verified": true,
+  "scheduled_audit_events": 61,
+  "scheduled_audit_runs": 11,
+  "controller_change_scope": {
+    "files": 16,
+    "added": 914,
+    "deleted": 91
+  },
+  "offline_tests": {
+    "passed": 3248,
+    "deselected": 36,
+    "seconds": 176.18
+  },
+  "native_fixed_docker_tests": {
+    "scenarios": 3,
+    "cases_per_scenario": 3,
+    "all_owned_operations": 12,
+    "all_removed": true,
+    "isolated_python_child_scenarios": 3,
+    "isolated_scenarios_seconds": 16.67
+  },
+  "original_private_lab_tests_executed": false,
+  "review": {
+    "important_found": 3,
+    "important_fixed": 3,
+    "critical": 0,
+    "minor": 0,
+    "author_fixpass": 1,
+    "rereview": false,
+    "postreview_actual_interface_fix": [
+      "scheduler_run_followup_target_correlation",
+      "standard_library_checker_core_with_sdk_compatibility_wrappers"
+    ]
+  },
+  "ci": {
+    "head": "008de641ef31d74cc6e7e879009fc9ee9db44a20",
+    "jobs_passed": 4,
+    "url": "https://github.com/frostloom/Myink/actions/runs/40711686324"
+  },
+  "failed_install002_preserved": true,
+  "product_release_performed": false,
+  "main_merged": false,
+  "admin_page_integrated": false,
+  "original_online_closed_loop_complete": false,
+  "timer_active": true,
+  "isolated_python_dependency_probe": true,
+  "no_model_launchers_imported": true,
+  "failed_isolated_dependency_probe_preserved": true,
+  "paused_and_resumed_audited": true,
+  "actual_nextday_acceptance": {
+    "schema": "pi-followup-actual-acceptance-v1",
+    "verified": true,
+    "checked_at": "2026-10-28T19:04:13.731958+00:00",
+    "receipt": {
+      "candidate_sha256": "e60cb0f664606240acbe48c40f65347956ce81c48595fa2edc0c10ea338ab4d1",
+      "entry_sha256": "961e2f58a0876189f4d1650480064f7dcb9d8812d170dca2df772c301b1b436d",
+      "mode": "ACTUAL",
+      "model_requests": 0,
+      "occurred_at": "2026-10-28T19:02:39.929319+00:00",
+      "outcome_sha256": "95da336a858ee05e4e18cb4889caf2bd086703197479b3892ac21fefb3beb6e5",
+      "run_id": "server-owner-002",
+      "schema": "pi-followup-result-v1",
+      "status": "passed",
+      "test_id": "owner002-nextday-regression",
+      "verified": true,
+      "receipt_sha256": "134e1b9aa9592a85b690ac37c9b40ed47d7342df67ae1ec9927bcf2af0c23254"
+    },
+    "tests": 18,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "container_removed": true,
+    "fee_sha256": "fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb",
+    "model_requests": 0,
+    "policy_closed": true,
+    "claim_count": 1,
+    "registry_unchanged": true,
+    "main_reader_followup": {
+      "criterion": "Recheck original18 frozen cases in the fixed isolated checker, preserve original billing and manager histories, verify candidate/source identities; never import candidate on host.",
+      "kind": "regression",
+      "scheduled_for": "2026-10-28T19:00:00+00:00",
+      "status": "planned",
+      "target_run_id": "server-owner-002",
+      "target_version_sha256": "e60cb0f664606240acbe48c40f65347956ce81c48595fa2edc0c10ea338ab4d1",
+      "test_id": "owner002-nextday-regression",
+      "plan_event_sha256": "1bfe45bfd833e36872bbfaeb3ef872be63520234893c4a7ab7764de48beafb57",
+      "result": {
+        "status": "passed",
+        "event_sha256": "81ae1b9113ad9c4a410d9d196e2bd2b4ba04316d75e3ec4027704288a8aa649b",
+        "occurred_at": "2026-10-28T19:02:39.929319+00:00",
+        "evidence_domain": "offline"
+      }
+    },
+    "daily_release_state": "unknown"
+  },
+  "readonly_verifier_note": "Initial absent-container assertion used case-sensitive Docker wording; corrected to lowercase no such object. Existing scheduled test was not rerun.",
+  "actual_acceptance_ci": {
+    "head": "a6a59f5f1f4fb9077c70f3d081b8e0207cc26aea",
+    "run": {
+      "id": 40751492905,
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/frostloom/Myink/actions/runs/40751492905"
+    },
+    "jobs": [
+      {
+        "name": "前端（lint + 单测 + 构建）",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/frostloom/Myink/actions/runs/40751492905/job/123039073461"
+      },
+      {
+        "name": "Python 全量回归（全新 PG）",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/frostloom/Myink/actions/runs/40751492905/job/123039073840"
+      },
+      {
+        "name": "镜像构建（Python + Caddy）",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/frostloom/Myink/actions/runs/40751492905/job/123039074005"
+      },
+      {
+        "name": "Pi offline control gates",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/frostloom/Myink/actions/runs/40751492905/job/123039074128"
+      }
+    ]
+  }
+}

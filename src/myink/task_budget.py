@@ -23,7 +23,9 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
 from myink.db import new_session, tenant_session
+from myink.maintenance import lock_maintenance, require_admission_open, register_admission, intent_outcome
 from myink.models import Project, Task
+from myink.maintenance_pause import (bind_execution, authorized_node, guard_maintenance, fence_effect, MaintenancePaused, READ_ONLY_TOOLS)
 from myink.models.task_budget import TaskBudget, TaskBudgetAttempt, TaskBudgetCall
 
 LEASE_SECONDS = 60
@@ -101,6 +103,10 @@ def ensure_task_budget(task_id, project_id, user_id, snapshot: dict | None) -> N
 
 
 def _locked(db, task_id) -> TaskBudget | None:
+    if _SCOPE.get() is None:
+        lock_maintenance(db)
+        db.scalar(select(Task).where(Task.id == uuid.UUID(str(task_id))).with_for_update())
+    fence_effect(db)
     return db.scalar(select(TaskBudget).where(
         TaskBudget.task_id == uuid.UUID(str(task_id))).with_for_update())
 
@@ -142,7 +148,15 @@ def renew_budget(task_id, owner_token) -> None:
 
 def release_budget(task_id, owner_token) -> None:
     with _ledger(task_id) as db:
-        row = _locked(db, task_id)
+        lock_maintenance(db)
+        db.scalar(select(Task).where(Task.id==uuid.UUID(str(task_id))).with_for_update())
+        from myink.maintenance_pause import _SCOPE as execution_scope
+        from myink.models.maintenance import MaintenanceExecution
+        execution=execution_scope.get()
+        current=db.get(MaintenanceExecution,uuid.UUID(str(task_id)))
+        if execution and (current.owner_token!=execution.owner or current.execution_generation!=execution.generation):
+            return
+        row = db.scalar(select(TaskBudget).where(TaskBudget.task_id==uuid.UUID(str(task_id))).with_for_update())
         if row is None or row.owner_token != owner_token:
             return
         _accrue(row, time.time())
@@ -202,7 +216,7 @@ class AttemptPermit:
 
 
 @contextmanager
-def bind_task_budget(task_id, owner_token):
+def _bind_task_budget(task_id, owner_token):
     managed = claim_budget(task_id, owner_token)
     token = _SCOPE.set(BudgetScope(str(task_id), owner_token) if managed else None)
     stopped = threading.Event()
@@ -226,6 +240,13 @@ def bind_task_budget(task_id, owner_token):
         _SCOPE.reset(token)
         if managed:
             release_budget(task_id, owner_token)
+
+
+@contextmanager
+def bind_task_budget(task_id, owner_token):
+    with bind_execution(task_id, owner_token):
+        with _bind_task_budget(task_id, owner_token):
+            yield
 
 
 @contextmanager
@@ -536,8 +557,9 @@ def budget_node(function, name=None):
     def wrapped(state, *args, **kwargs):
         operation = operation_for(state, name or function.__name__)
         with bind_budget_operation(operation):
-            guard_budget(operation)
-            return function(state, *args, **kwargs)
+            with authorized_node(operation):
+                guard_budget(operation)
+                return function(state, *args, **kwargs)
     return wrapped
 
 
@@ -545,6 +567,7 @@ def budget_llm(function):
     @wraps(function)
     def wrapped(db, state, node, *args, **kwargs):
         with bind_budget_operation(operation_for(state, node)):
+            guard_maintenance(operation_for(state, node))
             guard_budget()
             return function(db, state, node, *args, **kwargs)
     return wrapped
@@ -588,13 +611,21 @@ def load_short_progress(task_id):
 
 def budget_tool_call(identity, execute):
     scope = _SCOPE.get()
+    from myink.maintenance_pause import _SCOPE as execution_scope
+    if scope is None and execution_scope.get() is None:
+        return execute()
+    from myink.workflow.tools import _EXECUTORS
+    if identity.get("name") not in READ_ONLY_TOOLS or identity.get("name") not in _EXECUTORS:
+        raise TaskBudgetUnavailable("tool lacks a verified effect contract")
     if scope is None:
+        guard_maintenance("tool:" + identity["name"])
         return execute()
     key = "tool:" + hashlib.sha256(json.dumps([_OPERATION.get(), identity],
                                              sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     saved = _load_progress(scope.task_id, key)
     if saved is not None:
         return saved["result"]
+    guard_maintenance("tool:" + identity["name"])
     guard_budget()
     result = execute()
     _save_progress(scope.task_id, key, {"result": result})
@@ -603,6 +634,7 @@ def budget_tool_call(identity, execute):
 
 def record_budget_pause(task_id, exc, *, expected_owner=None):
     with _ledger(task_id) as db:
+        lock_maintenance(db)
         task = db.scalar(select(Task).where(Task.id == uuid.UUID(str(task_id))).with_for_update())
         row = _locked(db, task_id)
         if task.status == "cancelled":
@@ -626,6 +658,14 @@ def budget_execution(function):
         if budget_managed():
             return function(*args, **kwargs)
         params = signature.bind(*args, **kwargs).arguments
+        from myink.maintenance_pause import _SCOPE as execution_scope
+        execution = execution_scope.get()
+        if execution is not None:
+            requested = [str(params[k]) for k in ("task_id", "batch_task_id", "thread_id") if params.get(k) is not None]
+            if (not requested or any(tid != execution.task_id for tid in requested)
+                    or ("project_id" in params and str(params["project_id"]) != execution.project_id)):
+                raise TaskBudgetUnavailable("nested maintenance execution identity mismatch")
+            return function(*args, **kwargs)
         task_id = params.get("task_id") or params.get("batch_task_id") or params.get("thread_id")
         if not task_id:
             return function(*args, **kwargs)
@@ -643,6 +683,8 @@ def budget_execution(function):
             from myink.writing_resource_runtime import bind_resources
             with bind_task_budget(task_id, owner), bind_resources(resource_snapshot):
                 return function(*args, **kwargs)
+        except MaintenancePaused:
+            raise
         except (TaskBudgetPaused, TaskBudgetUnavailable) as exc:
             record_budget_pause(task_id, exc, expected_owner=owner)
             raise
@@ -660,6 +702,7 @@ def effect_identity(state, node):
 
 def load_effect(db, identity):
     """Lock the lease and receipt in the business transaction itself."""
+    fence_effect(db)
     scope = _SCOPE.get()
     if scope is None:
         return None
@@ -671,6 +714,7 @@ def load_effect(db, identity):
 
 
 def save_effect(db, identity, result):
+    fence_effect(db)
     scope = _SCOPE.get()
     if scope is None:
         return
@@ -736,7 +780,9 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody, *, client
     operation_id = str(body.operation_id or uuid.uuid4())
     key = "extension:" + operation_id
     params = body.model_dump(mode="json", exclude={"operation_id"})
+    priority = amqp.priority_for_user(user_id)
     with _ledger(task_id) as db:
+        require_admission_open(db)
         task = db.scalar(select(Task).where(Task.id == uuid.UUID(str(task_id))).with_for_update())
         row = _locked(db, task_id)
         if row is None:
@@ -804,15 +850,18 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody, *, client
                    "user_id":str(row.user_id), "payload":dict(task.payload),
                    "trace_id":task.trace_id or str(task_id), "request_id":operation_id,
                    "budget_operation_id":operation_id, "retry_count":0, "created_at":""}
+        intent_id = register_admission(db, message, priority=priority)
         receipt.response = {"params":params, "publication":"sending", "message":message,
                             "guest_charge":guest_charge,"previous_status":previous_status}
 
+    intent_outcome(intent_id, message["project_id"], publication_state="unknown")
     try:
         amqp.publish_once(json.dumps(message, ensure_ascii=False), amqp.KEY_TASKS,
-                          priority=amqp.priority_for_user(message['user_id']))
+                          priority=priority)
     except Exception as exc:
         definite = isinstance(exc, (amqp.PublishNotSent, pika.exceptions.NackError,
                                     pika.exceptions.UnroutableError))
+        intent_outcome(intent_id, message["project_id"], publication_state="rejected" if definite else "unknown")
         with _ledger(task_id) as db:
             task = db.scalar(select(Task).where(Task.id == uuid.UUID(str(task_id))).with_for_update())
             _locked(db, task_id)
@@ -826,6 +875,7 @@ def extend_and_resume_budget(task_id, user_id, body: ResumeBudgetBody, *, client
                 task.error = "续跑投递被明确拒绝；预算已保留，可使用同一操作重试"
         raise BudgetResumeError("BUDGET_PUBLISH_REJECTED: 使用同一操作重试" if definite else
                                "BUDGET_PUBLISH_UNCERTAIN: 预算已保留，请刷新任务状态", 503) from exc
+    intent_outcome(intent_id, message["project_id"], publication_state="published")
     with _ledger(task_id) as db:
         receipt = _extension(db, task_id, key)
         receipt.response = {**receipt.response, "publication":"published"}

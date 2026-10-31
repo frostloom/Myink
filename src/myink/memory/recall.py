@@ -231,6 +231,10 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
                  "relation_type": r.relation_type, "source_chapter": r.source_chapter}
                 for r in repo.get_relations(session, project_id, entity_ids=[ch.id])
                 if r.source_id == ch.id
+                # 只保留本章之前生效的关系：未来章来源行与 valid_from 尚在未来的历史行
+                # 都不该进入 pre-chapter 召回。valid_from 为 None 视为未知，保留。
+                and r.source_chapter < chapter_seq
+                and (r.valid_from is None or r.valid_from <= chapter_seq)
             ]
             snapshots.append({
                 "character_id": str(ch.id), "name": ch.name, "realm_cap": ch.realm_cap,
@@ -250,6 +254,7 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
         {"foreshadow_id": str(f.id), "description": f.description, "trigger": f.trigger,
          "planted_chapter": f.planted_chapter, "status": f.status}
         for f in repo.get_open_foreshadows(session, project_id)
+        if f.planted_chapter < chapter_seq
     ]
     threads_out = [
         {"name": t.name, "kind": t.kind, "status": t.status,
@@ -272,8 +277,10 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
     # 事件语义近邻召回（§15 最小向量召回）：以上一章摘要为 query，召回历史相似事件
     # ——补充关键词命中漏掉的呼应/重复素材；失败降级（模型未装/加载失败都不阻断）。
     if prev and prev.summary:
+        # before_chapter=chapter_seq：关键词腿只看本章之前，避免未来/本章条目
+        # 先占满 LIMIT 把更早的合法相关事件挤出窗口。
         recall_stats = _hybrid_recall(session, project_id, prev.summary, participants,
-                                      events_out, facts_out)
+                                      events_out, facts_out, before_chapter=chapter_seq)
     else:
         # 第 1 章没有前章摘要可作 query，且 before_chapter=1 让近期事件同样为空——这是设计
         # 如此（靠世界观 + 硬约束 + 大纲开场）。显式标注，便于区分「按设计没有」与「通道瘫了」。
@@ -334,7 +341,7 @@ def _terms(names: list[str] | None) -> list[str]:
 
 
 def _keyword_event_leg(session: Session, project_id: uuid.UUID,
-                       terms: list[str]) -> list[uuid.UUID]:
+                       terms: list[str], *, before_chapter: int | None = None) -> list[uuid.UUID]:
     """关键词腿：事件摘要 ILIKE 命中任一人物名，近期优先。ILIKE 走不了 btree，
     但显式 project_id 过滤 + LIMIT 封顶（§14.1 坑 1 / MVP 量级可接受，pg_trgm 列后续）。"""
     if not terms:
@@ -352,10 +359,16 @@ def _keyword_event_leg(session: Session, project_id: uuid.UUID,
         ).order_by(Alias.alias).limit(_MAX_KEYWORD_TERMS)).scalars().all()
         terms = _terms([*terms, *(c.name for c in characters), *aliases])
     patterns = [f"%{_esc_like(t)}%" for t in terms]
+    # 关键：本章/未来章的关键词命中必须在 LIMIT 之前就排掉，否则 5 条未来命中就能
+    # 吃满 _KEYWORD_RECALL_TOP_K，把更早的合法相关事件挤到窗口外（历史覆盖归零）。
+    conds = [
+        Event.project_id == project_id,
+        or_(*(Event.summary.ilike(p, escape="\\") for p in patterns)),
+    ]
+    if before_chapter is not None:
+        conds.append(Event.source_chapter < before_chapter)
     rows = session.execute(
-        select(Event).where(
-            Event.project_id == project_id,
-            or_(*(Event.summary.ilike(p, escape="\\") for p in patterns)),
+        select(Event).where(*conds
         ).order_by(Event.source_chapter.desc()).limit(_KEYWORD_RECALL_TOP_K)
     ).scalars().all()
     seen: set[uuid.UUID] = set()
@@ -384,7 +397,8 @@ def _est_tokens(text: str) -> int:
 
 def _hybrid_recall(session: Session, project_id: uuid.UUID, query_text: str,
                    participants: list[str] | None,
-                   events_out: list[dict], facts_out: list[dict]) -> dict:
+                   events_out: list[dict], facts_out: list[dict],
+                   *, before_chapter: int | None = None) -> dict:
     """事件混合召回（§7.2/§16）：向量腿（level=event）+ 关键词腿（出场人名 ILIKE），RRF 融合。
 
     关键词腿的术语就是 participants——它由 plan_cast 定下（本章真正出场的人），
@@ -438,7 +452,8 @@ def _hybrid_recall(session: Session, project_id: uuid.UUID, query_text: str,
         if not terms:
             keyword_status = "no_terms"
         else:
-            kw_ids = _keyword_event_leg(session, project_id, terms)
+            kw_ids = _keyword_event_leg(session, project_id, terms,
+                                        before_chapter=before_chapter)
             keyword_hits = len(kw_ids)
             if kw_ids:
                 legs.append(("keyword", kw_ids))
@@ -456,9 +471,14 @@ def _hybrid_recall(session: Session, project_id: uuid.UUID, query_text: str,
         fused = _rrf_fuse([ids for _, ids in legs])
         known = {str(e["event_id"]) for e in events_out}
         fused_ids = [sid for sid, _ in fused]
-        rows = session.execute(
-            select(Event).where(Event.id.in_(fused_ids))
-        ).scalars().all()
+        # 只水合本书、且（有章节边界时）严格早于当前章的事件：跨书/未来事件不算补充，
+        # 也不得占用额外召回名额。无效 ID 由下面的 by_id 检查自然跳过。
+        hydrate_stmt = select(Event).where(
+            Event.id.in_(fused_ids), Event.project_id == project_id,
+        )
+        if before_chapter is not None:
+            hydrate_stmt = hydrate_stmt.where(Event.source_chapter < before_chapter)
+        rows = session.execute(hydrate_stmt).scalars().all()
         by_id = {str(e.id): e for e in rows}
 
         for sid, _ in fused:

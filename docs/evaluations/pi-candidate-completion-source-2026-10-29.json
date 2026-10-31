@@ -1,0 +1,293 @@
+{
+  "schema": "pi-candidate-completion-acceptance-v1",
+  "date": "2026-10-29",
+  "branch": "codex/pi-autonomy-design",
+  "source_commit": "1ea1d514e90a566823f516775e38c93530d181c8",
+  "mode": "ACTUAL",
+  "controller_status": "active_finite_outside_window_verified",
+  "controller_sha256": "38d193bcbb54d412c266bc815479d03bcd47fa22f89ab2529795b3173a9622f4",
+  "sdk_code_sha256": "620afd95da381f9086f94c39877f55b653660f5095c70eb177190bda1b6e60a3",
+  "runtime_dependency_sha256": "9b6d4479661dfea5cba51e5dcaa8b77e30e911fbf3432c28fd522ee7a59ce0af",
+  "profile_sha256": "63383ce90e31ec99ab50ec3b3c2a6a60a14b5def5fdaca6f0ba8eb1a445771bd",
+  "profile_issued_at": "2026-10-29T03:27:42.120293+00:00",
+  "profile_expires_at": "2026-10-30T03:27:42.120293+00:00",
+  "new_paid_model_requests": 0,
+  "product_release": false,
+  "full_offline": {
+    "passed": 3887,
+    "deselected": 36,
+    "seconds": 264.42
+  },
+  "review": {
+    "critical": 0,
+    "important": 1,
+    "minor": 0,
+    "author_fixpass_complete": true,
+    "rereview": false
+  },
+  "ci": {
+    "run_id": 40809850010,
+    "url": "https://github.com/frostloom/Myink/actions/runs/40809850010",
+    "jobs": [
+      {
+        "name": "前端（lint + 单测 + 构建）",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/frostloom/Myink/actions/runs/40809850010/job/123237320752"
+      },
+      {
+        "name": "镜像构建（Python + Caddy）",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/frostloom/Myink/actions/runs/40809850010/job/123237320974"
+      },
+      {
+        "name": "Python 全量回归（全新 PG）",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/frostloom/Myink/actions/runs/40809850010/job/123237321099"
+      },
+      {
+        "name": "Pi offline control gates",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/frostloom/Myink/actions/runs/40809850010/job/123237321112"
+      }
+    ]
+  },
+  "native_sdk_mock": {
+    "scope": "native_sdk_mock_probe_only",
+    "status": "passed",
+    "pi_runtime_verified": true,
+    "mock_transport_calls": 2,
+    "mock_attempts": 2,
+    "paid_requests": 0,
+    "fee_sha256": "fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb",
+    "cleanup": [
+      {
+        "container_id": "fbe1b8a4a785c6891f67b066aaf5087c4372feaaee39be9d24650506775d64b6",
+        "stopped": true,
+        "exit_code": 0,
+        "removed": true
+      },
+      {
+        "container_id": "98f2f0401ab377e6071f22827937593e2cf7333dde9c5745d3a1d107d916f6e7",
+        "stopped": true,
+        "exit_code": 0,
+        "removed": true
+      }
+    ],
+    "failure_class": null,
+    "code_sha256": "620afd95da381f9086f94c39877f55b653660f5095c70eb177190bda1b6e60a3",
+    "controller_sha256": "38d193bcbb54d412c266bc815479d03bcd47fa22f89ab2529795b3173a9622f4"
+  },
+  "native_manager_idle": {
+    "runs": 2,
+    "elapsed_ms": [
+      874.282,
+      864.297
+    ],
+    "new_model_requests": 0
+  },
+  "timers_active": [
+    "myink-pi-manager.timer",
+    "myink-pi-autonomy.timer",
+    "myink-pi-review-worker.timer",
+    "myink-pi-observer.timer",
+    "myink-pi-diagnosis.timer",
+    "myink-pi-followup.timer"
+  ],
+  "original_fee_sha256": "fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb",
+  "original_followup_registry_sha256": "7d06dcea226bf291c4638b17c87027d92a7f0b1c1910d42350499d84cd7e0077",
+  "original_manager_prefix_preserved": true,
+  "audit": {
+    "activation_events": 2,
+    "retained_guard_events": 2,
+    "time_basis": "recorded_at",
+    "changes": [
+      {
+        "added": 20,
+        "category": "production",
+        "deleted": 2,
+        "path": "ops/pi/autonomy_coordinator.py"
+      },
+      {
+        "added": 2,
+        "category": "production",
+        "deleted": 2,
+        "path": "ops/pi/autonomy_dispatch.py"
+      },
+      {
+        "added": 10,
+        "category": "production",
+        "deleted": 4,
+        "path": "ops/pi/autonomy_worker.py"
+      },
+      {
+        "added": 80,
+        "category": "production",
+        "deleted": 0,
+        "path": "ops/pi/candidate_dossier.py"
+      },
+      {
+        "added": 79,
+        "category": "production",
+        "deleted": 0,
+        "path": "ops/pi/candidate_followup.py"
+      },
+      {
+        "added": 30,
+        "category": "production",
+        "deleted": 0,
+        "path": "ops/pi/candidate_review_evidence.py"
+      },
+      {
+        "added": 98,
+        "category": "production",
+        "deleted": 0,
+        "path": "ops/pi/candidate_review_launcher.py"
+      },
+      {
+        "added": 215,
+        "category": "production",
+        "deleted": 0,
+        "path": "ops/pi/candidate_review_stage.py"
+      },
+      {
+        "added": 13,
+        "category": "docs",
+        "deleted": 6,
+        "path": "ops/pi/deploy/README.md"
+      },
+      {
+        "added": 3,
+        "category": "production",
+        "deleted": 3,
+        "path": "ops/pi/deploy/observer_entry.py"
+      },
+      {
+        "added": 47,
+        "category": "production",
+        "deleted": 0,
+        "path": "ops/pi/development_audit.py"
+      },
+      {
+        "added": 82,
+        "category": "production",
+        "deleted": 0,
+        "path": "ops/pi/development_evidence.py"
+      },
+      {
+        "added": 7,
+        "category": "production",
+        "deleted": 0,
+        "path": "ops/pi/maintenance_window.py"
+      },
+      {
+        "added": 67,
+        "category": "production",
+        "deleted": 0,
+        "path": "ops/pi/manager_completion.py"
+      },
+      {
+        "added": 4,
+        "category": "production",
+        "deleted": 1,
+        "path": "ops/pi/no_tool_host.py"
+      },
+      {
+        "path": "deployment/autonomy-profile.json",
+        "category": "config",
+        "added": 1,
+        "deleted": 1
+      },
+      {
+        "path": "deployment/autonomy.env",
+        "category": "config",
+        "added": 3,
+        "deleted": 3
+      },
+      {
+        "path": "deployment/closed-manager.env",
+        "category": "config",
+        "added": 2,
+        "deleted": 2
+      },
+      {
+        "path": "deployment/review-worker.env",
+        "category": "config",
+        "added": 2,
+        "deleted": 2
+      }
+    ],
+    "added": 765,
+    "deleted": 26,
+    "main_reader": {
+      "schema": "pi-completion-main-reader-proof-v1",
+      "status": "passed",
+      "actual_controller_events": 2,
+      "retained_guard_events": 2,
+      "changed_files": 19,
+      "added": 765,
+      "deleted": 26,
+      "original_nextday_actual_result_linked": true,
+      "new_paid_candidate_pipeline_certified": false,
+      "product_release_certified": false
+    }
+  },
+  "enhancements": {
+    "model_tools": [
+      "observe_metrics",
+      "read_source",
+      "propose_plan",
+      "apply_patch",
+      "run_check",
+      "candidate_status"
+    ],
+    "memory": {
+      "private_phase_sessions": true,
+      "append_only_fee_manager_tool_and_audit_history": true,
+      "bounded_source_bound_diagnosis_facts": {
+        "max_facts": 8,
+        "max_bytes": 8192
+      },
+      "server_hindsight_adapter": false
+    },
+    "host_stages": [
+      "original_manager_binding",
+      "stopped_sdk_tool_fee_reconciliation",
+      "independent_no_tool_candidate_review",
+      "ordered_development_audit",
+      "root_fixed_nextday_registration",
+      "uncertain_stopped_manager_observation"
+    ],
+    "boundaries": {
+      "cumulative_budget_microyuan": 50000000,
+      "legacy_unknown_holds": 9,
+      "max_development_model_requests": 30,
+      "max_development_tool_requests": 96,
+      "max_development_seconds": 1800,
+      "max_candidate_review_model_requests": 1,
+      "max_candidate_review_seconds": 120,
+      "maintenance_timezone": "Asia/Shanghai",
+      "maintenance_hours": "02:00-06:00",
+      "new_candidate_cutoff": "05:30",
+      "max_followup_registry_entries": 32,
+      "model_has_host_shell_docker_credential_git_or_release_authority": false
+    },
+    "rollback": {
+      "guarded_upgrade_attempts": 2,
+      "configuration_changes_in_guarded_attempts": 0,
+      "private_preimages_and_intent_retained": true,
+      "databases_restored": false,
+      "business_rollback_certified": false
+    }
+  },
+  "remaining": [
+    "genuine_new_automatic_paid_candidate_pipeline",
+    "actual_due_test_for_new_candidate",
+    "explicitly_authorized_main_and_product_adoption",
+    "observed_product_behavior_and_owned_business_rollback",
+    "actual_24_to_48_hour_validation"
+  ]
+}

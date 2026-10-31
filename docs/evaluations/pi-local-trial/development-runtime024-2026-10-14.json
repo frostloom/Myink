@@ -1,0 +1,21 @@
+{
+  "schema": "pi-development-runtime024-summary-v1",
+  "status": "FAILED_OR_INCOMPLETE",
+  "candidate_accepted": false,
+  "candidate_modified": false,
+  "candidate_sha256": "dc6022b85b2556736ac3ac9d21e952105195025657a72d5f871405aca04dc597",
+  "actual_http_requests": 3,
+  "upstream_status_counts": {"200": 3},
+  "usage_records": 3,
+  "failure": {"last_assistant_stop_reason": "length", "raw_stop_reason": "max_tokens", "last_output_tokens": 2048, "last_assistant_tools": 0, "adapter_session_valid": false, "cause": "unfinished_length_turn_without_adapter_continuation", "provider_internal_thinking_proven": false},
+  "unchanged_candidate_check": {"primary_fidelity_passed": 16, "primary_fidelity_failed": 36, "other_primary_guards_each_passed": 52, "severe_guard_veto": true, "repaired_candidate": false},
+  "product_regression": "NOT_RUN",
+  "cumulative": {"attempts": 122, "conservative_microyuan": 13063317, "known_estimate_microyuan": 981141, "historical_unknown_microyuan": 12082176, "budget_microyuan": 20000000, "remaining_microyuan": 6936683, "requests_limit": null, "phase_allocations": null, "invoice_known": false},
+  "this_round": {"estimated_microyuan": 47676, "new_unknown_microyuan": 0},
+  "terminal": {"operations": 390, "events": 657, "pending_model_attempts": 0, "pending_phase_admissions": 0, "old_prefix_preserved": true, "closed_backup_equal": true},
+  "cleanup": {"owned_paid_trees_empty": 3, "keeper_stopped": true},
+  "semantic_quality": "unknown",
+  "release_approved": false,
+  "terminal_pins": {"ledger-after024.json": "5a844adecbcdbfbf4ebe03dfdc2c7271ca07dbd9c0747a4a5b5fcb76c4e4812c", "ledger-after024.sqlite": "4d3bf774b2e19f870f067793dbb4d49530911509135184069525481c0372e6a9", "terminal-checkpoint.json": "0fae1175ca3088ac32b09cbc2d178cd4ba75cd1ddb9abd6c52c844d06b7cb346", "keeper-stopped.json": "b5060a9a7fd91294777c91ca11865b2e8cbdf59a1be6d78ad7502ab0dcea31ee", "paid-export-manifest": "df4efd29fc04e19c8d9c8b904bfcd2bf58830e64a20dc2ca843495c0cbb6407e"},
+  "review_pins": {"facts": "2eb3c11dd4733ae21f9acf641fd5841af1eaf9254e2ff0296a5bea2e5ee932e7", "diagnosis": "dcbd6db2b78dcf2b26c79bc5e05ca1295cce798f8fc558068785f5fa2f910485"}
+}

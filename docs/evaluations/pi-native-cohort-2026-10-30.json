@@ -1,0 +1,166 @@
+{
+  "schema": "pi-native-cohort-checkpoint-v1",
+  "date": "2026-10-30",
+  "source_commit": "bbaae75c474b1658eb99c723d62b2610ff466d23",
+  "base_commit": "b53a6a9ea712c8d3b6c73ebc9aa771909c5a593d",
+  "run_id": "pi-native-cohort-20261030",
+  "version_sha256": "f69cee5b8a0129cc72f073d3b76e23678f5ee90ea0aba1134ae86a3e4071423f",
+  "changes": [
+    {
+      "path": "docs/superpowers/plans/2026-10-29-pi-product-maintenance-release.md",
+      "category": "docs",
+      "added": 1,
+      "deleted": 1
+    },
+    {
+      "path": "ops/pi/product_activation.py",
+      "category": "production",
+      "added": 297,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/product_cold_probe.py",
+      "category": "production",
+      "added": 2,
+      "deleted": 1
+    },
+    {
+      "path": "ops/pi/product_restore.py",
+      "category": "production",
+      "added": 10,
+      "deleted": 1
+    },
+    {
+      "path": "ops/pi/product_runtime.py",
+      "category": "production",
+      "added": 26,
+      "deleted": 8
+    },
+    {
+      "path": "ops/pi/tests/integration/test_product_activation_native.py",
+      "category": "test",
+      "added": 146,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/integration/test_product_application_restore.py",
+      "category": "test",
+      "added": 4,
+      "deleted": 4
+    },
+    {
+      "path": "ops/pi/tests/test_product_activation.py",
+      "category": "test",
+      "added": 118,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/test_product_restore.py",
+      "category": "test",
+      "added": 18,
+      "deleted": 0
+    },
+    {
+      "path": "ops/pi/tests/test_product_runtime.py",
+      "category": "test",
+      "added": 35,
+      "deleted": 1
+    }
+  ],
+  "release_allowed": false,
+  "production_changed": false,
+  "main_merged": false,
+  "server_audit_published": false,
+  "provider_calls": 0,
+  "pi_autonomous_improvement_claim": false,
+  "tests": {
+    "latest_unit": 38,
+    "latest_unit_seconds": 2.19,
+    "earlier_related": 78,
+    "earlier_related_seconds": 27.33,
+    "overlapping_suites": true,
+    "earlier_frozen_full": 4066,
+    "earlier_full_deselected": 52,
+    "earlier_full_seconds": 327.39,
+    "earlier_full_matches_final_source": false,
+    "native_full_stack": 1,
+    "native_seconds": 309.21,
+    "application_regression": 3,
+    "application_seconds": 135.63,
+    "application_deselected": 3
+  },
+  "base_exact_ci": {
+    "head": "b53a6a9ea712c8d3b6c73ebc9aa771909c5a593d",
+    "run_id": 40921631049,
+    "result": "4/4 success"
+  },
+  "source_exact_ci": "pending push",
+  "scope": "real owned seven services with synthetic data and SIMULATED host plan; fixture SQL changes rollback owner; no opening or business rollback acceptance",
+  "pending": [
+    "complete root-approved release/POST/open controller",
+    "private effective runtime/config password-auth recovery proof",
+    "cross-generation task adoption and business rollback preserving new writes",
+    "live network member and retained cohort/manual release guards",
+    "single final review and author fixpass",
+    "explicit main/product approval",
+    "fresh paid Pi adoption and actual nextday/24-48h observation"
+  ],
+  "nextday": {
+    "plan": {
+      "test_id": "native-cohort-nextday-20261031",
+      "scheduled_for": "2026-10-31T03:00:00+00:00",
+      "target_run_id": "pi-native-cohort-20261030",
+      "target_version_sha256": "f69cee5b8a0129cc72f073d3b76e23678f5ee90ea0aba1134ae86a3e4071423f",
+      "criterion": "复核固定容器生命周期及恢复边界；发布后另登记真实次日和24-48h观察。",
+      "kind": "restore",
+      "status": "blocked"
+    },
+    "registered": false,
+    "result": null
+  },
+  "audit": {
+    "local_events": 9,
+    "expected_daily_events": 27,
+    "scope_count": 10,
+    "reader_verified": true,
+    "published": "local private export only"
+  },
+  "evidence": {
+    "related": {
+      "sha256": "4bec383e98e96be122007a50bc0f2e926bbcbd717bd3b4ca98a993906f6192f8",
+      "bytes": 180
+    },
+    "latest-unit": {
+      "sha256": "af6b6b638a4b9f272b9607931ffc4bfe672f69cd2d963ab1030e3b7029e38b26",
+      "bytes": 99
+    },
+    "baseline-full": {
+      "sha256": "5076bfd2e84649501dc6f012bbc55a14f934a677015ce44736707de207ed309e",
+      "bytes": 4608
+    },
+    "native": {
+      "sha256": "ddad247f9887a96134ee2c776b379a197f0b9868598dbde63e8424c3f3e5d696",
+      "bytes": 110
+    },
+    "app": {
+      "sha256": "38c1d2f7858fb49586e7ceee8d37a28be65e75e8ff8d751285ae453d6d0cf201",
+      "bytes": 124
+    },
+    "drain-red": {
+      "sha256": "fac59a7f6471d5ce5af918316c7664816d0fa9482ad797d673e04fa29372b5da",
+      "bytes": 2586
+    },
+    "restore-red": {
+      "sha256": "5b5b7dddb8378ba119144f0fe16e45901df4add3a719f446be92ee797f913263",
+      "bytes": 8135
+    },
+    "network-red": {
+      "sha256": "851eefca6945176183d8d03a9df72563e0e71a16ade509341aee961967b6f090",
+      "bytes": 4395
+    },
+    "cohort-failure": {
+      "sha256": "e819f65b8b31cdc3dca6653c7d0988045ee109f4251aa2cbd8a3870e6a335564",
+      "bytes": 13761
+    }
+  }
+}

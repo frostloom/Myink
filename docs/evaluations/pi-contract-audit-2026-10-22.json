@@ -1,0 +1,247 @@
+{
+  "schema": "pi-contract-protocol-audit-v1",
+  "date": "2026-10-22",
+  "source_commit": "49327aaa3e8ecc37a906debfa93b9aa302bd4056",
+  "source_provenance": {
+    "runtime_sha256": "6e169d5462405f59c070365267eec24fddc005a3c141819ba7a1f548a592c528",
+    "node_sha256": "719a43d185f3b6a59d8fcbba1ff06b93c75f76fb0bb9916f81d33921615d4cb5",
+    "lock_sha256": "fd0f5bd8aa13e01da8792b161d80502f32e1afd00103151fbcc21f4b3146785a",
+    "pi_cli_sha256": "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+    "code_sha256": "295e2affc415c29a488128442a206611929613bdf3e0d47f4288b02b015766a7",
+    "controller_sha256": "7a448c22be4108329b7778fe56583732c9f2407ca9660c0c1a5b577a912e0f1d",
+    "worker_sha256": "80ca8e95b18d43c6f3f1eea0238967a9b93015c54ffbf3605df2645d818fcaff"
+  },
+  "actual_frozen_slots": 30,
+  "verified_pairs": 15,
+  "pair_contracts": [
+    {
+      "repeat": 1,
+      "group": "recall.events",
+      "same_input_and_system_and_parameters": true,
+      "prompt_only_request_difference": true,
+      "baseline_shared_scope": true,
+      "candidate_explicit_target": true
+    },
+    {
+      "repeat": 1,
+      "group": "recall.plot",
+      "same_input_and_system_and_parameters": true,
+      "prompt_only_request_difference": true,
+      "baseline_shared_scope": true,
+      "candidate_explicit_target": true
+    },
+    {
+      "repeat": 1,
+      "group": "recall.characters",
+      "same_input_and_system_and_parameters": true,
+      "prompt_only_request_difference": true,
+      "baseline_shared_scope": true,
+      "candidate_explicit_target": true
+    },
+    {
+      "repeat": 1,
+      "group": "extract",
+      "same_input_and_system_and_parameters": true,
+      "prompt_only_request_difference": true,
+      "baseline_shared_scope": true,
+      "candidate_explicit_target": true
+    },
+    {
+      "repeat": 1,
+      "group": "operations",
+      "same_input_and_system_and_parameters": true,
+      "prompt_only_request_difference": true,
+      "baseline_shared_scope": true,
+      "candidate_explicit_target": true
+    },
+    {
+      "repeat": 2,
+      "group": "recall.events",
+      "same_input_and_system_and_parameters": true,
+      "prompt_only_request_difference": true,
+      "baseline_shared_scope": true,
+      "candidate_explicit_target": true
+    },
+    {
+      "repeat": 2,
+      "group": "recall.plot",
+      "same_input_and_system_and_parameters": true,
+      "prompt_only_request_difference": true,
+      "baseline_shared_scope": true,
+      "candidate_explicit_target": true
+    },
+    {
+      "repeat": 2,
+      "group": "recall.characters",
+      "same_input_and_system_and_parameters": true,
+      "prompt_only_request_difference": true,
+      "baseline_shared_scope": true,
+      "candidate_explicit_target": true
+    },
+    {
+      "repeat": 2,
+      "group": "extract",
+      "same_input_and_system_and_parameters": true,
+      "prompt_only_request_difference": true,
+      "baseline_shared_scope": true,
+      "candidate_explicit_target": true
+    },
+    {
+      "repeat": 2,
+      "group": "operations",
+      "same_input_and_system_and_parameters": true,
+      "prompt_only_request_difference": true,
+      "baseline_shared_scope": true,
+      "candidate_explicit_target": true
+    },
+    {
+      "repeat": 3,
+      "group": "recall.events",
+      "same_input_and_system_and_parameters": true,
+      "prompt_only_request_difference": true,
+      "baseline_shared_scope": true,
+      "candidate_explicit_target": true
+    },
+    {
+      "repeat": 3,
+      "group": "recall.plot",
+      "same_input_and_system_and_parameters": true,
+      "prompt_only_request_difference": true,
+      "baseline_shared_scope": true,
+      "candidate_explicit_target": true
+    },
+    {
+      "repeat": 3,
+      "group": "recall.characters",
+      "same_input_and_system_and_parameters": true,
+      "prompt_only_request_difference": true,
+      "baseline_shared_scope": true,
+      "candidate_explicit_target": true
+    },
+    {
+      "repeat": 3,
+      "group": "extract",
+      "same_input_and_system_and_parameters": true,
+      "prompt_only_request_difference": true,
+      "baseline_shared_scope": true,
+      "candidate_explicit_target": true
+    },
+    {
+      "repeat": 3,
+      "group": "operations",
+      "same_input_and_system_and_parameters": true,
+      "prompt_only_request_difference": true,
+      "baseline_shared_scope": true,
+      "candidate_explicit_target": true
+    }
+  ],
+  "synthetic_mock_engine_controls": {
+    "total": 90,
+    "base_valid": 90,
+    "target_valid": 30,
+    "target_rejected": 60,
+    "by_arm": {
+      "baseline": {
+        "total": 45,
+        "target_valid": 15,
+        "target_rejected": 30
+      },
+      "candidate": {
+        "total": 45,
+        "target_valid": 15,
+        "target_rejected": 30
+      }
+    },
+    "real_model_calls": 0
+  },
+  "preserved_real_baseline": {
+    "base_valid": true,
+    "target_valid": false,
+    "score_reproduced": true,
+    "candidate_generated": false
+  },
+  "scoring_contract": {
+    "base_validator": "validate_writing_analysis",
+    "additional_target_scorer": "score_contract_output",
+    "same_for_both_arms": true,
+    "baseline": "legacy_shared_writing_prompt",
+    "candidate": "build_writing_prompt",
+    "comparison_factor": "whole_prompt_template",
+    "single_instruction_causal_effect_isolated": false,
+    "semantic_quality_inferred": false
+  },
+  "protocol_discrepancy": {
+    "early_draft": "known_billed_ordinary_contract_failure_may_continue_when_all_other_gates_hold",
+    "current_pilot": "any_result_verification_failure_blocks_before_next_slot",
+    "current_pilot_matches_its_spec": true,
+    "current_pilot_is_full_trial_executor": false,
+    "gate_relaxed": false,
+    "arbitrary_selection_supported": false,
+    "retry_or_resume_supported": false,
+    "ordinary_contract_failure_billing_unchanged": true
+  },
+  "historical_evidence": {
+    "report": "pi-local-trial/contract-trial-2026-10-17.md",
+    "historical_baseline_valid": 0,
+    "historical_candidate_valid": 2,
+    "slots_per_arm": 5,
+    "applies_to_historical_prompt_only": true,
+    "current_prompt_has_later_wording_changes": true,
+    "new_candidate_output_generated": false
+  },
+  "verification": {
+    "relevant_tests_passed": 396,
+    "skipped": 0,
+    "full_pi_suite_rerun": false,
+    "audit_core_network_calls": 0,
+    "real_provider_calls": 0,
+    "docker_calls": 0,
+    "mock_engine_calls": 90,
+    "canonical_audit_unchanged": true,
+    "protected_original_bytes_unchanged": true,
+    "credentials_read": false
+  },
+  "canonical_ledger": {
+    "sha256": "e14bf379f3d66927916f8113b22e49fc2d27fce59f564b8b7fcdda04c2a357ca",
+    "scope_sha256": "2218dd4133ffb7709f5d2c3812620a2ee7686ea57837983cf0495f0cd1099746",
+    "operations": 750,
+    "events": 1202
+  },
+  "accounting": {
+    "attempts": 211,
+    "known_attempts": 203,
+    "unknown_attempts": 8,
+    "pending_attempts": 0,
+    "known_charged_microyuan": 1797465,
+    "unknown_reserved_microyuan": 16114944,
+    "conservative_used_microyuan": 17912409,
+    "budget_microyuan": 20000000,
+    "conservative_remaining_microyuan": 2087591
+  },
+  "production_code_changed": false,
+  "trial_scorer_changed": false,
+  "launcher_behavior_changed": false,
+  "historical_results_rewritten": false,
+  "new_live_manifest_generated": false,
+  "automatic_execution": false,
+  "release_allowed": false,
+  "billing_verified": false,
+  "review": {
+    "status": "completed",
+    "critical": 0,
+    "important": 0,
+    "minor": 0,
+    "scope": "production code/specs, four public documents and authorized sanitized private audit evidence",
+    "real_private_inputs_or_sessions_read": false,
+    "tests_independently_rerun": false
+  },
+  "private_evidence_sha256": {
+    "audit.py": "dabe01d3b052a9cfa95a0d066013dc103a8593cbc095738672e323590270491c",
+    "audit.log": "315e5e3a5b27d3b3ac748f03589b5a69544d96055b9cb73104b203eccb75a2be",
+    "audit-preflight-failed.log": "9acd28dac7459dfeaa65b15e582b36d54d2e13a42ec29f504857e984c36c6b86",
+    "pair-checks-private.json": "7194e31425e661b536eb24156835e987562188f8b4e62fccc7d7596ee2febada",
+    "synthetic-controls-private.json": "07dddd3bd560e4cb041a72a485ba8270ae6f140cec68866abf245e7c91c038fa",
+    "audit-summary-private.json": "56250ff936cd85529cfd0d8551b954a83a44cbd7c7c32ea79b4dffe122220815",
+    "tests.log": "f42c4403cc1bc6f5e224d86cfda437f8ee4bcdcdc6cb779f19663bb3ba670bd1"
+  }
+}

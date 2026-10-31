@@ -1,0 +1,211 @@
+{
+  "date": "2026-10-24",
+  "completed_date": "2026-10-25",
+  "deferred_review_minors": [
+    "l1 helper comment says all text outside item remains guarded; full registered actor prefix is now also exempt; behavior approved and exact candidate retained"
+  ],
+  "status": "verified-host-supervised-two-task-sequence",
+  "accepted_tasks": 2,
+  "real_cycles": 5,
+  "initial_rejected_candidate": {
+    "sha256": "1fa3057946d4f9c8d4cf71eeb13ef4a9eaa5835b25aebcb7345d9e86d155c1c7",
+    "adopted": false,
+    "original_fixed_passed": 159,
+    "new_counterexamples_failed": 3,
+    "fees": {
+      "new_attempts": 18,
+      "new_unknown": 0,
+      "known_cost_microyuan": 94608,
+      "total_attempts": 495,
+      "total_known": 486,
+      "historical_unknown": 9,
+      "total_known_cost_microyuan": 3323078,
+      "original_rows_events_unchanged": true,
+      "policy_closed": true,
+      "credential_unchanged": true,
+      "owned_removed": true,
+      "analysis_attempts": 1,
+      "development_attempts": 17,
+      "ledger_sha256": "29595ce5f6bf6421aca9dbe010024159397483bb030948f823ef1bee276f81e3"
+    }
+  },
+  "preparation_stop": {
+    "status": "blocked",
+    "reason": "host test file0644 requires0600",
+    "new_attempts": 1,
+    "known_cost_microyuan": 15178,
+    "new_unknown": 0,
+    "development_attempts": 0,
+    "original_rows_events_unchanged": true,
+    "policy_closed": true,
+    "owned_removed": true,
+    "never_replayed": true
+  },
+  "request_size_stop": {
+    "status": "blocked",
+    "reason": "read-source overrun;68473ASCII exceeds65536 before seventh reservation",
+    "new_attempts": 7,
+    "known_cost_microyuan": 49336,
+    "new_unknown": 0,
+    "analysis_attempts": 1,
+    "development_attempts": 6,
+    "original_rows_events_unchanged": true,
+    "policy_closed": true,
+    "owned_removed": true,
+    "adopted": false,
+    "last_request_forwarded": false
+  },
+  "final_tool_summary": {
+    "source_reads": [
+      {
+        "start_line": 249,
+        "end_line": 296,
+        "path": "src/myink/validation/l1.py"
+      },
+      {
+        "start_line": 480,
+        "end_line": 520,
+        "path": "src/myink/validation/l1.py"
+      },
+      {
+        "start_line": 276,
+        "end_line": 296,
+        "path": "src/myink/validation/l1.py"
+      },
+      {
+        "start_line": 484,
+        "end_line": 516,
+        "path": "src/myink/validation/l1.py"
+      }
+    ],
+    "controlled_tool_receipts": 10,
+    "max_request_ascii_bytes": 28105,
+    "request_count": 10
+  },
+  "task1": {
+    "adoption": {
+      "reviewer": "sequence_one_final_review",
+      "approved": true,
+      "adopted": true,
+      "file": "src/myink/validation/l1.py",
+      "file_sha256": "06c37d29d345cadfc8cd701a4135eebd11f33a2e93c70c896fa6ebf4c4477faf",
+      "candidate_sha256": "1868d2bdefe777456738bd99d86c25bb068080fae276bda92cd21ea08e84cf17",
+      "source_before": "604f2263199814e3eb69bc6adcf0edcaed579ec896d3f8c3fc64f7c21c98a290",
+      "public_test": "tests/test_destroyed_item_entity_names.py"
+    },
+    "fees": {
+      "new_attempts": 7,
+      "new_unknown": 0,
+      "known_cost_microyuan": 40296,
+      "total_attempts": 503,
+      "total_known": 494,
+      "historical_unknown": 9,
+      "total_known_cost_microyuan": 3378552,
+      "original_rows_events_unchanged": true,
+      "policy_closed": true,
+      "credential_unchanged": true,
+      "owned_removed": true,
+      "analysis_attempts": 1,
+      "development_attempts": 6,
+      "ledger_sha256": "ef061ce0b268802eec8bb36d8cf4b2fe1e10bfbdc56275fb397260d291817dd9"
+    },
+    "baseline_tests": 162,
+    "baseline_failures": 6,
+    "final_passed": 162
+  },
+  "task2": {
+    "adoption": {
+      "reviewer": "sequence_two_final_review",
+      "approved": true,
+      "adopted": true,
+      "file": "src/myink/validation/l1.py",
+      "file_sha256": "e7b8696ebf42ab2736feed860c33e62b10f70ad30c260dec6bf49d2cd9411ddc",
+      "candidate_sha256": "5fd93a1df04fb07e6ea1bee1211e43bfdf12c516ca9318d0160c2653274c4932",
+      "source_before": "1868d2bdefe777456738bd99d86c25bb068080fae276bda92cd21ea08e84cf17",
+      "public_test": "tests/test_destroyed_item_actor_names.py"
+    },
+    "fees": {
+      "new_attempts": 11,
+      "new_unknown": 0,
+      "known_cost_microyuan": 60549,
+      "total_attempts": 521,
+      "total_known": 512,
+      "historical_unknown": 9,
+      "total_known_cost_microyuan": 3488437,
+      "original_rows_events_unchanged": true,
+      "policy_closed": true,
+      "credential_unchanged": true,
+      "owned_removed": true,
+      "analysis_attempts": 1,
+      "development_attempts": 10,
+      "ledger_sha256": "b8e960f22c639b469a9590a7400b5ac0a00b4f049a963fdf6c38a051423a9da3"
+    },
+    "baseline_tests": 174,
+    "baseline_failures": 5,
+    "final_passed": 174
+  },
+  "fees": {
+    "new_attempts": 44,
+    "known_cost_microyuan": 259967,
+    "new_unknown": 0,
+    "total_attempts": 521,
+    "total_known": 512,
+    "historical_unknown": 9,
+    "total_known_cost_microyuan": 3488437,
+    "original_rows_events_unchanged": true,
+    "policy_closed": true,
+    "credential_unchanged": true
+  },
+  "tests": {
+    "targeted_passed": 291,
+    "targeted_xfailed": 3,
+    "product_passed": 1828,
+    "product_skipped": 1,
+    "product_xfailed": 3,
+    "product_deselected": 159,
+    "product_warnings": 2,
+    "offline_boundary_passed": 76,
+    "additional_product_project_boundary_passed": 1,
+    "new_public_tests": 25
+  },
+  "recovery": {
+    "completed_cycle": {
+      "verified": true,
+      "mode": "ACTUAL",
+      "kind": "completed-cycle-receipt-read",
+      "new_model_calls": 0,
+      "billing_ledger_unchanged": true,
+      "control_ledger_unchanged": true,
+      "cycle_result_unchanged": true,
+      "ledger_sha256": "ef061ce0b268802eec8bb36d8cf4b2fe1e10bfbdc56275fb397260d291817dd9",
+      "process_restart_between_tasks": true,
+      "active_paid_process_killed": false
+    },
+    "blocked_cycle": {
+      "verified": true,
+      "mode": "ACTUAL",
+      "status": "blocked",
+      "same_terminal_receipt": true,
+      "billing_ledger_unchanged": true,
+      "control_ledger_unchanged": true,
+      "new_model_calls": 0
+    }
+  },
+  "owned_containers_checked_absent": 19,
+  "services_removed": true,
+  "original_dirty_files": 113,
+  "prior_dirty_preserved_before_readiness_update": 112,
+  "git_commit": false,
+  "push": false,
+  "merge": false,
+  "deploy": false,
+  "server_autonomy": false,
+  "limitations": [
+    "Finite host-supervised task selection/freezing/review/adoption, not unattended discovery or server autonomy",
+    "Restart between tasks; no deliberate active paid-process kill or real unknown-fee injection",
+    "Original rejected and private-mode-blocked cycles retained; later runs are fresh independently reviewed identities",
+    "Sample7 investigation found missing draft fixture and semantic binding need; sample7/8/9 remain unresolved",
+    "Metering at frozen rates is not independent provider invoice reconciliation",
+    "Controller/runtime unchanged, previous fullPi2455/4Node evidence not rerun this task"
+  ]
+}

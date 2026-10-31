@@ -10,17 +10,20 @@ from myink import db as database
 from myink.worker import enqueue as queue
 
 
-def test_configuration_reads_finish_before_project_lock_with_single_connection(monkeypatch):
-    engine = create_engine('sqlite://', poolclass=QueuePool, pool_size=1, max_overflow=0, pool_timeout=0.01)
-    @contextmanager
-    def tenant(pid):
-        with engine.connect():
-            yield SimpleNamespace(get=lambda *args, **kwargs: object())
+def test_configuration_reads_finish_before_project_lock_with_single_connection(temp_project, monkeypatch):
+    from sqlalchemy.orm import sessionmaker
+    from myink.models import Project
+
+    with database.new_session() as db:
+        owner = str(db.get(Project, uuid.UUID(temp_project)).user_id)
+    engine = create_engine(database.get_engine().url, poolclass=QueuePool,
+                          pool_size=1, max_overflow=0, pool_timeout=0.1)
     def read_configuration(*args):
         with engine.connect() as connection:
             connection.exec_driver_sql('SELECT 1')
         return {}
-    monkeypatch.setattr(database, 'tenant_session', tenant)
+    monkeypatch.setattr(database, '_engine', engine)
+    monkeypatch.setattr(database, '_SessionLocal', sessionmaker(bind=engine, expire_on_commit=False, autoflush=False))
     monkeypatch.setattr('myink.platform_readiness.require_operation_ready', read_configuration)
     monkeypatch.setattr('myink.task_budget.snapshot_budget', read_configuration)
     monkeypatch.setattr('myink.writing_resources.capture_task_resources', lambda *args: {})
@@ -29,7 +32,7 @@ def test_configuration_reads_finish_before_project_lock_with_single_connection(m
     monkeypatch.setattr(queue, 'get_redis', lambda: SimpleNamespace(set=lambda *args, **kwargs: None))
     monkeypatch.setattr(queue.amqp, 'publish', lambda *args, **kwargs: None)
     try:
-        result = queue.enqueue(user_id=str(uuid.uuid4()), project_id=str(uuid.uuid4()), task_type='chapter_generate', payload={}, quota_n=1, cost_est=0, priority=0)
+        result = queue.enqueue(user_id=owner, project_id=temp_project, task_type='chapter_generate', payload={}, quota_n=1, cost_est=0, priority=0)
         assert result['status'] == 'queued'
     finally:
         engine.dispose()

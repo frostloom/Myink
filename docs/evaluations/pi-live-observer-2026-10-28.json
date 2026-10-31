@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "authority": "audit_only",
+  "scope": "live_readonly_observer",
+  "passed": true,
+  "time_utc": "2026-10-28T13:44:41.869604+00:00",
+  "controller_source_commit": "f6e99f368b342e6d9c051cb79e58307f76d05f0d",
+  "runtime_sha256": "9a596b161b7cab321fd19bb4e9c579554c59cdfb2e8bdfd6c104b5ec013a4e77",
+  "archive_sha256": "46b37aaae7a70b448e879b05b09bacaf9800cfb2694bea1651a12739520b5ac5",
+  "distinct_actual_windows": 2,
+  "automatic_second_tick_shanghai": "2026-10-28T21:43:37+08:00",
+  "window_results": [
+    {
+      "run_id": "observer-20261028T131400Z-db793750ad20",
+      "window": {
+        "end": "2026-10-28T13:14:00+00:00",
+        "start": "2026-10-27T13:14:00+00:00"
+      },
+      "observed_samples": 1,
+      "status": "insufficient_evidence",
+      "availability": "unknown",
+      "snapshot_sha256": "3dd0d3b518d9968b278c0c1cad9d082786fb9586b6e1b1b6979e540d206b531b"
+    },
+    {
+      "run_id": "observer-20261028T132900Z-db793750ad20",
+      "window": {
+        "end": "2026-10-28T13:29:00+00:00",
+        "start": "2026-10-27T13:29:00+00:00"
+      },
+      "observed_samples": 1,
+      "status": "insufficient_evidence",
+      "availability": "unknown",
+      "snapshot_sha256": "c54ccff5cf1f2543f4dec44d4cce11156a6ea07a9895ee1f4a1a73f7a2770b1a"
+    }
+  ],
+  "daily_unique_samples": null,
+  "audit_event_count": 36,
+  "audit_run_count": 4,
+  "main_standalone_reader_verified": true,
+  "admin_page_integrated": false,
+  "new_model_requests": 0,
+  "canonical_fee_unchanged": true,
+  "manager_prefix_preserved": true,
+  "extra_idle_manager_events": 54,
+  "budget_microyuan": 50000000,
+  "historical_unknown": 9,
+  "historical_held_microyuan": 18115200,
+  "readyz": {
+    "status": "ok",
+    "checks": {
+      "redis": "ok",
+      "db": "ok",
+      "worker": "ok"
+    }
+  },
+  "offline_tests": {
+    "passed": 3199,
+    "deselected": 33,
+    "seconds": 163.77
+  },
+  "standalone_postgresql_tests": {
+    "passed": 14,
+    "seconds": 11.32
+  },
+  "original_private_lab_tests_executed": false,
+  "review": {
+    "important_found": 5,
+    "important_fixed": 5,
+    "critical": 0,
+    "minor": 0,
+    "author_fixpass": 1,
+    "rereview": false
+  },
+  "ci": {
+    "head": "f6e99f368b342e6d9c051cb79e58307f76d05f0d",
+    "jobs_passed": 4,
+    "url": "https://github.com/frostloom/Myink/actions/runs/40696543414"
+  },
+  "nextday_test": {
+    "test_id": "owner002-nextday-regression",
+    "scheduled_for": "2026-10-29T03:00:00+08:00",
+    "status": "planned",
+    "result": null
+  },
+  "failed_installation_evidence_preserved": true,
+  "product_release_performed": false,
+  "original_online_closed_loop_complete": false
+}

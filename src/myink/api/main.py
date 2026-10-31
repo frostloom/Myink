@@ -41,6 +41,7 @@ from myink.api.schemas import ChapterDetailOut, ChapterMetaOut, ProjectOut
 from myink.config import settings
 from myink.db import new_session, tenant_session
 from myink.models import Chapter, Project
+from myink.maintenance import MaintenanceUnavailable
 from myink.worker.enqueue import EnqueueUnavailable, GateError
 from myink.platform_readiness import PlatformNotReady
 from myink.worker.redis_client import get_redis
@@ -90,6 +91,12 @@ app.add_middleware(ResourceRequestLimit)
 async def _api_error(_request: Request, exc: ApiError) -> JSONResponse:
     """`{"error": CODE}` 信封——前端 GATE_CODES 认这个键，不认 FastAPI 默认的 detail。"""
     return JSONResponse({"error": exc.code}, status_code=exc.status_code, headers=exc.headers)
+
+
+@app.exception_handler(MaintenanceUnavailable)
+async def _maintenance_unavailable(_request: Request, exc: MaintenanceUnavailable) -> JSONResponse:
+    return JSONResponse({"error": "maintenance", "code": "maintenance", "reopen_at": exc.reopen_at},
+                        status_code=503, headers={"Retry-After": str(exc.retry_after), "Cache-Control": "no-store"})
 
 
 @app.exception_handler(GateError)

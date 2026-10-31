@@ -1,0 +1,99 @@
+{
+  "at": "2026-10-23T06:23:09.072439+00:00",
+  "source_commit": "f553a3cf63eba8dc6541fc5e67f4a5076817fa20",
+  "paid_requests": 0,
+  "model_posts": 0,
+  "provider_account_gets": 1,
+  "created_containers": 0,
+  "created_runs": 0,
+  "execution_authorized": false,
+  "proposal_executable": false,
+  "proposed_cap_microyuan": 2087591,
+  "single_request_reserve_microyuan": 2016384,
+  "full_thirty_worst_case_microyuan": 60491520,
+  "worst_case_guaranteed_slots": 1,
+  "headroom_after_next_reserve_microyuan": 71207,
+  "policy_credential_inputs_unchanged": true,
+  "canonical_db_wal_bytes_unchanged": true,
+  "logical_audit_unchanged": true,
+  "account_balance_observed": true,
+  "account_is_available": true,
+  "request_bytes": {
+    "min": 15621,
+    "max": 47956
+  },
+  "initial_frame_bytes": {
+    "min": 320878,
+    "max": 383033
+  },
+  "readiness": "V2_PREFIX_PROPOSAL_CHECKED_NOT_EXECUTION_AUTHORIZATION",
+  "intended_trial": "fixed-thirty-order-with-possible-early-stop",
+  "global_live_enabled": false,
+  "intended_future_policy_change": "live_enabled false to true only, after explicit execution authorization; then restore false",
+  "full_thirty_guaranteed": false,
+  "worker_timeout_seconds": 45,
+  "cleanup_active_wait_budget_seconds": 120,
+  "accounting": {
+    "attempts": 211,
+    "known_attempts": 203,
+    "unknown_attempts": 8,
+    "pending_attempts": 0,
+    "known_charged_microyuan": 1797465,
+    "unknown_reserved_microyuan": 16114944,
+    "conservative_used_microyuan": 17912409,
+    "budget_microyuan": 20000000,
+    "conservative_remaining_microyuan": 2087591
+  },
+  "policy_sha256": "c090c2f849813e68b234d9f272d45e65108467cfa6230754fa76ac11e4fcb799",
+  "scope_sha256": "2218dd4133ffb7709f5d2c3812620a2ee7686ea57837983cf0495f0cd1099746",
+  "ledger_sha256": "e14bf379f3d66927916f8113b22e49fc2d27fce59f564b8b7fcdda04c2a357ca",
+  "source_code_sha256": "86de1961a9f921b65dc7b1c296f2d7529fa83fbceea8c6b5c55e4039c3b5fbb2",
+  "input_sha256": "72c13d1a4c7d50dde071072406f8d4b901e1722771c85421c3b6a3ef358fd7a3",
+  "sources": [
+    {
+      "name": "pricing",
+      "url": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/",
+      "sha256": "556097caba8adfeeed6455714bffd731c7f60db520fcee06a922eba5840663a3",
+      "bytes": 26182
+    },
+    {
+      "name": "anthropic",
+      "url": "https://api-docs.deepseek.com/guides/anthropic_api/",
+      "sha256": "19b5e723f1c65f609c010999cdf3cc1929327c4369c54b0151e8ea82dc3dd033",
+      "bytes": 33800
+    },
+    {
+      "name": "cache",
+      "url": "https://api-docs.deepseek.com/zh-cn/guides/kv_cache/",
+      "sha256": "4c300649c617f75d8c4c2c23e88c9f0e310912c999da6671464622a609a328c0",
+      "bytes": 33246
+    }
+  ],
+  "check_status": "checked",
+  "launch_ready": false,
+  "selected_slots": 30,
+  "receipt_sha256": "e5caae93ddafd624a637d0b04a7e5007fccb2476f825b9c8247b68231e9f57d2",
+  "deadline_seconds": 1800,
+  "check_deadline_utc": "2026-10-23T06:53:04.302913+00:00",
+  "check_expiration_is_not_a_run_grant": true,
+  "production_ready": false,
+  "billing_verified": false,
+  "automatic_execution": false,
+  "release_allowed": false,
+  "proposed_authorization": {
+    "max_model_requests": 30,
+    "cap_microyuan": 2087591,
+    "execution_window_seconds": 1800,
+    "active_cleanup_wait_seconds": 120,
+    "send_existing_frozen_private_inputs": true,
+    "enable_live_only_for_this_run": true,
+    "restore_live_disabled_after_run": true,
+    "retry": false,
+    "resume": false,
+    "release_unknown": false,
+    "raise_total_budget": false,
+    "full_thirty_guaranteed": false,
+    "requires_new_run_and_fresh_manifest": true
+  },
+  "read_only_docker_identity_verified": true
+}

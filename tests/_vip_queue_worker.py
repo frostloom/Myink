@@ -45,7 +45,7 @@ def process(body, worker_id):
     return 'terminal'
 
 
-original_publish = amqp.publish
+original_publish = amqp.publish_once
 
 
 def publish_with_lost_confirm(body, routing_key, **kwargs):
@@ -59,5 +59,5 @@ consumer.valid_task_owner = lambda body: body.get('probe') == probe
 consumer.observe = lambda *args: None
 consumer.process = process
 if os.getenv('VIP_LOSE_CONFIRM') == '1':
-    amqp.publish = publish_with_lost_confirm
+    amqp.publish_once = publish_with_lost_confirm
 consumer.run()

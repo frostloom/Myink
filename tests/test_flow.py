@@ -464,7 +464,10 @@ def test_batch_review_resume_finalizes_chapter(project_id, monkeypatch):
         db.commit()
 
     # resume 批次：ch6 确认流收尾落库正文（不重跑 ch6），推进到 ch7 再 critical 暂停
-    # （BatchReviewError 由 worker 的 _run 接住置 awaiting_review；直调 resume_thread 会抛出）
+    # Mirror the worker's explicit resume transition after candidate review;
+    # the maintenance fence must continue to reject awaiting-review execution.
+    with tenant_session(project_id) as db:
+        db.get(Task, uuid.UUID(tid)).status = "running"
     _, batch_graph = get_graphs()
     with pytest.raises(bg_mod.BatchReviewError):
         resume_thread(batch_graph, tid, {
@@ -561,9 +564,9 @@ def test_batch_failure_and_resume(project_id, monkeypatch):
 def test_batch_pause_halt_and_resume(project_id, monkeypatch):
     """§6.12 手动暂停：章节边界守卫中断批次（不写剩余章），resume 同 thread 续跑不重跑已完成章。
 
-    批次 size=3（ch3/4/5），第 2 次 write（ch4）期间用户点暂停 → 任务置 paused；
-    图在 ch5 边界读到 paused → BatchHaltError 中断（非 END，checkpoint 停在本章）。
-    断言：write 只到 ch4（2 次）、任务保持 paused；resume 后只补 ch5（write=3）→ done。
+    批次 size=3（ch3/4/5），第 2 次 write（ch4）返回前用户点暂停。
+    节点级 fence 拒绝保存暂停后的结果，ch4 停在 write，ch3 已完成。
+    续跑必须保留 ch3，只重试未提交的 ch4 并写 ch5，总计 4 次 provider 调用。
     """
     import myink.providers as providers_mod
     import myink.workflow.batch_graph as bg_mod
@@ -584,7 +587,13 @@ def test_batch_pause_halt_and_resume(project_id, monkeypatch):
 
     result = generate_batch(project_id=project_id, size=3, start_chapter=3, batch_task_id=tid)
     assert result.get("manual_halt") == "paused", f"应返回 manual_halt=paused，实际 {result}"
-    assert stub.write_calls == 2, f"暂停后应停在第 3 章前（write=2），实际 {stub.write_calls}"
+    assert stub.write_calls == 2, f"暂停后不应开始 ch5，实际 {stub.write_calls}"
+    chapter_graph, _ = get_graphs()
+    completed = chapter_graph.get_state({"configurable": {"thread_id": f"{tid}:ch3"}})
+    interrupted = chapter_graph.get_state({"configurable": {"thread_id": f"{tid}:ch4"}})
+    assert completed.values.get("persisted") is True
+    assert interrupted.next == ("write",)
+    assert not interrupted.values.get("draft"), "暂停后的模型结果不能越过 fence 进入 checkpoint"
     with new_session() as db:
         assert db.get(Task, uuid.UUID(tid)).status == "paused", "暂停后任务状态应保持 paused"
 
@@ -599,8 +608,12 @@ def test_batch_pause_halt_and_resume(project_id, monkeypatch):
     })
     summary = final.get("batch_summary") or {}
     assert summary.get("status") == "done", f"续跑后批次应完成，实际 {summary}"
-    assert stub.write_calls == 3, f"已完成章不应重跑（续跑只补第 3 章 write），实际 {stub.write_calls}"
-    with new_session() as db:
+    assert stub.write_calls == 4, f"只应重试未提交的 ch4 并补写 ch5，实际 {stub.write_calls}"
+    with tenant_session(project_id) as db:
+        writes = db.execute(text(
+            "SELECT task_id, count(*) FROM agent_runs WHERE task_id LIKE :prefix "
+            "AND node='write' GROUP BY task_id"), {"prefix": f"{tid}:ch%"}).all()
+        assert dict(writes) == {f"{tid}:ch3": 1, f"{tid}:ch4": 1, f"{tid}:ch5": 1}
         assert db.get(Task, uuid.UUID(tid)).status == "done", "续跑成功任务应为 done"
 
 

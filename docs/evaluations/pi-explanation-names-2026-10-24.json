@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-24",
+  "status": "verified-real-pi-explanation-name-fix",
+  "source_before": "f8201f8672b523dc828213c361bbb60430d629efee67a446ce894fc44b5e205c",
+  "adoption": {
+    "reviewer": "explanation_names_final_review",
+    "approved": true,
+    "adopted": true,
+    "file": "src/myink/validation/l1.py",
+    "file_sha256": "09a18db50901da063553c18e0e855beea6f16e1c12a8ce5143627340004b6812",
+    "candidate_sha256": "604f2263199814e3eb69bc6adcf0edcaed579ec896d3f8c3fc64f7c21c98a290",
+    "test_path": "tests/test_first_visit_explanation_names.py"
+  },
+  "tests": {
+    "fixed": 101,
+    "baseline_failures": 6,
+    "fixed_failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "targeted_passed": 266,
+    "product_passed": 1803,
+    "product_skipped": 1,
+    "product_xfailed": 3,
+    "product_deselected": 159,
+    "product_warnings": 2
+  },
+  "fees": {
+    "new_attempts": 7,
+    "new_unknown": 0,
+    "known_cost_microyuan": 28951,
+    "total_attempts": 477,
+    "total_known": 468,
+    "historical_unknown": 9,
+    "total_known_cost_microyuan": 3228470,
+    "original_rows_events_unchanged": true,
+    "policy_closed": true,
+    "credential_unchanged": true,
+    "owned_removed": true,
+    "analysis_attempts": 1,
+    "development_attempts": 6,
+    "selection_reason": "Reproduced existing-behavior bug: catalog documents six false positives in ExplanationNameTests against baseline code, no new schema.",
+    "ledger_sha256": "d54b07a0fb5e5e1b2be179f9bafafce22f29ad57d8cc7e5fffd86d07f4de1e74"
+  },
+  "services_removed": true,
+  "previous_dirty_preserved": 108,
+  "previous_dirty_intentionally_changed": [
+    "src/myink/validation/l1.py"
+  ],
+  "git_commit": false,
+  "push": false,
+  "merge": false,
+  "deploy": false,
+  "server_autonomy": false,
+  "limitations": [
+    "Finite local supervised task; not long-running server autonomy",
+    "Historical nine unknown fees remain reserved",
+    "Usage at frozen rate; not independent provider invoice reconciliation",
+    "Sample matrix remains23/26; cases7/8/9 unresolved",
+    "Controller unchanged; previous2455Pi and4Node checks not rerun this task"
+  ]
+}

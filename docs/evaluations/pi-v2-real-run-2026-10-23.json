@@ -1,0 +1,470 @@
+{
+  "schema": "pi-v2-real-run-v1",
+  "at": "2026-10-23T06:41:56.511338+00:00",
+  "source_commit": "f553a3cf63eba8dc6541fc5e67f4a5076817fa20",
+  "run_id": "pi-v2-real-prefix-20261023-001",
+  "authorized_cap_microyuan": 2087591,
+  "execution_window_seconds": 1800,
+  "cleanup_active_wait_seconds": 120,
+  "execute_invocations": 1,
+  "outbound_model_posts_started": 6,
+  "status": "blocked",
+  "stop_reason": "execution_failed",
+  "failure_class": "ValueError",
+  "failure_detail": {
+    "slot_index": 6,
+    "stage": "result_verify",
+    "reason": "stage_failed",
+    "response_bytes": 27,
+    "http_status": 429
+  },
+  "summary": {
+    "planned_slots": 30,
+    "done": 3,
+    "failed": 3,
+    "uncertain": 1,
+    "blocked": 0,
+    "not_run": 23,
+    "by_arm": {
+      "baseline": {
+        "planned_slots": 15,
+        "done": 0,
+        "failed": 3,
+        "uncertain": 1,
+        "blocked": 0,
+        "not_run": 11
+      },
+      "candidate": {
+        "planned_slots": 15,
+        "done": 3,
+        "failed": 0,
+        "uncertain": 0,
+        "blocked": 0,
+        "not_run": 12
+      }
+    },
+    "by_domain": {
+      "recall.events": {
+        "planned_slots": 6,
+        "done": 1,
+        "failed": 1,
+        "uncertain": 0,
+        "blocked": 0,
+        "not_run": 4
+      },
+      "recall.plot": {
+        "planned_slots": 6,
+        "done": 1,
+        "failed": 1,
+        "uncertain": 0,
+        "blocked": 0,
+        "not_run": 4
+      },
+      "recall.characters": {
+        "planned_slots": 6,
+        "done": 1,
+        "failed": 1,
+        "uncertain": 0,
+        "blocked": 0,
+        "not_run": 4
+      },
+      "extract": {
+        "planned_slots": 6,
+        "done": 0,
+        "failed": 0,
+        "uncertain": 1,
+        "blocked": 0,
+        "not_run": 5
+      },
+      "operations": {
+        "planned_slots": 6,
+        "done": 0,
+        "failed": 0,
+        "uncertain": 0,
+        "blocked": 0,
+        "not_run": 6
+      }
+    }
+  },
+  "slots": [
+    {
+      "slot_index": 0,
+      "slot_id": "r1:recall.events:baseline",
+      "status": "FAILED"
+    },
+    {
+      "slot_index": 1,
+      "slot_id": "r1:recall.events:candidate",
+      "status": "DONE"
+    },
+    {
+      "slot_index": 2,
+      "slot_id": "r1:recall.plot:baseline",
+      "status": "FAILED"
+    },
+    {
+      "slot_index": 3,
+      "slot_id": "r1:recall.plot:candidate",
+      "status": "DONE"
+    },
+    {
+      "slot_index": 4,
+      "slot_id": "r1:recall.characters:baseline",
+      "status": "FAILED"
+    },
+    {
+      "slot_index": 5,
+      "slot_id": "r1:recall.characters:candidate",
+      "status": "DONE"
+    },
+    {
+      "slot_index": 6,
+      "slot_id": "r1:extract:baseline",
+      "status": "UNCERTAIN"
+    },
+    {
+      "slot_index": 7,
+      "slot_id": "r1:extract:candidate",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 8,
+      "slot_id": "r1:operations:baseline",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 9,
+      "slot_id": "r1:operations:candidate",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 10,
+      "slot_id": "r2:recall.events:candidate",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 11,
+      "slot_id": "r2:recall.events:baseline",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 12,
+      "slot_id": "r2:recall.plot:candidate",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 13,
+      "slot_id": "r2:recall.plot:baseline",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 14,
+      "slot_id": "r2:recall.characters:candidate",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 15,
+      "slot_id": "r2:recall.characters:baseline",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 16,
+      "slot_id": "r2:extract:candidate",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 17,
+      "slot_id": "r2:extract:baseline",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 18,
+      "slot_id": "r2:operations:candidate",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 19,
+      "slot_id": "r2:operations:baseline",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 20,
+      "slot_id": "r3:recall.events:baseline",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 21,
+      "slot_id": "r3:recall.events:candidate",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 22,
+      "slot_id": "r3:recall.plot:baseline",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 23,
+      "slot_id": "r3:recall.plot:candidate",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 24,
+      "slot_id": "r3:recall.characters:baseline",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 25,
+      "slot_id": "r3:recall.characters:candidate",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 26,
+      "slot_id": "r3:extract:baseline",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 27,
+      "slot_id": "r3:extract:candidate",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 28,
+      "slot_id": "r3:operations:baseline",
+      "status": "NOT_RUN"
+    },
+    {
+      "slot_index": 29,
+      "slot_id": "r3:operations:candidate",
+      "status": "NOT_RUN"
+    }
+  ],
+  "cleanup_complete": true,
+  "container_label_empty": true,
+  "cleanup": [
+    {
+      "container_id": "4fb8dfa11bf5cb3e63250595a5928eeb292b757cffbdccbd6a27a9f6df6119ae",
+      "stopped": true,
+      "removed": true,
+      "exit_code": 0
+    },
+    {
+      "container_id": "e636a7ef7bde6fe644e22305c0eb0c800625b1f24ea208a8b8fc1a963eb419db",
+      "stopped": true,
+      "removed": true,
+      "exit_code": 0
+    },
+    {
+      "container_id": "b49f482ddb3586d95fbc7719028ed7207cc19cdae73130b87a7c1cce35bf75eb",
+      "stopped": true,
+      "removed": true,
+      "exit_code": 0
+    },
+    {
+      "container_id": "4d0b4267e6103e4c89782e63be12be9fbf07de73fbe23757aeaa4c4e839471a0",
+      "stopped": true,
+      "removed": true,
+      "exit_code": 0
+    },
+    {
+      "container_id": "5652bf51edd701daa2d92a89c3163db000cb47b10f8e0901ffc0c6889f32769c",
+      "stopped": true,
+      "removed": true,
+      "exit_code": 0
+    },
+    {
+      "container_id": "da9a44f4af0993675e732f96a5a2a301f505a415fc9f5815f25f112e762d9034",
+      "stopped": true,
+      "removed": true,
+      "exit_code": 0
+    },
+    {
+      "container_id": "e0424f718d665ae8d4890b98ed77e4478dda8db758a99ea2d07a890759118ef6",
+      "stopped": true,
+      "removed": true,
+      "exit_code": 0
+    }
+  ],
+  "before_accounting": {
+    "attempts": 211,
+    "known_attempts": 203,
+    "unknown_attempts": 8,
+    "pending_attempts": 0,
+    "known_charged_microyuan": 1797465,
+    "unknown_reserved_microyuan": 16114944,
+    "conservative_used_microyuan": 17912409,
+    "budget_microyuan": 20000000,
+    "conservative_remaining_microyuan": 2087591
+  },
+  "after_accounting": {
+    "attempts": 217,
+    "known_attempts": 209,
+    "unknown_attempts": 8,
+    "pending_attempts": 0,
+    "known_charged_microyuan": 1884742,
+    "unknown_reserved_microyuan": 16114944,
+    "conservative_used_microyuan": 17999686,
+    "budget_microyuan": 20000000,
+    "conservative_remaining_microyuan": 2000314
+  },
+  "conservative_cost_delta_microyuan": 87277,
+  "policy_restored_disabled": true,
+  "credential_and_inputs_unchanged": true,
+  "historical_rows_unchanged": true,
+  "source_code_sha256": "86de1961a9f921b65dc7b1c296f2d7529fa83fbceea8c6b5c55e4039c3b5fbb2",
+  "input_sha256": "72c13d1a4c7d50dde071072406f8d4b901e1722771c85421c3b6a3ef358fd7a3",
+  "scope_sha256": "2218dd4133ffb7709f5d2c3812620a2ee7686ea57837983cf0495f0cd1099746",
+  "disabled_policy_sha256": "c090c2f849813e68b234d9f272d45e65108467cfa6230754fa76ac11e4fcb799",
+  "live_policy_sha256": "e1755b42a61a71923d7c51ba0a3bec9223739e3f27a26e0d41f41d2aa814b240",
+  "result_sha256": "79247b7b3daffb831fcf0f6e6833eb7bdb46d6ea0b3b4a9f0a03c83258ff592a",
+  "execution_state_sha256": "0cbfdf0da2d84ad4969e483483ccffa270786e85b8db89664b5429fdd75ce7c0",
+  "production_ready": false,
+  "billing_verified": false,
+  "release_allowed": false,
+  "retried": false,
+  "resumed": false,
+  "new_attempts": [
+    {
+      "attempt_id": "df66ba9e-7306-4e1b-be73-7d96cc519a3e",
+      "status": "done",
+      "slot_index": 0,
+      "usage_known": true,
+      "charged_microyuan": 8962
+    },
+    {
+      "attempt_id": "d7bd203e-8c5e-4765-a8a0-971bd589b003",
+      "status": "done",
+      "slot_index": 1,
+      "usage_known": true,
+      "charged_microyuan": 17684
+    },
+    {
+      "attempt_id": "6e556e6a-9755-4a58-bbbd-c2bff9f16090",
+      "status": "done",
+      "slot_index": 2,
+      "usage_known": true,
+      "charged_microyuan": 7706
+    },
+    {
+      "attempt_id": "a9ac1367-16d1-445b-83c4-bd14c5e5f7c7",
+      "status": "done",
+      "slot_index": 3,
+      "usage_known": true,
+      "charged_microyuan": 18214
+    },
+    {
+      "attempt_id": "17bf87d9-2596-4f5f-a4fd-8a27caa3423d",
+      "status": "done",
+      "slot_index": 4,
+      "usage_known": true,
+      "charged_microyuan": 16197
+    },
+    {
+      "attempt_id": "54de3282-46a6-4f69-8402-c6e6053b805b",
+      "status": "done",
+      "slot_index": 5,
+      "usage_known": true,
+      "charged_microyuan": 18514
+    }
+  ],
+  "observed_stop_reason": "local_budget_reservation_denied",
+  "next_reserve_microyuan": 2016384,
+  "remaining_before_next_reserve_microyuan": 2000314,
+  "reservation_shortfall_microyuan": 16070,
+  "seventh_slot_forwarded": false,
+  "new_unknown_attempts": 0,
+  "independent_closeout_verified": true,
+  "historical_unknown_reservation_unchanged": true,
+  "fresh_operation_label_scan_empty": true,
+  "created_and_removed_containers": 7,
+  "authorization_sha256": "217706deedfeec6c4b26b2d30d591e7a794c825414ff88ebc2abbbecc0c6bcf8",
+  "manifest_sha256": "28453f33e632688ce600126ac561005ebe2d18e26751c9dd7cc77bbbc2e05e73",
+  "executor_sha256": "7b8a9eb7562f64e11193426521b026ad6056f5f33e83c16af350f269da3a08c2",
+  "audit_script_sha256": "d2e7a6187cb55f178e054f09a6668196b600e8846039ccfc625f4727b4a60fe6",
+  "closed_out_at": "2026-10-23T06:48:44.162588+00:00",
+  "contract_outcomes": [
+    {
+      "slot_id": "r1:recall.events:baseline",
+      "contract_valid": false,
+      "failure": "output_invalid",
+      "request_sha256": "764ae66346742a17463a6ce50356c96c80aca6cd9ca1b6eac56ca732717229f2",
+      "session_sha256": "3f89da90295e146356629547fd7750c0e2e912d12b616a856c51f7ef1db27946",
+      "session_id": "01a1677d-19a4-70b5-a13f-044811f49fd7",
+      "http_statuses": [
+        403,
+        403,
+        200,
+        403
+      ]
+    },
+    {
+      "slot_id": "r1:recall.events:candidate",
+      "contract_valid": true,
+      "failure": null,
+      "request_sha256": "f18b38b62a98c1dc6cc7c830634ba73217774c9df663d1091c0b02631c52736f",
+      "session_sha256": "8f3f9b2fb059afbd4fb8803e07d778b0a16b7f5b0b496544fb563f4cba195faf",
+      "session_id": "01a1677d-706b-7392-bf11-fb6fb83b9c45",
+      "http_statuses": [
+        403,
+        403,
+        200,
+        403
+      ]
+    },
+    {
+      "slot_id": "r1:recall.plot:baseline",
+      "contract_valid": false,
+      "failure": "output_invalid",
+      "request_sha256": "764ae66346742a17463a6ce50356c96c80aca6cd9ca1b6eac56ca732717229f2",
+      "session_sha256": "8f80c25869c8a95d1609c1c5bf9c4f1ec1ac4691d0f5f0945d24734e19b8cc9c",
+      "session_id": "01a1677d-ac6f-71b0-9364-e69b7c9d3e03",
+      "http_statuses": [
+        403,
+        403,
+        200,
+        403
+      ]
+    },
+    {
+      "slot_id": "r1:recall.plot:candidate",
+      "contract_valid": true,
+      "failure": null,
+      "request_sha256": "65a60f70d88a10c01155c28e176f2e31eeee02a2709c9c843d3f7ad34069a0ea",
+      "session_sha256": "c0d7e2b5463a725a915c53637572baa3f9709c944a12726cd70a3eb4b288cc20",
+      "session_id": "01a1677d-f492-75c2-81ac-6d6b7c8fc75d",
+      "http_statuses": [
+        403,
+        403,
+        200,
+        403
+      ]
+    },
+    {
+      "slot_id": "r1:recall.characters:baseline",
+      "contract_valid": false,
+      "failure": "output_invalid",
+      "request_sha256": "ae42276d98304028269f93e6eae78fef902ff99ff32a8c20451d9578047ce136",
+      "session_sha256": "1bd335c7816ea841684d9ac9d997e1a6fdaa918399d0b53117b2ecba5159f7f9",
+      "session_id": "01a1677e-29a0-751f-b4cf-0d035ad0d121",
+      "http_statuses": [
+        403,
+        403,
+        200,
+        403
+      ]
+    },
+    {
+      "slot_id": "r1:recall.characters:candidate",
+      "contract_valid": true,
+      "failure": null,
+      "request_sha256": "5990a7f68ad0daac8a7164f70afaaa8e7b65bcb2ff7b2cf681ed02dd09a2ab43",
+      "session_sha256": "9896023aab0fcba6b3c98f4f914d5a016d1559b087b0fd31a38cb5d1a4d96486",
+      "session_id": "01a1677e-681a-73d3-9e69-3f7236e0b4de",
+      "http_statuses": [
+        403,
+        403,
+        200,
+        403
+      ]
+    }
+  ]
+}

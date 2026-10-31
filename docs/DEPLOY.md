@@ -313,3 +313,35 @@ HTTPS 已由 Caddy 承担（`SITE_ADDRESS` 填域名即自动签发续期）；C
 以及一项已知的结构性欠账——前端凭据从 localStorage 换成 HttpOnly Cookie。`/admin` 的第二因子
 （TOTP）已实现但**默认关闭**，要自己到账号页开启；机制与兜底命令见 [AUTH.md](AUTH.md)。
 当前没有生产可用性或真实小说质量的保证；演示应使用已验证的机制与测试结果描述能力。
+
+
+## Pi 接管后的统一产品入口
+
+首次未接管环境仍按上文初始化。产品被 Pi 协议接管后，人工和 Pi 的产品准备、激活、回退统一通过 `python -m ops.pi.product_entrypoint`，读取独立 root 封存的配置/批准及其 SHA256。准备流程内部获取原 `maintenance.lock`，激活/回退在同一把锁内调用固定控制器，仍检查当前 owner/generation/epoch/images、成套恢复资格和持久意图；不会退回直接 `docker compose up/down`。
+
+当前 ACTUAL 主机完整能力门禁、常规升级及最终产品授权仍待整体验收；入口会拒绝尚不支持的操作，不能把入口存在当成生产已启用。批准文件由外部操作者签发，入口不生成批准、不扩大模型工具或费用许可。最终操作包应提供冻结运行时和精确文件摘要，再执行以下固定动作：
+
+```bash
+python -m ops.pi.product_entrypoint prepare \
+  --host-config /home/ubuntu/myink-pi-managed/config/product-release.json \
+  --host-sha256 "$MYINK_PI_HOST_SHA256"
+
+python -m ops.pi.product_entrypoint activate \
+  --host-config /home/ubuntu/myink-pi-managed/config/product-release.json \
+  --host-sha256 "$MYINK_PI_HOST_SHA256" \
+  --control-config /home/ubuntu/myink-pi-managed/config/product-control.json \
+  --control-sha256 "$MYINK_PI_CONTROL_SHA256" \
+  --control-approval /home/ubuntu/myink-pi-managed/config/product-control-approval.json \
+  --control-approval-sha256 "$MYINK_PI_CONTROL_APPROVAL_SHA256"
+```
+
+维护窗口后的回退使用同一入口 `rollback` 和上述控制参数，额外提供 `--rollback-lease`、`--rollback-lease-sha256`。该独立许可仅绑定已完成采用的原 plan/控制配置/候选身份，至多原计划截止后72小时，不能续期激活或费用许可；每次回退仍限最多1800秒停机。人工新 owner/generation 或未知旧意图使旧回退失效。程序退出非零时保留原现场和账本收据，先核对失败阶段，不能改 UUID、重发未知动作或绕开协议直接重建容器。
+
+
+### 多轮操作的谱系与退役边界
+
+`pi-linux-product-host-v2` 封存初始 `project_operation_id` 和谱系路径/摘要。生产继续使用原全局产品控制账本；新建隔离演练在原锁旁使用按初始项目标识固定的账本。新操作不迁移、重建或复制已有 v1 历史；已有证据不匹配就拒绝。
+
+固定入口 `retire` 只接受 host 配置和摘要，在原锁内验证独立 `retire_previous` root 谱系批准、旧发布/回退及工厂子收据，再逐个核对当前 PG owner/代次/屏障、有效后端身份和完整容器清单。只普通删除已自然退出的旧后端；不强制停止、不删除镜像、卷或数据，不重放未知结果。批准来自外部，不由模型或入口生成。
+
+该接线目前用于隔离生命周期验收。完整 v2 升级在入口写入前仍被 intake 资格门禁拒绝，ACTUAL 总门禁保留；成功候选的旧回退权交接、跨代任务接续与新恢复资格必须完成后才能生产启用，不能把退役工具当成完整升级或回退授权。

@@ -18,7 +18,7 @@ QUEUE_PREFIX 只用于测试隔离：对 exchange 与 queue 名统一加前缀�
 
 from __future__ import annotations
 
-import threading
+import json
 
 import pika
 
@@ -92,6 +92,17 @@ def connect() -> pika.BlockingConnection:
     return pika.BlockingConnection(params)
 
 
+
+def _publisher_connection():
+    params=pika.URLParameters(settings.amqp_url)
+    params.connection_attempts=1
+    params.socket_timeout=10
+    params.stack_timeout=15
+    params.blocked_connection_timeout=10
+    params.heartbeat=30
+    return pika.BlockingConnection(params)
+
+
 def declare_topology(ch: pika.channel.Channel) -> None:
     """幂等声明拓扑；保留普通队列原参数，新增 VIP 队列无需清理已有消息。"""
     ch.exchange_declare(exchange(), exchange_type="direct", durable=True)
@@ -130,73 +141,60 @@ def declare_topology(ch: pika.channel.Channel) -> None:
     ch.queue_bind(vip_delay_queue(), exchange(), KEY_DELAY + '.vip')
 
 
-# 模块级发布连接（publisher confirm）：API 路由线程池 / worker 重投共用，锁串行。
-_publish_lock = threading.Lock()
-_publish_conn: pika.BlockingConnection | None = None
-
-
 def publish(body: str, routing_key: str, priority: int = 0, expiration_ms: int | None = None) -> None:
-    """发布到 myink.tasks 交换机（持久化 + 优先级 + publisher confirm）。
+    """One bounded original publication; never reuse an idle unserviced connection.
 
-    routing_key: KEY_TASKS（主队列）/ KEY_DELAY（延迟退避）。expiration_ms 非空时设置
-    逐条 TTL（毫秒）——延迟队列 DLX 回主队列实现退避。
-    阻塞式 confirm：broker nack / 连接断开抛 pika 异常；连接失效自动重建。
+    Persistent, mandatory delivery with publisher confirm. A lost confirm may
+    already be delivered: propagate it without any hidden publication retry.
+    Keep definitive broker Nack/Unroutable exceptions for original compensation.
     """
     routing_key = tier_routing_key(routing_key, priority)
-    global _publish_conn
-    with _publish_lock:
-        try:
-            if _publish_conn is None or _publish_conn.is_closed:
-                _publish_conn = connect()
-            ch = _publish_conn.channel()
-            declare_topology(ch)
-            ch.confirm_delivery()  # 阻塞式 publisher confirm
-            properties = pika.BasicProperties(delivery_mode=2, priority=priority)
-            if expiration_ms is not None:
-                properties.expiration = str(int(expiration_ms))
-            ch.basic_publish(exchange=exchange(), routing_key=routing_key, body=body, properties=properties, mandatory=True)
-        except pika.exceptions.AMQPError:
-            # 连接/通道失效：重建连接重试一次；仍失败抛给调用方（API 侧 503）
+    connection = None
+    try:
+        connection = _publisher_connection()
+        channel = connection.channel()
+        declare_topology(channel)
+        channel.confirm_delivery()
+        decoded = json.loads(body)
+        properties = pika.BasicProperties(delivery_mode=2, priority=priority,
+            expiration=str(int(expiration_ms)) if expiration_ms is not None else None,
+            message_id=str(decoded.get("request_id") or decoded.get("task_id")),
+            correlation_id=str(decoded.get("task_id")))
+        channel.basic_publish(exchange=exchange(), routing_key=routing_key, body=body,
+                              properties=properties, mandatory=True)
+    finally:
+        if connection is not None:
             try:
-                if _publish_conn is not None and not _publish_conn.is_closed:
-                    _publish_conn.close()
+                connection.close()
             except Exception:
                 pass
-            _publish_conn = connect()
-            ch = _publish_conn.channel()
-            declare_topology(ch)
-            ch.confirm_delivery()
-            properties = pika.BasicProperties(delivery_mode=2, priority=priority)
-            if expiration_ms is not None:
-                properties.expiration = str(int(expiration_ms))
-            ch.basic_publish(exchange=exchange(), routing_key=routing_key, body=body, properties=properties, mandatory=True)
 
 
 class PublishNotSent(Exception):
     """The resume message definitely did not reach the queue."""
 
 
-def publish_once(body: str, routing_key: str, priority: int = 0) -> None:
+def publish_once(body: str, routing_key: str, *, priority: int = 0, expiration_ms: int | None = None, operation_id: str | None = None) -> None:
     """No implicit retry after a lost confirm; bounded and mandatory delivery."""
     routing_key = tier_routing_key(routing_key, priority)
     connection = None
     try:
-        params = pika.URLParameters(settings.amqp_url)
-        params.connection_attempts = 1
-        params.socket_timeout = 10
-        params.stack_timeout = 15
-        params.blocked_connection_timeout = 10
-        params.heartbeat = 30
         try:
-            connection = pika.BlockingConnection(params)
+            connection = _publisher_connection()
             channel = connection.channel()
             declare_topology(channel)
             channel.confirm_delivery()
         except Exception as exc:
             raise PublishNotSent("续跑队列连接未建立") from exc
         try:
-            channel.basic_publish(exchange=exchange(), routing_key=routing_key, body=body,
-                                  properties=pika.BasicProperties(delivery_mode=2, priority=priority), mandatory=True)
+            decoded = json.loads(body)
+            properties = pika.BasicProperties(delivery_mode=2, priority=priority,
+                expiration=str(int(expiration_ms)) if expiration_ms is not None else None,
+                message_id=str(decoded.get("request_id") or decoded.get("task_id")),
+                correlation_id=str(decoded.get("task_id")),
+                headers={"operation_id":operation_id} if operation_id else None)
+            channel.basic_publish(exchange=dlx_exchange() if routing_key == KEY_DLQ else exchange(),
+                                  routing_key=routing_key, body=body, properties=properties, mandatory=True)
         except (pika.exceptions.NackError, pika.exceptions.UnroutableError) as exc:
             raise PublishNotSent("续跑投递被拒绝") from exc
     finally:

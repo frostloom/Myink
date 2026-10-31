@@ -1,0 +1,72 @@
+{
+  "date": "2026-10-26",
+  "branch": "codex/pi-autonomy-design",
+  "verified": true,
+  "scope": "Host-only private draft staging, no automatic execution or adoption",
+  "new_tests": 50,
+  "targeted_passed": 106,
+  "full_pi_passed": 2574,
+  "pi_deselected": 19,
+  "node_scripts_passed": 4,
+  "instance": {
+    "verified": true,
+    "scope": "draft staging plus fresh isolated check only",
+    "package_module_sha256": "70cc05b6e7d44810fbf61dff0f989365e98baf1e0246c65ddb33c72f1d879907",
+    "staging_retained": false,
+    "default_check_no_writes": true,
+    "source_sha256": "5ab3a79a042e8e333376a00fcfe8e8abf1c88d590636dae364a1befdfda86060",
+    "test_sha256": "58870c7f4d92560e2e50b4d0a53a7e734832a5827e49e5c862c7605edcae6d8a",
+    "static_hints": 250,
+    "fresh_isolated_tests": 250,
+    "fresh_isolated_passed": true,
+    "green_baseline_not_suitable_failed_task": true,
+    "draft_rejected_by_executor": true,
+    "original_ledger_unchanged": true,
+    "real_model_calls": 0,
+    "real_cost_microyuan": 0,
+    "old_runtime_execution_not_attempted": true
+  },
+  "review": {
+    "reviewer": "author-verification-after-independent-review",
+    "independent_review_sha256": "929b304b6127bcc65013aaa3cd9fdffaeb39f9fc135fe52fc62ca69c6723d9b3",
+    "initial_independent_approved": false,
+    "findings_closed": [
+      "P2 completion marker write/fsync failure"
+    ],
+    "red_tests": 4,
+    "red_log": "red-review.log",
+    "green_targeted": 106,
+    "green_full_pi": 2574,
+    "marker_publication": "synced closed private staging file; exclusive os.link; optional private alias cleanup disclosed",
+    "module_sha256": "70cc05b6e7d44810fbf61dff0f989365e98baf1e0246c65ddb33c72f1d879907",
+    "tests_sha256": "3c3082a8d2db7b3d2bf3fc6a518be16f9ffde07f3dd987f9bb724ad200958690",
+    "remaining_blockers": 0
+  },
+  "old_runtime_refused": true,
+  "real_model_calls": 0,
+  "new_real_cost_microyuan": 0,
+  "canonical_ledger_unchanged": true,
+  "canonical_ledger_sha256": "b320abc2cd51a5eb1f880e450a2cb6e7a545d85792db13ecf36998638509b8be",
+  "canonical_policy_closed_unchanged": true,
+  "canonical_credential_unchanged": true,
+  "owned_containers_absent": 2,
+  "prior_dirty_files": 141,
+  "unrelated_dirty_preserved": true,
+  "product_source_unchanged": true,
+  "committed": false,
+  "pushed": false,
+  "merged": false,
+  "deployed": false,
+  "limitations": [
+    "Static case hints are not actual checker inventory",
+    "Draft is not an approved Plan/config or a reason to retry an old cycle",
+    "Fresh runtime, isolated baseline, identity and reviews still required for a paid run",
+    "Not isolation against a malicious same-UID host process"
+  ],
+  "post_documentation_changed_existing_files": [
+    "docs/pi/development-readiness.md",
+    "docs/pi/local-development-launcher.md"
+  ],
+  "final_module_sha256": "70cc05b6e7d44810fbf61dff0f989365e98baf1e0246c65ddb33c72f1d879907",
+  "final_tests_sha256": "3c3082a8d2db7b3d2bf3fc6a518be16f9ffde07f3dd987f9bb724ad200958690"
+}
