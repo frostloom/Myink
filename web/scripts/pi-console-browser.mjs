@@ -31,7 +31,7 @@ try{
   assert.equal(await page.evaluate(()=>window.pwned),undefined)
   await page.getByText(/每日版本与变更/).click();await page.getByRole('table',{name:'每日变更范围'}).waitFor()
   assert.ok(await page.getByText('线上效果尚未验证',{exact:true}).isVisible())
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${name}: horizontal viewport overflow`)
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth||Array.from(document.querySelectorAll('main')).some(main=>main.scrollWidth>main.clientWidth)),false,`${name}: horizontal viewport/content overflow`)
   const screenshot=path.join(output,`${name}-pi-console.png`);await page.screenshot({path:screenshot,fullPage:true});receipt.screenshots.push(screenshot)
   receipt.checks.push(`${name}:audit_evidence_version_changes_no_overflow_or_html_execution`)
   await page.getByRole('button',{name:'暂不发布',exact:true}).click();await page.getByText('已记录暂不发布，Pi 继续等待确认。',{exact:true}).waitFor()

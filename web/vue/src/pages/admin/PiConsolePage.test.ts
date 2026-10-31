@@ -98,3 +98,17 @@ it('does not call an immediate failed receipt an accepted publication',async()=>
  expect(screen.getByText('发布前检查失败')).toBeTruthy()
  expect(screen.queryByText('发布请求已受理，等待宿主处理。')).toBeNull()
 })
+it('refreshes a queued operation after polling fails without submitting it again',async()=>{
+ vi.mocked(piApi.status).mockResolvedValue({...copy(fixture.status),latest_operation:copy(fixture.operation)} as never)
+ vi.mocked(piApi.operation).mockRejectedValue(new ApiError(503,'PI_CONSOLE_UNAVAILABLE',null))
+ setup();await flushPromises();expect(screen.getByText(/发布状态暂时无法读取/)).toBeTruthy()
+ vi.mocked(piApi.status).mockResolvedValue({...copy(fixture.status),latest_operation:{...copy(fixture.operation),status:'failed'}} as never)
+ await fireEvent.click(screen.getByRole('button',{name:'刷新 Pi 状态'}));await flushPromises()
+ expect(screen.getByText('发布前检查失败')).toBeTruthy();expect(piApi.decide).not.toHaveBeenCalled()
+})
+it('never borrows samples from a different selected run',async()=>{
+ vi.mocked(piApi.runs).mockResolvedValue({...copy(fixture.runs),items:[...copy(fixture.runs.items),{run_id:'run-without-observations',event_count:1,days:['2026-10-31']}]} as never)
+ vi.mocked(piApi.events).mockImplementation(async(_token,filters)=>filters?.runId==='run-without-observations'?{items:[],total:0,limit:25,offset:0} as never:copy(fixture.events) as never)
+ setup();await flushPromises();await fireEvent.update(screen.getByRole('combobox',{name:'选择 Pi 运行'}),'run-without-observations');await flushPromises()
+ expect(screen.queryByText('0 个有效样本')).toBeNull();expect(screen.getAllByText('未知').length).toBeGreaterThan(0)
+})

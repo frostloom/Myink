@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from myink.api.auth import require_admin, _AuthenticatedUser
 from myink.api.routes_admin import write_access_log, _safe_target
 from myink.api.admin_schemas import AdminPage
-from myink.api.pi_schemas import PiDecision, PiOperation, PiStatus
+from myink.api.pi_schemas import PiDecision, PiOperation, PiStatus, PiDaily
 from myink.config import settings
 from myink.pi_console import (PiConsoleClient, PiConsoleUnavailable, PiConsoleNotConfigured,
                               PiConsoleConflict, PiConsoleNotFound)
@@ -66,10 +66,10 @@ def events(run_id: Annotated[str, Query(pattern=r'^[A-Za-z0-9][A-Za-z0-9_.:-]{0,
     return _fetch('GET', '/v1/events', params=params, model=AdminPage[dict])
 
 
-@router.get('/daily', response_model=dict, name='admin.pi.daily')
+@router.get('/daily', response_model=PiDaily, name='admin.pi.daily')
 def daily(day: date, actor: _AuthenticatedUser = Depends(_actor)):
-    data = _fetch('GET', '/v1/daily', params=dict(day=day.isoformat()))
-    if data.get('schema_version') != 1 or data.get('authority') != 'audit_only' or data.get('day') != day.isoformat():
+    data = _fetch('GET', '/v1/daily', params=dict(day=day.isoformat()), model=PiDaily)
+    if data.day != day.isoformat():
         raise HTTPException(503, 'PI_CONSOLE_UNAVAILABLE')
     return data
 

@@ -53,3 +53,5 @@ PI_CONSOLE_CONFIG_SHA256=<admin-console.json 原始字节的 sha256>
 ## 验证与限制
 
 `tests/test_admin_pi_integration.py` 使用真实 JWT/隔离 PG 与真实本地 Unix socket，宿主发布效果为 SIMULATED；`ops/pi/tests/test_admin_publication.py` 的 Docker effects 也是模拟。浏览器 fixture 明确标记模拟，不是真实线上发布验收。真正的 ACTUAL Linux peer 身份、systemd 沙箱和 Docker 物理替换，须按本清单在已批准部署时验证并单独记录。
+
+审查后的发布顺序：准备及执行前还比较实际容器的 Compose config-hash、完整环境、命令和挂载，拒绝提前发生的磁盘配置漂移。真正替换前，对原 PostgreSQL `maintenance_control` 的完整旧行做 CAS，关闭 admission/consumer；提交关闭后重新检查在途任务、执行者、未落定 intake/outbox 和 AMQP。只有完整物理镜像核验完成，才在仍关闭的原行切换部署身份，原 Gate 确认后重新开放。任何关闭后的未知失败都保留关闭状态和 `maintenance-*.json` 回执，需人工核对；不能用删回执或回滚费用库恢复。

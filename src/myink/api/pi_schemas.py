@@ -111,3 +111,21 @@ class PiDecision(BaseModel):
     source_sha256: Digest
     comparison_sha256: Digest
     decision: Literal['publish', 'defer']
+
+
+class PiDaily(BaseModel):
+    schema_version: Literal[1]
+    authority: Literal['audit_only']
+    day: str
+    timezone: Literal['Asia/Shanghai']
+    event_count: Count
+    unknown_occurrence_count: Count
+    release_state: Literal['unknown', 'deployed', 'rolled_back', 'no_release']
+    release_runs: list[dict]
+    runs: list[str]
+    versions: list[dict]
+    change_scope: list[dict]
+    next_tests: list[dict]
+    known_cost_microyuan: Count | None
+    observed_samples: Count | None
+    sample_windows: list[dict]

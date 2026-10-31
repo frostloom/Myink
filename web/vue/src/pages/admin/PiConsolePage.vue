@@ -19,6 +19,11 @@ const daily=useResource(signal=>status.data ? piApi.daily(context.token,day.valu
 const runs=useResource(signal=>status.data ? piApi.runs(context.token,{day:day.value,limit:25,offset:runOffset.value},signal) : Promise.resolve(null),forbidden)
 const runId=computed(()=>selectedRun.value||status.data?.task_id||runs.data?.items[0]?.run_id||'')
 const events=useResource(signal=>status.data&&runId.value ? piApi.events(context.token,{runId:runId.value,limit:25,offset:eventOffset.value},signal) : Promise.resolve(null),forbidden)
+const observations=useResource(async signal=>{
+ if(!status.data||!runId.value)return null
+ const first=await piApi.events(context.token,{runId:runId.value,kind:'observation',limit:1},signal)
+ return first.total>1?piApi.events(context.token,{runId:runId.value,kind:'observation',limit:1,offset:first.total-1},signal):first
+},forbidden)
 const phases={idle:'等待下一轮',preparing:'准备本轮产物',awaiting_approval:'等待发布确认',awaiting_deployment:'已批准，等待部署核验',observing:'观察已部署版本',blocked:'需要人工处理'}
 const labels:Record<string,string>={observation:'指标观察',analysis:'分析',plan:'计划与决定',review:'独立评审',tool:'工具调用',development:'隔离开发',test:'测试',deployment:'部署',rollback:'回退',followup:'次日计划',version:'版本',enhancement:'工具与边界',memory:'记忆',passed:'通过',failed:'失败',blocked:'待人工处理',uncertain:'未确认',insufficient_evidence:'证据不足',planned:'已计划',running:'处理中',no_change:'无新变更',no_release:'未发布',candidate_ready:'候选已准备',rolled_back:'已回退',skipped:'未执行'}
 const toolLabels:Record<string,string>={observe_metrics:'读取冻结指标',read_source:'读取允许源码',propose_plan:'提出修复计划',apply_patch:'修改隔离候选',run_check:'执行固定检查',candidate_status:'核对候选状态'}
@@ -35,11 +40,11 @@ const sending=ref(false);const actionMessage=ref('');const actionError=ref('');l
 let pollTimer:ReturnType<typeof setTimeout>|undefined;let pollController:AbortController|undefined
 const busy=computed(()=>status.loading||!status.data||sending.value||!!activeOperation.value&&(busyStatuses.has(activeOperation.value.status)||activeOperation.value.decision==='publish'&&activeOperation.value.status==='succeeded'))
 const modal=shallowRef<{cycle:string;candidate:PiCandidate}|null>(null)
-const latestObservation=computed(()=>events.data?.items.filter(e=>e.kind==='observation').at(-1))
+const latestObservation=computed(()=>observations.data?.items.filter(e=>e.kind==='observation').at(-1))
 const sampleLabel=computed(()=>{
  const details=latestObservation.value?.details
  if(typeof details?.observed_samples==='number'&&typeof details.minimum_samples==='number')return `${details.observed_samples} / ${details.minimum_samples}`
- const count=daily.data?.sample_windows.at(-1)?.observed_samples
+ const count=daily.data?.sample_windows.find(window=>window.run_id===runId.value)?.observed_samples
  return count===null||count===undefined?'未知':`${count} 个有效样本`
 })
 const observedStatus=computed(()=>latestObservation.value?.status==='insufficient_evidence'?'证据不足':latestObservation.value?labels[latestObservation.value.status]??latestObservation.value.status:'查看观察记录')
@@ -60,15 +65,21 @@ async function poll(id:string){
   if(controller.signal.aborted)return
   operation.value=value
   if(['recording','queued','running'].includes(value.status))pollTimer=setTimeout(()=>{void poll(id)},2000)
-  else {actionMessage.value='';status.retry();daily.retry();runs.retry();events.retry()}
+  else {actionMessage.value='';status.retry();daily.retry();runs.retry();events.retry();observations.retry()}
  }catch(error){
   if(controller.signal.aborted)return
   if(error instanceof ApiError&&(error.status===401||error.status===403)){forbidden();return}
   actionError.value='发布状态暂时无法读取，请刷新查看；不会自动重复提交。'
  }
 }
-watch(()=>status.data?.latest_operation,value=>{
- if(value&&value.cycle_id===status.data?.cycle_id&&!operation.value){operation.value=value;if(['recording','queued','running'].includes(value.status))void poll(value.request_id)}
+watch(()=>status.data,value=>{
+ if(!value)return
+ if(operation.value?.cycle_id!==value.cycle_id){operation.value=null;stopPoll()}
+ const latest=value.latest_operation
+ if(!latest||latest.cycle_id!==value.cycle_id)return
+ if(operation.value&&operation.value.request_id!==latest.request_id&&latest.created_at<operation.value.created_at)return
+ operation.value=latest;stopPoll()
+ if(['recording','queued','running'].includes(latest.status))void poll(latest.request_id)
 })
 function openConfirmation(){const value=status.data;if(value?.cycle_id&&value.candidate)modal.value={cycle:value.cycle_id,candidate:structuredClone(value.candidate)}}
 async function decide(decision:'publish'|'defer'){
@@ -84,7 +95,7 @@ async function decide(decision:'publish'|'defer'){
   operation.value=result
   if(result.status==='deferred')actionMessage.value='已记录暂不发布，Pi 继续等待确认。'
   else if(['recording','queued','running'].includes(result.status)){actionMessage.value='发布请求已受理，等待宿主处理。';void poll(result.request_id)}
-  else {actionMessage.value='';status.retry();daily.retry();runs.retry();events.retry()}
+  else {actionMessage.value='';status.retry();daily.retry();runs.retry();events.retry();observations.retry()}
  }catch(error){
   if(controller.signal.aborted)return
   if(error instanceof ApiError&&(error.status===401||error.status===403)){forbidden();return}

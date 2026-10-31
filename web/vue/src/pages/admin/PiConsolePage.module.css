@@ -7,7 +7,7 @@
 .facts>div { display:grid; grid-template-columns:88px minmax(0,1fr); gap:var(--space-2); }
 .facts dt,.metrics dt,.metrics span { color:var(--ink-muted); font-size:var(--text-small); }
 .facts dd { margin:0; overflow-wrap:anywhere; }
-.section { display:grid; gap:var(--space-4); }
+.section { display:grid; grid-template-columns:minmax(0,1fr); gap:var(--space-4); }
 .section h2,.section h3,.section p { margin-top:0; }
 .sectionHead { display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:var(--space-4); }
 .sectionHead h2 { margin:0; }
