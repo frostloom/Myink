@@ -1,5 +1,12 @@
 # Pi administrator audit handoff
 
+Latest Oct31: user-approved product image18b/mainf230 and gated controller1fd39a01
+are deployed. One nightly timer is active; old seven remain disabled. The
+ordinary audit owner can read all1023 events after the root-collector permission
+fix. Two next-day plans are pending for Nov1 03:00 Asia/Shanghai; native result
+import/test_id association and main administrator UI remain unqualified.
+See [publication record](../evaluations/pi-approved-publication-2026-10-31.md).
+
 This is a read-only integration contract for the future main/admin implementation.
 It does not enable the admin UI, change authentication or grant execution rights.
 Use `src/myink/pi_audit.py` and `docs/contracts/pi-audit-v1.md`; never query the
