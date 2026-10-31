@@ -14,7 +14,7 @@ TOKEN='console-fixture-token-with-at-least-32-characters'
 @pytest.fixture
 def local_console(console_case,tmp_path):
     from ops.pi.admin_console_server import make_server
-    console,request,publisher,case=console_case;temporary=tempfile.TemporaryDirectory(prefix='pi-console-',dir='/private/tmp');path=Path(temporary.name)/'console.sock';server=make_server(path,TOKEN,console);thread=Thread(target=server.serve_forever,daemon=True);thread.start()
+    console,request,publisher,case=console_case;temporary=tempfile.TemporaryDirectory(prefix='pi-console-');path=Path(temporary.name).resolve()/'console.sock';server=make_server(path,TOKEN,console);thread=Thread(target=server.serve_forever,daemon=True);thread.start()
     with httpx.Client(transport=httpx.HTTPTransport(uds=str(path)),base_url='http://console',headers={'X-Pi-Console-Token':TOKEN}) as client:
         try:yield client,console,request,publisher
         finally:server.shutdown();server.server_close();thread.join(timeout=5);temporary.cleanup()
