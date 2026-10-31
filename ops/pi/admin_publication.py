@@ -25,6 +25,34 @@ def _git(repository, args, *, data=None, index=None):
     return result.stdout
 
 
+def live_config(commands, compose, config, image, rows):
+    """Compare resolved service intent against the current physical cohort."""
+    from .audit import strict_json
+    from .nightly_deployment import _run
+    def env(items):
+        result={}
+        for item in items:
+            key,separator,value=item.partition('=');require(separator and key not in result,'unique live environment required');result[key]=value
+        return result
+    images=strict_json(_run(commands,['image','inspect',image]));require(len(images)==1 and images[0]['Id']==image,'original immutable image required')
+    defaults=images[0]['Config']
+    for role in ('myink-api','myink-worker'):
+        service=config['services'][role]
+        hashes=_run(commands,compose+['config','--hash',role]).decode().split()
+        require(len(hashes)==2 and hashes[0]==role and hash_value(hashes[1]),'resolved Compose service identity required')
+        expected_env=dict(env(defaults.get('Env',[])),**{k:str(v) for k,v in service.get('environment',{}).items() if v is not None})
+        expected_mounts=[]
+        for v in service.get('volumes',[]):
+            source=v['source']
+            if v['type']=='volume':source=config.get('volumes',{}).get(source,{}).get('name',source)
+            expected_mounts.append((v['type'],source,v['target'],not v.get('read_only',False)))
+        selected=[r for r in rows if r['Config'].get('Labels',{}).get('com.docker.compose.service')==role]
+        require(len(selected)==(1 if role=='myink-api' else 2),'complete live application role required')
+        for row in selected:
+            c=row['Config'];mounts=[(v['Type'],v.get('Name') if v['Type']=='volume' else v['Source'],v['Destination'],v['RW']) for v in row.get('Mounts',[])]
+            require(c['Labels'].get('com.docker.compose.config-hash')==hashes[1] and env(c.get('Env',[]))==expected_env and c.get('Cmd')==service.get('command',defaults.get('Cmd')) and sorted(mounts)==sorted(expected_mounts),'current Compose differs from live application configuration')
+
+
 def package_files(repository, commit):
     require(hash_value(commit,40), 'exact source commit required')
     raw=_git(repository,['archive','--format=tar',commit,'src/myink']);files={};total=0
@@ -151,7 +179,9 @@ class NativePublication:
         commit=candidate_commit(repository,identities[0]['commit_sha'],bundle/'candidate',packet['image']['package_sha256'],root)
         compose=['compose','--project-directory',str(Path(self.config['compose_files'][0]).parent),'--project-name','myink']
         for name in self.config['compose_files']:compose.extend(['-f',name])
-        base=strict_json(_run(commands,compose+['config','--format','json']));_write(root/'previous-compose-private.json',base)
+        base=strict_json(_run(commands,compose+['config','--format','json']));live_config(commands,compose,base,base_image,rows);_write(root/'previous-compose-private.json',base)
+        from .admin_maintenance import Maintenance
+        maintenance=Maintenance(commands);base_maintenance=maintenance.opened(identities[0]);maintenance.quiet()
         services={key:dict(base['services'][key],image=image) for key in ('myink-api','myink-worker')}
         config_sha=digest(dict(schema='pi-effective-product-config-v1',image_id=image,services=services))
         import json
@@ -166,7 +196,7 @@ class NativePublication:
             require(current['image']==alias and current['command']==old['command'] and current.get('volumes',[])==old.get('volumes',[]),'publication changes service scope')
             require(all(current['environment'].get(k)==v for k,v in old['environment'].items() if k not in env) and all(current['environment'].get(k)==v for k,v in env.items()),'publication changes effective environment')
         self._idle(commands);require(_product(commands,base_image)==previous and self._ledgers()==before,'preparation changed original state')
-        plan=dict(schema='pi-admin-publication-plan-v1',mode=self.gate.mode,cycle_id=cycle,package_sha256=digest(packet['manifest']),image_id=image,base_image_id=base_image,source_commit=commit,identity=identity,previous_product_sha256=previous,base_config_sha256=digest(base),override_sha256=file_hash(path),compose_arguments=compose+['-f',str(path)],alias=alias,ledger_sha256=before)
+        plan=dict(schema='pi-admin-publication-plan-v1',mode=self.gate.mode,cycle_id=cycle,package_sha256=digest(packet['manifest']),image_id=image,base_image_id=base_image,source_commit=commit,identity=identity,previous_product_sha256=previous,base_config_sha256=digest(base),override_sha256=file_hash(path),compose_arguments=compose+['-f',str(path)],alias=alias,ledger_sha256=before,base_maintenance=base_maintenance)
         _write(root/'plan.json',plan);return plan
 
     def publish(self,cycle,bundle,plan):
@@ -182,13 +212,22 @@ class NativePublication:
         require(_product(commands,plan['base_image_id'])==plan['previous_product_sha256'],'base product changed')
         compose=plan['compose_arguments'];require(digest(strict_json(_run(commands,compose[:-2]+['config','--format','json'])))==plan['base_config_sha256'],'base configuration changed')
         require(strict_json(_run(commands,['image','inspect',plan['alias']]))[0]['Id']==plan['image_id'],'candidate alias changed')
+        from .admin_maintenance import Maintenance
+        current_base=strict_json(_run(commands,compose[:-2]+['config','--format','json']))
+        ids=_run(commands,['ps','-q','--filter','label=com.docker.compose.project=myink']).decode().split()
+        live_config(commands,compose[:-2],current_base,plan['base_image_id'],strict_json(_run(commands,['container','inspect',*ids])))
+        maintenance=Maintenance(commands);require(maintenance.read()==plan['base_maintenance'],'original maintenance owner changed')
+        self._idle(commands);self.gate.require_action(cycle,'deploy')
+        closed=maintenance.close(plan['base_maintenance'],cycle,self.gate.clock(),root)
         self._idle(commands);self.gate.require_action(cycle,'deploy')
         args=compose+['up','--detach','--no-deps','--no-build','--pull','never','--wait','--wait-timeout','180','--scale','myink-worker=2','myink-api','myink-worker']
         _write(root/'deploy-intent.json',dict(cycle_id=cycle,package_sha256=plan['package_sha256'],image_id=plan['image_id'],command=args))
         _run(commands,args,timeout=240);cohort,reason=_cohort(commands,plan['image_id'],packet['image']['package_sha256'],utc(self.gate.clock()))
         require(cohort is not None and reason is None and all(r['identity']==plan['identity'] for r in cohort),'deployed candidate identity unverified')
         require(self._ledgers()==plan['ledger_sha256'],'publication changed original accounting')
+        maintenance.quiet();closed=maintenance.adopt(closed,plan['identity'],root)
         if self.deployment_verifier:result=self.deployment_verifier(self.gate,cycle,bundle)
         else:result=confirm(self.gate,cycle,bundle,Path('/usr/bin/docker'),'unix:///var/run/docker.sock',self._daemon(),**({'transport_factory':self.transport_factory} if self.transport_factory else {}))
         require(result.get('verified') is True and result['status']=='observing','actual deployment attestation incomplete')
+        maintenance.reopen(closed,root)
         _write(root/'deploy-result.json',dict(status='verified',source_commit=plan['source_commit'],image_id=plan['image_id'],accounting_unchanged=True));return result
