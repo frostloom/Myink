@@ -102,6 +102,10 @@ jobs:
   frontend:
     name: 前端（lint + 单测 + 构建）
     runs-on: ubuntu-latest
+    # Temporary read-only access for the explicitly selected historical artifact.
+    permissions:
+      contents: read
+      actions: read
     defaults:
       run:
         working-directory: web
@@ -112,6 +116,41 @@ jobs:
           node-version: "24.22.1"
           cache: npm
           cache-dependency-path: web/package-lock.json
+      - name: 读取上轮浏览器回执（一次性诊断）
+        if: >-
+          github.ref == 'refs/heads/codex/pi-autonomy-design' && github.event.head_commit.message == 'ci(pi): expose historical browser failure'
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: vue-browser-matrix
+          run-id: "41176921031"
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/myink-prior-browser-matrix
+      - name: 公开上轮失败摘要（不改变本轮验收）
+        if: >-
+          github.ref == 'refs/heads/codex/pi-autonomy-design' && github.event.head_commit.message == 'ci(pi): expose historical browser failure'
+        continue-on-error: true
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { browserFailureAnnotation } from './scripts/browser-receipt.mjs';
+          const root = path.join(process.env.RUNNER_TEMP, 'myink-prior-browser-matrix');
+          for (const browser of ['chromium', 'firefox', 'webkit']) {
+            const directory = path.join(root, browser);
+            if (!fs.existsSync(directory)) continue;
+            for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+              if (!entry.isDirectory() || !/^[a-z][a-z0-9-]{0,63}$/.test(entry.name)) continue;
+              const file = path.join(directory, entry.name, 'receipt.json');
+              if (!fs.existsSync(file) || fs.statSync(file).size > 1048576) continue;
+              const detail = JSON.parse(fs.readFileSync(file, 'utf8'));
+              if (detail.passed === false) {
+                const reason = detail.error || JSON.stringify(detail.cleanupErrors || []);
+                console.log(browserFailureAnnotation(`previous-${browser}`, entry.name, reason).replace(/^::error/, '::notice'));
+              }
+            }
+          }
+          NODE
       - name: 安装依赖
         run: npm ci
       - name: 前端旧资源安全合并门禁

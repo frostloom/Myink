@@ -5,6 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
+import { browserFailureAnnotation } from './browser-receipt.mjs'
 const web = fileURLToPath(new URL('..', import.meta.url))
 const index = process.argv.indexOf('--output')
 const output = index < 0 ? fs.mkdtempSync(path.join(os.tmpdir(), 'myink-browser-matrix-')) : path.resolve(process.argv[index + 1])
@@ -33,7 +34,12 @@ for (const browser of ['chromium', 'firefox', 'webkit']) {
     const passed = result.status === 0 && detail?.passed === true && detail.browser === browser
     receipt.results.push({ browser, stage, passed, exitCode: result.status, checks: detail?.checks?.length ?? 0, receipt: path.join(target, 'receipt.json') })
     console.log(`${browser}/${stage}: ${passed ? 'passed' : 'FAILED'}`)
-    if (!passed) console.error(detail?.error || result.stderr || result.error?.message || 'Stage failed without diagnostics')
+    if (!passed) {
+      const cleanup = Array.isArray(detail?.cleanupErrors) && detail.cleanupErrors.length ? `Browser cleanup failed: ${detail.cleanupErrors.join('; ')}` : null
+      const message = detail?.error || cleanup || result.stderr || result.error?.message || 'Stage failed without diagnostics'
+      console.error(message)
+      if (process.env.GITHUB_ACTIONS === 'true') console.log(browserFailureAnnotation(browser, stage, message))
+    }
   }
 }
 receipt.passed = receipt.results.every(result => result.passed)
