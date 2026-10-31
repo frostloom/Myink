@@ -106,15 +106,21 @@ class Console:
         state = self.gate.status(); candidate = self._candidate(state)
         with self._db() as db:
             latest = db.execute('SELECT request_id FROM console_commands ORDER BY rowid DESC LIMIT 1').fetchone()
-        deployment = None
-        if state['cycle_id']:
-            with self.gate._connection() as db:
-                row = self.gate._row(db, state['cycle_id'])
-                if row['deployment']:
-                    packet = strict_json(row['deployment'])['packet']
-                    deployment = {k: packet[k] for k in ('deployment_id','deployed_at','image_id','source_sha256','comparison_sha256')}
+        saved = self._deployment(state['cycle_id']) if state['cycle_id'] else None
+        deployment = {k:saved['packet'][k] for k in ('deployment_id','deployed_at','image_id','source_sha256','comparison_sha256')} if saved else None
         return dict(schema_version=1, observed_at=self.gate.clock().isoformat(), **state, candidate=candidate, deployment=deployment,
+                    next_assessment_at=self._due(saved['packet']['deployed_at']) if saved and state['phase']=='observing' else None,
                     latest_operation=self.operation(latest[0]) if latest else None)
+
+    def _deployment(self, cycle):
+        with self.gate._connection() as db:
+            row=self.gate._row(db,cycle)
+            return strict_json(row['deployment']) if row['deployment'] else None
+
+    @staticmethod
+    def _due(deployed_at):
+        from .audit import utc, SHANGHAI
+        return utc((utc(deployed_at).astimezone(SHANGHAI)+timedelta(days=1)).replace(hour=3,minute=0,second=0,microsecond=0)).isoformat()
 
     def operation(self, identity):
         _uuid(identity)
@@ -135,6 +141,11 @@ class Console:
             version=dict(candidate_sha256=packet['source_sha256'],image_ids=dict(python=packet['image_id'])),changes=[],
             evidence=[dict(kind='authenticated_admin_decision',sha256=digest(packet),verified=True,evidence_domain='offline' if self.gate.mode=='ACTUAL' else 'synthetic')],followups=[],mode=self.gate.mode,
             evidence_domain='online_business' if stage=='deployed' and self.gate.mode=='ACTUAL' else 'offline' if self.gate.mode=='ACTUAL' else 'synthetic')
+        if stage=='deployed':
+            saved=self._deployment(packet['cycle_id']);require(saved is not None,'verified deployment receipt required')
+            event['version']['deployment_id']=saved['packet']['deployment_id']
+            event['evidence'].append(dict(kind='physical_deployment_receipt',sha256=saved['sha256'],verified=True,evidence_domain=event['evidence_domain']))
+            event['followups']=[dict(test_id='nightly-'+kind+'-'+packet['cycle_id'],scheduled_for=self._due(saved['packet']['deployed_at']),target_run_id=self.gate.status()['task_id'] or packet['cycle_id'],target_version_sha256=packet['source_sha256'],criterion='Frozen regression and cleanup.' if kind=='regression' else 'At least 20 version-bound complete business samples without confounders.',kind=kind,status='planned') for kind in ('regression','metrics')]
         store=AuditStore(self.audit_path);store.append('admin:'+packet['request_id']+':'+stage,event);store.export(self.export_root)
         if self.gate.mode=='ACTUAL':
             from .nightly_binding import _audit_outputs, _ordinary

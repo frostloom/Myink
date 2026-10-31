@@ -152,3 +152,14 @@ def test_candidate_cost_and_request_counts_preserve_original_evidence_domain(con
     console,request,publisher,case=console_case;source=json.loads((case[2]/'bundle/evaluation.json').read_bytes());value=console.status()['candidate']['evaluation']
     for key in ('model_requests','known_cost_microyuan','tool_count','evidence_domain','online_improvement_proven'):assert value[key]==source[key]
     assert value['online_improvement_proven'] is False
+
+
+def test_verified_publication_registers_nextday_plans_from_actual_deployment_time(console_case):
+    from myink.pi_audit import AuditReader
+    console,request,publisher,case=console_case;console.submit(request);assert console.process(request['request_id'])['status']=='succeeded'
+    daily=AuditReader(console.export_root).daily('2026-10-31');plans={p['test_id']:p for p in daily['next_tests']}
+    assert set(plans)=={'nightly-regression-'+case[1],'nightly-metrics-'+case[1]}
+    assert all(p['scheduled_for']=='2026-10-31T19:00:00+00:00' and p['target_run_id']==case[3] and p['target_version_sha256']==request['source_sha256'] and p['result'] is None for p in plans.values())
+    assert console.status()['next_assessment_at']=='2026-10-31T19:00:00+00:00'
+    events=AuditReader(console.export_root).events('admin-'+request['request_id'])['items']
+    assert any(proof['kind']=='physical_deployment_receipt' for event in events for proof in event['evidence'])
