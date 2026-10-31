@@ -220,3 +220,13 @@ def test_native_metric_probe_binds_actual_pg_and_validates_readonly_views(tmp_pa
 def case_now():
     from datetime import datetime,timezone
     return datetime(2026,10,31,7,tzinfo=timezone.utc)
+
+
+def test_actual_maintenance_identity_requests_full_container_id(monkeypatch):
+    from ops.pi import admin_maintenance
+    full = 'a' * 64
+    def docker_ps(commands, args, **kwargs):
+        # Docker ps --quiet still truncates; inspect Id is always full length.
+        return (full if '--no-trunc' in args else full[:12]).encode()
+    monkeypatch.setattr(admin_maintenance, '_run', docker_ps)
+    assert admin_maintenance.Maintenance(object()).container == full

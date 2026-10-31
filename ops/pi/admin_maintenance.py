@@ -17,7 +17,7 @@ def literal(value):return "'"+str(value).replace("'","''")+"'"
 class Maintenance:
     def __init__(self, commands):
         self.commands=commands
-        ids=_run(commands,['ps','-q','--filter','label=com.docker.compose.project=myink','--filter','label=com.docker.compose.service=myink-pg']).decode().split()
+        ids=_run(commands,['ps','-q','--no-trunc','--filter','label=com.docker.compose.project=myink','--filter','label=com.docker.compose.service=myink-pg']).decode().split()
         require(len(ids)==1,'original PG maintenance source required');self.container=ids[0]
 
     def query(self, sql):
