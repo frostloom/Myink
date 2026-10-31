@@ -1,0 +1,45 @@
+[Unit]
+Description=Myink authenticated human Pi console bridge
+After=docker.service
+Requisite=docker.service
+ConditionPathExists=/home/ubuntu/myink-pi-managed/config/admin-console.env
+ConditionPathExists=/home/ubuntu/myink-pi-managed/config/admin-console.json
+
+[Service]
+Type=exec
+User=root
+Group=10001
+WorkingDirectory=/home/ubuntu/myink-pi-managed
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=DOCKER_CONFIG=/nonexistent
+EnvironmentFile=/home/ubuntu/myink-pi-managed/config/admin-console.env
+ExecStart=/usr/bin/python3 -I -S -B ${PI_CONSOLE_ENTRYPOINT} --component console --config /home/ubuntu/myink-pi-managed/config/admin-console.json --config-sha256 ${PI_CONSOLE_CONFIG_SHA256}
+ExecStopPost=/usr/bin/rm -f /run/myink-pi-console/control.sock
+RuntimeDirectory=myink-pi-console
+RuntimeDirectoryMode=0750
+RuntimeDirectoryPreserve=yes
+Restart=on-failure
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=300
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_SETUID CAP_SETGID CAP_SETPCAP CAP_KILL
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadOnlyPaths=/home/ubuntu/myink-pi-managed/releases /home/ubuntu/myink-pi-managed/history /home/ubuntu/myink-pi-managed/state/credentials
+ReadWritePaths=/home/ubuntu/myink-pi-managed/state /home/ubuntu/myink-pi-managed/control /home/ubuntu/myink-pi-managed/nightly /home/ubuntu/myink-pi-managed/audit/state /home/ubuntu/myink-pi-managed/audit/export /home/ubuntu/myink-pi-managed/config/human-approvals /home/ubuntu/myink-pi-managed/config/deployment-receipts
+MemoryMax=512M
+TasksMax=96
+CPUQuota=100%
+LimitNOFILE=512
+StandardOutput=journal
+StandardError=journal

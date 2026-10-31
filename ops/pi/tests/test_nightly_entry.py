@@ -56,7 +56,8 @@ def test_verified_launcher_checks_gate_before_loading_host(tmp_path,monkeypatch,
 
 
 def test_all_scheduled_units_require_human_gate():
-    units=list(Path('ops/pi/deploy').glob('myink-pi-*.service'))
+    # The local human operator bridge does not dispatch a scheduled Pi component.
+    units=[p for p in Path('ops/pi/deploy').glob('myink-pi-*.service') if p.name!='myink-pi-admin-console.service']
     assert len(units)==8
     for path in units:assert '--human-gated' in path.read_text(),path
 
