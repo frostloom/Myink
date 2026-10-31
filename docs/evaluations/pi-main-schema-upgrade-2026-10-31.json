@@ -1,0 +1,25 @@
+{
+  "schema": "pi-main-schema-upgrade-rehearsal-v1",
+  "mode": "ISOLATED_SYNTHETIC",
+  "from_commit": "f2304a284247ba02e575e08d73cc97a48a5621c9",
+  "to_commit": "7e99f45f6b70ee9713058f73b247552b4520c6b4",
+  "existing_tables": 47,
+  "existing_rows": 470,
+  "existing_data_preserved": true,
+  "existing_rls_flags_preserved": true,
+  "new_tables": [
+    "maintenance_control",
+    "maintenance_executions",
+    "admission_intents",
+    "queue_handoffs"
+  ],
+  "lock_function_present": true,
+  "app_control_update_denied": true,
+  "app_lock_execute_allowed": true,
+  "report_private_tables_denied": true,
+  "new_private_tables_rls_forced": true,
+  "bootstrap_requires_explicit_identity_binding": true,
+  "production_changed": false,
+  "idempotent_init_preserves_closed_bound_identity": true,
+  "verified_at": "2026-10-31T06:46:40.276132+00:00"
+}
