@@ -1,23 +1,29 @@
 # Pi administrator audit handoff
 
-Latest Oct31: user-approved product image18b/mainf230 and gated controller1fd39a01
-are deployed. One nightly timer is active; old seven remain disabled. The
-ordinary audit owner can read all1023 events after the root-collector permission
-fix. Two next-day plans are pending for Nov1 03:00 Asia/Shanghai; native result
-import/test_id association and main administrator UI remain unqualified.
-See [publication record](../evaluations/pi-approved-publication-2026-10-31.md).
+Latest verified state (2026-10-31): approved product image18b/mainf230 and
+controller aae66f9fa66ad96627ae6690b3b8724bf427e349 are deployed. The closed
+controller pin is25d5be6aa5c88956d2bf0f87caf673a47dda0852ccd535c922f4789796001a80.
+Only the human-gated nightly timer is active; old seven remain disabled.
+The ordinary audit owner read all1034 events/260 runs, snapshot
+6317cfbeb2183fed716fa30273c0682194b0852a3162f4f9bf6f7cc04847363a.
+Native next-day publishing and stable test_id linkage are implemented and
+covered by offline consumer tests; actual Nov1 03:00 Asia/Shanghai results
+remain null. The first fully postdeployment hour had0/20 eligible samples.
+Main's administrator UI/reader integration remains a future integration task.
+See the [acceptance audit](../evaluations/pi-goal-acceptance-2026-10-31.md)
+and [publication record](../evaluations/pi-approved-publication-2026-10-31.md).
 
 This is a read-only integration contract for the future main/admin implementation.
 It does not enable the admin UI, change authentication or grant execution rights.
 Use `src/myink/pi_audit.py` and `docs/contracts/pi-audit-v1.md`; never query the
 billing/manager SQLite databases from the browser or copy their private payloads.
 
-Current qualification (2026-10-31): the original server store contains1006 events
+Historical prepublication qualification (2026-10-31, superseded above): the original server store contains1006 events
 after five new preparation records, with all1001 prior events preserved. The Pi
 branch reader validates the complete snapshot,256 runs,29 events for the original
-task, and the full four-file product scope. Main f450c0dc does not yet contain
+task, and the full four-file product scope. At that checkpoint, main f450c0dc did not contain
 this reader; this is a handoff artifact, not a deployed administrator feature.
-The candidate remains awaiting human publication approval. See the
+At that checkpoint, the candidate awaited human publication approval. See the
 [publication review](../evaluations/pi-publication-review-2026-10-31.md) for exact
 image/package hashes, pending deployment and relative next-day tasks.
 
