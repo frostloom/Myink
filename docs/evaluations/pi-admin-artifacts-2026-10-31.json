@@ -1,0 +1,41 @@
+{
+  "code_commit": "7e9679293a0d765f2662f9d2558d9327ed6364a0",
+  "production_deployed": false,
+  "images": {
+    "api": {
+      "tag": "myink-api:pi-admin-7e967929",
+      "id": "sha256:d69ba9a29f100bf9bde87fd851c0f96a5cb4d3a77673aeeb731980d358b4c3bf",
+      "revision": "7e9679293a0d765f2662f9d2558d9327ed6364a0",
+      "architecture": "arm64",
+      "os": "linux"
+    },
+    "caddy": {
+      "tag": "myink-caddy:pi-admin-7e967929",
+      "id": "sha256:5da0c495edf35ae81cc6489823a8fadc20976ec1c0356d37886b4014000f9239",
+      "revision": "7e9679293a0d765f2662f9d2558d9327ed6364a0",
+      "architecture": "arm64",
+      "os": "linux"
+    }
+  },
+  "python_package_sha256": "72c97066e7dbf72b5745fddae46489e9ae62908023b786a5e83b125a4be8fe25",
+  "python_source_files": 155,
+  "image_openapi_paths": 128,
+  "frontend_index_sha256": "3fcdda72ae5455deb2ac0defc0de4a759e8e47774f3ced9592c009b9b9d85629",
+  "runtime": {
+    "dependency_versions": {
+      "anyio": "4.15.1",
+      "certifi": "2026.7.22",
+      "h11": "0.16.0",
+      "httpcore": "1.0.9",
+      "httpx": "0.28.1",
+      "idna": "3.20",
+      "sniffio": "1.3.1",
+      "typing_extensions": "4.16.0"
+    },
+    "files": 416,
+    "runtime_sha256": "ad4a93019c298289acd5f0f0da8cff3a498b40bb18df300b02f21932a19642fb"
+  },
+  "qualification": "local_arm64_build_only",
+  "production_architecture": "x86_64",
+  "production_images_prepared": false
+}
