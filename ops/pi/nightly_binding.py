@@ -5,7 +5,7 @@ sample policy and audit destinations remain fixed. No query/model/release occurs
 """
 from pathlib import Path
 import os,stat
-from .audit import _path,_plain,require,strict_json,digest
+from .audit import _path,_plain,require,strict_json,digest,hash_value
 from .development_inputs import file_hash
 from .nightly_gate import BASE
 from .nightly_bundle import verify
@@ -71,6 +71,21 @@ def bind(gate,cycle,bundle,template_path,template_pin):
     _write(receipt,expected);return dict(path=str(path),sha256=expected['sha256'])
 
 
+def _audit_outputs(config):
+    audit=_path(config['audit_path']);export=_path(config.get('export_root',BASE/'audit/export'))
+    require(audit.parent==BASE/'audit/state' and export==BASE/'audit/export','fixed observer audit handoff required')
+    manifest=export/'manifest.json';_plain(manifest)
+    require(manifest.stat().st_size<=8388608 and stat.S_IMODE(manifest.stat().st_mode)==0o600,'bounded private audit manifest required')
+    metadata=strict_json(manifest.read_bytes())
+    require(metadata.get('schema_version')==1 and metadata.get('authority')=='audit_only' and isinstance(metadata.get('pages'),list) and len(metadata['pages'])<=10000,'bounded audit-only export required')
+    pages=_path(export/'pages');files=[audit,manifest]
+    for page in metadata['pages']:
+        require(isinstance(page,dict) and hash_value(page.get('sha256')),'fixed audit page digest required')
+        files.append(_path(pages/(page['sha256']+'.json')))
+    for item in files:_plain(item)
+    return files
+
+
 def collect(path,pin,*,mode):
     from .live_observer import observe
     config=_read(path);require(file_hash(path)==pin,'observer config changed before collection')
@@ -78,9 +93,11 @@ def collect(path,pin,*,mode):
     require(file_hash(path)==pin,'observer config changed during collection')
     if mode=='ACTUAL':
         # Future ordinary investigation workers must be able to verify the same
-        # immutable metrics receipt. Never chown a source/database/config tree.
+        # immutable metrics receipt and audit export. No source/product DB/config tree changes.
         root=_path(Path(config['root'])/result['run_id'])
         require(root.is_dir() and stat.S_IMODE(root.stat().st_mode)==0o700 and root.parent==Path(config['root']) and len(list(root.iterdir()))<=4,'bounded own observer output required')
-        for item in root.iterdir():_plain(item);_ordinary(item,mode)
+        files=list(root.iterdir())+_audit_outputs(config)
+        for item in files:_plain(item)
+        for item in files:_ordinary(item,mode)
         _ordinary(root,mode)
     return result

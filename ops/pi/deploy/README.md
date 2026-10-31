@@ -454,3 +454,10 @@ It records `operator_bootstrap_*` events, never `human_approved`; publication
 still needs the final package's human approval. Existing explicit human-rebuild
 instructions remain separate. A replacement date is a distinct metadata slot;
 this does not schedule another paid nightly iteration.
+
+Root nightly collection hands the metrics receipt and the fixed audit database,
+manifest and referenced hash-named pages back to the original ordinary audit
+owner. Source files, product databases, credentials and config directories are
+never part of that ownership handoff. Manifest reads keep the export contract's
+8MiB limit; links, traversal and destinations outside the fixed audit roots stop
+handoff before any ownership changes.
