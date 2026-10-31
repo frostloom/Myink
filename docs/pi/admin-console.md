@@ -46,13 +46,15 @@ PI_CONSOLE_CONFIG_SHA256=<admin-console.json 原始字节的 sha256>
 4. 在屏障关闭状态核对并绑定精确待部署身份，保留CAS前后回执，再更新 API/worker/Caddy 和显式 console 挂载。保留现有 provenance、命令、业务环境和挂载；当前生产引用原周期的 override，不能只复制基础 Compose 丢弃其有效配置。
 5. 实际核对新物理镜像、健康状态、维护身份及 Unix peer/systemd 权限，再开放工作入口。桥接先用 `publication_config_sha256:null` 只读验收管理员、普通账号及未登录访问，核对原费用账本没有变化，再单独开放候选发布。
 
+本次首次人工发布限定北京时间 06:00–23:00 开工、最多30分钟维护，留出下一次02:00检查前的完整发布后指标窗口；时间或原周期/物理版本漂移时停止重核。Caddy换镜像前要核对入口503配置及其autosave内容均已持久化，新Caddy以已验证的 --resume 读取同一配置卷，避免默认配置短暂重开入口。新镜像还应保留从实际旧生产镜像核验过的哈希资源，不得使用本机混杂缓存；恢复入口前核对当前新页面与旧资源均可读取。
+
 任何阶段结果未知都保持入口关闭并保留回执；不得通过重复初始化、删除 intent 或更换账本恢复。旧数据库回退须按实际迁移与备份判断，不能仅回退镜像就宣称完成恢复。
 
 ## 人工 main 更新后的观察交接
 
 首次 main 更新属于人工发布，不借用旧 Pi 候选的批准。旧周期可能仍为 observing 或因旧版本已退出而 blocked；不能将它改绑到新镜像，不能调用比较完成接口，也不能等待旧版本已不可能再产生的样本。
 
-先用原产品入口完成批准范围内的备份、入口关闭、自然排空、迁移及实际激活，保留全部失败和原收据。更新产品期间持有原 nightly 锁；交接入口随后会自行获取原 nightly.lock 和 maintenance.lock，调用时不要再在外层持有同一把锁。两阶段间旧 Gate 仍禁止新任务或模型执行。只有已健康运行的新 API/双worker、完整包摘要、revision、PG维护身份及原模型账本均核对后，才准备元数据交接。
+先核对是否已被 native 产品协议接管。2026-10-31 实际服务器没有 product-release/product-control 配置，也没有维护四表；现有 nightly 发布并非 native 接管，不能直接使用只接受原反馈挂载、只激活三个后端的 native 工厂来完成首次前端/socket更新。本次走明确批准的人工首次主线发布：关闭入口、自然排空、备份、迁移、绑定维护身份、替换 API/双worker/Caddy，并保留全部失败和原收据。若执行前发现 native 配置或接管状态已经变化，则停止重核，不能把此首次例外用于绕过已经接管的协议；已接管版本仍使用原固定产品入口。更新产品期间持有原 nightly 锁；交接入口随后会自行获取原 nightly.lock 和 maintenance.lock，调用时不要再在外层持有同一把锁。两阶段间旧 Gate 仍禁止新任务或模型执行。只有已健康运行的新 API/双worker、完整包摘要、revision、PG维护身份及原模型账本均核对后，才准备元数据交接。
 
 封存新 `config/autonomy-profile.json` 和 `config/nightly-source-template.json`，原 manager、费用库、50元及9笔未知预留不变。两者使用相同的 source-free 配置，模板 source_scope 与新真实源码一致。driver 保持 `inherit_task_id:null`，绑定新 Python 镜像，并同时钉住上述有限 profile 和固定模板。新 observer 绑定准确部署身份、1小时窗口和至少20样本；next-day计划不能移用旧周期。nightly.env 的入口、闭合 runtime pin 和 driver pin 也必须一致。
 
