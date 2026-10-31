@@ -57,6 +57,10 @@ const ERROR_CODES: Record<string, string> = {
   ACCOUNT_MODEL_BUSY: '账号已有模型请求正在处理，请稍候再试',
   ACCOUNT_MODEL_QUOTA_EXCEEDED: '今日建书与文风提取次数已用完，请明天再试',
   DEMO_LOGIN_DISABLED: '演示登录已关闭',
+  PI_CONSOLE_NOT_CONFIGURED: 'Pi 宿主控制台尚未接入，请配置后重试',
+  PI_CONSOLE_UNAVAILABLE: 'Pi 宿主控制台暂时不可用，请刷新查看',
+  PI_CANDIDATE_CHANGED_OR_BUSY: '候选或发布状态已变化，请刷新后重新核对',
+  PI_RECORD_NOT_FOUND: '未找到该 Pi 审计或发布操作',
   API_ERROR: '请求失败，请重试',
   Conflict: '内容已被其他人更新，请刷新后再试',
 }

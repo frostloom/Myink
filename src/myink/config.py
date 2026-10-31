@@ -38,6 +38,10 @@ class Settings:
     observation_rubric_id: str = field(default_factory=lambda: _env("OBSERVATION_RUBRIC_ID", "") or "")
     observation_data_id: str = field(default_factory=lambda: _env("OBSERVATION_DATA_ID", "") or "")
 
+    # Fixed host operator bridge. No Docker socket or executor database in API.
+    pi_console_socket: str = field(default_factory=lambda: _env("PI_CONSOLE_SOCKET", "") or "")
+    pi_console_token_file: str = field(default_factory=lambda: _env("PI_CONSOLE_TOKEN_FILE", "") or "")
+
     # 与 Caddy 共用；只有明确的 loopback HTTP 站点允许非 Secure 游客 cookie。
     site_address: str = field(default_factory=lambda: _env("SITE_ADDRESS", "http://localhost") or "")
     # 应用连接角色：非超级、NOBYPASSRLS（§14.1 坑：超级用户永远绕过 RLS）

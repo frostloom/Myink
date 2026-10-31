@@ -1,0 +1,14 @@
+# Explicit opt-in: docker compose -f docker-compose.yml -f docker-compose.pi-console.yml …
+# The API receives one authenticated local bridge; no Docker socket or Pi stores.
+services:
+  myink-api:
+    environment:
+      PI_CONSOLE_SOCKET: /run/pi-console/control.sock
+      PI_CONSOLE_TOKEN_FILE: /run/pi-console/client-token
+    volumes:
+      - type: bind
+        source: /run/myink-pi-console
+        target: /run/pi-console
+        read_only: true
+        bind:
+          create_host_path: false

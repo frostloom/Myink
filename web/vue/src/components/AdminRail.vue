@@ -26,6 +26,7 @@ const groups: Array<{ title: string; items: NavItem[] }> = [
     { title: '运营概览', items: [view('overview', '运营概览'), view('analytics', '数据分析'), view('projects', '作品'), view('tasks', '任务'), view('runs', '全部运行'), view('logs', '访问日志')] },
     { title: '用户与会员', items: [view('users', '用户与会员'), view('invites', '邀请码'), view('feedback', '用户反馈')] },
     { title: '模型与策略', items: [{ label: 'AI 模型', icon: 'models', to: '/admin/models' }, { label: '模型分配', icon: 'routes', to: '/admin/model-routes' }, { label: '用户默认设置', icon: 'defaults', to: '/admin/defaults' }] },
+    { title: '受控迭代', items: [{ label: 'Pi 管理', icon: 'runs', to: '/admin/pi' }] },
     { title: '写作资源', items: [{ label: '写作资源', icon: 'resources', to: '/admin/writing-resources' }] },
 ];
 function selected(item: NavItem) {

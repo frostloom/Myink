@@ -21,6 +21,7 @@ from myink.api.auth import router as auth_router
 from myink.api.ratelimit import ApiError, GlobalRateLimit
 from myink.api.resource_limits import ResourceRequestLimit
 from myink.api.routes_admin import router as admin_router
+from myink.api.routes_admin_pi import router as admin_pi_router
 from myink.api.routes_book import router as book_router
 from myink.api.routes_candidates import router as candidates_router
 from myink.api.routes_chapters import router as chapters_router
@@ -130,6 +131,7 @@ async def _aligned_http_error(request: Request, exc: StarletteHTTPException):
 
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(admin_pi_router)
 from myink.api.routes_writing_resources import router as writing_resource_router
 from myink.api.routes_user_writing_resources import router as user_writing_resource_router
 app.include_router(writing_resource_router)

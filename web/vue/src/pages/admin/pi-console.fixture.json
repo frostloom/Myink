@@ -1,0 +1,251 @@
+{
+  "status": {
+    "schema_version": 1,
+    "mode": "SIMULATED",
+    "observed_at": "2026-10-31T02:00:00+00:00",
+    "phase": "awaiting_approval",
+    "cycle_id": "20000000-0000-4000-8000-000000000001",
+    "task_id": "server-owner-fixture",
+    "package_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "candidate": {
+      "package_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "image_id": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "source_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "comparison_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "baseline_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "changes": [
+        {
+          "path": "src/myink/context_budget.py",
+          "category": "production",
+          "added": 4,
+          "deleted": 1
+        }
+      ],
+      "evaluation": {
+        "sdk_verified": true,
+        "checker": {
+          "passed": true,
+          "tests": 18,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "independent_review": {
+          "kind": "pre_development_file_review",
+          "sha256": "8888888888888888888888888888888888888888888888888888888888888888"
+        },
+        "model_requests": 12,
+        "known_cost_microyuan": 52742,
+        "tool_count": 14,
+        "evidence_domain": "real_provider_fixed_input",
+        "online_improvement_proven": false
+      },
+      "comparison": {
+        "anchor": "verified_deployment",
+        "day_offset": 1,
+        "status": "planned",
+        "online_improvement_proven": false,
+        "test_cases": [
+          "regression-a",
+          "regression-b"
+        ]
+      },
+      "publication_available": true
+    },
+    "deployment": null,
+    "next_assessment_at": null,
+    "latest_operation": null,
+    "executor": {
+      "service_state": "inactive/dead",
+      "timer_state": "active/waiting",
+      "last_result": "success",
+      "next_check": "Sun 2026-11-01 02:00:00 CST"
+    }
+  },
+  "daily": {
+    "schema_version": 1,
+    "authority": "audit_only",
+    "day": "2026-10-31",
+    "timezone": "Asia/Shanghai",
+    "event_count": 3,
+    "unknown_occurrence_count": 0,
+    "release_state": "unknown",
+    "release_runs": [],
+    "runs": [
+      "server-owner-fixture"
+    ],
+    "versions": [
+      {
+        "source_commit": "ffffffffffffffffffffffffffffffffffffffff",
+        "candidate_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "image_ids": {
+          "python": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "deployment_id": null
+      }
+    ],
+    "change_scope": [
+      {
+        "path": "src/myink/context_budget.py",
+        "category": "production",
+        "added": 4,
+        "deleted": 1,
+        "candidate_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "source_commit": "ffffffffffffffffffffffffffffffffffffffff"
+      }
+    ],
+    "next_tests": [
+      {
+        "test_id": "nightly-regression-20000000-0000-4000-8000-000000000001",
+        "scheduled_for": "2026-10-31T19:00:00+00:00",
+        "target_run_id": "server-owner-fixture",
+        "target_version_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "criterion": "固定案例与真实指标观察",
+        "kind": "regression",
+        "status": "planned",
+        "plan_event_sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+        "result": null
+      },
+      {
+        "test_id": "nightly-metrics-20000000-0000-4000-8000-000000000001",
+        "scheduled_for": "2026-10-31T19:00:00+00:00",
+        "target_run_id": "server-owner-fixture",
+        "target_version_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "criterion": "固定案例与真实指标观察",
+        "kind": "metrics",
+        "status": "planned",
+        "plan_event_sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+        "result": null
+      }
+    ],
+    "known_cost_microyuan": 0,
+    "observed_samples": null,
+    "sample_windows": [
+      {
+        "run_id": "server-owner-fixture",
+        "observed_samples": 0,
+        "window": "08:29–09:29",
+        "event_sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    ]
+  },
+  "runs": {
+    "items": [
+      {
+        "run_id": "server-owner-fixture",
+        "event_count": 3,
+        "days": [
+          "2026-10-31"
+        ]
+      }
+    ],
+    "total": 1,
+    "limit": 25,
+    "offset": 0
+  },
+  "events": {
+    "items": [
+      {
+        "schema_version": 1,
+        "authority": "audit_only",
+        "run_id": "server-owner-fixture",
+        "kind": "observation",
+        "status": "insufficient_evidence",
+        "mode": "SIMULATED",
+        "evidence_domain": "synthetic",
+        "occurred_at": "2026-10-31T01:29:00+00:00",
+        "recorded_at": "2026-10-31T01:29:00+00:00",
+        "event_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+        "sequence": 1,
+        "summary": "本窗口样本不足，保持观察。",
+        "details": {
+          "observed_samples": 0,
+          "minimum_samples": 20
+        },
+        "version": {
+          "source_commit": "ffffffffffffffffffffffffffffffffffffffff",
+          "candidate_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "image_ids": {
+            "python": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "deployment_id": null
+        },
+        "changes": [],
+        "followups": [],
+        "evidence": []
+      },
+      {
+        "schema_version": 1,
+        "authority": "audit_only",
+        "run_id": "server-owner-fixture",
+        "kind": "analysis",
+        "status": "passed",
+        "mode": "SIMULATED",
+        "evidence_domain": "synthetic",
+        "occurred_at": "2026-10-31T01:29:00+00:00",
+        "recorded_at": "2026-10-31T01:29:00+00:00",
+        "event_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+        "sequence": 2,
+        "summary": "建议继续收集真实样本。",
+        "details": {
+          "hypothesis": "<img src=x onerror=\"window.pwned=true\"> 保持等待，不建议发布。"
+        },
+        "version": {
+          "source_commit": "ffffffffffffffffffffffffffffffffffffffff",
+          "candidate_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "image_ids": {
+            "python": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "deployment_id": null
+        },
+        "changes": [],
+        "followups": [],
+        "evidence": []
+      },
+      {
+        "schema_version": 1,
+        "authority": "audit_only",
+        "run_id": "server-owner-fixture",
+        "kind": "tool",
+        "status": "passed",
+        "mode": "SIMULATED",
+        "evidence_domain": "synthetic",
+        "occurred_at": "2026-10-31T01:29:00+00:00",
+        "recorded_at": "2026-10-31T01:29:00+00:00",
+        "event_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+        "sequence": 3,
+        "summary": "固定回归通过。",
+        "details": {
+          "tool_name": "run_check",
+          "test_total": 18,
+          "test_failures": 0
+        },
+        "version": {
+          "source_commit": "ffffffffffffffffffffffffffffffffffffffff",
+          "candidate_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "image_ids": {
+            "python": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "deployment_id": null
+        },
+        "changes": [],
+        "followups": [],
+        "evidence": []
+      }
+    ],
+    "total": 3,
+    "limit": 25,
+    "offset": 0
+  },
+  "operation": {
+    "request_id": "10000000-0000-4000-8000-000000000001",
+    "actor_id": "30000000-0000-4000-8000-000000000001",
+    "cycle_id": "20000000-0000-4000-8000-000000000001",
+    "package_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "decision": "publish",
+    "status": "queued",
+    "created_at": "2026-10-31T02:00:00+00:00",
+    "completed_at": null,
+    "reason": null
+  }
+}

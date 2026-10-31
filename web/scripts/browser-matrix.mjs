@@ -19,6 +19,7 @@ for (const browser of ['chromium', 'firefox', 'webkit']) {
     ['readiness', 'scripts/vue-readiness-browser.mjs', ['--dist', 'dist-vue']],
     ['release', 'scripts/release-safety-browser.mjs', []],
     ['admin-feedback', 'scripts/admin-feedback-browser.mjs', []],
+    ['pi-console', 'scripts/pi-console-browser.mjs', []],
     ['resource-feedback', 'scripts/resource-feedback-browser.mjs', []],
     ['guest', 'scripts/guest-browser.mjs', []],
   ]) {

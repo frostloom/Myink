@@ -901,6 +901,38 @@
         "title": "AdminPage[FeedbackOut]",
         "type": "object"
       },
+      "AdminPage_dict_": {
+        "properties": {
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AdminPage[dict]",
+        "type": "object"
+      },
       "AdminProject": {
         "properties": {
           "chapter_count": {
@@ -5079,6 +5111,653 @@
         "title": "OutlineDraftOut",
         "type": "object"
       },
+      "PiCandidate": {
+        "properties": {
+          "baseline_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Baseline Sha256",
+            "type": "string"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/PiChange"
+            },
+            "maxItems": 128,
+            "title": "Changes",
+            "type": "array"
+          },
+          "comparison": {
+            "$ref": "#/components/schemas/PiComparison"
+          },
+          "comparison_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Comparison Sha256",
+            "type": "string"
+          },
+          "evaluation": {
+            "$ref": "#/components/schemas/PiEvaluation"
+          },
+          "image_id": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Image Id",
+            "type": "string"
+          },
+          "package_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Package Sha256",
+            "type": "string"
+          },
+          "publication_available": {
+            "title": "Publication Available",
+            "type": "boolean"
+          },
+          "source_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Source Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "package_sha256",
+          "image_id",
+          "source_sha256",
+          "comparison_sha256",
+          "baseline_sha256",
+          "changes",
+          "evaluation",
+          "comparison",
+          "publication_available"
+        ],
+        "title": "PiCandidate",
+        "type": "object"
+      },
+      "PiChange": {
+        "properties": {
+          "added": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Added"
+          },
+          "category": {
+            "enum": [
+              "production",
+              "test",
+              "docs",
+              "config"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "deleted": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted"
+          },
+          "path": {
+            "maxLength": 4096,
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "category",
+          "added",
+          "deleted"
+        ],
+        "title": "PiChange",
+        "type": "object"
+      },
+      "PiChecker": {
+        "properties": {
+          "errors": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errors"
+          },
+          "failures": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failures"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "skipped": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skipped"
+          },
+          "tests": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tests"
+          }
+        },
+        "required": [
+          "passed"
+        ],
+        "title": "PiChecker",
+        "type": "object"
+      },
+      "PiComparison": {
+        "properties": {
+          "anchor": {
+            "const": "verified_deployment",
+            "title": "Anchor",
+            "type": "string"
+          },
+          "day_offset": {
+            "const": 1,
+            "title": "Day Offset",
+            "type": "integer"
+          },
+          "online_improvement_proven": {
+            "const": false,
+            "title": "Online Improvement Proven",
+            "type": "boolean"
+          },
+          "status": {
+            "const": "planned",
+            "title": "Status",
+            "type": "string"
+          },
+          "test_cases": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 128,
+            "title": "Test Cases",
+            "type": "array"
+          }
+        },
+        "required": [
+          "anchor",
+          "day_offset",
+          "status",
+          "online_improvement_proven",
+          "test_cases"
+        ],
+        "title": "PiComparison",
+        "type": "object"
+      },
+      "PiDecision": {
+        "additionalProperties": false,
+        "properties": {
+          "comparison_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Comparison Sha256",
+            "type": "string"
+          },
+          "cycle_id": {
+            "format": "uuid",
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "publish",
+              "defer"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "image_id": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Image Id",
+            "type": "string"
+          },
+          "package_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Package Sha256",
+            "type": "string"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "source_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Source Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "cycle_id",
+          "package_sha256",
+          "image_id",
+          "source_sha256",
+          "comparison_sha256",
+          "decision"
+        ],
+        "title": "PiDecision",
+        "type": "object"
+      },
+      "PiDeployment": {
+        "properties": {
+          "comparison_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Comparison Sha256",
+            "type": "string"
+          },
+          "deployed_at": {
+            "format": "date-time",
+            "title": "Deployed At",
+            "type": "string"
+          },
+          "deployment_id": {
+            "maxLength": 128,
+            "title": "Deployment Id",
+            "type": "string"
+          },
+          "image_id": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Image Id",
+            "type": "string"
+          },
+          "source_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Source Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "deployment_id",
+          "deployed_at",
+          "image_id",
+          "source_sha256",
+          "comparison_sha256"
+        ],
+        "title": "PiDeployment",
+        "type": "object"
+      },
+      "PiEvaluation": {
+        "properties": {
+          "checker": {
+            "$ref": "#/components/schemas/PiChecker"
+          },
+          "evidence_domain": {
+            "enum": [
+              "online_business",
+              "real_provider_fixed_input",
+              "offline",
+              "synthetic",
+              "unknown"
+            ],
+            "title": "Evidence Domain",
+            "type": "string"
+          },
+          "independent_review": {
+            "$ref": "#/components/schemas/PiReview"
+          },
+          "known_cost_microyuan": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Known Cost Microyuan"
+          },
+          "model_requests": {
+            "minimum": 0.0,
+            "title": "Model Requests",
+            "type": "integer"
+          },
+          "online_improvement_proven": {
+            "title": "Online Improvement Proven",
+            "type": "boolean"
+          },
+          "sdk_verified": {
+            "title": "Sdk Verified",
+            "type": "boolean"
+          },
+          "tool_count": {
+            "minimum": 0.0,
+            "title": "Tool Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sdk_verified",
+          "checker",
+          "independent_review",
+          "model_requests",
+          "known_cost_microyuan",
+          "tool_count",
+          "evidence_domain",
+          "online_improvement_proven"
+        ],
+        "title": "PiEvaluation",
+        "type": "object"
+      },
+      "PiExecutor": {
+        "properties": {
+          "last_result": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Result"
+          },
+          "next_check": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Check"
+          },
+          "service_state": {
+            "maxLength": 64,
+            "title": "Service State",
+            "type": "string"
+          },
+          "timer_state": {
+            "maxLength": 64,
+            "title": "Timer State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_state",
+          "timer_state"
+        ],
+        "title": "PiExecutor",
+        "type": "object"
+      },
+      "PiOperation": {
+        "properties": {
+          "actor_id": {
+            "format": "uuid",
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "cycle_id": {
+            "format": "uuid",
+            "title": "Cycle Id",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "publish",
+              "defer"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "package_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Package Sha256",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "recording",
+              "queued",
+              "running",
+              "deferred",
+              "succeeded",
+              "failed",
+              "uncertain"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_id",
+          "actor_id",
+          "cycle_id",
+          "package_sha256",
+          "decision",
+          "status",
+          "created_at",
+          "completed_at"
+        ],
+        "title": "PiOperation",
+        "type": "object"
+      },
+      "PiReview": {
+        "properties": {
+          "kind": {
+            "maxLength": 160,
+            "title": "Kind",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "sha256"
+        ],
+        "title": "PiReview",
+        "type": "object"
+      },
+      "PiStatus": {
+        "properties": {
+          "candidate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PiCandidate"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cycle_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cycle Id"
+          },
+          "deployment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PiDeployment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "executor": {
+            "$ref": "#/components/schemas/PiExecutor"
+          },
+          "latest_operation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PiOperation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mode": {
+            "enum": [
+              "ACTUAL",
+              "SIMULATED"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "next_assessment_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Assessment At"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "package_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Package Sha256"
+          },
+          "phase": {
+            "enum": [
+              "idle",
+              "preparing",
+              "awaiting_approval",
+              "awaiting_deployment",
+              "observing",
+              "blocked"
+            ],
+            "title": "Phase",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          }
+        },
+        "required": [
+          "schema_version",
+          "mode",
+          "observed_at",
+          "phase",
+          "cycle_id",
+          "package_sha256",
+          "candidate",
+          "deployment",
+          "latest_operation",
+          "executor"
+        ],
+        "title": "PiStatus",
+        "type": "object"
+      },
       "PlanConfirmBody": {
         "properties": {
           "expected_attempt": {
@@ -8483,6 +9162,420 @@
         "summary": "Admin.Overview",
         "tags": [
           "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/pi/daily": {
+      "get": {
+        "operationId": "admin_pi_daily_api_v1_admin_pi_daily_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Admin Pi Daily Api V1 Admin Pi Daily Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Pi.Daily",
+        "tags": [
+          "admin-pi"
+        ]
+      }
+    },
+    "/api/v1/admin/pi/decisions": {
+      "post": {
+        "operationId": "admin_pi_decision_api_v1_admin_pi_decisions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PiDecision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PiOperation"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Pi.Decision",
+        "tags": [
+          "admin-pi"
+        ]
+      }
+    },
+    "/api/v1/admin/pi/enhancements": {
+      "get": {
+        "operationId": "admin_pi_enhancements_api_v1_admin_pi_enhancements_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 1000000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPage_dict_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Pi.Enhancements",
+        "tags": [
+          "admin-pi"
+        ]
+      }
+    },
+    "/api/v1/admin/pi/events": {
+      "get": {
+        "operationId": "admin_pi_events_api_v1_admin_pi_events_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,159}$",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 1000000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "observation",
+                    "analysis",
+                    "plan",
+                    "review",
+                    "tool",
+                    "development",
+                    "test",
+                    "deployment",
+                    "rollback",
+                    "followup",
+                    "version",
+                    "enhancement",
+                    "memory"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPage_dict_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Pi.Events",
+        "tags": [
+          "admin-pi"
+        ]
+      }
+    },
+    "/api/v1/admin/pi/operations/{operation_id}": {
+      "get": {
+        "operationId": "admin_pi_operation_api_v1_admin_pi_operations__operation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "operation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Operation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PiOperation"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Pi.Operation",
+        "tags": [
+          "admin-pi"
+        ]
+      }
+    },
+    "/api/v1/admin/pi/runs": {
+      "get": {
+        "operationId": "admin_pi_runs_api_v1_admin_pi_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 1000000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "day",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Day"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPage_dict_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Pi.Runs",
+        "tags": [
+          "admin-pi"
+        ]
+      }
+    },
+    "/api/v1/admin/pi/status": {
+      "get": {
+        "operationId": "admin_pi_status_api_v1_admin_pi_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PiStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Pi.Status",
+        "tags": [
+          "admin-pi"
         ]
       }
     },

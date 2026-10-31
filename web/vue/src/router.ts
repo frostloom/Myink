@@ -14,6 +14,7 @@ import LorePage from './pages/LorePage.vue'
 import AuditPage from './pages/AuditPage.vue'
 import AdminPage from './pages/AdminPage.vue'
 import { AdminConsole } from './pages/admin/AdminConsole'
+import PiConsolePage from './pages/admin/PiConsolePage.vue'
 import PlatformConfiguration from './pages/admin/PlatformConfiguration'
 import WritingResources from './pages/admin/WritingResources'
 import { ChapterDetailPage, ProjectDetailPage } from './pages/admin/ProjectDetail'
@@ -46,6 +47,7 @@ export function createCandidateRouter(history: RouterHistory = createWebHistory(
     { path: '/projects/:projectId/lore', component: LorePage },
     { path: '/admin', component: AdminPage, children: [
       { path: '', component: AdminConsole },
+      { path: 'pi', component: PiConsolePage },
       { path: 'configuration', redirect: '/admin/models' },
       { path: 'models', component: PlatformConfiguration, props: { section: 'models' } },
       { path: 'model-routes', component: PlatformConfiguration, props: { section: 'routes' } },
