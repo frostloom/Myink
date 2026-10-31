@@ -69,15 +69,27 @@ def native_case(repository,case,monkeypatch):
         def run(self,args,**kwargs):
             holder.calls.append(args)
             if args[:1]==['info']:body=b'simulation-console-daemon'
-            elif args[:1]==['ps']:body=b'rabbit' if any('myink-rabbitmq' in a for a in args) else b'api worker1 worker2'
+            elif args[:1]==['ps']:body=b'postgres' if any('myink-pg' in a for a in args) else b'rabbit' if any('myink-rabbitmq' in a for a in args) else b'api worker1 worker2'
             elif args[:2]==['container','inspect']:
-                body=json.dumps([dict(Config=dict(Labels={'com.docker.compose.service':role},Env=[k+'='+v for k,v in environment.items()])) for role in ('myink-api','myink-worker','myink-worker')]).encode()
+                body=json.dumps([dict(Config=dict(Labels={'com.docker.compose.service':role,'com.docker.compose.config-hash':'7'*64},Cmd=[role],Env=[k+'='+v for k,v in dict(environment,JWT_SECRET='PRIVATE_KEEP').items()]),Mounts=[]) for role in ('myink-api','myink-worker','myink-worker')]).encode()
             elif args[:2]==['image','ls']:body=b''
             elif args[:2]==['image','tag']:holder.alias=args[-1];body=b''
-            elif args[:2]==['image','inspect']:body=json.dumps([{'Id':'sha256:'+'0'*64 if holder.alias_drift else image}]).encode()
+            elif args[:2]==['image','inspect']:body=json.dumps([{'Id':base_image if args[-1]==base_image else 'sha256:'+'0'*64 if holder.alias_drift else image,'Config':{'Env':[]}}]).encode()
+            elif args[:1]==['exec'] and args[1]=='postgres':
+                sql=args[-1]
+                if 'UPDATE public.maintenance_control' in sql:
+                    import re
+                    value=json.loads(re.search(r"WITH desired AS \(SELECT '((?:[^']|'')*)'::jsonb AS value",sql).group(1).replace("''", "'"))
+                    if value['admission_closed'] and not holder.control_closed:holder.control_updates.append('closed')
+                    elif value['admission_closed']:holder.control_updates.append('identity')
+                    else:holder.control_updates.append('opened')
+                    holder.control=value;holder.control_closed=value['admission_closed'];body=json.dumps(value).encode()
+                elif 'active_tasks' in sql:body=json.dumps({'active_tasks':int(holder.inflight),'executions':0,'pending_admissions':0,'pending_handoffs':0}).encode()
+                else:body=json.dumps(holder.control).encode()
             elif args[:1]==['exec']:body=('queue:tasks\t'+('1' if holder.busy else '0')+'\t0\nqueue:tasks:vip\t0\t0\n').encode()
+            elif args[:1]==['compose'] and '--hash' in args:body=(args[-1]+' '+('8' if holder.config_drift else '7')*64+'\n').encode()
             elif args[:1]==['compose'] and 'config' in args:
-                value={'services':{k:dict(image=base_image,command=[k],environment={'JWT_SECRET':'PRIVATE_KEEP'},volumes=[]) for k in ('myink-api','myink-worker')}}
+                value={'services':{k:dict(image=base_image,command=[k],environment=dict(environment,JWT_SECRET='PRIVATE_KEEP'),volumes=[]) for k in ('myink-api','myink-worker')}}
                 if holder.config_drift:value['services']['myink-api']['environment']['JWT_SECRET']='CHANGED_PRIVATE'
                 inputs=[args[i+1] for i,x in enumerate(args[:-1]) if x=='-f']
                 if inputs[-1].endswith('compose.override.json'):
@@ -85,11 +97,13 @@ def native_case(repository,case,monkeypatch):
                     for k,v in override['services'].items():value['services'][k].update({n:x for n,x in v.items() if n!='environment'});value['services'][k]['environment'].update(v['environment'])
                 body=json.dumps(value).encode()
             elif args[:1]==['compose'] and 'up' in args:
+                if holder.compose_failed:raise ValueError('fixture compose failure')
                 holder.deployed=True;inputs=[args[i+1] for i,x in enumerate(args[:-1]) if x=='-f'];env=json.loads(Path(inputs[-1]).read_bytes())['services']['myink-api']['environment'];holder.deployed_identity=nightly_deployment._identity([k+'='+v for k,v in env.items()],image);body=b''
             else:raise AssertionError(args)
             identity=str(uuid.uuid4());folder=self.root/identity;folder.mkdir(mode=0o700);(folder/'stdout.bin').write_bytes(body);return dict(status='done',returncode=0,command_id=identity)
     from types import SimpleNamespace
-    holder=SimpleNamespace(calls=[],busy=False,product_drift=False,config_drift=False,alias_drift=False,deployed=False,deployed_identity=None)
+    holder=SimpleNamespace(calls=[],busy=False,product_drift=False,config_drift=False,alias_drift=False,deployed=False,deployed_identity=None,inflight=False,control_closed=False,control_updates=[],compose_failed=False)
+    holder.control=dict(id=1,epoch='original-epoch',deployment_id=identity['deployment_id'],generation=identity['generation'],owner=identity['owner'],image_ids=identity['image_ids'],deadline=None,admission_closed=False,consumer_blocked=False)
     def product(commands,expected):
         if holder.product_drift:raise ValueError('fixture base drift')
         return '9'*64
@@ -159,3 +173,29 @@ def test_candidate_source_object_is_retained_without_moving_main(repository):
     root,base,candidate,files,work=repository;commit=candidate_commit(root/'.git',base,candidate,digest(files),work)
     assert git(root,'rev-parse','refs/pi-candidates/'+commit).decode().strip()==commit
     assert git(root,'rev-parse','HEAD').decode().strip()==base
+
+
+def test_preexisting_compose_drift_is_rejected_against_live_cohort(native_case):
+    publication,gate,cycle,bundle,holder,packet,case=native_case;holder.config_drift=True
+    with pytest.raises(ValueError):publication.prepare(cycle,bundle)
+    assert not holder.deployed and not holder.control_updates
+
+
+def test_publication_fences_original_pg_then_changes_identity_and_reopens(native_case):
+    publication,gate,cycle,bundle,holder,packet,case=native_case;plan=publication.prepare(cycle,bundle);approve(native_case)
+    publication.publish(cycle,bundle,plan)
+    assert holder.control_updates==['closed','identity','opened']
+    assert holder.control['generation']==holder.deployed_identity['generation'] and holder.control['image_ids']==holder.deployed_identity['image_ids']
+    assert holder.control['owner']==holder.deployed_identity['owner'] and holder.control['admission_closed'] is False
+
+
+def test_inflight_admission_after_preparation_blocks_replacement(native_case):
+    publication,gate,cycle,bundle,holder,packet,case=native_case;plan=publication.prepare(cycle,bundle);approve(native_case);holder.inflight=True
+    with pytest.raises(ValueError):publication.publish(cycle,bundle,plan)
+    assert not holder.deployed
+
+
+def test_uncertain_compose_failure_preserves_closed_original_barrier(native_case):
+    publication,gate,cycle,bundle,holder,packet,case=native_case;plan=publication.prepare(cycle,bundle);approve(native_case);holder.compose_failed=True
+    with pytest.raises(ValueError):publication.publish(cycle,bundle,plan)
+    assert holder.control_closed and holder.control_updates==['closed']
