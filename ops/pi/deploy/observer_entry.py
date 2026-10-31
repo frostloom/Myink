@@ -52,22 +52,25 @@ def verify_release(root,expected,*,expected_owner=0):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--config',required=True);parser.add_argument('--config-sha256',required=True)
-    parser.add_argument('--component',choices=('observer','product_observer','followup','diagnosis','review_worker','investigation','reproducer','sdk_review','candidate_review','candidate_audit','development_audit','manager_audit','manager_handoff','coordinator_audit','coordinator_withdrawal','autonomy','manager','nightly','console'),default='observer')
+    parser.add_argument('--component',choices=('observer','product_observer','followup','diagnosis','review_worker','investigation','reproducer','sdk_review','candidate_review','candidate_audit','development_audit','manager_audit','manager_handoff','coordinator_audit','coordinator_withdrawal','autonomy','manager','nightly','console','nightly_handoff'),default='observer')
     parser.add_argument('--human-gated',action='store_true',help='require persistent single-cycle human approval gate')
     args=parser.parse_args()
     try:
         root=Path(__file__).resolve().parent
         code=verify_release(root,os.environ.get('PI_OBSERVER_RUNTIME_SHA256'))
         sys.path.insert(0,str(code));sys.dont_write_bytecode=True
-        if args.human_gated and args.component not in ('nightly','console'):
+        if args.human_gated and args.component not in ('nightly','console','nightly_handoff'):
             from ops.pi.nightly_host import runtime_admission
             admission=runtime_admission(args.component)
             if not admission['allowed']:
                 print(json.dumps(admission));return 0
-        if args.component in ('diagnosis','review_worker','investigation','reproducer','sdk_review','candidate_review','candidate_audit','development_audit','manager_audit','manager_handoff','coordinator_audit','coordinator_withdrawal','autonomy','manager','nightly','console'):
+        if args.component in ('diagnosis','review_worker','investigation','reproducer','sdk_review','candidate_review','candidate_audit','development_audit','manager_audit','manager_handoff','coordinator_audit','coordinator_withdrawal','autonomy','manager','nightly','console','nightly_handoff'):
             vendor=code.parent/'vendor';require(vendor.is_dir())
             sys.path.insert(1,str(vendor))
-            if args.component=='console':
+            if args.component=='nightly_handoff':
+                from ops.pi.nightly_handoff import run
+                result=run(args.config,args.config_sha256)
+            elif args.component=='console':
                 sys.path.insert(1,str(code/'src'))
                 from ops.pi.admin_console_server import serve
                 result=serve(args.config,args.config_sha256)

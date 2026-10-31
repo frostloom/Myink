@@ -1,4 +1,4 @@
-"""A fresh finite source lease requires a completed human-deployed comparison."""
+"""Fresh source leases require an approved comparison or verified human baseline."""
 from pathlib import Path
 from datetime import timedelta
 import json,sys,uuid
@@ -91,3 +91,46 @@ def test_copy_changed_during_ownership_handoff_cannot_be_signed_as_deployed_sour
     monkeypatch.setattr(nightly_source,'_ordinary',corrupt)
     with pytest.raises(ValueError):issue(source_case)
     assert not (source_case[2]/'source-stage.json').exists()
+
+
+@pytest.mark.parametrize("fault", [None,"receipt","template","observer","cohort","window"])
+def test_human_main_baseline_can_issue_fresh_inputs_days_after_interrupted_comparison(source_case,fault):
+    from copy import deepcopy
+    from ops.pi.nightly_source import prepare
+    from ops.pi.product_commands import _write
+    prior,old,out,template,observer,read,context=source_case;g=prior[0];now=prior[5]
+    manifest=json.loads((prior[2]/'bundle/manifest.json').read_bytes());g.ready(old,manifest)
+    permission=out/'approval.json'
+    _write(permission,dict(schema='pi-nightly-human-approval-v1',mode='SIMULATED',issuer='human_operator',cycle_id=old,package_sha256=digest(manifest),approved_actions=['deploy'],issued_at=now[0].isoformat(),expires_at=(now[0]+timedelta(hours=1)).isoformat()))
+    g.approve(old,permission,file_hash(permission));deployment=out/'deployment.json'
+    _write(deployment,dict(schema='pi-nightly-deployment-receipt-v1',mode='SIMULATED',issuer='trusted_deployment_verifier',cycle_id=old,package_sha256=digest(manifest),approval_sha256=file_hash(permission),image_id=manifest['image_id'],source_sha256=manifest['source_sha256'],comparison_sha256=manifest['comparison_sha256'],deployment_id='old-human-test',deployed_at=now[0].isoformat()))
+    g.deployed(old,deployment,file_hash(deployment))
+    identity=deepcopy(context[0]['identity']);identity.update(deployment_id='human-main-v2',generation=identity['generation']+1,commit_sha='8'*40,image_ids=dict(python='sha256:'+'9'*64))
+    for row in context:row.update(identity=identity,image_id=identity['image_ids']['python'])
+    oc=json.loads(Path(observer['path']).read_bytes());oc['identity']=identity;Path(observer['path']).write_text(json.dumps(oc));observer['sha256']=file_hash(observer['path'])
+    op=str(uuid.uuid4());hp=out/'manual.json'
+    h=dict(schema='pi-nightly-manual-handoff-v1',mode='SIMULATED',issuer='human_operator',action='interrupt_for_manual_main_release',operation_id=op,cycle_id=old,package_sha256=digest(manifest),deployment_sha256=file_hash(deployment),new_identity=identity,new_package_sha256='a'*64,driver_sha256='b'*64,profile_sha256='c'*64,issued_at=now[0].isoformat(),expires_at=(now[0]+timedelta(hours=1)).isoformat());_write(hp,h)
+    directory=out/('manual-handoff-'+op);directory.mkdir(mode=0o700)
+    result=dict(schema='pi-nightly-manual-handoff-result-v1',mode='SIMULATED',cycle_id=old,operation_id=op,permission_sha256=file_hash(hp),driver_sha256=h['driver_sha256'],source_template_sha256=file_hash(template),comparison_status='interrupted',online_improvement_proven=False,proof=dict(identity=identity,package_sha256=h['new_package_sha256'],source_sha256='d'*64,profile_sha256=h['profile_sha256'],cohort_sha256=digest(context),audit_path=str(out/'audit.sqlite'),export_root=str(out/'export'),observer=observer,deployed_at=now[0].isoformat(),metrics_source_sha256=digest(oc['source'])),accounting_sha256=digest((ledger_snapshot(g.state),ledger_snapshot(g.billing))),model_requests=0,known_cost_microyuan=0)
+    _write(directory/'verified.json',result);g.interrupt_observation(old,hp,file_hash(hp),digest(result))
+    now[0]+=timedelta(days=3)
+    new=str(uuid.uuid4());assert g.begin(new,'2026-11-05')['claimed'];fresh=out.parent/new;fresh.mkdir(mode=0o700)
+    before=ledger_snapshot(g.state),ledger_snapshot(g.billing)
+    source={'src/a.py':(prior[2]/'bundle/candidate/src/a.py').read_text()}
+    if fault=='receipt':
+        result['online_improvement_proven']=True;(directory/'verified.json').write_text(json.dumps(result))
+    elif fault=='template':
+        changed=json.loads(template.read_bytes());changed['validity_seconds']=3600;template.write_text(json.dumps(changed))
+    elif fault=='observer':
+        changed=json.loads(Path(observer['path']).read_bytes());changed['identity']['deployment_id']='different';Path(observer['path']).write_text(json.dumps(changed))
+    elif fault=='cohort':context[0]=dict(context[0],identity=dict(identity,deployment_id='different'))
+    elif fault=='window':context[0]=dict(context[0],started_at=now[0].isoformat())
+    def perform():return prepare(g,new,fresh,template,file_hash(template),collect=read,inspect_cohort=lambda *a:context,read_source=lambda *a:source)
+    if fault is not None:
+        with pytest.raises(ValueError):perform()
+        assert (ledger_snapshot(g.state),ledger_snapshot(g.billing))==before
+        return
+    r=perform()
+    assert r['comparison_sha256'] is None and r['baseline_receipt_sha256']==digest(result) and r['predecessor_kind']=='manual_main_release'
+    generated=json.loads(Path(r['profile']['path']).read_bytes());assert generated['source']['reference_commit']==identity['commit_sha'] and generated['checker_image_id']==identity['image_ids']['python']
+    assert generated['issued_at']==now[0].isoformat() and (ledger_snapshot(g.state),ledger_snapshot(g.billing))==before

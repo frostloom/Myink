@@ -48,6 +48,28 @@ PI_CONSOLE_CONFIG_SHA256=<admin-console.json 原始字节的 sha256>
 
 任何阶段结果未知都保持入口关闭并保留回执；不得通过重复初始化、删除 intent 或更换账本恢复。旧数据库回退须按实际迁移与备份判断，不能仅回退镜像就宣称完成恢复。
 
+## 人工 main 更新后的观察交接
+
+首次 main 更新属于人工发布，不借用旧 Pi 候选的批准。旧周期可能仍为 observing 或因旧版本已退出而 blocked；不能将它改绑到新镜像，不能调用比较完成接口，也不能等待旧版本已不可能再产生的样本。
+
+先用原产品入口完成批准范围内的备份、入口关闭、自然排空、迁移及实际激活，保留全部失败和原收据。更新产品期间持有原 nightly 锁；交接入口随后会自行获取原 nightly.lock 和 maintenance.lock，调用时不要再在外层持有同一把锁。两阶段间旧 Gate 仍禁止新任务或模型执行。只有已健康运行的新 API/双worker、完整包摘要、revision、PG维护身份及原模型账本均核对后，才准备元数据交接。
+
+封存新 `config/autonomy-profile.json` 和 `config/nightly-source-template.json`，原 manager、费用库、50元及9笔未知预留不变。两者使用相同的 source-free 配置，模板 source_scope 与新真实源码一致。driver 保持 `inherit_task_id:null`，绑定新 Python 镜像，并同时钉住上述有限 profile 和固定模板。新 observer 绑定准确部署身份、1小时窗口和至少20样本；next-day计划不能移用旧周期。nightly.env 的入口、闭合 runtime pin 和 driver pin 也必须一致。
+
+独立 root 批准位于 `config/manual-handoffs/<operation UUID>.json`（root:ubuntu0640，父目录root0750），原始字节SHA必须由操作者核对。封闭字段：
+
+```json
+{"schema":"pi-nightly-manual-handoff-v1","mode":"ACTUAL","issuer":"human_operator","action":"interrupt_for_manual_main_release","operation_id":"<UUID>","cycle_id":"<旧周期UUID>","package_sha256":"<旧package摘要>","deployment_sha256":"<旧deployment收据摘要>","new_identity":{"deployment_id":"<实际新部署>","generation":2,"owner":"<实际owner>","image_ids":{"python":"sha256:<实际新Python镜像>"},"commit_sha":"<新产品40位commit>","schema_id":"<实际schema>","config_hash":"<实际config摘要>"},"new_package_sha256":"<新完整Python包摘要>","driver_sha256":"<新driver原始字节摘要>","profile_sha256":"<新profile原始字节摘要>","issued_at":"<UTC时间>","expires_at":"<最多1小时后>"}
+```
+
+示例generation=2仅解释格式，执行时读取真实部署值；image_ids也必须是完整真实身份。此批准只允许核验已部署版本并结束旧观察，不允许部署、推送、发模型请求、增加预算或释放未知预留。用封闭 runtime 的 `entry.py --component nightly_handoff --config <批准固定路径> --config-sha256 <批准SHA>` 执行，环境中的 `PI_OBSERVER_RUNTIME_SHA256` 指向该 runtime；ACTUAL只允许Linux root和固定路径，拒绝模拟回调。
+
+回执写入原 `nightly/<旧周期>/manual-handoff-<operation UUID>/`。指标源还必须匹配实际生产PG容器/镜像/daemon/database，两张指标视图通过固定只读角色查询验证；安装的nightly runtime pin必须与当前已验证交接入口一致。同一旧周期存在任何未完成交接时，换operation UUID也不能绕过。新部署和输入在导出审计后再次核对；审计/verified.json持久化后，最后一笔Gate事务以 `observation_interrupted` 关闭旧观察，结论为 `insufficient_evidence`。原包、批准、部署、任务及已有失败不改，绝不写comparison_complete。原追加审计导出向main显示新版本及旧观察中断原因，不宣称线上改善。
+
+后续现有 source issuer 以独立 `pi-human-main-baseline-v1` 解释核验过的人工基线，重新采集新版本窗口、真实物理源码并签发有限输入；source-stage的 `comparison_sha256:null`，另存 `baseline_receipt_sha256` 与 `predecessor_kind:manual_main_release`。固定模板不会续用过期研究输入，因此首次profile过期不会永久卡住；无足够新证据仍不能伪造任务或通过比较。后续Pi候选仍须管理员确认发布，真正比较完成后回到原有比较来源路径。
+
+若intent存在但没有与最终Gate事件匹配的verified回执，入口拒绝重放，保留现场供人工核对。交接未完，旧Gate继续阻止新任务；不能靠删除目录、改UUID、直接改SQLite或降低20样本要求恢复。当前此路径仅完成模拟/离线验证，生产交接及root部署仍未执行。
+
 ## 开放候选发布
 
 配置 root0640 `config/admin-publication.json`：

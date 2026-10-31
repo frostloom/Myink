@@ -1,0 +1,28 @@
+{
+  "schema": "pi-manual-main-handoff-validation-v1",
+  "scope": "controller_and_audit_only",
+  "files": {
+    "ops/pi/nightly_gate.py": "018a41bd19714fdeec3943fb47b765159fb1121f23042df27d6da32e06322222",
+    "ops/pi/nightly_handoff.py": "ceddd2a84d792526dacca410e0b8a4ca33e75bb988bf716a426380860b7de412",
+    "ops/pi/nightly_source.py": "e7e33b0af2d51c2093f640fb13c6cc4c7faf44274637d0aa0f81b2edd416f172",
+    "ops/pi/deploy/observer_entry.py": "757f68d3cd73ea48d5743fc4f64befae3a2f45a7e262362b00233beec6e6d04e",
+    "ops/pi/tests/test_nightly_handoff.py": "281b9262dc8b3cdc5eb9ac59f10d1851bd1a47cec689731a82349a2fb4883510",
+    "ops/pi/tests/test_nightly_source.py": "9a01596e0192ac4f3e67320fd322c16c0a15c2e52042af8828252f3f0041b8cf",
+    "ops/pi/tests/test_observer_entry.py": "0d31c76137edd79761f5571e63d30c01c7efe2ce59991696be4312d2de9c3634"
+  },
+  "related_passed": 110,
+  "full_pi_passed": 4531,
+  "full_pi_deselected": 63,
+  "full_pi_warnings": 1,
+  "full_pi_seconds": 497.6,
+  "review": {
+    "independent": true,
+    "model": "gpt-6-astra",
+    "findings_fixed": 3,
+    "new_red_cases": 12,
+    "re_review": false
+  },
+  "native_handoff_qualification": "not_performed",
+  "new_product_deployed": false,
+  "new_model_requests": 0
+}

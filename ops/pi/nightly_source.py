@@ -1,7 +1,8 @@
-"""Fresh finite research input after a human-deployed comparison, never renewal.
+"""Fresh finite research from an approved comparison or verified human baseline.
 
 The standing root template omits source, observer and issuance dates. Those are
-derived anew from a completed approved version and a fresh read-only window.
+derived anew from a confirmed version and a fresh read-only window.
+A manually interrupted comparison is never represented as a completed test.
 The original manager, closed model policy, ledger and unknown holds remain fixed.
 """
 from pathlib import Path
@@ -36,6 +37,23 @@ def _inspect(packet,root):
     require(rows is not None,'confirmed product cohort no longer running');return rows
 
 
+def _manual_baseline(gate,previous,result_pin,bundle,template_pin):
+    with gate._connection() as db:
+        records=db.execute("SELECT payload FROM approval_events WHERE cycle_id=? AND kind='observation_interrupted'",(previous,)).fetchall()
+    if not records:return None
+    require(len(records)==1,'one interrupted predecessor required');event=strict_json(records[0][0])
+    require(event['decision']=='insufficient_evidence' and event['result_sha256']==result_pin,'interrupted observation is not a completed comparison')
+    path=bundle.parent/('manual-handoff-'+event['operation_id'])/'verified.json';receipt=_read(path)
+    require(receipt['schema']=='pi-nightly-manual-handoff-result-v1' and digest(receipt)==result_pin and receipt['mode']==gate.mode and receipt['cycle_id']==previous and receipt['operation_id']==event['operation_id'] and receipt['permission_sha256']==event['permission_sha256'] and receipt['driver_sha256']==event['new_driver_sha256'] and receipt['source_template_sha256']==template_pin and receipt['comparison_status']=='interrupted' and receipt['online_improvement_proven'] is False,'verified manual baseline receipt drift')
+    proof=receipt['proof'];require(proof['identity']==event['new_identity'] and proof['profile_sha256']==event['new_profile_sha256'] and proof['identity']['image_ids'].get('python') and utc(proof['deployed_at'])<=utc(gate.clock()),'human baseline identity drift')
+    if gate.mode=='ACTUAL':require(path.stat().st_uid==0 and path.parent.stat().st_uid==0 and stat.S_IMODE(path.parent.stat().st_mode)==0o700,'root verified human baseline required')
+    binding=proof['observer'];require(set(binding)=={'path','sha256'},'one confirmed human observer required')
+    observer=_read(binding['path']);require(file_hash(binding['path'])==binding['sha256'] and observer['identity']==proof['identity'] and proof['metrics_source_sha256']==digest(observer['source']),'human observer pin or identity changed')
+    packet=dict(schema='pi-human-main-baseline-v1',manifest=dict(image_id=proof['identity']['image_ids']['python']),image=dict(package_sha256=proof['package_sha256']))
+    deployment=dict(packet=dict(deployed_at=proof['deployed_at']))
+    return packet,deployment,dict(containers=[dict(identity=proof['identity'])]),path,binding,observer
+
+
 def prepare(gate,cycle,root,template_path,template_pin,*,collect=None,inspect_cohort=None,read_source=None):
     state=gate.status();require(state['phase']=='preparing' and state['cycle_id']==cycle and state['task_id'] is None,'one new unadmitted round required')
     root=_path(root);require(root.is_dir() and stat.S_IMODE(root.stat().st_mode)==0o700,'existing private new round required')
@@ -51,24 +69,30 @@ def prepare(gate,cycle,root,template_path,template_pin,*,collect=None,inspect_co
     with gate._connection() as c:
         row=c.execute("SELECT cycle_id,result_sha256 FROM approval_cycles WHERE phase='completed' AND package IS NOT NULL AND deployment IS NOT NULL ORDER BY rowid DESC LIMIT 1").fetchone()
         require(row is not None,'completed human-deployed predecessor required');previous=row['cycle_id'];result_pin=row['result_sha256']
-    bundle=root.parent/previous/'bundle';packet,deployment,cohort,cp=context(gate,previous,bundle,historical=True)
-    completed=[]
-    assessments=list((bundle.parent/'observation').glob('assessment-*/receipt.json'));require(len(assessments)<=4096,'bounded comparison history required')
-    for path in assessments:
-        value=_read(path)
-        if digest(value)==result_pin and value.get('schema')=='pi-nightly-nextday-assessment-v1' and value.get('cycle_id')==previous and value.get('status')=='completed':completed.append(path)
-    require(len(completed)==1,'original completed next-day comparison required')
-    binding=_read(bundle.parent/'observer-binding.json');observer=Path(binding['path']);oc=_read(observer)
-    require(file_hash(observer)==binding['sha256'] and binding['deployment_receipt_sha256']==deployment['sha256'] and binding['context_sha256']==file_hash(cp) and oc['identity']==cohort['containers'][0]['identity'],'confirmed observer binding drift')
+    bundle=root.parent/previous/'bundle';manual=_manual_baseline(gate,previous,result_pin,bundle,template_pin)
+    comparison_pin=result_pin;predecessor_kind='completed_comparison'
+    if manual is not None:
+        packet,deployment,cohort,cp,binding,oc=manual;comparison_pin=None;predecessor_kind='manual_main_release'
+    else:
+        bundle=root.parent/previous/'bundle';packet,deployment,cohort,cp=context(gate,previous,bundle,historical=True)
+        completed=[]
+        assessments=list((bundle.parent/'observation').glob('assessment-*/receipt.json'));require(len(assessments)<=4096,'bounded comparison history required')
+        for path in assessments:
+            value=_read(path)
+            if digest(value)==result_pin and value.get('schema')=='pi-nightly-nextday-assessment-v1' and value.get('cycle_id')==previous and value.get('status')=='completed':completed.append(path)
+        require(len(completed)==1,'original completed next-day comparison required')
+        binding=_read(bundle.parent/'observer-binding.json');observer=Path(binding['path']);oc=_read(observer)
+        require(file_hash(observer)==binding['sha256'] and binding['deployment_receipt_sha256']==deployment['sha256'] and binding['context_sha256']==file_hash(cp) and oc['identity']==cohort['containers'][0]['identity'],'confirmed observer binding drift')
+    observer=_path(binding['path'])
     receipt=root/'source-stage.json';intent=root/'source-intent.json'
     before=ledger_snapshot(gate.billing);profile=dict(template['profile'])
     require(profile['mode']==gate.mode and _path(profile['manager_state'])==gate.state and _path(profile['host']['ledger_path'])==gate.billing and profile['budget_microyuan']==before['limits']['budget_microyuan'],'original finite financial scope required')
     from .diagnosis_launcher import _unknown
     require(set(profile['legacy_unknown_ids'])==_unknown(before),'original unknown fee holds changed')
     if receipt.exists():
-        result=_read(receipt);require(result['cycle_id']==cycle and result['previous_cycle_id']==previous and result['template_sha256']==template_pin and result['comparison_sha256']==result_pin and result['context_sha256']==file_hash(cp),'fresh source receipt drift')
+        result=_read(receipt);require(result['cycle_id']==cycle and result['previous_cycle_id']==previous and result['template_sha256']==template_pin and result['comparison_sha256']==comparison_pin and result.get('baseline_receipt_sha256',result['comparison_sha256'])==result_pin and result['context_sha256']==file_hash(cp),'fresh source receipt drift')
         autonomy_profile.load(result['profile']['path'],result['profile']['sha256'],clock=gate.clock if gate.mode=='SIMULATED' else None);return result
-    require(not intent.exists(),'unfinished source preparation retained; no replay');_write(intent,dict(cycle_id=cycle,previous_cycle_id=previous,template_sha256=template_pin,comparison_sha256=result_pin))
+    require(not intent.exists(),'unfinished source preparation retained; no replay');_write(intent,dict(cycle_id=cycle,previous_cycle_id=previous,template_sha256=template_pin,comparison_sha256=comparison_pin,baseline_receipt_sha256=result_pin,predecessor_kind=predecessor_kind))
     inspect_cohort=inspect_cohort or _inspect
     actual=inspect_cohort(packet,root/'source-cohort-before')
     require(isinstance(actual,list) and len(actual)==3 and all(r['identity']==oc['identity'] and r['image_id']==packet['manifest']['image_id'] for r in actual),'confirmed live source identity changed')
@@ -100,5 +124,5 @@ def prepare(gate,cycle,root,template_path,template_pin,*,collect=None,inspect_co
         os.chown(path,0,pwd.getpwnam('ubuntu').pw_gid);os.chmod(path,0o640)
     pin=file_hash(path);autonomy_profile.load(path,pin,clock=gate.clock if gate.mode=='SIMULATED' else None)
     require(file_hash(template_path)==template_pin and ledger_snapshot(gate.billing)==before,'source template or original fee ledger changed')
-    result=dict(schema='pi-nightly-source-stage-v1',cycle_id=cycle,previous_cycle_id=previous,template_sha256=template_pin,comparison_sha256=result_pin,context_sha256=file_hash(cp),metrics_sha256=digest(metrics),profile=dict(path=str(path),sha256=pin),base_image_id=packet['manifest']['image_id'],known_model_requests=0,fee_sha256=before['sha256'])
+    result=dict(schema='pi-nightly-source-stage-v1',cycle_id=cycle,previous_cycle_id=previous,template_sha256=template_pin,comparison_sha256=comparison_pin,baseline_receipt_sha256=result_pin,predecessor_kind=predecessor_kind,context_sha256=file_hash(cp),metrics_sha256=digest(metrics),profile=dict(path=str(path),sha256=pin),base_image_id=packet['manifest']['image_id'],known_model_requests=0,fee_sha256=before['sha256'])
     _write(receipt,result);return result

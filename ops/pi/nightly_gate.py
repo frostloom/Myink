@@ -105,7 +105,7 @@ class ApprovalGate:
 
     def _trusted(self,path,pin,kind):
         path=_path(path);_plain(path);s=path.stat();require(s.st_size<=65536 and hash_value(pin) and sha256(path.read_bytes()).hexdigest()==pin,'operator receipt drift')
-        folders=dict(approval='human-approvals',deployment='deployment-receipts',rebuild='rebuild-approvals',bootstrap='bootstrap-instructions',compatibility='compatible-bases');require(kind in folders,'known operator receipt role required')
+        folders=dict(approval='human-approvals',deployment='deployment-receipts',rebuild='rebuild-approvals',bootstrap='bootstrap-instructions',compatibility='compatible-bases',handoff='manual-handoffs');require(kind in folders,'known operator receipt role required')
         if self.mode=='ACTUAL':require(path.parent==BASE/'config'/folders[kind] and s.st_uid==0 and stat.S_IMODE(s.st_mode)==0o640 and path.parent.stat().st_uid==0 and stat.S_IMODE(path.parent.stat().st_mode)==0o750,'root-issued operator receipt required')
         else:require(stat.S_IMODE(s.st_mode)==0o600 and stat.S_IMODE(path.parent.stat().st_mode)==0o700 and s.st_uid==os.geteuid(),'private simulated operator receipt required')
         return strict_json(path.read_bytes())
@@ -263,6 +263,38 @@ class ApprovalGate:
         with self._connection(True) as c:
             row=self._row(c,cycle);require(row['phase']=='preparing' and row['task_id'] is None and row['package'] is None,'only unadmitted preparation can close without publication')
             c.execute("UPDATE approval_cycles SET phase='completed',result_sha256=? WHERE cycle_id=?",(result_sha256,cycle));self._record(c,cycle,'no_release',dict(reason=reason,result_sha256=result_sha256))
+        return self.status()
+
+    def handoff_permission(self,cycle,path,pin,*,current=True):
+        value=self._trusted(path,pin,'handoff')
+        fields=set('schema mode issuer action operation_id cycle_id package_sha256 deployment_sha256 new_identity new_package_sha256 driver_sha256 profile_sha256 issued_at expires_at'.split())
+        require(isinstance(value,dict) and set(value)==fields and value['schema']=='pi-nightly-manual-handoff-v1' and value['mode']==self.mode and value['issuer']=='human_operator' and value['action']=='interrupt_for_manual_main_release' and value['cycle_id']==cycle,'exact human manual-update permission required')
+        _uuid(value['operation_id']);_uuid(cycle)
+        require(all(hash_value(value[k]) for k in ('package_sha256','deployment_sha256','new_package_sha256','driver_sha256','profile_sha256')),'exact manual-update pins required')
+        from .live_observer import _identity
+        identity=value['new_identity'];_identity(identity)
+        require(set(identity)==set('deployment_id generation owner image_ids commit_sha schema_id config_hash'.split()) and all(v is not None for v in identity.values()) and 'python' in identity['image_ids'],'complete new deployed identity required')
+        issued,expires=utc(value['issued_at']),utc(value['expires_at']);now=utc(self.clock())
+        require(issued<=now and issued<expires and expires-issued<=timedelta(hours=1),'bounded human handoff lifetime required')
+        if current:require(now<expires,'human handoff permission expired')
+        return value
+
+    def interrupt_observation(self,cycle,path,pin,result_sha256):
+        require(hash_value(result_sha256),'verified manual-update result required')
+        value=self.handoff_permission(cycle,path,pin,current=False)
+        event=dict(operation_id=value['operation_id'],decision='insufficient_evidence',reason='manual_main_release',permission_sha256=pin,result_sha256=result_sha256,new_driver_sha256=value['driver_sha256'],new_profile_sha256=value['profile_sha256'],new_identity=value['new_identity'])
+        with self._connection(True) as c:
+            self._not_archived(c,cycle);row=self._row(c,cycle)
+            require(row['package'] is not None and row['deployment'] is not None and digest(strict_json(row['package']))==value['package_sha256'] and strict_json(row['deployment'])['sha256']==value['deployment_sha256'],'old observation identity changed')
+            saved=strict_json(row['deployment']);require(self._trusted(saved['path'],saved['sha256'],'deployment')==saved['packet'] and value['new_identity']['deployment_id']!=saved['packet']['deployment_id'],'new main must differ from retained old deployment')
+            if row['phase']=='completed':
+                matches=c.execute("SELECT payload FROM approval_events WHERE cycle_id=? AND kind='observation_interrupted'",(cycle,)).fetchall()
+                require(len(matches)==1 and strict_json(matches[0][0])==event and row['result_sha256']==result_sha256,'unrelated completed observation cannot be replaced')
+            else:
+                require(row['phase'] in ('observing','blocked') and self._current(c)['cycle_id']==cycle,'only the current deployed observation may be interrupted')
+                self.handoff_permission(cycle,path,pin)
+                c.execute("UPDATE approval_cycles SET phase='completed',result_sha256=? WHERE cycle_id=?",(result_sha256,cycle))
+                self._record(c,cycle,'observation_interrupted',event)
         return self.status()
 
     def block(self,cycle,reason):

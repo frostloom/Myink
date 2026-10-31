@@ -1,0 +1,68 @@
+{
+  "schema": "pi-main-artifact-preparation-v2",
+  "source_commit": "be306a459447a148f5393391c7fb15a9d4f4aef9",
+  "mode": "LOCAL_AMD64_EMULATION",
+  "production_changed": false,
+  "images": {
+    "api": {
+      "tag": "myink-api:pi-admin-amd64-be306a45",
+      "image_id": "sha256:41b68f416572354e0968ac5791d3c7b1d45ed70fdd58fd841b3820f31417c40b",
+      "architecture": "amd64",
+      "os": "linux",
+      "revision": "be306a459447a148f5393391c7fb15a9d4f4aef9",
+      "uid": 10001,
+      "machine": "x86_64",
+      "python_files": 155,
+      "package_sha256": "72c97066e7dbf72b5745fddae46489e9ae62908023b786a5e83b125a4be8fe25",
+      "openapi_paths": 128,
+      "unauthenticated_status": 401
+    },
+    "caddy": {
+      "tag": "myink-caddy:pi-admin-amd64-be306a45-clean",
+      "image_id": "sha256:7c92c13d16d939b1bf416cec2641b00914f14aab1a889b9bf4438ff4dbb6c3f2",
+      "architecture": "amd64",
+      "os": "linux",
+      "revision": "be306a459447a148f5393391c7fb15a9d4f4aef9",
+      "static_files": 5,
+      "static_sha256": "1e416475c78d7bd6801a61169aca578ee854a454a89536dc1499ea432861d6ec",
+      "index_sha256": "3fcdda72ae5455deb2ac0defc0de4a759e8e47774f3ced9592c009b9b9d85629"
+    }
+  },
+  "archive": {
+    "path": "/private/tmp/myink-pi-admin-amd64-be306a45.tar",
+    "bytes": 127870464,
+    "sha256": "b070ea567aa26f8c2040a4fe584b4104368af5532ee8923678fd9f78396c8a6f",
+    "configs": [
+      {
+        "tags": [
+          "myink-api:pi-admin-amd64-be306a45"
+        ],
+        "config_sha256": "056d15bfe4bb3c1593526d3d2413c4d9cb26ebb5925c77cc2ad5e4d42f0ad267"
+      },
+      {
+        "tags": [
+          "myink-caddy:pi-admin-amd64-be306a45-clean"
+        ],
+        "config_sha256": "ef74b9ac1c024e33c897734fbc585cc7d54fd10b49ec6113047e46b6ba319e38"
+      }
+    ]
+  },
+  "console_runtime": {
+    "runtime_sha256": "476958f1fc2e5c7395a52f45c8e9608fdcb417fef2402f087aed9b986f723354",
+    "files": 416,
+    "dependency_versions": {
+      "httpx": "0.28.1",
+      "httpcore": "1.0.9",
+      "h11": "0.16.0",
+      "anyio": "4.15.1",
+      "idna": "3.20",
+      "certifi": "2026.7.22",
+      "sniffio": "1.3.1",
+      "typing_extensions": "4.16.0"
+    },
+    "source_commit": "be306a459447a148f5393391c7fb15a9d4f4aef9",
+    "archive": "/private/tmp/myink-pi-console-runtime-be306a45.tar.gz",
+    "archive_sha256": "ca3a0d3d3d89eb0a07122763aac6079a7e8ec828799b4582d470a55eebb1236b",
+    "production_installed": false
+  }
+}

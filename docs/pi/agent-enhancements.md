@@ -185,3 +185,9 @@ sdk_review_launcher通过全新无工具SDK会话给出approve/reject/needs_evid
 ## 连续升级身份准备（2026-10-30）
 
 冻结前代九字段、严格下一代、事务身份切换及兼容结构校验；不重跑DDL。完整接线前canonical Host拒绝v2。 证据见[阶段记录](../evaluations/pi-upgrade-preparation-2026-10-30.md)。
+
+### 人工 main 更新后的观察交接
+
+新增的是 root 操作者的元数据交接能力，不属于模型六工具。先核验已实际部署的 main、完整 Python 包/源码、维护身份、真正生产 PG 的只读指标访问，以及与正在执行的已验证 controller 一致的 nightly runtime，才将旧观察审计为 interrupted/insufficient_evidence。原包/批准/部署/任务与未知费用不改；未完成操作不能换UUID重放。现有 source issuer 可从独立人工基线重新采集窗口并生成有限输入，comparison_sha256为空，不把人工升级冒充Pi比较通过；后续正常Pi候选仍等用户发布确认。
+
+本能力目前是离线/模拟及源码验证结果，未执行生产交接。相关110项测试包含跨3天的新输入签发与篡改/漂移拒绝；这不是线上指标改善或新一轮真实Pi模型调用证据。发布步骤见[管理员运行手册](admin-console.md)。

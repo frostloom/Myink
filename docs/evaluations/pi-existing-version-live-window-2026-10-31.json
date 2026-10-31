@@ -1,0 +1,22 @@
+{
+  "schema": "pi-existing-version-live-window-v1",
+  "mode": "ACTUAL",
+  "run_id": "observer-20261031T075900Z-85aa8a269f5c",
+  "status": "insufficient_evidence",
+  "observed_samples": 0,
+  "availability": "unknown",
+  "confounders": [],
+  "window": {
+    "start": "2026-10-31T06:59:00+00:00",
+    "end": "2026-10-31T07:59:00+00:00"
+  },
+  "snapshot_sha256": "f119f935d00c3b0725114871a032ea0ebbcab8588073b938b835d5f541fcf4b8",
+  "receipt_sha256": "5498061055a94aecd63edc303c35297eaa5222bedb244611d55331019eb8b6bc",
+  "export_published": true,
+  "manager_sha256": "a588accf16ed7e7b1d3fc5e04709e000924010c6f840586ffbc2d2599ebf1eff",
+  "fee_sha256": "fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb",
+  "model_requests": 0,
+  "nextday_assessment_executed": false,
+  "product_released": false,
+  "new_handoff_executed": false
+}

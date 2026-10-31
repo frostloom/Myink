@@ -37,3 +37,18 @@ def test_runtime_drift_prevents_imports(release,change):
         (root/'code/known.py').unlink();(root/'code/known.py').symlink_to(root/'manifest.json')
     else:(root/'code/known.py').chmod(0o666)
     with pytest.raises(ValueError):module().verify_release(root,pin,expected_owner=os.getuid())
+
+
+def test_verified_root_handoff_component_does_not_use_model_admission(tmp_path,monkeypatch,capsys):
+    import sys
+    from ops.pi import nightly_handoff,nightly_host
+    monkeypatch.syspath_prepend(str(tmp_path/'path-guard'))
+    entry=module();code=tmp_path/'code';code.mkdir();(tmp_path/'vendor').mkdir()
+    monkeypatch.setattr(entry,'verify_release',lambda *args:code)
+    monkeypatch.setattr(sys,'argv',['entry.py','--human-gated','--component','nightly_handoff','--config','/sealed/manual.json','--config-sha256','a'*64])
+    def no_model(*args):pytest.fail('operator handoff is not a model capability')
+    monkeypatch.setattr(nightly_host,'runtime_admission',no_model)
+    calls=[]
+    monkeypatch.setattr(nightly_handoff,'run',lambda path,pin:calls.append((path,pin)) or dict(status='handed_off'))
+    assert entry.main()==0 and calls==[('/sealed/manual.json','a'*64)]
+    assert json.loads(capsys.readouterr().out)['status']=='handed_off'
