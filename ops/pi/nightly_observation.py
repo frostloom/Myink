@@ -2,7 +2,7 @@
 from pathlib import Path
 from datetime import datetime,timedelta,timezone
 import os,stat
-from .audit import _path,_plain,require,strict_json,digest,utc,SHANGHAI,validate_record
+from .audit import _path,_plain,require,strict_json,digest,utc,SHANGHAI,validate_record,AuditStore
 from .development_inputs import file_hash
 from .nightly_bundle import verify
 from .nightly_gate import BASE
@@ -21,15 +21,34 @@ def _audit(gate,cycle,slot,packet,config,assessment,tested,metrics=None):
         value=dict(kind=kind,status=status,run_id=task,occurred_at=utc(gate.clock()).isoformat(),summary=summary,details=dict(model_requests=0,known_cost_microyuan=0,operation_id=cycle,**details),version=version,changes=packet['changes'] if kind=='version' else [],evidence=proof,followups=[],mode=gate.mode,evidence_domain=evidence_domain)
         validate_record(value);records.append(dict(record_key=task+':nightly:'+cycle+':'+slot.name+':'+key,event=value))
     failed=assessment['status']=='blocked'
-    event('test','test','failed' if failed else 'passed','Next-day frozen regression and cleanup result.',dict(reference='nightly.nextday.regression.v1',test_total=tested.get('tests',0),test_failures=tested.get('failures',0),test_errors=tested.get('errors',0),test_skipped=tested.get('skipped',0),next_action='manual_rollback_review' if failed else 'version_bound_metrics'))
+    event('test','test','failed' if failed else 'passed','Next-day frozen regression and cleanup result.',dict(reference='nightly.nextday.regression.v1',test_id='nightly-regression-'+cycle,test_total=tested.get('tests',0),test_failures=tested.get('failures',0),test_errors=tested.get('errors',0),test_skipped=tested.get('skipped',0),next_action='manual_rollback_review' if failed else 'version_bound_metrics'))
     if metrics is not None:
         metric_domain='online_business' if gate.mode=='ACTUAL' else 'synthetic';proof=proof+[dict(kind='version_bound_metrics_result',sha256=digest(metrics),verified=True,evidence_domain=metric_domain)]
         event('metrics','observation','passed' if assessment['status']=='completed' else 'insufficient_evidence','Observed the confirmed version; online improvement remains unproven.',dict(reference='nightly.nextday.metrics.v1',observed_samples=assessment['observed_samples'],minimum_samples=assessment['minimum_samples'],decision=assessment['status'],next_action='next_nightly_round' if assessment['status']=='completed' else 'wait_for_evidence'),metric_domain)
+        event('metrics-test','test','passed' if assessment['status']=='completed' else 'insufficient_evidence','Next-day version-bound metrics result; insufficient evidence does not close the comparison.',dict(reference='nightly.nextday.metrics.test.v1',test_id='nightly-metrics-'+cycle,observed_samples=assessment['observed_samples'],minimum_samples=assessment['minimum_samples'],decision=assessment['status']),metric_domain)
     if failed:
         proof=proof+[dict(kind='manual_return_image',sha256=packet['image']['base_image_id'][7:],verified=True,evidence_domain=domain)]
         event('rollback','rollback','blocked','Manual rollback review reserved; no rollback was executed.',dict(reference='nightly.manual_return.v1',decision='advice_only',next_action='manual_rollback_review'))
     event('version','version','no_change','Recorded the confirmed image and change scope; no new release.',dict(reference='nightly.confirmed_version.v1',decision='no_new_release',next_action='manual_rollback_review' if failed else 'none'))
     _write(slot/'audit.json',dict(schema='pi-nightly-nextday-audit-v1',cycle_id=cycle,records=records))
+    publish_audit(gate,cycle,slot,config)
+
+
+def publish_audit(gate,cycle,slot,config):
+    """Audit-only idempotent publication; never acknowledges an assessment."""
+    slot=_path(slot);audit=_path(config['audit_path']);export=_path(config.get('export_root',audit.parent/'export'))
+    if gate.mode=='ACTUAL':require(os.geteuid()==0 and slot.parent==BASE/'nightly'/cycle/'observation' and slot.name.startswith('assessment-') and audit.parent==BASE/'audit/state' and export==BASE/'audit/export','fixed actual next-day audit outputs required')
+    else:require(not any(p.is_relative_to(BASE) for p in (slot,audit,export)),'isolated audit outputs required')
+    packet=_json(slot/'audit.json');require(packet['schema']=='pi-nightly-nextday-audit-v1' and packet['cycle_id']==cycle and isinstance(packet['records'],list) and 1<=len(packet['records'])<=8,'bounded same-cycle audit packet required')
+    for item in packet['records']:
+        require(set(item)=={'record_key','event'} and item['event']['mode']==gate.mode and item['event']['details']['operation_id']==cycle,'same-mode audit record required');validate_record(item['event'])
+    store=AuditStore(audit)
+    for item in packet['records']:store.append(item['record_key'],item['event'])
+    manifest=store.export(export)
+    if gate.mode=='ACTUAL':
+        from .nightly_binding import _audit_outputs,_ordinary
+        for path in _audit_outputs(config):_ordinary(path,gate.mode)
+    return dict(records=len(packet['records']),snapshot_sha256=manifest['snapshot_sha256'])
 
 
 def assess(gate,cycle,bundle,observer_config,config_pin,*,clock=None,observe=None,check=None):
@@ -45,9 +64,10 @@ def assess(gate,cycle,bundle,observer_config,config_pin,*,clock=None,observe=Non
     if gate.mode=='ACTUAL':require(bundle==BASE/'nightly'/cycle/'bundle' and path in (BASE/'config/observer/nightly-observer.json',BASE/'config/nightly-observers'/cycle/'observer.json'),'fixed ACTUAL observation inputs required')
     root=bundle.parent/'observation'
     if not root.exists():root.mkdir(mode=0o700)
+    require(all((prior/'receipt.json').exists() for prior in root.glob('assessment-*')),'unfinished observation claim requires inspection; no later-slot replay')
     slot=root/('assessment-'+datetime.fromtimestamp(int(now.timestamp())//900*900,tz=timezone.utc).strftime('%Y%m%dT%H%M%SZ'))
     if slot.exists():
-        require((slot/'receipt.json').exists(),'unfinished observation claim requires inspection; no same-slot replay');return _json(slot/'receipt.json')
+        require((slot/'receipt.json').exists(),'unfinished observation claim requires inspection; no same-slot replay');publish_audit(gate,cycle,slot,config);return _json(slot/'receipt.json')
     slot.mkdir(mode=0o700);_write(slot/'intent.json',dict(cycle_id=cycle,comparison_sha256=packet['manifest']['comparison_sha256'],observer_config_sha256=config_pin,model_requests=0))
     commands=None;context=None
     if gate.mode=='ACTUAL':

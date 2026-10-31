@@ -10,7 +10,7 @@
 - 发布前原业务队列无待处理/未确认消息；发布后物理核对三个进程的镜像、整包源码、启动时间及部署身份一致。`/healthz`和`/readyz`均HTTP200。健康不等于业务质量提升。
 - 原生nightly unit确认实际部署，周期 `0ad352dc-888b-4a75-97d4-39296f327c6b` 已进入 `observing`。批准收据摘要 `53c7e66e26637f2144bdb5d36cb73c888def660a2ed12d3761d3fa298dd513d0`，只授权GitHub推送和部署，没有镜像仓库推送授权。
 
-## 当前版本和控制器
+## 已部署产品与首次控制器
 
 | 项目 | 当前值 |
 |---|---|
@@ -44,19 +44,23 @@
 
 交付提交6da95cd4的[CI41153028006](https://github.com/frostloom/Myink/actions/runs/41153028006)在前端依赖安全检查失败。本地对官方npm注册表审计复现16项关联中危问题；来源为10月30日更新的[minimatch公告](https://github.com/advisories/GHSA-g3hv-75wg-m249)与[glob公告](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4)，不是新Pi源码或产品运行故障。
 
-仅在Pi分支开发依赖中明确覆盖minimatch11.0.1、glob14.0.2并更新锁文件，不降级ESLint、不关闭审计。全新npm ci后audit为0漏洞；lint通过（9条既有warning），shared207项及Vue809项单测通过，类型检查和构建通过，浏览器矩阵由下一次真实CI验证。当前已部署产品、控制器和生产前端均不改变；main仍仅保留本轮获批5文件改动，主线依赖同步须在后续main维护中明确纳入。
+仅在Pi分支开发依赖中明确覆盖minimatch11.0.1、glob14.0.2并更新锁文件，不降级ESLint、不关闭审计。全新npm ci后audit为0漏洞；lint通过（9条既有warning），shared207项及Vue809项单测通过，类型检查和构建通过，随后提交 `c750838c80a8c5b20295274241c2751f36e63408` 的[真实CI41155336216](https://github.com/frostloom/Myink/actions/runs/41155336216)全部4项通过，包含Chromium、Firefox、WebKit矩阵。当前已部署产品、控制器和生产前端均不改变；main仍仅保留本轮获批5文件改动，主线依赖同步须在后续main维护中明确纳入。
 
 ## 实际指标与次日任务
 
-已真实读取两个15分钟槽位的一小时只读窗口。新窗口为北京时间07:44–08:44，绑定本次部署；有效样本0/最低20，状态insufficient_evidence。窗口包含部署前时间，属于接线验证，**不是合格的发布后对比或线上改善证据**。新收据摘要 `adad53a0f3821a4187df291349f52e35008df17f8589760e218fde0031cf9fab`。
+先前07:29–08:29及07:44–08:44两个真实窗口跨越部署，只能证明接线。随后真实读取 **08:29–09:29** 完全位于08:27:33部署之后的一小时窗口；读取前后物理进程版本相同，运行配置身份匹配。有效样本仍为 **0/最低20**，状态insufficient_evidence，没有线上改善结论。收据摘要 `3d48a054ece965d991bade21505bd912b83be7a9cde22fca8fb7d9ee9e4ef598`。
 
 下一次门禁定时检查：**11月1日02:00北京时间**；实际次日评测到期：**11月1日03:00北京时间**。届时核对真实运行版本，执行冻结回归和一小时只读指标观察；至少20个完整有效样本、无混杂才可关闭本轮。样本不足继续观察；失败保留审计和人工回退建议，不自动部署或业务回退。下一候选仍须重新等待针对精确产物的人工确认。
 
-原生结果预留在服务器本周期 `observation/assessment-*/`、`observation/regression/`、`observer-binding.json`、`deployment-context.json`及版本化审计记录中。main后续导入原生次日audit.json时，须按reference、operation_id和候选版本关联预留test_id；当前尚未验证这一步的自动导入关联，不伪造结果。
+原生结果预留在服务器本周期 `observation/assessment-*/`、`observation/regression/`、`observer-binding.json`、`deployment-context.json`及版本化审计记录中。后续控制器补充稳定test_id及原审计库/只读导出的自动发布：回归与指标结果分别关联已登记的nightly-regression和nightly-metrics计划，跨天读取也能关联；保留原observation事件，未执行的指标不生成测试结果。
+
+最终60项相关检查通过，覆盖成功、样本不足、回归失败、模拟/真实模式隔离、重复导出和审计失败恢复。独立审查发现“下一槽位绕过未完成审计”P2，先失败复现再修复；任一早期assessment未写收据，后续槽位也停止，不重复采集。单独恢复导出只恢复审计，不确认评测完成。实际次日计划结果仍为null，尚不能把离线契约测试计为真实次日验收。全回归还发现可选export_root未按原观察器默认行为处理的兼容错误，补充失败测试后恢复既有默认值；失败运行如实保留。
+
+本次后续控制器修改以本记录所在提交的nightly_observation源码为准，精确安装版本、闭合包摘要和执行状态由服务器审计记录提供。业务产品仍使用上表版本。最终完整Pi离线回归 **4436通过、63按标记未选入，353.56秒，退出码0**。
 
 ## 审计交接
 
-原1001条历史完整保留，准备后1006条，加上两次真实收集及本次批准、部署、失败/修复、版本和次日计划后，当前**1023条、258个run**。快照摘要 `ff94afedcd25eebb830911c8768d21b791c36bd6893e12ebed9b44f274544113`；普通用户reader读通完整快照。两项次日计划均为planned，结果为null。
+原1001条历史完整保留，准备后1006条，加上两次真实收集及本次批准、部署、失败/修复、版本和次日计划后，发布后首个完整窗口及CI结果入账后为 **1032条、259个run**。快照摘要 `5ccdf527afe0fef7b927b7df281b4055598d3d0f9684b68f5faabe20375b9d36`；普通用户reader读通完整快照。两项次日计划均为planned，结果为null。
 
 原费用/工具/失败、全部4个产品文件范围及controller修复范围分开记录。reader和管理员契约仍在Pi分支，**main管理员页面未接入**；本次仅合入5文件产品补丁。入口见[增强清单](../pi/agent-enhancements.md)、[管理员交接](../pi/administrator-audit-handoff.md)及[输出对照](../pi/management-audit-output-map.md)。
 
