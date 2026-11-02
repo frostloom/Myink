@@ -1,0 +1,383 @@
+{
+  "admin_audit": {
+    "change_scope": [
+      {
+        "added": 15,
+        "candidate_sha256": null,
+        "category": "docs",
+        "deleted": 0,
+        "path": "docs/pi/admin-console.md",
+        "source_commit": "d840b8317a11fb188ff8dcd3fda9c078c866c845"
+      },
+      {
+        "added": 42,
+        "candidate_sha256": null,
+        "category": "docs",
+        "deleted": 0,
+        "path": "docs/superpowers/plans/2026-11-01-pi-empty-data-recovery.md",
+        "source_commit": "d840b8317a11fb188ff8dcd3fda9c078c866c845"
+      },
+      {
+        "added": 3,
+        "candidate_sha256": null,
+        "category": "production",
+        "deleted": 1,
+        "path": "ops/pi/autonomy_coordinator.py",
+        "source_commit": "d840b8317a11fb188ff8dcd3fda9c078c866c845"
+      },
+      {
+        "added": 12,
+        "candidate_sha256": null,
+        "category": "production",
+        "deleted": 3,
+        "path": "ops/pi/nightly_driver.py",
+        "source_commit": "d840b8317a11fb188ff8dcd3fda9c078c866c845"
+      },
+      {
+        "added": 13,
+        "candidate_sha256": null,
+        "category": "production",
+        "deleted": 0,
+        "path": "ops/pi/nightly_gate.py",
+        "source_commit": "d840b8317a11fb188ff8dcd3fda9c078c866c845"
+      },
+      {
+        "added": 26,
+        "candidate_sha256": null,
+        "category": "production",
+        "deleted": 0,
+        "path": "ops/pi/nightly_outcome.py",
+        "source_commit": "d840b8317a11fb188ff8dcd3fda9c078c866c845"
+      },
+      {
+        "added": 68,
+        "candidate_sha256": null,
+        "category": "production",
+        "deleted": 0,
+        "path": "ops/pi/nightly_recovery.py",
+        "source_commit": "d840b8317a11fb188ff8dcd3fda9c078c866c845"
+      },
+      {
+        "added": 23,
+        "candidate_sha256": null,
+        "category": "production",
+        "deleted": 1,
+        "path": "ops/pi/nightly_source.py",
+        "source_commit": "d840b8317a11fb188ff8dcd3fda9c078c866c845"
+      },
+      {
+        "added": 94,
+        "candidate_sha256": null,
+        "category": "production",
+        "deleted": 0,
+        "path": "ops/pi/preexec_reconciliation.py",
+        "source_commit": "d840b8317a11fb188ff8dcd3fda9c078c866c845"
+      },
+      {
+        "added": 16,
+        "candidate_sha256": null,
+        "category": "test",
+        "deleted": 0,
+        "path": "ops/pi/tests/test_nightly_driver.py",
+        "source_commit": "d840b8317a11fb188ff8dcd3fda9c078c866c845"
+      },
+      {
+        "added": 27,
+        "candidate_sha256": null,
+        "category": "test",
+        "deleted": 0,
+        "path": "ops/pi/tests/test_nightly_outcome.py",
+        "source_commit": "d840b8317a11fb188ff8dcd3fda9c078c866c845"
+      },
+      {
+        "added": 51,
+        "candidate_sha256": null,
+        "category": "test",
+        "deleted": 0,
+        "path": "ops/pi/tests/test_nightly_recovery.py",
+        "source_commit": "d840b8317a11fb188ff8dcd3fda9c078c866c845"
+      },
+      {
+        "added": 25,
+        "candidate_sha256": null,
+        "category": "test",
+        "deleted": 0,
+        "path": "ops/pi/tests/test_nightly_source.py",
+        "source_commit": "d840b8317a11fb188ff8dcd3fda9c078c866c845"
+      },
+      {
+        "added": 82,
+        "candidate_sha256": null,
+        "category": "test",
+        "deleted": 0,
+        "path": "ops/pi/tests/test_preexec_reconciliation.py",
+        "source_commit": "d840b8317a11fb188ff8dcd3fda9c078c866c845"
+      }
+    ],
+    "daily_release_state": "no_release",
+    "event_count": 8,
+    "next_tests": [
+      {
+        "criterion": "Inspect the next NEW nightly round, never replay this recovered one. If its frozen writing-task count is zero, verify no source analysis, model requests, manager dispatch or candidate build and an audited no_release; if new writing exists, retain the original admission and per-candidate human publication boundary.",
+        "kind": "metrics",
+        "plan_event_sha256": "ab231c1ed197678de0320e427213019e3c888c06d0b806fa22da7186bf5618b4",
+        "result": null,
+        "scheduled_for": "2026-11-02T18:15:00+00:00",
+        "status": "planned",
+        "target_run_id": "80e8801c-0ed9-4b0b-831b-3bcd2113df3f",
+        "target_version_sha256": "3db3fc0f9db5d2702f04653e8542b6bed1ee424224d7c065d8458a7eb9f040cf",
+        "test_id": "empty-writing-d840b831-20261103"
+      }
+    ]
+  },
+  "fresh_observation": {
+    "metrics": {
+      "automatic_execution": false,
+      "availability": "unknown",
+      "config_sha256": "7171e19adf6cfc043e769b951d93a2ffce0b7bbadb7074bb42894bd0c965513f",
+      "confounders": [],
+      "controller_sha256": "b35636d4cd658eab836825b9616bddccbcd21e888a56aa537fd2ed7942d4ea60",
+      "evidence_domain": "online_business",
+      "export_published": true,
+      "minimum_samples": 20,
+      "mode": "ACTUAL",
+      "observed_samples": 0,
+      "receipt_sha256": "041ad74433bc3f9d08df6ee58f97ae278f03ee12c412e8985b926aa5beba1f57",
+      "run_id": "observer-20261102T012900Z-57c76a91084c",
+      "schema": "pi-live-observer-result-v1",
+      "snapshot_sha256": "2182159b295b53ce107b7625684bea856fb119e64ff024ce58b014650ff4ebfb",
+      "status": "insufficient_evidence",
+      "window": {
+        "end": "2026-11-02T01:29:00+00:00",
+        "start": "2026-11-02T00:29:00+00:00"
+      }
+    },
+    "planned_tasks": 0
+  },
+  "post_repair": {
+    "admin_endpoints": {
+      "daily": 200,
+      "enhancements": 200,
+      "events": 200,
+      "runs": 200,
+      "status": 200
+    },
+    "admin_phase": "idle",
+    "anonymous_status": 401,
+    "budget_microyuan": 50000000,
+    "controller_version_visible": true,
+    "daily_event_count": 7,
+    "daily_release_state": "no_release",
+    "fee_sha256": "fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb",
+    "manager_sha256": "a588accf16ed7e7b1d3fc5e04709e000924010c6f840586ffbc2d2599ebf1eff",
+    "no_writing_skip_visible": true,
+    "normal_user_status": 403,
+    "timer": "NextElapseUSecRealtime=Tue 2026-11-03 02:00:00 CST\nActiveState=active\nSubState=waiting",
+    "unknown_holds": 9
+  },
+  "repair": {
+    "accounting": {
+      "actual-manager.sqlite": "a588accf16ed7e7b1d3fc5e04709e000924010c6f840586ffbc2d2599ebf1eff",
+      "ledger.sqlite": "fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb"
+    },
+    "budget_microyuan": 50000000,
+    "completed_at": "2026-11-02T01:36:27.926276+00:00",
+    "daytime_guard": {
+      "cycle_id": null,
+      "package_sha256": null,
+      "phase": "idle",
+      "status": "outside_window",
+      "task_id": null
+    },
+    "fresh_eligible_samples": 0,
+    "fresh_observation_run_id": "observer-20261102T012900Z-57c76a91084c",
+    "fresh_writing_tasks": 0,
+    "gate": {
+      "cycle_id": null,
+      "package_sha256": null,
+      "phase": "idle",
+      "task_id": null
+    },
+    "historical_certificate_sha256": "ef8ce8378adf9b78649f20f92a16fd7449ed8ff423f24a9e2bfc0fe1a159004a",
+    "model_requests": 0,
+    "original_failure_preserved": true,
+    "original_uncertain_receipt_preserved": true,
+    "product_containers_unchanged": true,
+    "recovery": {
+      "cycle_id": "80e8801c-0ed9-4b0b-831b-3bcd2113df3f",
+      "model_requests": 0,
+      "status": "no_release"
+    },
+    "root_controller_commit": "d840b8317a11fb188ff8dcd3fda9c078c866c845",
+    "root_runtime_sha256": "3db3fc0f9db5d2702f04653e8542b6bed1ee424224d7c065d8458a7eb9f040cf",
+    "sandbox_worker_unchanged": true,
+    "standing_template_unchanged": true,
+    "status": "repaired",
+    "unknown_holds": 9
+  },
+  "runtime": {
+    "archive": "/private/tmp/myink-pi-empty-runtime-d840b831.tar.gz",
+    "archive_sha256": "0b3863839b0f36fa5d86b7d32da4a29ee930242f5f0bdd481956389f40f4d313",
+    "dependency_versions": {
+      "anyio": "4.15.1",
+      "certifi": "2026.7.22",
+      "h11": "0.16.0",
+      "httpcore": "1.0.9",
+      "httpx": "0.28.1",
+      "idna": "3.20",
+      "sniffio": "1.3.1",
+      "typing_extensions": "4.16.0"
+    },
+    "files": 420,
+    "runtime_sha256": "3db3fc0f9db5d2702f04653e8542b6bed1ee424224d7c065d8458a7eb9f040cf",
+    "source_commit": "d840b8317a11fb188ff8dcd3fda9c078c866c845"
+  },
+  "tests": {
+    "changes": [
+      {
+        "added": 15,
+        "category": "docs",
+        "deleted": 0,
+        "path": "docs/pi/admin-console.md"
+      },
+      {
+        "added": 42,
+        "category": "docs",
+        "deleted": 0,
+        "path": "docs/superpowers/plans/2026-11-01-pi-empty-data-recovery.md"
+      },
+      {
+        "added": 3,
+        "category": "production",
+        "deleted": 1,
+        "path": "ops/pi/autonomy_coordinator.py"
+      },
+      {
+        "added": 12,
+        "category": "production",
+        "deleted": 3,
+        "path": "ops/pi/nightly_driver.py"
+      },
+      {
+        "added": 13,
+        "category": "production",
+        "deleted": 0,
+        "path": "ops/pi/nightly_gate.py"
+      },
+      {
+        "added": 26,
+        "category": "production",
+        "deleted": 0,
+        "path": "ops/pi/nightly_outcome.py"
+      },
+      {
+        "added": 68,
+        "category": "production",
+        "deleted": 0,
+        "path": "ops/pi/nightly_recovery.py"
+      },
+      {
+        "added": 23,
+        "category": "production",
+        "deleted": 1,
+        "path": "ops/pi/nightly_source.py"
+      },
+      {
+        "added": 94,
+        "category": "production",
+        "deleted": 0,
+        "path": "ops/pi/preexec_reconciliation.py"
+      },
+      {
+        "added": 16,
+        "category": "test",
+        "deleted": 0,
+        "path": "ops/pi/tests/test_nightly_driver.py"
+      },
+      {
+        "added": 27,
+        "category": "test",
+        "deleted": 0,
+        "path": "ops/pi/tests/test_nightly_outcome.py"
+      },
+      {
+        "added": 51,
+        "category": "test",
+        "deleted": 0,
+        "path": "ops/pi/tests/test_nightly_recovery.py"
+      },
+      {
+        "added": 25,
+        "category": "test",
+        "deleted": 0,
+        "path": "ops/pi/tests/test_nightly_source.py"
+      },
+      {
+        "added": 82,
+        "category": "test",
+        "deleted": 0,
+        "path": "ops/pi/tests/test_preexec_reconciliation.py"
+      }
+    ],
+    "controller_commit": "d840b8317a11fb188ff8dcd3fda9c078c866c845",
+    "deselected": 63,
+    "errors": 0,
+    "failures": 0,
+    "independent_review_findings_fixed": 1,
+    "passed": 4560,
+    "runtime_sha256": "3db3fc0f9db5d2702f04653e8542b6bed1ee424224d7c065d8458a7eb9f040cf",
+    "seconds": 358.64,
+    "warnings": 1,
+    "xml_sha256": "671e7536574f171db41101597f4214f1253ea3c88d897a47abb341487b628391"
+  },
+  "schema": "pi-empty-writing-recovery-v1",
+  "qualification": "ACTUAL",
+  "scheduled_nightly_path_verified": false,
+  "online_improvement_proven": false,
+  "deployed_code_ci": {
+    "commit": "d840b8317a11fb188ff8dcd3fda9c078c866c845",
+    "transport": "GitHub public commit checks page; REST endpoint rate limited",
+    "checks": [
+      {
+        "url": "https://github.com/frostloom/Myink/actions/runs/41373317291/job/125048187418",
+        "name": "Python 全量回归（全新 PG）",
+        "status": "This job succeeded"
+      },
+      {
+        "url": "https://github.com/frostloom/Myink/actions/runs/41373317291/job/125048187579",
+        "name": "前端（lint + 单测 + 构建）",
+        "status": "This job succeeded"
+      },
+      {
+        "url": "https://github.com/frostloom/Myink/actions/runs/41373317291/job/125048187471",
+        "name": "镜像构建（Python + Caddy）",
+        "status": "This job succeeded"
+      },
+      {
+        "url": "https://github.com/frostloom/Myink/actions/runs/41373317291/job/125048187205",
+        "name": "Pi offline control gates",
+        "status": "This job succeeded"
+      },
+      {
+        "url": "https://github.com/frostloom/Myink/actions/runs/41372814740/job/125046717276",
+        "name": "Python 全量回归（全新 PG）",
+        "status": "This job succeeded"
+      },
+      {
+        "url": "https://github.com/frostloom/Myink/actions/runs/41372814740/job/125046717007",
+        "name": "前端（lint + 单测 + 构建）",
+        "status": "This job succeeded"
+      },
+      {
+        "url": "https://github.com/frostloom/Myink/actions/runs/41372814740/job/125046717292",
+        "name": "镜像构建（Python + Caddy）",
+        "status": "This job succeeded"
+      },
+      {
+        "url": "https://github.com/frostloom/Myink/actions/runs/41372814740/job/125046717294",
+        "name": "Pi offline control gates",
+        "status": "This job succeeded"
+      }
+    ]
+  }
+}
