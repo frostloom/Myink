@@ -150,14 +150,23 @@ def run(config_path,pin,*,clock=None,admit=None,manager_trigger=None,image_facto
                         stage=(source_prepare or prepare_source)(gate,cycle,root,template['path'],template['sha256']);require(stage['cycle_id']==cycle,'source stage belongs to another round')
                         if not (root/'source-stage.json').exists():_write(root/'source-stage.json',stage)
                         require(_read(root/'source-stage.json')==stage,'source stage receipt drift');effective=dict(c,autonomy_profile=stage['profile'])
-                    require(c['mode']=='ACTUAL' or callable(admit),'SIMULATED source requires an explicit callback')
-                    admitted=(admit or _admit)(effective);_write(receipt,admitted)
+                    if c.get('source_template') is not None and stage.get('status')=='no_evidence':
+                        require(stage['profile'] is None and stage.get('reason')=='no_writing_data' and type(stage.get('observed_samples')) is int and stage['observed_samples']==0 and stage.get('known_model_requests')==0,'verified empty writing source required')
+                        admitted=dict(status='no_evidence',reason='no_writing_data',observed_samples=0,model_requests=0)
+                    else:
+                        require(c['mode']=='ACTUAL' or callable(admit),'SIMULATED source requires an explicit callback')
+                        admitted=(admit or _admit)(effective)
+                    _write(receipt,admitted)
+
                 result=_read(receipt)
                 disposition=result['status']
                 if disposition=='cached':require(result.get('previous_status') in ('no_task','not_reproduced'),'cached prior admission or failure needs reconciliation')
                 if disposition in ('no_task','not_reproduced','no_evidence','outside_window','lock_busy','cached'):
                     record=dict(schema='pi-nightly-no-release-v1',cycle_id=cycle,status='no_release',reason=disposition,admission_receipt_sha256=file_hash(receipt),model_requests=result.get('model_requests',0),deployed=False)
-                    _write(root/'no-release.json',record);gate.no_release(cycle,disposition,digest(record));return _response(gate,'no_release',reason=disposition)
+                    _write(root/'no-release.json',record)
+                    from .nightly_outcome import publish
+                    publish(gate,cycle,root,result.get('reason',disposition),model_requests=result.get('model_requests',0))
+                    gate.no_release(cycle,disposition,digest(record));return _response(gate,'no_release',reason=disposition)
                 require(disposition=='admitted','original source did not admit a task')
                 fp=result['research_fingerprint'];require(isinstance(fp,str) and len(fp)==64 and all(ch in '0123456789abcdef' for ch in fp),'original source fingerprint required')
                 task='auto-'+fp[:32];gate.bind_task(cycle,task);_write(selected,dict(task_id=task,origin='original_source_coordinator'))

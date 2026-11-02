@@ -96,7 +96,9 @@ def _history(root):
         require(isinstance(value,dict) and set(value)==RESULT and value['schema']=='pi-autonomy-coordinator-result-v1' and value['research_fingerprint']==child.name and value['profile_sha256']==intent['profile_sha256'],'coordinator history drift')
         for component,pin in value['phases'].items():require(file_hash(child/('phase-'+component)/'receipt.json')==pin,'phase history drift')
         records[child.name]=value
-        if value['status'] in ('uncertain','blocked'):return records,False
+        if value['status'] in ('uncertain','blocked'):
+            from .preexec_reconciliation import verified
+            if not verified(child,value['mode']):return records,False
     return records,True
 
 

@@ -92,3 +92,18 @@ PI_CONSOLE_CONFIG_SHA256=<admin-console.json 原始字节的 sha256>
 `tests/test_admin_pi_integration.py` 使用真实 JWT/隔离 PG 与真实本地 Unix socket，宿主发布效果为 SIMULATED；`ops/pi/tests/test_admin_publication.py` 的 Docker effects 也是模拟。浏览器 fixture 明确标记模拟，不是真实线上发布验收。2026-10-31已按批准范围单独验证ACTUAL Linux peer、systemd沙箱、首次物理替换及新版本指标读取，见实际回执；未来候选发布的完整业务效果仍需真实逐轮验收。
 
 审查后的发布顺序：准备及执行前还比较实际容器的 Compose config-hash、完整环境、命令和挂载，拒绝提前发生的磁盘配置漂移。真正替换前，对原 PostgreSQL `maintenance_control` 的完整旧行做 CAS，关闭 admission/consumer；提交关闭后重新检查在途任务、执行者、未落定 intake/outbox 和 AMQP。只有完整物理镜像核验完成，才在仍关闭的原行切换部署身份，原 Gate 确认后重新开放。任何关闭后的未知失败都保留关闭状态和 `maintenance-*.json` 回执，需人工核对；不能用删回执或回滚费用库恢复。
+
+
+## 没有写作数据时的正常跳过（2026-11-01修复）
+
+没有写作数据是正常状态，不要求每天产生修复候选。新source阶段先核验实际部署、只读指标快照及原账本：仅当可信快照的planned为0、有效完成样本也为0时，记录no_writing_data/no_release并结束本晚。跳过源码研究、模型分析、隔离开发、manager通知及镜像构建；同一晚后续唤醒只返回already_claimed，下一晚再读取新窗口。管理员审计记录未发布及等待新写作数据。
+
+有效完成样本0不等于没有数据：已有失败任务时planned大于0，仍走原有证据判断；未知、负数、布尔计数、损坏/过时快照、部署或费用漂移不能伪装成空数据。等待人工确认的候选也不能被此路径关闭。
+
+## 历史启动前失败的核对
+
+preexec_reconciliation只由宿主root操作者调用，使用原autonomy、manager和费用路径。仅识别已结束的setpriv127、精确setresuid/setgroups权限拒绝、空stdout、没有worker结果或准入/manager产物、原完整费用快照未变。它先写入固定证明及审计事件，再写root拥有的preexec-reconciliation.json证书。审计导出中断后允许重新验证并续写同一份审计/证书，不重新执行任何调查。原uncertain回执和失败日志保留；其他结果未确认的记录继续阻断。证书核对的是已固定原始证据，后续合法费用增长不会让已核对的旧失败重新阻塞。
+
+nightly_recovery进一步要求当前轮次blocked、没有task/package/approval/deployment、没有manager意图或候选，且原始冻结指标确实没有写作任务，才能追加未发布回执关闭准备阶段。保留原blocked事件，不写comparison_complete，不删除目录或改UUID重放。恢复目录存在但没有verified回执时继续保留现场，不自行重试未知执行。
+
+控制器更新不应改写已经封存的manual-main基线或standing template摘要。根nightly控制器可以升级；本次不改变既有b5ce沙箱worker runtime或业务镜像。未来首个有数据的真实模型迭代仍按原限额和逐轮人工发布边界验证。

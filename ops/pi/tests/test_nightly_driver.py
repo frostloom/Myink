@@ -183,3 +183,19 @@ def test_human_operator_rebuild_never_runs_automatic_intake_or_build(driver_case
     def forbidden(*a):pytest.fail('operator rebuild must not run automatic work')
     assert tick(driver_case,admit=forbidden,manager_trigger=forbidden)['status']=='waiting_operator_rebuild'
     assert len(Image.calls)==1 and g.status()['cycle_id']==new
+
+
+def test_empty_writing_source_finishes_without_admission_or_models(driver_case):
+    cp,cfg,finished,now,gate=driver_case
+    cfg.update(inherit_task_id=None,autonomy_profile=dict(path=str(cp.parent/'finite.json'),sha256='a'*64),source_template=dict(path=str(cp.parent/'standing.json'),sha256='b'*64))
+    cp.write_text(json.dumps(cfg));calls=[]
+    def empty(g,cycle,root,*args):
+        calls.append('metrics')
+        return dict(cycle_id=cycle,status='no_evidence',profile=None,reason='no_writing_data',observed_samples=0,known_model_requests=0)
+    def forbidden(*args):pytest.fail('empty writing data must not analyze, develop or notify manager')
+    before=ledger_snapshot(gate().state),ledger_snapshot(gate().billing)
+    result=tick(driver_case,source_prepare=empty,admit=forbidden,manager_trigger=forbidden)
+    assert result['status']=='no_release' and result['reason']=='no_evidence'
+    assert gate().status()['phase']=='idle'
+    assert tick(driver_case,source_prepare=empty,admit=forbidden)['status']=='already_claimed'
+    assert calls==['metrics'] and (ledger_snapshot(gate().state),ledger_snapshot(gate().billing))==before

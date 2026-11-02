@@ -54,6 +54,19 @@ def _manual_baseline(gate,previous,result_pin,bundle,template_pin):
     return packet,deployment,dict(containers=[dict(identity=proof['identity'])]),path,binding,observer
 
 
+def writing_count(metrics,observer,mode):
+    if mode=='SIMULATED':value=metrics.get('planned_tasks')
+    else:
+        run=metrics.get('run_id');require(isinstance(run,str) and run.startswith('observer-') and '/' not in run and '..' not in run,'fixed metric run required')
+        path=_path(observer['root'])/run/'metrics.json';_plain(path)
+        require(path.stat().st_size<=1048576 and file_hash(path)==metrics['snapshot_sha256'],'frozen writing workload drift')
+        snapshot=strict_json(path.read_bytes())
+        require(snapshot['id']==run and snapshot['window']==metrics['window'] and snapshot['identity']==dict(observer['identity'],schema_version=1),'writing workload identity drift')
+        value=snapshot['planned']
+    require(type(value) is int and value>=0,'known writing workload required')
+    return value
+
+
 def prepare(gate,cycle,root,template_path,template_pin,*,collect=None,inspect_cohort=None,read_source=None):
     state=gate.status();require(state['phase']=='preparing' and state['cycle_id']==cycle and state['task_id'] is None,'one new unadmitted round required')
     root=_path(root);require(root.is_dir() and stat.S_IMODE(root.stat().st_mode)==0o700,'existing private new round required')
@@ -91,7 +104,10 @@ def prepare(gate,cycle,root,template_path,template_pin,*,collect=None,inspect_co
     require(set(profile['legacy_unknown_ids'])==_unknown(before),'original unknown fee holds changed')
     if receipt.exists():
         result=_read(receipt);require(result['cycle_id']==cycle and result['previous_cycle_id']==previous and result['template_sha256']==template_pin and result['comparison_sha256']==comparison_pin and result.get('baseline_receipt_sha256',result['comparison_sha256'])==result_pin and result['context_sha256']==file_hash(cp),'fresh source receipt drift')
-        autonomy_profile.load(result['profile']['path'],result['profile']['sha256'],clock=gate.clock if gate.mode=='SIMULATED' else None);return result
+        if result.get('status')=='no_evidence':
+            metrics=_read(root/'source-metrics.json');require(result['profile'] is None and result['reason']=='no_writing_data' and digest(metrics)==result['metrics_sha256'] and metrics['status']=='insufficient_evidence' and type(metrics['observed_samples']) is int and metrics['observed_samples']==0 and writing_count(metrics,oc,gate.mode)==0,'empty writing receipt drift')
+        else:autonomy_profile.load(result['profile']['path'],result['profile']['sha256'],clock=gate.clock if gate.mode=='SIMULATED' else None)
+        return result
     require(not intent.exists(),'unfinished source preparation retained; no replay');_write(intent,dict(cycle_id=cycle,previous_cycle_id=previous,template_sha256=template_pin,comparison_sha256=comparison_pin,baseline_receipt_sha256=result_pin,predecessor_kind=predecessor_kind))
     inspect_cohort=inspect_cohort or _inspect
     actual=inspect_cohort(packet,root/'source-cohort-before')
@@ -103,6 +119,12 @@ def prepare(gate,cycle,root,template_path,template_pin,*,collect=None,inspect_co
     require(metrics['schema']=='pi-live-observer-result-v1' and metrics['mode']==gate.mode and metrics['config_sha256']==digest(oc) and metrics['status'] in ('passed','insufficient_evidence'),'completed fresh observation required')
     start,end=utc(metrics['window']['start']),utc(metrics['window']['end']);now=utc(gate.clock())
     require(max(utc(r['started_at']) for r in actual)<=start<end<=now and now-end<=timedelta(minutes=45) and utc(deployment['packet']['deployed_at'])<=start,'fresh deployed source observation required')
+    require(type(metrics.get('observed_samples')) is int and metrics['observed_samples']>=0,'known eligible sample count required')
+    if metrics['observed_samples']==0 and writing_count(metrics,oc,gate.mode)==0:
+        require(metrics['status']=='insufficient_evidence' and file_hash(template_path)==template_pin and ledger_snapshot(gate.billing)==before,'empty writing observation drift')
+        require(inspect_cohort(packet,root/'source-cohort-after')==actual,'source runtime changed during empty observation')
+        result=dict(schema='pi-nightly-source-stage-v1',cycle_id=cycle,previous_cycle_id=previous,template_sha256=template_pin,comparison_sha256=comparison_pin,baseline_receipt_sha256=result_pin,predecessor_kind=predecessor_kind,context_sha256=file_hash(cp),metrics_sha256=digest(metrics),profile=None,base_image_id=packet['manifest']['image_id'],known_model_requests=0,fee_sha256=before['sha256'],status='no_evidence',reason='no_writing_data',observed_samples=0)
+        _write(receipt,result);return result
     values=read_source(packet,actual,files,root/'source-read') if read_source is not None else read_installed(gate.mode,packet,actual,files,root/'source-read')
     require(isinstance(values,dict) and set(values)==set(files) and all(isinstance(v,str) and len(v.encode())<=24000 for v in values.values()),'bounded selected source text required')
     source_pin=digest({name:sha256(text.encode()).hexdigest() for name,text in values.items()})

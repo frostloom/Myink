@@ -134,3 +134,28 @@ def test_human_main_baseline_can_issue_fresh_inputs_days_after_interrupted_compa
     assert r['comparison_sha256'] is None and r['baseline_receipt_sha256']==digest(result) and r['predecessor_kind']=='manual_main_release'
     generated=json.loads(Path(r['profile']['path']).read_bytes());assert generated['source']['reference_commit']==identity['commit_sha'] and generated['checker_image_id']==identity['image_ids']['python']
     assert generated['issued_at']==now[0].isoformat() and (ledger_snapshot(g.state),ledger_snapshot(g.billing))==before
+
+
+def test_zero_eligible_samples_skip_source_and_lease_creation(source_case):
+    def empty(*args):
+        result=source_case[5](*args)
+        return dict(result,status='insufficient_evidence',observed_samples=0,planned_tasks=0)
+    def forbidden(*args):pytest.fail('zero writing data must not read development source')
+    result=issue(source_case,collect=empty,read_source=forbidden)
+    assert result['status']=='no_evidence' and result['profile'] is None
+    assert result['reason']=='no_writing_data'
+    assert not (source_case[2]/'source-inputs').exists()
+    assert issue(source_case,collect=lambda *a:pytest.fail('replayed metrics'),read_source=forbidden)==result
+
+
+@pytest.mark.parametrize('count',[None,False,-1])
+def test_unknown_or_invalid_workload_does_not_become_empty_writing(source_case,count):
+    def invalid(*args):return dict(source_case[5](*args),status='insufficient_evidence',observed_samples=0,planned_tasks=count)
+    with pytest.raises(ValueError):issue(source_case,collect=invalid,read_source=lambda *a:pytest.fail('invalid workload read source'))
+    assert not (source_case[2]/'source-stage.json').exists()
+
+
+def test_failed_writing_workload_with_zero_completed_is_not_empty(source_case):
+    def failed(*args):return dict(source_case[5](*args),status='insufficient_evidence',observed_samples=0,planned_tasks=1)
+    result=issue(source_case,collect=failed)
+    assert result['profile'] is not None and result.get('status')!='no_evidence'

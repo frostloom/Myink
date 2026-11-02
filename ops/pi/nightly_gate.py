@@ -265,6 +265,19 @@ class ApprovalGate:
             c.execute("UPDATE approval_cycles SET phase='completed',result_sha256=? WHERE cycle_id=?",(result_sha256,cycle));self._record(c,cycle,'no_release',dict(reason=reason,result_sha256=result_sha256))
         return self.status()
 
+    def reconcile_no_release(self,cycle,path,pin):
+        from .nightly_recovery import validated
+        validated(self,cycle,path,pin,current=False)
+        with self._connection(True) as db:
+            row=self._row(db,cycle)
+            if row['phase']=='completed':require(row['result_sha256']==pin,'unrelated completed round cannot be replaced')
+            else:
+                require(row['phase']=='blocked' and all(row[k] is None for k in ('task_id','package','approval','deployment')),'only blocked unadmitted preparation may reconcile')
+                validated(self,cycle,path,pin)
+                db.execute("UPDATE approval_cycles SET phase='completed',result_sha256=? WHERE cycle_id=?",(pin,cycle))
+                self._record(db,cycle,'no_release',dict(reason='no_evidence',result_sha256=pin,reconciled=True))
+        return self.status()
+
     def handoff_permission(self,cycle,path,pin,*,current=True):
         value=self._trusted(path,pin,'handoff')
         fields=set('schema mode issuer action operation_id cycle_id package_sha256 deployment_sha256 new_identity new_package_sha256 driver_sha256 profile_sha256 issued_at expires_at'.split())
