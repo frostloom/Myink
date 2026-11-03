@@ -110,5 +110,46 @@ it('never borrows samples from a different selected run',async()=>{
  vi.mocked(piApi.runs).mockResolvedValue({...copy(fixture.runs),items:[...copy(fixture.runs.items),{run_id:'run-without-observations',event_count:1,days:['2026-10-31']}]} as never)
  vi.mocked(piApi.events).mockImplementation(async(_token,filters)=>filters?.runId==='run-without-observations'?{items:[],total:0,limit:25,offset:0} as never:copy(fixture.events) as never)
  setup();await flushPromises();await fireEvent.update(screen.getByRole('combobox',{name:'选择 Pi 运行'}),'run-without-observations');await flushPromises()
- expect(screen.queryByText('0 个有效样本')).toBeNull();expect(screen.getAllByText('未知').length).toBeGreaterThan(0)
+ expect(screen.queryByText('0 个有效样本')).toBeNull();expect(screen.getByText('此记录没有样本统计')).toBeTruthy()
+})
+
+function emptyWritingFixture(reason='no_writing_data'){
+ vi.mocked(piApi.status).mockResolvedValue({...copy(fixture.status),phase:'idle',candidate:null,task_id:null,cycle_id:null,package_sha256:null} as never)
+ const event={...copy(fixture.events.items[0]!),kind:'deployment',status:'no_release',summary:'No writing data: skipped analysis, model calls and candidate development.',details:{reason,model_requests:0,next_action:'wait_for_new_writing_data'},occurred_at:'2026-11-02T18:00:00+00:00'}
+ vi.mocked(piApi.events).mockResolvedValue({items:[event],total:1,limit:25,offset:0} as never)
+ vi.mocked(piApi.daily).mockResolvedValue({...copy(fixture.daily),sample_windows:[{run_id:event.run_id,observed_samples:0,window:'2026-11-02T16:59:00+00:00 / 2026-11-02T17:59:00+00:00',event_sha256:event.event_sha256}]} as never)
+}
+it('explains a confirmed empty-writing skip without presenting it as failure or asking for publication',async()=>{
+ emptyWritingFixture();setup();await flushPromises()
+ const result=screen.getByRole('region',{name:'所选运行结论'})
+ expect(within(result).getByRole('heading',{name:'没有写作数据，本轮已跳过'})).toBeTruthy()
+ expect(within(result).getByText(/未分析、未调用模型、未开发候选/)).toBeTruthy()
+ expect(within(result).getByText(/无需操作/)).toBeTruthy()
+ expect(screen.getByText('No writing data: skipped analysis, model calls and candidate development.').closest('details')?.open).toBe(false)
+ expect(screen.queryByRole('button',{name:'查看并发布'})).toBeNull()
+ expect(screen.getByRole('button',{name:/11\/03 00:59.*11\/03 01:59.*北京时间/})).toBeTruthy()
+})
+it('does not infer an empty-writing skip from zero completed samples alone',async()=>{
+ emptyWritingFixture('no_candidate');setup();await flushPromises()
+ expect(screen.queryByRole('heading',{name:'没有写作数据，本轮已跳过'})).toBeNull()
+ expect(screen.queryByText(/无需操作，等待有写作数据后/)).toBeNull()
+})
+
+it.each([1,null])('does not claim model calls were skipped when request count is %s',async count=>{
+ emptyWritingFixture()
+ const event={...copy(fixture.events.items[0]!),kind:'deployment',status:'no_release',details:{reason:'no_writing_data',model_requests:count}}
+ vi.mocked(piApi.events).mockResolvedValue({items:[event],total:1,limit:25,offset:0} as never)
+ setup();await flushPromises()
+ expect(screen.queryByRole('heading',{name:'没有写作数据，本轮已跳过'})).toBeNull()
+ expect(screen.queryByText('没有写作数据，本轮跳过分析、模型调用和候选开发。')).toBeNull()
+ expect(screen.getByText('本轮未发布，模型调用记录需要核对。')).toBeTruthy()
+})
+it('formats the actual systemd Shanghai schedule and keeps current blocks actionable',async()=>{
+ emptyWritingFixture()
+ vi.mocked(piApi.status).mockResolvedValue({...copy(fixture.status),phase:'blocked',candidate:null,task_id:null,cycle_id:null,executor:{...copy(fixture.status.executor),next_check:'Tue 2026-11-03 02:00:00 CST'}} as never)
+ setup();await flushPromises()
+ const state=screen.getByRole('region',{name:'Pi 当前阶段'})
+ expect(within(state).getByText('11/03 02:00 · 北京时间')).toBeTruthy()
+ expect(within(state).getByRole('heading',{name:'需要人工处理'})).toBeTruthy()
+ expect(screen.queryByText(/无需操作，等待有写作数据后/)).toBeNull()
 })

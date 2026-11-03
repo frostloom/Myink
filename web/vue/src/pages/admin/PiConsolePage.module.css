@@ -39,3 +39,7 @@
 .dialog::backdrop { background:rgb(0 0 0 / 45%); }
 .dialog h2 { margin-top:0; }
 @media(max-width:640px) { .state { grid-template-columns:minmax(0,1fr); } .state,.section { padding:var(--space-3); } .sectionHead label { width:100%; } .sectionHead select { width:100%; min-width:0; } .metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .facts>div { grid-template-columns:80px minmax(0,1fr); } }
+
+.outcome { border-left:4px solid var(--accent); background:var(--surface-2); padding:var(--space-4); }
+.outcome h3 { font-size:var(--text-heading); margin:var(--space-2) 0; }
+.outcome p:last-child { margin-bottom:0; font-weight:600; }

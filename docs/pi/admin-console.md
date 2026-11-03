@@ -107,3 +107,9 @@ preexec_reconciliation只由宿主root操作者调用，使用原autonomy、mana
 nightly_recovery进一步要求当前轮次blocked、没有task/package/approval/deployment、没有manager意图或候选，且原始冻结指标确实没有写作任务，才能追加未发布回执关闭准备阶段。保留原blocked事件，不写comparison_complete，不删除目录或改UUID重放。恢复目录存在但没有verified回执时继续保留现场，不自行重试未知执行。
 
 控制器更新不应改写已经封存的manual-main基线或standing template摘要。根nightly控制器可以升级；本次不改变既有b5ce沙箱worker runtime或业务镜像。未来首个有数据的真实模型迭代仍按原限额和逐轮人工发布边界验证。
+
+### 可读的运行结果（2026-11-03）
+
+管理页将已确认的 `no_release / no_writing_data / model_requests=0` 显示为“没有写作数据，本轮已跳过”，解释未分析、未调用模型、未开发候选及未发布。仅有零个有效样本不推断没有写作任务；历史跳过记录也不覆盖当前阻断或待发布状态。观察窗口与下次检查使用北京时间，运行选择使用可读名称，原始英文、运行编号和完整版本信息保留在折叠详情中。审计条数与部署次数分别解释；缺失版本信息不解释成部署丢失。
+
+本次验证：共享测试 209 项通过；Vue 全量 840 项在 `--maxWorkers=1 --testTimeout=15000` 下通过；lint 无错误（保留 9 项现有警告），生产构建通过。默认 `npm test` 全量曾出现游客入口 1 项 5 秒超时（其余 839 项 Vue 测试通过），故不能将默认配置报告为全绿。新增 Pi 展示回归共 19 项通过，包含非零/缺失模型计数、跨运行样本、阻断状态和真实 systemd 时间格式。独立复查通过；本地合成数据浏览器验证覆盖桌面、390px 和 320px，无横向溢出。此条记录不代表服务器发布。
