@@ -1,0 +1,176 @@
+{
+  "schema": "pi-admin-readable-publication-v1",
+  "qualification": "ACTUAL",
+  "published": {
+    "accounting": {
+      "actual-manager.sqlite": "a588accf16ed7e7b1d3fc5e04709e000924010c6f840586ffbc2d2599ebf1eff",
+      "ledger.sqlite": "fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb"
+    },
+    "admin_page": 200,
+    "caddy_container_id": "f1b7bd01db86973230a8e9212e5ea4b9a10a7a7febb989d2fad521c0de9236cc",
+    "caddy_image_id": "sha256:9ca75fda991af9b3410c6c86873140a9452d5f5b7f2b4dbd456fd3f47369b5ee",
+    "completed_at": "2026-11-04T02:06:59.208387+00:00",
+    "healthz": 200,
+    "known_cost_microyuan": 0,
+    "model_requests": 0,
+    "other_six_containers_unchanged": true,
+    "pi_config_unchanged": true,
+    "readyz": 200,
+    "retained_files": 41,
+    "source_commit": "c77d992718a4930864744e869cd7827c406de908",
+    "static_files_verified": {
+      "assets/index-DE6s5PGQ.css": "a548791b077c308eb567bec378d16000a8258baf06410e7c57338ed9a5aa5ba1",
+      "assets/index-DUXYYDza.js": "70df4c32d23abdb993cbdb1b217fb8d4f0e5c3c2db93b758b3601d3e19989f5a",
+      "favicon.svg": "b04809d5028fa0acc584dd2580243a4478ae363a78466afa75b63650c4894c9b",
+      "index.html": "19563b7857e4995ff1c6d13416924973b48d77f60b6c37f83f1f165f4e8427cd",
+      "release.json": "28bff0cb12b3c55ebdd5178a2213eae415a5dee8388f85760b0c5e5254a2db7a"
+    },
+    "status": "published"
+  },
+  "pi": {
+    "gate": {
+      "phase": "idle",
+      "cycle_id": null,
+      "package_sha256": null,
+      "task_id": null
+    },
+    "nightly_rounds": [
+      {
+        "cycle_id": "6667de5f-bcbf-447d-8e80-95167931a307",
+        "occurred_at": "2026-11-02T18:00:05.726500+00:00",
+        "window": {
+          "end": "2026-11-02T17:59:00+00:00",
+          "start": "2026-11-02T16:59:00+00:00"
+        },
+        "metrics_run_id": "observer-20261102T175900Z-57c76a91084c",
+        "snapshot_sha256": "22af3e7e29cb4a4faf706dfb6375f9549b67605df27db7c08958ace7b4f73250",
+        "snapshot_verified": true,
+        "planned_tasks": 0,
+        "observed_samples": 0,
+        "minimum_samples": 20,
+        "reason": "no_writing_data",
+        "status": "no_release",
+        "model_requests": 0,
+        "source_profile_issued": false
+      },
+      {
+        "cycle_id": "ff3cc19c-c72e-4a28-97e7-edd3f04ddff7",
+        "occurred_at": "2026-11-03T18:00:05.579440+00:00",
+        "window": {
+          "end": "2026-11-03T17:59:00+00:00",
+          "start": "2026-11-03T16:59:00+00:00"
+        },
+        "metrics_run_id": "observer-20261103T175900Z-57c76a91084c",
+        "snapshot_sha256": "6ca2c94c1570df9c550878b36ce7f387aa1312dbcd7033ba3292acfc1abb1305",
+        "snapshot_verified": true,
+        "planned_tasks": 0,
+        "observed_samples": 0,
+        "minimum_samples": 20,
+        "reason": "no_writing_data",
+        "status": "no_release",
+        "model_requests": 0,
+        "source_profile_issued": false
+      }
+    ],
+    "budget_microyuan": 50000000,
+    "unknown_holds": 9,
+    "fee_sha256": "fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb",
+    "manager_sha256": "a588accf16ed7e7b1d3fc5e04709e000924010c6f840586ffbc2d2599ebf1eff",
+    "timer": "NextElapseUSecRealtime=Thu 2026-11-05 02:00:00 CST\nActiveState=active\nSubState=waiting\n"
+  },
+  "admin_api": {
+    "anonymous": 401,
+    "daily": {
+      "event_count": 6,
+      "executor": null,
+      "http_status": 200,
+      "phase": null,
+      "release_state": "no_release",
+      "total": null
+    },
+    "enhancements": {
+      "event_count": null,
+      "executor": null,
+      "http_status": 200,
+      "phase": null,
+      "release_state": null,
+      "total": 17
+    },
+    "events": {
+      "confirmed_empty_writing_skip": true,
+      "http_status": 200,
+      "total": 2
+    },
+    "normal_user": 403,
+    "runs": {
+      "event_count": null,
+      "executor": null,
+      "http_status": 200,
+      "phase": null,
+      "release_state": null,
+      "total": 2
+    },
+    "status": {
+      "event_count": null,
+      "executor": {
+        "last_result": "success",
+        "next_check": "Thu 2026-11-05 02:00:00 CST",
+        "service_state": "inactive/dead",
+        "timer_state": "active/waiting"
+      },
+      "http_status": 200,
+      "phase": "idle",
+      "release_state": null,
+      "total": null
+    }
+  },
+  "ci": {
+    "source_commit": "c77d992718a4930864744e869cd7827c406de908",
+    "url": "https://github.com/frostloom/Myink/actions/runs/41757547329",
+    "jobs": [
+      {
+        "name": "Python 全量回归（全新 PG）",
+        "conclusion": "success",
+        "url": "https://github.com/frostloom/Myink/actions/runs/41757547329/job/126337121458"
+      },
+      {
+        "name": "前端（lint + 单测 + 构建）",
+        "conclusion": "success",
+        "url": "https://github.com/frostloom/Myink/actions/runs/41757547329/job/126337121646"
+      },
+      {
+        "name": "镜像构建（Python + Caddy）",
+        "conclusion": "success",
+        "url": "https://github.com/frostloom/Myink/actions/runs/41757547329/job/126337121655"
+      },
+      {
+        "name": "Pi offline control gates",
+        "conclusion": "success",
+        "url": "https://github.com/frostloom/Myink/actions/runs/41757547329/job/126337121768"
+      }
+    ]
+  },
+  "local_validation": {
+    "shared_tests": 209,
+    "vue_tests": 840,
+    "vue_arguments": [
+      "--maxWorkers=1",
+      "--testTimeout=15000"
+    ],
+    "lint_errors": 0,
+    "existing_lint_warnings": 9,
+    "build_passed": true
+  },
+  "actual_browser": {
+    "authenticated_admin": true,
+    "desktop_width": 1440,
+    "mobile_width": 390,
+    "no_horizontal_overflow": true,
+    "release_id": "vue-5499d7e0a0176aa6195d57382b2c97f5f4c8c727cb2871470235a616bfe5ec77",
+    "empty_writing_conclusion_visible": true,
+    "observer_selection_keeps_evidence_gap": true,
+    "ephemeral_auth_removed": true
+  },
+  "scheduled_nightly_path_verified": true,
+  "online_improvement_proven": false
+}
