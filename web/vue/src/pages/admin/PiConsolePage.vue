@@ -17,7 +17,20 @@ const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'
 const day=ref(today());const runOffset=ref(0);const eventOffset=ref(0);const selectedRun=ref('')
 const daily=useResource(signal=>status.data ? piApi.daily(context.token,day.value,signal) : Promise.resolve(null),forbidden)
 const runs=useResource(signal=>status.data ? piApi.runs(context.token,{day:day.value,limit:25,offset:runOffset.value},signal) : Promise.resolve(null),forbidden)
-const runId=computed(()=>selectedRun.value||status.data?.task_id||runs.data?.items[0]?.run_id||'')
+const latestRun=useResource(async signal=>{
+ if(!status.data||status.data.task_id||!runs.data?.items.length)return null
+ const visible=runs.data.items.slice(0,25).filter(run=>run.event_count>0)
+ const candidates:Array<{runId:string;sequence:number}>=[]
+ for(let offset=0;offset<visible.length;offset+=4){
+  if(signal.aborted)return null
+  candidates.push(...await Promise.all(visible.slice(offset,offset+4).map(async run=>{
+  const page=await piApi.events(context.token,{runId:run.run_id,limit:1,offset:run.event_count-1},signal)
+  return {runId:run.run_id,sequence:page.items.at(-1)?.sequence??-1}
+  })))
+ }
+ return candidates.filter(run=>run.sequence>=0).sort((a,b)=>b.sequence-a.sequence)[0]?.runId??null
+},forbidden)
+const runId=computed(()=>selectedRun.value||status.data?.task_id||latestRun.data||'')
 const events=useResource(signal=>status.data&&runId.value ? piApi.events(context.token,{runId:runId.value,limit:25,offset:eventOffset.value},signal) : Promise.resolve(null),forbidden)
 const observations=useResource(async signal=>{
  if(!status.data||!runId.value)return null
@@ -155,8 +168,8 @@ onScopeDispose(()=>{stopPoll();actionController?.abort()})
         <div :class="base.tableWrap"><table><caption :class="styles.caption">候选变更范围</caption><thead><tr><th>文件</th><th>新增</th><th>删除</th></tr></thead><tbody><tr v-for="change in status.data.candidate.changes" :key="change.path"><td :class="styles.code">{{ change.path }}</td><td>{{ formatCount(change.added) }}</td><td>{{ formatCount(change.deleted) }}</td></tr></tbody></table></div>
       </section>
       <section :class="styles.section" aria-labelledby="report-heading">
-<header :class="styles.sectionHead"><h2 id="report-heading">指标与每日记录</h2><label>选择 Pi 运行<select v-model="selectedRun" class="input"><option value="">最新记录（自动选择）</option><option v-if="status.data.task_id&&!runs.data?.items.some(run=>run.run_id===status.data?.task_id)" :value="status.data.task_id">当前开发任务</option><option v-for="(run,index) in runs.data?.items??[]" :key="run.run_id" :value="run.run_id">{{ runLabel(run.run_id,index) }} · {{ run.event_count }} 条记录</option></select></label><label :class="styles.date">记录日期<input v-model="day" type="date" class="input" /></label></header>
-        <p v-if="daily.error" role="alert">审计报告不可用：{{ daily.error }}</p><p v-else-if="daily.loading">正在读取报告…</p>
+<header :class="styles.sectionHead"><h2 id="report-heading">指标与每日记录</h2><label>选择 Pi 运行<select v-model="selectedRun" class="input"><option value="">自动选择本页记录</option><option v-if="status.data.task_id&&!runs.data?.items.some(run=>run.run_id===status.data?.task_id)" :value="status.data.task_id">当前开发任务</option><option v-for="(run,index) in runs.data?.items??[]" :key="run.run_id" :value="run.run_id">{{ runLabel(run.run_id,index) }} · {{ run.event_count }} 条记录</option></select></label><label :class="styles.date">记录日期<input v-model="day" type="date" class="input" /></label></header>
+        <p v-if="latestRun.error&&!selectedRun" role="alert">无法自动选择本页最近记录，请手动选择运行。{{ latestRun.error }}</p><p v-if="daily.error" role="alert">审计报告不可用：{{ daily.error }}</p><p v-else-if="daily.loading">正在读取报告…</p>
         <template v-else-if="daily.data">
 <section v-if="!events.loading&&!events.error&&emptyWritingEvent" :class="styles.outcome" aria-label="所选运行结论"><p :class="styles.eyebrow">{{ time(emptyWritingEvent.occurred_at||emptyWritingEvent.recorded_at) }} · 北京时间 · {{ emptyWritingEvent.mode==='SIMULATED'?'模拟记录':'夜间检查结果' }}</p><h3>没有写作数据，本轮已跳过</h3><p>本轮未分析、未调用模型、未开发候选，也没有发布更新。</p><p>{{ status.data.phase==='idle'?'无需操作，等待有写作数据后在下一轮检查。':'这条记录无需发布；当前任务是否需要处理，请以上方状态为准。' }}</p></section>
 <div :class="styles.metrics"><div><span>所选记录的写作样本</span><strong>{{ sampleLabel }}</strong></div><div><span>写作效果判断</span><strong>{{ observedStatus }}</strong></div><div><span>当日审计记录（条）</span><strong>{{ daily.data.event_count }}</strong></div></div><p :class="styles.muted">样本不足时无法判断写作效果，不代表服务故障。审计条数是过程记录数量，不是开发次数。多个采集窗口可能重叠，样本数不累加。</p>

@@ -153,3 +153,40 @@ it('formats the actual systemd Shanghai schedule and keeps current blocks action
  expect(within(state).getByRole('heading',{name:'需要人工处理'})).toBeTruthy()
  expect(screen.queryByText(/无需操作，等待有写作数据后/)).toBeNull()
 })
+
+it('automatically selects the most recently recorded run instead of alphabetic index order',async()=>{
+ vi.mocked(piApi.status).mockResolvedValue({...copy(fixture.status),phase:'idle',candidate:null,task_id:null,cycle_id:null} as never)
+ vi.mocked(piApi.runs).mockResolvedValue({items:[{run_id:'a-old-empty',event_count:1,days:['2026-11-05']},{run_id:'z-new-calendar',event_count:1,days:['2026-11-05']}],total:2,limit:25,offset:0} as never)
+ vi.mocked(piApi.events).mockImplementation(async(_token,filters)=>{
+  const old=filters?.runId==='a-old-empty'
+  const event={...copy(fixture.events.items[0]!),run_id:old?'a-old-empty':'z-new-calendar',sequence:old?10:20,kind:old?'deployment':'observation',status:old?'no_release':'insufficient_evidence',details:old?{reason:'no_writing_data',model_requests:0}:{observed_samples:1,minimum_samples:20}}
+  const items=filters?.kind==='observation'&&old?[]:[event]
+  return {items,total:items.length,limit:1,offset:0} as never
+ })
+ setup();await flushPromises()
+ expect(screen.getByText('1 / 20')).toBeTruthy()
+ expect(screen.queryByRole('heading',{name:'没有写作数据，本轮已跳过'})).toBeNull()
+ await fireEvent.update(screen.getByRole('combobox',{name:'选择 Pi 运行'}),'a-old-empty');await flushPromises()
+ expect(screen.getByRole('heading',{name:'没有写作数据，本轮已跳过'})).toBeTruthy()
+ expect(screen.queryByText('1 / 20')).toBeNull()
+})
+it('does not silently select an old first row when latest-record lookup fails',async()=>{
+ vi.mocked(piApi.status).mockResolvedValue({...copy(fixture.status),phase:'idle',candidate:null,task_id:null,cycle_id:null} as never)
+ vi.mocked(piApi.events).mockRejectedValue(new ApiError(503,'PI_CONSOLE_UNAVAILABLE',null))
+ setup();await flushPromises()
+ expect(screen.getByText(/无法自动选择本页最近记录/)).toBeTruthy()
+ expect(screen.queryByRole('heading',{name:'没有写作数据，本轮已跳过'})).toBeNull()
+})
+it('bounds automatic audit lookup concurrency while still selecting the newest visible run',async()=>{
+ vi.mocked(piApi.status).mockResolvedValue({...copy(fixture.status),phase:'idle',candidate:null,task_id:null,cycle_id:null} as never)
+ const items=Array.from({length:6},(_,i)=>({run_id:`visible-${i+1}`,event_count:1,days:['2026-11-05']}))
+ vi.mocked(piApi.runs).mockResolvedValue({items,total:6,limit:25,offset:0} as never)
+ let active=0;let peak=0
+ vi.mocked(piApi.events).mockImplementation(async(_token,filters)=>{
+  active++;peak=Math.max(peak,active);await new Promise(resolve=>setTimeout(resolve,1));active--
+  const sequence=Number(filters?.runId.split('-').at(-1))
+  return {items:[{...copy(fixture.events.items[0]!),run_id:filters?.runId,sequence,kind:'observation',status:'insufficient_evidence',details:{observed_samples:sequence,minimum_samples:20}}],total:1,limit:1,offset:0} as never
+ })
+ setup();await screen.findByText('6 / 20')
+ expect(peak).toBeLessThanOrEqual(4)
+})
