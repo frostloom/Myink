@@ -1,0 +1,191 @@
+{
+  "schema": "pi-calendar-window-release-v1",
+  "qualification": "ACTUAL",
+  "root_controller": {
+    "accounting": {
+      "actual-manager.sqlite": "a588accf16ed7e7b1d3fc5e04709e000924010c6f840586ffbc2d2599ebf1eff",
+      "ledger.sqlite": "fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb"
+    },
+    "backfill": {
+      "collected_at": "2026-11-05T06:02:02.216843+00:00",
+      "completed": 1,
+      "failed": 1,
+      "gaps": [
+        "insufficient_samples",
+        "insufficient_tail_samples",
+        "unknown_identity",
+        "unmeasured_metrics"
+      ],
+      "minimum_samples": 20,
+      "observed_samples": 1,
+      "observer": {
+        "path": "/home/ubuntu/myink-pi-managed/config/nightly-source-observers/1a0bd57d-edce-54c5-bcb6-2b805dd7726b/observer.json",
+        "sha256": "42b0312ddd801c89d2b40fb42e6279bd30ed6b8b4db7b809f9c32aec30493bd5"
+      },
+      "planned": 2,
+      "run_id": "observer-20261104T160000Z-c6877d1b1ce3",
+      "snapshot_sha256": "a66d8ee07124a9be57141212416b9a18cc4208554c055aa24ae54cada0189ef1",
+      "status": "insufficient_evidence",
+      "window": {
+        "end": "2026-11-04T16:00:00+00:00",
+        "start": "2026-11-03T16:00:00+00:00"
+      }
+    },
+    "completed_at": "2026-11-05T06:04:07.612971+00:00",
+    "daytime_guard": {
+      "cycle_id": null,
+      "package_sha256": null,
+      "phase": "idle",
+      "status": "outside_window",
+      "task_id": null
+    },
+    "gate": {
+      "cycle_id": null,
+      "package_sha256": null,
+      "phase": "idle",
+      "task_id": null
+    },
+    "initial_operator_check": "lock_busy while canonical lock was held; metadata-only resume without recollection",
+    "known_cost_microyuan": 0,
+    "model_requests": 0,
+    "original_baseline_and_template_unchanged": true,
+    "product_containers_unchanged": true,
+    "runtime_sha256": "87400dd1b9066fd23596332e24af38727a18528ca0a7f4da39ae24f8851603ad",
+    "source_commit": "1930e0aa0cb823ef387dc497795f6792d9d3eaeb",
+    "status": "installed",
+    "worker_schema_qualified": true
+  },
+  "frontend": {
+    "accounting": {
+      "actual-manager.sqlite": "a588accf16ed7e7b1d3fc5e04709e000924010c6f840586ffbc2d2599ebf1eff",
+      "ledger.sqlite": "fe7c37ea1259b0d92d51524d818703a7063a953e54e53b062dbc36b6eb844afb"
+    },
+    "admin_page": 200,
+    "caddy_container_id": "3db5a77ad4c65e8297c537402d44eb0bcdf264dfbfe15b3728aa146a87dd00df",
+    "caddy_image_id": "sha256:201977f3c0a6e39e8a89b62282a582be91fc9f1ed75b120bdf90b782d490bc88",
+    "completed_at": "2026-11-05T06:22:11.689420+00:00",
+    "healthz": 200,
+    "known_cost_microyuan": 0,
+    "model_requests": 0,
+    "other_six_containers_unchanged": true,
+    "pi_config_unchanged": true,
+    "readyz": 200,
+    "retained_files": 42,
+    "source_commit": "24c62e775be97ddd5eb81c397a40e7dedd4b962e",
+    "static_files_verified": {
+      "assets/index-CY-xu5KD.js": "1e9a429712fcef7ad228d077e2ff84c314fd585e38bb3b723ce73c6d64fbe26e",
+      "assets/index-DE6s5PGQ.css": "a548791b077c308eb567bec378d16000a8258baf06410e7c57338ed9a5aa5ba1",
+      "favicon.svg": "b04809d5028fa0acc584dd2580243a4478ae363a78466afa75b63650c4894c9b",
+      "index.html": "c2ceed6d3997939ea462e0addec7d426c88f8365dc4bed8e1a1e581e6883d093",
+      "release.json": "a97812c82936f8c49bf66b1287d80b0bfb16807b84e465b5e2e534a60a2df69c"
+    },
+    "status": "published"
+  },
+  "actual_api": {
+    "anonymous": 401,
+    "daily": {
+      "corrected_window": {
+        "event_sha256": "44eca1360bd243de92029f4d027371dd798926eb0e8e66b82a3f6949ffeda4e6",
+        "observed_samples": 1,
+        "run_id": "observer-20261104T160000Z-c6877d1b1ce3",
+        "window": "2026-11-03T16:00:00+00:00 / 2026-11-04T16:00:00+00:00"
+      },
+      "event_count": 12,
+      "executor": null,
+      "phase": null,
+      "status": 200,
+      "total": null
+    },
+    "events": {
+      "actual_samples": 1,
+      "event_count": null,
+      "executor": null,
+      "phase": null,
+      "status": 200,
+      "total": 7
+    },
+    "normal_user": 403,
+    "runs": {
+      "event_count": null,
+      "executor": null,
+      "phase": null,
+      "status": 200,
+      "total": 3
+    },
+    "status": {
+      "event_count": null,
+      "executor": {
+        "last_result": "success",
+        "next_check": "Fri 2026-11-06 02:00:00 CST",
+        "service_state": "inactive/dead",
+        "timer_state": "active/waiting"
+      },
+      "phase": "idle",
+      "status": 200,
+      "total": null
+    }
+  },
+  "actual_browser": {
+    "automatic": true,
+    "emptyConclusion": false,
+    "fullDayWindow": true,
+    "insufficient": true,
+    "release": "vue-f3ac390538666de6cb6a28747f37fba7f8d8a5e2b5f81b1d065aa10fbdee013b",
+    "samples": true
+  },
+  "mobile": {
+    "mainOverflow": false,
+    "overflow": false
+  },
+  "validation": {
+    "pi_passed": 4573,
+    "pi_deselected": 63,
+    "pi_warning_count": 1,
+    "pi_seconds": 846.88,
+    "pi_junit_sha256": "83eabe3088f2a0883759c0c91514fc191cec9e9425b2383f25e7301d46a08f40",
+    "shared_passed": 209,
+    "vue_passed": 843,
+    "vue_seconds": 117.79,
+    "vue_args": [
+      "--maxWorkers=1",
+      "--testTimeout=15000"
+    ],
+    "pi_page_tests": 22,
+    "lint_errors": 0,
+    "existing_lint_warnings": 9,
+    "build_passed": true,
+    "independent_review_passed": true
+  },
+  "deployed_code_ci": {
+    "commit": "24c62e775be97ddd5eb81c397a40e7dedd4b962e",
+    "url": "https://github.com/frostloom/Myink/actions/runs/41979718445",
+    "jobs": [
+      {
+        "name": "Python 全量回归（全新 PG）",
+        "conclusion": "success",
+        "url": "https://github.com/frostloom/Myink/actions/runs/41979718445/job/127086780567"
+      },
+      {
+        "name": "镜像构建（Python + Caddy）",
+        "conclusion": "success",
+        "url": "https://github.com/frostloom/Myink/actions/runs/41979718445/job/127086780569"
+      },
+      {
+        "name": "前端（lint + 单测 + 构建）",
+        "conclusion": "success",
+        "url": "https://github.com/frostloom/Myink/actions/runs/41979718445/job/127086780638"
+      },
+      {
+        "name": "Pi offline control gates",
+        "conclusion": "success",
+        "url": "https://github.com/frostloom/Myink/actions/runs/41979718445/job/127086780716"
+      }
+    ]
+  },
+  "scheduled_calendar_nightly_verified": false,
+  "online_improvement_proven": false,
+  "next_check_beijing": "2026-11-06T02:00:00+08:00",
+  "next_test_beijing": "2026-11-06T02:15:00+08:00",
+  "budget_microyuan": 50000000,
+  "unknown_holds": 9
+}
