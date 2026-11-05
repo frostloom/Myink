@@ -77,3 +77,24 @@ def test_semantically_inconsistent_but_rehashed_artifacts_are_rejected(configure
         p=root/'metrics.json';m=json.loads(p.read_bytes());m['pricing_id']={'command':'not metadata'};p.write_bytes(encoded(m));r['snapshot_sha256']=sha256(p.read_bytes()).hexdigest()
     r['receipt_sha256']=digest({k:v for k,v in r.items() if k!='receipt_sha256'});path.write_bytes(encoded(r))
     with pytest.raises(ValueError):inspect(configured,result)
+
+
+@pytest.mark.parametrize('minutes,valid',[(0,True),(44,True),(46,False),(-1,False),(24*60,False)])
+def test_daily_evidence_freshness_uses_real_collection_time_not_yesterday_midnight(configured,minutes,valid):
+    from ops.pi.tests.test_live_observer import update
+    update(configured,window_policy='previous_day_shanghai',lookback_hours=24)
+    result=run(configured,Rows())
+    now=NOW+timedelta(minutes=minutes)
+    if valid:
+        evidence=inspect(configured,result,now)
+        assert evidence['expires_at']==(NOW+timedelta(minutes=45)).isoformat()
+    else:
+        with pytest.raises(ValueError):inspect(configured,result,now)
+
+
+def test_rehashed_daily_collection_time_cannot_disagree_with_original_intent(configured):
+    from ops.pi.tests.test_live_observer import update
+    update(configured,window_policy='previous_day_shanghai',lookback_hours=24)
+    result=run(configured,Rows());path=Path(configured[1]['root'])/result['run_id']/'receipt.json'
+    receipt=json.loads(path.read_bytes());receipt['collected_at']=(NOW+timedelta(minutes=30)).isoformat();receipt['receipt_sha256']=digest({k:v for k,v in receipt.items() if k!='receipt_sha256'});path.write_bytes(encoded(receipt))
+    with pytest.raises(ValueError):inspect(configured,result,NOW+timedelta(minutes=30))

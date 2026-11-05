@@ -1,6 +1,6 @@
 """Fresh source leases require an approved comparison or verified human baseline."""
 from pathlib import Path
-from datetime import timedelta
+from datetime import timedelta,timezone
 import json,sys,uuid
 import pytest
 from ops.pi.tests.test_nightly_binding import binding_case,deployed_case,bundle_case,finished,stopped,completed,config_file,Image,confirm,bind
@@ -12,10 +12,15 @@ from ops.pi.development_inputs import file_hash,ledger_snapshot,tree_hash
 def source_case(binding_case):
     deployed,observer_template=binding_case;case,calls=deployed;g,previous,root,task,finished,now=case;confirm(deployed);observer=bind(binding_case)
     now[0]+=timedelta(hours=26)
-    def read(path,pin):return dict(schema='pi-live-observer-result-v1',mode='SIMULATED',status='passed',config_sha256=digest(json.loads(Path(path).read_bytes())),observed_samples=20,confounders=[],window=dict(start=(now[0]-timedelta(hours=1)).isoformat(),end=(now[0]-timedelta(minutes=1)).isoformat()),run_id='fresh-window')
+    def read(path,pin):
+        config=json.loads(Path(path).read_bytes());daily=config.get('window_policy')=='previous_day_shanghai'
+        end=now[0].astimezone(timezone(timedelta(hours=8))).replace(hour=0,minute=0,second=0,microsecond=0).astimezone(timezone.utc) if daily else now[0]-timedelta(minutes=1)
+        start=end-timedelta(days=1) if daily else now[0]-timedelta(hours=1)
+        return dict(**(dict(collected_at=now[0].isoformat()) if daily else {}),schema='pi-live-observer-result-v1',mode='SIMULATED',status='passed',config_sha256=digest(json.loads(Path(path).read_bytes())),observed_samples=20,confounders=[],window=dict(start=start.isoformat(),end=end.isoformat()),run_id='fresh-window')
     def check(e,*a):return dict(passed=True,tests=len(e['test_cases']),failures=0,errors=0,skipped=0,cleanup=[dict(removed=True)])
     from ops.pi.nightly_observation import assess
     assert assess(g,previous,root/'bundle',observer['path'],observer['sha256'],observe=read,check=check)['status']=='completed'
+    now[0]+=timedelta(days=1)
     cycle=str(uuid.uuid4());assert g.begin(cycle,'2026-11-02')['claimed'];out=root.parent/cycle;out.mkdir(mode=0o700)
     c=finished[5];roots={}
     for key in ('root','permit_root','handoff_root','review_root','investigation_root','reproduction_root'):
@@ -42,7 +47,7 @@ def test_next_lease_is_fresh_source_bound_and_does_not_reset_original_ledgers(so
     prior,cycle,out,template,observer,read,context=source_case;g=prior[0];before=ledger_snapshot(g.state),ledger_snapshot(g.billing)
     r=issue(source_case);p=json.loads(Path(r['profile']['path']).read_bytes())
     assert p['source']['source_sha256']==tree_hash(prior[2]/'bundle/candidate') and p['source']['source_path']!=str(prior[2]/'bundle/candidate')
-    assert p['observer']['observer_config_path']==observer['path'] and p['checker_image_id']==r['base_image_id']=='sha256:'+'7'*64
+    assert p['observer']['observer_config_path']!=observer['path'] and p['checker_image_id']==r['base_image_id']=='sha256:'+'7'*64
     assert p['host']['image_id']==prior[4][5]['image_id'] and p['host']['ledger_path']==str(g.billing)
     assert p['issued_at']==prior[5][0].isoformat() and p['expires_at']==(prior[5][0]+timedelta(hours=2)).isoformat()
     assert json.loads(Path(p['source']['pending_path']).read_bytes())==[]
@@ -159,3 +164,50 @@ def test_failed_writing_workload_with_zero_completed_is_not_empty(source_case):
     def failed(*args):return dict(source_case[5](*args),status='insufficient_evidence',observed_samples=0,planned_tasks=1)
     result=issue(source_case,collect=failed)
     assert result['profile'] is not None and result.get('status')!='no_evidence'
+
+
+def test_new_nightly_source_derives_a_calendar_observer_without_rewriting_baseline(source_case):
+    original=Path(source_case[4]['path']);before=original.read_bytes();seen=[]
+    def collect(path,pin):
+        config=json.loads(Path(path).read_bytes());seen.append(config)
+        assert config.get('window_policy')=='previous_day_shanghai' and config['lookback_hours']==24
+        return source_case[5](path,pin)
+    result=issue(source_case,collect=collect)
+    assert original.read_bytes()==before and len(seen)==1
+    profile=json.loads(Path(result['profile']['path']).read_bytes())
+    assert result['source_observer']==dict(path=profile['observer']['observer_config_path'],sha256=profile['observer']['observer_config_sha256'])
+    frozen=json.loads((source_case[2]/'source-metrics.json').read_bytes())
+    assert frozen['window']['start'].endswith('16:00:00+00:00') and frozen['window']['end'].endswith('16:00:00+00:00')
+
+
+def test_daily_source_policy_drift_cannot_be_hidden_by_completed_stage_cache(source_case):
+    result=issue(source_case);path=Path(result['source_observer']['path']);config=json.loads(path.read_bytes());config['lookback_hours']=1;path.write_text(json.dumps(config))
+    with pytest.raises(ValueError):issue(source_case,collect=lambda *a:pytest.fail('cached stage recollected'))
+
+
+def test_legacy_empty_source_stage_remains_readable_without_recollection(source_case):
+    from ops.pi.audit import encoded
+    def empty(path,pin):return dict(source_case[5](path,pin),status='insufficient_evidence',observed_samples=0,planned_tasks=0)
+    result=issue(source_case,collect=empty);result.pop('source_observer')
+    metrics=empty(source_case[4]['path'],source_case[4]['sha256']);root=source_case[2]
+    (root/'source-metrics.json').write_bytes(encoded(metrics));result['metrics_sha256']=digest(metrics);(root/'source-stage.json').write_bytes(encoded(result))
+    assert issue(source_case,collect=lambda *a:pytest.fail('legacy stage recollected'))==result
+
+
+@pytest.mark.parametrize('fault',[None,'pin','edited'])
+def test_daily_worker_uses_verified_current_closed_runtime(tmp_path,monkeypatch,fault):
+    import os
+    from hashlib import sha256
+    from ops.pi import nightly_source
+    from ops.pi.deploy import observer_entry
+    from ops.pi.audit import encoded
+    root=tmp_path/'releases/daily/runtime';(root/'code/ops/pi').mkdir(parents=True);entry=root/'entry.py';entry.write_text('entry = True\n')
+    files={'entry.py':sha256(entry.read_bytes()).hexdigest()};pin=sha256(encoded(files)).hexdigest()
+    (root/'manifest.json').write_bytes(encoded(dict(schema='pi-observer-runtime-v1',files=files,code_sha256=pin,git_commit='a'*40)))
+    monkeypatch.setattr(nightly_source,'BASE',tmp_path);monkeypatch.setattr(nightly_source,'__file__',str(root/'code/ops/pi/nightly_source.py'));monkeypatch.setenv('PI_OBSERVER_RUNTIME_SHA256',pin if fault!='pin' else 'f'*64)
+    verify=observer_entry.verify_release
+    monkeypatch.setattr(observer_entry,'verify_release',lambda path,pin:verify(path,pin,expected_owner=os.getuid()))
+    if fault=='edited':entry.write_text('unexpected = True\n')
+    if fault is None:assert nightly_source.current_worker()==dict(worker_entry_path=str(entry),controller_sha256=pin)
+    else:
+        with pytest.raises(ValueError):nightly_source.current_worker()

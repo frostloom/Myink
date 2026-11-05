@@ -15,10 +15,19 @@ from .metrics import collect_snapshot
 from .psql_metrics import PsqlMetricsReader
 
 FIELDS=set('schema mode root audit_path source identity interval_minutes lookback_hours minimum_samples'.split())
-OPTIONAL={'export_root'}
+OPTIONAL={'export_root','window_policy'}
 RESULT_FIELDS=set('schema run_id mode config_sha256 controller_sha256 status evidence_domain observed_samples minimum_samples availability confounders snapshot_sha256 window automatic_execution export_published receipt_sha256'.split())
 IDENTITY_FIELDS=set('deployment_id generation owner image_ids commit_sha schema_id config_hash'.split())
 MAX_SNAPSHOT=1048576
+
+
+def observation_window(config,now):
+    if config.get('window_policy')=='previous_day_shanghai':
+        end=now.astimezone(timezone(timedelta(hours=8))).replace(hour=0,minute=0,second=0,microsecond=0).astimezone(timezone.utc)
+        return end-timedelta(days=1),end
+    end=datetime.fromtimestamp(int(now.timestamp())//900*900,tz=timezone.utc)-timedelta(minutes=1)
+    return end-timedelta(hours=config['lookback_hours']),end
+
 
 
 @dataclass(frozen=True)
@@ -71,6 +80,7 @@ def _load(config_path):
     require(type(config['interval_minutes']) is int and config['interval_minutes']==15
         and type(config['lookback_hours']) is int and 1<=config['lookback_hours']<=24
         and type(config['minimum_samples']) is int and 20<=config['minimum_samples']<=500,'bounded observer policy required')
+    require('window_policy' not in config or config['window_policy']=='previous_day_shanghai' and config['lookback_hours']==24,'strict calendar-day policy required')
     root=_private_directory(config['root']);audit=_path(config['audit_path']);_private_directory(audit.parent)
     require(not p.is_relative_to(root) and not audit.is_relative_to(root) and audit!=p,'separate observer outputs required')
     export=_path(config.get('export_root',audit.parent/'export'));_private_directory(export.parent)
@@ -88,7 +98,7 @@ def _load(config_path):
 
 def _cached(root,run_id,config_sha,controller):
     receipt=strict_json(_read(root/'receipt.json',65536))
-    require(isinstance(receipt,dict) and RESULT_FIELDS<=set(receipt)<=RESULT_FIELDS|{'failure_class'},'invalid observer result shape')
+    require(isinstance(receipt,dict) and RESULT_FIELDS<=set(receipt)<=RESULT_FIELDS|{'failure_class','collected_at'},'invalid observer result shape')
     require(hash_value(receipt['receipt_sha256']) and digest({k:v for k,v in receipt.items() if k!='receipt_sha256'})==receipt['receipt_sha256'],'observer receipt content changed')
     require(type(receipt['export_published']) is bool and receipt['status'] in ('passed','insufficient_evidence','blocked') and (receipt['observed_samples'] is None or type(receipt['observed_samples']) is int and receipt['observed_samples']>=0),'invalid observer result types')
     require(receipt.get('schema')=='pi-live-observer-result-v1'
@@ -97,6 +107,11 @@ def _cached(root,run_id,config_sha,controller):
     snapshot_sha=receipt.get('snapshot_sha256')
     if snapshot_sha is not None:
         require(hash_value(snapshot_sha) and sha256(_read(root/'metrics.json',MAX_SNAPSHOT)).hexdigest()==snapshot_sha,'observer snapshot changed')
+    if 'collected_at' in receipt:
+        require(isinstance(receipt['collected_at'],str),'calendar collection time required')
+        collected=utc(receipt['collected_at']);intent=strict_json(_read(root/'intent.json',65536))
+        start,end=observation_window(dict(window_policy='previous_day_shanghai'),collected)
+        require(intent.get('collected_at')==receipt['collected_at'] and receipt['window']==dict(start=start.isoformat(),end=end.isoformat()),'calendar collection/window drift')
     return receipt
 
 
@@ -108,8 +123,8 @@ def observe(config_path,*,clock=None,reader=None,expected_config_sha256=None):
     if expected_config_sha256 is not None:require(hash_value(expected_config_sha256) and raw_sha==expected_config_sha256,'observer config digest mismatch')
     source=PsqlMetricsReader(c['source']) if c['mode']=='ACTUAL' else reader
     now=utc((clock or (lambda:datetime.now(timezone.utc)))())
-    end=datetime.fromtimestamp(int(now.timestamp())//900*900,tz=timezone.utc)-timedelta(minutes=1)
-    start=end-timedelta(hours=c['lookback_hours']);config_sha=digest(c);controller=_controller()
+    start,end=observation_window(c,now);config_sha=digest(c);controller=_controller()
+    collected=dict(collected_at=now.isoformat()) if c.get('window_policy')=='previous_day_shanghai' else {}
     run_id='observer-'+end.strftime('%Y%m%dT%H%M%SZ')+'-'+digest(dict(config=config_sha,controller=controller))[:12]
     root=_path(base/run_id)
     if root.exists():
@@ -117,7 +132,7 @@ def observe(config_path,*,clock=None,reader=None,expected_config_sha256=None):
         require((root/'receipt.json').exists(),'unfinished observation window retained; no automatic replay')
         return _cached(root,run_id,config_sha,controller)
     audit=AuditStore(audit_path);root.mkdir(mode=0o700)
-    _publish(root/'intent.json',encoded(dict(schema='pi-observer-intent-v1',run_id=run_id,config_sha256=config_sha,controller_sha256=controller,mode=c['mode'],window=dict(start=start.isoformat(),end=end.isoformat()))),immutable=True)
+    _publish(root/'intent.json',encoded(dict(schema='pi-observer-intent-v1',run_id=run_id,config_sha256=config_sha,controller_sha256=controller,mode=c['mode'],window=dict(start=start.isoformat(),end=end.isoformat()),**collected)),immutable=True)
     identity=_identity(c['identity'])
     version=dict(source_commit=identity.commit_sha,deployment_id=identity.deployment_id,generation=identity.generation,owner=identity.owner,image_ids=identity.image_ids or {},controller_sha256=controller,policy_sha256=config_sha)
     def event(kind,status,summary,details=None,proof=None,domain='unknown'):
@@ -126,7 +141,7 @@ def observe(config_path,*,clock=None,reader=None,expected_config_sha256=None):
     audit.append(run_id+':start',event('observation','running','Started fixed, read-only metric collection.',dict(model_requests=0,known_cost_microyuan=0)))
     result=dict(schema='pi-live-observer-result-v1',run_id=run_id,mode=c['mode'],config_sha256=config_sha,controller_sha256=controller,
         status='blocked',evidence_domain='unknown',observed_samples=None,minimum_samples=c['minimum_samples'],availability='unknown',
-        confounders=[],snapshot_sha256=None,window=dict(start=start.isoformat(),end=end.isoformat()),automatic_execution=False,export_published=False)
+        confounders=[],snapshot_sha256=None,window=dict(start=start.isoformat(),end=end.isoformat()),automatic_execution=False,export_published=False,**collected)
     types=set();cohort=set();missing_type=False;missing_status=False;missing_model=False
     def collect(request):
         nonlocal missing_type,missing_status,missing_model

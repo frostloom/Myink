@@ -208,3 +208,20 @@ def test_real_cohort_fingerprint_is_stable_across_windows_and_changes_with_task_
     events=AuditStore(configured[1]['audit_path']).events(run_id=first['run_id'])
     terminal=next(e for e in events if e['kind']=='observation' and e['status']!='running')
     assert any(p['kind']=='observation_cohort' and p['sha256']==a['cohort_sha256'] and p['verified'] for p in terminal['evidence'])
+
+
+def test_calendar_day_includes_previous_morning_and_excludes_current_day(configured):
+    from datetime import datetime,timezone
+    path=update(configured,window_policy='previous_day_shanghai',lookback_hours=24)
+    now=datetime(2026,11,4,18,tzinfo=timezone.utc)
+    rows=[dict(id='done-yesterday',status='done',task_type='chapter_generate',batch_task_id=None,chapter_seq=None,created_at=datetime.fromisoformat('2026-11-04T10:26:00+08:00'),updated_at=datetime.fromisoformat('2026-11-04T10:28:00+08:00')),dict(id='failed-yesterday',status='failed',task_type='chapter_generate',batch_task_id=None,chapter_seq=None,created_at=datetime.fromisoformat('2026-11-04T10:19:00+08:00'),updated_at=datetime.fromisoformat('2026-11-04T10:19:01+08:00')),dict(id='today',status='done',task_type='chapter_generate',batch_task_id=None,chapter_seq=None,created_at=datetime.fromisoformat('2026-11-05T00:00:00+08:00'),updated_at=datetime.fromisoformat('2026-11-05T00:01:00+08:00'))]
+    def reader(request):
+        p=request['params']
+        return [r for r in rows if p['start']<=r['created_at']<p['end']] if request['source']=='tasks' else []
+    result=api().observe(path,clock=lambda:now,reader=reader)
+    assert result['window']==dict(start='2026-11-03T16:00:00+00:00',end='2026-11-04T16:00:00+00:00')
+    assert result['collected_at']==now.isoformat() and result['observed_samples']==1
+    frozen=json.loads((Path(configured[1]['root'])/result['run_id']/'metrics.json').read_text())
+    assert (frozen['planned'],frozen['completed'],frozen['failed'])==(2,1,1)
+    assert result['status']=='insufficient_evidence'
+    assert api().observe(path,clock=lambda:now+timedelta(minutes=10),reader=lambda _:pytest.fail('same daily snapshot must not replay'))==result

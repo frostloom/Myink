@@ -3,7 +3,7 @@ from datetime import datetime,timedelta,timezone
 from pathlib import Path
 import math
 from .audit import _path,digest,hash_value,name,require,strict_json,utc
-from .live_observer import _load,_cached,_read,_private_directory,_controller,MAX_SNAPSHOT
+from .live_observer import _load,_cached,_read,_private_directory,_controller,MAX_SNAPSHOT,observation_window
 
 COUNTS=set('planned completed failed paused queued human_waiting status_unknown complete_tasks tail_samples paired_groups'.split())
 FIELDS=set('id metric evidence_domain identity window measurements paired_group_ids config_hash prompt_hash rubric_hash data_hash schema_id model_ids version_range confounders pricing_id pricing_range pricing_availability availability task_type_range'.split())|COUNTS
@@ -49,7 +49,11 @@ def inspect_observation(observer_config_path,expected_config_sha256,receipt_path
         and receipt['evidence_domain']==('online_business' if c['mode']=='ACTUAL' else 'synthetic')
         and type(receipt['minimum_samples']) is int and receipt['minimum_samples']==c['minimum_samples'],'observation domain/threshold mismatch')
     now=utc((clock or (lambda:datetime.now(timezone.utc)))());start=utc(datetime.fromisoformat(snapshot['window']['start']));end=utc(datetime.fromisoformat(snapshot['window']['end']))
-    require(start<end<=now and now-end<=timedelta(minutes=45),'stale or future observation')
+    fresh=end
+    if c.get('window_policy')=='previous_day_shanghai':
+        require(isinstance(receipt.get('collected_at'),str),'calendar collection time required')
+        fresh=utc(receipt['collected_at']);require((start,end)==observation_window(c,now),'calendar observation is from another day')
+    require(start<end<=fresh<=now and now-fresh<=timedelta(minutes=45),'stale or future observation')
     versions=snapshot['version_range'];commit=versions['commit_sha'];source=commit[0] if len(commit)==1 and hash_value(commit[0],40) else None
     gaps=[]
     if snapshot['complete_tasks']<c['minimum_samples']:gaps.append('insufficient_samples')
@@ -61,4 +65,4 @@ def inspect_observation(observer_config_path,expected_config_sha256,receipt_path
     if snapshot.get('cohort_sha256') is None:gaps.append('unknown_cohort')
     facts=dict(counts={k:snapshot[k] for k in sorted(COUNTS)},measurements=snapshot['measurements'],version_range=versions,availability=snapshot['availability'],confounders=snapshot['confounders'],task_types=snapshot['task_type_range'],model_ids=snapshot['model_ids'],pricing_id=snapshot['pricing_id'],pricing_range=snapshot['pricing_range'],pricing_availability=snapshot['pricing_availability'],cohort_sha256=snapshot.get('cohort_sha256'),minimum_samples=c['minimum_samples'])
     fingerprint=digest(dict(source=digest(c['source']),mode=c['mode'],facts=facts))
-    return dict(schema='pi-live-evidence-v1',authority='observation_only',mode=c['mode'],evidence_domain=receipt['evidence_domain'],observation_run_id=receipt['run_id'],receipt_sha256=receipt['receipt_sha256'],snapshot_sha256=receipt['snapshot_sha256'],evidence_fingerprint=fingerprint,source_binding_sha256=digest(c['source']),observer_controller_sha256=controller,observer_policy_sha256=digest(c),cohort_sha256=snapshot.get('cohort_sha256'),source_commit=source,candidate_sha256=None,window=snapshot['window'],expires_at=(end+timedelta(minutes=45)).isoformat(),observed_samples=snapshot['complete_tasks'],minimum_samples=c['minimum_samples'],availability=snapshot['availability'],gaps=sorted(gaps),facts=facts,repair_eligible=False,requires=['source_bound_reproducer','independent_review'],model_requests=0)
+    return dict(schema='pi-live-evidence-v1',authority='observation_only',mode=c['mode'],evidence_domain=receipt['evidence_domain'],observation_run_id=receipt['run_id'],receipt_sha256=receipt['receipt_sha256'],snapshot_sha256=receipt['snapshot_sha256'],evidence_fingerprint=fingerprint,source_binding_sha256=digest(c['source']),observer_controller_sha256=controller,observer_policy_sha256=digest(c),cohort_sha256=snapshot.get('cohort_sha256'),source_commit=source,candidate_sha256=None,window=snapshot['window'],expires_at=(fresh+timedelta(minutes=45)).isoformat(),observed_samples=snapshot['complete_tasks'],minimum_samples=c['minimum_samples'],availability=snapshot['availability'],gaps=sorted(gaps),facts=facts,repair_eligible=False,requires=['source_bound_reproducer','independent_review'],model_requests=0)
