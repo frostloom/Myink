@@ -18,7 +18,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import delete as sa_delete, func
+from sqlalchemy import delete as sa_delete, func, select
 
 from myink.api.auth import require_owner
 from myink.api.schemas import (ChapterVersionsOut, ContentUpdateOut,
@@ -141,14 +141,20 @@ def correct_chapter_memory(project_id: str, chapter_id: str) -> dict:
             raise HTTPException(status_code=404, detail="章节不存在")
         if not ch.content:
             raise HTTPException(status_code=400, detail="该章无正文，无法校正")
+        source = {"chapter_id": str(ch.id), "version": ch.version or 1}
         candidates, err = nodes.extract_candidates_from_draft(
             db, project_id=project_id, chapter_seq=ch.chapter_seq, draft=ch.content,
             task_id=None)
         if err:
             raise HTTPException(status_code=502, detail=f"记忆抽取失败: {err}")
+        # Lock the chapter before the project, matching workflow persistence.
+        current = db.scalar(select(Chapter).where(Chapter.id == _chapter_id(chapter_id))
+                            .with_for_update().execution_options(populate_existing=True))
+        if current is None or (current.version or 1) != source["version"]:
+            raise HTTPException(status_code=409, detail="CHAPTER_VERSION_CONFLICT")
         report = correction.correct_chapter_memory(
             db, project_id=_project_id(project_id), chapter_seq=ch.chapter_seq,
-            new_candidates=candidates)
+            new_candidates=candidates, source=source)
     return report
 
 

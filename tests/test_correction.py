@@ -466,3 +466,68 @@ def test_repeated_correction_respects_rejection_with_changed_metadata(temp_proje
         report = correction.correct_chapter_memory(db, project_id=uuid.UUID(temp_project), chapter_seq=1,
             new_candidates=[_cand("fact", {"content": "明确拒绝", "confidence": .8})])
         assert report["pool"]["add_to_pool"] == 0
+
+
+def test_correction_rejects_body_changed_during_extraction(temp_project, monkeypatch):
+    chapter_id = _seed_chapter(temp_project, 5, '旧正文')
+    def extract(*args, **kwargs):
+        update_chapter_content(temp_project, chapter_id,
+                               ContentUpdate(content='新正文', expected_version=1))
+        return [_cand('fact', {'content': '旧正文中的事实'})], None
+    monkeypatch.setattr(nodes, 'extract_candidates_from_draft', extract)
+    with pytest.raises(HTTPException) as exc:
+        correct_chapter_memory(temp_project, chapter_id)
+    assert exc.value.status_code == 409
+    with tenant_session(temp_project) as db:
+        assert db.query(MemoryCandidate).filter_by(source_chapter=5).count() == 0
+
+
+@pytest.mark.parametrize('changed', [False, True])
+def test_correction_confirmation_is_bound_to_source_version(temp_project, monkeypatch, changed):
+    chapter_id = _seed_chapter(temp_project, 5, '旧正文')
+    monkeypatch.setattr(nodes, 'extract_candidates_from_draft', lambda *a, **k:
+                        ([_cand('fact', {'content': '校正事实'})], None))
+    correct_chapter_memory(temp_project, chapter_id)
+    with tenant_session(temp_project) as db:
+        candidate = db.query(MemoryCandidate).filter_by(source_chapter=5).one()
+        candidate_id = candidate.id
+        assert candidate.review['correction_source'] == {'chapter_id': chapter_id, 'version': 1}
+    if changed:
+        update_chapter_content(temp_project, chapter_id,
+                               ContentUpdate(content='新正文', expected_version=1))
+    with tenant_session(temp_project) as db:
+        result = nodes.confirm_candidate(db, temp_project, candidate_id)
+        assert (result is None) == changed
+
+
+def test_correction_can_replace_an_older_version_proposal(temp_project, monkeypatch):
+    chapter_id = _seed_chapter(temp_project, 5, '旧正文')
+    monkeypatch.setattr(nodes, 'extract_candidates_from_draft', lambda *a, **k:
+                        ([_cand('fact', {'content': '相同候选'})], None))
+    correct_chapter_memory(temp_project, chapter_id)
+    update_chapter_content(temp_project, chapter_id,
+                           ContentUpdate(content='新正文', expected_version=1))
+    report = correct_chapter_memory(temp_project, chapter_id)
+    assert report['pool']['add_to_pool'] == 1
+    with tenant_session(temp_project) as db:
+        rows = db.query(MemoryCandidate).filter_by(source_chapter=5).all()
+        assert {row.review['correction_source']['version'] for row in rows} == {1, 2}
+
+
+def test_rejected_correction_keeps_its_source_and_stays_rejected(temp_project, monkeypatch):
+    from myink.api.routes_candidates import reject_candidate
+    chapter_id = _seed_chapter(temp_project, 5, '正文')
+    monkeypatch.setattr(nodes, 'extract_candidates_from_draft', lambda *a, **k:
+                        ([_cand('fact', {'content': '作者不接受的候选'})], None))
+    correct_chapter_memory(temp_project, chapter_id)
+    with tenant_session(temp_project) as db:
+        candidate = db.query(MemoryCandidate).filter_by(source_chapter=5).one()
+        candidate_id = str(candidate.id)
+    reject_candidate(temp_project, candidate_id)
+    report = correct_chapter_memory(temp_project, chapter_id)
+    assert report['pool']['add_to_pool'] == 0
+    assert report['pool']['duplicates_skipped'] == 1
+    with tenant_session(temp_project) as db:
+        candidate = db.get(MemoryCandidate, uuid.UUID(candidate_id))
+        assert candidate.review['correction_source']['version'] == 1
+        assert candidate.status == 'rejected'

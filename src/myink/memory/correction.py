@@ -150,7 +150,7 @@ def diff_changeset(persisted: list[dict], new_candidates: list[dict]) -> dict:
 
 
 def _pool_has_duplicate(db: Session, project_id: uuid.UUID, chapter_seq: int,
-                        cand: dict) -> bool:
+                        cand: dict, source: dict | None = None) -> bool:
     """Deduplicate unresolved/rejected proposals, not historical confirmations.
 
     The changeset already excludes live memories. A confirmed proposal reaching
@@ -165,11 +165,12 @@ def _pool_has_duplicate(db: Session, project_id: uuid.UUID, chapter_seq: int,
         )
     ).scalars().all()
     return any(same_correction_proposal(cand["kind"], r.payload, cand["payload"])
+               and (source is None or (r.review or {}).get("correction_source") == source)
                and not (r.review or {}).get("superseded") for r in rows)
 
 
 def apply_changeset_to_pool(db: Session, *, project_id: uuid.UUID, chapter_seq: int,
-                            changeset: dict) -> dict:
+                            changeset: dict, source: dict | None = None) -> dict:
     """变更集 → 待确认池（数据流边界 §6.2：人工确认后落库/失效）。
 
     add 候选原样入池（kind 为 extract 正常 kind）；remove 项以 memory_removal 候选入池
@@ -178,22 +179,24 @@ def apply_changeset_to_pool(db: Session, *, project_id: uuid.UUID, chapter_seq: 
     """
     added = removed = dup = 0
     for cand in changeset["add"]:
-        if _pool_has_duplicate(db, project_id, chapter_seq, cand):
+        if _pool_has_duplicate(db, project_id, chapter_seq, cand, source):
             dup += 1
             continue
         db.add(MemoryCandidate(project_id=project_id, kind=cand["kind"],
                                source_chapter=chapter_seq, payload=cand.get("payload") or {},
-                               confidence=cand.get("confidence", 0.0)))
+                               confidence=cand.get("confidence", 0.0),
+                               review={"correction_source": source} if source is not None else None))
         added += 1
     for mem in changeset["remove"]:
         payload = {"memory_type": mem["memory_type"], "memory_id": mem["memory_id"],
                    "display": mem.get("display")}
         if _pool_has_duplicate(db, project_id, chapter_seq,
-                               {"kind": "memory_removal", "payload": payload}):
+                               {"kind": "memory_removal", "payload": payload}, source):
             dup += 1
             continue
         db.add(MemoryCandidate(project_id=project_id, kind="memory_removal",
-                               source_chapter=chapter_seq, payload=payload, confidence=1.0))
+                               source_chapter=chapter_seq, payload=payload, confidence=1.0,
+                               review={"correction_source": source} if source is not None else None))
         removed += 1
     return {"add_to_pool": added, "remove_to_pool": removed, "duplicates_skipped": dup}
 
@@ -260,7 +263,7 @@ def apply_memory_removal(db: Session, *, project_id: uuid.UUID, payload: dict,
 
 
 def correct_chapter_memory(db: Session, *, project_id: uuid.UUID, chapter_seq: int,
-                           new_candidates: list[dict]) -> dict:
+                           new_candidates: list[dict], source: dict | None = None) -> dict:
     """编辑后记忆校正：diff → 变更集 → 待确认池，返回变更报告（阶段 3）。
 
     纯风格编辑（改语言/标点/句长）时新候选与已落库记忆逐条命中 → keep 全量、池零新增，
@@ -274,7 +277,7 @@ def correct_chapter_memory(db: Session, *, project_id: uuid.UUID, chapter_seq: i
     persisted = load_persisted_memories(db, project_id=project_id, chapter_seq=chapter_seq)
     changeset = diff_changeset(persisted, new_candidates)
     pool_stats = apply_changeset_to_pool(db, project_id=project_id,
-                                         chapter_seq=chapter_seq, changeset=changeset)
+                                         chapter_seq=chapter_seq, changeset=changeset, source=source)
     return {
         "chapter_seq": chapter_seq,
         "changeset": {"add": len(changeset["add"]), "remove": len(changeset["remove"]),

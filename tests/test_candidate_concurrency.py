@@ -1,5 +1,7 @@
 """Real PostgreSQL transactions serialize decisions on one pending candidate."""
 from concurrent.futures import ThreadPoolExecutor
+
+import pytest
 from contextlib import contextmanager
 import threading
 
@@ -138,3 +140,48 @@ def test_correction_lock_allows_unrelated_chapter_candidate_inserts(temp_project
                 assert future.result(timeout=1)["pool"]["add_to_pool"] == 1
             finally:
                 writer.commit()
+
+
+@pytest.mark.parametrize('action', ['correct', 'confirm'])
+def test_correction_lock_order_matches_chapter_persistence(temp_project, monkeypatch, action):
+    import time
+    import uuid
+    from sqlalchemy import select, text, update
+    from myink.api.routes_chapters import correct_chapter_memory
+    from myink.db import get_admin_engine
+    from myink.models import Chapter, Project
+    from myink.workflow import nodes
+    pid = uuid.UUID(temp_project)
+    with tenant_session(temp_project) as db:
+        chapter = Chapter(project_id=pid, chapter_seq=1, title='章', content='正文', version=1)
+        db.add(chapter)
+        db.flush()
+        chapter_id = str(chapter.id)
+        candidate = MemoryCandidate(project_id=pid, source_chapter=1, kind='fact',
+                                    payload={'content': '校正事实'},
+                                    review={'correction_source': {'chapter_id': chapter_id, 'version': 1}})
+        db.add(candidate)
+        db.flush()
+        candidate_id = candidate.id
+    monkeypatch.setattr(nodes, 'extract_candidates_from_draft', lambda *a, **k: ([], None))
+    def perform():
+        if action == 'correct':
+            return correct_chapter_memory(temp_project, chapter_id)
+        with tenant_session(temp_project) as db:
+            return nodes.confirm_candidate(db, temp_project, candidate_id)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with tenant_session(temp_project) as writer:
+            writer.scalar(select(Chapter).where(Chapter.id == uuid.UUID(chapter_id)).with_for_update())
+            writer_pid = writer.scalar(text('SELECT pg_backend_pid()'))
+            future = pool.submit(perform)
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                with get_admin_engine().connect() as monitor:
+                    blocked = monitor.scalar(text('SELECT count(*) FROM pg_stat_activity WHERE :pid = ANY(pg_blocking_pids(pid))'), {'pid': writer_pid})
+                if blocked:
+                    break
+                time.sleep(.01)
+            assert blocked, 'correction did not reach its chapter lock'
+            writer.execute(update(Project).where(Project.id == pid).values(current_chapter=1))
+            writer.commit()
+            assert future.result(timeout=5) is not None

@@ -88,6 +88,6 @@ def reject_candidate(project_id: str, candidate_id: str, body: RejectCandidateIn
             raise HTTPException(status_code=409, detail=f"候选已处理: {cand.status}")
         cand.status = "rejected"
         decision = body or RejectCandidateIn()
-        cand.review = {"mode": decision.mode, "reason": decision.reason, "applied": False}
+        cand.review = {**(cand.review or {}), "mode": decision.mode, "reason": decision.reason, "applied": False}
         db.commit()
     return {"candidate_id": candidate_id, "status": "rejected"}

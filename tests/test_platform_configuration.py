@@ -269,7 +269,7 @@ def test_short_commit_uses_published_snapshot_on_creation_and_retry(monkeypatch,
     card = {field: 'ready' for field in routes.creation.REQUIRED_CARD_FIELDS}
     card.update(genre=genre, working_title='Short book', chapter_count=3, chars_per_chapter=1000)
     session = SimpleNamespace(status='active', card=card, book_id=None)
-    project = SimpleNamespace(id=pid)
+    project = SimpleNamespace(id=pid, genre=genre)
     user = SimpleNamespace(role='user', is_guest=False, platform_short_used=0)
     config = pc.empty_configuration()
     config['genre_packs'] = {'xiuxian': {'pacing': 'Published pacing'}}
@@ -280,6 +280,8 @@ def test_short_commit_uses_published_snapshot_on_creation_and_retry(monkeypatch,
         def __enter__(self): return self
         def __exit__(self, *args): pass
         def scalar(self, statement):
+            if 'projects' in str(statement):
+                return project
             return session if 'short_creation_sessions' in str(statement) else user
         def get(self, model, key): return project
         def commit(self): pass

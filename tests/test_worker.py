@@ -984,3 +984,15 @@ def test_batch_runner_materializes_each_chapter_before_its_subgraph(temp_project
     assert result["position"] == 1
     with tenant_session(temp_project) as db:
         assert repo.get_chapter(db, uuid.UUID(temp_project), 2).status == "writing"
+
+
+@pytest.mark.parametrize('count,final', [(1, False), (2, False), (3, True)])
+def test_retry_cleanup_matches_consumer_retry_limit(monkeypatch, count, final):
+    from dataclasses import replace
+    from myink.worker import processor
+    calls = []
+    monkeypatch.setattr(processor, 'settings', replace(processor.settings, worker_max_retries=3))
+    monkeypatch.setattr(processor, '_release_inflight', lambda body: calls.append('release'))
+    monkeypatch.setattr(processor, '_accumulate_cost', lambda body: calls.append('cost'))
+    processor._finish({'retry_count': count}, 'retry')
+    assert calls == (['release', 'cost'] if final else [])

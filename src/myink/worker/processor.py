@@ -411,7 +411,7 @@ def _finish(body: dict, decision: str) -> None:
       最后一次重试才释放（最后一次重试后下站进 DLQ，不释放会永久锁死本书）。
     - 成本累计：只在终态或最后一次重试求和一次，避免 retry 重复计入。
     """
-    final_attempt = int(body.get("retry_count") or 0) >= settings.worker_max_retries - 1
+    final_attempt = int(body.get("retry_count") or 0) >= settings.worker_max_retries
     if decision not in {"waiting", "yield"} and (decision != "retry" or final_attempt):
         _release_inflight(body)
     if decision == "terminal" or (decision == "retry" and final_attempt):

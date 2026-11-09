@@ -334,10 +334,18 @@ def commit(body: ShortCreationCommitBody, session_id: uuid.UUID,
         pid = project.id
         db.commit()
 
-    # Reuse the persisted snapshot on retries even if global packs changed meanwhile.
+    # Keep the snapshot for an unchanged genre; an edited genre selects a new pack.
     with tenant_session(str(pid)) as tdb:
+        project = tdb.scalar(select(Project).where(Project.id == pid).with_for_update())
+        genre_changed = project.genre != card["genre"]
         settings_row = get_settings(tdb, pid)
         genre_pack = (settings_row.genre_pack if settings_row else {}) or {}
+        if genre_changed:
+            primary_id = resolve_pack_id(card["genre"])
+            try:
+                genre_pack = build_book_pack(primary_id, None) if primary_id else {}
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     # 2) 出方案 + 审纲（复用旧向导的短篇分支，含「被打回就重出一次」）
     with tenant_session(str(pid)) as db2:
@@ -374,9 +382,20 @@ def commit(body: ShortCreationCommitBody, session_id: uuid.UUID,
     style_item_id = (body.style_item_id or "").strip()
     style_name: str | None = None
     with tenant_session(str(pid)) as tdb:
+        row = tdb.scalar(select(Project).where(Project.id == pid).with_for_update())
         _book._persist_short_outline(tdb, pid, outline)
-        row = tdb.scalar(select(Project).where(Project.id == pid))
+        row.title = card["working_title"]
+        row.genre = card["genre"]
+        settings_row = get_settings(tdb, pid)
+        if settings_row is None:
+            settings_row = ProjectSettings(project_id=pid, version=1)
+            tdb.add(settings_row)
+        if settings_row.genre_pack != genre_pack:
+            settings_row.genre_pack = genre_pack
+            settings_row.version = (settings_row.version or 1) + 1
         row.creation_context = {**(row.creation_context or {}),
+                               "premise": premise, "chapter_count": chapters,
+                               "chars_per_chapter": chars,
                                "creation_conversation": {
                                    field: card[field] for field in creation.REQUIRED_CARD_FIELDS}}
         if style_item_id:

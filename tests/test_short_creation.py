@@ -907,3 +907,91 @@ def test_commit_short_book_from_private_writing_resource(temp_user, chain_stub):
     finally:
         with new_session() as db:
             db.execute(sa_delete(PersonalWritingResource).where(PersonalWritingResource.id == rid)); db.commit()
+
+
+def test_retry_updates_changed_card_in_the_reused_book(temp_user, chain_stub, monkeypatch):
+    from myink.api import routes_book
+    from myink.workflow.short_runner import short_params_for
+    from myink.short.creation import card_premise
+    from myink.api import routes_short_creation
+    monkeypatch.setattr(routes_short_creation, 'resolve_pack_id', lambda genre: genre)
+    monkeypatch.setattr(routes_short_creation, 'build_book_pack', lambda primary, secondary: {'source_name': primary})
+    real = routes_book._short_outline_draft
+    calls = []
+    def flaky(*args, **kwargs):
+        calls.append(1)
+        if len(calls) == 1:
+            return {'outline_error': 'boom'}, {'outline': {}, 'error': 'boom'}
+        return real(*args, **kwargs)
+    monkeypatch.setattr(routes_book, '_short_outline_draft', flaky)
+    chain_stub([json.dumps(_short_outline(2), ensure_ascii=False)])
+    sid = _seed_session(temp_user)
+    assert _commit(temp_user, sid).status_code == 502
+    changed = {'working_title': '修改后的标题', 'genre': '都市', 'chapter_count': 2,
+               'chars_per_chapter': 1000, 'plot_sketch': '修改后的剧情'}
+    response = _commit(temp_user, sid, {'card': changed})
+    assert response.status_code == 200, response.text
+    pid = uuid.UUID(response.json()['project_id'])
+    with new_session() as db:
+        session = db.get(ShortCreationSession, uuid.UUID(sid))
+        project = db.get(Project, pid)
+        assert project.title == changed['working_title']
+        assert project.genre == changed['genre']
+        assert project.creation_context['premise'] == card_premise(session.card)
+        assert project.creation_context['chars_per_chapter'] == 1000
+        assert db.query(Project).filter(Project.user_id == uuid.UUID(temp_user)).count() == 1
+    assert short_params_for(str(pid)).chars_per_chapter == 1000
+    with tenant_session(str(pid)) as db:
+        assert get_settings(db, pid).genre_pack['source_name'] == changed['genre']
+
+
+def test_commit_keeps_selected_pack_if_another_request_changes_genre(temp_user, chain_stub, monkeypatch):
+    from myink.api import routes_book
+    from myink.models import ProjectSettings
+    real = routes_book._short_outline_draft
+    selected = []
+    def changed_during_planning(project_id, body, genre, pack, chapters, db):
+        selected.append(pack)
+        result = real(project_id, body, genre, pack, chapters, db)
+        with tenant_session(project_id) as other:
+            row = other.get(Project, uuid.UUID(project_id))
+            row.genre = '另一轮的题材'
+            settings_row = get_settings(other, row.id)
+            settings_row.genre_pack = {'source_name': '另一轮的题材'}
+        return result
+    monkeypatch.setattr(routes_book, '_short_outline_draft', changed_during_planning)
+    chain_stub([_PLAN_JSON])
+    response = _commit(temp_user, _seed_session(temp_user))
+    assert response.status_code == 200, response.text
+    with tenant_session(response.json()['project_id']) as db:
+        row = db.get(Project, uuid.UUID(response.json()['project_id']))
+        assert row.genre == _FULL_CARD['genre']
+        assert get_settings(db, row.id).genre_pack == selected[0]
+
+
+def test_commit_reads_genre_and_pack_from_the_same_locked_snapshot(temp_user, chain_stub, monkeypatch):
+    from contextlib import contextmanager
+    from myink.api import routes_short_creation
+    real_session = routes_short_creation.tenant_session
+    first = True
+    @contextmanager
+    def concurrent_session(project_id):
+        nonlocal first
+        if first:
+            first = False
+            with real_session(project_id) as other:
+                row = other.get(Project, uuid.UUID(project_id))
+                row.genre = '另一轮的题材'
+                get_settings(other, row.id).genre_pack = {'source_name': '另一轮的题材'}
+        with real_session(project_id) as db:
+            yield db
+    monkeypatch.setattr(routes_short_creation, 'tenant_session', concurrent_session)
+    monkeypatch.setattr(routes_short_creation, 'resolve_pack_id', lambda genre: genre)
+    monkeypatch.setattr(routes_short_creation, 'build_book_pack', lambda primary, secondary: {'source_name': primary})
+    chain_stub([_PLAN_JSON])
+    response = _commit(temp_user, _seed_session(temp_user))
+    assert response.status_code == 200, response.text
+    with real_session(response.json()['project_id']) as db:
+        row = db.get(Project, uuid.UUID(response.json()['project_id']))
+        assert row.genre == _FULL_CARD['genre']
+        assert get_settings(db, row.id).genre_pack['source_name'] == row.genre
