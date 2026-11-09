@@ -19,7 +19,7 @@ FIELDS=set('schema mode state_path billing_path gate_path root lock_path inherit
 
 def _load(path,pin,callbacks,clock):
     path=_path(path);_plain(path);require(path.stat().st_size<=65536 and file_hash(path)==pin,'nightly driver config drift');c=strict_json(path.read_bytes())
-    require(isinstance(c,dict) and FIELDS<=set(c)<=FIELDS|{'observation_config','observation_template','source_template'} and not ('observation_config' in c and 'observation_template' in c) and c['schema']=='pi-nightly-driver-v1' and c['mode'] in ('ACTUAL','SIMULATED'),'closed nightly driver config required')
+    require(isinstance(c,dict) and FIELDS<=set(c)<=FIELDS|{'observation_config','observation_template','source_template','manual_baseline'} and not ('observation_config' in c and 'observation_template' in c) and c['schema']=='pi-nightly-driver-v1' and c['mode'] in ('ACTUAL','SIMULATED'),'closed nightly driver config required')
     for key in ('root','lock_path','state_path','billing_path','gate_path'):_path(c[key])
     require(Path(c['root']).is_dir() and stat.S_IMODE(Path(c['root']).stat().st_mode)==0o700,'private nightly root required');_plain(Path(c['lock_path']))
     if c['mode']=='ACTUAL':
@@ -27,6 +27,9 @@ def _load(path,pin,callbacks,clock):
         require(all(Path(c[k])==v for k,v in dict(root=BASE/'nightly',lock_path=BASE/'control/nightly.lock',state_path=BASE/'state/actual-manager.sqlite',billing_path=BASE/'state/ledger.sqlite',gate_path=BASE/'state/nightly-approval.sqlite').items()),'original ACTUAL manager and fee roots required')
         require(c['docker']=='/usr/bin/docker' and c['endpoint']=='unix:///var/run/docker.sock' and c['daemon_id']=='0f90c176-9c45-4708-8103-37b5ff2464f1','original product Docker daemon required')
     else:require(stat.S_IMODE(path.stat().st_mode)==0o600 and not Path(c['root']).is_relative_to(BASE),'isolated private driver simulation required')
+    if 'manual_baseline' in c:
+        require(isinstance(c['manual_baseline'],str) and str(uuid.UUID(c['manual_baseline']))==c['manual_baseline'],'canonical idle baseline operation required')
+        require(c['inherit_task_id'] is None and 'source_template' in c and c['autonomy_profile'] is not None,'idle baseline driver requires fresh source, not an inherited task')
     profile=c['autonomy_profile'];require(profile is None or isinstance(profile,dict) and set(profile)=={'path','sha256'},'one fixed optional original source profile required')
     if profile is not None and c['mode']=='ACTUAL':require(_path(profile['path'])==BASE/'config/autonomy-profile.json','original finite source profile required')
     return c
@@ -126,6 +129,9 @@ def run(config_path,pin,*,clock=None,admit=None,manager_trigger=None,image_facto
                 from .maintenance_window import budget
                 try:budget(utc(clock()),2100)
                 except ValueError:return _response(gate,'outside_window')
+                if 'manual_baseline' in c:
+                    from .idle_baseline import window_ready
+                    if not window_ready(gate,dict(path=str(config_path),sha256=pin)):return _response(gate,'baseline_window_not_ready')
                 cycle=str(uuid.uuid4());claim=gate.begin(cycle,utc(clock()).astimezone(SHANGHAI).date().isoformat())
                 if not claim['claimed']:return _response(gate,'already_claimed')
                 root=Path(c['root'])/cycle;root.mkdir(mode=0o700)
@@ -147,7 +153,7 @@ def run(config_path,pin,*,clock=None,admit=None,manager_trigger=None,image_facto
                         from .nightly_source import prepare as prepare_source
                         template=c['source_template'];require(isinstance(template,dict) and set(template)=={'path','sha256'},'one pinned source template required')
                         require(c['mode']=='ACTUAL' or callable(source_prepare),'explicit simulated source preparation required')
-                        stage=(source_prepare or prepare_source)(gate,cycle,root,template['path'],template['sha256']);require(stage['cycle_id']==cycle,'source stage belongs to another round')
+                        stage=(source_prepare or prepare_source)(gate,cycle,root,template['path'],template['sha256'],**({'baseline':dict(path=str(config_path),sha256=pin)} if 'manual_baseline' in c else {}));require(stage['cycle_id']==cycle,'source stage belongs to another round')
                         if not (root/'source-stage.json').exists():_write(root/'source-stage.json',stage)
                         require(_read(root/'source-stage.json')==stage,'source stage receipt drift');effective=dict(c,autonomy_profile=stage['profile'])
                     if c.get('source_template') is not None and stage.get('status')=='no_evidence':

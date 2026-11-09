@@ -89,7 +89,7 @@ def daily_observer(mode,cycle,root,binding,original,*,create):
     return dict(path=str(path),sha256=file_hash(path)),config
 
 
-def prepare(gate,cycle,root,template_path,template_pin,*,collect=None,inspect_cohort=None,read_source=None):
+def prepare(gate,cycle,root,template_path,template_pin,*,collect=None,inspect_cohort=None,read_source=None,baseline=None):
     state=gate.status();require(state['phase']=='preparing' and state['cycle_id']==cycle and state['task_id'] is None,'one new unadmitted round required')
     root=_path(root);require(root.is_dir() and stat.S_IMODE(root.stat().st_mode)==0o700,'existing private new round required')
     template_path=_path(template_path);_plain(template_path)
@@ -104,7 +104,12 @@ def prepare(gate,cycle,root,template_path,template_pin,*,collect=None,inspect_co
     with gate._connection() as c:
         row=c.execute("SELECT cycle_id,result_sha256 FROM approval_cycles WHERE phase='completed' AND package IS NOT NULL AND deployment IS NOT NULL ORDER BY rowid DESC LIMIT 1").fetchone()
         require(row is not None,'completed human-deployed predecessor required');previous=row['cycle_id'];result_pin=row['result_sha256']
-    bundle=root.parent/previous/'bundle';manual=_manual_baseline(gate,previous,result_pin,bundle,template_pin)
+    bundle=root.parent/previous/'bundle';manual=None
+    if baseline is not None:
+        from .idle_baseline import load
+        manual=load(gate,previous,result_pin,baseline,template_pin)
+        if manual is not None:result_pin=file_hash(manual[3])
+    if manual is None:manual=_manual_baseline(gate,previous,result_pin,bundle,template_pin)
     comparison_pin=result_pin;predecessor_kind='completed_comparison'
     if manual is not None:
         packet,deployment,cohort,cp,binding,oc=manual;comparison_pin=None;predecessor_kind='manual_main_release'
