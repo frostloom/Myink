@@ -50,7 +50,7 @@ def _cohort(commands,image,package_sha256,now):
         started=utc(state['StartedAt']);require(started<=now,'runtime start is in the future')
         probe=strict_json(_run(commands,['exec','--user','10001:10001',row['Id'],'python','-I','-S','-B','-c',PROBE]))
         require(set(probe)=={'package','files'} and digest(probe['files'])==package_sha256,'running installed package differs from frozen image')
-        snapshots.append(dict(container_id=row['Id'],image_id=row['Image'],role=role,started_at=started.isoformat(),identity=identity,config_sha256=digest(dict(config=c,host=row.get('HostConfig',{}),mounts=row.get('Mounts',[])))))
+        snapshots.append(dict(container_id=row['Id'],image_id=row['Image'],role=role,started_at=started.isoformat(),identity=identity,config_sha256=digest(dict(config=c,host=row.get('HostConfig',{}),mounts=sorted(row.get('Mounts',[]),key=lambda mount:mount['Destination'])))))
     require(all(r['identity']==snapshots[0]['identity'] for r in snapshots),'mixed deployed product provenance')
     return snapshots,None
 

@@ -95,3 +95,29 @@ def test_unknown_or_mixed_product_identity_cannot_open_metrics(deployed_case,fau
 def test_existing_product_python_component_identity_is_accepted(deployed_case,monkeypatch):
     monkeypatch.setitem(ENV,'DEPLOYMENT_IMAGE_IDS',json.dumps(dict(python='sha256:'+'7'*64)))
     assert confirm(deployed_case)['status']=='observing'
+
+
+@pytest.mark.parametrize('changed', [False, True])
+def test_cohort_hash_ignores_mount_order_but_detects_changed_mounts(deployed_case, tmp_path, changed):
+    from ops.pi.nightly_deployment import _cohort
+    case, calls = deployed_case
+    root = tmp_path/'mount-order'; root.mkdir()
+    class MountOrder(Docker):
+        inspections = 0
+        def run(self, args, **kwargs):
+            result = super().run(args, **kwargs)
+            if args[:2] == ['container', 'inspect']:
+                path = self.root/result['command_id']/'stdout.bin'
+                rows = json.loads(path.read_bytes())
+                mounts = [dict(Type='volume', Name='feedback', Source='/volumes/feedback', Destination='/data/feedback', RW=True),
+                          dict(Type='bind', Source='/run/myink-pi-console', Destination='/run/pi-console', RW=False)]
+                if self.inspections:
+                    mounts.reverse()
+                    if changed:mounts[0]['RW'] = True
+                rows[0]['Mounts'] = mounts
+                path.write_text(json.dumps(rows)); self.inspections += 1
+            return result
+    transport = MountOrder(root, case, calls, None)
+    first, _ = _cohort(transport, 'sha256:'+'7'*64, digest(FILES), case[-1][0])
+    second, _ = _cohort(transport, 'sha256:'+'7'*64, digest(FILES), case[-1][0])
+    assert (first == second) is not changed
